@@ -12,7 +12,7 @@ export function pisoCorto(n) {
 
 export const APARATOS_DEF = [
   {id:'lvm', sigla:'Lvm:', nombre:'Lavamanos', grupo:'h', uc_af:0.5, uc_ac:0.5, ud:2, pmin:0.51, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
-  {id:'san', sigla:'San:', nombre:'Sanitario c/tanque', grupo:'h', uc_af:2.2, uc_ac:0, ud:4, pmin:0.71, pmax:14.10, qgas:0, norma:'NTC 1500 T1'},
+  {id:'san', sigla:'San:', nombre:'Sanitario con tanque', grupo:'h', uc_af:2.2, uc_ac:0, ud:4, pmin:0.71, pmax:14.10, qgas:0, norma:'NTC 1500 T1'},
   {id:'lvp', sigla:'Lvp:', nombre:'Lavaplatos', grupo:'h', uc_af:1.0, uc_ac:1.0, ud:2, pmin:0.51, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
   {id:'duc', sigla:'Duc:', nombre:'Ducha', grupo:'h', uc_af:1.0, uc_ac:1.0, ud:2, pmin:1.02, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
   {id:'tin', sigla:'Tin:', nombre:'Tina de baño', grupo:'h', uc_af:1.0, uc_ac:1.0, ud:2, pmin:0.51, pmax:14.10, qgas:0, norma:'NTC 1500 T1'},
@@ -55,12 +55,13 @@ export const TABS=[
 ];
 
 export const MATERIALES = {
-  af: {lbl:'Agua Fría', opts:['PVC presión','CPVC','Cobre rígido','Polipropileno PP-R']},
+  af: {lbl:'Agua Fría', opts:['PVC-PR','CPVC','Cobre rígido','Polipropileno PP-R']},
   ac: {lbl:'Agua Caliente', opts:['CPVC','Cobre rígido','Polipropileno PP-R','PEX']},
-  san: {lbl:'Sanitaria', opts:['PVC sanitario','Novatec','Hierro fundido','Concreto']},
-  ll: {lbl:'Aguas Lluvias', opts:['PVC sanitario','Novatec','Hierro fundido','Concreto','Gres cerámico']},
-  ven: {lbl:'Ventilación', opts:['PVC sanitario','Novatec']},
-  rci: {lbl:'Contra Incendio', opts:['Acero SCH 40','Acero SCH 10','Acero galvanizado','CPVC CPVC-CI','PVC C900']},
+  san: {lbl:'Sanitaria', opts:['PVC-S','Novatec','Hierro fundido','Concreto']},
+  ll: {lbl:'Aguas Lluvias', opts:['PVC-S','Novatec','Hierro fundido','Concreto','Gres cerámico']},
+  gas: {lbl:'Gas', opts:['PE al PE','Cobre rígido','A.C.','Acero HG','Polipropileno PP-R']},
+  ven: {lbl:'Ventilación', opts:['PVC-V','Novatec']},
+  rci: {lbl:'Contra Incendio', opts:['A.C. SCH 40','A.C. SCH 10','Acero HG','CPVC CPVC-CI','PVC C900 RDE 14']},
 };
 
 export const MATS_DEFAULT=Object.fromEntries(Object.entries(MATERIALES).map(([k,v])=>[k,v.opts.map((o,i)=>({id:k+i,val:o}))]));
@@ -84,11 +85,13 @@ export const UD_PISO_MAP={
 };
 
 export const NAV_TABS=[
-  {id:'info',  l:'Info General',    ico:'🏗️'},
-  {id:'redes', l:'Redes a Diseñar', ico:'🔧'},
-  {id:'datos', l:'Base Datos',      ico:'📊'},
-  {id:'crit',  l:'Normativa',       ico:'§'},
-  {id:'inf',   l:'Informe',         ico:'📄'},
+  {id:'info',  l:'Información general',  ico:'🏗️'},
+  {id:'planos',l:'Carga de planos',      ico:'📐'},
+  {id:'datos', l:'Parámetros de diseño', ico:'📊'},
+  {id:'visor', l:'Dibujo de Redes',      ico:'✏️'},
+  {id:'redes', l:'Diseño de redes',      ico:'🔧'},
+  {id:'inf',   l:'Informes',             ico:'📄'},
+  {id:'crit',  l:'Normativa',            ico:'§'},
 ];
 
 export const INFO_SUBTABS=[
@@ -160,13 +163,11 @@ export const REQ_ITEMS=[
   ['🏷️','Cotas NPT','Nivel piso terminado en cada planta'],
   ['🎨','Redes por color','AF · AC · SAN · LL · VEN · GAS con leyenda'],
   ['🚿','Símbolos NTC','Lvm · San · Duc · Lvp · Tin · Lvra'],
-  ['🔥','Puntos gas','Est · Cal · Hor · Sec marcados en plano'],
 ];
 
 export const BD_SUBTABS=[
   { id:'mats', l:'📦 Materiales por red', s:'Tipos de tubería editables' },
-  { id:'apars', l:'🚿 Aparatos', s:'UC · UD · Presiones · Q gas' },
-  { id:'calent', l:'♨️ Calentadores', s:'Catálogo a gas' },
+  { id:'apars', l:'🚿 Aparatos y Calentadores', s:'UC · UD · Q gas · Catálogo' },
   { id:'profs', l:'📏 Profundidades', s:'Instalación por red' },
 ];
 

@@ -4,7 +4,7 @@ import Layout from './layouts/Layout'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
-import WorkAreaPage from './pages/WorkAreaPage'
+import WorkAreaCivilFlowPage from './pages/WorkAreaCivilFlowPage'
 import ProfilePage from './pages/ProfilePage'
 import DocsPage from './pages/DocsPage'
 import PricingPage from './pages/PricingPage'
@@ -40,7 +40,7 @@ function App() {
             <Route path="/civilmep" element={<CivilMEPPage />} />
             <Route path="/civilroads" element={<CivilRoadsPage />} />
             <Route element={<Layout />}>
-              <Route path="/civilflowareatrabajo" element={<WorkAreaPage />} />
+              <Route path="/civilflowareatrabajo" element={<WorkAreaCivilFlowPage />} />
               <Route path="/perfil" element={<ProfilePage />} />
             </Route>
             <Route path="/dashboard" element={<Navigate to="/civilflowareatrabajo" replace />} />

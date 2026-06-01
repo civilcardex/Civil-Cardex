@@ -1,0 +1,573 @@
+import { useState, useRef, useMemo, useEffect } from "react";
+import { useSanitario } from "../context/SanitarioContext";
+import { usePlanos } from "../context/PlanosContext";
+import { useAnalysis } from "../hooks/useAnalysis";
+import CollapsibleNav from "./CollapsibleNav";
+import { REDES, USOS, EMPRES, NAV_TABS, REQ_ITEMS, pisoLbl } from "./constants";
+import { parseDecimalInput } from "../utils/parseDecimal";
+import { validateTramo } from "../utils/validateTramo";
+import CalculoUD from "./UdCalculation";
+import DisenosSanitarios from "./SanitaryDesign";
+import BajantesTable from "./DownpipesTable";
+import DisenoLluvias from "./RainwaterDesign";
+import ChequeoBajantesLluvias from "./RainDownpipesCheck";
+import ChequeoCanalesLluvias from "./RainChannelsCheck";
+import CalculoHidraulicoLluvias from "./RainwaterHydraulicCalc";
+import CalculoHidraulicoSanitario from "./SanitaryHydraulicCalc";
+
+import DisenoUDPanel from "./UdDesignPanel";
+import PanelValoresUD from "./UdValuesPanel";
+import PanelBajantesLluvias from "./RainDownpipesPanel";
+import PanelCanalesLluvias from "./RainChannelsPanel";
+import BaseDatos from "./DesignParameters";
+import Normativa from "./Normativa";
+
+function CIVILFLOWInner(){
+const { tramosSan, tramosLl, udBase, pisos, proy, setP, setPisos } = useSanitario();
+const { planos, addPlanos, removePlano, updatePlano, confirmPlano } = usePlanos();
+
+  const [tab,setTab]=useState('info');
+
+  useEffect(() => {
+    const openTab = sessionStorage.getItem('openTab');
+    if (openTab) {
+      setTab(openTab);
+      sessionStorage.removeItem('openTab');
+    }
+  }, []);
+
+  const [redes,setRedes]=useState(new Set(['san','ll']));
+  const redesActivas=useMemo(()=>REDES.filter(r=>redes.has(r.id)),[redes]);
+  const [redActiva,setRedActiva]=useState('san');
+const [planDrag,setPlanDrag]=useState(false);
+const [selectedPlanId,setSelectedPlanId]=useState(null);
+const selectedPlan=useMemo(()=>planos.find(p=>p.id===selectedPlanId)||null,[planos,selectedPlanId]);
+const [selectedPlanUrl,setSelectedPlanUrl]=useState(null);
+const pendingPlanos=useMemo(()=>planos.filter(p=>p.status==='pending'),[planos]);
+const confirmedPlanos=useMemo(()=>planos.filter(p=>p.status==='confirmed'),[planos]);
+
+const [nSotanos,setNSotanos]=useState('');
+const [nPisos,setNPisos]=useState('');
+const [altPiso,setAltPiso]=useState(0);
+const [altSotano,setAltSotano]=useState(0);
+const [nptPiso1,setNptPiso1]=useState(0);
+const [conCubierta,setConCubierta]=useState(false);
+
+const generarPisos=()=>{
+  const lista=[];
+  const ns=Number(nSotanos)||0;
+  const np=Number(nPisos)||0;
+  for(let i=ns;i>=1;i--)lista.push({id:'s'+i,n:-i,npt:parseFloat((nptPiso1-(i*altSotano)).toFixed(2)),ok:false,tipo:'sotano'});
+  for(let i=1;i<=np;i++)lista.push({id:'p'+i,n:i,npt:parseFloat((nptPiso1+((i-1)*altPiso)).toFixed(2)),ok:false,tipo:'piso'});
+  if(conCubierta)lista.push({id:'cub',n:99,npt:parseFloat((nptPiso1+(np*altPiso)).toFixed(2)),ok:false,tipo:'cubierta'});
+  setPisos(lista);
+};
+
+const addPiso=()=>setPisos(prev=>{
+  const pisosPOS=prev.filter(p=>p.n>0);
+  const maxN=pisosPOS.length?Math.max(...pisosPOS.map(p=>p.n)):0;
+  const ln=prev[prev.length-1]?.npt||0;
+  return[...prev,{id:Date.now(),n:maxN+1,npt:parseFloat((ln+3.10).toFixed(2)),ok:false}];
+});
+
+const addSotano=()=>setPisos(prev=>{
+  const pisoNEG=prev.filter(p=>p.n<0);
+  const minN=pisoNEG.length?Math.min(...pisoNEG.map(p=>p.n)):0;
+  const fn=prev[0]?.npt||0;
+  return[{id:Date.now(),n:minN-1,npt:parseFloat((fn-3.00).toFixed(2)),ok:false},...prev];
+});
+const { busy, meta, vals, analizar } = useAnalysis(setPisos);
+
+useEffect(()=>{
+  REDES.forEach(r=>{
+    const saved = localStorage.getItem('civilflow_net_' + r.id);
+    if (saved) {
+      document.documentElement.style.setProperty('--' + r.id, saved);
+      try {
+        const nets = require('./PlanoEngine').NETS;
+        const net = nets.find(n => n.id === r.id);
+        if (net) net.col = saved;
+      } catch(_) {}
+    }
+  });
+},[]);
+
+useEffect(()=>{
+  if(selectedPlan){
+    const url=URL.createObjectURL(selectedPlan.file);
+    setSelectedPlanUrl(url);
+    return ()=>{URL.revokeObjectURL(url);setSelectedPlanUrl(null)};
+  }else{
+    setSelectedPlanUrl(null);
+  }
+},[selectedPlan]);
+
+useEffect(()=>{
+  if(planos.length>0&&!planos.some(p=>p.id===selectedPlanId)){
+    setSelectedPlanId(planos[0].id);
+  }else if(planos.length===0){
+    setSelectedPlanId(null);
+  }
+// eslint-disable-next-line react-hooks/exhaustive-deps
+},[planos.length]);
+
+const fileRef=useRef();
+
+return(
+    <div style={{height:'100%',display:'flex',flexDirection:'column',overflow:'hidden'}}>
+            <div className="app">
+        <div className="nav">{NAV_TABS.map(t=>(
+          <div key={t.id} className={`ntab ${t.id==='visor'?'':tab===t.id?'on':''}`} onClick={()=>{if(t.id==='visor')window.location.href='#/visor';else setTab(t.id)}}>
+            <span className="ntab-ico">{t.ico}</span>{t.l}
+          </div>
+        ))}</div>
+        <div className="layout"><div className="content">
+
+{/* ── Información general ── */}
+{tab==='info'&&(
+<div className="fu info-gral" style={{display:'flex',flexDirection:'column',gap:10,flex:1,minHeight:0,overflow:'hidden'}}>
+
+  <div style={{display:'flex',flexDirection:'row',flexWrap:'nowrap',gap:6,flex:1,minHeight:0,overflowY:'hidden',overflowX:'auto',alignItems:'stretch'}}>
+
+    {/* ── Project ID ── */}
+    <div className="card" style={{flex:'0 1 auto',minWidth:200}}>
+      <div className="card-h" style={{padding:'4px 8px'}}>
+        <div style={{display:'flex',flexDirection:'column'}}>
+          <span className="card-t" style={{fontSize:13}}>📋 Identificación del proyecto</span>
+          <span className="card-s" style={{fontSize:11}}>Datos para memorias de cálculo</span>
+        </div>
+      </div>
+      <div style={{padding:'4px 6px'}}>
+        <div className="f" style={{marginBottom:3}}><label style={{fontSize:12}}>Nombre del proyecto</label><input value={proy.nombre} onChange={e=>setP('nombre',e.target.value)} style={{fontSize:12,padding:'3px 6px'}}/></div>
+        <div className="f" style={{marginBottom:3}}><label style={{fontSize:12}}>Dirección / Sector</label><input value={proy.dir} onChange={e=>setP('dir',e.target.value)} style={{fontSize:12,padding:'3px 6px'}}/></div>
+        <div className="f" style={{marginBottom:3}}><label style={{fontSize:12}}>Municipio</label><input value={proy.mun} onChange={e=>setP('mun',e.target.value)} style={{fontSize:12,padding:'3px 6px'}}/></div>
+        <div className="f" style={{marginBottom:3}}><label style={{fontSize:12}}>Departamento</label><input value={proy.dep} onChange={e=>setP('dep',e.target.value)} style={{fontSize:12,padding:'3px 6px'}}/></div>
+        <div className="f" style={{marginBottom:3}}><label style={{fontSize:12}}>Uso</label>
+          <select value={proy.uso} onChange={e=>setP('uso',e.target.value)} style={{fontSize:12,padding:'3px 6px',width:'100%'}}><option value="">—</option>{USOS.map(u=><option key={u}>{u}</option>)}</select></div>
+        <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Empresa</label>
+          <select value={proy.empresa} onChange={e=>setP('empresa',e.target.value)} style={{fontSize:12,padding:'3px 6px',width:'100%'}}><option value="">—</option>{EMPRES.map(u=><option key={u}>{u}</option>)}</select></div>
+      </div>
+    </div>
+
+    {/* ── Redes activas ── */}
+    <div className="card" style={{flex:'0 1 auto',minWidth:190}}>
+      <div className="card-h" style={{padding:'4px 8px'}}>
+        <div style={{display:'flex',flexDirection:'column'}}>
+          <span className="card-t" style={{fontSize:13}}>🔌 Redes activas</span>
+          <span className="card-s" style={{fontSize:11}}>{[...redes].length} de {REDES.length}</span>
+        </div>
+      </div>
+      <div style={{padding:'4px 6px'}}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr',gap:2}}>
+          {REDES.map(r=>{
+            const on=redes.has(r.id);
+            const cssVar = `--${r.id}`;
+            const currentColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim() || '#666';
+            return(
+              <div key={r.id} onClick={()=>{const n=new Set(redes);on?n.delete(r.id):n.add(r.id);setRedes(n);}}
+                style={{display:'flex',alignItems:'center',gap:3,padding:'3px 5px',cursor:'pointer',
+                background:on?'rgba(27,110,243,.06)':'var(--bg3)',
+                border:'1px solid '+(on?'rgba(27,110,243,.35)':'var(--line)'),borderRadius:'var(--r)',transition:'all .15s'}}>
+                <span style={{fontSize:13}}>{r.ico}</span>
+                <span style={{fontWeight:600,fontSize:12,color:on?'var(--acc2)':'var(--txt2)',whiteSpace:'nowrap',flex:1}}>{r.lbl}</span>
+                <input type="color" value={currentColor}
+                  onClick={e=>e.stopPropagation()}
+                  onChange={e=>{
+                    const c = e.target.value;
+                    document.documentElement.style.setProperty(cssVar, c);
+                    try {
+                      const nets = require('./PlanoEngine').NETS;
+                      const net = nets.find(n => n.id === r.id);
+                      if (net) net.col = c;
+                    } catch(_) {}
+                    try { localStorage.setItem('civilflow_net_' + r.id, c); } catch(_) {}
+                  }}
+                  style={{width:14,height:14,border:'none',padding:0,cursor:'pointer',background:'none',flexShrink:0}} />
+                <div style={{width:8,height:8,borderRadius:'50%',flexShrink:0,
+                  background:on?currentColor:'transparent',
+                  border:'1.5px solid '+(on?currentColor:'var(--txt3)')}} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+
+    {/* ── Generador de pisos ── */}
+    <div className="card" style={{flex:'0 0 auto',minWidth:0}}>
+      <div className="card-h" style={{padding:'4px 8px'}}>
+        <div style={{display:'flex',flexDirection:'column'}}>
+          <span className="card-t" style={{fontSize:13}}>🏢 Generador de pisos</span>
+          <span className="card-s" style={{fontSize:11}}>Generación automática de pisos y sótanos</span>
+        </div>
+      </div>
+      <div style={{padding:'4px 6px'}}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:3}}>
+          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Sótanos</label><input type="text" inputMode="numeric" value={nSotanos} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={e=>setNSotanos(e.target.value.replace(/\D/g,''))}/></div>
+          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Pisos</label><input type="text" inputMode="numeric" value={nPisos} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={e=>setNPisos(e.target.value.replace(/\D/g,''))}/></div>
+          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Alt. entrep.</label><input type="text" inputMode="decimal" value={altPiso||''} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)setAltPiso(v);else if(e.target.value==='')setAltPiso(0);}}/></div>
+          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Alt. sótano</label><input type="text" inputMode="decimal" value={altSotano||''} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)setAltSotano(v);else if(e.target.value==='')setAltSotano(0);}}/></div>
+          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>NPT P1</label><input type="text" inputMode="decimal" value={nptPiso1||''} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)setNptPiso1(v);else if(e.target.value==='')setNptPiso1(0);}}/></div>
+          <div className="f" style={{marginBottom:0,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
+            <label style={{fontSize:12,visibility:'hidden',margin:0,padding:0,height:0,overflow:'hidden'}}>_</label>
+            <div onClick={()=>setConCubierta(!conCubierta)} style={{display:'flex',alignItems:'center',gap:5,cursor:'pointer',userSelect:'none',paddingBottom:3}}>
+              <div style={{width:26,height:14,borderRadius:7,background:conCubierta?'var(--ll)':'var(--line2)',position:'relative',transition:'background .2s',flexShrink:0}}>
+                <div style={{width:10,height:10,borderRadius:'50%',background:'#fff',position:'absolute',top:2,left:conCubierta?14:2,transition:'left .2s'}} />
+              </div>
+              <span style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:600,color:'var(--txt2)'}}>Cubierta</span>
+            </div>
+          </div>
+        </div>
+        <button onClick={generarPisos} style={{width:'100%',padding:'6px',marginTop:4,background:'var(--acc)',border:'none',borderRadius:'var(--r)',color:'#fff',fontWeight:600,fontSize:12,cursor:'pointer'}}>Generar niveles automáticamente</button>
+      </div>
+    </div>
+
+    {/* ── Niveles generados ── */}
+    <div className="card" style={{flex:'1 1 auto',minWidth:220,display:'flex',flexDirection:'column'}}>
+      <div className="card-h" style={{padding:'4px 8px',flexShrink:0}}>
+        <div style={{display:'flex',flexDirection:'column'}}>
+          <span className="card-t" style={{fontSize:13}}>🏗️ Niveles generados</span>
+          <span className="card-s" style={{fontSize:11}}>{pisos.length} niveles</span>
+        </div>
+      </div>
+      <div style={{padding:'4px 6px',display:'flex',flexDirection:'column',flex:1,minHeight:0}}>
+        {pisos.length===0&&(
+          <div style={{fontSize:12,color:'var(--txt3)',textAlign:'center',padding:'12px 0',fontFamily:'var(--mono)'}}>Presione "Generar niveles"</div>
+        )}
+        {pisos.length>0&&(
+        <>
+          <div style={{flex:1,overflowY:'auto',minHeight:0}}>
+            {[...pisos].sort((a,b)=>a.n-b.n).map(p=>(
+              <div key={p.id} style={{display:'flex',alignItems:'center',gap:3,padding:'2px 4px',background:'var(--bg3)',border:'1px solid var(--line)',borderRadius:'var(--r)',borderLeft:'3px solid '+(p.tipo==='cubierta'?'var(--ll)':p.n<0?'var(--txt3)':'var(--acc2)'),marginBottom:2}}>
+                <span className={p.tipo==='cubierta'?'piso-tag cub':p.n<0?'piso-tag sot':'piso-tag'} style={{fontSize:11,padding:'2px 5px',minWidth:48}}>{pisoLbl(p.n)}</span>
+                <input type="text" inputMode="decimal" defaultValue={p.npt||''} key={p.id+'npt'} className="npt-in" style={{fontSize:12,width:52,padding:'2px 4px'}} onBlur={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)setPisos(prev=>prev.map(x=>x.id===p.id?{...x,npt:v}:x));}}/>
+                <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',height:20}}><span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--txt3)'}}>m</span></div>
+                <div className={`pdot ${p.ok?'ok':''}`} style={{marginLeft:'auto'}}/>
+              </div>
+            ))}
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:3,marginTop:2,flexShrink:0}}>
+            <button className="btn-xs" onClick={addSotano} style={{padding:'3px 6px',fontSize:10}}>+ Sótano</button>
+            <button className="btn-xs" onClick={addPiso} style={{padding:'3px 6px',fontSize:10}}>+ Piso</button>
+          </div>
+        </>)}
+      </div>
+    </div>
+
+    {/* ── Guía de uso ── */}
+    <div className="card" style={{flex:'0 1 auto',minWidth:0}}>
+      <div className="card-h" style={{padding:'4px 8px'}}>
+        <div style={{display:'flex',flexDirection:'column'}}>
+          <span className="card-t" style={{fontSize:13}}>📖 Guía de uso</span>
+          <span className="card-s" style={{fontSize:11}}>Recomendaciones</span>
+        </div>
+      </div>
+      <div style={{padding:'4px 8px',fontSize:11,lineHeight:1.6,color:'var(--txt2)'}}>
+        <ol style={{margin:0,paddingLeft:22,listStyle:'decimal',fontWeight:600}}>
+          <li style={{marginBottom:5,fontWeight:400,paddingLeft:3}}>Complete los datos del proyecto con la información de la memoria de cálculo.</li>
+          <li style={{marginBottom:5,fontWeight:400,paddingLeft:3}}>Active las redes que requiere el diseño según el uso del edificio.</li>
+          <li style={{marginBottom:5,fontWeight:400,paddingLeft:3}}>Configure la cantidad de pisos y sótanos, luego pulse <strong>"Generar niveles automáticamente"</strong>.</li>
+          <li style={{marginBottom:5,fontWeight:400,paddingLeft:3}}>Verifique los NPT generados y ajústelos si es necesario.</li>
+          <li style={{marginBottom:5,fontWeight:400,paddingLeft:3}}>Vaya a la pestaña <strong>Diseño de Redes</strong> para iniciar el cálculo hidráulico de cada red activa.</li>
+        </ol>
+      </div>
+    </div>
+
+  </div>
+</div>
+)}
+
+{tab==='planos'&&(
+<div className="fu" style={{flex:1,minHeight:0,display:'flex',flexDirection:'row',overflow:'hidden',padding:0}}>
+
+  {/* ── LEFT SIDEBAR: Requisitos ── */}
+  <div style={{width:170,flexShrink:0,display:'flex',flexDirection:'column',borderRight:'1px solid var(--line)',borderRadius:'var(--r2)'}}>
+    <div className="card-h" style={{padding:'8px 10px',borderBottom:'1px solid var(--line)',flexShrink:0,background:'none'}}>
+      <span className="card-t">📋 Requisitos del plano</span>
+    </div>
+    <div style={{flex:1,overflowY:'auto',padding:'8px 10px',display:'flex',flexDirection:'column',gap:8}}>
+      {REQ_ITEMS.map(([ico,t,s])=>(
+        <div key={t} style={{display:'flex',gap:10,alignItems:'flex-start',padding:'10px 12px',background:'var(--bg3)',borderRadius:'var(--r)',border:'1px solid var(--line)'}}>
+          <span style={{fontSize:16,flexShrink:0}}>{ico}</span>
+          <div><div style={{fontSize:12,fontWeight:500}}>{t}</div><div style={{fontSize:10,color:'var(--txt3)',marginTop:2,lineHeight:1.4}}>{s}</div></div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  {/* ── CENTER: PDF Viewer ── */}
+  <div style={{flex:1,display:'flex',flexDirection:'column',minWidth:0,position:'relative'}}
+    onDragOver={e=>{e.preventDefault();setPlanDrag(true)}}
+    onDragLeave={()=>setPlanDrag(false)}
+    onDrop={e=>{e.preventDefault();setPlanDrag(false);const fl=e.dataTransfer?.files;if(fl&&fl.length>0)addPlanos(fl);}}>
+    <input ref={fileRef} type="file" accept=".pdf" multiple style={{display:'none'}} onChange={e=>{addPlanos(e.target.files);e.target.value='';}}/>
+
+    {/* Header bar */}
+    <div style={{display:'flex',alignItems:'center',gap:8,padding:'6px 12px',borderBottom:'1px solid var(--line)',flexShrink:0,background:'var(--bg)',minHeight:36}}>
+      {selectedPlan ? (
+        <>
+          <span style={{fontSize:14,flexShrink:0}}>📄</span>
+          <span style={{fontSize:12,fontWeight:600,fontFamily:'var(--mono)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{selectedPlan.name}</span>
+          {selectedPlan.nivel!==null&&<span style={{fontSize:9,padding:'1px 6px',background:'var(--bg3)',borderRadius:'var(--r)',color:'var(--txt3)',fontFamily:'var(--mono)',flexShrink:0}}>{pisoLbl(selectedPlan.nivel)}</span>}
+          <span style={{fontSize:9,color:'var(--txt3)',fontFamily:'var(--mono)',flexShrink:0}}>1:{selectedPlan.scale}</span>
+          <div style={{flex:1}}/>
+          <button onClick={()=>setSelectedPlanId(null)}
+            style={{padding:'4px 12px',background:'rgba(211,47,47,0.15)',border:'1px solid rgba(211,47,47,0.35)',borderRadius:'var(--r)',color:'#ef5350',cursor:'pointer',fontSize:12,fontFamily:'var(--mono)',fontWeight:600,flexShrink:0,lineHeight:1.2,display:'flex',alignItems:'center',gap:4,transition:'all .15s'}}
+            onMouseEnter={e=>{e.currentTarget.style.background='rgba(211,47,47,0.3)';e.currentTarget.style.borderColor='rgba(211,47,47,0.6)'}}
+            onMouseLeave={e=>{e.currentTarget.style.background='rgba(211,47,47,0.15)';e.currentTarget.style.borderColor='rgba(211,47,47,0.35)'}} title="Cerrar vista">✕ Cerrar</button>
+          {confirmedPlanos.length>0&&(
+            <a href="#/visor" style={{padding:'3px 10px',background:'rgba(0,220,229,0.08)',border:'1px solid rgba(0,220,229,0.3)',borderRadius:'var(--r)',color:'#00dce5',fontWeight:600,fontSize:9,textDecoration:'none',fontFamily:'var(--mono)',whiteSpace:'nowrap'}}>
+              IR A DIBUJO DE REDES →
+            </a>
+          )}
+        </>
+      ) : (
+        <span style={{fontSize:11,color:'var(--txt3)'}}>Vista previa del plano</span>
+      )}
+    </div>
+
+    {/* PDF embed or placeholder */}
+    {selectedPlan&&selectedPlanUrl ? (
+      <div style={{flex:1,background:'#141416',position:'relative'}}>
+        {planDrag&&(
+          <div style={{position:'absolute',inset:0,zIndex:10,background:'rgba(0,220,229,.12)',border:'3px dashed rgba(0,220,229,.5)',display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}>
+            <span style={{fontSize:14,fontWeight:600,color:'#00dce5',fontFamily:'var(--mono)'}}>📐 SOLTAR PARA SUBIR</span>
+          </div>
+        )}
+        <embed key={selectedPlanUrl} src={selectedPlanUrl} type="application/pdf" style={{width:'100%',height:'100%'}}/>
+      </div>
+    ) : (
+      <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:12,background:'var(--bg)',cursor:'pointer',position:'relative'}}
+        onClick={()=>fileRef.current?.click()}>
+        {planDrag ? (
+          <div style={{position:'absolute',inset:0,background:'rgba(0,220,229,.08)',border:'3px dashed rgba(0,220,229,.4)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <span style={{fontSize:14,fontWeight:600,color:'#00dce5',fontFamily:'var(--mono)'}}>📐 SOLTAR PARA SUBIR</span>
+          </div>
+        ) : (
+          <>
+            <div style={{fontSize:40,opacity:.25}}>📐</div>
+            <div style={{fontSize:13,fontWeight:600,color:'var(--txt3)'}}>Vista previa del plano</div>
+            <div style={{fontSize:10,color:'var(--txt4)',textAlign:'center',maxWidth:260,lineHeight:1.5}}>
+              Sube un plano desde el panel derecho o arrastra un PDF aquí
+            </div>
+          </>
+        )}
+      </div>
+    )}
+  </div>
+
+  {/* ── RIGHT PANEL: Pending + Confirmed ── */}
+  <div style={{width:300,flexShrink:0,display:'flex',flexDirection:'column',borderLeft:'1px solid var(--line)',background:'var(--bg)'}}>
+
+    {/* Subir button */}
+    <div style={{padding:'10px 10px',borderBottom:'1px solid var(--line)',flexShrink:0}}>
+      <button onClick={()=>fileRef.current?.click()}
+        style={{width:'100%',padding:'10px',background:'rgba(0,220,229,0.06)',border:'1.5px dashed rgba(0,220,229,0.3)',borderRadius:'var(--r)',color:'#00dce5',fontWeight:600,fontSize:12,cursor:'pointer',fontFamily:'var(--mono)',display:'flex',alignItems:'center',justifyContent:'center',gap:5,transition:'all .15s'}}
+        onMouseEnter={e=>{e.currentTarget.style.background='rgba(0,220,229,0.12)';e.currentTarget.style.borderColor='rgba(0,220,229,0.5)'}}
+        onMouseLeave={e=>{e.currentTarget.style.background='rgba(0,220,229,0.06)';e.currentTarget.style.borderColor='rgba(0,220,229,0.3)'}}>
+        📐 SUBIR PLANO
+      </button>
+    </div>
+
+    {/* Pending section */}
+    <div style={{flex:'1 1 50%',minHeight:0,display:'flex',flexDirection:'column',overflow:'hidden',borderBottom:'1px solid var(--line)'}}
+      onDragOver={e=>{e.preventDefault();setPlanDrag(true)}}
+      onDragLeave={()=>setPlanDrag(false)}
+      onDrop={e=>{e.preventDefault();setPlanDrag(false);const fl=e.dataTransfer?.files;if(fl&&fl.length>0)addPlanos(fl);}}>
+      <div style={{padding:'7px 10px',fontSize:11,fontWeight:700,color:'var(--txt3)',fontFamily:'var(--mono)',borderBottom:'1px solid var(--line)',flexShrink:0,display:'flex',alignItems:'center',gap:5,textTransform:'uppercase',letterSpacing:.5}}>
+        <span style={{width:6,height:6,borderRadius:'50%',background:'#ffc107',flexShrink:0}}/>
+        Pendientes {pendingPlanos.length>0&&`(${pendingPlanos.length})`}
+      </div>
+      {pendingPlanos.length===0 ? (
+        <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:20,gap:8,cursor:'pointer',fontSize:11,color:'var(--txt4)',fontFamily:'var(--mono)',textAlign:'center',lineHeight:1.6}}
+          onClick={()=>fileRef.current?.click()}>
+          {planDrag ? (
+            <div style={{fontSize:13,fontWeight:600,color:'#00dce5'}}>📐 SOLTAR PARA SUBIR</div>
+          ) : (
+            <>
+              <div style={{fontSize:24,opacity:.3}}>📐</div>
+              <span>Arrastra PDFs aquí o haz clic para subir varios planos</span>
+            </>
+          )}
+        </div>
+      ) : (
+        <div style={{flex:1,overflowY:'auto'}}>
+          {pendingPlanos.map(p=>(
+            <div key={p.id} onClick={()=>setSelectedPlanId(p.id)}
+              style={{cursor:'pointer',padding:'8px 10px',borderBottom:'1px solid var(--line)',background:selectedPlanId===p.id?'rgba(27,110,243,.08)':'transparent',display:'flex',flexDirection:'column',gap:4,transition:'background .1s'}}>
+              <div style={{display:'flex',alignItems:'center',gap:4}}>
+                <span style={{fontSize:13,flexShrink:0}}>📄</span>
+                <span style={{fontSize:12,fontWeight:500,fontFamily:'var(--mono)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1}}>{p.name}</span>
+                <button onClick={e=>{e.stopPropagation();removePlano(p.id)}}
+                  style={{padding:'2px 8px',background:'var(--bg3)',border:'1px solid var(--line)',borderRadius:'var(--r)',color:'var(--txt3)',cursor:'pointer',fontSize:10,fontFamily:'var(--mono)',flexShrink:0}} title="Cancelar">Cancelar</button>
+              </div>
+              <div style={{display:'flex',gap:5,alignItems:'center'}}>
+                <select value={p.nivel??''} onClick={e=>e.stopPropagation()} onChange={e=>updatePlano(p.id,{nivel:e.target.value?Number(e.target.value):null})}
+                  style={{flex:1,fontSize:11,padding:'3px 5px',background:'var(--bg3)',border:'1px solid var(--line)',borderRadius:'var(--r)',color:'var(--txt2)',cursor:'pointer',minWidth:0}}>
+                  <option value="">— Nivel —</option>
+                  {[...pisos].sort((a,b)=>b.n-a.n).map(s=>{
+                    const ocupado=planos.some(x=>x.id!==p.id&&x.status==='confirmed'&&x.nivel===s.n);
+                    return <option key={s.id} value={s.n} disabled={ocupado}>{pisoLbl(s.n)} ({s.npt} m){ocupado?' (ocup)':''}</option>;
+                  })}
+                </select>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:3}}>
+                <label style={{fontSize:10,fontWeight:600,color:'var(--txt3)',fontFamily:'var(--mono)'}}>Escala</label>
+                <select value={p.scale||''} onClick={e=>e.stopPropagation()} onChange={e=>updatePlano(p.id,{scale:Number(e.target.value)||100})}
+                  style={{width:'100%',fontSize:11,padding:'3px 5px',background:'var(--bg3)',border:'1px solid var(--line)',borderRadius:'var(--r)',color:'var(--txt2)',cursor:'pointer'}}>
+                  <option value="">— Escala —</option>
+                  <option value="50">1:50</option>
+                  <option value="75">1:75</option>
+                  <option value="100">1:100</option>
+                  <option value="125">1:125</option>
+                  <option value="200">1:200</option>
+                </select>
+              </div>
+              <div style={{display:'flex',justifyContent:'flex-end',gap:4}}>
+                {p.nivel!==null&&p.nivel!==undefined&&(
+                  <button onClick={e=>{
+                    e.stopPropagation();
+                    if(planos.some(x=>x.id!==p.id&&x.status==='confirmed'&&x.nivel===p.nivel)){
+                      alert('Este nivel ya tiene un plano asociado.');
+                      return;
+                    }
+                    confirmPlano(p.id);
+                  }} style={{padding:'3px 10px',background:'rgba(0,220,229,.1)',border:'1px solid rgba(0,220,229,.25)',borderRadius:'var(--r)',color:'#00dce5',cursor:'pointer',fontSize:10,fontFamily:'var(--mono)',fontWeight:600}}>✓ Confirmar</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+
+    {/* Confirmed section */}
+    <div style={{flex:'1 1 50%',minHeight:0,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div style={{padding:'7px 10px',fontSize:11,fontWeight:700,color:'var(--txt3)',fontFamily:'var(--mono)',borderBottom:'1px solid var(--line)',flexShrink:0,display:'flex',alignItems:'center',gap:5,textTransform:'uppercase',letterSpacing:.5}}>
+        <span style={{width:6,height:6,borderRadius:'50%',background:'#00dce5',flexShrink:0}}/>
+        Cargados {confirmedPlanos.length>0&&`(${confirmedPlanos.length})`}
+      </div>
+      {confirmedPlanos.length===0 ? (
+        <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:20,fontSize:11,color:'var(--txt4)',fontFamily:'var(--mono)',textAlign:'center',lineHeight:1.6}}>
+          Aún no hay planos cargados
+        </div>
+      ) : (
+        <div style={{flex:1,overflowY:'auto'}}>
+          {confirmedPlanos.map(p=>(
+            <div key={p.id} onClick={()=>setSelectedPlanId(p.id)}
+              style={{cursor:'pointer',display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid var(--line)',background:selectedPlanId===p.id?'rgba(27,110,243,.08)':'transparent',transition:'background .1s'}}>
+              <span style={{fontSize:13,flexShrink:0}}>📄</span>
+              <div style={{minWidth:0,flex:1}}>
+                <div style={{fontSize:12,fontWeight:500,fontFamily:'var(--mono)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.name}</div>
+                <div style={{fontSize:10,color:'var(--txt3)',fontFamily:'var(--mono)',display:'flex',gap:5}}>
+                  {p.nivel!==null&&<span>{pisoLbl(p.nivel)}</span>}
+                  <span>1:{p.scale}</span>
+                </div>
+              </div>
+              <button onClick={e=>{e.stopPropagation();setSelectedPlanId(p.id)}}
+                style={{padding:'3px 7px',background:'var(--bg2)',border:'1px solid var(--line)',borderRadius:'var(--r)',color:'var(--acc2)',cursor:'pointer',fontSize:10,fontFamily:'var(--mono)',flexShrink:0}} title="Vista previa">👁</button>
+              <button onClick={e=>{e.stopPropagation();removePlano(p.id)}}
+                style={{padding:'3px 7px',background:'var(--bg3)',border:'1px solid var(--line)',borderRadius:'var(--r)',color:'var(--txt3)',cursor:'pointer',fontSize:10,fontFamily:'var(--mono)',flexShrink:0}} title="Eliminar">✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+</div>
+)}
+
+{/* ── Redes a diseñar ── */}
+{tab==='redes'&&redesActivas.length>0&&(
+  <div className="fu" style={{display:'flex',flexDirection:'column',gap:12,flex:1,minHeight:0}}>
+    <CollapsibleNav items={redesActivas} collapsedLabel={redesActivas.find(r=>r.id===redActiva)?.lbl || redesActivas[0]?.lbl} renderTab={(r)=>(<button key={r.id} onClick={()=>setRedActiva(r.id)} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 18px',borderRadius:'var(--r)',border:'1px solid',cursor:'pointer',fontSize:14,fontFamily:'var(--body)',flex:1,justifyContent:'center',borderColor:redActiva===r.id?r.col:'var(--line)',color:redActiva===r.id?r.col:'var(--txt3)',background:redActiva===r.id?'rgba(0,0,0,.15)':'transparent',fontWeight:redActiva===r.id?700:400}}><span style={{fontSize:22}}>{r.ico}</span><div style={{display:'flex',flexDirection:'column',alignItems:'flex-start',gap:1}}><span>{r.lbl}</span><span style={{fontSize:10,fontFamily:'var(--mono)',opacity:.7}}>{r.sub}</span></div></button>)} mode="flex" />
+  {redActiva==='san'&&redes.has('san')&&(
+    <div className="fu" style={{display:'flex',flexDirection:'column',gap:12}}>
+      <CalculoUD onTraerPlano={()=>{setTab('planos');}} />
+      <DisenosSanitarios /><BajantesTable /><CalculoHidraulicoSanitario />
+    </div>
+  )}
+  {redActiva==='ll'&&redes.has('ll')&&(
+    <div className="fu" style={{display:'flex',flexDirection:'column',gap:12}}>
+      <ChequeoBajantesLluvias /><ChequeoCanalesLluvias /><DisenoLluvias /><CalculoHidraulicoLluvias />
+    </div>
+  )}
+  {redesActivas.filter(r=>r.id!=='san'&&r.id!=='ll').map(r=>redActiva===r.id&&redes.has(r.id)&&(
+    <div key={r.id} className="fu" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,flex:1,minHeight:250}}>
+      <div style={{fontSize:48,opacity:.5}}>🚧</div>
+      <div style={{fontSize:18,fontWeight:600,color:'var(--txt2)'}}>{r.lbl}</div>
+      <div style={{fontSize:13,color:'var(--txt3)',textAlign:'center',maxWidth:380,lineHeight:1.6}}>
+        El módulo de <strong>{r.lbl}</strong> está en desarrollo.<br/>Pronto estará disponible para uso en CIVILFLOW.</div>
+    </div>
+  ))}</div>
+)}
+
+{/* ── Base de datos ── */}
+{tab==='datos'&&(
+<BaseDatos redes={redes} />
+)}
+
+{/* ── NORMATIVA ── */}
+{tab==='crit'&&(
+  <Normativa />
+)}
+
+{/* ── INFORME ── */}
+{tab==='inf'&&(
+<div className="fu" style={{display:'flex',flexDirection:'column',gap:12,flex:1,minHeight:0}}>
+  {(()=>{
+const okSAN=tramosSan.length>0&&tramosSan.every(validateTramo);
+const okLL=tramosLl.length>0&&tramosLl.every(validateTramo);
+    const items=[
+      ['PROYECTO',proy.nombre],['UBICACIÓN',[proy.mun,proy.dep].filter(Boolean).join(', ')],
+      ['USO',proy.uso],['EMPRESA',proy.empresa],
+      ['P RED',proy.p_red+' mca'],['DOTACIÓN',proy.dot+' L/hab/d'],
+      ['REDES',[...redes].join(' · ')],
+      ['NIVELES',[...pisos].sort((a,b)=>a.n-b.n).map(p=>pisoLbl(p.n)).join(' · ')],
+      ['SANITARIA',okSAN?'✓ OK':'✗ Revisar'],['AGUAS LLUVIAS',okLL?'✓ OK':'✗ Revisar'],
+    ];
+    return(
+      <div className="card">
+        <div className="card-h"><span className="card-t">📊 Resumen del proyecto</span><span className="card-s">CIVILFLOW KML 2026 · Ing. Camilo Cárdenas</span></div>
+        <div className="card-b">
+          {items.map(([k,v])=>(
+            <div key={k} style={{display:'flex',gap:10,alignItems:'baseline',padding:'5px 8px',background:'var(--bg3)',borderRadius:'var(--r)',border:'1px solid var(--line)',marginBottom:4}}>
+              <span style={{fontFamily:'var(--mono)',fontSize:8,color:'var(--txt3)',minWidth:120,flexShrink:0,textTransform:'uppercase'}}>{k}</span>
+              <span style={{fontSize:11,fontWeight:500,color:String(v).includes('✗')?'var(--err)':String(v).includes('✓')?'var(--ok)':'var(--txt)'}}>{v}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  })()}
+</div>
+)}
+
+          </div>
+        </div>
+
+        <div style={{display:'flex',alignItems:'center',gap:5,padding:'7px 12px',background:'var(--bg2)',borderTop:'1px solid var(--line)',flexShrink:0,overflowX:'auto'}}>
+  {redesActivas.map(r=>(
+    <button key={r.id} onClick={()=>{setTab('redes');setRedActiva(r.id);}}
+      style={{display:'flex',alignItems:'center',gap:5,padding:'6px 11px',borderRadius:'var(--r)',border:'1px solid',flexShrink:0,cursor:'pointer',fontSize:11,fontFamily:'var(--body)',fontWeight:600,
+      borderColor:tab==='redes'&&redActiva===r.id?r.col:'var(--line2)',
+      color:tab==='redes'&&redActiva===r.id?r.col:'var(--txt3)',
+      background:tab==='redes'&&redActiva===r.id?'rgba(0,0,0,.15)':'transparent'}}>
+      <span style={{fontSize:16}}>{r.ico}</span><span>{r.lbl}</span>
+    </button>
+  ))}
+<div style={{flex:1}}/>
+      </div>
+      </div>
+    </div>
+  );
+}
+
+function MiniBtn({onClick,children}){
+  return <button onClick={onClick}
+    style={{padding:'5px 10px',background:'rgba(24,26,30,0.92)',border:'1px solid #3a494a',borderRadius:6,color:'#e2e2e8',fontSize:11,cursor:'pointer',fontFamily:"'Hanken Grotesk',sans-serif",fontWeight:600,display:'flex',alignItems:'center',gap:4,boxShadow:'0 4px 16px rgba(0,0,0,.4)'}}>{children}</button>;
+}
+
+export default function CIVILFLOW(){
+  return <CIVILFLOWInner />;
+}
