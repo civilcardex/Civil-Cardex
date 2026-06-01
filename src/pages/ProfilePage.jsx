@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { useNavigate } from 'react-router-dom'
 
 function ProfilePage() {
   const [perfil, setPerfil] = useState({
@@ -23,6 +24,8 @@ function ProfilePage() {
     { id: 3, codigo: 'CR-98', nombre: 'Casa de Roca No. 98 - Redes Sanitarias', progreso: 65, estado: 'activo' },
     { id: 4, codigo: 'TOR-01', nombre: 'Torre Residencial - Hidroneumático y bombas', progreso: 80, estado: 'revision' },
   ]
+
+  const navigate = useNavigate()
 
   const estadoConfig = {
     completo: { color: 'bg-secondary text-on-secondary-container', label: 'COMPLETO' },
@@ -250,6 +253,21 @@ function ProfilePage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* ── Cerrar Sesión ── */}
+      <div className="border border-outline-variant bg-surface-container p-6 flex justify-end">
+        <button
+          onClick={async () => {
+            if (!supabase) return
+            await supabase.auth.signOut()
+            navigate('/')
+          }}
+          className="px-5 py-2 text-xs font-bold tracking-widest uppercase border border-error text-error hover:bg-error hover:text-on-error transition-all"
+          style={{ fontFamily: 'Geist, monospace' }}
+        >
+          Cerrar Sesión
+        </button>
       </div>
     </div>
   )
