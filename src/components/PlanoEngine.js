@@ -418,6 +418,8 @@ export default class PlanoEngine {
     };
     this.ramales.push(r);
     this.activeRamal = null;
+    this.selId = r.id;
+    this._emitSelect(r);
     this._emitStatus(this._statusMsg());
     this.render();
   }
@@ -1420,6 +1422,8 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
           flowDy = lastc.y - fc.y;
           flowLen = Math.hypot(flowDx, flowDy);
         }
+        const VERT_THRESH = 8;
+        const isVertical = Math.abs(flowDx) < VERT_THRESH && flowLen > 12;
         const arrowSize = showFlow && flowLen > 12 ? 34 : 0;
         const lbl = r.label || '';
         const lblPart = r.totalL ? `${r.totalL}m` : '';
@@ -1447,12 +1451,21 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
         const contentW = Math.max(nameW, infoW);
         const boxW = contentW + boxPadX * 2;
         const boxH = (lbl ? lineHName : 0) + ((preInfo || dPart || postInfo) ? lineHInfo : 0) + boxPadY * 2;
-        const labelOffsetY = -(boxH / 2 + 4);
-        const drawX = lc.x;
-        const drawY = lc.y + labelOffsetY;
+        const RIGHT_GAP = 10;
+        const ARROW_GAP = 8;
+        let drawX, drawY, labelAngle;
+        if (isVertical) {
+          const arrowSpace = showFlow ? arrowSize + ARROW_GAP : 0;
+          drawX = lc.x + RIGHT_GAP + arrowSpace + boxW / 2;
+          drawY = lc.y;
+          labelAngle = 0;
+        } else {
+          drawX = lc.x;
+          drawY = lc.y - (boxH / 2 + 4);
+          labelAngle = (r.labelAngle || 0) * Math.PI / 180;
+        }
 
-        const angle = (r.labelAngle || 0) * Math.PI / 180;
-        const cosA = Math.cos(angle), sinA = Math.sin(angle);
+        const cosA = Math.cos(labelAngle), sinA = Math.sin(labelAngle);
         const hw = boxW / 2, hh = boxH / 2;
         const corners = [
           { x: drawX + cosA * (-hw) - sinA * (-hh), y: drawY + sinA * (-hw) + cosA * (-hh) },
@@ -1461,7 +1474,7 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
           { x: drawX + cosA * (-hw) - sinA * (hh), y: drawY + sinA * (-hw) + cosA * (hh) },
         ];
         r._labelBox = {
-          cx: drawX, cy: drawY, w: boxW, h: boxH, angle,
+          cx: drawX, cy: drawY, w: boxW, h: boxH, angle: labelAngle,
           minX: Math.min(...corners.map(c => c.x)),
           minY: Math.min(...corners.map(c => c.y)),
           maxX: Math.max(...corners.map(c => c.x)),
@@ -1471,7 +1484,7 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
 
         ctx.save();
         ctx.translate(drawX, drawY);
-        ctx.rotate(angle);
+        ctx.rotate(labelAngle);
         ctx.fillStyle = 'rgba(255,255,255,0.88)';
         ctx.fillRect(-boxW / 2, -boxH / 2, boxW, boxH);
         ctx.textAlign = 'center';
@@ -1526,26 +1539,50 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
         if (showFlow && flowLen > 12) {
           const fdx = flowDx / flowLen;
           const fdy = flowDy / flowLen;
-          const arrowCenterY = drawY + boxH / 2 + arrowSize / 2 + 1;
-          const tailX = drawX - fdx * (arrowSize / 2);
-          const tailY = arrowCenterY - fdy * (arrowSize / 2);
-          const headX = drawX + fdx * (arrowSize / 2);
-          const headY = arrowCenterY + fdy * (arrowSize / 2);
-          ctx.strokeStyle = col;
-          ctx.lineWidth = 2.5;
-          ctx.lineCap = 'round';
-          ctx.beginPath();
-          ctx.moveTo(tailX, tailY);
-          ctx.lineTo(headX, headY);
-          ctx.stroke();
-          const aSize = 9;
-          ctx.fillStyle = col;
-          ctx.beginPath();
-          ctx.moveTo(headX, headY);
-          ctx.lineTo(headX - fdx * aSize - fdy * aSize * 0.5, headY - fdy * aSize + fdx * aSize * 0.5);
-          ctx.lineTo(headX - fdx * aSize + fdy * aSize * 0.5, headY - fdy * aSize - fdx * aSize * 0.5);
-          ctx.closePath();
-          ctx.fill();
+          if (isVertical) {
+            const arrowCenterX = lc.x + RIGHT_GAP + arrowSize / 2;
+            const arrowCenterY = lc.y;
+            const tailX = arrowCenterX;
+            const tailY = arrowCenterY - fdy * (arrowSize / 2);
+            const headX = arrowCenterX;
+            const headY = arrowCenterY + fdy * (arrowSize / 2);
+            ctx.strokeStyle = col;
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(tailX, tailY);
+            ctx.lineTo(headX, headY);
+            ctx.stroke();
+            const aSize = 9;
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.moveTo(headX, headY);
+            ctx.lineTo(headX - fdx * aSize - fdy * aSize * 0.5, headY - fdy * aSize + fdx * aSize * 0.5);
+            ctx.lineTo(headX - fdx * aSize + fdy * aSize * 0.5, headY - fdy * aSize - fdx * aSize * 0.5);
+            ctx.closePath();
+            ctx.fill();
+          } else {
+            const arrowCenterY = drawY + boxH / 2 + arrowSize / 2 + 1;
+            const tailX = drawX - fdx * (arrowSize / 2);
+            const tailY = arrowCenterY - fdy * (arrowSize / 2);
+            const headX = drawX + fdx * (arrowSize / 2);
+            const headY = arrowCenterY + fdy * (arrowSize / 2);
+            ctx.strokeStyle = col;
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(tailX, tailY);
+            ctx.lineTo(headX, headY);
+            ctx.stroke();
+            const aSize = 9;
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.moveTo(headX, headY);
+            ctx.lineTo(headX - fdx * aSize - fdy * aSize * 0.5, headY - fdy * aSize + fdx * aSize * 0.5);
+            ctx.lineTo(headX - fdx * aSize + fdy * aSize * 0.5, headY - fdy * aSize - fdx * aSize * 0.5);
+            ctx.closePath();
+            ctx.fill();
+          }
         }
       } else {
         r._labelBox = null;

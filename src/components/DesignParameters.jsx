@@ -113,9 +113,9 @@ export default function BaseDatos({ redes }) {
                 <tr>
                   <th style={{ width: 28, textAlign: 'center', padding: '4px 6px' }}>#</th>
                   <th style={{ padding: '4px 8px' }}>Red</th>
-                  <th style={{ padding: '4px 8px', minWidth: 130 }}>Tubería</th>
-                  <th className="c" style={{ width: 60, padding: '4px 6px' }}>Prof. (m)</th>
-                  <th className="c" style={{ width: 90, padding: '4px 6px' }}>Nivel ref.</th>
+<th style={{ padding: '4px 8px', minWidth: 90 }}>Tubería</th>
+          <th className="c" style={{ width: 60, padding: '4px 6px' }}>Prof. (m)</th>
+          <th className="c" style={{ width: 130, padding: '4px 6px' }}>Nivel ref.</th>
                 </tr>
               </thead>
               <tbody>
@@ -157,10 +157,10 @@ export default function BaseDatos({ redes }) {
                         />
                       </td>
                       <td style={{ padding: '3px 6px' }}>
-                        <input className="ni"
-                          style={{ width: '100%', fontSize: 11, padding: '2px 5px', textAlign: 'center' }}
-                          placeholder="—"
-                        />
+          <input className="ni"
+            style={{ width: '100%', fontSize: 11, padding: '2px 5px', textAlign: 'center' }}
+            placeholder=""
+          />
                       </td>
                     </tr>
                   );

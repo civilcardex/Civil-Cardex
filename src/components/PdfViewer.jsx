@@ -556,37 +556,37 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
         </div>
 
         {/* Warning overlays and screens rendered absolute/flex on top of/instead of the canvas */}
-        {!currentFile && (
+      {(!currentFile || selectedNivel === null || selectedNivel === undefined) && !error && (
+        <div style={{
+          position:"absolute",top:0,left:0,right:0,bottom:0,zIndex:10,
+          display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,padding:40,
+          background:"rgba(17,19,23,0.95)"
+        }}>
           <div style={{
-            position:"absolute",top:0,left:0,right:0,bottom:0,zIndex:10,
-            display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,padding:40,
-            background:"rgba(17,19,23,0.95)"
+            display:'flex',flexDirection:'column',alignItems:'center',gap:14,
+            padding:'32px 48px',maxWidth:480,
+            background:'linear-gradient(135deg,rgba(77,143,247,0.15),rgba(0,220,229,0.08))',
+            border:'2px solid rgba(77,143,247,0.4)',borderRadius:12,
+            boxShadow:'0 8px 40px rgba(77,143,247,0.15),inset 0 1px 0 rgba(77,143,247,0.1)',
           }}>
-            <div style={{
-              display:'flex',flexDirection:'column',alignItems:'center',gap:14,
-              padding:'32px 48px',maxWidth:480,
-              background:'linear-gradient(135deg,rgba(77,143,247,0.15),rgba(0,220,229,0.08))',
-              border:'2px solid rgba(77,143,247,0.4)',borderRadius:12,
-              boxShadow:'0 8px 40px rgba(77,143,247,0.15),inset 0 1px 0 rgba(77,143,247,0.1)',
-            }}>
-              <div style={{fontSize:56,lineHeight:1,filter:'drop-shadow(0 0 12px rgba(77,143,247,0.4))'}}>📐</div>
-              <div style={{fontSize:17,fontWeight:700,color:'#4D8FF7',fontFamily:"'Geist',monospace",letterSpacing:0.5,textAlign:'center'}}>
-                Selecciona un piso con plano asociado
-              </div>
-              <div style={{fontSize:12,color:'#e2e2e8',fontFamily:"'Geist',monospace",textAlign:'center',lineHeight:1.5,maxWidth:360}}>
-                Para empezar a dibujar, selecciona un <strong style={{color:'#00dce5'}}>piso</strong> que tenga un plano confirmado en el panel derecho, o carga un plano desde la pestaña <strong style={{color:'#00dce5'}}>"Carga de planos"</strong>.
-              </div>
-              <a href="#/civilflowareatrabajo" onClick={() => sessionStorage.setItem('openTab', 'planos')} style={{
-                marginTop:6,padding:'8px 18px',
-                background:'rgba(0,220,229,0.15)',border:'1px solid rgba(0,220,229,0.45)',
-                borderRadius:6,color:'#00dce5',fontWeight:700,fontSize:11,textDecoration:'none',
-                fontFamily:"'Geist',monospace",letterSpacing:1,textTransform:'uppercase',
-              }}>📐 Ir a Carga de planos</a>
+            <div style={{fontSize:56,lineHeight:1,filter:'drop-shadow(0 0 12px rgba(77,143,247,0.4))'}}>📐</div>
+            <div style={{fontSize:17,fontWeight:700,color:'#4D8FF7',fontFamily:"'Geist',monospace",letterSpacing:0.5,textAlign:'center'}}>
+              Selecciona un piso con plano asociado
             </div>
+            <div style={{fontSize:12,color:'#e2e2e8',fontFamily:"'Geist',monospace",textAlign:'center',lineHeight:1.5,maxWidth:360}}>
+              Para empezar a dibujar, selecciona un <strong style={{color:'#00dce5'}}>piso</strong> que tenga un plano confirmado en el panel derecho, o carga un plano desde la pestaña <strong style={{color:'#00dce5'}}>"Carga de planos"</strong>.
+            </div>
+            <a href="#/civilflowareatrabajo" onClick={() => sessionStorage.setItem('openTab', 'planos')} style={{
+              marginTop:6,padding:'8px 18px',
+              background:'rgba(0,220,229,0.15)',border:'1px solid rgba(0,220,229,0.45)',
+              borderRadius:6,color:'#00dce5',fontWeight:700,fontSize:11,textDecoration:'none',
+              fontFamily:"'Geist',monospace",letterSpacing:1,textTransform:'uppercase',
+            }}>📐 Ir a Carga de planos</a>
           </div>
-        )}
+        </div>
+      )}
 
-        {currentFile && error && (
+      {currentFile && error && (
           <div style={{
             position:"absolute",top:0,left:0,right:0,bottom:0,zIndex:10,
             display: "flex", flexDirection: "column", alignItems: "center", justifyContent:"center", gap: 12, padding: 40,
@@ -734,19 +734,28 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
                 </div>
                 <div>
                   <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Diámetro Nominal</div>
-                  {diamList.length > 0 ? (
-                    <select value={currentDiam}
-                      onChange={e => {
-                        const v = e.target.value;
-                        setDiamSel(prev => ({ ...prev, [activeNet]: v }));
-                        if (engineRef.current && selElement) {
-                          engineRef.current.updateSelected({ diametro: v });
-                          setSelElement({ ...selElement, diametro: v });
-                        }
-                      }}
-                      style={{ width: '100%', padding: "5px 8px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                      {diamList.map(d => <option key={d.n} value={d.n}>{d.n.split(' — ')[0]}</option>)}
-                    </select>
+        {diamList.length > 0 ? (
+          <select value={currentDiam}
+          onChange={e => {
+            const v = e.target.value;
+            setDiamSel(prev => ({ ...prev, [activeNet]: v }));
+            if (engineRef.current && selElement) {
+              engineRef.current.updateSelected({ diametro: v });
+              setSelElement({ ...selElement, diametro: v });
+            } else if (engineRef.current && !selElement) {
+              const eng = engineRef.current;
+              const lastRamal = [...eng.ramales].reverse().find(r => r.net === activeNet);
+              if (lastRamal) {
+                eng.selId = lastRamal.id;
+                eng.updateSelected({ diametro: v });
+                const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = lastRamal;
+                setSelElement({ ...rest, diametro: v });
+              }
+            }
+          }}
+          style={{ width: '100%', padding: "5px 8px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+          {diamList.map(d => <option key={d.n} value={d.n}>{d.n.split(' — ')[0]}</option>)}
+          </select>
                   ) : (
                     <div style={{ padding: '5px 8px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#6b8cae', fontSize: 11, fontFamily: "'Geist',monospace" }}>— Sin opciones —</div>
                   )}
@@ -755,14 +764,23 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
                   <div>
                     <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2 }}>Pendiente (%)</div>
                     <input type="number" step="0.1" min="0" max="100" value={currentPend}
-                      onChange={e => {
-                        const v = parseFloat(e.target.value) || 0;
-                        setPendSel(prev => ({ ...prev, [activeNet]: v }));
-                        if (engineRef.current && selElement) {
-                          engineRef.current.updateSelected({ pendiente: v });
-                          setSelElement({ ...selElement, pendiente: v });
-                        }
-                      }}
+          onChange={e => {
+            const v = parseFloat(e.target.value) || 0;
+            setPendSel(prev => ({ ...prev, [activeNet]: v }));
+            if (engineRef.current && selElement) {
+              engineRef.current.updateSelected({ pendiente: v });
+              setSelElement({ ...selElement, pendiente: v });
+            } else if (engineRef.current && !selElement) {
+              const eng = engineRef.current;
+              const lastRamal = [...eng.ramales].reverse().find(r => r.net === activeNet);
+              if (lastRamal) {
+                eng.selId = lastRamal.id;
+                eng.updateSelected({ pendiente: v });
+                const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = lastRamal;
+                setSelElement({ ...rest, pendiente: v });
+              }
+            }
+          }}
                       style={{ width: '100%', padding: "5px 8px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", textAlign: 'center' }}
                     />
                   </div>
