@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import PlanoEngine, { NETS } from "./PlanoEngine";
+import { pisoLbl } from "./constants";
+import { useSanitario } from "../context/SanitarioContext";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -21,7 +23,89 @@ const TIPOS_TRAMO = [
   { id: "tributario", label: "Tributario" },
 ];
 
-export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan, pisos }) {
+const DIAM_BY_MAT = {
+  'PVC sanitario': 'PVC-S',
+  'PVC presión':   'PVC-PR',
+  'Acero SCH 40':  'A.C. SCH 40',
+  'PVC C900':      'PVC C900 RDE 14',
+  'PVC-S': [
+    { n: '1½"', dInt: 42.68 }, { n: '2"', dInt: 54.48 },
+    { n: '3"', dInt: 76.20 }, { n: '4"', dInt: 107.70 }, { n: '6"', dInt: 160.04 },
+  ],
+  'PVC-V': [
+    { n: '1½"', dInt: 45.22 }, { n: '2"', dInt: 56.76 },
+    { n: '3"', dInt: 79.00 }, { n: '4"', dInt: 110.08 },
+  ],
+  'PVC-PR': [
+    { n: '½" (RDE 9)', dInt: 16.60 }, { n: '½" (RDE 13.5)', dInt: 18.18 },
+    { n: '¾" (RDE 11)', dInt: 21.81 }, { n: '¾" (RDE 21)', dInt: 23.63 },
+    { n: '1" (RDE 13.5)', dInt: 28.48 }, { n: '1" (RDE 21)', dInt: 30.20 },
+    { n: '1¼" (RDE 21)', dInt: 38.14 }, { n: '1½" (RDE 21)', dInt: 43.68 },
+    { n: '2" (RDE 21)', dInt: 54.58 }, { n: '2½" (RDE 21)', dInt: 66.07 },
+    { n: '3" (RDE 21)', dInt: 80.42 }, { n: '4" (RDE 21)', dInt: 103.42 },
+    { n: '6" (RDE 21)', dInt: 152.22 },
+  ],
+  'CPVC': [
+    { n: '½" (RDE 11)', dInt: 12.40 }, { n: '¾" (RDE 11)', dInt: 18.20 },
+    { n: '1" (RDE 11)', dInt: 23.40 }, { n: '1¼" (RDE 11)', dInt: 28.60 },
+    { n: '1½" (RDE 11)', dInt: 33.70 }, { n: '2" (RDE 11)', dInt: 44.20 },
+    { n: '2" (CPVC SCH 80)', dInt: 49.25 }, { n: '2½" (CPVC SCH 80)', dInt: 59.00 },
+    { n: '3" (CPVC SCH 80)', dInt: 73.66 },
+  ],
+  'Acero HG': [
+    { n: '⅜"', dInt: 9.50 }, { n: '½"', dInt: 12.70 },
+    { n: '¾"', dInt: 19.00 }, { n: '1"', dInt: 25.40 }, { n: '2"', dInt: 50.80 },
+  ],
+  'A.C.': [
+    { n: '⅜"', dInt: 10.00 }, { n: '½"', dInt: 13.40 },
+    { n: '¾"', dInt: 19.50 }, { n: '1"', dInt: 26.00 }, { n: '2"', dInt: 52.00 },
+  ],
+  'Cobre Rígido':  [{ n: '⅜"', dInt: 8.70 }, { n: '½"', dInt: 10.90 }, { n: '¾"', dInt: 17.40 }],
+  'Cobre Flexible': [{ n: '⅜"', dInt: 9.00 }, { n: '½"', dInt: 11.20 }],
+  'PE al PE': [
+    { n: '⅜"', dInt: 12.00 }, { n: '½"', dInt: 16.00 },
+    { n: '¾"', dInt: 20.00 }, { n: '1"', dInt: 25.00 },
+  ],
+  'Polietileno': [
+    { n: '½"', dInt: 14.50 }, { n: '¾"', dInt: 21.50 }, { n: '1"', dInt: 27.80 },
+  ],
+  'PEAD': [
+    { n: '½"', dInt: 14.50 }, { n: '¾"', dInt: 21.50 }, { n: '1"', dInt: 27.80 },
+  ],
+  'A.C. SCH 10': [
+    { n: '¾"', dInt: 22.48 }, { n: '1"', dInt: 27.86 }, { n: '1¼"', dInt: 36.66 },
+    { n: '1½"', dInt: 42.76 }, { n: '2"', dInt: 54.76 }, { n: '2½"', dInt: 66.9 },
+    { n: '3"', dInt: 82.8 }, { n: '4"', dInt: 108.2 }, { n: '5"', dInt: 134.5 },
+    { n: '6"', dInt: 161.5 }, { n: '8"', dInt: 209.54 }, { n: '10"', dInt: 263.44 },
+  ],
+  'A.C. SCH 40': [
+    { n: '½"', dInt: 15.76 }, { n: '¾"', dInt: 20.96 }, { n: '1"', dInt: 26.64 },
+    { n: '1¼"', dInt: 35.08 }, { n: '1½"', dInt: 40.94 }, { n: '2"', dInt: 52.48 },
+    { n: '2½"', dInt: 62.68 }, { n: '3"', dInt: 77.92 }, { n: '4"', dInt: 102.26 },
+    { n: '5"', dInt: 128.2 }, { n: '6"', dInt: 154.08 }, { n: '8"', dInt: 202.74 },
+    { n: '10"', dInt: 254.46 },
+  ],
+  'PVC C900 RDE 14': [
+    { n: '4"', dInt: 104.88 }, { n: '6"', dInt: 150.26 }, { n: '8"', dInt: 197.08 },
+    { n: '10"', dInt: 241.62 }, { n: '12"', dInt: 287.40 },
+  ],
+  'PVC C900 RDE 18': [
+    { n: '4"', dInt: 108.34 }, { n: '6"', dInt: 155.84 }, { n: '8"', dInt: 204.34 },
+    { n: '10"', dInt: 250.56 }, { n: '12"', dInt: 298.06 },
+  ],
+};
+const DIAM_DEFAULT_BY_NET = {
+  san: '4"',
+  ll:  '4"',
+  ven: '2"',
+  af:  '¾" (RDE 11)',
+  ac:  '¾" (RDE 11)',
+  gas: '½"',
+  rci: '2½"',
+};
+
+export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan, pisos=[], planos=[] }) {
+  const { mats } = useSanitario();
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1);
@@ -32,8 +116,13 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   const [tipoTramo, setTipoTramo] = useState("ramal");
   const [snapOn, setSnapOn] = useState(true);
   const [scaleM, setScaleM] = useState("0.5");
+  const [selectedNivel, setSelectedNivel] = useState(null);
+  const [hiddenNets, setHiddenNets] = useState(new Set());
   const [statusMsg, setStatusMsg] = useState("Seleccionar");
   const [selElement, setSelElement] = useState(null);
+  const [drawnElements, setDrawnElements] = useState([]);
+  const [diamSel, setDiamSel] = useState({});
+  const [pendSel, setPendSel] = useState({});
   const toolRef = useRef(tool);
   toolRef.current = tool;
 
@@ -49,6 +138,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   const mountId = useRef(0);
   const renderTaskRef = useRef(null);
   const fileInputSaveRef = useRef(null);
+  const scaleRef = useRef(1);
 
   const syncEngine = useCallback(() => {
     const eng = engineRef.current;
@@ -58,9 +148,38 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
     eng.setTipoTramo(tipoTramo);
     eng.setSnap(snapOn);
     eng.setScaleM(scaleM);
-  }, [tool, activeNet, tipoTramo, snapOn, scaleM]);
+    const floorObj = pisos.find(p => p.n === selectedNivel);
+    eng.nivelActual = floorObj || null;
+    eng.nptLevels = pisos.map(p => ({ label: pisoLbl(p.n), npt: p.npt }));
+    const matName = (mats?.[activeNet] && mats[activeNet][0]?.val) || '';
+    const d = diamSel[activeNet] || DIAM_DEFAULT_BY_NET[activeNet] || '';
+    const p = (activeNet === 'san' || activeNet === 'll') ? (pendSel[activeNet] !== undefined ? pendSel[activeNet] : 2.0) : 0;
+    eng.setRamalDefaults({ material: matName, diametro: d, pendiente: p });
+  }, [tool, activeNet, tipoTramo, snapOn, scaleM, mats, diamSel, pendSel, selectedNivel, pisos]);
 
   useEffect(() => { syncEngine(); }, [syncEngine]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key.toLowerCase() === 'g') { setSnapOn(p => !p); e.preventDefault(); }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const eng = engineRef.current;
+      if (eng) setDrawnElements(eng.getElementsByNet(activeNet));
+    }, 400);
+    return () => clearInterval(id);
+  }, [activeNet]);
+
+  useEffect(() => {
+    if (!engineRef.current) return;
+    setDrawnElements(engineRef.current.getElementsByNet(activeNet));
+  }, [selElement, activeNet]);
 
   useEffect(() => {
     if (!cwRef.current || !drawCanvasRef.current) return;
@@ -174,6 +293,21 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
     if (engineRef.current) engineRef.current.undoLast();
   }, []);
 
+  const handleFit = useCallback(async () => {
+    if (!pdfDocRef.current || !cwRef.current) return;
+    const page = await pdfDocRef.current.getPage(pageNumber);
+    const baseViewport = page.getViewport({ scale: 1 });
+    const cw = cwRef.current;
+    const pad = 16;
+    const availW = cw.clientWidth - pad * 2;
+    const availH = cw.clientHeight - pad * 2;
+    const sc = Math.min(availW / baseViewport.width, availH / baseViewport.height);
+    scaleRef.current = sc;
+    setScale(sc);
+    mountId.current += 1;
+    await renderPage(pageNumber, sc, mountId.current);
+  }, [pageNumber]);
+
   const handleClear = useCallback(() => {
     if (window.confirm("Limpiar todos los elementos del plano?")) {
       if (engineRef.current) engineRef.current.clearAll();
@@ -219,6 +353,17 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   }, [selElement]);
 
   useEffect(() => {
+    if (selElement && selElement.net === activeNet && engineRef.current) {
+      if (selElement.diametro) {
+        setDiamSel(prev => ({ ...prev, [activeNet]: selElement.diametro }));
+      }
+      if (selElement.pendiente !== undefined) {
+        setPendSel(prev => ({ ...prev, [activeNet]: selElement.pendiente }));
+      }
+    }
+  }, [selElement?.id, activeNet]);
+
+  useEffect(() => {
     const c = drawCanvasRef.current;
     if (c) {
       c.style.cursor = tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair';
@@ -229,173 +374,80 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
 
   return (
     <div style={{
-      flex: 1, display: "flex", minHeight: 0,
+      flex: 1, display: "flex", flexDirection: "column", minHeight: 0,
       background: "#111317", border: "1px solid #3a494a", overflow: "hidden",
     }}>
-      {/* Left toolbar */}
-    <div className="visor-sidebar" style={{
-      width: 190, flexShrink: 0, display: "flex", flexDirection: "column",
-      background: "#14161a", borderRight: "1px solid #3a494a",
-      overflowY: "auto", overflowX: "hidden",
-    }}>
+      {/* Network toolbar — horizontal strip above canvas */}
+      <div style={{
+        height: 38, flexShrink: 0, display: "flex", alignItems: "center", gap: 5,
+        padding: "0 8px", background: "#14161a", borderBottom: "1px solid #3a494a",
+        overflowX: "auto", overflowY: "hidden", justifyContent: "center",
+      }}>
+        <div style={{flex:1,minWidth:4}}/>
+        {NETS.map(n => {
+          const isActive=activeNet===n.id;
+          const isHidden=hiddenNets.has(n.id);
+          return <div key={n.id} style={{display:'flex',alignItems:'center',gap:2,flexShrink:0}}>
+            <button onClick={()=>setActiveNet(n.id)}
+              style={{
+                padding:"2px 6px", background:isActive?n.col+'22':"transparent",
+                border:`1px solid ${isActive?n.col:'#3a494a'}`,
+                borderLeft:`3px solid ${n.col}`,
+                borderRadius:"3px 0 0 3px", color:isActive?n.col:"#849495",
+                cursor:"pointer", fontFamily:"'Geist',monospace", fontWeight:600,
+                fontSize:10, whiteSpace:"nowrap",                 opacity:isHidden?0.5:1,
+              }}>
+              {n.lbl}
+            </button>
+            {isActive&&(
+              <input type="color" value={n.col}
+                onChange={e=>{
+                  n.col=e.target.value;
+                  document.documentElement.style.setProperty('--'+n.id,e.target.value);
+                  if(engineRef.current)engineRef.current.render();
+                }}
+                style={{width:18,height:22,padding:0,border:'1px solid #3a494a',borderRadius:'0 3px 3px 0',background:'transparent',cursor:'pointer',flexShrink:0}}/>
+            )}
+            <button onClick={()=>{
+              const next=new Set(hiddenNets);
+              if(next.has(n.id))next.delete(n.id);else next.add(n.id);
+              setHiddenNets(next);
+              if(engineRef.current)engineRef.current.setNetHidden(n.id,next.has(n.id));
+            }}
+              style={{
+                padding:"3px 6px", background:"transparent", border:"none",
+                cursor:"pointer", fontSize:14, flexShrink:0, lineHeight:1,
+                color:isHidden?'#6b8cae':n.col,
+                opacity:isHidden?0.5:1,
+                textDecoration:isHidden?'line-through':'none',
+              }}
+              title={isHidden?'Mostrar':'Ocultar'}>
+              {isHidden?'👁‍🗨':'👁'}
+            </button>
+          </div>;
+        })}
 
-      {/* Planos — agregar plano */}
-      <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
-        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center", justifyContent: "center" }}>
-          {files.map((f, i) => (
-            <div key={f.id} style={{ display: "flex", alignItems: "center" }}>
-              <button onClick={() => onSelectPlan(i)} style={{
-                padding: "3px 7px", background: i === activeIndex ? "#2563EB" : "#1e2024",
-                border: `1px solid ${i === activeIndex ? "#2563EB" : "#3a494a"}`, borderRight: "none",
-                borderRadius: "3px 0 0 3px", color: "#fff", cursor: "pointer",
-                fontSize: 10, fontFamily: "'Hanken Grotesk',sans-serif", maxWidth: 80,
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }} title={f.file.name}>
-                {f.file.name.replace('.pdf', '').substring(0, 10)}
-              </button>
-              <button onClick={() => onRemovePlan(i)} style={{
-                padding: "3px 5px", background: "#1e2024", border: "1px solid #3a494a", borderLeft: "none",
-                borderRadius: "0 3px 3px 0", color: "#ffb4ab", cursor: "pointer", fontSize: 9,
-              }} title={files.length === 1 ? "Cerrar visor" : "Eliminar plano"}>✕</button>
-            </div>
-          ))}
-          <button onClick={onAddPlan} style={{
-            width: 28, height: 28, background: "#1e2024", border: "1px dashed #3a494a", borderRadius: "3px",
-            color: "#b9caca", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center",
-            justifyContent: "center", fontWeight: 700, lineHeight: 1,
-          }} title="Agregar plano">+</button>
-        </div>
+        <div style={{flex:1,minWidth:4}}/>
       </div>
 
-      {/* Selected element info */}
-      {selElement && (
-        <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
-          {selElement.id?.startsWith('T') ? (
-            <span style={{
-              fontFamily: "'Geist',monospace", fontSize: 11, fontWeight: 700, display: "block", marginBottom: 4,
-              color: '#e2e2e8',
-              background: '#1e2024', padding: '2px 8px', borderRadius: 3,
-            }}>Texto</span>
-          ) : selElement.id?.startsWith('AR') ? (
-            <span style={{
-              fontFamily: "'Geist',monospace", fontSize: 11, fontWeight: 700, display: "block", marginBottom: 4,
-              color: '#22D3EE',
-              background: '#1e2024', padding: '2px 8px', borderRadius: 3,
-            }}>Área: {selElement.areaM2} m²</span>
-          ) : selElement.pts ? (
-            <span style={{
-              fontFamily: "'Geist',monospace", fontSize: 11, fontWeight: 700, display: "block", marginBottom: 4,
-              color: NETS.find(n => n.id === selElement.net)?.col || '#e2e2e8',
-              background: '#1e2024', padding: '2px 8px', borderRadius: 3,
-            }}>
-              {selElement.label || selElement.id}
-            </span>
-          ) : selElement.id?.startsWith('B') ? (
-            <span style={{
-              fontFamily: "'Geist',monospace", fontSize: 11, fontWeight: 700, display: "block", marginBottom: 4,
-              color: '#fff',
-              background: '#1e2024', padding: '2px 8px', borderRadius: 3,
-            }}>
-              {selElement.code || '—'}
-            </span>
-          ) : null}
-          {selElement.pts && !selElement.id?.startsWith('AR') && (
-            <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 3 }}>
-              L={selElement.totalL}m · {selElement.pts.length} pts
-            </div>
-          )}
-          {selElement.tipo && selElement.pts && (
-            <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 3 }}>{selElement.tipo.toUpperCase()}</div>
-          )}
+      {/* Main area: sidebar + canvas */}
+      <div style={{flex:1,display:"flex",minHeight:0}}>
 
-{/* Etiqueta editable — para todos excepto texto */}
-        {!selElement.id?.startsWith('T') && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 4 }}>
-            <input
-              value={selElement.id?.startsWith('AR') ? (selElement.label ?? '') : selElement.id?.startsWith('B') ? (selElement.code ?? '') : (selElement.label ?? '')}
-              placeholder="Etiqueta"
-              onChange={e => {
-                if (selElement.id?.startsWith('AR')) setSelElement({ ...selElement, label: e.target.value });
-                else if (selElement.id?.startsWith('B')) setSelElement({ ...selElement, code: e.target.value });
-                else setSelElement({ ...selElement, label: e.target.value });
-              }}
-              style={{ width: "100%", ...smInput }}
-            />
-              {selElement.id?.startsWith('AR') && (
-                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                  <span style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", whiteSpace: 'nowrap' }}>Color</span>
-                  <input
-                    type="color"
-                    value={selElement.color ? (selElement.color.startsWith('#') ? selElement.color.slice(0, 7) : '#22D3EE') : '#22D3EE'}
-                    onChange={e => setSelElement({ ...selElement, color: e.target.value + '33' })}
-                    style={{ width: 24, height: 20, padding: 0, border: '1px solid #3a494a', borderRadius: 2, background: 'transparent', cursor: 'pointer' }}
-                  />
-                </div>
-              )}
-              <button onClick={() => {
-                if (engineRef.current && selElement) {
-if (selElement.id?.startsWith('AR')) {
-          engineRef.current.updateSelected({ label: selElement.label, color: selElement.color });
-        } else if (selElement.id?.startsWith('B')) {
-          engineRef.current.updateSelected({ code: selElement.code, hVert: selElement.hVert, dNominal: selElement.dNominal });
-        } else {
-                    engineRef.current.updateSelected({ label: selElement.label });
-                  }
-                  engineRef.current.selId = null;
-                  setSelElement(null);
-                }
-              }} style={{
-                padding: "4px 8px", background: "#10B981", border: "1px solid #10B981",
-                borderRadius: 4, color: "#fff", cursor: "pointer", fontSize: 10,
-                fontFamily: "'Geist',monospace", fontWeight: 600, textAlign: "center",
-              }}>✓ Aplicar</button>
-            </div>
-          )}
-
-          {selElement.id?.startsWith('T') && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 4 }}>
-              <input value={selElement.text || ''} placeholder="Texto" onChange={e => handleUpdateSel('text', e.target.value)}
-                style={{ width: "100%", ...smInput }} />
-              <div style={{ display: "flex", gap: 4, justifyContent: "center" }}>
-                <span style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", display: "flex", alignItems: "center" }}>Tamaño</span>
-                <input value={selElement.fontSize || 12} type="number" min={6} max={72}
-                  onChange={e => handleUpdateSel('fontSize', parseInt(e.target.value) || 12)}
-                  style={{ width: 52, ...smInput }} />
-                <span style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", display: "flex", alignItems: "center" }}>Ancho</span>
-                <input value={selElement.boxW || 0} type="number" min={0}
-                  onChange={e => handleUpdateSel('boxW', parseInt(e.target.value) || 0)}
-                  style={{ width: 52, ...smInput }} />
-              </div>
-              <button onClick={() => { if (engineRef.current) { engineRef.current.rotateLabelSnap(); const el = engineRef.current.getSelected(); if (el) setSelElement({...el}); }}} style={{ ...smBtn, width: "100%", textAlign: "center" }} title="Rotar texto 45°">↻ Rotar</button>
-            </div>
-          )}
-
-          {!selElement.id?.startsWith('T') && !selElement.id?.startsWith('AR') && (
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}>
-              <button onClick={() => { if (engineRef.current) { engineRef.current.rotateLabelSnap(); const el = engineRef.current.getSelected(); if (el) setSelElement({...el}); }}} style={smBtn} title="Rotar elemento 45°">↻ Rotar</button>
-            </div>
-          )}
-          {selElement.id?.startsWith('B') && (
-            <>
-<input value={selElement.hVert && selElement.hVert !== 0 ? selElement.hVert : ''} placeholder="H(m)" onChange={e => handleUpdateSel('hVert', e.target.value)}
-          style={{ width: "100%", ...smInput, marginBottom: 3 }} />
-          <input value={selElement.dNominal && selElement.dNominal !== '0' ? selElement.dNominal : ''} placeholder="D(mm)" onChange={e => handleUpdateSel('dNominal', e.target.value)}
-          style={{ width: "100%", ...smInput, marginBottom: 3 }} />
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Herramientas */}
+      {/* Sidebar: only Herramientas + Acciones */}
+      <div className="visor-sidebar" style={{
+        width: 165, flexShrink: 0, display: "flex", flexDirection: "column",
+        background: "#14161a", borderRight: "1px solid #3a494a",
+        overflowY: "auto", overflowX: "hidden",
+      }}>
+        {/* Herramientas */}
         <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Herramientas</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        {TOOLS.map(t => (
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {TOOLS.map(t => (
               <button key={t.id} onClick={() => setTool(t.id)} title={`${t.label} (${t.shortcut})`} style={{
                 padding: "5px 8px", background: tool === t.id ? "#2563EB" : "#1e2024",
                 border: `1px solid ${tool === t.id ? "#2563EB" : "#3a494a"}`, borderRadius: "3px",
-                color: "#b9caca",
-                cursor: "pointer",
+                color: "#b9caca", cursor: "pointer",
                 fontFamily: "'Geist',monospace", fontWeight: 600, transition: "all .12s",
                 display: "flex", alignItems: "center", gap: 6, width: "100%",
               }}>
@@ -403,83 +455,73 @@ if (selElement.id?.startsWith('AR')) {
                 <span style={{ fontSize: 10, flex: 1 }}>{t.label}</span>
                 <span style={{ fontSize: 8, color: tool === t.id ? 'rgba(255,255,255,.6)' : '#6b8cae', fontFamily: "'Geist',monospace", marginLeft: 'auto' }}>{t.shortcut}</span>
               </button>
-        ))}
-      </div>
-        </div>
-
-        {/* Redes — lista vertical con nombre y color */}
-        <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Redes</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {NETS.map(n => (
-          <button key={n.id} onClick={() => setActiveNet(n.id)} title={`${n.emoji || ''} ${n.name || n.lbl}`} style={{
-            padding: "3px 6px", background: activeNet === n.id ? n.col + '22' : "transparent",
-            border: `1px solid ${activeNet === n.id ? n.col : '#3a494a'}`,
-            borderLeft: `3px solid ${n.col}`,
-            borderRadius: "3px", color: activeNet === n.id ? n.col : "#849495",
-            cursor: "pointer", fontFamily: "'Geist',monospace", fontWeight: 600,
-            transition: "all .15s", display: "flex", alignItems: "center", gap: 6, width: "100%",
-            fontSize: 10, textAlign: "left",
-          }}>
-            <span style={{ fontSize: 12, width: 16, textAlign: "center" }}>{n.emoji || ''}</span>
-            <span style={{ flex: 1, color: activeNet === n.id ? '#e2e2e8' : '#849495' }}>{n.name || n.lbl}</span>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: n.col, flexShrink: 0, border: '1px solid rgba(255,255,255,.15)' }} />
-              </button>
             ))}
           </div>
+          <div style={{marginTop:4}}>
+            <button onClick={()=>setSnapOn(!snapOn)}
+              style={{
+                padding: "5px 8px", background: snapOn ? "#10B98122" : "#1e2024",
+                border: `1px solid ${snapOn ? "#10B981" : "#3a494a"}`, borderRadius: "3px",
+                color: snapOn ? "#10B981" : "#849495", cursor: "pointer",
+                fontFamily: "'Geist',monospace", fontWeight: 600, transition: "all .12s",
+                display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 10,
+              }}>
+              <span style={{fontSize:14,width:18,textAlign:"center",color:snapOn?"#10B981":"#6b8cae"}}>{snapOn?'◉':'○'}</span>
+              <span style={{flex:1}}>Snap</span>
+              <span style={{fontSize:8,color:snapOn?'rgba(255,255,255,.6)':'#6b8cae',fontFamily:"'Geist',monospace"}}>G</span>
+            </button>
+          </div>
         </div>
 
-        {/* Tipo tramo */}
-        {(tool === 'line' || tool === 'baj') && (
-          <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
-            <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Tipo</div>
-            <div style={{ display: "flex", gap: 3 }}>
-              {TIPOS_TRAMO.map(tp => (
-                <button key={tp.id} onClick={() => setTipoTramo(tp.id)} style={{
-                  padding: "4px 8px", flex: 1, background: tipoTramo === tp.id ? netObj?.col || '#2563EB' : "#1e2024",
-                  border: `1px solid ${tipoTramo === tp.id ? (netObj?.col || '#2563EB') : "#3a494a"}`,
-                  borderRadius: "3px", color: tipoTramo === tp.id ? "#fff" : "#849495",
-                  cursor: "pointer", fontSize: 9, fontFamily: "'Geist',monospace", fontWeight: 600,
-                  whiteSpace: "nowrap", textAlign: "center",
-                }}>{tp.label}</button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Alinear — centrado */}
+        {/* Acciones */}
         <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
-          <button onClick={() => setSnapOn(!snapOn)} title={"Alinear a angulos 0/45/90/135/180° (" + (snapOn ? 'ON' : 'OFF') + ")"} style={{
-            padding: "5px 8px", width: "100%", background: snapOn ? "#10B981" : "#1e2024",
-            border: `1px solid ${snapOn ? "#10B981" : "#3a494a"}`, borderRadius: "3px",
-            color: snapOn ? "#fff" : "#849495", cursor: "pointer", fontSize: 10,
-            fontFamily: "'Geist',monospace", fontWeight: 600, whiteSpace: "nowrap",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-          }}>
-            {snapOn ? '◉' : '○'} Alinear
+          <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Acciones</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <button onClick={handleFit} style={{ ...accBtn, width: "100%", borderColor: "#10B98155", color: "#10B981" }} title="Ajustar PDF al visor">
+              <span style={{ fontSize: 14 }}>⛶</span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, lineHeight: 1.1 }}>
+                <span style={{ fontSize: 10, fontWeight: 700 }}>Ajustar</span>
+                <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Encajar PDF al visor</span>
+              </div>
+            </button>
+            <button onClick={handleSave} style={{ ...accBtn, width: "100%" }} title="Guardar trabajo (JSON)">
+              <span style={{ fontSize: 14 }}>💾</span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, lineHeight: 1.1 }}>
+                <span style={{ fontSize: 10, fontWeight: 700 }}>Guardar</span>
+                <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Descargar JSON</span>
+              </div>
+            </button>
+            <button onClick={handleUndo} style={{ ...accBtn, width: "100%" }} title="Deshacer (Ctrl+Z)">
+              <span style={{ fontSize: 14 }}>↩</span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, lineHeight: 1.1 }}>
+                <span style={{ fontSize: 10, fontWeight: 700 }}>Deshacer</span>
+                <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Ctrl+Z</span>
+              </div>
+            </button>
+            <button onClick={handleClear} style={{ ...accBtn, width: "100%", borderColor: "rgba(255,180,171,.3)", color: "#ffb4ab" }} title="Limpiar todo">
+              <span style={{ fontSize: 14 }}>🗑</span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, lineHeight: 1.1 }}>
+                <span style={{ fontSize: 10, fontWeight: 700 }}>Limpiar</span>
+                <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Borrar todo el plano</span>
+              </div>
+            </button>
+          </div>
+        </div>
+        <div style={{ flex: 1 }} />
+        {/* Close drawing */}
+        <div style={{padding:"6px 8px",borderTop:"1px solid #3a494a"}}>
+          <button onClick={()=>window.location.href='#/civilflowareatrabajo'}
+            style={{
+              padding: "8px", background: "rgba(211,47,47,.12)", border: "1px solid rgba(211,47,47,.3)", borderRadius: "3px",
+              color: "#ef5350", cursor: "pointer", fontFamily: "'Geist',monospace", fontWeight: 600,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", fontSize: 10,
+              transition:"all .15s",
+            }}
+            onMouseEnter={e=>{e.currentTarget.style.background='rgba(211,47,47,.25)';e.currentTarget.style.borderColor='rgba(211,47,47,.5)'}}
+            onMouseLeave={e=>{e.currentTarget.style.background='rgba(211,47,47,.12)';e.currentTarget.style.borderColor='rgba(211,47,47,.3)'}}>
+            ✕ Cerrar dibujo
           </button>
         </div>
-
-        {/* Escala — centrado */}
-        <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-          <span style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495" }}>Escala</span>
-          <input value={scaleM} onChange={e => setScaleM(e.target.value)} onBlur={() => { if (engineRef.current) engineRef.current.setScaleM(scaleM); }}
-            style={{ width: 44, padding: "2px 4px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", textAlign: "center" }}
-          />
-          <span style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495" }}>m/cm</span>
-        </div>
-
-      {/* Acciones */}
-      <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
-        <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Acciones</div>
-      <div style={{ display: "flex", gap: 0 }}>
-        <button onClick={handleSave} style={{ ...iconBtn, flex: 1, borderRadius: "3px 0 0 3px", borderRight: "1px solid #3a494a" }} title="Guardar (JSON)">💾</button>
-        <button onClick={handleUndo} style={{ ...iconBtn, flex: 1, borderRadius: 0, borderRight: "none" }} title="Deshacer (Ctrl+Z)">↩</button>
-        <button onClick={handleClear} style={{ ...iconBtn, flex: 1, borderRadius: "0 3px 3px 0", color: "#ffb4ab" }} title="Limpiar todo">🗑</button>
-      </div>
-      </div>
-
-        <div style={{ flex: 1 }} />
       </div>
 
       {/* Canvas area */}
@@ -487,33 +529,102 @@ if (selElement.id?.startsWith('AR')) {
         flex: 1, overflow: "hidden", display: "flex", justifyContent: "center",
         alignItems: "flex-start", background: "#111317", position: "relative",
       }}>
-        {error ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: 40 }}>
+        {/* Canvases and container always mounted to prevent unmounting and losing references */}
+        <div ref={containerRef} style={{
+          position: "relative",
+          display: currentFile && !error ? "inline-block" : "none",
+        }}>
+          <div id="pdfWrap" style={{ transformOrigin: '0 0' }}>
+            <canvas ref={pdfCanvasRef} style={{ display: "block", background: "#fff" }} />
+          </div>
+          <canvas
+            ref={drawCanvasRef}
+            style={{
+              position: "absolute", top: 0, left: 0,
+              cursor: tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair',
+            }}
+          />
+          {loading && currentFile && (
+            <div style={{
+              position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: "rgba(17,19,23,0.8)",
+            }}>
+              <div className="sp" />
+            </div>
+          )}
+        </div>
+
+        {/* Warning overlays and screens rendered absolute/flex on top of/instead of the canvas */}
+        {!currentFile && (
+          <div style={{
+            position:"absolute",top:0,left:0,right:0,bottom:0,zIndex:10,
+            display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,padding:40,
+            background:"rgba(17,19,23,0.95)"
+          }}>
+            <div style={{
+              display:'flex',flexDirection:'column',alignItems:'center',gap:14,
+              padding:'32px 48px',maxWidth:480,
+              background:'linear-gradient(135deg,rgba(77,143,247,0.15),rgba(0,220,229,0.08))',
+              border:'2px solid rgba(77,143,247,0.4)',borderRadius:12,
+              boxShadow:'0 8px 40px rgba(77,143,247,0.15),inset 0 1px 0 rgba(77,143,247,0.1)',
+            }}>
+              <div style={{fontSize:56,lineHeight:1,filter:'drop-shadow(0 0 12px rgba(77,143,247,0.4))'}}>📐</div>
+              <div style={{fontSize:17,fontWeight:700,color:'#4D8FF7',fontFamily:"'Geist',monospace",letterSpacing:0.5,textAlign:'center'}}>
+                Selecciona un piso con plano asociado
+              </div>
+              <div style={{fontSize:12,color:'#e2e2e8',fontFamily:"'Geist',monospace",textAlign:'center',lineHeight:1.5,maxWidth:360}}>
+                Para empezar a dibujar, selecciona un <strong style={{color:'#00dce5'}}>piso</strong> que tenga un plano confirmado en el panel derecho, o carga un plano desde la pestaña <strong style={{color:'#00dce5'}}>"Carga de planos"</strong>.
+              </div>
+              <a href="#/civilflowareatrabajo" onClick={() => sessionStorage.setItem('openTab', 'planos')} style={{
+                marginTop:6,padding:'8px 18px',
+                background:'rgba(0,220,229,0.15)',border:'1px solid rgba(0,220,229,0.45)',
+                borderRadius:6,color:'#00dce5',fontWeight:700,fontSize:11,textDecoration:'none',
+                fontFamily:"'Geist',monospace",letterSpacing:1,textTransform:'uppercase',
+              }}>📐 Ir a Carga de planos</a>
+            </div>
+          </div>
+        )}
+
+        {currentFile && error && (
+          <div style={{
+            position:"absolute",top:0,left:0,right:0,bottom:0,zIndex:10,
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent:"center", gap: 12, padding: 40,
+            background: "#111317"
+          }}>
             <div style={{ fontSize: 40 }}>⚠</div>
             <div style={{ color: "#ffb4ab", fontFamily: "'Geist',monospace", fontSize: 13 }}>Error al cargar el PDF</div>
             <div style={{ color: "#849495", fontFamily: "'Geist',monospace", fontSize: 11 }}>{error.message || String(error)}</div>
           </div>
-        ) : (
-          <div ref={containerRef} style={{ position: "relative", display: "inline-block" }}>
-            <div id="pdfWrap" style={{ transformOrigin: '0 0' }}>
-              <canvas ref={pdfCanvasRef} style={{ display: "block", background: "#fff" }} />
-            </div>
-            <canvas
-              ref={drawCanvasRef}
-              style={{
-                position: "absolute", top: 0, left: 0,
-                cursor: tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair',
-              }}
-            />
-            {loading && (
-              <div style={{
-                position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: "rgba(17,19,23,0.8)",
-              }}>
-                <div className="sp" />
+        )}
+
+        {currentFile && !error && selectedNivel !== null && selectedNivel !== undefined && !planos.some(p => p.nivel === selectedNivel && p.status === 'confirmed') && (
+          <div style={{
+            position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:20,
+            display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:14,
+            background:'rgba(17,19,23,0.95)',
+          }}>
+            <div style={{
+              display:'flex',flexDirection:'column',alignItems:'center',gap:14,
+              padding:'32px 48px',maxWidth:480,
+              background:'linear-gradient(135deg,rgba(245,166,35,0.18),rgba(245,166,35,0.08))',
+              border:'2px solid rgba(245,166,35,0.55)',borderRadius:12,
+              boxShadow:'0 8px 40px rgba(245,166,35,0.2),inset 0 1px 0 rgba(245,166,35,0.15)',
+            }}>
+              <div style={{fontSize:56,lineHeight:1,filter:'drop-shadow(0 0 12px rgba(245,166,35,0.5))'}}>⚠️</div>
+              <div style={{fontSize:18,fontWeight:700,color:'#f5a623',fontFamily:"'Geist',monospace",letterSpacing:0.5,textAlign:'center'}}>
+                {pisoLbl(selectedNivel)} — Sin plano asociado
               </div>
-            )}
+              <div style={{fontSize:12,color:'#e2e2e8',fontFamily:"'Geist',monospace",textAlign:'center',lineHeight:1.5,maxWidth:360}}>
+                El nivel seleccionado no tiene un plano confirmado. Carga un plano desde la pestaña <strong style={{color:'#00dce5'}}>"Carga de planos"</strong> y asígnale este nivel para empezar a dibujar.
+              </div>
+              <a href="#/civilflowareatrabajo" onClick={() => sessionStorage.setItem('openTab', 'planos')} style={{
+                marginTop:6,padding:'8px 18px',
+                background:'rgba(0,220,229,0.15)',border:'1px solid rgba(0,220,229,0.45)',
+                borderRadius:6,color:'#00dce5',fontWeight:700,fontSize:11,textDecoration:'none',
+                fontFamily:"'Geist',monospace",letterSpacing:1,textTransform:'uppercase',
+              }}>📐 Ir a Carga de planos</a>
+            </div>
           </div>
         )}
 
@@ -522,23 +633,260 @@ if (selElement.id?.startsWith('AR')) {
           position: 'absolute', bottom: 0, left: 0, right: 0,
           display: "flex", alignItems: "center", gap: 10, padding: "4px 14px",
           background: "rgba(17,19,23,0.92)", borderTop: "1px solid #3a494a",
-          fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495",
+          fontFamily: "'Geist',monospace", fontSize: 11, color: "#6b8cae",
         }}>
-          <span>{statusMsg}</span>
           <div style={{ flex: 1 }} />
           {tool === 'line' && (
-            <span style={{ color: '#6b8cae', fontSize: 9 }}>
+            <span style={{ color: '#6b8cae', fontSize: 11 }}>
               Enter/Doble-clic:Guardar · Esc:Cancelar
             </span>
           )}
           {tool === 'area' && (
-            <span style={{ color: '#6b8cae', fontSize: 9 }}>
+            <span style={{ color: '#6b8cae', fontSize: 11 }}>
               Enter/Doble-clic:Cerrar · Esc:Cancelar
             </span>
           )}
-          {snapOn && <span style={{ color: '#10B981' }}>Alinear</span>}
+          {snapOn && <span style={{ color: '#10B981', fontSize: 11 }}>Snap</span>}
         </div>
       </div>
+
+      {/* Right sidebar: Piso, ¿Qué voy a dibujar?, Tramo, Escala */}
+      <div className="visor-sidebar-right" style={{
+        width: 210, flexShrink: 0, display: "flex", flexDirection: "column",
+        background: "#14161a", borderLeft: "1px solid #3a494a",
+        overflowY: "auto", overflowX: "hidden",
+      }}>
+        {/* Piso */}
+        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
+          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Piso</div>
+          <select value={selectedNivel??''} onChange={e=>{setSelectedNivel(e.target.value?Number(e.target.value):null)}}
+            style={{width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace",cursor:'pointer'}}>
+            <option value="">— Seleccionar piso —</option>
+            {[...pisos].sort((a,b)=>b.n-a.n).map(s=>{
+              const tienePlano=planos.some(p=>p.nivel===s.n&&p.status==='confirmed');
+              return <option key={s.id} value={s.n}>{tienePlano?'🟢 ':''}{pisoLbl(s.n)} ({s.npt} m)</option>;
+            })}
+          </select>
+          {selectedNivel!==null&&(()=>{
+            const planoAsoc=planos.find(p=>p.nivel===selectedNivel&&p.status==='confirmed');
+            if(!planoAsoc)return null;
+            return(
+              <div style={{marginTop:8,padding:'6px 10px',background:'#1e2024',borderRadius:3,border:'1px solid rgba(0,220,229,.2)'}}>
+                <div style={{fontSize:11,color:'#00dce5',fontFamily:"'Geist',monospace",fontWeight:600,display:'flex',alignItems:'center',gap:4}}>📄 {planoAsoc.name}</div>
+                <div style={{fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace",marginTop:2}}>Escala 1:{planoAsoc.scale}</div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* ¿Qué voy a dibujar? */}
+        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
+          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>¿Qué voy a dibujar?</div>
+          <div style={{display:'flex',flexDirection:'column',gap:4}}>
+            {TIPOS_TRAMO.map(tp=>(
+              <button key={tp.id} onClick={()=>setTipoTramo(tp.id)}
+                style={{
+                  padding:"7px 10px", background:tipoTramo===tp.id?"#2563EB22":"#1e2024",
+                  border:`1px solid ${tipoTramo===tp.id?"#2563EB":"#3a494a"}`,
+                  borderRadius:"3px", cursor:"pointer", width:"100%",
+                  display:"flex", flexDirection:"column", gap:2, alignItems:"flex-start",
+                  transition:"all .12s",
+                }}>
+                <div style={{fontSize:11,fontWeight:600,color:tipoTramo===tp.id?"#2563EB":"#b9caca",fontFamily:"'Geist',monospace"}}>
+                  {tp.id==='ramal'?'📏 Ramal principal':tp.id==='tributario'?'🔀 Tributario':tp.label}
+                </div>
+                <div style={{fontSize:9,color:"#6b8cae",fontFamily:"'Geist',monospace",textAlign:"left"}}>
+                  {tp.id==='ramal'?'Trazos principales de la red activa':tp.id==='tributario'?'Ramificaciones que conectan al ramal principal':''}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Datos específicos */}
+        {(() => {
+          const netObj = NETS.find(n => n.id === activeNet);
+          const matList = mats?.[activeNet] || [];
+          const matName = matList[0]?.val || '—';
+          const diamList = DIAM_BY_MAT[matName] || [];
+          const isSelActiveNet = selElement && selElement.net === activeNet;
+          const currentDiam = (isSelActiveNet && selElement.diametro !== undefined && selElement.diametro !== '')
+            ? selElement.diametro
+            : (diamSel[activeNet] || DIAM_DEFAULT_BY_NET[activeNet] || (diamList[0]?.n || ''));
+          const showPend = activeNet === 'san' || activeNet === 'll';
+          const currentPend = (isSelActiveNet && selElement.pendiente !== undefined)
+            ? selElement.pendiente
+            : (pendSel[activeNet] !== undefined ? pendSel[activeNet] : 2.0);
+          return (
+            <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
+              <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos específicos</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: netObj?.col || '#849495', flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, color: '#849495', fontFamily: "'Geist',monospace" }}>Red:</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: netObj?.col || '#b9caca', fontFamily: "'Geist',monospace" }}>{netObj?.name || activeNet}</span>
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Tubería</div>
+                  <div style={{ padding: '5px 8px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#b9caca', fontSize: 12, fontFamily: "'Geist',monospace", fontWeight: 600 }}>
+                    {matName}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Diámetro Nominal</div>
+                  {diamList.length > 0 ? (
+                    <select value={currentDiam}
+                      onChange={e => {
+                        const v = e.target.value;
+                        setDiamSel(prev => ({ ...prev, [activeNet]: v }));
+                        if (engineRef.current && selElement) {
+                          engineRef.current.updateSelected({ diametro: v });
+                          setSelElement({ ...selElement, diametro: v });
+                        }
+                      }}
+                      style={{ width: '100%', padding: "5px 8px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                      {diamList.map(d => <option key={d.n} value={d.n}>{d.n.split(' — ')[0]}</option>)}
+                    </select>
+                  ) : (
+                    <div style={{ padding: '5px 8px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#6b8cae', fontSize: 11, fontFamily: "'Geist',monospace" }}>— Sin opciones —</div>
+                  )}
+                </div>
+                {showPend && (
+                  <div>
+                    <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2 }}>Pendiente (%)</div>
+                    <input type="number" step="0.1" min="0" max="100" value={currentPend}
+                      onChange={e => {
+                        const v = parseFloat(e.target.value) || 0;
+                        setPendSel(prev => ({ ...prev, [activeNet]: v }));
+                        if (engineRef.current && selElement) {
+                          engineRef.current.updateSelected({ pendiente: v });
+                          setSelElement({ ...selElement, pendiente: v });
+                        }
+                      }}
+                      style={{ width: '100%', padding: "5px 8px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", textAlign: 'center' }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Datos del tramo */}
+        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
+          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos del tramo</div>
+          {selElement ? (
+            <div style={{display:'flex',flexDirection:'column',gap:5}}>
+              {selElement.label&&(
+                <div style={{fontSize:13,fontWeight:600,color:'#b9caca',fontFamily:"'Geist',monospace",padding:'2px 0'}}>
+                  {selElement.label}
+                </div>
+              )}
+              {!selElement.id?.startsWith('AR')&&!selElement.id?.startsWith('T')&&(
+                <input value={selElement.label||''} placeholder="Nombre del tramo"
+                  onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({label:v});setSelElement({...selElement,label:v})}}}
+                  style={{width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace"}}/>
+              )}
+              {selElement.id?.startsWith('B')&&(
+                <input value={selElement.code||''} placeholder="Código bajante"
+                  onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({code:v});setSelElement({...selElement,code:v})}}}
+                  style={{width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace"}}/>
+              )}
+              {selElement.id?.startsWith('T')&&(
+                <input value={selElement.text||''} placeholder="Texto"
+                  onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({text:v});setSelElement({...selElement,text:v})}}}
+                  style={{width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace"}}/>
+              )}
+              {selElement.pts&&(
+                <div style={{fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace"}}>
+                  L={selElement.totalL}m · {selElement.pts.length} pts
+                  {selElement.tipo?` · ${selElement.tipo}`:''}
+                </div>
+              )}
+              <button onClick={handleDelete}
+                style={{padding:"4px 10px",background:"transparent",border:"1px solid #3a494a",borderRadius:3,color:"#ffb4ab",cursor:"pointer",fontSize:10,fontFamily:"'Geist',monospace",marginTop:2}}>
+                🗑 Eliminar
+              </button>
+            </div>
+          ) : (
+            <div style={{fontSize:11,color:'#6b8cae',fontFamily:"'Geist',monospace",padding:'4px 0'}}>
+              Selecciona un elemento en el plano
+            </div>
+          )}
+        </div>
+
+        {/* Trazos de red */}
+        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
+          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
+            Trazos de red ({drawnElements.length})
+          </div>
+          {drawnElements.length===0 ? (
+            <div style={{fontSize:11,color:'#6b8cae',fontFamily:"'Geist',monospace",padding:'4px 0'}}>
+              Ningún trazo dibujado en esta red
+            </div>
+          ) : (
+            <div style={{display:'flex',flexDirection:'column',gap:3}}>
+              {drawnElements.map(el=>(
+                <div key={el.id}
+                  style={{
+                    padding:'6px 8px',background:selElement?.id===el.id?'#2563EB22':'#1a1c20',
+                    borderRadius:3,cursor:'pointer',border:`1px solid ${selElement?.id===el.id?'rgba(37,99,235,.4)':'#3a494a'}`,
+                    display:'flex',flexDirection:'column',gap:4,
+                  }}>
+                  <div style={{display:'flex',alignItems:'center',gap:4}} onClick={()=>{if(engineRef.current)engineRef.current.selectById(el.id);}}>
+                    <span style={{fontSize:11,color:el.type==='bajante'?'#F04545':'#4D8FF7'}}>
+                      {el.type==='bajante'?'⬇':'╱'}
+                    </span>
+                    <span style={{fontSize:12,fontWeight:600,color:'#b9caca',fontFamily:"'Geist',monospace",flex:1}}>{el.label}</span>
+                    <span style={{fontSize:11,fontWeight:600,color:'#6b8cae',fontFamily:"'Geist',monospace",textTransform:'uppercase'}}>{(el.tipo==='ramal'?'ramal':el.tipo==='tributario'?'trib':el.tipo==='bajante'?'baj':el.tipo)||''}</span>
+                    <button onClick={e=>{e.stopPropagation();if(engineRef.current){engineRef.current.selectById(el.id);engineRef.current.deleteSelected();}}}
+                      style={{padding:'3px 6px',background:'transparent',border:'1px solid #3a494a',borderRadius:2,color:'#ffb4ab',cursor:'pointer',fontSize:10,fontFamily:"'Geist',monospace",flexShrink:0}}>✕</button>
+                  </div>
+                  <div style={{
+                    display:'flex',flexWrap:'wrap',gap:'2px 8px',fontSize:9,
+                    color:'#6b8cae',fontFamily:"'Geist',monospace",paddingLeft:17
+                  }}>
+                    <span>L={typeof el.totalL==='number'?el.totalL.toFixed(1):el.totalL}m</span>
+                    {el.type !== 'bajante' && <span>· {el.segs} {el.segs === 1 ? 'seg' : 'segs'}</span>}
+                    {(el.pendiente !== undefined && el.pendiente !== null && el.pendiente !== 0 && (activeNet === 'san' || activeNet === 'll')) && (
+                      <span>· S={el.pendiente}%</span>
+                    )}
+                    {el.diametro && <span>· Ø {el.diametro}</span>}
+                    {el.piso && <span>· {el.piso}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Escala */}
+        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
+          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Escala</div>
+          <div style={{display:'flex',flexDirection:'column',gap:5}}>
+            <select value={scaleM} onChange={e=>{setScaleM(e.target.value);if(engineRef.current)engineRef.current.setScaleM(e.target.value);}}
+              style={{width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace",cursor:'pointer'}}>
+              <option value="0.5">1:50</option>
+              <option value="0.75">1:75</option>
+              <option value="1.0">1:100</option>
+              <option value="1.25">1:125</option>
+              <option value="2.0">1:200</option>
+            </select>
+          </div>
+          {selectedNivel!==null&&(()=>{
+            const planoAsoc=planos.find(p=>p.nivel===selectedNivel&&p.status==='confirmed');
+            if(planoAsoc)return(
+              <div style={{marginTop:6,fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace"}}>
+                Plano: 1:{planoAsoc.scale}
+              </div>
+            );
+            return null;
+          })()}
+        </div>
+
+        <div style={{flex:1}}/>
+      </div>
+    </div>
     </div>
   );
 }
@@ -547,6 +895,12 @@ const iconBtn = {
   padding: "5px 6px", background: "#1e2024", border: "1px solid #3a494a",
   borderRadius: "4px", color: "#b9caca", cursor: "pointer", fontSize: 16,
   fontFamily: "'Geist',monospace", display: "flex", alignItems: "center", justifyContent: "center",
+};
+const accBtn = {
+  padding: "6px 8px", background: "#1e2024", border: "1px solid #3a494a",
+  borderRadius: "4px", color: "#b9caca", cursor: "pointer",
+  fontFamily: "'Geist',monospace", display: "flex", alignItems: "center", gap: 6,
+  transition: "all .12s",
 };
 const smBtn = {
   padding: "3px 8px", background: "#1e2024", border: "1px solid #3a494a",

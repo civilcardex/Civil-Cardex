@@ -3,19 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import PdfViewer from '../components/PdfViewer';
 import { usePlanos } from '../context/PlanosContext';
-import DisenoUDPanel from '../components/UdDesignPanel';
-import PanelValoresUD from '../components/UdValuesPanel';
-import PanelBajantesLluvias from '../components/RainDownpipesPanel';
-import PanelCanalesLluvias from '../components/RainChannelsPanel';
+import { useSanitario } from '../context/SanitarioContext';
 
 function ViewerInner() {
   const { planos, addPlanos, removePlano } = usePlanos();
+  const { pisos } = useSanitario();
   const [activeIndex, setActiveIndex] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [showDisenoUD, setShowDisenoUD] = useState(false);
-  const [showValoresUD, setShowValoresUD] = useState(false);
-  const [showBajantesLL, setShowBajantesLL] = useState(false);
-  const [showCanalesLL, setShowCanalesLL] = useState(false);
   const fileRef = useRef();
   const navigate = useNavigate();
 
@@ -42,31 +36,6 @@ function ViewerInner() {
     setDropdownOpen(false);
   };
 
-  if (planos.length === 0) {
-    return (
-      <div className="h-screen flex flex-col" style={{ background: '#0a0e14', color: '#e2e2e8' }}>
-        <Navbar />
-        <div className="flex-1 flex items-center justify-center pt-16">
-          <div className="text-center">
-            <div className="text-5xl mb-4">📐</div>
-            <div className="text-sm font-bold uppercase tracking-widest mb-2"
-              style={{ color: '#e8f4fd', fontFamily: 'Geist, monospace' }}>
-              No hay planos cargados
-            </div>
-            <div className="text-xs mb-6" style={{ color: '#6b8cae', fontFamily: 'Geist, monospace' }}>
-              Sube planos PDF para comenzar a trabajar
-            </div>
-            <button onClick={() => navigate('/civilflowareatrabajo')}
-              className="px-6 py-3 font-bold text-[11px] tracking-widest uppercase border rounded-lg transition-colors"
-              style={{ background: 'rgba(0,220,229,0.08)', borderColor: '#00dce555', color: '#00dce5', fontFamily: 'Geist, monospace' }}>
-              IR A CARGA DE PLANOS
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#0a0e14' }}>
       <input ref={fileRef} type="file" accept=".pdf" multiple style={{ display: 'none' }}
@@ -92,7 +61,7 @@ function ViewerInner() {
               }}>
               <span style={{ color: '#00dce5' }}>📄</span>
               <span style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {planos[activeIndex]?.name || 'Seleccionar'}
+                {planos[activeIndex]?.name || 'Ninguno'}
               </span>
               <span style={{ fontSize: 8, color: '#6b8cae' }}>▼</span>
             </button>
@@ -103,6 +72,11 @@ function ViewerInner() {
                 borderRadius: 6, boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
                 overflow: 'hidden', zIndex: 100,
               }}>
+                {planos.length===0&&(
+                  <div style={{padding:'12px 16px',color:'#6b8cae',fontFamily:'Geist, monospace',fontSize:11,textAlign:'center'}}>
+                    No hay planos cargados
+                  </div>
+                )}
                 {planos.map((p, i) => (
                   <div key={p.id}
                     onClick={() => handleSelectPlan(i)}
@@ -139,7 +113,7 @@ function ViewerInner() {
                     }}>
                     + Agregar
                   </button>
-        <button onClick={() => navigate('/civilflowareatrabajo')}
+                  <button onClick={() => navigate('/civilflowareatrabajo')}
                     style={{
                       padding: '5px 8px', background: '#1e2024',
                       border: '1px solid #3a494a', borderRadius: 3,
@@ -153,13 +127,15 @@ function ViewerInner() {
             )}
           </div>
           <div style={{ flex: 1 }} />
-          <span style={{ fontFamily: 'Geist, monospace', fontSize: 9, color: '#6b8cae' }}>
-            {activeIndex + 1} / {planos.length}
-          </span>
+          {planos.length>0&&(
+            <span style={{ fontFamily: 'Geist, monospace', fontSize: 9, color: '#6b8cae' }}>
+              {activeIndex + 1} / {planos.length}
+            </span>
+          )}
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingTop: 100, overflow: 'hidden', position: 'relative' }}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingTop: 84, overflow: 'hidden', position: 'relative' }}
         onClick={() => setDropdownOpen(false)}>
         <PdfViewer
           files={files}
@@ -167,39 +143,12 @@ function ViewerInner() {
           onSelectPlan={handleSelectPlan}
           onAddPlan={handleAddPlan}
           onRemovePlan={handleRemovePlan}
-          pisos={[]}
+          planos={planos}
+          pisos={pisos}
         />
-
-        {/* Floating design panels */}
-        {showDisenoUD && <DisenoUDPanel onClose={() => setShowDisenoUD(false)} />}
-        {showValoresUD && <PanelValoresUD onClose={() => setShowValoresUD(false)} />}
-        {showBajantesLL && <PanelBajantesLluvias onClose={() => setShowBajantesLL(false)} />}
-        {showCanalesLL && <PanelCanalesLluvias onClose={() => setShowCanalesLL(false)} />}
-
-        {/* Panel toggle buttons */}
-        <div style={{
-          position: 'absolute', bottom: 8, right: 8, zIndex: 60,
-          display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '50%',
-        }}>
-          {!showDisenoUD && <MiniBtn onClick={() => setShowDisenoUD(true)}>📊 Diseño UD</MiniBtn>}
-          {!showValoresUD && <MiniBtn onClick={() => setShowValoresUD(true)}>📊 UD base</MiniBtn>}
-          {!showBajantesLL && <MiniBtn onClick={() => setShowBajantesLL(true)}>🌧️ Bajantes</MiniBtn>}
-          {!showCanalesLL && <MiniBtn onClick={() => setShowCanalesLL(true)}>🌧️ Canales</MiniBtn>}
-        </div>
       </div>
     </div>
   );
-}
-
-function MiniBtn({ onClick, children }) {
-  return <button onClick={onClick}
-    style={{
-      padding: '5px 10px', background: 'rgba(24,26,30,0.92)', border: '1px solid #3a494a',
-      borderRadius: 6, color: '#e2e2e8', fontSize: 11, cursor: 'pointer',
-      fontFamily: "'Hanken Grotesk', sans-serif", fontWeight: 600,
-      display: 'flex', alignItems: 'center', gap: 4,
-      boxShadow: '0 4px 16px rgba(0,0,0,.4)',
-    }}>{children}</button>;
 }
 
 export default function ViewerPage() {

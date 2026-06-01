@@ -80,6 +80,7 @@ export default class PlanoEngine {
     this._dimStart = null;
     this.nivelActual = null;
     this.nptLevels = [];
+    this._hiddenNets = new Set();
 
     this._netCounts = {};
     NETS.forEach(n => { this._netCounts[n.id] = { ramal: 0, tributario: 0 }; });
@@ -108,6 +109,49 @@ export default class PlanoEngine {
 
   onSelect(cb) { this._onSelectCb = cb; }
   onStatus(cb) { this._onStatusCb = cb; }
+  onUpdate(cb) { this._onUpdateCb = cb; }
+
+  selectById(id) {
+    const found = this.ramales.find(r => r.id === id) || this.bajantes.find(b => b.id === id) ||
+      this.textAnnots.find(t => t.id === id) || this.areas.find(a => a.id === id) ||
+      this.dims.find(d => d.id === id);
+    if (found) { this.selId = found.id; this._emitSelect(found); this.render(); }
+  }
+
+  getElementsByNet(netId) {
+    const items = [];
+    for (const r of this.ramales) {
+      if (r.net === netId) {
+        items.push({
+          type: 'ramal',
+          id: r.id,
+          label: r.label || r.id,
+          totalL: r.totalL,
+          segs: r.pts ? Math.max(0, r.pts.length - 1) : 0,
+          piso: r.piso || '',
+          tipo: r.tipo,
+          pendiente: r.pendiente,
+          diametro: r.diametro
+        });
+      }
+    }
+    for (const b of this.bajantes) {
+      if (b.net === netId) {
+        items.push({
+          type: 'bajante',
+          id: b.id,
+          label: b.code || b.id,
+          totalL: b.totalL || 0,
+          segs: 0,
+          piso: b.piso || '',
+          tipo: 'bajante',
+          pendiente: b.pendiente,
+          diametro: b.dNominal
+        });
+      }
+    }
+    return items;
+  }
 
   destroy() {
     this.canv.removeEventListener('mousedown', this._onDown);
@@ -127,6 +171,12 @@ export default class PlanoEngine {
   resizeCanvas(w, h) {
     this.canv.width = w;
     this.canv.height = h;
+    this.render();
+  }
+
+  setNetHidden(netId, hidden) {
+    if (hidden) this._hiddenNets.add(netId);
+    else this._hiddenNets.delete(netId);
     this.render();
   }
 
@@ -151,7 +201,7 @@ export default class PlanoEngine {
   _emitSelect(el) {
     if (!this._onSelectCb) return;
     if (!el) { this._onSelectCb(null); return; }
-    const { _circ, _ghost, _box, _polyBox, ...rest } = el;
+    const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = el;
     this._onSelectCb(rest);
   }
 
@@ -168,6 +218,13 @@ export default class PlanoEngine {
   setActiveNet(id) { this.activeNet = id; }
   setTipoTramo(t) { this.tipoTramo = t; }
   setSnap(v) { this.snapMode = v; }
+  setRamalDefaults(d) {
+    this._ramalDefaults = {
+      material: d?.material || '',
+      diametro: d?.diametro || '',
+      pendiente: typeof d?.pendiente === 'number' ? d.pendiente : 0,
+    };
+  }
   setScaleM(v) {
     this.scaleM = parseFloat(v) || 0.5;
     this.ramales.forEach(r => {
@@ -243,6 +300,10 @@ export default class PlanoEngine {
 
     let foundBaj = null, minBD = 16;
     this.bajantes.forEach(b => {
+      if (b._labelBox && this._pointInLabelBox(cx, cy, b._labelBox)) {
+        const d = Math.hypot(cx - b._labelBox.cx, cy - b._labelBox.cy);
+        if (d < minBD) { minBD = d; foundBaj = b; }
+      }
       if (b._circ) {
         const d = Math.hypot(cx - b._circ.x, cy - b._circ.y);
         if (d < b._circ.r && d < minBD) { minBD = d; foundBaj = b; }
@@ -259,9 +320,8 @@ export default class PlanoEngine {
 
     let found = null, minD = 20;
     this.ramales.forEach(r => {
-      const lx = this.toCvs(r.labelX, r.labelY);
-      if (Math.hypot(cx - lx.x, cy - lx.y) < 18) {
-        const d = Math.hypot(cx - lx.x, cy - lx.y);
+      if (r._labelBox && this._pointInLabelBox(cx, cy, r._labelBox)) {
+        const d = Math.hypot(cx - r._labelBox.cx, cy - r._labelBox.cy);
         if (d < minD) { minD = d; found = r; }
       }
       for (let i = 0; i < r.pts.length - 1; i++) {
@@ -281,6 +341,15 @@ export default class PlanoEngine {
       }
     });
     this.selId = found ? found.id : null;
+
+    // Check area label boxes before area polygons
+    let foundAreaLabel = null;
+    this.areas.forEach(a => {
+      if (a._labelBox && this._pointInLabelBox(cx, cy, a._labelBox)) {
+        foundAreaLabel = a;
+      }
+    });
+    if (foundAreaLabel) { this.selId = foundAreaLabel.id; this._emitSelect(foundAreaLabel); this.render(); return; }
 
     // Check area polygons after ramales
     let foundArea = null;
@@ -307,6 +376,15 @@ export default class PlanoEngine {
     return inside;
   }
 
+  _pointInLabelBox(px, py, box) {
+    if (!box || !box.corners) return false;
+    const dx = px - box.cx, dy = py - box.cy;
+    const cosA = Math.cos(-box.angle), sinA = Math.sin(-box.angle);
+    const lx = dx * cosA - dy * sinA;
+    const ly = dx * sinA + dy * cosA;
+    return Math.abs(lx) <= box.w / 2 && Math.abs(ly) <= box.h / 2;
+  }
+
   _nextLabel() {
     const net = NETS.find(n => n.id === this.activeNet);
     const pfx = net ? net.lbl : 'R';
@@ -318,10 +396,11 @@ export default class PlanoEngine {
     return `${pfx}${cnt}`;
   }
 
-finishRamal() {
+  finishRamal() {
     if (!this.activeRamal || this.activeRamal.pts.length < 1) return;
     if (this.activeRamal.pts.length < 2) { this.activeRamal = null; this._emitStatus(this._statusMsg()); this.render(); return; }
     const [mx, my] = this._midpoint(this.activeRamal.pts);
+    const def = this._ramalDefaults || {};
     const r = {
       id: 'R' + Date.now(),
       net: this.activeRamal.net,
@@ -332,7 +411,10 @@ finishRamal() {
       label: this._nextLabel(),
       ini: '', fin: '', piso: '', dz: '', uc: 0,
       labelX: mx, labelY: my,
-      labelAngle: 0,
+      labelAngle: this._strokeAngle(this.activeRamal.pts),
+      material: def.material || '',
+      diametro: def.diametro || '',
+      pendiente: typeof def.pendiente === 'number' ? def.pendiente : 0,
     };
     this.ramales.push(r);
     this.activeRamal = null;
@@ -444,15 +526,57 @@ finishRamal() {
     return pts[pts.length - 1];
   }
 
+  _strokeAngle(pts) {
+    if (pts.length < 2) return 0;
+    let totalLen = 0;
+    const segLens = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const l = Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
+      segLens.push(l);
+      totalLen += l;
+    }
+    const half = totalLen / 2;
+    let acc = 0;
+    for (let i = 0; i < segLens.length; i++) {
+      if (acc + segLens[i] >= half) {
+        const dx = pts[i + 1][0] - pts[i][0];
+        const dy = pts[i + 1][1] - pts[i][1];
+        if (segLens[i] < 1) return 0;
+        let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        if (angle > 90) angle -= 180;
+        if (angle < -90) angle += 180;
+        return Math.round(angle);
+      }
+      acc += segLens[i];
+    }
+    return 0;
+  }
+
   updateSelected(fields) {
     const el = this.getSelected();
     if (el) {
       Object.assign(el, fields);
-      if (el.pts && el.id?.startsWith('R')) {
+      if (el.pts && el.id?.startsWith('R') && fields.pts) {
         const [mx, my] = this._midpoint(el.pts);
         el.labelX = mx;
         el.labelY = my;
+        el.labelAngle = this._strokeAngle(el.pts);
       }
+    }
+    this.render();
+  }
+
+  updateElementById(id, fields) {
+    let el = this.ramales.find(r => r.id === id) || this.bajantes.find(b => b.id === id) || this.textAnnots.find(t => t.id === id) || this.areas.find(a => a.id === id);
+    if (el) {
+      Object.assign(el, fields);
+      if (el.pts && el.id?.startsWith('R') && fields.pts) {
+        const [mx, my] = this._midpoint(el.pts);
+        el.labelX = mx;
+        el.labelY = my;
+        el.labelAngle = this._strokeAngle(el.pts);
+      }
+      this.selId = id;
     }
     this.render();
   }
@@ -486,14 +610,15 @@ finishRamal() {
     const el = this.getSelected();
     if (!el) return;
     if (el.pts) {
-      const mid = Math.floor(el.pts.length / 2);
-      el.labelX = el.pts[mid][0];
-      el.labelY = el.pts[mid][1];
+      const [mx, my] = this._midpoint(el.pts);
+      el.labelX = mx;
+      el.labelY = my;
+      el.labelAngle = this._strokeAngle(el.pts);
     } else {
       el.labelX = el.x;
       el.labelY = el.y;
+      el.labelAngle = 0;
     }
-    el.labelAngle = 0;
     this.render();
   }
 
@@ -580,12 +705,19 @@ if (this.tool === 'sel') {
         }
       }
 
-      // Drag already-selected label (ramales/bajantes)
-      if (sel && sel.labelX !== undefined && !sel.id?.startsWith('B') && !sel.id?.startsWith('T') && !sel.id?.startsWith('AR')) {
-        const lx = this.toCvs(sel.labelX, sel.labelY);
-        if (Math.hypot(x - lx.x, y - lx.y) < 20) {
-          this.lblDrag = { id: sel.id, offX: x - lx.x, offY: y - lx.y };
+        // Drag already-selected label (ramales/bajantes/areas)
+      if (sel && sel.labelX !== undefined && !sel.id?.startsWith('T')) {
+        if (sel._labelBox && this._pointInLabelBox(x, y, sel._labelBox)) {
+          const lPos = this.toCvs(sel.labelX, sel.labelY);
+          this.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
           return;
+        }
+        if (!sel.id?.startsWith('B')) {
+          const lPos = this.toCvs(sel.labelX, sel.labelY);
+          if (Math.hypot(x - lPos.x, y - lPos.y) < 12) {
+            this.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
+            return;
+          }
         }
       }
 
@@ -634,6 +766,18 @@ if (this.tool === 'sel') {
         }
       }
 
+      // Hit-test all area labels (select + drag label in one click)
+      for (const a of this.areas) {
+        if (a._labelBox && this._pointInLabelBox(x, y, a._labelBox)) {
+          this.selId = a.id;
+          const lPos = this.toCvs(a.labelX, a.labelY);
+          this.lblDrag = { id: a.id, offX: x - lPos.x, offY: y - lPos.y };
+          this._emitSelect(a);
+          this.render();
+          return;
+        }
+      }
+
       // Hit-test all area polygons
       for (const a of this.areas) {
         if (a._polyBox) {
@@ -651,15 +795,27 @@ if (this.tool === 'sel') {
 
       // Hit-test all ramal labels (select + drag in one click)
       for (const r of this.ramales) {
-        if (r.label !== undefined && r.labelX !== undefined) {
-          const lx = this.toCvs(r.labelX, r.labelY);
-          if (Math.hypot(x - lx.x, y - lx.y) < 18) {
-            this.selId = r.id;
-            this.lblDrag = { id: r.id, offX: x - lx.x, offY: y - lx.y };
-            this._emitSelect(r);
-            this.render();
-            return;
-          }
+        const lPos = this.toCvs(r.labelX, r.labelY);
+        const inBox = r._labelBox && this._pointInLabelBox(x, y, r._labelBox);
+        const nearPoint = Math.hypot(x - lPos.x, y - lPos.y) < 12;
+        if (inBox || nearPoint) {
+          this.selId = r.id;
+          this.lblDrag = { id: r.id, offX: x - lPos.x, offY: y - lPos.y };
+          this._emitSelect(r);
+          this.render();
+          return;
+        }
+      }
+
+      // Hit-test all bajante label boxes (select + drag label in one click)
+      for (const b of this.bajantes) {
+        if (b._labelBox && this._pointInLabelBox(x, y, b._labelBox)) {
+          this.selId = b.id;
+          const lPos = this.toCvs(b.labelX, b.labelY);
+          this.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
+          this._emitSelect(b);
+          this.render();
+          return;
         }
       }
 
@@ -828,14 +984,14 @@ if (this.tool === 'line') {
         }
         return;
       }
-      if (this.lblDrag) {
-        const el = this.ramales.find(r => r.id === this.lblDrag.id) || this.bajantes.find(b => b.id === this.lblDrag.id);
-        if (el) {
-          const p = this.toPlane(x - this.lblDrag.offX, y - this.lblDrag.offY);
-          el.labelX = p.x;
-          el.labelY = p.y;
-          this.render();
-        }
+    if (this.lblDrag) {
+      const el = this.ramales.find(r => r.id === this.lblDrag.id) || this.bajantes.find(b => b.id === this.lblDrag.id) || this.areas.find(a => a.id === this.lblDrag.id);
+      if (el) {
+        const p = this.toPlane(x - this.lblDrag.offX, y - this.lblDrag.offY);
+        el.labelX = p.x;
+        el.labelY = p.y;
+        this.render();
+      }
         return;
       }
       if (this.txtDrag) {
@@ -862,20 +1018,21 @@ if (this.tool === 'line') {
         }
         return;
       }
-if (this.ptDrag) {
-      const r = this.ramales.find(r => r.id === this.ptDrag.id);
-      if (r) {
-        const p = this.toPlane(x, y);
-        r.pts[this.ptDrag.ptIdx] = [p.x, p.y];
-        r.totalL = 0;
-        for (let i = 0; i < r.pts.length - 1; i++) {
-          r.totalL += this.pxToM(Math.hypot(r.pts[i + 1][0] - r.pts[i][0], r.pts[i + 1][1] - r.pts[i][1]));
-        }
-        r.totalL = +r.totalL.toFixed(3);
-        const [mx, my] = this._midpoint(r.pts);
-        r.labelX = mx;
-        r.labelY = my;
-        this.render();
+      if (this.ptDrag) {
+        const r = this.ramales.find(r => r.id === this.ptDrag.id);
+        if (r) {
+          const p = this.toPlane(x, y);
+          r.pts[this.ptDrag.ptIdx] = [p.x, p.y];
+          r.totalL = 0;
+          for (let i = 0; i < r.pts.length - 1; i++) {
+            r.totalL += this.pxToM(Math.hypot(r.pts[i + 1][0] - r.pts[i][0], r.pts[i + 1][1] - r.pts[i][1]));
+          }
+          r.totalL = +r.totalL.toFixed(3);
+          const [mx, my] = this._midpoint(r.pts);
+          r.labelX = mx;
+          r.labelY = my;
+          r.labelAngle = this._strokeAngle(r.pts);
+          this.render();
         }
         return;
       }
@@ -1071,6 +1228,7 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
 
   _drawAreas(ctx) {
     this.areas.forEach(a => {
+      if (this._hiddenNets.has(a.net)) return;
       if (a.pts.length < 3) return;
       const sel = a.id === this.selId;
       const pts = a.pts.map(p => this.toCvs(p[0], p[1]));
@@ -1100,18 +1258,35 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
       });
       a._polyBox = { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 
-      const lx = this.toCvs(a.labelX, a.labelY);
+        const lx = this.toCvs(a.labelX, a.labelY);
 
       if (a.label || a.areaM2) {
         ctx.save();
         ctx.translate(lx.x, lx.y);
-        ctx.rotate((a.labelAngle || 0) * Math.PI / 180);
+        const aAngle = (a.labelAngle || 0) * Math.PI / 180;
+        ctx.rotate(aAngle);
         const displayLabel = a.label || '';
         const areaLabel = a.areaM2 ? `${a.areaM2} m²` : '';
         ctx.font = 'bold 11px Geist, monospace';
         const tw = Math.max(ctx.measureText(displayLabel).width, ctx.measureText(areaLabel).width);
+        const aBoxW = tw + 10, aBoxH = areaLabel ? 30 : 22;
+        const aCosA = Math.cos(aAngle), aSinA = Math.sin(aAngle);
+        const aCorners = [
+          { x: lx.x + aCosA * (-aBoxW / 2) - aSinA * (-16 - aBoxH / 2), y: lx.y + aSinA * (-aBoxW / 2) + aCosA * (-16 - aBoxH / 2) },
+          { x: lx.x + aCosA * (aBoxW / 2) - aSinA * (-16 - aBoxH / 2), y: lx.y + aSinA * (aBoxW / 2) + aCosA * (-16 - aBoxH / 2) },
+          { x: lx.x + aCosA * (aBoxW / 2) - aSinA * (-16 + aBoxH / 2), y: lx.y + aSinA * (aBoxW / 2) + aCosA * (-16 + aBoxH / 2) },
+          { x: lx.x + aCosA * (-aBoxW / 2) - aSinA * (-16 + aBoxH / 2), y: lx.y + aSinA * (-aBoxW / 2) + aCosA * (-16 + aBoxH / 2) },
+        ];
+        a._labelBox = {
+          cx: lx.x, cy: lx.y - 16 + aBoxH / 2, w: aBoxW, h: aBoxH, angle: aAngle,
+          minX: Math.min(...aCorners.map(c => c.x)) - 2,
+          minY: Math.min(...aCorners.map(c => c.y)) - 2,
+          maxX: Math.max(...aCorners.map(c => c.x)) + 2,
+          maxY: Math.max(...aCorners.map(c => c.y)) + 2,
+          corners: aCorners
+        };
         ctx.fillStyle = 'rgba(17,19,23,0.82)';
-        ctx.fillRect(-tw / 2 - 5, -16, tw + 10, areaLabel ? 30 : 22);
+        ctx.fillRect(-tw / 2 - 5, -16, aBoxW, aBoxH);
         ctx.fillStyle = sel ? '#00dce5' : '#e2e2e8';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -1122,6 +1297,8 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
           ctx.fillText(areaLabel, 0, displayLabel ? 8 : 8);
         }
         ctx.restore();
+      } else {
+        a._labelBox = null;
       }
 
       if (sel) {
@@ -1202,6 +1379,7 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
 
   _drawRamales(ctx) {
     this.ramales.forEach(r => {
+      if (this._hiddenNets.has(r.net)) return;
       const net = NETS.find(n => n.id === r.net);
       const col = net ? net.col : '#e2e2e8';
       const sel = r.id === this.selId;
@@ -1220,24 +1398,6 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
           ctx.lineTo(c.x, c.y);
         }
         ctx.stroke();
-
-        const last = r.pts[r.pts.length - 1];
-        const prev = r.pts[r.pts.length - 2];
-        const lc = this.toCvs(last[0], last[1]);
-        const pc = this.toCvs(prev[0], prev[1]);
-        const adx = lc.x - pc.x, ady = lc.y - pc.y;
-        const al = Math.hypot(adx, ady);
-        if (al > 10) {
-          const aSize = 8;
-          const ax = -adx / al, ay = -ady / al;
-          ctx.fillStyle = col;
-          ctx.beginPath();
-          ctx.moveTo(lc.x, lc.y);
-          ctx.lineTo(lc.x + ax * aSize - ay * aSize * 0.5, lc.y + ay * aSize + ax * aSize * 0.5);
-          ctx.lineTo(lc.x + ax * aSize + ay * aSize * 0.5, lc.y + ay * aSize - ax * aSize * 0.5);
-          ctx.closePath();
-          ctx.fill();
-        }
       }
 
       r.pts.forEach(([px, py]) => {
@@ -1248,41 +1408,147 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
         ctx.fill();
       });
 
-      if (r.label || r.totalL) {
+        if (r.label || r.totalL || r.material || r.diametro || r.pendiente) {
         const lc = this.toCvs(r.labelX, r.labelY);
-        ctx.save();
-        ctx.translate(lc.x, lc.y);
-        ctx.rotate((r.labelAngle || 0) * Math.PI / 180);
+        const FLOW_NETS = ['san', 'll', 'af', 'ac'];
+        const showFlow = FLOW_NETS.includes(r.net) && r.pts.length >= 2;
+        let flowDx = 0, flowDy = 0, flowLen = 0;
+        if (showFlow) {
+          const fc = this.toCvs(r.pts[0][0], r.pts[0][1]);
+          const lastc = this.toCvs(r.pts[r.pts.length - 1][0], r.pts[r.pts.length - 1][1]);
+          flowDx = lastc.x - fc.x;
+          flowDy = lastc.y - fc.y;
+          flowLen = Math.hypot(flowDx, flowDy);
+        }
+        const arrowSize = showFlow && flowLen > 12 ? 34 : 0;
         const lbl = r.label || '';
-        const mLabel = r.totalL ? `${r.totalL}m` : '';
-        ctx.font = 'bold 11px Geist, monospace';
-        const tw = Math.max(ctx.measureText(lbl).width, mLabel ? (ctx.font = '9px Geist, monospace', ctx.measureText(mLabel).width) : 0);
-        const boxH = lbl && mLabel ? 32 : 22;
-        ctx.fillStyle = 'rgba(17,19,23,0.82)';
-        ctx.fillRect(-tw / 2 - 5, -16, tw + 10, boxH);
+        const lblPart = r.totalL ? `${r.totalL}m` : '';
+        const pPart = r.pendiente ? `S=${r.pendiente}%` : '';
+        const dPart = r.diametro ? `D=${r.diametro}` : '';
+        const matPart = r.material || '';
+        const preInfo = [lblPart, pPart].filter(Boolean).join(' · ');
+        const postInfo = matPart;
+
+        const lineHName = 14;
+        const lineHInfo = 16;
+        const boxPadX = 8;
+        const boxPadY = 4;
+        ctx.font = `bold 12px Geist, monospace`;
+        const nameW = lbl ? ctx.measureText(lbl).width : 0;
+        ctx.font = `600 9px Geist, monospace`;
+        const preW = preInfo ? ctx.measureText(preInfo).width : 0;
+        ctx.font = `bold 12px Geist, monospace`;
+        const dW = dPart ? ctx.measureText(dPart).width : 0;
+        ctx.font = `600 9px Geist, monospace`;
+        const postW = postInfo ? ctx.measureText(postInfo).width : 0;
+        const sep1W = (preInfo && dPart) ? ctx.measureText(' · ').width : 0;
+        const sep2W = (dPart && postInfo) ? ctx.measureText(' · ').width : 0;
+        const infoW = preW + sep1W + dW + sep2W + postW;
+        const contentW = Math.max(nameW, infoW);
+        const boxW = contentW + boxPadX * 2;
+        const boxH = (lbl ? lineHName : 0) + ((preInfo || dPart || postInfo) ? lineHInfo : 0) + boxPadY * 2;
+        const labelOffsetY = -(boxH / 2 + 4);
+        const drawX = lc.x;
+        const drawY = lc.y + labelOffsetY;
+
+        const angle = (r.labelAngle || 0) * Math.PI / 180;
+        const cosA = Math.cos(angle), sinA = Math.sin(angle);
+        const hw = boxW / 2, hh = boxH / 2;
+        const corners = [
+          { x: drawX + cosA * (-hw) - sinA * (-hh), y: drawY + sinA * (-hw) + cosA * (-hh) },
+          { x: drawX + cosA * (hw) - sinA * (-hh), y: drawY + sinA * (hw) + cosA * (-hh) },
+          { x: drawX + cosA * (hw) - sinA * (hh), y: drawY + sinA * (hw) + cosA * (hh) },
+          { x: drawX + cosA * (-hw) - sinA * (hh), y: drawY + sinA * (-hw) + cosA * (hh) },
+        ];
+        r._labelBox = {
+          cx: drawX, cy: drawY, w: boxW, h: boxH, angle,
+          minX: Math.min(...corners.map(c => c.x)),
+          minY: Math.min(...corners.map(c => c.y)),
+          maxX: Math.max(...corners.map(c => c.x)),
+          maxY: Math.max(...corners.map(c => c.y)),
+          corners
+        };
+
+        ctx.save();
+        ctx.translate(drawX, drawY);
+        ctx.rotate(angle);
+        ctx.fillStyle = 'rgba(255,255,255,0.88)';
+        ctx.fillRect(-boxW / 2, -boxH / 2, boxW, boxH);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         if (lbl) {
-          ctx.font = 'bold 11px Geist, monospace';
+          ctx.font = `bold 12px Geist, monospace`;
           ctx.fillStyle = col;
-          ctx.fillText(lbl, 0, mLabel ? -5 : -4);
+          ctx.fillText(lbl, 0, -boxH / 2 + boxPadY + lineHName / 2);
         }
-        if (mLabel) {
-          ctx.font = 'bold 10px Geist, monospace';
-          ctx.fillStyle = '#ffffff';
-          ctx.fillText(mLabel, 0, lbl ? 9 : -4);
+        if (preInfo || dPart || postInfo) {
+          const totalInfoW = preW + sep1W + dW + sep2W + postW;
+          let xCursor = -totalInfoW / 2;
+          const yInfo = boxH / 2 - boxPadY - lineHInfo / 2;
+          if (preInfo) {
+            ctx.font = `600 9px Geist, monospace`;
+            ctx.fillStyle = '#1a1a1a';
+            ctx.textAlign = 'left';
+            ctx.fillText(preInfo, xCursor, yInfo);
+            xCursor += preW;
+          }
+          if (preInfo && dPart) {
+            ctx.font = `600 9px Geist, monospace`;
+            ctx.fillStyle = '#1a1a1a';
+            ctx.textAlign = 'left';
+            ctx.fillText(' · ', xCursor, yInfo);
+            xCursor += sep1W;
+          }
+          if (dPart) {
+            ctx.font = `bold 12px Geist, monospace`;
+            ctx.fillStyle = '#000000';
+            ctx.textAlign = 'left';
+            ctx.fillText(dPart, xCursor, yInfo);
+            xCursor += dW;
+          }
+          if (dPart && postInfo) {
+            ctx.font = `600 9px Geist, monospace`;
+            ctx.fillStyle = '#1a1a1a';
+            ctx.textAlign = 'left';
+            ctx.fillText(' · ', xCursor, yInfo);
+            xCursor += sep2W;
+          }
+          if (postInfo) {
+            ctx.font = `600 9px Geist, monospace`;
+            ctx.fillStyle = '#1a1a1a';
+            ctx.textAlign = 'left';
+            ctx.fillText(postInfo, xCursor, yInfo);
+          }
+          ctx.textAlign = 'center';
         }
         ctx.restore();
 
-        if (sel) {
-          ctx.strokeStyle = '#4D8FF7';
-          ctx.lineWidth = 2;
+        if (showFlow && flowLen > 12) {
+          const fdx = flowDx / flowLen;
+          const fdy = flowDy / flowLen;
+          const arrowCenterY = drawY + boxH / 2 + arrowSize / 2 + 1;
+          const tailX = drawX - fdx * (arrowSize / 2);
+          const tailY = arrowCenterY - fdy * (arrowSize / 2);
+          const headX = drawX + fdx * (arrowSize / 2);
+          const headY = arrowCenterY + fdy * (arrowSize / 2);
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 2.5;
+          ctx.lineCap = 'round';
           ctx.beginPath();
-          ctx.arc(lc.x - 14, lc.y, 5, 0, Math.PI * 2);
+          ctx.moveTo(tailX, tailY);
+          ctx.lineTo(headX, headY);
           ctx.stroke();
-          ctx.fillStyle = '#4D8FF7';
+          const aSize = 9;
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.moveTo(headX, headY);
+          ctx.lineTo(headX - fdx * aSize - fdy * aSize * 0.5, headY - fdy * aSize + fdx * aSize * 0.5);
+          ctx.lineTo(headX - fdx * aSize + fdy * aSize * 0.5, headY - fdy * aSize - fdx * aSize * 0.5);
+          ctx.closePath();
           ctx.fill();
         }
+      } else {
+        r._labelBox = null;
       }
 
       ctx.restore();
@@ -1291,6 +1557,7 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
 
   _drawBajantes(ctx) {
     this.bajantes.forEach(b => {
+      if (this._hiddenNets.has(b.net)) return;
       const net = NETS.find(n => n.id === b.net);
       const col = net ? net.col : '#e2e2e8';
       const c = this.toCvs(b.x, b.y);
@@ -1381,44 +1648,65 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
         ctx.fill();
       }
 
-      if (b.code || b.code === '') {
-        const offDx = (b.labelX - b.x) * this.zoom;
-        const offDy = (b.labelY - b.y) * this.zoom;
-        ctx.save();
-        ctx.translate(offDx, offDy);
-        ctx.font = 'bold 10px Geist, monospace';
-        const displayCode = b.code || '—';
-        const tw = ctx.measureText(displayCode).width;
-        const labelH = 28 + (b.hVert !== undefined ? 13 : 0) + (b.dNominal !== undefined ? 13 : 0);
-        ctx.fillStyle = 'rgba(17,19,23,0.82)';
-        ctx.fillRect(-tw / 2 - 4, -10, tw + 8, labelH);
-        ctx.fillStyle = '#fff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(displayCode, 0, 0);
-        let labelY = 12;
-        if (b.hVert !== undefined) {
-          ctx.font = '9px Geist, monospace';
-          ctx.fillStyle = '#849495';
-          ctx.fillText(`H=${b.hVert}m`, 0, labelY);
-          labelY += 13;
-        }
-        if (b.dNominal !== undefined) {
-          ctx.font = '9px Geist, monospace';
-          ctx.fillStyle = '#849495';
-          ctx.fillText(`D=${b.dNominal && b.dNominal !== '0' ? b.dNominal : ''}mm`, 0, labelY);
-        }
-        if (sel) {
-          ctx.strokeStyle = '#4D8FF7';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(-14, 0, 5, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.fillStyle = '#4D8FF7';
-          ctx.fill();
-        }
-        ctx.restore();
+    if (b.code || b.code === '') {
+      const offDx = (b.labelX - b.x) * this.zoom;
+      const offDy = (b.labelY - b.y) * this.zoom;
+      ctx.save();
+      ctx.translate(offDx, offDy);
+      ctx.font = 'bold 10px Geist, monospace';
+      const displayCode = b.code || '—';
+      const tw = ctx.measureText(displayCode).width;
+      const boxW = tw + 8;
+      const boxH = 28 + (b.hVert !== undefined ? 13 : 0) + (b.dNominal !== undefined ? 13 : 0);
+      const lbCx = c.x + offDx * Math.cos(angle) - offDy * Math.sin(angle);
+      const lbCy = c.y + offDx * Math.sin(angle) + offDy * Math.cos(angle);
+      const cosA2 = Math.cos(angle), sinA2 = Math.sin(angle);
+      const hw2 = boxW / 2, hh2 = boxH / 2;
+      const corners2 = [
+        { x: lbCx + cosA2 * (-hw2) - sinA2 * (-10 - hh2), y: lbCy + sinA2 * (-hw2) + cosA2 * (-10 - hh2) },
+        { x: lbCx + cosA2 * (hw2) - sinA2 * (-10 - hh2), y: lbCy + sinA2 * (hw2) + cosA2 * (-10 - hh2) },
+        { x: lbCx + cosA2 * (hw2) - sinA2 * (-10 + hh2), y: lbCy + sinA2 * (hw2) + cosA2 * (-10 + hh2) },
+        { x: lbCx + cosA2 * (-hw2) - sinA2 * (-10 + hh2), y: lbCy + sinA2 * (-hw2) + cosA2 * (-10 + hh2) },
+      ];
+      b._labelBox = {
+        cx: lbCx, cy: lbCy - 10 + hh2, w: boxW, h: boxH, angle,
+        minX: Math.min(...corners2.map(c2 => c2.x)) - 2,
+        minY: Math.min(...corners2.map(c2 => c2.y)) - 2,
+        maxX: Math.max(...corners2.map(c2 => c2.x)) + 2,
+        maxY: Math.max(...corners2.map(c2 => c2.y)) + 2,
+        corners: corners2
+      };
+      ctx.fillStyle = 'rgba(17,19,23,0.82)';
+      ctx.fillRect(-tw / 2 - 4, -10, boxW, boxH);
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(displayCode, 0, 0);
+      let labelY = 12;
+      if (b.hVert !== undefined) {
+        ctx.font = '9px Geist, monospace';
+        ctx.fillStyle = '#849495';
+        ctx.fillText(`H=${b.hVert}m`, 0, labelY);
+        labelY += 13;
       }
+      if (b.dNominal !== undefined) {
+        ctx.font = '9px Geist, monospace';
+        ctx.fillStyle = '#849495';
+        ctx.fillText(`D=${b.dNominal && b.dNominal !== '0' ? b.dNominal : ''}mm`, 0, labelY);
+      }
+      if (sel) {
+        ctx.strokeStyle = '#4D8FF7';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(-14, 0, 5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#4D8FF7';
+        ctx.fill();
+      }
+      ctx.restore();
+    } else {
+      b._labelBox = null;
+    }
 
       ctx.restore();
     });
