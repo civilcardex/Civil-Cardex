@@ -22,7 +22,7 @@ export default function CivilStructurePage() {
           <div className="container mx-auto px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-3 relative z-10">
             <div className="flex flex-col justify-center gap-6 max-w-2xl py-12">
               <div className="inline-flex items-center gap-2 px-3 py-1 border border-primary text-primary w-fit" style={{ background: 'rgba(0,245,255,0.1)' }}>
-                <img src="/logos/civilStructurelogo.png" alt="CivilStructure" className="h-4 w-4 object-contain" />
+                <img src="/logos/civilStructurelogo.webp" alt="CivilStructure" className="h-4 w-4 object-contain" />
                 <span className="text-[11px] tracking-[0.08em] font-bold uppercase" style={{ fontFamily: 'Geist, monospace' }}>Módulo Estructural</span>
               </div>
               <h1 className="text-[32px] text-on-surface" style={{ fontFamily: 'Hanken Grotesk, sans-serif', fontWeight: 700 }}>

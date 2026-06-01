@@ -27,7 +27,7 @@ export default function CivilRoadsPage() {
           <div className="relative z-10 w-full px-6 lg:px-8 grid grid-cols-12 gap-3 mt-16 md:mt-0">
             <div className="col-span-12 md:col-span-6 lg:col-span-5 flex flex-col justify-center space-y-6">
               <div className="inline-flex items-center gap-2 px-3 py-1 w-fit border" style={{ background: '#1A1D23', borderColor: accent }}>
-                <img src="/logos/civilRoadslogo.png" alt="CivilRoads" className="h-4 w-4 object-contain" />
+                <img src="/logos/civilRoadslogo.webp" alt="CivilRoads" className="h-4 w-4 object-contain" />
                 <span className="text-[13px] uppercase" style={{ fontFamily: 'Geist, monospace', color: accent }}>CivilRoads Module</span>
               </div>
               <h1 className="text-[48px] leading-[1.1] font-bold text-on-background tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>

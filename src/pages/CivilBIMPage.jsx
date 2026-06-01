@@ -25,7 +25,7 @@ export default function CivilBIMPage() {
           <div className="w-full max-w-7xl px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 z-10 items-center py-20">
             <div className="flex flex-col gap-6">
               <div className="inline-flex items-center gap-2 border border-outline-variant px-3 py-1 w-fit" style={{ background: '#1a1c20' }}>
-                <img src="/logos/civilBIMlogo.png" alt="CivilBIM" className="h-4 w-4 object-contain" />
+                <img src="/logos/civilBIMlogo.webp" alt="CivilBIM" className="h-4 w-4 object-contain" />
                 <span className="text-[13px] text-on-surface-variant uppercase tracking-widest" style={{ fontFamily: 'Geist, monospace' }}>Módulo CivilBIM</span>
               </div>
               <h1 className="text-[48px] leading-[56px] font-bold text-on-surface tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
