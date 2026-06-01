@@ -62,7 +62,7 @@ export default {
         mono: ["Geist", "monospace"],
       },
       spacing: {
-        " gutters": "12px",
+        "gutters": "12px",
       },
       borderRadius: {
         DEFAULT: "0px",

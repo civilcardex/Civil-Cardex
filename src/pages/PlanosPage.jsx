@@ -10,7 +10,6 @@ const REQ_ITEMS = [
   ['🏷️', 'Cotas NPT', 'Nivel piso terminado en cada planta'],
   ['🎨', 'Redes por color', 'AF · AC · SAN · LL · VEN · GAS con leyenda'],
   ['🚿', 'Símbolos NTC', 'Lvm · San · Duc · Lvp · Tin · Lvra'],
-  ['🔥', 'Puntos gas', 'Est · Cal · Hor · Sec marcados en plano'],
 ];
 
 function PlanosPage() {

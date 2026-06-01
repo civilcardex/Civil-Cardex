@@ -4,7 +4,7 @@
 // Casa de Roca No. 97 - Floridablanca, Santander
 // ============================================
 
-export const GRAVEDAD = 9.8066;
+export const GRAVEDAD = 9.80665;
 export const COEF_HAZEN_PVC = 150;
 export const COEF_HAZEN_CPVC = 150;
 export const COEF_HAZEN_COBRE = 130;

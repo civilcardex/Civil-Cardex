@@ -4,7 +4,7 @@
 // Casa de Roca No. 97 - Floridablanca, Santander
 // ============================================
 
-export const GRAVEDAD = 9.806;
+export const GRAVEDAD = 9.80665;
 export const maning_SAN = 0.009;
 export const maning_SAN_VENT = 0.009;
 
@@ -12,7 +12,7 @@ export const maning_SAN_VENT = 0.009;
 export const APARATOS_UD = [
   { id: 'sif', nombre: 'Sifones/Drenajes', ud: 2, dimSifon: 2 },
   { id: 'lvm', nombre: 'Lavamanos', ud: 2, dimSifon: 1.25 },
-  { id: 'san', nombre: 'Sanitario c/tanque', ud: 4, dimSifon: 0 },
+  { id: 'san', nombre: 'Sanitario con tanque', ud: 4, dimSifon: 0 },
   { id: 'duc', nombre: 'Ducha', ud: 2, dimSifon: 1.5 },
   { id: 'lvra', nombre: 'Lavadora', ud: 4, dimSifon: 2 },
   { id: 'tin', nombre: 'Tina', ud: 2, dimSifon: 1.5 },
