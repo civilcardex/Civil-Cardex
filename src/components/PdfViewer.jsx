@@ -14,7 +14,7 @@ const TOOLS = [
   { id: "dim", label: "Cota", ico: "📏", key: "D", icoCol: "#22D3EE", shortcut: "D" },
   { id: "text", label: "Texto", ico: "T", key: "T", icoCol: "#A855F7", shortcut: "T" },
   { id: "baj", label: "Bajante", ico: "↓", key: "B", icoCol: "#F04545", shortcut: "B" },
-  { id: "erase", label: "Borrar", ico: "🧹", key: "E", icoCol: "#ffb4ab", shortcut: "E" },
+  { id: "erase", label: "Eliminar ramal", ico: "🧹", key: "E", icoCol: "#ffb4ab", shortcut: "E" },
   { id: "pan", label: "Mover", ico: "✋", key: "Espacio", icoCol: "#10B981", shortcut: "Espacio" },
 ];
 
@@ -104,7 +104,7 @@ const DIAM_DEFAULT_BY_NET = {
   rci: '2½"',
 };
 
-export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan, pisos=[], planos=[] }) {
+export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan, pisos=[], planos=[], activeNetworks }) {
   const { mats } = useSanitario();
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
@@ -128,6 +128,18 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
 
   const currentFile = files[activeIndex]?.file;
   const currentId = files[activeIndex]?.id;
+
+  const visibleNets = useMemo(() => {
+    if (activeNetworks) return NETS.filter(n => activeNetworks.has(n.id));
+    try {
+      const saved = localStorage.getItem('civilflow_active_nets');
+      if (saved) {
+        const ids = JSON.parse(saved);
+        return NETS.filter(n => ids.includes(n.id));
+      }
+    } catch (_) {}
+    return NETS;
+  }, [activeNetworks]);
 
   const pdfDocRef = useRef(null);
   const pdfCanvasRef = useRef(null);
@@ -309,21 +321,21 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   }, [pageNumber]);
 
   const handleClear = useCallback(() => {
-    if (window.confirm("Limpiar todos los elementos del plano?")) {
-      if (engineRef.current) engineRef.current.clearAll();
+    if (!engineRef.current) return;
+    const netId = activeNet;
+    const netName = NETS.find(n => n.id === netId)?.name || netId;
+    if (window.confirm(`¿Deseas eliminar todo el trazado de la red activa (${netName})? Esta acción no se puede deshacer.`)) {
+      engineRef.current.clearNet(netId);
+      setSelElement(null);
     }
-  }, []);
+  }, [activeNet]);
 
   const handleSave = useCallback(() => {
     if (!engineRef.current) return;
     const json = engineRef.current.saveWork();
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `plano_${currentId || 'work'}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const key = `civilflow_trazos_${currentId || 'work'}`;
+    try { localStorage.setItem(key, json); } catch (_) {}
+    setStatusMsg('✓ Trazado guardado en el proyecto');
   }, [currentId]);
 
   const handleLoad = useCallback((e) => {
@@ -340,11 +352,13 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   }, []);
 
   const handleDelete = useCallback(() => {
-    if (engineRef.current) {
+    if (!engineRef.current || !selElement) return;
+    const label = selElement.label || selElement.id || 'elemento';
+    if (window.confirm(`¿Deseas eliminar el ramal seleccionado (${label})?`)) {
       engineRef.current.deleteSelected();
       setSelElement(null);
     }
-  }, []);
+  }, [selElement]);
 
   const handleUpdateSel = useCallback((field, value) => {
     if (!engineRef.current || !selElement) return;
@@ -384,30 +398,22 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
         overflowX: "auto", overflowY: "hidden", justifyContent: "center",
       }}>
         <div style={{flex:1,minWidth:4}}/>
-        {NETS.map(n => {
+        {visibleNets.map(n => {
           const isActive=activeNet===n.id;
           const isHidden=hiddenNets.has(n.id);
           return <div key={n.id} style={{display:'flex',alignItems:'center',gap:2,flexShrink:0}}>
             <button onClick={()=>setActiveNet(n.id)}
+              title={`Red ${n.name}`}
               style={{
-                padding:"2px 6px", background:isActive?n.col+'22':"transparent",
+                padding:"2px 8px", background:isActive?n.col+'22':"transparent",
                 border:`1px solid ${isActive?n.col:'#3a494a'}`,
                 borderLeft:`3px solid ${n.col}`,
-                borderRadius:"3px 0 0 3px", color:isActive?n.col:"#849495",
+                borderRadius:"3px", color:isActive?n.col:"#849495",
                 cursor:"pointer", fontFamily:"'Geist',monospace", fontWeight:600,
-                fontSize:10, whiteSpace:"nowrap",                 opacity:isHidden?0.5:1,
+                fontSize:10, whiteSpace:"nowrap", opacity:isHidden?0.5:1,
               }}>
               {n.lbl}
             </button>
-            {isActive&&(
-              <input type="color" value={n.col}
-                onChange={e=>{
-                  n.col=e.target.value;
-                  document.documentElement.style.setProperty('--'+n.id,e.target.value);
-                  if(engineRef.current)engineRef.current.render();
-                }}
-                style={{width:18,height:22,padding:0,border:'1px solid #3a494a',borderRadius:'0 3px 3px 0',background:'transparent',cursor:'pointer',flexShrink:0}}/>
-            )}
             <button onClick={()=>{
               const next=new Set(hiddenNets);
               if(next.has(n.id))next.delete(n.id);else next.add(n.id);
@@ -477,32 +483,36 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
         <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Acciones</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <button onClick={handleFit} style={{ ...accBtn, width: "100%", borderColor: "#10B98155", color: "#10B981" }} title="Ajustar PDF al visor">
+            <button onClick={handleFit} disabled={!currentFile}
+              style={{ ...accBtn, width: "100%", borderColor: "#10B98155", color: "#10B981",
+                opacity: !currentFile ? 0.4 : 1, cursor: !currentFile ? 'not-allowed' : 'pointer',
+              }}
+              title={currentFile ? "Ajustar PDF al visor" : "Carga un plano para poder ajustarlo"}>
               <span style={{ fontSize: 14 }}>⛶</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, lineHeight: 1.1 }}>
                 <span style={{ fontSize: 10, fontWeight: 700 }}>Ajustar</span>
                 <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Encajar PDF al visor</span>
               </div>
             </button>
-            <button onClick={handleSave} style={{ ...accBtn, width: "100%" }} title="Guardar trabajo (JSON)">
+            <button onClick={handleSave} style={{ ...accBtn, width: "100%" }} title="Guarda los trazados y cambios realizados en el plano para la red activa">
               <span style={{ fontSize: 14 }}>💾</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, lineHeight: 1.1 }}>
                 <span style={{ fontSize: 10, fontWeight: 700 }}>Guardar</span>
-                <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Descargar JSON</span>
+                <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Guardar trazados en el proyecto</span>
               </div>
             </button>
-            <button onClick={handleUndo} style={{ ...accBtn, width: "100%" }} title="Deshacer (Ctrl+Z)">
+            <button onClick={handleUndo} style={{ ...accBtn, width: "100%" }} title="Deshace la última acción: eliminación de ramal o limpieza de red activa (Ctrl+Z)">
               <span style={{ fontSize: 14 }}>↩</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, lineHeight: 1.1 }}>
                 <span style={{ fontSize: 10, fontWeight: 700 }}>Deshacer</span>
                 <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Ctrl+Z</span>
               </div>
             </button>
-            <button onClick={handleClear} style={{ ...accBtn, width: "100%", borderColor: "rgba(255,180,171,.3)", color: "#ffb4ab" }} title="Limpiar todo">
+            <button onClick={handleClear} style={{ ...accBtn, width: "100%", borderColor: "rgba(255,180,171,.3)", color: "#ffb4ab" }} title="Eliminar todo el trazado de la red activa">
               <span style={{ fontSize: 14 }}>🗑</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, lineHeight: 1.1 }}>
                 <span style={{ fontSize: 10, fontWeight: 700 }}>Limpiar</span>
-                <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Borrar todo el plano</span>
+                <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Borrar trazado de red activa</span>
               </div>
             </button>
           </div>
@@ -823,7 +833,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
               )}
               <button onClick={handleDelete}
                 style={{padding:"4px 10px",background:"transparent",border:"1px solid #3a494a",borderRadius:3,color:"#ffb4ab",cursor:"pointer",fontSize:10,fontFamily:"'Geist',monospace",marginTop:2}}>
-                🗑 Eliminar
+                🗑 Eliminar ramal
               </button>
             </div>
           ) : (

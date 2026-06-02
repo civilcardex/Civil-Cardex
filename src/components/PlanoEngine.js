@@ -503,6 +503,17 @@ export default class PlanoEngine {
     this.render();
   }
 
+  clearNet(netId) {
+    this.ramales = this.ramales.filter(r => r.net !== netId);
+    this.bajantes = this.bajantes.filter(b => b.net !== netId);
+    this.activeRamal = null;
+    if (this.selId) {
+      const stillExists = this.ramales.find(r => r.id === this.selId) || this.bajantes.find(b => b.id === this.selId);
+      if (!stillExists) { this.selId = null; this._emitSelect(null); }
+    }
+    this.render();
+  }
+
   getSelected() {
     if (!this.selId) return null;
     return this.ramales.find(r => r.id === this.selId) || this.bajantes.find(b => b.id === this.selId) || this.textAnnots.find(t => t.id === this.selId) || this.areas.find(a => a.id === this.selId) || null;
