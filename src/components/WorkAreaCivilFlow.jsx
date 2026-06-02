@@ -4,7 +4,7 @@ import { usePlanos } from "../context/PlanosContext";
 import { useAnalysis } from "../hooks/useAnalysis";
 import CollapsibleNav from "./CollapsibleNav";
 import { REDES, USOS, EMPRES, NAV_TABS, REQ_ITEMS, pisoLbl } from "./constants";
-import { parseDecimalInput } from "../utils/parseDecimal";
+import { parseDecimalInput, parseIntInput } from "../utils/parseDecimal";
 import { validateTramo } from "../utils/validateTramo";
 import CalculoUD from "./UdCalculation";
 import DisenosSanitarios from "./SanitaryDesign";
@@ -48,33 +48,49 @@ const confirmedPlanos=useMemo(()=>planos.filter(p=>p.status==='confirmed'),[plan
 
 const [nSotanos,setNSotanos]=useState('');
 const [nPisos,setNPisos]=useState('');
-const [altPiso,setAltPiso]=useState(0);
-const [altSotano,setAltSotano]=useState(0);
-const [nptPiso1,setNptPiso1]=useState(0);
+const [altPiso,setAltPiso]=useState('');
+const [altSotano,setAltSotano]=useState('');
+const [nptPiso1,setNptPiso1]=useState('');
 const [conCubierta,setConCubierta]=useState(false);
 
 const generarPisos=()=>{
   const lista=[];
-  const ns=Number(nSotanos)||0;
-  const np=Number(nPisos)||0;
-  for(let i=ns;i>=1;i--)lista.push({id:'s'+i,n:-i,npt:parseFloat((nptPiso1-(i*altSotano)).toFixed(2)),ok:false,tipo:'sotano'});
-  for(let i=1;i<=np;i++)lista.push({id:'p'+i,n:i,npt:parseFloat((nptPiso1+((i-1)*altPiso)).toFixed(2)),ok:false,tipo:'piso'});
-  if(conCubierta)lista.push({id:'cub',n:99,npt:parseFloat((nptPiso1+(np*altPiso)).toFixed(2)),ok:false,tipo:'cubierta'});
+  const MAX=50;
+  const ns=Math.min(parseIntInput(nSotanos)||0,MAX);
+  const np=Math.min(parseIntInput(nPisos)||0,MAX);
+  const altP=parseIntInput(altPiso)||0;
+  const altS=parseIntInput(altSotano)||0;
+  const npt1=parseIntInput(nptPiso1)||0;
+  if(conCubierta)lista.push({id:'cub',n:99,npt:parseFloat((npt1+(np*altP)).toFixed(2)),ok:false,tipo:'cubierta'});
+  for(let i=np;i>=1;i--)lista.push({id:'p'+i,n:i,npt:parseFloat((npt1+((i-1)*altP)).toFixed(2)),ok:false,tipo:'piso'});
+  for(let i=1;i<=ns;i++)lista.push({id:'s'+i,n:-i,npt:parseFloat((npt1-(i*altS)).toFixed(2)),ok:false,tipo:'sotano'});
   setPisos(lista);
 };
 
+const onIntChange=(setter)=>(e)=>setter(e.target.value);
+const onIntBlur=(setter)=>(e)=>{
+  const v=parseIntInput(e.target.value);
+  setter(v!==null?String(v):'');
+};
+
+const delPiso=(id)=>setPisos(prev=>prev.filter(p=>p.id!==id));
+
 const addPiso=()=>setPisos(prev=>{
-  const pisosPOS=prev.filter(p=>p.n>0);
+  const pisosPOS=prev.filter(p=>p.tipo==='piso');
   const maxN=pisosPOS.length?Math.max(...pisosPOS.map(p=>p.n)):0;
-  const ln=prev[prev.length-1]?.npt||0;
-  return[...prev,{id:Date.now(),n:maxN+1,npt:parseFloat((ln+3.10).toFixed(2)),ok:false}];
+  const newPiso={id:Date.now(),n:maxN+1,npt:'',ok:false,tipo:'piso'};
+  const cubIx=prev.findIndex(p=>p.tipo==='cubierta');
+  const insertAt=cubIx>=0?cubIx+1:0;
+  const copy=[...prev];
+  copy.splice(insertAt,0,newPiso);
+  return copy;
 });
 
 const addSotano=()=>setPisos(prev=>{
-  const pisoNEG=prev.filter(p=>p.n<0);
+  const pisoNEG=prev.filter(p=>p.tipo==='sotano');
   const minN=pisoNEG.length?Math.min(...pisoNEG.map(p=>p.n)):0;
-  const fn=prev[0]?.npt||0;
-  return[{id:Date.now(),n:minN-1,npt:parseFloat((fn-3.00).toFixed(2)),ok:false},...prev];
+  const newSotano={id:Date.now(),n:minN-1,npt:'',ok:false,tipo:'sotano'};
+  return[...prev,newSotano];
 });
 const { busy, meta, vals, analizar } = useAnalysis(setPisos);
 
@@ -202,23 +218,22 @@ return(
         </div>
       </div>
       <div style={{padding:'4px 6px'}}>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:3}}>
-          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Sótanos</label><input type="text" inputMode="numeric" value={nSotanos} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={e=>setNSotanos(e.target.value.replace(/\D/g,''))}/></div>
-          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Pisos</label><input type="text" inputMode="numeric" value={nPisos} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={e=>setNPisos(e.target.value.replace(/\D/g,''))}/></div>
-          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Alt. entrep.</label><input type="text" inputMode="decimal" value={altPiso||''} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)setAltPiso(v);else if(e.target.value==='')setAltPiso(0);}}/></div>
-          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Alt. sótano</label><input type="text" inputMode="decimal" value={altSotano||''} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)setAltSotano(v);else if(e.target.value==='')setAltSotano(0);}}/></div>
-          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>NPT P1</label><input type="text" inputMode="decimal" value={nptPiso1||''} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)setNptPiso1(v);else if(e.target.value==='')setNptPiso1(0);}}/></div>
-          <div className="f" style={{marginBottom:0,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
-            <label style={{fontSize:12,visibility:'hidden',margin:0,padding:0,height:0,overflow:'hidden'}}>_</label>
-            <div onClick={()=>setConCubierta(!conCubierta)} style={{display:'flex',alignItems:'center',gap:5,cursor:'pointer',userSelect:'none',paddingBottom:3}}>
-              <div style={{width:26,height:14,borderRadius:7,background:conCubierta?'var(--ll)':'var(--line2)',position:'relative',transition:'background .2s',flexShrink:0}}>
-                <div style={{width:10,height:10,borderRadius:'50%',background:'#fff',position:'absolute',top:2,left:conCubierta?14:2,transition:'left .2s'}} />
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:3,alignItems:'end'}}>
+          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Sótanos</label><input type="text" inputMode="numeric" value={nSotanos} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={onIntChange(setNSotanos)} onBlur={onIntBlur(setNSotanos)}/></div>
+          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Pisos</label><input type="text" inputMode="numeric" value={nPisos} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={onIntChange(setNPisos)} onBlur={onIntBlur(setNPisos)}/></div>
+          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Alt. entrep.</label><input type="text" inputMode="numeric" value={altPiso} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={onIntChange(setAltPiso)} onBlur={onIntBlur(setAltPiso)}/></div>
+          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Alt. sótano</label><input type="text" inputMode="numeric" value={altSotano} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={onIntChange(setAltSotano)} onBlur={onIntBlur(setAltSotano)}/></div>
+          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>NPT P1</label><input type="text" inputMode="numeric" value={nptPiso1} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={onIntChange(setNptPiso1)} onBlur={onIntBlur(setNptPiso1)}/></div>
+          <div style={{display:'flex',alignItems:'flex-end',justifyContent:'flex-end',paddingRight:24,paddingBottom:2}}>
+            <div onClick={()=>setConCubierta(!conCubierta)} title="Incluir cubierta" style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',userSelect:'none',padding:'4px 8px',borderRadius:4,flexShrink:0}}>
+              <div style={{width:28,height:15,borderRadius:8,background:conCubierta?'var(--ll)':'var(--line2)',position:'relative',transition:'background .2s',flexShrink:0}}>
+                <div style={{width:11,height:11,borderRadius:'50%',background:'#fff',position:'absolute',top:2,left:conCubierta?15:2,transition:'left .2s'}} />
               </div>
-              <span style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:600,color:'var(--txt2)'}}>Cubierta</span>
+              <span style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:600,color:'var(--txt2)'}}>Incluir cubierta</span>
             </div>
           </div>
         </div>
-        <button onClick={generarPisos} style={{width:'100%',padding:'6px',marginTop:4,background:'var(--acc)',border:'none',borderRadius:'var(--r)',color:'#fff',fontWeight:600,fontSize:12,cursor:'pointer'}}>Generar niveles automáticamente</button>
+        <button onClick={generarPisos} style={{width:'100%',padding:'6px',marginTop:6,background:'var(--acc)',border:'none',borderRadius:'var(--r)',color:'#fff',fontWeight:600,fontSize:12,cursor:'pointer'}}>Generar niveles automáticamente</button>
       </div>
     </div>
 
@@ -237,12 +252,20 @@ return(
         {pisos.length>0&&(
         <>
           <div style={{flex:1,overflowY:'auto',minHeight:0}}>
-            {[...pisos].sort((a,b)=>a.n-b.n).map(p=>(
+            {[...pisos].sort((a,b)=>{
+              if(a.n===99)return -1;
+              if(b.n===99)return 1;
+              if(a.n>0&&b.n>0)return b.n-a.n;
+              if(a.n<0&&b.n<0)return a.n-b.n;
+              if(a.n>0)return -1;
+              return 1;
+            }).map(p=>(
               <div key={p.id} style={{display:'flex',alignItems:'center',gap:3,padding:'2px 4px',background:'var(--bg3)',border:'1px solid var(--line)',borderRadius:'var(--r)',borderLeft:'3px solid '+(p.tipo==='cubierta'?'var(--ll)':p.n<0?'var(--txt3)':'var(--acc2)'),marginBottom:2}}>
                 <span className={p.tipo==='cubierta'?'piso-tag cub':p.n<0?'piso-tag sot':'piso-tag'} style={{fontSize:11,padding:'2px 5px',minWidth:48}}>{pisoLbl(p.n)}</span>
                 <input type="text" inputMode="decimal" defaultValue={p.npt||''} key={p.id+'npt'} className="npt-in" style={{fontSize:12,width:52,padding:'2px 4px'}} onBlur={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)setPisos(prev=>prev.map(x=>x.id===p.id?{...x,npt:v}:x));}}/>
                 <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',height:20}}><span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--txt3)'}}>m</span></div>
-                <div className={`pdot ${p.ok?'ok':''}`} style={{marginLeft:'auto'}}/>
+                <div className={`pdot ${p.ok?'ok':''}`}/>
+                <button onClick={()=>delPiso(p.id)} title="Eliminar nivel" style={{padding:'1px 5px',background:'transparent',border:'1px solid var(--line)',borderRadius:2,color:'var(--txt3)',cursor:'pointer',fontSize:10,fontFamily:'var(--mono)',lineHeight:1,flexShrink:0,marginLeft:2}} onMouseEnter={e=>{e.currentTarget.style.color='#ef5350';e.currentTarget.style.borderColor='rgba(211,47,47,.5)';}} onMouseLeave={e=>{e.currentTarget.style.color='var(--txt3)';e.currentTarget.style.borderColor='var(--line)';}}>✕</button>
               </div>
             ))}
           </div>

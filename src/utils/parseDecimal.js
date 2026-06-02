@@ -3,3 +3,14 @@ export function parseDecimalInput(value) {
   const v = parseFloat(raw);
   return (!isNaN(v) && raw !== '') ? v : null;
 }
+
+export function parseIntInput(value) {
+  const raw = value.replace(/,/g, '.').trim();
+  if (raw === '') return null;
+  const v = parseFloat(raw);
+  if (isNaN(v)) return null;
+  if (v === 0) return null;
+  const intVal = Math.round(v);
+  if (Math.abs(v - intVal) > 0.001) return null;
+  return intVal;
+}
