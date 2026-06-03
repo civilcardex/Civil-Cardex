@@ -176,7 +176,7 @@ return(
             <div className="app">
         <div className="nav">{NAV_TABS.map(t=>(
           <div key={t.id} className={`ntab ${t.id==='visor'?'':tab===t.id?'on':''}`} onClick={()=>{if(t.id==='visor')window.location.href='#/visor';else setTab(t.id)}}>
-            <span className="ntab-ico">{t.ico}</span>{t.l}
+            <span className="ntab-ico">{t.icoImg ? <img src={t.icoImg} alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:2}} /> : t.ico}</span>{t.l}
           </div>
         ))}</div>
         <div className="layout"><div className="content">
@@ -191,7 +191,7 @@ return(
     <div className="card" style={{flex:'0 1 auto',minWidth:200}}>
       <div className="card-h" style={{padding:'4px 8px'}}>
         <div style={{display:'flex',flexDirection:'column'}}>
-          <span className="card-t" style={{fontSize:13}}>📋 Identificación del proyecto</span>
+          <span className="card-t" style={{fontSize:13}}><img src="/iconos_info_general/identificacion_del_proyecto.webp" alt="" style={{width:22,height:22,verticalAlign:'middle',marginRight:2}} />Identificación del proyecto</span>
           <span className="card-s" style={{fontSize:11}}>Datos para memorias de cálculo</span>
         </div>
       </div>
@@ -211,7 +211,7 @@ return(
     <div className="card" style={{flex:'0 1 auto',minWidth:190}}>
       <div className="card-h" style={{padding:'4px 8px'}}>
         <div style={{display:'flex',flexDirection:'column'}}>
-          <span className="card-t" style={{fontSize:13}}>🔌 Redes activas</span>
+          <span className="card-t" style={{fontSize:13}}><img src="/iconos_info_general/redes_activas.webp" alt="" style={{width:22,height:22,verticalAlign:'middle',marginRight:2}} />Redes activas</span>
           <span className="card-s" style={{fontSize:11}}>{[...redes].length} de {REDES.length}</span>
         </div>
       </div>
@@ -255,7 +255,7 @@ return(
     <div className="card" style={{flex:'0 0 auto',minWidth:0}}>
       <div className="card-h" style={{padding:'4px 8px'}}>
         <div style={{display:'flex',flexDirection:'column'}}>
-          <span className="card-t" style={{fontSize:13}}>🏢 Generador de pisos</span>
+          <span className="card-t" style={{fontSize:13}}><img src="/iconos_info_general/generador_de_pisos.webp" alt="" style={{width:22,height:22,verticalAlign:'middle',marginRight:2}} />Generador de pisos</span>
           <span className="card-s" style={{fontSize:11}}>Generación automática de pisos y sótanos</span>
         </div>
       </div>
@@ -283,7 +283,7 @@ return(
     <div className="card" style={{flex:'1 1 auto',minWidth:220,display:'flex',flexDirection:'column'}}>
       <div className="card-h" style={{padding:'4px 8px',flexShrink:0}}>
         <div style={{display:'flex',flexDirection:'column'}}>
-          <span className="card-t" style={{fontSize:13}}>🏗️ Niveles generados</span>
+          <span className="card-t" style={{fontSize:13}}><img src="/iconos_info_general/niveles_generados.webp" alt="" style={{width:22,height:22,verticalAlign:'middle',marginRight:2}} />Niveles generados</span>
           <span className="card-s" style={{fontSize:11}}>{pisos.length} niveles</span>
         </div>
       </div>
@@ -318,7 +318,7 @@ return(
     <div className="card" style={{flex:'0 1 auto',minWidth:0}}>
       <div className="card-h" style={{padding:'4px 8px'}}>
         <div style={{display:'flex',flexDirection:'column'}}>
-          <span className="card-t" style={{fontSize:13}}>📖 Guía de uso</span>
+          <span className="card-t" style={{fontSize:13}}><img src="/iconos_info_general/guia_de_uso.webp" alt="" style={{width:22,height:22,verticalAlign:'middle',marginRight:2}} />Guía de uso</span>
           <span className="card-s" style={{fontSize:11}}>Recomendaciones</span>
         </div>
       </div>
@@ -343,12 +343,12 @@ return(
   {/* ── LEFT SIDEBAR: Requisitos ── */}
   <div style={{width:170,flexShrink:0,display:'flex',flexDirection:'column',borderRight:'1px solid var(--line)',borderRadius:'var(--r2)'}}>
     <div className="card-h" style={{padding:'8px 10px',borderBottom:'1px solid var(--line)',flexShrink:0,background:'none'}}>
-      <span className="card-t">📋 Requisitos del plano</span>
+      <span className="card-t" style={{fontSize:13}}><img src="/iconos_carga_planos/requisitos_del_plano.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Requisitos del plano</span>
     </div>
     <div style={{flex:1,overflowY:'auto',padding:'8px 10px',display:'flex',flexDirection:'column',gap:8}}>
-      {REQ_ITEMS.map(([ico,t,s])=>(
+      {REQ_ITEMS.map(({ico,icoImg,t,s})=>(
         <div key={t} style={{display:'flex',gap:10,alignItems:'flex-start',padding:'10px 12px',background:'var(--bg3)',borderRadius:'var(--r)',border:'1px solid var(--line)'}}>
-          <span style={{fontSize:16,flexShrink:0}}>{ico}</span>
+          <span style={{fontSize:16,flexShrink:0}}>{icoImg ? <img src={icoImg} alt="" style={{width:24,height:24,verticalAlign:'middle'}} /> : ico}</span>
           <div><div style={{fontSize:12,fontWeight:500}}>{t}</div><div style={{fontSize:10,color:'var(--txt3)',marginTop:2,lineHeight:1.4}}>{s}</div></div>
         </div>
       ))}
@@ -425,7 +425,7 @@ return(
         style={{width:'100%',padding:'10px',background:'rgba(0,220,229,0.06)',border:'1.5px dashed rgba(0,220,229,0.3)',borderRadius:'var(--r)',color:'#00dce5',fontWeight:600,fontSize:12,cursor:'pointer',fontFamily:'var(--mono)',display:'flex',alignItems:'center',justifyContent:'center',gap:5,transition:'all .15s'}}
         onMouseEnter={e=>{e.currentTarget.style.background='rgba(0,220,229,0.12)';e.currentTarget.style.borderColor='rgba(0,220,229,0.5)'}}
         onMouseLeave={e=>{e.currentTarget.style.background='rgba(0,220,229,0.06)';e.currentTarget.style.borderColor='rgba(0,220,229,0.3)'}}>
-        📐 SUBIR PLANO
+        <img src="/iconos_carga_planos/subir_plano.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> SUBIR PLANO
       </button>
     </div>
 
@@ -435,7 +435,7 @@ return(
       onDragLeave={()=>setPlanDrag(false)}
       onDrop={e=>{e.preventDefault();setPlanDrag(false);const fl=e.dataTransfer?.files;if(fl&&fl.length>0)addPlanos(fl);}}>
       <div style={{padding:'7px 10px',fontSize:11,fontWeight:700,color:'var(--txt3)',fontFamily:'var(--mono)',borderBottom:'1px solid var(--line)',flexShrink:0,display:'flex',alignItems:'center',gap:5,textTransform:'uppercase',letterSpacing:.5}}>
-        <span style={{width:6,height:6,borderRadius:'50%',background:'#ffc107',flexShrink:0}}/>
+        <img src="/iconos_carga_planos/pendientes.webp" alt="" style={{width:24,height:24,verticalAlign:'middle'}} />
         Pendientes {pendingPlanos.length>0&&`(${pendingPlanos.length})`}
       </div>
       {pendingPlanos.length===0 ? (
@@ -504,7 +504,7 @@ return(
     {/* Confirmed section */}
     <div style={{flex:'1 1 50%',minHeight:0,display:'flex',flexDirection:'column',overflow:'hidden'}}>
       <div style={{padding:'7px 10px',fontSize:11,fontWeight:700,color:'var(--txt3)',fontFamily:'var(--mono)',borderBottom:'1px solid var(--line)',flexShrink:0,display:'flex',alignItems:'center',gap:5,textTransform:'uppercase',letterSpacing:.5}}>
-        <span style={{width:6,height:6,borderRadius:'50%',background:'#00dce5',flexShrink:0}}/>
+        <img src="/iconos_carga_planos/cargados.webp" alt="" style={{width:24,height:24,verticalAlign:'middle'}} />
         Cargados {confirmedPlanos.length>0&&`(${confirmedPlanos.length})`}
       </div>
       {confirmedPlanos.length===0 ? (

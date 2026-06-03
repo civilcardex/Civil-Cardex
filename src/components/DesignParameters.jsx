@@ -169,7 +169,7 @@ export default function BaseDatos({ redes }) {
         {/* ══════════ TABLA 1: MATERIALES POR RED ══════════ */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
-            <span className="card-t" style={{ fontSize: 13 }}>📦 Materiales por red</span>
+            <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/materiales_por_red.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:2}} />Materiales por red</span>
             <span className="card-s" style={{ fontSize: 10 }}>{activeRedes.length} redes activas</span>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
@@ -267,14 +267,14 @@ export default function BaseDatos({ redes }) {
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.15)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.08)'; }}
             title="Ver catálogo completo de materiales, diámetros y coeficientes">
-            📚 Catálogo Maestro
+            <img src="/iconos_parametros_de_diseno/catalogo_maestro.webp" alt="" style={{width:18,height:18,verticalAlign:'middle',marginRight:4}} /> Catálogo Maestro
           </button>
         </div>
 
         {/* ══════════ TABLA 2: CATÁLOGO DE APARATOS SANITARIOS ══════════ */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
-            <span className="card-t" style={{ fontSize: 13 }}>🚿 Catálogo de Aparatos Sanitarios</span>
+            <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_aparatos_sanitarios.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:2}} />Catálogo de Aparatos Sanitarios</span>
             <span className="card-s" style={{ fontSize: 10 }}>NTC 1500 · UC editables</span>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
@@ -323,7 +323,7 @@ export default function BaseDatos({ redes }) {
         {/* ══════════ TABLA 3: CATÁLOGO DE GASODOMÉSTICOS ══════════ */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
-            <span className="card-t" style={{ fontSize: 13 }}>🔥 Catálogo de Gasodomésticos</span>
+            <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_gasodomesticos.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:2}} />Catálogo de Gasodomésticos</span>
             <span className="card-s" style={{ fontSize: 10 }}>NTC 3728 · m³/hr</span>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>

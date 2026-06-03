@@ -115,9 +115,9 @@ export const UD_PISO_MAP={
 };
 
 export const NAV_TABS=[
-  {id:'info',  l:'Información general',  ico:'🏗️'},
-  {id:'planos',l:'Carga de planos',      ico:'📐'},
-  {id:'datos', l:'Parámetros de diseño', ico:'📊'},
+  {id:'info',  l:'Información general',  ico:'🏗️', icoImg:'/iconos_info_general/Informacion_del_proyecto.webp'},
+  {id:'planos',l:'Carga de planos',      ico:'📐', icoImg:'/iconos_carga_planos/carga_de_planos.webp'},
+  {id:'datos', l:'Parámetros de diseño', ico:'📊', icoImg:'/iconos_parametros_de_diseno/materiales_por_red.webp'},
   {id:'visor', l:'Dibujo de Redes',      ico:'✏️'},
   {id:'redes', l:'Diseño de redes',      ico:'🔧'},
   {id:'inf',   l:'Informes',             ico:'📄'},
@@ -247,11 +247,11 @@ export const DIAM_VENT=[
 export const R_OPTIONS=[{value:'1/4',label:'1/4'},{value:'7/24',label:'7/24'}];
 
 export const REQ_ITEMS=[
-  ['📏','Escala','1:50 · 1:100'],
-  ['📄','1 plano','Por nivel'],
-  ['🏷️','Cotas NPT','En planta'],
-  ['🎨','Redes color','AF·AC·SAN'],
-  ['🚿','Simbología','NTC 1500'],
+  {ico:'📏', icoImg:'/iconos_carga_planos/escala.webp', t:'Escala', s:'1:50 · 1:100'},
+  {ico:'📄', icoImg:'/iconos_carga_planos/plano_por_nivel.webp', t:'1 plano', s:'Por nivel'},
+  {ico:'🏷️', icoImg:'/iconos_carga_planos/cotas.webp', t:'Cotas NPT', s:'En planta'},
+  {ico:'🎨', icoImg:'/iconos_carga_planos/redes_por_color.webp', t:'Redes color', s:'AF·AC·SAN'},
+  {ico:'🚿', icoImg:'/iconos_carga_planos/simbologia.webp', t:'Simbología', s:'NTC 1500'},
 ];
 
 export const BD_SUBTABS=[
