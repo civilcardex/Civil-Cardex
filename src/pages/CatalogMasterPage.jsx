@@ -207,7 +207,7 @@ function SanitariasTable() {
             {ri === 0 ? (
               <td rowSpan={grp.rows.length} style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>{grp.mat}</td>
             ) : null}
-            <Td mono style={{ padding: '2px 8px', fontSize: 11 }}>{r.dn}</Td>
+            <Td mono center={false} style={{ padding: '2px 8px', fontSize: 11 }}>{r.dn}</Td>
             <Td mono style={{ padding: '2px 8px', fontSize: 11 }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
           </Tr>
         )))}
@@ -233,7 +233,7 @@ function VentilacionTable() {
             {ri === 0 ? (
               <td rowSpan={grp.rows.length} style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>{grp.mat}</td>
             ) : null}
-            <Td mono style={{ padding: '2px 8px', fontSize: 11 }}>{r.dn}</Td>
+            <Td mono center={false} style={{ padding: '2px 8px', fontSize: 11 }}>{r.dn}</Td>
             <Td mono style={{ padding: '2px 8px', fontSize: 11 }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
           </Tr>
         )))}
@@ -259,7 +259,7 @@ function AguaFriaTable() {
             {ri === 0 ? (
               <td rowSpan={grp.rows.length} style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>{grp.mat}</td>
             ) : null}
-            <Td mono style={{ padding: '2px 8px', fontSize: 11 }}>{r.dn}</Td>
+            <Td mono center={false} style={{ padding: '2px 8px', fontSize: 11 }}>{r.dn}</Td>
             <Td mono style={{ padding: '2px 8px', fontSize: 11 }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
           </Tr>
         )))}
@@ -285,7 +285,7 @@ function AguaCalienteTable() {
             {ri === 0 ? (
               <td rowSpan={grp.rows.length} style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>{grp.mat}</td>
             ) : null}
-            <Td mono style={{ padding: '2px 8px', fontSize: 11 }}>{r.dn}</Td>
+            <Td mono center={false} style={{ padding: '2px 8px', fontSize: 11 }}>{r.dn}</Td>
             <Td mono style={{ padding: '2px 8px', fontSize: 11 }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
           </Tr>
         )))}
@@ -366,7 +366,7 @@ function RciAceroTable() {
             {ri === 0 ? (
               <td rowSpan={grp.rows.length} style={{ padding: '2px 6px', fontSize: 11, fontWeight: 600, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>{grp.mat}</td>
             ) : null}
-            <Td mono style={{ padding: '2px 6px', fontSize: 11 }}>{r.dn}</Td>
+            <Td mono center={false} style={{ padding: '2px 6px', fontSize: 11 }}>{r.dn}</Td>
             <Td mono style={{ padding: '2px 6px', fontSize: 11 }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
           </Tr>
         )))}
@@ -491,7 +491,7 @@ function CoefFriccionTable() {
         <tbody>
           {COEF_FRICCION.map((c, i) => (
             <tr key={i} style={{ background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
-              <td style={coefTd}>{c.tipo}</td>
+              <td style={{ ...coefTd, textAlign: 'left' }}>{c.tipo}</td>
               <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'left' }}>{c.desc}</td>
               <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'left' }}>{c.sis}</td>
               <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'left' }}>{c.mat}</td>
@@ -524,7 +524,7 @@ export default function CatalogoMaestroPage() {
     <div style={{ height: '100%', background: 'var(--bg)', color: 'var(--txt)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '14px 16px 0', display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexShrink: 0, position: 'relative', marginBottom: 12 }}>
-          <button onClick={() => navigate('/civilflowareatrabajo')}
+          <button onClick={() => { sessionStorage.setItem('openTab', 'datos'); navigate('/civilflowareatrabajo'); }}
             style={{
               position: 'absolute', left: 0,
               padding: '5px 11px', background: 'var(--bg3)', border: '1px solid var(--line)',

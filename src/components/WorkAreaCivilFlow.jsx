@@ -2,7 +2,7 @@ import { useState, useRef, useMemo, useEffect } from "react";
 import { useSanitario } from "../context/SanitarioContext";
 import { usePlanos } from "../context/PlanosContext";
 import { useAnalysis } from "../hooks/useAnalysis";
-import CollapsibleNav from "./CollapsibleNav";
+import AccesoriosTable from "./AccesoriosTable";
 import { REDES, USOS, EMPRES, NAV_TABS, REQ_ITEMS, pisoLbl } from "./constants";
 import { parseDecimalInput, parseIntInput } from "../utils/parseDecimal";
 import { validateTramo } from "../utils/validateTramo";
@@ -25,7 +25,7 @@ import BaseDatos from "./DesignParameters";
 import Normativa from "./Normativa";
 
 function CIVILFLOWInner(){
-const { tramosSan, tramosLl, udBase, pisos, proy, setP, setPisos } = useSanitario();
+const { tramosSan, tramosLl, tramosAf, tramosAc, udBase, pisos, proy, setP, setPisos, updTramoAfAcc, updTramoAcAcc } = useSanitario();
 const { planos, addPlanos, removePlano, updatePlano, confirmPlano } = usePlanos();
 
   const [tab,setTab]=useState('info');
@@ -54,6 +54,10 @@ const redesActivas=useMemo(()=>REDES.filter(r=>redes.has(r.id)),[redes]);
     } catch (_) {}
   }, [redes]);
   const [redActiva,setRedActiva]=useState('san');
+  const [sanPage, setSanPage] = useState(1);
+  const [llPage, setLlPage] = useState(1);
+  const [afPage, setAfPage] = useState(1);
+  const [acPage, setAcPage] = useState(1);
 const [planDrag,setPlanDrag]=useState(false);
 const [selectedPlanId,setSelectedPlanId]=useState(null);
 const selectedPlan=useMemo(()=>planos.find(p=>p.id===selectedPlanId)||null,[planos,selectedPlanId]);
@@ -108,9 +112,12 @@ const onDecBlur=(setter)=>(e)=>{
 const delPiso=(id)=>setPisos(prev=>prev.filter(p=>p.id!==id));
 
 const addPiso=()=>setPisos(prev=>{
-  const pisosPOS=prev.filter(p=>p.tipo==='piso');
+  const pisosPOS=prev.filter(p=>p.tipo==='piso').sort((a,b)=>b.n-a.n);
   const maxN=pisosPOS.length?Math.max(...pisosPOS.map(p=>p.n)):0;
-  const newPiso={id:Date.now(),n:maxN+1,npt:'',ok:false,tipo:'piso'};
+  const hPis=parseFloat(altPiso)||0;
+  const lastNpt=pisosPOS.length?parseFloat(pisosPOS[0].npt)||0:0;
+  const newNpt=lastNpt>0?+((lastNpt+hPis).toFixed(2)):'';
+  const newPiso={id:Date.now(),n:maxN+1,npt:newNpt,ok:false,tipo:'piso'};
   const cubIx=prev.findIndex(p=>p.tipo==='cubierta');
   const insertAt=cubIx>=0?cubIx+1:0;
   const copy=[...prev];
@@ -119,9 +126,12 @@ const addPiso=()=>setPisos(prev=>{
 });
 
 const addSotano=()=>setPisos(prev=>{
-  const pisoNEG=prev.filter(p=>p.tipo==='sotano');
+  const pisoNEG=prev.filter(p=>p.tipo==='sotano').sort((a,b)=>a.n-b.n);
   const minN=pisoNEG.length?Math.min(...pisoNEG.map(p=>p.n)):0;
-  const newSotano={id:Date.now(),n:minN-1,npt:'',ok:false,tipo:'sotano'};
+  const hSot=parseFloat(altSotano)||0;
+  const lastNpt=pisoNEG.length?parseFloat(pisoNEG[0].npt)||0:0;
+  const newNpt=lastNpt<0?+((lastNpt-hSot).toFixed(2)):'';
+  const newSotano={id:Date.now(),n:minN-1,npt:newNpt,ok:false,tipo:'sotano'};
   return[...prev,newSotano];
 });
 const { busy, meta, vals, analizar } = useAnalysis(setPisos);
@@ -530,26 +540,41 @@ return(
 {/* ── Redes a diseñar ── */}
 {tab==='redes'&&redesActivas.length>0&&(
   <div className="fu" style={{display:'flex',flexDirection:'column',gap:12,flex:1,minHeight:0}}>
-    <CollapsibleNav items={redesActivas} collapsedLabel={redesActivas.find(r=>r.id===redActiva)?.lbl || redesActivas[0]?.lbl} renderTab={(r)=>(<button key={r.id} onClick={()=>setRedActiva(r.id)} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 18px',borderRadius:'var(--r)',border:'1px solid',cursor:'pointer',fontSize:14,fontFamily:'var(--body)',flex:1,justifyContent:'center',borderColor:redActiva===r.id?r.col:'var(--line)',color:redActiva===r.id?r.col:'var(--txt3)',background:redActiva===r.id?'rgba(0,0,0,.15)':'transparent',fontWeight:redActiva===r.id?700:400}}><span style={{fontSize:22}}>{r.ico}</span><div style={{display:'flex',flexDirection:'column',alignItems:'flex-start',gap:1}}><span>{r.lbl}</span><span style={{fontSize:10,fontFamily:'var(--mono)',opacity:.7}}>{r.sub}</span></div></button>)} mode="flex" />
+    <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>{redesActivas.map(r=>(<button key={r.id} onClick={()=>setRedActiva(r.id)} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',borderRadius:'var(--r)',border:'1px solid',cursor:'pointer',fontSize:13,fontFamily:'var(--body)',flex:1,justifyContent:'center',borderColor:redActiva===r.id?r.col:'var(--line)',color:redActiva===r.id?r.col:'var(--txt3)',background:redActiva===r.id?'rgba(0,0,0,.15)':'transparent',fontWeight:redActiva===r.id?700:400}}><span style={{fontSize:18}}>{r.ico}</span><span>{r.lbl}</span></button>))}</div>
   {redActiva==='san'&&redes.has('san')&&(
-    <div className="fu" style={{display:'flex',flexDirection:'column',gap:12}}>
-      <CalculoUD />
-      <DisenosSanitarios /><BajantesTable /><CalculoHidraulicoSanitario />
+    <div className="fu" style={{display:'flex',flexDirection:'column',gap:8}}>
+      <PageNav page={sanPage} setPage={setSanPage} total={3} color="var(--san)"
+        labels={['Cálculo UD','Diseño Sanitaria','Bajantes y Vent.']} />
+      {sanPage===1&&<CalculoUD />}
+      {sanPage===2&&<DisenosSanitarios />}
+      {sanPage===3&&<BajantesTable />}
+      <div style={{display:'none'}}><CalculoHidraulicoSanitario /></div>
     </div>
   )}
   {redActiva==='ll'&&redes.has('ll')&&(
-    <div className="fu" style={{display:'flex',flexDirection:'column',gap:12}}>
-      <ChequeoBajantesLluvias /><ChequeoCanalesLluvias /><DisenoLluvias /><CalculoHidraulicoLluvias />
+    <div className="fu" style={{display:'flex',flexDirection:'column',gap:8}}>
+      <PageNav page={llPage} setPage={setLlPage} total={3} color="var(--ll)"
+        labels={['Cheq. Bajantes','Cheq. Canales','Diseño Lluvias']} />
+      {llPage===1&&<ChequeoBajantesLluvias />}
+      {llPage===2&&<ChequeoCanalesLluvias />}
+      {llPage===3&&<DisenoLluvias />}
+      <div style={{display:'none'}}><CalculoHidraulicoLluvias /></div>
     </div>
   )}
   {redActiva==='af'&&redes.has('af')&&(
-    <div className="fu" style={{display:'flex',flexDirection:'column',gap:12}}>
-      <CalculoUCAF />
+    <div className="fu" style={{display:'flex',flexDirection:'column',gap:8}}>
+      <PageNav page={afPage} setPage={setAfPage} total={2} color="var(--af)"
+        labels={['Cálculo UC','Accesorios']} />
+      {afPage===1&&<CalculoUCAF />}
+      {afPage===2&&<AccesoriosTable tramos={tramosAf} updAcc={updTramoAfAcc} net="af" readOnly />}
     </div>
   )}
   {redActiva==='ac'&&redes.has('ac')&&(
-    <div className="fu" style={{display:'flex',flexDirection:'column',gap:12}}>
-      <CalculoUCAC />
+    <div className="fu" style={{display:'flex',flexDirection:'column',gap:8}}>
+      <PageNav page={acPage} setPage={setAcPage} total={2} color="var(--ac)"
+        labels={['Cálculo UC','Accesorios']} />
+      {acPage===1&&<CalculoUCAC />}
+      {acPage===2&&<AccesoriosTable tramos={tramosAc} updAcc={updTramoAcAcc} net="ac" readOnly />}
     </div>
   )}
   {redesActivas.filter(r=>r.id!=='san'&&r.id!=='ll'&&r.id!=='af'&&r.id!=='ac').map(r=>redActiva===r.id&&redes.has(r.id)&&(
@@ -619,6 +644,24 @@ const okLL=tramosLl.length>0&&tramosLl.every(validateTramo);
 <div style={{flex:1}}/>
       </div>
       </div>
+    </div>
+  );
+}
+
+function PageNav({page, setPage, total, labels, color}) {
+  return (
+    <div style={{display:'flex',alignItems:'center',gap:8,justifyContent:'center',padding:'6px 0',flexShrink:0}}>
+      <button onClick={()=>setPage(Math.max(1, page-1))} disabled={page<=1}
+        style={{padding:'6px 14px',border:'1px solid var(--line)',borderRadius:'var(--r)',background:'var(--bg3)',color:page<=1?'var(--txt3)':'var(--txt)',cursor:page<=1?'not-allowed':'pointer',fontSize:14,fontFamily:'var(--mono)',fontWeight:600,lineHeight:1}}>◀</button>
+      {Array.from({length:total},(_,i)=>i+1).map(p=>(
+        <button key={p} onClick={()=>setPage(p)}
+          style={{padding:'6px 16px',border:`1.5px solid ${p===page?color||'var(--acc)':'var(--line)'}`,borderRadius:'var(--r)',
+          background:p===page?`${color||'var(--acc)'}18`:'var(--bg3)',color:p===page?color||'var(--acc)':'var(--txt2)',
+          cursor:'pointer',fontSize:12,fontFamily:'var(--body)',fontWeight:p===page?700:500,
+          textAlign:'center',whiteSpace:'nowrap'}}>{labels?.[p-1]||`Pág ${p}`}</button>
+      ))}
+      <button onClick={()=>setPage(Math.min(total, page+1))} disabled={page>=total}
+        style={{padding:'6px 14px',border:'1px solid var(--line)',borderRadius:'var(--r)',background:'var(--bg3)',color:page>=total?'var(--txt3)':'var(--txt)',cursor:page>=total?'not-allowed':'pointer',fontSize:14,fontFamily:'var(--mono)',fontWeight:600,lineHeight:1}}>▶</button>
     </div>
   );
 }

@@ -1,11 +1,10 @@
 import { useSanitario } from "../context/SanitarioContext";
 import { pisoCorto, DIAM_BAN, DIAM_VENT } from "./constants";
 import { calcUDparcial, calcUDacumulado } from "./utils";
-import { parseDecimalInput } from "../utils/parseDecimal";
-import { calcularBajanteVentilacion, caudalHunterLPS } from "../utils/calcSanitario";
+import { calcularBajanteVentilacion } from "../utils/calcSanitario";
 
 export default function BajantesTable() {
-  const { tramosSan, udBase, pisos, updTramoSan } = useSanitario();
+  const { tramosSan, udBase, pisos } = useSanitario();
 
   return (
     <div className="card">
@@ -23,7 +22,7 @@ export default function BajantesTable() {
             </tr>
             <tr>
               <th className="col-h san" rowSpan={2} style={{textAlign:'center'}}>Bajante<br/>No.</th>
-              <th className="col-h san" rowSpan={2} style={{textAlign:'center'}}>Piso</th>
+              <th className="col-h san" rowSpan={2} style={{textAlign:'center'}}>Nivel</th>
               <th className="col-h san" colSpan={2} style={{textAlign:'center'}}>Unidades de<br/>Descarga</th>
               <th className="col-h san" rowSpan={2} style={{textAlign:'center'}}>r</th>
               <th className="col-h san" rowSpan={2} style={{textAlign:'center'}}>Q<br/><small>lps</small></th>
@@ -93,57 +92,31 @@ const chequeoVent=res.D_vent_prop_pulg>0?(res.D_vent_calc_pulg<=res.D_vent_prop_
                 return(
                   <tr key={t.id}>
                     <td className="c"><span className="sigla" style={{fontSize:10}}>{t.id}</span></td>
-                    <td className="c" style={{minWidth:80}}>
-                      <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:3}}>
-                        <select className="ni" style={{width:50,padding:'2px 3px',fontSize:10,textAlign:'center'}} value={t.pisoDesde||''} onChange={e=>updTramoSan(t.id,'pisoDesde',parseInt(e.target.value)||0)}>
-                          <option value="">—</option>
-                          {pisos.map(p=><option key={p.id} value={p.n}>{pisoCorto(p.n)}</option>)}
-                        </select>
-                        <span style={{color:'var(--txt3)',fontSize:9}}>-</span>
-                        <select className="ni" style={{width:50,padding:'2px 3px',fontSize:10,textAlign:'center'}} value={t.pisoHasta||''} onChange={e=>updTramoSan(t.id,'pisoHasta',parseInt(e.target.value)||0)}>
-                          <option value="">—</option>
-                          {pisos.map(p=><option key={p.id} value={p.n}>{pisoCorto(p.n)}</option>)}
-                        </select>
-                      </div>
+                    <td className="c">
+                      <span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt2)'}}>
+                        {t.pisoDesde ? pisoCorto(t.pisoDesde) : '—'} – {t.pisoHasta ? pisoCorto(t.pisoHasta) : '—'}
+                      </span>
                     </td>
                     <td className="c" style={{fontFamily:'var(--mono)'}}>{udParcial}</td>
                     <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700}}>{udAcum}</td>
                     <td className="c">
-                      <select className="ni" style={{width:44,padding:'2px 3px',fontSize:10}}
-                        value={rStr} onChange={e=>updTramoSan(t.id,'bajR',e.target.value==='7/24'?7/24:1/4)}>
-                        <option value="7/24">7/24</option>
-                        <option value="1/4">1/4</option>
-                      </select>
+                      <span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{rStr || '—'}</span>
                     </td>
                     <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600}}>{Q>0?Q.toFixed(3):'—'}</td>
-                    <td className="c"><input type="text" inputMode="decimal" className="ni" style={{width:50,padding:'2px 4px',fontSize:11,textAlign:'center'}} defaultValue={n||''} key={t.id+'nm'} onBlur={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updTramoSan(t.id,'nmaning',v);}}/></td>
+                    <td className="c" style={{fontFamily:'var(--mono)'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:10}}>{DcalcPulg>0?DcalcPulg.toFixed(2)+'"':'—'}</td>
-                    <td className="c">
-                      <select className="ni" style={{width:54,padding:'2px 3px',fontSize:11,textAlign:'center'}} value={t.bajDprop||''} onChange={e=>updTramoSan(t.id,'bajDprop',parseFloat(e.target.value)||0)}>
-                        <option value="">—</option>
-                        {DIAM_BAN.map(d=><option key={d.pulg} value={d.pulg}>{d.nom}</option>)}
-                      </select>
-                    </td>
+                    <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{t.bajDprop ? t.bajDprop+'"' : '—'}</span></td>
                     <td className="c">{chequeo}</td>
                     <td className="c" style={{fontFamily:'var(--mono)'}}>{QmaxB>0?QmaxB.toFixed(2):'—'}</td>
                     <td className="c">{Vt>0?Vt.toFixed(2):'—'}</td>
                     <td className="c">{Ltcalc>0?Ltcalc.toFixed(2):'—'}</td>
                     <td className="c">{Ltmin>0?Ltmin.toFixed(2):'—'}</td>
                     <td className="c">{Vair>0?Vair.toFixed(2):'—'}</td>
-                    <td className="c">
-                      <input type="text" inputMode="decimal" className="ni" style={{width:46,padding:'2px 3px',fontSize:10,textAlign:'center'}} defaultValue={fDarcy||''} key={t.id+'fd'} onBlur={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updTramoSan(t.id,'bajFDarcy',v);}}/>
-                    </td>
+                    <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{fDarcy > 0 ? fDarcy.toFixed(3) : '—'}</span></td>
                     <td className="c" style={{fontFamily:'var(--mono)'}}>{Qair>0?Qair.toFixed(2):'—'}</td>
-                    <td className="c">
-                      <input type="text" inputMode="decimal" className="ni" style={{width:46,padding:'2px 3px',fontSize:10,textAlign:'center'}} value={t.bajLong!==undefined?String(t.bajLong):'3'} onChange={e=>{const v=e.target.value.replace(/[^0-9.]/g,'');updTramoSan(t.id,'bajLong',v===''?0:parseFloat(v)||3);}}/>
-                    </td>
+                    <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{t.bajLong > 0 ? t.bajLong : '—'}</span></td>
                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:10}}>{DventCalcPulg>0?DventCalcPulg.toFixed(2)+'"':'—'}</td>
-                    <td className="c">
-                      <select className="ni" style={{width:54,padding:'2px 3px',fontSize:11,textAlign:'center'}} value={t.ventDprop||''} onChange={e=>updTramoSan(t.id,'ventDprop',parseFloat(e.target.value)||0)}>
-                        <option value="">—</option>
-                        {DIAM_VENT.map(d=><option key={d.pulg} value={d.pulg}>{d.nom}</option>)}
-                      </select>
-                    </td>
+                    <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{t.ventDprop ? t.ventDprop+'"' : '—'}</span></td>
                   </tr>
                 );
               });

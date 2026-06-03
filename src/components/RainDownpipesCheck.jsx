@@ -1,10 +1,8 @@
 import { useSanitario } from "../context/SanitarioContext";
 import { chequeoBajanteLluvia } from "../utils/calcSanitario";
-import { parseDecimalInput } from "../utils/parseDecimal";
-import { R_OPTIONS } from "./constants";
 
 export default function ChequeoBajantesLluvias() {
-  const { bajantesLl, addBajanteLL, delBajanteLL, updBajanteLL } = useSanitario();
+  const { bajantesLl } = useSanitario();
 
   return (
     <div className="card">
@@ -25,7 +23,6 @@ export default function ChequeoBajantesLluvias() {
               <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Maning</th>
               <th className="col-h ok" colSpan={2} style={{textAlign:'center',fontSize:11}}>Diámetro</th>
               <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Chequeo<br/>Dcal&lt;Dprop</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}></th>
             </tr>
             <tr>
               <th className="col-h ll" style={{fontSize:10,textAlign:'center'}}>Parcial<br/>m²</th>
@@ -40,32 +37,20 @@ const { Q, dCalc: diamCalc, chequeo } = chequeoBajanteLluvia(b);
 const diamProp = b.diamPropuesto || 0;
 return(
                 <tr key={b.id}>
-                  <td className="c"><input className="ni" style={{width:80,padding:'2px 4px',fontSize:11,textAlign:'center'}} value={b.bajante} onChange={e=>updBajanteLL(b.id,'bajante',e.target.value)}/></td>
-                  <td className="c"><input type="text" inputMode="decimal" className="ni" style={{width:70,padding:'2px 4px',fontSize:11,textAlign:'center'}} defaultValue={b.areaParcial||''} key={b.id+'ap'} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(b.id,'areaParcial',v);}} onBlur={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(b.id,'areaParcial',v);}}/></td>
-                  <td className="c"><input type="text" inputMode="decimal" className="ni" style={{width:70,padding:'2px 4px',fontSize:11,textAlign:'center'}} defaultValue={b.areaAcumulada||''} key={b.id+'aa'} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(b.id,'areaAcumulada',v);}} onBlur={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(b.id,'areaAcumulada',v);}}/></td>
-                  <td className="c"><input type="text" inputMode="decimal" className="ni" style={{width:70,padding:'2px 4px',fontSize:11,textAlign:'center'}} defaultValue={b.intensidad||''} key={b.id+'in'} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(b.id,'intensidad',v);}} onBlur={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(b.id,'intensidad',v);}}/></td>
-                  <td className="c"><input type="text" inputMode="decimal" className="ni" style={{width:60,padding:'2px 4px',fontSize:11,textAlign:'center'}} defaultValue={b.coeficienteC||''} key={b.id+'cc'} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(b.id,'coeficienteC',v);}} onBlur={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(b.id,'coeficienteC',v);}}/></td>
-                  <td className="c">
-<select className="ni" style={{width:60,padding:'2px 4px',fontSize:11,textAlign:'center'}} value={b.R} onChange={e=>updBajanteLL(b.id,'R',e.target.value)}>
-<option value="">—</option>{R_OPTIONS.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}
-                    </select>
-                  </td>
+                  <td className="c"><span className="sigla" style={{fontSize:11}}>{b.bajante || '—'}</span></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{b.areaParcial||'—'}</span></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{b.areaAcumulada||'—'}</span></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{b.intensidad||'—'}</span></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{b.coeficienteC||'—'}</span></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{b.R || '—'}</span></td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize:13}}>{Q>0?Q.toFixed(2):'—'}</td>
-                  <td className="c"><input type="text" inputMode="decimal" className="ni" style={{width:60,padding:'2px 4px',fontSize:11,textAlign:'center'}} defaultValue={b.manning||''} key={b.id+'mn'} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(b.id,'manning',v);}} onBlur={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(b.id,'manning',v);}}/></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{b.manning||'—'}</span></td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,fontSize:12}}>{diamCalc > 0 ? diamCalc.toFixed(2) : '—'}</td>
-                  <td className="c"><select className="ni" style={{width:60,padding:'2px 4px',fontSize:11,textAlign:'center'}} value={b.diamPropuesto||''} onChange={e=>updBajanteLL(b.id,'diamPropuesto',e.target.value?Number(e.target.value):0)}><option value="">—</option><option value="1.5">1½"</option><option value="2">2"</option><option value="3">3"</option><option value="4">4"</option><option value="6">6"</option></select></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{diamProp ? diamProp+'"' : '—'}</span></td>
                   <td className="c" style={{fontWeight:700}}>{chequeo}</td>
-                  <td className="c">
-                    <button onClick={()=>delBajanteLL(b.id)} style={{background:'var(--err-bg)',border:'1px solid var(--err-b)',borderRadius:'var(--r)',color:'var(--err)',padding:'1px 5px',fontSize:10,cursor:'pointer'}}>✕</button>
-                  </td>
                 </tr>
               );
             })}
-            <tr>
-              <td colSpan={12} style={{textAlign:'center',padding:'8px 0'}}>
-                <button className="btn-xs" onClick={addBajanteLL} style={{width:'auto',display:'inline-flex',alignItems:'center',gap:4}}>+ Agregar bajante</button>
-              </td>
-            </tr>
           </tbody>
         </table>
         </div>

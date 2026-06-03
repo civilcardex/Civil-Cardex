@@ -17,7 +17,7 @@ export default function DisenoUDPanel({ onClose }) {
         <thead>
           <tr>
             <th style={thS}>Tramo</th>
-            <th style={thS}>Piso</th>
+            <th style={thS}>Nivel</th>
             {udBase.map(d => (
               <th key={d.id} style={{...thS, minWidth: 44}}>
                 {d.nombre}<br/>

@@ -2,7 +2,7 @@ import { ACCESORIOS_HIDRO } from "./constants";
 
 const ACCENT = { af: '#3b82f6', ac: '#ef4444' };
 
-export default function AccesoriosTable({ tramos, updAcc, net }) {
+export default function AccesoriosTable({ tramos, updAcc, net, readOnly }) {
   const accent = ACCENT[net] || '#3b82f6';
   const cMono = "'Courier New',Courier,monospace";
   const cBg2 = '#1e293b';
@@ -32,6 +32,13 @@ export default function AccesoriosTable({ tramos, updAcc, net }) {
                   <td className="c" style={{fontSize:11,textAlign:'center',fontWeight:600,position:'sticky',left:0,background:cBg2,zIndex:1}}>{t.id}</td>
                   {ACCESORIOS_HIDRO.map(a => {
                     const v = t.accesorios?.[a.id] || 0;
+                    if (readOnly) {
+                      return (
+                        <td key={a.id} className="c" style={{padding:'2px 2px'}}>
+                          <span style={{fontSize:12,fontFamily:cMono,color:v>0?'var(--txt)':'var(--txt3)'}}>{v || '—'}</span>
+                        </td>
+                      );
+                    }
                     return (
                       <td key={a.id} className="c" style={{padding:'2px 2px'}}>
                         <input type="number" className="ni" style={{width:40,textAlign:'center',padding:'3px 4px',fontSize:12}}

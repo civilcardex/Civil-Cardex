@@ -2,7 +2,7 @@ import { useSanitario } from "../context/SanitarioContext";
 import FloatingPanel, { thS, tdS, inputStyle, tableStyle } from "./FloatingPanel";
 import { APARATO_EMOJI } from "./PlanoEngine";
 
-const NET_NAMES = { sif: '♻️', lvm: '👐', san: '🚽', duc: '🚿', lvra: '👕', tin: '🛀', lvp: '🍽', lvro: '👖' };
+const NET_NAMES = { sif: '♻️', lvm: '👐', san: '🚽', duc: '🚿', lvra: '👕', tin: '🛀', lvp: '🍽', lvro: '👖', nev: '🧊', lavav: '🍽' };
 
 export default function PanelValoresUD({ onClose }) {
   const { udBase, setUdBase } = useSanitario();

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSanitario } from "../context/SanitarioContext";
-import { MAT_COL, AF_UC_IDS, AC_UC_IDS, SAN_UC_IDS } from "./constants";
+import { MAT_COL, AF_UC_IDS, AC_UC_IDS, SAN_UC_IDS, APARATOS_DEF } from "./constants";
 
 function NumInput({ value, onCommit, color, width = 50, decimals = 2, disabled: isDisabled }) {
   const [text, setText] = useState(() => formatVal(value, decimals));
@@ -36,7 +36,7 @@ function NumInput({ value, onCommit, color, width = 50, decimals = 2, disabled: 
 
   if (isDisabled) {
     return (
-      <span style={{ width, display: 'inline-block', textAlign: 'center', fontSize: 11, color: '#3a494a', fontFamily: "'Geist',monospace", padding: '2px 4px', border: '1px solid transparent', cursor: 'not-allowed' }}>—</span>
+      <span style={{ width, display: 'inline-block', textAlign: 'center', fontSize: 11, color: '#3a494a', fontFamily: "'Geist',monospace", padding: '2px 4px', border: '1px solid transparent', cursor: 'not-allowed' }}>{formatVal(value || 0, decimals)}</span>
     );
   }
 
@@ -73,15 +73,16 @@ const REDES_MAT = [
 ];
 
 const CAT_APS = [
-  { id: 'sif',  n: 'Sifones',                 s: 'Sif',  ctrl: 'Sifón',               af: 0,   ac: 0  },
-  { id: 'san',  n: 'Inodoro',     s: 'Ino',  ctrl: 'Tanque',              af: 0,   ac: 0  },
-  { id: 'lvm',  n: 'Lavamanos',              s: 'Lvm',  ctrl: 'Llave',               af: 0,   ac: 0  },
-  { id: 'duc',  n: 'Ducha',                  s: 'Duc',  ctrl: 'Válvula de mezclado', af: 0,   ac: 0  },
-  { id: 'lvp',  n: 'Lavaplatos Cocina',      s: 'Lvp',  ctrl: 'Grifería',            af: 0,   ac: 0  },
-  { id: 'tin',  n: 'Tina',                   s: 'Tin',  ctrl: 'Grifería',            af: 0,   ac: 0  },
-  { id: 'lvra', n: 'Lavadora',               s: 'Lvra', ctrl: 'Automático',          af: 0,   ac: 0  },
-  { id: 'lvro', n: 'Lavadero',               s: 'Lvro', ctrl: 'Grifería',            af: 0,   ac: 0  },
-  { id: 'lavav',n: 'Lavavajillas',           s: 'Lavav',ctrl: 'Llave',               af: 0,   ac: 0  },
+  { id: 'sif',  n: 'Sifones',                 s: 'Sif',  ctrl: 'N.A.',                 af: 0,   ac: 0  },
+  { id: 'san',  n: 'Inodoro',                s: 'Ino',  ctrl: 'Tanque',               af: 2.2, ac: 0  },
+  { id: 'lvm',  n: 'Lavamanos',              s: 'Lvm',  ctrl: 'Llave',                af: 0.5, ac: 0.5},
+  { id: 'duc',  n: 'Ducha',                  s: 'Duc',  ctrl: 'Válvula de mezclado',  af: 1,   ac: 1  },
+  { id: 'lvp',  n: 'Lavaplatos Cocina',      s: 'Lvp',  ctrl: 'Grifería',             af: 1,   ac: 1  },
+  { id: 'tin',  n: 'Tina',                   s: 'Tin',  ctrl: 'Grifería',             af: 1,   ac: 1  },
+  { id: 'lvra', n: 'Lavadora',               s: 'Lvra', ctrl: 'Automático',           af: 1,   ac: 1  },
+  { id: 'lvro', n: 'Lavadero',               s: 'Lvro', ctrl: 'Grifería',             af: 1,   ac: 1  },
+  { id: 'nev',  n: 'Nevera',                 s: 'Nev',  ctrl: 'Llave',                af: 0.5, ac: 0  },
+  { id: 'lavav',n: 'Lavavajillas',           s: 'Lavav',ctrl: 'Llave',                af: 0,   ac: 1.5},
 ];
 
 const CAT_GAS = [
@@ -105,6 +106,7 @@ const CAT_GAS = [
 export default function BaseDatos({ redes }) {
   const navigate = useNavigate();
   const { mats, setMats, aps, setAps, profs, setProfs } = useSanitario();
+  const [profTexts, setProfTexts] = useState({});
 
   const activeRedes = REDES_MAT.filter(r => redes?.has(r.id));
 
@@ -134,16 +136,17 @@ export default function BaseDatos({ redes }) {
   };
 
   const apsMap = Object.fromEntries(CAT_APS.map(a => [a.id, a]));
+  const defUd = (id) => APARATOS_DEF.find(x => x.id === id)?.ud ?? 0;
   const apsMerged = CAT_APS.map(c => {
     const cur = aps.find(a => a.id === c.id);
     return {
       ...c,
-      ucaf: cur?.ucaf ?? c.af,
-      ucac: cur?.ucac ?? c.ac,
-      ud: cur?.ud ?? 0,
-      _blkAf: !AF_UC_IDS.includes(c.id),
-      _blkAc: !AC_UC_IDS.includes(c.id),
-      _blkUd: !SAN_UC_IDS.includes(c.id),
+      ucaf: cur?.ucaf || c.af,
+      ucac: cur?.ucac || c.ac,
+      ud: cur?.ud || defUd(c.id),
+      _blkAf: (c.af || 0) === 0,
+      _blkAc: (c.ac || 0) === 0,
+      _blkUd: defUd(c.id) === 0,
     };
   });
 
@@ -212,13 +215,38 @@ export default function BaseDatos({ redes }) {
                         )}
                       </td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                          <input type="number" step=".01" className="ni"
-                          style={{ width: 60, padding: '2px 4px', fontSize: 11, textAlign: 'center', color: 'var(--txt)' }}
-                          value={Number(r.prof).toFixed(2)}
+                          <input type="text" inputMode="decimal" className="ni"
+                          style={{ width: 65, padding: '2px 4px', fontSize: 11, textAlign: 'center', color: 'var(--txt)' }}
+                          value={profTexts[r.id] !== undefined ? profTexts[r.id] : (r.prof !== undefined && r.prof !== null ? String(r.prof) : '0')}
                           onChange={e => {
-                            const v = e.target.value.replace(',', '.');
-                            setProf(r.id, parseFloat(v) || 0);
+                            const raw = e.target.value.replace(',', '.');
+                            const cleaned = raw.replace(/[^0-9.\-]/g, '').replace(/(?!^)-/g, '');
+                            setProfTexts(prev => ({ ...prev, [r.id]: cleaned }));
                           }}
+                          onFocus={e => {
+                            setProfTexts(prev => {
+                              if (prev[r.id] !== undefined) return prev;
+                              const cur = r.prof !== undefined && r.prof !== null ? String(r.prof) : '0';
+                              return { ...prev, [r.id]: cur };
+                            });
+                            e.target.select();
+                          }}
+                          onBlur={e => {
+                            const v = profTexts[r.id];
+                            if (v === undefined) return;
+                            if (v === '' || v === '-') {
+                              setProf(r.id, 0);
+                            } else {
+                              const n = parseFloat(v);
+                              setProf(r.id, Number.isFinite(n) ? n : 0);
+                            }
+                            setProfTexts(prev => {
+                              const next = { ...prev };
+                              delete next[r.id];
+                              return next;
+                            });
+                          }}
+                          onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
                         />
                       </td>
                     </tr>
