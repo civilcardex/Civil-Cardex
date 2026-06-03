@@ -1,15 +1,19 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import PlanoEngine, { NETS } from "./PlanoEngine";
-import { pisoLbl } from "./constants";
+import { pisoLbl, matLongName } from "./constants";
 import { useSanitario } from "../context/SanitarioContext";
+import { usePlanos } from "../context/PlanosContext";
+import { writeSanDrawingSync } from "../utils/sanDrawingSync";
+import { writeHidroDrawingSync } from "../utils/hidroDrawingSync";
+import AparatosPanel from "./AparatosPanel";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const TOOLS = [
   { id: "sel", label: "Seleccionar", ico: "🖱", key: "S", icoCol: "#849495", shortcut: "S" },
-  { id: "line", label: "Ramal", ico: "╱", key: "L", icoCol: "#4D8FF7", shortcut: "L" },
+  { id: "line", label: "Ramal/Tributario", ico: "╱", key: "L", icoCol: "#4D8FF7", shortcut: "L" },
   { id: "area", label: "Área", ico: "⬡", key: "A", icoCol: "#22D3EE", shortcut: "A" },
   { id: "dim", label: "Cota", ico: "📏", key: "D", icoCol: "#22D3EE", shortcut: "D" },
   { id: "text", label: "Texto", ico: "T", key: "T", icoCol: "#A855F7", shortcut: "T" },
@@ -106,40 +110,172 @@ const DIAM_DEFAULT_BY_NET = {
 
 export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan, pisos=[], planos=[], activeNetworks }) {
   const { mats } = useSanitario();
+  const planosCtx = usePlanos();
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [tool, setTool] = useState("sel");
+  const [tool, setTool] = useState("line");
   const [activeNet, setActiveNet] = useState("af");
   const [tipoTramo, setTipoTramo] = useState("ramal");
+  const [padreTributarioId, setPadreTributarioId] = useState(null);
   const [snapOn, setSnapOn] = useState(true);
   const [scaleM, setScaleM] = useState("0.5");
   const [selectedNivel, setSelectedNivel] = useState(null);
   const [hiddenNets, setHiddenNets] = useState(new Set());
   const [statusMsg, setStatusMsg] = useState("Seleccionar");
+  const [saveStatus, setSaveStatus] = useState("saved");
   const [selElement, setSelElement] = useState(null);
   const [drawnElements, setDrawnElements] = useState([]);
   const [diamSel, setDiamSel] = useState({});
   const [pendSel, setPendSel] = useState({});
+  const [pendInput, setPendInput] = useState('');
   const toolRef = useRef(tool);
+  const autoSaveTimerRef = useRef(null);
   toolRef.current = tool;
 
-  const currentFile = files[activeIndex]?.file;
-  const currentId = files[activeIndex]?.id;
+const currentFile = files[activeIndex]?.file;
+const currentId = files[activeIndex]?.id;
+const currentIdRef = useRef(currentId);
+currentIdRef.current = currentId;
 
-  const visibleNets = useMemo(() => {
-    if (activeNetworks) return NETS.filter(n => activeNetworks.has(n.id));
+  useEffect(() => {
+    if (currentId == null) return;
+    const pl = planos.find(p => p.id === currentId);
+    if (pl && (pl.nivel ?? null) !== (selectedNivel ?? null)) {
+      setSelectedNivel(pl.nivel ?? null);
+    }
+  }, [currentId, planos]);
+
+  useEffect(() => {
+    if (!engineRef.current) return;
+    const prevId = engineRef.current._loadedPlanId;
+    if (prevId && prevId !== currentId) {
+      const prevKey = `civilflow_trazos_${prevId}`;
+      try { localStorage.setItem(prevKey, engineRef.current.saveWork()); } catch (_) {}
+    }
+    const key = `civilflow_trazos_${currentIdRef.current || currentId || 'work'}`;
     try {
-      const saved = localStorage.getItem('civilflow_active_nets');
-      if (saved) {
-        const ids = JSON.parse(saved);
-        return NETS.filter(n => ids.includes(n.id));
+      const json = localStorage.getItem(key);
+      if (json) {
+        engineRef.current.loadWork(json);
+      } else {
+        engineRef.current.ramales = [];
+        engineRef.current.bajantes = [];
+        engineRef.current.areas = [];
+        engineRef.current.dims = [];
+        engineRef.current.textAnnots = [];
+        engineRef.current.selId = null;
+        engineRef.current.activeRamal = null;
+        engineRef.current.activeArea = null;
+        engineRef.current.render();
       }
     } catch (_) {}
+    engineRef.current._loadedPlanId = currentId;
+    try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
+try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
+  }, [currentId]);
+
+  useEffect(() => {
+    try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
+try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
+  }, [planosCtx.planos.length, currentId, activeNet]);
+
+  useEffect(() => {
+    const handler = () => { try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
+try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {} };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, [planosCtx.planos.length]);
+
+const saveTrazosToStorage = useCallback(() => {
+const eng = engineRef.current;
+const id = currentIdRef.current;
+if (!eng || !id) return;
+const key = `civilflow_trazos_${id}`;
+try {
+const json = eng.saveWork();
+localStorage.setItem(key, json);
+} catch (e) {
+console.error('[saveTrazos] Error saving trazos key=' + key + ':', e);
+}
+}, []);
+
+  useEffect(() => {
+  window.addEventListener('beforeunload', saveTrazosToStorage);
+  return () => window.removeEventListener('beforeunload', saveTrazosToStorage);
+  }, [saveTrazosToStorage]);
+
+  useEffect(() => {
+  return () => { saveTrazosToStorage(); };
+  }, [saveTrazosToStorage]);
+
+const doSave = useCallback(() => {
+if (!engineRef.current) return;
+const id = currentIdRef.current;
+if (!id) return;
+const key = `civilflow_trazos_${id}`;
+const json = engineRef.current.saveWork();
+try { localStorage.setItem(key, json); } catch (_) {}
+try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
+try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
+engineRef.current._dirty = false;
+setSaveStatus('saved');
+}, [planosCtx.planos]);
+
+useEffect(() => {
+const interval = setInterval(() => {
+const eng = engineRef.current;
+if (!eng) return;
+if (eng._dirty && saveStatus === 'saved') {
+setSaveStatus('unsaved');
+}
+}, 300);
+return () => clearInterval(interval);
+}, [saveStatus]);
+
+useEffect(() => {
+if (saveStatus !== 'unsaved') return;
+if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+autoSaveTimerRef.current = setTimeout(() => {
+if (!engineRef.current?._dirty) { setSaveStatus('saved'); return; }
+setSaveStatus('saving');
+doSave();
+}, 1500);
+return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+}, [saveStatus, doSave]);
+
+  const [liveActiveNets, setLiveActiveNets] = useState(() => {
+    try {
+      const saved = localStorage.getItem('civilflow_active_nets');
+      if (saved) return new Set(JSON.parse(saved));
+    } catch (_) {}
+    return null;
+  });
+
+  useEffect(() => {
+    const refresh = () => {
+      try {
+        const saved = localStorage.getItem('civilflow_active_nets');
+        setLiveActiveNets(saved ? new Set(JSON.parse(saved)) : null);
+      } catch (_) {
+        setLiveActiveNets(null);
+      }
+    };
+    window.addEventListener('civilflow_nets_changed', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('civilflow_nets_changed', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
+
+  const finalVisibleNets = useMemo(() => {
+    if (activeNetworks) return NETS.filter(n => activeNetworks.has(n.id));
+    if (liveActiveNets) return NETS.filter(n => liveActiveNets.has(n.id));
     return NETS;
-  }, [activeNetworks]);
+  }, [activeNetworks, liveActiveNets]);
 
   const pdfDocRef = useRef(null);
   const pdfCanvasRef = useRef(null);
@@ -149,6 +285,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   const engineRef = useRef(null);
   const mountId = useRef(0);
   const renderTaskRef = useRef(null);
+  const renderingRef = useRef(false);
   const fileInputSaveRef = useRef(null);
   const scaleRef = useRef(1);
 
@@ -170,6 +307,29 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   }, [tool, activeNet, tipoTramo, snapOn, scaleM, mats, diamSel, pendSel, selectedNivel, pisos]);
 
   useEffect(() => { syncEngine(); }, [syncEngine]);
+
+  useEffect(() => {
+    if (finalVisibleNets.length === 0) return;
+    if (!finalVisibleNets.some(n => n.id === activeNet)) {
+      setActiveNet(finalVisibleNets[0].id);
+    }
+    setHiddenNets(prev => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const id of [...next]) {
+        if (!finalVisibleNets.some(n => n.id === id)) {
+          next.delete(id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [finalVisibleNets, activeNet]);
+
+  useEffect(() => {
+    setPadreTributarioId(null);
+    if (engineRef.current) engineRef.current.setPadreTributario(null);
+  }, [activeNet, tipoTramo]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -200,9 +360,19 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
     if (engineRef.current) engineRef.current.destroy();
     const pdfWrap = pdfCanvasRef.current?.parentElement;
     const eng = new PlanoEngine(cw, pdfWrap, canv);
-    engineRef.current = eng;
-    eng.onSelect((el) => setSelElement(el));
-    eng.onStatus((msg) => setStatusMsg(msg));
+engineRef.current = eng;
+eng.onSelect((el) => setSelElement(el));
+eng.onStatus((msg) => setStatusMsg(msg));
+eng.onDirty(() => {
+if (!autoSaveTimerRef.current) {
+autoSaveTimerRef.current = setTimeout(() => {
+autoSaveTimerRef.current = null;
+saveTrazosToStorage();
+try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
+try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
+}, 800);
+}
+});
     const origSetTool = eng.setTool.bind(eng);
     eng.setTool = (t) => {
       origSetTool(t);
@@ -257,31 +427,53 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   }, [scale]);
 
   const renderPage = async (pageNum, sc, mountCheck) => {
+    if (renderingRef.current) return;
     const pdf = pdfDocRef.current;
     const pdfCanvas = pdfCanvasRef.current;
     if (!pdf || !pdfCanvas) return;
 
     if (renderTaskRef.current) {
       try { renderTaskRef.current.cancel(); } catch (_) {}
+      try { await renderTaskRef.current.promise; } catch (_) {}
       renderTaskRef.current = null;
     }
+    renderingRef.current = true;
+
+    const dpr = window.devicePixelRatio || 1;
 
     try {
       const page = await pdf.getPage(pageNum);
+      if (mountCheck && mountCheck !== mountId.current) return;
       const viewport = page.getViewport({ scale: sc });
-      pdfCanvas.width = viewport.width;
-      pdfCanvas.height = viewport.height;
+      pdfCanvas.width = Math.floor(viewport.width * dpr);
+      pdfCanvas.height = Math.floor(viewport.height * dpr);
+      pdfCanvas.style.width = viewport.width + 'px';
+      pdfCanvas.style.height = viewport.height + 'px';
       const ctx = pdfCanvas.getContext("2d");
+      ctx.imageSmoothingEnabled = false;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, viewport.width, viewport.height);
       const task = page.render({ canvasContext: ctx, viewport });
       renderTaskRef.current = task;
-      await task.promise;
+      try {
+        await task.promise;
+      } catch (rerr) {
+        if (rerr?.name === 'RenderingCancelledException') { renderingRef.current = false; return; }
+        throw rerr;
+      }
       renderTaskRef.current = null;
 
       const drawCanvas = drawCanvasRef.current;
       if (drawCanvas) {
-        drawCanvas.width = viewport.width;
-        drawCanvas.height = viewport.height;
+        drawCanvas.width = Math.floor(viewport.width * dpr);
+        drawCanvas.height = Math.floor(viewport.height * dpr);
+        drawCanvas.style.width = viewport.width + 'px';
+        drawCanvas.style.height = viewport.height + 'px';
+        const dctx = drawCanvas.getContext('2d');
+        dctx.imageSmoothingEnabled = false;
+        dctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         if (engineRef.current) {
+          engineRef.current.dpr = dpr;
           engineRef.current.setPageSize(viewport.width, viewport.height);
           engineRef.current.resizeCanvas(viewport.width, viewport.height);
         }
@@ -291,6 +483,8 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
       if (mountCheck && mountCheck !== mountId.current) return;
       console.error("Error renderizando pagina:", err);
       setError(err);
+    } finally {
+      renderingRef.current = false;
     }
   };
 
@@ -306,7 +500,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   }, []);
 
   const handleFit = useCallback(async () => {
-    if (!pdfDocRef.current || !cwRef.current) return;
+    if (!currentFile || !pdfDocRef.current || !cwRef.current) return;
     const page = await pdfDocRef.current.getPage(pageNumber);
     const baseViewport = page.getViewport({ scale: 1 });
     const cw = cwRef.current;
@@ -331,12 +525,9 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   }, [activeNet]);
 
   const handleSave = useCallback(() => {
-    if (!engineRef.current) return;
-    const json = engineRef.current.saveWork();
-    const key = `civilflow_trazos_${currentId || 'work'}`;
-    try { localStorage.setItem(key, json); } catch (_) {}
-    setStatusMsg('✓ Trazado guardado en el proyecto');
-  }, [currentId]);
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    doSave();
+  }, [doSave]);
 
   const handleLoad = useCallback((e) => {
     const file = e.target.files?.[0];
@@ -373,7 +564,11 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
       }
       if (selElement.pendiente !== undefined) {
         setPendSel(prev => ({ ...prev, [activeNet]: selElement.pendiente }));
+        setPendInput(selElement.pendiente > 0 ? String(selElement.pendiente) : '');
       }
+    } else if (!selElement) {
+      const p = pendSel[activeNet];
+      setPendInput(p !== undefined && p > 0 ? String(p) : '');
     }
   }, [selElement?.id, activeNet]);
 
@@ -398,7 +593,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
         overflowX: "auto", overflowY: "hidden", justifyContent: "center",
       }}>
         <div style={{flex:1,minWidth:4}}/>
-        {visibleNets.map(n => {
+        {finalVisibleNets.map(n => {
           const isActive=activeNet===n.id;
           const isHidden=hiddenNets.has(n.id);
           return <div key={n.id} style={{display:'flex',alignItems:'center',gap:2,flexShrink:0}}>
@@ -406,13 +601,15 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
               title={`Red ${n.name}`}
               style={{
                 padding:"2px 8px", background:isActive?n.col+'22':"transparent",
-                border:`1px solid ${isActive?n.col:'#3a494a'}`,
+                borderTop:`1px solid ${isActive?n.col:'#3a494a'}`,
+                borderRight:`1px solid ${isActive?n.col:'#3a494a'}`,
+                borderBottom:`1px solid ${isActive?n.col:'#3a494a'}`,
                 borderLeft:`3px solid ${n.col}`,
                 borderRadius:"3px", color:isActive?n.col:"#849495",
                 cursor:"pointer", fontFamily:"'Geist',monospace", fontWeight:600,
                 fontSize:10, whiteSpace:"nowrap", opacity:isHidden?0.5:1,
               }}>
-              {n.lbl}
+              Red {n.name}
             </button>
             <button onClick={()=>{
               const next=new Set(hiddenNets);
@@ -445,6 +642,12 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
         background: "#14161a", borderRight: "1px solid #3a494a",
         overflowY: "auto", overflowX: "hidden",
       }}>
+        <div style={{
+          height: 3, flexShrink: 0, transition: 'background .3s',
+          background: saveStatus === 'saved' ? '#22c55e'
+            : saveStatus === 'saving' ? '#3b82f6'
+            : '#ef4444',
+        }} />
         {/* Herramientas */}
         <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Herramientas</div>
@@ -496,16 +699,21 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
             </button>
             <button onClick={handleSave} style={{ ...accBtn, width: "100%" }} title="Guarda los trazados y cambios realizados en el plano para la red activa">
               <span style={{ fontSize: 14 }}>💾</span>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, lineHeight: 1.1 }}>
-                <span style={{ fontSize: 10, fontWeight: 700 }}>Guardar</span>
-                <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Guardar trazados en el proyecto</span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 0, lineHeight: 1.1, flex: 1 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, textAlign: "left" }}>Guardar</span>
+                <span style={{
+                  fontSize: 10, fontWeight: 600, textAlign: "left",
+                  color: saveStatus === 'saved' ? '#22c55e' : saveStatus === 'saving' ? '#3b82f6' : '#ef4444',
+                }}>
+                  {saveStatus === 'saved' ? '✔ Guardado' : saveStatus === 'saving' ? '⏳ Guardando...' : '⚠ Sin guardar'}
+                </span>
               </div>
             </button>
-            <button onClick={handleUndo} style={{ ...accBtn, width: "100%" }} title="Deshace la última acción: eliminación de ramal o limpieza de red activa (Ctrl+Z)">
+            <button onClick={handleUndo} style={{ ...accBtn, width: "100%" }} title="Deshace el último elemento dibujado: ramal, bajante, área, cota o texto. (Ctrl+Z)">
               <span style={{ fontSize: 14 }}>↩</span>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, lineHeight: 1.1 }}>
                 <span style={{ fontSize: 10, fontWeight: 700 }}>Deshacer</span>
-                <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Ctrl+Z</span>
+                <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Último trazo · Ctrl+Z</span>
               </div>
             </button>
             <button onClick={handleClear} style={{ ...accBtn, width: "100%", borderColor: "rgba(255,180,171,.3)", color: "#ffb4ab" }} title="Eliminar todo el trazado de la red activa">
@@ -520,7 +728,15 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
         <div style={{ flex: 1 }} />
         {/* Close drawing */}
         <div style={{padding:"6px 8px",borderTop:"1px solid #3a494a"}}>
-          <button onClick={()=>window.location.href='#/civilflowareatrabajo'}
+        <button onClick={()=>{
+          if (engineRef.current) {
+const key = `civilflow_trazos_${currentIdRef.current || currentId || 'work'}`;
+            try { localStorage.setItem(key, engineRef.current.saveWork()); } catch (_) {}
+            try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
+try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
+          }
+          window.location.href = '#/civilflowareatrabajo';
+        }}
             style={{
               padding: "8px", background: "rgba(211,47,47,.12)", border: "1px solid rgba(211,47,47,.3)", borderRadius: "3px",
               color: "#ef5350", cursor: "pointer", fontFamily: "'Geist',monospace", fontWeight: 600,
@@ -529,7 +745,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
             }}
             onMouseEnter={e=>{e.currentTarget.style.background='rgba(211,47,47,.25)';e.currentTarget.style.borderColor='rgba(211,47,47,.5)'}}
             onMouseLeave={e=>{e.currentTarget.style.background='rgba(211,47,47,.12)';e.currentTarget.style.borderColor='rgba(211,47,47,.3)'}}>
-            ✕ Cerrar dibujo
+            <svg viewBox="0 0 22 22" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 3H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Cerrar dibujo
           </button>
         </div>
       </div>
@@ -544,8 +760,8 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
           position: "relative",
           display: currentFile && !error ? "inline-block" : "none",
         }}>
-          <div id="pdfWrap" style={{ transformOrigin: '0 0' }}>
-            <canvas ref={pdfCanvasRef} style={{ display: "block", background: "#fff" }} />
+          <div id="pdfWrap" style={{ transformOrigin: '0 0', imageRendering: 'pixelated' }}>
+            <canvas ref={pdfCanvasRef} style={{ display: "block", background: "#fff", imageRendering: 'pixelated' }} />
           </div>
           <canvas
             ref={drawCanvasRef}
@@ -669,7 +885,14 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
         {/* Piso */}
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Piso</div>
-          <select value={selectedNivel??''} onChange={e=>{setSelectedNivel(e.target.value?Number(e.target.value):null)}}
+          <select value={selectedNivel??''} onChange={e=>{
+            const v=e.target.value?Number(e.target.value):null;
+            setSelectedNivel(v);
+            if (v !== null) {
+              const idx = planos.findIndex(p => p.nivel === v && p.status === 'confirmed');
+              if (idx >= 0 && onSelectPlan) onSelectPlan(idx);
+            }
+          }}
             style={{width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace",cursor:'pointer'}}>
             <option value="">— Seleccionar piso —</option>
             {[...pisos].sort((a,b)=>b.n-a.n).map(s=>{
@@ -711,39 +934,57 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
               </button>
             ))}
           </div>
+          {tipoTramo === 'tributario' && (
+            <div style={{marginTop:8,padding:'8px 10px',background:padreTributarioId?'rgba(37,99,235,.12)':'#1e2024',border:`1px solid ${padreTributarioId?'#2563EB':'#3a494a'}`,borderRadius:3}}>
+              <div style={{fontSize:9,color:'#849495',fontFamily:"'Geist',monospace",textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>Padre (ramal asignado)</div>
+              <select value={padreTributarioId||''}
+                onChange={e=>{
+                  const v=e.target.value||null;
+                  setPadreTributarioId(v);
+                  if(engineRef.current)engineRef.current.setPadreTributario(v);
+                }}
+                style={{width:'100%',padding:'5px 8px',background:'#1a1c20',border:'1px solid #3a494a',borderRadius:3,color:padreTributarioId?'#2563EB':'#6b8cae',fontSize:11,fontFamily:"'Geist',monospace",cursor:'pointer'}}>
+                <option value="">— Seleccionar ramal padre —</option>
+                {drawnElements.filter(el=>el.type==='ramal'&&el.tipo==='ramal').map(el=>(
+                  <option key={el.id} value={el.id}>{el.label}{el.totalL?` · ${typeof el.totalL==='number'?el.totalL.toFixed(2):el.totalL}m`:''}</option>
+                ))}
+              </select>
+              {drawnElements.filter(el=>el.type==='ramal'&&el.tipo==='ramal').length===0 && (
+                <div style={{fontSize:10,color:'#ffb4ab',fontFamily:"'Geist',monospace",marginTop:6,lineHeight:1.4}}>
+                  No hay ramales principales en esta red. Dibuja primero un ramal antes de crear tributarios.
+                </div>
+              )}
+              {padreTributarioId && (
+                <div style={{fontSize:9,color:'#6b8cae',fontFamily:"'Geist',monospace",marginTop:4,lineHeight:1.4}}>
+                  El primer punto se conectará automáticamente al ramal seleccionado.
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Datos específicos */}
         {(() => {
-          const netObj = NETS.find(n => n.id === activeNet);
           const matList = mats?.[activeNet] || [];
-          const matName = matList[0]?.val || '—';
-          const diamList = DIAM_BY_MAT[matName] || [];
+          const matShort = matList[0]?.val || '—';
+          const matName = matLongName(matShort);
+          const diamList = DIAM_BY_MAT[matShort] || [];
           const isSelActiveNet = selElement && selElement.net === activeNet;
           const currentDiam = (isSelActiveNet && selElement.diametro !== undefined && selElement.diametro !== '')
             ? selElement.diametro
             : (diamSel[activeNet] || DIAM_DEFAULT_BY_NET[activeNet] || (diamList[0]?.n || ''));
-          const showPend = activeNet === 'san' || activeNet === 'll';
-          const currentPend = (isSelActiveNet && selElement.pendiente !== undefined)
-            ? selElement.pendiente
-            : (pendSel[activeNet] !== undefined ? pendSel[activeNet] : 2.0);
+        const showPend = activeNet === 'san' || activeNet === 'll';
           return (
             <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
               <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos específicos</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: netObj?.col || '#849495', flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: '#849495', fontFamily: "'Geist',monospace" }}>Red:</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: netObj?.col || '#b9caca', fontFamily: "'Geist',monospace" }}>{netObj?.name || activeNet}</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '3px 8px', background: '#1a1c20', border: '1px solid #282a2e', borderRadius: 3 }}>
+                  <span style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0 }}>Material</span>
+                  <span style={{ fontSize: 10, color: '#b9caca', fontFamily: "'Geist',monospace", fontWeight: 600, textAlign: 'right', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={matName}>{matName}</span>
                 </div>
-                <div>
-                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Tubería</div>
-                  <div style={{ padding: '5px 8px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#b9caca', fontSize: 12, fontFamily: "'Geist',monospace", fontWeight: 600 }}>
-                    {matName}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Diámetro Nominal</div>
+                <div style={{ display: 'grid', gridTemplateColumns: showPend ? '1fr 1fr' : '1fr', gap: 6 }}>
+                  <div>
+                    <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Diámetro</div>
         {diamList.length > 0 ? (
           <select value={currentDiam}
           onChange={e => {
@@ -763,67 +1004,137 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
               }
             }
           }}
-          style={{ width: '100%', padding: "5px 8px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+          style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' }}>
           {diamList.map(d => <option key={d.n} value={d.n}>{d.n.split(' — ')[0]}</option>)}
           </select>
                   ) : (
-                    <div style={{ padding: '5px 8px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#6b8cae', fontSize: 11, fontFamily: "'Geist',monospace" }}>— Sin opciones —</div>
+                    <div style={{ padding: '4px 6px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#6b8cae', fontSize: 11, fontFamily: "'Geist',monospace" }}>— Sin opciones —</div>
                   )}
                 </div>
-                {showPend && (
-                  <div>
-                    <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2 }}>Pendiente (%)</div>
-                    <input type="number" step="0.1" min="0" max="100" value={currentPend}
-          onChange={e => {
-            const v = parseFloat(e.target.value) || 0;
-            setPendSel(prev => ({ ...prev, [activeNet]: v }));
-            if (engineRef.current && selElement) {
-              engineRef.current.updateSelected({ pendiente: v });
-              setSelElement({ ...selElement, pendiente: v });
-            } else if (engineRef.current && !selElement) {
-              const eng = engineRef.current;
-              const lastRamal = [...eng.ramales].reverse().find(r => r.net === activeNet);
-              if (lastRamal) {
-                eng.selId = lastRamal.id;
-                eng.updateSelected({ pendiente: v });
-                const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = lastRamal;
-                setSelElement({ ...rest, pendiente: v });
-              }
-            }
-          }}
-                      style={{ width: '100%', padding: "5px 8px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", textAlign: 'center' }}
-                    />
+        {showPend && (
+          <div>
+            <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Pendiente %</div>
+            <input type="text" inputMode="decimal" value={pendInput}
+              onChange={e => {
+                const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+                setPendInput(raw);
+              }}
+              onBlur={e => {
+                const v = parseFloat(e.target.value.replace(/,/g, '.')) || 0;
+                setPendInput(v > 0 ? String(v) : '');
+                setPendSel(prev => ({ ...prev, [activeNet]: v }));
+                if (engineRef.current && selElement) {
+                  engineRef.current.updateSelected({ pendiente: v });
+                  setSelElement({ ...selElement, pendiente: v });
+                } else if (engineRef.current && !selElement) {
+                  const eng = engineRef.current;
+                  const lastRamal = [...eng.ramales].reverse().find(r => r.net === activeNet);
+                  if (lastRamal) {
+                    eng.selId = lastRamal.id;
+                    eng.updateSelected({ pendiente: v });
+                    const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = lastRamal;
+                    setSelElement({ ...rest, pendiente: v });
+                  }
+                }
+              }}
+              onFocus={() => {
+                const current = (isSelActiveNet && selElement?.pendiente !== undefined)
+                  ? selElement.pendiente
+                  : (pendSel[activeNet] !== undefined ? pendSel[activeNet] : 2.0);
+                setPendInput(current > 0 ? String(current) : '');
+              }}
+            style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", textAlign: 'center' }}
+            />
                   </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           );
         })()}
 
+        {/* Cuantificación de aparatos */}
+        <AparatosPanel activeNet={activeNet} selElement={selElement} />
+
         {/* Datos del tramo */}
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos del tramo</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", textTransform: "uppercase", letterSpacing: 1 }}>Datos del tramo</div>
+            {selElement && (selElement.pts || selElement.id?.startsWith('T')) && (
+              <button onClick={handleRotateLabel} title="Rotar etiqueta (0°/45°/90°/-90°/-45°)" style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '2px 6px', background: 'rgba(168,85,247,.1)',
+                border: '1px solid rgba(168,85,247,.35)', borderRadius: 3,
+                color: '#A855F7', cursor: 'pointer',
+                fontFamily: "'Geist',monospace", fontSize: 9, fontWeight: 700,
+              }}>
+                <span style={{ fontSize: 12, lineHeight: 1 }}>↻</span>
+                <span>{selElement.labelAngle || selElement.textAngle || 0}°</span>
+              </button>
+            )}
+          </div>
           {selElement ? (
             <div style={{display:'flex',flexDirection:'column',gap:5}}>
-              {selElement.label&&(
+              {selElement.label&&!(
+                selElement.id?.startsWith('R') && selElement.pts
+              )&&(
                 <div style={{fontSize:13,fontWeight:600,color:'#b9caca',fontFamily:"'Geist',monospace",padding:'2px 0'}}>
                   {selElement.label}
                 </div>
               )}
-              {!selElement.id?.startsWith('AR')&&!selElement.id?.startsWith('T')&&(
-                <input value={selElement.label||''} placeholder="Nombre del tramo"
-                  onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({label:v});setSelElement({...selElement,label:v})}}}
-                  style={{width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace"}}/>
+              {selElement.id?.startsWith('R') && selElement.pts && (
+                <div style={{display:'grid',gridTemplateColumns:'1.4fr 1fr 1fr',gap:3}}>
+                  <div>
+                    <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Nombre</div>
+                    <input value={selElement.label||''} placeholder="Tramo"
+                      onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({label:v});setSelElement({...selElement,label:v})}}}
+                      style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Ini</div>
+                    <input value={selElement.ini||''} placeholder="— ini —"
+                      onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({ini:v});setSelElement({...selElement,ini:v})}}}
+                      style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Fin</div>
+                    <input value={selElement.fin||''} placeholder="— fin —"
+                      onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({fin:v});setSelElement({...selElement,fin:v})}}}
+                      style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
+                  </div>
+                </div>
               )}
               {selElement.id?.startsWith('B')&&(
-                <input value={selElement.code||''} placeholder="Código bajante"
-                  onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({code:v});setSelElement({...selElement,code:v})}}}
-                  style={{width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace"}}/>
+                <div>
+                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Código</div>
+                  <input value={selElement.code||''} placeholder="Código bajante"
+                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({code:v});setSelElement({...selElement,code:v})}}}
+                    style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
+                </div>
               )}
               {selElement.id?.startsWith('T')&&(
-                <input value={selElement.text||''} placeholder="Texto"
-                  onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({text:v});setSelElement({...selElement,text:v})}}}
-                  style={{width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace"}}/>
+                <div>
+                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Texto</div>
+                  <input value={selElement.text||''} placeholder="Texto"
+                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({text:v});setSelElement({...selElement,text:v})}}}
+                    style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
+                </div>
+              )}
+              {selElement.id?.startsWith('AR')&&(
+                <div>
+                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Etiqueta</div>
+                  <input value={selElement.label||''} placeholder="Etiqueta área"
+                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({label:v});setSelElement({...selElement,label:v})}}}
+                    style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
+                </div>
+              )}
+              {selElement.pts && (activeNet === 'gas' || activeNet === 'ac' || activeNet === 'af') && (
+                <div>
+                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>ΔZ / L vert (m)</div>
+                  <input type="number" step="0.01" value={selElement.dz ?? ''} placeholder="0.00"
+                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({dz:v,lvert:v});setSelElement({...selElement,dz:v,lvert:v})}}}
+                    style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",textAlign:'center',minWidth:0}}/>
+                </div>
               )}
               {selElement.pts&&(
                 <div style={{fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace"}}>

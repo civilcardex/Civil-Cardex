@@ -12,7 +12,8 @@ export const NETS = [
 ];
 
 export const APARATO_EMOJI = {
-  san: '🚽',
+sif: '🔧',
+san: '🚽',
   lvm: '👐',
   duc: '🚿',
   lvp: '🍽',
@@ -20,6 +21,7 @@ export const APARATO_EMOJI = {
   lvra: '👕',
   sec: '👕',
   lvro: '👖',
+  nev: '🧊',
   ori: '🚹',
   est4: '🍳',
   est2: '🍳',
@@ -50,6 +52,7 @@ export default class PlanoEngine {
     this.zoom = 1;
     this.offX = 0;
     this.offY = 0;
+    this.dpr = 1;
     this.tool = 'sel';
     this.activeNet = 'af';
     this.tipoTramo = 'ramal';
@@ -64,6 +67,7 @@ export default class PlanoEngine {
     this.bajantes = [];
     this.areas = [];
     this.activeRamal = null;
+    this.padreTributario = null;
     this.activeArea = null;
     this.selId = null;
     this.areaDrag = null;
@@ -80,10 +84,20 @@ export default class PlanoEngine {
     this._dimStart = null;
     this.nivelActual = null;
     this.nptLevels = [];
-    this._hiddenNets = new Set();
+this._hiddenNets = new Set();
+this._loadedPlanId = null;
+this._onDirtyCb = null;
 
     this._netCounts = {};
     NETS.forEach(n => { this._netCounts[n.id] = { ramal: 0, tributario: 0 }; });
+
+    this.MM = {
+      lblName: 2.5,
+      lblInfo: 1.8,
+      lblCode: 2.0,
+      flowEmoji: 3.0,
+      coord: 1.8,
+    };
 
     this._onDown = this._onDown.bind(this);
     this._onMove = this._onMove.bind(this);
@@ -105,11 +119,15 @@ export default class PlanoEngine {
 
     this._onSelectCb = null;
     this._onStatusCb = null;
+    this._dirty = false;
+
+    this._loadedPlanId = null;
   }
 
-  onSelect(cb) { this._onSelectCb = cb; }
-  onStatus(cb) { this._onStatusCb = cb; }
-  onUpdate(cb) { this._onUpdateCb = cb; }
+onSelect(cb) { this._onSelectCb = cb; }
+onStatus(cb) { this._onStatusCb = cb; }
+onUpdate(cb) { this._onUpdateCb = cb; }
+onDirty(cb) { this._onDirtyCb = cb; }
 
   selectById(id) {
     const found = this.ramales.find(r => r.id === id) || this.bajantes.find(b => b.id === id) ||
@@ -169,8 +187,12 @@ export default class PlanoEngine {
   }
 
   resizeCanvas(w, h) {
-    this.canv.width = w;
-    this.canv.height = h;
+    const dpr = this.dpr || 1;
+    this.canv.width = Math.floor(w * dpr);
+    this.canv.height = Math.floor(h * dpr);
+    this.canv.style.width = w + 'px';
+    this.canv.style.height = h + 'px';
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.render();
   }
 
@@ -193,17 +215,23 @@ export default class PlanoEngine {
   toCvs(px, py) { return { x: px * this.zoom + this.offX, y: py * this.zoom + this.offY }; }
   toPlane(cx, cy) { return { x: (cx - this.offX) / this.zoom, y: (cy - this.offY) / this.zoom }; }
   pxToM(px) { return +(px / 96 * 2.54 * this.scaleM).toFixed(3); }
+  mm2cvs(mm) { return mm * 96 / 25.4 * this.zoom; }
 
   _emitStatus(msg) {
     if (this._onStatusCb) this._onStatusCb(msg);
   }
 
-  _emitSelect(el) {
-    if (!this._onSelectCb) return;
-    if (!el) { this._onSelectCb(null); return; }
-    const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = el;
-    this._onSelectCb(rest);
-  }
+_emitSelect(el) {
+if (!this._onSelectCb) return;
+if (!el) { this._onSelectCb(null); return; }
+const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = el;
+this._onSelectCb(rest);
+}
+
+_markDirty() {
+this._dirty = true;
+if (this._onDirtyCb) this._onDirtyCb();
+}
 
   setTool(t) {
     if (this.activeRamal && this.activeRamal.pts.length >= 2 && t !== 'line') this.finishRamal();
@@ -218,6 +246,22 @@ export default class PlanoEngine {
   setActiveNet(id) { this.activeNet = id; }
   setTipoTramo(t) { this.tipoTramo = t; }
   setSnap(v) { this.snapMode = v; }
+
+  setPadreTributario(ramalId) {
+    if (this.tipoTramo !== 'tributario') return;
+    const padre = this.ramales.find(r => r.id === ramalId && r.net === this.activeNet && r.tipo === 'ramal');
+    this.padreTributario = padre ? padre.id : null;
+    this.render();
+  }
+
+  getPadreTributario() {
+    if (!this.padreTributario) return null;
+    return this.ramales.find(r => r.id === this.padreTributario) || null;
+  }
+
+  getRamalesPadre() {
+    return this.ramales.filter(r => r.net === this.activeNet && r.tipo === 'ramal');
+  }
   setRamalDefaults(d) {
     this._ramalDefaults = {
       material: d?.material || '',
@@ -286,6 +330,27 @@ export default class PlanoEngine {
       }
     });
     return best;
+  }
+
+  _snapToSegment(x, y, pts) {
+    let best = null, minD = Infinity;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
+      const ddx = x2 - x1, ddy = y2 - y1, len2 = ddx * ddx + ddy * ddy;
+      if (len2 < 1) continue;
+      const t = Math.max(0, Math.min(1, ((x - x1) * ddx + (y - y1) * ddy) / len2));
+      const px = x1 + t * ddx, py = y1 + t * ddy;
+      const d = Math.hypot(x - px, y - py);
+      if (d < minD) { minD = d; best = { x: px, y: py }; }
+    }
+    return best;
+  }
+
+  snapPreviewToPadre(x, y) {
+    if (this.tipoTramo !== 'tributario' || !this.padreTributario || this.activeRamal) return null;
+    const padre = this.ramales.find(r => r.id === this.padreTributario);
+    if (!padre) return null;
+    return this._snapToSegment(x, y, padre.pts);
   }
 
   selectAt(cx, cy) {
@@ -388,10 +453,11 @@ export default class PlanoEngine {
   _nextLabel() {
     const net = NETS.find(n => n.id === this.activeNet);
     const pfx = net ? net.lbl : 'R';
-    const cnt = ++(this._netCounts[this.activeNet][this.tipoTramo]);
+    const cnt = this._netCounts[this.activeNet][this.tipoTramo] || 0;
     if (this.tipoTramo === 'tributario') {
-      const padre = this.activeRamal?.padre;
-      return `Tr${padre || cnt}-${cnt}`;
+      const padreId = this.activeRamal?.padre;
+      const padreR = padreId ? this.ramales.find(r => r.id === padreId) : null;
+      return padreR ? (padreR.label || padreR.id || `R${cnt}`) : `R${cnt}`;
     }
     return `${pfx}${cnt}`;
   }
@@ -401,8 +467,14 @@ export default class PlanoEngine {
     if (this.activeRamal.pts.length < 2) { this.activeRamal = null; this._emitStatus(this._statusMsg()); this.render(); return; }
     const [mx, my] = this._midpoint(this.activeRamal.pts);
     const def = this._ramalDefaults || {};
+    const net = NETS.find(n => n.id === this.activeRamal.net);
+    const netPfx = net ? net.lbl : 'R';
+    const cnt = ++(this._netCounts[this.activeRamal.net][this.tipoTramo]);
+    const id = this.tipoTramo === 'tributario'
+      ? 'T' + cnt
+      : netPfx + cnt;
     const r = {
-      id: 'R' + Date.now(),
+      id: id,
       net: this.activeRamal.net,
       tipo: this.activeRamal.tipo,
       padre: this.activeRamal.padre,
@@ -411,7 +483,7 @@ export default class PlanoEngine {
       label: this._nextLabel(),
       ini: '', fin: '', piso: '', dz: '', uc: 0,
       labelX: mx, labelY: my,
-      labelAngle: this._strokeAngle(this.activeRamal.pts),
+      labelAngle: 0,
       material: def.material || '',
       diametro: def.diametro || '',
       pendiente: typeof def.pendiente === 'number' ? def.pendiente : 0,
@@ -422,12 +494,14 @@ export default class PlanoEngine {
     this._emitSelect(r);
     this._emitStatus(this._statusMsg());
     this.render();
+    this._markDirty();
   }
 
   cancelRamal() {
     this.activeRamal = null;
     this._emitStatus(this._statusMsg());
     this.render();
+    this._markDirty();
   }
 
   undoLast() {
@@ -447,6 +521,7 @@ export default class PlanoEngine {
     this.selId = null;
     this._emitSelect(null);
     this.render();
+    this._markDirty();
   }
 
   cancelArea() {
@@ -512,6 +587,7 @@ export default class PlanoEngine {
       if (!stillExists) { this.selId = null; this._emitSelect(null); }
     }
     this.render();
+    this._markDirty();
   }
 
   getSelected() {
@@ -573,7 +649,6 @@ export default class PlanoEngine {
         const [mx, my] = this._midpoint(el.pts);
         el.labelX = mx;
         el.labelY = my;
-        el.labelAngle = this._strokeAngle(el.pts);
       }
     }
     this.render();
@@ -587,7 +662,6 @@ export default class PlanoEngine {
         const [mx, my] = this._midpoint(el.pts);
         el.labelX = mx;
         el.labelY = my;
-        el.labelAngle = this._strokeAngle(el.pts);
       }
       this.selId = id;
     }
@@ -597,26 +671,32 @@ export default class PlanoEngine {
   rotateLabelSnap() {
     const el = this.getSelected();
     if (!el) return;
+    const ANGLES = [0, 45, 90, -90, -45];
     if (el.id?.startsWith('T')) {
-      el.textAngle = ((el.textAngle || 0) + 45) % 360;
+      const cur = el.textAngle || 0;
+      const idx = ANGLES.reduce((b, a, i) => Math.abs(cur - a) < Math.abs(cur - ANGLES[b]) ? i : b, 0);
+      el.textAngle = ANGLES[(idx + 1) % ANGLES.length];
     } else {
-      el.labelAngle = ((el.labelAngle || 0) + 45) % 360;
+      const cur = el.labelAngle || 0;
+      const idx = ANGLES.reduce((b, a, i) => Math.abs(cur - a) < Math.abs(cur - ANGLES[b]) ? i : b, 0);
+      el.labelAngle = ANGLES[(idx + 1) % ANGLES.length];
     }
+    this._emitSelect(el);
     this.render();
   }
 
   deleteSelected() {
     if (!this.selId) return;
     const idxR = this.ramales.findIndex(r => r.id === this.selId);
-    if (idxR >= 0) { this.ramales.splice(idxR, 1); this.selId = null; this._emitSelect(null); this.render(); return; }
+    if (idxR >= 0) { this.ramales.splice(idxR, 1); this.selId = null; this._emitSelect(null); this.render(); this._markDirty(); return; }
     const idxB = this.bajantes.findIndex(b => b.id === this.selId);
-    if (idxB >= 0) { this.bajantes.splice(idxB, 1); this.selId = null; this._emitSelect(null); this.render(); return; }
+    if (idxB >= 0) { this.bajantes.splice(idxB, 1); this.selId = null; this._emitSelect(null); this.render(); this._markDirty(); return; }
     const idxT = this.textAnnots.findIndex(t => t.id === this.selId);
-    if (idxT >= 0) { this.textAnnots.splice(idxT, 1); this.selId = null; this._emitSelect(null); this.render(); return; }
+    if (idxT >= 0) { this.textAnnots.splice(idxT, 1); this.selId = null; this._emitSelect(null); this.render(); this._markDirty(); return; }
     const idxA = this.areas.findIndex(a => a.id === this.selId);
-    if (idxA >= 0) { this.areas.splice(idxA, 1); this.selId = null; this._emitSelect(null); this.render(); return; }
+    if (idxA >= 0) { this.areas.splice(idxA, 1); this.selId = null; this._emitSelect(null); this.render(); this._markDirty(); return; }
     const idxD = this.dims.findIndex(d => d.id === this.selId);
-    if (idxD >= 0) { this.dims.splice(idxD, 1); this.selId = null; this._emitSelect(null); this.render(); return; }
+    if (idxD >= 0) { this.dims.splice(idxD, 1); this.selId = null; this._emitSelect(null); this.render(); this._markDirty(); return; }
   }
 
   resetLabel() {
@@ -626,7 +706,7 @@ export default class PlanoEngine {
       const [mx, my] = this._midpoint(el.pts);
       el.labelX = mx;
       el.labelY = my;
-      el.labelAngle = this._strokeAngle(el.pts);
+      el.labelAngle = 0;
     } else {
       el.labelX = el.x;
       el.labelY = el.y;
@@ -691,6 +771,22 @@ export default class PlanoEngine {
       this.selId = null;
       this.activeRamal = null;
       this.activeArea = null;
+      this._netCounts = {};
+      NETS.forEach(n => { this._netCounts[n.id] = { ramal: 0, tributario: 0 }; });
+      for (const r of this.ramales) {
+        const net = NETS.find(n => n.id === r.net);
+        if (net && r.tipo !== 'tributario') {
+          const m = r.id?.match(new RegExp('^' + net.lbl + '(\\d+)$'));
+          if (m) {
+            const n = parseInt(m[1], 10);
+            if (n > (this._netCounts[r.net]?.[r.tipo] || 0)) {
+              if (!this._netCounts[r.net]) this._netCounts[r.net] = { ramal: 0, tributario: 0 };
+              this._netCounts[r.net][r.tipo] = n;
+            }
+          }
+        }
+      }
+      this._dirty = false;
       this.render();
     } catch (e) { console.error('Error loading work:', e); }
   }
@@ -850,13 +946,22 @@ if (this.tool === 'sel') {
 
 if (this.tool === 'line') {
   let pt = { x: p.x, y: p.y };
+  if (this.tipoTramo === 'tributario' && !this.padreTributario) {
+    this._emitStatus('Selecciona primero un ramal PADRE en el panel derecho');
+    return;
+  }
   if (!this.activeRamal) {
-    const sp = this.snapToExisting(pt.x, pt.y);
-    if (sp) pt = sp;
+    if (this.tipoTramo === 'tributario' && this.padreTributario) {
+      const sp = this.snapToExisting(pt.x, pt.y);
+      if (sp) pt = sp;
+    } else {
+      const sp = this.snapToExisting(pt.x, pt.y);
+      if (sp) pt = sp;
+    }
     this.activeRamal = {
       net: this.activeNet,
       tipo: this.tipoTramo,
-      padre: null,
+      padre: this.tipoTramo === 'tributario' ? this.padreTributario : null,
       pts: [[pt.x, pt.y]],
       totalL: 0,
     };
@@ -872,6 +977,13 @@ if (this.tool === 'line') {
       return;
     }
     if (this.snapMode) pt = this.snapAngle(last[0], last[1], pt.x, pt.y);
+    if (this.tipoTramo === 'tributario' && this.padreTributario) {
+      const padre = this.ramales.find(r => r.id === this.padreTributario);
+      if (padre) {
+        const sp = this._snapToSegment(pt.x, pt.y, padre.pts);
+        if (sp) pt = sp;
+      }
+    }
     const sp = this.snapToExisting(pt.x, pt.y);
     if (sp) pt = sp;
     const segPx = Math.hypot(pt.x - last[0], pt.y - last[1]);
@@ -899,7 +1011,7 @@ if (this.tool === 'line') {
     if (this.tool === 'text') {
       const t = prompt('Texto:');
       if (t) {
-        this.textAnnots.push({ id: 'T' + Date.now(), x: p.x, y: p.y, text: t, fontSize: 12, boxW: 0, lblOffX: 0, lblOffY: 0, textAngle: 0 });
+        this.textAnnots.push({ id: 'T' + Date.now(), x: p.x, y: p.y, text: t, fontMm: 2.5, boxW: 0, lblOffX: 0, lblOffY: 0, textAngle: 0 });
         this.render();
       }
       return;
@@ -910,11 +1022,12 @@ if (this.tool === 'line') {
       const bType = net?.bmType || 'bajante';
       const bPfx = net?.bmPfx || 'B';
       const cnt = this.bajantes.filter(b => b.net === this.activeNet).length + 1;
+      const bajId = bPfx + cnt;
       this.bajantes.push({
-        id: 'B' + Date.now(),
+        id: bajId,
         net: this.activeNet,
         tipo: bType,
-        code: `${bPfx}${cnt}`,
+        code: bajId,
         x: p.x, y: p.y,
         pisoBase: '', pisoCima: '',
         nptBase: 0, nptCima: 0,
@@ -927,6 +1040,7 @@ if (this.tool === 'line') {
         labelX: p.x, labelY: p.y + 20,
       });
       this.render();
+      this._markDirty();
       return;
     }
 
@@ -1044,7 +1158,6 @@ if (this.tool === 'line') {
           const [mx, my] = this._midpoint(r.pts);
           r.labelX = mx;
           r.labelY = my;
-          r.labelAngle = this._strokeAngle(r.pts);
           this.render();
         }
         return;
@@ -1140,6 +1253,9 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
     if (this.pdfWrap) {
       this.pdfWrap.style.transform = `translate(${this.offX}px,${this.offY}px) scale(${this.zoom})`;
       this.pdfWrap.style.transformOrigin = '0 0';
+      this.pdfWrap.style.imageRendering = 'pixelated';
+      this.pdfWrap.style.imageRendering = 'crisp-edges';
+      this.pdfWrap.style.willChange = 'transform';
     }
 
     this._drawDims(ctx);
@@ -1181,7 +1297,7 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
 
       const mx = (c1.x + c2.x) / 2, my = (c1.y + c2.y) / 2;
       const txt = `${d.L}m`;
-      ctx.font = '11px Geist, monospace';
+      ctx.font = `${this.mm2cvs(this.MM.lblInfo)}px Geist, monospace`;
       const tw = ctx.measureText(txt).width;
       ctx.fillStyle = 'rgba(17,19,23,0.75)';
       ctx.fillRect(mx - tw / 2 - 4, my - 8, tw + 8, 16);
@@ -1197,7 +1313,7 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
     this.textAnnots.forEach(t => {
       const c = this.toCvs(t.x + (t.lblOffX || 0), t.y + (t.lblOffY || 0));
       const sel = t.id === this.selId;
-      const fs = (t.fontSize || 12) * this.zoom;
+      const fs = this.mm2cvs(t.fontMm || 2.5);
       const angle = (t.textAngle || 0) * Math.PI / 180;
       ctx.save();
       ctx.translate(c.x, c.y);
@@ -1280,9 +1396,11 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
         ctx.rotate(aAngle);
         const displayLabel = a.label || '';
         const areaLabel = a.areaM2 ? `${a.areaM2} m²` : '';
-        ctx.font = 'bold 11px Geist, monospace';
+        const aFs = this.mm2cvs(this.MM.lblName);
+        const aFsSub = this.mm2cvs(this.MM.lblInfo);
+        ctx.font = `bold ${aFs}px Geist, monospace`;
         const tw = Math.max(ctx.measureText(displayLabel).width, ctx.measureText(areaLabel).width);
-        const aBoxW = tw + 10, aBoxH = areaLabel ? 30 : 22;
+        const aBoxW = tw + 10, aBoxH = areaLabel ? aFs + aFsSub + 10 : aFs + 8;
         const aCosA = Math.cos(aAngle), aSinA = Math.sin(aAngle);
         const aCorners = [
           { x: lx.x + aCosA * (-aBoxW / 2) - aSinA * (-16 - aBoxH / 2), y: lx.y + aSinA * (-aBoxW / 2) + aCosA * (-16 - aBoxH / 2) },
@@ -1303,11 +1421,11 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
         ctx.fillStyle = sel ? '#00dce5' : '#e2e2e8';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        if (displayLabel) ctx.fillText(displayLabel, 0, areaLabel ? -4 : 0);
+        if (displayLabel) ctx.fillText(displayLabel, 0, areaLabel ? -aFsSub / 2 - 2 : 0);
         if (areaLabel) {
-          ctx.font = 'bold 10px Geist, monospace';
+          ctx.font = `bold ${aFsSub}px Geist, monospace`;
           ctx.fillStyle = '#ffffff';
-          ctx.fillText(areaLabel, 0, displayLabel ? 8 : 8);
+          ctx.fillText(areaLabel, 0, displayLabel ? aFs / 2 + 2 : 0);
         }
         ctx.restore();
       } else {
@@ -1391,11 +1509,14 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
   }
 
   _drawRamales(ctx) {
+    const isTributarioMode = this.tipoTramo === 'tributario' && this.tool === 'line';
+    const padreId = this.padreTributario;
     this.ramales.forEach(r => {
       if (this._hiddenNets.has(r.net)) return;
       const net = NETS.find(n => n.id === r.net);
       const col = net ? net.col : '#e2e2e8';
       const sel = r.id === this.selId;
+      const isPadre = r.id === padreId;
       ctx.save();
       ctx.strokeStyle = col;
       ctx.lineWidth = sel ? 3 : 2;
@@ -1403,14 +1524,42 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
       ctx.lineJoin = 'round';
 
       if (r.pts.length > 1) {
-        ctx.beginPath();
-        const f = this.toCvs(r.pts[0][0], r.pts[0][1]);
-        ctx.moveTo(f.x, f.y);
-        for (let i = 1; i < r.pts.length; i++) {
-          const c = this.toCvs(r.pts[i][0], r.pts[i][1]);
-          ctx.lineTo(c.x, c.y);
+        if (isPadre && isTributarioMode) {
+          ctx.save();
+          ctx.setLineDash([6, 4]);
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = col;
+          ctx.beginPath();
+          const f = this.toCvs(r.pts[0][0], r.pts[0][1]);
+          ctx.moveTo(f.x, f.y);
+          for (let i = 1; i < r.pts.length; i++) {
+            const c = this.toCvs(r.pts[i][0], r.pts[i][1]);
+            ctx.lineTo(c.x, c.y);
+          }
+          ctx.stroke();
+          ctx.restore();
+        } else if (r.tipo === 'tributario') {
+          ctx.save();
+          ctx.setLineDash([6, 4]);
+          ctx.beginPath();
+          const f = this.toCvs(r.pts[0][0], r.pts[0][1]);
+          ctx.moveTo(f.x, f.y);
+          for (let i = 1; i < r.pts.length; i++) {
+            const c = this.toCvs(r.pts[i][0], r.pts[i][1]);
+            ctx.lineTo(c.x, c.y);
+          }
+          ctx.stroke();
+          ctx.restore();
+        } else {
+          ctx.beginPath();
+          const f = this.toCvs(r.pts[0][0], r.pts[0][1]);
+          ctx.moveTo(f.x, f.y);
+          for (let i = 1; i < r.pts.length; i++) {
+            const c = this.toCvs(r.pts[i][0], r.pts[i][1]);
+            ctx.lineTo(c.x, c.y);
+          }
+          ctx.stroke();
         }
-        ctx.stroke();
       }
 
       r.pts.forEach(([px, py]) => {
@@ -1420,6 +1569,50 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
         ctx.arc(c.x, c.y, 3, 0, Math.PI * 2);
         ctx.fill();
       });
+
+      if (isPadre && isTributarioMode && !this.activeRamal && r.pts.length >= 2) {
+        const mp = this.snapPreviewToPadre(this.mouseX, this.mouseY);
+        if (mp) {
+          const c = this.toCvs(mp.x, mp.y);
+          ctx.save();
+          ctx.fillStyle = col;
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, 5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      if (r.pts.length >= 2) {
+        const cStart = this.toCvs(r.pts[0][0], r.pts[0][1]);
+        const cEnd = this.toCvs(r.pts[r.pts.length - 1][0], r.pts[r.pts.length - 1][1]);
+        const drawEndMarker = (c, label) => {
+          if (!label) return;
+          ctx.save();
+          ctx.font = `bold ${this.mm2cvs(1.6)}px Geist, monospace`;
+          const tw = ctx.measureText(label).width;
+          const pad = 3;
+          const w = tw + pad * 2;
+          const h = this.mm2cvs(2.4) + pad * 2;
+          ctx.fillStyle = 'rgba(17,19,23,0.85)';
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.rect(c.x + 6, c.y - h / 2, w, h);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = col;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(label, c.x + 6 + pad, c.y);
+          ctx.restore();
+        };
+        drawEndMarker(cStart, r.ini);
+        drawEndMarker(cEnd, r.fin);
+      }
 
         if (r.label || r.totalL || r.material || r.diametro || r.pendiente) {
         const lc = this.toCvs(r.labelX, r.labelY);
@@ -1437,24 +1630,26 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
         const isVertical = Math.abs(flowDx) < VERT_THRESH && flowLen > 12;
         const arrowSize = showFlow && flowLen > 12 ? 34 : 0;
         const lbl = r.label || '';
-        const lblPart = r.totalL ? `${r.totalL}m` : '';
+        const lblPart = r.totalL ? `${r.totalL.toFixed(2)}m` : '';
         const pPart = r.pendiente ? `S=${r.pendiente}%` : '';
         const dPart = r.diametro ? `D=${r.diametro}` : '';
         const matPart = r.material || '';
         const preInfo = [lblPart, pPart].filter(Boolean).join(' · ');
         const postInfo = matPart;
 
-        const lineHName = 14;
-        const lineHInfo = 16;
-        const boxPadX = 8;
-        const boxPadY = 4;
-        ctx.font = `bold 12px Geist, monospace`;
+        const fsName = this.mm2cvs(this.MM.lblName);
+        const fsInfo = this.mm2cvs(this.MM.lblInfo);
+        const lineHName = fsName + 2;
+        const lineHInfo = fsInfo + 4;
+        const boxPadX = this.mm2cvs(1.0);
+        const boxPadY = this.mm2cvs(0.6);
+        ctx.font = `bold ${fsName}px Geist, monospace`;
         const nameW = lbl ? ctx.measureText(lbl).width : 0;
-        ctx.font = `600 9px Geist, monospace`;
+        ctx.font = `600 ${fsInfo}px Geist, monospace`;
         const preW = preInfo ? ctx.measureText(preInfo).width : 0;
-        ctx.font = `bold 12px Geist, monospace`;
+        ctx.font = `bold ${fsName}px Geist, monospace`;
         const dW = dPart ? ctx.measureText(dPart).width : 0;
-        ctx.font = `600 9px Geist, monospace`;
+        ctx.font = `600 ${fsInfo}px Geist, monospace`;
         const postW = postInfo ? ctx.measureText(postInfo).width : 0;
         const sep1W = (preInfo && dPart) ? ctx.measureText(' · ').width : 0;
         const sep2W = (dPart && postInfo) ? ctx.measureText(' · ').width : 0;
@@ -1464,17 +1659,16 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
         const boxH = (lbl ? lineHName : 0) + ((preInfo || dPart || postInfo) ? lineHInfo : 0) + boxPadY * 2;
         const RIGHT_GAP = 10;
         const ARROW_GAP = 8;
-        let drawX, drawY, labelAngle;
+        let drawX, drawY;
         if (isVertical) {
           const arrowSpace = showFlow ? arrowSize + ARROW_GAP : 0;
           drawX = lc.x + RIGHT_GAP + arrowSpace + boxW / 2;
           drawY = lc.y;
-          labelAngle = 0;
         } else {
           drawX = lc.x;
           drawY = lc.y - (boxH / 2 + 4);
-          labelAngle = (r.labelAngle || 0) * Math.PI / 180;
         }
+        const labelAngle = (r.labelAngle || 0) * Math.PI / 180;
 
         const cosA = Math.cos(labelAngle), sinA = Math.sin(labelAngle);
         const hw = boxW / 2, hh = boxH / 2;
@@ -1501,7 +1695,7 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         if (lbl) {
-          ctx.font = `bold 12px Geist, monospace`;
+          ctx.font = `bold ${fsName}px Geist, monospace`;
           ctx.fillStyle = col;
           ctx.fillText(lbl, 0, -boxH / 2 + boxPadY + lineHName / 2);
         }
@@ -1510,35 +1704,35 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
           let xCursor = -totalInfoW / 2;
           const yInfo = boxH / 2 - boxPadY - lineHInfo / 2;
           if (preInfo) {
-            ctx.font = `600 9px Geist, monospace`;
+            ctx.font = `600 ${fsInfo}px Geist, monospace`;
             ctx.fillStyle = '#1a1a1a';
             ctx.textAlign = 'left';
             ctx.fillText(preInfo, xCursor, yInfo);
             xCursor += preW;
           }
           if (preInfo && dPart) {
-            ctx.font = `600 9px Geist, monospace`;
+            ctx.font = `600 ${fsInfo}px Geist, monospace`;
             ctx.fillStyle = '#1a1a1a';
             ctx.textAlign = 'left';
             ctx.fillText(' · ', xCursor, yInfo);
             xCursor += sep1W;
           }
           if (dPart) {
-            ctx.font = `bold 12px Geist, monospace`;
+            ctx.font = `bold ${fsName}px Geist, monospace`;
             ctx.fillStyle = '#000000';
             ctx.textAlign = 'left';
             ctx.fillText(dPart, xCursor, yInfo);
             xCursor += dW;
           }
           if (dPart && postInfo) {
-            ctx.font = `600 9px Geist, monospace`;
+            ctx.font = `600 ${fsInfo}px Geist, monospace`;
             ctx.fillStyle = '#1a1a1a';
             ctx.textAlign = 'left';
             ctx.fillText(' · ', xCursor, yInfo);
             xCursor += sep2W;
           }
           if (postInfo) {
-            ctx.font = `600 9px Geist, monospace`;
+            ctx.font = `600 ${fsInfo}px Geist, monospace`;
             ctx.fillStyle = '#1a1a1a';
             ctx.textAlign = 'left';
             ctx.fillText(postInfo, xCursor, yInfo);
@@ -1701,11 +1895,14 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
       const offDy = (b.labelY - b.y) * this.zoom;
       ctx.save();
       ctx.translate(offDx, offDy);
-      ctx.font = 'bold 10px Geist, monospace';
+      const fsCode = this.mm2cvs(this.MM.lblCode);
+      const fsBInfo = this.mm2cvs(this.MM.lblInfo);
+      const lineH = fsBInfo + 2;
+      ctx.font = `bold ${fsCode}px Geist, monospace`;
       const displayCode = b.code || '—';
       const tw = ctx.measureText(displayCode).width;
-      const boxW = tw + 8;
-      const boxH = 28 + (b.hVert !== undefined ? 13 : 0) + (b.dNominal !== undefined ? 13 : 0);
+      const boxW = tw + this.mm2cvs(2);
+      const boxH = lineH * (1 + (b.hVert !== undefined ? 1 : 0) + (b.dNominal !== undefined ? 1 : 0)) + this.mm2cvs(1.2);
       const lbCx = c.x + offDx * Math.cos(angle) - offDy * Math.sin(angle);
       const lbCy = c.y + offDx * Math.sin(angle) + offDy * Math.cos(angle);
       const cosA2 = Math.cos(angle), sinA2 = Math.sin(angle);
@@ -1729,16 +1926,16 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
       ctx.fillStyle = '#fff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(displayCode, 0, 0);
-      let labelY = 12;
+      ctx.fillText(displayCode, 0, -boxH / 2 + lineH / 2 + 2);
+      let labelY = -boxH / 2 + lineH * 1.5 + 2;
       if (b.hVert !== undefined) {
-        ctx.font = '9px Geist, monospace';
+        ctx.font = `${fsBInfo}px Geist, monospace`;
         ctx.fillStyle = '#849495';
         ctx.fillText(`H=${b.hVert}m`, 0, labelY);
-        labelY += 13;
+        labelY += lineH;
       }
       if (b.dNominal !== undefined) {
-        ctx.font = '9px Geist, monospace';
+        ctx.font = `${fsBInfo}px Geist, monospace`;
         ctx.fillStyle = '#849495';
         ctx.fillText(`D=${b.dNominal && b.dNominal !== '0' ? b.dNominal : ''}mm`, 0, labelY);
       }
@@ -1781,7 +1978,7 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
       ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
       ctx.stroke();
       ctx.fillStyle = col;
-      ctx.font = `${12 * this.zoom}px sans-serif`;
+      ctx.font = `${this.mm2cvs(this.MM.flowEmoji)}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(b.tipo === 'bajante' ? '⬇' : '⬆', c.x, c.y);
@@ -1834,7 +2031,7 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
       const mx = (s.x + e.x) / 2, my = (s.y + e.y) / 2;
       const px = Math.hypot(mp.x - this._dimStart.x, mp.y - this._dimStart.y);
       const txt = `${this.pxToM(px).toFixed(2)}m`;
-      ctx.font = '11px Geist, monospace';
+      ctx.font = `${this.mm2cvs(this.MM.lblInfo)}px Geist, monospace`;
       const tw = ctx.measureText(txt).width;
       ctx.fillStyle = 'rgba(17,19,23,0.75)';
       ctx.fillRect(mx - tw / 2 - 4, my - 8, tw + 8, 16);
@@ -1929,7 +2126,7 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
     const segM = this.pxToM(segPx);
     const deg = Math.atan2(mp.y - last[1], mp.x - last[0]) * 180 / Math.PI;
     const cursorLabel = `${segM}m  ${Math.round(((deg % 360) + 360) % 360)}°`;
-    ctx.font = '10px Geist, monospace';
+    ctx.font = `${this.mm2cvs(this.MM.coord)}px Geist, monospace`;
     const tw = ctx.measureText(cursorLabel).width;
     ctx.fillStyle = 'rgba(17,19,23,0.82)';
     ctx.fillRect(mc.x + 12, mc.y - 18, tw + 8, 16);
