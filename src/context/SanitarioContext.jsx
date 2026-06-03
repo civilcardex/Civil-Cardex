@@ -71,52 +71,66 @@ const [profs, setProfs] = useState(PROFS_DEFAULT.map(p => ({...p})));
 
 const [crits, setCrits] = useState(CRIT0.map(c => ({...c})));
 
-  // SANITARIA sync
+// SANITARIA + LLUVIA sync
   useEffect(() => {
     function loadFromSync() {
       const sync = readSanDrawingSync();
       const planes = sync.planes || {};
       const hidroData = safeParse(localStorage.getItem(HIDRO_DATA_STORAGE_KEY), {}) || {};
-      const incoming = [];
+      const sanIncoming = [];
+      const llIncoming = [];
+      const tribIds = new Set();
       for (const [nivel, plane] of Object.entries(planes)) {
+        for (const r of (plane.ramales || [])) {
+          if (r.tipo === 'tributario') tribIds.add(r.id);
+        }
         const piso = parseInt(nivel);
         for (const r of (plane.ramales || [])) {
-          const hd = hidroData[r.id] || {};
-          incoming.push({
-            id: r.id,
-            piso,
-            fixtures: sync.aparatosByTramo?.[r.id] || {},
-            recibeDe: [],
-            esBajante: false,
-            descripcion: '',
-            diamDisPulg: r.diamPulg || 0,
-            nSalidas: hd.nSalidas || 0,
-            nmaning: r.maning ?? 0,
-            sPercent: r.pendiente ?? 0,
+          if (r.tipo === 'tributario') continue;
+          const apKey = r._aparatosKey || r.id;
+          const hd = hidroData[apKey] || {};
+          const tramo = {
+            id: r.id, piso,
+            fixtures: sync.aparatosByTramo?.[apKey] || {},
+            recibeDe: [], esBajante: false, descripcion: '',
+            diamDisPulg: r.diamPulg || 0, nSalidas: hd.nSalidas || 0,
+            nmaning: r.maning ?? 0, sPercent: r.pendiente ?? 0,
             bajR: 7/24, bajLong: 3, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
-          });
+          };
+          if (r._net === 'll') {
+            llIncoming.push({
+              _key: nextLlKey(), ...tramo,
+              desde: '', hasta: '',
+            });
+          } else {
+            sanIncoming.push(tramo);
+          }
         }
         for (const b of (plane.bajantes || [])) {
-          const hd = hidroData[b.id] || {};
-          incoming.push({
-            id: b.id,
-            piso,
-            fixtures: sync.aparatosByTramo?.[b.id] || {},
-            recibeDe: [],
-            esBajante: true,
-            descripcion: '',
-            diamDisPulg: b.diamPulg || 0,
-            nSalidas: hd.nSalidas || 0,
-            nmaning: b.maning ?? 0,
-            sPercent: 0,
+          const apKey = b._aparatosKey || b.id;
+          const hd = hidroData[apKey] || {};
+          const tramo = {
+            id: b.id, piso,
+            fixtures: sync.aparatosByTramo?.[apKey] || {},
+            recibeDe: [], esBajante: true, descripcion: '',
+            diamDisPulg: b.diamPulg || 0, nSalidas: hd.nSalidas || 0,
+            nmaning: b.maning ?? 0, sPercent: 0,
             bajR: 7/24, bajLong: 3, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
-          });
+          };
+          if (b._net === 'll') {
+            llIncoming.push({
+              _key: nextLlKey(), ...tramo,
+              desde: '', hasta: '',
+            });
+          } else {
+            sanIncoming.push(tramo);
+          }
         }
       }
-      if (incoming.length > 0) {
+      if (sanIncoming.length > 0) {
         setTramosSan(prev => {
-          const keep = prev.filter(t => !incoming.some(i => i.id === t.id));
-          const merged = incoming.map(i => {
+          const keep = prev.filter(t => !sanIncoming.some(i => i.id === t.id) && !tribIds.has(t.id));
+          const merged = sanIncoming.map(i => {
             const existing = prev.find(t => t.id === i.id);
             if (existing) {
               return {
@@ -126,6 +140,18 @@ const [crits, setCrits] = useState(CRIT0.map(c => ({...c})));
                 fixtures: { ...i.fixtures, ...existing.fixtures },
               };
             }
+            return i;
+          });
+          return [...keep, ...merged];
+        });
+      }
+      if (llIncoming.length > 0) {
+        setTramosLl(prev => {
+          const drawingIds = new Set([...llIncoming.map(i => i.id), ...tribIds]);
+          const keep = prev.filter(t => !drawingIds.has(t.id));
+          const merged = llIncoming.map(i => {
+            const ex = prev.find(t => t.id === i.id);
+            if (ex) return { ...i, descripcion: ex.descripcion || '', desde: ex.desde || '', hasta: ex.hasta || '' };
             return i;
           });
           return [...keep, ...merged];
@@ -150,37 +176,40 @@ const [crits, setCrits] = useState(CRIT0.map(c => ({...c})));
       const hidroData = sync.hidroData || {};
       const aparatos = sync.aparatosByTramo || {};
 
-      function buildTramos(family) {
-        const incoming = [];
-        for (const [key, plane] of Object.entries(planes)) {
-          if (!key.startsWith(family + '_')) continue;
-          const nivel = parseInt(key.slice(family.length + 1));
-          for (const r of (plane.ramales || [])) {
-            const familyKey = `${family}_${r.id}`;
-            const extra = hidroData[familyKey] || {};
-            incoming.push({
-              id: r.id,
-              piso: nivel,
-              fixtures: aparatos[familyKey] || {},
-              accesorios: extra.accesorios || {},
-              Lh: extra.Lh || 0,
-              nSalidas: extra.nSalidas || 0,
-              recibeDe: [],
-              descripcion: '',
-              diamDisPulg: r.diamPulg || 0,
-              material: r.material || '',
-            });
-          }
+    function buildTramos(family) {
+      const incoming = [];
+      for (const [key, plane] of Object.entries(planes)) {
+        if (!key.startsWith(family + '_')) continue;
+        const nivel = parseInt(key.slice(family.length + 1));
+        for (const r of (plane.ramales || [])) {
+          if (r.tipo === 'tributario') continue;
+          const apKey = r._aparatosKey || `${family}_${r.id}`;
+          const extra = hidroData[apKey] || {};
+          incoming.push({
+            id: r.id, piso: nivel,
+            fixtures: aparatos[apKey] || {},
+            accesorios: extra.accesorios || {},
+            Lh: extra.Lh || 0, nSalidas: extra.nSalidas || 0,
+            recibeDe: [], descripcion: '',
+            diamDisPulg: r.diamPulg || 0, material: r.material || '',
+          });
         }
-        return incoming;
       }
+      return incoming;
+    }
 
       const afIncoming = buildTramos('af');
       const acIncoming = buildTramos('ac');
+      const hidroTribIds = new Set();
+      for (const [key, plane] of Object.entries(planes)) {
+        for (const r of (plane.ramales || [])) {
+          if (r.tipo === 'tributario') hidroTribIds.add(r.id);
+        }
+      }
 
       if (afIncoming.length > 0) {
         setTramosAf(prev => {
-          const keep = prev.filter(t => !afIncoming.some(i => i.id === t.id));
+          const keep = prev.filter(t => !afIncoming.some(i => i.id === t.id) && !hidroTribIds.has(t.id));
           const merged = afIncoming.map(i => {
             const ex = prev.find(t => t.id === i.id);
             if (ex) return { ...i, recibeDe: ex.recibeDe || [], descripcion: ex.descripcion || '' };
@@ -191,7 +220,7 @@ const [crits, setCrits] = useState(CRIT0.map(c => ({...c})));
       }
       if (acIncoming.length > 0) {
         setTramosAc(prev => {
-          const keep = prev.filter(t => !acIncoming.some(i => i.id === t.id));
+          const keep = prev.filter(t => !acIncoming.some(i => i.id === t.id) && !hidroTribIds.has(t.id));
           const merged = acIncoming.map(i => {
             const ex = prev.find(t => t.id === i.id);
             if (ex) return { ...i, recibeDe: ex.recibeDe || [], descripcion: ex.descripcion || '' };

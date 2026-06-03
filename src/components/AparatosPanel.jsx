@@ -85,7 +85,7 @@ function esAplicable(ap, netId, unitKey) {
 
 function isCountableTarget(el) {
   if (!el) return false;
-  return el.id?.startsWith('R') || el.id?.startsWith('B');
+  return el.id?.startsWith('R') || el.id?.startsWith('B') || el.id?.startsWith('T');
 }
 
 export default function AparatosPanel({ activeNet, selElement }) {
@@ -112,6 +112,15 @@ export default function AparatosPanel({ activeNet, selElement }) {
       }
       return changed ? next : prev;
     });
+  }, []);
+
+  useEffect(() => {
+    const handleStorage = () => {
+      setCounts(loadAll());
+      setHidroData(loadHidroData());
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   useEffect(() => { saveAll(counts); }, [counts]);
@@ -147,7 +156,7 @@ try { writeSanDrawingSync(planos); } catch (_) {}
     if (apsField) {
       result = filtered.map(ap => {
         const fromAps = aps.find(p => p.id === ap.id);
-        return fromAps ? { ...ap, [unitKey]: fromAps[apsField] ?? ap[unitKey] } : ap;
+        return fromAps ? { ...ap, [unitKey]: fromAps[apsField] || ap[unitKey] } : ap;
       });
     }
     if (unitKey === 'ud') {
@@ -481,7 +490,7 @@ function AccesoriosSection({ targetId, curHidro, incAcc, decAcc, isActive, accen
           transition: 'opacity .25s',
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
-            {ACCESORIOS_HIDRO.map(a => {
+            {['Codos', 'Tees', 'Válvulas', 'Otros'].flatMap(cat => ACCESORIOS_HIDRO.filter(a => a.cat === cat)).map(a => {
               const v = acc[a.id] || 0;
               return (
                 <div key={a.id} style={{
@@ -494,7 +503,7 @@ function AccesoriosSection({ targetId, curHidro, incAcc, decAcc, isActive, accen
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     padding: '3px 2px 1px', gap: 1, cursor: targetId ? 'pointer' : 'default', minHeight: 42,
                   }} onClick={() => targetId && incAcc(a.id)}>
-                    <span style={{ fontSize: 16, lineHeight: 1 }}>{a.emoji}</span>
+                    <img src={a.icono} alt={a.nombre} style={{width:26,height:26,objectFit:'contain'}} />
                     <span style={{ fontSize: 7, fontWeight: 700, letterSpacing: .2, color: v > 0 ? accent : '#b9caca', fontFamily: "'Geist',monospace", textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.1 }}>{a.nombre}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'stretch', borderTop: `1px solid ${v > 0 ? accent + '55' : '#282a2e'}`, background: v > 0 ? 'rgba(37,99,235,.06)' : 'transparent' }}>
@@ -552,7 +561,7 @@ function TramoDataSection({ targetId, curHidro, setHidroField, isActive, showLh,
             )}
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
-                {netId === 'san' ? 'Salidas' : 'No. salidas'}
+                {netId === 'san' ? 'Descargas' : 'No. descargas'}
               </div>
               <input type="number" value={vNS} min={0} step={1} disabled={!targetId}
                 onChange={e => setHidroField('nSalidas', e.target.value === '' ? 0 : parseInt(e.target.value, 10) || 0)}

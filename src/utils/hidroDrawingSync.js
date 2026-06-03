@@ -37,15 +37,14 @@ function buildSync(planos) {
       const bajantes = [];
       for (const r of (data.ramales || [])) {
         if (r.net === family) {
+          const rKey = family + '_' + r.id;
           ramales.push({
             id: r.id, label: r.label || r.id, tipo: r.tipo,
-            padre: r.padre || null,
-            totalL: r.totalL || 0,
-            diametro: r.diametro || '',
-            diamPulg: diamPulgFromLabel(r.diametro),
+            padre: r.padre || null, totalL: r.totalL || 0,
+            diametro: r.diametro || '', diamPulg: diamPulgFromLabel(r.diametro),
             pendiente: typeof r.pendiente === 'number' ? r.pendiente : 0,
-            material: r.material || '',
-            maning: matManning(r.material),
+            material: r.material || '', maning: matManning(r.material),
+            _aparatosKey: rKey,
           });
         }
       }

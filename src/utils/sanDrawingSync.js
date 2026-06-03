@@ -4,7 +4,7 @@ const SYNC_KEY = 'civilflow_dibujo_sanitario_v1';
 const TRAZOS_PREFIX = 'civilflow_trazos_';
 const APARATOS_BY_TRAMO_KEY = 'civilflow_aparatos_by_tramo_v2';
 
-const SAN_FAMILIES = new Set(['san']);
+const SAN_FAMILIES = new Set(['san', 'll']);
 
 function safeParse(raw, fallback) {
   if (!raw) return fallback;
@@ -35,30 +35,25 @@ function buildSync(planos) {
     const sanBajantes = [];
     for (const r of (data.ramales || [])) {
       if (SAN_FAMILIES.has(r.net)) {
+        const rKey = r.net + '_' + r.id;
         sanRamales.push({
-          id: r.id,
-          label: r.label || r.id,
-          tipo: r.tipo,
-          padre: r.padre || null,
-          totalL: r.totalL || 0,
-          diametro: r.diametro || '',
-          diamPulg: diamPulgFromLabel(r.diametro),
+          id: r.id, label: r.label || r.id, tipo: r.tipo,
+          padre: r.padre || null, totalL: r.totalL || 0,
+          diametro: r.diametro || '', diamPulg: diamPulgFromLabel(r.diametro),
           pendiente: typeof r.pendiente === 'number' ? r.pendiente : 0,
-          material: r.material || '',
-          maning: matManning(r.material),
+          material: r.material || '', maning: matManning(r.material),
+          _aparatosKey: rKey, _net: r.net,
         });
       }
     }
     for (const b of (data.bajantes || [])) {
       if (SAN_FAMILIES.has(b.net)) {
+        const bKey = b.net + '_' + b.id;
         sanBajantes.push({
-          id: b.id,
-          code: b.code || b.id,
-          dNominal: b.dNominal || '',
-          diamPulg: diamPulgFromLabel(b.dNominal),
-          hVert: b.hVert || 0,
-          material: b.material || '',
-          maning: matManning(b.material),
+          id: b.id, code: b.code || b.id,
+          dNominal: b.dNominal || '', diamPulg: diamPulgFromLabel(b.dNominal),
+          hVert: b.hVert || 0, material: b.material || '',
+          maning: matManning(b.material), _aparatosKey: bKey, _net: b.net,
         });
       }
     }
