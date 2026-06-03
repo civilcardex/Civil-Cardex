@@ -6,7 +6,7 @@ export function pisoLbl(n) {
 
 export function pisoCorto(n) {
   if (n < 0) return `S${Math.abs(n)}`;
-  if (n === 99) return `Cub`;
+  if (n === 99) return `C`;
   return `P${n}`;
 }
 
@@ -14,11 +14,13 @@ export const APARATOS_DEF = [
   {id:'sif', sigla:'Sif:', nombre:'Sifón', grupo:'h', uc_af:0, uc_ac:0, ud:2, pmin:0, pmax:0, qgas:0, norma:'NTC 1500 T1'},
   {id:'lvm', sigla:'Lvm:', nombre:'Lavamanos', grupo:'h', uc_af:0.5, uc_ac:0.5, ud:2, pmin:0.51, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
   {id:'san', sigla:'Ino:', nombre:'Inodoro', grupo:'h', uc_af:2.2, uc_ac:0, ud:4, pmin:0.71, pmax:14.10, qgas:0, norma:'NTC 1500 T1'},
-  {id:'lvp', sigla:'Lvp:', nombre:'Lavaplatos', grupo:'h', uc_af:1.0, uc_ac:1.0, ud:2, pmin:0.51, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
+  {id:'lvp', sigla:'Lvp:', nombre:'Lavaplatos Cocina', grupo:'h', uc_af:1.0, uc_ac:1.0, ud:2, pmin:0.51, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
   {id:'duc', sigla:'Duc:', nombre:'Ducha', grupo:'h', uc_af:1.0, uc_ac:1.0, ud:2, pmin:1.02, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
-  {id:'tin', sigla:'Tin:', nombre:'Tina de baño', grupo:'h', uc_af:1.0, uc_ac:1.0, ud:2, pmin:0.51, pmax:14.10, qgas:0, norma:'NTC 1500 T1'},
-  {id:'lvra',sigla:'Lvra:', nombre:'Lavadora', grupo:'h', uc_af:1.0, uc_ac:0, ud:4, pmin:0.51, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
-  {id:'lvro',sigla:'Lvro:', nombre:'Lavadero', grupo:'h', uc_af:0.75,uc_ac:0.75,ud:2, pmin:0.51, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
+  {id:'tin', sigla:'Tin:', nombre:'Tina', grupo:'h', uc_af:1.0, uc_ac:1.0, ud:2, pmin:0.51, pmax:14.10, qgas:0, norma:'NTC 1500 T1'},
+  {id:'lvra',sigla:'Lvra:', nombre:'Lavadora', grupo:'h', uc_af:1.0, uc_ac:1.0, ud:2, pmin:0.51, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
+  {id:'lvro',sigla:'Lvro:', nombre:'Lavadero', grupo:'h', uc_af:1.0, uc_ac:1.0, ud:2, pmin:0.51, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
+  {id:'nev', sigla:'Nev:', nombre:'Nevera', grupo:'h', uc_af:0.5, uc_ac:0, ud:0, pmin:0.51, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
+  {id:'lavav',sigla:'Lavav:', nombre:'Lavavajillas', grupo:'h', uc_af:0, uc_ac:1.5, ud:2, pmin:0.51, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
   {id:'ori', sigla:'Ori:', nombre:'Orinal/Urinal', grupo:'h', uc_af:2.2, uc_ac:0, ud:5, pmin:0.71, pmax:14.10, qgas:0, norma:'NTC 1500 T1'},
   {id:'flu', sigla:'Flu:', nombre:'Sanitario fluxómetro', grupo:'h', uc_af:6.0, uc_ac:0, ud:6, pmin:0.71, pmax:14.10, qgas:0, norma:'NTC 1500 T1'},
   {id:'est4', sigla:'Est:', nombre:'Estufa 4 quemadores', grupo:'g', uc_af:0,uc_ac:0,ud:0, pmin:17,pmax:25, qgas:1.35, norma:'NTC 3728 T1'},
@@ -37,26 +39,27 @@ export const APARATOS_DEF = [
   {id:'turco',sigla:'Tur:', nombre:'Baño turco', grupo:'g', uc_af:0,uc_ac:0,ud:0, pmin:17,pmax:25, qgas:1.35, norma:'NTC 3728 T1'},
 ];
 
-export const AF_UC_IDS = ['san', 'lvm', 'duc', 'lvp', 'tin', 'lvra', 'lvro'];
-export const AC_UC_IDS = ['san', 'lvm', 'duc', 'lvp', 'tin', 'lvra', 'lvro'];
-export const SAN_UC_IDS = ['sif', 'lvm', 'san', 'duc', 'lvra', 'tin', 'lvp', 'lvro'];
+export const AF_UC_IDS = ['san', 'lvm', 'duc', 'lvp', 'tin', 'lvra', 'lvro', 'nev'];
+export const AC_UC_IDS = ['san', 'lvm', 'duc', 'lvp', 'tin', 'lvra', 'lvro', 'lavav'];
+export const SAN_UC_IDS = ['sif', 'lvm', 'san', 'duc', 'lvra', 'tin', 'lvp', 'lvro', 'lavav'];
 
 export const ACCESORIOS_HIDRO = [
-  {id:'codo90rc',emoji:'🔩',nombre:'Codo RC 90°'},
-  {id:'teeDirecto',emoji:'🔧',nombre:'Tee paso Directo'},
-  {id:'teeReduccion',emoji:'🔧',nombre:'Tee c/ reducción'},
-  {id:'teeLado',emoji:'🔧',nombre:'Tee paso Lado'},
-  {id:'teeBilateral',emoji:'🔧',nombre:'Tee salida bilateral'},
-  {id:'valvGlobo',emoji:'🚰',nombre:'Válvula globo'},
-  {id:'valvCompuerta',emoji:'🚰',nombre:'Válvula compuerta'},
-  {id:'reduccion',emoji:'🔽',nombre:'Reducción'},
-  {id:'ampliacion',emoji:'🔼',nombre:'Ampliación'},
-  {id:'codo45rc',emoji:'🔩',nombre:'Codo RC 45°'},
-  {id:'valvCheque',emoji:'✔️',nombre:'Válvula cheque'},
-  {id:'valvPie',emoji:'🪣',nombre:'Válvula pie'},
-  {id:'codo90rm',emoji:'🔩',nombre:'Codo RM 90°'},
-  {id:'codo90rl',emoji:'🔩',nombre:'Codo RL 90°'},
-  {id:'valvAngulo',emoji:'🚰',nombre:'Válvula ángulo'},
+  {id:'codo90rc',emoji:'🔩',nombre:'Codo RC 90°',icono:'/iconos_accesorios/codo90rc.webp', cat: 'Codos'},
+  {id:'teeDirecto',emoji:'🔧',nombre:'Tee paso Directo',icono:'/iconos_accesorios/teeDirecto.webp', cat: 'Tees'},
+  {id:'teeReduccion',emoji:'🔧',nombre:'Tee c/ reducción',icono:'/iconos_accesorios/teeReduccion.webp', cat: 'Tees'},
+  {id:'teeLado',emoji:'🔧',nombre:'Tee paso Lado',icono:'/iconos_accesorios/teeLado.webp', cat: 'Tees'},
+  {id:'teeBilateral',emoji:'🔧',nombre:'Tee salida bilateral',icono:'/iconos_accesorios/teeBilateral.webp', cat: 'Tees'},
+  {id:'valvGlobo',emoji:'🚰',nombre:'Válvula globo',icono:'/iconos_accesorios/valvGlobo.webp', cat: 'Válvulas'},
+  {id:'valvCompuerta',emoji:'🚰',nombre:'Válvula compuerta',icono:'/iconos_accesorios/valvCompuerta.webp', cat: 'Válvulas'},
+  {id:'reduccion',emoji:'🔽',nombre:'Reducción',icono:'/iconos_accesorios/reduccion.webp', cat: 'Otros'},
+  {id:'ampliacion',emoji:'🔼',nombre:'Ampliación',icono:'/iconos_accesorios/ampliacion.webp', cat: 'Otros'},
+  {id:'codo45rc',emoji:'🔩',nombre:'Codo RC 45°',icono:'/iconos_accesorios/codo45rc.webp', cat: 'Codos'},
+  {id:'valvCheque',emoji:'✔️',nombre:'Válvula cheque',icono:'/iconos_accesorios/valvCheque.webp', cat: 'Válvulas'},
+  {id:'valvPie',emoji:'🪣',nombre:'Válvula pie',icono:'/iconos_accesorios/valvPie.webp', cat: 'Válvulas'},
+  {id:'codo90rm',emoji:'🔩',nombre:'Codo RM 90°',icono:'/iconos_accesorios/codo90rm.webp', cat: 'Codos'},
+  {id:'codo90rl',emoji:'🔩',nombre:'Codo RL 90°',icono:'/iconos_accesorios/codo90rl.webp', cat: 'Codos'},
+  {id:'valvAngulo',emoji:'🚰',nombre:'Válvula ángulo',icono:'/iconos_accesorios/valvAngulo.webp', cat: 'Válvulas'},
+  {id:'otros',emoji:'➕',nombre:'Otros',icono:'/iconos_accesorios/otros.webp', cat: 'Otros'},
 ];
 
 export const REDES=[
@@ -102,11 +105,13 @@ export const UD_BASE_INIT=[
   {id:'tin',nombre:'Tina',ud:0},
   {id:'lvp',nombre:'Lavaplatos',ud:0},
   {id:'lvro',nombre:'Lavadero',ud:0},
+  {id:'lavav',nombre:'Lavavajillas',ud:0},
 ];
 
 export const UD_PISO_MAP={
   sif:'Sifones',lvm:'Lavamanos',san:'Inodoros',duc:'Duchas',
   lvra:'Lavadoras',tin:'Tina',lvp:'Lavaplatos',lvro:'Lavadero',
+  lavav:'Lavavajillas',
 };
 
 export const NAV_TABS=[
@@ -274,24 +279,26 @@ export const FUERZA_TRACTIVA_MIN = 0.15;
 
 export const APS_DEFAULT=[
   {id:'sif',s:'Sif:',n:'Sifón',g:'h',ucaf:0,ucac:0,ud:0,pmin:0,pmax:0,qg:0},
-  {id:'lvm',s:'Lvm:',n:'Lavamanos',g:'h',ucaf:0,ucac:0,ud:0,pmin:0,pmax:0,qg:0},
-{id:'san',s:'Ino:',n:'Inodoro',g:'h',ucaf:0,ucac:0,ud:0,pmin:0,pmax:0,qg:0},
-{id:'duc',s:'Duc:',n:'Ducha',g:'h',ucaf:0,ucac:0,ud:0,pmin:0,pmax:0,qg:0},
-{id:'lvp',s:'Lvp:',n:'Lavaplatos',g:'h',ucaf:0,ucac:0,ud:0,pmin:0,pmax:0,qg:0},
-{id:'tin',s:'Tin:',n:'Tina',g:'h',ucaf:0,ucac:0,ud:0,pmin:0,pmax:0,qg:0},
-{id:'lvra',s:'Lvra:',n:'Lavadora',g:'h',ucaf:0,ucac:0,ud:0,pmin:0,pmax:0,qg:0},
-{id:'lvro',s:'Lvro:',n:'Lavadero',g:'h',ucaf:0,ucac:0,ud:0,pmin:0,pmax:0,qg:0},
-{id:'est4',s:'Est4:',n:'Estufa 4Q',g:'g',ucaf:0,ucac:0,ud:0,pmin:17,pmax:25,qg:1.35},
-{id:'cal',s:'Cal:',n:'Calentador',g:'g',ucaf:0,ucac:0,ud:0,pmin:17,pmax:25,qg:1.76},
-{id:'hor',s:'Hor:',n:'Horno',g:'g',ucaf:0,ucac:0,ud:0,pmin:17,pmax:25,qg:1.15},
+  {id:'lvm',s:'Lvm:',n:'Lavamanos',g:'h',ucaf:0.5,ucac:0.5,ud:0,pmin:0,pmax:0,qg:0},
+  {id:'san',s:'Ino:',n:'Inodoro',g:'h',ucaf:2.2,ucac:0,ud:0,pmin:0,pmax:0,qg:0},
+  {id:'duc',s:'Duc:',n:'Ducha',g:'h',ucaf:1,ucac:1,ud:0,pmin:0,pmax:0,qg:0},
+  {id:'lvp',s:'Lvp:',n:'Lavaplatos Cocina',g:'h',ucaf:1,ucac:1,ud:0,pmin:0,pmax:0,qg:0},
+  {id:'tin',s:'Tin:',n:'Tina',g:'h',ucaf:1,ucac:1,ud:0,pmin:0,pmax:0,qg:0},
+  {id:'lvra',s:'Lvra:',n:'Lavadora',g:'h',ucaf:1,ucac:1,ud:0,pmin:0,pmax:0,qg:0},
+  {id:'lvro',s:'Lvro:',n:'Lavadero',g:'h',ucaf:1,ucac:1,ud:0,pmin:0,pmax:0,qg:0},
+  {id:'nev',s:'Nev:',n:'Nevera',g:'h',ucaf:0.5,ucac:0,ud:0,pmin:0,pmax:0,qg:0},
+  {id:'lavav',s:'Lavav:',n:'Lavavajillas',g:'h',ucaf:0,ucac:1.5,ud:0,pmin:0,pmax:0,qg:0},
+  {id:'est4',s:'Est4:',n:'Estufa 4Q',g:'g',ucaf:0,ucac:0,ud:0,pmin:17,pmax:25,qg:1.35},
+  {id:'cal',s:'Cal:',n:'Calentador',g:'g',ucaf:0,ucac:0,ud:0,pmin:17,pmax:25,qg:1.76},
+  {id:'hor',s:'Hor:',n:'Horno',g:'g',ucaf:0,ucac:0,ud:0,pmin:17,pmax:25,qg:1.15},
 ];
 
 export const PROFS_DEFAULT=[
-{id:'san',red:'Sanitaria',col:'var(--san)',prof:-0.70,norma:'RAS 2000 §D.4.1',nota:'Bajo losa'},
-{id:'ll',red:'Aguas Lluvias',col:'var(--ll)',prof:-0.50,norma:'RAS 2000 §D.4.2',nota:'Bajo losa'},
+{id:'san',red:'Sanitaria',col:'var(--san)',prof:0.00,norma:'RAS 2000 §D.4.1',nota:'Bajo losa'},
+{id:'ll',red:'Aguas Lluvias',col:'var(--ll)',prof:0.00,norma:'RAS 2000 §D.4.2',nota:'Bajo losa'},
 {id:'af',red:'Agua Fría',col:'var(--af)',prof:0.00,norma:'NTC 1500 §5.4',nota:'A nivel NPT'},
-{id:'ac',red:'Agua Caliente',col:'var(--ac)',prof:-0.10,norma:'NTC 1500 §5.4',nota:'Bajo NPT'},
-{id:'gas',red:'Gas',col:'var(--gas)',prof:-0.15,norma:'NTC 3728 §4.3',nota:'Con protección'},
+{id:'ac',red:'Agua Caliente',col:'var(--ac)',prof:0.00,norma:'NTC 1500 §5.4',nota:'Bajo NPT'},
+{id:'gas',red:'Gas',col:'var(--gas)',prof:0.00,norma:'NTC 3728 §4.3',nota:'Con protección'},
 {id:'ven',red:'Ventilación',col:'var(--ven)',prof:0.00,norma:'NTC 1500 §9.2',nota:'A nivel NPT'},
-{id:'rci',red:'Contra Incendio',col:'var(--rci)',prof:-0.45,norma:'NFPA 13 §6',nota:'Zona protegida'},
+{id:'rci',red:'Contra Incendio',col:'var(--rci)',prof:0.00,norma:'NFPA 13 §6',nota:'Zona protegida'},
 ];
