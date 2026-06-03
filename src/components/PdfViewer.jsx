@@ -18,7 +18,8 @@ const TOOLS = [
   { id: "dim", label: "Cota", ico: "📏", key: "D", icoCol: "#22D3EE", shortcut: "D" },
   { id: "text", label: "Texto", ico: "T", key: "T", icoCol: "#A855F7", shortcut: "T" },
   { id: "baj", label: "Bajante", ico: "↓", key: "B", icoCol: "#F04545", shortcut: "B" },
-  { id: "erase", label: "Eliminar ramal", ico: "🧹", key: "E", icoCol: "#ffb4ab", shortcut: "E" },
+  { id: "segdel", label: "Eliminar segmento", ico: "✂", key: "K", icoCol: "#ffb4ab", shortcut: "K" },
+  { id: "erase", label: "Eliminar ramal/tributario", ico: "🧹", key: "E", icoCol: "#ffb4ab", shortcut: "E" },
   { id: "pan", label: "Mover", ico: "✋", key: "Espacio", icoCol: "#10B981", shortcut: "Espacio" },
 ];
 
@@ -124,6 +125,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   const [scaleM, setScaleM] = useState("0.5");
   const [selectedNivel, setSelectedNivel] = useState(null);
   const [hiddenNets, setHiddenNets] = useState(new Set());
+  const [lockedNets, setLockedNets] = useState(new Set());
   const [statusMsg, setStatusMsg] = useState("Seleccionar");
   const [saveStatus, setSaveStatus] = useState("saved");
   const [selElement, setSelElement] = useState(null);
@@ -131,9 +133,23 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   const [diamSel, setDiamSel] = useState({});
   const [pendSel, setPendSel] = useState({});
   const [pendInput, setPendInput] = useState('');
+  const [engineReady, setEngineReady] = useState(false);
   const toolRef = useRef(tool);
   const autoSaveTimerRef = useRef(null);
   toolRef.current = tool;
+
+  useEffect(() => {
+    if (selectedNivel !== null) {
+      const plano = planos.find(p => p.nivel === selectedNivel && p.status === 'confirmed');
+      if (plano && plano.scale) {
+        const derived = String(plano.scale / 100);
+        if (['0.5', '0.75', '1', '1.25', '2'].includes(derived)) {
+          setScaleM(derived);
+          if (engineRef.current) engineRef.current.setScaleM(derived);
+        }
+      }
+    }
+  }, [selectedNivel, planos]);
 
 const currentFile = files[activeIndex]?.file;
 const currentId = files[activeIndex]?.id;
@@ -149,15 +165,17 @@ currentIdRef.current = currentId;
   }, [currentId, planos]);
 
   useEffect(() => {
-    if (!engineRef.current) return;
+    if (!engineRef.current || !engineReady) return;
     const prevId = engineRef.current._loadedPlanId;
     if (prevId && prevId !== currentId) {
       const prevKey = `civilflow_trazos_${prevId}`;
       try { localStorage.setItem(prevKey, engineRef.current.saveWork()); } catch (_) {}
     }
     const key = `civilflow_trazos_${currentIdRef.current || currentId || 'work'}`;
+    console.log('[LOAD] key=', key, 'currentId=', currentId, 'currentIdRef=', currentIdRef.current, 'engineReady=', engineReady);
     try {
       const json = localStorage.getItem(key);
+      console.log('[LOAD] json found:', json ? json.length + ' bytes' : 'null', 'ramales in json:', json ? JSON.parse(json).ramales?.length : null);
       if (json) {
         engineRef.current.loadWork(json);
       } else {
@@ -171,11 +189,11 @@ currentIdRef.current = currentId;
         engineRef.current.activeArea = null;
         engineRef.current.render();
       }
-    } catch (_) {}
+    } catch (e) { console.error('[LOAD] error', e); }
     engineRef.current._loadedPlanId = currentId;
     try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
-try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
-  }, [currentId]);
+    try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
+  }, [currentId, engineReady]);
 
   useEffect(() => {
     try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
@@ -360,27 +378,39 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
     if (engineRef.current) engineRef.current.destroy();
     const pdfWrap = pdfCanvasRef.current?.parentElement;
     const eng = new PlanoEngine(cw, pdfWrap, canv);
-engineRef.current = eng;
-eng.onSelect((el) => setSelElement(el));
-eng.onStatus((msg) => setStatusMsg(msg));
-eng.onDirty(() => {
-if (!autoSaveTimerRef.current) {
-autoSaveTimerRef.current = setTimeout(() => {
-autoSaveTimerRef.current = null;
-saveTrazosToStorage();
-try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
-try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
-}, 800);
-}
-});
+    engineRef.current = eng;
+    eng.onSelect((el) => setSelElement(el));
+    eng.onStatus((msg) => setStatusMsg(msg));
+    eng.onDirty(() => {
+      if (!autoSaveTimerRef.current) {
+        autoSaveTimerRef.current = setTimeout(() => {
+          autoSaveTimerRef.current = null;
+          saveTrazosToStorage();
+          try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
+          try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
+        }, 800);
+      }
+    });
     const origSetTool = eng.setTool.bind(eng);
     eng.setTool = (t) => {
       origSetTool(t);
       setTool(t);
     };
+    setEngineReady(true);
     return () => {
+      console.log('[CLEANUP] running, _loadedPlanId=', eng._loadedPlanId, 'ramales=', eng.ramales?.length);
+      try {
+        const id = eng._loadedPlanId;
+        if (id) {
+          const key = `civilflow_trazos_${id}`;
+          const work = eng.saveWork();
+          console.log('[CLEANUP] saving to', key, 'bytes=', work ? work.length : null);
+          localStorage.setItem(key, work);
+        }
+      } catch (e) { console.error('[CLEANUP] error', e); }
       eng.setTool = origSetTool;
       eng.destroy();
+      setEngineReady(false);
     };
   }, []);
 
@@ -499,20 +529,19 @@ try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
     if (engineRef.current) engineRef.current.undoLast();
   }, []);
 
-  const handleFit = useCallback(async () => {
-    if (!currentFile || !pdfDocRef.current || !cwRef.current) return;
-    const page = await pdfDocRef.current.getPage(pageNumber);
-    const baseViewport = page.getViewport({ scale: 1 });
+  const handleFit = useCallback(() => {
+    const eng = engineRef.current;
     const cw = cwRef.current;
+    if (!eng || !cw || !eng.pageW || !eng.pageH) return;
     const pad = 16;
     const availW = cw.clientWidth - pad * 2;
     const availH = cw.clientHeight - pad * 2;
-    const sc = Math.min(availW / baseViewport.width, availH / baseViewport.height);
-    scaleRef.current = sc;
-    setScale(sc);
-    mountId.current += 1;
-    await renderPage(pageNumber, sc, mountId.current);
-  }, [pageNumber]);
+    const sc = Math.min(availW / eng.pageW, availH / eng.pageH);
+    eng.zoom = sc;
+    eng.offX = (cw.clientWidth - eng.pageW * sc) / 2;
+    eng.offY = 16;
+    eng.render();
+  }, []);
 
   const handleClear = useCallback(() => {
     if (!engineRef.current) return;
@@ -596,9 +625,10 @@ try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
         {finalVisibleNets.map(n => {
           const isActive=activeNet===n.id;
           const isHidden=hiddenNets.has(n.id);
+          const isLocked=lockedNets.has(n.id);
           return <div key={n.id} style={{display:'flex',alignItems:'center',gap:2,flexShrink:0}}>
             <button onClick={()=>setActiveNet(n.id)}
-              title={`Red ${n.name}`}
+              title={`Red ${n.name}${isLocked?' (bloqueada)':''}`}
               style={{
                 padding:"2px 8px", background:isActive?n.col+'22':"transparent",
                 borderTop:`1px solid ${isActive?n.col:'#3a494a'}`,
@@ -608,8 +638,9 @@ try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
                 borderRadius:"3px", color:isActive?n.col:"#849495",
                 cursor:"pointer", fontFamily:"'Geist',monospace", fontWeight:600,
                 fontSize:10, whiteSpace:"nowrap", opacity:isHidden?0.5:1,
+                textDecoration:isLocked&&isActive?'line-through':'none',
               }}>
-              Red {n.name}
+              {isLocked&&isActive?'🔒 ':' '}{isHidden?'👻 ':' '}Red {n.name}
             </button>
             <button onClick={()=>{
               const next=new Set(hiddenNets);
@@ -626,6 +657,20 @@ try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
               }}
               title={isHidden?'Mostrar':'Ocultar'}>
               {isHidden?'👁‍🗨':'👁'}
+            </button>
+            <button onClick={()=>{
+              const next=new Set(lockedNets);
+              if(next.has(n.id))next.delete(n.id);else next.add(n.id);
+              setLockedNets(next);
+              if(engineRef.current)engineRef.current.setNetLocked(n.id,next.has(n.id));
+            }}
+              style={{
+                padding:"3px 3px", background:"transparent", border:"none",
+                cursor:"pointer", fontSize:11, flexShrink:0, lineHeight:1,
+                color:lockedNets.has(n.id)?'#6b8cae':n.col,
+              }}
+              title={lockedNets.has(n.id)?'Desbloquear red':'Bloquear red'}>
+              {lockedNets.has(n.id)?'🔒':'🔓'}
             </button>
           </div>;
         })}
@@ -661,7 +706,7 @@ try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
                 display: "flex", alignItems: "center", gap: 6, width: "100%",
               }}>
                 <span style={{ fontSize: 14, width: 18, textAlign: "center", color: tool === t.id ? "#fff" : t.icoCol }}>{t.ico}</span>
-                <span style={{ fontSize: 10, flex: 1 }}>{t.label}</span>
+                <span style={{ fontSize: 10, flex: 1, textAlign: 'left' }}>{t.label}</span>
                 <span style={{ fontSize: 8, color: tool === t.id ? 'rgba(255,255,255,.6)' : '#6b8cae', fontFamily: "'Geist',monospace", marginLeft: 'auto' }}>{t.shortcut}</span>
               </button>
             ))}
@@ -729,11 +774,15 @@ try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
         {/* Close drawing */}
         <div style={{padding:"6px 8px",borderTop:"1px solid #3a494a"}}>
         <button onClick={()=>{
-          if (engineRef.current) {
-const key = `civilflow_trazos_${currentIdRef.current || currentId || 'work'}`;
-            try { localStorage.setItem(key, engineRef.current.saveWork()); } catch (_) {}
+          const eng = engineRef.current;
+          const key = `civilflow_trazos_${currentIdRef.current || currentId || 'work'}`;
+          console.log('[CERRAR] key=', key, 'currentId=', currentId, 'currentIdRef=', currentIdRef.current);
+          if (eng) {
+            const work = eng.saveWork();
+            console.log('[CERRAR] work bytes=', work ? work.length : null, 'ramales=', eng.ramales?.length, 'bajantes=', eng.bajantes?.length);
+            try { localStorage.setItem(key, work); console.log('[CERRAR] saved to', key); } catch (e) { console.error('[CERRAR] save error', e); }
             try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
-try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
+            try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
           }
           window.location.href = '#/civilflowareatrabajo';
         }}
@@ -882,9 +931,9 @@ try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
         background: "#14161a", borderLeft: "1px solid #3a494a",
         overflowY: "auto", overflowX: "hidden",
       }}>
-        {/* Piso */}
+        {/* Nivel */}
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Piso</div>
+          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Nivel</div>
           <select value={selectedNivel??''} onChange={e=>{
             const v=e.target.value?Number(e.target.value):null;
             setSelectedNivel(v);
@@ -961,6 +1010,125 @@ try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
               )}
             </div>
           )}
+        </div>
+
+        {/* Datos del tramo */}
+        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", textTransform: "uppercase", letterSpacing: 1 }}>Datos del tramo</div>
+            {selElement && (selElement.pts || selElement.id?.startsWith('T')) && (
+              <button onClick={handleRotateLabel} title="Rotar etiqueta (0°/45°/90°/-90°/-45°)" style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                padding: '2px 6px', background: 'rgba(168,85,247,.1)',
+                border: '1px solid rgba(168,85,247,.35)', borderRadius: 3,
+                color: '#A855F7', cursor: 'pointer',
+                fontFamily: "'Geist',monospace", fontSize: 9, fontWeight: 700,
+              }}>
+                <span style={{ fontSize: 12, lineHeight: 1 }}>↻</span>
+                <span>{selElement.labelAngle || selElement.textAngle || 0}°</span>
+              </button>
+            )}
+          </div>
+          {selElement ? (
+            <div style={{display:'flex',flexDirection:'column',gap:5}}>
+              {selElement.label&&!(
+                selElement.id?.startsWith('R') && selElement.pts
+              )&&(
+                <div style={{fontSize:13,fontWeight:600,color:'#b9caca',fontFamily:"'Geist',monospace",padding:'2px 0'}}>
+                  {selElement.label}
+                </div>
+              )}
+              {selElement.id?.startsWith('R') && selElement.pts && (
+                <div style={{display:'grid',gridTemplateColumns:'1.4fr 1fr 1fr',gap:3}}>
+                  <div>
+                    <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Nombre</div>
+                    <input value={selElement.label||''} placeholder="Tramo"
+                      onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({label:v});setSelElement({...selElement,label:v})}}}
+                      style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Ini</div>
+                    <input value={selElement.ini||''} placeholder="— ini —"
+                      onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({ini:v});setSelElement({...selElement,ini:v})}}}
+                      style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Fin</div>
+                    <input value={selElement.fin||''} placeholder="— fin —"
+                      onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({fin:v});setSelElement({...selElement,fin:v})}}}
+                      style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
+                  </div>
+                </div>
+              )}
+              {selElement.id?.startsWith('B')&&(
+                <div>
+                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Código</div>
+                  <input value={selElement.code||''} placeholder="Código bajante"
+                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({code:v});setSelElement({...selElement,code:v})}}}
+                    style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
+                </div>
+              )}
+              {selElement.id?.startsWith('T')&&(
+                <div>
+                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Texto</div>
+                  <input value={selElement.text||''} placeholder="Texto"
+                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({text:v});setSelElement({...selElement,text:v})}}}
+                    style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
+                </div>
+              )}
+              {selElement.id?.startsWith('AR')&&(
+                <div>
+                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Etiqueta</div>
+                  <input value={selElement.label||''} placeholder="Etiqueta área"
+                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({label:v});setSelElement({...selElement,label:v})}}}
+                    style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
+                </div>
+              )}
+              {selElement.pts && (activeNet === 'gas' || activeNet === 'ac' || activeNet === 'af') && (
+                <div>
+                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>ΔZ / L vert (m)</div>
+                  <input type="number" step="0.01" value={selElement.dz ?? ''} placeholder="0.00"
+                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({dz:v,lvert:v});setSelElement({...selElement,dz:v,lvert:v})}}}
+                    style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",textAlign:'center',minWidth:0}}/>
+                </div>
+              )}
+              {selElement.pts&&(
+                <div style={{fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace"}}>
+                  L={selElement.totalL}m · {selElement.pts.length} pts
+                  {selElement.tipo?` · ${selElement.tipo}`:''}
+                </div>
+              )}
+              
+            </div>
+          ) : (
+            <div style={{fontSize:11,color:'#6b8cae',fontFamily:"'Geist',monospace",padding:'4px 0'}}>
+              Selecciona un elemento en el plano
+            </div>
+          )}
+        </div>
+
+        {/* Escala */}
+        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
+          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Escala</div>
+          <div style={{display:'flex',flexDirection:'column',gap:5}}>
+            <select value={scaleM} onChange={e=>{setScaleM(e.target.value);if(engineRef.current)engineRef.current.setScaleM(e.target.value);}}
+              style={{width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace",cursor:'pointer'}}>
+              <option value="0.5">1:50</option>
+              <option value="0.75">1:75</option>
+              <option value="1.0">1:100</option>
+              <option value="1.25">1:125</option>
+              <option value="2.0">1:200</option>
+            </select>
+          </div>
+          {selectedNivel!==null&&(()=>{
+            const planoAsoc=planos.find(p=>p.nivel===selectedNivel&&p.status==='confirmed');
+            if(planoAsoc)return(
+              <div style={{marginTop:6,fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace"}}>
+                Plano: 1:{planoAsoc.scale}
+              </div>
+            );
+            return null;
+          })()}
         </div>
 
         {/* Datos específicos */}
@@ -1056,104 +1224,6 @@ try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
         {/* Cuantificación de aparatos */}
         <AparatosPanel activeNet={activeNet} selElement={selElement} />
 
-        {/* Datos del tramo */}
-        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", textTransform: "uppercase", letterSpacing: 1 }}>Datos del tramo</div>
-            {selElement && (selElement.pts || selElement.id?.startsWith('T')) && (
-              <button onClick={handleRotateLabel} title="Rotar etiqueta (0°/45°/90°/-90°/-45°)" style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                padding: '2px 6px', background: 'rgba(168,85,247,.1)',
-                border: '1px solid rgba(168,85,247,.35)', borderRadius: 3,
-                color: '#A855F7', cursor: 'pointer',
-                fontFamily: "'Geist',monospace", fontSize: 9, fontWeight: 700,
-              }}>
-                <span style={{ fontSize: 12, lineHeight: 1 }}>↻</span>
-                <span>{selElement.labelAngle || selElement.textAngle || 0}°</span>
-              </button>
-            )}
-          </div>
-          {selElement ? (
-            <div style={{display:'flex',flexDirection:'column',gap:5}}>
-              {selElement.label&&!(
-                selElement.id?.startsWith('R') && selElement.pts
-              )&&(
-                <div style={{fontSize:13,fontWeight:600,color:'#b9caca',fontFamily:"'Geist',monospace",padding:'2px 0'}}>
-                  {selElement.label}
-                </div>
-              )}
-              {selElement.id?.startsWith('R') && selElement.pts && (
-                <div style={{display:'grid',gridTemplateColumns:'1.4fr 1fr 1fr',gap:3}}>
-                  <div>
-                    <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Nombre</div>
-                    <input value={selElement.label||''} placeholder="Tramo"
-                      onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({label:v});setSelElement({...selElement,label:v})}}}
-                      style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
-                  </div>
-                  <div>
-                    <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Ini</div>
-                    <input value={selElement.ini||''} placeholder="— ini —"
-                      onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({ini:v});setSelElement({...selElement,ini:v})}}}
-                      style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
-                  </div>
-                  <div>
-                    <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Fin</div>
-                    <input value={selElement.fin||''} placeholder="— fin —"
-                      onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({fin:v});setSelElement({...selElement,fin:v})}}}
-                      style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
-                  </div>
-                </div>
-              )}
-              {selElement.id?.startsWith('B')&&(
-                <div>
-                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Código</div>
-                  <input value={selElement.code||''} placeholder="Código bajante"
-                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({code:v});setSelElement({...selElement,code:v})}}}
-                    style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
-                </div>
-              )}
-              {selElement.id?.startsWith('T')&&(
-                <div>
-                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Texto</div>
-                  <input value={selElement.text||''} placeholder="Texto"
-                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({text:v});setSelElement({...selElement,text:v})}}}
-                    style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
-                </div>
-              )}
-              {selElement.id?.startsWith('AR')&&(
-                <div>
-                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Etiqueta</div>
-                  <input value={selElement.label||''} placeholder="Etiqueta área"
-                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({label:v});setSelElement({...selElement,label:v})}}}
-                    style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
-                </div>
-              )}
-              {selElement.pts && (activeNet === 'gas' || activeNet === 'ac' || activeNet === 'af') && (
-                <div>
-                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>ΔZ / L vert (m)</div>
-                  <input type="number" step="0.01" value={selElement.dz ?? ''} placeholder="0.00"
-                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({dz:v,lvert:v});setSelElement({...selElement,dz:v,lvert:v})}}}
-                    style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",textAlign:'center',minWidth:0}}/>
-                </div>
-              )}
-              {selElement.pts&&(
-                <div style={{fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace"}}>
-                  L={selElement.totalL}m · {selElement.pts.length} pts
-                  {selElement.tipo?` · ${selElement.tipo}`:''}
-                </div>
-              )}
-              <button onClick={handleDelete}
-                style={{padding:"4px 10px",background:"transparent",border:"1px solid #3a494a",borderRadius:3,color:"#ffb4ab",cursor:"pointer",fontSize:10,fontFamily:"'Geist',monospace",marginTop:2}}>
-                🗑 Eliminar ramal
-              </button>
-            </div>
-          ) : (
-            <div style={{fontSize:11,color:'#6b8cae',fontFamily:"'Geist',monospace",padding:'4px 0'}}>
-              Selecciona un elemento en el plano
-            </div>
-          )}
-        </div>
-
         {/* Trazos de red */}
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
@@ -1176,8 +1246,8 @@ try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
                     <span style={{fontSize:11,color:el.type==='bajante'?'#F04545':'#4D8FF7'}}>
                       {el.type==='bajante'?'⬇':'╱'}
                     </span>
-                    <span style={{fontSize:12,fontWeight:600,color:'#b9caca',fontFamily:"'Geist',monospace",flex:1}}>{el.label}</span>
-                    <span style={{fontSize:11,fontWeight:600,color:'#6b8cae',fontFamily:"'Geist',monospace",textTransform:'uppercase'}}>{(el.tipo==='ramal'?'ramal':el.tipo==='tributario'?'trib':el.tipo==='bajante'?'baj':el.tipo)||''}</span>
+<span style={{fontSize:12,fontWeight:600,color:'#b9caca',fontFamily:"'Geist',monospace",flex:1}}>{el.tipo==='tributario'?((()=>{try{const p=drawnElements.find(x=>x.id===el.padre&&x.tipo==='ramal');return p?p.label:el.label;}catch(_){return el.label}})()):el.label}</span>
+              <span style={{fontSize:11,fontWeight:600,color:'#6b8cae',fontFamily:"'Geist',monospace",textTransform:'uppercase'}}>{(el.tipo==='ramal'?'ramal':el.tipo==='tributario'?el.label:el.tipo==='bajante'?'baj':el.tipo)||''}</span>
                     <button onClick={e=>{e.stopPropagation();if(engineRef.current){engineRef.current.selectById(el.id);engineRef.current.deleteSelected();}}}
                       style={{padding:'3px 6px',background:'transparent',border:'1px solid #3a494a',borderRadius:2,color:'#ffb4ab',cursor:'pointer',fontSize:10,fontFamily:"'Geist',monospace",flexShrink:0}}>✕</button>
                   </div>
@@ -1197,30 +1267,6 @@ try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
               ))}
             </div>
           )}
-        </div>
-
-        {/* Escala */}
-        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Escala</div>
-          <div style={{display:'flex',flexDirection:'column',gap:5}}>
-            <select value={scaleM} onChange={e=>{setScaleM(e.target.value);if(engineRef.current)engineRef.current.setScaleM(e.target.value);}}
-              style={{width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace",cursor:'pointer'}}>
-              <option value="0.5">1:50</option>
-              <option value="0.75">1:75</option>
-              <option value="1.0">1:100</option>
-              <option value="1.25">1:125</option>
-              <option value="2.0">1:200</option>
-            </select>
-          </div>
-          {selectedNivel!==null&&(()=>{
-            const planoAsoc=planos.find(p=>p.nivel===selectedNivel&&p.status==='confirmed');
-            if(planoAsoc)return(
-              <div style={{marginTop:6,fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace"}}>
-                Plano: 1:{planoAsoc.scale}
-              </div>
-            );
-            return null;
-          })()}
         </div>
 
         <div style={{flex:1}}/>
