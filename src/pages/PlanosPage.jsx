@@ -5,11 +5,11 @@ import { usePlanos } from '../context/PlanosContext';
 import { fmtSize } from '../utils/fmtSize';
 
 const REQ_ITEMS = [
-  ['📏', 'Escala explícita', 'Barra gráfica o nota 1:50 · 1:75 · 1:100'],
-  ['📄', 'Plantas separadas', 'Una página por nivel (Sótano 1, 2... / Piso 1, 2...)'],
-  ['🏷️', 'Cotas NPT', 'Nivel piso terminado en cada planta'],
-  ['🎨', 'Redes por color', 'AF · AC · SAN · LL · VEN · GAS con leyenda'],
-  ['🚿', 'Símbolos NTC', 'Lvm · San · Duc · Lvp · Tin · Lvra'],
+  ['📏', 'Escala', '1:50 · 1:100'],
+  ['📄', '1 plano', 'Por nivel'],
+  ['🏷️', 'Cotas NPT', 'En planta'],
+  ['🎨', 'Redes color', 'AF·AC·SAN'],
+  ['🚿', 'Simbología', 'NTC 1500'],
 ];
 
 function PlanosPage() {

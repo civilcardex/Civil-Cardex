@@ -1,37 +1,24 @@
 import { useSanitario } from "../context/SanitarioContext";
-import { calcUDparcial, calcUDacumulado, NumIn } from "./utils";
-import { pisoCorto } from "./constants";
+import { calcUDparcial, calcUDacumulado } from "./utils";
+import { pisoCorto, APARATOS_DEF } from "./constants";
 
-export default function CalculoUD({ onTraerPlano }) {
-const { tramosSan, udBase, pisos, addTramoSan, delTramoSan, updTramoSan, updTramoSanFix, setUdBase } = useSanitario();
+export default function CalculoUD() {
+const { tramosSan, udBase, pisos, addTramoSan, delTramoSan, updTramoSan, updTramoSanFix, aps } = useSanitario();
 
 const pisosSelect = pisos.filter(p => p.tipo !== 'cubierta');
-const acumMap = calcUDacumulado(tramosSan, udBase);
+const mergedBase = udBase.map(d => {
+  const fromAps = aps.find(p => p.id === d.id);
+  const merged = fromAps ? { ...d, ud: fromAps.ud ?? d.ud } : d;
+  const def = APARATOS_DEF.find(x => x.id === d.id);
+  return { ...merged, _disabled: (def?.ud || 0) === 0 };
+});
+const acumMap = calcUDacumulado(tramosSan, mergedBase);
 
 return (
 <>
   <div className="card">
     <div className="card-h">
-      <span className="card-t">📊 Valores base UD por dispositivo</span>
-      <span className="card-s">Define las UD de cada aparato para calcular el caudal de diseño por tramo</span>
-    </div>
-    <div className="card-b">
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'6px 16px'}}>
-        {udBase.map(d=>(
-          <div key={d.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'4px 0',borderBottom:'1px solid var(--line)'}}>
-            <span style={{fontWeight:500,fontSize:13}}>{d.nombre}</span>
-            <NumIn val={d.ud} step={1} w={72} onChange={v=>{
-              setUdBase(prev=>prev.map(x=>x.id===d.id?{...x,ud:v}:x));
-            }}/>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-
-  <div className="card">
-    <div className="card-h">
-      <span className="card-t">📊 Cálculo Unidades de Descarga</span>
+      <span className="card-t">📊 C&aacute;lculo Unidades de Descarga</span>
       <span className="card-s">{tramosSan.length} tramos</span>
     </div>
     <div className="scroll-top" style={{padding:'16px'}}>
@@ -41,13 +28,13 @@ return (
             <tr>
               <th className="col-h" rowSpan={2} style={{minWidth:70,textAlign:'center'}}>Tramo</th>
               <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Piso</th>
-              <th className="col-h san" colSpan={udBase.length} style={{textAlign:'center'}}>Aparatos</th>
+              <th className="col-h san" colSpan={mergedBase.length} style={{textAlign:'center'}}>Aparatos</th>
               <th className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Unidades de Descarga</th>
               <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Bajante</th>
               <th className="col-h" rowSpan={2} style={{minWidth:34,textAlign:'center'}}></th>
             </tr>
             <tr>
-              {udBase.map(d=>(
+              {mergedBase.map(d=>(
                 <th key={d.id} className="col-h san" style={{minWidth:52,fontSize:9,textAlign:'center'}}>{d.nombre}<br/><span style={{fontSize:8,fontWeight:400}}>{d.ud} UD</span></th>
               ))}
               <th className="col-h ok" style={{textAlign:'center'}}>Parcial</th>
@@ -56,7 +43,7 @@ return (
           </thead>
           <tbody>
 {tramosSan.map((t,i)=>{
-const parcial=calcUDparcial(t,udBase);
+const parcial=calcUDparcial(t,mergedBase);
 const acum=acumMap[t.id]||0;
               return(
                 <tr key={i}>
@@ -66,10 +53,10 @@ const acum=acumMap[t.id]||0;
                       {pisosSelect.map(p=><option key={p.id} value={p.n}>{pisoCorto(p.n)}</option>)}
                     </select>
                   </td>
-                  {udBase.map(d=>(
+                  {mergedBase.map(d=>(
                     <td key={d.id} className="c" style={{padding:'2px 3px'}}>
-                      <input type="number" className="ni" style={{width:48,textAlign:'center',padding:'3px 4px',fontSize:12}} value={t.fixtures[d.id]===0?'':t.fixtures[d.id]??''} min={0}
-                      onChange={e=>updTramoSanFix(t.id,d.id,e.target.value===''?0:parseInt(e.target.value)||0)}/>
+<input type="number" className="ni" style={{width:48,textAlign:'center',padding:'3px 4px',fontSize:12}} value={t.fixtures[d.id]??0} min={0} disabled={d._disabled}
+onChange={e=>updTramoSanFix(t.id,d.id,e.target.value===''?0:parseInt(e.target.value)||0)}/>
                     </td>
                   ))}
                   <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,color:'var(--txt)',fontSize:13}}>{parcial}</td>
@@ -84,13 +71,10 @@ const acum=acumMap[t.id]||0;
               );
             })}
             <tr>
-              <td colSpan={2+udBase.length+4} style={{padding:'8px 0'}}>
+              <td colSpan={2+mergedBase.length+4} style={{padding:'8px 0'}}>
                 <div style={{display:'flex',justifyContent:'center',alignItems:'center',gap:8}}>
-                  <button className="btn-xs" onClick={addTramoSan} style={{width:'auto',display:'inline-flex',alignItems:'center',gap:4}}>+ Agregar tramo</button>
-                  {onTraerPlano && (
-                    <button className="btn-xs" onClick={onTraerPlano} style={{width:'auto',display:'inline-flex',alignItems:'center',gap:4}}>📐 Traer plano</button>
-                  )}
-                </div>
+<button className="btn-xs" onClick={addTramoSan} style={{width:'auto',display:'inline-flex',alignItems:'center',gap:4}}>+ Agregar tramo</button>
+</div>
               </td>
             </tr>
           </tbody>
@@ -99,7 +83,7 @@ const acum=acumMap[t.id]||0;
     </div>
     <div className="tot-bar">
       {(()=>{
-        const totales=udBase.map(d=>({
+        const totales=mergedBase.map(d=>({
           id:d.id,nombre:d.nombre,ud:d.ud,
           cant:tramosSan.reduce((s,t)=>s+(t.fixtures[d.id]||0),0)
         }));

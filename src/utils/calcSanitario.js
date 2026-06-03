@@ -12,7 +12,7 @@ export const maning_SAN_VENT = 0.009;
 export const APARATOS_UD = [
   { id: 'sif', nombre: 'Sifones/Drenajes', ud: 2, dimSifon: 2 },
   { id: 'lvm', nombre: 'Lavamanos', ud: 2, dimSifon: 1.25 },
-  { id: 'san', nombre: 'Sanitario con tanque', ud: 4, dimSifon: 0 },
+  { id: 'san', nombre: 'Inodoro', ud: 4, dimSifon: 0 },
   { id: 'duc', nombre: 'Ducha', ud: 2, dimSifon: 1.5 },
   { id: 'lvra', nombre: 'Lavadora', ud: 4, dimSifon: 2 },
   { id: 'tin', nombre: 'Tina', ud: 2, dimSifon: 1.5 },

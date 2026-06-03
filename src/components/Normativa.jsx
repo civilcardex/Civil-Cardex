@@ -281,7 +281,7 @@ function NTC1500() {
         <tbody>
           {[
             ["Lavamanos", "Lvm", 0.5, 0.5, 0.51, 5.63],
-            ["Sanitario (inodoro)", "San", 2.2, "—", 0.71, 14.1],
+            ["Inodoro", "San", 2.2, "—", 0.71, 14.1],
             ["Sanitario fluxómetro", "San-F", 5.0, "—", 1.05, 14.1],
             ["Ducha", "Duc", 1.0, 1.0, 1.02, 5.63],
             ["Tina / bañera", "Tin", 1.0, 1.0, 0.51, 14.1],

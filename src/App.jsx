@@ -16,6 +16,7 @@ import CivilBIMPage from './pages/CivilBIMPage'
 import CivilManagePage from './pages/CivilManagePage'
 import CivilMEPPage from './pages/CivilMEPPage'
 import CivilRoadsPage from './pages/CivilRoadsPage'
+import CatalogoMaestroPage from './pages/CatalogMasterPage'
 import { PlanosProvider } from './context/PlanosContext'
 import { SanitarioProvider } from './context/SanitarioContext'
 
@@ -42,6 +43,7 @@ function App() {
             <Route element={<Layout />}>
               <Route path="/civilflowareatrabajo" element={<WorkAreaCivilFlowPage />} />
               <Route path="/perfil" element={<ProfilePage />} />
+              <Route path="/catalogomaestro" element={<CatalogoMaestroPage />} />
             </Route>
             <Route path="/dashboard" element={<Navigate to="/civilflowareatrabajo" replace />} />
           </Routes>

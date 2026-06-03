@@ -14,6 +14,8 @@ import ChequeoBajantesLluvias from "./RainDownpipesCheck";
 import ChequeoCanalesLluvias from "./RainChannelsCheck";
 import CalculoHidraulicoLluvias from "./RainwaterHydraulicCalc";
 import CalculoHidraulicoSanitario from "./SanitaryHydraulicCalc";
+import CalculoUCAF from "./CalculoUCAF";
+import CalculoUCAC from "./CalculoUCAC";
 
 import DisenoUDPanel from "./UdDesignPanel";
 import PanelValoresUD from "./UdValuesPanel";
@@ -36,8 +38,21 @@ const { planos, addPlanos, removePlano, updatePlano, confirmPlano } = usePlanos(
     }
   }, []);
 
-  const [redes,setRedes]=useState(new Set(['san','ll']));
-  const redesActivas=useMemo(()=>REDES.filter(r=>redes.has(r.id)),[redes]);
+const [redes,setRedes]=useState(()=>{
+try {
+const saved = localStorage.getItem('civilflow_active_nets');
+if (saved) return new Set(JSON.parse(saved));
+} catch (_) {}
+return new Set(['san','ll']);
+});
+const redesActivas=useMemo(()=>REDES.filter(r=>redes.has(r.id)),[redes]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('civilflow_active_nets', JSON.stringify([...redes]));
+      window.dispatchEvent(new CustomEvent('civilflow_nets_changed', { detail: [...redes] }));
+    } catch (_) {}
+  }, [redes]);
   const [redActiva,setRedActiva]=useState('san');
 const [planDrag,setPlanDrag]=useState(false);
 const [selectedPlanId,setSelectedPlanId]=useState(null);
@@ -54,23 +69,40 @@ const [nptPiso1,setNptPiso1]=useState('');
 const [conCubierta,setConCubierta]=useState(false);
 
 const generarPisos=()=>{
-  const lista=[];
   const MAX=50;
-  const ns=Math.min(parseIntInput(nSotanos)||0,MAX);
-  const np=Math.min(parseIntInput(nPisos)||0,MAX);
-  const altP=parseIntInput(altPiso)||0;
-  const altS=parseIntInput(altSotano)||0;
-  const npt1=parseIntInput(nptPiso1)||0;
-  if(conCubierta)lista.push({id:'cub',n:99,npt:parseFloat((npt1+(np*altP)).toFixed(2)),ok:false,tipo:'cubierta'});
-  for(let i=np;i>=1;i--)lista.push({id:'p'+i,n:i,npt:parseFloat((npt1+((i-1)*altP)).toFixed(2)),ok:false,tipo:'piso'});
-  for(let i=1;i<=ns;i++)lista.push({id:'s'+i,n:-i,npt:parseFloat((npt1-(i*altS)).toFixed(2)),ok:false,tipo:'sotano'});
-  setPisos(lista);
+  const nSot=Math.min(parseIntInput(nSotanos)||0,MAX);
+  const nPis=Math.min(parseIntInput(nPisos)||0,MAX);
+  const hPis=parseDecimalInput(altPiso)||0;
+  const hSot=parseDecimalInput(altSotano)||0;
+  const npt1=parseDecimalInput(nptPiso1)||0;
+  const l=[];
+  for(let i=nSot;i>=1;i--)
+    l.push({id:'s'+i,n:-i,npt:+((npt1-(i*hSot)).toFixed(2)),ok:false,tipo:'sotano'});
+  for(let i=1;i<=nPis;i++)
+    l.push({id:'p'+i,n:i,npt:+((npt1+((i-1)*hPis)).toFixed(2)),ok:false,tipo:'piso'});
+  if(conCubierta)
+    l.push({id:'cub',n:99,npt:+((npt1+(nPis*hPis)).toFixed(2)),ok:false,tipo:'cubierta'});
+  setPisos(l);
 };
 
-const onIntChange=(setter)=>(e)=>setter(e.target.value);
+const onIntChange=(setter)=>(e)=>{
+  const onlyDigits=e.target.value.replace(/[^\d]/g,'');
+  setter(onlyDigits);
+};
 const onIntBlur=(setter)=>(e)=>{
   const v=parseIntInput(e.target.value);
-  setter(v!==null?String(v):'');
+  if(v!==null)setter(String(v));
+};
+const onDecChange=(setter)=>(e)=>{
+  const normalized=e.target.value.replace(/,/g,'.');
+  setter(normalized);
+};
+const onDecBlur=(setter)=>(e)=>{
+  const v=parseDecimalInput(e.target.value);
+  if(v!==null){
+    const s=String(v);
+    setter(s);
+  }
 };
 
 const delPiso=(id)=>setPisos(prev=>prev.filter(p=>p.id!==id));
@@ -221,9 +253,9 @@ return(
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:3,alignItems:'end'}}>
           <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Sótanos</label><input type="text" inputMode="numeric" value={nSotanos} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={onIntChange(setNSotanos)} onBlur={onIntBlur(setNSotanos)}/></div>
           <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Pisos</label><input type="text" inputMode="numeric" value={nPisos} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={onIntChange(setNPisos)} onBlur={onIntBlur(setNPisos)}/></div>
-          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Alt. entrep.</label><input type="text" inputMode="numeric" value={altPiso} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={onIntChange(setAltPiso)} onBlur={onIntBlur(setAltPiso)}/></div>
-          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Alt. sótano</label><input type="text" inputMode="numeric" value={altSotano} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={onIntChange(setAltSotano)} onBlur={onIntBlur(setAltSotano)}/></div>
-          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>NPT P1</label><input type="text" inputMode="numeric" value={nptPiso1} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={onIntChange(setNptPiso1)} onBlur={onIntBlur(setNptPiso1)}/></div>
+          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Altura entrepiso</label><input type="text" inputMode="decimal" value={altPiso} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={onDecChange(setAltPiso)} onBlur={onDecBlur(setAltPiso)}/></div>
+          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>Altura sótano</label><input type="text" inputMode="decimal" value={altSotano} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={onDecChange(setAltSotano)} onBlur={onDecBlur(setAltSotano)}/></div>
+          <div className="f" style={{marginBottom:0}}><label style={{fontSize:12}}>NPT P1</label><input type="text" inputMode="decimal" value={nptPiso1} style={{textAlign:'center',fontSize:12,padding:'3px 5px'}} onChange={onDecChange(setNptPiso1)} onBlur={onDecBlur(setNptPiso1)}/></div>
           <div style={{display:'flex',alignItems:'flex-end',justifyContent:'flex-end',paddingRight:24,paddingBottom:2}}>
             <div onClick={()=>setConCubierta(!conCubierta)} title="Incluir cubierta" style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',userSelect:'none',padding:'4px 8px',borderRadius:4,flexShrink:0}}>
               <div style={{width:28,height:15,borderRadius:8,background:conCubierta?'var(--ll)':'var(--line2)',position:'relative',transition:'background .2s',flexShrink:0}}>
@@ -252,17 +284,12 @@ return(
         {pisos.length>0&&(
         <>
           <div style={{flex:1,overflowY:'auto',minHeight:0}}>
-            {[...pisos].sort((a,b)=>{
-              if(a.n===99)return -1;
-              if(b.n===99)return 1;
-              if(a.n>0&&b.n>0)return b.n-a.n;
-              if(a.n<0&&b.n<0)return a.n-b.n;
-              if(a.n>0)return -1;
-              return 1;
-            }).map(p=>(
+            {[...pisos].sort((a,b)=>
+              (b.tipo==='cubierta'?999:b.n) - (a.tipo==='cubierta'?999:a.n)
+            ).map(p=>(
               <div key={p.id} style={{display:'flex',alignItems:'center',gap:3,padding:'2px 4px',background:'var(--bg3)',border:'1px solid var(--line)',borderRadius:'var(--r)',borderLeft:'3px solid '+(p.tipo==='cubierta'?'var(--ll)':p.n<0?'var(--txt3)':'var(--acc2)'),marginBottom:2}}>
                 <span className={p.tipo==='cubierta'?'piso-tag cub':p.n<0?'piso-tag sot':'piso-tag'} style={{fontSize:11,padding:'2px 5px',minWidth:48}}>{pisoLbl(p.n)}</span>
-                <input type="text" inputMode="decimal" defaultValue={p.npt||''} key={p.id+'npt'} className="npt-in" style={{fontSize:12,width:52,padding:'2px 4px'}} onBlur={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)setPisos(prev=>prev.map(x=>x.id===p.id?{...x,npt:v}:x));}}/>
+                <input type="text" inputMode="decimal" defaultValue={p.npt ?? ''} key={p.id+'npt'} className="npt-in" style={{fontSize:12,width:52,padding:'2px 4px'}} onBlur={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)setPisos(prev=>prev.map(x=>x.id===p.id?{...x,npt:v}:x));}}/>
                 <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',height:20}}><span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--txt3)'}}>m</span></div>
                 <div className={`pdot ${p.ok?'ok':''}`}/>
                 <button onClick={()=>delPiso(p.id)} title="Eliminar nivel" style={{padding:'1px 5px',background:'transparent',border:'1px solid var(--line)',borderRadius:2,color:'var(--txt3)',cursor:'pointer',fontSize:10,fontFamily:'var(--mono)',lineHeight:1,flexShrink:0,marginLeft:2}} onMouseEnter={e=>{e.currentTarget.style.color='#ef5350';e.currentTarget.style.borderColor='rgba(211,47,47,.5)';}} onMouseLeave={e=>{e.currentTarget.style.color='var(--txt3)';e.currentTarget.style.borderColor='var(--line)';}}>✕</button>
@@ -506,7 +533,7 @@ return(
     <CollapsibleNav items={redesActivas} collapsedLabel={redesActivas.find(r=>r.id===redActiva)?.lbl || redesActivas[0]?.lbl} renderTab={(r)=>(<button key={r.id} onClick={()=>setRedActiva(r.id)} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 18px',borderRadius:'var(--r)',border:'1px solid',cursor:'pointer',fontSize:14,fontFamily:'var(--body)',flex:1,justifyContent:'center',borderColor:redActiva===r.id?r.col:'var(--line)',color:redActiva===r.id?r.col:'var(--txt3)',background:redActiva===r.id?'rgba(0,0,0,.15)':'transparent',fontWeight:redActiva===r.id?700:400}}><span style={{fontSize:22}}>{r.ico}</span><div style={{display:'flex',flexDirection:'column',alignItems:'flex-start',gap:1}}><span>{r.lbl}</span><span style={{fontSize:10,fontFamily:'var(--mono)',opacity:.7}}>{r.sub}</span></div></button>)} mode="flex" />
   {redActiva==='san'&&redes.has('san')&&(
     <div className="fu" style={{display:'flex',flexDirection:'column',gap:12}}>
-      <CalculoUD onTraerPlano={()=>{setTab('planos');}} />
+      <CalculoUD />
       <DisenosSanitarios /><BajantesTable /><CalculoHidraulicoSanitario />
     </div>
   )}
@@ -515,7 +542,17 @@ return(
       <ChequeoBajantesLluvias /><ChequeoCanalesLluvias /><DisenoLluvias /><CalculoHidraulicoLluvias />
     </div>
   )}
-  {redesActivas.filter(r=>r.id!=='san'&&r.id!=='ll').map(r=>redActiva===r.id&&redes.has(r.id)&&(
+  {redActiva==='af'&&redes.has('af')&&(
+    <div className="fu" style={{display:'flex',flexDirection:'column',gap:12}}>
+      <CalculoUCAF />
+    </div>
+  )}
+  {redActiva==='ac'&&redes.has('ac')&&(
+    <div className="fu" style={{display:'flex',flexDirection:'column',gap:12}}>
+      <CalculoUCAC />
+    </div>
+  )}
+  {redesActivas.filter(r=>r.id!=='san'&&r.id!=='ll'&&r.id!=='af'&&r.id!=='ac').map(r=>redActiva===r.id&&redes.has(r.id)&&(
     <div key={r.id} className="fu" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,flex:1,minHeight:250}}>
       <div style={{fontSize:48,opacity:.5}}>🚧</div>
       <div style={{fontSize:18,fontWeight:600,color:'var(--txt2)'}}>{r.lbl}</div>

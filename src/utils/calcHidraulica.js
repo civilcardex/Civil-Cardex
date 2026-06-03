@@ -11,7 +11,7 @@ export const COEF_HAZEN_COBRE = 130;
 
 // ─── Tabla de UC por aparato (NTC 1500) ───
 export const APARATOS_UC = [
-  { id: 'san', nombre: 'Inodoro (tanque)', uc_af: 2.2, uc_ac: 0, ud: 4, pmin: 0.71, pmax: 14.08, sigla: 'San' },
+  { id: 'san', nombre: 'Inodoro (tanque)', uc_af: 2.2, uc_ac: 0, ud: 4, pmin: 0.71, pmax: 14.08, sigla: 'Ino' },
   { id: 'lvm', nombre: 'Lavamanos', uc_af: 0.5, uc_ac: 0.5, ud: 2, pmin: 0.51, pmax: 5.63, sigla: 'Lvm' },
   { id: 'duc', nombre: 'Ducha', uc_af: 1.0, uc_ac: 1.0, ud: 2, pmin: 1.02, pmax: 5.63, sigla: 'Duc' },
   { id: 'lvp', nombre: 'Lavaplatos Cocina', uc_af: 1.0, uc_ac: 1.0, ud: 2, pmin: 0.51, pmax: 5.63, sigla: 'Lvp' },

@@ -1,27 +1,30 @@
-import { useState, createContext, useContext } from "react";
-import { UD_BASE_INIT, MATS_DEFAULT, APS_DEFAULT, PROFS_DEFAULT, CRIT0 } from "../components/constants";
+import { useState, useEffect, createContext, useContext } from "react";
+import { UD_BASE_INIT, MATS_DEFAULT, APS_DEFAULT, PROFS_DEFAULT, CRIT0, APARATOS_DEF } from "../components/constants";
+import { readSanDrawingSync } from "../utils/sanDrawingSync";
+import { readHidroDrawingSync, HIDRO_DATA_STORAGE_KEY } from "../utils/hidroDrawingSync";
 
 const SanitarioContext = createContext(null);
 let _llKey = 0;
 function nextLlKey() { return `_ll_${++_llKey}`; }
 
+function safeParse(raw, fb) { try { return JSON.parse(raw); } catch (_) { return fb; } }
+
+const APS_STORAGE_KEY = 'civilflow_aps_v4';
+function loadAps() {
+  const raw = safeParse(localStorage.getItem(APS_STORAGE_KEY), null);
+  if (raw && Array.isArray(raw)) return raw;
+  return APS_DEFAULT.map(a => ({...a}));
+}
+
 export function SanitarioProvider({ children }) {
 const [udBase, setUdBase] = useState([...UD_BASE_INIT]);
 
-const [tramosSan, setTramosSan] = useState([
-{id:'BAN-1',piso:2,pisoDesde:2,pisoHasta:1,fixtures:{},recibeDe:[],esBajante:true,descripcion:'',diamDisPulg:0,nSalidas:0,nmaning:0,sPercent:0,bajR:(7/24),bajLong:3,bajFDarcy:0.025,bajDprop:0,ventDprop:0},
-{id:'BAN-2',piso:2,pisoDesde:2,pisoHasta:1,fixtures:{},recibeDe:[],esBajante:true,descripcion:'',diamDisPulg:0,nSalidas:0,nmaning:0,sPercent:0,bajR:(7/24),bajLong:3,bajFDarcy:0.025,bajDprop:0,ventDprop:0},
-{id:'R-1',piso:1,pisoDesde:1,pisoHasta:1,fixtures:{},recibeDe:['BAN-2'],esBajante:false,descripcion:'BAN 2',diamDisPulg:0,nSalidas:0,nmaning:0,sPercent:0,bajR:(7/24),bajLong:0,bajFDarcy:0.025,bajDprop:0,ventDprop:0},
-{id:'R-2',piso:1,pisoDesde:1,pisoHasta:1,fixtures:{},recibeDe:[],esBajante:false,descripcion:'',diamDisPulg:0,nSalidas:0,nmaning:0,sPercent:0,bajR:(7/24),bajLong:0,bajFDarcy:0.025,bajDprop:0,ventDprop:0},
-{id:'R-3',piso:1,pisoDesde:1,pisoHasta:1,fixtures:{},recibeDe:['BAN-1','R-1','R-2'],esBajante:false,descripcion:'BAN-1+R-1+R-2',diamDisPulg:0,nSalidas:0,nmaning:0,sPercent:0,bajR:(7/24),bajLong:0,bajFDarcy:0.025,bajDprop:0,ventDprop:0},
-]);
+const [tramosSan, setTramosSan] = useState([]);
 
-const [pisos, setPisos] = useState([
-{id:1,n:-1,npt:0,ok:false,tipo:'sotano'},
-{id:2,n:1, npt:0,ok:false,tipo:'piso'},
-{id:3,n:2, npt:0,ok:false,tipo:'piso'},
-{id:4,n:99,npt:0,ok:false,tipo:'cubierta'},
-]);
+const [tramosAf, setTramosAf] = useState([]);
+const [tramosAc, setTramosAc] = useState([]);
+
+const [pisos, setPisos] = useState([]);
 
 const [proy, setProy] = useState({
 nombre:'', dir:'',
@@ -58,11 +61,156 @@ const [mats, setMats] = useState(
   )
 );
 
-const [aps, setAps] = useState(APS_DEFAULT.map(a => ({...a})));
+const [aps, setAps] = useState(loadAps);
+
+useEffect(() => {
+  try { localStorage.setItem(APS_STORAGE_KEY, JSON.stringify(aps)); } catch (_) {}
+}, [aps]);
 
 const [profs, setProfs] = useState(PROFS_DEFAULT.map(p => ({...p})));
 
 const [crits, setCrits] = useState(CRIT0.map(c => ({...c})));
+
+  // SANITARIA sync
+  useEffect(() => {
+    function loadFromSync() {
+      const sync = readSanDrawingSync();
+      const planes = sync.planes || {};
+      const hidroData = safeParse(localStorage.getItem(HIDRO_DATA_STORAGE_KEY), {}) || {};
+      const incoming = [];
+      for (const [nivel, plane] of Object.entries(planes)) {
+        const piso = parseInt(nivel);
+        for (const r of (plane.ramales || [])) {
+          const hd = hidroData[r.id] || {};
+          incoming.push({
+            id: r.id,
+            piso,
+            fixtures: sync.aparatosByTramo?.[r.id] || {},
+            recibeDe: [],
+            esBajante: false,
+            descripcion: '',
+            diamDisPulg: r.diamPulg || 0,
+            nSalidas: hd.nSalidas || 0,
+            nmaning: r.maning ?? 0,
+            sPercent: r.pendiente ?? 0,
+            bajR: 7/24, bajLong: 3, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
+          });
+        }
+        for (const b of (plane.bajantes || [])) {
+          const hd = hidroData[b.id] || {};
+          incoming.push({
+            id: b.id,
+            piso,
+            fixtures: sync.aparatosByTramo?.[b.id] || {},
+            recibeDe: [],
+            esBajante: true,
+            descripcion: '',
+            diamDisPulg: b.diamPulg || 0,
+            nSalidas: hd.nSalidas || 0,
+            nmaning: b.maning ?? 0,
+            sPercent: 0,
+            bajR: 7/24, bajLong: 3, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
+          });
+        }
+      }
+      if (incoming.length > 0) {
+        setTramosSan(prev => {
+          const keep = prev.filter(t => !incoming.some(i => i.id === t.id));
+          const merged = incoming.map(i => {
+            const existing = prev.find(t => t.id === i.id);
+            if (existing) {
+              return {
+                ...i,
+                descripcion: existing.descripcion || i.descripcion,
+                nSalidas: existing.nSalidas ?? i.nSalidas,
+                fixtures: { ...i.fixtures, ...existing.fixtures },
+              };
+            }
+            return i;
+          });
+          return [...keep, ...merged];
+        });
+      }
+    }
+    loadFromSync();
+    const handler = () => loadFromSync();
+    window.addEventListener('civilflow_san_sync_changed', handler);
+    window.addEventListener('storage', handler);
+    return () => {
+      window.removeEventListener('civilflow_san_sync_changed', handler);
+      window.removeEventListener('storage', handler);
+    };
+  }, []);
+
+  // AF/AC sync
+  useEffect(() => {
+    function loadHidro() {
+      const sync = readHidroDrawingSync();
+      const planes = sync.planes || {};
+      const hidroData = sync.hidroData || {};
+      const aparatos = sync.aparatosByTramo || {};
+
+      function buildTramos(family) {
+        const incoming = [];
+        for (const [key, plane] of Object.entries(planes)) {
+          if (!key.startsWith(family + '_')) continue;
+          const nivel = parseInt(key.slice(family.length + 1));
+          for (const r of (plane.ramales || [])) {
+            const familyKey = `${family}_${r.id}`;
+            const extra = hidroData[familyKey] || {};
+            incoming.push({
+              id: r.id,
+              piso: nivel,
+              fixtures: aparatos[familyKey] || {},
+              accesorios: extra.accesorios || {},
+              Lh: extra.Lh || 0,
+              nSalidas: extra.nSalidas || 0,
+              recibeDe: [],
+              descripcion: '',
+              diamDisPulg: r.diamPulg || 0,
+              material: r.material || '',
+            });
+          }
+        }
+        return incoming;
+      }
+
+      const afIncoming = buildTramos('af');
+      const acIncoming = buildTramos('ac');
+
+      if (afIncoming.length > 0) {
+        setTramosAf(prev => {
+          const keep = prev.filter(t => !afIncoming.some(i => i.id === t.id));
+          const merged = afIncoming.map(i => {
+            const ex = prev.find(t => t.id === i.id);
+            if (ex) return { ...i, recibeDe: ex.recibeDe || [], descripcion: ex.descripcion || '' };
+            return i;
+          });
+          return [...keep, ...merged];
+        });
+      }
+      if (acIncoming.length > 0) {
+        setTramosAc(prev => {
+          const keep = prev.filter(t => !acIncoming.some(i => i.id === t.id));
+          const merged = acIncoming.map(i => {
+            const ex = prev.find(t => t.id === i.id);
+            if (ex) return { ...i, recibeDe: ex.recibeDe || [], descripcion: ex.descripcion || '' };
+            return i;
+          });
+          return [...keep, ...merged];
+        });
+      }
+    }
+
+    loadHidro();
+    const handler = () => loadHidro();
+    window.addEventListener('civilflow_hidro_sync_changed', handler);
+    window.addEventListener('storage', handler);
+    return () => {
+      window.removeEventListener('civilflow_hidro_sync_changed', handler);
+      window.removeEventListener('storage', handler);
+    };
+  }, []);
 
 const addCanalLL = () => setCanalesLl(p => [...p, {
 id:`CLL-${p.length+1}`,sector:'',areaParcial:0,areaAcumulada:0,intensidad:0,coeficienteC:0,manning:0,pendiente:0,b:0,h:0,bl:0,
@@ -83,6 +231,18 @@ const delTramoSan = (id) => setTramosSan(p => p.filter(t => t.id !== id));
 const updTramoSan = (id, field, val) => setTramosSan(p => p.map(t => t.id === id ? { ...t, [field]: val } : t));
 const updTramoSanFix = (id, fix, val) => setTramosSan(p => p.map(t => t.id === id ? { ...t, fixtures: { ...t.fixtures, [fix]: val } } : t));
 
+const delTramoAf = (id) => setTramosAf(p => p.filter(t => t.id !== id));
+const updTramoAf = (id, field, val) => setTramosAf(p => p.map(t => t.id === id ? { ...t, [field]: val } : t));
+const updTramoAfFix = (id, fix, val) => setTramosAf(p => p.map(t => t.id === id ? { ...t, fixtures: { ...t.fixtures, [fix]: val } } : t));
+const updTramoAfAcc = (id, accId, val) => setTramosAf(p => p.map(t => t.id === id ? { ...t, accesorios: { ...t.accesorios, [accId]: val } } : t));
+const updTramoAfHidro = (id, field, val) => setTramosAf(p => p.map(t => t.id === id ? { ...t, [field]: val } : t));
+
+const delTramoAc = (id) => setTramosAc(p => p.filter(t => t.id !== id));
+const updTramoAc = (id, field, val) => setTramosAc(p => p.map(t => t.id === id ? { ...t, [field]: val } : t));
+const updTramoAcFix = (id, fix, val) => setTramosAc(p => p.map(t => t.id === id ? { ...t, fixtures: { ...t.fixtures, [fix]: val } } : t));
+const updTramoAcAcc = (id, accId, val) => setTramosAc(p => p.map(t => t.id === id ? { ...t, accesorios: { ...t.accesorios, [accId]: val } } : t));
+const updTramoAcHidro = (id, field, val) => setTramosAc(p => p.map(t => t.id === id ? { ...t, [field]: val } : t));
+
 const addTramoLL = () => setTramosLl(p => [...p, {
 _key:nextLlKey(),id:'',piso:0,esBajante:false,desde:'',hasta:'',descripcion:'',diamDisPulg:0,nSalidas:0,nmaning:0,sPercent:0,
 }]);
@@ -93,9 +253,11 @@ const setP = (k, v) => setProy(p => ({ ...p, [k]: v }));
 
 return (
 <SanitarioContext.Provider value={{
-tramosSan, tramosLl, udBase, pisos, proy,
+tramosSan, tramosAf, tramosAc, tramosLl, udBase, pisos, proy,
 mats, aps, profs, crits,
 addTramoSan, delTramoSan, updTramoSan, updTramoSanFix,
+delTramoAf, updTramoAf, updTramoAfFix, updTramoAfAcc, updTramoAfHidro,
+delTramoAc, updTramoAc, updTramoAcFix, updTramoAcAcc, updTramoAcHidro,
 addTramoLL, delTramoLL, updTramoLL,
 bajantesLl, addBajanteLL, delBajanteLL, updBajanteLL,
 canalesLl, addCanalLL, delCanalLL, updCanalLL,

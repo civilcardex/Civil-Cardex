@@ -1,6 +1,64 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useSanitario } from "../context/SanitarioContext";
-import { MAT_COL } from "./constants";
+import { MAT_COL, AF_UC_IDS, AC_UC_IDS, SAN_UC_IDS } from "./constants";
+
+function NumInput({ value, onCommit, color, width = 50, decimals = 2, disabled: isDisabled }) {
+  const [text, setText] = useState(() => formatVal(value, decimals));
+  const [focused, setFocused] = useState(false);
+  const lastExtRef = useRef(value);
+
+  useEffect(() => {
+    if (focused) return;
+    if (value !== lastExtRef.current) {
+      lastExtRef.current = value;
+      setText(formatVal(value, decimals));
+    }
+  }, [value, focused, decimals]);
+
+  const handleChange = (e) => {
+    const raw = e.target.value;
+    const cleaned = raw.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+    const firstDot = cleaned.indexOf('.');
+    const safe = firstDot < 0
+      ? cleaned
+      : cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '');
+    setText(safe);
+  };
+
+  const commit = () => {
+    const n = parseFloat(text);
+    const finalVal = Number.isFinite(n) ? n : 0;
+    lastExtRef.current = finalVal;
+    onCommit(finalVal);
+    setText(formatVal(finalVal, decimals));
+  };
+
+  if (isDisabled) {
+    return (
+      <span style={{ width, display: 'inline-block', textAlign: 'center', fontSize: 11, color: '#3a494a', fontFamily: "'Geist',monospace", padding: '2px 4px', border: '1px solid transparent', cursor: 'not-allowed' }}>—</span>
+    );
+  }
+
+  return (
+    <input type="text" inputMode="decimal"
+      style={{ width, padding: '2px 4px', fontSize: 11, textAlign: 'center', color: color || 'var(--txt)' }}
+      className="ni"
+      value={text}
+      onChange={handleChange}
+      onFocus={(e) => { setFocused(true); e.target.select(); }}
+      onBlur={() => { setFocused(false); commit(); }}
+      onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+    />
+  );
+}
+
+function formatVal(v, decimals) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return (0).toFixed(decimals);
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(decimals);
+}
 
 const REDES_MAT = [
   { id: 'san', lbl: 'Sanitaria',        mat: 'PVC-S',                       prof: -0.70, fixed: true },
@@ -15,15 +73,15 @@ const REDES_MAT = [
 ];
 
 const CAT_APS = [
-  { id: 'san',  n: 'Sanitario con tanque',     s: 'San',  ctrl: 'Tanque',              af: 2.2, ac: 0  },
-  { id: 'lvm',  n: 'Lavamanos',              s: 'Lvm',  ctrl: 'Llave',               af: 0.5, ac: 0.5},
-  { id: 'duc',  n: 'Ducha',                  s: 'Duc',  ctrl: 'Válvula de mezclado', af: 1.0, ac: 1.0},
-  { id: 'lvp',  n: 'Lavaplatos Cocina',      s: 'Lvp',  ctrl: 'Grifería',            af: 1.0, ac: 1.0},
-  { id: 'tin',  n: 'Tina',                   s: 'Tin',  ctrl: 'Grifería',            af: 1.0, ac: 1.0},
-  { id: 'lvra', n: 'Lavadora',               s: 'Lvra', ctrl: 'Automático',          af: 1.0, ac: 1.0},
-  { id: 'lvro', n: 'Lavadero',               s: 'Lvro', ctrl: 'Grifería',            af: 1.0, ac: 1.0},
-  { id: 'nev',  n: 'Nevera',                 s: 'Nev',  ctrl: 'Llave',               af: 0.5, ac: 0  },
-  { id: 'lavav',n: 'Lavavajillas',           s: 'Lavav',ctrl: 'Llave',               af: 0,   ac: 1.5},
+  { id: 'sif',  n: 'Sifones',                 s: 'Sif',  ctrl: 'Sifón',               af: 0,   ac: 0  },
+  { id: 'san',  n: 'Inodoro',     s: 'Ino',  ctrl: 'Tanque',              af: 0,   ac: 0  },
+  { id: 'lvm',  n: 'Lavamanos',              s: 'Lvm',  ctrl: 'Llave',               af: 0,   ac: 0  },
+  { id: 'duc',  n: 'Ducha',                  s: 'Duc',  ctrl: 'Válvula de mezclado', af: 0,   ac: 0  },
+  { id: 'lvp',  n: 'Lavaplatos Cocina',      s: 'Lvp',  ctrl: 'Grifería',            af: 0,   ac: 0  },
+  { id: 'tin',  n: 'Tina',                   s: 'Tin',  ctrl: 'Grifería',            af: 0,   ac: 0  },
+  { id: 'lvra', n: 'Lavadora',               s: 'Lvra', ctrl: 'Automático',          af: 0,   ac: 0  },
+  { id: 'lvro', n: 'Lavadero',               s: 'Lvro', ctrl: 'Grifería',            af: 0,   ac: 0  },
+  { id: 'lavav',n: 'Lavavajillas',           s: 'Lavav',ctrl: 'Llave',               af: 0,   ac: 0  },
 ];
 
 const CAT_GAS = [
@@ -45,6 +103,7 @@ const CAT_GAS = [
 ];
 
 export default function BaseDatos({ redes }) {
+  const navigate = useNavigate();
   const { mats, setMats, aps, setAps, profs, setProfs } = useSanitario();
 
   const activeRedes = REDES_MAT.filter(r => redes?.has(r.id));
@@ -77,7 +136,15 @@ export default function BaseDatos({ redes }) {
   const apsMap = Object.fromEntries(CAT_APS.map(a => [a.id, a]));
   const apsMerged = CAT_APS.map(c => {
     const cur = aps.find(a => a.id === c.id);
-    return { ...c, ucaf: cur?.ucaf ?? c.af, ucac: cur?.ucac ?? c.ac };
+    return {
+      ...c,
+      ucaf: cur?.ucaf ?? c.af,
+      ucac: cur?.ucac ?? c.ac,
+      ud: cur?.ud ?? 0,
+      _blkAf: !AF_UC_IDS.includes(c.id),
+      _blkAc: !AC_UC_IDS.includes(c.id),
+      _blkUd: !SAN_UC_IDS.includes(c.id),
+    };
   });
 
   const setApsVal = (id, key, v) => {
@@ -91,18 +158,13 @@ export default function BaseDatos({ redes }) {
     });
   };
 
-  const totalAF = apsMerged.reduce((s, a) => s + (parseFloat(a.ucaf) || 0), 0);
-  const totalAC = apsMerged.reduce((s, a) => s + (parseFloat(a.ucac) || 0), 0);
-  const totalAFAC = totalAF + totalAC;
-  const totalQ  = CAT_GAS.reduce((s, g) => s + g.q, 0).toFixed(2);
-
   return (
     <div className="fu bd-section" style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden' }}>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.05fr 1fr', gap: 10, flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.05fr 1fr', gap: 10, flex: 1, minHeight: 0, alignItems: 'start' }}>
 
         {/* ══════════ TABLA 1: MATERIALES POR RED ══════════ */}
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
             <span className="card-t" style={{ fontSize: 13 }}>📦 Materiales por red</span>
             <span className="card-s" style={{ fontSize: 10 }}>{activeRedes.length} redes activas</span>
@@ -113,16 +175,16 @@ export default function BaseDatos({ redes }) {
                 <tr>
                   <th style={{ width: 28, textAlign: 'center', padding: '4px 6px' }}>#</th>
                   <th style={{ padding: '4px 8px' }}>Red</th>
-<th style={{ padding: '4px 8px', minWidth: 90 }}>Tubería</th>
-          <th className="c" style={{ width: 60, padding: '4px 6px' }}>Prof. (m)</th>
-          <th className="c" style={{ width: 130, padding: '4px 6px' }}>Nivel ref.</th>
+                  <th style={{ padding: '4px 8px', minWidth: 90 }}>Tubería</th>
+                  <th className="c" style={{ width: 130, padding: '4px 6px' }}>Profundidad de Instalación<br/>con respecto a NPT (m)</th>
                 </tr>
               </thead>
               <tbody>
                 {merged.map((r, ix) => {
                   const col = MAT_COL[r.id] || 'var(--txt2)';
+                  const isLast = ix === merged.length - 1;
                   return (
-                    <tr key={r.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)' }}>
+                    <tr key={r.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)', borderBottom: isLast ? '2px solid var(--line2)' : undefined }}>
                       <td style={{ textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--txt3)', padding: '3px 6px' }}>{ix + 1}</td>
                       <td style={{ padding: '3px 8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -150,17 +212,14 @@ export default function BaseDatos({ redes }) {
                         )}
                       </td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                          <input type="number" step=".05" className="ni"
-                          style={{ width: 50, padding: '2px 4px', fontSize: 11, textAlign: 'center', color: 'var(--txt)' }}
-                          value={r.prof}
-                          onChange={e => setProf(r.id, parseFloat(e.target.value) || 0)}
+                          <input type="number" step=".01" className="ni"
+                          style={{ width: 60, padding: '2px 4px', fontSize: 11, textAlign: 'center', color: 'var(--txt)' }}
+                          value={Number(r.prof).toFixed(2)}
+                          onChange={e => {
+                            const v = e.target.value.replace(',', '.');
+                            setProf(r.id, parseFloat(v) || 0);
+                          }}
                         />
-                      </td>
-                      <td style={{ padding: '3px 6px' }}>
-          <input className="ni"
-            style={{ width: '100%', fontSize: 11, padding: '2px 5px', textAlign: 'center' }}
-            placeholder=""
-          />
                       </td>
                     </tr>
                   );
@@ -168,6 +227,20 @@ export default function BaseDatos({ redes }) {
               </tbody>
             </table>
           </div>
+          <button onClick={() => navigate('/catalogomaestro')}
+            style={{
+              width: '100%', padding: '8px 10px', background: 'rgba(0,220,229,0.08)',
+              border: 'none', borderTop: '1px solid rgba(0,220,229,0.25)',
+              color: '#00dce5', cursor: 'pointer', fontFamily: 'var(--mono)',
+              fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              transition: 'all .15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.15)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.08)'; }}
+            title="Ver catálogo completo de materiales, diámetros y coeficientes">
+            📚 Catálogo Maestro
+          </button>
         </div>
 
         {/* ══════════ TABLA 2: CATÁLOGO DE APARATOS SANITARIOS ══════════ */}
@@ -185,48 +258,37 @@ export default function BaseDatos({ redes }) {
                   <th style={{ width: 80, padding: '4px 6px' }}>Tipo de Control</th>
                   <th className="c" style={{ width: 55, padding: '4px 4px', background: 'rgba(27,110,243,.07)', color: 'var(--acc2)' }}>UC AF</th>
                   <th className="c" style={{ width: 55, padding: '4px 4px', background: 'rgba(240,69,69,.07)', color: '#F04545' }}>UC AC</th>
+                  <th className="c" style={{ width: 55, padding: '4px 4px', background: 'rgba(245,166,35,.07)', color: 'var(--san)' }}>UD RS</th>
                 </tr>
               </thead>
               <tbody>
-                {apsMerged.map((a, ix) => (
-                  <tr key={a.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)' }}>
-                    <td style={{ padding: '3px 8px', fontWeight: 500 }}>{a.n}</td>
-                    <td style={{ padding: '3px 6px' }}>
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 600, color: 'var(--txt2)', padding: '0' }}>{a.s.toUpperCase()}</span>
-                    </td>
-                    <td style={{ padding: '3px 6px', fontSize: 11, color: 'var(--txt2)' }}>{a.ctrl}</td>
-                    <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                      <input type="number" step=".01" className="ni"
-                        style={{ width: 50, padding: '2px 4px', fontSize: 11, textAlign: 'center', color: 'var(--acc2)' }}
-                        value={a.ucaf}
-                        onChange={e => setApsVal(a.id, 'ucaf', parseFloat(e.target.value) || 0)}
-                      />
-                    </td>
-                    <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                      <input type="number" step=".01" className="ni"
-                        style={{ width: 50, padding: '2px 4px', fontSize: 11, textAlign: 'center', color: '#F04545' }}
-                        value={a.ucac}
-                        onChange={e => setApsVal(a.id, 'ucac', parseFloat(e.target.value) || 0)}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {apsMerged.map((a, ix) => {
+                  const isLast = ix === apsMerged.length - 1;
+                  const isLavavajillas = a.id === 'lavav';
+                  return (
+                    <tr key={a.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)', borderBottom: isLavavajillas ? '2px solid var(--line2)' : undefined }}>
+                      <td style={{ padding: '3px 8px', fontWeight: 500 }}>{a.n}</td>
+                      <td style={{ padding: '3px 6px' }}>
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 600, color: 'var(--txt2)', padding: '0' }}>{a.s.toUpperCase()}</span>
+                      </td>
+                      <td style={{ padding: '3px 6px', fontSize: 11, color: 'var(--txt2)' }}>{a.ctrl}</td>
+                      <td style={{ textAlign: 'center', padding: '3px 4px' }}>
+                        <NumInput value={a.ucaf} color="var(--acc2)" disabled={a._blkAf}
+                          onCommit={(v) => setApsVal(a.id, 'ucaf', v)} />
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '3px 4px' }}>
+                        <NumInput value={a.ucac} color="#F04545" disabled={a._blkAc}
+                          onCommit={(v) => setApsVal(a.id, 'ucac', v)} />
+                      </td>
+                      <td style={{ textAlign: 'center', padding: '3px 4px' }}>
+                        <NumInput value={a.ud ?? 0} color="var(--san)" disabled={a._blkUd}
+                          onCommit={(v) => setApsVal(a.id, 'ud', v)} />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
-          </div>
-          <div style={{ display: 'flex', gap: 16, padding: '7px 12px', background: 'var(--bg3)', borderTop: '1px solid var(--line)', fontSize: 12, flexShrink: 0 }}>
-            <div className="tot">
-              <div className="tl" style={{ fontSize: 10 }}>Σ AF</div>
-              <div className="tv" style={{ fontSize: 14, color: 'var(--acc2)' }}>{totalAF.toFixed(1)}</div>
-            </div>
-            <div className="tot">
-              <div className="tl" style={{ fontSize: 10 }}>Σ AC</div>
-              <div className="tv" style={{ fontSize: 14, color: '#F04545' }}>{totalAC.toFixed(1)}</div>
-            </div>
-            <div className="tot">
-              <div className="tl" style={{ fontSize: 10 }}>Σ AF+AC</div>
-              <div className="tv" style={{ fontSize: 16, color: 'var(--txt)', fontWeight: 700 }}>{totalAFAC.toFixed(1)}</div>
-            </div>
           </div>
         </div>
 
@@ -259,13 +321,6 @@ export default function BaseDatos({ redes }) {
                 ))}
               </tbody>
             </table>
-          </div>
-          <div style={{ display: 'flex', gap: 16, padding: '7px 12px', background: 'var(--bg3)', borderTop: '1px solid var(--line)', fontSize: 12, flexShrink: 0 }}>
-            <div className="tot">
-              <div className="tl" style={{ fontSize: 10 }}>Σ Q gas</div>
-              <div className="tv" style={{ fontSize: 14, color: 'var(--txt)' }}>{totalQ}</div>
-              <div className="ts" style={{ fontSize: 10 }}>m³/hr</div>
-            </div>
           </div>
         </div>
 

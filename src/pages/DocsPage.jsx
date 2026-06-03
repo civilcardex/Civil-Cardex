@@ -227,7 +227,7 @@ const docData = {
             <T>
               <Tr><Th>Aparato</Th><Th>Control</Th><Th>UD</Th></Tr>
               <Tr><Td>Lavamanos</Td><Td>Llave</Td><Td>2</Td></Tr>
-              <Tr><Td>Sanitario con tanque</Td><Td>Tanque</Td><Td>4</Td></Tr>
+              <Tr><Td>Inodoro</Td><Td>Tanque</Td><Td>4</Td></Tr>
               <Tr><Td>Ducha</Td><Td>Válvula mezcla</Td><Td>2</Td></Tr>
               <Tr><Td>Lavaplatos</Td><Td>Griferia</Td><Td>2</Td></Tr>
               <Tr><Td>Tina</Td><Td>Válvula mezcla</Td><Td>2</Td></Tr>
