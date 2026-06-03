@@ -84,9 +84,12 @@ export default class PlanoEngine {
     this._dimStart = null;
     this.nivelActual = null;
     this.nptLevels = [];
-this._hiddenNets = new Set();
+    this._hiddenNets = new Set();
+    this._lockedNets = new Set();
 this._loadedPlanId = null;
 this._onDirtyCb = null;
+this._segmentDeletePending = false;
+this._lastMouseCvs = { x: 0, y: 0 };
 
     this._netCounts = {};
     NETS.forEach(n => { this._netCounts[n.id] = { ramal: 0, tributario: 0 }; });
@@ -148,6 +151,7 @@ onDirty(cb) { this._onDirtyCb = cb; }
           segs: r.pts ? Math.max(0, r.pts.length - 1) : 0,
           piso: r.piso || '',
           tipo: r.tipo,
+          padre: r.padre || null,
           pendiente: r.pendiente,
           diametro: r.diametro
         });
@@ -199,6 +203,12 @@ onDirty(cb) { this._onDirtyCb = cb; }
   setNetHidden(netId, hidden) {
     if (hidden) this._hiddenNets.add(netId);
     else this._hiddenNets.delete(netId);
+    this.render();
+  }
+
+  setNetLocked(netId, locked) {
+    if (locked) this._lockedNets.add(netId);
+    else this._lockedNets.delete(netId);
     this.render();
   }
 
@@ -455,9 +465,7 @@ if (this._onDirtyCb) this._onDirtyCb();
     const pfx = net ? net.lbl : 'R';
     const cnt = this._netCounts[this.activeNet][this.tipoTramo] || 0;
     if (this.tipoTramo === 'tributario') {
-      const padreId = this.activeRamal?.padre;
-      const padreR = padreId ? this.ramales.find(r => r.id === padreId) : null;
-      return padreR ? (padreR.label || padreR.id || `R${cnt}`) : `R${cnt}`;
+      return `Trib${cnt}`;
     }
     return `${pfx}${cnt}`;
   }
@@ -471,8 +479,25 @@ if (this._onDirtyCb) this._onDirtyCb();
     const netPfx = net ? net.lbl : 'R';
     const cnt = ++(this._netCounts[this.activeRamal.net][this.tipoTramo]);
     const id = this.tipoTramo === 'tributario'
-      ? 'T' + cnt
+      ? 'T' + Date.now()
       : netPfx + cnt;
+      
+    // Clear any residual data in localStorage for this new ID to ensure it starts at 0
+    try {
+      const k = `${this.activeRamal.net}_${id}`;
+      const AP_KEY = 'civilflow_aparatos_by_tramo_v2';
+      const HD_KEY = 'civilflow_tramo_hidro_data_v3';
+      const apData = JSON.parse(localStorage.getItem(AP_KEY) || '{}');
+      const hdData = JSON.parse(localStorage.getItem(HD_KEY) || '{}');
+      let changed = false;
+      if (apData[k]) { delete apData[k]; changed = true; }
+      if (hdData[k]) { delete hdData[k]; changed = true; }
+      if (changed) {
+        localStorage.setItem(AP_KEY, JSON.stringify(apData));
+        localStorage.setItem(HD_KEY, JSON.stringify(hdData));
+        window.dispatchEvent(new Event('storage'));
+      }
+    } catch (_) {}
     const r = {
       id: id,
       net: this.activeRamal.net,
@@ -672,7 +697,7 @@ if (this._onDirtyCb) this._onDirtyCb();
     const el = this.getSelected();
     if (!el) return;
     const ANGLES = [0, 45, 90, -90, -45];
-    if (el.id?.startsWith('T')) {
+    if (el.id?.startsWith('T') && el.text !== undefined) {
       const cur = el.textAngle || 0;
       const idx = ANGLES.reduce((b, a, i) => Math.abs(cur - a) < Math.abs(cur - ANGLES[b]) ? i : b, 0);
       el.textAngle = ANGLES[(idx + 1) % ANGLES.length];
@@ -688,7 +713,17 @@ if (this._onDirtyCb) this._onDirtyCb();
   deleteSelected() {
     if (!this.selId) return;
     const idxR = this.ramales.findIndex(r => r.id === this.selId);
-    if (idxR >= 0) { this.ramales.splice(idxR, 1); this.selId = null; this._emitSelect(null); this.render(); this._markDirty(); return; }
+    if (idxR >= 0) {
+      const deleted = this.ramales[idxR];
+      // Delete associated tributaries
+      this.ramales = this.ramales.filter(r => r.id !== deleted.id && r.padre !== deleted.id);
+      this._renumberRamales(deleted.net);
+      this.selId = null;
+      this._emitSelect(null);
+      this.render();
+      this._markDirty();
+      return;
+    }
     const idxB = this.bajantes.findIndex(b => b.id === this.selId);
     if (idxB >= 0) { this.bajantes.splice(idxB, 1); this.selId = null; this._emitSelect(null); this.render(); this._markDirty(); return; }
     const idxT = this.textAnnots.findIndex(t => t.id === this.selId);
@@ -697,6 +732,97 @@ if (this._onDirtyCb) this._onDirtyCb();
     if (idxA >= 0) { this.areas.splice(idxA, 1); this.selId = null; this._emitSelect(null); this.render(); this._markDirty(); return; }
     const idxD = this.dims.findIndex(d => d.id === this.selId);
     if (idxD >= 0) { this.dims.splice(idxD, 1); this.selId = null; this._emitSelect(null); this.render(); this._markDirty(); return; }
+  }
+
+  _renumberRamales(netId) {
+    const net = NETS.find(n => n.id === netId);
+    if (!net) return;
+    const pfx = net.lbl;
+    const ramalesNet = this.ramales.filter(r => r.net === netId && r.tipo !== 'tributario');
+    ramalesNet.sort((a, b) => {
+      const na = parseInt((a.id || '').replace(pfx, ''), 10) || 0;
+      const nb = parseInt((b.id || '').replace(pfx, ''), 10) || 0;
+      return na - nb;
+    });
+    ramalesNet.forEach((r, i) => {
+      const oldId = r.id;
+      const newId = pfx + (i + 1);
+      if (oldId !== newId) {
+        // Migrate aparatos data from old key to new key
+        try {
+          const AP_KEY = 'civilflow_aparatos_by_tramo_v2';
+          const apData = JSON.parse(localStorage.getItem(AP_KEY) || '{}');
+          const oldK = `${netId}_${oldId}`;
+          const newK = `${netId}_${newId}`;
+          if (apData[oldK]) { apData[newK] = apData[oldK]; delete apData[oldK]; localStorage.setItem(AP_KEY, JSON.stringify(apData)); }
+        } catch (_) {}
+        try {
+          const HD_KEY = 'civilflow_tramo_hidro_data_v3';
+          const hdData = JSON.parse(localStorage.getItem(HD_KEY) || '{}');
+          const oldK = `${netId}_${oldId}`;
+          const newK = `${netId}_${newId}`;
+          if (hdData[oldK]) { hdData[newK] = hdData[oldK]; delete hdData[oldK]; localStorage.setItem(HD_KEY, JSON.stringify(hdData)); }
+        } catch (_) {}
+      }
+      r.id = newId;
+      r.label = newId;
+      this.ramales.filter(t => t.padre === oldId).forEach(t => { t.padre = newId; });
+    });
+    this._netCounts[netId].ramal = ramalesNet.length;
+  }
+
+  deleteSegmentAt(cx, cy) {
+    const plane = this.toPlane(cx, cy);
+    const HIT_DIST = 10 / this.zoom;
+    let bestR = null, bestIdx = -1, bestD = Infinity;
+
+    for (const r of this.ramales) {
+      if (!r.pts || r.pts.length < 2) continue;
+      for (let i = 0; i < r.pts.length; i++) {
+        const d = Math.hypot(plane.x - r.pts[i][0], plane.y - r.pts[i][1]);
+        if (d < bestD) { bestD = d; bestIdx = i; bestR = r; }
+      }
+      if (bestD <= HIT_DIST) continue;
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const d = this._ptSegDist(plane.x, plane.y, r.pts[i], r.pts[i + 1]);
+        if (d < bestD) {
+          bestD = d;
+          bestR = r;
+          const dA = Math.hypot(plane.x - r.pts[i][0], plane.y - r.pts[i][1]);
+          const dB = Math.hypot(plane.x - r.pts[i + 1][0], plane.y - r.pts[i + 1][1]);
+          bestIdx = dA <= dB ? i : i + 1;
+        }
+      }
+    }
+    if (!bestR || bestIdx < 0 || bestD > HIT_DIST) return;
+    const r = bestR;
+    if (r.pts.length <= 2) {
+      this.ramales = this.ramales.filter(x => x.id !== r.id && x.padre !== r.id);
+      if (r.tipo !== 'tributario') this._renumberRamales(r.net);
+      this.selId = null;
+      this._emitSelect(null);
+    } else {
+      r.pts.splice(bestIdx, 1);
+      r.totalL = 0;
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        r.totalL += this.pxToM(Math.hypot(r.pts[i + 1][0] - r.pts[i][0], r.pts[i + 1][1] - r.pts[i][1]));
+      }
+      r.totalL = +r.totalL.toFixed(3);
+      const [mx, my] = this._midpoint(r.pts);
+      r.labelX = mx;
+      r.labelY = my;
+    }
+    this.render();
+    this._markDirty();
+  }
+
+  _ptSegDist(px, py, a, b) {
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) return Math.hypot(px - a[0], py - a[1]);
+    let t = ((px - a[0]) * dx + (py - a[1]) * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (a[0] + t * dx), py - (a[1] + t * dy));
   }
 
   resetLabel() {
@@ -801,6 +927,8 @@ if (this._onDirtyCb) this._onDirtyCb();
       return;
     }
     const p = this.toPlane(x, y);
+
+if (this._lockedNets.has(this.activeNet)) return;
 
 if (this.tool === 'sel') {
       const sel = this.getSelected();
@@ -1044,6 +1172,11 @@ if (this.tool === 'line') {
       return;
     }
 
+  if (this.tool === 'segdel') {
+    this.deleteSegmentAt(x, y);
+    return;
+  }
+
     if (this.tool === 'erase') {
       this.selectAt(x, y);
       this.deleteSelected();
@@ -1080,6 +1213,7 @@ if (this.tool === 'line') {
 
   _onMove(e) {
     const { x, y } = this._getPos(e);
+    this._lastMouseCvs = { x, y };
     if (this.panning) {
       this.offX = x - this.panX0;
       this.offY = y - this.panY0;
@@ -1230,6 +1364,7 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
     else if (k === 'b') { this.setTool('baj'); e.preventDefault(); }
     else if (k === 'a') { this.setTool('area'); e.preventDefault(); }
     else if (k === 'e') { this.setTool('erase'); e.preventDefault(); }
+    else if (k === 'k') { this.setTool('segdel'); e.preventDefault(); }
     else if (k === ' ') { this.setTool(this.tool === 'pan' ? 'sel' : 'pan'); e.preventDefault(); }
     else if (k === 'enter') {
       if (this.activeRamal) { this.finishRamal(); e.preventDefault(); }
@@ -1629,13 +1764,18 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
         const VERT_THRESH = 8;
         const isVertical = Math.abs(flowDx) < VERT_THRESH && flowLen > 12;
         const arrowSize = showFlow && flowLen > 12 ? 34 : 0;
-        const lbl = r.label || '';
+        const lbl = (r.tipo === 'tributario')
+          ? (() => {
+              const padre = r.padre ? this.ramales.find(p => p.id === r.padre) : null;
+              return padre ? (padre.label || padre.id) : (r.label || '');
+            })()
+          : (r.label || '');
+        const matPart = r.material || '';
+        const dPart = r.diametro ? `D=${r.diametro}` : '';
         const lblPart = r.totalL ? `${r.totalL.toFixed(2)}m` : '';
         const pPart = r.pendiente ? `S=${r.pendiente}%` : '';
-        const dPart = r.diametro ? `D=${r.diametro}` : '';
-        const matPart = r.material || '';
-        const preInfo = [lblPart, pPart].filter(Boolean).join(' · ');
-        const postInfo = matPart;
+        const showPend = (r.net === 'san' || r.net === 'll');
+        const pendPart = showPend && pPart ? pPart : '';
 
         const fsName = this.mm2cvs(this.MM.lblName);
         const fsInfo = this.mm2cvs(this.MM.lblInfo);
@@ -1643,20 +1783,29 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
         const lineHInfo = fsInfo + 4;
         const boxPadX = this.mm2cvs(1.0);
         const boxPadY = this.mm2cvs(0.6);
+
+        // Build info segments in order: material · diameter · length · slope
+        const infoSegs = [
+          matPart ? { text: matPart, bold: false, w: 0 } : null,
+          dPart ? { text: dPart, bold: true, w: 0 } : null,
+          lblPart ? { text: lblPart, bold: false, w: 0 } : null,
+          pendPart ? { text: pendPart, bold: false, w: 0 } : null,
+        ].filter(Boolean);
+        const segSep = ' · ';
+        let sepW = 0;
+        ctx.font = `600 ${fsInfo}px Geist, monospace`;
+        if (infoSegs.length > 1) sepW = ctx.measureText(segSep).width;
+        for (const s of infoSegs) {
+          ctx.font = s.bold ? `bold ${fsName}px Geist, monospace` : `600 ${fsInfo}px Geist, monospace`;
+          s.w = ctx.measureText(s.text).width;
+        }
+        const totalInfoW = infoSegs.reduce((sum, s, i) => sum + s.w + (i < infoSegs.length - 1 ? sepW : 0), 0);
+
         ctx.font = `bold ${fsName}px Geist, monospace`;
         const nameW = lbl ? ctx.measureText(lbl).width : 0;
-        ctx.font = `600 ${fsInfo}px Geist, monospace`;
-        const preW = preInfo ? ctx.measureText(preInfo).width : 0;
-        ctx.font = `bold ${fsName}px Geist, monospace`;
-        const dW = dPart ? ctx.measureText(dPart).width : 0;
-        ctx.font = `600 ${fsInfo}px Geist, monospace`;
-        const postW = postInfo ? ctx.measureText(postInfo).width : 0;
-        const sep1W = (preInfo && dPart) ? ctx.measureText(' · ').width : 0;
-        const sep2W = (dPart && postInfo) ? ctx.measureText(' · ').width : 0;
-        const infoW = preW + sep1W + dW + sep2W + postW;
-        const contentW = Math.max(nameW, infoW);
+        const contentW = Math.max(nameW, totalInfoW);
         const boxW = contentW + boxPadX * 2;
-        const boxH = (lbl ? lineHName : 0) + ((preInfo || dPart || postInfo) ? lineHInfo : 0) + boxPadY * 2;
+        const boxH = (lbl ? lineHName : 0) + (infoSegs.length > 0 ? lineHInfo : 0) + boxPadY * 2;
         const RIGHT_GAP = 10;
         const ARROW_GAP = 8;
         let drawX, drawY;
@@ -1699,96 +1848,54 @@ if (k === 's') { this.setTool('sel'); e.preventDefault(); }
           ctx.fillStyle = col;
           ctx.fillText(lbl, 0, -boxH / 2 + boxPadY + lineHName / 2);
         }
-        if (preInfo || dPart || postInfo) {
-          const totalInfoW = preW + sep1W + dW + sep2W + postW;
-          let xCursor = -totalInfoW / 2;
+        if (infoSegs.length > 0) {
           const yInfo = boxH / 2 - boxPadY - lineHInfo / 2;
-          if (preInfo) {
-            ctx.font = `600 ${fsInfo}px Geist, monospace`;
-            ctx.fillStyle = '#1a1a1a';
+          let xCursor = -totalInfoW / 2;
+          for (let i = 0; i < infoSegs.length; i++) {
+            const s = infoSegs[i];
+            ctx.font = s.bold ? `bold ${fsName}px Geist, monospace` : `600 ${fsInfo}px Geist, monospace`;
+            ctx.fillStyle = s.bold ? '#000000' : '#1a1a1a';
             ctx.textAlign = 'left';
-            ctx.fillText(preInfo, xCursor, yInfo);
-            xCursor += preW;
-          }
-          if (preInfo && dPart) {
-            ctx.font = `600 ${fsInfo}px Geist, monospace`;
-            ctx.fillStyle = '#1a1a1a';
-            ctx.textAlign = 'left';
-            ctx.fillText(' · ', xCursor, yInfo);
-            xCursor += sep1W;
-          }
-          if (dPart) {
-            ctx.font = `bold ${fsName}px Geist, monospace`;
-            ctx.fillStyle = '#000000';
-            ctx.textAlign = 'left';
-            ctx.fillText(dPart, xCursor, yInfo);
-            xCursor += dW;
-          }
-          if (dPart && postInfo) {
-            ctx.font = `600 ${fsInfo}px Geist, monospace`;
-            ctx.fillStyle = '#1a1a1a';
-            ctx.textAlign = 'left';
-            ctx.fillText(' · ', xCursor, yInfo);
-            xCursor += sep2W;
-          }
-          if (postInfo) {
-            ctx.font = `600 ${fsInfo}px Geist, monospace`;
-            ctx.fillStyle = '#1a1a1a';
-            ctx.textAlign = 'left';
-            ctx.fillText(postInfo, xCursor, yInfo);
+            ctx.fillText(s.text, xCursor, yInfo);
+            xCursor += s.w;
+            if (i < infoSegs.length - 1) {
+              ctx.font = `600 ${fsInfo}px Geist, monospace`;
+              ctx.fillStyle = '#1a1a1a';
+              ctx.fillText(segSep, xCursor, yInfo);
+              xCursor += sepW;
+            }
           }
           ctx.textAlign = 'center';
         }
-        ctx.restore();
 
+        // Flow arrow inside rotated context — always parallel to label
         if (showFlow && flowLen > 12) {
-          const fdx = flowDx / flowLen;
-          const fdy = flowDy / flowLen;
-          if (isVertical) {
-            const arrowCenterX = lc.x + RIGHT_GAP + arrowSize / 2;
-            const arrowCenterY = lc.y;
-            const tailX = arrowCenterX;
-            const tailY = arrowCenterY - fdy * (arrowSize / 2);
-            const headX = arrowCenterX;
-            const headY = arrowCenterY + fdy * (arrowSize / 2);
-            ctx.strokeStyle = col;
-            ctx.lineWidth = 2.5;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(tailX, tailY);
-            ctx.lineTo(headX, headY);
-            ctx.stroke();
-            const aSize = 9;
-            ctx.fillStyle = col;
-            ctx.beginPath();
-            ctx.moveTo(headX, headY);
-            ctx.lineTo(headX - fdx * aSize - fdy * aSize * 0.5, headY - fdy * aSize + fdx * aSize * 0.5);
-            ctx.lineTo(headX - fdx * aSize + fdy * aSize * 0.5, headY - fdy * aSize - fdx * aSize * 0.5);
-            ctx.closePath();
-            ctx.fill();
-          } else {
-            const arrowCenterY = drawY + boxH / 2 + arrowSize / 2 + 1;
-            const tailX = drawX - fdx * (arrowSize / 2);
-            const tailY = arrowCenterY - fdy * (arrowSize / 2);
-            const headX = drawX + fdx * (arrowSize / 2);
-            const headY = arrowCenterY + fdy * (arrowSize / 2);
-            ctx.strokeStyle = col;
-            ctx.lineWidth = 2.5;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(tailX, tailY);
-            ctx.lineTo(headX, headY);
-            ctx.stroke();
-            const aSize = 9;
-            ctx.fillStyle = col;
-            ctx.beginPath();
-            ctx.moveTo(headX, headY);
-            ctx.lineTo(headX - fdx * aSize - fdy * aSize * 0.5, headY - fdy * aSize + fdx * aSize * 0.5);
-            ctx.lineTo(headX - fdx * aSize + fdy * aSize * 0.5, headY - fdy * aSize - fdx * aSize * 0.5);
-            ctx.closePath();
-            ctx.fill();
-          }
+          const arrowGap = 6;
+          const arrowY = boxH / 2 + arrowGap + arrowSize / 2;
+          ctx.save();
+          ctx.translate(0, arrowY);
+          // Determine flow direction in rotated label space
+          const dot = flowDx * cosA + flowDy * sinA;
+          const dir = dot >= 0 ? 1 : -1;
+          const halfSize = arrowSize / 2;
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 2.5;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(-halfSize * dir, 0);
+          ctx.lineTo(halfSize * dir, 0);
+          ctx.stroke();
+          const aSize = 9;
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.moveTo(halfSize * dir, 0);
+          ctx.lineTo(halfSize * dir - dir * aSize, -aSize * 0.5);
+          ctx.lineTo(halfSize * dir - dir * aSize, aSize * 0.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
         }
+        ctx.restore();
       } else {
         r._labelBox = null;
       }
