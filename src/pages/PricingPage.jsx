@@ -14,7 +14,7 @@ const plans = [
     to: '/civilflowareatrabajo',
     features: [
       'Hasta 3 proyectos activos',
-      'Módulos: Agua Fría + Sanitaria',
+      'Módulos: Agua fría + Sanitaria',
       'Exportación CSV de resultados',
       'Generador de niveles NPT',
       'Tabla de aparatos NTC 1500',

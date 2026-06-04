@@ -1,5 +1,5 @@
 // ============================================
-// calcSanitario.js - Calculo Red Sanitaria
+// calcSanitario.js - Calculo Red sanitaria
 // Basado en NTC 1500, RAS 2000, maning, Hunter
 // Casa de Roca No. 97 - Floridablanca, Santander
 // ============================================
@@ -389,12 +389,12 @@ export function calcularBajanteVentilacion(params) {
   };
 }
 
-// ─── Metodo Racional para aguas lluvias ───
+// ─── Metodo Racional para Aguas lluvias ───
 export function caudalRacional(C, I, A) {
   return (C * I * A) / 360;
 }
 
-// ─── Chequeo bajante aguas lluvias ───
+// ─── Chequeo bajante Aguas lluvias ───
 export function calcularBajanteALL(params) {
   const {
     bajante = '',
@@ -429,7 +429,7 @@ export function calcularBajanteALL(params) {
   };
 }
 
-// ─── Chequeo bajante aguas lluvias (UI inline formula) ───
+// ─── Chequeo bajante Aguas lluvias (UI inline formula) ───
 export function chequeoBajanteLluvia({ areaAcumulada = 0, intensidad = 0, coeficienteC = 0, R = '', diamPropuesto = 0 }) {
   const Rv = R === '1/4' ? 0.25 : (R === '7/24' ? 7 / 24 : 0);
   const Q = areaAcumulada > 0 && intensidad > 0 && coeficienteC > 0
@@ -444,7 +444,7 @@ export function chequeoBajanteLluvia({ areaAcumulada = 0, intensidad = 0, coefic
   return { Q, dCalc, chequeo };
 }
 
-// ─── Chequeo canal cubierta aguas lluvias (UI inline formula) ───
+// ─── Chequeo canal cubierta Aguas lluvias (UI inline formula) ───
 export function chequeoCanalLluvia({ areaAcumulada = 0, intensidad = 0, coeficienteC = 0, manning = 0, pendiente = 0, b = 0, h = 0 }) {
   const Qreal = areaAcumulada > 0 && intensidad > 0 && coeficienteC > 0
     ? Math.round(areaAcumulada * intensidad * coeficienteC / 100 * 100) / 100

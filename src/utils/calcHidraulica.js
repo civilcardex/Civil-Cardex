@@ -38,7 +38,7 @@ export const DIAMETROS_AF = [
   { nominal: '6" RDE 21',    pulg: 6.0,    dInt: 152.22, dExt: 152.40, rde: 21 },
 ];
 
-// ─── Diametros comerciales agua caliente CPVC ───
+// ─── Diametros comerciales Agua caliente CPVC ───
 export const DIAMETROS_AC = [
   { nominal: '1/2" CPVC RDE 11',   pulg: 0.5,  dInt: 12.40, dExt: 12.70,  rde: 11 },
   { nominal: '3/4" CPVC RDE 11',    pulg: 0.75, dInt: 18.20, dExt: 19.05,  rde: 11 },

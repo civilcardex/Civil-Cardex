@@ -99,20 +99,20 @@ const CONTADORES = [
 
 const MATERIALES_POR_RED = [
   { red: 'Sanitaria', mat: 'PVC-S' },
-  { red: 'Aguas Lluvias', mat: 'PVC-S' },
+  { red: 'Aguas lluvias', mat: 'PVC-S' },
   { red: 'Ventilacion', mat: 'PVC-V' },
   { red: 'Agua Fria', mat: 'PVC-Pr' },
-  { red: 'Agua Caliente', mat: 'CPVC' },
+  { red: 'Agua caliente', mat: 'CPVC' },
   { red: 'Gas', mats: ['Acero Galvanizado', 'Cobre Rigido', 'Cobre Flexible', 'PE al PE', 'Polietileno PEAD', 'Acero al Carbon'] },
   { red: 'Contra Incendio', mats: ['Acero Galvanizado', 'PVC C900', 'Acero al Carbon'] },
 ];
 
 const COEF_FRICCION = [
   { tipo: 'PVC-S', desc: 'PVC Sanitario', sis: 'Sanitaria', mat: 'PVC', n: 0.009, c: 150, cu: 145, e: 0.0015, pn: 'N/A' },
-  { tipo: 'PVC-S', desc: 'PVC Sanitario', sis: 'Aguas Lluvias', mat: 'PVC', n: 0.009, c: 150, cu: 145, e: 0.0015, pn: 'N/A' },
+  { tipo: 'PVC-S', desc: 'PVC Sanitario', sis: 'Aguas lluvias', mat: 'PVC', n: 0.009, c: 150, cu: 145, e: 0.0015, pn: 'N/A' },
   { tipo: 'PVC-V', desc: 'PVC Ventilación', sis: 'Ventilacion', mat: 'PVC', n: 0.009, c: 150, cu: 145, e: 0.0015, pn: 'N/A' },
   { tipo: 'PVC-Pr', desc: 'PVC Presión', sis: 'Agua Fria', mat: 'PVC', n: 0.009, c: 150, cu: 145, e: 0.0015, pn: 'Según RDE' },
-  { tipo: 'CPVC', desc: 'CPVC Agua Caliente', sis: 'Agua Caliente', mat: 'CPVC', n: 0.009, c: 150, cu: 145, e: 0.0015, pn: 'Según SDR' },
+  { tipo: 'CPVC', desc: 'CPVC Agua caliente', sis: 'Agua caliente', mat: 'CPVC', n: 0.009, c: 150, cu: 145, e: 0.0015, pn: 'Según SDR' },
   { tipo: 'Acero Galvanizado', desc: 'Acero Galvanizado', sis: 'Gas', mat: 'Acero', n: 0.015, c: 120, cu: 100, e: 0.15, pn: 'Según cédula' },
   { tipo: 'Cobre Rígido', desc: 'Cobre Tipo L/K', sis: 'Gas', mat: 'Cobre', n: 0.011, c: 130, cu: 120, e: 0.0015, pn: 'Según tipo' },
   { tipo: 'Cobre Flexible', desc: 'Cobre Flexible', sis: 'Gas', mat: 'Cobre', n: 0.011, c: 130, cu: 120, e: 0.0015, pn: 'Según tipo' },
@@ -560,7 +560,7 @@ export default function CatalogoMaestroPage() {
 
           {subpage === 2 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, alignContent: 'start' }}>
-              <SectionCard title="Sanitarias y aguas lluvias" subtitle="PVC-S · NTC 1500" span={1} compact>
+              <SectionCard title="Sanitarias y Aguas lluvias" subtitle="PVC-S · NTC 1500" span={1} compact>
                 <SanitariasTable />
               </SectionCard>
               <SectionCard title="Ventilación" subtitle="PVC-V · NTC 1500 §9" span={1} compact>

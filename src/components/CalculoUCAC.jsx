@@ -27,7 +27,7 @@ return (
 <>
 <div className="card">
 <div className="card-h">
-<span className="card-t">📊 C&aacute;lculo Unidades de Consumo Agua Caliente</span>
+<span className="card-t">📊 C&aacute;lculo Unidades de Consumo Agua caliente</span>
 <span className="card-s">{tramosAc.length} tramos</span>
 </div>
 <div className="scroll-top" style={{padding:'16px'}}>

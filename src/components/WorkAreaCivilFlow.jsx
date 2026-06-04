@@ -544,7 +544,7 @@ return(
   {redActiva==='san'&&redes.has('san')&&(
     <div className="fu" style={{display:'flex',flexDirection:'column',gap:8}}>
       <PageNav page={sanPage} setPage={setSanPage} total={3} color="var(--san)"
-        labels={['Cálculo UD','Diseño Sanitaria','Bajantes y Vent.']} />
+        labels={['Cálculo UD','Diseño sanitario','Bajantes y ventilación']} />
       {sanPage===1&&<CalculoUD />}
       {sanPage===2&&<DisenosSanitarios />}
       {sanPage===3&&<BajantesTable />}
@@ -554,7 +554,7 @@ return(
   {redActiva==='ll'&&redes.has('ll')&&(
     <div className="fu" style={{display:'flex',flexDirection:'column',gap:8}}>
       <PageNav page={llPage} setPage={setLlPage} total={3} color="var(--ll)"
-        labels={['Cheq. Bajantes','Cheq. Canales','Diseño Lluvias']} />
+        labels={['Chequeo bajantes','Chequeo canales','Diseño lluvias']} />
       {llPage===1&&<ChequeoBajantesLluvias />}
       {llPage===2&&<ChequeoCanalesLluvias />}
       {llPage===3&&<DisenoLluvias />}
@@ -609,7 +609,7 @@ const okLL=tramosLl.length>0&&tramosLl.every(validateTramo);
       ['P RED',proy.p_red+' mca'],['DOTACIÓN',proy.dot+' L/hab/d'],
       ['REDES',[...redes].join(' · ')],
       ['NIVELES',[...pisos].sort((a,b)=>a.n-b.n).map(p=>pisoLbl(p.n)).join(' · ')],
-      ['SANITARIA',okSAN?'✓ OK':'✗ Revisar'],['AGUAS LLUVIAS',okLL?'✓ OK':'✗ Revisar'],
+      ['SANITARIA',okSAN?'✓ OK':'✗ Revisar'],['Aguas lluvias',okLL?'✓ OK':'✗ Revisar'],
     ];
     return(
       <div className="card">

@@ -70,12 +70,12 @@ export const ACCESORIOS_HIDRO = [
 ];
 
 export const REDES=[
-  {id:'san',lbl:'Red Sanitaria', sub:'RAS D · maning n=0.009', ico:'♻️', icoImg:'/iconos_diseno_redes/red_sanitaria.webp', col:'var(--san)'},
+  {id:'san',lbl:'Red sanitaria', sub:'RAS D · maning n=0.009', ico:'♻️', icoImg:'/iconos_diseno_redes/red_sanitaria.webp', col:'var(--san)'},
   {id:'ven',lbl:'Ventilación', sub:'NTC 1500 §9 · D mín 1½"', ico:'💨', icoImg:'/iconos_diseno_redes/red_ventilacion.webp', col:'var(--ven)'},
-  {id:'ll', lbl:'Aguas Lluvias', sub:'Método Racional · IDF', ico:'🌧️', icoImg:'/iconos_diseno_redes/red_aguas_lluvias.webp', col:'var(--ll)'},
-  {id:'af', lbl:'Agua Fría', sub:'NTC 1500 · Hazen-Williams', ico:'💧', icoImg:'/iconos_diseno_redes/red_agua_fria.webp', col:'var(--af)'},
-  {id:'ac', lbl:'Agua Caliente', sub:'NTC 1500 · CPVC RDE 11', ico:'🔥', icoImg:'/iconos_diseno_redes/red_agua_caliente.webp', col:'var(--ac)'},
-  {id:'ep', lbl:'Equipo Presión', sub:'Bomba + recipiente vejiga', ico:'⚡', icoImg:'/iconos_diseno_redes/red_equipo_presion.webp', col:'var(--ep)'},
+  {id:'ll', lbl:'Aguas lluvias', sub:'Método Racional · IDF', ico:'🌧️', icoImg:'/iconos_diseno_redes/red_aguas_lluvias.webp', col:'var(--ll)'},
+  {id:'af', lbl:'Agua fría', sub:'NTC 1500 · Hazen-Williams', ico:'💧', icoImg:'/iconos_diseno_redes/red_agua_fria.webp', col:'var(--af)'},
+  {id:'ac', lbl:'Agua caliente', sub:'NTC 1500 · CPVC RDE 11', ico:'🔥', icoImg:'/iconos_diseno_redes/red_agua_caliente.webp', col:'var(--ac)'},
+  {id:'ep', lbl:'Equipo presión', sub:'Bomba + recipiente vejiga', ico:'⚡', icoImg:'/iconos_diseno_redes/red_equipo_presion.webp', col:'var(--ep)'},
   {id:'bom',lbl:'Bomba AR', sub:'Aguas residuales presión', ico:'⬆️', icoImg:'/iconos_diseno_redes/red_bomba_ar.webp', col:'var(--bom)'},
   {id:'rec',lbl:'Recirculación AC',sub:'Solo si L > 15 m', ico:'🔄', icoImg:'/iconos_diseno_redes/red_recirculacion_ac.webp', col:'var(--rec)'},
   {id:'rci',lbl:'Contra Incendio', sub:'NSR-10 J · NFPA 13:2022', ico:'🔴', icoImg:'/iconos_diseno_redes/red_contra_incendio.webp', col:'var(--rci)'},
@@ -90,10 +90,10 @@ export const TABS=[
 ];
 
 export const MATERIALES = {
-  af: {lbl:'Agua Fría', opts:['PVC-PR','CPVC','Cobre rígido','Polipropileno PP-R']},
-  ac: {lbl:'Agua Caliente', opts:['CPVC','Cobre rígido','Polipropileno PP-R','PEX']},
+  af: {lbl:'Agua fría', opts:['PVC-PR','CPVC','Cobre rígido','Polipropileno PP-R']},
+  ac: {lbl:'Agua caliente', opts:['CPVC','Cobre rígido','Polipropileno PP-R','PEX']},
   san: {lbl:'Sanitaria', opts:['PVC-S','Novatec','Hierro fundido','Concreto']},
-  ll: {lbl:'Aguas Lluvias', opts:['PVC-S','Novatec','Hierro fundido','Concreto','Gres cerámico']},
+  ll: {lbl:'Aguas lluvias', opts:['PVC-S','Novatec','Hierro fundido','Concreto','Gres cerámico']},
   gas: {lbl:'Gas', opts:['PE al PE','Cobre rígido','A.C.','Acero HG','Polipropileno PP-R']},
   ven: {lbl:'Ventilación', opts:['PVC-V','Novatec']},
   rci: {lbl:'Contra Incendio', opts:['A.C. SCH 40','A.C. SCH 10','Acero HG','CPVC CPVC-CI','PVC C900 RDE 14']},
@@ -125,7 +125,7 @@ export const NAV_TABS=[
   {id:'info',  l:'Información general',  ico:'🏗️', icoImg:'/iconos_info_general/Informacion_del_proyecto.webp'},
   {id:'planos',l:'Carga de planos',      ico:'📐', icoImg:'/iconos_carga_planos/carga_de_planos.webp'},
   {id:'datos', l:'Parámetros de diseño', ico:'📊', icoImg:'/iconos_parametros_de_diseno/materiales_por_red.webp'},
-  {id:'visor', l:'Dibujo de Redes',      ico:'✏️'},
+  {id:'visor', l:'Dibujo de Redes',      ico:'✏️', icoImg:'/iconos_aparatos/dibujo_de_redes.webp'},
   {id:'redes', l:'Diseño de redes',      ico:'🔧', icoImg:'/iconos_diseno_redes/diseno_redes.webp'},
   {id:'inf',   l:'Informes',             ico:'📄'},
   {id:'crit',  l:'Normativa',            ico:'§'},
@@ -302,9 +302,9 @@ export const APS_DEFAULT=[
 
 export const PROFS_DEFAULT=[
 {id:'san',red:'Sanitaria',col:'var(--san)',prof:0.00,norma:'RAS 2000 §D.4.1',nota:'Bajo losa'},
-{id:'ll',red:'Aguas Lluvias',col:'var(--ll)',prof:0.00,norma:'RAS 2000 §D.4.2',nota:'Bajo losa'},
-{id:'af',red:'Agua Fría',col:'var(--af)',prof:0.00,norma:'NTC 1500 §5.4',nota:'A nivel NPT'},
-{id:'ac',red:'Agua Caliente',col:'var(--ac)',prof:0.00,norma:'NTC 1500 §5.4',nota:'Bajo NPT'},
+{id:'ll',red:'Aguas lluvias',col:'var(--ll)',prof:0.00,norma:'RAS 2000 §D.4.2',nota:'Bajo losa'},
+{id:'af',red:'Agua fría',col:'var(--af)',prof:0.00,norma:'NTC 1500 §5.4',nota:'A nivel NPT'},
+{id:'ac',red:'Agua caliente',col:'var(--ac)',prof:0.00,norma:'NTC 1500 §5.4',nota:'Bajo NPT'},
 {id:'gas',red:'Gas',col:'var(--gas)',prof:0.00,norma:'NTC 3728 §4.3',nota:'Con protección'},
 {id:'ven',red:'Ventilación',col:'var(--ven)',prof:0.00,norma:'NTC 1500 §9.2',nota:'A nivel NPT'},
 {id:'rci',red:'Contra Incendio',col:'var(--rci)',prof:0.00,norma:'NFPA 13 §6',nota:'Zona protegida'},

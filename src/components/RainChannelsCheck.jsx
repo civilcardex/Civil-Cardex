@@ -7,7 +7,7 @@ export default function ChequeoCanalesLluvias() {
   return (
     <div className="card">
       <div className="card-h">
-        <span className="card-t">🌧️ Chequeo capacidad canal cubierta aguas lluvias</span>
+        <span className="card-t">🌧️ Chequeo capacidad canal cubierta Aguas lluvias</span>
       </div>
       <div className="scroll-top" style={{padding:'16px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
