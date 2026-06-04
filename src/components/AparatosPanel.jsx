@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, AF_UC_IDS, AC_UC_IDS } from './constants';
+import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, AF_UC_IDS, AC_UC_IDS, APARATO_IMG } from './constants';
 import { NETS } from './PlanoEngine';
 import { usePlanos } from '../context/PlanosContext';
 import { useSanitario } from '../context/SanitarioContext';
@@ -407,7 +407,7 @@ try { writeSanDrawingSync(planos); } catch (_) {}
                         padding: '4px 2px 2px', gap: 1, cursor: targetId ? 'pointer' : 'default',
                         minHeight: 48,
                       }} onClick={() => targetId && inc(ap.id)}>
-                        <span style={{ fontSize: 17, lineHeight: 1 }}>{ICONO[ap.id] || '•'}</span>
+                        <span style={{ fontSize: 17, lineHeight: 1 }}>{APARATO_IMG[ap.id] ? <img src={APARATO_IMG[ap.id]} alt="" style={{width:24,height:24,verticalAlign:'middle'}} /> : (ICONO[ap.id] || '•')}</span>
                         <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: .3, color: active ? accent : '#b9caca', fontFamily: "'Geist',monospace", textTransform: 'uppercase' }}>{abbr}</span>
                         <span style={{ fontSize: 8, fontWeight: 600, lineHeight: 1, color: '#6b8cae', fontFamily: "'Geist',monospace", padding: '1px 4px', marginTop: 1, background: 'rgba(0,0,0,.25)', border: '1px solid #282a2e', borderRadius: 2 }}>{uStr} {unidadLbl}</span>
                       </div>

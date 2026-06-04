@@ -43,6 +43,13 @@ export const AF_UC_IDS = ['san', 'lvm', 'duc', 'lvp', 'tin', 'lvra', 'lvro', 'ne
 export const AC_UC_IDS = ['san', 'lvm', 'duc', 'lvp', 'tin', 'lvra', 'lvro', 'lavav'];
 export const SAN_UC_IDS = ['sif', 'lvm', 'san', 'duc', 'lvra', 'tin', 'lvp', 'lvro', 'lavav'];
 
+export const APARATO_IMG = {
+  sif:'/iconos_aparatos/sifon.webp', lvm:'/iconos_aparatos/lavamanos.webp', san:'/iconos_aparatos/inodoro.webp',
+  lvp:'/iconos_aparatos/lavaplatos.webp', duc:'/iconos_aparatos/ducha.webp', tin:'/iconos_aparatos/tina.webp',
+  lvra:'/iconos_aparatos/lavadora.webp', lvro:'/iconos_aparatos/lavadero.webp', nev:'/iconos_aparatos/nevera.webp',
+  lavav:'/iconos_aparatos/lavavajillas.webp',
+};
+
 export const ACCESORIOS_HIDRO = [
   {id:'codo90rc',emoji:'🔩',nombre:'Codo RC 90°',icono:'/iconos_accesorios/codo90rc.webp', cat: 'Codos'},
   {id:'teeDirecto',emoji:'🔧',nombre:'Tee paso Directo',icono:'/iconos_accesorios/teeDirecto.webp', cat: 'Tees'},
@@ -63,16 +70,16 @@ export const ACCESORIOS_HIDRO = [
 ];
 
 export const REDES=[
-  {id:'san',lbl:'Red Sanitaria', sub:'RAS D · maning n=0.009', ico:'♻️',col:'var(--san)'},
-  {id:'ven',lbl:'Ventilación', sub:'NTC 1500 §9 · D mín 1½"', ico:'💨',col:'var(--ven)'},
-  {id:'ll', lbl:'Aguas Lluvias', sub:'Método Racional · IDF', ico:'🌧️',col:'var(--ll)'},
-  {id:'af', lbl:'Agua Fría', sub:'NTC 1500 · Hazen-Williams', ico:'💧',col:'var(--af)'},
-  {id:'ac', lbl:'Agua Caliente', sub:'NTC 1500 · CPVC RDE 11', ico:'🔥',col:'var(--ac)'},
-  {id:'ep', lbl:'Equipo Presión', sub:'Bomba + recipiente vejiga', ico:'⚡',col:'var(--ep)'},
-  {id:'bom',lbl:'Bomba AR', sub:'Aguas residuales presión', ico:'⬆️',col:'var(--bom)'},
-  {id:'rec',lbl:'Recirculación AC',sub:'Solo si L > 15 m', ico:'🔄',col:'var(--rec)'},
-  {id:'rci',lbl:'Contra Incendio', sub:'NSR-10 J · NFPA 13:2022', ico:'🔴',col:'var(--rci)'},
-  {id:'gas',lbl:'Gas', sub:'NTC 3728 · Baja presión', ico:'⛽',col:'var(--gas)'},
+  {id:'san',lbl:'Red Sanitaria', sub:'RAS D · maning n=0.009', ico:'♻️', icoImg:'/iconos_diseno_redes/red_sanitaria.webp', col:'var(--san)'},
+  {id:'ven',lbl:'Ventilación', sub:'NTC 1500 §9 · D mín 1½"', ico:'💨', icoImg:'/iconos_diseno_redes/red_ventilacion.webp', col:'var(--ven)'},
+  {id:'ll', lbl:'Aguas Lluvias', sub:'Método Racional · IDF', ico:'🌧️', icoImg:'/iconos_diseno_redes/red_aguas_lluvias.webp', col:'var(--ll)'},
+  {id:'af', lbl:'Agua Fría', sub:'NTC 1500 · Hazen-Williams', ico:'💧', icoImg:'/iconos_diseno_redes/red_agua_fria.webp', col:'var(--af)'},
+  {id:'ac', lbl:'Agua Caliente', sub:'NTC 1500 · CPVC RDE 11', ico:'🔥', icoImg:'/iconos_diseno_redes/red_agua_caliente.webp', col:'var(--ac)'},
+  {id:'ep', lbl:'Equipo Presión', sub:'Bomba + recipiente vejiga', ico:'⚡', icoImg:'/iconos_diseno_redes/red_equipo_presion.webp', col:'var(--ep)'},
+  {id:'bom',lbl:'Bomba AR', sub:'Aguas residuales presión', ico:'⬆️', icoImg:'/iconos_diseno_redes/red_bomba_ar.webp', col:'var(--bom)'},
+  {id:'rec',lbl:'Recirculación AC',sub:'Solo si L > 15 m', ico:'🔄', icoImg:'/iconos_diseno_redes/red_recirculacion_ac.webp', col:'var(--rec)'},
+  {id:'rci',lbl:'Contra Incendio', sub:'NSR-10 J · NFPA 13:2022', ico:'🔴', icoImg:'/iconos_diseno_redes/red_contra_incendio.webp', col:'var(--rci)'},
+  {id:'gas',lbl:'Gas', sub:'NTC 3728 · Baja presión', ico:'⛽', icoImg:'/iconos_diseno_redes/red_de_gas.webp', col:'var(--gas)'},
 ];
 
 export const TABS=[
@@ -119,7 +126,7 @@ export const NAV_TABS=[
   {id:'planos',l:'Carga de planos',      ico:'📐', icoImg:'/iconos_carga_planos/carga_de_planos.webp'},
   {id:'datos', l:'Parámetros de diseño', ico:'📊', icoImg:'/iconos_parametros_de_diseno/materiales_por_red.webp'},
   {id:'visor', l:'Dibujo de Redes',      ico:'✏️'},
-  {id:'redes', l:'Diseño de redes',      ico:'🔧'},
+  {id:'redes', l:'Diseño de redes',      ico:'🔧', icoImg:'/iconos_diseno_redes/diseno_redes.webp'},
   {id:'inf',   l:'Informes',             ico:'📄'},
   {id:'crit',  l:'Normativa',            ico:'§'},
 ];

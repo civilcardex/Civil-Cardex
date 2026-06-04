@@ -226,7 +226,7 @@ return(
                 style={{display:'flex',alignItems:'center',gap:3,padding:'3px 5px',cursor:'pointer',
                 background:on?'rgba(27,110,243,.06)':'var(--bg3)',
                 border:'1px solid '+(on?'rgba(27,110,243,.35)':'var(--line)'),borderRadius:'var(--r)',transition:'all .15s'}}>
-                <span style={{fontSize:13}}>{r.ico}</span>
+                {r.icoImg ? <img src={r.icoImg} alt="" style={{width:22,height:22,verticalAlign:'middle'}} /> : <span style={{fontSize:13}}>{r.ico}</span>}
                 <span style={{fontWeight:600,fontSize:12,color:on?'var(--acc2)':'var(--txt2)',whiteSpace:'nowrap',flex:1}}>{r.lbl}</span>
                 <input type="color" value={currentColor}
                   onClick={e=>e.stopPropagation()}
@@ -540,7 +540,7 @@ return(
 {/* ── Redes a diseñar ── */}
 {tab==='redes'&&redesActivas.length>0&&(
   <div className="fu" style={{display:'flex',flexDirection:'column',gap:12,flex:1,minHeight:0}}>
-    <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>{redesActivas.map(r=>(<button key={r.id} onClick={()=>setRedActiva(r.id)} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',borderRadius:'var(--r)',border:'1px solid',cursor:'pointer',fontSize:13,fontFamily:'var(--body)',flex:1,justifyContent:'center',borderColor:redActiva===r.id?r.col:'var(--line)',color:redActiva===r.id?r.col:'var(--txt3)',background:redActiva===r.id?'rgba(0,0,0,.15)':'transparent',fontWeight:redActiva===r.id?700:400}}><span style={{fontSize:18}}>{r.ico}</span><span>{r.lbl}</span></button>))}</div>
+    <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>{redesActivas.map(r=>(<button key={r.id} onClick={()=>setRedActiva(r.id)} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 14px',borderRadius:'var(--r)',border:'1px solid',cursor:'pointer',fontSize:13,fontFamily:'var(--body)',flex:1,justifyContent:'center',borderColor:redActiva===r.id?r.col:'var(--line)',color:redActiva===r.id?r.col:'var(--txt3)',background:redActiva===r.id?'rgba(0,0,0,.15)':'transparent',fontWeight:redActiva===r.id?700:400}}>{r.icoImg ? <img src={r.icoImg} alt="" style={{width:24,height:24,verticalAlign:'middle'}} /> : <span style={{fontSize:18}}>{r.ico}</span>}<span>{r.lbl}</span></button>))}</div>
   {redActiva==='san'&&redes.has('san')&&(
     <div className="fu" style={{display:'flex',flexDirection:'column',gap:8}}>
       <PageNav page={sanPage} setPage={setSanPage} total={3} color="var(--san)"
@@ -638,7 +638,7 @@ const okLL=tramosLl.length>0&&tramosLl.every(validateTramo);
       borderColor:tab==='redes'&&redActiva===r.id?r.col:'var(--line2)',
       color:tab==='redes'&&redActiva===r.id?r.col:'var(--txt3)',
       background:tab==='redes'&&redActiva===r.id?'rgba(0,0,0,.15)':'transparent'}}>
-      <span style={{fontSize:16}}>{r.ico}</span><span>{r.lbl}</span>
+       {r.icoImg ? <img src={r.icoImg} alt="" style={{width:22,height:22,verticalAlign:'middle'}} /> : <span style={{fontSize:16}}>{r.ico}</span>}<span>{r.lbl}</span>
     </button>
   ))}
 <div style={{flex:1}}/>

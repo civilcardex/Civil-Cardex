@@ -1,8 +1,6 @@
 import { useSanitario } from "../context/SanitarioContext";
 import FloatingPanel, { thS, tdS, inputStyle, tableStyle } from "./FloatingPanel";
-import { APARATO_EMOJI } from "./PlanoEngine";
-
-const NET_NAMES = { sif: '♻️', lvm: '👐', san: '🚽', duc: '🚿', lvra: '👕', tin: '🛀', lvp: '🍽', lvro: '👖', nev: '🧊', lavav: '🍽' };
+import { APARATO_IMG } from "./constants";
 
 export default function PanelValoresUD({ onClose }) {
   const { udBase, setUdBase } = useSanitario();
@@ -21,7 +19,7 @@ export default function PanelValoresUD({ onClose }) {
             <tr key={d.id} style={{ borderBottom: '1px solid #2a2c30' }}>
               <td style={{...tdS, textAlign: 'left', paddingLeft: 8}}>
                 <span style={{display:'flex',alignItems:'center',gap:6,color:'#e2e2e8',fontWeight:500,fontSize:12}}>
-                  <span style={{fontSize:14}}>{APARATO_EMOJI[d.id] || NET_NAMES[d.id] || '📋'}</span>
+                  <span style={{fontSize:16}}>{APARATO_IMG[d.id] ? <img src={APARATO_IMG[d.id]} alt="" style={{width:20,height:20,verticalAlign:'middle'}} /> : '📋'}</span>
                   {d.nombre}
                 </span>
               </td>
