@@ -1,6 +1,6 @@
 import { useSanitario } from "../context/SanitarioContext";
 import { APARATOS_DEF, AF_UC_IDS, pisoCorto } from "./constants";
-import { calcUCparcial } from "./utils";
+import { calcUCparcial, calcUCacumulado } from "./utils";
 export default function CalculoUCAF() {
 const { tramosAf, pisos, aps } = useSanitario();
 const AP = AF_UC_IDS.map(id => {
@@ -22,6 +22,8 @@ const totales = AP.map(d => ({
 }));
 const totalUC = totales.reduce((s, d) => s + (d.cant || 0) * (d.uc || 0), 0);
 
+const acumMap = calcUCacumulado(tramosAf, AP, field);
+
 return (
 <>
 <div className="card">
@@ -39,7 +41,7 @@ return (
 <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Inicia</th>
 <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Termina</th>
 <th className="col-h af" colSpan={AP.length} style={{textAlign:'center'}}>Aparatos</th>
-<th className="col-h ok" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Parcial</th>
+<th className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Unidades de Consumo</th>
 <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Lh (m)</th>
 <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>No de descarga<br/>Simult&aacute;neas</th>
 </tr>
@@ -49,21 +51,22 @@ return (
 {d.nombre}<br/><span style={{fontSize:8,fontWeight:400}}>{d.uc_af} UC</span>
 </th>
 ))}
+<th className="col-h ok" style={{textAlign:'center'}}>Parcial</th>
+<th className="col-h ok" style={{textAlign:'center'}}>Total</th>
 </tr>
 </thead>
 <tbody>
-{tramosAf.map((t, i) => {
+{[...tramosAf].sort((a, b) => (a.piso || 0) - (b.piso || 0)).map((t, i) => {
 const parcial = calcUCparcial(t, AP, field);
-const vLh = t.Lh ?? 0;
-const vNS = t.nSalidas ?? 0;
-const desde = t.recibeDe?.[0] || '';
-const hasta = t.id;
+const acum = acumMap[t.id] || 0;
+                  const vLh = t.Lh ?? 0;
+                  const vNS = t.nSalidas ?? 0;
 return (
 <tr key={i}>
-<td className="c"><span className="sigla" style={{fontSize:11}}>{t.id}</span></td>
-<td className="c"><span style={{fontSize:11,fontFamily:monof,color:txt2}}>{pisoCorto(t.piso)}</span></td>
-<td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{desde || '\u2014'}</td>
-<td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{hasta}</td>
+                  <td className="c"><span className="sigla" style={{fontSize:11}}>{t.id}</span></td>
+                  <td className="c"><span style={{fontSize:11,fontFamily:monof,color:txt2}}>{pisoCorto(t.piso)}</span></td>
+                  <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{t.ini || '\u2014'}</td>
+                  <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{t.fin || '\u2014'}</td>
 {AP.map(d => {
 const v = t.fixtures?.[d.id] || 0;
 return (
@@ -73,6 +76,7 @@ return (
 );
 })}
 <td className="c" style={{fontFamily:monof,fontWeight:700,color:txt,fontSize:13}}>{parcial}</td>
+<td className="c" style={{fontFamily:monof,fontWeight:700,color:'var(--af)',fontSize:14}}>{acum}</td>
 <td className="c"><span style={{fontFamily:monof,fontSize:12,color:txt2}}>{vLh > 0 ? vLh.toFixed(1) : '—'}</span></td>
 <td className="c"><span style={{fontFamily:monof,fontSize:12,color:txt2}}>{vNS > 0 ? vNS : '—'}</span></td>
 </tr>
@@ -95,8 +99,7 @@ return (
 </td>
 );
 })}
-<td style={{borderTop:'2px solid var(--line)'}}></td>
-<td className="c" style={{fontWeight:700,fontSize:14,color:txt,fontFamily:monof,textAlign:'center',borderTop:'2px solid var(--line)'}}>
+<td colSpan={2} className="c" style={{fontWeight:700,fontSize:14,color:'var(--af)',fontFamily:monof,textAlign:'center',borderTop:'2px solid var(--line)'}}>
 {totalUC} UC
 </td>
 <td style={{borderTop:'2px solid var(--line)'}}></td>

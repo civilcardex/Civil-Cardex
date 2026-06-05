@@ -53,18 +53,16 @@ return (
         </tr>
       </thead>
       <tbody>
-        {tramosAc.map((t, i) => {
+        {[...tramosAc].sort((a, b) => (a.piso || 0) - (b.piso || 0)).map((t, i) => {
           const parcial = calcUCparcial(t, AP, field);
           const vLh = t.Lh ?? 0;
           const vNS = t.nSalidas ?? 0;
-const desde = t.recibeDe?.[0] || '';
-const hasta = t.id;
 return (
 <tr key={i}>
-<td className="c"><span className="sigla" style={{fontSize:11}}>{t.id}</span></td>
-<td className="c"><span style={{fontSize:11,fontFamily:monof,color:txt2}}>{pisoCorto(t.piso)}</span></td>
-<td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{desde || '\u2014'}</td>
-<td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{hasta}</td>
+                  <td className="c"><span className="sigla" style={{fontSize:11}}>{t.id}</span></td>
+                  <td className="c"><span style={{fontSize:11,fontFamily:monof,color:txt2}}>{pisoCorto(t.piso)}</span></td>
+                  <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{t.ini || '\u2014'}</td>
+                  <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{t.fin || '\u2014'}</td>
 {AP.map(d => {
 const v = t.fixtures?.[d.id] || 0;
 return (

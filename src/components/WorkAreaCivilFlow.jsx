@@ -16,6 +16,8 @@ import CalculoHidraulicoLluvias from "./RainwaterHydraulicCalc";
 import CalculoHidraulicoSanitario from "./SanitaryHydraulicCalc";
 import CalculoUCAF from "./CalculoUCAF";
 import CalculoUCAC from "./CalculoUCAC";
+import DisenoRedAguaFria from "./DisenoRedAguaFria";
+import DisenoRedAguaCaliente from "./DisenoRedAguaCaliente";
 
 import DisenoUDPanel from "./UdDesignPanel";
 import PanelValoresUD from "./UdValuesPanel";
@@ -58,6 +60,14 @@ const redesActivas=useMemo(()=>REDES.filter(r=>redes.has(r.id)),[redes]);
   const [llPage, setLlPage] = useState(1);
   const [afPage, setAfPage] = useState(1);
   const [acPage, setAcPage] = useState(1);
+const [netColors, setNetColors] = useState(() => {
+  const init = {};
+  REDES.forEach(r => {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(`--${r.id}`).trim();
+    init[r.id] = v || '#666';
+  });
+  return init;
+});
 const [planDrag,setPlanDrag]=useState(false);
 const [selectedPlanId,setSelectedPlanId]=useState(null);
 const selectedPlan=useMemo(()=>planos.find(p=>p.id===selectedPlanId)||null,[planos,selectedPlanId]);
@@ -220,7 +230,7 @@ return(
           {REDES.map(r=>{
             const on=redes.has(r.id);
             const cssVar = `--${r.id}`;
-            const currentColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim() || '#666';
+            const currentColor = netColors[r.id] || '#666';
             return(
               <div key={r.id} onClick={()=>{const n=new Set(redes);on?n.delete(r.id):n.add(r.id);setRedes(n);}}
                 style={{display:'flex',alignItems:'center',gap:3,padding:'3px 5px',cursor:'pointer',
@@ -232,6 +242,7 @@ return(
                   onClick={e=>e.stopPropagation()}
                   onChange={e=>{
                     const c = e.target.value;
+                    setNetColors(prev => ({ ...prev, [r.id]: c }));
                     document.documentElement.style.setProperty(cssVar, c);
                     try {
                       const nets = require('./PlanoEngine').NETS;
@@ -563,18 +574,20 @@ return(
   )}
   {redActiva==='af'&&redes.has('af')&&(
     <div className="fu" style={{display:'flex',flexDirection:'column',gap:8}}>
-      <PageNav page={afPage} setPage={setAfPage} total={2} color="var(--af)"
-        labels={['Cálculo UC','Accesorios']} />
+      <PageNav page={afPage} setPage={setAfPage} total={3} color="var(--af)"
+        labels={['Cálculo UC','Accesorios','Diseño de red agua fria']} />
       {afPage===1&&<CalculoUCAF />}
       {afPage===2&&<AccesoriosTable tramos={tramosAf} updAcc={updTramoAfAcc} net="af" readOnly />}
+      {afPage===3&&<DisenoRedAguaFria />}
     </div>
   )}
   {redActiva==='ac'&&redes.has('ac')&&(
     <div className="fu" style={{display:'flex',flexDirection:'column',gap:8}}>
-      <PageNav page={acPage} setPage={setAcPage} total={2} color="var(--ac)"
-        labels={['Cálculo UC','Accesorios']} />
-      {acPage===1&&<CalculoUCAC />}
-      {acPage===2&&<AccesoriosTable tramos={tramosAc} updAcc={updTramoAcAcc} net="ac" readOnly />}
+              <PageNav page={acPage} setPage={setAcPage} total={3} color="var(--ac)"
+              labels={['Cálculo UC','Accesorios','Diseño de red agua caliente']} />
+              {acPage===1&&<CalculoUCAC />}
+              {acPage===2&&<AccesoriosTable tramos={tramosAc} updAcc={updTramoAcAcc} net="ac" readOnly />}
+              {acPage===3&&<DisenoRedAguaCaliente />}
     </div>
   )}
   {redesActivas.filter(r=>r.id!=='san'&&r.id!=='ll'&&r.id!=='af'&&r.id!=='ac').map(r=>redActiva===r.id&&redes.has(r.id)&&(

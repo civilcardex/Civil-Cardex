@@ -14,10 +14,25 @@ function safeParse(raw, fallback) {
 
 function diamPulgFromLabel(d) {
   if (!d) return 0;
-  const m = String(d).match(/(\d+)\s*[\u2013\u2014\/-]\s*(\d+)/);
-  if (m) return parseFloat(m[1]) + parseFloat(m[2]) / (Math.pow(2, Math.min(m[2].length, 3)));
-  const s = String(d).match(/(\d+(?:\.\d+)?)/);
-  return s ? parseFloat(s[1]) : 0;
+  const s = String(d);
+  const FRAC = { '½': 0.5, '⅓': 1 / 3, '⅔': 2 / 3, '¼': 0.25, '¾': 0.75, '⅛': 0.125, '⅜': 0.375, '⅝': 0.625, '⅞': 0.875 };
+  const inchPart = s.split('"')[0];
+  if (inchPart && inchPart !== s) {
+    for (const [ch, val] of Object.entries(FRAC)) {
+      const idx = inchPart.indexOf(ch);
+      if (idx !== -1) {
+        const before = inchPart.slice(0, idx).trim();
+        const whole = before ? parseFloat(before) || 0 : 0;
+        return whole + val;
+      }
+    }
+    const n = parseFloat(inchPart);
+    if (!isNaN(n)) return n;
+  }
+  const fracMatch = s.match(/(\d+)\s*\/\s*(\d+)/);
+  if (fracMatch) return parseFloat(fracMatch[1]) / parseFloat(fracMatch[2]);
+  const simple = s.match(/(\d+(?:\.\d+)?)/);
+  return simple ? parseFloat(simple[1]) : 0;
 }
 
 function buildSync(planos) {
@@ -41,9 +56,11 @@ function buildSync(planos) {
           ramales.push({
             id: r.id, label: r.label || r.id, tipo: r.tipo,
             padre: r.padre || null, totalL: r.totalL || 0,
+            ini: r.ini || '', fin: r.fin || '',
             diametro: r.diametro || '', diamPulg: diamPulgFromLabel(r.diametro),
             pendiente: typeof r.pendiente === 'number' ? r.pendiente : 0,
             material: r.material || '', maning: matManning(r.material),
+            dz: parseFloat(r.dz) || 0,
             _aparatosKey: rKey,
           });
         }
