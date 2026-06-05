@@ -96,7 +96,7 @@ function Acometida({
             </colgroup>
             <thead>
               <tr>
-                <th colSpan={3} className="col-h" style={{textAlign:"center",padding:"3px 4px",fontSize:11,fontWeight:700,background:"var(--af)",color:"#fff",letterSpacing:.5}}><img src="/iconos_diseno_redes/Acometida.webp" alt="" style={{width:18,height:18,verticalAlign:'middle',marginRight:4}} />ACOMETIDA</th>
+                <th colSpan={3} className="col-h" style={{textAlign:"center",padding:"3px 4px",fontSize:11,fontWeight:700,background:"var(--af)",color:"#fff",letterSpacing:.5}}>ACOMETIDA</th>
                 <th className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>Q (l/s)</th>
                 <th className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>diametro estimado</th>
                 <th className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>contador</th>
