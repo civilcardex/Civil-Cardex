@@ -68,7 +68,7 @@ function Acometida({
   return (
     <div className="card">
       <div className="card-h">
-        <span className="card-t">🚰 Acometida</span>
+        <span className="card-t"><img src="/iconos_diseno_redes/Acometida.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} /> Acometida</span>
       </div>
       <div className="scroll-top" style={{ padding: "6px" }}>
         <div className="scroll-inner" style={{ minWidth: "max-content" }}>
@@ -96,7 +96,7 @@ function Acometida({
             </colgroup>
             <thead>
               <tr>
-                <th colSpan={3} className="col-h" style={{textAlign:"center",padding:"3px 4px",fontSize:11,fontWeight:700,background:"var(--af)",color:"#fff",letterSpacing:.5}}>🚰 ACOMETIDA</th>
+                <th colSpan={3} className="col-h" style={{textAlign:"center",padding:"3px 4px",fontSize:11,fontWeight:700,background:"var(--af)",color:"#fff",letterSpacing:.5}}><img src="/iconos_diseno_redes/Acometida.webp" alt="" style={{width:18,height:18,verticalAlign:'middle',marginRight:4}} />ACOMETIDA</th>
                 <th className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>Q (l/s)</th>
                 <th className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>diametro estimado</th>
                 <th className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>contador</th>
@@ -353,7 +353,7 @@ export default function DisenoRedAguaFria() {
     <>
       <div className="card">
         <div className="card-h">
-          <span className="card-t">💧 Diseño de red agua fria</span>
+          <span className="card-t"><img src="/iconos_diseno_redes/RAF_Diseno.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} /> Diseño de red agua fria</span>
           <span className="card-s">{tramosAf.length} tramos</span>
         </div>
         <div className="scroll-top" style={{ padding: "6px" }}>
@@ -519,7 +519,7 @@ export default function DisenoRedAguaFria() {
   {/* ── TABLA INTERNA DE LE: Longitud equivalente por accesorios (oculta visualmente, calculos internos) ── */}
   <div style={{ display: "none" }}>
         <div className="card-h">
-          <span className="card-t">🔩 Longitud equivalente por accesorios (m)</span>
+          <span className="card-t"><img src="/iconos_diseno_redes/Accesorios.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} /> Longitud equivalente por accesorios (m)</span>
           <span className="card-s">Cálculo interno de Le por ramal · PVC-PR C=150</span>
         </div>
         <div style={{ padding: "4px" }}>

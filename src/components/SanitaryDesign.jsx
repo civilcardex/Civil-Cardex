@@ -80,7 +80,7 @@ const displayTramos = tramosSan.filter(t => !tribIds.has(t.id));
 return (
   <div className="card">
     <div className="card-h">
-      <span className="card-t">📊 Diseño Red sanitaria</span>
+      <span className="card-t"><img src="/iconos_diseno_redes/RS_Diseno.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} /> Diseño Red sanitaria</span>
       <span className="card-s">{tramosSan.length} tramos · {totalUD} UD totales</span>
     </div>
     <div className="scroll-top" style={{padding:'16px'}}>
