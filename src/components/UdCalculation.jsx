@@ -41,7 +41,7 @@ return (
 <>
   <div className="card">
     <div className="card-h">
-      <span className="card-t"><img src="/iconos_diseno_redes/RS_Calculo_UC.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} /> C&aacute;lculo Unidades de Descarga</span>
+      <span className="card-t"><img src="/iconos_diseno_redes/RS_Calculo_UC.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> C&aacute;lculo Unidades de Descarga</span>
       <span className="card-s">{tramosSan.length} tramos</span>
     </div>
     <div className="scroll-top" style={{padding:'16px'}}>

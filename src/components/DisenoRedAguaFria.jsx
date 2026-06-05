@@ -68,7 +68,7 @@ function Acometida({
   return (
     <div className="card">
       <div className="card-h">
-        <span className="card-t"><img src="/iconos_diseno_redes/Acometida.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} /> Acometida</span>
+        <span className="card-t"><img src="/iconos_diseno_redes/Acometida.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Acometida</span>
       </div>
       <div className="scroll-top" style={{ padding: "6px" }}>
         <div className="scroll-inner" style={{ minWidth: "max-content" }}>
@@ -353,7 +353,7 @@ export default function DisenoRedAguaFria() {
     <>
       <div className="card">
         <div className="card-h">
-          <span className="card-t"><img src="/iconos_diseno_redes/RAF_Diseno.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} /> Diseño de red agua fria</span>
+          <span className="card-t"><img src="/iconos_diseno_redes/RAF_Diseno.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Diseño de red agua fria</span>
           <span className="card-s">{tramosAf.length} tramos</span>
         </div>
         <div className="scroll-top" style={{ padding: "6px" }}>
@@ -519,7 +519,7 @@ export default function DisenoRedAguaFria() {
   {/* ── TABLA INTERNA DE LE: Longitud equivalente por accesorios (oculta visualmente, calculos internos) ── */}
   <div style={{ display: "none" }}>
         <div className="card-h">
-          <span className="card-t"><img src="/iconos_diseno_redes/Accesorios.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} /> Longitud equivalente por accesorios (m)</span>
+          <span className="card-t"><img src="/iconos_diseno_redes/Accesorios.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Longitud equivalente por accesorios (m)</span>
           <span className="card-s">Cálculo interno de Le por ramal · PVC-PR C=150</span>
         </div>
         <div style={{ padding: "4px" }}>
