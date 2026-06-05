@@ -51,21 +51,25 @@ export const APARATO_IMG = {
 };
 
 export const ACCESORIOS_HIDRO = [
+  // Codos
   {id:'codo90rc',emoji:'🔩',nombre:'Codo RC 90°',icono:'/iconos_accesorios/codo90rc.webp', cat: 'Codos'},
+  {id:'codo45rc',emoji:'🔩',nombre:'Codo RC 45°',icono:'/iconos_accesorios/codo45rc.webp', cat: 'Codos'},
+  {id:'codo90rm',emoji:'🔩',nombre:'Codo RM 90°',icono:'/iconos_accesorios/codo90rm.webp', cat: 'Codos'},
+  {id:'codo90rl',emoji:'🔩',nombre:'Codo RL 90°',icono:'/iconos_accesorios/codo90rl.webp', cat: 'Codos'},
+  // Tees
   {id:'teeDirecto',emoji:'🔧',nombre:'Tee paso Directo',icono:'/iconos_accesorios/teeDirecto.webp', cat: 'Tees'},
   {id:'teeReduccion',emoji:'🔧',nombre:'Tee c/ reducción',icono:'/iconos_accesorios/teeReduccion.webp', cat: 'Tees'},
   {id:'teeLado',emoji:'🔧',nombre:'Tee paso Lado',icono:'/iconos_accesorios/teeLado.webp', cat: 'Tees'},
   {id:'teeBilateral',emoji:'🔧',nombre:'Tee salida bilateral',icono:'/iconos_accesorios/teeBilateral.webp', cat: 'Tees'},
+  // Válvulas
   {id:'valvGlobo',emoji:'🚰',nombre:'Válvula globo',icono:'/iconos_accesorios/valvGlobo.webp', cat: 'Válvulas'},
   {id:'valvCompuerta',emoji:'🚰',nombre:'Válvula compuerta',icono:'/iconos_accesorios/valvCompuerta.webp', cat: 'Válvulas'},
-  {id:'reduccion',emoji:'🔽',nombre:'Reducción',icono:'/iconos_accesorios/reduccion.webp', cat: 'Otros'},
-  {id:'ampliacion',emoji:'🔼',nombre:'Ampliación',icono:'/iconos_accesorios/ampliacion.webp', cat: 'Otros'},
-  {id:'codo45rc',emoji:'🔩',nombre:'Codo RC 45°',icono:'/iconos_accesorios/codo45rc.webp', cat: 'Codos'},
   {id:'valvCheque',emoji:'✔️',nombre:'Válvula cheque',icono:'/iconos_accesorios/valvCheque.webp', cat: 'Válvulas'},
   {id:'valvPie',emoji:'🪣',nombre:'Válvula pie',icono:'/iconos_accesorios/valvPie.webp', cat: 'Válvulas'},
-  {id:'codo90rm',emoji:'🔩',nombre:'Codo RM 90°',icono:'/iconos_accesorios/codo90rm.webp', cat: 'Codos'},
-  {id:'codo90rl',emoji:'🔩',nombre:'Codo RL 90°',icono:'/iconos_accesorios/codo90rl.webp', cat: 'Codos'},
   {id:'valvAngulo',emoji:'🚰',nombre:'Válvula ángulo',icono:'/iconos_accesorios/valvAngulo.webp', cat: 'Válvulas'},
+  // Otros
+  {id:'reduccion',emoji:'🔽',nombre:'Reducción',icono:'/iconos_accesorios/reduccion.webp', cat: 'Otros'},
+  {id:'ampliacion',emoji:'🔼',nombre:'Ampliación',icono:'/iconos_accesorios/ampliacion.webp', cat: 'Otros'},
   {id:'otros',emoji:'➕',nombre:'Otros',icono:'/iconos_accesorios/otros.webp', cat: 'Otros'},
 ];
 
@@ -91,7 +95,7 @@ export const TABS=[
 
 export const MATERIALES = {
   af: {lbl:'Agua fría', opts:['PVC-PR','CPVC','Cobre rígido','Polipropileno PP-R']},
-  ac: {lbl:'Agua caliente', opts:['CPVC','Cobre rígido','Polipropileno PP-R','PEX']},
+  ac: {lbl:'Agua caliente', opts:['PVC-PR','CPVC','Cobre rígido','Polipropileno PP-R','PEX']},
   san: {lbl:'Sanitaria', opts:['PVC-S','Novatec','Hierro fundido','Concreto']},
   ll: {lbl:'Aguas lluvias', opts:['PVC-S','Novatec','Hierro fundido','Concreto','Gres cerámico']},
   gas: {lbl:'Gas', opts:['PE al PE','Cobre rígido','A.C.','Acero HG','Polipropileno PP-R']},
@@ -104,15 +108,15 @@ export const USOS=['Vivienda unifamiliar','Vivienda multifamiliar','Comercial','
 export const EMPRES=['EMAB - Floridablanca','Aguas de Bucaramanga','EAAB - Bogotá','EPM - Medellín','Otra'];
 
 export const UD_BASE_INIT=[
-  {id:'sif',nombre:'Sifones',ud:0},
-  {id:'lvm',nombre:'Lavamanos',ud:0},
-  {id:'san',nombre:'Inodoros',ud:0},
-  {id:'duc',nombre:'Duchas',ud:0},
-  {id:'lvra',nombre:'Lavadoras',ud:0},
-  {id:'tin',nombre:'Tina',ud:0},
-  {id:'lvp',nombre:'Lavaplatos',ud:0},
-  {id:'lvro',nombre:'Lavadero',ud:0},
-  {id:'lavav',nombre:'Lavavajillas',ud:0},
+  {id:'sif',nombre:'Sifones',ud:2},
+  {id:'lvm',nombre:'Lavamanos',ud:2},
+  {id:'san',nombre:'Inodoros',ud:4},
+  {id:'duc',nombre:'Duchas',ud:2},
+  {id:'lvra',nombre:'Lavadoras',ud:2},
+  {id:'tin',nombre:'Tina',ud:2},
+  {id:'lvp',nombre:'Lavaplatos',ud:2},
+  {id:'lvro',nombre:'Lavadero',ud:2},
+  {id:'lavav',nombre:'Lavavajillas',ud:2},
 ];
 
 export const UD_PISO_MAP={
@@ -285,19 +289,19 @@ export const FR_SUPERCRITICO = 1.1;
 export const FUERZA_TRACTIVA_MIN = 0.15;
 
 export const APS_DEFAULT=[
-  {id:'sif',s:'Sif:',n:'Sifón',g:'h',ucaf:0,ucac:0,ud:0,pmin:0,pmax:0,qg:0},
-  {id:'lvm',s:'Lvm:',n:'Lavamanos',g:'h',ucaf:0.5,ucac:0.5,ud:0,pmin:0,pmax:0,qg:0},
-  {id:'san',s:'Ino:',n:'Inodoro',g:'h',ucaf:2.2,ucac:0,ud:0,pmin:0,pmax:0,qg:0},
-  {id:'duc',s:'Duc:',n:'Ducha',g:'h',ucaf:1,ucac:1,ud:0,pmin:0,pmax:0,qg:0},
-  {id:'lvp',s:'Lvp:',n:'Lavaplatos Cocina',g:'h',ucaf:1,ucac:1,ud:0,pmin:0,pmax:0,qg:0},
-  {id:'tin',s:'Tin:',n:'Tina',g:'h',ucaf:1,ucac:1,ud:0,pmin:0,pmax:0,qg:0},
-  {id:'lvra',s:'Lvra:',n:'Lavadora',g:'h',ucaf:1,ucac:1,ud:0,pmin:0,pmax:0,qg:0},
-  {id:'lvro',s:'Lvro:',n:'Lavadero',g:'h',ucaf:1,ucac:1,ud:0,pmin:0,pmax:0,qg:0},
-  {id:'nev',s:'Nev:',n:'Nevera',g:'h',ucaf:0.5,ucac:0,ud:0,pmin:0,pmax:0,qg:0},
-  {id:'lavav',s:'Lavav:',n:'Lavavajillas',g:'h',ucaf:0,ucac:1.5,ud:0,pmin:0,pmax:0,qg:0},
-  {id:'est4',s:'Est4:',n:'Estufa 4Q',g:'g',ucaf:0,ucac:0,ud:0,pmin:17,pmax:25,qg:1.35},
-  {id:'cal',s:'Cal:',n:'Calentador',g:'g',ucaf:0,ucac:0,ud:0,pmin:17,pmax:25,qg:1.76},
-  {id:'hor',s:'Hor:',n:'Horno',g:'g',ucaf:0,ucac:0,ud:0,pmin:17,pmax:25,qg:1.15},
+  {id:'sif',s:'Sif:',n:'Sifón',g:'h',ucaf:0,ucac:0,ud:2,pmin:0,pmax:0,qg:0,ctrl:'Tanque',_blkUd:false},
+  {id:'lvm',s:'Lvm:',n:'Lavamanos',g:'h',ucaf:0.5,ucac:0.5,ud:2,pmin:0,pmax:0,qg:0,ctrl:'Llave',_blkUd:false},
+  {id:'san',s:'Ino:',n:'Inodoro',g:'h',ucaf:2.2,ucac:0,ud:4,pmin:0,pmax:0,qg:0,ctrl:'Tanque',_blkUd:false},
+  {id:'duc',s:'Duc:',n:'Ducha',g:'h',ucaf:1,ucac:1,ud:2,pmin:0,pmax:0,qg:0,ctrl:'Llave',_blkUd:false},
+  {id:'lvp',s:'Lvp:',n:'Lavaplatos Cocina',g:'h',ucaf:1,ucac:1,ud:2,pmin:0,pmax:0,qg:0,ctrl:'Llave',_blkUd:false},
+  {id:'tin',s:'Tin:',n:'Tina',g:'h',ucaf:1,ucac:1,ud:2,pmin:0,pmax:0,qg:0,ctrl:'Llave',_blkUd:false},
+  {id:'lvra',s:'Lvra:',n:'Lavadora',g:'h',ucaf:1,ucac:1,ud:2,pmin:0,pmax:0,qg:0,ctrl:'Llave',_blkUd:false},
+  {id:'lvro',s:'Lvro:',n:'Lavadero',g:'h',ucaf:1,ucac:1,ud:2,pmin:0,pmax:0,qg:0,ctrl:'Llave',_blkUd:false},
+  {id:'nev',s:'Nev:',n:'Nevera',g:'h',ucaf:0.5,ucac:0,ud:0,pmin:0,pmax:0,qg:0,ctrl:'Llave',_blkUd:true},
+  {id:'lavav',s:'Lavav:',n:'Lavavajillas',g:'h',ucaf:0,ucac:1.5,ud:2,pmin:0,pmax:0,qg:0,ctrl:'Llave',_blkUd:false},
+  {id:'est4',s:'Est4:',n:'Estufa 4Q',g:'g',ucaf:0,ucac:0,ud:0,pmin:17,pmax:25,qg:1.35,ctrl:'Llave',_blkUd:true},
+  {id:'cal',s:'Cal:',n:'Calentador',g:'g',ucaf:0,ucac:0,ud:0,pmin:17,pmax:25,qg:1.76,ctrl:'Llave',_blkUd:true},
+  {id:'hor',s:'Hor:',n:'Horno',g:'g',ucaf:0,ucac:0,ud:0,pmin:17,pmax:25,qg:1.15,ctrl:'Llave',_blkUd:true},
 ];
 
 export const PROFS_DEFAULT=[

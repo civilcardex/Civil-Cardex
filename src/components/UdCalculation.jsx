@@ -1,6 +1,6 @@
 import { useSanitario } from "../context/SanitarioContext";
 import { calcUDparcial, calcUDacumulado } from "./utils";
-import { pisoCorto, APARATOS_DEF } from "./constants";
+import { pisoCorto, APARATOS_DEF, SAN_UC_IDS } from "./constants";
 
 function getTributarioIds(tramos) {
   const tribSet = new Set();
@@ -17,19 +17,19 @@ function getTributarioIds(tramos) {
 }
 
 export default function CalculoUD() {
-const { tramosSan, udBase, pisos, aps, updTramoSan } = useSanitario();
+const { tramosSan, pisos, aps, updTramoSan } = useSanitario();
 
 const pisosSelect = pisos.filter(p => p.tipo !== 'cubierta');
-const mergedBase = udBase.map(d => {
-  const fromAps = aps.find(p => p.id === d.id);
-  const merged = fromAps ? { ...d, ud: fromAps.ud || d.ud } : d;
-  const def = APARATOS_DEF.find(x => x.id === d.id);
-  return { ...merged, _disabled: (def?.ud || 0) === 0 };
+const mergedBase = SAN_UC_IDS.map(id => {
+  const fromAps = aps.find(p => p.id === id);
+  const def = APARATOS_DEF.find(x => x.id === id);
+  return { id, nombre: def?.nombre || id, ud: fromAps?.ud || def?.ud || 0, _disabled: (def?.ud || 0) === 0 };
 });
 const acumMap = calcUDacumulado(tramosSan, mergedBase);
 
 const tribIds = getTributarioIds(tramosSan);
-const displayTramos = tramosSan.filter(t => !tribIds.has(t.id));
+const displayTramos = tramosSan.filter(t => !tribIds.has(t.id))
+  .sort((a, b) => (a.piso || 0) - (b.piso || 0));
 
 const totales = mergedBase.map(d => ({
   id: d.id, nombre: d.nombre, ud: d.ud,
@@ -51,6 +51,8 @@ return (
             <tr>
               <th className="col-h" rowSpan={2} style={{minWidth:70,textAlign:'center'}}>Tramo</th>
               <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Nivel</th>
+              <th className="col-h" rowSpan={2} style={{minWidth:60,textAlign:'center'}}>Inicio</th>
+              <th className="col-h" rowSpan={2} style={{minWidth:60,textAlign:'center'}}>Fin</th>
               <th className="col-h san" colSpan={mergedBase.length} style={{textAlign:'center'}}>Aparatos</th>
               <th className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Unidades de Descarga</th>
               <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Bajante</th>
@@ -71,6 +73,8 @@ const acum=acumMap[t.id]||0;
                 <tr key={t.id}>
                   <td className="c"><span className="sigla" style={{fontSize:11,fontWeight:600}}>{t.id}</span></td>
                   <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{pisoCorto(t.piso)}</span></td>
+                  <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.ini||'—'}</span></td>
+                  <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.fin||'—'}</span></td>
                   {mergedBase.map(d=>(
                     <td key={d.id} className="c" style={{padding:'2px 3px'}}>
                       <span style={{fontSize:12,fontFamily:'var(--mono)',color:d._disabled?'var(--txt3)':'var(--txt)'}}>{t.fixtures[d.id]??0}</span>
@@ -88,6 +92,8 @@ const acum=acumMap[t.id]||0;
           <tfoot>
             <tr>
               <td className="c" style={{fontWeight:600,fontSize:13,color:'var(--txt3)',textAlign:'center',borderTop:'2px solid var(--line)'}}>∑</td>
+              <td style={{borderTop:'2px solid var(--line)'}}></td>
+              <td style={{borderTop:'2px solid var(--line)'}}></td>
               <td style={{borderTop:'2px solid var(--line)'}}></td>
               {mergedBase.map(d => {
                 const subtotal = (d.cant || 0) * (d.ud || 0);

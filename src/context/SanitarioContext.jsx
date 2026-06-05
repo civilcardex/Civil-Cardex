@@ -31,7 +31,7 @@ nombre:'', dir:'',
 mun:'', dep:'',
 uso:'', empresa:'',
 p_red:'', dot:'',
-mat_af:'PVC presión', mat_ac:'CPVC', mat_rci:'Acero SCH 40',
+    mat_af:'PVC-PR', mat_ac:'PVC-PR', mat_rci:'Acero SCH 40',
 mat_san:'PVC sanitario', mat_ll:'PVC sanitario',
 mat_ven:'PVC sanitario', mat_gas:'PE al PE',
 altitud:'959', p_atm:'90.32',
@@ -93,6 +93,7 @@ const [crits, setCrits] = useState(CRIT0.map(c => ({...c})));
             id: r.id, piso,
             fixtures: sync.aparatosByTramo?.[apKey] || {},
             recibeDe: [], esBajante: false, descripcion: '',
+            ini: r.ini || '', fin: r.fin || '',
             diamDisPulg: r.diamPulg || 0, nSalidas: hd.nSalidas || 0,
             nmaning: r.maning ?? 0, sPercent: r.pendiente ?? 0,
             bajR: 7/24, bajLong: 3, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
@@ -127,36 +128,34 @@ const [crits, setCrits] = useState(CRIT0.map(c => ({...c})));
           }
         }
       }
-      if (sanIncoming.length > 0) {
-        setTramosSan(prev => {
-          const keep = prev.filter(t => !sanIncoming.some(i => i.id === t.id) && !tribIds.has(t.id));
-          const merged = sanIncoming.map(i => {
-            const existing = prev.find(t => t.id === i.id);
-            if (existing) {
-              return {
-                ...i,
-                descripcion: existing.descripcion || i.descripcion,
-                nSalidas: existing.nSalidas ?? i.nSalidas,
-                fixtures: { ...i.fixtures, ...existing.fixtures },
-              };
-            }
-            return i;
-          });
-          return [...keep, ...merged];
+      setTramosSan(prev => {
+        if (sanIncoming.length === 0) return [];
+        const keep = prev.filter(t => !sanIncoming.some(i => i.id === t.id) && !tribIds.has(t.id));
+        const merged = sanIncoming.map(i => {
+          const existing = prev.find(t => t.id === i.id);
+          if (existing) {
+            return {
+              ...i,
+              descripcion: existing.descripcion || i.descripcion,
+              nSalidas: existing.nSalidas ?? i.nSalidas,
+              fixtures: { ...i.fixtures, ...existing.fixtures },
+            };
+          }
+          return i;
         });
-      }
-      if (llIncoming.length > 0) {
-        setTramosLl(prev => {
-          const drawingIds = new Set([...llIncoming.map(i => i.id), ...tribIds]);
-          const keep = prev.filter(t => !drawingIds.has(t.id));
-          const merged = llIncoming.map(i => {
-            const ex = prev.find(t => t.id === i.id);
-            if (ex) return { ...i, descripcion: ex.descripcion || '', desde: ex.desde || '', hasta: ex.hasta || '' };
-            return i;
-          });
-          return [...keep, ...merged];
+        return [...keep, ...merged];
+      });
+      setTramosLl(prev => {
+        if (llIncoming.length === 0) return [];
+        const drawingIds = new Set([...llIncoming.map(i => i.id), ...tribIds]);
+        const keep = prev.filter(t => !drawingIds.has(t.id));
+        const merged = llIncoming.map(i => {
+          const ex = prev.find(t => t.id === i.id);
+          if (ex) return { ...i, descripcion: ex.descripcion || '', desde: ex.desde || '', hasta: ex.hasta || '' };
+          return i;
         });
-      }
+        return [...keep, ...merged];
+      });
     }
     loadFromSync();
     const handler = () => loadFromSync();
@@ -189,8 +188,10 @@ const [crits, setCrits] = useState(CRIT0.map(c => ({...c})));
             id: r.id, piso: nivel,
             fixtures: aparatos[apKey] || {},
             accesorios: extra.accesorios || {},
-            Lh: extra.Lh || 0, nSalidas: extra.nSalidas || 0,
+            Lh: extra.Lh || 0, Lv: r.dz || extra.Lv || 0,
+            nSalidas: extra.nSalidas || 0,
             recibeDe: [], descripcion: '',
+            ini: r.ini || '', fin: r.fin || '',
             diamDisPulg: r.diamPulg || 0, material: r.material || '',
           });
         }
@@ -207,28 +208,26 @@ const [crits, setCrits] = useState(CRIT0.map(c => ({...c})));
         }
       }
 
-      if (afIncoming.length > 0) {
-        setTramosAf(prev => {
-          const keep = prev.filter(t => !afIncoming.some(i => i.id === t.id) && !hidroTribIds.has(t.id));
-          const merged = afIncoming.map(i => {
-            const ex = prev.find(t => t.id === i.id);
-            if (ex) return { ...i, recibeDe: ex.recibeDe || [], descripcion: ex.descripcion || '' };
-            return i;
-          });
-          return [...keep, ...merged];
+      setTramosAf(prev => {
+        if (afIncoming.length === 0) return [];
+        const keep = prev.filter(t => !afIncoming.some(i => i.id === t.id) && !hidroTribIds.has(t.id));
+        const merged = afIncoming.map(i => {
+          const ex = prev.find(t => t.id === i.id);
+          if (ex) return { ...i, recibeDe: ex.recibeDe || [], descripcion: ex.descripcion || '' };
+          return i;
         });
-      }
-      if (acIncoming.length > 0) {
-        setTramosAc(prev => {
-          const keep = prev.filter(t => !acIncoming.some(i => i.id === t.id) && !hidroTribIds.has(t.id));
-          const merged = acIncoming.map(i => {
-            const ex = prev.find(t => t.id === i.id);
-            if (ex) return { ...i, recibeDe: ex.recibeDe || [], descripcion: ex.descripcion || '' };
-            return i;
-          });
-          return [...keep, ...merged];
+        return [...keep, ...merged];
+      });
+      setTramosAc(prev => {
+        if (acIncoming.length === 0) return [];
+        const keep = prev.filter(t => !acIncoming.some(i => i.id === t.id) && !hidroTribIds.has(t.id));
+        const merged = acIncoming.map(i => {
+          const ex = prev.find(t => t.id === i.id);
+          if (ex) return { ...i, recibeDe: ex.recibeDe || [], descripcion: ex.descripcion || '' };
+          return i;
         });
-      }
+        return [...keep, ...merged];
+      });
     }
 
     loadHidro();

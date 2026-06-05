@@ -65,7 +65,7 @@ const REDES_MAT = [
   { id: 'll',  lbl: 'Aguas lluvias',    mat: 'PVC-S',                       prof: -0.50, fixed: true },
   { id: 'ven', lbl: 'Ventilación',      mat: 'PVC-V',                       prof:  0.00, fixed: true },
   { id: 'af',  lbl: 'Agua fría',        mat: 'PVC-PR',                      prof:  0.00, fixed: true },
-  { id: 'ac',  lbl: 'Agua caliente',    mat: 'CPVC',                        prof: -0.10, fixed: true },
+  { id: 'ac', lbl: 'Agua caliente', mat: 'PVC-PR', prof: -0.10, fixed: true },
   { id: 'rci', lbl: 'Contra Incendio',  mat: 'A.C. SCH 40',      prof: -0.45,
     opts: ['A.C. SCH 10', 'A.C. SCH 40', 'PVC C900 RDE 14', 'PVC C900 RDE 18', 'Acero HG'] },
   { id: 'gas', lbl: 'Gas',              mat: 'PE al PE',                    prof: -0.15,

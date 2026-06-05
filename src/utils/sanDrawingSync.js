@@ -39,6 +39,7 @@ function buildSync(planos) {
         sanRamales.push({
           id: r.id, label: r.label || r.id, tipo: r.tipo,
           padre: r.padre || null, totalL: r.totalL || 0,
+          ini: r.ini || '', fin: r.fin || '',
           diametro: r.diametro || '', diamPulg: diamPulgFromLabel(r.diametro),
           pendiente: typeof r.pendiente === 'number' ? r.pendiente : 0,
           material: r.material || '', maning: matManning(r.material),

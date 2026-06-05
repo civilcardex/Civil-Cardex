@@ -1,7 +1,10 @@
+import { useMemo, useCallback } from "react";
 import { useSanitario } from "../context/SanitarioContext";
+import { usePlanos } from "../context/PlanosContext";
 import { pisoCorto, DIAM_OPTIONS, V_MIN, V_MAX, Y_D_MAX, FR_SUBCRITICO, FR_SUPERCRITICO, FUERZA_TRACTIVA_MIN } from "./constants";
 import { parseDescripcion } from "../utils/parseDescripcion";
 import { relacionesHidraulicas, caudalTuboLleno, velocidadTuboLleno, diametromaning, tipoRegimen, numeroFroude, tiranteCritico, GRAVEDAD } from "../utils/calcSanitario";
+import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiametroToDrawing";
 
 function getTributarioIds(tramos) {
   const tribSet = new Set();
@@ -16,7 +19,21 @@ function getTributarioIds(tramos) {
 }
 
 export default function DisenoLluvias() {
-  const { tramosLl } = useSanitario();
+  const { tramosLl, updTramoLL, delTramoLL } = useSanitario();
+  const { planos } = usePlanos();
+
+  const handleDiamChange = useCallback((tramoKey, tramoId, newPulg) => {
+    updTramoLL(tramoKey, 'diamDisPulg', newPulg);
+    const opt = DIAM_OPTIONS.find(o => o.pulg === newPulg);
+    if (opt && tramoId) {
+      writeDiametroToDrawing(tramoId, 'll', opt.label, planos);
+    }
+  }, [updTramoLL, planos]);
+
+  const handleDelete = useCallback((tramoKey, tramoId) => {
+    delTramoLL(tramoKey);
+    if (tramoId) deleteRamalFromDrawing(tramoId, 'll', planos);
+  }, [delTramoLL, planos]);
 
   const tribIds = getTributarioIds(tramosLl);
   const displayTramos = tramosLl.filter(t => !tribIds.has(t._key) && !tribIds.has(t.id));
@@ -60,10 +77,11 @@ export default function DisenoLluvias() {
               <th className="col-h ok" style={{fontSize:10,textAlign:'center'}}>Interno<br/>mm</th>
               <th className="col-h ven" style={{fontSize:10,textAlign:'center'}}>Vr<br/><small>kg/m2</small></th>
               <th className="col-h ven" style={{fontSize:10,textAlign:'center'}}>&gt;0.15</th>
+          <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}></th>
             </tr>
           </thead>
           <tbody>
-            {[...displayTramos].sort((a,b)=>(b.piso||0)-(a.piso||0)).map(t=>{
+            {[...displayTramos].sort((a,b)=>(a.piso||0)-(b.piso||0)).map(t=>{
 const n=t.nmaning;
 const sVal=t.sPercent;
 const S=sVal!=null&&sVal>0?sVal/100:null;
@@ -109,7 +127,16 @@ const descIds=parseDescripcion(t.descripcion);
                   <td className="c" style={{fontFamily:'var(--mono)'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
                   <td className="c" style={{fontFamily:'var(--mono)'}}>{sVal > 0 ? sVal : '—'}</td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontSize:10}}>{DcalcPulg>0?DcalcPulg.toFixed(2)+'"':'—'}</td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)'}}>{DdisPulg>0?DdisPulg+'"':'—'}</span></td>
+                  <td className="c">
+          <select
+            value={DdisPulg||''}
+            onChange={e=>handleDiamChange(t._key,t.id,parseFloat(e.target.value)||0)}
+            style={{fontFamily:'var(--mono)',fontSize:10,padding:'1px 2px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer'}}
+          >
+            <option value="">—</option>
+            {DIAM_OPTIONS.map(o=><option key={o.pulg} value={o.pulg}>{o.label}</option>)}
+          </select>
+        </td>
                   <td className="c">{DintMm>0?DintMm:'—'}</td>
                   <td className="c" style={{fontFamily:'var(--mono)'}}>{Qo>0?Qo.toFixed(2):'—'}</td>
                   <td className="c" style={{fontFamily:'var(--mono)'}}>{Vo>0?Vo.toFixed(2):'—'}</td>
@@ -123,8 +150,15 @@ const descIds=parseDescripcion(t.descripcion);
                   <td className="c">{Ymax>0?Ymax.toFixed(2):'—'}</td>
                   <td className="c">{chequeoYn}</td>
                   <td className="c">{fuerzaTractiva>0?fuerzaTractiva.toFixed(2):'—'}</td>
-                  <td className="c">{chequeoFT}</td>
-                </tr>
+        <td className="c">{chequeoFT}</td>
+        <td className="c" style={{padding:'2px'}}>
+          <button
+            onClick={() => handleDelete(t._key, t.id)}
+            title="Eliminar ramal"
+            style={{border:'none',background:'transparent',color:'var(--txt3)',cursor:'pointer',fontSize:12,padding:'0 2px',lineHeight:1}}
+          >&#x2715;</button>
+        </td>
+      </tr>
               );
             })}
           </tbody>
