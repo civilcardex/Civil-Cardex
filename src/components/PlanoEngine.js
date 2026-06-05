@@ -506,7 +506,7 @@ if (this._onDirtyCb) this._onDirtyCb();
       pts: this.activeRamal.pts,
       totalL: this.activeRamal.totalL,
       label: this._nextLabel(),
-      ini: '', fin: '', piso: '', dz: '', uc: 0,
+      ini: '', fin: '', piso: this.nivelActual?.n ?? '', dz: '', uc: 0,
       labelX: mx, labelY: my,
       labelAngle: 0,
       material: def.material || '',
@@ -677,6 +677,7 @@ if (this._onDirtyCb) this._onDirtyCb();
       }
     }
     this.render();
+    this._markDirty();
   }
 
   updateElementById(id, fields) {
@@ -691,6 +692,7 @@ if (this._onDirtyCb) this._onDirtyCb();
       this.selId = id;
     }
     this.render();
+    this._markDirty();
   }
 
   rotateLabelSnap() {
