@@ -1,0 +1,137 @@
+{
+  "nodes": [
+    {
+      "id": "skill_react_best_practices_system",
+      "label": "Vercel React Best Practices",
+      "file_type": "document",
+      "source_file": ".agents/skills/react-best-practices/SKILL.md",
+      "source_location": null
+    },
+    {
+      "id": "rules__sections_eliminating_waterfalls",
+      "label": "Eliminating Waterfalls (CRITICAL)",
+      "file_type": "document",
+      "source_file": ".agents/skills/react-best-practices/rules/_sections.md",
+      "source_location": null
+    },
+    {
+      "id": "rules__sections_bundle_size_optimization",
+      "label": "Bundle Size Optimization (CRITICAL)",
+      "file_type": "document",
+      "source_file": ".agents/skills/react-best-practices/rules/_sections.md",
+      "source_location": null
+    },
+    {
+      "id": "rules_async_defer_await_rule",
+      "label": "Defer Await Until Needed",
+      "file_type": "document",
+      "source_file": ".agents/skills/react-best-practices/rules/async-defer-await.md",
+      "source_location": null
+    },
+    {
+      "id": "rules_async_cheap_condition_before_await_rule",
+      "label": "Check Cheap Conditions Before Async Flags",
+      "file_type": "document",
+      "source_file": ".agents/skills/react-best-practices/rules/async-cheap-condition-before-await.md",
+      "source_location": null
+    },
+    {
+      "id": "rules_async_dependencies_rule",
+      "label": "Dependency-Based Parallelization",
+      "file_type": "document",
+      "source_file": ".agents/skills/react-best-practices/rules/async-dependencies.md",
+      "source_location": null
+    },
+    {
+      "id": "rules_bundle_barrel_imports_rule",
+      "label": "Avoid Barrel File Imports",
+      "file_type": "document",
+      "source_file": ".agents/skills/react-best-practices/rules/bundle-barrel-imports.md",
+      "source_location": null
+    }
+  ],
+  "edges": [
+    {
+      "source": "skill_react_best_practices_system",
+      "target": "rules__sections_eliminating_waterfalls",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".agents/skills/react-best-practices/SKILL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "skill_react_best_practices_system",
+      "target": "rules__sections_bundle_size_optimization",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".agents/skills/react-best-practices/SKILL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rules_async_defer_await_rule",
+      "target": "rules_async_cheap_condition_before_await_rule",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".agents/skills/react-best-practices/rules/async-defer-await.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "rules_async_cheap_condition_before_await_rule",
+      "target": "rules_async_defer_await_rule",
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".agents/skills/react-best-practices/rules/async-cheap-condition-before-await.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "hyperedges": [
+    {
+      "nodes": [
+        "rules__sections_eliminating_waterfalls",
+        "rules_async_defer_await_rule",
+        "rules_async_cheap_condition_before_await_rule",
+        "rules_async_dependencies_rule"
+      ],
+      "relation": "groups",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".agents/skills/react-best-practices/SKILL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "nodes": [
+        "rules__sections_bundle_size_optimization",
+        "rules_bundle_barrel_imports_rule"
+      ],
+      "relation": "groups",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".agents/skills/react-best-practices/SKILL.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "nodes": [
+        "rules_async_defer_await_rule",
+        "rules_async_cheap_condition_before_await_rule"
+      ],
+      "relation": "conceptually_related_to",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": ".agents/skills/react-best-practices/rules/async-defer-await.md",
+      "source_location": null,
+      "weight": 1.0
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

@@ -1,0 +1,1287 @@
+{
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\composition-patterns\\metadata.json": {
+    "mtime": 1780504873.8537972,
+    "ast_hash": "e6f6bf659ca1d8af9bcc607597e304c6",
+    "semantic_hash": "e6f6bf659ca1d8af9bcc607597e304c6"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\metadata.json": {
+    "mtime": 1780504873.8637865,
+    "ast_hash": "5cd9ae4fc688353236c3b92e8f06dfcc",
+    "semantic_hash": "5cd9ae4fc688353236c3b92e8f06dfcc"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\package.json": {
+    "mtime": 1780504873.918898,
+    "ast_hash": "4f21bee180a3dac2c22017304d580663",
+    "semantic_hash": "4f21bee180a3dac2c22017304d580663"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\postcss.config.js": {
+    "mtime": 1780504873.918898,
+    "ast_hash": "c735540bb63936a123bc867d950c9f69",
+    "semantic_hash": "c735540bb63936a123bc867d950c9f69"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\skills-lock.json": {
+    "mtime": 1780504873.9397583,
+    "ast_hash": "23d169807d185bf10a6878853475a11a",
+    "semantic_hash": "23d169807d185bf10a6878853475a11a"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\App.jsx": {
+    "mtime": 1780504873.9417734,
+    "ast_hash": "bb7a7f83a1396264c9d473ca17b95733",
+    "semantic_hash": "bb7a7f83a1396264c9d473ca17b95733"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\AccesoriosTable.jsx": {
+    "mtime": 1780618275.357836,
+    "ast_hash": "4839e8510c592ab5c28e483c59c1f241",
+    "semantic_hash": "4839e8510c592ab5c28e483c59c1f241"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\AparatosPanel.jsx": {
+    "mtime": 1780544260.063302,
+    "ast_hash": "bd97cd7bf3b6e49feb476fda6b5948c9",
+    "semantic_hash": "bd97cd7bf3b6e49feb476fda6b5948c9"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\CalculoUCAC.jsx": {
+    "mtime": 1780583115.3725893,
+    "ast_hash": "065cdd322d13aabc2d0f4162b0e9992a",
+    "semantic_hash": "065cdd322d13aabc2d0f4162b0e9992a"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\CalculoUCAF.jsx": {
+    "mtime": 1780583106.771163,
+    "ast_hash": "342a18e74bf341775302ba93838153a3",
+    "semantic_hash": "342a18e74bf341775302ba93838153a3"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\CollapsibleNav.jsx": {
+    "mtime": 1780504873.943787,
+    "ast_hash": "aabb4806b32fb4a1b1a49ffd07638480",
+    "semantic_hash": "aabb4806b32fb4a1b1a49ffd07638480"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\DesignParameters.jsx": {
+    "mtime": 1780604637.6900828,
+    "ast_hash": "95371df696c8ae7e8a73a3132eb4f05b",
+    "semantic_hash": "95371df696c8ae7e8a73a3132eb4f05b"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\DisenoRedAguaCaliente.jsx": {
+    "mtime": 1780632864.5600963,
+    "ast_hash": "952eee2aeae1f5b1a36aa282738c87da",
+    "semantic_hash": "952eee2aeae1f5b1a36aa282738c87da"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\DisenoRedAguaFria.jsx": {
+    "mtime": 1780632859.7537706,
+    "ast_hash": "b3bd902e37830f48840bde7aa8b1db19",
+    "semantic_hash": "b3bd902e37830f48840bde7aa8b1db19"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\DownpipesTable.jsx": {
+    "mtime": 1780504873.9458,
+    "ast_hash": "929f3276cd84092c8c2a20fcb7ef0eb8",
+    "semantic_hash": "929f3276cd84092c8c2a20fcb7ef0eb8"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\FloatingPanel.jsx": {
+    "mtime": 1780504873.9458,
+    "ast_hash": "f7ab1a7fd136fd56667107ab00996277",
+    "semantic_hash": "f7ab1a7fd136fd56667107ab00996277"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\Navbar.jsx": {
+    "mtime": 1780504873.9478133,
+    "ast_hash": "57086fd5b9b39683bfbce1aba15f70e9",
+    "semantic_hash": "57086fd5b9b39683bfbce1aba15f70e9"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\Normativa.jsx": {
+    "mtime": 1780544815.3205252,
+    "ast_hash": "fdb601c7df399f7450d6ab2e64b800c0",
+    "semantic_hash": "fdb601c7df399f7450d6ab2e64b800c0"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\PdfViewer.jsx": {
+    "mtime": 1780507952.0931761,
+    "ast_hash": "0bdf48b92f514ca49f91f0a02b407b80",
+    "semantic_hash": "0bdf48b92f514ca49f91f0a02b407b80"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\PlanoEngine.js": {
+    "mtime": 1780583563.6892161,
+    "ast_hash": "91d971cec73dc67771c402cc589c75f3",
+    "semantic_hash": "91d971cec73dc67771c402cc589c75f3"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\RainChannelsCheck.jsx": {
+    "mtime": 1780544815.3174784,
+    "ast_hash": "2cb4e6d8b68f061ff6802c9a757b5648",
+    "semantic_hash": "2cb4e6d8b68f061ff6802c9a757b5648"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\RainChannelsPanel.jsx": {
+    "mtime": 1780504873.9534605,
+    "ast_hash": "5e4115a03f536510049b5270cc3df26f",
+    "semantic_hash": "5e4115a03f536510049b5270cc3df26f"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\RainDownpipesCheck.jsx": {
+    "mtime": 1780504873.9534605,
+    "ast_hash": "f08b00ab093cde156c99fc8eb51189fc",
+    "semantic_hash": "f08b00ab093cde156c99fc8eb51189fc"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\RainDownpipesPanel.jsx": {
+    "mtime": 1780504873.9534605,
+    "ast_hash": "33d9b34a549faee729c4342c4a33d988",
+    "semantic_hash": "33d9b34a549faee729c4342c4a33d988"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\RainwaterDesign.jsx": {
+    "mtime": 1780604491.3920047,
+    "ast_hash": "d01bfe65a8292db9309e662f97807008",
+    "semantic_hash": "d01bfe65a8292db9309e662f97807008"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\RainwaterHydraulicCalc.jsx": {
+    "mtime": 1780504873.9534605,
+    "ast_hash": "095c0c58ddbbf278c682f9ccc0d31251",
+    "semantic_hash": "095c0c58ddbbf278c682f9ccc0d31251"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\SanitaryDesign.jsx": {
+    "mtime": 1780632877.7868247,
+    "ast_hash": "30aa081d2a51094d688f030ff3344901",
+    "semantic_hash": "30aa081d2a51094d688f030ff3344901"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\SanitaryHydraulicCalc.jsx": {
+    "mtime": 1780504873.958352,
+    "ast_hash": "830137b5b2ecef98e768318916a2dd0f",
+    "semantic_hash": "830137b5b2ecef98e768318916a2dd0f"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\UdCalculation.jsx": {
+    "mtime": 1780583091.2103431,
+    "ast_hash": "66c862576a9469eec4cd3d90c8ca6c5d",
+    "semantic_hash": "66c862576a9469eec4cd3d90c8ca6c5d"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\UdDesignPanel.jsx": {
+    "mtime": 1780504873.958352,
+    "ast_hash": "ed2db0bbabfc90b9222200a0d7fea868",
+    "semantic_hash": "ed2db0bbabfc90b9222200a0d7fea868"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\UdValuesPanel.jsx": {
+    "mtime": 1780544269.88413,
+    "ast_hash": "675c9d563bcf90832723bf075bc0f2d6",
+    "semantic_hash": "675c9d563bcf90832723bf075bc0f2d6"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\WorkAreaCivilFlow.jsx": {
+    "mtime": 1780605545.932119,
+    "ast_hash": "abb3236d007de248bdb1bb34019074db",
+    "semantic_hash": "abb3236d007de248bdb1bb34019074db"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\constants.js": {
+    "mtime": 1780604562.2709837,
+    "ast_hash": "7e8b4cb33267c01eabf7551720139732",
+    "semantic_hash": "7e8b4cb33267c01eabf7551720139732"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\components\\utils.jsx": {
+    "mtime": 1780504873.958352,
+    "ast_hash": "d4a3b37d0282d18ea2a5d8542ba4bc3c",
+    "semantic_hash": "d4a3b37d0282d18ea2a5d8542ba4bc3c"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\context\\PlanosContext.jsx": {
+    "mtime": 1780504873.958352,
+    "ast_hash": "6e0cb714a415f2b450e4a2ee7af08182",
+    "semantic_hash": "6e0cb714a415f2b450e4a2ee7af08182"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\context\\SanitarioContext.jsx": {
+    "mtime": 1780604680.8613331,
+    "ast_hash": "82c09d742fafc2ece717195e1158dc63",
+    "semantic_hash": "82c09d742fafc2ece717195e1158dc63"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\hooks\\useAnalysis.js": {
+    "mtime": 1780504873.964316,
+    "ast_hash": "cca6ff3b9dbb8d334f9c4819f8ada1aa",
+    "semantic_hash": "cca6ff3b9dbb8d334f9c4819f8ada1aa"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\hooks\\useFloorGenerator.js": {
+    "mtime": 1780504873.964316,
+    "ast_hash": "a431dbcdf523daeedf04c51119dae9bc",
+    "semantic_hash": "a431dbcdf523daeedf04c51119dae9bc"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\layouts\\Layout.jsx": {
+    "mtime": 1780504873.9667625,
+    "ast_hash": "7f6e8e04adf9c09c30bdfa39dbde57ff",
+    "semantic_hash": "7f6e8e04adf9c09c30bdfa39dbde57ff"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\lib\\supabase.js": {
+    "mtime": 1780504873.9667625,
+    "ast_hash": "c2369b2e3e066cbc023ceee4fb9f82e3",
+    "semantic_hash": "c2369b2e3e066cbc023ceee4fb9f82e3"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\main.jsx": {
+    "mtime": 1780504873.9667625,
+    "ast_hash": "0c4ca63f86bdc0a4745dc1fa05cd5fea",
+    "semantic_hash": "0c4ca63f86bdc0a4745dc1fa05cd5fea"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\CatalogMasterPage.jsx": {
+    "mtime": 1780582016.20391,
+    "ast_hash": "0b24df8f629e66e78aa00e6b3d3f21f0",
+    "semantic_hash": "0b24df8f629e66e78aa00e6b3d3f21f0"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\CivilBIMPage.jsx": {
+    "mtime": 1780504873.9707663,
+    "ast_hash": "f923f0c8eab6e5ab0758fe1e91afcc7e",
+    "semantic_hash": "f923f0c8eab6e5ab0758fe1e91afcc7e"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\CivilFlowPage.jsx": {
+    "mtime": 1780504873.9707663,
+    "ast_hash": "2345e1e1247c9996978853dc3e0759db",
+    "semantic_hash": "2345e1e1247c9996978853dc3e0759db"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\CivilMEPPage.jsx": {
+    "mtime": 1780504873.9718277,
+    "ast_hash": "0a65233a4d6c123510cc947cad1e08ee",
+    "semantic_hash": "0a65233a4d6c123510cc947cad1e08ee"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\CivilManagePage.jsx": {
+    "mtime": 1780504873.973073,
+    "ast_hash": "a0df6b89508f2ed7502024bb8a2d8395",
+    "semantic_hash": "a0df6b89508f2ed7502024bb8a2d8395"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\CivilRoadsPage.jsx": {
+    "mtime": 1780504873.973073,
+    "ast_hash": "3691488aca627441e464054363e7aad2",
+    "semantic_hash": "3691488aca627441e464054363e7aad2"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\CivilStructurePage.jsx": {
+    "mtime": 1780504873.973073,
+    "ast_hash": "0ee8e559f780b4099c561c5c0ee18531",
+    "semantic_hash": "0ee8e559f780b4099c561c5c0ee18531"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\CivilTerrainPage.jsx": {
+    "mtime": 1780504873.973073,
+    "ast_hash": "9f776ccc63db57a39b1440fc432e7ce8",
+    "semantic_hash": "9f776ccc63db57a39b1440fc432e7ce8"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\DocsPage.jsx": {
+    "mtime": 1780544868.7769136,
+    "ast_hash": "b491013ca5a8e229a61928f339a045f6",
+    "semantic_hash": "b491013ca5a8e229a61928f339a045f6"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\LandingPage.jsx": {
+    "mtime": 1780504873.9774394,
+    "ast_hash": "b8bdd79e7270fce74270fd55678ea807",
+    "semantic_hash": "b8bdd79e7270fce74270fd55678ea807"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\LoginPage.jsx": {
+    "mtime": 1780504873.9774394,
+    "ast_hash": "c4ec55f8ba6cf0f0a12f6c3e91d89b4b",
+    "semantic_hash": "c4ec55f8ba6cf0f0a12f6c3e91d89b4b"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\PlanosPage.jsx": {
+    "mtime": 1780504873.9774394,
+    "ast_hash": "2b8697d8081eaa9ad796d759179ae239",
+    "semantic_hash": "2b8697d8081eaa9ad796d759179ae239"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\PricingPage.jsx": {
+    "mtime": 1780544841.9454842,
+    "ast_hash": "fa42f60551c21a04c858d4536d1ed233",
+    "semantic_hash": "fa42f60551c21a04c858d4536d1ed233"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\ProfilePage.jsx": {
+    "mtime": 1780504873.9806209,
+    "ast_hash": "34d9239bb60e7fea95888c41c85b0ffc",
+    "semantic_hash": "34d9239bb60e7fea95888c41c85b0ffc"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\RegisterPage.jsx": {
+    "mtime": 1780504873.9814262,
+    "ast_hash": "36d9a6ec82355ed6810416e9eb6547df",
+    "semantic_hash": "36d9a6ec82355ed6810416e9eb6547df"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\ViewerPage.jsx": {
+    "mtime": 1780504873.9822118,
+    "ast_hash": "04d78351d6069cf974cf3f05757c5a40",
+    "semantic_hash": "04d78351d6069cf974cf3f05757c5a40"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\pages\\WorkAreaCivilFlowPage.jsx": {
+    "mtime": 1780504873.9828813,
+    "ast_hash": "9de11a40df2cbf9a4e6b5c56dfae32eb",
+    "semantic_hash": "9de11a40df2cbf9a4e6b5c56dfae32eb"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\utils\\calcHidraulica.js": {
+    "mtime": 1780544852.834137,
+    "ast_hash": "554ae449b5b167d8201d70a316fd0a73",
+    "semantic_hash": "554ae449b5b167d8201d70a316fd0a73"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\utils\\calcSanitario.js": {
+    "mtime": 1780544815.3205252,
+    "ast_hash": "23dfc3825ab5595a9da6b7b5a23f3e78",
+    "semantic_hash": "23dfc3825ab5595a9da6b7b5a23f3e78"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\utils\\fmtSize.js": {
+    "mtime": 1780504873.984873,
+    "ast_hash": "f9c1def0d0124dae157c0fcbe86ccc8a",
+    "semantic_hash": "f9c1def0d0124dae157c0fcbe86ccc8a"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\utils\\hidroDrawingSync.js": {
+    "mtime": 1780588049.7971892,
+    "ast_hash": "2b4e26a850634165672d360992c79846",
+    "semantic_hash": "2b4e26a850634165672d360992c79846"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\utils\\parseDecimal.js": {
+    "mtime": 1780504873.9854965,
+    "ast_hash": "cf9046982184a83e69d835a9c90996f7",
+    "semantic_hash": "cf9046982184a83e69d835a9c90996f7"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\utils\\parseDescripcion.js": {
+    "mtime": 1780504873.9861014,
+    "ast_hash": "ff6809c16ca1d3e8d41a42cf18709a1c",
+    "semantic_hash": "ff6809c16ca1d3e8d41a42cf18709a1c"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\utils\\sanDrawingSync.js": {
+    "mtime": 1780583033.248119,
+    "ast_hash": "13da6e4343a63d96cfc06054ae8b9e95",
+    "semantic_hash": "13da6e4343a63d96cfc06054ae8b9e95"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\utils\\validateTramo.js": {
+    "mtime": 1780504873.9861014,
+    "ast_hash": "c9fa252fb2dff2ad39dd4b180270f383",
+    "semantic_hash": "c9fa252fb2dff2ad39dd4b180270f383"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\utils\\writeDiametroToDrawing.js": {
+    "mtime": 1780603239.365893,
+    "ast_hash": "623acd9d4512d9a8fc060b96e7b5f311",
+    "semantic_hash": "623acd9d4512d9a8fc060b96e7b5f311"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\tailwind.config.js": {
+    "mtime": 1780504873.9861014,
+    "ast_hash": "e2d3bcf2e8c0d9ef19a833d41b20c3ca",
+    "semantic_hash": "e2d3bcf2e8c0d9ef19a833d41b20c3ca"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\tsconfig.json": {
+    "mtime": 1780504873.9883924,
+    "ast_hash": "fde883a579e5d3edc11a0b7340c39777",
+    "semantic_hash": "fde883a579e5d3edc11a0b7340c39777"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\vite.config.js": {
+    "mtime": 1780504873.9883924,
+    "ast_hash": "8a02e689b2b8b14fb24f000bdc9bfcae",
+    "semantic_hash": "8a02e689b2b8b14fb24f000bdc9bfcae"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\accessibility\\SKILL.md": {
+    "mtime": 1780504873.8497746,
+    "ast_hash": "8b501fd5421c176e106af8891dc3d502",
+    "semantic_hash": "8b501fd5421c176e106af8891dc3d502"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\accessibility\\references\\A11Y-PATTERNS.md": {
+    "mtime": 1780504873.8503015,
+    "ast_hash": "2995457ea35b394cc9665fa502d66e85",
+    "semantic_hash": "2995457ea35b394cc9665fa502d66e85"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\accessibility\\references\\WCAG.md": {
+    "mtime": 1780504873.8503015,
+    "ast_hash": "1aeaf4a30d2ceb69edec5a62bfb084ee",
+    "semantic_hash": "1aeaf4a30d2ceb69edec5a62bfb084ee"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\composition-patterns\\AGENTS.md": {
+    "mtime": 1780504873.8525403,
+    "ast_hash": "d64d288377dc2b80160b55423e5fa199",
+    "semantic_hash": "d64d288377dc2b80160b55423e5fa199"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\composition-patterns\\README.md": {
+    "mtime": 1780504873.8525403,
+    "ast_hash": "7c684a3925dac6c75fc740954191278f",
+    "semantic_hash": "7c684a3925dac6c75fc740954191278f"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\composition-patterns\\SKILL.md": {
+    "mtime": 1780504873.8537972,
+    "ast_hash": "bdf71be24018b7f091603a93b24e2c02",
+    "semantic_hash": "bdf71be24018b7f091603a93b24e2c02"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\composition-patterns\\rules\\_sections.md": {
+    "mtime": 1780504873.8537972,
+    "ast_hash": "1a688da708bbb2a637a3f505ce56d33d",
+    "semantic_hash": "1a688da708bbb2a637a3f505ce56d33d"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\composition-patterns\\rules\\_template.md": {
+    "mtime": 1780504873.8537972,
+    "ast_hash": "6c8b3f27850d6394325937117dc1321e",
+    "semantic_hash": "6c8b3f27850d6394325937117dc1321e"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\composition-patterns\\rules\\architecture-avoid-boolean-props.md": {
+    "mtime": 1780504873.8537972,
+    "ast_hash": "2558f13a654d1175c7ab596e654c60a1",
+    "semantic_hash": "2558f13a654d1175c7ab596e654c60a1"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\composition-patterns\\rules\\architecture-compound-components.md": {
+    "mtime": 1780504873.856081,
+    "ast_hash": "0160f5506c4d32cb4fd9adeae6dc93e2",
+    "semantic_hash": "0160f5506c4d32cb4fd9adeae6dc93e2"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\composition-patterns\\rules\\patterns-children-over-render-props.md": {
+    "mtime": 1780504873.856081,
+    "ast_hash": "72322b106f78a8ee8e77829f8e9da3fb",
+    "semantic_hash": "72322b106f78a8ee8e77829f8e9da3fb"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\composition-patterns\\rules\\patterns-explicit-variants.md": {
+    "mtime": 1780504873.856081,
+    "ast_hash": "bcd9bf42cbd8afa6ecf4a2847482e9b3",
+    "semantic_hash": "bcd9bf42cbd8afa6ecf4a2847482e9b3"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\composition-patterns\\rules\\react19-no-forwardref.md": {
+    "mtime": 1780504873.856081,
+    "ast_hash": "b82a772209424c72a0aa4924621e362b",
+    "semantic_hash": "b82a772209424c72a0aa4924621e362b"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\composition-patterns\\rules\\state-context-interface.md": {
+    "mtime": 1780504873.858088,
+    "ast_hash": "ed7f4ad08be2bdc9b727f7ddce0ead55",
+    "semantic_hash": "ed7f4ad08be2bdc9b727f7ddce0ead55"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\composition-patterns\\rules\\state-decouple-implementation.md": {
+    "mtime": 1780504873.858088,
+    "ast_hash": "237a1eae3697f07470b800c55b0e4ab0",
+    "semantic_hash": "237a1eae3697f07470b800c55b0e4ab0"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\composition-patterns\\rules\\state-lift-state.md": {
+    "mtime": 1780504873.858088,
+    "ast_hash": "890bbc1d7fde2496a7c47f12153f9856",
+    "semantic_hash": "890bbc1d7fde2496a7c47f12153f9856"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\frontend-design\\LICENSE.txt": {
+    "mtime": 1780504873.858088,
+    "ast_hash": "2ee41112a44fe7014dce33e26468ba93",
+    "semantic_hash": "2ee41112a44fe7014dce33e26468ba93"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\frontend-design\\SKILL.md": {
+    "mtime": 1780504873.858088,
+    "ast_hash": "06a0520e81f698334258c73ff0de533b",
+    "semantic_hash": "06a0520e81f698334258c73ff0de533b"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\nodejs-backend-patterns\\SKILL.md": {
+    "mtime": 1780504873.858088,
+    "ast_hash": "ce38982980158e42f6c8396b9bf9a867",
+    "semantic_hash": "ce38982980158e42f6c8396b9bf9a867"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\nodejs-backend-patterns\\references\\advanced-patterns.md": {
+    "mtime": 1780504873.861187,
+    "ast_hash": "bb25613ebc806047ebe1039a19a6f5da",
+    "semantic_hash": "bb25613ebc806047ebe1039a19a6f5da"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\nodejs-best-practices\\SKILL.md": {
+    "mtime": 1780504873.861766,
+    "ast_hash": "43fe7e7d4a9979140e073a4f6a6f93f6",
+    "semantic_hash": "43fe7e7d4a9979140e073a4f6a6f93f6"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\AGENTS.md": {
+    "mtime": 1780504873.861766,
+    "ast_hash": "fc8f9b0218d2173112a8418bf9d8abe7",
+    "semantic_hash": "fc8f9b0218d2173112a8418bf9d8abe7"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\README.md": {
+    "mtime": 1780504873.8637865,
+    "ast_hash": "abb5236c535db0bf7ce6f38c8998bc47",
+    "semantic_hash": "abb5236c535db0bf7ce6f38c8998bc47"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\SKILL.md": {
+    "mtime": 1780504873.8637865,
+    "ast_hash": "995a667ef0b53598f56ff897d9e4b334",
+    "semantic_hash": "995a667ef0b53598f56ff897d9e4b334"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\_sections.md": {
+    "mtime": 1780504873.8637865,
+    "ast_hash": "b8c110b45145ded6919562772afe067c",
+    "semantic_hash": "b8c110b45145ded6919562772afe067c"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\_template.md": {
+    "mtime": 1780504873.8637865,
+    "ast_hash": "a0d76a2f87f3f80e9a8f3a2a1054aaaf",
+    "semantic_hash": "a0d76a2f87f3f80e9a8f3a2a1054aaaf"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\advanced-effect-event-deps.md": {
+    "mtime": 1780504873.8657944,
+    "ast_hash": "3a0e314bb9576bab61f68d5de5afaf3e",
+    "semantic_hash": "3a0e314bb9576bab61f68d5de5afaf3e"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\advanced-event-handler-refs.md": {
+    "mtime": 1780504873.8664708,
+    "ast_hash": "f2a0d125f3773bfda91e187fa5bed48a",
+    "semantic_hash": "f2a0d125f3773bfda91e187fa5bed48a"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\advanced-init-once.md": {
+    "mtime": 1780504873.8668983,
+    "ast_hash": "0100519098b834e69a3515657a39bdc9",
+    "semantic_hash": "0100519098b834e69a3515657a39bdc9"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\advanced-use-latest.md": {
+    "mtime": 1780504873.8678825,
+    "ast_hash": "60309961293388c9b9e9fd4e0db344e3",
+    "semantic_hash": "60309961293388c9b9e9fd4e0db344e3"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\async-api-routes.md": {
+    "mtime": 1780504873.86839,
+    "ast_hash": "344fa543b37e303660404e1ef3a4638b",
+    "semantic_hash": "344fa543b37e303660404e1ef3a4638b"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\async-cheap-condition-before-await.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "96352f626f328e15a6213d485e29e36f",
+    "semantic_hash": "96352f626f328e15a6213d485e29e36f"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\async-defer-await.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "235a6b5760c2e4843d778167e462cb0e",
+    "semantic_hash": "235a6b5760c2e4843d778167e462cb0e"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\async-dependencies.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "9c5622d97b20b9e0cb79455b4322061a",
+    "semantic_hash": "9c5622d97b20b9e0cb79455b4322061a"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\async-parallel.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "a0e06a8e9985cdff4ece0312d8ee35db",
+    "semantic_hash": "a0e06a8e9985cdff4ece0312d8ee35db"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\async-suspense-boundaries.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "dbb2fc80721ca1ce32426f43219d314f",
+    "semantic_hash": "dbb2fc80721ca1ce32426f43219d314f"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\bundle-analyzable-paths.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "8cfe6e284cafd2be33f09c6a1abc78fd",
+    "semantic_hash": "8cfe6e284cafd2be33f09c6a1abc78fd"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\bundle-barrel-imports.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "fcba301df7f11c6847dca5962ac78828",
+    "semantic_hash": "fcba301df7f11c6847dca5962ac78828"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\bundle-conditional.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "585be2b6fc418c766e5b91cc2141d334",
+    "semantic_hash": "585be2b6fc418c766e5b91cc2141d334"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\bundle-defer-third-party.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "6d4d1d4fac411f724071428dd0bc93ba",
+    "semantic_hash": "6d4d1d4fac411f724071428dd0bc93ba"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\bundle-dynamic-imports.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "72d89583306887810f67e9f7860f06af",
+    "semantic_hash": "72d89583306887810f67e9f7860f06af"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\bundle-preload.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "924ec7e7502ca042070326d38e88f8cd",
+    "semantic_hash": "924ec7e7502ca042070326d38e88f8cd"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\client-event-listeners.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "71062add972f9735348b7ae77e778eb8",
+    "semantic_hash": "71062add972f9735348b7ae77e778eb8"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\client-localstorage-schema.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "982a459b07cbec2f8386e526b924c339",
+    "semantic_hash": "982a459b07cbec2f8386e526b924c339"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\client-passive-event-listeners.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "3853533fd5f49fa2fc98296f9c34d84f",
+    "semantic_hash": "3853533fd5f49fa2fc98296f9c34d84f"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\client-swr-dedup.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "e565fcba7836d339ca4707aad6fdaa4a",
+    "semantic_hash": "e565fcba7836d339ca4707aad6fdaa4a"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\js-batch-dom-css.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "869dbc06a931ccfb899b739316c348af",
+    "semantic_hash": "869dbc06a931ccfb899b739316c348af"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\js-cache-function-results.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "5d641ce87ef753d59e3205244e2851a1",
+    "semantic_hash": "5d641ce87ef753d59e3205244e2851a1"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\js-cache-property-access.md": {
+    "mtime": 1780504873.8687425,
+    "ast_hash": "5b4ae3cd853b92222a8fd8c8d8202426",
+    "semantic_hash": "5b4ae3cd853b92222a8fd8c8d8202426"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\js-cache-storage.md": {
+    "mtime": 1780504873.8778315,
+    "ast_hash": "828f260566ff92df56089321fa41c116",
+    "semantic_hash": "828f260566ff92df56089321fa41c116"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\js-combine-iterations.md": {
+    "mtime": 1780504873.8778315,
+    "ast_hash": "4f241532133637fee75304d40f016713",
+    "semantic_hash": "4f241532133637fee75304d40f016713"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\js-early-exit.md": {
+    "mtime": 1780504873.8778315,
+    "ast_hash": "d300cb3e57255029e446bdfa49dc4074",
+    "semantic_hash": "d300cb3e57255029e446bdfa49dc4074"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\js-flatmap-filter.md": {
+    "mtime": 1780504873.8778315,
+    "ast_hash": "161d9d8b444e5ec9cb58bffb0e1b76cd",
+    "semantic_hash": "161d9d8b444e5ec9cb58bffb0e1b76cd"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\js-hoist-regexp.md": {
+    "mtime": 1780504873.8778315,
+    "ast_hash": "ced4609a5916db47bbaccfcc3f2dcdbb",
+    "semantic_hash": "ced4609a5916db47bbaccfcc3f2dcdbb"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\js-index-maps.md": {
+    "mtime": 1780504873.8778315,
+    "ast_hash": "db5bcfde02e1ce9f41d6ed1f5aafc8c5",
+    "semantic_hash": "db5bcfde02e1ce9f41d6ed1f5aafc8c5"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\js-length-check-first.md": {
+    "mtime": 1780504873.8778315,
+    "ast_hash": "2ba208759dd91578f1085c28e6a92ce9",
+    "semantic_hash": "2ba208759dd91578f1085c28e6a92ce9"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\js-min-max-loop.md": {
+    "mtime": 1780504873.8778315,
+    "ast_hash": "82f654d27529dd80be7ae33d45dcdf8c",
+    "semantic_hash": "82f654d27529dd80be7ae33d45dcdf8c"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\js-request-idle-callback.md": {
+    "mtime": 1780504873.8778315,
+    "ast_hash": "91d7e7fca676efb7cecb4ccff1eaec01",
+    "semantic_hash": "91d7e7fca676efb7cecb4ccff1eaec01"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\js-set-map-lookups.md": {
+    "mtime": 1780504873.8778315,
+    "ast_hash": "59a278e21ecd322bff566ba4ad7f5a30",
+    "semantic_hash": "59a278e21ecd322bff566ba4ad7f5a30"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\js-tosorted-immutable.md": {
+    "mtime": 1780504873.883166,
+    "ast_hash": "fd0804905877b6b7b1858e5df1b5f3c4",
+    "semantic_hash": "fd0804905877b6b7b1858e5df1b5f3c4"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rendering-activity.md": {
+    "mtime": 1780504873.883693,
+    "ast_hash": "b66bde1377564aa196ba15fc94215cd3",
+    "semantic_hash": "b66bde1377564aa196ba15fc94215cd3"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rendering-animate-svg-wrapper.md": {
+    "mtime": 1780504873.883693,
+    "ast_hash": "7301cbe48bf0e1c44934847861384d03",
+    "semantic_hash": "7301cbe48bf0e1c44934847861384d03"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rendering-conditional-render.md": {
+    "mtime": 1780504873.883693,
+    "ast_hash": "7aa6112d7544d55147e183b84add9c31",
+    "semantic_hash": "7aa6112d7544d55147e183b84add9c31"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rendering-content-visibility.md": {
+    "mtime": 1780504873.8858185,
+    "ast_hash": "a4ec0125d3a9d79ac2ab5f7a7b5b4d7d",
+    "semantic_hash": "a4ec0125d3a9d79ac2ab5f7a7b5b4d7d"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rendering-hoist-jsx.md": {
+    "mtime": 1780504873.8858185,
+    "ast_hash": "00519c11155c5c2a6f493d7980211a71",
+    "semantic_hash": "00519c11155c5c2a6f493d7980211a71"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rendering-hydration-no-flicker.md": {
+    "mtime": 1780504873.8858185,
+    "ast_hash": "a33ebc96d26525f94c460342d913e47a",
+    "semantic_hash": "a33ebc96d26525f94c460342d913e47a"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rendering-hydration-suppress-warning.md": {
+    "mtime": 1780504873.8858185,
+    "ast_hash": "23bc895f5697c19a59712bf19474ec12",
+    "semantic_hash": "23bc895f5697c19a59712bf19474ec12"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rendering-resource-hints.md": {
+    "mtime": 1780504873.8858185,
+    "ast_hash": "a612b2d1d86d1b8205b92ff7dfd81eb8",
+    "semantic_hash": "a612b2d1d86d1b8205b92ff7dfd81eb8"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rendering-script-defer-async.md": {
+    "mtime": 1780504873.8858185,
+    "ast_hash": "d62596aed565dd3ad7bddd38bc8f7798",
+    "semantic_hash": "d62596aed565dd3ad7bddd38bc8f7798"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rendering-svg-precision.md": {
+    "mtime": 1780504873.8858185,
+    "ast_hash": "1b880754ee449c52ccc725481f8b2e90",
+    "semantic_hash": "1b880754ee449c52ccc725481f8b2e90"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rendering-usetransition-loading.md": {
+    "mtime": 1780504873.8858185,
+    "ast_hash": "3cea04ec76a76183cebc6571ac6365a2",
+    "semantic_hash": "3cea04ec76a76183cebc6571ac6365a2"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-defer-reads.md": {
+    "mtime": 1780504873.8913088,
+    "ast_hash": "2b754062eb7b203632859f6515ed3561",
+    "semantic_hash": "2b754062eb7b203632859f6515ed3561"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-dependencies.md": {
+    "mtime": 1780504873.892202,
+    "ast_hash": "ad0e42cd0616237f62f8a5abbc2138bc",
+    "semantic_hash": "ad0e42cd0616237f62f8a5abbc2138bc"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-derived-state-no-effect.md": {
+    "mtime": 1780504873.892202,
+    "ast_hash": "c83ba3c8ea58015fd30072790a4959c4",
+    "semantic_hash": "c83ba3c8ea58015fd30072790a4959c4"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-derived-state.md": {
+    "mtime": 1780504873.892202,
+    "ast_hash": "fadd31941e355786cb0cc7bba3c672fd",
+    "semantic_hash": "fadd31941e355786cb0cc7bba3c672fd"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-functional-setstate.md": {
+    "mtime": 1780504873.892202,
+    "ast_hash": "188c0b949d23c11885914c573f4a770a",
+    "semantic_hash": "188c0b949d23c11885914c573f4a770a"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-lazy-state-init.md": {
+    "mtime": 1780504873.892202,
+    "ast_hash": "6f9fc3d826cea2ca484912256149b077",
+    "semantic_hash": "6f9fc3d826cea2ca484912256149b077"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-memo-with-default-value.md": {
+    "mtime": 1780504873.892202,
+    "ast_hash": "9bfa45660e0a4d4f180e1d12d9ed44ea",
+    "semantic_hash": "9bfa45660e0a4d4f180e1d12d9ed44ea"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-memo.md": {
+    "mtime": 1780504873.892202,
+    "ast_hash": "f0decabf1e4cf032c36f0977c81167b7",
+    "semantic_hash": "f0decabf1e4cf032c36f0977c81167b7"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-move-effect-to-event.md": {
+    "mtime": 1780504873.8963993,
+    "ast_hash": "599463fe624afd8822ba2bfa7c0138d5",
+    "semantic_hash": "599463fe624afd8822ba2bfa7c0138d5"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-no-inline-components.md": {
+    "mtime": 1780504873.8963993,
+    "ast_hash": "713855e0060cfe2ce549d08ea77e1af6",
+    "semantic_hash": "713855e0060cfe2ce549d08ea77e1af6"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-simple-expression-in-memo.md": {
+    "mtime": 1780504873.8963993,
+    "ast_hash": "42c37552160cff86a0fcbd93a27aa74e",
+    "semantic_hash": "42c37552160cff86a0fcbd93a27aa74e"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-split-combined-hooks.md": {
+    "mtime": 1780504873.8963993,
+    "ast_hash": "b7485878ff82ce8468078a31fc1b7f19",
+    "semantic_hash": "b7485878ff82ce8468078a31fc1b7f19"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-transitions.md": {
+    "mtime": 1780504873.8963993,
+    "ast_hash": "3f275bbfb966fcb39c554ad959fdf016",
+    "semantic_hash": "3f275bbfb966fcb39c554ad959fdf016"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-use-deferred-value.md": {
+    "mtime": 1780504873.9003832,
+    "ast_hash": "913dc783397142c25ec997b5dc11245b",
+    "semantic_hash": "913dc783397142c25ec997b5dc11245b"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\rerender-use-ref-transient-values.md": {
+    "mtime": 1780504873.9011154,
+    "ast_hash": "24d2e82617e2da4207afaf049e1314f3",
+    "semantic_hash": "24d2e82617e2da4207afaf049e1314f3"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\server-after-nonblocking.md": {
+    "mtime": 1780504873.9011154,
+    "ast_hash": "c88a79384f87826bf1b20aa3637093a5",
+    "semantic_hash": "c88a79384f87826bf1b20aa3637093a5"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\server-auth-actions.md": {
+    "mtime": 1780504873.9024982,
+    "ast_hash": "d8691820d666e5dd9094ccc6996398e3",
+    "semantic_hash": "d8691820d666e5dd9094ccc6996398e3"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\server-cache-lru.md": {
+    "mtime": 1780504873.9024982,
+    "ast_hash": "723195ea460bfbc4d43b4eb0c47b246b",
+    "semantic_hash": "723195ea460bfbc4d43b4eb0c47b246b"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\server-cache-react.md": {
+    "mtime": 1780504873.9039886,
+    "ast_hash": "bc168ee66c4378854c7aa23cb9ca1369",
+    "semantic_hash": "bc168ee66c4378854c7aa23cb9ca1369"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\server-dedup-props.md": {
+    "mtime": 1780504873.9039886,
+    "ast_hash": "86bf6f2d562ca98bca778a5b9d2f0251",
+    "semantic_hash": "86bf6f2d562ca98bca778a5b9d2f0251"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\server-hoist-static-io.md": {
+    "mtime": 1780504873.9039886,
+    "ast_hash": "05789c4ba35f68cc0ed6deba3078f7ab",
+    "semantic_hash": "05789c4ba35f68cc0ed6deba3078f7ab"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\server-no-shared-module-state.md": {
+    "mtime": 1780504873.9039886,
+    "ast_hash": "7733faf82c146008e8f1c65660bac4bb",
+    "semantic_hash": "7733faf82c146008e8f1c65660bac4bb"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\server-parallel-fetching.md": {
+    "mtime": 1780504873.9059954,
+    "ast_hash": "1a36cf0b49a1a498fc1150afbf7a42c2",
+    "semantic_hash": "1a36cf0b49a1a498fc1150afbf7a42c2"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\server-parallel-nested-fetching.md": {
+    "mtime": 1780504873.9059954,
+    "ast_hash": "eaa7835a15d41842406acc34002f0d6c",
+    "semantic_hash": "eaa7835a15d41842406acc34002f0d6c"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\react-best-practices\\rules\\server-serialization.md": {
+    "mtime": 1780504873.9059954,
+    "ast_hash": "e6d34426614852685f43609dd9e3b250",
+    "semantic_hash": "e6d34426614852685f43609dd9e3b250"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\seo\\SKILL.md": {
+    "mtime": 1780504873.9059954,
+    "ast_hash": "51a3d2c0e33d8303d0377802e565f54c",
+    "semantic_hash": "51a3d2c0e33d8303d0377802e565f54c"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\tailwind-css-patterns\\SKILL.md": {
+    "mtime": 1780504873.9059954,
+    "ast_hash": "09406f483ba9ae79648dd15cadf292a8",
+    "semantic_hash": "09406f483ba9ae79648dd15cadf292a8"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\tailwind-css-patterns\\references\\accessibility.md": {
+    "mtime": 1780504873.9059954,
+    "ast_hash": "f77ad96a3107458e458f1d0bbc92b7e6",
+    "semantic_hash": "f77ad96a3107458e458f1d0bbc92b7e6"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\tailwind-css-patterns\\references\\animations.md": {
+    "mtime": 1780504873.9059954,
+    "ast_hash": "a4f08599c1e9e91809f47146e60f359d",
+    "semantic_hash": "a4f08599c1e9e91809f47146e60f359d"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\tailwind-css-patterns\\references\\component-patterns.md": {
+    "mtime": 1780504873.9059954,
+    "ast_hash": "1d9d98de37a2802c8201d6c7f500fd06",
+    "semantic_hash": "1d9d98de37a2802c8201d6c7f500fd06"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\tailwind-css-patterns\\references\\configuration.md": {
+    "mtime": 1780504873.9059954,
+    "ast_hash": "82dbfabe7e77b7649b86016873db8c70",
+    "semantic_hash": "82dbfabe7e77b7649b86016873db8c70"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\tailwind-css-patterns\\references\\layout-patterns.md": {
+    "mtime": 1780504873.9059954,
+    "ast_hash": "5634cb326b3be4266190286e091cd7ff",
+    "semantic_hash": "5634cb326b3be4266190286e091cd7ff"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\tailwind-css-patterns\\references\\performance.md": {
+    "mtime": 1780504873.9121833,
+    "ast_hash": "171bdd2789b6fa8e20589085facc651f",
+    "semantic_hash": "171bdd2789b6fa8e20589085facc651f"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\tailwind-css-patterns\\references\\reference.md": {
+    "mtime": 1780504873.9121833,
+    "ast_hash": "d6e81208ea059e182d342eb9d6cb73c4",
+    "semantic_hash": "d6e81208ea059e182d342eb9d6cb73c4"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\tailwind-css-patterns\\references\\responsive-design.md": {
+    "mtime": 1780504873.9121833,
+    "ast_hash": "59130e24f48113dd9fffa99e5ff97abf",
+    "semantic_hash": "59130e24f48113dd9fffa99e5ff97abf"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\typescript-advanced-types\\SKILL.md": {
+    "mtime": 1780504873.9141963,
+    "ast_hash": "4ba97f5309ed299dab2bc89fa5870b82",
+    "semantic_hash": "4ba97f5309ed299dab2bc89fa5870b82"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\vite\\GENERATION.md": {
+    "mtime": 1780504873.9141963,
+    "ast_hash": "0710ba4e920eac0b736aa01caa043d2e",
+    "semantic_hash": "0710ba4e920eac0b736aa01caa043d2e"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\vite\\SKILL.md": {
+    "mtime": 1780504873.9141963,
+    "ast_hash": "f95c98eea5671d3335df1c43e55b0694",
+    "semantic_hash": "f95c98eea5671d3335df1c43e55b0694"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\vite\\references\\build-and-ssr.md": {
+    "mtime": 1780504873.915951,
+    "ast_hash": "3591994102965408ff22039e96dbd2fd",
+    "semantic_hash": "3591994102965408ff22039e96dbd2fd"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\vite\\references\\core-config.md": {
+    "mtime": 1780504873.916458,
+    "ast_hash": "1b003bb6fcab7c97f9f28c44c80bfe87",
+    "semantic_hash": "1b003bb6fcab7c97f9f28c44c80bfe87"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\vite\\references\\core-features.md": {
+    "mtime": 1780504873.917028,
+    "ast_hash": "fb994d6242d2276ea707a63516462244",
+    "semantic_hash": "fb994d6242d2276ea707a63516462244"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\vite\\references\\core-plugin-api.md": {
+    "mtime": 1780504873.917028,
+    "ast_hash": "e156a1f2df25b836ee552f7404be72fc",
+    "semantic_hash": "e156a1f2df25b836ee552f7404be72fc"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\vite\\references\\environment-api.md": {
+    "mtime": 1780504873.917028,
+    "ast_hash": "e9e3aa8e1da4b8eff430048fc7dba211",
+    "semantic_hash": "e9e3aa8e1da4b8eff430048fc7dba211"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\.agents\\skills\\vite\\references\\rolldown-migration.md": {
+    "mtime": 1780504873.918898,
+    "ast_hash": "72ac2ba21662e706f29d3e3b58e72951",
+    "semantic_hash": "72ac2ba21662e706f29d3e3b58e72951"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\index.html": {
+    "mtime": 1780504873.918898,
+    "ast_hash": "52f877f54f2f75b0aba75adeb3568a71",
+    "semantic_hash": "52f877f54f2f75b0aba75adeb3568a71"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\favicon.svg": {
+    "mtime": 1780504873.918898,
+    "ast_hash": "7e840862161341271697daa99a40d76b",
+    "semantic_hash": "7e840862161341271697daa99a40d76b"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\ampliacion.webp": {
+    "mtime": 1780504873.918898,
+    "ast_hash": "66e6c8874210297c754d059071a48753",
+    "semantic_hash": "66e6c8874210297c754d059071a48753"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\codo45rc.webp": {
+    "mtime": 1780504873.918898,
+    "ast_hash": "f021cf4be6efd686c2f6f7e6377d3ba9",
+    "semantic_hash": "f021cf4be6efd686c2f6f7e6377d3ba9"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\codo90rc.webp": {
+    "mtime": 1780504873.918898,
+    "ast_hash": "55790ad956d57a3b43c8fd2e2f79db51",
+    "semantic_hash": "55790ad956d57a3b43c8fd2e2f79db51"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\codo90rl.webp": {
+    "mtime": 1780504873.918898,
+    "ast_hash": "39dc47b6adadf72a0381233c5823c760",
+    "semantic_hash": "39dc47b6adadf72a0381233c5823c760"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\codo90rm.webp": {
+    "mtime": 1780504873.918898,
+    "ast_hash": "7cd820f395417068b74c2c0201f6859a",
+    "semantic_hash": "7cd820f395417068b74c2c0201f6859a"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\otros.webp": {
+    "mtime": 1780504873.918898,
+    "ast_hash": "3cf77d66ae408fa6b25d9bb2fb0633b8",
+    "semantic_hash": "3cf77d66ae408fa6b25d9bb2fb0633b8"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\reduccion.webp": {
+    "mtime": 1780504873.927389,
+    "ast_hash": "0abba3468184e2e16970a55e7db98367",
+    "semantic_hash": "0abba3468184e2e16970a55e7db98367"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\teeBilateral.webp": {
+    "mtime": 1780504873.927389,
+    "ast_hash": "89146f7558404599d42e09cc51948a59",
+    "semantic_hash": "89146f7558404599d42e09cc51948a59"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\teeDirecto.webp": {
+    "mtime": 1780504873.927389,
+    "ast_hash": "4abceea159e01bd5af2e4b74c7fe4c51",
+    "semantic_hash": "4abceea159e01bd5af2e4b74c7fe4c51"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\teeLado.webp": {
+    "mtime": 1780504873.927389,
+    "ast_hash": "ca45e75c4ef3f352229642c56591de19",
+    "semantic_hash": "ca45e75c4ef3f352229642c56591de19"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\teeReduccion.webp": {
+    "mtime": 1780504873.927389,
+    "ast_hash": "7bf3144f3395a9446e650aba6306fcc4",
+    "semantic_hash": "7bf3144f3395a9446e650aba6306fcc4"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\valvAngulo.webp": {
+    "mtime": 1780504873.927389,
+    "ast_hash": "69f1851a28091e776cc6d063b0bf3bfa",
+    "semantic_hash": "69f1851a28091e776cc6d063b0bf3bfa"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\valvCheque.webp": {
+    "mtime": 1780504873.927389,
+    "ast_hash": "dcdd80369dd7782f3d32e5064903888b",
+    "semantic_hash": "dcdd80369dd7782f3d32e5064903888b"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\valvCompuerta.webp": {
+    "mtime": 1780504873.9320674,
+    "ast_hash": "98b49b106ea2ecfc77868646671e26d2",
+    "semantic_hash": "98b49b106ea2ecfc77868646671e26d2"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\valvGlobo.webp": {
+    "mtime": 1780504873.9330924,
+    "ast_hash": "66a27523f9d790720529982ded1b7a15",
+    "semantic_hash": "66a27523f9d790720529982ded1b7a15"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_accesorios\\valvPie.webp": {
+    "mtime": 1780504873.9336054,
+    "ast_hash": "a1684794525e1569c7842912bb918432",
+    "semantic_hash": "a1684794525e1569c7842912bb918432"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_aparatos\\dibujo_de_redes.webp": {
+    "mtime": 1780544555.3175855,
+    "ast_hash": "c9cded13698fd6889254b887d6bbb1e4",
+    "semantic_hash": "c9cded13698fd6889254b887d6bbb1e4"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_aparatos\\ducha.webp": {
+    "mtime": 1780543934.5568852,
+    "ast_hash": "6e22698c3b4c3ef90e1592bb374a7165",
+    "semantic_hash": "6e22698c3b4c3ef90e1592bb374a7165"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_aparatos\\inodoro.webp": {
+    "mtime": 1780543934.5909479,
+    "ast_hash": "a0e58a1b7b088837ed6320fdccf591db",
+    "semantic_hash": "a0e58a1b7b088837ed6320fdccf591db"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_aparatos\\lavadero.webp": {
+    "mtime": 1780543934.541349,
+    "ast_hash": "da26ecdad3d6166e560614ffe00bbe48",
+    "semantic_hash": "da26ecdad3d6166e560614ffe00bbe48"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_aparatos\\lavadora.webp": {
+    "mtime": 1780543934.5635958,
+    "ast_hash": "835ac94c1b0eab46d14166b11afc77b2",
+    "semantic_hash": "835ac94c1b0eab46d14166b11afc77b2"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_aparatos\\lavamanos.webp": {
+    "mtime": 1780543934.5803668,
+    "ast_hash": "15a96127e716c58bd442e5eb0c91456f",
+    "semantic_hash": "15a96127e716c58bd442e5eb0c91456f"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_aparatos\\lavaplatos.webp": {
+    "mtime": 1780543934.5241752,
+    "ast_hash": "d6f90f477da447dbc6f1cdbcce92b797",
+    "semantic_hash": "d6f90f477da447dbc6f1cdbcce92b797"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_aparatos\\lavavajillas.webp": {
+    "mtime": 1780543934.54493,
+    "ast_hash": "fa9747d626c3eb00a3b139a56b0793e0",
+    "semantic_hash": "fa9747d626c3eb00a3b139a56b0793e0"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_aparatos\\nevera.webp": {
+    "mtime": 1780543934.5763497,
+    "ast_hash": "ed60fc1f91b5d6cbe3dc64b06ea20d39",
+    "semantic_hash": "ed60fc1f91b5d6cbe3dc64b06ea20d39"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_aparatos\\sifon.webp": {
+    "mtime": 1780543934.5903423,
+    "ast_hash": "57d1fd17166b3174777e17e33a796c51",
+    "semantic_hash": "57d1fd17166b3174777e17e33a796c51"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_aparatos\\tina.webp": {
+    "mtime": 1780543934.5676124,
+    "ast_hash": "de0650355eeab4e4f49c7a3e08c00f35",
+    "semantic_hash": "de0650355eeab4e4f49c7a3e08c00f35"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_carga_planos\\carga_de_planos.webp": {
+    "mtime": 1780524408.7569995,
+    "ast_hash": "3bf379fcabb4ca697e8a4cd5fb3ac5c6",
+    "semantic_hash": "3bf379fcabb4ca697e8a4cd5fb3ac5c6"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_carga_planos\\cargados.webp": {
+    "mtime": 1780524408.7926104,
+    "ast_hash": "17120f17bb7f1dce276a6e1c488364d6",
+    "semantic_hash": "17120f17bb7f1dce276a6e1c488364d6"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_carga_planos\\cotas.webp": {
+    "mtime": 1780524408.8345964,
+    "ast_hash": "f4fc03c15b4a76d8a9c003a2520a808c",
+    "semantic_hash": "f4fc03c15b4a76d8a9c003a2520a808c"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_carga_planos\\escala.webp": {
+    "mtime": 1780524408.819345,
+    "ast_hash": "31f2006cc275b4ade927f273e07eedf5",
+    "semantic_hash": "31f2006cc275b4ade927f273e07eedf5"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_carga_planos\\pendientes.webp": {
+    "mtime": 1780524408.79854,
+    "ast_hash": "d3882ea0f7ea9e6de0e2bfc549f2269b",
+    "semantic_hash": "d3882ea0f7ea9e6de0e2bfc549f2269b"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_carga_planos\\plano_por_nivel.webp": {
+    "mtime": 1780524408.838643,
+    "ast_hash": "91e8c01be65e5309bb315be6d7b91dd5",
+    "semantic_hash": "91e8c01be65e5309bb315be6d7b91dd5"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_carga_planos\\redes_por_color.webp": {
+    "mtime": 1780524408.8261428,
+    "ast_hash": "0b46b1f7634aa37819affd70a420661b",
+    "semantic_hash": "0b46b1f7634aa37819affd70a420661b"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_carga_planos\\requisitos_del_plano.webp": {
+    "mtime": 1780524408.80363,
+    "ast_hash": "6adcf4d966e62fe02ed5021f22d3b513",
+    "semantic_hash": "6adcf4d966e62fe02ed5021f22d3b513"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_carga_planos\\simbologia.webp": {
+    "mtime": 1780524408.80363,
+    "ast_hash": "37503f35201da113c6b55925b301cd39",
+    "semantic_hash": "37503f35201da113c6b55925b301cd39"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_carga_planos\\subir_plano.webp": {
+    "mtime": 1780524408.7786283,
+    "ast_hash": "a64ffd590ee49f186fafc1b1b3e7ce06",
+    "semantic_hash": "a64ffd590ee49f186fafc1b1b3e7ce06"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_diseno_redes\\diseno_redes.webp": {
+    "mtime": 1780543972.1425586,
+    "ast_hash": "da63d67e231574af10739994d07f3261",
+    "semantic_hash": "da63d67e231574af10739994d07f3261"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_diseno_redes\\red_agua_caliente.webp": {
+    "mtime": 1780543972.1207197,
+    "ast_hash": "1ccd65aa3c16c93dc04319b1ca4f6bb5",
+    "semantic_hash": "1ccd65aa3c16c93dc04319b1ca4f6bb5"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_diseno_redes\\red_agua_fria.webp": {
+    "mtime": 1780543972.1345117,
+    "ast_hash": "cc994c706b65109e87e9bec46e3dc4cc",
+    "semantic_hash": "cc994c706b65109e87e9bec46e3dc4cc"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_diseno_redes\\red_aguas_lluvias.webp": {
+    "mtime": 1780543972.1265588,
+    "ast_hash": "2fe40d2d73cc8e5607f7872b2098355e",
+    "semantic_hash": "2fe40d2d73cc8e5607f7872b2098355e"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_diseno_redes\\red_bomba_ar.webp": {
+    "mtime": 1780543972.075372,
+    "ast_hash": "576b68034a8a8d4f2b50824513dd9486",
+    "semantic_hash": "576b68034a8a8d4f2b50824513dd9486"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_diseno_redes\\red_contra_incendio.webp": {
+    "mtime": 1780543972.0826716,
+    "ast_hash": "0c18b4c0a7a152dc65526e5d67324e6d",
+    "semantic_hash": "0c18b4c0a7a152dc65526e5d67324e6d"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_diseno_redes\\red_de_gas.webp": {
+    "mtime": 1780543972.0905747,
+    "ast_hash": "caad3b64f3585564c5aea1350337f5d4",
+    "semantic_hash": "caad3b64f3585564c5aea1350337f5d4"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_diseno_redes\\red_equipo_presion.webp": {
+    "mtime": 1780543972.0957482,
+    "ast_hash": "914ac18e99aa09dddccec498b4f361bb",
+    "semantic_hash": "914ac18e99aa09dddccec498b4f361bb"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_diseno_redes\\red_recirculacion_ac.webp": {
+    "mtime": 1780543972.0483592,
+    "ast_hash": "659550e9f001366a341ac37fa9dd2651",
+    "semantic_hash": "659550e9f001366a341ac37fa9dd2651"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_diseno_redes\\red_sanitaria.webp": {
+    "mtime": 1780543972.1136813,
+    "ast_hash": "29780f2c203e715a60ec7075c381fb85",
+    "semantic_hash": "29780f2c203e715a60ec7075c381fb85"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_diseno_redes\\red_ventilacion.webp": {
+    "mtime": 1780543972.0992873,
+    "ast_hash": "6d6d1ea8975471ea899e19043a45e4d4",
+    "semantic_hash": "6d6d1ea8975471ea899e19043a45e4d4"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_info_general\\Informacion_del_proyecto.webp": {
+    "mtime": 1780521706.1385252,
+    "ast_hash": "1fae56b95f15c0fbc189fc3cfcec3858",
+    "semantic_hash": "1fae56b95f15c0fbc189fc3cfcec3858"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_info_general\\generador_de_pisos.webp": {
+    "mtime": 1780521706.1250234,
+    "ast_hash": "855507df5f1d3141db01f89931198d43",
+    "semantic_hash": "855507df5f1d3141db01f89931198d43"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_info_general\\guia_de_uso.webp": {
+    "mtime": 1780521706.1077416,
+    "ast_hash": "604955e164c6893676607f981a08fa80",
+    "semantic_hash": "604955e164c6893676607f981a08fa80"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_info_general\\identificacion_del_proyecto.webp": {
+    "mtime": 1780521706.0931334,
+    "ast_hash": "1e2360bc0044e46bb81604253c1b1200",
+    "semantic_hash": "1e2360bc0044e46bb81604253c1b1200"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_info_general\\niveles_generados.webp": {
+    "mtime": 1780521706.1334715,
+    "ast_hash": "c1a77d9e36536b7ae09547dd44f762b1",
+    "semantic_hash": "c1a77d9e36536b7ae09547dd44f762b1"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_info_general\\redes_activas.webp": {
+    "mtime": 1780521706.1171386,
+    "ast_hash": "e61345c61ce876bf03627efb895283ea",
+    "semantic_hash": "e61345c61ce876bf03627efb895283ea"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_parametros_de_diseno\\catalogo_aparatos_sanitarios.webp": {
+    "mtime": 1780525143.2774403,
+    "ast_hash": "83fc2107cf95b8f34e2f866eff719d88",
+    "semantic_hash": "83fc2107cf95b8f34e2f866eff719d88"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_parametros_de_diseno\\catalogo_gasodomesticos.webp": {
+    "mtime": 1780525143.2665796,
+    "ast_hash": "dfefb613941f64a261f05eae82a87ff0",
+    "semantic_hash": "dfefb613941f64a261f05eae82a87ff0"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_parametros_de_diseno\\catalogo_maestro.webp": {
+    "mtime": 1780525143.2459905,
+    "ast_hash": "2d1e0874c4831e499b60227730789f74",
+    "semantic_hash": "2d1e0874c4831e499b60227730789f74"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\iconos_parametros_de_diseno\\materiales_por_red.webp": {
+    "mtime": 1780525143.270593,
+    "ast_hash": "e0f41cd085abf0fa8ba8d45d634fc9e0",
+    "semantic_hash": "e0f41cd085abf0fa8ba8d45d634fc9e0"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\icons.svg": {
+    "mtime": 1780504873.9336054,
+    "ast_hash": "3b4fcfcf393eca4d264dca4a4663bc37",
+    "semantic_hash": "3b4fcfcf393eca4d264dca4a4663bc37"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\logos\\civilBIMlogo.webp": {
+    "mtime": 1780504873.9348922,
+    "ast_hash": "635f316650a36ab99aea5fe422ef0998",
+    "semantic_hash": "635f316650a36ab99aea5fe422ef0998"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\logos\\civilCorelogo.webp": {
+    "mtime": 1780504873.9357266,
+    "ast_hash": "b220c637e00bd5f16fda9613c26cd780",
+    "semantic_hash": "b220c637e00bd5f16fda9613c26cd780"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\logos\\civilFlowlogo.webp": {
+    "mtime": 1780504873.9357266,
+    "ast_hash": "73141659178159205303be9799605c60",
+    "semantic_hash": "73141659178159205303be9799605c60"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\logos\\civilMEPlogo.webp": {
+    "mtime": 1780504873.9357266,
+    "ast_hash": "80acac098f7e00a6e288c9cec78086ae",
+    "semantic_hash": "80acac098f7e00a6e288c9cec78086ae"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\logos\\civilManagelogo.webp": {
+    "mtime": 1780504873.9357266,
+    "ast_hash": "bc69a5c6a4678c65072092f9aa7d77aa",
+    "semantic_hash": "bc69a5c6a4678c65072092f9aa7d77aa"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\logos\\civilRoadslogo.webp": {
+    "mtime": 1780504873.9357266,
+    "ast_hash": "2856a49848641e7337dca70102f7f222",
+    "semantic_hash": "2856a49848641e7337dca70102f7f222"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\logos\\civilStructurelogo.webp": {
+    "mtime": 1780504873.9397583,
+    "ast_hash": "7aa6d6f2200062b8312642462b0c8adb",
+    "semantic_hash": "7aa6d6f2200062b8312642462b0c8adb"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\public\\logos\\civilTerrainlogo.webp": {
+    "mtime": 1780504873.9397583,
+    "ast_hash": "ded8bb8dbf4d5f2df7c18f8a5b36e68d",
+    "semantic_hash": "ded8bb8dbf4d5f2df7c18f8a5b36e68d"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\assets\\hero.png": {
+    "mtime": 1780504873.9417734,
+    "ast_hash": "aead493361b27e7510691c5d7072dfc1",
+    "semantic_hash": "aead493361b27e7510691c5d7072dfc1"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\assets\\typescript.svg": {
+    "mtime": 1780504873.9417734,
+    "ast_hash": "07f132d2ec35a9f4c17c1b9f19a2aac7",
+    "semantic_hash": "07f132d2ec35a9f4c17c1b9f19a2aac7"
+  },
+  "C:\\CivilFlowKML\\civilflow-app\\src\\assets\\vite.svg": {
+    "mtime": 1780504873.9417734,
+    "ast_hash": "9960a24288958394ac50e57ff638b036",
+    "semantic_hash": "9960a24288958394ac50e57ff638b036"
+  }
+}

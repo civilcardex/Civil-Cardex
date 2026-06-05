@@ -1,0 +1,106 @@
+{
+  "nodes": [
+    {
+      "id": "public_logos_civilbimlogo",
+      "label": "CivilBIM Logo",
+      "file_type": "image",
+      "source_file": "public/logos/civilBIMlogo.webp"
+    },
+    {
+      "id": "public_logos_civilcorelogo",
+      "label": "CivilCore Logo",
+      "file_type": "image",
+      "source_file": "public/logos/civilCorelogo.webp"
+    },
+    {
+      "id": "public_logos_civilflowlogo",
+      "label": "CivilFlow Logo",
+      "file_type": "image",
+      "source_file": "public/logos/civilFlowlogo.webp"
+    },
+    {
+      "id": "public_logos_civilmeplogo",
+      "label": "CivilMEP Logo",
+      "file_type": "image",
+      "source_file": "public/logos/civilMEPlogo.webp"
+    },
+    {
+      "id": "public_logos_civilmanagelogo",
+      "label": "CivilManage Logo",
+      "file_type": "image",
+      "source_file": "public/logos/civilManagelogo.webp"
+    },
+    {
+      "id": "public_logos_civilroadslogo",
+      "label": "CivilRoads Logo",
+      "file_type": "image",
+      "source_file": "public/logos/civilRoadslogo.webp"
+    },
+    {
+      "id": "public_logos_civilstructurelogo",
+      "label": "CivilStructure Logo",
+      "file_type": "image",
+      "source_file": "public/logos/civilStructurelogo.webp"
+    },
+    {
+      "id": "public_logos_civilterrainlogo",
+      "label": "CivilTerrain Logo",
+      "file_type": "image",
+      "source_file": "public/logos/civilTerrainlogo.webp"
+    },
+    {
+      "id": "src_assets_hero",
+      "label": "Hero Image",
+      "file_type": "image",
+      "source_file": "src/assets/hero.png"
+    },
+    {
+      "id": "src_assets_typescript",
+      "label": "TypeScript Icon",
+      "file_type": "image",
+      "source_file": "src/assets/typescript.svg"
+    },
+    {
+      "id": "src_assets_vite",
+      "label": "Vite Icon",
+      "file_type": "image",
+      "source_file": "src/assets/vite.svg"
+    }
+  ],
+  "edges": [],
+  "hyperedges": [
+    {
+      "id": "brand_logos",
+      "label": "CivilFlow Brand Logos",
+      "nodes": [
+        "public_logos_civilbimlogo",
+        "public_logos_civilcorelogo",
+        "public_logos_civilflowlogo",
+        "public_logos_civilmeplogo",
+        "public_logos_civilmanagelogo",
+        "public_logos_civilroadslogo",
+        "public_logos_civilstructurelogo",
+        "public_logos_civilterrainlogo"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "public/logos"
+    },
+    {
+      "id": "app_assets",
+      "label": "App Assets",
+      "nodes": [
+        "src_assets_hero",
+        "src_assets_typescript",
+        "src_assets_vite"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "src/assets"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}

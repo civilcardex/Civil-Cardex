@@ -1,0 +1,91 @@
+{
+  "nodes": [
+    {"id": "iconos_diseno_redes_diseno_redes", "label": "Diseno Redes", "file_type": "image", "source_file": "public/iconos_diseno_redes/diseno_redes.webp"},
+    {"id": "iconos_diseno_redes_red_agua_caliente", "label": "Red Agua Caliente", "file_type": "image", "source_file": "public/iconos_diseno_redes/red_agua_caliente.webp"},
+    {"id": "iconos_diseno_redes_red_agua_fria", "label": "Red Agua Fria", "file_type": "image", "source_file": "public/iconos_diseno_redes/red_agua_fria.webp"},
+    {"id": "iconos_diseno_redes_red_aguas_lluvias", "label": "Red Aguas Lluvias", "file_type": "image", "source_file": "public/iconos_diseno_redes/red_aguas_lluvias.webp"},
+    {"id": "iconos_diseno_redes_red_bomba_ar", "label": "Red Bomba Ar", "file_type": "image", "source_file": "public/iconos_diseno_redes/red_bomba_ar.webp"},
+    {"id": "iconos_diseno_redes_red_contra_incendio", "label": "Red Contra Incendio", "file_type": "image", "source_file": "public/iconos_diseno_redes/red_contra_incendio.webp"},
+    {"id": "iconos_diseno_redes_red_de_gas", "label": "Red De Gas", "file_type": "image", "source_file": "public/iconos_diseno_redes/red_de_gas.webp"},
+    {"id": "iconos_diseno_redes_red_equipo_presion", "label": "Red Equipo Presion", "file_type": "image", "source_file": "public/iconos_diseno_redes/red_equipo_presion.webp"},
+    {"id": "iconos_diseno_redes_red_recirculacion_ac", "label": "Red Recirculacion Ac", "file_type": "image", "source_file": "public/iconos_diseno_redes/red_recirculacion_ac.webp"},
+    {"id": "iconos_diseno_redes_red_sanitaria", "label": "Red Sanitaria", "file_type": "image", "source_file": "public/iconos_diseno_redes/red_sanitaria.webp"},
+    {"id": "iconos_diseno_redes_red_ventilacion", "label": "Red Ventilacion", "file_type": "image", "source_file": "public/iconos_diseno_redes/red_ventilacion.webp"},
+    {"id": "iconos_info_general_informacion_del_proyecto", "label": "Informacion Del Proyecto", "file_type": "image", "source_file": "public/iconos_info_general/Informacion_del_proyecto.webp"},
+    {"id": "iconos_info_general_generador_de_pisos", "label": "Generador De Pisos", "file_type": "image", "source_file": "public/iconos_info_general/generador_de_pisos.webp"},
+    {"id": "iconos_info_general_guia_de_uso", "label": "Guia De Uso", "file_type": "image", "source_file": "public/iconos_info_general/guia_de_uso.webp"},
+    {"id": "iconos_info_general_identificacion_del_proyecto", "label": "Identificacion Del Proyecto", "file_type": "image", "source_file": "public/iconos_info_general/identificacion_del_proyecto.webp"},
+    {"id": "iconos_info_general_niveles_generados", "label": "Niveles Generados", "file_type": "image", "source_file": "public/iconos_info_general/niveles_generados.webp"},
+    {"id": "iconos_info_general_redes_activas", "label": "Redes Activas", "file_type": "image", "source_file": "public/iconos_info_general/redes_activas.webp"},
+    {"id": "iconos_parametros_de_diseno_catalogo_aparatos_sanitarios", "label": "Catalogo Aparatos Sanitarios", "file_type": "image", "source_file": "public/iconos_parametros_de_diseno/catalogo_aparatos_sanitarios.webp"},
+    {"id": "iconos_parametros_de_diseno_catalogo_gasodomesticos", "label": "Catalogo Gasodomesticos", "file_type": "image", "source_file": "public/iconos_parametros_de_diseno/catalogo_gasodomesticos.webp"},
+    {"id": "iconos_parametros_de_diseno_catalogo_maestro", "label": "Catalogo Maestro", "file_type": "image", "source_file": "public/iconos_parametros_de_diseno/catalogo_maestro.webp"},
+    {"id": "iconos_parametros_de_diseno_materiales_por_red", "label": "Materiales Por Red", "file_type": "image", "source_file": "public/iconos_parametros_de_diseno/materiales_por_red.webp"},
+    {"id": "public_icons", "label": "Icons", "file_type": "image", "source_file": "public/icons.svg"}
+  ],
+  "edges": [],
+  "hyperedges": [
+    {
+      "id": "network_design_icons",
+      "label": "Network Design Icons",
+      "nodes": [
+        "iconos_diseno_redes_diseno_redes",
+        "iconos_diseno_redes_red_agua_caliente",
+        "iconos_diseno_redes_red_agua_fria",
+        "iconos_diseno_redes_red_aguas_lluvias",
+        "iconos_diseno_redes_red_bomba_ar",
+        "iconos_diseno_redes_red_contra_incendio",
+        "iconos_diseno_redes_red_de_gas",
+        "iconos_diseno_redes_red_equipo_presion",
+        "iconos_diseno_redes_red_recirculacion_ac",
+        "iconos_diseno_redes_red_sanitaria",
+        "iconos_diseno_redes_red_ventilacion"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "public/iconos_diseno_redes"
+    },
+    {
+      "id": "project_info_icons",
+      "label": "Project Info Icons",
+      "nodes": [
+        "iconos_info_general_informacion_del_proyecto",
+        "iconos_info_general_generador_de_pisos",
+        "iconos_info_general_guia_de_uso",
+        "iconos_info_general_identificacion_del_proyecto",
+        "iconos_info_general_niveles_generados",
+        "iconos_info_general_redes_activas"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "public/iconos_info_general"
+    },
+    {
+      "id": "design_params_icons",
+      "label": "Design Parameters Icons",
+      "nodes": [
+        "iconos_parametros_de_diseno_catalogo_aparatos_sanitarios",
+        "iconos_parametros_de_diseno_catalogo_gasodomesticos",
+        "iconos_parametros_de_diseno_catalogo_maestro",
+        "iconos_parametros_de_diseno_materiales_por_red"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "public/iconos_parametros_de_diseno"
+    },
+    {
+      "id": "public_icons_svg",
+      "label": "Public SVG Icons",
+      "nodes": ["public_icons"],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "public"
+    }
+  ],
+  "input_tokens": 0,
+  "output_tokens": 0
+}
