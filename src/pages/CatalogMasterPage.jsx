@@ -407,7 +407,7 @@ function ContadoresTable() {
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, padding: '4px 6px', borderBottom: '1px solid rgba(0,220,229,0.35)' }}>
         <span style={{ fontSize: 10, fontWeight: 700, color: '#00dce5', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: 0.6, textAlign: 'center' }}>Diámetro Nominal</span>
-        <span style={{ fontSize: 10, fontWeight: 700, color: '#00dce5', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: 0.6, textAlign: 'center' }}>Qn LPS</span>
+        <span style={{ fontSize: 10, fontWeight: 700, color: '#00dce5', fontFamily: 'var(--mono)', letterSpacing: 0.6, textAlign: 'center' }}>Qn(LPS)</span>
       </div>
       {CONTADORES.map((c, i) => (
         <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, padding: '3px 6px', borderBottom: i < CONTADORES.length - 1 ? '1px solid var(--line)' : 'none', background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
@@ -551,7 +551,7 @@ export default function CatalogoMaestroPage() {
                 <SectionCard title="Materiales por red" subtitle="Por sistema" compact>
                   <MaterialesPorRedTable />
                 </SectionCard>
-                <SectionCard title="Contadores" subtitle="Qn en lps" compact>
+                <SectionCard title="Contadores" subtitle="Qn(LPS)" compact>
                   <ContadoresTable />
                 </SectionCard>
               </div>
