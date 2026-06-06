@@ -8,7 +8,7 @@ export function useZIndex() {
   return [z, bringToFront];
 }
 
-export default function FloatingPanel({ title, icon, count, onClose, children, defaultPos = { x: 40, y: 40 }, minW = 460 }) {
+export default function FloatingPanel({ title, icon, count = undefined, onClose, children = null, defaultPos = { x: 40, y: 40 }, minW = 460 }) {
   const [pos, setPos] = useState(defaultPos);
   const [collapsed, setCollapsed] = useState(false);
   const [zIndex, bringToFront] = useZIndex();
