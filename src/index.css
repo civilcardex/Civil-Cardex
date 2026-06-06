@@ -1674,3 +1674,8 @@ input[type="number"].ni {
 .bd-section .cal-v span {
   font-size: 10px;
 }
+
+.td-mono { font-family: var(--mono); font-size: 11px; padding: 0 1px; }
+.td-mono-b { font-family: var(--mono); font-size: 11px; padding: 0 1px; font-weight: 700; }
+.ni-mono { font-family: var(--mono); font-size: 11px; }
+.fmono { font-family: var(--mono); }
