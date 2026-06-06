@@ -150,10 +150,9 @@ function SectionCard({ title, subtitle, children, scroll, span = 1, maxWidth, co
 
 function Th({ children, style }) {
   return (
-    <th style={{
+    <th className="td-mono-b" style={{
       background: HEADER_BG,
       color: HEADER_TXT,
-      fontFamily: 'var(--mono)',
       fontSize: 10,
       fontWeight: 700,
       textTransform: 'uppercase',
@@ -177,8 +176,8 @@ function Tr({ children, index, style }) {
 
 function Td({ children, style, mono = false, center = true }) {
   return (
-    <td style={{
-      fontFamily: mono ? 'var(--mono)' : 'var(--body)',
+    <td className={mono ? 'td-mono' : ''} style={{
+      ...(mono ? {} : { fontFamily: 'var(--body)' }),
       fontSize: 12,
       fontWeight: 500,
       padding: '5px 10px',
@@ -406,13 +405,13 @@ function ContadoresTable() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, padding: '4px 6px', borderBottom: '1px solid rgba(0,220,229,0.35)' }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: '#00dce5', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: 0.6, textAlign: 'center' }}>Diámetro Nominal</span>
-        <span style={{ fontSize: 10, fontWeight: 700, color: '#00dce5', fontFamily: 'var(--mono)', letterSpacing: 0.6, textAlign: 'center' }}>Qn(LPS)</span>
+        <span className="td-mono-b" style={{ fontSize: 10, fontWeight: 700, color: '#00dce5',  textTransform: 'uppercase', letterSpacing: 0.6, textAlign: 'center' }}>Diámetro Nominal</span>
+        <span className="td-mono-b" style={{ fontSize: 10, fontWeight: 700, color: '#00dce5',  letterSpacing: 0.6, textAlign: 'center' }}>Qn(LPS)</span>
       </div>
       {CONTADORES.map((c, i) => (
         <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, padding: '3px 6px', borderBottom: i < CONTADORES.length - 1 ? '1px solid var(--line)' : 'none', background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
-          <span style={{ fontSize: 11, color: 'var(--txt)', fontFamily: 'var(--mono)', textAlign: 'center' }}>{c.dn}</span>
-          <span style={{ fontSize: 11, color: 'var(--txt)', fontFamily: 'var(--mono)', fontWeight: 500, textAlign: 'center' }}>{c.q.toFixed(2)}</span>
+          <span className="td-mono" style={{ fontSize: 11, color: 'var(--txt)',  textAlign: 'center' }}>{c.dn}</span>
+          <span className="td-mono" style={{ fontSize: 11, color: 'var(--txt)',  fontWeight: 500, textAlign: 'center' }}>{c.q.toFixed(2)}</span>
         </div>
       ))}
     </div>
@@ -425,9 +424,9 @@ function MaterialesPorRedTable() {
       {MATERIALES_POR_RED.map((c, i) => (
         <div key={i} style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', padding: '4px 8px', borderBottom: i < MATERIALES_POR_RED.length - 1 ? '1px solid var(--line)' : 'none', background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
           <span style={{ fontWeight: 500, fontSize: 11, color: 'var(--txt)', textAlign: 'center', alignSelf: 'center' }}>{c.red}</span>
-          {c.mat && <span style={{ fontSize: 11, color: 'var(--txt2)', fontFamily: 'var(--mono)', textAlign: 'center', alignSelf: 'center' }}>{c.mat}</span>}
+          {c.mat && <span className="td-mono" style={{ fontSize: 11, color: 'var(--txt2)',  textAlign: 'center', alignSelf: 'center' }}>{c.mat}</span>}
           {c.mats && (
-            <span style={{ fontSize: 11, color: 'var(--txt2)', fontFamily: 'var(--mono)', textAlign: 'center', lineHeight: 1.6, alignSelf: 'center' }}>
+            <span className="td-mono" style={{ fontSize: 11, color: 'var(--txt2)',  textAlign: 'center', lineHeight: 1.6, alignSelf: 'center' }}>
               {c.mats.slice(0, Math.ceil(c.mats.length / 2)).join(', ')},<br />
               {c.mats.slice(Math.ceil(c.mats.length / 2)).join(', ')}
             </span>
@@ -470,7 +469,7 @@ function CoefFriccionTable() {
           <tr>
             <td colSpan={9} style={{
               padding: '8px 12px', textAlign: 'center', fontWeight: 700, fontSize: 13,
-              fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: 0.5,
+               textTransform: 'uppercase', letterSpacing: 0.5,
               background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--txt)',
             }}>
               Coeficiente fricción tuberías
@@ -524,17 +523,17 @@ export default function CatalogoMaestroPage() {
     <div style={{ height: '100%', background: 'var(--bg)', color: 'var(--txt)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '14px 16px 0', display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexShrink: 0, position: 'relative', marginBottom: 12 }}>
-          <button onClick={() => { sessionStorage.setItem('openTab', 'datos'); navigate('/civilflowareatrabajo'); }}
+          <button className="td-mono" onClick={() => { sessionStorage.setItem('openTab', 'datos'); navigate('/civilflowareatrabajo'); }}
             style={{
               position: 'absolute', left: 0,
               padding: '5px 11px', background: 'var(--bg3)', border: '1px solid var(--line)',
-              borderRadius: 3, color: 'var(--txt2)', cursor: 'pointer',
-              fontFamily: 'var(--mono)', fontWeight: 600, fontSize: 11,
+              borderRadius: 3,               color: 'var(--txt2)', cursor: 'pointer',
+               fontWeight: 600, fontSize: 11,
               display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
             }}>
             ← VOLVER
           </button>
-          <h1 style={{ fontSize: 16, fontWeight: 700, color: 'var(--txt)', fontFamily: 'var(--mono)', margin: 0, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+          <h1 className="td-mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--txt)',  margin: 0, letterSpacing: 0.5, textTransform: 'uppercase' }}>
             Catálogo Maestro
           </h1>
         </div>
