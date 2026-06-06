@@ -4,6 +4,7 @@ const PlanosContext = createContext(null);
 
 export function PlanosProvider({ children }) {
   const [planos, setPlanos] = useState([]);
+  const [error, setError] = useState(null);
 
   const addPlanos = (newFiles) => {
     const pdfs = [];
@@ -12,7 +13,8 @@ export function PlanosProvider({ children }) {
       if (isPdf) pdfs.push({ id: Date.now() + Math.random(), file: f, name: f.name, nivel: null, scale: 100, status: 'pending' });
     }
     if (pdfs.length === 0 && newFiles.length > 0) {
-      alert('Solo se permiten archivos PDF.');
+      setError('Solo se permiten archivos PDF.');
+      setTimeout(() => setError(null), 3000);
       return [];
     }
     if (pdfs.length === 0) return [];
@@ -37,7 +39,7 @@ export function PlanosProvider({ children }) {
   };
 
   return (
-    <PlanosContext.Provider value={{ planos, addPlanos, removePlano, updatePlano, confirmPlano, getPlanoById }}>
+    <PlanosContext.Provider value={{ planos, error, setError, addPlanos, removePlano, updatePlano, confirmPlano, getPlanoById }}>
       {children}
     </PlanosContext.Provider>
   );

@@ -1,10 +1,14 @@
-import { useSanitario } from "../context/SanitarioContext";
-import { pisoCorto, DIAM_BAN, DIAM_VENT } from "./constants";
-import { calcUDparcial, calcUDacumulado } from "./utils";
-import { calcularBajanteVentilacion } from "../utils/calcSanitario";
+import { useTramos } from "../context/TramosContext";
+import { useProject } from "../context/ProjectContext";
+import { useApparatus } from "../context/ApparatusContext";
+import { pisoCorto, DIAM_BAN, DIAM_VENT } from "../constants";
+import { calcUDparcial, calcUDacumulado } from "../utils/componentHelpers";
+import { calcularBajanteVentilacion } from "../utils/calcSanitary";
 
 export default function BajantesTable() {
-  const { tramosSan, udBase, pisos } = useSanitario();
+  const { tramosSan } = useTramos();
+  const { udBase } = useApparatus();
+  const { pisos } = useProject();
 
   return (
     <div className="card">

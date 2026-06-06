@@ -1,10 +1,10 @@
-import { useSanitario } from "../context/SanitarioContext";
-import { chequeoCanalLluvia } from "../utils/calcSanitario";
+import { useRainwater } from "../context/RainwaterContext";
+import { chequeoCanalLluvia } from "../utils/calcSanitary";
 import { parseDecimalInput } from "../utils/parseDecimal";
 import FloatingPanel, { thS, tdS, inputStyle, btnDelStyle, btnAddStyle, tableStyle } from "./FloatingPanel";
 
 export default function PanelCanalesLluvias({ onClose }) {
-  const { canalesLl, addCanalLL, delCanalLL, updCanalLL } = useSanitario();
+  const { canalesLl, addCanalLL, delCanalLL, updCanalLL } = useRainwater();
 
   return (
     <FloatingPanel title="Canales cubierta" icon="🌧️" count={`${canalesLl.length} canales`} onClose={onClose} minW={620}>

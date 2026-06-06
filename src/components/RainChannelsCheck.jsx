@@ -1,8 +1,8 @@
-import { useSanitario } from "../context/SanitarioContext";
-import { chequeoCanalLluvia } from "../utils/calcSanitario";
+import { useRainwater } from "../context/RainwaterContext";
+import { chequeoCanalLluvia } from "../utils/calcSanitary";
 
 export default function ChequeoCanalesLluvias() {
-  const { canalesLl } = useSanitario();
+  const { canalesLl } = useRainwater();
 
   return (
     <div className="card">

@@ -1,8 +1,8 @@
-import { useSanitario } from "../context/SanitarioContext";
-import { chequeoBajanteLluvia } from "../utils/calcSanitario";
+import { useRainwater } from "../context/RainwaterContext";
+import { chequeoBajanteLluvia } from "../utils/calcSanitary";
 
 export default function ChequeoBajantesLluvias() {
-  const { bajantesLl } = useSanitario();
+  const { bajantesLl } = useRainwater();
 
   return (
     <div className="card">

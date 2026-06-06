@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { usePlanos } from '../context/PlanosContext';
+import { usePlanos } from '../context/PlansContext';
 import { fmtSize } from '../utils/fmtSize';
 
 const REQ_ITEMS = [
@@ -100,7 +100,7 @@ function PlanosPage() {
                   + Agregar más
                 </button>
               </div>
-              {planos.map((p, i) => (
+              {planos.map(p => (
                 <div key={p.id} className="plano-row flex items-center justify-between px-5 py-3 border-b last:border-b-0"
                   style={{ borderColor: '#3a494a22' }}>
                   <div className="flex items-center gap-3 min-w-0">

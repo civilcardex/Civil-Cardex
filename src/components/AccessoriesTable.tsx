@@ -1,9 +1,7 @@
-import { ACCESORIOS_HIDRO } from "./constants";
+import { memo } from 'react';
+import { ACCESORIOS_HIDRO } from "../constants";
 
-const ACCENT = { af: '#3b82f6', ac: '#ef4444' };
-
-export default function AccesoriosTable({ tramos, updAcc, net, readOnly }) {
-  const accent = ACCENT[net] || '#3b82f6';
+const AccesoriosTable = memo(function AccesoriosTable({ tramos, updAcc, readOnly }) {
   const cMono = "'Courier New',Courier,monospace";
   const cBg2 = '#1e293b';
   const cTxt3 = '#94a3b8';
@@ -63,4 +61,6 @@ export default function AccesoriosTable({ tramos, updAcc, net, readOnly }) {
       </div>
     </div>
   );
-}
+});
+
+export default AccesoriosTable;

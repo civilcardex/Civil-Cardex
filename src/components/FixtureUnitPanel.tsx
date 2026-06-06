@@ -1,10 +1,14 @@
-import { useSanitario } from "../context/SanitarioContext";
-import { calcUDparcial, calcUDacumulado } from "./utils";
-import { pisoCorto } from "./constants";
+import { useTramos } from "../context/TramosContext";
+import { useProject } from "../context/ProjectContext";
+import { useApparatus } from "../context/ApparatusContext";
+import { calcUDparcial, calcUDacumulado } from "../utils/componentHelpers";
+import { pisoCorto } from "../constants";
 import FloatingPanel, { thS, tdS, inputStyle, btnDelStyle, btnAddStyle, tableStyle } from "./FloatingPanel";
 
 export default function DisenoUDPanel({ onClose }) {
-  const { tramosSan, udBase, pisos, addTramoSan, delTramoSan, updTramoSan, updTramoSanFix } = useSanitario();
+  const { tramosSan, addTramoSan, delTramoSan, updTramoSan, updTramoSanFix } = useTramos();
+  const { pisos } = useProject();
+  const { udBase } = useApparatus();
 
   const pisosSelect = pisos.filter(p => p.tipo !== 'cubierta');
 

@@ -1,25 +1,12 @@
-import { useSanitario } from "../context/SanitarioContext";
-import { calcUDparcial, calcUDacumulado } from "./utils";
-import { pisoCorto, APARATOS_DEF, SAN_UC_IDS } from "./constants";
-
-function getTributarioIds(tramos) {
-  const tribSet = new Set();
-  for (const t of tramos) {
-    if (t.recibeDe) {
-      for (const id of t.recibeDe) tribSet.add(id);
-    }
-    if (t.descripcion) {
-      const ids = t.descripcion.split('+').map(s => s.trim()).filter(Boolean);
-      for (const id of ids) tribSet.add(id);
-    }
-  }
-  return tribSet;
-}
+import { useTramos } from "../context/TramosContext";
+import { useApparatus } from "../context/ApparatusContext";
+import { calcUDparcial, calcUDacumulado } from "../utils/componentHelpers";
+import { pisoCorto, APARATOS_DEF, SAN_UC_IDS } from "../constants";
+import { getTributarioIds } from "../utils/tramoUtils";
 
 export default function CalculoUD() {
-const { tramosSan, pisos, aps, updTramoSan } = useSanitario();
-
-const pisosSelect = pisos.filter(p => p.tipo !== 'cubierta');
+const { tramosSan, updTramoSan } = useTramos();
+const { aps } = useApparatus();
 const mergedBase = SAN_UC_IDS.map(id => {
   const fromAps = aps.find(p => p.id === id);
   const def = APARATOS_DEF.find(x => x.id === id);
@@ -66,7 +53,7 @@ return (
             </tr>
           </thead>
           <tbody>
-{displayTramos.map((t,i)=>{
+{displayTramos.map((t) => {
 const parcial=calcUDparcial(t,mergedBase);
 const acum=acumMap[t.id]||0;
               return(
@@ -95,7 +82,7 @@ const acum=acumMap[t.id]||0;
               <td style={{borderTop:'2px solid var(--line)'}}></td>
               <td style={{borderTop:'2px solid var(--line)'}}></td>
               <td style={{borderTop:'2px solid var(--line)'}}></td>
-              {mergedBase.map(d => {
+              {totales.map(d => {
                 const subtotal = (d.cant || 0) * (d.ud || 0);
                 return (
                   <td key={d.id} className="c" style={{padding:'4px 3px',borderTop:'2px solid var(--line)'}}>

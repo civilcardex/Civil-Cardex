@@ -1,9 +1,9 @@
-import { useSanitario } from "../context/SanitarioContext";
+import { useApparatus } from "../context/ApparatusContext";
 import FloatingPanel, { thS, tdS, inputStyle, tableStyle } from "./FloatingPanel";
-import { APARATO_IMG } from "./constants";
+import { APARATO_IMG } from "../constants";
 
 export default function PanelValoresUD({ onClose }) {
-  const { udBase, setUdBase } = useSanitario();
+  const { udBase, setUdBase } = useApparatus();
 
   return (
     <FloatingPanel title="Valores base UD" icon="📊" onClose={onClose} minW={380}>

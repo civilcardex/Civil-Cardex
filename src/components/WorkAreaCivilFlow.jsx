@@ -1,33 +1,37 @@
 import { useState, useRef, useMemo, useEffect } from "react";
-import { useSanitario } from "../context/SanitarioContext";
-import { usePlanos } from "../context/PlanosContext";
-import { useAnalysis } from "../hooks/useAnalysis";
-import AccesoriosTable from "./AccesoriosTable";
-import { REDES, USOS, EMPRES, NAV_TABS, REQ_ITEMS, pisoLbl } from "./constants";
+import { useTramos } from "../context/TramosContext";
+import { useProject } from "../context/ProjectContext";
+import { useApparatus } from "../context/ApparatusContext";
+import { usePlanos } from "../context/PlansContext";
+
+import AccesoriosTable from "./AccessoriesTable";
+import { REDES, USOS, EMPRES, NAV_TABS, REQ_ITEMS, pisoLbl } from "../constants";
 import { parseDecimalInput, parseIntInput } from "../utils/parseDecimal";
-import { validateTramo } from "../utils/validateTramo";
-import CalculoUD from "./UdCalculation";
+import { validateTramo } from "../utils/validatePipeSegment";
+import { NETS } from "../lib/PlanoEngine";
+import { ErrorBoundary } from "./ErrorBoundary";
+import CalculoUD from "./FixtureUnitCalc";
 import DisenosSanitarios from "./SanitaryDesign";
 import BajantesTable from "./DownpipesTable";
 import DisenoLluvias from "./RainwaterDesign";
 import ChequeoBajantesLluvias from "./RainDownpipesCheck";
 import ChequeoCanalesLluvias from "./RainChannelsCheck";
-import CalculoHidraulicoLluvias from "./RainwaterHydraulicCalc";
-import CalculoHidraulicoSanitario from "./SanitaryHydraulicCalc";
-import CalculoUCAF from "./CalculoUCAF";
-import CalculoUCAC from "./CalculoUCAC";
-import DisenoRedAguaFria from "./DisenoRedAguaFria";
-import DisenoRedAguaCaliente from "./DisenoRedAguaCaliente";
+import CalculoUCAF from "./ColdWaterCalc";
+import CalculoUCAC from "./HotWaterCalc";
+import DisenoRedAguaFria from "./ColdWaterDesign";
+import DisenoRedAguaCaliente from "./HotWaterDesign";
 
-import DisenoUDPanel from "./UdDesignPanel";
-import PanelValoresUD from "./UdValuesPanel";
+import DisenoUDPanel from "./FixtureUnitPanel";
+import PanelValoresUD from "./FixtureUnitValues";
 import PanelBajantesLluvias from "./RainDownpipesPanel";
 import PanelCanalesLluvias from "./RainChannelsPanel";
 import BaseDatos from "./DesignParameters";
-import Normativa from "./Normativa";
+import Normativa from "./Regulations";
 
 function CIVILFLOWInner(){
-const { tramosSan, tramosLl, tramosAf, tramosAc, udBase, pisos, proy, setP, setPisos, updTramoAfAcc, updTramoAcAcc } = useSanitario();
+const { tramosSan, tramosLl, tramosAf, tramosAc, updTramoAfAcc, updTramoAcAcc } = useTramos();
+const { pisos, proy, setP, setPisos } = useProject();
+const { udBase } = useApparatus();
 const { planos, addPlanos, removePlano, updatePlano, confirmPlano } = usePlanos();
 
   const [tab,setTab]=useState('info');
@@ -144,7 +148,7 @@ const addSotano=()=>setPisos(prev=>{
   const newSotano={id:Date.now(),n:minN-1,npt:newNpt,ok:false,tipo:'sotano'};
   return[...prev,newSotano];
 });
-const { busy, meta, vals, analizar } = useAnalysis(setPisos);
+
 
 useEffect(()=>{
   REDES.forEach(r=>{
@@ -152,10 +156,10 @@ useEffect(()=>{
     if (saved) {
       document.documentElement.style.setProperty('--' + r.id, saved);
       try {
-        const nets = require('./PlanoEngine').NETS;
+        const nets = NETS;
         const net = nets.find(n => n.id === r.id);
         if (net) net.col = saved;
-      } catch(_) {}
+      } catch(e) { console.error(e); }
     }
   });
 },[]);
@@ -245,10 +249,10 @@ return(
                     setNetColors(prev => ({ ...prev, [r.id]: c }));
                     document.documentElement.style.setProperty(cssVar, c);
                     try {
-                      const nets = require('./PlanoEngine').NETS;
+                      const nets = NETS;
                       const net = nets.find(n => n.id === r.id);
                       if (net) net.col = c;
-                    } catch(_) {}
+                    } catch(e) { console.error(e); }
                     try { localStorage.setItem('civilflow_net_' + r.id, c); } catch(_) {}
                   }}
                   style={{width:14,height:14,border:'none',padding:0,cursor:'pointer',background:'none',flexShrink:0}} />
@@ -282,7 +286,7 @@ return(
               <div style={{width:28,height:15,borderRadius:8,background:conCubierta?'var(--ll)':'var(--line2)',position:'relative',transition:'background .2s',flexShrink:0}}>
                 <div style={{width:11,height:11,borderRadius:'50%',background:'#fff',position:'absolute',top:2,left:conCubierta?15:2,transition:'left .2s'}} />
               </div>
-              <span style={{fontFamily:'var(--mono)',fontSize:10,fontWeight:600,color:'var(--txt2)'}}>Incluir cubierta</span>
+              <span style={{fontSize:10,fontWeight:600,color:'var(--txt2)'}}>Incluir cubierta</span>
             </div>
           </div>
         </div>
@@ -300,7 +304,7 @@ return(
       </div>
       <div style={{padding:'4px 6px',display:'flex',flexDirection:'column',flex:1,minHeight:0}}>
         {pisos.length===0&&(
-          <div style={{fontSize:12,color:'var(--txt3)',textAlign:'center',padding:'12px 0',fontFamily:'var(--mono)'}}>Presione "Generar niveles"</div>
+          <div style={{fontSize:12,color:'var(--txt3)',textAlign:'center',padding:'12px 0',}}>Presione "Generar niveles"</div>
         )}
         {pisos.length>0&&(
         <>
@@ -311,9 +315,9 @@ return(
               <div key={p.id} style={{display:'flex',alignItems:'center',gap:3,padding:'2px 4px',background:'var(--bg3)',border:'1px solid var(--line)',borderRadius:'var(--r)',borderLeft:'3px solid '+(p.tipo==='cubierta'?'var(--ll)':p.n<0?'var(--txt3)':'var(--acc2)'),marginBottom:2}}>
                 <span className={p.tipo==='cubierta'?'piso-tag cub':p.n<0?'piso-tag sot':'piso-tag'} style={{fontSize:11,padding:'2px 5px',minWidth:48}}>{pisoLbl(p.n)}</span>
                 <input type="text" inputMode="decimal" defaultValue={p.npt ?? ''} key={p.id+'npt'} className="npt-in" style={{fontSize:12,width:52,padding:'2px 4px'}} onBlur={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)setPisos(prev=>prev.map(x=>x.id===p.id?{...x,npt:v}:x));}}/>
-                <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',height:20}}><span style={{fontFamily:'var(--mono)',fontSize:11,color:'var(--txt3)'}}>m</span></div>
+                <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',height:20}}><span style={{fontSize:11,color:'var(--txt3)'}}>m</span></div>
                 <div className={`pdot ${p.ok?'ok':''}`}/>
-                <button onClick={()=>delPiso(p.id)} title="Eliminar nivel" style={{padding:'1px 5px',background:'transparent',border:'1px solid var(--line)',borderRadius:2,color:'var(--txt3)',cursor:'pointer',fontSize:10,fontFamily:'var(--mono)',lineHeight:1,flexShrink:0,marginLeft:2}} onMouseEnter={e=>{e.currentTarget.style.color='#ef5350';e.currentTarget.style.borderColor='rgba(211,47,47,.5)';}} onMouseLeave={e=>{e.currentTarget.style.color='var(--txt3)';e.currentTarget.style.borderColor='var(--line)';}}>✕</button>
+                <button onClick={()=>delPiso(p.id)} title="Eliminar nivel" style={{padding:'1px 5px',background:'transparent',border:'1px solid var(--line)',borderRadius:2,color:'var(--txt3)',cursor:'pointer',fontSize:10,lineHeight:1,flexShrink:0,marginLeft:2}} onMouseEnter={e=>{e.currentTarget.style.color='#ef5350';e.currentTarget.style.borderColor='rgba(211,47,47,.5)';}} onMouseLeave={e=>{e.currentTarget.style.color='var(--txt3)';e.currentTarget.style.borderColor='var(--line)';}}>✕</button>
               </div>
             ))}
           </div>
@@ -378,16 +382,16 @@ return(
       {selectedPlan ? (
         <>
           <span style={{fontSize:14,flexShrink:0}}>📄</span>
-          <span style={{fontSize:12,fontWeight:600,fontFamily:'var(--mono)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{selectedPlan.name}</span>
-          {selectedPlan.nivel!==null&&<span style={{fontSize:9,padding:'1px 6px',background:'var(--bg3)',borderRadius:'var(--r)',color:'var(--txt3)',fontFamily:'var(--mono)',flexShrink:0}}>{pisoLbl(selectedPlan.nivel)}</span>}
-          <span style={{fontSize:9,color:'var(--txt3)',fontFamily:'var(--mono)',flexShrink:0}}>1:{selectedPlan.scale}</span>
+          <span style={{fontSize:12,fontWeight:600,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{selectedPlan.name}</span>
+          {selectedPlan.nivel!==null&&<span style={{fontSize:9,padding:'1px 6px',background:'var(--bg3)',borderRadius:'var(--r)',color:'var(--txt3)',flexShrink:0}}>{pisoLbl(selectedPlan.nivel)}</span>}
+          <span style={{fontSize:9,color:'var(--txt3)',flexShrink:0}}>1:{selectedPlan.scale}</span>
           <div style={{flex:1}}/>
           <button onClick={()=>setSelectedPlanId(null)}
-            style={{padding:'4px 12px',background:'rgba(211,47,47,0.15)',border:'1px solid rgba(211,47,47,0.35)',borderRadius:'var(--r)',color:'#ef5350',cursor:'pointer',fontSize:12,fontFamily:'var(--mono)',fontWeight:600,flexShrink:0,lineHeight:1.2,display:'flex',alignItems:'center',gap:4,transition:'all .15s'}}
+            style={{padding:'4px 12px',background:'rgba(211,47,47,0.15)',border:'1px solid rgba(211,47,47,0.35)',borderRadius:'var(--r)',color:'#ef5350',cursor:'pointer',fontSize:12,fontWeight:600,flexShrink:0,lineHeight:1.2,display:'flex',alignItems:'center',gap:4,transition:'all .15s'}}
             onMouseEnter={e=>{e.currentTarget.style.background='rgba(211,47,47,0.3)';e.currentTarget.style.borderColor='rgba(211,47,47,0.6)'}}
             onMouseLeave={e=>{e.currentTarget.style.background='rgba(211,47,47,0.15)';e.currentTarget.style.borderColor='rgba(211,47,47,0.35)'}} title="Cerrar vista">✕ Cerrar</button>
           {confirmedPlanos.length>0&&(
-            <a href="#/visor" style={{padding:'3px 10px',background:'rgba(0,220,229,0.08)',border:'1px solid rgba(0,220,229,0.3)',borderRadius:'var(--r)',color:'#00dce5',fontWeight:600,fontSize:9,textDecoration:'none',fontFamily:'var(--mono)',whiteSpace:'nowrap'}}>
+            <a href="#/visor" style={{padding:'3px 10px',background:'rgba(0,220,229,0.08)',border:'1px solid rgba(0,220,229,0.3)',borderRadius:'var(--r)',color:'#00dce5',fontWeight:600,fontSize:9,textDecoration:'none',whiteSpace:'nowrap'}}>
               IR A DIBUJO DE REDES →
             </a>
           )}
@@ -402,7 +406,7 @@ return(
       <div style={{flex:1,background:'#141416',position:'relative'}}>
         {planDrag&&(
           <div style={{position:'absolute',inset:0,zIndex:10,background:'rgba(0,220,229,.12)',border:'3px dashed rgba(0,220,229,.5)',display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}>
-            <span style={{fontSize:14,fontWeight:600,color:'#00dce5',fontFamily:'var(--mono)'}}>📐 SOLTAR PARA SUBIR</span>
+            <span style={{fontSize:14,fontWeight:600,color:'#00dce5',}}>📐 SOLTAR PARA SUBIR</span>
           </div>
         )}
         <embed key={selectedPlanUrl} src={selectedPlanUrl} type="application/pdf" style={{width:'100%',height:'100%'}}/>
@@ -412,7 +416,7 @@ return(
         onClick={()=>fileRef.current?.click()}>
         {planDrag ? (
           <div style={{position:'absolute',inset:0,background:'rgba(0,220,229,.08)',border:'3px dashed rgba(0,220,229,.4)',display:'flex',alignItems:'center',justifyContent:'center'}}>
-            <span style={{fontSize:14,fontWeight:600,color:'#00dce5',fontFamily:'var(--mono)'}}>📐 SOLTAR PARA SUBIR</span>
+            <span style={{fontSize:14,fontWeight:600,color:'#00dce5',}}>📐 SOLTAR PARA SUBIR</span>
           </div>
         ) : (
           <>
@@ -433,7 +437,7 @@ return(
     {/* Subir button */}
     <div style={{padding:'10px 10px',borderBottom:'1px solid var(--line)',flexShrink:0}}>
       <button onClick={()=>fileRef.current?.click()}
-        style={{width:'100%',padding:'10px',background:'rgba(0,220,229,0.06)',border:'1.5px dashed rgba(0,220,229,0.3)',borderRadius:'var(--r)',color:'#00dce5',fontWeight:600,fontSize:12,cursor:'pointer',fontFamily:'var(--mono)',display:'flex',alignItems:'center',justifyContent:'center',gap:5,transition:'all .15s'}}
+        style={{width:'100%',padding:'10px',background:'rgba(0,220,229,0.06)',border:'1.5px dashed rgba(0,220,229,0.3)',borderRadius:'var(--r)',color:'#00dce5',fontWeight:600,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:5,transition:'all .15s'}}
         onMouseEnter={e=>{e.currentTarget.style.background='rgba(0,220,229,0.12)';e.currentTarget.style.borderColor='rgba(0,220,229,0.5)'}}
         onMouseLeave={e=>{e.currentTarget.style.background='rgba(0,220,229,0.06)';e.currentTarget.style.borderColor='rgba(0,220,229,0.3)'}}>
         <img src="/iconos_carga_planos/subir_plano.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> SUBIR PLANO
@@ -445,12 +449,12 @@ return(
       onDragOver={e=>{e.preventDefault();setPlanDrag(true)}}
       onDragLeave={()=>setPlanDrag(false)}
       onDrop={e=>{e.preventDefault();setPlanDrag(false);const fl=e.dataTransfer?.files;if(fl&&fl.length>0)addPlanos(fl);}}>
-      <div style={{padding:'7px 10px',fontSize:11,fontWeight:700,color:'var(--txt3)',fontFamily:'var(--mono)',borderBottom:'1px solid var(--line)',flexShrink:0,display:'flex',alignItems:'center',gap:5,textTransform:'uppercase',letterSpacing:.5}}>
+      <div style={{padding:'7px 10px',fontSize:11,fontWeight:700,color:'var(--txt3)',borderBottom:'1px solid var(--line)',flexShrink:0,display:'flex',alignItems:'center',gap:5,textTransform:'uppercase',letterSpacing:.5}}>
         <img src="/iconos_carga_planos/pendientes.webp" alt="" style={{width:24,height:24,verticalAlign:'middle'}} />
         Pendientes {pendingPlanos.length>0&&`(${pendingPlanos.length})`}
       </div>
       {pendingPlanos.length===0 ? (
-        <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:20,gap:8,cursor:'pointer',fontSize:11,color:'var(--txt4)',fontFamily:'var(--mono)',textAlign:'center',lineHeight:1.6}}
+        <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:20,gap:8,cursor:'pointer',fontSize:11,color:'var(--txt4)',textAlign:'center',lineHeight:1.6}}
           onClick={()=>fileRef.current?.click()}>
           {planDrag ? (
             <div style={{fontSize:13,fontWeight:600,color:'#00dce5'}}>📐 SOLTAR PARA SUBIR</div>
@@ -468,9 +472,9 @@ return(
               style={{cursor:'pointer',padding:'8px 10px',borderBottom:'1px solid var(--line)',background:selectedPlanId===p.id?'rgba(27,110,243,.08)':'transparent',display:'flex',flexDirection:'column',gap:4,transition:'background .1s'}}>
               <div style={{display:'flex',alignItems:'center',gap:4}}>
                 <span style={{fontSize:13,flexShrink:0}}>📄</span>
-                <span style={{fontSize:12,fontWeight:500,fontFamily:'var(--mono)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1}}>{p.name}</span>
+                <span style={{fontSize:12,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1}}>{p.name}</span>
                 <button onClick={e=>{e.stopPropagation();removePlano(p.id)}}
-                  style={{padding:'2px 8px',background:'var(--bg3)',border:'1px solid var(--line)',borderRadius:'var(--r)',color:'var(--txt3)',cursor:'pointer',fontSize:10,fontFamily:'var(--mono)',flexShrink:0}} title="Cancelar">Cancelar</button>
+                  style={{padding:'2px 8px',background:'var(--bg3)',border:'1px solid var(--line)',borderRadius:'var(--r)',color:'var(--txt3)',cursor:'pointer',fontSize:10,flexShrink:0}} title="Cancelar">Cancelar</button>
               </div>
               <div style={{display:'flex',gap:5,alignItems:'center'}}>
                 <select value={p.nivel??''} onClick={e=>e.stopPropagation()} onChange={e=>updatePlano(p.id,{nivel:e.target.value?Number(e.target.value):null})}
@@ -483,7 +487,7 @@ return(
                 </select>
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:3}}>
-                <label style={{fontSize:10,fontWeight:600,color:'var(--txt3)',fontFamily:'var(--mono)'}}>Escala</label>
+                <label style={{fontSize:10,fontWeight:600,color:'var(--txt3)',}}>Escala</label>
                 <select value={p.scale||''} onClick={e=>e.stopPropagation()} onChange={e=>updatePlano(p.id,{scale:Number(e.target.value)||100})}
                   style={{width:'100%',fontSize:11,padding:'3px 5px',background:'var(--bg3)',border:'1px solid var(--line)',borderRadius:'var(--r)',color:'var(--txt2)',cursor:'pointer'}}>
                   <option value="">— Escala —</option>
@@ -503,7 +507,7 @@ return(
                       return;
                     }
                     confirmPlano(p.id);
-                  }} style={{padding:'3px 10px',background:'rgba(0,220,229,.1)',border:'1px solid rgba(0,220,229,.25)',borderRadius:'var(--r)',color:'#00dce5',cursor:'pointer',fontSize:10,fontFamily:'var(--mono)',fontWeight:600}}>✓ Confirmar</button>
+                  }} style={{padding:'3px 10px',background:'rgba(0,220,229,.1)',border:'1px solid rgba(0,220,229,.25)',borderRadius:'var(--r)',color:'#00dce5',cursor:'pointer',fontSize:10,fontWeight:600}}>✓ Confirmar</button>
                 )}
               </div>
             </div>
@@ -514,12 +518,12 @@ return(
 
     {/* Confirmed section */}
     <div style={{flex:'1 1 50%',minHeight:0,display:'flex',flexDirection:'column',overflow:'hidden'}}>
-      <div style={{padding:'7px 10px',fontSize:11,fontWeight:700,color:'var(--txt3)',fontFamily:'var(--mono)',borderBottom:'1px solid var(--line)',flexShrink:0,display:'flex',alignItems:'center',gap:5,textTransform:'uppercase',letterSpacing:.5}}>
+      <div style={{padding:'7px 10px',fontSize:11,fontWeight:700,color:'var(--txt3)',borderBottom:'1px solid var(--line)',flexShrink:0,display:'flex',alignItems:'center',gap:5,textTransform:'uppercase',letterSpacing:.5}}>
         <img src="/iconos_carga_planos/cargados.webp" alt="" style={{width:24,height:24,verticalAlign:'middle'}} />
         Cargados {confirmedPlanos.length>0&&`(${confirmedPlanos.length})`}
       </div>
       {confirmedPlanos.length===0 ? (
-        <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:20,fontSize:11,color:'var(--txt4)',fontFamily:'var(--mono)',textAlign:'center',lineHeight:1.6}}>
+        <div style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',padding:20,fontSize:11,color:'var(--txt4)',textAlign:'center',lineHeight:1.6}}>
           Aún no hay planos cargados
         </div>
       ) : (
@@ -529,16 +533,16 @@ return(
               style={{cursor:'pointer',display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid var(--line)',background:selectedPlanId===p.id?'rgba(27,110,243,.08)':'transparent',transition:'background .1s'}}>
               <span style={{fontSize:13,flexShrink:0}}>📄</span>
               <div style={{minWidth:0,flex:1}}>
-                <div style={{fontSize:12,fontWeight:500,fontFamily:'var(--mono)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.name}</div>
-                <div style={{fontSize:10,color:'var(--txt3)',fontFamily:'var(--mono)',display:'flex',gap:5}}>
+                <div style={{fontSize:12,fontWeight:500,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{p.name}</div>
+                <div style={{fontSize:10,color:'var(--txt3)',display:'flex',gap:5}}>
                   {p.nivel!==null&&<span>{pisoLbl(p.nivel)}</span>}
                   <span>1:{p.scale}</span>
                 </div>
               </div>
               <button onClick={e=>{e.stopPropagation();setSelectedPlanId(p.id)}}
-                style={{padding:'3px 7px',background:'var(--bg2)',border:'1px solid var(--line)',borderRadius:'var(--r)',color:'var(--acc2)',cursor:'pointer',fontSize:10,fontFamily:'var(--mono)',flexShrink:0}} title="Vista previa">👁</button>
+                style={{padding:'3px 7px',background:'var(--bg2)',border:'1px solid var(--line)',borderRadius:'var(--r)',color:'var(--acc2)',cursor:'pointer',fontSize:10,flexShrink:0}} title="Vista previa">👁</button>
               <button onClick={e=>{e.stopPropagation();removePlano(p.id)}}
-                style={{padding:'3px 7px',background:'var(--bg3)',border:'1px solid var(--line)',borderRadius:'var(--r)',color:'var(--txt3)',cursor:'pointer',fontSize:10,fontFamily:'var(--mono)',flexShrink:0}} title="Eliminar">✕</button>
+                style={{padding:'3px 7px',background:'var(--bg3)',border:'1px solid var(--line)',borderRadius:'var(--r)',color:'var(--txt3)',cursor:'pointer',fontSize:10,flexShrink:0}} title="Eliminar">✕</button>
             </div>
           ))}
         </div>
@@ -559,7 +563,6 @@ return(
       {sanPage===1&&<CalculoUD />}
       {sanPage===2&&<DisenosSanitarios />}
       {sanPage===3&&<BajantesTable />}
-      <div style={{display:'none'}}><CalculoHidraulicoSanitario /></div>
     </div>
   )}
   {redActiva==='ll'&&redes.has('ll')&&(
@@ -569,7 +572,6 @@ return(
       {llPage===1&&<ChequeoBajantesLluvias />}
       {llPage===2&&<ChequeoCanalesLluvias />}
       {llPage===3&&<DisenoLluvias />}
-      <div style={{display:'none'}}><CalculoHidraulicoLluvias /></div>
     </div>
   )}
   {redActiva==='af'&&redes.has('af')&&(
@@ -630,7 +632,7 @@ const okLL=tramosLl.length>0&&tramosLl.every(validateTramo);
         <div className="card-b">
           {items.map(([k,v])=>(
             <div key={k} style={{display:'flex',gap:10,alignItems:'baseline',padding:'5px 8px',background:'var(--bg3)',borderRadius:'var(--r)',border:'1px solid var(--line)',marginBottom:4}}>
-              <span style={{fontFamily:'var(--mono)',fontSize:8,color:'var(--txt3)',minWidth:120,flexShrink:0,textTransform:'uppercase'}}>{k}</span>
+              <span style={{fontSize:8,color:'var(--txt3)',minWidth:120,flexShrink:0,textTransform:'uppercase'}}>{k}</span>
               <span style={{fontSize:11,fontWeight:500,color:String(v).includes('✗')?'var(--err)':String(v).includes('✓')?'var(--ok)':'var(--txt)'}}>{v}</span>
             </div>
           ))}
@@ -665,7 +667,7 @@ function PageNav({page, setPage, total, labels, color}) {
   return (
     <div style={{display:'flex',alignItems:'center',gap:8,justifyContent:'center',padding:'6px 0',flexShrink:0}}>
       <button onClick={()=>setPage(Math.max(1, page-1))} disabled={page<=1}
-        style={{padding:'6px 14px',border:'1px solid var(--line)',borderRadius:'var(--r)',background:'var(--bg3)',color:page<=1?'var(--txt3)':'var(--txt)',cursor:page<=1?'not-allowed':'pointer',fontSize:14,fontFamily:'var(--mono)',fontWeight:600,lineHeight:1}}>◀</button>
+        style={{padding:'6px 14px',border:'1px solid var(--line)',borderRadius:'var(--r)',background:'var(--bg3)',color:page<=1?'var(--txt3)':'var(--txt)',cursor:page<=1?'not-allowed':'pointer',fontSize:14,fontWeight:600,lineHeight:1}}>◀</button>
       {Array.from({length:total},(_,i)=>i+1).map(p=>(
         <button key={p} onClick={()=>setPage(p)}
           style={{padding:'6px 16px',border:`1.5px solid ${p===page?color||'var(--acc)':'var(--line)'}`,borderRadius:'var(--r)',
@@ -674,7 +676,7 @@ function PageNav({page, setPage, total, labels, color}) {
           textAlign:'center',whiteSpace:'nowrap'}}>{labels?.[p-1]||`Pág ${p}`}</button>
       ))}
       <button onClick={()=>setPage(Math.min(total, page+1))} disabled={page>=total}
-        style={{padding:'6px 14px',border:'1px solid var(--line)',borderRadius:'var(--r)',background:'var(--bg3)',color:page>=total?'var(--txt3)':'var(--txt)',cursor:page>=total?'not-allowed':'pointer',fontSize:14,fontFamily:'var(--mono)',fontWeight:600,lineHeight:1}}>▶</button>
+        style={{padding:'6px 14px',border:'1px solid var(--line)',borderRadius:'var(--r)',background:'var(--bg3)',color:page>=total?'var(--txt3)':'var(--txt)',cursor:page>=total?'not-allowed':'pointer',fontSize:14,fontWeight:600,lineHeight:1}}>▶</button>
     </div>
   );
 }
@@ -685,5 +687,5 @@ function MiniBtn({onClick,children}){
 }
 
 export default function CIVILFLOW(){
-  return <CIVILFLOWInner />;
+  return <ErrorBoundary><CIVILFLOWInner /></ErrorBoundary>;
 }

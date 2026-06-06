@@ -1,11 +1,11 @@
-import { useSanitario } from "../context/SanitarioContext";
-import { chequeoBajanteLluvia } from "../utils/calcSanitario";
+import { useRainwater } from "../context/RainwaterContext";
+import { chequeoBajanteLluvia } from "../utils/calcSanitary";
 import { parseDecimalInput } from "../utils/parseDecimal";
 import FloatingPanel, { thS, tdS, inputStyle, btnDelStyle, btnAddStyle, tableStyle } from "./FloatingPanel";
-import { R_OPTIONS } from "./constants";
+import { R_OPTIONS } from "../constants";
 
 export default function PanelBajantesLluvias({ onClose }) {
-  const { bajantesLl, addBajanteLL, delBajanteLL, updBajanteLL } = useSanitario();
+  const { bajantesLl, addBajanteLL, delBajanteLL, updBajanteLL } = useRainwater();
 
   return (
     <FloatingPanel title="Bajantes agua lluvias" icon="🌧️" count={`${bajantesLl.length} bajantes`} onClose={onClose} minW={580}>
