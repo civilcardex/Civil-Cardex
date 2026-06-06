@@ -1,11 +1,10 @@
-import { writeHidroDrawingSync } from './hidroDrawingSync';
-import { writeSanDrawingSync } from './sanDrawingSync';
+import { writeHidroDrawingSync } from './hydroDrawingSync';
+import { writeSanDrawingSync } from './sanitaryDrawingSync';
+import { safeParse } from './parseUtils';
 
 const TRAZOS_PREFIX = 'civilflow_trazos_';
 const HIDRO_FAMILIES = new Set(['af', 'ac']);
 const SAN_FAMILIES = new Set(['san', 'll']);
-
-function safeParse(raw, fb) { try { return JSON.parse(raw); } catch (_) { return fb; } }
 
 export function deleteRamalFromDrawing(ramalId, net, planos) {
   if (!ramalId || !net || !planos) return;

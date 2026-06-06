@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useSanitario } from "../context/SanitarioContext";
-import { MAT_COL, AF_UC_IDS, AC_UC_IDS, SAN_UC_IDS, APARATOS_DEF } from "./constants";
+import { useProject } from "../context/ProjectContext";
+import { useApparatus } from "../context/ApparatusContext";
+import { MAT_COL, AF_UC_IDS, AC_UC_IDS, SAN_UC_IDS, APARATOS_DEF, REDES_MAT, CAT_APS, CAT_GAS } from "../constants";
 
 function NumInput({ value, onCommit, color, width = 50, decimals = 2, disabled: isDisabled }) {
   const [text, setText] = useState(() => formatVal(value, decimals));
@@ -60,52 +61,10 @@ function formatVal(v, decimals) {
   return n.toFixed(decimals);
 }
 
-const REDES_MAT = [
-  { id: 'san', lbl: 'Sanitaria',        mat: 'PVC-S',                       prof: -0.70, fixed: true },
-  { id: 'll',  lbl: 'Aguas lluvias',    mat: 'PVC-S',                       prof: -0.50, fixed: true },
-  { id: 'ven', lbl: 'Ventilación',      mat: 'PVC-V',                       prof:  0.00, fixed: true },
-  { id: 'af',  lbl: 'Agua fría',        mat: 'PVC-PR',                      prof:  0.00, fixed: true },
-  { id: 'ac', lbl: 'Agua caliente', mat: 'PVC-PR', prof: -0.10, fixed: true },
-  { id: 'rci', lbl: 'Contra Incendio',  mat: 'A.C. SCH 40',      prof: -0.45,
-    opts: ['A.C. SCH 10', 'A.C. SCH 40', 'PVC C900 RDE 14', 'PVC C900 RDE 18', 'Acero HG'] },
-  { id: 'gas', lbl: 'Gas',              mat: 'PE al PE',                    prof: -0.15,
-    opts: ['Acero HG', 'A.C.', 'Cobre Rígido', 'Cobre Flexible', 'PE al PE', 'PEAD'] },
-];
-
-const CAT_APS = [
-  { id: 'sif',  n: 'Sifones',                 s: 'Sif',  ctrl: 'N.A.',                 af: 0,   ac: 0  },
-  { id: 'san',  n: 'Inodoro',                s: 'Ino',  ctrl: 'Tanque',               af: 2.2, ac: 0  },
-  { id: 'lvm',  n: 'Lavamanos',              s: 'Lvm',  ctrl: 'Llave',                af: 0.5, ac: 0.5},
-  { id: 'duc',  n: 'Ducha',                  s: 'Duc',  ctrl: 'Válvula de mezclado',  af: 1,   ac: 1  },
-  { id: 'lvp',  n: 'Lavaplatos Cocina',      s: 'Lvp',  ctrl: 'Grifería',             af: 1,   ac: 1  },
-  { id: 'tin',  n: 'Tina',                   s: 'Tin',  ctrl: 'Grifería',             af: 1,   ac: 1  },
-  { id: 'lvra', n: 'Lavadora',               s: 'Lvra', ctrl: 'Automático',           af: 1,   ac: 1  },
-  { id: 'lvro', n: 'Lavadero',               s: 'Lvro', ctrl: 'Grifería',             af: 1,   ac: 1  },
-  { id: 'nev',  n: 'Nevera',                 s: 'Nev',  ctrl: 'Llave',                af: 0.5, ac: 0  },
-  { id: 'lavav',n: 'Lavavajillas',           s: 'Lavav',ctrl: 'Llave',                af: 0,   ac: 1.5},
-];
-
-const CAT_GAS = [
-  { id: 'pisc',   n: 'Calentador de piscina',     s: 'Cpisc',   q: 6.08 },
-  { id: 'cal6',   n: 'Calentador P.D. Cap. 6 LPM',s: 'Cal 6LPM',q: 1.11 },
-  { id: 'cal11',  n: 'Calentador P.D. Cap. 11 LPM',s:'Cal 11LPM',q: 1.88 },
-  { id: 'cal21',  n: 'Calentador P.D. Cap. 21 LPM',s:'Cal 21LPM',q: 4.35 },
-  { id: 'jac',    n: 'Jacuzzi',                   s: 'Jac',     q: 3.38 },
-  { id: 'est2',   n: 'Estufa de 2 quemadores',    s: 'Est 2Q',  q: 0.68 },
-  { id: 'est4',   n: 'Estufa de 4 quemadores',    s: 'Est 4Q',  q: 1.35 },
-  { id: 'bt',     n: 'Baño turco',                s: 'BT',      q: 1.35 },
-  { id: 'bs',     n: 'Baño sauna',                s: 'BS',      q: 1.08 },
-  { id: 'hor_p',  n: 'Horno Pequeño',             s: 'HP',      q: 0.54 },
-  { id: 'hor_m',  n: 'Horno mediano',             s: 'HM',      q: 0.81 },
-  { id: 'hor_g',  n: 'Horno grande',              s: 'HG',      q: 1.15 },
-  { id: 'srp',    n: 'Secadora de Ropa Pequeña',  s: 'SRP',     q: 0.54 },
-  { id: 'srg',    n: 'Secadora de Ropa Grande',   s: 'SRG',     q: 0.81 },
-  { id: 'calp',   n: 'Caldera Pequeña',           s: 'Calp',    q: 1.76 },
-];
-
 export default function BaseDatos({ redes }) {
   const navigate = useNavigate();
-  const { mats, setMats, aps, setAps, profs, setProfs } = useSanitario();
+  const { mats, setMats, profs, setProfs } = useProject();
+  const { aps, setAps } = useApparatus();
   const [profTexts, setProfTexts] = useState({});
 
   const activeRedes = REDES_MAT.filter(r => redes?.has(r.id));

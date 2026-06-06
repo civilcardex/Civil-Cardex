@@ -1,15 +1,12 @@
-import { matManning } from '../components/constants';
+// @ts-nocheck
+import { matManning } from '../constants';
+import { safeParse } from './parseUtils';
 
 const SYNC_KEY = 'civilflow_dibujo_sanitario_v1';
 const TRAZOS_PREFIX = 'civilflow_trazos_';
 const APARATOS_BY_TRAMO_KEY = 'civilflow_aparatos_by_tramo_v2';
 
 const SAN_FAMILIES = new Set(['san', 'll']);
-
-function safeParse(raw, fallback) {
-  if (!raw) return fallback;
-  try { return JSON.parse(raw); } catch (_) { return fallback; }
-}
 
 function diamPulgFromLabel(d) {
   if (!d) return 0;

@@ -1,25 +1,15 @@
+// @ts-nocheck
 // ============================================
 // calcHidraulica.js - Calculo Red Hidraulica
 // Basado en NTC 1500, Hazen-Williams, Hunter
 // Casa de Roca No. 97 - Floridablanca, Santander
 // ============================================
 
-export const GRAVEDAD = 9.80665;
+import { factorSimultaneidad, caudalHunterLPS } from './calcSanitary';
+
 export const COEF_HAZEN_PVC = 150;
 export const COEF_HAZEN_CPVC = 150;
 export const COEF_HAZEN_COBRE = 130;
-
-// ─── Tabla de UC por aparato (NTC 1500) ───
-export const APARATOS_UC = [
-  { id: 'san', nombre: 'Inodoro (tanque)', uc_af: 2.2, uc_ac: 0, ud: 4, pmin: 0.71, pmax: 14.08, sigla: 'Ino' },
-  { id: 'lvm', nombre: 'Lavamanos', uc_af: 0.5, uc_ac: 0.5, ud: 2, pmin: 0.51, pmax: 5.63, sigla: 'Lvm' },
-  { id: 'duc', nombre: 'Ducha', uc_af: 1.0, uc_ac: 1.0, ud: 2, pmin: 1.02, pmax: 5.63, sigla: 'Duc' },
-  { id: 'lvp', nombre: 'Lavaplatos Cocina', uc_af: 1.0, uc_ac: 1.0, ud: 2, pmin: 0.51, pmax: 5.63, sigla: 'Lvp' },
-  { id: 'tin', nombre: 'Tina', uc_af: 1.0, uc_ac: 1.0, ud: 2, pmin: 0.51, pmax: 14.08, sigla: 'Tin' },
-  { id: 'lvra', nombre: 'Lavadora', uc_af: 1.0, uc_ac: 1.0, ud: 2, pmin: 0.51, pmax: 5.63, sigla: 'Lvra' },
-  { id: 'lvro', nombre: 'Lavadero', uc_af: 0.75, uc_ac: 0.75, ud: 2, pmin: 0.51, pmax: 5.63, sigla: 'Lvro' },
-  { id: 'nev', nombre: 'Nevera', uc_af: 0.5, uc_ac: 0, ud: 0, pmin: 0.51, pmax: 5.63, sigla: 'Nev' },
-];
 
 // ─── Diametros comerciales agua fria PVC (RDE 11/21) ───
 export const DIAMETROS_AF = [
@@ -84,23 +74,6 @@ export function getLe(accesorioId, diaPulg) {
   const idx = DIAM_LE.findIndex(d => d >= diaPulg);
   const i = idx >= 0 ? Math.min(idx, acc.le.length - 1) : acc.le.length - 1;
   return acc.le[i];
-}
-
-// ─── Factor de simultaneidad (Hunter modificado) ───
-export function factorSimultaneidad(numSalidas) {
-  if (numSalidas <= 1) return 1;
-  return 1 / Math.sqrt(numSalidas - 1);
-}
-
-// ─── Caudal de Hunter (Rodriguez Diaz) ───
-export function caudalHunterLPS(UC, K) {
-  let Quc;
-  if (UC < 240) {
-    Quc = K * 0.1163 * Math.pow(UC, 0.6875);
-  } else {
-    Quc = K * 0.074 * Math.pow(UC, 0.7504);
-  }
-  return Quc;
 }
 
 // ─── Seleccion de diametro comercial ───
@@ -180,15 +153,12 @@ export function calcularTramoHidraulico(params) {
     numSalidas = 1,
     Lh_m = 5.0,
     Lv_m = 0,
-    nudoIniAlt = '',
-    nudoFinAlt = '',
     presionRed_mca = 20.0,
     material = 'PVC',
     tipo = 'AF',
   } = params;
 
   const C = material === 'CPVC' ? COEF_HAZEN_CPVC : COEF_HAZEN_PVC;
-  const diametros = tipo === 'AC' ? DIAMETROS_AC : DIAMETROS_AF;
   const selDiam = tipo === 'AC'
     ? seleccionarDiametroAC
     : seleccionarDiametroAF;

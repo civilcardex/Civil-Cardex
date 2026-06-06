@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ============================================
 // calcSanitario.js - Calculo Red sanitaria
 // Basado en NTC 1500, RAS 2000, maning, Hunter
@@ -7,20 +8,6 @@
 export const GRAVEDAD = 9.80665;
 export const maning_SAN = 0.009;
 export const maning_SAN_VENT = 0.009;
-
-// ─── Tabla de UD por aparato (NTC 1500) ───
-export const APARATOS_UD = [
-  { id: 'sif', nombre: 'Sifones/Drenajes', ud: 2, dimSifon: 2 },
-  { id: 'lvm', nombre: 'Lavamanos', ud: 2, dimSifon: 1.25 },
-  { id: 'san', nombre: 'Inodoro', ud: 4, dimSifon: 0 },
-  { id: 'duc', nombre: 'Ducha', ud: 2, dimSifon: 1.5 },
-  { id: 'lvra', nombre: 'Lavadora', ud: 4, dimSifon: 2 },
-  { id: 'tin', nombre: 'Tina', ud: 2, dimSifon: 1.5 },
-  { id: 'lvp', nombre: 'Lavaplatos', ud: 2, dimSifon: 1.5 },
-  { id: 'lvro', nombre: 'Lavadero', ud: 2, dimSifon: 1.5 },
-  { id: 'ori', nombre: 'Orinal', ud: 5, dimSifon: 0 },
-  { id: 'flu', nombre: 'Sanitario fluxometro', ud: 6, dimSifon: 0 },
-];
 
 // ─── Tabla de tuberias sanitarias y ventilacion (del Excel) ───
 export const TUBERIAS_SAN = [
@@ -100,7 +87,7 @@ export function calcPropiedadesGeometricas(h_D) {
     A_D2,
     Rh_D,
     T_D,
-    A: (alpha) => (D_m) => A_D2 * D_m * D_m,
+    A: (_alpha: number) => (D_m: number) => A_D2 * D_m * D_m,
     Rh: Rh_D,
   };
 }
@@ -466,16 +453,12 @@ export function chequeoCanalLluvia({ areaAcumulada = 0, intensidad = 0, coeficie
 // ─── Chequeo canal cubierta ALL ───
 export function calcularCanalALL(params) {
   const {
-    sector = '',
     area_parcial = 0,
     area_acum = 0,
     intensidad = 100,
     C = 0.0278,
-    n = 0.01,
+    n = maning_SAN,
     pendiente = 0.02,
-    b_m = 0.30,
-    h_m = 0.40,
-    bordeLibre_m = 0.10,
   } = params;
 
   const Q_real = caudalRacional(C, intensidad, area_acum);

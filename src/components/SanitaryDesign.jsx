@@ -1,27 +1,19 @@
 import { useState, useMemo, useCallback } from "react";
-import { useSanitario } from "../context/SanitarioContext";
-import { usePlanos } from "../context/PlanosContext";
-import { calcUDparcial } from "./utils";
-import { pisoCorto, DIAM_OPTIONS, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN, SAN_UC_IDS, APARATOS_DEF } from "./constants";
-import { relacionesHidraulicas, caudalTuboLleno, velocidadTuboLleno, diametromaning, tipoRegimen, numeroFroude, tiranteCritico, caudalHunterLPS, factorSimultaneidad } from "../utils/calcSanitario";
-import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiametroToDrawing";
-
-function getTributarioIds(tramos) {
-  const tribSet = new Set();
-  for (const t of tramos) {
-    if (t.recibeDe) {
-      for (const id of t.recibeDe) tribSet.add(id);
-    }
-    if (t.descripcion) {
-      const ids = t.descripcion.split('+').map(s => s.trim()).filter(Boolean);
-      for (const id of ids) tribSet.add(id);
-    }
-  }
-  return tribSet;
-}
+import { useTramos } from "../context/TramosContext";
+import { useApparatus } from "../context/ApparatusContext";
+import { usePlanos } from "../context/PlansContext";
+import { calcUDparcial } from "../utils/componentHelpers";
+import { pisoCorto, DIAM_OPTIONS, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN, SAN_UC_IDS, APARATOS_DEF } from "../constants";
+import { diametromaning, caudalHunterLPS, factorSimultaneidad } from "../utils/calcSanitary";
+import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
+import { getTributarioIds } from "../utils/tramoUtils";
+import { calcHydraulicCheck } from "../utils/hydraulicCheck";
+import { useToggleMap } from "../hooks/useToggleMap";
+import HydraulicCalcTable from "./HydraulicCalcTable";
 
 export default function DisenosSanitarios() {
-  const { tramosSan, aps, updTramoSan, delTramoSan } = useSanitario();
+  const { tramosSan, updTramoSan, delTramoSan } = useTramos();
+  const { aps } = useApparatus();
   const { planos } = usePlanos();
 
   const handleDiamChange = useCallback((tramoId, newPulg) => {
@@ -46,18 +38,7 @@ const mergedBase = useMemo(() => {
   });
 }, [aps]);
 
-const [otrosSel, setOtrosSel] = useState(() => new Map());
-
-const toggleOtro = useCallback((tramoId, otroId) => {
-  setOtrosSel((prev) => {
-    const next = new Map(prev);
-    const set = new Set(next.get(tramoId) || []);
-    if (set.has(otroId)) set.delete(otroId);
-    else set.add(otroId);
-    next.set(tramoId, set);
-    return next;
-  });
-}, []);
+const [otrosSel, toggleOtro] = useToggleMap();
 
 const udMap = useMemo(() => {
   const m = {};
@@ -77,7 +58,8 @@ const totalUD = useMemo(() =>
 const tribIds = getTributarioIds(tramosSan);
 const displayTramos = tramosSan.filter(t => !tribIds.has(t.id));
 
-return (
+  return (
+  <>
   <div className="card">
     <div className="card-h">
       <span className="card-t"><img src="/iconos_diseno_redes/RS_Diseno.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Diseño Red sanitaria</span>
@@ -148,22 +130,10 @@ DcalcPulg=Math.round(diametromaning(Q/1000,n,S)*1000/25.4*100)/100;
 if(DdisPulg>0){chequeo=DcalcPulg<=DdisPulg?'O.K.':'NO CUMPLE';}
 }
 if(Q!=null&&Q>0&&S!=null&&S>0&&n!=null&&n>0&&DintMm>0){
-Qo=Math.round(caudalTuboLleno(DintMm/1000,n,S)*1000*100)/100;
-Vo=Math.round(velocidadTuboLleno(DintMm/1000,n,S)*100)/100;
-qqo=Qo>0?Math.round(Q/Qo*100)/100:0;
-const q=Qo>0?Q/Qo:0;
-const rel=relacionesHidraulicas(q);
-Vreal=Math.round(rel.v_V0*Vo*100)/100;
-chequeoV=(Vreal<V_MIN||Vreal>V_MAX)?'NO CUMPLE':'O.K.';
-const Rh=rel.Rh_D*DintMm;
-Yc=Math.round(tiranteCritico(DintMm/1000,Q/1000)*1000*100)/100;
-Yn=Math.round(rel.h_D*DintMm*100)/100;
-Ymax=Math.round(DintMm*Y_D_MAX*100)/100;
-chequeoYn=Math.max(Yc,Yn)<Ymax?'O.K.':'NO CUMPLE';
-Froude=Math.round(numeroFroude(Vreal,rel.Rh_D*DintMm/1000)*100)/100;
-tipoFlujo=tipoRegimen(Froude)==='Supercritico'?'Supercrítico':tipoRegimen(Froude)==='Subcritico'?'Subcrítico':'Crítico';
-fuerzaTractiva=Math.round(1000*Rh/1000*S*100)/100;
-chequeoFT=fuerzaTractiva>FUERZA_TRACTIVA_MIN?'O.K.':'NO CUMPLE';
+const hc = calcHydraulicCheck({ Q, S, n, DintMm, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN });
+Qo = hc.Qo; Vo = hc.Vo; qqo = hc.qqo; Vreal = hc.Vreal; chequeoV = hc.chequeoV;
+Yc = hc.Yc; Yn = hc.Yn; Froude = hc.Froude; tipoFlujo = hc.tipoFlujo;
+Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; chequeoFT = hc.chequeoFT;
         }
         return(
         <tr key={t.id}>
@@ -234,5 +204,6 @@ chequeoFT=fuerzaTractiva>FUERZA_TRACTIVA_MIN?'O.K.':'NO CUMPLE';
       </div>
     </div>
   </div>
-);
+  <HydraulicCalcTable tramos={tramosSan} mode="sanitary" titleIcon="♻️" titleText="Cálculo de Vreal, Y real, Rh real" colorVar="var(--txt)" />
+  </>);
 }
