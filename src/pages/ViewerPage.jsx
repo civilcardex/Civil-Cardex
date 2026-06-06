@@ -2,12 +2,12 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import PdfViewer from '../components/PdfViewer';
-import { usePlanos } from '../context/PlanosContext';
-import { useSanitario } from '../context/SanitarioContext';
+import { usePlanos } from '../context/PlansContext';
+import { useProject } from '../context/ProjectContext';
 
 function ViewerInner() {
   const { planos, addPlanos, removePlano } = usePlanos();
-  const { pisos } = useSanitario();
+  const { pisos } = useProject();
   const [activeIndex, setActiveIndex] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const fileRef = useRef();

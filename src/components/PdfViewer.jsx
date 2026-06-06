@@ -1,27 +1,16 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import PlanoEngine, { NETS } from "./PlanoEngine";
-import { pisoLbl, matLongName } from "./constants";
-import { useSanitario } from "../context/SanitarioContext";
-import { usePlanos } from "../context/PlanosContext";
-import { writeSanDrawingSync } from "../utils/sanDrawingSync";
-import { writeHidroDrawingSync } from "../utils/hidroDrawingSync";
-import AparatosPanel from "./AparatosPanel";
+import PlanoEngine, { NETS } from "../lib/PlanoEngine";
+import { pisoLbl, matLongName } from "../constants";
+import { useProject } from "../context/ProjectContext";
+import { usePlanos } from "../context/PlansContext";
+import { writeSanDrawingSync } from "../utils/sanitaryDrawingSync";
+import { writeHidroDrawingSync } from "../utils/hydroDrawingSync";
+import AparatosPanel from "./FixturesPanel";
+import PdfViewerToolbar from "./PdfViewerToolbar";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
-
-const TOOLS = [
-  { id: "sel", label: "Seleccionar", ico: "🖱", key: "S", icoCol: "#849495", shortcut: "S" },
-  { id: "line", label: "Ramal/Tributario", ico: "╱", key: "L", icoCol: "#4D8FF7", shortcut: "L" },
-  { id: "area", label: "Área", ico: "⬡", key: "A", icoCol: "#22D3EE", shortcut: "A" },
-  { id: "dim", label: "Cota", ico: "📏", key: "D", icoCol: "#22D3EE", shortcut: "D" },
-  { id: "text", label: "Texto", ico: "T", key: "T", icoCol: "#A855F7", shortcut: "T" },
-  { id: "baj", label: "Bajante", ico: "↓", key: "B", icoCol: "#F04545", shortcut: "B" },
-  { id: "segdel", label: "Eliminar segmento", ico: "✂", key: "K", icoCol: "#ffb4ab", shortcut: "K" },
-  { id: "erase", label: "Eliminar ramal/tributario", ico: "🧹", key: "E", icoCol: "#ffb4ab", shortcut: "E" },
-  { id: "pan", label: "Mover", ico: "✋", key: "Espacio", icoCol: "#10B981", shortcut: "Espacio" },
-];
 
 const TIPOS_TRAMO = [
   { id: "ramal", label: "Ramal" },
@@ -110,7 +99,7 @@ const DIAM_DEFAULT_BY_NET = {
 };
 
 export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan, pisos=[], planos=[], activeNetworks }) {
-  const { mats } = useSanitario();
+  const { mats } = useProject();
   const planosCtx = usePlanos();
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
@@ -150,6 +139,22 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
       }
     }
   }, [selectedNivel, planos]);
+
+  useEffect(() => {
+    if (selElement?.net) {
+      setActiveNet(selElement.net);
+    }
+  }, [selElement]);
+
+  useEffect(() => {
+    if (!engineRef.current) return;
+    const els = engineRef.current.getElementsByNet(activeNet);
+    if (els.length > 0 && selElement?.net !== activeNet) {
+      setSelElement(els[els.length - 1]);
+    } else if (els.length === 0) {
+      setSelElement(null);
+    }
+  }, [activeNet]);
 
 const currentFile = files[activeIndex]?.file;
 const currentId = files[activeIndex]?.id;
@@ -693,39 +698,12 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
             : saveStatus === 'saving' ? '#3b82f6'
             : '#ef4444',
         }} />
-        {/* Herramientas */}
-        <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Herramientas</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {TOOLS.map(t => (
-              <button key={t.id} onClick={() => setTool(t.id)} title={`${t.label} (${t.shortcut})`} style={{
-                padding: "5px 8px", background: tool === t.id ? "#2563EB" : "#1e2024",
-                border: `1px solid ${tool === t.id ? "#2563EB" : "#3a494a"}`, borderRadius: "3px",
-                color: "#b9caca", cursor: "pointer",
-                fontFamily: "'Geist',monospace", fontWeight: 600, transition: "all .12s",
-                display: "flex", alignItems: "center", gap: 6, width: "100%",
-              }}>
-                <span style={{ fontSize: 14, width: 18, textAlign: "center", color: tool === t.id ? "#fff" : t.icoCol }}>{t.ico}</span>
-                <span style={{ fontSize: 10, flex: 1, textAlign: 'left' }}>{t.label}</span>
-                <span style={{ fontSize: 8, color: tool === t.id ? 'rgba(255,255,255,.6)' : '#6b8cae', fontFamily: "'Geist',monospace", marginLeft: 'auto' }}>{t.shortcut}</span>
-              </button>
-            ))}
-          </div>
-          <div style={{marginTop:4}}>
-            <button onClick={()=>setSnapOn(!snapOn)}
-              style={{
-                padding: "5px 8px", background: snapOn ? "#10B98122" : "#1e2024",
-                border: `1px solid ${snapOn ? "#10B981" : "#3a494a"}`, borderRadius: "3px",
-                color: snapOn ? "#10B981" : "#849495", cursor: "pointer",
-                fontFamily: "'Geist',monospace", fontWeight: 600, transition: "all .12s",
-                display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 10,
-              }}>
-              <span style={{fontSize:14,width:18,textAlign:"center",color:snapOn?"#10B981":"#6b8cae"}}>{snapOn?'◉':'○'}</span>
-              <span style={{flex:1}}>Snap</span>
-              <span style={{fontSize:8,color:snapOn?'rgba(255,255,255,.6)':'#6b8cae',fontFamily:"'Geist',monospace"}}>G</span>
-            </button>
-          </div>
-        </div>
+        <PdfViewerToolbar
+          tool={tool}
+          snapOn={snapOn}
+          onSelectTool={setTool}
+          onSnapToggle={() => setSnapOn(!snapOn)}
+        />
 
         {/* Acciones */}
         <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
@@ -1084,14 +1062,7 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
                     style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
                 </div>
               )}
-              {selElement.pts && (activeNet === 'gas' || activeNet === 'ac' || activeNet === 'af') && (
-                <div>
-                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>ΔZ / L vert (m)</div>
-                  <input type="number" step="0.01" value={selElement.dz ?? ''} placeholder="0.00"
-                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({dz:v,lvert:v});setSelElement({...selElement,dz:v,lvert:v})}}}
-                    style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",textAlign:'center',minWidth:0}}/>
-                </div>
-              )}
+              {/* ΔZ moved to Datos específicos for AF/AC */}
               {selElement.pts&&(
                 <div style={{fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace"}}>
                   L={selElement.totalL}m · {selElement.pts.length} pts
@@ -1142,6 +1113,8 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
             ? selElement.diametro
             : (diamSel[activeNet] || DIAM_DEFAULT_BY_NET[activeNet] || (diamList[0]?.n || ''));
         const showPend = activeNet === 'san' || activeNet === 'll';
+        const showDeltaZ = activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas';
+        const showDescargas = activeNet === 'af' || activeNet === 'ac' || activeNet === 'san';
           return (
             <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
               <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos específicos</div>
@@ -1216,6 +1189,32 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
                   </div>
                   )}
                 </div>
+                {showDeltaZ && (
+                  <div style={{ display: 'grid', gridTemplateColumns: showDescargas ? '1fr 1fr' : '1fr', gap: 6 }}>
+                    <div>
+                      <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>ΔZ / L vert (m)</div>
+                      <input type="number" step="0.01" value={selElement?.dz ?? ''} placeholder="0.00"
+                        onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({dz:v,lvert:v});setSelElement({...selElement,dz:v,lvert:v})}}}
+                        style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
+                    </div>
+                    {showDescargas && (
+                      <div>
+                        <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}># Descargas</div>
+                        <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0"
+                          onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||0;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
+                          style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {!showDeltaZ && showDescargas && (
+                  <div>
+                    <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}># Descargas</div>
+                    <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0"
+                      onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||0;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
+                      style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
+                  </div>
+                )}
               </div>
             </div>
           );

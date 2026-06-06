@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useSanitario } from "../context/SanitarioContext";
-import { FILTROS_NORM, CRIT0 } from "./constants";
+import { useState, type ReactNode } from "react";
+import { useProject } from "../../context/ProjectContext";
+import { FILTROS_NORM, CRIT0 } from "../../constants";
+import NormaCard from "./RegulationCard";
 
 const SECCIONES = [
   {
@@ -47,22 +48,20 @@ const SECCIONES = [
   },
 ];
 
-const RED_ALL = ["af", "ac", "san", "ll", "gas", "rci"];
-
 export default function Normativa() {
-const [filtro, setFiltro] = useState("todos");
-const [abiertas, setAbiertas] = useState({});
-const [vista, setVista] = useState("referencias");
+  const [filtro, setFiltro] = useState("todos");
+  const [abiertas, setAbiertas] = useState<Record<string, boolean>>({});
+  const [vista, setVista] = useState("referencias");
 
-const { crits, setCrits } = useSanitario();
-const [critFil, setCritFil] = useState('todos');
+  const { crits, setCrits } = useProject();
+  const [critFil, setCritFil] = useState('todos');
 
   const secFiltradas = SECCIONES.filter((s) => {
     if (filtro === "todos") return true;
     return s.redes.includes(filtro);
   });
 
-  const toggleSeccion = (id) => {
+  const toggleSeccion = (id: string) => {
     setAbiertas(prev => ({...prev, [id]: !prev[id]}));
   };
 
@@ -184,32 +183,24 @@ const [critFil, setCritFil] = useState('todos');
       )}
 
       {/* Secciones */}
-      {secFiltradas.map((sec) => {
-        const isOpen = !!abiertas[sec.id];
-        return (
-          <div className={`card${isOpen ? ' sec-open' : ''}`} key={sec.id}
-            style={{ borderTop: '1px solid var(--line)', borderRadius: 0 }}>
-            <div className="card-h" onClick={() => toggleSeccion(sec.id)}
-              style={{ cursor: "pointer", userSelect: "none" }}>
-              <div>
-                <span className="card-t" style={{ fontSize: 15 }}>{sec.titulo}</span>
-                <span style={{ display:"block", fontSize:11, fontFamily:"var(--mono)", marginTop:2 }}>{sec.subt}</span>
-              </div>
-              <span style={{ fontSize:14 }}>{isOpen ? '▲' : '▼'}</span>
-            </div>
-            {isOpen && (
-              <div className="card-body-wrap">
-                <ContenidoSeccion id={sec.id} />
-              </div>
-            )}
-          </div>
-        );
-      })}
+      {secFiltradas.map((sec) => (
+        // @ts-expect-error TSX parser limitation in large file
+        <NormaCard
+          key={sec.id}
+          id={sec.id}
+          titulo={sec.titulo}
+          subt={sec.subt}
+          isOpen={!!abiertas[sec.id]}
+          onToggle={toggleSeccion}
+        >
+          <ContenidoSeccion id={sec.id} />
+        </NormaCard>
+      ))}
     </div>
   );
 }
 
-function ContenidoSeccion({ id }) {
+function ContenidoSeccion({ id }: { id: string }) {
   switch (id) {
     case "ntc1500":
       return <NTC1500 />;
@@ -230,11 +221,9 @@ function ContenidoSeccion({ id }) {
   }
 }
 
-// content sections (NTC1500, RAS2000, etc.) - increase padding
 function NTC1500() {
   return (
     <div className="card-b" style={{ padding: "18px" }}>
-      {/* 1.1 Dotaciones */}
       <h4 style={h4}>1.1 Dotaciones de diseño (§4)</h4>
       <table className="tbl" style={{ fontSize: 12 }}>
         <thead>
@@ -265,7 +254,6 @@ function NTC1500() {
         </tbody>
       </table>
 
-      {/* 1.2 Unidades de consumo */}
       <h4 style={h4}>1.2 Unidades de consumo UC (Tabla 1 — §5)</h4>
       <table className="tbl" style={{ fontSize: 12 }}>
         <thead>
@@ -305,7 +293,6 @@ function NTC1500() {
         </tbody>
       </table>
 
-      {/* 1.4 Hazen-Williams */}
       <h4 style={h4}>1.4 Cálculo hidráulico — Hazen-Williams (§5.4)</h4>
       <div className="ib info" style={{ fontSize: 12, padding: "10px 14px" }}>
         <span>∑</span>
@@ -360,7 +347,6 @@ function NTC1500() {
         </tbody>
       </table>
 
-      {/* 1.7 UD */}
       <h4 style={h4}>1.7 Unidades de Desagüe UD (Tabla 2 — §8)</h4>
       <table className="tbl" style={{ fontSize: 12 }}>
         <thead>
@@ -397,7 +383,6 @@ function NTC1500() {
         </tbody>
       </table>
 
-      {/* 1.8 Pendientes */}
       <h4 style={h4}>1.8 Pendientes mínimas (§8.3)</h4>
       <table className="tbl" style={{ fontSize: 12 }}>
         <thead>
@@ -428,7 +413,6 @@ function NTC1500() {
         <span>NTC 1500 permite S = 1% para D ≥ 2" con justificación hidráulica.</span>
       </div>
 
-      {/* 1.9 Capacidad UD */}
       <h4 style={h4}>1.9 Capacidad máxima de desagüe por diámetro (Tabla 3 — §8.4)</h4>
       <table className="tbl" style={{ fontSize: 12 }}>
         <thead>
@@ -459,7 +443,6 @@ function NTC1500() {
         </tbody>
       </table>
 
-      {/* 1.10 Ventilación */}
       <h4 style={h4}>1.10 Ventilación (§9)</h4>
       <table className="tbl" style={{ fontSize: 12 }}>
         <thead>
@@ -492,7 +475,6 @@ function NTC1500() {
   );
 }
 
-/* ═══════════════════ RAS 2000 ═══════════════════ */
 function RAS2000() {
   return (
     <div className="card-b" style={{ padding: "18px" }}>
@@ -634,7 +616,6 @@ function RAS2000() {
   );
 }
 
-/* ═══════════════════ NTC 3728:2014 ═══════════════════ */
 function NTC3728() {
   return (
     <div className="card-b" style={{ padding: "18px" }}>
@@ -732,7 +713,6 @@ function NTC3728() {
   );
 }
 
-/* ═══════════════════ NSR-10 Título J ═══════════════════ */
 function NSR10() {
   return (
     <div className="card-b" style={{ padding: "18px" }}>
@@ -793,7 +773,6 @@ function NSR10() {
   );
 }
 
-/* ═══════════════════ NFPA 13:2022 ═══════════════════ */
 function NFPA13() {
   return (
     <div className="card-b" style={{ padding: "18px" }}>
@@ -879,7 +858,6 @@ function NFPA13() {
   );
 }
 
-/* ═══════════════════ NTC 3096 ═══════════════════ */
 function NTC3096() {
   return (
     <div className="card-b" style={{ padding: "18px" }}>
@@ -914,7 +892,6 @@ function NTC3096() {
   );
 }
 
-/* ═══════════════════ Tablas de Referencia ═══════════════════ */
 function TablasRef() {
   return (
     <div className="card-b" style={{ padding: "18px" }}>
@@ -1029,11 +1006,12 @@ function TablasRef() {
               <tr key={i}>
                 <td>
                   <span
+                    className="td-mono"
                     style={{
                       color: col,
                       fontWeight: 600,
                       fontSize: 10,
-                      fontFamily: "var(--mono)",
+                      
                     }}
                   >
                     {red}
@@ -1041,7 +1019,7 @@ function TablasRef() {
                 </td>
                 <td style={{ fontWeight: 500 }}>{param}</td>
                 <td className="c">{crit}</td>
-                <td className="c" style={{ fontFamily: "var(--mono)", fontSize: 10 }}>
+                <td className="c td-mono" style={{  fontSize: 10 }}>
                   {norm}
                 </td>
               </tr>
@@ -1088,7 +1066,7 @@ function TablasRef() {
   );
 }
 
-function TabBtn({ active, onClick, children }) {
+function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children?: ReactNode; key?: any }) {
   return (
     <button onClick={onClick}
       style={{
@@ -1102,7 +1080,7 @@ function TabBtn({ active, onClick, children }) {
   );
 }
 
-function FilterBtn({ active, onClick, children }) {
+function FilterBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children?: ReactNode; key?: any }) {
   return (
     <button onClick={onClick}
       style={{
