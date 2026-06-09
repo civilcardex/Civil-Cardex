@@ -21,7 +21,7 @@ export default function CalculoUC({ tipo }: CalculoUCProps) {
   const colorVar = tipo === 'af' ? 'var(--af)' : 'var(--ac)';
   const clsHeader = tipo === 'af' ? 'af' : 'ac';
   const icon = tipo === 'af' ? 'RAF_Calculo_UC.webp' : 'RAC_Calculo_UC.webp';
-  const title = tipo === 'af' ? 'Agua Fr\u00EDa' : 'Agua caliente';
+  const title = tipo === 'af' ? 'agua fr\u00EDa' : 'agua caliente';
   const showTotal = tipo === 'af';
 
   const AP = ucIds.map(id => {
@@ -44,7 +44,7 @@ export default function CalculoUC({ tipo }: CalculoUCProps) {
     <>
       <div className="card">
         <div className="card-h">
-          <span className="card-t"><img src={`/iconos_diseno_redes/${icon}`} alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> C&aacute;lculo Unidades de Consumo {title}</span>
+          <span className="card-t"><img src={`/iconos_diseno_redes/${icon}`} alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> C&aacute;lculo de unidades de consumo {title}</span>
           <span className="card-s">{tramos.length} tramos</span>
         </div>
         <div className="scroll-top" style={{padding:'16px'}}>

@@ -7,7 +7,7 @@ export default function ChequeoBajantesLluvias() {
   return (
     <div className="card">
       <div className="card-h">
-        <span className="card-t">🌧️ Chequeo capacidad bajantes agua lluvias</span>
+        <span className="card-t"><img src="/iconos_diseno_redes/RALL_Chequeo_bajantes.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Chequeo capacidad bajantes aguas lluvias</span>
       </div>
       <div className="scroll-top" style={{padding:'16px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>

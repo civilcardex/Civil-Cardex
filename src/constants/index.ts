@@ -117,8 +117,8 @@ export const NAV_TABS=[
   {id:'datos', l:'Parámetros de diseño', ico:'📊', icoImg:'/iconos_parametros_de_diseno/materiales_por_red.webp'},
   {id:'visor', l:'Dibujo de Redes',      ico:'✏️', icoImg:'/iconos_aparatos/dibujo_de_redes.webp'},
   {id:'redes', l:'Diseño de redes',      ico:'🔧', icoImg:'/iconos_diseno_redes/diseno_redes.webp'},
-  {id:'inf',   l:'Informes',             ico:'📄'},
-  {id:'crit',  l:'Normativa',            ico:'§'},
+  {id:'inf',   l:'Informes',             ico:'📄', icoImg:'/Informes.webp'},
+  {id:'crit',  l:'Normativa',            ico:'§',  icoImg:'/normativa.webp'},
 ];
 
 export const INFO_SUBTABS=[

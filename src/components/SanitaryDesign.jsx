@@ -62,7 +62,7 @@ const displayTramos = tramosSan.filter(t => !tribIds.has(t.id));
   <>
   <div className="card">
     <div className="card-h">
-      <span className="card-t"><img src="/iconos_diseno_redes/RS_Diseno.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Diseño Red sanitaria</span>
+      <span className="card-t"><img src="/iconos_diseno_redes/RS_Diseno.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Diseño de red sanitaria</span>
       <span className="card-s">{tramosSan.length} tramos · {totalUD} UD totales</span>
     </div>
     <div className="scroll-top" style={{padding:'16px'}}>
@@ -204,6 +204,6 @@ Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; ch
       </div>
     </div>
   </div>
-  <HydraulicCalcTable tramos={tramosSan} mode="sanitary" titleIcon="♻️" titleText="Cálculo de Vreal, Y real, Rh real" colorVar="var(--txt)" />
+  <div style={{display:"none"}}><HydraulicCalcTable tramos={tramosSan} mode="sanitary" titleIcon="♻️" titleText="Cálculo de Vreal, Y real, Rh real" colorVar="var(--txt)" /></div>
   </>);
 }
