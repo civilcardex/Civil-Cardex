@@ -83,7 +83,7 @@ function LandingPage() {
           transition: max-height 0.4s cubic-bezier(.4,0,.2,1), opacity 0.35s ease, border-color 0.35s;
         }
         .desc-panel.active {
-          max-height: 200px;
+          max-height: 280px;
           opacity: 1;
         }
         .hero-logo-glow { animation: logoPulse 4s ease-in-out infinite; }
@@ -99,38 +99,40 @@ function LandingPage() {
       <Navbar />
 
       {/* ===== HERO ===== */}
-      <section className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden">
+      <section className="relative w-full h-screen flex flex-col overflow-hidden">
         {/* Background layers */}
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center top, #0d1a2e 0%, #0a0e14 60%)' }} />
         <div className="absolute inset-0 hero-bg-grid" />
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-[120px] hero-logo-glow pointer-events-none"
           style={{ background: 'rgba(0,170,255,0.12)' }} />
 
-        {/* Logo + Branding */}
-        <div className="relative z-10 flex flex-col items-center text-center px-4" style={{ marginTop: '-20vh' }}>
-          <div className="relative mb-6 p-5 rounded-2xl"
-            style={{ background: 'radial-gradient(circle at center, rgba(0,170,255,0.08) 0%, transparent 70%)', backdropFilter: 'blur(4px)', border: '1px solid rgba(0,170,255,0.1)' }}>
-            <img src="/logos/civilCorelogo.webp" alt="CivilCore"
-              className="w-36 h-36 md:w-44 md:h-44 object-contain"
-              style={{ filter: 'drop-shadow(0 0 80px rgba(0,170,255,0.5))' }} />
+        {/* Logo + Branding — upper area */}
+        <div className="relative z-10 flex-1 flex items-center justify-center px-4" style={{ paddingTop: '10vh', paddingBottom: '2vh' }}>
+          <div className="flex flex-col items-center text-center">
+            <div className="relative mb-4 md:mb-6 p-4 md:p-5 rounded-2xl"
+              style={{ background: 'radial-gradient(circle at center, rgba(0,170,255,0.08) 0%, transparent 70%)', backdropFilter: 'blur(4px)', border: '1px solid rgba(0,170,255,0.1)' }}>
+              <img src="/logos/civilCorelogo.webp" alt="CivilCore"
+                className="w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 object-contain"
+                style={{ filter: 'drop-shadow(0 0 80px rgba(0,170,255,0.5))' }} />
+            </div>
+            <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black tracking-tight uppercase mb-3 md:mb-4"
+              style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
+              <span style={{ color: '#e8f4fd' }}>CIVIL</span>
+              <span style={{ color: '#00dce5' }}>CORE</span>
+            </h1>
+            <p className="text-xs sm:text-sm md:text-base tracking-[0.35em] uppercase font-semibold"
+              style={{ color: '#6b8cae', fontFamily: 'Geist, monospace' }}>
+              DISEÑA. ANALIZA. OPTIMIZA. CONSTRUYE.
+            </p>
           </div>
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight uppercase mb-4"
-            style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
-            <span style={{ color: '#e8f4fd' }}>CIVIL</span>
-            <span style={{ color: '#00dce5' }}>CORE</span>
-          </h1>
-          <p className="text-sm md:text-base tracking-[0.35em] uppercase font-semibold"
-            style={{ color: '#6b8cae', fontFamily: 'Geist, monospace' }}>
-            DISEÑA. ANALIZA. OPTIMIZA. CONSTRUYE.
-          </p>
         </div>
 
-        {/* 7 Module Cards — bottom row */}
-        <div className="absolute bottom-24 left-0 right-0 z-10 px-4">
-          <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 md:gap-4">
+        {/* 7 Module Cards — bottom area */}
+        <div className="relative z-10 px-4 pb-6 sm:pb-8 md:pb-10">
+          <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 md:gap-4">
             {MODULOS_HERO.map((m, i) => (
               <div key={m.id}
-                className="hero-mod-card flex flex-col items-center text-center p-3 md:p-4 border rounded-lg relative"
+                className="hero-mod-card flex flex-col items-center text-center p-2 sm:p-3 md:p-4 border rounded-lg relative"
                 style={{ '--mod-color': m.color,
                   background: 'rgba(10,14,20,0.6)',
                   backdropFilter: 'blur(8px)',
@@ -141,54 +143,55 @@ function LandingPage() {
                 onClick={() => handleClick(m.path)}>
                 <div className="mod-glow absolute inset-0 rounded-lg pointer-events-none"
                   style={{ background: `radial-gradient(circle at center, ${m.color}0c 0%, transparent 70%)` }} />
-                <div className="w-20 h-20 md:w-24 md:h-24 flex items-center justify-center mb-3 relative z-10 rounded-xl"
+                <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 flex items-center justify-center mb-2 md:mb-3 relative z-10 rounded-xl"
                   style={{ background: 'radial-gradient(circle at center, rgba(0,170,255,0.04) 0%, transparent 70%)' }}>
-                  <img src={m.logo} alt={m.name} className="mod-logo w-full h-full object-contain p-2" />
+                  <img src={m.logo} alt={m.name} className="mod-logo w-full h-full object-contain p-1 sm:p-2" />
                 </div>
-                <span className="text-xs md:text-sm font-bold uppercase tracking-wider relative z-10"
+                <span className="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider relative z-10"
                   style={{ color: m.color, fontFamily: 'Hanken Grotesk, sans-serif' }}>
                   {m.name.replace('Civil', '')}
                 </span>
-                <span className="text-[9px] md:text-[10px] text-center mt-1.5 relative z-10 uppercase tracking-wider leading-tight"
+                <span className="text-[8px] sm:text-[9px] md:text-[10px] text-center mt-1 md:mt-1.5 relative z-10 uppercase tracking-wider leading-tight"
                   style={{ color: '#6b8cae', fontFamily: 'Geist, monospace', fontWeight: 600 }}>
                   {MOD_SUB[m.id]}
                 </span>
               </div>
             ))}
           </div>
-
         </div>
       </section>
 
       {/* ===== DESCRIPTION PANEL — below hero, slides down ===== */}
       <div className={`desc-panel border-t-2 border-b-2 ${hovered ? 'active' : ''}`}
         style={{ background: 'rgba(10,14,20,0.95)', backdropFilter: 'blur(16px)',
-          borderColor: hovered ? hovered.color : 'transparent', marginTop: -96 }}>
-        <div className="max-w-6xl mx-auto px-6 lg:px-8 py-5 flex flex-col md:flex-row gap-6 items-start">
+          borderColor: hovered ? hovered.color : 'transparent' }}>
+        <div className="max-w-6xl mx-auto px-6 lg:px-8 py-5 flex flex-col md:flex-row gap-5 items-start">
           {hovered ? (
             <>
-              <div className="flex items-center gap-4 flex-shrink-0">
-                <div className="w-12 h-12 border rounded-lg flex items-center justify-center"
+              <div className="flex items-center gap-4 flex-shrink-0 min-w-fit">
+                <div className="w-14 h-14 border rounded-lg flex items-center justify-center flex-shrink-0"
                   style={{ borderColor: hovered.color + '44', background: hovered.color + '0a' }}>
-                  <img src={hovered.logo} alt={hovered.name} className="w-8 h-8 object-contain"
+                  <img src={hovered.logo} alt={hovered.name} className="w-10 h-10 object-contain"
                     style={{ filter: `drop-shadow(0 0 6px ${hovered.color}55)` }} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold" style={{ color: hovered.color, fontFamily: 'Hanken Grotesk, sans-serif' }}>{hovered.name}</h3>
-                  <p className="text-xs uppercase tracking-widest" style={{ color: '#6b8cae', fontFamily: 'Geist, monospace' }}>
+                  <h3 className="text-lg font-bold whitespace-nowrap" style={{ color: hovered.color, fontFamily: 'Hanken Grotesk, sans-serif' }}>{hovered.name}</h3>
+                  <p className="text-xs uppercase tracking-widest whitespace-nowrap" style={{ color: '#6b8cae', fontFamily: 'Geist, monospace' }}>
                     {MOD_SUB[hovered.id].charAt(0) + MOD_SUB[hovered.id].slice(1).toLowerCase()}
                   </p>
                 </div>
               </div>
-              <p className="text-sm leading-relaxed flex-1" style={{ color: '#8a9bb0' }}>{hovered.desc}</p>
-              <div className="flex flex-wrap gap-2 flex-shrink-0">
-                {hovered.cats.map(c => (
-                  <span key={c} className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 border rounded"
-                    style={{ borderColor: hovered.color + '33', color: hovered.color, fontFamily: 'Geist, monospace', fontWeight: 600 }}>
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: hovered.color }} />
-                    {c}
-                  </span>
-                ))}
+              <div className="flex-1 flex flex-col gap-3 min-w-0">
+                <p className="text-sm leading-relaxed" style={{ color: '#8a9bb0' }}>{hovered.desc}</p>
+                <div className="flex flex-wrap gap-2">
+                  {hovered.cats.map(c => (
+                    <span key={c} className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 border rounded"
+                      style={{ borderColor: hovered.color + '33', color: hovered.color, fontFamily: 'Geist, monospace', fontWeight: 600 }}>
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: hovered.color }} />
+                      {c}
+                    </span>
+                  ))}
+                </div>
               </div>
             </>
           ) : <div style={{ minHeight: 1 }} />}
@@ -255,10 +258,13 @@ function LandingPage() {
             CivilCore — de los datos del proyecto a la memoria de cálculo exportable, con verificación normativa automática.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
-            <Link to="/civilflowareatrabajo" className="bg-primary text-on-primary px-10 py-4 uppercase text-[11px] tracking-[0.1em] font-bold hover:bg-primary-container transition-all"
+            <Link to="/civilflowareatrabajo" className="hidden md:inline-block bg-primary text-on-primary px-10 py-4 uppercase text-[11px] tracking-[0.1em] font-bold hover:bg-primary-container transition-all"
               style={{ fontFamily: 'Geist, monospace', boxShadow: '0 0 20px rgba(0,245,255,0.3)' }}>
               EMPEZAR AHORA
             </Link>
+            <span className="md:hidden text-sm px-6 py-3 text-center" style={{ color: '#f5a623', fontFamily: 'Geist, monospace', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 4 }}>
+              Disponible solo en escritorio
+            </span>
             <Link to="/docs" className="border border-outline-variant px-10 py-4 uppercase text-[11px] tracking-[0.1em] font-bold hover:border-primary hover:text-primary transition-all"
               style={{ fontFamily: 'Geist, monospace', color: '#6b8cae' }}>
               DOCUMENTACIÓN TÉCNICA
