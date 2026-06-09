@@ -17,7 +17,7 @@ export default function NormaCard({ id, titulo, subt, isOpen, onToggle, children
       <div className="card-h" onClick={() => onToggle(id)}
         style={{ cursor: "pointer", userSelect: "none" }}>
         <div>
-          <span className="card-t" style={{ fontSize: 15 }}>{titulo}</span>
+          <span className="card-t" style={{ fontSize: 15, color: 'var(--txt)' }}>{titulo}</span>
           <span className="td-mono" style={{ display:"block", fontSize:11, marginTop:2 }}>{subt}</span>
         </div>
         <span style={{ fontSize:14 }}>{isOpen ? '▲' : '▼'}</span>

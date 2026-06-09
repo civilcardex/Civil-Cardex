@@ -25,7 +25,7 @@ const SECCIONES = [
   {
     id: "nsr10",
     titulo: "4. NSR-10 Título J",
-    subt: "Requisitos de Protección Contra Incendio en Edificaciones",
+    subt: "Requisitos de protección contra incendio en edificaciones",
     redes: ["rci"],
   },
   {
@@ -42,7 +42,7 @@ const SECCIONES = [
   },
   {
     id: "tablas",
-    titulo: "7. Tablas de Referencia Rápida",
+    titulo: "7. Tablas de referencia rápida",
     subt: "Conversiones · Criterios críticos · Altitudes",
     redes: ["todos"],
   },
@@ -88,7 +88,7 @@ export default function Normativa() {
             <span className="ct-s" style={{ fontSize: 10 }}>NTC 1500:2020 · RAS 2000 · NTC 3728 · NFPA 13:2022</span>
           </div>
           <div className="cb" style={{ padding: "10px 14px" }}>
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap', justifyContent:'stretch', paddingBottom:10 }}>
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', paddingBottom:10 }}>
               {FILTROS_NORM.map(f => (
                 <FilterBtn key={f.k} active={critFil === f.k} onClick={() => setCritFil(f.k)}>{f.l}</FilterBtn>
               ))}
@@ -294,7 +294,7 @@ function NTC1500() {
       </table>
 
       <h4 style={h4}>1.4 Cálculo hidráulico — Hazen-Williams (§5.4)</h4>
-      <div className="ib info" style={{ fontSize: 12, padding: "10px 14px" }}>
+      <div className="ib info" style={{ fontSize: 14, padding: "10px 14px", color: "var(--txt)" }}>
         <span>∑</span>
         <span><b>Hf = 10.67 × L × Q¹·⁸⁵² / (C¹·⁸⁵² × D⁴·⁸⁷)</b></span>
       </div>
@@ -504,7 +504,7 @@ function RAS2000() {
       </table>
 
       <h4 style={h4}>2.3 Ecuación de Manning (§D.4.3)</h4>
-      <div className="ib info" style={{ fontSize: 12, padding: "10px 14px" }}>
+      <div className="ib info" style={{ fontSize: 14, padding: "10px 14px", color: "var(--txt)" }}>
         <span>∑</span>
         <span><b>V = (1/n) × R²⸍³ × S¹⸍² &nbsp;·&nbsp; Q = V × A</b></span>
       </div>
@@ -552,7 +552,7 @@ function RAS2000() {
       </table>
 
       <h4 style={h4}>2.5 Aguas lluvias — Método Racional (§D.2)</h4>
-      <div className="ib info" style={{ fontSize: 12, padding: "10px 14px" }}>
+      <div className="ib info" style={{ fontSize: 14, padding: "10px 14px", color: "var(--txt)" }}>
         <span>∑</span>
         <span><b>Q = C × I × A / 360.000</b> &nbsp;—&nbsp; Válido para A &lt; 2 km²</span>
       </div>
@@ -644,7 +644,7 @@ function NTC3728() {
       </table>
 
       <h4 style={h4}>3.2 Ecuación de Renouard (§6.2)</h4>
-      <div className="ib info" style={{ fontSize: 12, padding: "10px 14px" }}>
+      <div className="ib info" style={{ fontSize: 14, padding: "10px 14px", color: "var(--txt)" }}>
         <span>∑</span>
         <span><b>ΔP = 48620 × K × L × Q¹·⁸² / (P_at × Di⁴·⁸²)</b></span>
       </div>
@@ -674,7 +674,7 @@ function NTC3728() {
           ))}
         </tbody>
       </table>
-      <div className="ib info" style={{ fontSize: 11, padding: "8px 12px", marginTop: 6 }}>
+      <div className="ib info" style={{ fontSize: 13, padding: "8px 12px", marginTop: 6, color: "var(--txt)" }}>
         <span>ℹ</span>
         <span>Q_diseño = Q_instalado × fs</span>
       </div>
@@ -884,7 +884,7 @@ function NTC3096() {
           ))}
         </tbody>
       </table>
-      <div className="ib info" style={{ fontSize: 11, padding: "8px 12px", marginTop: 8 }}>
+      <div className="ib info" style={{ fontSize: 13, padding: "8px 12px", marginTop: 8, color: "var(--txt)" }}>
         <span>ℹ</span>
         <span>CPVC RDE 11: relación D externo / espesor = 11</span>
       </div>
@@ -1099,7 +1099,7 @@ const h4 = {
   fontFamily: "var(--mono)",
   fontSize: 15,
   fontWeight: 600,
-  color: "var(--acc2)",
+  color: "var(--txt)",
   margin: "16px 0 10px 0",
   letterSpacing: "0.3px",
 };
