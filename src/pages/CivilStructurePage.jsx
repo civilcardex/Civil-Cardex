@@ -25,16 +25,17 @@ export default function CivilStructurePage() {
                 <img src="/logos/civilStructurelogo.webp" alt="CivilStructure" className="h-4 w-4 object-contain" />
                 <span className="text-[11px] tracking-[0.08em] font-bold uppercase" style={{ fontFamily: 'Geist, monospace' }}>Módulo Estructural</span>
               </div>
-              <h1 className="text-[32px] text-on-surface" style={{ fontFamily: 'Hanken Grotesk, sans-serif', fontWeight: 700 }}>
+              <h1 className="text-xl md:text-3xl lg:text-[36px] text-on-surface" style={{ fontFamily: 'Hanken Grotesk, sans-serif', fontWeight: 700 }}>
                 CivilStructure: Análisis de Elementos Finitos sobre Terreno Real
               </h1>
               <p className="text-base text-on-surface-variant">
                 Diseño estructural avanzado y simulación física integrada. Analiza puentes, edificaciones y obras civiles complejas con interoperabilidad topográfica directa para cimentaciones precisas.
               </p>
-              <div className="flex gap-4 pt-4">
-                <Link to="/civilflowareatrabajo" className="bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-all" style={{ fontFamily: 'Geist, monospace' }}>
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                <Link to="/civilflowareatrabajo" className="hidden md:inline-block bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-all" style={{ fontFamily: 'Geist, monospace' }}>
                   COMENZAR ANÁLISIS
                 </Link>
+                <span className="md:hidden text-sm px-4 py-2 text-center" style={{ color: '#f5a623', fontFamily: 'Geist, monospace', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 4 }}>Disponible solo en escritorio</span>
                 <button className="border border-primary text-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container transition-all flex items-center gap-2" style={{ fontFamily: 'Geist, monospace' }}>
                   <span className="material-symbols-outlined text-base">download</span> DESCARGAR SDK
                 </button>

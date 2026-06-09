@@ -22,16 +22,17 @@ export default function CivilTerrainPage() {
               <img src="/logos/civilTerrainlogo.webp" alt="CivilTerrain" className="h-4 w-4 object-contain" />
               <span className="text-[11px] tracking-[0.08em] font-bold uppercase" style={{ fontFamily: 'Geist, monospace', color: '#79ff5b' }}>Módulo CivilTerrain</span>
             </div>
-            <h1 className="text-[32px] font-bold text-primary" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
+            <h1 className="text-xl md:text-3xl lg:text-[36px] font-bold text-primary" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
               Modelado Digital de Elevación de Próxima Generación
             </h1>
             <p className="text-base text-on-surface-variant max-w-xl">
               Herramientas avanzadas para topografía, cálculo preciso de movimiento de tierras y análisis  de alta densidad, integradas en un flujo de trabajo brutalmente eficiente.
             </p>
-            <div className="flex gap-4 mt-4">
-              <Link to="/civilflowareatrabajo" className="bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-colors border border-primary" style={{ fontFamily: 'Geist, monospace' }}>
+            <div className="flex flex-col sm:flex-row gap-4 mt-4">
+              <Link to="/civilflowareatrabajo" className="hidden md:inline-block bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-colors border border-primary" style={{ fontFamily: 'Geist, monospace' }}>
                 Iniciar Prueba Gratuita
               </Link>
+              <span className="md:hidden text-sm px-4 py-2 text-center" style={{ color: '#f5a623', fontFamily: 'Geist, monospace', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 4 }}>Disponible solo en escritorio</span>
               <Link to="/docs" className="bg-transparent text-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container-highest transition-colors border border-primary" style={{ fontFamily: 'Geist, monospace' }}>
                 Ver Documentación Técnica
               </Link>

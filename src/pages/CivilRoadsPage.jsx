@@ -30,16 +30,17 @@ export default function CivilRoadsPage() {
                 <img src="/logos/civilRoadslogo.webp" alt="CivilRoads" className="h-4 w-4 object-contain" />
                 <span className="text-[13px] uppercase" style={{ fontFamily: 'Geist, monospace', color: accent }}>CivilRoads Module</span>
               </div>
-              <h1 className="text-[48px] leading-[1.1] font-bold text-on-background tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
+              <h1 className="text-2xl md:text-4xl lg:text-[48px] leading-[1.1] font-bold text-on-background tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
                 Infraestructura Vial de <span style={{ color: accent }}>Alta Precisión</span>.
               </h1>
               <p className="text-base text-on-surface-variant max-w-md">
                 Diseño geométrico de carreteras y urbanismo sobre gemelos digitales.
               </p>
-              <div className="pt-8 flex gap-4">
-                <Link to="/civilflowareatrabajo" className="bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold flex items-center gap-2 hover:bg-primary/90 transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
+              <div className="pt-8 flex flex-col sm:flex-row gap-4">
+                <Link to="/civilflowareatrabajo" className="hidden md:inline-flex bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2 hover:bg-primary/90 transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
                   Iniciar Diseño <span className="material-symbols-outlined text-base">arrow_forward</span>
                 </Link>
+                <span className="md:hidden text-sm px-4 py-2 text-center" style={{ color: '#f5a623', fontFamily: 'Geist, monospace', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 4 }}>Disponible solo en escritorio</span>
                 <Link to="/docs" className="border border-outline text-on-background px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container-highest transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
                   Ver Documentación
                 </Link>
@@ -84,7 +85,7 @@ export default function CivilRoadsPage() {
 
         <section className="py-20 px-6 lg:px-8" style={{ background: '#0F1115' }}>
           <div className="max-w-7xl mx-auto">
-            <h2 className="text-[32px] font-bold text-on-background mb-2" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>Capacidades del Módulo</h2>
+            <h2 className="text-2xl md:text-4xl lg:text-[32px] font-bold text-on-background mb-2" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>Capacidades del Módulo</h2>
             <p className="text-base text-on-surface-variant mt-2 max-w-2xl mb-12">Herramientas especializadas para el diseño integral de infraestructuras viales y espacios urbanos.</p>
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
               {features.map((f, i) => (

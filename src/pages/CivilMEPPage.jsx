@@ -22,17 +22,18 @@ export default function CivilMEPPage() {
               <img src="/logos/civilMEPlogo.webp" alt="CivilMEP" className="h-4 w-4 object-contain" />
               <span className="text-[13px] uppercase" style={{ fontFamily: 'Geist, monospace', color: '#00dce5' }}>Module: CivilMEP</span>
             </div>
-            <h1 className="text-[48px] leading-[1.1] font-bold text-on-background tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
+            <h1 className="text-2xl md:text-4xl lg:text-[48px] leading-[1.1] font-bold text-on-background tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
               Diseño Inteligente de <br />
               <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(to right, #00dce5, #79ff5b)' }}>Instalaciones Especiales</span>
             </h1>
             <p className="text-base text-on-surface-variant max-w-xl">
               Modelado avanzado de sistemas mecánicos, eléctricos e hidrosanitarios. Diseñado para workflows de alta densidad y precisión .
             </p>
-            <div className="flex flex-wrap items-center gap-4 mt-4">
-              <Link to="/civilflowareatrabajo" className="text-on-primary px-8 py-3 uppercase text-[11px] tracking-[0.08em] font-bold flex items-center gap-2" style={{ fontFamily: 'Geist, monospace', background: '#00dce5' }}>
+            <div className="flex flex-wrap items-center gap-3 md:gap-4 mt-4">
+              <Link to="/civilflowareatrabajo" className="hidden md:inline-flex text-on-primary px-8 py-3 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2" style={{ fontFamily: 'Geist, monospace', background: '#00dce5' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>precision_manufacturing</span> INICIAR MODELADO
               </Link>
+              <span className="md:hidden text-sm px-4 py-2 text-center" style={{ color: '#f5a623', fontFamily: 'Geist, monospace', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 4 }}>Disponible solo en escritorio</span>
               <Link to="/docs" className="border border-outline-variant text-on-surface px-8 py-3 uppercase text-[11px] tracking-[0.08em] font-bold flex items-center gap-2 hover:border-primary transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>data_object</span> VER DOCS API
               </Link>

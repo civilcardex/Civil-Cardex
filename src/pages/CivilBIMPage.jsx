@@ -28,21 +28,22 @@ export default function CivilBIMPage() {
                 <img src="/logos/civilBIMlogo.webp" alt="CivilBIM" className="h-4 w-4 object-contain" />
                 <span className="text-[13px] text-on-surface-variant uppercase tracking-widest" style={{ fontFamily: 'Geist, monospace' }}>Módulo CivilBIM</span>
               </div>
-              <h1 className="text-[48px] leading-[56px] font-bold text-on-surface tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
+              <h1 className="text-2xl md:text-4xl lg:text-[48px] leading-[56px] font-bold text-on-surface tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
                 CivilBIM: El Nexo Digital de la Construcción
               </h1>
               <p className="text-base text-on-surface-variant max-w-xl">
                 Integración total de modelos inteligentes en flujos de trabajo es. Conecte diseño, análisis y gestión en un entorno unificado de alta precisión para proyectos de infraestructura civil.
               </p>
-              <div className="flex gap-4 mt-4">
-                <Link to="/civilflowareatrabajo" className="border border-outline-variant text-on-surface px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold flex items-center gap-2 hover:border-[#d946ef] transition-colors" style={{ fontFamily: 'Geist, monospace', background: '#333539' }}>
+              <div className="flex flex-col sm:flex-row gap-4 mt-4">
+                <Link to="/civilflowareatrabajo" className="hidden md:inline-flex border border-outline-variant text-on-surface px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2 hover:border-[#d946ef] transition-colors" style={{ fontFamily: 'Geist, monospace', background: '#333539' }}>
                   <span className="material-symbols-outlined text-lg">terminal</span> Iniciar Terminal BIM
                 </Link>
+                <span className="md:hidden text-sm px-4 py-2 text-center" style={{ color: '#f5a623', fontFamily: 'Geist, monospace', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 4 }}>Disponible solo en escritorio</span>
                 <Link to="/docs" className="border border-outline-variant text-on-surface-variant px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold flex items-center gap-2 hover:text-on-surface transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
                   <span className="material-symbols-outlined text-lg">description</span> Documentación API
                 </Link>
               </div>
-              <div className="grid grid-cols-3 gap-4 mt-8 border-t border-outline-variant pt-6">
+              <div className="grid grid-cols-3 gap-2 md:gap-4 mt-8 border-t border-outline-variant pt-6">
                 <div className="flex flex-col">
                   <span className="text-2xl text-on-surface font-bold" style={{ fontFamily: 'Geist, monospace' }}>99.9%</span>
                   <span className="text-[10px] text-on-surface-variant uppercase" style={{ fontFamily: 'Geist, monospace' }}>Precisión Geométrica</span>
@@ -57,7 +58,7 @@ export default function CivilBIMPage() {
                 </div>
               </div>
             </div>
-            <div className="relative h-[500px] w-full flex items-center justify-center">
+              <div className="relative h-[300px] lg:h-[500px] w-full flex items-center justify-center">
               <div className="absolute inset-0 border border-outline-variant flex items-center justify-center overflow-hidden" style={{ background: '#1a1c20', boxShadow: `0 0 20px -5px ${bimAccent}` }}>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="material-symbols-outlined opacity-10" style={{ fontSize: 120, color: bimAccent, fontVariationSettings: "'FILL' 0, 'wght' 200" }}>architecture</span>

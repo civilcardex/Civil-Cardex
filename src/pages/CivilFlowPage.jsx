@@ -28,16 +28,17 @@ export default function CivilFlowPage() {
               <img src="/logos/civilFlowlogo.webp" alt="CivilFlow" className="h-8 w-8 object-contain" />
               <span className="text-[11px] tracking-[0.08em] font-bold uppercase" style={{ fontFamily: 'Geist, monospace', color: '#00dce5' }}>Módulo Principal</span>
             </div>
-            <h1 className="text-[40px] leading-tight font-bold text-primary" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
+            <h1 className="text-2xl md:text-4xl lg:text-[44px] leading-tight font-bold text-primary" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
               CivilFlow: Redes de Fluidos con Precisión KML
             </h1>
             <p className="text-base text-on-surface-variant max-w-xl leading-relaxed">
               Diseño, análisis y optimización de redes hidráulicas, sanitarias y de gas. Integre flujos de trabajo de ingeniería de alta precisión directamente con modelos de terreno KML.
             </p>
-            <div className="flex gap-4 mt-4">
-              <Link to="/civilflowareatrabajo" className="px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold text-on-primary transition-all" style={{ fontFamily: 'Geist, monospace', background: '#00dce5', boxShadow: '0 0 15px rgba(0,220,229,0.3)' }}>
+            <div className="flex flex-col sm:flex-row gap-4 mt-4">
+              <Link to="/civilflowareatrabajo" className="hidden md:inline-block px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold text-on-primary transition-all" style={{ fontFamily: 'Geist, monospace', background: '#00dce5', boxShadow: '0 0 15px rgba(0,220,229,0.3)' }}>
                 Explorar Funciones
               </Link>
+              <span className="md:hidden text-sm px-4 py-2 text-center" style={{ color: '#f5a623', fontFamily: 'Geist, monospace', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 4 }}>Disponible solo en escritorio</span>
               <Link to="/docs" className="border border-outline-variant text-on-surface px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:border-primary transition-all" style={{ fontFamily: 'Geist, monospace', background: 'rgba(17,19,23,0.5)' }}>
                 Ver Documentación
               </Link>
@@ -82,8 +83,8 @@ export default function CivilFlowPage() {
 
         <section className="py-12 px-6 lg:px-8 max-w-6xl mx-auto">
           <h2 className="text-xl font-semibold text-on-surface border-b border-outline-variant pb-4 mb-6" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>ESPECIFICACIONES DEL MÓDULO</h2>
-          <div className="border border-outline-variant overflow-hidden" style={{ background: '#1e2024' }}>
-            <table className="w-full text-left text-sm">
+          <div className="border border-outline-variant overflow-auto" style={{ background: '#1e2024' }}>
+            <table className="w-full text-left text-sm min-w-[600px]">
               <thead className="border-b border-outline-variant" style={{ background: '#282a2e' }}>
                 <tr>
                   <th className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase" style={{ fontFamily: 'Geist, monospace' }}>Parámetro</th>
@@ -107,7 +108,7 @@ export default function CivilFlowPage() {
         </section>
 
         <section className="py-16 px-6 lg:px-8">
-          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 border border-outline-variant p-8" style={{ background: '#282a2e' }}>
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 border border-outline-variant p-6 md:p-8" style={{ background: '#282a2e' }}>
             <div className="flex flex-col gap-6">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#00f5ff' }} />
