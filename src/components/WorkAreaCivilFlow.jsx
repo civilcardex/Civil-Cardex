@@ -568,16 +568,16 @@ return(
   {redActiva==='ll'&&redes.has('ll')&&(
     <div className="fu" style={{display:'flex',flexDirection:'column',gap:8}}>
       <PageNav page={llPage} setPage={setLlPage} total={3} color="var(--ll)"
-        labels={['Chequeo bajantes','Chequeo canales','Diseño lluvias']} />
-      {llPage===1&&<ChequeoBajantesLluvias />}
-      {llPage===2&&<ChequeoCanalesLluvias />}
-      {llPage===3&&<DisenoLluvias />}
+        labels={['Diseño lluvias','Chequeo bajantes','Chequeo canales']} />
+      {llPage===1&&<DisenoLluvias />}
+      {llPage===2&&<ChequeoBajantesLluvias />}
+      {llPage===3&&<ChequeoCanalesLluvias />}
     </div>
   )}
   {redActiva==='af'&&redes.has('af')&&(
     <div className="fu" style={{display:'flex',flexDirection:'column',gap:8}}>
       <PageNav page={afPage} setPage={setAfPage} total={3} color="var(--af)"
-        labels={['Cálculo UC','Accesorios','Diseño de red agua fria']} />
+        labels={['Cálculo UC','Accesorios','Diseño de red agua fría']} />
       {afPage===1&&<CalculoUCAF />}
       {afPage===2&&<AccesoriosTable tramos={tramosAf} updAcc={updTramoAfAcc} net="af" readOnly />}
       {afPage===3&&<DisenoRedAguaFria />}
@@ -622,18 +622,18 @@ const okLL=tramosLl.length>0&&tramosLl.every(validateTramo);
       ['PROYECTO',proy.nombre],['UBICACIÓN',[proy.mun,proy.dep].filter(Boolean).join(', ')],
       ['USO',proy.uso],['EMPRESA',proy.empresa],
       ['P RED',proy.p_red+' mca'],['DOTACIÓN',proy.dot+' L/hab/d'],
-      ['REDES',[...redes].join(' · ')],
+      ['REDES',redesActivas.map(r=>r.lbl).join(' · ')],
       ['NIVELES',[...pisos].sort((a,b)=>a.n-b.n).map(p=>pisoLbl(p.n)).join(' · ')],
       ['SANITARIA',okSAN?'✓ OK':'✗ Revisar'],['Aguas lluvias',okLL?'✓ OK':'✗ Revisar'],
     ];
     return(
       <div className="card">
-        <div className="card-h"><span className="card-t">📊 Resumen del proyecto</span><span className="card-s">CIVILFLOW KML 2026 · Ing. Camilo Cárdenas</span></div>
+        <div className="card-h"><span className="card-t"><img src="/Informes.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Resumen del proyecto</span></div>
         <div className="card-b">
           {items.map(([k,v])=>(
-            <div key={k} style={{display:'flex',gap:10,alignItems:'baseline',padding:'5px 8px',background:'var(--bg3)',borderRadius:'var(--r)',border:'1px solid var(--line)',marginBottom:4}}>
-              <span style={{fontSize:8,color:'var(--txt3)',minWidth:120,flexShrink:0,textTransform:'uppercase'}}>{k}</span>
-              <span style={{fontSize:11,fontWeight:500,color:String(v).includes('✗')?'var(--err)':String(v).includes('✓')?'var(--ok)':'var(--txt)'}}>{v}</span>
+            <div key={k} style={{display:'flex',gap:12,alignItems:'baseline',padding:'8px 12px',background:'var(--bg3)',borderRadius:'var(--r)',border:'1px solid var(--line)',marginBottom:6}}>
+              <span style={{fontSize:11,color:'var(--txt3)',minWidth:130,flexShrink:0,textTransform:'uppercase',fontWeight:600}}>{k}</span>
+              <span style={{fontSize:14,fontWeight:500,color:String(v).includes('✗')?'var(--err)':String(v).includes('✓')?'var(--ok)':'var(--txt)'}}>{v}</span>
             </div>
           ))}
         </div>
