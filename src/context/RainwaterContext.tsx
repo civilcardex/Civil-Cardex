@@ -1,8 +1,17 @@
 import { useState, createContext, useContext, type ReactNode } from "react";
 
-const RainwaterContext = createContext<any>(null);
+interface BajanteLL { id: string; bajante: string; areaParcial: number; areaAcumulada: number; intensidad: number; coeficienteC: number; R: string; manning: number; diamPropuesto: number }
+interface CanalLL { id: string; sector: string; areaParcial: number; areaAcumulada: number; intensidad: number; coeficienteC: number; manning: number; pendiente: number; b: number; h: number; bl: number }
+interface RainwaterContextValue {
+  bajantesLl: BajanteLL[];
+  addBajanteLL: () => void; delBajanteLL: (id: string) => void; updBajanteLL: (id: string, field: string, val: any) => void;
+  canalesLl: CanalLL[];
+  addCanalLL: () => void; delCanalLL: (id: string) => void; updCanalLL: (id: string, field: string, val: any) => void;
+}
 
-export function RainwaterProvider({ children }: { children: ReactNode }) {
+const RainwaterContext = createContext<RainwaterContextValue | null>(null);
+
+export function RainwaterProvider({ children }: { children?: ReactNode }) {
 
 const [bajantesLl, setBajantesLl] = useState([
 {id:'BLL-1',bajante:'',areaParcial:0,areaAcumulada:0,intensidad:0,coeficienteC:0,R:'',manning:0,diamPropuesto:0},

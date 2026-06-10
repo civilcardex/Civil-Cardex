@@ -1,13 +1,25 @@
-import { useState, createContext, useContext } from 'react';
+import { useState, createContext, useContext, type ReactNode } from 'react';
 
-const PlanosContext = createContext(null);
+interface PlanItem { id: number; file: File; name: string; nivel: number | null; scale: number; status: string }
+interface PlansContextValue {
+  plans: PlanItem[];
+  error: string | null;
+  setError: React.Dispatch<React.SetStateAction<string | null>>;
+  addPlans: (newFiles: FileList | File[]) => PlanItem[];
+  removePlan: (id: number) => void;
+  updatePlan: (id: number, updates: Partial<PlanItem>) => void;
+  confirmPlan: (id: number) => void;
+  getPlanById: (id: number) => PlanItem | null;
+}
 
-export function PlanosProvider({ children }) {
-  const [planos, setPlanos] = useState([]);
-  const [error, setError] = useState(null);
+const PlansContext = createContext<PlansContextValue | null>(null);
 
-  const addPlanos = (newFiles) => {
-    const pdfs = [];
+export function PlansProvider({ children }: { children?: ReactNode }) {
+  const [plans, setPlans] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const addPlans = (newFiles: FileList | File[]) => {
+    const pdfs: PlanItem[] = [];
     for (const f of newFiles) {
       const isPdf = f.type === 'application/pdf' || f.name?.toLowerCase().endsWith('.pdf');
       if (isPdf) pdfs.push({ id: Date.now() + Math.random(), file: f, name: f.name, nivel: null, scale: 100, status: 'pending' });
@@ -18,35 +30,35 @@ export function PlanosProvider({ children }) {
       return [];
     }
     if (pdfs.length === 0) return [];
-    setPlanos(prev => [...prev, ...pdfs]);
+    setPlans(prev => [...prev, ...pdfs]);
     return pdfs;
   };
 
-  const removePlano = (id) => {
-    setPlanos(prev => prev.filter(p => p.id !== id));
+  const removePlan = (id: number) => {
+    setPlans(prev => prev.filter(p => p.id !== id));
   };
 
-  const updatePlano = (id, updates) => {
-    setPlanos(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  const updatePlan = (id: number, updates: Partial<PlanItem>) => {
+    setPlans(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
   };
 
-  const confirmPlano = (id) => {
-    setPlanos(prev => prev.map(p => p.id === id && p.status === 'pending' ? { ...p, status: 'confirmed' } : p));
+  const confirmPlan = (id: number) => {
+    setPlans(prev => prev.map(p => p.id === id && p.status === 'pending' ? { ...p, status: 'confirmed' } : p));
   };
 
-  const getPlanoById = (id) => {
-    return planos.find(p => p.id === id) || null;
+  const getPlanById = (id: number) => {
+    return plans.find(p => p.id === id) || null;
   };
 
   return (
-    <PlanosContext.Provider value={{ planos, error, setError, addPlanos, removePlano, updatePlano, confirmPlano, getPlanoById }}>
+    <PlansContext.Provider value={{ plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan, getPlanById }}>
       {children}
-    </PlanosContext.Provider>
+    </PlansContext.Provider>
   );
 }
 
-export function usePlanos() {
-  const ctx = useContext(PlanosContext);
-  if (!ctx) throw new Error('usePlanos debe usarse dentro de <PlanosProvider>');
+export function usePlans() {
+  const ctx = useContext(PlansContext);
+  if (!ctx) throw new Error('usePlans must be used within <PlansProvider>');
   return ctx;
 }

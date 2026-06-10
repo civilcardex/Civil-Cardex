@@ -1,9 +1,32 @@
 import { useState, createContext, useContext, type ReactNode } from "react";
 import { MATS_DEFAULT, PROFS_DEFAULT, CRIT0 } from "../constants";
 
-const ProjectContext = createContext<any>(null);
+interface Proyecto {
+  nombre: string; dir: string; mun: string; dep: string;
+  uso: string; empresa: string; p_red: string; dot: string;
+  mat_af: string; mat_ac: string; mat_rci: string;
+  mat_san: string; mat_ll: string; mat_ven: string; mat_gas: string;
+  altitud: string; p_atm: string;
+  poblFija: number; poblFlot: number; areaPiscina: number; areaVerdes: number;
+  C_escorrentia: number; pendienteSan: number;
+}
+interface MaterialItem { id: string; val: string }
+interface ProfItem { id: string; red: string; col: string; prof: number; norma: string; nota: string }
+interface CritItem { id: string; red: string; param: string; val: string; uni: string; norma: string; art: string; cumple: string; nota: string }
+interface ProjectContextValue {
+  pisos: any[]; proy: Proyecto; mats: Record<string, MaterialItem[]>;
+  profs: ProfItem[]; crits: CritItem[];
+  setPisos: React.Dispatch<React.SetStateAction<any[]>>;
+  setProy: React.Dispatch<React.SetStateAction<Proyecto>>;
+  setP: (k: string, v: any) => void;
+  setMats: React.Dispatch<React.SetStateAction<Record<string, MaterialItem[]>>>;
+  setProfs: React.Dispatch<React.SetStateAction<ProfItem[]>>;
+  setCrits: React.Dispatch<React.SetStateAction<CritItem[]>>;
+}
 
-export function ProjectProvider({ children }: { children: ReactNode }) {
+const ProjectContext = createContext<ProjectContextValue | null>(null);
+
+export function ProjectProvider({ children }: { children?: ReactNode }) {
 const [pisos, setPisos] = useState<any[]>([]);
 
 const [proy, setProy] = useState({

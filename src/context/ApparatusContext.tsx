@@ -1,17 +1,26 @@
 import { useState, useEffect, createContext, useContext, type ReactNode } from "react";
 import { UD_BASE_INIT, APS_DEFAULT } from "../constants";
 import { safeParse } from "../utils/parseUtils";
+import { APS_STORAGE_KEY } from "../constants/storage-keys";
 
-const ApparatusContext = createContext<any>(null);
+interface UdBaseItem { id: string; nombre: string; ud: number }
+interface ApsItem { id: string; s: string; n: string; g: string; ucaf: number; ucac: number; ud: number; pmin: number; pmax: number; qg: number; ctrl: string; _blkUd: boolean }
+interface ApparatusContextValue {
+  udBase: UdBaseItem[];
+  aps: ApsItem[];
+  setUdBase: React.Dispatch<React.SetStateAction<UdBaseItem[]>>;
+  setAps: React.Dispatch<React.SetStateAction<ApsItem[]>>;
+}
 
-const APS_STORAGE_KEY = 'civilflow_aps_v4';
+const ApparatusContext = createContext<ApparatusContextValue | null>(null);
+
 function loadAps() {
   const raw = safeParse(localStorage.getItem(APS_STORAGE_KEY), null);
   if (raw && Array.isArray(raw)) return raw;
   return APS_DEFAULT.map(a => ({...a}));
 }
 
-export function ApparatusProvider({ children }: { children: ReactNode }) {
+export function ApparatusProvider({ children }: { children?: ReactNode }) {
 const [udBase, setUdBase] = useState([...UD_BASE_INIT]);
 
 const [aps, setAps] = useState(loadAps);
