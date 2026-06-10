@@ -230,7 +230,7 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
 
   const finalVisibleNets = useMemo(() => {
     const excludeEquipment = (nets: any[]) => nets.filter((n: any) => n.id !== 'ep' && n.id !== 'bom');
-    if (activeNetworks) return excludeEquipment(NETS.filter(n => activeNetworks.has(n.id)));
+    if (activeNetworks && activeNetworks.size > 0) return excludeEquipment(NETS.filter(n => activeNetworks.has(n.id)));
     if (liveActiveNets) return excludeEquipment(NETS.filter(n => liveActiveNets.has(n.id)));
     return excludeEquipment(NETS);
   }, [activeNetworks, liveActiveNets]);
@@ -712,7 +712,7 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
             }}
             onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>)=>{e.currentTarget.style.background='rgba(211,47,47,.25)';e.currentTarget.style.borderColor='rgba(211,47,47,.5)'}}
             onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>)=>{e.currentTarget.style.background='rgba(211,47,47,.12)';e.currentTarget.style.borderColor='rgba(211,47,47,.3)'}}>
-            <svg viewBox="0 0 22 22" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 3H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Cerrar dibujo
+            <svg viewBox="0 0 22 22" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M9 3H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Cerrar dibujo
           </button>
         </div>
       </div>
