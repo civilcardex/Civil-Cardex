@@ -13,6 +13,7 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import CalculoUD from "./FixtureUnitCalc";
 import DisenosSanitarios from "./SanitaryDesign";
 import BajantesTable from "./DownpipesTable";
+import SanAccesoriosPage from "./SanAccesoriosPage";
 import DisenoLluvias from "./RainwaterDesign";
 import ChequeoBajantesLluvias from "./RainDownpipesCheck";
 import ChequeoCanalesLluvias from "./RainChannelsCheck";
@@ -603,7 +604,7 @@ return(
       {sanPage===1&&<CalculoUD />}
       {sanPage===2&&<DisenosSanitarios />}
       {sanPage===3&&<BajantesTable />}
-      {sanPage===4&&<div className="fu" style={{display:'flex',flexDirection:'column',gap:8}}><span style={{color:'var(--txt2)',fontSize:14}}>Accesorios</span></div>}
+      {sanPage===4&&<SanAccesoriosPage />}
     </div>
   )}
   {redActiva==='ll'&&redes.has('ll')&&(

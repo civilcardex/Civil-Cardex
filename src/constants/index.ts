@@ -81,6 +81,15 @@ export const ACCESORIOS_HIDRO = [
   {id:'otros',emoji:'➕',nombre:'Otros',icono:'/iconos_accesorios/otros.webp', cat: 'Otros'},
 ];
 
+export const ACCESORIOS_YEE = [
+  {id:'yeeSimple', emoji:'🔧', nombre:'Yee simple', icono:'/iconos_accesorios/ye_simple.webp', cat:'Tees'},
+  {id:'yeeDoble', emoji:'🔧', nombre:'Yee doble', icono:'/iconos_accesorios/ye_doble.webp', cat:'Tees'},
+];
+
+export const SAN_ACCESORIOS = ACCESORIOS_HIDRO.filter(a =>
+  a.id === 'codo90rm'
+).concat(ACCESORIOS_YEE);
+
 export const GAS_ACCESORIOS = [
   {id:'codos_90_std', emoji:'🔩', nombre:'Codos 90° std', icono:'/iconos_accesorios/codo90rc.webp', cat:'Codos'},
   {id:'codos_90_rl',  emoji:'🔩', nombre:'Codos 90° rl',  icono:'/iconos_accesorios/codo90rl.webp', cat:'Codos'},
@@ -331,6 +340,9 @@ export const CAT_APS = [
   { id: 'lvro', n: 'Lavadero',               s: 'Lvro', ctrl: 'Grifería',             af: 1,   ac: 1  },
   { id: 'nev',  n: 'Nevera',                 s: 'Nev',  ctrl: 'Llave',                af: 0.5, ac: 0  },
   { id: 'lavav',n: 'Lavavajillas',           s: 'Lavav',ctrl: 'Llave',                af: 0,   ac: 1.5},
+  { id: 'codo90rm',  n: 'Codo RM 90°',      s: 'C90RM', ctrl: 'N.A.',                af: 0,   ac: 0  },
+  { id: 'yeeSimple', n: 'Yee simple',       s: 'YSim',  ctrl: 'N.A.',                af: 0,   ac: 0  },
+  { id: 'yeeDoble',  n: 'Yee doble',        s: 'YDb',   ctrl: 'N.A.',                af: 0,   ac: 0  },
 ];
 
 export const CAT_GAS = [

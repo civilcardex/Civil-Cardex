@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, AF_UC_IDS, AC_UC_IDS, APARATO_IMG } from '../constants';
+import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, SAN_ACCESORIOS, GAS_ACCESORIOS, AF_UC_IDS, AC_UC_IDS, APARATO_IMG } from '../constants';
 import { NETS } from '../lib/PlanoEngine';
 import { usePlanos } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
@@ -11,6 +11,7 @@ const GAS_ID = 'gas';
 
 const STORAGE_KEY = 'civilflow_aparatos_by_tramo_v2';
 const HIDRO_DATA_KEY = 'civilflow_tramo_hidro_data_v3';
+const GAS_ACC_KEY = 'civilflow_gas_accesorios';
 
 const UNIDAD = {
   uc: 'UC',
@@ -58,6 +59,14 @@ function saveHidroData(map) {
   try { localStorage.setItem(HIDRO_DATA_KEY, JSON.stringify(map)); } catch (e) { console.error('AparatosPanel:', e); }
 }
 
+function loadGasAcc() {
+  try { return JSON.parse(localStorage.getItem(GAS_ACC_KEY)) || {}; } catch (_) { return {}; }
+}
+
+function saveGasAcc(map) {
+  try { localStorage.setItem(GAS_ACC_KEY, JSON.stringify(map)); } catch (e) { console.error('AparatosPanel:', e); }
+}
+
 function unitFor(netId) {
   const net = NETS.find(n => n.id === netId);
   if (!net) return null;
@@ -85,6 +94,7 @@ export default function AparatosPanel({ activeNet, selElement }) {
   const { aps } = useApparatus();
   const [counts, setCounts] = useState(loadAll);
   const [hidroData, setHidroData] = useState(loadHidroData);
+  const [gasAcc, setGasAcc] = useState(loadGasAcc);
   const [open, setOpen] = useState(true);
   const [pulse, setPulse] = useState(false);
   const containerRef = useRef(null);
@@ -107,6 +117,47 @@ export default function AparatosPanel({ activeNet, selElement }) {
   }, []);
 
   useEffect(() => {
+    setGasAcc(prev => {
+      const next = { ...prev };
+      let changed = false;
+      for (const [tramoId, map] of Object.entries(next)) {
+        if (!map || typeof map !== 'object') continue;
+        const vals = Object.values(map).filter(v => typeof v === 'number');
+        if (vals.length === 0 || vals.every(v => v <= 0)) {
+          delete next[tramoId];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, []);
+
+  useEffect(() => {
+    const TRAZOS_PREFIX = 'civilflow_trazos_';
+    const existingIds = new Set();
+    for (const plano of planos) {
+      if (!plano || plano.status !== 'confirmed') continue;
+      try {
+        const raw = localStorage.getItem(TRAZOS_PREFIX + plano.id);
+        if (!raw) continue;
+        const data = JSON.parse(raw);
+        for (const r of data.ramales || []) {
+          if (r.net === 'gas') existingIds.add(r.id);
+        }
+      } catch (_) {}
+    }
+    setGasAcc(prev => {
+      let changed = false;
+      const next = {};
+      for (const id of existingIds) {
+        if (prev[id]) next[id] = prev[id];
+      }
+      if (Object.keys(next).length !== Object.keys(prev).length) changed = true;
+      return changed ? next : prev;
+    });
+  }, [planos]);
+
+  useEffect(() => {
     const handleStorage = () => {
       setCounts(loadAll());
       setHidroData(loadHidroData());
@@ -117,6 +168,7 @@ export default function AparatosPanel({ activeNet, selElement }) {
 
   useEffect(() => { saveAll(counts); }, [counts]);
   useEffect(() => { saveHidroData(hidroData); }, [hidroData]);
+  useEffect(() => { saveGasAcc(gasAcc); }, [gasAcc]);
 
 useEffect(() => {
 try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:', e); }
@@ -280,6 +332,33 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
     });
   };
 
+  // Gas accessory operations
+  const gasAccMap = useMemo(() => {
+    if (!targetId) return {};
+    return gasAcc[targetId] || {};
+  }, [gasAcc, targetId]);
+
+  const incAccGas = (accId) => {
+    if (!targetId) return;
+    setGasAcc(prev => {
+      const cur = { ...(prev[targetId] || {}) };
+      cur[accId] = (cur[accId] || 0) + 1;
+      return { ...prev, [targetId]: cur };
+    });
+  };
+
+  const decAccGas = (accId) => {
+    if (!targetId) return;
+    setGasAcc(prev => {
+      const cur = { ...(prev[targetId] || {}) };
+      const v = (cur[accId] || 0) - 1;
+      if (v <= 0) delete cur[accId]; else cur[accId] = v;
+      const next = { ...prev };
+      if (Object.keys(cur).length === 0) delete next[targetId]; else next[targetId] = cur;
+      return next;
+    });
+  };
+
   if (!visible) {
     return (
       <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
@@ -419,13 +498,33 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
         </div>
       )}
 
-      {/* ── ACCESORIOS SECTION (solo AF/AC) ── */}
+      {/* ── ACCESORIOS SECTION ── */}
       {isAfAc && (
         <AccesoriosSection
           targetId={targetId}
           curHidro={curHidro}
           incAcc={incAcc}
           decAcc={decAcc}
+          accent={accent}
+          items={ACCESORIOS_HIDRO}
+        />
+      )}
+      {netId === 'san' && (
+        <AccesoriosSection
+          targetId={targetId}
+          curHidro={curHidro}
+          incAcc={incAcc}
+          decAcc={decAcc}
+          accent={accent}
+          items={SAN_ACCESORIOS}
+        />
+      )}
+      {isGas && (
+        <GasAccesoriosSection
+          targetId={targetId}
+          gasAccMap={gasAccMap}
+          incAccGas={incAccGas}
+          decAccGas={decAccGas}
           accent={accent}
         />
       )}
@@ -434,7 +533,7 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
 }
 
 /* ── ACCESORIOS SECTION ── */
-function AccesoriosSection({ targetId, curHidro, incAcc, decAcc, accent }) {
+function AccesoriosSection({ targetId, curHidro, incAcc, decAcc, accent, items = ACCESORIOS_HIDRO }) {
   const [accOpen, setAccOpen] = useState(true);
   const acc = curHidro.accesorios || {};
 
@@ -459,7 +558,7 @@ function AccesoriosSection({ targetId, curHidro, incAcc, decAcc, accent }) {
           transition: 'opacity .25s',
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
-            {['Codos', 'Tees', 'Válvulas', 'Otros'].flatMap(cat => ACCESORIOS_HIDRO.filter(a => a.cat === cat)).map(a => {
+            {items.map(a => {
               const v = acc[a.id] || 0;
               return (
                 <div key={a.id} style={{
@@ -480,6 +579,64 @@ function AccesoriosSection({ targetId, curHidro, incAcc, decAcc, accent }) {
                       style={{ flex: 1, padding: '1px 0', border: 'none', borderRight: `1px solid ${v > 0 ? accent + '55' : 'var(--bg4)'}`, background: 'transparent', color: v === 0 || !targetId ? 'var(--line)' : '#ffb4ab', cursor: v === 0 || !targetId ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 800, lineHeight: 1, fontFamily: "'Geist',monospace" }}>−</button>
                     <div style={{ flex: 1.2, textAlign: 'center', fontSize: 10, fontWeight: 800, lineHeight: '14px', color: v > 0 ? accent : 'var(--txt2)', fontFamily: "'Geist',monospace", background: v > 0 ? 'rgba(37,99,235,.18)' : 'transparent' }}>{v}</div>
                     <button onClick={(e) => { e.stopPropagation(); targetId && incAcc(a.id); }} disabled={!targetId}
+                      style={{ flex: 1, padding: '1px 0', border: 'none', borderLeft: `1px solid ${v > 0 ? accent + '55' : 'var(--bg4)'}`, background: 'transparent', color: !targetId ? 'var(--line)' : accent, cursor: !targetId ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 800, lineHeight: 1, fontFamily: "'Geist',monospace" }}>+</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── GAS ACCESORIOS SECTION ── */
+function GasAccesoriosSection({ targetId, gasAccMap, incAccGas, decAccGas, accent }) {
+  const [accOpen, setAccOpen] = useState(true);
+
+  return (
+    <div style={{ borderBottom: '1px solid #3a494a' }}>
+      <button onClick={() => setAccOpen(o => !o)} style={{
+        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '7px 12px', background: 'transparent', border: 'none', cursor: 'pointer',
+        borderTop: '1px solid var(--bg4)', textAlign: 'left',
+      }}>
+        <span style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1 }}>
+          🔩 Accesorios
+        </span>
+        <span style={{ fontSize: 10, color: 'var(--txt2)', fontFamily: "'Geist',monospace" }}>
+          {accOpen ? '▾' : '▸'}
+        </span>
+      </button>
+      {accOpen && (
+        <div style={{
+          padding: '0 10px 10px',
+          opacity: targetId ? 1 : 0.45, pointerEvents: targetId ? 'auto' : 'none',
+          transition: 'opacity .25s',
+        }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+            {GAS_ACCESORIOS.map(a => {
+              const v = gasAccMap[a.id] || 0;
+              return (
+                <div key={a.id} style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'stretch',
+                  background: v > 0 ? 'rgba(37,99,235,.12)' : 'var(--bg2)',
+                  border: `1px solid ${v > 0 ? accent : 'var(--line)'}`,
+                  borderRadius: 4, overflow: 'hidden', transition: 'all .12s',
+                }}>
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    padding: '3px 2px 1px', gap: 1, cursor: targetId ? 'pointer' : 'default', minHeight: 42,
+                  }} onClick={() => targetId && incAccGas(a.id)}>
+                    <img src={a.icono} alt={a.nombre} style={{width:26,height:26,objectFit:'contain'}} />
+                    <span style={{ fontSize: 7, fontWeight: 700, letterSpacing: .2, color: v > 0 ? accent : '#b9caca', fontFamily: "'Geist',monospace", textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.1 }}>{a.nombre}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'stretch', borderTop: `1px solid ${v > 0 ? accent + '55' : 'var(--bg4)'}`, background: v > 0 ? 'rgba(37,99,235,.06)' : 'transparent' }}>
+                    <button onClick={(e) => { e.stopPropagation(); targetId && decAccGas(a.id); }} disabled={!targetId || v === 0}
+                      style={{ flex: 1, padding: '1px 0', border: 'none', borderRight: `1px solid ${v > 0 ? accent + '55' : 'var(--bg4)'}`, background: 'transparent', color: v === 0 || !targetId ? 'var(--line)' : '#ffb4ab', cursor: v === 0 || !targetId ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 800, lineHeight: 1, fontFamily: "'Geist',monospace" }}>−</button>
+                    <div style={{ flex: 1.2, textAlign: 'center', fontSize: 10, fontWeight: 800, lineHeight: '14px', color: v > 0 ? accent : 'var(--txt2)', fontFamily: "'Geist',monospace", background: v > 0 ? 'rgba(37,99,235,.18)' : 'transparent' }}>{v}</div>
+                    <button onClick={(e) => { e.stopPropagation(); targetId && incAccGas(a.id); }} disabled={!targetId}
                       style={{ flex: 1, padding: '1px 0', border: 'none', borderLeft: `1px solid ${v > 0 ? accent + '55' : 'var(--bg4)'}`, background: 'transparent', color: !targetId ? 'var(--line)' : accent, cursor: !targetId ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 800, lineHeight: 1, fontFamily: "'Geist',monospace" }}>+</button>
                   </div>
                 </div>

@@ -96,16 +96,18 @@ export default function BaseDatos({ redes }) {
 
   const apsMap = Object.fromEntries(CAT_APS.map(a => [a.id, a]));
   const defUd = (id) => APARATOS_DEF.find(x => x.id === id)?.ud ?? 0;
+  const ACC_IDS = new Set(['codo90rm','yeeSimple','yeeDoble']);
   const apsMerged = CAT_APS.map(c => {
     const cur = aps.find(a => a.id === c.id);
+    const isAcc = ACC_IDS.has(c.id);
     return {
       ...c,
-      ucaf: cur?.ucaf || c.af,
-      ucac: cur?.ucac || c.ac,
-      ud: cur?.ud || defUd(c.id),
-      _blkAf: (c.af || 0) === 0,
-      _blkAc: (c.ac || 0) === 0,
-      _blkUd: defUd(c.id) === 0,
+      ucaf: isAcc ? 0 : (cur?.ucaf || c.af),
+      ucac: isAcc ? 0 : (cur?.ucac || c.ac),
+      ud: cur?.ud ?? 0,
+      _blkAf: isAcc || (c.af || 0) === 0,
+      _blkAc: isAcc || (c.ac || 0) === 0,
+      _blkUd: false,
     };
   });
 
