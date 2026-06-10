@@ -1,11 +1,11 @@
-export function parseDecimalInput(value) {
-  const raw = value.replace(/,/g, '.');
+export function parseDecimalInput(val: string): number | null {
+  const raw = val.replace(/,/g, '.');
   const v = parseFloat(raw);
   return (!isNaN(v) && raw !== '') ? v : null;
 }
 
-export function parseIntInput(value) {
-  const raw = value.replace(/,/g, '.').trim();
+export function parseIntInput(val: string): number | null {
+  const raw = val.replace(/,/g, '.').trim();
   if (raw === '') return null;
   const v = parseFloat(raw);
   if (isNaN(v)) return null;

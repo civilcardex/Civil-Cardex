@@ -1,3 +1,3 @@
-export function parseDescripcion(desc) {
-  return (desc || '').split('+').map(s => s.trim()).filter(Boolean);
+export function parseDescription(desc: string) {
+  return (desc || '').split('+').map((s: string) => s.trim()).filter(Boolean);
 }

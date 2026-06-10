@@ -4,9 +4,9 @@ import {
   caudalHunterLPS,
   caudalTuboLleno,
   velocidadTuboLleno,
-  diametromaning,
+  diametroManning,
   GRAVEDAD,
-  maning_SAN,
+  manning_SAN,
 } from '../calcSanitary'
 
 describe('factorSimultaneidad', () => {
@@ -67,12 +67,12 @@ describe('Manning functions', () => {
     expect(velocidadTuboLleno(0, 0.009, 0.02)).toBe(0)
   })
 
-  it('diametromaning returns a positive value for valid inputs', () => {
-    const D = diametromaning(0.005, 0.009, 0.02)
+  it('diametroManning returns a positive value for valid inputs', () => {
+    const D = diametroManning(0.005, 0.009, 0.02)
     expect(D).toBeGreaterThan(0)
   })
 
-  it('diametromaning returns 0 for S <= 0', () => {
-    expect(diametromaning(0.005, 0.009, 0)).toBe(0)
+  it('diametroManning returns 0 for S <= 0', () => {
+    expect(diametroManning(0.005, 0.009, 0)).toBe(0)
   })
 })

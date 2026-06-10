@@ -1,4 +1,4 @@
-export function validateTramo(t) {
+export function validateTramo(t: Record<string, any>) {
   const v = t.v_real || 0;
   const y = t.yD || 0;
   const q = t.qQ0 || 0;

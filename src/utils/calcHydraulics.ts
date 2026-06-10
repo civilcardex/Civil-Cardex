@@ -1,4 +1,3 @@
-// @ts-nocheck
 // ============================================
 // calcHidraulica.js - Calculo Red Hidraulica
 // Basado en NTC 1500, Hazen-Williams, Hunter
@@ -7,12 +6,22 @@
 
 import { factorSimultaneidad, caudalHunterLPS } from './calcSanitary';
 
-export const COEF_HAZEN_PVC = 150;
-export const COEF_HAZEN_CPVC = 150;
-export const COEF_HAZEN_COBRE = 130;
+export const COEF_HAZEN_PVC: number = 150;
+export const COEF_HAZEN_CPVC: number = 150;
+const COEF_HAZEN_COBRE: number = 130; // (unused, reserved for future use)
+
+export interface DiametroComercialAF {
+  nominal: string;
+  pulg: number;
+  dInt: number;
+  dExt: number;
+  rde?: number;
+  sch?: number;
+  V?: number;
+}
 
 // ─── Diametros comerciales agua fria PVC (RDE 11/21) ───
-export const DIAMETROS_AF = [
+export const DIAMETROS_AF: DiametroComercialAF[] = [
   { nominal: '1/2" RDE 9',   pulg: 0.5,    dInt: 16.60, dExt: 12.70,  rde: 9 },
   { nominal: '1/2" RDE 13.5', pulg: 0.5,   dInt: 18.18, dExt: 12.70,  rde: 13.5 },
   { nominal: '3/4" RDE 11',  pulg: 0.75,   dInt: 21.81, dExt: 19.05,  rde: 11 },
@@ -29,7 +38,7 @@ export const DIAMETROS_AF = [
 ];
 
 // ─── Diametros comerciales Agua caliente CPVC ───
-export const DIAMETROS_AC = [
+export const DIAMETROS_AC: DiametroComercialAF[] = [
   { nominal: '1/2" CPVC RDE 11',   pulg: 0.5,  dInt: 12.40, dExt: 12.70,  rde: 11 },
   { nominal: '3/4" CPVC RDE 11',    pulg: 0.75, dInt: 18.20, dExt: 19.05,  rde: 11 },
   { nominal: '1" CPVC RDE 11',      pulg: 1.0,  dInt: 23.40, dExt: 25.40,  rde: 11 },
@@ -42,7 +51,7 @@ export const DIAMETROS_AC = [
 ];
 
 // ─── Contadores ───
-export const CONTADORES = [
+export const CONTADORES: { diaPulg: number; qn_lps: number }[] = [
   { diaPulg: 0.5, qn_lps: 0.84 },
   { diaPulg: 0.5, qn_lps: 0.92 },
   { diaPulg: 0.75, qn_lps: 1.40 },
@@ -54,8 +63,15 @@ export const CONTADORES = [
   { diaPulg: 2.0, qn_lps: 8.40 },
 ];
 
+interface AccesorioLe {
+  id: string;
+  nombre: string;
+  le: number[];
+}
+
 // ─── Longitudes equivalentes de accesorios (PVC C=150) ───
-export const LE_ACCESORIOS = [
+// NOTE: See also LE_ACC_DEF in accesoriosUtils.ts for formula-based equivalent lengths
+export const LE_ACCESORIOS: AccesorioLe[] = [
   { id: 'codo90', nombre: 'Codo 90°', le: [0.36, 0.49, 0.62, 0.87, 1.12, 1.62, 2.12] },
   { id: 'teeLat', nombre: 'Tee salida lateral', le: [0.20, 0.29, 0.38, 0.55, 0.73, 1.08, 1.43] },
   { id: 'teeBiLat', nombre: 'Tee salida bilateral', le: [0.76, 1.02, 1.28, 1.79, 2.31, 3.34, 4.37] },
@@ -66,9 +82,9 @@ export const LE_ACCESORIOS = [
   { id: 'reduc', nombre: 'Reducciones (general)', le: [0.06, 0.08, 0.11, 0.16, 0.21, 0.30, 0.40] },
 ];
 
-const DIAM_LE = [0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0];
+const DIAM_LE: number[] = [0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0];
 
-export function getLe(accesorioId, diaPulg) {
+export function getLe(accesorioId: string, diaPulg: number): number {
   const acc = LE_ACCESORIOS.find(a => a.id === accesorioId);
   if (!acc) return 0;
   const idx = DIAM_LE.findIndex(d => d >= diaPulg);
@@ -77,52 +93,43 @@ export function getLe(accesorioId, diaPulg) {
 }
 
 // ─── Seleccion de diametro comercial ───
-export function seleccionarDiametroAF(Q_m3s, C, Vmax) {
+export function seleccionarDiametro(Q_m3s: number, tablaDiametros: DiametroComercialAF[], C?: number, Vmax?: number): DiametroComercialAF {
   C = C || COEF_HAZEN_PVC;
   Vmax = Vmax || 2.5;
-  for (const d of DIAMETROS_AF) {
+  const diametros = tablaDiametros;
+  for (const d of diametros) {
     const D_m = d.dInt / 1000;
     const V = (4 * Q_m3s) / (Math.PI * Math.pow(D_m, 2));
     if (V <= Vmax) {
       return { ...d, V: parseFloat(V.toFixed(4)) };
     }
   }
-  return { ...DIAMETROS_AF[DIAMETROS_AF.length - 1], V: parseFloat((4 * Q_m3s / (Math.PI * Math.pow(DIAMETROS_AF[DIAMETROS_AF.length - 1].dInt / 1000, 2))).toFixed(4)) };
+  return { ...diametros[diametros.length - 1], V: parseFloat((4 * Q_m3s / (Math.PI * Math.pow(diametros[diametros.length - 1].dInt / 1000, 2))).toFixed(4)) };
 }
 
-export function seleccionarDiametroAC(Q_m3s, C, Vmax) {
-  C = C || COEF_HAZEN_CPVC;
-  Vmax = Vmax || 2.5;
-  for (const d of DIAMETROS_AC) {
-    const D_m = d.dInt / 1000;
-    const V = (4 * Q_m3s) / (Math.PI * Math.pow(D_m, 2));
-    if (V <= Vmax) {
-      return { ...d, V: parseFloat(V.toFixed(4)) };
-    }
-  }
-  return { ...DIAMETROS_AC[DIAMETROS_AC.length - 1], V: parseFloat((4 * Q_m3s / (Math.PI * Math.pow(DIAMETROS_AC[DIAMETROS_AC.length - 1].dInt / 1000, 2))).toFixed(4)) };
-}
+export const seleccionarDiametroAF = (Q: number): DiametroComercialAF => seleccionarDiametro(Q, DIAMETROS_AF);
+export const seleccionarDiametroAC = (Q: number): DiametroComercialAF => seleccionarDiametro(Q, DIAMETROS_AC);
 
 // ─── Velocidad real ───
-export function velocidadReal(Q_m3s, D_m) {
+export function realVelocity(Q_m3s: number, D_m: number): number {
   if (D_m <= 0 || Q_m3s <= 0) return 0;
   return (4 * Q_m3s) / (Math.PI * D_m * D_m);
 }
 
 // ─── Perdida por friccion Hazen-Williams ───
-export function perdidaHazenWilliams(Q_m3s, L_m, D_m, C) {
+export function hazenWilliamsLoss(Q_m3s: number, L_m: number, D_m: number, C?: number): number {
   const coef = C || COEF_HAZEN_PVC;
   if (Q_m3s <= 0 || L_m <= 0 || D_m <= 0) return 0;
   return (10.67 * L_m * Math.pow(Q_m3s, 1.852)) / (Math.pow(coef, 1.852) * Math.pow(D_m, 4.87));
 }
 
 // ─── Presion en nudo ───
-export function presionNudo(presionInicial_mca, deltaZ_m, hfTotal_m) {
+export function nodePressure(presionInicial_mca: number, deltaZ_m: number, hfTotal_m: number): number {
   return presionInicial_mca + deltaZ_m - hfTotal_m;
 }
 
 // ─── Verificaciones ───
-export function verificarVelocidad(V) {
+export function checkVelocity(V: number): { cumple: boolean; mensaje: string; Vmin: number; Vmax: number } {
   const Vmin = 0.60;
   const Vmax = 3.00;
   return {
@@ -133,7 +140,7 @@ export function verificarVelocidad(V) {
   };
 }
 
-export function verificarPresion(Pnudo, PminAparato) {
+export function checkPressure(Pnudo: number, PminAparato?: number): { cumple: boolean; mensaje: string } {
   const Pmin = PminAparato || 0.51;
   return {
     cumple: Pnudo >= Pmin,
@@ -141,8 +148,57 @@ export function verificarPresion(Pnudo, PminAparato) {
   };
 }
 
+export interface TramoHidraulicoParams {
+  ramal?: string;
+  nudoIni?: string;
+  nudoFin?: string;
+  piso?: number;
+  UC_propias?: number | string;
+  UC_otros?: number | string;
+  numSalidas?: number | string;
+  Lh_m?: number;
+  Lv_m?: number;
+  presionRed_mca?: number;
+  material?: string;
+  tipo?: string;
+  desc_otros?: string;
+}
+
+export interface TramoHidraulicoResult {
+  ramal: string;
+  nudoIni: string;
+  nudoFin: string;
+  piso: number;
+  desc_otros: string;
+  UC_propias: number;
+  UC_otros: number;
+  UC_acumulado: number;
+  numSalidas: number;
+  K: number;
+  Q_Ls: number;
+  diamNominal: string;
+  D_int_mm: number;
+  D_ext_mm: number;
+  pulg: number;
+  material: string;
+  C: number;
+  V_ms: number;
+  V_mms: number;
+  Lh_m: number;
+  Lv_m: number;
+  Le_m: number;
+  L_total: number;
+  hf_m: number;
+  deltaZ_m: number;
+  P_ini_mca: number;
+  P_fin_mca: number;
+  verifV: { cumple: boolean; mensaje: string; Vmin: number; Vmax: number };
+  verifP: { cumple: boolean; mensaje: string };
+  cumple: boolean;
+}
+
 // ─── Calculo completo de un tramo hidraulico (AF o AC) ───
-export function calcularTramoHidraulico(params) {
+export function calculateHydraulicSegment(params: TramoHidraulicoParams): TramoHidraulicoResult {
   const {
     ramal = '',
     nudoIni = '',
@@ -163,30 +219,30 @@ export function calcularTramoHidraulico(params) {
     ? seleccionarDiametroAC
     : seleccionarDiametroAF;
 
-  const UC_acumulado = parseFloat(UC_propias) + parseFloat(UC_otros);
-  const K = factorSimultaneidad(parseInt(numSalidas) || 1);
+  const UC_acumulado = Number(UC_propias) + Number(UC_otros);
+  const K = factorSimultaneidad(Number(numSalidas) || 1);
   const Q_Ls = caudalHunterLPS(UC_acumulado, K);
   const Q_m3s = Q_Ls / 1000;
 
-  const diam = selDiam(Q_m3s, C);
+  const diam = selDiam(Q_m3s);
   const D_int_mm = diam.dInt;
   const D_int_m = D_int_mm / 1000;
 
-  const V_ms = velocidadReal(Q_m3s, D_int_m);
+  const V_ms = realVelocity(Q_m3s, D_int_m);
   const V_mms = V_ms * 1000;
 
   let Le_m = 0;
 
   const L_total = (Lh_m || 0) + (Lv_m || 0) + Le_m;
 
-  const hf = perdidaHazenWilliams(Q_m3s, L_total || 0.1, D_int_m, C);
+  const hf = hazenWilliamsLoss(Q_m3s, L_total || 0.1, D_int_m, C);
 
-  const deltaZ = parseFloat(Lv_m) || 0;
+  const deltaZ = Number(Lv_m) || 0;
   const P_ini = presionRed_mca;
-  const P_fin = presionNudo(P_ini, deltaZ, hf);
+  const P_fin = nodePressure(P_ini, deltaZ, hf);
 
-  const verifV = verificarVelocidad(V_ms);
-  const verifP = verificarPresion(P_fin);
+  const verifV = checkVelocity(V_ms);
+  const verifP = checkPressure(P_fin);
 
   const desc_otros = params.desc_otros || "";
 
@@ -196,10 +252,10 @@ export function calcularTramoHidraulico(params) {
     nudoFin,
     piso,
     desc_otros,
-    UC_propias: parseFloat(UC_propias) || 0,
-    UC_otros: parseFloat(UC_otros) || 0,
+    UC_propias: Number(UC_propias) || 0,
+    UC_otros: Number(UC_otros) || 0,
     UC_acumulado,
-    numSalidas: parseInt(numSalidas) || 1,
+    numSalidas: Number(numSalidas) || 1,
     K: parseFloat(K.toFixed(4)),
     Q_Ls: parseFloat(Q_Ls.toFixed(4)),
     diamNominal: diam.nominal,
@@ -210,8 +266,8 @@ export function calcularTramoHidraulico(params) {
     C,
     V_ms: parseFloat(V_ms.toFixed(4)),
     V_mms: parseFloat(V_mms.toFixed(1)),
-    Lh_m: parseFloat(Lh_m) || 0,
-    Lv_m: parseFloat(Lv_m) || 0,
+    Lh_m: Number(Lh_m) || 0,
+    Lv_m: Number(Lv_m) || 0,
     Le_m: parseFloat(Le_m.toFixed(2)),
     L_total: parseFloat(L_total.toFixed(2)),
     hf_m: parseFloat(hf.toFixed(4)),
@@ -225,7 +281,7 @@ export function calcularTramoHidraulico(params) {
 }
 
 // ─── Caudal total de consumo (Calculo TR) ───
-export function calcularConsumoTR(habitantes, dotacion, areaPiscina, areaVerdes, areaOtros) {
+export function calcularConsumoTR(habitantes: number, dotacion: number, areaPiscina: number, areaVerdes: number, areaOtros: number) {
   const q_fijos = habitantes * dotacion;
   const q_flotantes = 0;
   const q_piscina = (areaPiscina || 0) * 10;
@@ -246,3 +302,12 @@ export function calcularConsumoTR(habitantes, dotacion, areaPiscina, areaVerdes,
     Q_lps: parseFloat(Q_lps.toFixed(6)),
   };
 }
+
+export {
+  realVelocity as velocidadReal,
+  hazenWilliamsLoss as perdidaHazenWilliams,
+  nodePressure as presionNudo,
+  checkVelocity as verificarVelocidad,
+  checkPressure as verificarPresion,
+  calculateHydraulicSegment as calcularTramoHidraulico,
+};

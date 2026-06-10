@@ -1,45 +1,40 @@
-import { writeHidroDrawingSync } from './hydroDrawingSync';
-import { writeSanDrawingSync } from './sanitaryDrawingSync';
+import { writeHydroDrawingSync, writeSanDrawingSync } from './drawingSync';
 import { safeParse } from './parseUtils';
+import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../constants/storage-keys';
 
-const TRAZOS_PREFIX = 'civilflow_trazos_';
-const HIDRO_FAMILIES = new Set(['af', 'ac']);
-const SAN_FAMILIES = new Set(['san', 'll']);
-
-export function deleteRamalFromDrawing(ramalId, net, planos) {
-  if (!ramalId || !net || !planos) return;
-  const isHidro = HIDRO_FAMILIES.has(net);
+export function deleteRamalFromDrawing(ramalId: string, net: string, plans: any[]) {
+  if (!ramalId || !net || !plans) return;
+  const isHydro = HYDRO_FAMILIES.has(net);
   const isSan = SAN_FAMILIES.has(net);
 
-  for (const plano of planos) {
-    if (!plano || plano.status !== 'confirmed') continue;
-    const key = TRAZOS_PREFIX + plano.id;
+  for (const plan of plans) {
+    if (!plan || plan.status !== 'confirmed') continue;
+    const key = TRAZOS_PREFIX + plan.id;
     const raw = safeParse(localStorage.getItem(key), null);
     if (!raw) continue;
-    const data = typeof raw === 'string' ? safeParse(raw, {}) : raw;
-
+    const data = (typeof raw === 'string' ? safeParse(raw, {}) : raw) as Record<string, any>;
     const before = (data.ramales || []).length;
-    data.ramales = (data.ramales || []).filter(r => !(r.id === ramalId && r.net === net));
+    data.ramales = (data.ramales || []).filter((r: any) => !(r.id === ramalId && r.net === net));
     if ((data.ramales || []).length < before) {
       localStorage.setItem(key, JSON.stringify(data));
     }
   }
 
-  if (isHidro) writeHidroDrawingSync(planos);
-  if (isSan) writeSanDrawingSync(planos);
+  if (isHydro) writeHydroDrawingSync(plans);
+  if (isSan) writeSanDrawingSync(plans);
 }
 
-export function writeDiametroToDrawing(ramalId, net, newDiamLabel, planos) {
-  if (!ramalId || !net || !planos) return;
-  const isHidro = HIDRO_FAMILIES.has(net);
+export function writeDiametroToDrawing(ramalId: string, net: string, newDiamLabel: string, plans: any[]) {
+  if (!ramalId || !net || !plans) return;
+  const isHydro = HYDRO_FAMILIES.has(net);
   const isSan = SAN_FAMILIES.has(net);
 
-  for (const plano of planos) {
-    if (!plano || plano.status !== 'confirmed') continue;
-    const key = TRAZOS_PREFIX + plano.id;
+  for (const plan of plans) {
+    if (!plan || plan.status !== 'confirmed') continue;
+    const key = TRAZOS_PREFIX + plan.id;
     const raw = safeParse(localStorage.getItem(key), null);
     if (!raw) continue;
-    const data = typeof raw === 'string' ? safeParse(raw, {}) : raw;
+    const data = (typeof raw === 'string' ? safeParse(raw, {}) : raw) as Record<string, any>;
     let changed = false;
 
     for (const r of (data.ramales || [])) {
@@ -54,10 +49,6 @@ export function writeDiametroToDrawing(ramalId, net, newDiamLabel, planos) {
     }
   }
 
-  if (isHidro) {
-    writeHidroDrawingSync(planos);
-  }
-  if (isSan) {
-    writeSanDrawingSync(planos);
-  }
+  if (isHydro) writeHydroDrawingSync(plans);
+  if (isSan) writeSanDrawingSync(plans);
 }

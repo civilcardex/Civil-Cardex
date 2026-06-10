@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
   getLe,
-  velocidadReal,
-  perdidaHazenWilliams,
-  presionNudo,
-  verificarVelocidad,
-  verificarPresion,
+  realVelocity,
+  hazenWilliamsLoss,
+  nodePressure,
+  checkVelocity,
+  checkPressure,
   COEF_HAZEN_PVC,
 } from '../calcHydraulics'
 
@@ -26,9 +26,9 @@ describe('getLe', () => {
   })
 })
 
-describe('velocidadReal', () => {
+describe('realVelocity', () => {
   it('calcula velocidad correctamente', () => {
-    const V = velocidadReal(0.001, 0.05)
+    const V = realVelocity(0.001, 0.05)
     // Q = 0.001 m3/s, D = 0.05 m => A = pi*D^2/4
     const A = Math.PI * 0.05 * 0.05 / 4
     const expected = 0.001 / A
@@ -36,64 +36,64 @@ describe('velocidadReal', () => {
   })
 
   it('retorna 0 para D_m <= 0', () => {
-    expect(velocidadReal(0.001, 0)).toBe(0)
+    expect(realVelocity(0.001, 0)).toBe(0)
   })
 
   it('retorna 0 para Q_m3s <= 0', () => {
-    expect(velocidadReal(0, 0.05)).toBe(0)
+    expect(realVelocity(0, 0.05)).toBe(0)
   })
 })
 
-describe('perdidaHazenWilliams', () => {
+describe('hazenWilliamsLoss', () => {
   it('calcula perdida por friccion', () => {
-    const hf = perdidaHazenWilliams(0.001, 10, 0.05, COEF_HAZEN_PVC)
+    const hf = hazenWilliamsLoss(0.001, 10, 0.05, COEF_HAZEN_PVC)
     expect(hf).toBeGreaterThan(0)
   })
 
   it('retorna 0 para Q_m3s <= 0', () => {
-    expect(perdidaHazenWilliams(0, 10, 0.05, COEF_HAZEN_PVC)).toBe(0)
+    expect(hazenWilliamsLoss(0, 10, 0.05, COEF_HAZEN_PVC)).toBe(0)
   })
 
   it('retorna 0 para L_m <= 0', () => {
-    expect(perdidaHazenWilliams(0.001, 0, 0.05, COEF_HAZEN_PVC)).toBe(0)
+    expect(hazenWilliamsLoss(0.001, 0, 0.05, COEF_HAZEN_PVC)).toBe(0)
   })
 })
 
-describe('presionNudo', () => {
+describe('nodePressure', () => {
   it('calcula presion en nudo correctamente', () => {
-    const P = presionNudo(20, 3, 1.5)
+    const P = nodePressure(20, 3, 1.5)
     expect(P).toBe(21.5)
   })
 })
 
-describe('verificarVelocidad', () => {
+describe('checkVelocity', () => {
   it('retorna cumple true para velocidad dentro del rango', () => {
-    const result = verificarVelocidad(1.5)
+    const result = checkVelocity(1.5)
     expect(result.cumple).toBe(true)
     expect(result.mensaje).toBe('OK')
   })
 
   it('retorna cumple false para velocidad baja', () => {
-    const result = verificarVelocidad(0.3)
+    const result = checkVelocity(0.3)
     expect(result.cumple).toBe(false)
     expect(result.mensaje).toContain('sedimentacion')
   })
 
   it('retorna cumple false para velocidad alta', () => {
-    const result = verificarVelocidad(4.0)
+    const result = checkVelocity(4.0)
     expect(result.cumple).toBe(false)
     expect(result.mensaje).toContain('golpe de ariete')
   })
 })
 
-describe('verificarPresion', () => {
+describe('checkPressure', () => {
   it('retorna cumple true para presion suficiente', () => {
-    const result = verificarPresion(5.0, 1.0)
+    const result = checkPressure(5.0, 1.0)
     expect(result.cumple).toBe(true)
   })
 
   it('retorna cumple false para presion insuficiente', () => {
-    const result = verificarPresion(0.3, 1.0)
+    const result = checkPressure(0.3, 1.0)
     expect(result.cumple).toBe(false)
     expect(result.mensaje).toContain('INSUFICIENTE')
   })
