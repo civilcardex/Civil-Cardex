@@ -1,41 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { GAS } from '../constants';
 
 const SANITARIAS = [
   { mat: 'PVC-S', rows: [
     { dn: '1 1/2"', d: 42.68 }, { dn: '2"', d: 54.48 },
     { dn: '3"', d: 76.20 }, { dn: '4"', d: 107.70 }, { dn: '6"', d: 160.04 },
-  ]},
-];
-
-const VENTILACION = [
-  { mat: 'PVC-V', rows: [
-    { dn: '1 1/2"', d: 45.22 }, { dn: '2"', d: 56.76 },
-    { dn: '3"', d: 79.00 }, { dn: '4"', d: 110.08 },
-  ]},
-];
-
-const GAS = [
-  { mat: 'Acero Galvanizado', K: 57.50, rows: [
-    { dn: '3/8', d: 9.50 }, { dn: '1/2', d: 12.70 }, { dn: '3/4', d: 19.00 },
-    { dn: '1', d: 25.40 }, { dn: '2', d: 50.80 },
-  ]},
-  { mat: 'Acero al Carbón', K: 57.50, rows: [
-    { dn: '3/8', d: 10.00 }, { dn: '1/2', d: 13.40 }, { dn: '3/4', d: 19.50 },
-    { dn: '1', d: 26.00 }, { dn: '2', d: 52.00 },
-  ]},
-  { mat: 'Cobre Rígido', K: 54.20, rows: [
-    { dn: '3/8', d: 8.70 }, { dn: '1/2', d: 10.90 }, { dn: '3/4', d: 17.40 },
-  ]},
-  { mat: 'Cobre Flexible', K: 54.20, rows: [
-    { dn: '3/8', d: 9.00 }, { dn: '1/2', d: 11.20 },
-  ]},
-  { mat: 'PE al PE', K: 49.00, rows: [
-    { dn: '3/8', d: 12.00 }, { dn: '1/2', d: 16.00 },
-    { dn: '3/4', d: 20.00 }, { dn: '1', d: 25.00 },
-  ]},
-  { mat: 'Polietileno', K: 50.60, rows: [
-    { dn: '1/2', d: 14.50 }, { dn: '3/4', d: 21.50 }, { dn: '1', d: 27.80 },
   ]},
 ];
 
@@ -110,7 +80,6 @@ const MATERIALES_POR_RED = [
 const COEF_FRICCION = [
   { tipo: 'PVC-S', desc: 'PVC Sanitario', sis: 'Sanitaria', mat: 'PVC', n: 0.009, c: 150, cu: 145, e: 0.0015, pn: 'N/A' },
   { tipo: 'PVC-S', desc: 'PVC Sanitario', sis: 'Aguas lluvias', mat: 'PVC', n: 0.009, c: 150, cu: 145, e: 0.0015, pn: 'N/A' },
-  { tipo: 'PVC-V', desc: 'PVC Ventilación', sis: 'Ventilacion', mat: 'PVC', n: 0.009, c: 150, cu: 145, e: 0.0015, pn: 'N/A' },
   { tipo: 'PVC-Pr', desc: 'PVC Presión', sis: 'Agua Fria', mat: 'PVC', n: 0.009, c: 150, cu: 145, e: 0.0015, pn: 'Según RDE' },
   { tipo: 'CPVC', desc: 'CPVC Agua caliente', sis: 'Agua caliente', mat: 'CPVC', n: 0.009, c: 150, cu: 145, e: 0.0015, pn: 'Según SDR' },
   { tipo: 'Acero Galvanizado', desc: 'Acero Galvanizado', sis: 'Gas', mat: 'Acero', n: 0.015, c: 120, cu: 100, e: 0.15, pn: 'Según cédula' },
@@ -121,13 +90,6 @@ const COEF_FRICCION = [
   { tipo: 'Acero al Carbon', desc: 'Acero Negro', sis: 'Contra Incendio', mat: 'Acero', n: 0.012, c: 120, cu: 100, e: 0.045, pn: 'Según cédula' },
   { tipo: 'Acero Galvanizado', desc: 'Acero Galvanizado', sis: 'Contra Incendio', mat: 'Acero', n: 0.015, c: 120, cu: 100, e: 0.15, pn: 'Según cédula' },
   { tipo: 'PVC C900', desc: 'PVC C900', sis: 'Contra Incendio', mat: 'PVC', n: 0.009, c: 150, cu: 145, e: 0.0015, pn: 'DR 18/25' },
-];
-
-const TABS = [
-  { id: 1, label: '1' },
-  { id: 2, label: '2' },
-  { id: 3, label: '3' },
-  { id: 4, label: '4' },
 ];
 
 const HEADER_BG = 'var(--bg3)';
@@ -159,9 +121,11 @@ function Th({ children, style }) {
       letterSpacing: 0.6,
       padding: '4px 8px',
       borderBottom: `1px solid ${HEADER_BORDER}`,
-      borderTop: `1px solid ${HEADER_BORDER}`,
-      textAlign: 'left',
+      textAlign: 'center',
       whiteSpace: 'nowrap',
+      position: 'sticky',
+      top: 0,
+      zIndex: 5,
       ...style,
     }}>{children}</th>
   );
@@ -189,211 +153,62 @@ function Td({ children, style, mono = false, center = true }) {
   );
 }
 
-function SanitariasTable() {
+function PipeTable({ groups, compact }) {
   let idx = 0;
+  const cp = compact ? { thPad: '3px 8px', thFs: 11, thLs: 0.5, tdPad: '3px 8px', tdFs: 12, matFs: 14, matPad: '3px 8px', matFw: 700 } : { thPad: '4px 8px', thFs: 10, thLs: 0.6, tdPad: '5px 10px', tdFs: 12, matFs: 11, matPad: '4px 8px', matFw: 600 };
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
       <thead>
         <tr>
-          <Th style={{ width: '40%', textAlign: 'center' }}>Material</Th>
-          <Th style={{ textAlign: 'center' }}>Diametro Nominal</Th>
-          <Th style={{ textAlign: 'center' }}>Diametro Interior mm</Th>
+          <Th style={{ width: '25%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Material</Th>
+          <Th style={{ width: '35%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Diametro Nominal</Th>
+          <Th style={{ width: '40%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Ø Interior (mm)</Th>
         </tr>
       </thead>
       <tbody>
-        {SANITARIAS.map((grp, gi) => grp.rows.map((r, ri) => (
-          <Tr key={`${gi}-${ri}`} index={idx++}>
-            {ri === 0 ? (
-              <td rowSpan={grp.rows.length} style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>{grp.mat}</td>
-            ) : null}
-            <Td mono center={false} style={{ padding: '2px 8px', fontSize: 11 }}>{r.dn}</Td>
-            <Td mono style={{ padding: '2px 8px', fontSize: 11 }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
-          </Tr>
-        )))}
+        {groups.map((grp, gi) =>
+          grp.rows.map((r, ri) => (
+            <Tr key={`${gi}-${ri}`} index={idx++}>
+              {ri === 0 && (
+                <td rowSpan={grp.rows.length} style={{ padding: cp.matPad, fontSize: cp.matFs, fontWeight: cp.matFw, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderBottom: '1px solid var(--line)' }}>
+                  {grp.mat}
+                </td>
+              )}
+              <Td mono center={false} style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.dn}</Td>
+              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
+            </Tr>
+          ))
+        )}
       </tbody>
     </table>
   );
 }
 
-function VentilacionTable() {
+function GasTable({ groups, compact }) {
   let idx = 0;
+  const data = groups || GAS;
+  const cp = compact ? { thPad: '3px 8px', thFs: 11, thLs: 0.5, tdPad: '3px 8px', tdFs: 12, matFs: 14, matPad: '3px 8px', matFw: 700 } : { thPad: '4px 8px', thFs: 10, thLs: 0.6, tdPad: '5px 10px', tdFs: 12, matFs: 11, matPad: '4px 8px', matFw: 600 };
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
       <thead>
         <tr>
-          <Th style={{ width: '40%', textAlign: 'center' }}>Material</Th>
-          <Th style={{ textAlign: 'center' }}>Diametro Nominal</Th>
-          <Th style={{ textAlign: 'center' }}>Diametro Interior mm</Th>
+          <Th style={{ width: '28%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Material</Th>
+          <Th style={{ width: '28%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Diametro Nominal</Th>
+          <Th style={{ width: '24%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Ø Interior (mm)</Th>
+          <Th style={{ width: '20%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Coef. K</Th>
         </tr>
       </thead>
       <tbody>
-        {VENTILACION.map((grp, gi) => grp.rows.map((r, ri) => (
+        {data.map((grp, gi) => grp.rows.map((r, ri) => (
           <Tr key={`${gi}-${ri}`} index={idx++}>
-            {ri === 0 ? (
-              <td rowSpan={grp.rows.length} style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>{grp.mat}</td>
-            ) : null}
-            <Td mono center={false} style={{ padding: '2px 8px', fontSize: 11 }}>{r.dn}</Td>
-            <Td mono style={{ padding: '2px 8px', fontSize: 11 }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
-          </Tr>
-        )))}
-      </tbody>
-    </table>
-  );
-}
-
-function AguaFriaTable() {
-  let idx = 0;
-  return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-      <thead>
-        <tr>
-          <Th style={{ width: '35%', textAlign: 'center' }}>Material</Th>
-          <Th style={{ textAlign: 'center' }}>Diametro Nominal</Th>
-          <Th style={{ textAlign: 'center' }}>Diametro Interior mm</Th>
-        </tr>
-      </thead>
-      <tbody>
-        {AGUA_FRIA.map((grp, gi) => grp.rows.map((r, ri) => (
-          <Tr key={`${gi}-${ri}`} index={idx++}>
-            {ri === 0 ? (
-              <td rowSpan={grp.rows.length} style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>{grp.mat}</td>
-            ) : null}
-            <Td mono center={false} style={{ padding: '2px 8px', fontSize: 11 }}>{r.dn}</Td>
-            <Td mono style={{ padding: '2px 8px', fontSize: 11 }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
-          </Tr>
-        )))}
-      </tbody>
-    </table>
-  );
-}
-
-function AguaCalienteTable() {
-  let idx = 0;
-  return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-      <thead>
-        <tr>
-          <Th style={{ width: '35%', textAlign: 'center' }}>Material</Th>
-          <Th style={{ textAlign: 'center' }}>Diametro Nominal</Th>
-          <Th style={{ textAlign: 'center' }}>Diametro Interior mm</Th>
-        </tr>
-      </thead>
-      <tbody>
-        {AGUA_CALIENTE.map((grp, gi) => grp.rows.map((r, ri) => (
-          <Tr key={`${gi}-${ri}`} index={idx++}>
-            {ri === 0 ? (
-              <td rowSpan={grp.rows.length} style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>{grp.mat}</td>
-            ) : null}
-            <Td mono center={false} style={{ padding: '2px 8px', fontSize: 11 }}>{r.dn}</Td>
-            <Td mono style={{ padding: '2px 8px', fontSize: 11 }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
-          </Tr>
-        )))}
-      </tbody>
-    </table>
-  );
-}
-
-function GasTable() {
-  let idx = 0;
-  return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-      <thead>
-        <tr>
-          <Th style={{ width: '32%', textAlign: 'center', padding: '5px 6px' }}>Material</Th>
-          <Th style={{ textAlign: 'center', padding: '5px 6px' }}>Diametro Nominal</Th>
-          <Th style={{ textAlign: 'center', padding: '5px 6px' }}>Diametro Interno (mm)</Th>
-          <Th style={{ textAlign: 'center', padding: '5px 6px' }}>Coef. tubería K</Th>
-        </tr>
-      </thead>
-      <tbody>
-        {GAS.map((grp, gi) => grp.rows.map((r, ri) => (
-          <Tr key={`${gi}-${ri}`} index={idx++}>
-            {ri === 0 ? (
-              <td rowSpan={grp.rows.length} style={{ padding: '3px 6px', fontWeight: 600, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>{grp.mat}</td>
-            ) : null}
-            <Td mono style={{ padding: '3px 6px' }}>{r.dn}</Td>
-            <Td mono style={{ padding: '3px 6px' }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
-            <Td mono style={{ padding: '3px 6px' }}>{grp.K.toFixed(2)}</Td>
-          </Tr>
-        )))}
-      </tbody>
-    </table>
-  );
-}
-
-function RciTable() {
-  let idx = 0;
-  return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-      <thead>
-        <tr>
-          <Th style={{ width: '40%', textAlign: 'center' }}>Material</Th>
-          <Th style={{ textAlign: 'center' }}>Diametro Nominal</Th>
-          <Th style={{ textAlign: 'center' }}>Diametro Interior mm</Th>
-        </tr>
-      </thead>
-      <tbody>
-        {RCI.map((grp, gi) => grp.rows.map((r, ri) => (
-          <Tr key={`${gi}-${ri}`} index={idx++}>
-            {ri === 0 ? (
-              <td rowSpan={grp.rows.length} style={{ padding: '2px 8px', fontSize: 11, fontWeight: 600, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>{grp.mat}</td>
-            ) : null}
-            <Td mono style={{ padding: '2px 8px', fontSize: 11 }}>{r.dn}</Td>
-            <Td mono style={{ padding: '2px 8px', fontSize: 11 }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
-          </Tr>
-        )))}
-      </tbody>
-    </table>
-  );
-}
-
-function RciAceroTable() {
-  const groups = RCI.slice(0, 2);
-  let idx = 0;
-  return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-      <thead>
-        <tr>
-          <Th style={{ width: '40%', textAlign: 'center' }}>Material</Th>
-          <Th style={{ textAlign: 'center' }}>Diametro Nominal</Th>
-          <Th style={{ textAlign: 'center' }}>Diametro Interior mm</Th>
-        </tr>
-      </thead>
-      <tbody>
-        {groups.map((grp, gi) => grp.rows.map((r, ri) => (
-          <Tr key={`${gi}-${ri}`} index={idx++}>
-            {ri === 0 ? (
-              <td rowSpan={grp.rows.length} style={{ padding: '2px 6px', fontSize: 11, fontWeight: 600, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>{grp.mat}</td>
-            ) : null}
-            <Td mono center={false} style={{ padding: '2px 6px', fontSize: 11 }}>{r.dn}</Td>
-            <Td mono style={{ padding: '2px 6px', fontSize: 11 }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
-          </Tr>
-        )))}
-      </tbody>
-    </table>
-  );
-}
-
-function RciGalvTable() {
-  const groups = RCI.slice(2);
-  let idx = 0;
-  return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-      <thead>
-        <tr>
-          <Th style={{ width: '40%', textAlign: 'center' }}>Material</Th>
-          <Th style={{ textAlign: 'center' }}>Diametro Nominal</Th>
-          <Th style={{ textAlign: 'center' }}>Diametro Interior mm</Th>
-        </tr>
-      </thead>
-      <tbody>
-        {groups.map((grp, gi) => grp.rows.map((r, ri) => (
-          <Tr key={`${gi}-${ri}`} index={idx++}>
-            {ri === 0 ? (
-              <td rowSpan={grp.rows.length} style={{ padding: '2px 6px', fontSize: 11, fontWeight: 600, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>{grp.mat}</td>
-            ) : null}
-            <Td mono style={{ padding: '2px 6px', fontSize: 11 }}>{r.dn}</Td>
-            <Td mono style={{ padding: '2px 6px', fontSize: 11 }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
+            {ri === 0 && (
+              <td rowSpan={grp.rows.length} style={{ padding: cp.matPad, fontSize: cp.matFs, fontWeight: cp.matFw, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderBottom: '1px solid var(--line)' }}>
+                {grp.mat}
+              </td>
+            )}
+            <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.dn}</Td>
+            <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
+            <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{grp.K.toFixed(2)}</Td>
           </Tr>
         )))}
       </tbody>
@@ -404,36 +219,42 @@ function RciGalvTable() {
 function ContadoresTable() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, padding: '4px 6px', borderBottom: '1px solid rgba(0,220,229,0.35)' }}>
-        <span className="td-mono-b" style={{ fontSize: 10, fontWeight: 700, color: '#00dce5',  textTransform: 'uppercase', letterSpacing: 0.6, textAlign: 'center' }}>Diámetro Nominal</span>
-        <span className="td-mono-b" style={{ fontSize: 10, fontWeight: 700, color: '#00dce5',  letterSpacing: 0.6, textAlign: 'center' }}>Qn(LPS)</span>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, padding: '2px 6px', borderBottom: `1px solid ${HEADER_BORDER}` }}>
+        <span className="td-mono-b" style={{ fontSize: 12, fontWeight: 700, color: HEADER_TXT, textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'center' }}>Diámetro</span>
+        <span className="td-mono-b" style={{ fontSize: 12, fontWeight: 700, color: HEADER_TXT, letterSpacing: 0.4, textAlign: 'center' }}>Qn (LPS)</span>
       </div>
       {CONTADORES.map((c, i) => (
-        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, padding: '3px 6px', borderBottom: i < CONTADORES.length - 1 ? '1px solid var(--line)' : 'none', background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
-          <span className="td-mono" style={{ fontSize: 11, color: 'var(--txt)',  textAlign: 'center' }}>{c.dn}</span>
-          <span className="td-mono" style={{ fontSize: 11, color: 'var(--txt)',  fontWeight: 500, textAlign: 'center' }}>{c.q.toFixed(2)}</span>
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, padding: '1px 6px', borderBottom: i < CONTADORES.length - 1 ? '1px solid var(--line)' : 'none', background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
+          <span className="td-mono" style={{ fontSize: 13, color: 'var(--txt)', textAlign: 'center' }}>{c.dn}</span>
+          <span className="td-mono" style={{ fontSize: 13, color: 'var(--txt)', fontWeight: 500, textAlign: 'center' }}>{c.q.toFixed(2)}</span>
         </div>
       ))}
     </div>
   );
 }
 
+const cmpTd = { padding: '2px 6px', fontSize: 13 };
+
 function MaterialesPorRedTable() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      {MATERIALES_POR_RED.map((c, i) => (
-        <div key={i} style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', padding: '4px 8px', borderBottom: i < MATERIALES_POR_RED.length - 1 ? '1px solid var(--line)' : 'none', background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
-          <span style={{ fontWeight: 500, fontSize: 11, color: 'var(--txt)', textAlign: 'center', alignSelf: 'center' }}>{c.red}</span>
-          {c.mat && <span className="td-mono" style={{ fontSize: 11, color: 'var(--txt2)',  textAlign: 'center', alignSelf: 'center' }}>{c.mat}</span>}
-          {c.mats && (
-            <span className="td-mono" style={{ fontSize: 11, color: 'var(--txt2)',  textAlign: 'center', lineHeight: 1.6, alignSelf: 'center' }}>
-              {c.mats.slice(0, Math.ceil(c.mats.length / 2)).join(', ')},<br />
-              {c.mats.slice(Math.ceil(c.mats.length / 2)).join(', ')}
-            </span>
-          )}
-        </div>
-      ))}
-    </div>
+    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <thead>
+        <tr>
+          <Th style={{ width: '30%', padding: '2px 6px', fontSize: 12, letterSpacing: 0.4 }}>Red</Th>
+          <Th style={{ padding: '2px 6px', fontSize: 12, letterSpacing: 0.4 }}>Materiales</Th>
+        </tr>
+      </thead>
+      <tbody>
+        {MATERIALES_POR_RED.map((c, i) => (
+          <Tr key={i} index={i}>
+            <Td mono center={false} style={cmpTd}>{c.red}</Td>
+            <Td center={false} style={cmpTd}>
+              {c.mat || (c.mats ? c.mats.join(', ') : '')}
+            </Td>
+          </Tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -444,9 +265,9 @@ const coefTh = {
   fontSize: 12,
   fontWeight: 700,
   textTransform: 'uppercase',
-  letterSpacing: 0.6,
-  padding: '5px 8px',
-  border: '1px solid var(--line)',
+  letterSpacing: 0.4,
+  padding: '1px 4px',
+  borderBottom: `1px solid ${HEADER_BORDER}`,
   textAlign: 'center',
   whiteSpace: 'nowrap',
 };
@@ -455,10 +276,10 @@ const coefTd = {
   fontFamily: 'var(--mono)',
   fontSize: 13,
   fontWeight: 500,
-  padding: '2px 6px',
+  padding: '0px 3px',
   textAlign: 'center',
   color: 'var(--txt)',
-  border: '1px solid var(--line)',
+  borderBottom: '1px solid var(--line)',
 };
 
 function CoefFriccionTable() {
@@ -468,22 +289,22 @@ function CoefFriccionTable() {
         <thead>
           <tr>
             <td colSpan={9} style={{
-              padding: '8px 12px', textAlign: 'center', fontWeight: 700, fontSize: 13,
-               textTransform: 'uppercase', letterSpacing: 0.5,
+              padding: '2px 8px', textAlign: 'center', fontWeight: 700, fontSize: 12,
+              textTransform: 'uppercase', letterSpacing: 0.3,
               background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--txt)',
             }}>
               Coeficiente fricción tuberías
             </td>
           </tr>
           <tr>
-            <th style={{ ...coefTh, width: '14%' }}>Tipo Tubería</th>
+            <th style={{ ...coefTh, width: '14%' }}>Tipo</th>
             <th style={{ ...coefTh, width: '14%' }}>Descripción</th>
             <th style={{ ...coefTh, width: '10%' }}>Sistema</th>
             <th style={{ ...coefTh, width: '7%' }}>Material</th>
             <th style={coefTh}>Manning n</th>
             <th style={coefTh}>Hazen C</th>
-            <th style={coefTh}>Hazen C Usado</th>
-            <th style={coefTh}>Rugosidad Absoluta ε (mm)</th>
+            <th style={coefTh}>Hazen C Uso</th>
+            <th style={coefTh}>Rugosidad ε (mm)</th>
             <th style={coefTh}>Presión Nominal</th>
           </tr>
         </thead>
@@ -507,6 +328,17 @@ function CoefFriccionTable() {
   );
 }
 
+function filterGroups(groups, search) {
+  if (!search) return groups;
+  const q = search.toLowerCase();
+  return groups
+    .map(g => ({
+      ...g,
+      rows: g.rows.filter(r => r.dn.toLowerCase().includes(q)),
+    }))
+    .filter(g => g.mat.toLowerCase().includes(q) || g.rows.length > 0);
+}
+
 const pageBtn = {
   padding: '5px 12px', border: '1px solid var(--line)', borderRadius: 3,
   fontFamily: 'var(--mono)', fontSize: 11, cursor: 'pointer',
@@ -518,6 +350,17 @@ const pageBtn = {
 export default function CatalogoMaestroPage() {
   const navigate = useNavigate();
   const [subpage, setSubpage] = useState(1);
+  const [search, setSearch] = useState('');
+
+  const sanFiltered = useMemo(() => filterGroups(SANITARIAS, search), [search]);
+  const afFiltered = useMemo(() => filterGroups(AGUA_FRIA, search), [search]);
+  const acFiltered = useMemo(() => filterGroups(AGUA_CALIENTE, search), [search]);
+  const gasAcero = useMemo(() => filterGroups(GAS.slice(0, 2), search), [search]);
+  const gasCobre = useMemo(() => filterGroups(GAS.slice(2, 4), search), [search]);
+  const gasPe = useMemo(() => filterGroups(GAS.slice(4), search), [search]);
+  const rciSch10 = useMemo(() => filterGroups([RCI[0]], search), [search]);
+  const rciSch40 = useMemo(() => filterGroups([RCI[1]], search), [search]);
+  const rciPvcGalv = useMemo(() => filterGroups(RCI.slice(2), search), [search]);
 
   return (
     <div style={{ height: '100%', background: 'var(--bg)', color: 'var(--txt)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -527,26 +370,35 @@ export default function CatalogoMaestroPage() {
             style={{
               position: 'absolute', left: 0,
               padding: '5px 11px', background: 'var(--bg3)', border: '1px solid var(--line)',
-              borderRadius: 3,               color: 'var(--txt2)', cursor: 'pointer',
-               fontWeight: 600, fontSize: 11,
+              borderRadius: 3, color: 'var(--txt2)', cursor: 'pointer',
+              fontWeight: 600, fontSize: 11,
               display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
             }}>
             ← VOLVER
           </button>
-          <h1 className="td-mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--txt)',  margin: 0, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+          <h1 className="td-mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--txt)', margin: 0, letterSpacing: 0.5, textTransform: 'uppercase' }}>
             Catálogo Maestro
           </h1>
         </div>
 
+        <input value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar material o diámetro..."
+          style={{
+            width: '100%', padding: '8px 12px', marginBottom: 8, flexShrink: 0,
+            border: '1px solid var(--line)', borderRadius: 4,
+            background: 'var(--bg3)', color: 'var(--txt)',
+            fontFamily: 'var(--mono)', fontSize: 12, boxSizing: 'border-box',
+          }} />
+
         <div style={{
-          flex: 1, minHeight: 0, overflow: 'auto',
-          padding: '12px 0 8px',
-          display: 'flex', flexDirection: 'column', gap: 12,
+          flex: 1, minHeight: 0, overflow: subpage === 1 ? 'hidden' : 'auto',
+          padding: '6px 0',
+          display: 'flex', flexDirection: 'column', gap: 8,
         }}>
           {subpage === 1 && (
             <>
               <CoefFriccionTable />
-              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 0.5fr', gap: 12, flexShrink: 0 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.45fr', gap: 12, flexShrink: 0 }}>
                 <SectionCard title="Materiales por red" subtitle="Por sistema" compact>
                   <MaterialesPorRedTable />
                 </SectionCard>
@@ -558,37 +410,43 @@ export default function CatalogoMaestroPage() {
           )}
 
           {subpage === 2 && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, alignContent: 'start' }}>
-              <SectionCard title="Sanitarias y Aguas lluvias" subtitle="PVC-S · NTC 1500" span={1} compact>
-                <SanitariasTable />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, alignContent: 'start' }}>
+              <SectionCard title="Sanitarias" subtitle="PVC-S · NTC 1500" compact>
+                <PipeTable groups={sanFiltered} compact />
               </SectionCard>
-              <SectionCard title="Ventilación" subtitle="PVC-V · NTC 1500 §9" span={1} compact>
-                <VentilacionTable />
+              <SectionCard title="Agua fría" subtitle="PVC-Pr · NTC 1500" compact>
+                <PipeTable groups={afFiltered} compact />
               </SectionCard>
-              <SectionCard title="Agua fría" subtitle="PVC-Pr · NTC 1500" span={1} compact>
-                <AguaFriaTable />
-              </SectionCard>
-              <SectionCard title="Agua caliente" subtitle="CPVC · NTC 1500" span={1} compact>
-                <AguaCalienteTable />
+              <SectionCard title="Agua caliente" subtitle="CPVC · NTC 1500" compact>
+                <PipeTable groups={acFiltered} compact />
               </SectionCard>
             </div>
           )}
 
           {subpage === 3 && (
-            <div style={{ width: '100%' }}>
-              <SectionCard title="Gas" subtitle="NTC 3728 · múltiples materiales" compact>
-                <GasTable />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, alignContent: 'start' }}>
+              <SectionCard title="Gas — Acero" subtitle="Galvanizado · Carbón" compact>
+                <GasTable groups={gasAcero} compact />
+              </SectionCard>
+              <SectionCard title="Gas — Cobre" subtitle="Rígido · Flexible" compact>
+                <GasTable groups={gasCobre} compact />
+              </SectionCard>
+              <SectionCard title="Gas — PE" subtitle="PE al PE · Polietileno" compact>
+                <GasTable groups={gasPe} compact />
               </SectionCard>
             </div>
           )}
 
           {subpage === 4 && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, alignContent: 'start' }}>
-              <SectionCard title="Contra Incendio — Acero" subtitle="SCH 10 · SCH 40" compact>
-                <RciAceroTable />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, alignContent: 'start' }}>
+              <SectionCard title="Contra Incendio — SCH 10" subtitle="Acero al Carbon" compact>
+                <PipeTable groups={rciSch10} compact />
+              </SectionCard>
+              <SectionCard title="Contra Incendio — SCH 40" subtitle="Acero al Carbon" compact>
+                <PipeTable groups={rciSch40} compact />
               </SectionCard>
               <SectionCard title="Contra Incendio — PVC / Galv." subtitle="C900 RDE · Galvanizado" compact>
-                <RciGalvTable />
+                <PipeTable groups={rciPvcGalv} compact />
               </SectionCard>
             </div>
           )}
