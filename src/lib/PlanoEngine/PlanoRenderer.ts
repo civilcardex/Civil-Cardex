@@ -328,7 +328,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: any) {
         const pad = 3;
         const w = tw + pad * 2;
         const h = engine.mm2cvs(2.4) + pad * 2;
-        ctx.fillStyle = 'rgba(17,19,23,0.85)';
+        ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = col;
         ctx.lineWidth = 1;
         ctx.beginPath();
