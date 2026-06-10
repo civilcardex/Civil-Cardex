@@ -538,18 +538,18 @@ function RedesTab({ state }: { state: WorkAreaState }) {
       )}
       {redActiva === 'af' && redes.has('af') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <PageNav page={afPage} setPage={setAfPage} total={3} color="var(--af)" labels={['Cálculo UC', 'Accesorios', 'Diseño de red agua fría']} />
+          <PageNav page={afPage} setPage={setAfPage} total={3} color="var(--af)" labels={['Cálculo UC', 'Diseño de red agua fría', 'Accesorios']} />
           {afPage === 1 && <CalculoUC tipo="af" />}
-          {afPage === 2 && <AccesoriosTable tramos={tramosAf} updAcc={updTramoAfAcc} net="af" readOnly />}
-          {afPage === 3 && <DisenoRedAguaFria />}
+          {afPage === 2 && <DisenoRedAguaFria />}
+          {afPage === 3 && <AccesoriosTable tramos={tramosAf} updAcc={updTramoAfAcc} net="af" readOnly />}
         </div>
       )}
       {redActiva === 'ac' && redes.has('ac') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <PageNav page={acPage} setPage={setAcPage} total={3} color="var(--ac)" labels={['Cálculo UC', 'Accesorios', 'Diseño de red agua caliente']} />
+          <PageNav page={acPage} setPage={setAcPage} total={3} color="var(--ac)" labels={['Cálculo UC', 'Diseño de red agua caliente', 'Accesorios']} />
           {acPage === 1 && <CalculoUC tipo="ac" />}
-          {acPage === 2 && <AccesoriosTable tramos={tramosAc} updAcc={updTramoAcAcc} net="ac" readOnly />}
-          {acPage === 3 && <DisenoRedAguaCaliente />}
+          {acPage === 2 && <DisenoRedAguaCaliente />}
+          {acPage === 3 && <AccesoriosTable tramos={tramosAc} updAcc={updTramoAcAcc} net="ac" readOnly />}
         </div>
       )}
       {redActiva === 'bom' && redes.has('bom') && (
@@ -614,7 +614,7 @@ export default function WorkAreaContent({ state }: WorkAreaContentProps) {
   return (
     <>
       {tab === 'info' && <InfoTab state={state} />}
-      {tab === 'plans' && <PlanosTab state={state} />}
+      {tab === 'planos' && <PlanosTab state={state} />}
       {tab === 'redes' && state.redesActivas.length > 0 && <RedesTab state={state} />}
       {tab === 'datos' && <BaseDatos redes={redes} />}
       {tab === 'crit' && <Normativa />}
