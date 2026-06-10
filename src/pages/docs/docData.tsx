@@ -1,40 +1,7 @@
-import React, { useState } from 'react'
-import Navbar from '../components/Navbar'
+import React from 'react'
+import { FormatText as F, TableWrapper as T, TableHeader as Th, TableCell as Td, TableRow as Tr } from './SectionAccordion'
 
-/* ─────────────────────────────────────────────────────────────
-   Civil Flow KML 2026 — DOCUMENTACION
-   Ing. Camilo Cardenas Chacon     NTC 1500 · RAS 2000 · NTC 3728 · NSR-10
-   ───────────────────────────────────────────────────────────── */
-
-const F = ({ children }) => (
-  <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-    {children}
-  </div>
-)
-
-const T = ({ children }) => (
-  <div className="overflow-x-auto my-2">
-    <table className="w-full text-[12px] font-mono border-collapse">
-      <tbody>{children}</tbody>
-    </table>
-  </div>
-)
-
-const Th = ({ children }) => (
-  <th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">
-    {children}
-  </th>
-)
-
-const Td = ({ children }) => (
-  <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-    {children}
-  </td>
-)
-
-const Tr = ({ children }) => <tr>{children}</tr>
-
-const docData = {
+export const docData = {
   hidraulica: {
     name: 'Principios de hidráulica',
     icon: 'water_drop',
@@ -69,10 +36,10 @@ const docData = {
         ),
       },
       {
-        title: 'Ecuación de maning',
+        title: 'Ecuación de Manning',
         body: (
           <div className="space-y-3">
-            <p>Flujo a superficie libre según maning:</p>
+            <p>Flujo a superficie libre según Manning:</p>
             <F>
               V = (1/n) · R<sub>h</sub><sup>2/3</sup> · √S
             </F>
@@ -83,7 +50,7 @@ const docData = {
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">V</span><span>velocidad (m/s)</span>
-              <span className="font-semibold text-primary">n</span><span>coeficiente de rugosidad de maning</span>
+              <span className="font-semibold text-primary">n</span><span>coeficiente de rugosidad de Manning</span>
               <span className="font-semibold text-primary">R<sub>h</sub></span><span>radio hidráulico (m)</span>
               <span className="font-semibold text-primary">S</span><span>pendiente (m/m)</span>
               <span className="font-semibold text-primary">A</span><span>área de la sección (m²)</span>
@@ -155,11 +122,11 @@ const docData = {
             </F>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
-              <span className="font-semibold text-primary">S<sub>c</sub></span><span>pendiente critica</span>
+              <span className="font-semibold text-primary">S<sub>c</sub></span><span>pendiente crítica</span>
               <span className="font-semibold text-primary">d</span><span>diámetro de tubería (m)</span>
             </div>
             <div className="text-[12px] text-on-surface-variant border-l-2 border-outline-variant pl-3">
-              Si S &lt; S<sub>c</sub>: pendiente subcritica para cualquier caudal.<br/>
+              Si S &lt; S<sub>c</sub>: pendiente subcrítica para cualquier caudal.<br/>
               Si S &gt; S<sub>c</sub>: puede presentar comportamiento supercrítico.
             </div>
           </div>
@@ -201,7 +168,7 @@ const docData = {
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">b</span><span>ancho de base (m)</span>
               <span className="font-semibold text-primary">y</span><span>calado o profundidad del flujo (m)</span>
-              <span className="font-semibold text-primary">z</span><span>talud horizontal (relacion H:V)</span>
+              <span className="font-semibold text-primary">z</span><span>talud horizontal (relación H:V)</span>
               <span className="font-semibold text-primary">D</span><span>diámetro de tubería (m)</span>
               <span className="font-semibold text-primary">&theta;</span><span>ángulo del espejo de agua (rad)</span>
               <span className="font-semibold text-primary">A</span><span>área hidráulica (m²)</span>
@@ -229,12 +196,12 @@ const docData = {
               <Tr><Td>Lavamanos</Td><Td>Llave</Td><Td>2</Td></Tr>
               <Tr><Td>Inodoro</Td><Td>Tanque</Td><Td>4</Td></Tr>
               <Tr><Td>Ducha</Td><Td>Válvula mezcla</Td><Td>2</Td></Tr>
-              <Tr><Td>Lavaplatos</Td><Td>Griferia</Td><Td>2</Td></Tr>
+              <Tr><Td>Lavaplatos</Td><Td>Grifería</Td><Td>2</Td></Tr>
               <Tr><Td>Tina</Td><Td>Válvula mezcla</Td><Td>2</Td></Tr>
               <Tr><Td>Lavadora</Td><Td>—</Td><Td>4</Td></Tr>
               <Tr><Td>Lavadero</Td><Td>—</Td><Td>2</Td></Tr>
               <Tr><Td>Orinal / Urinal</Td><Td>Tanque</Td><Td>5</Td></Tr>
-              <Tr><Td>Sanitario fluxometro</Td><Td>Fluxómetro</Td><Td>6</Td></Tr>
+              <Tr><Td>Sanitario fluxómetro</Td><Td>Fluxómetro</Td><Td>6</Td></Tr>
             </T>
           </div>
         ),
@@ -269,7 +236,7 @@ const docData = {
         title: 'Bajantes sanitarios',
         body: (
           <div className="space-y-3">
-            <p>Diametro de bajante por maning:</p>
+            <p>Diámetro de bajante por Manning:</p>
             <F>
               D = ((Q · n) / (0.312 · &radic;S))<sup>3/8</sup> &times; 1000 / 25.4 &nbsp;&nbsp;[pulg]
             </F>
@@ -280,7 +247,7 @@ const docData = {
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">D</span><span>diámetro (pulgadas)</span>
               <span className="font-semibold text-primary">Q</span><span>caudal (m³/s)</span>
-              <span className="font-semibold text-primary">n</span><span>coeficiente de maning</span>
+              <span className="font-semibold text-primary">n</span><span>coeficiente de Manning</span>
               <span className="font-semibold text-primary">S</span><span>pendiente (m/m)</span>
             </div>
             <div className="text-[12px] text-on-surface-variant border-l-2 border-outline-variant pl-3">
@@ -296,7 +263,7 @@ const docData = {
           <div className="space-y-3">
             <p>Funciones: entrada de aire, evacuación de gases, mantener sellos hidráulicos, autolimpieza.</p>
             <div className="text-[12px] text-on-surface-variant border-l-2 border-outline-variant pl-3 mb-2">
-              Diametro mínimo NTC 1500: 1&frac12;" (38 mm)
+              Diámetro mínimo NTC 1500: 1&frac12;" (38 mm)
             </div>
             <F>
               Q<sub>aire</sub> = 1000 · V<sub>t</sub> · (&pi;/4) · D² · (17/24)
@@ -309,8 +276,8 @@ const docData = {
               <span className="font-semibold text-primary">Q<sub>aire</sub></span><span>caudal de aire requerido (m³/s)</span>
               <span className="font-semibold text-primary">V<sub>t</sub></span><span>velocidad del aire en la tubería (m/s)</span>
               <span className="font-semibold text-primary">D</span><span>diámetro de la bajante (m)</span>
-              <span className="font-semibold text-primary">D<sub>vent</sub></span><span>diámetro de ventilacion (m)</span>
-              <span className="font-semibold text-primary">n</span><span>coeficiente de maning</span>
+              <span className="font-semibold text-primary">D<sub>vent</sub></span><span>diámetro de ventilación (m)</span>
+              <span className="font-semibold text-primary">n</span><span>coeficiente de Manning</span>
               <span className="font-semibold text-primary">S</span><span>pendiente (m/m)</span>
             </div>
           </div>
@@ -360,7 +327,7 @@ const docData = {
         title: 'Bajante y canal de cubierta',
         body: (
           <div className="space-y-3">
-            <p>Diametro de bajante de Aguas lluvias:</p>
+            <p>Diámetro de bajante de Aguas lluvias:</p>
             <F>
               D = ((Q · n) / (1.754 · S<sup>5/3</sup>))<sup>3/8</sup> &times; 1000 &nbsp;&nbsp;[mm]
             </F>
@@ -373,7 +340,7 @@ const docData = {
               <span className="font-semibold text-primary">D</span><span>diámetro de bajante (mm)</span>
               <span className="font-semibold text-primary">Q</span><span>caudal de diseño (m³/s)</span>
               <span className="font-semibold text-primary">Q<sub>max</sub></span><span>caudal máximo del canal (m³/s)</span>
-              <span className="font-semibold text-primary">n</span><span>coeficiente de maning</span>
+              <span className="font-semibold text-primary">n</span><span>coeficiente de Manning</span>
               <span className="font-semibold text-primary">S</span><span>pendiente (m/m)</span>
               <span className="font-semibold text-primary">A</span><span>área hidráulica del canal (m²)</span>
               <span className="font-semibold text-primary">R<sub>h</sub></span><span>radio hidráulico (m)</span>
@@ -438,7 +405,7 @@ const docData = {
         title: 'Verificación de presión y velocidad',
         body: (
           <div className="space-y-3">
-            <p className="font-semibold text-[13px]">Presiónes mínimas por aparato (NTC 1500):</p>
+            <p className="font-semibold text-[13px]">Presiones mínimas por aparato (NTC 1500):</p>
             <T>
               <Tr><Th>Aparato</Th><Th>Min (m.c.a.)</Th><Th>Max (m.c.a.)</Th></Tr>
               <Tr><Td>Inodoro tanque</Td><Td>0.71</Td><Td>14.10</Td></Tr>
@@ -448,7 +415,7 @@ const docData = {
               <Tr><Td>Tina</Td><Td>0.51</Td><Td>14.10</Td></Tr>
             </T>
             <div className="text-[12px] text-on-surface-variant border-l-2 border-outline-variant pl-3">
-              Velocidad recomendada: 0.60 m/s – 3.00 m/s · Maxima absoluta: 5.00 m/s
+              Velocidad recomendada: 0.60 m/s – 3.00 m/s · Máxima absoluta: 5.00 m/s
             </div>
           </div>
         ),
@@ -489,7 +456,7 @@ const docData = {
               Q<sub>perd</sub> = U · A · (T<sub>m</sub> − T<sub>a</sub>)
             </F>
             <div className="text-[13px]">
-              <span className="font-semibold">Caudal de recirculacion:</span>
+              <span className="font-semibold">Caudal de recirculación:</span>
               <F>
                 Q<sub>rec</sub> = Q<sub>perd</sub> / (c<sub>p</sub> · &Delta;T)
               </F>
@@ -501,7 +468,7 @@ const docData = {
               <span className="font-semibold text-primary">A</span><span>área superficial del tubo (m²)</span>
               <span className="font-semibold text-primary">T<sub>m</sub></span><span>temperatura media del agua (°C)</span>
               <span className="font-semibold text-primary">T<sub>a</sub></span><span>temperatura ambiente (°C)</span>
-              <span className="font-semibold text-primary">Q<sub>rec</sub></span><span>caudal de recirculacion (kg/h)</span>
+              <span className="font-semibold text-primary">Q<sub>rec</sub></span><span>caudal de recirculación (kg/h)</span>
               <span className="font-semibold text-primary">c<sub>p</sub></span><span>calor específico = 1 kcal/(kg·°C)</span>
               <span className="font-semibold text-primary">&Delta;T</span><span>diferencia de temperatura (5–10 °C)</span>
             </div>
@@ -532,11 +499,11 @@ const docData = {
               <span className="font-semibold text-primary">K</span><span>coeficiente de fricción</span>
               <span className="font-semibold text-primary">L</span><span>longitud total (m)</span>
               <span className="font-semibold text-primary">Q</span><span>caudal de gas (m³/h)</span>
-              <span className="font-semibold text-primary">P<sub>atm</sub></span><span>presión atmosferica (kPa)</span>
+              <span className="font-semibold text-primary">P<sub>atm</sub></span><span>presión atmosférica (kPa)</span>
               <span className="font-semibold text-primary">D</span><span>diámetro interno (mm)</span>
             </div>
             <div className="text-[12px] text-on-surface-variant border-l-2 border-outline-variant pl-3">
-              Limite: &Delta;P &le; 9.81 mbar (1 m.c.a.) · Velocidad max: 10 m/s
+              Límite: &Delta;P &le; 9.81 mbar (1 m.c.a.) · Velocidad máx: 10 m/s
             </div>
           </div>
         ),
@@ -558,7 +525,7 @@ const docData = {
         title: 'Materiales para gas',
         body: (
           <T>
-            <Tr><Th>Material</Th><Th>Diametro típico</Th><Th>K</Th></Tr>
+            <Tr><Th>Material</Th><Th>Diámetro típico</Th><Th>K</Th></Tr>
             <Tr><Td>PE al PE ¾"</Td><Td>20 mm</Td><Td>49</Td></Tr>
             <Tr><Td>PE al PE 1"</Td><Td>25 mm</Td><Td>49</Td></Tr>
             <Tr><Td>Acero Galv ½"</Td><Td>12.7 mm</Td><Td>57.5</Td></Tr>
@@ -585,10 +552,10 @@ const docData = {
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">HP</span><span>potencia (HP) — 1 HP = 0.746 kW</span>
               <span className="font-semibold text-primary">Q</span><span>caudal (L/min)</span>
-              <span className="font-semibold text-primary">H<sub>m</sub></span><span>altura manometrica total (m)</span>
+              <span className="font-semibold text-primary">H<sub>m</sub></span><span>altura manométrica total (m)</span>
               <span className="font-semibold text-primary">&eta;</span><span>eficiencia de la bomba (decimal)</span>
             </div>
-            <p className="text-[13px] mt-2 font-semibold">Altura manometrica total:</p>
+            <p className="text-[13px] mt-2 font-semibold">Altura manométrica total:</p>
             <F>
               H<sub>m</sub> = H<sub>s</sub> + H<sub>i</sub> + h<sub>f,s</sub> + h<sub>f,i</sub>
             </F>
@@ -612,7 +579,7 @@ const docData = {
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">NPSH<sub>disp</sub></span><span>carga neta de succión disponible (m)</span>
-              <span className="font-semibold text-primary">P<sub>atm</sub></span><span>presión atmosferica (Pa)</span>
+              <span className="font-semibold text-primary">P<sub>atm</sub></span><span>presión atmosférica (Pa)</span>
               <span className="font-semibold text-primary">P<sub>v</sub></span><span>presión de vapor del agua (Pa)</span>
               <span className="font-semibold text-primary">&rho;</span><span>densidad del agua (kg/m³)</span>
               <span className="font-semibold text-primary">g</span><span>gravedad = 9.81 m/s²</span>
@@ -629,17 +596,17 @@ const docData = {
         body: (
           <div className="space-y-3">
             <F>
-              V = Población · Dotacion · F<sub>reserva</sub>
+              V = Población · Dotación · F<sub>reserva</sub>
             </F>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">V</span><span>volumen del tanque (L)</span>
               <span className="font-semibold text-primary">Población</span><span>número de habitantes</span>
-              <span className="font-semibold text-primary">Dotacion</span><span>consumo diario por persona (L/hab/dia)</span>
+              <span className="font-semibold text-primary">Dotación</span><span>consumo diario por persona (L/hab/dia)</span>
               <span className="font-semibold text-primary">F<sub>reserva</sub></span><span>factor de reserva (usualmente 1.5–2.0)</span>
             </div>
             <T>
-              <Tr><Th>Tipo de uso</Th><Th>Dotacion (L/hab/dia)</Th></Tr>
+              <Tr><Th>Tipo de uso</Th><Th>Dotación (L/hab/dia)</Th></Tr>
               <Tr><Td>Residencial</Td><Td>150–200</Td></Tr>
               <Tr><Td>Hotel</Td><Td>250–400</Td></Tr>
               <Tr><Td>Comercial</Td><Td>80–120</Td></Tr>
@@ -657,7 +624,7 @@ const docData = {
           <div className="space-y-3">
             <p className="text-[13px] font-semibold">Premisas de diseño:</p>
             <div className="grid grid-cols-2 gap-2 text-[12px]">
-              <div className="bg-surface-container-low p-2 rounded">Dotacion: 250 L/persona</div>
+              <div className="bg-surface-container-low p-2 rounded">Dotación: 250 L/persona</div>
               <div className="bg-surface-container-low p-2 rounded">Q<sub>b</sub> = 3 &times; Q<sub>m</sub></div>
               <div className="bg-surface-container-low p-2 rounded">P max: 50 psi (350 kPa)</div>
               <div className="bg-surface-container-low p-2 rounded">P min: 30 psi (207 kPa)</div>
@@ -684,7 +651,7 @@ const docData = {
     color: '#C9A227',
     sections: [
       {
-        title: 'maning — coeficientes n',
+        title: 'Manning — coeficientes n',
         body: (
           <T>
             <Tr><Th>Material</Th><Th>n</Th></Tr>
@@ -694,7 +661,7 @@ const docData = {
             <Tr><Td>Concreto</Td><Td>0.013</Td></Tr>
             <Tr><Td>Acero galvanizado</Td><Td>0.015</Td></Tr>
             <Tr><Td>Cobre</Td><Td>0.013</Td></Tr>
-            <Tr><Td>Gres ceramico</Td><Td>0.010</Td></Tr>
+            <Tr><Td>Gres cerámico</Td><Td>0.010</Td></Tr>
             <Tr><Td>PE</Td><Td>0.009</Td></Tr>
           </T>
         ),
@@ -703,7 +670,7 @@ const docData = {
         title: 'Verificaciones sanitarias',
         body: (
           <T>
-            <Tr><Th>Parametro</Th><Th>Condicion</Th><Th>Ref.</Th></Tr>
+            <Tr><Th>Parámetro</Th><Th>Condición</Th><Th>Ref.</Th></Tr>
             <Tr><Td>Pendiente min (2–6")</Td><Td>&ge; 2% (20 mm/m)</Td><Td>NTC 1500 8.4.1</Td></Tr>
             <Tr><Td>Pendiente min (8"+ )</Td><Td>&ge; 0.5% (5 mm/m)</Td><Td>NTC 1500 8.4.1</Td></Tr>
             <Tr><Td>Velocidad mínima</Td><Td>&ge; 0.60 m/s</Td><Td>NTC 1500</Td></Tr>
@@ -717,11 +684,11 @@ const docData = {
         title: 'Verificaciones redes de agua',
         body: (
           <T>
-            <Tr><Th>Parametro</Th><Th>Condicion</Th><Th>Ref.</Th></Tr>
+            <Tr><Th>Parámetro</Th><Th>Condición</Th><Th>Ref.</Th></Tr>
             <Tr><Td>Velocidad máxima (rec.)</Td><Td>&le; 3.00 m/s</Td><Td>RAS 2000</Td></Tr>
             <Tr><Td>Velocidad máxima abs.</Td><Td>&le; 5.00 m/s</Td><Td>RAS 2000</Td></Tr>
-            <Tr><Td>Presión estatica max</Td><Td>&le; 50 m.c.a.</Td><Td>NTC 1500</Td></Tr>
-            <Tr><Td>Presión dinamica min</Td><Td>&ge; 3.00 m.c.a.</Td><Td>NTC 1500</Td></Tr>
+            <Tr><Td>Presión estática máx</Td><Td>&le; 50 m.c.a.</Td><Td>NTC 1500</Td></Tr>
+            <Tr><Td>Presión dinámica mín</Td><Td>&ge; 3.00 m.c.a.</Td><Td>NTC 1500</Td></Tr>
           </T>
         ),
       },
@@ -729,7 +696,7 @@ const docData = {
         title: 'Verificaciones red de gas',
         body: (
           <T>
-            <Tr><Th>Parametro</Th><Th>Condicion</Th><Th>Ref.</Th></Tr>
+            <Tr><Th>Parámetro</Th><Th>Condición</Th><Th>Ref.</Th></Tr>
             <Tr><Td>&Delta;P máximo</Td><Td>&le; 9.81 mbar</Td><Td>NTC 3728</Td></Tr>
             <Tr><Td>Velocidad máxima</Td><Td>&le; 10 m/s</Td><Td>NTC 3728</Td></Tr>
             <Tr><Td>P. min en acometida</Td><Td>&ge; 17 mbar</Td><Td>NTC 3728</Td></Tr>
@@ -758,7 +725,6 @@ const docData = {
     icon: 'calculate',
     color: '#F5A623',
     sections: [
-
       {
         title: 'Número de Reynolds',
         body: (
@@ -774,9 +740,9 @@ const docData = {
               <span className="font-semibold text-primary">&nu;</span><span>viscosidad cinematica del agua (m²/s)</span>
             </div>
             <T>
-              <Tr><Th>Tipo de flujo</Th><Th>Rango Re</Th><Th>Caracteristica</Th></Tr>
+              <Tr><Th>Tipo de flujo</Th><Th>Rango Re</Th><Th>Característica</Th></Tr>
               <Tr><Td>Laminar</Td><Td>Re &lt; 2300</Td><Td>Líneas paralelas</Td></Tr>
-              <Tr><Td>Transicion</Td><Td>2300 &lt; Re &lt; 4000</Td><Td>Inestable</Td></Tr>
+              <Tr><Td>Transición</Td><Td>2300 &lt; Re &lt; 4000</Td><Td>Inestable</Td></Tr>
               <Tr><Td>Turbulento</Td><Td>Re &gt; 4000</Td><Td>Mezcla intensa</Td></Tr>
             </T>
           </div>
@@ -793,7 +759,7 @@ const docData = {
         title: 'Introducción',
         body: (
           <div className="space-y-3">
-            <p>CIVILFLOW KML 2026 es un aplicativo web de diseño hidrosanitario desarrollado por el Ing. Camilo Cardenas Chacon. Permite elaborar memorias de cálculo completas para redes de Agua Fria, Agua caliente, Sanitaria, Aguas lluvias, Gas Combustible y Red Contra Incendio.</p>
+            <p>CIVILFLOW KML 2026 es un aplicativo web de diseño hidrosanitario desarrollado por el Ing. Camilo Cardenas Chacon. Permite elaborar memorias de cálculo completas para redes de Agua fría, Agua caliente, Sanitaria, Aguas lluvias, Gas combustible y Red contra incendio.</p>
             <p className="text-[13px] font-semibold">Normas aplicadas:</p>
             <div className="flex flex-wrap gap-2">
               <span className="px-3 py-1 bg-surface-container-high border border-outline-variant rounded text-[11px] font-mono">NTC 1500:2020</span>
@@ -849,9 +815,9 @@ const docData = {
               <Tr><Td>Uso</Td><Td>Vivienda unifamiliar</Td></Tr>
               <Tr><Td>Empresa prestadora</Td><Td>EMAB - Floridablanca</Td></Tr>
               <Tr><Td>P. red (m.c.a.)</Td><Td>20</Td></Tr>
-              <Tr><Td>Dotacion (L/hab/dia)</Td><Td>280</Td></Tr>
+              <Tr><Td>Dotación (L/hab/dia)</Td><Td>280</Td></Tr>
             </T>
-            <div className="text-[12px] text-on-surface-variant">Dotacion según RAS 2000 Tabla B.2.1 — Vivienda unifamiliar: 200–280 L/hab/dia.</div>
+            <div className="text-[12px] text-on-surface-variant">Dotación según RAS 2000 Tabla B.2.1 — Vivienda unifamiliar: 200–280 L/hab/dia.</div>
           </div>
         ),
       },
@@ -863,7 +829,7 @@ const docData = {
             <ol className="list-decimal list-inside text-[13px] space-y-1">
               <li>Definir N° de sótanos (0 si no aplica)</li>
               <li>Definir N° de pisos sobre rasante (min. 1)</li>
-              <li>Altura de entrepiso (2.80–3.30 m) y sotano (2.80–3.00 m)</li>
+              <li>Altura de entrepiso (2.80–3.30 m) y sótano (2.80–3.00 m)</li>
               <li>NPT Piso 1 (nivel de referencia)</li>
               <li>Activar "Incluir cubierta" si aplica</li>
               <li>Hacer clic en "Generar niveles"</li>
@@ -878,13 +844,13 @@ const docData = {
             <Tr><Th>#</Th><Th>Red</Th><Th>Cuando activar</Th></Tr>
             <Tr><Td>1</Td><Td>Sanitaria</Td><Td>Siempre — obligatoria</Td></Tr>
             <Tr><Td>2</Td><Td>Aguas lluvias</Td><Td>Cuando hay cubierta</Td></Tr>
-            <Tr><Td>4</Td><Td>Agua Fria</Td><Td>Siempre — suministro</Td></Tr>
+            <Tr><Td>4</Td><Td>Agua fría</Td><Td>Siempre — suministro</Td></Tr>
             <Tr><Td>5</Td><Td>Agua caliente</Td><Td>Cuando hay calentador</Td></Tr>
             <Tr><Td>6</Td><Td>Red de Gas</Td><Td>Cuando hay aparatos a gas</Td></Tr>
             <Tr><Td>7</Td><Td>Equipo presión</Td><Td>Presión de red insuficiente</Td></Tr>
-            <Tr><Td>8</Td><Td>Bomba AR</Td><Td>Aguas residuales en sotano</Td></Tr>
+            <Tr><Td>8</Td><Td>Bomba AR</Td><Td>Aguas residuales en sótano</Td></Tr>
             <Tr><Td>9</Td><Td>Recirculación AC</Td><Td>L de AC &gt; 15 m</Td></Tr>
-            <Tr><Td>10</Td><Td>Contra Incendio</Td><Td>Segun NSR-10 Titulo J</Td></Tr>
+            <Tr><Td>10</Td><Td>Contra incendio</Td><Td>Segun NSR-10 Titulo J</Td></Tr>
           </T>
         ),
       },
@@ -912,7 +878,7 @@ const docData = {
           <T>
             <Tr><Th>Norma</Th><Th>Aplicación</Th></Tr>
             <Tr><Td>NTC 1500:2020</Td><Td>UC, UD, presiónes, velocidades, diámetros mínimos</Td></Tr>
-            <Tr><Td>RAS 2000</Td><Td>Dotaciones, maning, método racional</Td></Tr>
+            <Tr><Td>RAS 2000</Td><Td>Dotaciónes, Manning, método racional</Td></Tr>
             <Tr><Td>NTC 3728</Td><Td>Renouard, caudales gas, factor fs</Td></Tr>
             <Tr><Td>NSR-10 Título J</Td><Td>Protección contra incendio</Td></Tr>
             <Tr><Td>NFPA 13:2022</Td><Td>Rociadores, densidad, área operación</Td></Tr>
@@ -924,181 +890,3 @@ const docData = {
     ],
   },
 }
-
-function SectionAccordion({ section, sectionKey, isOpen, onToggle, showCategory }) {
-  return (
-    <div
-      className="border border-outline-variant rounded overflow-hidden bg-surface-container"
-      data-section-color
-      style={{ '--section-color': section.categoryColor }}
-    >
-      <button
-        onClick={() => onToggle(sectionKey)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-container-high"
-      >
-        <span className={`material-symbols-outlined text-lg transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}>
-          chevron_right
-        </span>
-        <span className="text-[13px] font-semibold text-on-surface">{section.title}</span>
-        {showCategory && (
-          <span className="text-[10px] px-2 py-0.5 rounded font-mono" style={{ color: section.categoryColor, border: '1px solid var(--section-color)' }}>
-            {section.categoryName}
-          </span>
-        )}
-        <span className="ml-auto material-symbols-outlined text-on-surface-variant text-sm">
-          {isOpen ? 'expand_less' : 'expand_more'}
-        </span>
-      </button>
-      {isOpen && (
-        <div className="px-4 pb-4 pt-1 border-t border-outline-variant animate-fade-in">
-          {section.body}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function DocsPage() {
-  const [activeCat, setActiveCat] = useState('hidraulica')
-  const [search, setSearch] = useState('')
-  const [openSections, setOpenSections] = useState({})
-
-  const categories = Object.entries(docData).map(([id, data]) => ({
-    id,
-    ...data,
-    sections: data.sections.map(s => ({
-      ...s,
-      categoryColor: data.color,
-      categoryName: data.name,
-      categoryId: id,
-    }))
-  }))
-  const activeCategory = categories.find((c) => c.id === activeCat)
-
-  const allSections = categories.flatMap(c => c.sections)
-
-  const toggleSection = (sectionKey) => {
-    setOpenSections((prev) => ({ ...prev, [sectionKey]: !prev[sectionKey] }))
-  }
-
-  const filteredSections =
-    search.trim() === ''
-      ? activeCategory?.sections || []
-      : allSections.filter((s) => {
-          const str = JSON.stringify(s.body.props.children)
-          return (
-            s.title.toLowerCase().includes(search.toLowerCase()) ||
-            (str && str.toLowerCase().includes(search.toLowerCase()))
-          )
-        })
-
-  return (
-    <div className="min-h-screen bg-surface-bg flex flex-col">
-      <Navbar />
-      <div className="flex gap-4 h-[calc(100vh-64px)] pt-16">
-      <style>{`
-        [data-section-color] .text-primary,
-        [data-section-color] .\\!text-primary {
-          color: var(--section-color) !important;
-        }
-        .docs-scroll::-webkit-scrollbar {
-          width: 6px;
-        }
-        .docs-scroll::-webkit-scrollbar-track {
-          background: #1a1c20;
-        }
-        .docs-scroll::-webkit-scrollbar-thumb {
-          background: #3a494a;
-          border-radius: 3px;
-        }
-        .docs-scroll::-webkit-scrollbar-thumb:hover {
-          background: #4d8ff7;
-        }
-      `}</style>
-      {/* Sidebar de categorías */}
-      <div className="w-64 shrink-0 border border-outline-variant bg-surface-container flex flex-col">
-        <div className="p-4 border-b border-outline-variant">
-          <h2 className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant">
-            Categorias
-          </h2>
-        </div>
-        <div className="flex-1 overflow-auto docs-scroll">
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => {
-                setActiveCat(cat.id)
-                setOpenSections({})
-              }}
-              className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
-                activeCat === cat.id
-                  ? 'bg-surface-container-high border-l-2 text-on-surface'
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low'
-              }`}
-              style={{
-                borderLeftColor: activeCat === cat.id ? cat.color : 'transparent',
-              }}
-            >
-              <span className="material-symbols-outlined text-[20px]" style={{ color: cat.color }}>
-                {cat.icon}
-              </span>
-              <span className="text-[13px] font-medium">{cat.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Contenido principal */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header + Busqueda */}
-        <div className="mb-4 flex items-center gap-4">
-          <span className="material-symbols-outlined text-3xl" style={{ color: search.trim() ? '#e9feff' : activeCategory?.color }}>
-            {search.trim() ? 'search' : activeCategory?.icon}
-          </span>
-          <div className="flex-1">
-            <h1 className="text-headline-sm font-bold text-on-surface">
-              {search.trim() ? 'Resultados de busqueda' : activeCategory?.name}
-            </h1>
-          </div>
-          <div className="w-72">
-            <div className="flex items-center border border-outline-variant bg-surface-container px-3">
-              <span className="material-symbols-outlined text-on-surface-variant text-lg">search</span>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar..."
-                className="flex-1 h-10 px-3 bg-transparent text-on-surface text-[13px] font-mono focus:outline-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Acordeón de secciones */}
-        <div className="flex-1 overflow-auto space-y-2 pr-1 docs-scroll">
-          {filteredSections.map((section) => {
-            const sectionKey = `${section.categoryId}:${section.title}`
-            return (
-              <SectionAccordion
-                key={sectionKey}
-                section={section}
-                sectionKey={sectionKey}
-                isOpen={openSections[sectionKey]}
-                onToggle={toggleSection}
-                showCategory={search.trim() !== ''}
-              />
-            )
-          })}
-          {filteredSections.length === 0 && (
-            <div className="text-center text-on-surface-variant text-[13px] py-12">
-              No se encontraron resultados
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-    </div>
-  )
-}
-
-export default DocsPage

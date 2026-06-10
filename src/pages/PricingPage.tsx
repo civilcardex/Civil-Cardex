@@ -22,7 +22,7 @@ const plans = [
     ],
 missing: [
 'Módulo Red de Gas',
-'Módulo Contra Incendio',
+'Módulo contra incendio',
 'Soporte técnico dedicado',
 ],
   },
@@ -40,7 +40,7 @@ missing: [
       'Proyectos ilimitados',
       '9 módulos completos',
       'Red de Gas (Renouard NTC 3728)',
-'Contra Incendio (NSR-10 + NFPA 13)',
+'Contra incendio (NSR-10 + NFPA 13)',
 'Exportación PDF memorias de cálculo',
       'Selección de calentadores (HACEB, BOSCH, RHEEM)',
       'Cálculo de bombas y equipos de presión',

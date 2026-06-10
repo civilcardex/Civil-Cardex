@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import MobileOnlyMessage from '../components/MobileOnlyMessage';
 
 const features = [
   { icon: 'hub', title: 'Interoperabilidad IFC y Revit', desc: 'Importación y exportación bidireccional sin pérdida de metadatos constructivos.', tags: ['.IFC', '.RVT', '.DWG'], span: true, highlight: false },
@@ -19,6 +21,7 @@ export default function CivilBIMPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
       <Navbar />
+      <MobileOnlyMessage />
       <main className="flex-grow pt-16 flex flex-col w-full">
         <section className="relative w-full flex items-center border-b border-outline-variant overflow-hidden" style={{ minHeight: 600 }}>
           <div className="absolute inset-0 z-0" style={{ opacity: 0.1, backgroundImage: 'radial-gradient(circle at 2px 2px, #849495 1px, transparent 0)', backgroundSize: '32px 32px' }} />
@@ -38,7 +41,6 @@ export default function CivilBIMPage() {
                 <Link to="/civilflowareatrabajo" className="hidden md:inline-flex border border-outline-variant text-on-surface px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2 hover:border-[#d946ef] transition-colors" style={{ fontFamily: 'Geist, monospace', background: '#333539' }}>
                   <span className="material-symbols-outlined text-lg">terminal</span> Iniciar Terminal BIM
                 </Link>
-                <span className="md:hidden text-sm px-4 py-2 text-center" style={{ color: '#f5a623', fontFamily: 'Geist, monospace', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 4 }}>Disponible solo en escritorio</span>
                 <Link to="/docs" className="border border-outline-variant text-on-surface-variant px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold flex items-center gap-2 hover:text-on-surface transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
                   <span className="material-symbols-outlined text-lg">description</span> Documentación API
                 </Link>
@@ -136,16 +138,7 @@ export default function CivilBIMPage() {
           </div>
         </section>
       </main>
-      <footer className="border-t border-outline-variant" style={{ background: '#0c0e12' }}>
-        <div className="flex flex-col md:flex-row justify-between items-center px-6 lg:px-8 py-8 w-full gap-4">
-          <span className="text-[11px] tracking-[0.08em] font-bold text-primary uppercase" style={{ fontFamily: 'Geist, monospace' }}>CivilCore</span>
-          <div className="flex flex-wrap gap-6 justify-center">
-            <Link to="/docs" className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant hover:text-primary uppercase transition-colors" style={{ fontFamily: 'Geist, monospace' }}>API</Link>
-            <Link to="/docs" className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant hover:text-primary uppercase transition-colors" style={{ fontFamily: 'Geist, monospace' }}>SDK</Link>
-          </div>
-          <span className="text-[13px] text-on-surface-variant uppercase" style={{ fontFamily: 'Geist, monospace' }}>© 2026 CIVILCORE ENGINEERING. ALL RIGHTS RESERVED.</span>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

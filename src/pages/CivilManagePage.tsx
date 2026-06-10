@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import MobileOnlyMessage from '../components/MobileOnlyMessage';
 
 const accent = '#f59e0b';
 
@@ -15,6 +17,7 @@ export default function CivilManagePage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
       <Navbar />
+      <MobileOnlyMessage />
       <main className="flex-grow pt-16 flex flex-col relative z-10">
         <section className="relative pt-24 pb-16 px-6 lg:px-8 overflow-hidden flex flex-col items-center justify-center text-center" style={{ minHeight: 600, backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
           <div className="absolute inset-0 pointer-events-none" style={{ background: `linear-gradient(to bottom, ${accent}0D, #111317)` }} />
@@ -33,7 +36,6 @@ export default function CivilManagePage() {
               <Link to="/civilflowareatrabajo" className="hidden md:inline-flex px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2" style={{ fontFamily: 'Geist, monospace', background: accent, color: '#111317' }}>
                 <span className="material-symbols-outlined text-sm">rocket_launch</span> INICIAR DEPLOYMENT
               </Link>
-              <span className="md:hidden text-sm px-4 py-2 text-center" style={{ color: '#f5a623', fontFamily: 'Geist, monospace', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 4 }}>Disponible solo en escritorio</span>
               <Link to="/docs" className="border border-outline-variant text-on-surface px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold flex items-center gap-2 hover:border-primary transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
                 <span className="material-symbols-outlined text-sm">terminal</span> VER DOCUMENTACIÓN API
               </Link>
@@ -80,18 +82,7 @@ export default function CivilManagePage() {
           </div>
         </section>
       </main>
-      <footer className="border-t border-outline-variant" style={{ background: '#0c0e12' }}>
-        <div className="flex flex-col md:flex-row justify-between items-center px-6 lg:px-8 py-8 w-full gap-4">
-          <span className="text-[11px] tracking-[0.08em] font-bold text-primary flex items-center gap-2 uppercase" style={{ fontFamily: 'Geist, monospace' }}>
-            <span className="material-symbols-outlined text-sm">precision_manufacturing</span> CIVILCORE ENGINEERING
-          </span>
-          <div className="flex gap-6">
-            <Link to="/docs" className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant uppercase transition-colors" style={{ fontFamily: 'Geist, monospace' }}>API</Link>
-            <Link to="/docs" className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant uppercase transition-colors" style={{ fontFamily: 'Geist, monospace' }}>SDK</Link>
-          </div>
-          <span className="text-[13px] text-outline-variant uppercase" style={{ fontFamily: 'Geist, monospace' }}>© 2026 CIVILCORE ENGINEERING. ALL RIGHTS RESERVED.</span>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

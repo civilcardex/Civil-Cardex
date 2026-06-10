@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import MobileOnlyMessage from '../components/MobileOnlyMessage';
 
 const features = [
   { icon: 'account_tree', title: 'Ruteo Inteligente de Tuberías y Ductos', desc: 'Algoritmos de pathfinding para el trazado automático evitando colisiones estructurales. Optimización de material basada en parámetros de fricción y caída de presión.', span: 'lg:col-span-2 lg:row-span-2', badge: 'STATUS: OPTIMAL' },
@@ -13,6 +15,7 @@ export default function CivilMEPPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
       <Navbar />
+      <MobileOnlyMessage />
       <main className="flex-grow pt-16 flex flex-col w-full max-w-[1440px] mx-auto">
         <section className="relative w-full flex flex-col lg:flex-row items-center px-6 lg:px-8 py-16 gap-12 overflow-hidden border-b border-outline-variant" style={{ background: '#1a1c20', minHeight: 600 }}>
           <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.1, backgroundImage: 'linear-gradient(to right, #3a494a 1px, transparent 1px), linear-gradient(to bottom, #3a494a 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
@@ -33,7 +36,6 @@ export default function CivilMEPPage() {
               <Link to="/civilflowareatrabajo" className="hidden md:inline-flex text-on-primary px-8 py-3 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2" style={{ fontFamily: 'Geist, monospace', background: '#00dce5' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>precision_manufacturing</span> INICIAR MODELADO
               </Link>
-              <span className="md:hidden text-sm px-4 py-2 text-center" style={{ color: '#f5a623', fontFamily: 'Geist, monospace', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 4 }}>Disponible solo en escritorio</span>
               <Link to="/docs" className="border border-outline-variant text-on-surface px-8 py-3 uppercase text-[11px] tracking-[0.08em] font-bold flex items-center gap-2 hover:border-primary transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>data_object</span> VER DOCS API
               </Link>
@@ -107,16 +109,7 @@ export default function CivilMEPPage() {
           </div>
         </section>
       </main>
-      <footer className="border-t border-outline-variant" style={{ background: '#0c0e12' }}>
-        <div className="flex flex-col md:flex-row justify-between items-center px-6 lg:px-8 py-8 w-full gap-4">
-          <span className="text-[11px] tracking-[0.08em] font-bold text-primary uppercase" style={{ fontFamily: 'Geist, monospace' }}>CivilCore</span>
-          <div className="flex flex-wrap items-center justify-center gap-6">
-            <Link to="/docs" className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant hover:text-primary uppercase transition-colors" style={{ fontFamily: 'Geist, monospace' }}>API</Link>
-            <Link to="/docs" className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant hover:text-primary uppercase transition-colors" style={{ fontFamily: 'Geist, monospace' }}>SDK</Link>
-          </div>
-          <span className="text-[13px] text-on-surface-variant uppercase" style={{ fontFamily: 'Geist, monospace' }}>© 2026 CIVILCORE ENGINEERING. ALL RIGHTS RESERVED.</span>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

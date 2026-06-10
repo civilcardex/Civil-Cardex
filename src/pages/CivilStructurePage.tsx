@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import MobileOnlyMessage from '../components/MobileOnlyMessage';
 
 const features = [
   { num: '01', icon: 'calculate', title: 'Cálculo de Estructuras Complejas', desc: 'Análisis no lineal, pandeo y grandes deformaciones para geometrías singulares.' },
@@ -13,6 +15,7 @@ export default function CivilStructurePage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
       <Navbar />
+      <MobileOnlyMessage />
       <main className="flex-grow pt-16 relative">
         <section className="relative flex items-center border-b border-outline-variant overflow-hidden" style={{ minHeight: 600, background: '#0c0e12' }}>
           <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.1, backgroundImage: 'linear-gradient(to right, #3a494a 1px, transparent 1px), linear-gradient(to bottom, #3a494a 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
@@ -35,8 +38,7 @@ export default function CivilStructurePage() {
                 <Link to="/civilflowareatrabajo" className="hidden md:inline-block bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-all" style={{ fontFamily: 'Geist, monospace' }}>
                   COMENZAR ANÁLISIS
                 </Link>
-                <span className="md:hidden text-sm px-4 py-2 text-center" style={{ color: '#f5a623', fontFamily: 'Geist, monospace', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 4 }}>Disponible solo en escritorio</span>
-                <button className="border border-primary text-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container transition-all flex items-center gap-2" style={{ fontFamily: 'Geist, monospace' }}>
+                <button className="border border-primary text-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container transition-all flex items-center gap-2" style={{ fontFamily: 'Geist, monospace' }} onClick={() => console.log('SDK download')}>
                   <span className="material-symbols-outlined text-base">download</span> DESCARGAR SDK
                 </button>
               </div>
@@ -110,16 +112,7 @@ export default function CivilStructurePage() {
           </div>
         </section>
       </main>
-      <footer className="border-t border-outline-variant" style={{ background: '#0c0e12' }}>
-        <div className="flex flex-col md:flex-row justify-between items-center py-8 px-6 lg:px-8 gap-4 w-full">
-          <span className="text-lg font-bold text-outline" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>CivilCore</span>
-          <div className="flex gap-6">
-            <Link to="/docs" className="text-outline uppercase tracking-widest hover:text-primary transition-colors" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace' }}>API</Link>
-            <Link to="/docs" className="text-outline uppercase tracking-widest hover:text-primary transition-colors" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace' }}>SDK</Link>
-          </div>
-          <span className="text-outline text-sm">© 2026 CivilCore. Ingeniería de Precisión .</span>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

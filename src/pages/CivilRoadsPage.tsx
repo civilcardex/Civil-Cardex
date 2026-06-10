@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import MobileOnlyMessage from '../components/MobileOnlyMessage';
 
 const accent = '#FFC107';
 
@@ -17,10 +19,11 @@ const metrics = [
   { label: 'Impacto Ambiental (CO2)', value: '-14.2%', isAccent: true },
 ];
 
-export default function CivilRoadsPage() {
+const CivilRoadsPage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
       <Navbar />
+      <MobileOnlyMessage />
       <main className="flex-grow pt-16 flex flex-col relative z-0">
         <section className="relative w-full flex items-center overflow-hidden border-b border-outline-variant" style={{ minHeight: 700 }}>
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #0F1115, rgba(15,17,21,0.8), transparent)' }} />
@@ -40,7 +43,6 @@ export default function CivilRoadsPage() {
                 <Link to="/civilflowareatrabajo" className="hidden md:inline-flex bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2 hover:bg-primary/90 transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
                   Iniciar Diseño <span className="material-symbols-outlined text-base">arrow_forward</span>
                 </Link>
-                <span className="md:hidden text-sm px-4 py-2 text-center" style={{ color: '#f5a623', fontFamily: 'Geist, monospace', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 4 }}>Disponible solo en escritorio</span>
                 <Link to="/docs" className="border border-outline text-on-background px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container-highest transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
                   Ver Documentación
                 </Link>
@@ -110,19 +112,9 @@ export default function CivilRoadsPage() {
           </div>
         </section>
       </main>
-      <footer className="border-t border-outline-variant" style={{ background: '#0c0e12' }}>
-        <div className="flex flex-col md:flex-row justify-between items-center px-6 lg:px-8 py-8 w-full gap-4">
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            <span className="text-[11px] tracking-[0.08em] font-bold text-primary uppercase" style={{ fontFamily: 'Geist, monospace' }}>CivilCore</span>
-            <span className="text-[13px] text-on-surface-variant hidden md:inline">|</span>
-            <span className="text-[13px] text-on-surface-variant uppercase" style={{ fontFamily: 'Geist, monospace' }}>© 2026 CIVILCORE ENGINEERING. ALL RIGHTS RESERVED.</span>
-          </div>
-          <div className="flex gap-6 items-center">
-            <Link to="/docs" className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant hover:text-primary uppercase transition-colors" style={{ fontFamily: 'Geist, monospace' }}>API</Link>
-            <Link to="/docs" className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant hover:text-primary uppercase transition-colors" style={{ fontFamily: 'Geist, monospace' }}>SDK</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
-}
+};
+
+export default CivilRoadsPage;

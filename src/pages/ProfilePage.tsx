@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
+import Navbar from '../components/Navbar'
 
 function ProfilePage() {
   const [perfil, setPerfil] = useState({
@@ -12,11 +13,11 @@ function ProfilePage() {
     email: '',
   })
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(null)
-  const [editField, setEditField] = useState(null)
-  const [editValue, setEditValue] = useState('')
-  const [proyectosOpen, setProyectosOpen] = useState(false)
-  const [userId, setUserId] = useState(null)
+  const [saving, setSaving] = useState<string | null>(null);
+  const [editField, setEditField] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [proyectosOpen, setProyectosOpen] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const proyectosActivos = [
     { id: 1, codigo: 'CR-97', nombre: 'Casa de Roca No. 97 - Redes Sanitarias y Lluvias', progreso: 100, estado: 'completo' },
@@ -27,7 +28,7 @@ function ProfilePage() {
 
   const navigate = useNavigate()
 
-  const estadoConfig = {
+  const estadoConfig: Record<string, { color: string; label: string }> = {
     completo: { color: 'bg-secondary text-on-secondary-container', label: 'COMPLETO' },
     revision: { color: 'bg-tertiary text-on-tertiary-container', label: 'EN REVISIÓN' },
     activo: { color: 'bg-primary text-on-primary-container', label: 'ACTIVO' },
@@ -66,9 +67,9 @@ function ProfilePage() {
     }
   }
 
-  function handleEditStart(field) {
+  function handleEditStart(field: string) {
     setEditField(field)
-    setEditValue(perfil[field])
+    setEditValue((perfil as any)[field])
   }
 
   function handleEditCancel() {
@@ -76,8 +77,8 @@ function ProfilePage() {
     setEditValue('')
   }
 
-  async function handleEditSave(field) {
-    if (editValue === perfil[field]) { handleEditCancel(); return }
+  async function handleEditSave(field: string) {
+    if (editValue === (perfil as any)[field]) { handleEditCancel(); return }
     setSaving(field)
     try {
       const { error } = await supabase
@@ -95,7 +96,7 @@ function ProfilePage() {
     }
   }
 
-  function handleEditKeyDown(e, field) {
+  function handleEditKeyDown(e: React.KeyboardEvent, field: string) {
     if (e.key === 'Enter') handleEditSave(field)
     if (e.key === 'Escape') handleEditCancel()
   }
@@ -121,6 +122,7 @@ function ProfilePage() {
 
   return (
     <div className="space-y-6">
+      <Navbar />
       {/* ── Header ── */}
       <div className="border border-outline-variant bg-surface-container p-6 flex items-start gap-6">
         <div className="w-20 h-20 border-2 border-primary bg-surface-container flex items-center justify-center shrink-0">
@@ -172,14 +174,14 @@ function ProfilePage() {
             >✕</button>
           </div>
         ) : readonly ? (
-          <span className="text-[13px] text-on-surface font-medium">{perfil[key]}</span>
+          <span className="text-[13px] text-on-surface font-medium">{(perfil as any)[key]}</span>
         ) : (
           <div
             className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors"
             onClick={() => handleEditStart(key)}
           >
             <span className="text-[13px] text-on-surface font-medium">
-              {perfil[key] || <span className="text-on-surface-variant italic opacity-50">Click para editar</span>}
+              {(perfil as any)[key] || <span className="text-on-surface-variant italic opacity-50">Click para editar</span>}
             </span>
             <span className="material-symbols-outlined text-xs text-on-surface-variant opacity-0 group-hover:opacity-60 transition-opacity">edit</span>
           </div>
@@ -215,6 +217,7 @@ function ProfilePage() {
             <div className="px-6 py-3 border-b border-outline-variant bg-surface-container-low">
               <button
                 className="flex items-center gap-2 text-primary hover:text-primary-fixed text-[13px] font-medium transition-colors"
+                onClick={() => navigate('/civilflowareatrabajo')}
               >
                 <span className="material-symbols-outlined text-lg">add_circle</span>
                 Nuevo Proyecto

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { usePlanos } from '../context/PlansContext';
+import { usePlans } from '../context/PlansContext';
 import { fmtSize } from '../utils/fmtSize';
 
 const REQ_ITEMS = [
@@ -12,22 +12,22 @@ const REQ_ITEMS = [
   ['🚿', 'Simbología', 'NTC 1500'],
 ];
 
-function PlanosPage() {
-  const { planos, addPlanos, removePlano } = usePlanos();
+function PlansPage() {
+  const { plans, addPlans, removePlan } = usePlans();
   const [drag, setDrag] = useState(false);
-  const fileRef = useRef();
+  const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  const onDrop = useCallback((e) => {
+  const onDrop = useCallback((e: any) => {
     e.preventDefault();
     setDrag(false);
     const fl = e.dataTransfer?.files || e.target?.files;
     if (!fl || fl.length === 0) return;
-    addPlanos(fl);
-  }, [addPlanos]);
+    addPlans(fl);
+  }, [addPlans]);
 
-  const handleFileInput = (e) => {
-    addPlanos(e.target.files);
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) addPlans(e.target.files);
     e.target.value = '';
   };
 
@@ -85,14 +85,14 @@ function PlanosPage() {
           </div>
 
           {/* Uploaded list */}
-          {planos.length > 0 && (
+          {plans.length > 0 && (
             <div className="border rounded-lg overflow-hidden mb-6"
               style={{ borderColor: '#3a494a', background: '#111317' }}>
               <div className="px-5 py-3 border-b flex items-center justify-between"
                 style={{ borderColor: '#3a494a', background: '#1A1D23' }}>
                 <span className="text-[10px] font-bold uppercase tracking-widest"
                   style={{ color: '#6b8cae', fontFamily: 'Geist, monospace' }}>
-                  Planos cargados ({planos.length})
+                  Planos cargados ({plans.length})
                 </span>
                 <button onClick={() => fileRef.current?.click()}
                   className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 border rounded transition-colors"
@@ -100,7 +100,7 @@ function PlanosPage() {
                   + Agregar más
                 </button>
               </div>
-              {planos.map(p => (
+              {plans.map(p => (
                 <div key={p.id} className="plano-row flex items-center justify-between px-5 py-3 border-b last:border-b-0"
                   style={{ borderColor: '#3a494a22' }}>
                   <div className="flex items-center gap-3 min-w-0">
@@ -114,7 +114,7 @@ function PlanosPage() {
                       </div>
                     </div>
                   </div>
-                  <button onClick={() => removePlano(p.id)}
+                   <button onClick={() => removePlan(p.id)}
                     className="material-symbols-outlined text-lg flex-shrink-0 transition-colors hover:text-red-400"
                     style={{ color: '#6b8cae' }}>
                     close
@@ -125,7 +125,7 @@ function PlanosPage() {
           )}
 
           {/* Area de Trabajo button */}
-          {planos.length > 0 && (
+          {plans.length > 0 && (
             <button onClick={() => navigate('/visor')}
               className="w-full h-14 font-bold text-[11px] tracking-widest uppercase transition-all border rounded-lg flex items-center justify-center gap-3"
               style={{
@@ -143,7 +143,7 @@ function PlanosPage() {
           )}
 
           {/* Requirements */}
-          {planos.length === 0 && (
+          {plans.length === 0 && (
             <div className="border rounded-lg overflow-hidden"
               style={{ borderColor: '#3a494a', background: '#111317' }}>
               <div className="px-5 py-3 border-b" style={{ borderColor: '#3a494a', background: '#1A1D23' }}>
@@ -173,4 +173,4 @@ function PlanosPage() {
   );
 }
 
-export default PlanosPage;
+export default PlansPage;

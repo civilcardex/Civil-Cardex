@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import MobileOnlyMessage from '../components/MobileOnlyMessage';
 
 const features = [
   { icon: 'cloud_sync', title: 'Procesamiento de Nubes de Puntos LiDAR', desc: 'Ingesta masiva de datos LiDAR con filtrado automatizado de ruido y clasificación de terreno. Algoritmos optimizados para manejar millones de puntos con latencia mínima.', badge: 'CAPACITY: >50M pts/sec', span: false },
@@ -13,6 +15,7 @@ export default function CivilTerrainPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
       <Navbar />
+      <MobileOnlyMessage />
       <main className="flex-grow pt-20 px-6 lg:px-8 pb-12 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none z-0" style={{ opacity: 0.1, backgroundImage: 'linear-gradient(to right, #3a494a 1px, transparent 1px), linear-gradient(to bottom, #3a494a 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
@@ -32,7 +35,6 @@ export default function CivilTerrainPage() {
               <Link to="/civilflowareatrabajo" className="hidden md:inline-block bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-colors border border-primary" style={{ fontFamily: 'Geist, monospace' }}>
                 Iniciar Prueba Gratuita
               </Link>
-              <span className="md:hidden text-sm px-4 py-2 text-center" style={{ color: '#f5a623', fontFamily: 'Geist, monospace', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 4 }}>Disponible solo en escritorio</span>
               <Link to="/docs" className="bg-transparent text-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container-highest transition-colors border border-primary" style={{ fontFamily: 'Geist, monospace' }}>
                 Ver Documentación Técnica
               </Link>
@@ -90,16 +92,7 @@ export default function CivilTerrainPage() {
           </div>
         </section>
       </main>
-      <footer className="border-t border-outline-variant" style={{ background: '#0c0e12' }}>
-        <div className="flex flex-col md:flex-row justify-between items-center py-8 px-6 lg:px-8 gap-4 w-full">
-          <span className="text-lg font-bold text-outline" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>CivilCore</span>
-          <div className="flex gap-6">
-            <Link to="/docs" className="text-outline uppercase tracking-widest hover:text-primary transition-colors" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace' }}>API</Link>
-            <Link to="/docs" className="text-outline uppercase tracking-widest hover:text-primary transition-colors" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace' }}>SDK</Link>
-          </div>
-          <span className="text-outline text-sm">© 2026 CivilCore. Ingeniería de Precisión .</span>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -2,36 +2,36 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import PdfViewer from '../components/PdfViewer';
-import { usePlanos } from '../context/PlansContext';
+import { usePlans } from '../context/PlansContext';
 import { useProject } from '../context/ProjectContext';
 
 function ViewerInner() {
-  const { planos, addPlanos, removePlano } = usePlanos();
+  const { plans, addPlans, removePlan } = usePlans();
   const { pisos } = useProject();
   const [activeIndex, setActiveIndex] = useState(0);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const fileRef = useRef();
+  const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
-  const files = planos.map(p => ({ id: p.id, file: p.file }));
+  const files = plans.map(p => ({ id: p.id, file: p.file }));
 
   const handleAddPlan = () => {
     fileRef.current?.click();
   };
 
-  const handleFileInput = (e) => {
-    addPlanos(e.target.files);
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) addPlans(e.target.files);
     e.target.value = '';
   };
 
-  const handleRemovePlan = (idx) => {
-    removePlano(planos[idx].id);
-    if (activeIndex >= planos.length - 1) {
-      setActiveIndex(Math.max(0, planos.length - 2));
+  const handleRemovePlan = (idx: number) => {
+    removePlan(plans[idx].id);
+    if (activeIndex >= plans.length - 1) {
+      setActiveIndex(Math.max(0, plans.length - 2));
     }
   };
 
-  const handleSelectPlan = (idx) => {
+  const handleSelectPlan = (idx: number) => {
     setActiveIndex(idx);
     setDropdownOpen(false);
   };
@@ -61,7 +61,7 @@ function ViewerInner() {
               }}>
               <span style={{ color: '#00dce5' }}>📄</span>
               <span style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {planos[activeIndex]?.name || 'Ninguno'}
+                {plans[activeIndex]?.name || 'Ninguno'}
               </span>
               <span style={{ fontSize: 8, color: '#6b8cae' }}>▼</span>
             </button>
@@ -72,12 +72,12 @@ function ViewerInner() {
                 borderRadius: 6, boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
                 overflow: 'hidden', zIndex: 100,
               }}>
-                {planos.length===0&&(
+                {plans.length===0&&(
                   <div style={{padding:'12px 16px',color:'#6b8cae',fontFamily:'Geist, monospace',fontSize:11,textAlign:'center'}}>
                     No hay planos cargados
                   </div>
                 )}
-                {planos.map((p, i) => (
+                {plans.map((p, i) => (
                   <div key={p.id}
                     onClick={() => handleSelectPlan(i)}
                     style={{
@@ -127,9 +127,9 @@ function ViewerInner() {
             )}
           </div>
           <div style={{ flex: 1 }} />
-          {planos.length>0&&(
+          {plans.length>0&&(
             <span style={{ fontFamily: 'Geist, monospace', fontSize: 9, color: '#6b8cae' }}>
-              {activeIndex + 1} / {planos.length}
+              {activeIndex + 1} / {plans.length}
             </span>
           )}
         </div>
@@ -143,8 +143,9 @@ function ViewerInner() {
           onSelectPlan={handleSelectPlan}
           onAddPlan={handleAddPlan}
           onRemovePlan={handleRemovePlan}
-          planos={planos}
+          planos={plans}
           pisos={pisos}
+          activeNetworks={new Set()}
         />
       </div>
     </div>

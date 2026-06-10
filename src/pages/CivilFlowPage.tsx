@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import MobileOnlyMessage from '../components/MobileOnlyMessage';
 
 const features = [
   { icon: 'speed', color: '#00dce5', title: 'Cálculo Hidráulico en Tiempo Real', desc: 'Análisis nodal instantáneo para redes presurizadas. Visualización de pérdida de carga y velocidades críticas durante la fase de diseño iterativo.', badge: 'STATUS: ACTIVE_SIM', badgeColor: '#79ff5b' },
@@ -20,6 +22,7 @@ export default function CivilFlowPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
       <Navbar />
+      <MobileOnlyMessage />
       <main className="flex-grow pt-16">
         <section className="relative w-full overflow-hidden border-b border-outline-variant" style={{ minHeight: 500, background: '#1a1c20' }}>
           <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, #111317 0%, rgba(17,19,23,0) 100%)' }} />
@@ -38,7 +41,6 @@ export default function CivilFlowPage() {
               <Link to="/civilflowareatrabajo" className="hidden md:inline-block px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold text-on-primary transition-all" style={{ fontFamily: 'Geist, monospace', background: '#00dce5', boxShadow: '0 0 15px rgba(0,220,229,0.3)' }}>
                 Explorar Funciones
               </Link>
-              <span className="md:hidden text-sm px-4 py-2 text-center" style={{ color: '#f5a623', fontFamily: 'Geist, monospace', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 4 }}>Disponible solo en escritorio</span>
               <Link to="/docs" className="border border-outline-variant text-on-surface px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:border-primary transition-all" style={{ fontFamily: 'Geist, monospace', background: 'rgba(17,19,23,0.5)' }}>
                 Ver Documentación
               </Link>
@@ -117,6 +119,7 @@ export default function CivilFlowPage() {
               <h2 className="text-2xl font-bold text-on-surface" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>Validación de Datos en su Propio Terreno</h2>
               <p className="text-sm text-on-surface-variant">Solicite acceso a nuestro entorno de pruebas sandbox. Suba un KML de muestra y experimente el ruteo automático y cálculo de presiones en tiempo real.</p>
               <div className="flex gap-4 mt-2">
+                {/* TODO: Wire up demo request form submission */}
                 <input className="px-4 py-3 flex-grow outline-none text-on-surface border-b border-outline-variant focus:border-primary transition-colors" style={{ fontFamily: 'Geist, monospace', fontSize: 13, background: '#0A0C0E' }} placeholder="INGRESAR_CORREO_CORPORATIVO" type="email" />
                 <button className="px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold text-on-primary flex items-center gap-2" style={{ fontFamily: 'Geist, monospace', background: '#00f5ff' }}>
                   Solicitar Demo <span className="material-symbols-outlined text-sm">arrow_forward</span>
@@ -133,16 +136,7 @@ export default function CivilFlowPage() {
           </div>
         </section>
       </main>
-      <footer className="border-t border-outline-variant" style={{ background: '#0c0e12' }}>
-        <div className="flex flex-col md:flex-row justify-between items-center py-8 px-6 lg:px-8 gap-4 w-full">
-          <span className="text-lg font-bold text-outline" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>CivilCore</span>
-          <div className="flex gap-6">
-            <Link to="/docs" className="text-outline uppercase tracking-widest hover:text-primary transition-colors" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace' }}>Documentación</Link>
-            <Link to="/pricing" className="text-outline uppercase tracking-widest hover:text-primary transition-colors" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace' }}>Precios</Link>
-          </div>
-          <span className="text-outline text-sm">© 2026 CivilCore. Ingeniería de Precisión .</span>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

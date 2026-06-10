@@ -44,12 +44,12 @@ const PILLARS = [
 ];
 
 function LandingPage() {
-  const [hoveredIdx, setHoveredIdx] = useState(null);
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const navigate = useNavigate();
   const hovered = hoveredIdx !== null ? MODULOS_HERO[hoveredIdx] : null;
-  const handleEnter = useCallback((i) => setHoveredIdx(i), []);
+  const handleEnter = useCallback((i: number) => setHoveredIdx(i), []);
   const handleLeave = useCallback(() => setHoveredIdx(null), []);
-  const handleClick = useCallback((path) => navigate(path), [navigate]);
+  const handleClick = useCallback((path: string) => navigate(path), [navigate]);
 
   return (
     <div className="min-h-screen" style={{ background: '#0a0e14', color: '#e2e2e8' }}>
@@ -137,7 +137,7 @@ function LandingPage() {
                   background: 'rgba(10,14,20,0.6)',
                   backdropFilter: 'blur(8px)',
                   borderColor: hoveredIdx === i ? m.color + '55' : 'transparent',
-                  boxShadow: hoveredIdx === i ? `0 0 20px ${m.color}22, 0 0 40px ${m.color}0a` : 'none' }}
+                  boxShadow: hoveredIdx === i ? `0 0 20px ${m.color}22, 0 0 40px ${m.color}0a` : 'none' } as any}
                 onMouseEnter={() => handleEnter(i)}
                 onMouseLeave={handleLeave}
                 onClick={() => handleClick(m.path)}>
@@ -153,7 +153,7 @@ function LandingPage() {
                 </span>
                 <span className="text-[8px] sm:text-[9px] md:text-[10px] text-center mt-1 md:mt-1.5 relative z-10 uppercase tracking-wider leading-tight"
                   style={{ color: '#6b8cae', fontFamily: 'Geist, monospace', fontWeight: 600 }}>
-                  {MOD_SUB[m.id]}
+                  {(MOD_SUB as Record<string, string>)[m.id]}
                 </span>
               </div>
             ))}
@@ -177,7 +177,7 @@ function LandingPage() {
                 <div>
                   <h3 className="text-lg font-bold whitespace-nowrap" style={{ color: hovered.color, fontFamily: 'Hanken Grotesk, sans-serif' }}>{hovered.name}</h3>
                   <p className="text-xs uppercase tracking-widest whitespace-nowrap" style={{ color: '#6b8cae', fontFamily: 'Geist, monospace' }}>
-                    {MOD_SUB[hovered.id].charAt(0) + MOD_SUB[hovered.id].slice(1).toLowerCase()}
+                    {((MOD_SUB as Record<string, string>)[hovered.id] || '').charAt(0) + ((MOD_SUB as Record<string, string>)[hovered.id] || '').slice(1).toLowerCase()}
                   </p>
                 </div>
               </div>
@@ -288,7 +288,7 @@ function LandingPage() {
             </nav>
           </div>
           <div style={{ color: '#3a494a', fontSize: 12 }}>
-            © 2026 CivilCore. Ingeniería de Precisión .
+            © 2026 CivilCore. Ingeniería de Precisión.
           </div>
         </div>
       </footer>

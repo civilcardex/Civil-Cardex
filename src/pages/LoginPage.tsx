@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import FormField from '../components/FormField';
 import { supabase } from '../lib/supabase';
 
 function LoginPage() {
@@ -11,7 +12,7 @@ function LoginPage() {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -25,7 +26,7 @@ function LoginPage() {
 
       if (signInError) throw signInError;
       navigate('/civilflowareatrabajo');
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión');
     } finally {
       setLoading(false);
@@ -68,53 +69,25 @@ function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="px-8 pb-6 space-y-5">
-              <div>
-                <label className="block text-[10px] font-bold tracking-widest uppercase mb-2"
-                  style={{ color: '#6b8cae', fontFamily: 'Geist, monospace' }}>
-                  CORREO ELECTRÓNICO
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full h-11 px-4 border text-sm focus:outline-none transition-colors"
-                  style={{ background: '#0a0e14', borderColor: '#3a494a', color: '#e2e2e8', fontFamily: 'Geist, monospace' }}
-                  onFocus={(e) => e.target.style.borderColor = '#00dce5'}
-                  onBlur={(e) => e.target.style.borderColor = '#3a494a'}
-                  placeholder="usuario@civilcore.com"
-                />
-              </div>
+              <FormField label="CORREO ELECTRÓNICO" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@civilcore.com" />
 
-        <div>
-          <label className="block text-[10px] font-bold tracking-widest uppercase mb-2"
-            style={{ color: '#6b8cae', fontFamily: 'Geist, monospace' }}>
-            CONTRASEÑA
-          </label>
-          <div className="relative">
-            <input
-              type={showPwd ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full h-11 px-4 pr-10 border text-sm focus:outline-none transition-colors"
-              style={{ background: '#0a0e14', borderColor: '#3a494a', color: '#e2e2e8', fontFamily: 'Geist, monospace' }}
-              onFocus={(e) => e.target.style.borderColor = '#00dce5'}
-              onBlur={(e) => e.target.style.borderColor = '#3a494a'}
-              placeholder="••••••••"
-            />
-            <button type="button" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-base opacity-50 hover:opacity-90 transition-opacity"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b8cae', padding: 0, lineHeight: 1 }}>
-              {showPwd ? '⬡' : '👁'}
-            </button>
-          </div>
+        <div style={{position:'relative'}}>
+          <FormField label="CONTRASEÑA" type={showPwd ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+          <button type="button" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}
+            className="absolute right-2 bottom-[12px] text-base opacity-50 hover:opacity-90 transition-opacity"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b8cae', padding: 0, lineHeight: 1 }}>
+            {showPwd ? '⬡' : '👁'}
+          </button>
         </div>
 
               <div className="flex items-center justify-between">
+                {/* TODO: Implement remember me functionality */}
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" className="w-4 h-4 border accent-[#00dce5]"
                     style={{ borderColor: '#3a494a', background: '#0a0e14' }} />
                   <span className="text-xs" style={{ color: '#6b8cae' }}>Recordarme</span>
                 </label>
+                {/* TODO: Implement forgot password flow */}
                 <button type="button" className="text-xs hover:underline" style={{ color: '#00dce5' }}>
                   ¿Olvidó su contraseña?
                 </button>
@@ -125,8 +98,8 @@ function LoginPage() {
                 className="w-full h-12 font-bold text-[11px] tracking-widest uppercase transition-all"
                 style={{ background: '#00dce5', color: '#0a0e14', fontFamily: 'Geist, monospace',
                   boxShadow: '0 0 20px rgba(0,220,229,0.2)' }}
-                onMouseEnter={(e) => e.target.style.boxShadow = '0 0 30px rgba(0,220,229,0.4)'}
-                onMouseLeave={(e) => e.target.style.boxShadow = '0 0 20px rgba(0,220,229,0.2)'}
+                onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => e.currentTarget.style.boxShadow = '0 0 30px rgba(0,220,229,0.4)'}
+                onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => e.currentTarget.style.boxShadow = '0 0 20px rgba(0,220,229,0.2)'}
               >
           {loading ? 'INGRESANDO...' : 'INICIAR SESIÓN'}
         </button>
