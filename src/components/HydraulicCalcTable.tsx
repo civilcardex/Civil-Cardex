@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { useApparatus } from "../context/ApparatusContext";
 import { calcUDparcial, calcUDacumulado } from "../utils/componentHelpers";
 import { DIAM_OPTIONS } from "../constants";
-import { parseDescripcion } from "../utils/parseDescription";
+import { parseDescription } from "../utils/parseDescription";
 import { relacionesHidraulicas, caudalTuboLleno } from "../utils/calcSanitary";
 
 interface HydraulicCalcTableProps {
@@ -42,7 +42,13 @@ const HydraulicCalcTable = memo(function HydraulicCalcTable({
             </tr>
           </thead>
           <tbody>
-            {tramos.map(t => {
+            {tramos.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                  No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
+                </td>
+              </tr>
+            ) : tramos.map(t => {
               const n = t.nmaning || 0.009;
               const sVal = t.sPercent || 2;
               const S = sVal / 100;
@@ -56,7 +62,7 @@ const HydraulicCalcTable = memo(function HydraulicCalcTable({
                 const nSalidas = t.nSalidas || 2;
                 const K = Math.round(nSalidas <= 1 ? 1 : 1 / Math.sqrt(nSalidas - 1) * 100) / 100;
                 const udPropias = calcUDparcial(t, udBase);
-                const descIds = parseDescripcion(t.descripcion);
+                const descIds = parseDescription(t.descripcion);
                 const udOtros = descIds.reduce((s: number, id: string) => s + ((acumMap as Record<string, number>)[id] || 0), 0);
                 const udAcum = udPropias + udOtros;
                 Q = udAcum > 0 ? Math.round(K * (udAcum < 240 ? 0.1163 * Math.pow(udAcum, 0.6875) : 0.074 * Math.pow(udAcum, 0.7504)) * 1000) / 1000 : 0;

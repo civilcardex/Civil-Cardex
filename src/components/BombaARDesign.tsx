@@ -1,32 +1,16 @@
 import { useState } from "react";
 import { parseDecimalInput } from "../utils/parseDecimal";
+import PageNav from './PageNav';
 
-function PageNav({page,setPage,total,labels,color}){
-  return(
-    <div style={{display:'flex',alignItems:'center',gap:6,justifyContent:'center',padding:'6px 0',flexShrink:0}}>
-      <button onClick={()=>setPage(Math.max(1,page-1))} disabled={page<=1}
-        style={{padding:'4px 10px',border:'1px solid var(--line)',borderRadius:'var(--r)',background:'var(--bg3)',color:page<=1?'var(--txt3)':'var(--txt)',cursor:page<=1?'not-allowed':'pointer',fontSize:12,fontWeight:600,lineHeight:1}}>◀</button>
-      {Array.from({length:total},(_,i)=>i+1).map(p=>(
-        <button key={p} onClick={()=>setPage(p)}
-          style={{padding:'4px 12px',border:`1.5px solid ${p===page?color||'var(--acc)':'var(--line)'}`,borderRadius:'var(--r)',
-          background:p===page?`${color||'var(--acc)'}18`:'var(--bg3)',color:p===page?color||'var(--acc)':'var(--txt2)',
-          cursor:'pointer',fontSize:11,fontFamily:'var(--body)',fontWeight:p===page?700:500,textAlign:'center',whiteSpace:'nowrap'}}>{labels?.[p-1]||`Pág ${p}`}</button>
-      ))}
-      <button onClick={()=>setPage(Math.min(total,page+1))} disabled={page>=total}
-        style={{padding:'4px 10px',border:'1px solid var(--line)',borderRadius:'var(--r)',background:'var(--bg3)',color:page>=total?'var(--txt3)':'var(--txt)',cursor:page>=total?'not-allowed':'pointer',fontSize:12,fontWeight:600,lineHeight:1}}>▶</button>
-    </div>
-  );
-}
+const dec=(s: string)=>parseDecimalInput(s)||0;
+const nv=(s: string)=>s===''?'':/^[\d]*\.?[\d]*$/.test(s)?s:false;
+const oc=(set: (v: any) => void)=>(e: React.ChangeEvent<HTMLInputElement>)=>{const v=nv(e.target.value);if(v!==false)set(v)};
 
-const dec=(s)=>parseDecimalInput(s)||0;
-const nv=(s)=>s===''?'':/^[\d]*\.?[\d]*$/.test(s)?s:false;
-const oc=(set)=>(e)=>{const v=nv(e.target.value);if(v!==false)set(v)};
-
-const SI={border:'1px solid var(--line)',borderRadius:3,background:'var(--bg4)',fontFamily:'var(--mono)',fontSize:11,color:'var(--txt)',width:'100%',boxSizing:'border-box',textAlign:'center',outline:'none',padding:'3px 5px'};
-const TH={fontSize:10,fontWeight:600,color:'var(--txt3)',fontFamily:'var(--mono)',textAlign:'center',padding:'5px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line2)',whiteSpace:'nowrap',textTransform:'uppercase',letterSpacing:'0.4px',background:'var(--bg3)'};
-const TD={fontSize:11,fontFamily:'var(--mono)',padding:'4px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line2)',color:'var(--txt2)',textAlign:'center',verticalAlign:'middle'};
+const SI: React.CSSProperties = {border:'1px solid var(--line)',borderRadius:3,background:'var(--bg4)',fontFamily:'var(--mono)',fontSize:11,color:'var(--txt)',width:'100%',boxSizing:'border-box',textAlign:'center',outline:'none',padding:'3px 5px'};
+const TH: React.CSSProperties = {fontSize:10,fontWeight:600,color:'var(--txt3)',fontFamily:'var(--mono)',textAlign:'center',padding:'5px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line)',whiteSpace:'nowrap',textTransform:'uppercase',letterSpacing:'0.4px',background:'var(--bg3)'};
+const TD: React.CSSProperties = {fontSize:11,fontFamily:'var(--mono)',padding:'4px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line)',color:'var(--txt2)',textAlign:'center',verticalAlign:'middle'};
 const TDL={...TD,textAlign:'left',fontFamily:'var(--body)'};
-const Fmt=(v,u='')=>{
+const Fmt=(v: any,u='')=>{
   if(v===''||v===null||v===undefined)return <span style={{color:'var(--txt3)',fontSize:10}}>—</span>;
   const val=typeof v==='number'?v.toFixed(2):v;
   return <span style={{fontFamily:'var(--mono)'}}>{val}{u?` ${u}`:''}</span>;
@@ -36,14 +20,14 @@ const SI2={...SI,fontSize:13,padding:'4px 6px'};
 const TH2={...TH,fontSize:11};
 const TD2={...TD,fontSize:13};
 const TDL2={...TDL,fontSize:13};
-const Fmt2=(v,u='')=>{
+const Fmt2=(v: any,u='')=>{
   if(v===''||v===null||v===undefined)return <span style={{color:'var(--txt3)',fontSize:12}}>—</span>;
   const val=typeof v==='number'?v.toFixed(2):v;
   return <span style={{fontFamily:'var(--mono)',fontSize:13}}>{val}{u?` ${u}`:''}</span>;
 };
 
-function Inp({v,set,style}){return <input type="text" inputMode="decimal" value={v} onChange={oc(set)} style={style||SI}/>;}
-function Tbl({cols,rows,th,td,tdl,fontSize}){
+function Inp({v,set,style}: {v: any; set: (v: any) => void; style?: React.CSSProperties}){return <input type="text" inputMode="decimal" value={v} onChange={oc(set)} style={style||SI}/>;}
+function Tbl({cols,rows,th,td,tdl,fontSize}: {cols: string[]; rows: any[][]; th?: any; td?: any; tdl?: any; fontSize?: number}){
   const h=th||TH,d=td||TD,dl=tdl||TDL;
   return <table className="tbl" style={{fontSize:fontSize||11,width:'100%',borderCollapse:'collapse'}}>
     <thead><tr>{cols.map((c,i)=><th key={i} style={h}>{c}</th>)}</tr></thead>

@@ -1,48 +1,32 @@
 import { useState, useMemo, useEffect } from "react";
 import { GAS, APARATOS_DEF, pisoCorto } from "../constants";
-import { usePlanos } from "../context/PlansContext";
+import { usePlans } from "../context/PlansContext";
 import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
 import { safeParse } from "../utils/parseUtils";
 import GasCalcUC from "./GasCalcUC";
+import PageNav from './PageNav';
 
-const TRAZOS_PREFIX = 'civilflow_trazos_';
-const GAS_ACC_KEY = 'civilflow_gas_accesorios';
+import { TRAZOS_PREFIX, GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY } from "../constants/storage-keys";
+
 const GAS_APPARATUS = APARATOS_DEF.filter(a => a.grupo === 'g' && (a.qgas || 0) > 0);
 
-function PageNav({page,setPage,total,labels,color}){
-  return(
-    <div style={{display:'flex',alignItems:'center',gap:6,justifyContent:'center',padding:'6px 0',flexShrink:0}}>
-      <button onClick={()=>setPage(Math.max(1,page-1))} disabled={page<=1}
-        style={{padding:'4px 10px',border:'1px solid var(--line)',borderRadius:'var(--r)',background:'var(--bg3)',color:page<=1?'var(--txt3)':'var(--txt)',cursor:page<=1?'not-allowed':'pointer',fontSize:12,fontWeight:600,lineHeight:1}}>{'\u25C0'}</button>
-      {Array.from({length:total},(_,i)=>i+1).map(p=>(
-        <button key={p} onClick={()=>setPage(p)}
-          style={{padding:'4px 12px',border:`1.5px solid ${p===page?color||'var(--acc)':'var(--line)'}`,borderRadius:'var(--r)',
-          background:p===page?`${color||'var(--acc)'}18`:'var(--bg3)',color:p===page?color||'var(--acc)':'var(--txt2)',
-          cursor:'pointer',fontSize:11,fontFamily:'var(--body)',fontWeight:p===page?700:500,textAlign:'center',whiteSpace:'nowrap'}}>{labels?.[p-1]||`P\u00e1g ${p}`}</button>
-      ))}
-      <button onClick={()=>setPage(Math.min(total,page+1))} disabled={page>=total}
-        style={{padding:'4px 10px',border:'1px solid var(--line)',borderRadius:'var(--r)',background:'var(--bg3)',color:page>=total?'var(--txt3)':'var(--txt)',cursor:page>=total?'not-allowed':'pointer',fontSize:12,fontWeight:600,lineHeight:1}}>{'\u25B6'}</button>
-    </div>
-  );
-}
+const SI: React.CSSProperties = {border:'1px solid var(--line)',borderRadius:3,background:'var(--bg4)',fontFamily:'var(--mono)',fontSize:11,color:'var(--txt)',width:'100%',boxSizing:'border-box',textAlign:'center',outline:'none',padding:'3px 5px'};
+const SD: React.CSSProperties = {...SI,textAlign:'left',fontFamily:'var(--body)',cursor:'pointer'};
+const TH: React.CSSProperties = {fontSize:10,fontWeight:600,color:'var(--txt3)',fontFamily:'var(--mono)',textAlign:'center',padding:'5px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line)',whiteSpace:'nowrap',textTransform:'uppercase',letterSpacing:'0.4px',background:'var(--bg3)',verticalAlign:'middle'};
+const TD: React.CSSProperties = {fontSize:11,fontFamily:'var(--mono)',padding:'4px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line)',color:'var(--txt2)',textAlign:'center',verticalAlign:'middle'};
 
-const SI={border:'1px solid var(--line)',borderRadius:3,background:'var(--bg4)',fontFamily:'var(--mono)',fontSize:11,color:'var(--txt)',width:'100%',boxSizing:'border-box',textAlign:'center',outline:'none',padding:'3px 5px'};
-const SD={...SI,textAlign:'left',fontFamily:'var(--body)',cursor:'pointer'};
-const TH={fontSize:10,fontWeight:600,color:'var(--txt3)',fontFamily:'var(--mono)',textAlign:'center',padding:'5px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line2)',whiteSpace:'nowrap',textTransform:'uppercase',letterSpacing:'0.4px',background:'var(--bg3)',verticalAlign:'middle'};
-const TD={fontSize:11,fontFamily:'var(--mono)',padding:'4px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line2)',color:'var(--txt2)',textAlign:'center',verticalAlign:'middle'};
-
-const ALL_DN=[];
+const ALL_DN: {mat: string; K: number; dn: string; d: number}[] = [];
 GAS.forEach(g=>{g.rows.forEach(r=>{ALL_DN.push({mat:g.mat,K:g.K,dn:r.dn,d:r.d});});});
 
 const ACC_KEYS=['codos_90_std','codos_90_rl','te_linea','te_ramal','valvula_bola'];
 const LE_K={codos_90_std:30,codos_90_rl:20,te_linea:20,te_ramal:20,valvula_bola:8};
 
-function lookupDn(mat,dn){
+function lookupDn(mat: string, dn: string){
   const match=ALL_DN.find(x=>x.mat===mat&&x.dn===dn);
   return match||null;
 }
 
-function renouardByType(counts) {
+function renouardByType(counts: Record<string, number>) {
   const products = [];
   for (const ap of GAS_APPARATUS) {
     const n = counts[ap.id] || 0;
@@ -56,16 +40,16 @@ function renouardByType(counts) {
   return (sorted[0].product + sorted[1].product) / 2 + sorted.slice(2).reduce((s, p) => s + p.product, 0);
 }
 
-function computeQDiseno(planos) {
-  const aparatos = safeParse(localStorage.getItem('civilflow_aparatos_by_tramo_v2'), {}) || {};
-  const totalByAp = {};
+function computeQDiseno(plans: any[]) {
+  const aparatos: Record<string, any> = safeParse(localStorage.getItem(APARATOS_BY_TRAMO_KEY), {}) || {};
+  const totalByAp: Record<string, number> = {};
   for (const ap of GAS_APPARATUS) totalByAp[ap.id] = 0;
 
-  for (const plano of planos) {
+  for (const plano of plans) {
     if (!plano || plano.status !== 'confirmed' || plano.nivel == null) continue;
     const raw = safeParse(localStorage.getItem(TRAZOS_PREFIX + plano.id), null);
     if (!raw) continue;
-    const data = typeof raw === 'string' ? safeParse(raw, {}) : raw;
+    const data = (typeof raw === 'string' ? safeParse(raw, {}) : raw) as Record<string, any>;
     for (const r of data.ramales || []) {
       if (r.net !== 'gas') continue;
       const counts = aparatos[`gas_${r.id}`] || {};
@@ -86,21 +70,21 @@ export default function GasDesign(){
   const [temp,setTemp]=useState('23');
   const [pmin,setPmin]=useState('17');
   const [densRel,setDensRel]=useState('0.67');
-  const { planos } = usePlanos();
+  const { plans } = usePlans();
 
   const [gasRefreshKey, setGasRefreshKey] = useState(0);
-  const [diamMat, setDiamMat] = useState(() => ({}));
-  const [diamDn, setDiamDn] = useState(() => ({}));
-  const [diamInt, setDiamInt] = useState(() => ({}));
-  const [diamK, setDiamK] = useState(() => ({}));
+  const [diamMat, setDiamMat] = useState<Record<string, string>>(() => ({}));
+  const [diamDn, setDiamDn] = useState<Record<string, string>>(() => ({}));
+  const [diamInt, setDiamInt] = useState<Record<string, number>>(() => ({}));
+  const [diamK, setDiamK] = useState<Record<string, number>>(() => ({}));
 
-  const [gasAcc, setGasAcc] = useState(() => {
+  const [gasAcc, setGasAcc] = useState<Record<string, any>>(() => {
     try { return safeParse(localStorage.getItem(GAS_ACC_KEY), {}); } catch (_) { return {}; }
   });
 
   useEffect(() => {
-    const existingIds = new Set();
-    for (const plano of planos) {
+    const existingIds = new Set<string>();
+    for (const plano of plans) {
       if (!plano || plano.status !== 'confirmed') continue;
       try {
         const raw = localStorage.getItem(TRAZOS_PREFIX + plano.id);
@@ -113,22 +97,22 @@ export default function GasDesign(){
     }
     setGasAcc(prev => {
       let changed = false;
-      const next = {};
+    const next: Record<string, any> = {};
       for (const id of existingIds) {
         if (prev[id]) next[id] = prev[id];
       }
       if (Object.keys(next).length !== Object.keys(prev).length) changed = true;
       return changed ? next : prev;
     });
-  }, [planos]);
+  }, [plans]);
 
   const gasTramos = useMemo(() => {
     const tramos = [];
-    for (const plano of planos) {
+    for (const plano of plans) {
       if (!plano || plano.status !== 'confirmed' || plano.nivel == null) continue;
       const raw = safeParse(localStorage.getItem(TRAZOS_PREFIX + plano.id), null);
       if (!raw) continue;
-      const data = typeof raw === 'string' ? safeParse(raw, {}) : raw;
+    const data = (typeof raw === 'string' ? safeParse(raw, {}) : raw) as Record<string, any>;
       for (const r of data.ramales || []) {
         if (r.net !== 'gas') continue;
         const mat = r.material || '';
@@ -150,38 +134,38 @@ export default function GasDesign(){
       }
     }
     return tramos.sort((a, b) => (b.piso || 0) - (a.piso || 0));
-  }, [planos, gasRefreshKey]);
+  }, [plans, gasRefreshKey]);
 
-  const handleDiamChange = (tramoId, mat, dn) => {
+  const handleDiamChange = (tramoId: string, mat: string, dn: string) => {
     const opt = lookupDn(mat, dn);
     setDiamMat(prev => ({ ...prev, [tramoId]: mat }));
     setDiamDn(prev => ({ ...prev, [tramoId]: dn }));
     setDiamInt(prev => ({ ...prev, [tramoId]: opt ? opt.d : 0 }));
     setDiamK(prev => ({ ...prev, [tramoId]: opt ? opt.K : 0 }));
-    if (opt) writeDiametroToDrawing(tramoId, 'gas', dn, planos);
+    if (opt) writeDiametroToDrawing(tramoId, 'gas', dn, plans);
   };
 
-  const handleDelete = (tramoId) => {
-    deleteRamalFromDrawing(tramoId, 'gas', planos);
+  const handleDelete = (tramoId: string) => {
+    deleteRamalFromDrawing(tramoId, 'gas', plans);
     setGasRefreshKey(k => k + 1);
   };
 
-  const getAcc = (tramoId) => gasAcc[tramoId] || {};
+  const getAcc = (tramoId: string) => (gasAcc[tramoId] || {}) as Record<string, number>;
 
   const checkRows = useMemo(() => {
     const pMin = Number(pmin) || 17;
     const DR = Number(densRel) || 0.67;
-    const aparatos = safeParse(localStorage.getItem('civilflow_aparatos_by_tramo_v2'), {}) || {};
+  const aparatos: Record<string, any> = safeParse(localStorage.getItem(APARATOS_BY_TRAMO_KEY), {}) || {};
     const result = [];
     let pAcum = pMin;
     for (const t of gasTramos) {
       const dInt = diamInt[t.id] || 0;
       const K = diamK[t.id] || 0;
-      const acc = gasAcc[t.id] || {};
+      const acc: Record<string, number> = gasAcc[t.id] || {};
       let sumLe = 0;
-      for (const k of ACC_KEYS) sumLe += (acc[k] || 0) * (LE_K[k] || 0);
+      for (const k of ACC_KEYS) sumLe += (acc[k] || 0) * ((LE_K as Record<string, number>)[k] || 0);
       const le = dInt > 0 ? dInt * sumLe / 1000 : 0;
-      const appCounts = aparatos[`gas_${t.id}`] || {};
+      const appCounts: Record<string, number> = aparatos[`gas_${t.id}`] || {};
       let q = 0;
       for (const ap of GAS_APPARATUS) q += (Number(appCounts[ap.id]) || 0) * (ap.qgas || 0);
       const dP = dInt > 0 ? 23200 * (le + (t.longitud || 0)) * Math.pow(q, 1.82) / Math.pow(dInt, 4.82) * Math.pow(DR, 0.82) : 0;
@@ -189,7 +173,7 @@ export default function GasDesign(){
       const pIni = pAcum;
       const pFin = pAcum - dP;
       pAcum = pFin;
-      const ok = (vel > 0 && vel <= 10 && dP > 0) ? 'O.K.' : (dP > 0 ? 'NO' : '\u2014');
+      const ok = (vel > 0 && vel <= 10 && dP > 0) ? 'O.K.' : (dP > 0 ? 'NO' : '—');
       result.push({ id: t.id, le, dP, vel, pIni, pFin, chequeo: ok });
     }
     return result;
@@ -215,13 +199,13 @@ export default function GasDesign(){
               ['Temperatura promedio de la ciudad',temp,setTemp,'°C'],
               ['Presión mínima de la red según operador',pmin,setPmin,'mbar'],
               ['Densidad relativa del gas a utilizar',densRel,setDensRel,'kPa'],
-            ].map(([lbl,val,setVal,uni],i,arr)=>(
+            ].map((row, i, arr)=>{const [lbl,val,setVal,uni] = row as [string, string, any, string];return (
               <tr key={i}>
-                <td style={{padding:'4px 8px',fontWeight:600,color:'var(--txt)',fontSize:12,borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line2)'}}>{lbl}</td>
-                <td style={{padding:'4px 8px',borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line2)'}}><input type="text" inputMode="decimal" value={val} onChange={e=>setVal(e.target.value)} style={{...SI,textAlign:'right',fontSize:12,padding:'4px 8px',width:90}}/></td>
+                <td style={{padding:'4px 8px',fontWeight:600,color:'var(--txt)',fontSize:12,borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}>{lbl}</td>
+                <td style={{padding:'4px 8px',borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}><input type="text" inputMode="decimal" value={val} onChange={e=>setVal(e.target.value)} style={{...SI,textAlign:'right',fontSize:12,padding:'4px 8px',width:90}}/></td>
                 <td style={{padding:'4px 8px',color:'var(--txt2)',fontSize:12,fontWeight:500,borderBottom:i<arr.length-1?'1px solid var(--line)':'none'}}>{uni}</td>
               </tr>
-            ))}
+            );})}
           </tbody>
             </table>
         </div>
@@ -252,7 +236,7 @@ export default function GasDesign(){
               </tr></thead>
               <tbody>
                 {gasTramos.length===0&&(
-                  <tr><td colSpan={COLS.length+1} style={{padding:'12px',textAlign:'center',color:'var(--txt3)',fontSize:11}}>No hay tramos. Dibuja ramales de gas en el visor para que aparezcan aqu&iacute;.</td></tr>
+                  <tr><td colSpan={COLS.length+1} style={{padding:'24px 0',textAlign:'center',color:'var(--txt3)',fontSize:11,border:'none'}}>No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.</td></tr>
                 )}
                 {gasTramos.map(t=>{
                   const mat=diamMat[t.id]||'';
@@ -263,8 +247,8 @@ export default function GasDesign(){
                     <tr key={t.id}>
                       <td className="c" style={{padding:'0 1px'}}><span className="sigla" style={{fontSize:11,padding:'1px 4px'}}>{t.id}</span></td>
                       <td className="c" style={{padding:'0 1px',color:'var(--txt2)',fontSize:11}}>{pisoCorto(t.piso)}</td>
-                      <td className="c" style={{...TD,padding:'2px 3px'}}>{t.ini||'\u2014'}</td>
-                      <td className="c" style={{...TD,padding:'2px 3px'}}>{t.fin||'\u2014'}</td>
+                      <td className="c" style={{...TD,padding:'2px 3px'}}>{t.ini||'—'}</td>
+                      <td className="c" style={{...TD,padding:'2px 3px'}}>{t.fin||'—'}</td>
                       <td className="c" style={{padding:'0 1px'}}>
                         <select value={mat?`${mat}|${dn}`:''} onChange={e=>{
                           const val=e.target.value;
@@ -278,9 +262,9 @@ export default function GasDesign(){
                           </optgroup>)}
                         </select>
                       </td>
-                      <td className="c" style={{...TD,padding:'2px 3px',color:dInt?'var(--txt)':'var(--txt3)'}}>{dInt?dInt.toFixed(2):'\u2014'}</td>
-                      <td className="c" style={{...TD,padding:'2px 3px',color:kVal?'var(--txt)':'var(--txt3)'}}>{kVal||'\u2014'}</td>
-                      <td className="c" style={{...TD,padding:'2px 3px'}}>{t.longitud>0?t.longitud.toFixed(2):'\u2014'}</td>
+                      <td className="c" style={{...TD,padding:'2px 3px',color:dInt?'var(--txt)':'var(--txt3)'}}>{dInt?dInt.toFixed(2):'—'}</td>
+                      <td className="c" style={{...TD,padding:'2px 3px',color:kVal?'var(--txt)':'var(--txt3)'}}>{kVal||'—'}</td>
+                      <td className="c" style={{...TD,padding:'2px 3px'}}>{t.longitud>0?t.longitud.toFixed(2):'—'}</td>
                       <td className="c" style={{padding:'0 1px'}}>
                         <button onClick={()=>handleDelete(t.id)} title="Eliminar" style={{border:'none',background:'transparent',color:'var(--txt3)',cursor:'pointer',fontSize:11,padding:'2px 6px',lineHeight:1}}>&#x2715;</button>
                       </td>
@@ -291,7 +275,7 @@ export default function GasDesign(){
             </table>
         </div>
       </div>
-      <div className="card" style={{display:'flex',flexDirection:'column',flex:1,minWidth:0,overflow:'hidden'}}>
+      <div className="card" style={{display:'flex',flexDirection:'column',minWidth:0,overflow:'hidden',...(gasTramos.length===0?{}:{flex:1})}}>
         <div className="card-h" style={{justifyContent:'space-between'}}>
           <span className="card-t">
             <img src="/iconos_diseno_redes/red_de_gas.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} />
@@ -308,24 +292,24 @@ export default function GasDesign(){
                   <th style={{...TH}} rowSpan={2}>d<sub>int</sub> (mm)</th>
                   <th style={{...TH,borderBottom:'2px solid var(--line)'}} colSpan={5}>Accesorios</th>
                   <th style={{...TH,borderLeft:'2px solid var(--line)'}} rowSpan={2}>Le (m)</th>
-                  <th style={TH} rowSpan={2}>{'\u0394'}P (mbar)</th>
+                  <th style={TH} rowSpan={2}>{'Δ'}P (mbar)</th>
                   <th style={{...TH}} rowSpan={2}>Vel (m/s)</th>
                   <th style={{...TH,borderBottom:'2px solid var(--line)'}} colSpan={2}>P tramo (mbar)</th>
-                  <th style={{...TH}} rowSpan={2}>Vel {'\u2264'}10</th>
+                  <th style={{...TH}} rowSpan={2}>Vel {'≤'}10</th>
                 </tr>
                 <tr>
-                  <th style={{...TH,fontSize:8}}>Codos 90{'\u00b0'} std</th>
-                  <th style={{...TH,fontSize:8}}>Codos 90{'\u00b0'} rl</th>
+                  <th style={{...TH,fontSize:8}}>Codos 90{'°'} std</th>
+                  <th style={{...TH,fontSize:8}}>Codos 90{'°'} rl</th>
                   <th style={{...TH,fontSize:8}}>Te en l&iacute;nea (flujo recto)</th>
                   <th style={{...TH,fontSize:8}}>Te ramal (flujo desviado)</th>
-                  <th style={{...TH,fontSize:8}}>V&aacute;lvula de bola (1/4 de vuelta)</th>
+                  <th style={{...TH,fontSize:8}}>Válvula de bola (1/4 de vuelta)</th>
                   <th style={{...TH,fontSize:9}}>INI</th>
                   <th style={{...TH,fontSize:9}}>FIN</th>
                 </tr>
               </thead>
               <tbody>
                 {gasTramos.length===0&&(
-                  <tr><td colSpan={14} style={{padding:'12px',textAlign:'center',color:'var(--txt3)',fontSize:11}}>No hay tramos. Dibuja ramales de gas en el visor para que aparezcan aqu&iacute;.</td></tr>
+                  <tr><td colSpan={14} style={{padding:'24px 0',textAlign:'center',color:'var(--txt3)',fontSize:11,border:'none'}}>No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.</td></tr>
                 )}
                 {gasTramos.map(t=>{
                   const dInt=diamInt[t.id]||0;
@@ -335,13 +319,13 @@ export default function GasDesign(){
                   const vel=chk?chk.vel:0;
                   const pIni=chk?chk.pIni:0;
                   const pFin=chk?chk.pFin:0;
-                  const ok=chk?chk.chequeo:'\u2014';
+                  const ok=chk?chk.chequeo:'—';
                   const acc=getAcc(t.id);
                   return(
                     <tr key={t.id}>
                       <td className="c" style={{padding:'0 1px'}}><span className="sigla" style={{fontSize:10,padding:'1px 3px'}}>{t.id}</span></td>
-                      <td className="c" style={{...TD,padding:'3px 2px',fontSize:10}}>{t.longitud>0?t.longitud.toFixed(2):'\u2014'}</td>
-                      <td className="c" style={{...TD,padding:'3px 2px',fontSize:10,color:dInt?'var(--txt)':'var(--txt3)'}}>{dInt?dInt.toFixed(2):'\u2014'}</td>
+                      <td className="c" style={{...TD,padding:'3px 2px',fontSize:10}}>{t.longitud>0?t.longitud.toFixed(2):'—'}</td>
+                      <td className="c" style={{...TD,padding:'3px 2px',fontSize:10,color:dInt?'var(--txt)':'var(--txt3)'}}>{dInt?dInt.toFixed(2):'—'}</td>
                       {ACC_KEYS.map(k=>(
                         <td key={k} className="c" style={{padding:'2px 1px',textAlign:'center',verticalAlign:'middle'}}>
                           <span style={{fontSize:10,fontWeight:600,fontFamily:'var(--mono)',color:(acc[k]||0)>0?'var(--txt)':'var(--txt3)'}}>{acc[k]||0}</span>
@@ -368,8 +352,8 @@ export default function GasDesign(){
   return(
     <div className="fu" style={{display:'flex',flexDirection:'column',gap:6,flex:1,minHeight:0}}>
       <PageNav page={gp} setPage={setGp} total={3} color="var(--gas)"
-        labels={['Datos generales','C\u00e1lculo UC','Dise\u00f1o de red + Chequeo']} />
-      <div style={{flex:1,padding:6,overflow:'hidden',display:'flex',flexDirection:'column'}}>
+        labels={['Datos generales','Cálculo UC','Diseño de red + Chequeo']} />
+      <div style={{padding:6,overflow:'hidden',display:'flex',flexDirection:'column'}}>
         {gp===1?page1:gp===2?page2:page3}
       </div>
     </div>

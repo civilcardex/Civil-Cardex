@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { ACCESORIOS_HIDRO } from "../constants";
 
-function calcLe(tramo) {
+function calcLe(tramo: any) {
   const d = tramo.dInt || tramo.diametro_interno || 0;
   if (!d) return null;
   const a = tramo.accesorios || {};
@@ -9,7 +9,7 @@ function calcLe(tramo) {
   return Math.round(d * sum / 1000 * 100) / 100;
 }
 
-const AccesoriosTable = memo(function AccesoriosTable({ tramos, updAcc, readOnly }) {
+const AccesoriosTable = memo(function AccesoriosTable({ tramos, updAcc, net, readOnly }: { tramos: any[]; updAcc: (id: string, accId: string, val: any) => void; net?: string; readOnly?: boolean }) {
   const cMono = "'Courier New',Courier,monospace";
   const cBg2 = '#1e293b';
   const cTxt3 = '#94a3b8';
@@ -69,8 +69,8 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos, updAcc, readOnly
               })}
               {tramos.length === 0 && (
                 <tr>
-                  <td className="c" colSpan={2 + ACCESORIOS_HIDRO.length} style={{fontSize:12,color:cTxt3,padding:'16px 0',textAlign:'center'}}>
-                    No hay tramos. Dibuja ramales en el visor para que aparezcan aqui.
+                  <td className="c" colSpan={2 + ACCESORIOS_HIDRO.length} style={{fontSize:11,color:'var(--txt3)',padding:'24px 0',textAlign:'center'}}>
+                    No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                   </td>
                 </tr>
               )}

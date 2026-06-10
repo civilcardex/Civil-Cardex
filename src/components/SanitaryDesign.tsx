@@ -1,10 +1,10 @@
 import { useState, useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useApparatus } from "../context/ApparatusContext";
-import { usePlanos } from "../context/PlansContext";
+import { usePlans } from "../context/PlansContext";
 import { calcUDparcial } from "../utils/componentHelpers";
 import { pisoCorto, DIAM_OPTIONS, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN, SAN_UC_IDS, APARATOS_DEF } from "../constants";
-import { diametromaning, caudalHunterLPS, factorSimultaneidad } from "../utils/calcSanitary";
+import { diametroManning, caudalHunterLPS, factorSimultaneidad } from "../utils/calcSanitary";
 import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
 import { getTributarioIds } from "../utils/tramoUtils";
 import { calcHydraulicCheck } from "../utils/hydraulicCheck";
@@ -14,20 +14,20 @@ import HydraulicCalcTable from "./HydraulicCalcTable";
 export default function DisenosSanitarios() {
   const { tramosSan, updTramoSan, delTramoSan } = useTramos();
   const { aps } = useApparatus();
-  const { planos } = usePlanos();
+  const { plans } = usePlans();
 
-  const handleDiamChange = useCallback((tramoId, newPulg) => {
+  const handleDiamChange = useCallback((tramoId: string, newPulg: number) => {
     updTramoSan(tramoId, 'diamDisPulg', newPulg);
     const opt = DIAM_OPTIONS.find(o => o.pulg === newPulg);
     if (opt) {
-      writeDiametroToDrawing(tramoId, 'san', opt.label, planos);
+      writeDiametroToDrawing(tramoId, 'san', opt.label, plans);
     }
-  }, [updTramoSan, planos]);
+  }, [updTramoSan, plans]);
 
-  const handleDelete = useCallback((tramoId) => {
+  const handleDelete = useCallback((tramoId: string) => {
     delTramoSan(tramoId);
-    deleteRamalFromDrawing(tramoId, 'san', planos);
-  }, [delTramoSan, planos]);
+    deleteRamalFromDrawing(tramoId, 'san', plans);
+  }, [delTramoSan, plans]);
 
 const mergedBase = useMemo(() => {
   const defMap = new Map(APARATOS_DEF.map(d => [d.id, d]));
@@ -41,7 +41,7 @@ const mergedBase = useMemo(() => {
 const [otrosSel, toggleOtro] = useToggleMap();
 
 const udMap = useMemo(() => {
-  const m = {};
+  const m: Record<string, number> = {};
   for (const t of tramosSan) m[t.id] = calcUDparcial(t, mergedBase);
   return m;
 }, [tramosSan, mergedBase]);
@@ -76,7 +76,7 @@ const displayTramos = tramosSan.filter(t => !tribIds.has(t.id));
               <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>#<br/>Desc.</th>
               <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>K</th>
               <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>Q<br/><small>LPS</small></th>
-              <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>Maning</th>
+              <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>Manning</th>
               <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>S %</th>
               <th className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize:10,padding:'2px 4px'}}>Diámetro</th>
               <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>Qo<br/><small>LPS</small></th>
@@ -105,7 +105,13 @@ const displayTramos = tramosSan.filter(t => !tribIds.has(t.id));
             </tr>
           </thead>
           <tbody>
-            {(()=>{
+            {displayTramos.length === 0 ? (
+              <tr>
+                <td colSpan={27} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                  No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
+                </td>
+              </tr>
+            ) : (()=>{
               const tramosOrden = [...tramosSan].sort((a,b)=>(a.piso||0)-(b.piso||0));
               return [...displayTramos].sort((a,b)=>(a.piso||0)-(b.piso||0)).map(t=>{
                 const udPropias=calcUDparcial(t,mergedBase);
@@ -126,7 +132,7 @@ const Q=udAcum>0&&K!=null?Math.round(caudalHunterLPS(udAcum,K)*1000)/1000:null;
         let Yc=0,Yn=0,Froude=0,tipoFlujo='—',Ymax=0,chequeoYn='—';
         let fuerzaTractiva=0,chequeoFT='—';
 if(Q!=null&&Q>0&&S!=null&&S>0&&n!=null&&n>0){
-DcalcPulg=Math.round(diametromaning(Q/1000,n,S)*1000/25.4*100)/100;
+DcalcPulg=Math.round(diametroManning(Q/1000,n,S)*1000/25.4*100)/100;
 if(DdisPulg>0){chequeo=DcalcPulg<=DdisPulg?'O.K.':'NO CUMPLE';}
 }
 if(Q!=null&&Q>0&&S!=null&&S>0&&n!=null&&n>0&&DintMm>0){
@@ -160,7 +166,7 @@ Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; ch
           <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize:11,padding:'3px 5px'}}>{udAcum}</td>
           <td className="c" style={{fontFamily:'var(--mono)',padding:'3px 5px'}}>{nSalidas > 0 ? nSalidas : '—'}</td>
           <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,padding:'3px 5px'}}>{K!=null?K.toFixed(2):'—'}</td>
-          <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,padding:'3px 5px'}}>{Q>0?Q.toFixed(3):'—'}</td>
+          <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,padding:'3px 5px'}}>{Q!=null && Q>0?Q.toFixed(3):'—'}</td>
           <td className="c" style={{fontFamily:'var(--mono)',padding:'3px 5px'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
           <td className="c" style={{fontFamily:'var(--mono)',padding:'3px 5px'}}>{sVal > 0 ? sVal : '—'}</td>
           <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'3px 5px'}}>{DcalcPulg>0?DcalcPulg.toFixed(2)+'"':'—'}</td>

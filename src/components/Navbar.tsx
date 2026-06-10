@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 function Navbar() {
   const location = useLocation();
   const path = location.pathname;
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
 

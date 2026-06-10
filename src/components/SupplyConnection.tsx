@@ -2,12 +2,7 @@ import { COEF_HAZEN_PVC } from "../utils/calcHydraulics";
 
 const C = COEF_HAZEN_PVC;
 
-const fmt = (v: unknown, d = 2): string => {
-  if (v === null || v === undefined) return "—";
-  const n = Number(v);
-  if (Number.isNaN(n)) return "—";
-  return n.toFixed(d);
-};
+import { fmt } from "../utils/fmt";
 
 interface FilaResult {
   dInt: number;

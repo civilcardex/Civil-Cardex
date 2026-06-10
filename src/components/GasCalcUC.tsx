@@ -1,11 +1,9 @@
 import { useMemo } from "react";
-import { usePlanos } from "../context/PlansContext";
+import { usePlans } from "../context/PlansContext";
 import { APARATOS_DEF } from "../constants";
 import { safeParse } from "../utils/parseUtils";
 
-const TRAZOS_PREFIX = "civilflow_trazos_";
-const APARATOS_KEY = "civilflow_aparatos_by_tramo_v2";
-
+import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from "../constants/storage-keys";
 const GAS_APPARATUS = APARATOS_DEF.filter(
   (a) => a.grupo === "g" && (a.qgas || 0) > 0
 );
@@ -17,20 +15,20 @@ const ABREV = {
   sauna: "SAU", turco: "TUR",
 };
 
-const TH = {
+const TH: React.CSSProperties = {
   fontSize: 10, fontWeight: 600, color: "var(--txt3)", fontFamily: "var(--mono)",
   textAlign: "center", padding: "3px 4px",
-  borderBottom: "1px solid var(--line)", borderRight: "1px solid var(--line2)",
+  borderBottom: "1px solid var(--line)", borderRight: "1px solid var(--line)",
   whiteSpace: "nowrap", textTransform: "uppercase",
   letterSpacing: "0.4px", background: "var(--bg3)",
 };
-const TD = {
+const TD: React.CSSProperties = {
   fontSize: 11, fontFamily: "var(--mono)", padding: "3px 4px",
-  borderBottom: "1px solid var(--line)", borderRight: "1px solid var(--line2)",
+  borderBottom: "1px solid var(--line)", borderRight: "1px solid var(--line)",
   color: "var(--txt2)", textAlign: "center", verticalAlign: "middle",
 };
 
-function renouardByType(counts) {
+function renouardByType(counts: Record<string, number>) {
   const present = [];
   for (const ap of GAS_APPARATUS) {
     const n = counts[ap.id] || 0;
@@ -47,23 +45,23 @@ function renouardByType(counts) {
   return part1 + part2;
 }
 
-export default function GasCalcUC({ patm, temp, densRel }) {
-  const { planos } = usePlanos();
+export default function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRel: string }) {
+  const { plans } = usePlans();
 
   const { tramos, totalByAp, tramoTotals, tramoAppCounts } = useMemo(() => {
-    const aparatos = safeParse(localStorage.getItem(APARATOS_KEY), {}) || {};
-    const tramosMap = {};
+    const aparatos: Record<string, any> = safeParse(localStorage.getItem(APARATOS_BY_TRAMO_KEY), {}) || {};
+    const tramosMap: Record<string, { id: string; piso: number | string; ini: string; fin: string; counts: Record<string, number> }> = {};
 
-    for (const plano of planos) {
+    for (const plano of plans) {
       if (!plano || plano.status !== "confirmed" || plano.nivel == null) continue;
       const raw = safeParse(localStorage.getItem(TRAZOS_PREFIX + plano.id), null);
       if (!raw) continue;
-      const data = typeof raw === "string" ? safeParse(raw, {}) : raw;
+      const data = (typeof raw === "string" ? safeParse(raw, {}) : raw) as Record<string, any>;
 
       for (const r of data.ramales || []) {
         if (r.net !== "gas") continue;
         const key = `gas_${r.id}`;
-        const counts = aparatos[key] || {};
+        const counts = (aparatos as Record<string, any>)[key] || {};
         const hasData = Object.values(counts).some((v) => (Number(v) || 0) > 0);
         if (!hasData) continue;
 
@@ -82,10 +80,10 @@ export default function GasCalcUC({ patm, temp, densRel }) {
     }
 
     const tramos = Object.values(tramosMap).sort(
-      (a, b) => (a.piso || 0) - (b.piso || 0)
+      (a, b) => (Number(a.piso) || 0) - (Number(b.piso) || 0)
     );
 
-    const totalByAp = {};
+    const totalByAp: Record<string, number> = {};
     for (const ap of GAS_APPARATUS) {
       totalByAp[ap.id] = tramos.reduce(
         (s, t) => s + (t.counts[ap.id] || 0), 0
@@ -100,7 +98,7 @@ export default function GasCalcUC({ patm, temp, densRel }) {
     });
 
     return { tramos, totalByAp, tramoTotals, tramoAppCounts };
-  }, [planos]);
+  }, [plans]);
 
   const globalTotal = useMemo(() => tramoTotals.reduce((s, q) => s + q, 0), [tramoTotals]);
 
@@ -134,7 +132,7 @@ export default function GasCalcUC({ patm, temp, densRel }) {
       <tr>
         {GAS_APPARATUS.map((a) => (
           <th key={a.id} style={{...TH, minWidth:40, fontSize:10, padding:"2px 2px", lineHeight:1.1}}>
-            <div style={{fontWeight:700}} title={a.nombre}>{ABREV[a.id]}</div>
+            <div style={{fontWeight:700}} title={a.nombre}>{(ABREV as Record<string, string>)[a.id]}</div>
             <div style={{fontSize:8, fontWeight:400, color:"var(--txt3)", marginTop:1}}>{a.qgas}</div>
           </th>
         ))}
@@ -144,11 +142,11 @@ export default function GasCalcUC({ patm, temp, densRel }) {
 
   if (tramos.length === 0) {
     return (
-      <div className="card" style={{ flex: 1 }}>
+      <div className="card">
         <div className="card-h">
           <span className="card-t">
             <img src="/iconos_diseno_redes/red_de_gas.webp" alt="" style={{ width: 24, height: 24, verticalAlign: "middle", marginRight: 4 }} />
-            C&aacute;lculo UC gas
+            Cálculo UC gas
           </span>
           <span className="card-s">0 tramos</span>
         </div>
@@ -156,7 +154,7 @@ export default function GasCalcUC({ patm, temp, densRel }) {
           <table className="tbl" style={{ width: "100%" }}>
             {tableHeader}
             <tbody>
-              <tr><td colSpan={4 + GAS_APPARATUS.length + 3} style={{ padding: 30, textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>No hay tramos con aparatos de gas.</td></tr>
+              <tr><td colSpan={4 + GAS_APPARATUS.length + 3} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>No hay tramos con aparatos de gas.</td></tr>
             </tbody>
           </table>
         </div>
@@ -169,7 +167,7 @@ export default function GasCalcUC({ patm, temp, densRel }) {
       <div className="card-h">
         <span className="card-t">
           <img src="/iconos_diseno_redes/red_de_gas.webp" alt="" style={{ width: 24, height: 24, verticalAlign: "middle", marginRight: 4 }} />
-          C&aacute;lculo UC gas
+          Cálculo UC gas
         </span>
         <span className="card-s">{tramos.length} tramos</span>
       </div>
@@ -201,7 +199,7 @@ export default function GasCalcUC({ patm, temp, densRel }) {
               <td style={{borderTop:"2px solid var(--line)", padding:0}}></td>
               <td style={{borderTop:"2px solid var(--line)", padding:0}}></td>
               {GAS_APPARATUS.map((a) => {
-                const total = totalByAp[a.id] || 0;
+                const total = (totalByAp as Record<string, number>)[a.id] || 0;
                 return (
                   <td key={a.id} className="c" style={{...TD, padding:"2px 2px", borderTop:"2px solid var(--line)"}}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0, fontSize: 9, fontFamily: "var(--mono)" }}>

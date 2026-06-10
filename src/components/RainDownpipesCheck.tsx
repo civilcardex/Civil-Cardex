@@ -20,7 +20,7 @@ export default function ChequeoBajantesLluvias() {
               <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Coeficiente de<br/>Escorrentía C</th>
               <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>R</th>
               <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Q = C×I×A<br/>LPS</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Maning</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Manning</th>
               <th className="col-h ok" colSpan={2} style={{textAlign:'center',fontSize:11}}>Diámetro</th>
               <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Chequeo<br/>Dcal&lt;Dprop</th>
             </tr>
@@ -32,7 +32,13 @@ export default function ChequeoBajantesLluvias() {
             </tr>
           </thead>
           <tbody>
-{bajantesLl.map(b=>{
+{bajantesLl.length === 0 ? (
+              <tr>
+                <td colSpan={11} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                  No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
+                </td>
+              </tr>
+) : bajantesLl.map(b=>{
 const { Q, dCalc: diamCalc, chequeo } = chequeoBajanteLluvia(b);
 const diamProp = b.diamPropuesto || 0;
 return(

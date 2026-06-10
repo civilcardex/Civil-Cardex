@@ -3,7 +3,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 export function ProtectedRoute() {
-  const [user, setUser] = useState(undefined);
+  const [user, setUser] = useState<any>(undefined);
 
   useEffect(() => {
     if (!supabase) { setUser(null); return; }

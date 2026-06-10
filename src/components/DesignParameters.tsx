@@ -4,7 +4,16 @@ import { useProject } from "../context/ProjectContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { MAT_COL, AF_UC_IDS, AC_UC_IDS, SAN_UC_IDS, APARATOS_DEF, REDES_MAT, CAT_APS, CAT_GAS } from "../constants";
 
-function NumInput({ value, onCommit, color, width = 50, decimals = 2, disabled: isDisabled }) {
+interface NumInputProps {
+  value: number;
+  onCommit: (v: number) => void;
+  color?: string;
+  width?: number;
+  decimals?: number;
+  disabled?: boolean;
+}
+
+function NumInput({ value, onCommit, color, width = 50, decimals = 2, disabled: isDisabled }: NumInputProps) {
   const [text, setText] = useState(() => formatVal(value, decimals));
   const [focused, setFocused] = useState(false);
   const lastExtRef = useRef(value);
@@ -17,7 +26,7 @@ function NumInput({ value, onCommit, color, width = 50, decimals = 2, disabled: 
     }
   }, [value, focused, decimals]);
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
     const cleaned = raw.replace(/,/g, '.').replace(/[^0-9.]/g, '');
     const firstDot = cleaned.indexOf('.');
@@ -47,38 +56,38 @@ function NumInput({ value, onCommit, color, width = 50, decimals = 2, disabled: 
       className="ni"
       value={text}
       onChange={handleChange}
-      onFocus={(e) => { setFocused(true); e.target.select(); }}
+      onFocus={(e: React.FocusEvent<HTMLInputElement>) => { setFocused(true); e.target.select(); }}
       onBlur={() => { setFocused(false); commit(); }}
-      onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+      onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
     />
   );
 }
 
-function formatVal(v, decimals) {
+function formatVal(v: number, decimals: number): string {
   const n = Number(v);
   if (!Number.isFinite(n)) return (0).toFixed(decimals);
   if (Number.isInteger(n)) return String(n);
   return n.toFixed(decimals);
 }
 
-export default function BaseDatos({ redes }) {
+export default function BaseDatos({ redes }: { redes: Set<string> }) {
   const navigate = useNavigate();
   const { mats, setMats, profs, setProfs } = useProject();
   const { aps, setAps } = useApparatus();
-  const [profTexts, setProfTexts] = useState({});
+  const [profTexts, setProfTexts] = useState<Record<string, string>>({});
 
   const activeRedes = REDES_MAT.filter(r => redes?.has(r.id));
 
-  const matMap = Object.fromEntries(activeRedes.map(r => [r.id, r]));
+  const matMap = Object.fromEntries(activeRedes.map((r: any) => [r.id, r]));
   const merged = activeRedes.map(r => ({
     ...r,
     matSel: (mats[r.id] && mats[r.id][0]?.val) || r.mat,
     prof: (profs.find(p => p.id === r.id)?.prof) ?? r.prof,
   }));
 
-  const getOpts = (r) => r.opts || (mats[r.id] && mats[r.id].length > 0 ? mats[r.id].map(o => o.val) : [r.mat]);
+  const getOpts = (r: any) => r.opts || (mats[r.id] && mats[r.id].length > 0 ? mats[r.id].map(o => o.val) : [r.mat]);
 
-  const setMatSel = (redId, newVal) => {
+  const setMatSel = (redId: string, newVal: string) => {
     setMats(prev => {
       const list = prev[redId] || [];
       if (list.length === 0) return { ...prev, [redId]: [{ id: redId + '_' + Date.now(), val: newVal }] };
@@ -86,16 +95,16 @@ export default function BaseDatos({ redes }) {
     });
   };
 
-  const setProf = (redId, v) => {
+  const setProf = (redId: string, v: number) => {
     setProfs(prev => {
       const ix = prev.findIndex(p => p.id === redId);
-      if (ix < 0) return [...prev, { id: redId, red: matMap[redId]?.lbl || redId, col: MAT_COL[redId] || 'var(--txt2)', prof: v, norma: '', nota: '' }];
+      if (ix < 0) return [...prev, { id: redId, red: matMap[redId]?.lbl || redId, col: (MAT_COL as Record<string, string>)[redId] || 'var(--txt2)', prof: v, norma: '', nota: '' }];
       return prev.map(p => p.id === redId ? { ...p, prof: v } : p);
     });
   };
 
   const apsMap = Object.fromEntries(CAT_APS.map(a => [a.id, a]));
-  const defUd = (id) => APARATOS_DEF.find(x => x.id === id)?.ud ?? 0;
+  const defUd = (id: string) => APARATOS_DEF.find(x => x.id === id)?.ud ?? 0;
   const ACC_IDS = new Set(['codo90rm','yeeSimple','yeeDoble']);
   const apsMerged = CAT_APS.map(c => {
     const cur = aps.find(a => a.id === c.id);
@@ -111,14 +120,14 @@ export default function BaseDatos({ redes }) {
     };
   });
 
-  const setApsVal = (id, key, v) => {
+  const setApsVal = (id: string, key: string, v: number) => {
     setAps(prev => {
       const ix = prev.findIndex(a => a.id === id);
       if (ix < 0) {
         const def = apsMap[id];
-        return [...prev, { id, s: def.s, n: def.n, g: 'h', ucaf: def.af, ucac: def.ac, ud: 0, pmin: 0, pmax: 0, qg: 0, [key]: v }];
+        return [...prev, { id, s: def.s, n: def.n, g: 'h', ucaf: def.af, ucac: def.ac, ud: 0, pmin: 0, pmax: 0, qg: 0, [key]: v } as any];
       }
-      return prev.map(a => a.id === id ? { ...a, [key]: v } : a);
+      return prev.map(a => a.id === id ? { ...a, [key]: v } as any : a);
     });
   };
 
@@ -145,10 +154,10 @@ export default function BaseDatos({ redes }) {
               </thead>
               <tbody>
                 {merged.map((r, ix) => {
-                  const col = MAT_COL[r.id] || 'var(--txt2)';
+                  const col = (MAT_COL as Record<string, string>)[r.id] || 'var(--txt2)';
                   const isLast = ix === merged.length - 1;
                   return (
-                    <tr key={r.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)', borderBottom: isLast ? '2px solid var(--line2)' : undefined }}>
+                    <tr key={r.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)', borderBottom: isLast ? '2px solid var(--line)' : undefined }}>
                       <td style={{ textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--txt3)', padding: '3px 6px' }}>{ix + 1}</td>
                       <td style={{ padding: '3px 8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -169,7 +178,7 @@ export default function BaseDatos({ redes }) {
                             }}
                             value={r.matSel}
                             onChange={e => setMatSel(r.id, e.target.value)}>
-                            {getOpts(r).map((o, i) => (
+                            {getOpts(r).map((o: string, i: number) => (
                               <option key={i} value={o} style={{ fontFamily: 'var(--body)', fontWeight: 400, color: '#000', background: '#fff' }}>{o}</option>
                             ))}
                           </select>
@@ -207,7 +216,7 @@ export default function BaseDatos({ redes }) {
                               return next;
                             });
                           }}
-                          onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+                          onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                         />
                       </td>
                     </tr>
@@ -255,7 +264,7 @@ export default function BaseDatos({ redes }) {
                   const isLast = ix === apsMerged.length - 1;
                   const isLavavajillas = a.id === 'lavav';
                   return (
-                    <tr key={a.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)', borderBottom: isLavavajillas ? '2px solid var(--line2)' : undefined }}>
+                    <tr key={a.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)', borderBottom: isLavavajillas ? '2px solid var(--line)' : undefined }}>
                       <td style={{ padding: '3px 8px', fontWeight: 500 }}>{a.n}</td>
                       <td style={{ padding: '3px 6px' }}>
                         <span style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 600, color: 'var(--txt2)', padding: '0' }}>{a.s.toUpperCase()}</span>

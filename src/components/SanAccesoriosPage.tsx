@@ -1,10 +1,9 @@
 import { useMemo, useState, useEffect } from 'react';
 import { SAN_ACCESORIOS } from '../constants';
+import { HYDRO_DATA_STORAGE_KEY } from '../constants/storage-keys';
 
-const HIDRO_KEY = 'civilflow_tramo_hidro_data_v3';
-
-function loadHidro() {
-  try { return JSON.parse(localStorage.getItem(HIDRO_KEY)) || {}; } catch (_) { return {}; }
+function loadHidro(): Record<string, any> {
+  try { return JSON.parse(localStorage.getItem(HYDRO_DATA_STORAGE_KEY) || '{}') || {}; } catch (_) { return {}; }
 }
 
 export default function SanAccesoriosPage() {
@@ -12,20 +11,22 @@ export default function SanAccesoriosPage() {
 
   useEffect(() => {
     const handler = () => setTick(t => t + 1);
+    // Listen for localStorage changes from other tabs (cross-tab sync)
     window.addEventListener('storage', handler);
-    const iv = setInterval(handler, 1500);
+    // Fallback polling for same-tab writes (storage event only fires in other tabs)
+    const iv = setInterval(handler, 10000);
     return () => { window.removeEventListener('storage', handler); clearInterval(iv); };
   }, []);
 
   const tramos = useMemo(() => {
     const hidroData = loadHidro();
     const result = [];
-    for (const [key, entry] of Object.entries(hidroData)) {
+    for (const [key, entry] of Object.entries(hidroData) as [string, Record<string, any>][]) {
       if (!key.startsWith('san_')) continue;
       const tramoId = key.slice(4);
       if (!tramoId) continue;
       const srcAcc = entry?.accesorios || {};
-      const acc = {};
+      const acc: Record<string, number> = {};
       for (const a of SAN_ACCESORIOS) {
         acc[a.id] = srcAcc[a.id] || 0;
       }
@@ -73,8 +74,8 @@ export default function SanAccesoriosPage() {
               ))}
               {tramos.length === 0 && (
                 <tr>
-                  <td className="c" colSpan={1 + SAN_ACCESORIOS.length} style={{ fontSize: 12, color: 'var(--txt3)', padding: '16px 0', textAlign: 'center' }}>
-                    No hay tramos de red sanitaria. Dibuja ramales en el visor para que aparezcan aqui.
+                  <td className="c" colSpan={1 + SAN_ACCESORIOS.length} style={{ fontSize: 11, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
+                    No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                   </td>
                 </tr>
               )}

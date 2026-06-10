@@ -30,21 +30,21 @@ export default function CalculoUC({ tipo }: CalculoUCProps) {
     const fromAps = aps.find(p => p.id === id);
     const merged = fromAps ? { ...a, [field]: fromAps[apField] || a[field] } : a;
     return { ...merged, _disabled: (a[field] || 0) === 0 };
-  }).filter(Boolean);
+  }).filter((x): x is NonNullable<typeof x> => x != null);
 
   const totales = AP.map(d => ({
-    id: d.id, nombre: d.nombre, uc: d[field],
-    cant: tramos.reduce((s, t) => s + ((t.fixtures?.[d.id] || 0)), 0)
+    id: d!.id, nombre: d!.nombre, uc: (d as any)[field],
+    cant: tramos.reduce((s, t) => s + ((t.fixtures?.[d!.id] || 0)), 0)
   }));
   const totalUC = totales.reduce((s, d) => s + (d.cant || 0) * (d.uc || 0), 0);
 
-  const acumMap = showTotal ? calcUCacumulado(tramos, AP, field) : {};
+  const acumMap = showTotal ? calcUCacumulado(tramos, AP as any, field) : {};
 
   return (
     <>
       <div className="card">
         <div className="card-h">
-          <span className="card-t"><img src={`/iconos_diseno_redes/${icon}`} alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> C&aacute;lculo de unidades de consumo {title}</span>
+          <span className="card-t"><img src={`/iconos_diseno_redes/${icon}`} alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Cálculo de unidades de consumo {title}</span>
           <span className="card-s">{tramos.length} tramos</span>
         </div>
         <div className="scroll-top" style={{padding:'16px'}}>
@@ -63,12 +63,12 @@ export default function CalculoUC({ tipo }: CalculoUCProps) {
                     <th className="col-h ok" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Parcial</th>
                   )}
                   <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Lh (m)</th>
-                  <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>No de descarga<br/>Simult&aacute;neas</th>
+                  <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>No de descarga<br/>Simultáneas</th>
                 </tr>
                 <tr>
                   {AP.map(d => (
-                    <th key={d.id} className={`col-h ${clsHeader}`} style={{minWidth:70,fontSize:9,textAlign:'center',whiteSpace:'nowrap',padding:'4px 2px'}}>
-                      {d.nombre}<br/><span style={{fontSize:8,fontWeight:400}}>{d[field]} UC</span>
+                    <th key={d!.id} className={`col-h ${clsHeader}`} style={{minWidth:70,fontSize:9,textAlign:'center',whiteSpace:'nowrap',padding:'4px 2px'}}>
+                      {d!.nombre}<br/><span style={{fontSize:8,fontWeight:400}}>{(d as any)[field]} UC</span>
                     </th>
                   ))}
                   {showTotal && (
@@ -80,8 +80,14 @@ export default function CalculoUC({ tipo }: CalculoUCProps) {
                 </tr>
               </thead>
               <tbody>
-                {[...tramos].sort((a, b) => (a.piso || 0) - (b.piso || 0)).map((t, i) => {
-                  const parcial = calcUCparcial(t, AP, field);
+                {tramos.length === 0 ? (
+                  <tr>
+                    <td colSpan={showTotal ? 4 + AP.length + 2 + 2 : 4 + AP.length + 3} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                      No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
+                    </td>
+                  </tr>
+                ) : [...tramos].sort((a, b) => (a.piso || 0) - (b.piso || 0)).map((t, i) => {
+                  const parcial = calcUCparcial(t, AP as any, field);
                   const acum = showTotal ? (acumMap[t.id] || 0) : 0;
                   const vLh = t.Lh ?? 0;
                   const vNS = t.nSalidas ?? 0;
@@ -92,10 +98,10 @@ export default function CalculoUC({ tipo }: CalculoUCProps) {
                       <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{t.ini || '\u2014'}</td>
                       <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{t.fin || '\u2014'}</td>
                       {AP.map(d => {
-                        const v = t.fixtures?.[d.id] || 0;
+                        const v = t.fixtures?.[d!.id] || 0;
                         return (
-                          <td key={d.id} className="c" style={{padding:'2px 3px'}}>
-                            <span style={{fontSize:12,fontFamily:monof,color:d._disabled?txt2:txt}}>{v}</span>
+                          <td key={d!.id} className="c" style={{padding:'2px 3px'}}>
+                            <span style={{fontSize:12,fontFamily:monof,color:(d as any)._disabled?txt2:txt}}>{v}</span>
                           </td>
                         );
                       })}

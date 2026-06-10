@@ -28,7 +28,7 @@ return (
 <>
   <div className="card">
     <div className="card-h">
-      <span className="card-t"><img src="/iconos_diseno_redes/RS_Calculo_UC.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> C&aacute;lculo de unidades de descarga</span>
+      <span className="card-t"><img src="/iconos_diseno_redes/RS_Calculo_UC.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Cálculo de unidades de descarga</span>
       <span className="card-s">{tramosSan.length} tramos</span>
     </div>
     <div className="scroll-top" style={{padding:'16px'}}>
@@ -53,7 +53,13 @@ return (
             </tr>
           </thead>
           <tbody>
-{displayTramos.map((t) => {
+{displayTramos.length === 0 ? (
+              <tr>
+                <td colSpan={4 + mergedBase.length + 3} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                  No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
+                </td>
+              </tr>
+) : displayTramos.map((t) => {
 const parcial=calcUDparcial(t,mergedBase);
 const acum=acumMap[t.id]||0;
               return(

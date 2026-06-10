@@ -1,9 +1,9 @@
 import { useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
-import { usePlanos } from "../context/PlansContext";
+import { usePlans } from "../context/PlansContext";
 import { pisoCorto, DIAM_OPTIONS, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN } from "../constants";
-import { parseDescripcion } from "../utils/parseDescription";
-import { diametromaning } from "../utils/calcSanitary";
+import { parseDescription } from "../utils/parseDescription";
+import { diametroManning } from "../utils/calcSanitary";
 import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
 import { getTributarioIds } from "../utils/tramoUtils";
 import { calcHydraulicCheck } from "../utils/hydraulicCheck";
@@ -11,20 +11,20 @@ import HydraulicCalcTable from "./HydraulicCalcTable";
 
 export default function DisenoLluvias() {
   const { tramosLl, updTramoLL, delTramoLL } = useTramos();
-  const { planos } = usePlanos();
+  const { plans } = usePlans();
 
-  const handleDiamChange = useCallback((tramoKey, tramoId, newPulg) => {
+  const handleDiamChange = useCallback((tramoKey: string, tramoId: string, newPulg: number) => {
     updTramoLL(tramoKey, 'diamDisPulg', newPulg);
     const opt = DIAM_OPTIONS.find(o => o.pulg === newPulg);
     if (opt && tramoId) {
-      writeDiametroToDrawing(tramoId, 'll', opt.label, planos);
+      writeDiametroToDrawing(tramoId, 'll', opt.label, plans);
     }
-  }, [updTramoLL, planos]);
+  }, [updTramoLL, plans]);
 
-  const handleDelete = useCallback((tramoKey, tramoId) => {
+  const handleDelete = useCallback((tramoKey: string, tramoId: string) => {
     delTramoLL(tramoKey);
-    if (tramoId) deleteRamalFromDrawing(tramoId, 'll', planos);
-  }, [delTramoLL, planos]);
+    if (tramoId) deleteRamalFromDrawing(tramoId, 'll', plans);
+  }, [delTramoLL, plans]);
 
   const tribIds = getTributarioIds(tramosLl);
   const displayTramos = tramosLl.filter(t => !tribIds.has(t._key) && !tribIds.has(t.id));
@@ -47,7 +47,7 @@ export default function DisenoLluvias() {
                <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Fin</th>
               <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center',minWidth:100}}>Puntos de conexión</th>
               <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Q<br/><small>LPS</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center',minWidth:70}}>Maning</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center',minWidth:70}}>Manning</th>
               <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>S %</th>
               <th className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize:11}}>Diámetro</th>
               <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Qo<br/><small>LPS</small></th>
@@ -73,7 +73,13 @@ export default function DisenoLluvias() {
             </tr>
           </thead>
           <tbody>
-            {[...displayTramos].sort((a,b)=>(a.piso||0)-(b.piso||0)).map(t=>{
+            {displayTramos.length === 0 ? (
+              <tr>
+                <td colSpan={25} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                  No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
+                </td>
+              </tr>
+            ) : [...displayTramos].sort((a,b)=>(a.piso||0)-(b.piso||0)).map(t=>{
 const n=t.nmaning;
 const sVal=t.sPercent;
 const S=sVal!=null&&sVal>0?sVal/100:null;
@@ -84,7 +90,7 @@ const Q=t.qLps||0;
       let Yc=0,Yn=0,Froude=0,tipoFlujo='—',Ymax=0,chequeoYn='—';
       let fuerzaTractiva=0,chequeoFT='—';
 if(Q>0&&S!=null&&S>0&&n!=null&&n>0){
-DcalcPulg=Math.round(diametromaning(Q/1000,n,S)*1000/25.4*100)/100;
+DcalcPulg=Math.round(diametroManning(Q/1000,n,S)*1000/25.4*100)/100;
 if(DdisPulg>0){chequeo=DcalcPulg<=DdisPulg?'O.K.':'NO CUMPLE';}
 }
 if(Q>0&&S!=null&&S>0&&n!=null&&n>0&&DintMm>0){
@@ -93,7 +99,7 @@ Qo = hc.Qo; Vo = hc.Vo; qqo = hc.qqo; Vreal = hc.Vreal; chequeoV = hc.chequeoV;
 Yc = hc.Yc; Yn = hc.Yn; Froude = hc.Froude; tipoFlujo = hc.tipoFlujo;
 Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; chequeoFT = hc.chequeoFT;
 }
-const descIds=parseDescripcion(t.descripcion);
+const descIds=parseDescription(t.descripcion);
               return(
                 <tr key={t._key}>
                   <td className="c"><span className="sigla" style={{fontSize:10}}>{t.id || t._key}</span></td>

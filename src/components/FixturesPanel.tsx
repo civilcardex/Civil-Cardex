@@ -1,17 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, SAN_ACCESORIOS, GAS_ACCESORIOS, AF_UC_IDS, AC_UC_IDS, APARATO_IMG } from '../constants';
 import { NETS } from '../lib/PlanoEngine';
-import { usePlanos } from '../context/PlansContext';
+import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
-import { writeSanDrawingSync } from '../utils/sanitaryDrawingSync';
-import { writeHidroDrawingSync } from '../utils/hydroDrawingSync';
+import { writeSanDrawingSync, writeHydroDrawingSync } from '../utils/drawingSync';
 
 const HIDROSAN_IDS = new Set(['af', 'ac', 'san']);
 const GAS_ID = 'gas';
 
-const STORAGE_KEY = 'civilflow_aparatos_by_tramo_v2';
-const HIDRO_DATA_KEY = 'civilflow_tramo_hidro_data_v3';
-const GAS_ACC_KEY = 'civilflow_gas_accesorios';
+import { TRAZOS_PREFIX, GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY } from "../constants/storage-keys";
 
 const UNIDAD = {
   uc: 'UC',
@@ -21,13 +18,13 @@ const UNIDAD = {
 
 const SAN_UD_IDS = new Set(UD_BASE_INIT.map(d => d.id));
 
-function corto(sigla) {
+function corto(sigla: string) {
   return (sigla || '').replace(/:$/, '').trim();
 }
 
-function loadAll() {
+function loadAll(): Record<string, any> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(APARATOS_BY_TRAMO_KEY);
     const data = raw ? JSON.parse(raw) : {};
     if (typeof data !== 'object' || !data) return {};
     let cleaned = false;
@@ -41,33 +38,33 @@ function loadAll() {
       }
     }
     if (cleaned) {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) { console.error('AparatosPanel:', e); }
+      try { localStorage.setItem(APARATOS_BY_TRAMO_KEY, JSON.stringify(data)); } catch (e) { console.error('AparatosPanel:', e); }
     }
     return data;
   } catch (_) { return {}; }
 }
 
-function saveAll(map) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(map)); } catch (e) { console.error('AparatosPanel:', e); }
+function saveAll(map: Record<string, any>) {
+  try { localStorage.setItem(APARATOS_BY_TRAMO_KEY, JSON.stringify(map)); } catch (e) { console.error('AparatosPanel:', e); }
 }
 
-function loadHidroData() {
-  try { return JSON.parse(localStorage.getItem(HIDRO_DATA_KEY)) || {}; } catch (_) { return {}; }
+function loadHidroData(): Record<string, any> {
+  try { return JSON.parse(localStorage.getItem(HYDRO_DATA_STORAGE_KEY) || '{}') || {}; } catch (_) { return {}; }
 }
 
-function saveHidroData(map) {
-  try { localStorage.setItem(HIDRO_DATA_KEY, JSON.stringify(map)); } catch (e) { console.error('AparatosPanel:', e); }
+function saveHidroData(map: Record<string, any>) {
+  try { localStorage.setItem(HYDRO_DATA_STORAGE_KEY, JSON.stringify(map)); } catch (e) { console.error('AparatosPanel:', e); }
 }
 
-function loadGasAcc() {
-  try { return JSON.parse(localStorage.getItem(GAS_ACC_KEY)) || {}; } catch (_) { return {}; }
+function loadGasAcc(): Record<string, any> {
+  try { return JSON.parse(localStorage.getItem(GAS_ACC_KEY) || '{}') || {}; } catch (_) { return {}; }
 }
 
-function saveGasAcc(map) {
+function saveGasAcc(map: Record<string, any>) {
   try { localStorage.setItem(GAS_ACC_KEY, JSON.stringify(map)); } catch (e) { console.error('AparatosPanel:', e); }
 }
 
-function unitFor(netId) {
+function unitFor(netId: string): string | null {
   const net = NETS.find(n => n.id === netId);
   if (!net) return null;
   if (netId === GAS_ID) return 'qgas';
@@ -76,7 +73,7 @@ function unitFor(netId) {
   return null;
 }
 
-function esAplicable(ap, netId, unitKey) {
+function esAplicable(ap: any, netId: string, unitKey: string | null) {
   if (netId === GAS_ID) return ap.grupo === 'g' && (ap.qgas || 0) > 0;
   if (unitKey === 'ud') return SAN_UD_IDS.has(ap.id);
   if (unitKey === 'uc_af') return AF_UC_IDS.includes(ap.id);
@@ -84,21 +81,21 @@ function esAplicable(ap, netId, unitKey) {
   return false;
 }
 
-function isCountableTarget(el) {
+function isCountableTarget(el: any): boolean {
   if (!el) return false;
   return el.id?.startsWith('R') || el.id?.startsWith('B') || el.id?.startsWith('T');
 }
 
-export default function AparatosPanel({ activeNet, selElement }) {
-  const { planos } = usePlanos();
+export default function AparatosPanel({ activeNet, selElement }: { activeNet: string; selElement: any }) {
+  const { plans } = usePlans();
   const { aps } = useApparatus();
-  const [counts, setCounts] = useState(loadAll);
-  const [hidroData, setHidroData] = useState(loadHidroData);
-  const [gasAcc, setGasAcc] = useState(loadGasAcc);
+  const [counts, setCounts] = useState<Record<string, any>>(loadAll);
+  const [hidroData, setHidroData] = useState<Record<string, any>>(loadHidroData);
+  const [gasAcc, setGasAcc] = useState<Record<string, any>>(loadGasAcc);
   const [open, setOpen] = useState(true);
   const [pulse, setPulse] = useState(false);
-  const containerRef = useRef(null);
-  const lastTargetRef = useRef(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const lastTargetRef = useRef<any>(null);
 
   useEffect(() => {
     setCounts(prev => {
@@ -133,9 +130,8 @@ export default function AparatosPanel({ activeNet, selElement }) {
   }, []);
 
   useEffect(() => {
-    const TRAZOS_PREFIX = 'civilflow_trazos_';
-    const existingIds = new Set();
-    for (const plano of planos) {
+    const existingIds = new Set<string>();
+    for (const plano of plans) {
       if (!plano || plano.status !== 'confirmed') continue;
       try {
         const raw = localStorage.getItem(TRAZOS_PREFIX + plano.id);
@@ -148,14 +144,14 @@ export default function AparatosPanel({ activeNet, selElement }) {
     }
     setGasAcc(prev => {
       let changed = false;
-      const next = {};
+      const next: Record<string, any> = {};
       for (const id of existingIds) {
         if (prev[id]) next[id] = prev[id];
       }
       if (Object.keys(next).length !== Object.keys(prev).length) changed = true;
       return changed ? next : prev;
     });
-  }, [planos]);
+  }, [plans]);
 
   useEffect(() => {
     const handleStorage = () => {
@@ -171,17 +167,17 @@ export default function AparatosPanel({ activeNet, selElement }) {
   useEffect(() => { saveGasAcc(gasAcc); }, [gasAcc]);
 
 useEffect(() => {
-try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:', e); }
-}, [counts, planos.length]);
+try { writeSanDrawingSync(plans); } catch (e) { console.error('AparatosPanel:', e); }
+}, [counts, plans.length]);
 
 useEffect(() => {
-try { writeHidroDrawingSync(planos); } catch (e) { console.error('AparatosPanel:', e); }
-}, [counts, hidroData, planos.length]);
+try { writeHydroDrawingSync(plans); } catch (e) { console.error('AparatosPanel:', e); }
+}, [counts, hidroData, plans.length]);
 
 // También refrescar sync sanitaria cuando cambian datos de tramo (nSalidas)
 useEffect(() => {
-try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:', e); }
-}, [hidroData, planos.length]);
+try { writeSanDrawingSync(plans); } catch (e) { console.error('AparatosPanel:', e); }
+}, [hidroData, plans.length]);
 
   const netId = activeNet;
   const isGas = netId === GAS_ID;
@@ -190,7 +186,7 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
   const visible = isHidro || isGas;
 
   const unitKey = useMemo(() => unitFor(netId), [netId]);
-  const unidadLbl = unitKey ? UNIDAD[unitKey] : '';
+  const unidadLbl = unitKey ? (UNIDAD as Record<string, string>)[unitKey] : '';
 
   const items = useMemo(() => {
     if (!unitKey) return [];
@@ -200,7 +196,7 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
     if (apsField) {
       result = filtered.map(ap => {
         const fromAps = aps.find(p => p.id === ap.id);
-        return fromAps ? { ...ap, [unitKey]: fromAps[apsField] || ap[unitKey] } : ap;
+        return fromAps ? { ...ap, [unitKey]: (fromAps as any)[apsField] || (ap as any)[unitKey] } : ap;
       });
     }
     if (unitKey === 'ud') {
@@ -256,7 +252,7 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
     if (!storageKey) return 0;
     let s = 0;
     for (const ap of items) {
-      const u = ap[unitKey] || 0;
+      const u = (ap as any)[unitKey || ''] || 0;
       s += (currentMap[ap.id] || 0) * u;
     }
     return s;
@@ -267,7 +263,7 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
     return total.toFixed(2);
   }, [total]);
 
-  const inc = (apId) => {
+  const inc = (apId: string) => {
     if (!storageKey) return;
     setCounts(prev => {
       const cur = prev[storageKey] || {};
@@ -275,7 +271,7 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
     });
   };
 
-  const dec = (apId) => {
+  const dec = (apId: string) => {
     if (!storageKey) return;
     setCounts(prev => {
       const cur = { ...(prev[storageKey] || {}) };
@@ -302,7 +298,7 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
   };
 
   // Accessory operations
-  const incAcc = (accId) => {
+  const incAcc = (accId: string) => {
     if (!storageKey) return;
     setHidroData(prev => {
       const cur = { ...(prev[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 }) };
@@ -313,7 +309,7 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
     });
   };
 
-  const decAcc = (accId) => {
+  const decAcc = (accId: string) => {
     if (!storageKey) return;
     setHidroData(prev => {
       const cur = { ...(prev[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 }) };
@@ -324,7 +320,7 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
     });
   };
 
-  const setHidroField = (field, val) => {
+  const setHidroField = (field: string, val: any) => {
     if (!storageKey) return;
     setHidroData(prev => {
       const cur = { ...(prev[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 }) };
@@ -338,7 +334,7 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
     return gasAcc[targetId] || {};
   }, [gasAcc, targetId]);
 
-  const incAccGas = (accId) => {
+  const incAccGas = (accId: string) => {
     if (!targetId) return;
     setGasAcc(prev => {
       const cur = { ...(prev[targetId] || {}) };
@@ -347,7 +343,7 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
     });
   };
 
-  const decAccGas = (accId) => {
+  const decAccGas = (accId: string) => {
     if (!targetId) return;
     setGasAcc(prev => {
       const cur = { ...(prev[targetId] || {}) };
@@ -455,7 +451,7 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
               {items.map(ap => {
                 const c = currentMap[ap.id] || 0;
-                const u = ap[unitKey] || 0;
+      const u = unitKey ? ((ap as any)[unitKey] || 0) : 0;
                 const abbr = corto(ap.sigla);
                 const active = c > 0;
                 const uStr = Number.isInteger(u) ? String(u) : u.toFixed(2).replace(/\.?0+$/, '');
@@ -474,7 +470,7 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
                         padding: '4px 2px 2px', gap: 1, cursor: targetId ? 'pointer' : 'default',
                         minHeight: 48,
                       }} onClick={() => targetId && inc(ap.id)}>
-                        <span style={{ fontSize: 17, lineHeight: 1 }}>{APARATO_IMG[ap.id] ? <img src={APARATO_IMG[ap.id]} alt="" style={{width:24,height:24,verticalAlign:'middle'}} /> : '•'}</span>
+                        <span style={{ fontSize: 17, lineHeight: 1 }}>{(APARATO_IMG as Record<string, string>)[ap.id] ? <img src={(APARATO_IMG as Record<string, string>)[ap.id]} alt="" style={{width:24,height:24,verticalAlign:'middle'}} /> : '•'}</span>
                         <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: .3, color: active ? accent : '#b9caca', fontFamily: "'Geist',monospace", textTransform: 'uppercase' }}>{abbr}</span>
                         <span style={{ fontSize: 8, fontWeight: 600, lineHeight: 1, color: 'var(--txt2)', fontFamily: "'Geist',monospace", padding: '1px 4px', marginTop: 1, background: 'rgba(0,0,0,.25)', border: '1px solid var(--bg4)', borderRadius: 2 }}>{uStr} {unidadLbl}</span>
                       </div>
@@ -490,8 +486,8 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
               })}
             </div>
             {items.length === 0 && (
-              <div style={{ fontSize: 11, color: 'var(--txt2)', fontFamily: "'Geist',monospace", padding: '6px 0', textAlign: 'center' }}>
-                No hay aparatos aplicables a esta red.
+              <div style={{ fontSize: 11, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
+                No hay aparatos en esta red. Dibuje ramales en el visor para agregarlos.
               </div>
             )}
           </div>
@@ -533,7 +529,14 @@ try { writeSanDrawingSync(planos); } catch (e) { console.error('AparatosPanel:',
 }
 
 /* ── ACCESORIOS SECTION ── */
-function AccesoriosSection({ targetId, curHidro, incAcc, decAcc, accent, items = ACCESORIOS_HIDRO }) {
+function AccesoriosSection({ targetId, curHidro, incAcc, decAcc, accent, items = ACCESORIOS_HIDRO }: {
+  targetId: string;
+  curHidro: Record<string, any>;
+  incAcc: (accId: string) => void;
+  decAcc: (accId: string) => void;
+  accent: string;
+  items?: any[];
+}) {
   const [accOpen, setAccOpen] = useState(true);
   const acc = curHidro.accesorios || {};
 
@@ -592,7 +595,13 @@ function AccesoriosSection({ targetId, curHidro, incAcc, decAcc, accent, items =
 }
 
 /* ── GAS ACCESORIOS SECTION ── */
-function GasAccesoriosSection({ targetId, gasAccMap, incAccGas, decAccGas, accent }) {
+function GasAccesoriosSection({ targetId, gasAccMap, incAccGas, decAccGas, accent }: {
+  targetId: string;
+  gasAccMap: Record<string, any>;
+  incAccGas: (accId: string) => void;
+  decAccGas: (accId: string) => void;
+  accent: string;
+}) {
   const [accOpen, setAccOpen] = useState(true);
 
   return (
@@ -650,7 +659,13 @@ function GasAccesoriosSection({ targetId, gasAccMap, incAccGas, decAccGas, accen
 }
 
 /* ── DATOS DE TRAMO SECTION ── */
-function TramoDataSection({ targetId, curHidro, setHidroField, showLh, netId }) {
+function TramoDataSection({ targetId, curHidro, setHidroField, showLh, netId }: {
+  targetId: string;
+  curHidro: Record<string, any>;
+  setHidroField: (field: string, val: any) => void;
+  showLh: boolean;
+  netId: string;
+}) {
   const [dataOpen, setDataOpen] = useState(true);
 
   const vLh = curHidro.Lh ?? 0;

@@ -2,51 +2,17 @@ import { useState, type ReactNode } from "react";
 import { useProject } from "../../context/ProjectContext";
 import { FILTROS_NORM, CRIT0 } from "../../constants";
 import NormaCard from "./RegulationCard";
-
-const SECCIONES = [
-  {
-    id: "ntc1500",
-    titulo: "1. NTC 1500:2020",
-    subt: "Código Colombiano de Fontanería",
-    redes: ["af", "ac", "san"],
-  },
-  {
-    id: "ras2000",
-    titulo: "2. RAS 2000",
-    subt: "Reglamento Técnico del Sector de Agua Potable y Saneamiento Básico — Título D",
-    redes: ["san", "ll"],
-  },
-  {
-    id: "ntc3728",
-    titulo: "3. NTC 3728:2014",
-    subt: "Instalaciones para suministro de gas domiciliario — Baja presión",
-    redes: ["gas"],
-  },
-  {
-    id: "nsr10",
-    titulo: "4. NSR-10 Título J",
-    subt: "Requisitos de protección contra incendio en edificaciones",
-    redes: ["rci"],
-  },
-  {
-    id: "nfpa13",
-    titulo: "5. NFPA 13:2022",
-    subt: "Standard for the Installation of Sprinkler Systems",
-    redes: ["rci"],
-  },
-  {
-    id: "ntc3096",
-    titulo: "6. NTC 3096",
-    subt: "Sistemas de tuberías plásticas — CPVC para conducción de fluidos a presión",
-    redes: ["af", "ac"],
-  },
-  {
-    id: "tablas",
-    titulo: "7. Tablas de referencia rápida",
-    subt: "Conversiones · Criterios críticos · Altitudes",
-    redes: ["todos"],
-  },
-];
+import {
+  SECCIONES,
+  NTC1500_DOTACIONES, NTC1500_UC, NTC1500_HAZEN_C, NTC1500_VELOCIDADES,
+  NTC1500_UD, NTC1500_PENDIENTES, NTC1500_CAPACIDAD, NTC1500_VENTILACION,
+  RAS2000_DOTACIONES, RAS2000_VELOCIDADES, RAS2000_LLENADO, RAS2000_ESCORRENTIA, RAS2000_TR,
+  NTC3728_PRESIONES, NTC3728_SIMULTANEIDAD, NTC3728_CAUDALES,
+  NSR10_CLASIFICACION, NSR10_ALTURA,
+  NFPA13_RIESGOS, NFPA13_DENSIDADES, NFPA13_ROCIADORES,
+  NTC3096_PARAMS,
+  TABLAS_PRESION, TABLAS_CAUDALES, TABLAS_CRITERIOS, TABLAS_ALTITUDES,
+} from "./regulationsData";
 
 export default function Normativa() {
   const [filtro, setFiltro] = useState("todos");
@@ -58,7 +24,7 @@ export default function Normativa() {
 
   const secFiltradas = SECCIONES.filter((s) => {
     if (filtro === "todos") return true;
-    return s.redes.includes(filtro);
+    return (s.redes as readonly string[]).includes(filtro);
   });
 
   const toggleSeccion = (id: string) => {
@@ -81,7 +47,6 @@ export default function Normativa() {
         <style>{localCSS}</style>
         {tabsRow}
 
-        {/* Cabecera con filtros de criterios */}
         <div className="card" style={{ flexShrink: 0 }}>
           <div className="ch" style={{ padding: "12px 16px" }}>
             <span className="ct-t" style={{ fontSize: 14 }}>§ Criterios de diseño — tabla editable</span>
@@ -107,7 +72,6 @@ export default function Normativa() {
           </div>
         </div>
 
-        {/* Tarjetas de criterio */}
         {critVisibles.length === 0 && (
           <div className="ib info"><span>ℹ</span><span>No hay criterios para esta red.</span></div>
         )}
@@ -167,7 +131,6 @@ export default function Normativa() {
       <style>{localCSS}</style>
       {tabsRow}
 
-      {/* Filtro */}
       <div style={{
         display: "flex", gap: 6, flexWrap: "wrap", padding: "12px 14px",
         background: "var(--bg2)", border: "1px solid var(--line)", borderRadius: "var(--r2)",
@@ -182,9 +145,8 @@ export default function Normativa() {
         <div className="ib info"><span>ℹ</span><span>Seleccione una red para ver su normativa aplicable.</span></div>
       )}
 
-      {/* Secciones */}
       {secFiltradas.map((sec) => (
-        // @ts-expect-error TSX parser limitation in large file
+        // @ts-ignore children passed via JSX
         <NormaCard
           key={sec.id}
           id={sec.id}
@@ -221,6 +183,15 @@ function ContenidoSeccion({ id }: { id: string }) {
   }
 }
 
+const h4 = {
+  fontFamily: "var(--mono)",
+  fontSize: 15,
+  fontWeight: 600,
+  color: "var(--txt)",
+  margin: "16px 0 10px 0",
+  letterSpacing: "0.3px",
+};
+
 function NTC1500() {
   return (
     <div className="card-b" style={{ padding: "18px" }}>
@@ -234,17 +205,7 @@ function NTC1500() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Vivienda estrato 1–2", "200 L/hab/día", "250 L/hab/día"],
-            ["Vivienda estrato 3–4", "220 L/hab/día", "280 L/hab/día"],
-            ["Vivienda estrato 5–6", "250 L/hab/día", "350 L/hab/día"],
-            ["Comercial oficinas", "20 L/m²/día", "30 L/m²/día"],
-            ["Comercial restaurante", "80 L/puesto/día", "120 L/puesto/día"],
-            ["Industria ligera", "30 L/m²/día", "50 L/m²/día"],
-            ["Educativo", "40 L/alumno/día", "60 L/alumno/día"],
-            ["Hospitalario", "600 L/cama/día", "1200 L/cama/día"],
-            ["Hoteles", "300 L/habitación/día", "500 L/habitación/día"],
-          ].map(([uso, min, max]) => (
+          {NTC1500_DOTACIONES.map(([uso, min, max]) => (
             <tr key={uso}>
               <td style={{ fontWeight: 500 }}>{uso}</td>
               <td className="c">{min}</td>
@@ -267,20 +228,7 @@ function NTC1500() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Lavamanos", "Lvm", 0.5, 0.5, 0.51, 5.63],
-            ["Inodoro", "San", 2.2, "—", 0.71, 14.1],
-            ["Sanitario fluxómetro", "San-F", 5.0, "—", 1.05, 14.1],
-            ["Ducha", "Duc", 1.0, 1.0, 1.02, 5.63],
-            ["Tina / bañera", "Tin", 1.0, 1.0, 0.51, 14.1],
-            ["Lavaplatos doméstico", "Lvp", 1.0, 1.0, 0.51, 5.63],
-            ["Lavadero", "Lvro", 0.75, 0.75, 0.51, 5.63],
-            ["Lavadora doméstica", "Lvra", 1.0, "—", 0.51, 5.63],
-            ["Orinal (sifón)", "Or", 0.5, "—", 0.51, 5.63],
-            ["Orinal (fluxómetro)", "Or-F", 3.0, "—", 1.05, 14.1],
-            ["Vertedero", "Vert", 0.5, "—", 0.51, 5.63],
-            ["Bebedero", "Beb", 0.5, "—", 0.51, 5.63],
-          ].map(([nom, sig, uca, ucac, pmin, pmax]) => (
+          {NTC1500_UC.map(([nom, sig, uca, ucac, pmin, pmax]) => (
             <tr key={nom}>
               <td style={{ fontWeight: 500 }}>{nom}</td>
               <td><span className="sigla">{sig}</span></td>
@@ -308,15 +256,7 @@ function NTC1500() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["PVC presión (nuevo)", 150],
-            ["CPVC RDE 11 (nuevo)", 150],
-            ["Cobre rígido (nuevo)", 140],
-            ["PP-R (nuevo)", 140],
-            ["Hierro galvanizado", 120],
-            ["Acero comercial", 120],
-            ["Fierro fundido", 100],
-          ].map(([m, c]) => (
+          {NTC1500_HAZEN_C.map(([m, c]) => (
             <tr key={m}>
               <td style={{ fontWeight: 500 }}>{m}</td>
               <td className="c">{c}</td>
@@ -334,11 +274,7 @@ function NTC1500() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Mínima (evitar sedimentación)", "0,50 m/s"],
-            ["Máxima recomendada", "2,50 m/s"],
-            ["Máxima absoluta", "3,00 m/s"],
-          ].map(([c, v]) => (
+          {NTC1500_VELOCIDADES.map(([c, v]) => (
             <tr key={c}>
               <td style={{ fontWeight: 500 }}>{c}</td>
               <td className="c">{v}</td>
@@ -358,21 +294,7 @@ function NTC1500() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Lavamanos", 2, "1½\"", "2\""],
-            ["Sanitario con sifón", 4, "3\"", "3\""],
-            ["Sanitario fluxómetro", 6, "3\"", "3\""],
-            ["Ducha", 2, "1½\"", "2\""],
-            ["Tina / bañera", 2, "1½\"", "2\""],
-            ["Lavaplatos", 2, "1½\"", "2\""],
-            ["Lavadero", 2, "1½\"", "2\""],
-            ["Lavadora", 4, "2\"", "2\""],
-            ["Orinal sifón", 2, "1½\"", "2\""],
-            ["Vertedero", 3, "2\"", "2\""],
-            ["Piso-sumidero 2\"", 1, "2\"", "2\""],
-            ["Piso-sumidero 3\"", 2, "3\"", "3\""],
-            ["Piso-sumidero 4\"", 3, "4\"", "4\""],
-          ].map(([nom, ud, ramal, baj]) => (
+          {NTC1500_UD.map(([nom, ud, ramal, baj]) => (
             <tr key={nom}>
               <td style={{ fontWeight: 500 }}>{nom}</td>
               <td className="c">{ud}</td>
@@ -393,13 +315,7 @@ function NTC1500() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["1½\" y 2\"", "2,0%", "2,5%"],
-            ["3\"", "1,0%", "2,0%"],
-            ["4\"", "1,0%", "1,5%"],
-            ["6\"", "0,5%", "1,0%"],
-            ["≥ 8\"", "0,3%", "0,5%"],
-          ].map(([d, min, rec]) => (
+          {NTC1500_PENDIENTES.map(([d, min, rec]) => (
             <tr key={d}>
               <td className="c" style={{ fontWeight: 500 }}>{d}</td>
               <td className="c">{min}</td>
@@ -424,15 +340,7 @@ function NTC1500() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["1½", 3, 4, 8],
-            ["2", 6, 10, 24],
-            ["2½", 12, 20, 42],
-            ["3", 20, 30, 60],
-            ["4", 160, 240, 500],
-            ["6", 620, 960, 1900],
-            ["8", 1400, 2200, 3600],
-          ].map(([d, rh, b1, b3]) => (
+          {NTC1500_CAPACIDAD.map(([d, rh, b1, b3]) => (
             <tr key={d}>
               <td className="c" style={{ fontWeight: 500 }}>{d}"</td>
               <td className="c">{rh}</td>
@@ -453,16 +361,7 @@ function NTC1500() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Diámetro mínimo tubería ventilación", "1½\"", "§9.2"],
-            ["D mín no menor que", "Mitad del D ramal", "§9.2"],
-            ["Prolongación sobre cubierta", "≥ 0,30 m", "§9.4"],
-            ["Cuello de ganso obligatorio", "Sí", "§9.4"],
-            ["Re-ventilación máx 1½\"", "1,20 m", "§9.5"],
-            ["Re-ventilación máx 2\"", "1,80 m", "§9.5"],
-            ["Re-ventilación máx 3\"", "3,00 m", "§9.5"],
-            ["Re-ventilación máx 4\"", "3,60 m", "§9.5"],
-          ].map(([p, v, a]) => (
+          {NTC1500_VENTILACION.map(([p, v, a]) => (
             <tr key={p}>
               <td style={{ fontWeight: 500 }}>{p}</td>
               <td className="c">{v}</td>
@@ -488,12 +387,7 @@ function RAS2000() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Bajo", "100 L/hab/día", "150 L/hab/día"],
-            ["Medio", "120 L/hab/día", "175 L/hab/día"],
-            ["Medio alto", "150 L/hab/día", "200 L/hab/día"],
-            ["Alto", "170 L/hab/día", "280 L/hab/día"],
-          ].map(([n, min, max]) => (
+          {RAS2000_DOTACIONES.map(([n, min, max]) => (
             <tr key={n}>
               <td style={{ fontWeight: 500 }}>{n}</td>
               <td className="c">{min}</td>
@@ -518,10 +412,7 @@ function RAS2000() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Mínima (auto-limpieza)", "0,45 m/s"],
-            ["Máxima (evitar erosión)", "4,00 m/s"],
-          ].map(([c, v]) => (
+          {RAS2000_VELOCIDADES.map(([c, v]) => (
             <tr key={c}>
               <td style={{ fontWeight: 500 }}>{c}</td>
               <td className="c">{v}</td>
@@ -539,10 +430,7 @@ function RAS2000() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Máximo a Q diseño", "0,75"],
-            ["Condición óptima", "0,60–0,70"],
-          ].map(([c, v]) => (
+          {RAS2000_LLENADO.map(([c, v]) => (
             <tr key={c}>
               <td style={{ fontWeight: 500 }}>{c}</td>
               <td className="c">{v}</td>
@@ -567,18 +455,7 @@ function RAS2000() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Teja metálica / zinc", 0.85, 0.95],
-            ["Losa concreto impermeable", 0.85, 0.95],
-            ["Teja de barro / cerámica", 0.75, 0.85],
-            ["Membrana asfáltica", 0.8, 0.9],
-            ["Pavimento asfalto", 0.7, 0.85],
-            ["Pavimento concreto", 0.7, 0.9],
-            ["Grava / balasto", 0.35, 0.7],
-            ["Cubierta verde extensiva", 0.2, 0.4],
-            ["Jardín / zona verde", 0.1, 0.35],
-            ["Piscina / espejo de agua", 1.0, 1.0],
-          ].map(([sup, cmin, cmax]) => (
+          {RAS2000_ESCORRENTIA.map(([sup, cmin, cmax]) => (
             <tr key={sup}>
               <td style={{ fontWeight: 500 }}>{sup}</td>
               <td className="c">{cmin}</td>
@@ -597,14 +474,7 @@ function RAS2000() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Cubierta residencial", 5],
-            ["Cubierta comercial", 10],
-            ["Cubierta industrial", 10],
-            ["Vías urbanas menores", 5],
-            ["Vías urbanas principales", "10–25"],
-            ["Obras de infraestructura", "25–100"],
-          ].map(([t, tr]) => (
+          {RAS2000_TR.map(([t, tr]) => (
             <tr key={t}>
               <td style={{ fontWeight: 500 }}>{t}</td>
               <td className="c">{tr}</td>
@@ -629,11 +499,7 @@ function NTC3728() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Red baja presión (domiciliaria)", "17 mbar", "100 mbar"],
-            ["Presión de operación típica", "20–25 mbar", "—"],
-            ["Pérdida máxima admisible", "—", "9,81 mbar"],
-          ].map(([t, min, max]) => (
+          {NTC3728_PRESIONES.map(([t, min, max]) => (
             <tr key={t}>
               <td style={{ fontWeight: 500 }}>{t}</td>
               <td className="c">{min}</td>
@@ -660,13 +526,7 @@ function NTC3728() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["1–2", 1.0],
-            ["3–5", 0.8],
-            ["6–10", 0.7],
-            ["11–20", 0.6],
-            ["> 20", 0.5],
-          ].map(([n, fs]) => (
+          {NTC3728_SIMULTANEIDAD.map(([n, fs]) => (
             <tr key={n}>
               <td className="c">{n}</td>
               <td className="c">{fs}</td>
@@ -688,20 +548,7 @@ function NTC3728() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Quemador cocina (1 hornilla)", 0.34],
-            ["Estufa 4 quemadores", 1.35],
-            ["Estufa 6 quemadores", 1.8],
-            ["Calentador 6 LPM", 1.11],
-            ["Calentador 8 LPM", 1.4],
-            ["Calentador 10 LPM", 1.98],
-            ["Calentador 12 LPM", 2.32],
-            ["Calentador 16 LPM", 3.0],
-            ["Calentador 21 LPM", 4.35],
-            ["Horno convencional", 1.15],
-            ["Secadora de ropa", 1.4],
-            ["Caldera residencial pequeña", 2.5],
-          ].map(([a, q]) => (
+          {NTC3728_CAUDALES.map(([a, q]) => (
             <tr key={a}>
               <td style={{ fontWeight: 500 }}>{a}</td>
               <td className="c">{q}</td>
@@ -726,15 +573,7 @@ function NSR10() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["A", "Vivienda unifamiliar / bifamiliar", "Casas, apartamentos"],
-            ["B", "Vivienda multifamiliar", "Edificios residenciales ≥ 3 unidades"],
-            ["C", "Comercio y servicios", "Tiendas, oficinas, bancos"],
-            ["D", "Industrial", "Bodegas, fábricas"],
-            ["E", "Educación", "Colegios, universidades"],
-            ["F", "Institucional", "Hospitales, cárceles"],
-            ["G", "Alta concentración", "Estadios, teatros, culto"],
-          ].map(([t, c, e]) => (
+          {NSR10_CLASIFICACION.map(([t, c, e]) => (
             <tr key={t}>
               <td className="c" style={{ fontWeight: 600 }}>{t}</td>
               <td>{c}</td>
@@ -755,11 +594,7 @@ function NSR10() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["≤ 3 pisos", "Extintor portátil", "Extintor portátil", "Red húmeda"],
-            ["4–9 pisos", "Extintor", "Red húmeda", "Red húmeda + RCI"],
-            ["≥ 10 pisos", "Red húmeda + RCI", "RCI completo", "RCI completo"],
-          ].map(([h, a, b, c]) => (
+          {NSR10_ALTURA.map(([h, a, b, c]) => (
             <tr key={h}>
               <td style={{ fontWeight: 500 }}>{h}</td>
               <td className="c">{a}</td>
@@ -786,13 +621,7 @@ function NFPA13() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Riesgo leve (RL)", "Baja combustibilidad", "Vivienda, oficinas, salas, iglesias"],
-            ["Riesgo ordinario G1 (RO1)", "Combustibilidad media-baja", "Parking, salas mecánicas"],
-            ["Riesgo ordinario G2 (RO2)", "Combustibilidad media", "Almacenes, manufactura ligera"],
-            ["Riesgo extra G1 (RE1)", "Alta combustibilidad", "Pintura, carpintería"],
-            ["Riesgo extra G2 (RE2)", "Muy alta combustibilidad", "Químicos, almacenaje palets"],
-          ].map(([g, d, e]) => (
+          {NFPA13_RIESGOS.map(([g, d, e]) => (
             <tr key={g}>
               <td style={{ fontWeight: 500 }}>{g}</td>
               <td>{d}</td>
@@ -812,13 +641,7 @@ function NFPA13() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Riesgo leve", 0.1, 139.4],
-            ["Riesgo ordinario G1", 0.15, 139.4],
-            ["Riesgo ordinario G2", 0.2, 139.4],
-            ["Riesgo extra G1", 0.3, 232.3],
-            ["Riesgo extra G2", "0,40–0,60", 232.3],
-          ].map(([c, d, a]) => (
+          {NFPA13_DENSIDADES.map(([c, d, a]) => (
             <tr key={c}>
               <td style={{ fontWeight: 500 }}>{c}</td>
               <td className="c">{d}</td>
@@ -837,16 +660,7 @@ function NFPA13() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Presión mínima de operación", "7,0 PSI (4,92 mca)"],
-            ["Presión máxima de operación", "175 PSI (123 mca)"],
-            ["K-factor rociador QR estándar", "5,6 gpm/√PSI"],
-            ["K-factor rociador QR ampliada", "8,0 gpm/√PSI"],
-            ["Temperatura nominal estándar", "68°C (color rojo)"],
-            ["Separación mínima entre rociadores", "1,80 m"],
-            ["Separación máxima entre rociadores", "4,60 m (RL) · 4,00 m (RO)"],
-            ["Distancia máxima a pared", "2,30 m (RL)"],
-          ].map(([p, v]) => (
+          {NFPA13_ROCIADORES.map(([p, v]) => (
             <tr key={p}>
               <td style={{ fontWeight: 500 }}>{p}</td>
               <td className="c">{v}</td>
@@ -869,14 +683,7 @@ function NTC3096() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Temperatura máxima de servicio", "93°C"],
-            ["Presión máxima de servicio", "100 PSI (70 mca) a 23°C"],
-            ["Coeficiente de expansión térmica", "6,3 × 10⁻⁵ m/m·°C"],
-            ["C Hazen-Williams", "150"],
-            ["Aislamiento térmico obligatorio", "Sí, en trayectos expuestos"],
-            ["Tipo de unión", "Solvente (cemento CPVC)"],
-          ].map(([p, v]) => (
+          {NTC3096_PARAMS.map(([p, v]) => (
             <tr key={p}>
               <td style={{ fontWeight: 500 }}>{p}</td>
               <td className="c">{v}</td>
@@ -908,13 +715,7 @@ function TablasRef() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["1 m.c.a.", 1.0, 0.0981, 1.4223, 9.807, 98.07],
-            ["1 bar", 10.2, 1.0, 14.504, 100.0, 1000],
-            ["1 PSI", 0.7031, 0.06895, 1.0, 6.895, 68.95],
-            ["1 kPa", 0.102, 0.01, 0.145, 1.0, 10.0],
-            ["1 mbar", 0.0102, 0.001, 0.0145, 0.1, 1.0],
-          ].map(([u, mca, bar, psi, kpa, mbar]) => (
+          {TABLAS_PRESION.map(([u, mca, bar, psi, kpa, mbar]) => (
             <tr key={u}>
               <td style={{ fontWeight: 600 }}>{u}</td>
               <td className="c">{mca}</td>
@@ -939,12 +740,7 @@ function TablasRef() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["1 lps", 1.0, 60.0, 3.6, 15.85],
-            ["1 lpm", 0.01667, 1.0, 0.06, 0.2642],
-            ["1 m³/hr", 0.2778, 16.67, 1.0, 4.403],
-            ["1 gpm", 0.06309, 3.785, 0.2271, 1.0],
-          ].map(([u, lps, lpm, m3h, gpm]) => (
+          {TABLAS_CAUDALES.map(([u, lps, lpm, m3h, gpm]) => (
             <tr key={u}>
               <td style={{ fontWeight: 600 }}>{u}</td>
               <td className="c">{lps}</td>
@@ -967,29 +763,7 @@ function TablasRef() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["AF / AC", "V mínima", "≥ 0,50 m/s", "NTC 1500 §5.4"],
-            ["AF / AC", "V máxima", "≤ 2,50 m/s", "NTC 1500 §5.4"],
-            ["AF / AC", "P mínima inodoro", "≥ 0,71 mca", "NTC 1500 Tabla 3"],
-            ["AF / AC", "P mínima ducha", "≥ 1,02 mca", "NTC 1500 Tabla 3"],
-            ["AF / AC", "P mínima lavamanos", "≥ 0,51 mca", "NTC 1500 Tabla 3"],
-            ["AF / AC", "P máxima cualquier punto", "≤ 14,10 mca", "NTC 1500 Tabla 3"],
-            ["SAN", "V mínima (auto-limpieza)", "≥ 0,45 m/s", "RAS 2000 §D.4.3"],
-            ["SAN", "V máxima", "≤ 4,00 m/s", "RAS 2000 §D.4.3"],
-            ["SAN", "Llenado máximo y/D", "≤ 0,75", "RAS 2000 §D.4.3"],
-            ["SAN", "Pendiente mínima D ≥ 2\"", "≥ 2,0%", "NTC 1500 §8.3"],
-            ["LL", "Método", "Q = C×I×A/360.000", "RAS 2000 §D.2"],
-            ["LL", "Período retorno cubierta", "Tr = 5 años", "RAS 2000 Tab. D.2.2"],
-            ["GAS", "ΔP máximo acumulado", "≤ 9,81 mbar", "NTC 3728 §6.2"],
-            ["GAS", "Velocidad máxima", "≤ 10 m/s", "NTC 3728 §6.3"],
-            ["VEN", "D mínimo", "≥ 1½\"", "NTC 1500 §9.2"],
-            ["VEN", "Prolongación sobre cubierta", "≥ 0,30 m", "NTC 1500 §9.4"],
-            ["RCI", "P mínima rociador", "≥ 7,0 PSI", "NFPA 13 §7.2.1.1"],
-            ["RCI", "V máxima tubería", "≤ 8,0 m/s", "NFPA 13 §28.2"],
-            ["RCI", "C HW acero SCH 40", "120", "NFPA 13 §28.2.1"],
-            ["RCI", "Densidad Riesgo leve", "0,10 gpm/pie²", "NFPA 13 §11.2.3.1.1"],
-            ["RCI", "Duración suministro RL", "30 min", "NFPA 13 §11.2.3.1.3"],
-          ].map(([red, param, crit, norm], i) => {
+          {TABLAS_CRITERIOS.map(([red, param, crit, norm], i) => {
             const col =
               red === "AF / AC"
                 ? "var(--acc2)"
@@ -1011,7 +785,6 @@ function TablasRef() {
                       color: col,
                       fontWeight: 600,
                       fontSize: 10,
-                      
                     }}
                   >
                     {red}
@@ -1019,7 +792,7 @@ function TablasRef() {
                 </td>
                 <td style={{ fontWeight: 500 }}>{param}</td>
                 <td className="c">{crit}</td>
-                <td className="c td-mono" style={{  fontSize: 10 }}>
+                <td className="c td-mono" style={{ fontSize: 10 }}>
                   {norm}
                 </td>
               </tr>
@@ -1039,20 +812,7 @@ function TablasRef() {
           </tr>
         </thead>
         <tbody>
-          {[
-            ["Bogotá D.C.", 2600, 74.7, 0.793],
-            ["Medellín", 1495, 85.58, 0.905],
-            ["Cali", 995, 90.49, 0.958],
-            ["Bucaramanga", 959, 90.32, 0.956],
-            ["Floridablanca", 924, 90.67, 0.96],
-            ["Barranquilla", 18, 101.15, 1.071],
-            ["Cúcuta", 320, 98.0, 1.038],
-            ["Manizales", 2153, 79.32, 0.84],
-            ["Pereira", 1411, 86.4, 0.915],
-            ["Ibagué", 1285, 87.63, 0.928],
-            ["Pasto", 2527, 75.43, 0.799],
-            ["Cartagena", 3, 101.2, 1.072],
-          ].map(([ciudad, alt, patm, den]) => (
+          {TABLAS_ALTITUDES.map(([ciudad, alt, patm, den]) => (
             <tr key={ciudad}>
               <td style={{ fontWeight: 500 }}>{ciudad}</td>
               <td className="c">{alt}</td>
@@ -1087,19 +847,10 @@ function FilterBtn({ active, onClick, children }: { active: boolean; onClick: ()
         flex: 1, padding: "12px 16px", borderRadius: "var(--r)",
         border: "1px solid", cursor: "pointer", fontSize: 14,
         fontWeight: active ? 600 : 400,
-        borderColor: active ? "var(--acc2)" : "var(--line2)",
+        borderColor: active ? "var(--acc2)" : "var(--line)",
         background: active ? "rgba(27,110,243,.08)" : "transparent",
         transition: "all .15s",
       }}
     >{children}</button>
   );
 }
-
-const h4 = {
-  fontFamily: "var(--mono)",
-  fontSize: 15,
-  fontWeight: 600,
-  color: "var(--txt)",
-  margin: "16px 0 10px 0",
-  letterSpacing: "0.3px",
-};

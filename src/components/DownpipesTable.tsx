@@ -30,7 +30,7 @@ export default function BajantesTable() {
               <th className="col-h san" colSpan={2} style={{textAlign:'center'}}>Unidades de<br/>Descarga</th>
               <th className="col-h san" rowSpan={2} style={{textAlign:'center'}}>r</th>
               <th className="col-h san" rowSpan={2} style={{textAlign:'center'}}>Q<br/><small>lps</small></th>
-              <th className="col-h san" rowSpan={2} style={{textAlign:'center',minWidth:70}}>Maning</th>
+              <th className="col-h san" rowSpan={2} style={{textAlign:'center',minWidth:70}}>Manning</th>
               <th className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Diametro</th>
               <th className="col-h ok" rowSpan={2} style={{textAlign:'center'}}>Chequeo<br/><small>Dcal&lt;Dprop</small></th>
               <th className="col-h ok" rowSpan={2} style={{textAlign:'center'}}>Q max<br/><small>Bajante</small></th>
@@ -57,13 +57,13 @@ export default function BajantesTable() {
             {(()=>{
               const acumMapALL=calcUDacumulado(tramosSan,udBase);
               const banTramos=tramosSan.filter(t=>t.esBajante);
-              if(banTramos.length===0) return <tr><td colSpan={20} style={{textAlign:'center',color:'var(--txt3)',padding:20}}>No hay bajantes definidos. Marque un tramo como "Bajante" en la tabla de Cálculo UD.</td></tr>;
+              if(banTramos.length===0) return <tr><td colSpan={20} style={{textAlign:'center',color:'var(--txt3)',padding:'24px 0',fontSize:11}}>No hay bajantes definidos. Marque un tramo como bajante en la tabla de Cálculo UD.</td></tr>;
               return banTramos.map(t=>{
 const rVal=t.bajR;
 const rStr=rVal!=null?(Math.abs(rVal-7/24)<0.001?'7/24':'1/4'):null;
 const udParcial=calcUDparcial(t,udBase);
 const descArr=(t.recibeDe||[]).join('+');
-const udOtros=(t.recibeDe||[]).reduce((s,id)=>s+(acumMapALL[id]||0),0);
+const udOtros=(t.recibeDe||[]).reduce((s: number,id: string)=>s+(acumMapALL[id]||0),0);
 const udAcum=udParcial+udOtros;
 const n=t.nmaning;
 const res=calcularBajanteVentilacion({

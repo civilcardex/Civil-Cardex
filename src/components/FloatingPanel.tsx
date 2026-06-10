@@ -1,19 +1,34 @@
 import { useState, useCallback } from "react";
 
+// Module-level counter for z-index stacking across independently rendered FloatingPanel instances.
+// Each panel calls nextZ() on mount and on bring-to-front, ensuring the most recently
+// interacted panel always renders above others. This global counter bypasses React's
+// component-local state tree intentionally — it must be shared across sibling panels
+// that don't share a common parent state. Reset to 50 so panels start above other UI.
 let _zCounter = 50;
 export function nextZ() { return ++_zCounter; }
-export function useZIndex() {
+export function useZIndex(): [number, () => void] {
   const [z, setZ] = useState(() => nextZ());
   const bringToFront = useCallback(() => setZ(nextZ()), []);
   return [z, bringToFront];
 }
 
-export default function FloatingPanel({ title, icon, count = undefined, onClose, children = null, defaultPos = { x: 40, y: 40 }, minW = 460 }) {
+interface FloatingPanelProps {
+  title: string;
+  icon: string;
+  count?: string | undefined;
+  onClose: () => void;
+  children?: React.ReactNode;
+  defaultPos?: { x: number; y: number };
+  minW?: number;
+}
+
+export default function FloatingPanel({ title, icon, count = undefined, onClose, children = null, defaultPos = { x: 40, y: 40 }, minW = 460 }: FloatingPanelProps) {
   const [pos, setPos] = useState(defaultPos);
   const [collapsed, setCollapsed] = useState(false);
   const [zIndex, bringToFront] = useZIndex();
 
-  const onMouseDown = useCallback((e) => {
+  const onMouseDown = useCallback((e: any) => {
     bringToFront();
     if (e.target.closest('.no-drag')) return;
     if (e.target.closest('input') || e.target.closest('select') || e.target.closest('button') || e.target.closest('label')) return;
@@ -21,7 +36,7 @@ export default function FloatingPanel({ title, icon, count = undefined, onClose,
     const startY = e.clientY;
     const origX = pos.x;
     const origY = pos.y;
-    const onMove = (ev) => {
+    const onMove = (ev: MouseEvent) => {
       setPos({ x: origX + ev.clientX - startX, y: origY + ev.clientY - startY });
     };
     const onUp = () => {
@@ -84,37 +99,37 @@ export default function FloatingPanel({ title, icon, count = undefined, onClose,
   );
 }
 
-export const thS = {
+export const thS: React.CSSProperties = {
   padding: '6px 6px', fontSize: 10, fontWeight: 600, textAlign: 'center',
   color: '#849495', borderBottom: '2px solid #3a494a', whiteSpace: 'nowrap',
   position: 'sticky', top: 0, background: '#121416',
 };
 
-export const tdS = {
+export const tdS: React.CSSProperties = {
   padding: '3px 4px', textAlign: 'center', verticalAlign: 'middle',
 };
 
-export const inputStyle = (w = 56) => ({
+export const inputStyle = (w = 56): React.CSSProperties => ({
   width: w, padding: '2px 4px', fontSize: 11, textAlign: 'center',
   background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3, color: '#e2e2e8',
 });
 
-export const numInputStyle = (w = 56) => ({
+export const numInputStyle = (w = 56): React.CSSProperties => ({
   ...inputStyle(w),
 });
 
-export const btnDelStyle = {
+export const btnDelStyle: React.CSSProperties = {
   background: 'transparent', border: '1px solid rgba(255,100,100,.3)',
   borderRadius: 3, color: '#ffb4ab', padding: '1px 4px', fontSize: 9, cursor: 'pointer',
 };
 
-export const btnAddStyle = {
+export const btnAddStyle: React.CSSProperties = {
   padding: '4px 12px', background: '#1e2024', border: '1px dashed #3a494a',
   borderRadius: 4, color: '#b9caca', cursor: 'pointer', fontSize: 11,
   fontFamily: "'Hanken Grotesk',sans-serif",
 };
 
-export const tableStyle = {
+export const tableStyle: React.CSSProperties = {
   borderCollapse: 'collapse', width: '100%',
   fontFamily: "'Geist',monospace", fontSize: 11, color: '#e2e2e8',
 };

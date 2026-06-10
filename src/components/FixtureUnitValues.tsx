@@ -2,7 +2,7 @@ import { useApparatus } from "../context/ApparatusContext";
 import FloatingPanel, { thS, tdS, inputStyle, tableStyle } from "./FloatingPanel";
 import { APARATO_IMG } from "../constants";
 
-export default function PanelValoresUD({ onClose }) {
+export default function PanelValoresUD({ onClose }: { onClose: () => void }) {
   const { udBase, setUdBase } = useApparatus();
 
   return (
@@ -19,7 +19,7 @@ export default function PanelValoresUD({ onClose }) {
             <tr key={d.id} style={{ borderBottom: '1px solid #2a2c30' }}>
               <td style={{...tdS, textAlign: 'left', paddingLeft: 8}}>
                 <span style={{display:'flex',alignItems:'center',gap:6,color:'#e2e2e8',fontWeight:500,fontSize:12}}>
-                  <span style={{fontSize:16}}>{APARATO_IMG[d.id] ? <img src={APARATO_IMG[d.id]} alt="" style={{width:20,height:20,verticalAlign:'middle'}} /> : '📋'}</span>
+                  <span style={{fontSize:16}}>{(APARATO_IMG as Record<string, string>)[d.id] ? <img src={(APARATO_IMG as Record<string, string>)[d.id]} alt="" style={{width:20,height:20,verticalAlign:'middle'}} /> : '📋'}</span>
                   {d.nombre}
                 </span>
               </td>

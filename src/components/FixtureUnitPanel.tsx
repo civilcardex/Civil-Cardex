@@ -5,7 +5,7 @@ import { calcUDparcial, calcUDacumulado } from "../utils/componentHelpers";
 import { pisoCorto } from "../constants";
 import FloatingPanel, { thS, tdS, inputStyle, btnDelStyle, btnAddStyle, tableStyle } from "./FloatingPanel";
 
-export default function DisenoUDPanel({ onClose }) {
+export default function DisenoUDPanel({ onClose }: { onClose: () => void }) {
   const { tramosSan, addTramoSan, delTramoSan, updTramoSan, updTramoSanFix } = useTramos();
   const { pisos } = useProject();
   const { udBase } = useApparatus();
@@ -35,7 +35,13 @@ export default function DisenoUDPanel({ onClose }) {
           </tr>
         </thead>
         <tbody>
-          {tramosSan.map((t) => {
+          {tramosSan.length === 0 ? (
+            <tr>
+              <td colSpan={colCount} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
+              </td>
+            </tr>
+          ) : tramosSan.map((t) => {
             const parcial = calcUDparcial(t, udBase);
             const acum = acumMap[t.id] || 0;
             return (
