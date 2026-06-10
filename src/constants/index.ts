@@ -81,7 +81,6 @@ export const REDES=[
   {id:'ac', lbl:'Agua caliente', sub:'NTC 1500 · CPVC RDE 11', ico:'🔥', icoImg:'/iconos_diseno_redes/red_agua_caliente.webp', col:'var(--ac)'},
   {id:'ep', lbl:'Equipo presión', sub:'Bomba + recipiente vejiga', ico:'⚡', icoImg:'/iconos_diseno_redes/red_equipo_presion.webp', col:'var(--ep)'},
   {id:'bom',lbl:'Bomba AR', sub:'Aguas residuales presión', ico:'⬆️', icoImg:'/iconos_diseno_redes/red_bomba_ar.webp', col:'var(--bom)'},
-  {id:'rec',lbl:'Recirculación AC',sub:'Solo si L > 15 m', ico:'🔄', icoImg:'/iconos_diseno_redes/red_recirculacion_ac.webp', col:'var(--rec)'},
   {id:'rci',lbl:'Contra Incendio', sub:'NSR-10 J · NFPA 13:2022', ico:'🔴', icoImg:'/iconos_diseno_redes/red_contra_incendio.webp', col:'var(--rci)'},
   {id:'gas',lbl:'Gas', sub:'NTC 3728 · Baja presión', ico:'⛽', icoImg:'/iconos_diseno_redes/red_de_gas.webp', col:'var(--gas)'},
 ];
@@ -116,7 +115,7 @@ export const NAV_TABS=[
   {id:'planos',l:'Carga de planos',      ico:'📐', icoImg:'/iconos_carga_planos/carga_de_planos.webp'},
   {id:'datos', l:'Parámetros de diseño', ico:'📊', icoImg:'/iconos_parametros_de_diseno/materiales_por_red.webp'},
   {id:'visor', l:'Dibujo de Redes',      ico:'✏️', icoImg:'/iconos_aparatos/dibujo_de_redes.webp'},
-  {id:'redes', l:'Diseño de redes',      ico:'🔧', icoImg:'/iconos_diseno_redes/diseno_redes.webp'},
+  {id:'redes', l:'Diseño de redes y equipos',      ico:'🔧', icoImg:'/iconos_diseno_redes/diseno_redes.webp'},
   {id:'inf',   l:'Informes',             ico:'📄', icoImg:'/Informes.webp'},
   {id:'crit',  l:'Normativa',            ico:'§',  icoImg:'/normativa.webp'},
 ];

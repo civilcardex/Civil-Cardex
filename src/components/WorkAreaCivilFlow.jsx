@@ -20,6 +20,7 @@ import CalculoUCAF from "./ColdWaterCalc";
 import CalculoUCAC from "./HotWaterCalc";
 import DisenoRedAguaFria from "./ColdWaterDesign";
 import DisenoRedAguaCaliente from "./HotWaterDesign";
+import BombaARDesign from "./BombaARDesign";
 
 import DisenoUDPanel from "./FixtureUnitPanel";
 import PanelValoresUD from "./FixtureUnitValues";
@@ -64,6 +65,7 @@ const redesActivas=useMemo(()=>REDES.filter(r=>redes.has(r.id)),[redes]);
   const [llPage, setLlPage] = useState(1);
   const [afPage, setAfPage] = useState(1);
   const [acPage, setAcPage] = useState(1);
+  const [bomPage, setBomPage] = useState(1);
 const [netColors, setNetColors] = useState(() => {
   const init = {};
   REDES.forEach(r => {
@@ -189,8 +191,8 @@ return(
     <div style={{height:'100%',display:'flex',flexDirection:'column',overflow:'hidden'}}>
             <div className="app">
         <div className="nav">{NAV_TABS.map(t=>(
-          <div key={t.id} className={`ntab ${t.id==='visor'?'':tab===t.id?'on':''}`} onClick={()=>{if(t.id==='visor')window.location.href='#/visor';else setTab(t.id)}}>
-            <span className="ntab-ico">{t.icoImg ? <img src={t.icoImg} alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:2}} /> : t.ico}</span>{t.l}
+          <div key={t.id} className={`ntab ${t.id==='visor'?'':tab===t.id?'on':''}`} onClick={()=>{if(t.id==='visor')window.location.href='#/visor';else setTab(t.id)}} style={t.id==='redes'?{flex:'0 0 auto',padding:'12px 28px'}:{}}>
+            <span className="ntab-ico">{t.icoImg ? <img src={t.icoImg} alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:2,objectFit:'contain'}} /> : t.ico}</span>{t.l}
           </div>
         ))}</div>
         <div className="layout"><div className="content">
@@ -226,22 +228,22 @@ return(
       <div className="card-h" style={{padding:'4px 8px'}}>
         <div style={{display:'flex',flexDirection:'column'}}>
           <span className="card-t" style={{fontSize:13}}><img src="/iconos_info_general/redes_activas.webp" alt="" style={{width:22,height:22,verticalAlign:'middle',marginRight:2}} />Redes activas</span>
-          <span className="card-s" style={{fontSize:11}}>{[...redes].length} de {REDES.length}</span>
+          <span className="card-s" style={{fontSize:11}}>{[...redes].filter(id=>id!=='ep'&&id!=='bom').length} de {REDES.filter(r=>r.id!=='ep'&&r.id!=='bom').length}</span>
         </div>
       </div>
       <div style={{padding:'4px 6px'}}>
         <div style={{display:'grid',gridTemplateColumns:'1fr',gap:2}}>
-          {REDES.map(r=>{
+          {REDES.filter(r=>r.id!=='ep'&&r.id!=='bom').map(r=>{
             const on=redes.has(r.id);
             const cssVar = `--${r.id}`;
             const currentColor = netColors[r.id] || '#666';
             return(
               <div key={r.id} onClick={()=>{const n=new Set(redes);on?n.delete(r.id):n.add(r.id);setRedes(n);}}
                 style={{display:'flex',alignItems:'center',gap:3,padding:'3px 5px',cursor:'pointer',
-                background:on?'rgba(27,110,243,.06)':'var(--bg3)',
-                border:'1px solid '+(on?'rgba(27,110,243,.35)':'var(--line)'),borderRadius:'var(--r)',transition:'all .15s'}}>
+                background:'var(--bg3)',
+                border:'1px solid var(--line)',borderRadius:'var(--r)',transition:'all .15s'}}>
                 {r.icoImg ? <img src={r.icoImg} alt="" style={{width:22,height:22,verticalAlign:'middle'}} /> : <span style={{fontSize:13}}>{r.ico}</span>}
-                <span style={{fontWeight:600,fontSize:12,color:on?'var(--acc2)':'var(--txt2)',whiteSpace:'nowrap',flex:1}}>{r.lbl}</span>
+                <span style={{fontWeight:600,fontSize:12,color:on?currentColor:'var(--txt2)',whiteSpace:'nowrap',flex:1}}>{r.lbl}</span>
                 <input type="color" value={currentColor}
                   onClick={e=>e.stopPropagation()}
                   onChange={e=>{
@@ -259,6 +261,37 @@ return(
                 <div style={{width:8,height:8,borderRadius:'50%',flexShrink:0,
                   background:on?currentColor:'transparent',
                   border:'1.5px solid '+(on?currentColor:'var(--txt3)')}} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+
+    {/* ── Equipos activos ── */}
+    <div className="card" style={{flex:'0 1 auto',minWidth:160}}>
+      <div className="card-h" style={{padding:'4px 8px'}}>
+        <div style={{display:'flex',flexDirection:'column'}}>
+          <span className="card-t" style={{fontSize:13}}><img src="/iconos_info_general/equipos_activos.webp" alt="" style={{width:22,height:22,verticalAlign:'middle',marginRight:2}} />Equipos activos</span>
+          <span className="card-s" style={{fontSize:11}}>{[...redes].filter(id=>id==='ep'||id==='bom').length} de 2</span>
+        </div>
+      </div>
+      <div style={{padding:'4px 6px'}}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr',gap:2}}>
+          {['ep','bom'].map(id=>{
+            const r=REDES.find(x=>x.id===id);
+            if(!r)return null;
+            const on=redes.has(r.id);
+            return(
+              <div key={r.id} onClick={()=>{const n=new Set(redes);on?n.delete(r.id):n.add(r.id);setRedes(n);}}
+                style={{display:'flex',alignItems:'center',gap:3,padding:'3px 5px',cursor:'pointer',
+                background:'var(--bg3)',
+                border:'1px solid var(--line)',borderRadius:'var(--r)',transition:'all .15s'}}>
+                {r.icoImg ? <img src={r.icoImg} alt="" style={{width:22,height:22,verticalAlign:'middle'}} /> : <span style={{fontSize:13}}>{r.ico}</span>}
+                <span style={{fontWeight:600,fontSize:12,color:on?'#22c55e':'var(--txt2)',whiteSpace:'nowrap',flex:1}}>{r.lbl}</span>
+                <div style={{width:8,height:8,borderRadius:'50%',flexShrink:0,
+                  background:on?'#22c55e':'transparent',
+                  border:'1.5px solid '+(on?'#22c55e':'var(--txt3)')}} />
               </div>
             );
           })}
@@ -343,7 +376,7 @@ return(
           <li style={{marginBottom:5,fontWeight:400,paddingLeft:3}}>Active las redes que requiere el diseño según el uso del edificio.</li>
           <li style={{marginBottom:5,fontWeight:400,paddingLeft:3}}>Configure la cantidad de pisos y sótanos, luego pulse <strong>"Generar niveles automáticamente"</strong>.</li>
           <li style={{marginBottom:5,fontWeight:400,paddingLeft:3}}>Verifique los NPT generados y ajústelos si es necesario.</li>
-          <li style={{marginBottom:5,fontWeight:400,paddingLeft:3}}>Vaya a la pestaña <strong>Diseño de Redes</strong> para iniciar el cálculo hidráulico de cada red activa.</li>
+          <li style={{marginBottom:5,fontWeight:400,paddingLeft:3}}>Vaya a la pestaña <strong>Diseño de Redes y Equipos</strong> para iniciar el cálculo hidráulico de cada red activa.</li>
         </ol>
       </div>
     </div>
@@ -592,7 +625,10 @@ return(
               {acPage===3&&<DisenoRedAguaCaliente />}
     </div>
   )}
-  {redesActivas.filter(r=>r.id!=='san'&&r.id!=='ll'&&r.id!=='af'&&r.id!=='ac').map(r=>redActiva===r.id&&redes.has(r.id)&&(
+  {redActiva==='bom'&&redes.has('bom')&&(
+    <BombaARDesign />
+  )}
+  {redesActivas.filter(r=>r.id!=='san'&&r.id!=='ll'&&r.id!=='af'&&r.id!=='ac'&&r.id!=='bom').map(r=>redActiva===r.id&&redes.has(r.id)&&(
     <div key={r.id} className="fu" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:16,flex:1,minHeight:250}}>
       <div style={{fontSize:48,opacity:.5}}>🚧</div>
       <div style={{fontSize:18,fontWeight:600,color:'var(--txt2)'}}>{r.lbl}</div>
