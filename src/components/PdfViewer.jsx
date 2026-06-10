@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import PlanoEngine, { NETS } from "../lib/PlanoEngine";
-import { pisoLbl, matLongName } from "../constants";
+import { pisoLbl, matLongName, GAS } from "../constants";
 import { useProject } from "../context/ProjectContext";
 import { usePlanos } from "../context/PlansContext";
 import { writeSanDrawingSync } from "../utils/sanitaryDrawingSync";
@@ -91,7 +91,6 @@ const DIAM_BY_MAT = {
 const DIAM_DEFAULT_BY_NET = {
   san: '4"',
   ll:  '4"',
-  ven: '2"',
   af:  '¾" (RDE 11)',
   ac:  '¾" (RDE 11)',
   gas: '½"',
@@ -120,6 +119,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   const [selElement, setSelElement] = useState(null);
   const [drawnElements, setDrawnElements] = useState([]);
   const [diamSel, setDiamSel] = useState({});
+  const [gasMatSel, setGasMatSel] = useState({});
   const [pendSel, setPendSel] = useState({});
   const [pendInput, setPendInput] = useState('');
   const [engineReady, setEngineReady] = useState(false);
@@ -295,9 +295,10 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
   }, []);
 
   const finalVisibleNets = useMemo(() => {
-    if (activeNetworks) return NETS.filter(n => activeNetworks.has(n.id));
-    if (liveActiveNets) return NETS.filter(n => liveActiveNets.has(n.id));
-    return NETS;
+    const excludeEquipment = (nets) => nets.filter(n => n.id !== 'ep' && n.id !== 'bom');
+    if (activeNetworks) return excludeEquipment(NETS.filter(n => activeNetworks.has(n.id)));
+    if (liveActiveNets) return excludeEquipment(NETS.filter(n => liveActiveNets.has(n.id)));
+    return excludeEquipment(NETS);
   }, [activeNetworks, liveActiveNets]);
 
   const pdfDocRef = useRef(null);
@@ -323,8 +324,12 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
     const floorObj = pisos.find(p => p.n === selectedNivel);
     eng.nivelActual = floorObj || null;
     eng.nptLevels = pisos.map(p => ({ label: pisoLbl(p.n), npt: p.npt }));
-    const matName = (mats?.[activeNet] && mats[activeNet][0]?.val) || '';
-    const d = diamSel[activeNet] || DIAM_DEFAULT_BY_NET[activeNet] || '';
+    const matName = activeNet === 'gas'
+      ? (gasMatSel[activeNet] || GAS[0]?.mat || '')
+      : (mats?.[activeNet] && mats[activeNet][0]?.val) || '';
+    const d = activeNet === 'gas'
+      ? (diamSel[activeNet] || GAS[0]?.rows[0]?.dn || '')
+      : (diamSel[activeNet] || DIAM_DEFAULT_BY_NET[activeNet] || '');
     const p = (activeNet === 'san' || activeNet === 'll') ? (pendSel[activeNet] !== undefined ? pendSel[activeNet] : 2.0) : 0;
     eng.setRamalDefaults({ material: matName, diametro: d, pendiente: p });
   }, [tool, activeNet, tipoTramo, snapOn, scaleM, mats, diamSel, pendSel, selectedNivel, pisos]);
@@ -1081,52 +1086,84 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
         {/* Escala */}
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Escala</div>
-          <div style={{display:'flex',flexDirection:'column',gap:5}}>
-            <select value={scaleM} onChange={e=>{setScaleM(e.target.value);if(engineRef.current)engineRef.current.setScaleM(e.target.value);}}
-              style={{width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace",cursor:'pointer'}}>
-              <option value="0.5">1:50</option>
-              <option value="0.75">1:75</option>
-              <option value="1.0">1:100</option>
-              <option value="1.25">1:125</option>
-              <option value="2.0">1:200</option>
-            </select>
+          <div style={{padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace"}}>
+            {(() => {
+              const planoAsoc = planos.find(p => p.nivel === selectedNivel && p.status === 'confirmed');
+              if (planoAsoc && planoAsoc.scale) return <span>1:{planoAsoc.scale}</span>;
+              const map = {'0.5':'1:50','0.75':'1:75','1.0':'1:100','1.25':'1:125','2.0':'1:200'};
+              return <span>{map[scaleM] || '1:100'}</span>;
+            })()}
           </div>
-          {selectedNivel!==null&&(()=>{
-            const planoAsoc=planos.find(p=>p.nivel===selectedNivel&&p.status==='confirmed');
-            if(planoAsoc)return(
-              <div style={{marginTop:6,fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace"}}>
-                Plano: 1:{planoAsoc.scale}
-              </div>
-            );
-            return null;
-          })()}
         </div>
 
         {/* Datos específicos */}
         {(() => {
+          const isGas = activeNet === 'gas';
           const matList = mats?.[activeNet] || [];
           const matShort = matList[0]?.val || '—';
           const matName = matLongName(matShort);
           const diamList = DIAM_BY_MAT[matShort] || [];
           const isSelActiveNet = selElement && selElement.net === activeNet;
-          const currentDiam = (isSelActiveNet && selElement.diametro !== undefined && selElement.diametro !== '')
-            ? selElement.diametro
-            : (diamSel[activeNet] || DIAM_DEFAULT_BY_NET[activeNet] || (diamList[0]?.n || ''));
-        const showPend = activeNet === 'san' || activeNet === 'll';
-        const showDeltaZ = activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas';
-        const showDescargas = activeNet === 'af' || activeNet === 'ac' || activeNet === 'san';
+          let currentDiam, currentMat;
+          if (isGas) {
+            const selMat = (isSelActiveNet && selElement.material) || gasMatSel[activeNet] || '';
+            const selDn = (isSelActiveNet && selElement.diametro !== undefined && selElement.diametro !== '')
+              ? selElement.diametro : (diamSel[activeNet] || '');
+            currentMat = selMat || GAS[0]?.mat || '';
+            currentDiam = selDn || GAS[0]?.rows[0]?.dn || '';
+          } else {
+            currentDiam = (isSelActiveNet && selElement.diametro !== undefined && selElement.diametro !== '')
+              ? selElement.diametro
+              : (diamSel[activeNet] || DIAM_DEFAULT_BY_NET[activeNet] || (diamList[0]?.n || ''));
+          }
+          const showPend = activeNet === 'san' || activeNet === 'll';
+          const showDeltaZ = activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas';
+          const showDescargas = activeNet === 'af' || activeNet === 'ac' || activeNet === 'san';
           return (
             <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
               <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos específicos</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '3px 8px', background: '#1a1c20', border: '1px solid #282a2e', borderRadius: 3 }}>
                   <span style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0 }}>Material</span>
-                  <span style={{ fontSize: 10, color: '#b9caca', fontFamily: "'Geist',monospace", fontWeight: 600, textAlign: 'right', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={matName}>{matName}</span>
+                  <span style={{ fontSize: 10, color: '#b9caca', fontFamily: "'Geist',monospace", fontWeight: 600, textAlign: 'right', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={isGas ? currentMat : matName}>{isGas ? currentMat : matName}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: showPend ? '1fr 1fr' : '1fr', gap: 6 }}>
                   <div>
                     <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Diámetro</div>
-        {diamList.length > 0 ? (
+        {isGas ? (
+          <select value={currentMat && currentDiam ? `${currentMat}|${currentDiam}` : ''}
+          onChange={e => {
+            const v = e.target.value;
+            if (!v) return;
+            const lastBar = v.lastIndexOf('|');
+            const mat = v.substring(0, lastBar);
+            const dn = v.substring(lastBar + 1);
+            setDiamSel(prev => ({ ...prev, [activeNet]: dn }));
+            setGasMatSel(prev => ({ ...prev, [activeNet]: mat }));
+            if (engineRef.current && selElement) {
+              engineRef.current.updateSelected({ material: mat, diametro: dn });
+              setSelElement({ ...selElement, material: mat, diametro: dn });
+            } else if (engineRef.current && !selElement) {
+              const eng = engineRef.current;
+              const lastRamal = [...eng.ramales].reverse().find(r => r.net === activeNet);
+              if (lastRamal) {
+                eng.selId = lastRamal.id;
+                eng.updateSelected({ material: mat, diametro: dn });
+                const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = lastRamal;
+                setSelElement({ ...rest, material: mat, diametro: dn });
+              }
+            }
+          }}
+          style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' }}>
+            {GAS.map(g => (
+              <optgroup key={g.mat} label={`${g.mat} (K=${g.K})`}>
+                {g.rows.map(r => (
+                  <option key={r.dn} value={`${g.mat}|${r.dn}`}>{r.dn}" ({r.d} mm)</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        ) : diamList.length > 0 ? (
           <select value={currentDiam}
           onChange={e => {
             const v = e.target.value;
@@ -1148,9 +1185,9 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
           style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' }}>
           {diamList.map(d => <option key={d.n} value={d.n}>{d.n.split(' — ')[0]}</option>)}
           </select>
-                  ) : (
-                    <div style={{ padding: '4px 6px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#6b8cae', fontSize: 11, fontFamily: "'Geist',monospace" }}>— Sin opciones —</div>
-                  )}
+                    ) : (
+                      <div style={{ padding: '4px 6px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#6b8cae', fontSize: 11, fontFamily: "'Geist',monospace" }}>— Sin opciones —</div>
+                    )}
                 </div>
         {showPend && (
           <div>

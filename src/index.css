@@ -55,9 +55,6 @@
   --ll: #22d3ee;
   --ll-bg: rgba(34, 211, 238, .07);
 
-  --ven: #A3E635;
-  --ven-bg: rgba(163, 230, 53, .07);
-
   --gas: #A855F7;
   --gas-bg: rgba(168, 85, 247, .1);
   --gas-b: rgba(168, 85, 247, .25);
@@ -991,11 +988,6 @@ input[type="number"].ni {
 
 .badge.ll {
   background: var(--ll-bg);
-  color: var(--txt);
-}
-
-.badge.ven {
-  background: var(--ven-bg);
   color: var(--txt);
 }
 

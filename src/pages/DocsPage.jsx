@@ -793,7 +793,7 @@ const docData = {
         title: 'Introducción',
         body: (
           <div className="space-y-3">
-            <p>CIVILFLOW KML 2026 es un aplicativo web de diseño hidrosanitario desarrollado por el Ing. Camilo Cardenas Chacon. Permite elaborar memorias de cálculo completas para redes de Agua Fria, Agua caliente, Sanitaria, Aguas lluvias, Ventilación, Gas Combustible y Red Contra Incendio.</p>
+            <p>CIVILFLOW KML 2026 es un aplicativo web de diseño hidrosanitario desarrollado por el Ing. Camilo Cardenas Chacon. Permite elaborar memorias de cálculo completas para redes de Agua Fria, Agua caliente, Sanitaria, Aguas lluvias, Gas Combustible y Red Contra Incendio.</p>
             <p className="text-[13px] font-semibold">Normas aplicadas:</p>
             <div className="flex flex-wrap gap-2">
               <span className="px-3 py-1 bg-surface-container-high border border-outline-variant rounded text-[11px] font-mono">NTC 1500:2020</span>
@@ -820,7 +820,7 @@ const docData = {
                 <div className="px-3 py-2 border-b border-outline-variant">Barra de navegacion con pestanas para acceder a cada modulo del aplicativo: Planos (carga de PDF o imagen), Materiales (gestion de catalogos por red), Aparatos (tabla de unidades de consumo y descarga), Cubierta (cálculo de Aguas lluvias por método racional), Gas (diseño de redes por Renouard), Calentadores (selección de equipos a gas), Validacion (resumen y verificacion final).</div>
 
                 <div className="bg-surface-container-high font-semibold px-3 py-2 border-b border-outline-variant">Sidebar</div>
-                <div className="px-3 py-2 border-b border-outline-variant">Panel lateral izquierdo con tres secciones: Datos del proyecto (nombre, dirección, municipio, uso, empresa prestadora, presión de red, dotación), Materiales por red (selector de tipo de tubería para cada sistema: AF, AC, sanitaria, lluvias, ventilacion, gas, RCI), Redes a calcular (toggles para activar o desactivar cada red del proyecto) y Generador de niveles (configuración de sótanos, pisos, alturas y NPT).</div>
+                <div className="px-3 py-2 border-b border-outline-variant">Panel lateral izquierdo con tres secciones: Datos del proyecto (nombre, dirección, municipio, uso, empresa prestadora, presión de red, dotación), Materiales por red (selector de tipo de tubería para cada sistema: AF, AC, sanitaria, lluvias, gas, RCI), Redes a calcular (toggles para activar o desactivar cada red del proyecto) y Generador de niveles (configuración de sótanos, pisos, alturas y NPT).</div>
 
                 <div className="bg-surface-container-high font-semibold px-3 py-2 border-b border-outline-variant">Content</div>
                 <div className="px-3 py-2 border-b border-outline-variant">Area central donde se muestran las tablas, formularios y resultados del modulo selecciónado. Aqui se ingresan los datos de cada red, se visualizan los cálculos y se revisan las verificaciones de norma.</div>
@@ -877,8 +877,7 @@ const docData = {
           <T>
             <Tr><Th>#</Th><Th>Red</Th><Th>Cuando activar</Th></Tr>
             <Tr><Td>1</Td><Td>Sanitaria</Td><Td>Siempre — obligatoria</Td></Tr>
-            <Tr><Td>2</Td><Td>Ventilación</Td><Td>Siempre — acompaña sanitaria</Td></Tr>
-            <Tr><Td>3</Td><Td>Aguas lluvias</Td><Td>Cuando hay cubierta</Td></Tr>
+            <Tr><Td>2</Td><Td>Aguas lluvias</Td><Td>Cuando hay cubierta</Td></Tr>
             <Tr><Td>4</Td><Td>Agua Fria</Td><Td>Siempre — suministro</Td></Tr>
             <Tr><Td>5</Td><Td>Agua caliente</Td><Td>Cuando hay calentador</Td></Tr>
             <Tr><Td>6</Td><Td>Red de Gas</Td><Td>Cuando hay aparatos a gas</Td></Tr>

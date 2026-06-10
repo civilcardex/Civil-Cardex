@@ -31,8 +31,9 @@ export const APARATOS_DEF = [
   {id:'sec_g',sigla:'SecG:', nombre:'Secadora grande', grupo:'g', uc_af:0,uc_ac:0,ud:0, pmin:17,pmax:25, qgas:0.81, norma:'NTC 3728 T1'},
   {id:'sec_p',sigla:'SecP:', nombre:'Secadora pequeña', grupo:'g', uc_af:0,uc_ac:0,ud:0, pmin:17,pmax:25, qgas:0.54, norma:'NTC 3728 T1'},
   {id:'cal_b',sigla:'Cal:', nombre:'Caldera pequeña', grupo:'g', uc_af:0,uc_ac:0,ud:0, pmin:17,pmax:25, qgas:1.76, norma:'NTC 3728 T1'},
-  {id:'calef', sigla:'Calef:', nombre:'Calefactor', grupo:'g', uc_af:0,uc_ac:0,ud:0, pmin:17,pmax:25, qgas:1.20, norma:'NTC 3728 T1'},
-  {id:'clima', sigla:'Clim:', nombre:'Climatizador', grupo:'g', uc_af:0,uc_ac:0,ud:0, pmin:17,pmax:25, qgas:1.80, norma:'NTC 3728 T1'},
+  {id:'cal6', sigla:'Cal6:', nombre:'Calentador P.D. 6 LPM', grupo:'g', uc_af:0,uc_ac:0,ud:0, pmin:17,pmax:25, qgas:1.11, norma:'NTC 3728 T1'},
+  {id:'cal11',sigla:'Cal11:',nombre:'Calentador P.D. 11 LPM',grupo:'g', uc_af:0,uc_ac:0,ud:0, pmin:17,pmax:25, qgas:1.88, norma:'NTC 3728 T1'},
+  {id:'cal21',sigla:'Cal21:',nombre:'Calentador P.D. 21 LPM',grupo:'g', uc_af:0,uc_ac:0,ud:0, pmin:17,pmax:25, qgas:4.35, norma:'NTC 3728 T1'},
   {id:'jac', sigla:'Jac:', nombre:'Jacuzzi', grupo:'g', uc_af:0,uc_ac:0,ud:0, pmin:17,pmax:25, qgas:3.38, norma:'NTC 3728 T1'},
   {id:'pisc', sigla:'Pis:', nombre:'Calentador piscina', grupo:'g', uc_af:0,uc_ac:0,ud:0, pmin:17,pmax:25, qgas:6.08, norma:'NTC 3728 T1'},
   {id:'sauna',sigla:'Sau:', nombre:'Baño sauna', grupo:'g', uc_af:0,uc_ac:0,ud:0, pmin:17,pmax:25, qgas:1.08, norma:'NTC 3728 T1'},
@@ -48,6 +49,13 @@ export const APARATO_IMG = {
   lvp:'/iconos_aparatos/lavaplatos.webp', duc:'/iconos_aparatos/ducha.webp', tin:'/iconos_aparatos/tina.webp',
   lvra:'/iconos_aparatos/lavadora.webp', lvro:'/iconos_aparatos/lavadero.webp', nev:'/iconos_aparatos/nevera.webp',
   lavav:'/iconos_aparatos/lavavajillas.webp',
+  est4:'/iconos_aparatos/estufa_4_puestos.webp', est2:'/iconos_aparatos/estufa_2_puestos.webp',
+  hor_g:'/iconos_aparatos/horno_grande.webp', hor_m:'/iconos_aparatos/horno_mediano.webp',
+  hor_p:'/iconos_aparatos/horno_pequeño.webp', sec_g:'/iconos_aparatos/secadora_grande.webp',
+  sec_p:'/iconos_aparatos/secadora_pequeña.webp', cal_b:'/iconos_aparatos/caldera_pequeña.webp',
+  cal6:'/iconos_aparatos/calentador_6LPM.webp', cal11:'/iconos_aparatos/calentador_11LPM.webp', cal21:'/iconos_aparatos/calentador_21LPM.webp',
+  jac:'/iconos_aparatos/jacuzzi.webp', pisc:'/iconos_aparatos/calentador_piscina.webp',
+  sauna:'/iconos_aparatos/sauna.webp', turco:'/iconos_aparatos/turco.webp',
 };
 
 export const ACCESORIOS_HIDRO = [
@@ -73,9 +81,16 @@ export const ACCESORIOS_HIDRO = [
   {id:'otros',emoji:'➕',nombre:'Otros',icono:'/iconos_accesorios/otros.webp', cat: 'Otros'},
 ];
 
+export const GAS_ACCESORIOS = [
+  {id:'codos_90_std', emoji:'🔩', nombre:'Codos 90° std', icono:'/iconos_accesorios/codo90rc.webp', cat:'Codos'},
+  {id:'codos_90_rl',  emoji:'🔩', nombre:'Codos 90° rl',  icono:'/iconos_accesorios/codo90rl.webp', cat:'Codos'},
+  {id:'te_linea',     emoji:'🔧', nombre:'Te en línea',    icono:'/iconos_accesorios/te_en_linea.webp', cat:'Tees'},
+  {id:'te_ramal',     emoji:'🔧', nombre:'Te ramal',       icono:'/iconos_accesorios/te_ramal.webp', cat:'Tees'},
+  {id:'valvula_bola', emoji:'🚰', nombre:'Válvula bola',   icono:'/iconos_accesorios/valvBola.webp', cat:'Válvulas'},
+];
+
 export const REDES=[
   {id:'san',lbl:'Red sanitaria', sub:'RAS D · maning n=0.009', ico:'♻️', icoImg:'/iconos_diseno_redes/red_sanitaria.webp', col:'var(--san)'},
-  {id:'ven',lbl:'Ventilación', sub:'NTC 1500 §9 · D mín 1½"', ico:'💨', icoImg:'/iconos_diseno_redes/red_ventilacion.webp', col:'var(--ven)'},
   {id:'ll', lbl:'Aguas lluvias', sub:'Método Racional · IDF', ico:'🌧️', icoImg:'/iconos_diseno_redes/red_aguas_lluvias.webp', col:'var(--ll)'},
   {id:'af', lbl:'Agua fría', sub:'NTC 1500 · Hazen-Williams', ico:'💧', icoImg:'/iconos_diseno_redes/red_agua_fria.webp', col:'var(--af)'},
   {id:'ac', lbl:'Agua caliente', sub:'NTC 1500 · CPVC RDE 11', ico:'🔥', icoImg:'/iconos_diseno_redes/red_agua_caliente.webp', col:'var(--ac)'},
@@ -98,7 +113,6 @@ export const MATERIALES = {
   san: {lbl:'Sanitaria', opts:['PVC-S','Novatec','Hierro fundido','Concreto']},
   ll: {lbl:'Aguas lluvias', opts:['PVC-S','Novatec','Hierro fundido','Concreto','Gres cerámico']},
   gas: {lbl:'Gas', opts:['PE al PE','Cobre rígido','A.C.','Acero HG','Polipropileno PP-R']},
-  ven: {lbl:'Ventilación', opts:['PVC-V','Novatec']},
   rci: {lbl:'Contra Incendio', opts:['A.C. SCH 40','A.C. SCH 10','Acero HG','CPVC CPVC-CI','PVC C900 RDE 14']},
 };
 
@@ -134,7 +148,6 @@ export const FILTROS_NORM=[{k:'todos',l:'Todos'},{k:'af',l:'AF/AC'},{k:'san',l:'
 export const MAT_LONGFORM = {
   'PVC-PR': 'PVC Presión',
   'PVC-S': 'PVC Sanitario',
-  'PVC-V': 'PVC Ventilación',
   'PVC C900 RDE 14': 'PVC C900 RDE 14',
   'PVC C900 RDE 18': 'PVC C900 RDE 18',
   'CPVC': 'CPVC (Cloruro de Polivinilo Clorado)',
@@ -190,8 +203,8 @@ export function matManning(short) {
   return MAT_MANING[short] ?? null;
 }
 
-export const NORM_COL={af:'var(--af)',ac:'var(--ac)',san:'var(--san)',ll:'var(--ll)',gas:'var(--gas)',rci:'var(--rci)',ven:'var(--ven)',ep:'var(--ep)',bom:'var(--bom)'};
-export const MAT_COL={af:'var(--af)',ac:'var(--ac)',san:'var(--san)',ll:'var(--ll)',ven:'var(--ven)',gas:'var(--gas)',rci:'var(--rci)',ep:'var(--ep)',bom:'var(--bom)'};
+export const NORM_COL={af:'var(--af)',ac:'var(--ac)',san:'var(--san)',ll:'var(--ll)',gas:'var(--gas)',rci:'var(--rci)',ep:'var(--ep)',bom:'var(--bom)'};
+export const MAT_COL={af:'var(--af)',ac:'var(--ac)',san:'var(--san)',ll:'var(--ll)',gas:'var(--gas)',rci:'var(--rci)',ep:'var(--ep)',bom:'var(--bom)'};
 
 export const CRIT0=[
 {id:'a1',red:'af',param:'V mínima AF/AC',val:'0.50',uni:'m/s',norma:'NTC 1500:2020',art:'§5.4',cumple:'V ≥ 0.50 m/s todos tramos',nota:'Evita sedimentación'},
@@ -293,14 +306,12 @@ export const PROFS_DEFAULT=[
 {id:'af',red:'Agua fría',col:'var(--af)',prof:0.00,norma:'NTC 1500 §5.4',nota:'A nivel NPT'},
 {id:'ac',red:'Agua caliente',col:'var(--ac)',prof:0.00,norma:'NTC 1500 §5.4',nota:'Bajo NPT'},
 {id:'gas',red:'Gas',col:'var(--gas)',prof:0.00,norma:'NTC 3728 §4.3',nota:'Con protección'},
-{id:'ven',red:'Ventilación',col:'var(--ven)',prof:0.00,norma:'NTC 1500 §9.2',nota:'A nivel NPT'},
 {id:'rci',red:'Contra Incendio',col:'var(--rci)',prof:0.00,norma:'NFPA 13 §6',nota:'Zona protegida'},
 ];
 
 export const REDES_MAT = [
   { id: 'san', lbl: 'Sanitaria',        mat: 'PVC-S',                       prof: -0.70, fixed: true },
   { id: 'll',  lbl: 'Aguas lluvias',    mat: 'PVC-S',                       prof: -0.50, fixed: true },
-  { id: 'ven', lbl: 'Ventilación',      mat: 'PVC-V',                       prof:  0.00, fixed: true },
   { id: 'af',  lbl: 'Agua fría',        mat: 'PVC-PR',                      prof:  0.00, fixed: true },
   { id: 'ac', lbl: 'Agua caliente', mat: 'PVC-PR', prof: -0.10, fixed: true },
   { id: 'rci', lbl: 'Contra Incendio',  mat: 'A.C. SCH 40',      prof: -0.45,
@@ -338,4 +349,28 @@ export const CAT_GAS = [
   { id: 'srp',    n: 'Secadora de Ropa Pequeña',  s: 'SRP',     q: 0.54 },
   { id: 'srg',    n: 'Secadora de Ropa Grande',   s: 'SRG',     q: 0.81 },
   { id: 'calp',   n: 'Caldera Pequeña',           s: 'Calp',    q: 1.76 },
+];
+
+export const GAS = [
+  { mat: 'Acero Galvanizado', K: 57.50, rows: [
+    { dn: '3/8', d: 9.50 }, { dn: '1/2', d: 12.70 }, { dn: '3/4', d: 19.00 },
+    { dn: '1', d: 25.40 }, { dn: '2', d: 50.80 },
+  ]},
+  { mat: 'Acero al Carbón', K: 57.50, rows: [
+    { dn: '3/8', d: 10.00 }, { dn: '1/2', d: 13.40 }, { dn: '3/4', d: 19.50 },
+    { dn: '1', d: 26.00 }, { dn: '2', d: 52.00 },
+  ]},
+  { mat: 'Cobre Rígido', K: 54.20, rows: [
+    { dn: '3/8', d: 8.70 }, { dn: '1/2', d: 10.90 }, { dn: '3/4', d: 17.40 },
+  ]},
+  { mat: 'Cobre Flexible', K: 54.20, rows: [
+    { dn: '3/8', d: 9.00 }, { dn: '1/2', d: 11.20 },
+  ]},
+  { mat: 'PE al PE', K: 49.00, rows: [
+    { dn: '3/8', d: 12.00 }, { dn: '1/2', d: 16.00 },
+    { dn: '3/4', d: 20.00 }, { dn: '1', d: 25.00 },
+  ]},
+  { mat: 'Polietileno', K: 50.60, rows: [
+    { dn: '1/2', d: 14.50 }, { dn: '3/4', d: 21.50 }, { dn: '1', d: 27.80 },
+  ]},
 ];
