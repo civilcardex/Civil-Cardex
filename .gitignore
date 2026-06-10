@@ -16,9 +16,8 @@ dist-ssr
 .env
 .env.*
 
-# graphify
+# Graphify
 graphify-out/
-
 
 # Editor directories and files
 .vscode/*
@@ -31,6 +30,4 @@ graphify-out/
 *.sln
 *.sw?
 
-# Graphify
-graphify-out/
 .opencode/plugins/graphify.js
