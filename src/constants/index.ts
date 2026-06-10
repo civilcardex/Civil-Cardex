@@ -190,8 +190,8 @@ export function matManning(short) {
   return MAT_MANING[short] ?? null;
 }
 
-export const NORM_COL={af:'var(--af)',ac:'var(--ac)',san:'var(--san)',ll:'var(--ll)',gas:'var(--gas)',rci:'var(--rci)',ven:'var(--ven)',ep:'var(--ep)',bom:'var(--bom)',rec:'var(--rec)'};
-export const MAT_COL={af:'var(--af)',ac:'var(--ac)',san:'var(--san)',ll:'var(--ll)',ven:'var(--ven)',gas:'var(--gas)',rci:'var(--rci)',ep:'var(--ep)',bom:'var(--bom)',rec:'var(--rec)'};
+export const NORM_COL={af:'var(--af)',ac:'var(--ac)',san:'var(--san)',ll:'var(--ll)',gas:'var(--gas)',rci:'var(--rci)',ven:'var(--ven)',ep:'var(--ep)',bom:'var(--bom)'};
+export const MAT_COL={af:'var(--af)',ac:'var(--ac)',san:'var(--san)',ll:'var(--ll)',ven:'var(--ven)',gas:'var(--gas)',rci:'var(--rci)',ep:'var(--ep)',bom:'var(--bom)'};
 
 export const CRIT0=[
 {id:'a1',red:'af',param:'V mínima AF/AC',val:'0.50',uni:'m/s',norma:'NTC 1500:2020',art:'§5.4',cumple:'V ≥ 0.50 m/s todos tramos',nota:'Evita sedimentación'},
