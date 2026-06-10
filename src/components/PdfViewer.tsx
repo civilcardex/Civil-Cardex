@@ -4,11 +4,12 @@ import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import PlanoEngine, { NETS } from "../lib/PlanoEngine";
 import { pisoLbl, matLongName, GAS } from "../constants";
 import { useProject } from "../context/ProjectContext";
-import { usePlanos } from "../context/PlansContext";
-import { writeSanDrawingSync } from "../utils/sanitaryDrawingSync";
-import { writeHidroDrawingSync } from "../utils/hydroDrawingSync";
+import { usePlans } from "../context/PlansContext";
+import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync";
 import AparatosPanel from "./FixturesPanel";
 import PdfViewerToolbar from "./PdfViewerToolbar";
+import PdfCanvas from "./pdfViewer/PdfCanvas";
+import TramoEditor, { DIAM_DEFAULT_BY_NET } from "./pdfViewer/TramoEditor";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -17,114 +18,47 @@ const TIPOS_TRAMO = [
   { id: "tributario", label: "Tributario" },
 ];
 
-const DIAM_BY_MAT = {
-  'PVC sanitario': 'PVC-S',
-  'PVC presión':   'PVC-PR',
-  'Acero SCH 40':  'A.C. SCH 40',
-  'PVC C900':      'PVC C900 RDE 14',
-  'PVC-S': [
-    { n: '1½"', dInt: 42.68 }, { n: '2"', dInt: 54.48 },
-    { n: '3"', dInt: 76.20 }, { n: '4"', dInt: 107.70 }, { n: '6"', dInt: 160.04 },
-  ],
-  'PVC-V': [
-    { n: '1½"', dInt: 45.22 }, { n: '2"', dInt: 56.76 },
-    { n: '3"', dInt: 79.00 }, { n: '4"', dInt: 110.08 },
-  ],
-  'PVC-PR': [
-    { n: '½" (RDE 9)', dInt: 16.60 }, { n: '½" (RDE 13.5)', dInt: 18.18 },
-    { n: '¾" (RDE 11)', dInt: 21.81 }, { n: '¾" (RDE 21)', dInt: 23.63 },
-    { n: '1" (RDE 13.5)', dInt: 28.48 }, { n: '1" (RDE 21)', dInt: 30.20 },
-    { n: '1¼" (RDE 21)', dInt: 38.14 }, { n: '1½" (RDE 21)', dInt: 43.68 },
-    { n: '2" (RDE 21)', dInt: 54.58 }, { n: '2½" (RDE 21)', dInt: 66.07 },
-    { n: '3" (RDE 21)', dInt: 80.42 }, { n: '4" (RDE 21)', dInt: 103.42 },
-    { n: '6" (RDE 21)', dInt: 152.22 },
-  ],
-  'CPVC': [
-    { n: '½" (RDE 11)', dInt: 12.40 }, { n: '¾" (RDE 11)', dInt: 18.20 },
-    { n: '1" (RDE 11)', dInt: 23.40 }, { n: '1¼" (RDE 11)', dInt: 28.60 },
-    { n: '1½" (RDE 11)', dInt: 33.70 }, { n: '2" (RDE 11)', dInt: 44.20 },
-    { n: '2" (CPVC SCH 80)', dInt: 49.25 }, { n: '2½" (CPVC SCH 80)', dInt: 59.00 },
-    { n: '3" (CPVC SCH 80)', dInt: 73.66 },
-  ],
-  'Acero HG': [
-    { n: '⅜"', dInt: 9.50 }, { n: '½"', dInt: 12.70 },
-    { n: '¾"', dInt: 19.00 }, { n: '1"', dInt: 25.40 }, { n: '2"', dInt: 50.80 },
-  ],
-  'A.C.': [
-    { n: '⅜"', dInt: 10.00 }, { n: '½"', dInt: 13.40 },
-    { n: '¾"', dInt: 19.50 }, { n: '1"', dInt: 26.00 }, { n: '2"', dInt: 52.00 },
-  ],
-  'Cobre Rígido':  [{ n: '⅜"', dInt: 8.70 }, { n: '½"', dInt: 10.90 }, { n: '¾"', dInt: 17.40 }],
-  'Cobre Flexible': [{ n: '⅜"', dInt: 9.00 }, { n: '½"', dInt: 11.20 }],
-  'PE al PE': [
-    { n: '⅜"', dInt: 12.00 }, { n: '½"', dInt: 16.00 },
-    { n: '¾"', dInt: 20.00 }, { n: '1"', dInt: 25.00 },
-  ],
-  'Polietileno': [
-    { n: '½"', dInt: 14.50 }, { n: '¾"', dInt: 21.50 }, { n: '1"', dInt: 27.80 },
-  ],
-  'PEAD': [
-    { n: '½"', dInt: 14.50 }, { n: '¾"', dInt: 21.50 }, { n: '1"', dInt: 27.80 },
-  ],
-  'A.C. SCH 10': [
-    { n: '¾"', dInt: 22.48 }, { n: '1"', dInt: 27.86 }, { n: '1¼"', dInt: 36.66 },
-    { n: '1½"', dInt: 42.76 }, { n: '2"', dInt: 54.76 }, { n: '2½"', dInt: 66.9 },
-    { n: '3"', dInt: 82.8 }, { n: '4"', dInt: 108.2 }, { n: '5"', dInt: 134.5 },
-    { n: '6"', dInt: 161.5 }, { n: '8"', dInt: 209.54 }, { n: '10"', dInt: 263.44 },
-  ],
-  'A.C. SCH 40': [
-    { n: '½"', dInt: 15.76 }, { n: '¾"', dInt: 20.96 }, { n: '1"', dInt: 26.64 },
-    { n: '1¼"', dInt: 35.08 }, { n: '1½"', dInt: 40.94 }, { n: '2"', dInt: 52.48 },
-    { n: '2½"', dInt: 62.68 }, { n: '3"', dInt: 77.92 }, { n: '4"', dInt: 102.26 },
-    { n: '5"', dInt: 128.2 }, { n: '6"', dInt: 154.08 }, { n: '8"', dInt: 202.74 },
-    { n: '10"', dInt: 254.46 },
-  ],
-  'PVC C900 RDE 14': [
-    { n: '4"', dInt: 104.88 }, { n: '6"', dInt: 150.26 }, { n: '8"', dInt: 197.08 },
-    { n: '10"', dInt: 241.62 }, { n: '12"', dInt: 287.40 },
-  ],
-  'PVC C900 RDE 18': [
-    { n: '4"', dInt: 108.34 }, { n: '6"', dInt: 155.84 }, { n: '8"', dInt: 204.34 },
-    { n: '10"', dInt: 250.56 }, { n: '12"', dInt: 298.06 },
-  ],
-};
-const DIAM_DEFAULT_BY_NET = {
-  san: '4"',
-  ll:  '4"',
-  af:  '¾" (RDE 11)',
-  ac:  '¾" (RDE 11)',
-  gas: '½"',
-  rci: '2½"',
-};
 
-export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan, pisos=[], planos=[], activeNetworks }) {
+
+interface PdfViewerProps {
+  files: any[];
+  activeIndex: number;
+  onSelectPlan: (idx: number) => void;
+  onAddPlan: () => void;
+  onRemovePlan: (idx: number) => void;
+  pisos?: any[];
+  planos?: any[];
+  activeNetworks: Set<string>;
+}
+
+export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan, pisos=[], planos=[], activeNetworks }: PdfViewerProps) {
   const { mats } = useProject();
-  const planosCtx = usePlanos();
+  const planosCtx = usePlans();
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tool, setTool] = useState("line");
   const [activeNet, setActiveNet] = useState("af");
   const [tipoTramo, setTipoTramo] = useState("ramal");
-  const [padreTributarioId, setPadreTributarioId] = useState(null);
+  const [padreTributarioId, setPadreTributarioId] = useState<string | null>(null);
   const [snapOn, setSnapOn] = useState(true);
   const [scaleM, setScaleM] = useState("0.5");
-  const [selectedNivel, setSelectedNivel] = useState(null);
-  const [hiddenNets, setHiddenNets] = useState(new Set());
-  const [lockedNets, setLockedNets] = useState(new Set());
+  const [selectedNivel, setSelectedNivel] = useState<number | null>(null);
+  const [hiddenNets, setHiddenNets] = useState<Set<string>>(new Set());
+  const [lockedNets, setLockedNets] = useState<Set<string>>(new Set());
   const [statusMsg, setStatusMsg] = useState("Seleccionar");
   const [saveStatus, setSaveStatus] = useState("saved");
-  const [selElement, setSelElement] = useState(null);
-  const [drawnElements, setDrawnElements] = useState([]);
-  const [diamSel, setDiamSel] = useState({});
-  const [gasMatSel, setGasMatSel] = useState({});
-  const [pendSel, setPendSel] = useState({});
+  const [selElement, setSelElement] = useState<Record<string, any> | null>(null);
+  const [drawnElements, setDrawnElements] = useState<any[]>([]);
+  const [diamSel, setDiamSel] = useState<Record<string, string>>({});
+  const [gasMatSel, setGasMatSel] = useState<Record<string, string>>({});
+  const [pendSel, setPendSel] = useState<Record<string, number>>({});
   const [pendInput, setPendInput] = useState('');
   const [engineReady, setEngineReady] = useState(false);
   const toolRef = useRef(tool);
-  const autoSaveTimerRef = useRef(null);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   toolRef.current = tool;
 
   useEffect(() => {
@@ -196,21 +130,21 @@ currentIdRef.current = currentId;
       }
     } catch (e) { console.error('[LOAD] error', e); }
     engineRef.current._loadedPlanId = currentId;
-    try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
-    try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
+    try { writeSanDrawingSync(planosCtx.plans); } catch (_) {}
+    try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {}
   }, [currentId, engineReady]);
 
   useEffect(() => {
-    try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
-try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
-  }, [planosCtx.planos.length, currentId, activeNet]);
+    try { writeSanDrawingSync(planosCtx.plans); } catch (_) {}
+try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {}
+  }, [planosCtx.plans.length, currentId, activeNet]);
 
   useEffect(() => {
-    const handler = () => { try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
-try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {} };
+    const handler = () => { try { writeSanDrawingSync(planosCtx.plans); } catch (_) {}
+try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
-  }, [planosCtx.planos.length]);
+  }, [planosCtx.plans.length]);
 
 const saveTrazosToStorage = useCallback(() => {
 const eng = engineRef.current;
@@ -241,11 +175,11 @@ if (!id) return;
 const key = `civilflow_trazos_${id}`;
 const json = engineRef.current.saveWork();
 try { localStorage.setItem(key, json); } catch (_) {}
-try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
-try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
+try { writeSanDrawingSync(planosCtx.plans); } catch (_) {}
+try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {}
 engineRef.current._dirty = false;
 setSaveStatus('saved');
-}, [planosCtx.planos]);
+}, [planosCtx.plans]);
 
 useEffect(() => {
 const interval = setInterval(() => {
@@ -269,7 +203,7 @@ doSave();
 return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
 }, [saveStatus, doSave]);
 
-  const [liveActiveNets, setLiveActiveNets] = useState(() => {
+  const [liveActiveNets, setLiveActiveNets] = useState<Set<string> | null>(() => {
     try {
       const saved = localStorage.getItem('civilflow_active_nets');
       if (saved) return new Set(JSON.parse(saved));
@@ -295,30 +229,30 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
   }, []);
 
   const finalVisibleNets = useMemo(() => {
-    const excludeEquipment = (nets) => nets.filter(n => n.id !== 'ep' && n.id !== 'bom');
+    const excludeEquipment = (nets: any[]) => nets.filter((n: any) => n.id !== 'ep' && n.id !== 'bom');
     if (activeNetworks) return excludeEquipment(NETS.filter(n => activeNetworks.has(n.id)));
     if (liveActiveNets) return excludeEquipment(NETS.filter(n => liveActiveNets.has(n.id)));
     return excludeEquipment(NETS);
   }, [activeNetworks, liveActiveNets]);
 
-  const pdfDocRef = useRef(null);
-  const pdfCanvasRef = useRef(null);
-  const drawCanvasRef = useRef(null);
-  const containerRef = useRef(null);
-  const cwRef = useRef(null);
-  const engineRef = useRef(null);
+  const pdfDocRef = useRef<any>(null);
+  const pdfCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const cwRef = useRef<HTMLDivElement | null>(null);
+  const engineRef = useRef<PlanoEngine | null>(null);
   const mountId = useRef(0);
-  const renderTaskRef = useRef(null);
+  const renderTaskRef = useRef<any>(null);
   const renderingRef = useRef(false);
-  const fileInputSaveRef = useRef(null);
+  const fileInputSaveRef = useRef<HTMLInputElement | null>(null);
   const scaleRef = useRef(1);
 
   const syncEngine = useCallback(() => {
     const eng = engineRef.current;
     if (!eng) return;
-    eng.setTool(tool);
+    eng.setTool(tool as any);
     eng.setActiveNet(activeNet);
-    eng.setTipoTramo(tipoTramo);
+    eng.setTipoTramo(tipoTramo as any);
     eng.setSnap(snapOn);
     eng.setScaleM(scaleM);
     const floorObj = pisos.find(p => p.n === selectedNivel);
@@ -338,7 +272,7 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
 
   useEffect(() => {
     if (finalVisibleNets.length === 0) return;
-    if (!finalVisibleNets.some(n => n.id === activeNet)) {
+    if (!finalVisibleNets.some((n: any) => n.id === activeNet)) {
       setActiveNet(finalVisibleNets[0].id);
     }
     setHiddenNets(prev => {
@@ -356,12 +290,13 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
 
   useEffect(() => {
     setPadreTributarioId(null);
-    if (engineRef.current) engineRef.current.setPadreTributario(null);
+    if (engineRef.current)   engineRef.current!.setPadreTributario(null as any);
   }, [activeNet, tipoTramo]);
 
   useEffect(() => {
-    const handler = (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') return;
       if (e.key.toLowerCase() === 'g') { setSnapOn(p => !p); e.preventDefault(); }
     };
     document.addEventListener('keydown', handler);
@@ -386,8 +321,8 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
     const cw = cwRef.current;
     const canv = drawCanvasRef.current;
     if (engineRef.current) engineRef.current.destroy();
-    const pdfWrap = pdfCanvasRef.current?.parentElement;
-    const eng = new PlanoEngine(cw, pdfWrap, canv);
+    const pdfWrap = pdfCanvasRef.current?.parentElement ?? undefined;
+    const eng = new PlanoEngine(cw, pdfWrap!, canv);
     engineRef.current = eng;
     eng.onSelect((el) => setSelElement(el));
     eng.onStatus((msg) => setStatusMsg(msg));
@@ -396,8 +331,8 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
         autoSaveTimerRef.current = setTimeout(() => {
           autoSaveTimerRef.current = null;
           saveTrazosToStorage();
-          try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
-          try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
+          try { writeSanDrawingSync(planosCtx.plans); } catch (_) {}
+          try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {}
         }, 800);
       }
     });
@@ -435,7 +370,7 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
       try {
         setLoading(true);
         setError(null);
-        const buffer = reader.result;
+        const buffer = reader.result as ArrayBuffer;
         const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
         if (thisMount !== mountId.current) return;
         pdfDocRef.current = pdf;
@@ -446,14 +381,14 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
       } catch (err) {
         if (thisMount === mountId.current) {
           console.error("Error cargando PDF:", err);
-          setError(err);
+          setError("Error cargando PDF");
           setLoading(false);
         }
       }
     };
 
     reader.onerror = () => {
-      setError(new Error("No se pudo leer el archivo."));
+      setError("No se pudo leer el archivo.");
       setLoading(false);
     };
 
@@ -466,7 +401,7 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
     renderPage(pageNumber, scale, mountId.current);
   }, [scale]);
 
-  const renderPage = async (pageNum, sc, mountCheck) => {
+  const renderPage = async (pageNum: number, sc: number, mountCheck: number) => {
     if (renderingRef.current) return;
     const pdf = pdfDocRef.current;
     const pdfCanvas = pdfCanvasRef.current;
@@ -489,16 +424,16 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
       pdfCanvas.height = Math.floor(viewport.height * dpr);
       pdfCanvas.style.width = viewport.width + 'px';
       pdfCanvas.style.height = viewport.height + 'px';
-      const ctx = pdfCanvas.getContext("2d");
-      ctx.imageSmoothingEnabled = false;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, viewport.width, viewport.height);
+      const ctx = pdfCanvas.getContext("2d")!;
+      ctx!.imageSmoothingEnabled = false;
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx!.clearRect(0, 0, viewport.width, viewport.height);
       const task = page.render({ canvasContext: ctx, viewport });
       renderTaskRef.current = task;
       try {
         await task.promise;
       } catch (rerr) {
-        if (rerr?.name === 'RenderingCancelledException') { renderingRef.current = false; return; }
+        if ((rerr as any)?.name === 'RenderingCancelledException') { renderingRef.current = false; return; }
         throw rerr;
       }
       renderTaskRef.current = null;
@@ -510,8 +445,8 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
         drawCanvas.style.width = viewport.width + 'px';
         drawCanvas.style.height = viewport.height + 'px';
         const dctx = drawCanvas.getContext('2d');
-        dctx.imageSmoothingEnabled = false;
-        dctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        dctx!.imageSmoothingEnabled = false;
+        dctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
         if (engineRef.current) {
           engineRef.current.dpr = dpr;
           engineRef.current.setPageSize(viewport.width, viewport.height);
@@ -519,16 +454,16 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
         }
       }
     } catch (err) {
-      if (err?.name === 'RenderingCancelledException') return;
+      if ((err as any)?.name === 'RenderingCancelledException') return;
       if (mountCheck && mountCheck !== mountId.current) return;
       console.error("Error renderizando pagina:", err);
-      setError(err);
+      setError(String(err));
     } finally {
       renderingRef.current = false;
     }
   };
 
-  const goToPage = useCallback((target) => {
+  const goToPage = useCallback((target: number) => {
     if (target < 1 || target > numPages) return;
     setPageNumber(target);
     mountId.current += 1;
@@ -568,11 +503,11 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
     doSave();
   }, [doSave]);
 
-  const handleLoad = useCallback((e) => {
+  const handleLoad = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !engineRef.current) return;
     const reader = new FileReader();
-    reader.onload = () => engineRef.current.loadWork(reader.result);
+    reader.onload = () => engineRef.current!.loadWork(reader.result as string);
     reader.readAsText(file);
     e.target.value = '';
   }, []);
@@ -590,7 +525,7 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
     }
   }, [selElement]);
 
-  const handleUpdateSel = useCallback((field, value) => {
+  const handleUpdateSel = useCallback((field: string, value: any) => {
     if (!engineRef.current || !selElement) return;
     engineRef.current.updateSelected({ [field]: value });
     setSelElement({ ...selElement, [field]: value });
@@ -632,13 +567,13 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
         overflowX: "auto", overflowY: "hidden", justifyContent: "center",
       }}>
         <div style={{flex:1,minWidth:4}}/>
-        {finalVisibleNets.map(n => {
+        {finalVisibleNets.map((n: any) => {
           const isActive=activeNet===n.id;
           const isHidden=hiddenNets.has(n.id);
           const isLocked=lockedNets.has(n.id);
           return <div key={n.id} style={{display:'flex',alignItems:'center',gap:2,flexShrink:0}}>
             <button onClick={()=>setActiveNet(n.id)}
-              title={`Red ${n.name}${isLocked?' (bloqueada)':''}`}
+              title={`Red ${n.name.charAt(0).toLowerCase() + n.name.slice(1)}${isLocked?' (bloqueada)':''}`}
               style={{
                 padding:"2px 8px", background:isActive?n.col+'22':"transparent",
                 borderTop:`1px solid ${isActive?n.col:'#3a494a'}`,
@@ -650,7 +585,7 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
                 fontSize:10, whiteSpace:"nowrap", opacity:isHidden?0.5:1,
                 textDecoration:isLocked&&isActive?'line-through':'none',
               }}>
-              {isLocked&&isActive?'🔒 ':' '}{isHidden?'👻 ':' '}Red {n.name}
+              {isLocked&&isActive?'🔒 ':' '}{isHidden?'👻 ':' '}Red {n.name.charAt(0).toLowerCase() + n.name.slice(1)}
             </button>
             <button onClick={()=>{
               const next=new Set(hiddenNets);
@@ -764,8 +699,8 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
             const work = eng.saveWork();
             console.log('[CERRAR] work bytes=', work ? work.length : null, 'ramales=', eng.ramales?.length, 'bajantes=', eng.bajantes?.length);
             try { localStorage.setItem(key, work); console.log('[CERRAR] saved to', key); } catch (e) { console.error('[CERRAR] save error', e); }
-            try { writeSanDrawingSync(planosCtx.planos); } catch (_) {}
-            try { writeHidroDrawingSync(planosCtx.planos); } catch (_) {}
+            try { writeSanDrawingSync(planosCtx.plans); } catch (_) {}
+            try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {}
           }
           window.location.href = '#/civilflowareatrabajo';
         }}
@@ -775,138 +710,29 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", fontSize: 10,
               transition:"all .15s",
             }}
-            onMouseEnter={e=>{e.currentTarget.style.background='rgba(211,47,47,.25)';e.currentTarget.style.borderColor='rgba(211,47,47,.5)'}}
-            onMouseLeave={e=>{e.currentTarget.style.background='rgba(211,47,47,.12)';e.currentTarget.style.borderColor='rgba(211,47,47,.3)'}}>
+            onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>)=>{e.currentTarget.style.background='rgba(211,47,47,.25)';e.currentTarget.style.borderColor='rgba(211,47,47,.5)'}}
+            onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>)=>{e.currentTarget.style.background='rgba(211,47,47,.12)';e.currentTarget.style.borderColor='rgba(211,47,47,.3)'}}>
             <svg viewBox="0 0 22 22" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 3H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Cerrar dibujo
           </button>
         </div>
       </div>
 
       {/* Canvas area */}
-      <div ref={cwRef} style={{
-        flex: 1, overflow: "hidden", display: "flex", justifyContent: "center",
-        alignItems: "flex-start", background: "#111317", position: "relative",
-      }}>
-        {/* Canvases and container always mounted to prevent unmounting and losing references */}
-        <div ref={containerRef} style={{
-          position: "relative",
-          display: currentFile && !error ? "inline-block" : "none",
-        }}>
-          <div id="pdfWrap" style={{ transformOrigin: '0 0', imageRendering: 'pixelated' }}>
-            <canvas ref={pdfCanvasRef} style={{ display: "block", background: "#fff", imageRendering: 'pixelated' }} />
-          </div>
-          <canvas
-            ref={drawCanvasRef}
-            style={{
-              position: "absolute", top: 0, left: 0,
-              cursor: tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair',
-            }}
-          />
-          {loading && currentFile && (
-            <div style={{
-              position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              background: "rgba(17,19,23,0.8)",
-            }}>
-              <div className="sp" />
-            </div>
-          )}
-        </div>
-
-        {/* Warning overlays and screens rendered absolute/flex on top of/instead of the canvas */}
-      {(!currentFile || selectedNivel === null || selectedNivel === undefined) && !error && (
-        <div style={{
-          position:"absolute",top:0,left:0,right:0,bottom:0,zIndex:10,
-          display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,padding:40,
-          background:"rgba(17,19,23,0.95)"
-        }}>
-          <div style={{
-            display:'flex',flexDirection:'column',alignItems:'center',gap:14,
-            padding:'32px 48px',maxWidth:480,
-            background:'linear-gradient(135deg,rgba(77,143,247,0.15),rgba(0,220,229,0.08))',
-            border:'2px solid rgba(77,143,247,0.4)',borderRadius:12,
-            boxShadow:'0 8px 40px rgba(77,143,247,0.15),inset 0 1px 0 rgba(77,143,247,0.1)',
-          }}>
-            <div style={{fontSize:56,lineHeight:1,filter:'drop-shadow(0 0 12px rgba(77,143,247,0.4))'}}>📐</div>
-            <div style={{fontSize:17,fontWeight:700,color:'#4D8FF7',fontFamily:"'Geist',monospace",letterSpacing:0.5,textAlign:'center'}}>
-              Selecciona un piso con plano asociado
-            </div>
-            <div style={{fontSize:12,color:'#e2e2e8',fontFamily:"'Geist',monospace",textAlign:'center',lineHeight:1.5,maxWidth:360}}>
-              Para empezar a dibujar, selecciona un <strong style={{color:'#00dce5'}}>piso</strong> que tenga un plano confirmado en el panel derecho, o carga un plano desde la pestaña <strong style={{color:'#00dce5'}}>"Carga de planos"</strong>.
-            </div>
-            <a href="#/civilflowareatrabajo" onClick={() => sessionStorage.setItem('openTab', 'planos')} style={{
-              marginTop:6,padding:'8px 18px',
-              background:'rgba(0,220,229,0.15)',border:'1px solid rgba(0,220,229,0.45)',
-              borderRadius:6,color:'#00dce5',fontWeight:700,fontSize:11,textDecoration:'none',
-              fontFamily:"'Geist',monospace",letterSpacing:1,textTransform:'uppercase',
-            }}>📐 Ir a Carga de planos</a>
-          </div>
-        </div>
-      )}
-
-      {currentFile && error && (
-          <div style={{
-            position:"absolute",top:0,left:0,right:0,bottom:0,zIndex:10,
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent:"center", gap: 12, padding: 40,
-            background: "#111317"
-          }}>
-            <div style={{ fontSize: 40 }}>⚠</div>
-            <div style={{ color: "#ffb4ab", fontFamily: "'Geist',monospace", fontSize: 13 }}>Error al cargar el PDF</div>
-            <div style={{ color: "#849495", fontFamily: "'Geist',monospace", fontSize: 11 }}>{error.message || String(error)}</div>
-          </div>
-        )}
-
-        {currentFile && !error && selectedNivel !== null && selectedNivel !== undefined && !planos.some(p => p.nivel === selectedNivel && p.status === 'confirmed') && (
-          <div style={{
-            position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:20,
-            display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:14,
-            background:'rgba(17,19,23,0.95)',
-          }}>
-            <div style={{
-              display:'flex',flexDirection:'column',alignItems:'center',gap:14,
-              padding:'32px 48px',maxWidth:480,
-              background:'linear-gradient(135deg,rgba(245,166,35,0.18),rgba(245,166,35,0.08))',
-              border:'2px solid rgba(245,166,35,0.55)',borderRadius:12,
-              boxShadow:'0 8px 40px rgba(245,166,35,0.2),inset 0 1px 0 rgba(245,166,35,0.15)',
-            }}>
-              <div style={{fontSize:56,lineHeight:1,filter:'drop-shadow(0 0 12px rgba(245,166,35,0.5))'}}>⚠️</div>
-              <div style={{fontSize:18,fontWeight:700,color:'#f5a623',fontFamily:"'Geist',monospace",letterSpacing:0.5,textAlign:'center'}}>
-                {pisoLbl(selectedNivel)} — Sin plano asociado
-              </div>
-              <div style={{fontSize:12,color:'#e2e2e8',fontFamily:"'Geist',monospace",textAlign:'center',lineHeight:1.5,maxWidth:360}}>
-                El nivel seleccionado no tiene un plano confirmado. Carga un plano desde la pestaña <strong style={{color:'#00dce5'}}>"Carga de planos"</strong> y asígnale este nivel para empezar a dibujar.
-              </div>
-              <a href="#/civilflowareatrabajo" onClick={() => sessionStorage.setItem('openTab', 'planos')} style={{
-                marginTop:6,padding:'8px 18px',
-                background:'rgba(0,220,229,0.15)',border:'1px solid rgba(0,220,229,0.45)',
-                borderRadius:6,color:'#00dce5',fontWeight:700,fontSize:11,textDecoration:'none',
-                fontFamily:"'Geist',monospace",letterSpacing:1,textTransform:'uppercase',
-              }}>📐 Ir a Carga de planos</a>
-            </div>
-          </div>
-        )}
-
-        {/* Status bar */}
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0,
-          display: "flex", alignItems: "center", gap: 10, padding: "4px 14px",
-          background: "rgba(17,19,23,0.92)", borderTop: "1px solid #3a494a",
-          fontFamily: "'Geist',monospace", fontSize: 11, color: "#6b8cae",
-        }}>
-          <div style={{ flex: 1 }} />
-          {tool === 'line' && (
-            <span style={{ color: '#6b8cae', fontSize: 11 }}>
-              Enter/Doble-clic:Guardar · Esc:Cancelar
-            </span>
-          )}
-          {tool === 'area' && (
-            <span style={{ color: '#6b8cae', fontSize: 11 }}>
-              Enter/Doble-clic:Cerrar · Esc:Cancelar
-            </span>
-          )}
-          {snapOn && <span style={{ color: '#10B981', fontSize: 11 }}>Snap</span>}
-        </div>
-      </div>
+        <PdfCanvas
+          cwRef={cwRef}
+          containerRef={containerRef}
+          pdfCanvasRef={pdfCanvasRef}
+          drawCanvasRef={drawCanvasRef}
+          currentFile={currentFile}
+          error={error as any}
+          loading={loading}
+          selectedNivel={selectedNivel}
+          pisos={pisos}
+          planos={planos}
+        tool={tool}
+        snapOn={snapOn}
+        onSelectPlan={onSelectPlan}
+      />
 
       {/* Right sidebar: Piso, ¿Qué voy a dibujar?, Tramo, Escala */}
       <div className="visor-sidebar-right" style={{
@@ -973,7 +799,7 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
                 onChange={e=>{
                   const v=e.target.value||null;
                   setPadreTributarioId(v);
-                  if(engineRef.current)engineRef.current.setPadreTributario(v);
+                   if (engineRef.current) engineRef.current.setPadreTributario(v as any);
                 }}
                 style={{width:'100%',padding:'5px 8px',background:'#1a1c20',border:'1px solid #3a494a',borderRadius:3,color:padreTributarioId?'#2563EB':'#6b8cae',fontSize:11,fontFamily:"'Geist',monospace",cursor:'pointer'}}>
                 <option value="">— Seleccionar ramal padre —</option>
@@ -995,93 +821,25 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
           )}
         </div>
 
-        {/* Datos del tramo */}
-        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", textTransform: "uppercase", letterSpacing: 1 }}>Datos del tramo</div>
-            {selElement && (selElement.pts || selElement.id?.startsWith('T')) && (
-              <button onClick={handleRotateLabel} title="Rotar etiqueta (0°/45°/90°/-90°/-45°)" style={{
-                display: 'flex', alignItems: 'center', gap: 4,
-                padding: '2px 6px', background: 'rgba(168,85,247,.1)',
-                border: '1px solid rgba(168,85,247,.35)', borderRadius: 3,
-                color: '#A855F7', cursor: 'pointer',
-                fontFamily: "'Geist',monospace", fontSize: 9, fontWeight: 700,
-              }}>
-                <span style={{ fontSize: 12, lineHeight: 1 }}>↻</span>
-                <span>{selElement.labelAngle || selElement.textAngle || 0}°</span>
-              </button>
-            )}
-          </div>
-          {selElement ? (
-            <div style={{display:'flex',flexDirection:'column',gap:5}}>
-              {selElement.label&&!(
-                selElement.id?.startsWith('R') && selElement.pts
-              )&&(
-                <div style={{fontSize:13,fontWeight:600,color:'#b9caca',fontFamily:"'Geist',monospace",padding:'2px 0'}}>
-                  {selElement.label}
-                </div>
-              )}
-              {selElement.id?.startsWith('R') && selElement.pts && (
-                <div style={{display:'grid',gridTemplateColumns:'1.4fr 1fr 1fr',gap:3}}>
-                  <div>
-                    <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Nombre</div>
-                    <input value={selElement.label||''} placeholder="Tramo"
-                      onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({label:v});setSelElement({...selElement,label:v})}}}
-                      style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
-                  </div>
-                  <div>
-                    <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Ini</div>
-                    <input value={selElement.ini||''} placeholder="— ini —"
-                      onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({ini:v});setSelElement({...selElement,ini:v})}}}
-                      style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
-                  </div>
-                  <div>
-                    <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Fin</div>
-                    <input value={selElement.fin||''} placeholder="— fin —"
-                      onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({fin:v});setSelElement({...selElement,fin:v})}}}
-                      style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
-                  </div>
-                </div>
-              )}
-              {selElement.id?.startsWith('B')&&(
-                <div>
-                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Código</div>
-                  <input value={selElement.code||''} placeholder="Código bajante"
-                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({code:v});setSelElement({...selElement,code:v})}}}
-                    style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
-                </div>
-              )}
-              {selElement.id?.startsWith('T')&&(
-                <div>
-                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Texto</div>
-                  <input value={selElement.text||''} placeholder="Texto"
-                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({text:v});setSelElement({...selElement,text:v})}}}
-                    style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
-                </div>
-              )}
-              {selElement.id?.startsWith('AR')&&(
-                <div>
-                  <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Etiqueta</div>
-                  <input value={selElement.label||''} placeholder="Etiqueta área"
-                    onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({label:v});setSelElement({...selElement,label:v})}}}
-                    style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
-                </div>
-              )}
-              {/* ΔZ moved to Datos específicos for AF/AC */}
-              {selElement.pts&&(
-                <div style={{fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace"}}>
-                  L={selElement.totalL}m · {selElement.pts.length} pts
-                  {selElement.tipo?` · ${selElement.tipo}`:''}
-                </div>
-              )}
-              
-            </div>
-          ) : (
-            <div style={{fontSize:11,color:'#6b8cae',fontFamily:"'Geist',monospace",padding:'4px 0'}}>
-              Selecciona un elemento en el plano
-            </div>
-          )}
-        </div>
+        <TramoEditor
+          selElement={selElement}
+          activeNet={activeNet}
+          engineRef={engineRef}
+          diamSel={diamSel}
+          gasMatSel={gasMatSel}
+          pendSel={pendSel}
+          pendInput={pendInput}
+          mats={mats}
+          matLongName={matLongName}
+          setDiamSel={setDiamSel}
+          setGasMatSel={setGasMatSel}
+          setPendSel={setPendSel}
+          setPendInput={setPendInput}
+          setSelElement={setSelElement}
+          handleUpdateSel={handleUpdateSel}
+          handleRotateLabel={handleRotateLabel}
+          handleDelete={handleDelete}
+        />
 
         {/* Escala */}
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
@@ -1090,172 +848,11 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
             {(() => {
               const planoAsoc = planos.find(p => p.nivel === selectedNivel && p.status === 'confirmed');
               if (planoAsoc && planoAsoc.scale) return <span>1:{planoAsoc.scale}</span>;
-              const map = {'0.5':'1:50','0.75':'1:75','1.0':'1:100','1.25':'1:125','2.0':'1:200'};
+              const map: Record<string, string> = {'0.5':'1:50','0.75':'1:75','1.0':'1:100','1.25':'1:125','2.0':'1:200'};
               return <span>{map[scaleM] || '1:100'}</span>;
             })()}
           </div>
         </div>
-
-        {/* Datos específicos */}
-        {(() => {
-          const isGas = activeNet === 'gas';
-          const matList = mats?.[activeNet] || [];
-          const matShort = matList[0]?.val || '—';
-          const matName = matLongName(matShort);
-          const diamList = DIAM_BY_MAT[matShort] || [];
-          const isSelActiveNet = selElement && selElement.net === activeNet;
-          let currentDiam, currentMat;
-          if (isGas) {
-            const selMat = (isSelActiveNet && selElement.material) || gasMatSel[activeNet] || '';
-            const selDn = (isSelActiveNet && selElement.diametro !== undefined && selElement.diametro !== '')
-              ? selElement.diametro : (diamSel[activeNet] || '');
-            currentMat = selMat || GAS[0]?.mat || '';
-            currentDiam = selDn || GAS[0]?.rows[0]?.dn || '';
-          } else {
-            currentDiam = (isSelActiveNet && selElement.diametro !== undefined && selElement.diametro !== '')
-              ? selElement.diametro
-              : (diamSel[activeNet] || DIAM_DEFAULT_BY_NET[activeNet] || (diamList[0]?.n || ''));
-          }
-          const showPend = activeNet === 'san' || activeNet === 'll';
-          const showDeltaZ = activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas';
-          const showDescargas = activeNet === 'af' || activeNet === 'ac' || activeNet === 'san';
-          return (
-            <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-              <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos específicos</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '3px 8px', background: '#1a1c20', border: '1px solid #282a2e', borderRadius: 3 }}>
-                  <span style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0 }}>Material</span>
-                  <span style={{ fontSize: 10, color: '#b9caca', fontFamily: "'Geist',monospace", fontWeight: 600, textAlign: 'right', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={isGas ? currentMat : matName}>{isGas ? currentMat : matName}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: showPend ? '1fr 1fr' : '1fr', gap: 6 }}>
-                  <div>
-                    <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Diámetro</div>
-        {isGas ? (
-          <select value={currentMat && currentDiam ? `${currentMat}|${currentDiam}` : ''}
-          onChange={e => {
-            const v = e.target.value;
-            if (!v) return;
-            const lastBar = v.lastIndexOf('|');
-            const mat = v.substring(0, lastBar);
-            const dn = v.substring(lastBar + 1);
-            setDiamSel(prev => ({ ...prev, [activeNet]: dn }));
-            setGasMatSel(prev => ({ ...prev, [activeNet]: mat }));
-            if (engineRef.current && selElement) {
-              engineRef.current.updateSelected({ material: mat, diametro: dn });
-              setSelElement({ ...selElement, material: mat, diametro: dn });
-            } else if (engineRef.current && !selElement) {
-              const eng = engineRef.current;
-              const lastRamal = [...eng.ramales].reverse().find(r => r.net === activeNet);
-              if (lastRamal) {
-                eng.selId = lastRamal.id;
-                eng.updateSelected({ material: mat, diametro: dn });
-                const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = lastRamal;
-                setSelElement({ ...rest, material: mat, diametro: dn });
-              }
-            }
-          }}
-          style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' }}>
-            {GAS.map(g => (
-              <optgroup key={g.mat} label={`${g.mat} (K=${g.K})`}>
-                {g.rows.map(r => (
-                  <option key={r.dn} value={`${g.mat}|${r.dn}`}>{r.dn}" ({r.d} mm)</option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        ) : diamList.length > 0 ? (
-          <select value={currentDiam}
-          onChange={e => {
-            const v = e.target.value;
-            setDiamSel(prev => ({ ...prev, [activeNet]: v }));
-            if (engineRef.current && selElement) {
-              engineRef.current.updateSelected({ diametro: v });
-              setSelElement({ ...selElement, diametro: v });
-            } else if (engineRef.current && !selElement) {
-              const eng = engineRef.current;
-              const lastRamal = [...eng.ramales].reverse().find(r => r.net === activeNet);
-              if (lastRamal) {
-                eng.selId = lastRamal.id;
-                eng.updateSelected({ diametro: v });
-                const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = lastRamal;
-                setSelElement({ ...rest, diametro: v });
-              }
-            }
-          }}
-          style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' }}>
-          {diamList.map(d => <option key={d.n} value={d.n}>{d.n.split(' — ')[0]}</option>)}
-          </select>
-                    ) : (
-                      <div style={{ padding: '4px 6px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#6b8cae', fontSize: 11, fontFamily: "'Geist',monospace" }}>— Sin opciones —</div>
-                    )}
-                </div>
-        {showPend && (
-          <div>
-            <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Pendiente %</div>
-            <input type="text" inputMode="decimal" value={pendInput}
-              onChange={e => {
-                const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-                setPendInput(raw);
-              }}
-              onBlur={e => {
-                const v = parseFloat(e.target.value.replace(/,/g, '.')) || 0;
-                setPendInput(v > 0 ? String(v) : '');
-                setPendSel(prev => ({ ...prev, [activeNet]: v }));
-                if (engineRef.current && selElement) {
-                  engineRef.current.updateSelected({ pendiente: v });
-                  setSelElement({ ...selElement, pendiente: v });
-                } else if (engineRef.current && !selElement) {
-                  const eng = engineRef.current;
-                  const lastRamal = [...eng.ramales].reverse().find(r => r.net === activeNet);
-                  if (lastRamal) {
-                    eng.selId = lastRamal.id;
-                    eng.updateSelected({ pendiente: v });
-                    const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = lastRamal;
-                    setSelElement({ ...rest, pendiente: v });
-                  }
-                }
-              }}
-              onFocus={() => {
-                const current = (isSelActiveNet && selElement?.pendiente !== undefined)
-                  ? selElement.pendiente
-                  : (pendSel[activeNet] !== undefined ? pendSel[activeNet] : 2.0);
-                setPendInput(current > 0 ? String(current) : '');
-              }}
-            style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", textAlign: 'center' }}
-            />
-                  </div>
-                  )}
-                </div>
-                {showDeltaZ && (
-                  <div style={{ display: 'grid', gridTemplateColumns: showDescargas ? '1fr 1fr' : '1fr', gap: 6 }}>
-                    <div>
-                      <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>ΔZ / L vert (m)</div>
-                      <input type="number" step="0.01" value={selElement?.dz ?? ''} placeholder="0.00"
-                        onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({dz:v,lvert:v});setSelElement({...selElement,dz:v,lvert:v})}}}
-                        style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
-                    </div>
-                    {showDescargas && (
-                      <div>
-                        <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}># Descargas</div>
-                        <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0"
-                          onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||0;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
-                          style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {!showDeltaZ && showDescargas && (
-                  <div>
-                    <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}># Descargas</div>
-                    <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0"
-                      onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||0;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
-                      style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
 
         {/* Cuantificación de aparatos */}
         <AparatosPanel activeNet={activeNet} selElement={selElement} />
@@ -1333,7 +930,7 @@ const smInput = {
   borderRadius: 4, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", textAlign: "center",
 };
 
-function navBtnSm(dis) {
+function navBtnSm(dis: boolean): React.CSSProperties {
   return {
     padding: "3px 8px", background: dis ? "#1e2024" : "#282a2e",
     border: "1px solid #3a494a", borderRadius: "3px",
