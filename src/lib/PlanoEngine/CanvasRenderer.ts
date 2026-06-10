@@ -1,14 +1,23 @@
-export function renderGrid(ctx: CanvasRenderingContext2D, w: number, h: number) {
+export function renderGrid(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  step = 50,
+  offsetX = 0,
+  offsetY = 0,
+  zoom = 1
+) {
+  const sx = offsetX % (step * zoom);
+  const sy = offsetY % (step * zoom);
   ctx.strokeStyle = '#1e293b';
   ctx.lineWidth = 0.5;
-  const step = 50;
-  for (let x = 0; x < w; x += step) {
+  for (let x = -sx; x < w; x += step * zoom) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, h);
     ctx.stroke();
   }
-  for (let y = 0; y < h; y += step) {
+  for (let y = -sy; y < h; y += step * zoom) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(w, y);
@@ -16,7 +25,14 @@ export function renderGrid(ctx: CanvasRenderingContext2D, w: number, h: number) 
   }
 }
 
-export function drawArrow(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number, size = 8) {
+export function drawArrow(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  size = 8
+) {
   const angle = Math.atan2(y2 - y1, x2 - x1);
   const ax1 = x2 - size * Math.cos(angle - Math.PI / 6);
   const ay1 = y2 - size * Math.sin(angle - Math.PI / 6);
