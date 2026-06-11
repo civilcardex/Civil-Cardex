@@ -186,7 +186,7 @@ export default function GasDesign(){
     <div className="card" style={{flexShrink:0,alignSelf:'start'}}>
       <div className="card-h" style={{padding:'6px 12px'}}>
         <span className="card-t">
-          <img src="/iconos_diseno_redes/red_de_gas.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />
+          <img src="/iconos_diseno_redes/datos_generales_red_gas.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />
           Datos generales
         </span>
       </div>
@@ -219,7 +219,7 @@ export default function GasDesign(){
       <div className="card" style={{display:'flex',flexDirection:'column'}}>
         <div className="card-h" style={{justifyContent:'space-between'}}>
           <span className="card-t">
-            <img src="/iconos_diseno_redes/red_de_gas.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} />
+            <img src="/iconos_diseno_redes/diseno_red_gas.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} />
             Diseño de red
           </span>
           <span className="card-s">{gasTramos.length} tramos</span>
@@ -278,7 +278,7 @@ export default function GasDesign(){
       <div className="card" style={{display:'flex',flexDirection:'column',minWidth:0,overflow:'hidden',...(gasTramos.length===0?{}:{flex:1})}}>
         <div className="card-h" style={{justifyContent:'space-between'}}>
           <span className="card-t">
-            <img src="/iconos_diseno_redes/red_de_gas.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} />
+            <img src="/iconos_diseno_redes/chequeo_red_gas.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} />
             Chequeo red de gas
           </span>
           <span className="card-s">{gasTramos.length} tramos</span>

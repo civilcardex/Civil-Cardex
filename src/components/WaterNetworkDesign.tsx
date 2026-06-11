@@ -316,7 +316,7 @@ export default function WaterNetworkDesign({ networkType, diamTable, lookupFn }:
 
       <div style={{ display: "none" }}>
         <div className="card-h">
-          <span className="card-t"><img src="/iconos_diseno_redes/Accesorios.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Longitud equivalente por accesorios (m)</span>
+          <span className="card-t"><img src="/iconos_diseno_redes/Accesorios.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Accesorios por ramal</span>
           <span className="card-s">Cálculo interno de Le por ramal · PVC-PR C=150</span>
         </div>
         <div style={{ padding: "4px" }}>
@@ -368,7 +368,7 @@ export default function WaterNetworkDesign({ networkType, diamTable, lookupFn }:
               </tr>
               <tr>
                 <th colSpan={2 + LE_ACC_DEF.length} style={{ background: "var(--bg3)", border: "1px solid var(--line)", textAlign: "center", padding: "4px", fontSize: 10, color: "var(--txt2)" }}>
-                  Longitud equivalente por accesorios (m)
+                  Accesorios por ramal
                 </th>
               </tr>
             </thead>
