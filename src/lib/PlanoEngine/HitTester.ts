@@ -50,7 +50,7 @@ export function pointToSegmentDist(px: number, py: number, x1: number, y1: numbe
   return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }
 
-export function snapToSegment(x: number, y: number, pts: number[][]) {
+export function snapToSegment(x: number, y: number, pts: number[][], threshold: number = Infinity) {
   let best: { x: number; y: number } | null = null;
   let minD = Infinity;
   for (let i = 0; i < pts.length - 1; i++) {
@@ -60,7 +60,7 @@ export function snapToSegment(x: number, y: number, pts: number[][]) {
     const t = Math.max(0, Math.min(1, ((x - x1) * ddx + (y - y1) * ddy) / len2));
     const ptx = x1 + t * ddx, pty = y1 + t * ddy;
     const d = Math.hypot(x - ptx, y - pty);
-    if (d < minD) { minD = d; best = { x: ptx, y: pty }; }
+    if (d < minD && d <= threshold) { minD = d; best = { x: ptx, y: pty }; }
   }
   return best;
 }

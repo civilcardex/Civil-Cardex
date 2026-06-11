@@ -299,7 +299,7 @@ function PlanosTab({ state }: { state: WorkAreaState }) {
       <div style={{ width: 170, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--line)', borderRadius: 'var(--r2)' }}>
         <div className="card-h" style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'none' }}>
           <span className="card-t" style={{ fontSize: 13 }}>
-            <img src="/iconos_carga_plans/requisitos_del_plano.webp" alt="" style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} />
+            <img src="/iconos_carga_planos/requisitos_del_plano.webp" alt="" style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} />
             Requisitos del plano
           </span>
         </div>
@@ -378,7 +378,7 @@ function PlanosTab({ state }: { state: WorkAreaState }) {
             style={{ width: '100%', padding: '10px', background: 'rgba(0,220,229,0.06)', border: '1.5px dashed rgba(0,220,229,0.3)', borderRadius: 'var(--r)', color: '#00dce5', fontWeight: 600, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all .15s' }}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.12)'; e.currentTarget.style.borderColor = 'rgba(0,220,229,0.5)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.06)'; e.currentTarget.style.borderColor = 'rgba(0,220,229,0.3)'; }}>
-            <img src="/iconos_carga_plans/subir_plano.webp" alt="" style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} /> SUBIR PLANO
+            <img src="/iconos_carga_planos/subir_plano.webp" alt="" style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} /> SUBIR PLANO
           </button>
         </div>
 
@@ -387,7 +387,7 @@ function PlanosTab({ state }: { state: WorkAreaState }) {
           onDragLeave={() => setPlanDrag(false)}
           onDrop={e => { e.preventDefault(); setPlanDrag(false); const fl = e.dataTransfer?.files; if (fl && fl.length > 0) addPlans(fl); }}>
           <div style={{ padding: '7px 10px', fontSize: 11, fontWeight: 700, color: 'var(--txt3)', borderBottom: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: .5 }}>
-            <img src="/iconos_carga_plans/pendientes.webp" alt="" style={{ width: 24, height: 24, verticalAlign: 'middle' }} />
+            <img src="/iconos_carga_planos/pendientes.webp" alt="" style={{ width: 24, height: 24, verticalAlign: 'middle' }} />
             Pendientes {pendingPlanos.length > 0 && `(${pendingPlanos.length})`}
           </div>
           {pendingPlanos.length === 0 ? (
@@ -455,7 +455,7 @@ function PlanosTab({ state }: { state: WorkAreaState }) {
 
         <div style={{ flex: '1 1 50%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ padding: '7px 10px', fontSize: 11, fontWeight: 700, color: 'var(--txt3)', borderBottom: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: .5 }}>
-            <img src="/iconos_carga_plans/cargados.webp" alt="" style={{ width: 24, height: 24, verticalAlign: 'middle' }} />
+            <img src="/iconos_carga_planos/cargados.webp" alt="" style={{ width: 24, height: 24, verticalAlign: 'middle' }} />
             Cargados {confirmedPlanos.length > 0 && `(${confirmedPlanos.length})`}
           </div>
           {confirmedPlanos.length === 0 ? (

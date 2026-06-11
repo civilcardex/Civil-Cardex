@@ -455,15 +455,15 @@ export default class PlanoEngine {
     return best;
   }
 
-  _snapToSegment(x: number, y: number, pts: number[][]): Point | null {
-    return snapToSegment(x, y, pts);
+  _snapToSegment(x: number, y: number, pts: number[][], threshold: number = Infinity): Point | null {
+    return snapToSegment(x, y, pts, threshold);
   }
 
   snapPreviewToPadre(x: number, y: number): Point | null {
     if (this.tipoTramo !== 'tributario' || !this.padreTributario || this.activeRamal) return null;
     const padre = this.ramales.find(r => r.id === this.padreTributario);
     if (!padre) return null;
-    return this._snapToSegment(x, y, padre.pts);
+    return this._snapToSegment(x, y, padre.pts, 20 / this.zoom);
   }
 
   _pointInPoly(px: number, py: number, cvsPts: Point[]): boolean {
@@ -1083,12 +1083,14 @@ export default class PlanoEngine {
       }
       if (!this.activeRamal) {
         if (this.tipoTramo === 'tributario' && this.padreTributario) {
-          const sp = this.snapToExisting(pt.x, pt.y);
-          if (sp) pt = sp;
-        } else {
-          const sp = this.snapToExisting(pt.x, pt.y);
-          if (sp) pt = sp;
+          const padre = this.ramales.find(r => r.id === this.padreTributario);
+          if (padre) {
+            const spSegment = this._snapToSegment(pt.x, pt.y, padre.pts, 20 / this.zoom);
+            if (spSegment) pt = spSegment;
+          }
         }
+        const sp = this.snapToExisting(pt.x, pt.y);
+        if (sp) pt = sp;
         this.activeRamal = {
           net: this.activeNet,
           tipo: this.tipoTramo,
@@ -1111,7 +1113,7 @@ export default class PlanoEngine {
         if (this.tipoTramo === 'tributario' && this.padreTributario) {
           const padre = this.ramales.find(r => r.id === this.padreTributario);
           if (padre) {
-            const sp = this._snapToSegment(pt.x, pt.y, padre.pts);
+            const sp = this._snapToSegment(pt.x, pt.y, padre.pts, 20 / this.zoom);
             if (sp) pt = sp;
           }
         }
