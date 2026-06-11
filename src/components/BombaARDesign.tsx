@@ -8,8 +8,8 @@ const oc=(set: (v: any) => void)=>(e: React.ChangeEvent<HTMLInputElement>)=>{con
 
 const SI: React.CSSProperties = {border:'1px solid var(--line)',borderRadius:3,background:'var(--bg4)',fontFamily:'var(--mono)',fontSize:11,color:'var(--txt)',width:'100%',boxSizing:'border-box',textAlign:'center',outline:'none',padding:'3px 5px'};
 const TH: React.CSSProperties = {fontSize:10,fontWeight:600,color:'var(--txt3)',fontFamily:'var(--mono)',textAlign:'center',padding:'5px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line)',whiteSpace:'nowrap',textTransform:'uppercase',letterSpacing:'0.4px',background:'var(--bg3)'};
-const TD: React.CSSProperties = {fontSize:11,fontFamily:'var(--mono)',padding:'4px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line)',color:'var(--txt2)',textAlign:'center',verticalAlign:'middle'};
-const TDL={...TD,textAlign:'left',fontFamily:'var(--body)'};
+const TD: React.CSSProperties = {fontSize:11,fontFamily:'var(--mono)',padding:'4px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line)',color:'var(--txt2)',textAlign:'center',verticalAlign:'middle',background:'#1a1c20'};
+const TDL: React.CSSProperties={...TD,textAlign:'left',fontFamily:'var(--body)'};
 const Fmt=(v: any,u='')=>{
   if(v===''||v===null||v===undefined)return <span style={{color:'var(--txt3)',fontSize:10}}>—</span>;
   const val=typeof v==='number'?v.toFixed(2):v;
@@ -19,7 +19,7 @@ const Fmt=(v: any,u='')=>{
 const SI2={...SI,fontSize:13,padding:'4px 6px'};
 const TH2={...TH,fontSize:11};
 const TD2={...TD,fontSize:13};
-const TDL2={...TDL,fontSize:13};
+const TDL2={...TDL,fontSize:13,fontWeight:700,color:'var(--txt)'};
 const Fmt2=(v: any,u='')=>{
   if(v===''||v===null||v===undefined)return <span style={{color:'var(--txt3)',fontSize:12}}>—</span>;
   const val=typeof v==='number'?v.toFixed(2):v;
@@ -27,11 +27,15 @@ const Fmt2=(v: any,u='')=>{
 };
 
 function Inp({v,set,style}: {v: any; set: (v: any) => void; style?: React.CSSProperties}){return <input type="text" inputMode="decimal" value={v} onChange={oc(set)} style={style||SI}/>;}
-function Tbl({cols,rows,th,td,tdl,fontSize}: {cols: string[]; rows: any[][]; th?: any; td?: any; tdl?: any; fontSize?: number}){
+function Tbl({cols,rows,th,td,tdl,fontSize,center,valueCol}: {cols: string[]; rows: any[][]; th?: any; td?: any; tdl?: any; fontSize?: number; center?: boolean; valueCol?: number}){
   const h=th||TH,d=td||TD,dl=tdl||TDL;
-  return <table className="tbl" style={{fontSize:fontSize||11,width:'100%',borderCollapse:'collapse'}}>
+  const vc = valueCol ?? 2;
+  return <table className="tbl" style={{fontSize:fontSize||11,width:center?'90%':'100%',maxWidth:900,borderCollapse:'collapse',margin:center?'0 auto':0}}>
     <thead><tr>{cols.map((c,i)=><th key={i} style={h}>{c}</th>)}</tr></thead>
-    <tbody>{rows.map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j} style={j===0?dl:d}>{c}</td>)}</tr>)}</tbody>
+    <tbody>{rows.map((r,i)=><tr key={i}>{r.map((c,j)=>{
+      const s = j===0 ? dl : j===vc ? {...d,width:'1%',whiteSpace:'nowrap'} : d;
+      return <td key={j} style={s}>{c}</td>;
+    })}</tr>)}</tbody>
   </table>;
 }
 
@@ -86,7 +90,7 @@ export default function BombaARDesign(){
   const COLS1=['Parámetro','Símbolo','Valor','Unidad','Equivalencia','Fuente / Norma'];
   const COLS2=['Componente','Símbolo','Valor','Unidad','Equivalencia','Observación'];
 
-  const page1=<Tbl th={TH2} td={TD2} tdl={TDL2} fontSize={13} cols={COLS1} rows={[
+  const page1=<Tbl th={TH2} td={TD2} tdl={TDL2} fontSize={13} valueCol={2} cols={COLS1} rows={[
     ['Número de Salidas Simultáneas','Sal sim',<Inp v={salSim} set={setSalSim} style={SI2}/>,'und','—','Probabilidad de trabajar al máximo'],
     ['UD acumuladas en sótano','UD tot',<Inp v={udTot} set={setUdTot} style={SI2}/>,'UD','—','NTC 1500'],
     ['Coeficiente K simultaneidad Hunter','K',Fmt2(K),'—','—','K = 1/√(n−1)'],
@@ -111,70 +115,106 @@ export default function BombaARDesign(){
     ['Chequeo velocidad','V chk',<span style={{color:Vch==='O.K.'?'#22c55e':'#ef5350',fontWeight:700,fontFamily:'var(--mono)',fontSize:13}}>{Vch}</span>,'—','—','Verificación automática'],
   ]}/>;
 
-  const page3=<>
-    <Tbl cols={COLS1} rows={[
-      ['Caudal nominal bomba','Q b',Fmt(Qb),'lps',Fmt((Qb*15.8503).toFixed(2),'GPM'),'Incluye reserva 25%'],
-      ['Altura manométrica Hm','H m',Fmt(Hm),'m.c.a.',Hm?Fmt((Hm*1.42).toFixed(2),'psi'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'Tomado de bloque 2'],
-      ['Potencia hidráulica','P hid',Fmt(Ph),'W',Ph?Fmt((Ph/746).toFixed(2),'HP'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'Ph = ρ·g·Q·Hm / 1000'],
-      ['Potencia en el eje','P eje',Fmt(Peje),'W',Peje?Fmt((Peje/746).toFixed(2),'HP'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'P eje = Ph / η bomba'],
-      ['Potencia comercial (×f srv)','P com',Fmt(Pcom),'W',Pcom?Fmt(php.toFixed(2),'HP'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'Motor seleccionar ≥ este valor'],
-      ['Selección comercial automática','Sel',<span style={{color:'var(--acc2)',fontWeight:700,fontFamily:'var(--mono)'}}>{Sel}</span>,'HP','—','Estándar: 0.5 / 1 / 2 / 3 / 5 HP'],
-      ['Tipo de bomba','Tipo','Sumergible trituradora','—','—','NTC 1500 §8.5 — residuales con sólidos'],
-      ['NPSH disponible mínimo','NPSH',<Inp v={npsh} set={setNpsh} style={SI}/>,'m','—','Verificar con curva del fabricante'],
-    ]}/>
-    <div className="card-t" style={{padding:'8px 8px',borderTop:'1px solid var(--line)',borderBottom:'1px solid var(--line)',background:'var(--bg4)',margin:'8px 0 4px',fontSize:15}}>
-      <img src="/iconos_diseno_redes/especificacion_camara_trituradora.webp" alt="" style={{width:22,height:22}} />Especificación — Bomba sumergible trituradora
+  const page3=<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', alignItems: 'start' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
+      <div className="card-h" style={{padding:'8px 8px'}}>
+        <span className="card-t"><img src="/iconos_diseno_redes/bomba_sumergible_trituradora.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Parámetros de Diseño</span>
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead><tr>{COLS1.map((c,i)=><th key={i} style={TH2}>{c}</th>)}</tr></thead>
+        <tbody>{[
+          ['Caudal nominal bomba','Q b',Fmt(Qb),'lps',Fmt((Qb*15.8503).toFixed(2),'GPM'),'Incluye reserva 25%'],
+          ['Altura manométrica Hm','H m',Fmt(Hm),'m.c.a.',Hm?Fmt((Hm*1.42).toFixed(2),'psi'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'Tomado de bloque 2'],
+          ['Potencia hidráulica','P hid',Fmt(Ph),'W',Ph?Fmt((Ph/746).toFixed(2),'HP'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'Ph = ρ·g·Q·Hm / 1000'],
+          ['Potencia en el eje','P eje',Fmt(Peje),'W',Peje?Fmt((Peje/746).toFixed(2),'HP'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'P eje = Ph / η bomba'],
+          ['Potencia comercial (×f srv)','P com',Fmt(Pcom),'W',Pcom?Fmt(php.toFixed(2),'HP'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'Motor seleccionar ≥ este valor'],
+          ['Selección comercial automática','Sel',<span style={{color:'var(--acc2)',fontWeight:700,fontFamily:'var(--mono)'}}>{Sel}</span>,'HP','—','Estándar: 0.5 / 1 / 2 / 3 / 5 HP'],
+          ['Tipo de bomba','Tipo','Sumergible trituradora','—','—','NTC 1500 §8.5 — residuales con sólidos'],
+          ['NPSH disponible mínimo','NPSH',<Inp v={npsh} set={setNpsh} style={{...SI, width: 35, fontSize: 10, padding: '2px 3px'}}/>,'m','—','Verificar con curva del fabricante'],
+        ].map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j} style={j===0?{...TDL2, color: '#fff'}:j===2?{...TD,fontSize:10,width:'35px',whiteSpace:'nowrap'}:j===5?{...TD2, width: '30%'}:TD2}>{c}</td>)}</tr>)}</tbody>
+      </table>
     </div>
-    <Tbl cols={['Ítem','Valor']} rows={[
-      ['Caudal nominal',Fmt((Qb*15.8503).toFixed(2),'GPM')],
-      ['Altura manométrica total (Hm)',Fmt(Hm,'m.c.a.')],
-      ['Potencia motor',<span style={{color:'var(--acc2)',fontWeight:700,fontFamily:'var(--mono)'}}>{Sel}</span>],
-      ['Tipo','Bomba sumergible trituradora, impeler monocanal'],
-      ['Tensión','110V o 220V monofásica — confirmar con proveedor'],
-    ]}/>
-    {Nota}
-  </>;
+    
+    <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
+      <div className="card-h" style={{padding:'8px 8px'}}>
+        <span className="card-t"><img src="/iconos_diseno_redes/especificacion_camara_trituradora.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Especificación — Bomba sumergible trituradora</span>
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead><tr>{['Ítem','Valor'].map((c,i)=><th key={i} style={TH2}>{c}</th>)}</tr></thead>
+        <tbody>{[
+          ['Caudal nominal',Fmt((Qb*15.8503).toFixed(2),'GPM')],
+          ['Altura manométrica total (Hm)',Fmt(Hm,'m.c.a.')],
+          ['Potencia motor',<span style={{color:'var(--acc2)',fontWeight:700,fontFamily:'var(--mono)'}}>{Sel}</span>],
+          ['Tipo','Bomba sumergible trituradora, impeler monocanal'],
+          ['Tensión','110V o 220V monofásica — confirmar con proveedor'],
+        ].map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j} style={j===0?{...TDL2, color: '#fff'}:TD2}>{c}</td>)}</tr>)}</tbody>
+      </table>
+      {Nota}
+    </div>
+  </div>;
 
-  const page4=<>
-    <Tbl cols={COLS1} rows={[
-      ['Tiempo mínimo ciclo arranque','t cic',<Inp v={tCic} set={setTCic} style={SI}/>,'min','—','Mínimo 5 min entre arranques'],
-      ['Volumen útil cámara mínimo','V cam',Fmt(Vcam),'lts',Vcam?Fmt((Vcam/1000).toFixed(2),'m³'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'V = Qb(lps) × t(s)'],
-      ['Tirante mínimo sobre bomba','h min',<Inp v={hMin} set={setHMin} style={SI}/>,'m','—','Evita cavitación'],
-      ['Tirante máximo antes de arrancar','h max',<Inp v={hMax} set={setHMax} style={SI}/>,'m','—','Nivel activación flotador'],
-      ['Ancho mínimo cámara','b cam',<Inp v={bCam} set={setBCam} style={SI}/>,'m','—','NTC 1500 §8.5 — mínimo 60 cm'],
-      ['Largo mínimo cámara','l cam',<Inp v={lCam} set={setLCam} style={SI}/>,'m','—','Verificar con dimensiones bomba'],
-      ['Volumen geométrico disponible','V geo',Fmt(Vgeo),'m³',Vgeo?Fmt((Vgeo*1000).toFixed(2),'lts'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'b×l×(h max−h min)'],
-      ['Chequeo volumen','V chk',<span style={{color:Vchk==='O.K.'?'#22c55e':'#ef5350',fontWeight:700,fontFamily:'var(--mono)'}}>{Vchk||'—'}</span>,'—','—','V geo ≥ V cam requerido'],
-    ]}/>
-    <div className="card-t" style={{padding:'8px 8px',borderTop:'1px solid var(--line)',borderBottom:'1px solid var(--line)',background:'var(--bg4)',margin:'8px 0 4px',fontSize:15}}>
-      <img src="/iconos_diseno_redes/especificacion_camara_bombeo.webp" alt="" style={{width:22,height:22}} />Especificación — Cámara de bombeo
+  const page4=<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', alignItems: 'start' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
+      <div className="card-h" style={{padding:'8px 8px'}}>
+        <span className="card-t"><img src="/iconos_diseno_redes/camara_bombeo.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Parámetros de Diseño</span>
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead><tr>{COLS1.map((c,i)=><th key={i} style={TH2}>{c}</th>)}</tr></thead>
+        <tbody>{[
+          ['Tiempo mínimo ciclo arranque','t cic',<Inp v={tCic} set={setTCic} style={SI}/>,'min','—','Mínimo 5 min entre arranques'],
+          ['Volumen útil cámara mínimo','V cam',Fmt(Vcam),'lts',Vcam?Fmt((Vcam/1000).toFixed(2),'m³'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'V = Qb(lps) × t(s)'],
+          ['Tirante mínimo sobre bomba','h min',<Inp v={hMin} set={setHMin} style={SI}/>,'m','—','Evita cavitación'],
+          ['Tirante máximo antes de arrancar','h max',<Inp v={hMax} set={setHMax} style={SI}/>,'m','—','Nivel activación flotador'],
+          ['Ancho mínimo cámara','b cam',<Inp v={bCam} set={setBCam} style={SI}/>,'m','—','NTC 1500 §8.5 — mínimo 60 cm'],
+          ['Largo mínimo cámara','l cam',<Inp v={lCam} set={setLCam} style={SI}/>,'m','—','Verificar con dimensiones bomba'],
+          ['Volumen geométrico disponible','V geo',Fmt(Vgeo),'m³',Vgeo?Fmt((Vgeo*1000).toFixed(2),'lts'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'b×l×(h max−h min)'],
+          ['Chequeo volumen','V chk',<span style={{color:Vchk==='O.K.'?'#22c55e':'#ef5350',fontWeight:700,fontFamily:'var(--mono)'}}>{Vchk||'—'}</span>,'—','—','V geo ≥ V cam requerido'],
+        ].map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j} style={j===0?{...TDL2, color: '#fff'}:j===2?{...TD2,width:'1%',whiteSpace:'nowrap'}:TD2}>{c}</td>)}</tr>)}</tbody>
+      </table>
     </div>
-    <Tbl cols={['Ítem','Valor']} rows={[
-      ['Volumen útil requerido',Fmt(Vcam,'lts')],
-      ['Dimensiones mínimas (m)',bc&&lc&&(hmx-hmn)?<span style={{fontFamily:'var(--mono)'}}>{`${bc} x ${lc} x ${(hmx-hmn).toFixed(2)}`}</span>:<span style={{color:'var(--txt3)',fontSize:10}}>—</span>],
-      ['Material','Concreto impermeabilizado o polietileno PEAD'],
-      ['Accesorios obligatorios','Rejilla aguas arriba + ventilación Ø2" + alarma nivel alto'],
-    ]}/>
-  </>;
+    
+    <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
+      <div className="card-h" style={{padding:'8px 8px'}}>
+        <span className="card-t"><img src="/iconos_diseno_redes/especificacion_camara_bombeo.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Especificación — Cámara de bombeo</span>
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+        <thead><tr>{['Ítem','Valor'].map((c,i)=><th key={i} style={TH2}>{c}</th>)}</tr></thead>
+        <tbody>{[
+          ['Volumen útil requerido',Fmt(Vcam,'lts')],
+          ['Dimensiones mínimas (m)',bc&&lc&&(hmx-hmn)?<span style={{fontFamily:'var(--mono)'}}>{`${bc} x ${lc} x ${(hmx-hmn).toFixed(2)}`}</span>:<span style={{color:'var(--txt3)',fontSize:10}}>—</span>],
+          ['Material','Concreto impermeabilizado o polietileno PEAD'],
+          ['Accesorios obligatorios','Rejilla aguas arriba + ventilación Ø2" + alarma nivel alto'],
+        ].map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j} style={j===0?{...TDL2, color: '#fff'}:TD2}>{c}</td>)}</tr>)}</tbody>
+      </table>
+    </div>
+  </div>;
 
   const pages=[
     {t:'Datos de entrada',icon:'/iconos_diseno_redes/datos_de_entrada.webp',c:page1},
     {t:'Cálculo de pérdidas de carga',icon:'/iconos_diseno_redes/calculo_perdidas_de_carga.webp',c:page2},
-    {t:'Bomba sumergible trituradora',icon:'/iconos_diseno_redes/bomba_sumergible_trituradora.webp',c:page3},
-    {t:'Cámara de bombeo (pozo húmedo)',icon:'/iconos_diseno_redes/camara_bombeo.webp',c:page4},
+    {t:'Bomba sumergible trituradora',icon:'/iconos_diseno_redes/bomba_sumergible_trituradora.webp',c:page3, noWrap: true},
+    {t:'Cámara de bombeo (pozo húmedo)',icon:'/iconos_diseno_redes/camara_bombeo.webp',c:page4, noWrap: true},
   ];
 
   return(
     <div className="fu" style={{display:'flex',flexDirection:'column',gap:6,flex:1,minHeight:0}}>
       <PageNav page={bp} setPage={setBp} total={4} color="var(--bom)"
         labels={['Datos de entrada','Pérdidas de carga','Bomba sumergible','Cámara bombeo']} />
-      <div className="card" style={{flex:1,display:'flex',flexDirection:'column',minHeight:0}}>
-        <div className="card-h">
-          <span className="card-t"><img src={pages[bp-1].icon} alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />{pages[bp-1].t}</span>
-        </div>
-        <div style={{flex:1,padding:6,overflow:'hidden'}}>
-          {pages[bp-1].c}
-        </div>
+      <div style={{flex:1,display:'flex',flexDirection:'column',minHeight:0,alignItems:'center'}}>
+        {pages[bp-1].noWrap ? (
+          <div style={{width:'100%', display:'flex', flexDirection:'column', flex:1, padding: '0 10px', boxSizing: 'border-box', overflowY: 'auto'}}>
+            {pages[bp-1].c}
+          </div>
+        ) : (
+          <div style={{width:'90%',maxWidth:900,overflow:'hidden',borderRadius:'var(--r)',border:'1px solid var(--line)'}}>
+            <div className="card-h" style={{padding:'8px 8px'}}>
+              <span className="card-t"><img src={pages[bp-1].icon} alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />{pages[bp-1].t}</span>
+            </div>
+            <div style={{flex:1,padding:0,overflow:'auto'}}>
+              {pages[bp-1].c}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
