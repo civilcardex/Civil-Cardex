@@ -17,6 +17,7 @@ import DisenoRedAguaFria from "./ColdWaterDesign";
 import DisenoRedAguaCaliente from "./HotWaterDesign";
 import BombaARDesign from "./BombaARDesign";
 import GasDesign from "./GasDesign";
+import PressureEquipmentDesign from "./PressureEquipmentDesign";
 import BaseDatos from "./DesignParameters";
 import Normativa from "./Regulations";
 import type { useWorkAreaState } from "./useWorkAreaState";
@@ -555,10 +556,13 @@ function RedesTab({ state }: { state: WorkAreaState }) {
       {redActiva === 'bom' && redes.has('bom') && (
         <BombaARDesign />
       )}
+      {redActiva === 'ep' && redes.has('ep') && (
+        <PressureEquipmentDesign />
+      )}
       {redActiva === 'gas' && redes.has('gas') && (
         <GasDesign />
       )}
-      {redesActivas.filter(r => r.id !== 'san' && r.id !== 'll' && r.id !== 'af' && r.id !== 'ac' && r.id !== 'bom' && r.id !== 'gas' && r.id !== 'ep').map(r => redActiva === r.id && redes.has(r.id) && (
+      {redesActivas.filter(r => r.id !== 'san' && r.id !== 'll' && r.id !== 'af' && r.id !== 'ac' && r.id !== 'bom' && r.id !== 'ep' && r.id !== 'gas').map(r => redActiva === r.id && redes.has(r.id) && (
         <div key={r.id} className="fu" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, flex: 1, minHeight: 250 }}>
           <div style={{ fontSize: 48, opacity: .5 }}>&#x1F6A7;</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--txt2)' }}>{r.lbl}</div>
