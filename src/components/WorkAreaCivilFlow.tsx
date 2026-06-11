@@ -47,7 +47,7 @@ function CIVILFLOWInner() {
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div className="app">
+      <div className="app" style={{ flex: 1, minHeight: 0 }}>
         <WorkAreaSidebar
           tab={state.tab}
           setTab={state.setTab}
