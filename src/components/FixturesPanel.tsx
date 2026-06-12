@@ -23,22 +23,7 @@ const UNIDAD = {
 const SAN_UD_IDS = new Set(UD_BASE_INIT.map(d => d.id));
 
 function loadAll(): Record<string, any> {
-  const data = loadFromStorage(APARATOS_BY_TRAMO_KEY, {}) as Record<string, any>;
-  if (typeof data !== 'object' || !data) return {};
-  let cleaned = false;
-  for (const [tramoId, counts] of Object.entries(data)) {
-    if (!counts || typeof counts !== 'object') continue;
-    const vals = Object.values(counts).filter(v => typeof v === 'number');
-    const allOne = vals.length > 0 && vals.every(v => v === 1);
-    if (allOne) {
-      delete data[tramoId];
-      cleaned = true;
-    }
-  }
-  if (cleaned) {
-    saveToStorage(APARATOS_BY_TRAMO_KEY, data);
-  }
-  return data;
+  return loadFromStorage(APARATOS_BY_TRAMO_KEY, {}) as Record<string, any>;
 }
 
 function saveAll(map: Record<string, any>) {
@@ -94,21 +79,6 @@ export default function AparatosPanel({ activeNet, selElement }: { activeNet: st
   const containerRef = useRef<HTMLDivElement | null>(null);
   const lastTargetRef = useRef<any>(null);
 
-  useEffect(() => {
-    setCounts(prev => {
-      const next = { ...prev };
-      let changed = false;
-      for (const [tramoId, map] of Object.entries(next)) {
-        if (!map || typeof map !== 'object') continue;
-        const vals = Object.values(map).filter(v => typeof v === 'number');
-        if (vals.length > 0 && vals.every(v => v === 1)) {
-          delete next[tramoId];
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, []);
 
   useEffect(() => {
     setGasAcc(prev => {

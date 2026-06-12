@@ -14,6 +14,8 @@ export const TOOLS: ToolDef[] = [
   { id: "dim", label: "Cota", ico: "📏", key: "D", icoCol: "#22D3EE", shortcut: "D" },
   { id: "text", label: "Texto", ico: "T", key: "T", icoCol: "#A855F7", shortcut: "T" },
   { id: "baj", label: "Bajante", ico: "↓", key: "B", icoCol: "#F04545", shortcut: "B" },
+  { id: "mon", label: "Montante", ico: "↑", key: "M", icoCol: "#3B82F6", shortcut: "M" },
+  { id: "delm", label: "Eliminar elemento", ico: "🗑", key: "X", icoCol: "#ffb4ab", shortcut: "X" },
   { id: "segdel", label: "Eliminar segmento", ico: "✂", key: "K", icoCol: "#ffb4ab", shortcut: "K" },
   { id: "erase", label: "Eliminar ramal/tributario", ico: "🧹", key: "E", icoCol: "#ffb4ab", shortcut: "E" },
   { id: "pan", label: "Mover", ico: "✋", key: "Espacio", icoCol: "#10B981", shortcut: "Espacio" },

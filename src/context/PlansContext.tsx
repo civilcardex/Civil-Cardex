@@ -1,5 +1,9 @@
-import { useState, createContext, useContext, type ReactNode } from 'react';
+import { useState, useEffect, useRef, createContext, useContext, type ReactNode } from 'react';
+import { saveToStorage, loadFromStorage, removeFromStorage } from '../services/storageService';
+import { storePDF, loadPDF, deletePDF } from '../services/idbStorage';
+import { PLANS_META_KEY } from '../constants/storage-keys';
 
+interface PlanMeta { id: number; name: string; nivel: number | null; scale: number; status: string }
 interface PlanItem { id: number; file: File; name: string; nivel: number | null; scale: number; status: string }
 interface PlansContextValue {
   plans: PlanItem[];
@@ -14,15 +18,54 @@ interface PlansContextValue {
 
 const PlansContext = createContext<PlansContextValue | null>(null);
 
+function persistMeta(plans: PlanItem[]) {
+  const meta: PlanMeta[] = plans.map(p => ({ id: p.id, name: p.name, nivel: p.nivel, scale: p.scale, status: p.status }));
+  if (meta.length === 0) {
+    removeFromStorage(PLANS_META_KEY);
+  } else {
+    saveToStorage(PLANS_META_KEY, meta);
+  }
+}
+
 export function PlansProvider({ children }: { children?: ReactNode }) {
   const [plans, setPlans] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const restoredRef = useRef(false);
+  const [restoreDone, setRestoreDone] = useState(false);
+
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    if (plans.length > 0) { setRestoreDone(true); return; }
+    (async () => {
+      const meta = loadFromStorage<PlanMeta[]>(PLANS_META_KEY, []);
+      if (meta.length === 0) { setRestoreDone(true); return; }
+      const restored: PlanItem[] = [];
+      for (const m of meta) {
+        const file = await loadPDF(m.id);
+        if (file) {
+          restored.push({ id: m.id, file, name: file.name, nivel: m.nivel, scale: m.scale, status: m.status });
+        }
+      }
+      if (restored.length > 0) setPlans(restored);
+      setRestoreDone(true);
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!restoreDone) return;
+    persistMeta(plans);
+  }, [plans, restoreDone]);
 
   const addPlans = (newFiles: FileList | File[]) => {
     const pdfs: PlanItem[] = [];
     for (const f of newFiles) {
       const isPdf = f.type === 'application/pdf' || f.name?.toLowerCase().endsWith('.pdf');
-      if (isPdf) pdfs.push({ id: Date.now() + Math.random(), file: f, name: f.name, nivel: null, scale: 100, status: 'pending' });
+      if (isPdf) {
+        const id = Date.now() + Math.random();
+        pdfs.push({ id, file: f, name: f.name, nivel: null, scale: 100, status: 'pending' });
+        storePDF(id, f).catch(() => {});
+      }
     }
     if (pdfs.length === 0 && newFiles.length > 0) {
       setError('Solo se permiten archivos PDF.');
@@ -36,6 +79,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
 
   const removePlan = (id: number) => {
     setPlans(prev => prev.filter(p => p.id !== id));
+    deletePDF(id).catch(() => {});
   };
 
   const updatePlan = (id: number, updates: Partial<PlanItem>) => {

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import PdfViewer from '../components/PdfViewer';
@@ -8,19 +8,67 @@ import { useProject } from '../context/ProjectContext';
 function ViewerInner() {
   const { plans, addPlans, removePlan } = usePlans();
   const { pisos } = useProject();
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(() => {
+    try {
+      const savedId = localStorage.getItem('civilflow_visor_activePlanId');
+      const saved = localStorage.getItem('civilflow_visor_activeIndex');
+      if (savedId && plans.length > 0) {
+        const idx = plans.findIndex(p => String(p.id) === savedId);
+        if (idx >= 0) return idx;
+      }
+      return saved ? Number(saved) : 0;
+    } catch (_) { return 0; }
+  });
+  const [activeNetworks] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('civilflow_activeNets');
+      if (saved) return new Set(JSON.parse(saved));
+    } catch (_) {}
+    return new Set();
+  });
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   const files = plans.map(p => ({ id: p.id, file: p.file }));
+  const planIdResolvedRef = useRef(false);
+
+  useEffect(() => {
+    if (planIdResolvedRef.current || files.length === 0) return;
+    planIdResolvedRef.current = true;
+    try {
+      const savedId = localStorage.getItem('civilflow_visor_activePlanId');
+      if (savedId && !plans.some(p => String(p.id) === savedId && plans.indexOf(p) === activeIndex)) {
+        const idx = files.findIndex(f => String(f.id) === savedId);
+        if (idx >= 0) setActiveIndex(idx);
+      }
+    } catch (_) {}
+  }, [files.length]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('civilflow_visor_activeIndex', String(activeIndex));
+      const plan = plans[activeIndex];
+      if (plan) localStorage.setItem('civilflow_visor_activePlanId', String(plan.id));
+    } catch (_) {}
+  }, [activeIndex, plans]);
+
+  useEffect(() => {
+    if (files.length > 0 && activeIndex >= files.length) {
+      setActiveIndex(Math.max(0, files.length - 1));
+    }
+  }, [files.length, activeIndex]);
 
   const handleAddPlan = () => {
     fileRef.current?.click();
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) addPlans(e.target.files);
+    if (e.target.files) {
+      const prevLen = plans.length;
+      const added = addPlans(e.target.files);
+      if (added.length > 0) setActiveIndex(prevLen + added.length - 1);
+    }
     e.target.value = '';
   };
 
@@ -145,7 +193,7 @@ function ViewerInner() {
           onRemovePlan={handleRemovePlan}
           planos={plans}
           pisos={pisos}
-          activeNetworks={new Set()}
+          activeNetworks={activeNetworks}
         />
       </div>
     </div>

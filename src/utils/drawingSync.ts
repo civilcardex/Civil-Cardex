@@ -16,12 +16,14 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
   if (!Array.isArray(plans)) return out;
 
   for (const plan of plans) {
-    if (!plan || plan.status !== 'confirmed') continue;
-    if (plan.nivel == null) continue;
+    if (!plan || plan.nivel == null) continue;
     const nivel = plan.nivel;
     const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
-    const data = raw as Record<string, any>;
+    let data = raw as Record<string, any>;
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data); } catch (_) { continue; }
+    }
 
     if (prefix) {
       for (const family of families) {
@@ -70,6 +72,9 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
             dNominal: b.dNominal || '', diamPulg: diamPulgFromLabel(b.dNominal),
             hVert: b.hVert || 0, material: b.material || '',
             maning: matManning(b.material), _aparatosKey: bKey, _net: b.net,
+            recibeDeIds: b.recibeDeIds || [],
+            area_m2: b.area_m2 || 0,
+            pisoBase: b.pisoBase || '', pisoCima: b.pisoCima || '',
           });
         }
       }

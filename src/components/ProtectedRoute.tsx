@@ -3,14 +3,30 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 export function ProtectedRoute() {
-  const [user, setUser] = useState<any>(undefined);
+  const [user, setUser] = useState<any>(() => {
+    if (!supabase) return null;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          const val = localStorage.getItem(key);
+          if (val) {
+            const parsed = JSON.parse(val);
+            if (parsed && parsed.user) return parsed.user;
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  });
 
   useEffect(() => {
-    if (!supabase) { setUser(null); return; }
-    supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null));
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user ?? null);
+    });
   }, []);
 
-  if (user === undefined) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--on-surface)' }}>Verificando acceso...</div>;
   if (!user) return <Navigate to="/login" replace />;
   return <Outlet />;
 }

@@ -57,7 +57,17 @@ export default function PlanosTab({ state }: PlanosTabProps) {
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(211,47,47,0.15)'; e.currentTarget.style.borderColor = 'rgba(211,47,47,0.35)'; }}
                 title="Cerrar vista">&#x2715; Cerrar</button>
               {confirmedPlanos.length > 0 && (
-                <a href="#/visor" style={{ padding: '3px 10px', background: 'rgba(0,220,229,0.08)', border: '1px solid rgba(0,220,229,0.3)', borderRadius: 'var(--r)', color: '#00dce5', fontWeight: 600, fontSize: 9, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                <a href="#/visor"
+                  onClick={() => {
+                    const idx = plans.findIndex(p => p.id === selectedPlanId);
+                    if (idx >= 0) {
+                      try {
+                        localStorage.setItem('civilflow_visor_activeIndex', String(idx));
+                        localStorage.setItem('civilflow_visor_activePlanId', String(selectedPlanId));
+                      } catch (_) {}
+                    }
+                  }}
+                  style={{ padding: '3px 10px', background: 'rgba(0,220,229,0.08)', border: '1px solid rgba(0,220,229,0.3)', borderRadius: 'var(--r)', color: '#00dce5', fontWeight: 600, fontSize: 9, textDecoration: 'none', whiteSpace: 'nowrap' }}>
                   IR A DIBUJO DE REDES &rarr;
                 </a>
               )}

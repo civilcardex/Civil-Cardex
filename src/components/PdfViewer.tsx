@@ -6,7 +6,7 @@ import { pisoLbl, matLongName, GAS } from "../constants";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync";
-import { loadFromStorage, saveToStorage } from "../services/storageService";
+import { loadFromStorage, saveToStorage, saveTrazosToDB, loadTrazosFromDB } from "../services/storageService";
 import AparatosPanel from "./FixturesPanel";
 import PdfViewerToolbar from "./PdfViewerToolbar";
 import PdfCanvas from "./pdfViewer/PdfCanvas";
@@ -37,16 +37,55 @@ interface PdfViewerProps {
 export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan, pisos=[], planos=[], activeNetworks }: PdfViewerProps) {
   const { mats } = useProject();
   const planosCtx = usePlans();
+  const plansRef = useRef(planosCtx.plans);
+  plansRef.current = planosCtx.plans;
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tool, setTool] = useState("line");
-  const [activeNet, setActiveNet] = useState("af");
-  const [tipoTramo, setTipoTramo] = useState("ramal");
+  const [tool, setTool] = useState(() => {
+    try { return sessionStorage.getItem('civilflow_visor_tool') || 'line'; }
+    catch (_) { return 'line'; }
+  });
+  const [activeNet, setActiveNet] = useState(() => {
+    if (activeNetworks && activeNetworks.size > 0) {
+      if (activeNetworks.has("af")) return "af";
+      return Array.from(activeNetworks)[0];
+    }
+    try {
+      const saved = localStorage.getItem('active_nets');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const valid = parsed.filter(id => id !== 'ep' && id !== 'bom');
+          if (valid.length > 0) {
+            if (parsed.includes("af")) return "af";
+            return valid[0];
+          }
+        }
+      }
+    } catch (_) {}
+    return "af";
+  });
+
+  useEffect(() => {
+    if (activeNetworks && activeNetworks.size > 0 && !activeNetworks.has(activeNet)) {
+      setActiveNet(Array.from(activeNetworks)[0]);
+    }
+  }, [activeNetworks, activeNet]);
+
+  const [tipoTramo, setTipoTramo] = useState(() => {
+    try { return sessionStorage.getItem('civilflow_visor_tipoTramo') || 'ramal'; }
+    catch (_) { return 'ramal'; }
+  });
   const [padreTributarioId, setPadreTributarioId] = useState<string | null>(null);
-  const [snapOn, setSnapOn] = useState(true);
+  const [snapOn, setSnapOn] = useState(() => {
+    try {
+      const v = sessionStorage.getItem('civilflow_visor_snapOn');
+      return v !== null ? v === 'true' : true;
+    } catch (_) { return true; }
+  });
   const [scaleM, setScaleM] = useState("0.5");
   const [selectedNivel, setSelectedNivel] = useState<number | null>(null);
   const [hiddenNets, setHiddenNets] = useState<Set<string>>(new Set());
@@ -61,6 +100,12 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   const [engineReady, setEngineReady] = useState(false);
   const toolRef = useRef(tool);
   toolRef.current = tool;
+  const activeNetRef = useRef(activeNet);
+  activeNetRef.current = activeNet;
+
+  useEffect(() => { try { sessionStorage.setItem('civilflow_visor_tool', tool); } catch (_) {} }, [tool]);
+  useEffect(() => { try { sessionStorage.setItem('civilflow_visor_tipoTramo', tipoTramo); } catch (_) {} }, [tipoTramo]);
+  useEffect(() => { try { sessionStorage.setItem('civilflow_visor_snapOn', String(snapOn)); } catch (_) {} }, [snapOn]);
 
   useEffect(() => {
     if (selectedNivel !== null) {
@@ -81,8 +126,11 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
     }
   }, [selElement]);
 
+  const loadingPlanRef = useRef(false);
+  const pdfRenderedRef = useRef(false);
   useEffect(() => {
     if (!engineRef.current) return;
+    if (loadingPlanRef.current) return;
     const els = engineRef.current.getElementsByNet(activeNet);
     if (els.length > 0 && selElement?.net !== activeNet) {
       setSelElement(els[els.length - 1]);
@@ -104,49 +152,142 @@ currentIdRef.current = currentId;
     }
   }, [currentId, planos]);
 
+  // Carga trazos desde la BD y/o localStorage para el plan dado.
+  // Retorna true si se cargaron datos.
+  const loadTrazosForPlan = useCallback(async (eng: PlanoEngine, resolvedId: string): Promise<boolean> => {
+    // 1. Obtener de localStorage primero de forma instantánea (síncrona)
+    const tryLoad = (id: string): any => {
+      const key = `trazos_${id}`;
+      const saved = loadFromStorage(key, null);
+      return saved || null;
+    };
+    const localData = tryLoad(resolvedId);
+
+    let initiallyLoaded = false;
+    if (localData) {
+      const workStr = typeof localData === 'string' ? localData : JSON.stringify(localData);
+      eng.loadWork(workStr);
+      initiallyLoaded = true;
+      requestAnimationFrame(() => { eng.render(); });
+    }
+
+    // 2. Consultar Supabase en segundo plano
+    try {
+      const dbData = await loadTrazosFromDB(resolvedId);
+
+      if (dbData) {
+        const dbTs = Number(dbData.ts || 0);
+        const localTs = Number(localData?.ts || 0);
+
+        if (dbTs > localTs || !localData) {
+          // La base de datos tiene datos más nuevos o no hay datos locales
+          const workStr = typeof dbData === 'string' ? dbData : JSON.stringify(dbData);
+          eng.loadWork(workStr);
+          if (!localData || dbTs > localTs) {
+            saveToStorage(`trazos_${resolvedId}`, dbData);
+          }
+          requestAnimationFrame(() => { eng.render(); });
+          initiallyLoaded = true;
+
+          // Sincronizar estado React
+          const loadedNet = eng.activeNet || activeNetRef.current || 'af';
+          const sm = eng.scaleM;
+          setActiveNet(loadedNet);
+          if (sm != null) setScaleM(String(sm));
+        } else if (localTs > dbTs && localData) {
+          // El caché local es más nuevo, sincronizar Supabase en segundo plano
+          saveTrazosToDB(resolvedId, localData);
+        }
+      } else if (localData) {
+        // No hay datos en Supabase pero sí en local, subir local a Supabase
+        saveTrazosToDB(resolvedId, localData);
+      }
+    } catch (e) {
+      console.error('[LOAD] Supabase error/sync error:', e);
+    }
+
+    return initiallyLoaded;
+  }, []);
+
   useEffect(() => {
     if (!engineRef.current || !engineReady) return;
-    const prevId = engineRef.current._loadedPlanId;
+    const eng = engineRef.current;
+    const prevId = eng._loadedPlanId;
+
+    // 1. Guardar el plano ANTERIOR antes de cualquier cambio
     if (prevId && prevId !== currentId) {
-      const prevKey = `trazos_${prevId}`;
-      saveToStorage(prevKey, engineRef.current.saveWork());
-    }
-    const key = `trazos_${currentIdRef.current || currentId || 'work'}`;
-    console.log('[LOAD] key=', key, 'currentId=', currentId, 'currentIdRef=', currentIdRef.current, 'engineReady=', engineReady);
-    try {
-      const saved = loadFromStorage(key, null);
-      console.log('[LOAD] saved:', saved ? 'object' : 'null', 'ramales:', saved ? (saved as any).ramales?.length : null);
-      if (saved) {
-        const workStr = typeof saved === 'string' ? saved : JSON.stringify(saved);
-        engineRef.current.loadWork(workStr);
-      } else {
-        engineRef.current.ramales = [];
-        engineRef.current.bajantes = [];
-        engineRef.current.areas = [];
-        engineRef.current.dims = [];
-        engineRef.current.textAnnots = [];
-        engineRef.current.selId = null;
-        engineRef.current.activeRamal = null;
-        engineRef.current.activeArea = null;
-        engineRef.current.render();
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
       }
-    } catch (e) { console.error('[LOAD] error', e); }
-    engineRef.current._loadedPlanId = currentId;
-    try { writeSanDrawingSync(planosCtx.plans); } catch (_) {}
-    try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {}
+      // Solo guardar si NO estamos cargando y hay cambios sin guardar
+      if (!loadingPlanRef.current && eng._dirty) {
+        const work = eng.saveWork() as any;
+        work.ts = Date.now();
+        saveToStorage(`trazos_${prevId}`, work);
+        eng._dirty = false;
+      }
+    }
+
+    // 2. Registrar el nuevo id ANTES de cargar para que onDirty
+    //    siempre use la clave correcta desde el primer trazo.
+    const resolvedId = currentIdRef.current || currentId || '';
+    if (!resolvedId) { loadingPlanRef.current = false; return; }
+    eng._loadedPlanId = resolvedId;
+
+    // 3. Cargar los trazos del nuevo plano de forma asíncrona.
+    //    Si no hay datos en la clave principal, intentar con last_tracos_id.
+    loadingPlanRef.current = true;
+    (async () => {
+      try {
+        const loaded = await loadTrazosForPlan(eng, resolvedId);
+        // Si el usuario cambió de plan durante la carga asíncrona, descartar
+        const currentRefId = currentIdRef.current || 'work';
+        if (resolvedId !== currentRefId) { loadingPlanRef.current = false; return; }
+
+        if (loaded) {
+          // Actualizar estado React con lo que cargó el engine.
+          const fallbackNet = activeNetworks && activeNetworks.size > 0 && !activeNetworks.has("af") 
+            ? Array.from(activeNetworks)[0] 
+            : (activeNetRef.current || 'af');
+          const loadedNet = eng.activeNet || fallbackNet;
+          const sm = eng.scaleM;
+          setActiveNet(loadedNet);
+          if (sm != null) setScaleM(String(sm));
+          requestAnimationFrame(() => { loadingPlanRef.current = false; if (engineRef.current) engineRef.current.render(); });
+        } else if (currentId) {
+          eng.ramales = [];
+          eng.bajantes = [];
+          eng.areas = [];
+          eng.dims = [];
+          eng.textAnnots = [];
+          eng.selId = null;
+          eng.activeRamal = null;
+          eng.activeArea = null;
+          eng.setActiveNet(activeNetRef.current); // Sincronizar red activa al limpiar el engine
+          eng.render();
+          loadingPlanRef.current = false;
+        }
+      } catch (e) { console.error('[LOAD] error', e); loadingPlanRef.current = false; }
+    })();
+
+    try { writeSanDrawingSync(plansRef.current); } catch (_) {}
+    try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
   }, [currentId, engineReady]);
 
   useEffect(() => {
-    try { writeSanDrawingSync(planosCtx.plans); } catch (_) {}
-try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {}
-  }, [planosCtx.plans.length, currentId, activeNet]);
+    try { writeSanDrawingSync(plansRef.current); } catch (_) {}
+    try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
+  }, [planosCtx.plans, currentId, activeNet]);
 
   useEffect(() => {
-    const handler = () => { try { writeSanDrawingSync(planosCtx.plans); } catch (_) {}
-try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
+    const handler = () => {
+      try { writeSanDrawingSync(plansRef.current); } catch (_) {}
+      try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
+    };
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
-  }, [planosCtx.plans.length]);
+  }, [planosCtx.plans]);
 
   const [liveActiveNets, setLiveActiveNets] = useState<Set<string> | null>(() => {
     try {
@@ -271,17 +412,27 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
     const pdfWrap = pdfCanvasRef.current?.parentElement ?? undefined;
     const eng = new PlanoEngine(cw, pdfWrap!, canv);
     engineRef.current = eng;
+    const initialId = currentIdRef.current || currentId || '';
+    eng._loadedPlanId = initialId || null;
     eng.onSelect((el) => setSelElement(el));
     eng.onStatus((msg) => setStatusMsg(msg));
     eng.onDirty(() => {
-      if (!autoSaveTimerRef.current) {
-        autoSaveTimerRef.current = setTimeout(() => {
-          autoSaveTimerRef.current = null;
-          saveTrazosToStorage();
-          try { writeSanDrawingSync(planosCtx.plans); } catch (_) {}
-          try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {}
-        }, 800);
-      }
+      eng._dirty = true;
+      if (loadingPlanRef.current) return;
+      try {
+        const id = eng._loadedPlanId || currentIdRef.current || 'work';
+        if (id) {
+          const work = eng.saveWork() as any;
+          work.ts = Date.now();
+          saveToStorage(`trazos_${id}`, work);
+          if (id !== 'work') {
+            saveToStorage('last_tracos_id', id);
+            saveTrazosToDB(id, work);
+          }
+        }
+      } catch (_) {}
+      try { writeSanDrawingSync(plansRef.current); } catch (_) {}
+      try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
     });
     const origSetTool = eng.setTool.bind(eng);
     eng.setTool = (t) => {
@@ -290,15 +441,23 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
     };
     setEngineReady(true);
     return () => {
-      console.log('[CLEANUP] running, _loadedPlanId=', eng._loadedPlanId, 'ramales=', eng.ramales?.length);
       try {
-        const id = eng._loadedPlanId;
-        if (id) {
-          saveToStorage(`trazos_${id}`, eng.saveWork());
+        if (!loadingPlanRef.current && eng._dirty) {
+          const id = eng._loadedPlanId || currentIdRef.current || 'work';
+          const work = eng.saveWork() as any;
+          work.ts = Date.now();
+          saveToStorage(`trazos_${id}`, work);
+          if (id !== 'work') {
+            saveToStorage('last_tracos_id', id);
+            saveTrazosToDB(id, work);
+          }
         }
       } catch (e) { console.error('[CLEANUP] error', e); }
+      try { writeSanDrawingSync(plansRef.current); } catch (_) {}
+      try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
       eng.setTool = origSetTool;
       eng.destroy();
+      engineRef.current = null;
       setEngineReady(false);
     };
   }, []);
@@ -392,9 +551,26 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
         dctx!.imageSmoothingEnabled = false;
         dctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
         if (engineRef.current) {
-          engineRef.current.dpr = dpr;
-          engineRef.current.setPageSize(viewport.width, viewport.height);
-          engineRef.current.resizeCanvas(viewport.width, viewport.height);
+          const eng = engineRef.current;
+          eng.dpr = dpr;
+          eng.setPageSize(viewport.width, viewport.height);
+          eng.resizeCanvas(viewport.width, viewport.height);
+
+          // Después de que el PDF se renderizó y el canvas tiene dimensiones
+          // correctas, re-cargar trazos si el engine está vacío (caso: reabrir visor).
+          // Esto cubre la race condition donde loadWork corrió antes del resize.
+          const resolvedId = eng._loadedPlanId || currentIdRef.current || 'work';
+          if (eng.ramales.length === 0 && eng.bajantes.length === 0 && eng.dims.length === 0 && eng.textAnnots.length === 0 && eng.areas.length === 0) {
+            const loaded = await loadTrazosForPlan(eng, resolvedId);
+            if (loaded) {
+              const loadedNet = eng.activeNet || activeNetRef.current || 'af';
+              const sm = eng.scaleM;
+              setActiveNet(loadedNet);
+              if (sm != null) setScaleM(String(sm));
+              eng.render();
+            }
+          }
+          pdfRenderedRef.current = true;
         }
       }
     } catch (err) {
@@ -427,10 +603,12 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
     const availH = cw.clientHeight - pad * 2;
     const sc = Math.min(availW / eng.pageW, availH / eng.pageH);
     eng.zoom = sc;
-    eng.offX = (cw.clientWidth - eng.pageW * sc) / 2;
-    eng.offY = 16;
+    eng.offX = eng.pageW * (1 - sc) / 2;
+    eng.offY = (cw.clientHeight - eng.pageH * sc) / 2;
     eng.render();
-  }, []);
+    const newScale = Math.max(1, Math.ceil(sc));
+    if (newScale !== scale) setScale(newScale);
+  }, [scale]);
 
   const handleClear = useCallback(() => {
     if (!engineRef.current) return;
@@ -598,14 +776,11 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
         <button onClick={()=>{
           const eng = engineRef.current;
           const key = `trazos_${currentIdRef.current || currentId || 'work'}`;
-          console.log('[CERRAR] key=', key, 'currentId=', currentId, 'currentIdRef=', currentIdRef.current);
           if (eng) {
             const work = eng.saveWork();
-            console.log('[CERRAR] work bytes=', work ? work.length : null, 'ramales=', eng.ramales?.length, 'bajantes=', eng.bajantes?.length);
             saveToStorage(key, work);
-            console.log('[CERRAR] saved to', key);
-            try { writeSanDrawingSync(planosCtx.plans); } catch (_) {}
-            try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {}
+            try { writeSanDrawingSync(plansRef.current); } catch (_) {}
+            try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
           }
           window.location.href = '#/civilflowareatrabajo';
         }}
@@ -643,6 +818,9 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
         width: 210, flexShrink: 0, display: "flex", flexDirection: "column",
         background: "#14161a", borderLeft: "1px solid #3a494a",
         overflowY: "auto", overflowX: "hidden",
+        opacity: tool === 'sel' ? 0.35 : 1,
+        pointerEvents: tool === 'sel' ? 'none' : 'auto',
+        transition: 'opacity 0.2s',
       }}>
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Nivel</div>
@@ -755,7 +933,9 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
           </div>
         </div>
 
+        {!(selElement && (selElement.id?.startsWith('B') || selElement.id?.startsWith('MON') || selElement.id?.startsWith('AR'))) && (
         <AparatosPanel activeNet={activeNet} selElement={selElement} />
+        )}
 
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
@@ -775,11 +955,11 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
                     display:'flex',flexDirection:'column',gap:4,
                   }}>
                   <div style={{display:'flex',alignItems:'center',gap:4}} onClick={()=>{if(engineRef.current)engineRef.current.selectById(el.id);}}>
-                    <span style={{fontSize:11,color:el.type==='bajante'?'#F04545':'#4D8FF7'}}>
-                      {el.type==='bajante'?'⬇':'╱'}
+                    <span style={{fontSize:11,color:el.tipo==='montante'?'#3B82F6':el.type==='bajante'?'#F04545':'#4D8FF7'}}>
+                      {el.tipo==='montante'?'⬆':el.type==='bajante'?'⬇':'╱'}
                     </span>
 <span style={{fontSize:12,fontWeight:600,color:'#b9caca',fontFamily:"'Geist',monospace",flex:1}}>{el.tipo==='tributario'?((()=>{try{const p=drawnElements.find(x=>x.id===el.padre&&x.tipo==='ramal');return p?p.label:el.label;}catch(_){return el.label}})()):el.label}</span>
-              <span style={{fontSize:11,fontWeight:600,color:'#6b8cae',fontFamily:"'Geist',monospace",textTransform:'uppercase'}}>{(el.tipo==='ramal'?'ramal':el.tipo==='tributario'?el.label:el.tipo==='bajante'?'baj':el.tipo)||''}</span>
+              <span style={{fontSize:11,fontWeight:600,color:'#6b8cae',fontFamily:"'Geist',monospace",textTransform:'uppercase'}}>{(el.tipo==='ramal'?'ramal':el.tipo==='tributario'?el.label:el.tipo==='bajante'?'baj':el.tipo==='montante'?'mon':el.tipo)||''}</span>
                     <button onClick={e=>{e.stopPropagation();if(engineRef.current){engineRef.current.selectById(el.id);engineRef.current.deleteSelected();}}}
                       style={{padding:'3px 6px',background:'transparent',border:'1px solid #3a494a',borderRadius:2,color:'#ffb4ab',cursor:'pointer',fontSize:10,fontFamily:"'Geist',monospace",flexShrink:0}}>✕</button>
                   </div>

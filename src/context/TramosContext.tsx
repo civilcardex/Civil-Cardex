@@ -90,6 +90,10 @@ const { tramosSan, tramosAf, tramosAc, tramosLl } = state;
             diamDisPulg: b.diamPulg || 0, nSalidas: hd.nSalidas || 0,
             nmaning: b.maning ?? 0, sPercent: 0,
             bajR: 7/24, bajLong: 3, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
+            recibeDeIds: b.recibeDeIds || [],
+            area_m2: b.area_m2 || 0,
+            pisoBase: b.pisoBase || '', pisoCima: b.pisoCima || '',
+            code: b.code || b.id,
           };
           if (b._net === 'll') {
             llIncoming.push({

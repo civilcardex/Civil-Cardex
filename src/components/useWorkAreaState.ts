@@ -134,7 +134,8 @@ export function useWorkAreaState() {
 
   useEffect(() => {
     REDES.forEach(r => {
-      const saved = loadFromStorage('net_' + r.id, null);
+      const raw = localStorage.getItem('civilflow_net_' + r.id);
+      const saved = raw ? (() => { try { return JSON.parse(raw); } catch (_) { return raw; } })() : null;
       if (saved && typeof saved === 'string') {
         document.documentElement.style.setProperty('--' + r.id, saved);
         try {
@@ -156,12 +157,17 @@ export function useWorkAreaState() {
     }
   }, [selectedPlan]);
 
+  const prevPlansLenRef = useRef(0);
   useEffect(() => {
-    if (plansCtx.plans.length > 0 && !plansCtx.plans.some((p: any) => p.id === selectedPlanId)) {
+    const len = plansCtx.plans.length;
+    if (len > 0 && len > prevPlansLenRef.current) {
+      setSelectedPlanId(plansCtx.plans[len - 1].id);
+    } else if (len > 0 && !plansCtx.plans.some((p: any) => p.id === selectedPlanId)) {
       setSelectedPlanId(plansCtx.plans[0].id);
-    } else if (plansCtx.plans.length === 0) {
+    } else if (len === 0) {
       setSelectedPlanId(null);
     }
+    prevPlansLenRef.current = len;
     }, [plansCtx.plans.length]);
 
   const fileRef = useRef<HTMLInputElement>(null);

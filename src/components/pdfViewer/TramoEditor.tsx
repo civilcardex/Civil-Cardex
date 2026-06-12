@@ -119,6 +119,84 @@ export default function TramoEditor({
       </div>
 
       {(() => {
+        const isBajMont = selElement && (selElement.id?.startsWith('B') || selElement.id?.startsWith('MON'));
+        const isArea = selElement && selElement.id?.startsWith('AR');
+
+        if (isArea) {
+          return (
+            <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
+              <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos específicos</div>
+              <div style={{ fontSize: 11, color: '#6b8cae', fontFamily: "'Geist',monospace", padding: '4px 0' }}>
+                Área: {selElement.areaM2 ? `${selElement.areaM2} m²` : '—'}
+              </div>
+            </div>
+          );
+        }
+
+        if (isBajMont) {
+          return (
+            <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
+              <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos específicos</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div>
+                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>H (m)</div>
+                  <input type="number" step="0.01" value={selElement.hVert ?? ''} placeholder="0.00"
+                    onChange={e => { const v = e.target.value; handleUpdateSel('hVert', v ? parseFloat(v) : 0); }}
+                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", textAlign: 'center' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>D (mm)</div>
+                  <input type="text" inputMode="decimal" value={selElement.dNominal !== undefined && selElement.dNominal !== '0' ? selElement.dNominal : ''} placeholder="—"
+                    onChange={e => { const v = e.target.value; handleUpdateSel('dNominal', v); }}
+                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", textAlign: 'center' }} />
+                </div>
+                {activeNet === 'll' && (
+                  <div>
+                    <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Área asociada</div>
+                    <select value={selElement.area_m2 ? String(selElement.area_m2) : ''}
+                      onChange={e => {
+                        const val = parseFloat(e.target.value) || 0;
+                        handleUpdateSel('area_m2', val);
+                      }}
+                      style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                      <option value="">— Sin área —</option>
+                      {(engineRef.current?.areas || []).filter((a: any) => !a.net || a.net === activeNet).map((a: any) => (
+                        <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {activeNet === 'san' && (
+                  <div>
+                    <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Ramales asociados</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 }}>
+                      {(() => {
+                        const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === 'san');
+                        if (bajRamales.length === 0) return <div style={{ fontSize: 10, color: '#6b8cae', fontFamily: "'Geist',monospace", padding: '4px' }}>Sin ramales en esta red</div>;
+                        const recibidos = (selElement.recibeDeIds || []) as string[];
+                        return bajRamales.map((r: any) => (
+                          <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 4px', cursor: 'pointer', borderRadius: 2, fontSize: 10, color: '#b9caca', fontFamily: "'Geist',monospace" }}>
+                            <input type="checkbox" checked={recibidos.includes(r.id)}
+                              onChange={e => {
+                                const newRecibe = e.target.checked
+                                  ? [...recibidos, r.id]
+                                  : recibidos.filter(id => id !== r.id);
+                                handleUpdateSel('recibeDeIds', newRecibe);
+                              }}
+                              style={{ accentColor: '#F5A623', margin: 0 }} />
+                            <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label || r.id}</span>
+                            <span style={{ fontSize: 9, color: '#6b8cae' }}>{r.totalL?.toFixed(1)}m</span>
+                          </label>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        }
+
         const isGas = activeNet === 'gas';
         const matList = mats?.[activeNet] || [];
         const matShort = matList[0]?.val || '—';

@@ -19,9 +19,11 @@ const Card = React.memo(function Card({ title, subtitle, icon, iconImg, iconImgS
     <div className={`card ${className}`} style={style}>
       {(title || icon || iconImg) && (
         <div className="card-h" style={headerStyle}>
-          {iconImg ? <img src={iconImg} alt="" style={{ width: 18, height: 18, marginRight: 6, ...iconImgStyle }} /> : null}
-          {icon}
-          {title && <span className="card-t">{title}</span>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {iconImg ? <img src={iconImg} alt="" style={{ width: 18, height: 18, ...iconImgStyle }} /> : null}
+            {icon}
+            {title && <span className="card-t">{title}</span>}
+          </div>
           {subtitle && <span className="card-s">{subtitle}</span>}
         </div>
       )}

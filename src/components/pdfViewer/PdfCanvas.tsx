@@ -33,8 +33,8 @@ export default function PdfCanvas({
         position: "relative",
         display: currentFile && !error ? "inline-block" : "none",
       }}>
-        <div id="pdfWrap" style={{ transformOrigin: '0 0', imageRendering: 'pixelated' }}>
-          <canvas ref={pdfCanvasRef} style={{ display: "block", background: "#fff", imageRendering: 'pixelated' }} />
+        <div id="pdfWrap" style={{ transformOrigin: '0 0' }}>
+          <canvas ref={pdfCanvasRef} style={{ display: "block", background: "#fff" }} />
         </div>
         <canvas
           ref={drawCanvasRef}
