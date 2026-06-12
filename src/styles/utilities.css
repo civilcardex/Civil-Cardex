@@ -1,0 +1,34 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Civil Flow KML 2026 — Animations & Utilities
+   ════════════════════════════════════════════════════════════════════════════ */
+
+@keyframes rot {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fu {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fu {
+  animation: fu .2s ease forwards;
+}
+
+.sp {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--line);
+  border-top-color: var(--acc2);
+  border-radius: 50%;
+  animation: rot .5s linear infinite;
+  display: inline-block;
+}

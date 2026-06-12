@@ -1,0 +1,331 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Civil Flow KML 2026 — Layout
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.content {
+  flex: 1;
+  overflow: hidden;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+}
+
+.content > .fu {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.content > .fu > .card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tab-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tab-content .card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tab-content .card .card-b .dz {
+  flex: 1;
+  min-height: 0;
+}
+
+.fdc11 {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* ── Topbar & Brand ── */
+
+.topbar {
+  height: 54px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  flex-shrink: 0;
+  background: linear-gradient(90deg, #111317 0%, #1a1c20 100%);
+}
+
+.logo-divider {
+  width: 1px;
+  height: 30px;
+  background: var(--line);
+  margin: 0 4px;
+}
+
+.brand-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.brand-name {
+  font-family: var(--head);
+  font-size: 20px;
+  letter-spacing: 1.5px;
+  line-height: 1;
+}
+
+.brand-d {
+  color: var(--acc2);
+}
+
+.brand-rest {
+  color: var(--txt);
+}
+
+.brand-sub {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--txt3);
+  letter-spacing: .5px;
+}
+
+.brand-sub b {
+  color: var(--gold);
+}
+
+.topbar-fill {
+  flex: 1;
+}
+
+.ing-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.ing-name {
+  font-family: var(--body);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--txt2);
+}
+
+.ing-title {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--txt3);
+}
+
+.vline {
+  width: 1px;
+  height: 28px;
+  background: var(--line);
+  margin: 0 8px;
+}
+
+.norms {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.norm {
+  font-family: var(--mono);
+  font-size: 8px;
+  padding: 2px 6px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  color: var(--txt3);
+}
+
+.norm.hi {
+  border-color: var(--acc3);
+  color: var(--acc2);
+}
+
+.proj-lbl {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--txt3);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Navigation ── */
+
+.nav {
+  display: flex;
+  width: 100%;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--line);
+  padding: 0;
+  gap: 0;
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+
+.ntab {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--txt3);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+  transition: all .15s;
+  font-family: var(--body);
+}
+
+.ntab:hover {
+  color: var(--txt2);
+}
+
+.ntab.on {
+  color: var(--acc2);
+  border-bottom-color: var(--acc2);
+}
+
+.ntab.gas-tab.on {
+  color: var(--gas);
+  border-bottom-color: var(--gas);
+}
+
+.ntab-ico {
+  font-size: 16px;
+}
+
+.nbadge {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--bg4);
+  color: var(--txt3);
+}
+
+.ntab.on .nbadge {
+  background: var(--acc3);
+  color: #fff;
+}
+
+.ntab.gas-tab.on .nbadge {
+  background: var(--gas-bg);
+  color: var(--gas);
+}
+
+/* ── Sidebar & Forms ── */
+
+.sb {
+  width: 360px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-sec {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sb-hdr {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--txt3);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sb-hdr::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.f {
+  margin-bottom: 10px;
+}
+
+.f label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--txt2);
+  margin-bottom: 4px;
+}
+
+.f input,
+.f select {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  font-size: 14px;
+  font-family: var(--mono);
+  color: var(--txt);
+  outline: none;
+  transition: border .15s;
+}
+
+.f input:focus,
+.f select:focus {
+  border-color: var(--acc2);
+}
+
+.f select option {
+  background: var(--bg3);
+}
+
+.f2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}

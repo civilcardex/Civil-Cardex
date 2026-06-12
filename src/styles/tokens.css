@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Civil Flow KML 2026 — Design Tokens
+   Ing. Camilo Cárdenas Chacón — Ingeniero Civil
+   NTC 1500 · RAS 2000 · NTC 3728 · NSR-10
+   ════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg: #111317;
+  --bg2: #1a1c20;
+  --bg3: #1e2024;
+  --bg4: #282a2e;
+  --bg5: #333539;
+
+  --line: #3a494a;
+
+  --txt: #e2e2e8;
+  --txt2: #b9caca;
+  --txt3: #849495;
+
+  --acc: #2563EB;
+  --acc2: #3B82F6;
+  --acc3: #1D4ED8;
+  --glow: rgba(37, 99, 235, .3);
+
+  --ok: #2ff801;
+  --ok-bg: rgba(47, 248, 1, .08);
+  --ok-b: rgba(47, 248, 1, .2);
+
+  --warn: #f5a623;
+  --warn-bg: rgba(245, 166, 35, .08);
+  --warn-b: rgba(245, 166, 35, .2);
+
+  --err: #ffb4ab;
+  --err-bg: rgba(255, 180, 171, .08);
+  --err-b: rgba(255, 180, 171, .2);
+
+  --af: #4D8FF7;
+  --af-bg: rgba(77, 143, 247, .08);
+
+  --ac: #F04545;
+  --ac-bg: rgba(240, 69, 69, .07);
+
+  --san: #f5a623;
+  --san-bg: rgba(245, 166, 35, .07);
+
+  --ll: #22d3ee;
+  --ll-bg: rgba(34, 211, 238, .07);
+
+  --gas: #A855F7;
+  --gas-bg: rgba(168, 85, 247, .1);
+  --gas-b: rgba(168, 85, 247, .25);
+
+  --rci: #F87171;
+  --rci-bg: rgba(248, 113, 113, .08);
+
+  --ep: #cca043;
+  --ep-bg: rgba(204, 160, 67, .08);
+
+  --bom: #8A9BB8;
+  --bom-bg: rgba(138, 155, 184, .08);
+
+  --gold: #c9a227;
+
+  --mono: 'Geist', monospace;
+  --head: 'Hanken Grotesk', sans-serif;
+  --body: 'Hanken Grotesk', sans-serif;
+
+  --r: 6px;
+  --r2: 8px;
+  --r3: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Civil Flow KML 2026 — Scrollbar
+   ════════════════════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--line);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--acc);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--acc2);
+}
+
+.card-b::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.card-b::-webkit-scrollbar-track {
+  background: var(--line);
+}
+
+.card-b::-webkit-scrollbar-thumb {
+  background: var(--acc);
+  border-radius: 4px;
+}
+
+.card-b::-webkit-scrollbar-thumb:hover {
+  background: var(--acc2);
+}
+
+.visor-sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: #3a494a #14161a;
+}
+
+.visor-sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.visor-sidebar::-webkit-scrollbar-track {
+  background: #14161a;
+}
+
+.visor-sidebar::-webkit-scrollbar-thumb {
+  background: #3a494a;
+  border-radius: 3px;
+}
+
+.scroll-top {
+  overflow-x: auto;
+  transform: rotateX(180deg);
+}
+
+.scroll-top > .scroll-inner {
+  transform: rotateX(180deg);
+}
