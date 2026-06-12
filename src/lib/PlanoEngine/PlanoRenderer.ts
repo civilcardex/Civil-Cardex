@@ -148,15 +148,15 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: PlanoEngineAP
         maxY: Math.max(...aCorners.map((c: any) => c.y)) + 2,
         corners: aCorners
       };
-      ctx.fillStyle = 'rgba(17,19,23,0.82)';
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(-tw / 2 - 5, -16, aBoxW, aBoxH);
-      ctx.fillStyle = sel ? '#00dce5' : '#e2e2e8';
+      ctx.fillStyle = '#000';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       if (displayLabel) ctx.fillText(displayLabel, 0, areaLabel ? -aFsSub / 2 - 2 : 0);
       if (areaLabel) {
         ctx.font = `bold ${aFsSub}px Geist, monospace`;
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#333';
         ctx.fillText(areaLabel, 0, displayLabel ? aFs / 2 + 2 : 0);
       }
       ctx.restore();
@@ -368,16 +368,16 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: PlanoEngine
           })()
         : (r.label || '');
       const matPart = r.material || '';
-      const dPart = r.diametro ? `D=${r.diametro}` : '';
+      const dPart = r.diametro ? `D=${r.diametro.split(' — ')[0]}` : '';
       const lblPart = r.totalL ? `${r.totalL.toFixed(2)}m` : '';
       const pPart = r.pendiente ? `S=${r.pendiente}%` : '';
       const showPend = (r.net === 'san' || r.net === 'll');
       const pendPart = showPend && pPart ? pPart : '';
 
       const fsName = engine.mm2cvs(engine.MM.lblName);
-      const fsInfo = engine.mm2cvs(engine.MM.lblInfo);
+      const fsInfo = engine.mm2cvs(engine.MM.lblName);
       const lineHName = fsName + 2;
-      const lineHInfo = fsInfo + 4;
+      const lineHInfo = fsName + 4;
       const boxPadX = engine.mm2cvs(1.0);
       const boxPadY = engine.mm2cvs(0.6);
 
@@ -507,7 +507,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: PlanoEngin
     const sel = b.id === engine.selId;
     const r = 14 * engine.zoom;
     const angle = (b.labelAngle || 0) * Math.PI / 180;
-    b._circ = { x: c.x, y: c.y, r };
+    b._circ = { x: c.x, y: c.y, r: 40 * engine.zoom };
 
     if (b.recibeDeIds?.length) {
       b.recibeDeIds.forEach((rid: string) => {
@@ -548,32 +548,16 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: PlanoEngin
     ctx.translate(c.x, c.y);
     ctx.rotate(angle);
 
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#F04545';
+    ctx.strokeStyle = b.tipo === 'bajante' ? '#F04545' : '#3B82F6';
     ctx.lineWidth = sel ? 3 : 2;
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.stroke();
     if (b.tipo === 'bajante') {
-      const aS = r * 0.7;
-      ctx.strokeStyle = '#F04545';
-      ctx.lineWidth = r * 0.15;
-      ctx.lineCap = 'butt';
-      ctx.beginPath();
-      ctx.moveTo(0, aS * 0.9);
-      ctx.lineTo(0, -aS * 0.5);
-      ctx.stroke();
-      ctx.fillStyle = '#F04545';
-      ctx.beginPath();
-      ctx.moveTo(0, -aS * 0.9);
-      ctx.lineTo(-aS * 0.4, -aS * 0.3);
-      ctx.lineTo(aS * 0.4, -aS * 0.3);
-      ctx.closePath();
-      ctx.fill();
-    } else {
       const aS = r * 0.7;
       ctx.strokeStyle = '#F04545';
       ctx.lineWidth = r * 0.15;
@@ -587,6 +571,22 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: PlanoEngin
       ctx.moveTo(0, aS * 0.9);
       ctx.lineTo(-aS * 0.4, aS * 0.3);
       ctx.lineTo(aS * 0.4, aS * 0.3);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      const aS = r * 0.7;
+      ctx.strokeStyle = '#3B82F6';
+      ctx.lineWidth = r * 0.15;
+      ctx.lineCap = 'butt';
+      ctx.beginPath();
+      ctx.moveTo(0, aS * 0.9);
+      ctx.lineTo(0, -aS * 0.5);
+      ctx.stroke();
+      ctx.fillStyle = '#3B82F6';
+      ctx.beginPath();
+      ctx.moveTo(0, -aS * 0.9);
+      ctx.lineTo(-aS * 0.4, -aS * 0.3);
+      ctx.lineTo(aS * 0.4, -aS * 0.3);
       ctx.closePath();
       ctx.fill();
     }
@@ -622,32 +622,23 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: PlanoEngin
         maxY: Math.max(...corners2.map((c2: any) => c2.y)) + 2,
         corners: corners2
       };
-      ctx.fillStyle = 'rgba(17,19,23,0.82)';
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(-tw / 2 - 4, -10, boxW, boxH);
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = '#000';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(displayCode, 0, -boxH / 2 + lineH / 2 + 2);
       let labelY = -boxH / 2 + lineH * 1.5 + 2;
       if (b.hVert !== undefined) {
-        ctx.font = `${fsBInfo}px Geist, monospace`;
-        ctx.fillStyle = '#849495';
+        ctx.font = `bold ${fsBInfo}px Geist, monospace`;
+        ctx.fillStyle = '#000';
         ctx.fillText(`H=${b.hVert}m`, 0, labelY);
         labelY += lineH;
       }
       if (b.dNominal !== undefined) {
-        ctx.font = `${fsBInfo}px Geist, monospace`;
-        ctx.fillStyle = '#849495';
+        ctx.font = `bold ${fsBInfo}px Geist, monospace`;
+        ctx.fillStyle = '#000';
         ctx.fillText(`D=${b.dNominal && b.dNominal !== '0' ? b.dNominal : ''}mm`, 0, labelY);
-      }
-      if (sel) {
-        ctx.strokeStyle = '#4D8FF7';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(-14, 0, 5, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.fillStyle = '#4D8FF7';
-        ctx.fill();
       }
       ctx.restore();
     } else {
@@ -668,7 +659,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: PlanoEngineA
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
     const r = 14 * engine.zoom;
-    b._ghost = { x: c.x, y: c.y, r };
+    b._ghost = { x: c.x, y: c.y, r: 40 * engine.zoom };
 
     ctx.save();
     ctx.globalAlpha = 0.35;

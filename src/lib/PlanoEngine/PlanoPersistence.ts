@@ -4,6 +4,9 @@ export interface PlanoWorkData {
   v: number;
   scaleM: number;
   activeNet: string;
+  zoom: number;
+  offX: number;
+  offY: number;
   nets: { id: string; col: string }[];
   ramales: unknown[];
   dims: unknown[];
@@ -16,19 +19,23 @@ export interface PlanoWorkData {
 export function serializeWork(engine: {
   scaleM: number;
   activeNet: string;
+  zoom: number;
+  offX: number;
+  offY: number;
   ramales: unknown[];
   dims: unknown[];
   textAnnots: unknown[];
   bajantes: unknown[];
   areas: unknown[];
   nptLevels: unknown[];
-}): string {
-  return JSON.stringify({
+}): PlanoWorkData {
+  return {
     v: 6, scaleM: engine.scaleM, activeNet: engine.activeNet,
+    zoom: engine.zoom, offX: engine.offX, offY: engine.offY,
     nets: NETS.map(n => ({ id: n.id, col: n.col })),
     ramales: engine.ramales, dims: engine.dims, textAnnots: engine.textAnnots,
     bajantes: engine.bajantes, areas: engine.areas, nptLevels: engine.nptLevels,
-  });
+  };
 }
 
 export function deserializeWork(json: string): PlanoWorkData | null {
@@ -63,6 +70,9 @@ export function applyWorkData(
 ) {
   engine.scaleM = d.scaleM || 0.5;
   engine.activeNet = d.activeNet || 'af';
+  engine.zoom = d.zoom ?? 1;
+  engine.offX = d.offX ?? 0;
+  engine.offY = d.offY ?? 0;
   engine.ramales = d.ramales || [];
   engine.dims = d.dims || [];
   engine.textAnnots = d.textAnnots || [];

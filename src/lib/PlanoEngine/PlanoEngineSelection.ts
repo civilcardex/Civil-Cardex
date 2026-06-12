@@ -6,6 +6,7 @@ import type {
   PlanoDimension,
 } from './PlanoState';
 import type { PlanoEngineAPI } from './PlanoEngineTypes';
+import { NETS } from './PlanoState';
 import { pointInPoly, pointInLabelBox } from './HitTester';
 import { _midpoint } from './PlanoEngineDrawing';
 
@@ -19,7 +20,7 @@ export function selectAt(engine: PlanoEngineAPI, cx: number, cy: number): void {
   });
   if (foundTxt) { engine.selId = (foundTxt as any).id; engine._emitSelect(foundTxt); engine.render(); return; }
 
-  let foundBaj: PlanoBajante | null = null, minBD = 16;
+  let foundBaj: PlanoBajante | null = null, minBD = 50;
   engine.bajantes.forEach((b: any) => {
     if (b._labelBox && pointInLabelBox(cx, cy, b._labelBox)) {
       const d = Math.hypot(cx - b._labelBox.cx, cy - b._labelBox.cy);
@@ -242,6 +243,20 @@ export function handleSelectDown(engine: PlanoEngineAPI, x: number, y: number): 
   if (sel && (sel.id?.startsWith('AR')) && (sel as any)._polyBox) {
     const pb = (sel as any)._polyBox!;
     if (x >= pb.x && x <= pb.x + pb.w && y >= pb.y && y <= pb.y + pb.h) {
+      // Before starting area drag, check if a bajante/montante is at this position
+      for (const b of engine.bajantes) {
+        if ((b as any)._circ) {
+          const d = Math.hypot(x - (b as any)._circ.x, y - (b as any)._circ.y);
+          if (d < (b as any)._circ.r) { selectAt(engine, x, y); return; }
+        }
+      }
+      const fg = engine.getBajantesFantasma() as any[];
+      for (const b of fg) {
+        if (b._ghost) {
+          const d = Math.hypot(x - b._ghost.x, y - b._ghost.y);
+          if (d < b._ghost.r) { selectAt(engine, x, y); return; }
+        }
+      }
       const tp = engine.toPlane(x, y);
       engine.areaDrag = { id: sel.id, startX: tp.x, startY: tp.y };
       return;
@@ -277,6 +292,16 @@ export function handleSelectDown(engine: PlanoEngineAPI, x: number, y: number): 
     if ((a as any)._polyBox) {
       const b = (a as any)._polyBox;
       if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+        // Check if a bajante/montante takes priority over this area
+        let bajAtPos = false;
+        for (const bb of engine.bajantes) {
+          if ((bb as any)._circ && Math.hypot(x - (bb as any)._circ.x, y - (bb as any)._circ.y) < (bb as any)._circ.r) { bajAtPos = true; break; }
+        }
+        if (!bajAtPos) {
+          const fg = engine.getBajantesFantasma() as any[];
+          for (const bb of fg) { if (bb._ghost && Math.hypot(x - bb._ghost.x, y - bb._ghost.y) < bb._ghost.r) { bajAtPos = true; break; } }
+        }
+        if (bajAtPos) break;
         engine.selId = a.id;
         const tp = engine.toPlane(x, y);
         engine.areaDrag = { id: a.id, startX: tp.x, startY: tp.y };
@@ -420,10 +445,45 @@ export function handleDragUp(engine: PlanoEngineAPI): void {
     const b = engine.bajantes.find((bb: any) => bb.id === engine.ghostDrag!.id);
     if (b && engine.nivelActual && (b as any).desplazamientos?.[engine.nivelActual.label ?? '']) {
       const d = (b as any).desplazamientos[engine.nivelActual.label ?? ''];
-      if (Math.abs(d.dx) < 1 && Math.abs(d.dy) < 1) delete (b as any).desplazamientos[engine.nivelActual.label ?? ''];
+      if (Math.abs(d.dx) < 1 && Math.abs(d.dy) < 1) {
+        delete (b as any).desplazamientos[engine.nivelActual.label ?? ''];
+      } else {
+        const oldLdesvio = d.Ldesvio;
+        if (!oldLdesvio) {
+          const net = NETS.find(n => n.id === (b as any).net);
+          const pfx = net ? net.lbl : 'R';
+          const cnt = ++(engine._netCounts[(b as any).net].ramal);
+          const ramId = pfx + cnt;
+          const diam = (b as any).dNominal || '0';
+          const ramal: PlanoRamal = {
+            id: ramId,
+            net: (b as any).net,
+            tipo: 'ramal',
+            padre: null,
+            pts: [[b.x, b.y], [b.x + d.dx, b.y + d.dy]],
+            totalL: +(engine.pxToM(Math.hypot(d.dx, d.dy))).toFixed(3),
+            label: pfx + cnt,
+            ini: '',
+            fin: '',
+            piso: engine.nivelActual?.n ?? '',
+            dz: '',
+            uc: 0,
+            labelX: (b.x + b.x + d.dx) / 2,
+            labelY: (b.y + b.y + d.dy) / 2,
+            labelAngle: 0,
+            material: '',
+            diametro: diam !== '0' ? diam : '',
+            pendiente: 1.5,
+          };
+          engine.ramales.push(ramal);
+          d.Ldesvio = ramId;
+          engine._emitStatus(`Desplazamiento conectado: ${ramId}`);
+        }
+      }
     }
     engine.ghostDrag = null;
     engine.render();
+    engine._markDirty();
   }
   if (engine.lblDrag) engine.lblDrag = null;
   if (engine.txtDrag) engine.txtDrag = null;

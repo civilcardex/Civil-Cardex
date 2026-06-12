@@ -148,5 +148,6 @@ export interface PlanoEngineAPI {
   _statusMsg(): string;
   _renumberRamales(netId: string): void;
   selectAt(cx: number, cy: number): void;
+  getSelected(): { id: string; pts?: number[][] } | null;
   deleteSelected(): void;
 }

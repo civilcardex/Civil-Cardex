@@ -52,7 +52,7 @@ export function getElementsByNet(engine: PlanoEngineAPI, netId: string): Array<{
         totalL: (b as any).totalL || 0,
         segs: 0,
         piso: (b as any).piso || '',
-        tipo: 'bajante',
+        tipo: b.tipo || 'bajante',
         pendiente: (b as any).pendiente,
         diametro: b.dNominal,
       });
@@ -158,4 +158,5 @@ export function _renumberRamales(engine: PlanoEngineAPI, netId: string): void {
     engine.ramales.filter(t => t.padre === oldId).forEach(t => { t.padre = newId; });
   });
   engine._netCounts[netId].ramal = ramalesNet.length;
+  try { window.dispatchEvent(new Event('storage')); } catch (_) {}
 }

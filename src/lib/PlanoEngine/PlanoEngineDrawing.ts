@@ -11,7 +11,7 @@ import type {
 import type { PlanoEngineAPI } from './PlanoEngineTypes';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 
-type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'pan' | 'area' | 'erase' | 'segdel';
+type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm';
 
 export function toolCursor(tool: string): string {
   return tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair';
@@ -20,7 +20,8 @@ export function toolCursor(tool: string): string {
 export function _statusMsg(engine: PlanoEngineAPI): string {
   const names: Record<string, string> = {
     sel: 'Seleccionar', line: 'Ramal', dim: 'Cota', text: 'Texto',
-    baj: 'Bajante', pan: 'Pan', area: 'Área', erase: 'Borrar',
+    baj: 'Bajante', mon: 'Montante', pan: 'Pan', area: 'Área', erase: 'Borrar',
+    delm: 'Eliminar elemento',
   };
   let m = names[engine.tool] || engine.tool;
   if (engine.tool === 'line') {
@@ -129,22 +130,6 @@ export function finishRamal(engine: PlanoEngineAPI): void {
     ? 'T' + Date.now()
     : netPfx + cnt;
 
-  try {
-    const k = `${engine.activeRamal!.net}_${id}`;
-    const AP_KEY = 'aparatos_by_tramo_v2';
-    const HD_KEY = 'tramo_hidro_data_v3';
-    const apData = loadFromStorage(AP_KEY, {}) as Record<string, unknown>;
-    const hdData = loadFromStorage(HD_KEY, {}) as Record<string, unknown>;
-    let changed = false;
-    if (apData[k]) { delete apData[k]; changed = true; }
-    if (hdData[k]) { delete hdData[k]; changed = true; }
-    if (changed) {
-      saveToStorage(AP_KEY, apData);
-      saveToStorage(HD_KEY, hdData);
-      window.dispatchEvent(new Event('storage'));
-    }
-  } catch (e) { console.error('PlanoEngine:', e); }
-
   const r: PlanoRamal = {
     id,
     net: engine.activeRamal!.net,
@@ -190,11 +175,13 @@ export function finishArea(engine: PlanoEngineAPI): void {
   const pts = engine.activeArea.pts;
   const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
   const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+  const areaCnt = engine.areas.length + 1;
   const area: PlanoArea = {
     id: 'AR' + Date.now(),
     pts: pts.map(p => [...p]),
     color: engine.activeArea.color || 'rgba(0,220,229,0.2)33',
-    label: '',
+    net: engine.activeNet,
+    label: 'AREA' + areaCnt,
     labelX: cx,
     labelY: cy,
     labelAngle: 0,
@@ -209,7 +196,7 @@ export function finishArea(engine: PlanoEngineAPI): void {
 export function undoLast(engine: PlanoEngineAPI): void {
   if (engine.activeRamal) { cancelRamal(engine); return; }
   if (engine.activeArea) { cancelArea(engine); return; }
-  if (engine.tool === 'baj' && engine.bajantes.length) {
+  if ((engine.tool === 'baj' || engine.tool === 'mon' || engine.tool === 'delm') && engine.bajantes.length) {
     engine.bajantes.pop();
   } else if (engine.ramales.length) {
     engine.ramales.pop();
@@ -375,16 +362,37 @@ export function handleTextDown(engine: PlanoEngineAPI, px: number, py: number): 
 }
 
 export function handleBajanteDown(engine: PlanoEngineAPI, px: number, py: number): void {
-  const net = NETS.find(n => n.id === engine.activeNet);
-  const bType = net?.bmType || 'bajante';
-  const bPfx = net?.bmPfx || 'B';
-  const cnt = engine.bajantes.filter(b => b.net === engine.activeNet).length + 1;
-  const bajId = bPfx + cnt;
+  const netPfx = engine.activeNet === 'll' ? 'BAJALL' : engine.activeNet === 'san' ? 'BAJRS' : 'BAJ';
+  const cnt = engine.bajantes.filter(b => b.tipo === 'bajante' && b.net === engine.activeNet).length + 1;
+  const bajId = netPfx + cnt;
   engine.bajantes.push({
     id: bajId,
     net: engine.activeNet,
-    tipo: bType,
+    tipo: 'bajante',
     code: bajId,
+    x: px, y: py,
+    pisoBase: '', pisoCima: '',
+    nptBase: 0, nptCima: 0,
+    hVert: 0, dNominal: '0',
+    recibeDeIds: [], alimentaIds: [], descargaEnId: null,
+    ucAcum: 0, ucExtra: 0, area_m2: 0,
+    desplazamientos: {},
+    lblOffX: 0, lblOffY: 0,
+    labelAngle: 0,
+    labelX: px, labelY: py + 20,
+  });
+  engine.render();
+  engine._markDirty();
+}
+
+export function handleMontanteDown(engine: PlanoEngineAPI, px: number, py: number): void {
+  const cnt = engine.bajantes.filter(b => b.tipo === 'montante').length + 1;
+  const monId = 'MON' + cnt;
+  engine.bajantes.push({
+    id: monId,
+    net: engine.activeNet,
+    tipo: 'montante',
+    code: 'MON' + cnt,
     x: px, y: py,
     pisoBase: '', pisoCima: '',
     nptBase: 0, nptCima: 0,
@@ -405,6 +413,22 @@ export function handleEraseDown(engine: PlanoEngineAPI, cx: number, cy: number):
   engine.deleteSelected();
   engine._emitSelect(null);
   engine.selId = null;
+}
+
+export function handleDeleteElementDown(engine: PlanoEngineAPI, cx: number, cy: number): void {
+  engine.selectAt(cx, cy);
+  const sel = engine.getSelected() as { id: string; pts?: number[][] } | null;
+  if (!sel) { engine._emitStatus('No se encontró ningún elemento'); return; }
+  if (sel.id?.startsWith('BAJ') || sel.id?.startsWith('MON') || sel.id?.startsWith('AR')) {
+    engine.deleteSelected();
+    engine._emitSelect(null);
+    engine.selId = null;
+    engine._emitStatus('Elemento eliminado');
+  } else {
+    engine.selId = null;
+    engine._emitSelect(null);
+    engine._emitStatus('Solo permite eliminar bajantes, montantes y áreas');
+  }
 }
 
 export function handleSegDelDown(engine: PlanoEngineAPI, cx: number, cy: number): void {

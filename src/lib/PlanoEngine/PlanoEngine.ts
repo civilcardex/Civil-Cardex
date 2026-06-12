@@ -38,7 +38,9 @@ import {
   handleDimDown,
   handleTextDown,
   handleBajanteDown,
+  handleMontanteDown,
   handleEraseDown,
+  handleDeleteElementDown,
   handleSegDelDown,
   handleAreaDown,
   handleDrawingMouseMove,
@@ -72,7 +74,7 @@ import {
 
 export { NETS };
 
-type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'pan' | 'area' | 'erase' | 'segdel';
+type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm';
 type TramoType = 'ramal' | 'tributario';
 
 interface Point { x: number; y: number }
@@ -454,10 +456,13 @@ export default class PlanoEngine {
 
   _renumberRamales(netId: string): void { _doRenumberRamales(this as unknown as PlanoEngineAPI, netId); }
 
-  saveWork(): string {
+  saveWork(): import('./PlanoPersistence').PlanoWorkData {
     return serializeWork(this as unknown as {
       scaleM: number;
       activeNet: string;
+      zoom: number;
+      offX: number;
+      offY: number;
       ramales: unknown[];
       dims: unknown[];
       textAnnots: unknown[];
@@ -467,9 +472,12 @@ export default class PlanoEngine {
     });
   }
 
-  loadWork(json: string): void {
+  loadWork(json: string | object): void {
     try {
-      const d = JSON.parse(json) as unknown as import('./PlanoPersistence').PlanoWorkData;
+      // Acepta tanto string como objeto ya parseado (loadFromStorage devuelve objeto)
+      const d = (typeof json === 'string'
+        ? JSON.parse(json)
+        : json) as unknown as import('./PlanoPersistence').PlanoWorkData;
       applyWorkData(this as unknown as {
         scaleM: number;
         activeNet: string;
@@ -506,8 +514,8 @@ export default class PlanoEngine {
       (this.cw.clientHeight - 36) / this.pageH,
     );
     this.zoom = s;
-    this.offX = (this.cw.clientWidth - this.pageW * s) / 2;
-    this.offY = 16;
+    this.offX = this.pageW * (1 - s) / 2;
+    this.offY = (this.cw.clientHeight - this.pageH * s) / 2;
     this.render();
   }
 
@@ -519,8 +527,6 @@ export default class PlanoEngine {
     if (this.pdfWrap) {
       this.pdfWrap.style.transform = `translate(${this.offX}px,${this.offY}px) scale(${this.zoom})`;
       this.pdfWrap.style.transformOrigin = '0 0';
-      this.pdfWrap.style.imageRendering = 'pixelated';
-      (this.pdfWrap.style as unknown as Record<string, string>).imageRendering = 'crisp-edges';
       this.pdfWrap.style.willChange = 'transform';
     }
 
@@ -558,10 +564,14 @@ export default class PlanoEngine {
       handleTextDown(this as unknown as PlanoEngineAPI, p.x, p.y);
     } else if (this.tool === 'baj') {
       handleBajanteDown(this as unknown as PlanoEngineAPI, p.x, p.y);
+    } else if (this.tool === 'mon') {
+      handleMontanteDown(this as unknown as PlanoEngineAPI, p.x, p.y);
     } else if (this.tool === 'area') {
       handleAreaDown(this as unknown as PlanoEngineAPI, p.x, p.y);
     } else if (this.tool === 'erase') {
       handleEraseDown(this as unknown as PlanoEngineAPI, x, y);
+    } else if (this.tool === 'delm') {
+      handleDeleteElementDown(this as unknown as PlanoEngineAPI, x, y);
     } else if (this.tool === 'segdel') {
       handleSegDelDown(this as unknown as PlanoEngineAPI, x, y);
     }
@@ -619,8 +629,10 @@ export default class PlanoEngine {
     else if (k === 'd') { this.setTool('dim'); e.preventDefault(); }
     else if (k === 't') { this.setTool('text'); e.preventDefault(); }
     else if (k === 'b') { this.setTool('baj'); e.preventDefault(); }
+    else if (k === 'm') { this.setTool('mon'); e.preventDefault(); }
     else if (k === 'a') { this.setTool('area'); e.preventDefault(); }
     else if (k === 'e') { this.setTool('erase'); e.preventDefault(); }
+    else if (k === 'x') { this.setTool('delm'); e.preventDefault(); }
     else if (k === 'k') { this.setTool('segdel'); e.preventDefault(); }
     else if (k === ' ') { this.setTool(this.tool === 'pan' ? 'sel' : 'pan'); e.preventDefault(); }
     else if (k === 'enter') {
