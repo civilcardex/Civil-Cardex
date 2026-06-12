@@ -81,13 +81,11 @@ function LoginPage() {
         </div>
 
               <div className="flex items-center justify-between">
-                {/* TODO: Implement remember me functionality */}
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" className="w-4 h-4 border accent-[#00dce5]"
                     style={{ borderColor: '#3a494a', background: '#0a0e14' }} />
                   <span className="text-xs" style={{ color: '#6b8cae' }}>Recordarme</span>
                 </label>
-                {/* TODO: Implement forgot password flow */}
                 <button type="button" className="text-xs hover:underline" style={{ color: '#00dce5' }}>
                   ¿Olvidó su contraseña?
                 </button>

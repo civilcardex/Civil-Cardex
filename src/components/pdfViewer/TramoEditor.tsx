@@ -33,7 +33,6 @@ export default function TramoEditor({
 
   return (
     <>
-      {/* Datos del tramo */}
       <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", textTransform: "uppercase", letterSpacing: 1 }}>Datos del tramo</div>
@@ -119,7 +118,6 @@ export default function TramoEditor({
         )}
       </div>
 
-      {/* Datos específicos */}
       {(() => {
         const isGas = activeNet === 'gas';
         const matList = mats?.[activeNet] || [];

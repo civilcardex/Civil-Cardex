@@ -551,7 +551,6 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
           onSnapToggle={() => setSnapOn(!snapOn)}
         />
 
-        {/* Acciones */}
         <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Acciones</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -595,7 +594,6 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
           </div>
         </div>
         <div style={{ flex: 1 }} />
-        {/* Close drawing */}
         <div style={{padding:"6px 8px",borderTop:"1px solid #3a494a"}}>
         <button onClick={()=>{
           const eng = engineRef.current;
@@ -624,8 +622,7 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
         </div>
       </div>
 
-      {/* Canvas area */}
-        <PdfCanvas
+      <PdfCanvas
           cwRef={cwRef}
           containerRef={containerRef}
           pdfCanvasRef={pdfCanvasRef}
@@ -647,7 +644,6 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
         background: "#14161a", borderLeft: "1px solid #3a494a",
         overflowY: "auto", overflowX: "hidden",
       }}>
-        {/* Nivel */}
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Nivel</div>
           <select value={selectedNivel??''} onChange={e=>{
@@ -677,7 +673,6 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
           })()}
         </div>
 
-        {/* ¿Qué voy a dibujar? */}
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>¿Qué voy a dibujar?</div>
           <div style={{display:'flex',flexDirection:'column',gap:4}}>
@@ -748,7 +743,6 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
           handleDelete={handleDelete}
         />
 
-        {/* Escala */}
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Escala</div>
           <div style={{padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace"}}>
@@ -761,10 +755,8 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
           </div>
         </div>
 
-        {/* Cuantificación de aparatos */}
         <AparatosPanel activeNet={activeNet} selElement={selElement} />
 
-        {/* Trazos de red */}
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
             Trazos de red ({drawnElements.length})

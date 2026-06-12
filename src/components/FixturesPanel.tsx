@@ -238,7 +238,6 @@ try { writeSanDrawingSync(plans); } catch (e) { console.error('AparatosPanel:', 
     return counts[storageKey] || {};
   }, [counts, storageKey]);
 
-  // hidro data for current target
   const curHidro = useMemo(() => {
     if (!storageKey) return { accesorios: {}, Lh: 0, nSalidas: 0 };
     return hidroData[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 };
@@ -293,7 +292,6 @@ try { writeSanDrawingSync(plans); } catch (e) { console.error('AparatosPanel:', 
     });
   };
 
-  // Accessory operations
   const incAcc = (accId: string) => {
     if (!storageKey) return;
     setHidroData(prev => {
@@ -324,7 +322,6 @@ try { writeSanDrawingSync(plans); } catch (e) { console.error('AparatosPanel:', 
     });
   };
 
-  // Gas accessory operations
   const gasAccMap = useMemo(() => {
     if (!targetId) return {};
     return gasAcc[targetId] || {};
@@ -378,7 +375,6 @@ try { writeSanDrawingSync(plans); } catch (e) { console.error('AparatosPanel:', 
 
   return (
     <div ref={containerRef} style={containerStyle}>
-      {/* ── MAIN HEADER ── */}
       <button onClick={() => setOpen(o => !o)} style={{
         width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '10px 12px 8px', background: 'transparent', border: 'none', cursor: 'pointer',
@@ -411,7 +407,6 @@ try { writeSanDrawingSync(plans); } catch (e) { console.error('AparatosPanel:', 
         </div>
       </button>
 
-      {/* ── APARATOS SECTION ── */}
       {open && (
         <div style={{ padding: '0 10px 10px' }}>
           {targetId ? (
@@ -463,7 +458,6 @@ try { writeSanDrawingSync(plans); } catch (e) { console.error('AparatosPanel:', 
         </div>
       )}
 
-      {/* ── ACCESORIOS SECTION ── */}
       {isAfAc && (
         <AccesoriosSection
           targetId={targetId}

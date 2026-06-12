@@ -123,7 +123,6 @@ function ProfilePage() {
   return (
     <div className="space-y-6">
       <Navbar />
-      {/* ── Header ── */}
       <div className="border border-outline-variant bg-surface-container p-6 flex items-start gap-6">
         <div className="w-20 h-20 border-2 border-primary bg-surface-container flex items-center justify-center shrink-0">
           <span className="material-symbols-outlined text-4xl text-primary">person</span>
@@ -141,7 +140,6 @@ function ProfilePage() {
         </div>
       </div>
 
-      {/* ── Información Personal Editable ── */}
       <div className="border border-outline-variant bg-surface-container p-6">
         <h2 className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant mb-4">
           Información Personal
@@ -191,7 +189,6 @@ function ProfilePage() {
         </div>
       </div>
 
-      {/* ── Proyectos Activos (Lista desplegable) ── */}
       <div className="border border-outline-variant bg-surface-container">
         <button
           onClick={() => setProyectosOpen(!proyectosOpen)}
@@ -213,7 +210,6 @@ function ProfilePage() {
 
         {proyectosOpen && (
           <div className="border-t border-outline-variant">
-            {/* Nuevo Proyecto */}
             <div className="px-6 py-3 border-b border-outline-variant bg-surface-container-low">
               <button
                 className="flex items-center gap-2 text-primary hover:text-primary-fixed text-[13px] font-medium transition-colors"
@@ -224,7 +220,6 @@ function ProfilePage() {
               </button>
             </div>
 
-            {/* Lista de proyectos */}
             <div className="divide-y divide-outline-variant">
               {proyectosActivos.map((proy) => {
                 const e = estadoConfig[proy.estado] || estadoConfig.activo
@@ -258,7 +253,6 @@ function ProfilePage() {
         )}
       </div>
 
-      {/* ── Cerrar Sesión ── */}
       <div className="border border-outline-variant bg-surface-container p-6 flex justify-end">
         <button
           onClick={async () => {

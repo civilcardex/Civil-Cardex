@@ -68,7 +68,6 @@ function PlansPage() {
           <input ref={fileRef} type="file" accept=".pdf" multiple style={{ display: 'none' }}
             onChange={handleFileInput} />
 
-          {/* Drop zone */}
           <div className={`plano-drop rounded-lg p-8 text-center mb-6 ${drag ? 'drag' : ''}`}
             onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
             onDragLeave={() => setDrag(false)}
@@ -84,7 +83,6 @@ function PlansPage() {
             </div>
           </div>
 
-          {/* Uploaded list */}
           {plans.length > 0 && (
             <div className="border rounded-lg overflow-hidden mb-6"
               style={{ borderColor: '#3a494a', background: '#111317' }}>
@@ -124,7 +122,6 @@ function PlansPage() {
             </div>
           )}
 
-          {/* Area de Trabajo button */}
           {plans.length > 0 && (
             <button onClick={() => navigate('/visor')}
               className="w-full h-14 font-bold text-[11px] tracking-widest uppercase transition-all border rounded-lg flex items-center justify-center gap-3"
@@ -142,7 +139,6 @@ function PlansPage() {
             </button>
           )}
 
-          {/* Requirements */}
           {plans.length === 0 && (
             <div className="border rounded-lg overflow-hidden"
               style={{ borderColor: '#3a494a', background: '#111317' }}>

@@ -146,7 +146,6 @@ export default function Normativa() {
       )}
 
       {secFiltradas.map((sec) => (
-        // @ts-ignore children passed via JSX
         <NormaCard
           key={sec.id}
           id={sec.id}

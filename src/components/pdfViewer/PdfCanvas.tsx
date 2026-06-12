@@ -127,7 +127,6 @@ export default function PdfCanvas({
         </div>
       )}
 
-      {/* Status bar */}
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         display: "flex", alignItems: "center", gap: 10, padding: "4px 14px",

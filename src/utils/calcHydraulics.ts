@@ -1,9 +1,3 @@
-// ============================================
-// calcHidraulica.js - Calculo Red Hidraulica
-// Basado en NTC 1500, Hazen-Williams, Hunter
-// Casa de Roca No. 97 - Floridablanca, Santander
-// ============================================
-
 import { factorSimultaneidad, caudalHunterLPS } from './calcSanitary';
 
 export const COEF_HAZEN_PVC: number = 150;

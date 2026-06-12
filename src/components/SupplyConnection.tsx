@@ -115,7 +115,6 @@ export default function Acometida({
             <tbody>
 
 
-              {/* Fila RED → CONT */}
               <tr>
                 <td className="c" style={{padding:"2px 1px",background:"var(--bg4)",fontWeight:700,fontSize:9,color:"var(--txt2)"}}>RED</td>
                 <td className="c" style={{padding:"2px 1px",fontSize:11,color:"var(--txt2)",textAlign:"center",fontWeight:700}}>→</td>
@@ -148,7 +147,6 @@ export default function Acometida({
                 <td className="c" style={{padding:"2px 1px",fontWeight:600,fontSize:11,color:f1.Pfin>=1?"var(--ok)":"var(--err)"}}>{f1.Pfin > 0 ? fmt(f1.Pfin, 2) : "—"}</td>
               </tr>
 
-              {/* Fila CONT → Mon (editable) */}
               <tr>
                 <td className="c" style={{padding:"2px 1px",background:"var(--bg4)",fontWeight:700,fontSize:9,color:"var(--txt2)"}}>CONTADOR</td>
                 <td className="c" style={{padding:"2px 1px",fontSize:11,color:"var(--txt2)",textAlign:"center",fontWeight:700}}>→</td>
@@ -184,7 +182,6 @@ export default function Acometida({
                 <td className="c" style={{padding:"2px 1px",fontWeight:600,fontSize:11,color:f2.Pfin>=1?"var(--ok)":"var(--err)"}}>{f2.Pfin > 0 ? fmt(f2.Pfin, 2) : "—"}</td>
               </tr>
 
-              {/* Fila Chequeo */}
               <tr>
                 <td colSpan={12} className="c" style={{padding:"2px 1px",fontSize:9,color:"var(--txt3)",textAlign:"right"}}>
                   Chequeo

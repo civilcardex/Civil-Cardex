@@ -162,8 +162,7 @@ export function useWorkAreaState() {
     } else if (plansCtx.plans.length === 0) {
       setSelectedPlanId(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plansCtx.plans.length]);
+    }, [plansCtx.plans.length]);
 
   const fileRef = useRef<HTMLInputElement>(null);
 

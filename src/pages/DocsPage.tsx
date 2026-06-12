@@ -3,10 +3,7 @@ import Navbar from '../components/Navbar'
 import { docData } from './docs/docData'
 import SectionAccordion from './docs/SectionAccordion'
 
-/* ─────────────────────────────────────────────────────────────
-   Civil Flow KML 2026 — DOCUMENTACION
-   Ing. Camilo Cardenas Chacon     NTC 1500 · RAS 2000 · NTC 3728 · NSR-10
-   ───────────────────────────────────────────────────────────── */
+
 
 function DocsPage() {
   const [activeCat, setActiveCat] = useState('hidraulica')
@@ -65,7 +62,6 @@ function DocsPage() {
           background: #4d8ff7;
         }
       `}</style>
-      {/* Sidebar de categorías */}
       <div className="w-64 shrink-0 border border-outline-variant bg-surface-container flex flex-col">
         <div className="p-4 border-b border-outline-variant">
           <h2 className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant">
@@ -98,9 +94,7 @@ function DocsPage() {
         </div>
       </div>
 
-      {/* Contenido principal */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header + Busqueda */}
         <div className="mb-4 flex items-center gap-4">
           <span className="material-symbols-outlined text-3xl" style={{ color: search.trim() ? '#e9feff' : activeCategory?.color }}>
             {search.trim() ? 'search' : activeCategory?.icon}
@@ -124,7 +118,6 @@ function DocsPage() {
           </div>
         </div>
 
-        {/* Acordeón de secciones */}
         <div className="flex-1 overflow-auto space-y-2 pr-1 docs-scroll">
           {filteredSections.map((section: any) => {
             const sectionKey = `${section.categoryId}:${section.title}`

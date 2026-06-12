@@ -72,7 +72,7 @@ function ActiveNetsCard({ redes, setRedes, netColors, setNetColors }: { redes: S
                       const net = (window as any).__NETS?.find?.((n: any) => n.id === r.id);
                       if (net) net.col = c;
                     } catch (e) { console.error(e); }
-                    try { localStorage.setItem('civilflow_net_' + r.id, c); } catch (_) { /* ignore */ }
+                    try { localStorage.setItem('civilflow_net_' + r.id, c); } catch (_) { }
                   }}
                   style={{ width: 14, height: 14, border: 'none', padding: 0, cursor: 'pointer', background: 'none', flexShrink: 0 }} />
                 <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: on ? currentColor : 'transparent', border: '1.5px solid ' + (on ? currentColor : 'var(--txt3)') }} />

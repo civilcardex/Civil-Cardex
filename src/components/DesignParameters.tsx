@@ -136,7 +136,6 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.05fr 1fr', gap: 10, flex: 1, minHeight: 0, alignItems: 'start' }}>
 
-        {/* ══════════ TABLA 1: MATERIALES POR RED ══════════ */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
             <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/materiales_por_red.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:2}} />Materiales por red</span>
@@ -241,7 +240,6 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
           </button>
         </div>
 
-        {/* ══════════ TABLA 2: CATÁLOGO DE APARATOS SANITARIOS ══════════ */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
             <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_aparatos_sanitarios.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:2}} />Catálogo de aparatos sanitarios</span>
@@ -290,7 +288,6 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
           </div>
         </div>
 
-        {/* ══════════ TABLA 3: CATÁLOGO DE GASODOMÉSTICOS ══════════ */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
             <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_gasodomesticos.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:2}} />Catálogo de gasodomésticos</span>

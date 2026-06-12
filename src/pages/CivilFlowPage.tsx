@@ -119,7 +119,6 @@ export default function CivilFlowPage() {
               <h2 className="text-2xl font-bold text-on-surface" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>Validación de Datos en su Propio Terreno</h2>
               <p className="text-sm text-on-surface-variant">Solicite acceso a nuestro entorno de pruebas sandbox. Suba un KML de muestra y experimente el ruteo automático y cálculo de presiones en tiempo real.</p>
               <div className="flex gap-4 mt-2">
-                {/* TODO: Wire up demo request form submission */}
                 <input className="px-4 py-3 flex-grow outline-none text-on-surface border-b border-outline-variant focus:border-primary transition-colors" style={{ fontFamily: 'Geist, monospace', fontSize: 13, background: '#0A0C0E' }} placeholder="INGRESAR_CORREO_CORPORATIVO" type="email" />
                 <button className="px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold text-on-primary flex items-center gap-2" style={{ fontFamily: 'Geist, monospace', background: '#00f5ff' }}>
                   Solicitar Demo <span className="material-symbols-outlined text-sm">arrow_forward</span>
