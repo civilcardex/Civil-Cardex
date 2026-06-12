@@ -34,7 +34,7 @@ export default function WaterNetworkDesign({ networkType, diamTable, lookupFn }:
   const colorVar = `var(--${networkType})`;
   const ucField = isAf(networkType) ? 'uc_af' : 'uc_ac';
   const title = isAf(networkType) ? 'agua fr\u00EDa' : 'agua caliente';
-  const icon = isAf(networkType) ? 'RAF_Diseno.webp' : 'RAC_Diseno.webp';
+  const icon = isAf(networkType) ? 'hidraulica/RAF_Diseno.webp' : 'hidraulica/RAC_Diseno.webp';
 
   const DIAM_OPTS = useMemo(() => {
     return diamTable.map(d => ({ pulg: d.pulg, nominal: d.nominal, label: d.nominal, dInt: d.dInt }));
@@ -316,7 +316,7 @@ export default function WaterNetworkDesign({ networkType, diamTable, lookupFn }:
 
       <div style={{ display: "none" }}>
         <div className="card-h">
-          <span className="card-t"><img src="/iconos_diseno_redes/Accesorios.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Accesorios por ramal</span>
+          <span className="card-t"><img src="/iconos_diseno_redes/general/Accesorios.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Accesorios por ramal</span>
           <span className="card-s">Cálculo interno de Le por ramal · PVC-PR C=150</span>
         </div>
         <div style={{ padding: "4px" }}>

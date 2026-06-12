@@ -145,7 +145,7 @@ export default function GasCalcUC({ patm, temp, densRel }: { patm: string; temp:
       <div className="card">
         <div className="card-h">
           <span className="card-t">
-            <img src="/iconos_diseno_redes/calculo_UC_gas.webp" alt="" style={{ width: 24, height: 24, verticalAlign: "middle", marginRight: 4 }} />
+            <img src="/iconos_diseno_redes/gas/calculo_UC_gas.webp" alt="" style={{ width: 24, height: 24, verticalAlign: "middle", marginRight: 4 }} />
             Cálculo UC gas
           </span>
           <span className="card-s">0 tramos</span>
@@ -166,7 +166,7 @@ export default function GasCalcUC({ patm, temp, densRel }: { patm: string; temp:
     <div className="card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
       <div className="card-h">
         <span className="card-t">
-          <img src="/iconos_diseno_redes/calculo_UC_gas.webp" alt="" style={{ width: 24, height: 24, verticalAlign: "middle", marginRight: 4 }} />
+          <img src="/iconos_diseno_redes/gas/calculo_UC_gas.webp" alt="" style={{ width: 24, height: 24, verticalAlign: "middle", marginRight: 4 }} />
           Cálculo UC gas
         </span>
         <span className="card-s">{tramos.length} tramos</span>
@@ -222,7 +222,7 @@ export default function GasCalcUC({ patm, temp, densRel }: { patm: string; temp:
     <div className="card" style={{ flexShrink: 0, alignSelf: "stretch" }}>
       <div className="card-h">
         <span className="card-t">
-          <img src="/iconos_diseno_redes/calculo_perdidas_de_carga.webp" alt="" style={{ width: 24, height: 24, verticalAlign: "middle", marginRight: 4 }} />
+          <img src="/iconos_diseno_redes/general/calculo_perdidas_de_carga.webp" alt="" style={{ width: 24, height: 24, verticalAlign: "middle", marginRight: 4 }} />
           Factores de correcci&oacute;n
         </span>
       </div>

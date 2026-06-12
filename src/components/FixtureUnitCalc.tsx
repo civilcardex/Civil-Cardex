@@ -15,7 +15,7 @@ const mergedBase = SAN_UC_IDS.map(id => {
 const acumMap = calcUDacumulado(tramosSan, mergedBase);
 
 const tribIds = getTributarioIds(tramosSan);
-const displayTramos = tramosSan.filter(t => !tribIds.has(t.id))
+const displayTramos = tramosSan.filter(t => !tribIds.has(t.id) && !t.esBajante)
   .sort((a, b) => (a.piso || 0) - (b.piso || 0));
 
 const totales = mergedBase.map(d => ({
@@ -28,7 +28,7 @@ return (
 <>
   <div className="card">
     <div className="card-h">
-      <span className="card-t"><img src="/iconos_diseno_redes/RS_Calculo_UC.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Cálculo de unidades de descarga</span>
+      <span className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Calculo_UC.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Cálculo de unidades de descarga</span>
       <span className="card-s">{tramosSan.length} tramos</span>
     </div>
     <div className="scroll-top" style={{padding:'16px'}}>

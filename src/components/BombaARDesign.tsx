@@ -91,7 +91,7 @@ export default function BombaARDesign(){
   const COLS2=['Componente','Símbolo','Valor','Unidad','Equivalencia','Observación'];
 
   const page1=<Tbl th={TH2} td={TD2} tdl={TDL2} fontSize={13} valueCol={2} cols={COLS1} rows={[
-    ['Número de Salidas Simultáneas','Sal sim',<Inp v={salSim} set={setSalSim} style={SI2}/>,'und','—','Probabilidad de trabajar al máximo'],
+    ['Número de salidas simultáneas','Sal sim',<Inp v={salSim} set={setSalSim} style={SI2}/>,'und','—','Probabilidad de trabajar al máximo'],
     ['UD acumuladas en sótano','UD tot',<Inp v={udTot} set={setUdTot} style={SI2}/>,'UD','—','NTC 1500'],
     ['Coeficiente K simultaneidad Hunter','K',Fmt2(K),'—','—','K = 1/√(n−1)'],
     ['Caudal de diseño Q = UD × K','Q dis',Fmt2(Qd),'lps',Fmt2((Qd*15.8503).toFixed(2),'GPM'),'Método Hunter NTC 1500'],
@@ -118,7 +118,7 @@ export default function BombaARDesign(){
   const page3=<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', alignItems: 'start' }}>
     <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
       <div className="card-h" style={{padding:'8px 8px'}}>
-        <span className="card-t"><img src="/iconos_diseno_redes/bomba_sumergible_trituradora.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Parámetros de Diseño</span>
+        <span className="card-t"><img src="/iconos_diseno_redes/equipos/bomba_sumergible_trituradora.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Parámetros de Diseño</span>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead><tr>{COLS1.map((c,i)=><th key={i} style={TH2}>{c}</th>)}</tr></thead>
@@ -137,7 +137,7 @@ export default function BombaARDesign(){
     
     <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
       <div className="card-h" style={{padding:'8px 8px'}}>
-        <span className="card-t"><img src="/iconos_diseno_redes/especificacion_camara_trituradora.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Especificación — Bomba sumergible trituradora</span>
+        <span className="card-t"><img src="/iconos_diseno_redes/equipos/especificacion_camara_trituradora.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Especificación — Bomba sumergible trituradora</span>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead><tr>{['Ítem','Valor'].map((c,i)=><th key={i} style={TH2}>{c}</th>)}</tr></thead>
@@ -156,7 +156,7 @@ export default function BombaARDesign(){
   const page4=<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', alignItems: 'start' }}>
     <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
       <div className="card-h" style={{padding:'8px 8px'}}>
-        <span className="card-t"><img src="/iconos_diseno_redes/camara_bombeo.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Parámetros de Diseño</span>
+        <span className="card-t"><img src="/iconos_diseno_redes/equipos/camara_bombeo.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Parámetros de Diseño</span>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead><tr>{COLS1.map((c,i)=><th key={i} style={TH2}>{c}</th>)}</tr></thead>
@@ -175,7 +175,7 @@ export default function BombaARDesign(){
     
     <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
       <div className="card-h" style={{padding:'8px 8px'}}>
-        <span className="card-t"><img src="/iconos_diseno_redes/especificacion_camara_bombeo.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Especificación — Cámara de bombeo</span>
+        <span className="card-t"><img src="/iconos_diseno_redes/equipos/especificacion_camara_bombeo.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Especificación — Cámara de bombeo</span>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead><tr>{['Ítem','Valor'].map((c,i)=><th key={i} style={TH2}>{c}</th>)}</tr></thead>
@@ -190,10 +190,10 @@ export default function BombaARDesign(){
   </div>;
 
   const pages=[
-    {t:'Datos de entrada',icon:'/iconos_diseno_redes/datos_de_entrada.webp',c:page1},
-    {t:'Cálculo de pérdidas de carga',icon:'/iconos_diseno_redes/calculo_perdidas_de_carga.webp',c:page2},
-    {t:'Bomba sumergible trituradora',icon:'/iconos_diseno_redes/bomba_sumergible_trituradora.webp',c:page3, noWrap: true},
-    {t:'Cámara de bombeo (pozo húmedo)',icon:'/iconos_diseno_redes/camara_bombeo.webp',c:page4, noWrap: true},
+    {t:'Datos de entrada',icon:'/iconos_diseno_redes/general/datos_de_entrada.webp',c:page1},
+    {t:'Cálculo de pérdidas de carga',icon:'/iconos_diseno_redes/general/calculo_perdidas_de_carga.webp',c:page2},
+    {t:'Bomba sumergible trituradora',icon:'/iconos_diseno_redes/equipos/bomba_sumergible_trituradora.webp',c:page3, noWrap: true},
+    {t:'Cámara de bombeo (pozo húmedo)',icon:'/iconos_diseno_redes/equipos/camara_bombeo.webp',c:page4, noWrap: true},
   ];
 
   return(

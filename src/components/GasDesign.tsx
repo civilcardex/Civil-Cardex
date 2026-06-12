@@ -182,15 +182,15 @@ export default function GasDesign(){
   const colW=['8%','5%','8%','8%','18%','10%','8%','12%'];
 
   const page1=<>
-    <div className="card" style={{flexShrink:0,alignSelf:'start'}}>
+    <div className="card" style={{flexShrink:0,alignSelf:'center'}}>
       <div className="card-h" style={{padding:'6px 12px'}}>
         <span className="card-t">
-          <img src="/iconos_diseno_redes/datos_generales_red_gas.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />
+          <img src="/iconos_diseno_redes/gas/datos_generales_red_gas.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />
           Datos generales
         </span>
       </div>
-      <div style={{padding:'6px 10px',display:'flex',flexDirection:'column',alignItems:'start'}}>
-        <table className="tbl" style={{fontSize:12,whiteSpace:'nowrap'}}>
+      <div style={{padding:'8px 12px',display:'flex',flexDirection:'column',alignItems:'center'}}>
+        <table className="tbl" style={{fontSize:13,whiteSpace:'nowrap'}}>
           <tbody>
             {[
               ['Altitud de la ciudad del proyecto',alt,setAlt,'msnm'],
@@ -200,9 +200,9 @@ export default function GasDesign(){
               ['Densidad relativa del gas a utilizar',densRel,setDensRel,'kPa'],
             ].map((row, i, arr)=>{const [lbl,val,setVal,uni] = row as [string, string, any, string];return (
               <tr key={i}>
-                <td style={{padding:'4px 8px',fontWeight:600,color:'var(--txt)',fontSize:12,borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}>{lbl}</td>
-                <td style={{padding:'4px 8px',borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}><input type="text" inputMode="decimal" value={val} onChange={e=>setVal(e.target.value)} style={{...SI,textAlign:'right',fontSize:12,padding:'4px 8px',width:90}}/></td>
-                <td style={{padding:'4px 8px',color:'var(--txt2)',fontSize:12,fontWeight:500,borderBottom:i<arr.length-1?'1px solid var(--line)':'none'}}>{uni}</td>
+                <td style={{padding:'6px 10px',fontWeight:600,color:'var(--txt)',fontSize:13,borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}>{lbl}</td>
+                <td style={{padding:'6px 10px',borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}><input type="text" inputMode="decimal" value={val} onChange={e=>setVal(e.target.value)} style={{...SI,textAlign:'right',fontSize:13,padding:'5px 8px',width:100}}/></td>
+                <td style={{padding:'6px 10px',color:'var(--txt2)',fontSize:13,fontWeight:500,borderBottom:i<arr.length-1?'1px solid var(--line)':'none'}}>{uni}</td>
               </tr>
             );})}
           </tbody>
@@ -218,7 +218,7 @@ export default function GasDesign(){
       <div className="card" style={{display:'flex',flexDirection:'column'}}>
         <div className="card-h" style={{justifyContent:'space-between'}}>
           <span className="card-t">
-            <img src="/iconos_diseno_redes/diseno_red_gas.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} />
+            <img src="/iconos_diseno_redes/gas/diseno_red_gas.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} />
             Diseño de red
           </span>
           <span className="card-s">{gasTramos.length} tramos</span>
@@ -277,7 +277,7 @@ export default function GasDesign(){
       <div className="card" style={{display:'flex',flexDirection:'column',minWidth:0,overflow:'hidden',...(gasTramos.length===0?{}:{flex:1})}}>
         <div className="card-h" style={{justifyContent:'space-between'}}>
           <span className="card-t">
-            <img src="/iconos_diseno_redes/chequeo_red_gas.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} />
+            <img src="/iconos_diseno_redes/gas/chequeo_red_gas.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:4}} />
             Chequeo red de gas
           </span>
           <span className="card-s">{gasTramos.length} tramos</span>

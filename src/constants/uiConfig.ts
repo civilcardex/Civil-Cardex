@@ -1,12 +1,12 @@
 export const REDES=[
-  {id:'san',lbl:'Red sanitaria', sub:'RAS D · Manning n=0.009', ico:'♻️', icoImg:'/iconos_diseno_redes/red_sanitaria.webp', col:'var(--san)'},
-  {id:'ll', lbl:'Aguas lluvias', sub:'Método Racional · IDF', ico:'🌧️', icoImg:'/iconos_diseno_redes/red_aguas_lluvias.webp', col:'var(--ll)'},
-  {id:'af', lbl:'Agua fría', sub:'NTC 1500 · Hazen-Williams', ico:'💧', icoImg:'/iconos_diseno_redes/red_agua_fria.webp', col:'var(--af)'},
-  {id:'ac', lbl:'Agua caliente', sub:'NTC 1500 · CPVC RDE 11', ico:'🔥', icoImg:'/iconos_diseno_redes/red_agua_caliente.webp', col:'var(--ac)'},
-  {id:'ep', lbl:'Equipo presión', sub:'Bomba + recipiente vejiga', ico:'⚡', icoImg:'/iconos_diseno_redes/red_equipo_presion.webp', col:'var(--ep)'},
-  {id:'bom',lbl:'Bomba AR', sub:'Aguas residuales presión', ico:'⬆️', icoImg:'/iconos_diseno_redes/red_bomba_ar.webp', col:'var(--bom)'},
-  {id:'rci',lbl:'Contra incendio', sub:'NSR-10 J · NFPA 13:2022', ico:'🔴', icoImg:'/iconos_diseno_redes/red_contra_incendio.webp', col:'var(--rci)'},
-  {id:'gas',lbl:'Gas', sub:'NTC 3728 · Baja presión', ico:'⛽', icoImg:'/iconos_diseno_redes/red_de_gas.webp', col:'var(--gas)'},
+  {id:'san',lbl:'Red sanitaria', sub:'RAS D · Manning n=0.009', ico:'♻️', icoImg:'/iconos_diseno_redes/sanitaria/red_sanitaria.webp', col:'var(--san)'},
+  {id:'ll', lbl:'Aguas lluvias', sub:'Método Racional · IDF', ico:'🌧️', icoImg:'/iconos_diseno_redes/aguas_lluvias/red_aguas_lluvias.webp', col:'var(--ll)'},
+  {id:'af', lbl:'Agua fría', sub:'NTC 1500 · Hazen-Williams', ico:'💧', icoImg:'/iconos_diseno_redes/hidraulica/red_agua_fria.webp', col:'var(--af)'},
+  {id:'ac', lbl:'Agua caliente', sub:'NTC 1500 · CPVC RDE 11', ico:'🔥', icoImg:'/iconos_diseno_redes/hidraulica/red_agua_caliente.webp', col:'var(--ac)'},
+  {id:'ep', lbl:'Equipo presión', sub:'Bomba + recipiente vejiga', ico:'⚡', icoImg:'/iconos_diseno_redes/equipos/red_equipo_presion.webp', col:'var(--ep)'},
+  {id:'bom',lbl:'Bomba AR', sub:'Aguas residuales presión', ico:'⬆️', icoImg:'/iconos_diseno_redes/equipos/red_bomba_ar.webp', col:'var(--bom)'},
+  {id:'rci',lbl:'Contra incendio', sub:'NSR-10 J · NFPA 13:2022', ico:'🔴', icoImg:'/iconos_diseno_redes/rci/red_contra_incendio.webp', col:'var(--rci)'},
+  {id:'gas',lbl:'Gas', sub:'NTC 3728 · Baja presión', ico:'⛽', icoImg:'/iconos_diseno_redes/gas/red_de_gas.webp', col:'var(--gas)'},
 ];
 
 export const TABS=[
@@ -24,7 +24,7 @@ export const NAV_TABS=[
   {id:'planos',l:'Carga de planos',      ico:'📐', icoImg:'/iconos_carga_planos/carga_de_planos.webp'},
   {id:'datos', l:'Parámetros de diseño', ico:'📊', icoImg:'/iconos_parametros_de_diseno/materiales_por_red.webp'},
   {id:'visor', l:'Dibujo de Redes',      ico:'✏️', icoImg:'/iconos_aparatos/dibujo_de_redes.webp'},
-  {id:'redes', l:'Diseño de redes y equipos',      ico:'🔧', icoImg:'/iconos_diseno_redes/diseno_redes.webp'},
+  {id:'redes', l:'Diseño de redes y equipos',      ico:'🔧', icoImg:'/iconos_diseno_redes/general/diseno_redes.webp'},
   {id:'inf',   l:'Informes',             ico:'📄', icoImg:'/Informes.webp'},
   {id:'crit',  l:'Normativa',            ico:'§',  icoImg:'/normativa.webp'},
 ];

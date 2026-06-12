@@ -103,9 +103,13 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
   const Vu = ciclos > 0 ? (Qd * 60) / (4 * ciclos) : 0;
   const Vt = alfa > 0 ? Vu / alfa : 0;
 
-  const alertaHMT = HMT < 0;
+  const hmtOk = HMT > 0 && HMT < pmax;
   const alertaPmax = HMT > pmax && pmax > 0;
   const alertaCiclos = ciclos > 10;
+  const hgOk = Hg > 0;
+  const hfOk = Hf >= 0;
+  const pminOk = pmin > 0;
+  const predOk = pred > 0;
 
   const sucDiam = useMemo(() => {
     const userDN = dec(ep.dnsuc);
@@ -134,7 +138,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
   if (section === "params") {
     return (
       <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.7fr 1fr", gap: 12, alignItems: "start" }}>
-        <Card style={FLEX_COL} title="📋 Parámetros del equipo — Datos del fabricante" bodyStyle={{ padding: 0 }}>
+        <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/parametros_equipo.webp" iconImgStyle={{ width: 22, height: 22 }} title="Parámetros del equipo — Datos del fabricante" bodyStyle={{ padding: 0 }}>
           <Tbl cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
             [<Param name="Eficiencia bomba (η_b)" />, <LazyInp field="etab" ariaLabel="Eficiencia bomba" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>0.55 – 0.80</span> Verificar en curva característica del fabricante para el punto Qd / HMT.</Comment>],
             [<Param name="Eficiencia motor (η_m)" />, <LazyInp field="etam" ariaLabel="Eficiencia motor" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>0.85 – 0.95</span> Motores IE2 o IE3 recomendados para uso con VFD.</Comment>],
@@ -146,7 +150,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
           ]} />
         </Card>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Card style={FLEX_COL} title="📊 Caudales" bodyStyle={{ padding: 0 }}>
+          <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/caudales.webp" iconImgStyle={{ width: 22, height: 22 }} title="Caudales" bodyStyle={{ padding: 0 }}>
             <Tbl thStyle={{ fontSize: 10, padding: "1px 4px" }} tdStyle={{ fontSize: 11, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
               ["Qd = MAX(Qac, Qasc)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qd > 0 ? Qd.toFixed(3) : "—"}</span>, "L/s"],
               ["Qd en m³/h", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qd > 0 ? Qm3h.toFixed(2) : "—"}</span>, "m³/h"],
@@ -154,20 +158,20 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
               ["Caudal por bomba Qb = Qd / Nt", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qb > 0 ? Qb.toFixed(3) : "—"}</span>, "L/s"],
             ]} />
           </Card>
-          <Card style={FLEX_COL} title={`📐 ${isRed ? "HMT = Hg + Hf + Pmin − Pred" : "HMT = Hg_total + Hf_red + Hf_suc + Pmin"}`} bodyStyle={{ padding: 0 }}>
+          <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/altura_manometrica.webp" iconImgStyle={{ width: 22, height: 22 }} title={`${isRed ? "HMT = Hg + Hf + Pmin − Pred" : "HMT = Hg_total + Hf_red + Hf_suc + Pmin"}`} bodyStyle={{ padding: 0 }}>
             <Tbl thStyle={{ fontSize: 10, padding: "1px 4px" }} tdStyle={{ fontSize: 11, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
-              ["Desnivel Hg = z_top − z_bomba", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Hg !== 0 ? Hg.toFixed(2) : "—"}</span>, "m.c.a."],
-              ["Hf crítica = MAX(Hf_ac, Hf_acs) + Hf_otros", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Hf > 0 ? Hf.toFixed(2) : "—"}</span>, "m.c.a."],
-              ["Pmin punto crítico", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{pmin > 0 ? pmin.toFixed(2) : "—"}</span>, "m.c.a."],
-              ...(isRed ? [] : [["Nivel mínimo cisterna (z_cis)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{zcis.toFixed(2)}</span>, "m"], ["Hf succión cisterna", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{hfcis > 0 ? hfcis.toFixed(2) : "—"}</span>, "m.c.a."]] as any[][]),
-              ...(!isRed ? [] : [["Pred. disponible", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{pred > 0 ? pred.toFixed(2) : "—"}</span>, "m.c.a."]] as any[][]),
-              [<span style={{ fontWeight: 700 }}>HMT total</span>, <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: alertaHMT ? "#ef5350" : "var(--txt)" }}>{HMT.toFixed(2)}</span>, "m.c.a."],
+              ["Desnivel Hg = z_top − z_bomba", <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hgOk ? "var(--ok)" : "#ef5350" }}>{hgOk ? "O.K" : "NO O.K"} {Hg.toFixed(2)}</span>, "m.c.a."],
+              ["Hf crítica = MAX(Hf_ac, Hf_acs) + Hf_otros", <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hfOk ? "var(--ok)" : "#ef5350" }}>{hfOk ? "O.K" : "NO O.K"} {Hf.toFixed(2)}</span>, "m.c.a."],
+              ["Pmin punto crítico", <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: pminOk ? "var(--ok)" : "#ef5350" }}>{pminOk ? "O.K" : "NO O.K"} {pmin.toFixed(2)}</span>, "m.c.a."],
+              ...(isRed ? [] : [["Nivel mínimo cisterna (z_cis)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{zcis.toFixed(2)}</span>, "m"], ["Hf succión cisterna", <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hfcis >= 0 ? "var(--ok)" : "#ef5350" }}>{hfcis >= 0 ? "O.K" : "NO O.K"} {hfcis.toFixed(2)}</span>, "m.c.a."]] as any[][]),
+              ...(!isRed ? [] : [["Pred. disponible", <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: predOk ? "var(--ok)" : "#ef5350" }}>{predOk ? "O.K" : "NO O.K"} {pred.toFixed(2)}</span>, "m.c.a."]] as any[][]),
+              [<span style={{ fontWeight: 700 }}>HMT total</span>, <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hmtOk ? "var(--ok)" : "#ef5350" }}>{hmtOk ? "O.K" : "NO O.K"}  {HMT.toFixed(2)}</span>, "m.c.a."],
               ["Verificación Pmáx", alertaPmax ? <span style={{ color: "#ef5350", fontWeight: 700, fontFamily: "var(--mono)" }}>⚠ {HMT.toFixed(2)} &gt; {pmax.toFixed(2)}</span> : <span style={{ color: "var(--ok)", fontWeight: 700, fontFamily: "var(--mono)" }}>✓ OK ({HMT.toFixed(2)} ≤ {pmax.toFixed(2)})</span>, "m.c.a."],
             ]} />
           </Card>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Card style={FLEX_COL} title="⚡ Potencia de la bomba" bodyStyle={{ padding: 0 }}>
+          <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/potencia_bomba.webp" iconImgStyle={{ width: 22, height: 22 }} title="Potencia de la bomba" bodyStyle={{ padding: 0 }}>
             <Tbl cols={["Parámetro", "Valor", "Ud."]} rows={[
               ["P_hid = γ · Qd · HMT", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Phid > 0 ? Phid.toFixed(0) : "—"}</span>, "W"],
               ["P_freno = P_hid / (η_b · η_m)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Pfreno > 0 ? Pfreno.toFixed(3) : "—"}</span>, "HP"],
@@ -175,7 +179,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
               ["P calculada (× F.S.)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Pins_kw > 0 ? Pins_kw.toFixed(2) : "—"}</span>, "kW"],
             ]} />
           </Card>
-          <Card style={FLEX_COL} title="⚡ Potencia comercial seleccionada" bodyStyle={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/pot_comercial_seleccionada.webp" iconImgStyle={{ width: 22, height: 22 }} title="Potencia comercial seleccionada" bodyStyle={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 6 }}>
             <div style={{ fontSize: 11, color: "var(--txt3)" }}>
               P calculada = <strong style={{ color: "var(--txt)" }}>{Pins_hp > 0 ? Pins_hp.toFixed(2) : "—"} HP</strong> · Comercial inmediata superior: <strong style={{ color: "var(--txt)", fontWeight: 700 }}>{autoNema} HP</strong>
             </div>
@@ -202,7 +206,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "480px 380px", gap: 16, justifyContent: "center", alignItems: "start" }}>
-      <Card style={FLEX_COL} title="🎛️ Setpoint y tanque hidroneumático" bodyStyle={{ padding: 0 }}>
+      <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.webp" iconImgStyle={{ width: 22, height: 22 }} title="Setpoint y tanque hidroneumático" bodyStyle={{ padding: 0 }}>
         <Tbl thStyle={{ fontSize: 11, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud.", "Fórmula"]} rows={[
           ["P_on (arranque)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Pon.toFixed(2)}</span>, "m.c.a.", "P_on = HMT"],
           ["P_off (paro)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Poff.toFixed(2)}</span>, "m.c.a.", "P_off = P_on × 1.10"],
@@ -212,7 +216,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
           [<span style={{ fontWeight: 700, color: "var(--txt)" }}>Volumen tanque Vt = Vu / α</span>, <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: "var(--txt)" }}>{Vt.toFixed(1)}</span>, "L", "Vt = Vu / α"]
         ]} />
       </Card>
-      <Card style={FLEX_COL} title="📏 Diámetros y velocidades" bodyStyle={{ padding: 0 }}>
+      <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/diametros_velocidades.webp" iconImgStyle={{ width: 22, height: 22 }} title="Diámetros y velocidades" bodyStyle={{ padding: 0 }}>
         <Tbl thStyle={{ fontSize: 11, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud."]} rows={[
           [<Param name="Tubería succión" sub="DN comercial" />, <LazyInp field="dnsuc" ariaLabel="Tubería succión" />, "mm DN"],
           ["Velocidad real succión", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{sucDiam.Vreal ? sucDiam.Vreal.toFixed(2) : "—"}</span>, "m/s"],
