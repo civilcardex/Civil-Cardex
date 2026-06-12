@@ -1,6 +1,7 @@
 import { NETS } from './PlanoState';
+import type { PlanoEngineAPI } from './PlanoEngineTypes';
 
-export function renderDims(ctx: CanvasRenderingContext2D, engine: any) {
+export function renderDims(ctx: CanvasRenderingContext2D, engine: PlanoEngineAPI): void {
   engine.dims.forEach((d: any) => {
     const c1 = engine.toCvs(d.x1, d.y1);
     const c2 = engine.toCvs(d.x2, d.y2);
@@ -40,7 +41,7 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: any) {
   });
 }
 
-export function renderTexts(ctx: CanvasRenderingContext2D, engine: any) {
+export function renderTexts(ctx: CanvasRenderingContext2D, engine: PlanoEngineAPI): void {
   engine.textAnnots.forEach((t: any) => {
     const c = engine.toCvs(t.x + (t.lblOffX || 0), t.y + (t.lblOffY || 0));
     const sel = t.id === engine.selId;
@@ -86,7 +87,7 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: any) {
   });
 }
 
-export function renderAreas(ctx: CanvasRenderingContext2D, engine: any) {
+export function renderAreas(ctx: CanvasRenderingContext2D, engine: PlanoEngineAPI): void {
   engine.areas.forEach((a: any) => {
     if (engine._hiddenNets.has(a.net)) return;
     if (a.pts.length < 3) return;
@@ -177,7 +178,7 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: any) {
   });
 }
 
-export function renderActiveArea(ctx: CanvasRenderingContext2D, engine: any) {
+export function renderActiveArea(ctx: CanvasRenderingContext2D, engine: PlanoEngineAPI): void {
   if (!engine.activeArea || engine.activeArea.pts.length < 1) return;
   const pts = engine.activeArea.pts.map((p: number[]) => engine.toCvs(p[0], p[1]));
   const col = NETS.find((n: any) => n.id === engine.activeNet)?.col || '#00dce5';
@@ -239,7 +240,7 @@ export function renderActiveArea(ctx: CanvasRenderingContext2D, engine: any) {
   ctx.restore();
 }
 
-export function renderRamales(ctx: CanvasRenderingContext2D, engine: any) {
+export function renderRamales(ctx: CanvasRenderingContext2D, engine: PlanoEngineAPI): void {
   const isTributarioMode = engine.tipoTramo === 'tributario' && engine.tool === 'line';
   const padreId = engine.padreTributario;
   engine.ramales.forEach((r: any) => {
@@ -497,7 +498,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: any) {
   });
 }
 
-export function renderBajantes(ctx: CanvasRenderingContext2D, engine: any) {
+export function renderBajantes(ctx: CanvasRenderingContext2D, engine: PlanoEngineAPI): void {
   engine.bajantes.forEach((b: any) => {
     if (engine._hiddenNets.has(b.net)) return;
     const net = NETS.find((n: any) => n.id === b.net);
@@ -657,12 +658,12 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: any) {
   });
 }
 
-export function renderGhosts(ctx: CanvasRenderingContext2D, engine: any) {
+export function renderGhosts(ctx: CanvasRenderingContext2D, engine: PlanoEngineAPI): void {
   const fg = engine.getBajantesFantasma();
   fg.forEach((b: any) => {
     const net = NETS.find((n: any) => n.id === b.net);
     const col = net ? net.col : '#e2e2e8';
-    const disp = b.desplazamientos?.[engine.nivelActual?.label];
+    const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
     const gx = b.x + (disp ? disp.dx : 0);
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
@@ -700,7 +701,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: any) {
   });
 }
 
-export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: any) {
+export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: PlanoEngineAPI): void {
   if (!engine._dimStart || engine.tool !== 'dim') return;
   const s = engine.toCvs(engine._dimStart.x, engine._dimStart.y);
   const mp = engine.toPlane(engine.mouseX, engine.mouseY);
@@ -749,9 +750,10 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: any) {
   ctx.restore();
 }
 
-export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: any) {
+export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: PlanoEngineAPI): void {
   if (!engine.activeRamal) return;
-  const net = NETS.find((n: any) => n.id === engine.activeRamal.net);
+  const ar = engine.activeRamal;
+  const net = NETS.find((n: any) => n.id === ar.net);
   const col = net ? net.col : '#e2e2e8';
 
   ctx.save();
@@ -760,18 +762,19 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: any) {
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
-  if (engine.activeRamal.pts.length > 1) {
+  if (ar.pts.length > 1) {
     ctx.beginPath();
-    const f = engine.toCvs(engine.activeRamal.pts[0][0], engine.activeRamal.pts[0][1]);
+    const f = engine.toCvs(ar.pts[0][0], ar.pts[0][1]);
     ctx.moveTo(f.x, f.y);
-    for (let i = 1; i < engine.activeRamal.pts.length; i++) {
-      const c = engine.toCvs(engine.activeRamal.pts[i][0], engine.activeRamal.pts[i][1]);
+    for (let i = 1; i < ar.pts.length; i++) {
+      const c = engine.toCvs(ar.pts[i][0], ar.pts[i][1]);
       ctx.lineTo(c.x, c.y);
     }
     ctx.stroke();
   }
 
-  engine.activeRamal.pts.forEach(([px, py]: [number, number], idx: number) => {
+  ar.pts.forEach((pt: number[], idx: number) => {
+    const px = pt[0], py = pt[1];
     const c = engine.toCvs(px, py);
     ctx.fillStyle = idx === 0 ? '#fff' : col;
     ctx.beginPath();
@@ -779,8 +782,8 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: any) {
     ctx.fill();
   });
 
-  const first = engine.activeRamal.pts[0];
-  const last = engine.activeRamal.pts[engine.activeRamal.pts.length - 1];
+  const first = ar.pts[0];
+  const last = ar.pts[ar.pts.length - 1];
   let mp = engine.toPlane(engine.mouseX, engine.mouseY);
   if (engine.snapMode) mp = engine.snapAngle(last[0], last[1], mp.x, mp.y);
   const sp = engine.snapToExisting(mp.x, mp.y);
@@ -788,7 +791,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: any) {
 
   const distFirst = Math.hypot(mp.x - first[0], mp.y - first[1]);
   const SNAP_CLOSE = 12 / engine.zoom;
-  if (engine.activeRamal.pts.length >= 3 && distFirst < SNAP_CLOSE) {
+  if (ar.pts.length >= 3 && distFirst < SNAP_CLOSE) {
     const fc = engine.toCvs(first[0], first[1]);
     ctx.strokeStyle = '#22D3EE';
     ctx.lineWidth = 2;
