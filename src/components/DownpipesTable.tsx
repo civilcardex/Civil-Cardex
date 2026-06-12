@@ -3,7 +3,7 @@ import { useProject } from "../context/ProjectContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { pisoCorto, DIAM_BAN, DIAM_VENT } from "../constants";
 import { calcUDparcial, calcUDacumulado } from "../utils/componentHelpers";
-import { calcularBajanteVentilacion } from "../utils/calcSanitary";
+import { calculateVentStack } from "../utils/calcSanitary";
 
 export default function BajantesTable() {
   const { tramosSan } = useTramos();
@@ -18,39 +18,40 @@ export default function BajantesTable() {
       <div className="scroll-top" style={{padding:'16px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
         <table className="tbl" style={{fontSize:13}}>
+          <caption className="visually-hidden">Bajantes de aguas negras y ventilación</caption>
           <thead>
             <tr>
-              <th className="col-h san" colSpan={7} style={{textAlign:'center'}}>INFORMACIÓN COMÚN</th>
-              <th className="col-h ok" colSpan={7} style={{textAlign:'center'}}>BAJANTES A.N.</th>
-              <th className="col-h ven" colSpan={6} style={{textAlign:'center'}}>TUBERIA DE VENTILACION</th>
+              <th scope="col" className="col-h san" colSpan={7} style={{textAlign:'center'}}>INFORMACIÓN COMÚN</th>
+              <th scope="col" className="col-h ok" colSpan={7} style={{textAlign:'center'}}>BAJANTES A.N.</th>
+              <th scope="col" className="col-h ven" colSpan={6} style={{textAlign:'center'}}>TUBERIA DE VENTILACION</th>
             </tr>
             <tr>
-              <th className="col-h san" rowSpan={2} style={{textAlign:'center'}}>Bajante<br/>No.</th>
-              <th className="col-h san" rowSpan={2} style={{textAlign:'center'}}>Nivel</th>
-              <th className="col-h san" colSpan={2} style={{textAlign:'center'}}>Unidades de<br/>Descarga</th>
-              <th className="col-h san" rowSpan={2} style={{textAlign:'center'}}>r</th>
-              <th className="col-h san" rowSpan={2} style={{textAlign:'center'}}>Q<br/><small>lps</small></th>
-              <th className="col-h san" rowSpan={2} style={{textAlign:'center',minWidth:70}}>Manning</th>
-              <th className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Diametro</th>
-              <th className="col-h ok" rowSpan={2} style={{textAlign:'center'}}>Chequeo<br/><small>Dcal&lt;Dprop</small></th>
-              <th className="col-h ok" rowSpan={2} style={{textAlign:'center'}}>Q max<br/><small>Bajante</small></th>
-              <th className="col-h ok" rowSpan={2} style={{textAlign:'center'}}>Velocidad<br/>Terminal<br/><small>m/s</small></th>
-              <th className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Longitud<br/>Terminal (m)</th>
-              <th className="col-h ven" rowSpan={2} style={{textAlign:'center'}}>Velocidad<br/>Aire<br/><small>m/s</small></th>
-              <th className="col-h ven" rowSpan={2} style={{textAlign:'center'}}>ƒ<br/><small>Darcy</small></th>
-              <th className="col-h ven" rowSpan={2} style={{textAlign:'center'}}>Q aire<br/><small>LPS</small></th>
-              <th className="col-h ven" rowSpan={2} style={{textAlign:'center'}}>Longitud<br/>bajante<br/><small>m</small></th>
-              <th className="col-h ven" colSpan={2} style={{textAlign:'center'}}>Diámetro</th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center'}}>Bajante<br/>No.</th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center'}}>Nivel</th>
+              <th scope="col" className="col-h san" colSpan={2} style={{textAlign:'center'}}>Unidades de<br/>Descarga</th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center'}}>r</th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center'}}>Q<br/><small>lps</small></th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',minWidth:70}}>Manning</th>
+              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Diametro</th>
+              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center'}}>Chequeo<br/><small>Dcal&lt;Dprop</small></th>
+              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center'}}>Q max<br/><small>Bajante</small></th>
+              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center'}}>Velocidad<br/>Terminal<br/><small>m/s</small></th>
+              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Longitud<br/>Terminal (m)</th>
+              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center'}}>Velocidad<br/>Aire<br/><small>m/s</small></th>
+              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center'}}>ƒ<br/><small>Darcy</small></th>
+              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center'}}>Q aire<br/><small>LPS</small></th>
+              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center'}}>Longitud<br/>bajante<br/><small>m</small></th>
+              <th scope="col" className="col-h ven" colSpan={2} style={{textAlign:'center'}}>Diámetro</th>
             </tr>
             <tr>
-              <th className="col-h san" style={{textAlign:'center'}}>Parcial<br/><small>UD</small></th>
-              <th className="col-h san" style={{textAlign:'center'}}>Acum.<br/><small>UD</small></th>
-              <th className="col-h ok" style={{textAlign:'center'}}>Calculado<br/><small>Pulg.</small></th>
-              <th className="col-h ok" style={{textAlign:'center'}}>Propuesto<br/><small>Pulg.</small></th>
-              <th className="col-h ok" style={{textAlign:'center'}}>calculada</th>
-              <th className="col-h ok" style={{textAlign:'center'}}>Minima</th>
-              <th className="col-h ven" style={{textAlign:'center'}}>Calculado<br/><small>Pulg.</small></th>
-              <th className="col-h ven" style={{textAlign:'center'}}>Propuesto<br/><small>Pulg.</small></th>
+              <th scope="col" className="col-h san" style={{textAlign:'center'}}>Parcial<br/><small>UD</small></th>
+              <th scope="col" className="col-h san" style={{textAlign:'center'}}>Acum.<br/><small>UD</small></th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center'}}>Calculado<br/><small>Pulg.</small></th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center'}}>Propuesto<br/><small>Pulg.</small></th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center'}}>calculada</th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center'}}>Minima</th>
+              <th scope="col" className="col-h ven" style={{textAlign:'center'}}>Calculado<br/><small>Pulg.</small></th>
+              <th scope="col" className="col-h ven" style={{textAlign:'center'}}>Propuesto<br/><small>Pulg.</small></th>
             </tr>
           </thead>
           <tbody>
@@ -66,7 +67,7 @@ const descArr=(t.recibeDe||[]).join('+');
 const udOtros=(t.recibeDe||[]).reduce((s: number,id: string)=>s+(acumMapALL[id]||0),0);
 const udAcum=udParcial+udOtros;
 const n=t.nmaning;
-const res=calcularBajanteVentilacion({
+const res=calculateVentStack({
 bajante:t.id,
 pisos:`${t.pisoDesde||''}-${t.pisoHasta||''}`,
 UD_propias:udParcial,

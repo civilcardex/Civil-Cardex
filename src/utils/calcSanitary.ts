@@ -26,13 +26,16 @@ export {
   capacidadBajante,
   velocidadTerminal,
   longitudTerminal,
+  calculateVentStack,
   calcularBajanteVentilacion,
 } from './calcBajantes';
 
 export {
   caudalRacional,
+  calculateDownpipe,
   calcularBajanteALL,
   chequeoBajanteLluvia,
   chequeoCanalLluvia,
+  calculateChannel,
   calcularCanalALL,
 } from './calcRainwater';

@@ -66,7 +66,7 @@ export interface BajanteVentilacionResult {
 }
 
 // ─── Calculo de bajante y ventilacion ───
-export function calcularBajanteVentilacion(params: BajanteVentilacionParams): BajanteVentilacionResult {
+export function calculateVentStack(params: BajanteVentilacionParams): BajanteVentilacionResult {
   const {
     bajante = '',
     pisos = '2-1',
@@ -137,3 +137,5 @@ export function calcularBajanteVentilacion(params: BajanteVentilacionParams): Ba
     cumple: chequeoDiam === 'Ok',
   };
 }
+
+export { calculateVentStack as calcularBajanteVentilacion };

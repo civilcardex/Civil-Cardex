@@ -84,7 +84,15 @@ export function velocidadTuboLleno(D_m: number, n: number, S: number): number {
 }
 
 // ─── Propiedades geometricas seccion circular parcialmente llena ───
-export function calcPropiedadesGeometricas(h_D: number) {
+export function calcPropiedadesGeometricas(h_D: number): {
+  hD: number;
+  alpha: number;
+  A_D2: number;
+  Rh_D: number;
+  T_D: number;
+  A: (_alpha: number) => (D_m: number) => number;
+  Rh: number;
+} {
   const hD = Math.min(Math.max(h_D, 0.001), 0.999);
   const alpha = 2 * Math.acos(1 - 2 * hD);
   const A_D2 = (alpha - Math.sin(alpha)) / 8;
@@ -102,7 +110,13 @@ export function calcPropiedadesGeometricas(h_D: number) {
 }
 
 // ─── Relacion Q/Qo y V/Vo (tablas de Leon/Estopin) ───
-export function relacionesHidraulicas(q_Qo: number) {
+export function relacionesHidraulicas(q_Qo: number): {
+  q_Qo: number;
+  v_V0: number;
+  h_D: number;
+  alpha: number;
+  Rh_D: number;
+} {
   let v_V0, h_D;
   const r = Math.min(Math.max(q_Qo, 0.01), 0.999);
 

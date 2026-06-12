@@ -31,7 +31,7 @@ export interface BajanteALLResult {
 }
 
 // ─── Chequeo bajante Aguas lluvias ───
-export function calcularBajanteALL(params: BajanteALLParams): BajanteALLResult {
+export function calculateDownpipe(params: BajanteALLParams): BajanteALLResult {
   const {
     bajante = '',
     area_parcial = 0,
@@ -72,7 +72,7 @@ export function chequeoBajanteLluvia({ areaAcumulada = 0, intensidad = 0, coefic
   coeficienteC?: number;
   R?: string;
   diamPropuesto?: number;
-}) {
+}): { Q: number; dCalc: number; chequeo: string } {
   const Rv = R === '1/4' ? 0.25 : (R === '7/24' ? 7 / 24 : 0);
   const Q = areaAcumulada > 0 && intensidad > 0 && coeficienteC > 0
     ? Math.round(areaAcumulada * intensidad * coeficienteC / 100 * 100) / 100
@@ -95,7 +95,7 @@ export function chequeoCanalLluvia({ areaAcumulada = 0, intensidad = 0, coeficie
   pendiente?: number;
   b?: number;
   h?: number;
-}) {
+}): { Qreal: number; Qmax: number; chequeo: string; totalStr: string } {
   const Qreal = areaAcumulada > 0 && intensidad > 0 && coeficienteC > 0
     ? Math.round(areaAcumulada * intensidad * coeficienteC / 100 * 100) / 100
     : 0;
@@ -144,7 +144,7 @@ export interface CanalALLResult {
 }
 
 // ─── Chequeo canal cubierta ALL ───
-export function calcularCanalALL(params: CanalALLParams): CanalALLResult {
+export function calculateChannel(params: CanalALLParams): CanalALLResult {
   const {
     sector = '',
     area_parcial = 0,
@@ -186,3 +186,5 @@ export function calcularCanalALL(params: CanalALLParams): CanalALLResult {
     chequeo: Q_real_Ls <= Q_max_Ls ? 'Ok' : 'No cumple',
   };
 }
+
+export { calculateDownpipe as calcularBajanteALL, calculateChannel as calcularCanalALL };

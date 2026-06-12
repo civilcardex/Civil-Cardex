@@ -281,7 +281,17 @@ export function calculateHydraulicSegment(params: TramoHidraulicoParams): TramoH
 }
 
 // ─── Caudal total de consumo (Calculo TR) ───
-export function calcularConsumoTR(habitantes: number, dotacion: number, areaPiscina: number, areaVerdes: number, areaOtros: number) {
+export function calcularConsumoTR(habitantes: number, dotacion: number, areaPiscina: number, areaVerdes: number, areaOtros: number): {
+  habitantes: number;
+  dotacion: number;
+  q_fijos: number;
+  q_flotantes: number;
+  q_piscina: number;
+  q_verdes: number;
+  q_otros: number;
+  total_diario: number;
+  Q_lps: number;
+} {
   const q_fijos = habitantes * dotacion;
   const q_flotantes = 0;
   const q_piscina = (areaPiscina || 0) * 10;
