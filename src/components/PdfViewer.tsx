@@ -6,10 +6,13 @@ import { pisoLbl, matLongName, GAS } from "../constants";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync";
+import { loadFromStorage, saveToStorage } from "../services/storageService";
 import AparatosPanel from "./FixturesPanel";
 import PdfViewerToolbar from "./PdfViewerToolbar";
 import PdfCanvas from "./pdfViewer/PdfCanvas";
 import TramoEditor, { DIAM_DEFAULT_BY_NET } from "./pdfViewer/TramoEditor";
+import PdfViewerNetworkBar from "./pdfViewer/PdfViewerNetworkBar";
+import { usePdfAutoSave } from "./pdfViewer/usePdfAutoSave";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -49,7 +52,6 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   const [hiddenNets, setHiddenNets] = useState<Set<string>>(new Set());
   const [lockedNets, setLockedNets] = useState<Set<string>>(new Set());
   const [statusMsg, setStatusMsg] = useState("Seleccionar");
-  const [saveStatus, setSaveStatus] = useState("saved");
   const [selElement, setSelElement] = useState<Record<string, any> | null>(null);
   const [drawnElements, setDrawnElements] = useState<any[]>([]);
   const [diamSel, setDiamSel] = useState<Record<string, string>>({});
@@ -58,7 +60,6 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   const [pendInput, setPendInput] = useState('');
   const [engineReady, setEngineReady] = useState(false);
   const toolRef = useRef(tool);
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   toolRef.current = tool;
 
   useEffect(() => {
@@ -107,16 +108,17 @@ currentIdRef.current = currentId;
     if (!engineRef.current || !engineReady) return;
     const prevId = engineRef.current._loadedPlanId;
     if (prevId && prevId !== currentId) {
-      const prevKey = `civilflow_trazos_${prevId}`;
-      try { localStorage.setItem(prevKey, engineRef.current.saveWork()); } catch (_) {}
+      const prevKey = `trazos_${prevId}`;
+      saveToStorage(prevKey, engineRef.current.saveWork());
     }
-    const key = `civilflow_trazos_${currentIdRef.current || currentId || 'work'}`;
+    const key = `trazos_${currentIdRef.current || currentId || 'work'}`;
     console.log('[LOAD] key=', key, 'currentId=', currentId, 'currentIdRef=', currentIdRef.current, 'engineReady=', engineReady);
     try {
-      const json = localStorage.getItem(key);
-      console.log('[LOAD] json found:', json ? json.length + ' bytes' : 'null', 'ramales in json:', json ? JSON.parse(json).ramales?.length : null);
-      if (json) {
-        engineRef.current.loadWork(json);
+      const saved = loadFromStorage(key, null);
+      console.log('[LOAD] saved:', saved ? 'object' : 'null', 'ramales:', saved ? (saved as any).ramales?.length : null);
+      if (saved) {
+        const workStr = typeof saved === 'string' ? saved : JSON.stringify(saved);
+        engineRef.current.loadWork(workStr);
       } else {
         engineRef.current.ramales = [];
         engineRef.current.bajantes = [];
@@ -146,67 +148,10 @@ try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {} };
     return () => window.removeEventListener('storage', handler);
   }, [planosCtx.plans.length]);
 
-const saveTrazosToStorage = useCallback(() => {
-const eng = engineRef.current;
-const id = currentIdRef.current;
-if (!eng || !id) return;
-const key = `civilflow_trazos_${id}`;
-try {
-const json = eng.saveWork();
-localStorage.setItem(key, json);
-} catch (e) {
-console.error('[saveTrazos] Error saving trazos key=' + key + ':', e);
-}
-}, []);
-
-  useEffect(() => {
-  window.addEventListener('beforeunload', saveTrazosToStorage);
-  return () => window.removeEventListener('beforeunload', saveTrazosToStorage);
-  }, [saveTrazosToStorage]);
-
-  useEffect(() => {
-  return () => { saveTrazosToStorage(); };
-  }, [saveTrazosToStorage]);
-
-const doSave = useCallback(() => {
-if (!engineRef.current) return;
-const id = currentIdRef.current;
-if (!id) return;
-const key = `civilflow_trazos_${id}`;
-const json = engineRef.current.saveWork();
-try { localStorage.setItem(key, json); } catch (_) {}
-try { writeSanDrawingSync(planosCtx.plans); } catch (_) {}
-try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {}
-engineRef.current._dirty = false;
-setSaveStatus('saved');
-}, [planosCtx.plans]);
-
-useEffect(() => {
-const interval = setInterval(() => {
-const eng = engineRef.current;
-if (!eng) return;
-if (eng._dirty && saveStatus === 'saved') {
-setSaveStatus('unsaved');
-}
-}, 300);
-return () => clearInterval(interval);
-}, [saveStatus]);
-
-useEffect(() => {
-if (saveStatus !== 'unsaved') return;
-if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-autoSaveTimerRef.current = setTimeout(() => {
-if (!engineRef.current?._dirty) { setSaveStatus('saved'); return; }
-setSaveStatus('saving');
-doSave();
-}, 1500);
-return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
-}, [saveStatus, doSave]);
-
   const [liveActiveNets, setLiveActiveNets] = useState<Set<string> | null>(() => {
     try {
-      const saved = localStorage.getItem('civilflow_active_nets');
-      if (saved) return new Set(JSON.parse(saved));
+      const saved = loadFromStorage('active_nets', null);
+      if (saved && Array.isArray(saved)) return new Set(saved);
     } catch (_) {}
     return null;
   });
@@ -214,8 +159,8 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
   useEffect(() => {
     const refresh = () => {
       try {
-        const saved = localStorage.getItem('civilflow_active_nets');
-        setLiveActiveNets(saved ? new Set(JSON.parse(saved)) : null);
+        const saved = loadFromStorage('active_nets', null);
+        setLiveActiveNets(saved && Array.isArray(saved) ? new Set(saved) : null);
       } catch (_) {
         setLiveActiveNets(null);
       }
@@ -246,6 +191,8 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
   const renderingRef = useRef(false);
   const fileInputSaveRef = useRef<HTMLInputElement | null>(null);
   const scaleRef = useRef(1);
+
+  const { saveStatus, setSaveStatus, doSave, saveTrazosToStorage, autoSaveTimerRef } = usePdfAutoSave(engineRef, currentIdRef, planosCtx.plans);
 
   const syncEngine = useCallback(() => {
     const eng = engineRef.current;
@@ -347,10 +294,7 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
       try {
         const id = eng._loadedPlanId;
         if (id) {
-          const key = `civilflow_trazos_${id}`;
-          const work = eng.saveWork();
-          console.log('[CLEANUP] saving to', key, 'bytes=', work ? work.length : null);
-          localStorage.setItem(key, work);
+          saveToStorage(`trazos_${id}`, eng.saveWork());
         }
       } catch (e) { console.error('[CLEANUP] error', e); }
       eng.setTool = origSetTool;
@@ -555,73 +499,35 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
 
   const netObj = NETS.find(n => n.id === activeNet);
 
+  const handleToggleHidden = useCallback((id: string) => {
+    const next = new Set(hiddenNets);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setHiddenNets(next);
+    if (engineRef.current) engineRef.current.setNetHidden(id, next.has(id));
+  }, [hiddenNets]);
+
+  const handleToggleLocked = useCallback((id: string) => {
+    const next = new Set(lockedNets);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setLockedNets(next);
+    if (engineRef.current) engineRef.current.setNetLocked(id, next.has(id));
+  }, [lockedNets]);
+
   return (
     <div style={{
       flex: 1, display: "flex", flexDirection: "column", minHeight: 0,
       background: "#111317", border: "1px solid #3a494a", overflow: "hidden",
     }}>
       {/* Network toolbar — horizontal strip above canvas */}
-      <div style={{
-        height: 38, flexShrink: 0, display: "flex", alignItems: "center", gap: 5,
-        padding: "0 8px", background: "#14161a", borderBottom: "1px solid #3a494a",
-        overflowX: "auto", overflowY: "hidden", justifyContent: "center",
-      }}>
-        <div style={{flex:1,minWidth:4}}/>
-        {finalVisibleNets.map((n: any) => {
-          const isActive=activeNet===n.id;
-          const isHidden=hiddenNets.has(n.id);
-          const isLocked=lockedNets.has(n.id);
-          return <div key={n.id} style={{display:'flex',alignItems:'center',gap:2,flexShrink:0}}>
-            <button onClick={()=>setActiveNet(n.id)}
-              title={`Red ${n.name.charAt(0).toLowerCase() + n.name.slice(1)}${isLocked?' (bloqueada)':''}`}
-              style={{
-                padding:"2px 8px", background:isActive?n.col+'22':"transparent",
-                borderTop:`1px solid ${isActive?n.col:'#3a494a'}`,
-                borderRight:`1px solid ${isActive?n.col:'#3a494a'}`,
-                borderBottom:`1px solid ${isActive?n.col:'#3a494a'}`,
-                borderLeft:`3px solid ${n.col}`,
-                borderRadius:"3px", color:isActive?n.col:"#849495",
-                cursor:"pointer", fontFamily:"'Geist',monospace", fontWeight:600,
-                fontSize:10, whiteSpace:"nowrap", opacity:isHidden?0.5:1,
-                textDecoration:isLocked&&isActive?'line-through':'none',
-              }}>
-              {isLocked&&isActive?'🔒 ':' '}{isHidden?'👻 ':' '}Red {n.name.charAt(0).toLowerCase() + n.name.slice(1)}
-            </button>
-            <button onClick={()=>{
-              const next=new Set(hiddenNets);
-              if(next.has(n.id))next.delete(n.id);else next.add(n.id);
-              setHiddenNets(next);
-              if(engineRef.current)engineRef.current.setNetHidden(n.id,next.has(n.id));
-            }}
-              style={{
-                padding:"3px 6px", background:"transparent", border:"none",
-                cursor:"pointer", fontSize:14, flexShrink:0, lineHeight:1,
-                color:isHidden?'#6b8cae':n.col,
-                opacity:isHidden?0.5:1,
-                textDecoration:isHidden?'line-through':'none',
-              }}
-              title={isHidden?'Mostrar':'Ocultar'}>
-              {isHidden?'👁‍🗨':'👁'}
-            </button>
-            <button onClick={()=>{
-              const next=new Set(lockedNets);
-              if(next.has(n.id))next.delete(n.id);else next.add(n.id);
-              setLockedNets(next);
-              if(engineRef.current)engineRef.current.setNetLocked(n.id,next.has(n.id));
-            }}
-              style={{
-                padding:"3px 3px", background:"transparent", border:"none",
-                cursor:"pointer", fontSize:11, flexShrink:0, lineHeight:1,
-                color:lockedNets.has(n.id)?'#6b8cae':n.col,
-              }}
-              title={lockedNets.has(n.id)?'Desbloquear red':'Bloquear red'}>
-              {lockedNets.has(n.id)?'🔒':'🔓'}
-            </button>
-          </div>;
-        })}
-
-        <div style={{flex:1,minWidth:4}}/>
-      </div>
+      <PdfViewerNetworkBar
+        nets={finalVisibleNets}
+        activeNet={activeNet}
+        hiddenNets={hiddenNets}
+        lockedNets={lockedNets}
+        onSelectNet={setActiveNet}
+        onToggleHidden={handleToggleHidden}
+        onToggleLocked={handleToggleLocked}
+      />
 
       {/* Main area: sidebar + canvas */}
       <div style={{flex:1,display:"flex",minHeight:0}}>
@@ -693,12 +599,13 @@ return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.curre
         <div style={{padding:"6px 8px",borderTop:"1px solid #3a494a"}}>
         <button onClick={()=>{
           const eng = engineRef.current;
-          const key = `civilflow_trazos_${currentIdRef.current || currentId || 'work'}`;
+          const key = `trazos_${currentIdRef.current || currentId || 'work'}`;
           console.log('[CERRAR] key=', key, 'currentId=', currentId, 'currentIdRef=', currentIdRef.current);
           if (eng) {
             const work = eng.saveWork();
             console.log('[CERRAR] work bytes=', work ? work.length : null, 'ramales=', eng.ramales?.length, 'bajantes=', eng.bajantes?.length);
-            try { localStorage.setItem(key, work); console.log('[CERRAR] saved to', key); } catch (e) { console.error('[CERRAR] save error', e); }
+            saveToStorage(key, work);
+            console.log('[CERRAR] saved to', key);
             try { writeSanDrawingSync(planosCtx.plans); } catch (_) {}
             try { writeHydroDrawingSync(planosCtx.plans); } catch (_) {}
           }
