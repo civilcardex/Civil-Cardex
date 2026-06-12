@@ -7,6 +7,7 @@ import { usePlans } from "../context/PlansContext";
 import { REDES } from "../constants";
 import { parseDecimalInput, parseIntInput } from "../utils/parseDecimal";
 import { NETS } from "../lib/PlanoEngine";
+import { loadFromStorage, saveToStorage } from "../services/storageService";
 
 export function useWorkAreaState() {
   const tramosCtx = useTramos();
@@ -25,20 +26,16 @@ export function useWorkAreaState() {
   }, []);
 
   const [redes, setRedes] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem('civilflow_active_nets');
-      if (saved) return new Set(JSON.parse(saved));
-    } catch (_) { /* ignore */ }
+    const saved = loadFromStorage('active_nets', null);
+    if (saved && Array.isArray(saved)) return new Set(saved);
     return new Set(['san', 'll']);
   });
 
   const redesActivas = useMemo(() => REDES.filter(r => redes.has(r.id)), [redes]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('civilflow_active_nets', JSON.stringify([...redes]));
-      window.dispatchEvent(new CustomEvent('civilflow_nets_changed', { detail: [...redes] }));
-    } catch (_) { /* ignore */ }
+    saveToStorage('active_nets', [...redes]);
+    window.dispatchEvent(new CustomEvent('civilflow_nets_changed', { detail: [...redes] }));
   }, [redes]);
 
   const [redActiva, setRedActiva] = useState<string>('san');
@@ -137,8 +134,8 @@ export function useWorkAreaState() {
 
   useEffect(() => {
     REDES.forEach(r => {
-      const saved = localStorage.getItem('civilflow_net_' + r.id);
-      if (saved) {
+      const saved = loadFromStorage('net_' + r.id, null);
+      if (saved && typeof saved === 'string') {
         document.documentElement.style.setProperty('--' + r.id, saved);
         try {
           const nets = NETS;

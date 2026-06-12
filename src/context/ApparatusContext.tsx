@@ -1,6 +1,6 @@
 import { useState, useEffect, createContext, useContext, type ReactNode } from "react";
 import { UD_BASE_INIT, APS_DEFAULT } from "../constants";
-import { safeParse } from "../utils/parseUtils";
+import { loadFromStorage, saveToStorage } from "../services/storageService";
 import { APS_STORAGE_KEY } from "../constants/storage-keys";
 
 interface UdBaseItem { id: string; nombre: string; ud: number }
@@ -15,7 +15,7 @@ interface ApparatusContextValue {
 const ApparatusContext = createContext<ApparatusContextValue | null>(null);
 
 function loadAps() {
-  const raw = safeParse(localStorage.getItem(APS_STORAGE_KEY), null);
+  const raw = loadFromStorage(APS_STORAGE_KEY, null);
   if (raw && Array.isArray(raw)) return raw;
   return APS_DEFAULT.map(a => ({...a}));
 }
@@ -26,7 +26,7 @@ const [udBase, setUdBase] = useState([...UD_BASE_INIT]);
 const [aps, setAps] = useState(loadAps);
 
 useEffect(() => {
-  try { localStorage.setItem(APS_STORAGE_KEY, JSON.stringify(aps)); } catch (e) { console.error('ApparatusContext persist aps:', e); }
+  saveToStorage(APS_STORAGE_KEY, aps);
 }, [aps]);
 
 return (

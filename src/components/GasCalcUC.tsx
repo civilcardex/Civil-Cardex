@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { usePlans } from "../context/PlansContext";
 import { APARATOS_DEF } from "../constants";
-import { safeParse } from "../utils/parseUtils";
+import { loadFromStorage } from "../services/storageService";
 
 import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from "../constants/storage-keys";
 const GAS_APPARATUS = APARATOS_DEF.filter(
@@ -49,14 +49,14 @@ export default function GasCalcUC({ patm, temp, densRel }: { patm: string; temp:
   const { plans } = usePlans();
 
   const { tramos, totalByAp, tramoTotals, tramoAppCounts } = useMemo(() => {
-    const aparatos: Record<string, any> = safeParse(localStorage.getItem(APARATOS_BY_TRAMO_KEY), {}) || {};
+    const aparatos: Record<string, any> = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
     const tramosMap: Record<string, { id: string; piso: number | string; ini: string; fin: string; counts: Record<string, number> }> = {};
 
     for (const plano of plans) {
       if (!plano || plano.status !== "confirmed" || plano.nivel == null) continue;
-      const raw = safeParse(localStorage.getItem(TRAZOS_PREFIX + plano.id), null);
+      const raw = loadFromStorage(TRAZOS_PREFIX + plano.id, null);
       if (!raw) continue;
-      const data = (typeof raw === "string" ? safeParse(raw, {}) : raw) as Record<string, any>;
+      const data = raw as Record<string, any>;
 
       for (const r of data.ramales || []) {
         if (r.net !== "gas") continue;

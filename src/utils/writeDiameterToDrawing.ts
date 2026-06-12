@@ -1,5 +1,5 @@
 import { writeHydroDrawingSync, writeSanDrawingSync } from './drawingSync';
-import { safeParse } from './parseUtils';
+import { loadFromStorage, saveToStorage } from '../services/storageService';
 import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../constants/storage-keys';
 
 export function deleteRamalFromDrawing(ramalId: string, net: string, plans: any[]) {
@@ -10,13 +10,13 @@ export function deleteRamalFromDrawing(ramalId: string, net: string, plans: any[
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
     const key = TRAZOS_PREFIX + plan.id;
-    const raw = safeParse(localStorage.getItem(key), null);
+    const raw = loadFromStorage(key, null);
     if (!raw) continue;
-    const data = (typeof raw === 'string' ? safeParse(raw, {}) : raw) as Record<string, any>;
+    const data = raw as Record<string, any>;
     const before = (data.ramales || []).length;
     data.ramales = (data.ramales || []).filter((r: any) => !(r.id === ramalId && r.net === net));
     if ((data.ramales || []).length < before) {
-      localStorage.setItem(key, JSON.stringify(data));
+      saveToStorage(key, data);
     }
   }
 
@@ -32,9 +32,9 @@ export function writeDiametroToDrawing(ramalId: string, net: string, newDiamLabe
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
     const key = TRAZOS_PREFIX + plan.id;
-    const raw = safeParse(localStorage.getItem(key), null);
+    const raw = loadFromStorage(key, null);
     if (!raw) continue;
-    const data = (typeof raw === 'string' ? safeParse(raw, {}) : raw) as Record<string, any>;
+    const data = raw as Record<string, any>;
     let changed = false;
 
     for (const r of (data.ramales || [])) {
@@ -45,7 +45,7 @@ export function writeDiametroToDrawing(ramalId: string, net: string, newDiamLabe
     }
 
     if (changed) {
-      localStorage.setItem(key, JSON.stringify(data));
+      saveToStorage(key, data);
     }
   }
 

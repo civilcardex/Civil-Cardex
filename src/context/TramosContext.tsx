@@ -1,7 +1,7 @@
 import { useEffect, createContext, useContext, useReducer, useRef, type ReactNode } from "react";
 import { readSanDrawingSync, readHydroDrawingSync } from "../utils/drawingSync";
 import { HYDRO_DATA_STORAGE_KEY } from "../constants/storage-keys";
-import { safeParse } from "../utils/parseUtils";
+import { loadFromStorage } from "../services/storageService";
 import { tramosReducer, type TramosState } from "./tramosReducer";
 
 interface TramosContextValue {
@@ -48,7 +48,7 @@ const { tramosSan, tramosAf, tramosAc, tramosLl } = state;
     function loadFromSync() {
       const sync = readSanDrawingSync();
       const planes = sync.planes || {};
-      const hidroData: Record<string, any> = safeParse(localStorage.getItem(HYDRO_DATA_STORAGE_KEY), {}) || {};
+      const hidroData: Record<string, any> = loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
       const sanIncoming: any[] = [];
       const llIncoming: any[] = [];
       const tribIds = new Set<string>();

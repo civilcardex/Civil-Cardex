@@ -1,8 +1,8 @@
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { GAS, APARATOS_DEF, pisoCorto } from "../constants";
 import { usePlans } from "../context/PlansContext";
 import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
-import { safeParse } from "../utils/parseUtils";
+import { loadFromStorage } from "../services/storageService";
 import GasCalcUC from "./GasCalcUC";
 import PageNav from './PageNav';
 
@@ -41,15 +41,15 @@ function renouardByType(counts: Record<string, number>) {
 }
 
 function computeQDiseno(plans: any[]) {
-  const aparatos: Record<string, any> = safeParse(localStorage.getItem(APARATOS_BY_TRAMO_KEY), {}) || {};
+  const aparatos: Record<string, any> = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
   const totalByAp: Record<string, number> = {};
   for (const ap of GAS_APPARATUS) totalByAp[ap.id] = 0;
 
   for (const plano of plans) {
     if (!plano || plano.status !== 'confirmed' || plano.nivel == null) continue;
-    const raw = safeParse(localStorage.getItem(TRAZOS_PREFIX + plano.id), null);
+    const raw = loadFromStorage(TRAZOS_PREFIX + plano.id, null);
     if (!raw) continue;
-    const data = (typeof raw === 'string' ? safeParse(raw, {}) : raw) as Record<string, any>;
+    const data = raw as Record<string, any>;
     for (const r of data.ramales || []) {
       if (r.net !== 'gas') continue;
       const counts = aparatos[`gas_${r.id}`] || {};
@@ -79,7 +79,7 @@ export default function GasDesign(){
   const [diamK, setDiamK] = useState<Record<string, number>>(() => ({}));
 
   const [gasAcc, setGasAcc] = useState<Record<string, any>>(() => {
-    try { return safeParse(localStorage.getItem(GAS_ACC_KEY), {}); } catch (_) { return {}; }
+    return loadFromStorage(GAS_ACC_KEY, {});
   });
 
   useEffect(() => {
@@ -87,10 +87,9 @@ export default function GasDesign(){
     for (const plano of plans) {
       if (!plano || plano.status !== 'confirmed') continue;
       try {
-        const raw = localStorage.getItem(TRAZOS_PREFIX + plano.id);
-        if (!raw) continue;
-        const data = JSON.parse(raw);
-        for (const r of data.ramales || []) {
+        const data = loadFromStorage(TRAZOS_PREFIX + plano.id, null);
+        if (!data) continue;
+        for (const r of (data as any).ramales || []) {
           if (r.net === 'gas') existingIds.add(r.id);
         }
       } catch (_) {}
@@ -110,9 +109,9 @@ export default function GasDesign(){
     const tramos = [];
     for (const plano of plans) {
       if (!plano || plano.status !== 'confirmed' || plano.nivel == null) continue;
-      const raw = safeParse(localStorage.getItem(TRAZOS_PREFIX + plano.id), null);
+      const raw = loadFromStorage(TRAZOS_PREFIX + plano.id, null);
       if (!raw) continue;
-    const data = (typeof raw === 'string' ? safeParse(raw, {}) : raw) as Record<string, any>;
+      const data = raw as Record<string, any>;
       for (const r of data.ramales || []) {
         if (r.net !== 'gas') continue;
         const mat = r.material || '';
@@ -155,7 +154,7 @@ export default function GasDesign(){
   const checkRows = useMemo(() => {
     const pMin = Number(pmin) || 17;
     const DR = Number(densRel) || 0.67;
-  const aparatos: Record<string, any> = safeParse(localStorage.getItem(APARATOS_BY_TRAMO_KEY), {}) || {};
+  const aparatos: Record<string, any> = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
     const result = [];
     let pAcum = pMin;
     for (const t of gasTramos) {

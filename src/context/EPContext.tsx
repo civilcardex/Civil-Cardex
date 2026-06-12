@@ -1,4 +1,5 @@
-import { useState, createContext, useContext, type ReactNode } from "react";
+import { useState, createContext, useContext, useEffect, type ReactNode } from "react";
+import { loadFromStorage, saveToStorage } from "../services/storageService";
 
 export interface EPData {
   qac: string;
@@ -52,17 +53,15 @@ const EPContext = createContext<EPContextValue | null>(null);
 
 export function EPProvider({ children }: { children?: ReactNode }) {
   const [ep, setEP] = useState<EPData>(() => {
-    try {
-      const saved = localStorage.getItem("civilflow_ep");
-      if (saved) return { ...EP_DEFAULTS, ...JSON.parse(saved) };
-    } catch (_) {}
+    const saved = loadFromStorage("ep", null);
+    if (saved) return { ...EP_DEFAULTS, ...(saved as Partial<EPData>) };
     return EP_DEFAULTS;
   });
 
   const updEP = (field: keyof EPData, val: any) => {
     setEP(prev => {
       const next = { ...prev, [field]: val };
-      try { localStorage.setItem("civilflow_ep", JSON.stringify(next)); } catch (_) {}
+      saveToStorage("ep", next);
       return next;
     });
   };

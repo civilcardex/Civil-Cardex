@@ -1,5 +1,5 @@
 import { matManning } from '../constants';
-import { safeParse } from './parseUtils';
+import { loadFromStorage, saveToStorage } from '../services/storageService';
 import {
   TRAZOS_PREFIX,
   APARATOS_BY_TRAMO_KEY,
@@ -19,9 +19,9 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
     if (!plan || plan.status !== 'confirmed') continue;
     if (plan.nivel == null) continue;
     const nivel = plan.nivel;
-    const raw = safeParse(localStorage.getItem(TRAZOS_PREFIX + plan.id), null);
+    const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
-    const data = (typeof raw === 'string' ? safeParse(raw, {}) : raw) as Record<string, any>;
+    const data = raw as Record<string, any>;
 
     if (prefix) {
       for (const family of families) {
@@ -78,7 +78,7 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
     }
   }
 
-  const rawAparatos = safeParse(localStorage.getItem(APARATOS_BY_TRAMO_KEY), {}) || {};
+  const rawAparatos = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
   out.aparatosByTramo = {};
   for (const [key, counts] of Object.entries(rawAparatos)) {
     if (!counts || typeof counts !== 'object') continue;
@@ -91,7 +91,7 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
   }
 
   if (prefix) {
-    const rawHidro = safeParse(localStorage.getItem(HYDRO_DATA_STORAGE_KEY), {}) || {};
+    const rawHidro = loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
     out.hidroData = {};
     for (const [key, val] of Object.entries(rawHidro)) {
       out.hidroData[key] = val;
@@ -104,7 +104,7 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
 export function writeHydroDrawingSync(plans: any[]) {
   try {
     const data = buildSyncData(plans, HYDRO_FAMILIES, 'h', HYDRO_SYNC_KEY);
-    localStorage.setItem(HYDRO_SYNC_KEY, JSON.stringify(data));
+    saveToStorage(HYDRO_SYNC_KEY, data);
     window.dispatchEvent(new CustomEvent('civilflow_hidro_sync_changed', { detail: data }));
     return data;
   } catch (e) {
@@ -114,7 +114,7 @@ export function writeHydroDrawingSync(plans: any[]) {
 }
 
 export function readHydroDrawingSync() {
-  return safeParse(localStorage.getItem(HYDRO_SYNC_KEY), { planes: {}, aparatosByTramo: {}, hidroData: {}, updatedAt: 0 }) as {
+  return loadFromStorage(HYDRO_SYNC_KEY, { planes: {}, aparatosByTramo: {}, hidroData: {}, updatedAt: 0 }) as {
     planes: Record<string, any>;
     aparatosByTramo: Record<string, any>;
     hidroData: Record<string, any>;
@@ -125,7 +125,7 @@ export function readHydroDrawingSync() {
 export function writeSanDrawingSync(plans: any[]) {
   try {
     const data = buildSyncData(plans, SAN_FAMILIES, '', SAN_SYNC_KEY);
-    localStorage.setItem(SAN_SYNC_KEY, JSON.stringify(data));
+    saveToStorage(SAN_SYNC_KEY, data);
     window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed', { detail: data }));
     return data;
   } catch (e) {
@@ -135,7 +135,7 @@ export function writeSanDrawingSync(plans: any[]) {
 }
 
 export function readSanDrawingSync() {
-  return safeParse(localStorage.getItem(SAN_SYNC_KEY), { planes: {}, aparatosByTramo: {}, updatedAt: 0 }) as {
+  return loadFromStorage(SAN_SYNC_KEY, { planes: {}, aparatosByTramo: {}, updatedAt: 0 }) as {
     planes: Record<string, any>;
     aparatosByTramo: Record<string, any>;
     updatedAt: number;

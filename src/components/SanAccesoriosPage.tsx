@@ -1,9 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { SAN_ACCESORIOS } from '../constants';
 import { HYDRO_DATA_STORAGE_KEY } from '../constants/storage-keys';
+import { loadFromStorage } from '../services/storageService';
 
 function loadHidro(): Record<string, any> {
-  try { return JSON.parse(localStorage.getItem(HYDRO_DATA_STORAGE_KEY) || '{}') || {}; } catch (_) { return {}; }
+  return loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
 }
 
 export default function SanAccesoriosPage() {
