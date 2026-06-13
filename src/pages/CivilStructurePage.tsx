@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import MobileOnlyMessage from '../components/MobileOnlyMessage';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const features = [
   { num: '01', icon: 'calculate', title: 'Cálculo de Estructuras Complejas', desc: 'Análisis no lineal, pandeo y grandes deformaciones para geometrías singulares.' },
@@ -12,6 +13,7 @@ const features = [
 ];
 
 export default function CivilStructurePage() {
+  usePageMeta('Estructuras');
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
       <Navbar />
@@ -38,7 +40,7 @@ export default function CivilStructurePage() {
                 <Link to="/civilflowareatrabajo" className="hidden md:inline-block bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-all" style={{ fontFamily: 'Geist, monospace' }}>
                   COMENZAR ANÁLISIS
                 </Link>
-                <button className="border border-primary text-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container transition-all flex items-center gap-2" style={{ fontFamily: 'Geist, monospace' }} onClick={() => console.log('SDK download')}>
+                <button className="border border-primary text-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container transition-all flex items-center gap-2" style={{ fontFamily: 'Geist, monospace' }} onClick={() => {}}>
                   <span className="material-symbols-outlined text-base">download</span> DESCARGAR SDK
                 </button>
               </div>

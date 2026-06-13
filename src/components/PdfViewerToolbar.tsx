@@ -8,7 +8,7 @@ export interface ToolDef {
 }
 
 export const TOOLS: ToolDef[] = [
-  { id: "sel", label: "Seleccionar", ico: "🖱", key: "S", icoCol: "#849495", shortcut: "S" },
+  { id: "sel", label: "Seleccionar elemento", ico: "🖱", key: "S", icoCol: "#849495", shortcut: "S" },
   { id: "line", label: "Ramal/Tributario", ico: "╱", key: "L", icoCol: "#4D8FF7", shortcut: "L" },
   { id: "area", label: "Área", ico: "⬡", key: "A", icoCol: "#22D3EE", shortcut: "A" },
   { id: "dim", label: "Cota", ico: "📏", key: "D", icoCol: "#22D3EE", shortcut: "D" },
@@ -24,28 +24,33 @@ export const TOOLS: ToolDef[] = [
 interface PdfViewerToolbarProps {
   tool: string;
   snapOn: boolean;
+  activeNet: string;
   onSelectTool: (toolId: string) => void;
   onSnapToggle: () => void;
 }
 
-export default function PdfViewerToolbar({ tool, snapOn, onSelectTool, onSnapToggle }: PdfViewerToolbarProps) {
+export default function PdfViewerToolbar({ tool, snapOn, activeNet, onSelectTool, onSnapToggle }: PdfViewerToolbarProps) {
   return (
     <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
       <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Herramientas</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        {TOOLS.map(t => (
-          <button key={t.id} onClick={() => onSelectTool(t.id)} title={`${t.label} (${t.shortcut})`} style={{
-            padding: "5px 8px", background: tool === t.id ? "#2563EB" : "#1e2024",
-            border: `1px solid ${tool === t.id ? "#2563EB" : "#3a494a"}`, borderRadius: "3px",
-            color: "#b9caca", cursor: "pointer",
-            fontFamily: "'Geist',monospace", fontWeight: 600, transition: "all .12s",
-            display: "flex", alignItems: "center", gap: 6, width: "100%",
-          }}>
-            <span style={{ fontSize: 14, width: 18, textAlign: "center", color: tool === t.id ? "#fff" : t.icoCol }}>{t.ico}</span>
-            <span style={{ fontSize: 10, flex: 1, textAlign: 'left' }}>{t.label}</span>
-            <span style={{ fontSize: 8, color: tool === t.id ? 'rgba(255,255,255,.6)' : '#6b8cae', fontFamily: "'Geist',monospace", marginLeft: 'auto' }}>{t.shortcut}</span>
-          </button>
-        ))}
+        {TOOLS.map(t => {
+          const isBajanteDisabled = t.id === 'baj' && (activeNet === 'af' || activeNet === 'ac');
+          return (
+            <button key={t.id} disabled={isBajanteDisabled} onClick={() => onSelectTool(t.id)} title={isBajanteDisabled ? "No disponible para esta red" : `${t.label} (${t.shortcut})`} style={{
+              padding: "5px 8px", background: tool === t.id ? "#2563EB" : "#1e2024",
+              border: `1px solid ${tool === t.id ? "#2563EB" : "#3a494a"}`, borderRadius: "3px",
+              color: "#b9caca", cursor: isBajanteDisabled ? "not-allowed" : "pointer",
+              opacity: isBajanteDisabled ? 0.3 : 1,
+              fontFamily: "'Geist',monospace", fontWeight: 600, transition: "all .12s",
+              display: "flex", alignItems: "center", gap: 6, width: "100%",
+            }}>
+              <span style={{ fontSize: 14, width: 18, textAlign: "center", color: tool === t.id ? "#fff" : t.icoCol }}>{t.ico}</span>
+              <span style={{ fontSize: 10, flex: 1, textAlign: 'left' }}>{t.label}</span>
+              <span style={{ fontSize: 8, color: tool === t.id ? 'rgba(255,255,255,.6)' : '#6b8cae', fontFamily: "'Geist',monospace", marginLeft: 'auto' }}>{t.shortcut}</span>
+            </button>
+          );
+        })}
       </div>
       <div style={{marginTop:4}}>
         <button onClick={onSnapToggle}

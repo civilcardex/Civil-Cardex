@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import MobileOnlyMessage from '../components/MobileOnlyMessage';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const accent = '#FFC107';
 
@@ -20,6 +21,7 @@ const metrics = [
 ];
 
 const CivilRoadsPage: React.FC = () => {
+  usePageMeta('Vías');
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
       <Navbar />

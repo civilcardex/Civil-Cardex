@@ -29,7 +29,7 @@ export default function PdfCanvas({
       alignItems: "flex-start", background: "#111317", position: "relative",
     }}>
       {/* Canvases and container always mounted to prevent unmounting and losing references */}
-      <div ref={containerRef} style={{
+      <div ref={containerRef} role="img" aria-label="Área de dibujo de planos" style={{
         position: "relative",
         display: currentFile && !error ? "inline-block" : "none",
       }}>

@@ -43,13 +43,16 @@ export default function AccessoriesSection({ targetId, curHidro, incAcc, decAcc,
                   border: `1px solid ${v > 0 ? accent : 'var(--line)'}`,
                   borderRadius: 4, overflow: 'hidden', transition: 'all .12s',
                 }}>
-                  <div style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    padding: '3px 2px 1px', gap: 1, cursor: targetId ? 'pointer' : 'default', minHeight: 42,
-                  }} onClick={() => targetId && incAcc(a.id)}>
+                  <button onClick={() => targetId && incAcc(a.id)} disabled={!targetId}
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      padding: '3px 2px 1px', gap: 1, minHeight: 42,
+                      border: 'none', background: 'transparent', cursor: targetId ? 'pointer' : 'default',
+                      font: 'inherit', color: 'inherit', width: '100%',
+                    }}>
                     <img src={a.icono} alt={a.nombre} style={{width:26,height:26,objectFit:'contain'}} />
                     <span style={{ fontSize: 7, fontWeight: 700, letterSpacing: .2, color: v > 0 ? accent : '#b9caca', fontFamily: "'Geist',monospace", textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.1 }}>{a.nombre}</span>
-                  </div>
+                  </button>
                   <div style={{ display: 'flex', alignItems: 'stretch', borderTop: `1px solid ${v > 0 ? accent + '55' : 'var(--bg4)'}`, background: v > 0 ? 'rgba(37,99,235,.06)' : 'transparent' }}>
                     <button onClick={(e) => { e.stopPropagation(); targetId && decAcc(a.id); }} disabled={!targetId || v === 0}
                       style={{ flex: 1, padding: '1px 0', border: 'none', borderRight: `1px solid ${v > 0 ? accent + '55' : 'var(--bg4)'}`, background: 'transparent', color: v === 0 || !targetId ? 'var(--line)' : '#ffb4ab', cursor: v === 0 || !targetId ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 800, lineHeight: 1, fontFamily: "'Geist',monospace" }}>−</button>

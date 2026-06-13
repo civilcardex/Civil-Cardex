@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 // Module-level counter for z-index stacking across independently rendered FloatingPanel instances.
 // Each panel calls nextZ() on mount and on bring-to-front, ensuring the most recently
@@ -27,6 +27,7 @@ export default function FloatingPanel({ title, icon, count = undefined, onClose,
   const [pos, setPos] = useState(defaultPos);
   const [collapsed, setCollapsed] = useState(false);
   const [zIndex, bringToFront] = useZIndex();
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const onMouseDown = useCallback((e: any) => {
     bringToFront();
@@ -47,8 +48,40 @@ export default function FloatingPanel({ title, icon, count = undefined, onClose,
     window.addEventListener('mouseup', onUp);
   }, [pos, bringToFront]);
 
+  useEffect(() => {
+    if (panelRef.current) {
+      const first = panelRef.current.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      first?.focus();
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && onClose) onClose();
+      if (e.key === 'Tab' && panelRef.current) {
+        const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
     <div
+      ref={panelRef}
+      role="dialog"
+      aria-modal="true"
       onMouseDown={onMouseDown}
       style={{
         position: 'absolute',
@@ -75,15 +108,15 @@ export default function FloatingPanel({ title, icon, count = undefined, onClose,
         cursor: 'grab', userSelect: 'none',
       }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e2e8', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{fontSize:15}}>{icon}</span> {title}
+          <span style={{fontSize:15}} aria-hidden="true">{icon}</span> {title}
           {count !== undefined && <span style={{ fontSize: 10, color: '#849495', fontWeight: 400 }}>{count}</span>}
         </span>
         <div style={{ display: 'flex', gap: 4 }} className="no-drag">
-          <button onClick={() => setCollapsed(c => !c)} style={{
+          <button onClick={() => setCollapsed(c => !c)} aria-label="Colapsar" style={{
             padding: '2px 8px', background: 'transparent', border: '1px solid #3a494a',
             borderRadius: 4, color: '#849495', cursor: 'pointer', fontSize: 12,
           }}>{collapsed ? '▾' : '_'}</button>
-          <button onClick={onClose} style={{
+          <button onClick={onClose} aria-label="Cerrar" style={{
             padding: '2px 8px', background: 'transparent', border: '1px solid #3a494a',
             borderRadius: 4, color: '#ffb4ab', cursor: 'pointer', fontSize: 12,
           }}>✕</button>

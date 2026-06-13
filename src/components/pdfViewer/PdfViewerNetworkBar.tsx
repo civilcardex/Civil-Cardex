@@ -34,6 +34,7 @@ export default function PdfViewerNetworkBar({
           <div key={n.id} style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
             <button
               onClick={() => onSelectNet(n.id)}
+              aria-label={`Red ${n.name.charAt(0).toLowerCase() + n.name.slice(1)}${isActive ? ' (activa)' : ' (inactiva)'}${isLocked ? ' bloqueada' : ''}`}
               title={`Red ${n.name.charAt(0).toLowerCase() + n.name.slice(1)}${isLocked ? ' (bloqueada)' : ''}`}
               style={{
                 padding: "2px 8px", background: isActive ? n.col + '22' : "transparent",
@@ -51,6 +52,7 @@ export default function PdfViewerNetworkBar({
             </button>
             <button
               onClick={() => onToggleHidden(n.id)}
+              aria-label={isHidden ? 'Mostrar red' : 'Ocultar red'}
               style={{
                 padding: "3px 6px", background: "transparent", border: "none",
                 cursor: "pointer", fontSize: 14, flexShrink: 0, lineHeight: 1,
@@ -64,6 +66,7 @@ export default function PdfViewerNetworkBar({
             </button>
             <button
               onClick={() => onToggleLocked(n.id)}
+              aria-label={lockedNets.has(n.id) ? 'Desbloquear red' : 'Bloquear red'}
               style={{
                 padding: "3px 3px", background: "transparent", border: "none",
                 cursor: "pointer", fontSize: 11, flexShrink: 0, lineHeight: 1,

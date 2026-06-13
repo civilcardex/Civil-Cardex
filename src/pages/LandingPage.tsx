@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const MODULOS_HERO = [
   { id: 'flow', logo: '/logos/civilFlowlogo.webp', name: 'CivilFlow', color: '#00aaff', path: '/civilflow',
@@ -47,6 +48,7 @@ function LandingPage() {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const navigate = useNavigate();
   const hovered = hoveredIdx !== null ? MODULOS_HERO[hoveredIdx] : null;
+  usePageMeta('Inicio', 'Plataforma de ingeniería civil para diseño hidráulico, sanitario y estructural');
   const handleEnter = useCallback((i: number) => setHoveredIdx(i), []);
   const handleLeave = useCallback(() => setHoveredIdx(null), []);
   const handleClick = useCallback((path: string) => navigate(path), [navigate]);

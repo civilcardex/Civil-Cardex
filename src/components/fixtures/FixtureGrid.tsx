@@ -37,15 +37,17 @@ export default function FixtureGrid({ items, currentMap, unitKey, unidadLbl, inc
               borderRadius: 4, overflow: 'hidden',
               transition: 'all .12s',
             }}>
-            <div style={{
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              padding: '4px 2px 2px', gap: 1, cursor: targetId ? 'pointer' : 'default',
-              minHeight: 48,
-            }} onClick={() => targetId && inc(ap.id)}>
+            <button onClick={() => targetId && inc(ap.id)} disabled={!targetId}
+              style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                padding: '4px 2px 2px', gap: 1, minHeight: 48,
+                border: 'none', background: 'transparent', cursor: targetId ? 'pointer' : 'default',
+                font: 'inherit', color: 'inherit', width: '100%',
+              }}>
               <span style={{ fontSize: 17, lineHeight: 1 }}>{(APARATO_IMG as Record<string, string>)[ap.id] ? <img src={(APARATO_IMG as Record<string, string>)[ap.id]} alt="" style={{width:24,height:24,verticalAlign:'middle'}} /> : '•'}</span>
               <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: .3, color: active ? accent : '#b9caca', fontFamily: "'Geist',monospace", textTransform: 'uppercase' }}>{abbr}</span>
               <span style={{ fontSize: 8, fontWeight: 600, lineHeight: 1, color: 'var(--txt2)', fontFamily: "'Geist',monospace", padding: '1px 4px', marginTop: 1, background: 'rgba(0,0,0,.25)', border: '1px solid var(--bg4)', borderRadius: 2 }}>{uStr} {unidadLbl}</span>
-            </div>
+            </button>
             <div style={{ display: 'flex', alignItems: 'stretch', borderTop: `1px solid ${active ? accent + '55' : 'var(--bg4)'}`, background: active ? 'rgba(37,99,235,.06)' : 'transparent' }}>
               <button onClick={(e) => { e.stopPropagation(); targetId && dec(ap.id); }} disabled={!targetId || c === 0}
                 style={{ flex: 1, padding: '2px 0', background: 'transparent', color: c === 0 || !targetId ? 'var(--line)' : '#ffb4ab', cursor: c === 0 || !targetId ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 800, fontFamily: "'Geist',monospace", border: 'none', borderRight: `1px solid ${active ? accent + '55' : 'var(--bg4)'}` }}>−</button>

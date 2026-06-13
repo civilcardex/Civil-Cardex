@@ -14,16 +14,21 @@ export default function NormaCard({ id, titulo, subt, isOpen, onToggle, children
   return (
     <div className={`card${isOpen ? ' sec-open' : ''}`}
       style={{ borderTop: '1px solid var(--line)', borderRadius: 0 }}>
-      <div className="card-h" onClick={() => onToggle(id)}
-        style={{ cursor: "pointer", userSelect: "none" }}>
+      <button className="card-h" onClick={() => onToggle(id)}
+        aria-expanded={isOpen} aria-controls={`reg-card-content-${id}`}
+        style={{
+          cursor: "pointer", userSelect: "none", width: '100%',
+          border: 'none', background: 'transparent', font: 'inherit', color: 'inherit',
+          textAlign: 'inherit',
+        }}>
         <div>
           <span className="card-t" style={{ fontSize: 15, color: 'var(--txt)' }}>{titulo}</span>
           <span className="td-mono" style={{ display:"block", fontSize:11, marginTop:2 }}>{subt}</span>
         </div>
         <span style={{ fontSize:14 }}>{isOpen ? '▲' : '▼'}</span>
-      </div>
+      </button>
       {isOpen && (
-        <div className="card-body-wrap">
+        <div className="card-body-wrap" id={`reg-card-content-${id}`}>
           {children}
         </div>
       )}

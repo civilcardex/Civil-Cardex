@@ -124,15 +124,38 @@ export default function GasDesign(){
           fin: r.fin || '',
           longitud: r.totalL || r.Lh || 0,
         });
-        if (opt) {
-          if (!diamMat[r.id]) setDiamMat(prev => ({ ...prev, [r.id]: mat }));
-          if (!diamDn[r.id]) setDiamDn(prev => ({ ...prev, [r.id]: dn }));
-          if (!diamInt[r.id]) setDiamInt(prev => ({ ...prev, [r.id]: opt.d }));
-          if (!diamK[r.id]) setDiamK(prev => ({ ...prev, [r.id]: opt.K }));
-        }
       }
     }
     return tramos.sort((a, b) => (b.piso || 0) - (a.piso || 0));
+  }, [plans, gasRefreshKey]);
+
+  useEffect(() => {
+    const toSetMat: Record<string, string> = {};
+    const toSetDn: Record<string, string> = {};
+    const toSetInt: Record<string, number> = {};
+    const toSetK: Record<string, number> = {};
+    for (const plano of plans) {
+      if (!plano || plano.status !== 'confirmed' || plano.nivel == null) continue;
+      const raw = loadFromStorage(TRAZOS_PREFIX + plano.id, null);
+      if (!raw) continue;
+      const data = raw as Record<string, any>;
+      for (const r of data.ramales || []) {
+        if (r.net !== 'gas') continue;
+        const mat = r.material || '';
+        const dn = r.diametro || '';
+        const opt = lookupDn(mat, dn);
+        if (opt) {
+          toSetMat[r.id] = mat;
+          toSetDn[r.id] = dn;
+          toSetInt[r.id] = opt.d;
+          toSetK[r.id] = opt.K;
+        }
+      }
+    }
+    setDiamMat(prev => { let n = prev; for (const [id, v] of Object.entries(toSetMat)) if (!(id in prev)) n = { ...n, [id]: v }; return n; });
+    setDiamDn(prev => { let n = prev; for (const [id, v] of Object.entries(toSetDn)) if (!(id in prev)) n = { ...n, [id]: v }; return n; });
+    setDiamInt(prev => { let n = prev; for (const [id, v] of Object.entries(toSetInt)) if (!(id in prev)) n = { ...n, [id]: v }; return n; });
+    setDiamK(prev => { let n = prev; for (const [id, v] of Object.entries(toSetK)) if (!(id in prev)) n = { ...n, [id]: v }; return n; });
   }, [plans, gasRefreshKey]);
 
   const handleDiamChange = (tramoId: string, mat: string, dn: string) => {
@@ -336,7 +359,7 @@ export default function GasDesign(){
                       <td className="c" style={{...TD,padding:'3px 2px',fontSize:10}}>{pIni.toFixed(2)}</td>
                       <td className="c" style={{...TD,padding:'3px 2px',fontSize:10}}>{pFin.toFixed(2)}</td>
                       <td className="c" style={{padding:'3px 2px'}}>
-                        <span style={{fontSize:10,fontWeight:700,fontFamily:'var(--mono)',color:ok==='O.K.'?'#22c55e':ok==='NO'?'#ef5350':'var(--txt3)'}}>{ok}</span>
+                        <span role="status" style={{fontSize:10,fontWeight:700,fontFamily:'var(--mono)',color:ok==='O.K.'?'#22c55e':ok==='NO'?'#ef5350':'var(--txt3)'}}>{ok}</span>
                       </td>
                     </tr>
                   );

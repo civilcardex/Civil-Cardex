@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import MobileOnlyMessage from '../components/MobileOnlyMessage';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const features = [
   { icon: 'account_tree', title: 'Ruteo Inteligente de Tuberías y Ductos', desc: 'Algoritmos de pathfinding para el trazado automático evitando colisiones estructurales. Optimización de material basada en parámetros de fricción y caída de presión.', span: 'lg:col-span-2 lg:row-span-2', badge: 'STATUS: OPTIMAL' },
@@ -12,6 +13,7 @@ const features = [
 ];
 
 export default function CivilMEPPage() {
+  usePageMeta('MEP');
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
       <Navbar />

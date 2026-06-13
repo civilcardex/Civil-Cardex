@@ -80,7 +80,7 @@ export default function TramoEditor({
                 </div>
               </div>
             )}
-            {selElement.id?.startsWith('B')&&(
+            {(selElement.tipo === 'bajante' || selElement.tipo === 'montante' || selElement.id?.startsWith('B'))&&(
               <div>
                 <div style={{fontSize:8,color:'#6b8cae',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Código</div>
                 <input value={selElement.code||''} placeholder="Código bajante"
@@ -119,7 +119,7 @@ export default function TramoEditor({
       </div>
 
       {(() => {
-        const isBajMont = selElement && (selElement.id?.startsWith('B') || selElement.id?.startsWith('MON'));
+        const isBajMont = selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante');
         const isArea = selElement && selElement.id?.startsWith('AR');
 
         if (isArea) {
@@ -171,7 +171,7 @@ export default function TramoEditor({
                     <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Ramales asociados</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 }}>
                       {(() => {
-                        const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === 'san');
+                        const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === 'san' && r.tipo !== 'tributario');
                         if (bajRamales.length === 0) return <div style={{ fontSize: 10, color: '#6b8cae', fontFamily: "'Geist',monospace", padding: '4px' }}>Sin ramales en esta red</div>;
                         const recibidos = (selElement.recibeDeIds || []) as string[];
                         return bajRamales.map((r: any) => (

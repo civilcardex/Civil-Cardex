@@ -34,16 +34,16 @@ export default function Normativa() {
   const localCSS = `.norm-tab{overflow-y:auto!important;flex:1!important;min-height:0!important;gap:0!important}.norm-tab>.card{flex:none!important;overflow:visible!important;min-height:auto!important}.norm-tab>.card.sec-open>.card-body-wrap{overflow:visible!important}`;
 
   const tabsRow = (
-    <div style={{ display: "flex", gap: 8, paddingBottom: 4, borderBottom: "1px solid var(--line)" }}>
-      <TabBtn active={vista === "referencias"} onClick={() => setVista("referencias")}>Referencias normativas</TabBtn>
-      <TabBtn active={vista === "criterios"} onClick={() => setVista("criterios")}>Criterios de diseño</TabBtn>
+    <div role="tablist" style={{ display: "flex", gap: 8, paddingBottom: 4, borderBottom: "1px solid var(--line)" }}>
+      <TabBtn id="tab-referencias" active={vista === "referencias"} onClick={() => setVista("referencias")}>Referencias normativas</TabBtn>
+      <TabBtn id="tab-criterios" active={vista === "criterios"} onClick={() => setVista("criterios")}>Criterios de diseño</TabBtn>
     </div>
   );
 
   if (vista === "criterios") {
     const critVisibles = critFil === 'todos' ? crits : crits.filter(x => x.red === critFil);
     return (
-      <div className="fu norm-tab" style={{ display:"flex", flexDirection:"column", gap:8, flex:1, minHeight:0 }}>
+      <div className="fu norm-tab" role="tabpanel" aria-labelledby="tab-criterios" style={{ display:"flex", flexDirection:"column", gap:8, flex:1, minHeight:0 }}>
         <style>{localCSS}</style>
         {tabsRow}
 
@@ -127,7 +127,7 @@ export default function Normativa() {
   }
 
   return (
-    <div className="fu norm-tab" style={{ display:"flex", flexDirection:"column", gap:0, flex:1, minHeight:0 }}>
+    <div className="fu norm-tab" role="tabpanel" aria-labelledby="tab-referencias" style={{ display:"flex", flexDirection:"column", gap:0, flex:1, minHeight:0 }}>
       <style>{localCSS}</style>
       {tabsRow}
 
@@ -825,9 +825,9 @@ function TablasRef() {
   );
 }
 
-function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children?: ReactNode; key?: any }) {
+function TabBtn({ active, onClick, children, id }: { active: boolean; onClick: () => void; children?: ReactNode; key?: any; id?: string }) {
   return (
-    <button onClick={onClick}
+    <button id={id} onClick={onClick} role="tab" aria-selected={active}
       style={{
         flex: 1, padding: "14px 18px", borderRadius: "var(--r)",
         border: "1px solid", cursor: "pointer", fontSize: 15,

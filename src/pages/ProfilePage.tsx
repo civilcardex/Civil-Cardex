@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import { usePageMeta } from '../hooks/usePageMeta'
 
 function ProfilePage() {
   const [perfil, setPerfil] = useState({
@@ -34,6 +35,7 @@ function ProfilePage() {
     activo: { color: 'bg-primary text-on-primary-container', label: 'ACTIVO' },
   }
 
+  usePageMeta('Perfil');
   useEffect(() => { fetchPerfil() }, [])
 
   async function fetchPerfil() {

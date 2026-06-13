@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import MobileOnlyMessage from '../components/MobileOnlyMessage';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const features = [
   { icon: 'cloud_sync', title: 'Procesamiento de Nubes de Puntos LiDAR', desc: 'Ingesta masiva de datos LiDAR con filtrado automatizado de ruido y clasificación de terreno. Algoritmos optimizados para manejar millones de puntos con latencia mínima.', badge: 'CAPACITY: >50M pts/sec', span: false },
@@ -12,6 +13,7 @@ const features = [
 ];
 
 export default function CivilTerrainPage() {
+  usePageMeta('Terreno');
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
       <Navbar />

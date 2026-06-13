@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const plans = [
   {
@@ -79,6 +80,7 @@ missing: [
 ];
 
 function PricingPage() {
+  usePageMeta('Precios');
   return (
     <div style={{ background: '#111317', color: '#e2e2e8', minHeight: '100vh' }}>
       <Navbar />

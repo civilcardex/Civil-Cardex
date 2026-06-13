@@ -132,7 +132,7 @@ const destinoVal = t.pisoCima || t.piso || '';
                   <tr key={rowKey(t)}>
                     <td className="c"><span className="sigla" style={{fontSize:10}}>{t.code || t.id}</span></td>
                     <td className="c" style={{padding:'2px'}}>
-                      <select value={String(origenVal)}
+                      <select aria-label="Origen" value={String(origenVal)}
                         onChange={e => updTramoSan(t.id, 'pisoBase', e.target.value)}
                         style={{width:'100%',padding:'1px 2px',background:'var(--bg2)',border:'1px solid var(--line)',borderRadius:2,color:'var(--txt)',fontSize:10,fontFamily:'var(--mono)',cursor:'pointer',textAlign:'center'}}>
                         <option value="">—</option>
@@ -140,7 +140,7 @@ const destinoVal = t.pisoCima || t.piso || '';
                       </select>
                     </td>
                     <td className="c" style={{padding:'2px'}}>
-                      <select value={String(destinoVal)}
+                      <select aria-label="Destino" value={String(destinoVal)}
                         onChange={e => updTramoSan(t.id, 'pisoCima', e.target.value)}
                         style={{width:'100%',padding:'1px 2px',background:'var(--bg2)',border:'1px solid var(--line)',borderRadius:2,color:'var(--txt)',fontSize:10,fontFamily:'var(--mono)',cursor:'pointer',textAlign:'center'}}>
                         <option value="">—</option>

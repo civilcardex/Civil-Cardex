@@ -4,6 +4,7 @@ import { GAS } from '../constants';
 import { SANITARIAS, RCI, AGUA_FRIA, AGUA_CALIENTE } from './catalog/catalogData';
 import SectionCard from './catalog/SectionCard';
 import { PipeTable, GasTable, ContadoresTable, MaterialesPorRedTable, CoefFriccionTable } from './catalog/CatalogTables';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 function filterGroups(groups: any[], search: string) {
   if (!search) return groups;
@@ -28,6 +29,7 @@ export default function CatalogMasterPage() {
   const navigate = useNavigate();
   const [subpage, setSubpage] = useState(1);
   const [search, setSearch] = useState('');
+  usePageMeta('Catálogo Maestro');
 
   const sanFiltered = useMemo(() => filterGroups(SANITARIAS, search), [search]);
   const afFiltered = useMemo(() => filterGroups(AGUA_FRIA, search), [search]);

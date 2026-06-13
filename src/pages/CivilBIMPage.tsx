@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import MobileOnlyMessage from '../components/MobileOnlyMessage';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const features = [
   { icon: 'hub', title: 'Interoperabilidad IFC y Revit', desc: 'Importación y exportación bidireccional sin pérdida de metadatos constructivos.', tags: ['.IFC', '.RVT', '.DWG'], span: true, highlight: false },
@@ -17,6 +18,7 @@ const syncRows = [
 ];
 
 export default function CivilBIMPage() {
+  usePageMeta('BIM');
   const bimAccent = '#d946ef';
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>

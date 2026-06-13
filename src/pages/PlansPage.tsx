@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { usePlans } from '../context/PlansContext';
 import { fmtSize } from '../utils/fmtSize';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const REQ_ITEMS = [
-  ['📏', 'Escala', '1:50 · 1:100'],
+  ['📏', 'Escala', 'Definir escala a trabajar'],
   ['📄', '1 plano', 'Por nivel'],
   ['🏷️', 'Cotas NPT', 'En planta'],
-  ['🎨', 'Redes color', 'AF·AC·SAN'],
+  ['🎨', 'Redes color', 'Definir colores por redes'],
   ['🚿', 'Simbología', 'NTC 1500'],
 ];
 
@@ -17,6 +18,7 @@ function PlansPage() {
   const [drag, setDrag] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  usePageMeta('Planos');
 
   const onDrop = useCallback((e: any) => {
     e.preventDefault();

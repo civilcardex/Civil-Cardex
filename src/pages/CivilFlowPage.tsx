@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import MobileOnlyMessage from '../components/MobileOnlyMessage';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 const features = [
   { icon: 'speed', color: '#00dce5', title: 'Cálculo Hidráulico en Tiempo Real', desc: 'Análisis nodal instantáneo para redes presurizadas. Visualización de pérdida de carga y velocidades críticas durante la fase de diseño iterativo.', badge: 'STATUS: ACTIVE_SIM', badgeColor: '#79ff5b' },
@@ -19,6 +20,7 @@ const specs = [
 ];
 
 export default function CivilFlowPage() {
+  usePageMeta('CivilFlow');
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
       <Navbar />

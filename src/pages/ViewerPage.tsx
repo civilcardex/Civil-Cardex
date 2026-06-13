@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import PdfViewer from '../components/PdfViewer';
 import { usePlans } from '../context/PlansContext';
 import { useProject } from '../context/ProjectContext';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 function ViewerInner() {
   const { plans, addPlans, removePlan } = usePlans();
@@ -32,6 +33,7 @@ function ViewerInner() {
 
   const files = plans.map(p => ({ id: p.id, file: p.file }));
   const planIdResolvedRef = useRef(false);
+  usePageMeta('Visor de Planos');
 
   useEffect(() => {
     if (planIdResolvedRef.current || files.length === 0) return;

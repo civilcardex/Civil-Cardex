@@ -2,13 +2,13 @@ import React, { useState } from 'react'
 import Navbar from '../components/Navbar'
 import { docData } from './docs/docData'
 import SectionAccordion from './docs/SectionAccordion'
-
-
+import { usePageMeta } from '../hooks/usePageMeta'
 
 function DocsPage() {
   const [activeCat, setActiveCat] = useState('hidraulica')
   const [search, setSearch] = useState('')
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
+  usePageMeta('Documentación');
 
   const categories = Object.entries(docData).map(([id, data]: [string, any]) => ({
     id,
