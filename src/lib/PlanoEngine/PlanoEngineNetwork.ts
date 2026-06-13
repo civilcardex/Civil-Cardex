@@ -76,6 +76,7 @@ export function setNetLocked(engine: PlanoEngineAPI, netId: string, locked: bool
 export function clearNet(engine: PlanoEngineAPI, netId: string): void {
   engine.ramales = engine.ramales.filter(r => r.net !== netId);
   engine.bajantes = engine.bajantes.filter(b => b.net !== netId);
+  engine._netCounts[netId] = { ramal: 0, tributario: 0 };
   engine.activeRamal = null;
   if (engine.selId) {
     const stillExists = engine.ramales.find((r: any) => r.id === engine.selId)

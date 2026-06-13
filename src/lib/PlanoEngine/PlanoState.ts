@@ -1,8 +1,8 @@
 export const NETS = [
   { id: 'af', lbl: 'RAF', col: '#4D8FF7', ucType: 'uc', bmType: 'montante', bmPfx: 'MAF', bmIco: '⬆', emoji: '💧', name: 'Agua fría' },
   { id: 'ac', lbl: 'RAC', col: '#F04545', ucType: 'uc', bmType: 'montante', bmPfx: 'MAC', bmIco: '⬆', emoji: '🔥', name: 'Agua caliente' },
-  { id: 'san', lbl: 'RS', col: '#F5A623', ucType: 'ud', bmType: 'bajante', bmPfx: 'BAN', bmIco: '⬇', emoji: '♻️', name: 'Sanitaria' },
-  { id: 'll', lbl: 'RALL', col: '#22D3EE', ucType: null, bmType: 'bajante', bmPfx: 'BALL', bmIco: '⬇', emoji: '🌧️', name: 'Aguas lluvias' },
+  { id: 'san', lbl: 'RS', col: '#F5A623', ucType: 'ud', bmType: 'bajante', bmPfx: 'BAN', bmIco: '⬇', emoji: '💩', name: 'Sanitaria' },
+  { id: 'll', lbl: 'RALL', col: '#8B5CF6', ucType: 'ud', bmType: 'bajante', bmPfx: 'BALL', bmIco: '⬇', emoji: '🌧', name: 'Aguas lluvias' },
   { id: 'gas', lbl: 'RG', col: '#A855F7', ucType: null, bmType: 'montante', bmPfx: 'MG', bmIco: '⬆', emoji: '⛽', name: 'Gas' },
   { id: 'rci', lbl: 'RRCI', col: '#F87171', ucType: null, bmType: 'montante', bmPfx: 'MRCI', bmIco: '⬆', emoji: '🔴', name: 'Contra incendio' },
   { id: 'rec', lbl: 'RREC', col: '#22D3EE', ucType: null, bmType: 'montante', bmPfx: 'MREC', bmIco: '⬆', emoji: '🔄', name: 'Recirculación' },

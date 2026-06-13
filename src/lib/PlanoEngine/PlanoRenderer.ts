@@ -358,24 +358,19 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: PlanoEngine
         flowDy = lastc.y - fc.y;
         flowLen = Math.hypot(flowDx, flowDy);
       }
-      const VERT_THRESH = 8;
+      const VERT_THRESH = 10;
       const isVertical = Math.abs(flowDx) < VERT_THRESH && flowLen > 12;
-      const arrowSize = showFlow && flowLen > 12 ? 34 : 0;
-      const lbl = (r.tipo === 'tributario')
-        ? (() => {
-            const padre = r.padre ? engine.ramales.find((p: any) => p.id === r.padre) : null;
-            return padre ? (padre.label || padre.id) : (r.label || '');
-          })()
-        : (r.label || '');
+      const arrowSize = showFlow && flowLen > 12 ? 46 : 0;
+      const lbl = r.label || '';
       const matPart = r.material || '';
       const dPart = r.diametro ? `D=${r.diametro.split(' — ')[0]}` : '';
-      const lblPart = r.totalL ? `${r.totalL.toFixed(2)}m` : '';
       const pPart = r.pendiente ? `S=${r.pendiente}%` : '';
       const showPend = (r.net === 'san' || r.net === 'll');
       const pendPart = showPend && pPart ? pPart : '';
+      const lblPart = r.totalL ? `L=${r.totalL.toFixed(2)}m` : '';
 
       const fsName = engine.mm2cvs(engine.MM.lblName);
-      const fsInfo = engine.mm2cvs(engine.MM.lblName);
+      const fsInfo = engine.mm2cvs(engine.MM.lblInfo);
       const lineHName = fsName + 2;
       const lineHInfo = fsName + 4;
       const boxPadX = engine.mm2cvs(1.0);
@@ -384,8 +379,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: PlanoEngine
       const infoSegs: Array<{ text: string; bold: boolean; w: number } | null> = [
         matPart ? { text: matPart, bold: false, w: 0 } : null,
         dPart ? { text: dPart, bold: true, w: 0 } : null,
-        lblPart ? { text: lblPart, bold: false, w: 0 } : null,
         pendPart ? { text: pendPart, bold: false, w: 0 } : null,
+        lblPart ? { text: lblPart, bold: false, w: 0 } : null,
       ].filter(Boolean) as Array<{ text: string; bold: boolean; w: number }>;
       const segSep = ' · ';
       let sepW = 0;
@@ -402,17 +397,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: PlanoEngine
       const contentW = Math.max(nameW, totalInfoW);
       const boxW = contentW + boxPadX * 2;
       const boxH = (lbl ? lineHName : 0) + (infoSegs.length > 0 ? lineHInfo : 0) + boxPadY * 2;
-      const RIGHT_GAP = 10;
-      const ARROW_GAP = 8;
       let drawX: number, drawY: number;
-      if (isVertical) {
-        const arrowSpace = showFlow ? arrowSize + ARROW_GAP : 0;
-        drawX = lc.x + RIGHT_GAP + arrowSpace + boxW / 2;
-        drawY = lc.y;
-      } else {
-        drawX = lc.x;
-        drawY = lc.y - (boxH / 2 + 4);
-      }
+      drawX = lc.x;
+      drawY = lc.y;
       const labelAngle = (r.labelAngle || 0) * Math.PI / 180;
 
       const cosA = Math.cos(labelAngle), sinA = Math.sin(labelAngle);
@@ -465,26 +452,26 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: PlanoEngine
       }
 
       if (showFlow && flowLen > 12) {
-        const arrowGap = 6;
+        const arrowGap = -8;
         const arrowY = boxH / 2 + arrowGap + arrowSize / 2;
         ctx.save();
         ctx.translate(0, arrowY);
         const dot = flowDx * cosA + flowDy * sinA;
         const dir = dot >= 0 ? 1 : -1;
-        const halfSize = arrowSize / 2;
+        const halfSize = arrowSize * 1.4;
         ctx.strokeStyle = col;
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 1;
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(-halfSize * dir, 0);
         ctx.lineTo(halfSize * dir, 0);
         ctx.stroke();
-        const aSize = 9;
+        const aSize = 10;
         ctx.fillStyle = col;
         ctx.beginPath();
         ctx.moveTo(halfSize * dir, 0);
-        ctx.lineTo(halfSize * dir - dir * aSize, -aSize * 0.5);
-        ctx.lineTo(halfSize * dir - dir * aSize, aSize * 0.5);
+        ctx.lineTo(halfSize * dir - dir * aSize, -aSize * 0.4);
+        ctx.lineTo(halfSize * dir - dir * aSize, aSize * 0.4);
         ctx.closePath();
         ctx.fill();
         ctx.restore();
@@ -495,6 +482,34 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: PlanoEngine
     }
 
     ctx.restore();
+
+    // Selection arrow on first point
+    if (r.id === engine.selId && r.pts.length >= 2) {
+      const firstC = engine.toCvs(r.pts[0][0], r.pts[0][1]);
+      const secondC = engine.toCvs(r.pts[1][0], r.pts[1][1]);
+      const adx = secondC.x - firstC.x, ady = secondC.y - firstC.y;
+      const alen = Math.hypot(adx, ady);
+      if (alen > 2) {
+        const unx = adx / alen, uny = ady / alen;
+        const arrowR = 18;
+        const cx = firstC.x - unx * arrowR * 0.3;
+        const cy = firstC.y - uny * arrowR * 0.3;
+        ctx.save();
+        ctx.fillStyle = '#FFEB3B';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.moveTo(cx + unx * arrowR, cy + uny * arrowR);
+        ctx.lineTo(cx + uny * arrowR * 0.5, cy - unx * arrowR * 0.5);
+        ctx.lineTo(cx - uny * arrowR * 0.5, cy + unx * arrowR * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
   });
 }
 
@@ -505,9 +520,9 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: PlanoEngin
     const col = net ? net.col : '#e2e2e8';
     const c = engine.toCvs(b.x, b.y);
     const sel = b.id === engine.selId;
-    const r = 14 * engine.zoom;
+    const r = 5 * engine.zoom;
     const angle = (b.labelAngle || 0) * Math.PI / 180;
-    b._circ = { x: c.x, y: c.y, r: 40 * engine.zoom };
+    b._circ = { x: c.x, y: c.y, r: 50 };
 
     if (b.recibeDeIds?.length) {
       b.recibeDeIds.forEach((rid: string) => {
@@ -529,7 +544,18 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: PlanoEngin
     }
 
     if (b.descargaEnId) {
-      const ram = engine.ramales.find((rr: any) => rr.id === b.descargaEnId);
+      // The format is now <planId>|<ramalId>. If the user selects a ramal on the same floor, it starts with the same planId.
+      // However, we only have engine.ramales for the current floor. If another floor's ramal has the SAME id,
+      // it won't be drawn incorrectly if we ensure we only draw when we find the exact ramal.
+      // But engine doesn't know its planId. Let's just find by id for now, 
+      // although if there are ID collisions across floors, it might draw a line to the wrong ramal.
+      const targetId = b.descargaEnId.includes('|') ? b.descargaEnId.split('|')[1] : b.descargaEnId;
+      // Also check if the target planId matches the current plan's id to avoid drawing lines across floors falsely.
+      // Wait, we don't have current plan id here. For now, we just find by targetId and hope there's no collision,
+      // or we accept that the visual line is a "best effort" on the current canvas.
+      const ram = engine.ramales.find((rr: any) => rr.id === targetId);
+      // Wait, to be safe, if there's a | we should probably only draw it if it's explicitly the SAME floor?
+      // Since we don't know the current floor ID in the engine, let's just search by ID.
       if (ram && ram.pts.length) {
         const first = ram.pts[0];
         const rc = engine.toCvs(first[0], first[1]);
@@ -603,7 +629,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: PlanoEngin
       const displayCode = b.code || '—';
       const tw = ctx.measureText(displayCode).width;
       const boxW = tw + engine.mm2cvs(2);
-      const boxH = lineH * (1 + (b.hVert !== undefined ? 1 : 0) + (b.dNominal !== undefined ? 1 : 0)) + engine.mm2cvs(1.2);
+      const boxH = lineH * (1 + (b.dNominal !== undefined ? 1 : 0)) + engine.mm2cvs(1.2);
       const lbCx = c.x + offDx * Math.cos(angle) - offDy * Math.sin(angle);
       const lbCy = c.y + offDx * Math.sin(angle) + offDy * Math.cos(angle);
       const cosA2 = Math.cos(angle), sinA2 = Math.sin(angle);
@@ -629,12 +655,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: PlanoEngin
       ctx.textBaseline = 'middle';
       ctx.fillText(displayCode, 0, -boxH / 2 + lineH / 2 + 2);
       let labelY = -boxH / 2 + lineH * 1.5 + 2;
-      if (b.hVert !== undefined) {
-        ctx.font = `bold ${fsBInfo}px Geist, monospace`;
-        ctx.fillStyle = '#000';
-        ctx.fillText(`H=${b.hVert}m`, 0, labelY);
-        labelY += lineH;
-      }
+
       if (b.dNominal !== undefined) {
         ctx.font = `bold ${fsBInfo}px Geist, monospace`;
         ctx.fillStyle = '#000';

@@ -7,7 +7,7 @@ export {
 } from './HitTester';
 export { renameElement, deleteElement, findElementById } from './ElementManager';
 
-export type { PlanoElement } from './ElementManager';
+export type { PlanoElement } from './PlanoState';
 export type {
   PlanoRamal, PlanoBajante, PlanoArea, PlanoDimension, PlanoTextAnnotation,
   PlanoLevel, PlanoNet, PlanoNetCounts,

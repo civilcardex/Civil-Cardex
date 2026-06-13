@@ -7,7 +7,7 @@ import type {
 } from './PlanoState';
 import type { PlanoEngineAPI } from './PlanoEngineTypes';
 import { NETS } from './PlanoState';
-import { pointInPoly, pointInLabelBox } from './HitTester';
+import { pointInPoly, pointInLabelBox, pointToSegmentDist } from './HitTester';
 import { _midpoint } from './PlanoEngineDrawing';
 
 export function selectAt(engine: PlanoEngineAPI, cx: number, cy: number): void {
@@ -49,16 +49,7 @@ export function selectAt(engine: PlanoEngineAPI, cx: number, cy: number): void {
     for (let i = 0; i < r.pts.length - 1; i++) {
       const [x1, y1] = r.pts[i], [x2, y2] = r.pts[i + 1];
       const c1 = engine.toCvs(x1, y1), c2 = engine.toCvs(x2, y2);
-      const ddx = c2.x - c1.x, ddy = c2.y - c1.y;
-      const len2 = ddx * ddx + ddy * ddy;
-      let d;
-      if (len2 < 1) {
-        d = Math.hypot(cx - c1.x, cy - c1.y);
-      } else {
-        const t = Math.max(0, Math.min(1, ((cx - c1.x) * ddx + (cy - c1.y) * ddy) / len2));
-        const px = c1.x + t * ddx, py = c1.y + t * ddy;
-        d = Math.hypot(cx - px, cy - py);
-      }
+      const d = pointToSegmentDist(cx, cy, c1.x, c1.y, c2.x, c2.y);
       if (d < minD) { minD = d; found = r; }
     }
   });
@@ -196,7 +187,7 @@ export function deleteSelected(engine: PlanoEngineAPI): void {
 export function handleSelectDown(engine: PlanoEngineAPI, x: number, y: number): void {
   const sel = getSelected(engine);
 
-  if (sel && (sel as any)._circ && (sel.id?.startsWith('B'))) {
+  if (sel && (sel as any)._circ && ((sel as any).tipo === 'bajante' || (sel as any).tipo === 'montante' || sel.id?.startsWith('B'))) {
     const circ = (sel as any)._circ!;
     const d = Math.hypot(x - circ.x, y - circ.y);
     if (d < circ.r) {
@@ -211,7 +202,7 @@ export function handleSelectDown(engine: PlanoEngineAPI, x: number, y: number): 
       engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
       return;
     }
-    if (!(sel.id?.startsWith('B'))) {
+    if (!((sel as any).tipo === 'bajante' || (sel as any).tipo === 'montante' || sel.id?.startsWith('B'))) {
       const lPos = engine.toCvs((sel as any).labelX, (sel as any).labelY);
       if (Math.hypot(x - lPos.x, y - lPos.y) < 12) {
         engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };

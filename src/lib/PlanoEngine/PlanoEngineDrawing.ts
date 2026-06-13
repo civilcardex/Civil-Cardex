@@ -10,6 +10,7 @@ import type {
 } from './PlanoState';
 import type { PlanoEngineAPI } from './PlanoEngineTypes';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
+import { pointToSegmentDist, snapToSegment } from './HitTester';
 
 type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm';
 
@@ -19,7 +20,7 @@ export function toolCursor(tool: string): string {
 
 export function _statusMsg(engine: PlanoEngineAPI): string {
   const names: Record<string, string> = {
-    sel: 'Seleccionar', line: 'Ramal', dim: 'Cota', text: 'Texto',
+    sel: 'Seleccionar elemento', line: 'Ramal', dim: 'Cota', text: 'Texto',
     baj: 'Bajante', mon: 'Montante', pan: 'Pan', area: 'Área', erase: 'Borrar',
     delm: 'Eliminar elemento',
   };
@@ -40,7 +41,9 @@ export function _nextLabel(engine: PlanoEngineAPI): string {
   const pfx = net ? net.lbl : 'R';
   const cnt = engine._netCounts[engine.activeNet]?.[engine.tipoTramo] || 0;
   if (engine.tipoTramo === 'tributario') {
-    return `Trib${cnt}`;
+    const padre = engine.ramales.find((r: any) => r.id === engine.padreTributario);
+    const padreLabel = padre ? (padre.label || padre.id) : '';
+    return `T${cnt}${padreLabel}`;
   }
   return `${pfx}${cnt}`;
 }
@@ -63,6 +66,16 @@ export function _midpoint(pts: number[][]): [number, number] {
     acc += segLens[i];
   }
   return [pts[pts.length - 1][0], pts[pts.length - 1][1]];
+}
+
+export function _firstSegmentAngle(pts: number[][]): number {
+  if (pts.length < 2) return 0;
+  const dx = pts[1][0] - pts[0][0];
+  const dy = pts[1][1] - pts[0][1];
+  let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  if (angle > 90) angle -= 180;
+  if (angle < -90) angle += 180;
+  return Math.round(angle);
 }
 
 export function _strokeAngle(pts: number[][]): number {
@@ -129,6 +142,19 @@ export function finishRamal(engine: PlanoEngineAPI): void {
   const id = engine.tipoTramo === 'tributario'
     ? 'T' + Date.now()
     : netPfx + cnt;
+  const firstAngle = _firstSegmentAngle(engine.activeRamal.pts);
+
+  // Position label above the first segment
+  const pts = engine.activeRamal.pts;
+  const x1 = pts[0][0], y1 = pts[0][1], x2 = pts[1][0], y2 = pts[1][1];
+  const midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
+  const rad = firstAngle * Math.PI / 180;
+  // up vector relative to the text angle
+  const upX = Math.sin(rad);
+  const upY = -Math.cos(rad);
+  const labelOffset = 48; // Closer to the line, but enough to fit the arrow above it
+  const labelX = midX + upX * labelOffset;
+  const labelY = midY + upY * labelOffset;
 
   const r: PlanoRamal = {
     id,
@@ -139,8 +165,8 @@ export function finishRamal(engine: PlanoEngineAPI): void {
     totalL: engine.activeRamal!.totalL,
     label: _nextLabel(engine),
     ini: '', fin: '', piso: engine.nivelActual?.n ?? '', dz: '', uc: 0,
-    labelX: mx, labelY: my,
-    labelAngle: 0,
+    labelX: labelX, labelY: labelY,
+    labelAngle: firstAngle,
     material: def.material || '',
     diametro: def.diametro || '',
     pendiente: typeof def.pendiente === 'number' ? def.pendiente : 0,
@@ -194,12 +220,27 @@ export function finishArea(engine: PlanoEngineAPI): void {
 }
 
 export function undoLast(engine: PlanoEngineAPI): void {
+  if (engine.activeRamal && engine.activeRamal.pts.length > 1) {
+    const ar = engine.activeRamal;
+    const last = ar.pts[ar.pts.length - 1];
+    const prev = ar.pts[ar.pts.length - 2];
+    const segLen = Math.hypot(last[0] - prev[0], last[1] - prev[1]);
+    ar.totalL = +(ar.totalL - engine.pxToM(segLen)).toFixed(3);
+    if (ar.totalL < 0) ar.totalL = 0;
+    ar.pts.pop();
+    engine._emitStatus(_statusMsg(engine));
+    engine.render();
+    engine._markDirty();
+    return;
+  }
   if (engine.activeRamal) { cancelRamal(engine); return; }
   if (engine.activeArea) { cancelArea(engine); return; }
   if ((engine.tool === 'baj' || engine.tool === 'mon' || engine.tool === 'delm') && engine.bajantes.length) {
     engine.bajantes.pop();
   } else if (engine.ramales.length) {
-    engine.ramales.pop();
+    const removed = engine.ramales.pop();
+    if (removed && removed.tipo !== 'tributario') engine._renumberRamales(removed.net);
+    else if (removed) engine._renumberRamales(removed.net);
   } else if (engine.areas.length) {
     engine.areas.pop();
   } else if (engine.dims.length) {
@@ -241,7 +282,7 @@ export function deleteSegmentAt(engine: PlanoEngineAPI, cx: number, cy: number):
     }
     if (bestD <= HIT_DIST) continue;
     for (let i = 0; i < r.pts.length - 1; i++) {
-      const d = pointToSegDist(plane.x, plane.y, r.pts[i][0], r.pts[i][1], r.pts[i + 1][0], r.pts[i + 1][1]);
+      const d = pointToSegmentDist(plane.x, plane.y, r.pts[i][0], r.pts[i][1], r.pts[i + 1][0], r.pts[i + 1][1]);
       if (d < bestD) {
         bestD = d;
         bestR = r;
@@ -253,6 +294,10 @@ export function deleteSegmentAt(engine: PlanoEngineAPI, cx: number, cy: number):
   }
   if (!bestR || bestIdx < 0 || bestD > HIT_DIST) return;
   const r = bestR;
+  if (bestIdx > 0 && bestIdx < r.pts.length - 1) {
+    engine._emitStatus('⚠ No se puede eliminar un segmento intermedio. Solo se pueden eliminar extremos.');
+    return;
+  }
   if (r.pts.length <= 2) {
     engine.ramales = engine.ramales.filter(x => x.id !== r.id && x.padre !== r.id);
     if (r.tipo !== 'tributario') engine._renumberRamales(r.net);
@@ -286,6 +331,28 @@ export function setScaleM(engine: PlanoEngineAPI, v: string | number): void {
   engine.render();
 }
 
+function tribSnapAngle(x0: number, y0: number, x1: number, y1: number, net: string): { x: number; y: number } {
+  const dx = x1 - x0, dy = y1 - y0;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 2) return { x: x1, y: y1 };
+  const deg = Math.atan2(dy, dx) * 180 / Math.PI;
+  let allowed: number[];
+  if (net === 'san' || net === 'll') {
+    allowed = [45, 135, -135, -45];
+  } else if (net === 'af' || net === 'ac') {
+    allowed = [45, 90, 135, -135, -90, -45];
+  } else {
+    allowed = [0, 45, 90, 135, 180, -135, -90, -45];
+  }
+  let best = 0, minDiff = 999;
+  allowed.forEach(a => {
+    const diff = Math.abs(((deg - a) + 540) % 360 - 180);
+    if (diff < minDiff) { minDiff = diff; best = a; }
+  });
+  const sr = best * Math.PI / 180;
+  return { x: x0 + dist * Math.cos(sr), y: y0 + dist * Math.sin(sr) };
+}
+
 export function handleLineDown(engine: PlanoEngineAPI, px: number, py: number): void {
   let pt: { x: number; y: number } = { x: px, y: py };
   if (engine.tipoTramo === 'tributario' && !engine.padreTributario) {
@@ -296,7 +363,7 @@ export function handleLineDown(engine: PlanoEngineAPI, px: number, py: number): 
     if (engine.tipoTramo === 'tributario' && engine.padreTributario) {
       const padre = engine.ramales.find((r: any) => r.id === engine.padreTributario);
       if (padre) {
-        const spSegment = snapToSeg(pt.x, pt.y, padre.pts, 20 / engine.zoom);
+        const spSegment = snapToSegment(pt.x, pt.y, padre.pts, 20 / engine.zoom);
         if (spSegment) pt = spSegment;
       }
     }
@@ -320,11 +387,17 @@ export function handleLineDown(engine: PlanoEngineAPI, px: number, py: number): 
       finishRamal(engine);
       return;
     }
-    if (engine.snapMode) pt = engine.snapAngle(last[0], last[1], pt.x, pt.y);
+    if (engine.snapMode) {
+      if (engine.tipoTramo === 'tributario') {
+        pt = tribSnapAngle(last[0], last[1], pt.x, pt.y, engine.activeNet);
+      } else {
+        pt = engine.snapAngle(last[0], last[1], pt.x, pt.y);
+      }
+    }
     if (engine.tipoTramo === 'tributario' && engine.padreTributario) {
       const padre = engine.ramales.find((r: any) => r.id === engine.padreTributario);
       if (padre) {
-        const sp = snapToSeg(pt.x, pt.y, padre.pts, 20 / engine.zoom);
+        const sp = snapToSegment(pt.x, pt.y, padre.pts, 20 / engine.zoom);
         if (sp) pt = sp;
       }
     }
@@ -362,7 +435,8 @@ export function handleTextDown(engine: PlanoEngineAPI, px: number, py: number): 
 }
 
 export function handleBajanteDown(engine: PlanoEngineAPI, px: number, py: number): void {
-  const netPfx = engine.activeNet === 'll' ? 'BAJALL' : engine.activeNet === 'san' ? 'BAJRS' : 'BAJ';
+  const net = NETS.find(n => n.id === engine.activeNet);
+  const netPfx = net ? net.bmPfx : 'BAJ';
   const cnt = engine.bajantes.filter(b => b.tipo === 'bajante' && b.net === engine.activeNet).length + 1;
   const bajId = netPfx + cnt;
   engine.bajantes.push({
@@ -419,7 +493,7 @@ export function handleDeleteElementDown(engine: PlanoEngineAPI, cx: number, cy: 
   engine.selectAt(cx, cy);
   const sel = engine.getSelected() as { id: string; pts?: number[][] } | null;
   if (!sel) { engine._emitStatus('No se encontró ningún elemento'); return; }
-  if (sel.id?.startsWith('BAJ') || sel.id?.startsWith('MON') || sel.id?.startsWith('AR')) {
+  if ((sel as any).tipo === 'bajante' || (sel as any).tipo === 'montante' || (sel as any).tipo === 'area' || sel.id?.startsWith('AR') || sel.id?.startsWith('BAJ') || sel.id?.startsWith('MON')) {
     engine.deleteSelected();
     engine._emitSelect(null);
     engine.selId = null;
@@ -476,26 +550,4 @@ export function handleDoubleClick(engine: PlanoEngineAPI): void {
   }
 }
 
-function pointToSegDist(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
-  const dx = x2 - x1, dy = y2 - y1;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return Math.hypot(px - x1, py - y1);
-  let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
-  t = Math.max(0, Math.min(1, t));
-  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
-}
 
-function snapToSeg(x: number, y: number, pts: number[][], threshold: number): { x: number; y: number } | null {
-  let best: { x: number; y: number } | null = null;
-  let minD = Infinity;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
-    const ddx = x2 - x1, ddy = y2 - y1, len2 = ddx * ddx + ddy * ddy;
-    if (len2 < 1) continue;
-    const t = Math.max(0, Math.min(1, ((x - x1) * ddx + (y - y1) * ddy) / len2));
-    const ptx = x1 + t * ddx, pty = y1 + t * ddy;
-    const d = Math.hypot(x - ptx, y - pty);
-    if (d < minD && d <= threshold) { minD = d; best = { x: ptx, y: pty }; }
-  }
-  return best;
-}
