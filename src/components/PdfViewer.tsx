@@ -103,6 +103,39 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   const activeNetRef = useRef(activeNet);
   activeNetRef.current = activeNet;
 
+  const [lowerFloorsRamales, setLowerFloorsRamales] = useState<Array<{ planId: string; planName: string; npt: number; ramales: any[] }>>([]);
+
+  useEffect(() => {
+    if (!selElement || !(selElement.tipo === 'bajante' || selElement.tipo === 'montante')) return;
+    const currentFloor = pisos.find(p => p.n === selectedNivel);
+    const currentNpt = currentFloor ? currentFloor.npt : Infinity;
+
+    const relevantPlans = planosCtx.plans.filter((plan: any) => {
+      const pF = pisos.find(p => String(p.n) === String(plan.nivel));
+      return pF && pF.npt <= currentNpt;
+    });
+
+    const results = relevantPlans.map((plan: any) => {
+      const pF = pisos.find(p => String(p.n) === String(plan.nivel))!;
+      let ramales: any[] = [];
+      if (plan.id === currentIdRef.current) {
+        ramales = engineRef.current?.ramales?.filter((r: any) => r.tipo !== 'tributario' && r.net === (selElement.net || activeNet)) || [];
+      } else {
+        const raw = localStorage.getItem('civilflow_trazos_' + plan.id);
+        if (raw) {
+          try {
+            const data = JSON.parse(raw);
+            ramales = (data.ramales || []).filter((r: any) => r.tipo !== 'tributario' && r.net === (selElement.net || activeNet));
+          } catch (_) {}
+        }
+      }
+      return { planId: plan.id, planName: plan.name, npt: pF.npt, ramales };
+    });
+
+    results.sort((a, b) => b.npt - a.npt);
+    setLowerFloorsRamales(results);
+  }, [selElement?.id, selectedNivel, pisos, planosCtx.plans, activeNet]);
+
   useEffect(() => { try { sessionStorage.setItem('civilflow_visor_tool', tool); } catch (_) {} }, [tool]);
   useEffect(() => { try { sessionStorage.setItem('civilflow_visor_tipoTramo', tipoTramo); } catch (_) {} }, [tipoTramo]);
   useEffect(() => { try { sessionStorage.setItem('civilflow_visor_snapOn', String(snapOn)); } catch (_) {} }, [snapOn]);
@@ -392,14 +425,6 @@ currentIdRef.current = currentId;
   }, []);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      const eng = engineRef.current;
-      if (eng) setDrawnElements(eng.getElementsByNet(activeNet));
-    }, 400);
-    return () => clearInterval(id);
-  }, [activeNet]);
-
-  useEffect(() => {
     if (!engineRef.current) return;
     setDrawnElements(engineRef.current.getElementsByNet(activeNet));
   }, [selElement, activeNet]);
@@ -418,6 +443,7 @@ currentIdRef.current = currentId;
     eng.onStatus((msg) => setStatusMsg(msg));
     eng.onDirty(() => {
       eng._dirty = true;
+      setDrawnElements(eng.getElementsByNet(activeNetRef.current || 'af'));
       if (loadingPlanRef.current) return;
       try {
         const id = eng._loadedPlanId || currentIdRef.current || 'work';
@@ -725,6 +751,7 @@ currentIdRef.current = currentId;
         <PdfViewerToolbar
           tool={tool}
           snapOn={snapOn}
+          activeNet={activeNet}
           onSelectTool={setTool}
           onSnapToggle={() => setSnapOn(!snapOn)}
         />
@@ -818,10 +845,9 @@ currentIdRef.current = currentId;
         width: 210, flexShrink: 0, display: "flex", flexDirection: "column",
         background: "#14161a", borderLeft: "1px solid #3a494a",
         overflowY: "auto", overflowX: "hidden",
-        opacity: tool === 'sel' ? 0.35 : 1,
-        pointerEvents: tool === 'sel' ? 'none' : 'auto',
         transition: 'opacity 0.2s',
       }}>
+        {/* Nivel — always enabled */}
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Nivel</div>
           <select value={selectedNivel??''} onChange={e=>{
@@ -850,6 +876,13 @@ currentIdRef.current = currentId;
             );
           })()}
         </div>
+
+        {/* Rest of sidebar — blocked when selecting without element selected */}
+        <div style={{
+          opacity: (tool === 'sel' && !selElement) ? 0.35 : 1,
+          pointerEvents: (tool === 'sel' && !selElement) ? 'none' : 'auto',
+          transition: 'opacity 0.2s',
+        }}>
 
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>¿Qué voy a dibujar?</div>
@@ -921,6 +954,65 @@ currentIdRef.current = currentId;
           handleDelete={handleDelete}
         />
 
+        {/* Bajante/Montante association */}
+        {selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante') && (
+        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a", opacity: 1, pointerEvents: 'auto' }}>
+            <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
+              Asociación de bajante
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div>
+                <div style={{ fontSize: 8, color: '#6b8cae', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: .5 }}>Origen (piso actual)</div>
+                <div style={{ padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#6b8cae", fontSize: 10, fontFamily: "'Geist',monospace" }}>
+                  {selectedNivel !== null ? pisoLbl(selectedNivel) : '—'}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 8, color: '#6b8cae', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: .5 }}>Destino</div>
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  <select value={selElement.descargaEnId || ''}
+                    onChange={e => {
+                      const v = e.target.value || null;
+                      if (engineRef.current) {
+                        engineRef.current.updateSelected({ descargaEnId: v });
+                        setSelElement({ ...selElement, descargaEnId: v });
+                      }
+                    }}
+                    style={{ flex: 1, padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                    <option value="">— Sin destino —</option>
+                    {lowerFloorsRamales.map(group => {
+                      const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
+                      const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
+                      return (
+                        <optgroup key={group.planId} label={pLabel + (group.ramales.length === 0 ? ' (sin ramales)' : '')}>
+                          {group.ramales.length > 0 ? group.ramales.map((r: any) => (
+                            <option key={`${group.planId}|${r.id}`} value={`${group.planId}|${r.id}`}>
+                              {r.label || r.id}
+                            </option>
+                          )) : (
+                            <option value="" disabled>— Sin ramales disponibles —</option>
+                          )}
+                        </optgroup>
+                      );
+                    })}
+                  </select>
+                  {selElement.descargaEnId && (
+                    <button onClick={() => {
+                      if (engineRef.current) {
+                        engineRef.current.updateSelected({ descargaEnId: null });
+                        setSelElement({ ...selElement, descargaEnId: null });
+                      }
+                    }}
+                      style={{ padding: '2px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 10 }}>
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Escala</div>
           <div style={{padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace"}}>
@@ -933,7 +1025,7 @@ currentIdRef.current = currentId;
           </div>
         </div>
 
-        {!(selElement && (selElement.id?.startsWith('B') || selElement.id?.startsWith('MON') || selElement.id?.startsWith('AR'))) && (
+        {!(selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante' || selElement.tipo === 'area' || selElement.id?.startsWith('AR'))) && (
         <AparatosPanel activeNet={activeNet} selElement={selElement} />
         )}
 
@@ -982,6 +1074,7 @@ currentIdRef.current = currentId;
         </div>
 
         <div style={{flex:1}}/>
+      </div>
       </div>
     </div>
     </div>
