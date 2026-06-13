@@ -46,10 +46,10 @@ export const MAT_COL = NORM_COL; // Alias — same color mapping
 export const R_OPTIONS=[{value:'1/4',label:'1/4'},{value:'7/24',label:'7/24'}];
 
 export const REQ_ITEMS=[
-  {ico:'📏', icoImg:'/iconos_carga_planos/escala.webp', t:'Escala', s:'1:50 · 1:100'},
+  {ico:'📏', icoImg:'/iconos_carga_planos/escala.webp', t:'Escala', s:'Definir escala a trabajar'},
   {ico:'📄', icoImg:'/iconos_carga_planos/plano_por_nivel.webp', t:'1 plano', s:'Por nivel'},
   {ico:'🏷️', icoImg:'/iconos_carga_planos/cotas.webp', t:'Cotas NPT', s:'En planta'},
-  {ico:'🎨', icoImg:'/iconos_carga_planos/redes_por_color.webp', t:'Redes color', s:'AF·AC·SAN'},
+  {ico:'🎨', icoImg:'/iconos_carga_planos/redes_por_color.webp', t:'Redes color', s:'Definir colores por redes'},
   {ico:'🚿', icoImg:'/iconos_carga_planos/simbologia.webp', t:'Simbología', s:'NTC 1500'},
 ];
 

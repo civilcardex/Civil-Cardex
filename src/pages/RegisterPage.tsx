@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FormField from '../components/FormField';
-import { supabase } from '../lib/supabase';
+import { signUp } from '../services/authService';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 function RegisterPage() {
   const [form, setForm] = useState({ nombre: '', apellido: '', email: '', profesion: '', matricula: '', telefono: '', password: '', confirm: '' });
@@ -12,6 +13,7 @@ function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const navigate = useNavigate();
+  usePageMeta('Registro');
 
   const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [field]: e.target.value });
 
@@ -35,22 +37,15 @@ function RegisterPage() {
     setLoading(true);
 
     try {
-      if (!supabase) { setError('Servicio no configurado'); setLoading(false); return; }
-      const { error: authError } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-        options: {
-          data: {
-            nombre: form.nombre,
-            apellido: form.apellido,
-            profesion: form.profesion,
-            matricula: form.matricula,
-            telefono: form.telefono,
-          }
+      await signUp(form.email, form.password, {
+        data: {
+          nombre: form.nombre,
+          apellido: form.apellido,
+          profesion: form.profesion,
+          matricula: form.matricula,
+          telefono: form.telefono,
         }
       });
-
-      if (authError) throw authError;
       navigate('/civilflowareatrabajo');
     } catch (err: any) {
       setError(err.message || 'Error al crear la cuenta');
@@ -113,6 +108,7 @@ function RegisterPage() {
           <div style={{position:'relative'}}>
             <FormField label="CONTRASEÑA" type={showPwd ? 'text' : 'password'} value={form.password} onChange={handleChange('password')} />
             <button type="button" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}
+              aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
               className="absolute right-2 bottom-[12px] text-sm opacity-50 hover:opacity-90 transition-opacity"
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b8cae', padding: 0 }}>
               {showPwd ? '⬡' : '👁'}
@@ -121,6 +117,7 @@ function RegisterPage() {
           <div style={{position:'relative'}}>
             <FormField label="CONFIRMAR" type={showConfirm ? 'text' : 'password'} value={form.confirm} onChange={handleChange('confirm')} />
             <button type="button" onClick={() => setShowConfirm(!showConfirm)} tabIndex={-1}
+              aria-label={showConfirm ? 'Ocultar contraseña' : 'Mostrar contraseña'}
               className="absolute right-2 bottom-[12px] text-sm opacity-50 hover:opacity-90 transition-opacity"
               style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b8cae', padding: 0 }}>
               {showConfirm ? '⬡' : '👁'}

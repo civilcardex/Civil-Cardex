@@ -61,10 +61,13 @@ export function EPProvider({ children }: { children?: ReactNode }) {
   const updEP = (field: keyof EPData, val: any) => {
     setEP(prev => {
       const next = { ...prev, [field]: val };
-      saveToStorage("ep", next);
       return next;
     });
   };
+
+  useEffect(() => {
+    saveToStorage("ep", ep);
+  }, [ep]);
 
   return (
     <EPContext.Provider value={{ ep, setEP, updEP }}>

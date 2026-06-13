@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FormField from '../components/FormField';
-import { supabase } from '../lib/supabase';
+import { signIn } from '../services/authService';
+import { usePageMeta } from '../hooks/usePageMeta';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
@@ -11,6 +12,7 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  usePageMeta('Iniciar Sesión');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,13 +20,7 @@ function LoginPage() {
     setLoading(true);
 
     try {
-      if (!supabase) { setError('Servicio no configurado'); setLoading(false); return; }
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (signInError) throw signInError;
+      await signIn(email, password);
       navigate('/civilflowareatrabajo');
     } catch (err: any) {
       setError(err.message || 'Error al iniciar sesión');
@@ -74,6 +70,7 @@ function LoginPage() {
         <div style={{position:'relative'}}>
           <FormField label="CONTRASEÑA" type={showPwd ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
           <button type="button" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}
+            aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
             className="absolute right-2 bottom-[12px] text-base opacity-50 hover:opacity-90 transition-opacity"
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b8cae', padding: 0, lineHeight: 1 }}>
             {showPwd ? '⬡' : '👁'}

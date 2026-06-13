@@ -2,7 +2,6 @@ import { factorSimultaneidad, caudalHunterLPS } from './calcSanitary';
 
 export const COEF_HAZEN_PVC: number = 150;
 export const COEF_HAZEN_CPVC: number = 150;
-const COEF_HAZEN_COBRE: number = 130; // (unused, reserved for future use)
 
 export interface DiametroComercialAF {
   nominal: string;
@@ -225,9 +224,7 @@ export function calculateHydraulicSegment(params: TramoHidraulicoParams): TramoH
   const V_ms = realVelocity(Q_m3s, D_int_m);
   const V_mms = V_ms * 1000;
 
-  let Le_m = 0;
-
-  const L_total = (Lh_m || 0) + (Lv_m || 0) + Le_m;
+  const L_total = (Lh_m || 0) + (Lv_m || 0);
 
   const hf = hazenWilliamsLoss(Q_m3s, L_total || 0.1, D_int_m, C);
 
@@ -262,7 +259,7 @@ export function calculateHydraulicSegment(params: TramoHidraulicoParams): TramoH
     V_mms: parseFloat(V_mms.toFixed(1)),
     Lh_m: Number(Lh_m) || 0,
     Lv_m: Number(Lv_m) || 0,
-    Le_m: parseFloat(Le_m.toFixed(2)),
+    Le_m: 0,
     L_total: parseFloat(L_total.toFixed(2)),
     hf_m: parseFloat(hf.toFixed(4)),
     deltaZ_m: parseFloat(deltaZ.toFixed(2)),

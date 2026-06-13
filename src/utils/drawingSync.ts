@@ -73,6 +73,7 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
             hVert: b.hVert || 0, material: b.material || '',
             maning: matManning(b.material), _aparatosKey: bKey, _net: b.net,
             recibeDeIds: b.recibeDeIds || [],
+            descargaEnId: b.descargaEnId || null,
             area_m2: b.area_m2 || 0,
             pisoBase: b.pisoBase || '', pisoCima: b.pisoCima || '',
           });
