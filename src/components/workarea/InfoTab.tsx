@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction, ChangeEvent, FocusEvent } from "react";
-import { REDES, USOS, EMPRES, pisoLbl } from "../../constants";
+import { REDES, USOS, pisoLbl } from "../../constants";
 import type { useWorkAreaState } from "../useWorkAreaState";
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
@@ -25,10 +25,8 @@ function ProjectIdCard({ proy, setP }: { proy: any; setP: (k: string, v: any) =>
         <div className="f" style={{ marginBottom: 3 }}><label style={{ fontSize: 12 }}>Dirección / Sector</label><input value={proy.dir} onChange={e => setP('dir', e.target.value)} style={{ fontSize: 12, padding: '3px 6px' }} /></div>
         <div className="f" style={{ marginBottom: 3 }}><label style={{ fontSize: 12 }}>Municipio</label><input value={proy.mun} onChange={e => setP('mun', e.target.value)} style={{ fontSize: 12, padding: '3px 6px' }} /></div>
         <div className="f" style={{ marginBottom: 3 }}><label style={{ fontSize: 12 }}>Departamento</label><input value={proy.dep} onChange={e => setP('dep', e.target.value)} style={{ fontSize: 12, padding: '3px 6px' }} /></div>
-        <div className="f" style={{ marginBottom: 3 }}><label style={{ fontSize: 12 }}>Uso</label>
+        <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Uso</label>
           <select value={proy.uso} onChange={e => setP('uso', e.target.value)} style={{ fontSize: 12, padding: '3px 6px', width: '100%' }}><option value="">—</option>{USOS.map(u => <option key={u}>{u}</option>)}</select></div>
-        <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Empresa</label>
-          <select value={proy.empresa} onChange={e => setP('empresa', e.target.value)} style={{ fontSize: 12, padding: '3px 6px', width: '100%' }}><option value="">—</option>{EMPRES.map(u => <option key={u}>{u}</option>)}</select></div>
       </div>
     </div>
   );
@@ -55,10 +53,10 @@ function ActiveNetsCard({ redes, setRedes, netColors, setNetColors }: { redes: S
             const cssVar = `--${r.id}`;
             const currentColor = netColors[r.id] || '#666';
             return (
-              <div key={r.id} onClick={() => { const n = new Set(redes); on ? n.delete(r.id) : n.add(r.id); setRedes(n); }}
+              <button key={r.id} onClick={() => { const n = new Set(redes); on ? n.delete(r.id) : n.add(r.id); setRedes(n); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 3, padding: '3px 5px', cursor: 'pointer',
-                  background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s'
+                  background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left'
                 }}>
                 {r.icoImg ? <img src={r.icoImg} alt="" style={{ width: 22, height: 22, verticalAlign: 'middle' }} /> : <span style={{ fontSize: 13 }}>{r.ico}</span>}
                 <span style={{ fontWeight: 600, fontSize: 12, color: on ? currentColor : 'var(--txt2)', whiteSpace: 'nowrap', flex: 1 }}>{r.lbl}</span>
@@ -76,7 +74,8 @@ function ActiveNetsCard({ redes, setRedes, netColors, setNetColors }: { redes: S
                   }}
                   style={{ width: 14, height: 14, border: 'none', padding: 0, cursor: 'pointer', background: 'none', flexShrink: 0 }} />
                 <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: on ? currentColor : 'transparent', border: '1.5px solid ' + (on ? currentColor : 'var(--txt3)') }} />
-              </div>
+                <span className="visually-hidden">{on ? 'Activa' : 'Inactiva'}</span>
+              </button>
             );
           })}
         </div>
@@ -104,15 +103,15 @@ function ActiveEquiposCard({ redes, setRedes }: { redes: Set<string>; setRedes: 
             if (!r) return null;
             const on = redes.has(r.id);
             return (
-              <div key={r.id} onClick={() => { const n = new Set(redes); on ? n.delete(r.id) : n.add(r.id); setRedes(n); }}
+              <button key={r.id} onClick={() => { const n = new Set(redes); on ? n.delete(r.id) : n.add(r.id); setRedes(n); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 3, padding: '3px 5px', cursor: 'pointer',
-                  background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s'
+                  background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left'
                 }}>
                 {r.icoImg ? <img src={r.icoImg} alt="" style={{ width: 22, height: 22, verticalAlign: 'middle' }} /> : <span style={{ fontSize: 13 }}>{r.ico}</span>}
                 <span style={{ fontWeight: 600, fontSize: 12, color: on ? '#22c55e' : 'var(--txt2)', whiteSpace: 'nowrap', flex: 1 }}>{r.lbl}</span>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: on ? '#22c55e' : 'transparent', border: '1.5px solid ' + (on ? '#22c55e' : 'var(--txt3)') }} />
-              </div>
+              </button>
             );
           })}
         </div>
@@ -151,12 +150,12 @@ function FloorGeneratorCard(props: {
           <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Altura sótano</label><input type="text" inputMode="decimal" value={props.altSotano} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onDecChange(props.setAltSotano)} onBlur={props.onDecBlur(props.setAltSotano)} /></div>
           <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>NPT P1</label><input type="text" inputMode="decimal" value={props.nptPiso1} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onDecChange(props.setNptPiso1)} onBlur={props.onDecBlur(props.setNptPiso1)} /></div>
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', paddingRight: 24, paddingBottom: 2 }}>
-            <div onClick={() => props.setConCubierta(!props.conCubierta)} title="Incluir cubierta" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', padding: '4px 8px', borderRadius: 4, flexShrink: 0 }}>
+            <button onClick={() => props.setConCubierta(!props.conCubierta)} title="Incluir cubierta" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', padding: '4px 8px', borderRadius: 4, flexShrink: 0, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'inherit' }}>
               <div style={{ width: 28, height: 15, borderRadius: 8, background: props.conCubierta ? 'var(--ll)' : 'var(--line)', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
                 <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: props.conCubierta ? 15 : 2, transition: 'left .2s' }} />
               </div>
               <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--txt2)' }}>Incluir cubierta</span>
-            </div>
+            </button>
           </div>
         </div>
         <button onClick={props.generarPisos} style={{ width: '100%', padding: '6px', marginTop: 6, background: 'var(--acc)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Generar niveles automáticamente</button>
@@ -235,13 +234,22 @@ export default function InfoTab({ state }: InfoTabProps) {
     proy, setP,
     redes, setRedes, netColors, setNetColors,
     nSotanos, nPisos, altPiso, altSotano, nptPiso1, conCubierta, setConCubierta,
-    generarPisos,
+    generarPisos, alertMsg, setAlertMsg,
     onIntChange, onIntBlur, onDecChange, onDecBlur,
     pisos, delPiso, addPiso, addSotano,
   } = state;
 
   return (
-    <div className="fu info-gral" style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+    <div className="fu info-gral" style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
+      {alertMsg && (
+        <div role="alert" style={{
+          flexShrink: 0, padding: '7px 14px', fontSize: 12, fontWeight: 600,
+          background: 'rgba(239,68,68,0.92)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+        }}>
+          ⚠ {alertMsg}
+          <button onClick={() => setAlertMsg(null)} style={{ background: 'rgba(255,255,255,.2)', border: 'none', borderRadius: 3, color: '#fff', cursor: 'pointer', fontSize: 11, padding: '2px 8px', flexShrink: 0 }}>✕</button>
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: 6, flex: 1, minHeight: 0, overflowY: 'hidden', overflowX: 'auto', alignItems: 'stretch' }}>
         <ProjectIdCard proy={proy} setP={setP} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 auto' }}>
