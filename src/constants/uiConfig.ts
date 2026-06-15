@@ -24,7 +24,7 @@ export const EMPRES=['EMAB - Floridablanca','Aguas de Bucaramanga','EAAB - Bogot
 export const NAV_TABS=[
   {id:'info',  l:'Información general',  ico:'🏗️', icoImg:'/iconos_info_general/Informacion_del_proyecto.webp'},
   {id:'planos',l:'Carga de planos',      ico:'📐', icoImg:'/iconos_carga_planos/carga_de_planos.webp'},
-  {id:'datos', l:'Parámetros de diseño', ico:'📊', icoImg:'/iconos_parametros_de_diseno/materiales_por_red.webp'},
+  {id:'datos', l:'Parámetros de diseño', ico:'📊', icoImg:'/iconos_parametros_de_diseno/catalogo_maestro.webp'},
   {id:'visor', l:'Dibujo de redes',      ico:'✏️', icoImg:'/iconos_aparatos/dibujo_de_redes.webp'},
   {id:'redes', l:'Diseño de redes y equipos',      ico:'🔧', icoImg:'/iconos_diseno_redes/general/diseno_redes.webp'},
   {id:'iso',   l:'Isometría',            ico:'📐', icoImg:''},
