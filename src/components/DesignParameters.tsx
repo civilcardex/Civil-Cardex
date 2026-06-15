@@ -1,74 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProject } from "../context/ProjectContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { MAT_COL, AF_UC_IDS, AC_UC_IDS, SAN_UC_IDS, APARATOS_DEF, REDES_MAT, CAT_APS, CAT_GAS } from "../constants";
-
-interface NumInputProps {
-  value: number;
-  onCommit: (v: number) => void;
-  color?: string;
-  width?: number;
-  decimals?: number;
-  disabled?: boolean;
-}
-
-function NumInput({ value, onCommit, color, width = 50, decimals = 2, disabled: isDisabled }: NumInputProps) {
-  const [text, setText] = useState(() => formatVal(value, decimals));
-  const [focused, setFocused] = useState(false);
-  const lastExtRef = useRef(value);
-
-  useEffect(() => {
-    if (focused) return;
-    if (value !== lastExtRef.current) {
-      lastExtRef.current = value;
-      setText(formatVal(value, decimals));
-    }
-  }, [value, focused, decimals]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-    const cleaned = raw.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-    const firstDot = cleaned.indexOf('.');
-    const safe = firstDot < 0
-      ? cleaned
-      : cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '');
-    setText(safe);
-  };
-
-  const commit = () => {
-    const n = parseFloat(text);
-    const finalVal = Number.isFinite(n) ? n : 0;
-    lastExtRef.current = finalVal;
-    onCommit(finalVal);
-    setText(formatVal(finalVal, decimals));
-  };
-
-  if (isDisabled) {
-    return (
-      <span style={{ width, display: 'inline-block', textAlign: 'center', fontSize: 11, color: '#3a494a', fontFamily: "'Geist',monospace", padding: '2px 4px', border: '1px solid transparent', cursor: 'not-allowed' }}>{formatVal(value || 0, decimals)}</span>
-    );
-  }
-
-  return (
-    <input type="text" inputMode="decimal"
-      style={{ width, padding: '2px 4px', fontSize: 11, textAlign: 'center', color: color || 'var(--txt)' }}
-      className="ni"
-      value={text}
-      onChange={handleChange}
-      onFocus={(e: React.FocusEvent<HTMLInputElement>) => { setFocused(true); e.target.select(); }}
-      onBlur={() => { setFocused(false); commit(); }}
-      onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-    />
-  );
-}
-
-function formatVal(v: number, decimals: number): string {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return (0).toFixed(decimals);
-  if (Number.isInteger(n)) return String(n);
-  return n.toFixed(decimals);
-}
+import { NumericInput } from "./NumericInput";
 
 export default function BaseDatos({ redes }: { redes: Set<string> }) {
   const navigate = useNavigate();
@@ -269,15 +204,15 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                       </td>
                       <td style={{ padding: '3px 6px', fontSize: 11, color: 'var(--txt2)' }}>{a.ctrl}</td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                        <NumInput value={a.ucaf} color="var(--acc2)" disabled={a._blkAf}
+                        <NumericInput value={a.ucaf} color="var(--acc2)" disabled={a._blkAf}
                           onCommit={(v) => setApsVal(a.id, 'ucaf', v)} />
                       </td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                        <NumInput value={a.ucac} color="#F04545" disabled={a._blkAc}
+                        <NumericInput value={a.ucac} color="#F04545" disabled={a._blkAc}
                           onCommit={(v) => setApsVal(a.id, 'ucac', v)} />
                       </td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                        <NumInput value={a.ud ?? 0} color="var(--san)" disabled={a._blkUd}
+                        <NumericInput value={a.ud ?? 0} color="var(--san)" disabled={a._blkUd}
                           onCommit={(v) => setApsVal(a.id, 'ud', v)} />
                       </td>
                     </tr>
