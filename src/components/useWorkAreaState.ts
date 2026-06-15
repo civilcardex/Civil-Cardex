@@ -9,6 +9,17 @@ import { parseDecimalInput, parseIntInput } from "../utils/parseDecimal";
 import { NETS } from "../lib/PlanoEngine";
 import { loadFromStorage, saveToStorage } from "../services/storageService";
 
+function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject<T>] {
+  const [val, _set] = useState<T>(initial);
+  const ref = useRef(val);
+  ref.current = val;
+  const set = (v: T) => {
+    ref.current = v;
+    _set(v);
+  };
+  return [val, set, ref];
+}
+
 export function useWorkAreaState() {
   const tramosCtx = useTramos();
   const projectCtx = useProject();
@@ -62,12 +73,12 @@ export function useWorkAreaState() {
   const pendingPlanos = useMemo(() => plansCtx.plans.filter((p: any) => p.status === 'pending'), [plansCtx.plans]);
   const confirmedPlanos = useMemo(() => plansCtx.plans.filter((p: any) => p.status === 'confirmed'), [plansCtx.plans]);
 
-  const [nSotanos, setNSotanos] = useState<string>('');
-  const [nPisos, setNPisos] = useState<string>('');
-  const [altPiso, setAltPiso] = useState<string>('');
-  const [altSotano, setAltSotano] = useState<string>('');
-  const [nptPiso1, setNptPiso1] = useState<string>('');
-  const [conCubierta, setConCubierta] = useState<boolean>(false);
+  const [nSotanos, setNSotanos, nSotanosRef] = useSyncedRef<string>('');
+  const [nPisos, setNPisos, nPisosRef] = useSyncedRef<string>('');
+  const [altPiso, setAltPiso, altPisoRef] = useSyncedRef<string>('');
+  const [altSotano, setAltSotano, altSotanoRef] = useSyncedRef<string>('');
+  const [nptPiso1, setNptPiso1, nptPiso1Ref] = useSyncedRef<string>('');
+  const [conCubierta, setConCubierta, conCubiertaRef] = useSyncedRef<boolean>(false);
 
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
 
@@ -79,24 +90,24 @@ export function useWorkAreaState() {
 
   const generarPisos = () => {
     const MAX = 50;
-    const nSot = Math.min(parseIntInput(nSotanos) || 0, MAX);
-    const nPis = Math.min(parseIntInput(nPisos) || 0, MAX);
+    const nSot = Math.min(parseIntInput(nSotanosRef.current) || 0, MAX);
+    const nPis = Math.min(parseIntInput(nPisosRef.current) || 0, MAX);
 
-    if (nPis > 0 && !nptPiso1.trim()) { setAlertMsg('Ingrese NPT Piso 1'); return; }
-    if (nPis > 0 && !altPiso.trim()) { setAlertMsg('Ingrese la altura de entrepiso'); return; }
-    if (nPis > 0 && !nPisos.trim()) { setAlertMsg('Ingrese el número de pisos'); return; }
-    if (nSot > 0 && !altSotano.trim()) { setAlertMsg('Ingrese la altura de sótano'); return; }
+    if (nPis > 0 && !nptPiso1Ref.current.trim()) { setAlertMsg('Ingrese NPT Piso 1'); return; }
+    if (nPis > 0 && !altPisoRef.current.trim()) { setAlertMsg('Ingrese la altura de entrepiso'); return; }
+    if (nPis > 0 && !nPisosRef.current.trim()) { setAlertMsg('Ingrese el número de pisos'); return; }
+    if (nSot > 0 && !altSotanoRef.current.trim()) { setAlertMsg('Ingrese la altura de sótano'); return; }
     if (nPis === 0 && nSot === 0) { setAlertMsg('Ingrese la cantidad de pisos o sótanos'); return; }
 
-    const hPis = parseDecimalInput(altPiso) || 0;
-    const hSot = parseDecimalInput(altSotano) || 0;
-    const npt1 = parseDecimalInput(nptPiso1) || 0;
+    const hPis = parseDecimalInput(altPisoRef.current) || 0;
+    const hSot = parseDecimalInput(altSotanoRef.current) || 0;
+    const npt1 = parseDecimalInput(nptPiso1Ref.current) || 0;
     const l: any[] = [];
     for (let i = nSot; i >= 1; i--)
       l.push({ id: 's' + i, n: -i, npt: +((npt1 - (i * hSot)).toFixed(2)), ok: false, tipo: 'sotano' });
     for (let i = 1; i <= nPis; i++)
       l.push({ id: 'p' + i, n: i, npt: +((npt1 + ((i - 1) * hPis)).toFixed(2)), ok: false, tipo: 'piso' });
-    if (conCubierta)
+    if (conCubiertaRef.current)
       l.push({ id: 'cub', n: 99, npt: +((npt1 + (nPis * hPis)).toFixed(2)), ok: false, tipo: 'cubierta' });
     projectCtx.setPisos(l);
     setAlertMsg(null);
@@ -127,11 +138,11 @@ export function useWorkAreaState() {
   const addPiso = () => projectCtx.setPisos((prev: any[]) => {
     const pisosPOS = prev.filter(p => p.tipo === 'piso').sort((a, b) => b.n - a.n);
     const maxN = pisosPOS.length ? Math.max(...pisosPOS.map(p => p.n)) : 0;
-    const hPis = parseFloat(altPiso) || 0;
+    const hPis = parseFloat(altPisoRef.current) || 0;
     const baseNpt = pisosPOS.length
       ? parseFloat(pisosPOS[0].npt) || 0
-      : parseFloat(nptPiso1) || 0;
-    const newNpt = +(baseNpt + ((maxN > 0 ? hPis : 0) * (pisosPOS.length || 1))).toFixed(2);
+      : parseFloat(nptPiso1Ref.current) || 0;
+    const newNpt = +(baseNpt + (pisosPOS.length > 0 ? hPis : 0)).toFixed(2);
     const newPiso = { id: Date.now(), n: maxN + 1, npt: newNpt, ok: false, tipo: 'piso' };
     const cubIx = prev.findIndex(p => p.tipo === 'cubierta');
     const insertAt = cubIx >= 0 ? cubIx + 1 : 0;
@@ -143,11 +154,11 @@ export function useWorkAreaState() {
   const addSotano = () => projectCtx.setPisos((prev: any[]) => {
     const pisoNEG = prev.filter(p => p.tipo === 'sotano').sort((a, b) => a.n - b.n);
     const minN = pisoNEG.length ? Math.min(...pisoNEG.map(p => p.n)) : 0;
-    const hSot = parseFloat(altSotano) || 0;
+    const hSot = parseFloat(altSotanoRef.current) || 0;
     const baseNpt = pisoNEG.length
       ? parseFloat(pisoNEG[0].npt) || 0
-      : parseFloat(nptPiso1) || 0;
-    const newNpt = +(baseNpt - hSot * (pisoNEG.length || 1)).toFixed(2);
+      : parseFloat(nptPiso1Ref.current) || 0;
+    const newNpt = +(baseNpt - hSot).toFixed(2);
     const newSotano = { id: Date.now(), n: minN === 0 ? -1 : minN - 1, npt: newNpt, ok: false, tipo: 'sotano' };
     return [...prev, newSotano];
   });
