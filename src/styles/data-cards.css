@@ -1,0 +1,380 @@
+/* ── Totals Bar ── */
+
+.tot-bar {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding: 9px 13px;
+  background: var(--bg3);
+  border-top: 1px solid var(--line);
+}
+
+.tot {
+  flex: 1;
+  min-width: 80px;
+  padding: 7px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+}
+
+.tot-l {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--txt3);
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+
+.tot-v {
+  font-family: var(--head);
+  font-size: 20px;
+  letter-spacing: .5px;
+}
+
+.tot-s {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--txt3);
+  margin-top: 2px;
+}
+
+/* ── Tramos ── */
+
+.tramo-card {
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  margin-bottom: 7px;
+  overflow: hidden;
+}
+
+.tramo-hdr {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 13px;
+  background: var(--bg4);
+  border-bottom: 1px solid var(--line);
+}
+
+.tramo-id {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gas);
+  background: var(--gas-bg);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.tramo-body {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  padding: 9px 11px;
+}
+
+.tramo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tramo-lbl {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--txt3);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+
+.tramo-chk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+  flex-wrap: wrap;
+}
+
+.chk-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+/* ── Calentadores ── */
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 7px;
+}
+
+.cal-card {
+  padding: 9px 11px;
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.cal-card:hover {
+  border-color: var(--gas-b);
+}
+
+.cal-card.sel {
+  border-color: var(--gas);
+  background: var(--gas-bg);
+}
+
+.cal-marca {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--txt3);
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.cal-ref {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--txt);
+  margin-bottom: 5px;
+}
+
+.cal-vals {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.cal-val {
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.cal-val span {
+  color: var(--gas);
+}
+
+.cal-c {
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all .15s;
+  background: var(--bg3);
+}
+
+.cal-c:hover {
+  border-color: var(--acc2);
+}
+
+.cal-c.sel {
+  border-color: var(--gas);
+  background: var(--gas-bg);
+}
+
+.cal-r {
+  font-weight: 600;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.cal-vs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.cal-v {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--txt);
+}
+
+.cal-v span {
+  font-size: 8px;
+  color: var(--txt3);
+  font-weight: 400;
+}
+
+/* ── Meta & Results ── */
+
+.meta-g {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.meta-c {
+  padding: 9px 11px;
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+}
+
+.meta-l {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--txt3);
+  margin-bottom: 3px;
+  text-transform: uppercase;
+}
+
+.meta-v {
+  font-family: var(--head);
+  font-size: 20px;
+  letter-spacing: .5px;
+  color: var(--txt);
+}
+
+.meta-s {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--acc2);
+  margin-top: 2px;
+}
+
+.res-row {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 11px;
+  background: var(--bg3);
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  margin-bottom: 4px;
+}
+
+.res-k {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--txt3);
+  min-width: 130px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.res-v {
+  font-size: 13px;
+  color: var(--txt);
+  font-weight: 500;
+}
+
+/* ── Presión ── */
+
+.pres-g {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.pres-c {
+  padding: 9px;
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+}
+
+.pres-niv {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--txt);
+  margin-bottom: 5px;
+}
+
+.pres-val {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.pres-val span {
+  color: var(--gas);
+}
+
+/* ── Action Bar & Buttons ── */
+
+.act-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 16px;
+  background: var(--bg2);
+  border-top: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.act-info {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--txt3);
+}
+
+.btn-g {
+  display: flex;
+  gap: 7px;
+}
+
+.btn {
+  padding: 7px 15px;
+  border-radius: var(--r);
+  font-size: 11px;
+  font-family: var(--body);
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--txt2);
+}
+
+.btn-ghost:hover {
+  border-color: var(--txt3);
+  background: var(--bg3);
+}
+
+.btn-pri {
+  background: var(--acc);
+  color: #fff;
+  box-shadow: 0 0 14px var(--glow);
+}
+
+.btn-pri:hover {
+  background: var(--acc3);
+}
+
+.btn-pri:disabled {
+  background: var(--bg4);
+  color: var(--txt3);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn-del {
+  background: var(--err-bg);
+  border: 1px solid var(--err-b);
+  border-radius: var(--r);
+  color: var(--err);
+  padding: 2px 8px;
+  font-size: 10px;
+  cursor: pointer;
+}

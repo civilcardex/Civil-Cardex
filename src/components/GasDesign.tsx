@@ -7,13 +7,10 @@ import GasCalcUC from "./GasCalcUC";
 import PageNav from './PageNav';
 
 import { TRAZOS_PREFIX, GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY } from "../constants/storage-keys";
+import { renouardByType } from "../utils/gasUtils";
+import { SI, SD, TH, TD } from "../styles/sharedTableStyles";
 
 const GAS_APPARATUS = APARATOS_DEF.filter(a => a.grupo === 'g' && (a.qgas || 0) > 0);
-
-const SI: React.CSSProperties = {border:'1px solid var(--line)',borderRadius:3,background:'var(--bg4)',fontFamily:'var(--mono)',fontSize:11,color:'var(--txt)',width:'100%',boxSizing:'border-box',textAlign:'center',outline:'none',padding:'3px 5px'};
-const SD: React.CSSProperties = {...SI,textAlign:'left',fontFamily:'var(--body)',cursor:'pointer'};
-const TH: React.CSSProperties = {fontSize:10,fontWeight:600,color:'var(--txt3)',fontFamily:'var(--mono)',textAlign:'center',padding:'5px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line)',whiteSpace:'nowrap',textTransform:'uppercase',letterSpacing:'0.4px',background:'var(--bg3)',verticalAlign:'middle'};
-const TD: React.CSSProperties = {fontSize:11,fontFamily:'var(--mono)',padding:'4px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line)',color:'var(--txt2)',textAlign:'center',verticalAlign:'middle'};
 
 const ALL_DN: {mat: string; K: number; dn: string; d: number}[] = [];
 GAS.forEach(g=>{g.rows.forEach(r=>{ALL_DN.push({mat:g.mat,K:g.K,dn:r.dn,d:r.d});});});
@@ -24,20 +21,6 @@ const LE_K={codos_90_std:30,codos_90_rl:20,te_linea:20,te_ramal:20,valvula_bola:
 function lookupDn(mat: string, dn: string){
   const match=ALL_DN.find(x=>x.mat===mat&&x.dn===dn);
   return match||null;
-}
-
-function renouardByType(counts: Record<string, number>) {
-  const products = [];
-  for (const ap of GAS_APPARATUS) {
-    const n = counts[ap.id] || 0;
-    if (n > 0) products.push({ q: ap.qgas, n, product: ap.qgas * n });
-  }
-  const sorted = products.sort((a, b) => b.product - a.product);
-  const nTypes = sorted.length;
-  if (nTypes === 0) return 0;
-  if (nTypes === 1) return sorted[0].product / 2;
-  if (nTypes === 2) return (sorted[0].product + sorted[1].product) / 2;
-  return (sorted[0].product + sorted[1].product) / 2 + sorted.slice(2).reduce((s, p) => s + p.product, 0);
 }
 
 function computeQDiseno(plans: any[]) {

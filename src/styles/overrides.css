@@ -1,0 +1,25 @@
+/* ── Context Overrides: Información general ── */
+
+.info-gral .card-t { font-size: 14px; }
+.info-gral .card-s { font-size: 11px; }
+.info-gral .f label { font-size: 11px; }
+.info-gral .f input,
+.info-gral .f select { font-size: 12px; }
+
+/* ── Context Overrides: BD Section ── */
+
+.bd-section .card-t { font-size: 18px; }
+.bd-section .card-s { font-size: 15px; }
+.bd-section .tbl { font-size: 14px; }
+.bd-section .tbl th { font-size: 11px; padding: 6px 10px; }
+.bd-section .tbl td { font-size: 13px; padding: 6px 10px; }
+.bd-section .ni { font-size: 13px; padding: 5px 8px; }
+.bd-section .ib { font-size: 15px; }
+.bd-section .badge { font-size: 11px; }
+.bd-section .mn9 { font-size: 11px; }
+.bd-section .tl { font-size: 10px; }
+.bd-section .tv { font-size: 17px; }
+.bd-section .ts { font-size: 10px; }
+.bd-section .cal-r { font-size: 13px; }
+.bd-section .cal-v { font-size: 15px; }
+.bd-section .cal-v span { font-size: 10px; }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, SAN_ACCESORIOS, AF_UC_IDS, AC_UC_IDS } from '../constants';
+import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, SAN_ACCESORIOS, GAS_ACCESORIOS, AF_UC_IDS, AC_UC_IDS } from '../constants';
 import { NETS } from '../lib/PlanoEngine';
 import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
@@ -7,7 +7,6 @@ import { writeSanDrawingSync, writeHydroDrawingSync } from '../utils/drawingSync
 import { loadFromStorage, saveToStorage } from '../services/storageService';
 import FixtureGrid from './fixtures/FixtureGrid';
 import AccesoriosSection from './fixtures/AccessoriesSection';
-import GasAccesoriosSection from './fixtures/GasAccesoriosSection';
 
 const HIDROSAN_IDS = new Set(['af', 'ac', 'san']);
 const GAS_ID = 'gas';
@@ -438,23 +437,14 @@ try { writeSanDrawingSync(plans); } catch (e) { console.error('AparatosPanel:', 
           items={ACCESORIOS_HIDRO}
         />
       )}
-      {netId === 'san' && (
+      {isGas && (
         <AccesoriosSection
           targetId={targetId}
-          curHidro={curHidro}
-          incAcc={incAcc}
-          decAcc={decAcc}
+          curHidro={{ accesorios: gasAccMap }}
+          incAcc={incAccGas}
+          decAcc={decAccGas}
           accent={accent}
-          items={SAN_ACCESORIOS}
-        />
-      )}
-      {isGas && (
-        <GasAccesoriosSection
-          targetId={targetId}
-          gasAccMap={gasAccMap}
-          incAccGas={incAccGas}
-          decAccGas={decAccGas}
-          accent={accent}
+          items={GAS_ACCESORIOS}
         />
       )}
     </div>

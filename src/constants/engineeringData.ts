@@ -70,9 +70,13 @@ export const ACCESORIOS_YEE = [
   {id:'yeeDoble', emoji:'🔧', nombre:'Yee doble', icono:'/iconos_accesorios/ye_doble.webp', cat:'Tees'},
 ];
 
-export const SAN_ACCESORIOS = ACCESORIOS_HIDRO.filter(a =>
-  a.id === 'codo90rm'
-).concat(ACCESORIOS_YEE);
+export const SAN_ACCESORIOS = [
+  ...ACCESORIOS_HIDRO.filter(a => a.id === 'codo90rm'),
+  {id:'codo90rmSube',emoji:'🔩',nombre:'Codo RM 90° sube',icono:'/iconos_accesorios/codo90rm.webp', cat: 'Codos'},
+  {id:'codo90rmBaja',emoji:'🔩',nombre:'Codo RM 90° baja',icono:'/iconos_accesorios/codo90rm.webp', cat: 'Codos'},
+  {id:'codoReventilado',emoji:'🔩',nombre:'Codo reventilado',icono:'/iconos_accesorios/codo90rl.webp', cat: 'Codos'},
+  ...ACCESORIOS_YEE,
+];
 
 export const GAS_ACCESORIOS = [
   {id:'codos_90_std', emoji:'🔩', nombre:'Codos 90° std', icono:'/iconos_accesorios/codo90rc.webp', cat:'Codos'},

@@ -69,6 +69,12 @@
   min-height: 0;
 }
 
+.card-icon {
+  font-family: var(--head);
+  font-size: 28px;
+  opacity: .7;
+}
+
 .dz {
   border: 2px dashed var(--line);
   border-radius: var(--r3);

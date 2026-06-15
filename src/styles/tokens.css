@@ -91,19 +91,6 @@
   width: 8px;
 }
 
-.card-b::-webkit-scrollbar-track {
-  background: var(--line);
-}
-
-.card-b::-webkit-scrollbar-thumb {
-  background: var(--acc);
-  border-radius: 4px;
-}
-
-.card-b::-webkit-scrollbar-thumb:hover {
-  background: var(--acc2);
-}
-
 .visor-sidebar {
   scrollbar-width: thin;
   scrollbar-color: #3a494a #14161a;
@@ -118,7 +105,7 @@
 }
 
 .visor-sidebar::-webkit-scrollbar-thumb {
-  background: #3a494a;
+  background: var(--line);
   border-radius: 3px;
 }
 

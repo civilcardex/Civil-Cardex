@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { parseDecimalInput } from "../utils/parseDecimal";
 import PageNav from './PageNav';
+import { SI, TH, TD } from "../styles/sharedTableStyles";
 
 const dec=(s: string)=>parseDecimalInput(s)||0;
 const nv=(s: string)=>s===''?'':/^[\d]*\.?[\d]*$/.test(s)?s:false;
 const oc=(set: (v: any) => void)=>(e: React.ChangeEvent<HTMLInputElement>)=>{const v=nv(e.target.value);if(v!==false)set(v)};
 
-const SI: React.CSSProperties = {border:'1px solid var(--line)',borderRadius:3,background:'var(--bg4)',fontFamily:'var(--mono)',fontSize:11,color:'var(--txt)',width:'100%',boxSizing:'border-box',textAlign:'center',outline:'none',padding:'3px 5px'};
-const TH: React.CSSProperties = {fontSize:10,fontWeight:600,color:'var(--txt3)',fontFamily:'var(--mono)',textAlign:'center',padding:'5px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line)',whiteSpace:'nowrap',textTransform:'uppercase',letterSpacing:'0.4px',background:'var(--bg3)'};
-const TD: React.CSSProperties = {fontSize:11,fontFamily:'var(--mono)',padding:'4px 6px',borderBottom:'1px solid var(--line)',borderRight:'1px solid var(--line)',color:'var(--txt2)',textAlign:'center',verticalAlign:'middle',background:'#1a1c20'};
-const TDL: React.CSSProperties={...TD,textAlign:'left',fontFamily:'var(--body)'};
+const TDBom: React.CSSProperties = {...TD,background:'#1a1c20'};
+const TDL: React.CSSProperties={...TDBom,textAlign:'left',fontFamily:'var(--body)'};
 const Fmt=(v: any,u='')=>{
   if(v===''||v===null||v===undefined)return <span style={{color:'var(--txt3)',fontSize:10}}>—</span>;
   const val=typeof v==='number'?v.toFixed(2):v;
@@ -18,7 +17,7 @@ const Fmt=(v: any,u='')=>{
 
 const SI2={...SI,fontSize:13,padding:'4px 6px'};
 const TH2={...TH,fontSize:11};
-const TD2={...TD,fontSize:13};
+const TD2={...TDBom,fontSize:13};
 const TDL2={...TDL,fontSize:13,fontWeight:700,color:'var(--txt)'};
 const Fmt2=(v: any,u='')=>{
   if(v===''||v===null||v===undefined)return <span style={{color:'var(--txt3)',fontSize:12}}>—</span>;
@@ -28,7 +27,7 @@ const Fmt2=(v: any,u='')=>{
 
 function Inp({v,set,style}: {v: any; set: (v: any) => void; style?: React.CSSProperties}){return <input type="text" inputMode="decimal" value={v} onChange={oc(set)} style={style||SI}/>;}
 function Tbl({cols,rows,th,td,tdl,fontSize,center,valueCol}: {cols: string[]; rows: any[][]; th?: any; td?: any; tdl?: any; fontSize?: number; center?: boolean; valueCol?: number}){
-  const h=th||TH,d=td||TD,dl=tdl||TDL;
+  const h=th||TH,d=td||TDBom,dl=tdl||TDL;
   const vc = valueCol ?? 2;
   return <table className="tbl" style={{fontSize:fontSize||11,width:center?'90%':'100%',maxWidth:900,borderCollapse:'collapse',margin:center?'0 auto':0}}>
     <thead><tr>{cols.map((c,i)=><th key={i} style={h}>{c}</th>)}</tr></thead>
@@ -131,7 +130,7 @@ export default function BombaARDesign(){
           ['Selección comercial automática','Sel',<span style={{color:'var(--acc2)',fontWeight:700,fontFamily:'var(--mono)'}}>{Sel}</span>,'HP','—','Estándar: 0.5 / 1 / 2 / 3 / 5 HP'],
           ['Tipo de bomba','Tipo','Sumergible trituradora','—','—','NTC 1500 §8.5 — residuales con sólidos'],
           ['NPSH disponible mínimo','NPSH',<Inp v={npsh} set={setNpsh} style={{...SI, width: 35, fontSize: 10, padding: '2px 3px'}}/>,'m','—','Verificar con curva del fabricante'],
-        ].map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j} style={j===0?{...TDL2, color: '#fff'}:j===2?{...TD,fontSize:10,width:'35px',whiteSpace:'nowrap'}:j===5?{...TD2, width: '30%'}:TD2}>{c}</td>)}</tr>)}</tbody>
+        ].map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j} style={j===0?{...TDL2, color: '#fff'}:j===2?{...TDBom,fontSize:10,width:'35px',whiteSpace:'nowrap'}:j===5?{...TD2, width: '30%'}:TD2}>{c}</td>)}</tr>)}</tbody>
       </table>
     </div>
     
