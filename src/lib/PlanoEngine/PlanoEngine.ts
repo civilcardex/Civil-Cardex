@@ -11,11 +11,11 @@ import type {
   PlanoActiveArea,
   PlanoRamalDefaults,
 } from './PlanoState';
-import type { PlanoEngineAPI } from './PlanoEngineTypes';
+import type { IPlanoEngineCore } from './PlanoEngineTypes';
 import {
   renderDims, renderTexts, renderAreas, renderActiveArea,
   renderRamales, renderBajantes, renderGhosts, renderDimGhost, renderActiveRamal,
-} from './PlanoRenderer';
+} from './renderers';
 import { pointInPoly, pointInLabelBox, pointToSegmentDist, snapToSegment } from './HitTester';
 import { serializeWork, applyWorkData } from './PlanoPersistence';
 import { setupCanvasEvents, teardownCanvasEvents, getCanvasPosition, wrapTouch } from './PlanoEventHandler';
@@ -25,10 +25,6 @@ import {
   cancelRamal as _cancelRamal,
   cancelArea as _cancelArea,
   finishArea as _finishArea,
-  undoLast as _undoLast,
-  clearAll as _clearAll,
-  deleteSegmentAt as _deleteSegmentAt,
-  setScaleM as _setScaleM,
   _statusMsg,
   _nextLabel,
   _midpoint,
@@ -45,6 +41,8 @@ import {
   handleAreaDown,
   handleDrawingMouseMove,
   handleDoubleClick,
+  deleteSegmentAt as _deleteSegmentAt,
+  setScaleM as _setScaleM,
 } from './PlanoEngineDrawing';
 import {
   selectAt as _selectAt,
@@ -71,6 +69,7 @@ import {
   getBajantesFantasma as _getBajantesFantasma,
   _renumberRamales as _doRenumberRamales,
 } from './PlanoEngineNetwork';
+import { PlanoHistory } from './PlanoHistory';
 
 export { NETS };
 
@@ -132,7 +131,7 @@ interface ElementItem {
   diametro?: string;
 }
 
-export default class PlanoEngine {
+export default class PlanoEngine implements IPlanoEngineCore {
   cw: HTMLElement;
   pdfWrap: HTMLElement | null;
   canv: HTMLCanvasElement;
@@ -200,9 +199,12 @@ export default class PlanoEngine {
   _onSelectCb: SelectCallback | null;
   _onStatusCb: StatusCallback | null;
   _onUpdateCb: UpdateCallback | null;
+  _onRequestTextCb: ((x: number, y: number, cb: (text: string) => void) => void) | null;
   _dirty: boolean;
 
   _ramalDefaults: PlanoRamalDefaults | null;
+
+  _history: PlanoHistory;
 
   constructor(cw: HTMLElement, pdfWrap: HTMLElement | null, canv: HTMLCanvasElement) {
     this.cw = cw;
@@ -265,6 +267,8 @@ export default class PlanoEngine {
 
     this._ramalDefaults = null;
 
+    this._history = new PlanoHistory(this);
+
     this._onDown = this._onDownHandler.bind(this) as (e: MouseEvent | TouchEvent) => void;
     this._onMove = this._onMouseMoveHandler.bind(this) as (e: MouseEvent | TouchEvent) => void;
     this._onUp = this._onMouseUpHandler.bind(this) as (e: MouseEvent | TouchEvent) => void;
@@ -272,19 +276,11 @@ export default class PlanoEngine {
     this._onWheel = this._onWheelHandler.bind(this);
     this._onKeyDown = this._onKeyDownHandler.bind(this);
 
-    setupCanvasEvents(this as unknown as {
-      canv: HTMLCanvasElement;
-      _onDown: (e: MouseEvent | TouchEvent) => void;
-      _onMove: (e: MouseEvent | TouchEvent) => void;
-      _onUp: (e: MouseEvent | TouchEvent) => void;
-      _onDblClick: (e: MouseEvent) => void;
-      _onWheel: (e: WheelEvent) => void;
-      _onKeyDown: (e: KeyboardEvent) => void;
-      _wrapTouch: (fn: (e: TouchEvent) => void) => (e: TouchEvent) => void;
-    });
+    setupCanvasEvents(this);
 
     this._onSelectCb = null;
     this._onStatusCb = null;
+    this._onRequestTextCb = null;
     this._dirty = false;
     this._onUpdateCb = null;
 
@@ -293,19 +289,12 @@ export default class PlanoEngine {
 
   onSelect(cb: SelectCallback): void { this._onSelectCb = cb; }
   onStatus(cb: StatusCallback): void { this._onStatusCb = cb; }
+  onRequestText(cb: (x: number, y: number, cb: (text: string) => void) => void): void { this._onRequestTextCb = cb; }
   onUpdate(cb: UpdateCallback): void { this._onUpdateCb = cb; }
   onDirty(cb: DirtyCallback): void { this._onDirtyCb = cb; }
 
   destroy(): void {
-    teardownCanvasEvents(this as unknown as {
-      canv: HTMLCanvasElement;
-      _onDown: (e: MouseEvent | TouchEvent) => void;
-      _onMove: (e: MouseEvent | TouchEvent) => void;
-      _onUp: (e: MouseEvent | TouchEvent) => void;
-      _onDblClick: (e: MouseEvent) => void;
-      _onWheel: (e: WheelEvent) => void;
-      _onKeyDown: (e: KeyboardEvent) => void;
-    });
+    teardownCanvasEvents(this);
   }
 
   setPageSize(w: number, h: number): void {
@@ -411,70 +400,57 @@ export default class PlanoEngine {
     return getCanvasPosition(this.canv, e);
   }
 
-  _statusMsg(): string { return _statusMsg(this as unknown as PlanoEngineAPI); }
-  _nextLabel(): string { return _nextLabel(this as unknown as PlanoEngineAPI); }
+  _statusMsg(): string { return _statusMsg(this); }
+  _nextLabel(): string { return _nextLabel(this); }
   _midpoint(pts: number[][]): [number, number] { return _midpoint(pts); }
   _strokeAngle(pts: number[][]): number { return _strokeAngle(pts); }
-  _calcPolyArea(pts: number[][]): number { return _calcPolyArea(this as unknown as PlanoEngineAPI, pts); }
+  _calcPolyArea(pts: number[][]): number { return _calcPolyArea(this, pts); }
 
-  setTool(t: ToolType): void { _setTool(this as unknown as PlanoEngineAPI, t); }
+  setTool(t: ToolType): void { _setTool(this, t); }
   setActiveNet(id: string): void { this.activeNet = id; }
   setTipoTramo(t: TramoType): void { this.tipoTramo = t; }
   setSnap(v: boolean): void { this.snapMode = v; }
 
-  setPadreTributario(ramalId: string): void { _setPadreTributario(this as unknown as PlanoEngineAPI, ramalId); }
-  getPadreTributario(): PlanoRamal | null { return _getPadreTributario(this as unknown as PlanoEngineAPI); }
-  getRamalesPadre(): PlanoRamal[] { return _getRamalesPadre(this as unknown as PlanoEngineAPI); }
-  setRamalDefaults(d: Partial<PlanoRamalDefaults> | null): void { _setRamalDefaults(this as unknown as PlanoEngineAPI, d); }
+  setPadreTributario(ramalId: string): void { _setPadreTributario(this, ramalId); }
+  getPadreTributario(): PlanoRamal | null { return _getPadreTributario(this); }
+  getRamalesPadre(): PlanoRamal[] { return _getRamalesPadre(this); }
+  setRamalDefaults(d: Partial<PlanoRamalDefaults> | null): void { _setRamalDefaults(this, d); }
 
-  setScaleM(v: string | number): void { _setScaleM(this as unknown as PlanoEngineAPI, v); }
+  setScaleM(v: string | number): void { _setScaleM(this, v); }
 
-  setNetHidden(netId: string, hidden: boolean): void { _setNetHidden(this as unknown as PlanoEngineAPI, netId, hidden); }
-  setNetLocked(netId: string, locked: boolean): void { _setNetLocked(this as unknown as PlanoEngineAPI, netId, locked); }
+  setNetHidden(netId: string, hidden: boolean): void { _setNetHidden(this, netId, hidden); }
+  setNetLocked(netId: string, locked: boolean): void { _setNetLocked(this, netId, locked); }
 
-  getElementsByNet(netId: string): ElementItem[] { return _getElementsByNet(this as unknown as PlanoEngineAPI, netId); }
+  getElementsByNet(netId: string): ElementItem[] { return _getElementsByNet(this, netId); }
 
-  selectById(id: string): void { _selectById(this as unknown as PlanoEngineAPI, id); }
-  selectAt(cx: number, cy: number): void { _selectAt(this as unknown as PlanoEngineAPI, cx, cy); }
-  getSelected(): PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null { return _getSelected(this as unknown as PlanoEngineAPI); }
-  updateSelected(fields: Record<string, unknown>): void { _updateSelected(this as unknown as PlanoEngineAPI, fields); }
-  updateElementById(id: string, fields: Record<string, unknown>): void { _updateElementById(this as unknown as PlanoEngineAPI, id, fields); }
-  rotateLabelSnap(): void { _rotateLabelSnap(this as unknown as PlanoEngineAPI); }
-  resetLabel(): void { _resetLabel(this as unknown as PlanoEngineAPI); }
-  deleteSelected(): void { _deleteSelected(this as unknown as PlanoEngineAPI); }
+  selectById(id: string): void { _selectById(this, id); }
+  selectAt(cx: number, cy: number): void { _selectAt(this, cx, cy); }
+  getSelected(): PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null { return _getSelected(this); }
+  updateSelected(fields: Record<string, unknown>): void { _updateSelected(this, fields); }
+  updateElementById(id: string, fields: Record<string, unknown>): void { _updateElementById(this, id, fields); }
+  rotateLabelSnap(): void { _rotateLabelSnap(this); }
+  resetLabel(): void { _resetLabel(this); }
+  deleteSelected(): void { _deleteSelected(this); }
 
-  finishRamal(): void { _finishRamal(this as unknown as PlanoEngineAPI); }
-  cancelRamal(): void { _cancelRamal(this as unknown as PlanoEngineAPI); }
-  cancelArea(): void { _cancelArea(this as unknown as PlanoEngineAPI); }
-  finishArea(): void { _finishArea(this as unknown as PlanoEngineAPI); }
-  undoLast(): void { _undoLast(this as unknown as PlanoEngineAPI); }
-  clearAll(): void { _clearAll(this as unknown as PlanoEngineAPI); }
-  clearNet(netId: string): void { _clearNet(this as unknown as PlanoEngineAPI, netId); }
-  deleteSegmentAt(cx: number, cy: number): void { _deleteSegmentAt(this as unknown as PlanoEngineAPI, cx, cy); }
+  finishRamal(): void { _finishRamal(this); }
+  cancelRamal(): void { _cancelRamal(this); }
+  cancelArea(): void { _cancelArea(this); }
+  finishArea(): void { _finishArea(this); }
+  undoLast(): void { this._history.undoLast(); }
+  clearAll(): void { this._history.clearAll(); }
+  clearNet(netId: string): void { _clearNet(this, netId); }
+  deleteSegmentAt(cx: number, cy: number): void { _deleteSegmentAt(this, cx, cy); }
 
-  getBajantesFantasma(): PlanoBajante[] { return _getBajantesFantasma(this as unknown as PlanoEngineAPI); }
+  getBajantesFantasma(): PlanoBajante[] { return _getBajantesFantasma(this); }
 
-  _renumberRamales(netId: string): void { _doRenumberRamales(this as unknown as PlanoEngineAPI, netId); }
+  _renumberRamales(netId: string): void { _doRenumberRamales(this, netId); }
 
   saveWork(): import('./PlanoPersistence').PlanoWorkData {
-    return serializeWork(this as unknown as {
-      scaleM: number;
-      activeNet: string;
-      zoom: number;
-      offX: number;
-      offY: number;
-      ramales: unknown[];
-      dims: unknown[];
-      textAnnots: unknown[];
-      bajantes: unknown[];
-      areas: unknown[];
-      nptLevels: unknown[];
-    });
+    return serializeWork(this);
   }
 
   loadWork(json: string | object): void {
     try {
-      // Acepta tanto string como objeto ya parseado (loadFromStorage devuelve objeto)
       const d = (typeof json === 'string'
         ? JSON.parse(json)
         : json) as unknown as import('./PlanoPersistence').PlanoWorkData;
@@ -494,7 +470,7 @@ export default class PlanoEngine {
         _dirty: boolean;
         render: () => void;
         [key: string]: unknown;
-      },         d);
+      }, d);
     } catch (e) { console.error('Error loading work:', e); }
   }
 
@@ -530,15 +506,15 @@ export default class PlanoEngine {
       this.pdfWrap.style.willChange = 'transform';
     }
 
-    renderDims(ctx, this as unknown as PlanoEngineAPI);
-    renderTexts(ctx, this as unknown as PlanoEngineAPI);
-    renderAreas(ctx, this as unknown as PlanoEngineAPI);
-    renderRamales(ctx, this as unknown as PlanoEngineAPI);
-    renderBajantes(ctx, this as unknown as PlanoEngineAPI);
-    renderGhosts(ctx, this as unknown as PlanoEngineAPI);
-    renderDimGhost(ctx, this as unknown as PlanoEngineAPI);
-    renderActiveArea(ctx, this as unknown as PlanoEngineAPI);
-    renderActiveRamal(ctx, this as unknown as PlanoEngineAPI);
+    renderDims(ctx, this);
+    renderTexts(ctx, this);
+    renderAreas(ctx, this);
+    renderRamales(ctx, this);
+    renderBajantes(ctx, this);
+    renderGhosts(ctx, this);
+    renderDimGhost(ctx, this);
+    renderActiveArea(ctx, this);
+    renderActiveRamal(ctx, this);
   }
 
   _onDownHandler(e: MouseEvent | TouchEvent): void {
@@ -555,25 +531,25 @@ export default class PlanoEngine {
     const p = this.toPlane(x, y);
 
     if (this.tool === 'sel') {
-      handleSelectDown(this as unknown as PlanoEngineAPI, x, y);
+      handleSelectDown(this, x, y);
     } else if (this.tool === 'line') {
-      handleLineDown(this as unknown as PlanoEngineAPI, p.x, p.y);
+      handleLineDown(this, p.x, p.y);
     } else if (this.tool === 'dim') {
-      handleDimDown(this as unknown as PlanoEngineAPI, p.x, p.y);
+      handleDimDown(this, p.x, p.y);
     } else if (this.tool === 'text') {
-      handleTextDown(this as unknown as PlanoEngineAPI, p.x, p.y);
+      handleTextDown(this, p.x, p.y);
     } else if (this.tool === 'baj') {
-      handleBajanteDown(this as unknown as PlanoEngineAPI, p.x, p.y);
+      handleBajanteDown(this, p.x, p.y);
     } else if (this.tool === 'mon') {
-      handleMontanteDown(this as unknown as PlanoEngineAPI, p.x, p.y);
+      handleMontanteDown(this, p.x, p.y);
     } else if (this.tool === 'area') {
-      handleAreaDown(this as unknown as PlanoEngineAPI, p.x, p.y);
+      handleAreaDown(this, p.x, p.y);
     } else if (this.tool === 'erase') {
-      handleEraseDown(this as unknown as PlanoEngineAPI, x, y);
+      handleEraseDown(this, x, y);
     } else if (this.tool === 'delm') {
-      handleDeleteElementDown(this as unknown as PlanoEngineAPI, x, y);
+      handleDeleteElementDown(this, x, y);
     } else if (this.tool === 'segdel') {
-      handleSegDelDown(this as unknown as PlanoEngineAPI, x, y);
+      handleSegDelDown(this, x, y);
     }
   }
 
@@ -588,9 +564,9 @@ export default class PlanoEngine {
     }
     const hasDrag = this.ghostDrag || this.bajDrag || this.lblDrag || this.txtDrag || this.areaDrag || this.ptDrag;
     if (hasDrag) {
-      handleDragMove(this as unknown as PlanoEngineAPI, x, y);
+      handleDragMove(this, x, y);
     } else if (this.activeRamal || this._dimStart || this.activeArea) {
-      handleDrawingMouseMove(this as unknown as PlanoEngineAPI, x, y);
+      handleDrawingMouseMove(this, x, y);
     }
   }
 
@@ -600,12 +576,12 @@ export default class PlanoEngine {
       this.panning = false;
       this.canv.style.cursor = this.tool === 'pan' ? 'grab' : this.tool === 'sel' ? 'default' : 'crosshair';
     }
-    handleDragUp(this as unknown as PlanoEngineAPI);
+    handleDragUp(this);
   }
 
   _onDblClickHandler(e: MouseEvent): void {
     void e;
-    handleDoubleClick(this as unknown as PlanoEngineAPI);
+    handleDoubleClick(this);
   }
 
   _onWheelHandler(e: WheelEvent): void {

@@ -1,93 +1,24 @@
-export interface PlanoEngineAPI {
-  dims: Array<{ id: string; x1: number; y1: number; x2: number; y2: number; L: number }>;
-  textAnnots: Array<{
-    x: number; y: number;
-    lblOffX?: number; lblOffY?: number;
-    id: string;
-    fontMm?: number;
-    textAngle?: number;
-    boxW: number;
-    text: string;
-    _box?: { x: number; y: number; w: number; h: number };
-  }>;
-  areas: Array<{
-    net?: string;
-    id: string;
-    pts: number[][];
-    color?: string;
-    labelX: number;
-    labelY: number;
-    labelAngle?: number;
-    label?: string;
-    areaM2?: number;
-    _polyBox?: { x: number; y: number; w: number; h: number };
-    _labelBox?: {
-      cx: number; cy: number; w: number; h: number; angle: number;
-      minX: number; minY: number; maxX: number; maxY: number;
-      corners: Array<{ x: number; y: number }>;
-    } | null;
-  }>;
-  ramales: Array<{
-    net: string;
-    id: string;
-    pts: number[][];
-    tipo?: string;
-    padre?: string | null;
-    ini?: string;
-    fin?: string;
-    label?: string;
-    totalL?: number;
-    material?: string;
-    diametro?: string;
-    pendiente?: number;
-    piso?: string;
-    dz?: string;
-    uc?: number;
-    labelX: number;
-    labelY: number;
-    labelAngle?: number;
-    _labelBox?: {
-      cx: number; cy: number; w: number; h: number; angle: number;
-      minX: number; minY: number; maxX: number; maxY: number;
-      corners: Array<{ x: number; y: number }>;
-    } | null;
-  }>;
-  bajantes: Array<{
-    net: string;
-    id: string;
-    x: number;
-    y: number;
-    labelAngle?: number;
-    labelX: number;
-    labelY: number;
-    recibeDeIds?: string[];
-    descargaEnId?: string | null;
-    code?: string;
-    hVert?: number;
-    dNominal?: string;
-    tipo?: string;
-    nptBase?: number;
-    nptCima?: number;
-    piso?: string;
-    pisoBase?: string;
-    pisoCima?: string;
-    totalL?: number;
-    pendiente?: number;
-    alimentaIds?: string[];
-    ucAcum?: number;
-    ucExtra?: number;
-    area_m2?: number;
-    lblOffX?: number;
-    lblOffY?: number;
-    desplazamientos?: Record<string, { dx: number; dy: number; Ldesvio: null }>;
-    _circ?: { x: number; y: number; r: number };
-    _ghost?: { x: number; y: number; r: number };
-    _labelBox?: {
-      cx: number; cy: number; w: number; h: number; angle: number;
-      minX: number; minY: number; maxX: number; maxY: number;
-      corners: Array<{ x: number; y: number }>;
-    } | null;
-  }>;
+import type {
+  PlanoRamal,
+  PlanoBajante,
+  PlanoArea,
+  PlanoDimension,
+  PlanoTextAnnotation,
+  PlanoLevel,
+  PlanoNetCounts,
+  PlanoActiveRamal,
+  PlanoActiveArea,
+  PlanoRamalDefaults,
+} from './PlanoState';
+
+export interface IPlanoEngineCore {
+  dims: PlanoDimension[];
+  textAnnots: PlanoTextAnnotation[];
+  areas: PlanoArea[];
+  ramales: PlanoRamal[];
+  bajantes: PlanoBajante[];
+  activeRamal: PlanoActiveRamal | null;
+  activeArea: PlanoActiveArea | null;
   selId: string | null;
   _hiddenNets: Set<string>;
   _lockedNets: Set<string>;
@@ -95,23 +26,21 @@ export interface PlanoEngineAPI {
   mouseX: number;
   mouseY: number;
   zoom: number;
+  offX: number;
+  offY: number;
   snapMode: boolean;
   tool: string;
   tipoTramo: string;
   scaleM: number;
   canv: HTMLCanvasElement;
   padreTributario: string | null;
-  activeRamal: { net: string; pts: number[][]; tipo: string; padre?: string | null; totalL: number } | null;
-  activeArea: { pts: number[][]; color?: string } | null;
-  nivelActual: { label?: string; npt?: number; n?: string } | null;
+  nivelActual: PlanoLevel | null;
   _dimStart: { x: number; y: number } | null;
-  _netCounts: Record<string, Record<string, number>>;
-  _ramalDefaults: { material: string; diametro: string; pendiente: number } | null;
+  _netCounts: Record<string, PlanoNetCounts>;
+  _ramalDefaults: PlanoRamalDefaults | null;
   _dirty: boolean;
-  nptLevels: Array<{ label?: string; npt?: number; n?: string }>;
-  panning: boolean;
-  panX0: number;
-  panY0: number;
+  _onRequestTextCb: ((x: number, y: number, cb: (text: string) => void) => void) | null;
+  nptLevels: PlanoLevel[];
   ghostDrag: { id: string; startX: number; startY: number; baseDx: number; baseDy: number } | null;
   lblDrag: { id: string; offX: number; offY: number } | null;
   txtDrag: { id: string; startX: number; startY: number; origX: number; origY: number } | null;
@@ -125,6 +54,7 @@ export interface PlanoEngineAPI {
     flowEmoji: number;
     coord: number;
   };
+
   toCvs(px: number, py: number): { x: number; y: number };
   toPlane(cx: number, cy: number): { x: number; y: number };
   mm2cvs(mm: number): number;
@@ -132,15 +62,7 @@ export interface PlanoEngineAPI {
   snapAngle(x0: number, y0: number, x1: number, y1: number): { x: number; y: number };
   snapToExisting(x: number, y: number): { x: number; y: number } | null;
   snapPreviewToPadre(x: number, y: number): { x: number; y: number } | null;
-  getBajantesFantasma(): Array<{
-    net: string;
-    id: string;
-    x: number;
-    y: number;
-    tipo?: string;
-    desplazamientos?: Record<string, { dx: number; dy: number; Ldesvio: null }>;
-    _ghost?: { x: number; y: number; r: number };
-  }>;
+  getBajantesFantasma(): PlanoBajante[];
   render(): void;
   _emitSelect(el: unknown): void;
   _emitStatus(msg: string): void;
@@ -148,6 +70,6 @@ export interface PlanoEngineAPI {
   _statusMsg(): string;
   _renumberRamales(netId: string): void;
   selectAt(cx: number, cy: number): void;
-  getSelected(): { id: string; pts?: number[][] } | null;
+  getSelected(): PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null;
   deleteSelected(): void;
 }

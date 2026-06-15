@@ -1,3 +1,5 @@
+// NETS re-exported from PlanoState via PlanoEngine (drawing-engine network defs).
+// For UI display use uiConfig.REDES instead.
 export { default, NETS } from './PlanoEngine';
 
 export { renderGrid, drawArrow } from './CanvasRenderer';

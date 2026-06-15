@@ -1,9 +1,9 @@
 import { NETS } from './PlanoState';
-import type { PlanoRamal, PlanoBajante, PlanoNetCounts } from './PlanoState';
-import type { PlanoEngineAPI } from './PlanoEngineTypes';
+import type { PlanoRamal, PlanoBajante } from './PlanoState';
+import type { IPlanoEngineCore } from './PlanoEngineTypes';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 
-export function getElementsByNet(engine: PlanoEngineAPI, netId: string): Array<{
+export function getElementsByNet(engine: IPlanoEngineCore, netId: string): Array<{
   type: string;
   id: string;
   label: string;
@@ -61,19 +61,19 @@ export function getElementsByNet(engine: PlanoEngineAPI, netId: string): Array<{
   return items;
 }
 
-export function setNetHidden(engine: PlanoEngineAPI, netId: string, hidden: boolean): void {
+export function setNetHidden(engine: IPlanoEngineCore, netId: string, hidden: boolean): void {
   if (hidden) engine._hiddenNets.add(netId);
   else engine._hiddenNets.delete(netId);
   engine.render();
 }
 
-export function setNetLocked(engine: PlanoEngineAPI, netId: string, locked: boolean): void {
+export function setNetLocked(engine: IPlanoEngineCore, netId: string, locked: boolean): void {
   if (locked) engine._lockedNets.add(netId);
   else engine._lockedNets.delete(netId);
   engine.render();
 }
 
-export function clearNet(engine: PlanoEngineAPI, netId: string): void {
+export function clearNet(engine: IPlanoEngineCore, netId: string): void {
   engine.ramales = engine.ramales.filter(r => r.net !== netId);
   engine.bajantes = engine.bajantes.filter(b => b.net !== netId);
   engine._netCounts[netId] = { ramal: 0, tributario: 0 };
@@ -87,23 +87,23 @@ export function clearNet(engine: PlanoEngineAPI, netId: string): void {
   engine._markDirty();
 }
 
-export function setPadreTributario(engine: PlanoEngineAPI, ramalId: string): void {
+export function setPadreTributario(engine: IPlanoEngineCore, ramalId: string): void {
   if (engine.tipoTramo !== 'tributario') return;
   const padre = engine.ramales.find(r => r.id === ramalId && r.net === engine.activeNet && r.tipo === 'ramal');
   engine.padreTributario = padre ? padre.id : null;
   engine.render();
 }
 
-export function getPadreTributario(engine: PlanoEngineAPI): PlanoRamal | null {
+export function getPadreTributario(engine: IPlanoEngineCore): PlanoRamal | null {
   if (!engine.padreTributario) return null;
   return engine.ramales.find(r => r.id === engine.padreTributario) as PlanoRamal || null;
 }
 
-export function getRamalesPadre(engine: PlanoEngineAPI): PlanoRamal[] {
+export function getRamalesPadre(engine: IPlanoEngineCore): PlanoRamal[] {
   return engine.ramales.filter(r => r.net === engine.activeNet && r.tipo === 'ramal') as unknown as PlanoRamal[];
 }
 
-export function setRamalDefaults(engine: PlanoEngineAPI, d: Partial<{ material: string; diametro: string; pendiente: number }> | null): void {
+export function setRamalDefaults(engine: IPlanoEngineCore, d: Partial<{ material: string; diametro: string; pendiente: number }> | null): void {
   engine._ramalDefaults = {
     material: d?.material || '',
     diametro: d?.diametro || '',
@@ -111,7 +111,7 @@ export function setRamalDefaults(engine: PlanoEngineAPI, d: Partial<{ material: 
   };
 }
 
-export function getBajantesFantasma(engine: PlanoEngineAPI): PlanoBajante[] {
+export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
   if (!engine.nivelActual) return [];
   return engine.bajantes.filter(b => {
     const base = Math.min(b.nptBase || 0, b.nptCima || 0);
@@ -125,7 +125,7 @@ export function getBajantesFantasma(engine: PlanoEngineAPI): PlanoBajante[] {
   }) as unknown as PlanoBajante[];
 }
 
-export function _renumberRamales(engine: PlanoEngineAPI, netId: string): void {
+export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void {
   const net = NETS.find(n => n.id === netId);
   if (!net) return;
   const pfx = net.lbl;

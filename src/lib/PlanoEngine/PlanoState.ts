@@ -1,3 +1,5 @@
+// NETS: Drawing-engine network definitions (ucType, bmType, bmPfx, etc).
+// For UI display use uiConfig.REDES instead (has lbl, sub, ico, icoImg).
 export const NETS = [
   { id: 'af', lbl: 'RAF', col: '#4D8FF7', ucType: 'uc', bmType: 'montante', bmPfx: 'MAF', bmIco: '⬆', emoji: '💧', name: 'Agua fría' },
   { id: 'ac', lbl: 'RAC', col: '#F04545', ucType: 'uc', bmType: 'montante', bmPfx: 'MAC', bmIco: '⬆', emoji: '🔥', name: 'Agua caliente' },
@@ -88,6 +90,7 @@ export interface PlanoBajante {
   labelAngle: number;
   labelX: number;
   labelY: number;
+  direccion?: 'sube' | 'baja' | 'mantiene';
   totalL?: number;
   pendiente?: number;
   piso?: string;

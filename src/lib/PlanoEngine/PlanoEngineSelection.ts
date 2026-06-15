@@ -3,14 +3,13 @@ import type {
   PlanoBajante,
   PlanoArea,
   PlanoTextAnnotation,
-  PlanoDimension,
 } from './PlanoState';
-import type { PlanoEngineAPI } from './PlanoEngineTypes';
+import type { IPlanoEngineCore } from './PlanoEngineTypes';
 import { NETS } from './PlanoState';
 import { pointInPoly, pointInLabelBox, pointToSegmentDist } from './HitTester';
 import { _midpoint } from './PlanoEngineDrawing';
 
-export function selectAt(engine: PlanoEngineAPI, cx: number, cy: number): void {
+export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number): void {
   let foundTxt: PlanoTextAnnotation | null = null;
   engine.textAnnots.forEach((t: any) => {
     if (t._box) {
@@ -75,7 +74,7 @@ export function selectAt(engine: PlanoEngineAPI, cx: number, cy: number): void {
   engine.render();
 }
 
-export function selectById(engine: PlanoEngineAPI, id: string): void {
+export function selectById(engine: IPlanoEngineCore, id: string): void {
   const found = engine.ramales.find((r: any) => r.id === id)
     || engine.bajantes.find((b: any) => b.id === id)
     || engine.textAnnots.find((t: any) => t.id === id)
@@ -84,7 +83,7 @@ export function selectById(engine: PlanoEngineAPI, id: string): void {
   if (found) { engine.selId = found.id; engine._emitSelect(found); engine.render(); }
 }
 
-export function getSelected(engine: PlanoEngineAPI): PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null {
+export function getSelected(engine: IPlanoEngineCore): PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null {
   if (!engine.selId) return null;
   return (engine.ramales.find((r: any) => r.id === engine.selId)
     || engine.bajantes.find((b: any) => b.id === engine.selId)
@@ -93,7 +92,7 @@ export function getSelected(engine: PlanoEngineAPI): PlanoRamal | PlanoBajante |
     || null) as PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null;
 }
 
-export function updateSelected(engine: PlanoEngineAPI, fields: Record<string, unknown>): void {
+export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, unknown>): void {
   const el = getSelected(engine);
   if (el) {
     Object.assign(el, fields);
@@ -109,7 +108,7 @@ export function updateSelected(engine: PlanoEngineAPI, fields: Record<string, un
   engine._markDirty();
 }
 
-export function updateElementById(engine: PlanoEngineAPI, id: string, fields: Record<string, unknown>): void {
+export function updateElementById(engine: IPlanoEngineCore, id: string, fields: Record<string, unknown>): void {
   let el: PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | undefined =
     (engine.ramales.find((r: any) => r.id === id)
       || engine.bajantes.find((b: any) => b.id === id)
@@ -128,7 +127,7 @@ export function updateElementById(engine: PlanoEngineAPI, id: string, fields: Re
   engine._markDirty();
 }
 
-export function rotateLabelSnap(engine: PlanoEngineAPI): void {
+export function rotateLabelSnap(engine: IPlanoEngineCore): void {
   const el = getSelected(engine);
   if (!el) return;
   const ANGLES = [0, 45, 90, -90, -45];
@@ -145,7 +144,7 @@ export function rotateLabelSnap(engine: PlanoEngineAPI): void {
   engine.render();
 }
 
-export function resetLabel(engine: PlanoEngineAPI): void {
+export function resetLabel(engine: IPlanoEngineCore): void {
   const el = getSelected(engine);
   if (!el) return;
   if ((el as PlanoRamal).pts) {
@@ -161,7 +160,7 @@ export function resetLabel(engine: PlanoEngineAPI): void {
   engine.render();
 }
 
-export function deleteSelected(engine: PlanoEngineAPI): void {
+export function deleteSelected(engine: IPlanoEngineCore): void {
   if (!engine.selId) return;
   const idxR = engine.ramales.findIndex((r: any) => r.id === engine.selId);
   if (idxR >= 0) {
@@ -184,7 +183,7 @@ export function deleteSelected(engine: PlanoEngineAPI): void {
   if (idxD >= 0) { engine.dims.splice(idxD, 1); engine.selId = null; engine._emitSelect(null); engine.render(); engine._markDirty(); return; }
 }
 
-export function handleSelectDown(engine: PlanoEngineAPI, x: number, y: number): void {
+export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number): void {
   const sel = getSelected(engine);
 
   if (sel && (sel as any)._circ && ((sel as any).tipo === 'bajante' || (sel as any).tipo === 'montante' || sel.id?.startsWith('B'))) {
@@ -234,7 +233,6 @@ export function handleSelectDown(engine: PlanoEngineAPI, x: number, y: number): 
   if (sel && (sel.id?.startsWith('AR')) && (sel as any)._polyBox) {
     const pb = (sel as any)._polyBox!;
     if (x >= pb.x && x <= pb.x + pb.w && y >= pb.y && y <= pb.y + pb.h) {
-      // Before starting area drag, check if a bajante/montante is at this position
       for (const b of engine.bajantes) {
         if ((b as any)._circ) {
           const d = Math.hypot(x - (b as any)._circ.x, y - (b as any)._circ.y);
@@ -283,7 +281,6 @@ export function handleSelectDown(engine: PlanoEngineAPI, x: number, y: number): 
     if ((a as any)._polyBox) {
       const b = (a as any)._polyBox;
       if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
-        // Check if a bajante/montante takes priority over this area
         let bajAtPos = false;
         for (const bb of engine.bajantes) {
           if ((bb as any)._circ && Math.hypot(x - (bb as any)._circ.x, y - (bb as any)._circ.y) < (bb as any)._circ.r) { bajAtPos = true; break; }
@@ -347,7 +344,7 @@ export function handleSelectDown(engine: PlanoEngineAPI, x: number, y: number): 
   selectAt(engine, x, y);
 }
 
-export function handleDragMove(engine: PlanoEngineAPI, x: number, y: number): void {
+export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): void {
   if (engine.ghostDrag) {
     const b = engine.bajantes.find((bb: any) => bb.id === engine.ghostDrag!.id);
     if (b && engine.nivelActual) {
@@ -431,7 +428,7 @@ export function handleDragMove(engine: PlanoEngineAPI, x: number, y: number): vo
   }
 }
 
-export function handleDragUp(engine: PlanoEngineAPI): void {
+export function handleDragUp(engine: IPlanoEngineCore): void {
   if (engine.ghostDrag) {
     const b = engine.bajantes.find((bb: any) => bb.id === engine.ghostDrag!.id);
     if (b && engine.nivelActual && (b as any).desplazamientos?.[engine.nivelActual.label ?? '']) {

@@ -1,15 +1,9 @@
 import { NETS } from './PlanoState';
 import type {
   PlanoRamal,
-  PlanoBajante,
   PlanoArea,
-  PlanoDimension,
-  PlanoTextAnnotation,
-  PlanoActiveRamal,
-  PlanoActiveArea,
 } from './PlanoState';
-import type { PlanoEngineAPI } from './PlanoEngineTypes';
-import { loadFromStorage, saveToStorage } from '../../services/storageService';
+import type { IPlanoEngineCore } from './PlanoEngineTypes';
 import { pointToSegmentDist, snapToSegment } from './HitTester';
 
 type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm';
@@ -18,7 +12,7 @@ export function toolCursor(tool: string): string {
   return tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair';
 }
 
-export function _statusMsg(engine: PlanoEngineAPI): string {
+export function _statusMsg(engine: IPlanoEngineCore): string {
   const names: Record<string, string> = {
     sel: 'Seleccionar elemento', line: 'Ramal', dim: 'Cota', text: 'Texto',
     baj: 'Bajante', mon: 'Montante', pan: 'Pan', area: 'Área', erase: 'Borrar',
@@ -36,10 +30,10 @@ export function _statusMsg(engine: PlanoEngineAPI): string {
   return m;
 }
 
-export function _nextLabel(engine: PlanoEngineAPI): string {
+export function _nextLabel(engine: IPlanoEngineCore): string {
   const net = NETS.find(n => n.id === engine.activeNet);
   const pfx = net ? net.lbl : 'R';
-  const cnt = engine._netCounts[engine.activeNet]?.[engine.tipoTramo] || 0;
+  const cnt = engine._netCounts[engine.activeNet]?.[engine.tipoTramo as keyof typeof engine._netCounts[string]] || 0;
   if (engine.tipoTramo === 'tributario') {
     const padre = engine.ramales.find((r: any) => r.id === engine.padreTributario);
     const padreLabel = padre ? (padre.label || padre.id) : '';
@@ -104,7 +98,7 @@ export function _strokeAngle(pts: number[][]): number {
   return 0;
 }
 
-export function _calcPolyArea(engine: PlanoEngineAPI, pts: number[][]): number {
+export function _calcPolyArea(engine: IPlanoEngineCore, pts: number[][]): number {
   let area = 0;
   for (let i = 0; i < pts.length; i++) {
     const j = (i + 1) % pts.length;
@@ -116,7 +110,7 @@ export function _calcPolyArea(engine: PlanoEngineAPI, pts: number[][]): number {
   return +m2.toFixed(2);
 }
 
-export function setTool(engine: PlanoEngineAPI, t: ToolType): void {
+export function setTool(engine: IPlanoEngineCore, t: ToolType): void {
   if (engine.activeRamal && engine.activeRamal.pts.length >= 2 && t !== 'line') finishRamal(engine);
   else if (engine.activeRamal && t !== 'line') cancelRamal(engine);
   if (engine.activeArea && t !== 'area') finishArea(engine);
@@ -126,7 +120,7 @@ export function setTool(engine: PlanoEngineAPI, t: ToolType): void {
   engine._emitStatus(_statusMsg(engine));
 }
 
-export function finishRamal(engine: PlanoEngineAPI): void {
+export function finishRamal(engine: IPlanoEngineCore): void {
   if (!engine.activeRamal || engine.activeRamal.pts.length < 1) return;
   if (engine.activeRamal.pts.length < 2) {
     engine.activeRamal = null;
@@ -138,21 +132,19 @@ export function finishRamal(engine: PlanoEngineAPI): void {
   const def = engine._ramalDefaults || { material: '', diametro: '', pendiente: 0 };
   const net = NETS.find(n => n.id === engine.activeRamal!.net);
   const netPfx = net ? net.lbl : 'R';
-  const cnt = ++(engine._netCounts[engine.activeRamal!.net][engine.tipoTramo]);
+  const cnt = ++(engine._netCounts[engine.activeRamal!.net][engine.tipoTramo as keyof typeof engine._netCounts[string]]);
   const id = engine.tipoTramo === 'tributario'
     ? 'T' + Date.now()
     : netPfx + cnt;
   const firstAngle = _firstSegmentAngle(engine.activeRamal.pts);
 
-  // Position label above the first segment
   const pts = engine.activeRamal.pts;
   const x1 = pts[0][0], y1 = pts[0][1], x2 = pts[1][0], y2 = pts[1][1];
   const midX = (x1 + x2) / 2, midY = (y1 + y2) / 2;
   const rad = firstAngle * Math.PI / 180;
-  // up vector relative to the text angle
   const upX = Math.sin(rad);
   const upY = -Math.cos(rad);
-  const labelOffset = 48; // Closer to the line, but enough to fit the arrow above it
+  const labelOffset = 48;
   const labelX = midX + upX * labelOffset;
   const labelY = midY + upY * labelOffset;
 
@@ -180,20 +172,20 @@ export function finishRamal(engine: PlanoEngineAPI): void {
   engine._markDirty();
 }
 
-export function cancelRamal(engine: PlanoEngineAPI): void {
+export function cancelRamal(engine: IPlanoEngineCore): void {
   engine.activeRamal = null;
   engine._emitStatus(_statusMsg(engine));
   engine.render();
   engine._markDirty();
 }
 
-export function cancelArea(engine: PlanoEngineAPI): void {
+export function cancelArea(engine: IPlanoEngineCore): void {
   engine.activeArea = null;
   engine._emitStatus(_statusMsg(engine));
   engine.render();
 }
 
-export function finishArea(engine: PlanoEngineAPI): void {
+export function finishArea(engine: IPlanoEngineCore): void {
   if (!engine.activeArea || engine.activeArea.pts.length < 3) {
     engine.activeArea = null;
     return;
@@ -215,61 +207,14 @@ export function finishArea(engine: PlanoEngineAPI): void {
   };
   engine.areas.push(area);
   engine.activeArea = null;
+  engine.selId = area.id;
+  engine._emitSelect(area);
   engine._emitStatus(_statusMsg(engine));
-  engine.render();
-}
-
-export function undoLast(engine: PlanoEngineAPI): void {
-  if (engine.activeRamal && engine.activeRamal.pts.length > 1) {
-    const ar = engine.activeRamal;
-    const last = ar.pts[ar.pts.length - 1];
-    const prev = ar.pts[ar.pts.length - 2];
-    const segLen = Math.hypot(last[0] - prev[0], last[1] - prev[1]);
-    ar.totalL = +(ar.totalL - engine.pxToM(segLen)).toFixed(3);
-    if (ar.totalL < 0) ar.totalL = 0;
-    ar.pts.pop();
-    engine._emitStatus(_statusMsg(engine));
-    engine.render();
-    engine._markDirty();
-    return;
-  }
-  if (engine.activeRamal) { cancelRamal(engine); return; }
-  if (engine.activeArea) { cancelArea(engine); return; }
-  if ((engine.tool === 'baj' || engine.tool === 'mon' || engine.tool === 'delm') && engine.bajantes.length) {
-    engine.bajantes.pop();
-  } else if (engine.ramales.length) {
-    const removed = engine.ramales.pop();
-    if (removed && removed.tipo !== 'tributario') engine._renumberRamales(removed.net);
-    else if (removed) engine._renumberRamales(removed.net);
-  } else if (engine.areas.length) {
-    engine.areas.pop();
-  } else if (engine.dims.length) {
-    engine.dims.pop();
-  } else if (engine.textAnnots.length) {
-    engine.textAnnots.pop();
-  }
-  engine.selId = null;
-  engine._emitSelect(null);
   engine.render();
   engine._markDirty();
 }
 
-export function clearAll(engine: PlanoEngineAPI): void {
-  engine.ramales = [];
-  engine.dims = [];
-  engine.textAnnots = [];
-  engine.bajantes = [];
-  engine.areas = [];
-  engine.activeRamal = null;
-  engine.activeArea = null;
-  engine.selId = null;
-  engine._netCounts = {};
-  NETS.forEach(n => { engine._netCounts[n.id] = { ramal: 0, tributario: 0 }; });
-  engine._emitSelect(null);
-  engine.render();
-}
-
-export function deleteSegmentAt(engine: PlanoEngineAPI, cx: number, cy: number): void {
+export function deleteSegmentAt(engine: IPlanoEngineCore, cx: number, cy: number): void {
   const plane = engine.toPlane(cx, cy);
   const HIT_DIST = 10 / engine.zoom;
   let bestR: any = null, bestIdx = -1, bestD = Infinity;
@@ -318,7 +263,7 @@ export function deleteSegmentAt(engine: PlanoEngineAPI, cx: number, cy: number):
   engine._markDirty();
 }
 
-export function setScaleM(engine: PlanoEngineAPI, v: string | number): void {
+export function setScaleM(engine: IPlanoEngineCore, v: string | number): void {
   engine.scaleM = parseFloat(String(v)) || 0.5;
   engine.ramales.forEach(r => {
     r.totalL = 0;
@@ -353,7 +298,7 @@ function tribSnapAngle(x0: number, y0: number, x1: number, y1: number, net: stri
   return { x: x0 + dist * Math.cos(sr), y: y0 + dist * Math.sin(sr) };
 }
 
-export function handleLineDown(engine: PlanoEngineAPI, px: number, py: number): void {
+export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number): void {
   let pt: { x: number; y: number } = { x: px, y: py };
   if (engine.tipoTramo === 'tributario' && !engine.padreTributario) {
     engine._emitStatus('Selecciona primero un ramal PADRE en el panel derecho');
@@ -411,7 +356,7 @@ export function handleLineDown(engine: PlanoEngineAPI, px: number, py: number): 
   engine.render();
 }
 
-export function handleDimDown(engine: PlanoEngineAPI, px: number, py: number): void {
+export function handleDimDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (!engine._dimStart) {
     engine._dimStart = { x: px, y: py };
   } else {
@@ -423,18 +368,38 @@ export function handleDimDown(engine: PlanoEngineAPI, px: number, py: number): v
   }
 }
 
-export function handleTextDown(engine: PlanoEngineAPI, px: number, py: number): void {
-  const t = prompt('Texto:');
-  if (t) {
-    engine.textAnnots.push({
-      id: 'T' + Date.now(), x: px, y: py, text: t,
-      fontMm: 2.5, boxW: 0, lblOffX: 0, lblOffY: 0, textAngle: 0,
+export function handleTextDown(engine: IPlanoEngineCore, px: number, py: number): void {
+  if (engine._onRequestTextCb) {
+    engine._onRequestTextCb(px, py, (t: string) => {
+      if (t) {
+        const tid = 'T' + Date.now();
+        engine.textAnnots.push({
+          id: tid, x: px, y: py, text: t,
+          fontMm: 2.5, boxW: 0, lblOffX: 0, lblOffY: 0, textAngle: 0,
+        });
+        engine.selId = tid;
+        engine._emitSelect(engine.textAnnots[engine.textAnnots.length - 1]);
+        engine.render();
+        engine._markDirty();
+      }
     });
-    engine.render();
+  } else {
+    const t = prompt('Texto:');
+    if (t) {
+      const tid2 = 'T' + Date.now();
+      engine.textAnnots.push({
+        id: tid2, x: px, y: py, text: t,
+        fontMm: 2.5, boxW: 0, lblOffX: 0, lblOffY: 0, textAngle: 0,
+      });
+      engine.selId = tid2;
+      engine._emitSelect(engine.textAnnots[engine.textAnnots.length - 1]);
+      engine.render();
+      engine._markDirty();
+    }
   }
 }
 
-export function handleBajanteDown(engine: PlanoEngineAPI, px: number, py: number): void {
+export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: number): void {
   const net = NETS.find(n => n.id === engine.activeNet);
   const netPfx = net ? net.bmPfx : 'BAJ';
   const cnt = engine.bajantes.filter(b => b.tipo === 'bajante' && b.net === engine.activeNet).length + 1;
@@ -455,11 +420,13 @@ export function handleBajanteDown(engine: PlanoEngineAPI, px: number, py: number
     labelAngle: 0,
     labelX: px, labelY: py + 20,
   });
+  engine.selId = bajId;
+  engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
   engine.render();
   engine._markDirty();
 }
 
-export function handleMontanteDown(engine: PlanoEngineAPI, px: number, py: number): void {
+export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: number): void {
   const cnt = engine.bajantes.filter(b => b.tipo === 'montante').length + 1;
   const monId = 'MON' + cnt;
   engine.bajantes.push({
@@ -478,18 +445,20 @@ export function handleMontanteDown(engine: PlanoEngineAPI, px: number, py: numbe
     labelAngle: 0,
     labelX: px, labelY: py + 20,
   });
+  engine.selId = monId;
+  engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
   engine.render();
   engine._markDirty();
 }
 
-export function handleEraseDown(engine: PlanoEngineAPI, cx: number, cy: number): void {
+export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number): void {
   engine.selectAt(cx, cy);
   engine.deleteSelected();
   engine._emitSelect(null);
   engine.selId = null;
 }
 
-export function handleDeleteElementDown(engine: PlanoEngineAPI, cx: number, cy: number): void {
+export function handleDeleteElementDown(engine: IPlanoEngineCore, cx: number, cy: number): void {
   engine.selectAt(cx, cy);
   const sel = engine.getSelected() as { id: string; pts?: number[][] } | null;
   if (!sel) { engine._emitStatus('No se encontró ningún elemento'); return; }
@@ -505,11 +474,11 @@ export function handleDeleteElementDown(engine: PlanoEngineAPI, cx: number, cy: 
   }
 }
 
-export function handleSegDelDown(engine: PlanoEngineAPI, cx: number, cy: number): void {
+export function handleSegDelDown(engine: IPlanoEngineCore, cx: number, cy: number): void {
   deleteSegmentAt(engine, cx, cy);
 }
 
-export function handleAreaDown(engine: PlanoEngineAPI, px: number, py: number): void {
+export function handleAreaDown(engine: IPlanoEngineCore, px: number, py: number): void {
   let pt: { x: number; y: number } = { x: px, y: py };
   if (!engine.activeArea) {
     if (engine.snapMode) pt = engine.snapAngle(px, py, pt.x, pt.y);
@@ -533,7 +502,7 @@ export function handleAreaDown(engine: PlanoEngineAPI, px: number, py: number): 
   engine.render();
 }
 
-export function handleDrawingMouseMove(engine: PlanoEngineAPI, x: number, y: number): void {
+export function handleDrawingMouseMove(engine: IPlanoEngineCore, x: number, y: number): void {
   if (engine.activeRamal || engine._dimStart || engine.activeArea) {
     engine.mouseX = x;
     engine.mouseY = y;
@@ -541,7 +510,7 @@ export function handleDrawingMouseMove(engine: PlanoEngineAPI, x: number, y: num
   }
 }
 
-export function handleDoubleClick(engine: PlanoEngineAPI): void {
+export function handleDoubleClick(engine: IPlanoEngineCore): void {
   if (engine.tool === 'line' && engine.activeRamal && engine.activeRamal.pts.length >= 2) {
     finishRamal(engine);
   }
@@ -549,5 +518,3 @@ export function handleDoubleClick(engine: PlanoEngineAPI): void {
     finishArea(engine);
   }
 }
-
-
