@@ -1,37 +1,19 @@
-import React, { useState, useRef, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { usePlans } from '../context/PlansContext';
 import { fmtSize } from '../utils/fmtSize';
 import { usePageMeta } from '../hooks/usePageMeta';
-
-const REQ_ITEMS = [
-  ['📏', 'Escala', 'Definir escala a trabajar'],
-  ['📄', '1 plano', 'Por nivel'],
-  ['🏷️', 'Cotas NPT', 'En planta'],
-  ['🎨', 'Redes color', 'Definir colores por redes'],
-  ['🚿', 'Simbología', 'NTC 1500'],
-];
+import { usePlanoFileUpload } from '../hooks/usePlanoFileUpload';
+import { REQ_ITEMS } from '../constants';
 
 function PlansPage() {
   const { plans, addPlans, removePlan } = usePlans();
-  const [drag, setDrag] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   usePageMeta('Planos');
 
-  const onDrop = useCallback((e: any) => {
-    e.preventDefault();
-    setDrag(false);
-    const fl = e.dataTransfer?.files || e.target?.files;
-    if (!fl || fl.length === 0) return;
-    addPlans(fl);
-  }, [addPlans]);
-
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) addPlans(e.target.files);
-    e.target.value = '';
-  };
+  const onFiles = useCallback((files: FileList) => addPlans(files), [addPlans]);
+  const { drag, setDrag, fileRef, onDrop, handleFileInput } = usePlanoFileUpload(onFiles);
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#0a0e14', color: '#e2e2e8' }}>
@@ -136,7 +118,6 @@ function PlansPage() {
               }}
               onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 0 30px rgba(0,220,229,0.25)'}
               onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 0 20px rgba(0,220,229,0.1)'}>
-         
               ÁREA DE TRABAJO
             </button>
           )}
@@ -151,7 +132,7 @@ function PlansPage() {
                 </span>
               </div>
               <div className="p-5" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {REQ_ITEMS.map(([ico, t, s]) => (
+                {REQ_ITEMS.map(({ ico, t, s }) => (
                   <div key={t}
                     style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 14px',
                       background: '#0a0e14', borderRadius: 6, border: '1px solid #3a494a' }}>

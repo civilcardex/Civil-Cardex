@@ -1,8 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
-import MobileOnlyMessage from '../components/MobileOnlyMessage';
+import ModulePageLayout from '../components/ModulePageLayout';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 const accent = '#FFC107';
@@ -23,11 +21,8 @@ const metrics = [
 const CivilRoadsPage: React.FC = () => {
   usePageMeta('Vías');
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
-      <Navbar />
-      <MobileOnlyMessage />
-      <main className="flex-grow pt-16 flex flex-col relative z-0">
-        <section className="relative w-full flex items-center overflow-hidden border-b border-outline-variant" style={{ minHeight: 700 }}>
+    <ModulePageLayout title="Vías" description="Diseño geométrico de carreteras y urbanismo sobre gemelos digitales." mainClassName="flex flex-col relative z-0">
+      <section className="relative w-full flex items-center overflow-hidden border-b border-outline-variant" style={{ minHeight: 700 }}>
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #0F1115, rgba(15,17,21,0.8), transparent)' }} />
           <div className="relative z-10 w-full px-6 lg:px-8 grid grid-cols-12 gap-3 mt-16 md:mt-0">
             <div className="col-span-12 md:col-span-6 lg:col-span-5 flex flex-col justify-center space-y-6">
@@ -113,9 +108,7 @@ const CivilRoadsPage: React.FC = () => {
             </div>
           </div>
         </section>
-      </main>
-      <Footer />
-    </div>
+    </ModulePageLayout>
   );
 };
 

@@ -1,8 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
-import MobileOnlyMessage from '../components/MobileOnlyMessage';
+import ModulePageLayout from '../components/ModulePageLayout';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 const features = [
@@ -15,11 +13,8 @@ const features = [
 export default function CivilStructurePage() {
   usePageMeta('Estructuras');
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
-      <Navbar />
-      <MobileOnlyMessage />
-      <main className="flex-grow pt-16 relative">
-        <section className="relative flex items-center border-b border-outline-variant overflow-hidden" style={{ minHeight: 600, background: '#0c0e12' }}>
+    <ModulePageLayout title="Estructuras" description="Diseño estructural avanzado y simulación física integrada." mainClassName="relative">
+      <section className="relative flex items-center border-b border-outline-variant overflow-hidden" style={{ minHeight: 600, background: '#0c0e12' }}>
           <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.1, backgroundImage: 'linear-gradient(to right, #3a494a 1px, transparent 1px), linear-gradient(to bottom, #3a494a 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
           <div className="absolute top-1/4 left-8 text-[13px] text-outline opacity-50 hidden lg:block" style={{ fontFamily: 'Geist, monospace' }}>
             SYS.INIT: OK<br />LOAD_FACTOR: 1.4<br />MESH_DENSITY: HIGH<br />SOLVER_ITER: 2540
@@ -113,8 +108,6 @@ export default function CivilStructurePage() {
             </button>
           </div>
         </section>
-      </main>
-      <Footer />
-    </div>
+    </ModulePageLayout>
   );
 }

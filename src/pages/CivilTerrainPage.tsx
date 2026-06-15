@@ -1,8 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
-import MobileOnlyMessage from '../components/MobileOnlyMessage';
+import ModulePageLayout from '../components/ModulePageLayout';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 const features = [
@@ -15,11 +13,8 @@ const features = [
 export default function CivilTerrainPage() {
   usePageMeta('Terreno');
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
-      <Navbar />
-      <MobileOnlyMessage />
-      <main className="flex-grow pt-20 px-6 lg:px-8 pb-12 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none z-0" style={{ opacity: 0.1, backgroundImage: 'linear-gradient(to right, #3a494a 1px, transparent 1px), linear-gradient(to bottom, #3a494a 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+    <ModulePageLayout title="Terreno" description="Modelado Digital de Elevación de Próxima Generación." mainClassName="pt-20 px-6 lg:px-8 pb-12 relative overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none z-0" style={{ opacity: 0.1, backgroundImage: 'linear-gradient(to right, #3a494a 1px, transparent 1px), linear-gradient(to bottom, #3a494a 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
         <section className="relative z-10 flex flex-col md:flex-row items-center gap-12 mb-24 max-w-7xl mx-auto">
           <div className="md:w-1/2 flex flex-col gap-6">
@@ -93,8 +88,6 @@ export default function CivilTerrainPage() {
             ))}
           </div>
         </section>
-      </main>
-      <Footer />
-    </div>
+    </ModulePageLayout>
   );
 }

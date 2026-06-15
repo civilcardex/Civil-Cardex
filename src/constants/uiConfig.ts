@@ -1,3 +1,5 @@
+// REDES: UI-display network definitions (lbl, sub, ico, icoImg, col as CSS var).
+// For drawing-engine definitions use PlanoState.NETS instead (has ucType, bmType, etc).
 export const REDES=[
   {id:'san',lbl:'Red sanitaria', sub:'RAS D · Manning n=0.009', ico:'♻️', icoImg:'/iconos_diseno_redes/sanitaria/red_sanitaria.webp', col:'var(--san)'},
   {id:'ll', lbl:'Aguas lluvias', sub:'Método Racional · IDF', ico:'🌧️', icoImg:'/iconos_diseno_redes/aguas_lluvias/red_aguas_lluvias.webp', col:'var(--ll)'},
@@ -23,8 +25,9 @@ export const NAV_TABS=[
   {id:'info',  l:'Información general',  ico:'🏗️', icoImg:'/iconos_info_general/Informacion_del_proyecto.webp'},
   {id:'planos',l:'Carga de planos',      ico:'📐', icoImg:'/iconos_carga_planos/carga_de_planos.webp'},
   {id:'datos', l:'Parámetros de diseño', ico:'📊', icoImg:'/iconos_parametros_de_diseno/materiales_por_red.webp'},
-  {id:'visor', l:'Dibujo de Redes',      ico:'✏️', icoImg:'/iconos_aparatos/dibujo_de_redes.webp'},
+  {id:'visor', l:'Dibujo de redes',      ico:'✏️', icoImg:'/iconos_aparatos/dibujo_de_redes.webp'},
   {id:'redes', l:'Diseño de redes y equipos',      ico:'🔧', icoImg:'/iconos_diseno_redes/general/diseno_redes.webp'},
+  {id:'iso',   l:'Isometría',            ico:'📐', icoImg:''},
   {id:'inf',   l:'Informes',             ico:'📄', icoImg:'/Informes.webp'},
   {id:'crit',  l:'Normativa',            ico:'§',  icoImg:'/normativa.webp'},
 ];

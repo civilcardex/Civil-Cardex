@@ -1,8 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
-import MobileOnlyMessage from '../components/MobileOnlyMessage';
+import ModulePageLayout from '../components/ModulePageLayout';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 const features = [
@@ -22,11 +20,8 @@ const specs = [
 export default function CivilFlowPage() {
   usePageMeta('CivilFlow');
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
-      <Navbar />
-      <MobileOnlyMessage />
-      <main className="flex-grow pt-16">
-        <section className="relative w-full overflow-hidden border-b border-outline-variant" style={{ minHeight: 500, background: '#1a1c20' }}>
+    <ModulePageLayout title="CivilFlow" description="Diseño, análisis y optimización de redes hidráulicas, sanitarias y de gas. Integre flujos de trabajo de ingeniería de alta precisión directamente con modelos de terreno KML.">
+      <section className="relative w-full overflow-hidden border-b border-outline-variant" style={{ minHeight: 500, background: '#1a1c20' }}>
           <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, #111317 0%, rgba(17,19,23,0) 100%)' }} />
           <div className="relative z-10 px-6 lg:px-8 py-20 max-w-5xl mx-auto flex flex-col gap-6">
             <div className="flex items-center gap-3">
@@ -136,8 +131,6 @@ export default function CivilFlowPage() {
             </div>
           </div>
         </section>
-      </main>
-      <Footer />
-    </div>
+    </ModulePageLayout>
   );
 }

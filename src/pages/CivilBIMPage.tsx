@@ -1,8 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
-import MobileOnlyMessage from '../components/MobileOnlyMessage';
+import ModulePageLayout from '../components/ModulePageLayout';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 const features = [
@@ -21,11 +19,8 @@ export default function CivilBIMPage() {
   usePageMeta('BIM');
   const bimAccent = '#d946ef';
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
-      <Navbar />
-      <MobileOnlyMessage />
-      <main className="flex-grow pt-16 flex flex-col w-full">
-        <section className="relative w-full flex items-center border-b border-outline-variant overflow-hidden" style={{ minHeight: 600 }}>
+    <ModulePageLayout title="BIM" description="Integración total de modelos inteligentes en flujos de trabajo." mainClassName="flex flex-col w-full">
+      <section className="relative w-full flex items-center border-b border-outline-variant overflow-hidden" style={{ minHeight: 600 }}>
           <div className="absolute inset-0 z-0" style={{ opacity: 0.1, backgroundImage: 'radial-gradient(circle at 2px 2px, #849495 1px, transparent 0)', backgroundSize: '32px 32px' }} />
           <div className="w-full max-w-7xl px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 z-10 items-center py-20">
             <div className="flex flex-col gap-6">
@@ -139,8 +134,6 @@ export default function CivilBIMPage() {
             </div>
           </div>
         </section>
-      </main>
-      <Footer />
-    </div>
+    </ModulePageLayout>
   );
 }

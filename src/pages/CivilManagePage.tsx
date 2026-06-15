@@ -1,8 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
-import MobileOnlyMessage from '../components/MobileOnlyMessage';
+import ModulePageLayout from '../components/ModulePageLayout';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 const accent = '#f59e0b';
@@ -17,11 +15,8 @@ const features = [
 export default function CivilManagePage() {
   usePageMeta('Gestión');
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#111317', color: '#e2e2e8' }}>
-      <Navbar />
-      <MobileOnlyMessage />
-      <main className="flex-grow pt-16 flex flex-col relative z-10">
-        <section className="relative pt-24 pb-16 px-6 lg:px-8 overflow-hidden flex flex-col items-center justify-center text-center" style={{ minHeight: 600, backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
+    <ModulePageLayout title="Gestión" description="Gestión financiera y operativa optimizada para infraestructura crítica." mainClassName="flex flex-col relative z-10">
+      <section className="relative pt-24 pb-16 px-6 lg:px-8 overflow-hidden flex flex-col items-center justify-center text-center" style={{ minHeight: 600, backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
           <div className="absolute inset-0 pointer-events-none" style={{ background: `linear-gradient(to bottom, ${accent}0D, #111317)` }} />
           <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center gap-6">
             <div className="flex items-center justify-center w-16 h-16 border mb-4" style={{ background: '#282a2e', borderColor: '#3a494a', boxShadow: `0 0 15px ${accent}33` }}>
@@ -83,8 +78,6 @@ export default function CivilManagePage() {
             </div>
           </div>
         </section>
-      </main>
-      <Footer />
-    </div>
+    </ModulePageLayout>
   );
 }
