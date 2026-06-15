@@ -17,8 +17,8 @@ function WorkAreaSidebar({ tab, setTab }: WorkAreaSidebarProps) {
         >
           <span className="ntab-ico">
             {t.icoImg
-              ? <img src={t.icoImg} alt="" style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 2, objectFit: 'contain' }} />
-              : t.ico}
+              ? <img src={t.icoImg} alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} />
+              : <span style={{ fontSize: 18, lineHeight: 1 }}>{t.ico}</span>}
           </span>
           {t.l}
         </div>
