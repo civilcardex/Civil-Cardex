@@ -1,5 +1,6 @@
-import { useState, createContext, useContext, useEffect, type ReactNode } from "react";
+import { useState, createContext, useEffect, type ReactNode } from "react";
 import { loadFromStorage, saveToStorage } from "../services/storageService";
+import { createUseContext } from "./contextHelpers";
 
 export interface EPData {
   qac: string;
@@ -76,8 +77,4 @@ export function EPProvider({ children }: { children?: ReactNode }) {
   );
 }
 
-export function useEP() {
-  const ctx = useContext(EPContext);
-  if (!ctx) throw new Error("useEP must be used within EPProvider");
-  return ctx;
-}
+export const useEP = createUseContext(EPContext, 'useEP');
