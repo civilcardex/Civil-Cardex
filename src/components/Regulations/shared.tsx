@@ -9,9 +9,9 @@ export const h4 = {
   letterSpacing: "0.3px",
 };
 
-export function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children?: ReactNode; key?: any }) {
+export function TabBtn({ active, onClick, children, id }: { active: boolean; onClick: () => void; children?: ReactNode; key?: any; id?: string }) {
   return (
-    <button onClick={onClick}
+    <button id={id} onClick={onClick} role="tab" aria-selected={active}
       style={{
         flex: 1, padding: "14px 18px", borderRadius: "var(--r)",
         border: "1px solid", cursor: "pointer", fontSize: 15,
