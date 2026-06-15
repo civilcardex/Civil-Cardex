@@ -11,29 +11,7 @@ export function usePdfAutoSave(
   const [saveStatus, setSaveStatus] = useState("saved");
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Guarda solo los trazos en storage (sin sync externo).
-  // Se usa como respaldo rápido en beforeunload y en onDirty.
-  const saveTrazosToStorage = useCallback(() => {
-    const eng = engineRef.current;
-    if (!eng || !eng._dirty) return;
-    const id = eng._loadedPlanId || currentIdRef.current || 'work';
-    const key = `trazos_${id}`;
-    try {
-      const work = eng.saveWork() as any;
-      work.ts = Date.now();
-      saveToStorage(key, work);
-      if (id !== 'work') {
-        saveToStorage('last_tracos_id', id);
-        saveTrazosToDB(id, work);
-      }
-    } catch (_) {}
-  }, []);
-
-  const doSave = useCallback(() => {
-    const eng = engineRef.current;
-    if (!eng) return;
-    const id = eng._loadedPlanId || currentIdRef.current || 'work';
-    eng._dirty = false;
+  const performSave = useCallback((eng: any, id: string) => {
     try {
       const work = eng.saveWork() as any;
       work.ts = Date.now();
@@ -43,10 +21,25 @@ export function usePdfAutoSave(
         saveTrazosToDB(id, work);
       }
     } catch (_) {}
+  }, []);
+
+  const saveTrazosToStorage = useCallback(() => {
+    const eng = engineRef.current;
+    if (!eng || !eng._dirty) return;
+    const id = eng._loadedPlanId || currentIdRef.current || 'work';
+    performSave(eng, id);
+  }, [performSave]);
+
+  const doSave = useCallback(() => {
+    const eng = engineRef.current;
+    if (!eng) return;
+    const id = eng._loadedPlanId || currentIdRef.current || 'work';
+    eng._dirty = false;
+    performSave(eng, id);
     try { writeSanDrawingSync(plans); } catch (_) {}
     try { writeHydroDrawingSync(plans); } catch (_) {}
     setSaveStatus('saved');
-  }, [plans]);
+  }, [plans, performSave]);
 
   // Guardar de forma robusta al cerrar pestaña, ocultar ventana o recargar
   useEffect(() => {

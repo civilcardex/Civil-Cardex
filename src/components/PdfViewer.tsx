@@ -8,11 +8,13 @@ import { usePlans } from "../context/PlansContext";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync";
 import { loadFromStorage, saveToStorage, saveTrazosToDB, loadTrazosFromDB } from "../services/storageService";
 import AparatosPanel from "./FixturesPanel";
-import PdfViewerToolbar from "./PdfViewerToolbar";
+import PdfViewerToolbar from "./pdfViewer/PdfViewerToolbar";
 import PdfCanvas from "./pdfViewer/PdfCanvas";
 import TramoEditor, { DIAM_DEFAULT_BY_NET } from "./pdfViewer/TramoEditor";
 import PdfViewerNetworkBar from "./pdfViewer/PdfViewerNetworkBar";
 import { usePdfAutoSave } from "./pdfViewer/usePdfAutoSave";
+import { usePdfViewerEngine } from "./pdfViewer/PdfViewerEngineInit";
+import PdfViewerDrawnElements from "./pdfViewer/PdfViewerDrawnElements";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
@@ -20,7 +22,6 @@ const TIPOS_TRAMO = [
   { id: "ramal", label: "Ramal" },
   { id: "tributario", label: "Tributario" },
 ];
-
 
 
 interface PdfViewerProps {
@@ -39,7 +40,6 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   const planosCtx = usePlans();
   const plansRef = useRef(planosCtx.plans);
   plansRef.current = planosCtx.plans;
-  const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1);
   const [error, setError] = useState<string | null>(null);
@@ -97,7 +97,8 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   const [gasMatSel, setGasMatSel] = useState<Record<string, string>>({});
   const [pendSel, setPendSel] = useState<Record<string, number>>({});
   const [pendInput, setPendInput] = useState('');
-  const [engineReady, setEngineReady] = useState(false);
+  const [textOverlay, setTextOverlay] = useState<{ x: number; y: number; value: string; cb: (text: string) => void } | null>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
   const toolRef = useRef(tool);
   toolRef.current = tool;
   const activeNetRef = useRef(activeNet);
@@ -159,23 +160,15 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
     }
   }, [selElement]);
 
-  const loadingPlanRef = useRef(false);
-  const pdfRenderedRef = useRef(false);
-  useEffect(() => {
-    if (!engineRef.current) return;
-    if (loadingPlanRef.current) return;
-    const els = engineRef.current.getElementsByNet(activeNet);
-    if (els.length > 0 && selElement?.net !== activeNet) {
-      setSelElement(els[els.length - 1]);
-    } else if (els.length === 0) {
-      setSelElement(null);
-    }
-  }, [activeNet]);
+  const currentFile = files[activeIndex]?.file;
+  const currentId = files[activeIndex]?.id;
+  const currentIdRef = useRef(currentId);
+  currentIdRef.current = currentId;
 
-const currentFile = files[activeIndex]?.file;
-const currentId = files[activeIndex]?.id;
-const currentIdRef = useRef(currentId);
-currentIdRef.current = currentId;
+  useEffect(() => {
+    if (pageNumber < 1) return;
+    setPageNumber(1);
+  }, [currentId]);
 
   useEffect(() => {
     if (currentId == null) return;
@@ -185,10 +178,12 @@ currentIdRef.current = currentId;
     }
   }, [currentId, planos]);
 
-  // Carga trazos desde la BD y/o localStorage para el plan dado.
-  // Retorna true si se cargaron datos.
+  const cwRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const pdfCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
   const loadTrazosForPlan = useCallback(async (eng: PlanoEngine, resolvedId: string): Promise<boolean> => {
-    // 1. Obtener de localStorage primero de forma instantánea (síncrona)
     const tryLoad = (id: string): any => {
       const key = `trazos_${id}`;
       const saved = loadFromStorage(key, null);
@@ -204,7 +199,6 @@ currentIdRef.current = currentId;
       requestAnimationFrame(() => { eng.render(); });
     }
 
-    // 2. Consultar Supabase en segundo plano
     try {
       const dbData = await loadTrazosFromDB(resolvedId);
 
@@ -213,7 +207,6 @@ currentIdRef.current = currentId;
         const localTs = Number(localData?.ts || 0);
 
         if (dbTs > localTs || !localData) {
-          // La base de datos tiene datos más nuevos o no hay datos locales
           const workStr = typeof dbData === 'string' ? dbData : JSON.stringify(dbData);
           eng.loadWork(workStr);
           if (!localData || dbTs > localTs) {
@@ -222,17 +215,14 @@ currentIdRef.current = currentId;
           requestAnimationFrame(() => { eng.render(); });
           initiallyLoaded = true;
 
-          // Sincronizar estado React
           const loadedNet = eng.activeNet || activeNetRef.current || 'af';
           const sm = eng.scaleM;
           setActiveNet(loadedNet);
           if (sm != null) setScaleM(String(sm));
         } else if (localTs > dbTs && localData) {
-          // El caché local es más nuevo, sincronizar Supabase en segundo plano
           saveTrazosToDB(resolvedId, localData);
         }
       } else if (localData) {
-        // No hay datos en Supabase pero sí en local, subir local a Supabase
         saveTrazosToDB(resolvedId, localData);
       }
     } catch (e) {
@@ -242,18 +232,68 @@ currentIdRef.current = currentId;
     return initiallyLoaded;
   }, []);
 
+  const onDirtyHandler = useCallback((eng: PlanoEngine) => {
+    setDrawnElements(eng.getElementsByNet(activeNetRef.current || 'af'));
+    if (loadingPlanRef.current) return;
+    try {
+      const id = eng._loadedPlanId || currentIdRef.current || 'work';
+      if (id) {
+        const work = eng.saveWork() as any;
+        work.ts = Date.now();
+        saveToStorage(`trazos_${id}`, work);
+        if (id !== 'work') {
+          saveToStorage('last_tracos_id', id);
+          saveTrazosToDB(id, work);
+        }
+      }
+    } catch (_) {}
+    try { writeSanDrawingSync(plansRef.current); } catch (_) {}
+    try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
+  }, []);
+
+  const onRequestTextCb = useCallback((x: number, y: number, cb: (text: string) => void) => {
+    setTextOverlay({ x, y, value: '', cb });
+    setTimeout(() => textInputRef.current?.focus(), 50);
+  }, []);
+
+  const {
+    engineRef,
+    numPages,
+    engineReady,
+    renderPage,
+    mountId,
+    loadingPlanRef,
+  } = usePdfViewerEngine({
+    currentFile,
+    currentId,
+    currentIdRef,
+    activeNetRef,
+    cwRef,
+    drawCanvasRef,
+    pdfCanvasRef,
+    onStatus: setStatusMsg,
+    onDirty: onDirtyHandler,
+    onSelect: setSelElement,
+    onToolChange: setTool,
+    onRequestText: onRequestTextCb,
+    loadTrazosForPlan,
+    setActiveNet,
+    setScaleM,
+    setLoading,
+    setError,
+    scale,
+  });
+
   useEffect(() => {
     if (!engineRef.current || !engineReady) return;
     const eng = engineRef.current;
     const prevId = eng._loadedPlanId;
 
-    // 1. Guardar el plano ANTERIOR antes de cualquier cambio
     if (prevId && prevId !== currentId) {
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current);
         autoSaveTimerRef.current = null;
       }
-      // Solo guardar si NO estamos cargando y hay cambios sin guardar
       if (!loadingPlanRef.current && eng._dirty) {
         const work = eng.saveWork() as any;
         work.ts = Date.now();
@@ -262,26 +302,20 @@ currentIdRef.current = currentId;
       }
     }
 
-    // 2. Registrar el nuevo id ANTES de cargar para que onDirty
-    //    siempre use la clave correcta desde el primer trazo.
     const resolvedId = currentIdRef.current || currentId || '';
     if (!resolvedId) { loadingPlanRef.current = false; return; }
     eng._loadedPlanId = resolvedId;
 
-    // 3. Cargar los trazos del nuevo plano de forma asíncrona.
-    //    Si no hay datos en la clave principal, intentar con last_tracos_id.
     loadingPlanRef.current = true;
     (async () => {
       try {
         const loaded = await loadTrazosForPlan(eng, resolvedId);
-        // Si el usuario cambió de plan durante la carga asíncrona, descartar
         const currentRefId = currentIdRef.current || 'work';
         if (resolvedId !== currentRefId) { loadingPlanRef.current = false; return; }
 
         if (loaded) {
-          // Actualizar estado React con lo que cargó el engine.
-          const fallbackNet = activeNetworks && activeNetworks.size > 0 && !activeNetworks.has("af") 
-            ? Array.from(activeNetworks)[0] 
+          const fallbackNet = activeNetworks && activeNetworks.size > 0 && !activeNetworks.has("af")
+            ? Array.from(activeNetworks)[0]
             : (activeNetRef.current || 'af');
           const loadedNet = eng.activeNet || fallbackNet;
           const sm = eng.scaleM;
@@ -297,7 +331,7 @@ currentIdRef.current = currentId;
           eng.selId = null;
           eng.activeRamal = null;
           eng.activeArea = null;
-          eng.setActiveNet(activeNetRef.current); // Sincronizar red activa al limpiar el engine
+          eng.setActiveNet(activeNetRef.current);
           eng.render();
           loadingPlanRef.current = false;
         }
@@ -307,6 +341,17 @@ currentIdRef.current = currentId;
     try { writeSanDrawingSync(plansRef.current); } catch (_) {}
     try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
   }, [currentId, engineReady]);
+
+  useEffect(() => {
+    if (!engineRef.current) return;
+    if (loadingPlanRef.current) return;
+    const els = engineRef.current.getElementsByNet(activeNet);
+    if (els.length > 0 && selElement?.net !== activeNet) {
+      setSelElement(els[els.length - 1]);
+    } else if (els.length === 0) {
+      setSelElement(null);
+    }
+  }, [activeNet]);
 
   useEffect(() => {
     try { writeSanDrawingSync(plansRef.current); } catch (_) {}
@@ -354,19 +399,7 @@ currentIdRef.current = currentId;
     return excludeEquipment(NETS);
   }, [activeNetworks, liveActiveNets]);
 
-  const pdfDocRef = useRef<any>(null);
-  const pdfCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const drawCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const cwRef = useRef<HTMLDivElement | null>(null);
-  const engineRef = useRef<PlanoEngine | null>(null);
-  const mountId = useRef(0);
-  const renderTaskRef = useRef<any>(null);
-  const renderingRef = useRef(false);
-  const fileInputSaveRef = useRef<HTMLInputElement | null>(null);
-  const scaleRef = useRef(1);
-
-  const { saveStatus, setSaveStatus, doSave, saveTrazosToStorage, autoSaveTimerRef } = usePdfAutoSave(engineRef, currentIdRef, planosCtx.plans);
+  const { saveStatus, doSave, autoSaveTimerRef } = usePdfAutoSave(engineRef, currentIdRef, planosCtx.plans);
 
   const syncEngine = useCallback(() => {
     const eng = engineRef.current;
@@ -430,191 +463,18 @@ currentIdRef.current = currentId;
   }, [selElement, activeNet]);
 
   useEffect(() => {
-    if (!cwRef.current || !drawCanvasRef.current) return;
-    const cw = cwRef.current;
-    const canv = drawCanvasRef.current;
-    if (engineRef.current) engineRef.current.destroy();
-    const pdfWrap = pdfCanvasRef.current?.parentElement ?? undefined;
-    const eng = new PlanoEngine(cw, pdfWrap!, canv);
-    engineRef.current = eng;
-    const initialId = currentIdRef.current || currentId || '';
-    eng._loadedPlanId = initialId || null;
-    eng.onSelect((el) => setSelElement(el));
-    eng.onStatus((msg) => setStatusMsg(msg));
-    eng.onDirty(() => {
-      eng._dirty = true;
-      setDrawnElements(eng.getElementsByNet(activeNetRef.current || 'af'));
-      if (loadingPlanRef.current) return;
-      try {
-        const id = eng._loadedPlanId || currentIdRef.current || 'work';
-        if (id) {
-          const work = eng.saveWork() as any;
-          work.ts = Date.now();
-          saveToStorage(`trazos_${id}`, work);
-          if (id !== 'work') {
-            saveToStorage('last_tracos_id', id);
-            saveTrazosToDB(id, work);
-          }
-        }
-      } catch (_) {}
-      try { writeSanDrawingSync(plansRef.current); } catch (_) {}
-      try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
-    });
-    const origSetTool = eng.setTool.bind(eng);
-    eng.setTool = (t) => {
-      origSetTool(t);
-      setTool(t);
-    };
-    setEngineReady(true);
-    return () => {
-      try {
-        if (!loadingPlanRef.current && eng._dirty) {
-          const id = eng._loadedPlanId || currentIdRef.current || 'work';
-          const work = eng.saveWork() as any;
-          work.ts = Date.now();
-          saveToStorage(`trazos_${id}`, work);
-          if (id !== 'work') {
-            saveToStorage('last_tracos_id', id);
-            saveTrazosToDB(id, work);
-          }
-        }
-      } catch (e) { console.error('[CLEANUP] error', e); }
-      try { writeSanDrawingSync(plansRef.current); } catch (_) {}
-      try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
-      eng.setTool = origSetTool;
-      eng.destroy();
-      engineRef.current = null;
-      setEngineReady(false);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!currentFile) return;
-    mountId.current += 1;
-    const thisMount = mountId.current;
-    const reader = new FileReader();
-
-    reader.onload = async () => {
-      if (thisMount !== mountId.current) return;
-      try {
-        setLoading(true);
-        setError(null);
-        const buffer = reader.result as ArrayBuffer;
-        const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-        if (thisMount !== mountId.current) return;
-        pdfDocRef.current = pdf;
-        setNumPages(pdf.numPages);
-        setPageNumber(1);
-        setLoading(false);
-        await renderPage(1, scale, thisMount);
-      } catch (err) {
-        if (thisMount === mountId.current) {
-          console.error("Error cargando PDF:", err);
-          setError("Error cargando PDF");
-          setLoading(false);
-        }
-      }
-    };
-
-    reader.onerror = () => {
-      setError("No se pudo leer el archivo.");
-      setLoading(false);
-    };
-
-    reader.readAsArrayBuffer(currentFile);
-  }, [currentId]);
-
-  useEffect(() => {
-    if (!pdfDocRef.current) return;
-    mountId.current += 1;
-    renderPage(pageNumber, scale, mountId.current);
-  }, [scale]);
-
-  const renderPage = async (pageNum: number, sc: number, mountCheck: number) => {
-    if (renderingRef.current) return;
-    const pdf = pdfDocRef.current;
-    const pdfCanvas = pdfCanvasRef.current;
-    if (!pdf || !pdfCanvas) return;
-
-    if (renderTaskRef.current) {
-      try { renderTaskRef.current.cancel(); } catch (_) {}
-      try { await renderTaskRef.current.promise; } catch (_) {}
-      renderTaskRef.current = null;
+    const c = drawCanvasRef.current;
+    if (c) {
+      c.style.cursor = tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair';
     }
-    renderingRef.current = true;
-
-    const dpr = window.devicePixelRatio || 1;
-
-    try {
-      const page = await pdf.getPage(pageNum);
-      if (mountCheck && mountCheck !== mountId.current) return;
-      const viewport = page.getViewport({ scale: sc });
-      pdfCanvas.width = Math.floor(viewport.width * dpr);
-      pdfCanvas.height = Math.floor(viewport.height * dpr);
-      pdfCanvas.style.width = viewport.width + 'px';
-      pdfCanvas.style.height = viewport.height + 'px';
-      const ctx = pdfCanvas.getContext("2d")!;
-      ctx!.imageSmoothingEnabled = false;
-      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx!.clearRect(0, 0, viewport.width, viewport.height);
-      const task = page.render({ canvasContext: ctx, viewport });
-      renderTaskRef.current = task;
-      try {
-        await task.promise;
-      } catch (rerr) {
-        if ((rerr as any)?.name === 'RenderingCancelledException') { renderingRef.current = false; return; }
-        throw rerr;
-      }
-      renderTaskRef.current = null;
-
-      const drawCanvas = drawCanvasRef.current;
-      if (drawCanvas) {
-        drawCanvas.width = Math.floor(viewport.width * dpr);
-        drawCanvas.height = Math.floor(viewport.height * dpr);
-        drawCanvas.style.width = viewport.width + 'px';
-        drawCanvas.style.height = viewport.height + 'px';
-        const dctx = drawCanvas.getContext('2d');
-        dctx!.imageSmoothingEnabled = false;
-        dctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-        if (engineRef.current) {
-          const eng = engineRef.current;
-          eng.dpr = dpr;
-          eng.setPageSize(viewport.width, viewport.height);
-          eng.resizeCanvas(viewport.width, viewport.height);
-
-          // Después de que el PDF se renderizó y el canvas tiene dimensiones
-          // correctas, re-cargar trazos si el engine está vacío (caso: reabrir visor).
-          // Esto cubre la race condition donde loadWork corrió antes del resize.
-          const resolvedId = eng._loadedPlanId || currentIdRef.current || 'work';
-          if (eng.ramales.length === 0 && eng.bajantes.length === 0 && eng.dims.length === 0 && eng.textAnnots.length === 0 && eng.areas.length === 0) {
-            const loaded = await loadTrazosForPlan(eng, resolvedId);
-            if (loaded) {
-              const loadedNet = eng.activeNet || activeNetRef.current || 'af';
-              const sm = eng.scaleM;
-              setActiveNet(loadedNet);
-              if (sm != null) setScaleM(String(sm));
-              eng.render();
-            }
-          }
-          pdfRenderedRef.current = true;
-        }
-      }
-    } catch (err) {
-      if ((err as any)?.name === 'RenderingCancelledException') return;
-      if (mountCheck && mountCheck !== mountId.current) return;
-      console.error("Error renderizando pagina:", err);
-      setError(String(err));
-    } finally {
-      renderingRef.current = false;
-    }
-  };
+  }, [tool]);
 
   const goToPage = useCallback((target: number) => {
     if (target < 1 || target > numPages) return;
     setPageNumber(target);
     mountId.current += 1;
     renderPage(target, scale, mountId.current);
-  }, [numPages, scale]);
+  }, [numPages, scale, renderPage, mountId]);
 
   const handleUndo = useCallback(() => {
     if (engineRef.current) engineRef.current.undoLast();
@@ -677,6 +537,7 @@ currentIdRef.current = currentId;
     if (!engineRef.current || !selElement) return;
     engineRef.current.updateSelected({ [field]: value });
     setSelElement({ ...selElement, [field]: value });
+    engineRef.current.render();
   }, [selElement]);
 
   useEffect(() => {
@@ -688,18 +549,12 @@ currentIdRef.current = currentId;
         setPendSel(prev => ({ ...prev, [activeNet]: selElement.pendiente }));
         setPendInput(selElement.pendiente > 0 ? String(selElement.pendiente) : '');
       }
+      engineRef.current.render();
     } else if (!selElement) {
       const p = pendSel[activeNet];
       setPendInput(p !== undefined && p > 0 ? String(p) : '');
     }
   }, [selElement?.id, activeNet]);
-
-  useEffect(() => {
-    const c = drawCanvasRef.current;
-    if (c) {
-      c.style.cursor = tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair';
-    }
-  }, [tool]);
 
   const netObj = NETS.find(n => n.id === activeNet);
 
@@ -736,7 +591,7 @@ currentIdRef.current = currentId;
       {/* Main area: sidebar + canvas */}
       <div style={{flex:1,display:"flex",minHeight:0}}>
 
-      {/* Sidebar: only Herramientas + Acciones */}
+      {/* Sidebar: Herramientas + Acciones */}
       <div className="visor-sidebar" style={{
         width: 165, flexShrink: 0, display: "flex", flexDirection: "column",
         background: "#14161a", borderRight: "1px solid #3a494a",
@@ -752,76 +607,19 @@ currentIdRef.current = currentId;
           tool={tool}
           snapOn={snapOn}
           activeNet={activeNet}
+          currentFile={currentFile}
+          saveStatus={saveStatus}
           onSelectTool={setTool}
           onSnapToggle={() => setSnapOn(!snapOn)}
+          onFit={handleFit}
+          onSave={handleSave}
+          onUndo={handleUndo}
+          onClear={handleClear}
+          engineRef={engineRef}
+          currentIdRef={currentIdRef}
+          currentId={currentId}
+          plansRef={plansRef}
         />
-
-        <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Acciones</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <button onClick={handleFit} disabled={!currentFile}
-              style={{ ...accBtn, width: "100%", borderColor: "#10B98155", color: "#10B981",
-                opacity: !currentFile ? 0.4 : 1, cursor: !currentFile ? 'not-allowed' : 'pointer',
-              }}
-              title={currentFile ? "Ajustar PDF al visor" : "Carga un plano para poder ajustarlo"}>
-              <span style={{ fontSize: 14 }}>⛶</span>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, lineHeight: 1.1 }}>
-                <span style={{ fontSize: 10, fontWeight: 700 }}>Ajustar</span>
-                <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Encajar PDF al visor</span>
-              </div>
-            </button>
-            <button onClick={handleSave} style={{ ...accBtn, width: "100%" }} title="Guarda los trazados y cambios realizados en el plano para la red activa">
-              <span style={{ fontSize: 14 }}>💾</span>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 0, lineHeight: 1.1, flex: 1 }}>
-                <span style={{ fontSize: 10, fontWeight: 700, textAlign: "left" }}>Guardar</span>
-                <span style={{
-                  fontSize: 10, fontWeight: 600, textAlign: "left",
-                  color: saveStatus === 'saved' ? '#22c55e' : saveStatus === 'saving' ? '#3b82f6' : '#ef4444',
-                }}>
-                  {saveStatus === 'saved' ? '✔ Guardado' : saveStatus === 'saving' ? '⏳ Guardando...' : '⚠ Sin guardar'}
-                </span>
-              </div>
-            </button>
-            <button onClick={handleUndo} style={{ ...accBtn, width: "100%" }} title="Deshace el último elemento dibujado: ramal, bajante, área, cota o texto. (Ctrl+Z)">
-              <span style={{ fontSize: 14 }}>↩</span>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, lineHeight: 1.1 }}>
-                <span style={{ fontSize: 10, fontWeight: 700 }}>Deshacer</span>
-                <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Último trazo · Ctrl+Z</span>
-              </div>
-            </button>
-            <button onClick={handleClear} style={{ ...accBtn, width: "100%", borderColor: "rgba(255,180,171,.3)", color: "#ffb4ab" }} title="Eliminar todo el trazado de la red activa">
-              <span style={{ fontSize: 14 }}>🗑</span>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0, lineHeight: 1.1 }}>
-                <span style={{ fontSize: 10, fontWeight: 700 }}>Limpiar</span>
-                <span style={{ fontSize: 8, opacity: 0.7, fontWeight: 400 }}>Borrar trazado de red activa</span>
-              </div>
-            </button>
-          </div>
-        </div>
-        <div style={{ flex: 1 }} />
-        <div style={{padding:"6px 8px",borderTop:"1px solid #3a494a"}}>
-        <button onClick={()=>{
-          const eng = engineRef.current;
-          const key = `trazos_${currentIdRef.current || currentId || 'work'}`;
-          if (eng) {
-            const work = eng.saveWork();
-            saveToStorage(key, work);
-            try { writeSanDrawingSync(plansRef.current); } catch (_) {}
-            try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
-          }
-          window.location.href = '#/civilflowareatrabajo';
-        }}
-            style={{
-              padding: "8px", background: "rgba(211,47,47,.12)", border: "1px solid rgba(211,47,47,.3)", borderRadius: "3px",
-              color: "#ef5350", cursor: "pointer", fontFamily: "'Geist',monospace", fontWeight: 600,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", fontSize: 10,
-              transition:"all .15s",
-            }}
-            onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>)=>{e.currentTarget.style.background='rgba(211,47,47,.25)';e.currentTarget.style.borderColor='rgba(211,47,47,.5)'}}
-            onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>)=>{e.currentTarget.style.background='rgba(211,47,47,.12)';e.currentTarget.style.borderColor='rgba(211,47,47,.3)'}}>
-            <svg viewBox="0 0 22 22" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M9 3H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Cerrar dibujo
-          </button>
-        </div>
       </div>
 
       <PdfCanvas
@@ -839,6 +637,56 @@ currentIdRef.current = currentId;
         snapOn={snapOn}
         onSelectPlan={onSelectPlan}
       />
+
+      {/* Text input overlay */}
+      {textOverlay && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(17,19,23,0.5)',
+        }} onClick={() => { textOverlay.cb(''); setTextOverlay(null); }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: '#1a1c20', border: '2px solid #4D8FF7', borderRadius: 8,
+            padding: '16px 20px', boxShadow: '0 8px 32px rgba(77,143,247,0.25)',
+            display: 'flex', flexDirection: 'column', gap: 10, minWidth: 280,
+          }}>
+            <div style={{ fontSize: 11, color: '#849495', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1 }}>Texto</div>
+            <input
+              ref={textInputRef}
+              value={textOverlay.value}
+              onChange={e => setTextOverlay({ ...textOverlay, value: e.target.value })}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  textOverlay.cb(textOverlay.value);
+                  setTextOverlay(null);
+                } else if (e.key === 'Escape') {
+                  textOverlay.cb('');
+                  setTextOverlay(null);
+                }
+              }}
+              placeholder="Escribe el texto..."
+              style={{
+                width: '100%', padding: '8px 12px', background: '#0d0f12',
+                border: '1px solid #3a494a', borderRadius: 4,
+                color: '#e2e2e8', fontSize: 14, fontFamily: "'Geist',monospace",
+                outline: 'none',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => { textOverlay.cb(''); setTextOverlay(null); }} style={{
+                padding: '5px 14px', background: 'transparent', border: '1px solid #3a494a',
+                borderRadius: 4, color: '#849495', fontSize: 11, fontFamily: "'Geist',monospace",
+                cursor: 'pointer',
+              }}>Cancelar</button>
+              <button onClick={() => { textOverlay.cb(textOverlay.value); setTextOverlay(null); }} style={{
+                padding: '5px 14px', background: '#4D8FF7', border: '1px solid #4D8FF7',
+                borderRadius: 4, color: '#fff', fontSize: 11, fontFamily: "'Geist',monospace",
+                cursor: 'pointer', fontWeight: 600,
+              }}>Aceptar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Right sidebar: Piso, ¿Qué voy a dibujar?, Tramo, Escala */}
       <div className="visor-sidebar-right" style={{
@@ -1029,49 +877,12 @@ currentIdRef.current = currentId;
         <AparatosPanel activeNet={activeNet} selElement={selElement} />
         )}
 
-        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-            Trazos de red ({drawnElements.length})
-          </div>
-          {drawnElements.length===0 ? (
-            <div style={{fontSize:11,color:'#6b8cae',fontFamily:"'Geist',monospace",padding:'4px 0'}}>
-              Ningún trazo dibujado en esta red
-            </div>
-          ) : (
-            <div style={{display:'flex',flexDirection:'column',gap:3}}>
-              {drawnElements.map(el=>(
-                <div key={el.id}
-                  style={{
-                    padding:'6px 8px',background:selElement?.id===el.id?'#2563EB22':'#1a1c20',
-                    borderRadius:3,cursor:'pointer',border:`1px solid ${selElement?.id===el.id?'rgba(37,99,235,.4)':'#3a494a'}`,
-                    display:'flex',flexDirection:'column',gap:4,
-                  }}>
-                  <div style={{display:'flex',alignItems:'center',gap:4}} onClick={()=>{if(engineRef.current)engineRef.current.selectById(el.id);}}>
-                    <span style={{fontSize:11,color:el.tipo==='montante'?'#3B82F6':el.type==='bajante'?'#F04545':'#4D8FF7'}}>
-                      {el.tipo==='montante'?'⬆':el.type==='bajante'?'⬇':'╱'}
-                    </span>
-<span style={{fontSize:12,fontWeight:600,color:'#b9caca',fontFamily:"'Geist',monospace",flex:1}}>{el.tipo==='tributario'?((()=>{try{const p=drawnElements.find(x=>x.id===el.padre&&x.tipo==='ramal');return p?p.label:el.label;}catch(_){return el.label}})()):el.label}</span>
-              <span style={{fontSize:11,fontWeight:600,color:'#6b8cae',fontFamily:"'Geist',monospace",textTransform:'uppercase'}}>{(el.tipo==='ramal'?'ramal':el.tipo==='tributario'?el.label:el.tipo==='bajante'?'baj':el.tipo==='montante'?'mon':el.tipo)||''}</span>
-                    <button onClick={e=>{e.stopPropagation();if(engineRef.current){engineRef.current.selectById(el.id);engineRef.current.deleteSelected();}}}
-                      style={{padding:'3px 6px',background:'transparent',border:'1px solid #3a494a',borderRadius:2,color:'#ffb4ab',cursor:'pointer',fontSize:10,fontFamily:"'Geist',monospace",flexShrink:0}}>✕</button>
-                  </div>
-                  <div style={{
-                    display:'flex',flexWrap:'wrap',gap:'2px 8px',fontSize:9,
-                    color:'#6b8cae',fontFamily:"'Geist',monospace",paddingLeft:17
-                  }}>
-                    <span>L={typeof el.totalL==='number'?el.totalL.toFixed(1):el.totalL}m</span>
-                    {el.type !== 'bajante' && <span>· {el.segs} {el.segs === 1 ? 'seg' : 'segs'}</span>}
-                    {(el.pendiente !== undefined && el.pendiente !== null && el.pendiente !== 0 && (activeNet === 'san' || activeNet === 'll')) && (
-                      <span>· S={el.pendiente}%</span>
-                    )}
-                    {el.diametro && <span>· Ø {el.diametro}</span>}
-                    {el.piso && <span>· {el.piso}</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <PdfViewerDrawnElements
+          drawnElements={drawnElements}
+          activeNet={activeNet}
+          selElement={selElement}
+          engineRef={engineRef}
+        />
 
         <div style={{flex:1}}/>
       </div>
@@ -1079,34 +890,4 @@ currentIdRef.current = currentId;
     </div>
     </div>
   );
-}
-
-const iconBtn = {
-  padding: "5px 6px", background: "#1e2024", border: "1px solid #3a494a",
-  borderRadius: "4px", color: "#b9caca", cursor: "pointer", fontSize: 16,
-  fontFamily: "'Geist',monospace", display: "flex", alignItems: "center", justifyContent: "center",
-};
-const accBtn = {
-  padding: "6px 8px", background: "#1e2024", border: "1px solid #3a494a",
-  borderRadius: "4px", color: "#b9caca", cursor: "pointer",
-  fontFamily: "'Geist',monospace", display: "flex", alignItems: "center", gap: 6,
-  transition: "all .12s",
-};
-const smBtn = {
-  padding: "3px 8px", background: "#1e2024", border: "1px solid #3a494a",
-  borderRadius: "4px", color: "#b9caca", cursor: "pointer", fontSize: 10,
-  fontFamily: "'Geist',monospace",
-};
-const smInput = {
-  padding: "3px 6px", background: "#1e2024", border: "1px solid #3a494a",
-  borderRadius: 4, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", textAlign: "center",
-};
-
-function navBtnSm(dis: boolean): React.CSSProperties {
-  return {
-    padding: "3px 8px", background: dis ? "#1e2024" : "#282a2e",
-    border: "1px solid #3a494a", borderRadius: "3px",
-    color: dis ? "#849495" : "#b9caca", cursor: dis ? "not-allowed" : "pointer",
-    opacity: dis ? 0.5 : 1, fontSize: 11, fontFamily: "'Geist',monospace",
-  };
 }

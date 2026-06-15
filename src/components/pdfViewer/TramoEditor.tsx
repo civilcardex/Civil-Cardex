@@ -167,8 +167,23 @@ export default function TramoEditor({
                   </div>
                 )}
                 {activeNet === 'san' && (
-                  <div>
-                    <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Ramales asociados</div>
+                  <>
+                    <div>
+                      <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Dirección</div>
+                      <div style={{ display: 'flex', gap: 3 }}>
+                        {([['sube','↑ Sube'],['baja','↓ Baja'],['mantiene','— Mantiene']] as const).map(([val, lbl]) => (
+                          <button key={val} onClick={() => handleUpdateSel('direccion', selElement.direccion === val ? undefined : val)} style={{
+                            flex: 1, padding: '4px 6px', fontSize: 10, fontFamily: "'Geist',monospace", borderRadius: 3,
+                            border: `1px solid ${selElement.direccion === val ? '#F5A623' : '#3a494a'}`,
+                            background: selElement.direccion === val ? 'rgba(245,166,35,.15)' : '#1e2024',
+                            color: selElement.direccion === val ? '#F5A623' : '#849495',
+                            cursor: 'pointer', fontWeight: selElement.direccion === val ? 600 : 400,
+                          }}>{lbl}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Ramales asociados</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 }}>
                       {(() => {
                         const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === 'san' && r.tipo !== 'tributario');
@@ -191,6 +206,7 @@ export default function TramoEditor({
                       })()}
                     </div>
                   </div>
+                  </>
                 )}
               </div>
             </div>
