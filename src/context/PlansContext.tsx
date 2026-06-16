@@ -4,8 +4,8 @@ import { storePDF, loadPDF, deletePDF } from '../services/idbStorage';
 import { PLANS_META_KEY } from '../constants/storage-keys';
 import { createUseContext } from './contextHelpers';
 
-interface PlanMeta { id: number; name: string; nivel: number | null; scale: number; status: string }
-interface PlanItem { id: number; file: File; name: string; nivel: number | null; scale: number; status: string }
+interface PlanMeta { id: number; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null }
+interface PlanItem { id: number; file: File; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null }
 interface PlansContextValue {
   plans: PlanItem[];
   error: string | null;
@@ -20,7 +20,7 @@ interface PlansContextValue {
 const PlansContext = createContext<PlansContextValue | null>(null);
 
 function persistMeta(plans: PlanItem[]) {
-  const meta: PlanMeta[] = plans.map(p => ({ id: p.id, name: p.name, nivel: p.nivel, scale: p.scale, status: p.status }));
+  const meta: PlanMeta[] = plans.map(p => ({ id: p.id, name: p.name, nivel: p.nivel, scale: p.scale, status: p.status, origen: p.origen }));
   if (meta.length === 0) {
     removeFromStorage(PLANS_META_KEY);
   } else {
@@ -45,7 +45,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       for (const m of meta) {
         const file = await loadPDF(m.id);
         if (file) {
-          restored.push({ id: m.id, file, name: file.name, nivel: m.nivel, scale: m.scale, status: m.status });
+          restored.push({ id: m.id, file, name: file.name, nivel: m.nivel, scale: m.scale, status: m.status, origen: m.origen });
         }
       }
       if (restored.length > 0) setPlans(restored);
@@ -64,7 +64,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       const isPdf = f.type === 'application/pdf' || f.name?.toLowerCase().endsWith('.pdf');
       if (isPdf) {
         const id = Date.now() + Math.random();
-        pdfs.push({ id, file: f, name: f.name, nivel: null, scale: 100, status: 'pending' });
+        pdfs.push({ id, file: f, name: f.name, nivel: null, scale: 100, status: 'pending', origen: null });
         storePDF(id, f).catch(() => {});
       }
     }

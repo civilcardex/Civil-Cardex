@@ -1,4 +1,6 @@
 import { useState, useRef, useCallback } from "react";
+import { saveTrazosToDB, loadFromStorage, saveToStorage } from "../../services/storageService";
+import { TRAZOS_PREFIX } from "../../constants/storage-keys";
 import { REQ_ITEMS, pisoLbl } from "../../constants";
 import EmptyState from "../shared/EmptyState";
 import PlanoConfigurator from "./PlanoConfigurator";
@@ -29,7 +31,23 @@ export default function PlanosTab({ state }: PlanosTabProps) {
   } = state;
 
   const [calibrating, setCalibrating] = useState(false);
-  const [calData, setCalData] = useState<Record<number, CalibrationData>>({});
+  const [calData, setCalData] = useState<Record<number, CalibrationData>>(() => {
+    const initial: Record<number, CalibrationData> = {};
+    if (plans) {
+      for (const p of plans) {
+        if (p.origen && p.scale) {
+          initial[p.id] = {
+            origen: p.origen,
+            scaleM: p.scale / 100,
+            factorX: null,
+            factorY: null,
+            calGlobal: null,
+          };
+        }
+      }
+    }
+    return initial;
+  });
 
   const isCalibrated = useCallback((planId: number) => {
     const cd = calData[planId];
@@ -49,8 +67,22 @@ export default function PlanosTab({ state }: PlanosTabProps) {
       calGlobal: config.calGlobal,
       fecha: new Date().toLocaleString('es-CO'),
     };
-    if (config.scaleM) {
-      updatePlan(config.planId, { scale: Math.round(config.scaleM * 100) });
+    updatePlan(config.planId, {
+      scale: config.scaleM ? Math.round(config.scaleM * 100) : 100,
+      origen: config.origen,
+    });
+
+    try {
+      const trazosKey = TRAZOS_PREFIX + config.planId;
+      const data = loadFromStorage<any>(trazosKey, {});
+      data.origen = config.origen;
+      if (config.scaleM) {
+        data.scaleM = config.scaleM;
+      }
+      saveToStorage(trazosKey, data);
+      saveTrazosToDB(String(config.planId), data).catch(e => console.error('saveTrazosToDB error:', e));
+    } catch (e) {
+      console.error('Error syncing calibration to Supabase:', e);
     }
   };
 
