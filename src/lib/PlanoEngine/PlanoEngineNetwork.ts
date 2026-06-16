@@ -76,6 +76,9 @@ export function setNetLocked(engine: IPlanoEngineCore, netId: string, locked: bo
 export function clearNet(engine: IPlanoEngineCore, netId: string): void {
   engine.ramales = engine.ramales.filter(r => r.net !== netId);
   engine.bajantes = engine.bajantes.filter(b => b.net !== netId);
+  engine.areas = engine.areas.filter(a => a.net !== netId);
+  if (engine.textAnnots) engine.textAnnots.length = 0;
+  if (engine.dims) engine.dims.length = 0;
   engine._netCounts[netId] = { ramal: 0, tributario: 0 };
   engine.activeRamal = null;
   if (engine.selId) {

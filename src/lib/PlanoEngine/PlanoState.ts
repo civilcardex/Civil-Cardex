@@ -149,6 +149,7 @@ export interface PlanoNetCounts {
 export type PlanoElement = PlanoRamal | PlanoBajante | PlanoArea | PlanoTextAnnotation | PlanoDimension;
 
 export interface PlanoActiveRamal {
+  id?: string;
   net: string;
   tipo: string;
   padre: string | null;

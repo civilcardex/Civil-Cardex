@@ -66,21 +66,31 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
       a._labelBox = null;
     }
 
-    if (sel) {
-      const arrowR = 12;
-      const ox = lx.x + 20;
-      ctx.fillStyle = '#FFEB3B';
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1.5;
-      ctx.shadowColor = '#000';
-      ctx.shadowBlur = 6;
-      ctx.beginPath();
-      ctx.moveTo(ox - arrowR, lx.y);
-      ctx.lineTo(ox, lx.y - arrowR * 0.5);
-      ctx.lineTo(ox, lx.y + arrowR * 0.5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+    if (sel && pts.length >= 2) {
+      const firstC = pts[0];
+      const secondC = pts[1];
+      const adx = secondC.x - firstC.x, ady = secondC.y - firstC.y;
+      const alen = Math.hypot(adx, ady);
+      if (alen > 2) {
+        const unx = adx / alen, uny = ady / alen;
+        const arrowR = 18;
+        const cx = firstC.x - unx * arrowR * 0.3;
+        const cy = firstC.y - uny * arrowR * 0.3;
+        ctx.save();
+        ctx.fillStyle = '#FFEB3B';
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1.5;
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.moveTo(cx + unx * arrowR, cy + uny * arrowR);
+        ctx.lineTo(cx + uny * arrowR * 0.5, cy - unx * arrowR * 0.5);
+        ctx.lineTo(cx - uny * arrowR * 0.5, cy + unx * arrowR * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
     }
 
     ctx.restore();

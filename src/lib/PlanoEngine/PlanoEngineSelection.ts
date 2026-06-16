@@ -6,8 +6,8 @@ import type {
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoEngineTypes';
 import { NETS } from './PlanoState';
-import { pointInPoly, pointInLabelBox, pointToSegmentDist } from './HitTester';
-import { _midpoint } from './PlanoEngineDrawing';
+import { pointInPoly, pointInLabelBox, pointToSegmentDist, distanceToRamal } from './HitTester';
+import { _midpoint, calculateRamalLength } from './PlanoEngineDrawing';
 
 export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number): void {
   let foundTxt: PlanoTextAnnotation | null = null;
@@ -45,12 +45,8 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number): void
       const d = Math.hypot(cx - r._labelBox.cx, cy - r._labelBox.cy);
       if (d < minD) { minD = d; found = r; }
     }
-    for (let i = 0; i < r.pts.length - 1; i++) {
-      const [x1, y1] = r.pts[i], [x2, y2] = r.pts[i + 1];
-      const c1 = engine.toCvs(x1, y1), c2 = engine.toCvs(x2, y2);
-      const d = pointToSegmentDist(cx, cy, c1.x, c1.y, c2.x, c2.y);
-      if (d < minD) { minD = d; found = r; }
-    }
+    const d = distanceToRamal(cx, cy, r.pts, (x, y) => engine.toCvs(x, y), engine.mm2cvs(3));
+    if (d < minD) { minD = d; found = r; }
   });
   engine.selId = found ? (found as any).id : null;
 
@@ -411,14 +407,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     if (r) {
       const p = engine.toPlane(x, y);
       (r as any).pts[engine.ptDrag.ptIdx] = [p.x, p.y];
-      (r as any).totalL = 0;
-      for (let i = 0; i < (r as any).pts.length - 1; i++) {
-        (r as any).totalL += engine.pxToM(Math.hypot(
-          (r as any).pts[i + 1][0] - (r as any).pts[i][0],
-          (r as any).pts[i + 1][1] - (r as any).pts[i][1],
-        ));
-      }
-      (r as any).totalL = +(r as any).totalL.toFixed(3);
+      (r as any).totalL = calculateRamalLength((r as any).pts, engine);
       const [mx, my] = _midpoint((r as any).pts);
       (r as any).labelX = mx;
       (r as any).labelY = my;

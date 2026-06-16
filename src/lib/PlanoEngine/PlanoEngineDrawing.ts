@@ -120,6 +120,30 @@ export function setTool(engine: IPlanoEngineCore, t: ToolType): void {
   engine._emitStatus(_statusMsg(engine));
 }
 
+export function calculateRamalLength(pts: number[][], engine: IPlanoEngineCore): number {
+  let len = 0;
+  const segments: Array<[number, number, number, number]> = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const x1 = pts[i][0], y1 = pts[i][1];
+    const x2 = pts[i + 1][0], y2 = pts[i + 1][1];
+    
+    let isBacktrack = false;
+    for (const [sx1, sy1, sx2, sy2] of segments) {
+      const distStart = Math.hypot(x1 - sx2, y1 - sy2);
+      const distEnd = Math.hypot(x2 - sx1, y2 - sy1);
+      if (distStart < 0.1 && distEnd < 0.1) {
+        isBacktrack = true;
+        break;
+      }
+    }
+    if (isBacktrack) continue;
+    
+    segments.push([x1, y1, x2, y2]);
+    len += engine.pxToM(Math.hypot(x2 - x1, y2 - y1));
+  }
+  return +len.toFixed(3);
+}
+
 export function finishRamal(engine: IPlanoEngineCore): void {
   if (!engine.activeRamal || engine.activeRamal.pts.length < 1) return;
   if (engine.activeRamal.pts.length < 2) {
@@ -127,6 +151,20 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     engine._emitStatus(_statusMsg(engine));
     engine.render();
     return;
+  }
+  if (engine.activeRamal.id) {
+    const existing = engine.ramales.find(r => r.id === engine.activeRamal!.id);
+    if (existing) {
+      existing.pts = engine.activeRamal.pts;
+      existing.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
+      engine.activeRamal = null;
+      engine.selId = existing.id;
+      engine._emitSelect(existing);
+      engine._emitStatus(_statusMsg(engine));
+      engine.render();
+      engine._markDirty();
+      return;
+    }
   }
   const [mx, my] = _midpoint(engine.activeRamal.pts);
   const def = engine._ramalDefaults || { material: '', diametro: '', pendiente: 0 };
@@ -154,7 +192,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     tipo: engine.activeRamal!.tipo,
     padre: engine.activeRamal!.padre || null,
     pts: engine.activeRamal!.pts,
-    totalL: engine.activeRamal!.totalL,
+    totalL: calculateRamalLength(engine.activeRamal!.pts, engine),
     label: _nextLabel(engine),
     ini: '', fin: '', piso: engine.nivelActual?.n ?? '', dz: '', uc: 0,
     labelX: labelX, labelY: labelY,
@@ -298,6 +336,14 @@ function tribSnapAngle(x0: number, y0: number, x1: number, y1: number, net: stri
   return { x: x0 + dist * Math.cos(sr), y: y0 + dist * Math.sin(sr) };
 }
 
+export function getBacktrackPts(pts: number[][], targetIdx: number): number[][] {
+  const backtrack: number[][] = [];
+  for (let j = pts.length - 2; j >= targetIdx; j--) {
+    backtrack.push([pts[j][0], pts[j][1]]);
+  }
+  return [...pts, ...backtrack];
+}
+
 export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number): void {
   let pt: { x: number; y: number } = { x: px, y: py };
   if (engine.tipoTramo === 'tributario' && !engine.padreTributario) {
@@ -305,6 +351,105 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     return;
   }
   if (!engine.activeRamal) {
+    let foundVertex: { r: any; idx: number } | null = null;
+    let bestDist = Infinity;
+    const activeNetsRamales = engine.ramales.filter((r: any) => r.net === engine.activeNet && r.pts.length >= 2);
+
+    for (const r of activeNetsRamales) {
+      for (let i = 0; i < r.pts.length; i++) {
+        let thresh = 12;
+        if (i > 0 && i < r.pts.length - 1) {
+          const ptA = r.pts[i - 1];
+          const ptB = r.pts[i];
+          const ptC = r.pts[i + 1];
+          const ax = ptB[0] - ptA[0], ay = ptB[1] - ptA[1];
+          const bx = ptC[0] - ptB[0], by = ptC[1] - ptB[1];
+          const lenA = Math.hypot(ax, ay), lenB = Math.hypot(bx, by);
+          if (lenA > 0 && lenB > 0) {
+            const cosAngle = (-ax * bx - ay * by) / (lenA * lenB);
+            if (Math.abs(cosAngle) < 0.05) {
+              thresh = 18; // Increase snap tolerance for elbow corners
+            }
+          }
+        }
+
+        const ptCvs = engine.toCvs(r.pts[i][0], r.pts[i][1]);
+        const clickCvs = engine.toCvs(px, py);
+        const dist = Math.hypot(clickCvs.x - ptCvs.x, clickCvs.y - ptCvs.y);
+        if (dist < thresh && dist < bestDist) {
+          bestDist = dist;
+          foundVertex = { r, idx: i };
+        }
+      }
+    }
+
+    if (foundVertex) {
+      const { r, idx } = foundVertex;
+      const finalPts = getBacktrackPts(r.pts, idx);
+
+      engine.activeRamal = {
+        id: r.id,
+        net: r.net,
+        tipo: r.tipo,
+        padre: r.padre,
+        pts: finalPts,
+        totalL: r.totalL,
+      };
+      engine._emitStatus('Dibujando derivación sobre ramal existente...');
+      engine.render();
+      return;
+    }
+
+    // If no vertex clicked, check segment bodies
+    let foundSegment: { r: any; segIdx: number; proj: [number, number] } | null = null;
+    let minSegDist = 12; // 12px threshold in canvas pixels
+
+    for (const r of activeNetsRamales) {
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const A = r.pts[i];
+        const B = r.pts[i + 1];
+        const dx = B[0] - A[0], dy = B[1] - A[1];
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq < 0.001) continue;
+
+        let t = ((px - A[0]) * dx + (py - A[1]) * dy) / lenSq;
+        t = Math.max(0, Math.min(1, t));
+        const projX = A[0] + t * dx;
+        const projY = A[1] + t * dy;
+
+        const projCvs = engine.toCvs(projX, projY);
+        const clickCvs = engine.toCvs(px, py);
+        const dist = Math.hypot(clickCvs.x - projCvs.x, clickCvs.y - projCvs.y);
+
+        if (dist < minSegDist) {
+          minSegDist = dist;
+          foundSegment = { r, segIdx: i, proj: [projX, projY] };
+        }
+      }
+    }
+
+    if (foundSegment) {
+      const { r, segIdx, proj } = foundSegment;
+      const Q = [
+        ...r.pts.slice(0, segIdx + 1),
+        proj,
+        ...r.pts.slice(segIdx + 1)
+      ];
+      const finalPts = getBacktrackPts(Q, segIdx + 1);
+
+      engine.activeRamal = {
+        id: r.id,
+        net: r.net,
+        tipo: r.tipo,
+        padre: r.padre,
+        pts: finalPts,
+        totalL: r.totalL,
+      };
+      engine._emitStatus('Dibujando derivación sobre ramal existente...');
+      engine.render();
+      return;
+    }
+
     if (engine.tipoTramo === 'tributario' && engine.padreTributario) {
       const padre = engine.ramales.find((r: any) => r.id === engine.padreTributario);
       if (padre) {
@@ -327,8 +472,8 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     const distFirst = Math.hypot(pt.x - first[0], pt.y - first[1]);
     const SNAP_CLOSE = 12 / engine.zoom;
     if (engine.activeRamal.pts.length >= 3 && distFirst < SNAP_CLOSE) {
-      engine.activeRamal.totalL = +(engine.activeRamal.totalL + engine.pxToM(Math.hypot(first[0] - last[0], first[1] - last[1]))).toFixed(3);
       engine.activeRamal.pts.push([first[0], first[1]]);
+      engine.activeRamal.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
       finishRamal(engine);
       return;
     }
@@ -348,9 +493,8 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     }
     const sp = engine.snapToExisting(pt.x, pt.y);
     if (sp) pt = sp;
-    const segPx = Math.hypot(pt.x - last[0], pt.y - last[1]);
-    engine.activeRamal.totalL = +(engine.activeRamal.totalL + engine.pxToM(segPx)).toFixed(3);
     engine.activeRamal.pts.push([pt.x, pt.y]);
+    engine.activeRamal.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
   }
   engine._emitStatus(_statusMsg(engine));
   engine.render();
@@ -462,7 +606,10 @@ export function handleDeleteElementDown(engine: IPlanoEngineCore, cx: number, cy
   engine.selectAt(cx, cy);
   const sel = engine.getSelected() as { id: string; pts?: number[][] } | null;
   if (!sel) { engine._emitStatus('No se encontró ningún elemento'); return; }
-  if ((sel as any).tipo === 'bajante' || (sel as any).tipo === 'montante' || (sel as any).tipo === 'area' || sel.id?.startsWith('AR') || sel.id?.startsWith('BAJ') || sel.id?.startsWith('MON')) {
+  const id = sel.id || '';
+  const tipo = (sel as any).tipo;
+  const isText = engine.textAnnots.some((t: any) => t.id === id);
+  if (tipo === 'bajante' || tipo === 'montante' || tipo === 'area' || id.startsWith('AR') || id.startsWith('BAJ') || id.startsWith('MON') || isText || id.startsWith('DIM')) {
     engine.deleteSelected();
     engine._emitSelect(null);
     engine.selId = null;
@@ -470,7 +617,7 @@ export function handleDeleteElementDown(engine: IPlanoEngineCore, cx: number, cy
   } else {
     engine.selId = null;
     engine._emitSelect(null);
-    engine._emitStatus('Solo permite eliminar bajantes, montantes y áreas');
+    engine._emitStatus('Elemento no eliminable');
   }
 }
 

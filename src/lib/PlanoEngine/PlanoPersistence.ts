@@ -38,15 +38,6 @@ export function serializeWork(engine: {
   };
 }
 
-export function deserializeWork(json: string): PlanoWorkData | null {
-  try {
-    const d = JSON.parse(json) as PlanoWorkData;
-    return d;
-  } catch (e) {
-    console.error('PlanoEngine: Error deserializing work:', e);
-    return null;
-  }
-}
 
 export function applyWorkData(
   engine: {

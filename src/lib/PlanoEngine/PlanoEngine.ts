@@ -16,7 +16,7 @@ import {
   renderDims, renderTexts, renderAreas, renderActiveArea,
   renderRamales, renderBajantes, renderGhosts, renderDimGhost, renderActiveRamal,
 } from './renderers';
-import { pointInPoly, pointInLabelBox, pointToSegmentDist, snapToSegment } from './HitTester';
+import { snapToSegment } from './HitTester';
 import { serializeWork, applyWorkData } from './PlanoPersistence';
 import { setupCanvasEvents, teardownCanvasEvents, getCanvasPosition, wrapTouch } from './PlanoEventHandler';
 import {
@@ -176,7 +176,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _lockedNets: Set<string>;
   _loadedPlanId: string | null;
   _onDirtyCb: DirtyCallback | null;
-  _segmentDeletePending: boolean;
   _lastMouseCvs: Point;
 
   _netCounts: Record<string, PlanoNetCounts>;
@@ -251,7 +250,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._lockedNets = new Set();
     this._loadedPlanId = null;
     this._onDirtyCb = null;
-    this._segmentDeletePending = false;
     this._lastMouseCvs = { x: 0, y: 0 };
 
     this._netCounts = {};
@@ -349,12 +347,30 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   snapToExisting(x: number, y: number): Point | null {
-    const THRESH = 16 / this.zoom;
-    let best: Point | null = null, minD = THRESH;
+    let best: Point | null = null;
+    let minD = 16 / this.zoom;
     this.ramales.forEach(r => {
-      r.pts.forEach(([rx, ry]) => {
+      r.pts.forEach(([rx, ry], idx) => {
+        let thresh = 16 / this.zoom;
+        if (idx > 0 && idx < r.pts.length - 1) {
+          const ptA = r.pts[idx - 1];
+          const ptB = r.pts[idx];
+          const ptC = r.pts[idx + 1];
+          const ax = ptB[0] - ptA[0], ay = ptB[1] - ptA[1];
+          const bx = ptC[0] - ptB[0], by = ptC[1] - ptB[1];
+          const lenA = Math.hypot(ax, ay), lenB = Math.hypot(bx, by);
+          if (lenA > 0 && lenB > 0) {
+            const cosAngle = (-ax * bx - ay * by) / (lenA * lenB);
+            if (Math.abs(cosAngle) < 0.05) {
+              thresh = 24 / this.zoom;
+            }
+          }
+        }
         const d = Math.hypot(x - rx, y - ry);
-        if (d < minD) { minD = d; best = { x: rx, y: ry }; }
+        if (d < thresh && (!best || d < minD)) {
+          minD = d;
+          best = { x: rx, y: ry };
+        }
       });
       for (let i = 0; i < r.pts.length - 1; i++) {
         const [x1, y1] = r.pts[i], [x2, y2] = r.pts[i + 1];
@@ -378,18 +394,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
     const padre = this.ramales.find(r => r.id === this.padreTributario);
     if (!padre) return null;
     return this._snapToSegment(x, y, padre.pts, 20 / this.zoom);
-  }
-
-  _pointInPoly(px: number, py: number, cvsPts: Point[]): boolean {
-    return pointInPoly(px, py, cvsPts);
-  }
-
-  _pointInLabelBox(px: number, py: number, box: { cx: number; cy: number; w: number; h: number; angle: number; corners?: Point[] }): boolean {
-    return pointInLabelBox(px, py, box);
-  }
-
-  _ptSegDist(px: number, py: number, a: [number, number], b: [number, number]): number {
-    return pointToSegmentDist(px, py, a[0], a[1], b[0], b[1]);
   }
 
   _wrapTouch(fn: (e: TouchEvent) => void): (e: TouchEvent) => void {
@@ -619,7 +623,16 @@ export default class PlanoEngine implements IPlanoEngineCore {
       if (this.activeRamal) { this.cancelRamal(); e.preventDefault(); }
       else if (this.activeArea) { this.cancelArea(); e.preventDefault(); }
       else if (this._dimStart) { this._dimStart = null; this.render(); e.preventDefault(); }
-      else { this.selId = null; this._emitSelect(null); this.render(); }
+      else {
+        if (this.tool !== 'sel') {
+          this.setTool('sel');
+          e.preventDefault();
+        } else {
+          this.selId = null;
+          this._emitSelect(null);
+          this.render();
+        }
+      }
     }
     else if (e.ctrlKey && k === 'z') { this.undoLast(); e.preventDefault(); }
     else if (e.ctrlKey && k === 's') { e.preventDefault(); }

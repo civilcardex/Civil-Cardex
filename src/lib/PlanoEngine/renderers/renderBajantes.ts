@@ -9,9 +9,9 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     const col = net ? net.col : '#e2e2e8';
     const c = engine.toCvs(b.x, b.y);
     const sel = b.id === engine.selId;
-    const r = 14 * engine.zoom;
+    const r = Math.max(6, 6 * engine.zoom);
     const angle = (b.labelAngle || 0) * Math.PI / 180;
-    b._circ = { x: c.x, y: c.y, r: 50 };
+    b._circ = { x: c.x, y: c.y, r: Math.max(50, r + 10) };
 
     if (b.recibeDeIds?.length) {
       b.recibeDeIds.forEach((rid: string) => {
@@ -58,11 +58,19 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = b.tipo === 'bajante' ? '#F04545' : '#3B82F6';
-    ctx.lineWidth = sel ? 3 : 2;
+    ctx.lineWidth = sel ? 2.5 : 1.5;
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.stroke();
-    if (b.tipo === 'bajante') {
+
+    if (b.net === 'san' && b.direccion) {
+      if (b.direccion === 'sube') {
+        ctx.fillStyle = b.tipo === 'bajante' ? '#F04545' : '#3B82F6';
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (b.tipo === 'bajante') {
       const aS = r * 0.7;
       ctx.strokeStyle = '#F04545';
       ctx.lineWidth = r * 0.15;
@@ -179,13 +187,13 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const gx = b.x + (disp ? disp.dx : 0);
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
-    const r = 14 * engine.zoom;
-    b._ghost = { x: c.x, y: c.y, r: 40 * engine.zoom };
+    const r = Math.max(5, 5 * engine.zoom);
+    b._ghost = { x: c.x, y: c.y, r: Math.max(40, r + 10) };
 
     ctx.save();
     ctx.globalAlpha = 0.35;
     ctx.strokeStyle = col;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.setLineDash([5, 4]);
     ctx.beginPath();
     ctx.arc(c.x, c.y, r, 0, Math.PI * 2);

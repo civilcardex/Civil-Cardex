@@ -64,3 +64,141 @@ export function snapToSegment(x: number, y: number, pts: number[][], threshold: 
   }
   return best;
 }
+
+export function distanceToRamal(
+  cx: number,
+  cy: number,
+  pts: number[][],
+  toCvs: (px: number, py: number) => { x: number; y: number },
+  rad: number
+): number {
+  if (pts.length < 2) return Infinity;
+
+  const cvsPts = pts.map(pt => toCvs(pt[0], pt[1]));
+  let minD = Infinity;
+
+  for (let i = 0; i < cvsPts.length; i++) {
+    const isCorner = i > 0 && i < cvsPts.length - 1;
+    let actualRad = 0;
+    let T_A = { x: 0, y: 0 };
+    let T_C = { x: 0, y: 0 };
+    let ccx = 0, ccy = 0;
+    let angle_TA = 0, angle_TC = 0;
+    let counterclockwise = false;
+
+    if (isCorner) {
+      const cvsA = cvsPts[i - 1];
+      const cvsB = cvsPts[i];
+      const cvsC = cvsPts[i + 1];
+
+      const ax = cvsB.x - cvsA.x, ay = cvsB.y - cvsA.y;
+      const bx = cvsC.x - cvsB.x, by = cvsC.y - cvsB.y;
+      const lenA = Math.hypot(ax, ay), lenB = Math.hypot(bx, by);
+
+      if (lenA > 0 && lenB > 0) {
+        const ux = -ax / lenA, uy = -ay / lenA; // B -> A
+        const vx = bx / lenB, vy = by / lenB;   // B -> C
+        const cosAngle = ux * vx + uy * vy;
+
+        if (Math.abs(cosAngle) < 0.05) {
+          actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
+          if (actualRad > 0.1) {
+            T_A = { x: cvsB.x + actualRad * ux, y: cvsB.y + actualRad * uy };
+            T_C = { x: cvsB.x + actualRad * vx, y: cvsB.y + actualRad * vy };
+            ccx = cvsB.x + (ux + vx) * actualRad;
+            ccy = cvsB.y + (uy + vy) * actualRad;
+            angle_TA = Math.atan2(-vy, -vx);
+            angle_TC = Math.atan2(-uy, -ux);
+            const cross = ux * vy - uy * vx;
+            counterclockwise = cross > 0;
+          }
+        }
+      }
+    }
+
+    if (isCorner && actualRad > 0.1) {
+      const distToCenter = Math.hypot(cx - ccx, cy - ccy);
+      const distToCircle = Math.abs(distToCenter - actualRad);
+
+      let angle = Math.atan2(cy - ccy, cx - ccx);
+      const twoPi = Math.PI * 2;
+      const normAngle = (angle % twoPi + twoPi) % twoPi;
+      const normStart = (angle_TA % twoPi + twoPi) % twoPi;
+      const normEnd = (angle_TC % twoPi + twoPi) % twoPi;
+
+      let inArc = false;
+      if (counterclockwise) {
+        if (normStart >= normEnd) {
+          inArc = normAngle >= normEnd && normAngle <= normStart;
+        } else {
+          inArc = normAngle >= normEnd || normAngle <= normStart;
+        }
+      } else {
+        if (normStart <= normEnd) {
+          inArc = normAngle >= normStart && normAngle <= normEnd;
+        } else {
+          inArc = normAngle >= normStart || normAngle <= normEnd;
+        }
+      }
+
+      if (inArc) {
+        minD = Math.min(minD, distToCircle);
+      } else {
+        minD = Math.min(minD, Math.hypot(cx - T_A.x, cy - T_A.y), Math.hypot(cx - T_C.x, cy - T_C.y));
+      }
+    }
+  }
+
+  for (let i = 0; i < cvsPts.length - 1; i++) {
+    let start = cvsPts[i];
+    let end = cvsPts[i + 1];
+
+    const startIsCorner = i > 0;
+    if (startIsCorner) {
+      const cvsA = cvsPts[i - 1];
+      const cvsB = cvsPts[i];
+      const cvsC = cvsPts[i + 1];
+      const ax = cvsB.x - cvsA.x, ay = cvsB.y - cvsA.y;
+      const bx = cvsC.x - cvsB.x, by = cvsC.y - cvsB.y;
+      const lenA = Math.hypot(ax, ay), lenB = Math.hypot(bx, by);
+      if (lenA > 0 && lenB > 0) {
+        const ux = -ax / lenA, uy = -ay / lenA;
+        const vx = bx / lenB, vy = by / lenB;
+        const cosAngle = ux * vx + uy * vy;
+        if (Math.abs(cosAngle) < 0.05) {
+          const actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
+          if (actualRad > 0.1) {
+            start = { x: cvsB.x + actualRad * vx, y: cvsB.y + actualRad * vy }; // T_C
+          }
+        }
+      }
+    }
+
+    const endIsCorner = i + 1 < cvsPts.length - 1;
+    if (endIsCorner) {
+      const cvsA = cvsPts[i];
+      const cvsB = cvsPts[i + 1];
+      const cvsC = cvsPts[i + 2];
+      const ax = cvsB.x - cvsA.x, ay = cvsB.y - cvsA.y;
+      const bx = cvsC.x - cvsB.x, by = cvsC.y - cvsB.y;
+      const lenA = Math.hypot(ax, ay), lenB = Math.hypot(bx, by);
+      if (lenA > 0 && lenB > 0) {
+        const ux = -ax / lenA, uy = -ay / lenA;
+        const vx = bx / lenB, vy = by / lenB;
+        const cosAngle = ux * vx + uy * vy;
+        if (Math.abs(cosAngle) < 0.05) {
+          const actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
+          if (actualRad > 0.1) {
+            end = { x: cvsB.x + actualRad * ux, y: cvsB.y + actualRad * uy }; // T_A
+          }
+        }
+      }
+    }
+
+    const d = pointToSegmentDist(cx, cy, start.x, start.y, end.x, end.y);
+    minD = Math.min(minD, d);
+  }
+
+  return minD;
+}
+
