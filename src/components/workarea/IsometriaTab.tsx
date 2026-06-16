@@ -28,22 +28,30 @@ function project(
 function readDrawing(plans: any[], net: string) {
   const ramales: any[] = [];
   const bajantes: any[] = [];
+  const scaleMap: Record<number, number> = {};
+  const origenMap: Record<number, { x_px: number; y_px: number }> = {};
   for (const plan of plans) {
     if (plan.nivel == null) continue;
     const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
     const data = (typeof raw === 'string') ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
     if (!data) continue;
+    if (data.scaleM) {
+      scaleMap[plan.nivel] = data.scaleM;
+    }
+    if (data.origen) {
+      origenMap[plan.nivel] = data.origen;
+    }
     for (const r of (data.ramales || [])) {
       if (r.net === net && r.tipo === 'ramal')
-        ramales.push({ ...r, planNivel: plan.nivel });
+        ramales.push({ ...r, planNivel: plan.nivel, planId: String(plan.id) });
     }
     for (const b of (data.bajantes || [])) {
       if (b.net === net)
-        bajantes.push({ ...b, planNivel: plan.nivel });
+        bajantes.push({ ...b, planNivel: plan.nivel, planId: String(plan.id) });
     }
   }
-  return { ramales, bajantes };
+  return { ramales, bajantes, scaleMap, origenMap };
 }
 
 async function loadPlanImage(plan: any): Promise<{ nivel: number; img: HTMLCanvasElement; w: number; h: number } | null> {
@@ -99,7 +107,19 @@ export default function IsometriaTab({ state }: any) {
 
   const nptMap = useMemo(() => {
     const m: Record<number, number> = {};
-    for (const p of (pisos || [])) m[p.n] = (p.npt || 0) * 1000;
+    const pisosArr = pisos || [];
+    for (const p of pisosArr) m[p.n] = (p.npt || 0) * 1000;
+    // If all NPT values are equal (or all zero), generate fallback Z offsets
+    // based on floor number so the scaleZ slider can separate floors visually
+    const vals = Object.values(m);
+    const allSame = vals.length > 1 && vals.every(v => v === vals[0]);
+    if (allSame) {
+      const defaultSpacingMm = 2700; // 2.7 m default floor-to-floor
+      for (const p of pisosArr) {
+        const floorIdx = p.n >= 0 && p.n < 90 ? p.n : p.n === 99 ? (pisosArr.filter((x: any) => x.n > 0 && x.n < 90).length + 1) : -(Math.abs(p.n));
+        m[p.n] = floorIdx * defaultSpacingMm;
+      }
+    }
     return m;
   }, [pisos]);
 
@@ -115,6 +135,42 @@ export default function IsometriaTab({ state }: any) {
   }, [plans]);
 
   const confirmedPlanos = useMemo(() => (plans || []).filter((p: any) => p.status === 'confirmed' && p.nivel != null), [plans]);
+
+  const getIsoCoords = useCallback((px: number, py: number, nivel: number) => {
+    const plan = confirmedPlanos.find((p: any) => p.nivel !== null && String(p.nivel) === String(nivel));
+    const scaleM = (plan?.scale ? plan.scale / 100 : null) || plan?.scaleM || data.scaleMap?.[nivel] || 0.5;
+    const planData = plan ? planImagesRef.current.get(plan.id) : null;
+    const scale = 1.5;
+    let pageW = 842;
+    let pageH = 595;
+    if (planData) {
+      pageW = planData.w / scale;
+      pageH = planData.h / scale;
+    } else {
+      for (const [, pd] of planImagesRef.current) {
+        pageW = pd.w / scale;
+        pageH = pd.h / scale;
+        break;
+      }
+    }
+    const ox = plan?.origen?.x_px ?? data.origenMap?.[nivel]?.x_px ?? (pageW / 2);
+    const oy = plan?.origen?.y_px ?? data.origenMap?.[nivel]?.y_px ?? (pageH / 2);
+    
+    // Convert to meters relative to origin, then multiply by 150 (isoScale)
+    const x_m = (px - ox) * (2.54 * scaleM / 96);
+    const y_m = (py - oy) * (2.54 * scaleM / 96);
+    const isoScale = 150;
+    return {
+      x: x_m * isoScale,
+      y: y_m * isoScale
+    };
+  }, [confirmedPlanos, data.scaleMap, data.origenMap]);
+
+  const getZPix = useCallback((zMm: number, nivel: number) => {
+    const zMeters = zMm / 1000;
+    const isoScale = 150;
+    return zMeters * isoScale;
+  }, []);
 
   useEffect(() => {
     if (!showPlanos) return;
@@ -146,16 +202,49 @@ export default function IsometriaTab({ state }: any) {
     if (W < 10 || H < 10) return;
     const cx = W / 2, cy = H / 2;
     let pts: ProjPt[] = [];
+    
+    // Add network points
     for (const r of data.ramales) {
       const z = nptMap[r.planNivel] || 0;
-      for (const p of r.pts) pts.push(project(p[0], p[1], z, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
+      const z_pix = getZPix(z, r.planNivel);
+      for (const p of r.pts) {
+        const iso = getIsoCoords(p[0], p[1], r.planNivel);
+        pts.push(project(iso.x, iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
+      }
     }
     for (const b of data.bajantes) {
       const baseZ = (b.nptBase || 0) * 1000;
       const cimaZ = (b.nptCima || 0) * 1000;
-      pts.push(project(b.x, b.y, baseZ, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
-      pts.push(project(b.x, b.y, cimaZ, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
+      const baseZ_pix = getZPix(baseZ, b.planNivel);
+      const cimaZ_pix = getZPix(cimaZ, b.planNivel);
+      const iso = getIsoCoords(b.x, b.y, b.planNivel);
+      pts.push(project(iso.x, iso.y, baseZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
+      pts.push(project(iso.x, iso.y, cimaZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
     }
+    
+    // Add plan corners if visible
+    if (showPlanos && planImagesRef.current.size > 0) {
+      for (const [planId, planData] of planImagesRef.current) {
+        const plan = confirmedPlanos.find((p: any) => p.id === planId);
+        if (!plan || plan.nivel == null) continue;
+        const z = nptMap[plan.nivel] || 0;
+        const z_pix = getZPix(z, plan.nivel);
+        const imgW = planData.w;
+        const imgH = planData.h;
+        const scale = 1.5;
+        const pageW = imgW / scale;
+        const pageH = imgH / scale;
+        const tl_iso = getIsoCoords(0, 0, plan.nivel);
+        const tr_iso = getIsoCoords(pageW, 0, plan.nivel);
+        const bl_iso = getIsoCoords(0, pageH, plan.nivel);
+        const br_iso = getIsoCoords(pageW, pageH, plan.nivel);
+        pts.push(project(tl_iso.x, tl_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
+        pts.push(project(tr_iso.x, tr_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
+        pts.push(project(bl_iso.x, bl_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
+        pts.push(project(br_iso.x, br_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
+      }
+    }
+
     if (pts.length === 0) return;
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const p of pts) {
@@ -172,7 +261,7 @@ export default function IsometriaTab({ state }: any) {
     setZoom(Math.max(0.1, Math.min(10, newZoom)));
     setOffX(newOffX);
     setOffY(newOffY);
-  }, [data, nptMap, rotZ, rotX, scaleZ, zoom, offX, offY, size]);
+  }, [data, nptMap, rotZ, rotX, scaleZ, zoom, offX, offY, size, showPlanos, confirmedPlanos, getIsoCoords, getZPix]);
 
   const resetView = useCallback(() => {
     setRotX(-25); setRotZ(45); setScaleZ(1); setZoom(1); setOffX(0); setOffY(0);
@@ -210,23 +299,31 @@ export default function IsometriaTab({ state }: any) {
         const plan = confirmedPlanos.find((p: any) => p.id === planId);
         if (!plan || plan.nivel == null) continue;
         const z = nptMap[plan.nivel] || 0;
+        const z_pix = getZPix(z, plan.nivel);
         const img = planData.img;
         const imgW = planData.w;
         const imgH = planData.h;
-        const halfW = imgW / 2;
-        const halfH = imgH / 2;
+        const scale = 1.5;
+        const pageW = imgW / scale;
+        const pageH = imgH / scale;
+        const tl_iso = getIsoCoords(0, 0, plan.nivel);
+        const tr_iso = getIsoCoords(pageW, 0, plan.nivel);
+        const bl_iso = getIsoCoords(0, pageH, plan.nivel);
+        const label_iso = getIsoCoords(pageW / 2, -30, plan.nivel);
+
         // 4 corners in isometric space: TL, TR, BL
-        const tl = project(-halfW, -halfH, z, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const tr = project(halfW, -halfH, z, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const bl = project(-halfW, halfH, z, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        const tl = project(tl_iso.x, tl_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        const tr = project(tr_iso.x, tr_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        const bl = project(bl_iso.x, bl_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
         // Affine transform: map image rect (0,0)-(imgW,imgH) to screen quad using TL, TR, BL
-        const ax = (tr.sx - tl.sx) / imgW;
-        const ay = (tr.sy - tl.sy) / imgW;
-        const bx = (bl.sx - tl.sx) / imgH;
-        const by = (bl.sy - tl.sy) / imgH;
+        // Multiply by dpr because setTransform replaces the DPR scale set by ctx.scale(dpr,dpr)
+        const ax = (tr.sx - tl.sx) / imgW * dpr;
+        const ay = (tr.sy - tl.sy) / imgW * dpr;
+        const bx = (bl.sx - tl.sx) / imgH * dpr;
+        const by = (bl.sy - tl.sy) / imgH * dpr;
         ctx.save();
         ctx.globalAlpha = 0.35;
-        ctx.setTransform(ax, ay, bx, by, tl.sx, tl.sy);
+        ctx.setTransform(ax, ay, bx, by, tl.sx * dpr, tl.sy * dpr);
         ctx.drawImage(img, 0, 0, imgW, imgH);
         // Quad outline
         ctx.globalAlpha = 0.6;
@@ -235,7 +332,7 @@ export default function IsometriaTab({ state }: any) {
         ctx.strokeRect(0.5, 0.5, imgW - 1, imgH - 1);
         ctx.restore();
         // Floor label
-        const midPt = project(0, -halfH - 30, z, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        const midPt = project(label_iso.x, label_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
         ctx.save();
         ctx.fillStyle = netColor + 'cc';
         ctx.font = `bold ${Math.max(10, 11 * zoom)}px Geist,monospace`;
@@ -253,12 +350,14 @@ export default function IsometriaTab({ state }: any) {
 
     for (const r of data.ramales) {
       const z = nptMap[r.planNivel] || 0;
+      const z_pix = getZPix(z, r.planNivel);
       const pts = r.pts;
       if (pts.length < 2) continue;
-      const isSel = r.id === selTramo;
+      const isSel = `${r.planId}:${r.id}` === selTramo;
       ctx.beginPath();
       for (let i = 0; i < pts.length; i++) {
-        const pr = project(pts[i][0], pts[i][1], z, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        const iso = getIsoCoords(pts[i][0], pts[i][1], r.planNivel);
+        const pr = project(iso.x, iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
         if (i === 0) ctx.moveTo(pr.sx, pr.sy); else ctx.lineTo(pr.sx, pr.sy);
       }
       ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
@@ -266,14 +365,17 @@ export default function IsometriaTab({ state }: any) {
       ctx.stroke();
 
       for (let i = 1; i < pts.length; i++) {
-        const a = project(pts[i - 1][0], pts[i - 1][1], z, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const b = project(pts[i][0], pts[i][1], z, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        segments.push({ sx1: a.sx, sy1: a.sy, sx2: b.sx, sy2: b.sy, z, id: r.id, label: r.label || r.id, isBaj: false });
+        const iso1 = getIsoCoords(pts[i - 1][0], pts[i - 1][1], r.planNivel);
+        const iso2 = getIsoCoords(pts[i][0], pts[i][1], r.planNivel);
+        const a = project(iso1.x, iso1.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        const b = project(iso2.x, iso2.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        segments.push({ sx1: a.sx, sy1: a.sy, sx2: b.sx, sy2: b.sy, z: z_pix, id: `${r.planId}:${r.id}`, label: r.label || r.id, isBaj: false });
       }
 
       if (isSel) {
         const midI = Math.floor(pts.length / 2);
-        const mp = project(pts[midI][0], pts[midI][1], z, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        const isoMid = getIsoCoords(pts[midI][0], pts[midI][1], r.planNivel);
+        const mp = project(isoMid.x, isoMid.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
         ctx.fillStyle = '#FFEB3B';
         ctx.font = 'bold 11px Geist,monospace';
         ctx.textAlign = 'center';
@@ -284,18 +386,74 @@ export default function IsometriaTab({ state }: any) {
     }
 
     for (const b of data.bajantes) {
-      const baseZ = (b.nptBase || 0) * 1000;
-      const cimaZ = (b.nptCima || 0) * 1000;
-      const pBase = project(b.x, b.y, baseZ, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-      const pCima = project(b.x, b.y, cimaZ, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-      const isSel = b.id === selTramo;
+      let baseZ = (b.nptBase || 0) * 1000;
+      let cimaZ = (b.nptCima || 0) * 1000;
+      
+      const currentZ = nptMap[b.planNivel] || 0;
+      let targetZ = currentZ;
+
+      let targetRamal = null;
+      if (b.descargaEnId) {
+        const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [b.planId, b.descargaEnId];
+        const targetPlanId = parts[0];
+        const targetId = parts[1];
+        targetRamal = data.ramales.find((rr: any) => rr.id === targetId && String(rr.planId) === String(targetPlanId));
+        if (targetRamal) {
+          targetZ = nptMap[targetRamal.planNivel] || 0;
+        }
+      }
+
+      // If manual NPTs are 0, infer heights from the floors it connects
+      if (baseZ === 0 && cimaZ === 0) {
+        if (targetZ < currentZ) {
+          cimaZ = currentZ;
+          baseZ = targetZ;
+        } else if (targetZ > currentZ) {
+          baseZ = currentZ;
+          cimaZ = targetZ;
+        } else {
+          // No valid connection or same floor, just give it a default 1m height
+          baseZ = currentZ;
+          cimaZ = currentZ + 1000;
+        }
+      }
+
+      const baseZ_pix = getZPix(baseZ, b.planNivel);
+      const cimaZ_pix = getZPix(cimaZ, b.planNivel);
+      const iso = getIsoCoords(b.x, b.y, b.planNivel);
+      const pBase = project(iso.x, iso.y, baseZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+      const pCima = project(iso.x, iso.y, cimaZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+      const isSel = `${b.planId}:${b.id}` === selTramo;
+      
+      // Draw the bajante's vertical pipe
       ctx.beginPath();
       ctx.moveTo(pBase.sx, pBase.sy);
       ctx.lineTo(pCima.sx, pCima.sy);
       ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
       ctx.lineWidth = isSel ? 3.5 : 2;
       ctx.stroke();
-      segments.push({ sx1: pBase.sx, sy1: pBase.sy, sx2: pCima.sx, sy2: pCima.sy, z: (baseZ + cimaZ) / 2, id: b.id, label: b.code || b.id, isBaj: true });
+      segments.push({ sx1: pBase.sx, sy1: pBase.sy, sx2: pCima.sx, sy2: pCima.sy, z: (baseZ_pix + cimaZ_pix) / 2, id: `${b.planId}:${b.id}`, label: b.code || b.id, isBaj: true });
+
+      // Draw connection to target ramal if it exists
+      if (targetRamal && targetRamal.pts.length > 0) {
+        const rIso = getIsoCoords(targetRamal.pts[0][0], targetRamal.pts[0][1], targetRamal.planNivel);
+        const rZ_pix = getZPix(targetZ, targetRamal.planNivel);
+        const rProj = project(rIso.x, rIso.y, rZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        
+        // Use the bajante's base or cima depending on where the target is
+        const connectionPoint = (targetZ === baseZ) ? pBase : pCima;
+        
+        // Connect horizontally from the bajante drop to the ramal
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(connectionPoint.sx, connectionPoint.sy);
+        ctx.lineTo(rProj.sx, rProj.sy);
+        ctx.strokeStyle = '#0ECC7A'; // green connection line
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.restore();
+      }
 
       if (isSel) {
         const mid = { sx: (pBase.sx + pCima.sx) / 2, sy: (pBase.sy + pCima.sy) / 2 };
@@ -345,7 +503,7 @@ export default function IsometriaTab({ state }: any) {
     (canvas as any).__isoSegments = segments;
     (canvas as any).__isoCx = W / 2;
     (canvas as any).__isoCy = H / 2;
-  }, [data, pisos, rotZ, rotX, scaleZ, zoom, offX, offY, size, selTramo, netColor, nptMap, activeNet, showPlanos, confirmedPlanos, renderTick]);
+  }, [data, pisos, rotZ, rotX, scaleZ, zoom, offX, offY, size, selTramo, netColor, nptMap, activeNet, showPlanos, confirmedPlanos, renderTick, getIsoCoords, getZPix]);
 
   const getTramoAt = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
@@ -415,12 +573,12 @@ export default function IsometriaTab({ state }: any) {
   }, [data]);
 
   const tramoList = useMemo(() => {
-    const items: { id: string; label: string; type: 'ramal' | 'bajante'; extra: string }[] = [];
-    for (const r of data.ramales) items.push({ id: r.id, label: r.label || r.id, type: 'ramal', extra: `L=${r.totalL}m` });
+    const items: { id: string; label: string; type: 'ramal' | 'bajante'; extra: string; nivel: number; selKey: string }[] = [];
+    for (const r of data.ramales) items.push({ id: r.id, label: r.label || r.id, type: 'ramal', extra: `L=${r.totalL}m`, nivel: r.planNivel, selKey: `${r.planId}:${r.id}` });
     for (const b of data.bajantes) {
       const dInches = b.dNominal ? Math.round(Number(b.dNominal) / 25.4) : 0;
       const lbl = dInches > 0 ? `${b.code || b.id}:${dInches}"` : (b.code || b.id);
-      items.push({ id: b.id, label: lbl, type: 'bajante', extra: `h=${b.hVert}m` });
+      items.push({ id: b.id, label: lbl, type: 'bajante', extra: `h=${b.hVert}m`, nivel: b.planNivel, selKey: `${b.planId}:${b.id}` });
     }
     return items;
   }, [data]);
@@ -469,24 +627,24 @@ export default function IsometriaTab({ state }: any) {
         <div style={{ flex: 1 }} />
 
         <label style={{ fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
-          rotX <input type="range" min={-90} max={90} value={rotX} onChange={e => setRotX(Number(e.target.value))} style={{ width: 60 }} />
+          Giro vertical <input type="range" min={-90} max={90} value={rotX} onChange={e => setRotX(Number(e.target.value))} style={{ width: 60 }} />
           <span style={{ width: 28, textAlign: 'right' }}>{rotX}°</span>
         </label>
         <label style={{ fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
-          rotZ <input type="range" min={0} max={360} value={rotZ} onChange={e => setRotZ(Number(e.target.value))} style={{ width: 60 }} />
+          Giro horizontal <input type="range" min={0} max={360} value={rotZ} onChange={e => setRotZ(Number(e.target.value))} style={{ width: 60 }} />
           <span style={{ width: 32, textAlign: 'right' }}>{rotZ}°</span>
         </label>
         <label style={{ fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
-          z <input type="range" min={0.1} max={5} step={0.1} value={scaleZ} onChange={e => setScaleZ(Number(e.target.value))} style={{ width: 50 }} />
+          Distancia entre pisos <input type="range" min={0.1} max={5} step={0.1} value={scaleZ} onChange={e => setScaleZ(Number(e.target.value))} style={{ width: 50 }} />
           <span style={{ width: 24, textAlign: 'right' }}>{scaleZ.toFixed(1)}</span>
         </label>
         <label style={{ fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
-          <input type="range" min={5} max={200} value={Math.round(zoom * 100)} onChange={e => setZoom(Number(e.target.value) / 100)} style={{ width: 50 }} />
+          Zoom <input type="range" min={5} max={200} value={Math.round(zoom * 100)} onChange={e => setZoom(Number(e.target.value) / 100)} style={{ width: 50 }} />
           <span style={{ width: 36, textAlign: 'right' }}>{Math.round(zoom * 100)}%</span>
         </label>
 
-        <button onClick={resetView} style={{ padding: '3px 8px', fontSize: 10, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' }}>⟲</button>
-        <button onClick={fitView} style={{ padding: '3px 8px', fontSize: 10, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' }}>⊞</button>
+        <button onClick={resetView} title="Reiniciar vista" style={{ padding: '3px 8px', fontSize: 10, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' }}>⟲</button>
+        <button onClick={fitView} title="Encuadrar todo" style={{ padding: '3px 8px', fontSize: 10, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' }}>⊞</button>
       </div>
 
       {/* Main area */}
@@ -501,17 +659,21 @@ export default function IsometriaTab({ state }: any) {
               Sin datos
             </div>
           )}
-          {tramoList.map(item => (
-            <div key={item.id} onClick={() => setSelTramo(prev => prev === item.id ? null : item.id)} style={{
-              padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-              background: selTramo === item.id ? '#2563EB22' : 'transparent',
-              borderLeft: selTramo === item.id ? '3px solid ' + netColor : '3px solid transparent',
-              fontFamily: 'Geist,monospace',
-            }}>
-              <span style={{ fontSize: 11, color: netColor, fontWeight: 600 }}>{item.label}</span>
-              <span style={{ fontSize: 9, color: '#5a6a6b', marginLeft: 'auto' }}>{item.extra}</span>
-            </div>
-          ))}
+          {tramoList.map(item => {
+            const floorLabel = item.nivel < 0 ? `S${Math.abs(item.nivel)}` : item.nivel === 99 ? 'C' : `P${item.nivel}`;
+            return (
+              <div key={item.selKey} onClick={() => setSelTramo(prev => prev === item.selKey ? null : item.selKey)} style={{
+                padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                background: selTramo === item.selKey ? '#2563EB22' : 'transparent',
+                borderLeft: selTramo === item.selKey ? '3px solid ' + netColor : '3px solid transparent',
+                fontFamily: 'Geist,monospace',
+              }}>
+                <span style={{ fontSize: 9, color: '#5a6a6b', minWidth: 22, fontWeight: 500 }}>{floorLabel}</span>
+                <span style={{ fontSize: 11, color: netColor, fontWeight: 600 }}>{item.label}</span>
+                <span style={{ fontSize: 9, color: '#5a6a6b', marginLeft: 'auto' }}>{item.extra}</span>
+              </div>
+            );
+          })}
           <div style={{ marginTop: 'auto', padding: '8px 12px', borderTop: '1px solid #3a494a', fontSize: 10, color: '#5a6a6b', fontFamily: 'Geist,monospace' }}>
             Tramos: {tramoList.length} · Long: {totalLen}m
           </div>
