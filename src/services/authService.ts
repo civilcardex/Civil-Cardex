@@ -11,20 +11,3 @@ export async function signUp(email: string, password: string, options?: { data?:
   if (error) throw error;
   return data;
 }
-
-export async function getCurrentUser() {
-  const { data } = await supabase.auth.getUser();
-  return data.user ?? null;
-}
-
-export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
-}
-
-export function onAuthChange(callback: (user: object | null) => void) {
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback(session?.user ?? null);
-  });
-  return data.subscription;
-}

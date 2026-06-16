@@ -11,12 +11,10 @@ interface TramosContextValue {
   updTramoAf: (id: string, field: string, val: any) => void;
   updTramoAfFix: (id: string, fix: string, val: any) => void;
   updTramoAfAcc: (id: string, accId: string, val: any) => void;
-  updTramoAfHidro: (id: string, field: string, val: any) => void;
   delTramoAc: (id: string) => void;
   updTramoAc: (id: string, field: string, val: any) => void;
   updTramoAcFix: (id: string, fix: string, val: any) => void;
   updTramoAcAcc: (id: string, accId: string, val: any) => void;
-  updTramoAcHidro: (id: string, field: string, val: any) => void;
   addTramoLL: () => void; delTramoLL: (key: string) => void;
   updTramoLL: (key: string, field: string, val: any) => void;
 }
@@ -53,13 +51,11 @@ const delTramoAf = (id: string) => dispatch({ type: 'DEL_TRAMO', net: 'af', id }
 const updTramoAf = (id: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'af', id, field, val });
 const updTramoAfFix = (id: string, fix: string, val: any) => dispatch({ type: 'UPD_TRAMO_FIX', net: 'af', id, fix, val });
 const updTramoAfAcc = (id: string, accId: string, val: any) => dispatch({ type: 'UPD_TRAMO_ACC', net: 'af', id, accId, val });
-const updTramoAfHidro = (id: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'af', id, field, val });
 
 const delTramoAc = (id: string) => dispatch({ type: 'DEL_TRAMO', net: 'ac', id });
 const updTramoAc = (id: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'ac', id, field, val });
 const updTramoAcFix = (id: string, fix: string, val: any) => dispatch({ type: 'UPD_TRAMO_FIX', net: 'ac', id, fix, val });
 const updTramoAcAcc = (id: string, accId: string, val: any) => dispatch({ type: 'UPD_TRAMO_ACC', net: 'ac', id, accId, val });
-const updTramoAcHidro = (id: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'ac', id, field, val });
 
 const addTramoLL = () => dispatch({ type: 'ADD_LL', newKey: nextLlKey() });
 const delTramoLL = (key: string) => dispatch({ type: 'DEL_TRAMO', net: 'll', id: key });
@@ -69,8 +65,8 @@ return (
 <TramosContext.Provider value={{
 tramosSan, tramosAf, tramosAc, tramosLl,
 addTramoSan, delTramoSan, updTramoSan, updTramoSanFix,
-delTramoAf, updTramoAf, updTramoAfFix, updTramoAfAcc, updTramoAfHidro,
-delTramoAc, updTramoAc, updTramoAcFix, updTramoAcAcc, updTramoAcHidro,
+delTramoAf, updTramoAf, updTramoAfFix, updTramoAfAcc,
+delTramoAc, updTramoAc, updTramoAcFix, updTramoAcAcc,
 addTramoLL, delTramoLL, updTramoLL,
 }}>
 {children}

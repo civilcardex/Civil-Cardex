@@ -76,17 +76,3 @@ export async function deletePDF(id: number): Promise<void> {
     console.error('idbStorage deletePDF:', id, e);
   }
 }
-
-export async function clearAllPDFs(): Promise<void> {
-  try {
-    const db = await openDB();
-    return new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      tx.objectStore(STORE_NAME).clear();
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  } catch (e) {
-    console.error('idbStorage clearAll:', e);
-  }
-}

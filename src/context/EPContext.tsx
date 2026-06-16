@@ -60,10 +60,7 @@ export function EPProvider({ children }: { children?: ReactNode }) {
   });
 
   const updEP = (field: keyof EPData, val: any) => {
-    setEP(prev => {
-      const next = { ...prev, [field]: val };
-      return next;
-    });
+    setEP(prev => ({ ...prev, [field]: val }));
   };
 
   useEffect(() => {

@@ -10,7 +10,6 @@ export {
   GAS_ACCESORIOS,
   MATERIALES,
   MATS_DEFAULT,
-  MAT_LONGFORM,
   matLongName,
   MAT_MANNING,
   matManning,
@@ -29,15 +28,11 @@ export {
   REDES,
   TABS,
   NAV_TABS,
-  INFO_SUBTABS,
-  REDES_SAN_LL,
   FILTROS_NORM,
-  BD_SUBTABS,
   REQ_ITEMS,
   NORM_COL,
   MAT_COL,
   USOS,
-  EMPRES,
   R_OPTIONS,
 } from './uiConfig';
 
@@ -50,8 +45,6 @@ export {
   V_MIN,
   V_MAX,
   Y_D_MAX,
-  FR_SUBCRITICO,
-  FR_SUPERCRITICO,
   FUERZA_TRACTIVA_MIN,
 } from './defaults';
 
