@@ -1,7 +1,7 @@
 // REDES: UI-display network definitions (lbl, sub, ico, icoImg, col as CSS var).
 // For drawing-engine definitions use PlanoState.NETS instead (has ucType, bmType, etc).
 export const REDES=[
-  {id:'san',lbl:'Red sanitaria', sub:'RAS D · Manning n=0.009', ico:'♻️', icoImg:'/iconos_diseno_redes/sanitaria/red_sanitaria.webp', col:'var(--san)'},
+  {id:'san',lbl:'Sanitaria', sub:'RAS D · Manning n=0.009', ico:'♻️', icoImg:'/iconos_diseno_redes/sanitaria/red_sanitaria.webp', col:'var(--san)'},
   {id:'ll', lbl:'Aguas lluvias', sub:'Método Racional · IDF', ico:'🌧️', icoImg:'/iconos_diseno_redes/aguas_lluvias/red_aguas_lluvias.webp', col:'var(--ll)'},
   {id:'af', lbl:'Agua fría', sub:'NTC 1500 · Hazen-Williams', ico:'💧', icoImg:'/iconos_diseno_redes/hidraulica/red_agua_fria.webp', col:'var(--af)'},
   {id:'ac', lbl:'Agua caliente', sub:'NTC 1500 · CPVC RDE 11', ico:'🔥', icoImg:'/iconos_diseno_redes/hidraulica/red_agua_caliente.webp', col:'var(--ac)'},
@@ -27,7 +27,7 @@ export const NAV_TABS=[
   {id:'datos', l:'Parámetros de diseño', ico:'📊', icoImg:'/iconos_parametros_de_diseno/catalogo_maestro.webp'},
   {id:'visor', l:'Dibujo de redes',      ico:'✏️', icoImg:'/iconos_aparatos/dibujo_de_redes.webp'},
   {id:'redes', l:'Diseño de redes y equipos',      ico:'🔧', icoImg:'/iconos_diseno_redes/general/diseno_redes.webp'},
-  {id:'iso',   l:'Isometría',            ico:'📐', icoImg:''},
+  {id:'iso',   l:'Isometría',            ico:'', icoImg:'/isometria.webp'},
   {id:'inf',   l:'Informes',             ico:'📄', icoImg:'/Informes.webp'},
   {id:'crit',  l:'Normativa',            ico:'§',  icoImg:'/normativa.webp'},
 ];

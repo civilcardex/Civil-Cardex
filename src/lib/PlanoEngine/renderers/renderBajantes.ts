@@ -33,19 +33,25 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     }
 
     if (b.descargaEnId) {
-      const targetId = b.descargaEnId.includes('|') ? b.descargaEnId.split('|')[1] : b.descargaEnId;
-      const ram = engine.ramales.find((rr: any) => rr.id === targetId);
-      if (ram && ram.pts.length) {
-        const first = ram.pts[0];
-        const rc = engine.toCvs(first[0], first[1]);
-        ctx.save();
-        ctx.strokeStyle = '#0ECC7A';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(c.x, c.y);
-        ctx.lineTo(rc.x, rc.y);
-        ctx.stroke();
-        ctx.restore();
+      const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [engine._loadedPlanId, b.descargaEnId];
+      const targetPlanId = parts[0];
+      const targetId = parts[1];
+
+      // Only draw line to ramal if the target ramal is on the CURRENT floor
+      if (String(targetPlanId) === String(engine._loadedPlanId)) {
+        const ram = engine.ramales.find((rr: any) => rr.id === targetId);
+        if (ram && ram.pts.length) {
+          const first = ram.pts[0];
+          const rc = engine.toCvs(first[0], first[1]);
+          ctx.save();
+          ctx.strokeStyle = '#0ECC7A';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(c.x, c.y);
+          ctx.lineTo(rc.x, rc.y);
+          ctx.stroke();
+          ctx.restore();
+        }
       }
     }
 
