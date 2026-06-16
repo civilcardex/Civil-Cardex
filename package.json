@@ -35,10 +35,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",
-    "fabric": "^7.4.0",
+    "pdfjs-dist": "^5.4.296",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "react-pdf": "^10.4.1",
     "react-router-dom": "^7.15.1"
   }
 }
