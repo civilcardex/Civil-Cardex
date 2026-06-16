@@ -9,7 +9,6 @@ import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDi
 import { getTributarioIds } from "../utils/tramoUtils";
 import { calcHydraulicCheck } from "../utils/hydraulicCheck";
 import { useToggleMap } from "../hooks/useToggleMap";
-import HydraulicCalcTable from "./HydraulicCalcTable";
 
 export default function DisenosSanitarios() {
   const { tramosSan, updTramoSan, delTramoSan } = useTramos();
@@ -81,11 +80,8 @@ const displayTramos = tramosSan.filter(t => !tribIds.has(t.id) && !t.esBajante);
               <th className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize:10,padding:'2px 4px'}}>Diámetro</th>
               <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>Qo<br/><small>LPS</small></th>
               <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>Vo<br/><small>m/s</small></th>
-              <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>Q/Qo</th>
-               <th className="col-h" rowSpan={2} style={{display:'none',fontSize:10,textAlign:'center',padding:'2px 4px'}}>Vreal<br/><small>m/s</small></th>
-              <th className="col-h" rowSpan={2} style={{display:'none',fontSize:10,textAlign:'center',padding:'2px 4px'}}>Chequeo<br/><small>0.45&lt;Vr&lt;4.0</small></th>
+               <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>Q/Qo</th>
               <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>Yc<br/><small>mm</small></th>
-              <th className="col-h" rowSpan={2} style={{display:'none',fontSize:10,textAlign:'center',padding:'2px 4px'}}>Yn<br/><small>mm</small></th>
               <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>Froude</th>
               <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>Tipo de<br/>Flujo</th>
               <th className="col-h" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'2px 4px'}}>Ymax<br/><small>0.75D mm</small></th>
@@ -107,7 +103,7 @@ const displayTramos = tramosSan.filter(t => !tribIds.has(t.id) && !t.esBajante);
           <tbody>
             {displayTramos.length === 0 ? (
               <tr>
-                <td colSpan={27} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                <td colSpan={24} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
                   No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                 </td>
               </tr>
@@ -127,19 +123,19 @@ const sVal=t.sPercent;
 const S=sVal!=null&&sVal>0?sVal/100:null;
 const Q=udAcum>0&&K!=null?Math.round(caudalHunterLPS(udAcum,K)*1000)/1000:null;
                 const dSel=DIAM_OPTIONS.find(d=>d.pulg===(t.diamDisPulg||0))||null;
-        let DcalcPulg=0,DdisPulg=dSel?dSel.pulg:0,DintMm=dSel?dSel.mm:0,chequeo='—';
-        let Qo=0,Vo=0,qqo=0,Vreal=0,chequeoV='—';
-        let Yc=0,Yn=0,Froude=0,tipoFlujo='—',Ymax=0,chequeoYn='—';
-        let fuerzaTractiva=0,chequeoFT='—';
+       let DcalcPulg=0,DdisPulg=dSel?dSel.pulg:0,DintMm=dSel?dSel.mm:0;
+       let Qo=0,Vo=0,qqo=0;
+       let Yc=0,Froude=0,tipoFlujo='—',Ymax=0,chequeoYn='—';
+       let fuerzaTractiva=0,chequeoFT='—';
 if(Q!=null&&Q>0&&S!=null&&S>0&&n!=null&&n>0){
 DcalcPulg=Math.round(diametroManning(Q/1000,n,S)*1000/25.4*100)/100;
-if(DdisPulg>0){chequeo=DcalcPulg<=DdisPulg?'O.K.':'NO CUMPLE';}
+ if(DdisPulg>0){const ok=DcalcPulg<=DdisPulg?'O.K.':'NO CUMPLE'; void ok;}
 }
 if(Q!=null&&Q>0&&S!=null&&S>0&&n!=null&&n>0&&DintMm>0){
 const hc = calcHydraulicCheck({ Q, S, n, DintMm, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN });
-Qo = hc.Qo; Vo = hc.Vo; qqo = hc.qqo; Vreal = hc.Vreal; chequeoV = hc.chequeoV;
-Yc = hc.Yc; Yn = hc.Yn; Froude = hc.Froude; tipoFlujo = hc.tipoFlujo;
-Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; chequeoFT = hc.chequeoFT;
+ Qo = hc.Qo; Vo = hc.Vo; qqo = hc.qqo;
+ Yc = hc.Yc; Froude = hc.Froude; tipoFlujo = hc.tipoFlujo;
+ Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; chequeoFT = hc.chequeoFT;
         }
         return(
         <tr key={t.id}>
@@ -184,10 +180,7 @@ Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; ch
           <td className="c" style={{fontFamily:'var(--mono)',padding:'3px 5px'}}>{Qo>0?Qo.toFixed(2):'—'}</td>
           <td className="c" style={{fontFamily:'var(--mono)',padding:'3px 5px'}}>{Vo>0?Vo.toFixed(2):'—'}</td>
           <td className="c" style={{fontFamily:'var(--mono)',padding:'3px 5px'}}>{qqo>0?qqo.toFixed(2):'—'}</td>
-          <td className="c" style={{display:'none',fontFamily:'var(--mono)',padding:'3px 5px'}}>{Vreal>0?Vreal.toFixed(2):'—'}</td>
-          <td className="c" style={{display:'none',padding:'3px 5px'}}>{chequeoV}</td>
           <td className="c" style={{padding:'3px 5px'}}>{Yc>0?Yc.toFixed(2):'—'}</td>
-          <td className="c" style={{display:'none',padding:'3px 5px'}}>{Yn>0?Yn.toFixed(2):'—'}</td>
           <td className="c" style={{padding:'3px 5px'}}>{Froude>0?Froude.toFixed(2):'—'}</td>
           <td className="c" style={{fontSize:10,padding:'3px 5px'}}>{tipoFlujo}</td>
           <td className="c" style={{padding:'3px 5px'}}>{Ymax>0?Ymax.toFixed(2):'—'}</td>
@@ -210,6 +203,5 @@ Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; ch
       </div>
     </div>
   </div>
-  <div style={{display:"none"}}><HydraulicCalcTable tramos={tramosSan} mode="sanitary" titleIcon="♻️" titleText="Cálculo de Vreal, Y real, Rh real" colorVar="var(--txt)" /></div>
   </>);
 }

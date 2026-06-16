@@ -6,7 +6,7 @@ import { usePlans } from '../context/PlansContext';
 import { useProject } from '../context/ProjectContext';
 import { usePageMeta } from '../hooks/usePageMeta';
 
-function ViewerInner() {
+export default function ViewerPage() {
   const { plans, addPlans, removePlan } = usePlans();
   const { pisos } = useProject();
   const [activeIndex, setActiveIndex] = useState(() => {
@@ -200,8 +200,4 @@ function ViewerInner() {
       </div>
     </div>
   );
-}
-
-export default function ViewerPage() {
-  return <ViewerInner />;
 }

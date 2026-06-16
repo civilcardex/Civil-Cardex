@@ -58,7 +58,7 @@ async function loadPlanImage(plan: any): Promise<{ nivel: number; img: HTMLCanva
     c.width = Math.floor(vp.width);
     c.height = Math.floor(vp.height);
     const ctx = c.getContext('2d')!;
-    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    await page.render({ canvas: c, viewport: vp }).promise;
     return { nivel: plan.nivel, img: c, w: vp.width, h: vp.height };
   } catch {
     return null;

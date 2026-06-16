@@ -10,7 +10,9 @@ import DisenoLluvias from "./RainwaterDesign";
 import ChequeoBajantesLluvias from "./RainDownpipesCheck";
 import ChequeoCanalesLluvias from "./RainChannelsCheck";
 import CalculoUC from "./CalculoUC";
-import WaterNetworkDesignWrapper from "./WaterNetworkDesignWrapper";
+import WaterNetworkDesign from "./WaterNetworkDesign";
+import { DIAMETROS_AF, DIAMETROS_AC } from "../utils/calcHydraulics";
+import { lookupInterno, lookupInternoAC } from "../utils/accesoriosUtils";
 import BombaARDesign from "./BombaARDesign";
 import GasDesign from "./GasDesign";
 import PressureEquipmentDesign from "./PressureEquipmentDesign";
@@ -78,7 +80,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <PageNav page={afPage} setPage={setAfPage} total={3} color="var(--af)" labels={['Cálculo UC', 'Diseño de red agua fría', 'Accesorios']} />
           {afPage === 1 && <CalculoUC tipo="af" />}
-          {afPage === 2 && <WaterNetworkDesignWrapper type="af" />}
+          {afPage === 2 && <WaterNetworkDesign networkType="af" diamTable={DIAMETROS_AF} lookupFn={lookupInterno as any} />}
           {afPage === 3 && <AccesoriosTable tramos={tramosAf} updAcc={updTramoAfAcc} net="af" readOnly />}
         </div>
       )}
@@ -86,7 +88,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <PageNav page={acPage} setPage={setAcPage} total={3} color="var(--ac)" labels={['Cálculo UC', 'Diseño de red agua caliente', 'Accesorios']} />
           {acPage === 1 && <CalculoUC tipo="ac" />}
-          {acPage === 2 && <WaterNetworkDesignWrapper type="ac" />}
+          {acPage === 2 && <WaterNetworkDesign networkType="ac" diamTable={DIAMETROS_AC} lookupFn={lookupInternoAC as any} />}
           {acPage === 3 && <AccesoriosTable tramos={tramosAc} updAcc={updTramoAcAcc} net="ac" readOnly />}
         </div>
       )}

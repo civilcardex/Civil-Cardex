@@ -171,7 +171,7 @@ export default function TramoEditor({
                     <div>
                       <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Dirección</div>
                       <div style={{ display: 'flex', gap: 3 }}>
-                        {([['sube','↑ Sube'],['baja','↓ Baja'],['mantiene','— Mantiene']] as const).map(([val, lbl]) => (
+                        {([['sube','↑ Sube'],['baja','↓ Baja']] as const).map(([val, lbl]) => (
                           <button key={val} onClick={() => handleUpdateSel('direccion', selElement.direccion === val ? undefined : val)} style={{
                             flex: 1, padding: '4px 6px', fontSize: 10, fontFamily: "'Geist',monospace", borderRadius: 3,
                             border: `1px solid ${selElement.direccion === val ? '#F5A623' : '#3a494a'}`,

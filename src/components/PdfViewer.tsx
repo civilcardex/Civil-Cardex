@@ -44,10 +44,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   const [scale, setScale] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tool, setTool] = useState(() => {
-    try { return sessionStorage.getItem('civilflow_visor_tool') || 'line'; }
-    catch (_) { return 'line'; }
-  });
+  const [tool, setTool] = useState('sel');
   const [activeNet, setActiveNet] = useState(() => {
     if (activeNetworks && activeNetworks.size > 0) {
       if (activeNetworks.has("af")) return "af";

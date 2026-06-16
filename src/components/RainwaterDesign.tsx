@@ -7,7 +7,6 @@ import { diametroManning } from "../utils/calcSanitary";
 import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
 import { getTributarioIds } from "../utils/tramoUtils";
 import { calcHydraulicCheck } from "../utils/hydraulicCheck";
-import HydraulicCalcTable from "./HydraulicCalcTable";
 
 export default function DisenoLluvias() {
   const { tramosLl, updTramoLL, delTramoLL } = useTramos();
@@ -36,46 +35,43 @@ export default function DisenoLluvias() {
       <div className="card-h">
         <span className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Diseno_red.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Diseño de red aguas lluvias</span>
       </div>
-      <div className="scroll-top" style={{padding:'16px'}}>
+      <div className="scroll-top" style={{padding:'12px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
-          <table className="tbl" style={{fontSize:13}}>
+          <table className="tbl" style={{fontSize:11}}>
           <thead>
             <tr>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Tramo<br/>o Ramal</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Nivel</th>
-<th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Inicio</th>
-               <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Fin</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center',minWidth:100}}>Puntos de conexión</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Q<br/><small>LPS</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center',minWidth:70}}>Manning</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>S %</th>
-              <th className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize:11}}>Diámetro</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Qo<br/><small>LPS</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Vo<br/><small>m/s</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Q/Qo</th>
-               <th className="col-h ll" rowSpan={2} style={{display:'none',fontSize:11,textAlign:'center'}}>Vreal<br/><small>m/s</small></th>
-              <th className="col-h ll" rowSpan={2} style={{display:'none',fontSize:11,textAlign:'center'}}>Chequeo<br/><small>0.45&lt;Vr&lt;4.0</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Yc<br/><small>mm</small></th>
-              <th className="col-h ll" rowSpan={2} style={{display:'none',fontSize:11,textAlign:'center'}}>Yn<br/><small>mm</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Froude</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Tipo de<br/>Flujo</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Ymax= 0.75D mm</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Yn vs Yc</th>
-              <th className="col-h ven" colSpan={2} style={{textAlign:'center',fontSize:11}}>Fuerza Tractiva</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Tramo</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Nivel</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Inicio</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Fin</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Conexiones</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Q<br/><small>LPS</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>n<br/>Manning</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>S&nbsp;%</th>
+              <th className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize:10,padding:'3px 2px'}}>Diámetro</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Qo<br/><small>LPS</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Vo<br/><small>m/s</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Q/Qo</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Yc<br/><small>mm</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Fr</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Flujo</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Ymax<br/><small>mm</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Yn vs Yc</th>
+              <th className="col-h ven" colSpan={2} style={{textAlign:'center',fontSize:10,padding:'3px 2px'}}>Fuerza Tractiva</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}></th>
             </tr>
             <tr>
-              <th className="col-h ok" style={{fontSize:10,textAlign:'center'}}>Calc.<br/>pulg</th>
-              <th className="col-h ok" style={{fontSize:10,textAlign:'center'}}>Diseño<br/>pulgada</th>
-              <th className="col-h ok" style={{fontSize:10,textAlign:'center'}}>Interno<br/>mm</th>
-              <th className="col-h ven" style={{fontSize:10,textAlign:'center'}}>Vr<br/><small>kg/m2</small></th>
-              <th className="col-h ven" style={{fontSize:10,textAlign:'center'}}>&gt;0.15</th>
-          <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}></th>
+              <th className="col-h ok" style={{fontSize:9,textAlign:'center',padding:'2px 2px'}}>Calc.<br/>pulg</th>
+              <th className="col-h ok" style={{fontSize:9,textAlign:'center',padding:'2px 2px'}}>Diseño<br/>pulg</th>
+              <th className="col-h ok" style={{fontSize:9,textAlign:'center',padding:'2px 2px'}}>Int.<br/>mm</th>
+              <th className="col-h ven" style={{fontSize:9,textAlign:'center',padding:'2px 2px'}}>Vr<br/><small>kg/m2</small></th>
+              <th className="col-h ven" style={{fontSize:9,textAlign:'center',padding:'2px 2px'}}>&gt;0.15</th>
             </tr>
           </thead>
           <tbody>
             {displayTramos.length === 0 ? (
               <tr>
-                <td colSpan={25} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                <td colSpan={22} style={{ padding: "16px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
                   No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                 </td>
               </tr>
@@ -85,63 +81,60 @@ const sVal=t.sPercent;
 const S=sVal!=null&&sVal>0?sVal/100:null;
 const Q=t.qLps||0;
               const dSel=DIAM_OPTIONS.find(d=>d.pulg===(t.diamDisPulg||0))||null;
-      let DcalcPulg=0,DdisPulg=dSel?dSel.pulg:0,DintMm=dSel?dSel.mm:0,chequeo='—';
-      let Qo=0,Vo=0,qqo=0,Vreal=0,chequeoV='—';
-      let Yc=0,Yn=0,Froude=0,tipoFlujo='—',Ymax=0,chequeoYn='—';
+      let DcalcPulg=0,DdisPulg=dSel?dSel.pulg:0,DintMm=dSel?dSel.mm:0;
+      let Qo=0,Vo=0,qqo=0;
+      let Yc=0,Froude=0,tipoFlujo='—',Ymax=0,chequeoYn='—';
       let fuerzaTractiva=0,chequeoFT='—';
 if(Q>0&&S!=null&&S>0&&n!=null&&n>0){
 DcalcPulg=Math.round(diametroManning(Q/1000,n,S)*1000/25.4*100)/100;
-if(DdisPulg>0){chequeo=DcalcPulg<=DdisPulg?'O.K.':'NO CUMPLE';}
+ if(DdisPulg>0){const ok=DcalcPulg<=DdisPulg?'O.K.':'NO CUMPLE'; void ok;}
 }
 if(Q>0&&S!=null&&S>0&&n!=null&&n>0&&DintMm>0){
 const hc = calcHydraulicCheck({ Q, S, n, DintMm, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN });
-Qo = hc.Qo; Vo = hc.Vo; qqo = hc.qqo; Vreal = hc.Vreal; chequeoV = hc.chequeoV;
-Yc = hc.Yc; Yn = hc.Yn; Froude = hc.Froude; tipoFlujo = hc.tipoFlujo;
-Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; chequeoFT = hc.chequeoFT;
+ Qo = hc.Qo; Vo = hc.Vo; qqo = hc.qqo;
+ Yc = hc.Yc; Froude = hc.Froude; tipoFlujo = hc.tipoFlujo;
+ Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; chequeoFT = hc.chequeoFT;
 }
 const descIds=parseDescription(t.descripcion);
               return(
                 <tr key={t._key}>
-                  <td className="c"><span className="sigla" style={{fontSize:10}}>{t.id || t._key}</span></td>
-                  <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.piso ? pisoCorto(t.piso) : '—'}</span></td>
-                  <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.desde || '—'}</span></td>
-                  <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.hasta || '—'}</span></td>
-                  <td className="c" style={{fontSize:10,color:'var(--txt2)'}}>
+                  <td className="c" style={{padding:'2px 4px'}}><span className="sigla" style={{fontSize:10}}>{t.id || t._key}</span></td>
+                  <td className="c" style={{padding:'2px 4px'}}><span style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.piso ? pisoCorto(t.piso) : '—'}</span></td>
+                  <td className="c" style={{padding:'2px 4px'}}><span style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.desde || '—'}</span></td>
+                  <td className="c" style={{padding:'2px 4px'}}><span style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.hasta || '—'}</span></td>
+                  <td className="c" style={{fontSize:9,color:'var(--txt2)',padding:'2px 4px'}}>
                     {descIds.length > 0 ? descIds.join(', ') : '—'}
                   </td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600}}>{Q>0?Q.toFixed(3):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)'}}>{sVal > 0 ? sVal : '—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10}}>{DcalcPulg>0?DcalcPulg.toFixed(2)+'"':'—'}</td>
-                  <td className="c">
+                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,padding:'2px 4px'}}>{Q>0?Q.toFixed(3):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{sVal > 0 ? sVal : '—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:9,padding:'2px 4px'}}>{DcalcPulg>0?DcalcPulg.toFixed(2)+'"':'—'}</td>
+                  <td className="c" style={{padding:'2px 2px'}}>
           <select
             value={DdisPulg||''}
             onChange={e=>handleDiamChange(t._key,t.id,parseFloat(e.target.value)||0)}
-            style={{fontFamily:'var(--mono)',fontSize:10,padding:'1px 2px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer'}}
+            style={{fontFamily:'var(--mono)',fontSize:9,padding:'1px 1px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer',maxWidth:60}}
           >
             <option value="">—</option>
             {DIAM_OPTIONS.map(o=><option key={o.pulg} value={o.pulg}>{o.label}</option>)}
           </select>
         </td>
-                  <td className="c">{DintMm>0?DintMm:'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)'}}>{Qo>0?Qo.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)'}}>{Vo>0?Vo.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)'}}>{qqo>0?qqo.toFixed(2):'—'}</td>
-                  <td className="c" style={{display:'none',fontFamily:'var(--mono)'}}>{Vreal>0?Vreal.toFixed(2):'—'}</td>
-                  <td className="c" style={{display:'none'}}>{chequeoV}</td>
-                  <td className="c">{Yc>0?Yc.toFixed(2):'—'}</td>
-                  <td className="c" style={{display:'none'}}>{Yn>0?Yn.toFixed(2):'—'}</td>
-                  <td className="c">{Froude>0?Froude.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontSize:10}}>{tipoFlujo}</td>
-                  <td className="c">{Ymax>0?Ymax.toFixed(2):'—'}</td>
-                  <td className="c">{chequeoYn}</td>
-                  <td className="c">{fuerzaTractiva>0?fuerzaTractiva.toFixed(2):'—'}</td>
-        <td className="c">{chequeoFT}</td>
-        <td className="c" style={{padding:'2px'}}>
+                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{DintMm>0?DintMm:'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{Qo>0?Qo.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{Vo>0?Vo.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{qqo>0?qqo.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{Yc>0?Yc.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{Froude>0?Froude.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontSize:9,padding:'2px 4px'}}>{tipoFlujo}</td>
+                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{Ymax>0?Ymax.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{chequeoYn}</td>
+                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{fuerzaTractiva>0?fuerzaTractiva.toFixed(2):'—'}</td>
+        <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{chequeoFT}</td>
+        <td className="c" style={{padding:'1px 4px'}}>
           <button
             onClick={() => handleDelete(t._key, t.id)}
             title="Eliminar ramal"
-            style={{border:'none',background:'transparent',color:'var(--txt3)',cursor:'pointer',fontSize:12,padding:'0 2px',lineHeight:1}}
+            style={{border:'none',background:'transparent',color:'var(--txt3)',cursor:'pointer',fontSize:11,padding:'0 2px',lineHeight:1}}
           >&#x2715;</button>
         </td>
       </tr>
@@ -152,6 +145,5 @@ const descIds=parseDescription(t.descripcion);
         </div>
       </div>
     </div>
-  <div style={{display:"none"}}><HydraulicCalcTable tramos={tramosLl} mode="rainwater" titleIcon="🌧️" titleText="Cálculo de Vreal, Y real, Rh real" colorVar="var(--ll)" /></div>
   </>);
 }

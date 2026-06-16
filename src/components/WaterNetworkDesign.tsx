@@ -6,7 +6,7 @@ import { AF_UC_IDS, AC_UC_IDS, APARATOS_DEF, pisoCorto } from "../constants";
 import { calcUCparcial } from "../utils/componentHelpers";
 import { COEF_HAZEN_PVC, COEF_HAZEN_CPVC, CONTADORES } from "../utils/calcHydraulics";
 import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
-import { LE_ACC_DEF, calcLeAcces } from "../utils/accesoriosUtils";
+import { calcLeAcces } from "../utils/accesoriosUtils";
 import { fmtPulg } from "../utils/formatUtils";
 import { fmt } from "../utils/fmt";
 import { useToggleMap } from "../hooks/useToggleMap";
@@ -314,116 +314,6 @@ export default function WaterNetworkDesign({ networkType, diamTable, lookupFn }:
         />
       )}
 
-      <div style={{ display: "none" }}>
-        <div className="card-h">
-          <span className="card-t"><img src="/iconos_diseno_redes/general/Accesorios.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Accesorios por ramal</span>
-          <span className="card-s">Cálculo interno de Le por ramal · PVC-PR C=150</span>
-        </div>
-        <div style={{ padding: "4px" }}>
-          <table className="tbl" style={{ width: "100%", fontSize: 10, tableLayout: "fixed" }}>
-            <colgroup>
-              <col style={{ width: "6%" }} />
-              <col style={{ width: "6%" }} />
-              {LE_ACC_DEF.map((a) => (
-                <col key={a.id} style={{ width: `${88 / LE_ACC_DEF.length}%` }} />
-              ))}
-            </colgroup>
-            <thead>
-              <tr>
-                <th className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "4px 2px" }}>Le</th>
-                <th className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "4px 2px" }}>D</th>
-                {LE_ACC_DEF.map((a) => (
-                  <th
-                    key={a.id}
-                    className="col-h"
-                    style={{
-                      textAlign: "center",
-                      padding: "4px 2px",
-                      fontSize: 9,
-                      writingMode: "vertical-rl",
-                      transform: "rotate(180deg)",
-                      whiteSpace: "nowrap",
-                      height: 100,
-                    }}
-                    title={a.n}
-                  >
-                    {a.id === "codo90rc" ? "Codo 90° RC" :
-                     a.id === "teeDirecto" ? "Tee Dir" :
-                     a.id === "teeReduccion" ? "Tee Red" :
-                     a.id === "teeLado" ? "Tee Lado" :
-                     a.id === "teeBilateral" ? "Tee Bil" :
-                     a.id === "valvGlobo" ? "V. Globo" :
-                     a.id === "valvCompuerta" ? "V. Comp" :
-                     a.id === "reduccion" ? "Reduc" :
-                     a.id === "ampliacion" ? "Ampl" :
-                     a.id === "codo45rc" ? "Codo 45° RC" :
-                     a.id === "valvCheque" ? "V. Cheq" :
-                     a.id === "valvPie" ? "V. Pie" :
-                     a.id === "codo90rm" ? "Codo 90° RM" :
-                     a.id === "codo90rl" ? "Codo 90° RL" :
-                     a.id === "valvAngulo" ? "V. Áng" :
-                     a.id === "otros" ? "Otros" : a.n}
-                  </th>
-                ))}
-              </tr>
-              <tr>
-                <th colSpan={2 + LE_ACC_DEF.length} style={{ background: "var(--bg3)", border: "1px solid var(--line)", textAlign: "center", padding: "4px", fontSize: 10, color: "var(--txt2)" }}>
-                  Accesorios por ramal
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {tramosOrden.length === 0 && (
-                <tr>
-                  <td colSpan={2 + LE_ACC_DEF.length} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
-                    No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
-                  </td>
-                </tr>
-              )}
-              {tramosOrden.map((t) => {
-                const disPulg = t.diamDisPulg || 0;
-                const leVal = calcLeAcces(t.accesorios, disPulg, C);
-                return (
-                  <tr key={t.id}>
-                    <td className="c" style={{  fontWeight: 700, padding: "4px 2px", textAlign: "center", background: leVal > 0 ? "rgba(59,130,246,.12)" : "transparent" }}>
-                      {leVal > 0 ? fmt(leVal, 2) : "—"}
-                    </td>
-                  <td className="c" style={{ padding: "4px 2px", textAlign: "center", color: "var(--txt2)" }}>
-                    <select
-                      value={disPulg || ''}
-                      onChange={e => handleDiamChange(t.id, e.target.value)}
-                      style={{  fontSize: 10, padding: "1px 2px", border: "1px solid var(--line)", borderRadius: 2, background: "var(--bg2)", color: "var(--txt)", cursor: "pointer" }}
-                    >
-                      <option value="">—</option>
-                      {DIAM_OPTS.map(o => (
-                        <option key={o.pulg} value={o.pulg}>{o.label}</option>
-                      ))}
-                    </select>
-                  </td>
-                    {LE_ACC_DEF.map((a) => {
-                      const v = t.accesorios?.[a.id] || 0;
-                      return (
-                        <td
-                          key={a.id}
-                          className="c"
-                          style={{
-                            padding: "4px 2px",
-                            textAlign: "center",
-                            background: v > 0 ? "rgba(59,130,246,.15)" : "transparent",
-                            color: v > 0 ? "var(--txt)" : "var(--txt3)",
-                          }}
-                        >
-                          {v > 0 ? v : ""}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </>
   );
 }
