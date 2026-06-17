@@ -304,11 +304,11 @@ export const DIAM_BY_MAT: Record<string, Array<{ n: string }>> = {
 };
 
 export const DIAM_DEFAULT_BY_NET: Record<string, string> = {
-  san: '4" — 107.7 mm',
-  ll: '3" — 76.2 mm',
-  af: '½" — 21.3 mm',
-  ac: '½" — 21.3 mm',
-  rci: '4" — 102.3 mm',
+  san: '',
+  ll: '',
+  af: '',
+  ac: '',
+  rci: '',
 };
 
 export const CAT_GAS = [

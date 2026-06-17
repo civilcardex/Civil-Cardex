@@ -42,7 +42,7 @@ function Navbar() {
         </button>
         <Link to="/" className="flex items-center gap-2">
           <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="h-9 w-9 md:h-12 md:w-12 object-contain"  width={36} height={36} loading="lazy" />
-          <span className="font-bold text-xl md:text-2xl tracking-tighter uppercase text-primary" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>CIVILCORE</span>
+          <span className="font-bold text-xl md:text-2xl tracking-tighter uppercase text-primary" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>CivilCore</span>
         </Link>
         <div className="hidden md:flex gap-4 items-center h-full">
           {navLinks.map(l => (

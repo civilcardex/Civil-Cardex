@@ -10,7 +10,7 @@ function Footer() {
           <Link to="/docs" className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant hover:text-primary uppercase transition-colors" style={{ fontFamily: 'Geist, monospace' }}>API</Link>
           <Link to="/docs" className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant hover:text-primary uppercase transition-colors" style={{ fontFamily: 'Geist, monospace' }}>SDK</Link>
         </div>
-        <span className="text-[13px] text-on-surface-variant uppercase" style={{ fontFamily: 'Geist, monospace' }}>© 2026 CIVILCORE ENGINEERING. ALL RIGHTS RESERVED.</span>
+        <span className="text-[13px] text-on-surface-variant uppercase" style={{ fontFamily: 'Geist, monospace' }}>© 2026 CivilCore Engineering. Todos los derechos reservados.</span>
       </div>
     </footer>
   );

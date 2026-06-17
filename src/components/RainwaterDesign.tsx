@@ -2,7 +2,6 @@ import { useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import { usePlans } from "../context/PlansContext";
 import { pisoCorto, DIAM_OPTIONS, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN } from "../constants";
-import { parseDescription } from "../utils/parseDescription";
 import { diametroManning } from "../utils/calcSanitary";
 import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
 import { getTributarioIds } from "../utils/tramoUtils";
@@ -95,7 +94,7 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm, V_MIN, V_MAX, Y_D_MAX, FUERZA_T
  Yc = hc.Yc; Froude = hc.Froude; tipoFlujo = hc.tipoFlujo;
  Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; chequeoFT = hc.chequeoFT;
 }
-const descIds=parseDescription(t.descripcion??'');
+const descIds=(t.descripcion??'').split('+').map(s=>s.trim()).filter(Boolean);
               return(
                 <tr key={t._key}>
                   <td className="c" style={{padding:'2px 4px'}}><span className="sigla" style={{fontSize:10}}>{t.id || t._key}</span></td>

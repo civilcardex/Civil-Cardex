@@ -3,7 +3,6 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './layouts/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { ProtectedRoute } from './components/ProtectedRoute'
-import LoadingSpinner from './components/LoadingSpinner'
 import { AppProviders } from './context/AppProviders'
 
 // Rutas ligeras - import estático
@@ -41,14 +40,14 @@ function App() {
             <Route path="/visor" element={<ViewerPage />} />
 
             {/* Rutas lazy públicas */}
-            <Route path="/docs" element={<Suspense fallback={<LoadingSpinner />}><DocsPage /></Suspense>} />
-            <Route path="/civilflow" element={<Suspense fallback={<LoadingSpinner />}><CivilFlowPage /></Suspense>} />
-            <Route path="/civilstructure" element={<Suspense fallback={<LoadingSpinner />}><CivilStructurePage /></Suspense>} />
-            <Route path="/civilterrain" element={<Suspense fallback={<LoadingSpinner />}><CivilTerrainPage /></Suspense>} />
-            <Route path="/civilbim" element={<Suspense fallback={<LoadingSpinner />}><CivilBIMPage /></Suspense>} />
-            <Route path="/civilmanage" element={<Suspense fallback={<LoadingSpinner />}><CivilManagePage /></Suspense>} />
-            <Route path="/civilmep" element={<Suspense fallback={<LoadingSpinner />}><CivilMEPPage /></Suspense>} />
-            <Route path="/civilroads" element={<Suspense fallback={<LoadingSpinner />}><CivilRoadsPage /></Suspense>} />
+            <Route path="/docs" element={<Suspense fallback={<div className="flex items-center justify-center min-h-screen" role="status" aria-live="polite" style={{color:'var(--on-surface)'}}>Cargando...</div>}><DocsPage /></Suspense>} />
+            <Route path="/civilflow" element={<Suspense fallback={<div className="flex items-center justify-center min-h-screen" role="status" aria-live="polite" style={{color:'var(--on-surface)'}}>Cargando...</div>}><CivilFlowPage /></Suspense>} />
+            <Route path="/civilstructure" element={<Suspense fallback={<div className="flex items-center justify-center min-h-screen" role="status" aria-live="polite" style={{color:'var(--on-surface)'}}>Cargando...</div>}><CivilStructurePage /></Suspense>} />
+            <Route path="/civilterrain" element={<Suspense fallback={<div className="flex items-center justify-center min-h-screen" role="status" aria-live="polite" style={{color:'var(--on-surface)'}}>Cargando...</div>}><CivilTerrainPage /></Suspense>} />
+            <Route path="/civilbim" element={<Suspense fallback={<div className="flex items-center justify-center min-h-screen" role="status" aria-live="polite" style={{color:'var(--on-surface)'}}>Cargando...</div>}><CivilBIMPage /></Suspense>} />
+            <Route path="/civilmanage" element={<Suspense fallback={<div className="flex items-center justify-center min-h-screen" role="status" aria-live="polite" style={{color:'var(--on-surface)'}}>Cargando...</div>}><CivilManagePage /></Suspense>} />
+            <Route path="/civilmep" element={<Suspense fallback={<div className="flex items-center justify-center min-h-screen" role="status" aria-live="polite" style={{color:'var(--on-surface)'}}>Cargando...</div>}><CivilMEPPage /></Suspense>} />
+            <Route path="/civilroads" element={<Suspense fallback={<div className="flex items-center justify-center min-h-screen" role="status" aria-live="polite" style={{color:'var(--on-surface)'}}>Cargando...</div>}><CivilRoadsPage /></Suspense>} />
 
             {/* Redirects */}
             <Route path="/planos" element={<Navigate to="/civilflowareatrabajo" replace />} />
@@ -57,9 +56,9 @@ function App() {
             {/* Rutas protegidas */}
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
-                <Route path="/civilflowareatrabajo" element={<Suspense fallback={<LoadingSpinner />}><WorkAreaCivilFlowPage /></Suspense>} />
+                <Route path="/civilflowareatrabajo" element={<Suspense fallback={<div className="flex items-center justify-center min-h-screen" role="status" aria-live="polite" style={{color:'var(--on-surface)'}}>Cargando...</div>}><WorkAreaCivilFlowPage /></Suspense>} />
                 <Route path="/perfil" element={<ProfilePage />} />
-                <Route path="/catalogomaestro" element={<Suspense fallback={<LoadingSpinner />}><CatalogoMaestroPage /></Suspense>} />
+                <Route path="/catalogomaestro" element={<Suspense fallback={<div className="flex items-center justify-center min-h-screen" role="status" aria-live="polite" style={{color:'var(--on-surface)'}}>Cargando...</div>}><CatalogoMaestroPage /></Suspense>} />
               </Route>
             </Route>
 

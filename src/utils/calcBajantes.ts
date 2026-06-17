@@ -1,11 +1,6 @@
 import { DIAM_BAN, DIAM_VENT } from '../constants';
 import { manning_SAN, caudalHunterLPS } from './calcSanitaryCore';
 
-interface DiamOption {
-  pulg: number;
-  mm: number;
-  nom: string;
-}
 
 // ─── Capacidad de bajante (Manning con factor r = 7/24) ───
 export function capacidadBajante(D_pulg: number, r?: number): number {
@@ -138,4 +133,4 @@ export function calculateVentStack(params: BajanteVentilacionParams): BajanteVen
   };
 }
 
-export { calculateVentStack as calcularBajanteVentilacion };
+

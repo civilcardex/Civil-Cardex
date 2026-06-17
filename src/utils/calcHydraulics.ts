@@ -1,4 +1,4 @@
-import { factorSimultaneidad, caudalHunterLPS } from './calcSanitary';
+
 
 export const COEF_HAZEN_PVC: number = 150;
 export const COEF_HAZEN_CPVC: number = 150;
@@ -141,136 +141,6 @@ export function checkPressure(Pnudo: number, PminAparato?: number): { cumple: bo
   };
 }
 
-export interface TramoHidraulicoParams {
-  ramal?: string;
-  nudoIni?: string;
-  nudoFin?: string;
-  piso?: number;
-  UC_propias?: number | string;
-  UC_otros?: number | string;
-  numSalidas?: number | string;
-  Lh_m?: number;
-  Lv_m?: number;
-  presionRed_mca?: number;
-  material?: string;
-  tipo?: string;
-  desc_otros?: string;
-}
-
-export interface TramoHidraulicoResult {
-  ramal: string;
-  nudoIni: string;
-  nudoFin: string;
-  piso: number;
-  desc_otros: string;
-  UC_propias: number;
-  UC_otros: number;
-  UC_acumulado: number;
-  numSalidas: number;
-  K: number;
-  Q_Ls: number;
-  diamNominal: string;
-  D_int_mm: number;
-  D_ext_mm: number;
-  pulg: number;
-  material: string;
-  C: number;
-  V_ms: number;
-  V_mms: number;
-  Lh_m: number;
-  Lv_m: number;
-  Le_m: number;
-  L_total: number;
-  hf_m: number;
-  deltaZ_m: number;
-  P_ini_mca: number;
-  P_fin_mca: number;
-  verifV: { cumple: boolean; mensaje: string; Vmin: number; Vmax: number };
-  verifP: { cumple: boolean; mensaje: string };
-  cumple: boolean;
-}
-
-// ─── Calculo completo de un tramo hidraulico (AF o AC) ───
-export function calculateHydraulicSegment(params: TramoHidraulicoParams): TramoHidraulicoResult {
-  const {
-    ramal = '',
-    nudoIni = '',
-    nudoFin = '',
-    piso = 1,
-    UC_propias = 0,
-    UC_otros = 0,
-    numSalidas = 1,
-    Lh_m = 5.0,
-    Lv_m = 0,
-    presionRed_mca = 20.0,
-    material = 'PVC',
-    tipo = 'AF',
-  } = params;
-
-  const C = material === 'CPVC' ? COEF_HAZEN_CPVC : COEF_HAZEN_PVC;
-  const selDiam = tipo === 'AC'
-    ? seleccionarDiametroAC
-    : seleccionarDiametroAF;
-
-  const UC_acumulado = Number(UC_propias) + Number(UC_otros);
-  const K = factorSimultaneidad(Number(numSalidas) || 1);
-  const Q_Ls = caudalHunterLPS(UC_acumulado, K);
-  const Q_m3s = Q_Ls / 1000;
-
-  const diam = selDiam(Q_m3s);
-  const D_int_mm = diam.dInt;
-  const D_int_m = D_int_mm / 1000;
-
-  const V_ms = realVelocity(Q_m3s, D_int_m);
-  const V_mms = V_ms * 1000;
-
-  const L_total = (Lh_m || 0) + (Lv_m || 0);
-
-  const hf = hazenWilliamsLoss(Q_m3s, L_total || 0.1, D_int_m, C);
-
-  const deltaZ = Number(Lv_m) || 0;
-  const P_ini = presionRed_mca;
-  const P_fin = nodePressure(P_ini, deltaZ, hf);
-
-  const verifV = checkVelocity(V_ms);
-  const verifP = checkPressure(P_fin);
-
-  const desc_otros = params.desc_otros || "";
-
-  return {
-    ramal,
-    nudoIni,
-    nudoFin,
-    piso,
-    desc_otros,
-    UC_propias: Number(UC_propias) || 0,
-    UC_otros: Number(UC_otros) || 0,
-    UC_acumulado,
-    numSalidas: Number(numSalidas) || 1,
-    K: parseFloat(K.toFixed(4)),
-    Q_Ls: parseFloat(Q_Ls.toFixed(4)),
-    diamNominal: diam.nominal,
-    D_int_mm,
-    D_ext_mm: diam.dExt,
-    pulg: diam.pulg,
-    material,
-    C,
-    V_ms: parseFloat(V_ms.toFixed(4)),
-    V_mms: parseFloat(V_mms.toFixed(1)),
-    Lh_m: Number(Lh_m) || 0,
-    Lv_m: Number(Lv_m) || 0,
-    Le_m: 0,
-    L_total: parseFloat(L_total.toFixed(2)),
-    hf_m: parseFloat(hf.toFixed(4)),
-    deltaZ_m: parseFloat(deltaZ.toFixed(2)),
-    P_ini_mca: parseFloat(P_ini.toFixed(2)),
-    P_fin_mca: parseFloat(P_fin.toFixed(2)),
-    verifV,
-    verifP,
-    cumple: verifV.cumple && verifP.cumple,
-  };
-}
-
 // ─── Caudal total de consumo (Calculo TR) ───
 export function calcularConsumoTR(habitantes: number, dotacion: number, areaPiscina: number, areaVerdes: number, areaOtros: number): {
   habitantes: number;
@@ -310,5 +180,4 @@ export {
   nodePressure as presionNudo,
   checkVelocity as verificarVelocidad,
   checkPressure as verificarPresion,
-  calculateHydraulicSegment as calcularTramoHidraulico,
 };

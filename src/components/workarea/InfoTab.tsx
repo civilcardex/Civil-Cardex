@@ -142,24 +142,24 @@ function FloorGeneratorCard(props: {
           <span className="card-s" style={{ fontSize: 11 }}>Generación automática de pisos y sótanos</span>
         </div>
       </div>
-      <div style={{ padding: '4px 6px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, alignItems: 'end' }}>
-          <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Sótanos</label><input type="text" inputMode="numeric" value={props.nSotanos} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onIntChange(props.setNSotanos)} onBlur={props.onIntBlur(props.setNSotanos)} /></div>
-          <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Pisos</label><input type="text" inputMode="numeric" value={props.nPisos} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onIntChange(props.setNPisos)} onBlur={props.onIntBlur(props.setNPisos)} /></div>
-          <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Altura entrepiso</label><input type="text" inputMode="decimal" value={props.altPiso} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onDecChange(props.setAltPiso)} onBlur={props.onDecBlur(props.setAltPiso)} /></div>
-          <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Altura sótano</label><input type="text" inputMode="decimal" value={props.altSotano} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onDecChange(props.setAltSotano)} onBlur={props.onDecBlur(props.setAltSotano)} /></div>
-          <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>NPT P1</label><input type="text" inputMode="decimal" value={props.nptPiso1} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onDecChange(props.setNptPiso1)} onBlur={props.onDecBlur(props.setNptPiso1)} /></div>
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', paddingRight: 24, paddingBottom: 2 }}>
-            <button onClick={() => props.setConCubierta(!props.conCubierta)} title="Incluir cubierta" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', padding: '4px 8px', borderRadius: 4, flexShrink: 0, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'inherit' }}>
-              <div style={{ width: 28, height: 15, borderRadius: 8, background: props.conCubierta ? 'var(--ll)' : 'var(--line)', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
-                <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: props.conCubierta ? 15 : 2, transition: 'left .2s' }} />
-              </div>
-              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--txt2)' }}>Incluir cubierta</span>
-            </button>
+        <div style={{ padding: '4px 6px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, alignItems: 'end' }}>
+            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Pisos</label><input type="text" inputMode="numeric" value={props.nPisos} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onIntChange(props.setNPisos)} onBlur={props.onIntBlur(props.setNPisos)} /></div>
+            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Altura entrepiso</label><input type="text" inputMode="decimal" value={props.altPiso} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onDecChange(props.setAltPiso)} onBlur={props.onDecBlur(props.setAltPiso)} /></div>
+            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Sótanos</label><input type="text" inputMode="numeric" value={props.nSotanos} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onIntChange(props.setNSotanos)} onBlur={props.onIntBlur(props.setNSotanos)} /></div>
+            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Altura sótano</label><input type="text" inputMode="decimal" value={props.altSotano} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onDecChange(props.setAltSotano)} onBlur={props.onDecBlur(props.setAltSotano)} /></div>
+            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>NPT P1</label><input type="text" inputMode="decimal" value={props.nptPiso1} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onDecChange(props.setNptPiso1)} onBlur={props.onDecBlur(props.setNptPiso1)} /></div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', paddingBottom: 2 }}>
+              <button onClick={() => props.setConCubierta(!props.conCubierta)} title="Incluir cubierta" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', padding: '4px 8px', borderRadius: 4, flexShrink: 0, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'inherit' }}>
+                <div style={{ width: 28, height: 15, borderRadius: 8, background: props.conCubierta ? 'var(--ll)' : 'var(--line)', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
+                  <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: props.conCubierta ? 15 : 2, transition: 'left .2s' }} />
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--txt2)' }}>Incluir cubierta</span>
+              </button>
+            </div>
           </div>
+          <button onClick={props.generarPisos} style={{ width: '100%', padding: '6px', marginTop: 6, background: 'var(--acc)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Generar niveles automáticamente</button>
         </div>
-        <button onClick={props.generarPisos} style={{ width: '100%', padding: '6px', marginTop: 6, background: 'var(--acc)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Generar niveles automáticamente</button>
-      </div>
     </div>
   );
 }

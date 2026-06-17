@@ -3,7 +3,8 @@ import { useEP } from "../../context/EPContext";
 import Card from "../shared/Card";
 import Tbl from "../shared/Tbl";
 import { PVC_SCH40, NEMA_HP, COMM_HP, selectDN } from "./calculations";
-import { LazyInp, Fmt, SI, dec, Param, Comment, FLEX_COL } from "./EPShared";
+import { LazyInp, Fmt, SI, Param, Comment, FLEX_COL } from "./EPShared";
+import { dec } from "../../utils/parseDecimal";
 
 interface EPVerificationPageProps {
   section?: "params" | "results";
@@ -115,12 +116,12 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
           </Card>
           <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/altura_manometrica.webp" iconImgStyle={{ width: 22, height: 22 }} title={`${isRed ? "HMT = Hg + Hf + Pmin − Pred" : "HMT = Hg_total + Hf_red + Hf_suc + Pmin"}`} bodyStyle={{ padding: 0 }}>
             <Tbl thStyle={{ fontSize: 10, padding: "1px 4px" }} tdStyle={{ fontSize: 11, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
-              ["Desnivel Hg = z_top − z_bomba", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hgOk ? "var(--ok)" : "#ef5350" }}>{hgOk ? "O.K" : "NO O.K"} {Hg.toFixed(2)}</span>, "m.c.a."],
-              ["Hf crítica = MAX(Hf_ac, Hf_acs) + Hf_otros", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hfOk ? "var(--ok)" : "#ef5350" }}>{hfOk ? "O.K" : "NO O.K"} {Hf.toFixed(2)}</span>, "m.c.a."],
-              ["Pmin punto crítico", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: pminOk ? "var(--ok)" : "#ef5350" }}>{pminOk ? "O.K" : "NO O.K"} {pmin.toFixed(2)}</span>, "m.c.a."],
-              ...(isRed ? [] : [["Nivel mínimo cisterna (z_cis)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{zcis.toFixed(2)}</span>, "m"], ["Hf succión cisterna", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hfcis >= 0 ? "var(--ok)" : "#ef5350" }}>{hfcis >= 0 ? "O.K" : "NO O.K"} {hfcis.toFixed(2)}</span>, "m.c.a."]] as any[][]),
-              ...(!isRed ? [] : [["Pred. disponible", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: predOk ? "var(--ok)" : "#ef5350" }}>{predOk ? "O.K" : "NO O.K"} {pred.toFixed(2)}</span>, "m.c.a."]] as any[][]),
-              [<span style={{ fontWeight: 700 }}>HMT total</span>, <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hmtOk ? "var(--ok)" : "#ef5350" }}>{hmtOk ? "O.K" : "NO O.K"}  {HMT.toFixed(2)}</span>, "m.c.a."],
+              ["Desnivel Hg = z_top − z_bomba", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hgOk ? "var(--ok)" : "#ef5350" }}>{hgOk ? "OK" : "NO CUMPLE"} {Hg.toFixed(2)}</span>, "m.c.a."],
+              ["Hf crítica = MAX(Hf_ac, Hf_acs) + Hf_otros", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hfOk ? "var(--ok)" : "#ef5350" }}>{hfOk ? "OK" : "NO CUMPLE"} {Hf.toFixed(2)}</span>, "m.c.a."],
+              ["Pmin punto crítico", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: pminOk ? "var(--ok)" : "#ef5350" }}>{pminOk ? "OK" : "NO CUMPLE"} {pmin.toFixed(2)}</span>, "m.c.a."],
+              ...(isRed ? [] : [["Nivel mínimo cisterna (z_cis)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{zcis.toFixed(2)}</span>, "m"], ["Hf succión cisterna", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hfcis >= 0 ? "var(--ok)" : "#ef5350" }}>{hfcis >= 0 ? "OK" : "NO CUMPLE"} {hfcis.toFixed(2)}</span>, "m.c.a."]] as any[][]),
+              ...(!isRed ? [] : [["Pred. disponible", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: predOk ? "var(--ok)" : "#ef5350" }}>{predOk ? "OK" : "NO CUMPLE"} {pred.toFixed(2)}</span>, "m.c.a."]] as any[][]),
+              [<span style={{ fontWeight: 700 }}>HMT total</span>, <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hmtOk ? "var(--ok)" : "#ef5350" }}>{hmtOk ? "OK" : "NO CUMPLE"}  {HMT.toFixed(2)}</span>, "m.c.a."],
               ["Verificación Pmáx", alertaPmax ? <span style={{ color: "#ef5350", fontWeight: 700, fontFamily: "var(--mono)" }}>⚠ {HMT.toFixed(2)} &gt; {pmax.toFixed(2)}</span> : <span style={{ color: "var(--ok)", fontWeight: 700, fontFamily: "var(--mono)" }}>✓ OK ({HMT.toFixed(2)} ≤ {pmax.toFixed(2)})</span>, "m.c.a."],
             ]} />
           </Card>
@@ -161,7 +162,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "480px 380px", gap: 16, justifyContent: "center", alignItems: "start" }}>
-      <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.webp" iconImgStyle={{ width: 22, height: 22 }} title="Setpoint y tanque hidroneumático" bodyStyle={{ padding: 0 }}>
+      <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.webp" iconImgStyle={{ width: 22, height: 22 }} title="Presostato y tanque hidroneumático" bodyStyle={{ padding: 0 }}>
         <Tbl thStyle={{ fontSize: 11, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud.", "Fórmula"]} rows={[
           ["P_on (arranque)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Pon.toFixed(2)}</span>, "m.c.a.", "P_on = HMT"],
           ["P_off (paro)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Poff.toFixed(2)}</span>, "m.c.a.", "P_off = P_on × 1.10"],

@@ -8,8 +8,8 @@ import { COEF_HAZEN_PVC, COEF_HAZEN_CPVC, CONTADORES } from "../utils/calcHydrau
 import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
 import { calcLeAcces } from "../utils/accesoriosUtils";
 import { fmtPulg } from "../utils/formatUtils";
-import { fmt } from "../utils/fmt";
 import { useToggleMap } from "../hooks/useToggleMap";
+const fmt = (v: unknown, d = 2) => v == null || Number.isNaN(Number(v)) ? "—" : Number(v).toFixed(d);
 import Acometida from "./SupplyConnection";
 
 interface WaterNetworkDesignProps {

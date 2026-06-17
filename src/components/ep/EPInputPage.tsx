@@ -2,7 +2,8 @@ import React, { useMemo } from "react";
 import { useEP } from "../../context/EPContext";
 import Card from "../shared/Card";
 import Tbl from "../shared/Tbl";
-import { LazyInp, Fmt, SI, dec, Param, Comment, FLEX_COL } from "./EPShared";
+import { LazyInp, Fmt, SI, Param, Comment, FLEX_COL } from "./EPShared";
+import { dec } from "../../utils/parseDecimal";
 
 export default function EPInputPage() {
   const { ep, updEP } = useEP();
@@ -88,7 +89,7 @@ export default function EPInputPage() {
                 <div style={{ padding: "2px 0" }}>
                   <LazyInp field="nr" ariaLabel="Bombas en reserva" style={{ ...SI, fontSize: 14, padding: "6px 8px", fontWeight: 700 }} />
                 </div>
-                <div style={{ fontSize: 9, color: "var(--txt4)", marginTop: 4 }}>Stand-by · arranque automático por falla</div>
+                <div style={{ fontSize: 9, color: "var(--txt4)", marginTop: 4 }}>Reserva · arranque automático por falla</div>
               </div>
             </div>
             <div style={{

@@ -58,7 +58,7 @@ export default function CalculoUC({ tipo }: CalculoUCProps) {
                   <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Termina</th>
                   <th className={`col-h ${clsHeader}`} colSpan={AP.length} style={{textAlign:'center'}}>Aparatos</th>
                   {showTotal ? (
-                    <th className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Unidades de Consumo</th>
+                    <th className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Unidades de consumo</th>
                   ) : (
                     <th className="col-h ok" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Parcial</th>
                   )}

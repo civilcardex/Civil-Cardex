@@ -1,5 +1,4 @@
 import { pisoLbl } from "../constants";
-import { validateTramo } from "../utils/validatePipeSegment";
 import PageNav from "./PageNav";
 import AccesoriosTable from "./AccessoriesTable";
 import CalculoUD from "./FixtureUnitCalc";
@@ -106,7 +105,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
           <div style={{ fontSize: 48, opacity: .5 }}>&#x1F6A7;</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--txt2)' }}>{r.lbl}</div>
           <div style={{ fontSize: 13, color: 'var(--txt3)', textAlign: 'center', maxWidth: 380, lineHeight: 1.6 }}>
-            El módulo de <strong>{r.lbl}</strong> está en desarrollo.<br />Pronto estará disponible para uso en CIVILFLOW.</div>
+            El módulo de <strong>{r.lbl}</strong> está en desarrollo.<br />Pronto estará disponible para uso en CivilFlow.</div>
         </div>
       ))}
     </div>
@@ -115,8 +114,8 @@ function RedesTab({ state }: { state: WorkAreaState }) {
 
 function InfTab({ state }: { state: WorkAreaState }) {
   const { proy, redesActivas, pisos, tramosSan, tramosLl } = state;
-  const okSAN = tramosSan.length > 0 && tramosSan.every(validateTramo);
-  const okLL = tramosLl.length > 0 && tramosLl.every(validateTramo);
+  const okSAN = tramosSan.length > 0 && tramosSan.every(t => { const r = t as any; const v=r.v_real||0; const y=r.yD||0; const q=r.qQ0||0; return v>=0.45&&v<=4.0&&y<=0.75&&q<=1.0; });
+  const okLL = tramosLl.length > 0 && tramosLl.every(t => { const r = t as any; const v=r.v_real||0; const y=r.yD||0; const q=r.qQ0||0; return v>=0.45&&v<=4.0&&y<=0.75&&q<=1.0; });
   const items: [string, string][] = [
     ['PROYECTO', proy.nombre],
     ['UBICACIÓN', [proy.mun, proy.dep].filter(Boolean).join(', ')],
@@ -127,7 +126,7 @@ function InfTab({ state }: { state: WorkAreaState }) {
     ['REDES', redesActivas.map((r: any) => r.lbl).join(' · ')],
     ['NIVELES', [...pisos].sort((a: any, b: any) => a.n - b.n).map((p: any) => pisoLbl(p.n)).join(' · ')],
     ['SANITARIA', okSAN ? '✓ OK' : '✗ Revisar'],
-    ['Aguas lluvias', okLL ? '✓ OK' : '✗ Revisar'],
+    ['AGUAS LLUVIAS', okLL ? '✓ OK' : '✗ Revisar'],
   ];
   return (
     <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}>

@@ -390,7 +390,7 @@ try { writeSanDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console
                   background: 'transparent', border: 'none', color: '#ffb4ab',
                   fontSize: 9, fontFamily: "'Geist',monospace", cursor: 'pointer',
                   textTransform: 'uppercase', letterSpacing: 1, padding: 0,
-                }}>↺ Reset</button>
+                }}>↺ Restablecer</button>
               )}
             </div>
           ) : (

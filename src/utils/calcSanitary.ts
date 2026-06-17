@@ -18,8 +18,6 @@ export {
   fuerzaTractiva,
   tipoRegimen,
   diametroManning,
-  calculateSanitarySegment,
-  calcularTramoSanitario,
 } from './calcSanitaryCore';
 
 export {
@@ -27,15 +25,10 @@ export {
   velocidadTerminal,
   longitudTerminal,
   calculateVentStack,
-  calcularBajanteVentilacion,
 } from './calcBajantes';
 
 export {
   caudalRacional,
-  calculateDownpipe,
-  calcularBajanteALL,
   chequeoBajanteLluvia,
   chequeoCanalLluvia,
-  calculateChannel,
-  calcularCanalALL,
 } from './calcRainwater';

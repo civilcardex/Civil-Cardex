@@ -1,10 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useEP, type EPData } from "../../context/EPContext";
-import { parseDecimalInput } from "../../utils/parseDecimal";
-
-export const dec = (s: string) => parseDecimalInput(s) || 0;
-
-export const SI: React.CSSProperties = { border: "1px solid var(--line)", borderRadius: 3, background: "var(--bg4)", fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt)", width: "100%", boxSizing: "border-box", textAlign: "center", outline: "none", padding: "3px 5px" };
+import { dec } from "../../utils/parseDecimal";
+import { SI } from "../../styles/sharedTableStyles";
+export { SI };
 
 export function LazyInp({ field, style, ariaLabel }: { field: keyof EPData; style?: React.CSSProperties; ariaLabel?: string }) {
   const { ep, updEP } = useEP();

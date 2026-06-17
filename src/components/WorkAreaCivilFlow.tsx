@@ -42,7 +42,7 @@ function NetworkBar({ redesActivas, tab, redActiva, setTab, setRedActiva }: Netw
   );
 }
 
-function CIVILFLOWInner() {
+function CivilFlowInner() {
   const state = useWorkAreaState();
 
   return (
@@ -69,6 +69,6 @@ function CIVILFLOWInner() {
   );
 }
 
-export default function CIVILFLOW() {
-  return <ErrorBoundary><CIVILFLOWInner /></ErrorBoundary>;
+export default function CivilFlow() {
+  return <ErrorBoundary><CivilFlowInner /></ErrorBoundary>;
 }

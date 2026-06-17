@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { parseDecimalInput } from "../utils/parseDecimal";
+import { dec } from "../utils/parseDecimal";
 import PageNav from './PageNav';
 import { SI, TH, TD } from "../styles/sharedTableStyles";
 
-const dec=(s: string)=>parseDecimalInput(s)||0;
 const nv=(s: string)=>s===''?'':/^[\d]*\.?[\d]*$/.test(s)?s:false;
 const oc=(set: (v: any) => void)=>(e: React.ChangeEvent<HTMLInputElement>)=>{const v=nv(e.target.value);if(v!==false)set(v)};
 

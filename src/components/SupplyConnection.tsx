@@ -1,8 +1,7 @@
 import { COEF_HAZEN_PVC } from "../utils/calcHydraulics";
 
 const C = COEF_HAZEN_PVC;
-
-import { fmt } from "../utils/fmt";
+const fmt = (v: unknown, d = 2) => v == null || Number.isNaN(Number(v)) ? "—" : Number(v).toFixed(d);
 
 interface FilaResult {
   dInt: number;
@@ -190,7 +189,7 @@ export default function Acometida({
                   <span style={{color:"var(--txt2)"}}>P CONT: {fmt(f1.Pfin,2)}</span> &nbsp;·&nbsp;
                   <span style={{color:"var(--txt2)"}}>P Mon: {fmt(f2.Pfin,2)}</span> &nbsp;·&nbsp;
                   <span style={{background:okPresion?"rgba(34,197,94,.2)":"rgba(239,68,68,.2)",padding:"0 4px",borderRadius:2,fontWeight:700,color:okPresion?"var(--ok)":"var(--err)"}}>
-                    {okPresion ? "O.K." : "No Cumple"}
+                    {okPresion ? "OK" : "NO CUMPLE"}
                   </span>
                 </td>
                 <td colSpan={2} style={{padding:"2px 1px",fontSize:9,color:"var(--txt3)",textAlign:"right"}}>
