@@ -10,7 +10,7 @@ import { REQ_ITEMS } from '../constants';
 function PlansPage() {
   const { plans, addPlans, removePlan } = usePlans();
   const navigate = useNavigate();
-  usePageMeta('Planos');
+  usePageMeta('Planos', 'Carga y gestión de planos PDF para diseño hidrosanitario. Calibración, niveles y visualización de redes sobre plano.');
 
   const onFiles = useCallback((files: FileList) => addPlans(files), [addPlans]);
   const { drag, setDrag, fileRef, onDrop, handleFileInput } = usePlanoFileUpload(onFiles);

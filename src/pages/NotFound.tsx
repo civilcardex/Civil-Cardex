@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 export default function NotFound() {
-  usePageMeta('Página no encontrada');
+  usePageMeta('Página no encontrada', 'La página solicitada no existe en CivilCore. Verifique la URL o vuelva al inicio.');
   return (
     <div className="min-h-screen bg-surface-bg text-on-surface font-sans flex items-center justify-center">
       <div className="text-center">

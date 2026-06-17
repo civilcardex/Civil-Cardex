@@ -79,9 +79,21 @@ missing: [
   },
 ];
 
+const FAQ_JSONLD = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    { '@type': 'Question', name: '\u00bfQu\u00e9 incluye el plan gratuito?', acceptedAnswer: { '@type': 'Answer', text: 'El plan gratuito incluye acceso a herramientas b\u00e1sicas de dise\u00f1o hidrosanitario con l\u00edmite de proyectos.' } },
+    { '@type': 'Question', name: '\u00bfPuedo cambiar de plan en cualquier momento?', acceptedAnswer: { '@type': 'Answer', text: 'S\u00ed, puede actualizar o cancelar su plan en cualquier momento desde su perfil. El cambio es inmediato.' } },
+    { '@type': 'Question', name: '\u00bfOfrecen descuentos para firmas de ingenier\u00eda?', acceptedAnswer: { '@type': 'Answer', text: 'S\u00ed, contamos con planes empresariales con descuento por volumen. Cont\u00e1ctenos para una cotizaci\u00f3n personalizada.' } },
+  ],
+};
+
 function PricingPage() {
-  usePageMeta('Precios');
+  usePageMeta('Precios', 'Planes y precios de CivilCore. Elija el plan ideal para ingenier\u00eda civil: b\u00e1sico, profesional o empresarial.');
   return (
+    <>
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSONLD) }} />
     <div style={{ background: '#111317', color: '#e2e2e8', minHeight: '100vh' }}>
       <Navbar />
       <div className="container mx-auto px-6 lg:px-8 py-24 pt-28">
@@ -175,6 +187,7 @@ function PricingPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

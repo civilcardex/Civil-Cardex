@@ -8,7 +8,7 @@ function DocsPage() {
   const [activeCat, setActiveCat] = useState('hidraulica')
   const [search, setSearch] = useState('')
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
-  usePageMeta('Documentación');
+  usePageMeta('Documentación', 'Guía completa de CivilCore. Normas NTC 1500, RAS 2000, NTC 3728. Tutoriales de diseño hidrosanitario y estructural.');
 
   const categories = Object.entries(docData).map(([id, data]: [string, any]) => ({
     id,

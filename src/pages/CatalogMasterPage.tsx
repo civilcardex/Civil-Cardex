@@ -29,7 +29,7 @@ export default function CatalogMasterPage() {
   const navigate = useNavigate();
   const [subpage, setSubpage] = useState(1);
   const [search, setSearch] = useState('');
-  usePageMeta('Catálogo Maestro');
+  usePageMeta('Catálogo Maestro', 'Catálogo de materiales, tuberías y equipos para diseño hidrosanitario. PVC, CPVC, cobre, acero y más según NTC 1500.');
 
   const sanFiltered = useMemo(() => filterGroups(SANITARIAS, search), [search]);
   const afFiltered = useMemo(() => filterGroups(AGUA_FRIA, search), [search]);
