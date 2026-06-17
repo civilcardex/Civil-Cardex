@@ -43,7 +43,7 @@ export default function SanAccesoriosPage() {
     <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
       <div className="card-h">
         <span className="card-t">
-          <img src="/iconos_diseno_redes/general/Accesorios.webp" alt="" style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} />
+          <img src="/iconos_diseno_redes/general/Accesorios.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
           Accesorios por ramal
         </span>
         <span className="card-s">{tramos.length} tramos · Red sanitaria</span>
@@ -56,7 +56,7 @@ export default function SanAccesoriosPage() {
                 <th className="col-h" style={{ minWidth: 64, textAlign: 'center', position: 'sticky', left: 0, zIndex: 2, background: 'var(--bg2)', fontSize: 11, padding: '5px 4px' }}>Tramo</th>
                 {SAN_ACCESORIOS.map(a => (
                   <th key={a.id} className="col-h" style={{ minWidth: 56, fontSize: 10, textAlign: 'center', whiteSpace: 'nowrap', padding: '5px 2px' }}>
-                    <img src={a.icono} alt={a.nombre} style={{ width: 24, height: 24, objectFit: 'contain', display: 'block', margin: '0 auto 2px' }} />
+                    <img src={a.icono} alt={a.nombre}  width={24} height={24} style={{width:24,height:24, objectFit: 'contain', display: 'block', margin: '0 auto 2px' }}  loading="lazy" />
                     <span style={{ fontSize: 9, fontWeight: 500 }}>{a.nombre}</span>
                   </th>
                 ))}

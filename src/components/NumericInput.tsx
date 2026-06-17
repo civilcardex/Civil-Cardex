@@ -62,6 +62,7 @@ export function NumericInput({ value, onCommit, decimals = 2, width = 52, disabl
       type="text"
       inputMode="decimal"
       className="ni"
+      aria-label={decimals === 0 ? 'Valor entero' : 'Valor numérico'}
       style={{ width, padding: '2px 4px', fontSize: 11, textAlign: 'center', color: color || 'var(--txt)', ...(inputStyle as React.CSSProperties || {}) }}
       value={text}
       onChange={handleChange}

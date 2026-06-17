@@ -73,7 +73,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
 
         <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
-            <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/materiales_por_red.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:2}} />Materiales por red</span>
+            <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/materiales_por_red.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Materiales por red</span>
             <span className="card-s" style={{ fontSize: 10 }}>{activeRedes.length} redes activas</span>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
@@ -171,13 +171,13 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.15)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.08)'; }}
             title="Ver catálogo completo de materiales, diámetros y coeficientes">
-            <img src="/iconos_parametros_de_diseno/catalogo_maestro.webp" alt="" style={{width:18,height:18,verticalAlign:'middle',marginRight:4}} /> Catálogo maestro
+            <img src="/iconos_parametros_de_diseno/catalogo_maestro.webp" alt=""  width={18} height={18} style={{width:18,height:18,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Catálogo maestro
           </button>
         </div>
 
         <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
-            <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_aparatos_sanitarios.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:2}} />Catálogo de aparatos sanitarios</span>
+            <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_aparatos_sanitarios.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de aparatos sanitarios</span>
             <span className="card-s" style={{ fontSize: 10 }}>NTC 1500 · UC editables</span>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
@@ -225,7 +225,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
 
         <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
-            <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_gasodomesticos.webp" alt="" style={{width:20,height:20,verticalAlign:'middle',marginRight:2}} />Catálogo de gasodomésticos</span>
+            <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_gasodomesticos.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de gasodomésticos</span>
             <span className="card-s" style={{ fontSize: 10 }}>NTC 3728 · m³/hr</span>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>

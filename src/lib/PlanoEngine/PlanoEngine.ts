@@ -475,7 +475,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
         render: () => void;
         [key: string]: unknown;
       }, d);
-    } catch (e) { console.error('Error loading work:', e); }
+    } catch (e) { if (import.meta.env.DEV) console.error('Error loading work:', e); }
   }
 
   doZoom(delta: number, cx?: number, cy?: number): void {

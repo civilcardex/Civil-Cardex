@@ -35,7 +35,7 @@ function ProfilePage() {
     activo: { color: 'bg-primary text-on-primary-container', label: 'ACTIVO' },
   }
 
-  usePageMeta('Perfil');
+  usePageMeta('Perfil', 'Gestione su perfil de CivilCore: datos personales, proyectos activos y configuración de cuenta de ingeniería.');
   useEffect(() => { fetchPerfil() }, [])
 
   async function fetchPerfil() {
@@ -51,7 +51,7 @@ function ProfilePage() {
         .eq('id', user.id)
         .single()
 
-      if (error) { console.error('Error cargando perfil:', error.message); return }
+      if (error) { if (import.meta.env.DEV) console.error('Error cargando perfil:', error.message); return }
       if (data) {
         setPerfil({
           nombre: data.nombre || '',
@@ -63,7 +63,7 @@ function ProfilePage() {
         })
       }
     } catch (err) {
-      console.error('Error:', err)
+      if (import.meta.env.DEV) console.error('Error:', err)
     } finally {
       setLoading(false)
     }
@@ -87,10 +87,10 @@ function ProfilePage() {
         .from('perfiles')
         .update({ [field]: editValue })
         .eq('id', userId)
-      if (error) { console.error('Error guardando:', error.message); return }
+      if (error) { if (import.meta.env.DEV) console.error('Error guardando:', error.message); return }
       setPerfil(prev => ({ ...prev, [field]: editValue }))
     } catch (err) {
-      console.error('Error:', err)
+      if (import.meta.env.DEV) console.error('Error:', err)
     } finally {
       setSaving(null)
       setEditField(null)
@@ -194,6 +194,7 @@ function ProfilePage() {
       <div className="border border-outline-variant bg-surface-container">
         <button
           onClick={() => setProyectosOpen(!proyectosOpen)}
+          aria-expanded={proyectosOpen}
           className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-surface-container-low transition-colors"
         >
           <div className="flex items-center gap-3">

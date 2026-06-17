@@ -44,7 +44,7 @@ export default function FixtureGrid({ items, currentMap, unitKey, unidadLbl, inc
                 border: 'none', background: 'transparent', cursor: targetId ? 'pointer' : 'default',
                 font: 'inherit', color: 'inherit', width: '100%',
               }}>
-              <span style={{ fontSize: 17, lineHeight: 1 }}>{(APARATO_IMG as Record<string, string>)[ap.id] ? <img src={(APARATO_IMG as Record<string, string>)[ap.id]} alt="" style={{width:24,height:24,verticalAlign:'middle'}} /> : '•'}</span>
+              <span style={{ fontSize: 17, lineHeight: 1 }}>{(APARATO_IMG as Record<string, string>)[ap.id] ? <img src={(APARATO_IMG as Record<string, string>)[ap.id]} alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle'}}  loading="lazy" /> : '•'}</span>
               <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: .3, color: active ? accent : '#b9caca', fontFamily: "'Geist',monospace", textTransform: 'uppercase' }}>{abbr}</span>
               <span style={{ fontSize: 8, fontWeight: 600, lineHeight: 1, color: 'var(--txt2)', fontFamily: "'Geist',monospace", padding: '1px 4px', marginTop: 1, background: 'rgba(0,0,0,.25)', border: '1px solid var(--bg4)', borderRadius: 2 }}>{uStr} {unidadLbl}</span>
             </button>

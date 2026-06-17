@@ -109,15 +109,19 @@ export default function IsometriaTab({ state }: any) {
     const m: Record<number, number> = {};
     const pisosArr = pisos || [];
     for (const p of pisosArr) m[p.n] = (p.npt || 0) * 1000;
-    // If all NPT values are equal (or all zero), generate fallback Z offsets
-    // based on floor number so the scaleZ slider can separate floors visually
+    // If the total vertical spread of all floors is less than 1 meter, it means NPT values 
+    // were not configured properly (e.g. all 0, or very close). In that case, generate 
+    // fallback Z offsets based on floor number so the scaleZ slider works.
     const vals = Object.values(m);
-    const allSame = vals.length > 1 && vals.every(v => v === vals[0]);
-    if (allSame) {
-      const defaultSpacingMm = 2700; // 2.7 m default floor-to-floor
-      for (const p of pisosArr) {
-        const floorIdx = p.n >= 0 && p.n < 90 ? p.n : p.n === 99 ? (pisosArr.filter((x: any) => x.n > 0 && x.n < 90).length + 1) : -(Math.abs(p.n));
-        m[p.n] = floorIdx * defaultSpacingMm;
+    if (vals.length > 1) {
+      const minZ = Math.min(...vals);
+      const maxZ = Math.max(...vals);
+      if ((maxZ - minZ) < 1000) {
+        const defaultSpacingMm = 2700; // 2.7 m default floor-to-floor
+        for (const p of pisosArr) {
+          const floorIdx = p.n >= 0 && p.n < 90 ? p.n : p.n === 99 ? (pisosArr.filter((x: any) => x.n > 0 && x.n < 90).length + 1) : -(Math.abs(p.n));
+          m[p.n] = floorIdx * defaultSpacingMm;
+        }
       }
     }
     return m;
@@ -557,10 +561,16 @@ export default function IsometriaTab({ state }: any) {
     return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
   }, []);
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    const factor = e.deltaY > 0 ? 0.9 : 1.1;
-    setZoom(z => Math.max(0.05, Math.min(20, z * factor)));
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const factor = e.deltaY > 0 ? 0.9 : 1.1;
+      setZoom(z => Math.max(0.05, Math.min(20, z * factor)));
+    };
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', onWheel);
   }, []);
 
   const fittedRef = useRef(false);
@@ -662,7 +672,7 @@ export default function IsometriaTab({ state }: any) {
           {tramoList.map(item => {
             const floorLabel = item.nivel < 0 ? `S${Math.abs(item.nivel)}` : item.nivel === 99 ? 'C' : `P${item.nivel}`;
             return (
-              <div key={item.selKey} onClick={() => setSelTramo(prev => prev === item.selKey ? null : item.selKey)} style={{
+              <div key={item.selKey} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelTramo(prev => prev === item.selKey ? null : item.selKey);}}} onClick={() => setSelTramo(prev => prev === item.selKey ? null : item.selKey)} style={{
                 padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
                 background: selTramo === item.selKey ? '#2563EB22' : 'transparent',
                 borderLeft: selTramo === item.selKey ? '3px solid ' + netColor : '3px solid transparent',
@@ -685,7 +695,6 @@ export default function IsometriaTab({ state }: any) {
             ref={canvasRef}
             style={{ width: '100%', height: '100%', display: 'block', cursor: dragRef.current ? 'grabbing' : 'grab' }}
             onMouseDown={handleMouseDown}
-            onWheel={handleWheel}
             onContextMenu={e => e.preventDefault()}
           />
         </div>

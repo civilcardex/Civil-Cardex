@@ -316,7 +316,7 @@ export const docData = {
             <Tr><Td>Cubierta impermeable</Td><Td>0.95–1.00</Td></Tr>
             <Tr><Td>Cubierta metálica</Td><Td>0.95–1.00</Td></Tr>
             <Tr><Td>Teja / Placa concreto</Td><Td>0.85–0.95</Td></Tr>
-            <Tr><Td>Jardines / Areas verdes</Td><Td>0.10–0.25</Td></Tr>
+            <Tr><Td>Jardines / Áreas verdes</Td><Td>0.10–0.25</Td></Tr>
             <Tr><Td>Zonas pavimentadas</Td><Td>0.70–0.95</Td></Tr>
             <Tr><Td>Césped / Suelo arenoso</Td><Td>0.05–0.10</Td></Tr>
             <Tr><Td>Césped / Suelo arcilloso</Td><Td>0.15–0.25</Td></Tr>
@@ -759,7 +759,7 @@ export const docData = {
         title: 'Introducción',
         body: (
           <div className="space-y-3">
-            <p>CIVILFLOW KML 2026 es un aplicativo web de diseño hidrosanitario desarrollado por el Ing. Camilo Cardenas Chacon. Permite elaborar memorias de cálculo completas para redes de Agua fría, Agua caliente, Sanitaria, Aguas lluvias, Gas combustible y Red contra incendio.</p>
+            <p>CIVILFLOW KML 2026 es un aplicativo web de diseño hidrosanitario desarrollado por el Ing. Camilo Cárdenas Chacón. Permite elaborar memorias de cálculo completas para redes de Agua fría, Agua caliente, Sanitaria, Aguas lluvias, Gas combustible y Red contra incendio.</p>
             <p className="text-[13px] font-semibold">Normas aplicadas:</p>
             <div className="flex flex-wrap gap-2">
               <span className="px-3 py-1 bg-surface-container-high border border-outline-variant rounded text-[11px] font-mono">NTC 1500:2020</span>
@@ -780,19 +780,19 @@ export const docData = {
             <div className="border border-outline-variant rounded overflow-hidden">
               <div className="grid grid-cols-[140px,1fr] gap-0 text-[13px]">
                 <div className="bg-surface-container-high font-semibold px-3 py-2 border-b border-outline-variant">Topbar</div>
-                <div className="px-3 py-2 border-b border-outline-variant">Barra superior con el logo de la firma KML, el nombre del sistema Civil Flow, los datos del ingeniero responsable (nombre, titulo, número de matricula profesional) y las normas tecnicas aplicables (NTC 1500, RAS 2000, NTC 3728, NSR-10). Se muestra tambien el nombre del proyecto activo.</div>
+                <div className="px-3 py-2 border-b border-outline-variant">Barra superior con el logo de la firma KML, el nombre del sistema Civil Flow, los datos del ingeniero responsable (nombre, título, número de matrícula profesional) y las normas técnicas aplicables (NTC 1500, RAS 2000, NTC 3728, NSR-10). Se muestra también el nombre del proyecto activo.</div>
 
-                <div className="bg-surface-container-high font-semibold px-3 py-2 border-b border-outline-variant">Nav / Pestanas</div>
-                <div className="px-3 py-2 border-b border-outline-variant">Barra de navegacion con pestanas para acceder a cada modulo del aplicativo: Planos (carga de PDF o imagen), Materiales (gestion de catalogos por red), Aparatos (tabla de unidades de consumo y descarga), Cubierta (cálculo de Aguas lluvias por método racional), Gas (diseño de redes por Renouard), Calentadores (selección de equipos a gas), Validacion (resumen y verificacion final).</div>
+                <div className="bg-surface-container-high font-semibold px-3 py-2 border-b border-outline-variant">Nav / Pestañas</div>
+                <div className="px-3 py-2 border-b border-outline-variant">Barra de navegación con pestañas para acceder a cada módulo del aplicativo: Planos (carga de PDF o imagen), Materiales (gestión de catálogos por red), Aparatos (tabla de unidades de consumo y descarga), Cubierta (cálculo de Aguas lluvias por método racional), Gas (diseño de redes por Renouard), Calentadores (selección de equipos a gas), Validación (resumen y verificación final).</div>
 
                 <div className="bg-surface-container-high font-semibold px-3 py-2 border-b border-outline-variant">Sidebar</div>
                 <div className="px-3 py-2 border-b border-outline-variant">Panel lateral izquierdo con tres secciones: Datos del proyecto (nombre, dirección, municipio, uso, empresa prestadora, presión de red, dotación), Materiales por red (selector de tipo de tubería para cada sistema: AF, AC, sanitaria, lluvias, gas, RCI), Redes a calcular (toggles para activar o desactivar cada red del proyecto) y Generador de niveles (configuración de sótanos, pisos, alturas y NPT).</div>
 
                 <div className="bg-surface-container-high font-semibold px-3 py-2 border-b border-outline-variant">Content</div>
-                <div className="px-3 py-2 border-b border-outline-variant">Area central donde se muestran las tablas, formularios y resultados del modulo selecciónado. Aqui se ingresan los datos de cada red, se visualizan los cálculos y se revisan las verificaciones de norma.</div>
+                <div className="px-3 py-2 border-b border-outline-variant">Área central donde se muestran las tablas, formularios y resultados del módulo seleccionado. Aquí se ingresan los datos de cada red, se visualizan los cálculos y se revisan las verificaciones de norma.</div>
 
                 <div className="bg-surface-container-high font-semibold px-3 py-2">Act Bar</div>
-                <div className="px-3 py-2">Barra de accion inferior que muestra en tiempo real los totales del proyecto: unidades de consumo (UC) de agua fria y caliente, unidades de descarga (UD) sanitarias, pérdida de presión acumulada de gas (ΔP) con indicador color verde/rojo según cumpla el límite NTC 3728.</div>
+                <div className="px-3 py-2">Barra de acción inferior que muestra en tiempo real los totales del proyecto: unidades de consumo (UC) de agua fría y caliente, unidades de descarga (UD) sanitarias, pérdida de presión acumulada de gas (ΔP) con indicador color verde/rojo según cumpla el límite NTC 3728.</div>
               </div>
             </div>
 
@@ -850,7 +850,7 @@ export const docData = {
             <Tr><Td>7</Td><Td>Equipo presión</Td><Td>Presión de red insuficiente</Td></Tr>
             <Tr><Td>8</Td><Td>Bomba AR</Td><Td>Aguas residuales en sótano</Td></Tr>
             <Tr><Td>9</Td><Td>Recirculación AC</Td><Td>L de AC &gt; 15 m</Td></Tr>
-            <Tr><Td>10</Td><Td>Contra incendio</Td><Td>Segun NSR-10 Titulo J</Td></Tr>
+            <Tr><Td>10</Td><Td>Contra incendio</Td><Td>Según NSR-10 Título J</Td></Tr>
           </T>
         ),
       },
@@ -864,7 +864,7 @@ export const docData = {
             <Tr><Td>3</Td><Td>Seleccionar materiales</Td></Tr>
             <Tr><Td>4</Td><Td>Activar redes</Td></Tr>
             <Tr><Td>5</Td><Td>Ajustar aparatos (UC, UD, Q gas)</Td></Tr>
-            <Tr><Td>6</Td><Td>Ingresar cubierta (areas, I)</Td></Tr>
+            <Tr><Td>6</Td><Td>Ingresar cubierta (áreas, I)</Td></Tr>
             <Tr><Td>7</Td><Td>Calcular red de gas (Renouard)</Td></Tr>
             <Tr><Td>8</Td><Td>Seleccionar calentador</Td></Tr>
             <Tr><Td>9</Td><Td>Verificar validación</Td></Tr>
@@ -877,8 +877,8 @@ export const docData = {
         body: (
           <T>
             <Tr><Th>Norma</Th><Th>Aplicación</Th></Tr>
-            <Tr><Td>NTC 1500:2020</Td><Td>UC, UD, presiónes, velocidades, diámetros mínimos</Td></Tr>
-            <Tr><Td>RAS 2000</Td><Td>Dotaciónes, Manning, método racional</Td></Tr>
+            <Tr><Td>NTC 1500:2020</Td><Td>UC, UD, presiones, velocidades, diámetros mínimos</Td></Tr>
+            <Tr><Td>RAS 2000</Td><Td>Dotaciones, Manning, método racional</Td></Tr>
             <Tr><Td>NTC 3728</Td><Td>Renouard, caudales gas, factor fs</Td></Tr>
             <Tr><Td>NSR-10 Título J</Td><Td>Protección contra incendio</Td></Tr>
             <Tr><Td>NFPA 13:2022</Td><Td>Rociadores, densidad, área operación</Td></Tr>

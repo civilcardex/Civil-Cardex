@@ -15,7 +15,7 @@ export default function AccessoriesSection({ targetId, curHidro, incAcc, decAcc,
 
   return (
     <div style={{ borderBottom: '1px solid #3a494a' }}>
-      <button onClick={() => setAccOpen(o => !o)} style={{
+      <button onClick={() => setAccOpen(o => !o)} aria-expanded={accOpen} style={{
         width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '7px 12px', background: 'transparent', border: 'none', cursor: 'pointer',
         borderTop: '1px solid var(--bg4)', textAlign: 'left',
@@ -50,7 +50,7 @@ export default function AccessoriesSection({ targetId, curHidro, incAcc, decAcc,
                       border: 'none', background: 'transparent', cursor: targetId ? 'pointer' : 'default',
                       font: 'inherit', color: 'inherit', width: '100%',
                     }}>
-                    <img src={a.icono} alt={a.nombre} style={{width:26,height:26,objectFit:'contain'}} />
+                    <img src={a.icono} alt={a.nombre}  width={26} height={26} style={{width:26,height:26,objectFit:'contain'}}  loading="lazy" />
                     <span style={{ fontSize: 7, fontWeight: 700, letterSpacing: .2, color: v > 0 ? accent : '#b9caca', fontFamily: "'Geist',monospace", textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.1 }}>{a.nombre}</span>
                   </button>
                   <div style={{ display: 'flex', alignItems: 'stretch', borderTop: `1px solid ${v > 0 ? accent + '55' : 'var(--bg4)'}`, background: v > 0 ? 'rgba(37,99,235,.06)' : 'transparent' }}>

@@ -13,14 +13,14 @@ const features = [
 ];
 
 export default function CivilManagePage() {
-  usePageMeta('Gestión');
+  usePageMeta('Gestión', 'Gestión de proyectos de ingeniería civil: presupuestos, cronogramas, control de costos y reportes automatizados.');
   return (
     <ModulePageLayout title="Gestión" description="Gestión financiera y operativa optimizada para infraestructura crítica." mainClassName="flex flex-col relative z-10">
       <section className="relative pt-24 pb-16 px-6 lg:px-8 overflow-hidden flex flex-col items-center justify-center text-center" style={{ minHeight: 600, backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
           <div className="absolute inset-0 pointer-events-none" style={{ background: `linear-gradient(to bottom, ${accent}0D, #111317)` }} />
           <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center gap-6">
             <div className="flex items-center justify-center w-16 h-16 border mb-4" style={{ background: '#282a2e', borderColor: '#3a494a', boxShadow: `0 0 15px ${accent}33` }}>
-              <img src="/logos/civilManagelogo.webp" alt="CivilManage" className="h-10 w-10 object-contain" />
+              <img src="/logos/civilManagelogo.webp" alt="CivilManage" className="h-10 w-10 object-contain"  width={40} height={40} loading="lazy" />
             </div>
             <h1 className="text-4xl md:text-6xl text-primary font-bold tracking-tight leading-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
               CivilManage: <br />

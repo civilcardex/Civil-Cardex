@@ -14,7 +14,7 @@ function ProjectIdCard({ proy, setP }: { proy: any; setP: (k: string, v: any) =>
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span className="card-t" style={{ fontSize: 13 }}>
-            <img src="/iconos_info_general/identificacion_del_proyecto.webp" alt="" style={{ width: 22, height: 22, verticalAlign: 'middle', marginRight: 2 }} />
+            <img src="/iconos_info_general/identificacion_del_proyecto.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Identificación del proyecto
           </span>
           <span className="card-s" style={{ fontSize: 11 }}>Datos para memorias de cálculo</span>
@@ -38,7 +38,7 @@ function ActiveNetsCard({ redes, setRedes, netColors, setNetColors }: { redes: S
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span className="card-t" style={{ fontSize: 13 }}>
-            <img src="/iconos_info_general/redes_activas.webp" alt="" style={{ width: 22, height: 22, verticalAlign: 'middle', marginRight: 2 }} />
+            <img src="/iconos_info_general/redes_activas.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Redes activas
           </span>
           <span className="card-s" style={{ fontSize: 11 }}>
@@ -58,7 +58,7 @@ function ActiveNetsCard({ redes, setRedes, netColors, setNetColors }: { redes: S
                   display: 'flex', alignItems: 'center', gap: 3, padding: '3px 5px', cursor: 'pointer',
                   background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left'
                 }}>
-                {r.icoImg ? <img src={r.icoImg} alt="" style={{ width: 22, height: 22, verticalAlign: 'middle' }} /> : <span style={{ fontSize: 13 }}>{r.ico}</span>}
+                {r.icoImg ? <img src={r.icoImg} alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle' }}  loading="lazy" /> : <span style={{ fontSize: 13 }}>{r.ico}</span>}
                 <span style={{ fontWeight: 600, fontSize: 12, color: on ? currentColor : 'var(--txt2)', whiteSpace: 'nowrap', flex: 1 }}>{r.lbl}</span>
                 <input type="color" value={currentColor}
                   onClick={e => e.stopPropagation()}
@@ -69,7 +69,7 @@ function ActiveNetsCard({ redes, setRedes, netColors, setNetColors }: { redes: S
                     try {
                       const net = (window as any).__NETS?.find?.((n: any) => n.id === r.id);
                       if (net) net.col = c;
-                    } catch (e) { console.error(e); }
+                    } catch (e) { if (import.meta.env.DEV) console.error(e); }
                     try { localStorage.setItem('civilflow_net_' + r.id, c); } catch (_) { }
                   }}
                   style={{ width: 14, height: 14, border: 'none', padding: 0, cursor: 'pointer', background: 'none', flexShrink: 0 }} />
@@ -90,7 +90,7 @@ function ActiveEquiposCard({ redes, setRedes }: { redes: Set<string>; setRedes: 
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span className="card-t" style={{ fontSize: 13 }}>
-            <img src="/iconos_info_general/equipos_activos.webp" alt="" style={{ width: 22, height: 22, verticalAlign: 'middle', marginRight: 2 }} />
+            <img src="/iconos_info_general/equipos_activos.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Equipos activos
           </span>
           <span className="card-s" style={{ fontSize: 11 }}>{[...redes].filter(id => id === 'ep' || id === 'bom').length} de 2</span>
@@ -108,7 +108,7 @@ function ActiveEquiposCard({ redes, setRedes }: { redes: Set<string>; setRedes: 
                   display: 'flex', alignItems: 'center', gap: 3, padding: '3px 5px', cursor: 'pointer',
                   background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left'
                 }}>
-                {r.icoImg ? <img src={r.icoImg} alt="" style={{ width: 22, height: 22, verticalAlign: 'middle' }} /> : <span style={{ fontSize: 13 }}>{r.ico}</span>}
+                {r.icoImg ? <img src={r.icoImg} alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle' }}  loading="lazy" /> : <span style={{ fontSize: 13 }}>{r.ico}</span>}
                 <span style={{ fontWeight: 600, fontSize: 12, color: on ? '#22c55e' : 'var(--txt2)', whiteSpace: 'nowrap', flex: 1 }}>{r.lbl}</span>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: on ? '#22c55e' : 'transparent', border: '1.5px solid ' + (on ? '#22c55e' : 'var(--txt3)') }} />
               </button>
@@ -136,7 +136,7 @@ function FloorGeneratorCard(props: {
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span className="card-t" style={{ fontSize: 13 }}>
-            <img src="/iconos_info_general/generador_de_pisos.webp" alt="" style={{ width: 22, height: 22, verticalAlign: 'middle', marginRight: 2 }} />
+            <img src="/iconos_info_general/generador_de_pisos.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Generador de pisos
           </span>
           <span className="card-s" style={{ fontSize: 11 }}>Generación automática de pisos y sótanos</span>
@@ -170,7 +170,7 @@ function LevelsCard({ pisos, delPiso, addPiso, addSotano, setPisos }: { pisos: a
       <div className="card-h" style={{ padding: '4px 8px', flexShrink: 0 }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span className="card-t" style={{ fontSize: 13 }}>
-            <img src="/iconos_info_general/niveles_generados.webp" alt="" style={{ width: 22, height: 22, verticalAlign: 'middle', marginRight: 2 }} />
+            <img src="/iconos_info_general/niveles_generados.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Niveles generados
           </span>
           <span className="card-s" style={{ fontSize: 11 }}>{pisos.length} niveles</span>
@@ -210,7 +210,7 @@ function UsageGuideCard() {
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span className="card-t" style={{ fontSize: 13 }}>
-            <img src="/iconos_info_general/guia_de_uso.webp" alt="" style={{ width: 22, height: 22, verticalAlign: 'middle', marginRight: 2 }} />
+            <img src="/iconos_info_general/guia_de_uso.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Guía de uso
           </span>
           <span className="card-s" style={{ fontSize: 11 }}>Recomendaciones</span>

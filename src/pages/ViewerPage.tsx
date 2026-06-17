@@ -33,7 +33,7 @@ export default function ViewerPage() {
 
   const files = plans.map(p => ({ id: p.id, file: p.file }));
   const planIdResolvedRef = useRef(false);
-  usePageMeta('Visor de Planos');
+  usePageMeta('Visor de Planos', 'Visor de planos PDF con superposicion de redes hidrosanitarias. Herramientas de dibujo, calibracion y medicion.');
 
   useEffect(() => {
     if (planIdResolvedRef.current || files.length === 0) return;
@@ -101,7 +101,7 @@ export default function ViewerPage() {
             Plano:
           </span>
           <div style={{ position: 'relative' }}>
-            <button onClick={() => setDropdownOpen(p => !p)}
+            <button onClick={() => setDropdownOpen(p => !p)} aria-expanded={dropdownOpen} aria-haspopup="listbox"
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 padding: '3px 10px', background: '#1e2024',

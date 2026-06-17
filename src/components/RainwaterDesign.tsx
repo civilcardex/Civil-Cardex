@@ -26,14 +26,14 @@ export default function DisenoLluvias() {
   }, [delTramoLL, plans]);
 
   const tribIds = getTributarioIds(tramosLl);
-  const displayTramos = tramosLl.filter(t => !tribIds.has(t._key) && !tribIds.has(t.id));
+  const displayTramos = tramosLl.filter(t => t._key != null && !tribIds.has(t._key) && !tribIds.has(t.id));
   const bajantes=tramosLl.filter(o=>o.esBajante);
 
   return (
   <>
     <div className="card">
       <div className="card-h">
-        <span className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Diseno_red.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Diseño de red aguas lluvias</span>
+        <span className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Diseno_red.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red aguas lluvias</span>
       </div>
       <div className="scroll-top" style={{padding:'12px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
@@ -76,8 +76,8 @@ export default function DisenoLluvias() {
                 </td>
               </tr>
             ) : [...displayTramos].sort((a,b)=>(a.piso||0)-(b.piso||0)).map(t=>{
-const n=t.nmaning;
-const sVal=t.sPercent;
+const n=t.nmaning??0;
+const sVal=t.sPercent??0;
 const S=sVal!=null&&sVal>0?sVal/100:null;
 const Q=t.qLps||0;
               const dSel=DIAM_OPTIONS.find(d=>d.pulg===(t.diamDisPulg||0))||null;
@@ -95,7 +95,7 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm, V_MIN, V_MAX, Y_D_MAX, FUERZA_T
  Yc = hc.Yc; Froude = hc.Froude; tipoFlujo = hc.tipoFlujo;
  Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; chequeoFT = hc.chequeoFT;
 }
-const descIds=parseDescription(t.descripcion);
+const descIds=parseDescription(t.descripcion??'');
               return(
                 <tr key={t._key}>
                   <td className="c" style={{padding:'2px 4px'}}><span className="sigla" style={{fontSize:10}}>{t.id || t._key}</span></td>
@@ -112,7 +112,7 @@ const descIds=parseDescription(t.descripcion);
                   <td className="c" style={{padding:'2px 2px'}}>
           <select
             value={DdisPulg||''}
-            onChange={e=>handleDiamChange(t._key,t.id,parseFloat(e.target.value)||0)}
+            onChange={e=>handleDiamChange(t._key!,t.id,parseFloat(e.target.value)||0)}
             style={{fontFamily:'var(--mono)',fontSize:9,padding:'1px 1px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer',maxWidth:60}}
           >
             <option value="">—</option>
@@ -132,7 +132,7 @@ const descIds=parseDescription(t.descripcion);
         <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{chequeoFT}</td>
         <td className="c" style={{padding:'1px 4px'}}>
           <button
-            onClick={() => handleDelete(t._key, t.id)}
+            onClick={() => handleDelete(t._key!, t.id)}
             title="Eliminar ramal"
             style={{border:'none',background:'transparent',color:'var(--txt3)',cursor:'pointer',fontSize:11,padding:'0 2px',lineHeight:1}}
           >&#x2715;</button>

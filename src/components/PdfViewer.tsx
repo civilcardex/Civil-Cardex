@@ -223,7 +223,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
         saveTrazosToDB(resolvedId, localData);
       }
     } catch (e) {
-      console.error('[LOAD] Supabase error/sync error:', e);
+      if (import.meta.env.DEV) console.error('[LOAD] Supabase error/sync error:', e);
     }
 
     return initiallyLoaded;
@@ -332,7 +332,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
           eng.render();
           loadingPlanRef.current = false;
         }
-      } catch (e) { console.error('[LOAD] error', e); loadingPlanRef.current = false; }
+      } catch (e) { if (import.meta.env.DEV) console.error('[LOAD] error', e); loadingPlanRef.current = false; }
     })();
 
     try { writeSanDrawingSync(plansRef.current); } catch (_) {}

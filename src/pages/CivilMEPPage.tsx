@@ -11,7 +11,7 @@ const features = [
 ];
 
 export default function CivilMEPPage() {
-  usePageMeta('MEP');
+  usePageMeta('MEP', 'Modelado MEP de sistemas mecánicos, eléctricos e hidrosanitarios. Ruteo inteligente y dimensionamiento normativo.');
   return (
     <ModulePageLayout title="MEP" description="Modelado avanzado de sistemas mecánicos, eléctricos e hidrosanitarios." mainClassName="flex flex-col w-full max-w-[1440px] mx-auto">
       <section className="relative w-full flex flex-col lg:flex-row items-center px-6 lg:px-8 py-16 gap-12 overflow-hidden border-b border-outline-variant" style={{ background: '#1a1c20', minHeight: 600 }}>
@@ -19,7 +19,7 @@ export default function CivilMEPPage() {
           <div className="relative z-10 w-full lg:w-1/2 flex flex-col gap-6">
             <div className="inline-flex items-center gap-2 border border-outline-variant px-3 py-1 w-max" style={{ background: '#111317' }}>
               <span className="w-2 h-2 bg-primary-fixed-dim animate-pulse" style={{ background: '#00dce5' }} />
-              <img src="/logos/civilMEPlogo.webp" alt="CivilMEP" className="h-4 w-4 object-contain" />
+              <img src="/logos/civilMEPlogo.webp" alt="CivilMEP" className="h-4 w-4 object-contain"  width={16} height={16} loading="lazy" />
               <span className="text-[13px] uppercase" style={{ fontFamily: 'Geist, monospace', color: '#00dce5' }}>Module: CivilMEP</span>
             </div>
             <h1 className="text-2xl md:text-4xl lg:text-[48px] leading-[1.1] font-bold text-on-background tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>

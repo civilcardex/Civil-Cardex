@@ -37,7 +37,7 @@ export default function BajantesTable() {
   return (
     <div className="card">
       <div className="card-h">
-          <span className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Bajantes.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Bajantes aguas negra y ventilación</span>
+          <span className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Bajantes.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Bajantes aguas negra y ventilación</span>
       </div>
       <div className="scroll-top" style={{padding:'16px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
@@ -47,7 +47,7 @@ export default function BajantesTable() {
             <tr>
               <th scope="col" className="col-h san" colSpan={8} style={{textAlign:'center'}}>INFORMACIÓN COMÚN</th>
               <th scope="col" className="col-h ok" colSpan={7} style={{textAlign:'center'}}>BAJANTES A.N.</th>
-              <th scope="col" className="col-h ven" colSpan={6} style={{textAlign:'center'}}>TUBERIA DE VENTILACION</th>
+              <th scope="col" className="col-h ven" colSpan={6} style={{textAlign:'center'}}>TUBERÍA DE VENTILACIÓN</th>
             </tr>
             <tr>
               <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center'}}>Bajante<br/>No.</th>
@@ -88,7 +88,7 @@ export default function BajantesTable() {
 const rVal=t.bajR;
 const rStr=rVal!=null?(Math.abs(rVal-7/24)<0.001?'7/24':'1/4'):null;
 const propiasUD = calcUDparcial(t, udBase);
-const ramalesIds = ((t.recibeDeIds?.length ? t.recibeDeIds : (bajRecibidos[t.id] || bajRecibidos[t.code])) || []) as string[];
+const ramalesIds = ((t.recibeDeIds?.length ? t.recibeDeIds : (bajRecibidos[t.id] || (t.code ? bajRecibidos[t.code] : undefined))) || []) as string[];
 const ramalesUD = ramalesIds.reduce((sum: number, rid: string) => {
   const rt = tramosSan.find(tr => tr.id === rid);
   return sum + (rt ? calcUDparcial(rt, udBase) : 0);
@@ -98,7 +98,7 @@ const ramalesLbl = ramalesIds.map((rid: string) => {
   const rt = tramosSan.find(tr => tr.id === rid);
   return rt ? (rt.label || rt.id) : rid;
 }).join(', ');
-const n=t.nmaning;
+const n=t.nmaning??0;
 const res=calculateVentStack({
 bajante:t.id,
 pisos:`${t.pisoBase||t.piso||''}-${t.pisoCima||t.piso||''}`,
@@ -119,7 +119,7 @@ const QmaxB=res.QmaxBajante;
 const Vt=res.Vt;
 const Ltcalc=res.Lt_calc;
 const Ltmin=res.Lt_min;
-const fDarcy=t.bajFDarcy;
+const fDarcy=t.bajFDarcy??0;
 const Vair=res.V_aire;
 const Qair=res.Q_aire_Ls;
 const Lbaj=res.longBajante_m;
@@ -166,7 +166,7 @@ const destinoVal = t.pisoCima || t.piso || '';
                     <td className="c">{Vair>0?Vair.toFixed(2):'—'}</td>
                     <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{fDarcy > 0 ? fDarcy.toFixed(3) : '—'}</span></td>
                     <td className="c" style={{fontFamily:'var(--mono)'}}>{Qair>0?Qair.toFixed(2):'—'}</td>
-                    <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{t.bajLong > 0 ? t.bajLong : '—'}</span></td>
+                    <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{(t.bajLong??0) > 0 ? t.bajLong : '—'}</span></td>
                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:10}}>{DventCalcPulg>0?DventCalcPulg.toFixed(2)+'"':'—'}</td>
                     <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{t.ventDprop ? t.ventDprop+'"' : '—'}</span></td>
                   </tr>

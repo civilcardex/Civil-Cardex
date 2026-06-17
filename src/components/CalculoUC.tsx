@@ -44,7 +44,7 @@ export default function CalculoUC({ tipo }: CalculoUCProps) {
     <>
       <div className="card">
         <div className="card-h">
-          <span className="card-t"><img src={icon} alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Cálculo de unidades de consumo {title}</span>
+          <span className="card-t"><img src={icon} alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Cálculo de unidades de consumo {title}</span>
           <span className="card-s">{tramos.length} tramos</span>
         </div>
         <div className="scroll-top" style={{padding:'16px'}}>
@@ -95,8 +95,8 @@ export default function CalculoUC({ tipo }: CalculoUCProps) {
                     <tr key={i}>
                       <td className="c"><span className="sigla" style={{fontSize:11}}>{t.id}</span></td>
                       <td className="c"><span style={{fontSize:11,fontFamily:monof,color:txt2}}>{pisoCorto(t.piso)}</span></td>
-                      <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{t.ini || '\u2014'}</td>
-                      <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{t.fin || '\u2014'}</td>
+                      <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{t.ini ? `${t.ini.x},${t.ini.y}` : '\u2014'}</td>
+                      <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{t.fin ? `${t.fin.x},${t.fin.y}` : '\u2014'}</td>
                       {AP.map(d => {
                         const v = t.fixtures?.[d!.id] || 0;
                         return (

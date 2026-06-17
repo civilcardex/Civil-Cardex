@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from "react";
+import { useNavigate } from 'react-router-dom';
 import { saveTrazosToDB, loadFromStorage, saveToStorage } from "../../services/storageService";
 import { TRAZOS_PREFIX } from "../../constants/storage-keys";
 import { REQ_ITEMS, pisoLbl } from "../../constants";
@@ -30,6 +31,7 @@ export default function PlanosTab({ state }: PlanosTabProps) {
     pisos, fileRef,
   } = state;
 
+  const navigate = useNavigate();
   const [calibrating, setCalibrating] = useState(false);
   const [calData, setCalData] = useState<Record<number, CalibrationData>>(() => {
     const initial: Record<number, CalibrationData> = {};
@@ -80,9 +82,9 @@ export default function PlanosTab({ state }: PlanosTabProps) {
         data.scaleM = config.scaleM;
       }
       saveToStorage(trazosKey, data);
-      saveTrazosToDB(String(config.planId), data).catch(e => console.error('saveTrazosToDB error:', e));
+      saveTrazosToDB(String(config.planId), data).catch(e => { if (import.meta.env.DEV) console.error('saveTrazosToDB error:', e); });
     } catch (e) {
-      console.error('Error syncing calibration to Supabase:', e);
+      if (import.meta.env.DEV) console.error('Error syncing calibration to Supabase:', e);
     }
   };
 
@@ -95,7 +97,7 @@ export default function PlanosTab({ state }: PlanosTabProps) {
         localStorage.setItem('civilflow_visor_activePlanId', String(selectedPlan.id));
       } catch (_) {}
     }
-    window.location.hash = '#/visor';
+    navigate('/visor');
   };
 
   const handleSelectPending = (plan: any) => {
@@ -159,14 +161,14 @@ export default function PlanosTab({ state }: PlanosTabProps) {
       <div style={{ width: 170, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--line)', borderRadius: 'var(--r2)' }}>
         <div className="card-h" style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'none' }}>
           <span className="card-t" style={{ fontSize: 13 }}>
-            <img src="/iconos_carga_planos/requisitos_del_plano.webp" alt="" style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} />
+            <img src="/iconos_carga_planos/requisitos_del_plano.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
             Requisitos del plano
           </span>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {REQ_ITEMS.map(({ ico, icoImg, t, s }) => (
             <div key={t} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', background: 'var(--bg3)', borderRadius: 'var(--r)', border: '1px solid var(--line)' }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>{icoImg ? <img src={icoImg} alt="" style={{ width: 24, height: 24, verticalAlign: 'middle' }} /> : ico}</span>
+              <span style={{ fontSize: 16, flexShrink: 0 }}>{icoImg ? <img src={icoImg} alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" /> : ico}</span>
               <div><div style={{ fontSize: 12, fontWeight: 500 }}>{t}</div><div style={{ fontSize: 10, color: 'var(--txt3)', marginTop: 2, lineHeight: 1.4 }}>{s}</div></div>
             </div>
           ))}
@@ -199,8 +201,7 @@ export default function PlanosTab({ state }: PlanosTabProps) {
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(211,47,47,0.15)'; e.currentTarget.style.borderColor = 'rgba(211,47,47,0.35)'; }}
                 title="Cerrar vista">&#x2715; Cerrar</button>
               {selectedPlan.status === 'confirmed' && (
-                <a href="#/visor"
-                  onClick={() => {
+                <button onClick={() => {
                     const idx = plans.findIndex(p => p.id === selectedPlanId);
                     if (idx >= 0) {
                       try {
@@ -208,10 +209,11 @@ export default function PlanosTab({ state }: PlanosTabProps) {
                         localStorage.setItem('civilflow_visor_activePlanId', String(selectedPlanId));
                       } catch (_) {}
                     }
+                    navigate('/visor');
                   }}
-                  style={{ padding: '3px 10px', background: 'rgba(0,220,229,0.08)', border: '1px solid rgba(0,220,229,0.3)', borderRadius: 'var(--r)', color: '#00dce5', fontWeight: 600, fontSize: 9, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                  style={{ padding: '3px 10px', background: 'rgba(0,220,229,0.08)', border: '1px solid rgba(0,220,229,0.3)', borderRadius: 'var(--r)', color: '#00dce5', fontWeight: 600, fontSize: 9, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   IR A DIBUJO DE REDES &rarr;
-                </a>
+                </button>
               )}
             </>
           ) : (
@@ -254,7 +256,7 @@ export default function PlanosTab({ state }: PlanosTabProps) {
             style={{ width: '100%', padding: '10px', background: 'rgba(0,220,229,0.06)', border: '1.5px dashed rgba(0,220,229,0.3)', borderRadius: 'var(--r)', color: '#00dce5', fontWeight: 600, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all .15s' }}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.12)'; e.currentTarget.style.borderColor = 'rgba(0,220,229,0.5)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.06)'; e.currentTarget.style.borderColor = 'rgba(0,220,229,0.3)'; }}>
-            <img src="/iconos_carga_planos/subir_plano.webp" alt="" style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} /> SUBIR PLANO
+            <img src="/iconos_carga_planos/subir_plano.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" /> SUBIR PLANO
           </button>
         </div>
 
@@ -263,7 +265,7 @@ export default function PlanosTab({ state }: PlanosTabProps) {
           onDragLeave={() => setPlanDrag(false)}
           onDrop={e => { e.preventDefault(); setPlanDrag(false); const fl = e.dataTransfer?.files; if (fl && fl.length > 0) addPlans(fl); }}>
           <div style={{ padding: '7px 10px', fontSize: 11, fontWeight: 700, color: 'var(--txt3)', borderBottom: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: .5 }}>
-            <img src="/iconos_carga_planos/pendientes.webp" alt="" style={{ width: 24, height: 24, verticalAlign: 'middle' }} />
+            <img src="/iconos_carga_planos/pendientes.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" />
             Pendientes {pendingPlanos.length > 0 && `(${pendingPlanos.length})`}
           </div>
           {pendingPlanos.length === 0 ? (
@@ -283,7 +285,7 @@ export default function PlanosTab({ state }: PlanosTabProps) {
               {pendingPlanos.map((p: any) => {
                 const calOk = isCalibrated(p.id);
                 return (
-                  <div key={p.id} onClick={() => handleSelectPending(p)}
+                  <div key={p.id} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();handleSelectPending(p);}}} onClick={() => handleSelectPending(p)}
                     style={{ cursor: 'pointer', padding: '8px 10px', borderBottom: '1px solid var(--line)', background: selectedPlanId === p.id ? 'rgba(27,110,243,.08)' : 'transparent', display: 'flex', flexDirection: 'column', gap: 4, transition: 'background .1s' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       <span style={{ fontSize: 13, flexShrink: 0 }}>&#x1F4C4;</span>
@@ -318,7 +320,7 @@ export default function PlanosTab({ state }: PlanosTabProps) {
 
         <div style={{ flex: '1 1 50%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ padding: '7px 10px', fontSize: 11, fontWeight: 700, color: 'var(--txt3)', borderBottom: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: .5 }}>
-            <img src="/iconos_carga_planos/cargados.webp" alt="" style={{ width: 24, height: 24, verticalAlign: 'middle' }} />
+            <img src="/iconos_carga_planos/cargados.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" />
             Cargados {confirmedPlanos.length > 0 && `(${confirmedPlanos.length})`}
           </div>
           {confirmedPlanos.length === 0 ? (
@@ -328,7 +330,7 @@ export default function PlanosTab({ state }: PlanosTabProps) {
           ) : (
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {confirmedPlanos.map((p: any) => (
-                <div key={p.id} onClick={() => setSelectedPlanId(p.id)}
+                <div key={p.id} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelectedPlanId(p.id);}}} onClick={() => setSelectedPlanId(p.id)}
                   style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderBottom: '1px solid var(--line)', background: selectedPlanId === p.id ? 'rgba(27,110,243,.08)' : 'transparent', transition: 'background .1s' }}>
                   <span style={{ fontSize: 13, flexShrink: 0 }}>&#x1F4C4;</span>
                   <div style={{ minWidth: 0, flex: 1 }}>

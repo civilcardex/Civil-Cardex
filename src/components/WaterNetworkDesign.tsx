@@ -149,7 +149,7 @@ export default function WaterNetworkDesign({ networkType, diamTable, lookupFn }:
     <>
       <div className="card">
         <div className="card-h">
-          <span className="card-t"><img src={`/iconos_diseno_redes/${icon}`} alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Diseño de red {title}</span>
+          <span className="card-t"><img src={`/iconos_diseno_redes/${icon}`} alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red {title}</span>
           <span className="card-s">{tramos.length} tramos</span>
         </div>
         <div className="scroll-top" style={{ padding: "6px" }}>
@@ -237,7 +237,7 @@ export default function WaterNetworkDesign({ networkType, diamTable, lookupFn }:
                   const Vmms = Qprob > 0 && internoMm > 0 ? Math.round((1000000 * Qprob) / ((Math.PI / 4) * internoMm * internoMm) * 10) / 10 : 0;
                   const H = t.totalL || t.Lh || 0;
                   const Vvert = t.Lv || t.deltaZ || 0;
-                  const Le = calcLeAcces(t.accesorios, disPulg, C);
+                  const Le = calcLeAcces(t.accesorios ?? {}, disPulg, C);
                   const Lt = H + Vvert + Le;
                   const hfPct = Vmms > 0 && C > 0 && internoMm > 0 ? Math.round(((60.1 * Math.pow(Vmms, 1.852)) / (Math.pow(C, 1.852) * Math.pow(internoMm, 1.167))) / 100 * 10000) / 10000 : 0;
                   const hfM = Lt > 0 && hfPct > 0 ? Math.round((Lt * hfPct) / 10 * 100) / 100 : 0;

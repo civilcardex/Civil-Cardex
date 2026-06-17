@@ -115,7 +115,7 @@ function LandingPage() {
               style={{ background: 'radial-gradient(circle at center, rgba(0,170,255,0.08) 0%, transparent 70%)', backdropFilter: 'blur(4px)', border: '1px solid rgba(0,170,255,0.1)' }}>
               <img src="/logos/civilCorelogo.webp" alt="CivilCore"
                 className="w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 object-contain"
-                style={{ filter: 'drop-shadow(0 0 80px rgba(0,170,255,0.5))' }} />
+                style={{ filter: 'drop-shadow(0 0 80px rgba(0,170,255,0.5))' }}  width={112} height={112} loading="lazy" />
             </div>
             <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black tracking-tight uppercase mb-3 md:mb-4"
               style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
@@ -174,7 +174,7 @@ function LandingPage() {
                 <div className="w-14 h-14 border rounded-lg flex items-center justify-center flex-shrink-0"
                   style={{ borderColor: hovered.color + '44', background: hovered.color + '0a' }}>
                   <img src={hovered.logo} alt={hovered.name} className="w-10 h-10 object-contain"
-                    style={{ filter: `drop-shadow(0 0 6px ${hovered.color}55)` }} />
+                    style={{ filter: `drop-shadow(0 0 6px ${hovered.color}55)` }}  width={40} height={40} loading="lazy" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold whitespace-nowrap" style={{ color: hovered.color, fontFamily: 'Hanken Grotesk, sans-serif' }}>{hovered.name}</h3>
@@ -280,7 +280,7 @@ function LandingPage() {
         <div className="flex flex-col md:flex-row justify-between items-center py-8 px-6 lg:px-8 gap-4 max-w-7xl mx-auto w-full">
           <div className="flex flex-col md:flex-row items-center gap-8">
             <Link to="/" className="flex items-center gap-2">
-              <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="h-11 w-11 object-contain" />
+              <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="h-11 w-11 object-contain"  width={44} height={44} loading="lazy" />
               <span className="text-2xl font-bold uppercase" style={{ color: '#3a494a', fontFamily: 'Hanken Grotesk, sans-serif' }}>CivilCore</span>
             </Link>
             <nav className="flex gap-6">

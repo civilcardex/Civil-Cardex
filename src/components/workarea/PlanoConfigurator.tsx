@@ -198,7 +198,7 @@ export default function PlanoConfigurator({
           setLoading(false);
           requestAnimationFrame(() => fitView());
         } catch (e) {
-          if (!cancelled) { console.error('Error loading PDF:', e); setLoading(false); }
+          if (!cancelled) { if (import.meta.env.DEV) console.error('Error loading PDF:', e); setLoading(false); }
         }
       })();
       return () => { cancelled = true; };

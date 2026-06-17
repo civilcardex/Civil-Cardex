@@ -65,7 +65,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       if (isPdf) {
         const id = Date.now() + Math.random();
         pdfs.push({ id, file: f, name: f.name, nivel: null, scale: 100, status: 'pending', origen: null });
-        storePDF(id, f).catch(() => {});
+        storePDF(id, f).catch(e => { if (import.meta.env.DEV) console.error('storePDF error:', e); });
       }
     }
     if (pdfs.length === 0 && newFiles.length > 0) {
@@ -80,7 +80,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
 
   const removePlan = (id: number) => {
     setPlans(prev => prev.filter(p => p.id !== id));
-    deletePDF(id).catch(() => {});
+    deletePDF(id).catch(e => { if (import.meta.env.DEV) console.error('deletePDF error:', e); });
   };
 
   const updatePlan = (id: number, updates: Partial<PlanItem>) => {

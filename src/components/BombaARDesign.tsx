@@ -117,7 +117,7 @@ export default function BombaARDesign(){
   const page3=<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', alignItems: 'start' }}>
     <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
       <div className="card-h" style={{padding:'8px 8px'}}>
-        <span className="card-t"><img src="/iconos_diseno_redes/equipos/bomba_sumergible_trituradora.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Parámetros de Diseño</span>
+        <span className="card-t"><img src="/iconos_diseno_redes/equipos/bomba_sumergible_trituradora.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />Parámetros de Diseño</span>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead><tr>{COLS1.map((c,i)=><th key={i} style={TH2}>{c}</th>)}</tr></thead>
@@ -136,7 +136,7 @@ export default function BombaARDesign(){
     
     <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
       <div className="card-h" style={{padding:'8px 8px'}}>
-        <span className="card-t"><img src="/iconos_diseno_redes/equipos/especificacion_camara_trituradora.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Especificación — Bomba sumergible trituradora</span>
+        <span className="card-t"><img src="/iconos_diseno_redes/equipos/especificacion_camara_trituradora.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />Especificación — Bomba sumergible trituradora</span>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead><tr>{['Ítem','Valor'].map((c,i)=><th key={i} style={TH2}>{c}</th>)}</tr></thead>
@@ -155,7 +155,7 @@ export default function BombaARDesign(){
   const page4=<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', alignItems: 'start' }}>
     <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
       <div className="card-h" style={{padding:'8px 8px'}}>
-        <span className="card-t"><img src="/iconos_diseno_redes/equipos/camara_bombeo.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Parámetros de Diseño</span>
+        <span className="card-t"><img src="/iconos_diseno_redes/equipos/camara_bombeo.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />Parámetros de Diseño</span>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead><tr>{COLS1.map((c,i)=><th key={i} style={TH2}>{c}</th>)}</tr></thead>
@@ -174,7 +174,7 @@ export default function BombaARDesign(){
     
     <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
       <div className="card-h" style={{padding:'8px 8px'}}>
-        <span className="card-t"><img src="/iconos_diseno_redes/equipos/especificacion_camara_bombeo.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />Especificación — Cámara de bombeo</span>
+        <span className="card-t"><img src="/iconos_diseno_redes/equipos/especificacion_camara_bombeo.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />Especificación — Cámara de bombeo</span>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead><tr>{['Ítem','Valor'].map((c,i)=><th key={i} style={TH2}>{c}</th>)}</tr></thead>
@@ -207,7 +207,7 @@ export default function BombaARDesign(){
         ) : (
           <div style={{width:'90%',maxWidth:900,overflow:'hidden',borderRadius:'var(--r)',border:'1px solid var(--line)'}}>
             <div className="card-h" style={{padding:'8px 8px'}}>
-              <span className="card-t"><img src={pages[bp-1].icon} alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} />{pages[bp-1].t}</span>
+              <span className="card-t"><img src={pages[bp-1].icon} alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />{pages[bp-1].t}</span>
             </div>
             <div style={{flex:1,padding:0,overflow:'auto'}}>
               {pages[bp-1].c}

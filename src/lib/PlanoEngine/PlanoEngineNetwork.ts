@@ -148,14 +148,14 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
         const oldK = `${netId}_${oldId}`;
         const newK = `${netId}_${newId}`;
         if (apData[oldK]) { apData[newK] = apData[oldK]; delete apData[oldK]; saveToStorage(AP_KEY, apData); }
-      } catch (e) { console.error('PlanoEngine:', e); }
+      } catch (e) { if (import.meta.env.DEV) console.error('PlanoEngine:', e); }
       try {
         const HD_KEY = 'tramo_hidro_data_v3';
         const hdData = loadFromStorage(HD_KEY, {}) as Record<string, unknown>;
         const oldK = `${netId}_${oldId}`;
         const newK = `${netId}_${newId}`;
         if (hdData[oldK]) { hdData[newK] = hdData[oldK]; delete hdData[oldK]; saveToStorage(HD_KEY, hdData); }
-      } catch (e) { console.error('PlanoEngine:', e); }
+      } catch (e) { if (import.meta.env.DEV) console.error('PlanoEngine:', e); }
     }
     r.id = newId;
     r.label = newId;

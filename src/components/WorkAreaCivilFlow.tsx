@@ -31,7 +31,7 @@ function NetworkBar({ redesActivas, tab, redActiva, setTab, setRedActiva }: Netw
             }}
           >
             {r.icoImg
-              ? <img src={r.icoImg} alt="" style={{ width: 22, height: 22, verticalAlign: 'middle' }} />
+              ? <img src={r.icoImg} alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle' }}  loading="lazy" />
               : <span style={{ fontSize: 16 }}>{r.ico}</span>}
             <span>{r.lbl}</span>
           </button>

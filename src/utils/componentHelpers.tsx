@@ -1,8 +1,4 @@
-interface Tramo {
-  id: string;
-  fixtures: Record<string, number>;
-  recibeDe?: string[];
-}
+import type { Tramo } from '../context/tramosReducer';
 
 interface UDBase {
   id: string;

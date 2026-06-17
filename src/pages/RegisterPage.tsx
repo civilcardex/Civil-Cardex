@@ -13,7 +13,7 @@ function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const navigate = useNavigate();
-  usePageMeta('Registro');
+  usePageMeta('Registro', 'Cree su cuenta en CivilCore para acceder a herramientas de diseno hidrosanitario, estructural y gestion de proyectos.');
 
   const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [field]: e.target.value });
 
@@ -77,7 +77,7 @@ function RegisterPage() {
             <div className="px-8 pt-10 pb-6 text-center">
               <div className="flex justify-center mb-5">
                 <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="w-24 h-24 object-contain"
-                  style={{ filter: 'drop-shadow(0 0 20px rgba(0,170,255,0.25))' }} />
+                  style={{ filter: 'drop-shadow(0 0 20px rgba(0,170,255,0.25))' }}  width={96} height={96} loading="lazy" />
               </div>
               <h1 className="text-2xl font-black tracking-tight uppercase mb-1"
                 style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
@@ -145,7 +145,7 @@ function RegisterPage() {
           {loading ? 'CREANDO CUENTA...' : 'CREAR CUENTA'}
         </button>
         {error && (
-          <div style={{ color: '#F04545', fontSize: 12, fontFamily: 'Geist, monospace', textAlign: 'center', padding: '8px', background: 'rgba(240,69,69,.08)', border: '1px solid rgba(240,69,69,.2)', borderRadius: 4 }}>
+          <div role="alert" aria-live="polite" style={{ color: '#F04545', fontSize: 12, fontFamily: 'Geist, monospace', textAlign: 'center', padding: '8px', background: 'rgba(240,69,69,.08)', border: '1px solid rgba(240,69,69,.2)', borderRadius: 4 }}>
             {error}
           </div>
         )}

@@ -114,7 +114,7 @@ export function writeHydroDrawingSync(plans: any[]) {
     window.dispatchEvent(new CustomEvent('civilflow_hidro_sync_changed', { detail: data }));
     return data;
   } catch (e) {
-    console.error('writeHydroDrawingSync error:', e);
+    if (import.meta.env.DEV) console.error('writeHydroDrawingSync error:', e);
     return null;
   }
 }
@@ -135,7 +135,7 @@ export function writeSanDrawingSync(plans: any[]) {
     window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed', { detail: data }));
     return data;
   } catch (e) {
-    console.error('writeSanDrawingSync error:', e);
+    if (import.meta.env.DEV) console.error('writeSanDrawingSync error:', e);
     return null;
   }
 }

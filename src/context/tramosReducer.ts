@@ -1,20 +1,60 @@
+export interface Tramo {
+  id: string;
+  _key?: string;
+  piso: number;
+  pisoDesde?: number;
+  pisoHasta?: number;
+  esBajante?: boolean;
+  desde?: string;
+  hasta?: string;
+  descripcion?: string;
+  diamDisPulg?: number;
+  nSalidas?: number;
+  nmaning?: number;
+  sPercent?: number;
+  qLps?: number;
+  recibeDe?: string[];
+  recibeDeIds?: string[];
+  fixtures: Record<string, number>;
+  accesorios?: Record<string, any>;
+  ini?: { x: number; y: number } | null;
+  fin?: { x: number; y: number } | null;
+  totalL?: number;
+  Lh?: number;
+  Lv?: number;
+  deltaZ?: number;
+  material?: string;
+  bajR?: number;
+  bajLong?: number;
+  bajFDarcy?: number;
+  bajDprop?: number;
+  ventDprop?: number;
+  area_m2?: number;
+  pisoBase?: number;
+  pisoCima?: number;
+  code?: string;
+  label?: string;
+  dInt?: number;
+  diametro_interno?: number;
+}
+
 export type TramosState = {
-  tramosSan: any[];
-  tramosAf: any[];
-  tramosAc: any[];
-  tramosLl: any[];
+  tramosSan: Tramo[];
+  tramosAf: Tramo[];
+  tramosAc: Tramo[];
+  tramosLl: Tramo[];
 };
 
 const netKey: Record<string, keyof TramosState> = {
   san: 'tramosSan', af: 'tramosAf', ac: 'tramosAc', ll: 'tramosLl',
 };
 
-function idMatch(t: any, net: string, id: string): boolean {
+function idMatch(t: Tramo, net: string, id: string): boolean {
   return net === 'll' ? t._key === id : t.id === id;
 }
 
 type TramosAction =
-  | { type: 'SET_TRAMOS'; net: string; payload: any[] }
+  | { type: 'SET_TRAMOS'; net: string; payload: Tramo[] }
   | { type: 'ADD_SAN'; newId: string }
   | { type: 'ADD_LL'; newKey: string }
   | { type: 'DEL_TRAMO'; net: string; id: string }
@@ -42,18 +82,18 @@ export function tramosReducer(state: TramosState, action: TramosAction): TramosS
         ...state,
         tramosLl: [...state.tramosLl, {
           _key: action.newKey, id: '', piso: 0, esBajante: false, desde: '', hasta: '',
-          descripcion: '', diamDisPulg: 0, nSalidas: 0, nmaning: 0, sPercent: 0,
+          descripcion: '', diamDisPulg: 0, nSalidas: 0, nmaning: 0, sPercent: 0, fixtures: {},
         }],
       };
     case 'DEL_TRAMO': {
       const key = netKey[action.net];
-      return { ...state, [key]: (state[key] as any[]).filter(t => !idMatch(t, action.net, action.id)) };
+      return { ...state, [key]: state[key].filter(t => !idMatch(t, action.net, action.id)) };
     }
     case 'UPD_TRAMO': {
       const key = netKey[action.net];
       return {
         ...state,
-        [key]: (state[key] as any[]).map(t =>
+        [key]: state[key].map(t =>
           idMatch(t, action.net, action.id) ? { ...t, [action.field]: action.val } : t
         ),
       };
@@ -62,7 +102,7 @@ export function tramosReducer(state: TramosState, action: TramosAction): TramosS
       const key = netKey[action.net];
       return {
         ...state,
-        [key]: (state[key] as any[]).map(t =>
+        [key]: state[key].map(t =>
           idMatch(t, action.net, action.id) ? { ...t, fixtures: { ...t.fixtures, [action.fix]: action.val } } : t
         ),
       };
@@ -71,7 +111,7 @@ export function tramosReducer(state: TramosState, action: TramosAction): TramosS
       const key = netKey[action.net];
       return {
         ...state,
-        [key]: (state[key] as any[]).map(t =>
+        [key]: state[key].map(t =>
           idMatch(t, action.net, action.id) ? { ...t, accesorios: { ...t.accesorios, [action.accId]: action.val } } : t
         ),
       };

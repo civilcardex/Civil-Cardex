@@ -1,4 +1,5 @@
 import React, { type RefObject } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { pisoLbl } from '../../constants'
 
 interface PdfCanvasProps {
@@ -23,6 +24,7 @@ export default function PdfCanvas({
   selectedNivel, pisos, planos,
   tool, snapOn, onSelectPlan,
 }: PdfCanvasProps) {
+  const navigate = useNavigate();
   return (
     <div ref={cwRef} style={{
       flex: 1, overflow: "hidden", display: "flex", justifyContent: "center",
@@ -75,12 +77,12 @@ export default function PdfCanvas({
           <div style={{fontSize:12,color:'#e2e2e8',fontFamily:"'Geist',monospace",textAlign:'center',lineHeight:1.5,maxWidth:360}}>
             Para empezar a dibujar, selecciona un <strong style={{color:'#00dce5'}}>piso</strong> que tenga un plano confirmado en el panel derecho, o carga un plano desde la pestaña <strong style={{color:'#00dce5'}}>"Carga de planos"</strong>.
           </div>
-          <a href="#/civilflowareatrabajo" onClick={() => sessionStorage.setItem('openTab', 'planos')} style={{
+          <button onClick={() => { sessionStorage.setItem('openTab', 'planos'); navigate('/civilflowareatrabajo'); }} style={{
             marginTop:6,padding:'8px 18px',
             background:'rgba(0,220,229,0.15)',border:'1px solid rgba(0,220,229,0.45)',
-            borderRadius:6,color:'#00dce5',fontWeight:700,fontSize:11,textDecoration:'none',
+            borderRadius:6,color:'#00dce5',fontWeight:700,fontSize:11,cursor:'pointer',
             fontFamily:"'Geist',monospace",letterSpacing:1,textTransform:'uppercase',
-          }}>📐 Ir a Carga de planos</a>
+          }}>📐 Ir a Carga de planos</button>
         </div>
       </div>
     )}
@@ -117,12 +119,12 @@ export default function PdfCanvas({
             <div style={{fontSize:12,color:'#e2e2e8',fontFamily:"'Geist',monospace",textAlign:'center',lineHeight:1.5,maxWidth:360}}>
               El nivel seleccionado no tiene un plano confirmado. Carga un plano desde la pestaña <strong style={{color:'#00dce5'}}>"Carga de planos"</strong> y asígnale este nivel para empezar a dibujar.
             </div>
-            <a href="#/civilflowareatrabajo" onClick={() => sessionStorage.setItem('openTab', 'planos')} style={{
+            <button onClick={() => { sessionStorage.setItem('openTab', 'planos'); navigate('/civilflowareatrabajo'); }} style={{
               marginTop:6,padding:'8px 18px',
               background:'rgba(0,220,229,0.15)',border:'1px solid rgba(0,220,229,0.45)',
-              borderRadius:6,color:'#00dce5',fontWeight:700,fontSize:11,textDecoration:'none',
+              borderRadius:6,color:'#00dce5',fontWeight:700,fontSize:11,cursor:'pointer',
               fontFamily:"'Geist',monospace",letterSpacing:1,textTransform:'uppercase',
-            }}>📐 Ir a Carga de planos</a>
+            }}>📐 Ir a Carga de planos</button>
           </div>
         </div>
       )}

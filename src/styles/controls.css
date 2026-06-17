@@ -113,6 +113,11 @@
   text-align: right;
 }
 
+.npt-in:focus-visible {
+  outline: 2px solid var(--acc2);
+  outline-offset: 1px;
+}
+
 .pdot {
   width: 6px;
   height: 6px;
@@ -191,6 +196,11 @@
   border-color: var(--acc2);
 }
 
+.ni:focus-visible {
+  outline: 2px solid var(--acc2);
+  outline-offset: 1px;
+}
+
 .fdc11 .ni {
   width: auto;
   padding: 5px 8px;
@@ -204,8 +214,9 @@
   text-align: right;
 }
 
-.fdc11 .ni:focus {
-  border-color: var(--acc2);
+.fdc11 .ni:focus-visible {
+  outline: 2px solid var(--acc2);
+  outline-offset: 1px;
 }
 
 input[type="number"].ni::-webkit-outer-spin-button,

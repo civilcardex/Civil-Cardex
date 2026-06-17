@@ -16,7 +16,7 @@ export default function TramoDataSection({ targetId, curHidro, setHidroField, sh
 
   return (
     <div style={{ borderBottom: '1px solid #3a494a' }}>
-      <button onClick={() => setDataOpen(o => !o)} style={{
+      <button onClick={() => setDataOpen(o => !o)} aria-expanded={dataOpen} style={{
         width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '7px 12px', background: 'transparent', border: 'none', cursor: 'pointer',
         borderTop: '1px solid var(--bg4)', textAlign: 'left',

@@ -39,7 +39,7 @@ export async function storePDF(id: number, file: File): Promise<void> {
       tx.onabort = () => reject(tx.error);
     });
   } catch (e) {
-    console.error('idbStorage storePDF:', id, e);
+    if (import.meta.env.DEV) console.error('idbStorage storePDF:', id, e);
   }
 }
 
@@ -57,7 +57,7 @@ export async function loadPDF(id: number): Promise<File | null> {
       req.onerror = () => reject(req.error);
     });
   } catch (e) {
-    console.error('idbStorage loadPDF:', id, e);
+    if (import.meta.env.DEV) console.error('idbStorage loadPDF:', id, e);
     return null;
   }
 }
@@ -73,6 +73,6 @@ export async function deletePDF(id: number): Promise<void> {
       tx.onabort = () => reject(tx.error);
     });
   } catch (e) {
-    console.error('idbStorage deletePDF:', id, e);
+    if (import.meta.env.DEV) console.error('idbStorage deletePDF:', id, e);
   }
 }

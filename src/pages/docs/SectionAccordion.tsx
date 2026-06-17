@@ -60,6 +60,7 @@ export default function SectionAccordion({ section, sectionKey, isOpen, onToggle
     >
       <button
         onClick={() => onToggle(sectionKey)}
+        aria-expanded={isOpen}
         className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-container-high"
       >
         <span className={`material-symbols-outlined text-lg transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}>

@@ -132,16 +132,16 @@ export default function AparatosPanel({ activeNet, selElement }: { activeNet: st
   useEffect(() => { saveGasAcc(gasAcc); }, [gasAcc]);
 
 useEffect(() => {
-try { writeSanDrawingSync(plans); } catch (e) { console.error('AparatosPanel:', e); }
+try { writeSanDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console.error('AparatosPanel:', e); }
 }, [counts, plans.length]);
 
 useEffect(() => {
-try { writeHydroDrawingSync(plans); } catch (e) { console.error('AparatosPanel:', e); }
+try { writeHydroDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console.error('AparatosPanel:', e); }
 }, [counts, hidroData, plans.length]);
 
 // También refrescar sync sanitaria cuando cambian datos de tramo (nSalidas)
 useEffect(() => {
-try { writeSanDrawingSync(plans); } catch (e) { console.error('AparatosPanel:', e); }
+try { writeSanDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console.error('AparatosPanel:', e); }
 }, [hidroData, plans.length]);
 
   const netId = activeNet;
@@ -344,7 +344,7 @@ try { writeSanDrawingSync(plans); } catch (e) { console.error('AparatosPanel:', 
 
   return (
     <div ref={containerRef} style={containerStyle}>
-      <button onClick={() => setOpen(o => !o)} style={{
+      <button onClick={() => setOpen(o => !o)} aria-expanded={open} style={{
         width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '10px 12px 8px', background: 'transparent', border: 'none', cursor: 'pointer',
         textAlign: 'left',

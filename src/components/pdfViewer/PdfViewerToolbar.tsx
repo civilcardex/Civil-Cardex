@@ -1,4 +1,5 @@
 import PlanoEngine from "../../lib/PlanoEngine";
+import { useNavigate } from 'react-router-dom';
 import { saveToStorage } from "../../services/storageService";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../../utils/drawingSync";
 
@@ -55,6 +56,7 @@ export default function PdfViewerToolbar({
   onSelectTool, onSnapToggle, onFit, onSave, onUndo, onClear,
   engineRef, currentIdRef, currentId, plansRef,
 }: PdfViewerToolbarProps) {
+  const navigate = useNavigate();
   return (
     <>
       <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
@@ -148,7 +150,7 @@ export default function PdfViewerToolbar({
           try { writeSanDrawingSync(plansRef.current); } catch (_) {}
           try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
         }
-        window.location.href = '#/civilflowareatrabajo';
+        navigate('/civilflowareatrabajo');
       }}
           style={{
             padding: "8px", background: "rgba(211,47,47,.12)", border: "1px solid rgba(211,47,47,.3)", borderRadius: "3px",

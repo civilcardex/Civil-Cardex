@@ -28,7 +28,7 @@ return (
 <>
   <div className="card">
     <div className="card-h">
-      <span className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Calculo_UC.webp" alt="" style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} /> Cálculo de unidades de descarga</span>
+      <span className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Calculo_UC.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Cálculo de unidades de descarga</span>
       <span className="card-s">{tramosSan.length} tramos</span>
     </div>
     <div className="scroll-top" style={{padding:'16px'}}>
@@ -66,8 +66,8 @@ const acum=acumMap[t.id]||0;
                 <tr key={t.id}>
                   <td className="c"><span className="sigla" style={{fontSize:11,fontWeight:600}}>{t.id}</span></td>
                   <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{pisoCorto(t.piso)}</span></td>
-                  <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.ini||'—'}</span></td>
-                  <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.fin||'—'}</span></td>
+                  <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.ini ? `${t.ini.x},${t.ini.y}` : '—'}</span></td>
+                  <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.fin ? `${t.fin.x},${t.fin.y}` : '—'}</span></td>
                   {mergedBase.map(d=>(
                     <td key={d.id} className="c" style={{padding:'2px 3px'}}>
                       <span style={{fontSize:12,fontFamily:'var(--mono)',color:d._disabled?'var(--txt3)':'var(--txt)'}}>{t.fixtures[d.id]??0}</span>

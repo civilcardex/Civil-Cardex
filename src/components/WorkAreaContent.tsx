@@ -54,7 +54,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
             background: redActiva === r.id ? 'rgba(0,0,0,.15)' : 'transparent',
             fontWeight: redActiva === r.id ? 700 : 400,
           }}>
-            {r.icoImg ? <img src={r.icoImg} alt="" style={{ width: 24, height: 24, verticalAlign: 'middle' }} /> : <span style={{ fontSize: 18 }}>{r.ico}</span>}
+            {r.icoImg ? <img src={r.icoImg} alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" /> : <span style={{ fontSize: 18 }}>{r.ico}</span>}
             <span>{r.lbl}</span>
           </button>
         ))}
@@ -134,7 +134,7 @@ function InfTab({ state }: { state: WorkAreaState }) {
       <div className="card">
         <div className="card-h">
           <span className="card-t">
-            <img src="/Informes.webp" alt="" style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} />
+            <img src="/Informes.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
             Resumen del proyecto
           </span>
         </div>

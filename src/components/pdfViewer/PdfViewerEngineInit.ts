@@ -123,7 +123,7 @@ export function usePdfViewerEngine({
     } catch (err) {
       if ((err as any)?.name === 'RenderingCancelledException') return;
       if (mountCheck && mountCheck !== mountId.current) return;
-      console.error("Error renderizando pagina:", err);
+      if (import.meta.env.DEV) console.error("Error renderizando pagina:", err);
       setError(String(err));
     } finally {
       renderingRef.current = false;
@@ -165,7 +165,7 @@ export function usePdfViewerEngine({
             saveTrazosToDB(id, work);
           }
         }
-      } catch (e) { console.error('[CLEANUP] error', e); }
+      } catch (e) { if (import.meta.env.DEV) console.error('[CLEANUP] error', e); }
       eng.setTool = origSetTool;
       eng.destroy();
       engineRef.current = null;
@@ -193,7 +193,7 @@ export function usePdfViewerEngine({
         await renderPage(1, scale, thisMount);
       } catch (err) {
         if (thisMount === mountId.current) {
-          console.error("Error cargando PDF:", err);
+          if (import.meta.env.DEV) console.error("Error cargando PDF:", err);
           setError("Error cargando PDF");
           setLoading(false);
         }

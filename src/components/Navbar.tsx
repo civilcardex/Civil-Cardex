@@ -36,12 +36,12 @@ function Navbar() {
     <nav className="fixed top-0 w-full z-50 border-b border-outline-variant flex justify-between items-center h-14 px-4 lg:px-6"
       style={{ background: '#111317' }}>
       <div className="flex items-center gap-4 md:gap-6">
-        <button className="md:hidden text-on-surface-variant p-1"
-          onClick={() => setMenuOpen(o => !o)} aria-label="Menú">
+<button className="md:hidden text-on-surface-variant p-1" 
+          onClick={() => setMenuOpen(o => !o)} aria-label="Menú" aria-expanded={menuOpen}>
           <span className="material-symbols-outlined text-xl">{menuOpen ? 'close' : 'menu'}</span>
         </button>
         <Link to="/" className="flex items-center gap-2">
-          <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="h-9 w-9 md:h-12 md:w-12 object-contain" />
+          <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="h-9 w-9 md:h-12 md:w-12 object-contain"  width={36} height={36} loading="lazy" />
           <span className="font-bold text-xl md:text-2xl tracking-tighter uppercase text-primary" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>CIVILCORE</span>
         </Link>
         <div className="hidden md:flex gap-4 items-center h-full">

@@ -173,7 +173,7 @@ export function useWorkAreaState() {
           const nets = NETS;
           const net = nets.find((n: any) => n.id === r.id);
           if (net) net.col = saved;
-        } catch (e) { console.error(e); }
+        } catch (e) { if (import.meta.env.DEV) console.error(e); }
       }
     });
   }, []);
