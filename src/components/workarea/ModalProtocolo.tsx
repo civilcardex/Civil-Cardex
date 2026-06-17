@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProtocoloProps {
   onClose: () => void;
@@ -36,9 +37,9 @@ export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  return (
+  const modalContent = (
     <div ref={modalRef} role="alertdialog" aria-modal="true" style={{
-      position: 'fixed', inset: 0, zIndex: 1000,
+      position: 'fixed', inset: 0, zIndex: 99999,
       background: 'rgba(0,0,0,0.7)', display: 'flex',
       alignItems: 'center', justifyContent: 'center',
     }} onClick={onClose}>
@@ -51,16 +52,17 @@ export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
         <div style={{
           padding: '14px 18px', borderBottom: '1px solid var(--line)',
           display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
+          background: 'var(--bg)', position: 'relative', zIndex: 10,
         }}>
-          <span style={{ fontSize: 18 }}>&#x1F4CB;</span>
-          <span style={{ fontSize: 14, fontWeight: 700 }}>Protocolo y recomendaciones</span>
+          <span style={{ fontSize: 18 }}>📋</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: '#e2e2e8' }}>Requisitos para carga de planos</span>
           <div style={{ flex: 1 }} />
           <button onClick={onClose} aria-label="Cerrar"
-            style={{ padding: '4px 10px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer', fontSize: 11 }}>
+            style={{ padding: '4px 10px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: '#b9caca', cursor: 'pointer', fontSize: 11 }}>
             &#x2715;
           </button>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ flex: '1 1 auto', overflowY: 'auto', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Section title="&#x1F4CD; Configuración en AutoCAD antes de exportar">
             <Item icon="📍" rule="Ejes de referencia obligatorios" detail="Dos líneas reales (no bloques ni xrefs): una horizontal X y una vertical Y, con cota etiquetada." />
             <Item icon="⊕" rule="Intersección común" detail="El cruce de los ejes debe estar en la misma posición relativa en TODOS los planos del proyecto (es el futuro origen)." />
@@ -125,12 +127,14 @@ export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--txt)' }}>{title}</div>
+      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: '#e2e2e8' }}>{title}</div>
       {children}
     </div>
   );
@@ -141,8 +145,8 @@ function Item({ icon, rule, detail }: { icon: string; rule: string; detail: stri
     <div style={{ display: 'flex', gap: 10, padding: '6px 8px', background: 'var(--bg3)', borderRadius: 'var(--r)', border: '1px solid var(--line)', marginBottom: 4, alignItems: 'flex-start' }}>
       <span style={{ fontSize: 16, flexShrink: 0 }}>{icon}</span>
       <div>
-        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--txt)' }}>{rule}</div>
-        <div style={{ fontSize: 11, color: 'var(--txt3)', lineHeight: 1.5, marginTop: 2 }}>{detail}</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e2e8' }}>{rule}</div>
+        <div style={{ fontSize: 11, color: '#b0b8b9', lineHeight: 1.5, marginTop: 2 }}>{detail}</div>
       </div>
     </div>
   );
@@ -152,7 +156,7 @@ function DiffRow({ diff, label, color }: { diff: string; label: string; color: s
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', background: 'var(--bg3)', borderRadius: 'var(--r)', border: '1px solid var(--line)' }}>
       <span style={{ fontSize: 11, fontWeight: 700, color, width: 50 }}>{diff}</span>
-      <span style={{ fontSize: 11, color: 'var(--txt2)' }}>→ {label}</span>
+      <span style={{ fontSize: 11, color: '#b9caca' }}>→ {label}</span>
     </div>
   );
 }

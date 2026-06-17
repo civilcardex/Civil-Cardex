@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { usePlans } from '../context/PlansContext';
-import { fmtSize } from '../utils/fmtSize';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { usePlanoFileUpload } from '../hooks/usePlanoFileUpload';
 import { REQ_ITEMS } from '../constants';
@@ -92,7 +91,7 @@ function PlansPage() {
                         {p.name}
                       </div>
                       <div className="text-[10px]" style={{ color: '#6b8cae', fontFamily: 'Geist, monospace' }}>
-                        {fmtSize(p.file.size)}
+                        {(p.file.size<1024?p.file.size+' B':p.file.size<1048576?(p.file.size/1024).toFixed(1)+' KB':(p.file.size/1048576).toFixed(1)+' MB')}
                       </div>
                     </div>
                   </div>

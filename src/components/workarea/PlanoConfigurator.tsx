@@ -44,12 +44,14 @@ export default function PlanoConfigurator({
   const [calPreview, setCalPreview] = useState<{ x: number; y: number } | null>(null);
   const [lenX, setLenX] = useState('');
   const [lenY, setLenY] = useState('');
-  const [factorX, setFactorX] = useState<number | null>(existingCal?.factorX || null);
-  const [factorY, setFactorY] = useState<number | null>(existingCal?.factorY || null);
+  const [factorX, setFactorX] = useState<number | null>(existingCal?.factorX ?? null);
+  const [factorY, setFactorY] = useState<number | null>(existingCal?.factorY ?? null);
   const [scaleM, setScaleM] = useState<number | null>(existingCal?.scaleM || null);
+  const [definedScale, setDefinedScale] = useState<number | null>(existingCal?.scaleM || null);
   const [calGlobal, setCalGlobal] = useState<boolean | null>(existingCal?.calGlobal ?? null);
   const [showProtocolo, setShowProtocolo] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [hasSaved, setHasSaved] = useState(!!existingCal);
   const [toast, setToast] = useState<{ msg: string; type: 'err' | 'ok' | 'warn' } | null>(null);
 
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
@@ -82,12 +84,15 @@ export default function PlanoConfigurator({
     if (fx && fy) {
       const f = (fx + fy) / 2;
       setScaleM(f);
+      setDefinedScale(f);
       const diff = Math.abs(fx - fy) / f * 100;
       if (diff > 5) {
         showToast(`Diferencia X/Y = ${diff.toFixed(1)}% - Posible distorsión. Re-exportar a 300 DPI`, 'warn');
       }
     } else if (fx || fy) {
-      setScaleM(fx || fy);
+      const f = fx || fy!;
+      setScaleM(f);
+      setDefinedScale(f);
     }
   }, [showToast]);
 
@@ -140,6 +145,29 @@ export default function PlanoConfigurator({
       y: Math.max(0, (h - pageHRef.current * z) / 2),
     });
   }, []);
+
+  // Listen for Escape key to cancel active calibration/origin modes
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (modoCalX) {
+          setModoCalX(false);
+          setCalStart(null);
+          setCalPreview(null);
+        }
+        if (modoCalY) {
+          setModoCalY(false);
+          setCalStart(null);
+          setCalPreview(null);
+        }
+        if (modoOrigen) {
+          setModoOrigen(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modoCalX, modoCalY, modoOrigen]);
 
   // Load image/PDF
   useEffect(() => {
@@ -260,15 +288,38 @@ export default function PlanoConfigurator({
       ctx.setLineDash([5, 4]);
       ctx.beginPath(); ctx.moveTo(calStart.x_px, calStart.y_px); ctx.lineTo(calPreview.x, calPreview.y); ctx.stroke();
       ctx.setLineDash([]);
-      const dpx = Math.hypot(calPreview.x - calStart.x_px, calPreview.y - calStart.y_px);
-      const cm = dpx / 96 * 2.54;
-      const dm = scaleM ? +(cm * scaleM).toFixed(3) : null;
-      const txt = dm ? `${dpx.toFixed(0)}px → ${dm}m` : `${dpx.toFixed(0)}px`;
+      const dx = modoCalX ? (calPreview.x - calStart.x_px) : 0;
+      const dy = modoCalY ? (calPreview.y - calStart.y_px) : 0;
+      const distPx = Math.hypot(dx, dy);
+      const distCm = distPx / 96 * 2.54;
+      const baseFactor = modoCalX
+        ? (factorY || scaleM || definedScale)
+        : (factorX || scaleM || definedScale);
+      const txt = baseFactor ? `${(distCm * baseFactor).toFixed(2)} m` : `Fijando escala...`;
+
       ctx.font = '600 11px monospace';
       ctx.fillStyle = color;
       const tx = calPreview.x + (calPreview.x > calStart.x_px ? 8 : -8 - ctx.measureText(txt).width);
       const ty = calPreview.y + (calPreview.y > calStart.y_px ? 18 : -4);
       ctx.fillText(txt, tx, ty);
+
+      const refVal = modoCalX ? parseFloat(lenX) : parseFloat(lenY);
+      if (!isNaN(refVal) && refVal > 0) {
+        const refTxt = `→ ref: ${refVal.toFixed(2)} m`;
+        ctx.font = '600 10px monospace';
+        ctx.fillStyle = color + 'aa';
+        const refTx = calPreview.x + (calPreview.x > calStart.x_px ? 8 : -8 - ctx.measureText(refTxt).width);
+        ctx.fillText(refTxt, refTx, ty + 14);
+      }
+
+      if (modoCalX) {
+        ctx.strokeStyle = color; ctx.lineWidth = 1;
+        ctx.setLineDash([2, 3]);
+        ctx.beginPath(); ctx.moveTo(calPreview.x, calPreview.y - 10); ctx.lineTo(calPreview.x, calPreview.y + 10); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = color;
+        ctx.beginPath(); ctx.arc(calPreview.x, calPreview.y, 4, 0, Math.PI * 2); ctx.fill();
+      }
     }
 
     const showCrosshair = (modoOrigen || modoCalX || modoCalY) && !calStart && cursorPos;
@@ -320,6 +371,7 @@ export default function PlanoConfigurator({
     if (modoOrigen) {
       setOrigen({ x_px: pp.x, y_px: pp.y });
       setModoOrigen(false);
+      setHasSaved(false);
       return;
     }
 
@@ -339,6 +391,7 @@ export default function PlanoConfigurator({
           setModoCalX(false);
           setCalStart(null); setCalPreview(null);
           calcularPromedio(fx, factorY);
+          setHasSaved(false);
         } else {
           const lr = parseFloat(lenY);
           const fy = lr / distCm;
@@ -346,6 +399,7 @@ export default function PlanoConfigurator({
           setModoCalY(false);
           setCalStart(null); setCalPreview(null);
           calcularPromedio(factorX, fy);
+          setHasSaved(false);
         }
       }
       return;
@@ -397,16 +451,27 @@ export default function PlanoConfigurator({
   const tieneCal = factorX !== null || factorY !== null;
 
   const guardarConfig = () => {
-    if (planNivel === null || planNivel === undefined) { showToast('Asigne un nivel antes de guardar (Paso 0)', 'err'); return; }
-    if (!origen) { showToast('Defina el origen antes de guardar (Paso 1)', 'err'); return; }
-    if (!scaleM) { showToast('Calibre al menos un eje antes de guardar (Paso 2 o 3)', 'err'); return; }
+    if (planNivel === null || planNivel === undefined) { showToast('Asigne un nivel antes de guardar (Paso 1)', 'err'); return; }
+    if (!origen) { showToast('Defina el origen antes de guardar (Paso 2)', 'err'); return; }
+    if (!scaleM) { showToast('Calibre al menos un eje antes de guardar (Paso 3 o 4)', 'err'); return; }
     if (tieneCal && calGlobal === null) {
       showToast('Seleccione si la calibración aplica a todos los planos o plano por plano', 'err');
       return;
     }
+
+    // Condición de si no está bien calibrado el plano (diferencia de calibración X/Y > 5%)
+    // Implementada pero deshabilitada por el momento
+    const diffPctVal = factorX && factorY && scaleM ? Math.abs(factorX - factorY) / scaleM * 100 : 0;
+    const bloquearPorMalaCalibracion = false; // Cambiar a: diffPctVal > 5
+    if (bloquearPorMalaCalibracion && diffPctVal > 5) {
+      showToast(`No se puede guardar: La diferencia de calibración X/Y (${diffPctVal.toFixed(1)}%) supera el 5%.`, 'err');
+      return;
+    }
+
     onSaveConfig({ planId, origen, scaleM, factorX, factorY, calGlobal });
     showToast('Configuración guardada', 'ok');
     setSaved(true);
+    setHasSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
 
@@ -431,23 +496,23 @@ export default function PlanoConfigurator({
       )}
 
       {/* Status bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'var(--bg)', minHeight: 30, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--txt2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>{planName}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 14px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'var(--bg)', minHeight: 36, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--txt)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 250 }}>{planName}</span>
         {scaleM && (
           <>
-            <span style={{ fontSize: 9, color: 'var(--txt3)', fontFamily: 'monospace' }}>
+            <span style={{ fontSize: 13, color: 'var(--txt2)', fontFamily: 'monospace' }}>
               ✓ 1cm = <strong style={{ color: 'var(--acc)' }}>{scaleM.toFixed(4)}m</strong>
             </span>
             {factorX && factorY && (
-              <span style={{ fontSize: 9, fontFamily: 'monospace', color: diffPct > 5 ? '#f59e0b' : 'var(--ok)' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'monospace', color: diffPct > 5 ? '#f59e0b' : 'var(--ok)' }}>
                 Δ {diffPct.toFixed(1)}% {diffPct <= 5 ? '✓' : '⚠'}
               </span>
             )}
           </>
         )}
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 9, color: 'var(--txt4)' }}>{Math.round(zoom * 100)}%</span>
-        <button onClick={fitView} title="Ajustar vista" style={{ padding: '1px 6px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 3, color: 'var(--txt3)', cursor: 'pointer', fontSize: 10 }}>
+        <span style={{ fontSize: 11, color: 'var(--txt4)' }}>{Math.round(zoom * 100)}%</span>
+        <button onClick={fitView} title="Ajustar vista" style={{ padding: '2px 8px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 3, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11 }}>
           ⊞ Ajustar
         </button>
       </div>
@@ -480,43 +545,78 @@ export default function PlanoConfigurator({
 
         {/* Right: Configuration panel - compact */}
         <div style={{ width: 250, flexShrink: 0, display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--line)', background: 'var(--bg)', overflowY: 'auto' }}>
-          {/* Step 0: Level */}
+          {/* Step 1: Level */}
           <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
-              Paso 0 · Asignar nivel
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+              Asignar nivel
             </div>
             <select value={planNivel ?? ''} onChange={e => {
               const v = e.target.value ? Number(e.target.value) : null;
               onUpdateNivel(planId, v);
+              setHasSaved(false);
             }}
-              style={{ width: '100%', padding: '5px 6px', fontSize: 11, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer' }}>
+              style={{ width: '100%', padding: '5px 6px', fontSize: 12, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer' }}>
               <option value="">— Seleccionar nivel —</option>
               {[...pisos].sort((a: any, b: any) => b.n - a.n).map((s: any) => {
                 const ocupado = plans.some((x: any) => x.id !== planId && x.status === 'confirmed' && x.nivel === s.n);
                 return <option key={s.id} value={s.n} disabled={ocupado}>{pisoLbl(s.n)} ({s.npt} m){ocupado ? ' (ocupado)' : ''}</option>;
               })}
             </select>
-            {/* Escala — autocalculada si hay calibración */}
-            <div style={{ marginTop: 6 }}>
-              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Escala</div>
-              {scaleM ? (
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--acc)', fontFamily: 'monospace' }}>
-                  1:{Math.round(scaleM * 100)} <span style={{ fontSize: 9, color: 'var(--txt4)', fontWeight: 400 }}>(calibrada)</span>
+            
+            {/* Escala - definida y calibrada side-by-side */}
+            <div style={{ marginTop: 8, display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, whiteSpace: 'nowrap' }}>
+                  Escala definida
                 </div>
-              ) : (
-                <div style={{ fontSize: 11, color: 'var(--txt4)' }}>— Calibra para definir</div>
-              )}
+                <select
+                  value={definedScale ? Math.round(definedScale * 100) : ''}
+                  onChange={e => {
+                    const val = e.target.value ? Number(e.target.value) : null;
+                    if (val) {
+                      setDefinedScale(val / 100);
+                    } else {
+                      setDefinedScale(null);
+                    }
+                  }}
+                  style={{ width: '100%', padding: '5px 6px', fontSize: 12, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer' }}
+                >
+                  <option value="">— Escala —</option>
+                  {(() => {
+                    const PREDEF = [50, 75, 100, 125, 150, 200, 250, 500];
+                    const calVal = definedScale ? Math.round(definedScale * 100) : 0;
+                    const hasCal = calVal > 0 && !PREDEF.includes(calVal);
+                    const opts = hasCal ? [...PREDEF, calVal].sort((a, b) => a - b) : PREDEF;
+                    return opts.map(v => (
+                      <option key={v} value={v}>1:{v}</option>
+                    ));
+                  })()}
+                </select>
+              </div>
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, whiteSpace: 'nowrap' }}>
+                  Escala calibrada
+                </div>
+                {scaleM ? (
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--acc)', fontFamily: 'monospace', padding: '5px 0', whiteSpace: 'nowrap' }}>
+                    1:{Math.round(scaleM * 100)}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: 'var(--txt4)', padding: '5px 0', whiteSpace: 'nowrap' }}>— Sin calibrar</div>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Step 1: Origin */}
+          {/* Step 2: Origin */}
           <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
-              Paso 1 · Definir origen
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+              Definir origen
             </div>
             <button onClick={activarModoOrigen}
               style={{
-                width: '100%', padding: '6px 8px', fontSize: 11, fontWeight: 600,
+                width: '100%', padding: '6px 8px', fontSize: 12, fontWeight: 600,
                 background: modoOrigen ? 'rgba(245,166,35,0.15)' : 'var(--bg3)',
                 border: `1.5px solid ${modoOrigen ? '#F5A623' : 'var(--line)'}`,
                 borderRadius: 'var(--r)', color: modoOrigen ? '#F5A623' : 'var(--txt2)',
@@ -526,125 +626,128 @@ export default function PlanoConfigurator({
             </button>
             {origen && (
               <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 10, color: 'var(--ok)', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: 11, color: 'var(--ok)', fontFamily: 'monospace' }}>
                   ✓ ({origen.x_px.toFixed(0)}, {origen.y_px.toFixed(0)}) px
                 </span>
-                <button onClick={() => setOrigen(null)}
-                  style={{ padding: '0 4px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 10, lineHeight: '16px' }}>
+                <button onClick={() => { setOrigen(null); setHasSaved(false); }}
+                  style={{ padding: '0 4px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11, lineHeight: '16px' }}>
                   ✕
                 </button>
               </div>
             )}
           </div>
 
-          {/* Step 2: Calibrate X */}
-          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
-              Paso 2 · Calibrar línea X
-            </div>
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              <input type="text" inputMode="decimal" placeholder="Longitud X (m)" value={lenX} onChange={e => setLenX(e.target.value.replace(/,/g, '.'))}
-                disabled={modoCalX}
-                style={{ flex: 1, padding: '5px 6px', fontSize: 11, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt)', fontFamily: 'monospace' }} />
-              <button onClick={activarModoCalX}
-                style={{
-                  padding: '5px 8px', fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap',
-                  background: modoCalX ? 'rgba(77,143,247,0.15)' : 'var(--bg3)',
-                  border: `1.5px solid ${modoCalX ? '#4D8FF7' : 'var(--line)'}`,
-                  borderRadius: 'var(--r)', color: modoCalX ? '#4D8FF7' : 'var(--txt2)',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, transition: 'all .15s',
-                }}>
-                ➡ {modoCalX ? 'Cancelar' : 'Trazar'}
-              </button>
-            </div>
-            {factorX && (
-              <div style={{ marginTop: 3, fontSize: 10, color: 'var(--ok)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
-                ✓ FX = {factorX.toFixed(5)} m/cm
-                <button onClick={() => { setFactorX(null); setLenX(''); if (!factorY) setScaleM(null); }}
-                  style={{ padding: '0 4px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 9, lineHeight: '14px' }}>✕</button>
+          {/* Step 3 & 4: Calibrate X and Y */}
+          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)', display: 'flex', gap: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+                Calibrar X
               </div>
-            )}
-          </div>
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                <input type="text" inputMode="decimal" placeholder="(m)" value={lenX} onChange={e => setLenX(e.target.value.replace(/,/g, '.'))}
+                  disabled={modoCalX}
+                  style={{ flex: 1, minWidth: 0, padding: '5px 4px', fontSize: 11, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt)', fontFamily: 'monospace' }} />
+                <button onClick={activarModoCalX}
+                  style={{
+                    padding: '5px 6px', fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap',
+                    background: modoCalX ? 'rgba(77,143,247,0.15)' : 'var(--bg3)',
+                    border: `1.5px solid ${modoCalX ? '#4D8FF7' : 'var(--line)'}`,
+                    borderRadius: 'var(--r)', color: modoCalX ? '#4D8FF7' : 'var(--txt2)',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all .15s',
+                  }}>
+                  {modoCalX ? 'Cancelar' : 'Trazar'}
+                </button>
+              </div>
+              {factorX && (
+                <div style={{ marginTop: 3, fontSize: 10, color: 'var(--ok)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                  ✓ {factorX.toFixed(4)}
+                  <button onClick={() => { setFactorX(null); setLenX(''); if (factorY) { setScaleM(factorY); setDefinedScale(factorY); } else { setScaleM(null); setDefinedScale(null); } setHasSaved(false); }}
+                    style={{ padding: '0 4px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 10, lineHeight: '14px' }}>✕</button>
+                </div>
+              )}
+            </div>
 
-          {/* Step 3: Calibrate Y */}
-          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
-              Paso 3 · Calibrar línea Y
-            </div>
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              <input type="text" inputMode="decimal" placeholder="Longitud Y (m)" value={lenY} onChange={e => setLenY(e.target.value.replace(/,/g, '.'))}
-                disabled={modoCalY}
-                style={{ flex: 1, padding: '5px 6px', fontSize: 11, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt)', fontFamily: 'monospace' }} />
-              <button onClick={activarModoCalY}
-                style={{
-                  padding: '5px 8px', fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap',
-                  background: modoCalY ? 'rgba(14,204,122,0.15)' : 'var(--bg3)',
-                  border: `1.5px solid ${modoCalY ? '#0ECC7A' : 'var(--line)'}`,
-                  borderRadius: 'var(--r)', color: modoCalY ? '#0ECC7A' : 'var(--txt2)',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, transition: 'all .15s',
-                }}>
-                ⬆ {modoCalY ? 'Cancelar' : 'Trazar'}
-              </button>
-            </div>
-            {factorY && (
-              <div style={{ marginTop: 3, fontSize: 10, color: 'var(--ok)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
-                ✓ FY = {factorY.toFixed(5)} m/cm
-                <button onClick={() => { setFactorY(null); setLenY(''); if (!factorX) setScaleM(null); }}
-                  style={{ padding: '0 4px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 9, lineHeight: '14px' }}>✕</button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+                Calibrar Y
               </div>
-            )}
+              <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                <input type="text" inputMode="decimal" placeholder="(m)" value={lenY} onChange={e => setLenY(e.target.value.replace(/,/g, '.'))}
+                  disabled={modoCalY}
+                  style={{ flex: 1, minWidth: 0, padding: '5px 4px', fontSize: 11, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt)', fontFamily: 'monospace' }} />
+                <button onClick={activarModoCalY}
+                  style={{
+                    padding: '5px 6px', fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap',
+                    background: modoCalY ? 'rgba(14,204,122,0.15)' : 'var(--bg3)',
+                    border: `1.5px solid ${modoCalY ? '#0ECC7A' : 'var(--line)'}`,
+                    borderRadius: 'var(--r)', color: modoCalY ? '#0ECC7A' : 'var(--txt2)',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all .15s',
+                  }}>
+                  {modoCalY ? 'Cancelar' : 'Trazar'}
+                </button>
+              </div>
+              {factorY && (
+                <div style={{ marginTop: 3, fontSize: 10, color: 'var(--ok)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                  ✓ {factorY.toFixed(4)}
+                  <button onClick={() => { setFactorY(null); setLenY(''); if (factorX) { setScaleM(factorX); setDefinedScale(factorX); } else { setScaleM(null); setDefinedScale(null); } setHasSaved(false); }}
+                    style={{ padding: '0 4px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 10, lineHeight: '14px' }}>✕</button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Scope */}
           {tieneCal && (
             <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
                 Alcance
               </div>
               <div style={{ display: 'flex', gap: 4 }}>
-                <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', background: 'var(--bg3)', borderRadius: 'var(--r)', cursor: 'pointer', fontSize: 11, color: 'var(--txt2)' }}>
-                  <input type="radio" name="calGlobal" checked={calGlobal === true} onChange={() => setCalGlobal(true)} />
-                  Todos
+                <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', background: 'var(--bg3)', borderRadius: 'var(--r)', cursor: 'pointer', fontSize: 12, color: 'var(--txt2)' }}>
+                  <input type="radio" name="calGlobal" checked={calGlobal === true} onChange={() => { setCalGlobal(true); setHasSaved(false); }} />
+                  Todos los pisos
                 </label>
-                <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', background: 'var(--bg3)', borderRadius: 'var(--r)', cursor: 'pointer', fontSize: 11, color: 'var(--txt2)' }}>
-                  <input type="radio" name="calGlobal" checked={calGlobal === false} onChange={() => setCalGlobal(false)} />
-                  Por plano
+                <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', background: 'var(--bg3)', borderRadius: 'var(--r)', cursor: 'pointer', fontSize: 12, color: 'var(--txt2)' }}>
+                  <input type="radio" name="calGlobal" checked={calGlobal === false} onChange={() => { setCalGlobal(false); setHasSaved(false); }} />
+                  Por piso
                 </label>
               </div>
             </div>
           )}
 
-          {/* Actions */}
-          <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 4, borderBottom: '1px solid var(--line)' }}>
-            <button onClick={() => setShowProtocolo(true)}
-              style={{ width: '100%', padding: '6px 8px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer', fontSize: 11, transition: 'all .15s' }}>
-              📋 Ver protocolo
-            </button>
+          {/* Actions & Verification */}
+          <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 8, borderBottom: '1px solid var(--line)' }}>
+            {/* Checklist - grid 3 cols */}
+            <div style={{ padding: '4px 0' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+                Verificación
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
+                <Chk done={planNivel !== null} label="Nivel" />
+                <Chk done={tieneOrigen} label="Origen" />
+                <Chk done={factorX !== null} label="Cal X" />
+                <Chk done={factorY !== null} label="Cal Y" />
+                <Chk done={scaleM !== null} label="Factor" />
+                <Chk done={calGlobal !== null} label="Alcance" />
+                <Chk done={hasSaved} label="Guardado" />
+              </div>
+            </div>
+
             <button onClick={guardarConfig}
               style={{
                 width: '100%', padding: '6px 8px',
                 background: saved ? 'rgba(14,204,122,0.15)' : 'var(--acc)',
                 border: saved ? '1.5px solid #0ECC7A' : 'none',
                 borderRadius: 'var(--r)', color: saved ? '#0ECC7A' : '#fff',
-                cursor: 'pointer', fontSize: 11, fontWeight: 600, transition: 'all .15s',
+                cursor: 'pointer', fontSize: 12, fontWeight: 600, transition: 'all .15s',
               }}>
               {saved ? '✓ Configuración guardada' : '💾 Guardar configuración'}
             </button>
-          </div>
 
-          {/* Checklist - grid 3 cols */}
-          <div style={{ padding: '8px 10px' }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
-              Verificación
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
-              <Chk done={planNivel !== null} label="Nivel" />
-              <Chk done={tieneOrigen} label="Origen" />
-              <Chk done={factorX !== null} label="Cal X" />
-              <Chk done={factorY !== null} label="Cal Y" />
-              <Chk done={scaleM !== null} label="Factor" />
-              <Chk done={saved} label="Guardado" />
-            </div>
+            <button onClick={() => setShowProtocolo(true)}
+              style={{ width: '100%', padding: '6px 8px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer', fontSize: 12, transition: 'all .15s' }}>
+              📋 Requisitos para carga de planos
+            </button>
           </div>
         </div>
       </div>
@@ -654,7 +757,7 @@ export default function PlanoConfigurator({
 
 function Chk({ done, label }: { done: boolean; label: string }) {
   return (
-    <span style={{ fontSize: 10, color: done ? 'var(--ok)' : 'var(--txt4)', display: 'flex', alignItems: 'center', gap: 3 }}>
+    <span style={{ fontSize: 11, color: done ? 'var(--ok)' : 'var(--txt4)', display: 'flex', alignItems: 'center', gap: 3 }}>
       {done ? '✅' : '⬜'} {label}
     </span>
   );

@@ -180,7 +180,10 @@ export function useWorkAreaState() {
 
   useEffect(() => {
     if (selectedPlan) {
-      const url = URL.createObjectURL(selectedPlan.file);
+      const pdfFile = selectedPlan.file.type === 'application/pdf'
+        ? selectedPlan.file
+        : new File([selectedPlan.file], selectedPlan.file.name, { type: 'application/pdf' });
+      const url = URL.createObjectURL(pdfFile);
       setSelectedPlanUrl(url);
       return () => { URL.revokeObjectURL(url); setSelectedPlanUrl(null) };
     } else {
