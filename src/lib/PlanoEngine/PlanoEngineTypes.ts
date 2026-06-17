@@ -54,6 +54,7 @@ export interface IPlanoEngineCore {
     flowEmoji: number;
     coord: number;
   };
+  readonly labelScaleM: number;
 
   toCvs(px: number, py: number): { x: number; y: number };
   toPlane(cx: number, cy: number): { x: number; y: number };

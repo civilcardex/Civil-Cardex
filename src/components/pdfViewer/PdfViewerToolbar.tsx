@@ -20,9 +20,7 @@ export const TOOLS: ToolDef[] = [
   { id: "text", label: "Texto", ico: "T", key: "T", icoCol: "#A855F7", shortcut: "T" },
   { id: "baj", label: "Bajante", ico: "\u2193", key: "B", icoCol: "#F04545", shortcut: "B" },
   { id: "mon", label: "Montante", ico: "\u2191", key: "M", icoCol: "#3B82F6", shortcut: "M" },
-  { id: "delm", label: "Eliminar elemento", ico: "\uD83D\uDDD1", key: "X", icoCol: "#ffb4ab", shortcut: "X" },
-  { id: "segdel", label: "Eliminar segmento", ico: "\u2702", key: "K", icoCol: "#ffb4ab", shortcut: "K" },
-  { id: "erase", label: "Eliminar ramal/tributario", ico: "\uD83E\uDDF9", key: "E", icoCol: "#ffb4ab", shortcut: "E" },
+  { id: "erase", label: "Borrador", ico: "🧽", key: "E", icoCol: "#ffb4ab", shortcut: "E" },
   { id: "pan", label: "Mover", ico: "\u270B", key: "Espacio", icoCol: "#10B981", shortcut: "Espacio" },
 ];
 

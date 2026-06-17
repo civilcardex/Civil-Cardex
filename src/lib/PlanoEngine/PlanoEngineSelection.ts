@@ -344,10 +344,31 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
   if (engine.ghostDrag) {
     const b = engine.bajantes.find((bb: any) => bb.id === engine.ghostDrag!.id);
     if (b && engine.nivelActual) {
-      const dx = (x - engine.ghostDrag.startX) / engine.zoom + engine.ghostDrag.baseDx;
-      const dy = (y - engine.ghostDrag.startY) / engine.zoom + engine.ghostDrag.baseDy;
+      let dx = (x - engine.ghostDrag.startX) / engine.zoom + engine.ghostDrag.baseDx;
+      let dy = (y - engine.ghostDrag.startY) / engine.zoom + engine.ghostDrag.baseDy;
+      if (engine.snapMode) {
+        let snappedPt = engine.snapAngle(b.x, b.y, b.x + dx, b.y + dy);
+        const sp = engine.snapToExisting(snappedPt.x, snappedPt.y);
+        if (sp) {
+          snappedPt = sp;
+        }
+        dx = snappedPt.x - b.x;
+        dy = snappedPt.y - b.y;
+      }
       if (!(b as any).desplazamientos) (b as any).desplazamientos = {};
-      (b as any).desplazamientos[engine.nivelActual.label ?? ''] = { dx, dy, Ldesvio: null };
+      const oldD = (b as any).desplazamientos[engine.nivelActual.label ?? ''];
+      const lDesvio = oldD ? oldD.Ldesvio : null;
+      (b as any).desplazamientos[engine.nivelActual.label ?? ''] = { dx, dy, Ldesvio: lDesvio };
+      
+      if (lDesvio) {
+        const r = engine.ramales.find((rr: any) => rr.id === lDesvio);
+        if (r) {
+          r.pts[0] = [b.x, b.y];
+          r.pts[r.pts.length - 1] = [b.x + dx, b.y + dy];
+          r.totalL = calculateRamalLength(r.pts, engine);
+        }
+      }
+      
       engine.render();
     }
     return;

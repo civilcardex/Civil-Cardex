@@ -26,7 +26,7 @@ export default function PdfCanvas({
 }: PdfCanvasProps) {
   const navigate = useNavigate();
   return (
-    <div ref={cwRef} style={{
+    <div ref={cwRef} onContextMenu={(e) => e.preventDefault()} style={{
       flex: 1, overflow: "hidden", display: "flex", justifyContent: "center",
       alignItems: "flex-start", background: "#111317", position: "relative",
     }}>

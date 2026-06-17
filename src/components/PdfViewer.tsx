@@ -138,6 +138,13 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   useEffect(() => { try { sessionStorage.setItem('civilflow_visor_tipoTramo', tipoTramo); } catch (_) {} }, [tipoTramo]);
   useEffect(() => { try { sessionStorage.setItem('civilflow_visor_snapOn', String(snapOn)); } catch (_) {} }, [snapOn]);
 
+  const [contextMenuState, setContextMenuState] = useState<{ visible: boolean; x: number; y: number; bajante: any } | null>(null);
+
+  const onContextMenuCb = useCallback((bajante: any, x: number, y: number) => {
+    if (engineRef.current && engineRef.current.selId !== bajante.id) return;
+    setContextMenuState({ visible: true, x, y, bajante });
+  }, []);
+
   useEffect(() => {
     if (selectedNivel !== null) {
       const plano = planos.find(p => p.nivel === selectedNivel && p.status === 'confirmed');
@@ -280,6 +287,12 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
     setError,
     scale,
   });
+
+  useEffect(() => {
+    if (engineRef.current && engineReady) {
+      engineRef.current.onContextMenu(onContextMenuCb);
+    }
+  }, [engineReady, onContextMenuCb]);
 
   useEffect(() => {
     if (!engineRef.current || !engineReady) return;
@@ -449,6 +462,12 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') return;
       if (e.key.toLowerCase() === 'g') { setSnapOn(p => !p); e.preventDefault(); }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (engineRef.current && engineRef.current.selId) {
+          engineRef.current.deleteSelected();
+          e.preventDefault();
+        }
+      }
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
@@ -683,6 +702,128 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
             </div>
           </div>
         </div>
+      )}
+
+      {/* Context Menu overlay for Bajantes */}
+      {contextMenuState && contextMenuState.visible && (
+        <>
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100
+          }} onClick={() => setContextMenuState(null)} onContextMenu={(e) => e.preventDefault()} />
+          <div style={{
+            position: 'absolute', left: contextMenuState.x, top: contextMenuState.y, zIndex: 101,
+            background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 6,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)', padding: '4px', minWidth: 140, maxWidth: 200,
+            display: 'flex', flexDirection: 'column', gap: 2,
+          }} onContextMenu={(e) => e.preventDefault()}>
+            <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Dirección de flujo
+            </div>
+            {['Sube', 'Baja', 'Desplazamiento'].map(opt => (
+              <button
+                key={opt}
+                onClick={() => {
+                  if (engineRef.current) {
+                    const currentNpt = pisos.find(p => p.n === selectedNivel)?.npt || 0;
+                    const allNpts = pisos.map(p => p.npt).sort((a,b) => a-b);
+                    const maxNpt = allNpts[allNpts.length - 1] || 0;
+                    const minNpt = allNpts[0] || 0;
+                    let updates: any = {};
+                    
+                    if (opt === 'Sube') {
+                      updates = { direccion: 'sube', nptBase: currentNpt, nptCima: maxNpt };
+                    } else if (opt === 'Baja') {
+                      updates = { direccion: 'baja', nptBase: minNpt, nptCima: currentNpt };
+                    } else if (opt === 'Desplazamiento') {
+                      const lvl = pisos.find(p => p.n === selectedNivel)?.label || '';
+                      if (lvl) {
+                        const currentDesp = contextMenuState.bajante.desplazamientos || {};
+                        updates = {
+                          desplazamientos: {
+                            ...currentDesp,
+                            [lvl]: { dx: 0, dy: 0 }
+                          }
+                        };
+                      }
+                    }
+                    if (Object.keys(updates).length > 0) {
+                      engineRef.current.updateElementById(contextMenuState.bajante.id, updates);
+                      if (selElement?.id === contextMenuState.bajante.id) {
+                        setSelElement({ ...selElement, ...updates });
+                      }
+                    }
+                  }
+                  setContextMenuState(null);
+                }}
+                style={{
+                  background: 'transparent', border: 'none', color: '#e2e2e8', padding: '6px 8px',
+                  textAlign: 'left', fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer',
+                  borderRadius: 3, display: 'flex', alignItems: 'center', gap: 6,
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#2563eb33'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <div style={{ color: opt === 'Sube' ? '#00dce5' : opt === 'Baja' ? '#F04545' : '#FFEB3B' }}>
+                  {opt === 'Sube' ? '⬆' : opt === 'Baja' ? '⬇' : '➡'}
+                </div>
+                {opt}
+              </button>
+            ))}
+            
+            {/* Show Area dropdown if activeNet === 'll' */}
+            {activeNet === 'll' && (
+              <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
+                <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Área asociada</div>
+                <select value={contextMenuState.bajante.area_m2 || ''}
+                  onChange={e => {
+                    const val = parseFloat(e.target.value) || 0;
+                    engineRef.current?.updateElementById(contextMenuState.bajante.id, { area_m2: val });
+                    setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, area_m2: val } } : null);
+                    if (selElement?.id === contextMenuState.bajante.id) {
+                      setSelElement({ ...selElement, area_m2: val });
+                    }
+                  }}
+                  style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                  <option value="">— Sin área —</option>
+                  {(engineRef.current?.areas || []).filter((a: any) => !a.net || a.net === activeNet).map((a: any) => (
+                    <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            
+            {/* Show Ramales if activeNet === 'san' */}
+            {activeNet === 'san' && (
+              <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
+                <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Ramales asociados</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
+                  {(() => {
+                    const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === 'san' && r.tipo !== 'tributario');
+                    if (bajRamales.length === 0) return <div style={{ fontSize: 10, color: '#6b8cae', fontFamily: "'Geist',monospace" }}>Sin ramales</div>;
+                    const recibidos = (contextMenuState.bajante.recibeDeIds || []) as string[];
+                    return bajRamales.map((r: any) => (
+                      <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px', cursor: 'pointer', fontSize: 10, color: '#b9caca', fontFamily: "'Geist',monospace" }}>
+                        <input type="checkbox" checked={recibidos.includes(r.id)}
+                          onChange={e => {
+                            const newRecibe = e.target.checked
+                              ? [...recibidos, r.id]
+                              : recibidos.filter(id => id !== r.id);
+                            engineRef.current?.updateElementById(contextMenuState.bajante.id, { recibeDeIds: newRecibe });
+                            setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, recibeDeIds: newRecibe } } : null);
+                            if (selElement?.id === contextMenuState.bajante.id) {
+                              setSelElement({ ...selElement, recibeDeIds: newRecibe });
+                            }
+                          }}
+                          style={{ accentColor: '#F5A623', margin: 0 }} />
+                        <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label || r.id}</span>
+                      </label>
+                    ));
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {/* Right sidebar: Piso, ¿Qué voy a dibujar?, Tramo, Escala */}

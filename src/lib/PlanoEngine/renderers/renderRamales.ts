@@ -1,4 +1,5 @@
 import { NETS } from '../PlanoState';
+import { snapTributaryToPadre45Deg } from '../PlanoEngineDrawing';
 import { rotatedRectCorners } from '../Coords';
 import type { IPlanoEngineCore } from '../PlanoEngineTypes';
 
@@ -70,7 +71,7 @@ function drawRamalPath(
         }
 
         if (Math.abs(cosAngle) < 0.05 && !isJunc) {
-          const rad = engine.mm2cvs(3);
+          const rad = engine.mm2cvs(1.5);
           const actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
 
           if (actualRad > 0.1) {
@@ -90,6 +91,7 @@ function drawRamalPath(
 
             ctx.save();
             ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 3.5;
             ctx.beginPath();
             ctx.arc(ccx, ccy, actualRad, angle_TA, angle_TC, counterclockwise);
             ctx.stroke();
@@ -106,85 +108,7 @@ function drawRamalPath(
     }
 
     if (!drewArc) {
-      const cvsA = cvsPts[i - 1];
-      const cvsB = cvsPts[i];
-      const dx = cvsB.x - cvsA.x, dy = cvsB.y - cvsA.y;
-      const len = Math.hypot(dx, dy);
-
-      let isJuncA = false;
-      let isJuncB = false;
-
-      if (len > 0.1) {
-        const ptA = pts[i - 1];
-        const ptB = pts[i];
-        isJuncA = isJunctionVertex(ptA[0], ptA[1], netRamales);
-        isJuncB = isJunctionVertex(ptB[0], ptB[1], netRamales);
-      }
-
-      if (len > 0.1 && (isJuncA || isJuncB)) {
-        const ux = dx / len, uy = dy / len;
-        const rad = engine.mm2cvs(3);
-
-        const cutA = isJuncA ? Math.min(rad, len) : 0;
-        const cutB = isJuncB ? len - Math.min(rad, len) : len;
-
-        if (cutA >= cutB) {
-          // Stroke whatever colored path we had up to cvsA
-          ctx.stroke();
-
-          ctx.save();
-          ctx.strokeStyle = '#000000';
-          ctx.setLineDash([]);
-          ctx.beginPath();
-          ctx.moveTo(cvsA.x, cvsA.y);
-          ctx.lineTo(cvsB.x, cvsB.y);
-          ctx.stroke();
-          ctx.restore();
-
-          // Start a new colored path at cvsB
-          ctx.beginPath();
-          ctx.moveTo(cvsB.x, cvsB.y);
-        } else {
-          const ptCutA = { x: cvsA.x + cutA * ux, y: cvsA.y + cutA * uy };
-          const ptCutB = { x: cvsA.x + cutB * ux, y: cvsA.y + cutB * uy };
-
-          if (cutA > 0) {
-            ctx.stroke();
-
-            ctx.save();
-            ctx.strokeStyle = '#000000';
-            ctx.setLineDash([]);
-            ctx.beginPath();
-            ctx.moveTo(cvsA.x, cvsA.y);
-            ctx.lineTo(ptCutA.x, ptCutA.y);
-            ctx.stroke();
-            ctx.restore();
-
-            ctx.beginPath();
-            ctx.moveTo(ptCutA.x, ptCutA.y);
-          }
-
-          ctx.lineTo(ptCutB.x, ptCutB.y);
-
-          if (cutB < len) {
-            ctx.stroke();
-
-            ctx.save();
-            ctx.strokeStyle = '#000000';
-            ctx.setLineDash([]);
-            ctx.beginPath();
-            ctx.moveTo(ptCutB.x, ptCutB.y);
-            ctx.lineTo(cvsB.x, cvsB.y);
-            ctx.stroke();
-            ctx.restore();
-
-            ctx.beginPath();
-            ctx.moveTo(cvsB.x, cvsB.y);
-          }
-        }
-      } else {
-        ctx.lineTo(cvsPts[i].x, cvsPts[i].y);
-      }
+      ctx.lineTo(cvsPts[i].x, cvsPts[i].y);
     }
   }
 
@@ -193,8 +117,9 @@ function drawRamalPath(
   if (elbows.length > 0) {
     ctx.save();
     ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3.5;
     ctx.setLineDash([]);
-    const tickLen = engine.mm2cvs(1.6);
+    const tickLen = engine.mm2cvs(1.0);
     elbows.forEach(elb => {
       ctx.beginPath();
       ctx.moveTo(elb.T_A.x - elb.perp_u.x * tickLen / 2, elb.T_A.y - elb.perp_u.y * tickLen / 2);
@@ -312,7 +237,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     const isPadre = r.id === padreId;
     ctx.save();
     ctx.strokeStyle = col;
-    ctx.lineWidth = sel ? 3 : 2;
+    ctx.lineWidth = sel ? 5 : 3.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -320,7 +245,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       if (isPadre && isTributarioMode) {
         ctx.save();
         ctx.setLineDash([6, 4]);
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 4;
         ctx.strokeStyle = col;
         drawRamalPath(ctx, r.pts, engine, col);
         ctx.restore();
@@ -441,8 +366,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const pendPart = showPend && pPart ? pPart : '';
       const lblPart = r.totalL ? `L=${r.totalL.toFixed(2)}m` : '';
 
-      const fsName = engine.mm2cvs(engine.MM.lblName);
-      const fsInfo = engine.mm2cvs(engine.MM.lblInfo);
+      const fsName = engine.mm2cvs(engine.MM.lblName * engine.labelScaleM);
+      const fsInfo = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM);
       const lineHName = fsName + 2;
       const lineHInfo = fsName + 4;
       const boxPadX = engine.mm2cvs(1.0);
@@ -554,7 +479,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         });
         if (connectedBaj && connectedBaj.direccion) {
           const v = engine.toCvs(r.pts[idx][0], r.pts[idx][1]);
-          const rad = engine.mm2cvs(3);
+          const rad = engine.mm2cvs(2);
           const isSube = connectedBaj.direccion === 'sube';
           ctx.save();
           ctx.strokeStyle = col;
@@ -733,18 +658,30 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           if (isTee || isYee) {
             ctx.save();
             ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 3;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.setLineDash([]);
 
-            const rad = engine.mm2cvs(3);
-            const tickLen = engine.mm2cvs(1.6);
+            const rad = engine.mm2cvs(2.0);
+            const tickLen = engine.mm2cvs(2.5);
             const cvsP = engine.toCvs(P[0], P[1]);
 
+            // First draw white mask over the colored ramal
             const drawTick = (u: { x: number; y: number }) => {
               const T_pt = { x: cvsP.x + rad * u.x, y: cvsP.y + rad * u.y };
               const perp = { x: -u.y, y: u.x };
+
+              ctx.lineWidth = 5; // Slightly thicker than the pipe to hide it completely
+              ctx.strokeStyle = '#ffffff';
+              ctx.beginPath();
+              ctx.moveTo(cvsP.x, cvsP.y);
+              ctx.lineTo(T_pt.x, T_pt.y);
+              ctx.stroke();
+
+              ctx.lineWidth = 2.5;
+              ctx.strokeStyle = '#000000';
+              ctx.stroke(); // strokes the same line from cvsP to T_pt
 
               ctx.beginPath();
               ctx.moveTo(T_pt.x - perp.x * tickLen / 2, T_pt.y - perp.y * tickLen / 2);
@@ -796,9 +733,34 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   const first = ar.pts[0];
   const last = ar.pts[ar.pts.length - 1];
   let mp = engine.toPlane(engine.mouseX, engine.mouseY);
-  if (engine.snapMode) mp = engine.snapAngle(last[0], last[1], mp.x, mp.y);
+  
+  let snapped = false;
+
+  if (engine.snapMode) {
+    mp = engine.snapAngle(last[0], last[1], mp.x, mp.y);
+  }
+
+  const activeRamales = engine.ramales.filter((r: any) => r.net === engine.activeNet);
+  for (const r of activeRamales) {
+    if (r.id === ar.id) continue;
+    let segSp = null;
+    if (engine.snapMode) {
+      segSp = snapTributaryToPadre45Deg(mp.x, mp.y, last[0], last[1], r.pts, 20 / engine.zoom);
+    } else {
+      segSp = engine._snapToSegment(mp.x, mp.y, r.pts, 20 / engine.zoom);
+    }
+    if (segSp) {
+      mp = segSp;
+      snapped = true;
+      break;
+    }
+  }
+
   const sp = engine.snapToExisting(mp.x, mp.y);
-  if (sp) mp = sp;
+  if (sp) {
+    mp = sp;
+    snapped = true;
+  }
 
   const distFirst = Math.hypot(mp.x - first[0], mp.y - first[1]);
   const SNAP_CLOSE = 12 / engine.zoom;
@@ -828,7 +790,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   ctx.stroke();
   ctx.setLineDash([]);
 
-  if (sp) {
+  if (snapped) {
     ctx.strokeStyle = '#22D3EE';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -840,7 +802,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   const segM = engine.pxToM(segPx);
   const deg = Math.atan2(mp.y - last[1], mp.x - last[0]) * 180 / Math.PI;
   const cursorLabel = `${segM}m  ${Math.round(((deg % 360) + 360) % 360)}°`;
-  ctx.font = `${engine.mm2cvs(engine.MM.coord)}px Geist, monospace`;
+  ctx.font = `${engine.mm2cvs(engine.MM.coord * engine.labelScaleM)}px Geist, monospace`;
   const tw = ctx.measureText(cursorLabel).width;
   ctx.fillStyle = 'rgba(17,19,23,0.82)';
   ctx.fillRect(mc.x + 12, mc.y - 18, tw + 8, 16);

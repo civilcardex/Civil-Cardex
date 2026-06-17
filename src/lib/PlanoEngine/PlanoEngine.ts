@@ -36,8 +36,6 @@ import {
   handleBajanteDown,
   handleMontanteDown,
   handleEraseDown,
-  handleDeleteElementDown,
-  handleSegDelDown,
   handleAreaDown,
   handleDrawingMouseMove,
   handleDoubleClick,
@@ -199,7 +197,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _onStatusCb: StatusCallback | null;
   _onUpdateCb: UpdateCallback | null;
   _onRequestTextCb: ((x: number, y: number, cb: (text: string) => void) => void) | null;
+  _onContextMenuCb: ((bajante: any, x: number, y: number) => void) | null;
   _dirty: boolean;
+  _lastRightClickTime: number;
 
   _ramalDefaults: PlanoRamalDefaults | null;
 
@@ -256,11 +256,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
     NETS.forEach(n => { this._netCounts[n.id] = { ramal: 0, tributario: 0 }; });
 
     this.MM = {
-      lblName: 2.5,
-      lblInfo: 1.8,
-      lblCode: 2.0,
-      flowEmoji: 3.0,
-      coord: 1.8,
+      lblName: 1.5,
+      lblInfo: 1.2,
+      lblCode: 1.4,
+      flowEmoji: 2.0,
+      coord: 1.2,
     };
 
     this._ramalDefaults = null;
@@ -279,7 +279,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._onSelectCb = null;
     this._onStatusCb = null;
     this._onRequestTextCb = null;
+    this._onContextMenuCb = null;
     this._dirty = false;
+    this._lastRightClickTime = 0;
     this._onUpdateCb = null;
 
     this._loadedPlanId = null;
@@ -288,6 +290,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   onSelect(cb: SelectCallback): void { this._onSelectCb = cb; }
   onStatus(cb: StatusCallback): void { this._onStatusCb = cb; }
   onRequestText(cb: (x: number, y: number, cb: (text: string) => void) => void): void { this._onRequestTextCb = cb; }
+  onContextMenu(cb: (b: any, x: number, y: number) => void): void { this._onContextMenuCb = cb; }
   onUpdate(cb: UpdateCallback): void { this._onUpdateCb = cb; }
   onDirty(cb: DirtyCallback): void { this._onDirtyCb = cb; }
 
@@ -314,6 +317,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
   toPlane(cx: number, cy: number): Point { return { x: (cx - this.offX) / this.zoom, y: (cy - this.offY) / this.zoom }; }
   pxToM(px: number): number { return +(px / 96 * 2.54 * this.scaleM).toFixed(3); }
   mm2cvs(mm: number): number { return mm * 96 / 25.4 * this.zoom; }
+
+  get labelScaleM(): number {
+    // If 1cm represents MORE meters (scaleM > 0.5), labels must shrink so they don't look huge relative to pipes.
+    return Math.max(0.1, Math.min(3.0, 0.5 / this.scaleM));
+  }
 
   _emitStatus(msg: string): void {
     if (this._onStatusCb) this._onStatusCb(msg);
@@ -372,6 +380,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
           best = { x: rx, y: ry };
         }
       });
+      /*
       for (let i = 0; i < r.pts.length - 1; i++) {
         const [x1, y1] = r.pts[i], [x2, y2] = r.pts[i + 1];
         const ddx = x2 - x1, ddy = y2 - y1, len2 = ddx * ddx + ddy * ddy;
@@ -381,6 +390,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
         const d = Math.hypot(x - px, y - py);
         if (d < minD) { minD = d; best = { x: px, y: py }; }
       }
+      */
     });
     return best;
   }
@@ -530,6 +540,31 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.canv.style.cursor = 'grabbing';
       return;
     }
+
+    if ((e as MouseEvent).button === 2) {
+      const now = Date.now();
+      if (now - this._lastRightClickTime < 300) {
+        this.selectAt(x, y);
+      } else {
+        // Single right click: Check if hit a bajante for context menu
+        const plane = this.toPlane(x, y);
+        const r = Math.max(6, 6 * this.zoom) + 10;
+        let hitBajante = null;
+        for (const b of this.bajantes) {
+          const c = this.toCvs(b.x, b.y);
+          if (Math.hypot(x - c.x, y - c.y) <= r) {
+            hitBajante = b;
+            break;
+          }
+        }
+        if (hitBajante && this.selId === hitBajante.id && this._onContextMenuCb) {
+          this._onContextMenuCb(hitBajante, (e as MouseEvent).clientX, (e as MouseEvent).clientY);
+        }
+      }
+      this._lastRightClickTime = now;
+      return; // prevent drawing on right click
+    }
+
     if (this._lockedNets.has(this.activeNet)) return;
 
     const p = this.toPlane(x, y);
@@ -550,10 +585,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
       handleAreaDown(this, p.x, p.y);
     } else if (this.tool === 'erase') {
       handleEraseDown(this, x, y);
-    } else if (this.tool === 'delm') {
-      handleDeleteElementDown(this, x, y);
-    } else if (this.tool === 'segdel') {
-      handleSegDelDown(this, x, y);
     }
   }
 
@@ -632,6 +663,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
           this._emitSelect(null);
           this.render();
         }
+      }
+    }
+    else if (k === 'delete') {
+      if (this.selId && !this.activeRamal && !this.activeArea) {
+        this.deleteSelected();
+        e.preventDefault();
       }
     }
     else if (e.ctrlKey && k === 'z') { this.undoLast(); e.preventDefault(); }

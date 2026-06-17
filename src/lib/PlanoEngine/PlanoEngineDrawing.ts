@@ -314,26 +314,49 @@ export function setScaleM(engine: IPlanoEngineCore, v: string | number): void {
   engine.render();
 }
 
-function tribSnapAngle(x0: number, y0: number, x1: number, y1: number, net: string): { x: number; y: number } {
-  const dx = x1 - x0, dy = y1 - y0;
-  const dist = Math.hypot(dx, dy);
-  if (dist < 2) return { x: x1, y: y1 };
-  const deg = Math.atan2(dy, dx) * 180 / Math.PI;
-  let allowed: number[];
-  if (net === 'san' || net === 'll') {
-    allowed = [45, 135, -135, -45];
-  } else if (net === 'af' || net === 'ac') {
-    allowed = [45, 90, 135, -135, -90, -45];
-  } else {
-    allowed = [0, 45, 90, 135, 180, -135, -90, -45];
+export function snapTributaryToPadre45Deg(cursorX: number, cursorY: number, lastX: number, lastY: number, pts: number[][], threshold: number): { x: number; y: number } | null {
+  let best: { x: number; y: number } | null = null;
+  let minD = Infinity;
+
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[i + 1];
+    const dx = x2 - x1, dy = y2 - y1;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 1) continue;
+    const len = Math.sqrt(lenSq);
+    const ux = dx / len, uy = dy / len;
+
+    // Project 'last' onto the line
+    const tLast = ((lastX - x1) * dx + (lastY - y1) * dy) / lenSq;
+    const projX = x1 + tLast * dx;
+    const projY = y1 + tLast * dy;
+    
+    // Perpendicular distance
+    const perpDist = Math.hypot(lastX - projX, lastY - projY);
+
+    // Two possible points at 45 degrees
+    const q1x = projX + ux * perpDist;
+    const q1y = projY + uy * perpDist;
+    const q2x = projX - ux * perpDist;
+    const q2y = projY - uy * perpDist;
+
+    // Check which one is closer to cursor and on segment
+    const checkPoint = (qx: number, qy: number) => {
+      const t = ((qx - x1) * dx + (qy - y1) * dy) / lenSq;
+      if (t >= 0 && t <= 1) {
+        const d = Math.hypot(cursorX - qx, cursorY - qy);
+        if (d < minD && d <= threshold) {
+          minD = d;
+          best = { x: qx, y: qy };
+        }
+      }
+    };
+    checkPoint(q1x, q1y);
+    checkPoint(q2x, q2y);
+    checkPoint(projX, projY); // 90 degree snap
   }
-  let best = 0, minDiff = 999;
-  allowed.forEach(a => {
-    const diff = Math.abs(((deg - a) + 540) % 360 - 180);
-    if (diff < minDiff) { minDiff = diff; best = a; }
-  });
-  const sr = best * Math.PI / 180;
-  return { x: x0 + dist * Math.cos(sr), y: y0 + dist * Math.sin(sr) };
+  return best;
 }
 
 export function getBacktrackPts(pts: number[][], targetIdx: number): number[][] {
@@ -351,114 +374,34 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     return;
   }
   if (!engine.activeRamal) {
-    let foundVertex: { r: any; idx: number } | null = null;
-    let bestDist = Infinity;
-    const activeNetsRamales = engine.ramales.filter((r: any) => r.net === engine.activeNet && r.pts.length >= 2);
+    // The user requested that we NEVER resume an existing ramal or start on a segment.
+    // Every click should start a completely NEW ramal.
+    // Snap only to existing vertices or free space.
 
-    for (const r of activeNetsRamales) {
-      for (let i = 0; i < r.pts.length; i++) {
-        let thresh = 12;
-        if (i > 0 && i < r.pts.length - 1) {
-          const ptA = r.pts[i - 1];
-          const ptB = r.pts[i];
-          const ptC = r.pts[i + 1];
-          const ax = ptB[0] - ptA[0], ay = ptB[1] - ptA[1];
-          const bx = ptC[0] - ptB[0], by = ptC[1] - ptB[1];
-          const lenA = Math.hypot(ax, ay), lenB = Math.hypot(bx, by);
-          if (lenA > 0 && lenB > 0) {
-            const cosAngle = (-ax * bx - ay * by) / (lenA * lenB);
-            if (Math.abs(cosAngle) < 0.05) {
-              thresh = 18; // Increase snap tolerance for elbow corners
-            }
-          }
-        }
+    // Snap only to existing vertices or free space, as requested
 
-        const ptCvs = engine.toCvs(r.pts[i][0], r.pts[i][1]);
-        const clickCvs = engine.toCvs(px, py);
-        const dist = Math.hypot(clickCvs.x - ptCvs.x, clickCvs.y - ptCvs.y);
-        if (dist < thresh && dist < bestDist) {
-          bestDist = dist;
-          foundVertex = { r, idx: i };
-        }
-      }
-    }
-
-    if (foundVertex) {
-      const { r, idx } = foundVertex;
-      const finalPts = getBacktrackPts(r.pts, idx);
-
-      engine.activeRamal = {
-        id: r.id,
-        net: r.net,
-        tipo: r.tipo,
-        padre: r.padre,
-        pts: finalPts,
-        totalL: r.totalL,
-      };
-      engine._emitStatus('Dibujando derivación sobre ramal existente...');
-      engine.render();
-      return;
-    }
-
-    // If no vertex clicked, check segment bodies
-    let foundSegment: { r: any; segIdx: number; proj: [number, number] } | null = null;
-    let minSegDist = 12; // 12px threshold in canvas pixels
-
-    for (const r of activeNetsRamales) {
-      for (let i = 0; i < r.pts.length - 1; i++) {
-        const A = r.pts[i];
-        const B = r.pts[i + 1];
-        const dx = B[0] - A[0], dy = B[1] - A[1];
-        const lenSq = dx * dx + dy * dy;
-        if (lenSq < 0.001) continue;
-
-        let t = ((px - A[0]) * dx + (py - A[1]) * dy) / lenSq;
-        t = Math.max(0, Math.min(1, t));
-        const projX = A[0] + t * dx;
-        const projY = A[1] + t * dy;
-
-        const projCvs = engine.toCvs(projX, projY);
-        const clickCvs = engine.toCvs(px, py);
-        const dist = Math.hypot(clickCvs.x - projCvs.x, clickCvs.y - projCvs.y);
-
-        if (dist < minSegDist) {
-          minSegDist = dist;
-          foundSegment = { r, segIdx: i, proj: [projX, projY] };
-        }
-      }
-    }
-
-    if (foundSegment) {
-      const { r, segIdx, proj } = foundSegment;
-      const Q = [
-        ...r.pts.slice(0, segIdx + 1),
-        proj,
-        ...r.pts.slice(segIdx + 1)
-      ];
-      const finalPts = getBacktrackPts(Q, segIdx + 1);
-
-      engine.activeRamal = {
-        id: r.id,
-        net: r.net,
-        tipo: r.tipo,
-        padre: r.padre,
-        pts: finalPts,
-        totalL: r.totalL,
-      };
-      engine._emitStatus('Dibujando derivación sobre ramal existente...');
-      engine.render();
-      return;
-    }
-
-    if (engine.tipoTramo === 'tributario' && engine.padreTributario) {
-      const padre = engine.ramales.find((r: any) => r.id === engine.padreTributario);
-      if (padre) {
-        const spSegment = snapToSegment(pt.x, pt.y, padre.pts, 20 / engine.zoom);
-        if (spSegment) pt = spSegment;
-      }
-    }
     const sp = engine.snapToExisting(pt.x, pt.y);
-    if (sp) pt = sp;
+    if (sp) {
+      pt = sp;
+    } else {
+      // If it didn't snap to a vertex, ensure it's not on a segment (must be free space)
+      const activeNetsRamales = engine.ramales.filter((r: any) => r.net === engine.activeNet);
+      let isOnSegment = false;
+      const SNAP_THRESH = 12 / engine.zoom;
+      
+      for (const r of activeNetsRamales) {
+        const segSnap = engine._snapToSegment(pt.x, pt.y, r.pts, SNAP_THRESH);
+        if (segSnap) {
+          isOnSegment = true;
+          break;
+        }
+      }
+      
+      if (isOnSegment) {
+        engine._emitStatus('No puedes iniciar un ramal sobre un segmento. Inicia en espacio libre o en un vértice.');
+        return;
+      }
+    }
     engine.activeRamal = {
       net: engine.activeNet,
       tipo: engine.tipoTramo,
@@ -477,22 +420,31 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       finishRamal(engine);
       return;
     }
+    let snappedToSeg = false;
     if (engine.snapMode) {
-      if (engine.tipoTramo === 'tributario') {
-        pt = tribSnapAngle(last[0], last[1], pt.x, pt.y, engine.activeNet);
+      pt = engine.snapAngle(last[0], last[1], pt.x, pt.y);
+    }
+    
+    const activeRamales = engine.ramales.filter((r: any) => r.net === engine.activeNet);
+    for (const r of activeRamales) {
+      if (r.id === engine.activeRamal.id) continue;
+      let sp = null;
+      if (engine.snapMode) {
+        sp = snapTributaryToPadre45Deg(pt.x, pt.y, last[0], last[1], r.pts, 20 / engine.zoom);
       } else {
-        pt = engine.snapAngle(last[0], last[1], pt.x, pt.y);
+        sp = engine._snapToSegment(pt.x, pt.y, r.pts, 20 / engine.zoom);
+      }
+      if (sp) {
+        pt = sp;
+        snappedToSeg = true;
+        break;
       }
     }
-    if (engine.tipoTramo === 'tributario' && engine.padreTributario) {
-      const padre = engine.ramales.find((r: any) => r.id === engine.padreTributario);
-      if (padre) {
-        const sp = snapToSegment(pt.x, pt.y, padre.pts, 20 / engine.zoom);
-        if (sp) pt = sp;
-      }
+
+    if (!snappedToSeg) {
+      const sp = engine.snapToExisting(pt.x, pt.y);
+      if (sp) pt = sp;
     }
-    const sp = engine.snapToExisting(pt.x, pt.y);
-    if (sp) pt = sp;
     engine.activeRamal.pts.push([pt.x, pt.y]);
     engine.activeRamal.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
   }
@@ -544,6 +496,10 @@ export function handleTextDown(engine: IPlanoEngineCore, px: number, py: number)
 }
 
 export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: number): void {
+  if (engine.snapMode) {
+    const sp = engine.snapToExisting(px, py);
+    if (sp) { px = sp.x; py = sp.y; }
+  }
   const net = NETS.find(n => n.id === engine.activeNet);
   const netPfx = net ? net.bmPfx : 'BAJ';
   const cnt = engine.bajantes.filter(b => b.tipo === 'bajante' && b.net === engine.activeNet).length + 1;
@@ -571,6 +527,10 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
 }
 
 export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: number): void {
+  if (engine.snapMode) {
+    const sp = engine.snapToExisting(px, py);
+    if (sp) { px = sp.x; py = sp.y; }
+  }
   const cnt = engine.bajantes.filter(b => b.tipo === 'montante').length + 1;
   const monId = 'MON' + cnt;
   engine.bajantes.push({
@@ -597,32 +557,71 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
 
 export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number): void {
   engine.selectAt(cx, cy);
-  engine.deleteSelected();
-  engine._emitSelect(null);
-  engine.selId = null;
-}
-
-export function handleDeleteElementDown(engine: IPlanoEngineCore, cx: number, cy: number): void {
-  engine.selectAt(cx, cy);
-  const sel = engine.getSelected() as { id: string; pts?: number[][] } | null;
-  if (!sel) { engine._emitStatus('No se encontró ningún elemento'); return; }
-  const id = sel.id || '';
+  const selId = engine.selId;
+  const sel = engine.getSelected();
+  
+  if (!sel || !selId) {
+    engine._emitStatus('No se encontró nada para borrar bajo el cursor');
+    return;
+  }
+  
+  const isText = engine.textAnnots.some((t: any) => t.id === selId);
+  const isArea = engine.areas.some((a: any) => a.id === selId);
   const tipo = (sel as any).tipo;
-  const isText = engine.textAnnots.some((t: any) => t.id === id);
-  if (tipo === 'bajante' || tipo === 'montante' || tipo === 'area' || id.startsWith('AR') || id.startsWith('BAJ') || id.startsWith('MON') || isText || id.startsWith('DIM')) {
+  
+  if (tipo === 'bajante' || tipo === 'montante' || isArea || isText || selId.startsWith('DIM')) {
     engine.deleteSelected();
     engine._emitSelect(null);
     engine.selId = null;
     engine._emitStatus('Elemento eliminado');
-  } else {
-    engine.selId = null;
-    engine._emitSelect(null);
-    engine._emitStatus('Elemento no eliminable');
+    engine.render();
+    engine._markDirty();
+    return;
   }
-}
-
-export function handleSegDelDown(engine: IPlanoEngineCore, cx: number, cy: number): void {
-  deleteSegmentAt(engine, cx, cy);
+  
+  if (tipo === 'ramal' || tipo === 'tributario') {
+    const plane = engine.toPlane(cx, cy);
+    const HIT_DIST = 10 / engine.zoom;
+    const r = sel as any;
+    
+    let bestIdx = -1, bestD = Infinity;
+    for (let i = 0; i < r.pts.length; i++) {
+      const d = Math.hypot(plane.x - r.pts[i][0], plane.y - r.pts[i][1]);
+      if (d < bestD) { bestD = d; bestIdx = i; }
+    }
+    if (bestD > HIT_DIST) {
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const d = pointToSegmentDist(plane.x, plane.y, r.pts[i][0], r.pts[i][1], r.pts[i + 1][0], r.pts[i + 1][1]);
+        if (d < bestD) {
+          bestD = d;
+          const dA = Math.hypot(plane.x - r.pts[i][0], plane.y - r.pts[i][1]);
+          const dB = Math.hypot(plane.x - r.pts[i + 1][0], plane.y - r.pts[i + 1][1]);
+          bestIdx = dA <= dB ? i : i + 1;
+        }
+      }
+    }
+    
+    // Si tiene más de 2 puntos y se hizo clic en un segmento extremo, recorta el extremo
+    if (r.pts.length > 2 && (bestIdx === 0 || bestIdx === r.pts.length - 1)) {
+      r.pts.splice(bestIdx, 1);
+      r.totalL = calculateRamalLength(r.pts, engine);
+      const [mx, my] = _midpoint(r.pts);
+      r.labelX = mx;
+      r.labelY = my;
+      engine._emitSelect(null);
+      engine.selId = null;
+      engine._emitStatus('Segmento extremo recortado');
+    } else {
+      // Si es un segmento intermedio o el ramal solo tiene 1 segmento (2 puntos), borra completo
+      engine.deleteSelected();
+      engine._emitSelect(null);
+      engine.selId = null;
+      engine._emitStatus('Ramal eliminado');
+    }
+    engine.render();
+    engine._markDirty();
+    return;
+  }
 }
 
 export function handleAreaDown(engine: IPlanoEngineCore, px: number, py: number): void {

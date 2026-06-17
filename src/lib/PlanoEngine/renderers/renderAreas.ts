@@ -43,8 +43,8 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
       ctx.rotate(aAngle);
       const displayLabel = a.label || '';
       const areaLabel = a.areaM2 ? `${a.areaM2} m²` : '';
-      const aFs = engine.mm2cvs(engine.MM.lblName);
-      const aFsSub = engine.mm2cvs(engine.MM.lblInfo);
+      const aFs = engine.mm2cvs(engine.MM.lblName * engine.labelScaleM);
+      const aFsSub = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM);
       ctx.font = `bold ${aFs}px Geist, monospace`;
       const tw = Math.max(ctx.measureText(displayLabel).width, ctx.measureText(areaLabel).width);
       const aBoxW = tw + 10, aBoxH = areaLabel ? aFs + aFsSub + 10 : aFs + 8;

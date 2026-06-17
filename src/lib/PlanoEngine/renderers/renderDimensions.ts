@@ -28,7 +28,7 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
 
     const mx = (c1.x + c2.x) / 2, my = (c1.y + c2.y) / 2;
     const txt = `${d.L}m`;
-    ctx.font = `${engine.mm2cvs(engine.MM.lblInfo)}px Geist, monospace`;
+    ctx.font = `${engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM)}px Geist, monospace`;
     const tw = ctx.measureText(txt).width;
     ctx.fillStyle = 'rgba(17,19,23,0.75)';
     ctx.fillRect(mx - tw / 2 - 4, my - 8, tw + 8, 16);
@@ -71,7 +71,7 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     const mx = (s.x + e.x) / 2, my = (s.y + e.y) / 2;
     const px = Math.hypot(mp.x - engine._dimStart.x, mp.y - engine._dimStart.y);
     const txt = `${engine.pxToM(px).toFixed(2)}m`;
-    ctx.font = `${engine.mm2cvs(engine.MM.lblInfo)}px Geist, monospace`;
+    ctx.font = `${engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM)}px Geist, monospace`;
     const tw = ctx.measureText(txt).width;
     ctx.fillStyle = 'rgba(17,19,23,0.75)';
     ctx.fillRect(mx - tw / 2 - 4, my - 8, tw + 8, 16);
