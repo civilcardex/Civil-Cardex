@@ -90,13 +90,15 @@ export interface PlanoBajante {
   labelAngle: number;
   labelX: number;
   labelY: number;
-  direccion?: 'sube' | 'baja' | 'mantiene';
+  direccion?: 'sube' | 'baja' | 'continua' | 'mantiene';
   totalL?: number;
   pendiente?: number;
   piso?: string;
   _circ?: { x: number; y: number; r: number };
   _ghost?: { x: number; y: number; r: number };
+  _ghostLabelBox?: LabelBoxCorners;
   _labelBox?: LabelBoxCorners;
+  ghostData?: Record<string, { dNominal?: string; direccion?: string; labelX?: number; labelY?: number }>;
 }
 
 export interface PlanoArea {

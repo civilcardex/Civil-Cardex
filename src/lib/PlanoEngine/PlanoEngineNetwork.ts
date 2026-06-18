@@ -117,12 +117,15 @@ export function setRamalDefaults(engine: IPlanoEngineCore, d: Partial<{ material
 export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
   if (!engine.nivelActual) return [];
   return engine.bajantes.filter(b => {
-    if ((b as any).isFantasma) return true;
     if (b.desplazamientos && b.desplazamientos[engine.nivelActual!.label]) return true;
     const base = Math.min(b.nptBase || 0, b.nptCima || 0);
     const cima = Math.max(b.nptBase || 0, b.nptCima || 0);
     const npt = engine.nivelActual!.npt || 0;
-    if (npt >= base && npt <= cima) return true;
+    if (npt >= base && npt <= cima) {
+      // Don't show direction ghost on the parent's own level
+      if ((b as any).pisoBase === engine.nivelActual.label) return false;
+      return true;
+    }
     const superior = engine.nptLevels
       .filter(l => (l.npt || 0) > npt)
       .sort((a, b) => (a.npt || 0) - (b.npt || 0))[0]?.npt;

@@ -16,7 +16,7 @@ import {
   renderDims, renderTexts, renderAreas, renderActiveArea,
   renderRamales, renderBajantes, renderGhosts, renderDimGhost, renderActiveRamal,
 } from './renderers';
-import { snapToSegment } from './HitTester';
+import { snapToSegment, pointInPoly, pointInLabelBox } from './HitTester';
 import { serializeWork, applyWorkData } from './PlanoPersistence';
 import { setupCanvasEvents, teardownCanvasEvents, getCanvasPosition, wrapTouch } from './PlanoEventHandler';
 import {
@@ -170,6 +170,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   txtDrag: TxtDrag | null;
   bajDrag: DragState | null;
   ptDrag: PointDrag | null;
+  ramalDrag: { id: string; startX: number; startY: number; origPts: [number, number][] } | null;
   _dimStart: DimStart | null;
   nivelActual: PlanoLevel | null;
   nptLevels: PlanoLevel[];
@@ -200,7 +201,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _onStatusCb: StatusCallback | null;
   _onUpdateCb: UpdateCallback | null;
   _onRequestTextCb: ((x: number, y: number, cb: (text: string) => void) => void) | null;
-  _onContextMenuCb: ((bajante: any, x: number, y: number) => void) | null;
+  _onContextMenuCb: ((bajante: any, x: number, y: number, isGhostClick?: boolean) => void) | null;
   _dirty: boolean;
   _lastRightClickTime: number;
 
@@ -235,6 +236,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.padreTributario = null;
     this.activeArea = null;
     this.selId = null;
+    this._isGhostSel = false;
+    this._yeeFlashKey = null;
     this.areaDrag = null;
     this.panning = false;
     this.panX0 = 0;
@@ -246,6 +249,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.txtDrag = null;
     this.bajDrag = null;
     this.ptDrag = null;
+    this.ramalDrag = null;
+    this.multiSel = [];
+    this.multiDrag = null;
+    this.marqueeRect = null;
     this._dimStart = null;
     this.nivelActual = null;
     this.nptLevels = [];
@@ -293,7 +300,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   onSelect(cb: SelectCallback): void { this._onSelectCb = cb; }
   onStatus(cb: StatusCallback): void { this._onStatusCb = cb; }
   onRequestText(cb: (x: number, y: number, cb: (text: string) => void) => void): void { this._onRequestTextCb = cb; }
-  onContextMenu(cb: (b: any, x: number, y: number) => void): void { this._onContextMenuCb = cb; }
+  onContextMenu(cb: (b: any, x: number, y: number, isGhostClick?: boolean) => void): void { this._onContextMenuCb = cb; }
   onUpdate(cb: UpdateCallback): void { this._onUpdateCb = cb; }
   onDirty(cb: DirtyCallback): void { this._onDirtyCb = cb; }
 
@@ -535,6 +542,18 @@ export default class PlanoEngine implements IPlanoEngineCore {
     renderDimGhost(ctx, this);
     renderActiveArea(ctx, this);
     renderActiveRamal(ctx, this);
+
+    if (this.marqueeRect) {
+      const { x1, y1, x2, y2 } = this.marqueeRect;
+      ctx.save();
+      ctx.strokeStyle = '#3B82F6';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
+      ctx.fillStyle = 'rgba(59,130,246,0.08)';
+      ctx.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
+      ctx.restore();
+    }
   }
 
   _onDownHandler(e: MouseEvent | TouchEvent): void {
@@ -553,28 +572,68 @@ export default class PlanoEngine implements IPlanoEngineCore {
         this.selectAt(x, y);
       } else {
         // Single right click: Check if hit a bajante for context menu
-        const plane = this.toPlane(x, y);
         const r = Math.max(6, 6 * this.zoom) + 10;
         let hitElement = null;
+        let isGhostClick = false;
         if (this.selId) {
           const b = this.bajantes.find(bb => bb.id === this.selId);
           if (b) {
-            const c = this.toCvs(b.x, b.y);
-            if (Math.hypot(x - c.x, y - c.y) <= r) hitElement = b;
+            if (!this._isGhostSel) {
+              const c = this.toCvs(b.x, b.y);
+              const hitOnCircle = Math.hypot(x - c.x, y - c.y) <= r;
+              const hitOnLabel = b._labelBox && pointInLabelBox(x, y, b._labelBox);
+              if (hitOnCircle || hitOnLabel) {
+                hitElement = b;
+              }
+            } else {
+              // Check ghost position for displaced bajantes
+              const ghostList = this.getBajantesFantasma().filter(g => g.id === this.selId);
+              if (ghostList.length > 0 && ghostList[0]._ghost) {
+                const gh = ghostList[0]._ghost;
+                const hitOnGhost = Math.hypot(x - gh.x, y - gh.y) <= gh.r;
+                const hitOnGhostLabel = ghostList[0]._ghostLabelBox && pointInLabelBox(x, y, ghostList[0]._ghostLabelBox);
+                if (hitOnGhost || hitOnGhostLabel) {
+                  hitElement = b;
+                  isGhostClick = true;
+                }
+              }
+            }
           } else {
             const ram = this.ramales.find(rr => rr.id === this.selId);
-            if (ram && ram.pts) {
-              for (let i = 0; i < ram.pts.length - 1; i++) {
-                const p1 = this.toCvs(ram.pts[i][0], ram.pts[i][1]);
-                const p2 = this.toCvs(ram.pts[i+1][0], ram.pts[i+1][1]);
-                const l2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
-                let t = l2 === 0 ? 0 : ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / l2;
-                t = Math.max(0, Math.min(1, t));
-                const projX = p1.x + t * (p2.x - p1.x);
-                const projY = p1.y + t * (p2.y - p1.y);
-                if (Math.hypot(x - projX, y - projY) <= 12) {
-                  hitElement = ram;
-                  break;
+            if (ram) {
+              let hitOnRamal = false;
+              if (ram.pts) {
+                for (let i = 0; i < ram.pts.length - 1; i++) {
+                  const p1 = this.toCvs(ram.pts[i][0], ram.pts[i][1]);
+                  const p2 = this.toCvs(ram.pts[i+1][0], ram.pts[i+1][1]);
+                  const l2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
+                  let t = l2 === 0 ? 0 : ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / l2;
+                  t = Math.max(0, Math.min(1, t));
+                  const projX = p1.x + t * (p2.x - p1.x);
+                  const projY = p1.y + t * (p2.y - p1.y);
+                  if (Math.hypot(x - projX, y - projY) <= 12) {
+                    hitOnRamal = true;
+                    break;
+                  }
+                }
+              }
+              const hitOnLabel = ram._labelBox && pointInLabelBox(x, y, ram._labelBox);
+              if (hitOnRamal || hitOnLabel) {
+                hitElement = ram;
+              }
+            } else {
+              const area = this.areas.find(aa => aa.id === this.selId);
+              if (area) {
+                let hitOnArea = false;
+                if (area.pts) {
+                  const cvsPts = area.pts.map((pt: number[]) => this.toCvs(pt[0], pt[1]));
+                  if (pointInPoly(x, y, cvsPts)) {
+                    hitOnArea = true;
+                  }
+                }
+                const hitOnLabel = area._labelBox && pointInLabelBox(x, y, area._labelBox);
+                if (hitOnArea || hitOnLabel) {
+                  hitElement = area;
                 }
               }
             }
@@ -582,7 +641,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
         }
         
         if (hitElement && this._onContextMenuCb) {
-          this._onContextMenuCb(hitElement, (e as MouseEvent).clientX, (e as MouseEvent).clientY);
+          this._onContextMenuCb(hitElement, (e as MouseEvent).clientX, (e as MouseEvent).clientY, isGhostClick);
         }
       }
       this._lastRightClickTime = now;
@@ -621,9 +680,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.render();
       return;
     }
-    const hasDrag = this.ghostDrag || this.bajDrag || this.lblDrag || this.txtDrag || this.areaDrag || this.ptDrag;
+    const hasDrag = this.ghostDrag || this.bajDrag || this.lblDrag || this.txtDrag || this.areaDrag || this.ptDrag || this.ramalDrag || this.multiDrag;
     if (hasDrag) {
       handleDragMove(this, x, y);
+    } else if (this.marqueeRect) {
+      this.marqueeRect.x2 = x;
+      this.marqueeRect.y2 = y;
+      this.render();
     } else if (this.activeRamal || this._dimStart || this.activeArea) {
       handleDrawingMouseMove(this, x, y);
     }
@@ -679,15 +742,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
       else if (this.activeArea) { this.cancelArea(); e.preventDefault(); }
       else if (this._dimStart) { this._dimStart = null; this.render(); e.preventDefault(); }
       else {
-        if (this.selId) {
-          const b = this.bajantes.find(x => x.id === this.selId);
-          if (b && b.isFantasma) {
-            this.updateElementById(b.id, { isFantasma: false });
-            this.render();
-            e.preventDefault();
-            return;
-          }
-        }
         if (this.tool !== 'sel') {
           this.setTool('sel');
           e.preventDefault();

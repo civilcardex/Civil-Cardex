@@ -20,6 +20,8 @@ export interface IPlanoEngineCore {
   activeRamal: PlanoActiveRamal | null;
   activeArea: PlanoActiveArea | null;
   selId: string | null;
+  _isGhostSel: boolean;
+  _yeeFlashKey: string | null;
   _hiddenNets: Set<string>;
   _lockedNets: Set<string>;
   activeNet: string;
@@ -47,6 +49,10 @@ export interface IPlanoEngineCore {
   bajDrag: { id: string; offX: number; offY: number } | null;
   ptDrag: { id: string; ptIdx: number } | null;
   areaDrag: { id: string; startX: number; startY: number } | null;
+  ramalDrag: { id: string; startX: number; startY: number; origPts: [number, number][] } | null;
+  multiSel: string[];
+  multiDrag: { startX: number; startY: number; origData: Record<string, any> } | null;
+  marqueeRect: { x1: number; y1: number; x2: number; y2: number } | null;
   MM: {
     lblName: number;
     lblInfo: number;

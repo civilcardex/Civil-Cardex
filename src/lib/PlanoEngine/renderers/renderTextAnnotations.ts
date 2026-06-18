@@ -47,12 +47,20 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
     ctx.fillText(t.text, 0, -fs);
     ctx.restore();
 
-    const cos = Math.abs(Math.cos(angle)), sin = Math.abs(Math.sin(angle));
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+    const absCos = Math.abs(cos), absSin = Math.abs(sin);
+    const boxW2 = boxW / 2, boxH2 = boxH / 2;
+    const cxRot = -pad + boxW2;
+    const cyRot = -fs - pad + boxH2;
+    const cxCanvas = c.x + cxRot * cos - cyRot * sin;
+    const cyCanvas = c.y + cxRot * sin + cyRot * cos;
+    const aW = absCos * boxW + absSin * boxH;
+    const aH = absSin * boxW + absCos * boxH;
     t._box = {
-      x: c.x - (boxW * cos + boxH * sin) / 2,
-      y: c.y - (boxH * cos + boxW * sin) / 2,
-      w: boxW * cos + boxH * sin,
-      h: boxH * cos + boxW * sin,
+      x: cxCanvas - aW / 2,
+      y: cyCanvas - aH / 2,
+      w: aW,
+      h: aH,
     };
   });
 }

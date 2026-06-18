@@ -10,8 +10,90 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     const c = engine.toCvs(b.x, b.y);
     const sel = b.id === engine.selId;
     const r = Math.max(7, 7 * engine.zoom);
-    const angle = (b.labelAngle || 0) * Math.PI / 180;
-    b._circ = { x: c.x, y: c.y, r: Math.max(50, r + 10) };
+
+    // Item 2: Label angle from first connected ramal + snap constraint
+    let angle = (b.labelAngle || 0) * Math.PI / 180;
+    const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
+    const lDesvioId = disp?.Ldesvio;
+    let parentRamal = null;
+    let isConnectedToGhost = false;
+
+    if (b.recibeDeIds?.length) {
+      const nonDesvioId = b.recibeDeIds.find((id: string) => id !== lDesvioId);
+      if (nonDesvioId) {
+        parentRamal = engine.ramales.find((rr: any) => rr.id === nonDesvioId);
+      }
+    }
+
+    if (!parentRamal) {
+      // Direct connection to parent riser
+      parentRamal = engine.ramales.find((rr: any) => {
+        if (rr.id === lDesvioId || !rr.pts?.length) return false;
+        const lastIdx = rr.pts.length - 1;
+        const isNearStart = Math.hypot(rr.pts[0][0] - b.x, rr.pts[0][1] - b.y) < 1;
+        const isNearEnd = Math.hypot(rr.pts[lastIdx][0] - b.x, rr.pts[lastIdx][1] - b.y) < 1;
+        return isNearStart || isNearEnd;
+      });
+    }
+
+    if (!parentRamal && disp) {
+      // Fallback connection to ghost riser
+      const gx = b.x + disp.dx;
+      const gy = b.y + disp.dy;
+      parentRamal = engine.ramales.find((rr: any) => {
+        if (rr.id === lDesvioId || !rr.pts?.length) return false;
+        const lastIdx = rr.pts.length - 1;
+        const isNearStart = Math.hypot(rr.pts[0][0] - gx, rr.pts[0][1] - gy) < 1;
+        const isNearEnd = Math.hypot(rr.pts[lastIdx][0] - gx, rr.pts[lastIdx][1] - gy) < 1;
+        return isNearStart || isNearEnd;
+      });
+      if (parentRamal) {
+        isConnectedToGhost = true;
+      }
+    }
+
+    if (parentRamal?.pts?.length >= 2) {
+      let targetX = b.x;
+      let targetY = b.y;
+      if (disp) {
+        const gx = b.x + disp.dx;
+        const gy = b.y + disp.dy;
+        const distToGhost = Math.min(
+          Math.hypot(parentRamal.pts[0][0] - gx, parentRamal.pts[0][1] - gy),
+          Math.hypot(parentRamal.pts[parentRamal.pts.length - 1][0] - gx, parentRamal.pts[parentRamal.pts.length - 1][1] - gy)
+        );
+        const distToParent = Math.min(
+          Math.hypot(parentRamal.pts[0][0] - b.x, parentRamal.pts[0][1] - b.y),
+          Math.hypot(parentRamal.pts[parentRamal.pts.length - 1][0] - b.x, parentRamal.pts[parentRamal.pts.length - 1][1] - b.y)
+        );
+        if (distToGhost < distToParent) {
+          targetX = gx;
+          targetY = gy;
+        }
+      }
+      const lastIdx = parentRamal.pts.length - 1;
+      const isNearEnd = Math.hypot(parentRamal.pts[lastIdx][0] - targetX, parentRamal.pts[lastIdx][1] - targetY) < 1;
+      const isNearStart = Math.hypot(parentRamal.pts[0][0] - targetX, parentRamal.pts[0][1] - targetY) < 1;
+      let dx = 0, dy = 0;
+      if (isNearEnd && !isNearStart) {
+        dx = parentRamal.pts[lastIdx][0] - parentRamal.pts[lastIdx - 1][0];
+        dy = parentRamal.pts[lastIdx][1] - parentRamal.pts[lastIdx - 1][1];
+      } else {
+        dx = parentRamal.pts[1][0] - parentRamal.pts[0][0];
+        dy = parentRamal.pts[1][1] - parentRamal.pts[0][1];
+      }
+      if (Math.hypot(dx, dy) > 0.1) {
+        const rawAngle = Math.atan2(dy, dx);
+        if (engine.snapMode) {
+          const snapped = engine.snapAngle(0, 0, dx, dy);
+          angle = Math.atan2(snapped.y, snapped.x);
+        } else {
+          angle = rawAngle;
+        }
+      }
+    }
+
+    b._circ = { x: c.x, y: c.y, r: Math.max(16, r + 6) };
 
     if (b.recibeDeIds?.length) {
       b.recibeDeIds.forEach((rid: string) => {
@@ -91,6 +173,12 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.lineTo(aS * 0.4, aS * 0.3);
       ctx.closePath();
       ctx.fill();
+    } else if (b.direccion === 'continua') {
+      ctx.fillStyle = arrowCol;
+      ctx.font = `${engine.mm2cvs(engine.MM.flowEmoji * engine.labelScaleM)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('➜', 0, 0);
     } else if (!b.direccion && !b.desplazamientos?.[engine.nivelActual?.label ?? '']) {
       // Default fallback if no direction and no displacement:
       // draw down arrow for bajante, up arrow for montante
@@ -125,7 +213,8 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     }
 
     // Yellow selection arrow (same style as ramales)
-    if (sel) {
+    const inMultiSel = (engine.multiSel || []).includes(b.id);
+    if ((sel || inMultiSel) && !engine._isGhostSel) {
       const arrowR = 16;
       const ox = r + 14;
       ctx.save();
@@ -143,12 +232,22 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.stroke();
       ctx.restore();
     }
+    ctx.restore();
 
     if (b.code || b.code === '') {
       const offDx = (b.labelX - b.x) * engine.zoom;
-      const offDy = (b.labelY - b.y) * engine.zoom;
-      
-      // Leader line
+      let offDy = (b.labelY - b.y) * engine.zoom;
+
+      // Item 2: Enforce minimum perpendicular offset so label doesn't sit on the ramal
+      const minPerpPx = engine.mm2cvs(3);
+      if (Math.abs(offDy) < minPerpPx) {
+        offDy = offDy >= 0 ? minPerpPx : -minPerpPx;
+      }
+
+      ctx.save();
+      ctx.translate(c.x, c.y);
+
+      // Leader line in global coords
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.lineTo(offDx, offDy);
@@ -156,37 +255,33 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      ctx.save();
       ctx.translate(offDx, offDy);
+      ctx.rotate(angle);
       const fsCode = engine.mm2cvs(engine.MM.lblCode * engine.labelScaleM * 1.35);
       const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35);
       const lineH = fsCode + 2;
       
       const codeStr = (b.code || '').replace(/#/g, '');
       let diamStr = '';
-      if (b.diametro) {
-        diamStr = b.diametro.split(' — ')[0];
-      } else if (b.dNominal && b.dNominal !== '0') {
+      if (b.dNominal && b.dNominal !== '0') {
         const v = String(b.dNominal).trim();
         if (v.includes('"') || v.includes('mm')) {
           diamStr = v;
         } else {
           const numV = Number(v);
           if (!isNaN(numV)) {
-            // Si es menor a 20, asumimos que son pulgadas (ej. 2, 4, 6)
             diamStr = numV < 20 ? `${numV}"` : `${numV}mm`;
           } else {
             diamStr = v;
           }
         }
+      } else if (b.diametro) {
+        diamStr = b.diametro.split(' — ')[0];
       }
       const line1 = diamStr ? `${codeStr}  ${diamStr}` : (codeStr || '—');
       
-      // Direction line
-      let dirText = b.direccion === 'sube' ? 'Sube' : b.direccion === 'baja' ? 'Baja' : '';
-      if (b.desplazamientos && engine.nivelActual?.label !== undefined && b.desplazamientos[engine.nivelActual.label]) {
-        dirText = 'Desplaz.';
-      }
+      // Direction text
+      let dirText = b.direccion === 'sube' ? 'Sube' : b.direccion === 'baja' ? 'Baja' : b.direccion === 'continua' ? 'Continua' : '';
       const hasDir = !!dirText;
       
       ctx.font = `bold ${fsCode}px Geist, monospace`;
@@ -195,8 +290,8 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       const boxH = hasDir ? lineH + 2 + fsDir + engine.mm2cvs(1.5) : lineH + engine.mm2cvs(1);
       const hh2 = boxH / 2;
       
-      const lbCx = c.x + offDx * Math.cos(angle) - offDy * Math.sin(angle);
-      const lbCy = c.y + offDx * Math.sin(angle) + offDy * Math.cos(angle);
+      const lbCx = c.x + offDx;
+      const lbCy = c.y + offDy;
       const { corners: corners2, minX, minY, maxX, maxY } = rotatedRectCorners(lbCx, lbCy - 10 + hh2, boxW, boxH, angle, 2);
       b._labelBox = { cx: lbCx, cy: lbCy - 10 + hh2, w: boxW, h: boxH, angle, minX, minY, maxX, maxY, corners: corners2 };
       
@@ -211,28 +306,17 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillText(line1, 0, -10 + engine.mm2cvs(0.5));
-      
-      // Separator line
-      const sepY = -10 + lineH + 1;
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 0.5;
-      ctx.beginPath();
-      ctx.moveTo(-boxW / 2, sepY);
-      ctx.lineTo(boxW / 2, sepY);
-      ctx.stroke();
-      
-      // Direction text below line
-      if (hasDir) {
+
+      // Direction text (no separator line — drawn directly below code)
+      if (dirText) {
         ctx.font = `${fsDir}px Geist, monospace`;
         ctx.fillStyle = '#000';
-        ctx.fillText(dirText, 0, sepY + 2);
+        ctx.fillText(dirText, 0, -10 + lineH + engine.mm2cvs(1));
       }
       ctx.restore();
     } else {
       b._labelBox = null;
     }
-
-    ctx.restore();
   });
 }
 
@@ -246,8 +330,50 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
     const r = Math.max(8, 8 * engine.zoom);
-    b._ghost = { x: c.x, y: c.y, r: Math.max(40, r + 10) };
+    b._ghost = { x: c.x, y: c.y, r: Math.max(16, r + 6) };
 
+    // Item 6: Compute label angle from first connected ramal
+    let ghostAngle = 0;
+    const lDesvioId = disp?.Ldesvio;
+    let firstRamal = null;
+    if (b.recibeDeIds?.length) {
+      const nonDesvioId = b.recibeDeIds.find((id: string) => id !== lDesvioId);
+      if (nonDesvioId) {
+        firstRamal = engine.ramales.find((rr: any) => rr.id === nonDesvioId);
+      }
+    }
+    if (!firstRamal) {
+      firstRamal = engine.ramales.find((rr: any) => {
+        if (rr.id === lDesvioId || !rr.pts?.length) return false;
+        const lastIdx = rr.pts.length - 1;
+        const isNearStart = Math.hypot(rr.pts[0][0] - gx, rr.pts[0][1] - gy) < 12;
+        const isNearEnd = Math.hypot(rr.pts[lastIdx][0] - gx, rr.pts[lastIdx][1] - gy) < 12;
+        return isNearStart || isNearEnd;
+      });
+    }
+    if (!firstRamal && lDesvioId) {
+      firstRamal = engine.ramales.find((rr: any) => rr.id === lDesvioId);
+    }
+    if (firstRamal?.pts?.length >= 2) {
+      const lastIdx = firstRamal.pts.length - 1;
+      const isNearEnd = Math.hypot(firstRamal.pts[lastIdx][0] - gx, firstRamal.pts[lastIdx][1] - gy) < 12;
+      const isNearStart = Math.hypot(firstRamal.pts[0][0] - gx, firstRamal.pts[0][1] - gy) < 12;
+      let dx = 0, dy = 0;
+      if (isNearEnd && !isNearStart) {
+        dx = firstRamal.pts[lastIdx][0] - firstRamal.pts[lastIdx - 1][0];
+        dy = firstRamal.pts[lastIdx][1] - firstRamal.pts[lastIdx - 1][1];
+      } else {
+        dx = firstRamal.pts[1][0] - firstRamal.pts[0][0];
+        dy = firstRamal.pts[1][1] - firstRamal.pts[0][1];
+      }
+      if (Math.hypot(dx, dy) > 0.1) {
+        ghostAngle = Math.atan2(dy, dx);
+      }
+    } else {
+      ghostAngle = (b.labelAngle || 0) * Math.PI / 180;
+    }
+
+    // Ghost circle + symbol
     ctx.save();
     ctx.globalAlpha = 0.35;
     ctx.strokeStyle = col;
@@ -257,10 +383,16 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
     ctx.stroke();
     ctx.fillStyle = col;
+    const gd = b.ghostData?.[engine.nivelActual?.label ?? ''];
+    let ghostDir = b.direccion;
+    if (gd && gd.direccion !== undefined) {
+      ghostDir = gd.direccion;
+    }
     let ghostSymbol = '';
-    if (b.direccion === 'sube') ghostSymbol = '•';
-    else if (b.direccion === 'baja') ghostSymbol = '⬇';
-    else if (!b.direccion && b.desplazamientos?.[engine.nivelActual?.label ?? '']) ghostSymbol = '';
+    if (ghostDir === 'sube') ghostSymbol = '•';
+    else if (ghostDir === 'baja') ghostSymbol = '⬇';
+    else if (ghostDir === 'continua') ghostSymbol = '➜';
+    else if (!ghostDir && b.desplazamientos?.[engine.nivelActual?.label ?? '']) ghostSymbol = '';
     else ghostSymbol = b.tipo === 'bajante' ? '⬇' : '⬆';
 
     if (ghostSymbol) {
@@ -278,6 +410,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     ctx.setLineDash([]);
     ctx.restore();
 
+    // Displacement line
     if (disp && (Math.abs(disp.dx) > 1 || Math.abs(disp.dy) > 1)) {
       const orig = engine.toCvs(b.x, b.y);
       ctx.save();
@@ -288,6 +421,117 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       ctx.moveTo(orig.x, orig.y);
       ctx.lineTo(c.x, c.y);
       ctx.stroke();
+      ctx.restore();
+    }
+
+    // Item 4: Yellow selection arrow when a connected ramal or the ghost itself is selected
+    const inMultiSel = (engine.multiSel || []).includes(b.id);
+    const connectedRamalSelected = b.recibeDeIds?.some((rid: string) => rid === engine.selId) || (engine.selId === b.id && engine._isGhostSel) || inMultiSel;
+    if (connectedRamalSelected) {
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.rotate(ghostAngle);
+      ctx.fillStyle = '#FFEB3B';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = '#000';
+      ctx.shadowBlur = 6;
+      const arrowR = 16;
+      const ox = r + 14;
+      ctx.beginPath();
+      ctx.moveTo(ox - arrowR, 0);
+      ctx.lineTo(ox, -arrowR * 0.5);
+      ctx.lineTo(ox, arrowR * 0.5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Item 6: Ghost label — only for displacement-based ghosts (not direction-only)
+    const isDespGhost = b.isFantasma || (b.desplazamientos && Object.keys(b.desplazamientos).length > 0);
+    if (isDespGhost && (b.code || b.code === '')) {
+      const gd = b.ghostData?.[engine.nivelActual?.label ?? ''];
+      let ghostOffX = 0;
+      let ghostOffY = 0;
+      if (gd?.labelX != null && gd?.labelY != null) {
+        ghostOffX = (gd.labelX - gx) * engine.zoom;
+        ghostOffY = (gd.labelY - gy) * engine.zoom;
+      } else {
+        const distPx = engine.mm2cvs(15);
+        ghostOffX = distPx * Math.cos(ghostAngle);
+        ghostOffY = distPx * Math.sin(ghostAngle);
+      }
+      const offDx = ghostOffX;
+      const offDy = ghostOffY;
+
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.translate(c.x, c.y);
+
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(offDx, offDy);
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.translate(offDx, offDy);
+      ctx.rotate(ghostAngle);
+      const fsCode = engine.mm2cvs(engine.MM.lblCode * engine.labelScaleM * 1.35);
+      const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35);
+      const lineH = fsCode + 2;
+
+      const codeStr = (b.code || '').replace(/#/g, '');
+      const ghostDir = gd?.direccion || b.direccion;
+      const ghostDNom = gd?.dNominal || b.dNominal;
+      let diamStr = '';
+      if (b.diametro) {
+        diamStr = b.diametro.split(' — ')[0];
+      } else if (ghostDNom && ghostDNom !== '0') {
+        const v = String(ghostDNom).trim();
+        if (v.includes('"') || v.includes('mm')) {
+          diamStr = v;
+        } else {
+          const numV = Number(v);
+          if (!isNaN(numV)) {
+            diamStr = numV < 20 ? `${numV}"` : `${numV}mm`;
+          } else {
+            diamStr = v;
+          }
+        }
+      }
+      const line1 = diamStr ? `${codeStr}  ${diamStr}` : (codeStr || '—');
+
+      let dirText = ghostDir === 'sube' ? 'Sube' : ghostDir === 'baja' ? 'Baja' : ghostDir === 'continua' ? 'Continua' : '';
+      const hasDir = !!dirText;
+
+      ctx.font = `bold ${fsCode}px Geist, monospace`;
+      const tw1 = ctx.measureText(line1).width;
+      const boxW = tw1 + engine.mm2cvs(4);
+      const boxH = hasDir ? lineH + 2 + fsDir + engine.mm2cvs(1.5) : lineH + engine.mm2cvs(1);
+      const hh2 = boxH / 2;
+
+      const lbCx = c.x + offDx;
+      const lbCy = c.y + offDy;
+      const { corners: corners2, minX, minY, maxX, maxY } = rotatedRectCorners(lbCx, lbCy - 10 + hh2, boxW, boxH, ghostAngle, 2);
+      b._ghostLabelBox = { cx: lbCx, cy: lbCy - 10 + hh2, w: boxW, h: boxH, angle: ghostAngle, minX, minY, maxX, maxY, corners: corners2 };
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(-boxW / 2, -10, boxW, boxH, 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#000';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(line1, 0, -10 + engine.mm2cvs(0.5));
+
+      if (dirText) {
+        ctx.font = `${fsDir}px Geist, monospace`;
+        ctx.fillStyle = '#000';
+        ctx.fillText(dirText, 0, -10 + lineH + engine.mm2cvs(1));
+      }
       ctx.restore();
     }
   });
