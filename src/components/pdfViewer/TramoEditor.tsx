@@ -166,24 +166,49 @@ export default function TramoEditor({
                     </select>
                   </div>
                 )}
+                <div>
+                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Dirección</div>
+                  <div style={{ display: 'flex', gap: 3 }}>
+                    {([['sube','↑ Sube'],['baja','↓ Baja'],['desplazamiento','↔ Desplaz.']] as const).map(([val, lbl]) => {
+                      const eng = engineRef.current;
+                      const lvl = eng?.nivelActual?.label ?? '';
+                      const hasDesplazamiento = val === 'desplazamiento' && !!(selElement.desplazamientos && selElement.desplazamientos[lvl]);
+                      const isActive = val === 'desplazamiento' ? hasDesplazamiento : selElement.direccion === val;
+                      
+                      return (
+                      <button key={val} onClick={() => {
+                        if (val === 'desplazamiento') {
+                          if (eng && lvl !== undefined) {
+                            const currentDesp = { ...(selElement.desplazamientos || {}) };
+                            if (currentDesp[lvl] && !selElement.direccion) {
+                              delete currentDesp[lvl];
+                            } else if (!currentDesp[lvl]) {
+                              currentDesp[lvl] = { dx: 2, dy: 0 };
+                            }
+                            eng.updateSelected({ desplazamientos: currentDesp, direccion: undefined });
+                            setSelElement({ ...selElement, desplazamientos: currentDesp, direccion: undefined });
+                            eng.render();
+                          }
+                        } else {
+                          const newDir = selElement.direccion === val ? undefined : val;
+                          const currentDesp = { ...(selElement.desplazamientos || {}) };
+                          eng.updateSelected({ direccion: newDir, desplazamientos: currentDesp });
+                          setSelElement({ ...selElement, direccion: newDir, desplazamientos: currentDesp });
+                          eng.render();
+                        }
+                      }} style={{
+                        flex: 1, padding: '4px 6px', fontSize: 10, fontFamily: "'Geist',monospace", borderRadius: 3,
+                        border: `1px solid ${isActive ? '#F5A623' : '#3a494a'}`,
+                        background: isActive ? 'rgba(245,166,35,.15)' : '#1e2024',
+                        color: isActive ? '#F5A623' : '#849495',
+                        cursor: 'pointer', fontWeight: isActive ? 600 : 400,
+                      }}>{lbl}</button>
+                    )})}
+                  </div>
+                </div>
                 {activeNet === 'san' && (
-                  <>
-                    <div>
-                      <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Dirección</div>
-                      <div style={{ display: 'flex', gap: 3 }}>
-                        {([['sube','↑ Sube'],['baja','↓ Baja']] as const).map(([val, lbl]) => (
-                          <button key={val} onClick={() => handleUpdateSel('direccion', selElement.direccion === val ? undefined : val)} style={{
-                            flex: 1, padding: '4px 6px', fontSize: 10, fontFamily: "'Geist',monospace", borderRadius: 3,
-                            border: `1px solid ${selElement.direccion === val ? '#F5A623' : '#3a494a'}`,
-                            background: selElement.direccion === val ? 'rgba(245,166,35,.15)' : '#1e2024',
-                            color: selElement.direccion === val ? '#F5A623' : '#849495',
-                            cursor: 'pointer', fontWeight: selElement.direccion === val ? 600 : 400,
-                          }}>{lbl}</button>
-                        ))}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Ramales asociados</div>
+                  <div>
+                    <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Ramales asociados</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 }}>
                       {(() => {
                         const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === 'san' && r.tipo !== 'tributario');
@@ -206,7 +231,6 @@ export default function TramoEditor({
                       })()}
                     </div>
                   </div>
-                  </>
                 )}
               </div>
             </div>

@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import * as pdfjsLib from "pdfjs-dist";
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import PlanoEngine, { NETS } from "../lib/PlanoEngine";
-import { pisoLbl, matLongName, GAS } from "../constants";
+import { pisoLbl, matLongName, GAS, DIAM_BAN, DIAM_BY_MAT } from "../constants";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync";
@@ -15,8 +13,6 @@ import PdfViewerNetworkBar from "./pdfViewer/PdfViewerNetworkBar";
 import { usePdfAutoSave } from "./pdfViewer/usePdfAutoSave";
 import { usePdfViewerEngine } from "./pdfViewer/PdfViewerEngineInit";
 import PdfViewerDrawnElements from "./pdfViewer/PdfViewerDrawnElements";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 const TIPOS_TRAMO = [
   { id: "ramal", label: "Ramal" },
@@ -161,6 +157,14 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   useEffect(() => {
     if (selElement?.net) {
       setActiveNet(selElement.net);
+    }
+    if (selElement?.id) {
+      if (engineRef.current && engineRef.current.tool !== 'sel') {
+        engineRef.current.setTool('sel');
+      }
+      if (tool !== 'sel') {
+        setTool('sel');
+      }
     }
   }, [selElement]);
 
@@ -716,10 +720,12 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
             boxShadow: '0 4px 16px rgba(0,0,0,0.4)', padding: '4px', minWidth: 140, maxWidth: 200,
             display: 'flex', flexDirection: 'column', gap: 2,
           }} onContextMenu={(e) => e.preventDefault()}>
-            <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              Dirección de flujo
-            </div>
-            {['Sube', 'Baja', 'Desplazamiento'].map(opt => (
+            {((contextMenuState.bajante.tipo === 'bajante' || contextMenuState.bajante.tipo === 'montante' || contextMenuState.bajante.id?.startsWith('B')) && !contextMenuState.bajante.pts) ? (
+              <>
+                <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Dirección de flujo
+                </div>
+                {['Sube', 'Baja', 'Desplazamiento'].map(opt => (
               <button
                 key={opt}
                 onClick={() => {
@@ -731,29 +737,41 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
                     let updates: any = {};
                     
                     if (opt === 'Sube') {
-                      updates = { direccion: 'sube', nptBase: currentNpt, nptCima: maxNpt };
+                      const lvl = pisos.find(p => p.n === selectedNivel)?.label ?? '';
+                      const currentDesp = { ...(contextMenuState.bajante.desplazamientos || {}) };
+                      updates = { direccion: 'sube', nptBase: currentNpt, nptCima: maxNpt, desplazamientos: currentDesp };
                     } else if (opt === 'Baja') {
-                      updates = { direccion: 'baja', nptBase: minNpt, nptCima: currentNpt };
+                      const lvl = pisos.find(p => p.n === selectedNivel)?.label ?? '';
+                      const currentDesp = { ...(contextMenuState.bajante.desplazamientos || {}) };
+                      updates = { direccion: 'baja', nptBase: minNpt, nptCima: currentNpt, desplazamientos: currentDesp };
                     } else if (opt === 'Desplazamiento') {
-                      const lvl = pisos.find(p => p.n === selectedNivel)?.label || '';
-                      if (lvl) {
+                      const lvl = pisos.find(p => p.n === selectedNivel)?.label ?? '';
+                      if (lvl !== undefined) {
                         const currentDesp = contextMenuState.bajante.desplazamientos || {};
                         updates = {
+                          direccion: undefined,
                           desplazamientos: {
                             ...currentDesp,
-                            [lvl]: { dx: 0, dy: 0 }
+                            [lvl]: { 
+                              dx: currentDesp[lvl]?.dx ?? 2, 
+                              dy: currentDesp[lvl]?.dy ?? 0,
+                              Ldesvio: currentDesp[lvl]?.Ldesvio
+                            }
                           }
                         };
                       }
                     }
                     if (Object.keys(updates).length > 0) {
                       engineRef.current.updateElementById(contextMenuState.bajante.id, updates);
+                      const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                      if (fresh) {
+                        setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
+                      }
                       if (selElement?.id === contextMenuState.bajante.id) {
                         setSelElement({ ...selElement, ...updates });
                       }
                     }
                   }
-                  setContextMenuState(null);
                 }}
                 style={{
                   background: 'transparent', border: 'none', color: '#e2e2e8', padding: '6px 8px',
@@ -770,6 +788,50 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
               </button>
             ))}
             
+            <button
+                onClick={() => {
+                  if (engineRef.current) {
+                    const isFantasma = contextMenuState.bajante.isFantasma;
+                    engineRef.current.updateElementById(contextMenuState.bajante.id, { isFantasma: !isFantasma });
+                    const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                    if (fresh) {
+                      setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
+                    }
+                    engineRef.current.render();
+                  }
+                }}
+                style={{
+                  background: 'transparent', border: 'none', color: '#e2e2e8', padding: '6px 8px',
+                  textAlign: 'left', fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer',
+                  borderRadius: 3, display: 'flex', alignItems: 'center', gap: 6,
+                  marginTop: 4, borderTop: '1px solid #3a494a'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#2563eb33'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                {contextMenuState.bajante.isFantasma ? 'Desactivar bajante de desplazamiento' : 'Activar bajante de desplazamiento'}
+              </button>
+
+            {/* Diameter selector */}
+            <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
+              <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Diámetro bajante</div>
+              <select value={contextMenuState.bajante.dNominal || ''}
+                onChange={e => {
+                  const val = e.target.value;
+                  engineRef.current?.updateElementById(contextMenuState.bajante.id, { dNominal: val });
+                  setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, dNominal: val } } : null);
+                  if (selElement?.id === contextMenuState.bajante.id) {
+                    setSelElement({ ...selElement, dNominal: val });
+                  }
+                }}
+                style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                <option value="">— Sin diámetro —</option>
+                {DIAM_BAN.map(d => (
+                  <option key={d.pulg} value={d.nom}>{d.nom} ({d.mm} mm)</option>
+                ))}
+              </select>
+            </div>
+
             {/* Show Area dropdown if activeNet === 'll' */}
             {activeNet === 'll' && (
               <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
@@ -822,6 +884,48 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
                 </div>
               </div>
             )}
+            </>
+            ) : contextMenuState.bajante.pts ? (
+              <>
+                <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Diámetro de ramal
+                </div>
+                {(() => {
+                  const isGas = contextMenuState.bajante.net === 'gas';
+                  const matList = mats?.[contextMenuState.bajante.net] || [];
+                  const matShort = contextMenuState.bajante.material || matList[0]?.val || '—';
+                  const diamList = isGas ? (GAS[0]?.rows.map(r => ({n: r.dn})) || []) : (DIAM_BY_MAT[matShort] || []);
+                  
+                  return (
+                    <div style={{ padding: '0 8px 8px' }}>
+                      <select
+                        value={contextMenuState.bajante.diametro || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (engineRef.current) {
+                            engineRef.current.updateElementById(contextMenuState.bajante.id, { diametro: val });
+                            setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, diametro: val } } : null);
+                            if (selElement?.id === contextMenuState.bajante.id) {
+                              setSelElement({ ...selElement, diametro: val });
+                            }
+                            if (activeNet === contextMenuState.bajante.net) {
+                              setDiamSel(prev => ({ ...prev, [activeNet]: val }));
+                            }
+                            engineRef.current.render();
+                          }
+                        }}
+                        style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
+                      >
+                        <option value="">— Sin diámetro —</option>
+                        {diamList.map((d: any) => (
+                          <option key={d.n} value={d.n}>{d.n}</option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                })()}
+              </>
+            ) : null}
           </div>
         </>
       )}
