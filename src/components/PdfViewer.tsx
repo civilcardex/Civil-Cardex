@@ -134,11 +134,11 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   useEffect(() => { try { sessionStorage.setItem('civilflow_visor_tipoTramo', tipoTramo); } catch (_) {} }, [tipoTramo]);
   useEffect(() => { try { sessionStorage.setItem('civilflow_visor_snapOn', String(snapOn)); } catch (_) {} }, [snapOn]);
 
-  const [contextMenuState, setContextMenuState] = useState<{ visible: boolean; x: number; y: number; bajante: any } | null>(null);
+  const [contextMenuState, setContextMenuState] = useState<{ visible: boolean; x: number; y: number; bajante: any; isGhostClick?: boolean } | null>(null);
+  const [confirmState, setConfirmState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({isOpen: false, title: '', message: '', onConfirm: () => {}});
 
-  const onContextMenuCb = useCallback((bajante: any, x: number, y: number) => {
-    if (engineRef.current && engineRef.current.selId !== bajante.id) return;
-    setContextMenuState({ visible: true, x, y, bajante });
+  const onContextMenuCb = useCallback((bajante: any, x: number, y: number, isGhostClick?: boolean) => {
+    setContextMenuState({ visible: true, x, y, bajante, isGhostClick });
   }, []);
 
   useEffect(() => {
@@ -424,7 +424,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
     eng.setSnap(snapOn);
     eng.setScaleM(scaleM);
     const floorObj = pisos.find(p => p.n === selectedNivel);
-    eng.nivelActual = floorObj || null;
+    eng.nivelActual = floorObj ? { ...floorObj, label: pisoLbl(floorObj.n) } : null;
     eng.nptLevels = pisos.map(p => ({ label: pisoLbl(p.n), npt: p.npt }));
     const matName = activeNet === 'gas'
       ? (gasMatSel[activeNet] || GAS[0]?.mat || '')
@@ -520,10 +520,16 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
     if (!engineRef.current) return;
     const netId = activeNet;
     const netName = NETS.find(n => n.id === netId)?.name || netId;
-    if (window.confirm(`¿Deseas eliminar todo el trazado de la red activa (${netName})? Esta acción no se puede deshacer.`)) {
-      engineRef.current.clearNet(netId);
-      setSelElement(null);
-    }
+    setConfirmState({
+      isOpen: true,
+      title: 'Limpiar red',
+      message: `¿Deseas eliminar todo el trazado de la red activa (${netName})? Esta acción no se puede deshacer.`,
+      onConfirm: () => {
+        engineRef.current!.clearNet(netId);
+        setSelElement(null);
+        setConfirmState(prev => ({...prev, isOpen: false}));
+      }
+    });
   }, [activeNet]);
 
   const handleSave = useCallback(() => {
@@ -546,11 +552,21 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
 
   const handleDelete = useCallback(() => {
     if (!engineRef.current || !selElement) return;
-    const label = selElement.label || selElement.id || 'elemento';
-    if (window.confirm(`¿Deseas eliminar el ramal seleccionado (${label})?`)) {
-      engineRef.current.deleteSelected();
-      setSelElement(null);
-    }
+    const sel = selElement as any;
+    let label = 'el elemento';
+    if (sel.type === 'ramal' && sel.ramal) label = `el ramal R${sel.ramal.id.slice(-4).toUpperCase()}`;
+    else if (sel.type === 'bajante' && sel.bajante) label = `el bajante ${sel.bajante.id}`;
+    
+    setConfirmState({
+      isOpen: true,
+      title: 'Eliminar elemento',
+      message: `¿Deseas eliminar ${label}?`,
+      onConfirm: () => {
+        engineRef.current!.deleteSelected();
+        setSelElement(null);
+        setConfirmState(prev => ({...prev, isOpen: false}));
+      }
+    });
   }, [selElement]);
 
   const handleUpdateSel = useCallback((field: string, value: any) => {
@@ -722,31 +738,64 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
           }} onContextMenu={(e) => e.preventDefault()}>
             {((contextMenuState.bajante.tipo === 'bajante' || contextMenuState.bajante.tipo === 'montante' || contextMenuState.bajante.id?.startsWith('B')) && !contextMenuState.bajante.pts) ? (
               <>
+                {(() => {
+                  const isGhost = contextMenuState.isGhostClick || false;
+                  const currentGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
+                  const gd = contextMenuState.bajante.ghostData?.[currentGhostLabel];
+                  const ghostDir = isGhost ? (gd && gd.direccion !== undefined ? gd.direccion : contextMenuState.bajante.direccion) : contextMenuState.bajante.direccion;
+                  const ghostDNom = isGhost ? (gd && gd.dNominal !== undefined ? gd.dNominal : contextMenuState.bajante.dNominal) : contextMenuState.bajante.dNominal;
+
+                  const updateGhostField = (field: string, val: string) => {
+                    if (!engineRef.current) return;
+                    const gd = { ...(contextMenuState.bajante.ghostData || {}) };
+                    const cd = { ...(gd[currentGhostLabel] || {}) };
+                    (cd as any)[field] = val;
+                    gd[currentGhostLabel] = cd;
+                    engineRef.current.updateElementById(contextMenuState.bajante.id, { ghostData: gd });
+                    const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                    if (fresh) {
+                      setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
+                      if (selElement?.id === contextMenuState.bajante.id) {
+                        setSelElement({ ...selElement, ghostData: gd });
+                      }
+                    }
+                  };
+
+                  return (<>
                 <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Dirección de flujo
                 </div>
-                {['Sube', 'Baja', 'Desplazamiento'].map(opt => (
+                {(isGhost ? ['Sube', 'Baja', 'Continua'] : ['Sube', 'Baja', 'Continua', 'Desplazamiento']).map(opt => (
               <button
                 key={opt}
-                onClick={() => {
-                  if (engineRef.current) {
-                    const currentNpt = pisos.find(p => p.n === selectedNivel)?.npt || 0;
+                 onClick={() => {
+                    if (engineRef.current) {
+                      if (isGhost && opt !== 'Desplazamiento') {
+                        updateGhostField('direccion', opt.toLowerCase());
+                        engineRef.current.render();
+                        return;
+                      }
+                     const currentNpt = pisos.find(p => p.n === selectedNivel)?.npt || 0;
                     const allNpts = pisos.map(p => p.npt).sort((a,b) => a-b);
                     const maxNpt = allNpts[allNpts.length - 1] || 0;
                     const minNpt = allNpts[0] || 0;
                     let updates: any = {};
                     
                     if (opt === 'Sube') {
-                      const lvl = pisos.find(p => p.n === selectedNivel)?.label ?? '';
+                      const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
                       const currentDesp = { ...(contextMenuState.bajante.desplazamientos || {}) };
                       updates = { direccion: 'sube', nptBase: currentNpt, nptCima: maxNpt, desplazamientos: currentDesp };
                     } else if (opt === 'Baja') {
-                      const lvl = pisos.find(p => p.n === selectedNivel)?.label ?? '';
+                      const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
                       const currentDesp = { ...(contextMenuState.bajante.desplazamientos || {}) };
                       updates = { direccion: 'baja', nptBase: minNpt, nptCima: currentNpt, desplazamientos: currentDesp };
+                    } else if (opt === 'Continua') {
+                      const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
+                      const currentDesp = { ...(contextMenuState.bajante.desplazamientos || {}) };
+                      updates = { direccion: 'continua', desplazamientos: currentDesp };
                     } else if (opt === 'Desplazamiento') {
-                      const lvl = pisos.find(p => p.n === selectedNivel)?.label ?? '';
-                      if (lvl !== undefined) {
+                      const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
+                      if (lvl) {
                         const currentDesp = contextMenuState.bajante.desplazamientos || {};
                         updates = {
                           direccion: undefined,
@@ -782,17 +831,66 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
                 <div style={{ color: opt === 'Sube' ? '#00dce5' : opt === 'Baja' ? '#F04545' : '#FFEB3B' }}>
-                  {opt === 'Sube' ? '⬆' : opt === 'Baja' ? '⬇' : '➡'}
+                  {opt === 'Sube' ? '⬆' : opt === 'Baja' ? '⬇' : opt === 'Continua' ? '➜' : '➡'}
                 </div>
                 {opt}
               </button>
             ))}
+            </>);
+            })()}
+
+            {/* Ghost detection + Destino dropdown — Items 3 & 5 */}
+            {(() => {
+              const isGhost = contextMenuState.isGhostClick || false;
+              return isGhost ? null : (
+              <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
+                <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Destino</div>
+                <select value={contextMenuState.bajante.descargaEnId || ''}
+                  onChange={e => {
+                    const v = e.target.value || null;
+                    engineRef.current?.updateElementById(contextMenuState.bajante.id, { descargaEnId: v });
+                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                    if (fresh) setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
+                    if (selElement?.id === contextMenuState.bajante.id) {
+                      setSelElement({ ...selElement, descargaEnId: v });
+                    }
+                  }}
+                  style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                  <option value="">— Sin destino —</option>
+                  {lowerFloorsRamales.map(group => {
+                    const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
+                    const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
+                    return (
+                      <optgroup key={group.planId} label={pLabel + (group.ramales.length === 0 ? ' (sin ramales)' : '')}>
+                        {group.ramales.length > 0 ? group.ramales.map((r: any) => (
+                          <option key={`${group.planId}|${r.id}`} value={`${group.planId}|${r.id}`}>
+                            {r.label || r.id}
+                          </option>
+                        )) : (
+                          <option value="" disabled>— Sin ramales disponibles —</option>
+                        )}
+                      </optgroup>
+                    );
+                  })}
+                </select>
+              </div>);
+            })()}
             
-            <button
+            {!contextMenuState.isGhostClick && (
+              <button
                 onClick={() => {
                   if (engineRef.current) {
+                    const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
                     const isFantasma = contextMenuState.bajante.isFantasma;
-                    engineRef.current.updateElementById(contextMenuState.bajante.id, { isFantasma: !isFantasma });
+                    const updates: any = { isFantasma: !isFantasma };
+                    if (!isFantasma && lvl) {
+                      const currentDesp = { ...(contextMenuState.bajante.desplazamientos || {}) };
+                      if (!currentDesp[lvl]) {
+                        currentDesp[lvl] = { dx: 2, dy: 0 };
+                        updates.desplazamientos = currentDesp;
+                      }
+                    }
+                    engineRef.current.updateElementById(contextMenuState.bajante.id, updates);
                     const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
                     if (fresh) {
                       setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
@@ -811,29 +909,52 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
               >
                 {contextMenuState.bajante.isFantasma ? 'Desactivar bajante de desplazamiento' : 'Activar bajante de desplazamiento'}
               </button>
+            )}
 
             {/* Diameter selector */}
             <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
-              <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Diámetro bajante</div>
-              <select value={contextMenuState.bajante.dNominal || ''}
+              <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Diámetro</div>
+              <select value={(() => {
+                const dIsGhost = contextMenuState.isGhostClick || false;
+                const dGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
+                const gd = contextMenuState.bajante.ghostData?.[dGhostLabel];
+                return dIsGhost ? (gd && gd.dNominal !== undefined ? gd.dNominal : (contextMenuState.bajante.dNominal || '')) : (contextMenuState.bajante.dNominal || '');
+              })()}
                 onChange={e => {
                   const val = e.target.value;
-                  engineRef.current?.updateElementById(contextMenuState.bajante.id, { dNominal: val });
-                  setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, dNominal: val } } : null);
-                  if (selElement?.id === contextMenuState.bajante.id) {
-                    setSelElement({ ...selElement, dNominal: val });
+                  const dIsGhost = contextMenuState.isGhostClick || false;
+                  if (dIsGhost && engineRef.current) {
+                    const dGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
+                    const gd2 = { ...(contextMenuState.bajante.ghostData || {}) };
+                    const cd = { ...(gd2[dGhostLabel] || {}) };
+                    cd.dNominal = val;
+                    gd2[dGhostLabel] = cd;
+                    engineRef.current?.updateElementById(contextMenuState.bajante.id, { ghostData: gd2 });
+                    const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                    if (fresh) {
+                      setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
+                      if (selElement?.id === contextMenuState.bajante.id) {
+                        setSelElement({ ...selElement, ghostData: gd2 });
+                      }
+                    }
+                  } else {
+                    engineRef.current?.updateElementById(contextMenuState.bajante.id, { dNominal: val });
+                    setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, dNominal: val } } : null);
+                    if (selElement?.id === contextMenuState.bajante.id) {
+                      setSelElement({ ...selElement, dNominal: val });
+                    }
                   }
                 }}
                 style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                <option value="">— Sin diámetro —</option>
+                <option value="">—</option>
                 {DIAM_BAN.map(d => (
-                  <option key={d.pulg} value={d.nom}>{d.nom} ({d.mm} mm)</option>
+                  <option key={d.pulg} value={d.nom}>{d.nom}</option>
                 ))}
               </select>
             </div>
 
-            {/* Show Area dropdown if activeNet === 'll' */}
-            {activeNet === 'll' && (
+            {/* Show Area dropdown for all networks */}
+            {!contextMenuState.isGhostClick && (
               <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
                 <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Área asociada</div>
                 <select value={contextMenuState.bajante.area_m2 || ''}
@@ -847,7 +968,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
                   }}
                   style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
                   <option value="">— Sin área —</option>
-                  {(engineRef.current?.areas || []).filter((a: any) => !a.net || a.net === activeNet).map((a: any) => (
+                  {(engineRef.current?.areas || []).map((a: any) => (
                     <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
                   ))}
                 </select>
@@ -855,7 +976,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
             )}
             
             {/* Show Ramales if activeNet === 'san' */}
-            {activeNet === 'san' && (
+            {activeNet === 'san' && !contextMenuState.isGhostClick && (
               <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
                 <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Ramales asociados</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
@@ -885,6 +1006,35 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
               </div>
             )}
             </>
+            ) : contextMenuState.bajante.id?.startsWith('AR') ? (
+              <>
+                <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Asociar Bajante
+                </div>
+                <div style={{ padding: '0 8px 8px' }}>
+                  <select
+                    value={(engineRef.current?.bajantes || []).find((b:any) => b.area_m2 === contextMenuState.bajante.areaM2)?.id || ''}
+                    onChange={e => {
+                      const bajanteId = e.target.value;
+                      (engineRef.current?.bajantes || []).forEach((b:any) => {
+                        if (b.area_m2 === contextMenuState.bajante.areaM2) {
+                          engineRef.current?.updateElementById(b.id, { area_m2: 0 });
+                        }
+                      });
+                      if (bajanteId) {
+                        engineRef.current?.updateElementById(bajanteId, { area_m2: contextMenuState.bajante.areaM2 });
+                      }
+                      engineRef.current?.render();
+                      setContextMenuState(null);
+                    }}
+                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                    <option value="">— Sin bajante —</option>
+                    {(engineRef.current?.bajantes || []).filter((b: any) => b.net === contextMenuState.bajante.net).map((b: any) => (
+                      <option key={b.id} value={b.id}>{b.code || b.id}</option>
+                    ))}
+                  </select>
+                </div>
+              </>
             ) : contextMenuState.bajante.pts ? (
               <>
                 <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
@@ -1045,7 +1195,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
         />
 
         {/* Bajante/Montante association */}
-        {selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante') && (
+        {selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante') && !engineRef.current?._isGhostSel && (
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a", opacity: 1, pointerEvents: 'auto' }}>
             <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
               Asociación de bajante
@@ -1129,6 +1279,24 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
         <div style={{flex:1}}/>
       </div>
       </div>
+      
+      {confirmState.isOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: 'var(--bg2)', padding: '20px', borderRadius: 'var(--r)', minWidth: 320, maxWidth: 400, border: '1px solid var(--line)', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#ef5350', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: 20 }}>⚠</span> {confirmState.title}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--txt2)', marginBottom: 20, lineHeight: 1.5 }}>
+              {confirmState.message}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button onClick={() => setConfirmState(prev => ({...prev, isOpen: false}))} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 4, color: 'var(--txt)', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Cancelar</button>
+              <button onClick={confirmState.onConfirm} style={{ padding: '6px 12px', background: '#ef5350', border: 'none', borderRadius: 4, color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
     </div>
   );
