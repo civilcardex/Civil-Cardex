@@ -66,6 +66,9 @@ import {
   setRamalDefaults as _setRamalDefaults,
   getBajantesFantasma as _getBajantesFantasma,
   _renumberRamales as _doRenumberRamales,
+  _renumberBajantes as _doRenumberBajantes,
+  _renumberMontantes as _doRenumberMontantes,
+  _renumberAreas as _doRenumberAreas,
 } from './PlanoEngineNetwork';
 import { PlanoHistory } from './PlanoHistory';
 
@@ -458,6 +461,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   getBajantesFantasma(): PlanoBajante[] { return _getBajantesFantasma(this); }
 
   _renumberRamales(netId: string): void { _doRenumberRamales(this, netId); }
+  _renumberBajantes(netId: string): void { _doRenumberBajantes(this, netId); }
+  _renumberMontantes(): void { _doRenumberMontantes(this); }
+  _renumberAreas(): void { _doRenumberAreas(this); }
 
   saveWork(): import('./PlanoPersistence').PlanoWorkData {
     return serializeWork(this);
@@ -549,16 +555,34 @@ export default class PlanoEngine implements IPlanoEngineCore {
         // Single right click: Check if hit a bajante for context menu
         const plane = this.toPlane(x, y);
         const r = Math.max(6, 6 * this.zoom) + 10;
-        let hitBajante = null;
-        for (const b of this.bajantes) {
-          const c = this.toCvs(b.x, b.y);
-          if (Math.hypot(x - c.x, y - c.y) <= r) {
-            hitBajante = b;
-            break;
+        let hitElement = null;
+        if (this.selId) {
+          const b = this.bajantes.find(bb => bb.id === this.selId);
+          if (b) {
+            const c = this.toCvs(b.x, b.y);
+            if (Math.hypot(x - c.x, y - c.y) <= r) hitElement = b;
+          } else {
+            const ram = this.ramales.find(rr => rr.id === this.selId);
+            if (ram && ram.pts) {
+              for (let i = 0; i < ram.pts.length - 1; i++) {
+                const p1 = this.toCvs(ram.pts[i][0], ram.pts[i][1]);
+                const p2 = this.toCvs(ram.pts[i+1][0], ram.pts[i+1][1]);
+                const l2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
+                let t = l2 === 0 ? 0 : ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / l2;
+                t = Math.max(0, Math.min(1, t));
+                const projX = p1.x + t * (p2.x - p1.x);
+                const projY = p1.y + t * (p2.y - p1.y);
+                if (Math.hypot(x - projX, y - projY) <= 12) {
+                  hitElement = ram;
+                  break;
+                }
+              }
+            }
           }
         }
-        if (hitBajante && this.selId === hitBajante.id && this._onContextMenuCb) {
-          this._onContextMenuCb(hitBajante, (e as MouseEvent).clientX, (e as MouseEvent).clientY);
+        
+        if (hitElement && this._onContextMenuCb) {
+          this._onContextMenuCb(hitElement, (e as MouseEvent).clientX, (e as MouseEvent).clientY);
         }
       }
       this._lastRightClickTime = now;
@@ -655,6 +679,15 @@ export default class PlanoEngine implements IPlanoEngineCore {
       else if (this.activeArea) { this.cancelArea(); e.preventDefault(); }
       else if (this._dimStart) { this._dimStart = null; this.render(); e.preventDefault(); }
       else {
+        if (this.selId) {
+          const b = this.bajantes.find(x => x.id === this.selId);
+          if (b && b.isFantasma) {
+            this.updateElementById(b.id, { isFantasma: false });
+            this.render();
+            e.preventDefault();
+            return;
+          }
+        }
         if (this.tool !== 'sel') {
           this.setTool('sel');
           e.preventDefault();

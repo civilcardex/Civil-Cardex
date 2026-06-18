@@ -558,6 +558,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
 }
 
 function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
+  const DOUBLE_YEE_THRESHOLD_MM = 10;
+
   NETS.forEach(net => {
     if (engine._hiddenNets.has(net.id)) return;
     const netRamales = engine.ramales.filter((r: any) => r.net === net.id);
@@ -572,7 +574,18 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       });
     });
 
-    vertexMap.forEach((P, _key) => {
+    interface JunctionData {
+      P: number[];
+      uA: { x: number; y: number };
+      uB: { x: number; y: number };
+      branches: { x: number; y: number }[];
+      isTee: boolean;
+      isYee: boolean;
+    }
+
+    const junctions: JunctionData[] = [];
+
+    vertexMap.forEach((P) => {
       const outgoingVectors: { x: number; y: number }[] = [];
 
       netRamales.forEach(r => {
@@ -656,50 +669,129 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           const isYee = Math.abs(cosVal) >= 0.4 && Math.abs(cosVal) <= 0.85;
 
           if (isTee || isYee) {
-            ctx.save();
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.setLineDash([]);
-
-            const rad = engine.mm2cvs(2.0);
-            const tickLen = engine.mm2cvs(2.5);
-            const cvsP = engine.toCvs(P[0], P[1]);
-
-            // First draw white mask over the colored ramal
-            const drawTick = (u: { x: number; y: number }) => {
-              const T_pt = { x: cvsP.x + rad * u.x, y: cvsP.y + rad * u.y };
-              const perp = { x: -u.y, y: u.x };
-
-              ctx.lineWidth = 5; // Slightly thicker than the pipe to hide it completely
-              ctx.strokeStyle = '#ffffff';
-              ctx.beginPath();
-              ctx.moveTo(cvsP.x, cvsP.y);
-              ctx.lineTo(T_pt.x, T_pt.y);
-              ctx.stroke();
-
-              ctx.lineWidth = 2.5;
-              ctx.strokeStyle = '#000000';
-              ctx.stroke(); // strokes the same line from cvsP to T_pt
-
-              ctx.beginPath();
-              ctx.moveTo(T_pt.x - perp.x * tickLen / 2, T_pt.y - perp.y * tickLen / 2);
-              ctx.lineTo(T_pt.x + perp.x * tickLen / 2, T_pt.y + perp.y * tickLen / 2);
-              ctx.stroke();
-            };
-
-            drawTick(uA);
-            drawTick(uB);
-            branches.forEach(uC => {
-              drawTick(uC);
-            });
-
-            ctx.restore();
+            junctions.push({ P, uA, uB, branches, isTee, isYee });
           }
         }
       }
     });
+
+    const usedInDouble = new Set<number>();
+
+    for (let i = 0; i < junctions.length; i++) {
+      for (let j = i + 1; j < junctions.length; j++) {
+        if (usedInDouble.has(i) || usedInDouble.has(j)) continue;
+        const a = junctions[i], b = junctions[j];
+        const distMm = Math.hypot(a.P[0] - b.P[0], a.P[1] - b.P[1]);
+        if (distMm > DOUBLE_YEE_THRESHOLD_MM) continue;
+
+        const dotMain = a.uA.x * b.uA.x + a.uA.y * b.uA.y;
+        const dotMain2 = a.uA.x * b.uB.x + a.uA.y * b.uB.y;
+        const aligned = Math.abs(Math.abs(dotMain) - 1) < 0.15 || Math.abs(Math.abs(dotMain2) - 1) < 0.15;
+        if (!aligned) continue;
+
+        usedInDouble.add(i);
+        usedInDouble.add(j);
+
+        const cvsA = engine.toCvs(a.P[0], a.P[1]);
+        const cvsB = engine.toCvs(b.P[0], b.P[1]);
+        const rad = engine.mm2cvs(2.0);
+        const tickLen = engine.mm2cvs(0.8);
+
+        ctx.save();
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.setLineDash([]);
+
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(cvsA.x, cvsA.y);
+        ctx.lineTo(cvsB.x, cvsB.y);
+        ctx.stroke();
+        
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#000000';
+        ctx.stroke();
+
+        const drawSingleTick = (center: { x: number; y: number }, u: { x: number; y: number }) => {
+          const T_pt = { x: center.x + rad * u.x, y: center.y + rad * u.y };
+          const perp = { x: -u.y, y: u.x };
+
+          ctx.lineWidth = 5;
+          ctx.strokeStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.moveTo(center.x, center.y);
+          ctx.lineTo(T_pt.x, T_pt.y);
+          ctx.stroke();
+
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = '#000000';
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(T_pt.x - perp.x * tickLen / 2, T_pt.y - perp.y * tickLen / 2);
+          ctx.lineTo(T_pt.x + perp.x * tickLen / 2, T_pt.y + perp.y * tickLen / 2);
+          ctx.stroke();
+        };
+
+        const vecAB = { x: b.P[0] - a.P[0], y: b.P[1] - a.P[1] };
+        const dotAa = a.uA.x * vecAB.x + a.uA.y * vecAB.y;
+        if (dotAa <= 0) drawSingleTick(cvsA, a.uA); else drawSingleTick(cvsA, a.uB);
+        a.branches.forEach(uC => drawSingleTick(cvsA, uC));
+
+        const vecBA = { x: a.P[0] - b.P[0], y: a.P[1] - b.P[1] };
+        const dotBa = b.uA.x * vecBA.x + b.uA.y * vecBA.y;
+        if (dotBa <= 0) drawSingleTick(cvsB, b.uA); else drawSingleTick(cvsB, b.uB);
+        b.branches.forEach(uC => drawSingleTick(cvsB, uC));
+
+        ctx.restore();
+      }
+    }
+
+    for (let i = 0; i < junctions.length; i++) {
+      if (usedInDouble.has(i)) continue;
+      const j = junctions[i];
+
+      ctx.save();
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.setLineDash([]);
+
+      const rad = engine.mm2cvs(2.0);
+      const tickLen = engine.mm2cvs(0.8);
+      const cvsP = engine.toCvs(j.P[0], j.P[1]);
+
+      const drawTick = (u: { x: number; y: number }) => {
+        const T_pt = { x: cvsP.x + rad * u.x, y: cvsP.y + rad * u.y };
+        const perp = { x: -u.y, y: u.x };
+
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.moveTo(cvsP.x, cvsP.y);
+        ctx.lineTo(T_pt.x, T_pt.y);
+        ctx.stroke();
+
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#000000';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(T_pt.x - perp.x * tickLen / 2, T_pt.y - perp.y * tickLen / 2);
+        ctx.lineTo(T_pt.x + perp.x * tickLen / 2, T_pt.y + perp.y * tickLen / 2);
+        ctx.stroke();
+      };
+
+      drawTick(j.uA);
+      drawTick(j.uB);
+      j.branches.forEach(uC => drawTick(uC));
+
+      ctx.restore();
+    }
   });
 }
 

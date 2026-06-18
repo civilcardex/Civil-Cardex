@@ -9,7 +9,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     const col = net ? net.col : '#e2e2e8';
     const c = engine.toCvs(b.x, b.y);
     const sel = b.id === engine.selId;
-    const r = Math.max(4, 4 * engine.zoom);
+    const r = Math.max(7, 7 * engine.zoom);
     const angle = (b.labelAngle || 0) * Math.PI / 180;
     b._circ = { x: c.x, y: c.y, r: Math.max(50, r + 10) };
 
@@ -69,45 +69,59 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.stroke();
 
-    if (b.net === 'san' && b.direccion) {
-      if (b.direccion === 'sube') {
-        ctx.fillStyle = b.tipo === 'bajante' ? '#F04545' : '#3B82F6';
-        ctx.beginPath();
-        ctx.arc(0, 0, r * 0.25, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } else if (b.tipo === 'bajante') {
+    const arrowCol = b.tipo === 'bajante' ? '#F04545' : '#3B82F6';
+    if (b.direccion === 'sube') {
+      ctx.fillStyle = arrowCol;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (b.direccion === 'baja') {
       const aS = r * 0.7;
-      ctx.strokeStyle = '#F04545';
+      ctx.strokeStyle = arrowCol;
       ctx.lineWidth = r * 0.15;
       ctx.lineCap = 'butt';
       ctx.beginPath();
       ctx.moveTo(0, -aS * 0.9);
       ctx.lineTo(0, aS * 0.5);
       ctx.stroke();
-      ctx.fillStyle = '#F04545';
+      ctx.fillStyle = arrowCol;
       ctx.beginPath();
       ctx.moveTo(0, aS * 0.9);
       ctx.lineTo(-aS * 0.4, aS * 0.3);
       ctx.lineTo(aS * 0.4, aS * 0.3);
       ctx.closePath();
       ctx.fill();
-    } else {
+    } else if (!b.direccion && !b.desplazamientos?.[engine.nivelActual?.label ?? '']) {
+      // Default fallback if no direction and no displacement:
+      // draw down arrow for bajante, up arrow for montante
       const aS = r * 0.7;
-      ctx.strokeStyle = '#3B82F6';
+      ctx.strokeStyle = arrowCol;
       ctx.lineWidth = r * 0.15;
       ctx.lineCap = 'butt';
       ctx.beginPath();
-      ctx.moveTo(0, aS * 0.9);
-      ctx.lineTo(0, -aS * 0.5);
-      ctx.stroke();
-      ctx.fillStyle = '#3B82F6';
-      ctx.beginPath();
-      ctx.moveTo(0, -aS * 0.9);
-      ctx.lineTo(-aS * 0.4, -aS * 0.3);
-      ctx.lineTo(aS * 0.4, -aS * 0.3);
-      ctx.closePath();
-      ctx.fill();
+      if (b.tipo === 'bajante') {
+        ctx.moveTo(0, -aS * 0.9);
+        ctx.lineTo(0, aS * 0.5);
+        ctx.stroke();
+        ctx.fillStyle = arrowCol;
+        ctx.beginPath();
+        ctx.moveTo(0, aS * 0.9);
+        ctx.lineTo(-aS * 0.4, aS * 0.3);
+        ctx.lineTo(aS * 0.4, aS * 0.3);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.moveTo(0, aS * 0.9);
+        ctx.lineTo(0, -aS * 0.5);
+        ctx.stroke();
+        ctx.fillStyle = arrowCol;
+        ctx.beginPath();
+        ctx.moveTo(0, -aS * 0.9);
+        ctx.lineTo(-aS * 0.4, -aS * 0.3);
+        ctx.lineTo(aS * 0.4, -aS * 0.3);
+        ctx.closePath();
+        ctx.fill();
+      }
     }
 
     // Yellow selection arrow (same style as ramales)
@@ -144,8 +158,8 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
 
       ctx.save();
       ctx.translate(offDx, offDy);
-      const fsCode = engine.mm2cvs(engine.MM.lblCode * engine.labelScaleM);
-      const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM);
+      const fsCode = engine.mm2cvs(engine.MM.lblCode * engine.labelScaleM * 1.35);
+      const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35);
       const lineH = fsCode + 2;
       
       const codeStr = (b.code || '').replace(/#/g, '');
@@ -168,8 +182,11 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       }
       const line1 = diamStr ? `${codeStr}  ${diamStr}` : (codeStr || '—');
       
-      // Direction line for sanitary
-      const dirText = b.net === 'san' && b.direccion === 'sube' ? 'Sube' : b.net === 'san' && b.direccion === 'baja' ? 'Baja' : '';
+      // Direction line
+      let dirText = b.direccion === 'sube' ? 'Sube' : b.direccion === 'baja' ? 'Baja' : '';
+      if (b.desplazamientos && engine.nivelActual?.label !== undefined && b.desplazamientos[engine.nivelActual.label]) {
+        dirText = 'Desplaz.';
+      }
       const hasDir = !!dirText;
       
       ctx.font = `bold ${fsCode}px Geist, monospace`;
@@ -228,7 +245,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const gx = b.x + (disp ? disp.dx : 0);
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
-    const r = Math.max(5, 5 * engine.zoom);
+    const r = Math.max(8, 8 * engine.zoom);
     b._ghost = { x: c.x, y: c.y, r: Math.max(40, r + 10) };
 
     ctx.save();
@@ -240,10 +257,24 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
     ctx.stroke();
     ctx.fillStyle = col;
-    ctx.font = `${engine.mm2cvs(engine.MM.flowEmoji * engine.labelScaleM)}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(b.tipo === 'bajante' ? '⬇' : '⬆', c.x, c.y);
+    let ghostSymbol = '';
+    if (b.direccion === 'sube') ghostSymbol = '•';
+    else if (b.direccion === 'baja') ghostSymbol = '⬇';
+    else if (!b.direccion && b.desplazamientos?.[engine.nivelActual?.label ?? '']) ghostSymbol = '';
+    else ghostSymbol = b.tipo === 'bajante' ? '⬇' : '⬆';
+
+    if (ghostSymbol) {
+      ctx.font = `${engine.mm2cvs(engine.MM.flowEmoji * engine.labelScaleM)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      if (ghostSymbol === '•') {
+         ctx.beginPath();
+         ctx.arc(c.x, c.y, r * 0.25, 0, Math.PI * 2);
+         ctx.fill();
+      } else {
+         ctx.fillText(ghostSymbol, c.x, c.y);
+      }
+    }
     ctx.setLineDash([]);
     ctx.restore();
 

@@ -170,11 +170,24 @@ export function deleteSelected(engine: IPlanoEngineCore): void {
     return;
   }
   const idxB = engine.bajantes.findIndex((b: any) => b.id === engine.selId);
-  if (idxB >= 0) { engine.bajantes.splice(idxB, 1); engine.selId = null; engine._emitSelect(null); engine.render(); engine._markDirty(); return; }
+  if (idxB >= 0) { 
+    const deleted = engine.bajantes[idxB];
+    engine.bajantes.splice(idxB, 1); 
+    if ((deleted as any).tipo === 'bajante') {
+      engine._renumberBajantes((deleted as any).net);
+    } else if ((deleted as any).tipo === 'montante') {
+      engine._renumberMontantes();
+    }
+    engine.selId = null; engine._emitSelect(null); engine.render(); engine._markDirty(); return; 
+  }
   const idxT = engine.textAnnots.findIndex((t: any) => t.id === engine.selId);
   if (idxT >= 0) { engine.textAnnots.splice(idxT, 1); engine.selId = null; engine._emitSelect(null); engine.render(); engine._markDirty(); return; }
   const idxA = engine.areas.findIndex((a: any) => a.id === engine.selId);
-  if (idxA >= 0) { engine.areas.splice(idxA, 1); engine.selId = null; engine._emitSelect(null); engine.render(); engine._markDirty(); return; }
+  if (idxA >= 0) { 
+    engine.areas.splice(idxA, 1); 
+    engine._renumberAreas();
+    engine.selId = null; engine._emitSelect(null); engine.render(); engine._markDirty(); return; 
+  }
   const idxD = engine.dims.findIndex((d: any) => d.id === engine.selId);
   if (idxD >= 0) { engine.dims.splice(idxD, 1); engine.selId = null; engine._emitSelect(null); engine.render(); engine._markDirty(); return; }
 }
@@ -186,7 +199,9 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number)
     const circ = (sel as any)._circ!;
     const d = Math.hypot(x - circ.x, y - circ.y);
     if (d < circ.r) {
-      engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
+      if (!(sel as any).isFantasma) {
+        engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
+      }
       return;
     }
   }
@@ -321,9 +336,9 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number)
   }
 
   const fg = engine.getBajantesFantasma() as any[];
-  let gFound: any = null, gMin = 16;
+  let gFound: any = null, gMin = Infinity;
   fg.forEach(b => {
-    if (b._ghost) {
+    if (b._ghost && b.isFantasma) {
       const d = Math.hypot(x - b._ghost.x, y - b._ghost.y);
       if (d < b._ghost.r && d < gMin) { gMin = d; gFound = b; }
     }
@@ -357,17 +372,40 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       }
       if (!(b as any).desplazamientos) (b as any).desplazamientos = {};
       const oldD = (b as any).desplazamientos[engine.nivelActual.label ?? ''];
+      const oldGx = b.x + (oldD ? oldD.dx : 0);
+      const oldGy = b.y + (oldD ? oldD.dy : 0);
+      
       const lDesvio = oldD ? oldD.Ldesvio : null;
       (b as any).desplazamientos[engine.nivelActual.label ?? ''] = { dx, dy, Ldesvio: lDesvio };
       
+      const newGx = b.x + dx;
+      const newGy = b.y + dy;
+      const diffGx = newGx - oldGx;
+      const diffGy = newGy - oldGy;
+
       if (lDesvio) {
         const r = engine.ramales.find((rr: any) => rr.id === lDesvio);
         if (r) {
           r.pts[0] = [b.x, b.y];
-          r.pts[r.pts.length - 1] = [b.x + dx, b.y + dy];
+          r.pts[r.pts.length - 1] = [newGx, newGy];
           r.totalL = calculateRamalLength(r.pts, engine);
         }
       }
+      
+      // Update other connected ramales to the phantom
+      engine.ramales.forEach((r: any) => {
+        if (r.id !== lDesvio && r.pts && r.pts.length > 0) {
+          let changed = false;
+          if (Math.hypot(r.pts[0][0] - oldGx, r.pts[0][1] - oldGy) < 1) {
+            r.pts[0][0] += diffGx; r.pts[0][1] += diffGy; changed = true;
+          }
+          const lastIdx = r.pts.length - 1;
+          if (Math.hypot(r.pts[lastIdx][0] - oldGx, r.pts[lastIdx][1] - oldGy) < 1) {
+            r.pts[lastIdx][0] += diffGx; r.pts[lastIdx][1] += diffGy; changed = true;
+          }
+          if (changed) r.totalL = calculateRamalLength(r.pts, engine);
+        }
+      });
       
       engine.render();
     }
@@ -379,10 +417,38 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const p = engine.toPlane(x - engine.bajDrag.offX, y - engine.bajDrag.offY);
       const dx = p.x - b.x;
       const dy = p.y - b.y;
+      const oldX = b.x;
+      const oldY = b.y;
+      const desp = (b as any).desplazamientos?.[engine.nivelActual?.label ?? ''];
+      const oldGx = desp ? oldX + desp.dx : oldX;
+      const oldGy = desp ? oldY + desp.dy : oldY;
+
       (b as any).x = p.x;
       (b as any).y = p.y;
       (b as any).labelX = ((b as any).labelX || 0) + dx;
       (b as any).labelY = ((b as any).labelY || 0) + dy;
+      
+      // Update connected ramales
+      engine.ramales.forEach((r: any) => {
+        if (r.pts && r.pts.length > 0) {
+          let changed = false;
+          if (Math.hypot(r.pts[0][0] - oldX, r.pts[0][1] - oldY) < 1) {
+            r.pts[0][0] += dx; r.pts[0][1] += dy; changed = true;
+          } else if (desp && Math.hypot(r.pts[0][0] - oldGx, r.pts[0][1] - oldGy) < 1) {
+            r.pts[0][0] += dx; r.pts[0][1] += dy; changed = true;
+          }
+          
+          const lastIdx = r.pts.length - 1;
+          if (Math.hypot(r.pts[lastIdx][0] - oldX, r.pts[lastIdx][1] - oldY) < 1) {
+            r.pts[lastIdx][0] += dx; r.pts[lastIdx][1] += dy; changed = true;
+          } else if (desp && Math.hypot(r.pts[lastIdx][0] - oldGx, r.pts[lastIdx][1] - oldGy) < 1) {
+            r.pts[lastIdx][0] += dx; r.pts[lastIdx][1] += dy; changed = true;
+          }
+          
+          if (changed) r.totalL = calculateRamalLength(r.pts, engine);
+        }
+      });
+      
       engine.render();
     }
     return;

@@ -70,6 +70,9 @@ export interface IPlanoEngineCore {
   _markDirty(): void;
   _statusMsg(): string;
   _renumberRamales(netId: string): void;
+  _renumberBajantes(netId: string): void;
+  _renumberMontantes(): void;
+  _renumberAreas(): void;
   selectAt(cx: number, cy: number): void;
   getSelected(): PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null;
   deleteSelected(): void;

@@ -117,6 +117,8 @@ export function setRamalDefaults(engine: IPlanoEngineCore, d: Partial<{ material
 export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
   if (!engine.nivelActual) return [];
   return engine.bajantes.filter(b => {
+    if ((b as any).isFantasma) return true;
+    if (b.desplazamientos && b.desplazamientos[engine.nivelActual!.label]) return true;
     const base = Math.min(b.nptBase || 0, b.nptCima || 0);
     const cima = Math.max(b.nptBase || 0, b.nptCima || 0);
     const npt = engine.nivelActual!.npt || 0;
@@ -163,4 +165,45 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
   });
   engine._netCounts[netId].ramal = ramalesNet.length;
   try { window.dispatchEvent(new Event('storage')); } catch (_) {}
+}
+
+export function _renumberBajantes(engine: IPlanoEngineCore, netId: string): void {
+  const net = NETS.find(n => n.id === netId);
+  const pfx = net ? net.bmPfx : 'BAJ';
+  const bajantesNet = engine.bajantes.filter(b => b.tipo === 'bajante' && b.net === netId);
+  bajantesNet.sort((a, b) => {
+    const na = parseInt((a.id || '').replace(pfx, ''), 10) || 0;
+    const nb = parseInt((b.id || '').replace(pfx, ''), 10) || 0;
+    return na - nb;
+  });
+  bajantesNet.forEach((b, i) => {
+    const newId = pfx + (i + 1);
+    b.id = newId;
+    b.code = newId;
+  });
+}
+
+export function _renumberMontantes(engine: IPlanoEngineCore): void {
+  const montantes = engine.bajantes.filter(b => b.tipo === 'montante');
+  montantes.sort((a, b) => {
+    const na = parseInt((a.id || '').replace('MON', ''), 10) || 0;
+    const nb = parseInt((b.id || '').replace('MON', ''), 10) || 0;
+    return na - nb;
+  });
+  montantes.forEach((b, i) => {
+    const newId = 'MON' + (i + 1);
+    b.id = newId;
+    b.code = newId;
+  });
+}
+
+export function _renumberAreas(engine: IPlanoEngineCore): void {
+  engine.areas.sort((a, b) => {
+    const na = parseInt((a.id || '').replace('AR', ''), 10) || parseInt((a.label || '').replace('AREA', ''), 10) || 0;
+    const nb = parseInt((b.id || '').replace('AR', ''), 10) || parseInt((b.label || '').replace('AREA', ''), 10) || 0;
+    return na - nb;
+  });
+  engine.areas.forEach((a, i) => {
+    a.label = 'AREA' + (i + 1);
+  });
 }
