@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import * as pdfjsLib from "pdfjs-dist";
+import { getPdfjs } from "../../utils/lazyPdfjs";
 import PlanoEngine from "../../lib/PlanoEngine";
 import { saveToStorage, saveTrazosToDB } from "../../services/storageService";
 
@@ -185,6 +185,7 @@ export function usePdfViewerEngine({
         setLoading(true);
         setError(null);
         const buffer = reader.result as ArrayBuffer;
+        const pdfjsLib = await getPdfjs();
         const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
         if (thisMount !== mountId.current) return;
         pdfDocRef.current = pdf;

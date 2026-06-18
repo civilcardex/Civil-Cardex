@@ -1,12 +1,9 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
-import * as pdfjsLib from "pdfjs-dist";
-import pdfjsWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { getPdfjs } from "../../utils/lazyPdfjs";
 import { NETS } from "../../lib/PlanoEngine";
 import { TRAZOS_PREFIX } from "../../constants/storage-keys";
 import { loadFromStorage } from "../../services/storageService";
 import { loadPDF } from "../../services/idbStorage";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 interface ProjPt { sx: number; sy: number }
 
@@ -59,6 +56,7 @@ async function loadPlanImage(plan: any): Promise<{ nivel: number; img: HTMLCanva
     const file = await loadPDF(plan.id);
     if (!file) return null;
     const buf = await file.arrayBuffer();
+    const pdfjsLib = await getPdfjs();
     const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
     const page = await pdf.getPage(1);
     const vp = page.getViewport({ scale: 1.5 });

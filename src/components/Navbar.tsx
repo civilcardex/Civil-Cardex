@@ -46,7 +46,7 @@ function Navbar() {
         </Link>
         <div className="hidden md:flex gap-4 items-center h-full">
           {navLinks.map(l => (
-            <Link key={l.to} to={l.to} className={path === l.to ? active : inactive} style={{ fontFamily: 'Geist, monospace' }}>{l.label}</Link>
+            <Link key={l.to} to={l.to} className={path === l.to ? active : inactive} aria-current={path === l.to ? 'page' : undefined} style={{ fontFamily: 'Geist, monospace' }}>{l.label}</Link>
           ))}
         </div>
       </div>
@@ -78,7 +78,7 @@ function Navbar() {
         <div className="absolute top-14 left-0 right-0 border-b border-outline-variant md:hidden"
           style={{ background: '#111317' }}>
           {navLinks.map(l => (
-            <Link key={l.to} to={l.to}
+            <Link key={l.to} to={l.to} aria-current={path === l.to ? 'page' : undefined}
               className={`block px-6 py-3 text-xs tracking-[0.08em] font-bold uppercase border-b border-outline-variant ${path === l.to ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}
               style={{ fontFamily: 'Geist, monospace' }}>
               {l.label}

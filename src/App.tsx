@@ -30,7 +30,13 @@ function App() {
   return (
     <AppProviders>
       <ErrorBoundary>
-        <div className="min-h-screen bg-surface-bg text-on-surface font-sans">
+        <a href="#app-content" className="skip-link"
+          style={{ position: 'absolute', left: '-9999px', zIndex: 9999 }}
+          onFocus={(e) => { e.currentTarget.style.left = '16px'; e.currentTarget.style.top = '16px'; }}
+          onBlur={(e) => { e.currentTarget.style.left = '-9999px'; }}>
+          Saltar al contenido principal
+        </a>
+        <div id="app-content" className="min-h-screen bg-surface-bg text-on-surface font-sans" role="main">
           <Routes>
             {/* Rutas públicas ligeras */}
             <Route path="/" element={<LandingPage />} />
