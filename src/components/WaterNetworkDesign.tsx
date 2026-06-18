@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
@@ -20,7 +20,7 @@ interface WaterNetworkDesignProps {
 
 const isAf = (t: string) => t === 'af';
 
-export default function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDesignProps) {
+function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDesignProps) {
   const { tramosAf, tramosAc, updTramoAf, updTramoAc, delTramoAf, delTramoAc } = useTramos();
   const { proy } = useProject();
   const { plans } = usePlans();
@@ -117,10 +117,10 @@ export default function WaterNetworkDesign({ networkType, diamTable, lookupFn }:
     return s;
   }, [tramos, propiaMap]);
 
-  const Qaco = ucTotal > 0
+  const Qaco = useMemo(() => ucTotal > 0
     ? Math.round((0.1163 * Math.pow(ucTotal, 0.6875)) * 1000) / 1000
-    : 0;
-  const sqrtQaco = Qaco > 0 ? Math.round(Math.sqrt(Qaco) * 100) / 100 : 0;
+    : 0, [ucTotal]);
+  const sqrtQaco = useMemo(() => Qaco > 0 ? Math.round(Math.sqrt(Qaco) * 100) / 100 : 0, [Qaco]);
 
   const calcFila = (pulg: number, h: number, v: number, le: number, pIn: number) => {
     const dInt: number = pulg > 0 ? ((diamTable.find(d => Math.abs(d.pulg - pulg) < 0.01) || {}).dInt || 0) : 0;
@@ -317,3 +317,4 @@ export default function WaterNetworkDesign({ networkType, diamTable, lookupFn }:
     </>
   );
 }
+export default React.memo(WaterNetworkDesign);

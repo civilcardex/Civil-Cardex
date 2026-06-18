@@ -26,4 +26,4 @@ function PageNav({ page, setPage, total, labels, color }: PageNavProps) {
   );
 }
 
-export default PageNav;
+export default React.memo(PageNav);

@@ -1,10 +1,11 @@
+import React from "react";
 import { useTramos } from "../context/TramosContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { calcUDparcial, calcUDacumulado } from "../utils/componentHelpers";
 import { pisoCorto, APARATOS_DEF, SAN_UC_IDS } from "../constants";
 import { getTributarioIds } from "../utils/tramoUtils";
 
-export default function CalculoUD() {
+function CalculoUD() {
 const { tramosSan, updTramoSan } = useTramos();
 const { aps } = useApparatus();
 const mergedBase = SAN_UC_IDS.map(id => {
@@ -112,5 +113,6 @@ const acum=acumMap[t.id]||0;
     </div>
   </div>
 </>
-);
+  );
 }
+export default React.memo(CalculoUD);

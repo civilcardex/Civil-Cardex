@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import type { ChangeEvent, FocusEvent } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useProject } from "../context/ProjectContext";
@@ -113,25 +113,25 @@ export function useWorkAreaState() {
     setAlertMsg(null);
   };
 
-  const onIntChange = (setter: (v: string) => void) => (e: ChangeEvent<HTMLInputElement>) => {
+  const onIntChange = useCallback((setter: (v: string) => void) => (e: ChangeEvent<HTMLInputElement>) => {
     const onlyDigits = e.target.value.replace(/[^\d]/g, '');
     setter(onlyDigits);
-  };
-  const onIntBlur = (setter: (v: string) => void) => (e: FocusEvent<HTMLInputElement>) => {
+  }, []);
+  const onIntBlur = useCallback((setter: (v: string) => void) => (e: FocusEvent<HTMLInputElement>) => {
     const v = parseIntInput(e.target.value);
     if (v !== null) setter(String(v));
-  };
-  const onDecChange = (setter: (v: string) => void) => (e: ChangeEvent<HTMLInputElement>) => {
+  }, []);
+  const onDecChange = useCallback((setter: (v: string) => void) => (e: ChangeEvent<HTMLInputElement>) => {
     const normalized = e.target.value.replace(/,/g, '.');
     setter(normalized);
-  };
-  const onDecBlur = (setter: (v: string) => void) => (e: FocusEvent<HTMLInputElement>) => {
+  }, []);
+  const onDecBlur = useCallback((setter: (v: string) => void) => (e: FocusEvent<HTMLInputElement>) => {
     const v = parseDecimalInput(e.target.value);
     if (v !== null) {
       const s = String(v);
       setter(s);
     }
-  };
+  }, []);
 
   const delPiso = (id: string | number) => projectCtx.setPisos((prev: any[]) => prev.filter(p => p.id !== id));
 

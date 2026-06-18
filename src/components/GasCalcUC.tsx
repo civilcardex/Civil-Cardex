@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { usePlans } from "../context/PlansContext";
 import { APARATOS_DEF } from "../constants";
 import { loadFromStorage } from "../services/storageService";
@@ -17,7 +17,7 @@ const ABREV = {
   sauna: "SAU", turco: "TUR",
 };
 
-export default function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRel: string }) {
+function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRel: string }) {
   const { plans } = usePlans();
 
   const { tramos, totalByAp, tramoTotals, tramoAppCounts } = useMemo(() => {
@@ -219,3 +219,4 @@ export default function GasCalcUC({ patm, temp, densRel }: { patm: string; temp:
     </div>
   </>);
 }
+export default React.memo(GasCalcUC);

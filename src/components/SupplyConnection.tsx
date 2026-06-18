@@ -1,3 +1,4 @@
+import React from "react";
 import { COEF_HAZEN_PVC } from "../utils/calcHydraulics";
 
 const C = COEF_HAZEN_PVC;
@@ -57,7 +58,7 @@ interface AcometidaProps {
   AF_DIAM_OPTS: DiamOpt[];
 }
 
-export default function Acometida({
+function Acometida({
   Qaco, sqrtQaco,
   acoMonName, setAcoMonName,
   acoRedContDiam, setAcoRedContDiam,
@@ -209,3 +210,4 @@ export default function Acometida({
     </div>
   );
 }
+export default React.memo(Acometida);

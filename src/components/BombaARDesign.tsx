@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { dec } from "../utils/parseDecimal";
 import PageNav from './PageNav';
 import { SI, TH, TD } from "../styles/sharedTableStyles";
@@ -38,7 +38,7 @@ function Tbl({cols,rows,th,td,tdl,fontSize,center,valueCol}: {cols: string[]; ro
 }
 
 
-export default function BombaARDesign(){
+function BombaARDesign(){
   const [bp,setBp]=useState(1);
   const [salSim,setSalSim]=useState('');
   const [udTot,setUdTot]=useState('');
@@ -217,3 +217,4 @@ export default function BombaARDesign(){
     </div>
   );
 }
+export default React.memo(BombaARDesign);

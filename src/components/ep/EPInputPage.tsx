@@ -5,7 +5,7 @@ import Tbl from "../shared/Tbl";
 import { LazyInp, Fmt, SI, Param, Comment, FLEX_COL } from "./EPShared";
 import { dec } from "../../utils/parseDecimal";
 
-export default function EPInputPage() {
+function EPInputPage() {
   const { ep, updEP } = useEP();
 
   const qac = dec(ep.qac), qasc = dec(ep.qasc);
@@ -107,3 +107,4 @@ export default function EPInputPage() {
     </div>
   );
 }
+export default React.memo(EPInputPage);

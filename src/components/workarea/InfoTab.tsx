@@ -1,3 +1,4 @@
+import React from "react";
 import type { Dispatch, SetStateAction, ChangeEvent, FocusEvent } from "react";
 import { REDES, USOS, pisoLbl } from "../../constants";
 import type { useWorkAreaState } from "../useWorkAreaState";
@@ -229,7 +230,7 @@ function UsageGuideCard() {
   );
 }
 
-export default function InfoTab({ state }: InfoTabProps) {
+function InfoTab({ state }: InfoTabProps) {
   const {
     proy, setP,
     redes, setRedes, netColors, setNetColors,
@@ -272,3 +273,4 @@ export default function InfoTab({ state }: InfoTabProps) {
     </div>
   );
 }
+export default React.memo(InfoTab);

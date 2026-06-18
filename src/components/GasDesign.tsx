@@ -46,7 +46,7 @@ function computeQDiseno(plans: any[]) {
   return renouardByType(totalByAp);
 }
 
-export default function GasDesign(){
+function GasDesign(){
   const [gp,setGp]=useState(1);
   const [alt,setAlt]=useState('959');
   const [patm,setPatm]=useState('90.32');
@@ -187,7 +187,7 @@ export default function GasDesign(){
   const COLS=['Tramo','Piso','Inicio','Fin','Diseño (pulg)','Interno mm','Coef. K','Longitud (m)'];
   const colW=['8%','5%','8%','8%','18%','10%','8%','12%'];
 
-  const page1=<>
+  const page1 = useMemo(()=><>
     <div className="card" style={{flexShrink:0,alignSelf:'center'}}>
       <div className="card-h" style={{padding:'6px 12px'}}>
         <span className="card-t">
@@ -215,11 +215,11 @@ export default function GasDesign(){
             </table>
         </div>
       </div>
-  </>;
-
+  </>, [alt, patm, temp, pmin, densRel]);
+  
   const page2=<GasCalcUC patm={patm} temp={temp} densRel={densRel} />;
 
-  const page3=<>
+  const page3 = useMemo(()=><>
     <div style={{display:'flex',flexDirection:'column',gap:6,flex:1,minHeight:0}}>
       <div className="card" style={{display:'flex',flexDirection:'column'}}>
         <div className="card-h" style={{justifyContent:'space-between'}}>
@@ -352,8 +352,8 @@ export default function GasDesign(){
         </div>
       </div>
     </div>
-  </>;
-
+  </>, [checkRows, gasTramos, diamInt, diamK, gasAcc, handleDelete, getAcc]);
+  
   return(
     <div className="fu" style={{display:'flex',flexDirection:'column',gap:6,flex:1,minHeight:0}}>
       <PageNav page={gp} setPage={setGp} total={3} color="var(--gas)"
@@ -364,3 +364,4 @@ export default function GasDesign(){
     </div>
   );
 }
+export default React.memo(GasDesign);

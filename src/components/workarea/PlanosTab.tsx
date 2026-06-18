@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { useNavigate } from 'react-router-dom';
 import { saveTrazosToDB, loadFromStorage, saveToStorage } from "../../services/storageService";
 import { TRAZOS_PREFIX } from "../../constants/storage-keys";
@@ -21,7 +21,7 @@ interface CalibrationData {
   calGlobal: boolean | null;
 }
 
-export default function PlanosTab({ state }: PlanosTabProps) {
+function PlanosTab({ state }: PlanosTabProps) {
   const {
     plans, addPlans, removePlan, updatePlan, confirmPlan,
     planDrag, setPlanDrag,
@@ -456,3 +456,4 @@ export default function PlanosTab({ state }: PlanosTabProps) {
     </div>
   );
 }
+export default React.memo(PlanosTab);

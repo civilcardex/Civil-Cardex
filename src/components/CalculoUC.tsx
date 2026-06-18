@@ -1,3 +1,4 @@
+import React from "react";
 import { useTramos } from "../context/TramosContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, pisoCorto } from "../constants";
@@ -11,7 +12,7 @@ const monof = "'Courier New',Courier,monospace";
 const txt2 = '#94a3b8';
 const txt = '#e2e8f0';
 
-export default function CalculoUC({ tipo }: CalculoUCProps) {
+function CalculoUC({ tipo }: CalculoUCProps) {
   const { tramosAf, tramosAc } = useTramos();
   const { aps } = useApparatus();
   const tramos = tipo === 'af' ? tramosAf : tramosAc;
@@ -155,3 +156,4 @@ export default function CalculoUC({ tipo }: CalculoUCProps) {
     </>
   );
 }
+export default React.memo(CalculoUC);
