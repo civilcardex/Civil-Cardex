@@ -77,8 +77,24 @@ export default function IsometriaTab({ state }: any) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ mode: 'rot' | 'pan'; sx: number; sy: number; rx0: number; rz0: number; ox0: number; oy0: number } | null>(null);
 
-  const [activeNet, setActiveNet] = useState('san');
-  const [rotX, setRotX] = useState(-25);
+  const [activeNet, setActiveNet] = useState(() => {
+    if (!state.plans) return 'san';
+    for (const n of NETS) {
+      let hasData = false;
+      for (const plan of state.plans) {
+        const raw = localStorage.getItem(TRAZOS_PREFIX + plan.id);
+        if (raw) {
+          try {
+            const data = JSON.parse(raw);
+            if ((data.ramales || []).some((r: any) => r.net === n.id)) hasData = true;
+            if ((data.bajantes || []).some((b: any) => b.net === n.id)) hasData = true;
+          } catch {}
+        }
+      }
+      if (hasData) return n.id;
+    }
+  });
+  const [rotX, setRotX] = useState(-45);
   const [rotZ, setRotZ] = useState(45);
   const [scaleZ, setScaleZ] = useState(1);
   const [zoom, setZoom] = useState(1);
@@ -137,6 +153,12 @@ export default function IsometriaTab({ state }: any) {
   }, [plans]);
 
   const confirmedPlanos = useMemo(() => (plans || []).filter((p: any) => p.status === 'confirmed' && p.nivel != null), [plans]);
+
+  useEffect(() => {
+    if (populatedNets.length > 0 && !populatedNets.includes(activeNet)) {
+      setActiveNet(populatedNets[0]);
+    }
+  }, [populatedNets, activeNet]);
 
   const getIsoCoords = useCallback((px: number, py: number, nivel: number) => {
     const plan = confirmedPlanos.find((p: any) => p.nivel !== null && String(p.nivel) === String(nivel));
@@ -247,7 +269,7 @@ export default function IsometriaTab({ state }: any) {
       }
     }
 
-    if (pts.length === 0) return;
+    if (pts.length === 0) return false;
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const p of pts) {
       if (p.sx < minX) minX = p.sx;
@@ -258,15 +280,20 @@ export default function IsometriaTab({ state }: any) {
     const bw = maxX - minX || 1, bh = maxY - minY || 1;
     const pad = 60;
     const newZoom = Math.min((W - pad * 2) / bw, (H - pad * 2) / bh) * zoom;
-    const newOffX = (W / 2 - (minX + maxX) / 2) / (zoom || 1) * zoom;
-    const newOffY = (H / 2 - (minY + maxY) / 2) / (zoom || 1) * zoom;
+    const cx_screen = (minX + maxX) / 2;
+    const cy_screen = (minY + maxY) / 2;
+    const cx_unzoomed = (cx_screen - offX - W / 2) / zoom;
+    const cy_unzoomed = (cy_screen - offY - H / 2) / zoom;
+    const newOffX = -cx_unzoomed * newZoom;
+    const newOffY = -cy_unzoomed * newZoom;
     setZoom(Math.max(0.1, Math.min(10, newZoom)));
     setOffX(newOffX);
     setOffY(newOffY);
+    return true;
   }, [data, nptMap, rotZ, rotX, scaleZ, zoom, offX, offY, size, showPlanos, confirmedPlanos, getIsoCoords, getZPix]);
 
   const resetView = useCallback(() => {
-    setRotX(-25); setRotZ(45); setScaleZ(1); setZoom(1); setOffX(0); setOffY(0);
+    setRotX(-45); setRotZ(45); setScaleZ(1); setZoom(1); setOffX(0); setOffY(0);
   }, []);
 
   useEffect(() => {
@@ -284,14 +311,6 @@ export default function IsometriaTab({ state }: any) {
     ctx.fillRect(0, 0, W, H);
 
     const cx = W / 2, cy = H / 2;
-
-    if (data.ramales.length === 0 && data.bajantes.length === 0) {
-      ctx.fillStyle = '#5a6a6b';
-      ctx.font = '14px Geist,monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('No hay datos para la red ' + (NETS.find(n => n.id === activeNet)?.name || activeNet), cx, cy);
-      return;
-    }
 
     const segments: { sx1: number; sy1: number; sx2: number; sy2: number; z: number; id: string; label: string; isBaj: boolean }[] = [];
 
@@ -564,8 +583,22 @@ export default function IsometriaTab({ state }: any) {
     if (!canvas) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+
       const factor = e.deltaY > 0 ? 0.9 : 1.1;
-      setZoom(z => Math.max(0.05, Math.min(20, z * factor)));
+      setZoom(z => {
+        const newZ = Math.max(0.05, Math.min(20, z * factor));
+        const actF = newZ / z;
+        if (actF !== 1) {
+          setOffX(ox => (mx - cx) - (mx - ox - cx) * actF);
+          setOffY(oy => (my - cy) - (my - oy - cy) * actF);
+        }
+        return newZ;
+      });
     };
     canvas.addEventListener('wheel', onWheel, { passive: false });
     return () => canvas.removeEventListener('wheel', onWheel);
@@ -573,12 +606,16 @@ export default function IsometriaTab({ state }: any) {
 
   const fittedRef = useRef(false);
   useEffect(() => {
-    if (!fittedRef.current && (data.ramales.length > 0 || data.bajantes.length > 0)) {
-      fittedRef.current = true;
-      const t = setTimeout(fitView, 100);
+    if (!fittedRef.current && (data.ramales.length > 0 || data.bajantes.length > 0 || (showPlanos && planImagesRef.current.size > 0))) {
+      if (showPlanos && confirmedPlanos.length > 0 && planImagesRef.current.size === 0) return; // wait for plans
+      const t = setTimeout(() => {
+        if (fitView()) {
+          fittedRef.current = true;
+        }
+      }, 100);
       return () => clearTimeout(t);
     }
-  }, [data]);
+  }, [data, showPlanos, confirmedPlanos.length, renderTick, fitView]);
 
   const tramoList = useMemo(() => {
     const items: { id: string; label: string; type: 'ramal' | 'bajante'; extra: string; nivel: number; selKey: string }[] = [];
@@ -635,11 +672,17 @@ export default function IsometriaTab({ state }: any) {
         <div style={{ flex: 1 }} />
 
         <label style={{ fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
-          Giro vertical <input type="range" min={-90} max={90} value={rotX} onChange={e => setRotX(Number(e.target.value))} style={{ width: 60 }} />
+          Giro vertical 
+          <button onClick={() => setRotX(-30)} style={{ padding: '2px 4px', fontSize: 9, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotX === -30 ? '#4D8FF7' : '#1e2024', color: rotX === -30 ? '#fff' : '#b9caca' }}>-30°</button>
+          <button onClick={() => setRotX(-45)} style={{ padding: '2px 4px', fontSize: 9, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotX === -45 ? '#4D8FF7' : '#1e2024', color: rotX === -45 ? '#fff' : '#b9caca' }}>-45°</button>
+          <input type="range" min={-90} max={90} value={rotX} onChange={e => setRotX(Number(e.target.value))} style={{ width: 60 }} />
           <span style={{ width: 28, textAlign: 'right' }}>{rotX}°</span>
         </label>
         <label style={{ fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
-          Giro horizontal <input type="range" min={0} max={360} value={rotZ} onChange={e => setRotZ(Number(e.target.value))} style={{ width: 60 }} />
+          Giro horizontal 
+          <button onClick={() => setRotZ(30)} style={{ padding: '2px 4px', fontSize: 9, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotZ === 30 ? '#4D8FF7' : '#1e2024', color: rotZ === 30 ? '#fff' : '#b9caca' }}>30°</button>
+          <button onClick={() => setRotZ(45)} style={{ padding: '2px 4px', fontSize: 9, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotZ === 45 ? '#4D8FF7' : '#1e2024', color: rotZ === 45 ? '#fff' : '#b9caca' }}>45°</button>
+          <input type="range" min={0} max={360} value={rotZ} onChange={e => setRotZ(Number(e.target.value))} style={{ width: 60 }} />
           <span style={{ width: 32, textAlign: 'right' }}>{rotZ}°</span>
         </label>
         <label style={{ fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
