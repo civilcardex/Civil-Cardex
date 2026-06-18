@@ -66,15 +66,21 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
     });
   };
 
+  const [isEditingMateriales, setIsEditingMateriales] = React.useState(false);
+  const [isEditingAparatos, setIsEditingAparatos] = React.useState(false);
+
   return (
     <div className="fu bd-section" style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden' }}>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.05fr 1fr', gap: 10, flex: 1, minHeight: 0, alignItems: 'start' }}>
 
         <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
-            <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/materiales_por_red.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Materiales por red</span>
-            <span className="card-s" style={{ fontSize: 10 }}>{activeRedes.length} redes activas</span>
+          <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+            <span className="card-t" style={{fontSize:13, display: 'flex', alignItems: 'center'}}><img src="/iconos_parametros_de_diseno/materiales_por_red.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Materiales por red</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="card-s" style={{ fontSize: 10 }}>{activeRedes.length} redes activas</span>
+              <button onClick={() => setIsEditingMateriales(!isEditingMateriales)} style={{ background: isEditingMateriales ? 'var(--acc)' : 'transparent', color: isEditingMateriales ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>{isEditingMateriales ? 'LISTO' : 'EDITAR'}</button>
+            </div>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
             <table className="tbl" style={{ fontSize: 12 }}>
@@ -104,11 +110,13 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                           <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, color: 'var(--txt)' }}>{r.mat}</span>
                         ) : (
                           <select
+                            disabled={!isEditingMateriales}
                             style={{
                               width: '100%', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600,
                               color: 'var(--txt2)',
                               border: 'none',
-                              padding: '2px 4px', cursor: 'pointer', background: 'transparent',
+                              padding: '2px 4px', cursor: isEditingMateriales ? 'pointer' : 'default', background: 'transparent',
+                              opacity: isEditingMateriales ? 1 : 0.7
                             }}
                             value={r.matSel}
                             onChange={e => setMatSel(r.id, e.target.value)}>
@@ -119,8 +127,8 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                         )}
                       </td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                          <input type="text" inputMode="decimal" className="ni"
-                          style={{ width: 65, padding: '2px 4px', fontSize: 11, textAlign: 'center', color: 'var(--txt)' }}
+                          <input type="text" disabled={!isEditingMateriales} inputMode="decimal" className="ni"
+                          style={{ width: 65, padding: '2px 4px', fontSize: 11, textAlign: 'center', color: 'var(--txt)', opacity: isEditingMateriales ? 1 : 0.7 }}
                           value={profTexts[r.id] !== undefined ? profTexts[r.id] : (r.prof !== undefined && r.prof !== null ? String(r.prof) : '0')}
                           onChange={e => {
                             const raw = e.target.value.replace(',', '.');
@@ -176,9 +184,12 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
         </div>
 
         <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-          <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
-            <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_aparatos_sanitarios.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de aparatos sanitarios</span>
-            <span className="card-s" style={{ fontSize: 10 }}>NTC 1500 · UC editables</span>
+          <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+            <span className="card-t" style={{fontSize:13, display: 'flex', alignItems: 'center'}}><img src="/iconos_parametros_de_diseno/catalogo_aparatos_sanitarios.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de aparatos sanitarios</span>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span className="card-s" style={{ fontSize: 10 }}>NTC 1500 · UC editables</span>
+              <button onClick={() => setIsEditingAparatos(!isEditingAparatos)} style={{ background: isEditingAparatos ? 'var(--acc)' : 'transparent', color: isEditingAparatos ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>{isEditingAparatos ? 'LISTO' : 'EDITAR'}</button>
+            </div>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
             <table className="tbl" style={{ fontSize: 12 }}>
@@ -204,15 +215,15 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                       </td>
                       <td style={{ padding: '3px 6px', fontSize: 11, color: 'var(--txt2)' }}>{a.ctrl}</td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                        <NumericInput value={a.ucaf} color="var(--acc2)" disabled={a._blkAf}
+                        <NumericInput value={a.ucaf} color="var(--acc2)" disabled={!isEditingAparatos || a._blkAf}
                           onCommit={(v) => setApsVal(a.id, 'ucaf', v)} />
                       </td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                        <NumericInput value={a.ucac} color="#F04545" disabled={a._blkAc}
+                        <NumericInput value={a.ucac} color="#F04545" disabled={!isEditingAparatos || a._blkAc}
                           onCommit={(v) => setApsVal(a.id, 'ucac', v)} />
                       </td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                        <NumericInput value={a.ud ?? 0} color="var(--san)" disabled={a._blkUd}
+                        <NumericInput value={a.ud ?? 0} color="var(--san)" disabled={!isEditingAparatos || a._blkUd}
                           onCommit={(v) => setApsVal(a.id, 'ud', v)} />
                       </td>
                     </tr>

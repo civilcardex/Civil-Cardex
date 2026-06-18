@@ -4,7 +4,7 @@ import { dec } from "../../utils/parseDecimal";
 import { SI } from "../../styles/sharedTableStyles";
 export { SI };
 
-export function LazyInp({ field, style, ariaLabel }: { field: keyof EPData; style?: React.CSSProperties; ariaLabel?: string }) {
+export function LazyInp({ field, style, ariaLabel, disabled }: { field: keyof EPData; style?: React.CSSProperties; ariaLabel?: string; disabled?: boolean }) {
   const { ep, updEP } = useEP();
   const [val, setVal] = useState(() => String(ep[field] ?? ""));
   const isDirty = useRef(false);
@@ -24,7 +24,7 @@ export function LazyInp({ field, style, ariaLabel }: { field: keyof EPData; styl
     updEP(field, val);
   };
 
-  return <input type="text" inputMode="decimal" aria-label={ariaLabel} value={val} onChange={handleChange} onBlur={handleBlur} style={style || SI} />;
+  return <input type="text" disabled={disabled} inputMode="decimal" aria-label={ariaLabel} value={val} onChange={handleChange} onBlur={handleBlur} style={{...style || SI, opacity: disabled ? 0.7 : 1, cursor: disabled ? 'default' : 'text'}} />;
 }
 
 export const Fmt = (v: any, u = "") => {

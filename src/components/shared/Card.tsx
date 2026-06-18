@@ -12,17 +12,21 @@ interface CardProps {
   bodyStyle?: React.CSSProperties;
   bodyClassName?: string;
   children: React.ReactNode;
+  headerRight?: React.ReactNode;
 }
 
-const Card = React.memo(function Card({ title, subtitle, icon, iconImg, iconImgStyle, className = '', style, headerStyle, bodyStyle, bodyClassName = 'card-b', children }: CardProps) {
+const Card = React.memo(function Card({ title, subtitle, icon, iconImg, iconImgStyle, className = '', style, headerStyle, bodyStyle, bodyClassName = 'card-b', headerRight, children }: CardProps) {
   return (
     <div className={`card ${className}`} style={style}>
-      {(title || icon || iconImg) && (
-        <div className="card-h" style={headerStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {iconImg ? <img src={iconImg} alt=""  width={18} height={18} style={{width:18,height:18, ...iconImgStyle }}  loading="lazy" /> : null}
-            {icon}
-            {title && <span className="card-t">{title}</span>}
+      {(title || icon || iconImg || headerRight) && (
+        <div className="card-h" style={{ display: 'flex', flexDirection: 'column', ...headerStyle }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {iconImg ? <img src={iconImg} alt=""  width={18} height={18} style={{width:18,height:18, ...iconImgStyle }}  loading="lazy" /> : null}
+              {icon}
+              {title && <span className="card-t">{title}</span>}
+            </div>
+            {headerRight && <div>{headerRight}</div>}
           </div>
           {subtitle && <span className="card-s">{subtitle}</span>}
         </div>
