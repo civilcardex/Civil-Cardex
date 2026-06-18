@@ -4,8 +4,8 @@ import { storePDF, loadPDF, deletePDF } from '../services/idbStorage';
 import { PLANS_META_KEY } from '../constants/storage-keys';
 import { createUseContext } from './contextHelpers';
 
-interface PlanMeta { id: number; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null }
-interface PlanItem { id: number; file: File; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null }
+interface PlanMeta { id: number; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null; definedScale?: number | null }
+interface PlanItem { id: number; file: File; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null; definedScale?: number | null }
 interface PlansContextValue {
   plans: PlanItem[];
   error: string | null;
@@ -30,6 +30,7 @@ function persistMeta(plans: PlanItem[]) {
     factorX: p.factorX,
     factorY: p.factorY,
     calGlobal: p.calGlobal,
+    definedScale: p.definedScale,
   }));
   if (meta.length === 0) {
     removeFromStorage(PLANS_META_KEY);
@@ -66,6 +67,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
             factorX: m.factorX || null,
             factorY: m.factorY || null,
             calGlobal: m.calGlobal || null,
+            definedScale: m.definedScale || null,
           });
         }
       }

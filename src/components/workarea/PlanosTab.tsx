@@ -19,6 +19,7 @@ interface CalibrationData {
   factorX: number | null;
   factorY: number | null;
   calGlobal: boolean | null;
+  definedScale?: number | null;
 }
 
 function PlanosTab({ state }: PlanosTabProps) {
@@ -45,6 +46,7 @@ function PlanosTab({ state }: PlanosTabProps) {
             factorX: p.factorX !== undefined && p.factorX !== null ? p.factorX : sm,
             factorY: p.factorY !== undefined && p.factorY !== null ? p.factorY : sm,
             calGlobal: p.calGlobal !== undefined && p.calGlobal !== null ? p.calGlobal : null,
+            definedScale: p.definedScale !== undefined && p.definedScale !== null ? p.definedScale : sm,
           };
         }
       }
@@ -76,6 +78,7 @@ function PlanosTab({ state }: PlanosTabProps) {
       factorX: config.factorX,
       factorY: config.factorY,
       calGlobal: config.calGlobal,
+      definedScale: config.definedScale,
     });
 
     try {
@@ -87,6 +90,7 @@ function PlanosTab({ state }: PlanosTabProps) {
       }
       data.factorX = config.factorX;
       data.factorY = config.factorY;
+      data.definedScale = config.definedScale;
       saveToStorage(trazosKey, data);
       saveTrazosToDB(String(config.planId), data).catch(e => { if (import.meta.env.DEV) console.error('saveTrazosToDB error:', e); });
     } catch (e) {
@@ -310,8 +314,10 @@ function PlanosTab({ state }: PlanosTabProps) {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <div style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 3 }}>
                           {calOk ? (
-                            <span style={{ color: 'var(--ok)', display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <span style={{ fontSize: 8 }}>●</span> Calibrado
+                            <span style={{ color: 'var(--ok)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}><span style={{ fontSize: 8 }}>●</span> Calibrado</span>
+                              {p.definedScale ? <span style={{ color: 'var(--txt3)' }}>Diseño 1:{Math.round(p.definedScale * 100)}</span> : null}
+                              <span style={{ color: 'var(--txt2)' }}>| Calibrada 1:{Math.round(p.scale/100 * 100)}</span>
                             </span>
                           ) : (
                             <span style={{ color: '#F5A623', display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -435,8 +441,16 @@ function PlanosTab({ state }: PlanosTabProps) {
                   style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderBottom: '1px solid var(--line)', background: selectedPlanId === p.id ? 'rgba(27,110,243,.08)' : 'transparent', transition: 'background .1s' }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                    <div style={{ fontSize: 10, color: 'var(--txt3)', display: 'flex', gap: 5 }}>
+                    <div style={{ fontSize: 10, color: 'var(--txt3)', display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
                       {p.nivel !== null && <span>{pisoLbl(p.nivel)}</span>}
+                      {p.scale ? (
+                        <>
+                          <span style={{ color: 'var(--line)' }}>|</span>
+                          {p.definedScale ? <span>Diseño 1:{Math.round(p.definedScale * 100)}</span> : null}
+                          {p.definedScale ? <span style={{ color: 'var(--line)' }}>|</span> : null}
+                          <span style={{ color: 'var(--txt2)' }}>Calibrada 1:{Math.round(p.scale)}</span>
+                        </>
+                      ) : null}
                     </div>
                   </div>
                   <button onClick={() => setSelectedPlanId(p.id)}
