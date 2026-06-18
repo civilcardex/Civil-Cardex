@@ -132,26 +132,28 @@ function FloorGeneratorCard(props: {
   onDecBlur: (setter: (v: string) => void) => (e: FocusEvent<HTMLInputElement>) => void;
   generarPisos: () => void;
 }) {
+  const [isEditing, setIsEditing] = React.useState(false);
   return (
     <div className="card" style={{ flex: '0 0 auto', minWidth: 0 }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span className="card-t" style={{ fontSize: 13 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+          <span className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
             <img src="/iconos_info_general/generador_de_pisos.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Generador de pisos
+            <button onClick={() => setIsEditing(!isEditing)} style={{ marginLeft: 'auto', background: isEditing ? 'var(--acc)' : 'transparent', color: isEditing ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>{isEditing ? 'LISTO' : 'EDITAR'}</button>
           </span>
           <span className="card-s" style={{ fontSize: 11 }}>Generación automática de pisos y sótanos</span>
         </div>
       </div>
         <div style={{ padding: '4px 6px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, alignItems: 'end' }}>
-            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Pisos</label><input type="text" inputMode="numeric" value={props.nPisos} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onIntChange(props.setNPisos)} onBlur={props.onIntBlur(props.setNPisos)} /></div>
-            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Altura entrepiso</label><input type="text" inputMode="decimal" value={props.altPiso} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onDecChange(props.setAltPiso)} onBlur={props.onDecBlur(props.setAltPiso)} /></div>
-            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Sótanos</label><input type="text" inputMode="numeric" value={props.nSotanos} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onIntChange(props.setNSotanos)} onBlur={props.onIntBlur(props.setNSotanos)} /></div>
-            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Altura sótano</label><input type="text" inputMode="decimal" value={props.altSotano} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onDecChange(props.setAltSotano)} onBlur={props.onDecBlur(props.setAltSotano)} /></div>
-            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>NPT P1</label><input type="text" inputMode="decimal" value={props.nptPiso1} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }} onChange={props.onDecChange(props.setNptPiso1)} onBlur={props.onDecBlur(props.setNptPiso1)} /></div>
+            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Pisos</label><input type="text" disabled={!isEditing} inputMode="numeric" value={props.nPisos} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px', opacity: isEditing ? 1 : 0.7 }} onChange={props.onIntChange(props.setNPisos)} onBlur={props.onIntBlur(props.setNPisos)} /></div>
+            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Altura entrepiso</label><input type="text" disabled={!isEditing} inputMode="decimal" value={props.altPiso} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px', opacity: isEditing ? 1 : 0.7 }} onChange={props.onDecChange(props.setAltPiso)} onBlur={props.onDecBlur(props.setAltPiso)} /></div>
+            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Sótanos</label><input type="text" disabled={!isEditing} inputMode="numeric" value={props.nSotanos} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px', opacity: isEditing ? 1 : 0.7 }} onChange={props.onIntChange(props.setNSotanos)} onBlur={props.onIntBlur(props.setNSotanos)} /></div>
+            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Altura sótano</label><input type="text" disabled={!isEditing} inputMode="decimal" value={props.altSotano} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px', opacity: isEditing ? 1 : 0.7 }} onChange={props.onDecChange(props.setAltSotano)} onBlur={props.onDecBlur(props.setAltSotano)} /></div>
+            <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>NPT P1</label><input type="text" disabled={!isEditing} inputMode="decimal" value={props.nptPiso1} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px', opacity: isEditing ? 1 : 0.7 }} onChange={props.onDecChange(props.setNptPiso1)} onBlur={props.onDecBlur(props.setNptPiso1)} /></div>
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', paddingBottom: 2 }}>
-              <button onClick={() => props.setConCubierta(!props.conCubierta)} title="Incluir cubierta" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', padding: '4px 8px', borderRadius: 4, flexShrink: 0, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'inherit' }}>
+              <button disabled={!isEditing} onClick={() => props.setConCubierta(!props.conCubierta)} title="Incluir cubierta" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: isEditing ? 'pointer' : 'default', userSelect: 'none', padding: '4px 8px', borderRadius: 4, flexShrink: 0, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'inherit', opacity: isEditing ? 1 : 0.7 }}>
                 <div style={{ width: 28, height: 15, borderRadius: 8, background: props.conCubierta ? 'var(--ll)' : 'var(--line)', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
                   <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: props.conCubierta ? 15 : 2, transition: 'left .2s' }} />
                 </div>
@@ -159,20 +161,22 @@ function FloorGeneratorCard(props: {
               </button>
             </div>
           </div>
-          <button onClick={props.generarPisos} style={{ width: '100%', padding: '6px', marginTop: 6, background: 'var(--acc)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer' }}>Generar niveles automáticamente</button>
+          <button disabled={!isEditing} onClick={props.generarPisos} style={{ width: '100%', padding: '6px', marginTop: 6, background: 'var(--acc)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontWeight: 600, fontSize: 12, cursor: isEditing ? 'pointer' : 'default', opacity: isEditing ? 1 : 0.5 }}>Generar niveles automáticamente</button>
         </div>
     </div>
   );
 }
 
 function LevelsCard({ pisos, delPiso, addPiso, addSotano, setPisos }: { pisos: any[]; delPiso: (id: string | number) => void; addPiso: () => void; addSotano: () => void; setPisos: (p: any[] | ((prev: any[]) => any[])) => void }) {
+  const [isEditing, setIsEditing] = React.useState(false);
   return (
     <div className="card" style={{ flex: '1 1 auto', minWidth: 220, display: 'flex', flexDirection: 'column' }}>
       <div className="card-h" style={{ padding: '4px 8px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span className="card-t" style={{ fontSize: 13 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+          <span className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
             <img src="/iconos_info_general/niveles_generados.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Niveles generados
+            <button onClick={() => setIsEditing(!isEditing)} style={{ marginLeft: 'auto', background: isEditing ? 'var(--acc)' : 'transparent', color: isEditing ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>{isEditing ? 'LISTO' : 'EDITAR'}</button>
           </span>
           <span className="card-s" style={{ fontSize: 11 }}>{pisos.length} niveles</span>
         </div>
@@ -187,17 +191,17 @@ function LevelsCard({ pisos, delPiso, addPiso, addSotano, setPisos }: { pisos: a
               {[...pisos].sort((a, b) => (b.tipo === 'cubierta' ? 999 : b.n) - (a.tipo === 'cubierta' ? 999 : a.n)).map((p: any) => (
                 <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '2px 4px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', borderLeft: '3px solid ' + (p.tipo === 'cubierta' ? 'var(--ll)' : p.n < 0 ? 'var(--txt3)' : 'var(--acc2)'), marginBottom: 2 }}>
                   <span className={p.tipo === 'cubierta' ? 'piso-tag cub' : p.n < 0 ? 'piso-tag sot' : 'piso-tag'} style={{ fontSize: 11, padding: '2px 5px', minWidth: 48 }}>{pisoLbl(p.n)}</span>
-                  <input type="text" inputMode="decimal" value={p.npt ?? ''} key={p.id + 'npt'} className="npt-in" style={{ fontSize: 12, width: 52, padding: '2px 4px' }} onChange={e => { const raw = e.target.value.replace(/,/g, '.'); const v = parseFloat(raw); if (!isNaN(v) || raw === '') { setPisos((prev: any[]) => prev.map(x => x.id === p.id ? { ...x, npt: raw === '' ? '' : v } : x)); } }} />
+                  <input type="text" disabled={!isEditing} inputMode="decimal" value={p.npt ?? ''} key={p.id + 'npt'} className="npt-in" style={{ fontSize: 12, width: 52, padding: '2px 4px', opacity: isEditing ? 1 : 0.7 }} onChange={e => { const raw = e.target.value.replace(/,/g, '.'); const v = parseFloat(raw); if (!isNaN(v) || raw === '') { setPisos((prev: any[]) => prev.map(x => x.id === p.id ? { ...x, npt: raw === '' ? '' : v } : x)); } }} />
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 20 }}><span style={{ fontSize: 11, color: 'var(--txt3)' }}>m</span></div>
                   <div className={`pdot ${p.ok ? 'ok' : ''}`} />
-                  <button onClick={() => delPiso(p.id)} title="Eliminar nivel" style={{ padding: '1px 5px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 10, lineHeight: 1, flexShrink: 0, marginLeft: 2 }} onMouseEnter={e => { e.currentTarget.style.color = '#ef5350'; e.currentTarget.style.borderColor = 'rgba(211,47,47,.5)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--txt3)'; e.currentTarget.style.borderColor = 'var(--line)'; }}>&#x2715;</button>
+                  {isEditing && <button onClick={() => delPiso(p.id)} title="Eliminar nivel" style={{ padding: '1px 5px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 10, lineHeight: 1, flexShrink: 0, marginLeft: 2 }} onMouseEnter={e => { e.currentTarget.style.color = '#ef5350'; e.currentTarget.style.borderColor = 'rgba(211,47,47,.5)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--txt3)'; e.currentTarget.style.borderColor = 'var(--line)'; }}>&#x2715;</button>}
                 </div>
               ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, marginTop: 2, flexShrink: 0 }}>
+            {isEditing && <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, marginTop: 2, flexShrink: 0 }}>
               <button className="btn-xs" onClick={addSotano} style={{ padding: '3px 6px', fontSize: 10 }}>+ Sótano</button>
               <button className="btn-xs" onClick={addPiso} style={{ padding: '3px 6px', fontSize: 10 }}>+ Piso</button>
-            </div>
+            </div>}
           </>
         )}
       </div>

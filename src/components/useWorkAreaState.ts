@@ -94,16 +94,22 @@ export function useWorkAreaState() {
     const nPis = Math.min(parseIntInput(nPisosRef.current) || 0, MAX);
 
     if (nPis > 0 && !nptPiso1Ref.current.trim()) { setAlertMsg('Ingrese NPT Piso 1'); return; }
+    let nSotFinal = nSot;
+    if (nSot > 0 && !altSotanoRef.current.trim()) {
+      nSotFinal = 0; // ignore basements if no height
+      if (nPis === 0) {
+        setAlertMsg('Ingrese la altura de sótano');
+        return;
+      }
+    }
     if (nPis > 0 && !altPisoRef.current.trim()) { setAlertMsg('Ingrese la altura de entrepiso'); return; }
-    if (nPis > 0 && !nPisosRef.current.trim()) { setAlertMsg('Ingrese el número de pisos'); return; }
-    if (nSot > 0 && !altSotanoRef.current.trim()) { setAlertMsg('Ingrese la altura de sótano'); return; }
-    if (nPis === 0 && nSot === 0) { setAlertMsg('Ingrese la cantidad de pisos o sótanos'); return; }
+    if (nPis === 0 && nSotFinal === 0) { setAlertMsg('Ingrese la cantidad de pisos o sótanos válidos'); return; }
 
     const hPis = parseDecimalInput(altPisoRef.current) || 0;
     const hSot = parseDecimalInput(altSotanoRef.current) || 0;
     const npt1 = parseDecimalInput(nptPiso1Ref.current) || 0;
     const l: any[] = [];
-    for (let i = nSot; i >= 1; i--)
+    for (let i = nSotFinal; i >= 1; i--)
       l.push({ id: 's' + i, n: -i, npt: +((npt1 - (i * hSot)).toFixed(2)), ok: false, tipo: 'sotano' });
     for (let i = 1; i <= nPis; i++)
       l.push({ id: 'p' + i, n: i, npt: +((npt1 + ((i - 1) * hPis)).toFixed(2)), ok: false, tipo: 'piso' });
@@ -135,8 +141,13 @@ export function useWorkAreaState() {
 
   const delPiso = (id: string | number) => projectCtx.setPisos((prev: any[]) => prev.filter(p => p.id !== id));
 
-  const addPiso = () => projectCtx.setPisos((prev: any[]) => {
-    const pisosPOS = prev.filter(p => p.tipo === 'piso').sort((a, b) => b.n - a.n);
+  const addPiso = () => {
+    if (!altPisoRef.current.trim()) {
+      setAlertMsg('Ingrese la altura de entrepiso');
+      return;
+    }
+    projectCtx.setPisos((prev: any[]) => {
+      const pisosPOS = prev.filter(p => p.tipo === 'piso').sort((a, b) => b.n - a.n);
     const maxN = pisosPOS.length ? Math.max(...pisosPOS.map(p => p.n)) : 0;
     const hPis = parseFloat(altPisoRef.current) || 0;
     const baseNpt = pisosPOS.length
@@ -148,11 +159,17 @@ export function useWorkAreaState() {
     const insertAt = cubIx >= 0 ? cubIx + 1 : 0;
     const copy = [...prev];
     copy.splice(insertAt, 0, newPiso);
-    return copy;
-  });
+      return copy;
+    });
+  };
 
-  const addSotano = () => projectCtx.setPisos((prev: any[]) => {
-    const pisoNEG = prev.filter(p => p.tipo === 'sotano').sort((a, b) => a.n - b.n);
+  const addSotano = () => {
+    if (!altSotanoRef.current.trim()) {
+      setAlertMsg('Ingrese la altura de sótano');
+      return;
+    }
+    projectCtx.setPisos((prev: any[]) => {
+      const pisoNEG = prev.filter(p => p.tipo === 'sotano').sort((a, b) => a.n - b.n);
     const minN = pisoNEG.length ? Math.min(...pisoNEG.map(p => p.n)) : 0;
     const hSot = parseFloat(altSotanoRef.current) || 0;
     const baseNpt = pisoNEG.length
@@ -160,8 +177,9 @@ export function useWorkAreaState() {
       : parseFloat(nptPiso1Ref.current) || 0;
     const newNpt = +(baseNpt - hSot).toFixed(2);
     const newSotano = { id: Date.now(), n: minN === 0 ? -1 : minN - 1, npt: newNpt, ok: false, tipo: 'sotano' };
-    return [...prev, newSotano];
-  });
+      return [...prev, newSotano];
+    });
+  };
 
   useEffect(() => {
     REDES.forEach(r => {
