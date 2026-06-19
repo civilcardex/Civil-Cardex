@@ -2,13 +2,18 @@ import { writeHydroDrawingSync, writeSanDrawingSync } from './drawingSync';
 import { loadFromStorage, saveToStorage } from '../services/storageService';
 import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../constants/storage-keys';
 
-export function deleteRamalFromDrawing(ramalId: string, net: string, plans: any[]) {
-  if (!ramalId || !net || !plans) return;
+export function deleteRamalFromDrawing(ramalKey: string, net: string, plans: any[]) {
+  if (!ramalKey || !net || !plans) return;
   const isHydro = HYDRO_FAMILIES.has(net);
   const isSan = SAN_FAMILIES.has(net);
 
+  const parts = ramalKey.split('-');
+  const ramalId = parts[0];
+  const planId = parts[1];
+
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
+    if (planId && plan.id !== planId) continue;
     const key = TRAZOS_PREFIX + plan.id;
     const raw = loadFromStorage(key, null);
     if (!raw) continue;
@@ -24,13 +29,18 @@ export function deleteRamalFromDrawing(ramalId: string, net: string, plans: any[
   if (isSan) writeSanDrawingSync(plans);
 }
 
-export function writeDiametroToDrawing(ramalId: string, net: string, newDiamLabel: string, plans: any[]) {
-  if (!ramalId || !net || !plans) return;
+export function writeDiametroToDrawing(ramalKey: string, net: string, newDiamLabel: string, plans: any[]) {
+  if (!ramalKey || !net || !plans) return;
   const isHydro = HYDRO_FAMILIES.has(net);
   const isSan = SAN_FAMILIES.has(net);
 
+  const parts = ramalKey.split('-');
+  const ramalId = parts[0];
+  const planId = parts[1];
+
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
+    if (planId && plan.id !== planId) continue;
     const key = TRAZOS_PREFIX + plan.id;
     const raw = loadFromStorage(key, null);
     if (!raw) continue;

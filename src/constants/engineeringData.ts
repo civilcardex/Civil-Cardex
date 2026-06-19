@@ -29,7 +29,7 @@ export const APARATOS_DEF = [
 ];
 
 export const AF_UC_IDS = ['san', 'lvm', 'duc', 'lvp', 'tin', 'lvra', 'lvro', 'nev'];
-export const AC_UC_IDS = ['san', 'lvm', 'duc', 'lvp', 'tin', 'lvra', 'lvro', 'lavav'];
+export const AC_UC_IDS = ['lvm', 'duc', 'lvp', 'tin', 'lvra', 'lvro', 'lavav'];
 export const SAN_UC_IDS = ['sif', 'lvm', 'san', 'duc', 'lvra', 'tin', 'lvp', 'lvro', 'lavav'];
 
 export const APARATO_IMG = {

@@ -2,6 +2,7 @@
 // For drawing-engine definitions use PlanoState.NETS instead (has ucType, bmType, etc).
 export const REDES=[
   {id:'san',lbl:'Sanitaria', sub:'RAS D · Manning n=0.009', ico:'♻️', icoImg:'/iconos_diseno_redes/sanitaria/red_sanitaria.webp', col:'var(--san)'},
+  {id:'vent',lbl:'Ventilación', sub:'Subred sanitaria · Ventilación', ico:'🌬', icoImg:'', col:'var(--vent)'},
   {id:'ll', lbl:'Aguas lluvias', sub:'Método Racional · IDF', ico:'🌧️', icoImg:'/iconos_diseno_redes/aguas_lluvias/red_aguas_lluvias.webp', col:'var(--ll)'},
   {id:'af', lbl:'Agua fría', sub:'NTC 1500 · Hazen-Williams', ico:'💧', icoImg:'/iconos_diseno_redes/hidraulica/red_agua_fria.webp', col:'var(--af)'},
   {id:'ac', lbl:'Agua caliente', sub:'NTC 1500 · CPVC RDE 11', ico:'🔥', icoImg:'/iconos_diseno_redes/hidraulica/red_agua_caliente.webp', col:'var(--ac)'},
@@ -26,7 +27,7 @@ export const NAV_TABS=[
 
 export const FILTROS_NORM=[{k:'todos',l:'Todos'},{k:'af',l:'AF/AC'},{k:'san',l:'Sanitaria'},{k:'ll',l:'Lluvias'},{k:'gas',l:'Gas'},{k:'rci',l:'RCI'}];
 
-export const NORM_COL={af:'var(--af)',ac:'var(--ac)',san:'var(--san)',ll:'var(--ll)',gas:'var(--gas)',rci:'var(--rci)',ep:'var(--ep)',bom:'var(--bom)'};
+export const NORM_COL={af:'var(--af)',ac:'var(--ac)',san:'var(--san)',vent:'var(--vent)',ll:'var(--ll)',gas:'var(--gas)',rci:'var(--rci)',ep:'var(--ep)',bom:'var(--bom)'};
 export const MAT_COL = NORM_COL; // Alias — same color mapping
 
 export const R_OPTIONS=[{value:'1/4',label:'1/4'},{value:'7/24',label:'7/24'}];

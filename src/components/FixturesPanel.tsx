@@ -127,6 +127,16 @@ export default function AparatosPanel({ activeNet, selElement }: { activeNet: st
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
+  useEffect(() => {
+    const handleClear = (_e: Event) => {
+      setCounts(loadAll());
+      setHidroData(loadHidroData());
+      setGasAcc(loadGasAcc());
+    };
+    window.addEventListener('aparatos-clear', handleClear);
+    return () => window.removeEventListener('aparatos-clear', handleClear);
+  }, []);
+
   useEffect(() => { saveAll(counts); }, [counts]);
   useEffect(() => { saveHidroData(hidroData); }, [hidroData]);
   useEffect(() => { saveGasAcc(gasAcc); }, [gasAcc]);
