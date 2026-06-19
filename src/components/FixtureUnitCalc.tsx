@@ -1,119 +1,229 @@
-import React from "react";
+import React, { useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useApparatus } from "../context/ApparatusContext";
-import { calcUDparcial, calcUDacumulado } from "../utils/componentHelpers";
+import { usePlans } from "../context/PlansContext";
+import { calcUDparcial } from "../utils/componentHelpers";
 import { pisoCorto, APARATOS_DEF, SAN_UC_IDS } from "../constants";
-import { getTributarioIds } from "../utils/tramoUtils";
+import { TRAZOS_PREFIX } from "../constants/storage-keys";
+import { loadFromStorage } from "../services/storageService";
 
 function CalculoUD() {
-const { tramosSan, updTramoSan } = useTramos();
-const { aps } = useApparatus();
-const mergedBase = SAN_UC_IDS.map(id => {
-  const fromAps = aps.find(p => p.id === id);
-  const def = APARATOS_DEF.find(x => x.id === id);
-  return { id, nombre: def?.nombre || id, ud: fromAps?.ud || def?.ud || 0, _disabled: (def?.ud || 0) === 0 };
-});
-const acumMap = calcUDacumulado(tramosSan, mergedBase);
+  const { tramosSan } = useTramos();
+  const { aps } = useApparatus();
+  const { plans } = usePlans();
 
-const tribIds = getTributarioIds(tramosSan);
-const displayTramos = tramosSan.filter(t => !tribIds.has(t.id) && !t.esBajante)
-  .sort((a, b) => (a.piso || 0) - (b.piso || 0));
+  const mergedBase = useMemo(() => {
+    return SAN_UC_IDS.map(id => {
+      const fromAps = aps.find(p => p.id === id);
+      const def = APARATOS_DEF.find(x => x.id === id);
+      return { id, nombre: def?.nombre || id, ud: fromAps?.ud || def?.ud || 0, _disabled: (def?.ud || 0) === 0 };
+    });
+  }, [aps]);
 
-const totales = mergedBase.map(d => ({
-  id: d.id, nombre: d.nombre, ud: d.ud,
-  cant: tramosSan.reduce((s, t) => s + (t.fixtures[d.id] || 0), 0)
-}));
-const totalUD = totales.reduce((s, d) => s + (d.cant || 0) * (d.ud || 0), 0);
+  const conexiones = useMemo(() => {
+    const map: Record<string, string[]> = {}; // parentKey -> childKeys[]
 
-return (
-<>
-  <div className="card">
-    <div className="card-h">
-      <h3 className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Calculo_UC.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Cálculo de unidades de descarga</h3>
-      <span className="card-s">{tramosSan.length} tramos</span>
-    </div>
-    <div className="scroll-top" style={{padding:'16px'}}>
-      <div className="scroll-inner" style={{minWidth:'max-content'}}>
-        <table className="tbl" style={{minWidth:900}}>
-          <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Cálculo de unidades de descarga</caption>
-          <thead>
-            <tr>
-              <th scope="col" className="col-h" rowSpan={2} style={{minWidth:70,textAlign:'center'}}>Tramo</th>
-              <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Nivel</th>
-              <th scope="col" className="col-h" rowSpan={2} style={{minWidth:60,textAlign:'center'}}>Inicio</th>
-              <th scope="col" className="col-h" rowSpan={2} style={{minWidth:60,textAlign:'center'}}>Fin</th>
-              <th scope="col" className="col-h san" colSpan={mergedBase.length} style={{textAlign:'center'}}>Aparatos</th>
-              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Unidades de descarga</th>
-              <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Bajante</th>
-            </tr>
-            <tr>
-              {mergedBase.map(d=>(
-                <th key={d.id} className="col-h san" style={{minWidth:52,fontSize:9,textAlign:'center'}}>{d.nombre}<br/><span style={{fontSize:8,fontWeight:400}}>{d.ud} UD</span></th>
-              ))}
-              <th scope="col" className="col-h ok" style={{textAlign:'center'}}>Parcial</th>
-              <th scope="col" className="col-h ok" style={{textAlign:'center'}}>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-{displayTramos.length === 0 ? (
+    for (const plan of plans || []) {
+      if (plan.nivel == null) continue;
+      const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
+      if (!raw) continue;
+      let data = raw as Record<string, any>;
+      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { continue; } }
+
+      const ramales = data.ramales || [];
+      const bajantes = data.bajantes || [];
+
+      const distToSegment = (p: number[], a: number[], b: number[]) => {
+        const dx = b[0] - a[0];
+        const dy = b[1] - a[1];
+        if (dx === 0 && dy === 0) return Math.hypot(p[0] - a[0], p[1] - a[1]);
+        let t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy);
+        t = Math.max(0, Math.min(1, t));
+        return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+      };
+
+      const distToPolyline = (p: number[], pts: number[][]) => {
+        let minDist = Infinity;
+        for (let i = 0; i < pts.length - 1; i++) {
+          const d = distToSegment(p, pts[i], pts[i + 1]);
+          if (d < minDist) minDist = d;
+        }
+        return minDist;
+      };
+
+      for (const r of ramales) {
+        if (!r.pts || r.pts.length < 2) continue;
+        const pStart = r.pts[0];
+        const pEnd = r.pts[r.pts.length - 1];
+        const rKey = `${r.id}-${plan.id}`;
+
+        let connection: { type: 'bajante' | 'ramal'; id: string } | null = null;
+
+        const checkEndpoint = (pt: number[]) => {
+          for (const b of bajantes) {
+            const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
+            const dist = Math.hypot(pt[0] - b.x, pt[1] - b.y);
+            if (isExplicit || dist < 2.0) {
+              return { type: 'bajante' as const, id: b.id };
+            }
+          }
+          let bestRx: any = null;
+          let minDist = Infinity;
+          for (const rx of ramales) {
+            if (rx.id === r.id) continue;
+            if (!rx.pts || rx.pts.length < 2) continue;
+            const dist = distToPolyline(pt, rx.pts);
+            if (dist < 2.0 && dist < minDist) {
+              minDist = dist;
+              bestRx = rx;
+            }
+          }
+          if (bestRx) {
+            return { type: 'ramal' as const, id: bestRx.id };
+          }
+          return null;
+        };
+
+        connection = checkEndpoint(pEnd) || checkEndpoint(pStart);
+
+        if (connection) {
+          const targetKey = `${connection.id}-${plan.id}`;
+          if (!map[targetKey]) map[targetKey] = [];
+          map[targetKey].push(rKey);
+        }
+      }
+    }
+    return map;
+  }, [plans]);
+
+  const getDescendantsUD = useCallback((tKey: string): number => {
+    const children = conexiones[tKey] || [];
+    let sum = 0;
+    for (const childKey of children) {
+      const childTramo = tramosSan.find(x => x._key === childKey);
+      if (childTramo) {
+        sum += calcUDparcial(childTramo, mergedBase) + getDescendantsUD(childKey);
+      }
+    }
+    return sum;
+  }, [conexiones, tramosSan, mergedBase]);
+
+  const getDescendantKeys = useCallback((tKey: string): string[] => {
+    const children = conexiones[tKey] || [];
+    let list: string[] = [];
+    for (const childKey of children) {
+      list.push(childKey);
+      list = list.concat(getDescendantKeys(childKey));
+    }
+    return list;
+  }, [conexiones]);
+
+  const displayTramos = useMemo(() => {
+    return tramosSan.filter(t => t.tipo === 'ramal' && !t.esBajante)
+      .sort((a, b) => (a.piso || 0) - (b.piso || 0));
+  }, [tramosSan]);
+
+  const totales = useMemo(() => {
+    return mergedBase.map(d => ({
+      id: d.id, nombre: d.nombre, ud: d.ud,
+      cant: tramosSan.reduce((s, t) => s + (t.fixtures[d.id] || 0), 0)
+    }));
+  }, [mergedBase, tramosSan]);
+
+  const totalUD = useMemo(() => {
+    return totales.reduce((s, d) => s + (d.cant || 0) * (d.ud || 0), 0);
+  }, [totales]);
+
+  return (
+  <>
+    <div className="card">
+      <div className="card-h">
+        <h3 className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Calculo_UC.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Cálculo de unidades de descarga</h3>
+        <span className="card-s">{displayTramos.length} tramos</span>
+      </div>
+      <div className="scroll-top" style={{padding:'16px'}}>
+        <div className="scroll-inner" style={{minWidth:'max-content'}}>
+          <table className="tbl" style={{minWidth:900}}>
+            <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Cálculo de unidades de descarga</caption>
+            <thead>
               <tr>
-                <td colSpan={4 + mergedBase.length + 3} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
-                  No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
-                </td>
+                <th scope="col" className="col-h" rowSpan={2} style={{minWidth:70,textAlign:'center'}}>Tramo</th>
+                <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Nivel</th>
+                <th scope="col" className="col-h" rowSpan={2} style={{minWidth:60,textAlign:'center'}}>Inicio</th>
+                <th scope="col" className="col-h" rowSpan={2} style={{minWidth:60,textAlign:'center'}}>Fin</th>
+                <th scope="col" className="col-h san" colSpan={mergedBase.length} style={{textAlign:'center'}}>Aparatos</th>
+                <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Unidades de descarga</th>
+                <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center',display:'none'}}>Bajante</th>
               </tr>
-) : displayTramos.map((t) => {
-const parcial=calcUDparcial(t,mergedBase);
-const acum=acumMap[t.id]||0;
-              return(
-                <tr key={t.id}>
-                  <td className="c"><span className="sigla" style={{fontSize:11,fontWeight:600}}>{t.id}</span></td>
-                  <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{pisoCorto(t.piso)}</span></td>
-                  <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.ini ? `${t.ini.x},${t.ini.y}` : '—'}</span></td>
-                  <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.fin ? `${t.fin.x},${t.fin.y}` : '—'}</span></td>
-                  {mergedBase.map(d=>(
-                    <td key={d.id} className="c" style={{padding:'2px 3px'}}>
-                      <span style={{fontSize:12,fontFamily:'var(--mono)',color:d._disabled?'var(--txt3)':'var(--txt)'}}>{t.fixtures[d.id]??0}</span>
-                    </td>
-                  ))}
-                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,color:'var(--txt)',fontSize:13}}>{parcial}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,color:'var(--txt)',fontSize:14}}>{acum}</td>
-                  <td className="c">
-                    <input type="checkbox" checked={!!t.esBajante} onChange={e=>updTramoSan(t.id,'esBajante',e.target.checked)} style={{width:16,height:16,cursor:'pointer',accentColor:'var(--san)'}} />
+              <tr>
+                {mergedBase.map(d=>(
+                  <th key={d.id} className="col-h san" style={{minWidth:52,fontSize:9,textAlign:'center'}}>{d.nombre}<br/><span style={{fontSize:8,fontWeight:400}}>{d.ud} UD</span></th>
+                ))}
+                <th scope="col" className="col-h ok" style={{textAlign:'center'}}>Parcial</th>
+                <th scope="col" className="col-h ok" style={{textAlign:'center'}}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+  {displayTramos.length === 0 ? (
+                <tr>
+                    <td colSpan={4 + mergedBase.length + 2} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                    No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td className="c" style={{fontWeight:600,fontSize:13,color:'var(--txt3)',textAlign:'center',borderTop:'2px solid var(--line)'}}>∑</td>
-              <td style={{borderTop:'2px solid var(--line)'}}></td>
-              <td style={{borderTop:'2px solid var(--line)'}}></td>
-              <td style={{borderTop:'2px solid var(--line)'}}></td>
-              {totales.map(d => {
-                const subtotal = (d.cant || 0) * (d.ud || 0);
-                return (
-                  <td key={d.id} className="c" style={{padding:'4px 3px',borderTop:'2px solid var(--line)'}}>
-                    <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:1,fontSize:10,fontFamily:'var(--mono)'}}>
-                      <span style={{fontWeight:600,color:'var(--txt)',fontSize:12}}>{d.cant}</span>
-                      <span style={{color:'var(--txt3)',fontSize:8}}>× {d.ud} UD</span>
-                      <span style={{fontWeight:700,color:'var(--san)',fontSize:11}}>{subtotal}</span>
-                    </div>
-                  </td>
-                );
-              })}
-              <td style={{borderTop:'2px solid var(--line)'}}></td>
-              <td className="c" style={{fontWeight:700,fontSize:14,color:'var(--txt)',fontFamily:'var(--mono)',textAlign:'center',borderTop:'2px solid var(--line)'}}>
-                {totalUD} UD
-              </td>
-              <td style={{borderTop:'2px solid var(--line)'}}></td>
-            </tr>
-          </tfoot>
-        </table>
+  ) : displayTramos.map((t) => {
+    const tKey = t._key || `${t.id}-${t.piso}`;
+    const parcial = calcUDparcial(t, mergedBase);
+    const acum = parcial + getDescendantsUD(tKey);
+    return (
+      <tr key={tKey}>
+        <td className="c"><span className="sigla" style={{fontSize:11,fontWeight:600}}>{t.id}</span></td>
+        <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{pisoCorto(t.piso)}</span></td>
+        <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.ini ? `${t.ini.x},${t.ini.y}` : '—'}</span></td>
+        <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.fin ? `${t.fin.x},${t.fin.y}` : '—'}</span></td>
+        {mergedBase.map(d=>(
+          <td key={d.id} className="c" style={{padding:'2px 3px'}}>
+            <span style={{fontSize:12,fontFamily:'var(--mono)',color:d._disabled?'var(--txt3)':'var(--txt)'}}>{t.fixtures[d.id]??0}</span>
+          </td>
+        ))}
+        <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,color:'var(--txt)',fontSize:13}}>{parcial}</td>
+        <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,color:'var(--txt)',fontSize:14}}>{acum}</td>
+        <td style={{display:'none'}}>
+        </td>
+      </tr>
+    );
+  })}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td className="c" style={{fontWeight:600,fontSize:13,color:'var(--txt3)',textAlign:'center',borderTop:'2px solid var(--line)'}}>∑</td>
+                <td style={{borderTop:'2px solid var(--line)'}}></td>
+                <td style={{borderTop:'2px solid var(--line)'}}></td>
+                <td style={{borderTop:'2px solid var(--line)'}}></td>
+                {totales.map(d => {
+                  const subtotal = (d.cant || 0) * (d.ud || 0);
+                  return (
+                    <td key={d.id} className="c" style={{padding:'4px 3px',borderTop:'2px solid var(--line)'}}>
+                      <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:1,fontSize:10,fontFamily:'var(--mono)'}}>
+                        <span style={{fontWeight:600,color:'var(--txt)',fontSize:12}}>{d.cant}</span>
+                        <span style={{color:'var(--txt3)',fontSize:8}}>× {d.ud} UD</span>
+                        <span style={{fontWeight:700,color:'var(--san)',fontSize:11}}>{subtotal}</span>
+                      </div>
+                    </td>
+                  );
+                })}
+                <td style={{borderTop:'2px solid var(--line)'}}></td>
+                <td className="c" style={{fontWeight:700,fontSize:14,color:'var(--txt)',fontFamily:'var(--mono)',textAlign:'center',borderTop:'2px solid var(--line)'}}>
+                  {totalUD} UD
+                </td>
+                <td style={{borderTop:'2px solid var(--line)',display:'none'}}></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
     </div>
-  </div>
-</>
+  </>
   );
 }
+
 export default React.memo(CalculoUD);
