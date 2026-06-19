@@ -30,11 +30,14 @@ interface TblProps {
   center?: boolean;
   valueCol?: number;
   tableStyle?: React.CSSProperties;
+  caption?: string;
 }
+
+const VH: React.CSSProperties = {position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0};
 
 const Tbl = React.memo(function Tbl({
   cols, rows, thStyle, tdStyle, tdlStyle,
-  fontSize, center, valueCol, tableStyle,
+  fontSize, center, valueCol, tableStyle, caption,
 }: TblProps) {
   const th = { ...TH_DEFAULT, ...thStyle };
   const td = { ...TD_DEFAULT, ...tdStyle };
@@ -53,6 +56,7 @@ const Tbl = React.memo(function Tbl({
         ...tableStyle,
       }}
     >
+      {caption && <caption style={VH}>{caption}</caption>}
       <thead>
         <tr>
           {cols.map((c, i) => (
