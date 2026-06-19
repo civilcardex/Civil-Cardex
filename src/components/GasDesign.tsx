@@ -190,13 +190,14 @@ function GasDesign(){
   const page1 = useMemo(()=><>
     <div className="card" style={{flexShrink:0,alignSelf:'center'}}>
       <div className="card-h" style={{padding:'6px 12px'}}>
-        <span className="card-t">
+        <h3 className="card-t">
           <img src="/iconos_diseno_redes/gas/datos_generales_red_gas.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
           Datos generales
-        </span>
+        </h3>
       </div>
       <div style={{padding:'8px 12px',display:'flex',flexDirection:'column',alignItems:'center'}}>
         <table className="tbl" style={{fontSize:13,whiteSpace:'nowrap'}}>
+          <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Datos generales</caption>
           <tbody>
             {[
               ['Altitud de la ciudad del proyecto',alt,setAlt,'msnm'],
@@ -207,7 +208,7 @@ function GasDesign(){
             ].map((row, i, arr)=>{const [lbl,val,setVal,uni] = row as [string, string, any, string];return (
               <tr key={i}>
                 <td style={{padding:'6px 10px',fontWeight:600,color:'var(--txt)',fontSize:13,borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}>{lbl}</td>
-                <td style={{padding:'6px 10px',borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}><input type="text" inputMode="decimal" value={val} onChange={e=>setVal(e.target.value)} style={{...SI,textAlign:'right',fontSize:13,padding:'5px 8px',width:100}}/></td>
+                <td style={{padding:'6px 10px',borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}><input type="text" inputMode="decimal" aria-label={lbl} value={val} onChange={e=>setVal(e.target.value)} style={{...SI,textAlign:'right',fontSize:13,padding:'5px 8px',width:100}}/></td>
                 <td style={{padding:'6px 10px',color:'var(--txt2)',fontSize:13,fontWeight:500,borderBottom:i<arr.length-1?'1px solid var(--line)':'none'}}>{uni}</td>
               </tr>
             );})}
@@ -223,21 +224,22 @@ function GasDesign(){
     <div style={{display:'flex',flexDirection:'column',gap:6,flex:1,minHeight:0}}>
       <div className="card" style={{display:'flex',flexDirection:'column'}}>
         <div className="card-h" style={{justifyContent:'space-between'}}>
-          <span className="card-t">
+          <h3 className="card-t">
             <img src="/iconos_diseno_redes/gas/diseno_red_gas.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
             Diseño de red
-          </span>
+          </h3>
           <span className="card-s">{gasTramos.length} tramos</span>
         </div>
         <div style={{padding:6}}>
             <table className="tbl" style={{fontSize:11,tableLayout:'auto',width:'100%',borderCollapse:'collapse'}}>
+              <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Diseño de red</caption>
               <colgroup>
                 {colW.map((w,i)=><col key={i} style={{width:w}}/>)}
                 <col style={{width:'4%'}}/>
               </colgroup>
               <thead><tr>
-                {COLS.map((c,i)=><th key={i} style={TH}>{c}</th>)}
-                <th style={TH}></th>
+                {COLS.map((c,i)=><th scope="col" key={i} style={TH}>{c}</th>)}
+                <th scope="col" style={TH}></th>
               </tr></thead>
               <tbody>
                 {gasTramos.length===0&&(
@@ -255,7 +257,7 @@ function GasDesign(){
                       <td className="c" style={{...TD,padding:'2px 3px'}}>{t.ini||'—'}</td>
                       <td className="c" style={{...TD,padding:'2px 3px'}}>{t.fin||'—'}</td>
                       <td className="c" style={{padding:'0 1px'}}>
-                        <select value={mat?`${mat}|${dn}`:''} onChange={e=>{
+                        <select aria-label="Diámetro diseño" value={mat?`${mat}|${dn}`:''} onChange={e=>{
                           const val=e.target.value;
                           if(!val){handleDiamChange(t.id,'','');return;}
                           const sep=val.lastIndexOf('|');
@@ -282,34 +284,35 @@ function GasDesign(){
       </div>
       <div className="card" style={{display:'flex',flexDirection:'column',minWidth:0,overflow:'hidden',...(gasTramos.length===0?{}:{flex:1})}}>
         <div className="card-h" style={{justifyContent:'space-between'}}>
-          <span className="card-t">
+          <h3 className="card-t">
             <img src="/iconos_diseno_redes/gas/chequeo_red_gas.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
             Chequeo red de gas
-          </span>
+          </h3>
           <span className="card-s">{gasTramos.length} tramos</span>
         </div>
         <div style={{padding:6,overflow:'auto'}}>
             <table className="tbl" style={{fontSize:10,tableLayout:'auto',width:'100%',borderCollapse:'collapse'}}>
+              <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Chequeo red de gas</caption>
               <thead>
                 <tr>
-                  <th style={{...TH}} rowSpan={2}>Tramo</th>
-                  <th style={{...TH}} rowSpan={2}>L (m)</th>
-                  <th style={{...TH}} rowSpan={2}>d<sub>int</sub> (mm)</th>
-                  <th style={{...TH,borderBottom:'2px solid var(--line)'}} colSpan={5}>Accesorios</th>
-                  <th style={{...TH,borderLeft:'2px solid var(--line)'}} rowSpan={2}>Le (m)</th>
-                  <th style={TH} rowSpan={2}>{'Δ'}P (mbar)</th>
-                  <th style={{...TH}} rowSpan={2}>Vel (m/s)</th>
-                  <th style={{...TH,borderBottom:'2px solid var(--line)'}} colSpan={2}>P tramo (mbar)</th>
-                  <th style={{...TH}} rowSpan={2}>Vel {'≤'}10</th>
+                  <th scope="col" style={{...TH}} rowSpan={2}>Tramo</th>
+                  <th scope="col" style={{...TH}} rowSpan={2}>L (m)</th>
+                  <th scope="col" style={{...TH}} rowSpan={2}>d<sub>int</sub> (mm)</th>
+                  <th scope="col" style={{...TH,borderBottom:'2px solid var(--line)'}} colSpan={5}>Accesorios</th>
+                  <th scope="col" style={{...TH,borderLeft:'2px solid var(--line)'}} rowSpan={2}>Le (m)</th>
+                  <th scope="col" style={TH} rowSpan={2}>{'Δ'}P (mbar)</th>
+                  <th scope="col" style={{...TH}} rowSpan={2}>Vel (m/s)</th>
+                  <th scope="col" style={{...TH,borderBottom:'2px solid var(--line)'}} colSpan={2}>P tramo (mbar)</th>
+                  <th scope="col" style={{...TH}} rowSpan={2}>Vel {'≤'}10</th>
                 </tr>
                 <tr>
-                  <th style={{...TH,fontSize:8}}>Codos 90{'°'} std</th>
-                  <th style={{...TH,fontSize:8}}>Codos 90{'°'} rl</th>
-                  <th style={{...TH,fontSize:8}}>Te en l&iacute;nea (flujo recto)</th>
-                  <th style={{...TH,fontSize:8}}>Te ramal (flujo desviado)</th>
-                  <th style={{...TH,fontSize:8}}>Válvula de bola (1/4 de vuelta)</th>
-                  <th style={{...TH,fontSize:9}}>INI</th>
-                  <th style={{...TH,fontSize:9}}>FIN</th>
+                  <th scope="col" style={{...TH,fontSize:8}}>Codos 90{'°'} std</th>
+                  <th scope="col" style={{...TH,fontSize:8}}>Codos 90{'°'} rl</th>
+                  <th scope="col" style={{...TH,fontSize:8}}>Te en l&iacute;nea (flujo recto)</th>
+                  <th scope="col" style={{...TH,fontSize:8}}>Te ramal (flujo desviado)</th>
+                  <th scope="col" style={{...TH,fontSize:8}}>Válvula de bola (1/4 de vuelta)</th>
+                  <th scope="col" style={{...TH,fontSize:9}}>INI</th>
+                  <th scope="col" style={{...TH,fontSize:9}}>FIN</th>
                 </tr>
               </thead>
               <tbody>

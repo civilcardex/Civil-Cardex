@@ -103,7 +103,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
     return (
       <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.7fr 1fr", gap: 12, alignItems: "start" }}>
         <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/parametros_equipo.webp" iconImgStyle={{ width: 22, height: 22 }} title="Parámetros del equipo — Datos del fabricante" bodyStyle={{ padding: 0 }} headerRight={<EditBtn edit={editParams} setEdit={setEditParams} />}>
-          <Tbl cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
+          <Tbl caption="Parámetros del equipo" cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
             [<Param name="Eficiencia bomba (η_b)" />, <LazyInp disabled={!editParams} field="etab" ariaLabel="Eficiencia bomba" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>0.55 – 0.80</span> Verificar en curva característica del fabricante para el punto Qd / HMT.</Comment>],
             [<Param name="Eficiencia motor (η_m)" />, <LazyInp disabled={!editParams} field="etam" ariaLabel="Eficiencia motor" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>0.85 – 0.95</span> Motores IE2 o IE3 recomendados para uso con VFD.</Comment>],
             [<Param name="Factor de seguridad potencia" />, <LazyInp disabled={!editParams} field="fs" ariaLabel="Factor de seguridad potencia" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>+25%</span> Margen sobre P_freno para selección de motor comercial estándar.</Comment>],
@@ -115,7 +115,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
         </Card>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/caudales.webp" iconImgStyle={{ width: 22, height: 22 }} title="Caudales" bodyStyle={{ padding: 0 }}>
-            <Tbl thStyle={{ fontSize: 10, padding: "1px 4px" }} tdStyle={{ fontSize: 11, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
+            <Tbl caption="Caudales" thStyle={{ fontSize: 10, padding: "1px 4px" }} tdStyle={{ fontSize: 11, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
               ["Qd = MAX(Qac, Qasc)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qd > 0 ? Qd.toFixed(3) : "—"}</span>, "L/s"],
               ["Qd en m³/h", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qd > 0 ? Qm3h.toFixed(2) : "—"}</span>, "m³/h"],
               ["Qd en GPM", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qd > 0 ? Qgpm.toFixed(1) : "—"}</span>, "GPM"],
@@ -123,7 +123,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
             ]} />
           </Card>
           <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/altura_manometrica.webp" iconImgStyle={{ width: 22, height: 22 }} title={`${isRed ? "HMT = Hg + Hf + Pmin − Pred" : "HMT = Hg_total + Hf_red + Hf_suc + Pmin"}`} bodyStyle={{ padding: 0 }}>
-            <Tbl thStyle={{ fontSize: 10, padding: "1px 4px" }} tdStyle={{ fontSize: 11, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
+            <Tbl caption="Altura manométrica total" thStyle={{ fontSize: 10, padding: "1px 4px" }} tdStyle={{ fontSize: 11, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
               ["Desnivel Hg = z_top − z_bomba", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hgOk ? "var(--ok)" : "#ef5350" }}>{hgOk ? "OK" : "NO CUMPLE"} {Hg.toFixed(2)}</span>, "m.c.a."],
               ["Hf crítica = MAX(Hf_ac, Hf_acs) + Hf_otros", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hfOk ? "var(--ok)" : "#ef5350" }}>{hfOk ? "OK" : "NO CUMPLE"} {Hf.toFixed(2)}</span>, "m.c.a."],
               ["Pmin punto crítico", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: pminOk ? "var(--ok)" : "#ef5350" }}>{pminOk ? "OK" : "NO CUMPLE"} {pmin.toFixed(2)}</span>, "m.c.a."],
@@ -136,7 +136,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/potencia_bomba.webp" iconImgStyle={{ width: 22, height: 22 }} title="Potencia de la bomba" bodyStyle={{ padding: 0 }}>
-            <Tbl cols={["Parámetro", "Valor", "Ud."]} rows={[
+            <Tbl caption="Potencia de la bomba" cols={["Parámetro", "Valor", "Ud."]} rows={[
               ["P_hid = γ · Qd · HMT", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Phid > 0 ? Phid.toFixed(0) : "—"}</span>, "W"],
               ["P_freno = P_hid / (η_b · η_m)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Pfreno > 0 ? Pfreno.toFixed(3) : "—"}</span>, "HP"],
               ["P calculada (× F.S.)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Pins_hp > 0 ? Pins_hp.toFixed(2) : "—"}</span>, "HP"],
@@ -171,7 +171,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
   return (
     <div style={{ display: "grid", gridTemplateColumns: "480px 380px", gap: 16, justifyContent: "center", alignItems: "start" }}>
       <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.webp" iconImgStyle={{ width: 22, height: 22 }} title="Presostato y tanque hidroneumático" bodyStyle={{ padding: 0 }}>
-        <Tbl thStyle={{ fontSize: 11, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud.", "Fórmula"]} rows={[
+        <Tbl caption="Presostato y tanque hidroneumático" thStyle={{ fontSize: 11, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud.", "Fórmula"]} rows={[
           ["P_on (arranque)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Pon.toFixed(2)}</span>, "m.c.a.", "P_on = HMT"],
           ["P_off (paro)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Poff.toFixed(2)}</span>, "m.c.a.", "P_off = P_on × 1.10"],
           ["P_on / P_off (presostato)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Pon_bar.toFixed(2)} / {Poff_bar.toFixed(2)}</span>, "bar", "÷ 10.2 → bar"],
@@ -181,7 +181,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
         ]} />
       </Card>
       <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/diametros_velocidades.webp" iconImgStyle={{ width: 22, height: 22 }} title="Diámetros y velocidades" bodyStyle={{ padding: 0 }} headerRight={<EditBtn edit={editDiametros} setEdit={setEditDiametros} />}>
-        <Tbl thStyle={{ fontSize: 11, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud."]} rows={[
+        <Tbl caption="Diámetros y velocidades" thStyle={{ fontSize: 11, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud."]} rows={[
           [<Param name="Tubería succión" sub="DN comercial" />, <LazyInp disabled={!editDiametros} field="dnsuc" ariaLabel="Tubería succión" />, "mm DN"],
           ["Velocidad real succión", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{sucDiam.Vreal ? sucDiam.Vreal.toFixed(2) : "—"}</span>, "m/s"],
           [<Param name="Tubería impulsión" sub="DN comercial" />, <LazyInp disabled={!editDiametros} field="dnimp" ariaLabel="Tubería impulsión" />, "mm DN"],

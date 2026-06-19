@@ -10,7 +10,7 @@ interface PageNavProps {
 
 function PageNav({ page, setPage, total, labels, color }: PageNavProps) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', padding: '6px 0', flexShrink: 0 }}>
+    <nav aria-label="Paginación" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', padding: '6px 0', flexShrink: 0 }}>
       <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page <= 1} aria-label="Anterior"
         style={{ padding: '6px 14px', border: '1px solid var(--line)', borderRadius: 'var(--r)', background: 'var(--bg3)', color: page <= 1 ? 'var(--txt3)' : 'var(--txt)', cursor: page <= 1 ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, lineHeight: 1 }}>{'◀'}</button>
       {Array.from({ length: total }, (_, i) => i + 1).map(p => (
@@ -22,7 +22,7 @@ function PageNav({ page, setPage, total, labels, color }: PageNavProps) {
       ))}
       <button onClick={() => setPage(Math.min(total, page + 1))} disabled={page >= total} aria-label="Siguiente"
         style={{ padding: '6px 14px', border: '1px solid var(--line)', borderRadius: 'var(--r)', background: 'var(--bg3)', color: page >= total ? 'var(--txt3)' : 'var(--txt)', cursor: page >= total ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, lineHeight: 1 }}>{'▶'}</button>
-    </div>
+    </nav>
   );
 }
 

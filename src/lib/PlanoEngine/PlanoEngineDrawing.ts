@@ -145,6 +145,7 @@ export function calculateRamalLength(pts: number[][], engine: IPlanoEngineCore):
 }
 
 export function finishRamal(engine: IPlanoEngineCore): void {
+  engine._yeeFlashKey = null;
   if (!engine.activeRamal || engine.activeRamal.pts.length < 1) return;
   if (engine.activeRamal.pts.length < 2) {
     engine.activeRamal = null;
@@ -211,6 +212,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
 }
 
 export function cancelRamal(engine: IPlanoEngineCore): void {
+  engine._yeeFlashKey = null;
   engine.activeRamal = null;
   engine._emitStatus(_statusMsg(engine));
   engine.render();
@@ -288,6 +290,7 @@ export function deleteSegmentAt(engine: IPlanoEngineCore, cx: number, cy: number
     engine._emitSelect(null);
   } else {
     r.pts.splice(bestIdx, 1);
+    r.labelAngle = _firstSegmentAngle(r.pts);
     r.totalL = 0;
     for (let i = 0; i < r.pts.length - 1; i++) {
       r.totalL += engine.pxToM(Math.hypot(r.pts[i + 1][0] - r.pts[i][0], r.pts[i + 1][1] - r.pts[i][1]));
@@ -510,8 +513,10 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     tipo: 'bajante',
     code: bajId,
     x: px, y: py,
-    pisoBase: '', pisoCima: '',
-    nptBase: 0, nptCima: 0,
+    pisoBase: engine.nivelActual?.label ?? '',
+    pisoCima: engine.nivelActual?.label ?? '',
+    nptBase: engine.nivelActual?.npt ?? 0,
+    nptCima: engine.nivelActual?.npt ?? 0,
     hVert: 0, dNominal: '0',
     recibeDeIds: [], alimentaIds: [], descargaEnId: null,
     ucAcum: 0, ucExtra: 0, area_m2: 0,
@@ -521,6 +526,7 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     labelX: px, labelY: py + 20,
   });
   engine.selId = bajId;
+  engine._isGhostSel = false;
   engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
   engine.render();
   engine._markDirty();
@@ -539,8 +545,10 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     tipo: 'montante',
     code: 'MON' + cnt,
     x: px, y: py,
-    pisoBase: '', pisoCima: '',
-    nptBase: 0, nptCima: 0,
+    pisoBase: engine.nivelActual?.label ?? '',
+    pisoCima: engine.nivelActual?.label ?? '',
+    nptBase: engine.nivelActual?.npt ?? 0,
+    nptCima: engine.nivelActual?.npt ?? 0,
     hVert: 0, dNominal: '0',
     recibeDeIds: [], alimentaIds: [], descargaEnId: null,
     ucAcum: 0, ucExtra: 0, area_m2: 0,
@@ -550,6 +558,7 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     labelX: px, labelY: py + 20,
   });
   engine.selId = monId;
+  engine._isGhostSel = false;
   engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
   engine.render();
   engine._markDirty();
@@ -605,6 +614,7 @@ export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number
     if (r.pts.length > 2 && (bestIdx === 0 || bestIdx === r.pts.length - 1)) {
       r.pts.splice(bestIdx, 1);
       r.totalL = calculateRamalLength(r.pts, engine);
+      r.labelAngle = _firstSegmentAngle(r.pts);
       const [mx, my] = _midpoint(r.pts);
       r.labelX = mx;
       r.labelY = my;

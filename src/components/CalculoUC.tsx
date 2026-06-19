@@ -45,26 +45,27 @@ function CalculoUC({ tipo }: CalculoUCProps) {
     <>
       <div className="card">
         <div className="card-h">
-          <span className="card-t"><img src={icon} alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Cálculo de unidades de consumo {title}</span>
+          <h3 className="card-t"><img src={icon} alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Cálculo de unidades de consumo {title}</h3>
           <span className="card-s">{tramos.length} tramos</span>
         </div>
         <div className="scroll-top" style={{padding:'16px'}}>
           <div className="scroll-inner" style={{minWidth:'max-content'}}>
             <table className="tbl" style={{minWidth:800}}>
+              <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>{`Cálculo de unidades de consumo ${title}`}</caption>
               <thead>
                 <tr>
-                  <th className="col-h" rowSpan={2} style={{minWidth:64,textAlign:'center'}}>Tramo</th>
-                  <th className="col-h" rowSpan={2} style={{minWidth:44,textAlign:'center'}}>Nivel</th>
-                  <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Inicia</th>
-                  <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Termina</th>
-                  <th className={`col-h ${clsHeader}`} colSpan={AP.length} style={{textAlign:'center'}}>Aparatos</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{minWidth:64,textAlign:'center'}}>Tramo</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{minWidth:44,textAlign:'center'}}>Nivel</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Inicia</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Termina</th>
+                  <th scope="col" className={`col-h ${clsHeader}`} colSpan={AP.length} style={{textAlign:'center'}}>Aparatos</th>
                   {showTotal ? (
-                    <th className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Unidades de consumo</th>
+                    <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Unidades de consumo</th>
                   ) : (
-                    <th className="col-h ok" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Parcial</th>
+                    <th scope="col" className="col-h ok" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Parcial</th>
                   )}
-                  <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Lh (m)</th>
-                  <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>No de descarga<br/>Simultáneas</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Lh (m)</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>No de descarga<br/>Simultáneas</th>
                 </tr>
                 <tr>
                   {AP.map(d => (
@@ -74,8 +75,8 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                   ))}
                   {showTotal && (
                     <>
-                      <th className="col-h ok" style={{textAlign:'center'}}>Parcial</th>
-                      <th className="col-h ok" style={{textAlign:'center'}}>Total</th>
+                      <th scope="col" className="col-h ok" style={{textAlign:'center'}}>Parcial</th>
+                      <th scope="col" className="col-h ok" style={{textAlign:'center'}}>Total</th>
                     </>
                   )}
                 </tr>

@@ -42,6 +42,7 @@
 }
 
 .card-t {
+  margin: 0;
   font-family: var(--body);
   font-size: 15px;
   font-weight: 600;

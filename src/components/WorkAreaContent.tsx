@@ -44,7 +44,8 @@ function RedesTab({ state }: { state: WorkAreaState }) {
 
   return (
     <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}>
-      <div role="group" aria-label="Seleccionar red activa" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <fieldset style={{ display: 'flex', gap: 6, flexWrap: 'wrap', border: 'none', padding: 0, margin: 0 }}>
+        <legend style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Redes</legend>
         {redesActivas.map(r => (
           <button key={r.id} onClick={() => setRedActiva(r.id)} aria-pressed={redActiva === r.id} aria-label={r.lbl} style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 'var(--r)', border: '1px solid',
@@ -58,7 +59,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
             <span>{r.lbl}</span>
           </button>
         ))}
-      </div>
+      </fieldset>
       {redActiva === 'san' && redes.has('san') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <PageNav page={sanPage} setPage={setSanPage} total={4} color="var(--san)" labels={['Cálculo UD', 'Diseño sanitario', 'Bajantes y ventilación', 'Accesorios']} />
@@ -133,10 +134,10 @@ function InfTab({ state }: { state: WorkAreaState }) {
     <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}>
       <div className="card">
         <div className="card-h">
-          <span className="card-t">
+          <h3 className="card-t">
             <img src="/Informes.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
             Resumen del proyecto
-          </span>
+          </h3>
         </div>
         <div className="card-b">
           {items.map(([k, v]) => (

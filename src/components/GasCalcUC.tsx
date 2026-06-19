@@ -92,18 +92,18 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
   const tableHeader = (
     <thead>
       <tr>
-        <th style={{...TH, minWidth:42, fontSize:11}} rowSpan={2}>Tramo</th>
-        <th style={{...TH, minWidth:36, fontSize:11}} rowSpan={2}>Niv.</th>
-        <th style={{...TH, minWidth:40, fontSize:11}} rowSpan={2}>Inicio</th>
-        <th style={{...TH, minWidth:40, fontSize:11}} rowSpan={2}>Fin</th>
-        <th style={{...TH, textAlign:"center"}} colSpan={GAS_APPARATUS.length}>Aparatos</th>
-        <th style={{...TH, minWidth:48, fontSize:11}} rowSpan={2}>Total</th>
-        <th style={{...TH, minWidth:62, fontSize:11}} rowSpan={2}>Q (m&sup3;/h)</th>
-        <th style={{...TH, minWidth:62, fontSize:11}} rowSpan={2}>Q dise&ntilde;o</th>
+        <th scope="col" style={{...TH, minWidth:42, fontSize:11}} rowSpan={2}>Tramo</th>
+        <th scope="col" style={{...TH, minWidth:36, fontSize:11}} rowSpan={2}>Niv.</th>
+        <th scope="col" style={{...TH, minWidth:40, fontSize:11}} rowSpan={2}>Inicio</th>
+        <th scope="col" style={{...TH, minWidth:40, fontSize:11}} rowSpan={2}>Fin</th>
+        <th scope="col" style={{...TH, textAlign:"center"}} colSpan={GAS_APPARATUS.length}>Aparatos</th>
+        <th scope="col" style={{...TH, minWidth:48, fontSize:11}} rowSpan={2}>Total</th>
+        <th scope="col" style={{...TH, minWidth:62, fontSize:11}} rowSpan={2}>Q (m&sup3;/h)</th>
+        <th scope="col" style={{...TH, minWidth:62, fontSize:11}} rowSpan={2}>Q dise&ntilde;o</th>
       </tr>
       <tr>
         {GAS_APPARATUS.map((a) => (
-          <th key={a.id} style={{...TH, minWidth:40, fontSize:10, padding:"2px 2px", lineHeight:1.1}}>
+          <th scope="col" key={a.id} style={{...TH, minWidth:40, fontSize:10, padding:"2px 2px", lineHeight:1.1}}>
             <div style={{fontWeight:700}} title={a.nombre}>{(ABREV as Record<string, string>)[a.id]}</div>
             <div style={{fontSize:8, fontWeight:400, color:"var(--txt3)", marginTop:1}}>{a.qgas}</div>
           </th>
@@ -116,14 +116,15 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
     return (
       <div className="card">
         <div className="card-h">
-          <span className="card-t">
+          <h3 className="card-t">
             <img src="/iconos_diseno_redes/gas/calculo_UC_gas.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
             Cálculo UC gas
-          </span>
+          </h3>
           <span className="card-s">0 tramos</span>
         </div>
         <div style={{ padding: 16 }}>
           <table className="tbl" style={{ width: "100%" }}>
+            <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Cálculo UC gas</caption>
             {tableHeader}
             <tbody>
               <tr><td colSpan={4 + GAS_APPARATUS.length + 3} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>No hay tramos con aparatos de gas.</td></tr>
@@ -137,14 +138,15 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
   return (<>
     <div className="card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
       <div className="card-h">
-        <span className="card-t">
+        <h3 className="card-t">
           <img src="/iconos_diseno_redes/gas/calculo_UC_gas.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
           Cálculo UC gas
-        </span>
+        </h3>
         <span className="card-s">{tramos.length} tramos</span>
       </div>
       <div style={{ flex: 1, overflow: "auto", padding: "8px 10px" }}>
         <table className="tbl" style={{ width: "100%" }}>
+          <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Cálculo UC gas</caption>
           {tableHeader}
           <tbody>
             {tramos.map((t, i) => (
@@ -193,10 +195,10 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
 
     <div className="card" style={{ flexShrink: 0, alignSelf: "stretch" }}>
       <div className="card-h">
-        <span className="card-t">
+        <h3 className="card-t">
           <img src="/iconos_diseno_redes/general/calculo_perdidas_de_carga.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
           Factores de correcci&oacute;n
-        </span>
+        </h3>
       </div>
       <div style={{ padding: "8px 16px", display: "flex", gap: 24, flexWrap: "wrap", fontSize: 13, justifyContent: "space-between" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 0", minWidth: 0 }}>

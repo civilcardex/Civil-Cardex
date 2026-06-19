@@ -737,7 +737,7 @@ export const docData = {
               <span className="font-semibold text-primary">Re</span><span>número de Reynolds (adimensional)</span>
               <span className="font-semibold text-primary">V</span><span>velocidad del fluido (m/s)</span>
               <span className="font-semibold text-primary">D</span><span>diámetro interno de la tubería (m)</span>
-              <span className="font-semibold text-primary">&nu;</span><span>viscosidad cinematica del agua (m²/s)</span>
+              <span className="font-semibold text-primary">&nu;</span><span>viscosidad cinemática del agua (m²/s)</span>
             </div>
             <T>
               <Tr><Th>Tipo de flujo</Th><Th>Rango Re</Th><Th>Característica</Th></Tr>
@@ -775,7 +775,7 @@ export const docData = {
         title: 'Interfaz del aplicativo',
         body: (
           <div className="space-y-4">
-            <p>La interfaz de CIVILFLOW KML 2026 se divide en cinco zonas principales, cada una con funciones especificas para facilitar el diseño hidrosanitario:</p>
+            <p>La interfaz de CIVILFLOW KML 2026 se divide en cinco zonas principales, cada una con funciones específicas para facilitar el diseño hidrosanitario:</p>
 
             <div className="border border-outline-variant rounded overflow-hidden">
               <div className="grid grid-cols-[140px,1fr] gap-0 text-[13px]">
@@ -810,7 +810,7 @@ export const docData = {
             <T>
               <Tr><Th>Campo</Th><Th>Ejemplo</Th></Tr>
               <Tr><Td>Nombre del proyecto</Td><Td>Casa No. 26 CR Monte Real</Td></Tr>
-              <Tr><Td>Direccion</Td><Td>CR 10 No. 25-40</Td></Tr>
+              <Tr><Td>Dirección</Td><Td>CR 10 No. 25-40</Td></Tr>
               <Tr><Td>Municipio</Td><Td>Floridablanca</Td></Tr>
               <Tr><Td>Uso</Td><Td>Vivienda unifamiliar</Td></Tr>
               <Tr><Td>Empresa prestadora</Td><Td>EMAB - Floridablanca</Td></Tr>
@@ -825,7 +825,7 @@ export const docData = {
         title: 'Generador de niveles',
         body: (
           <div className="space-y-3">
-            <p>El generador automatico de niveles se encuentra en la parte inferior del Sidebar.</p>
+            <p>El generador automático de niveles se encuentra en la parte inferior del Sidebar.</p>
             <ol className="list-decimal list-inside text-[13px] space-y-1">
               <li>Definir N° de sótanos (0 si no aplica)</li>
               <li>Definir N° de pisos sobre rasante (min. 1)</li>

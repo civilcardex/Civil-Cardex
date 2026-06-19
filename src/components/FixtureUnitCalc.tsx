@@ -29,28 +29,29 @@ return (
 <>
   <div className="card">
     <div className="card-h">
-      <span className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Calculo_UC.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Cálculo de unidades de descarga</span>
+      <h3 className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Calculo_UC.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Cálculo de unidades de descarga</h3>
       <span className="card-s">{tramosSan.length} tramos</span>
     </div>
     <div className="scroll-top" style={{padding:'16px'}}>
       <div className="scroll-inner" style={{minWidth:'max-content'}}>
         <table className="tbl" style={{minWidth:900}}>
+          <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Cálculo de unidades de descarga</caption>
           <thead>
             <tr>
-              <th className="col-h" rowSpan={2} style={{minWidth:70,textAlign:'center'}}>Tramo</th>
-              <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Nivel</th>
-              <th className="col-h" rowSpan={2} style={{minWidth:60,textAlign:'center'}}>Inicio</th>
-              <th className="col-h" rowSpan={2} style={{minWidth:60,textAlign:'center'}}>Fin</th>
-              <th className="col-h san" colSpan={mergedBase.length} style={{textAlign:'center'}}>Aparatos</th>
-              <th className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Unidades de Descarga</th>
-              <th className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Bajante</th>
+              <th scope="col" className="col-h" rowSpan={2} style={{minWidth:70,textAlign:'center'}}>Tramo</th>
+              <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Nivel</th>
+              <th scope="col" className="col-h" rowSpan={2} style={{minWidth:60,textAlign:'center'}}>Inicio</th>
+              <th scope="col" className="col-h" rowSpan={2} style={{minWidth:60,textAlign:'center'}}>Fin</th>
+              <th scope="col" className="col-h san" colSpan={mergedBase.length} style={{textAlign:'center'}}>Aparatos</th>
+              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Unidades de descarga</th>
+              <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Bajante</th>
             </tr>
             <tr>
               {mergedBase.map(d=>(
                 <th key={d.id} className="col-h san" style={{minWidth:52,fontSize:9,textAlign:'center'}}>{d.nombre}<br/><span style={{fontSize:8,fontWeight:400}}>{d.ud} UD</span></th>
               ))}
-              <th className="col-h ok" style={{textAlign:'center'}}>Parcial</th>
-              <th className="col-h ok" style={{textAlign:'center'}}>Total</th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center'}}>Parcial</th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center'}}>Total</th>
             </tr>
           </thead>
           <tbody>

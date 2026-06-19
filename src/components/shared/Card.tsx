@@ -24,7 +24,7 @@ const Card = React.memo(function Card({ title, subtitle, icon, iconImg, iconImgS
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {iconImg ? <img src={iconImg} alt=""  width={18} height={18} style={{width:18,height:18, ...iconImgStyle }}  loading="lazy" /> : null}
               {icon}
-              {title && <span className="card-t">{title}</span>}
+              {title && <h3 className="card-t">{title}</h3>}
             </div>
             {headerRight && <div>{headerRight}</div>}
           </div>

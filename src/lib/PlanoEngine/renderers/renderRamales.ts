@@ -399,13 +399,19 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       drawY = lc.y;
       const labelAngle = (r.labelAngle || 0) * Math.PI / 180;
       const cosA = Math.cos(labelAngle), sinA = Math.sin(labelAngle);
+      const labelGap = -engine.mm2cvs(7);
+      const gapOffX = -labelGap * sinA;
+      const gapOffY = labelGap * cosA;
+      const adjCx = drawX + gapOffX;
+      const adjCy = drawY + gapOffY;
 
-      const { corners, minX, minY, maxX, maxY } = rotatedRectCorners(drawX, drawY, boxW, boxH, labelAngle);
-      r._labelBox = { cx: drawX, cy: drawY, w: boxW, h: boxH, angle: labelAngle, minX, minY, maxX, maxY, corners };
+      const { corners, minX, minY, maxX, maxY } = rotatedRectCorners(adjCx, adjCy, boxW, boxH, labelAngle);
+      r._labelBox = { cx: adjCx, cy: adjCy, w: boxW, h: boxH, angle: labelAngle, minX, minY, maxX, maxY, corners };
 
       ctx.save();
       ctx.translate(drawX, drawY);
       ctx.rotate(labelAngle);
+      ctx.translate(0, labelGap);
       ctx.fillStyle = 'rgba(255,255,255,0.88)';
       ctx.fillRect(-boxW / 2, -boxH / 2, boxW, boxH);
       ctx.textAlign = 'center';
@@ -500,30 +506,68 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       }
     }
 
-    if (r.id === engine.selId && r.pts.length >= 2) {
-      const firstC = engine.toCvs(r.pts[0][0], r.pts[0][1]);
-      const secondC = engine.toCvs(r.pts[1][0], r.pts[1][1]);
-      const adx = secondC.x - firstC.x, ady = secondC.y - firstC.y;
-      const alen = Math.hypot(adx, ady);
-      if (alen > 2) {
-        const unx = adx / alen, uny = ady / alen;
-        const arrowR = 18;
-        const cx = firstC.x - unx * arrowR * 0.3;
-        const cy = firstC.y - uny * arrowR * 0.3;
-        ctx.save();
-        ctx.fillStyle = '#FFEB3B';
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1.5;
-        ctx.shadowColor = '#000';
-        ctx.shadowBlur = 6;
-        ctx.beginPath();
-        ctx.moveTo(cx + unx * arrowR, cy + uny * arrowR);
-        ctx.lineTo(cx + uny * arrowR * 0.5, cy - unx * arrowR * 0.5);
-        ctx.lineTo(cx - uny * arrowR * 0.5, cy + unx * arrowR * 0.5);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
+    if (r.pts.length >= 2 && (r.id === engine.selId || (engine.multiSel || []).includes(r.id))) {
+      const isDesvio = engine.bajantes.some((b: any) => {
+        const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
+        if (!disp || disp.Ldesvio !== r.id) return false;
+        const gx = b.x + (disp.dx || 0), gy = b.y + (disp.dy || 0);
+        const firstPt = r.pts[0], lastPt = r.pts[r.pts.length - 1];
+        const nearParent = Math.hypot(firstPt[0] - b.x, firstPt[1] - b.y) < 0.5;
+        const nearGhost = Math.hypot(lastPt[0] - gx, lastPt[1] - gy) < 0.5;
+        return nearParent && nearGhost;
+      });
+      if (isDesvio) {
+        const lastPt = r.pts[r.pts.length - 1];
+        const prevPt = r.pts[r.pts.length - 2];
+        const lastC = engine.toCvs(lastPt[0], lastPt[1]);
+        const prevC = engine.toCvs(prevPt[0], prevPt[1]);
+        const adx = prevC.x - lastC.x, ady = prevC.y - lastC.y;
+        const alen = Math.hypot(adx, ady);
+        if (alen > 2) {
+          const unx = adx / alen, uny = ady / alen;
+          const arrowR = 18;
+          const cx = lastC.x;
+          const cy = lastC.y;
+          ctx.save();
+          ctx.fillStyle = '#FFEB3B';
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 1.5;
+          ctx.shadowColor = '#000';
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.moveTo(cx + unx * arrowR, cy + uny * arrowR);
+          ctx.lineTo(cx + uny * arrowR * 0.5, cy - unx * arrowR * 0.5);
+          ctx.lineTo(cx - uny * arrowR * 0.5, cy + unx * arrowR * 0.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+      } else {
+        const firstC = engine.toCvs(r.pts[0][0], r.pts[0][1]);
+        const secondC = engine.toCvs(r.pts[1][0], r.pts[1][1]);
+        const adx = secondC.x - firstC.x, ady = secondC.y - firstC.y;
+        const alen = Math.hypot(adx, ady);
+        if (alen > 2) {
+          const unx = adx / alen, uny = ady / alen;
+          const arrowR = 18;
+          const cx = firstC.x;
+          const cy = firstC.y;
+          ctx.save();
+          ctx.fillStyle = '#FFEB3B';
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 1.5;
+          ctx.shadowColor = '#000';
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.moveTo(cx + unx * arrowR, cy + uny * arrowR);
+          ctx.lineTo(cx + uny * arrowR * 0.5, cy - unx * arrowR * 0.5);
+          ctx.lineTo(cx - uny * arrowR * 0.5, cy + unx * arrowR * 0.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
       }
     }
   });
@@ -704,47 +748,74 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         ctx.lineJoin = 'round';
         ctx.setLineDash([]);
 
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = '#ffffff';
+        const vectorsA = [];
+        const vecAB = { x: b.P[0] - a.P[0], y: b.P[1] - a.P[1] };
+        const dotAa = a.uA.x * vecAB.x + a.uA.y * vecAB.y;
+        if (dotAa <= 0) vectorsA.push(a.uA); else vectorsA.push(a.uB);
+        a.branches.forEach(uC => vectorsA.push(uC));
+
+        const vectorsB = [];
+        const vecBA = { x: a.P[0] - b.P[0], y: a.P[1] - b.P[1] };
+        const dotBa = b.uA.x * vecBA.x + b.uA.y * vecBA.y;
+        if (dotBa <= 0) vectorsB.push(b.uA); else vectorsB.push(b.uB);
+        b.branches.forEach(uC => vectorsB.push(uC));
+
         ctx.beginPath();
-        ctx.moveTo(cvsA.x, cvsA.y);
-        ctx.lineTo(cvsB.x, cvsB.y);
-        ctx.stroke();
+        if (vectorsA.length > 0) {
+          ctx.moveTo(cvsA.x + rad * vectorsA[0].x, cvsA.y + rad * vectorsA[0].y);
+          for(let i=1; i<vectorsA.length; i++) {
+             ctx.lineTo(cvsA.x, cvsA.y);
+             ctx.lineTo(cvsA.x + rad * vectorsA[i].x, cvsA.y + rad * vectorsA[i].y);
+          }
+          ctx.lineTo(cvsA.x, cvsA.y);
+        } else {
+          ctx.moveTo(cvsA.x, cvsA.y);
+        }
         
-        ctx.lineWidth = 2.5;
+        ctx.lineTo(cvsB.x, cvsB.y);
+
+        if (vectorsB.length > 0) {
+          ctx.lineTo(cvsB.x + rad * vectorsB[0].x, cvsB.y + rad * vectorsB[0].y);
+          for(let i=1; i<vectorsB.length; i++) {
+             ctx.lineTo(cvsB.x, cvsB.y);
+             ctx.lineTo(cvsB.x + rad * vectorsB[i].x, cvsB.y + rad * vectorsB[i].y);
+          }
+        }
+        
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = '#ffffff';
+        ctx.stroke();
+        ctx.lineWidth = 3.5;
         ctx.strokeStyle = '#000000';
         ctx.stroke();
 
-        const drawSingleTick = (center: { x: number; y: number }, u: { x: number; y: number }) => {
-          const T_pt = { x: center.x + rad * u.x, y: center.y + rad * u.y };
+        const yeeKey = `${a.P[0].toFixed(3)}_${a.P[1].toFixed(3)}_${b.P[0].toFixed(3)}_${b.P[1].toFixed(3)}`;
+        const isFlash = engine._yeeFlashKey !== yeeKey;
+        if (isFlash) {
+          engine._yeeFlashKey = yeeKey;
+          ctx.beginPath();
+          ctx.arc((cvsA.x + cvsB.x) / 2, (cvsA.y + cvsB.y) / 2, engine.mm2cvs(1.2), 0, Math.PI * 2);
+          ctx.strokeStyle = '#00FFFF';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = '#000000';
+        ctx.beginPath();
+        vectorsA.forEach(u => {
+          const T_pt = { x: cvsA.x + rad * u.x, y: cvsA.y + rad * u.y };
           const perp = { x: -u.y, y: u.x };
-
-          ctx.lineWidth = 5;
-          ctx.strokeStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.moveTo(center.x, center.y);
-          ctx.lineTo(T_pt.x, T_pt.y);
-          ctx.stroke();
-
-          ctx.lineWidth = 2.5;
-          ctx.strokeStyle = '#000000';
-          ctx.stroke();
-
-          ctx.beginPath();
           ctx.moveTo(T_pt.x - perp.x * tickLen / 2, T_pt.y - perp.y * tickLen / 2);
           ctx.lineTo(T_pt.x + perp.x * tickLen / 2, T_pt.y + perp.y * tickLen / 2);
-          ctx.stroke();
-        };
-
-        const vecAB = { x: b.P[0] - a.P[0], y: b.P[1] - a.P[1] };
-        const dotAa = a.uA.x * vecAB.x + a.uA.y * vecAB.y;
-        if (dotAa <= 0) drawSingleTick(cvsA, a.uA); else drawSingleTick(cvsA, a.uB);
-        a.branches.forEach(uC => drawSingleTick(cvsA, uC));
-
-        const vecBA = { x: a.P[0] - b.P[0], y: a.P[1] - b.P[1] };
-        const dotBa = b.uA.x * vecBA.x + b.uA.y * vecBA.y;
-        if (dotBa <= 0) drawSingleTick(cvsB, b.uA); else drawSingleTick(cvsB, b.uB);
-        b.branches.forEach(uC => drawSingleTick(cvsB, uC));
+        });
+        vectorsB.forEach(u => {
+          const T_pt = { x: cvsB.x + rad * u.x, y: cvsB.y + rad * u.y };
+          const perp = { x: -u.y, y: u.x };
+          ctx.moveTo(T_pt.x - perp.x * tickLen / 2, T_pt.y - perp.y * tickLen / 2);
+          ctx.lineTo(T_pt.x + perp.x * tickLen / 2, T_pt.y + perp.y * tickLen / 2);
+        });
+        ctx.stroke();
 
         ctx.restore();
       }
@@ -765,30 +836,32 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       const tickLen = engine.mm2cvs(0.8);
       const cvsP = engine.toCvs(j.P[0], j.P[1]);
 
-      const drawTick = (u: { x: number; y: number }) => {
+      const vectors = [j.uA, j.uB, ...j.branches];
+      ctx.beginPath();
+      if (vectors.length > 0) {
+        ctx.moveTo(cvsP.x + rad * vectors[0].x, cvsP.y + rad * vectors[0].y);
+        for(let i=1; i<vectors.length; i++) {
+           ctx.lineTo(cvsP.x, cvsP.y);
+           ctx.lineTo(cvsP.x + rad * vectors[i].x, cvsP.y + rad * vectors[i].y);
+        }
+      }
+
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = '#000000';
+      ctx.stroke();
+
+      ctx.beginPath();
+      vectors.forEach(u => {
         const T_pt = { x: cvsP.x + rad * u.x, y: cvsP.y + rad * u.y };
         const perp = { x: -u.y, y: u.x };
-
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.moveTo(cvsP.x, cvsP.y);
-        ctx.lineTo(T_pt.x, T_pt.y);
-        ctx.stroke();
-
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = '#000000';
-        ctx.stroke();
-
-        ctx.beginPath();
         ctx.moveTo(T_pt.x - perp.x * tickLen / 2, T_pt.y - perp.y * tickLen / 2);
         ctx.lineTo(T_pt.x + perp.x * tickLen / 2, T_pt.y + perp.y * tickLen / 2);
-        ctx.stroke();
-      };
-
-      drawTick(j.uA);
-      drawTick(j.uB);
-      j.branches.forEach(uC => drawTick(uC));
+      });
+      ctx.stroke();
 
       ctx.restore();
     }
@@ -886,14 +959,14 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
     ctx.strokeStyle = '#22D3EE';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(mc.x, mc.y, 6, 0, Math.PI * 2);
+    ctx.arc(mc.x, mc.y, 3.5, 0, Math.PI * 2);
     ctx.stroke();
   }
 
   const segPx = Math.hypot(mp.x - last[0], mp.y - last[1]);
-  const segM = engine.pxToM(segPx);
+  const segM = +(engine.pxToM(segPx).toFixed(2));
   const deg = Math.atan2(mp.y - last[1], mp.x - last[0]) * 180 / Math.PI;
-  const cursorLabel = `${segM}m  ${Math.round(((deg % 360) + 360) % 360)}°`;
+  const cursorLabel = `${segM} m  ${Math.round(((deg % 360) + 360) % 360)}°`;
   ctx.font = `${engine.mm2cvs(engine.MM.coord * engine.labelScaleM)}px Geist, monospace`;
   const tw = ctx.measureText(cursorLabel).width;
   ctx.fillStyle = 'rgba(17,19,23,0.82)';

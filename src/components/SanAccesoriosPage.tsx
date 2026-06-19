@@ -42,10 +42,10 @@ export default function SanAccesoriosPage() {
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
       <div className="card-h">
-        <span className="card-t">
+        <h3 className="card-t">
           <img src="/iconos_diseno_redes/general/Accesorios.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
           Accesorios por ramal
-        </span>
+        </h3>
         <span className="card-s">{tramos.length} tramos · Red sanitaria</span>
       </div>
       <div className="scroll-top" style={{ padding: '12px', flex: 1, minHeight: 0 }}>

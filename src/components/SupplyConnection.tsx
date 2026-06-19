@@ -1,7 +1,7 @@
 import React from "react";
-import { COEF_HAZEN_PVC } from "../utils/calcHydraulics";
+import { COEF_HAZEN } from "../utils/calcHydraulics";
 
-const C = COEF_HAZEN_PVC;
+const C = COEF_HAZEN;
 const fmt = (v: unknown, d = 2) => v == null || Number.isNaN(Number(v)) ? "—" : Number(v).toFixed(d);
 
 interface FilaResult {
@@ -73,11 +73,12 @@ function Acometida({
   return (
     <div className="card">
       <div className="card-h">
-        <span className="card-t"><img src="/iconos_diseno_redes/general/Acometida.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Acometida</span>
+        <h3 className="card-t"><img src="/iconos_diseno_redes/general/Acometida.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Acometida</h3>
       </div>
       <div className="scroll-top" style={{ padding: "6px" }}>
         <div className="scroll-inner" style={{ minWidth: "max-content" }}>
           <table className="tbl" style={{ fontSize: 10, tableLayout: "auto", width: "100%" }}>
+            <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Acometida</caption>
             <colgroup>
               <col style={{width:"4%"}}/>
               <col style={{width:"6.5%"}}/>
@@ -101,14 +102,14 @@ function Acometida({
             </colgroup>
             <thead>
               <tr>
-                <th colSpan={3} className="col-h" style={{textAlign:"center",padding:"3px 4px",fontSize:11,fontWeight:700,background:"var(--af)",color:"#fff",letterSpacing:.5}}>ACOMETIDA</th>
-                <th className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>Q (l/s)</th>
-                <th className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>diametro estimado</th>
-                <th className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>contador</th>
-                <th className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>diam. contador</th>
-                <th className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>material</th>
-                <th className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>coeficiente C</th>
-                <th className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>Qn (l/s)</th>
+                <th scope="col" colSpan={3} className="col-h" style={{textAlign:"center",padding:"3px 4px",fontSize:11,fontWeight:700,background:"var(--af)",color:"#fff",letterSpacing:.5}}>ACOMETIDA</th>
+                <th scope="col" className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>Q (l/s)</th>
+                <th scope="col" className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>diametro estimado</th>
+                <th scope="col" className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>contador</th>
+                <th scope="col" className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>diam. contador</th>
+                <th scope="col" className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>material</th>
+                <th scope="col" className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>coeficiente C</th>
+                <th scope="col" className="col-h" style={{textAlign:"center",padding:"2px 1px",fontSize:9,fontWeight:600}}>Qn (l/s)</th>
                 <th colSpan={9} className="col-h" style={{padding:"2px 1px",fontSize:8,fontWeight:500,color:"var(--txt3)"}}></th>
               </tr>
             </thead>
@@ -126,7 +127,7 @@ function Acometida({
                   {sqrtQaco > 0 ? fmt(sqrtQaco, 2) : "—"}
                 </td>
                 <td className="c" style={{padding:"2px 1px"}}>
-                  <select value={acoRedContDiam || ''} onChange={e => setAcoRedContDiam(parseFloat(e.target.value) || 0)}
+                  <select aria-label="Diámetro Red-Contador" value={acoRedContDiam || ''} onChange={e => setAcoRedContDiam(parseFloat(e.target.value) || 0)}
                     style={{fontSize:11,padding:"0 1px",border:"1px solid var(--line)",borderRadius:1,background:"var(--bg2)",color:"var(--txt)",cursor:"pointer",maxWidth:54}}>
                     <option value="">—</option>
                     {AF_DIAM_OPTS.map(o => <option key={o.pulg} value={o.pulg}>{o.label}</option>)}
@@ -136,14 +137,14 @@ function Acometida({
                 <td className="c" style={{padding:"2px 1px",fontSize:11}}>PVC</td>
                 <td className="c" style={{padding:"2px 1px",fontSize:11}}>{C}</td>
                 <td className="c" style={{padding:"2px 1px",fontWeight:600,fontSize:11,background:f1.V>0&&f1.V>=500&&f1.V<=2500?"rgba(34,197,94,.25)":f1.V>0?"rgba(239,68,68,.25)":"transparent"}}>{f1.V > 0 ? fmt(f1.V, 2) : "—"}</td>
-                <td className="c" style={{padding:"0 1px"}}><input type="number" step={0.01} className="ni" style={{width:42,textAlign:"center",padding:0,fontSize:11}} value={acoL1.h} onChange={e=>setAcoL1(s=>({...s,h:parseFloat(e.target.value)||0}))}/></td>
-                <td className="c" style={{padding:"0 1px"}}><input type="number" step={0.01} className="ni" style={{width:42,textAlign:"center",padding:0,fontSize:11}} value={acoL1.v} onChange={e=>setAcoL1(s=>({...s,v:parseFloat(e.target.value)||0}))}/></td>
-                <td className="c" style={{padding:"0 1px"}}><input type="number" step={0.01} className="ni" style={{width:42,textAlign:"center",padding:0,fontSize:11}} value={acoL1.le} onChange={e=>setAcoL1(s=>({...s,le:parseFloat(e.target.value)||0}))}/></td>
+                <td className="c" style={{padding:"0 1px"}}><input type="number" step={0.01} aria-label="Longitud horizontal Red-Contador" className="ni" style={{width:42,textAlign:"center",padding:0,fontSize:11}} value={acoL1.h} onChange={e=>setAcoL1(s=>({...s,h:parseFloat(e.target.value)||0}))}/></td>
+                <td className="c" style={{padding:"0 1px"}}><input type="number" step={0.01} aria-label="Longitud vertical Red-Contador" className="ni" style={{width:42,textAlign:"center",padding:0,fontSize:11}} value={acoL1.v} onChange={e=>setAcoL1(s=>({...s,v:parseFloat(e.target.value)||0}))}/></td>
+                <td className="c" style={{padding:"0 1px"}}><input type="number" step={0.01} aria-label="Longitud equivalente Red-Contador" className="ni" style={{width:42,textAlign:"center",padding:0,fontSize:11}} value={acoL1.le} onChange={e=>setAcoL1(s=>({...s,le:parseFloat(e.target.value)||0}))}/></td>
                 <td className="c" style={{padding:"2px 1px",fontWeight:600,fontSize:11}}>{f1.Lt > 0 ? fmt(f1.Lt, 2) : "—"}</td>
                 <td className="c" style={{padding:"2px 1px",fontSize:11}}>{f1.hfPct > 0 ? fmt(f1.hfPct, 2) : "—"}</td>
                 <td className="c" style={{padding:"2px 1px",fontWeight:600,fontSize:11}}>{f1.hfM > 0 ? fmt(f1.hfM, 2) : "—"}</td>
                 <td className="c" style={{padding:"2px 1px",fontSize:11}}>{acoL1.v > 0 ? fmt(acoL1.v, 2) : "—"}</td>
-                <td className="c" style={{padding:"0 1px"}}><input type="number" step={0.1} className="ni" style={{width:44,textAlign:"center",padding:0,fontSize:11}} value={acoPini} onChange={e=>setAcoPini(parseFloat(e.target.value)||0)}/></td>
+                <td className="c" style={{padding:"0 1px"}}><input type="number" step={0.1} aria-label="Presión inicial" className="ni" style={{width:44,textAlign:"center",padding:0,fontSize:11}} value={acoPini} onChange={e=>setAcoPini(parseFloat(e.target.value)||0)}/></td>
                 <td className="c" style={{padding:"2px 1px",fontWeight:600,fontSize:11,color:f1.Pfin>=1?"var(--ok)":"var(--err)"}}>{f1.Pfin > 0 ? fmt(f1.Pfin, 2) : "—"}</td>
               </tr>
 
@@ -151,7 +152,7 @@ function Acometida({
                 <td className="c" style={{padding:"2px 1px",background:"var(--bg4)",fontWeight:700,fontSize:9,color:"var(--txt2)"}}>CONTADOR</td>
                 <td className="c" style={{padding:"2px 1px",fontSize:11,color:"var(--txt2)",textAlign:"center",fontWeight:700}}>→</td>
                 <td className="c" style={{padding:"0",background:"var(--bg4)"}}>
-                  <input value={acoMonName} onChange={e=>setAcoMonName(e.target.value)}
+                  <input aria-label="Nombre montante" value={acoMonName} onChange={e=>setAcoMonName(e.target.value)}
                     style={{width:"100%",border:"none",background:"transparent",textAlign:"center",fontSize:11,fontWeight:700,color:"var(--txt2)",padding:"2px 1px"}}/>
                 </td>
                 <td className="c" style={{padding:"2px 1px",fontSize:11,fontWeight:600}}>
@@ -161,7 +162,7 @@ function Acometida({
                   {sqrtQaco > 0 ? fmt(sqrtQaco, 2) : "—"}
                 </td>
                 <td className="c" style={{padding:"2px 1px"}}>
-                  <select value={acoContMonDiam || ''} onChange={e => setAcoContMonDiam(parseFloat(e.target.value) || 0)}
+                  <select aria-label="Diámetro Contador-Montante" value={acoContMonDiam || ''} onChange={e => setAcoContMonDiam(parseFloat(e.target.value) || 0)}
                     style={{fontSize:11,padding:"0 1px",border:"1px solid var(--line)",borderRadius:1,background:"var(--bg2)",color:"var(--txt)",cursor:"pointer",maxWidth:54}}>
                     <option value="">—</option>
                     {AF_DIAM_OPTS.map(o => <option key={o.pulg} value={o.pulg}>{o.label}</option>)}
@@ -171,9 +172,9 @@ function Acometida({
                 <td className="c" style={{padding:"2px 1px",fontSize:11}}>PVC</td>
                 <td className="c" style={{padding:"2px 1px",fontSize:11}}>{C}</td>
                 <td className="c" style={{padding:"2px 1px",fontWeight:600,fontSize:11,background:f2.V>0&&f2.V>=500&&f2.V<=2500?"rgba(34,197,94,.25)":f2.V>0?"rgba(239,68,68,.25)":"transparent"}}>{f2.V > 0 ? fmt(f2.V, 2) : "—"}</td>
-                <td className="c" style={{padding:"0 1px"}}><input type="number" step={0.01} className="ni" style={{width:42,textAlign:"center",padding:0,fontSize:11}} value={acoL2.h} onChange={e=>setAcoL2(s=>({...s,h:parseFloat(e.target.value)||0}))}/></td>
-                <td className="c" style={{padding:"0 1px"}}><input type="number" step={0.01} className="ni" style={{width:42,textAlign:"center",padding:0,fontSize:11}} value={acoL2.v} onChange={e=>setAcoL2(s=>({...s,v:parseFloat(e.target.value)||0}))}/></td>
-                <td className="c" style={{padding:"0 1px"}}><input type="number" step={0.01} className="ni" style={{width:42,textAlign:"center",padding:0,fontSize:11}} value={acoL2.le} onChange={e=>setAcoL2(s=>({...s,le:parseFloat(e.target.value)||0}))}/></td>
+                <td className="c" style={{padding:"0 1px"}}><input type="number" step={0.01} aria-label="Longitud horizontal Contador-Montante" className="ni" style={{width:42,textAlign:"center",padding:0,fontSize:11}} value={acoL2.h} onChange={e=>setAcoL2(s=>({...s,h:parseFloat(e.target.value)||0}))}/></td>
+                <td className="c" style={{padding:"0 1px"}}><input type="number" step={0.01} aria-label="Longitud vertical Contador-Montante" className="ni" style={{width:42,textAlign:"center",padding:0,fontSize:11}} value={acoL2.v} onChange={e=>setAcoL2(s=>({...s,v:parseFloat(e.target.value)||0}))}/></td>
+                <td className="c" style={{padding:"0 1px"}}><input type="number" step={0.01} aria-label="Longitud equivalente Contador-Montante" className="ni" style={{width:42,textAlign:"center",padding:0,fontSize:11}} value={acoL2.le} onChange={e=>setAcoL2(s=>({...s,le:parseFloat(e.target.value)||0}))}/></td>
                 <td className="c" style={{padding:"2px 1px",fontWeight:600,fontSize:11}}>{f2.Lt > 0 ? fmt(f2.Lt, 2) : "—"}</td>
                 <td className="c" style={{padding:"2px 1px",fontSize:11}}>{f2.hfPct > 0 ? fmt(f2.hfPct, 2) : "—"}</td>
                 <td className="c" style={{padding:"2px 1px",fontWeight:600,fontSize:11}}>{f2.hfM > 0 ? fmt(f2.hfM, 2) : "—"}</td>

@@ -14,10 +14,10 @@ function ProjectIdCard({ proy, setP }: { proy: any; setP: (k: string, v: any) =>
     <div className="card" style={{ flex: '0 1 auto', minWidth: 200 }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span className="card-t" style={{ fontSize: 13 }}>
+          <h3 className="card-t" style={{ fontSize: 13 }}>
             <img src="/iconos_info_general/identificacion_del_proyecto.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Identificación del proyecto
-          </span>
+          </h3>
           <span className="card-s" style={{ fontSize: 11 }}>Datos para memorias de cálculo</span>
         </div>
       </div>
@@ -38,10 +38,10 @@ function ActiveNetsCard({ redes, setRedes, netColors, setNetColors }: { redes: S
     <div className="card" style={{ flex: '0 1 auto', minWidth: 190 }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span className="card-t" style={{ fontSize: 13 }}>
+          <h3 className="card-t" style={{ fontSize: 13 }}>
             <img src="/iconos_info_general/redes_activas.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Redes activas
-          </span>
+          </h3>
           <span className="card-s" style={{ fontSize: 11 }}>
             {[...redes].filter(id => id !== 'ep' && id !== 'bom').length} de {REDES.filter(r => r.id !== 'ep' && r.id !== 'bom').length}
           </span>
@@ -90,10 +90,10 @@ function ActiveEquiposCard({ redes, setRedes }: { redes: Set<string>; setRedes: 
     <div className="card" style={{ flex: 1, minWidth: 190, display: 'flex', flexDirection: 'column' }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span className="card-t" style={{ fontSize: 13 }}>
+          <h3 className="card-t" style={{ fontSize: 13 }}>
             <img src="/iconos_info_general/equipos_activos.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Equipos activos
-          </span>
+          </h3>
           <span className="card-s" style={{ fontSize: 11 }}>{[...redes].filter(id => id === 'ep' || id === 'bom').length} de 2</span>
         </div>
       </div>
@@ -137,11 +137,11 @@ function FloorGeneratorCard(props: {
     <div className="card" style={{ flex: '0 0 auto', minWidth: 0 }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-          <span className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
+          <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
             <img src="/iconos_info_general/generador_de_pisos.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Generador de pisos
             <button onClick={() => setIsEditing(!isEditing)} style={{ marginLeft: 'auto', background: isEditing ? 'var(--acc)' : 'transparent', color: isEditing ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>{isEditing ? 'LISTO' : 'EDITAR'}</button>
-          </span>
+          </h3>
           <span className="card-s" style={{ fontSize: 11 }}>Generación automática de pisos y sótanos</span>
         </div>
       </div>
@@ -173,11 +173,11 @@ function LevelsCard({ pisos, delPiso, addPiso, addSotano, setPisos }: { pisos: a
     <div className="card" style={{ flex: '1 1 auto', minWidth: 220, display: 'flex', flexDirection: 'column' }}>
       <div className="card-h" style={{ padding: '4px 8px', flexShrink: 0 }}>
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-          <span className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
+          <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
             <img src="/iconos_info_general/niveles_generados.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Niveles generados
             <button onClick={() => setIsEditing(!isEditing)} style={{ marginLeft: 'auto', background: isEditing ? 'var(--acc)' : 'transparent', color: isEditing ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>{isEditing ? 'LISTO' : 'EDITAR'}</button>
-          </span>
+          </h3>
           <span className="card-s" style={{ fontSize: 11 }}>{pisos.length} niveles</span>
         </div>
       </div>
@@ -214,10 +214,10 @@ function UsageGuideCard() {
     <div className="card" style={{ flex: '0 1 auto', minWidth: 0 }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span className="card-t" style={{ fontSize: 13 }}>
+          <h3 className="card-t" style={{ fontSize: 13 }}>
             <img src="/iconos_info_general/guia_de_uso.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Guía de uso
-          </span>
+          </h3>
           <span className="card-s" style={{ fontSize: 11 }}>Recomendaciones</span>
         </div>
       </div>

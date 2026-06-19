@@ -66,8 +66,8 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
     });
   };
 
-  const [isEditingMateriales, setIsEditingMateriales] = React.useState(false);
-  const [isEditingAparatos, setIsEditingAparatos] = React.useState(false);
+  const [isEditingMateriales, setIsEditingMateriales] = useState(false);
+  const [isEditingAparatos, setIsEditingAparatos] = useState(false);
 
   return (
     <div className="fu bd-section" style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden' }}>
@@ -76,7 +76,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
 
         <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-            <span className="card-t" style={{fontSize:13, display: 'flex', alignItems: 'center'}}><img src="/iconos_parametros_de_diseno/materiales_por_red.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Materiales por red</span>
+            <h3 className="card-t" style={{fontSize:13, display: 'flex', alignItems: 'center'}}><img src="/iconos_parametros_de_diseno/materiales_por_red.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Materiales por red</h3>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span className="card-s" style={{ fontSize: 10 }}>{activeRedes.length} redes activas</span>
               <button onClick={() => setIsEditingMateriales(!isEditingMateriales)} style={{ background: isEditingMateriales ? 'var(--acc)' : 'transparent', color: isEditingMateriales ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>{isEditingMateriales ? 'LISTO' : 'EDITAR'}</button>
@@ -89,7 +89,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                   <th style={{ width: 28, textAlign: 'center', padding: '4px 6px' }}>#</th>
                   <th style={{ padding: '4px 8px' }}>Red</th>
                   <th style={{ padding: '4px 8px', minWidth: 90 }}>Tubería</th>
-                  <th className="c" style={{ width: 130, padding: '4px 6px' }}>Profundidad de Instalación<br/>con respecto a NPT (m)</th>
+                  <th className="c" style={{ width: 130, padding: '4px 6px' }}>Profundidad de instalación<br/>con respecto a NPT (m)</th>
                 </tr>
               </thead>
               <tbody>
@@ -185,7 +185,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
 
         <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-            <span className="card-t" style={{fontSize:13, display: 'flex', alignItems: 'center'}}><img src="/iconos_parametros_de_diseno/catalogo_aparatos_sanitarios.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de aparatos sanitarios</span>
+            <h3 className="card-t" style={{fontSize:13, display: 'flex', alignItems: 'center'}}><img src="/iconos_parametros_de_diseno/catalogo_aparatos_sanitarios.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de aparatos sanitarios</h3>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span className="card-s" style={{ fontSize: 10 }}>NTC 1500 · UC editables</span>
               <button onClick={() => setIsEditingAparatos(!isEditingAparatos)} style={{ background: isEditingAparatos ? 'var(--acc)' : 'transparent', color: isEditingAparatos ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>{isEditingAparatos ? 'LISTO' : 'EDITAR'}</button>
@@ -236,7 +236,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
 
         <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
-            <span className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_gasodomesticos.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de gasodomésticos</span>
+            <h3 className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_gasodomesticos.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de gasodomésticos</h3>
             <span className="card-s" style={{ fontSize: 10 }}>NTC 3728 · m³/hr</span>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>

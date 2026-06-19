@@ -170,10 +170,10 @@ function PlanosTab({ state }: PlanosTabProps) {
     <div className="fu" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'row', overflow: 'hidden', padding: 0 }}>
       <div style={{ width: 170, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--line)', borderRadius: 'var(--r2)' }}>
         <div className="card-h" style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'none' }}>
-          <span className="card-t" style={{ fontSize: 13 }}>
+          <h3 className="card-t" style={{ fontSize: 13 }}>
             <img src="/iconos_carga_planos/requisitos_del_plano.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
             Requisitos del plano
-          </span>
+          </h3>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {REQ_ITEMS.map(({ ico, icoImg, t, s }) => (

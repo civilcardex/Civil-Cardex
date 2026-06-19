@@ -32,7 +32,7 @@ export default function DisenoLluvias() {
   <>
     <div className="card">
       <div className="card-h">
-        <span className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Diseno_red.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red aguas lluvias</span>
+        <h3 className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Diseno_red.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red aguas lluvias</h3>
       </div>
       <div className="scroll-top" style={{padding:'12px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>

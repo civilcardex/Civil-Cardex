@@ -22,7 +22,7 @@ export default function NormaCard({ id, titulo, subt, isOpen, onToggle, children
           textAlign: 'inherit',
         }}>
         <div>
-          <span className="card-t" style={{ fontSize: 15, color: 'var(--txt)' }}>{titulo}</span>
+          <h3 className="card-t" style={{ fontSize: 15, color: 'var(--txt)' }}>{titulo}</h3>
           <span className="td-mono" style={{ display:"block", fontSize:11, marginTop:2 }}>{subt}</span>
         </div>
         <span style={{ fontSize:14 }}>{isOpen ? '▲' : '▼'}</span>

@@ -4,7 +4,7 @@ import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
 import { AF_UC_IDS, AC_UC_IDS, APARATOS_DEF, pisoCorto } from "../constants";
 import { calcUCparcial } from "../utils/componentHelpers";
-import { COEF_HAZEN_PVC, COEF_HAZEN_CPVC, CONTADORES } from "../utils/calcHydraulics";
+import { COEF_HAZEN, CONTADORES } from "../utils/calcHydraulics";
 import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
 import { calcLeAcces } from "../utils/accesoriosUtils";
 import { fmtPulg } from "../utils/formatUtils";
@@ -29,7 +29,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   const updTramo = isAf(networkType) ? updTramoAf : updTramoAc;
   const delTramo = isAf(networkType) ? delTramoAf : delTramoAc;
   const ucIds = isAf(networkType) ? AF_UC_IDS : AC_UC_IDS;
-  const C = isAf(networkType) ? COEF_HAZEN_PVC : COEF_HAZEN_CPVC;
+  const C = COEF_HAZEN;
   const cssClass = networkType;
   const colorVar = `var(--${networkType})`;
   const ucField = isAf(networkType) ? 'uc_af' : 'uc_ac';
@@ -149,12 +149,13 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     <>
       <div className="card">
         <div className="card-h">
-          <span className="card-t"><img src={`/iconos_diseno_redes/${icon}`} alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red {title}</span>
+          <h3 className="card-t"><img src={`/iconos_diseno_redes/${icon}`} alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red {title}</h3>
           <span className="card-s">{tramos.length} tramos</span>
         </div>
         <div className="scroll-top" style={{ padding: "6px" }}>
           <div className="scroll-inner" style={{ minWidth: "max-content" }}>
             <table className="tbl" style={{ fontSize: 11, tableLayout: "auto", width: "100%" }}>
+              <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>{`Diseño de red ${title}`}</caption>
               <colgroup>
                 <col style={{width:"7%"}}/>
                 <col style={{width:"3.5%"}}/>
@@ -182,36 +183,36 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
               </colgroup>
               <thead>
                 <tr>
-                  <th className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Tramo</th>
-                  <th className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>PISO</th>
-                  <th className={`col-h ${cssClass}`} colSpan={3} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>UND consumo</th>
-                  <th className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>#Desc</th>
-                  <th className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>K</th>
-                  <th className={`col-h ${cssClass}`} rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Q (l/s)</th>
-                  <th className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>√Q</th>
-                  <th className="col-h ok" colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>DIAMETRO</th>
-                  <th className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>C</th>
-                  <th className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>V mm/s</th>
-                  <th className="col-h" colSpan={4} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>LONG (m)</th>
-                  <th className="col-h" colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Hf</th>
-                  <th className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>ΔZ (m)</th>
-                  <th className={`col-h ${cssClass}`} colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>P final (mca)</th>
-                  <th className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9, width:14 }}></th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Tramo</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>PISO</th>
+                  <th scope="col" className={`col-h ${cssClass}`} colSpan={3} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>UND consumo</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>#Desc</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>K</th>
+                  <th scope="col" className={`col-h ${cssClass}`} rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Q (l/s)</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>√Q</th>
+                  <th scope="col" className="col-h ok" colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>DIAMETRO</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>C</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>V mm/s</th>
+                  <th scope="col" className="col-h" colSpan={4} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>LONG (m)</th>
+                  <th scope="col" className="col-h" colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Hf</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>ΔZ (m)</th>
+                  <th scope="col" className={`col-h ${cssClass}`} colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>P final (mca)</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9, width:14 }}></th>
                 </tr>
                 <tr>
-                  <th className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Prop</th>
-                  <th className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Otr</th>
-                  <th className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Tot</th>
-                  <th className="col-h ok" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Diseño</th>
-                  <th className="col-h ok" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Int mm</th>
-                  <th className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Horizontal</th>
-                  <th className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>V</th>
-                  <th className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Le</th>
-                  <th className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Tot</th>
-                  <th className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>%</th>
-                  <th className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>m</th>
-                  <th className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>INI</th>
-                  <th className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>FIN</th>
+                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Prop</th>
+                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Otr</th>
+                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Tot</th>
+                  <th scope="col" className="col-h ok" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Diseño</th>
+                  <th scope="col" className="col-h ok" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Int mm</th>
+                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Horizontal</th>
+                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>V</th>
+                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Le</th>
+                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Tot</th>
+                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>%</th>
+                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>m</th>
+                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>INI</th>
+                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>FIN</th>
                 </tr>
               </thead>
               <tbody>
@@ -267,7 +268,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
                       <td className="c td-mono-b">{Qprob>0?fmt(Qprob,2):"—"}</td>
                       <td className="c td-mono">{raizQ>0?fmt(raizQ,2):"—"}</td>
                        <td className="c" style={{padding:"0 1px"}}>
-                        <select value={diamNomMap[t.id] || ''} onChange={e=>handleDiamChange(t.id, e.target.value)}
+                        <select aria-label="Diámetro diseño" value={diamNomMap[t.id] || ''} onChange={e=>handleDiamChange(t.id, e.target.value)}
                           style={{fontSize:10,padding:"0 1px",border:"1px solid var(--line)",borderRadius:1,background:"var(--bg2)",color:"var(--txt)",cursor:"pointer",maxWidth:120}}>
                           <option value="">—</option>
                           {DIAM_OPTS.map(o=><option key={o.nominal} value={o.nominal}>{o.label}</option>)}
@@ -283,8 +284,8 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
                       <td className="c td-mono">{hfPct>0?fmt(hfPct,2):"—"}</td>
                       <td className="c td-mono-b">{hfM>0?fmt(hfM,2):"—"}</td>
                       <td className="c td-mono">{dZ>0?fmt(dZ,2):"—"}</td>
-                      <td className="c" style={{padding:"0 1px"}}><input type="number" className="ni" style={{width:44,textAlign:"center",padding:0,fontSize:11}} value={Pin} step={0.1} onChange={e=>setPresIni(t.id,parseFloat(e.target.value)||0)}/></td>
-                      <td className="c" style={{padding:"0 1px"}}><input type="number" className="ni" style={{width:44,textAlign:"center",padding:0,fontSize:11}} value={Pfin} step={0.1} onChange={e=>setPresFin(t.id,parseFloat(e.target.value)||0)}/></td>
+                      <td className="c" style={{padding:"0 1px"}}><input type="number" aria-label="Presión inicial" className="ni" style={{width:44,textAlign:"center",padding:0,fontSize:11}} value={Pin} step={0.1} onChange={e=>setPresIni(t.id,parseFloat(e.target.value)||0)}/></td>
+                      <td className="c" style={{padding:"0 1px"}}><input type="number" aria-label="Presión final" className="ni" style={{width:44,textAlign:"center",padding:0,fontSize:11}} value={Pfin} step={0.1} onChange={e=>setPresFin(t.id,parseFloat(e.target.value)||0)}/></td>
                       <td className="c" style={{padding:"0 1px"}}><button onClick={()=>handleDelete(t.id)} title="Eliminar" style={{border:"none",background:"transparent",color:"var(--txt3)",cursor:"pointer",fontSize:11,padding:"2px 6px",lineHeight:1}}>&#x2715;</button></td>
                     </tr>
                   );
