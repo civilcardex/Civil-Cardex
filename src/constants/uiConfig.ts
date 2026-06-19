@@ -11,15 +11,7 @@ export const REDES=[
   {id:'gas',lbl:'Gas', sub:'NTC 3728 · Baja presión', ico:'⛽', icoImg:'/iconos_diseno_redes/gas/red_de_gas.webp', col:'var(--gas)'},
 ];
 
-export const TABS=[
-  {id:'plano', lbl:'Planos', ico:'📐'},
-  {id:'mats', lbl:'Caract. Materiales', ico:'📋'},
-  {id:'apars', lbl:'Dispositivos', ico:'🚿'},
-  {id:'cud', lbl:'Cálculo UD', ico:'📊'},
-];
-
 export const USOS=['Vivienda unifamiliar','Vivienda multifamiliar','Comercial','Institucional','Mixto'];
-export const EMPRES=['EMAB - Floridablanca','Aguas de Bucaramanga','EAAB - Bogotá','EPM - Medellín','Otra'];
 
 export const NAV_TABS=[
   {id:'info',  l:'Información general',  ico:'🏗️', icoImg:'/iconos_info_general/Informacion_del_proyecto.webp'},
@@ -31,15 +23,6 @@ export const NAV_TABS=[
   {id:'inf',   l:'Informes',             ico:'📄', icoImg:'/Informes.webp'},
   {id:'crit',  l:'Normativa',            ico:'§',  icoImg:'/normativa.webp'},
 ];
-
-export const INFO_SUBTABS=[
-  {id:'gral',   l:'📋 Datos generales',   s:'Nombre, uso, empresa, dotación'},
-  {id:'niveles',l:'🏢 Niveles / NPT',     s:'Generador de pisos y sótanos'},
-  {id:'redes',  l:'🔌 Redes activas',     s:'Selección de redes a calcular'},
-  {id:'plano',  l:'📐 Planos',            s:'Carga y análisis'},
-];
-
-export const REDES_SAN_LL=REDES.filter(r=>r.id==='san'||r.id==='ll');
 
 export const FILTROS_NORM=[{k:'todos',l:'Todos'},{k:'af',l:'AF/AC'},{k:'san',l:'Sanitaria'},{k:'ll',l:'Lluvias'},{k:'gas',l:'Gas'},{k:'rci',l:'RCI'}];
 
@@ -54,10 +37,4 @@ export const REQ_ITEMS=[
   {ico:'🏷️', icoImg:'/iconos_carga_planos/cotas.webp', t:'Cotas NPT', s:'En planta'},
   {ico:'🎨', icoImg:'/iconos_carga_planos/redes_por_color.webp', t:'Redes color', s:'Definir colores por redes'},
   {ico:'🚿', icoImg:'/iconos_carga_planos/simbologia.webp', t:'Simbología', s:'NTC 1500'},
-];
-
-export const BD_SUBTABS=[
-  { id:'mats', l:'📦 Materiales por red', s:'Tipos de tubería editables' },
-  { id:'apars', l:'🚿 Aparatos y Calentadores', s:'UC · UD · Q gas · Catálogo' },
-  { id:'profs', l:'📏 Profundidades', s:'Instalación por red' },
 ];

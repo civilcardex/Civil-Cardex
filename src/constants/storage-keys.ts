@@ -5,8 +5,6 @@ export const HYDRO_DATA_STORAGE_KEY = 'tramo_hidro_data_v3';
 export const HYDRO_SYNC_KEY = 'dibujo_hidro_v1';
 export const SAN_SYNC_KEY = 'dibujo_sanitario_v1';
 export const APS_STORAGE_KEY = 'aps_v5';
-export const ACTIVE_NETS_KEY = 'active_nets';
-export const NET_PREFIX = 'net_';
 
 export const PLANS_META_KEY = 'plans_meta';
 

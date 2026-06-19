@@ -7,8 +7,6 @@ export const UD_BASE_INIT = APARATOS_DEF
 export const V_MIN = 0.45;
 export const V_MAX = 4.0;
 export const Y_D_MAX = 0.75;
-export const FR_SUBCRITICO = 0.9;
-export const FR_SUPERCRITICO = 1.1;
 export const FUERZA_TRACTIVA_MIN = 0.15;
 
 export const APS_DEFAULT = APARATOS_DEF.map(d => ({

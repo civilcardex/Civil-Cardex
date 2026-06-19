@@ -17,7 +17,6 @@ export {
   DIAM_BAN,
   DIAM_VENT,
   GAS,
-  CALS,
   CAT_APS,
   CAT_GAS,
   DIAM_BY_MAT,
@@ -26,7 +25,6 @@ export {
 
 export {
   REDES,
-  TABS,
   NAV_TABS,
   FILTROS_NORM,
   REQ_ITEMS,

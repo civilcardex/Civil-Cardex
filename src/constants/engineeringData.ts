@@ -204,15 +204,6 @@ export const GAS = [
   ]},
 ];
 
-export const CALS=[
-  { l: 'HACEB 6 LPM', lpm: 6, kw: 11.5, m3h: 1.11, ef: 87 },
-  { l: 'BOSCH 8 LPM', lpm: 8, kw: 14.5, m3h: 1.40, ef: 88 },
-  { l: 'HACEB 10 LPM', lpm: 10, kw: 20.5, m3h: 1.98, ef: 89 },
-  { l: 'HACEB 12 LPM', lpm: 12, kw: 24.0, m3h: 2.32, ef: 88 },
-  { l: 'RHEEM 16 LPM', lpm: 16, kw: 31.0, m3h: 3.00, ef: 90 },
-  { l: 'BOSCH 21 LPM', lpm: 21, kw: 45.0, m3h: 4.35, ef: 88 },
-];
-
 export const CAT_APS = [
   { id: 'sif',  n: 'Sifones',                 s: 'Sif',  ctrl: 'N.A.',                 af: 0,   ac: 0  },
   { id: 'san',  n: 'Inodoro',                s: 'Ino',  ctrl: 'Tanque',               af: 2.2, ac: 0  },
