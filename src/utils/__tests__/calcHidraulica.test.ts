@@ -6,7 +6,7 @@ import {
   nodePressure,
   checkVelocity,
   checkPressure,
-  COEF_HAZEN_PVC,
+  COEF_HAZEN,
 } from '../calcHydraulics'
 
 describe('getLe', () => {
@@ -46,16 +46,16 @@ describe('realVelocity', () => {
 
 describe('hazenWilliamsLoss', () => {
   it('calcula perdida por friccion', () => {
-    const hf = hazenWilliamsLoss(0.001, 10, 0.05, COEF_HAZEN_PVC)
+    const hf = hazenWilliamsLoss(0.001, 10, 0.05, COEF_HAZEN)
     expect(hf).toBeGreaterThan(0)
   })
 
   it('retorna 0 para Q_m3s <= 0', () => {
-    expect(hazenWilliamsLoss(0, 10, 0.05, COEF_HAZEN_PVC)).toBe(0)
+    expect(hazenWilliamsLoss(0, 10, 0.05, COEF_HAZEN)).toBe(0)
   })
 
   it('retorna 0 para L_m <= 0', () => {
-    expect(hazenWilliamsLoss(0.001, 0, 0.05, COEF_HAZEN_PVC)).toBe(0)
+    expect(hazenWilliamsLoss(0.001, 0, 0.05, COEF_HAZEN)).toBe(0)
   })
 })
 

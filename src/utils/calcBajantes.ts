@@ -97,9 +97,8 @@ export function calculateVentStack(params: BajanteVentilacionParams): BajanteVen
   const fDarcy = bajFDarcy;
   const Lbajante = bajLong;
 
-  const D_vent_calc_pulg_raw = Lbajante > 0 && Q_aire > 0 ? Math.pow((Lbajante * fDarcy * Q_aire * Q_aire) / 3.25, 1 / 5) : 0;
-  const D_vent_calc_mm = D_vent_calc_pulg_raw * 25.4;
-  const D_vent_calc_pulg = D_vent_calc_mm / 25.4;
+  const D_vent_calc_pulg = Lbajante > 0 && Q_aire > 0 ? Math.pow((Lbajante * fDarcy * Q_aire * Q_aire) / 3.25, 1 / 5) : 0;
+  const D_vent_calc_mm = D_vent_calc_pulg * 25.4;
 
   const DventProp = ventDprop > 0 ? DIAM_VENT.find(d => Number(d.pulg) === Number(ventDprop)) : (D_vent_calc_mm > 0 ? DIAM_VENT.find(d => d.mm > D_vent_calc_mm) || DIAM_VENT[DIAM_VENT.length - 1] : null);
   const DventPropPulg = DventProp ? DventProp.pulg : 0;

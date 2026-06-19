@@ -196,9 +196,9 @@ export function fuerzaTractiva(Rh: number, S: number): number {
 
 // ─── Tipo de regimen ───
 export function tipoRegimen(Fr: number): string {
-  if (Fr < 0.9) return 'Subcritico';
-  if (Fr <= 1.1) return 'Critico';
-  return 'Supercritico';
+  if (Fr < 0.9) return 'Subcrítico';
+  if (Fr <= 1.1) return 'Crítico';
+  return 'Supercrítico';
 }
 
 // ─── Diámetro calculado por Manning ───

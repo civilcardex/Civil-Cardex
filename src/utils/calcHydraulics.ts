@@ -1,7 +1,6 @@
 
 
-export const COEF_HAZEN_PVC: number = 150;
-export const COEF_HAZEN_CPVC: number = 150;
+export const COEF_HAZEN: number = 150;
 
 export interface DiametroComercialAF {
   nominal: string;
@@ -85,24 +84,6 @@ export function getLe(accesorioId: string, diaPulg: number): number {
   return acc.le[i];
 }
 
-// ─── Seleccion de diametro comercial ───
-export function seleccionarDiametro(Q_m3s: number, tablaDiametros: DiametroComercialAF[], C?: number, Vmax?: number): DiametroComercialAF {
-  C = C || COEF_HAZEN_PVC;
-  Vmax = Vmax || 2.5;
-  const diametros = tablaDiametros;
-  for (const d of diametros) {
-    const D_m = d.dInt / 1000;
-    const V = (4 * Q_m3s) / (Math.PI * Math.pow(D_m, 2));
-    if (V <= Vmax) {
-      return { ...d, V: parseFloat(V.toFixed(4)) };
-    }
-  }
-  return { ...diametros[diametros.length - 1], V: parseFloat((4 * Q_m3s / (Math.PI * Math.pow(diametros[diametros.length - 1].dInt / 1000, 2))).toFixed(4)) };
-}
-
-export const seleccionarDiametroAF = (Q: number): DiametroComercialAF => seleccionarDiametro(Q, DIAMETROS_AF);
-export const seleccionarDiametroAC = (Q: number): DiametroComercialAF => seleccionarDiametro(Q, DIAMETROS_AC);
-
 // ─── Velocidad real ───
 export function realVelocity(Q_m3s: number, D_m: number): number {
   if (D_m <= 0 || Q_m3s <= 0) return 0;
@@ -111,7 +92,7 @@ export function realVelocity(Q_m3s: number, D_m: number): number {
 
 // ─── Perdida por friccion Hazen-Williams ───
 export function hazenWilliamsLoss(Q_m3s: number, L_m: number, D_m: number, C?: number): number {
-  const coef = C || COEF_HAZEN_PVC;
+  const coef = C || COEF_HAZEN;
   if (Q_m3s <= 0 || L_m <= 0 || D_m <= 0) return 0;
   return (10.67 * L_m * Math.pow(Q_m3s, 1.852)) / (Math.pow(coef, 1.852) * Math.pow(D_m, 4.87));
 }
@@ -141,43 +122,3 @@ export function checkPressure(Pnudo: number, PminAparato?: number): { cumple: bo
   };
 }
 
-// ─── Caudal total de consumo (Calculo TR) ───
-export function calcularConsumoTR(habitantes: number, dotacion: number, areaPiscina: number, areaVerdes: number, areaOtros: number): {
-  habitantes: number;
-  dotacion: number;
-  q_fijos: number;
-  q_flotantes: number;
-  q_piscina: number;
-  q_verdes: number;
-  q_otros: number;
-  total_diario: number;
-  Q_lps: number;
-} {
-  const q_fijos = habitantes * dotacion;
-  const q_flotantes = 0;
-  const q_piscina = (areaPiscina || 0) * 10;
-  const q_verdes = (areaVerdes || 0) * 2;
-  const q_otros = areaOtros || 100;
-  const total_diario = q_fijos + q_flotantes + q_piscina + q_verdes + q_otros;
-  const Q_lps = total_diario / 86400;
-
-  return {
-    habitantes,
-    dotacion,
-    q_fijos,
-    q_flotantes,
-    q_piscina,
-    q_verdes,
-    q_otros,
-    total_diario,
-    Q_lps: parseFloat(Q_lps.toFixed(6)),
-  };
-}
-
-export {
-  realVelocity as velocidadReal,
-  hazenWilliamsLoss as perdidaHazenWilliams,
-  nodePressure as presionNudo,
-  checkVelocity as verificarVelocidad,
-  checkPressure as verificarPresion,
-};

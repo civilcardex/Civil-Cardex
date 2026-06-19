@@ -1,4 +1,4 @@
-import { relacionesHidraulicas, caudalTuboLleno, velocidadTuboLleno, tipoRegimen, numeroFroude, tiranteCritico } from './calcSanitary';
+import { relacionesHidraulicas, caudalTuboLleno, velocidadTuboLleno, tipoRegimen, numeroFroude, tiranteCritico, fuerzaTractiva as fuerzaTractivaCore } from './calcSanitary';
 
 interface HydraulicResult {
   Qo: number;
@@ -41,8 +41,8 @@ export function calcHydraulicCheck({ Q, S, n, DintMm, V_MIN, V_MAX, Y_D_MAX, FUE
   const Ymax = Math.round(DintMm * Y_D_MAX * 100) / 100;
   const chequeoYn = Math.max(Yc, Yn) < Ymax ? 'O.K.' : 'NO CUMPLE';
   const Froude = Math.round(numeroFroude(Vreal, rel.Rh_D * DintMm / 1000) * 100) / 100;
-  const tipoFlujo = tipoRegimen(Froude) === 'Supercritico' ? 'Supercrítico' : tipoRegimen(Froude) === 'Subcritico' ? 'Subcrítico' : 'Crítico';
-  const fuerzaTractiva = Math.round(1000 * Rh / 1000 * S * 100) / 100;
+  const tipoFlujo = tipoRegimen(Froude);
+  const fuerzaTractiva = Math.round(fuerzaTractivaCore(Rh / 1000, S) * 100) / 100;
   const chequeoFT = fuerzaTractiva > FUERZA_TRACTIVA_MIN ? 'O.K.' : 'NO CUMPLE';
   return { Qo, Vo, qqo, Vreal, chequeoV, Yc, Yn, Froude, tipoFlujo, Ymax, chequeoYn, fuerzaTractiva, chequeoFT };
 }
