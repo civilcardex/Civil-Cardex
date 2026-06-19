@@ -1,7 +1,7 @@
-import { useState, useEffect, createContext, type ReactNode } from "react";
+import { createContext, type ReactNode } from "react";
 import { MATS_DEFAULT, PROFS_DEFAULT, CRIT0 } from "../constants";
 import { createUseContext } from "./contextHelpers";
-import { loadFromStorage, saveToStorage } from "../services/storageService";
+import { usePersistedState } from "../hooks/usePersistedState";
 
 interface Proyecto {
   nombre: string; dir: string; mun: string; dep: string;
@@ -19,66 +19,47 @@ interface ProjectContextValue {
   pisos: any[]; proy: Proyecto; mats: Record<string, MaterialItem[]>;
   profs: ProfItem[]; crits: CritItem[];
   setPisos: React.Dispatch<React.SetStateAction<any[]>>;
-  setProy: React.Dispatch<React.SetStateAction<Proyecto>>;
   setP: (k: string, v: any) => void;
   setMats: React.Dispatch<React.SetStateAction<Record<string, MaterialItem[]>>>;
   setProfs: React.Dispatch<React.SetStateAction<ProfItem[]>>;
   setCrits: React.Dispatch<React.SetStateAction<CritItem[]>>;
 }
 
+const PROY_DEFAULTS: Proyecto = {
+  nombre:'', dir:'',
+  mun:'', dep:'',
+  uso:'', empresa:'',
+  p_red:'', dot:'',
+  mat_af:'PVC-PR', mat_ac:'PVC-PR', mat_rci:'Acero SCH 40',
+  mat_san:'PVC sanitario', mat_ll:'PVC sanitario',
+  mat_ven:'PVC sanitario', mat_gas:'PE al PE',
+  altitud:'959', p_atm:'90.32',
+  poblFija:6, poblFlot:10, areaPiscina:40.12, areaVerdes:50,
+  C_escorrentia:0.95, pendienteSan:0.02,
+};
+
+const MATS_CLONED: Record<string, MaterialItem[]> = Object.fromEntries(
+  Object.entries(MATS_DEFAULT).map(([k, v]) => [k, v.map(item => ({...item}))])
+);
+
+const PROFS_CLONED: ProfItem[] = PROFS_DEFAULT.map(p => ({...p}));
+const CRITS_CLONED: CritItem[] = CRIT0.map(c => ({...c}));
+
 const ProjectContext = createContext<ProjectContextValue | null>(null);
 
 export function ProjectProvider({ children }: { children?: ReactNode }) {
-const [pisos, setPisos] = useState<any[]>(() => {
-  const saved = loadFromStorage('civilflow_pisos', null);
-  return Array.isArray(saved) ? saved : [];
-});
-
-const [proy, setProy] = useState<Proyecto>(() => {
-  const saved = loadFromStorage('civilflow_proy', null);
-  return saved || {
-    nombre:'', dir:'',
-    mun:'', dep:'',
-    uso:'', empresa:'',
-    p_red:'', dot:'',
-    mat_af:'PVC-PR', mat_ac:'PVC-PR', mat_rci:'Acero SCH 40',
-    mat_san:'PVC sanitario', mat_ll:'PVC sanitario',
-    mat_ven:'PVC sanitario', mat_gas:'PE al PE',
-    altitud:'959', p_atm:'90.32',
-    poblFija:6, poblFlot:10, areaPiscina:40.12, areaVerdes:50,
-    C_escorrentia:0.95, pendienteSan:0.02,
-  };
-});
-
-const [mats, setMats] = useState<Record<string, MaterialItem[]>>(() => {
-  const saved = loadFromStorage('civilflow_mats', null);
-  return saved || Object.fromEntries(
-    Object.entries(MATS_DEFAULT).map(([k, v]) => [k, v.map(item => ({...item}))])
-  );
-});
-
-const [profs, setProfs] = useState<ProfItem[]>(() => {
-  const saved = loadFromStorage('civilflow_profs', null);
-  return saved || PROFS_DEFAULT.map(p => ({...p}));
-});
-
-const [crits, setCrits] = useState<CritItem[]>(() => {
-  const saved = loadFromStorage('civilflow_crits', null);
-  return saved || CRIT0.map(c => ({...c}));
-});
-
-useEffect(() => { saveToStorage('civilflow_pisos', pisos); }, [pisos]);
-useEffect(() => { saveToStorage('civilflow_proy', proy); }, [proy]);
-useEffect(() => { saveToStorage('civilflow_mats', mats); }, [mats]);
-useEffect(() => { saveToStorage('civilflow_profs', profs); }, [profs]);
-useEffect(() => { saveToStorage('civilflow_crits', crits); }, [crits]);
+const [pisos, setPisos] = usePersistedState<any[]>('civilflow_pisos', []);
+const [proy, setProy] = usePersistedState<Proyecto>('civilflow_proy', PROY_DEFAULTS);
+const [mats, setMats] = usePersistedState<Record<string, MaterialItem[]>>('civilflow_mats', MATS_CLONED);
+const [profs, setProfs] = usePersistedState<ProfItem[]>('civilflow_profs', PROFS_CLONED);
+const [crits, setCrits] = usePersistedState<CritItem[]>('civilflow_crits', CRITS_CLONED);
 
 const setP = (k: string, v: any) => setProy(p => ({ ...p, [k]: v }));
 
 return (
 <ProjectContext.Provider value={{
 pisos, proy, mats, profs, crits,
-setPisos, setProy, setP, setMats, setProfs, setCrits,
+setPisos, setP, setMats, setProfs, setCrits,
 }}>
 {children}
 </ProjectContext.Provider>

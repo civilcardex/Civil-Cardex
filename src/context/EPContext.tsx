@@ -1,5 +1,5 @@
-import { useState, createContext, useEffect, type ReactNode } from "react";
-import { loadFromStorage, saveToStorage } from "../services/storageService";
+import { createContext, type ReactNode } from "react";
+import { usePersistedState } from "../hooks/usePersistedState";
 import { createUseContext } from "./contextHelpers";
 
 export interface EPData {
@@ -46,29 +46,22 @@ const EP_DEFAULTS: EPData = {
 
 interface EPContextValue {
   ep: EPData;
-  setEP: React.Dispatch<React.SetStateAction<EPData>>;
   updEP: (field: keyof EPData, val: any) => void;
 }
 
 const EPContext = createContext<EPContextValue | null>(null);
 
 export function EPProvider({ children }: { children?: ReactNode }) {
-  const [ep, setEP] = useState<EPData>(() => {
-    const saved = loadFromStorage("ep", null);
-    if (saved) return { ...EP_DEFAULTS, ...(saved as Partial<EPData>) };
-    return EP_DEFAULTS;
-  });
+  const [ep, setEP] = usePersistedState<EPData>("ep", EP_DEFAULTS,
+    (saved) => ({ ...EP_DEFAULTS, ...(saved as Partial<EPData>) })
+  );
 
   const updEP = (field: keyof EPData, val: any) => {
     setEP(prev => ({ ...prev, [field]: val }));
   };
 
-  useEffect(() => {
-    saveToStorage("ep", ep);
-  }, [ep]);
-
   return (
-    <EPContext.Provider value={{ ep, setEP, updEP }}>
+    <EPContext.Provider value={{ ep, updEP }}>
       {children}
     </EPContext.Provider>
   );

@@ -9,7 +9,6 @@ interface ApsItem { id: string; s: string; n: string; g: string; ucaf: number; u
 interface ApparatusContextValue {
   udBase: UdBaseItem[];
   aps: ApsItem[];
-  setUdBase: React.Dispatch<React.SetStateAction<UdBaseItem[]>>;
   setAps: React.Dispatch<React.SetStateAction<ApsItem[]>>;
 }
 
@@ -22,7 +21,7 @@ function loadAps() {
 }
 
 export function ApparatusProvider({ children }: { children?: ReactNode }) {
-const [udBase, setUdBase] = useState([...UD_BASE_INIT]);
+const [udBase] = useState([...UD_BASE_INIT]);
 
 const [aps, setAps] = useState(loadAps);
 
@@ -33,7 +32,7 @@ useEffect(() => {
 return (
 <ApparatusContext.Provider value={{
 udBase, aps,
-setUdBase, setAps,
+setAps,
 }}>
 {children}
 </ApparatusContext.Provider>
