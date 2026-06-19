@@ -22,12 +22,14 @@ export function useSanLlSync(
           if (r.tipo === 'tributario') tribIds.add(r.id);
         }
         const piso = parseInt(nivel);
+        const planId = (plane as any).planoId || nivel;
         for (const r of ((plane as any).ramales || [])) {
-          if (r.tipo === 'tributario') continue;
           const apKey = r._aparatosKey || r.id;
           const hd = hidroData[apKey] || {};
           const tramo = {
-            id: r.id, piso,
+            _key: `${r.id}-${planId}`,
+            id: r.id, piso, planId,
+            tipo: r.tipo || 'ramal',
             fixtures: sync.aparatosByTramo?.[apKey] || {},
             recibeDe: [], esBajante: false, descripcion: '',
             ini: r.ini || '', fin: r.fin || '',
@@ -38,7 +40,7 @@ export function useSanLlSync(
           };
           if (r._net === 'll') {
             llIncoming.push({
-              _key: nextLlKey(), ...tramo,
+              _key: tramo._key, ...tramo,
               desde: '', hasta: '',
             });
           } else {
@@ -49,20 +51,23 @@ export function useSanLlSync(
           const apKey = b._aparatosKey || b.id;
           const hd = hidroData[apKey] || {};
           const tramo = {
-            id: b.id, piso,
+            _key: `${b.id}-${planId}`,
+            id: b.id, piso, planId,
+            tipo: 'bajante',
             fixtures: sync.aparatosByTramo?.[apKey] || {},
             recibeDe: [], esBajante: true, descripcion: '',
             diamDisPulg: b.diamPulg || 0, nSalidas: hd.nSalidas || 0,
             nmaning: b.maning ?? 0, sPercent: 0,
-            bajR: 7/24, bajLong: 3, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
+            bajR: b.bajR ?? 7/24, bajLong: b.bajLong ?? 3, bajFDarcy: b.bajFDarcy ?? 0.025, bajDprop: b.bajDprop ?? 0, ventDprop: b.ventDprop ?? 0,
             recibeDeIds: b.recibeDeIds || [],
+            descargaEnId: b.descargaEnId || null,
             area_m2: b.area_m2 || 0,
             pisoBase: b.pisoBase || '', pisoCima: b.pisoCima || '',
             code: b.code || b.id,
           };
           if (b._net === 'll') {
             llIncoming.push({
-              _key: nextLlKey(), ...tramo,
+              _key: tramo._key, ...tramo,
               desde: '', hasta: '',
             });
           } else {
@@ -73,9 +78,8 @@ export function useSanLlSync(
       const prevSan = stateRef.current.tramosSan;
       const newSan = (() => {
         if (sanIncoming.length === 0) return [];
-        const keep = prevSan.filter(t => !sanIncoming.some(i => i.id === t.id) && !tribIds.has(t.id));
-        const merged = sanIncoming.map(i => {
-          const existing = prevSan.find(t => t.id === i.id);
+        return sanIncoming.map(i => {
+          const existing = prevSan.find(t => t._key === i._key);
           if (existing) {
             return {
               ...i,
@@ -86,7 +90,6 @@ export function useSanLlSync(
           }
           return i;
         });
-        return [...keep, ...merged];
       })();
       dispatch({ type: 'SET_TRAMOS', net: 'san', payload: newSan });
 
@@ -131,12 +134,15 @@ export function useHidroSync(
       for (const [key, plane] of Object.entries(planes)) {
         if (!key.startsWith(family + '_')) continue;
         const nivel = parseInt(key.slice(family.length + 1));
+        const planId = (plane as any).planoId || '';
         for (const r of ((plane as any).ramales || [])) {
-          if (r.tipo === 'tributario') continue;
           const apKey = r._aparatosKey || `${family}_${r.id}`;
           const extra = hidroData[apKey] || {};
           incoming.push({
-            id: r.id, piso: nivel,
+            _key: `${r.id}-${planId}`,
+            id: r.id, piso: nivel, planId,
+            tipo: r.tipo || 'ramal',
+            esBajante: false,
             fixtures: aparatos[apKey] || {},
             accesorios: extra.accesorios || {},
             Lh: extra.Lh || 0, Lv: r.dz || extra.Lv || 0,
@@ -153,36 +159,27 @@ export function useHidroSync(
 
       const afIncoming = buildTramos('af');
       const acIncoming = buildTramos('ac');
-      const hidroTribIds = new Set<string>();
-      for (const [, plane] of Object.entries(planes)) {
-        for (const r of ((plane as any).ramales || [])) {
-          if (r.tipo === 'tributario') hidroTribIds.add(r.id);
-        }
-      }
+
 
       const prevAf = stateRef.current.tramosAf;
       const newAf = (() => {
         if (afIncoming.length === 0) return [];
-        const keep = prevAf.filter(t => !afIncoming.some(i => i.id === t.id) && !hidroTribIds.has(t.id));
-        const merged = afIncoming.map(i => {
-          const ex = prevAf.find(t => t.id === i.id);
+        return afIncoming.map(i => {
+          const ex = prevAf.find(t => t._key === i._key);
           if (ex) return { ...i, recibeDe: ex.recibeDe || [], descripcion: ex.descripcion || '' };
           return i;
         });
-        return [...keep, ...merged];
       })();
       dispatch({ type: 'SET_TRAMOS', net: 'af', payload: newAf });
 
       const prevAc = stateRef.current.tramosAc;
       const newAc = (() => {
         if (acIncoming.length === 0) return [];
-        const keep = prevAc.filter(t => !acIncoming.some(i => i.id === t.id) && !hidroTribIds.has(t.id));
-        const merged = acIncoming.map(i => {
-          const ex = prevAc.find(t => t.id === i.id);
+        return acIncoming.map(i => {
+          const ex = prevAc.find(t => t._key === i._key);
           if (ex) return { ...i, recibeDe: ex.recibeDe || [], descripcion: ex.descripcion || '' };
           return i;
         });
-        return [...keep, ...merged];
       })();
       dispatch({ type: 'SET_TRAMOS', net: 'ac', payload: newAc });
     }

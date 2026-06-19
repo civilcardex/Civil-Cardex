@@ -1,6 +1,8 @@
 export interface Tramo {
   id: string;
   _key?: string;
+  tipo?: string;
+  planId?: string;
   piso: number;
   pisoDesde?: number;
   pisoHasta?: number;
@@ -15,6 +17,7 @@ export interface Tramo {
   qLps?: number;
   recibeDe?: string[];
   recibeDeIds?: string[];
+  descargaEnId?: string | null;
   fixtures: Record<string, number>;
   accesorios?: Record<string, any>;
   ini?: { x: number; y: number } | null;
@@ -50,7 +53,8 @@ const netKey: Record<string, keyof TramosState> = {
 };
 
 function idMatch(t: Tramo, net: string, id: string): boolean {
-  return net === 'll' ? t._key === id : t.id === id;
+  if (t._key && t._key === id) return true;
+  return t.id === id;
 }
 
 type TramosAction =
