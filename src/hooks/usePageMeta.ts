@@ -29,9 +29,15 @@ export function usePageMeta(title: string, description?: string) {
     const url = window.location.href.split('?')[0];
     setMeta('property', 'og:url', url, prev);
     
-    const link = document.querySelector('link[rel="canonical"]');
-    const prevHref = link?.getAttribute('href');
-    if (link) link.setAttribute('href', url);
+    const canonical = window.location.origin + window.location.pathname;
+    let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!link) {
+      link = document.createElement('link');
+      link.setAttribute('rel', 'canonical');
+      document.head.appendChild(link);
+    }
+    const prevHref = link.getAttribute('href');
+    link.setAttribute('href', canonical);
     
     return () => {
       document.title = prevTitle;
