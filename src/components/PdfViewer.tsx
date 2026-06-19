@@ -5,6 +5,7 @@ import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync";
 import { loadFromStorage, saveToStorage, saveTrazosToDB, loadTrazosFromDB } from "../services/storageService";
+import { APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY, GAS_ACC_KEY } from "../constants/storage-keys";
 import AparatosPanel from "./FixturesPanel";
 import PdfViewerToolbar from "./pdfViewer/PdfViewerToolbar";
 import PdfCanvas from "./pdfViewer/PdfCanvas";
@@ -134,11 +135,11 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   useEffect(() => { try { sessionStorage.setItem('civilflow_visor_tipoTramo', tipoTramo); } catch (_) {} }, [tipoTramo]);
   useEffect(() => { try { sessionStorage.setItem('civilflow_visor_snapOn', String(snapOn)); } catch (_) {} }, [snapOn]);
 
-  const [contextMenuState, setContextMenuState] = useState<{ visible: boolean; x: number; y: number; bajante: any; isGhostClick?: boolean } | null>(null);
+  const [contextMenuState, setContextMenuState] = useState<{ visible: boolean; x: number; y: number; bajante: any; isGhostClick?: boolean; ramalEndpoint?: { idx: number; x: number; y: number } | null } | null>(null);
   const [confirmState, setConfirmState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({isOpen: false, title: '', message: '', onConfirm: () => {}});
 
-  const onContextMenuCb = useCallback((bajante: any, x: number, y: number, isGhostClick?: boolean) => {
-    setContextMenuState({ visible: true, x, y, bajante, isGhostClick });
+  const onContextMenuCb = useCallback((bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null) => {
+    setContextMenuState({ visible: true, x, y, bajante, isGhostClick, ramalEndpoint });
   }, []);
 
   useEffect(() => {
@@ -259,6 +260,26 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
     try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
   }, []);
 
+  const onDeleteHandler = useCallback((ids: string[]) => {
+    const idSet = new Set(ids);
+    const cleanStore = (key: string, suffix: boolean) => {
+      const store = loadFromStorage(key, {}) as Record<string, any>;
+      let changed = false;
+      for (const k of Object.keys(store)) {
+        const match = suffix ? k.split('_').pop() : k;
+        if (match && idSet.has(match)) {
+          delete store[k];
+          changed = true;
+        }
+      }
+      if (changed) saveToStorage(key, store);
+    };
+    cleanStore(APARATOS_BY_TRAMO_KEY, true);
+    cleanStore(HYDRO_DATA_STORAGE_KEY, true);
+    cleanStore(GAS_ACC_KEY, false);
+    window.dispatchEvent(new CustomEvent('aparatos-clear', { detail: { ids } }));
+  }, []);
+
   const onRequestTextCb = useCallback((x: number, y: number, cb: (text: string) => void) => {
     setTextOverlay({ x, y, value: '', cb });
     setTimeout(() => textInputRef.current?.focus(), 50);
@@ -282,6 +303,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
     onStatus: setStatusMsg,
     onDirty: onDirtyHandler,
     onSelect: setSelElement,
+    onDelete: onDeleteHandler,
     onToolChange: setTool,
     onRequestText: onRequestTextCb,
     loadTrazosForPlan,
@@ -408,9 +430,18 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
 
   const finalVisibleNets = useMemo(() => {
     const excludeEquipment = (nets: any[]) => nets.filter((n: any) => n.id !== 'ep' && n.id !== 'bom');
-    if (activeNetworks && activeNetworks.size > 0) return excludeEquipment(NETS.filter(n => activeNetworks.has(n.id)));
-    if (liveActiveNets) return excludeEquipment(NETS.filter(n => liveActiveNets.has(n.id)));
-    return excludeEquipment(NETS);
+    const getNets = () => {
+      if (activeNetworks && activeNetworks.size > 0) return excludeEquipment(NETS.filter(n => activeNetworks.has(n.id)));
+      if (liveActiveNets) return excludeEquipment(NETS.filter(n => liveActiveNets.has(n.id)));
+      return excludeEquipment(NETS);
+    };
+    const base = getNets();
+    const hasSan = base.some((n: any) => n.id === 'san');
+    if (hasSan) {
+      const vent = NETS.find((n: any) => n.id === 'vent');
+      if (vent && !base.some((n: any) => n.id === 'vent')) base.push(vent);
+    }
+    return base.filter((n: any) => n.id !== 'vent' || hasSan);
   }, [activeNetworks, liveActiveNets]);
 
   const { saveStatus, doSave, autoSaveTimerRef } = usePdfAutoSave(engineRef, currentIdRef, planosCtx.plans);
@@ -467,8 +498,14 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
       if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') return;
       if (e.key.toLowerCase() === 'g') { setSnapOn(p => !p); e.preventDefault(); }
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (engineRef.current && engineRef.current.selId) {
-          engineRef.current.deleteSelected();
+        if (engineRef.current) {
+          const eng = engineRef.current;
+          if (eng.multiSel && eng.multiSel.length > 0) {
+            eng.deleteSelected(eng.multiSel);
+            eng.multiSel = [];
+          } else if (eng.selId) {
+            eng.deleteSelected();
+          }
           e.preventDefault();
         }
       }
@@ -733,7 +770,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
           <div style={{
             position: 'absolute', left: contextMenuState.x, top: contextMenuState.y, zIndex: 101,
             background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 6,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.4)', padding: '4px', minWidth: 140, maxWidth: 200,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.4)', padding: '4px', minWidth: 180, maxWidth: 320,
             display: 'flex', flexDirection: 'column', gap: 2,
           }} onContextMenu={(e) => e.preventDefault()}>
             {((contextMenuState.bajante.tipo === 'bajante' || contextMenuState.bajante.tipo === 'montante' || contextMenuState.bajante.id?.startsWith('B')) && !contextMenuState.bajante.pts) ? (
@@ -839,42 +876,125 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
             </>);
             })()}
 
-            {/* Ghost detection + Destino dropdown — Items 3 & 5 */}
-            {(() => {
-              const isGhost = contextMenuState.isGhostClick || false;
-              return isGhost ? null : (
+            {!contextMenuState.isGhostClick ? (
+              <div style={{ display: 'flex', gap: 6, padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
+                {/* Destino */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Destino</div>
+                  <select value={contextMenuState.bajante.descargaEnId || ''}
+                    onChange={e => {
+                      const v = e.target.value || null;
+                      engineRef.current?.updateElementById(contextMenuState.bajante.id, { descargaEnId: v });
+                      const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                      if (fresh) setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
+                      if (selElement?.id === contextMenuState.bajante.id) {
+                        setSelElement({ ...selElement, descargaEnId: v });
+                      }
+                    }}
+                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                    <option value="">— Sin destino —</option>
+                    {lowerFloorsRamales.map(group => {
+                      const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
+                      const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
+                      return (
+                        <optgroup key={group.planId} label={pLabel + (group.ramales.length === 0 ? ' (sin ramales)' : '')}>
+                          {group.ramales.length > 0 ? group.ramales.map((r: any) => (
+                            <option key={`${group.planId}|${r.id}`} value={`${group.planId}|${r.id}`}>
+                              {r.label || r.id}
+                            </option>
+                          )) : (
+                            <option value="" disabled>— Sin ramales disponibles —</option>
+                          )}
+                        </optgroup>
+                      );
+                    })}
+                  </select>
+                </div>
+                {/* Diámetro */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Diámetro</div>
+                  <select value={(() => {
+                    const dIsGhost = contextMenuState.isGhostClick || false;
+                    const dGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
+                    const gd = contextMenuState.bajante.ghostData?.[dGhostLabel];
+                    return dIsGhost ? (gd && gd.dNominal !== undefined ? gd.dNominal : (contextMenuState.bajante.dNominal || '')) : (contextMenuState.bajante.dNominal || '');
+                  })()}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const dIsGhost = contextMenuState.isGhostClick || false;
+                      if (dIsGhost && engineRef.current) {
+                        const dGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
+                        const gd2 = { ...(contextMenuState.bajante.ghostData || {}) };
+                        const cd = { ...(gd2[dGhostLabel] || {}) };
+                        cd.dNominal = val;
+                        gd2[dGhostLabel] = cd;
+                        engineRef.current?.updateElementById(contextMenuState.bajante.id, { ghostData: gd2 });
+                        const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                        if (fresh) {
+                          setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
+                          if (selElement?.id === contextMenuState.bajante.id) {
+                            setSelElement({ ...selElement, ghostData: gd2 });
+                          }
+                        }
+                      } else {
+                        engineRef.current?.updateElementById(contextMenuState.bajante.id, { dNominal: val });
+                        setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, dNominal: val } } : null);
+                        if (selElement?.id === contextMenuState.bajante.id) {
+                          setSelElement({ ...selElement, dNominal: val });
+                        }
+                      }
+                    }}
+                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                    <option value="">—</option>
+                    {DIAM_BAN.map(d => (
+                      <option key={d.pulg} value={d.nom}>{d.nom}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            ) : (
+              /* Ghost click - Diameter only */
               <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
-                <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Destino</div>
-                <select value={contextMenuState.bajante.descargaEnId || ''}
+                <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Diámetro</div>
+                <select value={(() => {
+                  const dIsGhost = contextMenuState.isGhostClick || false;
+                  const dGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
+                  const gd = contextMenuState.bajante.ghostData?.[dGhostLabel];
+                  return dIsGhost ? (gd && gd.dNominal !== undefined ? gd.dNominal : (contextMenuState.bajante.dNominal || '')) : (contextMenuState.bajante.dNominal || '');
+                })()}
                   onChange={e => {
-                    const v = e.target.value || null;
-                    engineRef.current?.updateElementById(contextMenuState.bajante.id, { descargaEnId: v });
-                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
-                    if (fresh) setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
-                    if (selElement?.id === contextMenuState.bajante.id) {
-                      setSelElement({ ...selElement, descargaEnId: v });
+                    const val = e.target.value;
+                    const dIsGhost = contextMenuState.isGhostClick || false;
+                    if (dIsGhost && engineRef.current) {
+                      const dGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
+                      const gd2 = { ...(contextMenuState.bajante.ghostData || {}) };
+                      const cd = { ...(gd2[dGhostLabel] || {}) };
+                      cd.dNominal = val;
+                      gd2[dGhostLabel] = cd;
+                      engineRef.current?.updateElementById(contextMenuState.bajante.id, { ghostData: gd2 });
+                      const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                      if (fresh) {
+                        setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
+                        if (selElement?.id === contextMenuState.bajante.id) {
+                          setSelElement({ ...selElement, ghostData: gd2 });
+                        }
+                      }
+                    } else {
+                      engineRef.current?.updateElementById(contextMenuState.bajante.id, { dNominal: val });
+                      setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, dNominal: val } } : null);
+                      if (selElement?.id === contextMenuState.bajante.id) {
+                        setSelElement({ ...selElement, dNominal: val });
+                      }
                     }
                   }}
-                  style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                  <option value="">— Sin destino —</option>
-                  {lowerFloorsRamales.map(group => {
-                    const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
-                    const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
-                    return (
-                      <optgroup key={group.planId} label={pLabel + (group.ramales.length === 0 ? ' (sin ramales)' : '')}>
-                        {group.ramales.length > 0 ? group.ramales.map((r: any) => (
-                          <option key={`${group.planId}|${r.id}`} value={`${group.planId}|${r.id}`}>
-                            {r.label || r.id}
-                          </option>
-                        )) : (
-                          <option value="" disabled>— Sin ramales disponibles —</option>
-                        )}
-                      </optgroup>
-                    );
-                  })}
+                  style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                  <option value="">—</option>
+                  {DIAM_BAN.map(d => (
+                    <option key={d.pulg} value={d.nom}>{d.nom}</option>
+                  ))}
                 </select>
-              </div>);
-            })()}
+              </div>
+            )}
             
             {!contextMenuState.isGhostClick && (
               <button
@@ -911,98 +1031,66 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
               </button>
             )}
 
-            {/* Diameter selector */}
-            <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
-              <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Diámetro</div>
-              <select value={(() => {
-                const dIsGhost = contextMenuState.isGhostClick || false;
-                const dGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-                const gd = contextMenuState.bajante.ghostData?.[dGhostLabel];
-                return dIsGhost ? (gd && gd.dNominal !== undefined ? gd.dNominal : (contextMenuState.bajante.dNominal || '')) : (contextMenuState.bajante.dNominal || '');
-              })()}
-                onChange={e => {
-                  const val = e.target.value;
-                  const dIsGhost = contextMenuState.isGhostClick || false;
-                  if (dIsGhost && engineRef.current) {
-                    const dGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-                    const gd2 = { ...(contextMenuState.bajante.ghostData || {}) };
-                    const cd = { ...(gd2[dGhostLabel] || {}) };
-                    cd.dNominal = val;
-                    gd2[dGhostLabel] = cd;
-                    engineRef.current?.updateElementById(contextMenuState.bajante.id, { ghostData: gd2 });
-                    const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
-                    if (fresh) {
-                      setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
-                      if (selElement?.id === contextMenuState.bajante.id) {
-                        setSelElement({ ...selElement, ghostData: gd2 });
-                      }
-                    }
-                  } else {
-                    engineRef.current?.updateElementById(contextMenuState.bajante.id, { dNominal: val });
-                    setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, dNominal: val } } : null);
-                    if (selElement?.id === contextMenuState.bajante.id) {
-                      setSelElement({ ...selElement, dNominal: val });
-                    }
-                  }
-                }}
-                style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                <option value="">—</option>
-                {DIAM_BAN.map(d => (
-                  <option key={d.pulg} value={d.nom}>{d.nom}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Show Area dropdown for all networks */}
+            {/* Show Area and Ramales selector side-by-side if not ghost */}
             {!contextMenuState.isGhostClick && (
-              <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
-                <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Área asociada</div>
-                <select value={contextMenuState.bajante.area_m2 || ''}
-                  onChange={e => {
-                    const val = parseFloat(e.target.value) || 0;
-                    engineRef.current?.updateElementById(contextMenuState.bajante.id, { area_m2: val });
-                    setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, area_m2: val } } : null);
-                    if (selElement?.id === contextMenuState.bajante.id) {
-                      setSelElement({ ...selElement, area_m2: val });
-                    }
-                  }}
-                  style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                  <option value="">— Sin área —</option>
-                  {(engineRef.current?.areas || []).map((a: any) => (
-                    <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            
-            {/* Show Ramales if activeNet === 'san' */}
-            {activeNet === 'san' && !contextMenuState.isGhostClick && (
-              <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
-                <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 }}>Ramales asociados</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
-                  {(() => {
-                    const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === 'san' && r.tipo !== 'tributario');
-                    if (bajRamales.length === 0) return <div style={{ fontSize: 10, color: '#6b8cae', fontFamily: "'Geist',monospace" }}>Sin ramales</div>;
-                    const recibidos = (contextMenuState.bajante.recibeDeIds || []) as string[];
-                    return bajRamales.map((r: any) => (
-                      <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px', cursor: 'pointer', fontSize: 10, color: '#b9caca', fontFamily: "'Geist',monospace" }}>
-                        <input type="checkbox" checked={recibidos.includes(r.id)}
-                          onChange={e => {
-                            const newRecibe = e.target.checked
-                              ? [...recibidos, r.id]
-                              : recibidos.filter(id => id !== r.id);
-                            engineRef.current?.updateElementById(contextMenuState.bajante.id, { recibeDeIds: newRecibe });
-                            setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, recibeDeIds: newRecibe } } : null);
-                            if (selElement?.id === contextMenuState.bajante.id) {
-                              setSelElement({ ...selElement, recibeDeIds: newRecibe });
-                            }
-                          }}
-                          style={{ accentColor: '#F5A623', margin: 0 }} />
-                        <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label || r.id}</span>
-                      </label>
-                    ));
-                  })()}
+              <div style={{
+                display: 'flex',
+                flexDirection: activeNet === 'san' ? 'row' : 'column',
+                gap: 6,
+                padding: '4px 8px',
+                borderTop: '1px solid #3a494a',
+                marginTop: 4
+              }}>
+                {/* Area */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Área asociada</div>
+                  <select value={contextMenuState.bajante.area_m2 || ''}
+                    onChange={e => {
+                      const val = parseFloat(e.target.value) || 0;
+                      engineRef.current?.updateElementById(contextMenuState.bajante.id, { area_m2: val });
+                      setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, area_m2: val } } : null);
+                      if (selElement?.id === contextMenuState.bajante.id) {
+                        setSelElement({ ...selElement, area_m2: val });
+                      }
+                    }}
+                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                    <option value="">— Sin área —</option>
+                    {(engineRef.current?.areas || []).map((a: any) => (
+                      <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
+                    ))}
+                  </select>
                 </div>
+
+                {/* Ramales asociados */}
+                {activeNet === 'san' && (
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Ramales asociados</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
+                      {(() => {
+                        const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === 'san' && r.tipo !== 'tributario');
+                        if (bajRamales.length === 0) return <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 2' }}>Sin ramales</div>;
+                        const recibidos = (contextMenuState.bajante.recibeDeIds || []) as string[];
+                        return bajRamales.map((r: any) => (
+                          <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
+                            <input type="checkbox" checked={recibidos.includes(r.id)}
+                              onChange={e => {
+                                const newRecibe = e.target.checked
+                                  ? [...recibidos, r.id]
+                                  : recibidos.filter(id => id !== r.id);
+                                engineRef.current?.updateElementById(contextMenuState.bajante.id, { recibeDeIds: newRecibe });
+                                setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, recibeDeIds: newRecibe } } : null);
+                                if (selElement?.id === contextMenuState.bajante.id) {
+                                  setSelElement({ ...selElement, recibeDeIds: newRecibe });
+                                }
+                              }}
+                              style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
+                            <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label || r.id}</span>
+                          </label>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             </>
@@ -1037,6 +1125,47 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
               </>
             ) : contextMenuState.bajante.pts ? (
               <>
+                {contextMenuState.ramalEndpoint && (() => {
+                  const supNets = ['san', 'll', 'vent', 'af', 'ac', 'gas', 'rci', 'rec'];
+                  if (!supNets.includes(contextMenuState.bajante.net)) return null;
+                  const ep = contextMenuState.ramalEndpoint;
+                  const netDef = NETS.find((n: any) => n.id === contextMenuState.bajante.net);
+                  const bmLabel = netDef?.bmType === 'bajante' ? 'bajante' : 'montante';
+                  return (
+                    <div style={{ padding: '4px 8px' }}>
+                      <button onClick={() => {
+                        const eng = engineRef.current;
+                        if (!eng) return;
+                        const cnt = eng.bajantes.filter((b: any) => b.net === contextMenuState.bajante.net).length + 1;
+                        const id = (netDef?.bmPfx || 'B') + cnt;
+                        eng.bajantes.push({
+                          id, net: contextMenuState.bajante.net,
+                          tipo: bmLabel,
+                          code: id,
+                          x: ep.x, y: ep.y,
+                          pisoBase: '', pisoCima: '',
+                          nptBase: 0, nptCima: 0, hVert: 0,
+                          dNominal: '0', recibeDeIds: [contextMenuState.bajante.id], alimentaIds: [], descargaEnId: null,
+                          ucAcum: 0, ucExtra: 0, area_m2: 0,
+                          desplazamientos: {},
+                          lblOffX: 0, lblOffY: 0, labelAngle: 0,
+                          labelX: ep.x, labelY: ep.y + 20,
+                        });
+                        eng.selId = id;
+                        eng._isGhostSel = false;
+                        eng._emitSelect(eng.bajantes[eng.bajantes.length - 1]);
+                        eng.render();
+                        eng._markDirty();
+                        setContextMenuState(null);
+                      }} style={{
+                        width: '100%', padding: '6px 8px', cursor: 'pointer',
+                        background: '#1e2024', border: '1px dashed #00dce5', borderRadius: 4,
+                        color: '#00dce5', fontSize: 11, fontFamily: "'Geist',monospace",
+                        textAlign: 'center', fontWeight: 600,
+                      }}>+ Crear {bmLabel}</button>
+                    </div>
+                  );
+                })()}
                 <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Diámetro de ramal
                 </div>
