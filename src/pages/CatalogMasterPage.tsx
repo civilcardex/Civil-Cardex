@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GAS } from '../constants';
-import { SANITARIAS, RCI, AGUA_FRIA, AGUA_CALIENTE } from './catalog/catalogData';
+import { SANITARIAS, RCI, AGUA_FRIA, AGUA_CALIENTE, VENTILACION } from './catalog/catalogData';
 import SectionCard from './catalog/SectionCard';
 import { PipeTable, GasTable, ContadoresTable, MaterialesPorRedTable, CoefFriccionTable } from './catalog/CatalogTables';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -32,6 +32,7 @@ export default function CatalogMasterPage() {
   usePageMeta('Catálogo Maestro', 'Catálogo de materiales, tuberías y equipos para diseño hidrosanitario. PVC, CPVC, cobre, acero y más según NTC 1500.');
 
   const sanFiltered = useMemo(() => filterGroups(SANITARIAS, search), [search]);
+  const ventFiltered = useMemo(() => filterGroups(VENTILACION, search), [search]);
   const afFiltered = useMemo(() => filterGroups(AGUA_FRIA, search), [search]);
   const acFiltered = useMemo(() => filterGroups(AGUA_CALIENTE, search), [search]);
   const gasAcero = useMemo(() => filterGroups(GAS.slice(0, 2), search), [search]);
@@ -90,9 +91,14 @@ export default function CatalogMasterPage() {
 
           {subpage === 2 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, alignContent: 'start' }}>
-              <SectionCard title="Sanitarias" subtitle="PVC-S · NTC 1500" compact>
-                <PipeTable groups={sanFiltered} compact />
-              </SectionCard>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <SectionCard title="Sanitarias" subtitle="PVC-S · NTC 1500" compact>
+                  <PipeTable groups={sanFiltered} compact />
+                </SectionCard>
+                <SectionCard title="Ventilación" subtitle="PVC-V" compact>
+                  <PipeTable groups={ventFiltered} compact />
+                </SectionCard>
+              </div>
               <SectionCard title="Agua fría" subtitle="PVC-Pr · NTC 1500" compact>
                 <PipeTable groups={afFiltered} compact />
               </SectionCard>

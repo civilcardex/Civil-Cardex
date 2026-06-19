@@ -5,6 +5,13 @@ export const SANITARIAS = [
   ]},
 ];
 
+export const VENTILACION = [
+  { mat: 'PVC-V', rows: [
+    { dn: '1 1/2"', d: 45.22 }, { dn: '2"', d: 56.76 },
+    { dn: '3"', d: 79.00 }, { dn: '4"', d: 110.08 },
+  ]},
+];
+
 export const RCI = [
   { mat: 'Acero al carbono SCH 10', rows: [
     { dn: '3/4"', d: 22.48 }, { dn: '1"', d: 27.86 }, { dn: '1 1/4"', d: 36.66 },
