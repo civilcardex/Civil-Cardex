@@ -13,7 +13,7 @@ function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const navigate = useNavigate();
-  usePageMeta('Registro', 'Cree su cuenta en CivilCore para acceder a herramientas de diseno hidrosanitario, estructural y gestion de proyectos.');
+  usePageMeta('Registro', 'Cree su cuenta en CivilCore para acceder a herramientas de diseño hidrosanitario, estructural y gestión de proyectos.');
 
   const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [field]: e.target.value });
 

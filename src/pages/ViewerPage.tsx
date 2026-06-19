@@ -33,7 +33,7 @@ export default function ViewerPage() {
 
   const files = plans.map(p => ({ id: p.id, file: p.file }));
   const planIdResolvedRef = useRef(false);
-  usePageMeta('Visor de Planos', 'Visor de planos PDF con superposicion de redes hidrosanitarias. Herramientas de dibujo, calibracion y medicion.');
+  usePageMeta('Visor de planos', 'Visor de planos PDF con superposición de redes hidrosanitarias. Herramientas de dibujo, calibración y medición.');
 
   useEffect(() => {
     if (planIdResolvedRef.current || files.length === 0) return;
