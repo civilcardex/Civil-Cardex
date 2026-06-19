@@ -14,24 +14,12 @@ interface PlansContextValue {
   removePlan: (id: number) => void;
   updatePlan: (id: number, updates: Partial<PlanItem>) => void;
   confirmPlan: (id: number) => void;
-  getPlanById: (id: number) => PlanItem | null;
 }
 
 const PlansContext = createContext<PlansContextValue | null>(null);
 
 function persistMeta(plans: PlanItem[]) {
-  const meta: PlanMeta[] = plans.map(p => ({
-    id: p.id,
-    name: p.name,
-    nivel: p.nivel,
-    scale: p.scale,
-    status: p.status,
-    origen: p.origen,
-    factorX: p.factorX,
-    factorY: p.factorY,
-    calGlobal: p.calGlobal,
-    definedScale: p.definedScale,
-  }));
+  const meta: PlanMeta[] = plans.map(({ file, ...meta }) => meta);
   if (meta.length === 0) {
     removeFromStorage(PLANS_META_KEY);
   } else {
@@ -114,12 +102,8 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     setPlans(prev => prev.map(p => p.id === id && p.status === 'pending' ? { ...p, status: 'confirmed' } : p));
   };
 
-  const getPlanById = (id: number) => {
-    return plans.find(p => p.id === id) || null;
-  };
-
   return (
-    <PlansContext.Provider value={{ plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan, getPlanById }}>
+    <PlansContext.Provider value={{ plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan }}>
       {children}
     </PlansContext.Provider>
   );
