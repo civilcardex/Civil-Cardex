@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  darkMode: "class",
+  darkMode: "class", // dark-only via CSS vars, darkMode kept for Tailwind purge safety
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
