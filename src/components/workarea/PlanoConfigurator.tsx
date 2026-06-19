@@ -52,13 +52,11 @@ export default function PlanoConfigurator({
   const [definedScale, setDefinedScale] = useState<number | null>(existingCal?.definedScale || existingCal?.scaleM || null);
   const [calGlobal, setCalGlobal] = useState<boolean | null>(existingCal?.calGlobal ?? null);
 
-  const [modoPreCalX, setModoPreCalX] = useState(false);
-  const [modoPreCalY, setModoPreCalY] = useState(false);
-  const [preCalX, setPreCalX] = useState<number | null>(null);
-  const [preCalY, setPreCalY] = useState<number | null>(null);
-  const [lenPreX, setLenPreX] = useState('');
-  const [lenPreY, setLenPreY] = useState('');
-  const [preScaleM, setPreScaleM] = useState<number | null>(null);
+  const [preScaleM, setPreScaleM] = useState<number | null>(() => {
+    if (existingCal?.definedScale) return existingCal.definedScale * (96 / 72);
+    if (existingCal?.scaleM) return existingCal.scaleM;
+    return null;
+  });
   const [showProtocolo, setShowProtocolo] = useState(false);
   const [saved, setSaved] = useState(false);
   const [hasSaved, setHasSaved] = useState(!!existingCal);
@@ -108,8 +106,6 @@ export default function PlanoConfigurator({
     setModoOrigen(!modoOrigen);
     setModoCalX(false);
     setModoCalY(false);
-    setModoPreCalX(false);
-    setModoPreCalY(false);
     setCalStart(null);
     setCalPreview(null);
   };
@@ -124,8 +120,6 @@ export default function PlanoConfigurator({
     if (!lr || lr <= 0) { showToast('Ingrese la longitud real X', 'err'); return; }
     setModoCalX(true);
     setModoCalY(false);
-    setModoPreCalX(false);
-    setModoPreCalY(false);
     setModoOrigen(false);
     setCalStart(null);
     setCalPreview(null);
@@ -141,46 +135,6 @@ export default function PlanoConfigurator({
     if (!lr || lr <= 0) { showToast('Ingrese la longitud real Y', 'err'); return; }
     setModoCalY(true);
     setModoCalX(false);
-    setModoPreCalX(false);
-    setModoPreCalY(false);
-    setModoOrigen(false);
-    setCalStart(null);
-    setCalPreview(null);
-  };
-
-  const calcularPrePromedio = useCallback((px: number | null, py: number | null) => {
-    setPreScaleM(px || py);
-  }, []);
-
-  const activarModoPreCalX = () => {
-    if (modoPreCalX) { setModoPreCalX(false); setCalStart(null); setCalPreview(null); return; }
-    if (!definedScale && !scaleM && !factorX && !factorY && !preCalY && !preScaleM) {
-      showToast('Seleccione primero la "Escala definida" aproximada del plano', 'err');
-      return;
-    }
-    const lr = parseFloat(lenPreX);
-    if (!lr || lr <= 0) { showToast('Ingrese la longitud real Pre-X', 'err'); return; }
-    setModoPreCalX(true);
-    setModoPreCalY(false);
-    setModoCalX(false);
-    setModoCalY(false);
-    setModoOrigen(false);
-    setCalStart(null);
-    setCalPreview(null);
-  };
-
-  const activarModoPreCalY = () => {
-    if (modoPreCalY) { setModoPreCalY(false); setCalStart(null); setCalPreview(null); return; }
-    if (!definedScale && !scaleM && !factorX && !factorY && !preCalX && !preScaleM) {
-      showToast('Seleccione primero la "Escala definida" aproximada del plano', 'err');
-      return;
-    }
-    const lr = parseFloat(lenPreY);
-    if (!lr || lr <= 0) { showToast('Ingrese la longitud real Pre-Y', 'err'); return; }
-    setModoPreCalY(true);
-    setModoPreCalX(false);
-    setModoCalX(false);
-    setModoCalY(false);
     setModoOrigen(false);
     setCalStart(null);
     setCalPreview(null);
@@ -212,14 +166,12 @@ export default function PlanoConfigurator({
       if (e.key === 'Escape') {
         if (modoCalX) { setModoCalX(false); setCalStart(null); setCalPreview(null); }
         if (modoCalY) { setModoCalY(false); setCalStart(null); setCalPreview(null); }
-        if (modoPreCalX) { setModoPreCalX(false); setCalStart(null); setCalPreview(null); }
-        if (modoPreCalY) { setModoPreCalY(false); setCalStart(null); setCalPreview(null); }
         if (modoOrigen) { setModoOrigen(false); }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modoCalX, modoCalY, modoPreCalX, modoPreCalY, modoOrigen]);
+  }, [modoCalX, modoCalY, modoOrigen]);
 
   // Load image/PDF
   useEffect(() => {
@@ -330,45 +282,30 @@ export default function PlanoConfigurator({
     }
 
     if (calStart) {
-      const isPre = modoPreCalX || modoPreCalY;
-      const isCal = modoCalX || modoCalY;
-      ctx.fillStyle = isPre ? '#B08F5C' : (modoCalX ? '#4D8FF7' : '#0ECC7A');
+      ctx.fillStyle = modoCalX ? '#4D8FF7' : '#0ECC7A';
       ctx.beginPath(); ctx.arc(calStart.x_px, calStart.y_px, 5, 0, Math.PI * 2); ctx.fill();
     }
 
     if (calPreview && calStart) {
-      const isPre = modoPreCalX || modoPreCalY;
-      const isCal = modoCalX || modoCalY;
-      const color = isPre ? '#B08F5C' : (modoCalX ? '#4D8FF7' : '#0ECC7A');
+      const color = modoCalX ? '#4D8FF7' : '#0ECC7A';
       ctx.strokeStyle = color; ctx.lineWidth = 1.5;
       ctx.setLineDash([5, 4]);
       ctx.beginPath(); ctx.moveTo(calStart.x_px, calStart.y_px); ctx.lineTo(calPreview.x, calPreview.y); ctx.stroke();
       ctx.setLineDash([]);
-      const dx = (modoCalX || modoPreCalX) ? (calPreview.x - calStart.x_px) : 0;
-      const dy = (modoCalY || modoPreCalY) ? (calPreview.y - calStart.y_px) : 0;
+      const dx = modoCalX ? (calPreview.x - calStart.x_px) : 0;
+      const dy = modoCalY ? (calPreview.y - calStart.y_px) : 0;
       const distPx = Math.hypot(dx, dy);
       const distCm = distPx / 96 * 2.54;
 
-      let baseFactor: number | null = null;
-      let isFirstCalib = false;
-      let refVal = 0;
-      if (isPre) {
-        baseFactor = modoPreCalX ? (preCalY || preScaleM || definedScale || scaleM) : (preCalX || preScaleM || definedScale || scaleM);
-        isFirstCalib = modoPreCalX ? !(preCalY || preScaleM || definedScale || scaleM) : !(preCalX || preScaleM || definedScale || scaleM);
-        refVal = modoPreCalX ? parseFloat(lenPreX) : parseFloat(lenPreY);
-      } else {
-        baseFactor = modoCalX ? (factorY || scaleM || preScaleM || definedScale) : (factorX || scaleM || preScaleM || definedScale);
-        isFirstCalib = modoCalX ? !(factorY || scaleM || preScaleM) : !(factorX || scaleM || preScaleM);
-        refVal = modoCalX ? parseFloat(lenX) : parseFloat(lenY);
-      }
+      const baseFactor = modoCalX ? (factorY || scaleM || definedScale) : (factorX || scaleM || definedScale);
+      const isFirstCalib = modoCalX ? !(factorY || scaleM) : !(factorX || scaleM);
+      const refVal = modoCalX ? parseFloat(lenX) : parseFloat(lenY);
 
       let txt = '';
       let refTxt = '';
 
-      if (isPre) {
-        txt = `Fijando escala a: ${refVal.toFixed(2)} m`;
-      } else if (isFirstCalib) {
-        txt = `Fijando a: ${refVal.toFixed(2)} m`;
+      if (isFirstCalib) {
+        txt = `${distCm.toFixed(2)} cm`;
       } else {
         txt = baseFactor ? `${(distCm * baseFactor).toFixed(2)} m` : `Fijando a: ${refVal.toFixed(2)} m`;
         if (baseFactor && !isNaN(refVal) && refVal > 0) {
@@ -389,7 +326,7 @@ export default function PlanoConfigurator({
         ctx.fillText(refTxt, refTx, ty + 14);
       }
 
-      if (modoCalX || modoPreCalX) {
+      if (modoCalX || modoCalY) {
         ctx.strokeStyle = color; ctx.lineWidth = 1;
         ctx.setLineDash([2, 3]);
         ctx.beginPath(); ctx.moveTo(calPreview.x, calPreview.y - 10); ctx.lineTo(calPreview.x, calPreview.y + 10); ctx.stroke();
@@ -399,7 +336,7 @@ export default function PlanoConfigurator({
       }
     }
 
-    const showCrosshair = (modoOrigen || modoCalX || modoCalY || modoPreCalX || modoPreCalY) && !calStart && cursorPos;
+    const showCrosshair = (modoOrigen || modoCalX || modoCalY) && !calStart && cursorPos;
     if (showCrosshair) {
       ctx.save();
       ctx.strokeStyle = 'rgba(0,220,229,0.4)'; ctx.lineWidth = 0.5;
@@ -412,13 +349,9 @@ export default function PlanoConfigurator({
       ctx.restore();
     }
 
-    if (modoOrigen || modoCalX || modoCalY || modoPreCalX || modoPreCalY) {
+    if (modoOrigen || modoCalX || modoCalY) {
       let txt = '';
-      if (modoOrigen) txt = '\u{1F4CD} Clic en la intersección de ejes';
-      else if (modoPreCalX && !calStart) txt = '[Pre] Clic en el primer extremo de la línea horizontal';
-      else if (modoPreCalX && calStart) txt = '[Pre] Clic en el segundo extremo de la línea X';
-      else if (modoPreCalY && !calStart) txt = '[Pre] Clic en el primer extremo de la línea vertical';
-      else if (modoPreCalY && calStart) txt = '[Pre] Clic en el segundo extremo de la línea Y';
+      if (modoOrigen) txt = '📍 Clic en la intersección de ejes';
       else if (modoCalX && !calStart) txt = 'Clic en el primer extremo de la línea horizontal';
       else if (modoCalX && calStart) txt = 'Clic en el segundo extremo de la línea X';
       else if (modoCalY && !calStart) txt = 'Clic en el primer extremo de la línea vertical';
@@ -434,7 +367,7 @@ export default function PlanoConfigurator({
         ctx.fillText(txt, 22, 30);
       }
     }
-  }, [origen, calStart, calPreview, modoOrigen, modoCalX, modoCalY, modoPreCalX, modoPreCalY, scaleM, preScaleM, imgLoaded, cursorPos]);
+  }, [origen, calStart, calPreview, modoOrigen, modoCalX, modoCalY, scaleM, imgLoaded, cursorPos]);
 
   const onMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -456,32 +389,16 @@ export default function PlanoConfigurator({
       return;
     }
 
-    if (modoCalX || modoCalY || modoPreCalX || modoPreCalY) {
+    if (modoCalX || modoCalY) {
       if (!calStart) {
         setCalStart({ x_px: pp.x, y_px: pp.y });
       } else {
-        const dx = (modoCalX || modoPreCalX) ? (pp.x - calStart.x_px) : 0;
-        const dy = (modoCalY || modoPreCalY) ? (pp.y - calStart.y_px) : 0;
+        const dx = modoCalX ? (pp.x - calStart.x_px) : 0;
+        const dy = modoCalY ? (pp.y - calStart.y_px) : 0;
         const distPx = Math.hypot(dx, dy);
         if (distPx < 5) { setCalStart(null); return; }
         const distCm = distPx / 96 * 2.54;
-        if (modoPreCalX) {
-          const lr = parseFloat(lenPreX);
-          const fx = lr / distCm;
-          setPreCalX(fx);
-          setModoPreCalX(false);
-          setCalStart(null); setCalPreview(null);
-          calcularPrePromedio(fx, preCalY);
-          setHasSaved(false);
-        } else if (modoPreCalY) {
-          const lr = parseFloat(lenPreY);
-          const fy = lr / distCm;
-          setPreCalY(fy);
-          setModoPreCalY(false);
-          setCalStart(null); setCalPreview(null);
-          calcularPrePromedio(preCalX, fy);
-          setHasSaved(false);
-        } else if (modoCalX) {
+        if (modoCalX) {
           const lr = parseFloat(lenX);
           const fx = lr / distCm;
           setFactorX(fx);
@@ -514,9 +431,9 @@ export default function PlanoConfigurator({
       setOffset({ x: panStart.ox + (x - panStart.x), y: panStart.oy + (y - panStart.y) });
       return;
     }
-    if ((modoCalX || modoCalY || modoPreCalX || modoPreCalY) && calStart) {
+    if ((modoCalX || modoCalY) && calStart) {
       const pp = canvasToPlane(x, y);
-      if (modoCalX || modoPreCalX) setCalPreview({ x: pp.x, y: calStart.y_px });
+      if (modoCalX) setCalPreview({ x: pp.x, y: calStart.y_px });
       else setCalPreview({ x: calStart.x_px, y: pp.y });
     }
   };
@@ -539,30 +456,27 @@ export default function PlanoConfigurator({
   };
 
   const cursor = () => {
-    if (modoOrigen || modoCalX || modoCalY || modoPreCalX || modoPreCalY) return 'crosshair';
+    if (modoOrigen || modoCalX || modoCalY) return 'crosshair';
     if (panning) return 'grabbing';
     return 'grab';
   };
 
   const tieneOrigen = origen !== null;
   const tieneCal = factorX !== null || factorY !== null;
-  const tienePreCal = preCalX !== null || preCalY !== null;
   const escalaDisponible = scaleM !== null || preScaleM !== null;
 
   const guardarConfig = () => {
     if (planNivel === null || planNivel === undefined) { showToast('Asigne un nivel antes de guardar (Paso 1)', 'err'); return; }
     if (!origen) { showToast('Defina el origen antes de guardar (Paso 2)', 'err'); return; }
     if (!scaleM && !preScaleM) { showToast('Calibre al menos un eje antes de guardar', 'err'); return; }
-    if ((tieneCal || tienePreCal) && calGlobal === null) {
+    if (escalaDisponible && calGlobal === null) {
       showToast('Seleccione si la calibración aplica a todos los planos o plano por plano', 'err');
       return;
     }
 
-    // Condición de si no está bien calibrado el plano (diferencia de calibración X/Y > 5%)
-    // Implementada pero deshabilitada por el momento
+    // Bloquea guardar si la diferencia de calibración X/Y supera el 5%
     const diffPctVal = factorX && factorY && scaleM ? Math.abs(factorX - factorY) / scaleM * 100 : 0;
-    const bloquearPorMalaCalibracion = false; // Cambiar a: diffPctVal > 5
-    if (bloquearPorMalaCalibracion && diffPctVal > 5) {
+    if (diffPctVal > 5) {
       showToast(`No se puede guardar: La diferencia de calibración X/Y (${diffPctVal.toFixed(1)}%) supera el 5%.`, 'err');
       return;
     }
@@ -673,9 +587,14 @@ export default function PlanoConfigurator({
                   onChange={e => {
                     const val = e.target.value ? Number(e.target.value) : null;
                     if (val) {
-                      setDefinedScale(val / 100);
+                      const dScale = val / 100;
+                      setDefinedScale(dScale);
+                      setPreScaleM(dScale * (96 / 72));
+                      setHasSaved(false);
                     } else {
                       setDefinedScale(null);
+                      setPreScaleM(null);
+                      setHasSaved(false);
                     }
                   }}
                   style={{ width: '100%', padding: '5px 6px', fontSize: 12, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer' }}
@@ -736,68 +655,7 @@ export default function PlanoConfigurator({
             )}
           </div>
 
-          {/* Pre-calibración X e Y (solo un eje) */}
-          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)', background: 'var(--bg-s)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
-              Precalibración X e Y
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(!preCalY || preCalX || modoPreCalX) && (
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--txt4)', marginBottom: 2 }}>Pre-X</div>
-                <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                  <input type="text" inputMode="decimal" placeholder="(m)" value={lenPreX} onChange={e => setLenPreX(e.target.value.replace(/,/g, '.'))}
-                    disabled={modoPreCalX}
-                    style={{ flex: 1, minWidth: 0, padding: '4px 3px', fontSize: 10, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt)', fontFamily: 'monospace' }} />
-                  {preCalX ? (
-                    <button onClick={() => { setPreCalX(null); setLenPreX(''); setPreScaleM(null); setHasSaved(false); }}
-                      style={{ padding: '4px 5px', fontSize: 9, fontWeight: 600, background: 'rgba(77,143,247,0.12)', border: '1.5px solid #4D8FF7', borderRadius: 'var(--r)', color: '#4D8FF7', cursor: 'pointer' }}>
-                      ✕
-                    </button>
-                  ) : (
-                  <button onClick={activarModoPreCalX}
-                    style={{
-                      padding: '4px 5px', fontSize: 9, fontWeight: 600, whiteSpace: 'nowrap',
-                      background: modoPreCalX ? 'rgba(77,143,247,0.15)' : 'var(--bg3)',
-                      border: `1.5px solid ${modoPreCalX ? '#4D8FF7' : 'var(--line)'}`,
-                      borderRadius: 'var(--r)', color: modoPreCalX ? '#4D8FF7' : 'var(--txt2)',
-                      cursor: 'pointer',
-                    }}>
-                    {modoPreCalX ? 'Cancelar' : 'Trazar'}
-                  </button>
-                  )}
-                </div>
-              </div>
-              )}
-              {(!preCalX || preCalY || modoPreCalY) && (
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--txt4)', marginBottom: 2 }}>Pre-Y</div>
-                <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
-                  <input type="text" inputMode="decimal" placeholder="(m)" value={lenPreY} onChange={e => setLenPreY(e.target.value.replace(/,/g, '.'))}
-                    disabled={modoPreCalY}
-                    style={{ flex: 1, minWidth: 0, padding: '4px 3px', fontSize: 10, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt)', fontFamily: 'monospace' }} />
-                  {preCalY ? (
-                    <button onClick={() => { setPreCalY(null); setLenPreY(''); setPreScaleM(null); setHasSaved(false); }}
-                      style={{ padding: '4px 5px', fontSize: 9, fontWeight: 600, background: 'rgba(77,143,247,0.12)', border: '1.5px solid #4D8FF7', borderRadius: 'var(--r)', color: '#4D8FF7', cursor: 'pointer' }}>
-                      ✕
-                    </button>
-                  ) : (
-                  <button onClick={activarModoPreCalY}
-                    style={{
-                      padding: '4px 5px', fontSize: 9, fontWeight: 600, whiteSpace: 'nowrap',
-                      background: modoPreCalY ? 'rgba(77,143,247,0.15)' : 'var(--bg3)',
-                      border: `1.5px solid ${modoPreCalY ? '#4D8FF7' : 'var(--line)'}`,
-                      borderRadius: 'var(--r)', color: modoPreCalY ? '#4D8FF7' : 'var(--txt2)',
-                      cursor: 'pointer',
-                    }}>
-                    {modoPreCalY ? 'Cancelar' : 'Trazar'}
-                  </button>
-                  )}
-                </div>
-              </div>
-              )}
-            </div>
-          </div>
+
 
           {/* Step 3 & 4: Calibrate X and Y */}
           <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)', display: 'flex', gap: 8 }}>
@@ -859,7 +717,7 @@ export default function PlanoConfigurator({
           </div>
 
           {/* Scope */}
-          {(tieneCal || tienePreCal) && (
+          {(tieneCal || preScaleM !== null) && (
             <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
                 Alcance
@@ -887,12 +745,10 @@ export default function PlanoConfigurator({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
                 <Chk done={planNivel !== null} label="Nivel" />
                 <Chk done={tieneOrigen} label="Origen" />
-                <Chk done={tienePreCal} label="Pre-Cal" />
                 <Chk done={factorX !== null} label="Cal X" />
                 <Chk done={factorY !== null} label="Cal Y" />
                 <Chk done={escalaDisponible} label="Escala" />
                 <Chk done={calGlobal !== null} label="Alcance" />
-                <Chk done={hasSaved} label="Guardado" />
                 <Chk done={hasSaved} label="Guardado" />
               </div>
             </div>

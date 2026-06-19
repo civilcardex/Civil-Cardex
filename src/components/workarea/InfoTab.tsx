@@ -10,75 +10,94 @@ interface InfoTabProps {
 }
 
 function ProjectIdCard({ proy, setP }: { proy: any; setP: (k: string, v: any) => void }) {
+  const [isEditing, setIsEditing] = React.useState(false);
   return (
     <div className="card" style={{ flex: '0 1 auto', minWidth: 200 }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h3 className="card-t" style={{ fontSize: 13 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+          <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
             <img src="/iconos_info_general/identificacion_del_proyecto.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Identificación del proyecto
+            <button onClick={() => setIsEditing(!isEditing)} style={{ marginLeft: 'auto', background: isEditing ? 'var(--acc)' : 'transparent', color: isEditing ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>{isEditing ? 'LISTO' : 'EDITAR'}</button>
           </h3>
           <span className="card-s" style={{ fontSize: 11 }}>Datos para memorias de cálculo</span>
         </div>
       </div>
       <div style={{ padding: '4px 6px' }}>
-        <div className="f" style={{ marginBottom: 3 }}><label style={{ fontSize: 12 }}>Nombre del proyecto</label><input value={proy.nombre} onChange={e => setP('nombre', e.target.value)} style={{ fontSize: 12, padding: '3px 6px' }} /></div>
-        <div className="f" style={{ marginBottom: 3 }}><label style={{ fontSize: 12 }}>Dirección / Sector</label><input value={proy.dir} onChange={e => setP('dir', e.target.value)} style={{ fontSize: 12, padding: '3px 6px' }} /></div>
-        <div className="f" style={{ marginBottom: 3 }}><label style={{ fontSize: 12 }}>Municipio</label><input value={proy.mun} onChange={e => setP('mun', e.target.value)} style={{ fontSize: 12, padding: '3px 6px' }} /></div>
-        <div className="f" style={{ marginBottom: 3 }}><label style={{ fontSize: 12 }}>Departamento</label><input value={proy.dep} onChange={e => setP('dep', e.target.value)} style={{ fontSize: 12, padding: '3px 6px' }} /></div>
+        <div className="f" style={{ marginBottom: 3 }}><label style={{ fontSize: 12 }}>Nombre del proyecto</label><input disabled={!isEditing} value={proy.nombre} onChange={e => setP('nombre', e.target.value)} style={{ fontSize: 12, padding: '3px 6px', opacity: isEditing ? 1 : 0.7 }} /></div>
+        <div className="f" style={{ marginBottom: 3 }}><label style={{ fontSize: 12 }}>Dirección / Sector</label><input disabled={!isEditing} value={proy.dir} onChange={e => setP('dir', e.target.value)} style={{ fontSize: 12, padding: '3px 6px', opacity: isEditing ? 1 : 0.7 }} /></div>
+        <div className="f" style={{ marginBottom: 3 }}><label style={{ fontSize: 12 }}>Municipio</label><input disabled={!isEditing} value={proy.mun} onChange={e => setP('mun', e.target.value)} style={{ fontSize: 12, padding: '3px 6px', opacity: isEditing ? 1 : 0.7 }} /></div>
+        <div className="f" style={{ marginBottom: 3 }}><label style={{ fontSize: 12 }}>Departamento</label><input disabled={!isEditing} value={proy.dep} onChange={e => setP('dep', e.target.value)} style={{ fontSize: 12, padding: '3px 6px', opacity: isEditing ? 1 : 0.7 }} /></div>
         <div className="f" style={{ marginBottom: 0 }}><label style={{ fontSize: 12 }}>Uso</label>
-          <select value={proy.uso} onChange={e => setP('uso', e.target.value)} style={{ fontSize: 12, padding: '3px 6px', width: '100%' }}><option value="">—</option>{USOS.map(u => <option key={u}>{u}</option>)}</select></div>
+          <select disabled={!isEditing} value={proy.uso} onChange={e => setP('uso', e.target.value)} style={{ fontSize: 12, padding: '3px 6px', width: '100%', opacity: isEditing ? 1 : 0.7 }}><option value="">—</option>{USOS.map(u => <option key={u}>{u}</option>)}</select></div>
       </div>
     </div>
   );
 }
 
 function ActiveNetsCard({ redes, setRedes, netColors, setNetColors }: { redes: Set<string>; setRedes: Dispatch<SetStateAction<Set<string>>>; netColors: Record<string, string>; setNetColors: Dispatch<SetStateAction<Record<string, string>>> }) {
+  const [isEditing, setIsEditing] = React.useState(false);
   return (
     <div className="card" style={{ flex: '0 1 auto', minWidth: 190 }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h3 className="card-t" style={{ fontSize: 13 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+          <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
             <img src="/iconos_info_general/redes_activas.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Redes activas
+            <button onClick={() => setIsEditing(!isEditing)} style={{ marginLeft: 'auto', background: isEditing ? 'var(--acc)' : 'transparent', color: isEditing ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>{isEditing ? 'LISTO' : 'EDITAR'}</button>
           </h3>
           <span className="card-s" style={{ fontSize: 11 }}>
-            {[...redes].filter(id => id !== 'ep' && id !== 'bom').length} de {REDES.filter(r => r.id !== 'ep' && r.id !== 'bom').length}
+            {[...redes].filter(id => id !== 'ep' && id !== 'bom' && id !== 'vent').length} de {REDES.filter(r => r.id !== 'ep' && r.id !== 'bom' && r.id !== 'vent').length}
           </span>
         </div>
       </div>
       <div style={{ padding: '4px 6px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
-          {REDES.filter(r => r.id !== 'ep' && r.id !== 'bom').map(r => {
-            const on = redes.has(r.id);
-            const cssVar = `--${r.id}`;
-            const currentColor = netColors[r.id] || '#666';
-            return (
-              <button key={r.id} onClick={() => { const n = new Set(redes); on ? n.delete(r.id) : n.add(r.id); setRedes(n); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 3, padding: '3px 5px', cursor: 'pointer',
-                  background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left'
-                }}>
-                {r.icoImg ? <img src={r.icoImg} alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle' }}  loading="lazy" /> : <span style={{ fontSize: 13 }}>{r.ico}</span>}
-                <span style={{ fontWeight: 600, fontSize: 12, color: on ? currentColor : 'var(--txt2)', whiteSpace: 'nowrap', flex: 1 }}>{r.lbl}</span>
-                <input type="color" value={currentColor}
-                  onClick={e => e.stopPropagation()}
-                  onChange={e => {
-                    const c = e.target.value;
-                    setNetColors(prev => ({ ...prev, [r.id]: c }));
-                    document.documentElement.style.setProperty(cssVar, c);
-                    try {
-                      const net = (window as any).__NETS?.find?.((n: any) => n.id === r.id);
-                      if (net) net.col = c;
-                    } catch (e) { if (import.meta.env.DEV) console.error(e); }
-                    try { localStorage.setItem('civilflow_net_' + r.id, c); } catch (_) { }
-                  }}
-                  style={{ width: 14, height: 14, border: 'none', padding: 0, cursor: 'pointer', background: 'none', flexShrink: 0 }} />
-                <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: on ? currentColor : 'transparent', border: '1.5px solid ' + (on ? currentColor : 'var(--txt3)') }} />
-                <span className="visually-hidden">{on ? 'Activa' : 'Inactiva'}</span>
-              </button>
-            );
-          })}
+          {(() => {
+            const mainNets = REDES.filter(r => r.id !== 'ep' && r.id !== 'bom' && r.id !== 'san' && r.id !== 'vent');
+            const sanRede = REDES.find(x => x.id === 'san');
+            const ventRede = REDES.find(x => x.id === 'vent');
+            const ordered = [...mainNets];
+            if (sanRede) ordered.push(sanRede);
+            if (ventRede) ordered.push(ventRede);
+
+            return ordered.map(r => {
+              const isVent = r.id === 'vent';
+              const on = redes.has(r.id);
+              const sanOn = redes.has('san');
+              const cssVar = `--${r.id}`;
+              const currentColor = netColors[r.id] || '#666';
+              return (
+                <button key={r.id} disabled={!isEditing || (isVent && !sanOn)} onClick={() => { if (isVent && !sanOn) return; const n = new Set(redes); on ? n.delete(r.id) : n.add(r.id); setRedes(n); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 3,
+                    padding: isVent ? '2px 5px 2px 14px' : '3px 5px',
+                    cursor: isEditing && (!isVent || sanOn) ? 'pointer' : 'default',
+                    background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left',
+                    opacity: (isEditing && (!isVent || sanOn)) ? 1 : 0.5
+                  }}>
+                  {isVent && <span style={{ fontSize: 11, color: 'var(--txt3)', marginRight: 1, fontFamily: 'monospace', lineHeight: '1', letterSpacing: -1 }}>╰─</span>}
+                  {r.icoImg ? <img src={r.icoImg} alt="" width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle' }} loading="lazy" /> : <span style={{ fontSize: 13 }}>{r.ico}</span>}
+                  <span style={{ fontWeight: 600, fontSize: 12, color: on ? currentColor : 'var(--txt2)', whiteSpace: 'nowrap', flex: 1 }}>{r.lbl}</span>
+                  <input type="color" value={currentColor} disabled={!isEditing || (isVent && !sanOn)}
+                    onClick={e => e.stopPropagation()}
+                    onChange={e => {
+                      const c = e.target.value;
+                      setNetColors(prev => ({ ...prev, [r.id]: c }));
+                      document.documentElement.style.setProperty(cssVar, c);
+                      try {
+                        const net = (window as any).__NETS?.find?.((n: any) => n.id === r.id);
+                        if (net) net.col = c;
+                      } catch (e) { if (import.meta.env.DEV) console.error(e); }
+                      try { localStorage.setItem('civilflow_net_' + r.id, c); } catch (_) { }
+                    }}
+                    style={{ width: 14, height: 14, border: 'none', padding: 0, cursor: isEditing && (!isVent || sanOn) ? 'pointer' : 'default', background: 'none', flexShrink: 0, opacity: isEditing && (!isVent || sanOn) ? 1 : 0.5 }} />
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: on ? currentColor : 'transparent', border: '1.5px solid ' + (on ? currentColor : 'var(--txt3)') }} />
+                  <span className="visually-hidden">{on ? 'Activa' : 'Inactiva'}</span>
+                </button>
+              );
+            });
+          })()}
         </div>
       </div>
     </div>
