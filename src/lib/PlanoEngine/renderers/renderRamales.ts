@@ -70,8 +70,9 @@ function drawRamalPath(
           }
         }
 
-        if (Math.abs(cosAngle) < 0.05 && !isJunc) {
-          const rad = engine.mm2cvs(1.5);
+        const is45 = Math.abs(cosAngle + Math.cos(Math.PI / 4)) < 0.05;
+        if ((Math.abs(cosAngle) < 0.05 || is45) && !isJunc) {
+          const rad = engine.mm2cvs(is45 ? 1.0 : 1.5);
           const actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
 
           if (actualRad > 0.1) {
@@ -288,7 +289,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
               );
               if (hasTrib) isJunc = true;
             }
-            if (Math.abs(cosAngle) < 0.05 && !isJunc) {
+            if ((Math.abs(cosAngle) < 0.05 || Math.abs(cosAngle + Math.cos(Math.PI / 4)) < 0.05) && !isJunc) {
               return;
             }
           }
@@ -599,6 +600,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   }
 
   renderJunctions(ctx, engine);
+  renderVentCodos(ctx, engine);
 }
 
 function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
@@ -868,6 +870,108 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
   });
 }
 
+function renderVentCodos(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
+  if (engine._hiddenNets.has('vent')) return;
+
+  const ventRamales = engine.ramales.filter((r: any) => r.net === 'vent');
+  if (ventRamales.length === 0) return;
+
+  const sanRamales = engine.ramales.filter((r: any) => r.net === 'san');
+  if (sanRamales.length === 0) return;
+
+  const sanPoints: Set<string> = new Set();
+  sanRamales.forEach((r: any) => {
+    r.pts.forEach((pt: number[]) => {
+      sanPoints.add(`${pt[0].toFixed(3)}_${pt[1].toFixed(3)}`);
+    });
+  });
+
+  const drawn = new Set<string>();
+
+  ventRamales.forEach((r: any) => {
+    [0, r.pts.length - 1].forEach((idx: number) => {
+      const pt = r.pts[idx];
+      for (const key of sanPoints) {
+        const [sx, sy] = key.split('_').map(Number);
+        const dist = Math.hypot(pt[0] - sx, pt[1] - sy);
+        if (dist < 0.5) {
+          const dk = `${sx.toFixed(3)}_${sy.toFixed(3)}`;
+          if (drawn.has(dk)) return;
+          drawn.add(dk);
+
+          // calculate ramal direction at junction point
+          let dx = 0, dy = 0;
+          if (idx === 0 && r.pts.length >= 2) {
+            dx = r.pts[1][0] - r.pts[0][0];
+            dy = r.pts[1][1] - r.pts[0][1];
+          } else if (idx === r.pts.length - 1 && r.pts.length >= 2) {
+            dx = r.pts[idx][0] - r.pts[idx - 1][0];
+            dy = r.pts[idx][1] - r.pts[idx - 1][1];
+          }
+          const len = Math.hypot(dx, dy);
+          if (len < 0.01) { dx = 1; dy = 0; } else { dx /= len; dy /= len; }
+          // perpendicular to ramal direction
+          const px = -dy, py = dx;
+
+          const c = engine.toCvs(sx, sy);
+          const rad = engine.mm2cvs(2.0);
+          const vLen = engine.mm2cvs(2.5);
+
+          ctx.save();
+          ctx.lineCap = 'round';
+
+          // vertical lines crossing the ramal segments (perpendicular)
+          const offset = rad + engine.mm2cvs(0.8);
+          const cx1 = c.x - dx * offset, cy1 = c.y - dy * offset;
+          const cx2 = c.x + dx * offset, cy2 = c.y + dy * offset;
+          // white under-stroke to mask ramal lines
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 10;
+          ctx.beginPath();
+          ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
+          ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(cx2 - px * vLen, cy2 - py * vLen);
+          ctx.lineTo(cx2 + px * vLen, cy2 + py * vLen);
+          ctx.stroke();
+          // black visible lines
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
+          ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(cx2 - px * vLen, cy2 - py * vLen);
+          ctx.lineTo(cx2 + px * vLen, cy2 + py * vLen);
+          ctx.stroke();
+
+          // white fill to cover ramal lines crossing through
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, rad + engine.mm2cvs(0.3), 0, Math.PI * 2);
+          ctx.fill();
+
+          // outline circle
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // small dot in center
+          ctx.fillStyle = '#000000';
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, engine.mm2cvs(0.5), 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore();
+          break;
+        }
+      }
+    });
+  });
+}
+
 export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   if (!engine.activeRamal) return;
   const ar = engine.activeRamal;
@@ -898,6 +1002,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   const first = ar.pts[0];
   const last = ar.pts[ar.pts.length - 1];
   let mp = engine.toPlane(engine.mouseX, engine.mouseY);
+  const origMp = { x: mp.x, y: mp.y }; // save for bajante proximity check
   
   let snapped = false;
 
@@ -921,10 +1026,34 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
     }
   }
 
-  const sp = engine.snapToExisting(mp.x, mp.y);
-  if (sp) {
-    mp = sp;
+  if (!snapped) {
+    const sp = engine.snapToExisting(mp.x, mp.y);
+    if (sp) mp = sp;
+  }
+
+  // Bajante center override — check original mouse position, override angle constraint
+  const bajThresh = 20 / engine.zoom;
+  const nearBaj = engine.bajantes.find((b: any) => {
+    if (engine._hiddenNets.has(b.net) || b.net !== ar.net) return false;
+    return Math.hypot(origMp.x - b.x, origMp.y - b.y) < bajThresh;
+  });
+  if (nearBaj) {
+    mp = { x: nearBaj.x, y: nearBaj.y };
     snapped = true;
+    // Draw cyan guide circle
+    const bc = engine.toCvs(nearBaj.x, nearBaj.y);
+    ctx.save();
+    ctx.strokeStyle = '#22D3EE';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.arc(bc.x, bc.y, 12, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(34,211,238,0.15)';
+    ctx.beginPath();
+    ctx.arc(bc.x, bc.y, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   const distFirst = Math.hypot(mp.x - first[0], mp.y - first[1]);

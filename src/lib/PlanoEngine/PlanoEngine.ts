@@ -201,7 +201,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _onStatusCb: StatusCallback | null;
   _onUpdateCb: UpdateCallback | null;
   _onRequestTextCb: ((x: number, y: number, cb: (text: string) => void) => void) | null;
-  _onContextMenuCb: ((bajante: any, x: number, y: number, isGhostClick?: boolean) => void) | null;
+  _onContextMenuCb: ((bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null) => void) | null;
+  _onDeleteCb: ((ids: string[]) => void) | null;
   _dirty: boolean;
   _lastRightClickTime: number;
 
@@ -290,6 +291,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._onStatusCb = null;
     this._onRequestTextCb = null;
     this._onContextMenuCb = null;
+    this._onDeleteCb = null;
     this._dirty = false;
     this._lastRightClickTime = 0;
     this._onUpdateCb = null;
@@ -300,9 +302,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
   onSelect(cb: SelectCallback): void { this._onSelectCb = cb; }
   onStatus(cb: StatusCallback): void { this._onStatusCb = cb; }
   onRequestText(cb: (x: number, y: number, cb: (text: string) => void) => void): void { this._onRequestTextCb = cb; }
-  onContextMenu(cb: (b: any, x: number, y: number, isGhostClick?: boolean) => void): void { this._onContextMenuCb = cb; }
+  onContextMenu(cb: (b: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null) => void): void { this._onContextMenuCb = cb; }
   onUpdate(cb: UpdateCallback): void { this._onUpdateCb = cb; }
   onDirty(cb: DirtyCallback): void { this._onDirtyCb = cb; }
+  onDelete(cb: (ids: string[]) => void): void { this._onDeleteCb = cb; }
 
   destroy(): void {
     teardownCanvasEvents(this);
@@ -342,6 +345,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (!el) { this._onSelectCb(null); return; }
     const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = el as unknown as Record<string, unknown>;
     this._onSelectCb(rest);
+  }
+
+  _emitDelete(ids: string[]): void {
+    if (this._onDeleteCb) this._onDeleteCb(ids);
   }
 
   _markDirty(): void {
@@ -390,17 +397,16 @@ export default class PlanoEngine implements IPlanoEngineCore {
           best = { x: rx, y: ry };
         }
       });
-      /*
-      for (let i = 0; i < r.pts.length - 1; i++) {
-        const [x1, y1] = r.pts[i], [x2, y2] = r.pts[i + 1];
-        const ddx = x2 - x1, ddy = y2 - y1, len2 = ddx * ddx + ddy * ddy;
-        if (len2 < 1) continue;
-        const t = Math.max(0, Math.min(1, ((x - x1) * ddx + (y - y1) * ddy) / len2));
-        const px = x1 + t * ddx, py = y1 + t * ddy;
-        const d = Math.hypot(x - px, y - py);
-        if (d < minD) { minD = d; best = { x: px, y: py }; }
+    });
+    // Snap to bajante/montante centers
+    const bajThresh = 20 / this.zoom;
+    this.bajantes.forEach(b => {
+      if (this._hiddenNets.has(b.net)) return;
+      const d = Math.hypot(x - b.x, y - b.y);
+      if (d < bajThresh && (!best || d < minD)) {
+        minD = d;
+        best = { x: b.x, y: b.y };
       }
-      */
     });
     return best;
   }
@@ -454,7 +460,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   updateElementById(id: string, fields: Record<string, unknown>): void { _updateElementById(this, id, fields); }
   rotateLabelSnap(): void { _rotateLabelSnap(this); }
   resetLabel(): void { _resetLabel(this); }
-  deleteSelected(): void { _deleteSelected(this); }
+  deleteSelected(ids?: string[]): void { _deleteSelected(this, ids); }
 
   finishRamal(): void { _finishRamal(this); }
   cancelRamal(): void { _cancelRamal(this); }
@@ -602,24 +608,37 @@ export default class PlanoEngine implements IPlanoEngineCore {
             const ram = this.ramales.find(rr => rr.id === this.selId);
             if (ram) {
               let hitOnRamal = false;
+              let ramalEndpoint: { idx: number; x: number; y: number } | null = null;
               if (ram.pts) {
-                for (let i = 0; i < ram.pts.length - 1; i++) {
-                  const p1 = this.toCvs(ram.pts[i][0], ram.pts[i][1]);
-                  const p2 = this.toCvs(ram.pts[i+1][0], ram.pts[i+1][1]);
-                  const l2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
-                  let t = l2 === 0 ? 0 : ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / l2;
-                  t = Math.max(0, Math.min(1, t));
-                  const projX = p1.x + t * (p2.x - p1.x);
-                  const projY = p1.y + t * (p2.y - p1.y);
-                  if (Math.hypot(x - projX, y - projY) <= 12) {
+                // Check endpoint hits first
+                for (const epIdx of [0, ram.pts.length - 1]) {
+                  const ep = this.toCvs(ram.pts[epIdx][0], ram.pts[epIdx][1]);
+                  if (Math.hypot(x - ep.x, y - ep.y) <= 12) {
                     hitOnRamal = true;
+                    ramalEndpoint = { idx: epIdx, x: ram.pts[epIdx][0], y: ram.pts[epIdx][1] };
                     break;
+                  }
+                }
+                if (!hitOnRamal) {
+                  for (let i = 0; i < ram.pts.length - 1; i++) {
+                    const p1 = this.toCvs(ram.pts[i][0], ram.pts[i][1]);
+                    const p2 = this.toCvs(ram.pts[i+1][0], ram.pts[i+1][1]);
+                    const l2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
+                    let t = l2 === 0 ? 0 : ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / l2;
+                    t = Math.max(0, Math.min(1, t));
+                    const projX = p1.x + t * (p2.x - p1.x);
+                    const projY = p1.y + t * (p2.y - p1.y);
+                    if (Math.hypot(x - projX, y - projY) <= 12) {
+                      hitOnRamal = true;
+                      break;
+                    }
                   }
                 }
               }
               const hitOnLabel = ram._labelBox && pointInLabelBox(x, y, ram._labelBox);
               if (hitOnRamal || hitOnLabel) {
                 hitElement = ram;
+                if (ramalEndpoint) (hitElement as any)._ctxEndpoint = ramalEndpoint;
               }
             } else {
               const area = this.areas.find(aa => aa.id === this.selId);
@@ -641,7 +660,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
         }
         
         if (hitElement && this._onContextMenuCb) {
-          this._onContextMenuCb(hitElement, (e as MouseEvent).clientX, (e as MouseEvent).clientY, isGhostClick);
+          const ep = (hitElement as any)._ctxEndpoint;
+          this._onContextMenuCb(hitElement, (e as MouseEvent).clientX, (e as MouseEvent).clientY, isGhostClick, ep || null);
+          (hitElement as any)._ctxEndpoint = undefined;
         }
       }
       this._lastRightClickTime = now;
@@ -753,8 +774,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
       }
     }
     else if (k === 'delete') {
-      if (this.selId && !this.activeRamal && !this.activeArea) {
-        this.deleteSelected();
+      if (!this.activeRamal && !this.activeArea) {
+        if (this.multiSel && this.multiSel.length > 0) {
+          this.deleteSelected(this.multiSel);
+          this.multiSel = [];
+        } else if (this.selId) {
+          this.deleteSelected();
+        }
         e.preventDefault();
       }
     }

@@ -11,87 +11,10 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     const sel = b.id === engine.selId;
     const r = Math.max(7, 7 * engine.zoom);
 
-    // Item 2: Label angle from first connected ramal + snap constraint
+    // Item 2: Label angle + snap constraint (Auto-rotation removed as requested)
     let angle = (b.labelAngle || 0) * Math.PI / 180;
     const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
     const lDesvioId = disp?.Ldesvio;
-    let parentRamal = null;
-    let isConnectedToGhost = false;
-
-    if (b.recibeDeIds?.length) {
-      const nonDesvioId = b.recibeDeIds.find((id: string) => id !== lDesvioId);
-      if (nonDesvioId) {
-        parentRamal = engine.ramales.find((rr: any) => rr.id === nonDesvioId);
-      }
-    }
-
-    if (!parentRamal) {
-      // Direct connection to parent riser
-      parentRamal = engine.ramales.find((rr: any) => {
-        if (rr.id === lDesvioId || !rr.pts?.length) return false;
-        const lastIdx = rr.pts.length - 1;
-        const isNearStart = Math.hypot(rr.pts[0][0] - b.x, rr.pts[0][1] - b.y) < 1;
-        const isNearEnd = Math.hypot(rr.pts[lastIdx][0] - b.x, rr.pts[lastIdx][1] - b.y) < 1;
-        return isNearStart || isNearEnd;
-      });
-    }
-
-    if (!parentRamal && disp) {
-      // Fallback connection to ghost riser
-      const gx = b.x + disp.dx;
-      const gy = b.y + disp.dy;
-      parentRamal = engine.ramales.find((rr: any) => {
-        if (rr.id === lDesvioId || !rr.pts?.length) return false;
-        const lastIdx = rr.pts.length - 1;
-        const isNearStart = Math.hypot(rr.pts[0][0] - gx, rr.pts[0][1] - gy) < 1;
-        const isNearEnd = Math.hypot(rr.pts[lastIdx][0] - gx, rr.pts[lastIdx][1] - gy) < 1;
-        return isNearStart || isNearEnd;
-      });
-      if (parentRamal) {
-        isConnectedToGhost = true;
-      }
-    }
-
-    if (parentRamal?.pts?.length >= 2) {
-      let targetX = b.x;
-      let targetY = b.y;
-      if (disp) {
-        const gx = b.x + disp.dx;
-        const gy = b.y + disp.dy;
-        const distToGhost = Math.min(
-          Math.hypot(parentRamal.pts[0][0] - gx, parentRamal.pts[0][1] - gy),
-          Math.hypot(parentRamal.pts[parentRamal.pts.length - 1][0] - gx, parentRamal.pts[parentRamal.pts.length - 1][1] - gy)
-        );
-        const distToParent = Math.min(
-          Math.hypot(parentRamal.pts[0][0] - b.x, parentRamal.pts[0][1] - b.y),
-          Math.hypot(parentRamal.pts[parentRamal.pts.length - 1][0] - b.x, parentRamal.pts[parentRamal.pts.length - 1][1] - b.y)
-        );
-        if (distToGhost < distToParent) {
-          targetX = gx;
-          targetY = gy;
-        }
-      }
-      const lastIdx = parentRamal.pts.length - 1;
-      const isNearEnd = Math.hypot(parentRamal.pts[lastIdx][0] - targetX, parentRamal.pts[lastIdx][1] - targetY) < 1;
-      const isNearStart = Math.hypot(parentRamal.pts[0][0] - targetX, parentRamal.pts[0][1] - targetY) < 1;
-      let dx = 0, dy = 0;
-      if (isNearEnd && !isNearStart) {
-        dx = parentRamal.pts[lastIdx][0] - parentRamal.pts[lastIdx - 1][0];
-        dy = parentRamal.pts[lastIdx][1] - parentRamal.pts[lastIdx - 1][1];
-      } else {
-        dx = parentRamal.pts[1][0] - parentRamal.pts[0][0];
-        dy = parentRamal.pts[1][1] - parentRamal.pts[0][1];
-      }
-      if (Math.hypot(dx, dy) > 0.1) {
-        const rawAngle = Math.atan2(dy, dx);
-        if (engine.snapMode) {
-          const snapped = engine.snapAngle(0, 0, dx, dy);
-          angle = Math.atan2(snapped.y, snapped.x);
-        } else {
-          angle = rawAngle;
-        }
-      }
-    }
 
     b._circ = { x: c.x, y: c.y, r: Math.max(16, r + 6) };
 
@@ -332,46 +255,8 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const r = Math.max(8, 8 * engine.zoom);
     b._ghost = { x: c.x, y: c.y, r: Math.max(16, r + 6) };
 
-    // Item 6: Compute label angle from first connected ramal
-    let ghostAngle = 0;
-    const lDesvioId = disp?.Ldesvio;
-    let firstRamal = null;
-    if (b.recibeDeIds?.length) {
-      const nonDesvioId = b.recibeDeIds.find((id: string) => id !== lDesvioId);
-      if (nonDesvioId) {
-        firstRamal = engine.ramales.find((rr: any) => rr.id === nonDesvioId);
-      }
-    }
-    if (!firstRamal) {
-      firstRamal = engine.ramales.find((rr: any) => {
-        if (rr.id === lDesvioId || !rr.pts?.length) return false;
-        const lastIdx = rr.pts.length - 1;
-        const isNearStart = Math.hypot(rr.pts[0][0] - gx, rr.pts[0][1] - gy) < 12;
-        const isNearEnd = Math.hypot(rr.pts[lastIdx][0] - gx, rr.pts[lastIdx][1] - gy) < 12;
-        return isNearStart || isNearEnd;
-      });
-    }
-    if (!firstRamal && lDesvioId) {
-      firstRamal = engine.ramales.find((rr: any) => rr.id === lDesvioId);
-    }
-    if (firstRamal?.pts?.length >= 2) {
-      const lastIdx = firstRamal.pts.length - 1;
-      const isNearEnd = Math.hypot(firstRamal.pts[lastIdx][0] - gx, firstRamal.pts[lastIdx][1] - gy) < 12;
-      const isNearStart = Math.hypot(firstRamal.pts[0][0] - gx, firstRamal.pts[0][1] - gy) < 12;
-      let dx = 0, dy = 0;
-      if (isNearEnd && !isNearStart) {
-        dx = firstRamal.pts[lastIdx][0] - firstRamal.pts[lastIdx - 1][0];
-        dy = firstRamal.pts[lastIdx][1] - firstRamal.pts[lastIdx - 1][1];
-      } else {
-        dx = firstRamal.pts[1][0] - firstRamal.pts[0][0];
-        dy = firstRamal.pts[1][1] - firstRamal.pts[0][1];
-      }
-      if (Math.hypot(dx, dy) > 0.1) {
-        ghostAngle = Math.atan2(dy, dx);
-      }
-    } else {
-      ghostAngle = (b.labelAngle || 0) * Math.PI / 180;
-    }
+    // Item 6: Label angle + snap constraint (Auto-rotation removed as requested)
+    let ghostAngle = (b.labelAngle || 0) * Math.PI / 180;
 
     // Ghost circle + symbol
     ctx.save();

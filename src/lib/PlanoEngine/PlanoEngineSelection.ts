@@ -165,16 +165,70 @@ export function resetLabel(engine: IPlanoEngineCore): void {
   engine.render();
 }
 
-export function deleteSelected(engine: IPlanoEngineCore): void {
+export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
+  if (ids && ids.length > 0) {
+    engine._yeeFlashKey = null;
+    const netsToRenumber = new Set<string>();
+    const bajNetsToRenumber = new Set<string>();
+    let renumberAreas = false;
+    for (const id of ids) {
+      const idxR = engine.ramales.findIndex((r: any) => r.id === id);
+      if (idxR >= 0) {
+        const deleted = engine.ramales[idxR];
+        engine.ramales = engine.ramales.filter((r: any) => r.id !== deleted.id && r.padre !== deleted.id);
+        netsToRenumber.add(deleted.net);
+        continue;
+      }
+      const idxB = engine.bajantes.findIndex((b: any) => b.id === id);
+      if (idxB >= 0) {
+        const deleted = engine.bajantes[idxB];
+        const lvl = engine.nivelActual?.label ?? '';
+        if (engine._isGhostSel && deleted.desplazamientos?.[lvl]) {
+          const lDesvioId = deleted.desplazamientos[lvl].Ldesvio;
+          if (lDesvioId) {
+            engine.ramales = engine.ramales.filter((r: any) => r.id !== lDesvioId);
+            netsToRenumber.add(deleted.net);
+          }
+          delete deleted.desplazamientos[lvl];
+          if (deleted.ghostData) delete deleted.ghostData[lvl];
+        } else {
+          engine.bajantes.splice(idxB, 1);
+          if ((deleted as any).tipo === 'bajante') bajNetsToRenumber.add((deleted as any).net);
+          else if ((deleted as any).tipo === 'montante') bajNetsToRenumber.add('montante');
+        }
+        continue;
+      }
+      const idxT = engine.textAnnots.findIndex((t: any) => t.id === id);
+      if (idxT >= 0) { engine.textAnnots.splice(idxT, 1); continue; }
+      const idxA = engine.areas.findIndex((a: any) => a.id === id);
+      if (idxA >= 0) { engine.areas.splice(idxA, 1); renumberAreas = true; continue; }
+      const idxD = engine.dims.findIndex((d: any) => d.id === id);
+      if (idxD >= 0) { engine.dims.splice(idxD, 1); continue; }
+    }
+    for (const net of netsToRenumber) engine._renumberRamales(net);
+    for (const net of bajNetsToRenumber) {
+      if (net === 'montante') engine._renumberMontantes();
+      else engine._renumberBajantes(net);
+    }
+    if (renumberAreas) engine._renumberAreas();
+    engine.selId = null;
+    engine._emitSelect(null);
+    engine._emitDelete(ids as string[]);
+    engine.render();
+    engine._markDirty();
+    return;
+  }
   if (!engine.selId) return;
   engine._yeeFlashKey = null;
   const idxR = engine.ramales.findIndex((r: any) => r.id === engine.selId);
   if (idxR >= 0) {
     const deleted = engine.ramales[idxR];
+    const deletedId = deleted.id;
     engine.ramales = engine.ramales.filter((r: any) => r.id !== deleted.id && r.padre !== deleted.id);
     engine._renumberRamales(deleted.net);
     engine.selId = null;
     engine._emitSelect(null);
+    engine._emitDelete([deletedId]);
     engine.render();
     engine._markDirty();
     return;
@@ -182,24 +236,46 @@ export function deleteSelected(engine: IPlanoEngineCore): void {
   const idxB = engine.bajantes.findIndex((b: any) => b.id === engine.selId);
   if (idxB >= 0) { 
     const deleted = engine.bajantes[idxB];
+    const deletedId = deleted.id;
+    // Ghost deletion: remove ghost data + desvio ramal, keep parent bajante
+    const lvl = engine.nivelActual?.label ?? '';
+    if (engine._isGhostSel && deleted.desplazamientos?.[lvl]) {
+      const lDesvioId = deleted.desplazamientos[lvl].Ldesvio;
+      if (lDesvioId) {
+        engine.ramales = engine.ramales.filter((r: any) => r.id !== lDesvioId);
+        engine._renumberRamales(deleted.net);
+      }
+      delete deleted.desplazamientos[lvl];
+      if (deleted.ghostData) delete deleted.ghostData[lvl];
+      engine.selId = null; engine._isGhostSel = false; engine._emitSelect(null); engine.render(); engine._markDirty(); return;
+    }
     engine.bajantes.splice(idxB, 1); 
     if ((deleted as any).tipo === 'bajante') {
       engine._renumberBajantes((deleted as any).net);
     } else if ((deleted as any).tipo === 'montante') {
       engine._renumberMontantes();
     }
-    engine.selId = null; engine._emitSelect(null); engine.render(); engine._markDirty(); return; 
+    engine.selId = null; engine._emitSelect(null); engine._emitDelete([deletedId]); engine.render(); engine._markDirty(); return; 
   }
   const idxT = engine.textAnnots.findIndex((t: any) => t.id === engine.selId);
-  if (idxT >= 0) { engine.textAnnots.splice(idxT, 1); engine.selId = null; engine._emitSelect(null); engine.render(); engine._markDirty(); return; }
+  if (idxT >= 0) { 
+    const deletedId = engine.textAnnots[idxT].id;
+    engine.textAnnots.splice(idxT, 1); 
+    engine.selId = null; engine._emitSelect(null); engine._emitDelete([deletedId]); engine.render(); engine._markDirty(); return; 
+  }
   const idxA = engine.areas.findIndex((a: any) => a.id === engine.selId);
   if (idxA >= 0) { 
+    const deletedId = engine.areas[idxA].id;
     engine.areas.splice(idxA, 1); 
     engine._renumberAreas();
-    engine.selId = null; engine._emitSelect(null); engine.render(); engine._markDirty(); return; 
+    engine.selId = null; engine._emitSelect(null); engine._emitDelete([deletedId]); engine.render(); engine._markDirty(); return; 
   }
   const idxD = engine.dims.findIndex((d: any) => d.id === engine.selId);
-  if (idxD >= 0) { engine.dims.splice(idxD, 1); engine.selId = null; engine._emitSelect(null); engine.render(); engine._markDirty(); return; }
+  if (idxD >= 0) { 
+    const deletedId = engine.dims[idxD].id;
+    engine.dims.splice(idxD, 1); 
+    engine.selId = null; engine._emitSelect(null); engine._emitDelete([deletedId]); engine.render(); engine._markDirty(); return; 
+  }
 }
 
 export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number): void {
@@ -301,7 +377,20 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number)
       if (pointToSegmentDist(x, y, p1.x, p1.y, p2.x, p2.y) < 6) {
         const tp = engine.toPlane(x, y);
         const origPts = ramalSel.pts.map((pt: number[]) => [...pt] as [number, number]);
-        engine.ramalDrag = { id: sel.id, startX: tp.x, startY: tp.y, origPts };
+        // Capture connected bajantes original positions for block-move
+        const connBaj: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[] = [];
+        for (const b of engine.bajantes) {
+          if (!b.recibeDeIds?.includes(sel.id)) continue;
+          const startDist = Math.hypot(b.x - ramalSel.pts[0][0], b.y - ramalSel.pts[0][1]);
+          const lastIdx = ramalSel.pts.length - 1;
+          const endDist = Math.hypot(b.x - ramalSel.pts[lastIdx][0], b.y - ramalSel.pts[lastIdx][1]);
+          if (startDist < 0.5) {
+            connBaj.push({ id: b.id, origX: b.x, origY: b.y, origLblX: b.labelX ?? b.x, origLblY: b.labelY ?? b.y, atIdx: 0 });
+          } else if (endDist < 0.5) {
+            connBaj.push({ id: b.id, origX: b.x, origY: b.y, origLblX: b.labelX ?? b.x, origLblY: b.labelY ?? b.y, atIdx: lastIdx });
+          }
+        }
+        engine.ramalDrag = { id: sel.id, startX: tp.x, startY: tp.y, origPts, connBaj };
         return;
       }
     }
@@ -570,6 +659,17 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         r.pts[i][1] = engine.ramalDrag.origPts[i][1] + slideDy;
       }
       r.totalL = calculateRamalLength(r.pts, engine);
+      // Block-move: update connected bajantes
+      if (engine.ramalDrag.connBaj) {
+        for (const cb of engine.ramalDrag.connBaj) {
+          const b = engine.bajantes.find((bb: any) => bb.id === cb.id);
+          if (!b) continue;
+          b.x = cb.origX + slideDx;
+          b.y = cb.origY + slideDy;
+          b.labelX = cb.origLblX + slideDx;
+          b.labelY = cb.origLblY + slideDy;
+        }
+      }
       engine.render();
     }
     return;
@@ -656,23 +756,19 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       (b as any).labelX = ((b as any).labelX || 0) + dx;
       (b as any).labelY = ((b as any).labelY || 0) + dy;
       
-      // Update connected ramales
-      engine.ramales.forEach((r: any) => {
-        if (r.pts && r.pts.length > 0) {
+      // Update connected ramales via recibeDeIds
+      if (b.recibeDeIds?.length) {
+        b.recibeDeIds.forEach((rid: string) => {
+          const r = engine.ramales.find((rr: any) => rr.id === rid);
+          if (!r || !r.pts) return;
           let changed = false;
-          if (Math.hypot(r.pts[0][0] - oldX, r.pts[0][1] - oldY) < 12) {
-            r.pts[0][0] += dx; r.pts[0][1] += dy; changed = true;
-          } else if (desp && Math.hypot(r.pts[0][0] - oldGx, r.pts[0][1] - oldGy) < 12) {
-            r.pts[0][0] += dx; r.pts[0][1] += dy; changed = true;
+          if (Math.hypot(r.pts[0][0] - oldX, r.pts[0][1] - oldY) < 0.5) {
+            r.pts[0][0] = p.x; r.pts[0][1] = p.y; changed = true;
           }
-          
           const lastIdx = r.pts.length - 1;
-          if (Math.hypot(r.pts[lastIdx][0] - oldX, r.pts[lastIdx][1] - oldY) < 12) {
-            r.pts[lastIdx][0] += dx; r.pts[lastIdx][1] += dy; changed = true;
-          } else if (desp && Math.hypot(r.pts[lastIdx][0] - oldGx, r.pts[lastIdx][1] - oldGy) < 12) {
-            r.pts[lastIdx][0] += dx; r.pts[lastIdx][1] += dy; changed = true;
+          if (Math.hypot(r.pts[lastIdx][0] - oldX, r.pts[lastIdx][1] - oldY) < 0.5) {
+            r.pts[lastIdx][0] = p.x; r.pts[lastIdx][1] = p.y; changed = true;
           }
-          
           if (changed) {
             r.totalL = calculateRamalLength(r.pts, engine);
             r.labelAngle = _firstSegmentAngle(r.pts);
@@ -680,8 +776,8 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             r.labelX = mx;
             r.labelY = my;
           }
-        }
-      });
+        });
+      }
       
       engine.render();
     }
@@ -794,6 +890,18 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
               other.labelX = mx;
               other.labelY = my;
             }
+          }
+          // Also move bajante if this ramal is in recibeDeIds
+          const bajForRamal = engine.bajantes.find((b: any) =>
+            b.recibeDeIds?.includes(r.id) &&
+            (Math.hypot(oldP[0] - b.x, oldP[1] - b.y) < 0.5 ||
+             Math.hypot(p.x - b.x, p.y - b.y) < 0.5)
+          );
+          if (bajForRamal) {
+            bajForRamal.x += dPx;
+            bajForRamal.y += dPy;
+            bajForRamal.labelX = (bajForRamal.labelX || 0) + dPx;
+            bajForRamal.labelY = (bajForRamal.labelY || 0) + dPy;
           }
         }
       }

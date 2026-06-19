@@ -49,7 +49,7 @@ export interface IPlanoEngineCore {
   bajDrag: { id: string; offX: number; offY: number } | null;
   ptDrag: { id: string; ptIdx: number } | null;
   areaDrag: { id: string; startX: number; startY: number } | null;
-  ramalDrag: { id: string; startX: number; startY: number; origPts: [number, number][] } | null;
+  ramalDrag: { id: string; startX: number; startY: number; origPts: [number, number][]; connBaj?: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[] } | null;
   multiSel: string[];
   multiDrag: { startX: number; startY: number; origData: Record<string, any> } | null;
   marqueeRect: { x1: number; y1: number; x2: number; y2: number } | null;
@@ -73,6 +73,7 @@ export interface IPlanoEngineCore {
   render(): void;
   _emitSelect(el: unknown): void;
   _emitStatus(msg: string): void;
+  _emitDelete(ids: string[]): void;
   _markDirty(): void;
   _statusMsg(): string;
   _renumberRamales(netId: string): void;
@@ -81,5 +82,5 @@ export interface IPlanoEngineCore {
   _renumberAreas(): void;
   selectAt(cx: number, cy: number): void;
   getSelected(): PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null;
-  deleteSelected(): void;
+  deleteSelected(ids?: string[]): void;
 }

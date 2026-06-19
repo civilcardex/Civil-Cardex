@@ -203,6 +203,21 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     pendiente: typeof def.pendiente === 'number' ? def.pendiente : 0,
   };
   engine.ramales.push(r);
+  // Associate ramal with bajante if endpoint is at bajante center
+  if (r.pts.length >= 2) {
+    const TOLLERANCE = 0.5;
+    for (const epIdx of [0, r.pts.length - 1]) {
+      const ep = r.pts[epIdx];
+      const baj = engine.bajantes.find((b: any) =>
+        Math.hypot(b.x - ep[0], b.y - ep[1]) < TOLLERANCE &&
+        b.net === r.net &&
+        !engine._hiddenNets.has(b.net)
+      );
+      if (baj && !baj.recibeDeIds.includes(r.id)) {
+        baj.recibeDeIds.push(r.id);
+      }
+    }
+  }
   engine.activeRamal = null;
   engine.selId = r.id;
   engine._emitSelect(r);
@@ -423,6 +438,10 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       finishRamal(engine);
       return;
     }
+
+    // Save raw cursor position BEFORE snap for bajante proximity check
+    const rawPt = { x: pt.x, y: pt.y };
+
     let snappedToSeg = false;
     if (engine.snapMode) {
       pt = engine.snapAngle(last[0], last[1], pt.x, pt.y);
@@ -447,6 +466,25 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     if (!snappedToSeg) {
       const sp = engine.snapToExisting(pt.x, pt.y);
       if (sp) pt = sp;
+    }
+    // Final bajante center override — use RAW cursor position for proximity
+    const bajThresh = 20 / engine.zoom;
+    const nearBaj = engine.bajantes.find((b: any) => {
+      if (engine._hiddenNets.has(b.net) || b.net !== engine.activeNet) return false;
+      return Math.hypot(rawPt.x - b.x, rawPt.y - b.y) < bajThresh;
+    });
+    if (nearBaj) {
+      if (engine.snapMode) {
+        // Move the entire ramal so the snapped point hits the bajante center exactly,
+        // preserving the snap angle.
+        const tx = nearBaj.x - pt.x;
+        const ty = nearBaj.y - pt.y;
+        for (const p of engine.activeRamal.pts) {
+          p[0] += tx;
+          p[1] += ty;
+        }
+      }
+      pt = { x: nearBaj.x, y: nearBaj.y };
     }
     engine.activeRamal.pts.push([pt.x, pt.y]);
     engine.activeRamal.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
@@ -503,6 +541,22 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     const sp = engine.snapToExisting(px, py);
     if (sp) { px = sp.x; py = sp.y; }
   }
+  // Snap to nearest ramal endpoint if close enough
+  const ASSOC_THRESH = 20 / engine.zoom;
+  const assocRamales: string[] = [];
+  for (const r of engine.ramales) {
+    if (r.net !== engine.activeNet || !r.pts?.length) continue;
+    const startDist = Math.hypot(px - r.pts[0][0], py - r.pts[0][1]);
+    const li = r.pts.length - 1;
+    const endDist = Math.hypot(px - r.pts[li][0], py - r.pts[li][1]);
+    if (startDist < ASSOC_THRESH && startDist <= endDist) {
+      px = r.pts[0][0]; py = r.pts[0][1];
+      assocRamales.push(r.id);
+    } else if (endDist < ASSOC_THRESH) {
+      px = r.pts[li][0]; py = r.pts[li][1];
+      assocRamales.push(r.id);
+    }
+  }
   const net = NETS.find(n => n.id === engine.activeNet);
   const netPfx = net ? net.bmPfx : 'BAJ';
   const cnt = engine.bajantes.filter(b => b.tipo === 'bajante' && b.net === engine.activeNet).length + 1;
@@ -518,7 +572,7 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     nptBase: engine.nivelActual?.npt ?? 0,
     nptCima: engine.nivelActual?.npt ?? 0,
     hVert: 0, dNominal: '0',
-    recibeDeIds: [], alimentaIds: [], descargaEnId: null,
+    recibeDeIds: assocRamales, alimentaIds: [], descargaEnId: null,
     ucAcum: 0, ucExtra: 0, area_m2: 0,
     desplazamientos: {},
     lblOffX: 0, lblOffY: 0,
