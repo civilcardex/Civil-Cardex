@@ -115,6 +115,48 @@ export default function DisenosSanitarios() {
       }
     }
 
+    // Add vertical connections for bajantes (from upper to lower sections)
+    const bajantesGroups: Record<string, typeof tramosSan> = {};
+    for (const t of tramosSan) {
+      if (t.esBajante && t.id) {
+        if (!bajantesGroups[t.id]) bajantesGroups[t.id] = [];
+        bajantesGroups[t.id].push(t);
+      }
+    }
+
+    for (const [bId, sections] of Object.entries(bajantesGroups)) {
+      sections.sort((a, b) => (a.piso || 0) - (b.piso || 0));
+      for (let i = 0; i < sections.length - 1; i++) {
+        const lowerKey = sections[i]._key;
+        const upperKey = sections[i + 1]._key;
+        if (lowerKey && upperKey) {
+          if (!calculoMap[lowerKey]) calculoMap[lowerKey] = [];
+          if (!calculoMap[lowerKey].includes(upperKey)) {
+            calculoMap[lowerKey].push(upperKey);
+          }
+        }
+      }
+    }
+
+    // Add discharge connections (descargaEnId) of bajantes into lower ramales
+    for (const t of tramosSan) {
+      if (t.esBajante && t.descargaEnId && t._key) {
+        const parts = t.descargaEnId.includes('|') ? t.descargaEnId.split('|') : ['', t.descargaEnId];
+        const dPlanId = parts[0];
+        const targetRamalId = parts[1];
+        if (targetRamalId) {
+          const targetKey = `${targetRamalId}-${dPlanId}`;
+          const targetExists = tramosSan.some(x => x._key === targetKey);
+          if (targetExists) {
+            if (!calculoMap[targetKey]) calculoMap[targetKey] = [];
+            if (!calculoMap[targetKey].includes(t._key)) {
+              calculoMap[targetKey].push(t._key);
+            }
+          }
+        }
+      }
+    }
+
     // Build undirected adjacency list for all tramos
     const adj: Record<string, string[]> = {};
     for (const t of tramosSan) {
@@ -169,13 +211,15 @@ export default function DisenosSanitarios() {
     return [calculoMap, displayMap];
   }, [plans, tramosSan]);
 
-  const getDescendantsUD = useCallback((tKey: string): number => {
+  const getDescendantsUD = useCallback((tKey: string, visited = new Set<string>()): number => {
+    if (visited.has(tKey)) return 0;
+    visited.add(tKey);
     const children = conexiones[tKey] || [];
     let sum = 0;
     for (const childKey of children) {
       const childTramo = tramosSan.find(x => x._key === childKey);
       if (childTramo) {
-        sum += calcUDparcial(childTramo, mergedBase) + getDescendantsUD(childKey);
+        sum += calcUDparcial(childTramo, mergedBase) + getDescendantsUD(childKey, visited);
       }
     }
     return sum;

@@ -99,16 +99,61 @@ export default function BajantesTable() {
         }
       }
     }
-    return map;
-  }, [plans]);
 
-  const getDescendantsUD = useCallback((tKey: string): number => {
+    // Add vertical connections for bajantes (from upper to lower sections)
+    const bajantesGroups: Record<string, typeof tramosSan> = {};
+    for (const t of tramosSan) {
+      if (t.esBajante && t.id) {
+        if (!bajantesGroups[t.id]) bajantesGroups[t.id] = [];
+        bajantesGroups[t.id].push(t);
+      }
+    }
+
+    for (const [bId, sections] of Object.entries(bajantesGroups)) {
+      sections.sort((a, b) => (a.piso || 0) - (b.piso || 0));
+      for (let i = 0; i < sections.length - 1; i++) {
+        const lowerKey = sections[i]._key;
+        const upperKey = sections[i + 1]._key;
+        if (lowerKey && upperKey) {
+          if (!map[lowerKey]) map[lowerKey] = [];
+          if (!map[lowerKey].includes(upperKey)) {
+            map[lowerKey].push(upperKey);
+          }
+        }
+      }
+    }
+
+    // Add discharge connections (descargaEnId) of bajantes into lower ramales
+    for (const t of tramosSan) {
+      if (t.esBajante && t.descargaEnId && t._key) {
+        const parts = t.descargaEnId.includes('|') ? t.descargaEnId.split('|') : ['', t.descargaEnId];
+        const dPlanId = parts[0];
+        const targetRamalId = parts[1];
+        if (targetRamalId) {
+          const targetKey = `${targetRamalId}-${dPlanId}`;
+          const targetExists = tramosSan.some(x => x._key === targetKey);
+          if (targetExists) {
+            if (!map[targetKey]) map[targetKey] = [];
+            if (!map[targetKey].includes(t._key)) {
+              map[targetKey].push(t._key);
+            }
+          }
+        }
+      }
+    }
+
+    return map;
+  }, [plans, tramosSan]);
+
+  const getDescendantsUD = useCallback((tKey: string, visited = new Set<string>()): number => {
+    if (visited.has(tKey)) return 0;
+    visited.add(tKey);
     const children = conexiones[tKey] || [];
     let sum = 0;
     for (const childKey of children) {
       const childTramo = tramosSan.find(x => x._key === childKey);
       if (childTramo) {
-        sum += calcUDparcial(childTramo, udBase) + getDescendantsUD(childKey);
+        sum += calcUDparcial(childTramo, udBase) + getDescendantsUD(childKey, visited);
       }
     }
     return sum;
@@ -189,16 +234,8 @@ export default function BajantesTable() {
 
                 const ramalesIds = (t.recibeDeIds || []) as string[];
                 const ramalesAsocVal = ramalesIds.length > 0 ? ramalesIds.join(', ') : '—';
-                let ramalesUD = 0;
-                for (const rid of ramalesIds) {
-                  const rt = tramosSan.find(tr => tr.id === rid && tr.piso === t.piso);
-                  if (rt) {
-                    const rtKey = rt._key || `${rt.id}-${planIdStr}`;
-                    ramalesUD += calcUDparcial(rt, udBase) + getDescendantsUD(rtKey);
-                  }
-                }
-
-                const totalUD = propiasUD + ramalesUD;
+                const totalUD = propiasUD + getDescendantsUD(t._key || `${t.id}-${planIdStr}`);
+                const ramalesUD = totalUD - propiasUD;
 
                 const n = t.nmaning ?? 0;
                 const origenVal = fmtPiso(t.piso?.toString() || '', pisos);
