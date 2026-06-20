@@ -20,7 +20,7 @@ function CalculoUD() {
     });
   }, [aps]);
 
-  const conexiones = useMemo(() => {
+  const [conexiones, componentTotalMap] = useMemo(() => {
     const map: Record<string, string[]> = {}; // parentKey -> childKeys[]
 
     for (const plan of plans || []) {
@@ -61,6 +61,13 @@ function CalculoUD() {
 
         const checkEndpoint = (pt: number[]) => {
           for (const b of bajantes) {
+            const isDischargingIntoR = b.descargaEnId && (
+              b.descargaEnId === `${plan.id}|${r.id}` ||
+              b.descargaEnId === r.id ||
+              (r.label && (b.descargaEnId === `${plan.id}|${r.label}` || b.descargaEnId === r.label))
+            );
+            if (isDischargingIntoR) continue;
+
             const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
             const dist = Math.hypot(pt[0] - b.x, pt[1] - b.y);
             if (isExplicit || dist < 2.0) {
@@ -89,7 +96,9 @@ function CalculoUD() {
         if (connection) {
           const targetKey = `${connection.id}-${plan.id}`;
           if (!map[targetKey]) map[targetKey] = [];
-          map[targetKey].push(rKey);
+          if (!map[targetKey].includes(rKey)) {
+            map[targetKey].push(rKey);
+          }
         }
       }
     }
@@ -136,8 +145,122 @@ function CalculoUD() {
       }
     }
 
-    return map;
-  }, [plans, tramosSan]);
+    // Build undirected adjacency list for all tramos
+    const adj: Record<string, string[]> = {};
+    for (const t of tramosSan) {
+      if (t._key) {
+        adj[t._key] = [];
+      }
+    }
+
+    for (const [parentKey, children] of Object.entries(map)) {
+      if (!adj[parentKey]) adj[parentKey] = [];
+      for (const childKey of children) {
+        if (!adj[childKey]) adj[childKey] = [];
+        if (!adj[parentKey].includes(childKey)) adj[parentKey].push(childKey);
+        if (!adj[childKey].includes(parentKey)) adj[childKey].push(parentKey);
+      }
+    }
+
+    // Find connected components in the full graph `adj`
+    const compVisited = new Set<string>();
+    const components: string[][] = [];
+
+    for (const node of Object.keys(adj)) {
+      if (!compVisited.has(node)) {
+        const comp: string[] = [];
+        const q = [node];
+        compVisited.add(node);
+        while (q.length > 0) {
+          const curr = q.shift()!;
+          comp.push(curr);
+          for (const neigh of adj[curr] || []) {
+            if (!compVisited.has(neigh)) {
+              compVisited.add(neigh);
+              q.push(neigh);
+            }
+          }
+        }
+        components.push(comp);
+      }
+    }
+
+    const getRootScore = (key: string): number => {
+      const tr = tramosSan.find(x => x._key === key);
+      if (!tr) return 99999999;
+      const piso = tr.piso || 0;
+      const isBajante = tr.esBajante;
+      const id = tr.id || '';
+      const match = id.match(/^([a-zA-Z]+)(\d+)?$/);
+      const num = match && match[2] ? parseInt(match[2]) : 999;
+      return (piso * 100000) + (isBajante ? 10000 : 0) + num;
+    };
+
+    const orientedConexiones: Record<string, string[]> = {};
+    const orientedVisited = new Set<string>();
+
+    for (const comp of components) {
+      let root = comp[0];
+      let minScore = getRootScore(root);
+      for (const node of comp) {
+        const score = getRootScore(node);
+        if (score < minScore) {
+          minScore = score;
+          root = node;
+        }
+      }
+
+      const q = [root];
+      orientedVisited.add(root);
+      while (q.length > 0) {
+        const parent = q.shift()!;
+        if (!orientedConexiones[parent]) orientedConexiones[parent] = [];
+        for (const child of adj[parent] || []) {
+          if (!orientedVisited.has(child)) {
+            orientedVisited.add(child);
+            orientedConexiones[parent].push(child);
+            q.push(child);
+          }
+        }
+      }
+    }
+
+    // Compute connected-component totals
+    const tramoById: Record<string, any> = {};
+    for (const t of tramosSan) {
+      const key = t._key || t.id;
+      if (key) tramoById[key] = t;
+    }
+    const parcialMap: Record<string, number> = {};
+    for (const t of tramosSan) {
+      const key = t._key || t.id;
+      if (key) parcialMap[key] = calcUDparcial(t, mergedBase);
+    }
+    const componentTotalMap: Record<string, number> = {};
+    const compVisited2 = new Set<string>();
+    for (const t of tramosSan) {
+      const startKey = t._key || t.id;
+      if (!startKey || compVisited2.has(startKey)) continue;
+      
+      const comp: string[] = [];
+      const q = [startKey];
+      compVisited2.add(startKey);
+      while (q.length > 0) {
+        const cur = q.shift()!;
+        comp.push(cur);
+        for (const nb of adj[cur] || []) {
+          if (!compVisited2.has(nb) && tramoById[nb]) {
+            compVisited2.add(nb);
+            q.push(nb);
+          }
+        }
+      }
+      const compTotal = comp.reduce((s, k) => s + (parcialMap[k] || 0), 0);
+      for (const k of comp) componentTotalMap[k] = compTotal;
+    }
+
+    return [orientedConexiones, componentTotalMap];
+  }, [plans, tramosSan, mergedBase]);
 
   const getDescendantsUD = useCallback((tKey: string, visited = new Set<string>()): number => {
     if (visited.has(tKey)) return 0;
@@ -220,7 +343,7 @@ function CalculoUD() {
   ) : displayTramos.map((t) => {
     const tKey = t._key || `${t.id}-${t.piso}`;
     const parcial = calcUDparcial(t, mergedBase);
-    const acum = parcial + getDescendantsUD(tKey);
+    const acum = (componentTotalMap[tKey] || 0) as number;
     return (
       <tr key={tKey}>
         <td className="c"><span className="sigla" style={{fontSize:11,fontWeight:600}}>{t.id}</span></td>

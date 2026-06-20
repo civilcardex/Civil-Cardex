@@ -41,7 +41,7 @@ export default function DisenosSanitarios() {
     return tramosSan.filter(t => t.tipo === 'ramal' && !t.esBajante);
   }, [tramosSan]);
 
-  const [conexiones, conexionesDisplay] = useMemo(() => {
+  const [conexiones, conexionesDisplay, componentTotalMap] = useMemo(() => {
     const calculoMap: Record<string, string[]> = {};
 
     for (const plan of plans || []) {
@@ -82,6 +82,13 @@ export default function DisenosSanitarios() {
 
         const checkEndpoint = (pt: number[]) => {
           for (const b of bajantes) {
+            const isDischargingIntoR = b.descargaEnId && (
+              b.descargaEnId === `${plan.id}|${r.id}` ||
+              b.descargaEnId === r.id ||
+              (r.label && (b.descargaEnId === `${plan.id}|${r.label}` || b.descargaEnId === r.label))
+            );
+            if (isDischargingIntoR) continue;
+
             const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
             const dist = Math.hypot(pt[0] - b.x, pt[1] - b.y);
             if (isExplicit || dist < 2.0) {
@@ -110,7 +117,9 @@ export default function DisenosSanitarios() {
         if (connection) {
           const targetKey = `${connection.id}-${plan.id}`;
           if (!calculoMap[targetKey]) calculoMap[targetKey] = [];
-          calculoMap[targetKey].push(rKey);
+          if (!calculoMap[targetKey].includes(rKey)) {
+            calculoMap[targetKey].push(rKey);
+          }
         }
       }
     }
@@ -208,8 +217,105 @@ export default function DisenosSanitarios() {
       }
     }
 
-    return [calculoMap, displayMap];
-  }, [plans, tramosSan]);
+    // Find connected components in the full graph `adj`
+    const compVisited = new Set<string>();
+    const components: string[][] = [];
+
+    for (const node of Object.keys(adj)) {
+      if (!compVisited.has(node)) {
+        const comp: string[] = [];
+        const q = [node];
+        compVisited.add(node);
+        while (q.length > 0) {
+          const curr = q.shift()!;
+          comp.push(curr);
+          for (const neigh of adj[curr] || []) {
+            if (!compVisited.has(neigh)) {
+              compVisited.add(neigh);
+              q.push(neigh);
+            }
+          }
+        }
+        components.push(comp);
+      }
+    }
+
+    const getRootScore = (key: string): number => {
+      const tr = tramosSan.find(x => x._key === key);
+      if (!tr) return 99999999;
+      const piso = tr.piso || 0;
+      const isBajante = tr.esBajante;
+      const id = tr.id || '';
+      const match = id.match(/^([a-zA-Z]+)(\d+)?$/);
+      const num = match && match[2] ? parseInt(match[2]) : 999;
+      return (piso * 100000) + (isBajante ? 10000 : 0) + num;
+    };
+
+    const orientedConexiones: Record<string, string[]> = {};
+    const orientedVisited = new Set<string>();
+
+    for (const comp of components) {
+      let root = comp[0];
+      let minScore = getRootScore(root);
+      for (const node of comp) {
+        const score = getRootScore(node);
+        if (score < minScore) {
+          minScore = score;
+          root = node;
+        }
+      }
+
+      const q = [root];
+      orientedVisited.add(root);
+      while (q.length > 0) {
+        const parent = q.shift()!;
+        if (!orientedConexiones[parent]) orientedConexiones[parent] = [];
+        for (const child of adj[parent] || []) {
+          if (!orientedVisited.has(child)) {
+            orientedVisited.add(child);
+            orientedConexiones[parent].push(child);
+            q.push(child);
+          }
+        }
+      }
+    }
+
+    // Compute connected-component totals: each tramo's Total = sum of all tramos in its component
+    const tramoById: Record<string, any> = {};
+    for (const t of tramosSan) {
+      const key = t._key || t.id;
+      if (key) tramoById[key] = t;
+    }
+    const parcialMap: Record<string, number> = {};
+    for (const t of tramosSan) {
+      const key = t._key || t.id;
+      if (key) parcialMap[key] = calcUDparcial(t, mergedBase);
+    }
+    const componentTotalMap: Record<string, number> = {};
+    const compVisited2 = new Set<string>();
+    for (const t of tramosSan) {
+      const startKey = t._key || t.id;
+      if (!startKey || compVisited2.has(startKey)) continue;
+      
+      const comp: string[] = [];
+      const q = [startKey];
+      compVisited2.add(startKey);
+      while (q.length > 0) {
+        const cur = q.shift()!;
+        comp.push(cur);
+        for (const nb of adj[cur] || []) {
+          if (!compVisited2.has(nb) && tramoById[nb]) {
+            compVisited2.add(nb);
+            q.push(nb);
+          }
+        }
+      }
+      const compTotal = comp.reduce((s, k) => s + (parcialMap[k] || 0), 0);
+      for (const k of comp) componentTotalMap[k] = compTotal;
+    }
+
+    return [orientedConexiones, displayMap, componentTotalMap];
+  }, [plans, tramosSan, mergedBase]);
 
   const getDescendantsUD = useCallback((tKey: string, visited = new Set<string>()): number => {
     if (visited.has(tKey)) return 0;
@@ -290,8 +396,8 @@ export default function DisenosSanitarios() {
                 
                 const udPropias=calcUDparcial(t,mergedBase);
                 const connectedKeys = conexionesDisplay[tKey] || [];
-                const totalExtra = getDescendantsUD(tKey);
-                const udAcum=udPropias+totalExtra;
+                const udAcum = (componentTotalMap[tKey] || 0) as number;
+                const totalExtra = udAcum - udPropias;
                 const nSalidas=t.nSalidas??0;
                 const K=nSalidas!=null&&nSalidas>0?Math.round(factorSimultaneidad(nSalidas)*100)/100:null;
                 const n=t.nmaning??0;
