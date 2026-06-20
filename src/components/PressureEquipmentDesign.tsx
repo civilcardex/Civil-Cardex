@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { useEP } from "../context/EPContext";
+import { EPProvider, useEP } from "../context/EPContext";
 import PageNav from "./PageNav";
 import EPInputPage from "./ep/EPInputPage";
 import EPVerificationPage from "./ep/EPVerificationPage";
 
-const PressureEquipmentDesign = React.memo(function PressureEquipmentDesign() {
+const EPContent = function PressureEquipmentDesign() {
   const [page, setPage] = useState(1);
 
   const pages = [
@@ -21,5 +21,12 @@ const PressureEquipmentDesign = React.memo(function PressureEquipmentDesign() {
       </div>
     </div>
   );
-});
-export default PressureEquipmentDesign;
+};
+
+export default function PressureEquipmentDesign() {
+  return (
+    <EPProvider>
+      <EPContent />
+    </EPProvider>
+  );
+}

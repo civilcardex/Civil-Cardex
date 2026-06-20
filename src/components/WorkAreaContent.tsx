@@ -11,6 +11,7 @@ import ChequeoBajantesLluvias from "./RainDownpipesCheck";
 import ChequeoCanalesLluvias from "./RainChannelsCheck";
 import CalculoUC from "./CalculoUC";
 import WaterNetworkDesign from "./WaterNetworkDesign";
+import { RainwaterProvider } from "../context/RainwaterContext";
 import { DIAMETROS_AF, DIAMETROS_AC } from "../utils/calcHydraulics";
 import { lookupInterno, lookupInternoAC } from "../utils/accesoriosUtils";
 import BombaARDesign from "./BombaARDesign";
@@ -20,7 +21,7 @@ import BaseDatos from "./DesignParameters";
 import Normativa from "./Regulations";
 import InfoTab from "./workarea/InfoTab";
 import PlanosTab from "./workarea/PlanosTab";
-import IsometriaTab from "./workarea/IsometriaTab";
+import { IsometriaTab } from "./workarea/IsometriaTab";
 import type { useWorkAreaState } from "./useWorkAreaState";
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
@@ -70,12 +71,14 @@ function RedesTab({ state }: { state: WorkAreaState }) {
         </div>
       )}
       {redActiva === 'll' && redes.has('ll') && (
+        <RainwaterProvider>
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <PageNav page={llPage} setPage={setLlPage} total={3} color="var(--ll)" labels={['Diseño lluvias', 'Chequeo bajantes', 'Chequeo canales']} />
           {llPage === 1 && <DisenoLluvias />}
           {llPage === 2 && <ChequeoBajantesLluvias />}
           {llPage === 3 && <ChequeoCanalesLluvias />}
         </div>
+        </RainwaterProvider>
       )}
       {redActiva === 'af' && redes.has('af') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

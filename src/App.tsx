@@ -16,8 +16,9 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import PricingPage from './pages/PricingPage'
 
-import ProfilePage from './pages/ProfilePage'
 import NotFound from './pages/NotFound'
+
+const ProfilePage = React.lazy(() => import('./pages/ProfilePage'))
 
 // Rutas pesadas - lazy
 const ViewerPage = React.lazy(() => import('./pages/ViewerPage'))
@@ -69,7 +70,7 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
                 <Route path="/civilflowareatrabajo" element={<Suspense fallback={<Fallback />}><WorkAreaCivilFlowPage /></Suspense>} />
-                <Route path="/perfil" element={<ProfilePage />} />
+                <Route path="/perfil" element={<Suspense fallback={<Fallback />}><ProfilePage /></Suspense>} />
                 <Route path="/catalogomaestro" element={<Suspense fallback={<Fallback />}><CatalogoMaestroPage /></Suspense>} />
               </Route>
             </Route>
