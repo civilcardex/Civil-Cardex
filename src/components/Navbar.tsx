@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { getCurrentUser } from '../services/authService';
 
 function Navbar() {
   const location = useLocation();
@@ -10,14 +10,18 @@ function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (!supabase) { setLoading(false); return }
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    getCurrentUser().then((user: any) => {
       setUser(user);
       setLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+
+    let subscription: { unsubscribe: () => void } | null = null;
+    import('../lib/supabase').then(({ supabase }) => {
+      subscription = supabase.auth.onAuthStateChange((_event, session) => {
+        setUser(session?.user ?? null);
+      }).data.subscription;
     });
+
     return () => subscription?.unsubscribe();
   }, []);
 
@@ -38,7 +42,7 @@ function Navbar() {
       <div className="flex items-center gap-4 md:gap-6">
 <button className="md:hidden text-on-surface-variant p-1" 
           onClick={() => setMenuOpen(o => !o)} aria-label="Menú" aria-expanded={menuOpen}>
-          <span className="material-symbols-outlined text-xl">{menuOpen ? 'close' : 'menu'}</span>
+          <span aria-hidden="true" className="material-symbols-outlined text-xl">{menuOpen ? 'close' : 'menu'}</span>
         </button>
         <Link to="/" className="flex items-center gap-2">
           <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="h-9 w-9 md:h-12 md:w-12 object-contain"  width={36} height={36} loading="lazy" />

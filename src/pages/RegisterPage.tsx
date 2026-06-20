@@ -84,55 +84,58 @@ function RegisterPage() {
                 <span style={{ color: '#e8f4fd' }}>CIVIL</span>
                 <span style={{ color: '#00dce5' }}>CORE</span>
               </h1>
-              <p className="text-xs uppercase tracking-widest" style={{ color: '#6b8cae', fontFamily: 'Geist, monospace', fontWeight: 600 }}>
+              <p className="text-xs uppercase tracking-widest" style={{ color: '#8AB4D6', fontFamily: 'Geist, monospace', fontWeight: 600 }}>
                 Crear Cuenta
               </p>
             </div>
 
             <form onSubmit={handleSubmit} className="px-8 pb-6 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <FormField label="NOMBRE" value={form.nombre} onChange={handleChange('nombre')} />
-                <FormField label="APELLIDO" value={form.apellido} onChange={handleChange('apellido')} />
-              </div>
+              <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+                <legend className="sr-only">Datos de registro</legend>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField label="NOMBRE" value={form.nombre} onChange={handleChange('nombre')} autoComplete="given-name" />
+                  <FormField label="APELLIDO" value={form.apellido} onChange={handleChange('apellido')} autoComplete="family-name" />
+                </div>
 
-              <FormField label="CORREO ELECTRÓNICO" type="email" value={form.email} onChange={handleChange('email')} placeholder="usuario@civilcore.com" />
+                <FormField label="CORREO ELECTRÓNICO" type="email" value={form.email} onChange={handleChange('email')} placeholder="usuario@civilcore.com" autoComplete="email" />
 
-        <FormField label="PROFESIÓN" value={form.profesion} onChange={handleChange('profesion')} placeholder="Ingeniero Civil" />
+                <FormField label="PROFESIÓN" value={form.profesion} onChange={handleChange('profesion')} placeholder="Ingeniero Civil" autoComplete="organization-title" />
 
-        <div className="grid grid-cols-2 gap-3">
-          <FormField label="MATRÍCULA PROFESIONAL" value={form.matricula} onChange={handleChange('matricula')} placeholder="12345-ABC" />
-          <FormField label="TELÉFONO" type="tel" value={form.telefono} onChange={handleChange('telefono')} placeholder="+57 300 123 4567" />
-        </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField label="MATRÍCULA PROFESIONAL" value={form.matricula} onChange={handleChange('matricula')} placeholder="12345-ABC" />
+                  <FormField label="TELÉFONO" type="tel" value={form.telefono} onChange={handleChange('telefono')} placeholder="+57 300 123 4567" autoComplete="tel" />
+                </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div style={{position:'relative'}}>
-            <FormField label="CONTRASEÑA" type={showPwd ? 'text' : 'password'} value={form.password} onChange={handleChange('password')} />
-            <button type="button" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}
-              aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              className="absolute right-2 bottom-[12px] text-sm opacity-50 hover:opacity-90 transition-opacity"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b8cae', padding: 0 }}>
-              {showPwd ? '⬡' : '👁'}
-            </button>
-          </div>
-          <div style={{position:'relative'}}>
-            <FormField label="CONFIRMAR" type={showConfirm ? 'text' : 'password'} value={form.confirm} onChange={handleChange('confirm')} />
-            <button type="button" onClick={() => setShowConfirm(!showConfirm)} tabIndex={-1}
-              aria-label={showConfirm ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              className="absolute right-2 bottom-[12px] text-sm opacity-50 hover:opacity-90 transition-opacity"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b8cae', padding: 0 }}>
-              {showConfirm ? '⬡' : '👁'}
-            </button>
-          </div>
-        </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div style={{position:'relative'}}>
+                    <FormField label="CONTRASEÑA" type={showPwd ? 'text' : 'password'} value={form.password} onChange={handleChange('password')} autoComplete="new-password" />
+                    <button type="button" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}
+                      aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                      className="absolute right-2 bottom-[12px] text-sm opacity-50 hover:opacity-90 transition-opacity"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8AB4D6', padding: 0 }}>
+                      {showPwd ? '⬡' : '👁'}
+                    </button>
+                  </div>
+                  <div style={{position:'relative'}}>
+                    <FormField label="CONFIRMAR" type={showConfirm ? 'text' : 'password'} value={form.confirm} onChange={handleChange('confirm')} />
+                    <button type="button" onClick={() => setShowConfirm(!showConfirm)} tabIndex={-1}
+                      aria-label={showConfirm ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                      className="absolute right-2 bottom-[12px] text-sm opacity-50 hover:opacity-90 transition-opacity"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8AB4D6', padding: 0 }}>
+                      {showConfirm ? '⬡' : '👁'}
+                    </button>
+                  </div>
+                </div>
 
-        <div className="flex items-start gap-2 pt-1">
-          <input type="checkbox" checked={aceptaTerminos} onChange={(e) => setAceptaTerminos(e.target.checked)}
-            className="w-4 h-4 mt-0.5 border accent-[#00dce5]"
-            style={{ borderColor: '#3a494a', background: '#0a0e14' }} />
-          <span className="text-[11px] leading-tight" style={{ color: '#6b8cae' }}>
-            Acepto los <span className="cursor-pointer hover:underline" style={{ color: '#00dce5' }}>Términos de Servicio</span> y la <span className="cursor-pointer hover:underline" style={{ color: '#00dce5' }}>Política de Privacidad</span>
-          </span>
-        </div>
+                <div className="flex items-start gap-2 pt-1">
+                  <input type="checkbox" checked={aceptaTerminos} onChange={(e) => setAceptaTerminos(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 border accent-[#00dce5]"
+                    style={{ borderColor: '#3a494a', background: '#0a0e14' }} />
+                  <span className="text-[11px] leading-tight" style={{ color: '#8AB4D6' }}>
+                    Acepto los <span className="cursor-pointer hover:underline" style={{ color: '#00dce5' }}>Términos de Servicio</span> y la <span className="cursor-pointer hover:underline" style={{ color: '#00dce5' }}>Política de Privacidad</span>
+                  </span>
+                </div>
+              </fieldset>
 
               <button
                 type="submit"
@@ -152,7 +155,7 @@ function RegisterPage() {
       </form>
 
             <div className="px-8 py-5 border-t text-center" style={{ borderColor: '#3a494a' }}>
-              <p className="text-xs" style={{ color: '#6b8cae' }}>
+              <p className="text-xs" style={{ color: '#8AB4D6' }}>
                 ¿Ya tiene cuenta?{' '}
                 <Link to="/login" className="font-bold hover:underline" style={{ color: '#00dce5' }}>
                   Iniciar Sesión

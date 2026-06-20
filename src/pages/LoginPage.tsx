@@ -64,18 +64,21 @@ function LoginPage() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="px-8 pb-6 space-y-5">
-              <FormField label="CORREO ELECTRÓNICO" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@civilcore.com" />
+<form onSubmit={handleSubmit} className="px-8 pb-6 space-y-5">
+              <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+                <legend className="sr-only">Datos de inicio de sesión</legend>
+                <FormField label="CORREO ELECTRÓNICO" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@civilcore.com" autoComplete="email" />
 
-        <div style={{position:'relative'}}>
-          <FormField label="CONTRASEÑA" type={showPwd ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-          <button type="button" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}
-            aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-            className="absolute right-2 bottom-[12px] text-base opacity-50 hover:opacity-90 transition-opacity"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b8cae', padding: 0, lineHeight: 1 }}>
-            {showPwd ? '⬡' : '👁'}
-          </button>
-        </div>
+                <div style={{position:'relative'}}>
+                  <FormField label="CONTRASEÑA" type={showPwd ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
+                  <button type="button" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}
+                    aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    className="absolute right-2 bottom-[12px] text-base opacity-50 hover:opacity-90 transition-opacity"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8AB4D6', padding: 0, lineHeight: 1 }}>
+                    {showPwd ? '⬡' : '👁'}
+                  </button>
+                </div>
+              </fieldset>
 
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2 cursor-pointer">
