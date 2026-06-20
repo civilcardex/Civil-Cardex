@@ -5,7 +5,7 @@ import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync";
 import { loadFromStorage, saveToStorage, saveTrazosToDB, loadTrazosFromDB } from "../services/storageService";
-import { APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY, GAS_ACC_KEY } from "../constants/storage-keys";
+import { GAS_ACC_KEY } from "../constants/storage-keys";
 import AparatosPanel from "./FixturesPanel";
 import PdfViewerToolbar from "./pdfViewer/PdfViewerToolbar";
 import PdfCanvas from "./pdfViewer/PdfCanvas";
@@ -266,17 +266,13 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
       const store = loadFromStorage(key, {}) as Record<string, any>;
       let changed = false;
       for (const k of Object.keys(store)) {
-        const segs = k.split('_');
-        const found = segs.some(s => idSet.has(s)) || idSet.has(k);
-        if (found) {
+        if (idSet.has(k)) {
           delete store[k];
           changed = true;
         }
       }
       if (changed) saveToStorage(key, store);
     };
-    cleanStore(APARATOS_BY_TRAMO_KEY);
-    cleanStore(HYDRO_DATA_STORAGE_KEY);
     cleanStore(GAS_ACC_KEY);
     window.dispatchEvent(new CustomEvent('aparatos-clear', { detail: { ids } }));
     try { writeSanDrawingSync(plansRef.current); } catch (_) {}

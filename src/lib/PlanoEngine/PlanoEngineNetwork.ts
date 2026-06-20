@@ -143,24 +143,49 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
     const nb = parseInt((b.id || '').replace(pfx, ''), 10) || 0;
     return na - nb;
   });
+  const keepIds = new Set(ramalesNet.map(r => r.id));
+
+  const cleanOrphans = (storageKey: string) => {
+    try {
+      const data = loadFromStorage(storageKey, {}) as Record<string, unknown>;
+      let changed = false;
+      for (const k of Object.keys(data)) {
+        const segs = k.split('_');
+        if (segs.length >= 2 && segs[0] === netId && !keepIds.has(segs[1])) {
+          delete data[k];
+          changed = true;
+        }
+      }
+      if (changed) saveToStorage(storageKey, data);
+    } catch (e) { if (import.meta.env.DEV) console.error('PlanoEngine:', e); }
+  };
+  cleanOrphans('aparatos_by_tramo_v2');
+  cleanOrphans('tramo_hidro_data_v3');
+
   ramalesNet.forEach((r, i) => {
     const oldId = r.id;
     const newId = pfx + (i + 1);
     if (oldId !== newId) {
-      try {
-        const AP_KEY = 'aparatos_by_tramo_v2';
-        const apData = loadFromStorage(AP_KEY, {}) as Record<string, unknown>;
-        const oldK = `${netId}_${oldId}`;
-        const newK = `${netId}_${newId}`;
-        if (apData[oldK]) { apData[newK] = apData[oldK]; delete apData[oldK]; saveToStorage(AP_KEY, apData); }
-      } catch (e) { if (import.meta.env.DEV) console.error('PlanoEngine:', e); }
-      try {
-        const HD_KEY = 'tramo_hidro_data_v3';
-        const hdData = loadFromStorage(HD_KEY, {}) as Record<string, unknown>;
-        const oldK = `${netId}_${oldId}`;
-        const newK = `${netId}_${newId}`;
-        if (hdData[oldK]) { hdData[newK] = hdData[oldK]; delete hdData[oldK]; saveToStorage(HD_KEY, hdData); }
-      } catch (e) { if (import.meta.env.DEV) console.error('PlanoEngine:', e); }
+      const migrateKeys = (storageKey: string) => {
+        try {
+          const data = loadFromStorage(storageKey, {}) as Record<string, unknown>;
+          let changed = false;
+          for (const k of Object.keys(data)) {
+            const segs = k.split('_');
+            const idx = segs.indexOf(oldId);
+            if (idx >= 0) {
+              segs[idx] = newId;
+              const newK = segs.join('_');
+              if (!data[newK]) data[newK] = data[k];
+              delete data[k];
+              changed = true;
+            }
+          }
+          if (changed) saveToStorage(storageKey, data);
+        } catch (e) { if (import.meta.env.DEV) console.error('PlanoEngine:', e); }
+      };
+      migrateKeys('aparatos_by_tramo_v2');
+      migrateKeys('tramo_hidro_data_v3');
     }
     r.id = newId;
     r.label = newId;
