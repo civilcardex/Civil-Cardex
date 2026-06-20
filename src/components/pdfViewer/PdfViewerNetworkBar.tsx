@@ -42,7 +42,7 @@ export default function PdfViewerNetworkBar({
                 borderRight: `1px solid ${isActive ? n.col : '#3a494a'}`,
                 borderBottom: `1px solid ${isActive ? n.col : '#3a494a'}`,
                 borderLeft: `3px solid ${n.col}`,
-                borderRadius: "3px", color: isActive ? n.col : "#849495",
+                borderRadius: "3px", color: isActive ? n.col : "#9BA8AA",
                 cursor: "pointer", fontFamily: "'Geist',monospace", fontWeight: 600,
                 fontSize: 10, whiteSpace: "nowrap", opacity: isHidden ? 0.5 : 1,
                 textDecoration: isLocked && isActive ? 'line-through' : 'none',
@@ -56,7 +56,7 @@ export default function PdfViewerNetworkBar({
               style={{
                 padding: "3px 6px", background: "transparent", border: "none",
                 cursor: "pointer", fontSize: 14, flexShrink: 0, lineHeight: 1,
-                color: isHidden ? '#6b8cae' : n.col,
+                color: isHidden ? '#8AB4D6' : n.col,
                 opacity: isHidden ? 0.5 : 1,
                 textDecoration: isHidden ? 'line-through' : 'none',
               }}
@@ -70,7 +70,7 @@ export default function PdfViewerNetworkBar({
               style={{
                 padding: "3px 3px", background: "transparent", border: "none",
                 cursor: "pointer", fontSize: 11, flexShrink: 0, lineHeight: 1,
-                color: lockedNets.has(n.id) ? '#6b8cae' : n.col,
+                color: lockedNets.has(n.id) ? '#8AB4D6' : n.col,
               }}
               title={lockedNets.has(n.id) ? 'Desbloquear red' : 'Bloquear red'}
             >

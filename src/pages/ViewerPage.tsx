@@ -97,7 +97,7 @@ export default function ViewerPage() {
           height: 36, display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px',
           background: '#111317', borderBottom: '1px solid #3a494a', position: 'relative',
         }}>
-          <span style={{ fontFamily: 'Geist, monospace', fontSize: 10, color: '#6b8cae', textTransform: 'uppercase', letterSpacing: 1 }}>
+          <span style={{ fontFamily: 'Geist, monospace', fontSize: 10, color: '#8AB4D6', textTransform: 'uppercase', letterSpacing: 1 }}>
             Plano:
           </span>
           <div style={{ position: 'relative' }}>
@@ -113,7 +113,7 @@ export default function ViewerPage() {
               <span style={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {plans[activeIndex]?.name || 'Ninguno'}
               </span>
-              <span style={{ fontSize: 8, color: '#6b8cae' }}>▼</span>
+              <span style={{ fontSize: 8, color: '#8AB4D6' }}>▼</span>
             </button>
             {dropdownOpen && (
               <div style={{
@@ -123,7 +123,7 @@ export default function ViewerPage() {
                 overflow: 'hidden', zIndex: 100,
               }}>
                 {plans.length===0&&(
-                  <div style={{padding:'12px 16px',color:'#6b8cae',fontFamily:'Geist, monospace',fontSize:11,textAlign:'center'}}>
+                  <div style={{padding:'12px 16px',color:'#8AB4D6',fontFamily:'Geist, monospace',fontSize:11,textAlign:'center'}}>
                     No hay planos cargados
                   </div>
                 )}
@@ -167,7 +167,7 @@ export default function ViewerPage() {
                     style={{
                       padding: '5px 8px', background: '#1e2024',
                       border: '1px solid #3a494a', borderRadius: 3,
-                      color: '#849495', cursor: 'pointer', fontSize: 10,
+                      color: '#9BA8AA', cursor: 'pointer', fontSize: 10,
                       fontFamily: 'Geist, monospace', textAlign: 'center',
                     }}>
                     📐 Planos
@@ -178,7 +178,7 @@ export default function ViewerPage() {
           </div>
           <div style={{ flex: 1 }} />
           {plans.length>0&&(
-            <span style={{ fontFamily: 'Geist, monospace', fontSize: 9, color: '#6b8cae' }}>
+            <span style={{ fontFamily: 'Geist, monospace', fontSize: 9, color: '#8AB4D6' }}>
               {activeIndex + 1} / {plans.length}
             </span>
           )}

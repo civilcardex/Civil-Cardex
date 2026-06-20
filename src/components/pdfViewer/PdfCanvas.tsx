@@ -95,7 +95,7 @@ export default function PdfCanvas({
         }}>
           <div style={{ fontSize: 40 }}>⚠</div>
           <div style={{ color: "#ffb4ab", fontFamily: "'Geist',monospace", fontSize: 13 }}>Error al cargar el PDF</div>
-          <div style={{ color: "#849495", fontFamily: "'Geist',monospace", fontSize: 11 }}>{error.message || String(error)}</div>
+          <div style={{ color: "#9BA8AA", fontFamily: "'Geist',monospace", fontSize: 11 }}>{error.message || String(error)}</div>
         </div>
       )}
 
@@ -133,16 +133,16 @@ export default function PdfCanvas({
         position: 'absolute', bottom: 0, left: 0, right: 0,
         display: "flex", alignItems: "center", gap: 10, padding: "4px 14px",
         background: "rgba(17,19,23,0.92)", borderTop: "1px solid #3a494a",
-        fontFamily: "'Geist',monospace", fontSize: 11, color: "#6b8cae",
+        fontFamily: "'Geist',monospace", fontSize: 11, color: "#8AB4D6",
       }}>
         <div style={{ flex: 1 }} />
         {tool === 'line' && (
-          <span style={{ color: '#6b8cae', fontSize: 11 }}>
+          <span style={{ color: '#8AB4D6', fontSize: 11 }}>
             Enter/Doble-clic:Guardar · Esc:Cancelar
           </span>
         )}
         {tool === 'area' && (
-          <span style={{ color: '#6b8cae', fontSize: 11 }}>
+          <span style={{ color: '#8AB4D6', fontSize: 11 }}>
             Enter/Doble-clic:Cerrar · Esc:Cancelar
           </span>
         )}

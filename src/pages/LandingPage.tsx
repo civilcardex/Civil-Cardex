@@ -123,7 +123,7 @@ function LandingPage() {
               <span style={{ color: '#00dce5' }}>CORE</span>
             </h1>
             <p className="text-xs sm:text-sm md:text-base tracking-[0.35em] uppercase font-semibold"
-              style={{ color: '#6b8cae', fontFamily: 'Geist, monospace' }}>
+              style={{ color: '#8AB4D6', fontFamily: 'Geist, monospace' }}>
               DISEÑA. ANALIZA. OPTIMIZA. CONSTRUYE.
             </p>
           </div>
@@ -154,7 +154,7 @@ function LandingPage() {
                   {m.name.replace('Civil', '')}
                 </span>
                 <span className="text-[8px] sm:text-[9px] md:text-[10px] text-center mt-1 md:mt-1.5 relative z-10 uppercase tracking-wider leading-tight"
-                  style={{ color: '#6b8cae', fontFamily: 'Geist, monospace', fontWeight: 600 }}>
+                  style={{ color: '#8AB4D6', fontFamily: 'Geist, monospace', fontWeight: 600 }}>
                   {(MOD_SUB as Record<string, string>)[m.id]}
                 </span>
               </div>
@@ -178,7 +178,7 @@ function LandingPage() {
                 </div>
                 <div>
                   <h3 className="text-lg font-bold whitespace-nowrap" style={{ color: hovered.color, fontFamily: 'Hanken Grotesk, sans-serif' }}>{hovered.name}</h3>
-                  <p className="text-xs uppercase tracking-widest whitespace-nowrap" style={{ color: '#6b8cae', fontFamily: 'Geist, monospace' }}>
+                  <p className="text-xs uppercase tracking-widest whitespace-nowrap" style={{ color: '#8AB4D6', fontFamily: 'Geist, monospace' }}>
                     {((MOD_SUB as Record<string, string>)[hovered.id] || '').charAt(0) + ((MOD_SUB as Record<string, string>)[hovered.id] || '').slice(1).toLowerCase()}
                   </p>
                 </div>
@@ -240,7 +240,7 @@ function LandingPage() {
                 style={{ background: '#111317' }}>
                 <span className="material-symbols-outlined text-3xl mb-4 block group-hover:text-primary transition-colors" style={{ color: '#00dce5' }}>{f.icon}</span>
                 <h3 className="text-sm font-bold uppercase tracking-widest mb-3" style={{ color: '#e8f4fd', fontFamily: 'Hanken Grotesk, sans-serif' }}>{f.title}</h3>
-                <p className="text-sm leading-relaxed" style={{ color: '#6b8cae' }}>{f.desc}</p>
+                <p className="text-sm leading-relaxed" style={{ color: '#8AB4D6' }}>{f.desc}</p>
               </div>
             ))}
           </div>
@@ -256,7 +256,7 @@ function LandingPage() {
             ¿Listo para elaborar sus<br />
             <span style={{ color: '#00dce5' }}>memorias de cálculo?</span>
           </h2>
-          <p className="text-sm max-w-xl mx-auto" style={{ color: '#6b8cae' }}>
+          <p className="text-sm max-w-xl mx-auto" style={{ color: '#8AB4D6' }}>
             CivilCore — de los datos del proyecto a la memoria de cálculo exportable, con verificación normativa automática.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
@@ -268,7 +268,7 @@ function LandingPage() {
               Disponible solo en escritorio
             </span>
             <Link to="/docs" className="border border-outline-variant px-10 py-4 uppercase text-[11px] tracking-[0.1em] font-bold hover:border-primary hover:text-primary transition-all"
-              style={{ fontFamily: 'Geist, monospace', color: '#6b8cae' }}>
+              style={{ fontFamily: 'Geist, monospace', color: '#8AB4D6' }}>
               DOCUMENTACIÓN TÉCNICA
             </Link>
           </div>

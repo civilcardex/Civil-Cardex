@@ -13,7 +13,7 @@ export interface ToolDef {
 }
 
 export const TOOLS: ToolDef[] = [
-  { id: "sel", label: "Seleccionar elemento", ico: "\uD83D\uDC46", key: "S", icoCol: "#849495", shortcut: "S" },
+  { id: "sel", label: "Seleccionar elemento", ico: "\uD83D\uDC46", key: "S", icoCol: "#9BA8AA", shortcut: "S" },
   { id: "line", label: "Ramal/Tributario", ico: "\u2571", key: "L", icoCol: "#4D8FF7", shortcut: "L" },
   { id: "area", label: "Área", ico: "\u2B21", key: "A", icoCol: "#22D3EE", shortcut: "A" },
   { id: "dim", label: "Cota", ico: "\uD83D\uDCCF", key: "D", icoCol: "#22D3EE", shortcut: "D" },
@@ -58,7 +58,7 @@ export default function PdfViewerToolbar({
   return (
     <>
       <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
-        <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Herramientas</div>
+        <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#9BA8AA", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Herramientas</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           {TOOLS.map(t => {
             const isBajanteDisabled = t.id === 'baj' && (activeNet === 'af' || activeNet === 'ac');
@@ -73,7 +73,7 @@ export default function PdfViewerToolbar({
               }}>
                 <span style={{ fontSize: 14, width: 18, textAlign: "center", color: tool === t.id ? "#fff" : t.icoCol }}>{t.ico}</span>
                 <span style={{ fontSize: 10, flex: 1, textAlign: 'left' }}>{t.label}</span>
-                <span style={{ fontSize: 8, color: tool === t.id ? 'rgba(255,255,255,.6)' : '#6b8cae', fontFamily: "'Geist',monospace", marginLeft: 'auto' }}>{t.shortcut}</span>
+                <span style={{ fontSize: 8, color: tool === t.id ? 'rgba(255,255,255,.6)' : '#8AB4D6', fontFamily: "'Geist',monospace", marginLeft: 'auto' }}>{t.shortcut}</span>
               </button>
             );
           })}
@@ -83,19 +83,19 @@ export default function PdfViewerToolbar({
             style={{
               padding: "5px 8px", background: snapOn ? "#10B98122" : "#1e2024",
               border: `1px solid ${snapOn ? "#10B981" : "#3a494a"}`, borderRadius: "3px",
-              color: snapOn ? "#10B981" : "#849495", cursor: "pointer",
+              color: snapOn ? "#10B981" : "#9BA8AA", cursor: "pointer",
               fontFamily: "'Geist',monospace", fontWeight: 600, transition: "all .12s",
               display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 10,
             }}>
-            <span style={{fontSize:14,width:18,textAlign:"center",color:snapOn?"#10B981":"#6b8cae"}}>{snapOn?'\u25C9':'\u25CB'}</span>
+            <span style={{fontSize:14,width:18,textAlign:"center",color:snapOn?"#10B981":"#8AB4D6"}}>{snapOn?'\u25C9':'\u25CB'}</span>
             <span style={{flex:1}}>Snap</span>
-            <span style={{fontSize:8,color:snapOn?'rgba(255,255,255,.6)':'#6b8cae',fontFamily:"'Geist',monospace"}}>G</span>
+            <span style={{fontSize:8,color:snapOn?'rgba(255,255,255,.6)':'#8AB4D6',fontFamily:"'Geist',monospace"}}>G</span>
           </button>
         </div>
       </div>
 
       <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
-        <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#849495", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Acciones</div>
+        <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#9BA8AA", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Acciones</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <button onClick={onFit} disabled={!currentFile}
             style={{ ...accBtn, width: "100%", borderColor: "#10B98155", color: "#10B981",
