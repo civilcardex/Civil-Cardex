@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { pisoLbl } from "../../constants";
 import ModalProtocolo from "./ModalProtocolo";
 
@@ -30,7 +30,7 @@ interface PlanoConfiguratorProps {
   onUpdateNivel: (planId: number, nivel: number | null) => void;
 }
 
-export default function PlanoConfigurator({
+function PlanoConfiguratorBase({
   planFile, planName, planId, onSaveConfig, onIrADibujo, existingCal,
   pisos, plans, planNivel, onUpdateNivel,
 }: PlanoConfiguratorProps) {
@@ -782,3 +782,6 @@ function Chk({ done, label }: { done: boolean; label: string }) {
     </span>
   );
 }
+
+const PlanoConfigurator = React.memo(PlanoConfiguratorBase);
+export { PlanoConfigurator };

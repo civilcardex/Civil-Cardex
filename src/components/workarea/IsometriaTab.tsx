@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { getPdfjs } from "../../utils/lazyPdfjs";
 import { NETS } from "../../lib/PlanoEngine";
 import { TRAZOS_PREFIX } from "../../constants/storage-keys";
@@ -71,7 +71,7 @@ async function loadPlanImage(plan: any): Promise<{ nivel: number; img: HTMLCanva
   }
 }
 
-export default function IsometriaTab({ state }: any) {
+function IsometriaTabBase({ state }: any) {
   const { plans, pisos } = state;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -743,3 +743,6 @@ export default function IsometriaTab({ state }: any) {
     </div>
   );
 }
+
+const IsometriaTab = React.memo(IsometriaTabBase);
+export { IsometriaTab };

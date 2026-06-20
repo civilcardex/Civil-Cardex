@@ -4,7 +4,7 @@ import { saveTrazosToDB, loadFromStorage, saveToStorage } from "../../services/s
 import { TRAZOS_PREFIX } from "../../constants/storage-keys";
 import { REQ_ITEMS, pisoLbl } from "../../constants";
 import EmptyState from "../shared/EmptyState";
-import PlanoConfigurator from "./PlanoConfigurator";
+import { PlanoConfigurator } from "./PlanoConfigurator";
 import type { useWorkAreaState } from "../useWorkAreaState";
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
