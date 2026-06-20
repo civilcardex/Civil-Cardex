@@ -71,8 +71,39 @@ function drawRamalPath(
         }
 
         const is45 = Math.abs(cosAngle + Math.cos(Math.PI / 4)) < 0.05;
-        if ((Math.abs(cosAngle) < 0.05 || is45) && !isJunc) {
-          const rad = engine.mm2cvs(is45 ? 1.0 : 1.5);
+        if (is45 && !isJunc) {
+          const rad = engine.mm2cvs(1.5);
+          const actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
+
+          if (actualRad > 0.1) {
+            const T_A = { x: cvsB.x + actualRad * ux, y: cvsB.y + actualRad * uy };
+            const T_C = { x: cvsB.x + actualRad * vx, y: cvsB.y + actualRad * vy };
+            
+            ctx.lineTo(T_A.x, T_A.y);
+            ctx.stroke();
+
+            ctx.save();
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 3.5;
+            ctx.lineJoin = 'round';
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(T_A.x, T_A.y);
+            ctx.lineTo(cvsB.x, cvsB.y);
+            ctx.lineTo(T_C.x, T_C.y);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.beginPath();
+            ctx.moveTo(T_C.x, T_C.y);
+
+            const perp_u = { x: -uy, y: ux };
+            const perp_v = { x: -vy, y: vx };
+            elbows.push({ T_A, T_C, perp_u, perp_v });
+            drewArc = true;
+          }
+        } else if (Math.abs(cosAngle) < 0.05 && !isJunc) {
+          const rad = engine.mm2cvs(1.5);
           const actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
 
           if (actualRad > 0.1) {
