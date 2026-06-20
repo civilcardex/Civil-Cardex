@@ -6,7 +6,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 // component-local state tree intentionally — it must be shared across sibling panels
 // that don't share a common parent state. Reset to 50 so panels start above other UI.
 let _zCounter = 50;
-export function nextZ() { return ++_zCounter; }
+function nextZ() { return ++_zCounter; }
 export function useZIndex(): [number, () => void] {
   const [z, setZ] = useState(() => nextZ());
   const bringToFront = useCallback(() => setZ(nextZ()), []);
@@ -147,7 +147,7 @@ export const inputStyle = (w = 56): React.CSSProperties => ({
   background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3, color: '#e2e2e8',
 });
 
-export const numInputStyle = (w = 56): React.CSSProperties => ({
+const numInputStyle = (w = 56): React.CSSProperties => ({
   ...inputStyle(w),
 });
 

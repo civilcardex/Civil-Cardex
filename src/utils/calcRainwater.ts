@@ -1,11 +1,3 @@
-
-
-
-// ─── Metodo Racional para Aguas lluvias ───
-export function caudalRacional(C: number, I: number, A: number): number {
-  return (C * I * A) / 360;
-}
-
 // ─── Chequeo bajante Aguas lluvias (UI inline formula) ───
 export function chequeoBajanteLluvia({ areaAcumulada = 0, intensidad = 0, coeficienteC = 0, R = '', diamPropuesto = 0 }: {
   areaAcumulada?: number;
@@ -53,4 +45,3 @@ export function chequeoCanalLluvia({ areaAcumulada = 0, intensidad = 0, coeficie
   const totalStr = b > 0 || h > 0 ? `${b} x ${h}` : '—';
   return { Qreal, Qmax, chequeo, totalStr };
 }
-

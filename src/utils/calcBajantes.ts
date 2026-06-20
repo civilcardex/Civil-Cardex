@@ -1,23 +1,6 @@
 import { DIAM_BAN, DIAM_VENT } from '../constants';
 import { manning_SAN, caudalHunterLPS } from './calcSanitaryCore';
 
-
-// ─── Capacidad de bajante (Manning con factor r = 7/24) ───
-export function capacidadBajante(D_pulg: number, r?: number): number {
-  const rFactor = r || 7 / 24;
-  return 1.754 * Math.pow(rFactor, 5 / 3) * Math.pow(D_pulg, 8 / 3);
-}
-
-// ─── Velocidad terminal en bajante ───
-export function velocidadTerminal(d_pulg: number): number {
-  return 2.76 * Math.pow(d_pulg, 0.4);
-}
-
-// ─── Longitud terminal ───
-export function longitudTerminal(Vt: number): number {
-  return 0.17 * Vt * Vt;
-}
-
 export interface BajanteVentilacionParams {
   bajante?: string;
   pisos?: string;
@@ -60,7 +43,6 @@ export interface BajanteVentilacionResult {
   cumple: boolean;
 }
 
-// ─── Calculo de bajante y ventilacion ───
 export function calculateVentStack(params: BajanteVentilacionParams): BajanteVentilacionResult {
   const {
     bajante = '',
@@ -131,5 +113,3 @@ export function calculateVentStack(params: BajanteVentilacionParams): BajanteVen
     cumple: chequeoDiam === 'Ok',
   };
 }
-
-
