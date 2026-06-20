@@ -53,7 +53,7 @@ const netKey: Record<string, keyof TramosState> = {
 };
 
 function idMatch(t: Tramo, net: string, id: string): boolean {
-  if (t._key && t._key === id) return true;
+  if (t._key) return t._key === id;
   return t.id === id;
 }
 

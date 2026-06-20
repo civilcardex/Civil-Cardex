@@ -67,7 +67,7 @@ function isCountableTarget(el: any): boolean {
   return el.id?.startsWith('R') || el.id?.startsWith('B') || el.id?.startsWith('T');
 }
 
-export default function AparatosPanel({ activeNet, selElement }: { activeNet: string; selElement: any }) {
+export default function AparatosPanel({ activeNet, selElement, planId }: { activeNet: string; selElement: any; planId?: string | number }) {
   const { plans } = usePlans();
   const { aps } = useApparatus();
   const [counts, setCounts] = useState<Record<string, any>>(loadAll);
@@ -184,7 +184,7 @@ try { writeSanDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console
   const target = isCountableTarget(selElement) ? selElement : null;
   const targetId = target?.id || null;
   const targetLbl = target?.label || target?.code || target?.id || '';
-  const storageKey = targetId ? `${netId}_${targetId}` : null;
+  const storageKey = targetId ? (planId ? `${netId}_${targetId}_${planId}` : `${netId}_${targetId}`) : null;
 
   useEffect(() => {
     if (targetId && targetId !== lastTargetRef.current) {

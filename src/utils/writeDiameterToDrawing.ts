@@ -13,7 +13,7 @@ export function deleteRamalFromDrawing(ramalKey: string, net: string, plans: any
 
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
-    if (planId && plan.id !== planId) continue;
+    if (planId && String(plan.id) !== String(planId)) continue;
     const key = TRAZOS_PREFIX + plan.id;
     const raw = loadFromStorage(key, null);
     if (!raw) continue;
@@ -40,7 +40,7 @@ export function writeDiametroToDrawing(ramalKey: string, net: string, newDiamLab
 
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
-    if (planId && plan.id !== planId) continue;
+    if (planId && String(plan.id) !== String(planId)) continue;
     const key = TRAZOS_PREFIX + plan.id;
     const raw = loadFromStorage(key, null);
     if (!raw) continue;

@@ -30,7 +30,7 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
         const ramales: any[] = [];
         for (const r of (data.ramales || [])) {
           if (r.net === family) {
-            const rKey = family + '_' + r.id;
+            const rKey = family + '_' + r.id + '_' + plan.id;
             ramales.push({
               id: r.id, label: r.label || r.id, tipo: r.tipo,
               padre: r.padre || null, totalL: r.totalL || 0,
@@ -52,7 +52,7 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
       const bajantes: any[] = [];
       for (const r of (data.ramales || [])) {
         if (families.has(r.net)) {
-          const rKey = r.net + '_' + r.id;
+          const rKey = r.net + '_' + r.id + '_' + plan.id;
           ramales.push({
             id: r.id, label: r.label || r.id, tipo: r.tipo,
             padre: r.padre || null, totalL: r.totalL || 0,
@@ -66,7 +66,7 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
       }
       for (const b of (data.bajantes || [])) {
         if (families.has(b.net)) {
-          const bKey = b.net + '_' + b.id;
+          const bKey = b.net + '_' + b.id + '_' + plan.id;
           bajantes.push({
             id: b.id, code: b.code || b.id,
             dNominal: b.dNominal || '', diamPulg: diamPulgFromLabel(b.dNominal),

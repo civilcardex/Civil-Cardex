@@ -26,13 +26,13 @@ export function useSanLlSync(
     const llIncoming: any[] = [];
     const tribIds = new Set<string>();
     for (const [nivel, plane] of Object.entries(planes)) {
-      for (const r of ((plane as any).ramales || [])) {
-        if (r.tipo === 'tributario') tribIds.add(r.id);
-      }
-      const piso = parseInt(nivel);
       const planId = (plane as any).planoId || nivel;
       for (const r of ((plane as any).ramales || [])) {
-        const apKey = r._aparatosKey || r.id;
+        if (r.tipo === 'tributario') tribIds.add(`${r.id}-${planId}`);
+      }
+      const piso = parseInt(nivel);
+      for (const r of ((plane as any).ramales || [])) {
+        const apKey = r._aparatosKey || `${r._net || 'san'}_${r.id}_${planId}`;
         const hd = hidroData[apKey] || {};
         const tramo = {
           _key: `${r.id}-${planId}`,
@@ -53,7 +53,7 @@ export function useSanLlSync(
         }
       }
       for (const b of ((plane as any).bajantes || [])) {
-        const apKey = b._aparatosKey || b.id;
+        const apKey = b._aparatosKey || `${b._net || 'san'}_${b.id}_${planId}`;
         const hd = hidroData[apKey] || {};
         const tramo = {
           _key: `${b.id}-${planId}`,
@@ -86,10 +86,10 @@ export function useSanLlSync(
 
     const prevLl = stateRef.current.tramosLl;
     if (llIncoming.length === 0) { dispatch({ type: 'SET_TRAMOS', net: 'll', payload: [] }); return; }
-    const drawingIds = new Set([...llIncoming.map(i => i.id), ...tribIds]);
-    const keep = prevLl.filter(t => !drawingIds.has(t.id));
+    const drawingKeys = new Set([...llIncoming.map(i => i._key), ...tribIds]);
+    const keep = prevLl.filter(t => t._key && !drawingKeys.has(t._key));
     const merged = llIncoming.map(i => {
-      const ex = prevLl.find(t => t.id === i.id);
+      const ex = prevLl.find(t => t._key === i._key);
       return ex ? { ...i, descripcion: ex.descripcion || '', desde: ex.desde || '', hasta: ex.hasta || '' } : i;
     });
     dispatch({ type: 'SET_TRAMOS', net: 'll', payload: [...keep, ...merged] });
@@ -113,7 +113,7 @@ export function useHidroSync(
         const nivel = parseInt(key.slice(family.length + 1));
         const planId = (plane as any).planoId || '';
         for (const r of ((plane as any).ramales || [])) {
-          const apKey = r._aparatosKey || `${family}_${r.id}`;
+          const apKey = r._aparatosKey || `${family}_${r.id}_${planId}`;
           const extra = hidroData[apKey] || {};
           incoming.push({
             _key: `${r.id}-${planId}`,

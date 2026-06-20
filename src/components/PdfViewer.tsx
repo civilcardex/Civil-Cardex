@@ -1395,7 +1395,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
         </div>
 
         {!(selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante' || selElement.tipo === 'area' || selElement.id?.startsWith('AR'))) && (
-        <AparatosPanel activeNet={activeNet} selElement={selElement} />
+        <AparatosPanel activeNet={activeNet} selElement={selElement} planId={currentId} />
         )}
 
         <PdfViewerDrawnElements
