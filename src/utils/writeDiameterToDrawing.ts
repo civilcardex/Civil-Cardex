@@ -1,6 +1,6 @@
 import { writeHydroDrawingSync, writeSanDrawingSync } from './drawingSync';
 import { loadFromStorage, saveToStorage } from '../services/storageService';
-import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../constants/storage-keys';
+import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY, HYDRO_FAMILIES, SAN_FAMILIES } from '../constants/storage-keys';
 
 export function deleteRamalFromDrawing(ramalKey: string, net: string, plans: any[]) {
   if (!ramalKey || !net || !plans) return;
@@ -10,6 +10,22 @@ export function deleteRamalFromDrawing(ramalKey: string, net: string, plans: any
   const parts = ramalKey.split('-');
   const ramalId = parts[0];
   const planId = parts[1];
+
+  const apKey = `${net}_${ramalId}_${planId}`;
+
+  const rawAparatos = loadFromStorage(APARATOS_BY_TRAMO_KEY, null) as Record<string, any> | null;
+  if (rawAparatos && apKey in rawAparatos) {
+    const copy = { ...rawAparatos };
+    delete copy[apKey];
+    saveToStorage(APARATOS_BY_TRAMO_KEY, copy);
+  }
+
+  const rawHidro = loadFromStorage(HYDRO_DATA_STORAGE_KEY, null) as Record<string, any> | null;
+  if (rawHidro && apKey in rawHidro) {
+    const copy = { ...rawHidro };
+    delete copy[apKey];
+    saveToStorage(HYDRO_DATA_STORAGE_KEY, copy);
+  }
 
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;

@@ -262,23 +262,26 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
 
   const onDeleteHandler = useCallback((ids: string[]) => {
     const idSet = new Set(ids);
-    const cleanStore = (key: string, suffix: boolean) => {
+    const cleanStore = (key: string) => {
       const store = loadFromStorage(key, {}) as Record<string, any>;
       let changed = false;
       for (const k of Object.keys(store)) {
-        const match = suffix ? k.split('_').pop() : k;
-        if (match && idSet.has(match)) {
+        const segs = k.split('_');
+        const found = segs.some(s => idSet.has(s)) || idSet.has(k);
+        if (found) {
           delete store[k];
           changed = true;
         }
       }
       if (changed) saveToStorage(key, store);
     };
-    cleanStore(APARATOS_BY_TRAMO_KEY, true);
-    cleanStore(HYDRO_DATA_STORAGE_KEY, true);
-    cleanStore(GAS_ACC_KEY, false);
+    cleanStore(APARATOS_BY_TRAMO_KEY);
+    cleanStore(HYDRO_DATA_STORAGE_KEY);
+    cleanStore(GAS_ACC_KEY);
     window.dispatchEvent(new CustomEvent('aparatos-clear', { detail: { ids } }));
-  }, []);
+    try { writeSanDrawingSync(plansRef.current); } catch (_) {}
+    try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
+  }, [plansRef]);
 
   const onRequestTextCb = useCallback((x: number, y: number, cb: (text: string) => void) => {
     setTextOverlay({ x, y, value: '', cb });
