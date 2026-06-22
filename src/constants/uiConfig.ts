@@ -2,6 +2,7 @@
 // For drawing-engine definitions use PlanoState.NETS instead (has ucType, bmType, etc).
 export const REDES=[
   {id:'san',lbl:'Sanitaria', sub:'RAS D · Manning n=0.009', ico:'♻️', icoImg:'/iconos_diseno_redes/sanitaria/red_sanitaria.webp', col:'var(--san)'},
+  {id:'vent',lbl:'Ventilación', sub:'Subred sanitaria · Ventilación', ico:'🌬', icoImg:'', col:'var(--vent)'},
   {id:'ll', lbl:'Aguas lluvias', sub:'Método Racional · IDF', ico:'🌧️', icoImg:'/iconos_diseno_redes/aguas_lluvias/red_aguas_lluvias.webp', col:'var(--ll)'},
   {id:'af', lbl:'Agua fría', sub:'NTC 1500 · Hazen-Williams', ico:'💧', icoImg:'/iconos_diseno_redes/hidraulica/red_agua_fria.webp', col:'var(--af)'},
   {id:'ac', lbl:'Agua caliente', sub:'NTC 1500 · CPVC RDE 11', ico:'🔥', icoImg:'/iconos_diseno_redes/hidraulica/red_agua_caliente.webp', col:'var(--ac)'},
