@@ -9,8 +9,32 @@ import { NETS } from './PlanoState';
 import { pointInPoly, pointInLabelBox, pointToSegmentDist, distanceToRamal } from './HitTester';
 import { _midpoint, _firstSegmentAngle, calculateRamalLength } from './PlanoEngineDrawing';
 
-export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number): void {
+export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMultiSelectModifier: boolean = false): void {
   engine._isGhostSel = false;
+  
+  const applySelection = (id: string | null, obj: any | null, isGhost: boolean = false) => {
+    engine._isGhostSel = isGhost;
+    if (isMultiSelectModifier) {
+      if (engine.selId && !engine.multiSel.includes(engine.selId)) {
+        engine.multiSel.push(engine.selId);
+      }
+      engine.selId = null;
+      if (id) {
+        if (engine.multiSel.includes(id)) {
+          engine.multiSel = engine.multiSel.filter(mid => mid !== id);
+        } else {
+          engine.multiSel.push(id);
+        }
+      }
+      engine._emitSelect(null);
+    } else {
+      engine.selId = id;
+      engine.multiSel = [];
+      engine._emitSelect(obj);
+    }
+    engine.render();
+  };
+
   let foundTxt: PlanoTextAnnotation | null = null;
   engine.textAnnots.forEach((t: any) => {
     if (t._box) {
@@ -18,7 +42,7 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number): void
       if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) foundTxt = t;
     }
   });
-  if (foundTxt) { engine.selId = (foundTxt as any).id; engine._emitSelect(foundTxt); engine.render(); return; }
+  if (foundTxt) return applySelection((foundTxt as any).id, foundTxt);
 
   let foundBaj: PlanoBajante | null = null, minBD = 50;
   let foundBajIsGhost = false;
@@ -39,13 +63,7 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number): void
       if (d < b._ghost.r && d < minBD) { minBD = d; foundBaj = b as any; foundBajIsGhost = true; }
     }
   });
-  if (foundBaj) {
-    engine.selId = (foundBaj as any).id;
-    engine._isGhostSel = foundBajIsGhost;
-    engine._emitSelect(foundBaj);
-    engine.render();
-    return;
-  }
+  if (foundBaj) return applySelection((foundBaj as any).id, foundBaj, foundBajIsGhost);
 
   let found: PlanoRamal | null = null, minD = 20;
   engine.ramales.forEach((r: any) => {
@@ -53,10 +71,16 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number): void
       const d = Math.hypot(cx - r._labelBox.cx, cy - r._labelBox.cy);
       if (d < minD) { minD = d; found = r; }
     }
-    const d = distanceToRamal(cx, cy, r.pts, (x, y) => engine.toCvs(x, y), engine.mm2cvs(3));
+    let d = distanceToRamal(cx, cy, r.pts, (x, y) => engine.toCvs(x, y), engine.mm2cvs(3));
+    if (r.pts && r.pts.length > 0) {
+      const pc1 = engine.toCvs(r.pts[0][0], r.pts[0][1]);
+      const pc2 = engine.toCvs(r.pts[r.pts.length - 1][0], r.pts[r.pts.length - 1][1]);
+      if (Math.hypot(cx - pc1.x, cy - pc1.y) < 15 || Math.hypot(cx - pc2.x, cy - pc2.y) < 15) {
+        d -= 5; // Priority for endpoints to easily select junctions like codo reventilado
+      }
+    }
     if (d < minD) { minD = d; found = r; }
   });
-  engine.selId = found ? (found as any).id : null;
 
   let foundAreaLabel: PlanoArea | null = null;
   engine.areas.forEach((a: any) => {
@@ -64,7 +88,7 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number): void
       foundAreaLabel = a;
     }
   });
-  if (foundAreaLabel) { engine.selId = (foundAreaLabel as any).id; engine._emitSelect(foundAreaLabel); engine.render(); return; }
+  if (foundAreaLabel) return applySelection((foundAreaLabel as any).id, foundAreaLabel);
 
   let foundArea: PlanoArea | null = null;
   engine.areas.forEach((a: any) => {
@@ -72,10 +96,9 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number): void
       foundArea = a;
     }
   });
-  if (foundArea) { engine.selId = (foundArea as any).id; engine._emitSelect(foundArea); engine.render(); return; }
+  if (foundArea) return applySelection((foundArea as any).id, foundArea);
 
-  engine._emitSelect(found);
-  engine.render();
+  applySelection(found ? (found as any).id : null, found);
 }
 
 export function selectById(engine: IPlanoEngineCore, id: string): void {
@@ -278,10 +301,58 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
   }
 }
 
-export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number): void {
+export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number, isMultiSelectModifier: boolean = false): void {
   const wasGhostSel = engine._isGhostSel;
   engine._isGhostSel = false;
   const sel = getSelected(engine);
+
+  // 1. Check if clicking on ANY ramal endpoint to start point dragging immediately
+  if (engine.tool === 'sel' && !isMultiSelectModifier) {
+    let bestRamal = null;
+    let bestPtIdx = -1;
+    let minPtDist = 15; // Hit threshold 15px
+    for (const r of engine.ramales) {
+      if (engine._hiddenNets.has(r.net)) continue;
+      if (r.pts && r.pts.length >= 2) {
+        for (const i of [0, r.pts.length - 1]) {
+          const pc = engine.toCvs(r.pts[i][0], r.pts[i][1]);
+          const d = Math.hypot(x - pc.x, y - pc.y);
+          if (d < minPtDist) {
+            minPtDist = d;
+            bestRamal = r;
+            bestPtIdx = i;
+          }
+        }
+      }
+    }
+    if (bestRamal) {
+      engine.selId = bestRamal.id;
+      engine.multiSel = [];
+      engine._emitSelect(bestRamal);
+      
+      let slideConstraint = undefined;
+      const pt = bestRamal.pts[bestPtIdx];
+      for (const other of engine.ramales) {
+        if (other.id === bestRamal.id) continue;
+        for (let si = 0; si < other.pts.length - 1; si++) {
+          const [ax, ay] = other.pts[si], [bx, by] = other.pts[si+1];
+          const sDx = bx - ax, sDy = by - ay;
+          const sLen = Math.hypot(sDx, sDy);
+          if (sLen < 0.001) continue;
+          const cross = Math.abs(sDx * (ay - pt[1]) - sDy * (ax - pt[0])) / sLen;
+          if (cross < 0.05) {
+            slideConstraint = { otherId: other.id, segmentIdx: si };
+            break;
+          }
+        }
+        if (slideConstraint) break;
+      }
+
+      engine.ptDrag = { id: bestRamal.id, ptIdx: bestPtIdx, slideConstraint };
+      engine.render();
+      return;
+    }
+  }
 
   if (engine.multiSel.length > 0 && engine.tool === 'sel') {
     for (const id of engine.multiSel) {
@@ -315,31 +386,33 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number)
         hit = x >= te._box.x && x <= te._box.x + te._box.w && y >= te._box.y && y <= te._box.y + te._box.h;
       }
       if (hit) {
-        const tp = engine.toPlane(x, y);
-        const origData: Record<string, any> = {};
-        for (const mid of engine.multiSel) {
-          const mel = engine.ramales.find(r => r.id === mid);
-          if (mel) {
-            origData[mid] = { type: 'ramal', origPts: mel.pts.map(p => [...p]), origLabelX: mel.labelX, origLabelY: mel.labelY, origLabelAngle: mel.labelAngle || 0 };
-            continue;
+        if (!isMultiSelectModifier) {
+          const tp = engine.toPlane(x, y);
+          const origData: Record<string, any> = {};
+          for (const mid of engine.multiSel) {
+            const mel = engine.ramales.find(r => r.id === mid);
+            if (mel) {
+              origData[mid] = { type: 'ramal', origPts: mel.pts.map(p => [...p]), origLabelX: mel.labelX, origLabelY: mel.labelY, origLabelAngle: mel.labelAngle || 0 };
+              continue;
+            }
+            const mba = engine.bajantes.find(b => b.id === mid);
+            if (mba) {
+              origData[mid] = { type: 'bajante', origX: mba.x, origY: mba.y, origLabelX: mba.labelX, origLabelY: mba.labelY };
+              continue;
+            }
+            const mtx = engine.textAnnots.find(t => t.id === mid);
+            if (mtx) {
+              origData[mid] = { type: 'text', origX: mtx.x, origY: mtx.y };
+            }
           }
-          const mba = engine.bajantes.find(b => b.id === mid);
-          if (mba) {
-            origData[mid] = { type: 'bajante', origX: mba.x, origY: mba.y, origLabelX: mba.labelX, origLabelY: mba.labelY };
-            continue;
-          }
-          const mtx = engine.textAnnots.find(t => t.id === mid);
-          if (mtx) {
-            origData[mid] = { type: 'text', origX: mtx.x, origY: mtx.y };
-          }
+          engine.multiDrag = { startX: tp.x, startY: tp.y, origData };
+          return;
         }
-        engine.multiDrag = { startX: tp.x, startY: tp.y, origData };
-        return;
       }
     }
   }
 
-  if (engine.multiSel.length > 0) {
+  if (engine.multiSel.length > 0 && !isMultiSelectModifier) {
     engine.multiSel = [];
   }
 
@@ -365,8 +438,28 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number)
     
     for (let i = 0; i < ramalSel.pts.length; i++) {
       const pc = engine.toCvs(ramalSel.pts[i][0], ramalSel.pts[i][1]);
-      if (Math.hypot(x - pc.x, y - pc.y) < 10) {
-        engine.ptDrag = { id: sel.id, ptIdx: i };
+      if (Math.hypot(x - pc.x, y - pc.y) < 15) {
+        let slideConstraint = undefined;
+        const isEndpoint = i === 0 || i === ramalSel.pts.length - 1;
+        if (isEndpoint) {
+          const pt = ramalSel.pts[i];
+          for (const other of engine.ramales) {
+            if (other.id === sel.id) continue;
+            for (let si = 0; si < other.pts.length - 1; si++) {
+              const [ax, ay] = other.pts[si], [bx, by] = other.pts[si+1];
+              const sDx = bx - ax, sDy = by - ay;
+              const sLen = Math.hypot(sDx, sDy);
+              if (sLen < 0.001) continue;
+              const cross = Math.abs(sDx * (ay - pt[1]) - sDy * (ax - pt[0])) / sLen;
+              if (cross < 0.05) {
+                slideConstraint = { otherId: other.id, segmentIdx: si };
+                break;
+              }
+            }
+            if (slideConstraint) break;
+          }
+        }
+        engine.ptDrag = { id: sel.id, ptIdx: i, slideConstraint };
         return;
       }
     }
@@ -426,14 +519,14 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number)
       for (const b of engine.bajantes) {
         if ((b as any)._circ) {
           const d = Math.hypot(x - (b as any)._circ.x, y - (b as any)._circ.y);
-          if (d < (b as any)._circ.r) { selectAt(engine, x, y); return; }
+          if (d < (b as any)._circ.r) { selectAt(engine, x, y, isMultiSelectModifier); return; }
         }
       }
       const fg = engine.getBajantesFantasma() as any[];
       for (const b of fg) {
         if (b._ghost) {
           const d = Math.hypot(x - b._ghost.x, y - b._ghost.y);
-          if (d < b._ghost.r) { selectAt(engine, x, y); return; }
+          if (d < b._ghost.r) { selectAt(engine, x, y, isMultiSelectModifier); return; }
         }
       }
       const tp = engine.toPlane(x, y);
@@ -582,9 +675,11 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number)
     }
     return;
   }
-  selectAt(engine, x, y);
+  selectAt(engine, x, y, isMultiSelectModifier);
   if (engine.tool === 'sel' && !engine.ptDrag && !engine.ramalDrag && !engine.bajDrag && !engine.ghostDrag && !engine.lblDrag && !engine.txtDrag && !engine.areaDrag && !engine.multiDrag && !engine.selId) {
-    engine.multiSel = [];
+    if (!isMultiSelectModifier) {
+      engine.multiSel = [];
+    }
     engine.marqueeRect = { x1: x, y1: y, x2: x, y2: y };
   }
 }
@@ -836,61 +931,63 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const idx = engine.ptDrag.ptIdx;
       const isEndpoint = idx === 0 || idx === r.pts.length - 1;
 
-      // SLIDE CONSTRAINT: if dragging endpoint that lies on another ramal's segment
-      if (isEndpoint) {
-        const origPt = r.pts[idx];
-        for (const other of engine.ramales) {
-          if (other.id === r.id) continue;
-          for (let si = 0; si < other.pts.length - 1; si++) {
-            const [ax, ay] = other.pts[si], [bx, by] = other.pts[si+1];
+      if (engine.snapMode) {
+        const constraint = engine.ptDrag.slideConstraint;
+        let snappedToConstraint = false;
+        
+        if (isEndpoint && constraint) {
+          const other = engine.ramales.find((o: any) => o.id === constraint.otherId);
+          if (other && other.pts && other.pts.length > constraint.segmentIdx) {
+            const [ax, ay] = other.pts[constraint.segmentIdx];
+            const [bx, by] = other.pts[constraint.segmentIdx + 1] || [ax, ay];
             const sDx = bx - ax, sDy = by - ay;
             const sLen = Math.hypot(sDx, sDy);
-            if (sLen < 0.001) continue;
-            const cross = Math.abs(sDx * (ay - origPt[1]) - sDy * (ax - origPt[0])) / sLen;
-            if (cross < 0.05) {
-              let t = ((p.x - ax) * sDx + (p.y - ay) * sDy) / (sLen * sLen);
-              t = Math.max(0, Math.min(1, t));
-              p.x = ax + t * sDx;
-              p.y = ay + t * sDy;
-              break;
+            if (sLen > 0.001) {
+              const crossPlane = Math.abs(sDx * (ay - p.y) - sDy * (ax - p.x)) / sLen;
+              // If within 15 screen pixels of the line, snap to it
+              if (crossPlane < engine.mm2cvs(3)) {
+                let t = ((p.x - ax) * sDx + (p.y - ay) * sDy) / (sLen * sLen);
+                p.x = ax + t * sDx;
+                p.y = ay + t * sDy;
+                snappedToConstraint = true;
+              }
             }
           }
         }
-      }
 
-      if (engine.snapMode) {
-        if (idx === 0 && r.pts.length > 1) {
-          p = engine.snapAngle(r.pts[1][0], r.pts[1][1], p.x, p.y);
-        } else if (idx > 0) {
-          p = engine.snapAngle(r.pts[idx - 1][0], r.pts[idx - 1][1], p.x, p.y);
+        if (!snappedToConstraint) {
+          if (idx === 0 && r.pts.length > 1) {
+            p = engine.snapAngle(r.pts[1][0], r.pts[1][1], p.x, p.y);
+          } else if (idx > 0) {
+            p = engine.snapAngle(r.pts[idx - 1][0], r.pts[idx - 1][1], p.x, p.y);
+          }
         }
       }
 
       const oldP = [...(r as any).pts[idx]];
       (r as any).pts[idx] = [p.x, p.y];
 
-      // GROUP MOVE: at junctions, move all connected ramales sharing this point
-      if (isEndpoint) {
-        const dPx = p.x - oldP[0], dPy = p.y - oldP[1];
-        if (Math.abs(dPx) + Math.abs(dPy) > 0.001) {
-          for (const other of engine.ramales) {
-            if (other.id === r.id) continue;
-            let changed = false;
-            if (Math.hypot(other.pts[0][0] - oldP[0], other.pts[0][1] - oldP[1]) < 0.5) {
-              other.pts[0][0] += dPx; other.pts[0][1] += dPy; changed = true;
-            }
-            const last = other.pts.length - 1;
-            if (last > 0 && Math.hypot(other.pts[last][0] - oldP[0], other.pts[last][1] - oldP[1]) < 0.5) {
-              other.pts[last][0] += dPx; other.pts[last][1] += dPy; changed = true;
-            }
-            if (changed) {
-              other.totalL = calculateRamalLength(other.pts, engine);
-              other.labelAngle = _firstSegmentAngle(other.pts);
-              const [mx, my] = _midpoint(other.pts);
-              other.labelX = mx;
-              other.labelY = my;
+      // GROUP MOVE: move all connected ramales sharing this point
+      const dPx = p.x - oldP[0], dPy = p.y - oldP[1];
+      if (Math.abs(dPx) + Math.abs(dPy) > 0.001) {
+        for (const other of engine.ramales) {
+          if (other.id === r.id) continue;
+          let changed = false;
+          for (let i = 0; i < other.pts.length; i++) {
+            if (Math.hypot(other.pts[i][0] - oldP[0], other.pts[i][1] - oldP[1]) < 0.5) {
+              other.pts[i][0] += dPx;
+              other.pts[i][1] += dPy;
+              changed = true;
             }
           }
+          if (changed) {
+            other.totalL = calculateRamalLength(other.pts, engine);
+            other.labelAngle = _firstSegmentAngle(other.pts);
+            const [mx, my] = _midpoint(other.pts);
+            other.labelX = mx;
+            other.labelY = my;
+          }
+        }
           // Also move bajante if this ramal is in recibeDeIds
           const bajForRamal = engine.bajantes.find((b: any) =>
             b.recibeDeIds?.includes(r.id) &&
@@ -904,7 +1001,6 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             bajForRamal.labelY = (bajForRamal.labelY || 0) + dPy;
           }
         }
-      }
 
       (r as any).labelAngle = _firstSegmentAngle((r as any).pts);
       (r as any).totalL = calculateRamalLength((r as any).pts, engine);
@@ -917,7 +1013,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
   }
 }
 
-export function handleDragUp(engine: IPlanoEngineCore): void {
+export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false): void {
   if (engine.marqueeRect) {
     const { x1, y1, x2, y2 } = engine.marqueeRect;
     const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
@@ -925,11 +1021,11 @@ export function handleDragUp(engine: IPlanoEngineCore): void {
     const w = maxX - minX, h = maxY - minY;
     engine.marqueeRect = null;
     if (w < 3 && h < 3) {
-      engine.multiSel = [];
-      engine.selId = null;
-      engine._emitSelect(null);
+      // Click was already handled by selectAt in handleSelectDown
     } else {
-      engine.multiSel = [];
+      if (!isCtrl) {
+        engine.multiSel = [];
+      }
       engine.ramales.forEach(r => {
         let inside = false;
         const lc = engine.toCvs(r.labelX || 0, r.labelY || 0);
@@ -956,15 +1052,19 @@ export function handleDragUp(engine: IPlanoEngineCore): void {
             if (ok) { inside = true; break; }
           }
         }
-        if (inside) engine.multiSel.push(r.id);
+        if (inside && !engine.multiSel.includes(r.id)) engine.multiSel.push(r.id);
       });
       engine.bajantes.forEach(b => {
         const c = engine.toCvs(b.x, b.y);
-        if (c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY) engine.multiSel.push(b.id);
+        if (c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY) {
+          if (!engine.multiSel.includes(b.id)) engine.multiSel.push(b.id);
+        }
       });
       engine.textAnnots.forEach(t => {
         const c = engine.toCvs(t.x, t.y);
-        if (c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY) engine.multiSel.push(t.id);
+        if (c.x >= minX && c.x <= maxX && c.y >= minY && c.y <= maxY) {
+          if (!engine.multiSel.includes(t.id)) engine.multiSel.push(t.id);
+        }
       });
       engine.selId = null;
       engine._emitSelect(null);

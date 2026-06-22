@@ -11,7 +11,6 @@ function loadHidro(): Record<string, any> {
 export default function SanAccesoriosPage() {
   const [tick, setTick] = useState(0);
   const { tramosSan } = useTramos();
-  const tramosSanIds = useMemo(() => new Set(tramosSan.map(t => t.id)), [tramosSan]);
 
   useEffect(() => {
     const handler = () => setTick(t => t + 1);
@@ -25,19 +24,17 @@ export default function SanAccesoriosPage() {
   const tramos = useMemo(() => {
     const hidroData = loadHidro();
     const result = [];
-    for (const [key, entry] of Object.entries(hidroData) as [string, Record<string, any>][]) {
-      if (!key.startsWith('san_')) continue;
-      const tramoId = key.slice(4);
-      if (!tramoId || !tramosSanIds.has(tramoId)) continue;
-      const srcAcc = entry?.accesorios || {};
+    for (const t of tramosSan) {
+      const key = `san_${t.id}_${t.planId}`;
+      const srcAcc = hidroData[key]?.accesorios || {};
       const acc: Record<string, number> = {};
       for (const a of SAN_ACCESORIOS) {
         acc[a.id] = srcAcc[a.id] || 0;
       }
-      result.push({ id: tramoId, accesorios: acc });
+      result.push({ id: t.id, accesorios: acc });
     }
     return result;
-  }, [tick]);
+  }, [tick, tramosSan]);
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>

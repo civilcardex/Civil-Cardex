@@ -69,6 +69,7 @@ import {
   _renumberBajantes as _doRenumberBajantes,
   _renumberMontantes as _doRenumberMontantes,
   _renumberAreas as _doRenumberAreas,
+  calcSanitaryAccessories,
 } from './PlanoEngineNetwork';
 import { PlanoHistory } from './PlanoHistory';
 
@@ -353,6 +354,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
   _markDirty(): void {
     this._dirty = true;
+    if (this.activeNet === 'san' || this.activeNet === 'vent') {
+      calcSanitaryAccessories(this);
+    }
     if (this._onDirtyCb) this._onDirtyCb();
   }
 
@@ -553,7 +557,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       const { x1, y1, x2, y2 } = this.marqueeRect;
       ctx.save();
       ctx.strokeStyle = '#3B82F6';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1 * this.zoom;
       ctx.setLineDash([4, 4]);
       ctx.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
       ctx.fillStyle = 'rgba(59,130,246,0.08)';
@@ -674,7 +678,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     const p = this.toPlane(x, y);
 
     if (this.tool === 'sel') {
-      handleSelectDown(this, x, y);
+      handleSelectDown(this, x, y, (e as MouseEvent).ctrlKey || false);
     } else if (this.tool === 'line') {
       handleLineDown(this, p.x, p.y);
     } else if (this.tool === 'dim') {
@@ -714,12 +718,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   _onMouseUpHandler(e: MouseEvent | TouchEvent): void {
-    void e;
     if (this.panning) {
       this.panning = false;
       this.canv.style.cursor = this.tool === 'pan' ? 'grab' : this.tool === 'sel' ? 'default' : 'crosshair';
     }
-    handleDragUp(this);
+    const isCtrl = (e as MouseEvent).ctrlKey || false;
+    handleDragUp(this, isCtrl);
   }
 
   _onDblClickHandler(e: MouseEvent): void {

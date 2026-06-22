@@ -235,3 +235,94 @@ export function _renumberAreas(engine: IPlanoEngineCore): void {
     a.label = 'AREA' + (i + 1);
   });
 }
+
+export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
+  const planId = engine._loadedPlanId;
+  if (!planId) return;
+
+  const sanRamales = engine.ramales.filter(r => r.net === 'san');
+  const ventRamales = engine.ramales.filter(r => r.net === 'vent');
+  const storageKey = 'tramo_hidro_data_v3';
+  let hidroData: Record<string, any>;
+  try {
+    hidroData = loadFromStorage(storageKey, {}) as Record<string, any>;
+  } catch (e) {
+    hidroData = {};
+  }
+
+  let changed = false;
+
+  for (const r of sanRamales) {
+    let count45 = 0;
+    let countVent = 0;
+
+    // 1. Calculate 45-degree elbows
+    if (r.pts && r.pts.length >= 3) {
+      for (let i = 1; i < r.pts.length - 1; i++) {
+        const p0 = r.pts[i - 1], p1 = r.pts[i], p2 = r.pts[i + 1];
+        const ax = p1[0] - p0[0], ay = p1[1] - p0[1];
+        const bx = p2[0] - p1[0], by = p2[1] - p1[1];
+        const lenA = Math.hypot(ax, ay), lenB = Math.hypot(bx, by);
+        if (lenA > 0 && lenB > 0) {
+          const ux = -ax / lenA, uy = -ay / lenA; // B -> A
+          const vx = bx / lenB, vy = by / lenB;   // B -> C
+          const cosAngle = ux * vx + uy * vy;
+          if (Math.abs(cosAngle + Math.cos(Math.PI / 4)) < 0.05) {
+            count45++;
+          }
+        }
+      }
+    }
+
+    // 2. Calculate vented elbows (codo reventilado)
+    if (r.pts && r.pts.length >= 2) {
+      for (const v of ventRamales) {
+        if (!v.pts || v.pts.length < 2) continue;
+        const end1 = v.pts[0];
+        const end2 = v.pts[v.pts.length - 1];
+        let connected = false;
+
+        for (let i = 0; i < r.pts.length - 1; i++) {
+          const [ax, ay] = r.pts[i];
+          const [bx, by] = r.pts[i+1];
+          const sDx = bx - ax, sDy = by - ay;
+          const sLenSq = sDx * sDx + sDy * sDy;
+          if (sLenSq < 0.0001) continue;
+
+          for (const end of [end1, end2]) {
+            let t = ((end[0] - ax) * sDx + (end[1] - ay) * sDy) / sLenSq;
+            t = Math.max(0, Math.min(1, t));
+            const projX = ax + t * sDx, projY = ay + t * sDy;
+            if (Math.hypot(end[0] - projX, end[1] - projY) < 0.5) {
+              connected = true;
+              break;
+            }
+          }
+          if (connected) break;
+        }
+
+        if (connected) {
+          countVent++;
+        }
+      }
+    }
+
+    const rKey = `san_${r.id}_${planId}`;
+    if (!hidroData[rKey]) hidroData[rKey] = { accesorios: {}, Lh: 0, nSalidas: 0 };
+    if (!hidroData[rKey].accesorios) hidroData[rKey].accesorios = {};
+
+    const acc = hidroData[rKey].accesorios;
+    
+    // Only update if changed
+    if (acc['codo45rc'] !== count45 || acc['codoReventilado'] !== countVent) {
+      if (count45 > 0) acc['codo45rc'] = count45; else delete acc['codo45rc'];
+      if (countVent > 0) acc['codoReventilado'] = countVent; else delete acc['codoReventilado'];
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    saveToStorage(storageKey, hidroData);
+    try { window.dispatchEvent(new Event('storage')); } catch (_) {}
+  }
+}

@@ -71,7 +71,7 @@ export const ACCESORIOS_YEE = [
 ];
 
 export const SAN_ACCESORIOS = [
-  ...ACCESORIOS_HIDRO.filter(a => a.id === 'codo90rm'),
+  ...ACCESORIOS_HIDRO.filter(a => a.id === 'codo90rm' || a.id === 'codo45rc'),
   {id:'codo90rmSube',emoji:'🔩',nombre:'Codo RM 90° sube',icono:'/iconos_accesorios/codo90rm.webp', cat: 'Codos'},
   {id:'codo90rmBaja',emoji:'🔩',nombre:'Codo RM 90° baja',icono:'/iconos_accesorios/codo90rm.webp', cat: 'Codos'},
   {id:'codoReventilado',emoji:'🔩',nombre:'Codo reventilado',icono:'/iconos_accesorios/codo90rl.webp', cat: 'Codos'},
