@@ -119,40 +119,29 @@ export default function AparatosPanel({ activeNet, selElement, planId }: { activ
   }, [plans]);
 
   useEffect(() => {
-    const handleStorage = () => {
-      setCounts(loadAll());
-      setHidroData(loadHidroData());
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
-
-  useEffect(() => {
-    const handleClear = (_e: Event) => {
+    const reloadAll = () => {
       setCounts(loadAll());
       setHidroData(loadHidroData());
       setGasAcc(loadGasAcc());
     };
-    window.addEventListener('aparatos-clear', handleClear);
-    return () => window.removeEventListener('aparatos-clear', handleClear);
+    window.addEventListener('storage', reloadAll);
+    window.addEventListener('aparatos-clear', reloadAll);
+    return () => {
+      window.removeEventListener('storage', reloadAll);
+      window.removeEventListener('aparatos-clear', reloadAll);
+    };
   }, []);
 
-  useEffect(() => { saveAll(counts); }, [counts]);
-  useEffect(() => { saveHidroData(hidroData); }, [hidroData]);
-  useEffect(() => { saveGasAcc(gasAcc); }, [gasAcc]);
+  useEffect(() => {
+    saveAll(counts);
+    saveHidroData(hidroData);
+    saveGasAcc(gasAcc);
+  }, [counts, hidroData, gasAcc]);
 
-useEffect(() => {
-try { writeSanDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console.error('AparatosPanel:', e); }
-}, [counts, plans.length]);
-
-useEffect(() => {
-try { writeHydroDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console.error('AparatosPanel:', e); }
-}, [counts, hidroData, plans.length]);
-
-// También refrescar sync sanitaria cuando cambian datos de tramo (nSalidas)
-useEffect(() => {
-try { writeSanDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console.error('AparatosPanel:', e); }
-}, [hidroData, plans.length]);
+  useEffect(() => {
+    try { writeSanDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console.error('AparatosPanel:', e); }
+    try { writeHydroDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console.error('AparatosPanel:', e); }
+  }, [counts, hidroData, plans.length]);
 
   const netId = activeNet;
   const isGas = netId === GAS_ID;
@@ -166,7 +155,8 @@ try { writeSanDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console
   const items = useMemo(() => {
     if (!unitKey) return [];
     const filtered = APARATOS_DEF.filter(ap => esAplicable(ap, netId, unitKey));
-    const apsField = unitKey === 'ud' ? 'ud' : unitKey === 'uc_af' ? 'ucaf' : unitKey === 'uc_ac' ? 'ucac' : null;
+    const APS_FIELD: Record<string, string> = { ud: 'ud', uc_af: 'ucaf', uc_ac: 'ucac' };
+    const apsField = APS_FIELD[unitKey || ''] || null;
     let result = filtered;
     if (apsField) {
       result = filtered.map(ap => {

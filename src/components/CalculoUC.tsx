@@ -15,15 +15,21 @@ const txt = '#e2e8f0';
 function CalculoUC({ tipo }: CalculoUCProps) {
   const { tramosAf, tramosAc } = useTramos();
   const { aps } = useApparatus();
-  const tramos = tipo === 'af' ? tramosAf : tramosAc;
-  const ucIds = tipo === 'af' ? AF_UC_IDS : AC_UC_IDS;
-  const field = tipo === 'af' ? 'uc_af' : 'uc_ac';
-  const apField = tipo === 'af' ? 'ucaf' : 'ucac';
-  const colorVar = tipo === 'af' ? 'var(--af)' : 'var(--ac)';
-  const clsHeader = tipo === 'af' ? 'af' : 'ac';
-  const icon = tipo === 'af' ? '/iconos_diseno_redes/hidraulica/RAF_Calculo_UC.webp' : '/iconos_diseno_redes/hidraulica/RAC_Calculo_UC.webp';
-  const title = tipo === 'af' ? 'agua fr\u00EDa' : 'agua caliente';
-  const showTotal = tipo === 'af';
+  const TIPO_CFG = {
+    af: {
+      tramos: tramosAf, ucIds: AF_UC_IDS, field: 'uc_af', apField: 'ucaf',
+      colorVar: 'var(--af)', clsHeader: 'af',
+      icon: '/iconos_diseno_redes/hidraulica/RAF_Calculo_UC.webp',
+      title: 'agua fr\u00EDa', showTotal: true,
+    },
+    ac: {
+      tramos: tramosAc, ucIds: AC_UC_IDS, field: 'uc_ac', apField: 'ucac',
+      colorVar: 'var(--ac)', clsHeader: 'ac',
+      icon: '/iconos_diseno_redes/hidraulica/RAC_Calculo_UC.webp',
+      title: 'agua caliente', showTotal: false,
+    },
+  } as const;
+  const { tramos, ucIds, field, apField, colorVar, clsHeader, icon, title, showTotal } = TIPO_CFG[tipo];
 
   const AP = ucIds.map(id => {
     const a = APARATOS_DEF.find(x => x.id === id);

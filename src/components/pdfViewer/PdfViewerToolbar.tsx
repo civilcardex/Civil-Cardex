@@ -24,6 +24,12 @@ export const TOOLS: ToolDef[] = [
   { id: "pan", label: "Mover", ico: "\u270B", key: "Espacio", icoCol: "#10B981", shortcut: "Espacio" },
 ];
 
+export const STATUS: Record<string, { color: string; label: string }> = {
+  saved: { color: '#22c55e', label: '\u2714 Guardado' },
+  saving: { color: '#3b82f6', label: '\u23F3 Guardando...' },
+  error: { color: '#ef4444', label: '\u26A0 Sin guardar' },
+};
+
 const accBtn: React.CSSProperties = {
   padding: "6px 8px", background: "#1e2024", border: "1px solid #3a494a",
   borderRadius: "4px", color: "#b9caca", cursor: "pointer",
@@ -114,9 +120,9 @@ export default function PdfViewerToolbar({
               <span style={{ fontSize: 10, fontWeight: 700, textAlign: "left" }}>Guardar</span>
               <span style={{
                 fontSize: 10, fontWeight: 600, textAlign: "left",
-                color: saveStatus === 'saved' ? '#22c55e' : saveStatus === 'saving' ? '#3b82f6' : '#ef4444',
+                color: STATUS[saveStatus]?.color || STATUS.error.color,
               }}>
-                {saveStatus === 'saved' ? '\u2714 Guardado' : saveStatus === 'saving' ? '\u23F3 Guardando...' : '\u26A0 Sin guardar'}
+                {STATUS[saveStatus]?.label || STATUS.error.label}
               </span>
             </div>
           </button>

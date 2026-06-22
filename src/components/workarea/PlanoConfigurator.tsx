@@ -496,6 +496,8 @@ function PlanoConfiguratorBase({
 
   const diffPct = factorX && factorY && scaleM ? Math.abs(factorX - factorY) / scaleM * 100 : 0;
 
+  const TOAST_BG: Record<string, string> = { err: 'rgba(211,47,47,0.9)', warn: 'rgba(245,158,11,0.9)', ok: 'rgba(14,204,122,0.9)' };
+
   return (
     <div className="fu" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {showProtocolo && <ModalProtocolo onClose={() => setShowProtocolo(false)} />}
@@ -503,7 +505,7 @@ function PlanoConfiguratorBase({
         <div role="alert" style={{
           position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100,
           padding: '6px 14px', fontSize: 11, fontWeight: 600, textAlign: 'center',
-          background: toast.type === 'err' ? 'rgba(211,47,47,0.9)' : toast.type === 'warn' ? 'rgba(245,158,11,0.9)' : 'rgba(14,204,122,0.9)',
+          background: TOAST_BG[toast.type] || TOAST_BG.ok,
           color: '#fff',
         }}>{toast.msg}</div>
       )}

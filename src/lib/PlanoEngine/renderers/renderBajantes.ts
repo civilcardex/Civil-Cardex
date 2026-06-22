@@ -2,6 +2,8 @@ import { NETS } from '../PlanoState';
 import { rotatedRectCorners } from '../Coords';
 import type { IPlanoEngineCore } from '../PlanoEngineTypes';
 
+const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
+
 export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.bajantes.forEach((b: any) => {
     if (engine._hiddenNets.has(b.net)) return;
@@ -204,7 +206,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       const line1 = diamStr ? `${codeStr}  ${diamStr}` : (codeStr || '—');
       
       // Direction text
-      let dirText = b.direccion === 'sube' ? 'Sube' : b.direccion === 'baja' ? 'Baja' : b.direccion === 'continua' ? 'Continua' : '';
+      let dirText = DIR_MAP[b.direccion] || '';
       const hasDir = !!dirText;
       
       ctx.font = `bold ${fsCode}px Geist, monospace`;
@@ -388,7 +390,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       }
       const line1 = diamStr ? `${codeStr}  ${diamStr}` : (codeStr || '—');
 
-      let dirText = ghostDir === 'sube' ? 'Sube' : ghostDir === 'baja' ? 'Baja' : ghostDir === 'continua' ? 'Continua' : '';
+      let dirText = DIR_MAP[ghostDir] || '';
       const hasDir = !!dirText;
 
       ctx.font = `bold ${fsCode}px Geist, monospace`;

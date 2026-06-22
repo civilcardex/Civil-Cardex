@@ -12,10 +12,11 @@ import type {
   PlanoRamalDefaults,
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoEngineTypes';
-import {
-  renderDims, renderTexts, renderAreas, renderActiveArea,
-  renderRamales, renderBajantes, renderGhosts, renderDimGhost, renderActiveRamal,
-} from './renderers';
+import { renderDims, renderDimGhost } from './renderers/renderDimensions';
+import { renderTexts } from './renderers/renderTextAnnotations';
+import { renderAreas, renderActiveArea } from './renderers/renderAreas';
+import { renderBajantes, renderGhosts } from './renderers/renderBajantes';
+import { renderRamales, renderActiveRamal } from './renderers/renderRamales';
 import { snapToSegment, pointInPoly, pointInLabelBox } from './HitTester';
 import { serializeWork, applyWorkData } from './PlanoPersistence';
 import { setupCanvasEvents, teardownCanvasEvents, getCanvasPosition, wrapTouch } from './PlanoEventHandler';

@@ -7,7 +7,7 @@ import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync
 import { loadFromStorage, saveToStorage, saveTrazosToDB, loadTrazosFromDB } from "../services/storageService";
 import { GAS_ACC_KEY } from "../constants/storage-keys";
 import AparatosPanel from "./FixturesPanel";
-import PdfViewerToolbar from "./pdfViewer/PdfViewerToolbar";
+import PdfViewerToolbar, { STATUS } from "./pdfViewer/PdfViewerToolbar";
 import PdfCanvas from "./pdfViewer/PdfCanvas";
 import TramoEditor, { DIAM_DEFAULT_BY_NET } from "./pdfViewer/TramoEditor";
 import PdfViewerNetworkBar from "./pdfViewer/PdfViewerNetworkBar";
@@ -671,9 +671,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
       }}>
         <div style={{
           height: 3, flexShrink: 0, transition: 'background .3s',
-          background: saveStatus === 'saved' ? '#22c55e'
-            : saveStatus === 'saving' ? '#3b82f6'
-            : '#ef4444',
+          background: STATUS[saveStatus]?.color || STATUS.error.color,
         }} />
         <PdfViewerToolbar
           tool={tool}
