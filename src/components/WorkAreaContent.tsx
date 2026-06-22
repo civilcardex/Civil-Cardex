@@ -18,7 +18,7 @@ import BombaARDesign from "./BombaARDesign";
 import GasDesign from "./GasDesign";
 import PressureEquipmentDesign from "./PressureEquipmentDesign";
 import BaseDatos from "./DesignParameters";
-import Normativa from "./Regulations";
+import Normativa from "./Regulations/Regulations";
 import InfoTab from "./workarea/InfoTab";
 import PlanosTab from "./workarea/PlanosTab";
 import { IsometriaTab } from "./workarea/IsometriaTab";

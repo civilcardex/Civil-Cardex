@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { getCurrentUser } from '../services/authService';
+import { getCurrentUser } from '../context/AuthContext';
 
 function Navbar() {
   const location = useLocation();

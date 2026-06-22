@@ -1,8 +1,6 @@
 import { useRef, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import Navbar from './Navbar';
-import Footer from './Footer';
-import MobileOnlyMessage from './MobileOnlyMessage';
 
 const MODULE_NAMES: Record<string, string> = {
   civilflow: 'CivilFlow',
@@ -44,11 +42,26 @@ export default function ModulePageLayout({ title: _title, description: _descript
     <>
       <script ref={breadRef} type="application/ld+json" />
       <Navbar />
-      <MobileOnlyMessage />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background p-4 lg:hidden" style={{ background: '#0c0e12' }}>
+        <div className="text-center">
+          <span className="material-symbols-outlined text-4xl mb-4 text-on-surface" aria-hidden="true">desktop_windows</span>
+          <p className="text-lg font-semibold text-on-surface" style={{ fontFamily: 'Geist, sans-serif' }}>Disponible solo en escritorio</p>
+          <p className="text-sm text-on-surface-variant mt-2" style={{ fontFamily: 'Geist, sans-serif' }}>Para una experiencia completa, accede desde tu computador</p>
+        </div>
+      </div>
       <main id="main-content" className={`flex-grow pt-16 ${mainClassName}`} style={{ background: '#111317', minHeight: '100vh' }}>
         {children}
       </main>
-      <Footer />
+      <footer className="border-t border-outline-variant" style={{ background: '#0c0e12' }}>
+        <div className="flex flex-col md:flex-row justify-between items-center px-6 lg:px-8 py-8 w-full gap-4">
+          <span className="text-[11px] tracking-[0.08em] font-bold text-primary uppercase" style={{ fontFamily: 'Geist, monospace' }}>CivilCore</span>
+          <div className="flex flex-wrap items-center justify-center gap-6">
+            <Link to="/docs" className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant hover:text-primary uppercase transition-colors" style={{ fontFamily: 'Geist, monospace' }}>API</Link>
+            <Link to="/docs" className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant hover:text-primary uppercase transition-colors" style={{ fontFamily: 'Geist, monospace' }}>SDK</Link>
+          </div>
+          <span className="text-[13px] text-on-surface-variant uppercase" style={{ fontFamily: 'Geist, monospace' }}>© 2026 CivilCore Engineering. Todos los derechos reservados.</span>
+        </div>
+      </footer>
     </>
   );
 }

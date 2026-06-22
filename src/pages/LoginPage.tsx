@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FormField from '../components/FormField';
-import { signIn } from '../services/authService';
+import { useAuth } from '../context/AuthContext';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 function LoginPage() {
@@ -12,6 +12,7 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   usePageMeta('Iniciar Sesión', 'Acceda a su cuenta de CivilCore para gestionar proyectos de ingeniería civil, diseño hidrosanitario y memorias de cálculo.');
 
   const handleSubmit = async (e: React.FormEvent) => {

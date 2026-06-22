@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FormField from '../components/FormField';
-import { signUp } from '../services/authService';
+import { useAuth } from '../context/AuthContext';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 function RegisterPage() {
@@ -13,6 +13,7 @@ function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [aceptaTerminos, setAceptaTerminos] = useState(false);
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   usePageMeta('Registro', 'Cree su cuenta en CivilCore para acceder a herramientas de diseño hidrosanitario, estructural y gestión de proyectos.');
 
   const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [field]: e.target.value });
