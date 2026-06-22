@@ -71,12 +71,12 @@ function ActiveNetsCard({ redes, setRedes, netColors, setNetColors }: { redes: S
                 <button key={r.id} disabled={!isEditing || (isVent && !sanOn)} onClick={() => { if (isVent && !sanOn) return; const n = new Set(redes); on ? n.delete(r.id) : n.add(r.id); setRedes(n); }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 3,
-                    padding: isVent ? '2px 5px 2px 14px' : '3px 5px',
+                    padding: isVent ? '2px 5px 2px 12px' : '3px 5px',
+                    marginLeft: isVent ? 10 : 0,
                     cursor: isEditing && (!isVent || sanOn) ? 'pointer' : 'default',
-                    background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left',
+                    background: 'var(--bg3)', borderTop: '1px solid var(--line)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)', borderLeft: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: isVent ? 'calc(100% - 10px)' : '100%', font: 'inherit', color: 'inherit', textAlign: 'left',
                     opacity: (isEditing && (!isVent || sanOn)) ? 1 : 0.5
                   }}>
-                  {isVent && <span style={{ fontSize: 11, color: 'var(--txt3)', marginRight: 1, fontFamily: 'monospace', lineHeight: '1', letterSpacing: -1 }}>╰─</span>}
                   {r.icoImg ? <img src={r.icoImg} alt="" width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle' }} loading="lazy" /> : <span style={{ fontSize: 13 }}>{r.ico}</span>}
                   <span style={{ fontWeight: 600, fontSize: 12, color: on ? currentColor : 'var(--txt2)', whiteSpace: 'nowrap', flex: 1 }}>{r.lbl}</span>
                   <input type="color" value={currentColor} disabled={!isEditing || (isVent && !sanOn)}
