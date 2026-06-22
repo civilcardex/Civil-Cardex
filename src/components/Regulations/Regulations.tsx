@@ -1,10 +1,15 @@
-import { useState } from "react";
+import { useState, type ReactNode, type Key } from "react";
 import { useProject } from "../../context/ProjectContext";
 import { FILTROS_NORM, CRIT0 } from "../../constants";
-import NormaCard from "./RegulationCard";
 import { TabBtn, FilterBtn } from "./shared";
 import { SECCIONES } from "./regulationsData";
-import { NTC1500, RAS2000, NTC3728, NSR10, NFPA13, NTC3096, TablasRef } from "./sections";
+import { NTC1500 } from "./sections/NTC1500";
+import { RAS2000 } from "./sections/RAS2000";
+import { NTC3728 } from "./sections/NTC3728";
+import { NSR10 } from "./sections/NSR10";
+import { NFPA13 } from "./sections/NFPA13";
+import { NTC3096 } from "./sections/NTC3096";
+import { TablasRef } from "./sections/TablasRef";
 
 export default function Normativa() {
   const [filtro, setFiltro] = useState("todos");
@@ -172,4 +177,40 @@ function ContenidoSeccion({ id }: { id: string }) {
     default:
       return null;
   }
+}
+
+interface NormaCardProps {
+  key?: Key;
+  id: string;
+  titulo: string;
+  subt: string;
+  isOpen: boolean;
+  onToggle: (id: string) => void;
+  children: ReactNode;
+}
+
+function NormaCard({ id, titulo, subt, isOpen, onToggle, children }: NormaCardProps) {
+  return (
+    <div className={`card${isOpen ? ' sec-open' : ''}`}
+      style={{ borderTop: '1px solid var(--line)', borderRadius: 0 }}>
+      <button className="card-h" onClick={() => onToggle(id)}
+        aria-expanded={isOpen} aria-controls={`reg-card-content-${id}`}
+        style={{
+          cursor: "pointer", userSelect: "none", width: '100%',
+          border: 'none', background: 'transparent', font: 'inherit', color: 'inherit',
+          textAlign: 'inherit',
+        }}>
+        <div>
+          <h3 className="card-t" style={{ fontSize: 15, color: 'var(--txt)' }}>{titulo}</h3>
+          <span className="td-mono" style={{ display:"block", fontSize:11, marginTop:2 }}>{subt}</span>
+        </div>
+        <span style={{ fontSize:14 }}>{isOpen ? '▲' : '▼'}</span>
+      </button>
+      {isOpen && (
+        <div className="card-body-wrap" id={`reg-card-content-${id}`}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
 }

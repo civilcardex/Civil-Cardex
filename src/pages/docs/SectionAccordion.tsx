@@ -1,43 +1,5 @@
 import React, { type ReactNode } from 'react'
 
-export function FormatText({ children }: { children?: ReactNode }) {
-  return (
-    <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
-      {children}
-    </div>
-  )
-}
-
-export function TableWrapper({ children }: { children?: ReactNode }) {
-  return (
-    <div className="overflow-x-auto my-2">
-      <table className="w-full text-[12px] font-mono border-collapse">
-        <tbody>{children}</tbody>
-      </table>
-    </div>
-  )
-}
-
-export function TableHeader({ children }: { children?: ReactNode }) {
-  return (
-    <th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">
-      {children}
-    </th>
-  )
-}
-
-export function TableCell({ children }: { children?: ReactNode }) {
-  return (
-    <td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">
-      {children}
-    </td>
-  )
-}
-
-export function TableRow({ children }: { children?: ReactNode }) {
-  return <tr>{children}</tr>
-}
-
 interface SectionAccordionProps {
   section: {
     title: string

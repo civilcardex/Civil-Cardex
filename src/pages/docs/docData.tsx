@@ -1,5 +1,4 @@
 import React from 'react'
-import { FormatText as F, TableWrapper as T, TableHeader as Th, TableCell as Td, TableRow as Tr } from './SectionAccordion'
 
 export const docData = {
   hidraulica: {
@@ -12,9 +11,9 @@ export const docData = {
         body: (
           <div className="space-y-3">
             <p>El número de Froude (Fr) es adimensional y relaciona las fuerzas de inercia con las de gravedad en un fluido.</p>
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               Fr = v / √(g · DH)
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">v</span><span>velocidad del agua (m/s)</span>
@@ -40,13 +39,13 @@ export const docData = {
         body: (
           <div className="space-y-3">
             <p>Flujo a superficie libre según Manning:</p>
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               V = (1/n) · R<sub>h</sub><sup>2/3</sup> · √S
-            </F>
+            </div>
             <p className="text-[13px]">Caudal:</p>
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               Q = (1/n) · A · R<sub>h</sub><sup>2/3</sup> · √S
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">V</span><span>velocidad (m/s)</span>
@@ -64,9 +63,9 @@ export const docData = {
         body: (
           <div className="space-y-3">
             <p>Fuerza que el fluido ejerce sobre el fondo del canal, responsable del arrastre de partículas sedimentadas.</p>
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               T<sub>0</sub> = &gamma; · R · S
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">T<sub>0</sub></span><span>tensión tractiva (kg/m²)</span>
@@ -87,27 +86,27 @@ export const docData = {
             <p>Para tuberías parcialmente llenas, las relaciones de velocidad y caudal dependen de Y/D:</p>
             <div className="text-[13px]">
               <span className="font-semibold text-primary">Relación v/V (velocidad real / tubo lleno):</span>
-              <F>
+              <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
                 0.00 &lt; q/Q &le; 0.06  →  v/V = 10<sup>(0.0298 + 0.2910 · log(q/Q))</sup><br/>
                 0.06 &lt; q/Q &le; 0.26  →  v/V = 10<sup>(0.0138 + 0.2860 · log(q/Q))</sup><br/>
                 0.26 &lt; q/Q &le; 0.91  →  v/V = 10<sup>(0.0218 + 0.2900 · log(q/Q))</sup>
-              </F>
+              </div>
             </div>
             <div className="text-[13px]">
               <span className="font-semibold text-primary">Relación h/D (calado / diámetro):</span>
-              <F>
+              <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
                 0.00 &le; q/Q &lt; 0.11  →  h/D = 0.3827 + 0.0645 · ln(q/Q)<br/>
                 0.11 &le; q/Q &lt; 0.21  →  h/D = 0.6003 + 0.1547 · ln(q/Q)<br/>
                 0.21 &le; q/Q &lt; 0.91  →  h/D = 0.225 + 0.667 · (q/Q)
-              </F>
+              </div>
             </div>
             <div className="text-[13px]">
               <span className="font-semibold text-primary">Ángulo &alpha; (radianes):</span>
-              <F>&alpha; = 2 · arccos(1 − 2 · h/D)</F>
+              <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">&alpha; = 2 · arccos(1 − 2 · h/D)</div>
             </div>
             <div className="text-[13px]">
               <span className="font-semibold text-primary">Relación R<sub>h</sub>/D:</span>
-              <F>R<sub>h</sub>/D = ¼ · (1 − sen(&alpha;) / &alpha;)</F>
+              <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">R<sub>h</sub>/D = ¼ · (1 − sen(&alpha;) / &alpha;)</div>
             </div>
           </div>
         ),
@@ -117,9 +116,9 @@ export const docData = {
         body: (
           <div className="space-y-3">
             <p>Para canales de sección circular:</p>
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               S<sub>c</sub> = (4.579 &times; 10<sup>−4</sup>) / d<sup>3</sup>
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">S<sub>c</sub></span><span>pendiente crítica</span>
@@ -138,30 +137,30 @@ export const docData = {
           <div className="space-y-4">
             <div>
               <span className="text-[13px] font-semibold text-cyan-400">Rectangular</span>
-              <F>
+              <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
                 A = b · y<br/>
                 P = b + 2 · y<br/>
                 R<sub>h</sub> = (b · y) / (b + 2 · y)<br/>
                 T = b
-              </F>
+              </div>
             </div>
             <div>
               <span className="text-[13px] font-semibold text-yellow-400">Trapezoidal</span>
-              <F>
+              <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
                 A = (b + z · y) · y<br/>
                 P = b + 2 · y · &radic;(1 + z²)<br/>
                 R<sub>h</sub> = ((b + z · y) · y) / (b + 2 · y · &radic;(1 + z²))<br/>
                 T = b + 2 · z · y
-              </F>
+              </div>
             </div>
             <div>
               <span className="text-[13px] font-semibold text-green-400">Circular (parcialmente lleno)</span>
-              <F>
+              <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
                 A = (D²/4) · (&theta; − sen(&theta;)) / 2<br/>
                 P = D · &theta; / 2<br/>
                 R<sub>h</sub> = D/4 · (1 − sen(&theta;) / &theta;)<br/>
                 T = D · sen(&theta;/2)
-              </F>
+              </div>
               <div className="text-[11px] text-on-surface-variant ml-4">con &theta; en radianes</div>
             </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
@@ -191,18 +190,18 @@ export const docData = {
         body: (
           <div className="space-y-3">
             <p>Método empírico para estimar el flujo máximo probable en sistemas de drenaje sanitario según NTC 1500.</p>
-            <T>
-              <Tr><Th>Aparato</Th><Th>Control</Th><Th>UD</Th></Tr>
-              <Tr><Td>Lavamanos</Td><Td>Llave</Td><Td>2</Td></Tr>
-              <Tr><Td>Inodoro</Td><Td>Tanque</Td><Td>4</Td></Tr>
-              <Tr><Td>Ducha</Td><Td>Válvula mezcla</Td><Td>2</Td></Tr>
-              <Tr><Td>Lavaplatos</Td><Td>Grifería</Td><Td>2</Td></Tr>
-              <Tr><Td>Tina</Td><Td>Válvula mezcla</Td><Td>2</Td></Tr>
-              <Tr><Td>Lavadora</Td><Td>—</Td><Td>4</Td></Tr>
-              <Tr><Td>Lavadero</Td><Td>—</Td><Td>2</Td></Tr>
-              <Tr><Td>Orinal / Urinal</Td><Td>Tanque</Td><Td>5</Td></Tr>
-              <Tr><Td>Sanitario fluxómetro</Td><Td>Fluxómetro</Td><Td>6</Td></Tr>
-            </T>
+            <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+              <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Aparato</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Control</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">UD</th></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Lavamanos</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Llave</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Inodoro</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Tanque</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">4</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Ducha</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Válvula mezcla</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Lavaplatos</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Grifería</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Tina</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Válvula mezcla</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Lavadora</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">—</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">4</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Lavadero</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">—</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Orinal / Urinal</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Tanque</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">5</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Sanitario fluxómetro</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Fluxómetro</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">6</td></tr>
+            </tbody></table></div>
           </div>
         ),
       },
@@ -211,15 +210,15 @@ export const docData = {
         body: (
           <div className="space-y-3">
             <p>Factor de simultaneidad y caudal de diseño por el método de Hunter:</p>
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               K = 1 / &radic;(N − 1) &nbsp;&nbsp; (N &gt; 1)<br/>
               K = 1 &nbsp;&nbsp; (N = 1)
-            </F>
-            <F>
+            </div>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               Q = K · Q<sub>UD</sub><br/><br/>
               Q<sub>UD</sub> = 0.1163 · UD<sup>0.6875</sup> &nbsp;&nbsp; (UD &lt; 240)<br/>
               Q<sub>UD</sub> = 0.074 · UD<sup>0.7504</sup> &nbsp;&nbsp; (UD &ge; 240)
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">K</span><span>factor de simultaneidad</span>
@@ -237,12 +236,12 @@ export const docData = {
         body: (
           <div className="space-y-3">
             <p>Diámetro de bajante por Manning:</p>
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               D = ((Q · n) / (0.312 · &radic;S))<sup>3/8</sup> &times; 1000 / 25.4 &nbsp;&nbsp;[pulg]
-            </F>
-            <F>
+            </div>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               Q = 0.312 · (D/1000)<sup>8/3</sup> · &radic;S / n
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">D</span><span>diámetro (pulgadas)</span>
@@ -265,12 +264,12 @@ export const docData = {
             <div className="text-[12px] text-on-surface-variant border-l-2 border-outline-variant pl-3 mb-2">
               Diámetro mínimo NTC 1500: 1&frac12;" (38 mm)
             </div>
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               Q<sub>aire</sub> = 1000 · V<sub>t</sub> · (&pi;/4) · D² · (17/24)
-            </F>
-            <F>
+            </div>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               D<sub>vent</sub> = ((Q<sub>aire</sub> · n) / (1.754 · S<sup>5/3</sup>))<sup>3/8</sup>
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">Q<sub>aire</sub></span><span>caudal de aire requerido (m³/s)</span>
@@ -295,9 +294,9 @@ export const docData = {
         body: (
           <div className="space-y-3">
             <p>El caudal de Aguas lluvias se calcula según RAS 2000:</p>
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               Q = (C · I · A) / 360
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">Q</span><span>caudal de diseño (m³/s)</span>
@@ -311,16 +310,16 @@ export const docData = {
       {
         title: 'Coeficiente de escorrentía C',
         body: (
-          <T>
-            <Tr><Th>Tipo de superficie</Th><Th>C</Th></Tr>
-            <Tr><Td>Cubierta impermeable</Td><Td>0.95–1.00</Td></Tr>
-            <Tr><Td>Cubierta metálica</Td><Td>0.95–1.00</Td></Tr>
-            <Tr><Td>Teja / Placa concreto</Td><Td>0.85–0.95</Td></Tr>
-            <Tr><Td>Jardines / Áreas verdes</Td><Td>0.10–0.25</Td></Tr>
-            <Tr><Td>Zonas pavimentadas</Td><Td>0.70–0.95</Td></Tr>
-            <Tr><Td>Césped / Suelo arenoso</Td><Td>0.05–0.10</Td></Tr>
-            <Tr><Td>Césped / Suelo arcilloso</Td><Td>0.15–0.25</Td></Tr>
-          </T>
+          <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+            <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Tipo de superficie</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">C</th></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Cubierta impermeable</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.95–1.00</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Cubierta metálica</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.95–1.00</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Teja / Placa concreto</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.85–0.95</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Jardines / Áreas verdes</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.10–0.25</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Zonas pavimentadas</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.70–0.95</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Césped / Suelo arenoso</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.05–0.10</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Césped / Suelo arcilloso</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.15–0.25</td></tr>
+          </tbody></table></div>
         ),
       },
       {
@@ -328,13 +327,13 @@ export const docData = {
         body: (
           <div className="space-y-3">
             <p>Diámetro de bajante de Aguas lluvias:</p>
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               D = ((Q · n) / (1.754 · S<sup>5/3</sup>))<sup>3/8</sup> &times; 1000 &nbsp;&nbsp;[mm]
-            </F>
+            </div>
             <p className="text-[13px]">Canal rectangular — caudal máximo:</p>
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               Q<sub>max</sub> = (1/n) · A · R<sub>h</sub><sup>2/3</sup> · √S
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">D</span><span>diámetro de bajante (mm)</span>
@@ -361,16 +360,16 @@ export const docData = {
         body: (
           <div className="space-y-3">
             <p>Unidades de Consumo para suministro de agua según NTC 1500:</p>
-            <T>
-              <Tr><Th>Aparato</Th><Th>UC AF</Th><Th>UC AC</Th><Th>UD</Th></Tr>
-              <Tr><Td>Inodoro tanque</Td><Td>2.2</Td><Td>—</Td><Td>4</Td></Tr>
-              <Tr><Td>Lavamanos</Td><Td>0.5</Td><Td>0.5</Td><Td>2</Td></Tr>
-              <Tr><Td>Ducha</Td><Td>1.0</Td><Td>1.0</Td><Td>2</Td></Tr>
-              <Tr><Td>Lavaplatos</Td><Td>1.0</Td><Td>1.0</Td><Td>2</Td></Tr>
-              <Tr><Td>Tina</Td><Td>1.0</Td><Td>1.0</Td><Td>2</Td></Tr>
-              <Tr><Td>Lavadora</Td><Td>1.0</Td><Td>—</Td><Td>4</Td></Tr>
-              <Tr><Td>Lavadero</Td><Td>0.75</Td><Td>0.75</Td><Td>2</Td></Tr>
-            </T>
+            <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+              <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Aparato</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">UC AF</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">UC AC</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">UD</th></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Inodoro tanque</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2.2</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">—</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">4</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Lavamanos</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.5</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.5</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Ducha</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1.0</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1.0</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Lavaplatos</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1.0</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1.0</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Tina</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1.0</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1.0</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Lavadora</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1.0</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">—</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">4</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Lavadero</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.75</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.75</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2</td></tr>
+            </tbody></table></div>
           </div>
         ),
       },
@@ -378,9 +377,9 @@ export const docData = {
         title: 'Hazen-Williams (pérdidas)',
         body: (
           <div className="space-y-3">
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               h<sub>f</sub> = (10.67 · L · Q<sup>1.852</sup>) / (C<sup>1.852</sup> · D<sup>4.87</sup>)
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">h<sub>f</sub></span><span>pérdida por fricción (m)</span>
@@ -406,14 +405,14 @@ export const docData = {
         body: (
           <div className="space-y-3">
             <p className="font-semibold text-[13px]">Presiones mínimas por aparato (NTC 1500):</p>
-            <T>
-              <Tr><Th>Aparato</Th><Th>Min (m.c.a.)</Th><Th>Max (m.c.a.)</Th></Tr>
-              <Tr><Td>Inodoro tanque</Td><Td>0.71</Td><Td>14.10</Td></Tr>
-              <Tr><Td>Lavamanos</Td><Td>0.51</Td><Td>5.63</Td></Tr>
-              <Tr><Td>Ducha</Td><Td>1.02</Td><Td>5.63</Td></Tr>
-              <Tr><Td>Lavaplatos</Td><Td>0.51</Td><Td>5.63</Td></Tr>
-              <Tr><Td>Tina</Td><Td>0.51</Td><Td>14.10</Td></Tr>
-            </T>
+            <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+              <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Aparato</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Min (m.c.a.)</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Max (m.c.a.)</th></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Inodoro tanque</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.71</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">14.10</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Lavamanos</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.51</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">5.63</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Ducha</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1.02</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">5.63</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Lavaplatos</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.51</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">5.63</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Tina</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.51</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">14.10</td></tr>
+            </tbody></table></div>
             <div className="text-[12px] text-on-surface-variant border-l-2 border-outline-variant pl-3">
               Velocidad recomendada: 0.60 m/s – 3.00 m/s · Máxima absoluta: 5.00 m/s
             </div>
@@ -438,13 +437,13 @@ export const docData = {
               <li>Recirculación opcional si L &gt; 15 m</li>
             </ul>
             <p className="text-[13px] font-semibold mt-2">Materiales comunes:</p>
-            <T>
-              <Tr><Th>Material</Th><Th>T max</Th><Th>Norma</Th></Tr>
-              <Tr><Td>CPVC</Td><Td>82 °C</Td><Td>RDE 11</Td></Tr>
-              <Tr><Td>Cobre</Td><Td>100 °C</Td><Td>Soldable</Td></Tr>
-              <Tr><Td>PP-R</Td><Td>70–90 °C</Td><Td>Tipo 3</Td></Tr>
-              <Tr><Td>PEX</Td><Td>60–80 °C</Td><Td>Tipo A/B/C</Td></Tr>
-            </T>
+            <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+              <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Material</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">T max</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Norma</th></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">CPVC</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">82 °C</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">RDE 11</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Cobre</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">100 °C</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Soldable</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">PP-R</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">70–90 °C</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Tipo 3</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">PEX</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">60–80 °C</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Tipo A/B/C</td></tr>
+            </tbody></table></div>
           </div>
         ),
       },
@@ -452,14 +451,14 @@ export const docData = {
         title: 'Pérdidas de calor y recirculación',
         body: (
           <div className="space-y-3">
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               Q<sub>perd</sub> = U · A · (T<sub>m</sub> − T<sub>a</sub>)
-            </F>
+            </div>
             <div className="text-[13px]">
               <span className="font-semibold">Caudal de recirculación:</span>
-              <F>
+              <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
                 Q<sub>rec</sub> = Q<sub>perd</sub> / (c<sub>p</sub> · &Delta;T)
-              </F>
+              </div>
             </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
@@ -490,9 +489,9 @@ export const docData = {
         body: (
           <div className="space-y-3">
             <p>Fórmula de Renouard para redes de baja presión (NTC 3728):</p>
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               &Delta;P = 48620 · K · L · Q<sup>1.82</sup> / (P<sub>atm</sub> · D<sup>4.82</sup>)
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">&Delta;P</span><span>pérdida de presión (Pa)</span>
@@ -511,28 +510,28 @@ export const docData = {
       {
         title: 'Factor de simultaneidad',
         body: (
-          <T>
-            <Tr><Th>N° aparatos</Th><Th>Factor fs</Th></Tr>
-            <Tr><Td>1–2</Td><Td>1.00</Td></Tr>
-            <Tr><Td>3–5</Td><Td>0.80</Td></Tr>
-            <Tr><Td>6–10</Td><Td>0.70</Td></Tr>
-            <Tr><Td>11–20</Td><Td>0.60</Td></Tr>
-            <Tr><Td>&gt; 20</Td><Td>0.50</Td></Tr>
-          </T>
+          <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+            <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">N° aparatos</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Factor fs</th></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1–2</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1.00</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">3–5</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.80</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">6–10</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.70</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">11–20</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.60</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&gt; 20</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.50</td></tr>
+          </tbody></table></div>
         ),
       },
       {
         title: 'Materiales para gas',
         body: (
-          <T>
-            <Tr><Th>Material</Th><Th>Diámetro típico</Th><Th>K</Th></Tr>
-            <Tr><Td>PE al PE ¾"</Td><Td>20 mm</Td><Td>49</Td></Tr>
-            <Tr><Td>PE al PE 1"</Td><Td>25 mm</Td><Td>49</Td></Tr>
-            <Tr><Td>Acero Galv ½"</Td><Td>12.7 mm</Td><Td>57.5</Td></Tr>
-            <Tr><Td>Acero Galv ¾"</Td><Td>19 mm</Td><Td>57.5</Td></Tr>
-            <Tr><Td>Cobre Rigido ½"</Td><Td>10.9 mm</Td><Td>54.2</Td></Tr>
-            <Tr><Td>Cobre Rigido ¾"</Td><Td>17.4 mm</Td><Td>54.2</Td></Tr>
-          </T>
+          <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+            <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Material</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Diámetro típico</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">K</th></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">PE al PE ¾"</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">20 mm</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">49</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">PE al PE 1"</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">25 mm</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">49</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Acero Galv ½"</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">12.7 mm</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">57.5</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Acero Galv ¾"</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">19 mm</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">57.5</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Cobre Rigido ½"</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">10.9 mm</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">54.2</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Cobre Rigido ¾"</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">17.4 mm</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">54.2</td></tr>
+          </tbody></table></div>
         ),
       },
     ],
@@ -546,9 +545,9 @@ export const docData = {
         title: 'Potencia de bomba',
         body: (
           <div className="space-y-3">
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               HP = (Q · H<sub>m</sub>) / (76 · &eta;)
-            </F>
+            </div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">HP</span><span>potencia (HP) — 1 HP = 0.746 kW</span>
               <span className="font-semibold text-primary">Q</span><span>caudal (L/min)</span>
@@ -556,9 +555,9 @@ export const docData = {
               <span className="font-semibold text-primary">&eta;</span><span>eficiencia de la bomba (decimal)</span>
             </div>
             <p className="text-[13px] mt-2 font-semibold">Altura manométrica total:</p>
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               H<sub>m</sub> = H<sub>s</sub> + H<sub>i</sub> + h<sub>f,s</sub> + h<sub>f,i</sub>
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">H<sub>s</sub></span><span>altura de succión (m)</span>
@@ -573,9 +572,9 @@ export const docData = {
         title: 'NPSH',
         body: (
           <div className="space-y-3">
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               NPSH<sub>disp</sub> = (P<sub>atm</sub> − P<sub>v</sub>) / (&rho; · g) − h<sub>f,s</sub>
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">NPSH<sub>disp</sub></span><span>carga neta de succión disponible (m)</span>
@@ -595,9 +594,9 @@ export const docData = {
         title: 'Tanque de reserva',
         body: (
           <div className="space-y-3">
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               V = Población · Dotación · F<sub>reserva</sub>
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">V</span><span>volumen del tanque (L)</span>
@@ -605,13 +604,13 @@ export const docData = {
               <span className="font-semibold text-primary">Dotación</span><span>consumo diario por persona (L/hab/dia)</span>
               <span className="font-semibold text-primary">F<sub>reserva</sub></span><span>factor de reserva (usualmente 1.5–2.0)</span>
             </div>
-            <T>
-              <Tr><Th>Tipo de uso</Th><Th>Dotación (L/hab/dia)</Th></Tr>
-              <Tr><Td>Residencial</Td><Td>150–200</Td></Tr>
-              <Tr><Td>Hotel</Td><Td>250–400</Td></Tr>
-              <Tr><Td>Comercial</Td><Td>80–120</Td></Tr>
-              <Tr><Td>Industrial</Td><Td>100–200</Td></Tr>
-            </T>
+            <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+              <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Tipo de uso</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Dotación (L/hab/dia)</th></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Residencial</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">150–200</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Hotel</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">250–400</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Comercial</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">80–120</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Industrial</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">100–200</td></tr>
+            </tbody></table></div>
             <div className="text-[12px] text-on-surface-variant">
               Relación L/A: 2:1 a 4:1 · Altura: 1.5–3.0 m
             </div>
@@ -631,9 +630,9 @@ export const docData = {
               <div className="bg-surface-container-low p-2 rounded">Arranques max: 6/hora</div>
               <div className="bg-surface-container-low p-2 rounded">Eficiencia: 60%</div>
             </div>
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               Q<sub>m</sub> = (q · N) / 1440 &nbsp;&nbsp;[L/min]
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">Q<sub>m</sub></span><span>caudal medio (L/min)</span>
@@ -653,69 +652,69 @@ export const docData = {
       {
         title: 'Manning — coeficientes n',
         body: (
-          <T>
-            <Tr><Th>Material</Th><Th>n</Th></Tr>
-            <Tr><Td>PVC sanitario</Td><Td>0.009</Td></Tr>
-            <Tr><Td>PVC presión</Td><Td>0.009</Td></Tr>
-            <Tr><Td>Hierro fundido</Td><Td>0.013</Td></Tr>
-            <Tr><Td>Concreto</Td><Td>0.013</Td></Tr>
-            <Tr><Td>Acero galvanizado</Td><Td>0.015</Td></Tr>
-            <Tr><Td>Cobre</Td><Td>0.013</Td></Tr>
-            <Tr><Td>Gres cerámico</Td><Td>0.010</Td></Tr>
-            <Tr><Td>PE</Td><Td>0.009</Td></Tr>
-          </T>
+          <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+            <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Material</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">n</th></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">PVC sanitario</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.009</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">PVC presión</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.009</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Hierro fundido</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.013</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Concreto</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.013</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Acero galvanizado</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.015</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Cobre</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.013</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Gres cerámico</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.010</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">PE</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">0.009</td></tr>
+          </tbody></table></div>
         ),
       },
       {
         title: 'Verificaciones sanitarias',
         body: (
-          <T>
-            <Tr><Th>Parámetro</Th><Th>Condición</Th><Th>Ref.</Th></Tr>
-            <Tr><Td>Pendiente min (2–6")</Td><Td>&ge; 2% (20 mm/m)</Td><Td>NTC 1500 8.4.1</Td></Tr>
-            <Tr><Td>Pendiente min (8"+ )</Td><Td>&ge; 0.5% (5 mm/m)</Td><Td>NTC 1500 8.4.1</Td></Tr>
-            <Tr><Td>Velocidad mínima</Td><Td>&ge; 0.60 m/s</Td><Td>NTC 1500</Td></Tr>
-            <Tr><Td>Velocidad máxima</Td><Td>&le; 5.00 m/s</Td><Td>NTC 1500</Td></Tr>
-            <Tr><Td>Fuerza tractiva min</Td><Td>&ge; 0.10 kg/m²</Td><Td>NTC 1500</Td></Tr>
-            <Tr><Td>Relleno sobre tubería</Td><Td>&ge; 0.30 m</Td><Td>NTC 1500</Td></Tr>
-          </T>
+          <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+            <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Parámetro</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Condición</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Ref.</th></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Pendiente min (2–6")</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&ge; 2% (20 mm/m)</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 1500 8.4.1</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Pendiente min (8"+ )</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&ge; 0.5% (5 mm/m)</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 1500 8.4.1</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Velocidad mínima</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&ge; 0.60 m/s</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 1500</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Velocidad máxima</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&le; 5.00 m/s</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 1500</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Fuerza tractiva min</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&ge; 0.10 kg/m²</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 1500</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Relleno sobre tubería</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&ge; 0.30 m</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 1500</td></tr>
+          </tbody></table></div>
         ),
       },
       {
         title: 'Verificaciones redes de agua',
         body: (
-          <T>
-            <Tr><Th>Parámetro</Th><Th>Condición</Th><Th>Ref.</Th></Tr>
-            <Tr><Td>Velocidad máxima (rec.)</Td><Td>&le; 3.00 m/s</Td><Td>RAS 2000</Td></Tr>
-            <Tr><Td>Velocidad máxima abs.</Td><Td>&le; 5.00 m/s</Td><Td>RAS 2000</Td></Tr>
-            <Tr><Td>Presión estática máx</Td><Td>&le; 50 m.c.a.</Td><Td>NTC 1500</Td></Tr>
-            <Tr><Td>Presión dinámica mín</Td><Td>&ge; 3.00 m.c.a.</Td><Td>NTC 1500</Td></Tr>
-          </T>
+          <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+            <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Parámetro</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Condición</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Ref.</th></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Velocidad máxima (rec.)</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&le; 3.00 m/s</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">RAS 2000</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Velocidad máxima abs.</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&le; 5.00 m/s</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">RAS 2000</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Presión estática máx</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&le; 50 m.c.a.</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 1500</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Presión dinámica mín</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&ge; 3.00 m.c.a.</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 1500</td></tr>
+          </tbody></table></div>
         ),
       },
       {
         title: 'Verificaciones red de gas',
         body: (
-          <T>
-            <Tr><Th>Parámetro</Th><Th>Condición</Th><Th>Ref.</Th></Tr>
-            <Tr><Td>&Delta;P máximo</Td><Td>&le; 9.81 mbar</Td><Td>NTC 3728</Td></Tr>
-            <Tr><Td>Velocidad máxima</Td><Td>&le; 10 m/s</Td><Td>NTC 3728</Td></Tr>
-            <Tr><Td>P. min en acometida</Td><Td>&ge; 17 mbar</Td><Td>NTC 3728</Td></Tr>
-            <Tr><Td>P. max interior</Td><Td>&le; 25 mbar</Td><Td>NTC 3728</Td></Tr>
-          </T>
+          <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+            <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Parámetro</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Condición</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Ref.</th></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&Delta;P máximo</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&le; 9.81 mbar</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 3728</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Velocidad máxima</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&le; 10 m/s</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 3728</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">P. min en acometida</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&ge; 17 mbar</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 3728</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">P. max interior</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">&le; 25 mbar</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 3728</td></tr>
+          </tbody></table></div>
         ),
       },
       {
         title: 'Diámetros comerciales PVC RDE 11',
         body: (
-          <T>
-            <Tr><Th>Nominal</Th><Th>DI (mm)</Th><Th>DE (mm)</Th></Tr>
-            <Tr><Td>½"</Td><Td>16.6</Td><Td>21.3</Td></Tr>
-            <Tr><Td>¾"</Td><Td>21.8</Td><Td>26.7</Td></Tr>
-            <Tr><Td>1"</Td><Td>28.5</Td><Td>33.4</Td></Tr>
-            <Tr><Td>1¼"</Td><Td>37.1</Td><Td>42.2</Td></Tr>
-            <Tr><Td>1½"</Td><Td>43.6</Td><Td>48.3</Td></Tr>
-            <Tr><Td>2"</Td><Td>56.1</Td><Td>60.3</Td></Tr>
-          </T>
+          <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+            <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Nominal</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">DI (mm)</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">DE (mm)</th></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">½"</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">16.6</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">21.3</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">¾"</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">21.8</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">26.7</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1"</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">28.5</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">33.4</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1¼"</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">37.1</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">42.2</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1½"</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">43.6</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">48.3</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2"</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">56.1</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">60.3</td></tr>
+          </tbody></table></div>
         ),
       },
     ],
@@ -729,9 +728,9 @@ export const docData = {
         title: 'Número de Reynolds',
         body: (
           <div className="space-y-3">
-            <F>
+            <div className="bg-surface-bg border border-outline-variant rounded px-4 py-3 font-mono text-[13px] text-primary tracking-wide my-2 leading-relaxed">
               Re = (V · D) / &nu;
-            </F>
+            </div>
             <div><span className="text-on-surface-variant">Donde:</span></div>
             <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1 text-[13px] ml-4">
               <span className="font-semibold text-primary">Re</span><span>número de Reynolds (adimensional)</span>
@@ -739,12 +738,12 @@ export const docData = {
               <span className="font-semibold text-primary">D</span><span>diámetro interno de la tubería (m)</span>
               <span className="font-semibold text-primary">&nu;</span><span>viscosidad cinemática del agua (m²/s)</span>
             </div>
-            <T>
-              <Tr><Th>Tipo de flujo</Th><Th>Rango Re</Th><Th>Característica</Th></Tr>
-              <Tr><Td>Laminar</Td><Td>Re &lt; 2300</Td><Td>Líneas paralelas</Td></Tr>
-              <Tr><Td>Transición</Td><Td>2300 &lt; Re &lt; 4000</Td><Td>Inestable</Td></Tr>
-              <Tr><Td>Turbulento</Td><Td>Re &gt; 4000</Td><Td>Mezcla intensa</Td></Tr>
-            </T>
+            <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+              <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Tipo de flujo</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Rango Re</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Característica</th></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Laminar</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Re &lt; 2300</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Líneas paralelas</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Transición</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2300 &lt; Re &lt; 4000</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Inestable</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Turbulento</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Re &gt; 4000</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Mezcla intensa</td></tr>
+            </tbody></table></div>
           </div>
         ),
       },
@@ -807,16 +806,16 @@ export const docData = {
         body: (
           <div className="space-y-3">
             <p>Complete los datos generales en el Sidebar. Estos datos aparecen en todas las memorias de cálculo.</p>
-            <T>
-              <Tr><Th>Campo</Th><Th>Ejemplo</Th></Tr>
-              <Tr><Td>Nombre del proyecto</Td><Td>Casa No. 26 CR Monte Real</Td></Tr>
-              <Tr><Td>Dirección</Td><Td>CR 10 No. 25-40</Td></Tr>
-              <Tr><Td>Municipio</Td><Td>Floridablanca</Td></Tr>
-              <Tr><Td>Uso</Td><Td>Vivienda unifamiliar</Td></Tr>
-              <Tr><Td>Empresa prestadora</Td><Td>EMAB - Floridablanca</Td></Tr>
-              <Tr><Td>P. red (m.c.a.)</Td><Td>20</Td></Tr>
-              <Tr><Td>Dotación (L/hab/dia)</Td><Td>280</Td></Tr>
-            </T>
+            <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+              <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Campo</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Ejemplo</th></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Nombre del proyecto</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Casa No. 26 CR Monte Real</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Dirección</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">CR 10 No. 25-40</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Municipio</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Floridablanca</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Uso</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Vivienda unifamiliar</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Empresa prestadora</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">EMAB - Floridablanca</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">P. red (m.c.a.)</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">20</td></tr>
+              <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Dotación (L/hab/dia)</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">280</td></tr>
+            </tbody></table></div>
             <div className="text-[12px] text-on-surface-variant">Dotación según RAS 2000 Tabla B.2.1 — Vivienda unifamiliar: 200–280 L/hab/dia.</div>
           </div>
         ),
@@ -840,51 +839,51 @@ export const docData = {
       {
         title: 'Redes a calcular',
         body: (
-          <T>
-            <Tr><Th>#</Th><Th>Red</Th><Th>Cuando activar</Th></Tr>
-            <Tr><Td>1</Td><Td>Sanitaria</Td><Td>Siempre — obligatoria</Td></Tr>
-            <Tr><Td>2</Td><Td>Aguas lluvias</Td><Td>Cuando hay cubierta</Td></Tr>
-            <Tr><Td>4</Td><Td>Agua fría</Td><Td>Siempre — suministro</Td></Tr>
-            <Tr><Td>5</Td><Td>Agua caliente</Td><Td>Cuando hay calentador</Td></Tr>
-            <Tr><Td>6</Td><Td>Red de Gas</Td><Td>Cuando hay aparatos a gas</Td></Tr>
-            <Tr><Td>7</Td><Td>Equipo presión</Td><Td>Presión de red insuficiente</Td></Tr>
-            <Tr><Td>8</Td><Td>Bomba AR</Td><Td>Aguas residuales en sótano</Td></Tr>
-            <Tr><Td>9</Td><Td>Recirculación AC</Td><Td>L de AC &gt; 15 m</Td></Tr>
-            <Tr><Td>10</Td><Td>Contra incendio</Td><Td>Según NSR-10 Título J</Td></Tr>
-          </T>
+          <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+            <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">#</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Red</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Cuando activar</th></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Sanitaria</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Siempre — obligatoria</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Aguas lluvias</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Cuando hay cubierta</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">4</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Agua fría</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Siempre — suministro</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">5</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Agua caliente</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Cuando hay calentador</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">6</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Red de Gas</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Cuando hay aparatos a gas</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">7</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Equipo presión</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Presión de red insuficiente</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">8</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Bomba AR</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Aguas residuales en sótano</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">9</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Recirculación AC</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">L de AC &gt; 15 m</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">10</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Contra incendio</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Según NSR-10 Título J</td></tr>
+          </tbody></table></div>
         ),
       },
       {
         title: 'Flujo de trabajo completo',
         body: (
-          <T>
-            <Tr><Th>#</Th><Th>Tarea</Th></Tr>
-            <Tr><Td>1</Td><Td>Datos del proyecto (Sidebar)</Td></Tr>
-            <Tr><Td>2</Td><Td>Generar niveles</Td></Tr>
-            <Tr><Td>3</Td><Td>Seleccionar materiales</Td></Tr>
-            <Tr><Td>4</Td><Td>Activar redes</Td></Tr>
-            <Tr><Td>5</Td><Td>Ajustar aparatos (UC, UD, Q gas)</Td></Tr>
-            <Tr><Td>6</Td><Td>Ingresar cubierta (áreas, I)</Td></Tr>
-            <Tr><Td>7</Td><Td>Calcular red de gas (Renouard)</Td></Tr>
-            <Tr><Td>8</Td><Td>Seleccionar calentador</Td></Tr>
-            <Tr><Td>9</Td><Td>Verificar validación</Td></Tr>
-            <Tr><Td>10</Td><Td>Verificar validación final</Td></Tr>
-          </T>
+          <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+            <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">#</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Tarea</th></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">1</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Datos del proyecto (Sidebar)</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">2</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Generar niveles</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">3</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Seleccionar materiales</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">4</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Activar redes</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">5</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Ajustar aparatos (UC, UD, Q gas)</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">6</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Ingresar cubierta (áreas, I)</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">7</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Calcular red de gas (Renouard)</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">8</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Seleccionar calentador</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">9</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Verificar validación</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">10</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Verificar validación final</td></tr>
+          </tbody></table></div>
         ),
       },
       {
         title: 'Normatividad aplicada',
         body: (
-          <T>
-            <Tr><Th>Norma</Th><Th>Aplicación</Th></Tr>
-            <Tr><Td>NTC 1500:2020</Td><Td>UC, UD, presiones, velocidades, diámetros mínimos</Td></Tr>
-            <Tr><Td>RAS 2000</Td><Td>Dotaciones, Manning, método racional</Td></Tr>
-            <Tr><Td>NTC 3728</Td><Td>Renouard, caudales gas, factor fs</Td></Tr>
-            <Tr><Td>NSR-10 Título J</Td><Td>Protección contra incendio</Td></Tr>
-            <Tr><Td>NFPA 13:2022</Td><Td>Rociadores, densidad, área operación</Td></Tr>
-            <Tr><Td>NTC 382</Td><Td>PVC a presión, RDE</Td></Tr>
-            <Tr><Td>NTC 1087</Td><Td>PVC sanitario y lluvias</Td></Tr>
-          </T>
+          <div className="overflow-x-auto my-2"><table className="w-full text-[12px] font-mono border-collapse"><tbody>
+            <tr><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Norma</th><th className="text-left px-3 py-1.5 bg-surface-container-high text-on-surface-variant font-semibold border border-outline-variant whitespace-nowrap">Aplicación</th></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 1500:2020</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">UC, UD, presiones, velocidades, diámetros mínimos</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">RAS 2000</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Dotaciones, Manning, método racional</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 3728</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Renouard, caudales gas, factor fs</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NSR-10 Título J</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Protección contra incendio</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NFPA 13:2022</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">Rociadores, densidad, área operación</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 382</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">PVC a presión, RDE</td></tr>
+            <tr><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">NTC 1087</td><td className="px-3 py-1.5 border border-outline-variant text-on-surface whitespace-nowrap">PVC sanitario y lluvias</td></tr>
+          </tbody></table></div>
         ),
       },
     ],
