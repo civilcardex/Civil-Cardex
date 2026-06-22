@@ -11,13 +11,13 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
     ctx.rotate(angle);
     ctx.font = `${fs}px Geist, monospace`;
     const tw = t.boxW > 0 ? t.boxW * engine.zoom : ctx.measureText(t.text).width;
-    const pad = 5;
+    const pad = 5 * engine.zoom;
     const boxW = tw + pad * 2;
     const boxH = fs + pad * 2;
 
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = sel ? '#4D8FF7' : '#3a494a';
-    ctx.lineWidth = sel ? 2 : 1;
+    ctx.lineWidth = (sel ? 2 : 1) * engine.zoom;
     ctx.beginPath();
     ctx.rect(-pad, -fs - pad, boxW, boxH);
     ctx.fill();
@@ -25,13 +25,13 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
 
     // Yellow selection arrow (same style as ramales/bajantes)
     if (sel) {
-      const arrowR = 12;
-      const ox = boxW + 16;
+      const arrowR = 10 * engine.zoom;
+      const ox = boxW + 16 * engine.zoom;
       ctx.fillStyle = '#FFEB3B';
       ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.5 * engine.zoom;
       ctx.shadowColor = '#000';
-      ctx.shadowBlur = 6;
+      ctx.shadowBlur = 6 * engine.zoom;
       ctx.beginPath();
       ctx.moveTo(ox - arrowR, -fs / 2);
       ctx.lineTo(ox, -fs / 2 - arrowR * 0.5);

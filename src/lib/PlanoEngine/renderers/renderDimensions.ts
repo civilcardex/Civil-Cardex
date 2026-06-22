@@ -6,7 +6,7 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
     const c2 = engine.toCvs(d.x2, d.y2);
     ctx.save();
     ctx.strokeStyle = '#F5A623';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.5 * engine.zoom;
     ctx.setLineDash([6, 4]);
     ctx.beginPath();
     ctx.moveTo(c1.x, c1.y);
@@ -18,7 +18,7 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
     const len = Math.hypot(dx, dy);
     if (len < 1) { ctx.restore(); return; }
     const nx = -dy / len, ny = dx / len;
-    const mk = 9;
+    const mk = 9 * engine.zoom;
     [c1, c2].forEach((pt: any) => {
       ctx.beginPath();
       ctx.moveTo(pt.x - nx * mk, pt.y - ny * mk);
@@ -30,8 +30,10 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
     const txt = `${d.L}m`;
     ctx.font = `${engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM)}px Geist, monospace`;
     const tw = ctx.measureText(txt).width;
+    const padX = 4 * engine.zoom;
+    const padY = 8 * engine.zoom;
     ctx.fillStyle = 'rgba(17,19,23,0.75)';
-    ctx.fillRect(mx - tw / 2 - 4, my - 8, tw + 8, 16);
+    ctx.fillRect(mx - tw / 2 - padX, my - padY, tw + padX * 2, padY * 2);
     ctx.fillStyle = '#F5A623';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -48,7 +50,7 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
 
   ctx.save();
   ctx.strokeStyle = '#F5A623';
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1.5 * engine.zoom;
   ctx.setLineDash([6, 4]);
   ctx.beginPath();
   ctx.moveTo(s.x, s.y);
@@ -60,7 +62,7 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
   const len = Math.hypot(dx, dy);
   if (len > 1) {
     const nx = -dy / len, ny = dx / len;
-    const mk = 9;
+    const mk = 9 * engine.zoom;
     [s, e].forEach((pt: any) => {
       ctx.beginPath();
       ctx.moveTo(pt.x - nx * mk, pt.y - ny * mk);
@@ -73,8 +75,10 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     const txt = `${engine.pxToM(px).toFixed(2)}m`;
     ctx.font = `${engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM)}px Geist, monospace`;
     const tw = ctx.measureText(txt).width;
+    const padX = 4 * engine.zoom;
+    const padY = 8 * engine.zoom;
     ctx.fillStyle = 'rgba(17,19,23,0.75)';
-    ctx.fillRect(mx - tw / 2 - 4, my - 8, tw + 8, 16);
+    ctx.fillRect(mx - tw / 2 - padX, my - padY, tw + padX * 2, padY * 2);
     ctx.fillStyle = '#F5A623';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -83,7 +87,7 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
 
   ctx.fillStyle = '#F5A623';
   ctx.beginPath();
-  ctx.arc(s.x, s.y, 4, 0, Math.PI * 2);
+  ctx.arc(s.x, s.y, 4 * engine.zoom, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();

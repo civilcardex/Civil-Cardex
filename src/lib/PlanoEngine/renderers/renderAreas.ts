@@ -21,7 +21,7 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
     ctx.fillStyle = a.color || 'rgba(0,220,229,0.12)';
     ctx.fill();
     ctx.strokeStyle = sel ? '#00dce5' : (a.color || 'rgba(0,220,229,0.5)').replace('0.2', '0.7').replace('33', 'aa');
-    ctx.lineWidth = sel ? 2.5 : 1.5;
+    ctx.lineWidth = (sel ? 2.5 : 1.5) * engine.zoom;
     ctx.setLineDash(sel ? [] : []);
     ctx.stroke();
     ctx.setLineDash([]);
@@ -73,15 +73,15 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
       const alen = Math.hypot(adx, ady);
       if (alen > 2) {
         const unx = adx / alen, uny = ady / alen;
-        const arrowR = 18;
+        const arrowR = 14 * engine.zoom;
         const cx = firstC.x - unx * arrowR * 0.3;
         const cy = firstC.y - uny * arrowR * 0.3;
         ctx.save();
         ctx.fillStyle = '#FFEB3B';
         ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.5 * engine.zoom;
         ctx.shadowColor = '#000';
-        ctx.shadowBlur = 6;
+        ctx.shadowBlur = 6 * engine.zoom;
         ctx.beginPath();
         ctx.moveTo(cx + unx * arrowR, cy + uny * arrowR);
         ctx.lineTo(cx + uny * arrowR * 0.5, cy - unx * arrowR * 0.5);
@@ -105,7 +105,7 @@ export function renderActiveArea(ctx: CanvasRenderingContext2D, engine: IPlanoEn
   ctx.save();
   ctx.fillStyle = col + '22';
   ctx.strokeStyle = col;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2 * engine.zoom;
   ctx.setLineDash([6, 4]);
   ctx.beginPath();
   ctx.moveTo(pts[0].x, pts[0].y);
@@ -120,7 +120,7 @@ export function renderActiveArea(ctx: CanvasRenderingContext2D, engine: IPlanoEn
   pts.forEach((p: any, idx: number) => {
     ctx.fillStyle = idx === 0 ? '#fff' : col;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, 4 * engine.zoom, 0, Math.PI * 2);
     ctx.fill();
   });
 
@@ -130,7 +130,7 @@ export function renderActiveArea(ctx: CanvasRenderingContext2D, engine: IPlanoEn
     if (engine.snapMode) mp = engine.snapAngle(last[0], last[1], mp.x, mp.y);
     const mc = engine.toCvs(mp.x, mp.y);
     ctx.strokeStyle = col + '88';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * engine.zoom;
     ctx.setLineDash([6, 4]);
     ctx.beginPath();
     ctx.moveTo(pts[pts.length - 1].x, pts[pts.length - 1].y);
@@ -147,9 +147,9 @@ export function renderActiveArea(ctx: CanvasRenderingContext2D, engine: IPlanoEn
     if (engine.activeArea.pts.length >= 3 && distFirst < SNAP_CLOSE) {
       const fc = engine.toCvs(first[0], first[1]);
       ctx.strokeStyle = '#22D3EE';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2 * engine.zoom;
       ctx.beginPath();
-      ctx.arc(fc.x, fc.y, 10, 0, Math.PI * 2);
+      ctx.arc(fc.x, fc.y, 10 * engine.zoom, 0, Math.PI * 2);
       ctx.stroke();
       ctx.fillStyle = 'rgba(34,211,238,0.25)';
       ctx.fill();

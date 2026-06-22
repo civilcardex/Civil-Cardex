@@ -9,7 +9,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     const col = net ? net.col : '#e2e2e8';
     const c = engine.toCvs(b.x, b.y);
     const sel = b.id === engine.selId;
-    const r = Math.max(7, 7 * engine.zoom);
+    const r = 7 * engine.zoom;
 
     // Item 2: Label angle + snap constraint (Auto-rotation removed as requested)
     let angle = (b.labelAngle || 0) * Math.PI / 180;
@@ -26,8 +26,8 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
           const rc = engine.toCvs(last[0], last[1]);
           ctx.save();
           ctx.strokeStyle = '#22D3EE';
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([4, 3]);
+          ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.setLineDash([4 * engine.zoom, 3 * engine.zoom]);
           ctx.beginPath();
           ctx.moveTo(rc.x, rc.y);
           ctx.lineTo(c.x, c.y);
@@ -50,7 +50,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
           const rc = engine.toCvs(first[0], first[1]);
           ctx.save();
           ctx.strokeStyle = '#0ECC7A';
-          ctx.lineWidth = 2;
+          ctx.lineWidth = 2 * engine.zoom;
           ctx.beginPath();
           ctx.moveTo(c.x, c.y);
           ctx.lineTo(rc.x, rc.y);
@@ -69,7 +69,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = b.tipo === 'bajante' ? '#F04545' : '#3B82F6';
-    ctx.lineWidth = sel ? 4.5 : 3.5;
+    ctx.lineWidth = (sel ? 4.5 : 3.5) * engine.zoom;
     ctx.beginPath();
     ctx.arc(0, 0, r, 0, Math.PI * 2);
     ctx.stroke();
@@ -138,14 +138,14 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     // Yellow selection arrow (same style as ramales)
     const inMultiSel = (engine.multiSel || []).includes(b.id);
     if ((sel || inMultiSel) && !engine._isGhostSel) {
-      const arrowR = 16;
-      const ox = r + 14;
+      const arrowR = 12 * engine.zoom;
+      const ox = r + 14 * engine.zoom;
       ctx.save();
       ctx.fillStyle = '#FFEB3B';
       ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.5 * engine.zoom;
       ctx.shadowColor = '#000';
-      ctx.shadowBlur = 6;
+      ctx.shadowBlur = 6 * engine.zoom;
       ctx.beginPath();
       ctx.moveTo(ox - arrowR, 0);
       ctx.lineTo(ox, -arrowR * 0.5);
@@ -175,7 +175,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.moveTo(0, 0);
       ctx.lineTo(offDx, offDy);
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.5 * engine.zoom;
       ctx.stroke();
 
       ctx.translate(offDx, offDy);
@@ -252,7 +252,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const gx = b.x + (disp ? disp.dx : 0);
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
-    const r = Math.max(8, 8 * engine.zoom);
+    const r = 8 * engine.zoom;
     b._ghost = { x: c.x, y: c.y, r: Math.max(16, r + 6) };
 
     // Item 6: Label angle + snap constraint (Auto-rotation removed as requested)
@@ -262,8 +262,8 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     ctx.save();
     ctx.globalAlpha = 0.35;
     ctx.strokeStyle = col;
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([5, 4]);
+    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.setLineDash([5 * engine.zoom, 4 * engine.zoom]);
     ctx.beginPath();
     ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
     ctx.stroke();
@@ -300,8 +300,8 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       const orig = engine.toCvs(b.x, b.y);
       ctx.save();
       ctx.strokeStyle = col + '66';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
+      ctx.lineWidth = 1 * engine.zoom;
+      ctx.setLineDash([3 * engine.zoom, 3 * engine.zoom]);
       ctx.beginPath();
       ctx.moveTo(orig.x, orig.y);
       ctx.lineTo(c.x, c.y);
@@ -318,11 +318,11 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       ctx.rotate(ghostAngle);
       ctx.fillStyle = '#FFEB3B';
       ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.5 * engine.zoom;
       ctx.shadowColor = '#000';
-      ctx.shadowBlur = 6;
-      const arrowR = 16;
-      const ox = r + 14;
+      ctx.shadowBlur = 6 * engine.zoom;
+      const arrowR = 12 * engine.zoom;
+      const ox = r + 14 * engine.zoom;
       ctx.beginPath();
       ctx.moveTo(ox - arrowR, 0);
       ctx.lineTo(ox, -arrowR * 0.5);
@@ -358,7 +358,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       ctx.moveTo(0, 0);
       ctx.lineTo(offDx, offDy);
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.5 * engine.zoom;
       ctx.stroke();
 
       ctx.translate(offDx, offDy);

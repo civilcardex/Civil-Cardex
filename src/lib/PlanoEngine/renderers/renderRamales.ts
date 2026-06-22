@@ -84,7 +84,7 @@ function drawRamalPath(
 
             ctx.save();
             ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 3.5;
+            ctx.lineWidth = 3.5 * engine.zoom;
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
             ctx.beginPath();
@@ -123,7 +123,7 @@ function drawRamalPath(
 
             ctx.save();
             ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 3.5;
+            ctx.lineWidth = 3.5 * engine.zoom;
             ctx.beginPath();
             ctx.arc(ccx, ccy, actualRad, angle_TA, angle_TC, counterclockwise);
             ctx.stroke();
@@ -149,7 +149,7 @@ function drawRamalPath(
   if (elbows.length > 0) {
     ctx.save();
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 3.5;
+    ctx.lineWidth = 3.5 * engine.zoom;
     ctx.setLineDash([]);
     const tickLen = engine.mm2cvs(1.0);
     elbows.forEach(elb => {
@@ -269,7 +269,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     const isPadre = r.id === padreId;
     ctx.save();
     ctx.strokeStyle = col;
-    ctx.lineWidth = sel ? 5 : 3.5;
+    ctx.lineWidth = (sel ? 5 : 3.5) * engine.zoom;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -277,7 +277,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       if (isPadre && isTributarioMode) {
         ctx.save();
         ctx.setLineDash([6, 4]);
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 4 * engine.zoom;
         ctx.strokeStyle = col;
         drawRamalPath(ctx, r.pts, engine, col);
         ctx.restore();
@@ -328,7 +328,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         const c = engine.toCvs(px, py);
         ctx.fillStyle = col;
         ctx.beginPath();
-        ctx.arc(c.x, c.y, 3, 0, Math.PI * 2);
+        ctx.arc(c.x, c.y, 3 * engine.zoom, 0, Math.PI * 2);
         ctx.fill();
       });
     }
@@ -340,9 +340,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         ctx.save();
         ctx.fillStyle = col;
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2 * engine.zoom;
         ctx.beginPath();
-        ctx.arc(c.x, c.y, 5, 0, Math.PI * 2);
+        ctx.arc(c.x, c.y, 5 * engine.zoom, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
         ctx.restore();
@@ -357,20 +357,20 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         ctx.save();
         ctx.font = `bold ${engine.mm2cvs(1.6)}px Geist, monospace`;
         const tw = ctx.measureText(label).width;
-        const pad = 3;
+        const pad = 3 * engine.zoom;
         const w = tw + pad * 2;
         const h = engine.mm2cvs(2.4) + pad * 2;
         ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = col;
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1 * engine.zoom;
         ctx.beginPath();
-        ctx.rect(c.x + 6, c.y - h / 2, w, h);
+        ctx.rect(c.x + 6 * engine.zoom, c.y - h / 2, w, h);
         ctx.fill();
         ctx.stroke();
         ctx.fillStyle = col;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(label, c.x + 6 + pad, c.y);
+        ctx.fillText(label, c.x + 6 * engine.zoom + pad, c.y);
         ctx.restore();
       };
       drawEndMarker(cStart, r.ini);
@@ -389,7 +389,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         flowDy = lastc.y - fc.y;
         flowLen = Math.hypot(flowDx, flowDy);
       }
-      const arrowSize = showFlow && flowLen > 12 ? 46 : 0;
+      const arrowSize = showFlow && flowLen > 12 * engine.zoom ? 46 * engine.zoom : 0;
       const lbl = r.label || '';
       const matPart = r.material || '';
       const dPart = r.diametro ? `D=${r.diametro.split(' — ')[0]}` : '';
@@ -473,8 +473,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         ctx.textAlign = 'center';
       }
 
-      if (showFlow && flowLen > 12) {
-        const arrowGap = -8;
+      if (showFlow && flowLen > 12 * engine.zoom) {
+        const arrowGap = -8 * engine.zoom;
         const arrowY = boxH / 2 + arrowGap + arrowSize / 2;
         ctx.save();
         ctx.translate(0, arrowY);
@@ -482,13 +482,13 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         const dir = dot >= 0 ? 1 : -1;
         const halfSize = arrowSize * 1.4;
         ctx.strokeStyle = col;
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1 * engine.zoom;
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(-halfSize * dir, 0);
         ctx.lineTo(halfSize * dir, 0);
         ctx.stroke();
-        const aSize = 10;
+        const aSize = 10 * engine.zoom;
         ctx.fillStyle = col;
         ctx.beginPath();
         ctx.moveTo(halfSize * dir, 0);
@@ -522,7 +522,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           ctx.save();
           ctx.strokeStyle = col;
           ctx.fillStyle = '#ffffff';
-          ctx.lineWidth = 2;
+          ctx.lineWidth = 2 * engine.zoom;
           ctx.beginPath();
           ctx.arc(v.x, v.y, rad, 0, Math.PI * 2);
           ctx.fill();
@@ -557,44 +557,82 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         const alen = Math.hypot(adx, ady);
         if (alen > 2) {
           const unx = adx / alen, uny = ady / alen;
-          const arrowR = 18;
+          const arrowR = 14 * engine.zoom;
           const cx = lastC.x;
           const cy = lastC.y;
           ctx.save();
           ctx.fillStyle = '#FFEB3B';
           ctx.strokeStyle = '#000';
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 1.5 * engine.zoom;
           ctx.shadowColor = '#000';
-          ctx.shadowBlur = 6;
+          ctx.shadowBlur = 6 * engine.zoom;
           ctx.beginPath();
-          ctx.moveTo(cx + unx * arrowR, cy + uny * arrowR);
-          ctx.lineTo(cx + uny * arrowR * 0.5, cy - unx * arrowR * 0.5);
-          ctx.lineTo(cx - uny * arrowR * 0.5, cy + unx * arrowR * 0.5);
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx - unx * arrowR + uny * arrowR * 0.4, cy - uny * arrowR - unx * arrowR * 0.4);
+          ctx.lineTo(cx - unx * arrowR - uny * arrowR * 0.4, cy - uny * arrowR + unx * arrowR * 0.4);
           ctx.closePath();
           ctx.fill();
           ctx.stroke();
           ctx.restore();
         }
       } else {
-        const firstC = engine.toCvs(r.pts[0][0], r.pts[0][1]);
-        const secondC = engine.toCvs(r.pts[1][0], r.pts[1][1]);
+        let startIdx = 0;
+        let nextIdx = 1;
+        
+        let isCodoReventiladoConnection = false;
+        let codoEndIdx = -1;
+
+        if (r.net === 'vent' || r.net === 'san') {
+          const ventRamales = engine.ramales.filter((rm: any) => rm.net === 'vent');
+          const sanRamales = engine.ramales.filter((rm: any) => rm.net === 'san');
+          
+          for (const vr of ventRamales) {
+            for (const idx of [0, vr.pts.length - 1]) {
+              const pt = vr.pts[idx];
+              const connectsToSan = sanRamales.some((sr: any) =>
+                sr.pts.some((sPt: number[]) => Math.hypot(pt[0] - sPt[0], pt[1] - sPt[1]) < 0.5)
+              );
+              if (connectsToSan) {
+                const rEndIdx = [0, r.pts.length - 1].find(eIdx => Math.hypot(r.pts[eIdx][0] - pt[0], r.pts[eIdx][1] - pt[1]) < 0.5);
+                if (rEndIdx !== undefined) {
+                  isCodoReventiladoConnection = true;
+                  codoEndIdx = rEndIdx;
+                  break;
+                }
+              }
+            }
+            if (isCodoReventiladoConnection) break;
+          }
+        }
+
+        if (isCodoReventiladoConnection && codoEndIdx !== -1) {
+          startIdx = codoEndIdx === 0 ? r.pts.length - 1 : 0;
+          nextIdx = startIdx === 0 ? 1 : r.pts.length - 2;
+        } else if (r.net === 'vent' && r.pts[r.pts.length - 1][0] < r.pts[0][0]) {
+          startIdx = r.pts.length - 1;
+          nextIdx = r.pts.length - 2;
+        }
+        
+        const firstC = engine.toCvs(r.pts[startIdx][0], r.pts[startIdx][1]);
+        const secondC = engine.toCvs(r.pts[nextIdx][0], r.pts[nextIdx][1]);
         const adx = secondC.x - firstC.x, ady = secondC.y - firstC.y;
         const alen = Math.hypot(adx, ady);
         if (alen > 2) {
           const unx = adx / alen, uny = ady / alen;
-          const arrowR = 18;
+          const arrowR = 14 * engine.zoom;
+          // Position arrow exactly at the start point (offset 0)
           const cx = firstC.x;
           const cy = firstC.y;
           ctx.save();
           ctx.fillStyle = '#FFEB3B';
           ctx.strokeStyle = '#000';
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 1.5 * engine.zoom;
           ctx.shadowColor = '#000';
-          ctx.shadowBlur = 6;
+          ctx.shadowBlur = 6 * engine.zoom;
           ctx.beginPath();
-          ctx.moveTo(cx + unx * arrowR, cy + uny * arrowR);
-          ctx.lineTo(cx + uny * arrowR * 0.5, cy - unx * arrowR * 0.5);
-          ctx.lineTo(cx - uny * arrowR * 0.5, cy + unx * arrowR * 0.5);
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx - unx * arrowR + uny * arrowR * 0.4, cy - uny * arrowR - unx * arrowR * 0.4);
+          ctx.lineTo(cx - unx * arrowR - uny * arrowR * 0.4, cy - uny * arrowR + unx * arrowR * 0.4);
           ctx.closePath();
           ctx.fill();
           ctx.stroke();
@@ -619,7 +657,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         ctx.save();
         ctx.fillStyle = '#ffffff';
         ctx.strokeStyle = col;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.5 * engine.zoom;
         ctx.beginPath();
         ctx.arc(c.x, c.y, 2.5, 0, Math.PI * 2);
         ctx.fill();
@@ -776,7 +814,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
 
         ctx.save();
         ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 3 * engine.zoom;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.setLineDash([]);
@@ -815,10 +853,10 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           }
         }
         
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 6 * engine.zoom;
         ctx.strokeStyle = '#ffffff';
         ctx.stroke();
-        ctx.lineWidth = 3.5;
+        ctx.lineWidth = 3.5 * engine.zoom;
         ctx.strokeStyle = '#000000';
         ctx.stroke();
 
@@ -829,11 +867,11 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           ctx.beginPath();
           ctx.arc((cvsA.x + cvsB.x) / 2, (cvsA.y + cvsB.y) / 2, engine.mm2cvs(1.2), 0, Math.PI * 2);
           ctx.strokeStyle = '#00FFFF';
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 1.5 * engine.zoom;
           ctx.stroke();
         }
 
-        ctx.lineWidth = 3.5;
+        ctx.lineWidth = 3.5 * engine.zoom;
         ctx.strokeStyle = '#000000';
         ctx.beginPath();
         vectorsA.forEach(u => {
@@ -860,7 +898,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
 
       ctx.save();
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3 * engine.zoom;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.setLineDash([]);
@@ -879,11 +917,11 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         }
       }
 
-      ctx.lineWidth = 6;
+      ctx.lineWidth = 6 * engine.zoom;
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
 
-      ctx.lineWidth = 3.5;
+      ctx.lineWidth = 3.5 * engine.zoom;
       ctx.strokeStyle = '#000000';
       ctx.stroke();
 
@@ -957,7 +995,7 @@ function renderVentCodos(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           const cx2 = c.x + dx * offset, cy2 = c.y + dy * offset;
           // white under-stroke to mask ramal lines
           ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 10;
+          ctx.lineWidth = 10 * engine.zoom;
           ctx.beginPath();
           ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
           ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
@@ -968,7 +1006,7 @@ function renderVentCodos(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           ctx.stroke();
           // black visible lines
           ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 3.5;
+          ctx.lineWidth = 3.5 * engine.zoom;
           ctx.beginPath();
           ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
           ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
@@ -1011,7 +1049,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
 
   ctx.save();
   ctx.strokeStyle = col;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2 * engine.zoom;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
@@ -1025,7 +1063,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
     ctx.save();
     ctx.fillStyle = idx === 0 ? '#fff' : col;
     ctx.beginPath();
-    ctx.arc(c.x, c.y, 4, 0, Math.PI * 2);
+    ctx.arc(c.x, c.y, 4 * engine.zoom, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   });
@@ -1075,14 +1113,14 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
     const bc = engine.toCvs(nearBaj.x, nearBaj.y);
     ctx.save();
     ctx.strokeStyle = '#22D3EE';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * engine.zoom;
     ctx.setLineDash([4, 3]);
     ctx.beginPath();
-    ctx.arc(bc.x, bc.y, 12, 0, Math.PI * 2);
+    ctx.arc(bc.x, bc.y, 12 * engine.zoom, 0, Math.PI * 2);
     ctx.stroke();
     ctx.fillStyle = 'rgba(34,211,238,0.15)';
     ctx.beginPath();
-    ctx.arc(bc.x, bc.y, 12, 0, Math.PI * 2);
+    ctx.arc(bc.x, bc.y, 12 * engine.zoom, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -1092,13 +1130,13 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   if (ar.pts.length >= 3 && distFirst < SNAP_CLOSE) {
     const fc = engine.toCvs(first[0], first[1]);
     ctx.strokeStyle = '#22D3EE';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * engine.zoom;
     ctx.beginPath();
-    ctx.arc(fc.x, fc.y, 10, 0, Math.PI * 2);
+    ctx.arc(fc.x, fc.y, 10 * engine.zoom, 0, Math.PI * 2);
     ctx.stroke();
     ctx.fillStyle = 'rgba(34,211,238,0.25)';
     ctx.beginPath();
-    ctx.arc(fc.x, fc.y, 10, 0, Math.PI * 2);
+    ctx.arc(fc.x, fc.y, 10 * engine.zoom, 0, Math.PI * 2);
     ctx.fill();
     mp = { x: first[0], y: first[1] };
   }
@@ -1107,7 +1145,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   const mc = engine.toCvs(mp.x, mp.y);
 
   ctx.strokeStyle = col + '88';
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 2 * engine.zoom;
   ctx.setLineDash([6, 4]);
   ctx.beginPath();
   ctx.moveTo(lc.x, lc.y);
@@ -1117,9 +1155,9 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
 
   if (snapped) {
     ctx.strokeStyle = '#22D3EE';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * engine.zoom;
     ctx.beginPath();
-    ctx.arc(mc.x, mc.y, 3.5, 0, Math.PI * 2);
+    ctx.arc(mc.x, mc.y, 3.5 * engine.zoom, 0, Math.PI * 2);
     ctx.stroke();
   }
 
