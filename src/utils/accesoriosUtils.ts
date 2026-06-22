@@ -23,7 +23,7 @@ export const LE_ACC_DEF = [
   { id: "otros",        n: "Otros (definir la Le)",        a: 0,    b: 0    },
 ];
 
-export function lookupInternoPulg(pulg: number, tabla: { pulg: number; dInt: number }[]): number | null {
+function lookupInternoPulg(pulg: number, tabla: { pulg: number; dInt: number }[]): number | null {
   if (!pulg || pulg <= 0) return null;
   const matches = tabla.filter((d) => Math.abs(d.pulg - pulg) < 0.01);
   if (matches.length === 0) return null;

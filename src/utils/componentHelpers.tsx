@@ -46,10 +46,6 @@ function calcAcumulado(tramos: Tramo[], calcParcial: (t: Tramo) => number): Reco
   return resueltos;
 }
 
-export function calcUDacumulado(tramos: Tramo[], udB: UDBase[]): Record<string, number> {
-  return calcAcumulado(tramos, (t) => calcUDparcial(t, udB));
-}
-
 export function calcUCacumulado(tramos: Tramo[], baseArr: UCBase[], field: string): Record<string, number> {
   return calcAcumulado(tramos, (t) => calcUCparcial(t, baseArr, field));
 }

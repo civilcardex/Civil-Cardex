@@ -1,15 +1,5 @@
-export const GRAVEDAD: number = 9.80665;
+const GRAVEDAD: number = 9.80665;
 export const manning_SAN: number = 0.009;
-
-export interface TuberiaSan {
-  nominal: string;
-  dExt: number;
-  dExtPulg: number;
-  dInt: number;
-  espesor: number;
-  espPulg: number;
-  peso: number;
-}
 
 // ─── Factor de simultaneidad (Hunter modificado) ───
 export function factorSimultaneidad(numSalidas: number): number {
