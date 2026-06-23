@@ -26,11 +26,7 @@ const [state, dispatch] = useReducer(tramosReducer, {
   tramosSan: [],
   tramosAf: [],
   tramosAc: [],
-  tramosLl: [
-    {_key:nextLlKey(),id:'',piso:0,esBajante:true,desde:'',hasta:'',descripcion:'',diamDisPulg:0,nSalidas:0,nmaning:0,sPercent:0,fixtures:{}},
-    {_key:nextLlKey(),id:'',piso:0,esBajante:true,desde:'',hasta:'',descripcion:'',diamDisPulg:0,nSalidas:0,nmaning:0,sPercent:0,fixtures:{}},
-    {_key:nextLlKey(),id:'',piso:0,esBajante:false,desde:'',hasta:'',descripcion:'',diamDisPulg:0,nSalidas:0,nmaning:0,sPercent:0,fixtures:{}},
-  ],
+  tramosLl: [],
 } as TramosState);
 const stateRef = useRef(state);
 stateRef.current = state;
