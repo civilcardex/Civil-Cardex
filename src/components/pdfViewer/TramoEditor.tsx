@@ -1,5 +1,6 @@
 import React, { type RefObject } from 'react'
 import { DIAM_BAN, DIAM_BY_MAT, DIAM_DEFAULT_BY_NET, GAS } from '../../constants'
+import { VENTILACION } from '../../pages/catalog/catalogData'
 
 interface TramoEditorProps {
   selElement: any
@@ -72,7 +73,7 @@ export default function TramoEditor({
                     style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
                 </div>
                 <div>
-                  <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Ini</div>
+                  <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Inicio</div>
                   <input value={selElement.ini||''} placeholder="— ini —"
                     onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({ini:v});setSelElement({...selElement,ini:v})}}}
                     style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
@@ -254,7 +255,21 @@ export default function TramoEditor({
                   </select>
                 </div>
               </div>
-                <div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Llenado (R)</div>
+                  <select value={selElement.bajR != null ? (Math.abs(selElement.bajR - 7/24) < 0.001 ? '7/24' : '1/4') : '7/24'}
+                    onChange={e => {
+                      const val = e.target.value;
+                      const valNum = val === '7/24' ? 7/24 : 0.25;
+                      handleUpdateSel('bajR', valNum);
+                    }}
+                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                    <option value="7/24">7/24</option>
+                    <option value="1/4">1/4</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Área asociada</div>
                   <select value={selElement.area_m2 ? String(selElement.area_m2) : ''}
                     onChange={e => {
@@ -263,11 +278,12 @@ export default function TramoEditor({
                     }}
                     style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
                     <option value="">— Sin área —</option>
-                    {(engineRef.current?.areas || []).map((a: any) => (
+                    {(engineRef.current?.areas || []).filter((a: any) => a.net === selElement.net).map((a: any) => (
                       <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
                     ))}
                   </select>
                 </div>
+              </div>
                 <div>
                   <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Dirección</div>
                   <div style={{ display: 'flex', gap: 3 }}>
@@ -309,15 +325,15 @@ export default function TramoEditor({
                   </div>
                 </div>
                 {activeNet === 'san' && (
-                  <div>
+                  <div style={{ width: '100%' }}>
                     <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Ramales asociados</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 }}>
                       {(() => {
                         const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === 'san' && r.tipo !== 'tributario');
-                        if (bajRamales.length === 0) return <div style={{ fontSize: 10, color: '#8AB4D6', fontFamily: "'Geist',monospace", padding: '4px' }}>Sin ramales en esta red</div>;
+                        if (bajRamales.length === 0) return <div style={{ fontSize: 10, color: '#8AB4D6', fontFamily: "'Geist',monospace", padding: '4px', gridColumn: 'span 4' }}>Sin ramales en esta red</div>;
                         const recibidos = (selElement.recibeDeIds || []) as string[];
                         return bajRamales.map((r: any) => (
-                          <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 4px', cursor: 'pointer', borderRadius: 2, fontSize: 10, color: '#b9caca', fontFamily: "'Geist',monospace" }}>
+                          <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
                             <input type="checkbox" checked={recibidos.includes(r.id)}
                               onChange={e => {
                                 const newRecibe = e.target.checked
@@ -325,9 +341,8 @@ export default function TramoEditor({
                                   : recibidos.filter(id => id !== r.id);
                                 handleUpdateSel('recibeDeIds', newRecibe);
                               }}
-                              style={{ accentColor: '#F5A623', margin: 0 }} />
+                              style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
                             <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label || r.id}</span>
-                            <span style={{ fontSize: 9, color: '#8AB4D6' }}>{r.totalL?.toFixed(1)}m</span>
                           </label>
                         ));
                       })()}
@@ -340,10 +355,16 @@ export default function TramoEditor({
         }
 
         const isGas = activeNet === 'gas';
+        const isVen = activeNet === 'vent';
         const matList = mats?.[activeNet] || [];
         const matShort = matList[0]?.val || '—';
         const matName = matLongName(matShort);
-        const diamList = DIAM_BY_MAT[matShort] || [];
+        let diamList: any[] = [];
+        if (isVen) {
+          diamList = VENTILACION[0]?.rows.map((r: any) => ({ n: r.dn })) || [];
+        } else {
+          diamList = DIAM_BY_MAT[matShort] || [];
+        }
         let currentDiam, currentMat;
         if (isGas) {
           const selMat = (isSelActiveNet && selElement.material) || gasMatSel[activeNet] || '';
@@ -353,8 +374,8 @@ export default function TramoEditor({
           currentDiam = selDn || GAS[0]?.rows[0]?.dn || '';
         } else {
           currentDiam = (isSelActiveNet && selElement.diametro !== undefined && selElement.diametro !== '')
-            ? selElement.diametro
-            : (diamSel[activeNet] || DIAM_DEFAULT_BY_NET[activeNet] || (diamList[0]?.n || ''));
+            ? selElement.diametro.split(' — ')[0].trim()
+            : (diamSel[activeNet] || DIAM_DEFAULT_BY_NET[activeNet] || (diamList[0]?.n?.split(' — ')[0]?.trim() || ''));
         }
         const showPend = activeNet === 'san' || activeNet === 'll';
         const showDeltaZ = activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas';
@@ -423,7 +444,10 @@ export default function TramoEditor({
           }
         }}
         style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' }}>
-        {diamList.map((d: any) => <option key={d.n} value={d.n}>{d.n.split(' — ')[0]}</option>)}
+        {diamList.map((d: any) => {
+          const valClean = d.n.split(' — ')[0].trim();
+          return <option key={d.n} value={valClean}>{valClean}</option>;
+        })}
         </select>
                   ) : (
                     <div style={{ padding: '4px 6px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#8AB4D6', fontSize: 11, fontFamily: "'Geist',monospace" }}>— Sin opciones —</div>
