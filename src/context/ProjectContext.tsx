@@ -1,6 +1,5 @@
-import { createContext, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { MATS_DEFAULT, PROFS_DEFAULT, CRIT0 } from "../constants";
-import { createUseContext } from "./contextHelpers";
 import { usePersistedState } from "../hooks/usePersistedState";
 
 interface Proyecto {
@@ -66,4 +65,8 @@ setPisos, setP, setMats, setProfs, setCrits,
 );
 }
 
-export const useProject = createUseContext(ProjectContext, 'useProject');
+export function useProject() {
+  const ctx = useContext(ProjectContext);
+  if (!ctx) throw new Error('useProject must be used within ProjectProvider');
+  return ctx;
+}

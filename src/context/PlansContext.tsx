@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef, createContext, type ReactNode } from 'react';
+import { useState, useEffect, useRef, createContext, useContext, type ReactNode } from 'react';
 import { saveToStorage, loadFromStorage, removeFromStorage } from '../services/storageService';
 import { storePDF, loadPDF, deletePDF } from '../services/idbStorage';
 import { PLANS_META_KEY } from '../constants/storage-keys';
-import { createUseContext } from './contextHelpers';
 
 interface PlanMeta { id: number; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null; definedScale?: number | null }
 interface PlanItem { id: number; file: File; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null; definedScale?: number | null }
@@ -109,4 +108,8 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
   );
 }
 
-export const usePlans = createUseContext(PlansContext, 'usePlans');
+export function usePlans() {
+  const ctx = useContext(PlansContext);
+  if (!ctx) throw new Error('usePlans must be used within PlansProvider');
+  return ctx;
+}

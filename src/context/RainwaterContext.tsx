@@ -1,5 +1,4 @@
-import { useState, createContext, type ReactNode } from "react";
-import { createUseContext } from "./contextHelpers";
+import { useState, createContext, useContext, type ReactNode } from "react";
 
 interface BajanteLL { id: string; bajante: string; areaParcial: number; areaAcumulada: number; intensidad: number; coeficienteC: number; R: string; manning: number; diamPropuesto: number }
 interface CanalLL { id: string; sector: string; areaParcial: number; areaAcumulada: number; intensidad: number; coeficienteC: number; manning: number; pendiente: number; b: number; h: number; bl: number }
@@ -59,4 +58,8 @@ canalesLl, addCanalLL, delCanalLL, updCanalLL,
 );
 }
 
-export const useRainwater = createUseContext(RainwaterContext, 'useRainwater');
+export function useRainwater() {
+  const ctx = useContext(RainwaterContext);
+  if (!ctx) throw new Error('useRainwater must be used within RainwaterProvider');
+  return ctx;
+}

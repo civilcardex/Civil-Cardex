@@ -16,7 +16,6 @@ function useSyncEvents(events: string[], load: () => void) {
 export function useSanLlSync(
   dispatch: (a: any) => void,
   stateRef: MutableRefObject<TramosState>,
-  _nextLlKey: () => string,
 ) {
   useSyncEvents(['civilflow_san_sync_changed', 'storage'], () => {
     const sync = readSanDrawingSync();

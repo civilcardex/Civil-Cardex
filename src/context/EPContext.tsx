@@ -1,6 +1,5 @@
-import { createContext, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { usePersistedState } from "../hooks/usePersistedState";
-import { createUseContext } from "./contextHelpers";
 
 export interface EPData {
   qac: string;
@@ -67,4 +66,8 @@ export function EPProvider({ children }: { children?: ReactNode }) {
   );
 }
 
-export const useEP = createUseContext(EPContext, 'useEP');
+export function useEP() {
+  const ctx = useContext(EPContext);
+  if (!ctx) throw new Error('useEP must be used within EPProvider');
+  return ctx;
+}

@@ -1,8 +1,7 @@
-import { useState, useEffect, createContext, type ReactNode } from "react";
+import { useState, useEffect, createContext, useContext, type ReactNode } from "react";
 import { UD_BASE_INIT, APS_DEFAULT } from "../constants";
 import { loadFromStorage, saveToStorage } from "../services/storageService";
 import { APS_STORAGE_KEY } from "../constants/storage-keys";
-import { createUseContext } from "./contextHelpers";
 
 interface UdBaseItem { id: string; nombre: string; ud: number }
 interface ApsItem { id: string; s: string; n: string; g: string; ucaf: number; ucac: number; ud: number; pmin: number; pmax: number; qg: number; ctrl: string; _blkUd: boolean }
@@ -39,4 +38,8 @@ setAps,
 );
 }
 
-export const useApparatus = createUseContext(ApparatusContext, 'useApparatus');
+export function useApparatus() {
+  const ctx = useContext(ApparatusContext);
+  if (!ctx) throw new Error('useApparatus must be used within ApparatusProvider');
+  return ctx;
+}

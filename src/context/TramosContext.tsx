@@ -1,7 +1,6 @@
-import { createContext, useReducer, useRef, type ReactNode } from "react";
+import { createContext, useReducer, useRef, useContext, type ReactNode } from "react";
 import { useSanLlSync, useHidroSync } from "../hooks/useTramosSync";
 import { tramosReducer, type TramosState, type Tramo } from "./tramosReducer";
-import { createUseContext } from "./contextHelpers";
 
 interface TramosContextValue {
   tramosSan: Tramo[]; tramosAf: Tramo[]; tramosAc: Tramo[]; tramosLl: Tramo[];
@@ -18,8 +17,6 @@ interface TramosContextValue {
 }
 
 const TramosContext = createContext<TramosContextValue | null>(null);
-let _llKey = 0;
-function nextLlKey() { return `_ll_${++_llKey}`; }
 
 export function TramosProvider({ children }: { children?: ReactNode }) {
 const [state, dispatch] = useReducer(tramosReducer, {
@@ -31,7 +28,7 @@ const [state, dispatch] = useReducer(tramosReducer, {
 const stateRef = useRef(state);
 stateRef.current = state;
 
-useSanLlSync(dispatch, stateRef, nextLlKey);
+useSanLlSync(dispatch, stateRef);
 useHidroSync(dispatch, stateRef);
 
 const { tramosSan, tramosAf, tramosAc, tramosLl } = state;
@@ -63,4 +60,8 @@ delTramoLL, updTramoLL,
 );
 }
 
-export const useTramos = createUseContext(TramosContext, 'useTramos');
+export function useTramos() {
+  const ctx = useContext(TramosContext);
+  if (!ctx) throw new Error('useTramos must be used within TramosProvider');
+  return ctx;
+}
