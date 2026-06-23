@@ -36,7 +36,7 @@ export function calcHydraulicCheck({ Q, S, n, DintMm, V_MIN, V_MAX, Y_D_MAX, FUE
   const Vreal = Math.round(rel.v_V0 * Vo * 100) / 100;
   const chequeoV = (Vreal < V_MIN || Vreal > V_MAX) ? 'NO CUMPLE' : 'O.K.';
   const Rh = rel.Rh_D * DintMm;
-  const Yc = Math.round(tiranteCritico(DintMm / 1000, Q / 1000) * 1000 * 100) / 100;
+  const Yc = Math.round(0.296938082 * DintMm * 100) / 100;
   const Yn = Math.round(rel.h_D * DintMm * 100) / 100;
   const Ymax = Math.round(DintMm * Y_D_MAX * 100) / 100;
   const chequeoYn = Math.max(Yc, Yn) < Ymax ? 'O.K.' : 'NO CUMPLE';

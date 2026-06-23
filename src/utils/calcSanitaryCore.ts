@@ -97,9 +97,9 @@ export function tiranteCritico(D_m: number, Q_m3s: number): number {
     const Fr2 = (Q_m3s * Q_m3s * T) / (GRAVEDAD * Math.pow(A, 3));
 
     if (Fr2 < 1) {
-      hD_lo = hD_mid;
-    } else {
       hD_hi = hD_mid;
+    } else {
+      hD_lo = hD_mid;
     }
   }
 

@@ -78,3 +78,35 @@ export function writeDiametroToDrawing(ramalKey: string, net: string, newDiamLab
   if (isHydro) writeHydroDrawingSync(plans);
   if (isSan) writeSanDrawingSync(plans);
 }
+
+export function writeBajantePropToDrawing(bajanteKey: string, net: string, prop: string, val: any, plans: any[]) {
+  if (!bajanteKey || !net || !plans) return;
+  const isSan = SAN_FAMILIES.has(net);
+
+  const parts = bajanteKey.split('-');
+  const bajanteId = parts[0];
+  const planId = parts[1];
+
+  for (const plan of plans) {
+    if (!plan || plan.status !== 'confirmed') continue;
+    if (planId && String(plan.id) !== String(planId)) continue;
+    const key = TRAZOS_PREFIX + plan.id;
+    const raw = loadFromStorage(key, null);
+    if (!raw) continue;
+    const data = raw as Record<string, any>;
+    let changed = false;
+
+    for (const b of (data.bajantes || [])) {
+      if (b.id === bajanteId && b.net === net) {
+        b[prop] = val;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      saveToStorage(key, data);
+    }
+  }
+
+  if (isSan) writeSanDrawingSync(plans);
+}

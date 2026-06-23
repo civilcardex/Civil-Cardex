@@ -75,7 +75,7 @@ export function calculateVentStack(params: BajanteVentilacionParams): BajanteVen
   const Lt_min = DpropPulg > 0 ? Math.max(Lt_calc, 10 * DpropPulg * 2.54 / 100) : 0;
 
   const V_aire = Vt;
-  const Q_aire = DpropPulg > 0 ? 1000 * V_aire * (17 / 24) * (Math.PI / 4) * Math.pow(DpropPulg * 2.54 / 100, 2) : 0;
+  const Q_aire = DpropPulg > 0 ? 1000 * V_aire * (1 - r) * (Math.PI / 4) * Math.pow(DpropPulg * 2.54 / 100, 2) : 0;
   const fDarcy = bajFDarcy;
   const Lbajante = bajLong;
 
