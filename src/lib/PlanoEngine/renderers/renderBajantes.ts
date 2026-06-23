@@ -11,21 +11,25 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     const col = net ? net.col : '#e2e2e8';
     const c = engine.toCvs(b.x, b.y);
     const sel = b.id === engine.selId;
-    const r = 7 * engine.zoom;
+    const r = 10 * engine.zoom;
 
     // Item 2: Label angle + snap constraint (Auto-rotation removed as requested)
     let angle = (b.labelAngle || 0) * Math.PI / 180;
     const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
     const lDesvioId = disp?.Ldesvio;
 
-    b._circ = { x: c.x, y: c.y, r: Math.max(16, r + 6) };
+    b._circ = { x: c.x, y: c.y, r: Math.max(30, r + 14) };
 
     if (b.recibeDeIds?.length) {
       b.recibeDeIds.forEach((rid: string) => {
         const ram = engine.ramales.find((rr: any) => rr.id === rid);
         if (ram) {
-          const last = ram.pts[ram.pts.length - 1];
-          const rc = engine.toCvs(last[0], last[1]);
+          const pStart = ram.pts[0];
+          const pEnd = ram.pts[ram.pts.length - 1];
+          const distStart = Math.hypot(pStart[0] - b.x, pStart[1] - b.y);
+          const distEnd = Math.hypot(pEnd[0] - b.x, pEnd[1] - b.y);
+          const bestPt = distStart < distEnd ? pStart : pEnd;
+          const rc = engine.toCvs(bestPt[0], bestPt[1]);
           ctx.save();
           ctx.strokeStyle = '#22D3EE';
           ctx.lineWidth = 1.5 * engine.zoom;
@@ -48,11 +52,16 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       if (String(targetPlanId) === String(engine._loadedPlanId)) {
         const ram = engine.ramales.find((rr: any) => rr.id === targetId);
         if (ram && ram.pts.length) {
-          const first = ram.pts[0];
-          const rc = engine.toCvs(first[0], first[1]);
+          const pStart = ram.pts[0];
+          const pEnd = ram.pts[ram.pts.length - 1];
+          const distStart = Math.hypot(pStart[0] - b.x, pStart[1] - b.y);
+          const distEnd = Math.hypot(pEnd[0] - b.x, pEnd[1] - b.y);
+          const bestPt = distStart < distEnd ? pStart : pEnd;
+          const rc = engine.toCvs(bestPt[0], bestPt[1]);
           ctx.save();
           ctx.strokeStyle = '#0ECC7A';
           ctx.lineWidth = 2 * engine.zoom;
+          ctx.setLineDash([4 * engine.zoom, 4 * engine.zoom]);
           ctx.beginPath();
           ctx.moveTo(c.x, c.y);
           ctx.lineTo(rc.x, rc.y);
@@ -172,9 +181,16 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.save();
       ctx.translate(c.x, c.y);
 
-      // Leader line in global coords
+      // Leader line from circle edge to label (shortest distance)
+      const distToLabel = Math.hypot(offDx, offDy);
+      let lineStartX = 0, lineStartY = 0;
+      if (distToLabel > 0.1) {
+        const ux = offDx / distToLabel, uy = offDy / distToLabel;
+        lineStartX = r * ux;
+        lineStartY = r * uy;
+      }
       ctx.beginPath();
-      ctx.moveTo(0, 0);
+      ctx.moveTo(lineStartX, lineStartY);
       ctx.lineTo(offDx, offDy);
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 1.5 * engine.zoom;
@@ -311,10 +327,10 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       ctx.restore();
     }
 
-    // Item 4: Yellow selection arrow when a connected ramal or the ghost itself is selected
+    // Item 4: Yellow selection arrow for ghost bajante selection
     const inMultiSel = (engine.multiSel || []).includes(b.id);
-    const connectedRamalSelected = b.recibeDeIds?.some((rid: string) => rid === engine.selId) || (engine.selId === b.id && engine._isGhostSel) || inMultiSel;
-    if (connectedRamalSelected) {
+    const ghostSel = engine.selId === b.id && engine._isGhostSel;
+    if (ghostSel || inMultiSel) {
       ctx.save();
       ctx.translate(c.x, c.y);
       ctx.rotate(ghostAngle);
@@ -356,8 +372,16 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       ctx.globalAlpha = 0.35;
       ctx.translate(c.x, c.y);
 
+      const ghostR = 8 * engine.zoom;
+      const ghostDist = Math.hypot(offDx, offDy);
+      let gLineStartX = 0, gLineStartY = 0;
+      if (ghostDist > 0.1) {
+        const ux = offDx / ghostDist, uy = offDy / ghostDist;
+        gLineStartX = ghostR * ux;
+        gLineStartY = ghostR * uy;
+      }
       ctx.beginPath();
-      ctx.moveTo(0, 0);
+      ctx.moveTo(gLineStartX, gLineStartY);
       ctx.lineTo(offDx, offDy);
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 1.5 * engine.zoom;
