@@ -306,6 +306,48 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
   engine._isGhostSel = false;
   const sel = getSelected(engine);
 
+  // 0. Bail out of ramal endpoint drag if click is on any bajante (label or circle)
+  //    This prevents ramal endpoint (15px threshold) from stealing bajante clicks at low zoom.
+  //    Also starts lblDrag/bajDrag immediately for BOTH selected and unselected bajantes,
+  //    BEFORE any area, text, ramal-body or ramal-endpoint logic can intercept it.
+  if (engine.tool === 'sel' && !isMultiSelectModifier) {
+    for (const b of engine.bajantes) {
+      if (b._labelBox && pointInLabelBox(x, y, b._labelBox)) {
+        if (b.id !== sel?.id) {
+          engine.selId = b.id;
+          engine._emitSelect(b);
+          engine.render();
+        }
+        const lPos = engine.toCvs(b.labelX ?? b.x, b.labelY ?? (b.y + 20));
+        engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
+        return;
+      }
+      if (b._circ && Math.hypot(x - b._circ.x, y - b._circ.y) < b._circ.r) {
+        if (b.id !== sel?.id) {
+          engine.selId = b.id;
+          engine._emitSelect(b);
+          engine.render();
+        }
+        if (!(b as any).isFantasma) {
+          engine.bajDrag = { id: b.id, offX: x - b._circ.x, offY: y - b._circ.y };
+        }
+        return;
+      }
+      if (b.labelX != null && b.labelY != null) {
+        const lPos = engine.toCvs(b.labelX, b.labelY);
+        if (Math.hypot(x - lPos.x, y - lPos.y) < 20) {
+          if (b.id !== sel?.id) {
+            engine.selId = b.id;
+            engine._emitSelect(b);
+            engine.render();
+          }
+          engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
+          return;
+        }
+      }
+    }
+  }
+
   // 1. Check if clicking on ANY ramal endpoint to start point dragging immediately
   if (engine.tool === 'sel' && !isMultiSelectModifier) {
     let bestRamal = null;
@@ -318,6 +360,12 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
           const pc = engine.toCvs(r.pts[i][0], r.pts[i][1]);
           const d = Math.hypot(x - pc.x, y - pc.y);
           if (d < minPtDist) {
+            // Skip if a bajante sits at this endpoint (bajante drag priority)
+            const epP = r.pts[i];
+            const bajAtEp = engine.bajantes.find((b: any) =>
+              Math.abs(b.x - epP[0]) < 0.1 && Math.abs(b.y - epP[1]) < 0.1
+            );
+            if (bajAtEp) continue;
             minPtDist = d;
             bestRamal = r;
             bestPtIdx = i;
@@ -331,21 +379,24 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
       engine._emitSelect(bestRamal);
       
       let slideConstraint = undefined;
-      const pt = bestRamal.pts[bestPtIdx];
-      for (const other of engine.ramales) {
-        if (other.id === bestRamal.id) continue;
-        for (let si = 0; si < other.pts.length - 1; si++) {
-          const [ax, ay] = other.pts[si], [bx, by] = other.pts[si+1];
-          const sDx = bx - ax, sDy = by - ay;
-          const sLen = Math.hypot(sDx, sDy);
-          if (sLen < 0.001) continue;
-          const cross = Math.abs(sDx * (ay - pt[1]) - sDy * (ax - pt[0])) / sLen;
-          if (cross < 0.05) {
-            slideConstraint = { otherId: other.id, segmentIdx: si };
-            break;
+      // Don't constrain vent ramal endpoints (codo reventilado)
+      if (bestRamal.net !== 'vent') {
+        const pt = bestRamal.pts[bestPtIdx];
+        for (const other of engine.ramales) {
+          if (other.id === bestRamal.id) continue;
+          for (let si = 0; si < other.pts.length - 1; si++) {
+            const [ax, ay] = other.pts[si], [bx, by] = other.pts[si+1];
+            const sDx = bx - ax, sDy = by - ay;
+            const sLen = Math.hypot(sDx, sDy);
+            if (sLen < 0.001) continue;
+            const cross = Math.abs(sDx * (ay - pt[1]) - sDy * (ax - pt[0])) / sLen;
+            if (cross < 0.05) {
+              slideConstraint = { otherId: other.id, segmentIdx: si };
+              break;
+            }
           }
+          if (slideConstraint) break;
         }
-        if (slideConstraint) break;
       }
 
       engine.ptDrag = { id: bestRamal.id, ptIdx: bestPtIdx, slideConstraint };
@@ -417,6 +468,20 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
   }
 
   if (sel && (sel as any)._circ && ((sel as any).tipo === 'bajante' || (sel as any).tipo === 'montante' || sel.id?.startsWith('B'))) {
+    // Label drag takes priority over body drag
+    if ((sel as any)._labelBox && pointInLabelBox(x, y, (sel as any)._labelBox)) {
+      const lPos = engine.toCvs((sel as any).labelX, (sel as any).labelY);
+      engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
+      return;
+    }
+    // Fallback: if click is near label center, start lblDrag (catches cases where _labelBox misses)
+    if ((sel as any).labelX != null && (sel as any).labelY != null) {
+      const lPos = engine.toCvs((sel as any).labelX, (sel as any).labelY);
+      if (Math.hypot(x - lPos.x, y - lPos.y) < 20) {
+        engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
+        return;
+      }
+    }
     const circ = (sel as any)._circ!;
     const d = Math.hypot(x - circ.x, y - circ.y);
     if (d < circ.r) {
@@ -597,9 +662,12 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
   }
 
   for (const b of engine.bajantes) {
-    if ((b as any)._labelBox && pointInLabelBox(x, y, (b as any)._labelBox)) {
+    const lb = (b as any)._labelBox;
+    const lbHit = lb && pointInLabelBox(x, y, lb);
+    const lPos = engine.toCvs((b as any).labelX, (b as any).labelY);
+    const nearLabel = Math.hypot(x - lPos.x, y - lPos.y) < 20;
+    if (lbHit || nearLabel) {
       engine.selId = b.id;
-      const lPos = engine.toCvs((b as any).labelX, (b as any).labelY);
       engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
       engine._emitSelect(b);
       engine.render();
@@ -1117,7 +1185,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     engine.render();
     engine._markDirty();
   }
-  if (engine.lblDrag) engine.lblDrag = null;
+  if (engine.lblDrag) { engine._markDirty(); engine.lblDrag = null; }
   if (engine.txtDrag) engine.txtDrag = null;
   if (engine.bajDrag) engine.bajDrag = null;
   if (engine.areaDrag) engine.areaDrag = null;

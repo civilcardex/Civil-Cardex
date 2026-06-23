@@ -578,6 +578,7 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     lblOffX: 0, lblOffY: 0,
     labelAngle: 0,
     labelX: px, labelY: py + 20,
+    bajR: 7/24,
   });
   engine.selId = bajId;
   engine._isGhostSel = false;
@@ -610,6 +611,7 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     lblOffX: 0, lblOffY: 0,
     labelAngle: 0,
     labelX: px, labelY: py + 20,
+    bajR: 7/24,
   });
   engine.selId = monId;
   engine._isGhostSel = false;

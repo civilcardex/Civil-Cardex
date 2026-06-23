@@ -355,8 +355,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
   _markDirty(): void {
     this._dirty = true;
-    if (this.activeNet === 'san' || this.activeNet === 'vent') {
-      calcSanitaryAccessories(this);
+    calcSanitaryAccessories(this);
+    if (this._history) {
+      this._history.saveSnapshot();
     }
     if (this._onDirtyCb) this._onDirtyCb();
   }
@@ -509,6 +510,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
         render: () => void;
         [key: string]: unknown;
       }, d);
+      if (this._history) {
+        this._history.saveSnapshot();
+      }
     } catch (e) { if (import.meta.env.DEV) console.error('Error loading work:', e); }
   }
 
@@ -591,7 +595,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
           if (b) {
             if (!this._isGhostSel) {
               const c = this.toCvs(b.x, b.y);
-              const hitOnCircle = Math.hypot(x - c.x, y - c.y) <= r;
+              const hitR = (b._circ?.r || Math.max(6, 6 * this.zoom) + 10);
+              const hitOnCircle = Math.hypot(x - c.x, y - c.y) <= hitR;
               const hitOnLabel = b._labelBox && pointInLabelBox(x, y, b._labelBox);
               if (hitOnCircle || hitOnLabel) {
                 hitElement = b;
@@ -679,6 +684,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
     const p = this.toPlane(x, y);
 
     if (this.tool === 'sel') {
+      // Direct lblDrag for selected bajante label — bypasses handleSelectDown entirely
+      const selEl = this.bajantes.find(b => b.id === this.selId);
+      if (selEl && selEl._labelBox && pointInLabelBox(x, y, selEl._labelBox)) {
+        const lPos = this.toCvs(selEl.labelX ?? selEl.x, selEl.labelY ?? (selEl.y + 20));
+        this.lblDrag = { id: selEl.id, offX: x - lPos.x, offY: y - lPos.y };
+        return;
+      }
       handleSelectDown(this, x, y, (e as MouseEvent).ctrlKey || false);
     } else if (this.tool === 'line') {
       handleLineDown(this, p.x, p.y);
