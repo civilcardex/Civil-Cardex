@@ -39,13 +39,16 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
               pendiente: typeof r.pendiente === 'number' ? r.pendiente : 0,
               material: r.material || '', maning: matManning(r.material),
               dz: parseFloat(r.dz) || 0,
+              piso: r.piso || nivel,
               _aparatosKey: rKey,
+              nSalidas: r.nSalidas || 0,
+              descargaEnId: r.descargaEnId || null,
             });
           }
         }
         const planoKey = family + '_' + nivel;
         if (ramales.length === 0) continue;
-        out.planes[planoKey] = { planoId: plan.id, planoName: plan.name, ramales, bajantes: [] };
+        out.planes[planoKey] = { planoId: plan.id, planoName: plan.name, nivel, npt: plan.npt ?? parseInt(nivel), ramales, bajantes: [] };
       }
     } else {
       const ramales: any[] = [];
@@ -60,7 +63,10 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
             diametro: r.diametro || '', diamPulg: diamPulgFromLabel(r.diametro),
             pendiente: typeof r.pendiente === 'number' ? r.pendiente : 0,
             material: r.material || '', maning: matManning(r.material),
+            piso: r.piso || nivel,
             _aparatosKey: rKey, _net: r.net,
+            nSalidas: r.nSalidas || 0,
+            descargaEnId: r.descargaEnId || null,
           });
         }
       }
@@ -76,11 +82,13 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
             descargaEnId: b.descargaEnId || null,
             area_m2: b.area_m2 || 0,
             pisoBase: b.pisoBase || '', pisoCima: b.pisoCima || '',
+            nSalidas: b.nSalidas || 0,
+            bajR: b.bajR ?? 7/24,
           });
         }
       }
       if (ramales.length === 0 && bajantes.length === 0) continue;
-      out.planes[nivel] = { planoId: plan.id, planoName: plan.name, ramales, bajantes };
+      out.planes[nivel] = { planoId: plan.id, planoName: plan.name, nivel: plan.nivel, npt: plan.npt, ramales, bajantes };
     }
   }
 

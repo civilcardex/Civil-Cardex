@@ -2,18 +2,59 @@ import { useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import { usePlans } from "../context/PlansContext";
 import { pisoCorto, DIAM_OPTIONS, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN } from "../constants";
-import { diametroManning } from "../utils/calcSanitary";
+import { diametroManning, chequeoBajanteLluvia } from "../utils/calcSanitary";
 import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
 import { getTributarioIds } from "../utils/tramoUtils";
 import { calcHydraulicCheck } from "../utils/hydraulicCheck";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
+import { useRainwater } from "../context/RainwaterContext";
+
+const renderStatus = (val: string) => {
+  if (val === 'O.K.' || val === 'Ok' || val === 'OK') {
+    return (
+      <span style={{
+        color: 'var(--ok)',
+        background: 'rgba(47, 248, 1, 0.08)',
+        border: '1px solid rgba(47, 248, 1, 0.15)',
+        padding: '1px 5px',
+        borderRadius: '3px',
+        fontWeight: 600,
+        fontSize: '9px',
+        fontFamily: 'var(--mono)',
+        display: 'inline-block'
+      }}>
+        {val}
+      </span>
+    );
+  }
+  if (val === 'NO CUMPLE' || val === 'No cumple' || val === 'NO') {
+    return (
+      <span style={{
+        color: 'var(--err)',
+        background: 'rgba(255, 180, 171, 0.08)',
+        border: '1px solid rgba(255, 180, 171, 0.15)',
+        padding: '1px 5px',
+        borderRadius: '3px',
+        fontWeight: 600,
+        fontSize: '9px',
+        fontFamily: 'var(--mono)',
+        display: 'inline-block',
+        whiteSpace: 'nowrap'
+      }}>
+        {val}
+      </span>
+    );
+  }
+  return <span style={{ color: 'var(--txt3)' }}>{val}</span>;
+};
 
 export default function DisenoLluvias() {
   const { tramosLl, updTramoLL, delTramoLL } = useTramos();
   const { plans } = usePlans();
+  const { bajantesLl } = useRainwater();
 
-  const [conexiones, conexionesDisplay] = useMemo(() => {
+  const [conexiones, _, conexionesDisplay] = useMemo(() => {
     const calculoMap: Record<string, string[]> = {};
 
     for (const plan of plans || []) {
@@ -139,20 +180,100 @@ export default function DisenoLluvias() {
       }
     }
 
-    return [calculoMap, displayMap];
-  }, [plans, tramosLl]);
-
-  const getDescendantsQ = useCallback((tKey: string): number => {
-    const children = conexiones[tKey] || [];
-    let sum = 0;
-    for (const childKey of children) {
-      const childTramo = tramosLl.find(x => x._key === childKey);
-      if (childTramo) {
-        sum += (childTramo.qLps || 0) + getDescendantsQ(childKey);
+    const ramalToBajantes: Record<string, string[]> = {};
+    const bajanteKeys = tramosLl.filter(t => t.esBajante && t._key).map(t => ({ key: t._key!, code: t.code || t.id }));
+    
+    for (const b of bajanteKeys) {
+      const queue = [b.key];
+      const visited = new Set<string>();
+      visited.add(b.key);
+      
+      while (queue.length > 0) {
+        const node = queue.shift()!;
+        const children = calculoMap[node] || [];
+        for (const child of children) {
+          if (!visited.has(child)) {
+            visited.add(child);
+            queue.push(child);
+            if (!ramalToBajantes[child]) ramalToBajantes[child] = [];
+            if (!ramalToBajantes[child].includes(b.code)) {
+              ramalToBajantes[child].push(b.code);
+            }
+          }
+        }
       }
     }
-    return sum;
-  }, [conexiones, tramosLl]);
+
+    return [calculoMap, displayMap, ramalToBajantes];
+  }, [plans, tramosLl]);
+
+  const getAssociatedBajantes = useCallback((tKey: string): string[] => {
+    return (conexionesDisplay as any)[tKey] || [];
+  }, [conexionesDisplay]);
+
+
+
+  const qMap = useMemo(() => {
+    const areaAcumMap: Record<string, number> = {};
+    for (const plan of plans || []) {
+      if (plan.nivel == null) continue;
+      const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
+      if (!raw) continue;
+      let data = raw as Record<string, any>;
+      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { continue; } }
+      const totalArea = (data.areas || []).reduce((s: number, a: any) => s + (a.areaM2 || 0), 0);
+      areaAcumMap[String(plan.nivel)] = totalArea;
+    }
+
+    const ownQMap: Record<string, number> = {};
+    for (const t of tramosLl) {
+      if (!t._key) continue;
+      let ownQ = 0;
+      if (t.area_m2 && t.area_m2 > 0) {
+        const manual = bajantesLl.find(b => 
+          b.bajante === t.id || b.bajante === t.code || b.id === t.id || b.id === t.code
+        );
+        const int = manual?.intensidad ?? 100;
+        const coef = manual?.coeficienteC ?? 0.0278;
+        ownQ = t.area_m2 * int * coef / 100;
+      } else {
+        ownQ = t.qLps || 0;
+      }
+      ownQMap[t._key] = ownQ;
+    }
+
+    const totalQMap: Record<string, number> = {};
+    for (const t of tramosLl) {
+      if (!t._key) continue;
+      
+      let total = 0;
+      if (t.tipo === 'ramal' && !t.esBajante) {
+        const associatedCodes = getAssociatedBajantes(t._key);
+        for (const code of associatedCodes) {
+          const bajante = bajantesLl.find(b => b.bajante === code || b.id === code || b.code === code);
+          const trBaj = tramosLl.find(tb => tb.code === code || tb.id === code);
+          const areaDib = trBaj?.area_m2 || 0;
+          const areaAcum = areaAcumMap[String(trBaj?.piso)] || bajante?.areaAcumulada || 0;
+          
+          if (bajante) {
+             const Q = chequeoBajanteLluvia({ areaAcumulada: areaAcum, intensidad: bajante.intensidad ?? 100, coeficienteC: bajante.coeficienteC ?? 0.0278 }).Q;
+             total += Q;
+          } else if (trBaj) {
+             const Q = chequeoBajanteLluvia({ areaAcumulada: areaAcum, intensidad: 100, coeficienteC: 0.0278 }).Q;
+             total += Q;
+          }
+        }
+        if (total === 0 && t.qLps) {
+           total = t.qLps;
+        }
+      } else {
+         total = ownQMap[t._key] || 0;
+      }
+      totalQMap[t._key] = total;
+    }
+    return totalQMap;
+  }, [tramosLl, bajantesLl, getAssociatedBajantes, plans]);
+
 
   const handleDiamChange = useCallback((tramoKey: string, tramoId: string, newPulg: number) => {
     updTramoLL(tramoKey, 'diamDisPulg', newPulg);
@@ -168,7 +289,7 @@ export default function DisenoLluvias() {
   }, [delTramoLL, plans]);
 
   const tribIds = getTributarioIds(tramosLl);
-  const displayTramos = tramosLl.filter(t => t._key != null && !tribIds.has(t._key) && !tribIds.has(t.id));
+  const displayTramos = tramosLl.filter(t => t._key != null && !t.esBajante && !tribIds.has(t._key) && !tribIds.has(t.id));
 
   return (
   <>
@@ -181,38 +302,40 @@ export default function DisenoLluvias() {
           <table className="tbl" style={{fontSize:11}}>
           <thead>
             <tr>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Tramo</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Nivel</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Inicio</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Fin</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Ramales<br/>asociados</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Q<br/><small>LPS</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>n<br/>Manning</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>S&nbsp;%</th>
-              <th className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize:10,padding:'3px 2px'}}>Diámetro</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Qo<br/><small>LPS</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Vo<br/><small>m/s</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Q/Qo</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Yc<br/><small>mm</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Fr</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Flujo</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Ymax<br/><small>mm</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}>Yn vs Yc</th>
-              <th className="col-h ven" colSpan={2} style={{textAlign:'center',fontSize:10,padding:'3px 2px'}}>Fuerza Tractiva</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:10,textAlign:'center',padding:'3px 4px'}}></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Tramo</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Nivel</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Inicio</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Fin</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Bajantes<br/>asociadas</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Caudal<br/>Q <small>(LPS)</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Manning<br/>n</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Pendiente<br/>S <small>(%)</small></th>
+              <th className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>Diámetro</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Qo<br/><small>(LPS)</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Vo<br/><small>(m/s)</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Q/Qo</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Vr<br/><small>(m/s)</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Chequeo Vel.</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Yc<br/><small>(mm)</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Yn<br/><small>(mm)</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Fr</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Flujo</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Ymax<br/><small>(mm)</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Yn vs Yc</th>
+              <th className="col-h ven" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>Fuerza Tractiva</th>
             </tr>
             <tr>
-              <th className="col-h ok" style={{fontSize:9,textAlign:'center',padding:'2px 2px'}}>Calc.<br/>pulg</th>
-              <th className="col-h ok" style={{fontSize:9,textAlign:'center',padding:'2px 2px'}}>Diseño<br/>pulg</th>
-              <th className="col-h ok" style={{fontSize:9,textAlign:'center',padding:'2px 2px'}}>Int.<br/>mm</th>
-              <th className="col-h ven" style={{fontSize:9,textAlign:'center',padding:'2px 2px'}}>Vr<br/><small>kg/m2</small></th>
-              <th className="col-h ven" style={{fontSize:9,textAlign:'center',padding:'2px 2px'}}>&gt;0.15</th>
+              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Calculado<br/><small>(")</small></th>
+              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Diseño<br/><small>(")</small></th>
+              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Interior<br/><small>(mm)</small></th>
+              <th className="col-h ven" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Real<br/><small>(kg/m²)</small></th>
+              <th className="col-h ven" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>&gt;0.15</th>
             </tr>
           </thead>
           <tbody>
             {displayTramos.length === 0 ? (
               <tr>
-                <td colSpan={22} style={{ padding: "16px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                <td colSpan={24} style={{ padding: "16px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
                   No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                 </td>
               </tr>
@@ -220,13 +343,12 @@ export default function DisenoLluvias() {
 const n=t.nmaning??0;
 const sVal=t.sPercent??0;
 const S=sVal!=null&&sVal>0?sVal/100:null;
-const ownQ = t.qLps || 0;
-const totalExtra = getDescendantsQ(t._key!);
-const Q = ownQ + totalExtra;
+const Q = qMap[t._key!] || 0;
               const dSel=DIAM_OPTIONS.find(d=>d.pulg===(t.diamDisPulg||0))||null;
       let DcalcPulg=0,DdisPulg=dSel?dSel.pulg:0,DintMm=dSel?dSel.mm:0;
       let Qo=0,Vo=0,qqo=0;
-      let Yc=0,Froude=0,tipoFlujo='—',Ymax=0,chequeoYn='—';
+      let Vreal=0,chequeoV='—';
+      let Yc=0,Yn=0,Froude=0,tipoFlujo='—',Ymax=0,chequeoYn='—';
       let fuerzaTractiva=0,chequeoFT='—';
 if(Q>0&&S!=null&&S>0&&n!=null&&n>0){
 DcalcPulg=Math.round(diametroManning(Q/1000,n,S)*1000/25.4*100)/100;
@@ -235,7 +357,8 @@ DcalcPulg=Math.round(diametroManning(Q/1000,n,S)*1000/25.4*100)/100;
 if(Q>0&&S!=null&&S>0&&n!=null&&n>0&&DintMm>0){
 const hc = calcHydraulicCheck({ Q, S, n, DintMm, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN });
  Qo = hc.Qo; Vo = hc.Vo; qqo = hc.qqo;
-  Yc = hc.Yc; Froude = hc.Froude; tipoFlujo = hc.tipoFlujo;
+  Vreal = hc.Vreal; chequeoV = hc.chequeoV;
+  Yc = hc.Yc; Yn = hc.Yn; Froude = hc.Froude; tipoFlujo = hc.tipoFlujo;
   Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; chequeoFT = hc.chequeoFT;
 }
               return(
@@ -246,24 +369,17 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm, V_MIN, V_MAX, Y_D_MAX, FUERZA_T
                   <td className="c" style={{padding:'2px 4px'}}><span style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.hasta || '—'}</span></td>
                   <td className="c" style={{padding:'2px 4px',minWidth:60,maxWidth:120}}>
                     {(() => {
-                      const connectedKeys = conexionesDisplay[t._key!] || [];
-                      return connectedKeys.length === 0 ? (
+                      const associatedBajantes = (conexionesDisplay as any)[t._key!] || [];
+                      return associatedBajantes.length === 0 ? (
                         <span style={{fontSize:9,color:'var(--txt3)'}}>—</span>
                       ) : (
                         <div style={{display:'flex',flexWrap:'wrap',gap:2,justifyContent:'center',alignItems:'center'}}>
-                          {connectedKeys.map(childKey => {
-                            const parts = childKey.split('-');
-                            const rId = parts[0];
-                            const childTramo = tramosLl.find(tr => tr._key === childKey);
-                            const childTotalQ = (childTramo ? childTramo.qLps || 0 : 0) + getDescendantsQ(childKey);
-                            return (
-                              <span key={childKey}
-                                title={`${rId} (${childTotalQ.toFixed(2)} LPS)`}
-                                style={{fontSize:9,padding:'1px 3px',border:'1px solid var(--ll)',borderRadius:3,color:'var(--ll)',fontFamily:'var(--mono)',lineHeight:1.3}}>
-                                {rId}
-                              </span>
-                            );
-                          })}
+                          {associatedBajantes.map((bajName: string) => (
+                            <span key={bajName}
+                              style={{fontSize:9,padding:'1px 3px',border:'1px solid var(--ll)',borderRadius:3,color:'var(--ll)',fontFamily:'var(--mono)',lineHeight:1.3}}>
+                              {bajName}
+                            </span>
+                          ))}
                         </div>
                       );
                     })()}
@@ -286,20 +402,16 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm, V_MIN, V_MAX, Y_D_MAX, FUERZA_T
                   <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{Qo>0?Qo.toFixed(2):'—'}</td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{Vo>0?Vo.toFixed(2):'—'}</td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{qqo>0?qqo.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{Yc>0?Yc.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{Froude>0?Froude.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{Vreal>0?Vreal.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{renderStatus(chequeoV)}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{Yc>0?Yc.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{Yn>0?Yn.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{Froude>0?Froude.toFixed(2):'—'}</td>
                   <td className="c" style={{fontSize:9,padding:'2px 4px'}}>{tipoFlujo}</td>
                   <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{Ymax>0?Ymax.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{chequeoYn}</td>
+                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{renderStatus(chequeoYn)}</td>
                   <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{fuerzaTractiva>0?fuerzaTractiva.toFixed(2):'—'}</td>
-        <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{chequeoFT}</td>
-        <td className="c" style={{padding:'1px 4px'}}>
-          <button
-            onClick={() => handleDelete(t._key!, t.id)}
-            title="Eliminar ramal"
-            style={{border:'none',background:'transparent',color:'var(--txt3)',cursor:'pointer',fontSize:11,padding:'0 2px',lineHeight:1}}
-          >&#x2715;</button>
-        </td>
+        <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{renderStatus(chequeoFT)}</td>
       </tr>
               );
             })}

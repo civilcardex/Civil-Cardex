@@ -30,24 +30,42 @@ export function useSanLlSync(
       for (const r of ((plane as any).ramales || [])) {
         if (r.tipo === 'tributario') tribIds.add(`${r.id}-${planId}`);
       }
-      const piso = parseInt(nivel);
+      const piso = (plane as any).npt ?? parseInt(nivel);
+      const fmtNivel = (v: string) => {
+        const n = parseInt(v);
+        if (isNaN(n)) return v.replace(/^Piso\s*/, 'P').replace(/^Sótano\s*/i, 'S').replace(/^Cubierta$/i, 'C');
+        if (n === 99) return 'C';
+        if (n < 0) return `S${Math.abs(n)}`;
+        return `P${n}`;
+      };
+      const venRamales = ((plane as any).ramales || []).filter((r: any) => r._net === 'vent' || r.net === 'vent');
+      const venMap = new Map();
+      for (const vr of venRamales) {
+        if (vr.descargaEnId && vr.diametro) {
+          const parts = vr.descargaEnId.includes('|') ? vr.descargaEnId.split('|') : [planId, vr.descargaEnId];
+          if (parts[0] === planId) venMap.set(parts[1], vr.diametro);
+        }
+      }
+
       for (const r of ((plane as any).ramales || [])) {
+        if (r._net === 'vent' || r.net === 'vent') continue;
         const apKey = r._aparatosKey || `${r._net || 'san'}_${r.id}_${planId}`;
         const hd = hidroData[apKey] || {};
         const tramo = {
           _key: `${r.id}-${planId}`,
-          id: r.id, piso, planId,
+          id: r.id, piso, planId, _nivelLabel: fmtNivel(r.piso || nivel),
+          _net: r._net || r.net || '',
           tipo: r.tipo || 'ramal',
           fixtures: sync.aparatosByTramo?.[apKey] || {},
           recibeDe: [], esBajante: false, descripcion: '',
           ini: r.ini || '', fin: r.fin || '',
-          diamDisPulg: r.diamPulg || 0, nSalidas: hd.nSalidas || 0,
+          diamDisPulg: r.diamPulg || 0, nSalidas: r.nSalidas || hd.nSalidas || 0,
           totalL: r.totalL || 0,
           nmaning: r.maning ?? 0, sPercent: r.pendiente ?? 0,
-          bajR: 7/24, bajLong: 3, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
+          bajR: 7/24, bajLong: 5, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
         };
         if (r._net === 'll') {
-          llIncoming.push({ _key: tramo._key, ...tramo, desde: '', hasta: '' });
+          llIncoming.push({ _key: tramo._key, ...tramo, desde: r.ini || '', hasta: r.fin || '' });
         } else {
           sanIncoming.push(tramo);
         }
@@ -55,15 +73,17 @@ export function useSanLlSync(
       for (const b of ((plane as any).bajantes || [])) {
         const apKey = b._aparatosKey || `${b._net || 'san'}_${b.id}_${planId}`;
         const hd = hidroData[apKey] || {};
+        const ventD = venMap.has(b.id) ? parseFloat(venMap.get(b.id)) : (b.ventDprop || b.diamPulg || 0);
         const tramo = {
           _key: `${b.id}-${planId}`,
-          id: b.id, piso, planId,
+          id: b.id, piso, planId, _nivelLabel: fmtNivel(b.piso || nivel),
+          _net: b._net || b.net || '',
           tipo: 'bajante',
           fixtures: sync.aparatosByTramo?.[apKey] || {},
           recibeDe: [], esBajante: true, descripcion: '',
-          diamDisPulg: b.diamPulg || 0, nSalidas: hd.nSalidas || 0,
+          diamDisPulg: b.diamPulg || 0, nSalidas: b.nSalidas || hd.nSalidas || 0,
           nmaning: b.maning ?? 0, sPercent: 0,
-          bajR: b.bajR ?? 7/24, bajLong: b.bajLong ?? 3, bajFDarcy: b.bajFDarcy ?? 0.025, bajDprop: b.bajDprop ?? 0, ventDprop: b.ventDprop ?? 0,
+          bajR: b.bajR ?? 7/24, bajLong: b.bajLong ?? 5, bajFDarcy: b.bajFDarcy ?? 0.025, bajDprop: b.diamPulg || 0, ventDprop: ventD,
           recibeDeIds: b.recibeDeIds || [],
           descargaEnId: b.descargaEnId || null,
           area_m2: b.area_m2 || 0,
@@ -71,7 +91,7 @@ export function useSanLlSync(
           code: b.code || b.id,
         };
         if (b._net === 'll') {
-          llIncoming.push({ _key: tramo._key, ...tramo, desde: '', hasta: '' });
+          llIncoming.push({ _key: tramo._key, ...tramo, desde: b.ini || '', hasta: b.fin || '' });
         } else {
           sanIncoming.push(tramo);
         }
@@ -80,19 +100,16 @@ export function useSanLlSync(
     const prevSan = stateRef.current.tramosSan;
     const newSan = sanIncoming.length === 0 ? [] : sanIncoming.map(i => {
       const existing = prevSan.find(t => t._key === i._key);
-      return existing ? { ...i, descripcion: existing.descripcion || i.descripcion, nSalidas: existing.nSalidas ?? i.nSalidas, fixtures: { ...i.fixtures, ...existing.fixtures } } : i;
+      return existing ? { ...i, descripcion: existing.descripcion || i.descripcion, nSalidas: i.nSalidas || existing.nSalidas || 0, fixtures: { ...i.fixtures, ...existing.fixtures } } : i;
     });
     dispatch({ type: 'SET_TRAMOS', net: 'san', payload: newSan });
 
     const prevLl = stateRef.current.tramosLl;
-    if (llIncoming.length === 0) { dispatch({ type: 'SET_TRAMOS', net: 'll', payload: [] }); return; }
-    const drawingKeys = new Set([...llIncoming.map(i => i._key), ...tribIds]);
-    const keep = prevLl.filter(t => t._key && !drawingKeys.has(t._key));
-    const merged = llIncoming.map(i => {
+    const newLl = llIncoming.length === 0 ? [] : llIncoming.map(i => {
       const ex = prevLl.find(t => t._key === i._key);
       return ex ? { ...i, descripcion: ex.descripcion || '', desde: ex.desde || '', hasta: ex.hasta || '' } : i;
     });
-    dispatch({ type: 'SET_TRAMOS', net: 'll', payload: [...keep, ...merged] });
+    dispatch({ type: 'SET_TRAMOS', net: 'll', payload: newLl });
   });
 }
 
