@@ -50,21 +50,21 @@ export default function RainInputPanel({ type, onClose }: RainInputPanelProps) {
         </tr>
       );
     } else {
-      const { Q, dCalc, chequeo: chk } = chequeoBajanteLluvia(item);
+      const { Q, dCalc, chequeo: chk } = chequeoBajanteLluvia({ ...item, coeficienteC: 0.0278 });
       return (
         <tr key={item.id} style={{borderBottom:'1px solid #2a2c30'}}>
           <td style={tdS}><input style={inputStyle(72)} value={item.bajante} onChange={e=>updBajanteLL(item.id,'bajante',e.target.value)}/></td>
           <td style={tdS}><input style={inputStyle(60)} defaultValue={item.areaParcial||''} key={item.id+'ap'} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(item.id,'areaParcial',v);}}/></td>
           <td style={tdS}><input style={inputStyle(60)} defaultValue={item.areaAcumulada||''} key={item.id+'aa'} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(item.id,'areaAcumulada',v);}}/></td>
           <td style={tdS}><input style={inputStyle(56)} defaultValue={item.intensidad||''} key={item.id+'in'} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(item.id,'intensidad',v);}}/></td>
-          <td style={tdS}><input style={inputStyle(50)} defaultValue={item.coeficienteC||''} key={item.id+'cc'} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(item.id,'coeficienteC',v);}}/></td>
+          <td style={tdS}><input style={inputStyle(50)} value="0.0278" readOnly disabled /></td>
           <td style={tdS}>
             <select style={{...inputStyle(52),padding:'2px 2px'}} value={item.R} onChange={e=>updBajanteLL(item.id,'R',e.target.value)}>
               <option value="">—</option>{R_OPTIONS.map(r=><option key={r.value} value={r.value}>{r.label}</option>)}
             </select>
           </td>
           <td style={{...tdS,fontWeight:700,fontSize:13}}>{Q>0?Q.toFixed(2):'—'}</td>
-          <td style={tdS}><input style={inputStyle(50)} defaultValue={item.manning||''} key={item.id+'mn'} onChange={e=>{const v=parseDecimalInput(e.target.value);if(v!==null)updBajanteLL(item.id,'manning',v);}}/></td>
+          <td style={tdS}><input style={inputStyle(50)} value="0.009" readOnly disabled /></td>
           <td style={tdS}>{dCalc > 0 ? dCalc.toFixed(2) : '—'}</td>
           <td style={tdS}><select style={{...inputStyle(56),padding:'2px 2px'}} value={item.diamPropuesto||''} onChange={e=>updBajanteLL(item.id,'diamPropuesto',e.target.value?Number(e.target.value):0)}><option value="">—</option><option value="1.5">1½"</option><option value="2">2"</option><option value="3">3"</option><option value="4">4"</option><option value="6">6"</option></select></td>
           <td style={{...tdS,fontWeight:700,color:chk==='O.K.'?'#2ff801':'#ffb4ab'}}>{chk}</td>

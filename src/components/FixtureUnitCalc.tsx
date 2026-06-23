@@ -193,7 +193,7 @@ function CalculoUD() {
       const id = tr.id || '';
       const match = id.match(/^([a-zA-Z]+)(\d+)?$/);
       const num = match && match[2] ? parseInt(match[2]) : 999;
-      return (piso * 100000) + (isBajante ? 10000 : 0) + num;
+      return (piso * 100000) + (isBajante ? 0 : 10000) + num;
     };
 
     const orientedConexiones: Record<string, string[]> = {};
@@ -348,8 +348,8 @@ function CalculoUD() {
       <tr key={tKey}>
         <td className="c"><span className="sigla" style={{fontSize:11,fontWeight:600}}>{t.id}</span></td>
         <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{pisoCorto(t.piso)}</span></td>
-        <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.ini ? `${t.ini.x},${t.ini.y}` : '—'}</span></td>
-        <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.fin ? `${t.fin.x},${t.fin.y}` : '—'}</span></td>
+        <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.ini || '—'}</span></td>
+        <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.fin || '—'}</span></td>
         {mergedBase.map(d=>(
           <td key={d.id} className="c" style={{padding:'2px 3px'}}>
             <span style={{fontSize:12,fontFamily:'var(--mono)',color:d._disabled?'var(--txt3)':'var(--txt)'}}>{t.fixtures[d.id]??0}</span>

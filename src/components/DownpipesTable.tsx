@@ -20,14 +20,56 @@ function fmtPiso(val: string, pisos: any[]): string {
   return val;
 }
 
+const renderStatus = (val: string) => {
+  if (val === 'O.K.' || val === 'Ok' || val === 'OK') {
+    return (
+      <span style={{
+        color: 'var(--ok)',
+        background: 'rgba(47, 248, 1, 0.08)',
+        border: '1px solid rgba(47, 248, 1, 0.15)',
+        padding: '1px 5px',
+        borderRadius: '3px',
+        fontWeight: 600,
+        fontSize: '9px',
+        fontFamily: 'var(--mono)',
+        display: 'inline-block'
+      }}>
+        {val}
+      </span>
+    );
+  }
+  if (val === 'NO CUMPLE' || val === 'No cumple' || val === 'NO') {
+    return (
+      <span style={{
+        color: 'var(--err)',
+        background: 'rgba(255, 180, 171, 0.08)',
+        border: '1px solid rgba(255, 180, 171, 0.15)',
+        padding: '1px 5px',
+        borderRadius: '3px',
+        fontWeight: 600,
+        fontSize: '9px',
+        fontFamily: 'var(--mono)',
+        display: 'inline-block',
+        whiteSpace: 'nowrap'
+      }}>
+        {val}
+      </span>
+    );
+  }
+  return <span style={{ color: 'var(--txt3)' }}>{val}</span>;
+};
+
+import { writeBajantePropToDrawing } from "../utils/writeDiameterToDrawing";
+
 export default function BajantesTable() {
   const { tramosSan } = useTramos();
   const { udBase } = useApparatus();
   const { pisos } = useProject();
   const { plans } = usePlans();
 
-  const [conexiones, componentTotalMap] = useMemo(() => {
+  const [conexiones, componentTotalMap, ventToSanMap] = useMemo(() => {
     const map: Record<string, string[]> = {};
+    const vMap: Record<string, string[]> = {};
 
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
@@ -106,6 +148,68 @@ export default function BajantesTable() {
             map[targetKey].push(rKey);
           }
         }
+      }
+
+      const ventBajantes = bajantes.filter((b: any) => b.net === 'vent');
+      const ventRamales = ramales.filter((r: any) => r.net === 'vent');
+
+      for (const vb of ventBajantes) {
+         const vbKey = `${vb.id}-${plan.id}`;
+         if (!vMap[vbKey]) vMap[vbKey] = [];
+         
+         for (const vr of ventRamales) {
+            const isExplicit = vb.recibeDeIds && (vb.recibeDeIds.includes(vr.id) || (vr.label && vb.recibeDeIds.includes(vr.label)));
+            let isConnected = isExplicit;
+            if (!isConnected && vr.pts && vr.pts.length >= 2) {
+               const d1 = Math.hypot(vr.pts[0][0] - vb.x, vr.pts[0][1] - vb.y);
+               const d2 = Math.hypot(vr.pts[vr.pts.length-1][0] - vb.x, vr.pts[vr.pts.length-1][1] - vb.y);
+               if (d1 < 2.0 || d2 < 2.0) isConnected = true;
+            }
+            if (isConnected) {
+               let foundSanId: string | null = null;
+               
+               if (vr.descargaEnId) {
+                  const parts = vr.descargaEnId.includes('|') ? vr.descargaEnId.split('|') : [plan.id, vr.descargaEnId];
+                  if (parts[1] !== vb.id && parts[1] !== vb.label) {
+                     const sanKey = `${parts[1]}-${parts[0]}`;
+                     if (!vMap[vbKey].includes(sanKey)) vMap[vbKey].push(sanKey);
+                     continue;
+                  }
+               }
+
+               const sanRamales = ramales.filter((r: any) => r.net === 'san');
+               const sanBajantes = bajantes.filter((b: any) => b.net === 'san');
+               
+               if (vr.pts && vr.pts.length >= 2) {
+                  const pt1 = vr.pts[0];
+                  const pt2 = vr.pts[vr.pts.length - 1];
+                  
+                  for (const sb of sanBajantes) {
+                     if (Math.hypot(pt1[0] - sb.x, pt1[1] - sb.y) < 2.0 || Math.hypot(pt2[0] - sb.x, pt2[1] - sb.y) < 2.0) {
+                        foundSanId = sb.id;
+                        break;
+                     }
+                  }
+                  
+                  if (!foundSanId) {
+                     for (const sr of sanRamales) {
+                        if (!sr.pts || sr.pts.length < 2) continue;
+                        const d1 = distToPolyline(pt1, sr.pts);
+                        const d2 = distToPolyline(pt2, sr.pts);
+                        if (d1 < 2.0 || d2 < 2.0) {
+                           foundSanId = sr.id;
+                           break;
+                        }
+                     }
+                  }
+               }
+               
+               if (foundSanId) {
+                  const sk = `${foundSanId}-${plan.id}`;
+                  if (!vMap[vbKey].includes(sk)) vMap[vbKey].push(sk);
+               }
+            }
+         }
       }
     }
 
@@ -199,7 +303,7 @@ export default function BajantesTable() {
       const id = tr.id || '';
       const match = id.match(/^([a-zA-Z]+)(\d+)?$/);
       const num = match && match[2] ? parseInt(match[2]) : 999;
-      return (piso * 100000) + (isBajante ? 10000 : 0) + num;
+      return (piso * 100000) + (isBajante ? 0 : 10000) + num;
     };
 
     const orientedConexiones: Record<string, string[]> = {};
@@ -265,7 +369,7 @@ export default function BajantesTable() {
       for (const k of comp) componentTotalMap[k] = compTotal;
     }
 
-    return [orientedConexiones, componentTotalMap];
+    return [orientedConexiones, componentTotalMap, vMap] as const;
   }, [plans, tramosSan, udBase]);
 
   const getDescendantsUD = useCallback((tKey: string, visited = new Set<string>()): number => {
@@ -300,31 +404,31 @@ export default function BajantesTable() {
             <tr>
               <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>No.</th>
               <th scope="col" className="col-h san" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Nivel</th>
-              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Ramales<br/>asociados</th>
-              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>UD</th>
-              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>r</th>
-              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Q<br/><small>lps</small></th>
-              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>n</th>
-              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Diám</th>
-              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Cheq</th>
-              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Q máx<br/><small>Baj</small></th>
-              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Vt<br/><small>m/s</small></th>
-              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>L term</th>
-              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Va<br/><small>m/s</small></th>
-              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>ƒ</th>
-              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Qa<br/><small>LPS</small></th>
-              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Lb<br/><small>m</small></th>
-              <th scope="col" className="col-h ven" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Diám V</th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Ramales<br/>Asociados</th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Unidades<br/>Descarga</th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Llenado<br/>(r)</th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Caudal<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Manning<br/>(n)</th>
+              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Diámetro</th>
+              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Chequeo</th>
+              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Caudal Máx.<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Vel. Term.<br/><small>(m/s)</small></th>
+              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Long. Terminal</th>
+              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Vel. Aire<br/><small>(m/s)</small></th>
+              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Fricción<br/>(ƒ)</th>
+              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Caudal Aire<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Long. Bajante<br/><small>(m)</small></th>
+              <th scope="col" className="col-h ven" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Diámetro Ventilación</th>
             </tr>
             <tr>
               <th scope="col" className="col-h san" style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Origen</th>
               <th scope="col" className="col-h san" style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Destino</th>
-              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Calc<br/>Pulg</th>
-              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Prop<br/>Pulg</th>
-              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>calc</th>
-              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>min</th>
-              <th scope="col" className="col-h ven" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Calc<br/>Pulg</th>
-              <th scope="col" className="col-h ven" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Prop<br/>Pulg</th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Calculado<br/><small>(pulg)</small></th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Propuesto<br/><small>(pulg)</small></th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Calculada<br/><small>(m)</small></th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Mínima<br/><small>(m)</small></th>
+              <th scope="col" className="col-h ven" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Calculado<br/><small>(pulg)</small></th>
+              <th scope="col" className="col-h ven" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Propuesto<br/><small>(pulg)</small></th>
             </tr>
           </thead>
           <tbody>
@@ -357,10 +461,23 @@ export default function BajantesTable() {
 
                 const ramalesIds = (t.recibeDeIds || []) as string[];
                 const ramalesAsocVal = ramalesIds.length > 0 ? ramalesIds.join(', ') : '—';
-                const totalUD = propiasUD + getDescendantsUD(t._key || `${t.id}-${planIdStr}`);
-                const ramalesUD = totalUD - propiasUD;
+                
+                let totalUD = propiasUD + getDescendantsUD(t._key || `${t.id}-${planIdStr}`);
+                let ramalesUD = totalUD - propiasUD;
 
-                const n = t.nmaning ?? 0;
+                if (t._net === 'vent' || t.net === 'vent') {
+                  const sanKeys = ventToSanMap[t._key || `${t.id}-${planIdStr}`] || [];
+                  totalUD = 0;
+                  for (const sk of sanKeys) {
+                    const st = tramosSan.find(x => x._key === sk);
+                    if (st) {
+                       totalUD += calcUDparcial(st, udBase) + getDescendantsUD(sk);
+                    }
+                  }
+                  ramalesUD = totalUD;
+                }
+
+                const n = t.nmaning || 0.009;
                 const origenVal = fmtPiso(t.piso?.toString() || '', pisos);
                 const pisosRange = targetPiso ? `${t.piso}-${targetPiso}` : `${t.piso}-${t.piso}`;
 
@@ -400,15 +517,15 @@ export default function BajantesTable() {
                     <td className="c" style={{fontSize:10,color:'var(--txt2)',fontFamily:'var(--mono)',padding:'1px 3px'}}>
                       {ramalesAsocVal}
                     </td>
-                    <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize:10,padding:'1px 3px'}}>{totalUD > 0 ? totalUD : (propiasUD > 0 ? propiasUD : '—')}</td>
+                    <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize:10,padding:'1px 3px'}}>{totalUD > 0 ? totalUD : '—'}</td>
                     <td className="c" style={{padding:'1px 3px'}}>
                       <span style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{rStr || '—'}</span>
                     </td>
-                    <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,fontSize:10,padding:'1px 3px'}}>{Q > 0 ? Q.toFixed(3) : '—'}</td>
+                    <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,fontSize:10,padding:'1px 3px'}}>{Q > 0 ? Q.toFixed(2) : '—'}</td>
                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'1px 3px'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:9,padding:'1px 3px'}}>{DcalcPulg > 0 ? DcalcPulg.toFixed(2) + '"' : '—'}</td>
                     <td className="c" style={{padding:'1px 3px'}}><span style={{fontFamily:'var(--mono)',fontSize:10}}>{t.bajDprop ? t.bajDprop + '"' : '—'}</span></td>
-                    <td className="c" style={{fontSize:10,padding:'1px 3px'}}>{chequeo}</td>
+                    <td className="c" style={{fontSize:10,padding:'1px 3px'}}>{renderStatus(chequeo)}</td>
                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'1px 3px'}}>{QmaxB > 0 ? QmaxB.toFixed(2) : '—'}</td>
                     <td className="c" style={{fontSize:10,padding:'1px 3px'}}>{Vt > 0 ? Vt.toFixed(2) : '—'}</td>
                     <td className="c" style={{fontSize:10,padding:'1px 3px'}}>{Ltcalc > 0 ? Ltcalc.toFixed(2) : '—'}</td>
@@ -416,7 +533,20 @@ export default function BajantesTable() {
                     <td className="c" style={{fontSize:10,padding:'1px 3px'}}>{Vair > 0 ? Vair.toFixed(2) : '—'}</td>
                     <td className="c" style={{padding:'1px 3px'}}><span style={{fontFamily:'var(--mono)',fontSize:10}}>{fDarcy > 0 ? fDarcy.toFixed(3) : '—'}</span></td>
                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'1px 3px'}}>{Qair > 0 ? Qair.toFixed(2) : '—'}</td>
-                    <td className="c" style={{padding:'1px 3px'}}><span style={{fontFamily:'var(--mono)',fontSize:10}}>{Lbaj > 0 ? Lbaj : '—'}</span></td>
+                    <td className="c" style={{padding:'1px 3px'}}>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        style={{ width: 40, padding: 2, textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 10, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--txt)' }}
+                        value={t.bajLong ?? 5}
+                        onChange={e => {
+                           const val = parseFloat(e.target.value) || 5;
+                           const tKey = t._key || `${t.id}-${t.piso}`;
+                           writeBajantePropToDrawing(tKey, t._net || 'san', 'bajLong', val, plans);
+                        }}
+                      />
+                    </td>
                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:9,padding:'1px 3px'}}>{DventCalcPulg > 0 ? DventCalcPulg.toFixed(2) + '"' : '—'}</td>
                     <td className="c" style={{padding:'1px 3px'}}><span style={{fontFamily:'var(--mono)',fontSize:10}}>{t.ventDprop ? t.ventDprop + '"' : '—'}</span></td>
                   </tr>

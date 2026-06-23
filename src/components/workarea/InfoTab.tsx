@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import type { Dispatch, SetStateAction, ChangeEvent, FocusEvent } from "react";
 import { REDES, USOS, pisoLbl } from "../../constants";
 import type { useWorkAreaState } from "../useWorkAreaState";
@@ -105,14 +105,18 @@ function ActiveNetsCard({ redes, setRedes, netColors, setNetColors }: { redes: S
 }
 
 function ActiveEquiposCard({ redes, setRedes }: { redes: Set<string>; setRedes: Dispatch<SetStateAction<Set<string>>> }) {
+  const [editing, setEditing] = useState(false);
   return (
     <div className="card" style={{ flex: 1, minWidth: 190, display: 'flex', flexDirection: 'column' }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h3 className="card-t" style={{ fontSize: 13 }}>
-            <img src="/iconos_info_general/equipos_activos.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
-            Equipos activos
-          </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <h3 className="card-t" style={{ fontSize: 13, flex: 1, whiteSpace: 'nowrap' }}>
+              <img src="/iconos_info_general/equipos_activos.webp" alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
+              Equipos activos
+            </h3>
+            <button onClick={() => setEditing(e => !e)} style={{ marginLeft: 'auto', background: editing ? 'var(--acc)' : 'transparent', color: editing ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>{editing ? 'LISTO' : 'EDITAR'}</button>
+          </div>
           <span className="card-s" style={{ fontSize: 11 }}>{[...redes].filter(id => id === 'ep' || id === 'bom').length} de 2</span>
         </div>
       </div>
@@ -123,10 +127,10 @@ function ActiveEquiposCard({ redes, setRedes }: { redes: Set<string>; setRedes: 
             if (!r) return null;
             const on = redes.has(r.id);
             return (
-              <button key={r.id} onClick={() => { const n = new Set(redes); on ? n.delete(r.id) : n.add(r.id); setRedes(n); }}
+              <button key={r.id} disabled={!editing} onClick={() => { if (!editing) return; const n = new Set(redes); on ? n.delete(r.id) : n.add(r.id); setRedes(n); }}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 3, padding: '3px 5px', cursor: 'pointer',
-                  background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left'
+                  display: 'flex', alignItems: 'center', gap: 3, padding: '3px 5px', cursor: editing ? 'pointer' : 'default',
+                  background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left', opacity: editing ? 1 : 0.5
                 }}>
                 {r.icoImg ? <img src={r.icoImg} alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle' }}  loading="lazy" /> : <span style={{ fontSize: 13 }}>{r.ico}</span>}
                 <span style={{ fontWeight: 600, fontSize: 12, color: on ? '#22c55e' : 'var(--txt2)', whiteSpace: 'nowrap', flex: 1 }}>{r.lbl}</span>

@@ -1,6 +1,45 @@
 import { useRainwater } from "../context/RainwaterContext";
 import { chequeoCanalLluvia } from "../utils/calcSanitary";
 
+const renderStatus = (val: string) => {
+  if (val === 'O.K.' || val === 'Ok' || val === 'OK') {
+    return (
+      <span style={{
+        color: 'var(--ok)',
+        background: 'rgba(47, 248, 1, 0.08)',
+        border: '1px solid rgba(47, 248, 1, 0.15)',
+        padding: '1px 5px',
+        borderRadius: '3px',
+        fontWeight: 600,
+        fontSize: '9px',
+        fontFamily: 'var(--mono)',
+        display: 'inline-block'
+      }}>
+        {val}
+      </span>
+    );
+  }
+  if (val === 'NO CUMPLE' || val === 'No cumple' || val === 'NO') {
+    return (
+      <span style={{
+        color: 'var(--err)',
+        background: 'rgba(255, 180, 171, 0.08)',
+        border: '1px solid rgba(255, 180, 171, 0.15)',
+        padding: '1px 5px',
+        borderRadius: '3px',
+        fontWeight: 600,
+        fontSize: '9px',
+        fontFamily: 'var(--mono)',
+        display: 'inline-block',
+        whiteSpace: 'nowrap'
+      }}>
+        {val}
+      </span>
+    );
+  }
+  return <span style={{ color: 'var(--txt3)' }}>{val}</span>;
+};
+
 export default function ChequeoCanalesLluvias() {
   const { canalesLl } = useRainwater();
 
@@ -11,27 +50,27 @@ export default function ChequeoCanalesLluvias() {
       </div>
       <div className="scroll-top" style={{padding:'16px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
-        <table className="tbl" style={{fontSize:13}}>
+        <table className="tbl" style={{fontSize:10, tableLayout:'auto', width:'100%', borderCollapse:'collapse'}}>
           <thead>
             <tr>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Sector</th>
-              <th className="col-h ll" colSpan={2} style={{textAlign:'center',fontSize:11}}>Área</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Intensidad promedio<br/>mm/hr/m²</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Coeficiente de<br/>Escorrentía C</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Q real<br/>LPS</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Manning</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Pendiente<br/>(%)</th>
-              <th className="col-h ok" colSpan={4} style={{textAlign:'center',fontSize:11}}>Sección propuesta</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Q max<br/>LPS</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Chequeo<br/>Qreal&lt;Qmax</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Sector</th>
+              <th className="col-h ll" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'3px 2px'}}>Área (m²)</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Intensidad (I)<br/><small>mm/hr</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Coef.<br/>Escorrentía (C)</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Q real<br/><small>(LPS)</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Manning<br/>(n)</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Pendiente<br/>S <small>(%)</small></th>
+              <th className="col-h ok" colSpan={4} style={{textAlign:'center',fontSize:9,padding:'3px 2px'}}>Sección propuesta (cm)</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Q max<br/><small>(LPS)</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Chequeo<br/>Qreal &lt; Qmax</th>
             </tr>
             <tr>
-              <th className="col-h ll" style={{fontSize:10,textAlign:'center'}}>Parcial<br/>m²</th>
-              <th className="col-h ll" style={{fontSize:10,textAlign:'center'}}>Acumulada<br/>m²</th>
-              <th className="col-h ok" style={{fontSize:10,textAlign:'center'}}>b<br/>(cm)</th>
-              <th className="col-h ok" style={{fontSize:10,textAlign:'center'}}>h<br/>(cm)</th>
-              <th className="col-h ok" style={{fontSize:10,textAlign:'center'}}>bl<br/>(cm)</th>
-              <th className="col-h ok" style={{fontSize:10,textAlign:'center'}}>Total<br/>(cm)</th>
+              <th className="col-h ll" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Parcial</th>
+              <th className="col-h ll" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Acumulada</th>
+              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>b</th>
+              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>h</th>
+              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>bl</th>
+              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Total</th>
             </tr>
           </thead>
           <tbody>
@@ -58,7 +97,7 @@ return(
                   <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{c.bl||'—'}</span></td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,fontSize:11}}>{totalStr}</td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize:12}}>{Qmax > 0 ? Qmax.toFixed(2) : '—'}</td>
-                  <td className="c" style={{fontWeight:700}}>{chequeo}</td>
+                  <td className="c" style={{fontSize:11}}>{renderStatus(chequeo)}</td>
                 </tr>
               );
             })}

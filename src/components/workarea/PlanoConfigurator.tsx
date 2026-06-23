@@ -52,8 +52,11 @@ function PlanoConfiguratorBase({
   const [definedScale, setDefinedScale] = useState<number | null>(existingCal?.definedScale || existingCal?.scaleM || null);
   const [calGlobal, setCalGlobal] = useState<boolean | null>(existingCal?.calGlobal ?? null);
 
+  const isPdf = planFile.type === 'application/pdf' || planFile.name.toLowerCase().endsWith('.pdf');
+  const isImage = /\.(png|jpe?g|webp|bmp|gif)$/i.test(planFile.name);
+
   const [preScaleM, setPreScaleM] = useState<number | null>(() => {
-    if (existingCal?.definedScale) return existingCal.definedScale * (96 / 72);
+    if (existingCal?.definedScale) return existingCal.definedScale * (96 / (isPdf ? 72 : 96));
     if (existingCal?.scaleM) return existingCal.scaleM;
     return null;
   });
@@ -74,9 +77,6 @@ function PlanoConfiguratorBase({
   const pdfCanvRef = useRef<HTMLCanvasElement | null>(null);
   const pageWRef = useRef(0);
   const pageHRef = useRef(0);
-
-  const isPdf = planFile.type === 'application/pdf' || planFile.name.toLowerCase().endsWith('.pdf');
-  const isImage = /\.(png|jpe?g|webp|bmp|gif)$/i.test(planFile.name);
 
   const showToast = useCallback((msg: string, type: 'err' | 'ok' | 'warn' = 'err') => {
     setToast({ msg, type });
@@ -295,20 +295,21 @@ function PlanoConfiguratorBase({
       const dx = modoCalX ? (calPreview.x - calStart.x_px) : 0;
       const dy = modoCalY ? (calPreview.y - calStart.y_px) : 0;
       const distPx = Math.hypot(dx, dy);
-      const distCm = distPx / 96 * 2.54;
+      const internalDistCm = distPx / 96 * 2.54;
+      const displayDistCm = distPx / (isPdf ? 72 : 96) * 2.54;
 
-      const baseFactor = modoCalX ? (factorY || scaleM || definedScale) : (factorX || scaleM || definedScale);
-      const isFirstCalib = modoCalX ? !(factorY || scaleM) : !(factorX || scaleM);
+      const baseFactor = modoCalX ? (factorY || scaleM || preScaleM) : (factorX || scaleM || preScaleM);
+      const isFirstCalib = !baseFactor;
       const refVal = modoCalX ? parseFloat(lenX) : parseFloat(lenY);
 
       let txt = '';
       let refTxt = '';
 
       if (isFirstCalib) {
-        txt = `${distCm.toFixed(2)} cm`;
+        txt = `${displayDistCm.toFixed(2)} cm`;
       } else {
-        txt = baseFactor ? `${(distCm * baseFactor).toFixed(2)} m` : `Fijando a: ${refVal.toFixed(2)} m`;
-        if (baseFactor && !isNaN(refVal) && refVal > 0) {
+        txt = `${(internalDistCm * baseFactor).toFixed(2)} m`;
+        if (!isNaN(refVal) && refVal > 0) {
           refTxt = `→ ref: ${refVal.toFixed(2)} m`;
         }
       }
@@ -591,7 +592,7 @@ function PlanoConfiguratorBase({
                     if (val) {
                       const dScale = val / 100;
                       setDefinedScale(dScale);
-                      setPreScaleM(dScale * (96 / 72));
+                      setPreScaleM(dScale * (96 / (isPdf ? 72 : 96)));
                       setHasSaved(false);
                     } else {
                       setDefinedScale(null);

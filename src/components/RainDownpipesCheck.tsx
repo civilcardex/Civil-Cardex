@@ -5,9 +5,49 @@ import { usePlans } from "../context/PlansContext";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
 import { chequeoBajanteLluvia } from "../utils/calcSanitary";
+import { parseDecimalInput } from "../utils/parseDecimal";
+
+const renderStatus = (val: string) => {
+  if (val === 'O.K.' || val === 'Ok' || val === 'OK') {
+    return (
+      <span style={{
+        color: 'var(--ok)',
+        background: 'rgba(47, 248, 1, 0.08)',
+        border: '1px solid rgba(47, 248, 1, 0.15)',
+        padding: '1px 5px',
+        borderRadius: '3px',
+        fontWeight: 600,
+        fontSize: '9px',
+        fontFamily: 'var(--mono)',
+        display: 'inline-block'
+      }}>
+        {val}
+      </span>
+    );
+  }
+  if (val === 'NO CUMPLE' || val === 'No cumple' || val === 'NO') {
+    return (
+      <span style={{
+        color: 'var(--err)',
+        background: 'rgba(255, 180, 171, 0.08)',
+        border: '1px solid rgba(255, 180, 171, 0.15)',
+        padding: '1px 5px',
+        borderRadius: '3px',
+        fontWeight: 600,
+        fontSize: '9px',
+        fontFamily: 'var(--mono)',
+        display: 'inline-block',
+        whiteSpace: 'nowrap'
+      }}>
+        {val}
+      </span>
+    );
+  }
+  return <span style={{ color: 'var(--txt3)' }}>{val}</span>;
+};
 
 export default function ChequeoBajantesLluvias() {
-  const { bajantesLl } = useRainwater();
+  const { bajantesLl, updBajanteLL } = useRainwater();
   const { tramosLl } = useTramos();
   const { plans } = usePlans();
 
@@ -64,16 +104,17 @@ export default function ChequeoBajantesLluvias() {
       const areaDib = areaDibujoMap[code] || areaDibujoMap[d.id] || 0;
       const areaParcial = areaDib || d.area_m2 || manual?.areaParcial || 0;
       const areaAcum = areaAcumMap[String(d.piso)] || manual?.areaAcumulada || 0;
+      const rVal = d.bajR != null ? (Math.abs(d.bajR - 0.25) < 0.001 ? '1/4' : '7/24') : '7/24';
       out.push({
         key: 'd_' + d.id + '_' + d.piso,
         bajante: code,
         areaParcial,
         areaAcum,
-        intensidad: manual?.intensidad,
-        coeficienteC: manual?.coeficienteC,
-        R: manual?.R,
-        manning: manual?.manning,
-        diamPropuesto: manual?.diamPropuesto,
+        intensidad: manual?.intensidad ?? 100,
+        coeficienteC: 0.0278,
+        R: rVal,
+        manning: 0.009,
+        diamPropuesto: d.diamDisPulg || 0,
       });
     }
 
@@ -89,10 +130,10 @@ export default function ChequeoBajantesLluvias() {
         bajante: m.bajante || m.id,
         areaParcial,
         areaAcum,
-        intensidad: m.intensidad,
-        coeficienteC: m.coeficienteC,
+        intensidad: m.intensidad ?? 100,
+        coeficienteC: 0.0278,
         R: m.R,
-        manning: m.manning,
+        manning: 0.009,
         diamPropuesto: m.diamPropuesto,
       });
     }
@@ -107,24 +148,24 @@ export default function ChequeoBajantesLluvias() {
       </div>
       <div className="scroll-top" style={{padding:'16px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
-        <table className="tbl" style={{fontSize:13}}>
+        <table className="tbl" style={{fontSize:10, tableLayout:'auto', width:'100%', borderCollapse:'collapse'}}>
           <thead>
             <tr>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Bajante #</th>
-              <th className="col-h ll" colSpan={2} style={{textAlign:'center',fontSize:11}}>Área</th>
-<th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Intensidad promedio<br/>mm/hr/m²</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Coeficiente de<br/>Escorrentía C</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>R</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Q = C×I×A<br/>LPS</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Manning</th>
-              <th className="col-h ok" colSpan={2} style={{textAlign:'center',fontSize:11}}>Diámetro</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:11,textAlign:'center'}}>Chequeo<br/>Dcal&lt;Dprop</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Bajante #</th>
+              <th className="col-h ll" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'3px 2px'}}>Área (m²)</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Intensidad (I)<br/><small>mm/hr</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Coef.<br/>Escorrentía (C)</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Llenado<br/>(R)</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Q = C×I×A<br/><small>(LPS)</small></th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Manning<br/>(n)</th>
+              <th className="col-h ok" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'3px 2px'}}>Diámetro (")</th>
+              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Chequeo<br/>Dcal &lt; Dprop</th>
             </tr>
             <tr>
-              <th className="col-h ll" style={{fontSize:10,textAlign:'center'}}>Parcial<br/>m²</th>
-              <th className="col-h ll" style={{fontSize:10,textAlign:'center'}}>Acumulada<br/>m²</th>
-              <th className="col-h ok" style={{fontSize:10,textAlign:'center'}}>Calculado<br/>(")</th>
-              <th className="col-h ok" style={{fontSize:10,textAlign:'center'}}>Propuesto<br/>(")</th>
+              <th className="col-h ll" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Parcial</th>
+              <th className="col-h ll" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Acumulada</th>
+              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Calculado</th>
+              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Propuesto</th>
             </tr>
           </thead>
           <tbody>
@@ -135,20 +176,45 @@ export default function ChequeoBajantesLluvias() {
                 </td>
               </tr>
 ) : rows.map(row=>{
-const { Q, dCalc: diamCalc, chequeo } = chequeoBajanteLluvia({ ...row, areaAcumulada: row.areaAcum || 0 });
+const { Q, dCalc: diamCalc, chequeo } = chequeoBajanteLluvia({ ...row, coeficienteC: 0.0278, areaAcumulada: row.areaAcum || 0 });
 return(
                 <tr key={row.key}>
                   <td className="c"><span className="sigla" style={{fontSize:11}}>{row.bajante || '—'}</span></td>
                   <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{row.areaParcial > 0 ? row.areaParcial.toFixed(2) : '—'}</span></td>
                   <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{row.areaAcum > 0 ? row.areaAcum.toFixed(2) : '—'}</span></td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{row.intensidad||'—'}</span></td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{row.coeficienteC||'—'}</span></td>
+                  <td className="c">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={row.intensidad ?? 100}
+                      key={row.key + '_in'}
+                      onChange={e => {}}
+                      onBlur={e => {
+                        const v = parseDecimalInput(e.target.value) ?? 100;
+                        if (v !== null && row.bajante) {
+                          updBajanteLL(row.bajante, 'intensidad', v);
+                        }
+                      }}
+                      style={{
+                        width: 56,
+                        padding: '2px 4px',
+                        background: 'var(--bg2)',
+                        border: '1px solid var(--line)',
+                        borderRadius: 2,
+                        color: 'var(--txt)',
+                        fontFamily: 'var(--mono)',
+                        fontSize: 11,
+                        textAlign: 'center',
+                      }}
+                    />
+                  </td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>0.0278</span></td>
                   <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{row.R||'—'}</span></td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize:13}}>{Q>0?Q.toFixed(2):'—'}</td>
                   <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{row.manning||'—'}</span></td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,fontSize:12}}>{diamCalc > 0 ? diamCalc.toFixed(2) : '—'}</td>
                   <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{row.diamPropuesto ? row.diamPropuesto+'"' : '—'}</span></td>
-                  <td className="c" style={{fontWeight:700}}>{chequeo}</td>
+                  <td className="c" style={{fontSize:11}}>{renderStatus(chequeo)}</td>
                 </tr>
               );
             })}

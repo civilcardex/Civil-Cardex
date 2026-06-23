@@ -42,7 +42,7 @@ export function useWorkAreaState() {
     return new Set(['san', 'll']);
   });
 
-  const redesActivas = useMemo(() => REDES.filter(r => redes.has(r.id)), [redes]);
+  const redesActivas = useMemo(() => REDES.filter(r => redes.has(r.id) && r.id !== 'vent'), [redes]);
 
   useEffect(() => {
     saveToStorage('active_nets', [...redes]);
