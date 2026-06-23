@@ -9,4 +9,4 @@ export const APS_STORAGE_KEY = 'aps_v5';
 export const PLANS_META_KEY = 'plans_meta';
 
 export const HYDRO_FAMILIES = new Set(['af', 'ac']);
-export const SAN_FAMILIES = new Set(['san', 'll']);
+export const SAN_FAMILIES = new Set(['san', 'll', 'vent']);
