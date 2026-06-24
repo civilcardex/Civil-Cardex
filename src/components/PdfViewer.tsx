@@ -652,11 +652,32 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
     if (engineRef.current) engineRef.current.setNetLocked(id, next.has(id));
   }, [lockedNets]);
 
+  const mainContainerStyle = useMemo(() => ({
+    flex: 1, display: "flex", flexDirection: "column" as const, minHeight: 0,
+    background: "#111317", border: "1px solid #3a494a", overflow: "hidden",
+  }), []);
+
+  const leftSidebarStyle = useMemo(() => ({
+    width: 165, flexShrink: 0, display: "flex", flexDirection: "column" as const,
+    background: "#14161a", borderRight: "1px solid #3a494a",
+    overflowY: "auto" as const, overflowX: "hidden" as const,
+  }), []);
+
+  const rightSidebarStyle = useMemo(() => ({
+    width: 210, flexShrink: 0, display: "flex", flexDirection: "column" as const,
+    background: "#14161a", borderLeft: "1px solid #3a494a",
+    overflowY: "auto" as const, overflowX: "hidden" as const,
+    transition: 'opacity 0.2s',
+  }), []);
+
+  const rightSidebarOpacity = useMemo(() => ({
+    opacity: (tool === 'sel' && !selElement) ? 0.35 : 1,
+    pointerEvents: (tool === 'sel' && !selElement) ? 'none' : 'auto' as const,
+    transition: 'opacity 0.2s',
+  }), [tool, selElement]);
+
   return (
-    <div style={{
-      flex: 1, display: "flex", flexDirection: "column", minHeight: 0,
-      background: "#111317", border: "1px solid #3a494a", overflow: "hidden",
-    }}>
+    <div style={mainContainerStyle}>
       {/* Network toolbar — horizontal strip above canvas */}
       <PdfViewerNetworkBar
         nets={finalVisibleNets}
@@ -672,11 +693,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
       <div style={{flex:1,display:"flex",minHeight:0}}>
 
       {/* Sidebar: Herramientas + Acciones */}
-      <div className="visor-sidebar" style={{
-        width: 165, flexShrink: 0, display: "flex", flexDirection: "column",
-        background: "#14161a", borderRight: "1px solid #3a494a",
-        overflowY: "auto", overflowX: "hidden",
-      }}>
+      <div className="visor-sidebar" style={leftSidebarStyle}>
         <div style={{
           height: 3, flexShrink: 0, transition: 'background .3s',
           background: STATUS[saveStatus]?.color || STATUS.error.color,
@@ -738,12 +755,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
         />
 
       {/* Right sidebar: Piso, ¿Qué voy a dibujar?, Tramo, Escala */}
-      <div className="visor-sidebar-right" style={{
-        width: 210, flexShrink: 0, display: "flex", flexDirection: "column",
-        background: "#14161a", borderLeft: "1px solid #3a494a",
-        overflowY: "auto", overflowX: "hidden",
-        transition: 'opacity 0.2s',
-      }}>
+      <div className="visor-sidebar-right" style={rightSidebarStyle}>
         {/* Nivel — always enabled */}
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Nivel</div>
@@ -775,11 +787,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
         </div>
 
         {/* Rest of sidebar — blocked when selecting without element selected */}
-        <div style={{
-          opacity: (tool === 'sel' && !selElement) ? 0.35 : 1,
-          pointerEvents: (tool === 'sel' && !selElement) ? 'none' : 'auto',
-          transition: 'opacity 0.2s',
-        }}>
+        <div style={rightSidebarOpacity}>
 
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>¿Qué voy a dibujar?</div>

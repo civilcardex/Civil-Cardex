@@ -188,7 +188,7 @@ export function usePdfViewerEngine({
         setLoading(true);
         setError(null);
         const buffer = reader.result as ArrayBuffer;
-        const pdfjsLib = await getPdfjs();
+        const pdfjsLib = await pdfjsPromise;
         const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
         if (thisMount !== mountId.current) return;
         pdfDocRef.current = pdf;
@@ -209,6 +209,7 @@ export function usePdfViewerEngine({
       setLoading(false);
     };
 
+    const pdfjsPromise = getPdfjs();
     reader.readAsArrayBuffer(currentFile);
   }, [currentId]);
 
