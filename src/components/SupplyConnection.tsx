@@ -1,8 +1,8 @@
-import React from "react";
+﻿import React from "react";
 import { COEF_HAZEN } from "../utils/calcHydraulics";
+import { fmt } from "../utils/formatUtils";
 
 const C = COEF_HAZEN;
-const fmt = (v: unknown, d = 2) => v == null || Number.isNaN(Number(v)) ? "—" : Number(v).toFixed(d);
 
 interface FilaResult {
   dInt: number;
@@ -78,7 +78,7 @@ function Acometida({
   return (
     <div className="card">
       <div className="card-h">
-        <h3 className="card-t"><img src="/iconos_diseno_redes/general/Acometida.webp" alt="" width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} loading="lazy" /> Acometida</h3>
+        <h3 className="card-t"><img src="/iconos_diseno_redes/general/Acometida.webp" alt="Acometida" width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} loading="lazy" /> Acometida</h3>
       </div>
       <div className="scroll-top" style={{ padding: "16px" }}>
         <div className="scroll-inner" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", alignItems: "stretch", minWidth: "900px" }}>
@@ -106,15 +106,15 @@ function Acometida({
             <table className="tbl" style={{ fontSize: 10, width: "100%", tableLayout: "auto", borderBottom: "none" }}>
               <thead>
                 <tr>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px"}}>Tramo</th>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px"}}>Desde</th>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px"}}>Hasta</th>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px", width: 35}}>L.H</th>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px", width: 35}}>L.V</th>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px", width: 35}}>L.Eq</th>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px"}}>Ø</th>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px"}}>Q</th>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px"}}>Hf</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Tramo</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Desde</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Hasta</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px", width: 35}}>L.H</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px", width: 35}}>L.V</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px", width: 35}}>L.Eq</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Ø</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Q</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Hf</th>
                 </tr>
               </thead>
               <tbody>
@@ -167,10 +167,10 @@ function Acometida({
             <table className="tbl" style={{ fontSize: 10, width: "100%", borderBottom: "none" }}>
               <thead>
                 <tr>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px"}}>Parámetro</th>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px"}}>AC-01</th>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px"}}>AC-02</th>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px"}}>Unidad</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Parámetro</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>AC-01</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>AC-02</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Unidad</th>
                 </tr>
               </thead>
               <tbody>
@@ -229,8 +229,8 @@ function Acometida({
             <table className="tbl" style={{ fontSize: 10, width: "100%", borderBottom: "none" }}>
               <thead>
                 <tr>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px"}}>Parámetro</th>
-                  <th className="col-h" style={{textAlign:"center", padding: "4px"}}>Valor / Estado</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Parámetro</th>
+                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Valor / Estado</th>
                 </tr>
               </thead>
               <tbody>

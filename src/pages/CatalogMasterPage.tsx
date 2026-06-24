@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GAS } from '../constants';
 import { SANITARIAS, RCI, AGUA_FRIA, AGUA_CALIENTE, VENTILACION } from './catalog/catalogData';
@@ -31,16 +31,16 @@ export default function CatalogMasterPage() {
   const [search, setSearch] = useState('');
   usePageMeta('Catálogo Maestro', 'Catálogo de materiales, tuberías y equipos para diseño hidrosanitario. PVC, CPVC, cobre, acero y más según NTC 1500.');
 
-  const sanFiltered = useMemo(() => filterGroups(SANITARIAS, search), [search]);
-  const ventFiltered = useMemo(() => filterGroups(VENTILACION, search), [search]);
-  const afFiltered = useMemo(() => filterGroups(AGUA_FRIA, search), [search]);
-  const acFiltered = useMemo(() => filterGroups(AGUA_CALIENTE, search), [search]);
-  const gasAcero = useMemo(() => filterGroups(GAS.slice(0, 2), search), [search]);
-  const gasCobre = useMemo(() => filterGroups(GAS.slice(2, 4), search), [search]);
-  const gasPe = useMemo(() => filterGroups(GAS.slice(4), search), [search]);
-  const rciSch10 = useMemo(() => filterGroups([RCI[0]], search), [search]);
-  const rciSch40 = useMemo(() => filterGroups([RCI[1]], search), [search]);
-  const rciPvcGalv = useMemo(() => filterGroups(RCI.slice(2), search), [search]);
+  const sanFiltered = filterGroups(SANITARIAS, search);
+  const ventFiltered = filterGroups(VENTILACION, search);
+  const afFiltered = filterGroups(AGUA_FRIA, search);
+  const acFiltered = filterGroups(AGUA_CALIENTE, search);
+  const gasAcero = filterGroups(GAS.slice(0, 2), search);
+  const gasCobre = filterGroups(GAS.slice(2, 4), search);
+  const gasPe = filterGroups(GAS.slice(4), search);
+  const rciSch10 = filterGroups([RCI[0]], search);
+  const rciSch40 = filterGroups([RCI[1]], search);
+  const rciPvcGalv = filterGroups(RCI.slice(2), search);
 
   return (
     <div style={{ height: '100%', background: 'var(--bg)', color: 'var(--txt)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -63,6 +63,7 @@ export default function CatalogMasterPage() {
 
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Buscar material o diámetro..."
+          aria-label="Buscar material o diámetro"
           style={{
             width: '100%', padding: '8px 12px', marginBottom: 8, flexShrink: 0,
             border: '1px solid var(--line)', borderRadius: 4,

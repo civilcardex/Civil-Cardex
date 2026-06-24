@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+﻿import React, { useState, useMemo } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
@@ -7,10 +7,9 @@ import { calcUCparcial } from "../utils/componentHelpers";
 import { COEF_HAZEN, CONTADORES } from "../utils/calcHydraulics";
 import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
 import { calcLeAcces } from "../utils/accesoriosUtils";
-import { fmtPulg } from "../utils/formatUtils";
+import { fmt, fmtPulg } from "../utils/formatUtils";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
-const fmt = (v: unknown, d = 2) => v == null || Number.isNaN(Number(v)) ? "—" : Number(v).toFixed(d);
 import Acometida from "./SupplyConnection";
 
 function LazyNumInput({ val, onSave, label }: { val: number | string; onSave: (v: number | undefined) => void; label?: string }) {
@@ -50,14 +49,12 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   const title = isAf(networkType) ? 'agua fr\u00EDa' : 'agua caliente';
   const icon = isAf(networkType) ? 'hidraulica/RAF_Diseno.webp' : 'hidraulica/RAC_Diseno.webp';
 
-  const DIAM_OPTS = useMemo(() => {
-    return diamTable.map(d => ({ pulg: d.pulg, nominal: d.nominal, label: d.nominal, dInt: d.dInt }));
-  }, [diamTable]);
+  const DIAM_OPTS = diamTable.map(d => ({ pulg: d.pulg, nominal: d.nominal, label: d.nominal, dInt: d.dInt }));
 
   const [diamIntMap, setDiamIntMap] = useState<Record<string, number>>({});
   const [diamNomMap, setDiamNomMap] = useState<Record<string, string>>({});
 
-  const handleDiamChange = useCallback((tramoId: string, nominal: string) => {
+  const handleDiamChange = (tramoId: string, nominal: string) => {
     const opt = DIAM_OPTS.find(o => o.nominal === nominal);
     if (!opt) return;
     const pulg = opt.pulg;
@@ -65,12 +62,12 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     setDiamIntMap(prev => ({ ...prev, [tramoId]: opt.dInt }));
     setDiamNomMap(prev => ({ ...prev, [tramoId]: opt.nominal }));
     writeDiametroToDrawing(tramoId, networkType, opt.label, plans);
-  }, [updTramo, DIAM_OPTS, plans, networkType]);
+  };
 
-  const handleDelete = useCallback((tramoId: string) => {
+  const handleDelete = (tramoId: string) => {
     delTramo(tramoId);
     deleteRamalFromDrawing(tramoId, networkType, plans);
-  }, [delTramo, plans, networkType]);
+  };
 
   const AP = useMemo(
     () =>
@@ -84,23 +81,23 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   const [presIniEdit, setPresIniEdit] = useState(() => new Map());
   const [presFinEdit, setPresFinEdit] = useState(() => new Map());
 
-  const setPresIni = useCallback((tramoId: string, v: number | undefined) => {
+  const setPresIni = (tramoId: string, v: number | undefined) => {
     setPresIniEdit((prev) => {
       const next = new Map(prev);
       if (v === undefined) next.delete(tramoId);
       else next.set(tramoId, v);
       return next;
     });
-  }, []);
+  };
 
-  const setPresFin = useCallback((tramoId: string, v: number | undefined) => {
+  const setPresFin = (tramoId: string, v: number | undefined) => {
     setPresFinEdit((prev) => {
       const next = new Map(prev);
       if (v === undefined) next.delete(tramoId);
       else next.set(tramoId, v);
       return next;
     });
-  }, []);
+  };
 
   const [conexiones, conexionesDisplay, componentTotalMap] = useMemo(() => {
     const calculoMap: Record<string, string[]> = {};
@@ -401,7 +398,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     <>
       <div className="card">
         <div className="card-h">
-          <h3 className="card-t"><img src={`/iconos_diseno_redes/${icon}`} alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red {title}</h3>
+          <h3 className="card-t"><img src={`/iconos_diseno_redes/${icon}`} alt={`${title}`}  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red {title}</h3>
           <span className="card-s">{tramosOrden.length} tramos</span>
         </div>
         <div className="scroll-top" style={{ padding: "6px" }}>

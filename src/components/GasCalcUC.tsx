@@ -1,14 +1,10 @@
-import React, { useMemo } from "react";
+﻿import React, { useMemo } from "react";
 import { usePlans } from "../context/PlansContext";
-import { APARATOS_DEF } from "../constants";
 import { loadFromStorage } from "../services/storageService";
 
 import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from "../constants/storage-keys";
-import { renouardByType } from "../utils/gasUtils";
+import { GAS_APPARATUS, renouardByType } from "../utils/gasUtils";
 import { TH, TD } from "../styles/sharedTableStyles";
-const GAS_APPARATUS = APARATOS_DEF.filter(
-  (a) => a.grupo === "g" && (a.qgas || 0) > 0
-);
 
 const ABREV = {
   est4: "EST-4Q", est2: "EST-2Q", hor_g: "HOR-G", hor_m: "HOR-M",
@@ -20,7 +16,7 @@ const ABREV = {
 function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRel: string }) {
   const { plans } = usePlans();
 
-  const { tramos, totalByAp, tramoTotals, tramoAppCounts, tramoQDisenos } = useMemo(() => {
+  const { tramos, totalByAp, tramoTotals, tramoAppCounts } = useMemo(() => {
     const aparatos: Record<string, any> = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
     const tramosMap: Record<string, { id: string; piso: number | string; ini: string; fin: string; counts: Record<string, number> }> = {};
 
@@ -71,19 +67,7 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
       return sum;
     });
 
-    const pAtm = Number(patm) || 101.325;
-    const T = Number(temp) || 23;
-    const DRval = Number(densRel) || 0.67;
-    const fAlt = 101.325 / pAtm;
-    const fTemp = Math.sqrt(288 / (273 + T));
-    const fDens = Math.sqrt(0.67 / DRval);
-    const corrF = fAlt * fTemp * fDens;
-    const tramoQDisenos = tramos.map((t, i) => {
-      const qRen = tramoTotals[i];
-      return Math.max(qRen * corrF, 2.7);
-    });
-
-    return { tramos, totalByAp, tramoTotals, tramoAppCounts, tramoQDisenos };
+    return { tramos, totalByAp, tramoTotals, tramoAppCounts };
   }, [plans, patm, temp, densRel]);
 
   const globalTotal = useMemo(() => tramoTotals.reduce((s, q) => s + q, 0), [tramoTotals]);
@@ -129,7 +113,7 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
       <div className="card">
         <div className="card-h">
           <h3 className="card-t">
-            <img src="/iconos_diseno_redes/gas/calculo_UC_gas.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
+            <img src="/iconos_diseno_redes/gas/calculo_UC_gas.webp" alt="Cálculo UC gas"  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
             Cálculo de unidades de consumo gas
           </h3>
           <span className="card-s">0 tramos</span>
@@ -151,7 +135,7 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
     <div className="card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
       <div className="card-h">
         <h3 className="card-t">
-          <img src="/iconos_diseno_redes/gas/calculo_UC_gas.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
+          <img src="/iconos_diseno_redes/gas/calculo_UC_gas.webp" alt="Cálculo UC gas"  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
           Cálculo de unidades de consumo gas
         </h3>
         <span className="card-s">{tramos.length} tramos</span>
@@ -206,7 +190,7 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
     <div className="card" style={{ flexShrink: 0, alignSelf: "stretch" }}>
       <div className="card-h">
         <h3 className="card-t">
-          <img src="/iconos_diseno_redes/general/calculo_perdidas_de_carga.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
+          <img src="/iconos_diseno_redes/general/calculo_perdidas_de_carga.webp" alt="Cálculo pérdidas de carga"  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
           Factores de correcci&oacute;n
         </h3>
       </div>

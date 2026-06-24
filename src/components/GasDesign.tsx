@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from "react";
-import { GAS, APARATOS_DEF, pisoCorto } from "../constants";
+﻿import React, { useState, useMemo, useEffect } from "react";
+import { GAS, LE_K, pisoCorto } from "../constants";
 import { usePlans } from "../context/PlansContext";
 import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
 import { loadFromStorage } from "../services/storageService";
@@ -7,16 +7,13 @@ import GasCalcUC from "./GasCalcUC";
 import PageNav from './PageNav';
 
 import { TRAZOS_PREFIX, GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY } from "../constants/storage-keys";
-import { renouardByType } from "../utils/gasUtils";
+import { GAS_APPARATUS, renouardByType } from "../utils/gasUtils";
 import { SI, SD, TH, TD } from "../styles/sharedTableStyles";
-
-const GAS_APPARATUS = APARATOS_DEF.filter(a => a.grupo === 'g' && (a.qgas || 0) > 0);
 
 const ALL_DN: {mat: string; K: number; dn: string; d: number}[] = [];
 GAS.forEach(g=>{g.rows.forEach(r=>{ALL_DN.push({mat:g.mat,K:g.K,dn:r.dn,d:r.d});});});
 
 const ACC_KEYS=['codos_90_std','codos_90_rl','te_linea','te_ramal','valvula_bola'];
-const LE_K={codos_90_std:30,codos_90_rl:20,te_linea:20,te_ramal:20,valvula_bola:8};
 
 function lookupDn(mat: string, dn: string){
   const match=ALL_DN.find(x=>x.mat===mat&&x.dn===dn);
@@ -195,11 +192,11 @@ function GasDesign(){
   const COLS=['Tramo','Nivel','Desde','Hasta','Material y Diámetro','Ø interno (mm)','Coeficiente K','Longitud (m)'];
   const colW=['8%','5%','8%','8%','18%','10%','8%','12%'];
 
-  const page1 = useMemo(()=><>
+  const page1 = (<>
     <div className="card" style={{flexShrink:0,alignSelf:'center'}}>
       <div className="card-h" style={{padding:'6px 12px'}}>
         <h3 className="card-t">
-          <img src="/iconos_diseno_redes/gas/datos_generales_red_gas.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
+          <img src="/iconos_diseno_redes/gas/datos_generales_red_gas.webp" alt="Datos generales red de gas"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
           Datos generales
         </h3>
       </div>
@@ -224,17 +221,17 @@ function GasDesign(){
             </table>
         </div>
       </div>
-  </>, [alt, patm, temp, pmin, densRel]);
+  </>);
   
   const page2=<GasCalcUC patm={patm} temp={temp} densRel={densRel} />;
 
-  const page3 = useMemo(()=><>
+  const page3 = (<>
     <div style={{display:'flex',flexDirection:'column',gap:6,flex:1,minHeight:0}}>
       <div className="card" style={{display:'flex',flexDirection:'column'}}>
         <div className="card-h" style={{justifyContent:'space-between'}}>
           <h3 className="card-t">
-            <img src="/iconos_diseno_redes/gas/diseno_red_gas.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
-            Diseño de red
+            <img src="/iconos_diseno_redes/gas/diseno_red_gas.webp" alt="Diseño red de gas"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
+            Diseño de red de gas
           </h3>
           <span className="card-s">{gasTramos.length} tramos</span>
         </div>
@@ -286,7 +283,7 @@ function GasDesign(){
       <div className="card" style={{display:'flex',flexDirection:'column',minWidth:0,overflow:'hidden',...(gasTramos.length===0?{}:{flex:1})}}>
         <div className="card-h" style={{justifyContent:'space-between'}}>
           <h3 className="card-t">
-            <img src="/iconos_diseno_redes/gas/chequeo_red_gas.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
+            <img src="/iconos_diseno_redes/gas/chequeo_red_gas.webp" alt="Chequeo red de gas"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
             Chequeo red de gas
           </h3>
           <span className="card-s">{gasTramos.length} tramos</span>
@@ -356,7 +353,7 @@ function GasDesign(){
         </div>
       </div>
     </div>
-  </>, [checkRows, gasTramos, diamInt, diamK, gasAcc, handleDelete, getAcc]);
+  </>);
   
   return(
     <div className="fu" style={{display:'flex',flexDirection:'column',gap:6,flex:1,minHeight:0}}>
