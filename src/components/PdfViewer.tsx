@@ -466,7 +466,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
       : (mats?.[activeNet] && mats[activeNet][0]?.val) || '';
     const d = activeNet === 'gas'
       ? (diamSel[activeNet] || GAS[0]?.rows[0]?.dn || '')
-      : (diamSel[activeNet] || DIAM_DEFAULT_BY_NET[activeNet] || '');
+      : (diamSel[activeNet] || '');
     const p = (activeNet === 'san' || activeNet === 'll') ? (pendSel[activeNet] !== undefined ? pendSel[activeNet] : 2.0) : 0;
     eng.setRamalDefaults({ material: matName, diametro: d, pendiente: p });
   }, [tool, activeNet, tipoTramo, snapOn, scaleM, mats, diamSel, pendSel, selectedNivel, pisos]);

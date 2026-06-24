@@ -84,6 +84,10 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
             pisoBase: b.pisoBase || '', pisoCima: b.pisoCima || '',
             nSalidas: b.nSalidas || 0,
             bajR: b.bajR ?? 7/24,
+            bajDprop: b.bajDprop,
+            ventDprop: b.ventDprop,
+            bajLong: b.bajLong,
+            bajFDarcy: b.bajFDarcy,
           });
         }
       }

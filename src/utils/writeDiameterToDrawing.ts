@@ -1,5 +1,5 @@
 import { writeHydroDrawingSync, writeSanDrawingSync } from './drawingSync';
-import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY, HYDRO_FAMILIES, SAN_FAMILIES } from '../constants/storage-keys';
 
 export function deleteRamalFromDrawing(ramalKey: string, net: string, plans: any[]) {
@@ -37,7 +37,9 @@ export function deleteRamalFromDrawing(ramalKey: string, net: string, plans: any
     const before = (data.ramales || []).length;
     data.ramales = (data.ramales || []).filter((r: any) => !(r.id === ramalId && r.net === net));
     if ((data.ramales || []).length < before) {
+      data.ts = Date.now();
       saveToStorage(key, data);
+      saveTrazosToDB(String(plan.id), data);
     }
   }
 
@@ -71,7 +73,9 @@ export function writeDiametroToDrawing(ramalKey: string, net: string, newDiamLab
     }
 
     if (changed) {
+      data.ts = Date.now();
       saveToStorage(key, data);
+      saveTrazosToDB(String(plan.id), data);
     }
   }
 
@@ -104,7 +108,9 @@ export function writeBajantePropToDrawing(bajanteKey: string, net: string, prop:
     }
 
     if (changed) {
+      data.ts = Date.now();
       saveToStorage(key, data);
+      saveTrazosToDB(String(plan.id), data);
     }
   }
 

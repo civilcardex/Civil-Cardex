@@ -1,5 +1,6 @@
 import { useEffect, type MutableRefObject } from "react";
 import { readSanDrawingSync, readHydroDrawingSync } from "../utils/drawingSync";
+import { diamPulgFromLabel } from "../utils/diamPulgFromLabel";
 import { HYDRO_DATA_STORAGE_KEY } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
 import type { TramosState } from "../context/tramosReducer";
@@ -40,9 +41,9 @@ export function useSanLlSync(
       const venRamales = ((plane as any).ramales || []).filter((r: any) => r._net === 'vent' || r.net === 'vent');
       const venMap = new Map();
       for (const vr of venRamales) {
-        if (vr.descargaEnId && vr.diametro) {
+        if (vr.descargaEnId) {
           const parts = vr.descargaEnId.includes('|') ? vr.descargaEnId.split('|') : [planId, vr.descargaEnId];
-          if (parts[0] === planId) venMap.set(parts[1], vr.diametro);
+          if (parts[0] === planId) venMap.set(parts[1], { diametro: vr.diametro || '', rId: vr.id, rPlanId: planId });
         }
       }
 
@@ -62,6 +63,7 @@ export function useSanLlSync(
           totalL: r.totalL || 0,
           nmaning: r.maning ?? 0, sPercent: r.pendiente ?? 0,
           bajR: 7/24, bajLong: 5, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
+          ventRamalKey: null,
         };
         if (r._net === 'll') {
           llIncoming.push({ _key: tramo._key, ...tramo, desde: r.ini || '', hasta: r.fin || '' });
@@ -72,7 +74,15 @@ export function useSanLlSync(
       for (const b of ((plane as any).bajantes || [])) {
         const apKey = b._aparatosKey || `${b._net || 'san'}_${b.id}_${planId}`;
         const hd = hidroData[apKey] || {};
-        const ventD = venMap.has(b.id) ? parseFloat(venMap.get(b.id)) : (b.ventDprop || b.diamPulg || 0);
+        
+        let ventData = venMap.get(b.id);
+        if (!ventData) {
+          const cVent = venRamales.find((vr: any) => vr.ini === b.id || vr.fin === b.id || (b.recibeDeIds && b.recibeDeIds.includes(vr.id)));
+          if (cVent) ventData = { diametro: cVent.diametro || '', rId: cVent.id, rPlanId: planId };
+        }
+        
+        const ventD = ventData && ventData.diametro ? parseFloat(ventData.diametro) : (b.ventDprop || 0);
+        const ventRamalKey = ventData ? `${ventData.rId}-${ventData.rPlanId}` : null;
         const tramo = {
           _key: `${b.id}-${planId}`,
           id: b.id, piso, planId, _nivelLabel: fmtNivel(b.piso || nivel),
@@ -83,6 +93,7 @@ export function useSanLlSync(
           diamDisPulg: b.diamPulg || 0, nSalidas: b.nSalidas || hd.nSalidas || 0,
           nmaning: b.maning ?? 0, sPercent: 0,
           bajR: b.bajR ?? 7/24, bajLong: b.bajLong ?? 5, bajFDarcy: b.bajFDarcy ?? 0.025, bajDprop: b.diamPulg || 0, ventDprop: ventD,
+          ventRamalKey,
           recibeDeIds: b.recibeDeIds || [],
           descargaEnId: b.descargaEnId || null,
           area_m2: b.area_m2 || 0,
@@ -139,10 +150,10 @@ export function useHidroSync(
             fixtures: aparatos[apKey] || {},
             accesorios: extra.accesorios || {},
             Lh: extra.Lh || 0, Lv: r.dz || extra.Lv || 0,
-            nSalidas: extra.nSalidas || 0,
+            nSalidas: r.nSalidas || extra.nSalidas || 0,
             recibeDe: [], descripcion: '',
             ini: r.ini || '', fin: r.fin || '',
-            diamDisPulg: r.diamPulg || 0, material: r.material || '',
+            diamDisPulg: diamPulgFromLabel(r.diametro) || r.diamPulg || 0, diametroOriginal: r.diametro || '', material: r.material || '',
             totalL: r.totalL || 0,
           });
         }
