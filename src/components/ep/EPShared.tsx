@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from "react";
 import { useEP, type EPData } from "../../context/EPContext";
 import { dec } from "../../utils/parseDecimal";
 import { SI } from "../../styles/sharedTableStyles";
-export { SI };
 
 export function LazyInp({ field, style, ariaLabel, disabled }: { field: keyof EPData; style?: React.CSSProperties; ariaLabel?: string; disabled?: boolean }) {
   const { ep, updEP } = useEP();

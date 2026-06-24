@@ -2,9 +2,12 @@ import React, { useMemo } from "react";
 import { useEP } from "../../context/EPContext";
 import Card from "../shared/Card";
 import Tbl from "../shared/Tbl";
+import EditButton from "../shared/EditButton";
 import { PVC_SCH40, NEMA_HP, COMM_HP, selectDN } from "./calculations";
-import { LazyInp, Fmt, SI, Param, Comment, FLEX_COL } from "./EPShared";
+import { LazyInp, Fmt, Param, Comment, FLEX_COL } from "./EPShared";
+import { SI } from "../../styles/sharedTableStyles";
 import { dec } from "../../utils/parseDecimal";
+import { AGUA_DENSIDAD, GRAVEDAD } from "../../utils/calcSanitaryCore";
 
 interface EPVerificationPageProps {
   section?: "params" | "results";
@@ -28,11 +31,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
   const [editPComercial, setEditPComercial] = React.useState(false);
   const [editDiametros, setEditDiametros] = React.useState(false);
 
-  const EditBtn = ({ edit, setEdit }: { edit: boolean, setEdit: (v: boolean) => void }) => (
-    <button onClick={() => setEdit(!edit)} style={{ background: edit ? 'var(--acc)' : 'transparent', color: edit ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>{edit ? 'LISTO' : 'EDITAR'}</button>
-  );
-
-  const Qd = useMemo(() => Math.max(qac, qasc), [qac, qasc]);
+  const Qd = Math.max(qac, qasc);
   const Qm3h = Qd * 3.6;
   const Qgpm = Qd * 15.85;
   const Qb = nt > 0 ? Qd / nt : Qd;
@@ -42,7 +41,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
   const Hf = isRed ? (HfCrit + hfotros) : (HfCrit + hfotros + hfcis);
   const HMT = isRed ? (Hg + Hf + pmin - pred) : (Hg + Hf + pmin);
 
-  const Phid = 1000 * 9.81 * (Qd / 1000) * (HMT > 0 ? HMT : 0);
+  const Phid = AGUA_DENSIDAD * GRAVEDAD * (Qd / 1000) * (HMT > 0 ? HMT : 0);
   const Pfreno = (etab * etam * 745.7) > 0 ? Phid / (etab * etam * 745.7) : 0;
   const Pins_hp = Pfreno * fs;
   const Pins_kw = (Pfreno * 745.7 * fs) / 1000;
@@ -102,7 +101,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
   if (section === "params") {
     return (
       <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.7fr 1fr", gap: 12, alignItems: "start" }}>
-        <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/parametros_equipo.webp" iconImgStyle={{ width: 22, height: 22 }} title="Parámetros del equipo — Datos del fabricante" bodyStyle={{ padding: 0 }} headerRight={<EditBtn edit={editParams} setEdit={setEditParams} />}>
+        <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/parametros_equipo.webp" iconImgStyle={{ width: 22, height: 22 }} title="Parámetros del equipo — Datos del fabricante" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editParams} setEdit={setEditParams} />}>
           <Tbl caption="Parámetros del equipo" cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
             [<Param name="Eficiencia bomba (η_b)" />, <LazyInp disabled={!editParams} field="etab" ariaLabel="Eficiencia bomba" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>0.55 – 0.80</span> Verificar en curva característica del fabricante para el punto Qd / HMT.</Comment>],
             [<Param name="Eficiencia motor (η_m)" />, <LazyInp disabled={!editParams} field="etam" ariaLabel="Eficiencia motor" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>0.85 – 0.95</span> Motores IE2 o IE3 recomendados para uso con VFD.</Comment>],
@@ -143,12 +142,12 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
               ["P calculada (× F.S.)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Pins_kw > 0 ? Pins_kw.toFixed(2) : "—"}</span>, "kW"],
             ]} />
           </Card>
-          <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/pot_comercial_seleccionada.webp" iconImgStyle={{ width: 22, height: 22 }} title="Potencia comercial seleccionada" bodyStyle={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 6 }} headerRight={<EditBtn edit={editPComercial} setEdit={setEditPComercial} />}>
+          <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/pot_comercial_seleccionada.webp" iconImgStyle={{ width: 22, height: 22 }} title="Potencia comercial seleccionada" bodyStyle={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 6 }} headerRight={<EditButton edit={editPComercial} setEdit={setEditPComercial} />}>
             <div style={{ fontSize: 11, color: "var(--txt3)" }}>
               P calculada = <strong style={{ color: "var(--txt)" }}>{Pins_hp > 0 ? Pins_hp.toFixed(2) : "—"} HP</strong> · Comercial inmediata superior: <strong style={{ color: "var(--txt)", fontWeight: 700 }}>{autoNema} HP</strong>
             </div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <select disabled={!editPComercial} value={ep.pcomercial || ""} onChange={(e) => updEP("pcomercial", e.target.value)} style={{ flex: 1, padding: "5px 8px", borderRadius: "var(--r)", border: "1px solid var(--line)", background: "var(--bg2)", color: "var(--txt)", fontFamily: "var(--mono)", fontSize: 11, fontWeight: 600, cursor: editPComercial ? "pointer" : "default", outline: "none", boxSizing: "border-box", opacity: editPComercial ? 1 : 0.7 }}>
+              <select aria-label="Potencia comercial" disabled={!editPComercial} value={ep.pcomercial || ""} onChange={(e) => updEP("pcomercial", e.target.value)} style={{ flex: 1, padding: "5px 8px", borderRadius: "var(--r)", border: "1px solid var(--line)", background: "var(--bg2)", color: "var(--txt)", fontFamily: "var(--mono)", fontSize: 11, fontWeight: 600, cursor: editPComercial ? "pointer" : "default", outline: "none", boxSizing: "border-box", opacity: editPComercial ? 1 : 0.7 }}>
                 <option value="">Seleccione</option>
                 {COMM_HP.map(({ hp, kw }) => (<option key={hp} value={String(hp)}>{hp} HP ({kw} kW)</option>))}
               </select>
@@ -180,7 +179,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
           [<span style={{ fontWeight: 700, color: "var(--txt)" }}>Volumen tanque Vt = Vu / α</span>, <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: "var(--txt)" }}>{Vt.toFixed(1)}</span>, "L", "Vt = Vu / α"]
         ]} />
       </Card>
-      <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/diametros_velocidades.webp" iconImgStyle={{ width: 22, height: 22 }} title="Diámetros y velocidades" bodyStyle={{ padding: 0 }} headerRight={<EditBtn edit={editDiametros} setEdit={setEditDiametros} />}>
+      <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/diametros_velocidades.webp" iconImgStyle={{ width: 22, height: 22 }} title="Diámetros y velocidades" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editDiametros} setEdit={setEditDiametros} />}>
         <Tbl caption="Diámetros y velocidades" thStyle={{ fontSize: 11, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud."]} rows={[
           [<Param name="Tubería succión" sub="DN comercial" />, <LazyInp disabled={!editDiametros} field="dnsuc" ariaLabel="Tubería succión" />, "mm DN"],
           ["Velocidad real succión", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{sucDiam.Vreal ? sucDiam.Vreal.toFixed(2) : "—"}</span>, "m/s"],

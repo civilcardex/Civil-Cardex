@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { dec } from "../utils/parseDecimal";
 import PageNav from './PageNav';
 import { SI, TH, TD } from "../styles/sharedTableStyles";
+import EditButton from "./shared/EditButton";
 
 const nv=(s: string)=>s===''?'':/^[\d]*\.?[\d]*$/.test(s)?s:false;
 const oc=(set: (v: any) => void)=>(e: React.ChangeEvent<HTMLInputElement>)=>{const v=nv(e.target.value);if(v!==false)set(v)};
@@ -61,10 +62,6 @@ function BombaARDesign(){
   const [editP3, setEditP3] = useState(false);
   const [editP4, setEditP4] = useState(false);
 
-  const EditBtn = ({ edit, setEdit }: { edit: boolean, setEdit: (v: boolean) => void }) => (
-    <button onClick={() => setEdit(!edit)} style={{ background: edit ? 'var(--acc)' : 'transparent', color: edit ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600, marginLeft: 'auto' }}>{edit ? 'LISTO' : 'EDITAR'}</button>
-  );
-
   const sal=dec(salSim); const ud=dec(udTot); const hzg=dec(hz); const li=dec(lImp);
   const di=dec(dImp); const ch=dec(cHW)||150; const pd=dec(pDesc); const eb=dec(etaB)||0.65;
   const fs=dec(fSrv)||1.25; const tc=dec(tCic); const hmn=dec(hMin); const hmx=dec(hMax);
@@ -100,7 +97,7 @@ function BombaARDesign(){
   const page1=(
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <EditBtn edit={editP1} setEdit={setEditP1} />
+        <EditButton edit={editP1} setEdit={setEditP1} />
       </div>
       <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
       <Tbl th={TH2} td={TD2} tdl={TDL2} fontSize={13} valueCol={2} caption="Datos de entrada" cols={COLS1} rows={[
@@ -134,8 +131,8 @@ function BombaARDesign(){
   const page3=<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', alignItems: 'start' }}>
     <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
       <div className="card-h" style={{padding:'8px 8px', display: 'flex', alignItems: 'center'}}>
-        <h3 className="card-t"><img src="/iconos_diseno_redes/equipos/bomba_sumergible_trituradora.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />Parámetros de diseño bomba sumergible</h3>
-        <EditBtn edit={editP3} setEdit={setEditP3} />
+        <h3 className="card-t"><img src="/iconos_diseno_redes/equipos/bomba_sumergible_trituradora.webp" alt="Bomba sumergible trituradora"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />Parámetros de diseño bomba sumergible</h3>
+        <EditButton edit={editP3} setEdit={setEditP3} />
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Parámetros de diseño bomba sumergible</caption>
@@ -155,7 +152,7 @@ function BombaARDesign(){
     
     <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
       <div className="card-h" style={{padding:'8px 8px'}}>
-        <h3 className="card-t"><img src="/iconos_diseno_redes/equipos/especificacion_camara_trituradora.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />Especificación — Bomba sumergible trituradora</h3>
+        <h3 className="card-t"><img src="/iconos_diseno_redes/equipos/especificacion_camara_trituradora.webp" alt="Especificación cámara trituradora"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />Especificación — Bomba sumergible trituradora</h3>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Especificación — Bomba sumergible trituradora</caption>
@@ -175,8 +172,8 @@ function BombaARDesign(){
   const page4=<div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', alignItems: 'start' }}>
     <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
       <div className="card-h" style={{padding:'8px 8px', display: 'flex', alignItems: 'center'}}>
-        <h3 className="card-t"><img src="/iconos_diseno_redes/equipos/camara_bombeo.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />Parámetros de diseño cámara de bombeo</h3>
-        <EditBtn edit={editP4} setEdit={setEditP4} />
+        <h3 className="card-t"><img src="/iconos_diseno_redes/equipos/camara_bombeo.webp" alt="Cámara de bombeo"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />Parámetros de diseño cámara de bombeo</h3>
+        <EditButton edit={editP4} setEdit={setEditP4} />
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Parámetros de diseño cámara de bombeo</caption>
@@ -196,7 +193,7 @@ function BombaARDesign(){
     
     <div style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
       <div className="card-h" style={{padding:'8px 8px'}}>
-        <h3 className="card-t"><img src="/iconos_diseno_redes/equipos/especificacion_camara_bombeo.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />Especificación — Cámara de bombeo</h3>
+        <h3 className="card-t"><img src="/iconos_diseno_redes/equipos/especificacion_camara_bombeo.webp" alt="Especificación cámara de bombeo"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />Especificación — Cámara de bombeo</h3>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Especificación — Cámara de bombeo</caption>

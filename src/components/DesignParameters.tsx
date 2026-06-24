@@ -1,9 +1,10 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProject } from "../context/ProjectContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { MAT_COL, AF_UC_IDS, AC_UC_IDS, SAN_UC_IDS, APARATOS_DEF, REDES_MAT, CAT_APS, CAT_GAS } from "../constants";
 import { NumericInput } from "./NumericInput";
+import EditButton from "./shared/EditButton";
 
 export default function BaseDatos({ redes }: { redes: Set<string> }) {
   const navigate = useNavigate();
@@ -76,20 +77,20 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
 
         <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-            <h3 className="card-t" style={{fontSize:13, display: 'flex', alignItems: 'center'}}><img src="/iconos_parametros_de_diseno/materiales_por_red.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Materiales por red</h3>
+            <h3 className="card-t" style={{fontSize:13, display: 'flex', alignItems: 'center'}}><img src="/iconos_parametros_de_diseno/materiales_por_red.webp" alt="Materiales por red"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Materiales por red</h3>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span className="card-s" style={{ fontSize: 10 }}>{activeRedes.length} redes activas</span>
-              <button onClick={() => setIsEditingMateriales(!isEditingMateriales)} style={{ background: isEditingMateriales ? 'var(--acc)' : 'transparent', color: isEditingMateriales ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>{isEditingMateriales ? 'LISTO' : 'EDITAR'}</button>
+              <EditButton edit={isEditingMateriales} setEdit={setIsEditingMateriales} />
             </div>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
             <table className="tbl" style={{ fontSize: 12 }}>
               <thead>
                 <tr>
-                  <th style={{ width: 28, textAlign: 'center', padding: '4px 6px' }}>#</th>
-                  <th style={{ padding: '4px 8px' }}>Red</th>
-                  <th style={{ padding: '4px 8px', minWidth: 90 }}>Tubería</th>
-                  <th className="c" style={{ width: 130, padding: '4px 6px' }}>Profundidad de instalación<br/>con respecto a NPT (m)</th>
+                  <th scope="col" style={{ width: 28, textAlign: 'center', padding: '4px 6px' }}>#</th>
+                  <th scope="col" style={{ padding: '4px 8px' }}>Red</th>
+                  <th scope="col" style={{ padding: '4px 8px', minWidth: 90 }}>Tubería</th>
+                  <th scope="col" className="c" style={{ width: 130, padding: '4px 6px' }}>Profundidad de instalación<br/>con respecto a NPT (m)</th>
                 </tr>
               </thead>
               <tbody>
@@ -110,6 +111,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                           <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, color: 'var(--txt)' }}>{r.mat}</span>
                         ) : (
                           <select
+                            aria-label="Seleccionar material"
                             disabled={!isEditingMateriales}
                             style={{
                               width: '100%', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600,
@@ -127,7 +129,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                         )}
                       </td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                          <input type="text" disabled={!isEditingMateriales} inputMode="decimal" className="ni"
+                          <input type="text" disabled={!isEditingMateriales} inputMode="decimal" className="ni" aria-label="Profundidad"
                           style={{ width: 65, padding: '2px 4px', fontSize: 11, textAlign: 'center', color: 'var(--txt)', opacity: isEditingMateriales ? 1 : 0.7 }}
                           value={profTexts[r.id] !== undefined ? profTexts[r.id] : (r.prof !== undefined && r.prof !== null ? String(r.prof) : '0')}
                           onChange={e => {
@@ -179,28 +181,28 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.15)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.08)'; }}
             title="Ver catálogo completo de materiales, diámetros y coeficientes">
-            <img src="/iconos_parametros_de_diseno/catalogo_maestro.webp" alt=""  width={18} height={18} style={{width:18,height:18,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Catálogo maestro
+            <img src="/iconos_parametros_de_diseno/catalogo_maestro.webp" alt="Catálogo maestro"  width={18} height={18} style={{width:18,height:18,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Catálogo maestro
           </button>
         </div>
 
         <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-            <h3 className="card-t" style={{fontSize:13, display: 'flex', alignItems: 'center'}}><img src="/iconos_parametros_de_diseno/catalogo_aparatos_sanitarios.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de aparatos sanitarios</h3>
+            <h3 className="card-t" style={{fontSize:13, display: 'flex', alignItems: 'center'}}><img src="/iconos_parametros_de_diseno/catalogo_aparatos_sanitarios.webp" alt="Catálogo de aparatos sanitarios"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de aparatos sanitarios</h3>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span className="card-s" style={{ fontSize: 10 }}>NTC 1500 · UC editables</span>
-              <button onClick={() => setIsEditingAparatos(!isEditingAparatos)} style={{ background: isEditingAparatos ? 'var(--acc)' : 'transparent', color: isEditingAparatos ? '#fff' : 'var(--acc)', border: '1px solid var(--acc)', borderRadius: 4, padding: '2px 6px', fontSize: 10, cursor: 'pointer', fontWeight: 600 }}>{isEditingAparatos ? 'LISTO' : 'EDITAR'}</button>
+              <EditButton edit={isEditingAparatos} setEdit={setIsEditingAparatos} />
             </div>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
             <table className="tbl" style={{ fontSize: 12 }}>
               <thead>
                 <tr>
-                  <th style={{ padding: '4px 8px' }}>Aparato</th>
-                  <th style={{ width: 60, padding: '4px 6px' }}>Sigla</th>
-                  <th style={{ width: 80, padding: '4px 6px' }}>Tipo de Control</th>
-                  <th className="c" style={{ width: 55, padding: '4px 4px', background: 'rgba(27,110,243,.07)', color: 'var(--acc2)' }}>UC AF</th>
-                  <th className="c" style={{ width: 55, padding: '4px 4px', background: 'rgba(240,69,69,.07)', color: '#F04545' }}>UC AC</th>
-                  <th className="c" style={{ width: 55, padding: '4px 4px', background: 'rgba(245,166,35,.07)', color: 'var(--san)' }}>UD RS</th>
+                  <th scope="col" style={{ padding: '4px 8px' }}>Aparato</th>
+                  <th scope="col" style={{ width: 60, padding: '4px 6px' }}>Sigla</th>
+                  <th scope="col" style={{ width: 80, padding: '4px 6px' }}>Tipo de Control</th>
+                  <th scope="col" className="c" style={{ width: 55, padding: '4px 4px', background: 'rgba(27,110,243,.07)', color: 'var(--acc2)' }}>UC AF</th>
+                  <th scope="col" className="c" style={{ width: 55, padding: '4px 4px', background: 'rgba(240,69,69,.07)', color: '#F04545' }}>UC AC</th>
+                  <th scope="col" className="c" style={{ width: 55, padding: '4px 4px', background: 'rgba(245,166,35,.07)', color: 'var(--san)' }}>UD RS</th>
                 </tr>
               </thead>
               <tbody>
@@ -236,17 +238,17 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
 
         <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
-            <h3 className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_gasodomesticos.webp" alt=""  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de gasodomésticos</h3>
+            <h3 className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_gasodomesticos.webp" alt="Catálogo de gasodomésticos"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de gasodomésticos</h3>
             <span className="card-s" style={{ fontSize: 10 }}>NTC 3728 · m³/hr</span>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
             <table className="tbl" style={{ fontSize: 12 }}>
               <thead>
                 <tr>
-                  <th style={{ padding: '4px 8px' }}>Aparato</th>
-                  <th style={{ width: 88, padding: '4px 6px' }}>Sigla</th>
-                  <th style={{ width: 60, padding: '4px 6px' }}>Tipo de Control</th>
-                  <th className="c" style={{ width: 90, padding: '4px 6px' }}>Consumo m³/hr</th>
+                  <th scope="col" style={{ padding: '4px 8px' }}>Aparato</th>
+                  <th scope="col" style={{ width: 88, padding: '4px 6px' }}>Sigla</th>
+                  <th scope="col" style={{ width: 60, padding: '4px 6px' }}>Tipo de Control</th>
+                  <th scope="col" className="c" style={{ width: 90, padding: '4px 6px' }}>Consumo m³/hr</th>
                 </tr>
               </thead>
               <tbody>
