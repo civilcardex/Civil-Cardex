@@ -1,3 +1,4 @@
+import { AGUA_CALIENTE } from '../pages/catalog/catalogData';
 export const APARATOS_DEF = [
   {id:'sif', sigla:'Sif:', nombre:'Sifón', grupo:'h', uc_af:0, uc_ac:0, ud:2, pmin:0, pmax:0, qgas:0, norma:'NTC 1500 T1'},
   {id:'lvm', sigla:'Lvm:', nombre:'Lavamanos', grupo:'h', uc_af:0.5, uc_ac:0.5, ud:2, pmin:0.51, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
@@ -164,20 +165,18 @@ export const DIAM_OPTIONS=[
 ];
 
 export const DIAM_BAN=[
-  { pulg:1.5, mm:42.68, nom:'1½"' },
+  { pulg:1.5, mm:42.68, nom:'1 1/2"' },
   { pulg:2, mm:54.48, nom:'2"' },
   { pulg:3, mm:76.20, nom:'3"' },
-  { pulg:4, mm:107.70,nom:'4"' },
-  { pulg:6, mm:160.04,nom:'6"' },
-  { pulg:8, mm:213.20,nom:'8"' },
+  { pulg:4, mm:107.70, nom:'4"' },
+  { pulg:6, mm:160.04, nom:'6"' },
 ];
 
 export const DIAM_VENT=[
-  { pulg:1.5, mm:42.68, nom:'1½"' },
-  { pulg:2, mm:54.48, nom:'2"' },
-  { pulg:3, mm:76.20, nom:'3"' },
-  { pulg:4, mm:107.70,nom:'4"' },
-  { pulg:6, mm:160.04,nom:'6"' },
+  { pulg:1.5, mm:45.22, nom:'1 1/2"' },
+  { pulg:2, mm:56.76, nom:'2"' },
+  { pulg:3, mm:79.00, nom:'3"' },
+  { pulg:4, mm:110.08, nom:'4"' },
 ];
 
 export const GAS = [
@@ -223,15 +222,20 @@ export const DIAM_BY_MAT: Record<string, Array<{ n: string }>> = {
     { n: '4" — 107.7 mm' }, { n: '6" — 160.0 mm' },
   ],
   'PVC-PR': [
-    { n: '½" — 21.3 mm' }, { n: '¾" — 26.7 mm' }, { n: '1" — 33.4 mm' },
-    { n: '1¼" — 42.2 mm' }, { n: '1½" — 48.3 mm' }, { n: '2" — 60.3 mm' },
-    { n: '2½" — 73.0 mm' }, { n: '3" — 88.9 mm' }, { n: '4" — 114.3 mm' },
+    { n: '1/2" RDE 9 — 16.6 mm' }, { n: '1/2" RDE 13.5 — 18.18 mm' },
+    { n: '3/4" RDE 11 — 21.81 mm' }, { n: '3/4" RDE 21 — 23.63 mm' },
+    { n: '1" RDE 13.5 — 28.48 mm' }, { n: '1" RDE 21 — 30.20 mm' },
+    { n: '1-1/4" RDE 21 — 38.14 mm' }, { n: '1-1/2" RDE 21 — 43.68 mm' },
+    { n: '2" RDE 21 — 54.58 mm' }, { n: '2-1/2" RDE 21 — 66.07 mm' },
+    { n: '3" RDE 21 — 80.42 mm' }, { n: '4" RDE 21 — 103.42 mm' },
+    { n: '6" RDE 21 — 152.22 mm' },
   ],
-  'CPVC': [
-    { n: '½" — 15.9 mm' }, { n: '¾" — 22.2 mm' }, { n: '1" — 28.6 mm' },
-    { n: '1¼" — 34.9 mm' }, { n: '1½" — 41.3 mm' }, { n: '2" — 54.0 mm' },
-    { n: '2½" — 66.7 mm' }, { n: '3" — 79.4 mm' }, { n: '4" — 104.8 mm' },
-  ],
+  'CPVC': AGUA_CALIENTE[0].rows.map(r => {
+    const match = r.dn.match(/^(.+?)\s*\((.+?)\)$/);
+    if (!match) return { n: r.dn };
+    const specFixed = match[2].replace('CPVC ', '');
+    return { n: `${match[1]}" ${specFixed} — ${r.d.toFixed(1)} mm` };
+  }),
   'Cobre rígido': [
     { n: '½" — 12.7 mm' }, { n: '¾" — 19.1 mm' }, { n: '1" — 25.4 mm' },
     { n: '1¼" — 31.8 mm' }, { n: '1½" — 38.1 mm' }, { n: '2" — 50.8 mm' },
