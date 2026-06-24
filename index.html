@@ -1,15 +1,14 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Civil Core - Ingeniería civil asistida. Diseño, cálculo y documentación de infraestructuras viales, hidrosanitarias, estructurales y BIM." />
+    <meta name="description" content="Civil Core — Plataforma de ingeniería civil para diseño hidrosanitario, estructural, vial y BIM. Cálculo de redes hidráulicas, sanitarias, gas, aguas lluvias y equipos a presión con verificación normativa NTC 1500, RAS 2000, NSR-10." />
     <meta name="theme-color" content="#111317" />
-
 
     <!-- Open Graph -->
     <meta property="og:title" content="Civil Core">
-    <meta property="og:description" content="Plataforma de ingeniería civil para diseño hidráulico, sanitario, estructural y más">
+    <meta property="og:description" content="Plataforma de ingeniería civil para diseño hidráulico, sanitario, estructural, BIM, vías y gestión de proyectos.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://civilcore.app">
     <meta property="og:image" content="https://civilcore.app/logos/civilCorelogo.webp">
@@ -17,19 +16,41 @@
     <meta property="og:image:height" content="512">
     <meta property="og:locale" content="es_ES">
     <link rel="alternate" hreflang="es" href="https://civilcore.app" />
+    <link rel="alternate" hreflang="x-default" href="https://civilcore.app" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Civil Core">
-    <meta name="twitter:description" content="Plataforma de ingeniería civil para diseño hidráulico, sanitario, estructural y más">
+    <meta name="twitter:description" content="Plataforma de ingeniería civil para diseño hidráulico, sanitario, estructural, BIM, vías y gestión de proyectos.">
     <meta name="twitter:image" content="https://civilcore.app/logos/civilCorelogo.webp">
 
     <!-- Robots -->
     <meta name="robots" content="index, follow">
     <!-- CSP: frame-ancestors y upgrade-insecure-requests deben ir como HTTP header (nginx/CDN), no en meta -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self' blob:; frame-src 'self' blob:; object-src 'self' blob:; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
 
-    <!-- JSON-LD Structured Data -->
+    <!-- JSON-LD Structured Data: Organization -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Civil Core",
+  "description": "Plataforma de ingeniería civil para diseño hidrosanitario, estructural, vial y BIM con verificación normativa automática.",
+  "url": "https://civilcore.app",
+  "logo": "https://civilcore.app/logos/civilCorelogo.webp",
+    "contactPoint": {
+    "@type": "ContactPoint",
+    "contactType": "technical support",
+    "availableLanguage": ["Spanish", "English"]
+  }
+}
+    </script>
+
+    <!-- JSON-LD Structured Data: WebApplication -->
     <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -49,7 +70,7 @@
     "priceCurrency": "USD"
   }
 }
-</script>
+    </script>
 
     <title>Civil Core</title>
     <link rel="icon" type="image/webp" href="/logos/civilCorelogo.webp" />
@@ -62,6 +83,15 @@
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <div style="padding: 2rem; font-family: system-ui, sans-serif; text-align: center; background: #111317; color: #e2e2e8; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+        <div>
+          <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Civil Core</h1>
+          <p style="margin-bottom: 1rem;">Esta aplicación requiere JavaScript para funcionar. Por favor, habilite JavaScript en su navegador.</p>
+          <p style="font-size: 0.85rem; color: #8AB4D6;">Plataforma de ingeniería civil — Diseño hidrosanitario, estructural, BIM y gestión de proyectos.</p>
+        </div>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 
 function setMeta(prop: string, name: string, content: string, prev: Record<string, string | null>) {
   const sel = prop === 'property' ? `meta[property="${name}"]` : `meta[name="${name}"]`;
@@ -20,10 +20,12 @@ export function usePageMeta(title: string, description?: string) {
     const prevTitle = document.title;
     document.title = fullTitle;
     setMeta('property', 'og:title', fullTitle, prev);
+    setMeta('name', 'twitter:title', fullTitle, prev);
     
     if (description) {
       setMeta('name', 'description', description, prev);
       setMeta('property', 'og:description', description, prev);
+      setMeta('name', 'twitter:description', description, prev);
     }
     
     const url = window.location.href.split('?')[0];

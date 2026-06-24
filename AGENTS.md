@@ -1,4 +1,4 @@
-## graphify
+﻿## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
 
@@ -10,6 +10,26 @@ Rules:
 - If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
+
+## Security Notes
+
+### Known Risks (Client-Side Only — Requires Backend Changes)
+
+- **Auth tokens in localStorage**: Supabase's client SDK stores JWT auth tokens (access + refresh) under `sb-*-auth-token` keys in `localStorage`. This is the default Supabase behavior and cannot be changed without switching to a server-side auth flow (e.g., Supabase SSR with httpOnly cookies). In the current SPA architecture:
+  - XSS via dependency compromise could exfiltrate tokens from localStorage.
+  - No token encryption at rest.
+  - ProtectedRoute.tsx explicitly reads `sb-*-auth-token` from localStorage as an optimistic cache check (lines 9-21).
+  - **Mitigation**: The CSP meta tag blocks `object-src`, restricts `script-src`, and `frame-src` is `'self'`, reducing injection vectors. For production, consider migrating to a BFF pattern or Supabase SSR.
+
+- **Sensitive app data in localStorage**: Application state (plan selections, trazo data, network configuration) is stored under `civilflow_*` keys and in sessionStorage. Not encrypted but does not contain secrets.
+
+- **No CSRF token**: This SPA uses Supabase JWT bearer tokens in the `Authorization` header, providing inherent CSRF protection. No additional CSRF mechanism is needed.
+
+### Security Headers (Deployment Note)
+- The CSP `frame-ancestors` directive and `Strict-Transport-Security` (HSTS) must be set at the CDN/reverse proxy level (nginx, Cloudflare, Netlify, Vercel) — they do not work via `<meta>` tags.
+- `X-Frame-Options: DENY` is set via `<meta>` tag but should also be sent as an HTTP header.
+- `.env` is git-ignored. Supabase anon key is public by design. `VITE_` prefix correctly marks client-exposed env vars.
+
 
 ## Session Summary — 2026-06-22
 
