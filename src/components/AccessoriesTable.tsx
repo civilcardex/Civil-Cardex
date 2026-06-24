@@ -1,11 +1,11 @@
-import { memo } from 'react';
-import { ACCESORIOS_HIDRO } from "../constants";
+﻿import { memo } from 'react';
+import { ACCESORIOS_HIDRO, LE_K } from "../constants";
 
 function calcLe(tramo: any) {
   const d = tramo.dInt || tramo.diametro_interno || 0;
   if (!d) return null;
   const a = tramo.accesorios || {};
-  const sum = (a.codos_90_std||0)*30 + (a.codos_90_rl||0)*20 + (a.te_linea||0)*20 + (a.te_ramal||0)*20 + (a.valvula_bola||0)*8;
+  const sum = (a.codos_90_std||0)*LE_K.codos_90_std + (a.codos_90_rl||0)*LE_K.codos_90_rl + (a.te_linea||0)*LE_K.te_linea + (a.te_ramal||0)*LE_K.te_ramal + (a.valvula_bola||0)*LE_K.valvula_bola;
   return Math.round(d * sum / 1000 * 100) / 100;
 }
 
@@ -16,7 +16,7 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos, updAcc, net, rea
   return (
     <div className="card">
       <div className="card-h">
-        <h3 className="card-t"><img src="/iconos_diseno_redes/general/Accesorios.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Accesorios por ramal</h3>
+        <h3 className="card-t"><img src="/iconos_diseno_redes/general/Accesorios.webp" alt="Accesorios"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Accesorios por ramal</h3>
         <span className="card-s">{tramos.length} tramos</span>
       </div>
       <div className="scroll-top" style={{padding:'12px'}}>
@@ -24,14 +24,14 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos, updAcc, net, rea
           <table className="tbl" style={{minWidth:700,fontSize:13}}>
             <thead>
               <tr>
-                <th className="col-h" style={{minWidth:64,textAlign:'center',position:'sticky',left:0,zIndex:2,background:cBg2,fontSize:11,padding:'5px 4px'}}>Tramo</th>
+                <th scope="col" className="col-h" style={{minWidth:64,textAlign:'center',position:'sticky',left:0,zIndex:2,background:cBg2,fontSize:11,padding:'5px 4px'}}>Tramo</th>
                 {ACCESORIOS_HIDRO.map(a => (
-                  <th key={a.id} className="col-h" style={{minWidth:56,fontSize:10,textAlign:'center',whiteSpace:'nowrap',padding:'5px 2px'}}>
+                  <th scope="col" key={a.id} className="col-h" style={{minWidth:56,fontSize:10,textAlign:'center',whiteSpace:'nowrap',padding:'5px 2px'}}>
                     <img src={a.icono} alt={a.nombre}  width={24} height={24} style={{width:24,height:24,objectFit:'contain',display:'block',margin:'0 auto 2px'}}  loading="lazy" />
                     <span style={{fontSize:9,fontWeight:500}}>{a.nombre}</span>
                   </th>
                 ))}
-                <th className="col-h" style={{minWidth:80,fontSize:10,textAlign:'center',whiteSpace:'nowrap',padding:'5px 4px',borderLeft:'2px solid var(--line)'}}>
+                <th scope="col" className="col-h" style={{minWidth:80,fontSize:10,textAlign:'center',whiteSpace:'nowrap',padding:'5px 4px',borderLeft:'2px solid var(--line)'}}>
                   <span style={{fontSize:9,fontWeight:600}}>Le (m)</span>
                 </th>
               </tr>
@@ -53,7 +53,7 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos, updAcc, net, rea
                       }
                       return (
                         <td key={a.id} className="c" style={{padding:'4px 2px'}}>
-                          <input type="number" className="ni" style={{width:48,textAlign:'center',padding:'4px 4px',fontSize:13}}
+                          <input type="number" className="ni" aria-label={`${a.nombre} para tramo ${t.id}`} style={{width:48,textAlign:'center',padding:'4px 4px',fontSize:13}}
                             value={v === 0 ? '' : v} min={0} step={1}
                             onChange={e => updAcc(t.id, a.id, e.target.value === '' ? 0 : parseInt(e.target.value, 10) || 0)}/>
                         </td>

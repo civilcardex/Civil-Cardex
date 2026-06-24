@@ -1,4 +1,5 @@
-const GRAVEDAD: number = 9.80665;
+export const GRAVEDAD: number = 9.80665;
+export const AGUA_DENSIDAD: number = 1000;
 export const manning_SAN: number = 0.009;
 
 // ─── Factor de simultaneidad (Hunter modificado) ───

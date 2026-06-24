@@ -11,7 +11,21 @@ import {
 } from '../constants/storage-keys';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
 
-function buildSyncData(plans: any[], families: Set<string>, prefix: string, storageKey: string) {
+function collectAparatos(out: any) {
+  const rawAparatos = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
+  out.aparatosByTramo = {};
+  for (const [key, counts] of Object.entries(rawAparatos)) {
+    if (!counts || typeof counts !== 'object') continue;
+    const filtered: Record<string, number> = {};
+    for (const [apId, n] of Object.entries(counts)) {
+      const v = Number(n) || 0;
+      if (v > 0) filtered[apId] = v;
+    }
+    if (Object.keys(filtered).length > 0) out.aparatosByTramo[key] = filtered;
+  }
+}
+
+function buildPrefixedSyncData(plans: any[], families: Set<string>) {
   const out: any = { planes: {}, updatedAt: Date.now() };
   if (!Array.isArray(plans)) return out;
 
@@ -25,37 +39,11 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
       try { data = JSON.parse(data); } catch (_) { continue; }
     }
 
-    if (prefix) {
-      for (const family of families) {
-        const ramales: any[] = [];
-        for (const r of (data.ramales || [])) {
-          if (r.net === family) {
-            const rKey = family + '_' + r.id + '_' + plan.id;
-            ramales.push({
-              id: r.id, label: r.label || r.id, tipo: r.tipo,
-              padre: r.padre || null, totalL: r.totalL || 0,
-              ini: r.ini || '', fin: r.fin || '',
-              diametro: r.diametro || '', diamPulg: diamPulgFromLabel(r.diametro),
-              pendiente: typeof r.pendiente === 'number' ? r.pendiente : 0,
-              material: r.material || '', maning: matManning(r.material),
-              dz: parseFloat(r.dz) || 0,
-              piso: r.piso || nivel,
-              _aparatosKey: rKey,
-              nSalidas: r.nSalidas || 0,
-              descargaEnId: r.descargaEnId || null,
-            });
-          }
-        }
-        const planoKey = family + '_' + nivel;
-        if (ramales.length === 0) continue;
-        out.planes[planoKey] = { planoId: plan.id, planoName: plan.name, nivel, npt: plan.npt ?? parseInt(nivel), ramales, bajantes: [] };
-      }
-    } else {
+    for (const family of families) {
       const ramales: any[] = [];
-      const bajantes: any[] = [];
       for (const r of (data.ramales || [])) {
-        if (families.has(r.net)) {
-          const rKey = r.net + '_' + r.id + '_' + plan.id;
+        if (r.net === family) {
+          const rKey = family + '_' + r.id + '_' + plan.id;
           ramales.push({
             id: r.id, label: r.label || r.id, tipo: r.tipo,
             padre: r.padre || null, totalL: r.totalL || 0,
@@ -63,60 +51,98 @@ function buildSyncData(plans: any[], families: Set<string>, prefix: string, stor
             diametro: r.diametro || '', diamPulg: diamPulgFromLabel(r.diametro),
             pendiente: typeof r.pendiente === 'number' ? r.pendiente : 0,
             material: r.material || '', maning: matManning(r.material),
+            dz: parseFloat(r.dz) || 0,
             piso: r.piso || nivel,
-            _aparatosKey: rKey, _net: r.net,
+            _aparatosKey: rKey,
             nSalidas: r.nSalidas || 0,
             descargaEnId: r.descargaEnId || null,
           });
         }
       }
-      for (const b of (data.bajantes || [])) {
-        if (families.has(b.net)) {
-          const bKey = b.net + '_' + b.id + '_' + plan.id;
-          bajantes.push({
-            id: b.id, code: b.code || b.id,
-            dNominal: b.dNominal || '', diamPulg: diamPulgFromLabel(b.dNominal),
-            hVert: b.hVert || 0, material: b.material || '',
-            maning: matManning(b.material), _aparatosKey: bKey, _net: b.net,
-            recibeDeIds: b.recibeDeIds || [],
-            descargaEnId: b.descargaEnId || null,
-            area_m2: b.area_m2 || 0,
-            pisoBase: b.pisoBase || '', pisoCima: b.pisoCima || '',
-            nSalidas: b.nSalidas || 0,
-            bajR: b.bajR ?? 7/24,
-            bajDprop: b.bajDprop,
-            ventDprop: b.ventDprop,
-            bajLong: b.bajLong,
-            bajFDarcy: b.bajFDarcy,
-          });
-        }
-      }
-      if (ramales.length === 0 && bajantes.length === 0) continue;
-      out.planes[nivel] = { planoId: plan.id, planoName: plan.name, nivel: plan.nivel, npt: plan.npt, ramales, bajantes };
+      const planoKey = family + '_' + nivel;
+      if (ramales.length === 0) continue;
+      out.planes[planoKey] = { planoId: plan.id, planoName: plan.name, nivel, npt: plan.npt ?? parseInt(nivel), ramales, bajantes: [] };
     }
   }
 
-  const rawAparatos = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
-  out.aparatosByTramo = {};
-  for (const [key, counts] of Object.entries(rawAparatos)) {
-    if (!counts || typeof counts !== 'object') continue;
-    const filtered: Record<string, number> = {};
-    for (const [apId, n] of Object.entries(counts)) {
-      const v = Number(n) || 0;
-      if (v > 0) filtered[apId] = v;
-    }
-    if (Object.keys(filtered).length > 0) out.aparatosByTramo[key] = filtered;
-  }
+  collectAparatos(out);
 
-  if (prefix) {
-    const rawHidro = loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
-    out.hidroData = {};
-    for (const [key, val] of Object.entries(rawHidro)) {
-      out.hidroData[key] = val;
-    }
+  const rawHidro = loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
+  out.hidroData = {};
+  for (const [key, val] of Object.entries(rawHidro)) {
+    out.hidroData[key] = val;
   }
 
   return out;
+}
+
+function buildNonPrefixedSyncData(plans: any[], families: Set<string>) {
+  const out: any = { planes: {}, updatedAt: Date.now() };
+  if (!Array.isArray(plans)) return out;
+
+  for (const plan of plans) {
+    if (!plan || plan.nivel == null) continue;
+    const nivel = plan.nivel;
+    const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
+    if (!raw) continue;
+    let data = raw as Record<string, any>;
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data); } catch (_) { continue; }
+    }
+
+    const ramales: any[] = [];
+    const bajantes: any[] = [];
+    for (const r of (data.ramales || [])) {
+      if (families.has(r.net)) {
+        const rKey = r.net + '_' + r.id + '_' + plan.id;
+        ramales.push({
+          id: r.id, label: r.label || r.id, tipo: r.tipo,
+          padre: r.padre || null, totalL: r.totalL || 0,
+          ini: r.ini || '', fin: r.fin || '',
+          diametro: r.diametro || '', diamPulg: diamPulgFromLabel(r.diametro),
+          pendiente: typeof r.pendiente === 'number' ? r.pendiente : 0,
+          material: r.material || '', maning: matManning(r.material),
+          piso: r.piso || nivel,
+          _aparatosKey: rKey, _net: r.net,
+          nSalidas: r.nSalidas || 0,
+          descargaEnId: r.descargaEnId || null,
+        });
+      }
+    }
+    for (const b of (data.bajantes || [])) {
+      if (families.has(b.net)) {
+        const bKey = b.net + '_' + b.id + '_' + plan.id;
+        bajantes.push({
+          id: b.id, code: b.code || b.id,
+          dNominal: b.dNominal || '', diamPulg: diamPulgFromLabel(b.dNominal),
+          hVert: b.hVert || 0, material: b.material || '',
+          maning: matManning(b.material), _aparatosKey: bKey, _net: b.net,
+          recibeDeIds: b.recibeDeIds || [],
+          descargaEnId: b.descargaEnId || null,
+          area_m2: b.area_m2 || 0,
+          pisoBase: b.pisoBase || '', pisoCima: b.pisoCima || '',
+          nSalidas: b.nSalidas || 0,
+          bajR: b.bajR ?? 7/24,
+          bajDprop: b.bajDprop,
+          ventDprop: b.ventDprop,
+          bajLong: b.bajLong,
+          bajFDarcy: b.bajFDarcy,
+        });
+      }
+    }
+    if (ramales.length === 0 && bajantes.length === 0) continue;
+    out.planes[nivel] = { planoId: plan.id, planoName: plan.name, nivel: plan.nivel, npt: plan.npt, ramales, bajantes };
+  }
+
+  collectAparatos(out);
+
+  return out;
+}
+
+function buildSyncData(plans: any[], families: Set<string>, prefix: string, _storageKey: string) {
+  return prefix
+    ? buildPrefixedSyncData(plans, families)
+    : buildNonPrefixedSyncData(plans, families);
 }
 
 export function writeHydroDrawingSync(plans: any[]) {

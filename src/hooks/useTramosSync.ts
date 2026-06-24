@@ -123,6 +123,39 @@ export function useSanLlSync(
   });
 }
 
+function buildTramos(
+  family: string,
+  planes: Record<string, any>,
+  hidroData: Record<string, any>,
+  aparatos: Record<string, any>,
+) {
+  const incoming: any[] = [];
+  for (const [key, plane] of Object.entries(planes)) {
+    if (!key.startsWith(family + '_')) continue;
+    const nivel = parseInt(key.slice(family.length + 1));
+    const planId = (plane as any).planoId || '';
+    for (const r of ((plane as any).ramales || [])) {
+      const apKey = r._aparatosKey || `${family}_${r.id}_${planId}`;
+      const extra = hidroData[apKey] || {};
+      incoming.push({
+        _key: `${r.id}-${planId}`,
+        id: r.id, piso: nivel, planId,
+        tipo: r.tipo || 'ramal',
+        esBajante: false,
+        fixtures: aparatos[apKey] || {},
+        accesorios: extra.accesorios || {},
+        Lh: extra.Lh || 0, Lv: r.dz || extra.Lv || 0,
+        nSalidas: r.nSalidas || extra.nSalidas || 0,
+        recibeDe: [], descripcion: '',
+        ini: r.ini || '', fin: r.fin || '',
+        diamDisPulg: diamPulgFromLabel(r.diametro) || r.diamPulg || 0, diametroOriginal: r.diametro || '', material: r.material || '',
+        totalL: r.totalL || 0,
+      });
+    }
+  }
+  return incoming;
+}
+
 export function useHidroSync(
   dispatch: (a: any) => void,
   stateRef: MutableRefObject<TramosState>,
@@ -133,36 +166,8 @@ export function useHidroSync(
     const hidroData: Record<string, any> = (sync.hidroData as Record<string, any>) || {};
     const aparatos: Record<string, any> = (sync.aparatosByTramo as Record<string, any>) || {};
 
-    function buildTramos(family: string) {
-      const incoming: any[] = [];
-      for (const [key, plane] of Object.entries(planes)) {
-        if (!key.startsWith(family + '_')) continue;
-        const nivel = parseInt(key.slice(family.length + 1));
-        const planId = (plane as any).planoId || '';
-        for (const r of ((plane as any).ramales || [])) {
-          const apKey = r._aparatosKey || `${family}_${r.id}_${planId}`;
-          const extra = hidroData[apKey] || {};
-          incoming.push({
-            _key: `${r.id}-${planId}`,
-            id: r.id, piso: nivel, planId,
-            tipo: r.tipo || 'ramal',
-            esBajante: false,
-            fixtures: aparatos[apKey] || {},
-            accesorios: extra.accesorios || {},
-            Lh: extra.Lh || 0, Lv: r.dz || extra.Lv || 0,
-            nSalidas: r.nSalidas || extra.nSalidas || 0,
-            recibeDe: [], descripcion: '',
-            ini: r.ini || '', fin: r.fin || '',
-            diamDisPulg: diamPulgFromLabel(r.diametro) || r.diamPulg || 0, diametroOriginal: r.diametro || '', material: r.material || '',
-            totalL: r.totalL || 0,
-          });
-        }
-      }
-      return incoming;
-    }
-
-    const afIncoming = buildTramos('af');
-    const acIncoming = buildTramos('ac');
+    const afIncoming = buildTramos('af', planes, hidroData, aparatos);
+    const acIncoming = buildTramos('ac', planes, hidroData, aparatos);
 
     const prevAf = stateRef.current.tramosAf;
     const newAf = afIncoming.length === 0 ? [] : afIncoming.map(i => {

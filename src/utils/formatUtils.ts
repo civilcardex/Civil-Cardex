@@ -1,5 +1,7 @@
 const FRAC: Record<number, string> = { 0.5: '½', 0.75: '¾', 0.25: '¼', 0.125: '⅛', 0.375: '⅜', 0.625: '⅝', 0.875: '⅞' };
 
+export const fmt = (v: unknown, d = 2) => v == null || Number.isNaN(Number(v)) ? "—" : Number(v).toFixed(d);
+
 export function fmtPulg(v: number): string {
   if (!v || v <= 0) return "—";
   const ent = Math.floor(v);

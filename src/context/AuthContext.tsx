@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { supabase } from '../lib/supabase';
 
 interface User {
   id: string;
@@ -24,7 +25,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let subscription: { unsubscribe: () => void } | null = null;
 
     const initAuth = async () => {
-      const { supabase } = await import('../lib/supabase');
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user as User | null);
       setLoading(false);
@@ -42,14 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { supabase } = await import('../lib/supabase');
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     return data;
   };
 
   const signUp = async (email: string, password: string, options?: { data?: Record<string, string> }) => {
-    const { supabase } = await import('../lib/supabase');
     const { data, error } = await supabase.auth.signUp({ email, password, options });
     if (error) throw error;
     return data;
@@ -69,7 +67,5 @@ export function useAuth() {
 }
 
 export function getCurrentUser() {
-  return import('../lib/supabase').then(({ supabase }) =>
-    supabase.auth.getUser().then(({ data: { user } }) => user)
-  );
+  return supabase.auth.getUser().then(({ data: { user } }) => user);
 }

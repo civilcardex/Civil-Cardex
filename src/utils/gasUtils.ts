@@ -1,6 +1,6 @@
 import { APARATOS_DEF } from "../constants";
 
-const GAS_APPARATUS = APARATOS_DEF.filter(
+export const GAS_APPARATUS = APARATOS_DEF.filter(
   (a) => a.grupo === "g" && (a.qgas || 0) > 0
 );
 
