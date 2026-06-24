@@ -62,16 +62,16 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                 <tr>
                   <th scope="col" className="col-h" rowSpan={2} style={{minWidth:64,textAlign:'center'}}>Tramo</th>
                   <th scope="col" className="col-h" rowSpan={2} style={{minWidth:44,textAlign:'center'}}>Nivel</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Inicia</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Termina</th>
-                  <th scope="col" className={`col-h ${clsHeader}`} colSpan={AP.length} style={{textAlign:'center'}}>Aparatos</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{minWidth:44,textAlign:'center',padding:'4px'}}>Inicio</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{minWidth:44,textAlign:'center',padding:'4px'}}>Fin</th>
+                  <th scope="col" className={`col-h ${clsHeader}`} colSpan={AP.length} style={{textAlign:'center',padding:'4px'}}>Aparatos</th>
                   {showTotal ? (
-                    <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center'}}>Unidades de consumo</th>
+                    <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center',padding:'4px'}}>Unidades de consumo</th>
                   ) : (
-                    <th scope="col" className="col-h ok" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Parcial</th>
+                    <th scope="col" className="col-h ok" rowSpan={2} style={{minWidth:52,textAlign:'center',padding:'4px'}}>Parcial</th>
                   )}
-                  <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>Lh (m)</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center'}}>No de descarga<br/>Simultáneas</th>
+                  {showTotal && <th scope="col" className="col-h" rowSpan={2} style={{minWidth:44,textAlign:'center',padding:'4px'}}>Lh (m)</th>}
+                  {showTotal && <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center',padding:'4px'}}>No de descarga<br/>Simultáneas</th>}
                 </tr>
                 <tr>
                   {AP.map(d => (
@@ -103,8 +103,8 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     <tr key={i}>
                       <td className="c"><span className="sigla" style={{fontSize:11}}>{t.id}</span></td>
                       <td className="c"><span style={{fontSize:11,fontFamily:monof,color:txt2}}>{pisoCorto(t.piso)}</span></td>
-                      <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{t.ini ? `${t.ini.x},${t.ini.y}` : '\u2014'}</td>
-                      <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2}}>{t.fin ? `${t.fin.x},${t.fin.y}` : '\u2014'}</td>
+                      <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2,padding:'2px 4px'}}>{t.ini && typeof t.ini === 'object' ? `${t.ini.x},${t.ini.y}` : t.ini || '\u2014'}</td>
+                      <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2,padding:'2px 4px'}}>{t.fin && typeof t.fin === 'object' ? `${t.fin.x},${t.fin.y}` : t.fin || '\u2014'}</td>
                       {AP.map(d => {
                         const v = t.fixtures?.[d!.id] || 0;
                         return (
@@ -117,8 +117,8 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       {showTotal && (
                         <td className="c" style={{fontFamily:monof,fontWeight:700,color:colorVar,fontSize:14}}>{acum}</td>
                       )}
-                      <td className="c"><span style={{fontFamily:monof,fontSize:12,color:txt2}}>{vLh > 0 ? vLh.toFixed(1) : '\u2014'}</span></td>
-                      <td className="c"><span style={{fontFamily:monof,fontSize:12,color:txt2}}>{vNS > 0 ? vNS : '\u2014'}</span></td>
+                      {showTotal && <td className="c" style={{padding:'2px 4px'}}><span style={{fontFamily:monof,fontSize:12,color:txt2}}>{vLh > 0 ? vLh.toFixed(1) : '\u2014'}</span></td>}
+                      {showTotal && <td className="c" style={{padding:'2px 4px'}}><span style={{fontFamily:monof,fontSize:12,color:txt2}}>{vNS > 0 ? vNS : '\u2014'}</span></td>}
                     </tr>
                   );
                 })}
@@ -146,14 +146,11 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       {totalUC} UC
                     </td>
                   ) : (
-                    <>
-                      <td style={{borderTop:'2px solid var(--line)'}}></td>
-                      <td className="c" style={{fontWeight:700,fontSize:14,color:txt,fontFamily:monof,textAlign:'center',borderTop:'2px solid var(--line)'}}>
-                        {totalUC} UC
-                      </td>
-                    </>
+                    <td className="c" style={{fontWeight:700,fontSize:14,color:txt,fontFamily:monof,textAlign:'center',borderTop:'2px solid var(--line)'}}>
+                      {totalUC} UC
+                    </td>
                   )}
-                  <td style={{borderTop:'2px solid var(--line)'}}></td>
+                  {showTotal && <td colSpan={2} style={{borderTop:'2px solid var(--line)'}}></td>}
                 </tr>
               </tfoot>
             </table>

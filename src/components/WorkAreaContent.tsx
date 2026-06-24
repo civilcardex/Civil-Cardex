@@ -63,7 +63,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
       </fieldset>
       {redActiva === 'san' && redes.has('san') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <PageNav page={sanPage} setPage={setSanPage} total={4} color="var(--san)" labels={['Cálculo UD', 'Diseño sanitario', 'Bajantes y ventilación', 'Accesorios']} />
+          <PageNav page={sanPage} setPage={setSanPage} total={4} color="var(--san)" labels={['Cálculo de unidades de descarga', 'Diseño sanitario', 'Bajantes y ventilación', 'Accesorios']} />
           {sanPage === 1 && <CalculoUD />}
           {sanPage === 2 && <DisenosSanitarios />}
           {sanPage === 3 && <BajantesTable />}
@@ -82,7 +82,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
       )}
       {redActiva === 'af' && redes.has('af') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <PageNav page={afPage} setPage={setAfPage} total={3} color="var(--af)" labels={['Cálculo UC', 'Diseño de red agua fría', 'Accesorios']} />
+          <PageNav page={afPage} setPage={setAfPage} total={3} color="var(--af)" labels={['Cálculo de unidades de consumo', 'Diseño de red agua fría', 'Accesorios']} />
           {afPage === 1 && <CalculoUC tipo="af" />}
           {afPage === 2 && <WaterNetworkDesign networkType="af" diamTable={DIAMETROS_AF} lookupFn={lookupInterno as any} />}
           {afPage === 3 && <AccesoriosTable tramos={tramosAf} updAcc={updTramoAfAcc} net="af" readOnly />}
@@ -90,7 +90,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
       )}
       {redActiva === 'ac' && redes.has('ac') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <PageNav page={acPage} setPage={setAcPage} total={3} color="var(--ac)" labels={['Cálculo UC', 'Diseño de red agua caliente', 'Accesorios']} />
+          <PageNav page={acPage} setPage={setAcPage} total={3} color="var(--ac)" labels={['Cálculo de unidades de consumo', 'Diseño de red agua caliente', 'Accesorios']} />
           {acPage === 1 && <CalculoUC tipo="ac" />}
           {acPage === 2 && <WaterNetworkDesign networkType="ac" diamTable={DIAMETROS_AC} lookupFn={lookupInternoAC as any} />}
           {acPage === 3 && <AccesoriosTable tramos={tramosAc} updAcc={updTramoAcAcc} net="ac" readOnly />}

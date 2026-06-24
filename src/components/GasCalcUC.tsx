@@ -20,7 +20,7 @@ const ABREV = {
 function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRel: string }) {
   const { plans } = usePlans();
 
-  const { tramos, totalByAp, tramoTotals, tramoAppCounts } = useMemo(() => {
+  const { tramos, totalByAp, tramoTotals, tramoAppCounts, tramoQDisenos } = useMemo(() => {
     const aparatos: Record<string, any> = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
     const tramosMap: Record<string, { id: string; piso: number | string; ini: string; fin: string; counts: Record<string, number> }> = {};
 
@@ -32,8 +32,10 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
 
       for (const r of data.ramales || []) {
         if (r.net !== "gas") continue;
+        const pid = plano.id ? String(plano.id) : '';
         const key = `gas_${r.id}`;
-        const counts = (aparatos as Record<string, any>)[key] || {};
+        const keyPid = pid ? `gas_${r.id}_${pid}` : '';
+        const counts = (aparatos as Record<string, any>)[keyPid] || (aparatos as Record<string, any>)[key] || {};
         const hasData = Object.values(counts).some((v) => (Number(v) || 0) > 0);
         if (!hasData) continue;
 
@@ -69,8 +71,20 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
       return sum;
     });
 
-    return { tramos, totalByAp, tramoTotals, tramoAppCounts };
-  }, [plans]);
+    const pAtm = Number(patm) || 101.325;
+    const T = Number(temp) || 23;
+    const DRval = Number(densRel) || 0.67;
+    const fAlt = 101.325 / pAtm;
+    const fTemp = Math.sqrt(288 / (273 + T));
+    const fDens = Math.sqrt(0.67 / DRval);
+    const corrF = fAlt * fTemp * fDens;
+    const tramoQDisenos = tramos.map((t, i) => {
+      const qRen = tramoTotals[i];
+      return Math.max(qRen * corrF, 2.7);
+    });
+
+    return { tramos, totalByAp, tramoTotals, tramoAppCounts, tramoQDisenos };
+  }, [plans, patm, temp, densRel]);
 
   const globalTotal = useMemo(() => tramoTotals.reduce((s, q) => s + q, 0), [tramoTotals]);
 
@@ -87,7 +101,6 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
   const fTemp = Math.sqrt(288 / (273 + T));
   const fDens = Math.sqrt(0.67 / DR);
   const corrTotal = fAlt * fTemp * fDens;
-  const qDiseno = Math.max(globalTotal * corrTotal, 2.7);
 
   const tableHeader = (
     <thead>
@@ -99,7 +112,6 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
         <th scope="col" style={{...TH, textAlign:"center"}} colSpan={GAS_APPARATUS.length}>Aparatos</th>
         <th scope="col" style={{...TH, minWidth:48, fontSize:11}} rowSpan={2}>Total</th>
         <th scope="col" style={{...TH, minWidth:62, fontSize:11}} rowSpan={2}>Q (m&sup3;/h)</th>
-        <th scope="col" style={{...TH, minWidth:62, fontSize:11}} rowSpan={2}>Q dise&ntilde;o</th>
       </tr>
       <tr>
         {GAS_APPARATUS.map((a) => (
@@ -118,16 +130,16 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
         <div className="card-h">
           <h3 className="card-t">
             <img src="/iconos_diseno_redes/gas/calculo_UC_gas.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
-            Cálculo UC gas
+            Cálculo de unidades de consumo gas
           </h3>
           <span className="card-s">0 tramos</span>
         </div>
         <div style={{ padding: 16 }}>
           <table className="tbl" style={{ width: "100%" }}>
-            <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Cálculo UC gas</caption>
+            <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Cálculo de unidades de consumo gas</caption>
             {tableHeader}
             <tbody>
-              <tr><td colSpan={4 + GAS_APPARATUS.length + 3} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>No hay tramos con aparatos de gas.</td></tr>
+              <tr><td colSpan={4 + GAS_APPARATUS.length + 2} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>No hay tramos con aparatos de gas.</td></tr>
             </tbody>
           </table>
         </div>
@@ -140,13 +152,13 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
       <div className="card-h">
         <h3 className="card-t">
           <img src="/iconos_diseno_redes/gas/calculo_UC_gas.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
-          Cálculo UC gas
+          Cálculo de unidades de consumo gas
         </h3>
         <span className="card-s">{tramos.length} tramos</span>
       </div>
       <div style={{ flex: 1, overflow: "auto", padding: "8px 10px" }}>
         <table className="tbl" style={{ width: "100%" }}>
-          <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Cálculo UC gas</caption>
+          <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Cálculo de unidades de consumo gas</caption>
           {tableHeader}
           <tbody>
             {tramos.map((t, i) => (
@@ -162,7 +174,6 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
                 ))}
                 <td className="c" style={{...TD, padding:"2px 3px", fontWeight:600, fontSize:11, color:"var(--txt)"}}>{tramoAppCounts[i]}</td>
                 <td className="c" style={{...TD, padding:"2px 3px", fontWeight:700, fontSize:11, color:"var(--txt)"}}>{tramoTotals[i].toFixed(2)}</td>
-                <td className="c" style={{...TD, padding:"2px 3px", fontWeight:700, fontSize:11, color:"var(--txt)"}}>{qDiseno.toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
@@ -186,7 +197,6 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
               })}
               <td className="c" style={{...TD, padding:"2px 3px", fontWeight:600, fontSize:12, color:"var(--txt)", textAlign:"center", borderTop:"2px solid var(--line)"}}>{totalAppCount}</td>
               <td className="c" style={{...TD, padding:"2px 3px", fontWeight:700, fontSize:12, color:"var(--txt)", textAlign:"center", borderTop:"2px solid var(--line)"}}>{globalTotal.toFixed(2)} m&sup3;/h</td>
-              <td className="c" style={{...TD, padding:"2px 3px", fontWeight:700, fontSize:12, color:"var(--txt)", textAlign:"center", borderTop:"2px solid var(--line)"}}>{qDiseno.toFixed(2)} m&sup3;/h</td>
             </tr>
           </tfoot>
         </table>
@@ -214,8 +224,8 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
           <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>f<sub>dens</sub> = &radic;(0.67 / {DR.toFixed(2)}) = <span>{fDens.toFixed(2)}</span></span>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 0", minWidth: 0 }}>
-          <span style={{ color: "var(--txt3)", fontSize: 11 }}>Factor total</span>
-          <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>F = {fAlt.toFixed(2)} &times; {fTemp.toFixed(2)} &times; {fDens.toFixed(2)} = <span>{corrTotal.toFixed(2)}</span></span>
+          <span style={{ color: "var(--txt3)", fontSize: 11 }}>Caudal de diseño</span>
+          <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>Q<sub>d</sub> = max(&Sigma;Q<sub>i</sub> &times; {corrTotal.toFixed(2)}, 2.7) = <span style={{fontWeight:700}}>{Math.max(globalTotal * corrTotal, 2.7).toFixed(2)}</span> m&sup3;/h</span>
         </div>
       </div>
     </div>

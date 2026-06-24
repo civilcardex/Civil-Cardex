@@ -15,7 +15,7 @@
   font-weight: 600;
   letter-spacing: .4px;
   text-transform: uppercase;
-  text-align: left;
+  text-align: center;
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
