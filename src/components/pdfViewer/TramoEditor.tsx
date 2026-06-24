@@ -375,7 +375,7 @@ export default function TramoEditor({
         } else {
           currentDiam = (isSelActiveNet && selElement.diametro !== undefined && selElement.diametro !== '')
             ? selElement.diametro.split(' — ')[0].trim()
-            : (diamSel[activeNet] || DIAM_DEFAULT_BY_NET[activeNet] || (diamList[0]?.n?.split(' — ')[0]?.trim() || ''));
+            : (diamSel[activeNet] || '');
         }
         const showPend = activeNet === 'san' || activeNet === 'll';
         const showDeltaZ = activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas';
@@ -384,45 +384,62 @@ export default function TramoEditor({
           <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
             <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#9BA8AA", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos específicos</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '3px 8px', background: '#1a1c20', border: '1px solid #282a2e', borderRadius: 3 }}>
-                <span style={{ fontSize: 9, color: '#8AB4D6', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0 }}>Material</span>
-                <span style={{ fontSize: 10, color: '#b9caca', fontFamily: "'Geist',monospace", fontWeight: 600, textAlign: 'right', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={isGas ? currentMat : matName}>{isGas ? currentMat : matName}</span>
-              </div>
+              {isGas ? (
+                <div>
+                  <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Material</div>
+                  <select value={currentMat}
+                    onChange={e => {
+                      const mat = e.target.value;
+                      const g = GAS.find(x => x.mat === mat);
+                      const dn = g ? g.rows[0]?.dn || '' : '';
+                      setGasMatSel(prev => ({ ...prev, [activeNet]: mat }));
+                      setDiamSel(prev => ({ ...prev, [activeNet]: dn }));
+                      if (engineRef.current && selElement) {
+                        engineRef.current.updateSelected({ material: mat, diametro: dn });
+                        setSelElement({ ...selElement, material: mat, diametro: dn });
+                      }
+                    }}
+                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' }}>
+                    {GAS.map(g => (
+                      <option key={g.mat} value={g.mat}>{g.mat}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '3px 8px', background: '#1a1c20', border: '1px solid #282a2e', borderRadius: 3 }}>
+                  <span style={{ fontSize: 9, color: '#8AB4D6', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0 }}>Material</span>
+                  <span style={{ fontSize: 10, color: '#b9caca', fontFamily: "'Geist',monospace", fontWeight: 600, textAlign: 'right', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={matName}>{matName}</span>
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: showPend ? '1fr 1fr' : '1fr', gap: 6 }}>
                 <div>
                   <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Diámetro</div>
       {isGas ? (
-        <select value={currentMat && currentDiam ? `${currentMat}|${currentDiam}` : ''}
+        <select value={currentDiam}
         onChange={e => {
-          const v = e.target.value;
-          if (!v) return;
-          const lastBar = v.lastIndexOf('|');
-          const mat = v.substring(0, lastBar);
-          const dn = v.substring(lastBar + 1);
+          const dn = e.target.value;
           setDiamSel(prev => ({ ...prev, [activeNet]: dn }));
-          setGasMatSel(prev => ({ ...prev, [activeNet]: mat }));
           if (engineRef.current && selElement) {
-            engineRef.current.updateSelected({ material: mat, diametro: dn });
-            setSelElement({ ...selElement, material: mat, diametro: dn });
+            engineRef.current.updateSelected({ diametro: dn });
+            setSelElement({ ...selElement, diametro: dn });
           } else if (engineRef.current && !selElement) {
             const eng = engineRef.current;
             const lastRamal = [...eng.ramales].reverse().find((r: any) => r.net === activeNet);
             if (lastRamal) {
               eng.selId = lastRamal.id;
-              eng.updateSelected({ material: mat, diametro: dn });
+              eng.updateSelected({ diametro: dn });
               const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = lastRamal;
-              setSelElement({ ...rest, material: mat, diametro: dn });
+              setSelElement({ ...rest, diametro: dn });
             }
           }
         }}
         style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' }}>
-          {GAS.map(g => (
-            <optgroup key={g.mat} label={`${g.mat} (K=${g.K})`}>
-              {g.rows.map((r: any) => (
-                <option key={r.dn} value={`${g.mat}|${r.dn}`}>{r.dn}" ({r.d} mm)</option>
-              ))}
-            </optgroup>
-          ))}
+          {(() => {
+            const gasMat = GAS.find(g => g.mat === currentMat);
+            return gasMat ? gasMat.rows.map((r: any) => (
+              <option key={r.dn} value={r.dn}>{r.dn}"</option>
+            )) : <option value="">—</option>;
+          })()}
         </select>
       ) : diamList.length > 0 ? (
         <select value={currentDiam}
@@ -444,6 +461,7 @@ export default function TramoEditor({
           }
         }}
         style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' }}>
+        <option value="">Sin diámetro</option>
         {diamList.map((d: any) => {
           const valClean = d.n.split(' — ')[0].trim();
           return <option key={d.n} value={valClean}>{valClean}</option>;
@@ -453,7 +471,7 @@ export default function TramoEditor({
                     <div style={{ padding: '4px 6px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#8AB4D6', fontSize: 11, fontFamily: "'Geist',monospace" }}>— Sin opciones —</div>
                   )}
               </div>
-      {showPend && (
+      {showPend ? (
         <div>
           <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Pendiente %</div>
           <input type="text" inputMode="decimal" value={pendInput}
@@ -488,19 +506,19 @@ export default function TramoEditor({
           style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", textAlign: 'center' }}
           />
                 </div>
-                )}
+                ) : null}
               </div>
-              {showDeltaZ && (
+              {showDeltaZ && !isGas && (
                 <div style={{ display: 'grid', gridTemplateColumns: showDescargas ? '1fr 1fr' : '1fr', gap: 6 }}>
                   <div>
-                    <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>ΔZ / L vert (m)</div>
+                    <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>ΔZ / L vert (m)</div>
                     <input type="number" step="0.01" value={selElement?.dz ?? ''} placeholder="0.00"
                       onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({dz:v,lvert:v});setSelElement({...selElement,dz:v,lvert:v})}}}
                       style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
                   </div>
                   {showDescargas && (
                     <div>
-                      <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}># Descargas</div>
+                      <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>No. de descargas</div>
                       <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0"
                         onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||0;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
                         style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
@@ -510,7 +528,7 @@ export default function TramoEditor({
               )}
               {!showDeltaZ && showDescargas && (
                 <div>
-                  <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}># Descargas</div>
+                  <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>No. de descargas</div>
                   <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0"
                     onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||0;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
                     style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
