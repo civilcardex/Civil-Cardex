@@ -1,28 +1,31 @@
-﻿import { useMemo } from "react";
+﻿import { Suspense, lazy, useMemo } from "react";
 import { pisoLbl } from "../constants";
 import PageNav from "./PageNav";
-import AccesoriosTable from "./AccessoriesTable";
-import CalculoUD from "./FixtureUnitCalc";
-import DisenosSanitarios from "./SanitaryDesign";
-import BajantesTable from "./DownpipesTable";
-import SanAccesoriosPage from "./SanAccesoriosPage";
-import DisenoLluvias from "./RainwaterDesign";
-import ChequeoBajantesLluvias from "./RainDownpipesCheck";
-import ChequeoCanalesLluvias from "./RainChannelsCheck";
-import CalculoUC from "./CalculoUC";
-import WaterNetworkDesign from "./WaterNetworkDesign";
 import { RainwaterProvider } from "../context/RainwaterContext";
 import { DIAMETROS_AF, DIAMETROS_AC } from "../utils/calcHydraulics";
 import { lookupInterno, lookupInternoAC } from "../utils/accesoriosUtils";
-import BombaARDesign from "./BombaARDesign";
-import GasDesign from "./GasDesign";
-import PressureEquipmentDesign from "./PressureEquipmentDesign";
-import BaseDatos from "./DesignParameters";
-import Normativa from "./Regulations/Regulations";
 import InfoTab from "./workarea/InfoTab";
 import PlanosTab from "./workarea/PlanosTab";
-import { IsometriaTab } from "./workarea/IsometriaTab";
 import type { useWorkAreaState } from "./useWorkAreaState";
+
+const AccesoriosTable = lazy(() => import('./AccessoriesTable'));
+const CalculoUD = lazy(() => import('./FixtureUnitCalc'));
+const DisenosSanitarios = lazy(() => import('./SanitaryDesign'));
+const BajantesTable = lazy(() => import('./DownpipesTable'));
+const SanAccesoriosPage = lazy(() => import('./SanAccesoriosPage'));
+const DisenoLluvias = lazy(() => import('./RainwaterDesign'));
+const ChequeoBajantesLluvias = lazy(() => import('./RainDownpipesCheck'));
+const ChequeoCanalesLluvias = lazy(() => import('./RainChannelsCheck'));
+const CalculoUC = lazy(() => import('./CalculoUC'));
+const WaterNetworkDesign = lazy(() => import('./WaterNetworkDesign'));
+const BombaARDesign = lazy(() => import('./BombaARDesign'));
+const GasDesign = lazy(() => import('./GasDesign'));
+const PressureEquipmentDesign = lazy(() => import('./PressureEquipmentDesign'));
+const BaseDatos = lazy(() => import('./DesignParameters'));
+const Normativa = lazy(() => import('./Regulations/Regulations'));
+const IsometriaTab = lazy(() => import('./workarea/IsometriaTab').then(m => ({ default: m.IsometriaTab })));
+
+const FALLBACK = <div style={{padding:20,color:'var(--txt2)',fontSize:13}}>Cargando...</div>;
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 
@@ -64,46 +67,46 @@ function RedesTab({ state }: { state: WorkAreaState }) {
       {redActiva === 'san' && redes.has('san') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <PageNav page={sanPage} setPage={setSanPage} total={4} color="var(--san)" labels={['Cálculo de unidades de descarga', 'Diseño sanitario', 'Bajantes y ventilación', 'Accesorios']} />
-          {sanPage === 1 && <CalculoUD />}
-          {sanPage === 2 && <DisenosSanitarios />}
-          {sanPage === 3 && <BajantesTable />}
-          {sanPage === 4 && <SanAccesoriosPage />}
+          {sanPage === 1 && <Suspense fallback={FALLBACK}><CalculoUD /></Suspense>}
+          {sanPage === 2 && <Suspense fallback={FALLBACK}><DisenosSanitarios /></Suspense>}
+          {sanPage === 3 && <Suspense fallback={FALLBACK}><BajantesTable /></Suspense>}
+          {sanPage === 4 && <Suspense fallback={FALLBACK}><SanAccesoriosPage /></Suspense>}
         </div>
       )}
       {redActiva === 'll' && redes.has('ll') && (
         <RainwaterProvider>
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <PageNav page={llPage} setPage={setLlPage} total={3} color="var(--ll)" labels={['Diseño lluvias', 'Chequeo bajantes', 'Chequeo canales']} />
-          {llPage === 1 && <DisenoLluvias />}
-          {llPage === 2 && <ChequeoBajantesLluvias />}
-          {llPage === 3 && <ChequeoCanalesLluvias />}
+          {llPage === 1 && <Suspense fallback={FALLBACK}><DisenoLluvias /></Suspense>}
+          {llPage === 2 && <Suspense fallback={FALLBACK}><ChequeoBajantesLluvias /></Suspense>}
+          {llPage === 3 && <Suspense fallback={FALLBACK}><ChequeoCanalesLluvias /></Suspense>}
         </div>
         </RainwaterProvider>
       )}
       {redActiva === 'af' && redes.has('af') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <PageNav page={afPage} setPage={setAfPage} total={3} color="var(--af)" labels={['Cálculo de unidades de consumo', 'Diseño de red agua fría', 'Accesorios']} />
-          {afPage === 1 && <CalculoUC tipo="af" />}
-          {afPage === 2 && <WaterNetworkDesign networkType="af" diamTable={DIAMETROS_AF} lookupFn={lookupInterno as any} />}
-          {afPage === 3 && <AccesoriosTable tramos={tramosAf} updAcc={updTramoAfAcc} net="af" readOnly />}
+          {afPage === 1 && <Suspense fallback={FALLBACK}><CalculoUC tipo="af" /></Suspense>}
+          {afPage === 2 && <Suspense fallback={FALLBACK}><WaterNetworkDesign networkType="af" diamTable={DIAMETROS_AF} lookupFn={lookupInterno as any} /></Suspense>}
+          {afPage === 3 && <Suspense fallback={FALLBACK}><AccesoriosTable tramos={tramosAf} updAcc={updTramoAfAcc} net="af" readOnly /></Suspense>}
         </div>
       )}
       {redActiva === 'ac' && redes.has('ac') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <PageNav page={acPage} setPage={setAcPage} total={3} color="var(--ac)" labels={['Cálculo de unidades de consumo', 'Diseño de red agua caliente', 'Accesorios']} />
-          {acPage === 1 && <CalculoUC tipo="ac" />}
-          {acPage === 2 && <WaterNetworkDesign networkType="ac" diamTable={DIAMETROS_AC} lookupFn={lookupInternoAC as any} />}
-          {acPage === 3 && <AccesoriosTable tramos={tramosAc} updAcc={updTramoAcAcc} net="ac" readOnly />}
+          {acPage === 1 && <Suspense fallback={FALLBACK}><CalculoUC tipo="ac" /></Suspense>}
+          {acPage === 2 && <Suspense fallback={FALLBACK}><WaterNetworkDesign networkType="ac" diamTable={DIAMETROS_AC} lookupFn={lookupInternoAC as any} /></Suspense>}
+          {acPage === 3 && <Suspense fallback={FALLBACK}><AccesoriosTable tramos={tramosAc} updAcc={updTramoAcAcc} net="ac" readOnly /></Suspense>}
         </div>
       )}
       {redActiva === 'bom' && redes.has('bom') && (
-        <BombaARDesign />
+        <Suspense fallback={FALLBACK}><BombaARDesign /></Suspense>
       )}
       {redActiva === 'ep' && redes.has('ep') && (
-        <PressureEquipmentDesign />
+        <Suspense fallback={FALLBACK}><PressureEquipmentDesign /></Suspense>
       )}
       {redActiva === 'gas' && redes.has('gas') && (
-        <GasDesign />
+        <Suspense fallback={FALLBACK}><GasDesign /></Suspense>
       )}
       {redesActivas.filter(r => r.id !== 'san' && r.id !== 'll' && r.id !== 'af' && r.id !== 'ac' && r.id !== 'bom' && r.id !== 'ep' && r.id !== 'gas').map(r => redActiva === r.id && redes.has(r.id) && (
         <div key={r.id} className="fu" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, flex: 1, minHeight: 250 }}>
@@ -163,10 +166,10 @@ export default function WorkAreaContent({ state }: WorkAreaContentProps) {
       {tab === 'info' && <InfoTab state={state} />}
       {tab === 'planos' && <PlanosTab state={state} />}
       {tab === 'redes' && state.redesActivas.length > 0 && <RedesTab state={state} />}
-      {tab === 'datos' && <BaseDatos redes={redes} />}
-      {tab === 'crit' && <Normativa />}
+      {tab === 'datos' && <Suspense fallback={FALLBACK}><BaseDatos redes={redes} /></Suspense>}
+      {tab === 'crit' && <Suspense fallback={FALLBACK}><Normativa /></Suspense>}
       {tab === 'inf' && <InfTab state={state} />}
-      {tab === 'iso' && <IsometriaTab state={state} />}
+      {tab === 'iso' && <Suspense fallback={FALLBACK}><IsometriaTab state={state} /></Suspense>}
     </>
   );
 }
