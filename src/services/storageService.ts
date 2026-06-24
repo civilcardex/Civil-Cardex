@@ -1,10 +1,20 @@
 const PREFIX = 'civilflow_';
 
+const _cache = new Map<string, any>();
+export function cacheClear(key?: string) {
+  if (key) _cache.delete(PREFIX + key);
+  else _cache.clear();
+}
+
 export function loadFromStorage<T>(key: string, fallback: T): T {
+  const fullKey = PREFIX + key;
+  if (_cache.has(fullKey)) return _cache.get(fullKey) as T;
   try {
-    const raw = localStorage.getItem(PREFIX + key);
+    const raw = localStorage.getItem(fullKey);
     if (raw === null) return fallback;
-    return JSON.parse(raw) as T;
+    const result = JSON.parse(raw) as T;
+    _cache.set(fullKey, result);
+    return result;
   } catch (e) {
     if (import.meta.env.DEV) console.error('storageService load:', key, e);
     return fallback;
@@ -12,16 +22,20 @@ export function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 export function saveToStorage(key: string, data: unknown): void {
+  const fullKey = PREFIX + key;
+  _cache.delete(fullKey);
   try {
-    localStorage.setItem(PREFIX + key, JSON.stringify(data));
+    localStorage.setItem(fullKey, JSON.stringify(data));
   } catch (e) {
     if (import.meta.env.DEV) console.error('storageService save:', key, e);
   }
 }
 
 export function removeFromStorage(key: string): void {
+  const fullKey = PREFIX + key;
+  _cache.delete(fullKey);
   try {
-    localStorage.removeItem(PREFIX + key);
+    localStorage.removeItem(fullKey);
   } catch (e) {
     if (import.meta.env.DEV) console.error('storageService remove:', key, e);
   }
