@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import { useRainwater } from "../context/RainwaterContext";
 import { useTramos } from "../context/TramosContext";
 import { usePlans } from "../context/PlansContext";
@@ -144,28 +144,28 @@ export default function ChequeoBajantesLluvias() {
   return (
     <div className="card">
       <div className="card-h">
-        <h3 className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Chequeo_bajantes.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Chequeo capacidad bajantes aguas lluvias</h3>
+        <h3 className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Chequeo_bajantes.webp" alt="Chequeo bajantes"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Chequeo capacidad bajantes aguas lluvias</h3>
       </div>
       <div className="scroll-top" style={{padding:'16px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
         <table className="tbl" style={{fontSize:10, tableLayout:'auto', width:'100%', borderCollapse:'collapse'}}>
           <thead>
             <tr>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Bajante #</th>
-              <th className="col-h ll" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'3px 2px'}}>Área (m²)</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Intensidad (I)<br/><small>mm/hr</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Coef.<br/>Escorrentía (C)</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Llenado<br/>(R)</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Q = C×I×A<br/><small>(LPS)</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Manning<br/>(n)</th>
-              <th className="col-h ok" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'3px 2px'}}>Diámetro (")</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Chequeo<br/>Dcal &lt; Dprop</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Bajante #</th>
+              <th scope="col" className="col-h ll" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'3px 2px'}}>Área (m²)</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Intensidad (I)<br/><small>mm/hr</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Coef.<br/>Escorrentía (C)</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Llenado<br/>(R)</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Q = C×I×A<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Manning<br/>(n)</th>
+              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'3px 2px'}}>Diámetro (")</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Chequeo<br/>Dcal &lt; Dprop</th>
             </tr>
             <tr>
-              <th className="col-h ll" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Parcial</th>
-              <th className="col-h ll" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Acumulada</th>
-              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Calculado</th>
-              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Propuesto</th>
+              <th scope="col" className="col-h ll" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Parcial</th>
+              <th scope="col" className="col-h ll" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Acumulada</th>
+              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Calculado</th>
+              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Propuesto</th>
             </tr>
           </thead>
           <tbody>

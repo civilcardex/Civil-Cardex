@@ -95,7 +95,7 @@ function LandingPage() {
             linear-gradient(90deg, rgba(0,170,255,0.03) 1px, transparent 1px);
           background-size: 60px 60px;
         }
-        .section-divider { background: linear-gradient(90deg, transparent, rgba(0,170,255,0.15), transparent); height: 1px; }
+        .section-divider { background: linear-gradient(90deg, transparent, rgba(0,170,255,0.15), transparent); height: 1px; border: none; margin: 0; }
       `}</style>
 
       <Navbar />
@@ -131,9 +131,9 @@ function LandingPage() {
 
         {/* 7 Module Cards — bottom area */}
         <div className="relative z-10 px-4 pb-6 sm:pb-8 md:pb-10">
-          <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 md:gap-4">
+          <ul className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 md:gap-4" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {MODULOS_HERO.map((m, i) => (
-              <div key={m.id}
+              <li key={m.id}
                 className="hero-mod-card flex flex-col items-center text-center p-2 sm:p-3 md:p-4 border rounded-lg relative"
                 style={{ '--mod-color': m.color,
                   background: 'rgba(10,14,20,0.6)',
@@ -157,9 +157,9 @@ function LandingPage() {
                   style={{ color: '#8AB4D6', fontFamily: 'Geist, monospace', fontWeight: 600 }}>
                   {(MOD_SUB as Record<string, string>)[m.id]}
                 </span>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </section>
 
@@ -177,7 +177,7 @@ function LandingPage() {
                     style={{ filter: `drop-shadow(0 0 6px ${hovered.color}55)` }}  width={40} height={40} loading="lazy" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold whitespace-nowrap" style={{ color: hovered.color, fontFamily: 'Hanken Grotesk, sans-serif' }}>{hovered.name}</h3>
+                  <h2 className="text-lg font-bold whitespace-nowrap" style={{ color: hovered.color, fontFamily: 'Hanken Grotesk, sans-serif' }}>{hovered.name}</h2>
                   <p className="text-xs uppercase tracking-widest whitespace-nowrap" style={{ color: '#8AB4D6', fontFamily: 'Geist, monospace' }}>
                     {((MOD_SUB as Record<string, string>)[hovered.id] || '').charAt(0) + ((MOD_SUB as Record<string, string>)[hovered.id] || '').slice(1).toLowerCase()}
                   </p>
@@ -220,7 +220,7 @@ function LandingPage() {
         </div>
       </section>
 
-      <div className="section-divider" />
+      <hr className="section-divider" />
 
       {/* ===== POR QUÉ CIVILCORE ===== */}
       <section className="py-20 px-6 lg:px-8" style={{ background: '#0a0e14' }}>
@@ -247,7 +247,7 @@ function LandingPage() {
         </div>
       </section>
 
-      <div className="section-divider" />
+      <hr className="section-divider" />
 
       {/* ===== CTA ===== */}
       <section className="py-24 px-6 lg:px-8" style={{ background: '#0a0e14' }}>

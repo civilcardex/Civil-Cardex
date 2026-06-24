@@ -8,7 +8,7 @@ const HEADER_BORDER = 'rgba(0,220,229,0.35)'
 
 function Th({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <th className="td-mono-b" style={{
+    <th scope="col" className="td-mono-b" style={{
       background: HEADER_BG,
       color: HEADER_TXT,
       fontSize: 10,
@@ -115,18 +115,25 @@ export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact
 
 export function ContadoresTable() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, padding: '2px 6px', borderBottom: `1px solid ${HEADER_BORDER}` }}>
-        <span className="td-mono-b" style={{ fontSize: 12, fontWeight: 700, color: HEADER_TXT, textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'center' }}>Diámetro</span>
-        <span className="td-mono-b" style={{ fontSize: 12, fontWeight: 700, color: HEADER_TXT, letterSpacing: 0.4, textAlign: 'center' }}>Qn (LPS)</span>
-      </div>
-      {CONTADORES.map((c, i) => (
-        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, padding: '1px 6px', borderBottom: i < CONTADORES.length - 1 ? '1px solid var(--line)' : 'none', background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
-          <span className="td-mono" style={{ fontSize: 13, color: 'var(--txt)', textAlign: 'center' }}>{c.dn}</span>
-          <span className="td-mono" style={{ fontSize: 13, color: 'var(--txt)', fontWeight: 500, textAlign: 'center' }}>{c.q.toFixed(2)}</span>
-        </div>
-      ))}
-    </div>
+    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <thead>
+        <tr>
+          <th scope="col" className="td-mono-b" style={{ fontSize: 12, fontWeight: 700, color: HEADER_TXT, textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'center', padding: '2px 6px', borderBottom: `1px solid ${HEADER_BORDER}`, width: '50%' }}>Diámetro</th>
+          <th scope="col" className="td-mono-b" style={{ fontSize: 12, fontWeight: 700, color: HEADER_TXT, letterSpacing: 0.4, textAlign: 'center', padding: '2px 6px', borderBottom: `1px solid ${HEADER_BORDER}`, width: '50%' }}>Qn (LPS)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {CONTADORES.map((c, i) => {
+          const cellBorder = i < CONTADORES.length - 1 ? '1px solid var(--line)' : 'none'
+          return (
+            <tr key={i} style={{ background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
+              <td className="td-mono" style={{ fontSize: 13, color: 'var(--txt)', textAlign: 'center', padding: '1px 6px', borderBottom: cellBorder }}>{c.dn}</td>
+              <td className="td-mono" style={{ fontSize: 13, color: 'var(--txt)', fontWeight: 500, textAlign: 'center', padding: '1px 6px', borderBottom: cellBorder }}>{c.q.toFixed(2)}</td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
   )
 }
 
@@ -185,24 +192,24 @@ export function CoefFriccionTable() {
       <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
         <thead>
           <tr>
-            <td colSpan={9} style={{
+            <th scope="colgroup" colSpan={9} style={{
               padding: '2px 8px', textAlign: 'center', fontWeight: 700, fontSize: 12,
               textTransform: 'uppercase', letterSpacing: 0.3,
               background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--txt)',
             }}>
               Coeficiente fricción tuberías
-            </td>
+            </th>
           </tr>
           <tr>
-            <th style={{ ...coefTh, width: '14%' }}>Tipo</th>
-            <th style={{ ...coefTh, width: '14%' }}>Descripción</th>
-            <th style={{ ...coefTh, width: '10%' }}>Sistema</th>
-            <th style={{ ...coefTh, width: '7%' }}>Material</th>
-            <th style={coefTh}>Manning n</th>
-            <th style={coefTh}>Hazen C</th>
-            <th style={coefTh}>Hazen C Uso</th>
-            <th style={coefTh}>Rugosidad ε (mm)</th>
-            <th style={coefTh}>Presión Nominal</th>
+            <th scope="col" style={{ ...coefTh, width: '14%' }}>Tipo</th>
+            <th scope="col" style={{ ...coefTh, width: '14%' }}>Descripción</th>
+            <th scope="col" style={{ ...coefTh, width: '10%' }}>Sistema</th>
+            <th scope="col" style={{ ...coefTh, width: '7%' }}>Material</th>
+            <th scope="col" style={coefTh}>Manning n</th>
+            <th scope="col" style={coefTh}>Hazen C</th>
+            <th scope="col" style={coefTh}>Hazen C Uso</th>
+            <th scope="col" style={coefTh}>Rugosidad ε (mm)</th>
+            <th scope="col" style={coefTh}>Presión Nominal</th>
           </tr>
         </thead>
         <tbody>

@@ -125,7 +125,7 @@ function ProfilePage() {
   return (
     <div className="space-y-6">
       <Navbar />
-      <div className="border border-outline-variant bg-surface-container p-6 flex items-start gap-6">
+      <header className="border border-outline-variant bg-surface-container p-6 flex items-start gap-6">
         <div className="w-20 h-20 border-2 border-primary bg-surface-container flex items-center justify-center shrink-0">
           <span className="material-symbols-outlined text-4xl text-primary">person</span>
         </div>
@@ -140,10 +140,10 @@ function ProfilePage() {
             </div>
           )}
         </div>
-      </div>
+      </header>
 
-      <div className="border border-outline-variant bg-surface-container p-6">
-        <h2 className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant mb-4">
+      <section aria-labelledby="info-personal-heading" className="border border-outline-variant bg-surface-container p-6">
+        <h2 id="info-personal-heading" className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant mb-4">
           Información Personal
         </h2>
   <div className="grid grid-cols-2 gap-4">
@@ -177,8 +177,11 @@ function ProfilePage() {
           <span className="text-[13px] text-on-surface font-medium">{(perfil as any)[key]}</span>
         ) : (
           <div
+            role="button"
+            tabIndex={0}
             className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors"
             onClick={() => handleEditStart(key)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleEditStart(key); } }}
           >
             <span className="text-[13px] text-on-surface font-medium">
               {(perfil as any)[key] || <span className="text-on-surface-variant italic opacity-50">Click para editar</span>}
@@ -189,18 +192,18 @@ function ProfilePage() {
       </div>
     ))}
         </div>
-      </div>
+      </section>
 
-      <div className="border border-outline-variant bg-surface-container">
+      <section aria-labelledby="proyectos-heading" className="border border-outline-variant bg-surface-container">
         <button
-          onClick={() => setProyectosOpen(!proyectosOpen)}
+          onClick={() => setProyectosOpen(prev => !prev)}
           aria-expanded={proyectosOpen}
           className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-surface-container-low transition-colors"
         >
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-primary text-xl">folder_open</span>
             <div>
-              <h2 className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant">
+              <h2 id="proyectos-heading" className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant">
                 Proyectos Activos
               </h2>
               <span className="text-[13px] text-on-surface font-medium">{proyectosActivos.length} proyectos</span>
@@ -223,11 +226,11 @@ function ProfilePage() {
               </button>
             </div>
 
-            <div className="divide-y divide-outline-variant">
+            <ul className="divide-y divide-outline-variant" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {proyectosActivos.map((proy) => {
                 const e = estadoConfig[proy.estado] || estadoConfig.activo
                 return (
-                  <div key={proy.id} className="px-6 py-3 flex items-center gap-4 hover:bg-surface-container-low transition-colors cursor-pointer">
+                  <li key={proy.id} className="px-6 py-3 flex items-center gap-4 hover:bg-surface-container-low transition-colors cursor-pointer">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[13px] font-bold font-mono text-on-surface">{proy.codigo}</span>
@@ -248,13 +251,13 @@ function ProfilePage() {
                       </div>
                       <span className="material-symbols-outlined text-on-surface-variant text-lg">arrow_forward</span>
                     </div>
-                  </div>
+                  </li>
                 )
               })}
-            </div>
+            </ul>
           </div>
         )}
-      </div>
+      </section>
 
       <div className="border border-outline-variant bg-surface-container p-6 flex justify-end">
         <button

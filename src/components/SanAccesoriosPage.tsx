@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+﻿import { useMemo, useState, useEffect } from 'react';
 import { SAN_ACCESORIOS } from '../constants';
 import { HYDRO_DATA_STORAGE_KEY } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
@@ -41,7 +41,7 @@ export default function SanAccesoriosPage() {
     <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
       <div className="card-h">
         <h3 className="card-t">
-          <img src="/iconos_diseno_redes/general/Accesorios.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
+          <img src="/iconos_diseno_redes/general/Accesorios.webp" alt="Accesorios"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
           Accesorios por ramal
         </h3>
         <span className="card-s">{tramos.length} tramos · Red sanitaria</span>
@@ -51,10 +51,10 @@ export default function SanAccesoriosPage() {
           <table className="tbl" style={{ minWidth: 700, fontSize: 13 }}>
             <thead>
               <tr>
-                <th className="col-h" style={{ minWidth: 64, textAlign: 'center', position: 'sticky', left: 0, zIndex: 2, background: 'var(--bg2)', fontSize: 11, padding: '5px 4px' }}>Tramo</th>
-                <th className="col-h" style={{ minWidth: 40, textAlign: 'center', position: 'sticky', left: 64, zIndex: 2, background: 'var(--bg2)', fontSize: 10, padding: '5px 4px' }}>Nivel</th>
+                <th scope="col" className="col-h" style={{ minWidth: 64, textAlign: 'center', position: 'sticky', left: 0, zIndex: 2, background: 'var(--bg2)', fontSize: 11, padding: '5px 4px' }}>Tramo</th>
+                <th scope="col" className="col-h" style={{ minWidth: 40, textAlign: 'center', position: 'sticky', left: 64, zIndex: 2, background: 'var(--bg2)', fontSize: 10, padding: '5px 4px' }}>Nivel</th>
                 {SAN_ACCESORIOS.map(a => (
-                  <th key={a.id} className="col-h" style={{ minWidth: 56, fontSize: 10, textAlign: 'center', whiteSpace: 'nowrap', padding: '5px 2px' }}>
+                  <th scope="col" key={a.id} className="col-h" style={{ minWidth: 56, fontSize: 10, textAlign: 'center', whiteSpace: 'nowrap', padding: '5px 2px' }}>
                     <img src={a.icono} alt={a.nombre}  width={24} height={24} style={{width:24,height:24, objectFit: 'contain', display: 'block', margin: '0 auto 2px' }}  loading="lazy" />
                     <span style={{ fontSize: 9, fontWeight: 500 }}>{a.nombre}</span>
                   </th>

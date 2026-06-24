@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+﻿import React, { useState, useRef, useCallback } from "react";
 import { useNavigate } from 'react-router-dom';
 import { saveTrazosToDB, loadFromStorage, saveToStorage } from "../../services/storageService";
 import { TRAZOS_PREFIX } from "../../constants/storage-keys";
@@ -171,7 +171,7 @@ function PlanosTab({ state }: PlanosTabProps) {
       <div style={{ width: 170, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--line)', borderRadius: 'var(--r2)' }}>
         <div className="card-h" style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'none' }}>
           <h3 className="card-t" style={{ fontSize: 13 }}>
-            <img src="/iconos_carga_planos/requisitos_del_plano.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
+            <img src="/iconos_carga_planos/requisitos_del_plano.webp" alt="Requisitos del plano"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
             Requisitos del plano
           </h3>
         </div>
@@ -230,7 +230,9 @@ function PlanosTab({ state }: PlanosTabProps) {
           </div>
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, background: 'var(--bg)', cursor: 'pointer', position: 'relative' }}
-            onClick={() => fileRef.current?.click()}>
+            role="button" tabIndex={0}
+            onClick={() => fileRef.current?.click()}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}>
             {planDrag ? (
               <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,220,229,.08)', border: '3px dashed rgba(0,220,229,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#00dce5' }}>&#x1F4D0; SOLTAR PARA SUBIR</span>
@@ -254,7 +256,7 @@ function PlanosTab({ state }: PlanosTabProps) {
             style={{ width: '100%', padding: '10px', background: 'rgba(0,220,229,0.06)', border: '1.5px dashed rgba(0,220,229,0.3)', borderRadius: 'var(--r)', color: '#00dce5', fontWeight: 600, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all .15s' }}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.12)'; e.currentTarget.style.borderColor = 'rgba(0,220,229,0.5)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.06)'; e.currentTarget.style.borderColor = 'rgba(0,220,229,0.3)'; }}>
-            <img src="/iconos_carga_planos/subir_plano.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" /> SUBIR PLANO
+            <img src="/iconos_carga_planos/subir_plano.webp" alt="Subir plano"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" /> SUBIR PLANO
           </button>
         </div>
 
@@ -263,12 +265,14 @@ function PlanosTab({ state }: PlanosTabProps) {
           onDragLeave={() => setPlanDrag(false)}
           onDrop={e => { e.preventDefault(); setPlanDrag(false); const fl = e.dataTransfer?.files; if (fl && fl.length > 0) addPlans(fl); }}>
           <div style={{ padding: '7px 10px', fontSize: 11, fontWeight: 700, color: 'var(--txt3)', borderBottom: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: .5 }}>
-            <img src="/iconos_carga_planos/pendientes.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" />
+            <img src="/iconos_carga_planos/pendientes.webp" alt="Pendientes"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" />
             Pendientes {pendingPlanos.length > 0 && `(${pendingPlanos.length})`}
           </div>
           {pendingPlanos.length === 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, gap: 8, cursor: 'pointer', fontSize: 11, color: 'var(--txt4)', textAlign: 'center', lineHeight: 1.6 }}
-              onClick={() => fileRef.current?.click()}>
+              role="button" tabIndex={0}
+              onClick={() => fileRef.current?.click()}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}>
               {planDrag ? (
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#00dce5' }}>&#x1F4D0; SOLTAR PARA SUBIR</div>
               ) : (
@@ -427,7 +431,7 @@ function PlanosTab({ state }: PlanosTabProps) {
 
         <div style={{ flex: '1 1 50%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ padding: '7px 10px', fontSize: 11, fontWeight: 700, color: 'var(--txt3)', borderBottom: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: .5 }}>
-            <img src="/iconos_carga_planos/cargados.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" />
+            <img src="/iconos_carga_planos/cargados.webp" alt="Cargados"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" />
             Cargados {confirmedPlanos.length > 0 && `(${confirmedPlanos.length})`}
           </div>
           {confirmedPlanos.length === 0 ? (

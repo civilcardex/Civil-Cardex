@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+﻿import { useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
@@ -389,7 +389,7 @@ export default function BajantesTable() {
   return (
     <div className="card">
       <div className="card-h">
-          <h3 className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Bajantes.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Bajantes de aguas negras y ventilación</h3>
+          <h3 className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Bajantes.webp" alt="Bajantes"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Bajantes de aguas negras y ventilación</h3>
       </div>
       <div className="scroll-top" style={{padding:'16px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
@@ -566,6 +566,7 @@ export default function BajantesTable() {
                         type="number"
                         min="0"
                         step="0.1"
+                        aria-label="Longitud del bajante (m)"
                         style={{ width: 40, padding: 2, textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 10, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--txt)' }}
                         value={t.bajLong ?? 5}
                         onChange={e => {

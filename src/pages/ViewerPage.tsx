@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import PdfViewer from '../components/PdfViewer';
@@ -61,9 +61,7 @@ export default function ViewerPage() {
     }
   }, [files.length, activeIndex]);
 
-  const handleAddPlan = () => {
-    fileRef.current?.click();
-  };
+  const handleAddPlan = useCallback(() => fileRef.current?.click(), []);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -74,24 +72,22 @@ export default function ViewerPage() {
     e.target.value = '';
   };
 
-  const handleRemovePlan = (idx: number) => {
+  const handleRemovePlan = useCallback((idx: number) => {
     removePlan(plans[idx].id);
-    if (activeIndex >= plans.length - 1) {
-      setActiveIndex(Math.max(0, plans.length - 2));
-    }
-  };
+    setActiveIndex(prev => Math.max(0, prev >= plans.length - 1 ? plans.length - 2 : prev));
+  }, [plans, removePlan]);
 
-  const handleSelectPlan = (idx: number) => {
+  const handleSelectPlan = useCallback((idx: number) => {
     setActiveIndex(idx);
     setDropdownOpen(false);
-  };
+  }, []);
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#0a0e14' }}>
-      <input ref={fileRef} type="file" accept=".pdf" multiple style={{ display: 'none' }}
+      <input ref={fileRef} type="file" accept=".pdf" multiple style={{ display: 'none' }} aria-label="Cargar planos PDF"
         onChange={handleFileInput} />
 
-      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50 }}>
+      <header style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50 }}>
         <Navbar />
         <div style={{
           height: 36, display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px',
@@ -183,7 +179,7 @@ export default function ViewerPage() {
             </span>
           )}
         </div>
-      </div>
+      </header>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingTop: 84, overflow: 'hidden', position: 'relative' }}
         onClick={() => setDropdownOpen(false)}>

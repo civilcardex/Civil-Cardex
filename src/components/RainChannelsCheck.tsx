@@ -1,4 +1,4 @@
-import { useRainwater } from "../context/RainwaterContext";
+﻿import { useRainwater } from "../context/RainwaterContext";
 import { chequeoCanalLluvia } from "../utils/calcSanitary";
 
 const renderStatus = (val: string) => {
@@ -46,31 +46,31 @@ export default function ChequeoCanalesLluvias() {
   return (
     <div className="card">
       <div className="card-h">
-        <h3 className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Chequeo_canal_cubierta.webp" alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Chequeo capacidad canal cubierta aguas lluvias</h3>
+        <h3 className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Chequeo_canal_cubierta.webp" alt="Chequeo canal cubierta"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Chequeo capacidad canal cubierta aguas lluvias</h3>
       </div>
       <div className="scroll-top" style={{padding:'16px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
         <table className="tbl" style={{fontSize:10, tableLayout:'auto', width:'100%', borderCollapse:'collapse'}}>
           <thead>
             <tr>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Sector</th>
-              <th className="col-h ll" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'3px 2px'}}>Área (m²)</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Intensidad (I)<br/><small>mm/hr</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Coef.<br/>Escorrentía (C)</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Q real<br/><small>(LPS)</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Manning<br/>(n)</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Pendiente<br/>S <small>(%)</small></th>
-              <th className="col-h ok" colSpan={4} style={{textAlign:'center',fontSize:9,padding:'3px 2px'}}>Sección propuesta (cm)</th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Q max<br/><small>(LPS)</small></th>
-              <th className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Chequeo<br/>Qreal &lt; Qmax</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Sector</th>
+              <th scope="col" className="col-h ll" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'3px 2px'}}>Área (m²)</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Intensidad (I)<br/><small>mm/hr</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Coef.<br/>Escorrentía (C)</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Q real<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Manning<br/>(n)</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Pendiente<br/>S <small>(%)</small></th>
+              <th scope="col" className="col-h ok" colSpan={4} style={{textAlign:'center',fontSize:9,padding:'3px 2px'}}>Sección propuesta (cm)</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Q max<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Chequeo<br/>Qreal &lt; Qmax</th>
             </tr>
             <tr>
-              <th className="col-h ll" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Parcial</th>
-              <th className="col-h ll" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Acumulada</th>
-              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>b</th>
-              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>h</th>
-              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>bl</th>
-              <th className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Total</th>
+              <th scope="col" className="col-h ll" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Parcial</th>
+              <th scope="col" className="col-h ll" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Acumulada</th>
+              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>b</th>
+              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>h</th>
+              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>bl</th>
+              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Total</th>
             </tr>
           </thead>
           <tbody>

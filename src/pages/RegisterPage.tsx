@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FormField from '../components/FormField';
@@ -94,11 +94,11 @@ function RegisterPage() {
               <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
                 <legend className="sr-only">Datos de registro</legend>
                 <div className="grid grid-cols-2 gap-3">
-                  <FormField label="NOMBRE" value={form.nombre} onChange={handleChange('nombre')} autoComplete="given-name" />
-                  <FormField label="APELLIDO" value={form.apellido} onChange={handleChange('apellido')} autoComplete="family-name" />
+                  <FormField label="NOMBRE" value={form.nombre} onChange={handleChange('nombre')} autoComplete="given-name" required />
+                  <FormField label="APELLIDO" value={form.apellido} onChange={handleChange('apellido')} autoComplete="family-name" required />
                 </div>
 
-                <FormField label="CORREO ELECTRÓNICO" type="email" value={form.email} onChange={handleChange('email')} placeholder="usuario@civilcore.com" autoComplete="email" />
+                <FormField label="CORREO ELECTRÓNICO" type="email" value={form.email} onChange={handleChange('email')} placeholder="usuario@civilcore.com" autoComplete="email" required />
 
                 <FormField label="PROFESIÓN" value={form.profesion} onChange={handleChange('profesion')} placeholder="Ingeniero Civil" autoComplete="organization-title" />
 
@@ -109,8 +109,8 @@ function RegisterPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div style={{position:'relative'}}>
-                    <FormField label="CONTRASEÑA" type={showPwd ? 'text' : 'password'} value={form.password} onChange={handleChange('password')} autoComplete="new-password" />
-                    <button type="button" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}
+                    <FormField label="CONTRASEÑA" type={showPwd ? 'text' : 'password'} value={form.password} onChange={handleChange('password')} autoComplete="new-password" required minLength={6} />
+                    <button type="button" onClick={() => setShowPwd(prev => !prev)} tabIndex={-1}
                       aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                       className="absolute right-2 bottom-[12px] text-sm opacity-50 hover:opacity-90 transition-opacity"
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8AB4D6', padding: 0 }}>
@@ -118,8 +118,8 @@ function RegisterPage() {
                     </button>
                   </div>
                   <div style={{position:'relative'}}>
-                    <FormField label="CONFIRMAR" type={showConfirm ? 'text' : 'password'} value={form.confirm} onChange={handleChange('confirm')} />
-                    <button type="button" onClick={() => setShowConfirm(!showConfirm)} tabIndex={-1}
+                    <FormField label="CONFIRMAR" type={showConfirm ? 'text' : 'password'} value={form.confirm} onChange={handleChange('confirm')} required minLength={6} />
+                    <button type="button" onClick={() => setShowConfirm(prev => !prev)} tabIndex={-1}
                       aria-label={showConfirm ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                       className="absolute right-2 bottom-[12px] text-sm opacity-50 hover:opacity-90 transition-opacity"
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8AB4D6', padding: 0 }}>

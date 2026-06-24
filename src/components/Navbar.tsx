@@ -48,11 +48,13 @@ function Navbar() {
           <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="h-9 w-9 md:h-12 md:w-12 object-contain"  width={36} height={36} loading="lazy" />
           <span className="font-bold text-xl md:text-2xl tracking-tighter uppercase text-primary" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>CivilCore</span>
         </Link>
-        <div className="hidden md:flex gap-4 items-center h-full">
+        <ul className="hidden md:flex gap-4 items-center h-full" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {navLinks.map(l => (
-            <Link key={l.to} to={l.to} className={path === l.to ? active : inactive} aria-current={path === l.to ? 'page' : undefined} style={{ fontFamily: 'Geist, monospace' }}>{l.label}</Link>
+            <li key={l.to}>
+              <Link to={l.to} className={path === l.to ? active : inactive} aria-current={path === l.to ? 'page' : undefined} style={{ fontFamily: 'Geist, monospace' }}>{l.label}</Link>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
       <div className="flex gap-3 items-center">
         {loading ? (

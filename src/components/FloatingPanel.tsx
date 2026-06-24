@@ -5,7 +5,8 @@ import { useState, useCallback, useEffect, useRef } from "react";
 // interacted panel always renders above others. This global counter bypasses React's
 // component-local state tree intentionally — it must be shared across sibling panels
 // that don't share a common parent state. Reset to 50 so panels start above other UI.
-let _zCounter = 50;
+const Z_INDEX_BASE = 50;
+let _zCounter = Z_INDEX_BASE;
 function nextZ() { return ++_zCounter; }
 export function useZIndex(): [number, () => void] {
   const [z, setZ] = useState(() => nextZ());
@@ -82,6 +83,7 @@ export default function FloatingPanel({ title, icon, count = undefined, onClose,
       ref={panelRef}
       role="dialog"
       aria-modal="true"
+      aria-labelledby="floating-panel-title"
       onMouseDown={onMouseDown}
       style={{
         position: 'absolute',
@@ -107,7 +109,7 @@ export default function FloatingPanel({ title, icon, count = undefined, onClose,
         borderBottom: collapsed ? 'none' : '1px solid #3a494a',
         cursor: 'grab', userSelect: 'none',
       }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e2e8', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span id="floating-panel-title" style={{ fontSize: 13, fontWeight: 600, color: '#e2e2e8', display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{fontSize:15}} aria-hidden="true">{icon}</span> {title}
           {count !== undefined && <span style={{ fontSize: 10, color: '#849495', fontWeight: 400 }}>{count}</span>}
         </span>
@@ -145,10 +147,6 @@ export const tdS: React.CSSProperties = {
 export const inputStyle = (w = 56): React.CSSProperties => ({
   width: w, padding: '2px 4px', fontSize: 11, textAlign: 'center',
   background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3, color: '#e2e2e8',
-});
-
-const numInputStyle = (w = 56): React.CSSProperties => ({
-  ...inputStyle(w),
 });
 
 export const btnDelStyle: React.CSSProperties = {

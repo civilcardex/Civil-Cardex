@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+﻿import { useMemo } from "react";
 import { pisoLbl } from "../constants";
 import PageNav from "./PageNav";
 import AccesoriosTable from "./AccessoriesTable";
@@ -138,7 +138,7 @@ function InfTab({ state }: { state: WorkAreaState }) {
       <div className="card">
         <div className="card-h">
           <h3 className="card-t">
-            <img src="/Informes.webp" alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
+            <img src="/Informes.webp" alt="Informes"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
             Resumen del proyecto
           </h3>
         </div>

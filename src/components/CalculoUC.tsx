@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useTramos } from "../context/TramosContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, pisoCorto } from "../constants";
@@ -51,7 +51,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
     <>
       <div className="card">
         <div className="card-h">
-          <h3 className="card-t"><img src={icon} alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Cálculo de unidades de consumo {title}</h3>
+          <h3 className="card-t"><img src={icon} alt={`${title}`}  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Cálculo de unidades de consumo {title}</h3>
           <span className="card-s">{tramos.length} tramos</span>
         </div>
         <div className="scroll-top" style={{padding:'16px'}}>

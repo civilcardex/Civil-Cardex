@@ -103,7 +103,7 @@ function PlanoConfiguratorBase({
   }, [showToast]);
 
   const activarModoOrigen = () => {
-    setModoOrigen(!modoOrigen);
+    setModoOrigen(prev => !prev);
     setModoCalX(false);
     setModoCalY(false);
     setCalStart(null);
@@ -571,6 +571,7 @@ function PlanoConfiguratorBase({
               onUpdateNivel(planId, v);
               setHasSaved(false);
             }}
+              aria-label="Seleccionar nivel de plano"
               style={{ width: '100%', padding: '5px 6px', fontSize: 12, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer' }}>
               <option value="">— Seleccionar nivel —</option>
               {[...pisos].sort((a: any, b: any) => b.n - a.n).map((s: any) => {
@@ -600,6 +601,7 @@ function PlanoConfiguratorBase({
                       setHasSaved(false);
                     }
                   }}
+                  aria-label="Seleccionar nivel de plano"
                   style={{ width: '100%', padding: '5px 6px', fontSize: 12, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer' }}
                 >
                   <option value="">— Escala —</option>
@@ -667,7 +669,7 @@ function PlanoConfiguratorBase({
                 Calibrar X
               </div>
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                <input type="text" inputMode="decimal" placeholder="(m)" value={lenX} onChange={e => setLenX(e.target.value.replace(/,/g, '.'))}
+                <input type="text" inputMode="decimal" placeholder="(m)" value={lenX} onChange={e => setLenX(e.target.value.replace(/,/g, '.'))} aria-label="Longitud del eje X (m)"
                   disabled={modoCalX}
                   style={{ flex: 1, minWidth: 0, padding: '5px 4px', fontSize: 11, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt)', fontFamily: 'monospace' }} />
                 <button onClick={activarModoCalX}
@@ -695,7 +697,7 @@ function PlanoConfiguratorBase({
                 Calibrar Y
               </div>
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                <input type="text" inputMode="decimal" placeholder="(m)" value={lenY} onChange={e => setLenY(e.target.value.replace(/,/g, '.'))}
+                <input type="text" inputMode="decimal" placeholder="(m)" value={lenY} onChange={e => setLenY(e.target.value.replace(/,/g, '.'))} aria-label="Longitud del eje Y (m)"
                   disabled={modoCalY}
                   style={{ flex: 1, minWidth: 0, padding: '5px 4px', fontSize: 11, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt)', fontFamily: 'monospace' }} />
                 <button onClick={activarModoCalY}

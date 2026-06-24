@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FormField from '../components/FormField';
@@ -68,11 +68,11 @@ function LoginPage() {
 <form onSubmit={handleSubmit} className="px-8 pb-6 space-y-5">
               <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
                 <legend className="sr-only">Datos de inicio de sesión</legend>
-                <FormField label="CORREO ELECTRÓNICO" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@civilcore.com" autoComplete="email" />
+                <FormField label="CORREO ELECTRÓNICO" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="usuario@civilcore.com" autoComplete="email" required />
 
                 <div style={{position:'relative'}}>
-                  <FormField label="CONTRASEÑA" type={showPwd ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
-                  <button type="button" onClick={() => setShowPwd(!showPwd)} tabIndex={-1}
+                  <FormField label="CONTRASEÑA" type={showPwd ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" required minLength={6} />
+                  <button type="button" onClick={() => setShowPwd(prev => !prev)} tabIndex={-1}
                     aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                     className="absolute right-2 bottom-[12px] text-base opacity-50 hover:opacity-90 transition-opacity"
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8AB4D6', padding: 0, lineHeight: 1 }}>

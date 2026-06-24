@@ -1,4 +1,4 @@
-import { useId } from 'react';
+﻿import { useId } from 'react';
 
 interface FormFieldProps {
   label: string;
@@ -7,10 +7,12 @@ interface FormFieldProps {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   required?: boolean;
+  minLength?: number;
+  maxLength?: number;
   autoComplete?: string;
 }
 
-function FormField({ label, type = 'text', value, onChange, placeholder, required, autoComplete }: FormFieldProps) {
+function FormField({ label, type = 'text', value, onChange, placeholder, required, minLength, maxLength, autoComplete }: FormFieldProps) {
   const fieldId = useId();
   return (
     <div>
@@ -23,6 +25,8 @@ function FormField({ label, type = 'text', value, onChange, placeholder, require
         onBlur={(e) => e.target.style.borderColor = '#3a494a'}
         placeholder={placeholder}
         required={required}
+        minLength={minLength}
+        maxLength={maxLength}
         autoComplete={autoComplete} />
     </div>
   );

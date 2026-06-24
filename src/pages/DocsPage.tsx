@@ -62,16 +62,16 @@ function DocsPage() {
           background: #4d8ff7;
         }
       `}</style>
-      <div className="w-64 shrink-0 border border-outline-variant bg-surface-container flex flex-col">
+      <nav aria-label="Categorías de documentación" className="w-64 shrink-0 border border-outline-variant bg-surface-container flex flex-col">
         <div className="p-4 border-b border-outline-variant">
-          <h2 className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant">
+          <span className="block text-[11px] font-bold tracking-widest uppercase text-on-surface-variant">
             Categorías
-          </h2>
+          </span>
         </div>
-        <div className="flex-1 overflow-auto docs-scroll">
+        <ul className="flex-1 overflow-auto docs-scroll" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {categories.map((cat) => (
+            <li key={cat.id}>
             <button
-              key={cat.id}
               onClick={() => {
                 setActiveCat(cat.id)
                 setOpenSections({})
@@ -90,11 +90,12 @@ function DocsPage() {
               </span>
               <span className="text-[13px] font-medium">{cat.name}</span>
             </button>
+            </li>
           ))}
-        </div>
-      </div>
+        </ul>
+      </nav>
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <main className="flex-1 flex flex-col min-w-0">
         <div className="mb-4 flex items-center gap-4">
           <span className="material-symbols-outlined text-3xl" style={{ color: search.trim() ? '#e9feff' : activeCategory?.color }}>
             {search.trim() ? 'search' : activeCategory?.icon}
@@ -112,6 +113,7 @@ function DocsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar..."
+                aria-label="Buscar documentación"
                 className="flex-1 h-10 px-3 bg-transparent text-on-surface text-[13px] font-mono focus:outline-none"
               />
             </div>
@@ -139,7 +141,7 @@ function DocsPage() {
             </div>
           )}
         </div>
-      </div>
+      </main>
     </div>
     </div>
   )

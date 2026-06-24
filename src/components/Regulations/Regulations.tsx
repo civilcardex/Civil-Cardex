@@ -80,13 +80,13 @@ export default function Normativa() {
                 gap:8, padding:'10px 14px',
                 alignItems:'center', borderBottom:'1px solid var(--line)',
               }}>
-                <input className="ni" style={{ width:'100%', textAlign:'left', fontWeight:600, fontSize:12 }}
+                <input className="ni" aria-label="Nombre del parámetro" style={{ width:'100%', textAlign:'left', fontWeight:600, fontSize:12 }}
                   value={cr.param}
                   onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, param:v} : x)); }} />
-                <input className="ni" style={{ width:75, fontWeight:700, fontSize:12 }}
+                <input className="ni" aria-label="Valor del parámetro" style={{ width:75, fontWeight:700, fontSize:12 }}
                   value={cr.val}
                   onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, val:v} : x)); }} />
-                <input className="ni" style={{ width:56, fontSize:10 }}
+                <input className="ni" aria-label="Unidad del parámetro" style={{ width:56, fontSize:10 }}
                   value={cr.uni}
                   onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, uni:v} : x)); }} />
                 <button className="btn-del" style={{ padding:'3px 10px', fontSize:11 }} onClick={() => setCrits(p => p.filter(x => x.id !== cr.id))}>✕</button>
@@ -95,23 +95,23 @@ export default function Normativa() {
                 <div style={{ marginBottom:0 }}>
                   <label style={{ display:'block', fontSize:11, fontWeight:500, marginBottom:2 }}>Norma · Artículo</label>
                   <div style={{ display:'flex', gap:5 }}>
-                    <input className="ni" style={{ flex:1, textAlign:'left', fontSize:10 }}
+                    <input className="ni" aria-label="Norma" style={{ flex:1, textAlign:'left', fontSize:10 }}
                       value={cr.norma}
                       onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, norma:v} : x)); }} />
-                    <input className="ni" style={{ width:75, textAlign:'center', fontSize:10 }}
+                    <input className="ni" aria-label="Artículo" style={{ width:75, textAlign:'center', fontSize:10 }}
                       value={cr.art}
                       onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, art:v} : x)); }} />
                   </div>
                 </div>
                 <div style={{ marginBottom:0 }}>
                   <label style={{ display:'block', fontSize:11, fontWeight:500, marginBottom:2 }}>Evidencia de cumplimiento</label>
-                  <input className="ni" style={{ width:'100%', textAlign:'left', fontSize:11 }}
+                  <input className="ni" aria-label="Evidencia de cumplimiento" style={{ width:'100%', textAlign:'left', fontSize:11 }}
                     value={cr.cumple}
                     onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, cumple:v} : x)); }} />
                 </div>
                 <div style={{ marginBottom:0, gridColumn:'1 / -1' }}>
                   <label style={{ display:'block', fontSize:11, fontWeight:500, marginBottom:2 }}>Observación técnica</label>
-                  <input className="ni" style={{ width:'100%', textAlign:'left', fontSize:11, fontStyle:'italic' }}
+                  <input className="ni" aria-label="Observación técnica" style={{ width:'100%', textAlign:'left', fontSize:11, fontStyle:'italic' }}
                     value={cr.nota}
                     onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, nota:v} : x)); }} />
                 </div>

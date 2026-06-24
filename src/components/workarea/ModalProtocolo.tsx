@@ -38,7 +38,7 @@ export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
   }, [onClose]);
 
   const modalContent = (
-    <div ref={modalRef} role="alertdialog" aria-modal="true" style={{
+    <div ref={modalRef} role="alertdialog" aria-modal="true" aria-labelledby="modal-protocolo-title" style={{
       position: 'fixed', inset: 0, zIndex: 99999,
       background: 'rgba(0,0,0,0.7)', display: 'flex',
       alignItems: 'center', justifyContent: 'center',
@@ -55,7 +55,7 @@ export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
           background: 'var(--bg)', position: 'relative', zIndex: 10,
         }}>
           <span style={{ fontSize: 18 }}>📋</span>
-          <span style={{ fontSize: 15, fontWeight: 700, color: '#e2e2e8' }}>Requisitos para carga de planos</span>
+          <span id="modal-protocolo-title" style={{ fontSize: 15, fontWeight: 700, color: '#e2e2e8' }}>Requisitos para carga de planos</span>
           <div style={{ flex: 1 }} />
           <button onClick={onClose} aria-label="Cerrar"
             style={{ padding: '4px 10px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: '#b9caca', cursor: 'pointer', fontSize: 11 }}>

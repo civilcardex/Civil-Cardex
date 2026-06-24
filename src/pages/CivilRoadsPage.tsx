@@ -59,7 +59,7 @@ const CivilRoadsPage: React.FC = () => {
               <div className="p-8 w-full max-w-lg relative border" style={{ background: 'linear-gradient(135deg, rgba(26,29,35,0.8), rgba(26,29,35,0.4))', backdropFilter: 'blur(12px)', borderColor: 'rgba(51,56,66,0.5)' }}>
                 <div className="absolute top-0 left-0 w-full h-1 opacity-50" style={{ background: `linear-gradient(to right, transparent, ${accent}, transparent)` }} />
                 <div className="flex justify-between items-start mb-6">
-                  <h3 className="text-xl font-bold text-on-background" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>Live Metrics View</h3>
+                  <div className="text-xl font-bold text-on-background" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>Live Metrics View</div>
                   <span className="material-symbols-outlined text-outline">data_usage</span>
                 </div>
                 <div className="space-y-4">
