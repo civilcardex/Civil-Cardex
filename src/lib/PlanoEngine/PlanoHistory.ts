@@ -2,6 +2,8 @@ import { NETS } from './PlanoState';
 import type { IPlanoEngineCore, PlanoRamal, PlanoBajante, PlanoArea, PlanoDimension, PlanoTextAnnotation } from './PlanoEngineTypes';
 import { cancelRamal, cancelArea } from './PlanoEngineDrawing';
 
+const MAX_UNDO_STACK = 50;
+
 interface HistorySnapshot {
   ramales: PlanoRamal[];
   bajantes: PlanoBajante[];
@@ -24,15 +26,15 @@ export class PlanoHistory {
     if (this._isRestoring) return;
     const e = this._engine;
     const snap: HistorySnapshot = {
-      ramales: JSON.parse(JSON.stringify(e.ramales)),
-      bajantes: JSON.parse(JSON.stringify(e.bajantes)),
-      areas: JSON.parse(JSON.stringify(e.areas)),
-      dims: JSON.parse(JSON.stringify(e.dims)),
-      textAnnots: JSON.parse(JSON.stringify(e.textAnnots)),
-      _netCounts: JSON.parse(JSON.stringify(e._netCounts)),
+      ramales: structuredClone(e.ramales),
+      bajantes: structuredClone(e.bajantes),
+      areas: structuredClone(e.areas),
+      dims: structuredClone(e.dims),
+      textAnnots: structuredClone(e.textAnnots),
+      _netCounts: structuredClone(e._netCounts),
     };
     this._undoStack.push(snap);
-    if (this._undoStack.length > 50) this._undoStack.shift();
+    if (this._undoStack.length > MAX_UNDO_STACK) this._undoStack.shift();
   }
 
   undoLast(): void {
@@ -66,12 +68,12 @@ export class PlanoHistory {
       _netCounts: Object.fromEntries(NETS.map(n => [n.id, { ramal: 0, tributario: 0 }]))
     };
 
-    e.ramales = JSON.parse(JSON.stringify(snap.ramales));
-    e.bajantes = JSON.parse(JSON.stringify(snap.bajantes));
-    e.areas = JSON.parse(JSON.stringify(snap.areas));
-    e.dims = JSON.parse(JSON.stringify(snap.dims));
-    e.textAnnots = JSON.parse(JSON.stringify(snap.textAnnots));
-    e._netCounts = JSON.parse(JSON.stringify(snap._netCounts));
+    e.ramales = structuredClone(snap.ramales);
+    e.bajantes = structuredClone(snap.bajantes);
+    e.areas = structuredClone(snap.areas);
+    e.dims = structuredClone(snap.dims);
+    e.textAnnots = structuredClone(snap.textAnnots);
+    e._netCounts = structuredClone(snap._netCounts);
 
     e.selId = null;
     e._emitSelect(null);

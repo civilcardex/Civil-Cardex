@@ -73,6 +73,8 @@ import {
   calcSanitaryAccessories,
 } from './PlanoEngineNetwork';
 import { PlanoHistory } from './PlanoHistory';
+import { initEngineState } from './DragStateMachine';
+import { hitTestRightClick, hitTestBajanteLabelForDrag } from './PlanoEngineHitTesting';
 
 export { NETS };
 
@@ -80,41 +82,6 @@ type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area'
 type TramoType = 'ramal' | 'tributario';
 
 interface Point { x: number; y: number }
-
-interface DragState {
-  id: string;
-  offX: number;
-  offY: number;
-}
-
-interface PointDrag {
-  id: string;
-  ptIdx: number;
-}
-
-interface TxtDrag {
-  id: string;
-  startX: number;
-  startY: number;
-  origX: number;
-  origY: number;
-}
-
-interface AreaDrag {
-  id: string;
-  startX: number;
-  startY: number;
-}
-
-interface GhostDrag {
-  id: string;
-  startX: number;
-  startY: number;
-  baseDx: number;
-  baseDy: number;
-}
-
-interface DimStart extends Point {}
 
 type SelectCallback = (el: Record<string, unknown> | null) => void;
 type StatusCallback = (msg: string) => void;
@@ -161,19 +128,19 @@ export default class PlanoEngine implements IPlanoEngineCore {
   padreTributario: string | null;
   activeArea: PlanoActiveArea | null;
   selId: string | null;
-  areaDrag: AreaDrag | null;
+  areaDrag: { id: string; startX: number; startY: number } | null;
   panning: boolean;
   panX0: number;
   panY0: number;
   mouseX: number;
   mouseY: number;
-  ghostDrag: GhostDrag | null;
-  lblDrag: DragState | null;
-  txtDrag: TxtDrag | null;
-  bajDrag: DragState | null;
-  ptDrag: PointDrag | null;
-  ramalDrag: { id: string; startX: number; startY: number; origPts: [number, number][] } | null;
-  _dimStart: DimStart | null;
+  ghostDrag: { id: string; startX: number; startY: number; baseDx: number; baseDy: number } | null;
+  lblDrag: { id: string; offX: number; offY: number } | null;
+  txtDrag: { id: string; startX: number; startY: number; origX: number; origY: number } | null;
+  bajDrag: { id: string; offX: number; offY: number } | null;
+  ptDrag: { id: string; ptIdx: number; slideConstraint?: { otherId: string; segmentIdx: number } } | null;
+  ramalDrag: { id: string; startX: number; startY: number; origPts: [number, number][]; connBaj?: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[] } | null;
+  _dimStart: Point | null;
   nivelActual: PlanoLevel | null;
   nptLevels: PlanoLevel[];
   _hiddenNets: Set<string>;
@@ -212,71 +179,19 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
   _history: PlanoHistory;
 
+  _isGhostSel: boolean;
+  _yeeFlashKey: string | null;
+  multiSel: string[];
+  multiDrag: { startX: number; startY: number; origData: Record<string, unknown> } | null;
+  marqueeRect: { x1: number; y1: number; x2: number; y2: number } | null;
+
   constructor(cw: HTMLElement, pdfWrap: HTMLElement | null, canv: HTMLCanvasElement) {
     this.cw = cw;
     this.pdfWrap = pdfWrap;
     this.canv = canv;
     this.ctx = canv.getContext('2d')!;
 
-    this.zoom = 1;
-    this.offX = 0;
-    this.offY = 0;
-    this.dpr = 1;
-    this.tool = 'sel';
-    this.activeNet = 'af';
-    this.tipoTramo = 'ramal';
-    this.snapMode = true;
-    this.scaleM = 0.5;
-    this.pageW = 0;
-    this.pageH = 0;
-
-    this.ramales = [];
-    this.dims = [];
-    this.textAnnots = [];
-    this.bajantes = [];
-    this.areas = [];
-    this.activeRamal = null;
-    this.padreTributario = null;
-    this.activeArea = null;
-    this.selId = null;
-    this._isGhostSel = false;
-    this._yeeFlashKey = null;
-    this.areaDrag = null;
-    this.panning = false;
-    this.panX0 = 0;
-    this.panY0 = 0;
-    this.mouseX = 0;
-    this.mouseY = 0;
-    this.ghostDrag = null;
-    this.lblDrag = null;
-    this.txtDrag = null;
-    this.bajDrag = null;
-    this.ptDrag = null;
-    this.ramalDrag = null;
-    this.multiSel = [];
-    this.multiDrag = null;
-    this.marqueeRect = null;
-    this._dimStart = null;
-    this.nivelActual = null;
-    this.nptLevels = [];
-    this._hiddenNets = new Set();
-    this._lockedNets = new Set();
-    this._loadedPlanId = null;
-    this._onDirtyCb = null;
-    this._lastMouseCvs = { x: 0, y: 0 };
-
-    this._netCounts = {};
-    NETS.forEach(n => { this._netCounts[n.id] = { ramal: 0, tributario: 0 }; });
-
-    this.MM = {
-      lblName: 1.5,
-      lblInfo: 1.2,
-      lblCode: 1.4,
-      flowEmoji: 2.0,
-      coord: 1.2,
-    };
-
-    this._ramalDefaults = null;
+    initEngineState(this);
 
     this._history = new PlanoHistory(this);
 
@@ -297,7 +212,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._dirty = false;
     this._lastRightClickTime = 0;
     this._onUpdateCb = null;
-
     this._loadedPlanId = null;
   }
 
@@ -334,7 +248,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
   mm2cvs(mm: number): number { return mm * 96 / 25.4 * this.zoom; }
 
   get labelScaleM(): number {
-    // If 1cm represents MORE meters (scaleM > 0.5), labels must shrink so they don't look huge relative to pipes.
     return Math.max(0.1, Math.min(3.0, 0.5 / this.scaleM));
   }
 
@@ -404,7 +317,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
         }
       });
     });
-    // Snap to bajante/montante centers
     const bajThresh = 20 / this.zoom;
     this.bajantes.forEach(b => {
       if (this._hiddenNets.has(b.net)) return;
@@ -573,7 +485,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
   _onDownHandler(e: MouseEvent | TouchEvent): void {
     const { x, y } = this._getPos(e);
-    if ((e as MouseEvent).button === 1 || this.tool === 'pan') {
+
+    if (e instanceof MouseEvent && e.button === 1 || this.tool === 'pan') {
       this.panning = true;
       this.panX0 = x - this.offX;
       this.panY0 = y - this.offY;
@@ -581,102 +494,24 @@ export default class PlanoEngine implements IPlanoEngineCore {
       return;
     }
 
-    if ((e as MouseEvent).button === 2) {
+    if (e instanceof MouseEvent && e.button === 2) {
       const now = Date.now();
       if (now - this._lastRightClickTime < 300) {
         this.selectAt(x, y);
       } else {
-        // Single right click: Check if hit a bajante for context menu
-        const r = Math.max(6, 6 * this.zoom) + 10;
-        let hitElement = null;
-        let isGhostClick = false;
-        if (this.selId) {
-          const b = this.bajantes.find(bb => bb.id === this.selId);
-          if (b) {
-            if (!this._isGhostSel) {
-              const c = this.toCvs(b.x, b.y);
-              const hitR = (b._circ?.r || Math.max(6, 6 * this.zoom) + 10);
-              const hitOnCircle = Math.hypot(x - c.x, y - c.y) <= hitR;
-              const hitOnLabel = b._labelBox && pointInLabelBox(x, y, b._labelBox);
-              if (hitOnCircle || hitOnLabel) {
-                hitElement = b;
-              }
-            } else {
-              // Check ghost position for displaced bajantes
-              const ghostList = this.getBajantesFantasma().filter(g => g.id === this.selId);
-              if (ghostList.length > 0 && ghostList[0]._ghost) {
-                const gh = ghostList[0]._ghost;
-                const hitOnGhost = Math.hypot(x - gh.x, y - gh.y) <= gh.r;
-                const hitOnGhostLabel = ghostList[0]._ghostLabelBox && pointInLabelBox(x, y, ghostList[0]._ghostLabelBox);
-                if (hitOnGhost || hitOnGhostLabel) {
-                  hitElement = b;
-                  isGhostClick = true;
-                }
-              }
-            }
-          } else {
-            const ram = this.ramales.find(rr => rr.id === this.selId);
-            if (ram) {
-              let hitOnRamal = false;
-              let ramalEndpoint: { idx: number; x: number; y: number } | null = null;
-              if (ram.pts) {
-                // Check endpoint hits first
-                for (const epIdx of [0, ram.pts.length - 1]) {
-                  const ep = this.toCvs(ram.pts[epIdx][0], ram.pts[epIdx][1]);
-                  if (Math.hypot(x - ep.x, y - ep.y) <= 12) {
-                    hitOnRamal = true;
-                    ramalEndpoint = { idx: epIdx, x: ram.pts[epIdx][0], y: ram.pts[epIdx][1] };
-                    break;
-                  }
-                }
-                if (!hitOnRamal) {
-                  for (let i = 0; i < ram.pts.length - 1; i++) {
-                    const p1 = this.toCvs(ram.pts[i][0], ram.pts[i][1]);
-                    const p2 = this.toCvs(ram.pts[i+1][0], ram.pts[i+1][1]);
-                    const l2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
-                    let t = l2 === 0 ? 0 : ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / l2;
-                    t = Math.max(0, Math.min(1, t));
-                    const projX = p1.x + t * (p2.x - p1.x);
-                    const projY = p1.y + t * (p2.y - p1.y);
-                    if (Math.hypot(x - projX, y - projY) <= 12) {
-                      hitOnRamal = true;
-                      break;
-                    }
-                  }
-                }
-              }
-              const hitOnLabel = ram._labelBox && pointInLabelBox(x, y, ram._labelBox);
-              if (hitOnRamal || hitOnLabel) {
-                hitElement = ram;
-                if (ramalEndpoint) (hitElement as any)._ctxEndpoint = ramalEndpoint;
-              }
-            } else {
-              const area = this.areas.find(aa => aa.id === this.selId);
-              if (area) {
-                let hitOnArea = false;
-                if (area.pts) {
-                  const cvsPts = area.pts.map((pt: number[]) => this.toCvs(pt[0], pt[1]));
-                  if (pointInPoly(x, y, cvsPts)) {
-                    hitOnArea = true;
-                  }
-                }
-                const hitOnLabel = area._labelBox && pointInLabelBox(x, y, area._labelBox);
-                if (hitOnArea || hitOnLabel) {
-                  hitElement = area;
-                }
-              }
-            }
-          }
-        }
-        
-        if (hitElement && this._onContextMenuCb) {
-          const ep = (hitElement as any)._ctxEndpoint;
-          this._onContextMenuCb(hitElement, (e as MouseEvent).clientX, (e as MouseEvent).clientY, isGhostClick, ep || null);
-          (hitElement as any)._ctxEndpoint = undefined;
+        const hit = hitTestRightClick(this, x, y, e.clientX, e.clientY);
+        if (hit && this._onContextMenuCb) {
+          this._onContextMenuCb(
+            hit.element,
+            hit.clientX,
+            hit.clientY,
+            hit.isGhostClick,
+            hit.ramalEndpoint || null
+          );
         }
       }
       this._lastRightClickTime = now;
-      return; // prevent drawing on right click
+      return;
     }
 
     if (this._lockedNets.has(this.activeNet)) return;
@@ -684,14 +519,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
     const p = this.toPlane(x, y);
 
     if (this.tool === 'sel') {
-      // Direct lblDrag for selected bajante label — bypasses handleSelectDown entirely
-      const selEl = this.bajantes.find(b => b.id === this.selId);
-      if (selEl && selEl._labelBox && pointInLabelBox(x, y, selEl._labelBox)) {
-        const lPos = this.toCvs(selEl.labelX ?? selEl.x, selEl.labelY ?? (selEl.y + 20));
-        this.lblDrag = { id: selEl.id, offX: x - lPos.x, offY: y - lPos.y };
+      const lblDragResult = hitTestBajanteLabelForDrag(this, x, y);
+      if (lblDragResult) {
+        this.lblDrag = lblDragResult;
         return;
       }
-      handleSelectDown(this, x, y, (e as MouseEvent).ctrlKey || false);
+      handleSelectDown(this, x, y, e instanceof MouseEvent && (e.ctrlKey || false));
     } else if (this.tool === 'line') {
       handleLineDown(this, p.x, p.y);
     } else if (this.tool === 'dim') {
@@ -735,7 +568,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.panning = false;
       this.canv.style.cursor = this.tool === 'pan' ? 'grab' : this.tool === 'sel' ? 'default' : 'crosshair';
     }
-    const isCtrl = (e as MouseEvent).ctrlKey || false;
+    const isCtrl = e instanceof MouseEvent && e.ctrlKey || false;
     handleDragUp(this, isCtrl);
   }
 
