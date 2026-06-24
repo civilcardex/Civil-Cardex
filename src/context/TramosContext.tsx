@@ -1,4 +1,4 @@
-import { createContext, useReducer, useRef, useContext, type ReactNode } from "react";
+import { createContext, useReducer, useRef, useMemo, useContext, type ReactNode } from "react";
 import { useSanLlSync, useHidroSync } from "../hooks/useTramosSync";
 import { tramosReducer, type TramosState, type Tramo } from "./tramosReducer";
 
@@ -47,14 +47,16 @@ const updTramoAcAcc = (id: string, accId: string, val: any) => dispatch({ type: 
 const delTramoLL = (key: string) => dispatch({ type: 'DEL_TRAMO', net: 'll', id: key });
 const updTramoLL = (key: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'll', id: key, field, val });
 
+const value = useMemo(() => ({
+  tramosSan, tramosAf, tramosAc, tramosLl,
+  delTramoSan, updTramoSan,
+  delTramoAf, updTramoAf, updTramoAfAcc,
+  delTramoAc, updTramoAc, updTramoAcAcc,
+  delTramoLL, updTramoLL,
+}), [tramosSan, tramosAf, tramosAc, tramosLl]);
+
 return (
-<TramosContext.Provider value={{
-tramosSan, tramosAf, tramosAc, tramosLl,
-delTramoSan, updTramoSan,
-delTramoAf, updTramoAf, updTramoAfAcc,
-delTramoAc, updTramoAc, updTramoAcAcc,
-delTramoLL, updTramoLL,
-}}>
+<TramosContext.Provider value={value}>
 {children}
 </TramosContext.Provider>
 );

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, type ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 
 interface User {
@@ -53,8 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data;
   };
 
+  const value = useMemo(() => ({ user, loading, signIn, signUp }), [user, loading, signIn, signUp]);
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

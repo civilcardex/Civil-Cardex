@@ -1,4 +1,4 @@
-import { useState, createContext, useContext, type ReactNode } from "react";
+import { useState, useMemo, createContext, useContext, type ReactNode } from "react";
 
 interface BajanteLL { id: string; bajante: string; areaParcial: number; areaAcumulada: number; intensidad: number; coeficienteC: number; R: string; manning: number; diamPropuesto: number }
 interface CanalLL { id: string; sector: string; areaParcial: number; areaAcumulada: number; intensidad: number; coeficienteC: number; manning: number; pendiente: number; b: number; h: number; bl: number }
@@ -48,11 +48,13 @@ const updBajanteLL = (id: string, field: string, val: any) => setBajantesLl(p =>
   return p.map(t => (t.id === id || (t.bajante && t.bajante === id)) ? { ...t, [field]: val } : t);
 });
 
+const value = useMemo(() => ({
+  bajantesLl, addBajanteLL, delBajanteLL, updBajanteLL,
+  canalesLl, addCanalLL, delCanalLL, updCanalLL,
+}), [bajantesLl, canalesLl]);
+
 return (
-<RainwaterContext.Provider value={{
-bajantesLl, addBajanteLL, delBajanteLL, updBajanteLL,
-canalesLl, addCanalLL, delCanalLL, updCanalLL,
-}}>
+<RainwaterContext.Provider value={value}>
 {children}
 </RainwaterContext.Provider>
 );

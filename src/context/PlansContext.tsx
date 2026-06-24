@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useMemo, createContext, useContext, type ReactNode } from 'react';
 import { saveToStorage, loadFromStorage, removeFromStorage } from '../services/storageService';
 import { storePDF, loadPDF, deletePDF } from '../services/idbStorage';
 import { PLANS_META_KEY } from '../constants/storage-keys';
@@ -39,9 +39,11 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     (async () => {
       const meta = loadFromStorage<PlanMeta[]>(PLANS_META_KEY, []);
       if (meta.length === 0) { setRestoreDone(true); return; }
+      const files = await Promise.all(meta.map(m => loadPDF(m.id)));
       const restored: PlanItem[] = [];
-      for (const m of meta) {
-        const file = await loadPDF(m.id);
+      for (let i = 0; i < meta.length; i++) {
+        const file = files[i];
+        const m = meta[i];
         if (file) {
           restored.push({
             id: m.id,
@@ -101,8 +103,10 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     setPlans(prev => prev.map(p => p.id === id && p.status === 'pending' ? { ...p, status: 'confirmed' } : p));
   };
 
+  const value = useMemo(() => ({ plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan }), [plans, error, addPlans, removePlan, updatePlan, confirmPlan]);
+
   return (
-    <PlansContext.Provider value={{ plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan }}>
+    <PlansContext.Provider value={value}>
       {children}
     </PlansContext.Provider>
   );

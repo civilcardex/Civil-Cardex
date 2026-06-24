@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { usePersistedState } from "../hooks/usePersistedState";
 
 export interface EPData {
@@ -59,8 +59,10 @@ export function EPProvider({ children }: { children?: ReactNode }) {
     setEP(prev => ({ ...prev, [field]: val }));
   };
 
+  const value = useMemo(() => ({ ep, updEP }), [ep]);
+
   return (
-    <EPContext.Provider value={{ ep, updEP }}>
+    <EPContext.Provider value={value}>
       {children}
     </EPContext.Provider>
   );

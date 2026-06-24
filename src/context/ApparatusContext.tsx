@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext, type ReactNode } from "react";
+import { useState, useEffect, useMemo, createContext, useContext, type ReactNode } from "react";
 import { UD_BASE_INIT, APS_DEFAULT } from "../constants";
 import { loadFromStorage, saveToStorage } from "../services/storageService";
 import { APS_STORAGE_KEY } from "../constants/storage-keys";
@@ -28,11 +28,13 @@ useEffect(() => {
   saveToStorage(APS_STORAGE_KEY, aps);
 }, [aps]);
 
+const value = useMemo(() => ({
+  udBase, aps,
+  setAps,
+}), [udBase, aps]);
+
 return (
-<ApparatusContext.Provider value={{
-udBase, aps,
-setAps,
-}}>
+<ApparatusContext.Provider value={value}>
 {children}
 </ApparatusContext.Provider>
 );

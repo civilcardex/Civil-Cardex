@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { MATS_DEFAULT, PROFS_DEFAULT, CRIT0 } from "../constants";
 import { usePersistedState } from "../hooks/usePersistedState";
 
@@ -55,11 +55,13 @@ const [crits, setCrits] = usePersistedState<CritItem[]>('civilflow_crits', CRITS
 
 const setP = (k: string, v: any) => setProy(p => ({ ...p, [k]: v }));
 
+const value = useMemo(() => ({
+  pisos, proy, mats, profs, crits,
+  setPisos, setP, setMats, setProfs, setCrits,
+}), [pisos, proy, mats, profs, crits]);
+
 return (
-<ProjectContext.Provider value={{
-pisos, proy, mats, profs, crits,
-setPisos, setP, setMats, setProfs, setCrits,
-}}>
+<ProjectContext.Provider value={value}>
 {children}
 </ProjectContext.Provider>
 );
