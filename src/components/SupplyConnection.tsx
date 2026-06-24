@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { COEF_HAZEN } from "../utils/calcHydraulics";
 import { fmt } from "../utils/formatUtils";
 

@@ -131,23 +131,35 @@ function LandingPage() {
 
         {/* 7 Module Cards — bottom area */}
         <div className="relative z-10 px-4 pb-6 sm:pb-8 md:pb-10">
-          <ul className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 md:gap-4" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          <ul className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 md:gap-4" style={{ listStyle: 'none', margin: 0, padding: 0, justifyItems: 'center' }}>
             {MODULOS_HERO.map((m, i) => (
               <li key={m.id}
-                className="hero-mod-card flex flex-col items-center text-center p-2 sm:p-3 md:p-4 border rounded-lg relative"
+                className="hero-mod-card flex flex-col items-center justify-center text-center p-2 sm:p-3 md:p-4 border rounded-lg relative w-full"
                 style={{ '--mod-color': m.color,
                   background: 'rgba(10,14,20,0.6)',
                   backdropFilter: 'blur(8px)',
                   borderColor: hoveredIdx === i ? m.color + '55' : 'transparent',
-                  boxShadow: hoveredIdx === i ? `0 0 20px ${m.color}22, 0 0 40px ${m.color}0a` : 'none' } as any}
+                  boxShadow: hoveredIdx === i ? `0 0 20px ${m.color}22, 0 0 40px ${m.color}0a` : 'none',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center' } as any}
                 onMouseEnter={() => handleEnter(i)}
                 onMouseLeave={handleLeave}
                 onClick={() => handleClick(m.path)}>
                 <div className="mod-glow absolute inset-0 rounded-lg pointer-events-none"
                   style={{ background: `radial-gradient(circle at center, ${m.color}0c 0%, transparent 70%)` }} />
-                <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 flex items-center justify-center mb-2 md:mb-3 relative z-10 rounded-xl"
-                  style={{ background: 'radial-gradient(circle at center, rgba(0,170,255,0.04) 0%, transparent 70%)' }}>
-                  <img src={m.logo} alt={m.name} className="mod-logo w-full h-full object-contain p-1 sm:p-2" />
+                <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 relative z-10 rounded-xl"
+                  style={{
+                    background: 'radial-gradient(circle at center, rgba(0,170,255,0.04) 0%, transparent 70%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    alignSelf: 'center',
+                    marginBottom: '12px'
+                  }}>
+                  <img src={m.logo} alt={m.name} className="mod-logo" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
                 </div>
                 <span className="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider relative z-10"
                   style={{ color: m.color, fontFamily: 'Hanken Grotesk, sans-serif' }}>
