@@ -5,7 +5,7 @@ import { usePlans } from "../context/PlansContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
-import { pisoCorto } from "../constants";
+import { pisoCorto, DIAM_BAN, DIAM_VENT } from "../constants";
 import { calcUDparcial } from "../utils/componentHelpers";
 import { calculateVentStack } from "../utils/calcSanitary";
 
@@ -59,7 +59,7 @@ const renderStatus = (val: string) => {
   return <span style={{ color: 'var(--txt3)' }}>{val}</span>;
 };
 
-import { writeBajantePropToDrawing } from "../utils/writeDiameterToDrawing";
+import { writeBajantePropToDrawing, writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
 
 export default function BajantesTable() {
   const { tramosSan } = useTramos();
@@ -434,7 +434,7 @@ export default function BajantesTable() {
           <tbody>
             {(()=>{
               const banTramos = tramosSan.filter(t => t.esBajante);
-              if (banTramos.length === 0) return <tr><td colSpan={21} style={{textAlign:'center',color:'var(--txt3)',padding:'24px 0',fontSize:11}}>No hay bajantes definidos. Marque un tramo como bajante en la tabla de Cálculo UD.</td></tr>;
+              if (banTramos.length === 0) return <tr><td colSpan={21} style={{textAlign:'center',color:'var(--txt3)',padding:'24px 0',fontSize:11}}>No hay bajantes definidos. Marque un tramo como bajante en la tabla de Cálculo de unidades de descarga.</td></tr>;
 
               return banTramos.map(t => {
                 const rVal = t.bajR;
@@ -524,7 +524,35 @@ export default function BajantesTable() {
                     <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,fontSize:10,padding:'1px 3px'}}>{Q > 0 ? Q.toFixed(2) : '—'}</td>
                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'1px 3px'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:9,padding:'1px 3px'}}>{DcalcPulg > 0 ? DcalcPulg.toFixed(2) + '"' : '—'}</td>
-                    <td className="c" style={{padding:'1px 3px'}}><span style={{fontFamily:'var(--mono)',fontSize:10}}>{t.bajDprop ? t.bajDprop + '"' : '—'}</span></td>
+                    <td className="c" style={{padding:'1px 3px'}}>
+                      <select
+                        aria-label="Diámetro Bajante Propuesto"
+                        value={t.bajDprop || ''}
+                        onChange={e => {
+                          const val = parseFloat(e.target.value) || 0;
+                          const tKey = t._key || `${t.id}-${planIdStr}`;
+                          const matched = DIAM_BAN.find(d => d.pulg === val);
+                          const nom = matched ? matched.nom : '';
+                          writeBajantePropToDrawing(tKey, t._net || 'san', 'dNominal', nom, plans);
+                        }}
+                        style={{
+                          fontSize: 10,
+                          padding: '2px 4px',
+                          background: 'var(--bg2)',
+                          border: '1px solid var(--line)',
+                          color: 'var(--txt)',
+                          borderRadius: 2,
+                          width: '100%',
+                          textAlign: 'center',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="">—</option>
+                        {DIAM_BAN.map(d => (
+                          <option key={d.pulg} value={d.pulg}>{d.nom}</option>
+                        ))}
+                      </select>
+                    </td>
                     <td className="c" style={{fontSize:10,padding:'1px 3px'}}>{renderStatus(chequeo)}</td>
                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'1px 3px'}}>{QmaxB > 0 ? QmaxB.toFixed(2) : '—'}</td>
                     <td className="c" style={{fontSize:10,padding:'1px 3px'}}>{Vt > 0 ? Vt.toFixed(2) : '—'}</td>
@@ -548,7 +576,40 @@ export default function BajantesTable() {
                       />
                     </td>
                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:9,padding:'1px 3px'}}>{DventCalcPulg > 0 ? DventCalcPulg.toFixed(2) + '"' : '—'}</td>
-                    <td className="c" style={{padding:'1px 3px'}}><span style={{fontFamily:'var(--mono)',fontSize:10}}>{t.ventDprop ? t.ventDprop + '"' : '—'}</span></td>
+                    <td className="c" style={{padding:'1px 3px'}}>
+                      <select
+                        aria-label="Diámetro Ventilación Propuesto"
+                        value={t.ventDprop || ''}
+                        onChange={e => {
+                          const val = parseFloat(e.target.value) || 0;
+                          if (t.ventRamalKey) {
+                            const matched = DIAM_VENT.find(d => d.pulg === val);
+                            const nom = matched ? matched.nom : '';
+                            writeDiametroToDrawing(t.ventRamalKey, 'vent', nom, plans);
+                          } else {
+                            const tKey = t._key || `${t.id}-${planIdStr}`;
+                            writeBajantePropToDrawing(tKey, t._net || 'san', 'ventDprop', val, plans);
+                          }
+                        }}
+                        style={{
+                          fontSize: 10,
+                          padding: '2px 4px',
+                          background: 'var(--bg2)',
+                          border: DventPropPulg < DventCalcPulg ? '1px solid var(--err)' : '1px solid var(--line)',
+                          color: DventPropPulg < DventCalcPulg ? 'var(--err)' : 'var(--txt)',
+                          fontWeight: DventPropPulg < DventCalcPulg ? 'bold' : 'normal',
+                          borderRadius: 2,
+                          width: '100%',
+                          textAlign: 'center',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="">—</option>
+                        {DIAM_VENT.map(d => (
+                          <option key={d.pulg} value={d.pulg}>{d.nom}</option>
+                        ))}
+                      </select>
+                    </td>
                   </tr>
                 );
               });

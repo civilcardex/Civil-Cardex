@@ -333,7 +333,7 @@ export default function AparatosPanel({ activeNet, selElement, planId }: { activ
   const netObj = NETS.find(n => n.id === netId);
   const accent = netObj?.col || '#2563EB';
 
-  const headerLbl = isGas ? '⛽ Gasodomésticos' : '🚿 Aparatos';
+  const headerLbl = isGas ? '⛽ Aparatos' : '🚿 Aparatos';
   const isActive = !!targetId;
   const containerStyle = {
     borderBottom: '1px solid #3a494a',
@@ -347,9 +347,9 @@ export default function AparatosPanel({ activeNet, selElement, planId }: { activ
       <button onClick={() => setOpen(o => !o)} aria-expanded={open} style={{
         width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '10px 12px 8px', background: 'transparent', border: 'none', cursor: 'pointer',
-        textAlign: 'left',
+        textAlign: 'left', overflow: 'hidden',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
           <span style={{
             display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
             background: isActive ? accent : 'transparent',
@@ -357,20 +357,20 @@ export default function AparatosPanel({ activeNet, selElement, planId }: { activ
             flexShrink: 0,
             boxShadow: isActive ? `0 0 8px ${accent}` : 'none',
           }} />
-          <span style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1 }}>
+          <span style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {headerLbl}
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0 }}>
           <span style={{
             fontSize: 11, fontWeight: 700, color: accent,
             fontFamily: "'Geist',monospace", background: 'rgba(37,99,235,.1)',
             border: `1px solid ${accent}55`,
-            borderRadius: 3, padding: '1px 7px',
+            borderRadius: 3, padding: '1px 7px', whiteSpace: 'nowrap',
           }}>
             {totalStr} {unidadLbl}
           </span>
-          <span style={{ fontSize: 10, color: 'var(--txt2)', fontFamily: "'Geist',monospace" }}>
+          <span style={{ fontSize: 10, color: 'var(--txt2)', fontFamily: "'Geist',monospace", flexShrink: 0 }}>
             {open ? '▾' : '▸'}
           </span>
         </div>
