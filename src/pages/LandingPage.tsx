@@ -131,10 +131,10 @@ function LandingPage() {
 
         {/* 7 Module Cards — bottom area */}
         <div className="relative z-10 px-4 pb-6 sm:pb-8 md:pb-10">
-          <ul className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 sm:gap-3 md:gap-4" style={{ listStyle: 'none', margin: 0, padding: 0, justifyItems: 'center' }}>
+          <ul className="max-w-7xl mx-auto flex flex-wrap justify-center gap-3 sm:gap-4 md:gap-5" style={{ listStyle: 'none', margin: '0 auto', padding: 0 }}>
             {MODULOS_HERO.map((m, i) => (
               <li key={m.id}
-                className="hero-mod-card flex flex-col items-center justify-center text-center p-2 sm:p-3 md:p-4 border rounded-lg relative w-full"
+                className="hero-mod-card flex flex-col items-center justify-center text-center p-3 border rounded-lg relative w-[140px] sm:w-[150px] md:w-[160px]"
                 style={{ '--mod-color': m.color,
                   background: 'rgba(10,14,20,0.6)',
                   backdropFilter: 'blur(8px)',
@@ -153,10 +153,9 @@ function LandingPage() {
                 <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 relative z-10 rounded-xl"
                   style={{
                     background: 'radial-gradient(circle at center, rgba(0,170,255,0.04) 0%, transparent 70%)',
-                    display: 'flex',
+                    display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    alignSelf: 'center',
                     marginBottom: '12px'
                   }}>
                   <img src={m.logo} alt={m.name} className="mod-logo" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />

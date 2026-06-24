@@ -1,4 +1,4 @@
-﻿import { Suspense, lazy, useMemo } from "react";
+import { Suspense, lazy, useMemo } from "react";
 import { pisoLbl } from "../constants";
 import PageNav from "./PageNav";
 import { RainwaterProvider } from "../context/RainwaterContext";
@@ -25,7 +25,7 @@ const BaseDatos = lazy(() => import('./DesignParameters'));
 const Normativa = lazy(() => import('./Regulations/Regulations'));
 const IsometriaTab = lazy(() => import('./workarea/IsometriaTab').then(m => ({ default: m.IsometriaTab })));
 
-const FALLBACK = <div style={{padding:20,color:'var(--txt2)',fontSize:13}}>Cargando...</div>;
+const FALLBACK = <div style={{ minHeight: 400 }} />;
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 
