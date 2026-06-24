@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { memo, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import PlanoEngine, { NETS } from "../lib/PlanoEngine";
-import { pisoLbl, matLongName, GAS, DIAM_BAN, DIAM_BY_MAT } from "../constants";
+import { pisoLbl, matLongName, GAS, DIAM_BAN, DIAM_BY_MAT, DEFAULT_PENDIENTE_PCT } from "../constants";
 import { VENTILACION } from "../pages/catalog/catalogData";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
@@ -15,6 +15,9 @@ import PdfViewerNetworkBar from "./pdfViewer/PdfViewerNetworkBar";
 import { usePdfAutoSave } from "./pdfViewer/usePdfAutoSave";
 import { usePdfViewerEngine } from "./pdfViewer/PdfViewerEngineInit";
 import PdfViewerDrawnElements from "./pdfViewer/PdfViewerDrawnElements";
+import BajanteContextMenu from "./pdfViewer/BajanteContextMenu";
+import TextInputOverlay from "./pdfViewer/TextInputOverlay";
+import ConfirmDialog from "./pdfViewer/ConfirmDialog";
 
 const TIPOS_TRAMO = [
   { id: "ramal", label: "Ramal" },
@@ -33,7 +36,7 @@ interface PdfViewerProps {
   activeNetworks: Set<string>;
 }
 
-export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan, pisos=[], planos=[], activeNetworks }: PdfViewerProps) {
+function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan, pisos=[], planos=[], activeNetworks }: PdfViewerProps) {
   const { mats } = useProject();
   const planosCtx = usePlans();
   const plansRef = useRef(planosCtx.plans);
@@ -139,9 +142,9 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
   const [contextMenuState, setContextMenuState] = useState<{ visible: boolean; x: number; y: number; bajante: any; isGhostClick?: boolean; ramalEndpoint?: { idx: number; x: number; y: number } | null } | null>(null);
   const [confirmState, setConfirmState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({isOpen: false, title: '', message: '', onConfirm: () => {}});
 
-  const onContextMenuCb = useCallback((bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null) => {
+  const onContextMenuCb = (bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null) => {
     setContextMenuState({ visible: true, x, y, bajante, isGhostClick, ramalEndpoint });
-  }, []);
+  };
 
   useEffect(() => {
     if (selectedNivel !== null) {
@@ -467,7 +470,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
     const d = activeNet === 'gas'
       ? (diamSel[activeNet] || GAS[0]?.rows[0]?.dn || '')
       : (diamSel[activeNet] || '');
-    const p = (activeNet === 'san' || activeNet === 'll') ? (pendSel[activeNet] !== undefined ? pendSel[activeNet] : 2.0) : 0;
+    const p = (activeNet === 'san' || activeNet === 'll') ? (pendSel[activeNet] !== undefined ? pendSel[activeNet] : DEFAULT_PENDIENTE_PCT) : 0;
     eng.setRamalDefaults({ material: matName, diametro: d, pendiente: p });
   }, [tool, activeNet, tipoTramo, snapOn, scaleM, mats, diamSel, pendSel, selectedNivel, pisos]);
 
@@ -685,7 +688,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
           currentFile={currentFile}
           saveStatus={saveStatus}
           onSelectTool={setTool}
-          onSnapToggle={() => setSnapOn(!snapOn)}
+          onSnapToggle={() => setSnapOn(prev => !prev)}
           onFit={handleFit}
           onSave={handleSave}
           onUndo={handleUndo}
@@ -713,584 +716,26 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
         onSelectPlan={onSelectPlan}
       />
 
-      {/* Text input overlay */}
-      {textOverlay && (
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-          zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(17,19,23,0.5)',
-        }} onClick={() => { textOverlay.cb(''); setTextOverlay(null); }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background: '#1a1c20', border: '2px solid #4D8FF7', borderRadius: 8,
-            padding: '16px 20px', boxShadow: '0 8px 32px rgba(77,143,247,0.25)',
-            display: 'flex', flexDirection: 'column', gap: 10, minWidth: 280,
-          }}>
-            <div style={{ fontSize: 11, color: '#849495', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1 }}>Texto</div>
-            <input
-              ref={textInputRef}
-              value={textOverlay.value}
-              onChange={e => setTextOverlay({ ...textOverlay, value: e.target.value })}
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  textOverlay.cb(textOverlay.value);
-                  setTextOverlay(null);
-                } else if (e.key === 'Escape') {
-                  textOverlay.cb('');
-                  setTextOverlay(null);
-                }
-              }}
-              placeholder="Escribe el texto..."
-              style={{
-                width: '100%', padding: '8px 12px', background: '#0d0f12',
-                border: '1px solid #3a494a', borderRadius: 4,
-                color: '#e2e2e8', fontSize: 14, fontFamily: "'Geist',monospace",
-                outline: 'none',
-              }}
-            />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button onClick={() => { textOverlay.cb(''); setTextOverlay(null); }} style={{
-                padding: '5px 14px', background: 'transparent', border: '1px solid #3a494a',
-                borderRadius: 4, color: '#849495', fontSize: 11, fontFamily: "'Geist',monospace",
-                cursor: 'pointer',
-              }}>Cancelar</button>
-              <button onClick={() => { textOverlay.cb(textOverlay.value); setTextOverlay(null); }} style={{
-                padding: '5px 14px', background: '#4D8FF7', border: '1px solid #4D8FF7',
-                borderRadius: 4, color: '#fff', fontSize: 11, fontFamily: "'Geist',monospace",
-                cursor: 'pointer', fontWeight: 600,
-              }}>Aceptar</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <TextInputOverlay
+          textOverlay={textOverlay}
+          setTextOverlay={setTextOverlay}
+          textInputRef={textInputRef}
+        />
 
-      {/* Context Menu overlay for Bajantes */}
-      {contextMenuState && contextMenuState.visible && (
-        <>
-          <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100
-          }} onClick={() => setContextMenuState(null)} onContextMenu={(e) => e.preventDefault()} />
-          <div style={{
-            position: 'absolute', left: contextMenuState.x, top: contextMenuState.y, zIndex: 101,
-            background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 6,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.4)', padding: '4px', minWidth: 180, maxWidth: 320,
-            display: 'flex', flexDirection: 'column', gap: 2,
-          }} onContextMenu={(e) => e.preventDefault()}>
-            {((contextMenuState.bajante.tipo === 'bajante' || contextMenuState.bajante.tipo === 'montante' || contextMenuState.bajante.id?.startsWith('B')) && !contextMenuState.bajante.pts) ? (
-              <>
-                {(() => {
-                  const isGhost = contextMenuState.isGhostClick || false;
-                  const currentGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-                  const gd = contextMenuState.bajante.ghostData?.[currentGhostLabel];
-                  const ghostDir = isGhost ? (gd && gd.direccion !== undefined ? gd.direccion : contextMenuState.bajante.direccion) : contextMenuState.bajante.direccion;
-                  const ghostDNom = isGhost ? (gd && gd.dNominal !== undefined ? gd.dNominal : contextMenuState.bajante.dNominal) : contextMenuState.bajante.dNominal;
-
-                  const updateGhostField = (field: string, val: string) => {
-                    if (!engineRef.current) return;
-                    const gd = { ...(contextMenuState.bajante.ghostData || {}) };
-                    const cd = { ...(gd[currentGhostLabel] || {}) };
-                    (cd as any)[field] = val;
-                    gd[currentGhostLabel] = cd;
-                    engineRef.current.updateElementById(contextMenuState.bajante.id, { ghostData: gd });
-                    const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
-                    if (fresh) {
-                      setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
-                      if (selElement?.id === contextMenuState.bajante.id) {
-                        setSelElement({ ...selElement, ghostData: gd });
-                      }
-                    }
-                  };
-
-                  return (<>
-                <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Dirección de flujo
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: '0 8px 4px' }}>
-                  {(isGhost ? ['Sube', 'Baja', 'Continua'] : ['Sube', 'Baja', 'Continua', 'Desplazamiento']).map(opt => {
-                    const isActive = opt === 'Desplazamiento'
-                      ? (!ghostDir && !!(contextMenuState.bajante.desplazamientos && contextMenuState.bajante.desplazamientos[currentGhostLabel]))
-                      : (ghostDir === opt.toLowerCase());
-                    return (
-                      <button
-                        key={opt}
-                        onClick={() => {
-                          if (engineRef.current) {
-                            if (isGhost && opt !== 'Desplazamiento') {
-                              updateGhostField('direccion', opt.toLowerCase());
-                              engineRef.current.render();
-                              return;
-                            }
-                            const currentNpt = pisos.find(p => p.n === selectedNivel)?.npt || 0;
-                            const allNpts = pisos.map(p => p.npt).sort((a,b) => a-b);
-                            const maxNpt = allNpts[allNpts.length - 1] || 0;
-                            const minNpt = allNpts[0] || 0;
-                            let updates: any = {};
-                            
-                            if (opt === 'Sube') {
-                              const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-                              const currentDesp = { ...(contextMenuState.bajante.desplazamientos || {}) };
-                              updates = { direccion: 'sube', nptBase: currentNpt, nptCima: maxNpt, desplazamientos: currentDesp };
-                            } else if (opt === 'Baja') {
-                              const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-                              const currentDesp = { ...(contextMenuState.bajante.desplazamientos || {}) };
-                              updates = { direccion: 'baja', nptBase: minNpt, nptCima: currentNpt, desplazamientos: currentDesp };
-                            } else if (opt === 'Continua') {
-                              const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-                              const currentDesp = { ...(contextMenuState.bajante.desplazamientos || {}) };
-                              updates = { direccion: 'continua', desplazamientos: currentDesp };
-                            } else if (opt === 'Desplazamiento') {
-                              const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-                              if (lvl) {
-                                const currentDesp = contextMenuState.bajante.desplazamientos || {};
-                                updates = {
-                                  direccion: undefined,
-                                  desplazamientos: {
-                                    ...currentDesp,
-                                    [lvl]: { 
-                                      dx: currentDesp[lvl]?.dx ?? 2, 
-                                      dy: currentDesp[lvl]?.dy ?? 0,
-                                      Ldesvio: currentDesp[lvl]?.Ldesvio
-                                    }
-                                  }
-                                };
-                              }
-                            }
-                            if (Object.keys(updates).length > 0) {
-                              engineRef.current.updateElementById(contextMenuState.bajante.id, updates);
-                              const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
-                              if (fresh) {
-                                setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
-                              }
-                              if (selElement?.id === contextMenuState.bajante.id) {
-                                setSelElement({ ...selElement, ...updates });
-                              }
-                            }
-                          }
-                        }}
-                        style={{
-                          background: isActive ? 'rgba(37,99,235,0.15)' : '#1e2024',
-                          border: `1px solid ${isActive ? '#2563eb' : '#3a494a'}`,
-                          color: isActive ? '#3b82f6' : '#e2e2e8',
-                          padding: '6px 8px',
-                          textAlign: 'left', fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer',
-                          borderRadius: 3, display: 'flex', alignItems: 'center', gap: 6,
-                          transition: 'all 0.1s',
-                        }}
-                        onMouseEnter={e => {
-                          if (!isActive) e.currentTarget.style.background = '#2563eb33';
-                        }}
-                        onMouseLeave={e => {
-                          if (!isActive) e.currentTarget.style.background = '#1e2024';
-                        }}
-                      >
-                        <div style={{ color: opt === 'Sube' ? '#00dce5' : opt === 'Baja' ? '#F04545' : '#FFEB3B' }}>
-                          {opt === 'Sube' ? '⬆' : opt === 'Baja' ? '⬇' : opt === 'Continua' ? '➜' : '➡'}
-                        </div>
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
-              </>);
-            })()}
-
-            {!contextMenuState.isGhostClick && (
-              <button
-                onClick={() => {
-                  if (engineRef.current) {
-                    const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-                    const isFantasma = contextMenuState.bajante.isFantasma;
-                    const updates: any = { isFantasma: !isFantasma };
-                    if (!isFantasma && lvl) {
-                      const currentDesp = { ...(contextMenuState.bajante.desplazamientos || {}) };
-                      if (!currentDesp[lvl]) {
-                        currentDesp[lvl] = { dx: 2, dy: 0 };
-                        updates.desplazamientos = currentDesp;
-                      }
-                    }
-                    engineRef.current.updateElementById(contextMenuState.bajante.id, updates);
-                    const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
-                    if (fresh) {
-                      setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
-                    }
-                    engineRef.current.render();
-                  }
-                }}
-                style={{
-                  background: 'transparent', border: 'none', color: '#e2e2e8', padding: '6px 8px',
-                  textAlign: 'left', fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer',
-                  borderRadius: 3, display: 'flex', alignItems: 'center', gap: 6,
-                  marginTop: 4, borderTop: '1px solid #3a494a'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = '#2563eb33'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-              >
-                {contextMenuState.bajante.isFantasma ? 'Desactivar bajante de desplazamiento' : 'Activar bajante de desplazamiento'}
-              </button>
-            )}
-
-            {!contextMenuState.isGhostClick ? (
-              <>
-                <div style={{ display: 'flex', gap: 6, padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
-                {/* Destino */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Destino</div>
-                  <select value={contextMenuState.bajante.descargaEnId || ''}
-                    onChange={e => {
-                      const v = e.target.value || null;
-                      engineRef.current?.updateElementById(contextMenuState.bajante.id, { descargaEnId: v });
-                      const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
-                      if (fresh) setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
-                      if (selElement?.id === contextMenuState.bajante.id) {
-                        setSelElement({ ...selElement, descargaEnId: v });
-                      }
-                    }}
-                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                    <option value="">— Sin destino —</option>
-                    {lowerFloorsRamales.map(group => {
-                      const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
-                      const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
-                      return (
-                        <optgroup key={group.planId} label={pLabel + (group.ramales.length === 0 ? ' (sin ramales)' : '')}>
-                          {group.ramales.length > 0 ? group.ramales.map((r: any) => (
-                            <option key={`${group.planId}|${r.id}`} value={`${group.planId}|${r.id}`}>
-                              {r.label || r.id}
-                            </option>
-                          )) : (
-                            <option value="" disabled>— Sin ramales disponibles —</option>
-                          )}
-                        </optgroup>
-                      );
-                    })}
-                  </select>
-                </div>
-                {/* Diámetro */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Diámetro</div>
-                  <select value={(() => {
-                    const dIsGhost = contextMenuState.isGhostClick || false;
-                    const dGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-                    const gd = contextMenuState.bajante.ghostData?.[dGhostLabel];
-                    return dIsGhost ? (gd && gd.dNominal !== undefined ? gd.dNominal : (contextMenuState.bajante.dNominal || '')) : (contextMenuState.bajante.dNominal || '');
-                  })()}
-                    onChange={e => {
-                      const val = e.target.value;
-                      const dIsGhost = contextMenuState.isGhostClick || false;
-                      if (dIsGhost && engineRef.current) {
-                        const dGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-                        const gd2 = { ...(contextMenuState.bajante.ghostData || {}) };
-                        const cd = { ...(gd2[dGhostLabel] || {}) };
-                        cd.dNominal = val;
-                        gd2[dGhostLabel] = cd;
-                        engineRef.current?.updateElementById(contextMenuState.bajante.id, { ghostData: gd2 });
-                        const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
-                        if (fresh) {
-                          setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
-                          if (selElement?.id === contextMenuState.bajante.id) {
-                            setSelElement({ ...selElement, ghostData: gd2 });
-                          }
-                        }
-                      } else {
-                        engineRef.current?.updateElementById(contextMenuState.bajante.id, { dNominal: val });
-                        setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, dNominal: val } } : null);
-                        if (selElement?.id === contextMenuState.bajante.id) {
-                          setSelElement({ ...selElement, dNominal: val });
-                        }
-                      }
-                    }}
-                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                    <option value="">—</option>
-                    {DIAM_BAN.map(d => (
-                      <option key={d.pulg} value={d.nom}>{d.nom}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 6, padding: '0 8px 4px' }}>
-                {/* Llenado (R) */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Llenado (R)</div>
-                  <select value={contextMenuState.bajante.bajR != null ? (Math.abs(contextMenuState.bajante.bajR - 7/24) < 0.001 ? '7/24' : '1/4') : '7/24'}
-                    onChange={e => {
-                      const val = e.target.value;
-                      const valNum = val === '7/24' ? 7/24 : 0.25;
-                      engineRef.current?.updateElementById(contextMenuState.bajante.id, { bajR: valNum });
-                      const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
-                      if (fresh) setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
-                      if (selElement?.id === contextMenuState.bajante.id) {
-                        setSelElement({ ...selElement, bajR: valNum });
-                      }
-                    }}
-                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                    <option value="7/24">7/24</option>
-                    <option value="1/4">1/4</option>
-                  </select>
-                </div>
-                {/* Área asociada */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Área asociada</div>
-                  <select value={contextMenuState.bajante.area_m2 || ''}
-                    onChange={e => {
-                      const val = parseFloat(e.target.value) || 0;
-                      engineRef.current?.updateElementById(contextMenuState.bajante.id, { area_m2: val });
-                      setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, area_m2: val } } : null);
-                      if (selElement?.id === contextMenuState.bajante.id) {
-                        setSelElement({ ...selElement, area_m2: val });
-                      }
-                    }}
-                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                    <option value="">— Sin área —</option>
-                    {(engineRef.current?.areas || []).filter((a: any) => a.net === contextMenuState.bajante.net).map((a: any) => (
-                      <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </>
-          ) : (
-            /* Ghost click - Diameter only */
-            <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
-              <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Diámetro</div>
-              <select value={(() => {
-                const dIsGhost = contextMenuState.isGhostClick || false;
-                const dGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-                const gd = contextMenuState.bajante.ghostData?.[dGhostLabel];
-                return dIsGhost ? (gd && gd.dNominal !== undefined ? gd.dNominal : (contextMenuState.bajante.dNominal || '')) : (contextMenuState.bajante.dNominal || '');
-              })()}
-                onChange={e => {
-                  const val = e.target.value;
-                  const dIsGhost = contextMenuState.isGhostClick || false;
-                  if (dIsGhost && engineRef.current) {
-                    const dGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-                    const gd2 = { ...(contextMenuState.bajante.ghostData || {}) };
-                    const cd = { ...(gd2[dGhostLabel] || {}) };
-                    cd.dNominal = val;
-                    gd2[dGhostLabel] = cd;
-                    engineRef.current?.updateElementById(contextMenuState.bajante.id, { ghostData: gd2 });
-                    const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
-                    if (fresh) {
-                      setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
-                      if (selElement?.id === contextMenuState.bajante.id) {
-                        setSelElement({ ...selElement, ghostData: gd2 });
-                      }
-                    }
-                  } else {
-                    engineRef.current?.updateElementById(contextMenuState.bajante.id, { dNominal: val });
-                    setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, dNominal: val } } : null);
-                    if (selElement?.id === contextMenuState.bajante.id) {
-                      setSelElement({ ...selElement, dNominal: val });
-                    }
-                  }
-                }}
-                style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                <option value="">—</option>
-                {DIAM_BAN.map(d => (
-                  <option key={d.pulg} value={d.nom}>{d.nom}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Show Ramales selector occupying full width if not ghost and activeNet in ['san', 'll'] */}
-          {!contextMenuState.isGhostClick && ['san', 'll'].includes(activeNet) && (
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-              padding: '4px 8px',
-              borderTop: '1px solid #3a494a',
-              marginTop: 4
-            }}>
-              <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Ramales asociados</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
-                {(() => {
-                  const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === activeNet && r.tipo !== 'tributario');
-                  if (bajRamales.length === 0) return <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin ramales</div>;
-                  const recibidos = (contextMenuState.bajante.recibeDeIds || []) as string[];
-                  return bajRamales.map((r: any) => (
-                    <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
-                      <input type="checkbox" checked={recibidos.includes(r.id)}
-                        onChange={e => {
-                          const newRecibe = e.target.checked
-                            ? [...recibidos, r.id]
-                            : recibidos.filter(id => id !== r.id);
-                          engineRef.current?.updateElementById(contextMenuState.bajante.id, { recibeDeIds: newRecibe });
-                          setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, recibeDeIds: newRecibe } } : null);
-                          if (selElement?.id === contextMenuState.bajante.id) {
-                            setSelElement({ ...selElement, recibeDeIds: newRecibe });
-                          }
-                        }}
-                        style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
-                      <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label || r.id}</span>
-                    </label>
-                  ));
-                })()}
-              </div>
-            </div>
-          )}
-            </>
-            ) : contextMenuState.bajante.id?.startsWith('AR') ? (
-              <>
-                <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Asociar Bajante
-                </div>
-                <div style={{ padding: '0 8px 8px' }}>
-                  <select
-                    value={(engineRef.current?.bajantes || []).find((b:any) => b.area_m2 === contextMenuState.bajante.areaM2)?.id || ''}
-                    onChange={e => {
-                      const bajanteId = e.target.value;
-                      (engineRef.current?.bajantes || []).forEach((b:any) => {
-                        if (b.area_m2 === contextMenuState.bajante.areaM2) {
-                          engineRef.current?.updateElementById(b.id, { area_m2: 0 });
-                        }
-                      });
-                      if (bajanteId) {
-                        engineRef.current?.updateElementById(bajanteId, { area_m2: contextMenuState.bajante.areaM2 });
-                      }
-                      engineRef.current?.render();
-                      setContextMenuState(null);
-                    }}
-                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                    <option value="">— Sin bajante —</option>
-                    {(engineRef.current?.bajantes || []).filter((b: any) => b.net === contextMenuState.bajante.net).map((b: any) => (
-                      <option key={b.id} value={b.id}>{b.code || b.id}</option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            ) : contextMenuState.bajante.pts ? (
-              <>
-                {contextMenuState.ramalEndpoint && (() => {
-                  const supNets = ['san', 'll', 'vent', 'af', 'ac', 'gas', 'rci', 'rec'];
-                  if (!supNets.includes(contextMenuState.bajante.net)) return null;
-                  const ep = contextMenuState.ramalEndpoint;
-                  const netDef = NETS.find((n: any) => n.id === contextMenuState.bajante.net);
-                  const bmLabel = netDef?.bmType === 'bajante' ? 'bajante' : 'montante';
-                  return (
-                    <div style={{ padding: '4px 8px' }}>
-                      <button onClick={() => {
-                        const eng = engineRef.current;
-                        if (!eng) return;
-                        const cnt = eng.bajantes.filter((b: any) => b.net === contextMenuState.bajante.net).length + 1;
-                        const id = (netDef?.bmPfx || 'B') + cnt;
-                        const nl = eng.nivelActual;
-                        eng.bajantes.push({
-                          id, net: contextMenuState.bajante.net,
-                          tipo: bmLabel,
-                          code: id,
-                          direccion: bmLabel === 'bajante' ? 'baja' : 'sube',
-                          x: ep.x, y: ep.y,
-                          pisoBase: nl?.label ?? '',
-                          pisoCima: nl?.label ?? '',
-                          nptBase: nl?.npt ?? 0,
-                          nptCima: nl?.npt ?? 0,
-                          hVert: 0,
-                          dNominal: '0', recibeDeIds: [contextMenuState.bajante.id], alimentaIds: [], descargaEnId: null,
-                          ucAcum: 0, ucExtra: 0, area_m2: 0,
-                          desplazamientos: {},
-                          lblOffX: 0, lblOffY: 0, labelAngle: 0,
-                          labelX: ep.x, labelY: ep.y + 20,
-                          bajR: 7/24,
-                        });
-                        eng.selId = id;
-                        eng._isGhostSel = false;
-                        eng._emitSelect(eng.bajantes[eng.bajantes.length - 1]);
-                        eng.render();
-                        eng._markDirty();
-                        setContextMenuState(null);
-                      }} style={{
-                        width: '100%', padding: '6px 8px', cursor: 'pointer',
-                        background: '#1e2024', border: '1px dashed #00dce5', borderRadius: 4,
-                        color: '#00dce5', fontSize: 11, fontFamily: "'Geist',monospace",
-                        textAlign: 'center', fontWeight: 600,
-                      }}>+ Crear {bmLabel}</button>
-                    </div>
-                  );
-                })()}
-                <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Diámetro de ramal
-                </div>
-                {(() => {
-                  const isGas = contextMenuState.bajante.net === 'gas';
-                  const isVen = contextMenuState.bajante.net === 'vent';
-                  const matList = mats?.[contextMenuState.bajante.net] || [];
-                  const matShort = contextMenuState.bajante.material || matList[0]?.val || '—';
-                  let diamList: any[] = [];
-                  if (isVen) {
-                    diamList = VENTILACION[0]?.rows.map((r: any) => ({ n: r.dn })) || [];
-                  } else if (isGas) {
-                    diamList = GAS[0]?.rows.map(r => ({n: r.dn})) || [];
-                  } else {
-                    diamList = DIAM_BY_MAT[matShort] || [];
-                  }
-                  
-                  return (
-                    <div style={{ padding: '0 8px 8px' }}>
-                      <select
-                        value={contextMenuState.bajante.diametro ? contextMenuState.bajante.diametro.split(' — ')[0].trim() : ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (engineRef.current) {
-                            engineRef.current.updateElementById(contextMenuState.bajante.id, { diametro: val });
-                            setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, diametro: val } } : null);
-                            if (selElement?.id === contextMenuState.bajante.id) {
-                              setSelElement({ ...selElement, diametro: val });
-                            }
-                            if (activeNet === contextMenuState.bajante.net) {
-                              setDiamSel(prev => ({ ...prev, [activeNet]: val }));
-                            }
-                            engineRef.current.render();
-                          }
-                        }}
-                        style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
-                      >
-                        <option value="">— Sin diámetro —</option>
-                        {diamList.map((d: any) => {
-                          const valClean = d.n.split(' — ')[0].trim();
-                          return <option key={d.n} value={valClean}>{valClean}</option>;
-                        })}
-                      </select>
-                    </div>
-                  );
-                })()}
-
-                <div style={{
-                  display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4
-                }}>
-                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
-                    {(() => {
-                      const netBajantes = (engineRef.current?.bajantes || []).filter((b: any) => b.net === contextMenuState.bajante.net && b.tipo !== 'tributario');
-                      if (netBajantes.length === 0) return <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin bajantes</div>;
-                      const ramalId = contextMenuState.bajante.id;
-                      return netBajantes.map((b: any) => {
-                        const isAssociated = (b.recibeDeIds || []).includes(ramalId);
-                        return (
-                        <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
-                          <input type="checkbox" checked={isAssociated}
-                            onChange={e => {
-                              const recibidos = b.recibeDeIds || [];
-                              const newRecibe = e.target.checked
-                                ? [...recibidos, ramalId]
-                                : recibidos.filter((id: string) => id !== ramalId);
-                              engineRef.current?.updateElementById(b.id, { recibeDeIds: newRecibe });
-                              setContextMenuState(prev => prev ? { ...prev } : null);
-                              if (selElement?.id === b.id) {
-                                setSelElement({ ...selElement, recibeDeIds: newRecibe });
-                              }
-                            }}
-                            style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
-                          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.label || b.id}</span>
-                        </label>
-                      )});
-                    })()}
-                  </div>
-                </div>
-
-              </>
-            ) : null}
-          </div>
-        </>
-      )}
+      <BajanteContextMenu
+          contextMenuState={contextMenuState}
+          setContextMenuState={setContextMenuState}
+          selectedNivel={selectedNivel}
+          pisos={pisos}
+          engineRef={engineRef}
+          selElement={selElement}
+          setSelElement={setSelElement}
+          lowerFloorsRamales={lowerFloorsRamales}
+          planosCtx={planosCtx}
+          mats={mats}
+          activeNet={activeNet}
+          setDiamSel={setDiamSel}
+        />
 
       {/* Right sidebar: Piso, ¿Qué voy a dibujar?, Tramo, Escala */}
       <div className="visor-sidebar-right" style={{
@@ -1302,7 +747,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
         {/* Nivel — always enabled */}
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Nivel</div>
-          <select value={selectedNivel??''} onChange={e=>{
+          <select aria-label="Seleccionar nivel" value={selectedNivel??''} onChange={e=>{
             const v=e.target.value?Number(e.target.value):null;
             setSelectedNivel(v);
             if (v !== null) {
@@ -1360,7 +805,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
           {tipoTramo === 'tributario' && (
             <div style={{marginTop:8,padding:'8px 10px',background:padreTributarioId?'rgba(37,99,235,.12)':'#1e2024',border:`1px solid ${padreTributarioId?'#2563EB':'#3a494a'}`,borderRadius:3}}>
               <div style={{fontSize:9,color:'#849495',fontFamily:"'Geist',monospace",textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>Padre (ramal asignado)</div>
-              <select value={padreTributarioId||''}
+              <select aria-label="Seleccionar ramal padre tributario" value={padreTributarioId||''}
                 onChange={e=>{
                   const v=e.target.value||null;
                   setPadreTributarioId(v);
@@ -1422,7 +867,7 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
               <div>
                 <div style={{ fontSize: 8, color: '#6b8cae', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: .5 }}>Destino</div>
                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                  <select value={selElement.descargaEnId || ''}
+                  <select aria-label="Seleccionar destino de descarga" value={selElement.descargaEnId || ''}
                     onChange={e => {
                       const v = e.target.value || null;
                       if (engineRef.current) {
@@ -1492,24 +937,12 @@ export default function PdfViewer({ files, activeIndex, onSelectPlan, onAddPlan,
       </div>
       </div>
       
-      {confirmState.isOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: 'var(--bg2)', padding: '20px', borderRadius: 'var(--r)', minWidth: 320, maxWidth: 400, border: '1px solid var(--line)', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#ef5350', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 20 }}>⚠</span> {confirmState.title}
-            </div>
-            <div style={{ fontSize: 13, color: 'var(--txt2)', marginBottom: 20, lineHeight: 1.5 }}>
-              {confirmState.message}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button onClick={() => setConfirmState(prev => ({...prev, isOpen: false}))} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 4, color: 'var(--txt)', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Cancelar</button>
-              <button onClick={confirmState.onConfirm} style={{ padding: '6px 12px', background: '#ef5350', border: 'none', borderRadius: 4, color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Eliminar</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog confirmState={confirmState} setConfirmState={setConfirmState} />
 
     </div>
     </div>
   );
 }
+
+const PdfViewer = memo(PdfViewer_);
+export default PdfViewer;

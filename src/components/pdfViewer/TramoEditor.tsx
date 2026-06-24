@@ -68,19 +68,19 @@ export default function TramoEditor({
               <div style={{display:'grid',gridTemplateColumns:'1.4fr 1fr 1fr',gap:3}}>
                 <div>
                   <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Nombre</div>
-                  <input value={selElement.label||''} placeholder="Tramo"
+                  <input value={selElement.label||''} placeholder="Tramo" aria-label="Nombre del tramo"
                     onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({label:v});setSelElement({...selElement,label:v})}}}
                     style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
                 </div>
                 <div>
                   <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Inicio</div>
-                  <input value={selElement.ini||''} placeholder="— ini —"
+                  <input value={selElement.ini||''} placeholder="— ini —" aria-label="Conexión de inicio"
                     onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({ini:v});setSelElement({...selElement,ini:v})}}}
                     style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
                 </div>
                 <div>
                   <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Fin</div>
-                  <input value={selElement.fin||''} placeholder="— fin —"
+                  <input value={selElement.fin||''} placeholder="— fin —" aria-label="Conexión de fin"
                     onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({fin:v});setSelElement({...selElement,fin:v})}}}
                     style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
                 </div>
@@ -89,7 +89,7 @@ export default function TramoEditor({
             {(selElement.tipo === 'bajante' || selElement.tipo === 'montante' || selElement.id?.startsWith('B'))&&(
               <div>
                 <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Código</div>
-                <input value={selElement.code||''} placeholder="Código bajante"
+                <input value={selElement.code||''} placeholder="Código bajante" aria-label="Código"
                   onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({code:v});setSelElement({...selElement,code:v})}}}
                   style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
               </div>
@@ -97,7 +97,7 @@ export default function TramoEditor({
             {selElement.id?.startsWith('T')&&(
               <div>
                 <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Texto</div>
-                <input value={selElement.text||''} placeholder="Texto"
+                <input value={selElement.text||''} placeholder="Texto" aria-label="Texto adicional"
                   onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({text:v});setSelElement({...selElement,text:v})}}}
                   style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
               </div>
@@ -106,7 +106,7 @@ export default function TramoEditor({
               <>
                 <div>
                   <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Etiqueta</div>
-                  <input value={selElement.label||''} placeholder="Etiqueta área"
+                  <input value={selElement.label||''} placeholder="Etiqueta área" aria-label="Etiqueta"
                     onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({label:v});setSelElement({...selElement,label:v})}}}
                     style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace"}}/>
                 </div>
@@ -119,6 +119,7 @@ export default function TramoEditor({
                 <div>
                   <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Asociar Bajante</div>
                   <select
+                    aria-label="Asociar bajante"
                     value={(engineRef.current?.bajantes || []).find((b:any) => b.area_m2 === selElement.areaM2)?.id || ''}
                     onChange={e => {
                       const bajanteId = e.target.value;
@@ -175,7 +176,7 @@ export default function TramoEditor({
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div>
                     <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Diámetro</div>
-                    <select value={currentGhostDiam}
+                    <select value={currentGhostDiam} aria-label="Diámetro"
                       onChange={e => {
                         const val = e.target.value;
                         const gdNew = { ...(selElement.ghostData || {}) };
@@ -239,13 +240,13 @@ export default function TramoEditor({
               <div style={{ display: 'flex', gap: 6 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>H (m)</div>
-                  <input type="number" step="0.01" value={selElement.hVert ?? ''} placeholder="0.00"
+                  <input type="number" step="0.01" value={selElement.hVert ?? ''} placeholder="0.00" aria-label="Altura H (m)"
                     onChange={e => { const v = e.target.value; handleUpdateSel('hVert', v ? parseFloat(v) : 0); }}
                     style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", textAlign: 'center' }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Diámetro</div>
-                  <select value={selElement.dNominal !== undefined && selElement.dNominal !== '0' && selElement.dNominal !== '' ? selElement.dNominal : ''}
+                  <select value={selElement.dNominal !== undefined && selElement.dNominal !== '0' && selElement.dNominal !== '' ? selElement.dNominal : ''} aria-label="Diámetro"
                     onChange={e => { handleUpdateSel('dNominal', e.target.value); }}
                     style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
                     <option value="">—</option>
@@ -258,7 +259,7 @@ export default function TramoEditor({
               <div style={{ display: 'flex', gap: 8 }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Llenado (R)</div>
-                  <select value={selElement.bajR != null ? (Math.abs(selElement.bajR - 7/24) < 0.001 ? '7/24' : '1/4') : '7/24'}
+                  <select value={selElement.bajR != null ? (Math.abs(selElement.bajR - 7/24) < 0.001 ? '7/24' : '1/4') : '7/24'} aria-label="Llenado (R)"
                     onChange={e => {
                       const val = e.target.value;
                       const valNum = val === '7/24' ? 7/24 : 0.25;
@@ -271,7 +272,7 @@ export default function TramoEditor({
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Área asociada</div>
-                  <select value={selElement.area_m2 ? String(selElement.area_m2) : ''}
+                  <select value={selElement.area_m2 ? String(selElement.area_m2) : ''} aria-label="Área asociada"
                     onChange={e => {
                       const val = parseFloat(e.target.value) || 0;
                       handleUpdateSel('area_m2', val);
@@ -387,7 +388,7 @@ export default function TramoEditor({
               {isGas ? (
                 <div>
                   <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Material</div>
-                  <select value={currentMat}
+                  <select value={currentMat} aria-label="Material"
                     onChange={e => {
                       const mat = e.target.value;
                       const g = GAS.find(x => x.mat === mat);
@@ -415,7 +416,7 @@ export default function TramoEditor({
                 <div>
                   <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Diámetro</div>
       {isGas ? (
-        <select value={currentDiam}
+        <select value={currentDiam} aria-label="Diámetro"
         onChange={e => {
           const dn = e.target.value;
           setDiamSel(prev => ({ ...prev, [activeNet]: dn }));
@@ -442,7 +443,7 @@ export default function TramoEditor({
           })()}
         </select>
       ) : diamList.length > 0 ? (
-        <select value={currentDiam}
+        <select value={currentDiam} aria-label="Diámetro"
         onChange={e => {
           const v = e.target.value;
           setDiamSel(prev => ({ ...prev, [activeNet]: v }));
@@ -474,7 +475,7 @@ export default function TramoEditor({
       {showPend ? (
         <div>
           <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Pendiente %</div>
-          <input type="text" inputMode="decimal" value={pendInput}
+          <input type="text" inputMode="decimal" value={pendInput} aria-label="Pendiente (%)"
             onChange={e => {
               const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
               setPendInput(raw);
@@ -512,14 +513,14 @@ export default function TramoEditor({
                 <div style={{ display: 'grid', gridTemplateColumns: showDescargas ? '1fr 1fr' : '1fr', gap: 6 }}>
                   <div>
                     <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>ΔZ / L vert (m)</div>
-                    <input type="number" step="0.01" value={selElement?.dz ?? ''} placeholder="0.00"
+                    <input type="number" step="0.01" value={selElement?.dz ?? ''} placeholder="0.00" aria-label="Delta Z o longitud vertical (m)"
                       onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({dz:v,lvert:v});setSelElement({...selElement,dz:v,lvert:v})}}}
                       style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
                   </div>
                   {showDescargas && (
                     <div>
                       <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>No. de descargas</div>
-                      <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0"
+                      <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0" aria-label="Número de descargas"
                         onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||0;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
                         style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
                     </div>
@@ -529,7 +530,7 @@ export default function TramoEditor({
               {!showDeltaZ && showDescargas && (
                 <div>
                   <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>No. de descargas</div>
-                  <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0"
+                  <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0" aria-label="Número de descargas"
                     onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||0;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
                     style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
                 </div>
