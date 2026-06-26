@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { useTramos } from "../context/TramosContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, pisoCorto } from "../constants";
@@ -70,7 +70,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                   ) : (
                     <th scope="col" className="col-h ok" rowSpan={2} style={{minWidth:52,textAlign:'center',padding:'4px'}}>Parcial</th>
                   )}
-                  {showTotal && <th scope="col" className="col-h" rowSpan={2} style={{minWidth:44,textAlign:'center',padding:'4px'}}>Lh (m)</th>}
+                  {showTotal && <th scope="col" className="col-h" rowSpan={2} style={{minWidth:44,textAlign:'center',padding:'4px'}}>Longitud (m)</th>}
                   {showTotal && <th scope="col" className="col-h" rowSpan={2} style={{minWidth:52,textAlign:'center',padding:'4px'}}>No de descarga<br/>Simultáneas</th>}
                 </tr>
                 <tr>
@@ -97,7 +97,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                 ) : [...tramos].sort((a, b) => (a.piso || 0) - (b.piso || 0)).map((t, i) => {
                   const parcial = calcUCparcial(t, AP as any, field);
                   const acum = showTotal ? (acumMap[t.id] || 0) : 0;
-                  const vLh = t.Lh ?? 0;
+                  const vLh = t.totalL || t.Lh || 0;
                   const vNS = t.nSalidas ?? 0;
                   return (
                     <tr key={i}>
@@ -117,7 +117,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       {showTotal && (
                         <td className="c" style={{fontFamily:monof,fontWeight:700,color:colorVar,fontSize:14}}>{acum}</td>
                       )}
-                      {showTotal && <td className="c" style={{padding:'2px 4px'}}><span style={{fontFamily:monof,fontSize:12,color:txt2}}>{vLh > 0 ? vLh.toFixed(1) : '\u2014'}</span></td>}
+                      {showTotal && <td className="c" style={{padding:'2px 4px'}}><span style={{fontFamily:monof,fontSize:12,color:txt2}}>{vLh > 0 ? vLh.toFixed(2) : '\u2014'}</span></td>}
                       {showTotal && <td className="c" style={{padding:'2px 4px'}}><span style={{fontFamily:monof,fontSize:12,color:txt2}}>{vNS > 0 ? vNS : '\u2014'}</span></td>}
                     </tr>
                   );
