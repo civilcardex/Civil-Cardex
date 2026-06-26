@@ -76,17 +76,71 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     ctx.rotate(angle);
 
     ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = b.tipo === 'bajante' ? '#F04545' : '#3B82F6';
-    ctx.lineWidth = (sel ? 4.5 : 3.5) * engine.zoom;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.stroke();
+    if (b.tipo === 'red_publica' || b.tipo === 'contador') {
+      const afNet = NETS.find((n: any) => n.id === 'af');
+      const afCol = afNet ? afNet.col : '#4D8FF7';
+      ctx.fillStyle = b.tipo === 'red_publica' ? '#64748b' : afCol;
+      ctx.beginPath();
+      ctx.rect(-r, -r, r * 2, r * 2);
+      ctx.fill();
+      ctx.strokeStyle = sel ? '#FFEB3B' : (b.tipo === 'red_publica' ? '#475569' : afCol);
+      ctx.lineWidth = (sel ? 4.5 : 2) * engine.zoom;
+      ctx.beginPath();
+      ctx.rect(-r, -r, r * 2, r * 2);
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = b.tipo === 'bajante' ? '#F04545' : '#3B82F6';
+      ctx.lineWidth = (sel ? 4.5 : 3.5) * engine.zoom;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
 
     const arrowCol = b.tipo === 'bajante' ? '#F04545' : '#3B82F6';
-    if (b.direccion === 'sube') {
+    if (b.tipo === 'red_publica') {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${r * 0.9}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('RP', 0, 0);
+    } else if (b.tipo === 'contador') {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${r * 0.9}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('C', 0, 0);
+
+      // Draw arrow entering from the bottom of the box, saying "Red Pública"
+      ctx.save();
+      const zoom = engine.zoom;
+      const arrowColor = '#64748b'; // grey color
+      ctx.strokeStyle = arrowColor;
+      ctx.fillStyle = arrowColor;
+      ctx.lineWidth = 2.5 * zoom; // thicker line
+
+      // Vertical line: from (0, r + 24 * zoom) to (0, r + 5 * zoom)
+      ctx.beginPath();
+      ctx.moveTo(0, r + 24 * zoom);
+      ctx.lineTo(0, r + 5 * zoom);
+      ctx.stroke();
+
+      // Arrow head pointing up at (0, r + 3 * zoom)
+      ctx.beginPath();
+      ctx.moveTo(0, r + 3 * zoom);
+      ctx.lineTo(-5 * zoom, r + 11 * zoom);
+      ctx.lineTo(5 * zoom, r + 11 * zoom);
+      ctx.closePath();
+      ctx.fill();
+
+      // Text "Red Pública" centered under the arrow
+      ctx.font = `bold ${r * 0.7}px sans-serif`; // larger text
+      ctx.textBaseline = 'top';
+      ctx.fillText('Red Pública', 0, r + 28 * zoom);
+      ctx.restore();
+    } else if (b.direccion === 'sube') {
       ctx.fillStyle = arrowCol;
       ctx.beginPath();
       ctx.arc(0, 0, r * 0.25, 0, Math.PI * 2);
@@ -219,7 +273,10 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       } else if (b.diametro) {
         diamStr = b.diametro.split(' — ')[0];
       }
-      const line1 = diamStr ? `${codeStr}  ${diamStr}` : (codeStr || '—');
+      if (b.net === 'gas' && diamStr && !diamStr.endsWith('"')) {
+        diamStr += '"';
+      }
+      const line1 = diamStr ? `${codeStr}  D=${diamStr}` : (codeStr || '—');
       
       // Direction text
       let dirText = DIR_MAP[b.direccion] || '';
@@ -271,7 +328,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
     const r = 8 * engine.zoom;
-    b._ghost = { x: c.x, y: c.y, r: Math.max(16, r + 6) };
+    b._ghost = { x: c.x, y: c.y, r: Math.max(24, r + 10) };
 
     // Item 6: Label angle + snap constraint (Auto-rotation removed as requested)
     let ghostAngle = (b.labelAngle || 0) * Math.PI / 180;
@@ -412,7 +469,10 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
           }
         }
       }
-      const line1 = diamStr ? `${codeStr}  ${diamStr}` : (codeStr || '—');
+      if (b.net === 'gas' && diamStr && !diamStr.endsWith('"')) {
+        diamStr += '"';
+      }
+      const line1 = diamStr ? `${codeStr}  D=${diamStr}` : (codeStr || '—');
 
       let dirText = DIR_MAP[ghostDir] || '';
       const hasDir = !!dirText;

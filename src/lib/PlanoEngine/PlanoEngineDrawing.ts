@@ -6,7 +6,7 @@ import type {
 import type { IPlanoEngineCore } from './PlanoEngineTypes';
 import { pointToSegmentDist, snapToSegment } from './HitTester';
 
-type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm';
+type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont';
 
 export function toolCursor(tool: string): string {
   return tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair';
@@ -16,7 +16,7 @@ export function _statusMsg(engine: IPlanoEngineCore): string {
   const names: Record<string, string> = {
     sel: 'Seleccionar elemento', line: 'Ramal', dim: 'Cota', text: 'Texto',
     baj: 'Bajante', mon: 'Montante', pan: 'Pan', area: 'Área', erase: 'Borrar',
-    delm: 'Eliminar elemento',
+    delm: 'Eliminar elemento', red_pub: 'Red Pública', cont: 'Contador',
   };
   let m = names[engine.tool] || engine.tool;
   if (engine.tool === 'line') {
@@ -467,24 +467,35 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       const sp = engine.snapToExisting(pt.x, pt.y);
       if (sp) pt = sp;
     }
-    // Final bajante center override — use RAW cursor position for proximity
+    const lvlLabel = engine.nivelActual?.label ?? '';
     const bajThresh = 20 / engine.zoom;
     const nearBaj = engine.bajantes.find((b: any) => {
       if (engine._hiddenNets.has(b.net) || b.net !== engine.activeNet) return false;
-      return Math.hypot(rawPt.x - b.x, rawPt.y - b.y) < bajThresh;
+      const disp = b.desplazamientos?.[lvlLabel] || {};
+      const bx = b.x + (disp.dx || 0);
+      const by = b.y + (disp.dy || 0);
+      return Math.hypot(rawPt.x - bx, rawPt.y - by) < bajThresh;
     });
     if (nearBaj) {
+      const disp = nearBaj.desplazamientos?.[lvlLabel] || {};
+      const bx = nearBaj.x + (disp.dx || 0);
+      const by = nearBaj.y + (disp.dy || 0);
       if (engine.snapMode) {
-        // Move the entire ramal so the snapped point hits the bajante center exactly,
-        // preserving the snap angle.
-        const tx = nearBaj.x - pt.x;
-        const ty = nearBaj.y - pt.y;
-        for (const p of engine.activeRamal.pts) {
-          p[0] += tx;
-          p[1] += ty;
+        const dx = pt.x - bx;
+        const dy = pt.y - by;
+        if (nearBaj.desplazamientos?.[lvlLabel]) {
+          nearBaj.desplazamientos[lvlLabel].dx = (nearBaj.desplazamientos[lvlLabel].dx || 0) + dx;
+          nearBaj.desplazamientos[lvlLabel].dy = (nearBaj.desplazamientos[lvlLabel].dy || 0) + dy;
+        } else {
+          nearBaj.x = pt.x;
+          nearBaj.y = pt.y;
         }
+        if (nearBaj.labelX != null) nearBaj.labelX += dx;
+        if (nearBaj.labelY != null) nearBaj.labelY += dy;
+        engine._markDirty();
+      } else {
+        pt = { x: bx, y: by };
       }
-      pt = { x: nearBaj.x, y: nearBaj.y };
     }
     engine.activeRamal.pts.push([pt.x, pt.y]);
     engine.activeRamal.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
@@ -592,13 +603,16 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     const sp = engine.snapToExisting(px, py);
     if (sp) { px = sp.x; py = sp.y; }
   }
-  const cnt = engine.bajantes.filter(b => b.tipo === 'montante').length + 1;
-  const monId = 'MON' + cnt;
+  const netDef = NETS.find(n => n.id === engine.activeNet);
+  const pfx = netDef?.bmPfx || 'MON';
+  const cnt = engine.bajantes.filter(b => b.tipo === 'montante' && b.net === engine.activeNet).length + 1;
+  const monId = `${pfx}${cnt}_${engine.activeNet}`;
+  const code = `${pfx}${cnt}`;
   engine.bajantes.push({
     id: monId,
     net: engine.activeNet,
     tipo: 'montante',
-    code: 'MON' + cnt,
+    code: code,
     x: px, y: py,
     pisoBase: engine.nivelActual?.label ?? '',
     pisoCima: engine.nivelActual?.label ?? '',
@@ -613,7 +627,77 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     labelX: px, labelY: py + 20,
     bajR: 7/24,
   });
-  engine.selId = monId;
+  engine._renumberMontantes();
+  const newlyCreated = engine.bajantes.find(b => b.tipo === 'montante' && b.x === px && b.y === py);
+  if (newlyCreated) {
+    engine.selId = newlyCreated.id;
+    engine._emitSelect(newlyCreated);
+  }
+  engine._isGhostSel = false;
+  engine.render();
+  engine._markDirty();
+}
+
+export function handleRedPublicaDown(engine: IPlanoEngineCore, px: number, py: number): void {
+  if (engine.snapMode) {
+    const sp = engine.snapToExisting(px, py);
+    if (sp) { px = sp.x; py = sp.y; }
+  }
+  const cnt = engine.bajantes.filter(b => b.tipo === 'red_publica').length + 1;
+  const rpId = 'RP' + cnt;
+  engine.bajantes.push({
+    id: rpId,
+    net: engine.activeNet,
+    tipo: 'red_publica',
+    code: 'RP' + cnt,
+    x: px, y: py,
+    pisoBase: engine.nivelActual?.label ?? '',
+    pisoCima: engine.nivelActual?.label ?? '',
+    nptBase: engine.nivelActual?.npt ?? 0,
+    nptCima: engine.nivelActual?.npt ?? 0,
+    hVert: 0, dNominal: '0',
+    recibeDeIds: [], alimentaIds: [], descargaEnId: null,
+    ucAcum: 0, ucExtra: 0, area_m2: 0,
+    desplazamientos: {},
+    lblOffX: 0, lblOffY: 0,
+    labelAngle: 0,
+    labelX: px, labelY: py + 20,
+    bajR: 7/24,
+  });
+  engine.selId = rpId;
+  engine._isGhostSel = false;
+  engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
+  engine.render();
+  engine._markDirty();
+}
+
+export function handleContadorDown(engine: IPlanoEngineCore, px: number, py: number): void {
+  if (engine.snapMode) {
+    const sp = engine.snapToExisting(px, py);
+    if (sp) { px = sp.x; py = sp.y; }
+  }
+  const cnt = engine.bajantes.filter(b => b.tipo === 'contador').length + 1;
+  const cntId = 'CNT' + cnt;
+  engine.bajantes.push({
+    id: cntId,
+    net: engine.activeNet,
+    tipo: 'contador',
+    code: 'CNT' + cnt,
+    x: px, y: py,
+    pisoBase: engine.nivelActual?.label ?? '',
+    pisoCima: engine.nivelActual?.label ?? '',
+    nptBase: engine.nivelActual?.npt ?? 0,
+    nptCima: engine.nivelActual?.npt ?? 0,
+    hVert: 0, dNominal: '0',
+    recibeDeIds: [], alimentaIds: [], descargaEnId: null,
+    ucAcum: 0, ucExtra: 0, area_m2: 0,
+    desplazamientos: {},
+    lblOffX: 0, lblOffY: 0,
+    labelAngle: 0,
+    labelX: px - 25, labelY: py,
+    bajR: 7/24,
+  });
+  engine.selId = cntId;
   engine._isGhostSel = false;
   engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
   engine.render();
@@ -634,7 +718,7 @@ export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number
   const isArea = engine.areas.some((a: any) => a.id === selId);
   const tipo = (sel as any).tipo;
   
-  if (tipo === 'bajante' || tipo === 'montante' || isArea || isText || selId.startsWith('DIM')) {
+  if (tipo === 'bajante' || tipo === 'montante' || tipo === 'red_publica' || tipo === 'contador' || isArea || isText || selId.startsWith('DIM')) {
     engine.deleteSelected();
     engine._emitSelect(null);
     engine.selId = null;

@@ -61,15 +61,22 @@ export default function PdfViewerToolbar({
   engineRef, currentIdRef, currentId, plansRef,
 }: PdfViewerToolbarProps) {
   const navigate = useNavigate();
+  const netTools = [...TOOLS];
+  if (activeNet === 'af') {
+    netTools.splice(7, 0,
+      { id: "cont", label: "Contador", ico: "🔳", key: "C", icoCol: "#4D8FF7", shortcut: "C" }
+    );
+  }
+
   return (
     <>
       <div style={{ padding: "6px 8px 4px", borderBottom: "1px solid #3a494a" }}>
         <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#9BA8AA", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Herramientas</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          {TOOLS.map(t => {
+          {netTools.map(t => {
             const isBajanteDisabled = t.id === 'baj' && (activeNet === 'af' || activeNet === 'ac');
             return (
-              <button key={t.id} disabled={isBajanteDisabled} onClick={() => onSelectTool(t.id)} title={isBajanteDisabled ? "No disponible para esta red" : `${t.label} (${t.shortcut})`} style={{
+              <button key={t.id} disabled={isBajanteDisabled} onClick={() => onSelectTool(t.id)} title={isBajanteDisabled ? "No disponible para esta red" : t.shortcut ? `${t.label} (${t.shortcut})` : t.label} style={{
                 padding: "5px 8px", background: tool === t.id ? "#2563EB" : "#1e2024",
                 border: `1px solid ${tool === t.id ? "#2563EB" : "#3a494a"}`, borderRadius: "3px",
                 color: "#b9caca", cursor: isBajanteDisabled ? "not-allowed" : "pointer",

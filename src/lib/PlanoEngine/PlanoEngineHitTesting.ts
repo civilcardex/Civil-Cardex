@@ -124,7 +124,7 @@ export function hitTestBajanteLabelForDrag(
   return null;
 }
 
-export type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm';
+export type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont';
 
 export function getToolFromKey(key: string): ToolType | null {
   const map: Record<string, ToolType> = {

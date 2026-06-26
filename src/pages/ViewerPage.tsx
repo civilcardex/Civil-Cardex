@@ -22,7 +22,7 @@ export default function ViewerPage() {
   });
   const [activeNetworks] = useState<Set<string>>(() => {
     try {
-      const saved = localStorage.getItem('civilflow_activeNets');
+      const saved = localStorage.getItem('civilflow_active_nets');
       if (saved) return new Set(JSON.parse(saved));
     } catch (_) {}
     return new Set();

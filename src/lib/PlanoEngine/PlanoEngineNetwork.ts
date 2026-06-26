@@ -212,17 +212,22 @@ export function _renumberBajantes(engine: IPlanoEngineCore, netId: string): void
 }
 
 export function _renumberMontantes(engine: IPlanoEngineCore): void {
-  const montantes = engine.bajantes.filter(b => b.tipo === 'montante');
-  montantes.sort((a, b) => {
-    const na = parseInt((a.id || '').replace('MON', ''), 10) || 0;
-    const nb = parseInt((b.id || '').replace('MON', ''), 10) || 0;
-    return na - nb;
-  });
-  montantes.forEach((b, i) => {
-    const newId = 'MON' + (i + 1);
-    b.id = newId;
-    b.code = newId;
-  });
+  const nets = Array.from(new Set(engine.bajantes.filter(b => b.tipo === 'montante').map(b => b.net || 'af')));
+  for (const netId of nets) {
+    const netDef = NETS.find(n => n.id === netId);
+    const pfx = netDef?.bmPfx || 'MON';
+    const montantes = engine.bajantes.filter(b => b.tipo === 'montante' && (b.net || 'af') === netId);
+    montantes.sort((a, b) => {
+      const na = parseInt((a.code || a.id || '').replace(pfx, '').replace('MON', ''), 10) || 0;
+      const nb = parseInt((b.code || b.id || '').replace(pfx, '').replace('MON', ''), 10) || 0;
+      return na - nb;
+    });
+    montantes.forEach((b, i) => {
+      const idx = i + 1;
+      b.id = `${pfx}${idx}_${netId}`;
+      b.code = `${pfx}${idx}`;
+    });
+  }
 }
 
 export function _renumberAreas(engine: IPlanoEngineCore): void {
@@ -496,5 +501,71 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
   if (changed) {
     saveToStorage(storageKey, hidroData);
     try { window.dispatchEvent(new Event('storage')); } catch (_) {}
+  }
+}
+
+export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
+  const lvlLabel = engine.nivelActual?.label ?? '';
+  for (const r of engine.ramales) {
+    if (r.net !== 'af' && r.net !== 'ac') continue;
+    const pts = r.pts || [];
+    if (pts.length < 2) continue;
+    
+    const pStart = pts[0];
+    const pEnd = pts[pts.length - 1];
+    
+    const findConnectedBajante = (pt: number[]) => {
+      for (const b of engine.bajantes) {
+        if (b.net !== r.net) continue;
+        const disp = b.desplazamientos?.[lvlLabel] || {};
+        const bx = b.x + (disp.dx || 0);
+        const by = b.y + (disp.dy || 0);
+        const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
+        const dist = Math.hypot(pt[0] - bx, pt[1] - by);
+        if (isExplicit) {
+          const otherPt = pt === pStart ? pEnd : pStart;
+          const otherDist = Math.hypot(otherPt[0] - bx, otherPt[1] - by);
+          if (dist < otherDist) return b;
+        } else if (dist < 2.0) {
+          return b;
+        }
+      }
+      return null;
+    };
+    
+    const bStart = findConnectedBajante(pStart);
+    const bEnd = findConnectedBajante(pEnd);
+    
+    let newIni = r.ini || '';
+    let newFin = r.fin || '';
+
+    if (bStart && bEnd) {
+      const isStartCont = bStart.tipo === 'contador';
+      const isStartMon = bStart.tipo === 'montante';
+      const isEndCont = bEnd.tipo === 'contador';
+      const isEndMon = bEnd.tipo === 'montante';
+      
+      if ((isStartCont && isEndMon) || (isStartMon && isEndCont)) {
+        const cont = isStartCont ? bStart : bEnd;
+        const mon = isStartMon ? bStart : bEnd;
+        newIni = cont.code || cont.id;
+        newFin = mon.code || mon.id;
+      } else {
+        newIni = bStart.code || bStart.id;
+        newFin = bEnd.code || bEnd.id;
+      }
+    } else {
+      if (bStart) {
+        newIni = bStart.code || bStart.id;
+      }
+      if (bEnd) {
+        newFin = bEnd.code || bEnd.id;
+      }
+    }
+
+    if (r.ini !== newIni || r.fin !== newFin) {
+      r.ini = newIni;
+      r.fin = newFin;
+    }
   }
 }

@@ -373,8 +373,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         ctx.fillText(label, c.x + 6 * engine.zoom + pad, c.y);
         ctx.restore();
       };
-      drawEndMarker(cStart, r.ini);
-      drawEndMarker(cEnd, r.fin);
+      // drawEndMarker(cStart, r.ini);
+      // drawEndMarker(cEnd, r.fin);
     }
 
     if (r.label || r.totalL || r.material || r.diametro || r.pendiente) {
@@ -392,7 +392,10 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const arrowSize = showFlow && flowLen > 12 * engine.zoom ? 46 * engine.zoom : 0;
       const lbl = r.label || '';
       const matPart = r.material || '';
-      const dPart = r.diametro ? `D=${r.diametro.split(' — ')[0]}` : '';
+      let dPart = r.diametro ? `D=${r.diametro.split(' — ')[0]}` : '';
+      if (r.net === 'gas' && dPart && !dPart.endsWith('"')) {
+        dPart += '"';
+      }
       const pPart = r.pendiente ? `S=${r.pendiente}%` : '';
       const showPend = (r.net === 'san' || r.net === 'll');
       const pendPart = showPend && pPart ? pPart : '';

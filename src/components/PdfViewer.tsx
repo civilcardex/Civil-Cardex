@@ -18,6 +18,7 @@ import PdfViewerDrawnElements from "./pdfViewer/PdfViewerDrawnElements";
 import BajanteContextMenu from "./pdfViewer/BajanteContextMenu";
 import TextInputOverlay from "./pdfViewer/TextInputOverlay";
 import ConfirmDialog from "./pdfViewer/ConfirmDialog";
+import AlertDialog from "./pdfViewer/AlertDialog";
 
 const TIPOS_TRAMO = [
   { id: "ramal", label: "Ramal" },
@@ -141,6 +142,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
 
   const [contextMenuState, setContextMenuState] = useState<{ visible: boolean; x: number; y: number; bajante: any; isGhostClick?: boolean; ramalEndpoint?: { idx: number; x: number; y: number } | null } | null>(null);
   const [confirmState, setConfirmState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({isOpen: false, title: '', message: '', onConfirm: () => {}});
+  const [alertDialogState, setAlertDialogState] = useState<{isOpen: boolean; title: string; message: string}>({isOpen: false, title: '', message: ''});
 
   const onContextMenuCb = (bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null) => {
     setContextMenuState({ visible: true, x, y, bajante, isGhostClick, ramalEndpoint });
@@ -247,6 +249,15 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
 
   const onDirtyHandler = useCallback((eng: PlanoEngine) => {
     setDrawnElements(eng.getElementsByNet(activeNetRef.current || 'af'));
+    
+    if (eng.selId) {
+      const sel = eng.getSelected();
+      if (sel) {
+        const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = sel as any;
+        setSelElement(rest);
+      }
+    }
+
     if (loadingPlanRef.current) return;
     try {
       const id = eng._loadedPlanId || currentIdRef.current || 'work';
@@ -313,6 +324,9 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
     onDelete: onDeleteHandler,
     onToolChange: setTool,
     onRequestText: onRequestTextCb,
+    onAlert: useCallback((title: string, msg: string) => {
+      setAlertDialogState({ isOpen: true, title, message: msg });
+    }, []),
     loadTrazosForPlan,
     setActiveNet,
     setScaleM,
@@ -320,6 +334,12 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
     setError,
     scale,
   });
+
+  useEffect(() => {
+    if (engineRef.current) {
+      (engineRef.current as any).activeNetworks = activeNetworks;
+    }
+  }, [activeNetworks, engineRef.current]);
 
   useEffect(() => {
     if (engineRef.current && engineReady) {
@@ -504,6 +524,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') return;
       if (e.key.toLowerCase() === 'g') { setSnapOn(p => !p); e.preventDefault(); }
+      if (e.key.toLowerCase() === 'c') { setTool('cont'); e.preventDefault(); }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (engineRef.current) {
           const eng = engineRef.current;
@@ -519,7 +540,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, []);
+  }, [setTool]);
 
   useEffect(() => {
     if (!engineRef.current) return;
@@ -615,8 +636,9 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
 
   const handleUpdateSel = useCallback((field: string, value: any) => {
     if (!engineRef.current || !selElement) return;
-    engineRef.current.updateSelected({ [field]: value });
-    setSelElement({ ...selElement, [field]: value });
+    const fields = { [field]: value };
+    engineRef.current.updateSelected(fields);
+    setSelElement({ ...selElement, [field]: fields[field] });
     engineRef.current.render();
   }, [selElement]);
 
@@ -946,6 +968,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
       </div>
       
       <ConfirmDialog confirmState={confirmState} setConfirmState={setConfirmState} />
+      <AlertDialog alertDialogState={alertDialogState} setAlertDialogState={setAlertDialogState} />
 
     </div>
     </div>

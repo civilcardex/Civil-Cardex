@@ -1,6 +1,6 @@
 import React, { type RefObject } from 'react'
-import { DIAM_BAN, DIAM_BY_MAT, DIAM_DEFAULT_BY_NET, GAS } from '../../constants'
-import { VENTILACION } from '../../pages/catalog/catalogData'
+import { DIAM_BAN, DIAM_BY_MAT, DIAM_DEFAULT_BY_NET, DIAM_VENT, GAS } from '../../constants'
+import { VENTILACION, CONTADORES as CONTADORES_CAT } from '../../pages/catalog/catalogData'
 
 interface TramoEditorProps {
   selElement: any
@@ -34,6 +34,62 @@ export default function TramoEditor({
   const eng = engineRef.current;
   const lvl = eng?.nivelActual?.label ?? '';
   const isGhostSel = (selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante') && eng?._isGhostSel) || false;
+
+  if (selElement && selElement.tipo === 'contador') {
+    return (
+      <>
+        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#9BA8AA", textTransform: "uppercase", letterSpacing: 1 }}>
+              Datos del Contador
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#b9caca', fontFamily: "'Geist',monospace", padding: '2px 0' }}>
+              {selElement.code || selElement.id}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
+          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#9BA8AA", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
+            Datos específicos
+          </div>
+          <div>
+            <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
+              Diámetro
+            </div>
+            <select
+              value={selElement.dNominal || ''}
+              aria-label="Diámetro del Contador"
+              onChange={e => {
+                const val = e.target.value;
+                handleUpdateSel('dNominal', val);
+              }}
+              style={{
+                width: '100%',
+                padding: "4px 6px",
+                background: "#1e2024",
+                border: "1px solid #3a494a",
+                borderRadius: 3,
+                color: "#e2e2e8",
+                fontSize: 11,
+                fontFamily: "'Geist',monospace",
+                cursor: 'pointer'
+              }}
+            >
+              <option value="">— Sin diámetro —</option>
+              {CONTADORES_CAT.map((c: any) => (
+                <option key={c.dn} value={`${c.dn}"`}>
+                  {c.dn}"
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -73,14 +129,14 @@ export default function TramoEditor({
                     style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
                 </div>
                 <div>
-                  <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Inicio</div>
-                  <input value={selElement.ini||''} placeholder="— ini —" aria-label="Conexión de inicio"
+                  <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Inicial</div>
+                  <input value={selElement.ini||''} placeholder="— inicial —" aria-label="Conexión de inicio"
                     onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({ini:v});setSelElement({...selElement,ini:v})}}}
                     style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
                 </div>
                 <div>
-                  <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Fin</div>
-                  <input value={selElement.fin||''} placeholder="— fin —" aria-label="Conexión de fin"
+                  <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Final</div>
+                  <input value={selElement.fin||''} placeholder="— final —" aria-label="Conexión de fin"
                     onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({fin:v});setSelElement({...selElement,fin:v})}}}
                     style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
                 </div>
@@ -184,14 +240,15 @@ export default function TramoEditor({
                         cd.dNominal = val;
                         gdNew[lvl] = cd;
                         if (engineRef.current) {
-                          engineRef.current.updateSelected({ ghostData: gdNew });
-                          setSelElement({ ...selElement, ghostData: gdNew });
+                          const fields = { ghostData: gdNew };
+                          engineRef.current.updateSelected(fields);
+                          setSelElement({ ...selElement, ghostData: fields.ghostData });
                           engineRef.current.render();
                         }
                       }}
                       style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
                       <option value="">—</option>
-                      {DIAM_BAN.map(d => (
+                      {(selElement.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
                         <option key={d.pulg} value={d.nom}>{d.nom}</option>
                       ))}
                     </select>
@@ -250,7 +307,7 @@ export default function TramoEditor({
                     onChange={e => { handleUpdateSel('dNominal', e.target.value); }}
                     style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
                     <option value="">—</option>
-                    {DIAM_BAN.map(d => (
+                    {(selElement.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
                       <option key={d.pulg} value={d.nom}>{d.nom}</option>
                     ))}
                   </select>
@@ -421,8 +478,9 @@ export default function TramoEditor({
           const dn = e.target.value;
           setDiamSel(prev => ({ ...prev, [activeNet]: dn }));
           if (engineRef.current && selElement) {
-            engineRef.current.updateSelected({ diametro: dn });
-            setSelElement({ ...selElement, diametro: dn });
+            const fields = { diametro: dn };
+            engineRef.current.updateSelected(fields);
+            setSelElement({ ...selElement, diametro: fields.diametro });
           } else if (engineRef.current && !selElement) {
             const eng = engineRef.current;
             const lastRamal = [...eng.ramales].reverse().find((r: any) => r.net === activeNet);
@@ -448,8 +506,9 @@ export default function TramoEditor({
           const v = e.target.value;
           setDiamSel(prev => ({ ...prev, [activeNet]: v }));
           if (engineRef.current && selElement) {
-            engineRef.current.updateSelected({ diametro: v });
-            setSelElement({ ...selElement, diametro: v });
+            const fields = { diametro: v };
+            engineRef.current.updateSelected(fields);
+            setSelElement({ ...selElement, diametro: fields.diametro });
           } else if (engineRef.current && !selElement) {
             const eng = engineRef.current;
             const lastRamal = [...eng.ramales].reverse().find((r: any) => r.net === activeNet);

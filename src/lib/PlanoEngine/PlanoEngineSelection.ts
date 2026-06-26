@@ -8,6 +8,7 @@ import type { IPlanoEngineCore } from './PlanoEngineTypes';
 import { NETS } from './PlanoState';
 import { pointInPoly, pointInLabelBox, pointToSegmentDist, distanceToRamal } from './HitTester';
 import { _midpoint, _firstSegmentAngle, calculateRamalLength } from './PlanoEngineDrawing';
+import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 
 export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMultiSelectModifier: boolean = false): void {
   engine._isGhostSel = false;
@@ -63,7 +64,27 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMul
       if (d < b._ghost.r && d < minBD) { minBD = d; foundBaj = b as any; foundBajIsGhost = true; }
     }
   });
-  if (foundBaj) return applySelection((foundBaj as any).id, foundBaj, foundBajIsGhost);
+  const checkAndSwitchNet = (obj: any): boolean => {
+    if (!obj || !obj.net) return true;
+    if (obj.net !== engine.activeNet) {
+      const activeNets = (engine as any).activeNetworks as Set<string> | undefined;
+      const isNetActive = activeNets ? activeNets.has(obj.net) : true;
+      if (!isNetActive) {
+        const netObj = NETS.find((n: any) => n.id === obj.net);
+        const netName = netObj ? netObj.name : obj.net;
+        engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
+        return false;
+      } else {
+        engine.setActiveNet(obj.net);
+      }
+    }
+    return true;
+  };
+
+  if (foundBaj) {
+    if (!checkAndSwitchNet(foundBaj)) return;
+    return applySelection((foundBaj as any).id, foundBaj, foundBajIsGhost);
+  }
 
   let found: PlanoRamal | null = null, minD = 20;
   engine.ramales.forEach((r: any) => {
@@ -76,7 +97,7 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMul
       const pc1 = engine.toCvs(r.pts[0][0], r.pts[0][1]);
       const pc2 = engine.toCvs(r.pts[r.pts.length - 1][0], r.pts[r.pts.length - 1][1]);
       if (Math.hypot(cx - pc1.x, cy - pc1.y) < 15 || Math.hypot(cx - pc2.x, cy - pc2.y) < 15) {
-        d -= 5; // Priority for endpoints to easily select junctions like codo reventilado
+        d -= 5;
       }
     }
     if (d < minD) { minD = d; found = r; }
@@ -88,7 +109,10 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMul
       foundAreaLabel = a;
     }
   });
-  if (foundAreaLabel) return applySelection((foundAreaLabel as any).id, foundAreaLabel);
+  if (foundAreaLabel) {
+    if (!checkAndSwitchNet(foundAreaLabel)) return;
+    return applySelection((foundAreaLabel as any).id, foundAreaLabel);
+  }
 
   let foundArea: PlanoArea | null = null;
   engine.areas.forEach((a: any) => {
@@ -96,7 +120,14 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMul
       foundArea = a;
     }
   });
-  if (foundArea) return applySelection((foundArea as any).id, foundArea);
+  if (foundArea) {
+    if (!checkAndSwitchNet(foundArea)) return;
+    return applySelection((foundArea as any).id, foundArea);
+  }
+
+  if (found) {
+    if (!checkAndSwitchNet(found)) return;
+  }
 
   applySelection(found ? (found as any).id : null, found);
 }
@@ -120,9 +151,111 @@ export function getSelected(engine: IPlanoEngineCore): PlanoRamal | PlanoBajante
     || null) as PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null;
 }
 
+function checkVentDiameterLimits(engine: IPlanoEngineCore, el: any, fields: Record<string, unknown>): boolean {
+  if (!el || !fields) return true;
+
+  const getConnectedVentRamales = (b: any) => {
+    const ventRamales = engine.ramales.filter((r: any) => r.net === 'vent');
+    const connected: any[] = [];
+    const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
+    const bx = b.x + (disp ? disp.dx : 0);
+    const by = b.y + (disp ? disp.dy : 0);
+    for (const vr of ventRamales) {
+      const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(vr.id) || (vr.label && b.recibeDeIds.includes(vr.label)));
+      let isConnected = isExplicit;
+      if (!isConnected && vr.pts && vr.pts.length >= 2) {
+        const d1 = Math.hypot(vr.pts[0][0] - bx, vr.pts[0][1] - by);
+        const d2 = Math.hypot(vr.pts[vr.pts.length - 1][0] - bx, vr.pts[vr.pts.length - 1][1] - by);
+        if (d1 < 2.0 || d2 < 2.0) isConnected = true;
+      }
+      if (isConnected) connected.push(vr);
+    }
+    return connected;
+  };
+
+  const getConnectedVentBajantes = (r: any) => {
+    const ventBajantes = engine.bajantes.filter((b: any) => b.net === 'vent');
+    const connected: any[] = [];
+    for (const vb of ventBajantes) {
+      const disp = vb.desplazamientos?.[engine.nivelActual?.label ?? ''];
+      const bx = vb.x + (disp ? disp.dx : 0);
+      const by = vb.y + (disp ? disp.dy : 0);
+      const isExplicit = vb.recibeDeIds && (vb.recibeDeIds.includes(r.id) || (r.label && vb.recibeDeIds.includes(r.label)));
+      let isConnected = isExplicit;
+      if (!isConnected && r.pts && r.pts.length >= 2) {
+        const d1 = Math.hypot(r.pts[0][0] - bx, r.pts[0][1] - by);
+        const d2 = Math.hypot(r.pts[r.pts.length - 1][0] - bx, r.pts[r.pts.length - 1][1] - by);
+        if (d1 < 2.0 || d2 < 2.0) isConnected = true;
+      }
+      if (isConnected) connected.push(vb);
+    }
+    return connected;
+  };
+
+  const isVent = el.net === 'vent' || el._net === 'vent';
+  if (isVent) {
+    if (el.tipo === 'bajante' || el.tipo === 'montante') {
+      let newDNom = '';
+      if (fields.dNominal !== undefined) {
+        newDNom = String(fields.dNominal || '');
+      } else if (fields.ghostData !== undefined) {
+        const lvl = engine.nivelActual?.label ?? '';
+        const gd = (fields.ghostData as any)[lvl] || {};
+        newDNom = String(gd.dNominal || gd.d_nominal || '');
+      }
+      if (newDNom) {
+        const bDVal = diamPulgFromLabel(newDNom);
+        if (bDVal > 0) {
+          const connected = getConnectedVentRamales(el);
+          for (const vr of connected) {
+            const rDVal = vr.diamPulg || diamPulgFromLabel(vr.diametro);
+            if (rDVal > 0 && bDVal < rDVal) {
+              engine.triggerAlert(
+                'Diámetro no válido',
+                `El diámetro del bajante de ventilación (${newDNom}) no puede ser inferior al diámetro del ramal de ventilación al que está conectado (${vr.diametro || vr.id}).`
+              );
+              if (fields.dNominal !== undefined) {
+                fields.dNominal = '';
+              } else if (fields.ghostData !== undefined) {
+                const lvl = engine.nivelActual?.label ?? '';
+                const gd = (fields.ghostData as any)[lvl] || {};
+                gd.dNominal = '';
+                gd.d_nominal = '';
+              }
+              return true;
+            }
+          }
+        }
+      }
+    } else if (el.id?.startsWith('R') && fields.diametro !== undefined) {
+      const newDiam = String(fields.diametro || '');
+      const rDVal = diamPulgFromLabel(newDiam);
+      if (rDVal > 0) {
+        const connected = getConnectedVentBajantes(el);
+        for (const vb of connected) {
+          const lvl = engine.nivelActual?.label ?? '';
+          const gd = vb.ghostData?.[lvl];
+          const bNominal = gd?.dNominal || gd?.d_nominal || vb.dNominal || '';
+          const bDVal = vb.diamPulg || diamPulgFromLabel(bNominal);
+          if (bDVal > 0 && bDVal < rDVal) {
+            engine.triggerAlert(
+              'Diámetro no válido',
+              `El diámetro del bajante de ventilación (${bNominal || vb.id}) no puede ser inferior al diámetro del ramal de ventilación al que está conectado (${newDiam}).`
+            );
+            fields.diametro = '';
+            return true;
+          }
+        }
+      }
+    }
+  }
+  return true;
+}
+
 export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, unknown>): void {
   const el = getSelected(engine);
   if (el) {
+    checkVentDiameterLimits(engine, el, fields);
     Object.assign(el, fields);
     if ((el as PlanoRamal).pts && el.id?.startsWith('R') && fields.pts) {
       const [mx, my] = _midpoint((el as PlanoRamal).pts);
@@ -143,6 +276,7 @@ export function updateElementById(engine: IPlanoEngineCore, id: string, fields: 
       || engine.textAnnots.find((t: any) => t.id === id)
       || engine.areas.find((a: any) => a.id === id)) as any;
   if (el) {
+    checkVentDiameterLimits(engine, el, fields);
     Object.assign(el, fields);
     if ((el as PlanoRamal).pts && el.id?.startsWith('R') && fields.pts) {
       const [mx, my] = _midpoint((el as PlanoRamal).pts);
@@ -218,6 +352,8 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
           engine.bajantes.splice(idxB, 1);
           if ((deleted as any).tipo === 'bajante') bajNetsToRenumber.add((deleted as any).net);
           else if ((deleted as any).tipo === 'montante') bajNetsToRenumber.add('montante');
+          else if ((deleted as any).tipo === 'red_publica') bajNetsToRenumber.add('red_publica');
+          else if ((deleted as any).tipo === 'contador') bajNetsToRenumber.add('contador');
         }
         continue;
       }
@@ -231,6 +367,14 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
     for (const net of netsToRenumber) engine._renumberRamales(net);
     for (const net of bajNetsToRenumber) {
       if (net === 'montante') engine._renumberMontantes();
+      else if (net === 'red_publica') {
+        const rps = engine.bajantes.filter(b => b.tipo === 'red_publica');
+        rps.forEach((b, i) => { b.id = 'RP' + (i + 1); b.code = 'RP' + (i + 1); });
+      }
+      else if (net === 'contador') {
+        const cnts = engine.bajantes.filter(b => b.tipo === 'contador');
+        cnts.forEach((b, i) => { b.id = 'CNT' + (i + 1); b.code = 'CNT' + (i + 1); });
+      }
       else engine._renumberBajantes(net);
     }
     if (renumberAreas) engine._renumberAreas();
@@ -277,6 +421,12 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       engine._renumberBajantes((deleted as any).net);
     } else if ((deleted as any).tipo === 'montante') {
       engine._renumberMontantes();
+    } else if ((deleted as any).tipo === 'red_publica') {
+      const rps = engine.bajantes.filter(b => b.tipo === 'red_publica');
+      rps.forEach((b, i) => { b.id = 'RP' + (i + 1); b.code = 'RP' + (i + 1); });
+    } else if ((deleted as any).tipo === 'contador') {
+      const cnts = engine.bajantes.filter(b => b.tipo === 'contador');
+      cnts.forEach((b, i) => { b.id = 'CNT' + (i + 1); b.code = 'CNT' + (i + 1); });
     }
     engine.selId = null; engine._emitSelect(null); engine._emitDelete([deletedId]); engine.render(); engine._markDirty(); return; 
   }
@@ -322,7 +472,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
         engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
         return;
       }
-      if (b._circ && Math.hypot(x - b._circ.x, y - b._circ.y) < b._circ.r) {
+      if (b._circ && !(b as any).isFantasma && Math.hypot(x - b._circ.x, y - b._circ.y) < b._circ.r) {
         if (b.id !== sel?.id) {
           engine.selId = b.id;
           engine._emitSelect(b);
@@ -374,6 +524,18 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
       }
     }
     if (bestRamal) {
+      if (bestRamal.net !== engine.activeNet) {
+        const activeNets = (engine as any).activeNetworks as Set<string> | undefined;
+        const isNetActive = activeNets ? activeNets.has(bestRamal.net) : true;
+        if (!isNetActive) {
+          const netObj = NETS.find((n: any) => n.id === bestRamal.net);
+          const netName = netObj ? netObj.name : bestRamal.net;
+          engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
+          return;
+        } else {
+          engine.setActiveNet(bestRamal.net);
+        }
+      }
       engine.selId = bestRamal.id;
       engine.multiSel = [];
       engine._emitSelect(bestRamal);
@@ -467,7 +629,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     engine.multiSel = [];
   }
 
-  if (sel && (sel as any)._circ && ((sel as any).tipo === 'bajante' || (sel as any).tipo === 'montante' || sel.id?.startsWith('B'))) {
+  if (sel && (sel as any)._circ && ((sel as any).tipo === 'bajante' || (sel as any).tipo === 'montante' || (sel as any).tipo === 'red_publica' || (sel as any).tipo === 'contador' || sel.id?.startsWith('B'))) {
     // Label drag takes priority over body drag
     if ((sel as any)._labelBox && pointInLabelBox(x, y, (sel as any)._labelBox)) {
       const lPos = engine.toCvs((sel as any).labelX, (sel as any).labelY);
@@ -484,7 +646,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     }
     const circ = (sel as any)._circ!;
     const d = Math.hypot(x - circ.x, y - circ.y);
-    if (d < circ.r) {
+    if (d < circ.r && !(sel as any).isFantasma) {
       if (wasGhostSel) {
         engine._isGhostSel = false;
         engine._emitSelect(sel);
@@ -560,7 +722,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
       engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
       return;
     }
-    if (!((sel as any).tipo === 'bajante' || (sel as any).tipo === 'montante' || sel.id?.startsWith('B'))) {
+    if (!((sel as any).tipo === 'bajante' || (sel as any).tipo === 'montante' || (sel as any).tipo === 'red_publica' || (sel as any).tipo === 'contador' || sel.id?.startsWith('B'))) {
       const lPos = engine.toCvs((sel as any).labelX, (sel as any).labelY);
       if (Math.hypot(x - lPos.x, y - lPos.y) < 12) {
         engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
@@ -653,6 +815,18 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     const inBox = (r as any)._labelBox && pointInLabelBox(x, y, (r as any)._labelBox);
     const nearPoint = Math.hypot(x - lPos.x, y - lPos.y) < 12;
     if (inBox || nearPoint) {
+      if (r.net !== engine.activeNet) {
+        const activeNets = (engine as any).activeNetworks as Set<string> | undefined;
+        const isNetActive = activeNets ? activeNets.has(r.net) : true;
+        if (!isNetActive) {
+          const netObj = NETS.find((n: any) => n.id === r.net);
+          const netName = netObj ? netObj.name : r.net;
+          engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
+          return;
+        } else {
+          engine.setActiveNet(r.net);
+        }
+      }
       engine.selId = r.id;
       engine.lblDrag = { id: r.id, offX: x - lPos.x, offY: y - lPos.y };
       engine._emitSelect(r);
@@ -667,6 +841,18 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     const lPos = engine.toCvs((b as any).labelX, (b as any).labelY);
     const nearLabel = Math.hypot(x - lPos.x, y - lPos.y) < 20;
     if (lbHit || nearLabel) {
+      if (b.net !== engine.activeNet) {
+        const activeNets = (engine as any).activeNetworks as Set<string> | undefined;
+        const isNetActive = activeNets ? activeNets.has(b.net) : true;
+        if (!isNetActive) {
+          const netObj = NETS.find((n: any) => n.id === b.net);
+          const netName = netObj ? netObj.name : b.net;
+          engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
+          return;
+        } else {
+          engine.setActiveNet(b.net);
+        }
+      }
       engine.selId = b.id;
       engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
       engine._emitSelect(b);
@@ -681,6 +867,18 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
   // Check ghost label boxes first (for label drag)
   for (const b of fg) {
     if ((b as any)._ghostLabelBox && pointInLabelBox(x, y, (b as any)._ghostLabelBox)) {
+      if (b.net !== engine.activeNet) {
+        const activeNets = (engine as any).activeNetworks as Set<string> | undefined;
+        const isNetActive = activeNets ? activeNets.has(b.net) : true;
+        if (!isNetActive) {
+          const netObj = NETS.find((n: any) => n.id === b.net);
+          const netName = netObj ? netObj.name : b.net;
+          engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
+          return;
+        } else {
+          engine.setActiveNet(b.net);
+        }
+      }
       engine.selId = b.id;
       engine._isGhostSel = true;
       const gd = (b as any).ghostData?.[engine.nivelActual?.label ?? ''] || {};
@@ -831,6 +1029,19 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           b.y = cb.origY + slideDy;
           b.labelX = cb.origLblX + slideDx;
           b.labelY = cb.origLblY + slideDy;
+        }
+      }
+      // If this ramal is an Ldesvio (connects bajante to ghost), update ghost displacement
+      if (engine.nivelActual) {
+        const lvl = engine.nivelActual.label ?? '';
+        for (const b of engine.bajantes as any[]) {
+          const desp = b.desplazamientos?.[lvl];
+          if (desp && desp.Ldesvio === r.id) {
+            const lastPt = r.pts[r.pts.length - 1];
+            desp.dx = lastPt[0] - b.x;
+            desp.dy = lastPt[1] - b.y;
+            break;
+          }
         }
       }
       engine.render();
@@ -1070,6 +1281,19 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           }
         }
 
+      // If this ramal is an Ldesvio, update ghost displacement
+      if (engine.nivelActual) {
+        const lvl = engine.nivelActual.label ?? '';
+        for (const b of engine.bajantes as any[]) {
+          const desp = b.desplazamientos?.[lvl];
+          if (desp && desp.Ldesvio === r.id) {
+            const lastPt = r.pts[r.pts.length - 1];
+            desp.dx = lastPt[0] - b.x;
+            desp.dy = lastPt[1] - b.y;
+            break;
+          }
+        }
+      }
       (r as any).labelAngle = _firstSegmentAngle((r as any).pts);
       (r as any).totalL = calculateRamalLength((r as any).pts, engine);
       const [mx, my] = _midpoint((r as any).pts);

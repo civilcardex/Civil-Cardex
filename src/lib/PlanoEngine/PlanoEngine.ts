@@ -36,6 +36,8 @@ import {
   handleTextDown,
   handleBajanteDown,
   handleMontanteDown,
+  handleRedPublicaDown,
+  handleContadorDown,
   handleEraseDown,
   handleAreaDown,
   handleDrawingMouseMove,
@@ -71,6 +73,7 @@ import {
   _renumberMontantes as _doRenumberMontantes,
   _renumberAreas as _doRenumberAreas,
   calcSanitaryAccessories,
+  autoDetectRamalConnections,
 } from './PlanoEngineNetwork';
 import { PlanoHistory } from './PlanoHistory';
 import { initEngineState } from './DragStateMachine';
@@ -78,7 +81,7 @@ import { hitTestRightClick, hitTestBajanteLabelForDrag } from './PlanoEngineHitT
 
 export { NETS };
 
-type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm';
+type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont';
 type TramoType = 'ramal' | 'tributario';
 
 interface Point { x: number; y: number }
@@ -172,6 +175,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _onRequestTextCb: ((x: number, y: number, cb: (text: string) => void) => void) | null;
   _onContextMenuCb: ((bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null) => void) | null;
   _onDeleteCb: ((ids: string[]) => void) | null;
+  _onActiveNetChangeCb: ((net: string) => void) | null;
+  _onAlertCb: ((title: string, msg: string) => void) | null;
   _dirty: boolean;
   _lastRightClickTime: number;
 
@@ -209,6 +214,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._onRequestTextCb = null;
     this._onContextMenuCb = null;
     this._onDeleteCb = null;
+    this._onActiveNetChangeCb = null;
+    this._onAlertCb = null;
     this._dirty = false;
     this._lastRightClickTime = 0;
     this._onUpdateCb = null;
@@ -222,6 +229,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
   onUpdate(cb: UpdateCallback): void { this._onUpdateCb = cb; }
   onDirty(cb: DirtyCallback): void { this._onDirtyCb = cb; }
   onDelete(cb: (ids: string[]) => void): void { this._onDeleteCb = cb; }
+  onActiveNetChange(cb: (net: string) => void): void { this._onActiveNetChangeCb = cb; }
+  onAlert(cb: (title: string, msg: string) => void): void { this._onAlertCb = cb; }
+
+  triggerAlert(title: string, msg: string): void {
+    if (this._onAlertCb) this._onAlertCb(title, msg);
+  }
 
   destroy(): void {
     teardownCanvasEvents(this);
@@ -268,6 +281,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
   _markDirty(): void {
     this._dirty = true;
+    autoDetectRamalConnections(this);
     calcSanitaryAccessories(this);
     if (this._history) {
       this._history.saveSnapshot();
@@ -318,12 +332,16 @@ export default class PlanoEngine implements IPlanoEngineCore {
       });
     });
     const bajThresh = 20 / this.zoom;
+    const lvlLabel = this.nivelActual?.label ?? '';
     this.bajantes.forEach(b => {
       if (this._hiddenNets.has(b.net)) return;
-      const d = Math.hypot(x - b.x, y - b.y);
+      const disp = b.desplazamientos?.[lvlLabel] || {};
+      const bx = b.x + (disp.dx || 0);
+      const by = b.y + (disp.dy || 0);
+      const d = Math.hypot(x - bx, y - by);
       if (d < bajThresh && (!best || d < minD)) {
         minD = d;
-        best = { x: b.x, y: b.y };
+        best = { x: bx, y: by };
       }
     });
     return best;
@@ -355,7 +373,14 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _calcPolyArea(pts: number[][]): number { return _calcPolyArea(this, pts); }
 
   setTool(t: ToolType): void { _setTool(this, t); }
-  setActiveNet(id: string): void { this.activeNet = id; }
+  setActiveNet(id: string): void {
+    if (this.activeNet !== id) {
+      this.activeNet = id;
+      if (this._onActiveNetChangeCb) {
+        this._onActiveNetChangeCb(id);
+      }
+    }
+  }
   setTipoTramo(t: TramoType): void { this.tipoTramo = t; }
   setSnap(v: boolean): void { this.snapMode = v; }
 
@@ -422,6 +447,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
         render: () => void;
         [key: string]: unknown;
       }, d);
+      autoDetectRamalConnections(this);
       if (this._history) {
         this._history.saveSnapshot();
       }
@@ -535,6 +561,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
       handleBajanteDown(this, p.x, p.y);
     } else if (this.tool === 'mon') {
       handleMontanteDown(this, p.x, p.y);
+    } else if (this.tool === 'red_pub') {
+      handleRedPublicaDown(this, p.x, p.y);
+    } else if (this.tool === 'cont') {
+      handleContadorDown(this, p.x, p.y);
     } else if (this.tool === 'area') {
       handleAreaDown(this, p.x, p.y);
     } else if (this.tool === 'erase') {
@@ -595,6 +625,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     const k = e.key.toLowerCase();
     if (k === 's') { this.setTool('sel'); e.preventDefault(); }
     else if (k === 'l') { this.setTool('line'); e.preventDefault(); }
+    else if (k === 'c') { this.setTool('cont'); e.preventDefault(); }
     else if (k === 'd') { this.setTool('dim'); e.preventDefault(); }
     else if (k === 't') { this.setTool('text'); e.preventDefault(); }
     else if (k === 'b') { this.setTool('baj'); e.preventDefault(); }

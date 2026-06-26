@@ -83,4 +83,6 @@ export interface IPlanoEngineCore {
   selectAt(cx: number, cy: number): void;
   getSelected(): PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null;
   deleteSelected(ids?: string[]): void;
+  setActiveNet(id: string): void;
+  triggerAlert(title: string, msg: string): void;
 }
