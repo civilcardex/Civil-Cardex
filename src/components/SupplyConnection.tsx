@@ -33,6 +33,7 @@ interface AcometidaProps {
   ucTotal: number;
   Qaco: number;
   sqrtQaco: number;
+  Qac2: number;
   contadorSel: ContadorSel;
   acoContIx: number;
   setAcoContIx: (ix: number) => void;
@@ -56,10 +57,12 @@ interface AcometidaProps {
   pResidual: number;
   okPresion: boolean;
   AF_DIAM_OPTS: DiamOpt[];
+  isTr1Drawn?: boolean;
+  isTr2Drawn?: boolean;
 }
 
 function Acometida({
-  Qaco, sqrtQaco,
+  Qaco, sqrtQaco, Qac2,
   acoMonName, setAcoMonName,
   acoRedContDiam, setAcoRedContDiam,
   acoContMonDiam, setAcoContMonDiam,
@@ -69,6 +72,8 @@ function Acometida({
   f1, f2,
   pResidual, okPresion,
   AF_DIAM_OPTS,
+  isTr1Drawn = false,
+  isTr2Drawn = false,
 }: AcometidaProps) {
   
   const inputBg = "rgba(59,130,246,0.12)"; // Azul claro
@@ -123,14 +128,34 @@ function Acometida({
                   <td className="c" style={{fontWeight: 600, padding: "2px 4px"}}>AC-01</td>
                   <td className="c" style={{padding: "2px 4px"}}>Red Pública</td>
                   <td className="c" style={{padding: "2px 4px"}}>Contador</td>
-                  <td className="c" style={{padding: "1px"}}><input type="number" step={0.01} aria-label="Longitud horizontal ACOM-01" value={acoL1.h} onChange={e=>setAcoL1(s=>({...s,h:parseFloat(e.target.value)||0}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} /></td>
-                  <td className="c" style={{padding: "1px"}}><input type="number" step={0.01} aria-label="Longitud vertical ACOM-01" value={acoL1.v} onChange={e=>setAcoL1(s=>({...s,v:parseFloat(e.target.value)||0}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} /></td>
-                  <td className="c" style={{padding: "1px"}}><input type="number" step={0.01} aria-label="Longitud equivalente ACOM-01" value={acoL1.le} onChange={e=>setAcoL1(s=>({...s,le:parseFloat(e.target.value)||0}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} /></td>
                   <td className="c" style={{padding: "1px"}}>
-                    <select aria-label="Diámetro ACOM-01" value={acoRedContDiam || ''} onChange={e => setAcoRedContDiam(parseFloat(e.target.value) || 0)} style={{fontSize: 10, padding: "1px", background: "transparent", border: "1px solid var(--line)", borderRadius: 2, width: "100%", cursor: "pointer"}}>
-                      <option value="">—</option>
-                      {AF_DIAM_OPTS.map(o => <option key={o.pulg} value={o.pulg}>{o.label}</option>)}
-                    </select>
+                    {isTr1Drawn ? (
+                      <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{fmt(acoL1.h, 2)}</span>
+                    ) : (
+                      <input type="number" step={0.01} aria-label="Longitud horizontal ACOM-01" value={acoL1.h} onChange={e=>setAcoL1(s=>({...s,h:parseFloat(e.target.value)||0}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} />
+                    )}
+                  </td>
+                  <td className="c" style={{padding: "1px", fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>
+                    0.00
+                  </td>
+                  <td className="c" style={{padding: "1px"}}>
+                    {isTr1Drawn ? (
+                      <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{fmt(acoL1.le, 2)}</span>
+                    ) : (
+                      <input type="number" step={0.01} aria-label="Longitud equivalente ACOM-01" value={acoL1.le} onChange={e=>setAcoL1(s=>({...s,le:parseFloat(e.target.value)||0}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} />
+                    )}
+                  </td>
+                  <td className="c" style={{padding: "1px"}}>
+                    {isTr1Drawn ? (
+                      <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)", fontWeight: 600}}>
+                        {AF_DIAM_OPTS.find(o => Math.abs(o.pulg - acoRedContDiam) < 0.01)?.label || `${acoRedContDiam}"`}
+                      </span>
+                    ) : (
+                      <select aria-label="Diámetro ACOM-01" value={acoRedContDiam || ''} onChange={e => setAcoRedContDiam(parseFloat(e.target.value) || 0)} style={{fontSize: 10, padding: "1px", background: "transparent", border: "1px solid var(--line)", borderRadius: 2, width: "100%", cursor: "pointer"}}>
+                        <option value="">—</option>
+                        {AF_DIAM_OPTS.map((o, i) => <option key={i} value={o.pulg}>{o.label || o.nominal || `${o.pulg}"`}</option>)}
+                      </select>
+                    )}
                   </td>
                   <td className="c" style={{fontWeight: 600, padding: "2px 4px", textAlign: "center", color: "var(--txt2)"}}>{fmt(Qaco)}</td>
                   <td className="c" style={{fontWeight: 600, padding: "2px 4px", textAlign: "center", color: "var(--txt2)"}}>{fmt(f1.hfM)}</td>
@@ -140,18 +165,42 @@ function Acometida({
                   <td className="c" style={{fontWeight: 600, padding: "2px 4px"}}>AC-02</td>
                   <td className="c" style={{padding: "2px 4px"}}>Contador</td>
                   <td className="c" style={{padding: "1px"}}>
-                    <input aria-label="Nombre montante" value={acoMonName} onChange={e=>setAcoMonName(e.target.value)} className="ni" style={{fontSize: 10, padding: "2px"}} placeholder="Mont..." />
+                    {isTr2Drawn ? (
+                      <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{acoMonName || '—'}</span>
+                    ) : (
+                      <input aria-label="Nombre montante" value={acoMonName} onChange={e=>setAcoMonName(e.target.value)} className="ni" style={{fontSize: 10, padding: "2px"}} placeholder="Mont..." />
+                    )}
                   </td>
-                  <td className="c" style={{padding: "1px"}}><input type="number" step={0.01} aria-label="Longitud horizontal ACOM-02" value={acoL2.h} onChange={e=>setAcoL2(s=>({...s,h:parseFloat(e.target.value)||0}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} /></td>
-                  <td className="c" style={{padding: "1px"}}><input type="number" step={0.01} aria-label="Longitud vertical ACOM-02" value={acoL2.v} onChange={e=>setAcoL2(s=>({...s,v:parseFloat(e.target.value)||0}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} /></td>
-                  <td className="c" style={{padding: "1px"}}><input type="number" step={0.01} aria-label="Longitud equivalente ACOM-02" value={acoL2.le} onChange={e=>setAcoL2(s=>({...s,le:parseFloat(e.target.value)||0}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} /></td>
                   <td className="c" style={{padding: "1px"}}>
-                    <select aria-label="Diámetro ACOM-02" value={acoContMonDiam || ''} onChange={e => setAcoContMonDiam(parseFloat(e.target.value) || 0)} style={{fontSize: 10, padding: "1px", background: "transparent", border: "1px solid var(--line)", borderRadius: 2, width: "100%", cursor: "pointer"}}>
-                      <option value="">—</option>
-                      {AF_DIAM_OPTS.map(o => <option key={o.pulg} value={o.pulg}>{o.label}</option>)}
-                    </select>
+                    {isTr2Drawn ? (
+                      <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{fmt(acoL2.h, 2)}</span>
+                    ) : (
+                      <input type="number" step={0.01} aria-label="Longitud horizontal ACOM-02" value={acoL2.h} onChange={e=>setAcoL2(s=>({...s,h:parseFloat(e.target.value)||0}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} />
+                    )}
                   </td>
-                  <td className="c" style={{fontWeight: 600, padding: "2px 4px", textAlign: "center", color: "var(--txt2)"}}>{fmt(Qaco)}</td>
+                  <td className="c" style={{padding: "1px", fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>
+                    0.00
+                  </td>
+                  <td className="c" style={{padding: "1px"}}>
+                    {isTr2Drawn ? (
+                      <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{fmt(acoL2.le, 2)}</span>
+                    ) : (
+                      <input type="number" step={0.01} aria-label="Longitud equivalente ACOM-02" value={acoL2.le} onChange={e=>setAcoL2(s=>({...s,le:parseFloat(e.target.value)||0}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} />
+                    )}
+                  </td>
+                  <td className="c" style={{padding: "1px"}}>
+                    {isTr2Drawn ? (
+                      <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)", fontWeight: 600}}>
+                        {AF_DIAM_OPTS.find(o => Math.abs(o.pulg - acoContMonDiam) < 0.01)?.label || `${acoContMonDiam}"`}
+                      </span>
+                    ) : (
+                      <select aria-label="Diámetro ACOM-02" value={acoContMonDiam || ''} onChange={e => setAcoContMonDiam(parseFloat(e.target.value) || 0)} style={{fontSize: 10, padding: "1px", background: "transparent", border: "1px solid var(--line)", borderRadius: 2, width: "100%", cursor: "pointer"}}>
+                        <option value="">—</option>
+                        {AF_DIAM_OPTS.map((o, i) => <option key={i} value={o.pulg}>{o.label || o.nominal || `${o.pulg}"`}</option>)}
+                      </select>
+                    )}
+                  </td>
+                  <td className="c" style={{fontWeight: 600, padding: "2px 4px", textAlign: "center", color: "var(--txt2)"}}>{fmt(Qac2)}</td>
                   <td className="c" style={{fontWeight: 600, padding: "2px 4px", textAlign: "center", color: "var(--txt2)"}}>{fmt(f2.hfM)}</td>
                 </tr>
               </tbody>
@@ -176,7 +225,8 @@ function Acometida({
               <tbody>
                 <tr>
                   <td style={{padding: "4px", textAlign: "left", fontWeight: 600}}>Caudal (Q)</td>
-                  <td className="c" colSpan={2} style={{textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px"}}>{fmt(Qaco)}</td>
+                  <td className="c" style={{textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px"}}>{fmt(Qaco)}</td>
+                  <td className="c" style={{textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px"}}>{fmt(Qac2)}</td>
                   <td className="c" style={{textAlign: "center", color: "var(--txt3)", padding: "4px"}}>l/s</td>
                 </tr>
                 <tr>

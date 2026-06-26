@@ -1,9 +1,10 @@
 import { useEffect, type MutableRefObject } from "react";
 import { readSanDrawingSync, readHydroDrawingSync } from "../utils/drawingSync";
 import { diamPulgFromLabel } from "../utils/diamPulgFromLabel";
-import { HYDRO_DATA_STORAGE_KEY } from "../constants/storage-keys";
-import { loadFromStorage } from "../services/storageService";
+import { HYDRO_DATA_STORAGE_KEY, TRAZOS_PREFIX } from "../constants/storage-keys";
+import { loadFromStorage, saveToStorage } from "../services/storageService";
 import type { TramosState } from "../context/tramosReducer";
+import { pisoLbl } from "../constants";
 
 function useSyncEvents(events: string[], load: () => void) {
   useEffect(() => {
@@ -81,7 +82,7 @@ export function useSanLlSync(
           if (cVent) ventData = { diametro: cVent.diametro || '', rId: cVent.id, rPlanId: planId };
         }
         
-        const ventD = ventData && ventData.diametro ? parseFloat(ventData.diametro) : (b.ventDprop || 0);
+        const ventRamalDiam = ventData && ventData.diametro ? parseFloat(ventData.diametro) : 0;
         const ventRamalKey = ventData ? `${ventData.rId}-${ventData.rPlanId}` : null;
         const tramo = {
           _key: `${b.id}-${planId}`,
@@ -92,7 +93,7 @@ export function useSanLlSync(
           recibeDe: [], esBajante: true, descripcion: '',
           diamDisPulg: b.diamPulg || 0, nSalidas: b.nSalidas || hd.nSalidas || 0,
           nmaning: b.maning ?? 0, sPercent: 0,
-          bajR: b.bajR ?? 7/24, bajLong: b.bajLong ?? 5, bajFDarcy: b.bajFDarcy ?? 0.025, bajDprop: b.diamPulg || 0, ventDprop: ventD,
+          bajR: b.bajR ?? 7/24, bajLong: b.bajLong ?? 5, bajFDarcy: b.bajFDarcy ?? 0.025, bajDprop: b.diamPulg || 0, ventDprop: b.ventDprop || 0, ventRamalDiamPulg: ventRamalDiam,
           ventRamalKey,
           recibeDeIds: b.recibeDeIds || [],
           descargaEnId: b.descargaEnId || null,
@@ -130,24 +131,139 @@ function buildTramos(
   aparatos: Record<string, any>,
 ) {
   const incoming: any[] = [];
+  
+  const fmtNivel = (v: string) => {
+    const n = parseInt(v);
+    if (isNaN(n)) return v.replace(/^Piso\s*/, 'P').replace(/^Sótano\s*/i, 'S').replace(/^Cubierta$/i, 'C');
+    if (n === 99) return 'C';
+    if (n < 0) return `S${Math.abs(n)}`;
+    return `P${n}`;
+  };
+
   for (const [key, plane] of Object.entries(planes)) {
     if (!key.startsWith(family + '_')) continue;
     const nivel = parseInt(key.slice(family.length + 1));
     const planId = (plane as any).planoId || '';
+    const raw = loadFromStorage(TRAZOS_PREFIX + planId, null);
+    let drawingBajantes: any[] = [];
+    let drawingData: any = null;
+    if (raw) {
+      drawingData = raw;
+      if (typeof drawingData === 'string') {
+        try { drawingData = JSON.parse(drawingData); } catch (_) {}
+      }
+      drawingBajantes = drawingData?.bajantes || [];
+    }
+
     for (const r of ((plane as any).ramales || [])) {
+      let rId = r.id;
+      let ini = String(r.ini || '');
+      let fin = String(r.fin || '');
+
+      if (family === 'af' && drawingBajantes.length > 0) {
+        const pts = r.pts || [];
+        if (pts.length >= 2) {
+          const pStart = pts[0];
+          const pEnd = pts[pts.length - 1];
+          const floorNum = typeof r.piso === 'number' ? r.piso : parseInt(r.piso || String(nivel));
+          const lvlLabel = pisoLbl(floorNum);
+
+          const findConnectedBajante = (pt: number[]) => {
+            for (const b of drawingBajantes) {
+              const disp = b.desplazamientos?.[lvlLabel] || {};
+              const bx = b.x + (disp.dx || 0);
+              const by = b.y + (disp.dy || 0);
+              const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
+              const dist = Math.hypot(pt[0] - bx, pt[1] - by);
+              if (isExplicit) {
+                const otherPt = pt === pStart ? pEnd : pStart;
+                const otherDist = Math.hypot(otherPt[0] - bx, otherPt[1] - by);
+                if (dist < otherDist) return b;
+              } else if (dist < 2.0) {
+                return b;
+              }
+            }
+            return null;
+          };
+
+          const bStart = findConnectedBajante(pStart);
+          const bEnd = findConnectedBajante(pEnd);
+
+          let newIni = r.ini || '';
+          let newFin = r.fin || '';
+
+          if (bStart && bEnd) {
+            const isStartCont = bStart.tipo === 'contador';
+            const isStartMon = bStart.tipo === 'montante';
+            const isEndCont = bEnd.tipo === 'contador';
+            const isEndMon = bEnd.tipo === 'montante';
+
+            if ((isStartCont && isEndMon) || (isStartMon && isEndCont)) {
+              const cont = isStartCont ? bStart : bEnd;
+              const mon = isStartMon ? bStart : bEnd;
+              newIni = cont.code || cont.id;
+              newFin = mon.code || mon.id;
+            } else {
+              newIni = bStart.code || bStart.id;
+              newFin = bEnd.code || bEnd.id;
+            }
+          } else {
+            if (bStart) {
+              newIni = bStart.code || bStart.id;
+            }
+            if (bEnd) {
+              newFin = bEnd.code || bEnd.id;
+            }
+          }
+
+          if (r.ini !== newIni || r.fin !== newFin) {
+            r.ini = newIni;
+            r.fin = newFin;
+
+            // Persist automatically to drawings storage
+            if (drawingData) {
+              for (const drawingRamal of (drawingData.ramales || [])) {
+                if (drawingRamal.id === r.id) {
+                  drawingRamal.ini = newIni;
+                  drawingRamal.fin = newFin;
+                  break;
+                }
+              }
+              saveToStorage(TRAZOS_PREFIX + planId, drawingData);
+            }
+          }
+          ini = newIni;
+          fin = newFin;
+        }
+      }
+
+      const isAC1 = (ini.startsWith('RP') && fin.startsWith('CNT')) || (ini.startsWith('CNT') && fin.startsWith('RP'));
+      const isAC2 = (ini.startsWith('CNT') && !fin.startsWith('RP')) || (fin.startsWith('CNT') && !ini.startsWith('RP'));
+
       const apKey = r._aparatosKey || `${family}_${r.id}_${planId}`;
       const extra = hidroData[apKey] || {};
+      // Read nSalidas and dz directly from drawing data as authoritative source
+      let dznSalidas = r.nSalidas || 0;
+      let dzLvert = r.lvert || r.dz || 0;
+      if (drawingData) {
+        const dr = (drawingData.ramales || []).find((x: any) => x.id === r.id);
+        if (dr) {
+          if (!dznSalidas) dznSalidas = dr.nSalidas || 0;
+          if (!dzLvert) dzLvert = parseFloat(dr.lvert || dr.dz) || 0;
+        }
+      }
       incoming.push({
-        _key: `${r.id}-${planId}`,
-        id: r.id, piso: nivel, planId,
+        _key: `${rId}-${planId}`,
+        id: rId, piso: nivel, planId,
+        _net: r._net || family,
         tipo: r.tipo || 'ramal',
         esBajante: false,
         fixtures: aparatos[apKey] || {},
         accesorios: extra.accesorios || {},
-        Lh: extra.Lh || 0, Lv: r.dz || extra.Lv || 0,
-        nSalidas: r.nSalidas || extra.nSalidas || 0,
+        Lh: extra.Lh || 0, Lv: (family === 'ac' && (isAC1 || isAC2)) ? 0 : dzLvert,
+        nSalidas: dznSalidas,
         recibeDe: [], descripcion: '',
-        ini: r.ini || '', fin: r.fin || '',
+        ini: ini, fin: fin,
         diamDisPulg: diamPulgFromLabel(r.diametro) || r.diamPulg || 0, diametroOriginal: r.diametro || '', material: r.material || '',
         totalL: r.totalL || 0,
       });

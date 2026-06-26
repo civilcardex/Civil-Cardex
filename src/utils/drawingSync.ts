@@ -25,19 +25,36 @@ function collectAparatos(out: any) {
   }
 }
 
+function inferNivelFromDrawing(data: any): number {
+  if (!data) return 0;
+  for (const r of (data.ramales || [])) {
+    if (r.piso != null) {
+      const n = parseInt(r.piso);
+      if (!isNaN(n)) return n;
+    }
+  }
+  for (const b of (data.bajantes || [])) {
+    if (b.pisoBase != null) {
+      const n = parseInt(b.pisoBase);
+      if (!isNaN(n)) return n;
+    }
+  }
+  return 0;
+}
+
 function buildPrefixedSyncData(plans: any[], families: Set<string>) {
   const out: any = { planes: {}, updatedAt: Date.now() };
   if (!Array.isArray(plans)) return out;
 
   for (const plan of plans) {
-    if (!plan || plan.nivel == null) continue;
-    const nivel = plan.nivel;
+    if (!plan) continue;
     const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
     let data = raw as Record<string, any>;
     if (typeof data === 'string') {
       try { data = JSON.parse(data); } catch (_) { continue; }
     }
+    const nivel = plan.nivel ?? inferNivelFromDrawing(data);
 
     for (const family of families) {
       const ramales: any[] = [];
@@ -51,9 +68,12 @@ function buildPrefixedSyncData(plans: any[], families: Set<string>) {
             diametro: r.diametro || '', diamPulg: diamPulgFromLabel(r.diametro),
             pendiente: typeof r.pendiente === 'number' ? r.pendiente : 0,
             material: r.material || '', maning: matManning(r.material),
-            dz: parseFloat(r.dz) || 0,
+            dz: parseFloat(r.dz || r.lvert) || 0,
             piso: r.piso || nivel,
             _aparatosKey: rKey,
+            _net: r.net || family,
+            pts: r.pts || [],
+            lvert: parseFloat(r.lvert) || 0,
             nSalidas: r.nSalidas || 0,
             descargaEnId: r.descargaEnId || null,
           });
@@ -81,14 +101,14 @@ function buildNonPrefixedSyncData(plans: any[], families: Set<string>) {
   if (!Array.isArray(plans)) return out;
 
   for (const plan of plans) {
-    if (!plan || plan.nivel == null) continue;
-    const nivel = plan.nivel;
+    if (!plan) continue;
     const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
     let data = raw as Record<string, any>;
     if (typeof data === 'string') {
       try { data = JSON.parse(data); } catch (_) { continue; }
     }
+    const nivel = plan.nivel ?? inferNivelFromDrawing(data);
 
     const ramales: any[] = [];
     const bajantes: any[] = [];
