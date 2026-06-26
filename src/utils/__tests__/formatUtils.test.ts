@@ -19,7 +19,7 @@ describe('fmtPulg', () => {
   })
 
   it('retorna entero + fraccion', () => {
-    expect(fmtPulg(1.5)).toBe('1½"')
+    expect(fmtPulg(1.5)).toBe('1 ½"')
   })
 
   it('retorna decimal con 2 cifras si no hay fraccion Unicode', () => {

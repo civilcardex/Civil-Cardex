@@ -1,4 +1,6 @@
-import { AGUA_CALIENTE } from '../pages/catalog/catalogData';
+import { AGUA_CALIENTE, VENTILACION } from '../pages/catalog/catalogData';
+import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
+
 export const APARATOS_DEF = [
   {id:'sif', sigla:'Sif:', nombre:'Sifón', grupo:'h', uc_af:0, uc_ac:0, ud:2, pmin:0, pmax:0, qgas:0, norma:'NTC 1500 T1'},
   {id:'lvm', sigla:'Lvm:', nombre:'Lavamanos', grupo:'h', uc_af:0.5, uc_ac:0.5, ud:2, pmin:0.51, pmax:5.63, qgas:0, norma:'NTC 1500 T1'},
@@ -157,7 +159,7 @@ export function matManning(short: string) {
 }
 
 export const DIAM_OPTIONS=[
-  {pulg:1.5,label:'1 1/2"',mm:42.68},
+  {pulg:1.5,label:'1 ½"',mm:42.68},
   {pulg:2,label:'2"',mm:54.48},
   {pulg:3,label:'3"',mm:76.20},
   {pulg:4,label:'4"',mm:107.70},
@@ -165,41 +167,40 @@ export const DIAM_OPTIONS=[
 ];
 
 export const DIAM_BAN=[
-  { pulg:1.5, mm:42.68, nom:'1 1/2"' },
+  { pulg:1.5, mm:42.68, nom:'1 ½"' },
   { pulg:2, mm:54.48, nom:'2"' },
   { pulg:3, mm:76.20, nom:'3"' },
   { pulg:4, mm:107.70, nom:'4"' },
   { pulg:6, mm:160.04, nom:'6"' },
 ];
 
-export const DIAM_VENT=[
-  { pulg:1.5, mm:45.22, nom:'1 1/2"' },
-  { pulg:2, mm:56.76, nom:'2"' },
-  { pulg:3, mm:79.00, nom:'3"' },
-  { pulg:4, mm:110.08, nom:'4"' },
-];
+export const DIAM_VENT = (VENTILACION[0]?.rows || []).map((r: any) => ({
+  pulg: diamPulgFromLabel(r.dn),
+  mm: r.d,
+  nom: r.dn
+}));
 
 export const GAS = [
   { mat: 'Acero galvanizado', K: 57.50, rows: [
-    { dn: '3/8', d: 9.50 }, { dn: '1/2', d: 12.70 }, { dn: '3/4', d: 19.00 },
-    { dn: '1', d: 25.40 }, { dn: '2', d: 50.80 },
+    { dn: '⅜"', d: 9.50 }, { dn: '½"', d: 12.70 }, { dn: '¾"', d: 19.00 },
+    { dn: '1"', d: 25.40 }, { dn: '2"', d: 50.80 },
   ]},
   { mat: 'Acero al carbono', K: 57.50, rows: [
-    { dn: '3/8', d: 10.00 }, { dn: '1/2', d: 13.40 }, { dn: '3/4', d: 19.50 },
-    { dn: '1', d: 26.00 }, { dn: '2', d: 52.00 },
+    { dn: '⅜"', d: 10.00 }, { dn: '½"', d: 13.40 }, { dn: '¾"', d: 19.50 },
+    { dn: '1"', d: 26.00 }, { dn: '2"', d: 52.00 },
   ]},
   { mat: 'Cobre rígido', K: 54.20, rows: [
-    { dn: '3/8', d: 8.70 }, { dn: '1/2', d: 10.90 }, { dn: '3/4', d: 17.40 },
+    { dn: '⅜"', d: 8.70 }, { dn: '½"', d: 10.90 }, { dn: '¾"', d: 17.40 },
   ]},
   { mat: 'Cobre flexible', K: 54.20, rows: [
-    { dn: '3/8', d: 9.00 }, { dn: '1/2', d: 11.20 },
+    { dn: '⅜"', d: 9.00 }, { dn: '½"', d: 11.20 },
   ]},
   { mat: 'PE al PE', K: 49.00, rows: [
-    { dn: '3/8', d: 12.00 }, { dn: '1/2', d: 16.00 },
-    { dn: '3/4', d: 20.00 }, { dn: '1', d: 25.00 },
+    { dn: '⅜"', d: 12.00 }, { dn: '½"', d: 16.00 },
+    { dn: '¾"', d: 20.00 }, { dn: '1"', d: 25.00 },
   ]},
   { mat: 'Polietileno', K: 50.60, rows: [
-    { dn: '1/2', d: 14.50 }, { dn: '3/4', d: 21.50 }, { dn: '1', d: 27.80 },
+    { dn: '½"', d: 14.50 }, { dn: '¾"', d: 21.50 }, { dn: '1"', d: 27.80 },
   ]},
 ];
 
@@ -209,7 +210,7 @@ export const CAT_APS = [
   { id: 'lvm',  n: 'Lavamanos',              s: 'Lvm',  ctrl: 'Llave',                af: 0.5, ac: 0.5},
   { id: 'duc',  n: 'Ducha',                  s: 'Duc',  ctrl: 'Válvula de mezclado',  af: 1,   ac: 1  },
   { id: 'lvp',  n: 'Lavaplatos cocina',      s: 'Lvp',  ctrl: 'Grifería',             af: 1,   ac: 1  },
-  { id: 'tin',  n: 'Tina',                   s: 'Tin',  ctrl: 'Grifería',             af: 1,   ac: 1  },
+  { id: 'tin',  n: 'Tina',                   s: 'Tina',                   ctrl: 'Grifería',             af: 1,   ac: 1  },
   { id: 'lvra', n: 'Lavadora',               s: 'Lvra', ctrl: 'Automático',           af: 1,   ac: 1  },
   { id: 'lvro', n: 'Lavadero',               s: 'Lvro', ctrl: 'Grifería',             af: 1,   ac: 1  },
   { id: 'nev',  n: 'Nevera',                 s: 'Nev',  ctrl: 'Llave',                af: 0.5, ac: 0  },
@@ -218,15 +219,15 @@ export const CAT_APS = [
 
 export const DIAM_BY_MAT: Record<string, Array<{ n: string }>> = {
   'PVC-S': [
-    { n: '1½" — 42.7 mm' }, { n: '2" — 54.5 mm' }, { n: '3" — 76.2 mm' },
+    { n: '1 ½" — 42.7 mm' }, { n: '2" — 54.5 mm' }, { n: '3" — 76.2 mm' },
     { n: '4" — 107.7 mm' }, { n: '6" — 160.0 mm' },
   ],
   'PVC-PR': [
-    { n: '1/2" RDE 9 — 16.6 mm' }, { n: '1/2" RDE 13.5 — 18.18 mm' },
-    { n: '3/4" RDE 11 — 21.81 mm' }, { n: '3/4" RDE 21 — 23.63 mm' },
+    { n: '½" RDE 9 — 16.6 mm' }, { n: '½" RDE 13.5 — 18.18 mm' },
+    { n: '¾" RDE 11 — 21.81 mm' }, { n: '¾" RDE 21 — 23.63 mm' },
     { n: '1" RDE 13.5 — 28.48 mm' }, { n: '1" RDE 21 — 30.20 mm' },
-    { n: '1-1/4" RDE 21 — 38.14 mm' }, { n: '1-1/2" RDE 21 — 43.68 mm' },
-    { n: '2" RDE 21 — 54.58 mm' }, { n: '2-1/2" RDE 21 — 66.07 mm' },
+    { n: '1¼" RDE 21 — 38.14 mm' }, { n: '1 ½" RDE 21 — 43.68 mm' },
+    { n: '2" RDE 21 — 54.58 mm' }, { n: '2 ½" RDE 21 — 66.07 mm' },
     { n: '3" RDE 21 — 80.42 mm' }, { n: '4" RDE 21 — 103.42 mm' },
     { n: '6" RDE 21 — 152.22 mm' },
   ],

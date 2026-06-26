@@ -29,6 +29,7 @@ export const DIAMETROS_AF: DiametroComercialAF[] = [
   { nominal: '6" RDE 21',    pulg: 6.0,    dInt: 152.22, dExt: 152.40, rde: 21 },
 ];
 
+import { diamPulgFromLabel } from './diamPulgFromLabel';
 import { AGUA_CALIENTE } from '../pages/catalog/catalogData';
 
 // ─── Diametros comerciales Agua caliente CPVC (from Catalog) ───
@@ -39,17 +40,7 @@ export const DIAMETROS_AC: DiametroComercialAF[] = AGUA_CALIENTE[0].rows.map(r =
   const fracStr = match[1];
   const spec = match[2];
   
-  let pulg = 0;
-  if (fracStr.includes(' ')) {
-    const [w, f] = fracStr.split(' ');
-    const [n, d] = f.split('/');
-    pulg = parseInt(w) + parseInt(n) / parseInt(d);
-  } else if (fracStr.includes('/')) {
-    const [n, d] = fracStr.split('/');
-    pulg = parseInt(n) / parseInt(d);
-  } else {
-    pulg = parseFloat(fracStr);
-  }
+  const pulg = diamPulgFromLabel(fracStr);
   
   const specFixed = spec.replace('CPVC ', '');
   const nominal = `${fracStr}" ${specFixed}`;
