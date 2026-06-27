@@ -1,6 +1,7 @@
 import React, { type RefObject } from 'react'
 import { DIAM_BAN, DIAM_BY_MAT, DIAM_DEFAULT_BY_NET, DIAM_VENT, GAS } from '../../constants'
 import { VENTILACION, CONTADORES as CONTADORES_CAT } from '../../pages/catalog/catalogData'
+import { DIAMETROS_AF } from '../../utils/calcHydraulics'
 
 interface TramoEditorProps {
   selElement: any
@@ -19,7 +20,7 @@ interface TramoEditorProps {
   setSelElement: React.Dispatch<React.SetStateAction<any>>
   handleUpdateSel: (field: string, value: any) => void
   handleRotateLabel: () => void
-  handleDelete: () => void
+
 }
 
 export default function TramoEditor({
@@ -27,7 +28,7 @@ export default function TramoEditor({
   diamSel, gasMatSel, pendSel, pendInput,
   mats, matLongName,
   setDiamSel, setGasMatSel, setPendSel, setPendInput, setSelElement,
-  handleUpdateSel, handleRotateLabel, handleDelete,
+  handleUpdateSel, handleRotateLabel,
 }: TramoEditorProps) {
 
   const isSelActiveNet = selElement && selElement.net === activeNet
@@ -86,6 +87,40 @@ export default function TramoEditor({
               ))}
             </select>
           </div>
+          {/* AC-01 diameter dropdown */}
+          {activeNet === 'af' && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
+                Diámetro AC-01 (Red→Contador)
+              </div>
+              <select
+                value={selElement.acoDiam || ''}
+                aria-label="Diámetro del tramo AC-01"
+                onChange={e => {
+                  const val = e.target.value;
+                  handleUpdateSel('acoDiam', val);
+                }}
+                style={{
+                  width: '100%',
+                  padding: "4px 6px",
+                  background: "#1e2024",
+                  border: "1px solid #3a494a",
+                  borderRadius: 3,
+                  color: "#e2e2e8",
+                  fontSize: 11,
+                  fontFamily: "'Geist',monospace",
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="">— Sin diámetro —</option>
+                {DIAMETROS_AF.map((d) => (
+                  <option key={d.nominal} value={d.nominal}>
+                    {d.nominal}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </>
     );
@@ -423,7 +458,7 @@ export default function TramoEditor({
         } else {
           diamList = DIAM_BY_MAT[matShort] || [];
         }
-        let currentDiam, currentMat;
+        let currentDiam: string = '', currentMat: any = '';
         if (isGas) {
           const selMat = (isSelActiveNet && selElement.material) || gasMatSel[activeNet] || '';
           const selDn = (isSelActiveNet && selElement.diametro !== undefined && selElement.diametro !== '')
@@ -571,7 +606,7 @@ export default function TramoEditor({
               {showDeltaZ && !isGas && (
                 <div style={{ display: 'grid', gridTemplateColumns: showDescargas ? '1fr 1fr' : '1fr', gap: 6 }}>
                   <div>
-                    <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>ΔZ / L vert (m)</div>
+                    <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>Altura (m)</div>
                     <input type="number" step="0.01" value={selElement?.dz ?? ''} placeholder="0.00" aria-label="Delta Z o longitud vertical (m)"
                       onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({dz:v,lvert:v});setSelElement({...selElement,dz:v,lvert:v})}}}
                       style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>

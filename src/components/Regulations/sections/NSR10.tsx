@@ -1,7 +1,7 @@
 import {
   NSR10_CLASIFICACION, NSR10_ALTURA,
 } from "../regulationsData";
-import { h4 } from "../shared";
+import { subHeadingStyle as h4 } from "../shared";
 
 export function NSR10() {
   return (

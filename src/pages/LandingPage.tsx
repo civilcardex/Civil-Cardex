@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import {  useState, useCallback  } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -55,6 +55,27 @@ function LandingPage() {
 
   return (
     <div className="min-h-screen" style={{ background: '#0a0e14', color: '#e2e2e8' }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "CivilFlow",
+  "url": "https://civilcore.app",
+  "description": "Software de ingeniería hidrosanitaria para diseño de redes de agua, gas, sanitarias, pluviales y equipos de presión.",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://civilcore.app/docs?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "CivilFlow",
+  "url": "https://civilcore.app",
+  "logo": "https://civilcore.app/logo.webp",
+  "description": "Software de ingeniería civil e hidrosanitaria. Cumplimiento NTC 1500, RAS 2000, NSR-10.",
+  "foundingDate": "2024"
+}) }} />
       <style>{`
         .hero-mod-card {
           transition: transform 0.35s cubic-bezier(.4,0,.2,1), border-color 0.35s, box-shadow 0.35s;

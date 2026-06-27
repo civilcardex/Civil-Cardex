@@ -1,5 +1,5 @@
 import { useRainwater } from "../context/RainwaterContext";
-import { chequeoCanalLluvia, chequeoBajanteLluvia } from "../utils/calcSanitary";
+import { chequeoCanalLluvia, chequeoBajanteLluvia } from "../utils/calcRainwater";
 import { parseDecimalInput } from "../utils/parseDecimal";
 import { R_OPTIONS } from "../constants";
 import FloatingPanel, { thS, tdS, inputStyle, btnDelStyle, btnAddStyle, tableStyle } from "./FloatingPanel";

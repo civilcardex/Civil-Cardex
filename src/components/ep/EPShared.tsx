@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useEP, type EPData } from "../../context/EPContext";
-import { dec } from "../../utils/parseDecimal";
+
 import { SI } from "../../styles/sharedTableStyles";
 
 export function LazyInp({ field, style, ariaLabel, disabled }: { field: keyof EPData; style?: React.CSSProperties; ariaLabel?: string; disabled?: boolean }) {
@@ -43,4 +43,3 @@ export const Comment = ({ children }: { children: React.ReactNode }) => (
   <span style={{ fontSize: 9, color: "var(--txt4)", lineHeight: 1.2, wordBreak: "break-word" }}>{children}</span>
 );
 
-export const FLEX_COL: React.CSSProperties = { display: "flex", flexDirection: "column" };

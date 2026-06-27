@@ -1,18 +1,21 @@
-﻿import { memo } from 'react';
-import { ACCESORIOS_HIDRO, LE_K } from "../constants";
+import { memo } from 'react';
+import { ACCESORIOS_HIDRO } from "../constants";
 
-function calcLe(tramo: any) {
-  const d = tramo.dInt || tramo.diametro_interno || 0;
-  if (!d) return null;
-  const a = tramo.accesorios || {};
-  const sum = (a.codos_90_std||0)*LE_K.codos_90_std + (a.codos_90_rl||0)*LE_K.codos_90_rl + (a.te_linea||0)*LE_K.te_linea + (a.te_ramal||0)*LE_K.te_ramal + (a.valvula_bola||0)*LE_K.valvula_bola;
-  return Math.round(d * sum / 1000 * 100) / 100;
-}
+const isAC1 = (ini: string, fin: string) => {
+  if (ini.startsWith('RP') || fin.startsWith('RP')) return true;
+  if (fin.startsWith('CNT') && !ini.startsWith('CNT') && !ini.startsWith('M') && !ini.startsWith('B')) return true;
+  return false;
+};
+const isAC2 = (ini: string, fin: string) => {
+  if (ini.startsWith('RP') || fin.startsWith('RP')) return false;
+  if (ini.startsWith('CNT')) return true;
+  if (fin.startsWith('CNT') && (ini.startsWith('M') || ini.startsWith('B'))) return true;
+  return false;
+};
 
-const AccesoriosTable = memo(function AccesoriosTable({ tramos, updAcc, net, readOnly }: { tramos: any[]; updAcc: (id: string, accId: string, val: any) => void; net?: string; readOnly?: boolean }) {
+const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: any[] }) {
   const cMono = "'Courier New',Courier,monospace";
   const cBg2 = '#1e293b';
-  const cTxt3 = '#94a3b8';
   return (
     <div className="card">
       <div className="card-h">
@@ -31,45 +34,30 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos, updAcc, net, rea
                     <span style={{fontSize:9,fontWeight:500}}>{a.nombre}</span>
                   </th>
                 ))}
-                <th scope="col" className="col-h" style={{minWidth:80,fontSize:10,textAlign:'center',whiteSpace:'nowrap',padding:'5px 4px',borderLeft:'2px solid var(--line)'}}>
-                  <span style={{fontSize:9,fontWeight:600}}>Le (m)</span>
-                </th>
               </tr>
             </thead>
             <tbody>
               {tramos.map((t, i) => {
-                const le = calcLe(t);
+                const iniStr = String(t.ini || '');
+                const finStr = String(t.fin || '');
+                const lbl = isAC1(iniStr, finStr) ? `AC-01` : isAC2(iniStr, finStr) ? `AC-02 (${t.id})` : t.id;
                 return (
                   <tr key={i}>
-                    <td className="c" style={{fontSize:13,textAlign:'center',fontWeight:600,position:'sticky',left:0,background:cBg2,zIndex:1,padding:'4px 4px'}}>{t.id}</td>
+                    <td className="c" style={{fontSize:12,textAlign:'center',fontWeight:600,position:'sticky',left:0,background:cBg2,zIndex:1,padding:'4px 4px',whiteSpace:'nowrap'}}>{lbl}</td>
                     {ACCESORIOS_HIDRO.map(a => {
                       const v = t.accesorios?.[a.id] || 0;
-                      if (readOnly) {
-                        return (
-                          <td key={a.id} className="c" style={{padding:'4px 2px'}}>
-                            <span style={{fontSize:13,fontFamily:cMono,color:v>0?'var(--txt)':'var(--txt3)'}}>{v || '\u2014'}</span>
-                          </td>
-                        );
-                      }
                       return (
                         <td key={a.id} className="c" style={{padding:'4px 2px'}}>
-                          <input type="number" className="ni" aria-label={`${a.nombre} para tramo ${t.id}`} style={{width:48,textAlign:'center',padding:'4px 4px',fontSize:13}}
-                            value={v === 0 ? '' : v} min={0} step={1}
-                            onChange={e => updAcc(t.id, a.id, e.target.value === '' ? 0 : parseInt(e.target.value, 10) || 0)}/>
+                          <span style={{fontSize:13,fontFamily:cMono,color:v>0?'var(--txt)':'var(--txt3)'}}>{v || '\u2014'}</span>
                         </td>
                       );
                     })}
-                    <td className="c" style={{padding:'4px 4px',borderLeft:'2px solid var(--line)'}}>
-                      <span style={{fontSize:12,fontFamily:cMono,fontWeight:600,color:le!=null&&le>0?'var(--acc2)':'var(--txt3)'}}>
-                        {le!=null&&le>0?le.toFixed(2):'\u2014'}
-                      </span>
-                    </td>
                   </tr>
                 );
               })}
               {tramos.length === 0 && (
                 <tr>
-                  <td className="c" colSpan={2 + ACCESORIOS_HIDRO.length} style={{fontSize:11,color:'var(--txt3)',padding:'24px 0',textAlign:'center'}}>
+                  <td className="c" colSpan={1 + ACCESORIOS_HIDRO.length} style={{fontSize:11,color:'var(--txt3)',padding:'24px 0',textAlign:'center'}}>
                     No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                   </td>
                 </tr>

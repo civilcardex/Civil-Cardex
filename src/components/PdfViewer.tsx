@@ -1,7 +1,6 @@
 import { memo, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import PlanoEngine, { NETS } from "../lib/PlanoEngine";
-import { pisoLbl, matLongName, GAS, DIAM_BAN, DIAM_BY_MAT, DEFAULT_PENDIENTE_PCT } from "../constants";
-import { VENTILACION } from "../pages/catalog/catalogData";
+import { pisoLbl, matLongName, GAS, DEFAULT_PENDIENTE_PCT } from "../constants";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync";
@@ -10,7 +9,7 @@ import { GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY } from "../c
 import AparatosPanel from "./FixturesPanel";
 import PdfViewerToolbar, { STATUS } from "./pdfViewer/PdfViewerToolbar";
 import PdfCanvas from "./pdfViewer/PdfCanvas";
-import TramoEditor, { DIAM_DEFAULT_BY_NET } from "./pdfViewer/TramoEditor";
+import TramoEditor from "./pdfViewer/TramoEditor";
 import PdfViewerNetworkBar from "./pdfViewer/PdfViewerNetworkBar";
 import { usePdfAutoSave } from "./pdfViewer/usePdfAutoSave";
 import { usePdfViewerEngine } from "./pdfViewer/PdfViewerEngineInit";
@@ -37,12 +36,11 @@ interface PdfViewerProps {
   activeNetworks: Set<string>;
 }
 
-function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan, pisos=[], planos=[], activeNetworks }: PdfViewerProps) {
+function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], activeNetworks }: PdfViewerProps) {
   const { mats } = useProject();
   const planosCtx = usePlans();
   const plansRef = useRef(planosCtx.plans);
   plansRef.current = planosCtx.plans;
-  const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,7 +87,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
   const [selectedNivel, setSelectedNivel] = useState<number | null>(null);
   const [hiddenNets, setHiddenNets] = useState<Set<string>>(new Set());
   const [lockedNets, setLockedNets] = useState<Set<string>>(new Set());
-  const [statusMsg, setStatusMsg] = useState("Seleccionar");
+
   const [selElement, setSelElement] = useState<Record<string, any> | null>(null);
   const [drawnElements, setDrawnElements] = useState<any[]>([]);
   const [diamSel, setDiamSel] = useState<Record<string, string>>({});
@@ -98,8 +96,6 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
   const [pendInput, setPendInput] = useState('');
   const [textOverlay, setTextOverlay] = useState<{ x: number; y: number; value: string; cb: (text: string) => void } | null>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
-  const toolRef = useRef(tool);
-  toolRef.current = tool;
   const activeNetRef = useRef(activeNet);
   activeNetRef.current = activeNet;
 
@@ -179,11 +175,6 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
   const currentId = files[activeIndex]?.id;
   const currentIdRef = useRef(currentId);
   currentIdRef.current = currentId;
-
-  useEffect(() => {
-    if (pageNumber < 1) return;
-    setPageNumber(1);
-  }, [currentId]);
 
   useEffect(() => {
     if (currentId == null) return;
@@ -305,10 +296,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
 
   const {
     engineRef,
-    numPages,
     engineReady,
-    renderPage,
-    mountId,
     loadingPlanRef,
   } = usePdfViewerEngine({
     currentFile,
@@ -318,7 +306,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
     cwRef,
     drawCanvasRef,
     pdfCanvasRef,
-    onStatus: setStatusMsg,
+    onStatus: () => {},
     onDirty: onDirtyHandler,
     onSelect: setSelElement,
     onDelete: onDeleteHandler,
@@ -554,13 +542,6 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
     }
   }, [tool]);
 
-  const goToPage = useCallback((target: number) => {
-    if (target < 1 || target > numPages) return;
-    setPageNumber(target);
-    mountId.current += 1;
-    renderPage(target, scale, mountId.current);
-  }, [numPages, scale, renderPage, mountId]);
-
   const handleUndo = useCallback(() => {
     if (engineRef.current) engineRef.current.undoLast();
   }, []);
@@ -602,37 +583,9 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
     doSave();
   }, [doSave]);
 
-  const handleLoad = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !engineRef.current) return;
-    const reader = new FileReader();
-    reader.onload = () => engineRef.current!.loadWork(reader.result as string);
-    reader.readAsText(file);
-    e.target.value = '';
-  }, []);
-
   const handleRotateLabel = useCallback(() => {
     if (engineRef.current) engineRef.current.rotateLabelSnap();
   }, []);
-
-  const handleDelete = useCallback(() => {
-    if (!engineRef.current || !selElement) return;
-    const sel = selElement as any;
-    let label = 'el elemento';
-    if (sel.type === 'ramal' && sel.ramal) label = `el ramal R${sel.ramal.id.slice(-4).toUpperCase()}`;
-    else if (sel.type === 'bajante' && sel.bajante) label = `el bajante ${sel.bajante.id}`;
-    
-    setConfirmState({
-      isOpen: true,
-      title: 'Eliminar elemento',
-      message: `¿Deseas eliminar ${label}?`,
-      onConfirm: () => {
-        engineRef.current!.deleteSelected();
-        setSelElement(null);
-        setConfirmState(prev => ({...prev, isOpen: false}));
-      }
-    });
-  }, [selElement]);
 
   const handleUpdateSel = useCallback((field: string, value: any) => {
     if (!engineRef.current || !selElement) return;
@@ -657,8 +610,6 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
       setPendInput(p !== undefined && p > 0 ? String(p) : '');
     }
   }, [selElement?.id, activeNet]);
-
-  const netObj = NETS.find(n => n.id === activeNet);
 
   const handleToggleHidden = useCallback((id: string) => {
     const next = new Set(hiddenNets);
@@ -694,13 +645,12 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
 
   const rightSidebarOpacity = useMemo(() => ({
     opacity: (tool === 'sel' && !selElement) ? 0.35 : 1,
-    pointerEvents: (tool === 'sel' && !selElement) ? 'none' : 'auto' as const,
+    pointerEvents: (tool === 'sel' && !selElement) ? ('none' as const) : ('auto' as const),
     transition: 'opacity 0.2s',
   }), [tool, selElement]);
 
   return (
     <div style={mainContainerStyle}>
-      {/* Network toolbar — horizontal strip above canvas */}
       <PdfViewerNetworkBar
         nets={finalVisibleNets}
         activeNet={activeNet}
@@ -711,10 +661,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
         onToggleLocked={handleToggleLocked}
       />
 
-      {/* Main area: sidebar + canvas */}
       <div style={{flex:1,display:"flex",minHeight:0}}>
 
-      {/* Sidebar: Herramientas + Acciones */}
       <div className="visor-sidebar" style={leftSidebarStyle}>
         <div style={{
           height: 3, flexShrink: 0, transition: 'background .3s',
@@ -750,11 +698,9 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
           selectedNivel={selectedNivel}
           pisos={pisos}
           planos={planos}
-        tool={tool}
-        snapOn={snapOn}
-        onSelectPlan={onSelectPlan}
+          tool={tool}
+          snapOn={snapOn}
       />
-
       <TextInputOverlay
           textOverlay={textOverlay}
           setTextOverlay={setTextOverlay}
@@ -878,7 +824,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, onAddPlan, onRemovePlan,
           setSelElement={setSelElement}
           handleUpdateSel={handleUpdateSel}
           handleRotateLabel={handleRotateLabel}
-          handleDelete={handleDelete}
+  
         />
 
         {/* Bajante/Montante association */}

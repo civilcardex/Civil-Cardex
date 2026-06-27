@@ -4,7 +4,7 @@ import { diamPulgFromLabel } from "../utils/diamPulgFromLabel";
 import { HYDRO_DATA_STORAGE_KEY, TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage, saveToStorage } from "../services/storageService";
 import type { TramosState } from "../context/tramosReducer";
-import { pisoLbl } from "../constants";
+import { pisoLbl, pisoCorto } from "../constants";
 
 function useSyncEvents(events: string[], load: () => void) {
   useEffect(() => {
@@ -32,12 +32,10 @@ export function useSanLlSync(
         if (r.tipo === 'tributario') tribIds.add(`${r.id}-${planId}`);
       }
       const piso = (plane as any).npt ?? parseInt(nivel);
-      const fmtNivel = (v: string) => {
-        const n = parseInt(v);
-        if (isNaN(n)) return v.replace(/^Piso\s*/, 'P').replace(/^Sótano\s*/i, 'S').replace(/^Cubierta$/i, 'C');
-        if (n === 99) return 'C';
-        if (n < 0) return `S${Math.abs(n)}`;
-        return `P${n}`;
+      const fmtNivel = (v: unknown): string => {
+        const n = Number(v);
+        if (!isNaN(n)) return pisoCorto(n);
+        return String(v ?? '');
       };
       const venRamales = ((plane as any).ramales || []).filter((r: any) => r._net === 'vent' || r.net === 'vent');
       const venMap = new Map();
@@ -67,7 +65,7 @@ export function useSanLlSync(
           ventRamalKey: null,
         };
         if (r._net === 'll') {
-          llIncoming.push({ _key: tramo._key, ...tramo, desde: r.ini || '', hasta: r.fin || '' });
+          llIncoming.push({ ...tramo, desde: r.ini || '', hasta: r.fin || '' });
         } else {
           sanIncoming.push(tramo);
         }
@@ -102,7 +100,7 @@ export function useSanLlSync(
           code: b.code || b.id,
         };
         if (b._net === 'll') {
-          llIncoming.push({ _key: tramo._key, ...tramo, desde: b.ini || '', hasta: b.fin || '' });
+          llIncoming.push({ ...tramo, desde: b.ini || '', hasta: b.fin || '' });
         } else {
           sanIncoming.push(tramo);
         }
@@ -132,13 +130,7 @@ function buildTramos(
 ) {
   const incoming: any[] = [];
   
-  const fmtNivel = (v: string) => {
-    const n = parseInt(v);
-    if (isNaN(n)) return v.replace(/^Piso\s*/, 'P').replace(/^Sótano\s*/i, 'S').replace(/^Cubierta$/i, 'C');
-    if (n === 99) return 'C';
-    if (n < 0) return `S${Math.abs(n)}`;
-    return `P${n}`;
-  };
+
 
   for (const [key, plane] of Object.entries(planes)) {
     if (!key.startsWith(family + '_')) continue;
@@ -237,19 +229,34 @@ function buildTramos(
         }
       }
 
-      const isAC1 = (ini.startsWith('RP') && fin.startsWith('CNT')) || (ini.startsWith('CNT') && fin.startsWith('RP'));
-      const isAC2 = (ini.startsWith('CNT') && !fin.startsWith('RP')) || (fin.startsWith('CNT') && !ini.startsWith('RP'));
+      const isAC1 = (() => {
+        if (ini.startsWith('RP') || fin.startsWith('RP')) return true;
+        if (fin.startsWith('CNT') && !ini.startsWith('CNT') && !ini.startsWith('M') && !ini.startsWith('B')) return true;
+        return false;
+      })();
+      const isAC2 = (() => {
+        if (ini.startsWith('RP') || fin.startsWith('RP')) return false;
+        if (ini.startsWith('CNT')) return true;
+        if (fin.startsWith('CNT') && (ini.startsWith('M') || ini.startsWith('B'))) return true;
+        return false;
+      })();
 
-      const apKey = r._aparatosKey || `${family}_${r.id}_${planId}`;
+      let apKey = r._aparatosKey || `${family}_${r.id}_${planId}`;
+      if (family === 'af' && isAC1) {
+        const cntId = fin.startsWith('CNT') ? fin : (ini.startsWith('CNT') ? ini : null);
+        if (cntId) {
+          apKey = `${family}_${cntId}_${planId}`;
+        }
+      }
       const extra = hidroData[apKey] || {};
       // Read nSalidas and dz directly from drawing data as authoritative source
       let dznSalidas = r.nSalidas || 0;
-      let dzLvert = r.lvert || r.dz || 0;
+      let dzLvert = r.lvert ?? r.dz ?? 0;
       if (drawingData) {
         const dr = (drawingData.ramales || []).find((x: any) => x.id === r.id);
         if (dr) {
           if (!dznSalidas) dznSalidas = dr.nSalidas || 0;
-          if (!dzLvert) dzLvert = parseFloat(dr.lvert || dr.dz) || 0;
+          if (dzLvert === 0 || dzLvert === undefined) dzLvert = parseFloat(dr.lvert ?? dr.dz) || 0;
         }
       }
       incoming.push({
@@ -266,7 +273,40 @@ function buildTramos(
         ini: ini, fin: fin,
         diamDisPulg: diamPulgFromLabel(r.diametro) || r.diamPulg || 0, diametroOriginal: r.diametro || '', material: r.material || '',
         totalL: r.totalL || 0,
+        _nivelLabel: pisoLbl(typeof r.piso === 'number' ? r.piso : parseInt(r.piso || String(nivel)))
       });
+    }
+
+    if (family === 'af') {
+      const contadores = drawingBajantes.filter(b => b.tipo === 'contador' && (b.net === 'af' || !b.net));
+      for (const cnt of contadores) {
+        const cntId = cnt.code || cnt.id;
+        const hasAC1 = incoming.some(r => r.fin === cntId && (r.ini.startsWith('RP') || r.ini === 'RP'));
+        if (!hasAC1) {
+          const rId = `AC-01-${cntId}`;
+          const apKey = `af_${cntId}_${planId}`;
+          const extra = hidroData[apKey] || {};
+          const pisoCnt = typeof cnt.piso === 'number' ? cnt.piso : parseInt(cnt.pisoBase || String(nivel));
+          incoming.push({
+            _key: `${rId}-${planId}`,
+            id: rId, piso: isNaN(pisoCnt) ? nivel : pisoCnt, planId,
+            _net: 'af',
+            tipo: 'ramal',
+            esBajante: false,
+            fixtures: aparatos[apKey] || {},
+            accesorios: extra.accesorios || {},
+            Lh: extra.Lh || 0, Lv: 0,
+            nSalidas: 0,
+            recibeDe: [], descripcion: '',
+            ini: 'RP', fin: cntId,
+            diamDisPulg: extra.dNominal ? diamPulgFromLabel(String(extra.dNominal)) : 0,
+            diametroOriginal: extra.dNominal ? String(extra.dNominal) : '',
+            material: extra.material || '',
+            totalL: 0,
+            _nivelLabel: pisoLbl(isNaN(pisoCnt) ? nivel : pisoCnt)
+          });
+        }
+      }
     }
   }
   return incoming;

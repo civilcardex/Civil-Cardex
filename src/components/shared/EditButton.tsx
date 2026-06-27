@@ -2,7 +2,7 @@ import React from 'react';
 
 interface EditButtonProps {
   edit: boolean;
-  setEdit: (v: boolean) => void;
+  setEdit: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const BASE: React.CSSProperties = {

@@ -26,6 +26,9 @@
 
     <!-- Robots -->
     <meta name="robots" content="index, follow">
+    <!-- CSP: unsafe-inline required for Vite HMR in dev mode.
+         unsafe-eval required by pdfjs-dist worker and Vite dev server.
+         For production, consider removing unsafe-eval if pdfjs worker is loaded from CDN. -->
     <!-- CSP: frame-ancestors y upgrade-insecure-requests deben ir como HTTP header (nginx/CDN), no en meta -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self' blob:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self';">
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
@@ -77,8 +80,8 @@
     <link rel="apple-touch-icon" type="image/png" href="/logos/civilcoreicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Geist:wght@400;500;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" />
+    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Geist:wght@400;500;700&display=swap" rel="stylesheet" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" crossorigin="anonymous" />
     <link rel="canonical" href="https://civilcore.app" />
   </head>
   <body>

@@ -4,10 +4,17 @@ export {
   AC_UC_IDS,
   SAN_UC_IDS,
   APARATO_IMG,
+  CAT_APS,
+} from './engineeringDataFixtures';
+
+export {
   ACCESORIOS_HIDRO,
   ACCESORIOS_YEE,
   SAN_ACCESORIOS,
   GAS_ACCESORIOS,
+} from './engineeringDataAccessories';
+
+export {
   MATS_DEFAULT,
   matLongName,
   MAT_MANNING,
@@ -16,11 +23,10 @@ export {
   DIAM_BAN,
   DIAM_VENT,
   GAS,
-  CAT_APS,
   CAT_GAS,
   DIAM_BY_MAT,
   DIAM_DEFAULT_BY_NET,
-} from './engineeringData';
+} from './engineeringDataMaterials';
 
 export {
   REDES,

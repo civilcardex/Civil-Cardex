@@ -21,7 +21,7 @@ const metrics = [
 const CivilRoadsPage: React.FC = () => {
   usePageMeta('Vías', 'Diseño geométrico de carreteras, urbanismo, peraltes y alineamientos. Simulación de tráfico e impacto vial integrada.');
   return (
-    <ModulePageLayout title="Vías" description="Diseño geométrico de carreteras y urbanismo sobre gemelos digitales." mainClassName="flex flex-col relative z-0">
+    <ModulePageLayout title="Vías" mainClassName="flex flex-col relative z-0">
       <section className="relative w-full flex items-center overflow-hidden border-b border-outline-variant" style={{ minHeight: 700 }}>
           <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, #0F1115, rgba(15,17,21,0.8), transparent)' }} />
           <div className="relative z-10 w-full px-6 lg:px-8 grid grid-cols-12 gap-3 mt-16 md:mt-0">

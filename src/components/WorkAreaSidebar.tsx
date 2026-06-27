@@ -17,6 +17,11 @@ function WorkAreaSidebar({ tab, setTab }: WorkAreaSidebarProps) {
               type="button"
               className={`ntab ${t.id === 'visor' ? '' : tab === t.id ? 'on' : ''}`}
               onClick={() => { if (t.id === 'visor') navigate('/visor'); else setTab(t.id); }}
+              onMouseEnter={() => {
+                if (t.id === 'datos') import('./DesignParameters');
+                else if (t.id === 'crit') import('./Regulations/Regulations');
+                else if (t.id === 'iso') import('./workarea/IsometriaTab');
+              }}
               style={t.id === 'redes' ? { flex: '0 0 auto', padding: '12px 28px' } : {}}
             >
               <span className="ntab-ico">

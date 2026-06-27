@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import {  useState  } from 'react';
 import Navbar from '../components/Navbar'
 import { docData } from './docs/docData'
 import SectionAccordion from './docs/SectionAccordion'
@@ -41,6 +41,13 @@ function DocsPage() {
 
   return (
     <div className="min-h-screen bg-surface-bg flex flex-col">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Documentación — CivilFlow",
+  "description": "Documentación técnica de normas y estándares de ingeniería hidrosanitaria.",
+  "about": "NTC 1500, RAS 2000, NSR-10, NFPA 13, ingeniería hidrosanitaria"
+}) }} />
       <Navbar />
       <div className="flex gap-4 h-[calc(100vh-64px)] pt-16">
       <style>{`

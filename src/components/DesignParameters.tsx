@@ -1,8 +1,8 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProject } from "../context/ProjectContext";
 import { useApparatus } from "../context/ApparatusContext";
-import { MAT_COL, AF_UC_IDS, AC_UC_IDS, SAN_UC_IDS, APARATOS_DEF, REDES_MAT, CAT_APS, CAT_GAS } from "../constants";
+import { NORM_COL, REDES_MAT, CAT_APS, CAT_GAS } from "../constants";
 import { NumericInput } from "./NumericInput";
 import EditButton from "./shared/EditButton";
 
@@ -34,13 +34,12 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
   const setProf = (redId: string, v: number) => {
     setProfs(prev => {
       const ix = prev.findIndex(p => p.id === redId);
-      if (ix < 0) return [...prev, { id: redId, red: matMap[redId]?.lbl || redId, col: (MAT_COL as Record<string, string>)[redId] || 'var(--txt2)', prof: v, norma: '', nota: '' }];
+      if (ix < 0) return [...prev, { id: redId, red: matMap[redId]?.lbl || redId, col: (NORM_COL as Record<string, string>)[redId] || 'var(--txt2)', prof: v, norma: '', nota: '' }];
       return prev.map(p => p.id === redId ? { ...p, prof: v } : p);
     });
   };
 
-  const apsMap = Object.fromEntries(CAT_APS.map(a => [a.id, a]));
-  const defUd = (id: string) => APARATOS_DEF.find(x => x.id === id)?.ud ?? 0;
+  const apsMap = Object.fromEntries(CAT_APS.map(a => [a.id, a]));  
   const ACC_IDS = new Set(['codo90rm','yeeSimple','yeeDoble']);
   const apsMerged = CAT_APS.map(c => {
     const cur = aps.find(a => a.id === c.id);
@@ -85,6 +84,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
             <table className="tbl" style={{ fontSize: 12 }}>
+              <caption style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Materiales y profundidad de instalación por red</caption>
               <thead>
                 <tr>
                   <th scope="col" style={{ width: 28, textAlign: 'center', padding: '4px 6px' }}>#</th>
@@ -95,7 +95,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
               </thead>
               <tbody>
                 {merged.map((r, ix) => {
-                  const col = (MAT_COL as Record<string, string>)[r.id] || 'var(--txt2)';
+                  const col = (NORM_COL as Record<string, string>)[r.id] || 'var(--txt2)';
                   const isLast = ix === merged.length - 1;
                   return (
                     <tr key={r.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)', borderBottom: isLast ? '2px solid var(--line)' : undefined }}>
@@ -145,7 +145,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                             });
                             e.target.select();
                           }}
-                          onBlur={e => {
+                          onBlur={() => {
                             const v = profTexts[r.id];
                             if (v === undefined) return;
                             if (v === '' || v === '-') {
@@ -207,7 +207,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
               </thead>
               <tbody>
                 {apsMerged.map((a, ix) => {
-                  const isLast = ix === apsMerged.length - 1;
+                  
                   const isLavavajillas = a.id === 'lavav';
                   return (
                     <tr key={a.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)', borderBottom: isLavavajillas ? '2px solid var(--line)' : undefined }}>

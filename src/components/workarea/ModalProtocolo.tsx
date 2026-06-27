@@ -7,8 +7,10 @@ interface ModalProtocoloProps {
 
 export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const prevActiveEl = useRef<Element | null>(null);
 
   useEffect(() => {
+    prevActiveEl.current = document.activeElement;
     if (modalRef.current) {
       const first = modalRef.current.querySelector<HTMLElement>(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -34,7 +36,10 @@ export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
       }
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      (prevActiveEl.current as HTMLElement)?.focus?.();
+    };
   }, [onClose]);
 
   const modalContent = (

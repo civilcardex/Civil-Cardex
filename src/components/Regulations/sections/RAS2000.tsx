@@ -1,7 +1,7 @@
 import {
   RAS2000_DOTACIONES, RAS2000_VELOCIDADES, RAS2000_LLENADO, RAS2000_ESCORRENTIA, RAS2000_TR,
 } from "../regulationsData";
-import { h4 } from "../shared";
+import { subHeadingStyle as h4 } from "../shared";
 
 export function RAS2000() {
   return (

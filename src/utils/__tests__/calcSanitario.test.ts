@@ -5,7 +5,7 @@ import {
   caudalTuboLleno,
   velocidadTuboLleno,
   diametroManning,
-} from '../calcSanitary'
+} from '../calcSanitaryCore'
 
 describe('factorSimultaneidad', () => {
   it('numSalidas=1 retorna 1', () => {

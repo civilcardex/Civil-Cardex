@@ -1,10 +1,10 @@
-﻿import { useMemo } from "react";
+import { useMemo } from "react";
 import { useRainwater } from "../context/RainwaterContext";
 import { useTramos } from "../context/TramosContext";
 import { usePlans } from "../context/PlansContext";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
-import { chequeoBajanteLluvia } from "../utils/calcSanitary";
+import { chequeoBajanteLluvia } from "../utils/calcRainwater";
 import { parseDecimalInput } from "../utils/parseDecimal";
 
 const renderStatus = (val: string) => {
@@ -188,7 +188,7 @@ return(
                       inputMode="decimal"
                       value={row.intensidad ?? 100}
                       key={row.key + '_in'}
-                      onChange={e => {}}
+                      onChange={() => {}}
                       onBlur={e => {
                         const v = parseDecimalInput(e.target.value) ?? 100;
                         if (v !== null && row.bajante) {

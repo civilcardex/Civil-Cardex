@@ -1,7 +1,7 @@
 import {
   NTC3728_PRESIONES, NTC3728_SIMULTANEIDAD, NTC3728_CAUDALES,
 } from "../regulationsData";
-import { h4 } from "../shared";
+import { subHeadingStyle as h4 } from "../shared";
 
 export function NTC3728() {
   return (

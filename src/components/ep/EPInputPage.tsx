@@ -1,9 +1,9 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { useEP } from "../../context/EPContext";
 import Card from "../shared/Card";
 import Tbl from "../shared/Tbl";
 import EditButton from "../shared/EditButton";
-import { LazyInp, Fmt, Param, Comment, FLEX_COL } from "./EPShared";
+import { LazyInp, Param, Comment } from "./EPShared";
 import { SI } from "../../styles/sharedTableStyles";
 import { dec } from "../../utils/parseDecimal";
 
@@ -32,13 +32,13 @@ function EPInputPage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/caudales_diseno.webp" iconImgStyle={{ width: 22, height: 22 }} title="Caudales de diseño" subtitle="Del diseño de redes" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editCaudales} setEdit={setEditCaudales} />}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/caudales_diseno.webp" iconImgStyle={{ width: 22, height: 22 }} title="Caudales de diseño" subtitle="Del diseño de redes" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editCaudales} setEdit={setEditCaudales} />}>
             <Tbl caption="Caudales de diseño" thStyle={{ fontSize: 13 }} tdStyle={{ fontSize: 14 }} tdlStyle={{ fontSize: 15 }} cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
               [<Param name="Caudal diseño AF" sub="Red agua fría" />, <LazyInp disabled={!editCaudales} field="qac" ariaLabel="Caudal diseño AF" />, "L/s", <Comment><span style={{ color: "var(--txt3)", fontWeight: 600 }}>Hunter / RAS 2000</span> · Caudal probable de la red de agua fría. Obtenido del diseño hidráulico.</Comment>],
               [<Param name="Caudal diseño ACS" sub="Red agua caliente" />, <LazyInp disabled={!editCaudales} field="qasc" ariaLabel="Caudal diseño ACS" />, "L/s", <Comment><span style={{ color: "var(--txt3)", fontWeight: 600 }}>Hunter / RAS 2000</span> · Típico 60–70% del Qac. Del diseño de red ACS.</Comment>],
             ]} />
           </Card>
-          <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/presiones_y_cotas.webp" iconImgStyle={{ width: 22, height: 22 }} title="Presiones y cotas" subtitle="NTC 1500 + levantamiento" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editPresiones} setEdit={setEditPresiones} />}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/presiones_y_cotas.webp" iconImgStyle={{ width: 22, height: 22 }} title="Presiones y cotas" subtitle="NTC 1500 + levantamiento" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editPresiones} setEdit={setEditPresiones} />}>
             <Tbl caption="Presiones y cotas" thStyle={{ fontSize: 13 }} tdStyle={{ fontSize: 14 }} tdlStyle={{ fontSize: 15 }} cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
               ...(isRed ? [[
                 <Param name="Presión acometida" sub="Red pública en entrega" />,
@@ -75,14 +75,14 @@ function EPInputPage() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/perdidas_de_carga.webp" iconImgStyle={{ width: 22, height: 22 }} title="Pérdidas de carga" subtitle="Del diseño de redes" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editPerdidas} setEdit={setEditPerdidas} />}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/perdidas_de_carga.webp" iconImgStyle={{ width: 22, height: 22 }} title="Pérdidas de carga" subtitle="Del diseño de redes" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editPerdidas} setEdit={setEditPerdidas} />}>
             <Tbl caption="Pérdidas de carga" thStyle={{ fontSize: 13 }} tdStyle={{ fontSize: 14 }} tdlStyle={{ fontSize: 15 }} cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
               [<Param name="Pérdidas red AF" sub="Tramos + accesorios" />, <LazyInp disabled={!editPerdidas} field="hfac" ariaLabel="Pérdidas red AF" />, "m.c.a.", <Comment><span style={{ color: "var(--txt3)", fontWeight: 600 }}>Darcy-Weisbach</span> · Sumatoria pérdidas tramo más desfavorable de la red AC.</Comment>],
               [<Param name="Pérdidas red ACS" sub="Tramos + accesorios" />, <LazyInp disabled={!editPerdidas} field="hfacs" ariaLabel="Pérdidas red ACS" />, "m.c.a.", <Comment><span style={{ color: "var(--txt3)", fontWeight: 600 }}>Darcy-Weisbach</span> · El módulo usa MAX(Hf_ac, Hf_acs) como pérdida crítica de diseño.</Comment>],
               [<Param name="Pérdidas adicionales" sub="Intercambiador, filtros, zonas" />, <LazyInp disabled={!editPerdidas} field="hfotros" ariaLabel="Pérdidas adicionales" />, "m.c.a.", <Comment><span style={{ color: "var(--txt3)", fontWeight: 600 }}>Opcional</span> · Calentador, filtros multimedia, válvulas de zona u otros no incluidos en el diseño de redes.</Comment>],
             ]} />
           </Card>
-          <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/config_bombas.webp" iconImgStyle={{ width: 22, height: 22 }} title="Configuración de bombas" bodyStyle={{ padding: 6, display: "flex", flexDirection: "column", gap: 0 }} headerRight={<EditButton edit={editBombas} setEdit={setEditBombas} />}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/config_bombas.webp" iconImgStyle={{ width: 22, height: 22 }} title="Configuración de bombas" bodyStyle={{ padding: 6, display: "flex", flexDirection: "column", gap: 0 }} headerRight={<EditButton edit={editBombas} setEdit={setEditBombas} />}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               <div style={{ border: "1px solid var(--line)", borderRadius: "var(--r)", background: "var(--bg2)", padding: "8px 10px" }}>
                 <div style={{ fontSize: 11, color: "var(--txt3)", marginBottom: 4, fontWeight: 600 }}>Bombas en trabajo</div>

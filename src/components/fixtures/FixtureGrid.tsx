@@ -1,4 +1,3 @@
-import React from 'react';
 import { APARATO_IMG } from '../../constants';
 
 function corto(sigla: string) {

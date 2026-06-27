@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import ModulePageLayout from '../components/ModulePageLayout';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -13,7 +12,7 @@ const features = [
 export default function CivilStructurePage() {
   usePageMeta('Estructuras', 'Diseño estructural avanzado con análisis FEM. Cálculo de cargas sísmicas, viento y cimentaciones según normativa.');
   return (
-    <ModulePageLayout title="Estructuras" description="Diseño estructural avanzado y simulación física integrada." mainClassName="relative">
+    <ModulePageLayout title="Estructuras" mainClassName="relative">
       <section className="relative flex items-center border-b border-outline-variant overflow-hidden" style={{ minHeight: 600, background: '#0c0e12' }}>
           <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.1, backgroundImage: 'linear-gradient(to right, #3a494a 1px, transparent 1px), linear-gradient(to bottom, #3a494a 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
           <div className="absolute top-1/4 left-8 text-[13px] text-outline opacity-50 hidden lg:block" style={{ fontFamily: 'Geist, monospace' }}>

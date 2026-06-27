@@ -63,7 +63,6 @@ async function loadPlanImage(plan: any): Promise<{ nivel: number; img: HTMLCanva
     const c = document.createElement('canvas');
     c.width = Math.floor(vp.width);
     c.height = Math.floor(vp.height);
-    const ctx = c.getContext('2d')!;
     await page.render({ canvas: c, viewport: vp }).promise;
     return { nivel: plan.nivel, img: c, w: vp.width, h: vp.height };
   } catch {
@@ -117,7 +116,7 @@ function IsometriaTabBase({ state }: any) {
     return () => ro.disconnect();
   }, []);
 
-  const data = useMemo(() => readDrawing(plans || [], activeNet), [plans, activeNet]);
+  const data = useMemo(() => readDrawing(plans || [], activeNet || ''), [plans, activeNet]);
 
   const nptMap = useMemo(() => {
     const m: Record<number, number> = {};
@@ -146,7 +145,8 @@ function IsometriaTabBase({ state }: any) {
   const populatedNets = useMemo(() => {
     const netsWithData: string[] = [];
     for (const n of NETS) {
-      const d = readDrawing(plans || [], n.id);
+      const nId = typeof n.id === 'string' ? n.id : (n.id || '');
+      const d = readDrawing(plans || [], nId);
       if (d.ramales.length > 0 || d.bajantes.length > 0) netsWithData.push(n.id);
     }
     return netsWithData;
@@ -155,7 +155,7 @@ function IsometriaTabBase({ state }: any) {
   const confirmedPlanos = useMemo(() => (plans || []).filter((p: any) => p.status === 'confirmed' && p.nivel != null), [plans]);
 
   useEffect(() => {
-    if (populatedNets.length > 0 && !populatedNets.includes(activeNet)) {
+    if (populatedNets.length > 0 && !populatedNets.includes(activeNet || '')) {
       setActiveNet(populatedNets[0]);
     }
   }, [populatedNets, activeNet]);
@@ -190,7 +190,7 @@ function IsometriaTabBase({ state }: any) {
     };
   }, [confirmedPlanos, data.scaleMap, data.origenMap]);
 
-  const getZPix = useCallback((zMm: number, nivel: number) => {
+  const getZPix = useCallback((zMm: number, _nivel?: number) => {
     const zMeters = zMm / 1000;
     const isoScale = 150;
     return zMeters * isoScale;

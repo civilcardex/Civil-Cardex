@@ -44,9 +44,16 @@ export default function FloatingPanel({ title, icon, count = undefined, onClose,
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('mouseleave', onLeave);
+    };
+    const onLeave = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('mouseleave', onLeave);
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
+    window.addEventListener('mouseleave', onLeave);
   }, [pos, bringToFront]);
 
   useEffect(() => {
@@ -151,7 +158,7 @@ export const inputStyle = (w = 56): React.CSSProperties => ({
 
 export const btnDelStyle: React.CSSProperties = {
   background: 'transparent', border: '1px solid rgba(255,100,100,.3)',
-  borderRadius: 3, color: '#ffb4ab', padding: '1px 4px', fontSize: 9, cursor: 'pointer',
+  borderRadius: 3, color: '#ffb4ab', padding: '3px 6px', fontSize: 11, cursor: 'pointer',
 };
 
 export const btnAddStyle: React.CSSProperties = {

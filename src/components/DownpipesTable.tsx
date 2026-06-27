@@ -7,7 +7,7 @@ import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
 import { pisoLbl, pisoCorto, DIAM_BAN, DIAM_VENT } from "../constants";
 import { calcUDparcial } from "../utils/componentHelpers";
-import { calculateVentStack } from "../utils/calcSanitary";
+import { calculateVentStack } from "../utils/calcBajantes";
 import { diamPulgFromLabel } from "../utils/diamPulgFromLabel";
 
 

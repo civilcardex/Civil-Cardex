@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export const h4 = {
+export const subHeadingStyle = {
   fontFamily: "var(--mono)",
   fontSize: 15,
   fontWeight: 600,

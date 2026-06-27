@@ -68,6 +68,7 @@ export function useAuth() {
   return context;
 }
 
-export function getCurrentUser() {
-  return supabase.auth.getUser().then(({ data: { user } }) => user);
+export async function getCurrentUser() {
+  const { data: { user } } = await supabase.auth.getUser();
+  return user;
 }

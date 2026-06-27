@@ -14,12 +14,11 @@ const MODULE_NAMES: Record<string, string> = {
 
 interface ModulePageLayoutProps {
   title: string;
-  description: string;
   children: React.ReactNode;
   mainClassName?: string;
 }
 
-export default function ModulePageLayout({ title: _title, description: _description, children, mainClassName = '' }: ModulePageLayoutProps) {
+export default function ModulePageLayout({ title: _title, children, mainClassName = '' }: ModulePageLayoutProps) {
   const loc = useLocation();
   const breadRef = useRef<HTMLScriptElement>(null);
 

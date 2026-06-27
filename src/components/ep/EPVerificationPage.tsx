@@ -4,7 +4,7 @@ import Card from "../shared/Card";
 import Tbl from "../shared/Tbl";
 import EditButton from "../shared/EditButton";
 import { PVC_SCH40, NEMA_HP, COMM_HP, selectDN } from "./calculations";
-import { LazyInp, Fmt, Param, Comment, FLEX_COL } from "./EPShared";
+import { LazyInp, Param, Comment } from "./EPShared";
 import { SI } from "../../styles/sharedTableStyles";
 import { dec } from "../../utils/parseDecimal";
 import { AGUA_DENSIDAD, GRAVEDAD } from "../../utils/calcSanitaryCore";
@@ -20,7 +20,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
   const hfac = dec(ep.hfac), hfacs = dec(ep.hfacs), hfotros = dec(ep.hfotros);
   const pred = dec(ep.pred), pmin = dec(ep.pmin), pmax = dec(ep.pmax);
   const zbomba = dec(ep.zbomba), ztop = dec(ep.ztop), zcis = dec(ep.zcis), hfcis = dec(ep.hfcis);
-  const nt = dec(ep.nt) || 1, nr = dec(ep.nr);
+  const nt = dec(ep.nt) || 1;
   const etab = dec(ep.etab) || 0.65, etam = dec(ep.etam) || 0.85;
   const fs = dec(ep.fs) || 1.15, ciclos = dec(ep.ciclos) || 6;
   const alfa = dec(ep.alfa) || 0.30;
@@ -68,7 +68,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
 
   const hmtOk = HMT > 0 && HMT < pmax;
   const alertaPmax = HMT > pmax && pmax > 0;
-  const alertaCiclos = ciclos > 10;
+
   const hgOk = Hg > 0;
   const hfOk = Hf >= 0;
   const pminOk = pmin > 0;
@@ -101,7 +101,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
   if (section === "params") {
     return (
       <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.7fr 1fr", gap: 12, alignItems: "start" }}>
-        <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/parametros_equipo.webp" iconImgStyle={{ width: 22, height: 22 }} title="Parámetros del equipo — Datos del fabricante" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editParams} setEdit={setEditParams} />}>
+        <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/parametros_equipo.webp" iconImgStyle={{ width: 22, height: 22 }} title="Parámetros del equipo — Datos del fabricante" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editParams} setEdit={setEditParams} />}>
           <Tbl caption="Parámetros del equipo" cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
             [<Param name="Eficiencia bomba (η_b)" />, <LazyInp disabled={!editParams} field="etab" ariaLabel="Eficiencia bomba" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>0.55 – 0.80</span> Verificar en curva característica del fabricante para el punto Qd / HMT.</Comment>],
             [<Param name="Eficiencia motor (η_m)" />, <LazyInp disabled={!editParams} field="etam" ariaLabel="Eficiencia motor" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>0.85 – 0.95</span> Motores IE2 o IE3 recomendados para uso con VFD.</Comment>],
@@ -113,7 +113,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
           ]} />
         </Card>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/caudales.webp" iconImgStyle={{ width: 22, height: 22 }} title="Caudales" bodyStyle={{ padding: 0 }}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/caudales.webp" iconImgStyle={{ width: 22, height: 22 }} title="Caudales" bodyStyle={{ padding: 0 }}>
             <Tbl caption="Caudales" thStyle={{ fontSize: 10, padding: "1px 4px" }} tdStyle={{ fontSize: 11, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
               ["Qd = MAX(Qac, Qasc)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qd > 0 ? Qd.toFixed(3) : "—"}</span>, "L/s"],
               ["Qd en m³/h", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qd > 0 ? Qm3h.toFixed(2) : "—"}</span>, "m³/h"],
@@ -121,7 +121,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
               ["Caudal por bomba Qb = Qd / Nt", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qb > 0 ? Qb.toFixed(3) : "—"}</span>, "L/s"],
             ]} />
           </Card>
-          <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/altura_manometrica.webp" iconImgStyle={{ width: 22, height: 22 }} title={`${isRed ? "HMT = Hg + Hf + Pmin − Pred" : "HMT = Hg_total + Hf_red + Hf_suc + Pmin"}`} bodyStyle={{ padding: 0 }}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/altura_manometrica.webp" iconImgStyle={{ width: 22, height: 22 }} title={`${isRed ? "HMT = Hg + Hf + Pmin − Pred" : "HMT = Hg_total + Hf_red + Hf_suc + Pmin"}`} bodyStyle={{ padding: 0 }}>
             <Tbl caption="Altura manométrica total" thStyle={{ fontSize: 10, padding: "1px 4px" }} tdStyle={{ fontSize: 11, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
               ["Desnivel Hg = z_top − z_bomba", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hgOk ? "var(--ok)" : "#ef5350" }}>{hgOk ? "OK" : "NO CUMPLE"} {Hg.toFixed(2)}</span>, "m.c.a."],
               ["Hf crítica = MAX(Hf_ac, Hf_acs) + Hf_otros", <span role="status" style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hfOk ? "var(--ok)" : "#ef5350" }}>{hfOk ? "OK" : "NO CUMPLE"} {Hf.toFixed(2)}</span>, "m.c.a."],
@@ -134,7 +134,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
           </Card>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/potencia_bomba.webp" iconImgStyle={{ width: 22, height: 22 }} title="Potencia de la bomba" bodyStyle={{ padding: 0 }}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/potencia_bomba.webp" iconImgStyle={{ width: 22, height: 22 }} title="Potencia de la bomba" bodyStyle={{ padding: 0 }}>
             <Tbl caption="Potencia de la bomba" cols={["Parámetro", "Valor", "Ud."]} rows={[
               ["P_hid = γ · Qd · HMT", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Phid > 0 ? Phid.toFixed(0) : "—"}</span>, "W"],
               ["P_freno = P_hid / (η_b · η_m)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Pfreno > 0 ? Pfreno.toFixed(3) : "—"}</span>, "HP"],
@@ -142,7 +142,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
               ["P calculada (× F.S.)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Pins_kw > 0 ? Pins_kw.toFixed(2) : "—"}</span>, "kW"],
             ]} />
           </Card>
-          <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/pot_comercial_seleccionada.webp" iconImgStyle={{ width: 22, height: 22 }} title="Potencia comercial seleccionada" bodyStyle={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 6 }} headerRight={<EditButton edit={editPComercial} setEdit={setEditPComercial} />}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/pot_comercial_seleccionada.webp" iconImgStyle={{ width: 22, height: 22 }} title="Potencia comercial seleccionada" bodyStyle={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 6 }} headerRight={<EditButton edit={editPComercial} setEdit={setEditPComercial} />}>
             <div style={{ fontSize: 11, color: "var(--txt3)" }}>
               P calculada = <strong style={{ color: "var(--txt)" }}>{Pins_hp > 0 ? Pins_hp.toFixed(2) : "—"} HP</strong> · Comercial inmediata superior: <strong style={{ color: "var(--txt)", fontWeight: 700 }}>{autoNema} HP</strong>
             </div>
@@ -169,7 +169,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "480px 380px", gap: 16, justifyContent: "center", alignItems: "start" }}>
-      <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.webp" iconImgStyle={{ width: 22, height: 22 }} title="Presostato y tanque hidroneumático" bodyStyle={{ padding: 0 }}>
+      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.webp" iconImgStyle={{ width: 22, height: 22 }} title="Presostato y tanque hidroneumático" bodyStyle={{ padding: 0 }}>
         <Tbl caption="Presostato y tanque hidroneumático" thStyle={{ fontSize: 11, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud.", "Fórmula"]} rows={[
           ["P_on (arranque)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Pon.toFixed(2)}</span>, "m.c.a.", "P_on = HMT"],
           ["P_off (paro)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Poff.toFixed(2)}</span>, "m.c.a.", "P_off = P_on × 1.10"],
@@ -179,7 +179,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
           [<span style={{ fontWeight: 700, color: "var(--txt)" }}>Volumen tanque Vt = Vu / α</span>, <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: "var(--txt)" }}>{Vt.toFixed(1)}</span>, "L", "Vt = Vu / α"]
         ]} />
       </Card>
-      <Card style={FLEX_COL} iconImg="/iconos_diseno_redes/equipos/diametros_velocidades.webp" iconImgStyle={{ width: 22, height: 22 }} title="Diámetros y velocidades" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editDiametros} setEdit={setEditDiametros} />}>
+      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/diametros_velocidades.webp" iconImgStyle={{ width: 22, height: 22 }} title="Diámetros y velocidades" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editDiametros} setEdit={setEditDiametros} />}>
         <Tbl caption="Diámetros y velocidades" thStyle={{ fontSize: 11, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud."]} rows={[
           [<Param name="Tubería succión" sub="DN comercial" />, <LazyInp disabled={!editDiametros} field="dnsuc" ariaLabel="Tubería succión" />, "mm DN"],
           ["Velocidad real succión", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{sucDiam.Vreal ? sucDiam.Vreal.toFixed(2) : "—"}</span>, "m/s"],

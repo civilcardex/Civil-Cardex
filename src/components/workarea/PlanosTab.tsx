@@ -1,9 +1,9 @@
-﻿import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { useNavigate } from 'react-router-dom';
 import { saveTrazosToDB, loadFromStorage, saveToStorage } from "../../services/storageService";
 import { TRAZOS_PREFIX } from "../../constants/storage-keys";
 import { REQ_ITEMS, pisoLbl } from "../../constants";
-import EmptyState from "../shared/EmptyState";
+
 import { PlanoConfigurator } from "./PlanoConfigurator";
 import type { useWorkAreaState } from "../useWorkAreaState";
 
@@ -110,10 +110,6 @@ function PlanosTab({ state }: PlanosTabProps) {
     navigate('/visor');
   };
 
-  const handleSelectPending = (plan: any) => {
-    setSelectedPlanId(plan.id);
-    setCalibrating(true);
-  };
 
   // Calibration mode: full-width PlanoConfigurator with back button
   if (calibrating && selectedPlan) {
@@ -436,7 +432,10 @@ function PlanosTab({ state }: PlanosTabProps) {
           </div>
           {confirmedPlanos.length === 0 ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <EmptyState message="Aún no hay planos cargados" />
+              <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--txt3)', fontSize: 11 }}>
+                <div style={{ fontSize: 24, marginBottom: 4 }}>{'\u{1F4CB}'}</div>
+                Aún no hay planos cargados
+              </div>
             </div>
           ) : (
             <div style={{ flex: 1, overflowY: 'auto' }}>

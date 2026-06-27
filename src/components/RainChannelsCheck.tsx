@@ -1,5 +1,5 @@
 ﻿import { useRainwater } from "../context/RainwaterContext";
-import { chequeoCanalLluvia } from "../utils/calcSanitary";
+import { chequeoCanalLluvia } from "../utils/calcRainwater";
 
 const renderStatus = (val: string) => {
   if (val === 'O.K.' || val === 'Ok' || val === 'OK') {

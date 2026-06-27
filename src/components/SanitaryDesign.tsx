@@ -4,7 +4,7 @@ import { useApparatus } from "../context/ApparatusContext";
 import { usePlans } from "../context/PlansContext";
 import { calcUDparcial } from "../utils/componentHelpers";
 import { pisoCorto, DIAM_OPTIONS, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN, SAN_UC_IDS, APARATOS_DEF } from "../constants";
-import { diametroManning, caudalHunterLPS, factorSimultaneidad } from "../utils/calcSanitary";
+import { diametroManning, caudalHunterLPS, factorSimultaneidad } from "../utils/calcSanitaryCore";
 import { writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
 import { calcHydraulicCheck } from "../utils/hydraulicCheck";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";

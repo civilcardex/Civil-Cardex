@@ -1,16 +1,15 @@
 import { AGUA_CALIENTE, VENTILACION } from '../pages/catalog/catalogData';
 import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
 
-export const MATERIALES = {
-  af: {lbl:'Agua fría', opts:['PVC-PR','CPVC','Cobre rígido','Polipropileno PP-R']},
-  ac: {lbl:'Agua caliente', opts:['PVC-PR','CPVC','Cobre rígido','Polipropileno PP-R','PEX']},
-  san: {lbl:'Sanitaria', opts:['PVC-S','Novatec','Hierro fundido','Concreto']},
-  ll: {lbl:'Aguas lluvias', opts:['PVC-S','Novatec','Hierro fundido','Concreto','Gres cerámico']},
-  gas: {lbl:'Gas', opts:['PE al PE','Cobre rígido','A.C.','Acero HG','Polipropileno PP-R']},
-  rci: {lbl:'Contra incendio', opts:['A.C. SCH 40','A.C. SCH 10','Acero HG','CPVC CPVC-CI','PVC C900 RDE 14']},
+const MATS_RAW = {
+  af: ['PVC-PR','CPVC','Cobre rígido','Polipropileno PP-R'],
+  ac: ['PVC-PR','CPVC','Cobre rígido','Polipropileno PP-R','PEX'],
+  san: ['PVC-S','Novatec','Hierro fundido','Concreto'],
+  ll: ['PVC-S','Novatec','Hierro fundido','Concreto','Gres cerámico'],
+  gas: ['PE al PE','Cobre rígido','A.C.','Acero HG','Polipropileno PP-R'],
+  rci: ['A.C. SCH 40','A.C. SCH 10','Acero HG','CPVC CPVC-CI','PVC C900 RDE 14'],
 };
-
-export const MATS_DEFAULT=Object.fromEntries(Object.entries(MATERIALES).map(([k,v])=>[k,v.opts.map((o,i)=>({id:k+i,val:o}))]));
+export const MATS_DEFAULT = Object.fromEntries(Object.entries(MATS_RAW).map(([k,v])=>[k,v.map((o,i)=>({id:k+i,val:o}))]));
 
 export const MAT_LONGFORM = {
   'PVC-PR': 'PVC Presión',

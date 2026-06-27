@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import PlanoEngine, { NETS } from "../../lib/PlanoEngine";
 import { DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS, pisoLbl } from "../../constants";
-import { pisoCorto } from "../../constants/helpers";
 import { VENTILACION, CONTADORES as CONTADORES_CAT } from "../../pages/catalog/catalogData";
+import { DIAMETROS_AF } from "../../utils/calcHydraulics";
+import { writeAcoDiamToDrawing, writeContadorDiamToDrawing } from "../../utils/writeDiameterToDrawing";
 
 interface ContextMenuState {
   visible: boolean;
@@ -22,7 +23,7 @@ interface LowerFloorRamales {
 
 interface BajanteContextMenuProps {
   contextMenuState: ContextMenuState | null;
-  setContextMenuState: (state: ContextMenuState | null) => void;
+  setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
   selectedNivel: number | null;
   pisos: any[];
   engineRef: React.MutableRefObject<PlanoEngine | null>;
@@ -84,7 +85,6 @@ export default function BajanteContextMenu({
               const currentGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
               const gd = contextMenuState.bajante.ghostData?.[currentGhostLabel];
               const ghostDir = isGhost ? (gd && gd.direccion !== undefined ? gd.direccion : contextMenuState.bajante.direccion) : contextMenuState.bajante.direccion;
-              const ghostDNom = isGhost ? (gd && gd.dNominal !== undefined ? gd.dNominal : contextMenuState.bajante.dNominal) : contextMenuState.bajante.dNominal;
 
               const updateGhostField = (field: string, val: string) => {
                 if (!engineRef.current) return;
@@ -92,8 +92,8 @@ export default function BajanteContextMenu({
                 const cd = { ...(gd[currentGhostLabel] || {}) };
                 (cd as any)[field] = val;
                 gd[currentGhostLabel] = cd;
-                engineRef.current.updateElementById(contextMenuState.bajante.id, { ghostData: gd });
-                const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                engineRef.current?.updateElementById(contextMenuState.bajante.id, { ghostData: gd });
+                const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
                 if (fresh) {
                   setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
                   if (selElement?.id === contextMenuState.bajante.id) {
@@ -118,7 +118,7 @@ export default function BajanteContextMenu({
                           if (engineRef.current) {
                             if (isGhost && opt !== 'Desplazamiento') {
                               updateGhostField('direccion', opt.toLowerCase());
-                              engineRef.current.render();
+                              engineRef.current?.render();
                               return;
                             }
                             const currentNpt = pisos.find(p => p.n === selectedNivel)?.npt || 0;
@@ -128,15 +128,12 @@ export default function BajanteContextMenu({
                             let updates: any = {};
 
                             if (opt === 'Sube') {
-                              const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
                               const currentDesp = { ...(contextMenuState.bajante.desplazamientos || {}) };
                               updates = { direccion: 'sube', nptBase: currentNpt, nptCima: maxNpt, desplazamientos: currentDesp };
                             } else if (opt === 'Baja') {
-                              const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
                               const currentDesp = { ...(contextMenuState.bajante.desplazamientos || {}) };
                               updates = { direccion: 'baja', nptBase: minNpt, nptCima: currentNpt, desplazamientos: currentDesp };
                             } else if (opt === 'Continua') {
-                              const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
                               const currentDesp = { ...(contextMenuState.bajante.desplazamientos || {}) };
                               updates = { direccion: 'continua', desplazamientos: currentDesp };
                             } else if (opt === 'Desplazamiento') {
@@ -157,8 +154,8 @@ export default function BajanteContextMenu({
                               }
                             }
                             if (Object.keys(updates).length > 0) {
-                              engineRef.current.updateElementById(contextMenuState.bajante.id, updates);
-                              const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                              engineRef.current?.updateElementById(contextMenuState.bajante.id, updates);
+                              const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
                               if (fresh) {
                                 setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
                               }
@@ -209,12 +206,12 @@ export default function BajanteContextMenu({
                         updates.desplazamientos = currentDesp;
                       }
                     }
-                    engineRef.current.updateElementById(contextMenuState.bajante.id, updates);
-                    const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                    engineRef.current?.updateElementById(contextMenuState.bajante.id, updates);
+                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
                     if (fresh) {
                       setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
                     }
-                    engineRef.current.render();
+                    engineRef.current?.render();
                   }
                 }}
                 style={{
@@ -283,7 +280,7 @@ export default function BajanteContextMenu({
                           gd2[dGhostLabel] = cd;
                           const fields = { ghostData: gd2 };
                           engineRef.current?.updateElementById(contextMenuState.bajante.id, fields);
-                          const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                          const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
                           if (fresh) {
                             setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
                             if (selElement?.id === contextMenuState.bajante.id) {
@@ -293,7 +290,7 @@ export default function BajanteContextMenu({
                         } else {
                           const fields = { dNominal: val };
                           engineRef.current?.updateElementById(contextMenuState.bajante.id, fields);
-                          const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                          const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
                           if (fresh) {
                             setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
                             if (selElement?.id === contextMenuState.bajante.id) {
@@ -369,7 +366,7 @@ export default function BajanteContextMenu({
                       gd2[dGhostLabel] = cd;
                       const fields = { ghostData: gd2 };
                       engineRef.current?.updateElementById(contextMenuState.bajante.id, fields);
-                      const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                      const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
                       if (fresh) {
                         setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
                         if (selElement?.id === contextMenuState.bajante.id) {
@@ -379,7 +376,7 @@ export default function BajanteContextMenu({
                     } else {
                       const fields = { dNominal: val };
                       engineRef.current?.updateElementById(contextMenuState.bajante.id, fields);
-                      const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                      const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
                       if (fresh) {
                         setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
                         if (selElement?.id === contextMenuState.bajante.id) {
@@ -547,7 +544,7 @@ export default function BajanteContextMenu({
                     onChange={(e) => {
                       const val = e.target.value;
                       if (engineRef.current) {
-                        engineRef.current.updateElementById(contextMenuState.bajante.id, { diametro: val });
+                        engineRef.current?.updateElementById(contextMenuState.bajante.id, { diametro: val });
                         setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, diametro: val } } : null);
                         if (selElement?.id === contextMenuState.bajante.id) {
                           setSelElement({ ...selElement, diametro: val });
@@ -555,7 +552,7 @@ export default function BajanteContextMenu({
                         if (activeNet === contextMenuState.bajante.net) {
                           setDiamSel(prev => ({ ...prev, [activeNet]: val }));
                         }
-                        engineRef.current.render();
+                        engineRef.current?.render();
                       }
                     }}
                     style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
@@ -620,15 +617,17 @@ export default function BajanteContextMenu({
                   const dNom = val ? `${val}"` : '';
                   if (engineRef.current) {
                     const fields = { dNominal: dNom };
-                    engineRef.current.updateElementById(contextMenuState.bajante.id, fields);
-                    const fresh = engineRef.current.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                    engineRef.current?.updateElementById(contextMenuState.bajante.id, fields);
+                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
                     if (fresh) {
                       setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
                       if (selElement?.id === contextMenuState.bajante.id) {
                         setSelElement({ ...selElement, dNominal: fields.dNominal });
                       }
                     }
-                    engineRef.current.render();
+                    engineRef.current?.render();
+                    // Persist to localStorage for design table to read
+                    writeContadorDiamToDrawing(dNom, planosCtx.plans, contextMenuState.bajante.net || 'af');
                   }
                 }}
                 style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
@@ -638,6 +637,36 @@ export default function BajanteContextMenu({
                   <option key={c.dn} value={c.dn}>{c.dn}"</option>
                 ))}
               </select>
+            </div>
+            <div style={{ borderTop: '1px solid #3a494a', marginTop: 4 }}>
+              <div style={{ fontSize: 9, color: '#22D3EE', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                AC-01 (Red Pública → Contador)
+              </div>
+              <div style={{ padding: '0 8px 8px' }}>
+                <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4 }}>Diámetro</div>
+                <select
+                  value={contextMenuState.bajante.acoDiam || ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (engineRef.current) {
+                      engineRef.current?.updateElementById(contextMenuState.bajante.id, { acoDiam: val });
+                      const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                      if (fresh) {
+                        setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
+                      }
+                      engineRef.current?.render();
+                      // Persist to localStorage for design table to read
+                      writeAcoDiamToDrawing(val, planosCtx.plans, contextMenuState.bajante.net || 'af');
+                    }
+                  }}
+                  style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
+                >
+                  <option value="">— Sin diámetro —</option>
+                  {DIAMETROS_AF.map((d, i) => (
+                    <option key={i} value={d.nominal}>{d.nominal}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </>
         ) : null}

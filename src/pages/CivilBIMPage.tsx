@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import ModulePageLayout from '../components/ModulePageLayout';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -19,7 +18,7 @@ export default function CivilBIMPage() {
   usePageMeta('BIM', 'Modelado BIM para infraestructura civil. Integración IFC, Revit, detección de colisiones y coordinación multidisciplinar.');
   const bimAccent = '#d946ef';
   return (
-    <ModulePageLayout title="BIM" description="Integración total de modelos inteligentes en flujos de trabajo." mainClassName="flex flex-col w-full">
+    <ModulePageLayout title="BIM" mainClassName="flex flex-col w-full">
       <section className="relative w-full flex items-center border-b border-outline-variant overflow-hidden" style={{ minHeight: 600 }}>
           <div className="absolute inset-0 z-0" style={{ opacity: 0.1, backgroundImage: 'radial-gradient(circle at 2px 2px, #849495 1px, transparent 0)', backgroundSize: '32px 32px' }} />
           <div className="w-full max-w-7xl px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-12 z-10 items-center py-20">

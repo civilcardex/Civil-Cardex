@@ -11,7 +11,9 @@ import {
 } from '../constants/storage-keys';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
 
-function collectAparatos(out: any) {
+type DrawingData = Record<string, any>;
+
+function collectAparatos(out: DrawingData) {
   const rawAparatos = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
   out.aparatosByTramo = {};
   for (const [key, counts] of Object.entries(rawAparatos)) {
@@ -25,7 +27,7 @@ function collectAparatos(out: any) {
   }
 }
 
-function inferNivelFromDrawing(data: any): number {
+function inferNivelFromDrawing(data: DrawingData): number {
   if (!data) return 0;
   for (const r of (data.ramales || [])) {
     if (r.piso != null) {
@@ -42,15 +44,15 @@ function inferNivelFromDrawing(data: any): number {
   return 0;
 }
 
-function buildPrefixedSyncData(plans: any[], families: Set<string>) {
-  const out: any = { planes: {}, updatedAt: Date.now() };
+function buildPrefixedSyncData(plans: DrawingData[], families: Set<string>) {
+  const out: DrawingData = { planes: {}, updatedAt: Date.now() };
   if (!Array.isArray(plans)) return out;
 
   for (const plan of plans) {
     if (!plan) continue;
     const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
-    let data = raw as Record<string, any>;
+    let data = raw as DrawingData;
     if (typeof data === 'string') {
       try { data = JSON.parse(data); } catch (_) { continue; }
     }
@@ -68,12 +70,12 @@ function buildPrefixedSyncData(plans: any[], families: Set<string>) {
             diametro: r.diametro || '', diamPulg: diamPulgFromLabel(r.diametro),
             pendiente: typeof r.pendiente === 'number' ? r.pendiente : 0,
             material: r.material || '', maning: matManning(r.material),
-            dz: parseFloat(r.dz || r.lvert) || 0,
+            dz: parseFloat(r.dz ?? r.lvert) || 0,
             piso: r.piso || nivel,
             _aparatosKey: rKey,
             _net: r.net || family,
             pts: r.pts || [],
-            lvert: parseFloat(r.lvert) || 0,
+            lvert: parseFloat(r.lvert ?? r.dz) || 0,
             nSalidas: r.nSalidas || 0,
             descargaEnId: r.descargaEnId || null,
           });
@@ -96,15 +98,15 @@ function buildPrefixedSyncData(plans: any[], families: Set<string>) {
   return out;
 }
 
-function buildNonPrefixedSyncData(plans: any[], families: Set<string>) {
-  const out: any = { planes: {}, updatedAt: Date.now() };
+function buildNonPrefixedSyncData(plans: DrawingData[], families: Set<string>) {
+  const out: DrawingData = { planes: {}, updatedAt: Date.now() };
   if (!Array.isArray(plans)) return out;
 
   for (const plan of plans) {
     if (!plan) continue;
     const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
-    let data = raw as Record<string, any>;
+    let data = raw as DrawingData;
     if (typeof data === 'string') {
       try { data = JSON.parse(data); } catch (_) { continue; }
     }
@@ -159,13 +161,13 @@ function buildNonPrefixedSyncData(plans: any[], families: Set<string>) {
   return out;
 }
 
-function buildSyncData(plans: any[], families: Set<string>, prefix: string, _storageKey: string) {
+function buildSyncData(plans: DrawingData[], families: Set<string>, prefix: string, _storageKey: string) {
   return prefix
     ? buildPrefixedSyncData(plans, families)
     : buildNonPrefixedSyncData(plans, families);
 }
 
-export function writeHydroDrawingSync(plans: any[]) {
+export function writeHydroDrawingSync(plans: DrawingData[]) {
   try {
     const data = buildSyncData(plans, HYDRO_FAMILIES, 'h', HYDRO_SYNC_KEY);
     saveToStorage(HYDRO_SYNC_KEY, data);
@@ -186,7 +188,7 @@ export function readHydroDrawingSync() {
   };
 }
 
-export function writeSanDrawingSync(plans: any[]) {
+export function writeSanDrawingSync(plans: DrawingData[]) {
   try {
     const data = buildSyncData(plans, SAN_FAMILIES, '', SAN_SYNC_KEY);
     saveToStorage(SAN_SYNC_KEY, data);

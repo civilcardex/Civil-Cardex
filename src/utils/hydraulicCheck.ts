@@ -1,4 +1,4 @@
-import { relacionesHidraulicas, caudalTuboLleno, velocidadTuboLleno, tipoRegimen, numeroFroude, fuerzaTractiva as fuerzaTractivaCore } from './calcSanitary';
+import { relacionesHidraulicas, caudalTuboLleno, velocidadTuboLleno, tipoRegimen, numeroFroude, fuerzaTractiva as fuerzaTractivaCore } from './calcSanitaryCore';
 
 const YC_FACTOR = 0.296938082; // Derived from Manning n=0.009 for PVC
 

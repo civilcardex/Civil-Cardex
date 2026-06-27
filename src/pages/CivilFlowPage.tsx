@@ -19,7 +19,7 @@ const specs = [
 export default function CivilFlowPage() {
   usePageMeta('CivilFlow', 'Diseño y cálculo de redes hidráulicas, sanitarias y de gas. Hazen-Williams, Manning, Renouard con exportación KML.');
   return (
-    <ModulePageLayout title="CivilFlow" description="Diseño, análisis y optimización de redes hidráulicas, sanitarias y de gas. Integre flujos de trabajo de ingeniería de alta precisión directamente con modelos de terreno KML.">
+    <ModulePageLayout title="CivilFlow">
       <section className="relative w-full overflow-hidden border-b border-outline-variant" style={{ minHeight: 500, background: '#1a1c20' }}>
           <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, #111317 0%, rgba(17,19,23,0) 100%)' }} />
           <div className="relative z-10 px-6 lg:px-8 py-20 max-w-5xl mx-auto flex flex-col gap-6">

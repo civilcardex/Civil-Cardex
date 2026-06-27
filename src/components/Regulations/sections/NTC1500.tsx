@@ -2,7 +2,7 @@ import {
   NTC1500_DOTACIONES, NTC1500_UC, NTC1500_HAZEN_C, NTC1500_VELOCIDADES,
   NTC1500_UD, NTC1500_PENDIENTES, NTC1500_CAPACIDAD, NTC1500_VENTILACION,
 } from "../regulationsData";
-import { h4 } from "../shared";
+import { subHeadingStyle as h4 } from "../shared";
 
 export function NTC1500() {
   return (

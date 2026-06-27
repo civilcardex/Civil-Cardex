@@ -33,6 +33,30 @@ interface WorkAreaContentProps {
   state: WorkAreaState;
 }
 
+const prefetchSan = (p: number) => {
+  if (p === 1) import('./FixtureUnitCalc');
+  else if (p === 2) import('./SanitaryDesign');
+  else if (p === 3) import('./DownpipesTable');
+  else if (p === 4) import('./SanAccesoriosPage');
+};
+const prefetchLl = (p: number) => {
+  if (p === 1) import('./RainwaterDesign');
+  else if (p === 2) import('./RainDownpipesCheck');
+  else if (p === 3) import('./RainChannelsCheck');
+};
+const prefetchAfAc = (p: number) => {
+  if (p === 1) import('./CalculoUC');
+  else if (p === 2) import('./WaterNetworkDesign');
+  else if (p === 3) import('./AccessoriesTable');
+};
+const prefetchHeavy = () => {
+  import('./BombaARDesign');
+  import('./PressureEquipmentDesign');
+  import('./GasDesign');
+  import('./DesignParameters');
+  import('./Regulations/Regulations');
+};
+
 function RedesTab({ state }: { state: WorkAreaState }) {
   const {
     redesActivas, redes,
@@ -41,9 +65,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
     llPage, setLlPage,
     afPage, setAfPage,
     acPage, setAcPage,
-    bomPage, setBomPage,
-    gasPage, setGasPage,
-    tramosAf, tramosAc, updTramoAfAcc, updTramoAcAcc,
+    tramosAf, tramosAc,
   } = state;
 
   return (
@@ -51,7 +73,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
       <fieldset style={{ display: 'flex', gap: 6, flexWrap: 'wrap', border: 'none', padding: 0, margin: 0 }}>
         <legend style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Redes</legend>
         {redesActivas.map(r => (
-          <button key={r.id} onClick={() => setRedActiva(r.id)} aria-pressed={redActiva === r.id} aria-label={r.lbl} style={{
+          <button key={r.id} onClick={() => setRedActiva(r.id)} onMouseEnter={() => { if (r.id === 'bom' || r.id === 'ep' || r.id === 'gas') prefetchHeavy(); }} aria-pressed={redActiva === r.id} aria-label={r.lbl} style={{
             display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 'var(--r)', border: '1px solid',
             cursor: 'pointer', fontSize: 13, fontFamily: 'var(--body)', flex: 1, justifyContent: 'center',
             borderColor: redActiva === r.id ? r.col : 'var(--line)',
@@ -66,7 +88,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
       </fieldset>
       {redActiva === 'san' && redes.has('san') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <PageNav page={sanPage} setPage={setSanPage} total={4} color="var(--san)" labels={['Cálculo de unidades de descarga', 'Diseño sanitario', 'Bajantes y ventilación', 'Accesorios']} />
+          <PageNav page={sanPage} setPage={setSanPage} total={4} color="var(--san)" labels={['Cálculo de unidades de descarga', 'Diseño sanitario', 'Bajantes y ventilación', 'Accesorios']} onPageHover={prefetchSan} />
           {sanPage === 1 && <Suspense fallback={FALLBACK}><CalculoUD /></Suspense>}
           {sanPage === 2 && <Suspense fallback={FALLBACK}><DisenosSanitarios /></Suspense>}
           {sanPage === 3 && <Suspense fallback={FALLBACK}><BajantesTable /></Suspense>}
@@ -76,7 +98,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
       {redActiva === 'll' && redes.has('ll') && (
         <RainwaterProvider>
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <PageNav page={llPage} setPage={setLlPage} total={3} color="var(--ll)" labels={['Diseño lluvias', 'Chequeo bajantes', 'Chequeo canales']} />
+          <PageNav page={llPage} setPage={setLlPage} total={3} color="var(--ll)" labels={['Diseño lluvias', 'Chequeo bajantes', 'Chequeo canales']} onPageHover={prefetchLl} />
           {llPage === 1 && <Suspense fallback={FALLBACK}><DisenoLluvias /></Suspense>}
           {llPage === 2 && <Suspense fallback={FALLBACK}><ChequeoBajantesLluvias /></Suspense>}
           {llPage === 3 && <Suspense fallback={FALLBACK}><ChequeoCanalesLluvias /></Suspense>}
@@ -85,18 +107,18 @@ function RedesTab({ state }: { state: WorkAreaState }) {
       )}
       {redActiva === 'af' && redes.has('af') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <PageNav page={afPage} setPage={setAfPage} total={3} color="var(--af)" labels={['Cálculo de unidades de consumo', 'Diseño de red agua fría', 'Accesorios']} />
+          <PageNav page={afPage} setPage={setAfPage} total={3} color="var(--af)" labels={['Cálculo de unidades de consumo', 'Diseño de red agua fría', 'Accesorios']} onPageHover={prefetchAfAc} />
           {afPage === 1 && <Suspense fallback={FALLBACK}><CalculoUC tipo="af" /></Suspense>}
           {afPage === 2 && <Suspense fallback={FALLBACK}><WaterNetworkDesign networkType="af" diamTable={DIAMETROS_AF} lookupFn={lookupInterno as any} /></Suspense>}
-          {afPage === 3 && <Suspense fallback={FALLBACK}><AccesoriosTable tramos={tramosAf} updAcc={updTramoAfAcc} net="af" readOnly /></Suspense>}
+          {afPage === 3 && <Suspense fallback={FALLBACK}><AccesoriosTable tramos={tramosAf} /></Suspense>}
         </div>
       )}
       {redActiva === 'ac' && redes.has('ac') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <PageNav page={acPage} setPage={setAcPage} total={3} color="var(--ac)" labels={['Cálculo de unidades de consumo', 'Diseño de red agua caliente', 'Accesorios']} />
+          <PageNav page={acPage} setPage={setAcPage} total={3} color="var(--ac)" labels={['Cálculo de unidades de consumo', 'Diseño de red agua caliente', 'Accesorios']} onPageHover={prefetchAfAc} />
           {acPage === 1 && <Suspense fallback={FALLBACK}><CalculoUC tipo="ac" /></Suspense>}
           {acPage === 2 && <Suspense fallback={FALLBACK}><WaterNetworkDesign networkType="ac" diamTable={DIAMETROS_AC} lookupFn={lookupInternoAC as any} /></Suspense>}
-          {acPage === 3 && <Suspense fallback={FALLBACK}><AccesoriosTable tramos={tramosAc} updAcc={updTramoAcAcc} net="ac" readOnly /></Suspense>}
+          {acPage === 3 && <Suspense fallback={FALLBACK}><AccesoriosTable tramos={tramosAc} /></Suspense>}
         </div>
       )}
       {redActiva === 'bom' && redes.has('bom') && (
@@ -163,13 +185,13 @@ export default function WorkAreaContent({ state }: WorkAreaContentProps) {
 
   return (
     <>
-      {tab === 'info' && <InfoTab state={state} />}
-      {tab === 'planos' && <PlanosTab state={state} />}
-      {tab === 'redes' && state.redesActivas.length > 0 && <RedesTab state={state} />}
-      {tab === 'datos' && <Suspense fallback={FALLBACK}><BaseDatos redes={redes} /></Suspense>}
-      {tab === 'crit' && <Suspense fallback={FALLBACK}><Normativa /></Suspense>}
-      {tab === 'inf' && <InfTab state={state} />}
-      {tab === 'iso' && <Suspense fallback={FALLBACK}><IsometriaTab state={state} /></Suspense>}
+      {tab === 'info' && <section aria-label="Información del proyecto"><InfoTab state={state} /></section>}
+      {tab === 'planos' && <section aria-label="Carga de planos"><PlanosTab state={state} /></section>}
+      {tab === 'redes' && state.redesActivas.length > 0 && <section aria-label="Diseño de red"><RedesTab state={state} /></section>}
+      {tab === 'datos' && <section aria-label="Parámetros de diseño"><Suspense fallback={FALLBACK}><BaseDatos redes={redes} /></Suspense></section>}
+      {tab === 'crit' && <section aria-label="Criterios y normativa"><Suspense fallback={FALLBACK}><Normativa /></Suspense></section>}
+      {tab === 'inf' && <section aria-label="Resumen del proyecto"><InfTab state={state} /></section>}
+      {tab === 'iso' && <section aria-label="Isometría de red"><Suspense fallback={FALLBACK}><IsometriaTab state={state} /></Suspense></section>}
     </>
   );
 }

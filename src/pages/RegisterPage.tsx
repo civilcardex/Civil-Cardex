@@ -110,7 +110,7 @@ function RegisterPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div style={{position:'relative'}}>
                     <FormField label="CONTRASEÑA" type={showPwd ? 'text' : 'password'} value={form.password} onChange={handleChange('password')} autoComplete="new-password" required minLength={6} />
-                    <button type="button" onClick={() => setShowPwd(prev => !prev)} tabIndex={-1}
+                    <button type="button" onClick={() => setShowPwd(prev => !prev)}
                       aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                       className="absolute right-2 bottom-[12px] text-sm opacity-50 hover:opacity-90 transition-opacity"
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8AB4D6', padding: 0 }}>
@@ -119,7 +119,7 @@ function RegisterPage() {
                   </div>
                   <div style={{position:'relative'}}>
                     <FormField label="CONFIRMAR" type={showConfirm ? 'text' : 'password'} value={form.confirm} onChange={handleChange('confirm')} required minLength={6} />
-                    <button type="button" onClick={() => setShowConfirm(prev => !prev)} tabIndex={-1}
+                    <button type="button" onClick={() => setShowConfirm(prev => !prev)}
                       aria-label={showConfirm ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                       className="absolute right-2 bottom-[12px] text-sm opacity-50 hover:opacity-90 transition-opacity"
                       style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8AB4D6', padding: 0 }}>

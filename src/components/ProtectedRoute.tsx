@@ -22,9 +22,10 @@ export function ProtectedRoute() {
 
   useEffect(() => {
     if (!supabase) return;
-    supabase.auth.getUser().then(({ data }) => {
+    (async () => {
+      const { data } = await supabase.auth.getUser();
       setUser(data.user ?? null);
-    });
+    })();
   }, []);
 
   if (!user) return <Navigate to="/login" replace />;

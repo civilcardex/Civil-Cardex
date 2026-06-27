@@ -1,7 +1,7 @@
 import {
   TABLAS_PRESION, TABLAS_CAUDALES, TABLAS_CRITERIOS, TABLAS_ALTITUDES,
 } from "../regulationsData";
-import { h4 } from "../shared";
+import { subHeadingStyle as h4 } from "../shared";
 
 export function TablasRef() {
   return (

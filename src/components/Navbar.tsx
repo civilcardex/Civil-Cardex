@@ -10,17 +10,18 @@ function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    getCurrentUser().then((user: any) => {
+    let subscription: { unsubscribe: () => void } | null = null;
+
+    (async () => {
+      const user = await getCurrentUser();
       setUser(user);
       setLoading(false);
-    });
 
-    let subscription: { unsubscribe: () => void } | null = null;
-    import('../lib/supabase').then(({ supabase }) => {
+      const { supabase } = await import('../lib/supabase');
       subscription = supabase.auth.onAuthStateChange((_event, session) => {
         setUser(session?.user ?? null);
       }).data.subscription;
-    });
+    })();
 
     return () => subscription?.unsubscribe();
   }, []);

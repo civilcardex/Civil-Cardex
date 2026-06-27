@@ -28,10 +28,12 @@ interface PlanoConfiguratorProps {
   plans: any[];
   planNivel: number | null;
   onUpdateNivel: (planId: number, nivel: number | null) => void;
+  onChangePisoCorto?: (planId: number, pisoId: number) => void;
+  onCopyPisoCorto?: (planId: number) => void;
 }
 
 function PlanoConfiguratorBase({
-  planFile, planName, planId, onSaveConfig, onIrADibujo, existingCal,
+  planFile, planName, planId, onSaveConfig, existingCal,
   pisos, plans, planNivel, onUpdateNivel,
 }: PlanoConfiguratorProps) {
 
@@ -80,7 +82,7 @@ function PlanoConfiguratorBase({
 
   const showToast = useCallback((msg: string, type: 'err' | 'ok' | 'warn' = 'err') => {
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+    setTimeout(() => setToast(null), 8000);
   }, []);
 
   const canvasToPlane = useCallback((cx: number, cy: number) => ({
@@ -439,7 +441,7 @@ function PlanoConfiguratorBase({
     }
   };
 
-  const onMouseUp = (e: React.MouseEvent) => {
+  const onMouseUp = () => {
     if (panning) { setPanning(false); setPanStart(null); }
     setCursorPos(null);
   };
@@ -489,11 +491,7 @@ function PlanoConfiguratorBase({
     setTimeout(() => setSaved(false), 2500);
   };
 
-  const irADibujo = () => {
-    if (!origen) { showToast('Defina el origen antes de ir a dibujo', 'err'); return; }
-    if (!scaleM) { showToast('Calibre al menos un eje antes de ir a dibujo', 'err'); return; }
-    onIrADibujo();
-  };
+
 
   const diffPct = factorX && factorY && scaleM ? Math.abs(factorX - factorY) / scaleM * 100 : 0;
 
@@ -601,7 +599,7 @@ function PlanoConfiguratorBase({
                       setHasSaved(false);
                     }
                   }}
-                  aria-label="Seleccionar nivel de plano"
+                  aria-label="Seleccionar escala definida del plano"
                   style={{ width: '100%', padding: '5px 6px', fontSize: 12, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer' }}
                 >
                   <option value="">— Escala —</option>

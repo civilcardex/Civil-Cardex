@@ -72,7 +72,7 @@ function LoginPage() {
 
                 <div style={{position:'relative'}}>
                   <FormField label="CONTRASEÑA" type={showPwd ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" required minLength={6} />
-                  <button type="button" onClick={() => setShowPwd(prev => !prev)} tabIndex={-1}
+                  <button type="button" onClick={() => setShowPwd(prev => !prev)}
                     aria-label={showPwd ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                     className="absolute right-2 bottom-[12px] text-base opacity-50 hover:opacity-90 transition-opacity"
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8AB4D6', padding: 0, lineHeight: 1 }}>

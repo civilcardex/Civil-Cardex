@@ -24,11 +24,6 @@ function _cacheSet(key: string, value: any): void {
   _cache.set(key, { value, ts: Date.now() });
 }
 
-export function cacheClear(key?: string) {
-  if (key) _cache.delete(PREFIX + key);
-  else _cache.clear();
-}
-
 export function loadFromStorage<T>(key: string, fallback: T): T {
   const fullKey = PREFIX + key;
   const cached = _cacheGet(fullKey);

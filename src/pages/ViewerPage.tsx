@@ -112,7 +112,7 @@ export default function ViewerPage() {
               <span style={{ fontSize: 8, color: '#8AB4D6' }}>▼</span>
             </button>
             {dropdownOpen && (
-              <div style={{
+              <div role="listbox" aria-label="Seleccionar plano" style={{
                 position: 'absolute', top: '100%', left: 0, marginTop: 4,
                 minWidth: 240, background: '#15171b', border: '1px solid #3a494a',
                 borderRadius: 6, boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
@@ -125,7 +125,9 @@ export default function ViewerPage() {
                 )}
                 {plans.map((p, i) => (
                   <div key={p.id}
+                    role="option" aria-selected={i === activeIndex} tabIndex={0}
                     onClick={() => handleSelectPlan(i)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelectPlan(i); } }}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '8px 12px', cursor: 'pointer',

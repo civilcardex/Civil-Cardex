@@ -1,7 +1,7 @@
 import {
   NFPA13_RIESGOS, NFPA13_DENSIDADES, NFPA13_ROCIADORES,
 } from "../regulationsData";
-import { h4 } from "../shared";
+import { subHeadingStyle as h4 } from "../shared";
 
 export function NFPA13() {
   return (

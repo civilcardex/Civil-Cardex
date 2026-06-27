@@ -1,4 +1,4 @@
-import React, { type RefObject } from 'react'
+import {  type RefObject  } from 'react';
 import { useNavigate } from 'react-router-dom'
 import { pisoLbl } from '../../constants'
 
@@ -15,14 +15,13 @@ interface PdfCanvasProps {
   planos: any[]
   tool: string
   snapOn: boolean
-  onSelectPlan?: (index: number) => void
 }
 
 export default function PdfCanvas({
   cwRef, containerRef, pdfCanvasRef, drawCanvasRef,
   currentFile, error, loading,
-  selectedNivel, pisos, planos,
-  tool, snapOn, onSelectPlan,
+  selectedNivel, planos,
+  tool, snapOn,
 }: PdfCanvasProps) {
   const navigate = useNavigate();
   return (
