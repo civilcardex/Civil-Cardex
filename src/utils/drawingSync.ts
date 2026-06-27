@@ -135,7 +135,7 @@ function buildNonPrefixedSyncData(plans: DrawingData[], families: Set<string>) {
       if (families.has(b.net)) {
         const bKey = b.net + '_' + b.id + '_' + plan.id;
         bajantes.push({
-          id: b.id, code: b.code || b.id,
+          id: b.id, code: b.code || b.id, tipo: b.tipo || 'bajante',
           dNominal: b.dNominal || '', diamPulg: diamPulgFromLabel(b.dNominal),
           hVert: b.hVert || 0, material: b.material || '',
           maning: matManning(b.material), _aparatosKey: bKey, _net: b.net,

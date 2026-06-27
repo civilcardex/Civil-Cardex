@@ -66,8 +66,8 @@ export const AGUA_CALIENTE = [
 ];
 
 export const CONTADORES = [
-  { dn: '½', q: 0.84 }, { dn: '¾', q: 1.40 },
-  { dn: '1', q: 1.96 }, { dn: '1 ½', q: 5.60 }, { dn: '2', q: 8.40 },
+  { dn: '1/2', q: 0.84 }, { dn: '3/4', q: 1.40 },
+  { dn: '1', q: 1.96 }, { dn: '1 1/2', q: 5.60 }, { dn: '2', q: 8.40 },
 ];
 
 export const MATERIALES_POR_RED = [
