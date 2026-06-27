@@ -5,7 +5,7 @@ export function getPdfjs(): Promise<any> {
   if (cached) return Promise.resolve(cached);
   if (!promise) {
     promise = import('pdfjs-dist').then(mod => {
-      mod.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href;
+      mod.GlobalWorkerOptions.workerSrc = '/pdfjs/pdf.worker.min.mjs';
       cached = mod;
       return mod;
     });

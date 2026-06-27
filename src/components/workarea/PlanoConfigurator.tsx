@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { pisoLbl } from "../../constants";
 import ModalProtocolo from "./ModalProtocolo";
+import { getPdfjs } from "../../utils/lazyPdfjs";
 
 interface PlanoConfiguratorProps {
   planFile: File;
@@ -210,8 +211,7 @@ function PlanoConfiguratorBase({
       let cancelled = false;
       (async () => {
         try {
-          const pdfjsLib = await import('pdfjs-dist');
-          pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).href;
+          const pdfjsLib = await getPdfjs();
           const data = await planFile.arrayBuffer();
           const pdf = await pdfjsLib.getDocument({ data }).promise;
           if (cancelled) return;
