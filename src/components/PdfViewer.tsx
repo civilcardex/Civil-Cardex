@@ -514,6 +514,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
       if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') return;
       if (e.key.toLowerCase() === 'g') { setSnapOn(p => !p); e.preventDefault(); }
       if (e.key.toLowerCase() === 'c') { setTool('cont'); e.preventDefault(); }
+      if (e.key.toLowerCase() === 'h') { setTool('calent'); e.preventDefault(); }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (engineRef.current) {
           const eng = engineRef.current;
