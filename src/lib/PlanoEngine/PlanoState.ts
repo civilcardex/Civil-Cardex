@@ -64,6 +64,7 @@ export interface PlanoRamal {
   diametro: string;
   pendiente: number;
   _labelBox?: LabelBoxCorners;
+  _net?: string;
 }
 
 export interface PlanoBajante {
@@ -95,6 +96,7 @@ export interface PlanoBajante {
   totalL?: number;
   pendiente?: number;
   piso?: string;
+  bajR?: number;
   _circ?: { x: number; y: number; r: number };
   _ghost?: { x: number; y: number; r: number };
   _ghostLabelBox?: LabelBoxCorners;

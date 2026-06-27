@@ -2,6 +2,69 @@ import { writeHydroDrawingSync, writeSanDrawingSync } from './drawingSync';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY, HYDRO_FAMILIES, SAN_FAMILIES } from '../constants/storage-keys';
 
+const PULG_STRING_TO_NUM: Record<string, number> = {
+  '1/2"': 0.5, '½': 0.5, '1/2': 0.5,
+  '3/4"': 0.75, '¾': 0.75, '3/4': 0.75,
+  '1"': 1, '1': 1,
+  '1-1/4"': 1.25, '1 1/4"': 1.25, '1¼': 1.25, '1-1/4': 1.25, '1 1/4': 1.25,
+  '1-1/2"': 1.5, '1 1/2"': 1.5, '1½': 1.5, '1 ½': 1.5, '1-1/2': 1.5, '1 1/2': 1.5,
+  '2"': 2, '2': 2, '2-1/2': 2.5, '2-1/2"': 2.5, '2½': 2.5, '2 ½': 2.5,
+  '3"': 3, '3': 3, '4"': 4, '4': 4, '6"': 6, '6': 6,
+};
+
+const NUM_TO_PULG_STRING: Record<number, string> = {
+  0.5: '½"', 0.75: '¾"', 1: '1"', 1.25: '1¼"', 1.5: '1½"', 2: '2"',
+};
+
+export function pulgStrToNum(s: string): number {
+  const clean = cleanupLabel(s);
+  return PULG_STRING_TO_NUM[clean] ?? (parseFloat(s) || 0);
+}
+
+export function numToPulgStr(n: number): string {
+  return NUM_TO_PULG_STRING[n] || `${n}"`;
+}
+
+export function findContadorBajante(plans: any[], net: string): { planId: string | number; bajante: any } | null {
+  for (const plan of plans) {
+    if (!plan || plan.status !== 'confirmed') continue;
+    const key = TRAZOS_PREFIX + plan.id;
+    const raw = loadFromStorage(key, null);
+    if (!raw) continue;
+    const data = raw as Record<string, any>;
+    const bajante = (data.bajantes || []).find((b: any) => b.tipo === 'contador' && b.net === net);
+    if (bajante) return { planId: plan.id, bajante };
+  }
+  return null;
+}
+
+export function readAcoDiamFromDrawing(plans: any[], net: string): string | null {
+  const found = findContadorBajante(plans, net);
+  return found?.bajante?.acoDiam || null;
+}
+
+export function readContadorDiamFromDrawing(plans: any[], net: string): string | null {
+  const found = findContadorBajante(plans, net);
+  return found?.bajante?.dNominal || null;
+}
+
+export function readCnt1Accesorios(plans: any[], net: string): Record<string, number> {
+  for (const plan of plans) {
+    if (!plan || plan.status !== 'confirmed') continue;
+    const hidroKey = `${net}_CNT1_${plan.id}`;
+    const hidroRaw = loadFromStorage(HYDRO_DATA_STORAGE_KEY, null) as Record<string, any> | null;
+    if (hidroRaw && hidroRaw[hidroKey]) {
+      return hidroRaw[hidroKey].accesorios || {};
+    }
+  }
+  return {};
+}
+
+function cleanupLabel(s: string): string {
+  // Strip RDE / SCH suffix and normalize spacing for fraction matching
+  return s.replace(/"/g, '').replace(/\s*RDE.*$|\s*SCH.*$/i, '').replace(/\s+/g, '').trim();
+}
+
 export function deleteRamalFromDrawing(ramalKey: string, net: string, plans: any[]) {
   if (!ramalKey || !net || !plans) return;
   const isHydro = HYDRO_FAMILIES.has(net);
@@ -83,8 +146,50 @@ export function writeDiametroToDrawing(ramalKey: string, net: string, newDiamLab
   if (isSan) writeSanDrawingSync(plans);
 }
 
+export function writeContadorDiamToDrawing(val: string, plans: any[], net: string): void {
+  if (!plans) return;
+  const found = findContadorBajante(plans, net);
+  if (!found) return;
+  const key = TRAZOS_PREFIX + found.planId;
+  const raw = loadFromStorage(key, null);
+  if (!raw) return;
+  const data = raw as Record<string, any>;
+
+  // Write to bajante's dNominal
+  const baj = (data.bajantes || []).find((b: any) => b.id === found.bajante.id);
+  if (baj) {
+    baj.dNominal = val;
+  }
+
+  data.ts = Date.now();
+  saveToStorage(key, data);
+  saveTrazosToDB(String(found.planId), data);
+  if (HYDRO_FAMILIES.has(net)) writeHydroDrawingSync(plans);
+  if (SAN_FAMILIES.has(net)) writeSanDrawingSync(plans);
+}
+
+export function writeAcoDiamToDrawing(val: string, plans: any[], net: string): void {
+  if (!plans) return;
+  const found = findContadorBajante(plans, net);
+  if (!found) return;
+  const key = TRAZOS_PREFIX + found.planId;
+  const raw = loadFromStorage(key, null);
+  if (!raw) return;
+  const data = raw as Record<string, any>;
+  const baj = (data.bajantes || []).find((b: any) => b.id === found.bajante.id);
+  if (baj) {
+    baj.acoDiam = val;
+    data.ts = Date.now();
+    saveToStorage(key, data);
+    saveTrazosToDB(String(found.planId), data);
+    if (HYDRO_FAMILIES.has(net)) writeHydroDrawingSync(plans);
+    if (SAN_FAMILIES.has(net)) writeSanDrawingSync(plans);
+  }
+}
+
 export function writeBajantePropToDrawing(bajanteKey: string, net: string, prop: string, val: any, plans: any[]) {
   if (!bajanteKey || !net || !plans) return;
+  const isHydro = HYDRO_FAMILIES.has(net);
   const isSan = SAN_FAMILIES.has(net);
 
   const parts = bajanteKey.split('-');
@@ -114,5 +219,6 @@ export function writeBajantePropToDrawing(bajanteKey: string, net: string, prop:
     }
   }
 
+  if (isHydro) writeHydroDrawingSync(plans);
   if (isSan) writeSanDrawingSync(plans);
 }

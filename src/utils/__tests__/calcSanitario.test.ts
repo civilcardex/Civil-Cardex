@@ -5,8 +5,6 @@ import {
   caudalTuboLleno,
   velocidadTuboLleno,
   diametroManning,
-  GRAVEDAD,
-  manning_SAN,
 } from '../calcSanitary'
 
 describe('factorSimultaneidad', () => {

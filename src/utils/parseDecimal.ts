@@ -14,5 +14,4 @@ export function parseIntInput(val: string): number | null {
   return intVal;
 }
 
-/** Shorthand: parseDecimalInput(s) || 0 */
-export const dec = (s: string) => parseDecimalInput(s) || 0;
+export const dec = (s: string) => parseDecimalInput(s) ?? 0;

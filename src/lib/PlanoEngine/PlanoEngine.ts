@@ -17,7 +17,7 @@ import { renderTexts } from './renderers/renderTextAnnotations';
 import { renderAreas, renderActiveArea } from './renderers/renderAreas';
 import { renderBajantes, renderGhosts } from './renderers/renderBajantes';
 import { renderRamales, renderActiveRamal } from './renderers/renderRamales';
-import { snapToSegment, pointInPoly, pointInLabelBox } from './HitTester';
+import { snapToSegment } from './HitTester';
 import { serializeWork, applyWorkData } from './PlanoPersistence';
 import { setupCanvasEvents, teardownCanvasEvents, getCanvasPosition, wrapTouch } from './PlanoEventHandler';
 import {
@@ -74,6 +74,7 @@ import {
   _renumberAreas as _doRenumberAreas,
   calcSanitaryAccessories,
   autoDetectRamalConnections,
+  ensureRpCntRamal,
 } from './PlanoEngineNetwork';
 import { PlanoHistory } from './PlanoHistory';
 import { initEngineState } from './DragStateMachine';
@@ -110,57 +111,63 @@ export default class PlanoEngine implements IPlanoEngineCore {
   canv: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
 
-  zoom: number;
-  offX: number;
-  offY: number;
-  dpr: number;
-  tool: ToolType;
-  activeNet: string;
-  tipoTramo: TramoType;
-  snapMode: boolean;
-  scaleM: number;
-  pageW: number;
-  pageH: number;
+  zoom!: number;
+  offX!: number;
+  offY!: number;
+  dpr!: number;
+  tool!: ToolType;
+  activeNet!: string;
+  tipoTramo!: TramoType;
+  snapMode!: boolean;
+  scaleM!: number;
+  pageW!: number;
+  pageH!: number;
 
-  ramales: PlanoRamal[];
-  dims: PlanoDimension[];
-  textAnnots: PlanoTextAnnotation[];
-  bajantes: PlanoBajante[];
-  areas: PlanoArea[];
-  activeRamal: PlanoActiveRamal | null;
-  padreTributario: string | null;
-  activeArea: PlanoActiveArea | null;
-  selId: string | null;
-  areaDrag: { id: string; startX: number; startY: number } | null;
-  panning: boolean;
-  panX0: number;
-  panY0: number;
-  mouseX: number;
-  mouseY: number;
-  ghostDrag: { id: string; startX: number; startY: number; baseDx: number; baseDy: number } | null;
-  lblDrag: { id: string; offX: number; offY: number } | null;
-  txtDrag: { id: string; startX: number; startY: number; origX: number; origY: number } | null;
-  bajDrag: { id: string; offX: number; offY: number } | null;
-  ptDrag: { id: string; ptIdx: number; slideConstraint?: { otherId: string; segmentIdx: number } } | null;
-  ramalDrag: { id: string; startX: number; startY: number; origPts: [number, number][]; connBaj?: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[] } | null;
-  _dimStart: Point | null;
-  nivelActual: PlanoLevel | null;
-  nptLevels: PlanoLevel[];
-  _hiddenNets: Set<string>;
-  _lockedNets: Set<string>;
-  _loadedPlanId: string | null;
-  _onDirtyCb: DirtyCallback | null;
-  _lastMouseCvs: Point;
+  ramales!: PlanoRamal[];
+  dims!: PlanoDimension[];
+  textAnnots!: PlanoTextAnnotation[];
+  bajantes!: PlanoBajante[];
+  areas!: PlanoArea[];
+  activeRamal!: PlanoActiveRamal | null;
+  padreTributario!: string | null;
+  activeArea!: PlanoActiveArea | null;
+  selId!: string | null;
+  areaDrag!: { id: string; startX: number; startY: number } | null;
+  panning!: boolean;
+  panX0!: number;
+  panY0!: number;
+  mouseX!: number;
+  mouseY!: number;
+  ghostDrag!: { id: string; startX: number; startY: number; baseDx: number; baseDy: number } | null;
+  lblDrag!: { id: string; offX: number; offY: number } | null;
+  txtDrag!: { id: string; startX: number; startY: number; origX: number; origY: number } | null;
+  bajDrag!: { id: string; offX: number; offY: number } | null;
+  ptDrag!: { id: string; ptIdx: number; slideConstraint?: { otherId: string; segmentIdx: number } } | null;
+  ramalDrag!: { id: string; startX: number; startY: number; origPts: [number, number][]; connBaj?: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[] } | null;
+  _dimStart!: Point | null;
+  nivelActual!: PlanoLevel | null;
+  nptLevels!: PlanoLevel[];
+  _hiddenNets!: Set<string>;
+  _lockedNets!: Set<string>;
+  _loadedPlanId!: string | null;
+  _onDirtyCb!: DirtyCallback | null;
+  _lastMouseCvs!: Point;
 
-  _netCounts: Record<string, PlanoNetCounts>;
+  _netCounts!: Record<string, PlanoNetCounts>;
 
-  MM: {
+  MM!: {
     lblName: number;
     lblInfo: number;
     lblCode: number;
     flowEmoji: number;
     coord: number;
   };
+
+  panX!: number;
+  panY!: number;
+  drawingAcc!: boolean;
+  dirty!: boolean;
+  offCtx!: CanvasRenderingContext2D | null;
 
   _onDown: (e: MouseEvent | TouchEvent) => void;
   _onMove: (e: MouseEvent | TouchEvent) => void;
@@ -180,15 +187,17 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _dirty: boolean;
   _lastRightClickTime: number;
 
-  _ramalDefaults: PlanoRamalDefaults | null;
+  _ramalDefaults!: PlanoRamalDefaults | null;
 
   _history: PlanoHistory;
 
-  _isGhostSel: boolean;
-  _yeeFlashKey: string | null;
-  multiSel: string[];
-  multiDrag: { startX: number; startY: number; origData: Record<string, unknown> } | null;
-  marqueeRect: { x1: number; y1: number; x2: number; y2: number } | null;
+  _isGhostSel!: boolean;
+  _yeeFlashKey!: string | null;
+  multiSel!: string[];
+  multiDrag!: { startX: number; startY: number; origData: Record<string, unknown> } | null;
+  marqueeRect!: { x1: number; y1: number; x2: number; y2: number } | null;
+  private _needsRender = false;
+  private _rafId: number | null = null;
 
   constructor(cw: HTMLElement, pdfWrap: HTMLElement | null, canv: HTMLCanvasElement) {
     this.cw = cw;
@@ -237,6 +246,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   destroy(): void {
+    if (this._rafId !== null) {
+      cancelAnimationFrame(this._rafId);
+      this._rafId = null;
+    }
     teardownCanvasEvents(this);
   }
 
@@ -282,6 +295,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _markDirty(): void {
     this._dirty = true;
     autoDetectRamalConnections(this);
+    ensureRpCntRamal(this);
     calcSanitaryAccessories(this);
     if (this._history) {
       this._history.saveSnapshot();
@@ -448,6 +462,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
         [key: string]: unknown;
       }, d);
       autoDetectRamalConnections(this);
+      ensureRpCntRamal(this);
       if (this._history) {
         this._history.saveSnapshot();
       }
@@ -509,6 +524,16 @@ export default class PlanoEngine implements IPlanoEngineCore {
     }
   }
 
+  scheduleRender(): void {
+    if (this._needsRender) return;
+    this._needsRender = true;
+    this._rafId = requestAnimationFrame(() => {
+      this._rafId = null;
+      this._needsRender = false;
+      this.render();
+    });
+  }
+
   _onDownHandler(e: MouseEvent | TouchEvent): void {
     const { x, y } = this._getPos(e);
 
@@ -521,22 +546,24 @@ export default class PlanoEngine implements IPlanoEngineCore {
     }
 
     if (e instanceof MouseEvent && e.button === 2) {
-      const now = Date.now();
-      if (now - this._lastRightClickTime < 300) {
-        this.selectAt(x, y);
-      } else {
-        const hit = hitTestRightClick(this, x, y, e.clientX, e.clientY);
-        if (hit && this._onContextMenuCb) {
+      const hit = hitTestRightClick(this, x, y, e.clientX, e.clientY);
+      if (hit) {
+        const el = hit.element as any;
+        this.selId = el.id ?? el.label ?? null;
+        this.multiSel = [];
+        this._isGhostSel = hit.isGhostClick || false;
+        this._emitSelect(el);
+        if (this._onContextMenuCb) {
           this._onContextMenuCb(
-            hit.element,
+            el,
             hit.clientX,
             hit.clientY,
             hit.isGhostClick,
             hit.ramalEndpoint || null
           );
         }
+        this.render();
       }
-      this._lastRightClickTime = now;
       return;
     }
 
@@ -578,7 +605,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (this.panning) {
       this.offX = x - this.panX0;
       this.offY = y - this.panY0;
-      this.render();
+      this.scheduleRender();
       return;
     }
     const hasDrag = this.ghostDrag || this.bajDrag || this.lblDrag || this.txtDrag || this.areaDrag || this.ptDrag || this.ramalDrag || this.multiDrag;
@@ -587,7 +614,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     } else if (this.marqueeRect) {
       this.marqueeRect.x2 = x;
       this.marqueeRect.y2 = y;
-      this.render();
+      this.scheduleRender();
     } else if (this.activeRamal || this._dimStart || this.activeArea) {
       handleDrawingMouseMove(this, x, y);
     }

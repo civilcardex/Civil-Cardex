@@ -16,53 +16,63 @@ export function hitTestRightClick(
   clientX: number,
   clientY: number
 ): ContextMenuHitResult | null {
-  if (!engine.selId) return null;
-
   const zoom = engine.zoom;
 
-  const bajante = engine.bajantes.find(b => b.id === engine.selId);
-  if (bajante) {
-    if (!(engine as any)._isGhostSel) {
-      const c = engine.toCvs(bajante.x, bajante.y);
-      const hitR = (bajante._circ?.r || Math.max(6, 6 * zoom) + 10);
-      const hitOnCircle = Math.hypot(x - c.x, y - c.y) <= hitR;
-      const hitOnLabel = bajante._labelBox && pointInLabelBox(x, y, bajante._labelBox);
-      if (hitOnCircle || hitOnLabel) {
-        return { element: bajante, isGhostClick: false, clientX, clientY };
+  // Check ghost bajantes first (top priority)
+  const fg = engine.getBajantesFantasma() as any[];
+  for (const b of fg) {
+    if (b._ghost) {
+      const d = Math.hypot(x - b._ghost.x, y - b._ghost.y);
+      if (d <= b._ghost.r) {
+        return { element: b, isGhostClick: true, clientX, clientY };
       }
-    } else {
-      const ghostList = engine.getBajantesFantasma().filter(g => g.id === engine.selId);
-      if (ghostList.length > 0 && ghostList[0]._ghost) {
-        const gh = ghostList[0]._ghost;
-        const hitOnGhost = Math.hypot(x - gh.x, y - gh.y) <= gh.r;
-        const hitOnGhostLabel = ghostList[0]._ghostLabelBox && pointInLabelBox(x, y, ghostList[0]._ghostLabelBox);
-        if (hitOnGhost || hitOnGhostLabel) {
-          return { element: bajante, isGhostClick: true, clientX, clientY };
-        }
+      if (b._ghostLabelBox && pointInLabelBox(x, y, b._ghostLabelBox)) {
+        return { element: b, isGhostClick: true, clientX, clientY };
       }
     }
-    return null;
   }
 
-  const ramal = engine.ramales.find(r => r.id === engine.selId);
-  if (ramal) {
+  // Check Contador (box + arrow) BEFORE ramales — both must be clickable without interference
+  for (const b of engine.bajantes) {
+    if (b.tipo === 'contador') {
+      const c = engine.toCvs(b.x, b.y);
+      const hitR = Math.max(22 * zoom, 10 * zoom + 8);
+      // Box area
+      if (Math.hypot(x - c.x, y - c.y) <= hitR) {
+        return { element: b, isGhostClick: false, clientX, clientY };
+      }
+      // Arrow area below the box
+      const arrowLeft = c.x - 50 * zoom;
+      const arrowRight = c.x + 50 * zoom;
+      const arrowTop = c.y + 10 * zoom;
+      const arrowBottom = c.y + 10 * zoom + 50 * zoom;
+      if (x >= arrowLeft && x <= arrowRight && y >= arrowTop && y <= arrowBottom) {
+        return { element: b, isGhostClick: false, clientX, clientY };
+      }
+    }
+  }
+
+  // Check ramales — segments should win over bajante circles
+  for (const r of engine.ramales) {
     let hitOnRamal = false;
     let ramalEndpoint: { idx: number; x: number; y: number } | null = null;
 
-    if (ramal.pts) {
-      for (const epIdx of [0, ramal.pts.length - 1]) {
-        const ep = engine.toCvs(ramal.pts[epIdx][0], ramal.pts[epIdx][1]);
+    if (r.pts) {
+      // Check endpoints first (12px radius)
+      for (const epIdx of [0, r.pts.length - 1]) {
+        const ep = engine.toCvs(r.pts[epIdx][0], r.pts[epIdx][1]);
         if (Math.hypot(x - ep.x, y - ep.y) <= 12) {
           hitOnRamal = true;
-          ramalEndpoint = { idx: epIdx, x: ramal.pts[epIdx][0], y: ramal.pts[epIdx][1] };
+          ramalEndpoint = { idx: epIdx, x: r.pts[epIdx][0], y: r.pts[epIdx][1] };
           break;
         }
       }
 
+      // Check segments (12px distance from line)
       if (!hitOnRamal) {
-        for (let i = 0; i < ramal.pts.length - 1; i++) {
-          const p1 = engine.toCvs(ramal.pts[i][0], ramal.pts[i][1]);
-          const p2 = engine.toCvs(ramal.pts[i + 1][0], ramal.pts[i + 1][1]);
+        for (let i = 0; i < r.pts.length - 1; i++) {
+          const p1 = engine.toCvs(r.pts[i][0], r.pts[i][1]);
+          const p2 = engine.toCvs(r.pts[i + 1][0], r.pts[i + 1][1]);
           const l2 = Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2);
           let t = l2 === 0 ? 0 : ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / l2;
           t = Math.max(0, Math.min(1, t));
@@ -76,23 +86,34 @@ export function hitTestRightClick(
       }
     }
 
-    const hitOnLabel = ramal._labelBox && pointInLabelBox(x, y, ramal._labelBox);
+    const hitOnLabel = r._labelBox && pointInLabelBox(x, y, r._labelBox);
     if (hitOnRamal || hitOnLabel) {
-      return { element: ramal, isGhostClick: false, ramalEndpoint, clientX, clientY };
+      return { element: r, isGhostClick: false, ramalEndpoint, clientX, clientY };
     }
-    return null;
   }
 
-  const area = engine.areas.find(a => a.id === engine.selId);
-  if (area) {
+  // Check real bajantes (circle or label) - only if ramal didn't win
+  for (const b of engine.bajantes) {
+    const c = engine.toCvs(b.x, b.y);
+    const hitR = b._circ?.r || Math.max(50 * zoom, 10 * zoom + 14);
+    const hitOnCircle = Math.hypot(x - c.x, y - c.y) <= hitR;
+    const hitOnLabel = b._labelBox && pointInLabelBox(x, y, b._labelBox);
+    if (hitOnCircle || hitOnLabel) {
+      const isArrowZone = b.tipo === 'contador' && y > c.y + hitR * 0.3;
+      return { element: b, isGhostClick: isArrowZone, clientX, clientY };
+    }
+  }
+
+  // Check areas
+  for (const a of engine.areas) {
     let hitOnArea = false;
-    if (area.pts) {
-      const cvsPts = area.pts.map((pt: number[]) => engine.toCvs(pt[0], pt[1]));
+    if (a.pts) {
+      const cvsPts = a.pts.map((pt: number[]) => engine.toCvs(pt[0], pt[1]));
       hitOnArea = isPointInPoly(x, y, cvsPts);
     }
-    const hitOnLabel = area._labelBox && pointInLabelBox(x, y, area._labelBox);
+    const hitOnLabel = a._labelBox && pointInLabelBox(x, y, a._labelBox);
     if (hitOnArea || hitOnLabel) {
-      return { element: area, isGhostClick: false, clientX, clientY };
+      return { element: a, isGhostClick: false, clientX, clientY };
     }
   }
 

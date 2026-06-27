@@ -35,6 +35,17 @@ export interface IPlanoEngineCore {
   tipoTramo: string;
   scaleM: number;
   canv: HTMLCanvasElement;
+  dpr: number;
+  pageW: number;
+  pageH: number;
+  panX: number;
+  panY: number;
+  panX0: number;
+  panY0: number;
+  panning: boolean;
+  drawingAcc: boolean;
+  dirty: boolean;
+  offCtx: CanvasRenderingContext2D | null;
   padreTributario: string | null;
   nivelActual: PlanoLevel | null;
   _dimStart: { x: number; y: number } | null;
@@ -42,6 +53,10 @@ export interface IPlanoEngineCore {
   _ramalDefaults: PlanoRamalDefaults | null;
   _dirty: boolean;
   _onRequestTextCb: ((x: number, y: number, cb: (text: string) => void) => void) | null;
+  _loadedPlanId: string | null;
+  _onDirtyCb: (() => void) | null;
+  _lastMouseCvs: { x: number; y: number };
+  _snapToSegment(x: number, y: number, pts: number[][], threshold?: number): { x: number; y: number } | null;
   nptLevels: PlanoLevel[];
   ghostDrag: { id: string; startX: number; startY: number; baseDx: number; baseDy: number } | null;
   lblDrag: { id: string; offX: number; offY: number } | null;

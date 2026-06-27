@@ -7,18 +7,16 @@ const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 
 export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.bajantes.forEach((b: any) => {
     if (engine._hiddenNets.has(b.net)) return;
-    const net = NETS.find((n: any) => n.id === b.net);
-    const col = net ? net.col : '#e2e2e8';
+
     const c = engine.toCvs(b.x, b.y);
     const sel = b.id === engine.selId;
     const r = 10 * engine.zoom;
 
     // Item 2: Label angle + snap constraint (Auto-rotation removed as requested)
     let angle = (b.labelAngle || 0) * Math.PI / 180;
-    const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
-    const lDesvioId = disp?.Ldesvio;
 
-    b._circ = { x: c.x, y: c.y, r: Math.max(30, r + 14) };
+
+    b._circ = { x: c.x, y: c.y, r: Math.max(22 * engine.zoom, r + 8) };
 
     if (b.recibeDeIds?.length) {
       b.recibeDeIds.forEach((rid: string) => {

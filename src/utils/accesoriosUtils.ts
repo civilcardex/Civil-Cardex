@@ -1,7 +1,7 @@
 import { DIAMETROS_AF, DIAMETROS_AC } from './calcHydraulics';
 
 // NOTE: See also LE_ACCESORIOS in calcHydraulics.ts for hardcoded Le arrays by diameter
-const LE_ACC_DEF = [
+export const LE_ACC_DEF = [
   { id: "codo90rc",     n: "Codo radio corto 90",          a: 0.76, b: 0.17 },
   { id: "codo45rc",     n: "Codo radio corto 45",          a: 0.38, b: 0.02 },
   { id: "codo90rm",     n: "Codo radio medio 90",          a: 0.67, b: 0.09 },

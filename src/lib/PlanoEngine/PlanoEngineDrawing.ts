@@ -4,7 +4,7 @@ import type {
   PlanoArea,
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoEngineTypes';
-import { pointToSegmentDist, snapToSegment } from './HitTester';
+import { pointToSegmentDist } from './HitTester';
 
 type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont';
 
@@ -167,7 +167,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       return;
     }
   }
-  const [mx, my] = _midpoint(engine.activeRamal.pts);
+
   const def = engine._ramalDefaults || { material: '', diametro: '', pendiente: 0 };
   const net = NETS.find(n => n.id === engine.activeRamal!.net);
   const netPfx = net ? net.lbl : 'R';
@@ -700,6 +700,50 @@ export function handleContadorDown(engine: IPlanoEngineCore, px: number, py: num
   engine.selId = cntId;
   engine._isGhostSel = false;
   engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
+
+  // Auto-create ramal from nearest Red Pública to this Contador
+  const rps = engine.bajantes.filter(b => b.tipo === 'red_publica' && b.net === engine.activeNet);
+  if (rps.length > 0) {
+    let nearestRP = rps[0];
+    let minDist = Infinity;
+    for (const rp of rps) {
+      const d = Math.hypot(rp.x - px, rp.y - py);
+      if (d < minDist) { minDist = d; nearestRP = rp; }
+    }
+    const rpId = nearestRP.code || nearestRP.id;
+    const alreadyConnected = engine.ramales.some((r: any) =>
+      r.net === engine.activeNet && ((r.ini === rpId && r.fin === cntId) || (r.ini === cntId && r.fin === rpId))
+    );
+    if (!alreadyConnected) {
+      const net = NETS.find(n => n.id === engine.activeNet);
+      const pfx = net ? net.lbl : 'R';
+      if (!engine._netCounts[engine.activeNet]) engine._netCounts[engine.activeNet] = { ramal: 0, tributario: 0 };
+      const ramCnt = ++(engine._netCounts[engine.activeNet].ramal);
+      const ramId = pfx + ramCnt;
+      engine.ramales.push({
+        id: ramId,
+        net: engine.activeNet,
+        _net: engine.activeNet,
+        tipo: 'ramal',
+        padre: null,
+        pts: [[nearestRP.x, nearestRP.y], [px, py]],
+        totalL: +(engine.pxToM(Math.hypot(px - nearestRP.x, py - nearestRP.y))).toFixed(3),
+        label: pfx + ramCnt,
+        ini: rpId,
+        fin: cntId,
+        piso: engine.nivelActual?.n ?? '',
+        dz: '',
+        uc: 0,
+        labelX: (nearestRP.x + px) / 2,
+        labelY: (nearestRP.y + py) / 2,
+        labelAngle: 0,
+        material: '',
+        diametro: '',
+        pendiente: 1.5,
+      });
+    }
+  }
+
   engine.render();
   engine._markDirty();
 }
@@ -802,7 +846,7 @@ export function handleDrawingMouseMove(engine: IPlanoEngineCore, x: number, y: n
   if (engine.activeRamal || engine._dimStart || engine.activeArea) {
     engine.mouseX = x;
     engine.mouseY = y;
-    engine.render();
+    (engine as any).scheduleRender();
   }
 }
 

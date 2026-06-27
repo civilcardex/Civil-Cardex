@@ -117,13 +117,13 @@ export function setRamalDefaults(engine: IPlanoEngineCore, d: Partial<{ material
 export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
   if (!engine.nivelActual) return [];
   return engine.bajantes.filter(b => {
-    if (b.desplazamientos && b.desplazamientos[engine.nivelActual!.label]) return true;
+    if (b.desplazamientos && b.desplazamientos[engine.nivelActual!.label || '']) return true;
     const base = Math.min(b.nptBase || 0, b.nptCima || 0);
     const cima = Math.max(b.nptBase || 0, b.nptCima || 0);
     const npt = engine.nivelActual!.npt || 0;
     if (npt >= base && npt <= cima) {
       // Don't show direction ghost on the parent's own level
-      if ((b as any).pisoBase === engine.nivelActual.label) return false;
+      if ((b as any).pisoBase === engine.nivelActual!.label) return false;
       return true;
     }
     const superior = engine.nptLevels
@@ -566,6 +566,60 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
     if (r.ini !== newIni || r.fin !== newFin) {
       r.ini = newIni;
       r.fin = newFin;
+    }
+  }
+}
+
+/**
+ * Auto-create a ramal between the nearest Red Pública and each Contador
+ * that doesn't already have a connecting ramal. Runs on load for existing data.
+ */
+export function ensureRpCntRamal(engine: IPlanoEngineCore): void {
+  const nets = ['af', 'ac'];
+  for (const netId of nets) {
+    const contadores = engine.bajantes.filter(b => b.tipo === 'contador' && b.net === netId);
+    for (const cnt of contadores) {
+      const rps = engine.bajantes.filter(b => b.tipo === 'red_publica' && b.net === netId);
+      if (rps.length === 0) continue;
+      let nearestRP = rps[0];
+      let minDist = Infinity;
+      for (const rp of rps) {
+        const d = Math.hypot(rp.x - cnt.x, rp.y - cnt.y);
+        if (d < minDist) { minDist = d; nearestRP = rp; }
+      }
+      const rpId = nearestRP.code || nearestRP.id;
+      const cntId = cnt.code || cnt.id;
+      const alreadyConnected = engine.ramales.some((r: any) =>
+        r.net === netId && ((r.ini === rpId && r.fin === cntId) || (r.ini === cntId && r.fin === rpId))
+      );
+      if (alreadyConnected) continue;
+      const net = NETS.find(n => n.id === netId);
+      const pfx = net ? net.lbl : 'R';
+      if (!engine._netCounts[netId]) engine._netCounts[netId] = { ramal: 0, tributario: 0 };
+      engine._netCounts[netId].ramal++;
+      const ramCnt = engine._netCounts[netId].ramal;
+      const ramId = pfx + ramCnt;
+      engine.ramales.push({
+        id: ramId,
+        net: netId,
+        _net: netId,
+        tipo: 'ramal',
+        padre: null,
+        pts: [[nearestRP.x, nearestRP.y], [cnt.x, cnt.y]],
+        totalL: +(engine.pxToM(Math.hypot(cnt.x - nearestRP.x, cnt.y - nearestRP.y))).toFixed(3),
+        label: pfx + ramCnt,
+        ini: rpId,
+        fin: cntId,
+        piso: engine.nivelActual?.n ?? '',
+        dz: '',
+        uc: 0,
+        labelX: (nearestRP.x + cnt.x) / 2,
+        labelY: (nearestRP.y + cnt.y) / 2,
+        labelAngle: 0,
+        material: '',
+        diametro: '',
+        pendiente: 1.5,
+      });
     }
   }
 }

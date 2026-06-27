@@ -1,5 +1,6 @@
 import { NETS } from './PlanoState';
-import type { IPlanoEngineCore, PlanoRamal, PlanoBajante, PlanoArea, PlanoDimension, PlanoTextAnnotation } from './PlanoEngineTypes';
+import type { IPlanoEngineCore } from './PlanoEngineTypes';
+import type { PlanoRamal, PlanoBajante, PlanoArea, PlanoDimension, PlanoTextAnnotation } from './PlanoState';
 import { cancelRamal, cancelArea } from './PlanoEngineDrawing';
 
 const MAX_UNDO_STACK = 50;

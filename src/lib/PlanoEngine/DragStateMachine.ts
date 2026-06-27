@@ -1,5 +1,6 @@
 import type { IPlanoEngineCore } from './PlanoEngineTypes';
 import { NETS } from './PlanoState';
+import { pointInLabelBox, pointInPoly } from './HitTester';
 
 export interface DragState {
   id: string;
@@ -300,8 +301,8 @@ export function initEngineState(engine: IPlanoEngineCore): void {
   (engine as any)._yeeFlashKey = null;
   engine.areaDrag = null;
   engine.panning = false;
-  engine.panX0 = 0;
-  engine.panY0 = 0;
+  (engine as any).panX0 = 0;
+  (engine as any).panY0 = 0;
   engine.mouseX = 0;
   engine.mouseY = 0;
   engine.ghostDrag = null;
