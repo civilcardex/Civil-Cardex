@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, SAN_ACCESORIOS, GAS_ACCESORIOS, AF_UC_IDS, AC_UC_IDS } from '../constants';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, GAS_ACCESORIOS, AF_UC_IDS, AC_UC_IDS } from '../constants';
 import { NETS } from '../lib/PlanoEngine';
 import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
@@ -67,7 +67,7 @@ function isCountableTarget(el: any): boolean {
   return el.id?.startsWith('R') || el.id?.startsWith('B') || el.id?.startsWith('T');
 }
 
-export default function AparatosPanel({ activeNet, selElement, planId }: { activeNet: string; selElement: any; planId?: string | number }) {
+const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, planId }: { activeNet: string; selElement: any; planId?: string | number }) {
   const { plans } = usePlans();
   const { aps } = useApparatus();
   const [counts, setCounts] = useState<Record<string, any>>(loadAll);
@@ -171,7 +171,7 @@ export default function AparatosPanel({ activeNet, selElement, planId }: { activ
     return result.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   }, [netId, unitKey, aps]);
 
-  const target = isCountableTarget(selElement) ? selElement : null;
+const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo === 'contador' ? { ...selElement, id: 'CNT1' } : null);
   const targetId = target?.id || null;
   const targetLbl = target?.label || target?.code || target?.id || '';
   const storageKey = targetId ? (planId ? `${netId}_${targetId}_${planId}` : `${netId}_${targetId}`) : null;
@@ -283,13 +283,6 @@ export default function AparatosPanel({ activeNet, selElement, planId }: { activ
     });
   };
 
-  const setHidroField = (field: string, val: any) => {
-    if (!storageKey) return;
-    setHidroData(prev => {
-      const cur = { ...(prev[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 }) };
-      return { ...prev, [storageKey]: { ...cur, [field]: val } };
-    });
-  };
 
   const gasAccMap = useMemo(() => {
     if (!targetId) return {};
@@ -408,20 +401,28 @@ export default function AparatosPanel({ activeNet, selElement, planId }: { activ
             transition: 'opacity .25s',
             filter: targetId ? 'none' : 'grayscale(.6)',
           }}>
-            <FixtureGrid
-              items={items}
-              currentMap={currentMap}
-              unitKey={unitKey}
-              unidadLbl={unidadLbl}
-              inc={inc}
-              dec={dec}
-              targetId={targetId}
-              accent={accent}
-            />
-            {items.length === 0 && (
+            {selElement?.tipo === 'contador' ? (
               <div style={{ fontSize: 11, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
-                No hay aparatos en esta red. Dibuje ramales en el visor para agregarlos.
+                La sección de aparatos no aplica para el contador.
               </div>
+            ) : (
+              <>
+                <FixtureGrid
+                  items={items}
+                  currentMap={currentMap}
+                  unitKey={unitKey}
+                  unidadLbl={unidadLbl}
+                  inc={inc}
+                  dec={dec}
+                  targetId={targetId}
+                  accent={accent}
+                />
+                {items.length === 0 && (
+                  <div style={{ fontSize: 11, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
+                    No hay aparatos en esta red. Dibuje ramales en el visor para agregarlos.
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -449,5 +450,6 @@ export default function AparatosPanel({ activeNet, selElement, planId }: { activ
       )}
     </div>
   );
-}
+});
+export default AparatosPanel;
 

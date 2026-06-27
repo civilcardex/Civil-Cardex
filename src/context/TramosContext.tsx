@@ -1,4 +1,4 @@
-import { createContext, useReducer, useRef, useMemo, useContext, type ReactNode } from "react";
+import { createContext, useReducer, useRef, useMemo, useCallback, useContext, type ReactNode } from "react";
 import { useSanLlSync, useHidroSync } from "../hooks/useTramosSync";
 import { tramosReducer, type TramosState, type Tramo } from "./tramosReducer";
 
@@ -33,19 +33,19 @@ useHidroSync(dispatch, stateRef);
 
 const { tramosSan, tramosAf, tramosAc, tramosLl } = state;
 
-const delTramoSan = (id: string) => dispatch({ type: 'DEL_TRAMO', net: 'san', id });
-const updTramoSan = (id: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'san', id, field, val });
+const delTramoSan = useCallback((id: string) => dispatch({ type: 'DEL_TRAMO', net: 'san', id }), []);
+const updTramoSan = useCallback((id: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'san', id, field, val }), []);
 
-const delTramoAf = (id: string) => dispatch({ type: 'DEL_TRAMO', net: 'af', id });
-const updTramoAf = (id: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'af', id, field, val });
-const updTramoAfAcc = (id: string, accId: string, val: any) => dispatch({ type: 'UPD_TRAMO_ACC', net: 'af', id, accId, val });
+const delTramoAf = useCallback((id: string) => dispatch({ type: 'DEL_TRAMO', net: 'af', id }), []);
+const updTramoAf = useCallback((id: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'af', id, field, val }), []);
+const updTramoAfAcc = useCallback((id: string, accId: string, val: any) => dispatch({ type: 'UPD_TRAMO_ACC', net: 'af', id, accId, val }), []);
 
-const delTramoAc = (id: string) => dispatch({ type: 'DEL_TRAMO', net: 'ac', id });
-const updTramoAc = (id: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'ac', id, field, val });
-const updTramoAcAcc = (id: string, accId: string, val: any) => dispatch({ type: 'UPD_TRAMO_ACC', net: 'ac', id, accId, val });
+const delTramoAc = useCallback((id: string) => dispatch({ type: 'DEL_TRAMO', net: 'ac', id }), []);
+const updTramoAc = useCallback((id: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'ac', id, field, val }), []);
+const updTramoAcAcc = useCallback((id: string, accId: string, val: any) => dispatch({ type: 'UPD_TRAMO_ACC', net: 'ac', id, accId, val }), []);
 
-const delTramoLL = (key: string) => dispatch({ type: 'DEL_TRAMO', net: 'll', id: key });
-const updTramoLL = (key: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'll', id: key, field, val });
+const delTramoLL = useCallback((key: string) => dispatch({ type: 'DEL_TRAMO', net: 'll', id: key }), []);
+const updTramoLL = useCallback((key: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'll', id: key, field, val }), []);
 
 const value = useMemo(() => ({
   tramosSan, tramosAf, tramosAc, tramosLl,

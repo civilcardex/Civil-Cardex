@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, createContext, useContext, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext, type ReactNode } from 'react';
 import { saveToStorage, loadFromStorage, removeFromStorage } from '../services/storageService';
 import { storePDF, loadPDF, deletePDF } from '../services/idbStorage';
 import { PLANS_META_KEY } from '../constants/storage-keys';
@@ -70,7 +70,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     persistMeta(plans);
   }, [plans, restoreDone]);
 
-  const addPlans = (newFiles: FileList | File[]) => {
+  const addPlans = useCallback((newFiles: FileList | File[]) => {
     const pdfs: PlanItem[] = [];
     for (const f of newFiles) {
       const isPdf = f.type === 'application/pdf' || f.name?.toLowerCase().endsWith('.pdf');
@@ -88,22 +88,22 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     if (pdfs.length === 0) return [];
     setPlans(prev => [...prev, ...pdfs]);
     return pdfs;
-  };
+  }, []);
 
-  const removePlan = (id: number) => {
+  const removePlan = useCallback((id: number) => {
     setPlans(prev => prev.filter(p => p.id !== id));
     deletePDF(id).catch(e => { if (import.meta.env.DEV) console.error('deletePDF error:', e); });
-  };
+  }, []);
 
-  const updatePlan = (id: number, updates: Partial<PlanItem>) => {
+  const updatePlan = useCallback((id: number, updates: Partial<PlanItem>) => {
     setPlans(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
-  };
+  }, []);
 
-  const confirmPlan = (id: number) => {
+  const confirmPlan = useCallback((id: number) => {
     setPlans(prev => prev.map(p => p.id === id && p.status === 'pending' ? { ...p, status: 'confirmed' } : p));
-  };
+  }, []);
 
-  const value = useMemo(() => ({ plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan }), [plans, error, addPlans, removePlan, updatePlan, confirmPlan]);
+  const value = useMemo(() => ({ plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan }), [plans, error]);
 
   return (
     <PlansContext.Provider value={value}>

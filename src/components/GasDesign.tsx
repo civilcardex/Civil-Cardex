@@ -1,16 +1,18 @@
-﻿import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { GAS, LE_K, pisoCorto } from "../constants";
 import { usePlans } from "../context/PlansContext";
-import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
+import { writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
 import { loadFromStorage } from "../services/storageService";
 import GasCalcUC from "./GasCalcUC";
 import PageNav from './PageNav';
 
 import { TRAZOS_PREFIX, GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY } from "../constants/storage-keys";
-import { GAS_APPARATUS, renouardByType } from "../utils/gasUtils";
+import { renouardByType } from "../utils/gasUtils";
 import { SI, SD, TH, TD } from "../styles/sharedTableStyles";
 
 const ALL_DN: {mat: string; K: number; dn: string; d: number}[] = [];
+const SR_ONLY = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 } as const;
+const EMPTY_ROW = { padding:'24px 0', textAlign:'center', color:'var(--txt3)', fontSize:11, border:'none' } as const;
 GAS.forEach(g=>{g.rows.forEach(r=>{ALL_DN.push({mat:g.mat,K:g.K,dn:r.dn,d:r.d});});});
 
 const ACC_KEYS=['codos_90_std','codos_90_rl','te_linea','te_ramal','valvula_bola'];
@@ -18,30 +20,6 @@ const ACC_KEYS=['codos_90_std','codos_90_rl','te_linea','te_ramal','valvula_bola
 function lookupDn(mat: string, dn: string){
   const match=ALL_DN.find(x=>x.mat===mat&&x.dn===dn);
   return match||null;
-}
-
-function computeQDiseno(plans: any[]) {
-  const aparatos: Record<string, any> = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
-  const totalByAp: Record<string, number> = {};
-  for (const ap of GAS_APPARATUS) totalByAp[ap.id] = 0;
-
-  for (const plano of plans) {
-    if (!plano || plano.status !== 'confirmed' || plano.nivel == null) continue;
-    const raw = loadFromStorage(TRAZOS_PREFIX + plano.id, null);
-    if (!raw) continue;
-    const data = raw as Record<string, any>;
-    for (const r of data.ramales || []) {
-      if (r.net !== 'gas') continue;
-      const pid = plano.id ? String(plano.id) : '';
-      const counts = aparatos[`gas_${r.id}_${pid}`] || aparatos[`gas_${r.id}`] || {};
-      for (const ap of GAS_APPARATUS) {
-        const n = Number(counts[ap.id]) || 0;
-        if (n > 0) totalByAp[ap.id] = (totalByAp[ap.id] || 0) + n;
-      }
-    }
-  }
-
-  return renouardByType(totalByAp);
 }
 
 function GasDesign(){
@@ -53,7 +31,7 @@ function GasDesign(){
   const [densRel,setDensRel]=useState('0.67');
   const { plans } = usePlans();
 
-  const [gasRefreshKey, setGasRefreshKey] = useState(0);
+  const [gasRefreshKey] = useState(0);
   const [diamMat, setDiamMat] = useState<Record<string, string>>(() => ({}));
   const [diamDn, setDiamDn] = useState<Record<string, string>>(() => ({}));
   const [diamInt, setDiamInt] = useState<Record<string, number>>(() => ({}));
@@ -95,9 +73,8 @@ function GasDesign(){
       const data = raw as Record<string, any>;
       for (const r of data.ramales || []) {
         if (r.net !== 'gas') continue;
-        const mat = r.material || '';
-        const dn = r.diametro || '';
-        const opt = lookupDn(mat, dn);
+
+
         tramos.push({
           id: r.id,
           planId: plano.id,
@@ -149,11 +126,6 @@ function GasDesign(){
     if (opt) writeDiametroToDrawing(tramoId, 'gas', dn, plans);
   };
 
-  const handleDelete = (tramoId: string) => {
-    deleteRamalFromDrawing(tramoId, 'gas', plans);
-    setGasRefreshKey(k => k + 1);
-  };
-
   const getAcc = (tramoId: string) => (gasAcc[tramoId] || {}) as Record<string, number>;
 
   const checkRows = useMemo(() => {
@@ -169,7 +141,7 @@ function GasDesign(){
     let pAcum = pMin;
     for (const t of gasTramos) {
       const dInt = diamInt[t.id] || 0;
-      const K = diamK[t.id] || 0;
+
       const acc: Record<string, number> = gasAcc[t.id] || {};
       let sumLe = 0;
       for (const k of ACC_KEYS) sumLe += (acc[k] || 0) * ((LE_K as Record<string, number>)[k] || 0);
@@ -202,7 +174,7 @@ function GasDesign(){
       </div>
       <div style={{padding:'8px 12px',display:'flex',flexDirection:'column',alignItems:'center'}}>
         <table className="tbl" style={{fontSize:13,whiteSpace:'nowrap'}}>
-          <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Datos generales</caption>
+          <caption style={SR_ONLY}>Datos generales</caption>
           <tbody>
             {[
               ['Altitud de la ciudad del proyecto',alt,setAlt,'msnm'],
@@ -237,7 +209,7 @@ function GasDesign(){
         </div>
         <div style={{padding:6}}>
             <table className="tbl" style={{fontSize:11,tableLayout:'auto',width:'100%',borderCollapse:'collapse'}}>
-              <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Diseño de red</caption>
+              <caption style={SR_ONLY}>Diseño de red</caption>
               <colgroup>
                 {colW.map((w,i)=><col key={i} style={{width:w}}/>)}
               </colgroup>
@@ -246,7 +218,7 @@ function GasDesign(){
               </tr></thead>
               <tbody>
                 {gasTramos.length===0&&(
-                  <tr><td colSpan={COLS.length} style={{padding:'24px 0',textAlign:'center',color:'var(--txt3)',fontSize:11,border:'none'}}>No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.</td></tr>
+                  <tr><td colSpan={COLS.length} style={EMPTY_ROW}>No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.</td></tr>
                 )}
                 {gasTramos.map(t=>{
                   const mat=diamMat[t.id]||'';
@@ -290,7 +262,7 @@ function GasDesign(){
         </div>
         <div style={{padding:6,overflow:'auto'}}>
             <table className="tbl" style={{fontSize:10,tableLayout:'auto',width:'100%',borderCollapse:'collapse'}}>
-              <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Chequeo red de gas</caption>
+              <caption style={SR_ONLY}>Chequeo red de gas</caption>
               <thead>
                 <tr>
                   <th scope="col" style={{...TH}} rowSpan={2}>Tramo</th>
@@ -315,7 +287,7 @@ function GasDesign(){
               </thead>
               <tbody>
                 {gasTramos.length===0&&(
-                  <tr><td colSpan={14} style={{padding:'24px 0',textAlign:'center',color:'var(--txt3)',fontSize:11,border:'none'}}>No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.</td></tr>
+                  <tr><td colSpan={14} style={EMPTY_ROW}>No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.</td></tr>
                 )}
                 {gasTramos.map(t=>{
                   const dInt=diamInt[t.id]||0;

@@ -1,9 +1,9 @@
-﻿import { useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import { usePlans } from "../context/PlansContext";
 import { pisoCorto, DIAM_OPTIONS, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN } from "../constants";
 import { diametroManning, chequeoBajanteLluvia } from "../utils/calcSanitary";
-import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
+import { writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
 import { getTributarioIds } from "../utils/tramoUtils";
 import { calcHydraulicCheck } from "../utils/hydraulicCheck";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
@@ -50,11 +50,11 @@ const renderStatus = (val: string) => {
 };
 
 export default function DisenoLluvias() {
-  const { tramosLl, updTramoLL, delTramoLL } = useTramos();
+  const { tramosLl, updTramoLL } = useTramos();
   const { plans } = usePlans();
   const { bajantesLl } = useRainwater();
 
-  const [conexiones, _, conexionesDisplay] = useMemo(() => {
+  const [, , conexionesDisplay] = useMemo(() => {
     const calculoMap: Record<string, string[]> = {};
 
     for (const plan of plans || []) {
@@ -250,9 +250,9 @@ export default function DisenoLluvias() {
       if (t.tipo === 'ramal' && !t.esBajante) {
         const associatedCodes = getAssociatedBajantes(t._key);
         for (const code of associatedCodes) {
-          const bajante = bajantesLl.find(b => b.bajante === code || b.id === code || b.code === code);
+          const bajante = bajantesLl.find(b => b.bajante === code || b.id === code);
           const trBaj = tramosLl.find(tb => tb.code === code || tb.id === code);
-          const areaDib = trBaj?.area_m2 || 0;
+
           const areaAcum = areaAcumMap[String(trBaj?.piso)] || bajante?.areaAcumulada || 0;
           
           if (bajante) {
@@ -283,10 +283,7 @@ export default function DisenoLluvias() {
     }
   }, [updTramoLL, plans]);
 
-  const handleDelete = useCallback((tramoKey: string, tramoId: string) => {
-    delTramoLL(tramoKey);
-    if (tramoId) deleteRamalFromDrawing(tramoId, 'll', plans);
-  }, [delTramoLL, plans]);
+
 
   const tribIds = getTributarioIds(tramosLl);
   const displayTramos = tramosLl.filter(t => t._key != null && !t.esBajante && !tribIds.has(t._key) && !tribIds.has(t.id));

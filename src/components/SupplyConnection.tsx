@@ -1,6 +1,7 @@
 import React from "react";
 import { COEF_HAZEN } from "../utils/calcHydraulics";
 import { fmt } from "../utils/formatUtils";
+import { CONTADORES as CONTADORES_CAT } from "../pages/catalog/catalogData";
 
 const C = COEF_HAZEN;
 
@@ -21,6 +22,7 @@ interface LData {
 
 interface ContadorSel {
   qn_lps: number;
+  diaPulg?: number;
 }
 
 interface DiamOpt {
@@ -30,10 +32,7 @@ interface DiamOpt {
 }
 
 interface AcometidaProps {
-  ucTotal: number;
   Qaco: number;
-  sqrtQaco: number;
-  Qac2: number;
   contadorSel: ContadorSel;
   acoContIx: number;
   setAcoContIx: (ix: number) => void;
@@ -59,10 +58,22 @@ interface AcometidaProps {
   AF_DIAM_OPTS: DiamOpt[];
   isTr1Drawn?: boolean;
   isTr2Drawn?: boolean;
+  onAcoDiamChange?: (val: string) => void;
+  onContDiamChange?: (val: string) => void;
 }
 
+const SECTION_COL: React.CSSProperties = { display: "flex", flexDirection: "column", border: "1px solid var(--line)", borderRadius: "var(--r)", overflow: "hidden", background: "var(--bg)" };
+const SECTION_HDR: React.CSSProperties = { padding: "8px 12px", borderBottom: "1px solid var(--line)", background: "var(--bg2)" };
+const SECTION_H4: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "var(--txt)", margin: 0, textTransform: "uppercase", letterSpacing: 0.5 };
+const TH_CENTER: React.CSSProperties = { textAlign: "center", padding: "4px" };
+const TD_PARAM_LABEL: React.CSSProperties = { padding: "4px", textAlign: "left", fontWeight: 600 };
+const TD_PARAM_VALUE: React.CSSProperties = { textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px" };
+const TD_PARAM_UNIT: React.CSSProperties = { textAlign: "center", color: "var(--txt3)", padding: "4px" };
+const SCROLL_INNER: React.CSSProperties = { display: "grid", gridTemplateColumns: "2fr 1fr 0.7fr", gap: "16px", alignItems: "stretch", minWidth: "900px" };
+
 function Acometida({
-  Qaco, sqrtQaco, Qac2,
+  Qaco,
+  hfContador,
   acoMonName, setAcoMonName,
   acoRedContDiam, setAcoRedContDiam,
   acoContMonDiam, setAcoContMonDiam,
@@ -74,24 +85,24 @@ function Acometida({
   AF_DIAM_OPTS,
   isTr1Drawn = false,
   isTr2Drawn = false,
+  onAcoDiamChange,
+  onContDiamChange,
+  acoContIx,
+  setAcoContIx,
 }: AcometidaProps) {
-  
-  const inputBg = "rgba(59,130,246,0.12)"; // Azul claro
-  const calcBg = "rgba(234,179,8,0.12)";   // Amarillo claro
-  const resBg = "rgba(34,197,94,0.15)";    // Verde claro
-  
+
   return (
     <div className="card">
       <div className="card-h">
         <h3 className="card-t"><img src="/iconos_diseno_redes/general/Acometida.webp" alt="Acometida" width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}} loading="lazy" /> Acometida</h3>
       </div>
       <div className="scroll-top" style={{ padding: "16px" }}>
-        <div className="scroll-inner" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px", alignItems: "stretch", minWidth: "900px" }}>
+        <div className="scroll-inner" style={SCROLL_INNER}>
           
           {/* SECTION 1: Esquema de Flujo Hidráulico & Tabla Tramos */}
-          <div style={{ display: "flex", flexDirection: "column", border: "1px solid var(--line)", borderRadius: "var(--r)", overflow: "hidden", background: "var(--bg)" }}>
-            <div className="card-h" style={{ padding: "8px 12px", borderBottom: "1px solid var(--line)", background: "var(--bg2)" }}>
-              <h4 style={{ fontSize: 11, fontWeight: 700, color: "var(--txt)", margin: 0, textTransform: "uppercase", letterSpacing: 0.5 }}>1. Flujo Hidráulico y Tramos</h4>
+          <div style={SECTION_COL}>
+            <div className="card-h" style={SECTION_HDR}>
+              <h4 style={SECTION_H4}>1. Flujo Hidráulico y Tramos</h4>
             </div>
             
             <div style={{ padding: "12px", borderBottom: "1px solid var(--line)" }}>
@@ -108,18 +119,19 @@ function Acometida({
             </div>
 
             {/* Tramos Table */}
-            <table className="tbl" style={{ fontSize: 10, width: "100%", tableLayout: "auto", borderBottom: "none" }}>
+            <table className="tbl" style={{ fontSize: 10, width: "100%", tableLayout: "fixed", borderBottom: "none" }}>
               <thead>
                 <tr>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Tramo</th>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Desde</th>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Hasta</th>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px", width: 35}}>L.H</th>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px", width: 35}}>L.V</th>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px", width: 35}}>L.Eq</th>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Ø</th>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Q</th>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Hf</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={TH_CENTER}>Tramo</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, maxWidth: 60}}>Desde</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, maxWidth: 60}}>Hasta</th>
+                  <th scope="colgroup" className="col-h" colSpan={2} style={{...TH_CENTER, fontSize:9}}>Longitud</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, minWidth: 46}}>Ø Estimado</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, minWidth: 80}}>Ø Propuesto</th>
+                </tr>
+                <tr>
+                  <th scope="col" className="col-h" style={{...TH_CENTER, fontSize: 9, fontWeight: 400}}>Horizontal</th>
+                  <th scope="col" className="col-h" style={{...TH_CENTER, fontSize: 9, fontWeight: 400}}>Equivalente</th>
                 </tr>
               </thead>
               <tbody>
@@ -135,30 +147,26 @@ function Acometida({
                       <input type="number" step={0.01} aria-label="Longitud horizontal ACOM-01" value={acoL1.h} onChange={e=>setAcoL1(s=>({...s,h:parseFloat(e.target.value)||0}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} />
                     )}
                   </td>
-                  <td className="c" style={{padding: "1px", fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>
-                    0.00
-                  </td>
                   <td className="c" style={{padding: "1px"}}>
-                    {isTr1Drawn ? (
-                      <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{fmt(acoL1.le, 2)}</span>
-                    ) : (
-                      <input type="number" step={0.01} aria-label="Longitud equivalente ACOM-01" value={acoL1.le} onChange={e=>setAcoL1(s=>({...s,le:parseFloat(e.target.value)||0}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} />
-                    )}
+                    <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{fmt(acoL1.le, 2)}</span>
                   </td>
+                  <td className="c" style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{Qaco > 0 ? fmt(Math.sqrt(Qaco), 2) : "—"}</td>
                   <td className="c" style={{padding: "1px"}}>
-                    {isTr1Drawn ? (
-                      <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)", fontWeight: 600}}>
-                        {AF_DIAM_OPTS.find(o => Math.abs(o.pulg - acoRedContDiam) < 0.01)?.label || `${acoRedContDiam}"`}
-                      </span>
-                    ) : (
-                      <select aria-label="Diámetro ACOM-01" value={acoRedContDiam || ''} onChange={e => setAcoRedContDiam(parseFloat(e.target.value) || 0)} style={{fontSize: 10, padding: "1px", background: "transparent", border: "1px solid var(--line)", borderRadius: 2, width: "100%", cursor: "pointer"}}>
-                        <option value="">—</option>
-                        {AF_DIAM_OPTS.map((o, i) => <option key={i} value={o.pulg}>{o.label || o.nominal || `${o.pulg}"`}</option>)}
-                      </select>
-                    )}
+                    <select aria-label="Diámetro ACOM-01"
+                      value={acoRedContDiam || ''}
+                      onChange={e => {
+                        const num = parseFloat(e.target.value) || 0;
+                        setAcoRedContDiam(num);
+                        if (num > 0 && onAcoDiamChange) {
+                          const label = AF_DIAM_OPTS.find(o => Math.abs(o.pulg - num) < 0.01)?.label || `${num}"`;
+                          onAcoDiamChange(label);
+                        }
+                      }}
+                      style={{width:"100%",padding:"3px 4px",border:"1px solid #3a494a",borderRadius:3,background:"#1e2024",color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",cursor:"pointer"}}>
+                      <option value="">—</option>
+                      {AF_DIAM_OPTS.map((o, i) => <option key={i} value={o.pulg}>{o.label}</option>)}
+                    </select>
                   </td>
-                  <td className="c" style={{fontWeight: 600, padding: "2px 4px", textAlign: "center", color: "var(--txt2)"}}>{fmt(Qaco)}</td>
-                  <td className="c" style={{fontWeight: 600, padding: "2px 4px", textAlign: "center", color: "var(--txt2)"}}>{fmt(f1.hfM)}</td>
                 </tr>
                 {/* ACOM-02 */}
                 <tr>
@@ -178,9 +186,6 @@ function Acometida({
                       <input type="number" step={0.01} aria-label="Longitud horizontal ACOM-02" value={acoL2.h} onChange={e=>setAcoL2(s=>({...s,h:parseFloat(e.target.value)||0}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} />
                     )}
                   </td>
-                  <td className="c" style={{padding: "1px", fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>
-                    0.00
-                  </td>
                   <td className="c" style={{padding: "1px"}}>
                     {isTr2Drawn ? (
                       <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{fmt(acoL2.le, 2)}</span>
@@ -188,70 +193,92 @@ function Acometida({
                       <input type="number" step={0.01} aria-label="Longitud equivalente ACOM-02" value={acoL2.le} onChange={e=>setAcoL2(s=>({...s,le:parseFloat(e.target.value)||0}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} />
                     )}
                   </td>
+                  <td className="c" style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{Qaco > 0 ? fmt(Math.sqrt(Qaco), 2) : "—"}</td>
                   <td className="c" style={{padding: "1px"}}>
-                    {isTr2Drawn ? (
-                      <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)", fontWeight: 600}}>
-                        {AF_DIAM_OPTS.find(o => Math.abs(o.pulg - acoContMonDiam) < 0.01)?.label || `${acoContMonDiam}"`}
-                      </span>
-                    ) : (
-                      <select aria-label="Diámetro ACOM-02" value={acoContMonDiam || ''} onChange={e => setAcoContMonDiam(parseFloat(e.target.value) || 0)} style={{fontSize: 10, padding: "1px", background: "transparent", border: "1px solid var(--line)", borderRadius: 2, width: "100%", cursor: "pointer"}}>
-                        <option value="">—</option>
-                        {AF_DIAM_OPTS.map((o, i) => <option key={i} value={o.pulg}>{o.label || o.nominal || `${o.pulg}"`}</option>)}
-                      </select>
-                    )}
+                    <select aria-label="Diámetro ACOM-02" value={acoContMonDiam || ''} onChange={e => setAcoContMonDiam(parseFloat(e.target.value) || 0)}
+                      style={{width:"100%",padding:"3px 4px",border:"1px solid #3a494a",borderRadius:3,background:"#1e2024",color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",cursor:"pointer"}}>
+                      <option value="">—</option>
+                      {AF_DIAM_OPTS.map((o, i) => <option key={i} value={o.pulg}>{o.label || `${o.pulg}"`}</option>)}
+                    </select>
                   </td>
-                  <td className="c" style={{fontWeight: 600, padding: "2px 4px", textAlign: "center", color: "var(--txt2)"}}>{fmt(Qac2)}</td>
-                  <td className="c" style={{fontWeight: 600, padding: "2px 4px", textAlign: "center", color: "var(--txt2)"}}>{fmt(f2.hfM)}</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           {/* SECTION 2: Tabla Resumen Acometida */}
-          <div style={{ display: "flex", flexDirection: "column", border: "1px solid var(--line)", borderRadius: "var(--r)", overflow: "hidden", background: "var(--bg)" }}>
-            <div className="card-h" style={{ padding: "8px 12px", borderBottom: "1px solid var(--line)", background: "var(--bg2)" }}>
-              <h4 style={{ fontSize: 11, fontWeight: 700, color: "var(--txt)", margin: 0, textTransform: "uppercase", letterSpacing: 0.5 }}>2. Resumen de Parámetros</h4>
+          <div style={SECTION_COL}>
+            <div className="card-h" style={SECTION_HDR}>
+              <h4 style={SECTION_H4}>2. Resumen de Parámetros</h4>
             </div>
             
             <table className="tbl" style={{ fontSize: 10, width: "100%", borderBottom: "none" }}>
               <thead>
                 <tr>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Parámetro</th>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>AC-01</th>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>AC-02</th>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Unidad</th>
+                  <th scope="col" className="col-h" style={TH_CENTER}>Parámetro</th>
+                  <th scope="col" className="col-h" style={TH_CENTER}>AC-01</th>
+                  <th scope="col" className="col-h" style={TH_CENTER}>AC-02</th>
+                  <th scope="col" className="col-h" style={TH_CENTER}>Unidad</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td style={{padding: "4px", textAlign: "left", fontWeight: 600}}>Caudal (Q)</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px"}}>{fmt(Qaco)}</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px"}}>{fmt(Qac2)}</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt3)", padding: "4px"}}>l/s</td>
+                  <td style={TD_PARAM_LABEL}>Caudal (Q)</td>
+                  <td className="c" style={TD_PARAM_VALUE}>{fmt(Qaco)}</td>
+                  <td className="c" style={TD_PARAM_VALUE}>{fmt(Qaco)}</td>
+                  <td className="c" style={TD_PARAM_UNIT}>l/s</td>
                 </tr>
                 <tr>
-                  <td style={{padding: "4px", textAlign: "left", fontWeight: 600}}>Diámetro int.</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px"}}>{fmt(f1.dInt)}</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px"}}>{fmt(f2.dInt)}</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt3)", padding: "4px"}}>mm</td>
+                  <td style={TD_PARAM_LABEL}>Diámetro int.</td>
+                  <td className="c" style={TD_PARAM_VALUE}>{fmt(f1.dInt)}</td>
+                  <td className="c" style={TD_PARAM_VALUE}>{fmt(f2.dInt)}</td>
+                  <td className="c" style={TD_PARAM_UNIT}>mm</td>
                 </tr>
                 <tr>
-                  <td style={{padding: "4px", textAlign: "left", fontWeight: 600}}>Velocidad</td>
+                  <td style={TD_PARAM_LABEL}>Velocidad</td>
                   <td className="c" style={{textAlign: "center", fontWeight: 600, padding: "4px", color: f1.V > 2.5 ? "var(--err)" : "var(--txt2)"}}>{fmt(f1.V)}</td>
                   <td className="c" style={{textAlign: "center", fontWeight: 600, padding: "4px", color: f2.V > 2.5 ? "var(--err)" : "var(--txt2)"}}>{fmt(f2.V)}</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt3)", padding: "4px"}}>m/s</td>
+                  <td className="c" style={TD_PARAM_UNIT}>m/s</td>
                 </tr>
                 <tr>
-                  <td style={{padding: "4px", textAlign: "left", fontWeight: 600}}>L. total eq.</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px"}}>{fmt(f1.Lt)}</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px"}}>{fmt(f2.Lt)}</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt3)", padding: "4px"}}>m</td>
+                  <td style={TD_PARAM_LABEL}>L. total eq.</td>
+                  <td className="c" style={TD_PARAM_VALUE}>{fmt(f1.Lt)}</td>
+                  <td className="c" style={TD_PARAM_VALUE}>{fmt(f2.Lt)}</td>
+                  <td className="c" style={TD_PARAM_UNIT}>m</td>
                 </tr>
                 <tr>
-                  <td style={{padding: "4px", textAlign: "left", fontWeight: 600}}>Hf (C={C})</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px"}}>{fmt(f1.hfM)}</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px"}}>{fmt(f2.hfM)}</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt3)", padding: "4px"}}>mca</td>
+                  <td style={TD_PARAM_LABEL}>Pérdida de carga (Hf)</td>
+                  <td className="c" style={TD_PARAM_VALUE}>{fmt(f1.hfM)}</td>
+                  <td className="c" style={TD_PARAM_VALUE}>{fmt(f2.hfM)}</td>
+                  <td className="c" style={TD_PARAM_UNIT}>mca</td>
+                </tr>
+                <tr>
+                  <td style={TD_PARAM_LABEL}>Coeficiente C</td>
+                  <td className="c" colSpan={2} style={{textAlign: "center", fontWeight: 600, padding: "4px", color: "var(--txt2)"}}>{C}</td>
+                  <td className="c" style={TD_PARAM_UNIT}>—</td>
+                </tr>
+                <tr>
+                  <td style={TD_PARAM_LABEL}>Diámetro del contador</td>
+                  <td className="c" colSpan={2} style={{textAlign: "center", padding: "2px"}}>
+                    <select value={acoContIx} onChange={e => {
+                      const i = parseInt(e.target.value);
+                      setAcoContIx(i);
+                      if (onContDiamChange && CONTADORES_CAT[i]) {
+                        onContDiamChange(`${CONTADORES_CAT[i].dn}"`);
+                      }
+                    }}
+                      style={{width:"100%",padding:"3px 4px",border:"1px solid #3a494a",borderRadius:3,background:"#1e2024",color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",cursor:"pointer"}}>
+                      {CONTADORES_CAT.map((c, i) => (
+                        <option key={i} value={i}>{c.dn}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="c" style={TD_PARAM_UNIT}>pulg</td>
+                </tr>
+                <tr>
+                  <td style={TD_PARAM_LABEL}>Hf contador</td>
+                  <td className="c" colSpan={2} style={{textAlign: "center", fontWeight: 600, padding: "4px", color: hfContador > 10 ? "var(--err)" : "var(--txt2)"}}>{fmt(hfContador)}</td>
+                  <td className="c" style={TD_PARAM_UNIT}>mca</td>
                 </tr>
                 <tr>
                   <td style={{padding: "4px", textAlign: "left", fontWeight: 600}}>P. disponible</td>
@@ -261,26 +288,26 @@ function Acometida({
                   <td className="c" style={{textAlign: "center", color: "var(--txt3)", padding: "4px"}}>mca</td>
                 </tr>
                 <tr>
-                  <td style={{padding: "4px", textAlign: "left", fontWeight: 600}}>P. final tramo</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt2)", fontWeight: 700, padding: "4px"}}>{fmt(f1.Pfin)}</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt2)", fontWeight: 700, padding: "4px"}}>{fmt(f2.Pfin)}</td>
-                  <td className="c" style={{textAlign: "center", color: "var(--txt3)", padding: "4px"}}>mca</td>
+                  <td style={TD_PARAM_LABEL}>P. final tramo</td>
+                  <td className="c" style={{...TD_PARAM_VALUE, fontWeight: 700}}>{fmt(f1.Pfin)}</td>
+                  <td className="c" style={{...TD_PARAM_VALUE, fontWeight: 700}}>{fmt(f2.Pfin)}</td>
+                  <td className="c" style={TD_PARAM_UNIT}>mca</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           {/* SECTION 3: Verificación Final */}
-          <div style={{ display: "flex", flexDirection: "column", border: "1px solid var(--line)", borderRadius: "var(--r)", overflow: "hidden", background: "var(--bg)" }}>
-            <div className="card-h" style={{ padding: "8px 12px", borderBottom: "1px solid var(--line)", background: "var(--bg2)" }}>
-              <h4 style={{ fontSize: 11, fontWeight: 700, color: "var(--txt)", margin: 0, textTransform: "uppercase", letterSpacing: 0.5 }}>3. Verificación</h4>
+          <div style={SECTION_COL}>
+            <div className="card-h" style={SECTION_HDR}>
+              <h4 style={SECTION_H4}>3. Verificación</h4>
             </div>
             
             <table className="tbl" style={{ fontSize: 10, width: "100%", borderBottom: "none" }}>
               <thead>
                 <tr>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Parámetro</th>
-                  <th scope="col" className="col-h" style={{textAlign:"center", padding: "4px"}}>Valor / Estado</th>
+                  <th scope="col" className="col-h" style={TH_CENTER}>Parámetro</th>
+                  <th scope="col" className="col-h" style={TH_CENTER}>Valor / Estado</th>
                 </tr>
               </thead>
               <tbody>

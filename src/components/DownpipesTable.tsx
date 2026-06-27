@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { memo, useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
@@ -9,6 +9,8 @@ import { pisoLbl, pisoCorto, DIAM_BAN, DIAM_VENT } from "../constants";
 import { calcUDparcial } from "../utils/componentHelpers";
 import { calculateVentStack } from "../utils/calcSanitary";
 import { diamPulgFromLabel } from "../utils/diamPulgFromLabel";
+
+
 
 function fmtPiso(val: string, pisos: any[]): string {
   if (!val) return '—';
@@ -62,13 +64,13 @@ const renderStatus = (val: string) => {
 
 import { writeBajantePropToDrawing, writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
 
-export default function BajantesTable() {
+const BajantesTable = memo(function BajantesTable_() {
   const { tramosSan } = useTramos();
   const { udBase } = useApparatus();
   const { pisos } = useProject();
   const { plans } = usePlans();
 
-  const [conexiones, componentTotalMap, ventToSanMap, sanToVentBajKeys, ventRamalDiamMap, components] = useMemo(() => {
+  const [conexiones, ventToSanMap, ventRamalDiamMap, components] = useMemo(() => {
     const map: Record<string, string[]> = {};
     const vMap: Record<string, string[]> = {};
     const ventRamalDiamMap: Record<string, number> = {};
@@ -84,7 +86,7 @@ export default function BajantesTable() {
       const bajantes = data.bajantes || [];
 
       const getBajantePos = (b: any) => {
-        const lvl = pisoLbl(plan.nivel);
+        const lvl = pisoLbl(plan.nivel ?? 0);
         const disp = b.desplazamientos?.[lvl] || {};
         return {
           x: b.x + (disp.dx || 0),
@@ -235,16 +237,7 @@ export default function BajantesTable() {
       }
     }
 
-    // Build reverse map: san element key → array of vent bajante keys
-    const sanToVentBajKeys: Record<string, string[]> = {};
-    for (const [ventBajKey, sanKeys] of Object.entries(vMap)) {
-      for (const sanKey of sanKeys) {
-        if (!sanToVentBajKeys[sanKey]) sanToVentBajKeys[sanKey] = [];
-        if (!sanToVentBajKeys[sanKey].includes(ventBajKey)) {
-          sanToVentBajKeys[sanKey].push(ventBajKey);
-        }
-      }
-    }
+
 
     // Add vertical connections for bajantes (from upper to lower sections)
     const bajantesGroups: Record<string, typeof tramosSan> = {};
@@ -255,7 +248,7 @@ export default function BajantesTable() {
       }
     }
 
-    for (const [bId, sections] of Object.entries(bajantesGroups)) {
+    for (const sections of Object.values(bajantesGroups)) {
       sections.sort((a, b) => (a.piso || 0) - (b.piso || 0));
       for (let i = 0; i < sections.length - 1; i++) {
         const lowerKey = sections[i]._key;
@@ -379,30 +372,7 @@ export default function BajantesTable() {
       const key = t._key || t.id;
       if (key) parcialMap[key] = calcUDparcial(t, udBase);
     }
-    const componentTotalMap: Record<string, number> = {};
-    const compVisited2 = new Set<string>();
-    for (const t of tramosSan) {
-      const startKey = t._key || t.id;
-      if (!startKey || compVisited2.has(startKey)) continue;
-      
-      const comp: string[] = [];
-      const q = [startKey];
-      compVisited2.add(startKey);
-      while (q.length > 0) {
-        const cur = q.shift()!;
-        comp.push(cur);
-        for (const nb of adj[cur] || []) {
-          if (!compVisited2.has(nb) && tramoById[nb]) {
-            compVisited2.add(nb);
-            q.push(nb);
-          }
-        }
-      }
-      const compTotal = comp.reduce((s, k) => s + (parcialMap[k] || 0), 0);
-      for (const k of comp) componentTotalMap[k] = compTotal;
-    }
-
-    return [orientedConexiones, componentTotalMap, vMap, sanToVentBajKeys, ventRamalDiamMap, components] as const;
+    return [orientedConexiones, vMap, ventRamalDiamMap, components] as const;
   }, [plans, tramosSan, udBase]);
 
   const getDescendantsUD = useCallback((tKey: string, visited = new Set<string>()): number => {
@@ -815,4 +785,5 @@ export default function BajantesTable() {
       </div>
     </div>
   );
-}
+});
+export default BajantesTable;

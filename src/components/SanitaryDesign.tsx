@@ -1,14 +1,19 @@
-﻿import { useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { usePlans } from "../context/PlansContext";
 import { calcUDparcial } from "../utils/componentHelpers";
 import { pisoCorto, DIAM_OPTIONS, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN, SAN_UC_IDS, APARATOS_DEF } from "../constants";
 import { diametroManning, caudalHunterLPS, factorSimultaneidad } from "../utils/calcSanitary";
-import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
+import { writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
 import { calcHydraulicCheck } from "../utils/hydraulicCheck";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
+
+const SR_ONLY = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 } as const;
+const EMPTY_ROW = { padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 } as const;
+const TH_HDR = { fontSize:9, textAlign:'center', padding:'2px 3px' } as const;
+const TH_SUB = { fontSize:8, textAlign:'center', padding:'2px 3px' } as const;
 
 const renderStatus = (val: string) => {
   if (val === 'O.K.' || val === 'Ok' || val === 'OK') {
@@ -50,7 +55,7 @@ const renderStatus = (val: string) => {
 };
 
 export default function DisenosSanitarios() {
-  const { tramosSan, updTramoSan, delTramoSan } = useTramos();
+  const { tramosSan, updTramoSan } = useTramos();
   const { aps } = useApparatus();
   const { plans } = usePlans();
 
@@ -62,10 +67,7 @@ export default function DisenosSanitarios() {
     }
   }, [updTramoSan, plans]);
 
-  const handleDelete = useCallback((tramoId: string) => {
-    delTramoSan(tramoId);
-    deleteRamalFromDrawing(tramoId, 'san', plans);
-  }, [delTramoSan, plans]);
+
 
   const mergedBase = useMemo(() => {
     const defMap = new Map(APARATOS_DEF.map(d => [d.id, d]));
@@ -172,7 +174,7 @@ export default function DisenosSanitarios() {
       }
     }
 
-    for (const [bId, sections] of Object.entries(bajantesGroups)) {
+    for (const sections of Object.values(bajantesGroups)) {
       sections.sort((a, b) => (a.piso || 0) - (b.piso || 0));
       for (let i = 0; i < sections.length - 1; i++) {
         const lowerKey = sections[i]._key;
@@ -389,46 +391,46 @@ export default function DisenosSanitarios() {
     <div className="scroll-top" style={{padding:'16px'}}>
       <div className="scroll-inner">
         <table className="tbl" style={{fontSize:10}}>
-          <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Diseño de red sanitaria</caption>
+          <caption style={SR_ONLY}>Diseño de red sanitaria</caption>
           <thead>
             <tr>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Tramo</th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Nivel</th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Tramo</th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Nivel</th>
               <th scope="col" className="col-h san" colSpan={3} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>UD</th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}># Descargas</th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>K</th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Caudal<br/>Q <small>(LPS)</small></th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Manning<br/>n</th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Pendiente<br/>S <small>(%)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}># Descargas</th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>K</th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Caudal<br/>Q <small>(LPS)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Manning<br/>n</th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Pendiente<br/>S <small>(%)</small></th>
               <th scope="col" className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>Diámetro</th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Qo<br/><small>(LPS)</small></th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Vo<br/><small>(m/s)</small></th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Q/Qo</th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Vel. Real<br/>Vr <small>(m/s)</small></th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Chequeo Vel.</th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Yc<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Yn<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Froude</th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Flujo</th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Ymax<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Yn vs Yc</th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Qo<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Vo<br/><small>(m/s)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Q/Qo</th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Vel. Real<br/>Vr <small>(m/s)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Chequeo Vel.</th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Yc<br/><small>(mm)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Yn<br/><small>(mm)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Froude</th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Flujo</th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Ymax<br/><small>(mm)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Yn vs Yc</th>
               <th scope="col" className="col-h ven" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>Fuerza Tractiva</th>
             </tr>
             <tr>
-              <th scope="col" className="col-h san" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Propia</th>
-              <th scope="col" className="col-h san" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Otros</th>
-              <th scope="col" className="col-h san" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Total</th>
-              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Calculado<br/><small>(")</small></th>
-              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Diseño<br/><small>(")</small></th>
-              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Interior<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h ven" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Real<br/><small>(kg/m²)</small></th>
-              <th scope="col" className="col-h ven" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>&gt;0.15</th>
+              <th scope="col" className="col-h san" style={TH_SUB}>Propia</th>
+              <th scope="col" className="col-h san" style={TH_SUB}>Otros</th>
+              <th scope="col" className="col-h san" style={TH_SUB}>Total</th>
+              <th scope="col" className="col-h ok" style={TH_SUB}>Calculado<br/><small>(")</small></th>
+              <th scope="col" className="col-h ok" style={TH_SUB}>Diseño<br/><small>(")</small></th>
+              <th scope="col" className="col-h ok" style={TH_SUB}>Interior<br/><small>(mm)</small></th>
+              <th scope="col" className="col-h ven" style={TH_SUB}>Real<br/><small>(kg/m²)</small></th>
+              <th scope="col" className="col-h ven" style={TH_SUB}>&gt;0.15</th>
             </tr>
           </thead>
           <tbody>
             {displayTramos.length === 0 ? (
               <tr>
-                <td colSpan={26} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                <td colSpan={26} style={EMPTY_ROW}>
                   No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                 </td>
               </tr>
@@ -439,7 +441,7 @@ export default function DisenosSanitarios() {
                 const udPropias=calcUDparcial(t,mergedBase);
                 const connectedKeys = conexionesDisplay[tKey] || [];
                 const udAcum = (componentTotalMap[tKey] || 0) as number;
-                const totalExtra = udAcum - udPropias;
+
                 const nSalidas=t.nSalidas??0;
                 const K=nSalidas!=null&&nSalidas>0?Math.round(factorSimultaneidad(nSalidas)*100)/100:null;
                 const n=t.nmaning || 0.009;

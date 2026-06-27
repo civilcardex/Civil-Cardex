@@ -15,7 +15,10 @@ export function usePersistedState<T>(
   });
 
   useEffect(() => {
-    saveToStorage(key, state);
+    const timer = setTimeout(() => {
+      saveToStorage(key, state);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [key, state]);
 
   return [state, setState];

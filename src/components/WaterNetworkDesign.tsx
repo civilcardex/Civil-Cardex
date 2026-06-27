@@ -5,9 +5,9 @@ import { usePlans } from "../context/PlansContext";
 import { AF_UC_IDS, AC_UC_IDS, APARATOS_DEF, pisoCorto } from "../constants";
 import { calcUCparcial } from "../utils/componentHelpers";
 import { COEF_HAZEN, CONTADORES } from "../utils/calcHydraulics";
-import { writeDiametroToDrawing, deleteRamalFromDrawing } from "../utils/writeDiameterToDrawing";
+import { writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
 import { calcLeAcces } from "../utils/accesoriosUtils";
-import { fmt, fmtPulg } from "../utils/formatUtils";
+import { fmt } from "../utils/formatUtils";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
 import Acometida from "./SupplyConnection";
@@ -36,23 +36,28 @@ const isAf = (t: string) => t === 'af';
 const isAC1 = (t: any) => {
   const ini = String(t.ini || '');
   const fin = String(t.fin || '');
-  return (ini.startsWith('RP') && fin.startsWith('CNT')) || (fin.startsWith('RP') && ini.startsWith('CNT'));
+  if (ini.startsWith('RP') || fin.startsWith('RP')) return true;
+  if (fin.startsWith('CNT') && !ini.startsWith('CNT') && !ini.startsWith('M') && !ini.startsWith('B')) return true;
+  return false;
 };
 
 const isAC2 = (t: any) => {
   const ini = String(t.ini || '');
   const fin = String(t.fin || '');
-  return (ini.startsWith('CNT') && !fin.startsWith('RP')) || (fin.startsWith('CNT') && !ini.startsWith('RP'));
+  if (ini.startsWith('RP') || fin.startsWith('RP')) return false;
+  if (ini.startsWith('CNT')) return true;
+  if (fin.startsWith('CNT') && (ini.startsWith('M') || ini.startsWith('B'))) return true;
+  return false;
 };
 
 function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDesignProps) {
-  const { tramosAf, tramosAc, updTramoAf, updTramoAc, delTramoAf, delTramoAc } = useTramos();
+  const { tramosAf, tramosAc, updTramoAf, updTramoAc } = useTramos();
   const { proy } = useProject();
   const { plans } = usePlans();
 
   const tramos = isAf(networkType) ? tramosAf : tramosAc;
   const updTramo = isAf(networkType) ? updTramoAf : updTramoAc;
-  const delTramo = isAf(networkType) ? delTramoAf : delTramoAc;
+  
   const ucIds = isAf(networkType) ? AF_UC_IDS : AC_UC_IDS;
   const C = COEF_HAZEN;
   const cssClass = networkType;
@@ -76,10 +81,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     writeDiametroToDrawing(tramoId, networkType, opt.label, plans);
   };
 
-  const handleDelete = (tramoId: string) => {
-    delTramo(tramoId);
-    deleteRamalFromDrawing(tramoId, networkType, plans);
-  };
+  
 
   const AP = useMemo(
     () =>
@@ -111,7 +113,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     });
   };
 
-  const [conexiones, conexionesDisplay, componentTotalMap] = useMemo(() => {
+  const [, conexionesDisplay, componentTotalMap] = useMemo(() => {
     const calculoMap: Record<string, string[]> = {};
 
     for (const plan of plans || []) {
@@ -418,20 +420,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   const Qaco = useMemo(() => ucTotal > 0
     ? Math.round((0.1163 * Math.pow(ucTotal, 0.6875)) * 1000) / 1000
     : 0, [ucTotal]);
-  const sqrtQaco = useMemo(() => Qaco > 0 ? Math.round(Math.sqrt(Qaco) * 100) / 100 : 0, [Qaco]);
-
-  // Qac2 = Q del tramo CNT→Montante (AC-02), calculado con los fixtures de ese tramo
-  const Qac2 = useMemo(() => {
-    if (!tr2) return Qaco;
-    const ownKey = tr2._key || tr2.id;
-    const total = (componentTotalMap[ownKey] || 0) as number;
-    const nDesc = tr2.nSalidas || 0;
-    const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
-    if (total > 0 && K > 0) {
-      return Math.round(K * (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000) / 1000;
-    }
-    return Qaco;
-  }, [tr2, componentTotalMap, Qaco]);
+  
 
   const calcFila = (pulg: number, h: number, v: number, le: number, pIn: number) => {
     const dInt: number = pulg > 0 ? ((diamTable.find(d => Math.abs(d.pulg - pulg) < 0.01) || {}).dInt || 0) : 0;
@@ -448,8 +437,8 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   };
 
   const acoL1LeTotal = resolvedL1.le + acoLeMed;
-  const f1 = calcFila(resolvedRedContDiam, resolvedL1.h, resolvedL1.v, acoL1LeTotal, acoPini);
-  const f2 = calcFila(resolvedContMonDiam, resolvedL2.h, resolvedL2.v, resolvedL2.le, f1.Pfin);
+  const f1 = calcFila(resolvedRedContDiam || 0, resolvedL1.h, resolvedL1.v, acoL1LeTotal, acoPini);
+  const f2 = calcFila(resolvedContMonDiam || 0, resolvedL2.h, resolvedL2.v, resolvedL2.le, f1.Pfin);
   const hfContador = Qaco > 0 && contadorSel.qn_lps > 0
     ? Math.round(10 * Math.pow(Qaco / contadorSel.qn_lps, 2) * 100) / 100
     : 0;
@@ -524,7 +513,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
                   const getMatchedOption = () => {
                     if (diamNomMap[ownKey]) return DIAM_OPTS.find(o => o.nominal === diamNomMap[ownKey]);
                     if (t.diametroOriginal) {
-                      const match = DIAM_OPTS.find(o => t.diametroOriginal.startsWith(o.nominal));
+                      const match = DIAM_OPTS.find(o => t.diametroOriginal?.startsWith(o.nominal));
                       if (match) return match;
                     }
                     return DIAM_OPTS.find(o => Math.abs(o.pulg - disPulg) < 0.01);
@@ -534,7 +523,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
                   const internoMm = diamIntMap[ownKey] || (matchedOpt ? matchedOpt.dInt : lookupFn(disPulg) || 0);
                   const Vmms = Qprob > 0 && internoMm > 0 ? Math.round((1000000 * Qprob) / ((Math.PI / 4) * internoMm * internoMm) * 10) / 10 : 0;
                   const H = t.totalL || t.Lh || 0;
-                  const Vvert = t.Lv || t.deltaZ || 0;
+                  const Vvert = t.Lv != null ? Number(t.Lv) : (t.deltaZ != null ? Number(t.deltaZ) : 0);
                   const realPulg = matchedOpt ? matchedOpt.pulg : disPulg;
                   const Le = calcLeAcces(t.accesorios ?? {}, realPulg, C);
                   const Lt = H + Vvert + Le;
@@ -593,11 +582,11 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
                       <td className="c td-mono">{C}</td>
                       <td className="c" style={{fontWeight:600,padding:"0 1px",fontSize:11,background:Vmms>0&&vCumple?"rgba(34,197,94,.25)":Vmms>0?"rgba(239,68,68,.25)":"transparent"}}>{Vmms>0?fmt(Vmms,2):"—"}</td>
                       <td className="c td-mono">{H>0?fmt(H,2):"—"}</td>
-                      <td className="c td-mono">{Vvert>0?fmt(Vvert,2):"—"}</td>
+                      <td className="c td-mono">{Vvert != null ? fmt(Vvert, 2) : "—"}</td>
                       <td className="c td-mono">{Le>0?fmt(Le,2):"—"}</td>
                       <td className="c td-mono-b">{Lt>0?fmt(Lt,2):"—"}</td>
-                      <td className="c td-mono">{hfPct>0?fmt(hfPct,2):"—"}</td>
-                      <td className="c td-mono-b">{hfM>0?fmt(hfM,2):"—"}</td>
+                      <td className="c td-mono">{hfPct != null ? fmt(hfPct, 2) : "—"}</td>
+                      <td className="c td-mono-b">{hfM != null ? fmt(hfM, 2) : "—"}</td>
                       <td className="c" style={{padding:"0 1px"}}><LazyNumInput label="Presión inicial" val={fmt(Pin,2)} onSave={v => setPresIni(ownKey, v)} /></td>
                       <td className="c" style={{padding:"0 1px"}}><LazyNumInput label="Presión final" val={fmt(Pfin,2)} onSave={v => setPresFin(ownKey, v)} /></td>
                     </tr>
@@ -613,11 +602,11 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
 
       {isAf(networkType) && (
         <Acometida
-          ucTotal={ucTotal} Qaco={Qaco} sqrtQaco={sqrtQaco} Qac2={Qac2}
+          Qaco={Qaco}
           contadorSel={contadorSel} acoContIx={acoContIx} setAcoContIx={setAcoContIx}
           acoMonName={resolvedMonName} setAcoMonName={setAcoMonName}
-          acoRedContDiam={resolvedRedContDiam} setAcoRedContDiam={setAcoRedContDiam}
-          acoContMonDiam={resolvedContMonDiam} setAcoContMonDiam={setAcoContMonDiam}
+          acoRedContDiam={resolvedRedContDiam || 0} setAcoRedContDiam={setAcoRedContDiam}
+          acoContMonDiam={resolvedContMonDiam || 0} setAcoContMonDiam={setAcoContMonDiam}
           acoL1={resolvedL1} setAcoL1={setAcoL1}
           acoL2={resolvedL2} setAcoL2={setAcoL2}
           acoPini={acoPini} setAcoPini={setAcoPini}

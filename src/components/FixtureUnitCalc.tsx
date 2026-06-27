@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { usePlans } from "../context/PlansContext";
@@ -112,7 +112,7 @@ function CalculoUD() {
       }
     }
 
-    for (const [bId, sections] of Object.entries(bajantesGroups)) {
+    for (const sections of Object.values(bajantesGroups)) {
       sections.sort((a, b) => (a.piso || 0) - (b.piso || 0));
       for (let i = 0; i < sections.length - 1; i++) {
         const lowerKey = sections[i]._key;
@@ -348,8 +348,8 @@ function CalculoUD() {
       <tr key={tKey}>
         <td className="c"><span className="sigla" style={{fontSize:11,fontWeight:600}}>{t.id}</span></td>
         <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{pisoCorto(t.piso)}</span></td>
-        <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.ini || '—'}</span></td>
-        <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.fin || '—'}</span></td>
+        <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.ini && typeof t.ini === 'object' ? `${t.ini.x},${t.ini.y}` : t.ini || '—'}</span></td>
+        <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.fin && typeof t.fin === 'object' ? `${t.fin.x},${t.fin.y}` : t.fin || '—'}</span></td>
         {mergedBase.map(d=>(
           <td key={d.id} className="c" style={{padding:'2px 3px'}}>
             <span style={{fontSize:12,fontFamily:'var(--mono)',color:d._disabled?'var(--txt3)':'var(--txt)'}}>{t.fixtures[d.id]??0}</span>

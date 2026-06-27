@@ -62,8 +62,8 @@ function BombaARDesign(){
   const [editP3, setEditP3] = useState(false);
   const [editP4, setEditP4] = useState(false);
 
-  const sal=dec(salSim); const ud=dec(udTot); const hzg=dec(hz); const li=dec(lImp);
-  const di=dec(dImp); const ch=dec(cHW)||150; const pd=dec(pDesc); const eb=dec(etaB)||0.65;
+  const sal=dec(salSim); const ud=dec(udTot); const li=dec(lImp);
+  const di=dec(dImp); const ch=dec(cHW)||150; const pd=dec(pDesc);
   const fs=dec(fSrv)||1.25; const tc=dec(tCic); const hmn=dec(hMin); const hmx=dec(hMax);
   const bc=dec(bCam); const lc=dec(lCam);
   const Dm=di*0.0254;
