@@ -44,6 +44,19 @@ export interface CanvasBox {
   h: number;
 }
 
+export function isBajante(el: PlanoElement | null): el is PlanoBajante {
+  return el != null && '_circ' in el;
+}
+export function isRamal(el: PlanoElement | null): el is PlanoRamal {
+  return el != null && 'pts' in el;
+}
+export function isTextAnnotation(el: PlanoElement | null): el is PlanoTextAnnotation {
+  return el != null && '_box' in el;
+}
+export function isArea(el: PlanoElement | null): el is PlanoArea {
+  return el != null && '_polyBox' in el;
+}
+
 export interface PlanoRamal {
   id: string;
   net: string;
@@ -102,6 +115,7 @@ export interface PlanoBajante {
   _ghostLabelBox?: LabelBoxCorners;
   _labelBox?: LabelBoxCorners;
   ghostData?: Record<string, { dNominal?: string; direccion?: string; labelX?: number; labelY?: number }>;
+  isFantasma?: boolean;
 }
 
 export interface PlanoArea {
@@ -173,6 +187,16 @@ export interface PlanoRamalDefaults {
   pendiente: number;
 }
 
+export type MultiDragOrigData = Record<string, {
+  type: 'ramal' | 'bajante' | 'text';
+  origPts?: number[][];
+  origLabelX?: number;
+  origLabelY?: number;
+  origLabelAngle?: number;
+  origX?: number;
+  origY?: number;
+}>;
+
 export interface IPlanoEngineCore {
   dims: PlanoDimension[];
   textAnnots: PlanoTextAnnotation[];
@@ -228,7 +252,7 @@ export interface IPlanoEngineCore {
   areaDrag: { id: string; startX: number; startY: number } | null;
   ramalDrag: { id: string; startX: number; startY: number; origPts: [number, number][]; connBaj?: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[] } | null;
   multiSel: string[];
-  multiDrag: { startX: number; startY: number; origData: Record<string, any> } | null;
+  multiDrag: { startX: number; startY: number; origData: MultiDragOrigData } | null;
   marqueeRect: { x1: number; y1: number; x2: number; y2: number } | null;
   MM: {
     lblName: number;
@@ -248,6 +272,7 @@ export interface IPlanoEngineCore {
   snapPreviewToPadre(x: number, y: number): { x: number; y: number } | null;
   getBajantesFantasma(): PlanoBajante[];
   render(): void;
+  scheduleRender(): void;
   _emitSelect(el: unknown): void;
   _emitStatus(msg: string): void;
   _emitDelete(ids: string[]): void;

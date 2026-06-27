@@ -5,7 +5,6 @@ interface User {
   id: string;
   email?: string;
   user_metadata?: Record<string, string>;
-  [key: string]: any;
 }
 
 interface AuthContextType {

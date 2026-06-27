@@ -2,7 +2,7 @@ import React, { type RefObject } from 'react'
 import { DIAM_BAN, DIAM_BY_MAT, DIAM_DEFAULT_BY_NET, DIAM_VENT, GAS } from '../../constants'
 import { VENTILACION, CONTADORES as CONTADORES_CAT } from '../../pages/catalog/catalogData';
 import { CAT_GAS } from '../../constants/engineeringDataGas';
-import { DIAMETROS_AF } from '../../utils/calcHydraulics'
+import { DIAMETROS_AF } from '../../constants/hydraulicData'
 
 interface TramoEditorProps {
   selElement: any
@@ -481,14 +481,14 @@ export default function TramoEditor({
                       {(() => {
                         const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === 'san' && r.tipo !== 'tributario');
                         if (bajRamales.length === 0) return <div style={{ fontSize: 10, color: '#8AB4D6', fontFamily: "'Geist',monospace", padding: '4px', gridColumn: 'span 4' }}>Sin ramales en esta red</div>;
-                        const recibidos = (selElement.recibeDeIds || []) as string[];
+                        const recibidos = (selElement.recibeDeIds || []);
                         return bajRamales.map((r: any) => (
                           <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
                             <input type="checkbox" checked={recibidos.includes(r.id)}
                               onChange={e => {
                                 const newRecibe = e.target.checked
                                   ? [...recibidos, r.id]
-                                  : recibidos.filter(id => id !== r.id);
+                                  : recibidos.filter((id: string) => id !== r.id);
                                 handleUpdateSel('recibeDeIds', newRecibe);
                               }}
                               style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />

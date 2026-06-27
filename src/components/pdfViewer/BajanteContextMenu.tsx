@@ -3,7 +3,7 @@ import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import { DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS, pisoLbl } from "../../constants";
 import { VENTILACION, CONTADORES as CONTADORES_CAT } from "../../pages/catalog/catalogData";
-import { DIAMETROS_AF } from "../../utils/calcHydraulics";
+import { DIAMETROS_AF } from "../../constants/hydraulicData";
 import { writeAcoDiamToDrawing, writeContadorDiamToDrawing } from "../../utils/writeDiameterToDrawing";
 import { CAT_GAS } from "../../constants/engineeringDataGas";
 
@@ -410,14 +410,14 @@ export default function BajanteContextMenu({
                   {(() => {
                     const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === activeNet && r.tipo !== 'tributario');
                     if (bajRamales.length === 0) return <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin ramales</div>;
-                    const recibidos = (contextMenuState.bajante.recibeDeIds || []) as string[];
+                    const recibidos = (contextMenuState.bajante.recibeDeIds || []);
                     return bajRamales.map((r: any) => (
                       <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
                         <input type="checkbox" checked={recibidos.includes(r.id)}
                           onChange={e => {
                             const newRecibe = e.target.checked
                               ? [...recibidos, r.id]
-                              : recibidos.filter(id => id !== r.id);
+                              : recibidos.filter((id: string) => id !== r.id);
                             engineRef.current?.updateElementById(contextMenuState.bajante.id, { recibeDeIds: newRecibe });
                             setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, recibeDeIds: newRecibe } } : null);
                             if (selElement?.id === contextMenuState.bajante.id) {

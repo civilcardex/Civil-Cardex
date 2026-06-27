@@ -1,5 +1,5 @@
-import type { IPlanoEngineCore } from './PlanoState';
-import { NETS } from './PlanoState';
+import type { IPlanoEngineCore, PlanoBajante, MultiDragOrigData } from './PlanoState';
+import { NETS, isBajante, isRamal, isTextAnnotation, isArea } from './PlanoState';
 import { pointInLabelBox, pointToSegmentDist, distanceToRamal } from './HitTester';
 import { getSelected } from './PlanoEngineSelection';
 import { selectAt } from './selectAt';
@@ -22,13 +22,13 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
         engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
         return;
       }
-      if (b._circ && !(b as any).isFantasma && Math.hypot(x - b._circ.x, y - b._circ.y) < b._circ.r) {
+      if (b._circ && !b.isFantasma && Math.hypot(x - b._circ.x, y - b._circ.y) < b._circ.r) {
         if (b.id !== sel?.id) {
           engine.selId = b.id;
           engine._emitSelect(b);
           engine.render();
         }
-        if (!(b as any).isFantasma) {
+        if (!b.isFantasma) {
           engine.bajDrag = { id: b.id, offX: x - b._circ.x, offY: y - b._circ.y };
         }
         return;
@@ -60,7 +60,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
           const d = Math.hypot(x - pc.x, y - pc.y);
           if (d < minPtDist) {
             const epP = r.pts[i];
-            const bajAtEp = engine.bajantes.find((b: any) =>
+            const bajAtEp = engine.bajantes.find(b =>
               Math.abs(b.x - epP[0]) < 0.1 && Math.abs(b.y - epP[1]) < 0.1
             );
             if (bajAtEp) continue;
@@ -74,7 +74,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     if (bestRamal) {
       if (bestRamal.net !== engine.activeNet) {
         if (!checkActiveNet(engine, bestRamal.net)) {
-          const netObj = NETS.find((n: any) => n.id === bestRamal.net);
+          const netObj = NETS.find(n => n.id === bestRamal.net);
           const netName = netObj ? netObj.name : bestRamal.net;
           engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
           return;
@@ -146,7 +146,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
       if (hit) {
         if (!isMultiSelectModifier) {
           const tp = engine.toPlane(x, y);
-          const origData: Record<string, any> = {};
+          const origData: MultiDragOrigData = {};
           for (const mid of engine.multiSel) {
             const mel = engine.ramales.find(r => r.id === mid);
             if (mel) {
@@ -174,44 +174,42 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     engine.multiSel = [];
   }
 
-  if (sel && (sel as any)._circ && ((sel as any).tipo === 'bajante' || (sel as any).tipo === 'montante' || (sel as any).tipo === 'red_publica' || (sel as any).tipo === 'contador' || sel.id?.startsWith('B'))) {
-    if ((sel as any)._labelBox && pointInLabelBox(x, y, (sel as any)._labelBox)) {
-      const lPos = engine.toCvs((sel as any).labelX, (sel as any).labelY);
+  if (isBajante(sel) && (sel.tipo === 'bajante' || sel.tipo === 'montante' || sel.tipo === 'red_publica' || sel.tipo === 'contador' || sel.id?.startsWith('B'))) {
+    if (sel._labelBox && pointInLabelBox(x, y, sel._labelBox)) {
+      const lPos = engine.toCvs(sel.labelX, sel.labelY);
       engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
       return;
     }
-    if ((sel as any).labelX != null && (sel as any).labelY != null) {
-      const lPos = engine.toCvs((sel as any).labelX, (sel as any).labelY);
+    if (sel.labelX != null && sel.labelY != null) {
+      const lPos = engine.toCvs(sel.labelX, sel.labelY);
       if (Math.hypot(x - lPos.x, y - lPos.y) < 20) {
         engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
         return;
       }
     }
-    const circ = (sel as any)._circ!;
+    const circ = sel._circ!;
     const d = Math.hypot(x - circ.x, y - circ.y);
-    if (d < circ.r && !(sel as any).isFantasma) {
+    if (d < circ.r && !sel.isFantasma) {
       if (wasGhostSel) {
         engine._isGhostSel = false;
         engine._emitSelect(sel);
         engine.render();
       }
-      if (!(sel as any).isFantasma) {
+      if (!sel.isFantasma) {
         engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
       }
       return;
     }
   }
 
-  if (sel && (sel as any).pts && (sel.id?.startsWith('R'))) {
-    const ramalSel = sel as any;
-    
-    for (let i = 0; i < ramalSel.pts.length; i++) {
-      const pc = engine.toCvs(ramalSel.pts[i][0], ramalSel.pts[i][1]);
+  if (isRamal(sel) && sel.id?.startsWith('R')) {
+    for (let i = 0; i < sel.pts.length; i++) {
+      const pc = engine.toCvs(sel.pts[i][0], sel.pts[i][1]);
       if (Math.hypot(x - pc.x, y - pc.y) < 15) {
         let slideConstraint = undefined;
-        const isEndpoint = i === 0 || i === ramalSel.pts.length - 1;
+        const isEndpoint = i === 0 || i === sel.pts.length - 1;
         if (isEndpoint) {
-          const pt = ramalSel.pts[i];
+          const pt = sel.pts[i];
           for (const other of engine.ramales) {
             if (other.id === sel.id) continue;
             for (let si = 0; si < other.pts.length - 1; si++) {
@@ -232,18 +230,18 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
         return;
       }
     }
-    for (let i = 0; i < ramalSel.pts.length - 1; i++) {
-      const p1 = engine.toCvs(ramalSel.pts[i][0], ramalSel.pts[i][1]);
-      const p2 = engine.toCvs(ramalSel.pts[i+1][0], ramalSel.pts[i+1][1]);
+    for (let i = 0; i < sel.pts.length - 1; i++) {
+      const p1 = engine.toCvs(sel.pts[i][0], sel.pts[i][1]);
+      const p2 = engine.toCvs(sel.pts[i+1][0], sel.pts[i+1][1]);
       if (pointToSegmentDist(x, y, p1.x, p1.y, p2.x, p2.y) < 6) {
         const tp = engine.toPlane(x, y);
-        const origPts = ramalSel.pts.map((pt: number[]) => [...pt] as [number, number]);
+        const origPts = sel.pts.map((pt: number[]) => [...pt] as [number, number]);
         const connBaj: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[] = [];
         for (const b of engine.bajantes) {
           if (!b.recibeDeIds?.includes(sel.id)) continue;
-          const startDist = Math.hypot(b.x - ramalSel.pts[0][0], b.y - ramalSel.pts[0][1]);
-          const lastIdx = ramalSel.pts.length - 1;
-          const endDist = Math.hypot(b.x - ramalSel.pts[lastIdx][0], b.y - ramalSel.pts[lastIdx][1]);
+          const startDist = Math.hypot(b.x - sel.pts[0][0], b.y - sel.pts[0][1]);
+          const lastIdx = sel.pts.length - 1;
+          const endDist = Math.hypot(b.x - sel.pts[lastIdx][0], b.y - sel.pts[lastIdx][1]);
           if (startDist < 0.5) {
             connBaj.push({ id: b.id, origX: b.x, origY: b.y, origLblX: b.labelX ?? b.x, origLblY: b.labelY ?? b.y, atIdx: 0 });
           } else if (endDist < 0.5) {
@@ -256,14 +254,14 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     }
   }
 
-  if (sel && (sel as any).labelX !== undefined && !(sel.id?.startsWith('T'))) {
-    if ((sel as any)._labelBox && pointInLabelBox(x, y, (sel as any)._labelBox)) {
-      const lPos = engine.toCvs((sel as any).labelX, (sel as any).labelY);
+  if (sel && 'labelX' in sel && !(sel.id?.startsWith('T'))) {
+    if (sel._labelBox && pointInLabelBox(x, y, sel._labelBox)) {
+      const lPos = engine.toCvs(sel.labelX!, sel.labelY!);
       engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
       return;
     }
-    if (!((sel as any).tipo === 'bajante' || (sel as any).tipo === 'montante' || (sel as any).tipo === 'red_publica' || (sel as any).tipo === 'contador' || sel.id?.startsWith('B'))) {
-      const lPos = engine.toCvs((sel as any).labelX, (sel as any).labelY);
+    if (!(isBajante(sel) && (sel.tipo === 'bajante' || sel.tipo === 'montante' || sel.tipo === 'red_publica' || sel.tipo === 'contador' || sel.id?.startsWith('B')))) {
+      const lPos = engine.toCvs(sel.labelX!, sel.labelY!);
       if (Math.hypot(x - lPos.x, y - lPos.y) < 12) {
         engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
         return;
@@ -271,25 +269,25 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     }
   }
 
-  if (sel && (sel as any)._box && (sel.id?.startsWith('T'))) {
-    const b = (sel as any)._box!;
+  if (isTextAnnotation(sel) && sel._box && sel.id?.startsWith('T')) {
+    const b = sel._box;
     if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
       const tp = engine.toPlane(x, y);
-      engine.txtDrag = { id: sel.id, startX: tp.x, startY: tp.y, origX: (sel as any).x, origY: (sel as any).y };
+      engine.txtDrag = { id: sel.id, startX: tp.x, startY: tp.y, origX: sel.x, origY: sel.y };
       return;
     }
   }
 
-  if (sel && (sel.id?.startsWith('AR')) && (sel as any)._polyBox) {
-    const pb = (sel as any)._polyBox!;
+  if (isArea(sel) && sel.id?.startsWith('AR') && sel._polyBox) {
+    const pb = sel._polyBox;
     if (x >= pb.x && x <= pb.x + pb.w && y >= pb.y && y <= pb.y + pb.h) {
       for (const b of engine.bajantes) {
-        if ((b as any)._circ) {
-          const d = Math.hypot(x - (b as any)._circ.x, y - (b as any)._circ.y);
-          if (d < (b as any)._circ.r) { selectAt(engine, x, y, isMultiSelectModifier); return; }
+        if (b._circ) {
+          const d = Math.hypot(x - b._circ.x, y - b._circ.y);
+          if (d < b._circ.r) { selectAt(engine, x, y, isMultiSelectModifier); return; }
         }
       }
-      const fg = engine.getBajantesFantasma() as any[];
+      const fg = engine.getBajantesFantasma();
       for (const b of fg) {
         if (b._ghost) {
           const d = Math.hypot(x - b._ghost.x, y - b._ghost.y);
@@ -303,8 +301,8 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
   }
 
   for (const t of engine.textAnnots) {
-    if ((t as any)._box) {
-      const b = (t as any)._box;
+    if (t._box) {
+      const b = t._box;
       if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
         engine.selId = t.id;
         const tp = engine.toPlane(x, y);
@@ -317,7 +315,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
   }
 
   for (const a of engine.areas) {
-    if ((a as any)._labelBox && pointInLabelBox(x, y, (a as any)._labelBox)) {
+    if (a._labelBox && pointInLabelBox(x, y, a._labelBox)) {
       engine.selId = a.id;
       const lPos = engine.toCvs(a.labelX, a.labelY);
       engine.lblDrag = { id: a.id, offX: x - lPos.x, offY: y - lPos.y };
@@ -328,15 +326,15 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
   }
 
   for (const a of engine.areas) {
-    if ((a as any)._polyBox) {
-      const b = (a as any)._polyBox;
+    if (a._polyBox) {
+      const b = a._polyBox;
       if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
         let bajAtPos = false;
         for (const bb of engine.bajantes) {
-          if ((bb as any)._circ && Math.hypot(x - (bb as any)._circ.x, y - (bb as any)._circ.y) < (bb as any)._circ.r) { bajAtPos = true; break; }
+          if (bb._circ && Math.hypot(x - bb._circ.x, y - bb._circ.y) < bb._circ.r) { bajAtPos = true; break; }
         }
         if (!bajAtPos) {
-          const fg = engine.getBajantesFantasma() as any[];
+          const fg = engine.getBajantesFantasma();
           for (const bb of fg) { if (bb._ghost && Math.hypot(x - bb._ghost.x, y - bb._ghost.y) < bb._ghost.r) { bajAtPos = true; break; } }
         }
         if (bajAtPos) break;
@@ -351,13 +349,13 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
   }
 
   for (const r of engine.ramales) {
-    const lPos = engine.toCvs((r as any).labelX, (r as any).labelY);
-    const inBox = (r as any)._labelBox && pointInLabelBox(x, y, (r as any)._labelBox);
+    const lPos = engine.toCvs(r.labelX, r.labelY);
+    const inBox = r._labelBox && pointInLabelBox(x, y, r._labelBox);
     const nearPoint = Math.hypot(x - lPos.x, y - lPos.y) < 12;
     if (inBox || nearPoint) {
       if (r.net !== engine.activeNet) {
         if (!checkActiveNet(engine, r.net)) {
-          const netObj = NETS.find((n: any) => n.id === r.net);
+          const netObj = NETS.find(n => n.id === r.net);
           const netName = netObj ? netObj.name : r.net;
           engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
           return;
@@ -374,14 +372,14 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
   }
 
   for (const b of engine.bajantes) {
-    const lb = (b as any)._labelBox;
+    const lb = b._labelBox;
     const lbHit = lb && pointInLabelBox(x, y, lb);
-    const lPos = engine.toCvs((b as any).labelX, (b as any).labelY);
+    const lPos = engine.toCvs(b.labelX, b.labelY);
     const nearLabel = Math.hypot(x - lPos.x, y - lPos.y) < 20;
     if (lbHit || nearLabel) {
       if (b.net !== engine.activeNet) {
         if (!checkActiveNet(engine, b.net)) {
-          const netObj = NETS.find((n: any) => n.id === b.net);
+          const netObj = NETS.find(n => n.id === b.net);
           const netName = netObj ? netObj.name : b.net;
           engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
           return;
@@ -397,14 +395,14 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     }
   }
 
-  const fg = engine.getBajantesFantasma() as any[];
-  let gFound: any = null, gMin = Infinity;
+  const fg = engine.getBajantesFantasma();
+  let gFound: PlanoBajante | null = null, gMin = Infinity;
 
   for (const b of fg) {
-    if ((b as any)._ghostLabelBox && pointInLabelBox(x, y, (b as any)._ghostLabelBox)) {
+    if (b._ghostLabelBox && pointInLabelBox(x, y, b._ghostLabelBox)) {
       if (b.net !== engine.activeNet) {
         if (!checkActiveNet(engine, b.net)) {
-          const netObj = NETS.find((n: any) => n.id === b.net);
+          const netObj = NETS.find(n => n.id === b.net);
           const netName = netObj ? netObj.name : b.net;
           engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
           return;
@@ -414,19 +412,19 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
       }
       engine.selId = b.id;
       engine._isGhostSel = true;
-      const gd = (b as any).ghostData?.[engine.nivelActual?.label ?? ''] || {};
-      let lx, ly;
+      const gd = b.ghostData?.[engine.nivelActual?.label ?? ''] || {};
+      let lx: number, ly: number;
       if (gd.labelX != null && gd.labelY != null) {
         lx = gd.labelX;
         ly = gd.labelY;
       } else {
-        const disp = (b as any).desplazamientos?.[engine.nivelActual?.label ?? ''];
-        const gx = (b as any).x + (disp ? disp.dx : 0);
-        const gy = (b as any).y + (disp ? disp.dy : 0);
+        const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
+        const gx = b.x + (disp ? disp.dx : 0);
+        const gy = b.y + (disp ? disp.dy : 0);
         let ghostAngle = 0;
-        const firstRamal = (b as any).recibeDeIds?.length
-          ? engine.ramales.find((rr: any) => rr.id === (b as any).recibeDeIds[0])
-          : engine.ramales.find((rr: any) => rr.pts?.length && Math.hypot(rr.pts[0][0] - gx, rr.pts[0][1] - gy) < 12);
+        const firstRamal = b.recibeDeIds?.length
+          ? engine.ramales.find(rr => rr.id === b.recibeDeIds![0])
+          : engine.ramales.find(rr => rr.pts?.length && Math.hypot(rr.pts[0][0] - gx, rr.pts[0][1] - gy) < 12);
         if (firstRamal && firstRamal.pts && firstRamal.pts.length >= 2) {
           const dx = firstRamal.pts[1][0] - firstRamal.pts[0][0];
           const dy = firstRamal.pts[1][1] - firstRamal.pts[0][1];
@@ -434,7 +432,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
             ghostAngle = Math.atan2(dy, dx);
           }
         } else {
-          ghostAngle = ((b as any).labelAngle || 0) * Math.PI / 180;
+          ghostAngle = (b.labelAngle || 0) * Math.PI / 180;
         }
         const c = engine.toCvs(gx, gy);
         const distPx = engine.mm2cvs(15);
@@ -452,23 +450,23 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     }
   }
 
-  fg.forEach(b => {
+  for (const b of fg) {
     if (b._ghost) {
       const d = Math.hypot(x - b._ghost.x, y - b._ghost.y);
-      if (d < b._ghost.r && d < gMin) { gMin = d; gFound = b; }
+      if (d < b._ghost.r && d < gMin) { gMin = d; gFound = b as PlanoBajante; }
     }
-  });
+  }
   if (gFound) {
-    engine.selId = (gFound as any).id;
+    engine.selId = gFound.id;
     engine._isGhostSel = true;
     engine._emitSelect(gFound);
     engine.render();
-    if ((gFound as any).isFantasma) {
+    if (gFound.isFantasma) {
       engine.ghostDrag = {
-        id: (gFound as any).id,
+        id: gFound.id,
         startX: x, startY: y,
-        baseDx: (gFound as any).desplazamientos?.[engine.nivelActual?.label ?? '']?.dx || 0,
-        baseDy: (gFound as any).desplazamientos?.[engine.nivelActual?.label ?? '']?.dy || 0,
+        baseDx: gFound.desplazamientos?.[engine.nivelActual?.label ?? '']?.dx || 0,
+        baseDy: gFound.desplazamientos?.[engine.nivelActual?.label ?? '']?.dy || 0,
       };
     }
     return;

@@ -877,7 +877,7 @@ export function handleDrawingMouseMove(engine: IPlanoEngineCore, x: number, y: n
   if (engine.activeRamal || engine._dimStart || engine.activeArea) {
     engine.mouseX = x;
     engine.mouseY = y;
-    (engine as any).scheduleRender();
+    engine.scheduleRender();
   }
 }
 

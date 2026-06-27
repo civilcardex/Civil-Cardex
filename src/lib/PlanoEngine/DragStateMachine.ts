@@ -1,4 +1,4 @@
-import type { IPlanoEngineCore } from './PlanoState';
+import type { IPlanoEngineCore, MultiDragOrigData } from './PlanoState';
 import { NETS } from './PlanoState';
 import { pointInLabelBox, pointInPoly } from './HitTester';
 
@@ -39,7 +39,7 @@ export interface GhostDrag {
 export interface MultiDrag {
   startX: number;
   startY: number;
-  origData: Record<string, unknown>;
+  origData: MultiDragOrigData;
 }
 
 export interface RamalDrag {
@@ -151,7 +151,7 @@ export class DragStateMachine {
     this.setCurrentDrag('area');
   }
 
-  setMultiDrag(startX: number, startY: number, origData: Record<string, unknown>): void {
+  setMultiDrag(startX: number, startY: number, origData: MultiDragOrigData): void {
     this.clearAll();
     this.multiDrag = { startX, startY, origData };
     this.setCurrentDrag('multi');

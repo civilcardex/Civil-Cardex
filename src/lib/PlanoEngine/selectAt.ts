@@ -3,6 +3,7 @@ import type {
   PlanoBajante,
   PlanoArea,
   PlanoTextAnnotation,
+  PlanoElement,
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { NETS } from './PlanoState';
@@ -12,7 +13,7 @@ import { checkActiveNet } from './checkActiveNet';
 export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMultiSelectModifier: boolean = false): void {
   engine._isGhostSel = false;
   
-  const applySelection = (id: string | null, obj: any | null, isGhost: boolean = false) => {
+  const applySelection = (id: string | null, obj: PlanoElement | null, isGhost: boolean = false) => {
     engine._isGhostSel = isGhost;
     if (isMultiSelectModifier) {
       if (engine.selId && !engine.multiSel.includes(engine.selId)) {
@@ -36,38 +37,38 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMul
   };
 
   let foundTxt: PlanoTextAnnotation | null = null;
-  engine.textAnnots.forEach((t: any) => {
+  for (const t of engine.textAnnots) {
     if (t._box) {
       const b = t._box;
-      if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) foundTxt = t;
+      if (cx >= b.x && cx <= b.x + b.w && cy >= b.y && cy <= b.y + b.h) foundTxt = t as PlanoTextAnnotation;
     }
-  });
-  if (foundTxt) return applySelection((foundTxt as any).id, foundTxt);
+  }
+  if (foundTxt) return applySelection(foundTxt.id, foundTxt);
 
   let foundBaj: PlanoBajante | null = null, minBD = 50;
   let foundBajIsGhost = false;
-  engine.bajantes.forEach((b: any) => {
+  for (const b of engine.bajantes) {
     if (b._labelBox && pointInLabelBox(cx, cy, b._labelBox)) {
       const d = Math.hypot(cx - b._labelBox.cx, cy - b._labelBox.cy);
-      if (d < minBD) { minBD = d; foundBaj = b; foundBajIsGhost = false; }
+      if (d < minBD) { minBD = d; foundBaj = b as PlanoBajante; foundBajIsGhost = false; }
     }
     if (b._circ) {
       const d = Math.hypot(cx - b._circ.x, cy - b._circ.y);
-      if (d < b._circ.r && d < minBD) { minBD = d; foundBaj = b; foundBajIsGhost = false; }
+      if (d < b._circ.r && d < minBD) { minBD = d; foundBaj = b as PlanoBajante; foundBajIsGhost = false; }
     }
-  });
-  const fg = engine.getBajantesFantasma() as any[];
-  fg.forEach(b => {
+  }
+  const fg = engine.getBajantesFantasma();
+  for (const b of fg) {
     if (b._ghost) {
       const d = Math.hypot(cx - b._ghost.x, cy - b._ghost.y);
-      if (d < b._ghost.r && d < minBD) { minBD = d; foundBaj = b as any; foundBajIsGhost = true; }
+      if (d < b._ghost.r && d < minBD) { minBD = d; foundBaj = b as PlanoBajante; foundBajIsGhost = true; }
     }
-  });
-  const checkAndSwitchNet = (obj: any): boolean => {
+  }
+  const checkAndSwitchNet = (obj: { net?: string }): boolean => {
     if (!obj || !obj.net) return true;
     if (obj.net !== engine.activeNet) {
       if (!checkActiveNet(engine, obj.net)) {
-        const netObj = NETS.find((n: any) => n.id === obj.net);
+        const netObj = NETS.find(n => n.id === obj.net);
         const netName = netObj ? netObj.name : obj.net;
         engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
         return false;
@@ -80,14 +81,14 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMul
 
   if (foundBaj) {
     if (!checkAndSwitchNet(foundBaj)) return;
-    return applySelection((foundBaj as any).id, foundBaj, foundBajIsGhost);
+    return applySelection(foundBaj.id, foundBaj, foundBajIsGhost);
   }
 
   let found: PlanoRamal | null = null, minD = 20;
-  engine.ramales.forEach((r: any) => {
+  for (const r of engine.ramales) {
     if (r._labelBox && pointInLabelBox(cx, cy, r._labelBox)) {
       const d = Math.hypot(cx - r._labelBox.cx, cy - r._labelBox.cy);
-      if (d < minD) { minD = d; found = r; }
+      if (d < minD) { minD = d; found = r as PlanoRamal; }
     }
     let d = distanceToRamal(cx, cy, r.pts, (x, y) => engine.toCvs(x, y), engine.mm2cvs(3));
     if (r.pts && r.pts.length > 0) {
@@ -97,34 +98,34 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMul
         d -= 5;
       }
     }
-    if (d < minD) { minD = d; found = r; }
-  });
+    if (d < minD) { minD = d; found = r as PlanoRamal; }
+  }
 
   let foundAreaLabel: PlanoArea | null = null;
-  engine.areas.forEach((a: any) => {
+  for (const a of engine.areas) {
     if (a._labelBox && pointInLabelBox(cx, cy, a._labelBox)) {
-      foundAreaLabel = a;
+      foundAreaLabel = a as PlanoArea;
     }
-  });
+  }
   if (foundAreaLabel) {
     if (!checkAndSwitchNet(foundAreaLabel)) return;
-    return applySelection((foundAreaLabel as any).id, foundAreaLabel);
+    return applySelection(foundAreaLabel.id, foundAreaLabel);
   }
 
   let foundArea: PlanoArea | null = null;
-  engine.areas.forEach((a: any) => {
-    if (pointInPoly(cx, cy, a.pts.map((pt: number[]) => engine.toCvs(pt[0], pt[1])))) {
-      foundArea = a;
+  for (const a of engine.areas) {
+    if (pointInPoly(cx, cy, a.pts.map(pt => engine.toCvs(pt[0], pt[1])))) {
+      foundArea = a as PlanoArea;
     }
-  });
+  }
   if (foundArea) {
     if (!checkAndSwitchNet(foundArea)) return;
-    return applySelection((foundArea as any).id, foundArea);
+    return applySelection(foundArea.id, foundArea);
   }
 
   if (found) {
     if (!checkAndSwitchNet(found)) return;
   }
 
-  applySelection(found ? (found as any).id : null, found);
+  applySelection(found ? found.id : null, found);
 }

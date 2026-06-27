@@ -4,7 +4,7 @@ import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
 import { AF_UC_IDS, AC_UC_IDS, APARATOS_DEF, pisoCorto } from "../constants";
 import { calcUCparcial } from "../utils/componentHelpers";
-import { COEF_HAZEN } from "../utils/calcHydraulics";
+import { COEF_HAZEN } from "../constants/hydraulicData";
 import { CONTADORES as CONTADORES_CAT } from "../pages/catalog/catalogData";
 import { writeDiametroToDrawing, writeContadorDiamToDrawing, findContadorBajante } from "../utils/writeDiameterToDrawing";
 import { calcLeAcces } from "../utils/accesoriosUtils";
@@ -446,7 +446,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     let s = 0;
     for (const t of tramos) {
       const key = t._key || t.id;
-      s += (propiaMap[key] || 0) as number;
+      s += (propiaMap[key] || 0);
     }
     return s;
   }, [tramos, propiaMap]);
@@ -454,7 +454,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   const Qaco = useMemo(() => {
     if (tr2) {
       const ownKey = tr2._key || tr2.id;
-      const total = (componentTotalMap[ownKey] || 0) as number;
+      const total = (componentTotalMap[ownKey] || 0);
       const nDesc = tr2.nSalidas || 0;
       const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
       if (total > 0 && K > 0) {
@@ -545,9 +545,9 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
                 )}
                 {tramosOrden.map((t) => {
                   const ownKey = t._key || t.id;
-                  const propia = (propiaMap[ownKey] || 0) as number;
+                  const propia = (propiaMap[ownKey] || 0);
                   const isTr2 = t === tr2;
-                  const total = (componentTotalMap[ownKey] || 0) as number;
+const total = (componentTotalMap[ownKey] || 0);
                   const nDesc = t.nSalidas || 0;
                   const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
                   const Qprob = isTr2 ? Qaco : (total > 0 && K > 0 ? Math.round(K * (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000) / 1000 : 0);
@@ -597,7 +597,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
                                 const rId = parts[0];
                                 const childTramo = tramos.find(tr => (tr._key || tr.id) === childKey);
                                 const childOwnKey = childTramo?._key || childTramo?.id || childKey;
-                                const childTotalUd = (componentTotalMap[childOwnKey] || 0) as number;
+                                const childTotalUd = (componentTotalMap[childOwnKey] || 0);
                                 return (
                                   <span key={childKey}
                                     title={`${rId} (${childTotalUd.toFixed(2)} UC)`}

@@ -343,7 +343,7 @@ function CalculoUD() {
   ) : displayTramos.map((t) => {
     const tKey = t._key || `${t.id}-${t.piso}`;
     const parcial = calcUDparcial(t, mergedBase);
-    const acum = (componentTotalMap[tKey] || 0) as number;
+    const acum = (componentTotalMap[tKey] || 0);
     return (
       <tr key={tKey}>
         <td className="c"><span className="sigla" style={{fontSize:11,fontWeight:600}}>{t.id}</span></td>

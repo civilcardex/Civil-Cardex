@@ -10,6 +10,7 @@ import type {
   PlanoActiveRamal,
   PlanoActiveArea,
   PlanoRamalDefaults,
+  MultiDragOrigData,
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { renderDims, renderDimGhost } from './renderers/renderDimensions';
@@ -197,7 +198,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _isGhostSel!: boolean;
   _yeeFlashKey!: string | null;
   multiSel!: string[];
-  multiDrag!: { startX: number; startY: number; origData: Record<string, unknown> } | null;
+  multiDrag!: { startX: number; startY: number; origData: MultiDragOrigData } | null;
   marqueeRect!: { x1: number; y1: number; x2: number; y2: number } | null;
   private _needsRender = false;
   private _rafId: number | null = null;
