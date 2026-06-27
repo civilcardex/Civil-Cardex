@@ -1,4 +1,4 @@
-import { memo, useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { memo, useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
 import PlanoEngine from "../lib/PlanoEngine/PlanoEngine";
 import { NETS } from "../lib/PlanoEngine/PlanoState";
 import { pisoLbl, matLongName, GAS, DEFAULT_PENDIENTE_PCT } from "../constants";
@@ -36,6 +36,22 @@ interface PdfViewerProps {
   planos?: any[];
   activeNetworks: Set<string>;
 }
+
+const mainContainerStyle: CSSProperties = {
+  flex: 1, display: "flex", flexDirection: "column", minHeight: 0,
+  background: "#111317", border: "1px solid #3a494a", overflow: "hidden",
+};
+const leftSidebarStyle: CSSProperties = {
+  width: 165, flexShrink: 0, display: "flex", flexDirection: "column",
+  background: "#14161a", borderRight: "1px solid #3a494a",
+  overflowY: "auto", overflowX: "hidden",
+};
+const rightSidebarStyle: CSSProperties = {
+  width: 210, flexShrink: 0, display: "flex", flexDirection: "column",
+  background: "#14161a", borderLeft: "1px solid #3a494a",
+  overflowY: "auto", overflowX: "hidden",
+  transition: 'opacity 0.2s',
+};
 
 function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], activeNetworks }: PdfViewerProps) {
   const { mats } = useProject();
@@ -585,6 +601,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     doSave();
   }, [doSave]);
 
+  const handleSnapToggle = useCallback(() => setSnapOn(prev => !prev), []);
+
   const handleRotateLabel = useCallback(() => {
     if (engineRef.current) engineRef.current.rotateLabelSnap();
   }, []);
@@ -627,29 +645,30 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     if (engineRef.current) engineRef.current.setNetLocked(id, next.has(id));
   }, [lockedNets]);
 
-  const mainContainerStyle = useMemo(() => ({
-    flex: 1, display: "flex", flexDirection: "column" as const, minHeight: 0,
-    background: "#111317", border: "1px solid #3a494a", overflow: "hidden",
-  }), []);
-
-  const leftSidebarStyle = useMemo(() => ({
-    width: 165, flexShrink: 0, display: "flex", flexDirection: "column" as const,
-    background: "#14161a", borderRight: "1px solid #3a494a",
-    overflowY: "auto" as const, overflowX: "hidden" as const,
-  }), []);
-
-  const rightSidebarStyle = useMemo(() => ({
-    width: 210, flexShrink: 0, display: "flex", flexDirection: "column" as const,
-    background: "#14161a", borderLeft: "1px solid #3a494a",
-    overflowY: "auto" as const, overflowX: "hidden" as const,
-    transition: 'opacity 0.2s',
-  }), []);
-
   const rightSidebarOpacity = useMemo(() => ({
     opacity: (tool === 'sel' && !selElement) ? 0.35 : 1,
     pointerEvents: (tool === 'sel' && !selElement) ? ('none' as const) : ('auto' as const),
     transition: 'opacity 0.2s',
   }), [tool, selElement]);
+
+  const planoAsocInfo = useMemo(() => {
+    if (selectedNivel === null) return null;
+    const planoAsoc = planos.find(p => p.nivel === selectedNivel && p.status === 'confirmed');
+    if (!planoAsoc) return null;
+    return (
+      <div style={{marginTop:8,padding:'6px 10px',background:'#1e2024',borderRadius:3,border:'1px solid rgba(0,220,229,.2)'}}>
+        <div style={{fontSize:11,color:'#00dce5',fontFamily:"'Geist',monospace",fontWeight:600,display:'flex',alignItems:'center',gap:4}}>📄 {planoAsoc.name}</div>
+        <div style={{fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace",marginTop:2}}>Escala 1:{planoAsoc.scale}</div>
+      </div>
+    );
+  }, [selectedNivel, planos]);
+
+  const scaleText = useMemo(() => {
+    const planoAsoc = planos.find(p => p.nivel === selectedNivel && p.status === 'confirmed');
+    if (planoAsoc && planoAsoc.scale) return <span>1:{planoAsoc.scale}</span>;
+    const map: Record<string, string> = {'0.5':'1:50','0.75':'1:75','1.0':'1:100','1.25':'1:125','2.0':'1:200'};
+    return <span>{map[scaleM] || '1:100'}</span>;
+  }, [selectedNivel, planos, scaleM]);
 
   return (
     <div style={mainContainerStyle}>
@@ -677,7 +696,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
           currentFile={currentFile}
           saveStatus={saveStatus}
           onSelectTool={setTool}
-          onSnapToggle={() => setSnapOn(prev => !prev)}
+           onSnapToggle={handleSnapToggle}
           onFit={handleFit}
           onSave={handleSave}
           onUndo={handleUndo}
@@ -744,16 +763,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
               return <option key={s.id} value={s.n}>{tienePlano?'🟢 ':''}{pisoLbl(s.n)} ({s.npt} m)</option>;
             })}
           </select>
-          {selectedNivel!==null&&(()=>{
-            const planoAsoc=planos.find(p=>p.nivel===selectedNivel&&p.status==='confirmed');
-            if(!planoAsoc)return null;
-            return(
-              <div style={{marginTop:8,padding:'6px 10px',background:'#1e2024',borderRadius:3,border:'1px solid rgba(0,220,229,.2)'}}>
-                <div style={{fontSize:11,color:'#00dce5',fontFamily:"'Geist',monospace",fontWeight:600,display:'flex',alignItems:'center',gap:4}}>📄 {planoAsoc.name}</div>
-                <div style={{fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace",marginTop:2}}>Escala 1:{planoAsoc.scale}</div>
-              </div>
-            );
-          })()}
+          {planoAsocInfo}
         </div>
 
         {/* Rest of sidebar — blocked when selecting without element selected */}
@@ -891,12 +901,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Escala</div>
           <div style={{padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace"}}>
-            {(() => {
-              const planoAsoc = planos.find(p => p.nivel === selectedNivel && p.status === 'confirmed');
-              if (planoAsoc && planoAsoc.scale) return <span>1:{planoAsoc.scale}</span>;
-              const map: Record<string, string> = {'0.5':'1:50','0.75':'1:75','1.0':'1:100','1.25':'1:125','2.0':'1:200'};
-              return <span>{map[scaleM] || '1:100'}</span>;
-            })()}
+            {scaleText}
           </div>
         </div>
 

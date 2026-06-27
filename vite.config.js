@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), visualizer({ filename: 'dist/stats.html', open: false, gzipSize: true })],
   server: {
     hmr: {
       overlay: true,
@@ -22,6 +23,7 @@ export default defineConfig({
           if (id.includes('node_modules/react')) return 'vendor-react';
           if (id.includes('react-router-dom')) return 'vendor-router';
           if (id.includes('@supabase') || id.includes('lib/supabase')) return 'vendor-supabase';
+          if (id.includes('node_modules') && !id.includes('pdfjs-dist')) return 'vendor-other';
         },
       },
     },

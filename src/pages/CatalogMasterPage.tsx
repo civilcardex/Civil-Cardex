@@ -6,17 +6,6 @@ import SectionCard from './catalog/SectionCard';
 import { PipeTable, GasTable, ContadoresTable, MaterialesPorRedTable, CoefFriccionTable } from './catalog/CatalogTables';
 import { usePageMeta } from '../hooks/usePageMeta';
 
-function filterGroups(groups: any[], search: string) {
-  if (!search) return groups;
-  const q = search.toLowerCase();
-  return groups
-    .map((g: any) => ({
-      ...g,
-      rows: g.rows.filter((r: any) => r.dn.toLowerCase().includes(q)),
-    }))
-    .filter((g: any) => g.mat.toLowerCase().includes(q) || g.rows.length > 0);
-}
-
 const pageBtn = {
   padding: '5px 12px', border: '1px solid var(--line)', borderRadius: 3,
   fontFamily: 'var(--mono)', fontSize: 11, cursor: 'pointer',
@@ -28,19 +17,7 @@ const pageBtn = {
 export default function CatalogMasterPage() {
   const navigate = useNavigate();
   const [subpage, setSubpage] = useState(1);
-  const [search, setSearch] = useState('');
   usePageMeta('Catálogo Maestro', 'Catálogo de materiales, tuberías y equipos para diseño hidrosanitario. PVC, CPVC, cobre, acero y más según NTC 1500.');
-
-  const sanFiltered = filterGroups(SANITARIAS, search);
-  const ventFiltered = filterGroups(VENTILACION, search);
-  const afFiltered = filterGroups(AGUA_FRIA, search);
-  const acFiltered = filterGroups(AGUA_CALIENTE, search);
-  const gasAcero = filterGroups(GAS.slice(0, 2), search);
-  const gasCobre = filterGroups(GAS.slice(2, 4), search);
-  const gasPe = filterGroups(GAS.slice(4), search);
-  const rciSch10 = filterGroups([RCI[0]], search);
-  const rciSch40 = filterGroups([RCI[1]], search);
-  const rciPvcGalv = filterGroups(RCI.slice(2), search);
 
   return (
     <div style={{ height: '100%', background: 'var(--bg)', color: 'var(--txt)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -68,16 +45,6 @@ export default function CatalogMasterPage() {
           </h1>
         </div>
 
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar material o diámetro..."
-          aria-label="Buscar material o diámetro"
-          style={{
-            width: '100%', padding: '8px 12px', marginBottom: 8, flexShrink: 0,
-            border: '1px solid var(--line)', borderRadius: 4,
-            background: 'var(--bg3)', color: 'var(--txt)',
-            fontFamily: 'var(--mono)', fontSize: 12, boxSizing: 'border-box',
-          }} />
-
         <div style={{
           flex: 1, minHeight: 0, overflow: subpage === 1 ? 'hidden' : 'auto',
           padding: '6px 0',
@@ -101,17 +68,17 @@ export default function CatalogMasterPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, alignContent: 'start' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <SectionCard title="Sanitarias" subtitle="PVC-S · NTC 1500" compact>
-                  <PipeTable groups={sanFiltered} compact />
+                  <PipeTable groups={SANITARIAS} compact />
                 </SectionCard>
                 <SectionCard title="Ventilación" subtitle="PVC-V" compact>
-                  <PipeTable groups={ventFiltered} compact />
+                  <PipeTable groups={VENTILACION} compact />
                 </SectionCard>
               </div>
               <SectionCard title="Agua fría" subtitle="PVC-Pr · NTC 1500" compact>
-                <PipeTable groups={afFiltered} compact />
+                <PipeTable groups={AGUA_FRIA} compact />
               </SectionCard>
               <SectionCard title="Agua caliente" subtitle="CPVC · NTC 1500" compact>
-                <PipeTable groups={acFiltered} compact />
+                <PipeTable groups={AGUA_CALIENTE} compact />
               </SectionCard>
             </div>
           )}
@@ -119,13 +86,13 @@ export default function CatalogMasterPage() {
           {subpage === 3 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, alignContent: 'start' }}>
               <SectionCard title="Gas — Acero" subtitle="Galvanizado · Carbón" compact>
-                <GasTable groups={gasAcero} compact />
+                <GasTable groups={GAS.slice(0, 2)} compact />
               </SectionCard>
               <SectionCard title="Gas — Cobre" subtitle="Rígido · Flexible" compact>
-                <GasTable groups={gasCobre} compact />
+                <GasTable groups={GAS.slice(2, 4)} compact />
               </SectionCard>
               <SectionCard title="Gas — PE" subtitle="PE al PE · Polietileno" compact>
-                <GasTable groups={gasPe} compact />
+                <GasTable groups={GAS.slice(4)} compact />
               </SectionCard>
             </div>
           )}
@@ -133,19 +100,19 @@ export default function CatalogMasterPage() {
           {subpage === 4 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, alignContent: 'start' }}>
               <SectionCard title="Contra incendio — SCH 10" subtitle="Acero al carbono" compact>
-                <PipeTable groups={rciSch10} compact />
+                <PipeTable groups={[RCI[0]]} compact />
               </SectionCard>
               <SectionCard title="Contra incendio — SCH 40" subtitle="Acero al carbono" compact>
-                <PipeTable groups={rciSch40} compact />
+                <PipeTable groups={[RCI[1]]} compact />
               </SectionCard>
               <SectionCard title="Contra incendio — PVC / Galv." subtitle="C900 RDE · Galvanizado" compact>
-                <PipeTable groups={rciPvcGalv} compact />
+                <PipeTable groups={RCI.slice(2)} compact />
               </SectionCard>
             </div>
           )}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, flexShrink: 0, padding: '8px 0 12px', borderTop: '1px solid var(--line)' }}>
+        <nav aria-label="Paginación de catálogo" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, flexShrink: 0, padding: '8px 0 12px', borderTop: '1px solid var(--line)' }}>
           <button onClick={() => setSubpage(Math.max(1, subpage - 1))}
             style={{ ...pageBtn, opacity: subpage === 1 ? 0.3 : 1, cursor: subpage === 1 ? 'default' : 'pointer' }}>
             ←
@@ -166,7 +133,7 @@ export default function CatalogMasterPage() {
             style={{ ...pageBtn, opacity: subpage === 4 ? 0.3 : 1, cursor: subpage === 4 ? 'default' : 'pointer' }}>
             →
           </button>
-        </div>
+        </nav>
       </div>
     </div>
   );
