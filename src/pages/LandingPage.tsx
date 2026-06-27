@@ -156,6 +156,9 @@ function LandingPage() {
             {MODULOS_HERO.map((m, i) => (
               <li key={m.id}
                 className="hero-mod-card flex flex-col items-center justify-center text-center p-3 border rounded-lg relative w-[140px] sm:w-[150px] md:w-[160px]"
+                role="button" tabIndex={0}
+                aria-label={`${m.name}: ${m.desc}`}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(m.path); } }}
                 style={{ '--mod-color': m.color,
                   background: 'rgba(10,14,20,0.6)',
                   backdropFilter: 'blur(8px)',
@@ -318,7 +321,7 @@ function LandingPage() {
             <nav className="flex gap-6">
               <Link to="/docs" className="uppercase tracking-widest transition-colors hover:text-on-surface" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#3a494a' }}>Documentación</Link>
               <Link to="/pricing" className="uppercase tracking-widest transition-colors hover:text-on-surface" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#3a494a' }}>Precios</Link>
-              <span className="uppercase tracking-widest cursor-pointer transition-colors hover:text-on-surface" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#3a494a' }}>Contacto Técnico</span>
+              <button type="button" className="uppercase tracking-widest cursor-pointer transition-colors hover:text-on-surface" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#3a494a', background: 'none', border: 'none', padding: 0 }}>Contacto Técnico</button>
             </nav>
           </div>
           <div style={{ color: '#3a494a', fontSize: 12 }}>

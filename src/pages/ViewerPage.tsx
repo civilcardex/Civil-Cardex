@@ -6,6 +6,17 @@ import { usePlans } from '../context/PlansContext';
 import { useProject } from '../context/ProjectContext';
 import { usePageMeta } from '../hooks/usePageMeta';
 
+const VIEWER_JSONLD = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'Visor de planos — CivilCore',
+  description: 'Visor de planos PDF con superposición de redes hidrosanitarias. Herramientas de dibujo, calibración y medición.',
+  url: 'https://civilcore.app/visor',
+  applicationCategory: 'ViewerApplication',
+  operatingSystem: 'Web',
+  browserRequirements: 'Requiere JavaScript y WebGL',
+};
+
 export default function ViewerPage() {
   const { plans, addPlans, removePlan } = usePlans();
   const { pisos } = useProject();
@@ -45,7 +56,7 @@ export default function ViewerPage() {
         if (idx >= 0) setActiveIndex(idx);
       }
     } catch (_) {}
-  }, [files.length]);
+  }, [files.length, plans, activeIndex]);
 
   useEffect(() => {
     try {
@@ -87,8 +98,12 @@ export default function ViewerPage() {
       <input ref={fileRef} type="file" accept=".pdf" multiple style={{ display: 'none' }} aria-label="Cargar planos PDF"
         onChange={handleFileInput} />
 
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(VIEWER_JSONLD) }} />
       <header style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50 }}>
         <Navbar />
+        <h1 style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+          Visor de planos
+        </h1>
         <div style={{
           height: 36, display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px',
           background: '#111317', borderBottom: '1px solid #3a494a', position: 'relative',
@@ -96,7 +111,7 @@ export default function ViewerPage() {
           <span style={{ fontFamily: 'Geist, monospace', fontSize: 10, color: '#8AB4D6', textTransform: 'uppercase', letterSpacing: 1 }}>
             Plano:
           </span>
-          <div style={{ position: 'relative' }}>
+          <nav aria-label="Selector de planos" style={{ position: 'relative' }}>
             <button onClick={() => setDropdownOpen(p => !p)} aria-expanded={dropdownOpen} aria-haspopup="listbox"
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -173,7 +188,7 @@ export default function ViewerPage() {
                 </div>
               </div>
             )}
-          </div>
+          </nav>
           <div style={{ flex: 1 }} />
           {plans.length>0&&(
             <span style={{ fontFamily: 'Geist, monospace', fontSize: 9, color: '#8AB4D6' }}>
@@ -183,7 +198,7 @@ export default function ViewerPage() {
         </div>
       </header>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingTop: 84, overflow: 'hidden', position: 'relative' }}
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingTop: 84, overflow: 'hidden', position: 'relative' }}
         onClick={() => setDropdownOpen(false)}>
         <PdfViewer
           files={files}
@@ -195,7 +210,7 @@ export default function ViewerPage() {
           pisos={pisos}
           activeNetworks={activeNetworks}
         />
-      </div>
+      </main>
     </div>
   );
 }

@@ -51,10 +51,12 @@ interface GroupType { mat: string; rows: Array<{ dn: string; d: number }> }
 interface GasGroupType { mat: string; K: number; rows: Array<{ dn: string; d: number }> }
 
 export function PipeTable({ groups, compact }: { groups: GroupType[]; compact?: boolean }) {
-  let idx = 0
   const cp = compact ? { thPad: '3px 8px', thFs: 11, thLs: 0.5, tdPad: '3px 8px', tdFs: 12, matFs: 14, matPad: '3px 8px', matFw: 700 } : { thPad: '4px 8px', thFs: 10, thLs: 0.6, tdPad: '5px 10px', tdFs: 12, matFs: 11, matPad: '4px 8px', matFw: 600 }
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+      <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+        Diámetros nominales e interiores por material
+      </caption>
       <thead>
         <tr>
           <Th style={{ width: '25%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Material</Th>
@@ -63,8 +65,9 @@ export function PipeTable({ groups, compact }: { groups: GroupType[]; compact?: 
         </tr>
       </thead>
       <tbody>
-        {groups.map((grp, gi) =>
-          grp.rows.map((r, ri) => (
+        {groups.map((grp, gi) => {
+          let idx = 0
+          return grp.rows.map((r, ri) => (
             <Tr key={`${gi}-${ri}`} index={idx++}>
               {ri === 0 && (
                 <td rowSpan={grp.rows.length} style={{ padding: cp.matPad, fontSize: cp.matFs, fontWeight: cp.matFw, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderBottom: '1px solid var(--line)' }}>
@@ -75,7 +78,7 @@ export function PipeTable({ groups, compact }: { groups: GroupType[]; compact?: 
               <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
             </Tr>
           ))
-        )}
+        })}
       </tbody>
     </table>
   )
@@ -87,6 +90,9 @@ export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact
   const cp = compact ? { thPad: '3px 8px', thFs: 11, thLs: 0.5, tdPad: '3px 8px', tdFs: 12, matFs: 14, matPad: '3px 8px', matFw: 700 } : { thPad: '4px 8px', thFs: 10, thLs: 0.6, tdPad: '5px 10px', tdFs: 12, matFs: 11, matPad: '4px 8px', matFw: 600 }
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+      <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+        Diámetros nominales, interiores y coeficiente K para gas
+      </caption>
       <thead>
         <tr>
           <Th style={{ width: '28%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}>Material</Th>
@@ -116,6 +122,9 @@ export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact
 export function ContadoresTable() {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+        Caudales nominales de contadores por diámetro
+      </caption>
       <thead>
         <tr>
           <th scope="col" className="td-mono-b" style={{ fontSize: 12, fontWeight: 700, color: HEADER_TXT, textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'center', padding: '2px 6px', borderBottom: `1px solid ${HEADER_BORDER}`, width: '50%' }}>Diámetro</th>
@@ -142,6 +151,9 @@ const cmpTd = { padding: '2px 6px', fontSize: 13 }
 export function MaterialesPorRedTable() {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+        Materiales recomendados por tipo de red
+      </caption>
       <thead>
         <tr>
           <Th style={{ width: '30%', padding: '2px 6px', fontSize: 12, letterSpacing: 0.4 }}>Red</Th>
@@ -190,6 +202,9 @@ export function CoefFriccionTable() {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
+        <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+          Coeficientes de fricción por tipo de tubería
+        </caption>
         <thead>
           <tr>
             <th scope="colgroup" colSpan={9} style={{

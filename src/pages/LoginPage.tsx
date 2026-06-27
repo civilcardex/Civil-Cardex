@@ -5,6 +5,14 @@ import FormField from '../components/FormField';
 import { useAuth } from '../context/AuthContext';
 import { usePageMeta } from '../hooks/usePageMeta';
 
+const LOGIN_JSONLD = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: 'Iniciar Sesión — CivilCore',
+  description: 'Acceda a su cuenta de CivilCore para gestionar proyectos de ingeniería civil, diseño hidrosanitario y memorias de cálculo.',
+  url: 'https://civilcore.app/login',
+};
+
 function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,6 +48,7 @@ function LoginPage() {
         }
       `}</style>
 
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(LOGIN_JSONLD) }} />
       <Navbar />
 
       <div className="flex-1 flex items-center justify-center relative pt-16">

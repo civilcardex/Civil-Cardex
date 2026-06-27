@@ -5,6 +5,14 @@ import FormField from '../components/FormField';
 import { useAuth } from '../context/AuthContext';
 import { usePageMeta } from '../hooks/usePageMeta';
 
+const REGISTER_JSONLD = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: 'Registro — CivilCore',
+  description: 'Cree su cuenta en CivilCore para acceder a herramientas de diseño hidrosanitario, estructural y gestión de proyectos.',
+  url: 'https://civilcore.app/register',
+};
+
 function RegisterPage() {
   const [form, setForm] = useState({ nombre: '', apellido: '', email: '', profesion: '', matricula: '', telefono: '', password: '', confirm: '' });
   const [loading, setLoading] = useState(false);
@@ -65,6 +73,7 @@ function RegisterPage() {
         }
       `}</style>
 
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(REGISTER_JSONLD) }} />
       <Navbar />
 
       <div className="flex-1 flex items-center justify-center relative pt-16 py-12">
@@ -133,7 +142,7 @@ function RegisterPage() {
                     className="w-4 h-4 mt-0.5 border accent-[#00dce5]"
                     style={{ borderColor: '#3a494a', background: '#0a0e14' }} />
                   <span className="text-[11px] leading-tight" style={{ color: '#8AB4D6' }}>
-                    Acepto los <span className="cursor-pointer hover:underline" style={{ color: '#00dce5' }}>Términos de Servicio</span> y la <span className="cursor-pointer hover:underline" style={{ color: '#00dce5' }}>Política de Privacidad</span>
+                    Acepto los <button type="button" className="cursor-pointer hover:underline" style={{ color: '#00dce5', background: 'none', border: 'none', padding: 0, font: 'inherit' }}>Términos de Servicio</button> y la <button type="button" className="cursor-pointer hover:underline" style={{ color: '#00dce5', background: 'none', border: 'none', padding: 0, font: 'inherit' }}>Política de Privacidad</button>
                   </span>
                 </div>
               </fieldset>
