@@ -37,5 +37,4 @@ export const CAT_GAS = [
   { id: 'hor_g',  n: 'Horno grande',              s: 'HG',      q: 1.15 },
   { id: 'srp',    n: 'Secadora de ropa pequeña',  s: 'SRP',     q: 0.54 },
   { id: 'srg',    n: 'Secadora de ropa grande',   s: 'SRG',     q: 0.81 },
-  { id: 'calp',   n: 'Caldera pequeña',           s: 'Calp',    q: 1.76 },
 ];

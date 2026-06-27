@@ -5,6 +5,7 @@ import { DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS, pisoLbl } from "../../constants"
 import { VENTILACION, CONTADORES as CONTADORES_CAT } from "../../pages/catalog/catalogData";
 import { DIAMETROS_AF } from "../../utils/calcHydraulics";
 import { writeAcoDiamToDrawing, writeContadorDiamToDrawing } from "../../utils/writeDiameterToDrawing";
+import { CAT_GAS } from "../../constants/engineeringDataGas";
 
 interface ContextMenuState {
   visible: boolean;
@@ -668,6 +669,41 @@ export default function BajanteContextMenu({
                   ))}
                 </select>
               </div>
+            </div>
+          </>
+        ) : contextMenuState.bajante.tipo === 'calentador' ? (
+          <>
+            <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Calentador: {contextMenuState.bajante.code || contextMenuState.bajante.id}
+            </div>
+            <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px 0', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Equipo (Capacidad)
+            </div>
+            <div style={{ padding: '0 8px 8px' }}>
+              <select
+                value={contextMenuState.bajante.capacidad || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (engineRef.current) {
+                    const fields = { capacidad: val };
+                    engineRef.current?.updateElementById(contextMenuState.bajante.id, fields);
+                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === contextMenuState.bajante.id);
+                    if (fresh) {
+                      setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
+                      if (selElement?.id === contextMenuState.bajante.id) {
+                        setSelElement({ ...selElement, capacidad: val });
+                      }
+                    }
+                    engineRef.current?.render();
+                  }
+                }}
+                style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
+              >
+                <option value="">— Seleccionar —</option>
+                {CAT_GAS.filter(g => g.id.startsWith('cal')).map(g => (
+                  <option key={g.id} value={g.id}>{g.n}</option>
+                ))}
+              </select>
             </div>
           </>
         ) : null}

@@ -64,7 +64,7 @@ function esAplicable(ap: any, netId: string, unitKey: string | null) {
 
 function isCountableTarget(el: any): boolean {
   if (!el) return false;
-  return el.id?.startsWith('R') || el.id?.startsWith('B') || el.id?.startsWith('T');
+  return el.id?.startsWith('R') || el.id?.startsWith('B') || el.id?.startsWith('T') || el.tipo === 'calentador';
 }
 
 const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, planId }: { activeNet: string; selElement: any; planId?: string | number }) {
@@ -428,7 +428,7 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
         </div>
       )}
 
-      {isAfAc && (
+      {isAfAc && selElement?.tipo !== 'calentador' && (
         <AccesoriosSection
           targetId={targetId}
           curHidro={curHidro}

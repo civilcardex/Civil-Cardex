@@ -6,7 +6,7 @@ import type {
 import type { IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
 
-type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont';
+type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont' | 'calent';
 
 export function toolCursor(tool: string): string {
   return tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair';
@@ -634,6 +634,37 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     engine._emitSelect(newlyCreated);
   }
   engine._isGhostSel = false;
+  engine.render();
+  engine._markDirty();
+}
+
+export function handleCalentadorDown(engine: IPlanoEngineCore, px: number, py: number): void {
+  if (engine.snapMode) {
+    const sp = engine.snapToExisting(px, py);
+    if (sp) { px = sp.x; py = sp.y; }
+  }
+  const calent = engine.bajantes.filter(b => b.tipo === 'calentador').length + 1;
+  const calentId = 'CALENT' + calent;
+  engine.bajantes.push({
+    id: calentId,
+    net: engine.activeNet,
+    tipo: 'calentador',
+    code: 'CALENT' + calent,
+    x: px, y: py,
+    pisoBase: engine.nivelActual?.label ?? '',
+    pisoCima: engine.nivelActual?.label ?? '',
+    nptBase: engine.nivelActual?.npt ?? 0,
+    nptCima: engine.nivelActual?.npt ?? 0,
+    hVert: 0, dNominal: '0',
+    recibeDeIds: [], alimentaIds: [], descargaEnId: null,
+    ucAcum: 0, ucExtra: 0, area_m2: 0,
+    desplazamientos: {},
+    lblOffX: 0, lblOffY: 0,
+    labelAngle: 0,
+    labelX: px - 25, labelY: py,
+    bajR: 7/24,
+  });
+  engine.selId = calentId;
   engine.render();
   engine._markDirty();
 }

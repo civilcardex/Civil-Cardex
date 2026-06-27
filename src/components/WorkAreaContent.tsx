@@ -9,6 +9,7 @@ import PlanosTab from "./workarea/PlanosTab";
 import type { useWorkAreaState } from "./useWorkAreaState";
 
 const AccesoriosTable = lazy(() => import('./AccessoriesTable'));
+const HeaterSelection = lazy(() => import('./HeaterSelection'));
 const CalculoUD = lazy(() => import('./FixtureUnitCalc'));
 const DisenosSanitarios = lazy(() => import('./SanitaryDesign'));
 const BajantesTable = lazy(() => import('./DownpipesTable'));
@@ -115,10 +116,11 @@ function RedesTab({ state }: { state: WorkAreaState }) {
       )}
       {redActiva === 'ac' && redes.has('ac') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <PageNav page={acPage} setPage={setAcPage} total={3} color="var(--ac)" labels={['Cálculo de unidades de consumo', 'Diseño de red agua caliente', 'Accesorios']} onPageHover={prefetchAfAc} />
+          <PageNav page={acPage} setPage={setAcPage} total={4} color="var(--ac)" labels={['Cálculo de unidades de consumo', 'Diseño de red agua caliente', 'Selección calentador', 'Accesorios']} onPageHover={prefetchAfAc} />
           {acPage === 1 && <Suspense fallback={FALLBACK}><CalculoUC tipo="ac" /></Suspense>}
           {acPage === 2 && <Suspense fallback={FALLBACK}><WaterNetworkDesign networkType="ac" diamTable={DIAMETROS_AC} lookupFn={lookupInternoAC as any} /></Suspense>}
-          {acPage === 3 && <Suspense fallback={FALLBACK}><AccesoriosTable tramos={tramosAc} /></Suspense>}
+          {acPage === 3 && <Suspense fallback={FALLBACK}><HeaterSelection /></Suspense>}
+          {acPage === 4 && <Suspense fallback={FALLBACK}><AccesoriosTable tramos={tramosAc} /></Suspense>}
         </div>
       )}
       {redActiva === 'bom' && redes.has('bom') && (

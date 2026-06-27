@@ -86,6 +86,18 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.stroke();
+    } else if (b.tipo === 'calentador') {
+      const acNet = NETS.find((n: any) => n.id === 'ac');
+      const acCol = acNet ? acNet.col : '#F04545';
+      ctx.fillStyle = acCol;
+      ctx.beginPath();
+      ctx.rect(-r, -r, r * 2, r * 2);
+      ctx.fill();
+      ctx.strokeStyle = sel ? '#FFEB3B' : acCol;
+      ctx.lineWidth = (sel ? 4.5 : 2) * engine.zoom;
+      ctx.beginPath();
+      ctx.rect(-r, -r, r * 2, r * 2);
+      ctx.stroke();
     } else {
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
@@ -138,6 +150,12 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.textBaseline = 'top';
       ctx.fillText('Red Pública', 0, r + 28 * zoom);
       ctx.restore();
+    } else if (b.tipo === 'calentador') {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${r * 0.9}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('H', 0, 0);
     } else if (b.direccion === 'sube') {
       ctx.fillStyle = arrowCol;
       ctx.beginPath();

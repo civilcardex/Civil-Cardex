@@ -37,6 +37,7 @@ import {
   handleMontanteDown,
   handleRedPublicaDown,
   handleContadorDown,
+  handleCalentadorDown,
   handleEraseDown,
   handleAreaDown,
   handleDrawingMouseMove,
@@ -81,7 +82,7 @@ import { hitTestRightClick, hitTestBajanteLabelForDrag } from './PlanoEngineHitT
 
 export { NETS };
 
-type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont';
+type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont' | 'calent';
 type TramoType = 'ramal' | 'tributario';
 
 interface Point { x: number; y: number }
@@ -148,6 +149,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   nptLevels!: PlanoLevel[];
   _hiddenNets!: Set<string>;
   _lockedNets!: Set<string>;
+  private _touchStartHandler?: (e: TouchEvent) => void;
+  private _touchMoveHandler?: (e: TouchEvent) => void;
+  private _touchEndHandler?: (e: TouchEvent) => void;
   _loadedPlanId!: string | null;
   _onDirtyCb!: DirtyCallback | null;
   _lastMouseCvs!: Point;
@@ -623,6 +627,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
       handleRedPublicaDown(this, p.x, p.y);
     } else if (this.tool === 'cont') {
       handleContadorDown(this, p.x, p.y);
+    } else if (this.tool === 'calent') {
+      handleCalentadorDown(this, p.x, p.y);
     } else if (this.tool === 'area') {
       handleAreaDown(this, p.x, p.y);
     } else if (this.tool === 'erase') {
@@ -684,6 +690,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (k === 's') { this.setTool('sel'); e.preventDefault(); }
     else if (k === 'l') { this.setTool('line'); e.preventDefault(); }
     else if (k === 'c') { this.setTool('cont'); e.preventDefault(); }
+    else if (k === 'h') { this.setTool('calent'); e.preventDefault(); }
     else if (k === 'd') { this.setTool('dim'); e.preventDefault(); }
     else if (k === 't') { this.setTool('text'); e.preventDefault(); }
     else if (k === 'b') { this.setTool('baj'); e.preventDefault(); }

@@ -307,6 +307,37 @@ function buildTramos(
           });
         }
       }
+    } else if (family === 'ac') {
+      const calentadores = drawingBajantes.filter(b => b.tipo === 'calentador' && (b.net === 'ac' || !b.net));
+      for (const cal of calentadores) {
+        const calId = cal.code || cal.id;
+        const hasAC1 = incoming.some(r => r.fin === calId && r.ini === 'AF');
+        if (!hasAC1) {
+          const rId = `AC-01-${calId}`;
+          const apKey = `ac_${calId}_${planId}`;
+          const extra = hidroData[apKey] || {};
+          const pisoCal = typeof cal.piso === 'number' ? cal.piso : parseInt(cal.pisoBase || String(nivel));
+          incoming.push({
+            _key: `${rId}-${planId}`,
+            id: rId, piso: isNaN(pisoCal) ? nivel : pisoCal, planId,
+            _net: 'ac',
+            tipo: 'ramal',
+            esBajante: false,
+            fixtures: aparatos[apKey] || {},
+            accesorios: extra.accesorios || {},
+            Lh: extra.Lh || 0, Lv: 0,
+            nSalidas: 0,
+            recibeDe: [], descripcion: '',
+            ini: 'AF', fin: calId,
+            diamDisPulg: extra.dNominal ? diamPulgFromLabel(String(extra.dNominal)) : 0,
+            diametroOriginal: extra.dNominal ? String(extra.dNominal) : '',
+            material: extra.material || '',
+            totalL: 0,
+            _nivelLabel: pisoLbl(isNaN(pisoCal) ? nivel : pisoCal),
+            calCapacidad: cal.capacidad || ''
+          });
+        }
+      }
     }
   }
   return incoming;

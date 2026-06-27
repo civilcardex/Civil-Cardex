@@ -62,6 +62,11 @@ export default function PdfViewerToolbar({
 }: PdfViewerToolbarProps) {
   const navigate = useNavigate();
   const netTools = [...TOOLS];
+  if (activeNet === 'af' || activeNet === 'ac') {
+    netTools.splice(7, 0,
+      { id: "calent", label: "Calentador", ico: "🔥", key: "H", icoCol: "#ff7b00", shortcut: "H" }
+    );
+  }
   if (activeNet === 'af') {
     netTools.splice(7, 0,
       { id: "cont", label: "Contador", ico: "🔳", key: "C", icoCol: "#4D8FF7", shortcut: "C" }

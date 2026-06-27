@@ -1,4 +1,4 @@
-﻿import React, { useMemo } from "react";
+import React, { useMemo } from "react";
 import { usePlans } from "../context/PlansContext";
 import { loadFromStorage } from "../services/storageService";
 
@@ -8,7 +8,7 @@ import { TH, TD } from "../styles/sharedTableStyles";
 
 const ABREV = {
   est4: "EST-4Q", est2: "EST-2Q", hor_g: "HOR-G", hor_m: "HOR-M",
-  hor_p: "HOR-P", sec_g: "SEC-G", sec_p: "SEC-P", cal_b: "CAL-P",
+  hor_p: "HOR-P", sec_g: "SEC-G", sec_p: "SEC-P",
   cal6: "CAL-6", cal11: "CAL-11", cal21: "CAL-21", jac: "JAC", pisc: "C-PSC",
   sauna: "SAU", turco: "TUR",
 };
