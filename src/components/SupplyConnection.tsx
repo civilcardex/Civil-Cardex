@@ -1,5 +1,5 @@
 import React from "react";
-import { COEF_HAZEN } from "../utils/calcHydraulics";
+import { COEF_HAZEN } from "../constants/hydraulicData";
 import { fmt } from "../utils/formatUtils";
 import { CONTADORES as CONTADORES_CAT } from "../pages/catalog/catalogData";
 

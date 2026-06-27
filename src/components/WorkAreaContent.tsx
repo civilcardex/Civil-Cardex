@@ -2,7 +2,7 @@ import { Suspense, lazy, useMemo } from "react";
 import { pisoLbl } from "../constants";
 import PageNav from "./PageNav";
 import { RainwaterProvider } from "../context/RainwaterContext";
-import { DIAMETROS_AF, DIAMETROS_AC } from "../utils/calcHydraulics";
+import { DIAMETROS_AF, DIAMETROS_AC } from "../constants/hydraulicData";
 import { lookupInterno, lookupInternoAC } from "../utils/accesoriosUtils";
 import InfoTab from "./workarea/InfoTab";
 import PlanosTab from "./workarea/PlanosTab";

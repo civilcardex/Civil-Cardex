@@ -1,4 +1,4 @@
-import { DIAMETROS_AF, DIAMETROS_AC } from './calcHydraulics';
+import { DIAMETROS_AF, DIAMETROS_AC } from '../constants/hydraulicData';
 
 // NOTE: See also LE_ACCESORIOS in calcHydraulics.ts for hardcoded Le arrays by diameter
 export const LE_ACC_DEF = [

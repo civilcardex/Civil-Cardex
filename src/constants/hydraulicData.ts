@@ -1,4 +1,5 @@
-
+import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
+import { AGUA_CALIENTE } from '../pages/catalog/catalogData';
 
 export const COEF_HAZEN: number = 150;
 
@@ -12,7 +13,6 @@ export interface DiametroComercialAF {
   V?: number;
 }
 
-// ─── Diametros comerciales agua fria PVC (RDE 11/21) ───
 export const DIAMETROS_AF: DiametroComercialAF[] = [
   { nominal: '1/2" RDE 9',   pulg: 0.5,    dInt: 16.60, dExt: 12.70,  rde: 9 },
   { nominal: '1/2" RDE 13.5', pulg: 0.5,   dInt: 18.18, dExt: 12.70,  rde: 13.5 },
@@ -29,10 +29,6 @@ export const DIAMETROS_AF: DiametroComercialAF[] = [
   { nominal: '6" RDE 21',    pulg: 6.0,    dInt: 152.22, dExt: 152.40, rde: 21 },
 ];
 
-import { diamPulgFromLabel } from './diamPulgFromLabel';
-import { AGUA_CALIENTE } from '../pages/catalog/catalogData';
-
-// ─── Diametros comerciales Agua caliente CPVC (from Catalog) ───
 export const DIAMETROS_AC: DiametroComercialAF[] = AGUA_CALIENTE[0].rows.map(r => {
   const match = r.dn.match(/^(.+?)\s*\((.+?)\)$/);
   if (!match) return { nominal: r.dn, pulg: 0, dInt: r.d, dExt: 0 };
@@ -56,8 +52,6 @@ export const DIAMETROS_AC: DiametroComercialAF[] = AGUA_CALIENTE[0].rows.map(r =
   };
 });
 
-
-// ─── Contadores ───
 export const CONTADORES: { diaPulg: number; qn_lps: number }[] = [
   { diaPulg: 0.5, qn_lps: 0.84 },
   { diaPulg: 0.5, qn_lps: 0.92 },
@@ -69,6 +63,3 @@ export const CONTADORES: { diaPulg: number; qn_lps: number }[] = [
   { diaPulg: 1.5, qn_lps: 5.60 },
   { diaPulg: 2.0, qn_lps: 8.40 },
 ];
-
-
-
