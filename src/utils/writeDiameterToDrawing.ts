@@ -2,29 +2,6 @@ import { writeHydroDrawingSync, writeSanDrawingSync } from './drawingSync';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY, HYDRO_FAMILIES, SAN_FAMILIES } from '../constants/storage-keys';
 
-const PULG_STRING_TO_NUM: Record<string, number> = {
-  '1/2"': 0.5, '½': 0.5, '1/2': 0.5,
-  '3/4"': 0.75, '¾': 0.75, '3/4': 0.75,
-  '1"': 1, '1': 1,
-  '1-1/4"': 1.25, '1 1/4"': 1.25, '1¼': 1.25, '1-1/4': 1.25, '1 1/4': 1.25,
-  '1-1/2"': 1.5, '1 1/2"': 1.5, '1½': 1.5, '1 ½': 1.5, '1-1/2': 1.5, '1 1/2': 1.5,
-  '2"': 2, '2': 2, '2-1/2': 2.5, '2-1/2"': 2.5, '2½': 2.5, '2 ½': 2.5,
-  '3"': 3, '3': 3, '4"': 4, '4': 4, '6"': 6, '6': 6,
-};
-
-const NUM_TO_PULG_STRING: Record<number, string> = {
-  0.5: '½"', 0.75: '¾"', 1: '1"', 1.25: '1¼"', 1.5: '1½"', 2: '2"',
-};
-
-export function pulgStrToNum(s: string): number {
-  const clean = cleanupLabel(s);
-  return PULG_STRING_TO_NUM[clean] ?? (parseFloat(s) || 0);
-}
-
-export function numToPulgStr(n: number): string {
-  return NUM_TO_PULG_STRING[n] || `${n}"`;
-}
-
 export function findContadorBajante(plans: any[], net: string): { planId: string | number; bajante: any } | null {
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
@@ -58,11 +35,6 @@ export function readCnt1Accesorios(plans: any[], net: string): Record<string, nu
     }
   }
   return {};
-}
-
-function cleanupLabel(s: string): string {
-  // Strip RDE / SCH suffix and normalize spacing for fraction matching
-  return s.replace(/"/g, '').replace(/\s*RDE.*$|\s*SCH.*$/i, '').replace(/\s+/g, '').trim();
 }
 
 export function deleteRamalFromDrawing(ramalKey: string, net: string, plans: any[]) {

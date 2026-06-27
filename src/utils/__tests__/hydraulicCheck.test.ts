@@ -7,10 +7,6 @@ describe('calcHydraulicCheck', () => {
     S: 0.02,
     n: 0.009,
     DintMm: 110,
-    V_MIN: 0.45,
-    V_MAX: 4.0,
-    Y_D_MAX: 0.75,
-    FUERZA_TRACTIVA_MIN: 0.15,
   }
 
   it('retorna todos los campos del resultado', () => {

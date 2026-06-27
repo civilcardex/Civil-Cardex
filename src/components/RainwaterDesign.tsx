@@ -1,7 +1,7 @@
 import { useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import { usePlans } from "../context/PlansContext";
-import { pisoCorto, DIAM_OPTIONS, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN } from "../constants";
+import { pisoCorto, DIAM_OPTIONS } from "../constants";
 import { diametroManning } from "../utils/calcSanitaryCore";
 import { chequeoBajanteLluvia } from "../utils/calcRainwater";
 import { writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
@@ -353,7 +353,7 @@ DcalcPulg=Math.round(diametroManning(Q/1000,n,S)*1000/25.4*100)/100;
  if(DdisPulg>0){const ok=DcalcPulg<=DdisPulg?'O.K.':'NO CUMPLE'; void ok;}
 }
 if(Q>0&&S!=null&&S>0&&n!=null&&n>0&&DintMm>0){
-const hc = calcHydraulicCheck({ Q, S, n, DintMm, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN });
+const hc = calcHydraulicCheck({ Q, S, n, DintMm });
  Qo = hc.Qo; Vo = hc.Vo; qqo = hc.qqo;
   Vreal = hc.Vreal; chequeoV = hc.chequeoV;
   Yc = hc.Yc; Yn = hc.Yn; Froude = hc.Froude; tipoFlujo = hc.tipoFlujo;

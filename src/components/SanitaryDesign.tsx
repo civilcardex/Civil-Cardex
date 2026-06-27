@@ -3,7 +3,7 @@ import { useTramos } from "../context/TramosContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { usePlans } from "../context/PlansContext";
 import { calcUDparcial } from "../utils/componentHelpers";
-import { pisoCorto, DIAM_OPTIONS, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN, SAN_UC_IDS, APARATOS_DEF } from "../constants";
+import { pisoCorto, DIAM_OPTIONS, SAN_UC_IDS, APARATOS_DEF } from "../constants";
 import { diametroManning, caudalHunterLPS, factorSimultaneidad } from "../utils/calcSanitaryCore";
 import { writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
 import { calcHydraulicCheck } from "../utils/hydraulicCheck";
@@ -459,7 +459,7 @@ export default function DisenosSanitarios() {
                   if(DdisPulg>0){const ok=DcalcPulg<=DdisPulg?'O.K.':'NO CUMPLE'; void ok;}
                 }
                 if(Q!=null&&Q>0&&S!=null&&S>0&&n!=null&&n>0&&DintMm>0){
-                  const hc = calcHydraulicCheck({ Q, S, n, DintMm, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN });
+                  const hc = calcHydraulicCheck({ Q, S, n, DintMm });
                   Qo = hc.Qo; Vo = hc.Vo; qqo = hc.qqo;
                   Vreal = hc.Vreal; chequeoV = hc.chequeoV;
                   Yc = hc.Yc; Yn = hc.Yn; Froude = hc.Froude; tipoFlujo = hc.tipoFlujo;

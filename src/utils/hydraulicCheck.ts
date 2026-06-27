@@ -1,4 +1,5 @@
 import { relacionesHidraulicas, caudalTuboLleno, velocidadTuboLleno, tipoRegimen, numeroFroude, fuerzaTractiva as fuerzaTractivaCore } from './calcSanitaryCore';
+import { V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN } from '../constants';
 
 const YC_FACTOR = 0.296938082; // Derived from Manning n=0.009 for PVC
 
@@ -23,13 +24,9 @@ interface HydraulicParams {
   S: number;
   n: number;
   DintMm: number;
-  V_MIN: number;
-  V_MAX: number;
-  Y_D_MAX: number;
-  FUERZA_TRACTIVA_MIN: number;
 }
 
-export function calcHydraulicCheck({ Q, S, n, DintMm, V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN }: HydraulicParams): HydraulicResult {
+export function calcHydraulicCheck({ Q, S, n, DintMm }: HydraulicParams): HydraulicResult {
   const Qo = Math.round(caudalTuboLleno(DintMm / 1000, n, S) * 1000 * 100) / 100;
   const Vo = Math.round(velocidadTuboLleno(DintMm / 1000, n, S) * 100) / 100;
   const qqo = Qo > 0 ? Math.round(Q / Qo * 100) / 100 : 0;
