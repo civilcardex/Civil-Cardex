@@ -1,4 +1,4 @@
-import type { IPlanoEngineCore } from './PlanoEngineTypes';
+import type { IPlanoEngineCore } from './PlanoState';
 import { calculateRamalLength, _midpoint, _firstSegmentAngle } from './PlanoEngineDrawing';
 
 export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): void {

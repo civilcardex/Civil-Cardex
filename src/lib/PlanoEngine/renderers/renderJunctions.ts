@@ -1,5 +1,5 @@
 import { NETS } from '../PlanoState';
-import type { IPlanoEngineCore } from '../PlanoEngineTypes';
+import type { IPlanoEngineCore } from '../PlanoState';
 
 function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const DOUBLE_YEE_THRESHOLD_MM = 10;

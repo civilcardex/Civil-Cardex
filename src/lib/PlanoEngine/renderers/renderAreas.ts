@@ -1,6 +1,6 @@
 import { NETS } from '../PlanoState';
 import { rotatedRectCorners } from '../Coords';
-import type { IPlanoEngineCore } from '../PlanoEngineTypes';
+import type { IPlanoEngineCore } from '../PlanoState';
 
 export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.areas.forEach((a: any) => {

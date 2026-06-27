@@ -1,4 +1,4 @@
-import { APARATOS_DEF, SAN_UC_IDS } from './engineeringData';
+import { APARATOS_DEF, SAN_UC_IDS } from './engineeringDataFixtures';
 
 export const UD_BASE_INIT = APARATOS_DEF
   .filter(d => SAN_UC_IDS.includes(d.id))

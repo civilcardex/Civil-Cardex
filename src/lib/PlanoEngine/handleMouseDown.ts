@@ -1,4 +1,4 @@
-import type { IPlanoEngineCore } from './PlanoEngineTypes';
+import type { IPlanoEngineCore } from './PlanoState';
 import { NETS } from './PlanoState';
 import { pointInLabelBox, pointToSegmentDist, distanceToRamal } from './HitTester';
 import { getSelected } from './PlanoEngineSelection';

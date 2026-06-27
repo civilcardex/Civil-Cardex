@@ -1,7 +1,7 @@
 ﻿import React, { useState } from "react";
 import type { Dispatch, SetStateAction, ChangeEvent, FocusEvent } from "react";
 import { REDES, USOS, pisoLbl } from "../../constants";
-import { NETS } from "../../lib/PlanoEngine";
+import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import type { useWorkAreaState } from "../useWorkAreaState";
 import EditButton from "../shared/EditButton";
 

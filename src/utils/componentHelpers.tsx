@@ -1,4 +1,4 @@
-import type { Tramo } from '../context/tramosReducer';
+import type { Tramo } from '../context/TramosContext';
 
 interface UDBase {
   id: string;

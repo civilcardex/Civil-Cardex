@@ -3,7 +3,7 @@ import type {
   PlanoRamal,
   PlanoArea,
 } from './PlanoState';
-import type { IPlanoEngineCore } from './PlanoEngineTypes';
+import type { IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
 
 type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont';

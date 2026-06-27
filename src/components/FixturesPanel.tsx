@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, GAS_ACCESORIOS, AF_UC_IDS, AC_UC_IDS } from '../constants';
-import { NETS } from '../lib/PlanoEngine';
+import { NETS } from '../lib/PlanoEngine/PlanoState';
 import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { writeSanDrawingSync, writeHydroDrawingSync } from '../utils/drawingSync';

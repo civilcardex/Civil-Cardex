@@ -1,4 +1,4 @@
-import type { IPlanoEngineCore } from '../PlanoEngineTypes';
+import type { IPlanoEngineCore } from '../PlanoState';
 
 export interface ElbowInfo {
   T_A: { x: number; y: number };

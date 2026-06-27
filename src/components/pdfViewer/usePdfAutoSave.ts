@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import PlanoEngine from "../../lib/PlanoEngine";
+import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { saveToStorage, saveTrazosToDB } from "../../services/storageService";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../../utils/drawingSync";
 

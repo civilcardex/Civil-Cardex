@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getPdfjs } from "../../utils/lazyPdfjs";
-import PlanoEngine from "../../lib/PlanoEngine";
+import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { saveToStorage, saveTrazosToDB } from "../../services/storageService";
 
 interface UsePdfViewerEngineParams {

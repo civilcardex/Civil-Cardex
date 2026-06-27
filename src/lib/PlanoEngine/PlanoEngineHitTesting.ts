@@ -1,4 +1,4 @@
-import type { IPlanoEngineCore } from './PlanoEngineTypes';
+import type { IPlanoEngineCore } from './PlanoState';
 import { pointInLabelBox } from './HitTester';
 
 export interface ContextMenuHitResult {

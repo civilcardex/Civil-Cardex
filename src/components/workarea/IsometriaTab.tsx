@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { getPdfjs } from "../../utils/lazyPdfjs";
-import { NETS } from "../../lib/PlanoEngine";
+import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import { TRAZOS_PREFIX } from "../../constants/storage-keys";
 import { loadFromStorage } from "../../services/storageService";
 import { loadPDF } from "../../services/idbStorage";

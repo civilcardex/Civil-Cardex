@@ -69,21 +69,15 @@ export function matManning(short: string) {
   return (MAT_MANNING as Record<string, number>)[short] ?? null;
 }
 
-export const DIAM_OPTIONS=[
-  {pulg:1.5,label:'1 ½"',mm:42.68},
-  {pulg:2,label:'2"',mm:54.48},
-  {pulg:3,label:'3"',mm:76.20},
-  {pulg:4,label:'4"',mm:107.70},
-  {pulg:6,label:'6"',mm:160.04},
+export const DIAM_BAN=[
+  {pulg:1.5, mm:42.68, nom:'1 ½"'},
+  {pulg:2, mm:54.48, nom:'2"'},
+  {pulg:3, mm:76.20, nom:'3"'},
+  {pulg:4, mm:107.70, nom:'4"'},
+  {pulg:6, mm:160.04, nom:'6"'},
 ];
 
-export const DIAM_BAN=[
-  { pulg:1.5, mm:42.68, nom:'1 ½"' },
-  { pulg:2, mm:54.48, nom:'2"' },
-  { pulg:3, mm:76.20, nom:'3"' },
-  { pulg:4, mm:107.70, nom:'4"' },
-  { pulg:6, mm:160.04, nom:'6"' },
-];
+export const DIAM_OPTIONS = DIAM_BAN.map(d => ({pulg: d.pulg, label: d.nom, mm: d.mm}));
 
 export const DIAM_VENT = (VENTILACION[0]?.rows || []).map((r: any) => ({
   pulg: diamPulgFromLabel(r.dn),

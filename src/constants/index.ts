@@ -22,11 +22,14 @@ export {
   DIAM_OPTIONS,
   DIAM_BAN,
   DIAM_VENT,
-  GAS,
-  CAT_GAS,
   DIAM_BY_MAT,
   DIAM_DEFAULT_BY_NET,
 } from './engineeringDataMaterials';
+
+export {
+  GAS,
+  CAT_GAS,
+} from './engineeringDataGas';
 
 export {
   REDES,

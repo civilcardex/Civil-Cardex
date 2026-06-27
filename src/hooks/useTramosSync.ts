@@ -3,7 +3,7 @@ import { readSanDrawingSync, readHydroDrawingSync } from "../utils/drawingSync";
 import { diamPulgFromLabel } from "../utils/diamPulgFromLabel";
 import { HYDRO_DATA_STORAGE_KEY, TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage, saveToStorage } from "../services/storageService";
-import type { TramosState } from "../context/tramosReducer";
+import type { TramosState } from "../context/TramosContext";
 import { pisoLbl, pisoCorto } from "../constants";
 
 function useSyncEvents(events: string[], load: () => void) {

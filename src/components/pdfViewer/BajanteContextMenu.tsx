@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import PlanoEngine, { NETS } from "../../lib/PlanoEngine";
+import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
+import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import { DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS, pisoLbl } from "../../constants";
 import { VENTILACION, CONTADORES as CONTADORES_CAT } from "../../pages/catalog/catalogData";
 import { DIAMETROS_AF } from "../../utils/calcHydraulics";

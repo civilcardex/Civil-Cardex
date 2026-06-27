@@ -1,5 +1,6 @@
 import { memo, useState, useRef, useEffect, useCallback, useMemo } from "react";
-import PlanoEngine, { NETS } from "../lib/PlanoEngine";
+import PlanoEngine from "../lib/PlanoEngine/PlanoEngine";
+import { NETS } from "../lib/PlanoEngine/PlanoState";
 import { pisoLbl, matLongName, GAS, DEFAULT_PENDIENTE_PCT } from "../constants";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";

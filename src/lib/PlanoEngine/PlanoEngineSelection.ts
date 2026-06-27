@@ -4,7 +4,7 @@ import type {
   PlanoArea,
   PlanoTextAnnotation,
 } from './PlanoState';
-import type { IPlanoEngineCore } from './PlanoEngineTypes';
+import type { IPlanoEngineCore } from './PlanoState';
 import { _midpoint } from './PlanoEngineDrawing';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 

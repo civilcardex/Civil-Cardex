@@ -1,5 +1,5 @@
 import { NETS } from './PlanoState';
-import type { IPlanoEngineCore } from './PlanoEngineTypes';
+import type { IPlanoEngineCore } from './PlanoState';
 import type { PlanoRamal, PlanoBajante, PlanoArea, PlanoDimension, PlanoTextAnnotation } from './PlanoState';
 import { cancelRamal, cancelArea } from './PlanoEngineDrawing';
 

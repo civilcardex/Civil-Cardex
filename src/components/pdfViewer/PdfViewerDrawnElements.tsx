@@ -1,4 +1,4 @@
-import PlanoEngine from "../../lib/PlanoEngine";
+import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 
 interface PdfViewerDrawnElementsProps {
   drawnElements: any[];

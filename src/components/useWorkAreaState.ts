@@ -6,7 +6,7 @@ import { useApparatus } from "../context/ApparatusContext";
 import { usePlans } from "../context/PlansContext";
 import { REDES } from "../constants";
 import { parseDecimalInput, parseIntInput } from "../utils/parseDecimal";
-import { NETS } from "../lib/PlanoEngine";
+import { NETS } from "../lib/PlanoEngine/PlanoState";
 import { loadFromStorage, saveToStorage } from "../services/storageService";
 
 function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject<T>] {

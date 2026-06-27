@@ -1,7 +1,7 @@
 import { NETS } from '../PlanoState';
 import { snapTributaryToPadre45Deg } from '../PlanoEngineDrawing';
 import { rotatedRectCorners } from '../Coords';
-import type { IPlanoEngineCore } from '../PlanoEngineTypes';
+import type { IPlanoEngineCore } from '../PlanoState';
 import { drawRamalPath } from './drawRamalPath';
 import { renderJunctions } from './renderJunctions';
 import { renderVentCodos } from './renderVentCodos';

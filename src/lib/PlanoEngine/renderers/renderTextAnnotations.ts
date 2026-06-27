@@ -1,4 +1,4 @@
-import type { IPlanoEngineCore } from '../PlanoEngineTypes';
+import type { IPlanoEngineCore } from '../PlanoState';
 
 export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.textAnnots.forEach((t: any) => {

@@ -1,4 +1,4 @@
-import PlanoEngine from "../../lib/PlanoEngine";
+import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { useNavigate } from 'react-router-dom';
 import { saveToStorage } from "../../services/storageService";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../../utils/drawingSync";

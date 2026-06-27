@@ -11,7 +11,7 @@ import type {
   PlanoActiveArea,
   PlanoRamalDefaults,
 } from './PlanoState';
-import type { IPlanoEngineCore } from './PlanoEngineTypes';
+import type { IPlanoEngineCore } from './PlanoState';
 import { renderDims, renderDimGhost } from './renderers/renderDimensions';
 import { renderTexts } from './renderers/renderTextAnnotations';
 import { renderAreas, renderActiveArea } from './renderers/renderAreas';
@@ -19,7 +19,6 @@ import { renderBajantes, renderGhosts } from './renderers/renderBajantes';
 import { renderRamales, renderActiveRamal } from './renderers/renderRamales';
 import { snapToSegment } from './HitTester';
 import { serializeWork, applyWorkData } from './PlanoPersistence';
-import { setupCanvasEvents, teardownCanvasEvents, getCanvasPosition, wrapTouch } from './PlanoEventHandler';
 import {
   setTool as _setTool,
   finishRamal as _finishRamal,
@@ -216,7 +215,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._onWheel = this._onWheelHandler.bind(this);
     this._onKeyDown = this._onKeyDownHandler.bind(this);
 
-    setupCanvasEvents(this);
+    this._setupCanvasEvents();
 
     this._onSelectCb = null;
     this._onStatusCb = null;
@@ -250,7 +249,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       cancelAnimationFrame(this._rafId);
       this._rafId = null;
     }
-    teardownCanvasEvents(this);
+    this._teardownCanvasEvents();
   }
 
   setPageSize(w: number, h: number): void {
@@ -373,11 +372,43 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   _wrapTouch(fn: (e: TouchEvent) => void): (e: TouchEvent) => void {
-    return wrapTouch(fn);
+    return (e: TouchEvent) => { e.preventDefault(); fn(e); };
   }
 
   _getPos(e: MouseEvent | TouchEvent): Point {
-    return getCanvasPosition(this.canv, e);
+    const r = this.canv.getBoundingClientRect();
+    const t = e instanceof TouchEvent ? (e as TouchEvent).touches[0] : e as MouseEvent;
+    return { x: t.clientX - r.left, y: t.clientY - r.top };
+  }
+
+  private _setupCanvasEvents(): void {
+    this._touchStartHandler = this._wrapTouch(this._onDown as (e: TouchEvent) => void);
+    this._touchMoveHandler = this._wrapTouch(this._onMove as (e: TouchEvent) => void);
+    this._touchEndHandler = (e: TouchEvent) => { e.preventDefault(); this._onUp(e); };
+
+    this.canv.addEventListener('mousedown', this._onDown);
+    this.canv.addEventListener('mousemove', this._onMove);
+    this.canv.addEventListener('mouseup', this._onUp);
+    this.canv.addEventListener('mouseleave', this._onUp);
+    this.canv.addEventListener('dblclick', this._onDblClick);
+    this.canv.addEventListener('wheel', this._onWheel, { passive: false });
+    this.canv.addEventListener('touchstart', this._touchStartHandler, { passive: false });
+    this.canv.addEventListener('touchmove', this._touchMoveHandler, { passive: false });
+    this.canv.addEventListener('touchend', this._touchEndHandler, { passive: false });
+    document.addEventListener('keydown', this._onKeyDown);
+  }
+
+  private _teardownCanvasEvents(): void {
+    this.canv.removeEventListener('mousedown', this._onDown);
+    this.canv.removeEventListener('mousemove', this._onMove);
+    this.canv.removeEventListener('mouseup', this._onUp);
+    this.canv.removeEventListener('mouseleave', this._onUp);
+    this.canv.removeEventListener('dblclick', this._onDblClick);
+    this.canv.removeEventListener('wheel', this._onWheel);
+    if (this._touchStartHandler) this.canv.removeEventListener('touchstart', this._touchStartHandler);
+    if (this._touchMoveHandler) this.canv.removeEventListener('touchmove', this._touchMoveHandler);
+    if (this._touchEndHandler) this.canv.removeEventListener('touchend', this._touchEndHandler);
+    document.removeEventListener('keydown', this._onKeyDown);
   }
 
   _statusMsg(): string { return _statusMsg(this); }
