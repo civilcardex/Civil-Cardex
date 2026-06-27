@@ -70,6 +70,19 @@ const BajantesTable = memo(function BajantesTable_() {
   const { pisos } = useProject();
   const { plans } = usePlans();
 
+  const storageByPlan = useMemo(() => {
+    const cache: Record<string, any> = {};
+    for (const p of plans || []) {
+      const raw = loadFromStorage(TRAZOS_PREFIX + p.id, null);
+      if (raw) {
+        let d: any = raw;
+        if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_) { continue; } }
+        cache[String(p.id)] = d;
+      }
+    }
+    return cache;
+  }, [plans]);
+
   const [conexiones, ventToSanMap, ventRamalDiamMap, components] = useMemo(() => {
     const map: Record<string, string[]> = {};
     const vMap: Record<string, string[]> = {};
@@ -468,7 +481,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   }
                 }
 
-                const ramalesIds = (t.recibeDeIds || []) as string[];
+                const ramalesIds = (t.recibeDeIds || []);
                 const ramalesAsocVal = ramalesIds.length > 0 ? ramalesIds.join(', ') : '—';
                 
                 let totalUD = propiasUD + getDescendantsUD(t._key || `${t.id}-${planIdStr}`);
@@ -498,7 +511,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 // Find associated Ventilation Bajante keys (from vMap)
                 const ventBajKeys: string[] = [];
                 for (const [vKey, sanKeys] of Object.entries(ventToSanMap || {})) {
-                  if ((sanKeys as string[]).some(sk => tComp.includes(sk))) {
+                    if (sanKeys.some(sk => tComp.includes(sk))) {
                     if (!ventBajKeys.includes(vKey)) ventBajKeys.push(vKey);
                   }
                 }
@@ -506,7 +519,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 // Find associated Sanitary Bajante keys
                 const sanBajKeys: string[] = [];
                 if (isVent) {
-                  const sanKeys = (ventToSanMap as Record<string, string[]>)[tKey] || [];
+                    const sanKeys = ventToSanMap[tKey] || [];
                   for (const sk of sanKeys) {
                     const comp = components.find((c: any) => c.includes(sk)) || [sk];
                     for (const k of comp) {
@@ -582,19 +595,16 @@ const BajantesTable = memo(function BajantesTable_() {
                    const parts = vKey.split('-');
                    const vrId = parts[0];
                    const vPlanId = parts.slice(1).join('-');
-                   for (const p of plans || []) {
-                     if (String(p.id) !== vPlanId) continue;
-                     const raw = loadFromStorage(TRAZOS_PREFIX + p.id, null);
-                     if (!raw) continue;
-                     let d = raw as any;
-                     if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_) { return 0; } }
-                     for (const vr of (d.ramales || [])) {
-                       if (vr.id === vrId && (vr._net === 'vent' || vr.net === 'vent')) {
-                         return vr.diamPulg || (vr.diametro ? parseFloat(String(vr.diametro).replace(/[^0-9.]/g, '')) : 0);
-                       }
-                     }
-                   }
-                   return 0;
+                    const raw = storageByPlan[vPlanId];
+                    if (!raw) return 0;
+                    let d = raw as any;
+                    if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_) { return 0; } }
+                    for (const vr of (d.ramales || [])) {
+                      if (vr.id === vrId && (vr._net === 'vent' || vr.net === 'vent')) {
+                        return vr.diamPulg || (vr.diametro ? parseFloat(String(vr.diametro).replace(/[^0-9.]/g, '')) : 0);
+                      }
+                    }
+                    return 0;
                  })();
                 
                 const ventDiamWarn = ventRamalDiamPulg > 0 && resolvedVentDprop > 0 && resolvedVentDprop < ventRamalDiamPulg;
@@ -602,13 +612,11 @@ const BajantesTable = memo(function BajantesTable_() {
                 const maxSanRamalDiamPulg = (() => {
                    let maxD = 0;
                    const planIdStr = t.planId || (t._key ? t._key.split('-')[1] : '');
-                   const rIds = (t.recibeDeIds || []) as string[];
+                   const rIds = (t.recibeDeIds || []);
                    if (rIds.length === 0) return 0;
-                   
-                   const plan = plans?.find((p: any) => String(p.id) === String(planIdStr));
-                   if (!plan) return 0;
-                   const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
-                   if (!raw) return 0;
+                    
+                    const raw = storageByPlan[planIdStr];
+                    if (!raw) return 0;
                    let d = raw as any;
                    if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_) { return 0; } }
                    

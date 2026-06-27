@@ -29,6 +29,15 @@ export function removeFromStorage(key: string): void {
 }
 
 import { supabase } from '../lib/supabase';
+import { TRAZOS_PREFIX } from '../constants/storage-keys';
+
+export function loadPlanTrazos(planId: string): any | null {
+  return loadFromStorage(TRAZOS_PREFIX + planId, null);
+}
+
+export function savePlanTrazos(planId: string, data: unknown): void {
+  saveToStorage(TRAZOS_PREFIX + planId, data);
+}
 
 export async function saveTrazosToDB(planoId: string, data: any): Promise<void> {
   try {

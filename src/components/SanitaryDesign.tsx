@@ -440,7 +440,7 @@ export default function DisenosSanitarios() {
                 
                 const udPropias=calcUDparcial(t,mergedBase);
                 const connectedKeys = conexionesDisplay[tKey] || [];
-                const udAcum = (componentTotalMap[tKey] || 0) as number;
+                const udAcum = (componentTotalMap[tKey] || 0);
 
                 const nSalidas=t.nSalidas??0;
                 const K=nSalidas!=null&&nSalidas>0?Math.round(factorSimultaneidad(nSalidas)*100)/100:null;
