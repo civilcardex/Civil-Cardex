@@ -53,7 +53,7 @@ function CivilFlowInner() {
           setTab={state.setTab}
         />
         <div className="layout">
-          <div className="content">
+          <div className="content" style={{ padding: state.tab === 'planos' ? 0 : undefined }}>
             <WorkAreaContent state={state} />
           </div>
         </div>

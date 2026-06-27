@@ -185,13 +185,13 @@ export default function WorkAreaContent({ state }: WorkAreaContentProps) {
 
   return (
     <>
-      {tab === 'info' && <section aria-label="Información del proyecto"><InfoTab state={state} /></section>}
-      {tab === 'planos' && <section aria-label="Carga de planos"><PlanosTab state={state} /></section>}
-      {tab === 'redes' && state.redesActivas.length > 0 && <section aria-label="Diseño de red"><RedesTab state={state} /></section>}
-      {tab === 'datos' && <section aria-label="Parámetros de diseño"><Suspense fallback={FALLBACK}><BaseDatos redes={redes} /></Suspense></section>}
-      {tab === 'crit' && <section aria-label="Criterios y normativa"><Suspense fallback={FALLBACK}><Normativa /></Suspense></section>}
-      {tab === 'inf' && <section aria-label="Resumen del proyecto"><InfTab state={state} /></section>}
-      {tab === 'iso' && <section aria-label="Isometría de red"><Suspense fallback={FALLBACK}><IsometriaTab state={state} /></Suspense></section>}
+      {tab === 'info' && <section aria-label="Información del proyecto" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><InfoTab state={state} /></section>}
+      {tab === 'planos' && <section aria-label="Carga de planos" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><PlanosTab state={state} /></section>}
+      {tab === 'redes' && state.redesActivas.length > 0 && <section aria-label="Diseño de red" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><RedesTab state={state} /></section>}
+      {tab === 'datos' && <section aria-label="Parámetros de diseño" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><Suspense fallback={FALLBACK}><BaseDatos redes={redes} /></Suspense></section>}
+      {tab === 'crit' && <section aria-label="Criterios y normativa" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><Suspense fallback={FALLBACK}><Normativa /></Suspense></section>}
+      {tab === 'inf' && <section aria-label="Resumen del proyecto" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><InfTab state={state} /></section>}
+      {tab === 'iso' && <section aria-label="Isometría de red" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><Suspense fallback={FALLBACK}><IsometriaTab state={state} /></Suspense></section>}
     </>
   );
 }

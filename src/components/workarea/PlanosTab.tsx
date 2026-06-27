@@ -164,7 +164,7 @@ function PlanosTab({ state }: PlanosTabProps) {
 
   return (
     <div className="fu" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'row', overflow: 'hidden', padding: 0 }}>
-      <div style={{ width: 170, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--line)', borderRadius: 'var(--r2)' }}>
+      <div style={{ width: 170, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--line)' }}>
         <div className="card-h" style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'none' }}>
           <h3 className="card-t" style={{ fontSize: 13 }}>
             <img src="/iconos_carga_planos/requisitos_del_plano.webp" alt="Requisitos del plano"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
@@ -222,7 +222,7 @@ function PlanosTab({ state }: PlanosTabProps) {
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#00dce5' }}>&#x1F4D0; SOLTAR PARA SUBIR</span>
               </div>
             )}
-            <embed key={selectedPlanUrl} src={selectedPlanUrl} type="application/pdf" title="Plano seleccionado" style={{ width: '100%', height: '100%' }} />
+            <iframe key={selectedPlanUrl} src={`${selectedPlanUrl}#toolbar=0`} title="Plano seleccionado" style={{ width: '100%', height: '100%', border: 'none' }} />
           </div>
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, background: 'var(--bg)', cursor: 'pointer', position: 'relative' }}
