@@ -28,7 +28,6 @@ export {
   FILTROS_NORM,
   REQ_ITEMS,
   NORM_COL,
-  MAT_COL,
   USOS,
   R_OPTIONS,
 } from './uiConfig';

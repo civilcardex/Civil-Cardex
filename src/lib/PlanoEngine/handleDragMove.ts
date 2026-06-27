@@ -1,0 +1,346 @@
+import type { IPlanoEngineCore } from './PlanoEngineTypes';
+import { calculateRamalLength, _midpoint, _firstSegmentAngle } from './PlanoEngineDrawing';
+
+export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): void {
+  if (engine.multiDrag) {
+    const tp = engine.toPlane(x, y);
+    const dx = tp.x - engine.multiDrag.startX;
+    const dy = tp.y - engine.multiDrag.startY;
+    for (const id of Object.keys(engine.multiDrag.origData)) {
+      const orig = engine.multiDrag.origData[id];
+      if (!orig) continue;
+      if (orig.type === 'ramal') {
+        const r = engine.ramales.find(rr => rr.id === id);
+        if (r) {
+          r.pts = orig.origPts.map((p: number[]) => [p[0] + dx, p[1] + dy]);
+          r.labelX = orig.origLabelX + dx;
+          r.labelY = orig.origLabelY + dy;
+          r.labelAngle = orig.origLabelAngle;
+          r.totalL = calculateRamalLength(r.pts, engine);
+        }
+      } else if (orig.type === 'bajante') {
+        const b = engine.bajantes.find(bb => bb.id === id);
+        if (b) {
+          b.x = orig.origX + dx;
+          b.y = orig.origY + dy;
+          b.labelX = orig.origLabelX + dx;
+          b.labelY = orig.origLabelY + dy;
+        }
+      } else if (orig.type === 'text') {
+        const t = engine.textAnnots.find(tt => tt.id === id);
+        if (t) {
+          t.x = orig.origX + dx;
+          t.y = orig.origY + dy;
+        }
+      }
+    }
+    (engine as any).scheduleRender();
+    return;
+  }
+  if (engine.ramalDrag) {
+    const r = engine.ramales.find((rr: any) => rr.id === engine.ramalDrag!.id);
+    if (r) {
+      const tp = engine.toPlane(x, y);
+      const dx = tp.x - engine.ramalDrag.startX;
+      const dy = tp.y - engine.ramalDrag.startY;
+
+      let slideDx = dx, slideDy = dy;
+      for (const other of engine.ramales) {
+        if (other.id === r.id) continue;
+        for (let si = 0; si < other.pts.length - 1; si++) {
+          const [ax, ay] = other.pts[si], [bx, by] = other.pts[si+1];
+          const sDx = bx - ax, sDy = by - ay;
+          const sLen = Math.hypot(sDx, sDy);
+          if (sLen < 0.001) continue;
+          const origFirst = engine.ramalDrag.origPts[0];
+          const cross = Math.abs(sDx * (ay - origFirst[1]) - sDy * (ax - origFirst[0])) / sLen;
+          if (cross < 0.05) {
+            const proposedX = origFirst[0] + dx, proposedY = origFirst[1] + dy;
+            let t = ((proposedX - ax) * sDx + (proposedY - ay) * sDy) / (sLen * sLen);
+            t = Math.max(0, Math.min(1, t));
+            slideDx = (ax + t * sDx) - origFirst[0];
+            slideDy = (ay + t * sDy) - origFirst[1];
+            break;
+          }
+        }
+      }
+
+      for (let i = 0; i < r.pts.length; i++) {
+        r.pts[i][0] = engine.ramalDrag.origPts[i][0] + slideDx;
+        r.pts[i][1] = engine.ramalDrag.origPts[i][1] + slideDy;
+      }
+      r.totalL = calculateRamalLength(r.pts, engine);
+      if (engine.ramalDrag.connBaj) {
+        for (const cb of engine.ramalDrag.connBaj) {
+          const b = engine.bajantes.find((bb: any) => bb.id === cb.id);
+          if (!b) continue;
+          b.x = cb.origX + slideDx;
+          b.y = cb.origY + slideDy;
+          b.labelX = cb.origLblX + slideDx;
+          b.labelY = cb.origLblY + slideDy;
+        }
+      }
+      if (engine.nivelActual) {
+        const lvl = engine.nivelActual.label ?? '';
+        for (const b of engine.bajantes as any[]) {
+          const desp = b.desplazamientos?.[lvl];
+          if (desp && desp.Ldesvio === r.id) {
+            const lastPt = r.pts[r.pts.length - 1];
+            desp.dx = lastPt[0] - b.x;
+            desp.dy = lastPt[1] - b.y;
+            break;
+          }
+        }
+      }
+      (engine as any).scheduleRender();
+    }
+    return;
+  }
+  if (engine.ghostDrag) {
+    const b = engine.bajantes.find((bb: any) => bb.id === engine.ghostDrag!.id);
+    if (b && engine.nivelActual) {
+      let dx = (x - engine.ghostDrag.startX) / engine.zoom + engine.ghostDrag.baseDx;
+      let dy = (y - engine.ghostDrag.startY) / engine.zoom + engine.ghostDrag.baseDy;
+      if (engine.snapMode) {
+        let snappedPt = engine.snapAngle(b.x, b.y, b.x + dx, b.y + dy);
+        const sp = engine.snapToExisting(snappedPt.x, snappedPt.y);
+        if (sp) {
+          snappedPt = sp;
+        }
+        dx = snappedPt.x - b.x;
+        dy = snappedPt.y - b.y;
+      }
+      if (!(b as any).desplazamientos) (b as any).desplazamientos = {};
+      const oldD = (b as any).desplazamientos[engine.nivelActual.label ?? ''];
+      const oldGx = b.x + (oldD ? oldD.dx : 0);
+      const oldGy = b.y + (oldD ? oldD.dy : 0);
+      
+      const lDesvio = oldD ? oldD.Ldesvio : null;
+      (b as any).desplazamientos[engine.nivelActual.label ?? ''] = { dx, dy, Ldesvio: lDesvio };
+      
+      const newGx = b.x + dx;
+      const newGy = b.y + dy;
+      const diffGx = newGx - oldGx;
+      const diffGy = newGy - oldGy;
+
+      if (lDesvio) {
+        const r = engine.ramales.find((rr: any) => rr.id === lDesvio);
+        if (r) {
+          r.pts[0] = [b.x, b.y];
+          r.pts[r.pts.length - 1] = [newGx, newGy];
+          r.totalL = calculateRamalLength(r.pts, engine);
+          r.labelAngle = _firstSegmentAngle(r.pts);
+          const [mx, my] = _midpoint(r.pts);
+          r.labelX = mx;
+          r.labelY = my;
+        }
+      }
+      
+      engine.ramales.forEach((r: any) => {
+        if (r.id !== lDesvio && r.pts && r.pts.length > 0) {
+          let changed = false;
+          if (Math.hypot(r.pts[0][0] - oldGx, r.pts[0][1] - oldGy) < 12) {
+            r.pts[0][0] += diffGx; r.pts[0][1] += diffGy; changed = true;
+          }
+          const lastIdx = r.pts.length - 1;
+          if (Math.hypot(r.pts[lastIdx][0] - oldGx, r.pts[lastIdx][1] - oldGy) < 12) {
+            r.pts[lastIdx][0] += diffGx; r.pts[lastIdx][1] += diffGy; changed = true;
+          }
+          if (changed) {
+            r.totalL = calculateRamalLength(r.pts, engine);
+            r.labelAngle = _firstSegmentAngle(r.pts);
+            const [mx, my] = _midpoint(r.pts);
+            r.labelX = mx;
+            r.labelY = my;
+          }
+        }
+      });
+      
+      (engine as any).scheduleRender();
+    }
+    return;
+  }
+  if (engine.bajDrag) {
+    const b = engine.bajantes.find((bb: any) => bb.id === engine.bajDrag!.id);
+    if (b) {
+      const p = engine.toPlane(x - engine.bajDrag.offX, y - engine.bajDrag.offY);
+      const dx = p.x - b.x;
+      const dy = p.y - b.y;
+      const oldX = b.x;
+      const oldY = b.y;
+
+
+
+      (b as any).x = p.x;
+      (b as any).y = p.y;
+      (b as any).labelX = ((b as any).labelX || 0) + dx;
+      (b as any).labelY = ((b as any).labelY || 0) + dy;
+      
+      if (b.recibeDeIds?.length) {
+        b.recibeDeIds.forEach((rid: string) => {
+          const r = engine.ramales.find((rr: any) => rr.id === rid);
+          if (!r || !r.pts) return;
+          let changed = false;
+          if (Math.hypot(r.pts[0][0] - oldX, r.pts[0][1] - oldY) < 0.5) {
+            r.pts[0][0] = p.x; r.pts[0][1] = p.y; changed = true;
+          }
+          const lastIdx = r.pts.length - 1;
+          if (Math.hypot(r.pts[lastIdx][0] - oldX, r.pts[lastIdx][1] - oldY) < 0.5) {
+            r.pts[lastIdx][0] = p.x; r.pts[lastIdx][1] = p.y; changed = true;
+          }
+          if (changed) {
+            r.totalL = calculateRamalLength(r.pts, engine);
+            r.labelAngle = _firstSegmentAngle(r.pts);
+            const [mx, my] = _midpoint(r.pts);
+            r.labelX = mx;
+            r.labelY = my;
+          }
+        });
+      }
+      
+      (engine as any).scheduleRender();
+    }
+    return;
+  }
+  if (engine.lblDrag) {
+    const el = engine.ramales.find((r: any) => r.id === engine.lblDrag!.id)
+      || engine.bajantes.find((b: any) => b.id === engine.lblDrag!.id)
+      || engine.areas.find((a: any) => a.id === engine.lblDrag!.id);
+    if (el) {
+      const p = engine.toPlane(x - engine.lblDrag.offX, y - engine.lblDrag.offY);
+      const isGhost = engine.getBajantesFantasma().some((g: any) => g.id === el.id);
+      if (isGhost && engine.nivelActual) {
+        const lbl = engine.nivelActual.label ?? '';
+        if (!(el as any).ghostData) (el as any).ghostData = {};
+        if (!(el as any).ghostData[lbl]) (el as any).ghostData[lbl] = {};
+        (el as any).ghostData[lbl].labelX = p.x;
+        (el as any).ghostData[lbl].labelY = p.y;
+      } else {
+        (el as any).labelX = p.x;
+        (el as any).labelY = p.y;
+      }
+      (engine as any).scheduleRender();
+    }
+    return;
+  }
+  if (engine.txtDrag) {
+    const t = engine.textAnnots.find((tt: any) => tt.id === engine.txtDrag!.id);
+    if (t) {
+      const p = engine.toPlane(x, y);
+      (t as any).x = engine.txtDrag.origX + (p.x - engine.txtDrag.startX);
+      (t as any).y = engine.txtDrag.origY + (p.y - engine.txtDrag.startY);
+      (engine as any).scheduleRender();
+    }
+    return;
+  }
+  if (engine.areaDrag) {
+    const a = engine.areas.find((aa: any) => aa.id === engine.areaDrag!.id);
+    if (a) {
+      const p = engine.toPlane(x, y);
+      const dx = p.x - engine.areaDrag.startX;
+      const dy = p.y - engine.areaDrag.startY;
+      (a as any).pts.forEach((pt: number[]) => { pt[0] += dx; pt[1] += dy; });
+      if ((a as any).labelX !== undefined) { (a as any).labelX += dx; (a as any).labelY += dy; }
+      engine.areaDrag.startX = p.x;
+      engine.areaDrag.startY = p.y;
+      (engine as any).scheduleRender();
+    }
+    return;
+  }
+  if (engine.ptDrag) {
+    const r = engine.ramales.find((rr: any) => rr.id === engine.ptDrag!.id);
+    if (r) {
+      let p = engine.toPlane(x, y);
+      const idx = engine.ptDrag.ptIdx;
+      const isEndpoint = idx === 0 || idx === r.pts.length - 1;
+
+      if (engine.snapMode) {
+        const constraint = engine.ptDrag.slideConstraint;
+        let snappedToConstraint = false;
+        
+        if (isEndpoint && constraint) {
+          const other = engine.ramales.find((o: any) => o.id === constraint.otherId);
+          if (other && other.pts && other.pts.length > constraint.segmentIdx) {
+            const [ax, ay] = other.pts[constraint.segmentIdx];
+            const [bx, by] = other.pts[constraint.segmentIdx + 1] || [ax, ay];
+            const sDx = bx - ax, sDy = by - ay;
+            const sLen = Math.hypot(sDx, sDy);
+            if (sLen > 0.001) {
+              const crossPlane = Math.abs(sDx * (ay - p.y) - sDy * (ax - p.x)) / sLen;
+              if (crossPlane < engine.mm2cvs(3)) {
+                let t = ((p.x - ax) * sDx + (p.y - ay) * sDy) / (sLen * sLen);
+                p.x = ax + t * sDx;
+                p.y = ay + t * sDy;
+                snappedToConstraint = true;
+              }
+            }
+          }
+        }
+
+        if (!snappedToConstraint) {
+          if (idx === 0 && r.pts.length > 1) {
+            p = engine.snapAngle(r.pts[1][0], r.pts[1][1], p.x, p.y);
+          } else if (idx > 0) {
+            p = engine.snapAngle(r.pts[idx - 1][0], r.pts[idx - 1][1], p.x, p.y);
+          }
+        }
+      }
+
+      const oldP = [...(r as any).pts[idx]];
+      (r as any).pts[idx] = [p.x, p.y];
+
+      const dPx = p.x - oldP[0], dPy = p.y - oldP[1];
+      if (Math.abs(dPx) + Math.abs(dPy) > 0.001) {
+        for (const other of engine.ramales) {
+          if (other.id === r.id) continue;
+          let changed = false;
+          for (let i = 0; i < other.pts.length; i++) {
+            if (Math.hypot(other.pts[i][0] - oldP[0], other.pts[i][1] - oldP[1]) < 0.5) {
+              other.pts[i][0] += dPx;
+              other.pts[i][1] += dPy;
+              changed = true;
+            }
+          }
+          if (changed) {
+            other.totalL = calculateRamalLength(other.pts, engine);
+            other.labelAngle = _firstSegmentAngle(other.pts);
+            const [mx, my] = _midpoint(other.pts);
+            other.labelX = mx;
+            other.labelY = my;
+          }
+        }
+          const bajForRamal = engine.bajantes.find((b: any) =>
+            b.recibeDeIds?.includes(r.id) &&
+            (Math.hypot(oldP[0] - b.x, oldP[1] - b.y) < 0.5 ||
+             Math.hypot(p.x - b.x, p.y - b.y) < 0.5)
+          );
+          if (bajForRamal) {
+            bajForRamal.x += dPx;
+            bajForRamal.y += dPy;
+            bajForRamal.labelX = (bajForRamal.labelX || 0) + dPx;
+            bajForRamal.labelY = (bajForRamal.labelY || 0) + dPy;
+          }
+        }
+
+      if (engine.nivelActual) {
+        const lvl = engine.nivelActual.label ?? '';
+        for (const b of engine.bajantes as any[]) {
+          const desp = b.desplazamientos?.[lvl];
+          if (desp && desp.Ldesvio === r.id) {
+            const lastPt = r.pts[r.pts.length - 1];
+            desp.dx = lastPt[0] - b.x;
+            desp.dy = lastPt[1] - b.y;
+            break;
+          }
+        }
+      }
+      (r as any).labelAngle = _firstSegmentAngle((r as any).pts);
+      (r as any).totalL = calculateRamalLength((r as any).pts, engine);
+      const [mx, my] = _midpoint((r as any).pts);
+      (r as any).labelX = mx;
+      (r as any).labelY = my;
+      (engine as any).scheduleRender();
+    }
+    return;
+  }
+}

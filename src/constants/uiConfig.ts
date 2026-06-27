@@ -28,7 +28,6 @@ export const NAV_TABS=[
 export const FILTROS_NORM=[{k:'todos',l:'Todos'},{k:'af',l:'AF/AC'},{k:'san',l:'Sanitaria'},{k:'ll',l:'Lluvias'},{k:'gas',l:'Gas'},{k:'rci',l:'RCI'}];
 
 export const NORM_COL={af:'var(--af)',ac:'var(--ac)',san:'var(--san)',vent:'var(--vent)',ll:'var(--ll)',gas:'var(--gas)',rci:'var(--rci)',ep:'var(--ep)',bom:'var(--bom)'};
-export const MAT_COL = NORM_COL; // Alias — same color mapping
 
 export const R_OPTIONS=[{value:'1/4',label:'1/4'},{value:'7/24',label:'7/24'}];
 

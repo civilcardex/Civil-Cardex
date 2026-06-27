@@ -2,172 +2,9 @@ import { NETS } from '../PlanoState';
 import { snapTributaryToPadre45Deg } from '../PlanoEngineDrawing';
 import { rotatedRectCorners } from '../Coords';
 import type { IPlanoEngineCore } from '../PlanoEngineTypes';
-
-interface ElbowInfo {
-  T_A: { x: number; y: number };
-  T_C: { x: number; y: number };
-  perp_u: { x: number; y: number };
-  perp_v: { x: number; y: number };
-}
-
-function drawRamalPath(
-  ctx: CanvasRenderingContext2D,
-  pts: number[][],
-  engine: IPlanoEngineCore,
-  _col: string
-): ElbowInfo[] {
-  if (pts.length < 2) return [];
-
-  const cvsPts = pts.map(pt => engine.toCvs(pt[0], pt[1]));
-  const elbows: ElbowInfo[] = [];
-
-  const activeRamal = engine.activeRamal;
-  const r = engine.ramales.find((rm: any) => rm.pts === pts) || (activeRamal?.pts === pts ? activeRamal : null);
-  const netId = r ? r.net : engine.activeNet;
-  const netRamales = engine.ramales.filter((rm: any) => rm.net === netId);
-  if (activeRamal && activeRamal.net === netId && !netRamales.some((rm: any) => rm.pts === activeRamal.pts)) {
-    netRamales.push(activeRamal as any);
-  }
-
-  ctx.beginPath();
-  ctx.moveTo(cvsPts[0].x, cvsPts[0].y);
-
-  for (let i = 1; i < cvsPts.length; i++) {
-    const isCorner = i < cvsPts.length - 1;
-    let drewArc = false;
-
-    if (isCorner) {
-      const cvsA = cvsPts[i - 1];
-      const cvsB = cvsPts[i];
-      const cvsC = cvsPts[i + 1];
-
-      const ax = cvsB.x - cvsA.x, ay = cvsB.y - cvsA.y;
-      const bx = cvsC.x - cvsB.x, by = cvsC.y - cvsB.y;
-      const lenA = Math.hypot(ax, ay), lenB = Math.hypot(bx, by);
-
-      if (lenA > 0 && lenB > 0) {
-        const ux = -ax / lenA, uy = -ay / lenA; // B -> A
-        const vx = bx / lenB, vy = by / lenB;   // B -> C
-        const cosAngle = ux * vx + uy * vy;
-
-        const pt = pts[i];
-        let isJunc = false;
-        for (let k = 0; k < pts.length; k++) {
-          if (k !== i && Math.hypot(pts[k][0] - pt[0], pts[k][1] - pt[1]) < 0.5) {
-            isJunc = true;
-            break;
-          }
-        }
-        if (!isJunc) {
-          const r = engine.ramales.find((rm: any) => rm.pts === pts);
-          if (r) {
-            const hasTrib = engine.ramales.some((other: any) => 
-              other.padre === r.id && 
-              other.pts.length >= 2 && 
-              Math.hypot(other.pts[0][0] - pt[0], other.pts[0][1] - pt[1]) < 0.5
-            );
-            if (hasTrib) isJunc = true;
-          }
-        }
-
-        const is45 = Math.abs(cosAngle + Math.cos(Math.PI / 4)) < 0.05;
-        if (is45 && !isJunc) {
-          const rad = engine.mm2cvs(1.5);
-          const actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
-
-          if (actualRad > 0.1) {
-            const T_A = { x: cvsB.x + actualRad * ux, y: cvsB.y + actualRad * uy };
-            const T_C = { x: cvsB.x + actualRad * vx, y: cvsB.y + actualRad * vy };
-            
-            ctx.lineTo(T_A.x, T_A.y);
-            ctx.stroke();
-
-            ctx.save();
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 2 * engine.zoom;
-            ctx.lineJoin = 'round';
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(T_A.x, T_A.y);
-            ctx.lineTo(cvsB.x, cvsB.y);
-            ctx.lineTo(T_C.x, T_C.y);
-            ctx.stroke();
-            ctx.restore();
-
-            ctx.beginPath();
-            ctx.moveTo(T_C.x, T_C.y);
-
-            const perp_u = { x: -uy, y: ux };
-            const perp_v = { x: -vy, y: vx };
-            elbows.push({ T_A, T_C, perp_u, perp_v });
-            drewArc = true;
-          }
-        } else if (Math.abs(cosAngle) < 0.05 && !isJunc) {
-          const rad = engine.mm2cvs(1.5);
-          const actualRad = Math.min(rad, lenA * 0.8, lenB * 0.8);
-
-          if (actualRad > 0.1) {
-            const T_A = { x: cvsB.x + actualRad * ux, y: cvsB.y + actualRad * uy };
-            const T_C = { x: cvsB.x + actualRad * vx, y: cvsB.y + actualRad * vy };
-            const ccx = cvsB.x + (ux + vx) * actualRad;
-            const ccy = cvsB.y + (uy + vy) * actualRad;
-            const angle_TA = Math.atan2(-vy, -vx);
-            const angle_TC = Math.atan2(-uy, -ux);
-            const cross = ux * vy - uy * vx;
-            const counterclockwise = cross > 0;
-            const perp_u = { x: -uy, y: ux };
-            const perp_v = { x: -vy, y: vx };
-
-            ctx.lineTo(T_A.x, T_A.y);
-            ctx.stroke();
-
-            ctx.save();
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 2 * engine.zoom;
-            ctx.beginPath();
-            ctx.arc(ccx, ccy, actualRad, angle_TA, angle_TC, counterclockwise);
-            ctx.stroke();
-            ctx.restore();
-
-            ctx.beginPath();
-            ctx.moveTo(T_C.x, T_C.y);
-
-            elbows.push({ T_A, T_C, perp_u, perp_v });
-            drewArc = true;
-          }
-        }
-      }
-    }
-
-    if (!drewArc) {
-      ctx.lineTo(cvsPts[i].x, cvsPts[i].y);
-    }
-  }
-
-  ctx.stroke();
-
-  if (elbows.length > 0) {
-    ctx.save();
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2 * engine.zoom;
-    ctx.setLineDash([]);
-    const tickLen = engine.mm2cvs(1.0);
-    elbows.forEach(elb => {
-      ctx.beginPath();
-      ctx.moveTo(elb.T_A.x - elb.perp_u.x * tickLen / 2, elb.T_A.y - elb.perp_u.y * tickLen / 2);
-      ctx.lineTo(elb.T_A.x + elb.perp_u.x * tickLen / 2, elb.T_A.y + elb.perp_u.y * tickLen / 2);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(elb.T_C.x - elb.perp_v.x * tickLen / 2, elb.T_C.y - elb.perp_v.y * tickLen / 2);
-      ctx.lineTo(elb.T_C.x + elb.perp_v.x * tickLen / 2, elb.T_C.y + elb.perp_v.y * tickLen / 2);
-      ctx.stroke();
-    });
-    ctx.restore();
-  }
-
-  return elbows;
-}
+import { drawRamalPath } from './drawRamalPath';
+import { renderJunctions } from './renderJunctions';
+import { renderVentCodos } from './renderVentCodos';
 
 function isJunctionVertex(px: number, py: number, netRamales: any[]): boolean {
   const outgoingVectors: { x: number; y: number }[] = [];
@@ -349,33 +186,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       }
     }
 
-    if (r.pts.length >= 2) {
-      const cStart = engine.toCvs(r.pts[0][0], r.pts[0][1]);
-      const cEnd = engine.toCvs(r.pts[r.pts.length - 1][0], r.pts[r.pts.length - 1][1]);
-      const drawEndMarker = (c: any, label: string) => {
-        if (!label) return;
-        ctx.save();
-        ctx.font = `bold ${engine.mm2cvs(1.6)}px Geist, monospace`;
-        const tw = ctx.measureText(label).width;
-        const pad = 3 * engine.zoom;
-        const w = tw + pad * 2;
-        const h = engine.mm2cvs(2.4) + pad * 2;
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = col;
-        ctx.lineWidth = 1 * engine.zoom;
-        ctx.beginPath();
-        ctx.rect(c.x + 6 * engine.zoom, c.y - h / 2, w, h);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = col;
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, c.x + 6 * engine.zoom + pad, c.y);
-        ctx.restore();
-      };
-      // drawEndMarker(cStart, r.ini);
-      // drawEndMarker(cEnd, r.fin);
-    }
+
 
     if (r.label || r.totalL || r.material || r.diametro || r.pendiente) {
       const lc = engine.toCvs(r.labelX, r.labelY);
@@ -608,7 +419,6 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           }
         }
 
-        // Check for bajante connections - only show arrow at opposite endpoint
         if (r.net === 'san' && !isCodoReventiladoConnection) {
           for (const b of (engine.bajantes || [])) {
             if (b.net !== 'san') continue;
@@ -643,7 +453,6 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         if (alen > 2) {
           const unx = adx / alen, uny = ady / alen;
           const arrowR = 14 * engine.zoom;
-          // Position arrow exactly at the start point (offset 0)
           const cx = firstC.x;
           const cy = firstC.y;
           ctx.save();
@@ -672,7 +481,6 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     const col = net ? net.col : '#a1a1aa';
     activeNetsRamales.forEach((r: any) => {
       r.pts.forEach(([px, py]: [number, number]) => {
-        // Skip drawing connection socket if it's a Tee/Yee junction
         if (isJunctionVertex(px, py, activeNetsRamales)) {
           return;
         }
@@ -693,374 +501,6 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
 
   renderJunctions(ctx, engine);
   renderVentCodos(ctx, engine);
-}
-
-function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
-  const DOUBLE_YEE_THRESHOLD_MM = 10;
-
-  NETS.forEach(net => {
-    if (engine._hiddenNets.has(net.id)) return;
-    const netRamales = engine.ramales.filter((r: any) => r.net === net.id);
-    if (netRamales.length === 0) return;
-
-    const getPointKey = (x: number, y: number) => `${x.toFixed(3)}_${y.toFixed(3)}`;
-    const vertexMap = new Map<string, number[]>();
-
-    netRamales.forEach(r => {
-      r.pts.forEach((pt: number[]) => {
-        vertexMap.set(getPointKey(pt[0], pt[1]), pt);
-      });
-    });
-
-    interface JunctionData {
-      P: number[];
-      uA: { x: number; y: number };
-      uB: { x: number; y: number };
-      branches: { x: number; y: number }[];
-      isTee: boolean;
-      isYee: boolean;
-    }
-
-    const junctions: JunctionData[] = [];
-
-    vertexMap.forEach((P) => {
-      const outgoingVectors: { x: number; y: number }[] = [];
-
-      netRamales.forEach(r => {
-        let isVertex = false;
-        for (let i = 0; i < r.pts.length; i++) {
-          if (Math.hypot(r.pts[i][0] - P[0], r.pts[i][1] - P[1]) < 0.5) {
-            isVertex = true;
-            if (i > 0) {
-              const prev = r.pts[i - 1];
-              const dx = prev[0] - P[0], dy = prev[1] - P[1];
-              const len = Math.hypot(dx, dy);
-              if (len > 0.1) outgoingVectors.push({ x: dx / len, y: dy / len });
-            }
-            if (i < r.pts.length - 1) {
-              const next = r.pts[i + 1];
-              const dx = next[0] - P[0], dy = next[1] - P[1];
-              const len = Math.hypot(dx, dy);
-              if (len > 0.1) outgoingVectors.push({ x: dx / len, y: dy / len });
-            }
-          }
-        }
-
-        if (!isVertex) {
-          for (let i = 0; i < r.pts.length - 1; i++) {
-            const A = r.pts[i];
-            const B = r.pts[i + 1];
-            const dx = B[0] - A[0], dy = B[1] - A[1];
-            const lenSq = dx * dx + dy * dy;
-            if (lenSq > 0.001) {
-              let t = ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / lenSq;
-              t = Math.max(0, Math.min(1, t));
-              const projX = A[0] + t * dx;
-              const projY = A[1] + t * dy;
-              const dist = Math.hypot(P[0] - projX, P[1] - projY);
-              
-              const lenA = Math.hypot(A[0] - P[0], A[1] - P[1]);
-              const lenB = Math.hypot(B[0] - P[0], B[1] - P[1]);
-
-              if (dist < 0.5 && lenA > 0.5 && lenB > 0.5) {
-                outgoingVectors.push({ x: (A[0] - P[0]) / lenA, y: (A[1] - P[1]) / lenA });
-                outgoingVectors.push({ x: (B[0] - P[0]) / lenB, y: (B[1] - P[1]) / lenB });
-              }
-            }
-          }
-        }
-      });
-
-      const uniqueVectors: { x: number; y: number }[] = [];
-      outgoingVectors.forEach(v => {
-        const isDup = uniqueVectors.some(uv => {
-          const dot = uv.x * v.x + uv.y * v.y;
-          return dot > 0.99;
-        });
-        if (!isDup) uniqueVectors.push(v);
-      });
-
-      if (uniqueVectors.length >= 3 && uniqueVectors.length <= 4) {
-        let bestPair = { i: -1, j: -1, dot: 1 };
-        for (let i = 0; i < uniqueVectors.length; i++) {
-          for (let j = i + 1; j < uniqueVectors.length; j++) {
-            const dot = uniqueVectors[i].x * uniqueVectors[j].x + uniqueVectors[i].y * uniqueVectors[j].y;
-            if (dot < bestPair.dot) {
-              bestPair = { i, j, dot };
-            }
-          }
-        }
-
-        if (bestPair.dot < -0.9) {
-          const uA = uniqueVectors[bestPair.i];
-          const uB = uniqueVectors[bestPair.j];
-          
-          const branches: { x: number; y: number }[] = [];
-          for (let k = 0; k < uniqueVectors.length; k++) {
-            if (k !== bestPair.i && k !== bestPair.j) {
-              branches.push(uniqueVectors[k]);
-            }
-          }
-
-          const cosVal = branches[0].x * uB.x + branches[0].y * uB.y;
-          const isTee = Math.abs(cosVal) < 0.15;
-          const isYee = Math.abs(cosVal) >= 0.4 && Math.abs(cosVal) <= 0.85;
-
-          if (isTee || isYee) {
-            junctions.push({ P, uA, uB, branches, isTee, isYee });
-          }
-        }
-      }
-    });
-
-    const usedInDouble = new Set<number>();
-
-    for (let i = 0; i < junctions.length; i++) {
-      for (let j = i + 1; j < junctions.length; j++) {
-        if (usedInDouble.has(i) || usedInDouble.has(j)) continue;
-        const a = junctions[i], b = junctions[j];
-        const distMm = Math.hypot(a.P[0] - b.P[0], a.P[1] - b.P[1]);
-        if (distMm > DOUBLE_YEE_THRESHOLD_MM) continue;
-
-        const dotMain = a.uA.x * b.uA.x + a.uA.y * b.uA.y;
-        const dotMain2 = a.uA.x * b.uB.x + a.uA.y * b.uB.y;
-        const aligned = Math.abs(Math.abs(dotMain) - 1) < 0.15 || Math.abs(Math.abs(dotMain2) - 1) < 0.15;
-        if (!aligned) continue;
-
-        usedInDouble.add(i);
-        usedInDouble.add(j);
-
-        const cvsA = engine.toCvs(a.P[0], a.P[1]);
-        const cvsB = engine.toCvs(b.P[0], b.P[1]);
-        const rad = engine.mm2cvs(2.0);
-        const tickLen = engine.mm2cvs(0.8);
-
-        ctx.save();
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 2 * engine.zoom;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.setLineDash([]);
-
-        const vectorsA = [];
-        const vecAB = { x: b.P[0] - a.P[0], y: b.P[1] - a.P[1] };
-        const dotAa = a.uA.x * vecAB.x + a.uA.y * vecAB.y;
-        if (dotAa <= 0) vectorsA.push(a.uA); else vectorsA.push(a.uB);
-        a.branches.forEach(uC => vectorsA.push(uC));
-
-        const vectorsB = [];
-        const vecBA = { x: a.P[0] - b.P[0], y: a.P[1] - b.P[1] };
-        const dotBa = b.uA.x * vecBA.x + b.uA.y * vecBA.y;
-        if (dotBa <= 0) vectorsB.push(b.uA); else vectorsB.push(b.uB);
-        b.branches.forEach(uC => vectorsB.push(uC));
-
-        ctx.beginPath();
-        if (vectorsA.length > 0) {
-          ctx.moveTo(cvsA.x + rad * vectorsA[0].x, cvsA.y + rad * vectorsA[0].y);
-          for(let i=1; i<vectorsA.length; i++) {
-             ctx.lineTo(cvsA.x, cvsA.y);
-             ctx.lineTo(cvsA.x + rad * vectorsA[i].x, cvsA.y + rad * vectorsA[i].y);
-          }
-          ctx.lineTo(cvsA.x, cvsA.y);
-        } else {
-          ctx.moveTo(cvsA.x, cvsA.y);
-        }
-        
-        ctx.lineTo(cvsB.x, cvsB.y);
-
-        if (vectorsB.length > 0) {
-          ctx.lineTo(cvsB.x + rad * vectorsB[0].x, cvsB.y + rad * vectorsB[0].y);
-          for(let i=1; i<vectorsB.length; i++) {
-             ctx.lineTo(cvsB.x, cvsB.y);
-             ctx.lineTo(cvsB.x + rad * vectorsB[i].x, cvsB.y + rad * vectorsB[i].y);
-          }
-        }
-        
-        ctx.lineWidth = 3 * engine.zoom;
-        ctx.strokeStyle = '#ffffff';
-        ctx.stroke();
-        ctx.lineWidth = 2 * engine.zoom;
-        ctx.strokeStyle = '#000000';
-        ctx.stroke();
-
-        const yeeKey = `${a.P[0].toFixed(3)}_${a.P[1].toFixed(3)}_${b.P[0].toFixed(3)}_${b.P[1].toFixed(3)}`;
-        const isFlash = engine._yeeFlashKey !== yeeKey;
-        if (isFlash) {
-          engine._yeeFlashKey = yeeKey;
-          ctx.beginPath();
-          ctx.arc((cvsA.x + cvsB.x) / 2, (cvsA.y + cvsB.y) / 2, engine.mm2cvs(1.2), 0, Math.PI * 2);
-          ctx.strokeStyle = '#00FFFF';
-          ctx.lineWidth = 1.5 * engine.zoom;
-          ctx.stroke();
-        }
-
-        ctx.lineWidth = 2 * engine.zoom;
-        ctx.strokeStyle = '#000000';
-        ctx.beginPath();
-        vectorsA.forEach(u => {
-          const T_pt = { x: cvsA.x + rad * u.x, y: cvsA.y + rad * u.y };
-          const perp = { x: -u.y, y: u.x };
-          ctx.moveTo(T_pt.x - perp.x * tickLen / 2, T_pt.y - perp.y * tickLen / 2);
-          ctx.lineTo(T_pt.x + perp.x * tickLen / 2, T_pt.y + perp.y * tickLen / 2);
-        });
-        vectorsB.forEach(u => {
-          const T_pt = { x: cvsB.x + rad * u.x, y: cvsB.y + rad * u.y };
-          const perp = { x: -u.y, y: u.x };
-          ctx.moveTo(T_pt.x - perp.x * tickLen / 2, T_pt.y - perp.y * tickLen / 2);
-          ctx.lineTo(T_pt.x + perp.x * tickLen / 2, T_pt.y + perp.y * tickLen / 2);
-        });
-        ctx.stroke();
-
-        ctx.restore();
-      }
-    }
-
-    for (let i = 0; i < junctions.length; i++) {
-      if (usedInDouble.has(i)) continue;
-      const j = junctions[i];
-
-      ctx.save();
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2 * engine.zoom;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.setLineDash([]);
-      const rad = engine.mm2cvs(2.0);
-      const tickLen = engine.mm2cvs(0.8);
-      const cvsP = engine.toCvs(j.P[0], j.P[1]);
-
-      const vectors = [j.uA, j.uB, ...j.branches];
-      ctx.beginPath();
-      if (vectors.length > 0) {
-        ctx.moveTo(cvsP.x + rad * vectors[0].x, cvsP.y + rad * vectors[0].y);
-        for(let i=1; i<vectors.length; i++) {
-           ctx.lineTo(cvsP.x, cvsP.y);
-           ctx.lineTo(cvsP.x + rad * vectors[i].x, cvsP.y + rad * vectors[i].y);
-        }
-      }
-
-      ctx.lineWidth = 3 * engine.zoom;
-      ctx.strokeStyle = '#ffffff';
-      ctx.stroke();
-
-      ctx.lineWidth = 2 * engine.zoom;
-      ctx.strokeStyle = '#000000';
-      ctx.stroke();
-
-      ctx.beginPath();
-      vectors.forEach(u => {
-        const T_pt = { x: cvsP.x + rad * u.x, y: cvsP.y + rad * u.y };
-        const perp = { x: -u.y, y: u.x };
-        ctx.moveTo(T_pt.x - perp.x * tickLen / 2, T_pt.y - perp.y * tickLen / 2);
-        ctx.lineTo(T_pt.x + perp.x * tickLen / 2, T_pt.y + perp.y * tickLen / 2);
-      });
-      ctx.stroke();
-
-      ctx.restore();
-    }
-  });
-}
-
-function renderVentCodos(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
-  if (engine._hiddenNets.has('vent')) return;
-
-  const ventRamales = engine.ramales.filter((r: any) => r.net === 'vent');
-  if (ventRamales.length === 0) return;
-
-  const sanRamales = engine.ramales.filter((r: any) => r.net === 'san');
-  if (sanRamales.length === 0) return;
-
-  const sanPoints: Set<string> = new Set();
-  sanRamales.forEach((r: any) => {
-    r.pts.forEach((pt: number[]) => {
-      sanPoints.add(`${pt[0].toFixed(3)}_${pt[1].toFixed(3)}`);
-    });
-  });
-
-  const drawn = new Set<string>();
-
-  ventRamales.forEach((r: any) => {
-    [0, r.pts.length - 1].forEach((idx: number) => {
-      const pt = r.pts[idx];
-      for (const key of sanPoints) {
-        const [sx, sy] = key.split('_').map(Number);
-        const dist = Math.hypot(pt[0] - sx, pt[1] - sy);
-        if (dist < 0.5) {
-          const dk = `${sx.toFixed(3)}_${sy.toFixed(3)}`;
-          if (drawn.has(dk)) return;
-          drawn.add(dk);
-
-          // calculate ramal direction at junction point
-          let dx = 0, dy = 0;
-          if (idx === 0 && r.pts.length >= 2) {
-            dx = r.pts[1][0] - r.pts[0][0];
-            dy = r.pts[1][1] - r.pts[0][1];
-          } else if (idx === r.pts.length - 1 && r.pts.length >= 2) {
-            dx = r.pts[idx][0] - r.pts[idx - 1][0];
-            dy = r.pts[idx][1] - r.pts[idx - 1][1];
-          }
-          const len = Math.hypot(dx, dy);
-          if (len < 0.01) { dx = 1; dy = 0; } else { dx /= len; dy /= len; }
-          // perpendicular to ramal direction
-          const px = -dy, py = dx;
-
-          const c = engine.toCvs(sx, sy);
-          const rad = engine.mm2cvs(2.0);
-          const vLen = engine.mm2cvs(2.5);
-
-          ctx.save();
-          ctx.lineCap = 'round';
-
-          // vertical lines crossing the ramal segments (perpendicular)
-          const offset = rad + engine.mm2cvs(0.8);
-          const cx1 = c.x - dx * offset, cy1 = c.y - dy * offset;
-          const cx2 = c.x + dx * offset, cy2 = c.y + dy * offset;
-          // white under-stroke to mask ramal lines
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 4 * engine.zoom;
-          ctx.beginPath();
-          ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
-          ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(cx2 - px * vLen, cy2 - py * vLen);
-          ctx.lineTo(cx2 + px * vLen, cy2 + py * vLen);
-          ctx.stroke();
-          // black visible lines
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 2 * engine.zoom;
-          ctx.beginPath();
-          ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
-          ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(cx2 - px * vLen, cy2 - py * vLen);
-          ctx.lineTo(cx2 + px * vLen, cy2 + py * vLen);
-          ctx.stroke();
-
-          // white fill to cover ramal lines crossing through
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, rad + engine.mm2cvs(0.3), 0, Math.PI * 2);
-          ctx.fill();
-
-          // outline circle
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
-          ctx.stroke();
-
-          // small dot in center
-          ctx.fillStyle = '#000000';
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, engine.mm2cvs(0.5), 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.restore();
-          break;
-        }
-      }
-    });
-  });
 }
 
 export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
@@ -1093,7 +533,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   const first = ar.pts[0];
   const last = ar.pts[ar.pts.length - 1];
   let mp = engine.toPlane(engine.mouseX, engine.mouseY);
-  const origMp = { x: mp.x, y: mp.y }; // save for bajante proximity check
+  const origMp = { x: mp.x, y: mp.y };
   
   let snapped = false;
 
@@ -1122,7 +562,6 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
     if (sp) mp = sp;
   }
 
-  // Bajante center override — check original mouse position, override angle constraint
   const bajThresh = 20 / engine.zoom;
   const nearBaj = engine.bajantes.find((b: any) => {
     if (engine._hiddenNets.has(b.net) || b.net !== ar.net) return false;
@@ -1131,7 +570,6 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   if (nearBaj) {
     mp = { x: nearBaj.x, y: nearBaj.y };
     snapped = true;
-    // Draw cyan guide circle
     const bc = engine.toCvs(nearBaj.x, nearBaj.y);
     ctx.save();
     ctx.strokeStyle = '#22D3EE';
