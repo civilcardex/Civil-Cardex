@@ -222,7 +222,7 @@ function PlanosTab({ state }: PlanosTabProps) {
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#00dce5' }}>&#x1F4D0; SOLTAR PARA SUBIR</span>
               </div>
             )}
-            <iframe key={selectedPlanUrl} src={`${selectedPlanUrl}#toolbar=0`} title="Plano seleccionado" style={{ width: '100%', height: '100%', border: 'none' }} />
+            <embed key={selectedPlanUrl} src={`${selectedPlanUrl}#toolbar=0`} type="application/pdf" title="Plano seleccionado" style={{ width: '100%', height: '100%' }} />
           </div>
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, background: 'var(--bg)', cursor: 'pointer', position: 'relative' }}
