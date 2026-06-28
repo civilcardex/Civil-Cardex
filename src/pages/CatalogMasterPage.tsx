@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GAS } from '../constants';
+import { GAS } from '../constants/engineeringDataGas';
 import { SANITARIAS, RCI, AGUA_FRIA, AGUA_CALIENTE, VENTILACION } from './catalog/catalogData';
 import SectionCard from './catalog/SectionCard';
 import { PipeTable, GasTable, ContadoresTable, MaterialesPorRedTable, CoefFriccionTable } from './catalog/CatalogTables';

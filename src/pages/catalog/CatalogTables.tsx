@@ -1,5 +1,5 @@
 import React from 'react'
-import { GAS } from '../../constants'
+import { GAS } from '../../constants/engineeringDataGas'
 import { CONTADORES, MATERIALES_POR_RED, COEF_FRICCION } from './catalogData'
 
 const HEADER_BG = 'var(--bg3)'
