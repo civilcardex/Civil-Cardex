@@ -18,7 +18,7 @@ export default function CivilTerrainPage() {
         <section className="relative z-10 flex flex-col md:flex-row items-center gap-12 mb-24 max-w-7xl mx-auto">
           <div className="md:w-1/2 flex flex-col gap-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 border border-outline-variant w-fit" style={{ background: '#282a2e' }}>
-              <img src="/logos/civilTerrainlogo.webp" alt="CivilTerrain" className="h-4 w-4 object-contain"  width={16} height={16} loading="lazy" />
+              <img src="/logos/civilTerrainlogo.svg" alt="CivilTerrain" className="h-4 w-4 object-contain"  width={16} height={16} loading="lazy" />
               <span className="text-[11px] tracking-[0.08em] font-bold uppercase" style={{ fontFamily: 'Geist, monospace', color: '#79ff5b' }}>Módulo CivilTerrain</span>
             </div>
             <h1 className="text-xl md:text-3xl lg:text-[36px] font-bold text-primary" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>

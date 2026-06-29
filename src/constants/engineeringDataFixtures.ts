@@ -32,17 +32,17 @@ export const AC_UC_IDS = ['lvm', 'duc', 'lvp', 'tin', 'lvra', 'lvro', 'lavav'];
 export const SAN_UC_IDS = ['sif', 'lvm', 'san', 'duc', 'lvra', 'tin', 'lvp', 'lvro', 'lavav'];
 
 export const APARATO_IMG = {
-  sif:'/iconos_aparatos/sifon.webp', lvm:'/iconos_aparatos/lavamanos.webp', san:'/iconos_aparatos/inodoro.webp',
-  lvp:'/iconos_aparatos/lavaplatos.webp', duc:'/iconos_aparatos/ducha.webp', tin:'/iconos_aparatos/tina.webp',
-  lvra:'/iconos_aparatos/lavadora.webp', lvro:'/iconos_aparatos/lavadero.webp', nev:'/iconos_aparatos/nevera.webp',
-  lavav:'/iconos_aparatos/lavavajillas.webp',
-  est4:'/iconos_aparatos/estufa_4_puestos.webp', est2:'/iconos_aparatos/estufa_2_puestos.webp',
-  hor_g:'/iconos_aparatos/horno_grande.webp', hor_m:'/iconos_aparatos/horno_mediano.webp',
-  hor_p:'/iconos_aparatos/horno_pequeño.webp', sec_g:'/iconos_aparatos/secadora_grande.webp',
-  sec_p:'/iconos_aparatos/secadora_pequeña.webp',
-  cal6:'/iconos_aparatos/calentador_6LPM.webp', cal11:'/iconos_aparatos/calentador_11LPM.webp', cal21:'/iconos_aparatos/calentador_21LPM.webp',
-  jac:'/iconos_aparatos/jacuzzi.webp', pisc:'/iconos_aparatos/calentador_piscina.webp',
-  sauna:'/iconos_aparatos/sauna.webp', turco:'/iconos_aparatos/turco.webp',
+  sif:'/iconos_aparatos/sifon.svg', lvm:'/iconos_aparatos/lavamanos.svg', san:'/iconos_aparatos/inodoro.svg',
+  lvp:'/iconos_aparatos/lavaplatos.svg', duc:'/iconos_aparatos/ducha.svg', tin:'/iconos_aparatos/tina.svg',
+  lvra:'/iconos_aparatos/lavadora.svg', lvro:'/iconos_aparatos/lavadero.svg', nev:'/iconos_aparatos/nevera.svg',
+  lavav:'/iconos_aparatos/lavavajillas.svg',
+  est4:'/iconos_aparatos/estufa_4_puestos.svg', est2:'/iconos_aparatos/estufa_2_puestos.svg',
+  hor_g:'/iconos_aparatos/horno_grande.svg', hor_m:'/iconos_aparatos/horno_mediano.svg',
+  hor_p:'/iconos_aparatos/horno_pequeño.svg', sec_g:'/iconos_aparatos/secadora_grande.svg',
+  sec_p:'/iconos_aparatos/secadora_pequeña.svg',
+  cal6:'/iconos_aparatos/calentador_6LPM.svg', cal11:'/iconos_aparatos/calentador_11LPM.svg', cal21:'/iconos_aparatos/calentador_21LPM.svg',
+  jac:'/iconos_aparatos/jacuzzi.svg', pisc:'/iconos_aparatos/calentador_piscina.svg',
+  sauna:'/iconos_aparatos/sauna.svg', turco:'/iconos_aparatos/turco.svg',
 };
 
 export const CAT_APS = [

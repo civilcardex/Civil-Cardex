@@ -46,7 +46,7 @@ function Navbar() {
           <span aria-hidden="true" className="material-symbols-outlined text-xl">{menuOpen ? 'close' : 'menu'}</span>
         </button>
         <Link to="/" className="flex items-center gap-2">
-          <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="h-9 w-9 md:h-12 md:w-12 object-contain"  width={36} height={36} loading="lazy" />
+          <img src="/logos/civilCorelogo.svg" alt="CivilCore" className="h-9 w-9 md:h-12 md:w-12 object-contain"  width={36} height={36} loading="lazy" />
           <span className="font-bold text-xl md:text-2xl tracking-tighter uppercase text-primary" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>CivilCore</span>
         </Link>
         <ul className="hidden md:flex gap-4 items-center h-full" style={{ listStyle: 'none', margin: 0, padding: 0 }}>

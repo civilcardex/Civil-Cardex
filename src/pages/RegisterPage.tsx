@@ -86,7 +86,7 @@ function RegisterPage() {
 
             <div className="px-8 pt-10 pb-6 text-center">
               <div className="flex justify-center mb-5">
-                <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="w-24 h-24 object-contain"
+                <img src="/logos/civilCorelogo.svg" alt="CivilCore" className="w-24 h-24 object-contain"
                   style={{ filter: 'drop-shadow(0 0 20px rgba(0,170,255,0.25))' }}  width={96} height={96} loading="lazy" />
               </div>
               <h1 className="text-2xl font-black tracking-tight uppercase mb-1"

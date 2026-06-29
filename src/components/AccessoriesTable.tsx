@@ -19,7 +19,7 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: any[
   return (
     <div className="card">
       <div className="card-h">
-        <h3 className="card-t"><img src="/iconos_diseno_redes/general/Accesorios.webp" alt="Accesorios"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Accesorios por ramal</h3>
+        <h3 className="card-t"><img src="/iconos_diseno_redes/general/Accesorios.svg" alt="Accesorios"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Accesorios por ramal</h3>
         <span className="card-s">{tramos.length} tramos</span>
       </div>
       <div className="scroll-top" style={{padding:'12px'}}>

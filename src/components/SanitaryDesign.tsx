@@ -385,7 +385,7 @@ export default function DisenosSanitarios() {
   <>
   <div className="card">
     <div className="card-h">
-      <h3 className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Diseno.webp" alt="Diseño red sanitaria"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red sanitaria</h3>
+      <h3 className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Diseno.svg" alt="Diseño red sanitaria"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red sanitaria</h3>
       <span className="card-s">{displayTramos.length} tramos · {totalUD} UD totales</span>
     </div>
     <div className="scroll-top" style={{padding:'16px'}}>

@@ -18,7 +18,7 @@ export default function CivilMEPPage() {
           <div className="relative z-10 w-full lg:w-1/2 flex flex-col gap-6">
             <div className="inline-flex items-center gap-2 border border-outline-variant px-3 py-1 w-max" style={{ background: '#111317' }}>
               <span className="w-2 h-2 bg-primary-fixed-dim animate-pulse" style={{ background: '#00dce5' }} />
-              <img src="/logos/civilMEPlogo.webp" alt="CivilMEP" className="h-4 w-4 object-contain"  width={16} height={16} loading="lazy" />
+              <img src="/logos/civilMEPlogo.svg" alt="CivilMEP" className="h-4 w-4 object-contain"  width={16} height={16} loading="lazy" />
               <span className="text-[13px] uppercase" style={{ fontFamily: 'Geist, monospace', color: '#00dce5' }}>Module: CivilMEP</span>
             </div>
             <h1 className="text-2xl md:text-4xl lg:text-[48px] leading-[1.1] font-bold text-on-background tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>

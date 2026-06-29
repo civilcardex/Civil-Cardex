@@ -65,7 +65,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   const colorVar = `var(--${networkType})`;
   const ucField = isAf(networkType) ? 'uc_af' : 'uc_ac';
   const title = isAf(networkType) ? 'agua fr\u00EDa' : 'agua caliente';
-  const icon = isAf(networkType) ? 'hidraulica/RAF_Diseno.webp' : 'hidraulica/RAC_Diseno.webp';
+  const icon = isAf(networkType) ? 'hidraulica/RAF_Diseno.svg' : 'hidraulica/RAC_Diseno.svg';
 
   const DIAM_OPTS = diamTable.map(d => ({ pulg: d.pulg, nominal: d.nominal, label: d.nominal, dInt: d.dInt }));
 

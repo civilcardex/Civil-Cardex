@@ -8,9 +8,9 @@ const EPContent = function PressureEquipmentDesign() {
   const [page, setPage] = useState(1);
 
   const pages = [
-    { t: "Datos de entrada", icon: "/iconos_diseno_redes/general/datos_de_entrada.webp", c: <EPInputPage /> },
-    { t: "Parámetros del equipo", icon: "/iconos_diseno_redes/general/datos_de_entrada.webp", c: <EPVerificationPage section="params" /> },
-    { t: "Resultados y Resumen", icon: "/iconos_diseno_redes/general/datos_de_entrada.webp", c: <EPVerificationPage section="results" /> },
+    { t: "Datos de entrada", icon: "/iconos_diseno_redes/general/datos_de_entrada.svg", c: <EPInputPage /> },
+    { t: "Parámetros del equipo", icon: "/iconos_diseno_redes/general/datos_de_entrada.svg", c: <EPVerificationPage section="params" /> },
+    { t: "Resultados y Resumen", icon: "/iconos_diseno_redes/general/datos_de_entrada.svg", c: <EPVerificationPage section="results" /> },
   ];
 
   return (

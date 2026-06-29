@@ -4,25 +4,25 @@ import Navbar from '../components/Navbar';
 import { usePageMeta } from '../hooks/usePageMeta';
 
 const MODULOS_HERO = [
-  { id: 'flow', logo: '/logos/civilFlowlogo.webp', name: 'CivilFlow', color: '#00aaff', path: '/civilflow',
+  { id: 'flow', logo: '/logos/civilFlowlogo.svg', name: 'CivilFlow', color: '#00aaff', path: '/civilflow',
     desc: 'Diseño y análisis de redes hidráulicas, sanitarias y de gas. Modelado de flujos, presiones y caudales.',
     cats: ['Modelado de redes', 'Análisis de presiones', 'Cálculo de caudales', 'Normativas integradas'] },
-  { id: 'structure', logo: '/logos/civilStructurelogo.webp', name: 'CivilStructure', color: '#7f8c8d', path: '/civilstructure',
+  { id: 'structure', logo: '/logos/civilStructurelogo.svg', name: 'CivilStructure', color: '#7f8c8d', path: '/civilstructure',
     desc: 'Diseño estructural y análisis de elementos como puentes, losas y marcos. Cálculo de cargas y resistencia.',
     cats: ['Análisis FEM', 'Diseño de elementos', 'Cálculo de cargas', 'Normativas NTC'] },
-  { id: 'terrain', logo: '/logos/civilTerrainlogo.webp', name: 'CivilTerrain', color: '#27ae60', path: '/civilterrain',
+  { id: 'terrain', logo: '/logos/civilTerrainlogo.svg', name: 'CivilTerrain', color: '#27ae60', path: '/civilterrain',
     desc: 'Topografía digital, perfiles de terreno y cálculo de movimiento de tierras. Modelos 3D del suelo.',
     cats: ['Modelos 3D', 'Curvas de nivel', 'Volúmenes corte/relleno', 'Integración LiDAR'] },
-  { id: 'bim', logo: '/logos/civilBIMlogo.webp', name: 'CivilBIM', color: '#8e44ad', path: '/civilbim',
+  { id: 'bim', logo: '/logos/civilBIMlogo.svg', name: 'CivilBIM', color: '#8e44ad', path: '/civilbim',
     desc: 'Integración BIM para coordinación multidisciplinar. Visualización y gestión de modelos 3D inteligentes.',
     cats: ['Importación IFC', 'Detección de colisiones', 'Coordinación BIM', 'Vinculación Revit'] },
-  { id: 'manage', logo: '/logos/civilManagelogo.webp', name: 'CivilManage', color: '#e67e22', path: '/civilmanage',
+  { id: 'manage', logo: '/logos/civilManagelogo.svg', name: 'CivilManage', color: '#e67e22', path: '/civilmanage',
     desc: 'Gestión de proyectos, presupuestos, cronogramas y seguimiento de avance de obra.',
     cats: ['Control de costos', 'Gestión de cronogramas', 'Avance de obra', 'Integración ERP'] },
-  { id: 'mep', logo: '/logos/civilMEPlogo.webp', name: 'CivilMEP', color: '#16a085', path: '/civilmep',
+  { id: 'mep', logo: '/logos/civilMEPlogo.svg', name: 'CivilMEP', color: '#16a085', path: '/civilmep',
     desc: 'Diseño de instalaciones mecánicas, eléctricas y de plomería integradas al modelo civil.',
     cats: ['Ruteo inteligente', 'Análisis de cargas', 'Dimensionamiento', 'Coordination MEP'] },
-  { id: 'roads', logo: '/logos/civilRoadslogo.webp', name: 'CivilRoads', color: '#f1c40f', path: '/civilroads',
+  { id: 'roads', logo: '/logos/civilRoadslogo.svg', name: 'CivilRoads', color: '#f1c40f', path: '/civilroads',
     desc: 'Diseño geométrico de vías, urbanismo, peraltes y alineamientos horizontales y verticales.',
     cats: ['Alineamientos', 'Diseño geométrico', 'Señalización', 'Análisis de tráfico'] },
 ];
@@ -72,7 +72,7 @@ function LandingPage() {
   "@type": "Organization",
   "name": "CivilFlow",
   "url": "https://civilcore.app",
-  "logo": "https://civilcore.app/logo.webp",
+  "logo": "https://civilcore.app/logo.svg",
   "description": "Software de ingeniería civil e hidrosanitaria. Cumplimiento NTC 1500, RAS 2000, NSR-10.",
   "foundingDate": "2024"
 }) }} />
@@ -134,7 +134,7 @@ function LandingPage() {
           <div className="flex flex-col items-center text-center">
             <div className="relative mb-4 md:mb-6 p-4 md:p-5 rounded-2xl"
               style={{ background: 'radial-gradient(circle at center, rgba(0,170,255,0.08) 0%, transparent 70%)', backdropFilter: 'blur(4px)', border: '1px solid rgba(0,170,255,0.1)' }}>
-              <img src="/logos/civilCorelogo.webp" alt="CivilCore"
+              <img src="/logos/civilCorelogo.svg" alt="CivilCore"
                 className="w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 object-contain"
                 style={{ filter: 'drop-shadow(0 0 80px rgba(0,170,255,0.5))' }}  width={112} height={112} loading="lazy" />
             </div>
@@ -315,7 +315,7 @@ function LandingPage() {
         <div className="flex flex-col md:flex-row justify-between items-center py-8 px-6 lg:px-8 gap-4 max-w-7xl mx-auto w-full">
           <div className="flex flex-col md:flex-row items-center gap-8">
             <Link to="/" className="flex items-center gap-2">
-              <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="h-11 w-11 object-contain"  width={44} height={44} loading="lazy" />
+              <img src="/logos/civilCorelogo.svg" alt="CivilCore" className="h-11 w-11 object-contain"  width={44} height={44} loading="lazy" />
               <span className="text-2xl font-bold uppercase" style={{ color: '#3a494a', fontFamily: 'Hanken Grotesk, sans-serif' }}>CivilCore</span>
             </Link>
             <nav className="flex gap-6">

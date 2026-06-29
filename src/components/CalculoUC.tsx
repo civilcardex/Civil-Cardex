@@ -19,13 +19,13 @@ function CalculoUC({ tipo }: CalculoUCProps) {
     af: {
       tramos: tramosAf, ucIds: AF_UC_IDS, field: 'uc_af', apField: 'ucaf',
       colorVar: 'var(--af)', clsHeader: 'af',
-      icon: '/iconos_diseno_redes/hidraulica/RAF_Calculo_UC.webp',
+      icon: '/iconos_diseno_redes/hidraulica/RAF_Calculo_UC.svg',
       title: 'agua fr\u00EDa', showTotal: true,
     },
     ac: {
       tramos: tramosAc, ucIds: AC_UC_IDS, field: 'uc_ac', apField: 'ucac',
       colorVar: 'var(--ac)', clsHeader: 'ac',
-      icon: '/iconos_diseno_redes/hidraulica/RAC_Calculo_UC.webp',
+      icon: '/iconos_diseno_redes/hidraulica/RAC_Calculo_UC.svg',
       title: 'agua caliente', showTotal: false,
     },
   } as const;

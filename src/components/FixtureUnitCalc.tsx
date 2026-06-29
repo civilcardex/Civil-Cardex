@@ -308,7 +308,7 @@ function CalculoUD() {
   <>
     <div className="card">
       <div className="card-h">
-        <h3 className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Calculo_UC.webp" alt="Cálculo unidades de descarga"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Cálculo de unidades de descarga</h3>
+        <h3 className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Calculo_UC.svg" alt="Cálculo unidades de descarga"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Cálculo de unidades de descarga</h3>
         <span className="card-s">{displayTramos.length} tramos</span>
       </div>
       <div className="scroll-top" style={{padding:'16px'}}>
