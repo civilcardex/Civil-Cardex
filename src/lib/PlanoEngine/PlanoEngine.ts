@@ -150,6 +150,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   nptLevels!: PlanoLevel[];
   _hiddenNets!: Set<string>;
   _lockedNets!: Set<string>;
+  activeNetworks!: Set<string> | undefined;
   private _touchStartHandler?: (e: TouchEvent) => void;
   private _touchMoveHandler?: (e: TouchEvent) => void;
   private _touchEndHandler?: (e: TouchEvent) => void;

@@ -210,6 +210,7 @@ export interface IPlanoEngineCore {
   _yeeFlashKey: string | null;
   _hiddenNets: Set<string>;
   _lockedNets: Set<string>;
+  activeNetworks: Set<string> | undefined;
   activeNet: string;
   mouseX: number;
   mouseY: number;
