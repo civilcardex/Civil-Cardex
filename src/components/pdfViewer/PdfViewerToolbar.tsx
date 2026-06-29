@@ -163,8 +163,8 @@ export default function PdfViewerToolbar({
         if (eng) {
           const work = eng.saveWork();
           saveToStorage(key, work);
-          try { writeSanDrawingSync(plansRef.current); } catch (_) {}
-          try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
+          try { writeSanDrawingSync(plansRef.current); } catch { /* ignore */ }
+          try { writeHydroDrawingSync(plansRef.current); } catch { /* ignore */ }
         }
         navigate('/civilflowareatrabajo');
       }}

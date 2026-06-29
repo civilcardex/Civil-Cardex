@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { pisoLbl } from "../../constants";
 import ModalProtocolo from "./ModalProtocolo";

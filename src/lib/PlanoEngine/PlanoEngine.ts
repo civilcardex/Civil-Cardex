@@ -289,7 +289,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _emitSelect(el: PlanoRamal | PlanoBajante | PlanoArea | PlanoTextAnnotation | PlanoDimension | null): void {
     if (!this._onSelectCb) return;
     if (!el) { this._onSelectCb(null); return; }
-    const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = el as unknown as Record<string, unknown>;
+    const rest = { ...el } as any;
+    delete rest._circ;
+    delete rest._ghost;
+    delete rest._box;
+    delete rest._polyBox;
+    delete rest._labelBox;
     this._onSelectCb(rest);
   }
 
@@ -696,6 +701,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _onKeyDownHandler(e: KeyboardEvent): void {
     if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'SELECT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
     const k = e.key.toLowerCase();
+    if (e.ctrlKey && k === 'z') { this.undoLast(); e.preventDefault(); return; }
+    if (e.ctrlKey && k === 's') { e.preventDefault(); return; }
     if (k === 's') { this.setTool('sel'); e.preventDefault(); }
     else if (k === 'l') { this.setTool('line'); e.preventDefault(); }
     else if (k === 'c') { this.setTool('cont'); e.preventDefault(); }
@@ -739,7 +746,5 @@ export default class PlanoEngine implements IPlanoEngineCore {
         e.preventDefault();
       }
     }
-    else if (e.ctrlKey && k === 'z') { this.undoLast(); e.preventDefault(); }
-    else if (e.ctrlKey && k === 's') { e.preventDefault(); }
   }
 }

@@ -16,7 +16,9 @@ export function ProtectedRoute() {
           }
         }
       }
-    } catch (_) {}
+    } catch {
+      // ignore
+    }
     return null;
   });
 

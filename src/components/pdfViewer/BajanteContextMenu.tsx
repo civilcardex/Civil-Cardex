@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs */
 import { useEffect } from "react";
 import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
@@ -92,6 +93,7 @@ export default function BajanteContextMenu({
               const gd = contextMenuState.bajante.ghostData?.[currentGhostLabel];
               const ghostDir = isGhost ? (gd && gd.direccion !== undefined ? gd.direccion : contextMenuState.bajante.direccion) : contextMenuState.bajante.direccion;
 
+              // eslint-disable-next-line react-hooks/refs
               const updateGhostField = (field: string, val: string) => {
                 if (!engineRef.current) return;
                 const gd = { ...(contextMenuState.bajante.ghostData || {}) };
@@ -345,6 +347,7 @@ export default function BajanteContextMenu({
                       }}
                       style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
                       <option value="">— Sin área —</option>
+                      {/* eslint-disable-next-line react-hooks/refs */}
                       {(engineRef.current?.areas || []).filter((a: any) => a.net === contextMenuState.bajante.net).map((a: any) => (
                         <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
                       ))}
@@ -412,6 +415,7 @@ export default function BajanteContextMenu({
                 <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Ramales asociados</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
                   {(() => {
+                    // eslint-disable-next-line react-hooks/refs
                     const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === activeNet && r.tipo !== 'tributario');
                     if (bajRamales.length === 0) return <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin ramales</div>;
                     const recibidos = (contextMenuState.bajante.recibeDeIds || []);
@@ -444,6 +448,7 @@ export default function BajanteContextMenu({
             </div>
             <div style={{ padding: '0 8px 8px' }}>
               <select
+                // eslint-disable-next-line react-hooks/refs
                 value={(engineRef.current?.bajantes || []).find((b: any) => b.area_m2 === contextMenuState.bajante.areaM2)?.id || ''}
                 onChange={e => {
                   const bajanteId = e.target.value;
@@ -460,6 +465,7 @@ export default function BajanteContextMenu({
                 }}
                 style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
                 <option value="">— Sin bajante —</option>
+                {/* eslint-disable-next-line react-hooks/refs */}
                 {(engineRef.current?.bajantes || []).filter((b: any) => b.net === contextMenuState.bajante.net).map((b: any) => (
                   <option key={b.id} value={b.id}>{b.code || b.id}</option>
                 ))}

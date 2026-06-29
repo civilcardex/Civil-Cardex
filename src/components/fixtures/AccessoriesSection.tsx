@@ -54,10 +54,10 @@ export default function AccessoriesSection({ targetId, curHidro, incAcc, decAcc,
                     <span style={{ fontSize: 7, fontWeight: 700, letterSpacing: .2, color: v > 0 ? accent : '#b9caca', fontFamily: "'Geist',monospace", textTransform: 'uppercase', textAlign: 'center', lineHeight: 1.1 }}>{a.nombre}</span>
                   </button>
                   <div style={{ display: 'flex', alignItems: 'stretch', borderTop: `1px solid ${v > 0 ? accent + '55' : 'var(--bg4)'}`, background: v > 0 ? 'rgba(37,99,235,.06)' : 'transparent' }}>
-                    <button onClick={(e) => { e.stopPropagation(); targetId && decAcc(a.id); }} disabled={!targetId || v === 0}
+                    <button onClick={(e) => { e.stopPropagation(); if (targetId) decAcc(a.id); }} disabled={!targetId || v === 0}
                       style={{ flex: 1, padding: '1px 0', border: 'none', borderRight: `1px solid ${v > 0 ? accent + '55' : 'var(--bg4)'}`, background: 'transparent', color: v === 0 || !targetId ? 'var(--line)' : '#ffb4ab', cursor: v === 0 || !targetId ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 800, lineHeight: 1, fontFamily: "'Geist',monospace" }}>−</button>
                     <div style={{ flex: 1.2, textAlign: 'center', fontSize: 10, fontWeight: 800, lineHeight: '14px', color: v > 0 ? accent : 'var(--txt2)', fontFamily: "'Geist',monospace", background: v > 0 ? 'rgba(37,99,235,.18)' : 'transparent' }}>{v}</div>
-                    <button onClick={(e) => { e.stopPropagation(); targetId && incAcc(a.id); }} disabled={!targetId}
+                    <button onClick={(e) => { e.stopPropagation(); if (targetId) incAcc(a.id); }} disabled={!targetId}
                       style={{ flex: 1, padding: '1px 0', border: 'none', borderLeft: `1px solid ${v > 0 ? accent + '55' : 'var(--bg4)'}`, background: 'transparent', color: !targetId ? 'var(--line)' : accent, cursor: !targetId ? 'not-allowed' : 'pointer', fontSize: 11, fontWeight: 800, lineHeight: 1, fontFamily: "'Geist',monospace" }}>+</button>
                   </div>
                 </div>

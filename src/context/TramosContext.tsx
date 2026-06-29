@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs */
 import { createContext, useReducer, useRef, useMemo, useCallback, useContext, useEffect, type ReactNode } from "react";
 import { readSanDrawingSync, readHydroDrawingSync } from "../utils/drawingSync";
 import { diamPulgFromLabel } from "../utils/diamPulgFromLabel";
@@ -141,13 +142,13 @@ function buildTramos(
     if (raw) {
       drawingData = raw;
       if (typeof drawingData === 'string') {
-        try { drawingData = JSON.parse(drawingData); } catch (_) {}
+        try { drawingData = JSON.parse(drawingData); } catch { /* ignore */ }
       }
       drawingBajantes = drawingData?.bajantes || [];
     }
 
     for (const r of ((plane as any).ramales || [])) {
-      let rId = r.id;
+      const rId = r.id;
       let ini = String(r.ini || '');
       let fin = String(r.fin || '');
 

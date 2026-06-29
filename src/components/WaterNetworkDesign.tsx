@@ -15,7 +15,11 @@ import Acometida from "./SupplyConnection";
 
 function LazyNumInput({ val, onSave, label }: { val: number | string; onSave: (v: number | undefined) => void; label?: string }) {
   const [str, setStr] = React.useState(val != null ? val.toString() : "");
-  React.useEffect(() => { setStr(val != null ? val.toString() : ""); }, [val]);
+  const [prevVal, setPrevVal] = React.useState(val);
+  if (val !== prevVal) {
+    setPrevVal(val);
+    setStr(val != null ? val.toString() : "");
+  }
   const blur = () => {
     if (str.trim() === "") return onSave(undefined);
     const n = parseFloat(str);
@@ -377,6 +381,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
       dNom = dNom.replace('½', '1/2').replace('¾', '3/4');
       const idx = CONTADORES_CAT.findIndex(c => `${c.dn}"` === dNom);
       if (idx !== -1) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setAcoContIx(prev => prev !== idx ? idx : prev);
       }
     }

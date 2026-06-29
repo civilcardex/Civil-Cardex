@@ -105,7 +105,9 @@ const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, plan
         for (const r of (data as any).ramales || []) {
           if (r.net === 'gas') existingIds.add(r.id);
         }
-      } catch (_) {}
+      } catch {
+        // ignore
+      }
     }
     setGasAcc(prev => {
       let changed = false;

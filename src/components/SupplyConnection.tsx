@@ -73,11 +73,14 @@ const SCROLL_INNER: React.CSSProperties = { display: "grid", gridTemplateColumns
 
 function LazyNum({ value, onChange, ariaLabel, style, className }: any) {
   const [val, setVal] = React.useState(value?.toString() || "");
-  React.useEffect(() => {
+  const [prevValue, setPrevValue] = React.useState(value);
+
+  if (value !== prevValue) {
+    setPrevValue(value);
     if (parseFloat(val) !== value && !(val === "" && value === 0)) {
       setVal(value?.toString() || "0");
     }
-  }, [value]);
+  }
   return (
     <input 
       type="number" 

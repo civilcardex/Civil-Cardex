@@ -20,7 +20,9 @@ export function usePdfAutoSave(
         saveToStorage('last_tracos_id', id);
         saveTrazosToDB(id, work);
       }
-    } catch (_) {}
+    } catch {
+      // ignore
+    }
   }, []);
 
   const saveTrazosToStorage = useCallback(() => {
@@ -36,8 +38,8 @@ export function usePdfAutoSave(
     const id = eng._loadedPlanId || currentIdRef.current || 'work';
     eng._dirty = false;
     performSave(eng, id);
-    try { writeSanDrawingSync(plans); } catch (_) {}
-    try { writeHydroDrawingSync(plans); } catch (_) {}
+    try { writeSanDrawingSync(plans); } catch { /* ignore */ }
+    try { writeHydroDrawingSync(plans); } catch { /* ignore */ }
     setSaveStatus('saved');
   }, [plans, performSave]);
 

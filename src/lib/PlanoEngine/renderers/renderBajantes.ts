@@ -13,7 +13,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     const r = 10 * engine.zoom;
 
     // Item 2: Label angle + snap constraint (Auto-rotation removed as requested)
-    let angle = (b.labelAngle || 0) * Math.PI / 180;
+    const angle = (b.labelAngle || 0) * Math.PI / 180;
 
 
     b._circ = { x: c.x, y: c.y, r: Math.max(22 * engine.zoom, r + 8) };
@@ -295,7 +295,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       const line1 = diamStr ? `${codeStr}  D=${diamStr}` : (codeStr || '—');
       
       // Direction text
-      let dirText = DIR_MAP[b.direccion] || '';
+      const dirText = DIR_MAP[b.direccion] || '';
       const hasDir = !!dirText;
       
       ctx.font = `bold ${fsCode}px Geist, monospace`;
@@ -347,7 +347,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     b._ghost = { x: c.x, y: c.y, r: Math.max(24, r + 10) };
 
     // Item 6: Label angle + snap constraint (Auto-rotation removed as requested)
-    let ghostAngle = (b.labelAngle || 0) * Math.PI / 180;
+    const ghostAngle = (b.labelAngle || 0) * Math.PI / 180;
 
     // Ghost circle + symbol
     ctx.save();
@@ -490,7 +490,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       }
       const line1 = diamStr ? `${codeStr}  D=${diamStr}` : (codeStr || '—');
 
-      let dirText = DIR_MAP[ghostDir] || '';
+      const dirText = DIR_MAP[ghostDir] || '';
       const hasDir = !!dirText;
 
       ctx.font = `bold ${fsCode}px Geist, monospace`;

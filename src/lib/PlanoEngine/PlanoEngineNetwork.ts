@@ -192,7 +192,7 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
     engine.ramales.filter(t => t.padre === oldId).forEach(t => { t.padre = newId; });
   });
   engine._netCounts[netId].ramal = ramalesNet.length;
-  try { window.dispatchEvent(new Event('storage')); } catch (_) {}
+  try { window.dispatchEvent(new Event('storage')); } catch { /* ignore */ }
 }
 
 export function _renumberBajantes(engine: IPlanoEngineCore, netId: string): void {
@@ -251,7 +251,7 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
   let hidroData: Record<string, any>;
   try {
     hidroData = loadFromStorage(storageKey, {}) as Record<string, any>;
-  } catch (e) {
+  } catch {
     hidroData = {};
   }
 
@@ -500,7 +500,7 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
 
   if (changed) {
     saveToStorage(storageKey, hidroData);
-    try { window.dispatchEvent(new Event('storage')); } catch (_) {}
+    try { window.dispatchEvent(new Event('storage')); } catch { /* ignore */ }
   }
 }
 

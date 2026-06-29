@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext, type ReactNode } from 'react';
 import { saveToStorage, loadFromStorage, removeFromStorage } from '../services/storageService';
 import { storePDF, loadPDF, deletePDF } from '../services/idbStorage';
@@ -27,7 +28,7 @@ function persistMeta(plans: PlanItem[]) {
 }
 
 export function PlansProvider({ children }: { children?: ReactNode }) {
-  const [plans, setPlans] = useState<any[]>([]);
+  const [plans, setPlans] = useState<PlanItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const restoredRef = useRef(false);
   const [restoreDone, setRestoreDone] = useState(false);

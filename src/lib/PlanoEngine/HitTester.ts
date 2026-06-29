@@ -120,7 +120,7 @@ export function distanceToRamal(
       const distToCenter = Math.hypot(cx - ccx, cy - ccy);
       const distToCircle = Math.abs(distToCenter - actualRad);
 
-      let angle = Math.atan2(cy - ccy, cx - ccx);
+      const angle = Math.atan2(cy - ccy, cx - ccx);
       const twoPi = Math.PI * 2;
       const normAngle = (angle % twoPi + twoPi) % twoPi;
       const normStart = (angle_TA % twoPi + twoPi) % twoPi;

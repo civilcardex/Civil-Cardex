@@ -105,7 +105,9 @@ function PlanosTab({ state }: PlanosTabProps) {
       try {
         localStorage.setItem('civilflow_visor_activeIndex', String(idx));
         localStorage.setItem('civilflow_visor_activePlanId', String(selectedPlan.id));
-      } catch (_) {}
+      } catch {
+        // ignore
+      }
     }
     navigate('/visor');
   };
@@ -201,7 +203,9 @@ function PlanosTab({ state }: PlanosTabProps) {
                       try {
                         localStorage.setItem('civilflow_visor_activeIndex', String(idx));
                         localStorage.setItem('civilflow_visor_activePlanId', String(selectedPlanId));
-                      } catch (_) {}
+                      } catch {
+                        // ignore
+                      }
                     }
                     navigate('/visor');
                   }}

@@ -240,9 +240,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const contentW = Math.max(nameW, totalInfoW);
       const boxW = contentW + boxPadX * 2;
       const boxH = (lbl ? lineHName : 0) + (infoSegs.length > 0 ? lineHInfo : 0) + boxPadY * 2;
-      let drawX: number, drawY: number;
-      drawX = lc.x;
-      drawY = lc.y;
+      const drawX = lc.x;
+      const drawY = lc.y;
       const labelAngle = (r.labelAngle || 0) * Math.PI / 180;
       const cosA = Math.cos(labelAngle), sinA = Math.sin(labelAngle);
       const labelGap = -engine.mm2cvs(12);

@@ -20,7 +20,7 @@ const VIEWER_JSONLD = {
 export default function ViewerPage() {
   const { plans, addPlans, removePlan } = usePlans();
   const { pisos } = useProject();
-  const [activeIndex, setActiveIndex] = useState(() => {
+  const [rawActiveIndex, setActiveIndex] = useState(() => {
     try {
       const savedId = localStorage.getItem('civilflow_visor_activePlanId');
       const saved = localStorage.getItem('civilflow_visor_activeIndex');
@@ -29,13 +29,17 @@ export default function ViewerPage() {
         if (idx >= 0) return idx;
       }
       return saved ? Number(saved) : 0;
-    } catch (_) { return 0; }
+    } catch {
+      return 0;
+    }
   });
   const [activeNetworks] = useState<Set<string>>(() => {
     try {
       const saved = localStorage.getItem('civilflow_active_nets');
       if (saved) return new Set(JSON.parse(saved));
-    } catch (_) {}
+    } catch {
+      // ignore
+    }
     return new Set();
   });
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -43,34 +47,42 @@ export default function ViewerPage() {
   const navigate = useNavigate();
 
   const files = plans.map(p => ({ id: p.id, file: p.file }));
-  const planIdResolvedRef = useRef(false);
+  const [planIdResolved, setPlanIdResolved] = useState(false);
   usePageMeta('Visor de planos', 'Visor de planos PDF con superposición de redes hidrosanitarias. Herramientas de dibujo, calibración y medición.');
 
-  useEffect(() => {
-    if (planIdResolvedRef.current || files.length === 0) return;
-    planIdResolvedRef.current = true;
+  // Adjust state during render-phase if rawActiveIndex is out of bounds
+  let activeIndex = rawActiveIndex;
+  if (files.length > 0 && rawActiveIndex >= files.length) {
+    activeIndex = Math.max(0, files.length - 1);
+    setActiveIndex(activeIndex);
+  }
+
+  // Resolve saved plan ID once when plans become available
+  if (!planIdResolved && plans.length > 0) {
+    setPlanIdResolved(true);
     try {
       const savedId = localStorage.getItem('civilflow_visor_activePlanId');
-      if (savedId && !plans.some(p => String(p.id) === savedId && plans.indexOf(p) === activeIndex)) {
-        const idx = files.findIndex(f => String(f.id) === savedId);
-        if (idx >= 0) setActiveIndex(idx);
+      if (savedId) {
+        const idx = plans.findIndex(p => String(p.id) === savedId);
+        if (idx >= 0 && idx !== rawActiveIndex) {
+          activeIndex = idx;
+          setActiveIndex(idx);
+        }
       }
-    } catch (_) {}
-  }, [files.length, plans, activeIndex]);
+    } catch {
+      // ignore
+    }
+  }
 
   useEffect(() => {
     try {
       localStorage.setItem('civilflow_visor_activeIndex', String(activeIndex));
       const plan = plans[activeIndex];
       if (plan) localStorage.setItem('civilflow_visor_activePlanId', String(plan.id));
-    } catch (_) {}
-  }, [activeIndex, plans]);
-
-  useEffect(() => {
-    if (files.length > 0 && activeIndex >= files.length) {
-      setActiveIndex(Math.max(0, files.length - 1));
+    } catch {
+      // ignore
     }
-  }, [files.length, activeIndex]);
+  }, [activeIndex, plans]);
 
   const handleAddPlan = useCallback(() => fileRef.current?.click(), []);
 

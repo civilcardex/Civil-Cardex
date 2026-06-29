@@ -269,7 +269,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             if (sLen > 0.001) {
               const crossPlane = Math.abs(sDx * (ay - p.y) - sDy * (ax - p.x)) / sLen;
               if (crossPlane < engine.mm2cvs(3)) {
-                let t = ((p.x - ax) * sDx + (p.y - ay) * sDy) / (sLen * sLen);
+                const t = ((p.x - ax) * sDx + (p.y - ay) * sDy) / (sLen * sLen);
                 p.x = ax + t * sDx;
                 p.y = ay + t * sDy;
                 snappedToConstraint = true;

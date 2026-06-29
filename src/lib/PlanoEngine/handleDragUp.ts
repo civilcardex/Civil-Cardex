@@ -9,8 +9,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
     const w = maxX - minX, h = maxY - minY;
     engine.marqueeRect = null;
-    if (w < 3 && h < 3) {
-    } else {
+    if (w >= 3 || h >= 3) {
       if (!isCtrl) {
         engine.multiSel = [];
       }

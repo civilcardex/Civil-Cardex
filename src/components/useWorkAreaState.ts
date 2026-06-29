@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs, react-hooks/set-state-in-effect */
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
 import type { ChangeEvent, FocusEvent } from "react";
 import { useTramos } from "../context/TramosContext";

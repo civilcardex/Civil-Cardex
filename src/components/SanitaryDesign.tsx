@@ -358,7 +358,7 @@ export default function DisenosSanitarios() {
     return [orientedConexiones, displayMap, componentTotalMap];
   }, [plans, tramosSan, mergedBase]);
 
-  const getDescendantsUD = useCallback((tKey: string, visited = new Set<string>()): number => {
+  function getDescendantsUD(tKey: string, visited = new Set<string>()): number {
     if (visited.has(tKey)) return 0;
     visited.add(tKey);
     const children = conexiones[tKey] || [];
@@ -370,7 +370,7 @@ export default function DisenosSanitarios() {
       }
     }
     return sum;
-  }, [conexiones, tramosSan, mergedBase]);
+  }
 
   const totales = useMemo(() => mergedBase.map(d => ({
     id: d.id, nombre: d.nombre, ud: d.ud,
@@ -449,7 +449,9 @@ export default function DisenosSanitarios() {
                 const S=sVal!=null&&sVal>0?sVal/100:null;
                 const Q=udAcum>0&&K!=null?Math.round(caudalHunterLPS(udAcum,K)*1000)/1000:null;
                 const dSel=DIAM_OPTIONS.find(d=>d.pulg===(t.diamDisPulg||0))||null;
-                let DcalcPulg=0,DdisPulg=dSel?dSel.pulg:0,DintMm=dSel?dSel.mm:0;
+                let DcalcPulg = 0;
+                const DdisPulg = dSel ? dSel.pulg : 0;
+                const DintMm = dSel ? dSel.mm : 0;
                 let Qo=0,Vo=0,qqo=0;
                 let Vreal=0,chequeoV='—';
                 let Yc=0,Yn=0,Froude=0,tipoFlujo='—',Ymax=0,chequeoYn='—';

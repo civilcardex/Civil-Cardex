@@ -134,7 +134,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                           value={profTexts[r.id] !== undefined ? profTexts[r.id] : (r.prof !== undefined && r.prof !== null ? String(r.prof) : '0')}
                           onChange={e => {
                             const raw = e.target.value.replace(',', '.');
-                            const cleaned = raw.replace(/[^0-9.\-]/g, '').replace(/(?!^)-/g, '');
+                            const cleaned = raw.replace(/[^0-9.-]/g, '').replace(/(?!^)-/g, '');
                             setProfTexts(prev => ({ ...prev, [r.id]: cleaned }));
                           }}
                           onFocus={e => {

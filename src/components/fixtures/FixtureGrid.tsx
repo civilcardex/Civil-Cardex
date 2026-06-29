@@ -48,10 +48,10 @@ export default function FixtureGrid({ items, currentMap, unitKey, unidadLbl, inc
               <span style={{ fontSize: 8, fontWeight: 600, lineHeight: 1, color: 'var(--txt2)', fontFamily: "'Geist',monospace", padding: '1px 4px', marginTop: 1, background: 'rgba(0,0,0,.25)', border: '1px solid var(--bg4)', borderRadius: 2 }}>{uStr} {unidadLbl}</span>
             </button>
             <div style={{ display: 'flex', alignItems: 'stretch', borderTop: `1px solid ${active ? accent + '55' : 'var(--bg4)'}`, background: active ? 'rgba(37,99,235,.06)' : 'transparent' }}>
-              <button onClick={(e) => { e.stopPropagation(); targetId && dec(ap.id); }} disabled={!targetId || c === 0}
+              <button onClick={(e) => { e.stopPropagation(); if (targetId) dec(ap.id); }} disabled={!targetId || c === 0}
                 style={{ flex: 1, padding: '2px 0', background: 'transparent', color: c === 0 || !targetId ? 'var(--line)' : '#ffb4ab', cursor: c === 0 || !targetId ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 800, fontFamily: "'Geist',monospace", border: 'none', borderRight: `1px solid ${active ? accent + '55' : 'var(--bg4)'}` }}>−</button>
               <div style={{ flex: 1.2, textAlign: 'center', fontSize: 10, fontWeight: 800, lineHeight: '14px', color: c > 0 ? accent : 'var(--txt2)', fontFamily: "'Geist',monospace", background: c > 0 ? 'rgba(37,99,235,.18)' : 'transparent' }}>{c}</div>
-              <button onClick={(e) => { e.stopPropagation(); targetId && inc(ap.id); }} disabled={!targetId}
+              <button onClick={(e) => { e.stopPropagation(); if (targetId) inc(ap.id); }} disabled={!targetId}
                 style={{ flex: 1, padding: '2px 0', background: 'transparent', color: !targetId ? 'var(--line)' : accent, cursor: !targetId ? 'not-allowed' : 'pointer', fontSize: 12, fontWeight: 800, fontFamily: "'Geist',monospace", border: 'none', borderLeft: `1px solid ${active ? accent + '55' : 'var(--bg4)'}` }}>+</button>
             </div>
           </div>

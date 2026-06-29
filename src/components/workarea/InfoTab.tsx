@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import type { Dispatch, SetStateAction, ChangeEvent, FocusEvent } from "react";
 import { REDES, USOS, pisoLbl } from "../../constants";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
@@ -70,7 +70,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({ redes, setRedes, net
               const cssVar = `--${r.id}`;
               const currentColor = netColors[r.id] || '#666';
               return (
-                <button key={r.id} disabled={!isEditing || (isVent && !sanOn)} onClick={() => { if (isVent && !sanOn) return; const n = new Set(redes); on ? n.delete(r.id) : n.add(r.id); setRedes(n); }}
+                <button key={r.id} disabled={!isEditing || (isVent && !sanOn)} onClick={() => { if (isVent && !sanOn) return; const n = new Set(redes); if (on) n.delete(r.id); else n.add(r.id); setRedes(n); }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 3,
                     padding: isVent ? '2px 5px 2px 12px' : '3px 5px',
@@ -91,7 +91,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({ redes, setRedes, net
                         const net = NETS.find((n: any) => n.id === r.id);
                         if (net) net.col = c;
                       } catch (e) { if (import.meta.env.DEV) console.error(e); }
-                      try { localStorage.setItem('civilflow_net_' + r.id, c); } catch (_) { }
+                      try { localStorage.setItem('civilflow_net_' + r.id, c); } catch { /* ignore */ }
                     }}
                     style={{ width: 14, height: 14, border: 'none', padding: 0, cursor: isEditing && (!isVent || sanOn) ? 'pointer' : 'default', background: 'none', flexShrink: 0, opacity: isEditing && (!isVent || sanOn) ? 1 : 0.5 }} />
                   <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: on ? currentColor : 'transparent', border: '1.5px solid ' + (on ? currentColor : 'var(--txt3)') }} />
@@ -129,7 +129,7 @@ const ActiveEquiposCard = React.memo(function ActiveEquiposCard({ redes, setRede
             if (!r) return null;
             const on = redes.has(r.id);
             return (
-              <button key={r.id} disabled={!editing} onClick={() => { if (!editing) return; const n = new Set(redes); on ? n.delete(r.id) : n.add(r.id); setRedes(n); }}
+              <button key={r.id} disabled={!editing} onClick={() => { if (!editing) return; const n = new Set(redes); if (on) n.delete(r.id); else n.add(r.id); setRedes(n); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 3, padding: '3px 5px', cursor: editing ? 'pointer' : 'default',
                   background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left', opacity: editing ? 1 : 0.5

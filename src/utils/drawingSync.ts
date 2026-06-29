@@ -54,7 +54,7 @@ function buildPrefixedSyncData(plans: DrawingData[], families: Set<string>) {
     if (!raw) continue;
     let data = raw as DrawingData;
     if (typeof data === 'string') {
-      try { data = JSON.parse(data); } catch (_) { continue; }
+      try { data = JSON.parse(data); } catch { continue; }
     }
     const nivel = plan.nivel ?? inferNivelFromDrawing(data);
 
@@ -108,7 +108,7 @@ function buildNonPrefixedSyncData(plans: DrawingData[], families: Set<string>) {
     if (!raw) continue;
     let data = raw as DrawingData;
     if (typeof data === 'string') {
-      try { data = JSON.parse(data); } catch (_) { continue; }
+      try { data = JSON.parse(data); } catch { continue; }
     }
     const nivel = plan.nivel ?? inferNivelFromDrawing(data);
 

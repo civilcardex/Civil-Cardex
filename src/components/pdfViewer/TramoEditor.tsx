@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs */
 import React, { type RefObject } from 'react'
 import { DIAM_BAN, DIAM_BY_MAT, DIAM_DEFAULT_BY_NET, DIAM_VENT } from '../../constants'
 import { GAS } from '../../constants/engineeringDataGas';

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
@@ -35,9 +36,6 @@ function ProfilePage() {
     activo: { color: 'bg-primary text-on-primary-container', label: 'ACTIVO' },
   }
 
-  usePageMeta('Perfil', 'Gestione su perfil de CivilCore: datos personales, proyectos activos y configuración de cuenta de ingeniería.');
-  useEffect(() => { fetchPerfil() }, [])
-
   async function fetchPerfil() {
     if (!supabase) return
     try {
@@ -68,6 +66,9 @@ function ProfilePage() {
       setLoading(false)
     }
   }
+
+  usePageMeta('Perfil', 'Gestione su perfil de CivilCore: datos personales, proyectos activos y configuración de cuenta de ingeniería.');
+  useEffect(() => { fetchPerfil() }, [])
 
   function handleEditStart(field: string) {
     setEditField(field)

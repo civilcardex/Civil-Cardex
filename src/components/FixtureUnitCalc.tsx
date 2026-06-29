@@ -262,7 +262,7 @@ function CalculoUD() {
     return [orientedConexiones, componentTotalMap];
   }, [plans, tramosSan, mergedBase]);
 
-  const getDescendantsUD = useCallback((tKey: string, visited = new Set<string>()): number => {
+  function getDescendantsUD(tKey: string, visited = new Set<string>()): number {
     if (visited.has(tKey)) return 0;
     visited.add(tKey);
     const children = conexiones[tKey] || [];
@@ -274,9 +274,9 @@ function CalculoUD() {
       }
     }
     return sum;
-  }, [conexiones, tramosSan, mergedBase]);
+  }
 
-  const getDescendantKeys = useCallback((tKey: string, visited = new Set<string>()): string[] => {
+  function getDescendantKeys(tKey: string, visited = new Set<string>()): string[] {
     if (visited.has(tKey)) return [];
     visited.add(tKey);
     const children = conexiones[tKey] || [];
@@ -286,7 +286,7 @@ function CalculoUD() {
       list = list.concat(getDescendantKeys(childKey, visited));
     }
     return list;
-  }, [conexiones]);
+  }
 
   const displayTramos = useMemo(() => {
     return tramosSan.filter(t => t.tipo === 'ramal' && !t.esBajante)

@@ -152,7 +152,7 @@ export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, 
 }
 
 export function updateElementById(engine: IPlanoEngineCore, id: string, fields: Record<string, unknown>): void {
-  let el: PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | undefined =
+  const el: PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | undefined =
     (engine.ramales.find((r: any) => r.id === id)
       || engine.bajantes.find((b: any) => b.id === id)
       || engine.textAnnots.find((t: any) => t.id === id)

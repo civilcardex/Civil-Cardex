@@ -65,8 +65,8 @@ export function usePdfViewerEngine({
     if (!pdf || !pdfCanvas) return;
 
     if (renderTaskRef.current) {
-      try { renderTaskRef.current.cancel(); } catch (_) {}
-      try { await renderTaskRef.current.promise; } catch (_) {}
+      try { renderTaskRef.current.cancel(); } catch { /* ignore */ }
+      try { await renderTaskRef.current.promise; } catch { /* ignore */ }
       renderTaskRef.current = null;
     }
     renderingRef.current = true;

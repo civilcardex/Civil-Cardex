@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useMemo, useEffect } from "react";
 import { LE_K, pisoCorto } from "../constants";
 import { GAS, CAT_GAS } from "../constants/engineeringDataGas";
@@ -55,7 +56,9 @@ function GasDesign(){
         for (const r of (data as any).ramales || []) {
           if (r.net === 'gas') existingIds.add(r.id);
         }
-      } catch (_) {}
+      } catch {
+        // ignore
+      }
     }
     setGasAcc(prev => {
       let changed = false;
