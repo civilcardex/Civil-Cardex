@@ -146,18 +146,11 @@ function IsometriaTabBase({ state }: any) {
   const nptMap = useMemo(() => {
     const m: Record<number, number> = {};
     const pisosArr = pisos || [];
-    for (const p of pisosArr) m[p.n] = (p.npt || 0) * 1000;
-    const vals = Object.values(m);
-    if (vals.length > 1) {
-      const minZ = Math.min(...vals);
-      const maxZ = Math.max(...vals);
-      if ((maxZ - minZ) < 1000) {
-        const defaultSpacingMm = 2700;
-        for (const p of pisosArr) {
-          const floorIdx = p.n >= 0 && p.n < 90 ? p.n : p.n === 99 ? (pisosArr.filter((x: any) => x.n > 0 && x.n < 90).length + 1) : -(Math.abs(p.n));
-          m[p.n] = floorIdx * defaultSpacingMm;
-        }
-      }
+    const defaultSpacingMm = 2700;
+    const sorted = [...pisosArr].sort((a: any, b: any) => a.n - b.n);
+    for (const p of sorted) {
+      const floorIdx = p.n >= 0 && p.n < 90 ? p.n : p.n === 99 ? (sorted.filter((x: any) => x.n > 0 && x.n < 90).length + 1) : -(Math.abs(p.n));
+      m[p.n] = floorIdx * defaultSpacingMm;
     }
     return m;
   }, [pisos]);
@@ -545,9 +538,6 @@ function IsometriaTabBase({ state }: any) {
 
       for (const b of netData.bajantes) {
         const profB = profByNet[b.net] ?? 0;
-        let baseZ = ((b.nptBase || 0) + profB) * 1000;
-        let cimaZ = ((b.nptCima || 0) + profB) * 1000;
-
         const currentZ = nptMap[b.planNivel] || 0;
         let targetZ = currentZ;
 
@@ -562,18 +552,10 @@ function IsometriaTabBase({ state }: any) {
           }
         }
 
-        if (baseZ === 0 && cimaZ === 0) {
-          if (targetZ < currentZ) {
-            cimaZ = currentZ;
-            baseZ = targetZ;
-          } else if (targetZ > currentZ) {
-            baseZ = currentZ;
-            cimaZ = targetZ;
-          } else {
-            baseZ = currentZ;
-            cimaZ = currentZ + 1000;
-          }
-        }
+        const lo = Math.min(currentZ, targetZ);
+        const hi = Math.max(currentZ, targetZ);
+        const baseZ = (lo === hi ? lo : lo) + profB * 1000;
+        const cimaZ = (lo === hi ? hi + 1000 : hi) + profB * 1000;
 
         const baseZ_pix = getZPix(baseZ, b.planNivel);
         const cimaZ_pix = getZPix(cimaZ, b.planNivel);
