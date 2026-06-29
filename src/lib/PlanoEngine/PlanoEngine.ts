@@ -605,6 +605,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
     if (this._lockedNets.has(this.activeNet)) return;
 
+    if (this.activeNetworks && !this.activeNetworks.has(this.activeNet)) {
+      const netObj = NETS.find((n: any) => n.id === this.activeNet);
+      const netName = netObj ? netObj.name : this.activeNet;
+      this.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
+      return;
+    }
+
     const p = this.toPlane(x, y);
 
     if (this.tool === 'sel') {

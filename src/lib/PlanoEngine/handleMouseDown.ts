@@ -13,6 +13,16 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
   if (engine.tool === 'sel' && !isMultiSelectModifier) {
     for (const b of engine.bajantes) {
       if (b._labelBox && pointInLabelBox(x, y, b._labelBox)) {
+        if (b.net !== engine.activeNet) {
+          if (!checkActiveNet(engine, b.net)) {
+            const netObj = NETS.find(n => n.id === b.net);
+            const netName = netObj ? netObj.name : b.net;
+            engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
+            return;
+          } else {
+            engine.setActiveNet(b.net);
+          }
+        }
         if (b.id !== sel?.id) {
           engine.selId = b.id;
           engine._emitSelect(b);
@@ -23,6 +33,16 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
         return;
       }
       if (b._circ && !b.isFantasma && Math.hypot(x - b._circ.x, y - b._circ.y) < b._circ.r) {
+        if (b.net !== engine.activeNet) {
+          if (!checkActiveNet(engine, b.net)) {
+            const netObj = NETS.find(n => n.id === b.net);
+            const netName = netObj ? netObj.name : b.net;
+            engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
+            return;
+          } else {
+            engine.setActiveNet(b.net);
+          }
+        }
         if (b.id !== sel?.id) {
           engine.selId = b.id;
           engine._emitSelect(b);
@@ -175,6 +195,16 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
   }
 
   if (isBajante(sel) && (sel.tipo === 'bajante' || sel.tipo === 'montante' || sel.tipo === 'red_publica' || sel.tipo === 'contador' || sel.id?.startsWith('B'))) {
+    if (sel.net !== engine.activeNet) {
+      if (!checkActiveNet(engine, sel.net)) {
+        const netObj = NETS.find(n => n.id === sel.net);
+        const netName = netObj ? netObj.name : sel.net;
+        engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
+        return;
+      } else {
+        engine.setActiveNet(sel.net);
+      }
+    }
     if (sel._labelBox && pointInLabelBox(x, y, sel._labelBox)) {
       const lPos = engine.toCvs(sel.labelX, sel.labelY);
       engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
@@ -457,6 +487,16 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     }
   }
   if (gFound) {
+    if (gFound.net !== engine.activeNet) {
+      if (!checkActiveNet(engine, gFound.net)) {
+        const netObj = NETS.find(n => n.id === gFound.net);
+        const netName = netObj ? netObj.name : gFound.net;
+        engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
+        return;
+      } else {
+        engine.setActiveNet(gFound.net);
+      }
+    }
     engine.selId = gFound.id;
     engine._isGhostSel = true;
     engine._emitSelect(gFound);
