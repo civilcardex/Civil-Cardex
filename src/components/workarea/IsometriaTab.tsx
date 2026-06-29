@@ -5,6 +5,8 @@ import { TRAZOS_PREFIX } from "../../constants/storage-keys";
 import { loadFromStorage } from "../../services/storageService";
 import { loadPDF } from "../../services/idbStorage";
 
+const ISO_NETS_KEY = 'civilflow_iso_activeNets';
+
 interface ProjPt { sx: number; sy: number }
 
 function project(
@@ -22,9 +24,9 @@ function project(
   return { sx: x1 * zoom + offX + cx, sy: y2 * zoom + offY + cy };
 }
 
-function readDrawing(plans: any[], net: string) {
-  const ramales: any[] = [];
-  const bajantes: any[] = [];
+function readDrawingAll(plans: any[], netIds: string[]) {
+  const dataByNet: Record<string, { ramales: any[]; bajantes: any[] }> = {};
+  for (const nid of netIds) dataByNet[nid] = { ramales: [], bajantes: [] };
   const scaleMap: Record<number, number> = {};
   const origenMap: Record<number, { x_px: number; y_px: number }> = {};
   for (const plan of plans) {
@@ -33,22 +35,20 @@ function readDrawing(plans: any[], net: string) {
     if (!raw) continue;
     const data = (typeof raw === 'string') ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
     if (!data) continue;
-    if (data.scaleM) {
-      scaleMap[plan.nivel] = data.scaleM;
-    }
-    if (data.origen) {
-      origenMap[plan.nivel] = data.origen;
-    }
-    for (const r of (data.ramales || [])) {
-      if (r.net === net && r.tipo === 'ramal')
-        ramales.push({ ...r, planNivel: plan.nivel, planId: String(plan.id) });
-    }
-    for (const b of (data.bajantes || [])) {
-      if (b.net === net)
-        bajantes.push({ ...b, planNivel: plan.nivel, planId: String(plan.id) });
+    if (data.scaleM) scaleMap[plan.nivel] = data.scaleM;
+    if (data.origen) origenMap[plan.nivel] = data.origen;
+    for (const netId of netIds) {
+      for (const r of (data.ramales || [])) {
+        if (r.net === netId && r.tipo === 'ramal')
+          dataByNet[netId].ramales.push({ ...r, planNivel: plan.nivel, planId: String(plan.id) });
+      }
+      for (const b of (data.bajantes || [])) {
+        if (b.net === netId)
+          dataByNet[netId].bajantes.push({ ...b, planNivel: plan.nivel, planId: String(plan.id) });
+      }
     }
   }
-  return { ramales, bajantes, scaleMap, origenMap };
+  return { dataByNet, scaleMap, origenMap };
 }
 
 async function loadPlanImage(plan: any): Promise<{ nivel: number; img: HTMLCanvasElement; w: number; h: number } | null> {
@@ -71,28 +71,48 @@ async function loadPlanImage(plan: any): Promise<{ nivel: number; img: HTMLCanva
 }
 
 function IsometriaTabBase({ state }: any) {
-  const { plans, pisos } = state;
+  const { plans, pisos, profs, proy } = state;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ mode: 'rot' | 'pan'; sx: number; sy: number; rx0: number; rz0: number; ox0: number; oy0: number } | null>(null);
 
-  const [activeNet, setActiveNet] = useState(() => {
-    if (!state.plans) return 'san';
+  const [activeNets, _setActiveNets] = useState<Set<string>>(() => {
+    const saved = (() => { try { return JSON.parse(localStorage.getItem(ISO_NETS_KEY) || 'null'); } catch { return null; } })();
+    if (Array.isArray(saved) && saved.length > 0) return new Set(saved);
+    if (!state.plans) return new Set();
+    const withData: string[] = [];
     for (const n of NETS) {
-      let hasData = false;
       for (const plan of state.plans) {
         const raw = localStorage.getItem(TRAZOS_PREFIX + plan.id);
         if (raw) {
           try {
             const data = JSON.parse(raw);
-            if ((data.ramales || []).some((r: any) => r.net === n.id)) hasData = true;
-            if ((data.bajantes || []).some((b: any) => b.net === n.id)) hasData = true;
-          } catch {}
+            if ((data.ramales || []).some((r: any) => r.net === n.id) || (data.bajantes || []).some((b: any) => b.net === n.id)) {
+              withData.push(n.id);
+              break;
+            }
+          } catch { /* empty */ }
         }
       }
-      if (hasData) return n.id;
     }
+    return new Set(withData);
   });
+  const setActiveNets = useCallback((fn: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    _setActiveNets(prev => {
+      const next = typeof fn === 'function' ? (fn as (prev: Set<string>) => Set<string>)(prev) : fn;
+      localStorage.setItem(ISO_NETS_KEY, JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
+  const toggleNet = useCallback((netId: string) => {
+    setActiveNets(prev => {
+      const next = new Set(prev);
+      if (next.has(netId)) next.delete(netId); else next.add(netId);
+      return next;
+    });
+  }, [setActiveNets]);
+
   const [rotX, setRotX] = useState(-45);
   const [rotZ, setRotZ] = useState(45);
   const [scaleZ, setScaleZ] = useState(1);
@@ -104,6 +124,9 @@ function IsometriaTabBase({ state }: any) {
   const [showPlanos, setShowPlanos] = useState(true);
   const planImagesRef = useRef<Map<any, { img: HTMLCanvasElement; w: number; h: number }>>(new Map());
   const [renderTick, setRenderTick] = useState(0);
+  const [cursorStyle, setCursorStyle] = useState('grab');
+  const [planosCount, setPlanosCount] = useState('0/0');
+  useEffect(() => { setCursorStyle(dragRef.current ? 'grabbing' : 'grab'); });
 
   useEffect(() => {
     const el = containerRef.current;
@@ -116,21 +139,20 @@ function IsometriaTabBase({ state }: any) {
     return () => ro.disconnect();
   }, []);
 
-  const data = useMemo(() => readDrawing(plans || [], activeNet || ''), [plans, activeNet]);
+  const sortedNets = useMemo(() => [...activeNets].sort(), [activeNets]);
+  const result = useMemo(() => readDrawingAll(plans || [], sortedNets), [plans, sortedNets]);
+  const { dataByNet, scaleMap: readScaleMap, origenMap: readOrigenMap } = result;
 
   const nptMap = useMemo(() => {
     const m: Record<number, number> = {};
     const pisosArr = pisos || [];
     for (const p of pisosArr) m[p.n] = (p.npt || 0) * 1000;
-    // If the total vertical spread of all floors is less than 1 meter, it means NPT values 
-    // were not configured properly (e.g. all 0, or very close). In that case, generate 
-    // fallback Z offsets based on floor number so the scaleZ slider works.
     const vals = Object.values(m);
     if (vals.length > 1) {
       const minZ = Math.min(...vals);
       const maxZ = Math.max(...vals);
       if ((maxZ - minZ) < 1000) {
-        const defaultSpacingMm = 2700; // 2.7 m default floor-to-floor
+        const defaultSpacingMm = 2700;
         for (const p of pisosArr) {
           const floorIdx = p.n >= 0 && p.n < 90 ? p.n : p.n === 99 ? (pisosArr.filter((x: any) => x.n > 0 && x.n < 90).length + 1) : -(Math.abs(p.n));
           m[p.n] = floorIdx * defaultSpacingMm;
@@ -140,29 +162,71 @@ function IsometriaTabBase({ state }: any) {
     return m;
   }, [pisos]);
 
-  const netColor = NETS.find(n => n.id === activeNet)?.col || '#888';
+  const profByNet = useMemo(() => {
+    const m: Record<string, number> = {};
+    (profs || []).forEach((p: any) => { m[p.id] = p.prof ?? 0; });
+    return m;
+  }, [profs]);
+
+  const [collapsedNets, _setCollapsedNets] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('civilflow_iso_collapsed') || '[]')); }
+    catch { return new Set(); }
+  });
+  const toggleCollapsedNet = useCallback((netId: string) => {
+    _setCollapsedNets(prev => {
+      const next = new Set(prev);
+      if (next.has(netId)) next.delete(netId); else next.add(netId);
+      localStorage.setItem('civilflow_iso_collapsed', JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
+  const tramoTree = useMemo(() => {
+    const tree: { netId: string; netName: string; netColor: string; niveles: { nivel: number; label: string; ramales: any[]; bajantes: any[] }[] }[] = [];
+    for (const n of NETS) {
+      if (!activeNets.has(n.id)) continue;
+      const netData = dataByNet[n.id];
+      if (!netData || (netData.ramales.length === 0 && netData.bajantes.length === 0)) continue;
+      const netColor = n.col || '#888';
+      const nivelMap: Record<number, { ramales: any[]; bajantes: any[] }> = {};
+      for (const r of netData.ramales) {
+        const niv = r.planNivel;
+        if (!nivelMap[niv]) nivelMap[niv] = { ramales: [], bajantes: [] };
+        nivelMap[niv].ramales.push(r);
+      }
+      for (const b of netData.bajantes) {
+        const niv = b.planNivel;
+        if (!nivelMap[niv]) nivelMap[niv] = { ramales: [], bajantes: [] };
+        nivelMap[niv].bajantes.push(b);
+      }
+      const niveles = Object.entries(nivelMap)
+        .sort(([a], [b]) => Number(a) - Number(b))
+        .map(([nivel, data]) => ({
+          nivel: Number(nivel),
+          label: Number(nivel) < 0 ? `S${Math.abs(Number(nivel))}` : Number(nivel) === 99 ? 'C' : `P${Number(nivel)}`,
+          ...data,
+        }));
+      tree.push({ netId: n.id, netName: n.name, netColor, niveles });
+    }
+    return tree;
+  }, [dataByNet, activeNets]);
 
   const populatedNets = useMemo(() => {
     const netsWithData: string[] = [];
     for (const n of NETS) {
       const nId = typeof n.id === 'string' ? n.id : (n.id || '');
-      const d = readDrawing(plans || [], nId);
-      if (d.ramales.length > 0 || d.bajantes.length > 0) netsWithData.push(n.id);
+      const d = readDrawingAll(plans || [], [nId]);
+      const nd = d.dataByNet[nId];
+      if (nd && (nd.ramales.length > 0 || nd.bajantes.length > 0)) netsWithData.push(n.id);
     }
     return netsWithData;
   }, [plans]);
 
   const confirmedPlanos = useMemo(() => (plans || []).filter((p: any) => p.status === 'confirmed' && p.nivel != null), [plans]);
 
-  useEffect(() => {
-    if (populatedNets.length > 0 && !populatedNets.includes(activeNet || '')) {
-      setActiveNet(populatedNets[0]);
-    }
-  }, [populatedNets, activeNet]);
-
   const getIsoCoords = useCallback((px: number, py: number, nivel: number) => {
     const plan = confirmedPlanos.find((p: any) => p.nivel !== null && String(p.nivel) === String(nivel));
-    const scaleM = (plan?.scale ? plan.scale / 100 : null) || plan?.scaleM || data.scaleMap?.[nivel] || 0.5;
+    const scaleM = (plan?.scale ? plan.scale / 100 : null) || plan?.scaleM || readScaleMap?.[nivel] || 0.5;
     const planData = plan ? planImagesRef.current.get(plan.id) : null;
     const scale = 1.5;
     let pageW = 842;
@@ -177,10 +241,9 @@ function IsometriaTabBase({ state }: any) {
         break;
       }
     }
-    const ox = plan?.origen?.x_px ?? data.origenMap?.[nivel]?.x_px ?? (pageW / 2);
-    const oy = plan?.origen?.y_px ?? data.origenMap?.[nivel]?.y_px ?? (pageH / 2);
-    
-    // Convert to meters relative to origin, then multiply by 150 (isoScale)
+    const ox = plan?.origen?.x_px ?? readOrigenMap?.[nivel]?.x_px ?? (pageW / 2);
+    const oy = plan?.origen?.y_px ?? readOrigenMap?.[nivel]?.y_px ?? (pageH / 2);
+
     const x_m = (px - ox) * (2.54 * scaleM / 96);
     const y_m = (py - oy) * (2.54 * scaleM / 96);
     const isoScale = 150;
@@ -188,7 +251,7 @@ function IsometriaTabBase({ state }: any) {
       x: x_m * isoScale,
       y: y_m * isoScale
     };
-  }, [confirmedPlanos, data.scaleMap, data.origenMap]);
+  }, [confirmedPlanos, readScaleMap, readOrigenMap]);
 
   const getZPix = useCallback((zMm: number, _nivel?: number) => {
     const zMeters = zMm / 1000;
@@ -216,6 +279,7 @@ function IsometriaTabBase({ state }: any) {
       if (!cancelled) {
         planImagesRef.current = newImages;
         setRenderTick(n => n + 1);
+        setPlanosCount(`${newImages.size}/${confirmedPlanos.length}`);
       }
     })();
     return () => { cancelled = true; };
@@ -225,28 +289,51 @@ function IsometriaTabBase({ state }: any) {
     const W = size.w, H = size.h;
     if (W < 10 || H < 10) return;
     const cx = W / 2, cy = H / 2;
-    let pts: ProjPt[] = [];
-    
-    // Add network points
-    for (const r of data.ramales) {
-      const z = nptMap[r.planNivel] || 0;
-      const z_pix = getZPix(z, r.planNivel);
-      for (const p of r.pts) {
-        const iso = getIsoCoords(p[0], p[1], r.planNivel);
-        pts.push(project(iso.x, iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
+    const pts: ProjPt[] = [];
+
+    for (const [netId, netData] of Object.entries(dataByNet)) {
+      if (!activeNets.has(netId)) continue;
+      const prof = profByNet[netId] ?? 0;
+      for (const r of netData.ramales) {
+        const z = (nptMap[r.planNivel] || 0) + prof * 1000;
+        const z_pix = getZPix(z, r.planNivel);
+        for (const p of r.pts) {
+          const iso = getIsoCoords(p[0], p[1], r.planNivel);
+          pts.push(project(iso.x, iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
+        }
+      }
+      for (const b of netData.bajantes) {
+        const prof2 = profByNet[b.net] ?? 0;
+        let baseZ = ((b.nptBase || 0) + prof2) * 1000;
+        let cimaZ = ((b.nptCima || 0) + prof2) * 1000;
+        const currentZ = nptMap[b.planNivel] || 0;
+        let targetZ = currentZ;
+        if (b.descargaEnId) {
+          const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [b.planId, b.descargaEnId];
+          const targetPlanId = parts[0];
+          const targetId = parts[1];
+          const targetRamal = netData.ramales.find((rr: any) => rr.id === targetId && String(rr.planId) === String(targetPlanId));
+          if (targetRamal) {
+            targetZ = nptMap[targetRamal.planNivel] || 0;
+          }
+        }
+        if (baseZ === 0 && cimaZ === 0) {
+          if (targetZ < currentZ) {
+            cimaZ = currentZ; baseZ = targetZ;
+          } else if (targetZ > currentZ) {
+            baseZ = currentZ; cimaZ = targetZ;
+          } else {
+            baseZ = currentZ; cimaZ = currentZ + 1000;
+          }
+        }
+        const baseZ_pix = getZPix(baseZ, b.planNivel);
+        const cimaZ_pix = getZPix(cimaZ, b.planNivel);
+        const iso = getIsoCoords(b.x, b.y, b.planNivel);
+        pts.push(project(iso.x, iso.y, baseZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
+        pts.push(project(iso.x, iso.y, cimaZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
       }
     }
-    for (const b of data.bajantes) {
-      const baseZ = (b.nptBase || 0) * 1000;
-      const cimaZ = (b.nptCima || 0) * 1000;
-      const baseZ_pix = getZPix(baseZ, b.planNivel);
-      const cimaZ_pix = getZPix(cimaZ, b.planNivel);
-      const iso = getIsoCoords(b.x, b.y, b.planNivel);
-      pts.push(project(iso.x, iso.y, baseZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
-      pts.push(project(iso.x, iso.y, cimaZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy));
-    }
-    
-    // Add plan corners if visible
+
     if (showPlanos && planImagesRef.current.size > 0) {
       for (const [planId, planData] of planImagesRef.current) {
         const plan = confirmedPlanos.find((p: any) => p.id === planId);
@@ -290,11 +377,59 @@ function IsometriaTabBase({ state }: any) {
     setOffX(newOffX);
     setOffY(newOffY);
     return true;
-  }, [data, nptMap, rotZ, rotX, scaleZ, zoom, offX, offY, size, showPlanos, confirmedPlanos, getIsoCoords, getZPix]);
+  }, [dataByNet, activeNets, profByNet, nptMap, rotZ, rotX, scaleZ, zoom, offX, offY, size, showPlanos, confirmedPlanos, getIsoCoords, getZPix]);
 
   const resetView = useCallback(() => {
     setRotX(-45); setRotZ(45); setScaleZ(1); setZoom(1); setOffX(0); setOffY(0);
   }, []);
+
+  const totals = useMemo(() => {
+    let ramales = 0, bajantes = 0, len = 0;
+    for (const nd of Object.values(dataByNet)) {
+      for (const r of nd.ramales) { ramales++; len += r.totalL || 0; }
+      bajantes += nd.bajantes.length;
+    }
+    return { ramales, bajantes, len: len.toFixed(1) };
+  }, [dataByNet]);
+
+  const exportPdf = useCallback(async () => {
+    const canvas = canvasRef.current;
+    if (!canvas || size.w < 10) return;
+    const { jsPDF } = await import('jspdf');
+    const dataUrl = canvas.toDataURL('image/png', 1.0);
+    const doc = new jsPDF({ orientation: 'landscape', format: 'a3' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+
+    doc.setFontSize(16);
+    doc.text('Civil Flow', 15, 15);
+    doc.setFontSize(11);
+    const netNames = [...activeNets].map(id => NETS.find(n => n.id === id)?.name).filter(Boolean).join(', ');
+    doc.text(`Proyecto: ${proy?.nombre || '—'}`, 15, 23);
+    doc.text(`Redes: ${netNames || '—'}`, 15, 31);
+
+    doc.setDrawColor(180, 180, 180);
+    doc.line(14, 35, pageW - 14, 35);
+
+    const margin = 14;
+    const usableW = pageW - margin * 2;
+    const aspect = canvas.width / canvas.height;
+    let imgW = usableW;
+    let imgH = usableW / aspect;
+    const maxImgH = pageH - 40 - margin;
+    if (imgH > maxImgH) { imgH = maxImgH; imgW = imgH * aspect; }
+    const imgX = margin + (usableW - imgW) / 2;
+    const imgY = 40 + (maxImgH - imgH) / 2;
+    doc.addImage(dataUrl, 'PNG', imgX, imgY, imgW, imgH);
+
+    doc.setFontSize(9);
+    doc.text(`Vista: rotX=${rotX}° rotZ=${rotZ}° scaleZ=${scaleZ.toFixed(1)} zoom=${Math.round(zoom * 100)}%`, margin, pageH - 8);
+    const dateStr = new Date().toLocaleDateString('es-CO');
+    doc.text(`Tramos: ${totals.ramales} · Bajantes: ${totals.bajantes} · Long: ${totals.len}m`, pageW / 2, pageH - 8, { align: 'center' } as any);
+    doc.text(dateStr, pageW - margin, pageH - 8, { align: 'right' } as any);
+
+    doc.save(`civilflow_isometria_${(proy?.nombre || 'proyecto').replace(/[^a-zA-Z0-9_-]/g, '_')}_${dateStr.replace(/\//g, '-')}.pdf`);
+  }, [activeNets, proy, rotX, rotZ, scaleZ, zoom, size, totals]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -312,7 +447,7 @@ function IsometriaTabBase({ state }: any) {
 
     const cx = W / 2, cy = H / 2;
 
-    const segments: { sx1: number; sy1: number; sx2: number; sy2: number; z: number; id: string; label: string; isBaj: boolean }[] = [];
+    const segments: { sx1: number; sy1: number; sx2: number; sy2: number; z: number; id: string; label: string; isBaj: boolean; netId: string }[] = [];
 
     // Draw planos as semi-transparent background sheets
     if (showPlanos && planImagesRef.current.size > 0) {
@@ -332,12 +467,9 @@ function IsometriaTabBase({ state }: any) {
         const bl_iso = getIsoCoords(0, pageH, plan.nivel);
         const label_iso = getIsoCoords(pageW / 2, -30, plan.nivel);
 
-        // 4 corners in isometric space: TL, TR, BL
         const tl = project(tl_iso.x, tl_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
         const tr = project(tr_iso.x, tr_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
         const bl = project(bl_iso.x, bl_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        // Affine transform: map image rect (0,0)-(imgW,imgH) to screen quad using TL, TR, BL
-        // Multiply by dpr because setTransform replaces the DPR scale set by ctx.scale(dpr,dpr)
         const ax = (tr.sx - tl.sx) / imgW * dpr;
         const ay = (tr.sy - tl.sy) / imgW * dpr;
         const bx = (bl.sx - tl.sx) / imgH * dpr;
@@ -346,16 +478,14 @@ function IsometriaTabBase({ state }: any) {
         ctx.globalAlpha = 0.35;
         ctx.setTransform(ax, ay, bx, by, tl.sx * dpr, tl.sy * dpr);
         ctx.drawImage(img, 0, 0, imgW, imgH);
-        // Quad outline
         ctx.globalAlpha = 0.6;
-        ctx.strokeStyle = netColor;
+        ctx.strokeStyle = '#5a6a6b';
         ctx.lineWidth = 1 / (zoom || 1);
         ctx.strokeRect(0.5, 0.5, imgW - 1, imgH - 1);
         ctx.restore();
-        // Floor label
         const midPt = project(label_iso.x, label_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
         ctx.save();
-        ctx.fillStyle = netColor + 'cc';
+        ctx.fillStyle = '#5a6a6bcc';
         ctx.font = `bold ${Math.max(10, 11 * zoom)}px Geist,monospace`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
@@ -365,130 +495,132 @@ function IsometriaTabBase({ state }: any) {
       }
     }
 
-    ctx.strokeStyle = netColor;
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
+    // Draw each active network
+    for (const [netId, netData] of Object.entries(dataByNet)) {
+      if (!activeNets.has(netId)) continue;
+      const netColor = NETS.find(n => n.id === netId)?.col || '#888';
+      const prof = profByNet[netId] ?? 0;
 
-    for (const r of data.ramales) {
-      const z = nptMap[r.planNivel] || 0;
-      const z_pix = getZPix(z, r.planNivel);
-      const pts = r.pts;
-      if (pts.length < 2) continue;
-      const isSel = `${r.planId}:${r.id}` === selTramo;
-      ctx.beginPath();
-      for (let i = 0; i < pts.length; i++) {
-        const iso = getIsoCoords(pts[i][0], pts[i][1], r.planNivel);
-        const pr = project(iso.x, iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        if (i === 0) ctx.moveTo(pr.sx, pr.sy); else ctx.lineTo(pr.sx, pr.sy);
-      }
-      ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
-      ctx.lineWidth = isSel ? 3.5 : 2;
-      ctx.stroke();
+      ctx.strokeStyle = netColor;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
 
-      for (let i = 1; i < pts.length; i++) {
-        const iso1 = getIsoCoords(pts[i - 1][0], pts[i - 1][1], r.planNivel);
-        const iso2 = getIsoCoords(pts[i][0], pts[i][1], r.planNivel);
-        const a = project(iso1.x, iso1.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const b = project(iso2.x, iso2.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        segments.push({ sx1: a.sx, sy1: a.sy, sx2: b.sx, sy2: b.sy, z: z_pix, id: `${r.planId}:${r.id}`, label: r.label || r.id, isBaj: false });
-      }
-
-      if (isSel) {
-        const midI = Math.floor(pts.length / 2);
-        const isoMid = getIsoCoords(pts[midI][0], pts[midI][1], r.planNivel);
-        const mp = project(isoMid.x, isoMid.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        ctx.fillStyle = '#FFEB3B';
-        ctx.font = 'bold 11px Geist,monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        const lbl = `${r.label || r.id} L=${r.totalL}m`;
-        ctx.fillText(lbl, mp.sx, mp.sy - 8);
-      }
-    }
-
-    for (const b of data.bajantes) {
-      let baseZ = (b.nptBase || 0) * 1000;
-      let cimaZ = (b.nptCima || 0) * 1000;
-      
-      const currentZ = nptMap[b.planNivel] || 0;
-      let targetZ = currentZ;
-
-      let targetRamal = null;
-      if (b.descargaEnId) {
-        const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [b.planId, b.descargaEnId];
-        const targetPlanId = parts[0];
-        const targetId = parts[1];
-        targetRamal = data.ramales.find((rr: any) => rr.id === targetId && String(rr.planId) === String(targetPlanId));
-        if (targetRamal) {
-          targetZ = nptMap[targetRamal.planNivel] || 0;
-        }
-      }
-
-      // If manual NPTs are 0, infer heights from the floors it connects
-      if (baseZ === 0 && cimaZ === 0) {
-        if (targetZ < currentZ) {
-          cimaZ = currentZ;
-          baseZ = targetZ;
-        } else if (targetZ > currentZ) {
-          baseZ = currentZ;
-          cimaZ = targetZ;
-        } else {
-          // No valid connection or same floor, just give it a default 1m height
-          baseZ = currentZ;
-          cimaZ = currentZ + 1000;
-        }
-      }
-
-      const baseZ_pix = getZPix(baseZ, b.planNivel);
-      const cimaZ_pix = getZPix(cimaZ, b.planNivel);
-      const iso = getIsoCoords(b.x, b.y, b.planNivel);
-      const pBase = project(iso.x, iso.y, baseZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-      const pCima = project(iso.x, iso.y, cimaZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-      const isSel = `${b.planId}:${b.id}` === selTramo;
-      
-      // Draw the bajante's vertical pipe
-      ctx.beginPath();
-      ctx.moveTo(pBase.sx, pBase.sy);
-      ctx.lineTo(pCima.sx, pCima.sy);
-      ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
-      ctx.lineWidth = isSel ? 3.5 : 2;
-      ctx.stroke();
-      segments.push({ sx1: pBase.sx, sy1: pBase.sy, sx2: pCima.sx, sy2: pCima.sy, z: (baseZ_pix + cimaZ_pix) / 2, id: `${b.planId}:${b.id}`, label: b.code || b.id, isBaj: true });
-
-      // Draw connection to target ramal if it exists
-      if (targetRamal && targetRamal.pts.length > 0) {
-        const rIso = getIsoCoords(targetRamal.pts[0][0], targetRamal.pts[0][1], targetRamal.planNivel);
-        const rZ_pix = getZPix(targetZ, targetRamal.planNivel);
-        const rProj = project(rIso.x, rIso.y, rZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        
-        // Use the bajante's base or cima depending on where the target is
-        const connectionPoint = (targetZ === baseZ) ? pBase : pCima;
-        
-        // Connect horizontally from the bajante drop to the ramal
-        ctx.save();
+      for (const r of netData.ramales) {
+        const z = (nptMap[r.planNivel] || 0) + prof * 1000;
+        const z_pix = getZPix(z, r.planNivel);
+        const pts = r.pts;
+        if (pts.length < 2) continue;
+        const selKey = `${netId}:${r.planId}:${r.id}`;
+        const isSel = selKey === selTramo;
         ctx.beginPath();
-        ctx.moveTo(connectionPoint.sx, connectionPoint.sy);
-        ctx.lineTo(rProj.sx, rProj.sy);
-        ctx.strokeStyle = '#0ECC7A'; // green connection line
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 4]);
+        for (let i = 0; i < pts.length; i++) {
+          const iso = getIsoCoords(pts[i][0], pts[i][1], r.planNivel);
+          const pr = project(iso.x, iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+          if (i === 0) ctx.moveTo(pr.sx, pr.sy); else ctx.lineTo(pr.sx, pr.sy);
+        }
+        ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
+        ctx.lineWidth = isSel ? 3.5 : 2;
         ctx.stroke();
-        ctx.restore();
+
+        for (let i = 1; i < pts.length; i++) {
+          const iso1 = getIsoCoords(pts[i - 1][0], pts[i - 1][1], r.planNivel);
+          const iso2 = getIsoCoords(pts[i][0], pts[i][1], r.planNivel);
+          const a = project(iso1.x, iso1.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+          const b = project(iso2.x, iso2.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+          segments.push({ sx1: a.sx, sy1: a.sy, sx2: b.sx, sy2: b.sy, z: z_pix, id: selKey, label: r.label || r.id, isBaj: false, netId });
+        }
+
+        if (isSel) {
+          const midI = Math.floor(pts.length / 2);
+          const isoMid = getIsoCoords(pts[midI][0], pts[midI][1], r.planNivel);
+          const mp = project(isoMid.x, isoMid.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+          ctx.fillStyle = '#FFEB3B';
+          ctx.font = 'bold 11px Geist,monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          const lbl = `${r.label || r.id} L=${r.totalL}m`;
+          ctx.fillText(lbl, mp.sx, mp.sy - 8);
+        }
       }
 
-      if (isSel) {
-        const mid = { sx: (pBase.sx + pCima.sx) / 2, sy: (pBase.sy + pCima.sy) / 2 };
-        const dInches = b.dNominal ? Math.round(Number(b.dNominal) / 25.4) : 0;
-        const lbl1 = dInches > 0 ? `${b.code || b.id}:${dInches}"` : `${b.code || b.id}`;
-        const dirText = b.direccion === 'sube' ? 'Sube' : b.direccion === 'baja' ? 'Baja' : '';
-        ctx.fillStyle = '#FFEB3B';
-        ctx.font = 'bold 11px Geist,monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(lbl1, mid.sx, mid.sy - 8);
-        if (dirText) {
-          ctx.font = '10px Geist,monospace';
-          ctx.fillText(dirText, mid.sx, mid.sy - 8 + 13);
+      for (const b of netData.bajantes) {
+        const profB = profByNet[b.net] ?? 0;
+        let baseZ = ((b.nptBase || 0) + profB) * 1000;
+        let cimaZ = ((b.nptCima || 0) + profB) * 1000;
+
+        const currentZ = nptMap[b.planNivel] || 0;
+        let targetZ = currentZ;
+
+        let targetRamal = null;
+        if (b.descargaEnId) {
+          const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [b.planId, b.descargaEnId];
+          const targetPlanId = parts[0];
+          const targetId = parts[1];
+          targetRamal = netData.ramales.find((rr: any) => rr.id === targetId && String(rr.planId) === String(targetPlanId));
+          if (targetRamal) {
+            targetZ = nptMap[targetRamal.planNivel] || 0;
+          }
+        }
+
+        if (baseZ === 0 && cimaZ === 0) {
+          if (targetZ < currentZ) {
+            cimaZ = currentZ;
+            baseZ = targetZ;
+          } else if (targetZ > currentZ) {
+            baseZ = currentZ;
+            cimaZ = targetZ;
+          } else {
+            baseZ = currentZ;
+            cimaZ = currentZ + 1000;
+          }
+        }
+
+        const baseZ_pix = getZPix(baseZ, b.planNivel);
+        const cimaZ_pix = getZPix(cimaZ, b.planNivel);
+        const iso = getIsoCoords(b.x, b.y, b.planNivel);
+        const pBase = project(iso.x, iso.y, baseZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        const pCima = project(iso.x, iso.y, cimaZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        const selKey = `${netId}:${b.planId}:${b.id}`;
+        const isSel = selKey === selTramo;
+
+        ctx.beginPath();
+        ctx.moveTo(pBase.sx, pBase.sy);
+        ctx.lineTo(pCima.sx, pCima.sy);
+        ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
+        ctx.lineWidth = isSel ? 3.5 : 2;
+        ctx.stroke();
+        segments.push({ sx1: pBase.sx, sy1: pBase.sy, sx2: pCima.sx, sy2: pCima.sy, z: (baseZ_pix + cimaZ_pix) / 2, id: selKey, label: b.code || b.id, isBaj: true, netId });
+
+        if (targetRamal && targetRamal.pts.length > 0) {
+          const rIso = getIsoCoords(targetRamal.pts[0][0], targetRamal.pts[0][1], targetRamal.planNivel);
+          const rZ_pix = getZPix(targetZ, targetRamal.planNivel);
+          const rProj = project(rIso.x, rIso.y, rZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+          const connectionPoint = (targetZ === baseZ) ? pBase : pCima;
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(connectionPoint.sx, connectionPoint.sy);
+          ctx.lineTo(rProj.sx, rProj.sy);
+          ctx.strokeStyle = '#0ECC7A';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        if (isSel) {
+          const mid = { sx: (pBase.sx + pCima.sx) / 2, sy: (pBase.sy + pCima.sy) / 2 };
+          const dInches = b.dNominal ? Math.round(Number(b.dNominal) / 25.4) : 0;
+          const lbl1 = dInches > 0 ? `${b.code || b.id}:${dInches}"` : `${b.code || b.id}`;
+          const dirText = b.direccion === 'sube' ? 'Sube' : b.direccion === 'baja' ? 'Baja' : '';
+          ctx.fillStyle = '#FFEB3B';
+          ctx.font = 'bold 11px Geist,monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(lbl1, mid.sx, mid.sy - 8);
+          if (dirText) {
+            ctx.font = '10px Geist,monospace';
+            ctx.fillText(dirText, mid.sx, mid.sy - 8 + 13);
+          }
         }
       }
     }
@@ -524,7 +656,7 @@ function IsometriaTabBase({ state }: any) {
     (canvas as any).__isoSegments = segments;
     (canvas as any).__isoCx = W / 2;
     (canvas as any).__isoCy = H / 2;
-  }, [data, pisos, rotZ, rotX, scaleZ, zoom, offX, offY, size, selTramo, netColor, nptMap, activeNet, showPlanos, confirmedPlanos, renderTick, getIsoCoords, getZPix]);
+  }, [dataByNet, activeNets, profByNet, nptMap, pisos, rotZ, rotX, scaleZ, zoom, offX, offY, size, selTramo, showPlanos, confirmedPlanos, renderTick, getIsoCoords, getZPix]);
 
   const getTramoAt = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
@@ -604,10 +736,17 @@ function IsometriaTabBase({ state }: any) {
     return () => canvas.removeEventListener('wheel', onWheel);
   }, []);
 
+  const hasAnyData = useMemo(() => {
+    for (const nd of Object.values(dataByNet)) {
+      if (nd.ramales.length > 0 || nd.bajantes.length > 0) return true;
+    }
+    return false;
+  }, [dataByNet]);
+
   const fittedRef = useRef(false);
   useEffect(() => {
-    if (!fittedRef.current && (data.ramales.length > 0 || data.bajantes.length > 0 || (showPlanos && planImagesRef.current.size > 0))) {
-      if (showPlanos && confirmedPlanos.length > 0 && planImagesRef.current.size === 0) return; // wait for plans
+    if (!fittedRef.current && (hasAnyData || (showPlanos && planImagesRef.current.size > 0))) {
+      if (showPlanos && confirmedPlanos.length > 0 && planImagesRef.current.size === 0) return;
       const t = setTimeout(() => {
         if (fitView()) {
           fittedRef.current = true;
@@ -615,50 +754,25 @@ function IsometriaTabBase({ state }: any) {
       }, 100);
       return () => clearTimeout(t);
     }
-  }, [data, showPlanos, confirmedPlanos.length, renderTick, fitView]);
-
-  const tramoList = useMemo(() => {
-    const items: { id: string; label: string; type: 'ramal' | 'bajante'; extra: string; nivel: number; selKey: string }[] = [];
-    for (const r of data.ramales) items.push({ id: r.id, label: r.label || r.id, type: 'ramal', extra: `L=${r.totalL}m`, nivel: r.planNivel, selKey: `${r.planId}:${r.id}` });
-    for (const b of data.bajantes) {
-      const dInches = b.dNominal ? Math.round(Number(b.dNominal) / 25.4) : 0;
-      const lbl = dInches > 0 ? `${b.code || b.id}:${dInches}"` : (b.code || b.id);
-      items.push({ id: b.id, label: lbl, type: 'bajante', extra: `h=${b.hVert}m`, nivel: b.planNivel, selKey: `${b.planId}:${b.id}` });
-    }
-    return items;
-  }, [data]);
-
-  const totalLen = useMemo(() => {
-    let sum = 0;
-    for (const r of data.ramales) sum += r.totalL || 0;
-    return sum.toFixed(1);
-  }, [data]);
+  }, [dataByNet, hasAnyData, showPlanos, confirmedPlanos.length, renderTick, fitView]);
 
   return (
     <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minHeight: 0 }}>
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: '#0d0f12', borderBottom: '1px solid #3a494a', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 16, marginRight: 4 }}>📐</span>
+        <img src="/isometria.svg" alt="" width={24} height={24} style={{ width: 24, height: 24, objectFit: 'contain' }} />
         <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e2e8', fontFamily: 'Geist,monospace', marginRight: 12 }}>Isometría</span>
 
         <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-          {populatedNets.length === 0 ? NETS.map(n => (
-            <button key={n.id} onClick={() => setActiveNet(n.id)} style={{
-              padding: '3px 8px', fontSize: 11, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid', cursor: 'pointer',
-              background: activeNet === n.id ? n.col + '33' : '#1e2024',
-              borderColor: activeNet === n.id ? n.col : '#3a494a',
-              color: activeNet === n.id ? n.col : '#849495',
-              fontWeight: activeNet === n.id ? 600 : 400,
-            }}>{n.emoji} {n.lbl}</button>
-          )) : populatedNets.map(nid => {
-            const n = NETS.find(x => x.id === nid)!;
+          {(populatedNets.length === 0 ? NETS : populatedNets.map(nid => NETS.find(x => x.id === nid)!).filter(Boolean)).map(n => {
+            const isOn = activeNets.has(n.id);
             return (
-              <button key={n.id} onClick={() => setActiveNet(n.id)} style={{
+              <button key={n.id} onClick={() => toggleNet(n.id)} aria-pressed={isOn} style={{
                 padding: '3px 8px', fontSize: 11, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid', cursor: 'pointer',
-                background: activeNet === n.id ? n.col + '33' : '#1e2024',
-                borderColor: activeNet === n.id ? n.col : '#3a494a',
-                color: activeNet === n.id ? n.col : '#849495',
-                fontWeight: activeNet === n.id ? 600 : 400,
+                background: isOn ? n.col + '33' : '#1e2024',
+                borderColor: isOn ? n.col : '#3a494a',
+                color: isOn ? n.col : '#849495',
+                fontWeight: isOn ? 600 : 400,
               }}>{n.emoji} {n.lbl}</button>
             );
           })}
@@ -666,7 +780,7 @@ function IsometriaTabBase({ state }: any) {
 
         <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', cursor: 'pointer', marginLeft: 8, padding: '3px 8px', borderRadius: 3, border: `1px solid ${showPlanos ? '#4D8FF7' : '#3a494a'}`, background: showPlanos ? 'rgba(77,143,247,.15)' : 'transparent' }}>
           <input type="checkbox" checked={showPlanos} onChange={e => setShowPlanos(e.target.checked)} style={{ accentColor: '#4D8FF7', margin: 0 }} />
-          Planos ({planImagesRef.current.size}/{confirmedPlanos.length})
+          Planos ({planosCount})
         </label>
 
         <div style={{ flex: 1 }} />
@@ -696,37 +810,81 @@ function IsometriaTabBase({ state }: any) {
 
         <button onClick={resetView} title="Reiniciar vista" style={{ padding: '3px 8px', fontSize: 10, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' }}>⟲</button>
         <button onClick={fitView} title="Encuadrar todo" style={{ padding: '3px 8px', fontSize: 10, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' }}>⊞</button>
+        <button onClick={exportPdf} title="Exportar PDF" style={{ padding: '3px 8px', fontSize: 10, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' }}>⬇ PDF</button>
       </div>
 
       {/* Main area */}
       <div className="fu" style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        {/* Tramos sidebar */}
+        {/* Tramos sidebar — grouped by network then floor */}
         <div style={{ width: 200, flexShrink: 0, background: '#0d0f12', borderRight: '1px solid #3a494a', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '10px 12px 6px', fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', textTransform: 'uppercase', letterSpacing: 1 }}>
-            {NETS.find(n => n.id === activeNet)?.name || activeNet}
+            Isometría
           </div>
-          {tramoList.length === 0 && (
+          {tramoTree.length === 0 && (
             <div style={{ padding: '20px 12px', fontSize: 11, color: '#5a6a6b', fontFamily: 'Geist,monospace', textAlign: 'center' }}>
               Sin datos
             </div>
           )}
-          {tramoList.map(item => {
-            const floorLabel = item.nivel < 0 ? `S${Math.abs(item.nivel)}` : item.nivel === 99 ? 'C' : `P${item.nivel}`;
+          {tramoTree.map(net => {
+            const isCollapsed = collapsedNets.has(net.netId);
+            const netRamales = net.niveles.reduce((s, nv) => s + nv.ramales.length, 0);
+            const netBajantes = net.niveles.reduce((s, nv) => s + nv.bajantes.length, 0);
             return (
-              <div key={item.selKey} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelTramo(prev => prev === item.selKey ? null : item.selKey);}}} onClick={() => setSelTramo(prev => prev === item.selKey ? null : item.selKey)} style={{
-                padding: '6px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-                background: selTramo === item.selKey ? '#2563EB22' : 'transparent',
-                borderLeft: selTramo === item.selKey ? '3px solid ' + netColor : '3px solid transparent',
-                fontFamily: 'Geist,monospace',
-              }}>
-                <span style={{ fontSize: 9, color: '#5a6a6b', minWidth: 22, fontWeight: 500 }}>{floorLabel}</span>
-                <span style={{ fontSize: 11, color: netColor, fontWeight: 600 }}>{item.label}</span>
-                <span style={{ fontSize: 9, color: '#5a6a6b', marginLeft: 'auto' }}>{item.extra}</span>
+              <div key={net.netId}>
+                <div role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCollapsedNet(net.netId);}}} onClick={() => toggleCollapsedNet(net.netId)} style={{
+                  padding: '7px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                  borderBottom: '1px solid #2a3a3b', fontFamily: 'Geist,monospace',
+                  userSelect: 'none',
+                }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: net.netColor, flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, color: net.netColor, fontWeight: 700, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{net.netName}</span>
+                  <span style={{ fontSize: 9, color: '#5a6a6b', whiteSpace: 'nowrap' }}>{netRamales + netBajantes}</span>
+                  <span style={{ fontSize: 9, color: '#5a6a6b', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform .15s' }}>▾</span>
+                </div>
+                {!isCollapsed && net.niveles.map(nv => (
+                  <div key={nv.nivel}>
+                    <div style={{ padding: '3px 10px 2px 20px', fontSize: 9, color: '#5a6a6b', fontFamily: 'Geist,monospace', fontWeight: 600, letterSpacing: 0.5 }}>
+                      {nv.label}
+                    </div>
+                    {nv.ramales.map(r => {
+                      const selKey = `${net.netId}:${r.planId}:${r.id}`;
+                      const isSel = selKey === selTramo;
+                      return (
+                        <div key={selKey} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelTramo(prev => prev === selKey ? null : selKey);}}} onClick={() => setSelTramo(prev => prev === selKey ? null : selKey)} style={{
+                          padding: '3px 10px 3px 26px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                          background: isSel ? '#2563EB22' : 'transparent',
+                          borderLeft: isSel ? '2px solid ' + net.netColor : '2px solid transparent',
+                          fontFamily: 'Geist,monospace', fontSize: 10,
+                        }}>
+                          <span style={{ color: net.netColor, fontWeight: 600, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label || r.id}</span>
+                          <span style={{ fontSize: 9, color: '#5a6a6b' }}>L={r.totalL}m</span>
+                        </div>
+                      );
+                    })}
+                    {nv.bajantes.map(b => {
+                      const selKey = `${net.netId}:${b.planId}:${b.id}`;
+                      const isSel = selKey === selTramo;
+                      const dInches = b.dNominal ? Math.round(Number(b.dNominal) / 25.4) : 0;
+                      const lbl = dInches > 0 ? `${b.code || b.id}:${dInches}"` : (b.code || b.id);
+                      return (
+                        <div key={selKey} role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelTramo(prev => prev === selKey ? null : selKey);}}} onClick={() => setSelTramo(prev => prev === selKey ? null : selKey)} style={{
+                          padding: '3px 10px 3px 26px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                          background: isSel ? '#2563EB22' : 'transparent',
+                          borderLeft: isSel ? '2px solid ' + net.netColor : '2px solid transparent',
+                          fontFamily: 'Geist,monospace', fontSize: 10,
+                        }}>
+                          <span style={{ color: net.netColor, fontWeight: 600, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lbl}</span>
+                          {!(b.tipo === 'contador' || b.tipo === 'calentador') && <span style={{ fontSize: 9, color: '#5a6a6b' }}>h={b.hVert}m</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             );
           })}
           <div style={{ marginTop: 'auto', padding: '8px 12px', borderTop: '1px solid #3a494a', fontSize: 10, color: '#5a6a6b', fontFamily: 'Geist,monospace' }}>
-            Tramos: {tramoList.length} · Long: {totalLen}m
+            Tramos: {totals.ramales} · Bajantes: {totals.bajantes} · Long: {totals.len}m
           </div>
         </div>
 
@@ -734,7 +892,7 @@ function IsometriaTabBase({ state }: any) {
         <div ref={containerRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
           <canvas
             ref={canvasRef}
-            style={{ width: '100%', height: '100%', display: 'block', cursor: dragRef.current ? 'grabbing' : 'grab' }}
+            style={{ width: '100%', height: '100%', display: 'block', cursor: cursorStyle }}
             onMouseDown={handleMouseDown}
             onContextMenu={e => e.preventDefault()}
           />
