@@ -18,6 +18,7 @@ export default defineConfig({
           if (id.includes('src/constants')) return 'vendor-constants';
           if (id.includes('src/utils/calc') || id.includes('src/utils/hydraulicCheck')) return 'vendor-calcs';
           if (id.includes('pdfjs-dist') && !id.includes('pdf.worker')) return 'vendor-pdfjs';
+          if (id.includes('node_modules/jspdf')) return 'vendor-jspdf';
           if (id.includes('src/lib/PlanoEngine')) return 'plano-engine';
           if (id.includes('src/components/PdfViewer')) return 'pdf-viewer';
           if (id.includes('node_modules/react')) return 'vendor-react';
