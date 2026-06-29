@@ -75,25 +75,25 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
 
     ctx.fillStyle = '#ffffff';
     if (b.tipo === 'red_publica' || b.tipo === 'contador') {
-      const afNet = NETS.find((n: any) => n.id === 'af');
-      const afCol = afNet ? afNet.col : '#4D8FF7';
-      ctx.fillStyle = b.tipo === 'red_publica' ? '#64748b' : afCol;
+      const netObj = NETS.find((n: any) => n.id === (b.net === 'gas' ? 'gas' : 'af'));
+      const col = netObj ? netObj.col : (b.net === 'gas' ? '#A855F7' : '#4D8FF7');
+      ctx.fillStyle = b.tipo === 'red_publica' ? '#64748b' : col;
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.fill();
-      ctx.strokeStyle = sel ? '#FFEB3B' : (b.tipo === 'red_publica' ? '#475569' : afCol);
+      ctx.strokeStyle = sel ? '#FFEB3B' : (b.tipo === 'red_publica' ? '#475569' : col);
       ctx.lineWidth = (sel ? 4.5 : 2) * engine.zoom;
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.stroke();
     } else if (b.tipo === 'calentador') {
-      const acNet = NETS.find((n: any) => n.id === 'ac');
-      const acCol = acNet ? acNet.col : '#F04545';
-      ctx.fillStyle = acCol;
+      const netObj = NETS.find((n: any) => n.id === (b.net === 'gas' ? 'gas' : 'ac'));
+      const col = netObj ? netObj.col : (b.net === 'gas' ? '#A855F7' : '#F04545');
+      ctx.fillStyle = col;
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.fill();
-      ctx.strokeStyle = sel ? '#FFEB3B' : acCol;
+      ctx.strokeStyle = sel ? '#FFEB3B' : col;
       ctx.lineWidth = (sel ? 4.5 : 2) * engine.zoom;
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);

@@ -1,11 +1,15 @@
 import { useEffect } from "react";
 import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
-import { DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS, pisoLbl } from "../../constants";
+import { DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, pisoLbl } from "../../constants";
+import { GAS } from "../../constants/engineeringDataGas";
 import { VENTILACION, CONTADORES as CONTADORES_CAT } from "../../pages/catalog/catalogData";
 import { DIAMETROS_AF } from "../../constants/hydraulicData";
 import { writeAcoDiamToDrawing, writeContadorDiamToDrawing } from "../../utils/writeDiameterToDrawing";
 import { CAT_GAS } from "../../constants/engineeringDataGas";
+
+const GAS_DN_LABELS: string[] = [];
+for (const g of GAS) for (const r of g.rows) if (!GAS_DN_LABELS.includes(r.dn)) GAS_DN_LABELS.push(r.dn);
 
 interface ContextMenuState {
   visible: boolean;
@@ -640,9 +644,10 @@ export default function BajanteContextMenu({
                 ))}
               </select>
             </div>
+            {contextMenuState.bajante.net === 'af' || contextMenuState.bajante.net === 'gas' ? (
             <div style={{ borderTop: '1px solid #3a494a', marginTop: 4 }}>
               <div style={{ fontSize: 9, color: '#22D3EE', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                AC-01 (Red Pública → Contador)
+                {contextMenuState.bajante.net === 'gas' ? 'Conexión (Red → Contador)' : 'AC-01 (Red Pública → Contador)'}
               </div>
               <div style={{ padding: '0 8px 8px' }}>
                 <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4 }}>Diámetro</div>
@@ -657,19 +662,19 @@ export default function BajanteContextMenu({
                         setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
                       }
                       engineRef.current?.render();
-                      // Persist to localStorage for design table to read
                       writeAcoDiamToDrawing(val, planosCtx.plans, contextMenuState.bajante.net || 'af');
                     }
                   }}
                   style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
                 >
                   <option value="">— Sin diámetro —</option>
-                  {DIAMETROS_AF.map((d, i) => (
-                    <option key={i} value={d.nominal}>{d.nominal}</option>
+                  {(contextMenuState.bajante.net === 'gas' ? GAS_DN_LABELS : DIAMETROS_AF.map(d => d.nominal)).map(d => (
+                    <option key={d} value={d}>{d}</option>
                   ))}
                 </select>
               </div>
             </div>
+            ) : null}
           </>
         ) : contextMenuState.bajante.tipo === 'calentador' ? (
           <>

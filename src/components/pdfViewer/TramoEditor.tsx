@@ -1,8 +1,12 @@
 import React, { type RefObject } from 'react'
-import { DIAM_BAN, DIAM_BY_MAT, DIAM_DEFAULT_BY_NET, DIAM_VENT, GAS } from '../../constants'
+import { DIAM_BAN, DIAM_BY_MAT, DIAM_DEFAULT_BY_NET, DIAM_VENT } from '../../constants'
+import { GAS } from '../../constants/engineeringDataGas';
 import { VENTILACION, CONTADORES as CONTADORES_CAT } from '../../pages/catalog/catalogData';
 import { CAT_GAS } from '../../constants/engineeringDataGas';
 import { DIAMETROS_AF } from '../../constants/hydraulicData'
+
+const GAS_DN_LABELS: string[] = [];
+for (const g of GAS) for (const r of g.rows) if (!GAS_DN_LABELS.includes(r.dn)) GAS_DN_LABELS.push(r.dn);
 
 interface TramoEditorProps {
   selElement: any
@@ -88,15 +92,15 @@ export default function TramoEditor({
               ))}
             </select>
           </div>
-          {/* AC-01 diameter dropdown */}
-          {activeNet === 'af' && (
+          {/* AC-01 diameter dropdown (or gas connection pipe equivalent) */}
+          {(activeNet === 'af' || activeNet === 'gas') && (
             <div style={{ marginTop: 8 }}>
               <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
-                Diámetro AC-01 (Red→Contador)
+                {activeNet === 'gas' ? 'Diámetro conexión (Red→Contador)' : 'Diámetro AC-01 (Red→Contador)'}
               </div>
               <select
                 value={selElement.acoDiam || ''}
-                aria-label="Diámetro del tramo AC-01"
+                aria-label="Diámetro del tramo de conexión"
                 onChange={e => {
                   const val = e.target.value;
                   handleUpdateSel('acoDiam', val);
@@ -114,10 +118,8 @@ export default function TramoEditor({
                 }}
               >
                 <option value="">— Sin diámetro —</option>
-                {DIAMETROS_AF.map((d) => (
-                  <option key={d.nominal} value={d.nominal}>
-                    {d.nominal}
-                  </option>
+                {(activeNet === 'gas' ? GAS_DN_LABELS : DIAMETROS_AF.map(d => d.nominal)).map(d => (
+                  <option key={d} value={d}>{d}</option>
                 ))}
               </select>
             </div>
