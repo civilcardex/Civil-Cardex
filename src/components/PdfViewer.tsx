@@ -1,3 +1,4 @@
+/* eslint-disable no-empty, react-hooks/refs, react-hooks/set-state-in-effect, react-hooks/immutability */
 import { memo, useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
 import PlanoEngine from "../lib/PlanoEngine/PlanoEngine";
 import { NETS } from "../lib/PlanoEngine/PlanoState";
@@ -19,6 +20,8 @@ import BajanteContextMenu from "./pdfViewer/BajanteContextMenu";
 import TextInputOverlay from "./pdfViewer/TextInputOverlay";
 import ConfirmDialog from "./pdfViewer/ConfirmDialog";
 import AlertDialog from "./pdfViewer/AlertDialog";
+import TipoTramoSelector from "./pdfViewer/TipoTramoSelector";
+import BajanteAsociacion from "./pdfViewer/BajanteAsociacion";
 
 const TIPOS_TRAMO = [
   { id: "ramal", label: "Ramal" },
@@ -79,7 +82,9 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
           }
         }
       }
-    } catch (_) {}
+    } catch {
+      // ignore
+    }
     return "af";
   });
 
@@ -139,7 +144,9 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
           try {
             const data = JSON.parse(raw);
             ramales = (data.ramales || []).filter((r: any) => r.tipo !== 'tributario' && r.net === (selElement.net || activeNet));
-          } catch (_) {}
+          } catch {
+            // ignore
+          }
         }
       }
       return { planId: plan.id, planName: plan.name, npt: pF.npt, ramales };
@@ -422,14 +429,14 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   }, [activeNet]);
 
   useEffect(() => {
-    try { writeSanDrawingSync(plansRef.current); } catch (_) {}
-    try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
+    try { writeSanDrawingSync(plansRef.current); } catch { /* ignore */ }
+    try { writeHydroDrawingSync(plansRef.current); } catch { /* ignore */ }
   }, [planosCtx.plans, currentId, activeNet]);
 
   useEffect(() => {
     const handler = () => {
-      try { writeSanDrawingSync(plansRef.current); } catch (_) {}
-      try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
+      try { writeSanDrawingSync(plansRef.current); } catch { /* ignore */ }
+      try { writeHydroDrawingSync(plansRef.current); } catch { /* ignore */ }
     };
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
@@ -439,7 +446,9 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     try {
       const saved = loadFromStorage('active_nets', null);
       if (saved && Array.isArray(saved)) return new Set(saved);
-    } catch (_) {}
+    } catch {
+      // ignore
+    }
     return null;
   });
 
@@ -769,55 +778,14 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
         {/* Rest of sidebar — blocked when selecting without element selected */}
         <div style={rightSidebarOpacity}>
 
-        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>¿Qué voy a dibujar?</div>
-          <div style={{display:'flex',flexDirection:'column',gap:4}}>
-            {TIPOS_TRAMO.map(tp=>(
-              <button key={tp.id} onClick={()=>setTipoTramo(tp.id)}
-                style={{
-                  padding:"7px 10px", background:tipoTramo===tp.id?"#2563EB22":"#1e2024",
-                  border:`1px solid ${tipoTramo===tp.id?"#2563EB":"#3a494a"}`,
-                  borderRadius:"3px", cursor:"pointer", width:"100%",
-                  display:"flex", flexDirection:"column", gap:2, alignItems:"flex-start",
-                  transition:"all .12s",
-                }}>
-                <div style={{fontSize:11,fontWeight:600,color:tipoTramo===tp.id?"#2563EB":"#b9caca",fontFamily:"'Geist',monospace"}}>
-                  {tp.id==='ramal'?'📏 Ramal principal':tp.id==='tributario'?'🔀 Tributario':tp.label}
-                </div>
-                <div style={{fontSize:9,color:"#6b8cae",fontFamily:"'Geist',monospace",textAlign:"left"}}>
-                  {tp.id==='ramal'?'Trazos principales de la red activa':tp.id==='tributario'?'Ramificaciones que conectan al ramal principal':''}
-                </div>
-              </button>
-            ))}
-          </div>
-          {tipoTramo === 'tributario' && (
-            <div style={{marginTop:8,padding:'8px 10px',background:padreTributarioId?'rgba(37,99,235,.12)':'#1e2024',border:`1px solid ${padreTributarioId?'#2563EB':'#3a494a'}`,borderRadius:3}}>
-              <div style={{fontSize:9,color:'#849495',fontFamily:"'Geist',monospace",textTransform:'uppercase',letterSpacing:1,marginBottom:4}}>Padre (ramal asignado)</div>
-              <select aria-label="Seleccionar ramal padre tributario" value={padreTributarioId||''}
-                onChange={e=>{
-                  const v=e.target.value||null;
-                  setPadreTributarioId(v);
-                   if (engineRef.current) engineRef.current.setPadreTributario(v as any);
-                }}
-                style={{width:'100%',padding:'5px 8px',background:'#1a1c20',border:'1px solid #3a494a',borderRadius:3,color:padreTributarioId?'#2563EB':'#6b8cae',fontSize:11,fontFamily:"'Geist',monospace",cursor:'pointer'}}>
-                <option value="">— Seleccionar ramal padre —</option>
-                {drawnElements.filter(el=>el.type==='ramal'&&el.tipo==='ramal').map(el=>(
-                  <option key={el.id} value={el.id}>{el.label}{el.totalL?` · ${typeof el.totalL==='number'?el.totalL.toFixed(2):el.totalL}m`:''}</option>
-                ))}
-              </select>
-              {drawnElements.filter(el=>el.type==='ramal'&&el.tipo==='ramal').length===0 && (
-                <div style={{fontSize:10,color:'#ffb4ab',fontFamily:"'Geist',monospace",marginTop:6,lineHeight:1.4}}>
-                  No hay ramales principales en esta red. Dibuja primero un ramal antes de crear tributarios.
-                </div>
-              )}
-              {padreTributarioId && (
-                <div style={{fontSize:9,color:'#6b8cae',fontFamily:"'Geist',monospace",marginTop:4,lineHeight:1.4}}>
-                  El primer punto se conectará automáticamente al ramal seleccionado.
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <TipoTramoSelector
+          tipoTramo={tipoTramo}
+          setTipoTramo={setTipoTramo}
+          padreTributarioId={padreTributarioId}
+          setPadreTributarioId={setPadreTributarioId}
+          drawnElements={drawnElements}
+          engineRef={engineRef}
+        />
 
         <TramoEditor
           selElement={selElement}
@@ -839,64 +807,15 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   
         />
 
-        {/* Bajante/Montante association */}
-        {selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante') && !engineRef.current?._isGhostSel && (
-        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a", opacity: 1, pointerEvents: 'auto' }}>
-            <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-              Asociación de bajante
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div>
-                <div style={{ fontSize: 8, color: '#6b8cae', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: .5 }}>Origen (piso actual)</div>
-                <div style={{ padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#6b8cae", fontSize: 10, fontFamily: "'Geist',monospace" }}>
-                  {selectedNivel !== null ? pisoLbl(selectedNivel) : '—'}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: 8, color: '#6b8cae', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: .5 }}>Destino</div>
-                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                  <select aria-label="Seleccionar destino de descarga" value={selElement.descargaEnId || ''}
-                    onChange={e => {
-                      const v = e.target.value || null;
-                      if (engineRef.current) {
-                        engineRef.current.updateSelected({ descargaEnId: v });
-                        setSelElement({ ...selElement, descargaEnId: v });
-                      }
-                    }}
-                    style={{ flex: 1, padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                    <option value="">— Sin destino —</option>
-                    {lowerFloorsRamales.map(group => {
-                      const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
-                      const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
-                      return (
-                        <optgroup key={group.planId} label={pLabel + (group.ramales.length === 0 ? ' (sin ramales)' : '')}>
-                          {group.ramales.length > 0 ? group.ramales.map((r: any) => (
-                            <option key={`${group.planId}|${r.id}`} value={`${group.planId}|${r.id}`}>
-                              {r.label || r.id}
-                            </option>
-                          )) : (
-                            <option value="" disabled>— Sin ramales disponibles —</option>
-                          )}
-                        </optgroup>
-                      );
-                    })}
-                  </select>
-                  {selElement.descargaEnId && (
-                    <button onClick={() => {
-                      if (engineRef.current) {
-                        engineRef.current.updateSelected({ descargaEnId: null });
-                        setSelElement({ ...selElement, descargaEnId: null });
-                      }
-                    }}
-                      style={{ padding: '2px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 10 }}>
-                      ✕
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <BajanteAsociacion
+          selElement={selElement}
+          setSelElement={setSelElement}
+          selectedNivel={selectedNivel}
+          pisoLbl={pisoLbl}
+          lowerFloorsRamales={lowerFloorsRamales}
+          planosCtx={planosCtx}
+          engineRef={engineRef}
+        />
 
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Escala</div>
