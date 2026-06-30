@@ -1,6 +1,6 @@
 import { memo, useCallback, useMemo, useState } from "react";
 import { pisoLbl } from "../../constants";
-import { loadFromStorage } from "../../services/storageService";
+import { loadFromStorage, saveTrazosToDB } from "../../services/storageService";
 import { copyDrawingFromPlan, type CopySourceSelection } from "../../utils/copyDrawingFromPlan";
 
 const NET_OPTIONS = [
@@ -118,7 +118,7 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
 
       if (result.copied > 0) {
         try {
-          const { saveTrazosToDB } = await import('../../services/storageService');
+
           const work = eng.saveWork();
           if (work) {
             (work as any).ts = Date.now();
