@@ -9,6 +9,14 @@ function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // init
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     let subscription: { unsubscribe: () => void } | null = null;
@@ -38,9 +46,14 @@ function Navbar() {
     { to: '/docs', label: 'DOCUMENTACIÓN' },
   ];
 
+  const isLandingTop = path === '/' && scrollY < 50;
+
   return (
-    <nav className="fixed top-0 w-full z-50 border-b border-outline-variant flex justify-between items-center h-14 px-4 lg:px-6"
-      style={{ background: '#111317' }}>
+    <nav className={`fixed top-0 w-full z-50 flex justify-between items-center px-4 lg:px-6 transition-all duration-500 ease-in-out ${isLandingTop ? 'h-20' : 'h-14 border-b border-outline-variant'}`}
+      style={{ 
+        background: isLandingTop ? 'transparent' : 'rgba(17,19,23,0.85)',
+        backdropFilter: isLandingTop ? 'none' : 'blur(12px)'
+      }}>
       <div className="flex items-center gap-4 md:gap-6">
 <button className="md:hidden text-on-surface-variant p-1" 
           onClick={() => setMenuOpen(o => !o)} aria-label="Menú" aria-expanded={menuOpen}>
