@@ -69,7 +69,7 @@ const TH_CENTER: React.CSSProperties = { textAlign: "center", padding: "4px" };
 const TD_PARAM_LABEL: React.CSSProperties = { padding: "4px", textAlign: "left", fontWeight: 600 };
 const TD_PARAM_VALUE: React.CSSProperties = { textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px" };
 const TD_PARAM_UNIT: React.CSSProperties = { textAlign: "center", color: "var(--txt3)", padding: "4px" };
-const SCROLL_INNER: React.CSSProperties = { display: "grid", gridTemplateColumns: "1.7fr 1.15fr 0.85fr", gap: "16px", alignItems: "stretch", minWidth: "900px" };
+const SCROLL_INNER: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(290px, 100%), 1fr))", gap: "16px", alignItems: "stretch" };
 
 function LazyNum({ value, onChange, ariaLabel, style, className }: any) {
   const [val, setVal] = React.useState(value?.toString() || "");

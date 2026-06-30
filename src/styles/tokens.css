@@ -69,6 +69,8 @@
   --r: 6px;
   --r2: 8px;
   --r3: 12px;
+  --pdf-left-sidebar-w: 165px;
+  --pdf-right-sidebar-w: 210px;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -214,7 +214,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               {cfg.description}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 mt-4">
-              <Link to="/civilflowareatrabajo" className="hidden md:inline-block px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold text-on-primary transition-all" style={{ fontFamily: 'Geist, monospace', background: cfg.accent, boxShadow: `0 0 15px ${cfg.accent}4d` }}>
+              <Link to="/civilflowareatrabajo" className="inline-block px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold text-on-primary transition-all" style={{ fontFamily: 'Geist, monospace', background: cfg.accent, boxShadow: `0 0 15px ${cfg.accent}4d` }}>
                 {cfg.ctaText}
               </Link>
               <Link to="/docs" className="border border-outline-variant text-on-surface px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:border-primary transition-all" style={{ fontFamily: 'Geist, monospace', background: 'rgba(17,19,23,0.5)' }}>
@@ -242,7 +242,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                 {cfg.description}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <Link to="/civilflowareatrabajo" className="hidden md:inline-block bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-all" style={{ fontFamily: 'Geist, monospace', background: cfg.accent }}>
+                <Link to="/civilflowareatrabajo" className="inline-block bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-all" style={{ fontFamily: 'Geist, monospace', background: cfg.accent }}>
                   {cfg.ctaText}
                 </Link>
                 <button className="border text-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container transition-all flex items-center gap-2" style={{ fontFamily: 'Geist, monospace', borderColor: cfg.accent, color: cfg.accent }}>
@@ -279,7 +279,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               {cfg.description}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 mt-4">
-              <Link to="/civilflowareatrabajo" className="hidden md:inline-block bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-colors border border-primary" style={{ fontFamily: 'Geist, monospace' }}>
+              <Link to="/civilflowareatrabajo" className="inline-block bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-colors border border-primary" style={{ fontFamily: 'Geist, monospace' }}>
                 {cfg.ctaText}
               </Link>
               <Link to="/docs" className="bg-transparent text-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container-highest transition-colors border border-primary" style={{ fontFamily: 'Geist, monospace', borderColor: 'var(--acc)', color: 'var(--acc)' }}>
@@ -316,7 +316,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                 {cfg.description}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 mt-4">
-                <Link to="/civilflowareatrabajo" className="hidden md:inline-flex border border-outline-variant text-on-surface px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2 hover:border-[#d946ef] transition-colors" style={{ fontFamily: 'Geist, monospace', background: '#333539' }}>
+                <Link to="/civilflowareatrabajo" className="inline-flex border border-outline-variant text-on-surface px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2 hover:border-[#d946ef] transition-colors" style={{ fontFamily: 'Geist, monospace', background: '#333539' }}>
                   <span className="material-symbols-outlined text-lg">terminal</span> {cfg.ctaText}
                 </Link>
                 <Link to="/docs" className="border border-outline-variant text-on-surface-variant px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold flex items-center gap-2 hover:text-on-surface transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
@@ -371,7 +371,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               {cfg.description}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 mt-8">
-              <Link to="/civilflowareatrabajo" className="hidden md:inline-flex px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2" style={{ fontFamily: 'Geist, monospace', background: cfg.accent, color: '#111317' }}>
+              <Link to="/civilflowareatrabajo" className="inline-flex px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2" style={{ fontFamily: 'Geist, monospace', background: cfg.accent, color: '#111317' }}>
                 <span className="material-symbols-outlined text-sm">rocket_launch</span> {cfg.ctaText}
               </Link>
               <Link to="/docs" className="border border-outline-variant text-on-surface px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold flex items-center gap-2 hover:border-primary transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
@@ -397,7 +397,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               {cfg.description}
             </p>
             <div className="flex flex-wrap items-center gap-3 md:gap-4 mt-4">
-              <Link to="/civilflowareatrabajo" className="hidden md:inline-flex text-on-primary px-8 py-3 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2" style={{ fontFamily: 'Geist, monospace', background: '#00dce5' }}>
+              <Link to="/civilflowareatrabajo" className="inline-flex text-on-primary px-8 py-3 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2" style={{ fontFamily: 'Geist, monospace', background: '#00dce5' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>precision_manufacturing</span> {cfg.ctaText}
               </Link>
               <Link to="/docs" className="border border-outline-variant text-on-surface px-8 py-3 uppercase text-[11px] tracking-[0.08em] font-bold flex items-center gap-2 hover:border-primary transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
@@ -448,7 +448,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                 {cfg.description}
               </p>
               <div className="pt-8 flex flex-col sm:flex-row gap-4">
-                <Link to="/civilflowareatrabajo" className="hidden md:inline-flex bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2 hover:bg-primary/90 transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
+                <Link to="/civilflowareatrabajo" className="inline-flex bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2 hover:bg-primary/90 transition-colors" style={{ fontFamily: 'Geist, monospace' }}>
                   {cfg.ctaText} <span className="material-symbols-outlined text-base">arrow_forward</span>
                 </Link>
                 <Link to="/docs" className="border border-outline text-on-background px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container-highest transition-colors" style={{ fontFamily: 'Geist, monospace' }}>

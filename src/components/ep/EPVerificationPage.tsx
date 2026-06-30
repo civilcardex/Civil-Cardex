@@ -100,7 +100,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
 
   if (section === "params") {
     return (
-      <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.7fr 1fr", gap: 12, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 12, alignItems: "start" }}>
         <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/parametros_equipo.svg" iconImgStyle={{ width: 22, height: 22 }} title="Parámetros del equipo — Datos del fabricante" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editParams} setEdit={setEditParams} />}>
           <Tbl caption="Parámetros del equipo" cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
             [<Param name="Eficiencia bomba (η_b)" />, <LazyInp disabled={!editParams} field="etab" ariaLabel="Eficiencia bomba" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>0.55 – 0.80</span> Verificar en curva característica del fabricante para el punto Qd / HMT.</Comment>],
@@ -168,7 +168,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "480px 380px", gap: 16, justifyContent: "center", alignItems: "start" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(360px, 100%), 1fr))", gap: 16, justifyContent: "center", alignItems: "start" }}>
       <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.svg" iconImgStyle={{ width: 22, height: 22 }} title="Presostato y tanque hidroneumático" bodyStyle={{ padding: 0 }}>
         <Tbl caption="Presostato y tanque hidroneumático" thStyle={{ fontSize: 11, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud.", "Fórmula"]} rows={[
           ["P_on (arranque)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Pon.toFixed(2)}</span>, "m.c.a.", "P_on = HMT"],

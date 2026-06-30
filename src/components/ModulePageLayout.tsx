@@ -7,9 +7,9 @@ const MODULE_NAMES: Record<string, string> = {
   civilstructure: 'Estructuras',
   civilterrain: 'Terreno',
   civilbim: 'BIM',
-  civilmanage: 'Gesti\u00f3n',
+  civilmanage: 'Gestión',
   civilmep: 'MEP',
-  civilroads: 'V\u00edas',
+  civilroads: 'Vías',
 };
 
 interface ModulePageLayoutProps {
@@ -41,13 +41,6 @@ export default function ModulePageLayout({ title: _title, children, mainClassNam
     <>
       <script ref={breadRef} type="application/ld+json" />
       <Navbar />
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background p-4 lg:hidden" style={{ background: '#0c0e12' }}>
-        <div className="text-center">
-          <span className="material-symbols-outlined text-4xl mb-4 text-on-surface" aria-hidden="true">desktop_windows</span>
-          <p className="text-lg font-semibold text-on-surface" style={{ fontFamily: 'Geist, sans-serif' }}>Disponible solo en escritorio</p>
-          <p className="text-sm text-on-surface-variant mt-2" style={{ fontFamily: 'Geist, sans-serif' }}>Para una experiencia completa, accede desde tu computador</p>
-        </div>
-      </div>
       <main id="main-content" className={`flex-grow pt-16 ${mainClassName}`} style={{ background: '#111317', minHeight: '100vh' }}>
         {children}
       </main>

@@ -59,6 +59,25 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   const plansRef = useRef(planosCtx.plans);
   plansRef.current = planosCtx.plans;
   const [scale, setScale] = useState(1);
+  const [leftCollapsed, setLeftCollapsed] = useState(() => window.innerWidth < 1024);
+  const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 1024);
+
+  const dynamicLeftStyle = useMemo(() => ({
+    ...leftSidebarStyle,
+    width: leftCollapsed ? 0 : 165,
+    borderRight: leftCollapsed ? "none" : "1px solid #3a494a",
+    overflow: leftCollapsed ? "hidden" : "auto",
+    transition: "width 0.2s ease, border-right 0.2s ease",
+  }), [leftCollapsed]);
+
+  const dynamicRightStyle = useMemo(() => ({
+    ...rightSidebarStyle,
+    width: rightCollapsed ? 0 : 210,
+    borderLeft: rightCollapsed ? "none" : "1px solid #3a494a",
+    overflow: rightCollapsed ? "hidden" : "auto",
+    transition: "width 0.2s ease, border-left 0.2s ease",
+  }), [rightCollapsed]);
+
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tool, setTool] = useState('sel');
@@ -682,9 +701,9 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
         onToggleLocked={handleToggleLocked}
       />
 
-      <div style={{flex:1,display:"flex",minHeight:0}}>
+      <div style={{flex:1,display:"flex",minHeight:0,position:"relative"}}>
 
-      <div className="visor-sidebar" style={leftSidebarStyle}>
+      <div className="visor-sidebar" style={dynamicLeftStyle}>
         <div style={{
           height: 3, flexShrink: 0, transition: 'background .3s',
           background: STATUS[saveStatus]?.color || STATUS.error.color,
@@ -744,7 +763,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
         />
 
       {/* Right sidebar: Piso, ¿Qué voy a dibujar?, Tramo, Escala */}
-      <div className="visor-sidebar-right" style={rightSidebarStyle}>
+      <div className="visor-sidebar-right" style={dynamicRightStyle}>
         {/* Nivel — always enabled */}
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Nivel</div>
@@ -837,6 +856,67 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
 
         <div style={{flex:1}}/>
       </div>
+
+      {/* Left Sidebar Toggle Button */}
+      <button
+        onClick={() => setLeftCollapsed(!leftCollapsed)}
+        style={{
+          position: "absolute",
+          left: leftCollapsed ? 0 : 165,
+          top: "50%",
+          transform: "translateY(-50%)",
+          zIndex: 40,
+          width: 20,
+          height: 48,
+          background: "#14161a",
+          border: "1px solid #3a494a",
+          borderLeft: leftCollapsed ? "1px solid #3a494a" : "none",
+          borderRadius: "0 4px 4px 0",
+          color: "#849495",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
+          fontSize: 10,
+          transition: "left 0.2s ease",
+        }}
+        title={leftCollapsed ? "Expandir barra izquierda" : "Colapsar barra izquierda"}
+        aria-label={leftCollapsed ? "Expandir barra izquierda" : "Colapsar barra izquierda"}
+      >
+        {leftCollapsed ? "▶" : "◀"}
+      </button>
+
+      {/* Right Sidebar Toggle Button */}
+      <button
+        onClick={() => setRightCollapsed(!rightCollapsed)}
+        style={{
+          position: "absolute",
+          right: rightCollapsed ? 0 : 210,
+          top: "50%",
+          transform: "translateY(-50%)",
+          zIndex: 40,
+          width: 20,
+          height: 48,
+          background: "#14161a",
+          border: "1px solid #3a494a",
+          borderRight: rightCollapsed ? "1px solid #3a494a" : "none",
+          borderRadius: "4px 0 0 4px",
+          color: "#849495",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
+          fontSize: 10,
+          transition: "right 0.2s ease",
+        }}
+        title={rightCollapsed ? "Expandir barra derecha" : "Colapsar barra derecha"}
+        aria-label={rightCollapsed ? "Expandir barra derecha" : "Colapsar barra derecha"}
+      >
+        {rightCollapsed ? "◀" : "▶"}
+      </button>
+
       </div>
       
       <ConfirmDialog confirmState={confirmState} setConfirmState={setConfirmState} />
