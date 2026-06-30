@@ -33,8 +33,12 @@ export default function CursorSpotlight({ containerRef }: CursorSpotlightProps) 
     
     if (!container || !spotlight) return;
 
+    let rect = container.getBoundingClientRect();
+    const updateRect = () => {
+      rect = container.getBoundingClientRect();
+    };
+
     const handleMouseMove = (e: MouseEvent) => {
-      const rect = container.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
@@ -48,10 +52,12 @@ export default function CursorSpotlight({ containerRef }: CursorSpotlightProps) 
       setIsVisible(false);
     };
 
+    container.addEventListener('mouseenter', updateRect);
     container.addEventListener('mousemove', handleMouseMove);
     container.addEventListener('mouseleave', handleMouseLeave);
 
     return () => {
+      container.removeEventListener('mouseenter', updateRect);
       container.removeEventListener('mousemove', handleMouseMove);
       container.removeEventListener('mouseleave', handleMouseLeave);
     };

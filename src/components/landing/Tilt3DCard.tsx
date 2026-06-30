@@ -8,6 +8,7 @@ interface Props {
 
 export default function Tilt3DCard({ children, className = '', style = {} }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
+  const rectRef = useRef<DOMRect | null>(null);
   const [tiltStyle, setTiltStyle] = useState({});
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
@@ -24,7 +25,10 @@ export default function Tilt3DCard({ children, className = '', style = {} }: Pro
     const card = cardRef.current;
     if (!card) return;
 
-    const rect = card.getBoundingClientRect();
+    if (!rectRef.current) {
+      rectRef.current = card.getBoundingClientRect();
+    }
+    const rect = rectRef.current;
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
@@ -42,6 +46,7 @@ export default function Tilt3DCard({ children, className = '', style = {} }: Pro
   };
 
   const handleMouseLeave = () => {
+    rectRef.current = null;
     if (prefersReducedMotion) return;
     setTiltStyle({
       transform: `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`,

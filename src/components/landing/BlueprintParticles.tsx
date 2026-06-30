@@ -47,13 +47,18 @@ export default function BlueprintParticles() {
       }
     };
 
+    let cachedRect: DOMRect | null = null;
+
     const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      mouseX = e.clientX - rect.left;
-      mouseY = e.clientY - rect.top;
+      if (!cachedRect) {
+        cachedRect = canvas.getBoundingClientRect();
+      }
+      mouseX = e.clientX - cachedRect.left;
+      mouseY = e.clientY - cachedRect.top;
     };
 
     const handleMouseLeave = () => {
+      cachedRect = null;
       mouseX = -1000;
       mouseY = -1000;
     };
