@@ -22,11 +22,8 @@ import ConfirmDialog from "./pdfViewer/ConfirmDialog";
 import AlertDialog from "./pdfViewer/AlertDialog";
 import TipoTramoSelector from "./pdfViewer/TipoTramoSelector";
 import BajanteAsociacion from "./pdfViewer/BajanteAsociacion";
+import { CopyFromPlanPanel } from "./pdfViewer/CopyFromPlanPanel";
 
-const TIPOS_TRAMO = [
-  { id: "ramal", label: "Ramal" },
-  { id: "tributario", label: "Tributario" },
-];
 
 
 interface PdfViewerProps {
@@ -476,13 +473,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
       if (liveActiveNets) return excludeEquipment(NETS.filter(n => liveActiveNets.has(n.id)));
       return excludeEquipment(NETS);
     };
-    const base = getNets();
-    const hasSan = base.some((n: any) => n.id === 'san');
-    if (hasSan) {
-      const vent = NETS.find((n: any) => n.id === 'vent');
-      if (vent && !base.some((n: any) => n.id === 'vent')) base.push(vent);
-    }
-    return base.filter((n: any) => n.id !== 'vent' || hasSan);
+    return getNets();
   }, [activeNetworks, liveActiveNets]);
 
   const { saveStatus, doSave, autoSaveTimerRef } = usePdfAutoSave(engineRef, currentIdRef, planosCtx.plans);
@@ -774,6 +765,15 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
           </select>
           {planoAsocInfo}
         </div>
+
+        <CopyFromPlanPanel
+          engineRef={engineRef}
+          currentId={currentId}
+          currentIdRef={currentIdRef}
+          planosCtx={planosCtx}
+          pisos={pisos}
+          visibleNets={finalVisibleNets}
+        />
 
         {/* Rest of sidebar — blocked when selecting without element selected */}
         <div style={rightSidebarOpacity}>
