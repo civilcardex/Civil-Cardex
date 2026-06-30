@@ -9,8 +9,9 @@ interface Props {
 export default function Tilt3DCard({ children, className = '', style = {} }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const rectRef = useRef<DOMRect | null>(null);
-  const [tiltStyle, setTiltStyle] = useState({});
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  const rafId = useRef<number | null>(null);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -38,30 +39,36 @@ export default function Tilt3DCard({ children, className = '', style = {} }: Pro
     const rotateX = ((y - centerY) / centerY) * -8; // Max -8 to 8
     const rotateY = ((x - centerX) / centerX) * 8; // Max -8 to 8
 
-    setTiltStyle({
-      transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.04, 1.04, 1.04)`,
-      transition: 'none',
-      zIndex: 20
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    
+    rafId.current = requestAnimationFrame(() => {
+      card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.04, 1.04, 1.04)`;
+      card.style.transition = 'none';
+      card.style.zIndex = '20';
     });
   };
 
   const handleMouseLeave = () => {
     rectRef.current = null;
-    if (prefersReducedMotion) return;
-    setTiltStyle({
-      transform: `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`,
-      transition: 'transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1)',
-      zIndex: 1
+    const card = cardRef.current;
+    if (!card) return;
+    
+    if (rafId.current) cancelAnimationFrame(rafId.current);
+    
+    rafId.current = requestAnimationFrame(() => {
+      card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
+      card.style.transition = 'transform 0.5s cubic-bezier(0.23, 1, 0.32, 1)';
+      card.style.zIndex = '1';
     });
   };
 
   return (
     <div
       ref={cardRef}
-      className={className}
+      className={`relative transition-all duration-300 ease-out will-change-transform ${className}`}
+      style={style}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      style={{ ...style, ...tiltStyle, willChange: 'transform' }}
     >
       {children}
     </div>

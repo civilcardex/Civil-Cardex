@@ -311,7 +311,7 @@ function LandingPage() {
         <div className="absolute inset-0 z-[4] pointer-events-auto">
           <BlueprintParticles />
         </div>
-        <BlueprintMarks />
+
         
         <CursorSpotlight containerRef={heroRef as React.RefObject<HTMLElement>} />
 
