@@ -87,9 +87,21 @@
     <link rel="canonical" href="https://civilcore.app" />
     <link rel="preconnect" href="https://klkwpjdzargmeovwcgxe.supabase.co" />
     <link rel="dns-prefetch" href="https://klkwpjdzargmeovwcgxe.supabase.co" />
+    <link rel="modulepreload" href="/src/main.tsx" />
+    <link rel="preload" as="image" href="/logos/civilCorelogo.svg" fetchpriority="high" />
+    <style>
+      /* Critical inline CSS for instant FCP */
+      html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; background: #111317; color: #e2e2e8; }
+      ._preload {
+        display: flex; align-items: center; justify-content: center; height: 100vh;
+        font-family: system-ui, sans-serif; flex-direction: column; gap: 12px;
+      }
+      ._preload img { width: 48px; height: 48px; }
+      ._preload p { font-size: 14px; color: #8AB4D6; margin: 0; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="_preload"><img src="/logos/civilCorelogo.svg" alt="Civil Core" width="48" height="48" /><p>Cargando…</p></div></div>
     <noscript>
       <div style="padding: 2rem; font-family: system-ui, sans-serif; text-align: center; background: #111317; color: #e2e2e8; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
         <div>
