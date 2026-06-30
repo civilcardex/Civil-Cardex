@@ -272,7 +272,16 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35);
       const lineH = fsCode + 2;
       
-      const codeStr = (b.code || '').replace(/#/g, '');
+      const getPisoCorto = (v: any) => {
+        const n = typeof v === 'number' ? v : parseInt(String(v), 10);
+        if (isNaN(n)) return '';
+        if (n < 0) return `S${Math.abs(n)}`;
+        if (n === 99) return 'C';
+        return `P${n}`;
+      };
+      const pCorto = getPisoCorto(engine.nivelActual?.n);
+      const lvlSuffix = pCorto ? `-${pCorto}` : '';
+      const codeStr = (b.code ? b.code.replace(/#/g, '') : '') + (b.code ? lvlSuffix : '');
       let diamStr = '';
       if (b.dNominal && b.dNominal !== '0') {
         const v = String(b.dNominal).trim();
@@ -466,7 +475,16 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35);
       const lineH = fsCode + 2;
 
-      const codeStr = (b.code || '').replace(/#/g, '');
+      const getPisoCorto = (v: any) => {
+        const n = typeof v === 'number' ? v : parseInt(String(v), 10);
+        if (isNaN(n)) return '';
+        if (n < 0) return `S${Math.abs(n)}`;
+        if (n === 99) return 'C';
+        return `P${n}`;
+      };
+      const pCorto = getPisoCorto(engine.nivelActual?.n);
+      const lvlSuffix = pCorto ? `-${pCorto}` : '';
+      const codeStr = (b.code ? b.code.replace(/#/g, '') : '') + (b.code ? lvlSuffix : '');
       const ghostDir = gd?.direccion || b.direccion;
       const ghostDNom = gd?.dNominal || b.dNominal;
       let diamStr = '';

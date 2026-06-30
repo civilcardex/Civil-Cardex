@@ -201,7 +201,16 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         flowLen = Math.hypot(flowDx, flowDy);
       }
       const arrowSize = showFlow && flowLen > 12 * engine.zoom ? 46 * engine.zoom : 0;
-      const lbl = r.label || '';
+      const getPisoCorto = (v: any) => {
+        const n = typeof v === 'number' ? v : parseInt(String(v), 10);
+        if (isNaN(n)) return '';
+        if (n < 0) return `S${Math.abs(n)}`;
+        if (n === 99) return 'C';
+        return `P${n}`;
+      };
+      const pCorto = getPisoCorto(engine.nivelActual?.n);
+      const lvlSuffix = pCorto ? `-${pCorto}` : '';
+      const lbl = r.label ? `${r.label}${lvlSuffix}` : '';
       const matPart = r.material || '';
       let dPart = r.diametro ? `D=${r.diametro.split(' — ')[0]}` : '';
       if (r.net === 'gas' && dPart && !dPart.endsWith('"')) {
