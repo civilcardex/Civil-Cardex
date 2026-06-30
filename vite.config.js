@@ -15,7 +15,7 @@ export default defineConfig({
         return deps.filter(dep => !dep.includes('pdf-viewer') && !dep.includes('vendor-jspdf') && !dep.includes('vendor-pdfjs') && !dep.includes('plano-engine'));
       }
     },
-    chunkSizeWarningLimit: 500,
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
         manualChunks(id) {
