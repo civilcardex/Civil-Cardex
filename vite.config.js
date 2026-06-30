@@ -10,6 +10,11 @@ export default defineConfig({
     },
   },
   build: {
+    modulePreload: {
+      resolveDependencies(filename, deps) {
+        return deps.filter(dep => !dep.includes('pdf-viewer') && !dep.includes('vendor-jspdf') && !dep.includes('vendor-pdfjs') && !dep.includes('plano-engine'));
+      }
+    },
     chunkSizeWarningLimit: 500,
     rollupOptions: {
       output: {
