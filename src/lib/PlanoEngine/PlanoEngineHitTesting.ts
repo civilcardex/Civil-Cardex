@@ -1,5 +1,5 @@
 import type { IPlanoEngineCore } from './PlanoState';
-import { pointInLabelBox } from './HitTester';
+import { pointInLabelBox, pointInPoly } from './HitTester';
 
 export interface ContextMenuHitResult {
   element: unknown;
@@ -109,7 +109,7 @@ export function hitTestRightClick(
     let hitOnArea = false;
     if (a.pts) {
       const cvsPts = a.pts.map((pt: number[]) => engine.toCvs(pt[0], pt[1]));
-      hitOnArea = isPointInPoly(x, y, cvsPts);
+      hitOnArea = pointInPoly(x, y, cvsPts);
     }
     const hitOnLabel = a._labelBox && pointInLabelBox(x, y, a._labelBox);
     if (hitOnArea || hitOnLabel) {
@@ -120,17 +120,6 @@ export function hitTestRightClick(
   return null;
 }
 
-function isPointInPoly(x: number, y: number, poly: { x: number; y: number }[]): boolean {
-  let inside = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const xi = poly[i].x, yi = poly[i].y;
-    const xj = poly[j].x, yj = poly[j].y;
-    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
-      inside = !inside;
-    }
-  }
-  return inside;
-}
 
 export function hitTestBajanteLabelForDrag(
   engine: IPlanoEngineCore,

@@ -224,14 +224,14 @@ export default function TramoEditor({
                     style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
                 </div>
                 <div>
-                  <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Inicial</div>
-                  <input value={selElement.ini||''} placeholder="— inicial —" aria-label="Conexión de inicio"
+                  <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Inicio</div>
+                  <input value={selElement.ini||''} placeholder="— inicio —" aria-label="Conexión de inicio"
                     onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({ini:v});setSelElement({...selElement,ini:v})}}}
                     style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
                 </div>
                 <div>
-                  <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Final</div>
-                  <input value={selElement.fin||''} placeholder="— final —" aria-label="Conexión de fin"
+                  <div style={{fontSize:8,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.5}}>Fin</div>
+                  <input value={selElement.fin||''} placeholder="— fin —" aria-label="Conexión de fin"
                     onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({fin:v});setSelElement({...selElement,fin:v})}}}
                     style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",minWidth:0}}/>
                 </div>

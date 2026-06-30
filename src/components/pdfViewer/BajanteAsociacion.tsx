@@ -2,7 +2,7 @@
 import React from 'react';
 
 interface BajanteAsociacionProps {
-  selElement: Record<string, any>;
+  selElement: Record<string, any> | null;
   setSelElement: (el: any) => void;
   selectedNivel: number | null;
   pisoLbl: (n: number) => string;

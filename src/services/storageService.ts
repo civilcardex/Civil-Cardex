@@ -31,15 +31,21 @@ export function removeFromStorage(key: string): void {
 import { supabase } from '../lib/supabase';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 
-export function loadPlanTrazos(planId: string): any | null {
-  return loadFromStorage(TRAZOS_PREFIX + planId, null);
+export interface PlanTrazos {
+  ts?: number;
+  ramales?: unknown[];
+  bajantes?: unknown[];
+}
+
+export function loadPlanTrazos(planId: string): PlanTrazos | null {
+  return loadFromStorage<PlanTrazos | null>(TRAZOS_PREFIX + planId, null);
 }
 
 export function savePlanTrazos(planId: string, data: unknown): void {
   saveToStorage(TRAZOS_PREFIX + planId, data);
 }
 
-export async function saveTrazosToDB(planoId: string, data: any): Promise<void> {
+export async function saveTrazosToDB(planoId: string, data: unknown): Promise<void> {
   try {
     const { error } = await supabase
       .from('plano_trazos')
@@ -52,7 +58,7 @@ export async function saveTrazosToDB(planoId: string, data: any): Promise<void> 
   }
 }
 
-export async function loadTrazosFromDB(planoId: string): Promise<any | null> {
+export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | null> {
   try {
     const { data, error } = await supabase
       .from('plano_trazos')
@@ -67,7 +73,7 @@ export async function loadTrazosFromDB(planoId: string): Promise<any | null> {
       }
       return null;
     }
-    return data?.data || null;
+    return (data?.data as PlanTrazos) || null;
   } catch (e) {
     if (import.meta.env.DEV) console.error('storageService loadTrazosFromDB exception:', e);
     return null;

@@ -184,7 +184,7 @@ function GasDesign(){
     return result;
   }, [gasTramos, diamInt, diamK, gasAcc, pmin, temp, densRel, patm]);
 
-  const COLS=['Tramo','Nivel','Desde','Hasta','Material y Diámetro','Ø interno (mm)','Coeficiente K','Longitud (m)'];
+  const COLS=['Tramo','Nivel','Inicio','Fin','Material y Diámetro','Ø interno (mm)','Coeficiente K','Longitud (m)'];
   const colW=['8%','5%','8%','8%','18%','10%','8%','12%'];
 
   const page1 = (<>
@@ -367,8 +367,8 @@ function GasDesign(){
                   <th scope="col" style={{...TH,fontSize:8}}>Te en l&iacute;nea (flujo recto)</th>
                   <th scope="col" style={{...TH,fontSize:8}}>Te ramal (flujo desviado)</th>
                   <th scope="col" style={{...TH,fontSize:8}}>Válvula de bola (1/4 de vuelta)</th>
-                  <th scope="col" style={{...TH,fontSize:9}}>Inicial</th>
-                  <th scope="col" style={{...TH,fontSize:9}}>Final</th>
+                  <th scope="col" style={{...TH,fontSize:9}}>Inicio</th>
+                  <th scope="col" style={{...TH,fontSize:9}}>Fin</th>
                 </tr>
               </thead>
               <tbody>

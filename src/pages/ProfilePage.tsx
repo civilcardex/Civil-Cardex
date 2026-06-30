@@ -72,7 +72,7 @@ function ProfilePage() {
 
   function handleEditStart(field: string) {
     setEditField(field)
-    setEditValue((perfil as any)[field])
+    setEditValue((perfil as Record<string, string>)[field] || '')
   }
 
   function handleEditCancel() {
@@ -81,7 +81,7 @@ function ProfilePage() {
   }
 
   async function handleEditSave(field: string) {
-    if (editValue === (perfil as any)[field]) { handleEditCancel(); return }
+    if (editValue === (perfil as Record<string, string>)[field]) { handleEditCancel(); return }
     setSaving(field)
     try {
       const { error } = await supabase
@@ -175,7 +175,7 @@ function ProfilePage() {
             >✕</button>
           </div>
         ) : readonly ? (
-          <span className="text-[13px] text-on-surface font-medium">{(perfil as any)[key]}</span>
+          <span className="text-[13px] text-on-surface font-medium">{(perfil as Record<string, string>)[key]}</span>
         ) : (
           <div
             role="button"
@@ -185,7 +185,7 @@ function ProfilePage() {
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleEditStart(key); } }}
           >
             <span className="text-[13px] text-on-surface font-medium">
-              {(perfil as any)[key] || <span className="text-on-surface-variant italic opacity-50">Click para editar</span>}
+              {(perfil as Record<string, string>)[key] || <span className="text-on-surface-variant italic opacity-50">Click para editar</span>}
             </span>
             <span className="material-symbols-outlined text-xs text-on-surface-variant opacity-0 group-hover:opacity-60 transition-opacity">edit</span>
           </div>

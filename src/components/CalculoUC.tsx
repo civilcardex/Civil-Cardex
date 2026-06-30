@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, pisoCorto } from "../constants";
@@ -31,21 +31,34 @@ function CalculoUC({ tipo }: CalculoUCProps) {
   } as const;
   const { tramos, ucIds, field, apField, colorVar, clsHeader, icon, title, showTotal } = TIPO_CFG[tipo];
 
-  const AP = ucIds.map(id => {
-    const a = APARATOS_DEF.find(x => x.id === id);
-    if (!a) return null;
-    const fromAps = aps.find(p => p.id === id);
-    const merged = fromAps ? { ...a, [field]: fromAps[apField] || a[field] } : a;
-    return { ...merged, _disabled: (a[field] || 0) === 0 };
-  }).filter((x): x is NonNullable<typeof x> => x != null);
+  const AP = useMemo(() => {
+    return ucIds.map(id => {
+      const a = APARATOS_DEF.find(x => x.id === id);
+      if (!a) return null;
+      const fromAps = aps.find(p => p.id === id);
+      const merged = fromAps ? { ...a, [field]: fromAps[apField] || a[field] } : a;
+      return { ...merged, _disabled: (a[field] || 0) === 0 };
+    }).filter((x): x is NonNullable<typeof x> => x != null);
+  }, [ucIds, aps, field, apField]);
 
-  const totales = AP.map(d => ({
-    id: d!.id, nombre: d!.nombre, uc: (d as any)[field],
-    cant: tramos.reduce((s, t) => s + ((t.fixtures?.[d!.id] || 0)), 0)
-  }));
-  const totalUC = totales.reduce((s, d) => s + (d.cant || 0) * (d.uc || 0), 0);
+  const totales = useMemo(() => {
+    return AP.map(d => ({
+      id: d.id, nombre: d.nombre, uc: (d as any)[field],
+      cant: tramos.reduce((s, t) => s + ((t.fixtures?.[d.id] || 0)), 0)
+    }));
+  }, [AP, tramos, field]);
 
-  const acumMap = showTotal ? calcUCacumulado(tramos, AP as any, field) : {};
+  const totalUC = useMemo(() => {
+    return totales.reduce((s, d) => s + (d.cant || 0) * (d.uc || 0), 0);
+  }, [totales]);
+
+  const acumMap = useMemo(() => {
+    return showTotal ? calcUCacumulado(tramos, AP as any, field) : {};
+  }, [showTotal, tramos, AP, field]);
+
+  const sortedTramos = useMemo(() => {
+    return [...tramos].sort((a, b) => (a.piso || 0) - (b.piso || 0));
+  }, [tramos]);
 
   return (
     <>
@@ -94,7 +107,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                     </td>
                   </tr>
-                ) : [...tramos].sort((a, b) => (a.piso || 0) - (b.piso || 0)).map((t, i) => {
+                ) : sortedTramos.map((t, i) => {
                   const parcial = calcUCparcial(t, AP as any, field);
                   const acum = showTotal ? (acumMap[t.id] || 0) : 0;
                   const vLh = t.totalL || t.Lh || 0;

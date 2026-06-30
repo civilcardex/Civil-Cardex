@@ -11,55 +11,109 @@ import {
 } from '../constants/storage-keys';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
 
-type DrawingData = Record<string, any>;
+interface RawElement {
+  id: string;
+  net: string;
+  tipo: string;
+  padre?: string | null;
+  totalL?: number;
+  ini?: string;
+  fin?: string;
+  diametro?: string;
+  pendiente?: number;
+  material?: string;
+  dz?: string;
+  lvert?: string;
+  piso?: string;
+  pts?: number[][];
+  nSalidas?: number;
+  descargaEnId?: string | null;
+  code?: string;
+  dNominal?: string;
+  hVert?: number;
+  recibeDeIds?: string[];
+  alimentaIds?: string[];
+  area_m2?: number;
+  pisoBase?: string;
+  pisoCima?: string;
+  nptBase?: number;
+  nptCima?: number;
+  bajR?: number;
+  bajDprop?: unknown;
+  ventDprop?: unknown;
+  bajLong?: unknown;
+  bajFDarcy?: unknown;
+  label?: string;
+}
 
-function collectAparatos(out: DrawingData) {
-  const rawAparatos = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
+export interface DrawingData {
+  planes?: Record<string, unknown>;
+  aparatosByTramo?: Record<string, unknown>;
+  hidroData?: Record<string, unknown>;
+  updatedAt?: number;
+  id?: string | number;
+  nivel?: string | number | null;
+  name?: string;
+  npt?: number;
+  ramales?: RawElement[];
+  bajantes?: RawElement[];
+  [key: string]: unknown;
+}
+
+export interface SyncPlanInput {
+  id: string | number;
+  name?: string;
+  nivel?: string | number | null;
+  npt?: number;
+  status?: string;
+}
+
+interface TraceData {
+  ramales?: RawElement[];
+  bajantes?: RawElement[];
+  [key: string]: unknown;
+}
+
+interface SyncDataResult {
+  planes: Record<string, unknown>;
+  aparatosByTramo?: Record<string, unknown>;
+  hidroData?: Record<string, unknown>;
+  updatedAt: number;
+}
+
+function collectAparatos(out: SyncDataResult) {
+  const rawAparatos = loadFromStorage<Record<string, unknown>>(APARATOS_BY_TRAMO_KEY, {});
   out.aparatosByTramo = {};
   for (const [key, counts] of Object.entries(rawAparatos)) {
     if (!counts || typeof counts !== 'object') continue;
-    const filtered: Record<string, number> = {};
-    for (const [apId, n] of Object.entries(counts)) {
-      const v = Number(n) || 0;
-      if (v > 0) filtered[apId] = v;
-    }
-    if (Object.keys(filtered).length > 0) out.aparatosByTramo[key] = filtered;
+    out.aparatosByTramo[key] = counts;
   }
 }
 
-function inferNivelFromDrawing(data: DrawingData): number {
-  if (!data) return 0;
-  for (const r of (data.ramales || [])) {
-    if (r.piso != null) {
-      const n = parseInt(r.piso);
-      if (!isNaN(n)) return n;
-    }
+function inferNivelFromDrawing(data: TraceData): string {
+  const all = [...(data.ramales || []), ...(data.bajantes || [])];
+  for (const el of all) {
+    if (el.piso) return el.piso;
   }
-  for (const b of (data.bajantes || [])) {
-    if (b.pisoBase != null) {
-      const n = parseInt(b.pisoBase);
-      if (!isNaN(n)) return n;
-    }
-  }
-  return 0;
+  return '0';
 }
 
-function buildPrefixedSyncData(plans: DrawingData[], families: Set<string>) {
-  const out: DrawingData = { planes: {}, updatedAt: Date.now() };
+function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): SyncDataResult {
+  const out: SyncDataResult = { planes: {}, updatedAt: Date.now() };
   if (!Array.isArray(plans)) return out;
 
   for (const plan of plans) {
-    if (!plan) continue;
-    const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
+    if (!plan || plan.id === undefined) continue;
+    const raw = loadFromStorage<TraceData | null>(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
-    let data = raw as DrawingData;
+    let data = raw;
     if (typeof data === 'string') {
-      try { data = JSON.parse(data); } catch { continue; }
+      try { data = JSON.parse(data) as TraceData; } catch { continue; }
     }
-    const nivel = plan.nivel ?? inferNivelFromDrawing(data);
+    const nivel = String(plan.nivel ?? inferNivelFromDrawing(data));
 
     for (const family of families) {
-      const ramales: any[] = [];
+      const ramales: unknown[] = [];
       for (const r of (data.ramales || [])) {
         if (r.net === family) {
           const rKey = family + '_' + r.id + '_' + plan.id;
@@ -69,13 +123,13 @@ function buildPrefixedSyncData(plans: DrawingData[], families: Set<string>) {
             ini: r.ini || '', fin: r.fin || '',
             diametro: r.diametro || '', diamPulg: diamPulgFromLabel(r.diametro),
             pendiente: typeof r.pendiente === 'number' ? r.pendiente : 0,
-            material: r.material || '', maning: matManning(r.material),
-            dz: parseFloat(r.dz ?? r.lvert) || 0,
+            material: r.material || '', maning: matManning(r.material || ''),
+            dz: parseFloat(r.dz ?? r.lvert ?? '0') || 0,
             piso: r.piso || nivel,
             _aparatosKey: rKey,
             _net: r.net || family,
             pts: r.pts || [],
-            lvert: parseFloat(r.lvert ?? r.dz) || 0,
+            lvert: parseFloat(r.lvert ?? r.dz ?? '0') || 0,
             nSalidas: r.nSalidas || 0,
             descargaEnId: r.descargaEnId || null,
           });
@@ -83,13 +137,20 @@ function buildPrefixedSyncData(plans: DrawingData[], families: Set<string>) {
       }
       const planoKey = family + '_' + nivel;
       if (ramales.length === 0) continue;
-      out.planes[planoKey] = { planoId: plan.id, planoName: plan.name, nivel, npt: plan.npt ?? parseInt(nivel), ramales, bajantes: [] };
+      out.planes[planoKey] = {
+        planoId: plan.id,
+        planoName: plan.name || '',
+        nivel,
+        npt: plan.npt ?? parseInt(nivel),
+        ramales,
+        bajantes: []
+      };
     }
   }
 
   collectAparatos(out);
 
-  const rawHidro = loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
+  const rawHidro = loadFromStorage<Record<string, unknown>>(HYDRO_DATA_STORAGE_KEY, {});
   out.hidroData = {};
   for (const [key, val] of Object.entries(rawHidro)) {
     out.hidroData[key] = val;
@@ -98,22 +159,22 @@ function buildPrefixedSyncData(plans: DrawingData[], families: Set<string>) {
   return out;
 }
 
-function buildNonPrefixedSyncData(plans: DrawingData[], families: Set<string>) {
-  const out: DrawingData = { planes: {}, updatedAt: Date.now() };
+function buildNonPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): SyncDataResult {
+  const out: SyncDataResult = { planes: {}, updatedAt: Date.now() };
   if (!Array.isArray(plans)) return out;
 
   for (const plan of plans) {
-    if (!plan) continue;
-    const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
+    if (!plan || plan.id === undefined) continue;
+    const raw = loadFromStorage<TraceData | null>(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
-    let data = raw as DrawingData;
+    let data = raw;
     if (typeof data === 'string') {
-      try { data = JSON.parse(data); } catch { continue; }
+      try { data = JSON.parse(data) as TraceData; } catch { continue; }
     }
-    const nivel = plan.nivel ?? inferNivelFromDrawing(data);
+    const nivel = String(plan.nivel ?? inferNivelFromDrawing(data));
 
-    const ramales: any[] = [];
-    const bajantes: any[] = [];
+    const ramales: unknown[] = [];
+    const bajantes: unknown[] = [];
     for (const r of (data.ramales || [])) {
       if (families.has(r.net)) {
         const rKey = r.net + '_' + r.id + '_' + plan.id;
@@ -123,7 +184,7 @@ function buildNonPrefixedSyncData(plans: DrawingData[], families: Set<string>) {
           ini: r.ini || '', fin: r.fin || '',
           diametro: r.diametro || '', diamPulg: diamPulgFromLabel(r.diametro),
           pendiente: typeof r.pendiente === 'number' ? r.pendiente : 0,
-          material: r.material || '', maning: matManning(r.material),
+          material: r.material || '', maning: matManning(r.material || ''),
           piso: r.piso || nivel,
           _aparatosKey: rKey, _net: r.net,
           nSalidas: r.nSalidas || 0,
@@ -138,7 +199,7 @@ function buildNonPrefixedSyncData(plans: DrawingData[], families: Set<string>) {
           id: b.id, code: b.code || b.id, tipo: b.tipo || 'bajante',
           dNominal: b.dNominal || '', diamPulg: diamPulgFromLabel(b.dNominal),
           hVert: b.hVert || 0, material: b.material || '',
-          maning: matManning(b.material), _aparatosKey: bKey, _net: b.net,
+          maning: matManning(b.material || ''), _aparatosKey: bKey, _net: b.net,
           recibeDeIds: b.recibeDeIds || [],
           descargaEnId: b.descargaEnId || null,
           area_m2: b.area_m2 || 0,
@@ -153,7 +214,7 @@ function buildNonPrefixedSyncData(plans: DrawingData[], families: Set<string>) {
       }
     }
     if (ramales.length === 0 && bajantes.length === 0) continue;
-    out.planes[nivel] = { planoId: plan.id, planoName: plan.name, nivel: plan.nivel, npt: plan.npt, ramales, bajantes };
+    out.planes[nivel] = { planoId: plan.id, planoName: plan.name || '', nivel: String(plan.nivel || ''), npt: plan.npt || 0, ramales, bajantes };
   }
 
   collectAparatos(out);
@@ -161,13 +222,13 @@ function buildNonPrefixedSyncData(plans: DrawingData[], families: Set<string>) {
   return out;
 }
 
-function buildSyncData(plans: DrawingData[], families: Set<string>, prefix: string, _storageKey: string) {
+function buildSyncData(plans: SyncPlanInput[], families: Set<string>, prefix: string, _storageKey: string): SyncDataResult {
   return prefix
     ? buildPrefixedSyncData(plans, families)
     : buildNonPrefixedSyncData(plans, families);
 }
 
-export function writeHydroDrawingSync(plans: DrawingData[]) {
+export function writeHydroDrawingSync(plans: SyncPlanInput[]) {
   try {
     const data = buildSyncData(plans, HYDRO_FAMILIES, 'h', HYDRO_SYNC_KEY);
     saveToStorage(HYDRO_SYNC_KEY, data);
@@ -181,14 +242,14 @@ export function writeHydroDrawingSync(plans: DrawingData[]) {
 
 export function readHydroDrawingSync() {
   return loadFromStorage(HYDRO_SYNC_KEY, { planes: {}, aparatosByTramo: {}, hidroData: {}, updatedAt: 0 }) as {
-    planes: Record<string, any>;
-    aparatosByTramo: Record<string, any>;
-    hidroData: Record<string, any>;
+    planes: Record<string, unknown>;
+    aparatosByTramo: Record<string, unknown>;
+    hidroData: Record<string, unknown>;
     updatedAt: number;
   };
 }
 
-export function writeSanDrawingSync(plans: DrawingData[]) {
+export function writeSanDrawingSync(plans: SyncPlanInput[]) {
   try {
     const data = buildSyncData(plans, SAN_FAMILIES, '', SAN_SYNC_KEY);
     saveToStorage(SAN_SYNC_KEY, data);
@@ -202,8 +263,8 @@ export function writeSanDrawingSync(plans: DrawingData[]) {
 
 export function readSanDrawingSync() {
   return loadFromStorage(SAN_SYNC_KEY, { planes: {}, aparatosByTramo: {}, updatedAt: 0 }) as {
-    planes: Record<string, any>;
-    aparatosByTramo: Record<string, any>;
+    planes: Record<string, unknown>;
+    aparatosByTramo: Record<string, unknown>;
     updatedAt: number;
   };
 }

@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { usePlans } from "../context/PlansContext";
@@ -20,7 +20,7 @@ function CalculoUD() {
     });
   }, [aps]);
 
-  const [conexiones, componentTotalMap] = useMemo(() => {
+  const [, componentTotalMap] = useMemo(() => {
     const map: Record<string, string[]> = {}; // parentKey -> childKeys[]
 
     for (const plan of plans || []) {
@@ -262,31 +262,6 @@ function CalculoUD() {
     return [orientedConexiones, componentTotalMap];
   }, [plans, tramosSan, mergedBase]);
 
-  function getDescendantsUD(tKey: string, visited = new Set<string>()): number {
-    if (visited.has(tKey)) return 0;
-    visited.add(tKey);
-    const children = conexiones[tKey] || [];
-    let sum = 0;
-    for (const childKey of children) {
-      const childTramo = tramosSan.find(x => x._key === childKey);
-      if (childTramo) {
-        sum += calcUDparcial(childTramo, mergedBase) + getDescendantsUD(childKey, visited);
-      }
-    }
-    return sum;
-  }
-
-  function getDescendantKeys(tKey: string, visited = new Set<string>()): string[] {
-    if (visited.has(tKey)) return [];
-    visited.add(tKey);
-    const children = conexiones[tKey] || [];
-    let list: string[] = [];
-    for (const childKey of children) {
-      list.push(childKey);
-      list = list.concat(getDescendantKeys(childKey, visited));
-    }
-    return list;
-  }
 
   const displayTramos = useMemo(() => {
     return tramosSan.filter(t => t.tipo === 'ramal' && !t.esBajante)

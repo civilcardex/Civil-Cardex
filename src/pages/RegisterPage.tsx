@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import FormField from '../components/FormField';
@@ -56,8 +56,9 @@ function RegisterPage() {
         }
       });
       navigate('/civilflowareatrabajo');
-    } catch (err: any) {
-      setError(err.message || 'Error al crear la cuenta');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Error al crear la cuenta';
+      setError(message);
     } finally {
       setLoading(false);
     }

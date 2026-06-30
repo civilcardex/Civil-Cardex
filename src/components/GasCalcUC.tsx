@@ -90,7 +90,7 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
     <thead>
       <tr>
         <th scope="col" style={{...TH, minWidth:42, fontSize:11}} rowSpan={2}>Tramo</th>
-        <th scope="col" style={{...TH, minWidth:36, fontSize:11}} rowSpan={2}>Niv.</th>
+        <th scope="col" style={{...TH, minWidth:36, fontSize:11}} rowSpan={2}>Niveñs</th>
         <th scope="col" style={{...TH, minWidth:40, fontSize:11}} rowSpan={2}>Inicio</th>
         <th scope="col" style={{...TH, minWidth:40, fontSize:11}} rowSpan={2}>Fin</th>
         <th scope="col" style={{...TH, textAlign:"center"}} colSpan={GAS_APPARATUS.length}>Aparatos</th>
