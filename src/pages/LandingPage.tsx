@@ -13,6 +13,7 @@ import HeroAurora from '../components/landing/HeroAurora';
 import TopographyBackground from '../components/landing/TopographyBackground';
 import RotatingWireframe from '../components/landing/RotatingWireframe';
 import BlueprintMarks from '../components/landing/BlueprintMarks';
+
 const MODULOS_HERO = [
   { id: 'flow', logo: '/logos/civilFlowlogo.svg', name: 'CivilFlow', color: '#00aaff', path: '/civilflow',
     desc: 'Diseño y análisis de redes hidráulicas, sanitarias y de gas. Modelado de flujos, presiones y caudales.',
@@ -364,7 +365,7 @@ function LandingPage() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     textAlign: 'center',
-                    animationDelay: `${450 + i * 80}ms` } as React.CSSProperties}>
+                    animationDelay: `${450 + i * 80}ms` } as any}>
                   
                   <div className="mod-tooltip">
                     <h3 className="text-base font-bold mb-2" style={{ color: m.color, fontFamily: 'Hanken Grotesk, sans-serif' }}>{m.name}</h3>

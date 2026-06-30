@@ -510,7 +510,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
                 <tr>
                   <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Tramo</th>
                   <th scope="col" className={`col-h ${cssClass}`} rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Inicio</th>
-                  <th scope="col" className={`col-h ${cssClass}`} rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Fin</th>
+                  <th scope="col" className={`col-h ${cssClass}`} rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Final</th>
                   <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Piso</th>
                   <th scope="col" className={`col-h ${cssClass}`} colSpan={3} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Unidades Consumo</th>
                   <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>No. de descargas</th>
@@ -536,8 +536,8 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
                   <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Total</th>
                   <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>%</th>
                   <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>m</th>
-                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Inicio</th>
-                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Fin</th>
+                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Inicial</th>
+                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Final</th>
                 </tr>
               </thead>
               <tbody>
