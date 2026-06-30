@@ -80,14 +80,7 @@ function MobileGate({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <div className="md:hidden" style={{ 
-        position: 'fixed',
-        inset: 0,
-        zIndex: 99999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '16px',
+      <div className="fixed inset-0 z-[99999] flex md:hidden items-center justify-center p-4" style={{ 
         background: 'radial-gradient(circle at center, #161b22 0%, #080a0f 100%)',
         backdropFilter: 'blur(8px)',
       }}>
