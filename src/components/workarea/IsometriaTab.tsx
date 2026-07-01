@@ -120,6 +120,8 @@ function IsometriaTabBase({ state }: any) {
   const [offX, setOffX] = useState(0);
   const [offY, setOffY] = useState(0);
   const [selTramo, setSelTramo] = useState<string | null>(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 800, h: 500 });
   const [showPlanos, setShowPlanos] = useState(true);
   const planImagesRef = useRef<Map<any, { img: HTMLCanvasElement; w: number; h: number }>>(new Map());
@@ -423,6 +425,24 @@ function IsometriaTabBase({ state }: any) {
 
     doc.save(`civilflow_isometria_${(proy?.nombre || 'proyecto').replace(/[^a-zA-Z0-9_-]/g, '_')}_${dateStr.replace(/\//g, '-')}.pdf`);
   }, [activeNets, proy, rotX, rotZ, scaleZ, zoom, size, totals]);
+
+  const exportPng = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || size.w < 10) return;
+    const link = document.createElement('a');
+    link.download = `civilflow_isometria_${(proy?.nombre || 'proyecto').replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toLocaleDateString('es-CO').replace(/\//g, '-')}.png`;
+    link.href = canvas.toDataURL('image/png', 1.0);
+    link.click();
+  }, [proy, size]);
+
+  useEffect(() => {
+    if (!showExportMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) setShowExportMenu(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showExportMenu]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -792,7 +812,15 @@ function IsometriaTabBase({ state }: any) {
 
         <button onClick={resetView} title="Reiniciar vista" style={{ padding: '3px 8px', fontSize: 10, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' }}>⟲</button>
         <button onClick={fitView} title="Encuadrar todo" style={{ padding: '3px 8px', fontSize: 10, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' }}>⊞</button>
-        <button onClick={exportPdf} title="Exportar PDF" style={{ padding: '3px 8px', fontSize: 10, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' }}>⬇ PDF</button>
+        <div ref={exportRef} style={{ position: 'relative', display: 'inline-block' }}>
+          <button onClick={() => setShowExportMenu(p => !p)} title="Descargar" style={{ padding: '3px 8px', fontSize: 10, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' }}>⬇ Descargar</button>
+          {showExportMenu && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, display: 'flex', flexDirection: 'column', minWidth: 80 }}>
+              <button onClick={() => { setShowExportMenu(false); exportPdf(); }} style={{ padding: '4px 8px', fontSize: 10, fontFamily: 'Geist,monospace', border: 'none', background: 'transparent', color: '#b9caca', cursor: 'pointer', textAlign: 'left' }}>PDF</button>
+              <button onClick={() => { setShowExportMenu(false); exportPng(); }} style={{ padding: '4px 8px', fontSize: 10, fontFamily: 'Geist,monospace', border: 'none', background: 'transparent', color: '#b9caca', cursor: 'pointer', textAlign: 'left' }}>PNG</button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Main area */}
