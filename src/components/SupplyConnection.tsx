@@ -154,16 +154,16 @@ function Acometida({
               <thead>
                 <tr>
                   <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, width: 45}}>Tramo</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, maxWidth: 60}}>Desde</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, maxWidth: 60}}>Hasta</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, maxWidth: 50}}>Desde</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, maxWidth: 55}}>Hasta</th>
                   <th scope="colgroup" className="col-h" colSpan={2} style={{...TH_CENTER, fontSize: 10}}>Longitud</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, width: 60}}>Ø Estimado</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, width: 70}}>Ø Propuesto</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, width: 65}}>Diámetro<br/>Estimado</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, width: 75}}>Diámetro<br/>Propuesto</th>
                 </tr>
                 <tr>
-                  <th scope="col" className="col-h" style={{...TH_CENTER, fontSize: 10, fontWeight: 400}}>Horizontal</th>
-                  <th scope="col" className="col-h" style={{...TH_CENTER, fontSize: 10, fontWeight: 400}}>Equivalente</th>
-                </tr>
+                  <th scope="col" className="col-h" style={{...TH_CENTER, fontSize: 9, fontWeight: 405}}>Horizontal</th>
+                  <th scope="col" className="col-h" style={{...TH_CENTER, fontSize: 9, fontWeight: 405}}>Equivalente</th>
+                </tr> 
               </thead>
               <tbody>
                 {/* ACOM-01 */}
@@ -243,7 +243,7 @@ function Acometida({
                   <td className="c" style={TD_PARAM_UNIT}>l/s</td>
                 </tr>
                 <tr>
-                  <td style={TD_PARAM_LABEL}>Diámetro int.</td>
+                  <td style={TD_PARAM_LABEL}>Diámetro interior</td>
                   <td className="c" style={TD_PARAM_VALUE}>{fmt(f1.dInt)}</td>
                   <td className="c" style={TD_PARAM_VALUE}>{fmt(f2.dInt)}</td>
                   <td className="c" style={TD_PARAM_UNIT}>mm</td>
@@ -352,7 +352,7 @@ function Acometida({
                   <td style={{textAlign: "right", fontWeight: 700, padding: "6px 8px", color: "var(--txt2)", fontFamily: "var(--mono)"}}>{fmt(f2.Pfin)} <span style={{fontSize: 9, color: "var(--txt3)"}}>mca</span></td>
                 </tr>
                 <tr>
-                  <td style={{fontWeight: 600, padding: "6px 8px", textAlign: "left"}}>Hf Contador &le; Max</td>
+                  <td style={{fontWeight: 600, padding: "6px 8px", textAlign: "left"}}>Pérdidas en contador &le; Pérdidas máximas</td>
                   <td style={{textAlign: "right", padding: "4px 8px"}}>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", justifyContent: "flex-end", width: "100%" }}>
                       <span style={{fontFamily: "var(--mono)", fontWeight: 700, color: hfContador <= acoHfMax ? "var(--succ)" : "var(--err)"}}>{fmt(hfContador)}</span>
@@ -370,7 +370,7 @@ function Acometida({
                 </tr>
 
                 <tr>
-                  <td style={{fontWeight: 600, padding: "6px 8px", textAlign: "left"}}>P. residual final</td>
+                  <td style={{fontWeight: 600, padding: "6px 8px", textAlign: "left"}}>Presión residual final</td>
                   <td style={{textAlign: "right", fontWeight: 700, padding: "6px 8px", color: "var(--txt2)", fontFamily: "var(--mono)"}}>{fmt(pResidual)} <span style={{fontSize: 9, color: "var(--txt3)"}}>mca</span></td>
                 </tr>
                 <tr>

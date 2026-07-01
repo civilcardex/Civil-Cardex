@@ -396,24 +396,24 @@ export default function DisenosSanitarios() {
             <tr>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Tramo</th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Nivel</th>
-              <th scope="col" className="col-h san" colSpan={3} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>UD</th>
+              <th scope="col" className="col-h san" colSpan={3} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>Unidades de descarga</th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}># Descargas</th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>K</th>
-              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Caudal<br/>Q <small>(LPS)</small></th>
-              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Manning<br/>n</th>
-              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Pendiente<br/>S <small>(%)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Caudal<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Manning<br/></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Pendiente<br/><small>(%)</small></th>
               <th scope="col" className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>Diámetro</th>
-              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Qo<br/><small>(LPS)</small></th>
-              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Vo<br/><small>(m/s)</small></th>
-              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Q/Qo</th>
-              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Vel. Real<br/>Vr <small>(m/s)</small></th>
-              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Chequeo Vel.</th>
-              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Yc<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Yn<br/><small>(mm)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Q<sub>o</sub><br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>V<sub>o</sub><br/><small>(m/s)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Q/Q<sub>o</sub></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Velocidad real<br/><small>(m/s)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Chequeo  velocidad</th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Y<sub>c</sub><br/><small>(mm)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Y<sub>n</sub><br/><small>(mm)</small></th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Froude</th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Flujo</th>
-              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Ymax<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Yn vs Yc</th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Y<sub>max</sub><br/><small>(mm)</small></th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Y<sub>n</sub> vs Y<sub>c</sub></th>
               <th scope="col" className="col-h ven" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>Fuerza Tractiva</th>
             </tr>
             <tr>

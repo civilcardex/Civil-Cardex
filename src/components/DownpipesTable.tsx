@@ -422,29 +422,29 @@ const BajantesTable = memo(function BajantesTable_() {
               <th scope="col" className="col-h san" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Nivel</th>
               <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Ramales<br/>Asociados</th>
               <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Unidades<br/>Descarga</th>
-              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Llenado<br/>(r)</th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Llenado<br/></th>
               <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Caudal<br/><small>(LPS)</small></th>
-              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Manning<br/>(n)</th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Manning<br/></th>
               <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Diámetro</th>
               <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Chequeo</th>
-              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Caudal Máx.<br/><small>(LPS)</small></th>
-              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Vel. Term.<br/><small>(m/s)</small></th>
-              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Long. Terminal</th>
+              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Caudal máximo<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Velocidad terminal<br/><small>(m/s)</small></th>
+              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Longitud terminal</th>
               <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Vel. Aire<br/><small>(m/s)</small></th>
               <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Fricción<br/>(ƒ)</th>
               <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Caudal Aire<br/><small>(LPS)</small></th>
-              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Long. Bajante<br/><small>(m)</small></th>
+              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Longitud Bajante<br/><small>(m)</small></th>
               <th scope="col" className="col-h ven" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Diámetro Ventilación</th>
             </tr>
             <tr>
               <th scope="col" className="col-h san" style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Origen</th>
               <th scope="col" className="col-h san" style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Destino</th>
-              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Calculado<br/><small>(pulg)</small></th>
-              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Propuesto<br/><small>(pulg)</small></th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Calculado<br/><small>(″)</small></th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Propuesto<br/><small>(″)</small></th>
               <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Calculada<br/><small>(m)</small></th>
               <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Mínima<br/><small>(m)</small></th>
-              <th scope="col" className="col-h ven" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Calculado<br/><small>(pulg)</small></th>
-              <th scope="col" className="col-h ven" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Propuesto<br/><small>(pulg)</small></th>
+              <th scope="col" className="col-h ven" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Calculado<br/><small>(″)</small></th>
+              <th scope="col" className="col-h ven" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Propuesto<br/><small>(″)</small></th>
             </tr>
           </thead>
           <tbody>

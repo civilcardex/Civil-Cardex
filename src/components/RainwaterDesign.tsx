@@ -305,18 +305,18 @@ export default function DisenoLluvias() {
               <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Inicio</th>
               <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Fin</th>
               <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Bajantes<br/>asociadas</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Caudal<br/>Q <small>(LPS)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Manning<br/>n</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Pendiente<br/>S <small>(%)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Caudal<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Manning<br/></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Pendiente<br/><small>(%)</small></th>
               <th scope="col" className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>Diámetro</th>
               <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Qo<br/><small>(LPS)</small></th>
               <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Vo<br/><small>(m/s)</small></th>
               <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Q/Qo</th>
               <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Vr<br/><small>(m/s)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Chequeo Vel.</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>CHEQUEO VELOCIDAD</th>
               <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Yc<br/><small>(mm)</small></th>
               <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Yn<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Fr</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>FROUDE</th>
               <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Flujo</th>
               <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Ymax<br/><small>(mm)</small></th>
               <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Yn vs Yc</th>

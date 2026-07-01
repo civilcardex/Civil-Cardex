@@ -353,7 +353,7 @@ function GasDesign(){
                 <tr>
                   <th scope="col" style={{...TH}} rowSpan={2}>Tramo</th>
                   <th scope="col" style={{...TH}} rowSpan={2}>Longitud (m)</th>
-                  <th scope="col" style={{...TH}} rowSpan={2}>Ø interno (mm)</th>
+                  <th scope="col" style={{...TH}} rowSpan={2}>Diámetro<br/>interno (mm)</th>
                   <th scope="col" style={{...TH,borderBottom:'2px solid var(--line)'}} colSpan={5}>Accesorios</th>
                   <th scope="col" style={{...TH,borderLeft:'2px solid var(--line)'}} rowSpan={2}>Longitud equivalente (m)</th>
                   <th scope="col" style={TH} rowSpan={2}>{'Δ'}P (mbar)</th>
