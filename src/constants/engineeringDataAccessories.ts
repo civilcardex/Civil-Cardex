@@ -1,8 +1,8 @@
 export const ACCESORIOS_HIDRO = [
-  {id:'codo90rc',emoji:'🔩',nombre:'Codo RC 90°',icono:'/iconos_accesorios/codo90rc.svg', cat: 'Codos'},
-  {id:'codo45rc',emoji:'🔩',nombre:'Codo RC 45°',icono:'/iconos_accesorios/codo45rc.svg', cat: 'Codos'},
-  {id:'codo90rm',emoji:'🔩',nombre:'Codo RM 90°',icono:'/iconos_accesorios/codo90rm.svg', cat: 'Codos'},
-  {id:'codo90rl',emoji:'🔩',nombre:'Codo RL 90°',icono:'/iconos_accesorios/codo90rl.svg', cat: 'Codos'},
+  {id:'codo90rc',emoji:'🔩',nombre:'Codo corto 90°',icono:'/iconos_accesorios/codo90rc.svg', cat: 'Codos'},
+  {id:'codo45rc',emoji:'🔩',nombre:'Codo corto 45°',icono:'/iconos_accesorios/codo45rc.svg', cat: 'Codos'},
+  {id:'codo90rm',emoji:'🔩',nombre:'Codo medio 90°',icono:'/iconos_accesorios/codo90rm.svg', cat: 'Codos'},
+  {id:'codo90rl',emoji:'🔩',nombre:'Codo largo 90°',icono:'/iconos_accesorios/codo90rl.svg', cat: 'Codos'},
   {id:'teeDirecto',emoji:'🔧',nombre:'Tee paso directo',icono:'/iconos_accesorios/teeDirecto.svg', cat: 'Tees'},
   {id:'teeReduccion',emoji:'🔧',nombre:'Tee c/ reducción',icono:'/iconos_accesorios/teeReduccion.svg', cat: 'Tees'},
   {id:'teeLado',emoji:'🔧',nombre:'Tee paso lado',icono:'/iconos_accesorios/teeLado.svg', cat: 'Tees'},
@@ -28,6 +28,7 @@ export const SAN_ACCESORIOS = [
   {id:'codo90rmBaja',emoji:'🔩',nombre:'Codo RM 90° baja',icono:'/iconos_accesorios/codo90rm.svg', cat: 'Codos'},
   {id:'codoReventilado',emoji:'🔩',nombre:'Codo reventilado',icono:'/iconos_accesorios/codo90rl.svg', cat: 'Codos'},
   ...ACCESORIOS_YEE,
+  {id:'tee',emoji:'🔧',nombre:'Tee',icono:'/iconos_accesorios/te_ramal.svg', cat:'Tees'},
 ];
 
 export const GAS_ACCESORIOS = [

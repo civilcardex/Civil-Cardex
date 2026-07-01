@@ -264,6 +264,7 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
   const junctionRamalIds: string[] = [];
   const junctionPositions: { x: number; y: number }[] = [];
   const junctionBranchCos: number[] = [];
+  const teeRamalIds: string[] = [];
 
   // Build a unique set of all san ramal vertexes
   const getPointKey = (x: number, y: number) => `${x.toFixed(3)}_${y.toFixed(3)}`;
@@ -336,6 +337,7 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
     if (branches.length === 0) return;
     const cosVal = branches[0].x * uniq[bestPair.j].x + branches[0].y * uniq[bestPair.j].y;
     const isYee = Math.abs(cosVal) >= 0.4 && Math.abs(cosVal) <= 0.85;
+    const isTee = Math.abs(cosVal) < 0.15;
 
     if (isYee) {
       // Find the main ramal that passes through this vertex
@@ -362,6 +364,32 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
               junctionRamalIds.push(String(rr.id));
               junctionPositions.push({ x: P[0], y: P[1] });
               junctionBranchCos.push(cosVal);
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    if (isTee) {
+      for (const rr of sanRamales) {
+        if (!rr.pts) continue;
+        for (let k = 0; k < rr.pts.length; k++) {
+          if (Math.hypot(rr.pts[k][0] - P[0], rr.pts[k][1] - P[1]) < 0.5) {
+            teeRamalIds.push(String(rr.id));
+            return;
+          }
+        }
+        for (let k = 0; k < rr.pts.length - 1; k++) {
+          const A = rr.pts[k], B = rr.pts[k + 1];
+          const sdx = B[0] - A[0], sdy = B[1] - A[1];
+          const sLenSq = sdx * sdx + sdy * sdy;
+          if (sLenSq > 0.001) {
+            let t = ((P[0] - A[0]) * sdx + (P[1] - A[1]) * sdy) / sLenSq;
+            t = Math.max(0, Math.min(1, t));
+            const projX = A[0] + t * sdx, projY = A[1] + t * sdy;
+            if (Math.hypot(P[0] - projX, P[1] - projY) < 0.5) {
+              teeRamalIds.push(String(rr.id));
               return;
             }
           }
@@ -400,6 +428,13 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
     const id = junctionRamalIds[i];
     if (!yeeCounts[id]) yeeCounts[id] = { simple: 0, doble: 0 };
     yeeCounts[id].simple += 1;
+  }
+
+  // Count tees per ramal
+  const teeCounts: Record<string, number> = {};
+  for (const id of teeRamalIds) {
+    if (!teeCounts[id]) teeCounts[id] = 0;
+    teeCounts[id]++;
   }
 
   for (const r of sanRamales) {
@@ -495,6 +530,13 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
     } else {
       if ('yeeSimple' in acc) { delete acc['yeeSimple']; changed = true; }
       if ('yeeDoble' in acc) { delete acc['yeeDoble']; changed = true; }
+    }
+
+    // Store tee counts
+    const tee = teeCounts[String(r.id)] || 0;
+    if (acc['tee'] !== tee) {
+      if (tee > 0) acc['tee'] = tee; else delete acc['tee'];
+      changed = true;
     }
   }
 
