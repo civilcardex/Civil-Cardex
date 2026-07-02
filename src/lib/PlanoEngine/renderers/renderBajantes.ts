@@ -4,19 +4,69 @@ import type { IPlanoEngineCore } from '../PlanoState';
 
 const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
 
+function getLabelIntersection(
+  offDx: number,
+  offDy: number,
+  boxW: number,
+  boxH: number,
+  angle: number
+): { x: number; y: number } {
+  const cosA = Math.cos(angle);
+  const sinA = Math.sin(angle);
+
+  const localStartX = -offDx * cosA - offDy * sinA;
+  const localStartY =  offDx * sinA - offDy * cosA;
+
+  const xMin = -boxW / 2;
+  const xMax = boxW / 2;
+  const yMin = -10;
+  const yMax = -10 + boxH;
+
+  let tEnter = 0;
+  let tExit = 1;
+
+  if (localStartX !== 0) {
+    const t1 = 1 - (xMin / localStartX);
+    const t2 = 1 - (xMax / localStartX);
+    const tMin = Math.min(t1, t2);
+    const tMax = Math.max(t1, t2);
+    tEnter = Math.max(tEnter, tMin);
+    tExit = Math.min(tExit, tMax);
+  }
+
+  if (localStartY !== 0) {
+    const t1 = 1 - (yMin / localStartY);
+    const t2 = 1 - (yMax / localStartY);
+    const tMin = Math.min(t1, t2);
+    const tMax = Math.max(t1, t2);
+    tEnter = Math.max(tEnter, tMin);
+    tExit = Math.min(tExit, tMax);
+  }
+
+  tEnter = Math.max(0, Math.min(1, tEnter));
+
+  const localIntersectX = localStartX * (1 - tEnter);
+  const localIntersectY = localStartY * (1 - tEnter);
+
+  const intersectDx = localIntersectX * cosA - localIntersectY * sinA + offDx;
+  const intersectDy = localIntersectX * sinA + localIntersectY * cosA + offDy;
+
+  return { x: intersectDx, y: intersectDy };
+}
+
 export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.bajantes.forEach((b: any) => {
     if (engine._hiddenNets.has(b.net)) return;
 
     const c = engine.toCvs(b.x, b.y);
     const sel = b.id === engine.selId;
-    const r = 10 * engine.zoom;
+    const r = 8 * engine.zoom;
 
     // Item 2: Label angle + snap constraint (Auto-rotation removed as requested)
     const angle = (b.labelAngle || 0) * Math.PI / 180;
 
 
-    b._circ = { x: c.x, y: c.y, r: Math.max(22 * engine.zoom, r + 8) };
+    b._circ = { x: c.x, y: c.y, r: Math.max(24 * engine.zoom, r + 10) };
 
     if (b.recibeDeIds?.length) {
       b.recibeDeIds.forEach((rid: string) => {
@@ -46,8 +96,9 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       const targetPlanId = parts[0];
       const targetId = parts[1];
 
-      // Only draw line to ramal if the target ramal is on the CURRENT floor
+      // Only draw line if the target is on the CURRENT floor
       if (String(targetPlanId) === String(engine._loadedPlanId)) {
+        // Draw line to target RAMAL
         const ram = engine.ramales.find((rr: any) => rr.id === targetId);
         if (ram && ram.pts.length) {
           const pStart = ram.pts[0];
@@ -66,7 +117,77 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
           ctx.stroke();
           ctx.restore();
         }
+        // Draw line to target BAJANTE on same floor
+        const targetBaj = engine.bajantes.find((bb: any) => bb.id === targetId);
+        if (targetBaj) {
+          const tc = engine.toCvs(targetBaj.x, targetBaj.y);
+          ctx.save();
+          ctx.strokeStyle = '#0ECC7A';
+          ctx.lineWidth = 2 * engine.zoom;
+          ctx.setLineDash([4 * engine.zoom, 4 * engine.zoom]);
+          ctx.beginPath();
+          ctx.moveTo(c.x, c.y);
+          ctx.lineTo(tc.x, tc.y);
+          ctx.stroke();
+          ctx.restore();
+        }
       }
+    }
+
+    // Draw lines from ramales/bajantes that feed this bajante (recibeDeIds)
+    if (b.recibeDeIds?.length) {
+      b.recibeDeIds.forEach((rid: string) => {
+        const ram = engine.ramales.find((rr: any) => rr.id === rid);
+        if (ram && ram.pts.length) {
+          const pStart = ram.pts[0];
+          const pEnd = ram.pts[ram.pts.length - 1];
+          const distStart = Math.hypot(pStart[0] - b.x, pStart[1] - b.y);
+          const distEnd = Math.hypot(pEnd[0] - b.x, pEnd[1] - b.y);
+          const bestPt = distStart < distEnd ? pStart : pEnd;
+          const rc = engine.toCvs(bestPt[0], bestPt[1]);
+          ctx.save();
+          ctx.strokeStyle = '#0ECC7A';
+          ctx.lineWidth = 2 * engine.zoom;
+          ctx.setLineDash([4 * engine.zoom, 4 * engine.zoom]);
+          ctx.beginPath();
+          ctx.moveTo(rc.x, rc.y);
+          ctx.lineTo(c.x, c.y);
+          ctx.stroke();
+          ctx.restore();
+        }
+        const srcBaj = engine.bajantes.find((bb: any) => bb.id === rid);
+        if (srcBaj) {
+          const sc = engine.toCvs(srcBaj.x, srcBaj.y);
+          ctx.save();
+          ctx.strokeStyle = '#22D3EE';
+          ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.setLineDash([4 * engine.zoom, 3 * engine.zoom]);
+          ctx.beginPath();
+          ctx.moveTo(sc.x, sc.y);
+          ctx.lineTo(c.x, c.y);
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
+    }
+
+    // Draw line to bajantes alimentados (alimentaIds)
+    if (b.alimentaIds?.length) {
+      b.alimentaIds.forEach((aid: string) => {
+        const targetBaj = engine.bajantes.find((bb: any) => bb.id === aid);
+        if (targetBaj) {
+          const tc = engine.toCvs(targetBaj.x, targetBaj.y);
+          ctx.save();
+          ctx.strokeStyle = '#22D3EE';
+          ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.setLineDash([4 * engine.zoom, 3 * engine.zoom]);
+          ctx.beginPath();
+          ctx.moveTo(c.x, c.y);
+          ctx.lineTo(tc.x, tc.y);
+          ctx.stroke();
+          ctx.restore();
+        }
+      });
     }
 
     ctx.save();
@@ -82,7 +203,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.fill();
       ctx.strokeStyle = sel ? '#FFEB3B' : (b.tipo === 'red_publica' ? '#475569' : col);
-      ctx.lineWidth = (sel ? 4.5 : 2) * engine.zoom;
+      ctx.lineWidth = (sel ? 3.5 : 2) * engine.zoom;
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.stroke();
@@ -94,7 +215,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.fill();
       ctx.strokeStyle = sel ? '#FFEB3B' : col;
-      ctx.lineWidth = (sel ? 4.5 : 2) * engine.zoom;
+      ctx.lineWidth = (sel ? 3.5 : 2) * engine.zoom;
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.stroke();
@@ -103,7 +224,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = b.tipo === 'bajante' ? '#F04545' : '#3B82F6';
-      ctx.lineWidth = (sel ? 4.5 : 3.5) * engine.zoom;
+      ctx.lineWidth = (sel ? 3.5 : 2.5) * engine.zoom;
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.stroke();
@@ -238,9 +359,13 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     }
     ctx.restore();
 
-    if (b.code || b.code === '') {
-      const offDx = (b.labelX - b.x) * engine.zoom;
-      let offDy = (b.labelY - b.y) * engine.zoom;
+    const isGhostOnThisLevel = !!b.desplazamientos?.[engine.nivelActual?.label ?? '']
+      || b.pisoBase !== engine.nivelActual?.label;
+    if (!isGhostOnThisLevel && (b.code || b.code === '')) {
+      const lx = b.labelX ?? b.x;
+      const ly = b.labelY ?? (b.y + 20);
+      const offDx = (lx - b.x) * engine.zoom;
+      let offDy = (ly - b.y) * engine.zoom;
 
       // Item 2: Enforce minimum perpendicular offset so label doesn't sit on the ramal
       const minPerpPx = engine.mm2cvs(3);
@@ -248,30 +373,6 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
         offDy = offDy >= 0 ? minPerpPx : -minPerpPx;
       }
 
-      ctx.save();
-      ctx.translate(c.x, c.y);
-
-      // Leader line from circle edge to label (shortest distance)
-      const distToLabel = Math.hypot(offDx, offDy);
-      let lineStartX = 0, lineStartY = 0;
-      if (distToLabel > 0.1) {
-        const ux = offDx / distToLabel, uy = offDy / distToLabel;
-        lineStartX = r * ux;
-        lineStartY = r * uy;
-      }
-      ctx.beginPath();
-      ctx.moveTo(lineStartX, lineStartY);
-      ctx.lineTo(offDx, offDy);
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 1.5 * engine.zoom;
-      ctx.stroke();
-
-      ctx.translate(offDx, offDy);
-      ctx.rotate(angle);
-      const fsCode = engine.mm2cvs(engine.MM.lblCode * engine.labelScaleM * 1.35);
-      const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35);
-      const lineH = fsCode + 2;
-      
       const getPisoCorto = (v: any) => {
         const n = typeof v === 'number' ? v : parseInt(String(v), 10);
         if (isNaN(n)) return '';
@@ -303,39 +404,69 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       }
       const line1 = diamStr ? `${codeStr}  D=${diamStr}` : (codeStr || '—');
       
-      // Direction text
       const dirText = DIR_MAP[b.direccion] || '';
       const hasDir = !!dirText;
-      
+
+      const fsCode = engine.mm2cvs(engine.MM.lblCode * engine.labelScaleM * 1.35);
+      const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35);
+      const lineH = fsCode + 2;
+
+      ctx.save();
       ctx.font = `bold ${fsCode}px Geist, monospace`;
       const tw1 = ctx.measureText(line1).width;
       const boxW = tw1 + engine.mm2cvs(4);
       const boxH = hasDir ? lineH + 2 + fsDir + engine.mm2cvs(1.5) : lineH + engine.mm2cvs(1);
       const hh2 = boxH / 2;
+
+      const intersection = getLabelIntersection(offDx, offDy, boxW, boxH, angle);
+
+      ctx.save();
+      ctx.translate(c.x, c.y);
+
+      const distToLabel = Math.hypot(offDx, offDy);
+      let lineStartX = 0, lineStartY = 0;
+      if (distToLabel > 0.1) {
+        const ux = offDx / distToLabel, uy = offDy / distToLabel;
+        lineStartX = r * ux;
+        lineStartY = r * uy;
+      }
+      ctx.beginPath();
+      ctx.moveTo(lineStartX, lineStartY);
+      ctx.lineTo(intersection.x, intersection.y);
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 0.8 * engine.zoom;
+      ctx.stroke();
+
+      ctx.translate(offDx, offDy);
+      ctx.rotate(angle);
       
       const lbCx = c.x + offDx;
       const lbCy = c.y + offDy;
       const { corners: corners2, minX, minY, maxX, maxY } = rotatedRectCorners(lbCx, lbCy - 10 + hh2, boxW, boxH, angle, 2);
       b._labelBox = { cx: lbCx, cy: lbCy - 10 + hh2, w: boxW, h: boxH, angle, minX, minY, maxX, maxY, corners: corners2 };
       
-      // Background (White)
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.roundRect(-boxW / 2, -10, boxW, boxH, 2);
+      ctx.roundRect(-boxW / 2, -10, boxW, boxH, 0);
       ctx.fill();
 
-      // Line 1: code + diameter
+      if (b.tipo === 'contador' || b.tipo === 'calentador') {
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 0.8 * engine.zoom;
+        ctx.stroke();
+      }
+
       ctx.fillStyle = '#000';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
       ctx.fillText(line1, 0, -10 + engine.mm2cvs(0.5));
 
-      // Direction text (no separator line — drawn directly below code)
       if (dirText) {
         ctx.font = `${fsDir}px Geist, monospace`;
         ctx.fillStyle = '#000';
         ctx.fillText(dirText, 0, -10 + lineH + engine.mm2cvs(1));
       }
+      ctx.restore();
       ctx.restore();
     } else {
       b._labelBox = null;
@@ -352,22 +483,27 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const gx = b.x + (disp ? disp.dx : 0);
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
-    const r = 8 * engine.zoom;
-    b._ghost = { x: c.x, y: c.y, r: Math.max(24, r + 10) };
+    const r = 6.5 * engine.zoom;
+    b._ghost = { x: c.x, y: c.y, r: Math.max(24 * engine.zoom, r + 10) };
 
-    // Item 6: Label angle + snap constraint (Auto-rotation removed as requested)
-    const ghostAngle = (b.labelAngle || 0) * Math.PI / 180;
+    // Item 6: Label angle — auto-rotate to vertical when displacement is vertical
+    const ghostAngle = (disp && Math.abs(disp.dy) > Math.abs(disp.dx))
+      ? Math.PI / 2
+      : (b.direccion === 'sube' || b.direccion === 'baja')
+        ? Math.PI / 2
+        : (b.labelAngle || 0) * Math.PI / 180;
 
     // Ghost circle + symbol
     ctx.save();
     ctx.globalAlpha = 0.35;
     ctx.strokeStyle = col;
+    ctx.fillStyle = col;
     ctx.lineWidth = 1.5 * engine.zoom;
     ctx.setLineDash([5 * engine.zoom, 4 * engine.zoom]);
     ctx.beginPath();
     ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = col;
+    ctx.setLineDash([]);
     const gd = b.ghostData?.[engine.nivelActual?.label ?? ''];
     let ghostDir = b.direccion;
     if (gd && gd.direccion !== undefined) {
@@ -392,7 +528,6 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
          ctx.fillText(ghostSymbol, c.x, c.y);
       }
     }
-    ctx.setLineDash([]);
     ctx.restore();
 
     // Displacement line
@@ -433,9 +568,8 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       ctx.restore();
     }
 
-    // Item 6: Ghost label — only for displacement-based ghosts (not direction-only)
-    const isDespGhost = b.isFantasma || (b.desplazamientos && Object.keys(b.desplazamientos).length > 0);
-    if (isDespGhost && (b.code || b.code === '')) {
+    // Item 6: Ghost label — render for all ghosts
+    if (b.code || b.code === '') {
       const gd = b.ghostData?.[engine.nivelActual?.label ?? ''];
       let ghostOffX = 0;
       let ghostOffY = 0;
@@ -449,31 +583,6 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       }
       const offDx = ghostOffX;
       const offDy = ghostOffY;
-
-      ctx.save();
-      ctx.globalAlpha = 0.35;
-      ctx.translate(c.x, c.y);
-
-      const ghostR = 8 * engine.zoom;
-      const ghostDist = Math.hypot(offDx, offDy);
-      let gLineStartX = 0, gLineStartY = 0;
-      if (ghostDist > 0.1) {
-        const ux = offDx / ghostDist, uy = offDy / ghostDist;
-        gLineStartX = ghostR * ux;
-        gLineStartY = ghostR * uy;
-      }
-      ctx.beginPath();
-      ctx.moveTo(gLineStartX, gLineStartY);
-      ctx.lineTo(offDx, offDy);
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 1.5 * engine.zoom;
-      ctx.stroke();
-
-      ctx.translate(offDx, offDy);
-      ctx.rotate(ghostAngle);
-      const fsCode = engine.mm2cvs(engine.MM.lblCode * engine.labelScaleM * 1.35);
-      const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35);
-      const lineH = fsCode + 2;
 
       const getPisoCorto = (v: any) => {
         const n = typeof v === 'number' ? v : parseInt(String(v), 10);
@@ -511,11 +620,39 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       const dirText = DIR_MAP[ghostDir] || '';
       const hasDir = !!dirText;
 
+      const fsCode = engine.mm2cvs(engine.MM.lblCode * engine.labelScaleM * 1.35);
+      const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35);
+      const lineH = fsCode + 2;
+
+      ctx.save();
       ctx.font = `bold ${fsCode}px Geist, monospace`;
       const tw1 = ctx.measureText(line1).width;
       const boxW = tw1 + engine.mm2cvs(4);
       const boxH = hasDir ? lineH + 2 + fsDir + engine.mm2cvs(1.5) : lineH + engine.mm2cvs(1);
       const hh2 = boxH / 2;
+
+      const intersection = getLabelIntersection(offDx, offDy, boxW, boxH, ghostAngle);
+
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.translate(c.x, c.y);
+
+      const ghostDist = Math.hypot(offDx, offDy);
+      let gLineStartX = 0, gLineStartY = 0;
+      if (ghostDist > 0.1) {
+        const ux = offDx / ghostDist, uy = offDy / ghostDist;
+        gLineStartX = r * ux;
+        gLineStartY = r * uy;
+      }
+      ctx.beginPath();
+      ctx.moveTo(gLineStartX, gLineStartY);
+      ctx.lineTo(intersection.x, intersection.y);
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 0.8 * engine.zoom;
+      ctx.stroke();
+
+      ctx.translate(offDx, offDy);
+      ctx.rotate(ghostAngle);
 
       const lbCx = c.x + offDx;
       const lbCy = c.y + offDy;
@@ -524,8 +661,14 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
 
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.roundRect(-boxW / 2, -10, boxW, boxH, 2);
+      ctx.roundRect(-boxW / 2, -10, boxW, boxH, 0);
       ctx.fill();
+
+      if (b.tipo === 'contador' || b.tipo === 'calentador') {
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 0.8 * engine.zoom;
+        ctx.stroke();
+      }
 
       ctx.fillStyle = '#000';
       ctx.textAlign = 'center';
@@ -537,6 +680,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
         ctx.fillStyle = '#000';
         ctx.fillText(dirText, 0, -10 + lineH + engine.mm2cvs(1));
       }
+      ctx.restore();
       ctx.restore();
     }
   });

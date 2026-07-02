@@ -127,9 +127,25 @@ export function hitTestBajanteLabelForDrag(
   y: number
 ): { id: string; offX: number; offY: number } | null {
   const selEl = engine.bajantes.find(b => b.id === engine.selId);
-  if (selEl && selEl._labelBox && pointInLabelBox(x, y, selEl._labelBox)) {
-    const lPos = engine.toCvs(selEl.labelX ?? selEl.x, selEl.labelY ?? (selEl.y + 20));
-    return { id: selEl.id, offX: x - lPos.x, offY: y - lPos.y };
+  if (selEl) {
+    if (selEl._labelBox && pointInLabelBox(x, y, selEl._labelBox)) {
+      const lPos = engine.toCvs(selEl.labelX ?? selEl.x, selEl.labelY ?? (selEl.y + 20));
+      return { id: selEl.id, offX: x - lPos.x, offY: y - lPos.y };
+    }
+    if (selEl.labelX != null && selEl.labelY != null) {
+      const lPos = engine.toCvs(selEl.labelX, selEl.labelY);
+      if (Math.hypot(x - lPos.x, y - lPos.y) < 40) {
+        return { id: selEl.id, offX: x - lPos.x, offY: y - lPos.y };
+      }
+    }
+    if (selEl.tipo === 'contador' || selEl.tipo === 'calentador') {
+      const lx = selEl.labelX ?? (selEl.x - 25);
+      const ly = selEl.labelY ?? selEl.y;
+      const lPos = engine.toCvs(lx, ly);
+      if (Math.hypot(x - lPos.x, y - lPos.y) < 60) {
+        return { id: selEl.id, offX: x - lPos.x, offY: y - lPos.y };
+      }
+    }
   }
   return null;
 }

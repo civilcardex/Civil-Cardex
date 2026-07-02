@@ -42,17 +42,17 @@ function renderVentCodos(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           const px = -dy, py = dx;
 
           const c = engine.toCvs(sx, sy);
-          const rad = engine.mm2cvs(2.0);
-          const vLen = engine.mm2cvs(2.5);
+          const rad = engine.mm2cvs(1.3);
+          const vLen = engine.mm2cvs(1.8);
 
           ctx.save();
           ctx.lineCap = 'round';
 
-          const offset = rad + engine.mm2cvs(0.8);
+          const offset = rad + engine.mm2cvs(0.5);
           const cx1 = c.x - dx * offset, cy1 = c.y - dy * offset;
           const cx2 = c.x + dx * offset, cy2 = c.y + dy * offset;
           ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 4 * engine.zoom;
+          ctx.lineWidth = 3.5 * engine.zoom;
           ctx.beginPath();
           ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
           ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
@@ -62,7 +62,7 @@ function renderVentCodos(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           ctx.lineTo(cx2 + px * vLen, cy2 + py * vLen);
           ctx.stroke();
           ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 2 * engine.zoom;
+          ctx.lineWidth = 1.5 * engine.zoom;
           ctx.beginPath();
           ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
           ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
@@ -74,7 +74,7 @@ function renderVentCodos(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
 
           ctx.fillStyle = '#ffffff';
           ctx.beginPath();
-          ctx.arc(c.x, c.y, rad + engine.mm2cvs(0.3), 0, Math.PI * 2);
+          ctx.arc(c.x, c.y, rad + engine.mm2cvs(0.2), 0, Math.PI * 2);
           ctx.fill();
 
           ctx.beginPath();
@@ -83,7 +83,7 @@ function renderVentCodos(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
 
           ctx.fillStyle = '#000000';
           ctx.beginPath();
-          ctx.arc(c.x, c.y, engine.mm2cvs(0.5), 0, Math.PI * 2);
+          ctx.arc(c.x, c.y, engine.mm2cvs(0.35), 0, Math.PI * 2);
           ctx.fill();
 
           ctx.restore();

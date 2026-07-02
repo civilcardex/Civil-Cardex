@@ -6,94 +6,6 @@ import { drawRamalPath } from './drawRamalPath';
 import { renderJunctions } from './renderJunctions';
 import { renderVentCodos } from './renderVentCodos';
 
-function isJunctionVertex(px: number, py: number, netRamales: any[]): boolean {
-  const outgoingVectors: { x: number; y: number }[] = [];
-  
-  netRamales.forEach(r => {
-    let isVertex = false;
-    for (let i = 0; i < r.pts.length; i++) {
-      if (Math.hypot(r.pts[i][0] - px, r.pts[i][1] - py) < 0.5) {
-        isVertex = true;
-        if (i > 0) {
-          const prev = r.pts[i - 1];
-          const dx = prev[0] - px, dy = prev[1] - py;
-          const len = Math.hypot(dx, dy);
-          if (len > 0.1) outgoingVectors.push({ x: dx / len, y: dy / len });
-        }
-        if (i < r.pts.length - 1) {
-          const next = r.pts[i + 1];
-          const dx = next[0] - px, dy = next[1] - py;
-          const len = Math.hypot(dx, dy);
-          if (len > 0.1) outgoingVectors.push({ x: dx / len, y: dy / len });
-        }
-      }
-    }
-
-    if (!isVertex) {
-      for (let i = 0; i < r.pts.length - 1; i++) {
-        const A = r.pts[i];
-        const B = r.pts[i + 1];
-        const dx = B[0] - A[0], dy = B[1] - A[1];
-        const lenSq = dx * dx + dy * dy;
-        if (lenSq > 0.001) {
-          let t = ((px - A[0]) * dx + (py - A[1]) * dy) / lenSq;
-          t = Math.max(0, Math.min(1, t));
-          const projX = A[0] + t * dx;
-          const projY = A[1] + t * dy;
-          const dist = Math.hypot(px - projX, py - projY);
-          
-          const lenA = Math.hypot(A[0] - px, A[1] - py);
-          const lenB = Math.hypot(B[0] - px, B[1] - py);
-
-          if (dist < 0.5 && lenA > 0.5 && lenB > 0.5) {
-            outgoingVectors.push({ x: (A[0] - px) / lenA, y: (A[1] - py) / lenA });
-            outgoingVectors.push({ x: (B[0] - px) / lenB, y: (B[1] - py) / lenB });
-          }
-        }
-      }
-    }
-  });
-
-  const uniqueVectors: { x: number; y: number }[] = [];
-  outgoingVectors.forEach(v => {
-    const isDup = uniqueVectors.some(uv => {
-      const dot = uv.x * v.x + uv.y * v.y;
-      return dot > 0.99;
-    });
-    if (!isDup) uniqueVectors.push(v);
-  });
-
-  if (uniqueVectors.length >= 3 && uniqueVectors.length <= 4) {
-    let bestPair = { i: -1, j: -1, dot: 1 };
-    for (let i = 0; i < uniqueVectors.length; i++) {
-      for (let j = i + 1; j < uniqueVectors.length; j++) {
-        const dot = uniqueVectors[i].x * uniqueVectors[j].x + uniqueVectors[i].y * uniqueVectors[j].y;
-        if (dot < bestPair.dot) {
-          bestPair = { i, j, dot };
-        }
-      }
-    }
-
-    if (bestPair.dot < -0.9) {
-      const uB = uniqueVectors[bestPair.j];
-      const branches: { x: number; y: number }[] = [];
-      for (let k = 0; k < uniqueVectors.length; k++) {
-        if (k !== bestPair.i && k !== bestPair.j) {
-          branches.push(uniqueVectors[k]);
-        }
-      }
-
-      if (branches.length > 0) {
-        const cosVal = branches[0].x * uB.x + branches[0].y * uB.y;
-        const isTee = Math.abs(cosVal) < 0.15;
-        const isYee = Math.abs(cosVal) >= 0.4 && Math.abs(cosVal) <= 0.85;
-        return isTee || isYee;
-      }
-    }
-  }
-
-  return false;
-}
 
 export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const isTributarioMode = engine.tipoTramo === 'tributario' && engine.tool === 'line';
@@ -141,23 +53,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
             const ux = -ax / lenA, uy = -ay / lenA;
             const vx = bx / lenB, vy = by / lenB;
             const cosAngle = ux * vx + uy * vy;
-            const pt = r.pts[idx];
-            let isJunc = false;
-            for (let k = 0; k < r.pts.length; k++) {
-              if (k !== idx && Math.hypot(r.pts[k][0] - pt[0], r.pts[k][1] - pt[1]) < 0.5) {
-                isJunc = true;
-                break;
-              }
-            }
-            if (!isJunc) {
-              const hasTrib = engine.ramales.some((other: any) => 
-                other.padre === r.id && 
-                other.pts.length >= 2 && 
-                Math.hypot(other.pts[0][0] - pt[0], other.pts[0][1] - pt[1]) < 0.5
-              );
-              if (hasTrib) isJunc = true;
-            }
-            if ((Math.abs(cosAngle) < 0.05 || Math.abs(cosAngle + Math.cos(Math.PI / 4)) < 0.05) && !isJunc) {
+            // Hide intermediate collinear selection dots (straight line)
+            if (cosAngle < -0.95) {
               return;
             }
           }
@@ -251,9 +148,17 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const boxH = (lbl ? lineHName : 0) + (infoSegs.length > 0 ? lineHInfo : 0) + boxPadY * 2;
       const drawX = lc.x;
       const drawY = lc.y;
-      const labelAngle = (r.labelAngle || 0) * Math.PI / 180;
+      let labelAngleDeg = r.labelAngle != null ? r.labelAngle : 0;
+      if ((r.labelAngle == null || r.labelAngle === 0) && r.pts && r.pts.length >= 2) {
+        const dx = r.pts[1][0] - r.pts[0][0];
+        const dy = r.pts[1][1] - r.pts[0][1];
+        if (Math.abs(dy) > Math.abs(dx)) {
+          labelAngleDeg = 90;
+        }
+      }
+      const labelAngle = labelAngleDeg * Math.PI / 180;
       const cosA = Math.cos(labelAngle), sinA = Math.sin(labelAngle);
-      const labelGap = -engine.mm2cvs(12);
+      const labelGap = -engine.mm2cvs(5);
       const gapOffX = -labelGap * sinA;
       const gapOffY = labelGap * cosA;
       const adjCx = drawX + gapOffX;
@@ -296,13 +201,12 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       }
 
       if (showFlow && flowLen > 12 * engine.zoom) {
-        const arrowGap = -8 * engine.zoom;
-        const arrowY = boxH / 2 + arrowGap + arrowSize / 2;
+        const arrowY = boxH / 2 + 2 * engine.zoom;
         ctx.save();
         ctx.translate(0, arrowY);
         const dot = flowDx * cosA + flowDy * sinA;
         const dir = dot >= 0 ? 1 : -1;
-        const halfSize = arrowSize * 1.4;
+        const halfSize = nameW ? nameW / 2 : 12 * engine.zoom;
         ctx.strokeStyle = col;
         ctx.lineWidth = 1 * engine.zoom;
         ctx.lineCap = 'round';
@@ -310,7 +214,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         ctx.moveTo(-halfSize * dir, 0);
         ctx.lineTo(halfSize * dir, 0);
         ctx.stroke();
-        const aSize = 10 * engine.zoom;
+        const aSize = Math.min(8 * engine.zoom, halfSize * 0.8);
         ctx.fillStyle = col;
         ctx.beginPath();
         ctx.moveTo(halfSize * dir, 0);
@@ -361,6 +265,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     }
 
     if (r.pts.length >= 2 && (r.id === engine.selId || (engine.multiSel || []).includes(r.id))) {
+      let desvioBajante: any = null;
       const isDesvio = engine.bajantes.some((b: any) => {
         const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
         if (!disp || disp.Ldesvio !== r.id) return false;
@@ -368,20 +273,44 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         const firstPt = r.pts[0], lastPt = r.pts[r.pts.length - 1];
         const nearParent = Math.hypot(firstPt[0] - b.x, firstPt[1] - b.y) < 0.5;
         const nearGhost = Math.hypot(lastPt[0] - gx, lastPt[1] - gy) < 0.5;
-        return nearParent && nearGhost;
+        if (nearParent && nearGhost) {
+          desvioBajante = b;
+          return true;
+        }
+        return false;
       });
-      if (isDesvio) {
-        const lastPt = r.pts[r.pts.length - 1];
-        const prevPt = r.pts[r.pts.length - 2];
-        const lastC = engine.toCvs(lastPt[0], lastPt[1]);
-        const prevC = engine.toCvs(prevPt[0], prevPt[1]);
-        const adx = prevC.x - lastC.x, ady = prevC.y - lastC.y;
+      
+      if (isDesvio && desvioBajante) {
+        const firstPt = r.pts[0], lastPt = r.pts[r.pts.length - 1];
+        const isSube = desvioBajante.direccion === 'sube';
+        
+        let startIdx = 0, nextIdx = 1;
+        
+        const firstIsParent = Math.hypot(firstPt[0] - desvioBajante.x, firstPt[1] - desvioBajante.y) < 0.5;
+        if (isSube) {
+          if (firstIsParent) {
+            startIdx = r.pts.length - 1; nextIdx = r.pts.length - 2;
+          } else {
+            startIdx = 0; nextIdx = 1;
+          }
+        } else {
+          if (firstIsParent) {
+            startIdx = 0; nextIdx = 1;
+          } else {
+            startIdx = r.pts.length - 1; nextIdx = r.pts.length - 2;
+          }
+        }
+        
+        const firstC = engine.toCvs(r.pts[startIdx][0], r.pts[startIdx][1]);
+        const secondC = engine.toCvs(r.pts[nextIdx][0], r.pts[nextIdx][1]);
+        const adx = secondC.x - firstC.x, ady = secondC.y - firstC.y;
         const alen = Math.hypot(adx, ady);
+        
         if (alen > 2) {
           const unx = adx / alen, uny = ady / alen;
           const arrowR = 14 * engine.zoom;
-          const cx = lastC.x;
-          const cy = lastC.y;
+          const cx = firstC.x;
+          const cy = firstC.y;
           ctx.save();
           ctx.fillStyle = '#FFEB3B';
           ctx.strokeStyle = '#000';
@@ -480,32 +409,139 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         }
       }
     }
-  });
 
-  if (engine.tool === 'line') {
-    const activeNetsRamales = engine.ramales.filter((r: any) => r.net === engine.activeNet && r.pts.length >= 2);
-
-    const net = NETS.find((n: any) => n.id === engine.activeNet);
-    const col = net ? net.col : '#a1a1aa';
-    activeNetsRamales.forEach((r: any) => {
-      r.pts.forEach(([px, py]: [number, number]) => {
-        if (isJunctionVertex(px, py, activeNetsRamales)) {
-          return;
+    if (r.tipo === 'tributario' && r.net === 'san' && r.pts.length >= 2) {
+      [0, r.pts.length - 1].forEach((idx) => {
+        const accType = idx === 0 ? r.accesorioInicio : r.accesorioFin;
+        if (!accType) return;
+        
+        const pt = r.pts[idx];
+        const c = engine.toCvs(pt[0], pt[1]);
+        
+        let dx = 0, dy = 0;
+        if (idx === 0) {
+          dx = r.pts[1][0] - r.pts[0][0];
+          dy = r.pts[1][1] - r.pts[0][1];
+        } else {
+          dx = r.pts[idx][0] - r.pts[idx - 1][0];
+          dy = r.pts[idx][1] - r.pts[idx - 1][1];
         }
-        const c = engine.toCvs(px, py);
+        const len = Math.hypot(dx, dy);
+        if (len > 0.01) {
+          dx /= len;
+          dy /= len;
+        } else {
+          dx = 1;
+          dy = 0;
+        }
+        const px = -dy, py = dx;
+        
+        const rad = engine.mm2cvs(1.6);
+        
         ctx.save();
-        ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = col;
-        ctx.lineWidth = 1.5 * engine.zoom;
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        if (accType === 'sifon') {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          
+          ctx.beginPath();
+          const x1 = c.x - px * rad * 0.45 + dx * rad * 0.45;
+          const y1 = c.y - py * rad * 0.45 + dy * rad * 0.45;
+          const x2 = c.x - px * rad * 0.45 - dx * rad * 0.2;
+          const y2 = c.y - py * rad * 0.45 - dy * rad * 0.2;
+          const x3 = c.x + px * rad * 0.45 - dx * rad * 0.2;
+          const y3 = c.y + py * rad * 0.45 - dy * rad * 0.2;
+          const x4 = c.x + px * rad * 0.45 + dx * rad * 0.45;
+          const y4 = c.y + py * rad * 0.45 + dy * rad * 0.45;
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+          ctx.arcTo(c.x - dx * rad * 0.65, c.y - dy * rad * 0.65, x3, y3, rad * 0.45);
+          ctx.lineTo(x4, y4);
+          ctx.stroke();
+        } else if (accType === 'codoSube') {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          
+          ctx.fillStyle = '#000000';
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, rad * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (accType === 'codoBaja') {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          
+          ctx.beginPath();
+          const offset = rad * Math.SQRT1_2;
+          ctx.moveTo(c.x - offset, c.y - offset);
+          ctx.lineTo(c.x + offset, c.y + offset);
+          ctx.moveTo(c.x + offset, c.y - offset);
+          ctx.lineTo(c.x - offset, c.y + offset);
+          ctx.stroke();
+        } else if (accType === 'codoReventilado') {
+          const rRad = engine.mm2cvs(1.2);
+          const vLen = engine.mm2cvs(1.6);
+          const offset = rRad + engine.mm2cvs(0.5);
+          const cx1 = c.x - dx * offset, cy1 = c.y - dy * offset;
+          const cx2 = c.x + dx * offset, cy2 = c.y + dy * offset;
+          
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 3.5 * engine.zoom;
+          ctx.beginPath();
+          ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
+          ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(cx2 - px * vLen, cy2 - py * vLen);
+          ctx.lineTo(cx2 + px * vLen, cy2 + py * vLen);
+          ctx.stroke();
+          
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.beginPath();
+          ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
+          ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(cx2 - px * vLen, cy2 - py * vLen);
+          ctx.lineTo(cx2 + px * vLen, cy2 + py * vLen);
+          ctx.stroke();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, rRad + engine.mm2cvs(0.2), 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, rRad, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.fillStyle = '#000000';
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, engine.mm2cvs(0.35), 0, Math.PI * 2);
+          ctx.fill();
+        }
+        
         ctx.restore();
       });
-    });
-
-  }
+    }
+  });
 
   renderJunctions(ctx, engine);
   renderVentCodos(ctx, engine);
@@ -620,14 +656,6 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   ctx.lineTo(mc.x, mc.y);
   ctx.stroke();
   ctx.setLineDash([]);
-
-  if (snapped) {
-    ctx.strokeStyle = '#22D3EE';
-    ctx.lineWidth = 2 * engine.zoom;
-    ctx.beginPath();
-    ctx.arc(mc.x, mc.y, 2.5 * engine.zoom, 0, Math.PI * 2);
-    ctx.stroke();
-  }
 
   const segPx = Math.hypot(mp.x - last[0], mp.y - last[1]);
   const segM = +(engine.pxToM(segPx).toFixed(2));
