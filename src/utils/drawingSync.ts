@@ -132,6 +132,10 @@ function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): S
             lvert: parseFloat(r.lvert ?? r.dz ?? '0') || 0,
             nSalidas: r.nSalidas || 0,
             descargaEnId: r.descargaEnId || null,
+            accesorioInicio: r.accesorioInicio || '',
+            accesorioFin: r.accesorioFin || '',
+            diametroInicio: r.diametroInicio || '',
+            diametroFin: r.diametroFin || '',
           });
         }
       }

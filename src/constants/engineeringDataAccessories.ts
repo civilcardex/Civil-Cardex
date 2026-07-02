@@ -24,9 +24,10 @@ export const ACCESORIOS_YEE = [
 
 export const SAN_ACCESORIOS = [
   ...ACCESORIOS_HIDRO.filter(a => a.id === 'codo90rm' || a.id === 'codo45rc'),
-  {id:'codo90rmSube',emoji:'🔩',nombre:'Codo RM 90° sube',icono:'/iconos_accesorios/codo90rm.svg', cat: 'Codos'},
-  {id:'codo90rmBaja',emoji:'🔩',nombre:'Codo RM 90° baja',icono:'/iconos_accesorios/codo90rm.svg', cat: 'Codos'},
+  {id:'codo90rmSube',emoji:'🔩',nombre:'Codo medio 90° sube',icono:'/iconos_accesorios/codo90rm.svg', cat: 'Codos'},
+  {id:'codo90rmBaja',emoji:'🔩',nombre:'Codo medio 90° baja',icono:'/iconos_accesorios/codo90rm.svg', cat: 'Codos'},
   {id:'codoReventilado',emoji:'🔩',nombre:'Codo reventilado',icono:'/iconos_accesorios/codo90rl.svg', cat: 'Codos'},
+  {id:'sifon',emoji:'🧼',nombre:'Sifón',icono:'/iconos_aparatos/sifon.svg', cat:'Otros'},
   ...ACCESORIOS_YEE,
   {id:'tee',emoji:'🔧',nombre:'Tee',icono:'/iconos_accesorios/te_ramal.svg', cat:'Tees'},
 ];

@@ -512,31 +512,60 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
 
     const acc = hidroData[rKey].accesorios;
     
-    // Only update if changed
-    if (acc['codo45rc'] !== count45 || acc['codoReventilado'] !== countVent ||
-        acc['codo90rmSube'] !== countSube || acc['codo90rmBaja'] !== countBaja) {
-      if (count45 > 0) acc['codo45rc'] = count45; else delete acc['codo45rc'];
-      if (countVent > 0) acc['codoReventilado'] = countVent; else delete acc['codoReventilado'];
-      if (countSube > 0) acc['codo90rmSube'] = countSube; else delete acc['codo90rmSube'];
-      if (countBaja > 0) acc['codo90rmBaja'] = countBaja; else delete acc['codo90rmBaja'];
-      changed = true;
-    }
+    if (r.tipo === 'tributario') {
+      let countSifonTrib = 0;
+      let countVentTrib = 0;
+      let countSubeTrib = 0;
+      let countBajaTrib = 0;
+      
+      const processAcc = (accType: string) => {
+        if (accType === 'sifon') countSifonTrib++;
+        else if (accType === 'codoReventilado') countVentTrib++;
+        else if (accType === 'codoSube') countSubeTrib++;
+        else if (accType === 'codoBaja') countBajaTrib++;
+      };
+      
+      processAcc(r.accesorioInicio);
+      processAcc(r.accesorioFin);
 
-    // Store yee counts
-    const yee = yeeCounts[String(r.id)];
-    if (yee) {
-      if (acc['yeeSimple'] !== yee.simple) { acc['yeeSimple'] = yee.simple; changed = true; }
-      if (acc['yeeDoble'] !== yee.doble) { acc['yeeDoble'] = yee.doble; changed = true; }
-    } else {
+      if (acc['sifon'] !== countSifonTrib || acc['codoReventilado'] !== countVentTrib ||
+          acc['codo90rmSube'] !== countSubeTrib || acc['codo90rmBaja'] !== countBajaTrib) {
+        if (countSifonTrib > 0) acc['sifon'] = countSifonTrib; else delete acc['sifon'];
+        if (countVentTrib > 0) acc['codoReventilado'] = countVentTrib; else delete acc['codoReventilado'];
+        if (countSubeTrib > 0) acc['codo90rmSube'] = countSubeTrib; else delete acc['codo90rmSube'];
+        if (countBajaTrib > 0) acc['codo90rmBaja'] = countBajaTrib; else delete acc['codo90rmBaja'];
+        changed = true;
+      }
+      
+      if ('codo45rc' in acc) { delete acc['codo45rc']; changed = true; }
       if ('yeeSimple' in acc) { delete acc['yeeSimple']; changed = true; }
       if ('yeeDoble' in acc) { delete acc['yeeDoble']; changed = true; }
-    }
+      if ('tee' in acc) { delete acc['tee']; changed = true; }
+    } else {
+      if (acc['sifon'] !== undefined) { delete acc['sifon']; changed = true; }
+      if (acc['codo45rc'] !== count45 || acc['codoReventilado'] !== countVent ||
+          acc['codo90rmSube'] !== countSube || acc['codo90rmBaja'] !== countBaja) {
+        if (count45 > 0) acc['codo45rc'] = count45; else delete acc['codo45rc'];
+        if (countVent > 0) acc['codoReventilado'] = countVent; else delete acc['codoReventilado'];
+        if (countSube > 0) acc['codo90rmSube'] = countSube; else delete acc['codo90rmSube'];
+        if (countBaja > 0) acc['codo90rmBaja'] = countBaja; else delete acc['codo90rmBaja'];
+        changed = true;
+      }
 
-    // Store tee counts
-    const tee = teeCounts[String(r.id)] || 0;
-    if (acc['tee'] !== tee) {
-      if (tee > 0) acc['tee'] = tee; else delete acc['tee'];
-      changed = true;
+      const yee = yeeCounts[String(r.id)];
+      if (yee) {
+        if (acc['yeeSimple'] !== yee.simple) { acc['yeeSimple'] = yee.simple; changed = true; }
+        if (acc['yeeDoble'] !== yee.doble) { acc['yeeDoble'] = yee.doble; changed = true; }
+      } else {
+        if ('yeeSimple' in acc) { delete acc['yeeSimple']; changed = true; }
+        if ('yeeDoble' in acc) { delete acc['yeeDoble']; changed = true; }
+      }
+
+      const tee = teeCounts[String(r.id)] || 0;
+      if (acc['tee'] !== tee) {
+        if (tee > 0) acc['tee'] = tee; else delete acc['tee'];
+        changed = true;
+      }
     }
   }
 
@@ -661,6 +690,7 @@ export function ensureRpCntRamal(engine: IPlanoEngineCore): void {
         material: '',
         diametro: '',
         pendiente: 1.5,
+        bloqueado: true,
       });
     }
   }

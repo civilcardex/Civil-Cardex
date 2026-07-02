@@ -1,10 +1,11 @@
 /* eslint-disable react-hooks/refs */
-import React, { type RefObject } from 'react'
+import React, { type RefObject, useMemo } from 'react'
 import { DIAM_BAN, DIAM_BY_MAT, DIAM_DEFAULT_BY_NET, DIAM_VENT } from '../../constants'
 import { GAS } from '../../constants/engineeringDataGas';
 import { VENTILACION, CONTADORES as CONTADORES_CAT } from '../../pages/catalog/catalogData';
 import { CAT_GAS } from '../../constants/engineeringDataGas';
 import { DIAMETROS_AF } from '../../constants/hydraulicData'
+import { writeBajantePropToDrawing } from '../../utils/writeDiameterToDrawing';
 
 const GAS_DN_LABELS: string[] = [];
 for (const g of GAS) for (const r of g.rows) if (!GAS_DN_LABELS.includes(r.dn)) GAS_DN_LABELS.push(r.dn);
@@ -26,18 +27,47 @@ interface TramoEditorProps {
   setSelElement: React.Dispatch<React.SetStateAction<any>>
   handleUpdateSel: (field: string, value: any) => void
   handleRotateLabel: () => void
-
+  plans?: any[]
 }
 
 export default function TramoEditor({
   selElement, activeNet, engineRef,
   diamSel, gasMatSel, pendSel, pendInput,
   mats, matLongName,
-  setDiamSel, setGasMatSel, setPendSel, setPendInput, setSelElement,
-  handleUpdateSel, handleRotateLabel,
+  setDiamSel, setGasMatSel, setPendSel, setPendInput,
+  setSelElement, handleUpdateSel, handleRotateLabel,
+  plans,
 }: TramoEditorProps) {
-
   const isSelActiveNet = selElement && selElement.net === activeNet
+
+  const allBajantes = useMemo(() => {
+    if (!plans) return [];
+    const list: Array<{ key: string; id: string; label: string; planId: string; planName: string; descargaEnId: string | null }> = [];
+    for (const plan of plans) {
+      if (plan.status !== 'confirmed') continue;
+      const key = 'civilflow_trazos_' + plan.id;
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try {
+          const data = JSON.parse(raw);
+          const bajs = data.bajantes || [];
+          for (const b of bajs) {
+            if (b.net === activeNet) {
+              list.push({
+                key: `${b.id}-${plan.id}`,
+                id: b.id,
+                label: b.code || b.id,
+                planId: String(plan.id),
+                planName: plan.name,
+                descargaEnId: b.descargaEnId || null
+              });
+            }
+          }
+        } catch (_) {}
+      }
+    }
+    return list;
+  }, [plans, activeNet]);
   const eng = engineRef.current;
   const lvl = eng?.nivelActual?.label ?? '';
   const isGhostSel = (selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante') && eng?._isGhostSel) || false;
@@ -502,6 +532,38 @@ export default function TramoEditor({
                     </div>
                   </div>
                 )}
+                {activeNet === 'san' && (
+                  <div style={{ width: '100%', marginTop: 8 }}>
+                    <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Bajantes asociadas</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 }}>
+                      {(() => {
+                        const others = allBajantes.filter((b: any) => b.key !== `${selElement.id}-${engineRef.current?.planId}`);
+                        if (others.length === 0) return <div style={{ fontSize: 10, color: '#8AB4D6', fontFamily: "'Geist',monospace", padding: '4px', gridColumn: 'span 2' }}>Sin otras bajantes en esta red</div>;
+                        
+                        return others.map((b: any) => {
+                          const isAssoc = b.descargaEnId === `${engineRef.current?.planId}|${selElement.id}`;
+                          return (
+                            <label key={b.key} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
+                              <input type="checkbox" checked={isAssoc}
+                                onChange={e => {
+                                  const checked = e.target.checked;
+                                  const val = checked ? `${engineRef.current?.planId}|${selElement.id}` : null;
+                                  
+                                  // Update target bajante property in localStorage/DB
+                                  writeBajantePropToDrawing(b.key, activeNet, 'descargaEnId', val, plans || []);
+                                  
+                                  // Trigger a re-render/sync event
+                                  window.dispatchEvent(new CustomEvent('civilflow_nets_changed', { detail: [activeNet] }));
+                                }}
+                                style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
+                              <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${b.planName} - ${b.label}`}>{b.planName.split(' ')[0]}: {b.label}</span>
+                            </label>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -537,6 +599,7 @@ export default function TramoEditor({
           <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
             <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#9BA8AA", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos específicos</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+
               {isGas ? (
                 <div>
                   <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Material</div>
@@ -687,6 +750,99 @@ export default function TramoEditor({
                   <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0" aria-label="Número de descargas"
                     onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||0;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
                     style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
+                </div>
+              )}
+              {selElement?.tipo === 'tributario' && activeNet === 'san' && (
+                <div style={{ borderTop: '1px solid #3a494a', paddingTop: 8, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1 }}>Accesorios Extremos</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                    <div>
+                      <div style={{ fontSize: 8, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2 }}>Inicio (Aparato)</div>
+                      <select value={selElement.accesorioInicio || ''} aria-label="Accesorio inicio"
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (engineRef.current) {
+                            const updates: any = { accesorioInicio: val };
+                            if (val && !selElement.diametroInicio) {
+                              updates.diametroInicio = selElement.diametro || '';
+                            }
+                            engineRef.current.updateSelected(updates);
+                            setSelElement({ ...selElement, ...updates });
+                            engineRef.current.render();
+                            engineRef.current._markDirty();
+                          }
+                        }}
+                        style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                        <option value="">Ninguno</option>
+                        <option value="sifon">🧼 Sifón</option>
+                        <option value="codoSube">🔩 Codo Sube</option>
+                        <option value="codoBaja">🔩 Codo Baja</option>
+                        <option value="codoReventilado">🔩 Codo reventilado</option>
+                      </select>
+                      {selElement.accesorioInicio && (
+                        <select value={(selElement.diametroInicio || selElement.diametro || '').split(' — ')[0].trim()} aria-label="Diámetro inicio"
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (engineRef.current) {
+                              engineRef.current.updateSelected({ diametroInicio: val });
+                              setSelElement({ ...selElement, diametroInicio: val });
+                              engineRef.current.render();
+                              engineRef.current._markDirty();
+                            }
+                          }}
+                          style={{ width: '100%', padding: "2px 4px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 9, fontFamily: "'Geist',monospace", cursor: 'pointer', marginTop: 3 }}>
+                          <option value="">Usar red</option>
+                          {diamList.map((d: any) => {
+                            const valClean = d.n.split(' — ')[0].trim();
+                            return <option key={d.n} value={valClean}>{valClean}</option>;
+                          })}
+                        </select>
+                      )}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 8, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2 }}>Fin (Ramal)</div>
+                      <select value={selElement.accesorioFin || ''} aria-label="Accesorio fin"
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (engineRef.current) {
+                            const updates: any = { accesorioFin: val };
+                            if (val && !selElement.diametroFin) {
+                              updates.diametroFin = selElement.diametro || '';
+                            }
+                            engineRef.current.updateSelected(updates);
+                            setSelElement({ ...selElement, ...updates });
+                            engineRef.current.render();
+                            engineRef.current._markDirty();
+                          }
+                        }}
+                        style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                        <option value="">Ninguno</option>
+                        <option value="sifon">🧼 Sifón</option>
+                        <option value="codoSube">🔩 Codo Sube</option>
+                        <option value="codoBaja">🔩 Codo Baja</option>
+                        <option value="codoReventilado">🔩 Codo reventilado</option>
+                      </select>
+                      {selElement.accesorioFin && (
+                        <select value={(selElement.diametroFin || selElement.diametro || '').split(' — ')[0].trim()} aria-label="Diámetro fin"
+                          onChange={e => {
+                            const val = e.target.value;
+                            if (engineRef.current) {
+                              engineRef.current.updateSelected({ diametroFin: val });
+                              setSelElement({ ...selElement, diametroFin: val });
+                              engineRef.current.render();
+                              engineRef.current._markDirty();
+                            }
+                          }}
+                          style={{ width: '100%', padding: "2px 4px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 9, fontFamily: "'Geist',monospace", cursor: 'pointer', marginTop: 3 }}>
+                          <option value="">Usar red</option>
+                          {diamList.map((d: any) => {
+                            const valClean = d.n.split(' — ')[0].trim();
+                            return <option key={d.n} value={valClean}>{valClean}</option>;
+                          })}
+                        </select>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

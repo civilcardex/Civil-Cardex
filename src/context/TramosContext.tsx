@@ -228,21 +228,23 @@ function buildTramos(
         }
       }
 
+      const isContador = (s: string) => s.startsWith('CNT') || s.startsWith('cntAF');
+
       const isAC1 = (() => {
         if (ini.startsWith('RP') || fin.startsWith('RP')) return true;
-        if (fin.startsWith('CNT') && !ini.startsWith('CNT') && !ini.startsWith('M') && !ini.startsWith('B')) return true;
+        if (isContador(fin) && !isContador(ini) && !ini.startsWith('M') && !ini.startsWith('B')) return true;
         return false;
       })();
       const isAC2 = (() => {
         if (ini.startsWith('RP') || fin.startsWith('RP')) return false;
-        if (ini.startsWith('CNT')) return true;
-        if (fin.startsWith('CNT') && (ini.startsWith('M') || ini.startsWith('B'))) return true;
+        if (isContador(ini)) return true;
+        if (isContador(fin) && (ini.startsWith('M') || ini.startsWith('B'))) return true;
         return false;
       })();
 
       let apKey = r._aparatosKey || `${family}_${r.id}_${planId}`;
       if (family === 'af' && isAC1) {
-        const cntId = fin.startsWith('CNT') ? fin : (ini.startsWith('CNT') ? ini : null);
+        const cntId = isContador(fin) ? fin : (isContador(ini) ? ini : null);
         if (cntId) {
           apKey = `${family}_${cntId}_${planId}`;
         }
@@ -396,6 +398,14 @@ useEffect(() => {
           nmaning: r.maning ?? 0, sPercent: r.pendiente ?? 0,
           bajR: 7/24, bajLong: 5, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
           ventRamalKey: null,
+          label: r.label || r.id,
+          diametro: r.diametro || '',
+          diamPulg: r.diamPulg || 0,
+          accesorioInicio: r.accesorioInicio || '',
+          accesorioFin: r.accesorioFin || '',
+          diametroInicio: r.diametroInicio || '',
+          diametroFin: r.diametroFin || '',
+          padreTributarioLabel: r.padreTributario ? ((plane as any).ramales?.find((pr: any) => pr.id === r.padreTributario)?.label || r.padreTributario) : null,
         };
         if (r._net === 'll') {
           llIncoming.push({ ...tramo, desde: r.ini || '', hasta: r.fin || '' });

@@ -1,12 +1,12 @@
 /* eslint-disable react-hooks/refs */
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import { DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, pisoLbl } from "../../constants";
 import { GAS } from "../../constants/engineeringDataGas";
 import { VENTILACION, CONTADORES as CONTADORES_CAT } from "../../pages/catalog/catalogData";
 import { DIAMETROS_AF } from "../../constants/hydraulicData";
-import { writeAcoDiamToDrawing, writeContadorDiamToDrawing } from "../../utils/writeDiameterToDrawing";
+import { writeAcoDiamToDrawing, writeContadorDiamToDrawing, writeBajantePropToDrawing } from "../../utils/writeDiameterToDrawing";
 import { CAT_GAS } from "../../constants/engineeringDataGas";
 
 const GAS_DN_LABELS: string[] = [];
@@ -57,6 +57,44 @@ export default function BajanteContextMenu({
   activeNet,
   setDiamSel,
 }: BajanteContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [adjustedPos, setAdjustedPos] = useState({ x: contextMenuState?.x || 0, y: contextMenuState?.y || 0 });
+
+  useEffect(() => {
+    const el = menuRef.current;
+    if (!el || !contextMenuState) return;
+    const parentEl = el.offsetParent;
+    if (!parentEl) return;
+    const parentRect = parentEl.getBoundingClientRect();
+    const menuRect = el.getBoundingClientRect();
+    
+    let newX = contextMenuState.x - parentRect.left;
+    let newY = contextMenuState.y - parentRect.top;
+
+    if (contextMenuState.x + menuRect.width + 10 > window.innerWidth) {
+      newX = newX - menuRect.width - 5;
+    } else {
+      newX = newX + 5;
+    }
+
+    if (contextMenuState.y + menuRect.height + 10 > window.innerHeight) {
+      newY = newY - menuRect.height - 5;
+    } else {
+      newY = newY + 5;
+    }
+
+    if (newX < 10) newX = 10;
+    if (newY < 10) newY = 10;
+    if (newX + menuRect.width > parentRect.width - 10) {
+      newX = parentRect.width - menuRect.width - 10;
+    }
+    if (newY + menuRect.height > parentRect.height - 10) {
+      newY = parentRect.height - menuRect.height - 10;
+    }
+
+    setAdjustedPos({ x: newX, y: newY });
+  }, [contextMenuState?.x, contextMenuState?.y, contextMenuState?.visible]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setContextMenuState(null);
@@ -79,8 +117,8 @@ export default function BajanteContextMenu({
       <div role="presentation" style={{
         position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100
       }} onClick={() => setContextMenuState(null)} onContextMenu={(e) => e.preventDefault()} />
-      <div role="dialog" aria-label="Menú contextual de elemento" style={{
-        position: 'absolute', left: contextMenuState.x, top: contextMenuState.y, zIndex: 101,
+      <div ref={menuRef} role="dialog" aria-label="Menú contextual de elemento" style={{
+        position: 'absolute', left: adjustedPos.x, top: adjustedPos.y, zIndex: 101,
         background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 6,
         boxShadow: '0 4px 16px rgba(0,0,0,0.4)', padding: '4px', minWidth: 180, maxWidth: 320,
         display: 'flex', flexDirection: 'column', gap: 2,
@@ -231,7 +269,7 @@ export default function BajanteContextMenu({
                 onMouseEnter={e => e.currentTarget.style.background = '#2563eb33'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
-                {contextMenuState.bajante.isFantasma ? 'Desactivar bajante de desplazamiento' : 'Activar bajante de desplazamiento'}
+                {contextMenuState.bajante.isFantasma ? 'Desactivar desplazamiento del bajante' : 'Activar desplazamiento del bajante'}
               </button>
             )}
 
@@ -249,20 +287,77 @@ export default function BajanteContextMenu({
                         if (selElement?.id === contextMenuState.bajante.id) {
                           setSelElement({ ...selElement, descargaEnId: v });
                         }
+                        const bKey = `${contextMenuState.bajante.id}-${engineRef.current?.planId}`;
+                        writeBajantePropToDrawing(bKey, contextMenuState.bajante.net || 'san', 'descargaEnId', v, planosCtx.plans);
+
+                        if (v && engineRef.current) {
+                          const oParts = v.split('|');
+                          const oPlanId = oParts[0];
+                          const oTgtId = oParts[1];
+                          const lowerPl = lowerFloorsRamales.find((g: any) => String(g.planId) === String(oPlanId));
+                          const targetBaj = lowerPl?.bajantes?.find((b: any) => String(b.id) === String(oTgtId));
+                          if (targetBaj) {
+                            const dist = Math.hypot(contextMenuState.bajante.x - targetBaj.x, contextMenuState.bajante.y - targetBaj.y);
+                            if (dist > 0.05) {
+                              const exists = engineRef.current.ramales.some((r: any) => 
+                                (Math.hypot(r.pts[0][0] - contextMenuState.bajante.x, r.pts[0][1] - contextMenuState.bajante.y) < 0.5 &&
+                                 Math.hypot(r.pts[r.pts.length - 1][0] - targetBaj.x, r.pts[r.pts.length - 1][1] - targetBaj.y) < 0.5) ||
+                                (Math.hypot(r.pts[0][0] - targetBaj.x, r.pts[0][1] - targetBaj.y) < 0.5 &&
+                                 Math.hypot(r.pts[r.pts.length - 1][0] - contextMenuState.bajante.x, r.pts[r.pts.length - 1][1] - contextMenuState.bajante.y) < 0.5)
+                              );
+                              if (!exists) {
+                                const net = contextMenuState.bajante.net || 'san';
+                                const cnt = ++(engineRef.current._netCounts[net]['ramal']);
+                                const newRamalId = 'R' + Date.now();
+                                const netPfx = NETS.find(n => n.id === net)?.lbl || 'R';
+                                const newRamal: any = {
+                                  id: newRamalId,
+                                  net,
+                                  tipo: 'ramal',
+                                  padre: null,
+                                  pts: [[contextMenuState.bajante.x, contextMenuState.bajante.y], [targetBaj.x, targetBaj.y]],
+                                  totalL: +(engineRef.current.pxToM(dist)).toFixed(3),
+                                  label: netPfx + cnt,
+                                  ini: '', fin: '',
+                                  piso: engineRef.current.nivelActual?.n ?? '',
+                                  dz: '', uc: 0,
+                                  labelX: (contextMenuState.bajante.x + targetBaj.x) / 2,
+                                  labelY: (contextMenuState.bajante.y + targetBaj.y) / 2,
+                                  labelAngle: 0,
+                                  material: '',
+                                  diametro: '',
+                                  pendiente: 1.5,
+                                  bloqueado: true,
+                                };
+                                engineRef.current.ramales.push(newRamal);
+                                engineRef.current._markDirty();
+                                engineRef.current.render();
+                              }
+                            }
+                          }
+                        }
                       }}
                       style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
                       <option value="">— Sin destino —</option>
                       {lowerFloorsRamales.map(group => {
                         const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
                         const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
+                        const hasRamales = group.ramales && group.ramales.length > 0;
+                        const hasBajantes = group.bajantes && group.bajantes.filter((b: any) => b.id !== contextMenuState.bajante.id).length > 0;
                         return (
-                          <optgroup key={group.planId} label={pLabel + (group.ramales.length === 0 ? ' (sin ramales)' : '')}>
-                            {group.ramales.length > 0 ? group.ramales.map((r: any) => (
+                          <optgroup key={group.planId} label={pLabel}>
+                            {hasRamales && group.ramales.map((r: any) => (
                               <option key={`${group.planId}|${r.id}`} value={`${group.planId}|${r.id}`}>
-                                {r.label || r.id}
+                                Ramal: {r.label || r.id}
                               </option>
-                            )) : (
-                              <option value="" disabled>— Sin ramales disponibles —</option>
+                            ))}
+                            {hasBajantes && group.bajantes.filter((b: any) => b.id !== contextMenuState.bajante.id).map((b: any) => (
+                              <option key={`${group.planId}|${b.id}`} value={`${group.planId}|${b.id}`}>
+                                Bajante: {b.code || b.id}
+                              </option>
+                            ))}
+                            {!hasRamales && !hasBajantes && (
+                              <option value="" disabled>— Sin elementos disponibles —</option>
                             )}
                           </optgroup>
                         );
@@ -440,6 +535,44 @@ export default function BajanteContextMenu({
                 </div>
               </div>
             )}
+
+            {!contextMenuState.isGhostClick && ['san', 'll'].includes(activeNet) && (
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4
+              }}>
+                <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
+                  {(() => {
+                    const netBajantes = (engineRef.current?.bajantes || []).filter((b: any) => b.net === contextMenuState.bajante.net && b.id !== contextMenuState.bajante.id && b.tipo !== 'tributario');
+                    if (netBajantes.length === 0) return <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin bajantes</div>;
+                    const currentId = contextMenuState.bajante.id;
+                    return netBajantes.map((b: any) => {
+                      const isAssociated = (contextMenuState.bajante.recibeDeIds || []).includes(b.id);
+                      return (
+                        <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
+                          <input type="checkbox" checked={isAssociated}
+                            onChange={e => {
+                              const recibidos = contextMenuState.bajante.recibeDeIds || [];
+                              const newRecibe = e.target.checked
+                                ? [...recibidos, b.id]
+                                : recibidos.filter((id: string) => id !== b.id);
+                              engineRef.current?.updateElementById(currentId, { recibeDeIds: newRecibe });
+                              const fresh = engineRef.current?.bajantes.find((x: any) => x.id === currentId);
+                              if (fresh) setContextMenuState(prev => prev ? { ...prev, bajante: { ...fresh } } : null);
+                              if (selElement?.id === currentId) {
+                                setSelElement({ ...selElement, recibeDeIds: newRecibe });
+                              }
+                              engineRef.current?.render();
+                            }}
+                            style={{ accentColor: '#2563eb', margin: 0, flexShrink: 0 }} />
+                          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={b.code || b.id}>{b.code || b.id}</span>
+                        </label>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            )}
           </>
         ) : isArea ? (
           <>
@@ -478,6 +611,87 @@ export default function BajanteContextMenu({
               const supNets = ['san', 'll', 'vent', 'af', 'ac', 'gas', 'rci', 'rec'];
               if (!supNets.includes(contextMenuState.bajante.net)) return null;
               const ep = contextMenuState.ramalEndpoint;
+
+              if (contextMenuState.bajante.tipo === 'tributario' && contextMenuState.bajante.net === 'san') {
+                const isStart = ep.idx === 0;
+                const fieldAcc = isStart ? 'accesorioInicio' : 'accesorioFin';
+                const fieldDiam = isStart ? 'diametroInicio' : 'diametroFin';
+                
+                const currentAcc = contextMenuState.bajante[fieldAcc] || '';
+                const currentDiam = contextMenuState.bajante[fieldDiam] || contextMenuState.bajante.diametro || '';
+                
+                const matList = mats?.[contextMenuState.bajante.net] || [];
+                const matShort = contextMenuState.bajante.material || matList[0]?.val || '—';
+                const diamList = DIAM_BY_MAT[matShort] || [];
+
+                return (
+                  <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 6, borderBottom: '1px solid #3a494a', marginBottom: 4 }}>
+                    <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Extremo {isStart ? 'Inicio (Aparato)' : 'Fin (Ramal)'}
+                    </div>
+                    
+                    <div>
+                      <div style={{ fontSize: 9, color: '#849495', marginBottom: 2 }}>Seleccionar Accesorio</div>
+                      <select
+                        value={currentAcc}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (engineRef.current) {
+                            const updates: any = { [fieldAcc]: val };
+                            if (val && !contextMenuState.bajante[fieldDiam]) {
+                              updates[fieldDiam] = contextMenuState.bajante.diametro || '';
+                            }
+                            engineRef.current.updateElementById(contextMenuState.bajante.id, updates);
+                            setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, ...updates } } : null);
+                            if (selElement?.id === contextMenuState.bajante.id) {
+                              setSelElement({ ...selElement, ...updates });
+                            }
+                            engineRef.current.render();
+                            engineRef.current._markDirty();
+                          }
+                        }}
+                        style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
+                      >
+                        <option value="">Ninguno</option>
+                        <option value="sifon">🧼 Sifón</option>
+                        <option value="codoSube">🔩 Codo Sube</option>
+                        <option value="codoBaja">🔩 Codo Baja</option>
+                        <option value="codoReventilado">🔩 Codo reventilado</option>
+                      </select>
+                    </div>
+
+                    {currentAcc && (
+                      <div>
+                        <div style={{ fontSize: 9, color: '#849495', marginBottom: 2 }}>Diámetro de Accesorio</div>
+                        <select
+                          value={currentDiam ? currentDiam.split(' — ')[0].trim() : ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (engineRef.current) {
+                              const updates = { [fieldDiam]: val };
+                              engineRef.current.updateElementById(contextMenuState.bajante.id, updates);
+                              setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, ...updates } } : null);
+                              if (selElement?.id === contextMenuState.bajante.id) {
+                                setSelElement({ ...selElement, ...updates });
+                              }
+                              engineRef.current.render();
+                              engineRef.current._markDirty();
+                            }
+                          }}
+                          style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
+                        >
+                          <option value="">Usar diámetro de red</option>
+                          {diamList.map((d: any) => {
+                            const valClean = d.n.split(' — ')[0].trim();
+                            return <option key={d.n} value={valClean}>{valClean}</option>;
+                          })}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               const netDef = NETS.find((n: any) => n.id === contextMenuState.bajante.net);
               const bmLabel = netDef?.bmType === 'bajante' ? 'bajante' : 'montante';
               return (
@@ -580,28 +794,54 @@ export default function BajanteContextMenu({
             })()}
 
             <div style={{
+              padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+            }}>
+              <span style={{ fontSize: 10, color: '#e2e2e8', fontFamily: "'Geist',monospace" }}>🔒 Bloquear movimiento</span>
+              <input type="checkbox" checked={!!contextMenuState.bajante.bloqueado}
+                onChange={e => {
+                  const val = e.target.checked;
+                  if (engineRef.current) {
+                    engineRef.current?.updateElementById(contextMenuState.bajante.id, { bloqueado: val });
+                    setContextMenuState(prev => prev ? { ...prev, bajante: { ...prev.bajante, bloqueado: val } } : null);
+                    if (selElement?.id === contextMenuState.bajante.id) {
+                      setSelElement({ ...selElement, bloqueado: val });
+                    }
+                    engineRef.current?.render();
+                  }
+                }}
+                style={{ accentColor: '#F5A623', cursor: 'pointer', margin: 0 }} />
+            </div>
+
+            <div style={{
               display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4
             }}>
               <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
                 {(() => {
-                  const netBajantes = (engineRef.current?.bajantes || []).filter((b: any) => b.net === contextMenuState.bajante.net && b.tipo !== 'tributario');
+                  const netBajantes = (engineRef.current?.bajantes || []).filter((b: any) => b.net === contextMenuState.bajante.net && b.id !== contextMenuState.bajante.id && b.tipo !== 'tributario');
                   if (netBajantes.length === 0) return <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin bajantes</div>;
-                  const ramalId = contextMenuState.bajante.id;
+                  const currentId = contextMenuState.bajante.id;
                   return netBajantes.map((b: any) => {
-                    const isAssociated = (b.recibeDeIds || []).includes(ramalId);
+                    const isAssociated = (b.recibeDeIds || []).includes(currentId);
                     return (
                       <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
                         <input type="checkbox" checked={isAssociated}
                           onChange={e => {
                             const recibidos = b.recibeDeIds || [];
                             const newRecibe = e.target.checked
-                              ? [...recibidos, ramalId]
-                              : recibidos.filter((id: string) => id !== ramalId);
-                            engineRef.current?.updateElementById(b.id, { recibeDeIds: newRecibe });
+                              ? [...recibidos, currentId]
+                              : recibidos.filter((id: string) => id !== currentId);
+                            const extraFields: Record<string, any> = { recibeDeIds: newRecibe };
+                            if (e.target.checked) {
+                              extraFields.descargaEnId = currentId;
+                            } else if (b.descargaEnId === currentId || b.descargaEnId?.endsWith('|' + currentId)) {
+                              extraFields.descargaEnId = null;
+                            }
+                            engineRef.current?.updateElementById(b.id, extraFields);
                             setContextMenuState(prev => prev ? { ...prev } : null);
                             if (selElement?.id === b.id) {
-                              setSelElement({ ...selElement, recibeDeIds: newRecibe });
+                              setSelElement({ ...selElement, ...extraFields });
                             }
                           }}
                           style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />

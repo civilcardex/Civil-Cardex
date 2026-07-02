@@ -1,6 +1,9 @@
 export function diamPulgFromLabel(d: unknown): number {
   if (!d) return 0;
-  const s = String(d).trim();
+  let s = String(d).trim();
+  if (s.includes('—')) {
+    s = s.split('—').pop()!.trim();
+  }
 
   const FRAC = { '½': 0.5, '⅓': 1 / 3, '⅔': 2 / 3, '¼': 0.25, '¾': 0.75, '⅛': 0.125, '⅜': 0.375, '⅝': 0.625, '⅞': 0.875 };
 
