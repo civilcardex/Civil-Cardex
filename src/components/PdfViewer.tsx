@@ -137,7 +137,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   const activeNetRef = useRef(activeNet);
   activeNetRef.current = activeNet;
 
-  const [lowerFloorsRamales, setLowerFloorsRamales] = useState<Array<{ planId: string; planName: string; npt: number; ramales: any[] }>>([]);
+  const [lowerFloorsRamales, setLowerFloorsRamales] = useState<Array<{ planId: string; planName: string; npt: number; ramales: any[]; bajantes: any[] }>>([]);
 
   useEffect(() => {
     if (!selElement || !(selElement.tipo === 'bajante' || selElement.tipo === 'montante')) return;
@@ -152,20 +152,23 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     const results = relevantPlans.map((plan: any) => {
       const pF = pisos.find(p => String(p.n) === String(plan.nivel))!;
       let ramales: any[] = [];
+      let bajantes: any[] = [];
       if (plan.id === currentIdRef.current) {
         ramales = engineRef.current?.ramales?.filter((r: any) => r.tipo !== 'tributario' && r.net === (selElement.net || activeNet)) || [];
+        bajantes = engineRef.current?.bajantes?.filter((b: any) => b.net === (selElement.net || activeNet)) || [];
       } else {
         const raw = localStorage.getItem('civilflow_trazos_' + plan.id);
         if (raw) {
           try {
             const data = JSON.parse(raw);
             ramales = (data.ramales || []).filter((r: any) => r.tipo !== 'tributario' && r.net === (selElement.net || activeNet));
+            bajantes = (data.bajantes || []).filter((b: any) => b.net === (selElement.net || activeNet));
           } catch {
             // ignore
           }
         }
       }
-      return { planId: plan.id, planName: plan.name, npt: pF.npt, ramales };
+      return { planId: plan.id, planName: plan.name, npt: pF.npt, ramales, bajantes };
     });
 
     results.sort((a, b) => b.npt - a.npt);
@@ -823,7 +826,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
           setSelElement={setSelElement}
           handleUpdateSel={handleUpdateSel}
           handleRotateLabel={handleRotateLabel}
-  
+          plans={planosCtx.plans}
         />
 
         <BajanteAsociacion

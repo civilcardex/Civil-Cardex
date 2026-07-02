@@ -217,15 +217,15 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                       </td>
                       <td style={{ padding: '3px 6px', fontSize: 11, color: 'var(--txt2)' }}>{a.ctrl}</td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                        <NumericInput value={a.ucaf} color="var(--acc2)" disabled={!isEditingAparatos || a._blkAf}
+                        <NumericInput value={a.ucaf} color="var(--acc2)" decimals={1} disabled={!isEditingAparatos || a._blkAf}
                           onCommit={(v) => setApsVal(a.id, 'ucaf', v)} />
                       </td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                        <NumericInput value={a.ucac} color="#F04545" disabled={!isEditingAparatos || a._blkAc}
+                        <NumericInput value={a.ucac} color="#F04545" decimals={1} disabled={!isEditingAparatos || a._blkAc}
                           onCommit={(v) => setApsVal(a.id, 'ucac', v)} />
                       </td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
-                        <NumericInput value={a.ud ?? 0} color="var(--san)" disabled={!isEditingAparatos || a._blkUd}
+                        <NumericInput value={a.ud ?? 0} color="var(--san)" decimals={0} disabled={!isEditingAparatos || a._blkUd}
                           onCommit={(v) => setApsVal(a.id, 'ud', v)} />
                       </td>
                     </tr>

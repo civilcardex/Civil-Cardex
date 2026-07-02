@@ -87,6 +87,23 @@ Rules:
 - Yee auto-sum: logic rewritten, need to verify in browser.
 - Nivel column: stores npt in sync data, need to verify plan.npt is saved with plans.
 - RS1 cached: user mentioned this, may need to clear localStorage/sync cache.
+- Ghost label (Issue 3): `isGhostOnThisLevel` logic added, need to verify in browser for direction-based ghosts.
+- Contador/calentador label drag (Issue 5): fallback values for sync-loaded labels, need to verify in browser.
+
+## Session Summary — 2026-07-02
+
+### Done
+- **RenderBajantes.ts:362** — `hasDispOnThisLevel` renamed to `isGhostOnThisLevel` and now ALSO checks `b.pisoBase !== engine.nivelActual?.label` to catch direction-based ghosts. When true, main loop skips the horizontal label.
+- **RenderBajantes.ts:569** — Removed `isDespGhost` guard. Ghost label now renders unconditionally for ALL items in the `getBajantesFantasma()` list, so direction-based ghosts also get an auto-rotated ghost label.
+- **handleMouseDown.ts:35** — Removed `b.labelX != null && b.labelY != null` guard from the contador/calentador lblDrag check. Uses fallback `b.labelX ?? (b.x - 25)` and `b.labelY ?? b.y` so sync-loaded contadores (without persisted labelX/labelY) still get label-drag detection instead of falling through to bajDrag.
+- **RenderBajantes.ts:490-493** — `ghostAngle` now also checks `b.direccion === 'sube' || b.direccion === 'baja'` to auto-rotate to π/2 for direction-based ghosts (not just displacement-based). Without this, direction ghosts fell through to `b.labelAngle || 0` (horizontal).
+- Build verified: `npx vite build` passes clean.
+
+### Relevant Files
+- `src/lib/PlanoEngine/renderers/renderBajantes.ts:362` — `isGhostOnThisLevel` check
+- `src/lib/PlanoEngine/renderers/renderBajantes.ts:490` — ghostAngle direction check
+- `src/lib/PlanoEngine/renderers/renderBajantes.ts:569` — ghost label unconditional
+- `src/lib/PlanoEngine/handleMouseDown.ts:35` — contador/calentador label drag fallback
 
 ## Session Summary — 2026-06-11
 

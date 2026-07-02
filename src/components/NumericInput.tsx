@@ -14,7 +14,6 @@ interface NumericInputProps {
 function formatVal(v: number, decimals: number): string {
   const n = Number(v);
   if (!Number.isFinite(n)) return (0).toFixed(decimals);
-  if (Number.isInteger(n)) return String(n);
   return n.toFixed(decimals);
 }
 

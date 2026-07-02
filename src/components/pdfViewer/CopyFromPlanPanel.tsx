@@ -167,7 +167,7 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
             <path d="M5 12h14" />
             <path d="M12 5l7 7-7 7" />
           </svg>
-          Copiar redes
+          Copiar elementos
         </span>
         <span style={{
           fontSize: 9, color: open ? '#00dce5' : '#5a7a7a',

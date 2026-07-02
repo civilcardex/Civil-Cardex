@@ -25,12 +25,12 @@ export const APS_DEFAULT = APARATOS_DEF.map(d => ({
 }));
 
 export const PROFS_DEFAULT=[
-  {id:'san',red:'Sanitaria',col:'var(--san)',prof:0.00,norma:'RAS 2000 §D.4.1',nota:'Bajo losa'},
-  {id:'ll',red:'Aguas lluvias',col:'var(--ll)',prof:0.00,norma:'RAS 2000 §D.4.2',nota:'Bajo losa'},
-  {id:'af',red:'Agua fría',col:'var(--af)',prof:0.00,norma:'NTC 1500 §5.4',nota:'A nivel NPT'},
-  {id:'ac',red:'Agua caliente',col:'var(--ac)',prof:0.00,norma:'NTC 1500 §5.4',nota:'Bajo NPT'},
-  {id:'gas',red:'Gas',col:'var(--gas)',prof:0.00,norma:'NTC 3728 §4.3',nota:'Con protección'},
-  {id:'rci',red:'Contra incendio',col:'var(--rci)',prof:0.00,norma:'NFPA 13 §6',nota:'Zona protegida'},
+  {id:'san',red:'Sanitaria',col:'var(--san)',prof:-0.70,norma:'RAS 2000 §D.4.1',nota:'Bajo losa'},
+  {id:'ll',red:'Aguas lluvias',col:'var(--ll)',prof:-0.50,norma:'RAS 2000 §D.4.2',nota:'Bajo losa'},
+  {id:'af',red:'Agua fría',col:'var(--af)',prof:-0.05,norma:'NTC 1500 §5.4',nota:'A nivel NPT'},
+  {id:'ac',red:'Agua caliente',col:'var(--ac)',prof:-0.10,norma:'NTC 1500 §5.4',nota:'Bajo NPT'},
+  {id:'gas',red:'Gas',col:'var(--gas)',prof:-0.15,norma:'NTC 3728 §4.3',nota:'Con protección'},
+  {id:'rci',red:'Contra incendio',col:'var(--rci)',prof:-0.45,norma:'NFPA 13 §6',nota:'Zona protegida'},
 ];
 
 export const CRIT0=[
@@ -58,7 +58,7 @@ export const CRIT0=[
 export const REDES_MAT = [
   { id: 'san', lbl: 'Sanitaria',        mat: 'PVC-S',                       prof: -0.70, fixed: true },
   { id: 'll',  lbl: 'Aguas lluvias',    mat: 'PVC-S',                       prof: -0.50, fixed: true },
-  { id: 'af',  lbl: 'Agua fría',        mat: 'PVC-PR',                      prof:  0.00, fixed: true },
+  { id: 'af',  lbl: 'Agua fría',        mat: 'PVC-PR',                      prof: -0.05, fixed: true },
   { id: 'ac', lbl: 'Agua caliente', mat: 'PVC-PR', prof: -0.10, fixed: true },
   { id: 'rci', lbl: 'Contra incendio',  mat: 'A.C. SCH 40',      prof: -0.45,
     opts: ['A.C. SCH 10', 'A.C. SCH 40', 'PVC C900 RDE 14', 'PVC C900 RDE 18', 'Acero HG'] },

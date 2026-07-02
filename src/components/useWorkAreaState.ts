@@ -111,11 +111,11 @@ export function useWorkAreaState() {
     const npt1 = parseDecimalInput(nptPiso1Ref.current) || 0;
     const l: any[] = [];
     for (let i = nSotFinal; i >= 1; i--)
-      l.push({ id: 's' + i, n: -i, npt: +((npt1 - (i * hSot)).toFixed(2)), ok: false, tipo: 'sotano' });
+      l.push({ id: 's' + i, n: -i, npt: +((npt1 - (i * hSot)).toFixed(2)), ok: false, tipo: 'sotano', h: hSot.toFixed(2) });
     for (let i = 1; i <= nPis; i++)
-      l.push({ id: 'p' + i, n: i, npt: +((npt1 + ((i - 1) * hPis)).toFixed(2)), ok: false, tipo: 'piso' });
+      l.push({ id: 'p' + i, n: i, npt: +((npt1 + ((i - 1) * hPis)).toFixed(2)), ok: false, tipo: 'piso', h: hPis.toFixed(2) });
     if (conCubiertaRef.current)
-      l.push({ id: 'cub', n: 99, npt: +((npt1 + (nPis * hPis)).toFixed(2)), ok: false, tipo: 'cubierta' });
+      l.push({ id: 'cub', n: 99, npt: +((npt1 + (nPis * hPis)).toFixed(2)), ok: false, tipo: 'cubierta', h: hPis.toFixed(2) });
     projectCtx.setPisos(l);
     setAlertMsg(null);
   };
@@ -135,8 +135,7 @@ export function useWorkAreaState() {
   const onDecBlur = useCallback((setter: (v: string) => void) => (e: FocusEvent<HTMLInputElement>) => {
     const v = parseDecimalInput(e.target.value);
     if (v !== null) {
-      const s = String(v);
-      setter(s);
+      setter(v.toFixed(2));
     }
   }, []);
 
@@ -149,17 +148,17 @@ export function useWorkAreaState() {
     }
     projectCtx.setPisos((prev: any[]) => {
       const pisosPOS = prev.filter(p => p.tipo === 'piso').sort((a, b) => b.n - a.n);
-    const maxN = pisosPOS.length ? Math.max(...pisosPOS.map(p => p.n)) : 0;
-    const hPis = parseFloat(altPisoRef.current) || 0;
-    const baseNpt = pisosPOS.length
-      ? parseFloat(pisosPOS[0].npt) || 0
-      : parseFloat(nptPiso1Ref.current) || 0;
-    const newNpt = +(baseNpt + (pisosPOS.length > 0 ? hPis : 0)).toFixed(2);
-    const newPiso = { id: Date.now(), n: maxN + 1, npt: newNpt, ok: false, tipo: 'piso' };
-    const cubIx = prev.findIndex(p => p.tipo === 'cubierta');
-    const insertAt = cubIx >= 0 ? cubIx + 1 : 0;
-    const copy = [...prev];
-    copy.splice(insertAt, 0, newPiso);
+      const maxN = pisosPOS.length ? Math.max(...pisosPOS.map(p => p.n)) : 0;
+      const hPis = parseFloat(altPisoRef.current) || 0;
+      const baseNpt = pisosPOS.length
+        ? parseFloat(pisosPOS[0].npt) || 0
+        : parseFloat(nptPiso1Ref.current) || 0;
+      const newNpt = +(baseNpt + (pisosPOS.length > 0 ? hPis : 0)).toFixed(2);
+      const newPiso = { id: Date.now(), n: maxN + 1, npt: newNpt, ok: false, tipo: 'piso', h: hPis.toFixed(2) };
+      const cubIx = prev.findIndex(p => p.tipo === 'cubierta');
+      const insertAt = cubIx >= 0 ? cubIx + 1 : 0;
+      const copy = [...prev];
+      copy.splice(insertAt, 0, newPiso);
       return copy;
     });
   };
@@ -171,13 +170,13 @@ export function useWorkAreaState() {
     }
     projectCtx.setPisos((prev: any[]) => {
       const pisoNEG = prev.filter(p => p.tipo === 'sotano').sort((a, b) => a.n - b.n);
-    const minN = pisoNEG.length ? Math.min(...pisoNEG.map(p => p.n)) : 0;
-    const hSot = parseFloat(altSotanoRef.current) || 0;
-    const baseNpt = pisoNEG.length
-      ? parseFloat(pisoNEG[0].npt) || 0
-      : parseFloat(nptPiso1Ref.current) || 0;
-    const newNpt = +(baseNpt - hSot).toFixed(2);
-    const newSotano = { id: Date.now(), n: minN === 0 ? -1 : minN - 1, npt: newNpt, ok: false, tipo: 'sotano' };
+      const minN = pisoNEG.length ? Math.min(...pisoNEG.map(p => p.n)) : 0;
+      const hSot = parseFloat(altSotanoRef.current) || 0;
+      const baseNpt = pisoNEG.length
+        ? parseFloat(pisoNEG[0].npt) || 0
+        : parseFloat(nptPiso1Ref.current) || 0;
+      const newNpt = +(baseNpt - hSot).toFixed(2);
+      const newSotano = { id: Date.now(), n: minN === 0 ? -1 : minN - 1, npt: newNpt, ok: false, tipo: 'sotano', h: hSot.toFixed(2) };
       return [...prev, newSotano];
     });
   };

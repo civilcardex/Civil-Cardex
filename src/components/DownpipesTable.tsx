@@ -402,6 +402,42 @@ const BajantesTable = memo(function BajantesTable_() {
     return sum;
   }, [conexiones, tramosSan, udBase]);
 
+  const getBajanteTotalUD = useCallback((bKey: string, visited = new Set<string>()): number => {
+    if (visited.has(bKey)) return 0;
+    visited.add(bKey);
+
+    const parts = bKey.split('-');
+    const bId = parts[0];
+    const planId = parts[1];
+
+    const planData = storageByPlan[planId];
+    const bObj = planData?.bajantes?.find((b: any) => b.id === bId);
+    
+    const tr = tramosSan.find(x => x._key === bKey);
+    const propiasUD = tr ? calcUDparcial(tr, udBase) : 0;
+
+    let sum = propiasUD + getDescendantsUD(bKey);
+
+    // Find other bajantes that discharge into this one
+    for (const otherB of tramosSan) {
+      if (!otherB.esBajante || otherB._key === bKey) continue;
+      
+      if (otherB.descargaEnId) {
+        const oParts = otherB.descargaEnId.split('|');
+        const oPlanId = oParts[0];
+        const oTgtId = oParts[1];
+
+        // Match either by exact ID or by custom code/label
+        const matches = String(oPlanId) === String(planId) && (oTgtId === bId || (bObj && bObj.code && oTgtId === bObj.code));
+        if (matches) {
+          sum += getBajanteTotalUD(otherB._key || `${otherB.id}-${otherB.planId}`, visited);
+        }
+      }
+    }
+
+    return sum;
+  }, [storageByPlan, tramosSan, udBase, getDescendantsUD]);
+
   return (
     <div className="card">
       <div className="card-h">
@@ -475,7 +511,9 @@ const BajantesTable = memo(function BajantesTable_() {
                   if (targetPlan && targetPlan.nivel != null) {
                     targetPiso = targetPlan.nivel.toString();
                     const targetPisoVal = fmtPiso(targetPiso, pisos);
-                    destinoVal = targetRamal ? `${targetPisoVal}-${targetRamal}` : targetPisoVal;
+                    const isTgtBajante = targetRamal.startsWith('B') || targetRamal.startsWith('M');
+                    const prefix = isTgtBajante ? 'Bajante: ' : 'Ramal: ';
+                    destinoVal = targetRamal ? `${prefix}${targetPisoVal}-${targetRamal}` : targetPisoVal;
                   } else {
                     destinoVal = targetRamal || '—';
                   }
@@ -484,17 +522,14 @@ const BajantesTable = memo(function BajantesTable_() {
                 const ramalesIds = (t.recibeDeIds || []);
                 const ramalesAsocVal = ramalesIds.length > 0 ? ramalesIds.join(', ') : '—';
                 
-                let totalUD = propiasUD + getDescendantsUD(t._key || `${t.id}-${planIdStr}`);
+                let totalUD = getBajanteTotalUD(t._key || `${t.id}-${planIdStr}`);
                 let ramalesUD = totalUD - propiasUD;
 
                 if (t._net === 'vent' || t.net === 'vent') {
                   const sanKeys = ventToSanMap[t._key || `${t.id}-${planIdStr}`] || [];
                   totalUD = 0;
                   for (const sk of sanKeys) {
-                    const st = tramosSan.find(x => x._key === sk);
-                    if (st) {
-                       totalUD += calcUDparcial(st, udBase) + getDescendantsUD(sk);
-                    }
+                    totalUD += getBajanteTotalUD(sk);
                   }
                   ramalesUD = totalUD;
                 }

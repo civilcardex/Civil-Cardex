@@ -69,7 +69,7 @@ const TH_CENTER: React.CSSProperties = { textAlign: "center", padding: "4px" };
 const TD_PARAM_LABEL: React.CSSProperties = { padding: "4px", textAlign: "left", fontWeight: 600 };
 const TD_PARAM_VALUE: React.CSSProperties = { textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px" };
 const TD_PARAM_UNIT: React.CSSProperties = { textAlign: "center", color: "var(--txt3)", padding: "4px" };
-const SCROLL_INNER: React.CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(290px, 100%), 1fr))", gap: "16px", alignItems: "stretch" };
+const SCROLL_INNER: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "stretch", paddingBottom: "16px" };
 
 function LazyNum({ value, onChange, ariaLabel, style, className }: any) {
   const [val, setVal] = React.useState(value?.toString() || "");
@@ -133,7 +133,7 @@ function Acometida({
         <div className="scroll-inner" style={SCROLL_INNER}>
           
           {/* SECTION 1: Esquema de Flujo Hidráulico & Tabla Tramos */}
-          <div style={SECTION_COL}>
+          <div style={{...SECTION_COL, flex: "16 1 440px"}}>
             <div className="card-h" style={SECTION_HDR}>
               <h4 style={SECTION_H4}>1. Flujo Hidráulico y Tramos</h4>
             </div>
@@ -153,16 +153,16 @@ function Acometida({
             <table className="tbl" style={{ fontSize: 11, width: "100%", tableLayout: "fixed", borderBottom: "none" }}>
               <thead>
                 <tr>
-                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, width: 45}}>Tramo</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, maxWidth: 50}}>Desde</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, maxWidth: 55}}>Hasta</th>
-                  <th scope="colgroup" className="col-h" colSpan={2} style={{...TH_CENTER, fontSize: 10}}>Longitud</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, width: 65}}>Diámetro<br/>Estimado</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, width: 75}}>Diámetro<br/>Propuesto</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, width: "10%"}}>Tramo</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, width: "16%"}}>Desde</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, width: "16%"}}>Hasta</th>
+                  <th scope="colgroup" className="col-h" colSpan={2} style={{...TH_CENTER, fontSize: 10, width: "26%"}}>Longitud (m)</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, width: "16%"}}>Diámetro<br/>Estimado</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, width: "16%"}}>Diámetro<br/>Propuesto</th>
                 </tr>
                 <tr>
-                  <th scope="col" className="col-h" style={{...TH_CENTER, fontSize: 9, fontWeight: 405}}>Horizontal</th>
-                  <th scope="col" className="col-h" style={{...TH_CENTER, fontSize: 9, fontWeight: 405}}>Equivalente</th>
+                  <th scope="col" className="col-h" style={{...TH_CENTER, fontSize: 9, fontWeight: 405, width: "13%"}}>Horizontal</th>
+                  <th scope="col" className="col-h" style={{...TH_CENTER, fontSize: 9, fontWeight: 405, width: "13%"}}>Equivalente</th>
                 </tr> 
               </thead>
               <tbody>
@@ -220,19 +220,19 @@ function Acometida({
             </table>
           </div>
 
-          {/* SECTION 2: Tabla Resumen Acometida */}
-          <div style={SECTION_COL}>
+          {/* SECTION 2: Parámetros y Constantes */}
+          <div style={{...SECTION_COL, flex: "8 1 240px"}}>
             <div className="card-h" style={SECTION_HDR}>
               <h4 style={SECTION_H4}>2. Resumen de Parámetros</h4>
             </div>
             
-            <table className="tbl" style={{ fontSize: 11, width: "100%", borderBottom: "none" }}>
+            <table className="tbl" style={{ fontSize: 11, width: "100%", tableLayout: "fixed", borderBottom: "none" }}>
               <thead>
                 <tr>
-                  <th scope="col" className="col-h" style={TH_CENTER}>Parámetro</th>
-                  <th scope="col" className="col-h" style={TH_CENTER}>AC-01</th>
-                  <th scope="col" className="col-h" style={TH_CENTER}>AC-02</th>
-                  <th scope="col" className="col-h" style={TH_CENTER}>Unidad</th>
+                  <th scope="col" className="col-h" style={{ ...TH_CENTER, width: "45%" }}>Parámetro</th>
+                  <th scope="col" className="col-h" style={{ ...TH_CENTER, width: "20%" }}>AC-01</th>
+                  <th scope="col" className="col-h" style={{ ...TH_CENTER, width: "20%" }}>AC-02</th>
+                  <th scope="col" className="col-h" style={{ ...TH_CENTER, width: "15%" }}>Unidad</th>
                 </tr>
               </thead>
               <tbody>
@@ -311,16 +311,16 @@ function Acometida({
           </div>
 
           {/* SECTION 3: Verificación Final */}
-          <div style={SECTION_COL}>
+          <div style={{...SECTION_COL, flex: "8 1 240px"}}>
             <div className="card-h" style={SECTION_HDR}>
               <h4 style={SECTION_H4}>3. Verificación</h4>
             </div>
             
-            <table className="tbl" style={{ fontSize: 10, width: "100%", borderBottom: "none" }}>
+            <table className="tbl" style={{ fontSize: 10, width: "100%", tableLayout: "fixed", borderBottom: "none" }}>
               <thead>
                 <tr>
-                  <th scope="col" className="col-h" style={TH_CENTER}>Parámetro</th>
-                  <th scope="col" className="col-h" style={TH_CENTER}>Valor / Estado</th>
+                  <th scope="col" className="col-h" style={{ ...TH_CENTER, width: "55%" }}>Parámetro</th>
+                  <th scope="col" className="col-h" style={{ ...TH_CENTER, width: "45%" }}>Valor / Estado</th>
                 </tr>
               </thead>
               <tbody>
@@ -366,6 +366,34 @@ function Acometida({
                       />
                       <span style={{fontSize: 9, color: "var(--txt3)", fontFamily: "var(--mono)"}}>mca</span>
                     </div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style={{fontWeight: 600, padding: "6px 8px", textAlign: "left"}}>Diámetro acometida vs Contador</td>
+                  <td style={{textAlign: "right", padding: "6px 8px", fontWeight: 700, fontFamily: "var(--mono)"}}>
+                    {(() => {
+                      const getDiamVal = (valStr: string) => {
+                        if (!valStr) return 0;
+                        if (valStr.includes('1/2')) return 0.5;
+                        if (valStr.includes('3/4')) return 0.75;
+                        if (valStr.includes('1 1/4')) return 1.25;
+                        if (valStr.includes('1 1/2')) return 1.5;
+                        const match = valStr.match(/(\d+)\/(\d+)/);
+                        if (match) return parseInt(match[1]) / parseInt(match[2]);
+                        const num = parseFloat(valStr.replace(/[^0-9.]/g, ''));
+                        return isNaN(num) ? 0 : num;
+                      };
+                      const dValAco = getDiamVal(acoRedContDiam);
+                      const dValCont = getDiamVal(contadorSel.dn || '0');
+                      const diff = dValAco - dValCont;
+                      const ok = diff <= 0.5;
+                      return (
+                        <span style={{ color: ok ? "var(--succ)" : "var(--warn)" }}>
+                          {ok ? "✓ Conforme" : `⚠️ +${diff.toFixed(2)}"`}
+                        </span>
+                      );
+                    })()}
                   </td>
                 </tr>
 

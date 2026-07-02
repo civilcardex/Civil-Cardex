@@ -4,7 +4,6 @@ import { CONTADORES, MATERIALES_POR_RED, COEF_FRICCION } from './catalogData'
 
 const HEADER_BG = 'var(--bg3)'
 const HEADER_TXT = '#00dce5'
-const HEADER_BORDER = 'rgba(0,220,229,0.35)'
 
 function Th({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) {
   return (
@@ -16,7 +15,7 @@ function Th({ children, style }: { children?: React.ReactNode; style?: React.CSS
       textTransform: 'uppercase',
       letterSpacing: 0.6,
       padding: '4px 8px',
-      borderBottom: `1px solid ${HEADER_BORDER}`,
+      border: '1px solid var(--line)',
       textAlign: 'center',
       whiteSpace: 'nowrap',
       position: 'sticky',
@@ -27,21 +26,21 @@ function Th({ children, style }: { children?: React.ReactNode; style?: React.CSS
   )
 }
 
-function Tr({ children, index, style, key: _key }: { children?: React.ReactNode; index: number; style?: React.CSSProperties; key?: React.Key }) {
+function Tr({ children, index, style }: { children?: React.ReactNode; index: number; style?: React.CSSProperties }) {
   const bg = index % 2 === 0 ? 'var(--bg3)' : 'var(--bg)'
   return <tr style={{ background: bg, ...style }}>{children}</tr>
 }
 
-function Td({ children, style, mono = false, center = true }: { children?: React.ReactNode; style?: React.CSSProperties; mono?: boolean; center?: boolean }) {
+function Td({ children, style, mono = false }: { children?: React.ReactNode; style?: React.CSSProperties; mono?: boolean; center?: boolean }) {
   return (
     <td className={mono ? 'td-mono' : ''} style={{
       ...(mono ? {} : { fontFamily: 'var(--body)' }),
       fontSize: 12,
       fontWeight: 500,
       padding: '5px 10px',
-      textAlign: center ? 'center' : 'left',
+      textAlign: 'center',
       color: 'var(--txt)',
-      borderBottom: '1px solid var(--line)',
+      border: '1px solid var(--line)',
       ...style,
     }}>{children}</td>
   )
@@ -53,7 +52,7 @@ interface GasGroupType { mat: string; K: number; rows: Array<{ dn: string; d: nu
 export function PipeTable({ groups, compact }: { groups: GroupType[]; compact?: boolean }) {
   const cp = compact ? { thPad: '3px 8px', thFs: 11, thLs: 0.5, tdPad: '3px 8px', tdFs: 12, matFs: 14, matPad: '3px 8px', matFw: 700 } : { thPad: '4px 8px', thFs: 10, thLs: 0.6, tdPad: '5px 10px', tdFs: 12, matFs: 11, matPad: '4px 8px', matFw: 600 }
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', border: '1px solid var(--line)' }}>
       <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
         Diámetros nominales e interiores por material
       </caption>
@@ -70,12 +69,12 @@ export function PipeTable({ groups, compact }: { groups: GroupType[]; compact?: 
           return grp.rows.map((r, ri) => (
             <Tr key={`${gi}-${ri}`} index={idx++}>
               {ri === 0 && (
-                <td rowSpan={grp.rows.length} style={{ padding: cp.matPad, fontSize: cp.matFs, fontWeight: cp.matFw, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderBottom: '1px solid var(--line)' }}>
+                <td rowSpan={grp.rows.length} style={{ padding: cp.matPad, fontSize: cp.matFs, fontWeight: cp.matFw, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', border: '1px solid var(--line)' }}>
                   {grp.mat}
                 </td>
               )}
-              <Td mono center={false} style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.dn}</Td>
-              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
+              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.dn}</Td>
+              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.d.toFixed(2)}</Td>
             </Tr>
           ))
         })}
@@ -89,7 +88,7 @@ export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact
   const data = groups || GAS
   const cp = compact ? { thPad: '3px 8px', thFs: 11, thLs: 0.5, tdPad: '3px 8px', tdFs: 12, matFs: 14, matPad: '3px 8px', matFw: 700 } : { thPad: '4px 8px', thFs: 10, thLs: 0.6, tdPad: '5px 10px', tdFs: 12, matFs: 11, matPad: '4px 8px', matFw: 600 }
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', border: '1px solid var(--line)' }}>
       <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
         Diámetros nominales, interiores y coeficiente K para gas
       </caption>
@@ -105,12 +104,12 @@ export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact
         {data.map((grp, gi) => grp.rows.map((r: { dn: string; d: number }, ri: number) => (
           <Tr key={`${gi}-${ri}`} index={idx++}>
             {ri === 0 && (
-              <td rowSpan={grp.rows.length} style={{ padding: cp.matPad, fontSize: cp.matFs, fontWeight: cp.matFw, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', borderBottom: '1px solid var(--line)' }}>
+              <td rowSpan={grp.rows.length} style={{ padding: cp.matPad, fontSize: cp.matFs, fontWeight: cp.matFw, textAlign: 'center', verticalAlign: 'middle', color: 'var(--txt2)', border: '1px solid var(--line)' }}>
                 {grp.mat}
               </td>
             )}
-            <Td mono center={false} style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.dn}</Td>
-            <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.d.toFixed(2).replace(/\.00$/, '')}</Td>
+            <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.dn}</Td>
+            <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.d.toFixed(2)}</Td>
             <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{grp.K.toFixed(2)}</Td>
           </Tr>
         )))}
@@ -121,23 +120,29 @@ export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact
 
 export function ContadoresTable() {
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
       <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
         Caudales nominales de contadores por diámetro
       </caption>
       <thead>
         <tr>
-          <th scope="col" className="td-mono-b" style={{ fontSize: 12, fontWeight: 700, color: HEADER_TXT, textTransform: 'uppercase', letterSpacing: 0.4, textAlign: 'center', padding: '2px 6px', borderBottom: `1px solid ${HEADER_BORDER}`, width: '50%' }}>Diámetro</th>
-          <th scope="col" className="td-mono-b" style={{ fontSize: 12, fontWeight: 700, color: HEADER_TXT, letterSpacing: 0.4, textAlign: 'center', padding: '2px 6px', borderBottom: `1px solid ${HEADER_BORDER}`, width: '50%' }}>Qn (LPS)</th>
+          <Th style={{ width: '50%' }}>Diámetro</Th>
+          <Th style={{ width: '50%' }}>Qn (LPS)</Th>
         </tr>
       </thead>
       <tbody>
         {CONTADORES.map((c, i) => {
-          const cellBorder = i < CONTADORES.length - 1 ? '1px solid var(--line)' : 'none'
+          let label = c.dn;
+          if (label === '1/2') label = '½"';
+          else if (label === '3/4') label = '¾"';
+          else if (label === '1') label = '1"';
+          else if (label === '1 1/2') label = '1 ½"';
+          else if (label === '2') label = '2"';
+          else if (!label.endsWith('"')) label += '"';
           return (
             <tr key={i} style={{ background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
-              <td className="td-mono" style={{ fontSize: 13, color: 'var(--txt)', textAlign: 'center', padding: '1px 6px', borderBottom: cellBorder }}>{c.dn}</td>
-              <td className="td-mono" style={{ fontSize: 13, color: 'var(--txt)', fontWeight: 500, textAlign: 'center', padding: '1px 6px', borderBottom: cellBorder }}>{c.q.toFixed(2)}</td>
+              <Td mono>{label}</Td>
+              <Td mono>{c.q.toFixed(2)}</Td>
             </tr>
           )
         })}
@@ -150,7 +155,7 @@ const cmpTd = { padding: '2px 6px', fontSize: 13 }
 
 export function MaterialesPorRedTable() {
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
       <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
         Materiales recomendados por tipo de red
       </caption>
@@ -163,8 +168,8 @@ export function MaterialesPorRedTable() {
       <tbody>
         {MATERIALES_POR_RED.map((c, i) => (
           <Tr key={i} index={i}>
-            <Td mono center={false} style={cmpTd}>{c.red}</Td>
-            <Td center={false} style={cmpTd}>
+            <Td mono style={cmpTd}>{c.red}</Td>
+            <Td style={cmpTd}>
               {'mat' in c ? c.mat : (c.mats ? c.mats.join(', ') : '')}
             </Td>
           </Tr>
@@ -183,7 +188,7 @@ const coefTh = {
   textTransform: 'uppercase',
   letterSpacing: 0.4,
   padding: '1px 4px',
-  borderBottom: `1px solid ${HEADER_BORDER}`,
+  border: '1px solid var(--line)',
   textAlign: 'center',
   whiteSpace: 'nowrap',
 } as React.CSSProperties
@@ -195,7 +200,7 @@ const coefTd = {
   padding: '0px 3px',
   textAlign: 'center',
   color: 'var(--txt)',
-  borderBottom: '1px solid var(--line)',
+  border: '1px solid var(--line)',
 } as React.CSSProperties
 
 export function CoefFriccionTable() {
@@ -230,15 +235,15 @@ export function CoefFriccionTable() {
         <tbody>
           {COEF_FRICCION.map((c, i) => (
             <tr key={i} style={{ background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
-              <td style={{ ...coefTd, textAlign: 'left' }}>{c.tipo}</td>
-              <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'left' }}>{c.desc}</td>
-              <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'left' }}>{c.sis}</td>
-              <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'left' }}>{c.mat}</td>
+              <td style={{ ...coefTd, textAlign: 'center' }}>{c.tipo}</td>
+              <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'center' }}>{c.desc}</td>
+              <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'center' }}>{c.sis}</td>
+              <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'center' }}>{c.mat}</td>
               <td style={coefTd}>{c.n.toFixed(3)}</td>
               <td style={coefTd}>{c.c}</td>
               <td style={coefTd}>{c.cu}</td>
-              <td style={coefTd}>{c.e}</td>
-              <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'left' }}>{c.pn}</td>
+              <td style={coefTd}>{c.e.toFixed(4)}</td>
+              <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'center' }}>{c.pn}</td>
             </tr>
           ))}
         </tbody>
