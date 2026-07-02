@@ -251,7 +251,7 @@ export interface IPlanoEngineCore {
   bajDrag: { id: string; offX: number; offY: number } | null;
   ptDrag: { id: string; ptIdx: number; slideConstraint?: { otherId: string; segmentIdx: number } } | null;
   areaDrag: { id: string; startX: number; startY: number } | null;
-  ramalDrag: { id: string; startX: number; startY: number; origPts: [number, number][]; connBaj?: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[] } | null;
+  ramalDrag: { id: string; startX: number; startY: number; origPts: [number, number][]; origLabelX?: number; origLabelY?: number; connBaj?: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[] } | null;
   multiSel: string[];
   multiDrag: { startX: number; startY: number; origData: MultiDragOrigData } | null;
   marqueeRect: { x1: number; y1: number; x2: number; y2: number } | null;

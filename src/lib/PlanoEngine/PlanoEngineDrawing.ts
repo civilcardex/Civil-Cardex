@@ -6,6 +6,54 @@ import type {
 import type { IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
 
+export function checkRamalAngles(pts: number[][], net: string): boolean {
+  if (pts.length < 2) return true;
+  const isSanOrLl = net === 'san' || net === 'll';
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[i + 1];
+    const dx = x2 - x1, dy = y2 - y1;
+    if (Math.hypot(dx, dy) < 0.1) continue;
+    const deg = Math.round(((Math.atan2(dy, dx) * 180 / Math.PI) % 360 + 360) % 360);
+    
+    if (isSanOrLl) {
+      const rem = deg % 45;
+      if (rem > 1 && rem < 44) {
+        return false;
+      }
+    } else {
+      // Otras redes: allow multiples of 45 degrees
+      const rem = deg % 45;
+      if (rem > 1 && rem < 44) {
+        return false;
+      }
+    }
+  }
+
+  // Prevent sharp internal angles (< 45 deg) between consecutive segments
+  for (let i = 0; i < pts.length - 2; i++) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[i + 1];
+    const [x3, y3] = pts[i + 2];
+    
+    const dx1 = x2 - x1, dy1 = y2 - y1;
+    const dx2 = x3 - x2, dy2 = y3 - y2;
+    if (Math.hypot(dx1, dy1) < 0.1 || Math.hypot(dx2, dy2) < 0.1) continue;
+    
+    const a1 = Math.atan2(dy1, dx1) * 180 / Math.PI;
+    const a2 = Math.atan2(dy2, dx2) * 180 / Math.PI;
+    let diff = Math.abs(a2 - a1) % 360;
+    if (diff > 180) diff = 360 - diff;
+    
+    const internalAngle = 180 - diff;
+    if (internalAngle < 50) { // < 50 degrees to block exactly 45 (V-shape)
+      return false;
+    }
+  }
+
+  return true;
+}
+
 type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont' | 'calent';
 
 export function toolCursor(tool: string): string {
@@ -183,7 +231,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   const rad = firstAngle * Math.PI / 180;
   const upX = Math.sin(rad);
   const upY = -Math.cos(rad);
-  const labelOffset = 48;
+  const labelOffset = 0;
   const labelX = midX + upX * labelOffset;
   const labelY = midY + upY * labelOffset;
 
@@ -201,8 +249,22 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     material: def.material || '',
     diametro: def.diametro || '',
     pendiente: typeof def.pendiente === 'number' ? def.pendiente : 0,
+    bloqueado: true,
   };
   engine.ramales.push(r);
+  if (!checkRamalAngles(r.pts, r.net)) {
+    engine.triggerAlert(
+      'Ángulo no recomendado',
+      (r.net === 'san' || r.net === 'll')
+        ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 0° y 45°.'
+        : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
+    );
+    engine.ramales.pop();
+    engine.activeRamal = null;
+    engine._markDirty();
+    engine.render();
+    return;
+  }
   // Associate ramal with bajante if endpoint is at bajante center
   if (r.pts.length >= 2) {
     const TOLLERANCE = 0.5;
@@ -392,17 +454,45 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     return;
   }
   if (!engine.activeRamal) {
-    // The user requested that we NEVER resume an existing ramal or start on a segment.
-    // Every click should start a completely NEW ramal.
-    // Snap only to existing vertices or free space.
-
-    // Snap only to existing vertices or free space, as requested
-
     const sp = engine.snapToExisting(pt.x, pt.y);
     if (sp) {
       pt = sp;
+      const activeNetsRamales = engine.ramales.filter((rm: any) => rm.net === engine.activeNet);
+      let continueRamal: any = null;
+      let reversePoints = false;
+      const SNAP_THRESH = 0.5;
+      for (const rm of activeNetsRamales) {
+        const firstPt = rm.pts[0];
+        const lastPt = rm.pts[rm.pts.length - 1];
+        const dFirst = Math.hypot(pt.x - firstPt[0], pt.y - firstPt[1]);
+        const dLast = Math.hypot(pt.x - lastPt[0], pt.y - lastPt[1]);
+        if (dFirst < SNAP_THRESH) {
+          continueRamal = rm;
+          reversePoints = true;
+          break;
+        } else if (dLast < SNAP_THRESH) {
+          continueRamal = rm;
+          break;
+        }
+      }
+
+      if (continueRamal) {
+        if (reversePoints) {
+          continueRamal.pts.reverse();
+        }
+        engine.activeRamal = {
+          id: continueRamal.id,
+          net: continueRamal.net,
+          tipo: continueRamal.tipo,
+          padre: continueRamal.padre,
+          pts: [...continueRamal.pts],
+          totalL: continueRamal.totalL,
+        };
+        engine._emitStatus(`Continuando ramal: ${continueRamal.id}`);
+        engine.render();
+        return;
+      }
     } else {
-      // If it didn't snap to a vertex, ensure it's not on a segment (must be free space)
       const activeNetsRamales = engine.ramales.filter((r: any) => r.net === engine.activeNet);
       let isOnSegment = false;
       const SNAP_THRESH = 12 / engine.zoom;
@@ -432,6 +522,13 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     const first = engine.activeRamal.pts[0];
     const distFirst = Math.hypot(pt.x - first[0], pt.y - first[1]);
     const SNAP_CLOSE = 12 / engine.zoom;
+
+    const distLast = Math.hypot(pt.x - last[0], pt.y - last[1]);
+    if (distLast < SNAP_CLOSE) {
+      finishRamal(engine);
+      return;
+    }
+
     if (engine.activeRamal.pts.length >= 3 && distFirst < SNAP_CLOSE) {
       engine.activeRamal.pts.push([first[0], first[1]]);
       engine.activeRamal.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
@@ -644,12 +741,12 @@ export function handleCalentadorDown(engine: IPlanoEngineCore, px: number, py: n
     if (sp) { px = sp.x; py = sp.y; }
   }
   const calent = engine.bajantes.filter(b => b.tipo === 'calentador').length + 1;
-  const calentId = 'CALENT' + calent;
+  const calentId = 'calentG' + calent;
   engine.bajantes.push({
     id: calentId,
     net: engine.activeNet,
     tipo: 'calentador',
-    code: 'CALENT' + calent,
+    code: 'calentG' + calent,
     x: px, y: py,
     pisoBase: engine.nivelActual?.label ?? '',
     pisoCima: engine.nivelActual?.label ?? '',
@@ -708,12 +805,12 @@ export function handleContadorDown(engine: IPlanoEngineCore, px: number, py: num
     if (sp) { px = sp.x; py = sp.y; }
   }
   const cnt = engine.bajantes.filter(b => b.tipo === 'contador').length + 1;
-  const cntId = 'CNT' + cnt;
+  const cntId = 'cntAF' + cnt;
   engine.bajantes.push({
     id: cntId,
     net: engine.activeNet,
     tipo: 'contador',
-    code: 'CNT' + cnt,
+    code: 'cntAF' + cnt,
     x: px, y: py,
     pisoBase: engine.nivelActual?.label ?? '',
     pisoCima: engine.nivelActual?.label ?? '',
@@ -771,6 +868,7 @@ export function handleContadorDown(engine: IPlanoEngineCore, px: number, py: num
         material: '',
         diametro: '',
         pendiente: 1.5,
+        bloqueado: true,
       });
     }
   }
@@ -793,7 +891,7 @@ export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number
   const isArea = engine.areas.some((a: any) => a.id === selId);
   const tipo = (sel as any).tipo;
   
-  if (tipo === 'bajante' || tipo === 'montante' || tipo === 'red_publica' || tipo === 'contador' || isArea || isText || selId.startsWith('DIM')) {
+  if (tipo === 'bajante' || tipo === 'montante' || tipo === 'red_publica' || tipo === 'contador' || tipo === 'calentador' || isArea || isText || selId.startsWith('DIM')) {
     engine.deleteSelected();
     engine._emitSelect(null);
     engine.selId = null;

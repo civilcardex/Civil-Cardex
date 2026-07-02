@@ -11,7 +11,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       if (!orig) continue;
       if (orig.type === 'ramal') {
         const r = engine.ramales.find(rr => rr.id === id);
-        if (r) {
+        if (r && !r.bloqueado) {
           r.pts = (orig.origPts || []).map(p => [p[0] + dx, p[1] + dy]);
           r.labelX = (orig.origLabelX || 0) + dx;
           r.labelY = (orig.origLabelY || 0) + dy;
@@ -39,7 +39,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
   }
   if (engine.ramalDrag) {
     const r = engine.ramales.find(rr => rr.id === engine.ramalDrag!.id);
-    if (r) {
+    if (r && !r.bloqueado) {
       const tp = engine.toPlane(x, y);
       const dx = tp.x - engine.ramalDrag.startX;
       const dy = tp.y - engine.ramalDrag.startY;
@@ -68,6 +68,12 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       for (let i = 0; i < r.pts.length; i++) {
         r.pts[i][0] = engine.ramalDrag.origPts[i][0] + slideDx;
         r.pts[i][1] = engine.ramalDrag.origPts[i][1] + slideDy;
+      }
+      if (engine.ramalDrag.origLabelX !== undefined && r.labelX !== undefined) {
+        r.labelX = engine.ramalDrag.origLabelX + slideDx;
+      }
+      if (engine.ramalDrag.origLabelY !== undefined && r.labelY !== undefined) {
+        r.labelY = engine.ramalDrag.origLabelY + slideDy;
       }
       r.totalL = calculateRamalLength(r.pts, engine);
       if (engine.ramalDrag.connBaj) {

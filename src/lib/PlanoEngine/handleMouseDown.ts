@@ -32,6 +32,30 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
         engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
         return;
       }
+      if (b.tipo === 'contador' || b.tipo === 'calentador') {
+        const lx = b.labelX ?? (b.x - 25);
+        const ly = b.labelY ?? b.y;
+        const lPos = engine.toCvs(lx, ly);
+        if (Math.hypot(x - lPos.x, y - lPos.y) < 50) {
+          if (b.net !== engine.activeNet) {
+            if (!checkActiveNet(engine, b.net)) {
+              const netObj = NETS.find(n => n.id === b.net);
+              const netName = netObj ? netObj.name : b.net;
+              engine.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
+              return;
+            } else {
+              engine.setActiveNet(b.net);
+            }
+          }
+          if (b.id !== sel?.id) {
+            engine.selId = b.id;
+            engine._emitSelect(b);
+            engine.render();
+          }
+          engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
+          return;
+        }
+      }
       if (b._circ && !b.isFantasma && Math.hypot(x - b._circ.x, y - b._circ.y) < b._circ.r) {
         if (b.net !== engine.activeNet) {
           if (!checkActiveNet(engine, b.net)) {
@@ -55,7 +79,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
       }
       if (b.labelX != null && b.labelY != null) {
         const lPos = engine.toCvs(b.labelX, b.labelY);
-        if (Math.hypot(x - lPos.x, y - lPos.y) < 20) {
+        if (Math.hypot(x - lPos.x, y - lPos.y) < 30) {
           if (b.id !== sel?.id) {
             engine.selId = b.id;
             engine._emitSelect(b);
@@ -105,6 +129,10 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
       engine.selId = bestRamal.id;
       engine.multiSel = [];
       engine._emitSelect(bestRamal);
+      if (bestRamal.bloqueado) {
+        engine.render();
+        return;
+      }
       
       let slideConstraint = undefined;
       if (bestRamal.net !== 'vent') {
@@ -126,6 +154,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
         }
       }
 
+      (engine as any)._dragBackupPts = JSON.parse(JSON.stringify(bestRamal.pts));
       engine.ptDrag = { id: bestRamal.id, ptIdx: bestPtIdx, slideConstraint };
       engine.render();
       return;
@@ -194,7 +223,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     engine.multiSel = [];
   }
 
-  if (isBajante(sel) && (sel.tipo === 'bajante' || sel.tipo === 'montante' || sel.tipo === 'red_publica' || sel.tipo === 'contador' || sel.id?.startsWith('B'))) {
+  if (isBajante(sel) && (sel.tipo === 'bajante' || sel.tipo === 'montante' || sel.tipo === 'red_publica' || sel.tipo === 'contador' || sel.tipo === 'calentador' || sel.id?.startsWith('B'))) {
     if (sel.net !== engine.activeNet) {
       if (!checkActiveNet(engine, sel.net)) {
         const netObj = NETS.find(n => n.id === sel.net);
@@ -212,7 +241,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     }
     if (sel.labelX != null && sel.labelY != null) {
       const lPos = engine.toCvs(sel.labelX, sel.labelY);
-      if (Math.hypot(x - lPos.x, y - lPos.y) < 20) {
+      if (Math.hypot(x - lPos.x, y - lPos.y) < 30) {
         engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
         return;
       }
@@ -232,7 +261,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     }
   }
 
-  if (isRamal(sel) && sel.id?.startsWith('R')) {
+  if (isRamal(sel) && sel.id?.startsWith('R') && !sel.bloqueado) {
     for (let i = 0; i < sel.pts.length; i++) {
       const pc = engine.toCvs(sel.pts[i][0], sel.pts[i][1]);
       if (Math.hypot(x - pc.x, y - pc.y) < 15) {
@@ -256,6 +285,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
             if (slideConstraint) break;
           }
         }
+        (engine as any)._dragBackupPts = JSON.parse(JSON.stringify(sel.pts));
         engine.ptDrag = { id: sel.id, ptIdx: i, slideConstraint };
         return;
       }
@@ -278,7 +308,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
             connBaj.push({ id: b.id, origX: b.x, origY: b.y, origLblX: b.labelX ?? b.x, origLblY: b.labelY ?? b.y, atIdx: lastIdx });
           }
         }
-        engine.ramalDrag = { id: sel.id, startX: tp.x, startY: tp.y, origPts, connBaj };
+        engine.ramalDrag = { id: sel.id, startX: tp.x, startY: tp.y, origPts, connBaj, origLabelX: sel.labelX, origLabelY: sel.labelY };
         return;
       }
     }
@@ -290,7 +320,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
       engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
       return;
     }
-    if (!(isBajante(sel) && (sel.tipo === 'bajante' || sel.tipo === 'montante' || sel.tipo === 'red_publica' || sel.tipo === 'contador' || sel.id?.startsWith('B')))) {
+    if (!(isBajante(sel) && (sel.tipo === 'bajante' || sel.tipo === 'montante' || sel.tipo === 'red_publica' || sel.tipo === 'contador' || sel.tipo === 'calentador' || sel.id?.startsWith('B')))) {
       const lPos = engine.toCvs(sel.labelX!, sel.labelY!);
       if (Math.hypot(x - lPos.x, y - lPos.y) < 12) {
         engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };

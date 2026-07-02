@@ -2,6 +2,54 @@ import type { IPlanoEngineCore } from './PlanoState';
 import type { PlanoRamal } from './PlanoState';
 import { NETS } from './PlanoState';
 
+export function checkRamalAngles(pts: number[][], net: string): boolean {
+  if (pts.length < 2) return true;
+  const isSanOrLl = net === 'san' || net === 'll';
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[i + 1];
+    const dx = x2 - x1, dy = y2 - y1;
+    if (Math.hypot(dx, dy) < 0.1) continue;
+    const deg = Math.round(((Math.atan2(dy, dx) * 180 / Math.PI) % 360 + 360) % 360);
+    
+    if (isSanOrLl) {
+      const rem = deg % 45;
+      if (rem > 1 && rem < 44) {
+        return false;
+      }
+    } else {
+      // Otras redes: allow multiples of 45 degrees
+      const rem = deg % 45;
+      if (rem > 1 && rem < 44) {
+        return false;
+      }
+    }
+  }
+
+  // Prevent sharp internal angles (< 45 deg) between consecutive segments
+  for (let i = 0; i < pts.length - 2; i++) {
+    const [x1, y1] = pts[i];
+    const [x2, y2] = pts[i + 1];
+    const [x3, y3] = pts[i + 2];
+    
+    const dx1 = x2 - x1, dy1 = y2 - y1;
+    const dx2 = x3 - x2, dy2 = y3 - y2;
+    if (Math.hypot(dx1, dy1) < 0.1 || Math.hypot(dx2, dy2) < 0.1) continue;
+    
+    const a1 = Math.atan2(dy1, dx1) * 180 / Math.PI;
+    const a2 = Math.atan2(dy2, dx2) * 180 / Math.PI;
+    let diff = Math.abs(a2 - a1) % 360;
+    if (diff > 180) diff = 360 - diff;
+    
+    const internalAngle = 180 - diff;
+    if (internalAngle < 50) { // < 50 degrees to block exactly 45 (V-shape)
+      return false;
+    }
+  }
+
+  return true;
+}
+
 export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false): void {
   if (engine.marqueeRect) {
     const { x1, y1, x2, y2 } = engine.marqueeRect;
@@ -93,6 +141,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
             material: '',
             diametro: diam !== '0' ? diam : '',
             pendiente: 1.5,
+            bloqueado: true,
           };
           engine.ramales.push(ramal);
           d.Ldesvio = ramId;
@@ -108,9 +157,44 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
   if (engine.txtDrag) engine.txtDrag = null;
   if (engine.bajDrag) engine.bajDrag = null;
   if (engine.areaDrag) engine.areaDrag = null;
-  if (engine.ptDrag) { engine.ptDrag = null; engine._markDirty(); }
+  if (engine.ptDrag) {
+    const rId = engine.ptDrag.id;
+    engine.ptDrag = null;
+    engine._markDirty();
+    const ram = engine.ramales.find((r: any) => r.id === rId);
+    if (ram && !checkRamalAngles(ram.pts, ram.net)) {
+      engine.triggerAlert(
+        'Ángulo no recomendado',
+        (ram.net === 'san' || ram.net === 'll')
+          ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 0° y 45°.'
+          : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
+      );
+      if ((engine as any)._dragBackupPts) {
+        ram.pts = (engine as any)._dragBackupPts;
+        (engine as any)._dragBackupPts = null;
+        engine._markDirty();
+        engine.render();
+      }
+    }
+  }
   if (engine.ramalDrag) {
+    const rId = engine.ramalDrag.id;
+    const origPts = engine.ramalDrag.origPts;
     engine.ramalDrag = null;
     engine._markDirty();
+    const ram = engine.ramales.find((r: any) => r.id === rId);
+    if (ram && !checkRamalAngles(ram.pts, ram.net)) {
+      engine.triggerAlert(
+        'Ángulo no recomendado',
+        (ram.net === 'san' || ram.net === 'll')
+          ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 0° y 45°.'
+          : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
+      );
+      if (origPts) {
+        ram.pts = origPts;
+        engine._markDirty();
+        engine.render();
+      }
+    }
   }
 }
