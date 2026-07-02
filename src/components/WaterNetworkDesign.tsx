@@ -38,11 +38,13 @@ interface WaterNetworkDesignProps {
 
 const isAf = (t: string) => t === 'af';
 
+const isContador = (s: string) => s.startsWith('CNT') || s.startsWith('cntAF');
+
 const isAC1 = (t: any) => {
   const ini = String(t.ini || '');
   const fin = String(t.fin || '');
   if (ini.startsWith('RP') || fin.startsWith('RP')) return true;
-  if (fin.startsWith('CNT') && !ini.startsWith('CNT') && !ini.startsWith('M') && !ini.startsWith('B')) return true;
+  if (isContador(fin) && !isContador(ini) && !ini.startsWith('M') && !ini.startsWith('B')) return true;
   return false;
 };
 
@@ -50,8 +52,8 @@ const isAC2 = (t: any) => {
   const ini = String(t.ini || '');
   const fin = String(t.fin || '');
   if (ini.startsWith('RP') || fin.startsWith('RP')) return false;
-  if (ini.startsWith('CNT')) return true;
-  if (fin.startsWith('CNT') && (ini.startsWith('M') || ini.startsWith('B'))) return true;
+  if (isContador(ini)) return true;
+  if (isContador(fin) && (ini.startsWith('M') || ini.startsWith('B'))) return true;
   return false;
 };
 
@@ -401,8 +403,8 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     if (tr2) {
       const iniStr = typeof tr2.ini === 'string' ? tr2.ini : '';
       const finStr = typeof tr2.fin === 'string' ? tr2.fin : '';
-      if (iniStr.startsWith('CNT')) return finStr || acoMonName;
-      if (finStr.startsWith('CNT')) return iniStr || acoMonName;
+      if (isContador(iniStr)) return finStr || acoMonName;
+      if (isContador(finStr)) return iniStr || acoMonName;
       return iniStr || finStr || acoMonName;
     }
     return acoMonName;

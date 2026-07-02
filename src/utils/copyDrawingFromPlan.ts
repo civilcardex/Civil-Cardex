@@ -162,8 +162,8 @@ export function copyDrawingFromPlan(
     const maxBajante = maxForType(engine.bajantes.filter((b) => b.net === netId && b.tipo === 'bajante'), new RegExp('^' + bmPfx + '(\\d+)$'));
     const maxMontante = maxForType(engine.bajantes.filter((b) => b.net === netId && b.tipo === 'montante'), new RegExp('^' + bmPfx + '(\\d+)_' + netId + '$'));
     const maxRp = maxForType(engine.bajantes.filter((b) => b.tipo === 'red_publica'), /^RP(\d+)$/);
-    const maxCnt = maxForType(engine.bajantes.filter((b) => b.tipo === 'contador'), /^CNT(\d+)$/);
-    const maxCal = maxForType(engine.bajantes.filter((b) => b.tipo === 'calentador'), /^CALENT(\d+)$/);
+    const maxCnt = maxForType(engine.bajantes.filter((b) => b.tipo === 'contador'), /^(?:CNT|cntAF)(\d+)$/);
+    const maxCal = maxForType(engine.bajantes.filter((b) => b.tipo === 'calentador'), /^(?:CALENT|calentG)(\d+)$/);
 
     let ramalCounter = maxRamal;
     let bajanteCounter = maxBajante;
@@ -214,13 +214,13 @@ export function copyDrawingFromPlan(
         b.code = newId;
       } else if (b.tipo === 'contador') {
         cntCounter++;
-        const newId = 'CNT' + cntCounter;
+        const newId = 'cntAF' + cntCounter;
         oldToNew[origId] = newId;
         b.id = newId;
         b.code = newId;
       } else if (b.tipo === 'calentador') {
         calCounter++;
-        const newId = 'CALENT' + calCounter;
+        const newId = 'calentG' + calCounter;
         oldToNew[origId] = newId;
         b.id = newId;
         b.code = newId;

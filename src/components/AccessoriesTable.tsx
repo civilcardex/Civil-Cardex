@@ -1,15 +1,17 @@
 import { memo } from 'react';
 import { ACCESORIOS_HIDRO } from "../constants";
 
+const isContador = (s: string) => s.startsWith('CNT') || s.startsWith('cntAF');
+
 const isAC1 = (ini: string, fin: string) => {
   if (ini.startsWith('RP') || fin.startsWith('RP')) return true;
-  if (fin.startsWith('CNT') && !ini.startsWith('CNT') && !ini.startsWith('M') && !ini.startsWith('B')) return true;
+  if (isContador(fin) && !isContador(ini) && !ini.startsWith('M') && !ini.startsWith('B')) return true;
   return false;
 };
 const isAC2 = (ini: string, fin: string) => {
   if (ini.startsWith('RP') || fin.startsWith('RP')) return false;
-  if (ini.startsWith('CNT')) return true;
-  if (fin.startsWith('CNT') && (ini.startsWith('M') || ini.startsWith('B'))) return true;
+  if (isContador(ini)) return true;
+  if (isContador(fin) && (ini.startsWith('M') || ini.startsWith('B'))) return true;
   return false;
 };
 
