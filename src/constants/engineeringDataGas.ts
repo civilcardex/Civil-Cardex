@@ -22,6 +22,9 @@ export const GAS = [
   ]},
 ];
 
+export const GAS_DN_LABELS: string[] = [];
+for (const g of GAS) for (const r of g.rows) if (!GAS_DN_LABELS.includes(r.dn)) GAS_DN_LABELS.push(r.dn);
+
 export const CAT_GAS = [
   { id: 'pisc',   n: 'Calentador de piscina',     s: 'Cpisc',   q: 6.08 },
   { id: 'cal6',   n: 'Calentador P.D. Cap. 6 LPM',s: 'Cal 6LPM',q: 1.11 },

@@ -1,6 +1,6 @@
 import { NETS } from '../PlanoState';
 import { snapTributaryToPadre45Deg } from '../PlanoEngineDrawing';
-import { rotatedRectCorners } from '../Coords';
+import { rotatedRectCorners } from '../HitTester';
 import type { IPlanoEngineCore } from '../PlanoState';
 import { drawRamalPath } from './drawRamalPath';
 import { renderJunctions } from './renderJunctions';
@@ -97,7 +97,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         flowDy = lastc.y - fc.y;
         flowLen = Math.hypot(flowDx, flowDy);
       }
-      const arrowSize = showFlow && flowLen > 12 * engine.zoom ? 46 * engine.zoom : 0;
+      
       const getPisoCorto = (v: any) => {
         const n = typeof v === 'number' ? v : parseInt(String(v), 10);
         if (isNaN(n)) return '';
@@ -281,7 +281,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       });
       
       if (isDesvio && desvioBajante) {
-        const firstPt = r.pts[0], lastPt = r.pts[r.pts.length - 1];
+        const firstPt = r.pts[0];
         const isSube = desvioBajante.direccion === 'sube';
         
         let startIdx = 0, nextIdx = 1;

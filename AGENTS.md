@@ -30,6 +30,22 @@ Rules:
 - `X-Frame-Options: DENY` is set via `<meta>` tag but should also be sent as an HTTP header.
 - `.env` is git-ignored. Supabase anon key is public by design. `VITE_` prefix correctly marks client-exposed env vars.
 
+### Deployment Headers (Required at CDN/Reverse Proxy)
+
+These security headers cannot be set via `<meta>` tags and MUST be configured at the deployment layer:
+
+| Header | Value | Origin |
+|--------|-------|--------|
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | index.html comment |
+| `X-Frame-Options` | `DENY` | index.html meta tag + HTTP header |
+| `Content-Security-Policy: frame-ancestors` | `'none'` | HTTP header only |
+
+Configure these in:
+- **Nginx**: Add to `server {}` block
+- **Cloudflare**: Add via "HTTP Response Headers" rule
+- **Netlify**: Add via `_headers` file or `netlify.toml`
+- **Vercel**: Add via `vercel.json` `headers` config
+
 
 ## Session Summary — 2026-06-22
 
@@ -104,6 +120,31 @@ Rules:
 - `src/lib/PlanoEngine/renderers/renderBajantes.ts:490` — ghostAngle direction check
 - `src/lib/PlanoEngine/renderers/renderBajantes.ts:569` — ghost label unconditional
 - `src/lib/PlanoEngine/handleMouseDown.ts:35` — contador/calentador label drag fallback
+
+## Session Summary — 2026-07-02 (Phase 4 — Component Splitting)
+
+### Done
+- **4.1 BajanteContextMenu.tsx** (962→218 lines): Extracted `BajanteDirectionSelector` (165l), `BajanteDiameterSelector` (259l), `BajanteConnectionPanel` (299l), `BajanteCodeEditor` (222l). Container renders conditional sections based on element type (bajante/montante, área, ramal/hasPts, contador, calentador).
+- **4.2 TramoEditor.tsx** (852→258 lines): Extracted `ContadorEditor` (93l), `CalentadorEditor` (59l), `BajanteEditor` (234l), `RamalEditor` (212l), `TributarioEditor` (101l). Each handles its own element type with all props/imports.
+- **4.3 PdfViewer.tsx** (932→808 lines): Extracted `PdfViewerDialogs.tsx` (64l — owns contextMenu/confirm/alert dialog state), `PdfViewerActions.ts` (149l — `usePdfViewerActions` hook with 10 handlers), `PdfViewerSidebarRight.tsx` (162l — nivel/tipoTramo/tramoEditor/escala/aparatos sidebar).
+- **Build verified**: `npx vite build` passes clean (442 modules).
+
+### Relevant New Files
+- `src/components/pdfViewer/BajanteDirectionSelector.tsx`
+- `src/components/pdfViewer/BajanteDiameterSelector.tsx`
+- `src/components/pdfViewer/BajanteConnectionPanel.tsx`
+- `src/components/pdfViewer/BajanteCodeEditor.tsx`
+- `src/components/pdfViewer/ContadorEditor.tsx`
+- `src/components/pdfViewer/CalentadorEditor.tsx`
+- `src/components/pdfViewer/BajanteEditor.tsx`
+- `src/components/pdfViewer/RamalEditor.tsx`
+- `src/components/pdfViewer/TributarioEditor.tsx`
+- `src/components/pdfViewer/PdfViewerDialogs.tsx`
+- `src/components/pdfViewer/PdfViewerActions.ts`
+- `src/components/pdfViewer/PdfViewerSidebarRight.tsx`
+
+### Fixed — drawingAngles.ts:checkRamalAngles
+- **San/ll angle constraint**: Changed from per-segment `deg % 45` check to internal-angle-between-segments check. San/ll only allows `internalAngle ≥ 134°` (straight at 180° or 45° turn at 135°). AF/AC keeps original behavior (multiples of 45° per segment, internal angle ≥ 50°). 90° turns blocked in san/ll.
 
 ## Session Summary — 2026-06-11
 

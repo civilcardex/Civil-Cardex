@@ -50,3 +50,44 @@ export function calcUCacumulado(tramos: Tramo[], baseArr: UCBase[], field: strin
   return calcAcumulado(tramos, (t) => calcUCparcial(t, baseArr, field));
 }
 
+export function renderStatus(val: string) {
+  const ok = val === 'O.K.' || val === 'Ok' || val === 'OK';
+  const fail = val === 'NO CUMPLE' || val === 'No cumple' || val === 'NO';
+  if (ok) {
+    return (
+      <span style={{
+        color: 'var(--ok)',
+        background: 'rgba(47, 248, 1, 0.08)',
+        border: '1px solid rgba(47, 248, 1, 0.15)',
+        padding: '1px 5px',
+        borderRadius: '3px',
+        fontWeight: 600,
+        fontSize: '9px',
+        fontFamily: 'var(--mono)',
+        display: 'inline-block'
+      }}>
+        {val}
+      </span>
+    );
+  }
+  if (fail) {
+    return (
+      <span style={{
+        color: 'var(--err)',
+        background: 'rgba(255, 180, 171, 0.08)',
+        border: '1px solid rgba(255, 180, 171, 0.15)',
+        padding: '1px 5px',
+        borderRadius: '3px',
+        fontWeight: 600,
+        fontSize: '9px',
+        fontFamily: 'var(--mono)',
+        display: 'inline-block',
+        whiteSpace: 'nowrap'
+      }}>
+        {val}
+      </span>
+    );
+  }
+  return <span style={{ color: 'var(--txt3)' }}>{val}</span>;
+}
+

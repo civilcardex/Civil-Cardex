@@ -26,9 +26,18 @@
 
     <!-- Robots -->
     <meta name="robots" content="index, follow">
-    <!-- CSP: unsafe-inline required for Vite HMR in dev mode.
-         unsafe-eval required by pdfjs-dist internal parser (not worker, which loads from CDN).
-         SRI (integrity) on Google Fonts not feasible — URLs are dynamically generated. crossorigin="anonymous" is set instead. -->
+    <!--
+  CSP Notes:
+  - frame-ancestors directive must be set as HTTP header (nginx/Cloudflare/Netlify/Vercel)
+  - Strict-Transport-Security (HSTS) must be set as HTTP header
+  - X-Frame-Options: DENY works both as meta tag AND HTTP header, but HTTP header is more robust
+  The meta tag CSP below covers script-src, style-src, object-src, etc.
+
+  Additional CSP rationale:
+  - unsafe-inline required for Vite HMR in dev mode
+  - unsafe-eval required by pdfjs-dist internal parser (not worker, which loads from CDN)
+  - SRI (integrity) on Google Fonts not feasible — URLs are dynamically generated. crossorigin="anonymous" is set instead.
+-->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self' blob:; frame-src 'self' blob:; object-src 'self' blob:; base-uri 'self'; form-action 'self';">
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />

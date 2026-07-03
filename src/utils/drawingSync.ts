@@ -11,7 +11,7 @@ import {
 } from '../constants/storage-keys';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
 
-interface RawElement {
+export interface RawElement {
   id: string;
   net: string;
   tipo: string;
@@ -44,6 +44,12 @@ interface RawElement {
   bajLong?: unknown;
   bajFDarcy?: unknown;
   label?: string;
+  acoDiam?: string;
+  accesorioInicio?: string;
+  accesorioFin?: string;
+  diametroInicio?: string;
+  diametroFin?: string;
+  [key: string]: unknown;
 }
 
 export interface DrawingData {

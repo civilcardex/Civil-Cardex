@@ -29,6 +29,7 @@ export {
 export {
   GAS,
   CAT_GAS,
+  GAS_DN_LABELS,
 } from './engineeringDataGas';
 
 export {

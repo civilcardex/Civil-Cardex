@@ -47,9 +47,12 @@ export function savePlanTrazos(planId: string, data: unknown): void {
 
 export async function saveTrazosToDB(planoId: string, data: unknown): Promise<void> {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
     const { error } = await supabase
       .from('plano_trazos')
-      .upsert({ plano_id: planoId, data }, { onConflict: 'plano_id' });
+      .upsert({ plano_id: planoId, data, user_id: user.id }, { onConflict: 'plano_id' })
+      .eq('user_id', user.id);
     if (error) {
       if (import.meta.env.DEV) console.error('storageService saveTrazosToDB:', error);
     }
@@ -60,10 +63,13 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
 
 export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | null> {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
     const { data, error } = await supabase
       .from('plano_trazos')
       .select('data')
       .eq('plano_id', planoId)
+      .eq('user_id', user.id)
       .single();
       
     if (error) {

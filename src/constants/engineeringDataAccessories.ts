@@ -29,7 +29,6 @@ export const SAN_ACCESORIOS = [
   {id:'codoReventilado',emoji:'🔩',nombre:'Codo reventilado',icono:'/iconos_accesorios/codo90rl.svg', cat: 'Codos'},
   {id:'sifon',emoji:'🧼',nombre:'Sifón',icono:'/iconos_aparatos/sifon.svg', cat:'Otros'},
   ...ACCESORIOS_YEE,
-  {id:'tee',emoji:'🔧',nombre:'Tee',icono:'/iconos_accesorios/te_ramal.svg', cat:'Tees'},
 ];
 
 export const GAS_ACCESORIOS = [

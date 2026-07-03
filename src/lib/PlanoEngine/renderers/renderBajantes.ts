@@ -1,5 +1,5 @@
 import { NETS } from '../PlanoState';
-import { rotatedRectCorners } from '../Coords';
+import { rotatedRectCorners } from '../HitTester';
 import type { IPlanoEngineCore } from '../PlanoState';
 
 const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };

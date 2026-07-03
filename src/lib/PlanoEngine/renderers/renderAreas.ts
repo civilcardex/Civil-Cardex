@@ -1,5 +1,5 @@
 import { NETS } from '../PlanoState';
-import { rotatedRectCorners } from '../Coords';
+import { rotatedRectCorners } from '../HitTester';
 import type { IPlanoEngineCore } from '../PlanoState';
 
 export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {

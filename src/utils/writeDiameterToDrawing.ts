@@ -1,17 +1,7 @@
 import { writeHydroDrawingSync, writeSanDrawingSync } from './drawingSync';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY, HYDRO_FAMILIES, SAN_FAMILIES } from '../constants/storage-keys';
-import type { SyncPlanInput } from './drawingSync';
-
-interface RawElement {
-  id: string;
-  net: string;
-  tipo: string;
-  dNominal?: string;
-  acoDiam?: string;
-  diametro?: string;
-  [key: string]: unknown;
-}
+import type { SyncPlanInput, RawElement } from './drawingSync';
 
 interface LocalDrawingData {
   ts?: number;

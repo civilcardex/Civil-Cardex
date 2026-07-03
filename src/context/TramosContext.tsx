@@ -259,22 +259,22 @@ function buildTramos(
           if (dzLvert === 0 || dzLvert === undefined) dzLvert = parseFloat(dr.lvert ?? dr.dz) || 0;
         }
       }
-      incoming.push({
-        _key: `${rId}-${planId}`,
-        id: rId, piso: nivel, planId,
-        _net: r._net || family,
-        tipo: r.tipo || 'ramal',
-        esBajante: false,
-        fixtures: aparatos[apKey] || {},
-        accesorios: extra.accesorios || {},
-        Lh: extra.Lh || 0, Lv: (family === 'ac' && (isAC1 || isAC2)) ? 0 : dzLvert,
-        nSalidas: dznSalidas,
-        recibeDe: [], descripcion: '',
-        ini: ini, fin: fin,
-        diamDisPulg: diamPulgFromLabel(r.diametro) || r.diamPulg || 0, diametroOriginal: r.diametro || '', material: r.material || '',
-        totalL: r.totalL || 0,
-        _nivelLabel: pisoLbl(typeof r.piso === 'number' ? r.piso : parseInt(r.piso || String(nivel)))
-      });
+          incoming.push({
+            _key: `${rId}-${planId}`,
+            id: rId, label: r.label || r.id, piso: nivel, planId,
+            _net: r._net || family,
+            tipo: r.tipo || 'ramal',
+            esBajante: false,
+            fixtures: aparatos[apKey] || {},
+            accesorios: extra.accesorios || {},
+            Lh: extra.Lh || 0, Lv: (family === 'ac' && (isAC1 || isAC2)) ? 0 : dzLvert,
+            nSalidas: dznSalidas,
+            recibeDe: [], descripcion: '',
+            ini: ini, fin: fin,
+            diamDisPulg: diamPulgFromLabel(r.diametro) || r.diamPulg || 0, diametroOriginal: r.diametro || '', material: r.material || '',
+            totalL: r.totalL || 0,
+            _nivelLabel: pisoLbl(typeof r.piso === 'number' ? r.piso : parseInt(r.piso || String(nivel)))
+          });
     }
 
     if (family === 'af') {
@@ -366,7 +366,7 @@ useEffect(() => {
       for (const r of ((plane as any).ramales || [])) {
         if (r.tipo === 'tributario') tribIds.add(`${r.id}-${planId}`);
       }
-      const piso = (plane as any).npt ?? parseInt(nivel);
+      const piso = parseInt(nivel);
       const fmtNivel = (v: unknown): string => {
         const n = Number(v);
         if (!isNaN(n)) return pisoCorto(n);
