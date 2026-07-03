@@ -12,7 +12,7 @@ import ScrollIndicator from '../components/landing/ScrollIndicator';
 import HeroAurora from '../components/landing/HeroAurora';
 import TopographyBackground from '../components/landing/TopographyBackground';
 import RotatingWireframe from '../components/landing/RotatingWireframe';
-import BlueprintMarks from '../components/landing/BlueprintMarks';
+
 
 const MODULOS_HERO = [
   { id: 'flow', logo: '/logos/civilFlowlogo.svg', name: 'CivilFlow', color: '#00aaff', path: '/civilflow',

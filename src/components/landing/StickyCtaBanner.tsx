@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 
 interface StickyCtaBannerProps {
   heroId: string;
@@ -9,15 +10,7 @@ interface StickyCtaBannerProps {
 export default function StickyCtaBanner({ heroId, ctaId }: StickyCtaBannerProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
-    const listener = (event: MediaQueryListEvent) => setPrefersReducedMotion(event.matches);
-    mediaQuery.addEventListener('change', listener);
-    return () => mediaQuery.removeEventListener('change', listener);
-  }, []);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     if (isDismissed) return;

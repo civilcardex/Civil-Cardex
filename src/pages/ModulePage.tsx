@@ -235,9 +235,9 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                 <img src={cfg.logo} alt={cfg.title} className="h-4 w-4 object-contain" width={16} height={16} loading="lazy" />
                 <span className="text-[11px] tracking-[0.08em] font-bold uppercase" style={{ fontFamily: 'Geist, monospace' }}>{cfg.badgeLabel}</span>
               </div>
-              <h1 className="text-xl md:text-3xl lg:text-[36px] text-on-surface" style={{ fontFamily: 'Hanken Grotesk, sans-serif', fontWeight: 700 }}>
+              <h2 className="text-xl md:text-3xl lg:text-[36px] text-on-surface" style={{ fontFamily: 'Hanken Grotesk, sans-serif', fontWeight: 700 }}>
                 {cfg.headline}
-              </h1>
+              </h2>
               <p className="text-base text-on-surface-variant">
                 {cfg.description}
               </p>
@@ -272,9 +272,9 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               <img src={cfg.logo} alt={cfg.title} className="h-4 w-4 object-contain" width={16} height={16} loading="lazy" />
               <span className="text-[11px] tracking-[0.08em] font-bold uppercase" style={{ fontFamily: 'Geist, monospace', color: cfg.accent }}>{cfg.badgeLabel}</span>
             </div>
-            <h1 className="text-xl md:text-3xl lg:text-[36px] font-bold text-primary" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
+            <h2 className="text-xl md:text-3xl lg:text-[36px] font-bold text-primary" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
               {cfg.headline}
-            </h1>
+            </h2>
             <p className="text-base text-on-surface-variant max-w-xl">
               {cfg.description}
             </p>
@@ -309,9 +309,9 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                 <img src={cfg.logo} alt={cfg.title} className="h-4 w-4 object-contain" width={16} height={16} loading="lazy" />
                 <span className="text-[13px] text-on-surface-variant uppercase tracking-widest" style={{ fontFamily: 'Geist, monospace' }}>{cfg.badgeLabel}</span>
               </div>
-              <h1 className="text-2xl md:text-4xl lg:text-[48px] leading-[56px] font-bold text-on-surface tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
+              <h2 className="text-2xl md:text-4xl lg:text-[48px] leading-[56px] font-bold text-on-surface tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
                 {cfg.headline}
-              </h1>
+              </h2>
               <p className="text-base text-on-surface-variant max-w-xl">
                 {cfg.description}
               </p>
@@ -363,10 +363,10 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
             <div className="flex items-center justify-center w-16 h-16 border mb-4" style={{ background: '#282a2e', borderColor: '#3a494a', boxShadow: `0 0 15px ${cfg.accent}33` }}>
               <img src={cfg.logo} alt={cfg.title} className="h-10 w-10 object-contain" width={40} height={40} loading="lazy" />
             </div>
-            <h1 className="text-4xl md:text-6xl text-primary font-bold tracking-tight leading-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
+            <h2 className="text-4xl md:text-6xl text-primary font-bold tracking-tight leading-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
               CivilManage: <br />
               <span className="text-transparent bg-clip-text" style={{ backgroundImage: `linear-gradient(to right, ${cfg.accent}, #fef08a)` }}>Control Total</span> sobre el Ciclo de Vida del Proyecto
-            </h1>
+            </h2>
             <p className="text-base text-on-surface-variant max-w-2xl">
               {cfg.description}
             </p>
@@ -389,10 +389,10 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               <img src={cfg.logo} alt={cfg.title} className="h-4 w-4 object-contain" width={16} height={16} loading="lazy" />
               <span className="text-[13px] uppercase" style={{ fontFamily: 'Geist, monospace', color: '#00dce5' }}>{cfg.badgeLabel}</span>
             </div>
-            <h1 className="text-2xl md:text-4xl lg:text-[48px] leading-[1.1] font-bold text-on-background tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
+            <h2 className="text-2xl md:text-4xl lg:text-[48px] leading-[1.1] font-bold text-on-background tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
               Diseño Inteligente de <br />
               <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(to right, #00dce5, #79ff5b)' }}>Instalaciones Especiales</span>
-            </h1>
+            </h2>
             <p className="text-base text-on-surface-variant max-w-xl">
               {cfg.description}
             </p>
@@ -441,9 +441,9 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                 <img src={cfg.logo} alt={cfg.title} className="h-4 w-4 object-contain" width={16} height={16} loading="lazy" />
                 <span className="text-[13px] uppercase" style={{ fontFamily: 'Geist, monospace', color: cfg.accent }}>{cfg.badgeLabel}</span>
               </div>
-              <h1 className="text-2xl md:text-4xl lg:text-[48px] leading-[1.1] font-bold text-on-background tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
+              <h2 className="text-2xl md:text-4xl lg:text-[48px] leading-[1.1] font-bold text-on-background tracking-tight" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
                 Infraestructura Vial de <span style={{ color: cfg.accent }}>Alta Precisión</span>.
-              </h1>
+              </h2>
               <p className="text-base text-on-surface-variant max-w-md">
                 {cfg.description}
               </p>

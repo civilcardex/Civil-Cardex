@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 
 interface Props {
   text: string;
@@ -10,12 +11,10 @@ interface Props {
 export default function TypewriterText({ text, delay = 800, className, style }: Props) {
   const [displayedText, setDisplayedText] = useState('');
   const [showCursor, setShowCursor] = useState(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
-    const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    setPrefersReducedMotion(isReduced);
-    if (isReduced) {
+    if (prefersReducedMotion) {
       setDisplayedText(text);
       return;
     }

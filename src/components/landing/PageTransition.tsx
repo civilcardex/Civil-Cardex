@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 
 interface Props {
   children: (location: ReturnType<typeof useLocation>) => React.ReactNode;
@@ -9,9 +10,9 @@ export default function PageTransition({ children }: Props) {
   const location = useLocation();
   const [displayLocation, setDisplayLocation] = useState(location);
   const [transitionStage, setTransitionStage] = useState('fadeIn');
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) {
       setDisplayLocation(location);
       return;
@@ -20,7 +21,7 @@ export default function PageTransition({ children }: Props) {
     if (location.pathname !== displayLocation.pathname) {
       setTransitionStage('fadeOut');
     }
-  }, [location, displayLocation]);
+  }, [location, displayLocation, prefersReducedMotion]);
 
   const handleTransitionEnd = () => {
     if (transitionStage === 'fadeOut') {
@@ -29,9 +30,7 @@ export default function PageTransition({ children }: Props) {
     }
   };
 
-  const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  if (isReduced) {
+  if (prefersReducedMotion) {
     return <>{children(location)}</>;
   }
 

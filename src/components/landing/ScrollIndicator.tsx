@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion';
 
 export default function ScrollIndicator() {
   const [opacity, setOpacity] = useState(1);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
-    const isReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    setPrefersReducedMotion(isReduced);
-    if (isReduced) return;
+    if (prefersReducedMotion) return;
 
     const handleScroll = () => {
       const scrollY = window.scrollY;
@@ -16,7 +15,7 @@ export default function ScrollIndicator() {
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [prefersReducedMotion]);
 
   if (prefersReducedMotion || opacity === 0) return null;
 
