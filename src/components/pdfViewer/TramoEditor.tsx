@@ -1,14 +1,12 @@
 /* eslint-disable react-hooks/refs */
 import React, { type RefObject, useMemo } from 'react'
-import { DIAM_BAN, DIAM_BY_MAT, DIAM_DEFAULT_BY_NET, DIAM_VENT } from '../../constants'
-import { GAS } from '../../constants/engineeringDataGas';
-import { VENTILACION, CONTADORES as CONTADORES_CAT } from '../../pages/catalog/catalogData';
-import { CAT_GAS } from '../../constants/engineeringDataGas';
-import { DIAMETROS_AF } from '../../constants/hydraulicData'
-import { writeBajantePropToDrawing } from '../../utils/writeDiameterToDrawing';
-
-const GAS_DN_LABELS: string[] = [];
-for (const g of GAS) for (const r of g.rows) if (!GAS_DN_LABELS.includes(r.dn)) GAS_DN_LABELS.push(r.dn);
+import { DIAM_BY_MAT, DIAM_DEFAULT_BY_NET } from '../../constants'
+import { VENTILACION } from '../../pages/catalog/catalogData'
+import ContadorEditor from './ContadorEditor'
+import CalentadorEditor from './CalentadorEditor'
+import BajanteEditor from './BajanteEditor'
+import RamalEditor from './RamalEditor'
+import TributarioEditor from './TributarioEditor'
 
 interface TramoEditorProps {
   selElement: any
@@ -73,151 +71,25 @@ export default function TramoEditor({
   const isGhostSel = (selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante') && eng?._isGhostSel) || false;
 
   if (selElement && selElement.tipo === 'contador') {
-    return (
-      <>
-        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#9BA8AA", textTransform: "uppercase", letterSpacing: 1 }}>
-              Datos del Contador
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#b9caca', fontFamily: "'Geist',monospace", padding: '2px 0' }}>
-              {selElement.code || selElement.id}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#9BA8AA", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-            Datos específicos
-          </div>
-          <div>
-            <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
-              Diámetro
-            </div>
-            <select
-              value={selElement.dNominal || ''}
-              aria-label="Diámetro del Contador"
-              onChange={e => {
-                const val = e.target.value;
-                handleUpdateSel('dNominal', val);
-              }}
-              style={{
-                width: '100%',
-                padding: "4px 6px",
-                background: "#1e2024",
-                border: "1px solid #3a494a",
-                borderRadius: 3,
-                color: "#e2e2e8",
-                fontSize: 11,
-                fontFamily: "'Geist',monospace",
-                cursor: 'pointer'
-              }}
-            >
-              <option value="">— Sin diámetro —</option>
-              {CONTADORES_CAT.map((c: any) => (
-                <option key={c.dn} value={`${c.dn}"`}>
-                  {c.dn}"
-                </option>
-              ))}
-            </select>
-          </div>
-          {/* AC-01 diameter dropdown (or gas connection pipe equivalent) */}
-          {(activeNet === 'af' || activeNet === 'gas') && (
-            <div style={{ marginTop: 8 }}>
-              <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
-                {activeNet === 'gas' ? 'Diámetro conexión (Red→Contador)' : 'Diámetro AC-01 (Red→Contador)'}
-              </div>
-              <select
-                value={selElement.acoDiam || ''}
-                aria-label="Diámetro del tramo de conexión"
-                onChange={e => {
-                  const val = e.target.value;
-                  handleUpdateSel('acoDiam', val);
-                }}
-                style={{
-                  width: '100%',
-                  padding: "4px 6px",
-                  background: "#1e2024",
-                  border: "1px solid #3a494a",
-                  borderRadius: 3,
-                  color: "#e2e2e8",
-                  fontSize: 11,
-                  fontFamily: "'Geist',monospace",
-                  cursor: 'pointer'
-                }}
-              >
-                <option value="">— Sin diámetro —</option>
-                {(activeNet === 'gas' ? GAS_DN_LABELS : DIAMETROS_AF.map(d => d.nominal)).map(d => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-      </>
-    );
+    return <ContadorEditor selElement={selElement} activeNet={activeNet} handleUpdateSel={handleUpdateSel} />;
   }
 
   if (selElement && selElement.tipo === 'calentador') {
-    return (
-      <>
-        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#9BA8AA", textTransform: "uppercase", letterSpacing: 1 }}>
-              Datos del Calentador
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#b9caca', fontFamily: "'Geist',monospace", padding: '2px 0' }}>
-              {selElement.code || selElement.id}
-            </div>
-          </div>
-        </div>
+    return <CalentadorEditor selElement={selElement} handleUpdateSel={handleUpdateSel} />;
+  }
 
-        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#9BA8AA", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
-            Datos específicos
-          </div>
-          <div>
-            <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>
-              Equipo (Capacidad)
-            </div>
-            <select
-              value={selElement.capacidad || ''}
-              aria-label="Capacidad del Calentador"
-              onChange={e => {
-                const val = e.target.value;
-                handleUpdateSel('capacidad', val);
-              }}
-              style={{
-                width: '100%',
-                padding: "4px 6px",
-                background: "#1e2024",
-                border: "1px solid #3a494a",
-                borderRadius: 3,
-                color: "#e2e2e8",
-                fontSize: 11,
-                fontFamily: "'Geist',monospace",
-                cursor: 'pointer'
-              }}
-            >
-              <option value="">— Seleccionar —</option>
-              {CAT_GAS.filter(g => g.id.startsWith('cal')).map(g => (
-                <option key={g.id} value={g.id}>
-                  {g.n}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </>
-    );
+  const isVen = activeNet === 'vent';
+  const matList = mats?.[activeNet] || [];
+  const matShort = matList[0]?.val || '—';
+  let diamList: any[] = [];
+  if (isVen) {
+    diamList = VENTILACION[0]?.rows.map((r: any) => ({ n: r.dn })) || [];
+  } else {
+    diamList = DIAM_BY_MAT[matShort] || [];
   }
 
   return (
-    <>
+    <form onSubmit={e => e.preventDefault()}>
       <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#9BA8AA", textTransform: "uppercase", letterSpacing: 1 }}>
@@ -323,7 +195,7 @@ export default function TramoEditor({
                     ))}
                   </select>
                 </div>
-              </>
+          </>
             )}
             {selElement.pts&&(
               <div style={{fontSize:10,color:'#8AB4D6',fontFamily:"'Geist',monospace"}}>
@@ -346,510 +218,52 @@ export default function TramoEditor({
         if (isArea) return null;
 
         if (isBajMont) {
-          if (isGhostSel) {
-            const gd = selElement.ghostData?.[lvl] || {};
-            const currentGhostDiam = gd.dNominal || '';
-            const currentGhostDir = gd.direccion || '';
-
-            return (
-              <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-                <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#9BA8AA", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos específicos (Fantasma)</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div>
-                    <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Diámetro</div>
-                    <select value={currentGhostDiam} aria-label="Diámetro"
-                      onChange={e => {
-                        const val = e.target.value;
-                        const gdNew = { ...(selElement.ghostData || {}) };
-                        const cd = { ...(gdNew[lvl] || {}) };
-                        cd.dNominal = val;
-                        gdNew[lvl] = cd;
-                        if (engineRef.current) {
-                          const fields = { ghostData: gdNew };
-                          engineRef.current.updateSelected(fields);
-                          setSelElement({ ...selElement, ghostData: fields.ghostData });
-                          engineRef.current.render();
-                        }
-                      }}
-                      style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                      <option value="">—</option>
-                      {(selElement.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
-                        <option key={d.pulg} value={d.nom}>{d.nom}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Dirección de flujo</div>
-                    <div style={{ display: 'flex', gap: 3 }}>
-                      {([['sube','↑ Sube'],['baja','↓ Baja'],['continua','➜ Continua']] as const).map(([val, lbl]) => {
-                        const isActive = currentGhostDir === val;
-                        return (
-                          <button key={val} onClick={() => {
-                            const gdNew = { ...(selElement.ghostData || {}) };
-                            const cd = { ...(gdNew[lvl] || {}) };
-                            const newDir = cd.direccion === val ? undefined : val;
-                            if (newDir) {
-                              cd.direccion = newDir;
-                            } else {
-                              delete cd.direccion;
-                            }
-                            gdNew[lvl] = cd;
-                            if (engineRef.current) {
-                              engineRef.current.updateSelected({ ghostData: gdNew });
-                              setSelElement({ ...selElement, ghostData: gdNew });
-                              engineRef.current.render();
-                            }
-                          }} style={{
-                            flex: 1, padding: '4px 6px', fontSize: 10, fontFamily: "'Geist',monospace", borderRadius: 3,
-                            border: `1px solid ${isActive ? '#F5A623' : '#3a494a'}`,
-                            background: isActive ? 'rgba(245,166,35,.15)' : '#1e2024',
-                            color: isActive ? '#F5A623' : '#9BA8AA',
-                            cursor: 'pointer', fontWeight: isActive ? 600 : 400,
-                          }}>{lbl}</button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          }
-
           return (
-            <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-              <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#9BA8AA", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos específicos</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>H (m)</div>
-                  <input type="number" step="0.01" value={selElement.hVert ?? ''} placeholder="0.00" aria-label="Altura H (m)"
-                    onChange={e => { const v = e.target.value; handleUpdateSel('hVert', v ? parseFloat(v) : 0); }}
-                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", textAlign: 'center' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Diámetro</div>
-                  <select value={selElement.dNominal !== undefined && selElement.dNominal !== '0' && selElement.dNominal !== '' ? selElement.dNominal : ''} aria-label="Diámetro"
-                    onChange={e => { handleUpdateSel('dNominal', e.target.value); }}
-                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                    <option value="">—</option>
-                    {(selElement.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
-                      <option key={d.pulg} value={d.nom}>{d.nom}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Llenado (R)</div>
-                  <select value={selElement.bajR != null ? (Math.abs(selElement.bajR - 7/24) < 0.001 ? '7/24' : '1/4') : '7/24'} aria-label="Llenado (R)"
-                    onChange={e => {
-                      const val = e.target.value;
-                      const valNum = val === '7/24' ? 7/24 : 0.25;
-                      handleUpdateSel('bajR', valNum);
-                    }}
-                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                    <option value="7/24">7/24</option>
-                    <option value="1/4">1/4</option>
-                  </select>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Área asociada</div>
-                  <select value={selElement.area_m2 ? String(selElement.area_m2) : ''} aria-label="Área asociada"
-                    onChange={e => {
-                      const val = parseFloat(e.target.value) || 0;
-                      handleUpdateSel('area_m2', val);
-                    }}
-                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                    <option value="">— Sin área —</option>
-                    {(engineRef.current?.areas || []).filter((a: any) => a.net === selElement.net).map((a: any) => (
-                      <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-                <div>
-                  <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Dirección</div>
-                  <div style={{ display: 'flex', gap: 3 }}>
-                    {([['sube','↑ Sube'],['baja','↓ Baja'],['continua','➜ Continua'],['desplazamiento','↔ Desplaz.']] as const).map(([val, lbl]) => {
-                      const eng = engineRef.current;
-                      const lvl = eng?.nivelActual?.label ?? '';
-                      const hasDesplazamiento = val === 'desplazamiento' && !!(selElement.desplazamientos && selElement.desplazamientos[lvl]);
-                      const isActive = val === 'desplazamiento' ? hasDesplazamiento : selElement.direccion === val;
-                      
-                      return (
-                      <button key={val} onClick={() => {
-                        if (val === 'desplazamiento') {
-                          if (eng && lvl !== undefined) {
-                            const currentDesp = { ...(selElement.desplazamientos || {}) };
-                            if (currentDesp[lvl] && !selElement.direccion) {
-                              delete currentDesp[lvl];
-                            } else if (!currentDesp[lvl]) {
-                              currentDesp[lvl] = { dx: 2, dy: 0 };
-                            }
-                            eng.updateSelected({ desplazamientos: currentDesp, direccion: undefined });
-                            setSelElement({ ...selElement, desplazamientos: currentDesp, direccion: undefined });
-                            eng.render();
-                          }
-                        } else {
-                          const newDir = selElement.direccion === val ? undefined : val;
-                          const currentDesp = { ...(selElement.desplazamientos || {}) };
-                          eng.updateSelected({ direccion: newDir, desplazamientos: currentDesp });
-                          setSelElement({ ...selElement, direccion: newDir, desplazamientos: currentDesp });
-                          eng.render();
-                        }
-                      }} style={{
-                        flex: 1, padding: '4px 6px', fontSize: 10, fontFamily: "'Geist',monospace", borderRadius: 3,
-                        border: `1px solid ${isActive ? '#F5A623' : '#3a494a'}`,
-                        background: isActive ? 'rgba(245,166,35,.15)' : '#1e2024',
-                        color: isActive ? '#F5A623' : '#9BA8AA',
-                        cursor: 'pointer', fontWeight: isActive ? 600 : 400,
-                      }}>{lbl}</button>
-                    )})}
-                  </div>
-                </div>
-                {activeNet === 'san' && (
-                  <div style={{ width: '100%' }}>
-                    <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Ramales asociados</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 }}>
-                      {(() => {
-                        const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === 'san' && r.tipo !== 'tributario');
-                        if (bajRamales.length === 0) return <div style={{ fontSize: 10, color: '#8AB4D6', fontFamily: "'Geist',monospace", padding: '4px', gridColumn: 'span 4' }}>Sin ramales en esta red</div>;
-                        const recibidos = (selElement.recibeDeIds || []);
-                        return bajRamales.map((r: any) => (
-                          <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
-                            <input type="checkbox" checked={recibidos.includes(r.id)}
-                              onChange={e => {
-                                const newRecibe = e.target.checked
-                                  ? [...recibidos, r.id]
-                                  : recibidos.filter((id: string) => id !== r.id);
-                                handleUpdateSel('recibeDeIds', newRecibe);
-                              }}
-                              style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
-                            <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label || r.id}</span>
-                          </label>
-                        ));
-                      })()}
-                    </div>
-                  </div>
-                )}
-                {activeNet === 'san' && (
-                  <div style={{ width: '100%', marginTop: 8 }}>
-                    <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Bajantes asociadas</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 }}>
-                      {(() => {
-                        const others = allBajantes.filter((b: any) => b.key !== `${selElement.id}-${engineRef.current?.planId}`);
-                        if (others.length === 0) return <div style={{ fontSize: 10, color: '#8AB4D6', fontFamily: "'Geist',monospace", padding: '4px', gridColumn: 'span 2' }}>Sin otras bajantes en esta red</div>;
-                        
-                        return others.map((b: any) => {
-                          const isAssoc = b.descargaEnId === `${engineRef.current?.planId}|${selElement.id}`;
-                          return (
-                            <label key={b.key} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
-                              <input type="checkbox" checked={isAssoc}
-                                onChange={e => {
-                                  const checked = e.target.checked;
-                                  const val = checked ? `${engineRef.current?.planId}|${selElement.id}` : null;
-                                  
-                                  // Update target bajante property in localStorage/DB
-                                  writeBajantePropToDrawing(b.key, activeNet, 'descargaEnId', val, plans || []);
-                                  
-                                  // Trigger a re-render/sync event
-                                  window.dispatchEvent(new CustomEvent('civilflow_nets_changed', { detail: [activeNet] }));
-                                }}
-                                style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
-                              <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${b.planName} - ${b.label}`}>{b.planName.split(' ')[0]}: {b.label}</span>
-                            </label>
-                          );
-                        });
-                      })()}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            <BajanteEditor
+              selElement={selElement}
+              activeNet={activeNet}
+              engineRef={engineRef}
+              setSelElement={setSelElement}
+              handleUpdateSel={handleUpdateSel}
+              isGhostSel={isGhostSel}
+              lvl={lvl}
+              allBajantes={allBajantes}
+              plans={plans}
+            />
           );
         }
 
-        const isGas = activeNet === 'gas';
-        const isVen = activeNet === 'vent';
-        const matList = mats?.[activeNet] || [];
-        const matShort = matList[0]?.val || '—';
-        const matName = matLongName(matShort);
-        let diamList: any[] = [];
-        if (isVen) {
-          diamList = VENTILACION[0]?.rows.map((r: any) => ({ n: r.dn })) || [];
-        } else {
-          diamList = DIAM_BY_MAT[matShort] || [];
-        }
-        let currentDiam: string = '', currentMat: any = '';
-        if (isGas) {
-          const selMat = (isSelActiveNet && selElement.material) || gasMatSel[activeNet] || '';
-          const selDn = (isSelActiveNet && selElement.diametro !== undefined && selElement.diametro !== '')
-            ? selElement.diametro : (diamSel[activeNet] || '');
-          currentMat = selMat || GAS[0]?.mat || '';
-          currentDiam = selDn || GAS[0]?.rows[0]?.dn || '';
-        } else {
-          currentDiam = (isSelActiveNet && selElement.diametro !== undefined && selElement.diametro !== '')
-            ? selElement.diametro.split(' — ')[0].trim()
-            : (diamSel[activeNet] || '');
-        }
-        const showPend = activeNet === 'san' || activeNet === 'll';
-        const showDeltaZ = activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas';
-        const showDescargas = activeNet === 'af' || activeNet === 'ac' || activeNet === 'san';
         return (
-          <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-            <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#9BA8AA", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos específicos</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-
-              {isGas ? (
-                <div>
-                  <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Material</div>
-                  <select value={currentMat} aria-label="Material"
-                    onChange={e => {
-                      const mat = e.target.value;
-                      const g = GAS.find(x => x.mat === mat);
-                      const dn = g ? g.rows[0]?.dn || '' : '';
-                      setGasMatSel(prev => ({ ...prev, [activeNet]: mat }));
-                      setDiamSel(prev => ({ ...prev, [activeNet]: dn }));
-                      if (engineRef.current && selElement) {
-                        engineRef.current.updateSelected({ material: mat, diametro: dn });
-                        setSelElement({ ...selElement, material: mat, diametro: dn });
-                      }
-                    }}
-                    style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' }}>
-                    {GAS.map(g => (
-                      <option key={g.mat} value={g.mat}>{g.mat}</option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '3px 8px', background: '#1a1c20', border: '1px solid #282a2e', borderRadius: 3 }}>
-                  <span style={{ fontSize: 9, color: '#8AB4D6', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0 }}>Material</span>
-                  <span style={{ fontSize: 10, color: '#b9caca', fontFamily: "'Geist',monospace", fontWeight: 600, textAlign: 'right', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={matName}>{matName}</span>
-                </div>
-              )}
-              <div style={{ display: 'grid', gridTemplateColumns: showPend ? '1fr 1fr' : '1fr', gap: 6 }}>
-                <div>
-                  <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Diámetro</div>
-      {isGas ? (
-        <select value={currentDiam} aria-label="Diámetro"
-        onChange={e => {
-          const dn = e.target.value;
-          setDiamSel(prev => ({ ...prev, [activeNet]: dn }));
-          if (engineRef.current && selElement) {
-            const fields = { diametro: dn };
-            engineRef.current.updateSelected(fields);
-            setSelElement({ ...selElement, diametro: fields.diametro });
-          } else if (engineRef.current && !selElement) {
-            const eng = engineRef.current;
-            const lastRamal = [...eng.ramales].reverse().find((r: any) => r.net === activeNet);
-            if (lastRamal) {
-              eng.selId = lastRamal.id;
-              eng.updateSelected({ diametro: dn });
-              const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = lastRamal;
-              setSelElement({ ...rest, diametro: dn });
-            }
-          }
-        }}
-        style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' }}>
-          {(() => {
-            const gasMat = GAS.find(g => g.mat === currentMat);
-            return gasMat ? gasMat.rows.map((r: any) => (
-              <option key={r.dn} value={r.dn}>{r.dn}"</option>
-            )) : <option value="">—</option>;
-          })()}
-        </select>
-      ) : diamList.length > 0 ? (
-        <select value={currentDiam} aria-label="Diámetro"
-        onChange={e => {
-          const v = e.target.value;
-          setDiamSel(prev => ({ ...prev, [activeNet]: v }));
-          if (engineRef.current && selElement) {
-            const fields = { diametro: v };
-            engineRef.current.updateSelected(fields);
-            setSelElement({ ...selElement, diametro: fields.diametro });
-          } else if (engineRef.current && !selElement) {
-            const eng = engineRef.current;
-            const lastRamal = [...eng.ramales].reverse().find((r: any) => r.net === activeNet);
-            if (lastRamal) {
-              eng.selId = lastRamal.id;
-              eng.updateSelected({ diametro: v });
-              const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = lastRamal;
-              setSelElement({ ...rest, diametro: v });
-            }
-          }
-        }}
-        style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' }}>
-        <option value="">Sin diámetro</option>
-        {diamList.map((d: any) => {
-          const valClean = d.n.split(' — ')[0].trim();
-          return <option key={d.n} value={valClean}>{valClean}</option>;
-        })}
-        </select>
-                  ) : (
-                    <div style={{ padding: '4px 6px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#8AB4D6', fontSize: 11, fontFamily: "'Geist',monospace" }}>— Sin opciones —</div>
-                  )}
-              </div>
-      {showPend ? (
-        <div>
-          <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Pendiente %</div>
-          <input type="text" inputMode="decimal" value={pendInput} aria-label="Pendiente (%)"
-            onChange={e => {
-              const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-              setPendInput(raw);
-            }}
-            onBlur={e => {
-              const v = parseFloat(e.target.value.replace(/,/g, '.')) || 0;
-              setPendInput(v > 0 ? String(v) : '');
-              setPendSel(prev => ({ ...prev, [activeNet]: v }));
-              if (engineRef.current && selElement) {
-                engineRef.current.updateSelected({ pendiente: v });
-                setSelElement({ ...selElement, pendiente: v });
-              } else if (engineRef.current && !selElement) {
-                const eng = engineRef.current;
-                const lastRamal = [...eng.ramales].reverse().find((r: any) => r.net === activeNet);
-                if (lastRamal) {
-                  eng.selId = lastRamal.id;
-                  eng.updateSelected({ pendiente: v });
-                  const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = lastRamal;
-                  setSelElement({ ...rest, pendiente: v });
-                }
-              }
-            }}
-            onFocus={() => {
-              const current = (isSelActiveNet && selElement?.pendiente !== undefined)
-                ? selElement.pendiente
-                : (pendSel[activeNet] !== undefined ? pendSel[activeNet] : 2.0);
-              setPendInput(current > 0 ? String(current) : '');
-            }}
-          style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", textAlign: 'center' }}
-          />
-                </div>
-                ) : null}
-              </div>
-              {showDeltaZ && !isGas && (
-                <div style={{ display: 'grid', gridTemplateColumns: showDescargas ? '1fr 1fr' : '1fr', gap: 6 }}>
-                  <div>
-                    <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>Altura (m)</div>
-                    <input type="number" step="0.01" value={selElement?.dz ?? ''} placeholder="0.00" aria-label="Delta Z o longitud vertical (m)"
-                      onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({dz:v,lvert:v});setSelElement({...selElement,dz:v,lvert:v})}}}
-                      style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
-                  </div>
-                  {showDescargas && (
-                    <div>
-                      <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>No. de descargas</div>
-                      <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0" aria-label="Número de descargas"
-                        onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||0;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
-                        style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
-                    </div>
-                  )}
-                </div>
-              )}
-              {!showDeltaZ && showDescargas && (
-                <div>
-                  <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>No. de descargas</div>
-                  <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0" aria-label="Número de descargas"
-                    onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||0;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
-                    style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
-                </div>
-              )}
-              {selElement?.tipo === 'tributario' && activeNet === 'san' && (
-                <div style={{ borderTop: '1px solid #3a494a', paddingTop: 8, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1 }}>Accesorios Extremos</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                    <div>
-                      <div style={{ fontSize: 8, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2 }}>Inicio (Aparato)</div>
-                      <select value={selElement.accesorioInicio || ''} aria-label="Accesorio inicio"
-                        onChange={e => {
-                          const val = e.target.value;
-                          if (engineRef.current) {
-                            const updates: any = { accesorioInicio: val };
-                            if (val && !selElement.diametroInicio) {
-                              updates.diametroInicio = selElement.diametro || '';
-                            }
-                            engineRef.current.updateSelected(updates);
-                            setSelElement({ ...selElement, ...updates });
-                            engineRef.current.render();
-                            engineRef.current._markDirty();
-                          }
-                        }}
-                        style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                        <option value="">Ninguno</option>
-                        <option value="sifon">🧼 Sifón</option>
-                        <option value="codoSube">🔩 Codo Sube</option>
-                        <option value="codoBaja">🔩 Codo Baja</option>
-                        <option value="codoReventilado">🔩 Codo reventilado</option>
-                      </select>
-                      {selElement.accesorioInicio && (
-                        <select value={(selElement.diametroInicio || selElement.diametro || '').split(' — ')[0].trim()} aria-label="Diámetro inicio"
-                          onChange={e => {
-                            const val = e.target.value;
-                            if (engineRef.current) {
-                              engineRef.current.updateSelected({ diametroInicio: val });
-                              setSelElement({ ...selElement, diametroInicio: val });
-                              engineRef.current.render();
-                              engineRef.current._markDirty();
-                            }
-                          }}
-                          style={{ width: '100%', padding: "2px 4px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 9, fontFamily: "'Geist',monospace", cursor: 'pointer', marginTop: 3 }}>
-                          <option value="">Usar red</option>
-                          {diamList.map((d: any) => {
-                            const valClean = d.n.split(' — ')[0].trim();
-                            return <option key={d.n} value={valClean}>{valClean}</option>;
-                          })}
-                        </select>
-                      )}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 8, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2 }}>Fin (Ramal)</div>
-                      <select value={selElement.accesorioFin || ''} aria-label="Accesorio fin"
-                        onChange={e => {
-                          const val = e.target.value;
-                          if (engineRef.current) {
-                            const updates: any = { accesorioFin: val };
-                            if (val && !selElement.diametroFin) {
-                              updates.diametroFin = selElement.diametro || '';
-                            }
-                            engineRef.current.updateSelected(updates);
-                            setSelElement({ ...selElement, ...updates });
-                            engineRef.current.render();
-                            engineRef.current._markDirty();
-                          }
-                        }}
-                        style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
-                        <option value="">Ninguno</option>
-                        <option value="sifon">🧼 Sifón</option>
-                        <option value="codoSube">🔩 Codo Sube</option>
-                        <option value="codoBaja">🔩 Codo Baja</option>
-                        <option value="codoReventilado">🔩 Codo reventilado</option>
-                      </select>
-                      {selElement.accesorioFin && (
-                        <select value={(selElement.diametroFin || selElement.diametro || '').split(' — ')[0].trim()} aria-label="Diámetro fin"
-                          onChange={e => {
-                            const val = e.target.value;
-                            if (engineRef.current) {
-                              engineRef.current.updateSelected({ diametroFin: val });
-                              setSelElement({ ...selElement, diametroFin: val });
-                              engineRef.current.render();
-                              engineRef.current._markDirty();
-                            }
-                          }}
-                          style={{ width: '100%', padding: "2px 4px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 9, fontFamily: "'Geist',monospace", cursor: 'pointer', marginTop: 3 }}>
-                          <option value="">Usar red</option>
-                          {diamList.map((d: any) => {
-                            const valClean = d.n.split(' — ')[0].trim();
-                            return <option key={d.n} value={valClean}>{valClean}</option>;
-                          })}
-                        </select>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <>
+            <RamalEditor
+              selElement={selElement}
+              activeNet={activeNet}
+              engineRef={engineRef}
+              setSelElement={setSelElement}
+              isSelActiveNet={isSelActiveNet}
+              diamSel={diamSel}
+              gasMatSel={gasMatSel}
+              pendSel={pendSel}
+              pendInput={pendInput}
+              mats={mats}
+              matLongName={matLongName}
+              setDiamSel={setDiamSel}
+              setGasMatSel={setGasMatSel}
+              setPendSel={setPendSel}
+              setPendInput={setPendInput}
+            />
+            {selElement?.tipo === 'tributario' && activeNet === 'san' && (
+              <TributarioEditor
+                selElement={selElement}
+                engineRef={engineRef}
+                setSelElement={setSelElement}
+                diamList={diamList}
+              />
+            )}
+          </>
         );
       })()}
-    </>
+    </form>
   )
 }
 
