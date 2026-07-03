@@ -44,6 +44,11 @@ export interface CanvasBox {
   h: number;
 }
 
+export function checkActiveNet(engine: IPlanoEngineCore, netId: string): boolean {
+  const activeNets = engine.activeNetworks as Set<string> | undefined;
+  return activeNets ? activeNets.has(netId) : true;
+}
+
 export function isBajante(el: PlanoElement | null): el is PlanoBajante {
   return el != null && '_circ' in el;
 }
@@ -76,6 +81,9 @@ export interface PlanoRamal {
   material: string;
   diametro: string;
   pendiente: number;
+  bloqueado?: boolean;
+  accesorioInicio?: string;
+  accesorioFin?: string;
   _labelBox?: LabelBoxCorners;
   _net?: string;
 }

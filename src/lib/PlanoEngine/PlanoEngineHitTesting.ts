@@ -167,23 +167,3 @@ export function getToolFromKey(key: string): ToolType | null {
   };
   return map[key] ?? null;
 }
-
-export function isPanningTool(tool: ToolType): boolean {
-  return tool === 'pan';
-}
-
-export function isMiddleButton(e: MouseEvent, tool: ToolType): boolean {
-  return e.button === 1 || tool === 'pan';
-}
-
-export function isRightButton(e: MouseEvent): boolean {
-  return e.button === 2;
-}
-
-export function shouldStartPanning(e: MouseEvent, tool: ToolType): boolean {
-  return isMiddleButton(e, tool);
-}
-
-export function getHitRadius(zoom: number): number {
-  return Math.max(6, 6 * zoom) + 10;
-}

@@ -5,54 +5,10 @@ import type {
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
+import { _firstSegmentAngle, checkRamalAngles, snapTributaryToPadre45Deg } from './drawingAngles';
 
-export function checkRamalAngles(pts: number[][], net: string): boolean {
-  if (pts.length < 2) return true;
-  const isSanOrLl = net === 'san' || net === 'll';
-  for (let i = 0; i < pts.length - 1; i++) {
-    const [x1, y1] = pts[i];
-    const [x2, y2] = pts[i + 1];
-    const dx = x2 - x1, dy = y2 - y1;
-    if (Math.hypot(dx, dy) < 0.1) continue;
-    const deg = Math.round(((Math.atan2(dy, dx) * 180 / Math.PI) % 360 + 360) % 360);
-    
-    if (isSanOrLl) {
-      const rem = deg % 45;
-      if (rem > 1 && rem < 44) {
-        return false;
-      }
-    } else {
-      // Otras redes: allow multiples of 45 degrees
-      const rem = deg % 45;
-      if (rem > 1 && rem < 44) {
-        return false;
-      }
-    }
-  }
-
-  // Prevent sharp internal angles (< 45 deg) between consecutive segments
-  for (let i = 0; i < pts.length - 2; i++) {
-    const [x1, y1] = pts[i];
-    const [x2, y2] = pts[i + 1];
-    const [x3, y3] = pts[i + 2];
-    
-    const dx1 = x2 - x1, dy1 = y2 - y1;
-    const dx2 = x3 - x2, dy2 = y3 - y2;
-    if (Math.hypot(dx1, dy1) < 0.1 || Math.hypot(dx2, dy2) < 0.1) continue;
-    
-    const a1 = Math.atan2(dy1, dx1) * 180 / Math.PI;
-    const a2 = Math.atan2(dy2, dx2) * 180 / Math.PI;
-    let diff = Math.abs(a2 - a1) % 360;
-    if (diff > 180) diff = 360 - diff;
-    
-    const internalAngle = 180 - diff;
-    if (internalAngle < 50) { // < 50 degrees to block exactly 45 (V-shape)
-      return false;
-    }
-  }
-
-  return true;
-}
+export { checkRamalAngles, _firstSegmentAngle, _strokeAngle, snapTributaryToPadre45Deg } from './drawingAngles';
+export { handleBajanteDown, handleMontanteDown, handleCalentadorDown, handleRedPublicaDown, handleContadorDown } from './drawingCreations';
 
 type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont' | 'calent';
 
@@ -110,41 +66,7 @@ export function _midpoint(pts: number[][]): [number, number] {
   return [pts[pts.length - 1][0], pts[pts.length - 1][1]];
 }
 
-export function _firstSegmentAngle(pts: number[][]): number {
-  if (pts.length < 2) return 0;
-  const dx = pts[1][0] - pts[0][0];
-  const dy = pts[1][1] - pts[0][1];
-  let angle = Math.atan2(dy, dx) * 180 / Math.PI;
-  if (angle > 90) angle -= 180;
-  if (angle < -90) angle += 180;
-  return Math.round(angle);
-}
 
-export function _strokeAngle(pts: number[][]): number {
-  if (pts.length < 2) return 0;
-  let totalLen = 0;
-  const segLens: number[] = [];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const l = Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
-    segLens.push(l);
-    totalLen += l;
-  }
-  const half = totalLen / 2;
-  let acc = 0;
-  for (let i = 0; i < segLens.length; i++) {
-    if (acc + segLens[i] >= half) {
-      const dx = pts[i + 1][0] - pts[i][0];
-      const dy = pts[i + 1][1] - pts[i][1];
-      if (segLens[i] < 1) return 0;
-      let angle = Math.atan2(dy, dx) * 180 / Math.PI;
-      if (angle > 90) angle -= 180;
-      if (angle < -90) angle += 180;
-      return Math.round(angle);
-    }
-    acc += segLens[i];
-  }
-  return 0;
-}
 
 export function _calcPolyArea(engine: IPlanoEngineCore, pts: number[][]): number {
   let area = 0;
@@ -394,57 +316,35 @@ export function setScaleM(engine: IPlanoEngineCore, v: string | number): void {
   engine.render();
 }
 
-export function snapTributaryToPadre45Deg(cursorX: number, cursorY: number, lastX: number, lastY: number, pts: number[][], threshold: number): { x: number; y: number } | null {
-  let best: { x: number; y: number } | null = null;
-  let minD = Infinity;
-
-  for (let i = 0; i < pts.length - 1; i++) {
-    const [x1, y1] = pts[i];
-    const [x2, y2] = pts[i + 1];
-    const dx = x2 - x1, dy = y2 - y1;
-    const lenSq = dx * dx + dy * dy;
-    if (lenSq < 1) continue;
-    const len = Math.sqrt(lenSq);
-    const ux = dx / len, uy = dy / len;
-
-    // Project 'last' onto the line
-    const tLast = ((lastX - x1) * dx + (lastY - y1) * dy) / lenSq;
-    const projX = x1 + tLast * dx;
-    const projY = y1 + tLast * dy;
-    
-    // Perpendicular distance
-    const perpDist = Math.hypot(lastX - projX, lastY - projY);
-
-    // Two possible points at 45 degrees
-    const q1x = projX + ux * perpDist;
-    const q1y = projY + uy * perpDist;
-    const q2x = projX - ux * perpDist;
-    const q2y = projY - uy * perpDist;
-
-    // Check which one is closer to cursor and on segment
-    const checkPoint = (qx: number, qy: number) => {
-      const t = ((qx - x1) * dx + (qy - y1) * dy) / lenSq;
+function checkCrossRamalAngle(engine: IPlanoEngineCore, pA: number[], pB: number[], skipId: string): boolean {
+  for (const r of engine.ramales) {
+    if (r.id === skipId || !r.pts || r.pts.length < 2) continue;
+    const isSanOrLl = (r.net || engine.activeNet) === 'san' || (r.net || engine.activeNet) === 'll';
+    for (let si = 0; si < r.pts.length - 1; si++) {
+      const [ax, ay] = r.pts[si], [bx, by] = r.pts[si + 1];
+      const segLen = Math.hypot(bx - ax, by - ay);
+      if (segLen < 0.1) continue;
+      const t = ((pB[0] - ax) * (bx - ax) + (pB[1] - ay) * (by - ay)) / (segLen * segLen);
       if (t >= 0 && t <= 1) {
-        const d = Math.hypot(cursorX - qx, cursorY - qy);
-        if (d < minD && d <= threshold) {
-          minD = d;
-          best = { x: qx, y: qy };
+        const projDist = Math.abs((bx - ax) * (ay - pB[1]) - (by - ay) * (ax - pB[0])) / segLen;
+        if (projDist < 0.5) {
+          const a1 = Math.atan2(pB[1] - pA[1], pB[0] - pA[0]) * 180 / Math.PI;
+          const a2 = Math.atan2(by - ay, bx - ax) * 180 / Math.PI;
+          let diff = Math.abs(a2 - a1) % 360;
+          if (diff > 180) diff = 360 - diff;
+          const internalAngle = 180 - diff;
+          if (isSanOrLl ? internalAngle < 134 : internalAngle < 50) {
+            engine.triggerAlert(
+              'Ángulo no recomendado',
+              isSanOrLl ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 0° y 45°.' : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
+            );
+            return false;
+          }
         }
       }
-    };
-    checkPoint(q1x, q1y);
-    checkPoint(q2x, q2y);
-    checkPoint(projX, projY); // 90 degree snap
+    }
   }
-  return best;
-}
-
-export function getBacktrackPts(pts: number[][], targetIdx: number): number[][] {
-  const backtrack: number[][] = [];
-  for (let j = pts.length - 2; j >= targetIdx; j--) {
-    backtrack.push([pts[j][0], pts[j][1]]);
-  }
-  return [...pts, ...backtrack];
+  return true;
 }
 
 export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number): void {
@@ -457,7 +357,10 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     const sp = engine.snapToExisting(pt.x, pt.y);
     if (sp) {
       pt = sp;
-      const activeNetsRamales = engine.ramales.filter((rm: any) => rm.net === engine.activeNet);
+      let activeNetsRamales = engine.ramales.filter((rm: any) => rm.net === engine.activeNet);
+      if (engine.tipoTramo === 'tributario') {
+        activeNetsRamales = activeNetsRamales.filter((rm: any) => rm.id === engine.padreTributario);
+      }
       let continueRamal: any = null;
       let reversePoints = false;
       const SNAP_THRESH = 0.5;
@@ -493,7 +396,10 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
         return;
       }
     } else {
-      const activeNetsRamales = engine.ramales.filter((r: any) => r.net === engine.activeNet);
+      let activeNetsRamales = engine.ramales.filter((r: any) => r.net === engine.activeNet);
+      if (engine.tipoTramo === 'tributario') {
+        activeNetsRamales = activeNetsRamales.filter((r: any) => r.id !== engine.padreTributario);
+      }
       let isOnSegment = false;
       const SNAP_THRESH = 12 / engine.zoom;
       
@@ -544,7 +450,9 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       pt = engine.snapAngle(last[0], last[1], pt.x, pt.y);
     }
     
-    const activeRamales = engine.ramales.filter((r: any) => r.net === engine.activeNet);
+    const activeRamales = engine.tipoTramo === 'tributario'
+      ? engine.ramales.filter((r: any) => r.id === engine.padreTributario)
+      : engine.ramales.filter((r: any) => r.net === engine.activeNet);
     for (const r of activeRamales) {
       if (r.id === engine.activeRamal.id) continue;
       let sp = null;
@@ -594,8 +502,41 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
         pt = { x: bx, y: by };
       }
     }
+    if (engine.activeRamal.pts.length >= 2) {
+      const testPts = [...engine.activeRamal.pts, [pt.x, pt.y]];
+      if (!checkRamalAngles(testPts, engine.activeNet)) {
+        engine.triggerAlert(
+          'Ángulo no recomendado',
+          (engine.activeNet === 'san' || engine.activeNet === 'll')
+            ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 0° y 45°.'
+            : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
+        );
+        return;
+      }
+    }
     engine.activeRamal.pts.push([pt.x, pt.y]);
     engine.activeRamal.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
+
+    // Cross-ramal tee check: validate angle between active ramal and any existing ramal
+    {
+      const ppts = engine.activeRamal.pts;
+      const lastIdx = ppts.length - 1;
+      if (lastIdx >= 1 && !checkCrossRamalAngle(engine, ppts[lastIdx - 1], ppts[lastIdx], engine.activeRamal.id || '')) {
+        engine.activeRamal.pts.pop();
+        engine.activeRamal.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
+        engine._markDirty();
+        engine.render();
+        return;
+      }
+      // First segment: connection point is pts[0], so pass pts[1] as pA, pts[0] as pB
+      if (lastIdx >= 2 && !checkCrossRamalAngle(engine, ppts[1], ppts[0], engine.activeRamal.id || '')) {
+        engine.activeRamal.pts.pop();
+        engine.activeRamal.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
+        engine._markDirty();
+        engine.render();
+        return;
+      }
+    }
   }
   engine._emitStatus(_statusMsg(engine));
   engine.render();
@@ -635,240 +576,6 @@ export function handleTextDown(engine: IPlanoEngineCore, px: number, py: number)
       engine.textAnnots.push({
         id: tid2, x: px, y: py, text: t,
         fontMm: 2.5, boxW: 0, lblOffX: 0, lblOffY: 0, textAngle: 0,
-      });
-      engine.selId = tid2;
-      engine._emitSelect(engine.textAnnots[engine.textAnnots.length - 1]);
-      engine.render();
-      engine._markDirty();
-    }
-  }
-}
-
-export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: number): void {
-  if (engine.snapMode) {
-    const sp = engine.snapToExisting(px, py);
-    if (sp) { px = sp.x; py = sp.y; }
-  }
-  // Snap to nearest ramal endpoint if close enough
-  const ASSOC_THRESH = 20 / engine.zoom;
-  const assocRamales: string[] = [];
-  for (const r of engine.ramales) {
-    if (r.net !== engine.activeNet || !r.pts?.length) continue;
-    const startDist = Math.hypot(px - r.pts[0][0], py - r.pts[0][1]);
-    const li = r.pts.length - 1;
-    const endDist = Math.hypot(px - r.pts[li][0], py - r.pts[li][1]);
-    if (startDist < ASSOC_THRESH && startDist <= endDist) {
-      px = r.pts[0][0]; py = r.pts[0][1];
-      assocRamales.push(r.id);
-    } else if (endDist < ASSOC_THRESH) {
-      px = r.pts[li][0]; py = r.pts[li][1];
-      assocRamales.push(r.id);
-    }
-  }
-  const net = NETS.find(n => n.id === engine.activeNet);
-  const netPfx = net ? net.bmPfx : 'BAJ';
-  const cnt = engine.bajantes.filter(b => b.tipo === 'bajante' && b.net === engine.activeNet).length + 1;
-  const bajId = netPfx + cnt;
-  engine.bajantes.push({
-    id: bajId,
-    net: engine.activeNet,
-    tipo: 'bajante',
-    code: bajId,
-    x: px, y: py,
-    pisoBase: engine.nivelActual?.label ?? '',
-    pisoCima: engine.nivelActual?.label ?? '',
-    nptBase: engine.nivelActual?.npt ?? 0,
-    nptCima: engine.nivelActual?.npt ?? 0,
-    hVert: 0, dNominal: '0',
-    recibeDeIds: assocRamales, alimentaIds: [], descargaEnId: null,
-    ucAcum: 0, ucExtra: 0, area_m2: 0,
-    desplazamientos: {},
-    lblOffX: 0, lblOffY: 0,
-    labelAngle: 0,
-    labelX: px, labelY: py + 20,
-    bajR: 7/24,
-  });
-  engine.selId = bajId;
-  engine._isGhostSel = false;
-  engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
-  engine.render();
-  engine._markDirty();
-}
-
-export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: number): void {
-  if (engine.snapMode) {
-    const sp = engine.snapToExisting(px, py);
-    if (sp) { px = sp.x; py = sp.y; }
-  }
-  const netDef = NETS.find(n => n.id === engine.activeNet);
-  const pfx = netDef?.bmPfx || 'MON';
-  const cnt = engine.bajantes.filter(b => b.tipo === 'montante' && b.net === engine.activeNet).length + 1;
-  const monId = `${pfx}${cnt}_${engine.activeNet}`;
-  const code = `${pfx}${cnt}`;
-  engine.bajantes.push({
-    id: monId,
-    net: engine.activeNet,
-    tipo: 'montante',
-    code: code,
-    x: px, y: py,
-    pisoBase: engine.nivelActual?.label ?? '',
-    pisoCima: engine.nivelActual?.label ?? '',
-    nptBase: engine.nivelActual?.npt ?? 0,
-    nptCima: engine.nivelActual?.npt ?? 0,
-    hVert: 0, dNominal: '0',
-    recibeDeIds: [], alimentaIds: [], descargaEnId: null,
-    ucAcum: 0, ucExtra: 0, area_m2: 0,
-    desplazamientos: {},
-    lblOffX: 0, lblOffY: 0,
-    labelAngle: 0,
-    labelX: px, labelY: py + 20,
-    bajR: 7/24,
-  });
-  engine._renumberMontantes();
-  const newlyCreated = engine.bajantes.find(b => b.tipo === 'montante' && b.x === px && b.y === py);
-  if (newlyCreated) {
-    engine.selId = newlyCreated.id;
-    engine._emitSelect(newlyCreated);
-  }
-  engine._isGhostSel = false;
-  engine.render();
-  engine._markDirty();
-}
-
-export function handleCalentadorDown(engine: IPlanoEngineCore, px: number, py: number): void {
-  if (engine.snapMode) {
-    const sp = engine.snapToExisting(px, py);
-    if (sp) { px = sp.x; py = sp.y; }
-  }
-  const calent = engine.bajantes.filter(b => b.tipo === 'calentador').length + 1;
-  const calentId = 'calentG' + calent;
-  engine.bajantes.push({
-    id: calentId,
-    net: engine.activeNet,
-    tipo: 'calentador',
-    code: 'calentG' + calent,
-    x: px, y: py,
-    pisoBase: engine.nivelActual?.label ?? '',
-    pisoCima: engine.nivelActual?.label ?? '',
-    nptBase: engine.nivelActual?.npt ?? 0,
-    nptCima: engine.nivelActual?.npt ?? 0,
-    hVert: 0, dNominal: '0',
-    recibeDeIds: [], alimentaIds: [], descargaEnId: null,
-    ucAcum: 0, ucExtra: 0, area_m2: 0,
-    desplazamientos: {},
-    lblOffX: 0, lblOffY: 0,
-    labelAngle: 0,
-    labelX: px - 25, labelY: py,
-    bajR: 7/24,
-  });
-  engine.selId = calentId;
-  engine.render();
-  engine._markDirty();
-}
-
-export function handleRedPublicaDown(engine: IPlanoEngineCore, px: number, py: number): void {
-  if (engine.snapMode) {
-    const sp = engine.snapToExisting(px, py);
-    if (sp) { px = sp.x; py = sp.y; }
-  }
-  const cnt = engine.bajantes.filter(b => b.tipo === 'red_publica').length + 1;
-  const rpId = 'RP' + cnt;
-  engine.bajantes.push({
-    id: rpId,
-    net: engine.activeNet,
-    tipo: 'red_publica',
-    code: 'RP' + cnt,
-    x: px, y: py,
-    pisoBase: engine.nivelActual?.label ?? '',
-    pisoCima: engine.nivelActual?.label ?? '',
-    nptBase: engine.nivelActual?.npt ?? 0,
-    nptCima: engine.nivelActual?.npt ?? 0,
-    hVert: 0, dNominal: '0',
-    recibeDeIds: [], alimentaIds: [], descargaEnId: null,
-    ucAcum: 0, ucExtra: 0, area_m2: 0,
-    desplazamientos: {},
-    lblOffX: 0, lblOffY: 0,
-    labelAngle: 0,
-    labelX: px, labelY: py + 20,
-    bajR: 7/24,
-  });
-  engine.selId = rpId;
-  engine._isGhostSel = false;
-  engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
-  engine.render();
-  engine._markDirty();
-}
-
-export function handleContadorDown(engine: IPlanoEngineCore, px: number, py: number): void {
-  if (engine.snapMode) {
-    const sp = engine.snapToExisting(px, py);
-    if (sp) { px = sp.x; py = sp.y; }
-  }
-  const cnt = engine.bajantes.filter(b => b.tipo === 'contador').length + 1;
-  const cntId = 'cntAF' + cnt;
-  engine.bajantes.push({
-    id: cntId,
-    net: engine.activeNet,
-    tipo: 'contador',
-    code: 'cntAF' + cnt,
-    x: px, y: py,
-    pisoBase: engine.nivelActual?.label ?? '',
-    pisoCima: engine.nivelActual?.label ?? '',
-    nptBase: engine.nivelActual?.npt ?? 0,
-    nptCima: engine.nivelActual?.npt ?? 0,
-    hVert: 0, dNominal: '0',
-    recibeDeIds: [], alimentaIds: [], descargaEnId: null,
-    ucAcum: 0, ucExtra: 0, area_m2: 0,
-    desplazamientos: {},
-    lblOffX: 0, lblOffY: 0,
-    labelAngle: 0,
-    labelX: px - 25, labelY: py,
-    bajR: 7/24,
-  });
-  engine.selId = cntId;
-  engine._isGhostSel = false;
-  engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
-
-  // Auto-create ramal from nearest Red Pública to this Contador
-  const rps = engine.bajantes.filter(b => b.tipo === 'red_publica' && b.net === engine.activeNet);
-  if (rps.length > 0) {
-    let nearestRP = rps[0];
-    let minDist = Infinity;
-    for (const rp of rps) {
-      const d = Math.hypot(rp.x - px, rp.y - py);
-      if (d < minDist) { minDist = d; nearestRP = rp; }
-    }
-    const rpId = nearestRP.code || nearestRP.id;
-    const alreadyConnected = engine.ramales.some((r: any) =>
-      r.net === engine.activeNet && ((r.ini === rpId && r.fin === cntId) || (r.ini === cntId && r.fin === rpId))
-    );
-    if (!alreadyConnected) {
-      const net = NETS.find(n => n.id === engine.activeNet);
-      const pfx = net ? net.lbl : 'R';
-      if (!engine._netCounts[engine.activeNet]) engine._netCounts[engine.activeNet] = { ramal: 0, tributario: 0 };
-      const ramCnt = ++(engine._netCounts[engine.activeNet].ramal);
-      const ramId = pfx + ramCnt;
-      engine.ramales.push({
-        id: ramId,
-        net: engine.activeNet,
-        _net: engine.activeNet,
-        tipo: 'ramal',
-        padre: null,
-        pts: [[nearestRP.x, nearestRP.y], [px, py]],
-        totalL: +(engine.pxToM(Math.hypot(px - nearestRP.x, py - nearestRP.y))).toFixed(3),
-        label: pfx + ramCnt,
-        ini: rpId,
-        fin: cntId,
-        piso: engine.nivelActual?.n ?? '',
-        dz: '',
-        uc: 0,
-        labelX: (nearestRP.x + px) / 2,
-        labelY: (nearestRP.y + py) / 2,
-        labelAngle: 0,
-        material: '',
-        diametro: '',
-        pendiente: 1.5,
-        bloqueado: true,
       });
     }
   }

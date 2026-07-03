@@ -1,6 +1,6 @@
 const PT_LINE = 16;
 
-export function hitTestPoint(px: number, py: number, x: number, y: number, threshold = PT_LINE) {
+function hitTestPoint(px: number, py: number, x: number, y: number, threshold = PT_LINE) {
   return Math.hypot(px - x, py - y) <= threshold;
 }
 
@@ -14,10 +14,6 @@ export function hitTestLine(px: number, py: number, x1: number, y1: number, x2: 
   const cx = x1 + t * dx;
   const cy = y1 + t * dy;
   return Math.hypot(px - cx, py - cy) <= threshold;
-}
-
-export function hitTestRect(px: number, py: number, rx: number, ry: number, rw: number, rh: number) {
-  return px >= rx && px <= rx + rw && py >= ry && py <= ry + rh;
 }
 
 export function pointInPoly(px: number, py: number, cvsPts: { x: number; y: number }[]) {
@@ -63,6 +59,26 @@ export function snapToSegment(x: number, y: number, pts: number[][], threshold: 
     if (d < minD && d <= threshold) { minD = d; best = { x: ptx, y: pty }; }
   }
   return best;
+}
+
+export function rotatedRectCorners(
+  cx: number, cy: number, w: number, h: number, angle: number, margin = 0
+): { corners: { x: number; y: number }[]; minX: number; minY: number; maxX: number; maxY: number } {
+  const cosA = Math.cos(angle), sinA = Math.sin(angle);
+  const hw = w / 2, hh = h / 2;
+  const corners = [
+    { x: cx + cosA * (-hw) - sinA * (-hh), y: cy + sinA * (-hw) + cosA * (-hh) },
+    { x: cx + cosA * (hw) - sinA * (-hh), y: cy + sinA * (hw) + cosA * (-hh) },
+    { x: cx + cosA * (hw) - sinA * (hh), y: cy + sinA * (hw) + cosA * (hh) },
+    { x: cx + cosA * (-hw) - sinA * (hh), y: cy + sinA * (-hw) + cosA * (hh) },
+  ];
+  return {
+    corners,
+    minX: Math.min(...corners.map(c => c.x)) - margin,
+    minY: Math.min(...corners.map(c => c.y)) - margin,
+    maxX: Math.max(...corners.map(c => c.x)) + margin,
+    maxY: Math.max(...corners.map(c => c.y)) + margin,
+  };
 }
 
 export function distanceToRamal(
