@@ -128,7 +128,7 @@ export default function SanAccesoriosPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', flex: 1, paddingBottom: '24px' }}>
       
       {/* Card 1: Accesorios por ramal */}
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <section className="card" style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div className="card-h">
           <h3 className="card-t">
             <img src="/iconos_diseno_redes/general/Accesorios.svg" alt="Accesorios" width={24} height={24} style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} loading="lazy" />
@@ -185,10 +185,10 @@ export default function SanAccesoriosPage() {
             </table>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Card 2: Resumen de accesorios por diámetro */}
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <section className="card" style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
         <div className="card-h">
           <h3 className="card-t">
             <img src="/iconos_diseno_redes/general/Accesorios.svg" alt="Totales" width={24} height={24} style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} loading="lazy" />
@@ -235,7 +235,7 @@ export default function SanAccesoriosPage() {
             </table>
           </div>
         </div>
-      </div>
+      </section>
       
     </div>
   );

@@ -26,7 +26,7 @@ export default function PdfViewerDrawnElements({ drawnElements, activeNet, selEl
                 borderRadius:3,cursor:'pointer',border:`1px solid ${selElement?.id===el.id?'rgba(37,99,235,.4)':'#3a494a'}`,
                 display:'flex',flexDirection:'column',gap:4,
               }}>
-              <div role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();engineRef.current?.selectById(el.id);}}} style={{display:'flex',alignItems:'center',gap:4}} onClick={()=>{if(engineRef.current)engineRef.current.selectById(el.id);}}>
+              <div role="button" tabIndex={0} aria-label={`Seleccionar elemento ${el.id}`} aria-selected={el.id === selElement?.id} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();engineRef.current?.selectById(el.id);}}} style={{display:'flex',alignItems:'center',gap:4}} onClick={()=>{if(engineRef.current)engineRef.current.selectById(el.id);}}>
                 <span style={{fontSize:11,color:el.tipo==='montante'?'#3B82F6':el.type==='bajante'?'#F04545':'#4D8FF7'}}>
                   {el.tipo==='montante'?'\u2B06':el.type==='bajante'?'\u2B07':'\u2571'}
                 </span>

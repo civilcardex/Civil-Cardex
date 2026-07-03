@@ -14,7 +14,7 @@ interface InfoTabProps {
 const ProjectIdCard = React.memo(function ProjectIdCard({ proy, setP }: { proy: any; setP: (k: string, v: any) => void }) {
   const [isEditing, setIsEditing] = React.useState(false);
   return (
-    <div className="card" style={{ flex: '0 1 auto', minWidth: 200 }}>
+    <section className="card" style={{ flex: '0 1 auto', minWidth: 200 }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
           <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
@@ -33,14 +33,14 @@ const ProjectIdCard = React.memo(function ProjectIdCard({ proy, setP }: { proy: 
         <div className="f" style={{ marginBottom: 0 }}><label htmlFor="proj-uso" style={{ fontSize: 12 }}>Uso</label>
           <select id="proj-uso" disabled={!isEditing} value={proy.uso} onChange={e => setP('uso', e.target.value)} style={{ fontSize: 12, padding: '3px 6px', width: '100%', opacity: isEditing ? 1 : 0.7 }}><option value="">—</option>{USOS.map(u => <option key={u}>{u}</option>)}</select></div>
       </div>
-    </div>
+    </section>
   );
 });
 
 const ActiveNetsCard = React.memo(function ActiveNetsCard({ redes, setRedes, netColors, setNetColors }: { redes: Set<string>; setRedes: Dispatch<SetStateAction<Set<string>>>; netColors: Record<string, string>; setNetColors: Dispatch<SetStateAction<Record<string, string>>> }) {
   const [isEditing, setIsEditing] = React.useState(false);
   return (
-    <div className="card" style={{ flex: '0 1 auto', minWidth: 190 }}>
+    <section className="card" style={{ flex: '0 1 auto', minWidth: 190 }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
           <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
@@ -102,14 +102,14 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({ redes, setRedes, net
           })()}
         </div>
       </div>
-    </div>
+    </section>
   );
 });
 
 const ActiveEquiposCard = React.memo(function ActiveEquiposCard({ redes, setRedes }: { redes: Set<string>; setRedes: Dispatch<SetStateAction<Set<string>>> }) {
   const [editing, setEditing] = useState(false);
   return (
-    <div className="card" style={{ flex: 1, minWidth: 190, display: 'flex', flexDirection: 'column' }}>
+    <section className="card" style={{ flex: 1, minWidth: 190, display: 'flex', flexDirection: 'column' }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -142,7 +142,7 @@ const ActiveEquiposCard = React.memo(function ActiveEquiposCard({ redes, setRede
           })}
         </div>
       </div>
-    </div>
+    </section>
   );
 });
 
@@ -159,7 +159,7 @@ const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
 }) {
   const [isEditing, setIsEditing] = React.useState(false);
   return (
-    <div className="card" style={{ flex: '0 0 auto', minWidth: 0 }}>
+    <section className="card" style={{ flex: '0 0 auto', minWidth: 0 }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
           <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
@@ -188,14 +188,14 @@ const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
           </div>
           <button disabled={!isEditing} onClick={props.generarPisos} style={{ width: '100%', padding: '6px', marginTop: 6, background: 'var(--acc)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontWeight: 600, fontSize: 12, cursor: isEditing ? 'pointer' : 'default', opacity: isEditing ? 1 : 0.5 }}>Generar niveles automáticamente</button>
         </div>
-    </div>
+    </section>
   );
 });
 
 const LevelsCard = React.memo(function LevelsCard({ pisos, delPiso, addPiso, addSotano, setPisos }: { pisos: any[]; delPiso: (id: string | number) => void; addPiso: () => void; addSotano: () => void; setPisos: (p: any[] | ((prev: any[]) => any[])) => void }) {
   const [isEditing, setIsEditing] = React.useState(false);
   return (
-    <div className="card" style={{ flex: '1 1 auto', minWidth: 220, display: 'flex', flexDirection: 'column' }}>
+    <section className="card" style={{ flex: '1 1 auto', minWidth: 220, display: 'flex', flexDirection: 'column' }}>
       <div className="card-h" style={{ padding: '4px 8px', flexShrink: 0 }}>
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
           <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
@@ -243,13 +243,13 @@ const LevelsCard = React.memo(function LevelsCard({ pisos, delPiso, addPiso, add
           </>
         )}
       </div>
-    </div>
+    </section>
   );
 });
 
 const UsageGuideCard = React.memo(function UsageGuideCard() {
   return (
-    <div className="card" style={{ flex: '0 1 auto', minWidth: 0 }}>
+    <section className="card" style={{ flex: '0 1 auto', minWidth: 0 }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <h3 className="card-t" style={{ fontSize: 13 }}>
@@ -268,7 +268,7 @@ const UsageGuideCard = React.memo(function UsageGuideCard() {
           <li style={{ marginBottom: 5, fontWeight: 400, paddingLeft: 3 }}>Vaya a la pestaña <strong>Diseño de Redes y Equipos</strong> para iniciar el cálculo hidráulico de cada red activa.</li>
         </ol>
       </div>
-    </div>
+    </section>
   );
 });
 

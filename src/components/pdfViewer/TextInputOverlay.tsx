@@ -20,7 +20,19 @@ export default function TextInputOverlay({ textOverlay, setTextOverlay, textInpu
       zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'rgba(17,19,23,0.5)',
     }} onClick={() => { textOverlay.cb(''); setTextOverlay(null); }}>
-      <div role="dialog" aria-modal="true" aria-label="Ingresar texto" onClick={e => e.stopPropagation()} style={{
+      <div role="dialog" aria-modal="true" aria-label="Ingresar texto" onClick={e => e.stopPropagation()} onKeyDown={e => {
+          if (e.key === 'Tab') {
+            const focusable = e.currentTarget.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (focusable.length === 0) return;
+            const first = focusable[0] as HTMLElement;
+            const last = focusable[focusable.length - 1] as HTMLElement;
+            if (e.shiftKey) {
+              if (document.activeElement === first) { last.focus(); e.preventDefault(); }
+            } else {
+              if (document.activeElement === last) { first.focus(); e.preventDefault(); }
+            }
+          }
+        }} style={{
         background: '#1a1c20', border: '2px solid #4D8FF7', borderRadius: 8,
         padding: '16px 20px', boxShadow: '0 8px 32px rgba(77,143,247,0.25)',
         display: 'flex', flexDirection: 'column', gap: 10, minWidth: 280,

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { useNavigate } from 'react-router-dom';
 import { saveToStorage } from "../../services/storageService";
@@ -37,25 +38,27 @@ const accBtn: React.CSSProperties = {
   transition: "all .12s",
 };
 
-interface PdfViewerToolbarProps {
+type NavFn = () => void;
+type SelToolFn = (toolId: string) => void;
+export type PdfViewerToolbarProps = {
   tool: string;
   snapOn: boolean;
   activeNet: string;
   currentFile: File | null;
   saveStatus: string;
-  onSelectTool: (toolId: string) => void;
-  onSnapToggle: () => void;
-  onFit: () => void;
-  onSave: () => void;
-  onUndo: () => void;
-  onClear: () => void;
+  onSelectTool: SelToolFn;
+  onSnapToggle: NavFn;
+  onFit: NavFn;
+  onSave: NavFn;
+  onUndo: NavFn;
+  onClear: NavFn;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
   currentIdRef: React.MutableRefObject<string | undefined>;
   currentId: string | undefined;
   plansRef: React.MutableRefObject<any[]>;
-}
+};
 
-export default function PdfViewerToolbar({
+function PdfViewerToolbar_({
   tool, snapOn, activeNet, currentFile, saveStatus,
   onSelectTool, onSnapToggle, onFit, onSave, onUndo, onClear,
   engineRef, currentIdRef, currentId, plansRef,
@@ -182,3 +185,6 @@ export default function PdfViewerToolbar({
     </>
   );
 }
+
+const PdfViewerToolbar = memo(PdfViewerToolbar_);
+export default PdfViewerToolbar;

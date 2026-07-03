@@ -5,9 +5,9 @@ import { RainwaterProvider } from "../context/RainwaterContext";
 import { DIAMETROS_AF, DIAMETROS_AC } from "../constants/hydraulicData";
 import { lookupInterno, lookupInternoAC } from "../utils/accesoriosUtils";
 import InfoTab from "./workarea/InfoTab";
-import PlanosTab from "./workarea/PlanosTab";
 import type { useWorkAreaState } from "./useWorkAreaState";
 
+const PlanosTab = lazy(() => import("./workarea/PlanosTab"));
 const AccesoriosTable = lazy(() => import('./AccessoriesTable'));
 const HeaterSelection = lazy(() => import('./HeaterSelection'));
 const CalculoUD = lazy(() => import('./FixtureUnitCalc'));
@@ -162,12 +162,12 @@ function InfTab({ state }: { state: WorkAreaState }) {
   ], [proy, redesActivas, pisos, okSAN, okLL]);
   return (
     <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}>
-      <div className="card">
+      <section className="card">
         <div className="card-h">
-          <h3 className="card-t">
+          <h2 className="card-t">
             <img src="/Informes.svg" alt="Informes"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
             Resumen del proyecto
-          </h3>
+          </h2>
         </div>
         <div className="card-b">
           {items.map(([k, v]) => (
@@ -177,7 +177,7 @@ function InfTab({ state }: { state: WorkAreaState }) {
             </div>
           ))}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
@@ -187,13 +187,13 @@ export default function WorkAreaContent({ state }: WorkAreaContentProps) {
 
   return (
     <>
-      {tab === 'info' && <section aria-label="Información del proyecto" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><InfoTab state={state} /></section>}
-      {tab === 'planos' && <section aria-label="Carga de planos" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><PlanosTab state={state} /></section>}
-      {tab === 'redes' && state.redesActivas.length > 0 && <section aria-label="Diseño de red" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><RedesTab state={state} /></section>}
-      {tab === 'datos' && <section aria-label="Parámetros de diseño" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><Suspense fallback={FALLBACK}><BaseDatos redes={redes} /></Suspense></section>}
-      {tab === 'crit' && <section aria-label="Criterios y normativa" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><Suspense fallback={FALLBACK}><Normativa /></Suspense></section>}
+      {tab === 'info' && <section aria-label="Información del proyecto" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Información del proyecto</h2><InfoTab state={state} /></section>}
+      {tab === 'planos' && <section aria-label="Carga de planos" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Carga de planos</h2><Suspense fallback={FALLBACK}><PlanosTab state={state} /></Suspense></section>}
+      {tab === 'redes' && state.redesActivas.length > 0 && <section aria-label="Diseño de red" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Diseño de red</h2><RedesTab state={state} /></section>}
+      {tab === 'datos' && <section aria-label="Parámetros de diseño" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Parámetros de diseño</h2><Suspense fallback={FALLBACK}><BaseDatos redes={redes} /></Suspense></section>}
+      {tab === 'crit' && <section aria-label="Criterios y normativa" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Criterios y normativa</h2><Suspense fallback={FALLBACK}><Normativa /></Suspense></section>}
       {tab === 'inf' && <section aria-label="Resumen del proyecto" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><InfTab state={state} /></section>}
-      {tab === 'iso' && <section aria-label="Isometría de red" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><Suspense fallback={FALLBACK}><IsometriaTab state={state} /></Suspense></section>}
+      {tab === 'iso' && <section aria-label="Isometría de red" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Isometría de red</h2><Suspense fallback={FALLBACK}><IsometriaTab state={state} /></Suspense></section>}
     </>
   );
 }

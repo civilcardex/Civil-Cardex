@@ -15,8 +15,8 @@ const NET_OPTIONS = [
 
 interface CopyFromPlanPanelProps {
   engineRef: React.MutableRefObject<any>;
-  currentId: string;
-  currentIdRef: React.MutableRefObject<string>;
+  currentId: string | undefined;
+  currentIdRef: React.MutableRefObject<string | undefined>;
   planosCtx: { plans: any[] };
   pisos: any[];
   visibleNets: any[];

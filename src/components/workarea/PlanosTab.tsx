@@ -256,7 +256,7 @@ function PlanosTab({ state }: PlanosTabProps) {
           </div>
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, background: 'var(--bg)', cursor: 'pointer', position: 'relative' }}
-            role="button" tabIndex={0}
+            role="button" tabIndex={0} aria-label="Seleccionar archivo de plano"
             onClick={() => fileRef.current?.click()}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}>
             {planDrag ? (
@@ -296,7 +296,7 @@ function PlanosTab({ state }: PlanosTabProps) {
           </div>
           {pendingPlanos.length === 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, gap: 8, cursor: 'pointer', fontSize: 11, color: 'var(--txt4)', textAlign: 'center', lineHeight: 1.6 }}
-              role="button" tabIndex={0}
+              role="button" tabIndex={0} aria-label="Subir planos"
               onClick={() => fileRef.current?.click()}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}>
               {planDrag ? (

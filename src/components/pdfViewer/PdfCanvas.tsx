@@ -1,4 +1,4 @@
-import {  type RefObject  } from 'react';
+import { memo, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom'
 import { pisoLbl } from '../../constants'
 
@@ -17,7 +17,7 @@ interface PdfCanvasProps {
   snapOn: boolean
 }
 
-export default function PdfCanvas({
+function PdfCanvas({
   cwRef, containerRef, pdfCanvasRef, drawCanvasRef,
   currentFile, error, loading,
   selectedNivel, planos,
@@ -150,3 +150,5 @@ export default function PdfCanvas({
     </div>
   )
 }
+
+export default memo(PdfCanvas);

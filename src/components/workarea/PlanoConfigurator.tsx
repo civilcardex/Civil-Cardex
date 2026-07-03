@@ -463,7 +463,7 @@ function PlanoConfiguratorBase({
   };
 
   const tieneOrigen = origen !== null;
-  const tieneCal = factorX !== null || factorY !== null;
+  
   const escalaDisponible = scaleM !== null || preScaleM !== null;
 
   const guardarConfig = () => {
