@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import React, { useState, useMemo, useEffect } from "react";
-import { LE_K, pisoCorto } from "../constants";
+import { LE_K, pisoCorto, GAS_DN_LABELS } from "../constants";
 import { GAS, CAT_GAS } from "../constants/engineeringDataGas";
 import { CONTADORES as CONTADORES_CAT } from "../pages/catalog/catalogData";
 import { usePlans } from "../context/PlansContext";
@@ -17,9 +17,6 @@ const ALL_DN: {mat: string; K: number; dn: string; d: number}[] = [];
 const SR_ONLY = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 } as const;
 const EMPTY_ROW = { padding:'24px 0', textAlign:'center', color:'var(--txt3)', fontSize:11, border:'none' } as const;
 GAS.forEach(g=>{g.rows.forEach(r=>{ALL_DN.push({mat:g.mat,K:g.K,dn:r.dn,d:r.d});});});
-const GAS_DN_LABELS: string[] = [];
-for (const g of GAS) for (const r of g.rows) if (!GAS_DN_LABELS.includes(r.dn)) GAS_DN_LABELS.push(r.dn);
-
 const ACC_KEYS=['codos_90_std','codos_90_rl','te_linea','te_ramal','valvula_bola'];
 
 function lookupDn(mat: string, dn: string){
@@ -188,7 +185,7 @@ function GasDesign(){
   const colW=['8%','5%','8%','8%','18%','10%','8%','12%'];
 
   const page1 = (<>
-    <div className="card" style={{flexShrink:0,alignSelf:'center'}}>
+    <section className="card" style={{flexShrink:0,alignSelf:'center'}}>
       <div className="card-h" style={{padding:'6px 12px'}}>
         <h3 className="card-t">
           <img src="/iconos_diseno_redes/gas/datos_generales_red_gas.svg" alt="Datos generales red de gas"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
@@ -215,14 +212,14 @@ function GasDesign(){
           </tbody>
             </table>
         </div>
-      </div>
+      </section>
   </>);
   
   const page2=<GasCalcUC patm={patm} temp={temp} densRel={densRel} />;
 
   const page3 = (<>
     <div style={{display:'flex',flexDirection:'column',gap:6,flex:1,minHeight:0}}>
-      <div className="card" style={{display:'flex',flexDirection:'column'}}>
+      <section className="card" style={{display:'flex',flexDirection:'column'}}>
         <div className="card-h" style={{justifyContent:'space-between'}}>
           <h3 className="card-t">
             <img src="/iconos_diseno_redes/gas/diseno_red_gas.svg" alt="Diseño red de gas"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
@@ -274,9 +271,9 @@ function GasDesign(){
               </tbody>
             </table>
         </div>
-      </div>
+      </section>
       {gasContBajantes.length > 0 && (
-        <div className="card" style={{flexShrink:0}}>
+        <section className="card" style={{flexShrink:0}}>
           <div className="card-h" style={{justifyContent:'space-between'}}>
             <h3 className="card-t">
               <img src="/iconos_diseno_redes/hidraulica/red_agua_fria.svg" alt="Contador / Calentador"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
@@ -336,9 +333,9 @@ function GasDesign(){
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       )}
-      <div className="card" style={{display:'flex',flexDirection:'column',minWidth:0,overflow:'hidden',...(gasTramos.length===0?{}:{flex:1})}}>
+      <section className="card" style={{display:'flex',flexDirection:'column',minWidth:0,overflow:'hidden',...(gasTramos.length===0?{}:{flex:1})}}>
         <div className="card-h" style={{justifyContent:'space-between'}}>
           <h3 className="card-t">
             <img src="/iconos_diseno_redes/gas/chequeo_red_gas.svg" alt="Chequeo red de gas"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
@@ -401,7 +398,7 @@ function GasDesign(){
                       <td className="c" style={{...TD,padding:'3px 2px',fontSize:10}}>{pIni.toFixed(2)}</td>
                       <td className="c" style={{...TD,padding:'3px 2px',fontSize:10}}>{pFin.toFixed(2)}</td>
                       <td className="c" style={{padding:'3px 2px'}}>
-                        <span role="status" style={{fontSize:10,fontWeight:700,fontFamily:'var(--mono)',color:ok==='O.K.'?'#22c55e':ok==='NO'?'#ef5350':'var(--txt3)'}}>{ok}</span>
+                        <span style={{fontSize:10,fontWeight:700,fontFamily:'var(--mono)',color:ok==='O.K.'?'#22c55e':ok==='NO'?'#ef5350':'var(--txt3)'}}>{ok}</span>
                       </td>
                     </tr>
                   );
@@ -409,7 +406,7 @@ function GasDesign(){
               </tbody>
             </table>
         </div>
-      </div>
+      </section>
     </div>
   </>);
   

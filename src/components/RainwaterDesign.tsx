@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import { usePlans } from "../context/PlansContext";
+import { renderStatus } from "../utils/componentHelpers";
 import { pisoCorto, DIAM_OPTIONS } from "../constants";
 import { diametroManning } from "../utils/calcSanitaryCore";
 import { chequeoBajanteLluvia } from "../utils/calcRainwater";
@@ -10,45 +11,6 @@ import { calcHydraulicCheck } from "../utils/hydraulicCheck";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
 import { useRainwater } from "../context/RainwaterContext";
-
-const renderStatus = (val: string) => {
-  if (val === 'O.K.' || val === 'Ok' || val === 'OK') {
-    return (
-      <span style={{
-        color: 'var(--ok)',
-        background: 'rgba(47, 248, 1, 0.08)',
-        border: '1px solid rgba(47, 248, 1, 0.15)',
-        padding: '1px 5px',
-        borderRadius: '3px',
-        fontWeight: 600,
-        fontSize: '9px',
-        fontFamily: 'var(--mono)',
-        display: 'inline-block'
-      }}>
-        {val}
-      </span>
-    );
-  }
-  if (val === 'NO CUMPLE' || val === 'No cumple' || val === 'NO') {
-    return (
-      <span style={{
-        color: 'var(--err)',
-        background: 'rgba(255, 180, 171, 0.08)',
-        border: '1px solid rgba(255, 180, 171, 0.15)',
-        padding: '1px 5px',
-        borderRadius: '3px',
-        fontWeight: 600,
-        fontSize: '9px',
-        fontFamily: 'var(--mono)',
-        display: 'inline-block',
-        whiteSpace: 'nowrap'
-      }}>
-        {val}
-      </span>
-    );
-  }
-  return <span style={{ color: 'var(--txt3)' }}>{val}</span>;
-};
 
 export default function DisenoLluvias() {
   const { tramosLl, updTramoLL } = useTramos();
@@ -291,7 +253,7 @@ export default function DisenoLluvias() {
 
   return (
   <>
-    <div className="card">
+    <section className="card">
       <div className="card-h">
         <h3 className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Diseno_red.svg" alt="Diseño red aguas lluvias"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red aguas lluvias</h3>
       </div>
@@ -420,6 +382,6 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm });
         </table>
         </div>
       </div>
-    </div>
+    </section>
   </>);
 }

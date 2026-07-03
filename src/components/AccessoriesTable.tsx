@@ -19,7 +19,7 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: any[
   const cMono = "'Courier New',Courier,monospace";
   const cBg2 = '#1e293b';
   return (
-    <div className="card">
+    <section className="card">
       <div className="card-h">
         <h3 className="card-t"><img src="/iconos_diseno_redes/general/Accesorios.svg" alt="Accesorios"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Accesorios por ramal</h3>
         <span className="card-s">{tramos.length} tramos</span>
@@ -42,7 +42,7 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: any[
               {tramos.map((t, i) => {
                 const iniStr = String(t.ini || '');
                 const finStr = String(t.fin || '');
-                const lbl = isAC1(iniStr, finStr) ? `AC-01` : isAC2(iniStr, finStr) ? `AC-02 (${t.id})` : t.id;
+                const lbl = isAC1(iniStr, finStr) ? `AC-01` : isAC2(iniStr, finStr) ? `AC-02 (${t.label || t.id})` : t.label || t.id;
                 return (
                   <tr key={i}>
                     <td className="c" style={{fontSize:12,textAlign:'center',fontWeight:600,position:'sticky',left:0,background:cBg2,zIndex:1,padding:'4px 4px',whiteSpace:'nowrap'}}>{lbl}</td>
@@ -68,7 +68,7 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: any[
           </table>
         </div>
       </div>
-    </div>
+    </section>
   );
 });
 

@@ -44,9 +44,9 @@ export default function Normativa() {
         <style>{localCSS}</style>
         {tabsRow}
 
-        <div className="card" style={{ flexShrink: 0 }}>
+        <section className="card" style={{ flexShrink: 0 }}>
           <div className="ch" style={{ padding: "12px 16px" }}>
-            <span className="ct-t" style={{ fontSize: 14 }}>§ Criterios de diseño — tabla editable</span>
+            <h2 className="ct-t" style={{ fontSize: 14 }}>§ Criterios de diseño — tabla editable</h2>
             <span className="ct-s" style={{ fontSize: 10 }}>NTC 1500:2020 · RAS 2000 · NTC 3728 · NFPA 13:2022</span>
           </div>
           <div className="cb" style={{ padding: "10px 14px" }}>
@@ -67,14 +67,14 @@ export default function Normativa() {
               >↺ Restaurar</button>
             </div>
           </div>
-        </div>
+        </section>
 
         {critVisibles.length === 0 && (
           <div className="ib info"><span>ℹ</span><span>No hay criterios para esta red.</span></div>
         )}
         <div style={{ flex:1, minHeight:0, overflowY:'auto', display:'flex', flexDirection:'column', gap:6 }}>
           {critVisibles.map(cr => (
-            <div key={cr.id} className="card" style={{ flexShrink: 0 }}>
+            <section key={cr.id} className="card" style={{ flexShrink: 0 }}>
               <div className="card-b" style={{
                 display:'grid', gridTemplateColumns:'1fr auto auto auto',
                 gap:8, padding:'10px 14px',
@@ -116,7 +116,7 @@ export default function Normativa() {
                     onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, nota:v} : x)); }} />
                 </div>
               </div>
-            </div>
+            </section>
           ))}
         </div>
       </div>
@@ -201,7 +201,7 @@ function NormaCard({ id, titulo, subt, isOpen, onToggle, children }: NormaCardPr
           textAlign: 'inherit',
         }}>
         <div>
-          <h3 className="card-t" style={{ fontSize: 15, color: 'var(--txt)' }}>{titulo}</h3>
+          <h2 className="card-t" style={{ fontSize: 15, color: 'var(--txt)' }}>{titulo}</h2>
           <span className="td-mono" style={{ display:"block", fontSize:11, marginTop:2 }}>{subt}</span>
         </div>
         <span style={{ fontSize:14 }}>{isOpen ? '▲' : '▼'}</span>

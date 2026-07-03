@@ -5,12 +5,10 @@ import { usePlans } from "../context/PlansContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
+import { renderStatus, calcUDparcial } from "../utils/componentHelpers";
 import { pisoLbl, pisoCorto, DIAM_BAN, DIAM_VENT } from "../constants";
-import { calcUDparcial } from "../utils/componentHelpers";
 import { calculateVentStack } from "../utils/calcBajantes";
 import { diamPulgFromLabel } from "../utils/diamPulgFromLabel";
-
-
 
 function fmtPiso(val: string, pisos: any[]): string {
   if (!val) return '—';
@@ -22,45 +20,6 @@ function fmtPiso(val: string, pisos: any[]): string {
   }
   return val;
 }
-
-const renderStatus = (val: string) => {
-  if (val === 'O.K.' || val === 'Ok' || val === 'OK') {
-    return (
-      <span style={{
-        color: 'var(--ok)',
-        background: 'rgba(47, 248, 1, 0.08)',
-        border: '1px solid rgba(47, 248, 1, 0.15)',
-        padding: '1px 5px',
-        borderRadius: '3px',
-        fontWeight: 600,
-        fontSize: '9px',
-        fontFamily: 'var(--mono)',
-        display: 'inline-block'
-      }}>
-        {val}
-      </span>
-    );
-  }
-  if (val === 'NO CUMPLE' || val === 'No cumple' || val === 'NO') {
-    return (
-      <span style={{
-        color: 'var(--err)',
-        background: 'rgba(255, 180, 171, 0.08)',
-        border: '1px solid rgba(255, 180, 171, 0.15)',
-        padding: '1px 5px',
-        borderRadius: '3px',
-        fontWeight: 600,
-        fontSize: '9px',
-        fontFamily: 'var(--mono)',
-        display: 'inline-block',
-        whiteSpace: 'nowrap'
-      }}>
-        {val}
-      </span>
-    );
-  }
-  return <span style={{ color: 'var(--txt3)' }}>{val}</span>;
-};
 
 import { writeBajantePropToDrawing, writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
 
@@ -439,7 +398,7 @@ const BajantesTable = memo(function BajantesTable_() {
   }, [storageByPlan, tramosSan, udBase, getDescendantsUD]);
 
   return (
-    <div className="card">
+    <section className="card">
       <div className="card-h">
           <h3 className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Bajantes.svg" alt="Bajantes"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Bajantes de aguas negras y ventilación</h3>
       </div>
@@ -826,7 +785,7 @@ const BajantesTable = memo(function BajantesTable_() {
         </table>
         </div>
       </div>
-    </div>
+    </section>
   );
 });
 export default BajantesTable;

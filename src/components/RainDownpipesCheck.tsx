@@ -5,46 +5,8 @@ import { usePlans } from "../context/PlansContext";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
 import { chequeoBajanteLluvia } from "../utils/calcRainwater";
+import { renderStatus } from "../utils/componentHelpers";
 import { parseDecimalInput } from "../utils/parseDecimal";
-
-const renderStatus = (val: string) => {
-  if (val === 'O.K.' || val === 'Ok' || val === 'OK') {
-    return (
-      <span style={{
-        color: 'var(--ok)',
-        background: 'rgba(47, 248, 1, 0.08)',
-        border: '1px solid rgba(47, 248, 1, 0.15)',
-        padding: '1px 5px',
-        borderRadius: '3px',
-        fontWeight: 600,
-        fontSize: '9px',
-        fontFamily: 'var(--mono)',
-        display: 'inline-block'
-      }}>
-        {val}
-      </span>
-    );
-  }
-  if (val === 'NO CUMPLE' || val === 'No cumple' || val === 'NO') {
-    return (
-      <span style={{
-        color: 'var(--err)',
-        background: 'rgba(255, 180, 171, 0.08)',
-        border: '1px solid rgba(255, 180, 171, 0.15)',
-        padding: '1px 5px',
-        borderRadius: '3px',
-        fontWeight: 600,
-        fontSize: '9px',
-        fontFamily: 'var(--mono)',
-        display: 'inline-block',
-        whiteSpace: 'nowrap'
-      }}>
-        {val}
-      </span>
-    );
-  }
-  return <span style={{ color: 'var(--txt3)' }}>{val}</span>;
-};
 
 export default function ChequeoBajantesLluvias() {
   const { bajantesLl, updBajanteLL } = useRainwater();
@@ -142,7 +104,7 @@ export default function ChequeoBajantesLluvias() {
   }, [drawingBajantes, bajantesLl, areaDibujoMap, areaAcumMap]);
 
   return (
-    <div className="card">
+    <section className="card">
       <div className="card-h">
         <h3 className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Chequeo_bajantes.svg" alt="Chequeo bajantes"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Chequeo capacidad bajantes aguas lluvias</h3>
       </div>
@@ -222,6 +184,6 @@ return(
         </table>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

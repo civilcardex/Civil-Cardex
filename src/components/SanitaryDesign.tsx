@@ -2,7 +2,7 @@ import { useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { usePlans } from "../context/PlansContext";
-import { calcUDparcial } from "../utils/componentHelpers";
+import { calcUDparcial, renderStatus } from "../utils/componentHelpers";
 import { pisoCorto, DIAM_OPTIONS, SAN_UC_IDS, APARATOS_DEF } from "../constants";
 import { diametroManning, caudalHunterLPS, factorSimultaneidad } from "../utils/calcSanitaryCore";
 import { writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
@@ -14,45 +14,6 @@ const SR_ONLY = { position:'absolute',width:'1px',height:'1px',padding:0,margin:
 const EMPTY_ROW = { padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 } as const;
 const TH_HDR = { fontSize:9, textAlign:'center', padding:'2px 3px' } as const;
 const TH_SUB = { fontSize:8, textAlign:'center', padding:'2px 3px' } as const;
-
-const renderStatus = (val: string) => {
-  if (val === 'O.K.' || val === 'Ok' || val === 'OK') {
-    return (
-      <span style={{
-        color: 'var(--ok)',
-        background: 'rgba(47, 248, 1, 0.08)',
-        border: '1px solid rgba(47, 248, 1, 0.15)',
-        padding: '1px 5px',
-        borderRadius: '3px',
-        fontWeight: 600,
-        fontSize: '9px',
-        fontFamily: 'var(--mono)',
-        display: 'inline-block'
-      }}>
-        {val}
-      </span>
-    );
-  }
-  if (val === 'NO CUMPLE' || val === 'No cumple' || val === 'NO') {
-    return (
-      <span style={{
-        color: 'var(--err)',
-        background: 'rgba(255, 180, 171, 0.08)',
-        border: '1px solid rgba(255, 180, 171, 0.15)',
-        padding: '1px 5px',
-        borderRadius: '3px',
-        fontWeight: 600,
-        fontSize: '9px',
-        fontFamily: 'var(--mono)',
-        display: 'inline-block',
-        whiteSpace: 'nowrap'
-      }}>
-        {val}
-      </span>
-    );
-  }
-  return <span style={{ color: 'var(--txt3)' }}>{val}</span>;
-};
 
 export default function DisenosSanitarios() {
   const { tramosSan, updTramoSan } = useTramos();
@@ -383,7 +344,7 @@ export default function DisenosSanitarios() {
 
   return (
   <>
-  <div className="card">
+  <section className="card">
     <div className="card-h">
       <h3 className="card-t"><img src="/iconos_diseno_redes/sanitaria/RS_Diseno.svg" alt="Diseño red sanitaria"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red sanitaria</h3>
       <span className="card-s">{displayTramos.length} tramos · {totalUD} UD totales</span>
@@ -534,6 +495,6 @@ export default function DisenosSanitarios() {
         </table>
       </div>
     </div>
-  </div>
+  </section>
   </>);
 }

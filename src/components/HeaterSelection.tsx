@@ -99,7 +99,7 @@ export default function HeaterSelection() {
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       
-      <div className="card" style={{ width: '100%', maxWidth: 600, marginBottom: 20 }}>
+      <section className="card" style={{ width: '100%', maxWidth: 600, marginBottom: 20 }}>
         <table className="tbl">
           <thead>
             <tr>
@@ -131,9 +131,9 @@ export default function HeaterSelection() {
             )}
           </tbody>
         </table>
-      </div>
+      </section>
 
-      <div className="card" style={{ maxWidth: 600 }}>
+      <section className="card" style={{ maxWidth: 600 }}>
         <table className="tbl">
           <tbody>
             <tr>
@@ -210,7 +210,7 @@ export default function HeaterSelection() {
             </tr>
           </tbody>
         </table>
-      </div>
+      </section>
     </div>
   );
 }

@@ -74,7 +74,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.05fr 1fr', gap: 10, flex: 1, minHeight: 0, alignItems: 'start' }}>
 
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <section className="card" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
             <h3 className="card-t" style={{fontSize:13, display: 'flex', alignItems: 'center'}}><img src="/iconos_parametros_de_diseno/materiales_por_red.svg" alt="Materiales por red"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Materiales por red</h3>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -183,9 +183,9 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
             title="Ver catálogo completo de materiales, diámetros y coeficientes">
             <img src="/iconos_parametros_de_diseno/catalogo_maestro.svg" alt="Catálogo maestro"  width={18} height={18} style={{width:18,height:18,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Catálogo maestro
           </button>
-        </div>
+        </section>
 
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+        <section className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
             <h3 className="card-t" style={{fontSize:13, display: 'flex', alignItems: 'center'}}><img src="/iconos_parametros_de_diseno/catalogo_aparatos_sanitarios.svg" alt="Catálogo de aparatos sanitarios"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de aparatos sanitarios</h3>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -234,9 +234,9 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
 
-        <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+        <section className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
             <h3 className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_gasodomesticos.svg" alt="Catálogo de gasodomésticos"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de gasodomésticos</h3>
             <span className="card-s" style={{ fontSize: 10 }}>NTC 3728 · m³/hr</span>
@@ -265,7 +265,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
 
       </div>
     </div>

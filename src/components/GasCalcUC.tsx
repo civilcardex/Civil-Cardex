@@ -4,6 +4,7 @@ import { loadFromStorage } from "../services/storageService";
 
 import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from "../constants/storage-keys";
 import { GAS_APPARATUS, renouardByType } from "../utils/gasUtils";
+import { pisoCorto } from "../constants";
 import { TH, TD } from "../styles/sharedTableStyles";
 
 const ABREV = {
@@ -110,7 +111,7 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
 
   if (tramos.length === 0) {
     return (
-      <div className="card">
+      <section className="card">
         <div className="card-h">
           <h3 className="card-t">
             <img src="/iconos_diseno_redes/gas/calculo_UC_gas.svg" alt="Cálculo UC gas"  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
@@ -127,12 +128,12 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
     );
   }
 
   return (<>
-    <div className="card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+    <section className="card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
       <div className="card-h">
         <h3 className="card-t">
           <img src="/iconos_diseno_redes/gas/calculo_UC_gas.svg" alt="Cálculo UC gas"  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
@@ -148,7 +149,7 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
             {tramos.map((t, i) => (
               <tr key={t.id}>
                 <td className="c" style={{...TD, padding:"2px 3px"}}><span className="sigla" style={{ fontSize: 10, fontWeight: 600 }}>{t.id}</span></td>
-                <td className="c" style={{...TD, padding:"2px 3px"}}><span style={{ fontSize: 10 }}>{t.piso || "\u2014"}</span></td>
+                <td className="c" style={{...TD, padding:"2px 3px"}}><span style={{ fontSize: 10 }}>{t.piso != null && t.piso !== '' ? pisoCorto(Number(t.piso)) : "\u2014"}</span></td>
                 <td className="c" style={{...TD, padding:"2px 3px"}}><span style={{ fontSize: 10 }}>{t.ini || "\u2014"}</span></td>
                 <td className="c" style={{...TD, padding:"2px 3px"}}><span style={{ fontSize: 10 }}>{t.fin || "\u2014"}</span></td>
                 {GAS_APPARATUS.map((a) => (
@@ -185,9 +186,9 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
           </tfoot>
         </table>
       </div>
-    </div>
+    </section>
 
-    <div className="card" style={{ flexShrink: 0, alignSelf: "stretch" }}>
+    <section className="card" style={{ flexShrink: 0, alignSelf: "stretch" }}>
       <div className="card-h">
         <h3 className="card-t">
           <img src="/iconos_diseno_redes/general/calculo_perdidas_de_carga.svg" alt="Cálculo pérdidas de carga"  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
@@ -212,7 +213,7 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
           <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>Q<sub>d</sub> = max(&Sigma;Q<sub>i</sub> &times; {corrTotal.toFixed(2)}, 2.7) = <span style={{fontWeight:700}}>{Math.max(globalTotal * corrTotal, 2.7).toFixed(2)}</span> m&sup3;/h</span>
         </div>
       </div>
-    </div>
+    </section>
   </>);
 }
 export default React.memo(GasCalcUC);

@@ -62,7 +62,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
 
   return (
     <>
-      <div className="card">
+      <section className="card">
         <div className="card-h">
           <h3 className="card-t"><img src={icon} alt={`${title}`}  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Cálculo de unidades de consumo {title}</h3>
           <span className="card-s">{tramos.length} tramos</span>
@@ -169,7 +169,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
             </table>
           </div>
         </div>
-      </div>
+      </section>
     </>
   );
 }
