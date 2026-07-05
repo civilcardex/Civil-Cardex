@@ -169,13 +169,47 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
   if (engine.bajDrag) {
     const b = engine.bajantes.find(bb => bb.id === engine.bajDrag!.id);
     if (b) {
-      const p = engine.toPlane(x - engine.bajDrag.offX, y - engine.bajDrag.offY);
-      const dx = p.x - b.x;
-      const dy = p.y - b.y;
+      let p = engine.toPlane(x - engine.bajDrag.offX, y - engine.bajDrag.offY);
       const oldX = b.x;
       const oldY = b.y;
 
+      const associatedRamales: PlanoRamal[] = [];
+      if (b.recibeDeIds?.length) {
+        b.recibeDeIds.forEach(rid => {
+          const r = engine.ramales.find(rr => rr.id === rid);
+          if (r) associatedRamales.push(r);
+        });
+      }
+      if (b.descargaEnId) {
+        const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [engine._loadedPlanId, b.descargaEnId];
+        const targetPlanId = parts[0];
+        const targetId = parts[1];
+        if (String(targetPlanId) === String(engine._loadedPlanId)) {
+          const r = engine.ramales.find(rr => rr.id === targetId);
+          if (r) associatedRamales.push(r);
+        }
+      }
 
+      const snapThresh = 20 / engine.zoom;
+      for (const r of associatedRamales) {
+        if (!r.pts || r.pts.length === 0) continue;
+        const pStart = r.pts[0];
+        const pEnd = r.pts[r.pts.length - 1];
+        const dStart = Math.hypot(pStart[0] - p.x, pStart[1] - p.y);
+        const dEnd = Math.hypot(pEnd[0] - p.x, pEnd[1] - p.y);
+        if (dStart < snapThresh && dStart <= dEnd) {
+          p.x = pStart[0];
+          p.y = pStart[1];
+          break;
+        } else if (dEnd < snapThresh) {
+          p.x = pEnd[0];
+          p.y = pEnd[1];
+          break;
+        }
+      }
+
+      const dx = p.x - oldX;
+      const dy = p.y - oldY;
 
       b.x = p.x;
       b.y = p.y;
@@ -289,6 +323,35 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             p = engine.snapAngle(r.pts[1][0], r.pts[1][1], p.x, p.y);
           } else if (idx > 0) {
             p = engine.snapAngle(r.pts[idx - 1][0], r.pts[idx - 1][1], p.x, p.y);
+          }
+        }
+      }
+
+      if (isEndpoint) {
+        const associatedBajantes: any[] = [];
+        engine.bajantes.forEach(b => {
+          const isRecibe = b.recibeDeIds?.includes(r.id);
+          let isDescarga = false;
+          if (b.descargaEnId) {
+            const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [engine._loadedPlanId, b.descargaEnId];
+            const targetPlanId = parts[0];
+            const targetId = parts[1];
+            if (String(targetPlanId) === String(engine._loadedPlanId) && targetId === r.id) {
+              isDescarga = true;
+            }
+          }
+          if (isRecibe || isDescarga) {
+            associatedBajantes.push(b);
+          }
+        });
+
+        const snapThresh = 20 / engine.zoom;
+        for (const b of associatedBajantes) {
+          const dist = Math.hypot(b.x - p.x, b.y - p.y);
+          if (dist < snapThresh) {
+            p.x = b.x;
+            p.y = b.y;
+            break;
           }
         }
       }

@@ -25,12 +25,12 @@ export function checkRamalAngles(pts: number[][], net: string): boolean {
     const dx2 = x3 - x2, dy2 = y3 - y2;
     if (Math.hypot(dx1, dy1) < 0.1 || Math.hypot(dx2, dy2) < 0.1) continue;
 
-    const a1 = Math.atan2(dy1, dx1) * 180 / Math.PI;
-    const a2 = Math.atan2(dy2, dx2) * 180 / Math.PI;
-    let diff = Math.abs(a2 - a1) % 360;
-    if (diff > 180) diff = 360 - diff;
-
-    const internalAngle = 180 - diff;
+    const len1 = Math.hypot(dx1, dy1);
+    const len2 = Math.hypot(dx2, dy2);
+    const dot = dx1 * dx2 + dy1 * dy2;
+    const cosVal = dot / (len1 * len2);
+    const turnAngle = Math.acos(Math.max(-1, Math.min(1, cosVal))) * 180 / Math.PI;
+    const internalAngle = 180 - turnAngle;
 
     if (isSanOrLl) {
       if (internalAngle < 134) {
@@ -43,6 +43,23 @@ export function checkRamalAngles(pts: number[][], net: string): boolean {
     }
   }
 
+  return true;
+}
+
+export function segmentsIntersect(a1: number[], a2: number[], b1: number[], b2: number[]): boolean {
+  const [x1, y1] = a1, [x2, y2] = a2, [x3, y3] = b1, [x4, y4] = b2;
+  const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (Math.abs(d) < 1e-10) return false;
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
+  const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / d;
+  if (t < 0 || t > 1 || u < 0 || u > 1) return false;
+  const ix = x1 + t * (x2 - x1);
+  const iy = y1 + t * (y2 - y1);
+  const dA1 = Math.hypot(ix - x1, iy - y1);
+  const dA2 = Math.hypot(ix - x2, iy - y2);
+  const dB1 = Math.hypot(ix - x3, iy - y3);
+  const dB2 = Math.hypot(ix - x4, iy - y4);
+  if (dA1 < 0.001 || dA2 < 0.001 || dB1 < 0.001 || dB2 < 0.001) return false;
   return true;
 }
 

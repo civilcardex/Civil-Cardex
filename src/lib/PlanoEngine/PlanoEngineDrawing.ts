@@ -5,9 +5,9 @@ import type {
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
-import { _firstSegmentAngle, checkRamalAngles, snapTributaryToPadre45Deg } from './drawingAngles';
+import { _firstSegmentAngle, checkRamalAngles, segmentsIntersect, snapTributaryToPadre45Deg } from './drawingAngles';
 
-export { checkRamalAngles, _firstSegmentAngle, _strokeAngle, snapTributaryToPadre45Deg } from './drawingAngles';
+export { checkRamalAngles, _firstSegmentAngle, _strokeAngle, segmentsIntersect, snapTributaryToPadre45Deg } from './drawingAngles';
 export { handleBajanteDown, handleMontanteDown, handleCalentadorDown, handleRedPublicaDown, handleContadorDown } from './drawingCreations';
 
 type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont' | 'calent';
@@ -165,7 +165,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     pts: engine.activeRamal!.pts,
     totalL: calculateRamalLength(engine.activeRamal!.pts, engine),
     label: _nextLabel(engine),
-    ini: '', fin: '', piso: engine.nivelActual?.n ?? '', dz: '', uc: 0,
+    ini: '', fin: '', piso: engine.nivelActual?.n ?? '', dz: '', uc: 0, nSalidas: 1,
     labelX: labelX, labelY: labelY,
     labelAngle: firstAngle,
     material: def.material || '',
@@ -333,10 +333,16 @@ function checkCrossRamalAngle(engine: IPlanoEngineCore, pA: number[], pB: number
           let diff = Math.abs(a2 - a1) % 360;
           if (diff > 180) diff = 360 - diff;
           const internalAngle = 180 - diff;
-          if (isSanOrLl ? internalAngle < 134 : internalAngle < 50) {
+          let isAllowed = false;
+          if (isSanOrLl) {
+            isAllowed = (diff <= 46) || (diff >= 134) || (Math.abs(diff - 45) <= 10) || (Math.abs(diff - 135) <= 10);
+          } else {
+            isAllowed = (internalAngle >= 50);
+          }
+          if (!isAllowed) {
             engine.triggerAlert(
               'Ángulo no recomendado',
-              isSanOrLl ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 0° y 45°.' : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
+              isSanOrLl ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.' : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
             );
             return false;
           }
@@ -363,7 +369,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       }
       let continueRamal: any = null;
       let reversePoints = false;
-      const SNAP_THRESH = 0.5;
+      const SNAP_THRESH = 0.25;
       for (const rm of activeNetsRamales) {
         const firstPt = rm.pts[0];
         const lastPt = rm.pts[rm.pts.length - 1];
@@ -427,7 +433,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     const last = engine.activeRamal.pts[engine.activeRamal.pts.length - 1];
     const first = engine.activeRamal.pts[0];
     const distFirst = Math.hypot(pt.x - first[0], pt.y - first[1]);
-    const SNAP_CLOSE = 12 / engine.zoom;
+    const SNAP_CLOSE = 6 / engine.zoom;
 
     const distLast = Math.hypot(pt.x - last[0], pt.y - last[1]);
     if (distLast < SNAP_CLOSE) {
@@ -508,10 +514,34 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
         engine.triggerAlert(
           'Ángulo no recomendado',
           (engine.activeNet === 'san' || engine.activeNet === 'll')
-            ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 0° y 45°.'
+            ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
             : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
         );
         return;
+      }
+    }
+
+    // Check segment intersection with existing ramales of the same network
+    {
+      const ppts = engine.activeRamal.pts;
+      const lastIdx = ppts.length - 1;
+      if (lastIdx >= 0) {
+        const segStart = ppts[lastIdx];
+        const segEnd = [pt.x, pt.y] as number[];
+        for (const r of engine.ramales) {
+          if (r.net !== engine.activeNet) continue;
+          if (r.id === engine.activeRamal.id) continue;
+          if (!r.pts || r.pts.length < 2) continue;
+          for (let si = 0; si < r.pts.length - 1; si++) {
+            if (segmentsIntersect(segStart, segEnd, r.pts[si], r.pts[si + 1])) {
+              engine.triggerAlert(
+                'Cruce de líneas no permitido',
+                'El trazo cruza otro trazo de la misma red. No se permite el cruce de líneas en la misma cota de dibujo.'
+              );
+              return;
+            }
+          }
+        }
       }
     }
     engine.activeRamal.pts.push([pt.x, pt.y]);

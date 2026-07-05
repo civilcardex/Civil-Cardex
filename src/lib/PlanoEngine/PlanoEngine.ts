@@ -588,6 +588,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
     }
 
     if (e instanceof MouseEvent && e.button === 2) {
+      // Right-click during ramal drawing: finish ramal
+      if (this.activeRamal && this.tool === 'line') {
+        this.finishRamal();
+        return;
+      }
       const hit = hitTestRightClick(this, x, y, e.clientX, e.clientY);
       if (hit) {
         const el = hit.element as any;
@@ -606,6 +611,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
         }
         this.render();
       }
+      return;
+    }
+
+    // Double-click during ramal drawing: finish ramal (only effective on left button)
+    if (e instanceof MouseEvent && e.detail >= 2 && this.activeRamal && this.tool === 'line') {
+      this.finishRamal();
       return;
     }
 

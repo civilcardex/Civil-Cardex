@@ -286,7 +286,6 @@ export function updateElementById(engine: IPlanoEngineCore, id: string, fields: 
       (el as PlanoRamal).labelX = mx;
       (el as PlanoRamal).labelY = my;
     }
-    engine.selId = id;
   }
   engine.render();
   engine._markDirty();

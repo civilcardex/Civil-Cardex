@@ -119,7 +119,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       engine.triggerAlert(
         'Ángulo no recomendado',
         (ram.net === 'san' || ram.net === 'll')
-          ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 0° y 45°.'
+          ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
           : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
       );
       if ((engine as any)._dragBackupPts) {
@@ -140,7 +140,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       engine.triggerAlert(
         'Ángulo no recomendado',
         (ram.net === 'san' || ram.net === 'll')
-          ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 0° y 45°.'
+          ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
           : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
       );
       if (origPts) {
