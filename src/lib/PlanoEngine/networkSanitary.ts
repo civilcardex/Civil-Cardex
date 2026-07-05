@@ -286,7 +286,14 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
       if ('yeeDoble' in acc) { delete acc['yeeDoble']; changed = true; }
       if ('tee' in acc) { delete acc['tee']; changed = true; }
     } else {
-      if (acc['sifon'] !== undefined) { delete acc['sifon']; changed = true; }
+      // Count siphons from extreme accessories on ramales
+      let countSifonRamal = 0;
+      if (r.accesorioInicio === 'sifon') countSifonRamal++;
+      if (r.accesorioFin === 'sifon') countSifonRamal++;
+      if (acc['sifon'] !== (countSifonRamal || undefined)) {
+        if (countSifonRamal > 0) acc['sifon'] = countSifonRamal; else delete acc['sifon'];
+        changed = true;
+      }
       if (acc['codo45rc'] !== count45 || acc['codoReventilado'] !== countVent ||
           acc['codo90rmSube'] !== countSube || acc['codo90rmBaja'] !== countBaja) {
         if (count45 > 0) acc['codo45rc'] = count45; else delete acc['codo45rc'];

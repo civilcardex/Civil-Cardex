@@ -60,7 +60,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
 
     const c = engine.toCvs(b.x, b.y);
     const sel = b.id === engine.selId;
-    const r = 8 * engine.zoom;
+    const r = 8 * (engine.labelScaleM || 1) * engine.zoom;
 
     // Item 2: Label angle + snap constraint (Auto-rotation removed as requested)
     const angle = (b.labelAngle || 0) * Math.PI / 180;
@@ -68,10 +68,11 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
 
     b._circ = { x: c.x, y: c.y, r: Math.max(24 * engine.zoom, r + 10) };
 
+    // Draw green dashed lines from ramales that feed this bajante (recibeDeIds)
     if (b.recibeDeIds?.length) {
       b.recibeDeIds.forEach((rid: string) => {
         const ram = engine.ramales.find((rr: any) => rr.id === rid);
-        if (ram) {
+        if (ram && ram.pts.length) {
           const pStart = ram.pts[0];
           const pEnd = ram.pts[ram.pts.length - 1];
           const distStart = Math.hypot(pStart[0] - b.x, pStart[1] - b.y);
@@ -79,9 +80,9 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
           const bestPt = distStart < distEnd ? pStart : pEnd;
           const rc = engine.toCvs(bestPt[0], bestPt[1]);
           ctx.save();
-          ctx.strokeStyle = '#22D3EE';
-          ctx.lineWidth = 1.5 * engine.zoom;
-          ctx.setLineDash([4 * engine.zoom, 3 * engine.zoom]);
+          ctx.strokeStyle = '#0ECC7A';
+          ctx.lineWidth = 2 * engine.zoom;
+          ctx.setLineDash([4 * engine.zoom, 4 * engine.zoom]);
           ctx.beginPath();
           ctx.moveTo(rc.x, rc.y);
           ctx.lineTo(c.x, c.y);
@@ -134,78 +135,48 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       }
     }
 
-    // Draw lines from ramales/bajantes that feed this bajante (recibeDeIds)
-    if (b.recibeDeIds?.length) {
-      b.recibeDeIds.forEach((rid: string) => {
-        const ram = engine.ramales.find((rr: any) => rr.id === rid);
-        if (ram && ram.pts.length) {
-          const pStart = ram.pts[0];
-          const pEnd = ram.pts[ram.pts.length - 1];
-          const distStart = Math.hypot(pStart[0] - b.x, pStart[1] - b.y);
-          const distEnd = Math.hypot(pEnd[0] - b.x, pEnd[1] - b.y);
-          const bestPt = distStart < distEnd ? pStart : pEnd;
-          const rc = engine.toCvs(bestPt[0], bestPt[1]);
-          ctx.save();
-          ctx.strokeStyle = '#0ECC7A';
-          ctx.lineWidth = 2 * engine.zoom;
-          ctx.setLineDash([4 * engine.zoom, 4 * engine.zoom]);
-          ctx.beginPath();
-          ctx.moveTo(rc.x, rc.y);
-          ctx.lineTo(c.x, c.y);
-          ctx.stroke();
-          ctx.restore();
-        }
-        const srcBaj = engine.bajantes.find((bb: any) => bb.id === rid);
-        if (srcBaj) {
-          const sc = engine.toCvs(srcBaj.x, srcBaj.y);
-          ctx.save();
-          ctx.strokeStyle = '#22D3EE';
-          ctx.lineWidth = 1.5 * engine.zoom;
-          ctx.setLineDash([4 * engine.zoom, 3 * engine.zoom]);
-          ctx.beginPath();
-          ctx.moveTo(sc.x, sc.y);
-          ctx.lineTo(c.x, c.y);
-          ctx.stroke();
-          ctx.restore();
-        }
-      });
-    }
-
-    // Draw line to bajantes alimentados (alimentaIds)
-    if (b.alimentaIds?.length) {
-      b.alimentaIds.forEach((aid: string) => {
-        const targetBaj = engine.bajantes.find((bb: any) => bb.id === aid);
-        if (targetBaj) {
-          const tc = engine.toCvs(targetBaj.x, targetBaj.y);
-          ctx.save();
-          ctx.strokeStyle = '#22D3EE';
-          ctx.lineWidth = 1.5 * engine.zoom;
-          ctx.setLineDash([4 * engine.zoom, 3 * engine.zoom]);
-          ctx.beginPath();
-          ctx.moveTo(c.x, c.y);
-          ctx.lineTo(tc.x, tc.y);
-          ctx.stroke();
-          ctx.restore();
-        }
-      });
-    }
-
     ctx.save();
     ctx.translate(c.x, c.y);
     ctx.rotate(angle);
 
     ctx.fillStyle = '#ffffff';
-    if (b.tipo === 'red_publica' || b.tipo === 'contador') {
-      const netObj = NETS.find((n: any) => n.id === (b.net === 'gas' ? 'gas' : 'af'));
-      const col = netObj ? netObj.col : (b.net === 'gas' ? '#A855F7' : '#4D8FF7');
-      ctx.fillStyle = b.tipo === 'red_publica' ? '#64748b' : col;
+    if (b.tipo === 'red_publica') {
+      ctx.fillStyle = '#64748b';
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.fill();
-      ctx.strokeStyle = sel ? '#FFEB3B' : (b.tipo === 'red_publica' ? '#475569' : col);
+      ctx.strokeStyle = sel ? '#FFEB3B' : '#475569';
       ctx.lineWidth = (sel ? 3.5 : 2) * engine.zoom;
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);
+      ctx.stroke();
+    } else if (b.tipo === 'contador' && b.net === 'gas') {
+      ctx.fillStyle = '#A855F7';
+      const devW = r * 2; const devH = r * 2.4;
+      ctx.beginPath();
+      ctx.rect(-devW / 2, -devH / 2, devW, devH);
+      ctx.fill();
+      ctx.strokeStyle = sel ? '#FFEB3B' : '#A855F7';
+      ctx.lineWidth = (sel ? 3.5 : 2) * engine.zoom;
+      ctx.beginPath();
+      ctx.rect(-devW / 2, -devH / 2, devW, devH);
+      ctx.stroke();
+      const dispW = devW * 0.6; const dispH = devH * 0.12;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(-dispW / 2, -devH / 2 + devH * 0.12, dispW, dispH, 1 * engine.zoom);
+      ctx.fill();
+    } else if (b.tipo === 'contador') {
+      const netObj = NETS.find((n: any) => n.id === (b.net === 'gas' ? 'gas' : 'af'));
+      const col = netObj ? netObj.col : '#4D8FF7';
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 1.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = sel ? '#FFEB3B' : col;
+      ctx.lineWidth = (sel ? 3.5 : 2) * engine.zoom;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 1.3, 0, Math.PI * 2);
       ctx.stroke();
     } else if (b.tipo === 'calentador') {
       const netObj = NETS.find((n: any) => n.id === (b.net === 'gas' ? 'gas' : 'ac'));
@@ -237,46 +208,20 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('RP', 0, 0);
+    } else if (b.tipo === 'contador' && b.net === 'gas') {
+      // Gas meter: no letter, no pipe segments
     } else if (b.tipo === 'contador') {
       ctx.fillStyle = '#ffffff';
       ctx.font = `bold ${r * 0.9}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('C', 0, 0);
-
-      // Draw arrow entering from the bottom of the box, saying "Red Pública"
-      ctx.save();
-      const zoom = engine.zoom;
-      const arrowColor = '#64748b'; // grey color
-      ctx.strokeStyle = arrowColor;
-      ctx.fillStyle = arrowColor;
-      ctx.lineWidth = 2.5 * zoom; // thicker line
-
-      // Vertical line: from (0, r + 24 * zoom) to (0, r + 5 * zoom)
-      ctx.beginPath();
-      ctx.moveTo(0, r + 24 * zoom);
-      ctx.lineTo(0, r + 5 * zoom);
-      ctx.stroke();
-
-      // Arrow head pointing up at (0, r + 3 * zoom)
-      ctx.beginPath();
-      ctx.moveTo(0, r + 3 * zoom);
-      ctx.lineTo(-5 * zoom, r + 11 * zoom);
-      ctx.lineTo(5 * zoom, r + 11 * zoom);
-      ctx.closePath();
-      ctx.fill();
-
-      // Text "Red Pública" centered under the arrow
-      ctx.font = `bold ${r * 0.7}px sans-serif`; // larger text
-      ctx.textBaseline = 'top';
-      ctx.fillText('Red Pública', 0, r + 28 * zoom);
-      ctx.restore();
+      ctx.fillText('M', 0, 0);
     } else if (b.tipo === 'calentador') {
       ctx.fillStyle = '#ffffff';
       ctx.font = `bold ${r * 0.9}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('H', 0, 0);
+      ctx.fillText('C', 0, 0);
     } else if (b.direccion === 'sube') {
       ctx.fillStyle = arrowCol;
       ctx.beginPath();
@@ -359,8 +304,10 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     }
     ctx.restore();
 
-    const isGhostOnThisLevel = !!b.desplazamientos?.[engine.nivelActual?.label ?? '']
-      || b.pisoBase !== engine.nivelActual?.label;
+    const isGhostOnThisLevel = b.tipo === 'contador' || b.tipo === 'calentador' || b.tipo === 'red_publica'
+      ? false
+      : (!!b.desplazamientos?.[engine.nivelActual?.label ?? '']
+      || b.pisoBase !== engine.nivelActual?.label);
     if (!isGhostOnThisLevel && (b.code || b.code === '')) {
       const lx = b.labelX ?? b.x;
       const ly = b.labelY ?? (b.y + 20);
@@ -382,7 +329,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       };
       const pCorto = getPisoCorto(engine.nivelActual?.n);
       const lvlSuffix = pCorto ? `-${pCorto}` : '';
-      const codeStr = (b.code ? b.code.replace(/#/g, '') : '') + (b.code ? lvlSuffix : '');
+      const codeStr = (b.code ? b.code.replace(/#/g, '').toUpperCase() : '') + (b.code ? lvlSuffix : '');
       let diamStr = '';
       if (b.dNominal && b.dNominal !== '0') {
         const v = String(b.dNominal).trim();
@@ -593,7 +540,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       };
       const pCorto = getPisoCorto(engine.nivelActual?.n);
       const lvlSuffix = pCorto ? `-${pCorto}` : '';
-      const codeStr = (b.code ? b.code.replace(/#/g, '') : '') + (b.code ? lvlSuffix : '');
+      const codeStr = (b.code ? b.code.replace(/#/g, '').toUpperCase() : '') + (b.code ? lvlSuffix : '');
       const ghostDir = gd?.direccion || b.direccion;
       const ghostDNom = gd?.dNominal || b.dNominal;
       let diamStr = '';

@@ -410,7 +410,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       }
     }
 
-    if (r.tipo === 'tributario' && r.net === 'san' && r.pts.length >= 2) {
+    if ((r.tipo === 'tributario' || r.tipo === 'ramal') && ['san', 'af', 'ac'].includes(r.net) && r.pts.length >= 2) {
       [0, r.pts.length - 1].forEach((idx) => {
         const accType = idx === 0 ? r.accesorioInicio : r.accesorioFin;
         if (!accType) return;
@@ -436,34 +436,83 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         }
         const px = -dy, py = dx;
         
-        const rad = engine.mm2cvs(1.6);
+        const rad = engine.mm2cvs(1.6 * (engine.labelScaleM || 1));
         
         ctx.save();
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         
         if (accType === 'sifon') {
-          ctx.fillStyle = '#ffffff';
+          const outX = idx === 0 ? -dx : dx;
+          const outY = idx === 0 ? -dy : dy;
+          const perX = -outY;
+          const perY = outX;
+
+          const L1 = rad * 1.6;
+          const tickL = rad * 0.45;
+          const H1 = rad * 0.4;
+          const R = rad * 0.6;
+          const H2 = rad * 1.0;
+          const capW = rad * 0.35;
+
           ctx.strokeStyle = '#000000';
           ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+
+          // 1. Long segment: from c to pt_corner1
+          const pt_corner1X = c.x + outX * L1;
+          const pt_corner1Y = c.y + outY * L1;
           ctx.beginPath();
-          ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.moveTo(c.x, c.y);
+          ctx.lineTo(pt_corner1X, pt_corner1Y);
           ctx.stroke();
-          
+
+          // 2. Tick line crossing the long segment
+          const pt_tickX = c.x + outX * (rad * 0.9);
+          const pt_tickY = c.y + outY * (rad * 0.9);
           ctx.beginPath();
-          const x1 = c.x - px * rad * 0.45 + dx * rad * 0.45;
-          const y1 = c.y - py * rad * 0.45 + dy * rad * 0.45;
-          const x2 = c.x - px * rad * 0.45 - dx * rad * 0.2;
-          const y2 = c.y - py * rad * 0.45 - dy * rad * 0.2;
-          const x3 = c.x + px * rad * 0.45 - dx * rad * 0.2;
-          const y3 = c.y + py * rad * 0.45 - dy * rad * 0.2;
-          const x4 = c.x + px * rad * 0.45 + dx * rad * 0.45;
-          const y4 = c.y + py * rad * 0.45 + dy * rad * 0.45;
-          ctx.moveTo(x1, y1);
-          ctx.lineTo(x2, y2);
-          ctx.arcTo(c.x - dx * rad * 0.65, c.y - dy * rad * 0.65, x3, y3, rad * 0.45);
-          ctx.lineTo(x4, y4);
+          ctx.moveTo(pt_tickX + perX * tickL, pt_tickY + perY * tickL);
+          ctx.lineTo(pt_tickX - perX * tickL, pt_tickY - perY * tickL);
+          ctx.stroke();
+
+          // 3. Turn down: from pt_corner1 to pt_corner2
+          const pt_corner2X = pt_corner1X + perX * H1;
+          const pt_corner2Y = pt_corner1Y + perY * H1;
+          ctx.beginPath();
+          ctx.moveTo(pt_corner1X, pt_corner1Y);
+          ctx.lineTo(pt_corner2X, pt_corner2Y);
+          ctx.stroke();
+
+          // 4. Semi-circular U-bend centered at cArc
+          const cArcX = pt_corner2X + outX * R;
+          const cArcY = pt_corner2Y + outY * R;
+          ctx.beginPath();
+          for (let step = 0; step <= 16; step++) {
+            const angleVal = Math.PI + (step / 16) * Math.PI;
+            const cosA = Math.cos(angleVal);
+            const sinA = Math.sin(angleVal);
+            const px_arc = cArcX + outX * R * cosA - perX * R * sinA;
+            const py_arc = cArcY + outY * R * cosA - perY * R * sinA;
+            if (step === 0) ctx.moveTo(px_arc, py_arc);
+            else ctx.lineTo(px_arc, py_arc);
+          }
+          ctx.stroke();
+
+          // 5. Riser going up from end of arc
+          const pt_end_arcX = pt_corner2X + outX * (2 * R);
+          const pt_end_arcY = pt_corner2Y + outY * (2 * R);
+          const pt_riser_topX = pt_end_arcX - perX * H2;
+          const pt_riser_topY = pt_end_arcY - perY * H2;
+          ctx.beginPath();
+          ctx.moveTo(pt_end_arcX, pt_end_arcY);
+          ctx.lineTo(pt_riser_topX, pt_riser_topY);
+          ctx.stroke();
+
+          // 6. Cap line at the top of the riser
+          ctx.beginPath();
+          ctx.moveTo(pt_riser_topX + outX * capW, pt_riser_topY + outY * capW);
+          ctx.lineTo(pt_riser_topX - outX * capW, pt_riser_topY - outY * capW);
           ctx.stroke();
         } else if (accType === 'codoSube') {
           ctx.fillStyle = '#ffffff';
@@ -536,6 +585,167 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           ctx.beginPath();
           ctx.arc(c.x, c.y, engine.mm2cvs(0.35), 0, Math.PI * 2);
           ctx.fill();
+        } else if (accType === 'valvCompuerta') {
+          const triH = rad * 0.9;
+          const triW = rad * 0.7;
+          const stem = rad * 1.5;
+          const capW = rad * 0.7;
+
+          ctx.fillStyle = '#000000';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+
+          // Filled triangle pointing perpendicular to ramal (along px,py)
+          ctx.beginPath();
+          ctx.moveTo(c.x + px * triH, c.y + py * triH);
+          ctx.lineTo(c.x + dx * triW, c.y + dy * triW);
+          ctx.lineTo(c.x - dx * triW, c.y - dy * triW);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Stem from center perpendicular to ramal
+          const stemEndX = c.x + px * stem;
+          const stemEndY = c.y + py * stem;
+          ctx.beginPath();
+          ctx.moveTo(c.x, c.y);
+          ctx.lineTo(stemEndX, stemEndY);
+          ctx.stroke();
+
+          // T-bar cap at end of stem
+          ctx.beginPath();
+          ctx.moveTo(stemEndX - dx * capW, stemEndY - dy * capW);
+          ctx.lineTo(stemEndX + dx * capW, stemEndY + dy * capW);
+          ctx.stroke();
+        } else if (accType === 'valvGlobo') {
+          const circR = rad * 0.55;
+          const stem = rad * 1.5;
+          const capW = rad * 0.7;
+
+          ctx.fillStyle = '#000000';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+
+          // Filled circle centered on endpoint
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, circR, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Stem from center perpendicular to ramal
+          const stemEndX = c.x + px * stem;
+          const stemEndY = c.y + py * stem;
+          ctx.beginPath();
+          ctx.moveTo(c.x, c.y);
+          ctx.lineTo(stemEndX, stemEndY);
+          ctx.stroke();
+
+          // T-bar cap at end of stem
+          ctx.beginPath();
+          ctx.moveTo(stemEndX - dx * capW, stemEndY - dy * capW);
+          ctx.lineTo(stemEndX + dx * capW, stemEndY + dy * capW);
+          ctx.stroke();
+        } else if (accType === 'valvCheque') {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, rad * 0.9, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#000000';
+          ctx.beginPath();
+          const tipX = c.x + dx * rad * 0.65;
+          const tipY = c.y + dy * rad * 0.65;
+          const baseX = c.x - dx * rad * 0.4;
+          const baseY = c.y - dy * rad * 0.4;
+          const perpX = px * rad * 0.3;
+          const perpY = py * rad * 0.3;
+          ctx.moveTo(tipX, tipY);
+          ctx.lineTo(baseX - perpX, baseY - perpY);
+          ctx.lineTo(baseX + perpX, baseY + perpY);
+          ctx.closePath();
+          ctx.fill();
+        } else if (accType === 'valvAngulo') {
+          const outX = idx === 0 ? -dx : dx;
+          const outY = idx === 0 ? -dy : dy;
+          const perX = -outY;
+          const perY = outX;
+
+          const vRad = rad * 1.35;
+          const capW = vRad * 0.4;
+          const L1 = vRad * 0.55;
+          const triH = vRad * 0.65;
+          const triW = vRad * 0.35;
+          const L2 = vRad * 0.65;
+          const L3 = vRad * 0.8;
+
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1.0 * engine.zoom;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+
+          // 1. T-bar cap at the connection point c
+          ctx.beginPath();
+          ctx.moveTo(c.x + perX * capW, c.y + perY * capW);
+          ctx.lineTo(c.x - perX * capW, c.y - perY * capW);
+          ctx.stroke();
+
+          // 2. Vertical line from c to junction P
+          const pX = c.x + outX * L1;
+          const pY = c.y + outY * L1;
+          ctx.beginPath();
+          ctx.moveTo(c.x, c.y);
+          ctx.lineTo(pX, pY);
+          ctx.stroke();
+
+          // 3. Vertical triangle (pointing down along out)
+          const v1X = pX + outX * triH + perX * triW;
+          const v1Y = pY + outY * triH + perY * triW;
+          const v2X = pX + outX * triH - perX * triW;
+          const v2Y = pY + outY * triH - perY * triW;
+
+          ctx.beginPath();
+          ctx.moveTo(pX, pY);
+          ctx.lineTo(v1X, v1Y);
+          ctx.lineTo(v2X, v2Y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // 4. Line below the vertical triangle
+          const baseVertX = pX + outX * triH;
+          const baseVertY = pY + outY * triH;
+          ctx.beginPath();
+          ctx.moveTo(baseVertX, baseVertY);
+          ctx.lineTo(baseVertX + outX * L2, baseVertY + outY * L2);
+          ctx.stroke();
+
+          // 5. Horizontal triangle (pointing right along per)
+          const h1X = pX + perX * triH + outX * triW;
+          const h1Y = pY + perY * triH + outY * triW;
+          const h2X = pX + perX * triH - outX * triW;
+          const h2Y = pY + perY * triH - outY * triW;
+
+          ctx.beginPath();
+          ctx.moveTo(pX, pY);
+          ctx.lineTo(h1X, h1Y);
+          ctx.lineTo(h2X, h2Y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // 6. Line extending from the horizontal triangle
+          const baseHorizX = pX + perX * triH;
+          const baseHorizY = pY + perY * triH;
+          ctx.beginPath();
+          ctx.moveTo(baseHorizX, baseHorizY);
+          ctx.lineTo(baseHorizX + perX * L3, baseHorizY + perY * L3);
+          ctx.stroke();
         }
         
         ctx.restore();

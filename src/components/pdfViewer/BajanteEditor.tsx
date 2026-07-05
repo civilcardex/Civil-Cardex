@@ -224,7 +224,7 @@ export default function BajanteEditor({ selElement, activeNet, engineRef, setSel
                           window.dispatchEvent(new CustomEvent('civilflow_nets_changed', { detail: [activeNet] }));
                         }}
                         style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
-                      <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={`${b.planName} - ${b.label}`}>{b.planName.split(' ')[0]}: {b.label}</span>
+                      <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={b.label}>{b.label}</span>
                     </label>
                   );
                 });

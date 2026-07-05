@@ -51,7 +51,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       }
       else if (net === 'contador') {
         const cnts = engine.bajantes.filter(b => b.tipo === 'contador');
-        cnts.forEach((b, i) => { b.id = 'cntAF' + (i + 1); b.code = 'cntAF' + (i + 1); });
+        cnts.forEach((b, i) => { const pfx = b.net === 'gas' ? 'CTNG' : 'CNTAF'; b.id = pfx + (i + 1); b.code = pfx + (i + 1); });
       }
       else engine._renumberBajantes(net);
     }
@@ -103,7 +103,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       rps.forEach((b, i) => { b.id = 'RP' + (i + 1); b.code = 'RP' + (i + 1); });
     } else if (deleted.tipo === 'contador') {
       const cnts = engine.bajantes.filter(b => b.tipo === 'contador');
-      cnts.forEach((b, i) => { b.id = 'cntAF' + (i + 1); b.code = 'cntAF' + (i + 1); });
+      cnts.forEach((b, i) => { const pfx = b.net === 'gas' ? 'CTNG' : 'CNTAF'; b.id = pfx + (i + 1); b.code = pfx + (i + 1); });
     }
     engine.selId = null; engine._emitSelect(null); engine._emitDelete([deletedId]); engine.render(); engine._markDirty(); return; 
   }

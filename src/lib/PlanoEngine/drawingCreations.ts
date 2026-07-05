@@ -97,12 +97,12 @@ export function handleCalentadorDown(engine: IPlanoEngineCore, px: number, py: n
     if (sp) { px = sp.x; py = sp.y; }
   }
   const calent = engine.bajantes.filter(b => b.tipo === 'calentador').length + 1;
-  const calentId = 'calentG' + calent;
+  const calentId = 'CALENT' + calent;
   engine.bajantes.push({
     id: calentId,
     net: engine.activeNet,
     tipo: 'calentador',
-    code: 'calentG' + calent,
+    code: 'CALENT' + calent,
     x: px, y: py,
     pisoBase: engine.nivelActual?.label ?? '',
     pisoCima: engine.nivelActual?.label ?? '',
@@ -160,13 +160,14 @@ export function handleContadorDown(engine: IPlanoEngineCore, px: number, py: num
     const sp = engine.snapToExisting(px, py);
     if (sp) { px = sp.x; py = sp.y; }
   }
+  const cntPfx = engine.activeNet === 'gas' ? 'CTNG' : 'CNTAF';
   const cnt = engine.bajantes.filter(b => b.tipo === 'contador').length + 1;
-  const cntId = 'cntAF' + cnt;
+  const cntId = cntPfx + cnt;
   engine.bajantes.push({
     id: cntId,
     net: engine.activeNet,
     tipo: 'contador',
-    code: 'cntAF' + cnt,
+    code: cntPfx + cnt,
     x: px, y: py,
     pisoBase: engine.nivelActual?.label ?? '',
     pisoCima: engine.nivelActual?.label ?? '',
