@@ -250,12 +250,12 @@ function buildTramos(
         }
       }
       const extra = hidroData[apKey] || {};
-      let dznSalidas = r.nSalidas || 0;
+      let dznSalidas = r.nSalidas || 1;
       let dzLvert = r.lvert ?? r.dz ?? 0;
       if (drawingData) {
         const dr = (drawingData.ramales || []).find((x: any) => x.id === r.id);
         if (dr) {
-          if (!dznSalidas) dznSalidas = dr.nSalidas || 0;
+          if (!dznSalidas) dznSalidas = dr.nSalidas || 1;
           if (dzLvert === 0 || dzLvert === undefined) dzLvert = parseFloat(dr.lvert ?? dr.dz) || 0;
         }
       }
@@ -296,7 +296,7 @@ function buildTramos(
             fixtures: aparatos[apKey] || {},
             accesorios: extra.accesorios || {},
             Lh: extra.Lh || 0, Lv: 0,
-            nSalidas: 0,
+            nSalidas: 1,
             recibeDe: [], descripcion: '',
             ini: 'RP', fin: cntId,
             diamDisPulg: extra.dNominal ? diamPulgFromLabel(String(extra.dNominal)) : 0,
@@ -326,7 +326,7 @@ function buildTramos(
             fixtures: aparatos[apKey] || {},
             accesorios: extra.accesorios || {},
             Lh: extra.Lh || 0, Lv: 0,
-            nSalidas: 0,
+            nSalidas: 1,
             recibeDe: [], descripcion: '',
             ini: 'AF', fin: calId,
             diamDisPulg: extra.dNominal ? diamPulgFromLabel(String(extra.dNominal)) : 0,
@@ -393,7 +393,7 @@ useEffect(() => {
           fixtures: sync.aparatosByTramo?.[apKey] || {},
           recibeDe: [], esBajante: false, descripcion: '',
           ini: r.ini || '', fin: r.fin || '',
-          diamDisPulg: r.diamPulg || 0, nSalidas: r.nSalidas || hd.nSalidas || 0,
+          diamDisPulg: r.diamPulg || 0, nSalidas: r.nSalidas || hd.nSalidas || 1,
           totalL: r.totalL || 0,
           nmaning: r.maning ?? 0, sPercent: r.pendiente ?? 0,
           bajR: 7/24, bajLong: 5, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
@@ -405,7 +405,7 @@ useEffect(() => {
           accesorioFin: r.accesorioFin || '',
           diametroInicio: r.diametroInicio || '',
           diametroFin: r.diametroFin || '',
-          padreTributarioLabel: r.padreTributario ? ((plane as any).ramales?.find((pr: any) => pr.id === r.padreTributario)?.label || r.padreTributario) : null,
+          padreTributarioLabel: r.padre ? ((plane as any).ramales?.find((pr: any) => pr.id === r.padre)?.label || r.padre) : null,
         };
         if (r._net === 'll') {
           llIncoming.push({ ...tramo, desde: r.ini || '', hasta: r.fin || '' });
@@ -432,7 +432,7 @@ useEffect(() => {
           tipo: 'bajante',
           fixtures: sync.aparatosByTramo?.[apKey] || {},
           recibeDe: [], esBajante: true, descripcion: '',
-          diamDisPulg: b.diamPulg || 0, nSalidas: b.nSalidas || hd.nSalidas || 0,
+          diamDisPulg: b.diamPulg || 0, nSalidas: b.nSalidas || hd.nSalidas || 1,
           nmaning: b.maning ?? 0, sPercent: 0,
           bajR: b.bajR ?? 7/24, bajLong: b.bajLong ?? 5, bajFDarcy: b.bajFDarcy ?? 0.025, bajDprop: b.diamPulg || 0, ventDprop: b.ventDprop ?? 0, ventRamalDiamPulg: ventRamalDiam,
           ventRamalKey,
@@ -452,7 +452,7 @@ useEffect(() => {
     const prevSan = stateRef.current.tramosSan;
     const newSan = sanIncoming.length === 0 ? [] : sanIncoming.map(i => {
       const existing = prevSan.find(t => t._key === i._key);
-      return existing ? { ...i, descripcion: existing.descripcion || i.descripcion, nSalidas: i.nSalidas || existing.nSalidas || 0, fixtures: { ...i.fixtures, ...existing.fixtures } } : i;
+      return existing ? { ...i, descripcion: existing.descripcion || i.descripcion, nSalidas: i.nSalidas || existing.nSalidas || 1, fixtures: { ...i.fixtures, ...existing.fixtures } } : i;
     });
     dispatch({ type: 'SET_TRAMOS', net: 'san', payload: newSan });
 

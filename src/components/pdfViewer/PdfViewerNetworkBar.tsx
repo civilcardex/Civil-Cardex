@@ -7,6 +7,7 @@ interface PdfViewerNetworkBarProps {
   onSelectNet: (id: string) => void;
   onToggleHidden: (id: string) => void;
   onToggleLocked: (id: string) => void;
+  scaleText?: React.ReactNode;
 }
 
 export default function PdfViewerNetworkBar({
@@ -17,13 +18,21 @@ export default function PdfViewerNetworkBar({
   onSelectNet,
   onToggleHidden,
   onToggleLocked,
+  scaleText,
 }: PdfViewerNetworkBarProps) {
   return (
     <div style={{
-      height: 38, flexShrink: 0, display: "flex", alignItems: "center", gap: 5,
-      padding: "0 8px", background: "#14161a", borderBottom: "1px solid #3a494a",
-      overflowX: "auto", overflowY: "hidden", justifyContent: "center",
+      height: 38, flexShrink: 0, display: "flex", alignItems: "center", gap: 8,
+      padding: "0 10px", background: "#14161a", borderBottom: "1px solid #3a494a",
+      overflowX: "auto", overflowY: "hidden",
     }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ fontFamily: "'Geist',monospace", fontSize: 9, color: "#6b8cae", textTransform: "uppercase", letterSpacing: 1 }}>Escala:</div>
+        <div style={{ padding:"2px 8px", background:"#1e2024", border:"1px solid #2a3435", borderRadius:2, color:"#8AB4D6", fontSize:10, fontFamily:"'Geist',monospace", fontWeight: 600 }}>
+          {scaleText || '1:100'}
+        </div>
+      </div>
+      <div style={{ width: 12 }} />
       <div style={{ flex: 1, minWidth: 4 }} />
       {nets.map((n: any) => {
         const isActive = activeNet === n.id;

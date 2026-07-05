@@ -614,10 +614,10 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   }, [selElement?.id, activeNet]);
 
   const rightSidebarOpacity = useMemo(() => ({
-    opacity: (tool === 'sel' && !selElement) ? 0.35 : 1,
-    pointerEvents: (tool === 'sel' && !selElement) ? ('none' as const) : ('auto' as const),
+    opacity: (!selElement) ? 0.35 : 1,
+    pointerEvents: (!selElement) ? ('none' as const) : ('auto' as const),
     transition: 'opacity 0.2s',
-  }), [tool, selElement]);
+  }), [selElement]);
 
   const scaleText = useMemo(() => {
     const planoAsoc = planos.find(p => p.nivel === selectedNivel && p.status === 'confirmed');
@@ -636,6 +636,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
         onSelectNet={setActiveNet}
         onToggleHidden={actions.handleToggleHidden}
         onToggleLocked={actions.handleToggleLocked}
+        scaleText={scaleText}
       />
 
       <div style={{flex:1,display:"flex",minHeight:0,position:"relative",minWidth:0}}>

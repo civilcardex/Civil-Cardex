@@ -5,6 +5,7 @@ import BajanteDirectionSelector from "./BajanteDirectionSelector";
 import BajanteDiameterSelector from "./BajanteDiameterSelector";
 import BajanteConnectionPanel from "./BajanteConnectionPanel";
 import BajanteCodeEditor from "./BajanteCodeEditor";
+import { bajanteLabel } from "../../utils/accessoryAbbreviations";
 
 interface ContextMenuState {
   visible: boolean;
@@ -127,7 +128,7 @@ function BajanteContextMenu({
         }} style={{
         position: 'absolute', left: adjustedPos.x, top: adjustedPos.y, zIndex: 101,
         background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 6,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.4)', padding: '4px', minWidth: 180, maxWidth: 320,
+        boxShadow: '0 4px 16px rgba(0,0,0,0.4)', padding: '4px', minWidth: 150, maxWidth: 280,
         display: 'flex', flexDirection: 'column', gap: 2,
       }} onContextMenu={(e) => e.preventDefault()}>
         {isBajanteTipo && !hasPts ? (
@@ -164,6 +165,7 @@ function BajanteContextMenu({
                 setContextMenuState={setContextMenuState}
                 mats={mats}
                 activeNet={activeNet}
+                planosCtx={planosCtx}
               />
             )}
           </>
@@ -192,6 +194,7 @@ function BajanteContextMenu({
                 setContextMenuState={setContextMenuState}
                 mats={mats}
                 activeNet={activeNet}
+                planosCtx={planosCtx}
               />
             )}
             <BajanteCodeEditor
@@ -205,6 +208,64 @@ function BajanteContextMenu({
               setDiamSel={setDiamSel}
               planosCtx={planosCtx}
             />
+            <div style={{
+              padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+            }}>
+              <span style={{ fontSize: 10, color: '#e2e2e8', fontFamily: "'Geist',monospace" }}>Bloquear movimiento</span>
+              <input type="checkbox" checked={!!bajante.bloqueado}
+                onChange={e => {
+                  const val = e.target.checked;
+                  if (engineRef.current) {
+                    engineRef.current?.updateElementById(bajante.id, { bloqueado: val });
+                    if (selElement?.id === bajante.id) {
+                      setSelElement({ ...selElement, bloqueado: val });
+                    }
+                    engineRef.current?.render();
+                  }
+                }}
+                style={{ accentColor: '#F5A623', cursor: 'pointer', margin: 0 }} />
+            </div>
+            {['san', 'll'].includes(activeNet) && (
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4
+              }}>
+                <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
+                  {(() => {
+                    const currentId = bajante.id;
+                    const netBajantes = (engineRef.current?.bajantes || []).filter((b: any) => b.net === bajante.net && b.id !== bajante.id && b.tipo !== 'tributario');
+                    if (netBajantes.length === 0) return <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin bajantes</div>;
+                    return netBajantes.map((b: any) => {
+                      const isAssociated = (b.recibeDeIds || []).includes(currentId);
+                      return (
+                        <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
+                          <input type="checkbox" checked={isAssociated}
+                            onChange={e => {
+                              const recibidos = b.recibeDeIds || [];
+                              const newRecibe = e.target.checked
+                                ? [...recibidos, currentId]
+                                : recibidos.filter((id: string) => id !== currentId);
+                              const extraFields: Record<string, any> = { recibeDeIds: newRecibe };
+                              if (e.target.checked) {
+                                extraFields.descargaEnId = currentId;
+                              } else if (b.descargaEnId === currentId || b.descargaEnId?.endsWith('|' + currentId)) {
+                                extraFields.descargaEnId = null;
+                              }
+                              engineRef.current?.updateElementById(b.id, extraFields);
+                              if (selElement?.id === b.id) {
+                                setSelElement({ ...selElement, ...extraFields });
+                              }
+                            }}
+                            style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
+                          <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bajanteLabel(b, engineRef.current?.nivelActual?.label)}</span>
+                        </label>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            )}
           </>
         ) : tipo === 'contador' ? (
           <BajanteCodeEditor

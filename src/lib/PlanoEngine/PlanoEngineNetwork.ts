@@ -119,6 +119,7 @@ export function setRamalDefaults(engine: IPlanoEngineCore, d: Partial<{ material
 export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
   if (!engine.nivelActual) return [];
   return engine.bajantes.filter(b => {
+    if (b.tipo === 'contador' || b.tipo === 'calentador' || b.tipo === 'red_publica') return false;
     if (b.desplazamientos && b.desplazamientos[engine.nivelActual!.label || '']) return true;
     const base = Math.min(b.nptBase || 0, b.nptCima || 0);
     const cima = Math.max(b.nptBase || 0, b.nptCima || 0);
@@ -136,63 +137,85 @@ export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
 }
 
 
+import { ACC_ABBR } from "../../utils/accessoryAbbreviations";
+
 export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
   const lvlLabel = engine.nivelActual?.label ?? '';
+  const ACC_LABELS = ACC_ABBR;
+
+  const findEndpointTarget = (r: PlanoRamal, pt: number[]): { code: string; isAcc: boolean; ref: PlanoBajante | PlanoRamal | null } | null => {
+    const ptDist = (b: { x: number; y: number }) => Math.hypot(pt[0] - b.x, pt[1] - b.y);
+
+    const dispMap = (b: any) => {
+      const disp = b.desplazamientos?.[lvlLabel] || {};
+      return { x: b.x + (disp.dx || 0), y: b.y + (disp.dy || 0) };
+    };
+
+    let bestBaj: PlanoBajante | null = null;
+    let bestBajDist = Infinity;
+    for (const b of engine.bajantes) {
+      if (b.net !== r.net) continue;
+      const pos = dispMap(b);
+      const d = ptDist(pos);
+      if (d < bestBajDist) { bestBajDist = d; bestBaj = b; }
+    }
+    if (bestBaj && bestBajDist <= 0.5) {
+      const code = bestBaj.code || bestBaj.id;
+      return { code, isAcc: false, ref: bestBaj };
+    }
+
+    let bestRam: PlanoRamal | null = null;
+    let bestRamDist = Infinity;
+    for (const rr of engine.ramales) {
+      if (rr === r) continue;
+      if (rr.net !== r.net) continue;
+      if (!rr.pts || rr.pts.length < 1) continue;
+      for (const pt2 of rr.pts) {
+        const d = ptDist({ x: pt2[0], y: pt2[1] });
+        if (d < bestRamDist) { bestRamDist = d; bestRam = rr; }
+      }
+    }
+    if (bestRam && bestRamDist <= 0.5) {
+      const code = bestRam.label || bestRam.id;
+      return { code: `${code}-CI`, isAcc: false, ref: bestRam };
+    }
+
+    return null;
+  };
+
   for (const r of engine.ramales) {
-    if (r.net !== 'af' && r.net !== 'ac') continue;
     const pts = r.pts || [];
     if (pts.length < 2) continue;
-    
+
     const pStart = pts[0];
     const pEnd = pts[pts.length - 1];
-    
-    const findConnectedBajante = (pt: number[]) => {
-      for (const b of engine.bajantes) {
-        if (b.net !== r.net) continue;
-        const disp = b.desplazamientos?.[lvlLabel] || {};
-        const bx = b.x + (disp.dx || 0);
-        const by = b.y + (disp.dy || 0);
-        const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
-        const dist = Math.hypot(pt[0] - bx, pt[1] - by);
-        if (isExplicit) {
-          const otherPt = pt === pStart ? pEnd : pStart;
-          const otherDist = Math.hypot(otherPt[0] - bx, otherPt[1] - by);
-          if (dist < otherDist) return b;
-        } else if (dist < 2.0) {
-          return b;
-        }
-      }
-      return null;
-    };
-    
-    const bStart = findConnectedBajante(pStart);
-    const bEnd = findConnectedBajante(pEnd);
-    
+
+    const accIni = (r as any).accesorioInicio;
+    const accFin = (r as any).accesorioFin;
+    const tStart = accIni ? { code: ACC_LABELS[accIni] || accIni, isAcc: true, ref: null } : findEndpointTarget(r, pStart);
+    const tEnd = accFin ? { code: ACC_LABELS[accFin] || accFin, isAcc: true, ref: null } : findEndpointTarget(r, pEnd);
+
     let newIni = r.ini || '';
     let newFin = r.fin || '';
 
-    if (bStart && bEnd) {
-      const isStartCont = bStart.tipo === 'contador';
-      const isStartMon = bStart.tipo === 'montante';
-      const isEndCont = bEnd.tipo === 'contador';
-      const isEndMon = bEnd.tipo === 'montante';
-      
+    if (tStart && tEnd && tStart.ref && tEnd.ref) {
+      const refS = tStart.ref as any;
+      const refE = tEnd.ref as any;
+      const isStartCont = refS.tipo === 'contador';
+      const isStartMon = refS.tipo === 'montante';
+      const isEndCont = refE.tipo === 'contador';
+      const isEndMon = refE.tipo === 'montante';
+
       if ((isStartCont && isEndMon) || (isStartMon && isEndCont)) {
-        const cont = isStartCont ? bStart : bEnd;
-        const mon = isStartMon ? bStart : bEnd;
-        newIni = cont.code || cont.id;
-        newFin = mon.code || mon.id;
+        newIni = isStartCont ? tStart.code : tEnd.code;
+        newFin = isStartMon ? tStart.code : tEnd.code;
       } else {
-        newIni = bStart.code || bStart.id;
-        newFin = bEnd.code || bEnd.id;
+        newIni = tStart.code;
+        newFin = tEnd.code;
       }
     } else {
-      if (bStart) {
-        newIni = bStart.code || bStart.id;
-      }
-      if (bEnd) {
-        newFin = bEnd.code || bEnd.id;
-      }
+      if (tStart) newIni = tStart.code;
+      if (tEnd) newFin = tEnd.code;
     }
 
     if (r.ini !== newIni || r.fin !== newFin) {

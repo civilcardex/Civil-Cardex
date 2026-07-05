@@ -183,30 +183,24 @@ export default function RamalEditor({
             </div>
             ) : null}
           </div>
-          {showDeltaZ && !isGas && (
-            <div style={{ display: 'grid', gridTemplateColumns: showDescargas ? '1fr 1fr' : '1fr', gap: 6 }}>
+          {(showDeltaZ || showDescargas) && (
+            <div style={{ display: 'grid', gridTemplateColumns: (showDeltaZ || showDescargas) && (showDescargas || showDeltaZ) ? '1fr 1fr' : '1fr', gap: 6 }}>
+              {showDeltaZ && (
               <div>
                 <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>Altura (m)</div>
                 <input type="number" step="0.01" value={selElement?.dz ?? ''} placeholder="0.00" aria-label="Delta Z o longitud vertical (m)"
                   onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({dz:v,lvert:v});setSelElement({...selElement,dz:v,lvert:v})}}}
-                  style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
+                  style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
               </div>
+              )}
               {showDescargas && (
                 <div>
-                  <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>No. de descargas</div>
-                  <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0" aria-label="Número de descargas"
-                    onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||0;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
-                    style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
+                  <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>Descargas</div>
+                  <input type="number" step="1" min="1" value={selElement?.nSalidas ?? 1} placeholder="1" aria-label="Número de descargas en simultáneo"
+                    onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||1;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
+                    style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
                 </div>
               )}
-            </div>
-          )}
-          {!showDeltaZ && showDescargas && (
-            <div>
-              <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>No. de descargas</div>
-              <input type="number" step="1" min="0" value={selElement?.nSalidas ?? ''} placeholder="0" aria-label="Número de descargas"
-                onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||0;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
-                style={{width:'100%',padding:"4px 6px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
             </div>
           )}
     </div>

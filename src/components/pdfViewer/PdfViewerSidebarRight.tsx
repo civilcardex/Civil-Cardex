@@ -126,6 +126,7 @@ export default function PdfViewerSidebarRight(props: PdfViewerSidebarRightProps)
         handleUpdateSel={handleUpdateSel}
         handleRotateLabel={handleRotateLabel}
         plans={planosCtx.plans}
+        pisos={pisos}
       />
 
       <BajanteAsociacion
@@ -137,13 +138,6 @@ export default function PdfViewerSidebarRight(props: PdfViewerSidebarRightProps)
         planosCtx={planosCtx}
         engineRef={engineRef}
       />
-
-      <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-        <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Escala</div>
-        <div style={{padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace"}}>
-          {scaleText}
-        </div>
-      </div>
 
       {!(selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante' || selElement.tipo === 'area' || selElement.id?.startsWith('AR'))) && (
       <AparatosPanel activeNet={activeNet} selElement={selElement} planId={currentId} />
