@@ -84,8 +84,10 @@ export interface PlanoRamal {
   bloqueado?: boolean;
   accesorioInicio?: string;
   accesorioFin?: string;
+  nSalidas?: number;
   _labelBox?: LabelBoxCorners;
   _net?: string;
+  diamPulg?: number;
 }
 
 export interface PlanoBajante {
@@ -122,8 +124,10 @@ export interface PlanoBajante {
   _ghost?: { x: number; y: number; r: number };
   _ghostLabelBox?: LabelBoxCorners;
   _labelBox?: LabelBoxCorners;
-  ghostData?: Record<string, { dNominal?: string; direccion?: string; labelX?: number; labelY?: number }>;
+  ghostData?: Record<string, { dNominal?: string; direccion?: 'sube' | 'baja' | 'continua' | 'mantiene'; labelX?: number; labelY?: number }>;
   isFantasma?: boolean;
+  diamPulg?: number;
+  diametro?: string;
 }
 
 export interface PlanoArea {
@@ -249,6 +253,7 @@ export interface IPlanoEngineCore {
   _dirty: boolean;
   _onRequestTextCb: ((x: number, y: number, cb: (text: string) => void) => void) | null;
   _loadedPlanId: string | null;
+  planId?: string;
   _onDirtyCb: (() => void) | null;
   _lastMouseCvs: { x: number; y: number };
   _snapToSegment(x: number, y: number, pts: number[][], threshold?: number): { x: number; y: number } | null;

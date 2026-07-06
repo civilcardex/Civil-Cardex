@@ -84,8 +84,8 @@ export function clearNet(engine: IPlanoEngineCore, netId: string): void {
   engine._netCounts[netId] = { ramal: 0, tributario: 0 };
   engine.activeRamal = null;
   if (engine.selId) {
-    const stillExists = engine.ramales.find((r: any) => r.id === engine.selId)
-      || engine.bajantes.find((b: any) => b.id === engine.selId);
+    const stillExists = engine.ramales.find((r) => r.id === engine.selId)
+      || engine.bajantes.find((b) => b.id === engine.selId);
     if (!stillExists) { engine.selId = null; engine._emitSelect(null); }
   }
   engine.render();
@@ -244,7 +244,7 @@ export function ensureRpCntRamal(engine: IPlanoEngineCore): void {
       }
       const rpId = nearestRP.code || nearestRP.id;
       const cntId = cnt.code || cnt.id;
-      const alreadyConnected = engine.ramales.some((r: any) =>
+      const alreadyConnected = engine.ramales.some((r) =>
         r.net === netId && ((r.ini === rpId && r.fin === cntId) || (r.ini === cntId && r.fin === rpId))
       );
       if (alreadyConnected) continue;

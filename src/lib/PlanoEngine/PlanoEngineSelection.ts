@@ -137,20 +137,20 @@ export { handleDragUp } from './handleDragUp';
 
 export function selectById(engine: IPlanoEngineCore, id: string): void {
   engine._isGhostSel = false;
-  const found = engine.ramales.find((r: any) => r.id === id)
-    || engine.bajantes.find((b: any) => b.id === id)
-    || engine.textAnnots.find((t: any) => t.id === id)
-    || engine.areas.find((a: any) => a.id === id)
-    || engine.dims.find((d: any) => d.id === id);
+  const found = engine.ramales.find((r) => r.id === id)
+    || engine.bajantes.find((b) => b.id === id)
+    || engine.textAnnots.find((t) => t.id === id)
+    || engine.areas.find((a) => a.id === id)
+    || engine.dims.find((d) => d.id === id);
   if (found) { engine.selId = found.id; engine._emitSelect(found); engine.render(); }
 }
 
 export function getSelected(engine: IPlanoEngineCore): PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null {
   if (!engine.selId) return null;
-  return (engine.ramales.find((r: any) => r.id === engine.selId)
-    || engine.bajantes.find((b: any) => b.id === engine.selId)
-    || engine.textAnnots.find((t: any) => t.id === engine.selId)
-    || engine.areas.find((a: any) => a.id === engine.selId)
+  return (engine.ramales.find((r) => r.id === engine.selId)
+    || engine.bajantes.find((b) => b.id === engine.selId)
+    || engine.textAnnots.find((t) => t.id === engine.selId)
+    || engine.areas.find((a) => a.id === engine.selId)
     || null) as PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null;
 }
 
@@ -158,8 +158,8 @@ function checkVentDiameterLimits(engine: IPlanoEngineCore, el: any, fields: Reco
   if (!el || !fields) return true;
 
   const getConnectedVentRamales = (b: any) => {
-    const ventRamales = engine.ramales.filter((r: any) => r.net === 'vent');
-    const connected: any[] = [];
+    const ventRamales = engine.ramales.filter((r) => r.net === 'vent');
+    const connected: PlanoRamal[] = [];
     const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
     const bx = b.x + (disp ? disp.dx : 0);
     const by = b.y + (disp ? disp.dy : 0);
@@ -177,8 +177,8 @@ function checkVentDiameterLimits(engine: IPlanoEngineCore, el: any, fields: Reco
   };
 
   const getConnectedVentBajantes = (r: any) => {
-    const ventBajantes = engine.bajantes.filter((b: any) => b.net === 'vent');
-    const connected: any[] = [];
+    const ventBajantes = engine.bajantes.filter((b) => b.net === 'vent');
+    const connected: PlanoBajante[] = [];
     for (const vb of ventBajantes) {
       const disp = vb.desplazamientos?.[engine.nivelActual?.label ?? ''];
       const bx = vb.x + (disp ? disp.dx : 0);
@@ -238,7 +238,7 @@ function checkVentDiameterLimits(engine: IPlanoEngineCore, el: any, fields: Reco
         for (const vb of connected) {
           const lvl = engine.nivelActual?.label ?? '';
           const gd = vb.ghostData?.[lvl];
-          const bNominal = gd?.dNominal || gd?.d_nominal || vb.dNominal || '';
+          const bNominal = gd?.dNominal || vb.dNominal || '';
           const bDVal = vb.diamPulg || diamPulgFromLabel(bNominal);
           if (bDVal > 0 && bDVal < rDVal) {
             engine.triggerAlert(
@@ -274,10 +274,10 @@ export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, 
 
 export function updateElementById(engine: IPlanoEngineCore, id: string, fields: Record<string, unknown>): void {
   const el: PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | undefined =
-    (engine.ramales.find((r: any) => r.id === id)
-      || engine.bajantes.find((b: any) => b.id === id)
-      || engine.textAnnots.find((t: any) => t.id === id)
-      || engine.areas.find((a: any) => a.id === id)) as any;
+    (engine.ramales.find((r) => r.id === id)
+      || engine.bajantes.find((b) => b.id === id)
+      || engine.textAnnots.find((t) => t.id === id)
+      || engine.areas.find((a) => a.id === id)) as any;
   if (el) {
     checkVentDiameterLimits(engine, el, fields);
     Object.assign(el, fields);

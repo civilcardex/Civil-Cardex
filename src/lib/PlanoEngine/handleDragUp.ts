@@ -62,7 +62,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
   }
   if (engine.multiDrag) { engine.multiDrag = null; engine._markDirty(); engine.render(); }
   if (engine.ghostDrag) {
-    const b = engine.bajantes.find((bb: any) => bb.id === engine.ghostDrag!.id);
+    const b = engine.bajantes.find((bb) => bb.id === engine.ghostDrag!.id);
     if (b && engine.nivelActual && (b as any).desplazamientos?.[engine.nivelActual.label ?? '']) {
       const d = (b as any).desplazamientos[engine.nivelActual.label ?? ''];
       if (Math.abs(d.dx) < 1 && Math.abs(d.dy) < 1) {
@@ -114,7 +114,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     const rId = engine.ptDrag.id;
     engine.ptDrag = null;
     engine._markDirty();
-    const ram = engine.ramales.find((r: any) => r.id === rId);
+    const ram = engine.ramales.find((r) => r.id === rId);
     if (ram && !checkRamalAngles(ram.pts, ram.net)) {
       engine.triggerAlert(
         'Ángulo no recomendado',
@@ -135,7 +135,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     const origPts = engine.ramalDrag.origPts;
     engine.ramalDrag = null;
     engine._markDirty();
-    const ram = engine.ramales.find((r: any) => r.id === rId);
+    const ram = engine.ramales.find((r) => r.id === rId);
     if (ram && !checkRamalAngles(ram.pts, ram.net)) {
       engine.triggerAlert(
         'Ángulo no recomendado',

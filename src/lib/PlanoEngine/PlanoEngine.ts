@@ -155,6 +155,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   private _touchMoveHandler?: (e: TouchEvent) => void;
   private _touchEndHandler?: (e: TouchEvent) => void;
   _loadedPlanId!: string | null;
+  planId?: string;
   _onDirtyCb!: DirtyCallback | null;
   _lastMouseCvs!: Point;
 
@@ -623,7 +624,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (this._lockedNets.has(this.activeNet)) return;
 
     if (this.activeNetworks && !this.activeNetworks.has(this.activeNet)) {
-      const netObj = NETS.find((n: any) => n.id === this.activeNet);
+      const netObj = NETS.find((n) => n.id === this.activeNet);
       const netName = netObj ? netObj.name : this.activeNet;
       this.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
       return;

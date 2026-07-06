@@ -103,7 +103,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     return;
   }
   if (engine.ghostDrag) {
-    const b = engine.bajantes.find((bb: any) => bb.id === engine.ghostDrag!.id);
+    const b = engine.bajantes.find((bb) => bb.id === engine.ghostDrag!.id);
     if (b && engine.nivelActual) {
       let dx = (x - engine.ghostDrag.startX) / engine.zoom + engine.ghostDrag.baseDx;
       let dy = (y - engine.ghostDrag.startY) / engine.zoom + engine.ghostDrag.baseDy;
@@ -130,7 +130,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const diffGy = newGy - oldGy;
 
       if (lDesvio) {
-        const r = engine.ramales.find((rr: any) => rr.id === lDesvio);
+        const r = engine.ramales.find((rr) => rr.id === lDesvio);
         if (r) {
           r.pts[0] = [b.x, b.y];
           r.pts[r.pts.length - 1] = [newGx, newGy];

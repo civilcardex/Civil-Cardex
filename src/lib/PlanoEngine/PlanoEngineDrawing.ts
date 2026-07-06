@@ -39,7 +39,7 @@ export function _nextLabel(engine: IPlanoEngineCore): string {
   const pfx = net ? net.lbl : 'R';
   const cnt = engine._netCounts[engine.activeNet]?.[engine.tipoTramo as keyof typeof engine._netCounts[string]] || 0;
   if (engine.tipoTramo === 'tributario') {
-    const padre = engine.ramales.find((r: any) => r.id === engine.padreTributario);
+    const padre = engine.ramales.find((r) => r.id === engine.padreTributario);
     const padreLabel = padre ? (padre.label || padre.id) : '';
     return `T${cnt}${padreLabel}`;
   }
@@ -402,9 +402,9 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
         return;
       }
     } else {
-      let activeNetsRamales = engine.ramales.filter((r: any) => r.net === engine.activeNet);
+      let activeNetsRamales = engine.ramales.filter((r) => r.net === engine.activeNet);
       if (engine.tipoTramo === 'tributario') {
-        activeNetsRamales = activeNetsRamales.filter((r: any) => r.id !== engine.padreTributario);
+        activeNetsRamales = activeNetsRamales.filter((r) => r.id !== engine.padreTributario);
       }
       let isOnSegment = false;
       const SNAP_THRESH = 12 / engine.zoom;
@@ -457,8 +457,8 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     }
     
     const activeRamales = engine.tipoTramo === 'tributario'
-      ? engine.ramales.filter((r: any) => r.id === engine.padreTributario)
-      : engine.ramales.filter((r: any) => r.net === engine.activeNet);
+      ? engine.ramales.filter((r) => r.id === engine.padreTributario)
+      : engine.ramales.filter((r) => r.net === engine.activeNet);
     for (const r of activeRamales) {
       if (r.id === engine.activeRamal.id) continue;
       let sp = null;
@@ -624,8 +624,8 @@ export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number
     return;
   }
   
-  const isText = engine.textAnnots.some((t: any) => t.id === selId);
-  const isArea = engine.areas.some((a: any) => a.id === selId);
+  const isText = engine.textAnnots.some((t) => t.id === selId);
+  const isArea = engine.areas.some((a) => a.id === selId);
   const tipo = (sel as any).tipo;
   
   if (tipo === 'bajante' || tipo === 'montante' || tipo === 'red_publica' || tipo === 'contador' || tipo === 'calentador' || isArea || isText || selId.startsWith('DIM')) {
