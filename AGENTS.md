@@ -161,13 +161,13 @@ These policies prevent unauthorized access or tampering with drawing data belong
 ## Session Summary — 2026-07-05 (Phase 6 — TypeScript best practices)
 
 ### Done
-- **Phase 7: Composition Patterns** — TramoEditor and BajanteContextMenu:
+- **Phase 7: Composition Patterns** — TramoEditor and DrawingElementContextMenu:
   - **ExtremeAccessoryEditor**: `engineRef: any` → `React.MutableRefObject<PlanoEngine | null>`
   - **TramoEditorContext** (new file): Shared context provider for all TramoEditor sub-components; eliminates prop drilling of 16 props across 4 sub-editors (ContadorEditor, CalentadorEditor, BajanteEditor, RamalEditor)
   - **TramoEditor explicit variants**: `ContadorTramoEditor`, `CalentadorTramoEditor`, `BajanteTramoEditor`, `AreaTramoEditor`, `RamalTramoEditor` — each variant composes only its needed sub-components. Main `TramoEditor` is now a thin provider + dispatcher.
-  - **BajanteContextMenuContext** (new file): Shared context elimintating prop drilling of 12 props across 4 sub-components (BajanteDirectionSelector, BajanteDiameterSelector, BajanteConnectionPanel, BajanteCodeEditor)
-  - **BajanteContextMenu explicit variants**: `BajanteMenu`, `AreaMenu`, `RamalMenu`, `ContadorMenu`, `CalentadorMenu` — 5 explicit variants replacing the 5-arm type switch. Main component is now a provider + dispatcher.
-  - Both `useBajanteContextMenu()` and `useTramoEditor()` hooks throw if used outside their providers.
+  - **DrawingElementContextMenuContext** (new file): Shared context elimintating prop drilling of 12 props across 4 sub-components (BajanteDirectionSelector, BajanteDiameterSelector, BajanteConnectionPanel, BajanteCodeEditor)
+  - **DrawingElementContextMenu explicit variants**: `BajanteMenu`, `AreaMenu`, `RamalMenu`, `ContadorMenu`, `CalentadorMenu` — 5 explicit variants replacing the 5-arm type switch. Main component is now a provider + dispatcher.
+  - Both `useDrawingElementContextMenu()` and `useTramoEditor()` hooks throw if used outside their providers.
 - **Phase 6 clean sweep** — Removed every `: any` annotation from `src/lib/PlanoEngine/` and `src/utils/accessoryAbbreviations.ts`. Rerun counted header-level `any` remnants were function parameters (render-only, low impact). Verified with `tsc --noEmit` zero errors.
 - **Phase 6.2: PlanoEngine `any` types** — Cleaned iteration callback `: any` types across 14 files:
   - `PlanoEngine.ts`: `(n: any) → (n)`
@@ -199,9 +199,9 @@ These policies prevent unauthorized access or tampering with drawing data belong
 - `src/lib/PlanoEngine/renderers/renderAreas.ts` — any callback + null + optional net fix
 - `src/utils/accessoryAbbreviations.ts` — `b: any` → typed interface
 - `src/components/pdfViewer/TramoEditorContext.tsx` — shared context (new)
-- `src/components/pdfViewer/BajanteContextMenuContext.tsx` — shared context (new)
+- `src/components/pdfViewer/DrawingElementContextMenuContext.tsx` — shared context (new)
 - `src/components/pdfViewer/TramoEditor.tsx` — provider + 5 explicit variant components
-- `src/components/pdfViewer/BajanteContextMenu.tsx` — provider + 5 explicit variant components
+- `src/components/pdfViewer/DrawingElementContextMenu.tsx` — provider + 5 explicit variant components
 - `src/components/pdfViewer/ExtremeAccessoryEditor.tsx` — `engineRef: any` → typed
 
 ### Fixed — drawingAngles.ts:checkRamalAngles
