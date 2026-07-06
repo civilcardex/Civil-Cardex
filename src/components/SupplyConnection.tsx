@@ -162,7 +162,7 @@ function Acometida({
                 </tr>
                 <tr>
                   <th scope="col" className="col-h" style={{...TH_CENTER, fontSize: 9, fontWeight: 405, width: "13%"}}>Horizontal</th>
-                  <th scope="col" className="col-h" style={{...TH_CENTER, fontSize: 9, fontWeight: 405, width: "13%"}}>Equivalente</th>
+                  <th scope="col" className="col-h" style={{...TH_CENTER, fontSize: 9, fontWeight: 405, width: "13%"}}>Eq. Accesorios</th>
                 </tr> 
               </thead>
               <tbody>

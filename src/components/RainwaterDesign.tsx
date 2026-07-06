@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import { usePlans } from "../context/PlansContext";
 import { renderStatus } from "../utils/componentHelpers";
@@ -8,7 +8,8 @@ import { chequeoBajanteLluvia } from "../utils/calcRainwater";
 import { writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
 import { calcHydraulicCheck } from "../utils/hydraulicCheck";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
-import { loadFromStorage } from "../services/storageService";
+import { loadFromStorage, savePlanTrazos } from "../services/storageService";
+import { writeSanDrawingSync } from "../utils/drawingSync";
 import { useRainwater } from "../context/RainwaterContext";
 
 function getTributarioIds(tramos: Array<{ recibeDe?: string[]; descripcion?: string }>): Set<string> {
@@ -24,6 +25,32 @@ function getTributarioIds(tramos: Array<{ recibeDe?: string[]; descripcion?: str
   }
   return tribSet;
 }
+
+const CaudalCell = React.memo(function CaudalCell({ tramoKey, value, onCaudalChange }: { tramoKey: string; value: number; onCaudalChange: (key: string, val: number) => void }) {
+  const [text, setText] = React.useState('');
+  const [editing, setEditing] = React.useState(false);
+  const ref = React.useRef<HTMLInputElement>(null);
+  const display = editing ? text : (value > 0 ? value.toFixed(2) : '');
+  return (
+    <input ref={ref} type="text" inputMode="decimal" 
+      value={display} 
+      placeholder="0.00"
+      aria-label="Caudal (LPS)"
+      onFocus={() => { setEditing(true); setText(display); }}
+      onChange={e => {
+        const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+        setText(raw);
+      }}
+      onBlur={() => {
+        setEditing(false);
+        const v = parseFloat(text) || 0;
+        const finalVal = text === '' ? 0 : v;
+        onCaudalChange(tramoKey, finalVal);
+      }}
+      style={{ width: '60px', padding: '2px 4px', background: 'transparent', border: '1px solid transparent', borderRadius: 2, color: 'var(--txt)', fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 600, textAlign: 'center' }}
+    />
+  );
+});
 
 export default function DisenoLluvias() {
   const { tramosLl, updTramoLL } = useTramos();
@@ -205,7 +232,10 @@ export default function DisenoLluvias() {
     for (const t of tramosLl) {
       if (!t._key) continue;
       let ownQ = 0;
-      if (t.area_m2 && t.area_m2 > 0) {
+      // Prioritize manually edited caudal field
+      if (t.caudal != null && t.caudal > 0) {
+        ownQ = t.caudal;
+      } else if (t.area_m2 && t.area_m2 > 0) {
         const manual = bajantesLl.find(b => 
           b.bajante === t.id || b.bajante === t.code || b.id === t.id || b.id === t.code
         );
@@ -223,7 +253,10 @@ export default function DisenoLluvias() {
       if (!t._key) continue;
       
       let total = 0;
-      if (t.tipo === 'ramal' && !t.esBajante) {
+      // Prioritize manual caudal override
+      if (t.caudal != null && t.caudal > 0) {
+        total = t.caudal;
+      } else if (t.tipo === 'ramal' && !t.esBajante) {
         const associatedCodes = getAssociatedBajantes(t._key);
         for (const code of associatedCodes) {
           const bajante = bajantesLl.find(b => b.bajante === code || b.id === code);
@@ -256,6 +289,26 @@ export default function DisenoLluvias() {
     const opt = DIAM_OPTIONS.find(o => o.pulg === newPulg);
     if (opt && tramoId) {
       writeDiametroToDrawing(tramoId, 'll', opt.label, plans);
+    }
+  }, [updTramoLL, plans]);
+
+  const handleCaudalChange = useCallback((tramoKey: string, newCaudal: number) => {
+    updTramoLL(tramoKey, 'caudal', newCaudal);
+    // Sync to drawing plan trace data (bidirectional)
+    const [ramalId, planId] = tramoKey.split('-');
+    if (planId) {
+      const raw = loadFromStorage<any>(TRAZOS_PREFIX + planId, null);
+      if (raw) {
+        let data = raw;
+        if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { return; } }
+        const r = (data.ramales || []).find((x: any) => x.id === ramalId);
+        if (r) {
+          r.caudal = newCaudal;
+          data.ts = Date.now();
+          savePlanTrazos(planId, data);
+          writeSanDrawingSync(plans);
+        }
+      }
     }
   }, [updTramoLL, plans]);
 
@@ -359,7 +412,9 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm });
                       );
                     })()}
                   </td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,padding:'2px 4px'}}>{Q>0?Q.toFixed(3):'—'}</td>
+                  <td className="c" style={{padding:'2px 4px',minWidth:60}}>
+                    <CaudalCell tramoKey={t._key ?? ''} value={Q} onCaudalChange={handleCaudalChange} />
+                  </td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{sVal > 0 ? sVal : '—'}</td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontSize:9,padding:'2px 4px'}}>{DcalcPulg>0?DcalcPulg.toFixed(2)+'"':'—'}</td>
