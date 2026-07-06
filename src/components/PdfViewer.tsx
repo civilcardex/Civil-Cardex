@@ -14,7 +14,8 @@ import PdfViewerNetworkBar from "./pdfViewer/PdfViewerNetworkBar";
 import { usePdfAutoSave } from "./pdfViewer/usePdfAutoSave";
 import { usePdfViewerEngine } from "./pdfViewer/PdfViewerEngineInit";
 import TextInputOverlay from "./pdfViewer/TextInputOverlay";
-import BajanteContextMenu from "./pdfViewer/BajanteContextMenu";
+import DrawingElementContextMenu from "./pdfViewer/DrawingElementContextMenu";
+import { type ContextMenuState } from "./pdfViewer/DrawingElementContextMenuContext";
 import ConfirmDialog from "./pdfViewer/ConfirmDialog";
 import AlertDialog from "./pdfViewer/AlertDialog";
 import TipoTramoSelector from "./pdfViewer/TipoTramoSelector";
@@ -302,13 +303,13 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   }, []);
 
   // ── Dialog state ──
-  const [contextMenuState, setContextMenuState] = useState<{ visible: boolean; x: number; y: number; bajante: any; isGhostClick?: boolean; ramalEndpoint?: { idx: number; x: number; y: number } | null } | null>(null);
+  const [contextMenuState, setContextMenuState] = useState<ContextMenuState | null>(null);
   const [confirmState, setConfirmState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({isOpen: false, title: '', message: '', onConfirm: () => {}});
   const [alertDialogState, setAlertDialogState] = useState<{isOpen: boolean; title: string; message: string}>({isOpen: false, title: '', message: ''});
 
   const contextMenuCbRef = useRef<any>(null);
   const onContextMenuCb = useCallback((bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: any) => {
-    setContextMenuState({ visible: true, x, y, bajante, isGhostClick, ramalEndpoint });
+    setContextMenuState({ visible: true, x, y, element: bajante, isGhostClick, ramalEndpoint });
   }, []);
   contextMenuCbRef.current = onContextMenuCb;
 
@@ -603,7 +604,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
 
       {/* Dialogs (was PdfViewerDialogs) */}
       <TextInputOverlay textOverlay={textOverlay} setTextOverlay={setTextOverlay} textInputRef={textInputRef} />
-      <BajanteContextMenu
+      <DrawingElementContextMenu
         contextMenuState={contextMenuState} setContextMenuState={setContextMenuState}
         selectedNivel={selectedNivel} pisos={pisos} engineRef={engineRef}
         selElement={selElement} setSelElement={setSelElement}

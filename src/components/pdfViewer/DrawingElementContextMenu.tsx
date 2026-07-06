@@ -1,14 +1,19 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { bajanteLabel } from "../../utils/accessoryAbbreviations";
-import { pisoLbl, DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS_DN_LABELS } from "../../constants";
+import { pisoLbl, DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS_DN_LABELS, APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, SAN_UC_IDS, ACCESORIOS_HIDRO, SAN_ACCESORIOS, GAS_ACCESORIOS } from "../../constants";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import { writeBajantePropToDrawing, writeAcoDiamToDrawing, writeContadorDiamToDrawing } from "../../utils/writeDiameterToDrawing";
 import { syncExtremeAccessoryToHidroData } from "../../utils/syncExtremeAccessory";
 import { GAS, CAT_GAS } from "../../constants/engineeringDataGas";
 import { VENTILACION, CONTADORES as CONTADORES_CAT } from "../../pages/catalog/catalogData";
 import { DIAMETROS_AF } from "../../constants/hydraulicData";
-import { BajanteContextMenuCtx, useBajanteContextMenu, type BajanteContextMenuContextValue, type ContextMenuState } from "./BajanteContextMenuContext";
-import type PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
+import { DrawingElementContextMenuCtx, useDrawingElementContextMenu, type DrawingElementContextMenuContextValue, type ContextMenuState } from "./DrawingElementContextMenuContext";
+import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
+import { loadFromStorage, saveToStorage } from "../../services/storageService";
+import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from "../../constants/storage-keys";
+import { writeSanDrawingSync, writeHydroDrawingSync } from "../../utils/drawingSync";
+
+
 
 interface LowerFloorRamales {
   planId: string;
@@ -18,7 +23,7 @@ interface LowerFloorRamales {
 }
 
 function BajanteDirectionSelector({
-  bajante,
+  element,
   isGhostClick = false,
   selectedNivel,
   pisos,
@@ -27,7 +32,7 @@ function BajanteDirectionSelector({
   setSelElement,
   setContextMenuState,
 }: {
-  bajante: any;
+  element: any;
   isGhostClick?: boolean;
   selectedNivel: number | null;
   pisos: any[];
@@ -37,20 +42,20 @@ function BajanteDirectionSelector({
   setContextMenuState: React.Dispatch<React.SetStateAction<any>>;
 }) {
   const currentGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-  const gd = bajante.ghostData?.[currentGhostLabel];
-  const ghostDir = isGhostClick ? (gd && gd.direccion !== undefined ? gd.direccion : bajante.direccion) : bajante.direccion;
+  const gd = element.ghostData?.[currentGhostLabel];
+  const ghostDir = isGhostClick ? (gd && gd.direccion !== undefined ? gd.direccion : element.direccion) : element.direccion;
 
   const updateGhostField = (field: string, val: string) => {
     if (!engineRef.current) return;
-    const gd2 = { ...(bajante.ghostData || {}) };
+    const gd2 = { ...(element.ghostData || {}) };
     const cd = { ...(gd2[currentGhostLabel] || {}) };
     (cd as any)[field] = val;
     gd2[currentGhostLabel] = cd;
-    engineRef.current?.updateElementById(bajante.id, { ghostData: gd2 });
-    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === bajante.id);
+    engineRef.current?.updateElementById(element.id, { ghostData: gd2 });
+    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
     if (fresh) {
-      setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...fresh } } : null);
-      if (selElement?.id === bajante.id) {
+      setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+      if (selElement?.id === element.id) {
         setSelElement({ ...selElement, ghostData: gd2 });
       }
     }
@@ -64,7 +69,7 @@ function BajanteDirectionSelector({
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: '0 8px 4px' }}>
         {(isGhostClick ? ['Sube', 'Baja', 'Continua'] : ['Sube', 'Baja', 'Continua', 'Desplazamiento']).map(opt => {
           const isActive = opt === 'Desplazamiento'
-            ? (!ghostDir && !!(bajante.desplazamientos && bajante.desplazamientos[currentGhostLabel]))
+            ? (!ghostDir && !!(element.desplazamientos && element.desplazamientos[currentGhostLabel]))
             : (ghostDir === opt.toLowerCase());
           return (
             <button
@@ -83,15 +88,15 @@ function BajanteDirectionSelector({
                   let updates: any = {};
 
                   if (opt === 'Sube') {
-                    updates = { direccion: 'sube', nptBase: currentNpt, nptCima: maxNpt, desplazamientos: { ...(bajante.desplazamientos || {}) } };
+                    updates = { direccion: 'sube', nptBase: currentNpt, nptCima: maxNpt, desplazamientos: { ...(element.desplazamientos || {}) } };
                   } else if (opt === 'Baja') {
-                    updates = { direccion: 'baja', nptBase: minNpt, nptCima: currentNpt, desplazamientos: { ...(bajante.desplazamientos || {}) } };
+                    updates = { direccion: 'baja', nptBase: minNpt, nptCima: currentNpt, desplazamientos: { ...(element.desplazamientos || {}) } };
                   } else if (opt === 'Continua') {
-                    updates = { direccion: 'continua', desplazamientos: { ...(bajante.desplazamientos || {}) } };
+                    updates = { direccion: 'continua', desplazamientos: { ...(element.desplazamientos || {}) } };
                   } else if (opt === 'Desplazamiento') {
                     const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
                     if (lvl) {
-                      const currentDesp = bajante.desplazamientos || {};
+                      const currentDesp = element.desplazamientos || {};
                       updates = {
                         direccion: undefined,
                         desplazamientos: {
@@ -102,12 +107,12 @@ function BajanteDirectionSelector({
                     }
                   }
                   if (Object.keys(updates).length > 0) {
-                    engineRef.current?.updateElementById(bajante.id, updates);
-                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === bajante.id);
+                    engineRef.current?.updateElementById(element.id, updates);
+                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
                     if (fresh) {
-                      setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...fresh } } : null);
+                      setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
                     }
-                    if (selElement?.id === bajante.id) {
+                    if (selElement?.id === element.id) {
                       setSelElement({ ...selElement, ...updates });
                     }
                   }
@@ -139,19 +144,19 @@ function BajanteDirectionSelector({
           onClick={() => {
             if (engineRef.current) {
               const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-              const isFantasma = bajante.isFantasma;
+              const isFantasma = element.isFantasma;
               const updates: any = { isFantasma: !isFantasma };
               if (!isFantasma && lvl) {
-                const currentDesp = { ...(bajante.desplazamientos || {}) };
+                const currentDesp = { ...(element.desplazamientos || {}) };
                 if (!currentDesp[lvl]) {
                   currentDesp[lvl] = { dx: 2, dy: 0 };
                   updates.desplazamientos = currentDesp;
                 }
               }
-              engineRef.current?.updateElementById(bajante.id, updates);
-              const fresh = engineRef.current?.bajantes.find((b: any) => b.id === bajante.id);
+              engineRef.current?.updateElementById(element.id, updates);
+              const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
               if (fresh) {
-                setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...fresh } } : null);
+                setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
               }
               engineRef.current?.render();
             }
@@ -165,7 +170,7 @@ function BajanteDirectionSelector({
           onMouseEnter={e => e.currentTarget.style.background = '#2563eb33'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
-          {bajante.isFantasma ? 'Desactivar desplazamiento del bajante' : 'Activar desplazamiento del bajante'}
+          {element.isFantasma ? 'Desactivar desplazamiento del bajante' : 'Activar desplazamiento del bajante'}
         </button>
       )}
     </>
@@ -173,7 +178,7 @@ function BajanteDirectionSelector({
 }
 
 function BajanteDiameterSelector({
-  bajante,
+  element,
   isGhostClick = false,
   selectedNivel,
   engineRef,
@@ -183,7 +188,7 @@ function BajanteDiameterSelector({
   lowerFloorsRamales,
   planosCtx,
 }: {
-  bajante: any;
+  element: any;
   isGhostClick?: boolean;
   selectedNivel: number | null;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
@@ -202,17 +207,17 @@ function BajanteDiameterSelector({
           <div style={{ display: 'flex', gap: 6, padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Destino</div>
-              <select value={bajante.descargaEnId || ''}
+              <select value={element.descargaEnId || ''}
                 onChange={e => {
                   const v = e.target.value || null;
-                  engineRef.current?.updateElementById(bajante.id, { descargaEnId: v });
-                  const fresh = engineRef.current?.bajantes.find((b: any) => b.id === bajante.id);
-                  if (fresh) setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...fresh } } : null);
-                  if (selElement?.id === bajante.id) {
+                  engineRef.current?.updateElementById(element.id, { descargaEnId: v });
+                  const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
+                  if (fresh) setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                  if (selElement?.id === element.id) {
                     setSelElement({ ...selElement, descargaEnId: v });
                   }
-                  const bKey = `${bajante.id}-${engineRef.current?.planId}`;
-                  writeBajantePropToDrawing(bKey, bajante.net || 'san', 'descargaEnId', v, planosCtx.plans);
+                  const bKey = `${element.id}-${engineRef.current?.planId}`;
+                  writeBajantePropToDrawing(bKey, element.net || 'san', 'descargaEnId', v, planosCtx.plans);
 
                   if (v && engineRef.current) {
                     const oParts = v.split('|');
@@ -221,16 +226,16 @@ function BajanteDiameterSelector({
                     const lowerPl = lowerFloorsRamales.find((g: any) => String(g.planId) === String(oPlanId));
                     const targetBaj = lowerPl?.bajantes?.find((b: any) => String(b.id) === String(oTgtId));
                     if (targetBaj) {
-                      const dist = Math.hypot(bajante.x - targetBaj.x, bajante.y - targetBaj.y);
+                      const dist = Math.hypot(element.x - targetBaj.x, element.y - targetBaj.y);
                       if (dist > 0.05) {
                         const exists = engineRef.current.ramales.some((r: any) => 
-                          (Math.hypot(r.pts[0][0] - bajante.x, r.pts[0][1] - bajante.y) < 0.5 &&
+                          (Math.hypot(r.pts[0][0] - element.x, r.pts[0][1] - element.y) < 0.5 &&
                            Math.hypot(r.pts[r.pts.length - 1][0] - targetBaj.x, r.pts[r.pts.length - 1][1] - targetBaj.y) < 0.5) ||
                           (Math.hypot(r.pts[0][0] - targetBaj.x, r.pts[0][1] - targetBaj.y) < 0.5 &&
-                           Math.hypot(r.pts[r.pts.length - 1][0] - bajante.x, r.pts[r.pts.length - 1][1] - bajante.y) < 0.5)
+                           Math.hypot(r.pts[r.pts.length - 1][0] - element.x, r.pts[r.pts.length - 1][1] - element.y) < 0.5)
                         );
                         if (!exists) {
-                          const net = bajante.net || 'san';
+                          const net = element.net || 'san';
                           const cnt = ++(engineRef.current._netCounts[net]['ramal']);
                           const newRamalId = 'R' + Date.now();
                           const netPfx = NETS.find(n => n.id === net)?.lbl || 'R';
@@ -239,14 +244,14 @@ function BajanteDiameterSelector({
                             net,
                             tipo: 'ramal',
                             padre: null,
-                            pts: [[bajante.x, bajante.y], [targetBaj.x, targetBaj.y]],
+                            pts: [[element.x, element.y], [targetBaj.x, targetBaj.y]],
                             totalL: +(engineRef.current.pxToM(dist)).toFixed(3),
                             label: netPfx + cnt,
                             ini: '', fin: '',
                             piso: engineRef.current.nivelActual?.n ?? '',
                             dz: '', uc: 0,
-                            labelX: (bajante.x + targetBaj.x) / 2,
-                            labelY: (bajante.y + targetBaj.y) / 2,
+                            labelX: (element.x + targetBaj.x) / 2,
+                            labelY: (element.y + targetBaj.y) / 2,
                             labelAngle: 0,
                             material: '',
                             diametro: '',
@@ -267,7 +272,7 @@ function BajanteDiameterSelector({
                   const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
                   const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
                   const hasRamales = group.ramales && group.ramales.length > 0;
-                  const hasBajantes = group.bajantes && group.bajantes.filter((b: any) => b.id !== bajante.id).length > 0;
+                  const hasBajantes = group.bajantes && group.bajantes.filter((b: any) => b.id !== element.id).length > 0;
                   return (
                     <optgroup key={group.planId} label={pLabel}>
                       {hasRamales && group.ramales.map((r: any) => (
@@ -275,7 +280,7 @@ function BajanteDiameterSelector({
                           Ramal: {r.label || r.id}
                         </option>
                       ))}
-                      {hasBajantes && group.bajantes.filter((b: any) => b.id !== bajante.id).map((b: any) => (
+                      {hasBajantes && group.bajantes.filter((b: any) => b.id !== element.id).map((b: any) => (
                         <option key={`${group.planId}|${b.id}`} value={`${group.planId}|${b.id}`}>
                           Bajante: {b.code || b.id}
                         </option>
@@ -291,32 +296,32 @@ function BajanteDiameterSelector({
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Diámetro</div>
               <select value={(() => {
-                const gd = bajante.ghostData?.[currentGhostLabel];
-                return isGhostClick ? (gd && gd.dNominal !== undefined ? gd.dNominal : (bajante.dNominal || '')) : (bajante.dNominal || '');
+                const gd = element.ghostData?.[currentGhostLabel];
+                return isGhostClick ? (gd && gd.dNominal !== undefined ? gd.dNominal : (element.dNominal || '')) : (element.dNominal || '');
               })()}
                 onChange={e => {
                   const val = e.target.value;
                   if (isGhostClick && engineRef.current) {
-                    const gd2 = { ...(bajante.ghostData || {}) };
+                    const gd2 = { ...(element.ghostData || {}) };
                     const cd = { ...(gd2[currentGhostLabel] || {}) };
                     cd.dNominal = val;
                     gd2[currentGhostLabel] = cd;
                     const fields = { ghostData: gd2 };
-                    engineRef.current?.updateElementById(bajante.id, fields);
-                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === bajante.id);
+                    engineRef.current?.updateElementById(element.id, fields);
+                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
                     if (fresh) {
-                      setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...fresh } } : null);
-                      if (selElement?.id === bajante.id) {
+                      setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                      if (selElement?.id === element.id) {
                         setSelElement({ ...selElement, ghostData: fields.ghostData });
                       }
                     }
                   } else {
                     const fields = { dNominal: val };
-                    engineRef.current?.updateElementById(bajante.id, fields);
-                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === bajante.id);
+                    engineRef.current?.updateElementById(element.id, fields);
+                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
                     if (fresh) {
-                      setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...fresh } } : null);
-                      if (selElement?.id === bajante.id) {
+                      setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                      if (selElement?.id === element.id) {
                         setSelElement({ ...selElement, dNominal: fields.dNominal });
                       }
                     }
@@ -324,7 +329,7 @@ function BajanteDiameterSelector({
                 }}
                 style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
                 <option value="">—</option>
-                {(bajante.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
+                {(element.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
                   <option key={d.pulg} value={d.nom}>{d.nom}</option>
                 ))}
               </select>
@@ -333,14 +338,14 @@ function BajanteDiameterSelector({
           <div style={{ display: 'flex', gap: 6, padding: '0 8px 4px' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Llenado (R)</div>
-              <select value={bajante.bajR != null ? (Math.abs(bajante.bajR - 7 / 24) < 0.001 ? '7/24' : '1/4') : '7/24'}
+              <select value={element.bajR != null ? (Math.abs(element.bajR - 7 / 24) < 0.001 ? '7/24' : '1/4') : '7/24'}
                 onChange={e => {
                   const val = e.target.value;
                   const valNum = val === '7/24' ? 7 / 24 : 0.25;
-                  engineRef.current?.updateElementById(bajante.id, { bajR: valNum });
-                  const fresh = engineRef.current?.bajantes.find((b: any) => b.id === bajante.id);
-                  if (fresh) setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...fresh } } : null);
-                  if (selElement?.id === bajante.id) {
+                  engineRef.current?.updateElementById(element.id, { bajR: valNum });
+                  const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
+                  if (fresh) setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                  if (selElement?.id === element.id) {
                     setSelElement({ ...selElement, bajR: valNum });
                   }
                 }}
@@ -351,18 +356,18 @@ function BajanteDiameterSelector({
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Área asociada</div>
-              <select value={bajante.area_m2 || ''}
+              <select value={element.area_m2 || ''}
                 onChange={e => {
                   const val = parseFloat(e.target.value) || 0;
-                  engineRef.current?.updateElementById(bajante.id, { area_m2: val });
-                  setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...prev.bajante, area_m2: val } } : null);
-                  if (selElement?.id === bajante.id) {
+                  engineRef.current?.updateElementById(element.id, { area_m2: val });
+                  setContextMenuState((prev: any) => prev ? { ...prev, element: { ...prev.element, area_m2: val } } : null);
+                  if (selElement?.id === element.id) {
                     setSelElement({ ...selElement, area_m2: val });
                   }
                 }}
                 style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
                 <option value="">— Sin área —</option>
-                {(engineRef.current?.areas || []).filter((a: any) => a.net === bajante.net).map((a: any) => (
+                {(engineRef.current?.areas || []).filter((a: any) => a.net === element.net).map((a: any) => (
                   <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
                 ))}
               </select>
@@ -373,33 +378,33 @@ function BajanteDiameterSelector({
         <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
           <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Diámetro</div>
           <select value={(() => {
-            const gd = bajante.ghostData?.[currentGhostLabel];
-            return isGhostClick ? (gd && gd.dNominal !== undefined ? gd.dNominal : (bajante.dNominal || '')) : (bajante.dNominal || '');
+            const gd = element.ghostData?.[currentGhostLabel];
+            return isGhostClick ? (gd && gd.dNominal !== undefined ? gd.dNominal : (element.dNominal || '')) : (element.dNominal || '');
           })()}
             onChange={e => {
               const val = e.target.value;
               if (engineRef.current) {
                 if (isGhostClick) {
-                  const gd2 = { ...(bajante.ghostData || {}) };
+                  const gd2 = { ...(element.ghostData || {}) };
                   const cd = { ...(gd2[currentGhostLabel] || {}) };
                   cd.dNominal = val;
                   gd2[currentGhostLabel] = cd;
                   const fields = { ghostData: gd2 };
-                  engineRef.current?.updateElementById(bajante.id, fields);
-                  const fresh = engineRef.current?.bajantes.find((b: any) => b.id === bajante.id);
+                  engineRef.current?.updateElementById(element.id, fields);
+                  const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
                   if (fresh) {
-                    setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...fresh } } : null);
-                    if (selElement?.id === bajante.id) {
+                    setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                    if (selElement?.id === element.id) {
                       setSelElement({ ...selElement, ghostData: fields.ghostData });
                     }
                   }
                 } else {
                   const fields = { dNominal: val };
-                  engineRef.current?.updateElementById(bajante.id, fields);
-                  const fresh = engineRef.current?.bajantes.find((b: any) => b.id === bajante.id);
+                  engineRef.current?.updateElementById(element.id, fields);
+                  const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
                   if (fresh) {
-                    setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...fresh } } : null);
-                    if (selElement?.id === bajante.id) {
+                    setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                    if (selElement?.id === element.id) {
                       setSelElement({ ...selElement, dNominal: fields.dNominal });
                     }
                   }
@@ -408,7 +413,7 @@ function BajanteDiameterSelector({
             }}
             style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
             <option value="">—</option>
-            {(bajante.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
+            {(element.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
               <option key={d.pulg} value={d.nom}>{d.nom}</option>
             ))}
           </select>
@@ -419,7 +424,7 @@ function BajanteDiameterSelector({
 }
 
 function BajanteConnectionPanel({
-  bajante,
+  element,
   isGhostClick = false,
   ramalEndpoint,
   engineRef,
@@ -430,7 +435,7 @@ function BajanteConnectionPanel({
   activeNet,
   planosCtx,
 }: {
-  bajante: any;
+  element: any;
   isGhostClick?: boolean;
   ramalEndpoint?: { idx: number; x: number; y: number } | null;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
@@ -441,7 +446,7 @@ function BajanteConnectionPanel({
   activeNet: string;
   planosCtx?: { plans: any[] };
 }) {
-  const hasPts = !!bajante.pts;
+  const hasPts = !!element.pts;
 
   return (
     <>
@@ -456,13 +461,13 @@ function BajanteConnectionPanel({
               {(() => {
                 const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === activeNet && r.tipo !== 'tributario');
                 if (bajRamales.length === 0) return <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin ramales</div>;
-                const recibidos = (bajante.recibeDeIds || []);
+                const recibidos = (element.recibeDeIds || []);
                 return bajRamales.map((r: any) => {
                   const isAssociated = recibidos.includes(r.id);
                   const rStart = r.pts?.[0];
                   const rEnd = r.pts?.[r.pts.length - 1];
-                  const distStart = rStart ? Math.hypot(rStart[0] - bajante.x, rStart[1] - bajante.y) : Infinity;
-                  const distEnd = rEnd ? Math.hypot(rEnd[0] - bajante.x, rEnd[1] - bajante.y) : Infinity;
+                  const distStart = rStart ? Math.hypot(rStart[0] - element.x, rStart[1] - element.y) : Infinity;
+                  const distEnd = rEnd ? Math.hypot(rEnd[0] - element.x, rEnd[1] - element.y) : Infinity;
                   const isAtStart = distStart <= distEnd;
                   return (
                     <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
@@ -472,12 +477,12 @@ function BajanteConnectionPanel({
                           const newRecibe = checked
                             ? [...recibidos, r.id]
                             : recibidos.filter((id: string) => id !== r.id);
-                          engineRef.current?.updateElementById(bajante.id, { recibeDeIds: newRecibe });
-                          setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...prev.bajante, recibeDeIds: newRecibe } } : null);
-                          if (selElement?.id === bajante.id) {
+                          engineRef.current?.updateElementById(element.id, { recibeDeIds: newRecibe });
+                          setContextMenuState((prev: any) => prev ? { ...prev, element: { ...prev.element, recibeDeIds: newRecibe } } : null);
+                          if (selElement?.id === element.id) {
                             setSelElement({ ...selElement, recibeDeIds: newRecibe });
                           }
-                          const bajCode = bajante.code || bajante.id;
+                          const bajCode = element.code || element.id;
                           const currentIni = r.ini || '';
                           const currentFin = r.fin || '';
                           if (isAtStart) {
@@ -505,18 +510,18 @@ function BajanteConnectionPanel({
             <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
               {(() => {
-                const netBajantes = (engineRef.current?.bajantes || []).filter((b: any) => b.net === bajante.net && b.id !== bajante.id && b.tipo !== 'tributario');
+                const netBajantes = (engineRef.current?.bajantes || []).filter((b: any) => b.net === element.net && b.id !== element.id && b.tipo !== 'tributario');
                 if (netBajantes.length === 0) return <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin bajantes</div>;
-                const currentId = bajante.id;
+                const currentId = element.id;
                 return netBajantes.map((b: any) => {
-                  const isAssociated = (bajante.recibeDeIds || []).includes(b.id)
+                  const isAssociated = (element.recibeDeIds || []).includes(b.id)
                     || (b.recibeDeIds || []).includes(currentId);
                   return (
                     <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
                       <input type="checkbox" checked={isAssociated}
                         onChange={e => {
                           const checked = e.target.checked;
-                          const bajFresh = bajante.recibeDeIds || [];
+                          const bajFresh = element.recibeDeIds || [];
                           const otherFresh = b.recibeDeIds || [];
 
                           const newBajRecibe = checked
@@ -529,7 +534,7 @@ function BajanteConnectionPanel({
                           engineRef.current?.updateElementById(currentId, { recibeDeIds: newBajRecibe });
                           engineRef.current?.updateElementById(b.id, { recibeDeIds: newOtherRecibe });
                           const refreshed = engineRef.current?.bajantes.find((x: any) => x.id === currentId);
-                          if (refreshed) setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...refreshed } } : null);
+                          if (refreshed) setContextMenuState((prev: any) => prev ? { ...prev, element: { ...refreshed } } : null);
                           if (selElement?.id === currentId) {
                             setSelElement({ ...selElement, recibeDeIds: newBajRecibe });
                           }
@@ -551,39 +556,27 @@ function BajanteConnectionPanel({
 
       {hasPts && ramalEndpoint && (() => {
         const supNets = ['san', 'll', 'vent', 'af', 'ac', 'gas', 'rci', 'rec'];
-        if (!supNets.includes(bajante.net)) return null;
+        if (!supNets.includes(element.net)) return null;
         const ep = ramalEndpoint;
 
-        const netDef = NETS.find((n: any) => n.id === bajante.net);
+        const netDef = NETS.find((n: any) => n.id === element.net);
         const bmLabel = netDef?.bmType === 'bajante' ? 'bajante' : 'montante';
 
         return (
           <>
-            {(bajante.tipo === 'tributario' || bajante.tipo === 'ramal') && ['san', 'af', 'ac'].includes(bajante.net) && (() => {
+            {(element.tipo === 'tributario' || element.tipo === 'ramal') && ['san', 'af', 'ac', 'gas'].includes(element.net) && (() => {
               const isStart = ep.idx === 0;
               const fieldAcc = isStart ? 'accesorioInicio' : 'accesorioFin';
               const fieldDiam = isStart ? 'diametroInicio' : 'diametroFin';
 
-              const currentAcc = bajante[fieldAcc] || '';
-              const currentDiam = bajante[fieldDiam] || bajante.diametro || '';
+              const currentAcc = element[fieldAcc] || '';
+              const currentDiam = element[fieldDiam] || element.diametro || '';
 
-              const matList = mats?.[bajante.net] || [];
-              const matShort = bajante.material || matList[0]?.val || '';
+              const matList = mats?.[element.net] || [];
+              const matShort = element.material || matList[0]?.val || '';
               const diamList = DIAM_BY_MAT[matShort] || [];
 
-              const accOptions = bajante.net === 'san'
-                ? [
-                    { value: 'sifon', label: 'Sifón' },
-                    { value: 'codoSube', label: 'Codo Sube' },
-                    { value: 'codoBaja', label: 'Codo Baja' },
-                    { value: 'codoReventilado', label: 'Codo reventilado' },
-                  ]
-                : [
-                    { value: 'valvCompuerta', label: 'Válvula compuerta' },
-                    { value: 'valvGlobo', label: 'Válvula globo' },
-                    { value: 'valvCheque', label: 'Válvula cheque' },
-                    { value: 'valvAngulo', label: 'Válvula ángulo' },
-                  ];
+              const accOptions = getAccessoryOptions(element.net);
 
               return (
                 <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 6, borderBottom: '1px solid #3a494a', marginBottom: 4 }}>
@@ -598,20 +591,20 @@ function BajanteConnectionPanel({
                       onChange={(e) => {
                         const val = e.target.value;
                         if (engineRef.current) {
-                          const oldVal = bajante[fieldAcc] || '';
+                          const oldVal = element[fieldAcc] || '';
                           const updates: any = { [fieldAcc]: val };
-                          if (val && !bajante[fieldDiam]) {
-                            updates[fieldDiam] = bajante.diametro || '';
+                          if (val && !element[fieldDiam]) {
+                            updates[fieldDiam] = element.diametro || '';
                           }
-                          engineRef.current.updateElementById(bajante.id, updates);
-                          setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...prev.bajante, ...updates } } : null);
-                          if (selElement?.id === bajante.id) {
+                          engineRef.current.updateElementById(element.id, updates);
+                          setContextMenuState((prev: any) => prev ? { ...prev, element: { ...prev.element, ...updates } } : null);
+                          if (selElement?.id === element.id) {
                             setSelElement({ ...selElement, ...updates });
                           }
                           engineRef.current.render();
                           engineRef.current._markDirty();
                           if (val !== oldVal && planosCtx?.plans) {
-                            syncExtremeAccessoryToHidroData(bajante.id, fieldAcc, oldVal, val, planosCtx.plans);
+                            syncExtremeAccessoryToHidroData(element.id, fieldAcc, oldVal, val, planosCtx.plans);
                           }
                         }
                       }}
@@ -633,9 +626,9 @@ function BajanteConnectionPanel({
                           const val = e.target.value;
                           if (engineRef.current) {
                             const updates = { [fieldDiam]: val };
-                            engineRef.current.updateElementById(bajante.id, updates);
-                            setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...prev.bajante, ...updates } } : null);
-                            if (selElement?.id === bajante.id) {
+                            engineRef.current.updateElementById(element.id, updates);
+                            setContextMenuState((prev: any) => prev ? { ...prev, element: { ...prev.element, ...updates } } : null);
+                            if (selElement?.id === element.id) {
                               setSelElement({ ...selElement, ...updates });
                             }
                             engineRef.current.render();
@@ -665,12 +658,12 @@ function BajanteConnectionPanel({
                 if (!eng) return;
                 const isMon = bmLabel === 'montante';
                 const pfx = netDef?.bmPfx || (isMon ? 'MON' : 'B');
-                const cnt = eng.bajantes.filter((b: any) => b.tipo === bmLabel && (!isMon || b.net === bajante.net)).length + 1;
-                const id = isMon ? pfx + cnt + '_' + bajante.net : (pfx + cnt);
+                const cnt = eng.bajantes.filter((b: any) => b.tipo === bmLabel && (!isMon || b.net === element.net)).length + 1;
+                const id = isMon ? pfx + cnt + '_' + element.net : (pfx + cnt);
                 const code = isMon ? pfx + cnt : id;
                 const nl = eng.nivelActual;
                 eng.bajantes.push({
-                  id, net: bajante.net,
+                  id, net: element.net,
                   tipo: bmLabel,
                   code: code,
                   direccion: bmLabel === 'bajante' ? 'baja' : 'sube',
@@ -680,7 +673,7 @@ function BajanteConnectionPanel({
                   nptBase: nl?.npt ?? 0,
                   nptCima: nl?.npt ?? 0,
                   hVert: 0,
-                  dNominal: '0', recibeDeIds: [bajante.id], alimentaIds: [], descargaEnId: null,
+                  dNominal: '0', recibeDeIds: [element.id], alimentaIds: [], descargaEnId: null,
                   ucAcum: 0, ucExtra: 0, area_m2: 0,
                   desplazamientos: {},
                   lblOffX: 0, lblOffY: 0, labelAngle: 0,
@@ -690,7 +683,7 @@ function BajanteConnectionPanel({
                 if (bmLabel === 'montante') {
                   eng._renumberMontantes();
                 } else {
-                  eng._renumberBajantes(bajante.net);
+                  eng._renumberBajantes(element.net);
                 }
                 const newlyCreated = eng.bajantes.find((b: any) => b.tipo === bmLabel && b.x === ep.x && b.y === ep.y);
                 if (newlyCreated) {
@@ -716,7 +709,7 @@ function BajanteConnectionPanel({
 }
 
 function BajanteCodeEditor({
-  bajante,
+  element,
   engineRef,
   selElement,
   setSelElement,
@@ -726,7 +719,7 @@ function BajanteCodeEditor({
   setDiamSel,
   planosCtx,
 }: {
-  bajante: any;
+  element: any;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
   selElement: Record<string, any> | null;
   setSelElement: (el: Record<string, any> | null) => void;
@@ -736,9 +729,9 @@ function BajanteCodeEditor({
   setDiamSel: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   planosCtx: { plans: any[] };
 }) {
-  const isArea = bajante.id?.startsWith('AR');
-  const hasPts = !!bajante.pts;
-  const tipo = bajante.tipo;
+  const isArea = element.id?.startsWith('AR');
+  const hasPts = !!element.pts;
+  const tipo = element.tipo;
 
   if (isArea) {
     return (
@@ -748,23 +741,23 @@ function BajanteCodeEditor({
         </div>
         <div style={{ padding: '0 8px 8px' }}>
           <select
-            value={(engineRef.current?.bajantes || []).find((b: any) => b.area_m2 === bajante.areaM2)?.id || ''}
+            value={(engineRef.current?.bajantes || []).find((b: any) => b.area_m2 === element.areaM2)?.id || ''}
             onChange={e => {
               const bajanteId = e.target.value;
               (engineRef.current?.bajantes || []).forEach((b: any) => {
-                if (b.area_m2 === bajante.areaM2) {
+                if (b.area_m2 === element.areaM2) {
                   engineRef.current?.updateElementById(b.id, { area_m2: 0 });
                 }
               });
               if (bajanteId) {
-                engineRef.current?.updateElementById(bajanteId, { area_m2: bajante.areaM2 });
+                engineRef.current?.updateElementById(bajanteId, { area_m2: element.areaM2 });
               }
               engineRef.current?.render();
               setContextMenuState(null);
             }}
             style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
             <option value="">— Sin bajante —</option>
-            {(engineRef.current?.bajantes || []).filter((b: any) => b.net === bajante.net).map((b: any) => (
+            {(engineRef.current?.bajantes || []).filter((b: any) => b.net === element.net).map((b: any) => (
               <option key={b.id} value={b.id}>{b.code || b.id}</option>
             ))}
           </select>
@@ -774,10 +767,10 @@ function BajanteCodeEditor({
   }
 
   if (hasPts) {
-    const isGas = bajante.net === 'gas';
-    const isVen = bajante.net === 'vent';
-    const matList = mats?.[bajante.net] || [];
-    const matShort = bajante.material || matList[0]?.val || '—';
+    const isGas = element.net === 'gas';
+    const isVen = element.net === 'vent';
+    const matList = mats?.[element.net] || [];
+    const matShort = element.material || matList[0]?.val || '—';
     let diamList: any[] = [];
     if (isVen) {
       diamList = VENTILACION[0]?.rows.map((r: any) => ({ n: r.dn })) || [];
@@ -794,16 +787,16 @@ function BajanteCodeEditor({
         </div>
         <div style={{ padding: '0 8px 8px' }}>
           <select
-            value={bajante.diametro ? bajante.diametro.split(' — ')[0].trim() : ''}
+            value={element.diametro ? element.diametro.split(' — ')[0].trim() : ''}
             onChange={(e) => {
               const val = e.target.value;
               if (engineRef.current) {
-                engineRef.current?.updateElementById(bajante.id, { diametro: val });
-                setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...prev.bajante, diametro: val } } : null);
-                if (selElement?.id === bajante.id) {
+                engineRef.current?.updateElementById(element.id, { diametro: val });
+                setContextMenuState((prev: any) => prev ? { ...prev, element: { ...prev.element, diametro: val } } : null);
+                if (selElement?.id === element.id) {
                   setSelElement({ ...selElement, diametro: val });
                 }
-                if (activeNet === bajante.net) {
+                if (activeNet === element.net) {
                   setDiamSel((prev: any) => ({ ...prev, [activeNet]: val }));
                 }
                 engineRef.current?.render();
@@ -826,29 +819,29 @@ function BajanteCodeEditor({
     return (
       <>
         <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
-          Contador: {bajante.code || bajante.id}
+          Contador: {element.code || element.id}
         </div>
         <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px 0', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Diámetro del Contador
         </div>
         <div style={{ padding: '0 8px 8px' }}>
           <select
-            value={bajante.dNominal ? bajante.dNominal.replace(/"/g, '').trim() : ''}
+            value={element.dNominal ? element.dNominal.replace(/"/g, '').trim() : ''}
             onChange={(e) => {
               const val = e.target.value;
               const dNom = val ? `${val}"` : '';
               if (engineRef.current) {
                 const fields = { dNominal: dNom };
-                engineRef.current?.updateElementById(bajante.id, fields);
-                const fresh = engineRef.current?.bajantes.find((b: any) => b.id === bajante.id);
+                engineRef.current?.updateElementById(element.id, fields);
+                const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
                 if (fresh) {
-                  setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...fresh } } : null);
-                  if (selElement?.id === bajante.id) {
+                  setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                  if (selElement?.id === element.id) {
                     setSelElement({ ...selElement, dNominal: fields.dNominal });
                   }
                 }
                 engineRef.current?.render();
-                writeContadorDiamToDrawing(dNom, planosCtx.plans, bajante.net || 'af');
+                writeContadorDiamToDrawing(dNom, planosCtx.plans, element.net || 'af');
               }
             }}
             style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
@@ -859,31 +852,31 @@ function BajanteCodeEditor({
             ))}
           </select>
         </div>
-        {(bajante.net === 'af' || bajante.net === 'gas') && (
+        {(element.net === 'af' || element.net === 'gas') && (
           <div style={{ borderTop: '1px solid #3a494a', marginTop: 4 }}>
             <div style={{ fontSize: 9, color: '#22D3EE', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              {bajante.net === 'gas' ? 'Conexión (Red → Contador)' : 'AC-01 (Red Pública → Contador)'}
+              {element.net === 'gas' ? 'Conexión (Red → Contador)' : 'AC-01 (Red Pública → Contador)'}
             </div>
             <div style={{ padding: '0 8px 8px' }}>
               <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4 }}>Diámetro</div>
               <select
-                value={bajante.acoDiam || ''}
+                value={element.acoDiam || ''}
                 onChange={(e) => {
                   const val = e.target.value;
                   if (engineRef.current) {
-                    engineRef.current?.updateElementById(bajante.id, { acoDiam: val });
-                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === bajante.id);
+                    engineRef.current?.updateElementById(element.id, { acoDiam: val });
+                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
                     if (fresh) {
-                      setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...fresh } } : null);
+                      setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
                     }
                     engineRef.current?.render();
-                    writeAcoDiamToDrawing(val, planosCtx.plans, bajante.net || 'af');
+                    writeAcoDiamToDrawing(val, planosCtx.plans, element.net || 'af');
                   }
                 }}
                 style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
               >
                 <option value="">— Sin diámetro —</option>
-                {(bajante.net === 'gas' ? GAS_DN_LABELS : DIAMETROS_AF.map(d => d.nominal)).map(d => (
+                {(element.net === 'gas' ? GAS_DN_LABELS : DIAMETROS_AF.map(d => d.nominal)).map(d => (
                   <option key={d} value={d}>{d}</option>
                 ))}
               </select>
@@ -898,23 +891,23 @@ function BajanteCodeEditor({
     return (
       <>
         <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
-          Calentador: {bajante.code || bajante.id}
+          Calentador: {element.code || element.id}
         </div>
         <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px 0', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Equipo (Capacidad)
         </div>
         <div style={{ padding: '0 8px 8px' }}>
           <select
-            value={bajante.capacidad || ''}
+            value={element.capacidad || ''}
             onChange={(e) => {
               const val = e.target.value;
               if (engineRef.current) {
                 const fields = { capacidad: val };
-                engineRef.current?.updateElementById(bajante.id, fields);
-                const fresh = engineRef.current?.bajantes.find((b: any) => b.id === bajante.id);
+                engineRef.current?.updateElementById(element.id, fields);
+                const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
                 if (fresh) {
-                  setContextMenuState((prev: any) => prev ? { ...prev, bajante: { ...fresh } } : null);
-                  if (selElement?.id === bajante.id) {
+                  setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                  if (selElement?.id === element.id) {
                     setSelElement({ ...selElement, capacidad: val });
                   }
                 }
@@ -936,20 +929,252 @@ function BajanteCodeEditor({
   return null;
 }
 
-/* ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
- *  Variant components — explicit, composed, no boolean props
- * ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― */
+function getAccessoryOptions(netId: string) {
+  if (netId === 'san') {
+    return SAN_ACCESORIOS.filter(a => a.id === 'codo90rmSube' || a.id === 'codo90rmBaja').map(a => ({ value: a.id, label: a.nombre }));
+  }
+  if (['ll', 'vent'].includes(netId)) {
+    return SAN_ACCESORIOS.map(a => ({ value: a.id, label: a.nombre }));
+  }
+  if (netId === 'gas') {
+    return GAS_ACCESORIOS.map(a => ({ value: a.id, label: a.nombre }));
+  }
+  if (['af', 'ac', 'rci', 'rec'].includes(netId)) {
+    return ACCESORIOS_HIDRO.map(a => ({ value: a.id, label: a.nombre }));
+  }
+  return [];
+}
+
+function getApplicableAppliances(netId: string) {
+  if (netId === 'gas') {
+    return APARATOS_DEF.filter(ap => ap.grupo === 'g' && (ap.qgas || 0) > 0);
+  }
+  if (netId === 'san') {
+    return APARATOS_DEF.filter(ap => SAN_UC_IDS.includes(ap.id));
+  }
+  if (netId === 'af') {
+    return APARATOS_DEF.filter(ap => AF_UC_IDS.includes(ap.id));
+  }
+  if (netId === 'ac') {
+    return APARATOS_DEF.filter(ap => AC_UC_IDS.includes(ap.id));
+  }
+  return [];
+}
+
+function AparatoSelector({
+  netId,
+  elementId,
+  engineRef,
+  ramalEndpoint,
+  planosCtx,
+  selElement,
+  setSelElement,
+}: {
+  netId: string;
+  elementId: string;
+  engineRef: React.MutableRefObject<PlanoEngine | null>;
+  ramalEndpoint: { idx: number; x: number; y: number } | null;
+  planosCtx: { plans: any[] };
+  selElement: Record<string, any> | null;
+  setSelElement: (el: Record<string, any> | null) => void;
+}) {
+  const planId = engineRef.current?._loadedPlanId || null;
+
+  const applicable = getApplicableAppliances(netId);
+  if (applicable.length === 0) return null;
+
+  // Find fresh element
+  const fresh = engineRef.current?.ramales.find((r: any) => r.id === elementId)
+    || engineRef.current?.bajantes.find((b: any) => b.id === elementId);
+  if (!fresh) return null;
+
+  const isRamal = 'pts' in fresh;
+  const isStart = ramalEndpoint ? ramalEndpoint.idx === 0 : true;
+  const fieldApp = isRamal ? (isStart ? 'aparatoInicio' : 'aparatoFin') : 'aparato';
+  const currentVal = (fresh as any)[fieldApp] || '';
+
+  const currentDef = APARATOS_DEF.find(x => x.id === currentVal);
+  const currentName = currentDef ? currentDef.nombre : currentVal;
+
+  return (
+    <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
+      <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        Aparato {isRamal ? (isStart ? '(Inicio)' : '(Fin)') : ''}
+      </div>
+
+      {currentVal && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: '#e2e2e8', background: 'rgba(255,255,255,0.03)', padding: '2px 4px', borderRadius: 3, marginBottom: 6 }}>
+          <span>{currentName}</span>
+          <button
+            onClick={() => {
+              const plans = planosCtx?.plans || [];
+              
+              // 1. Update engine memory
+              const updates = { [fieldApp]: null };
+              engineRef.current?.updateElementById(elementId, updates);
+              if (selElement?.id === elementId) {
+                setSelElement({ ...selElement, ...updates });
+              }
+
+              // 2. Update localStorage plans trace data
+              for (const plan of plans) {
+                if (!plan || plan.status !== 'confirmed') continue;
+                const raw = loadFromStorage<any>(TRAZOS_PREFIX + plan.id, null);
+                if (!raw) continue;
+                let data = raw;
+                if (typeof data === 'string') {
+                  try { data = JSON.parse(data); } catch { continue; }
+                }
+                let found = false;
+                if (isRamal) {
+                  const r = (data.ramales || []).find((x: any) => x.id === elementId);
+                  if (r) { r[fieldApp] = undefined; found = true; }
+                } else {
+                  const b = (data.bajantes || []).find((x: any) => x.id === elementId);
+                  if (b) { b[fieldApp] = undefined; found = true; }
+                }
+                if (found) {
+                  data.ts = Date.now();
+                  saveToStorage(TRAZOS_PREFIX + plan.id, data);
+                }
+              }
+
+              // 3. Update APARATOS_BY_TRAMO_KEY (aparatos_by_tramo_v2)
+              const allCounts = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {}) || {};
+              const storageKey = planId ? `${netId}_${elementId}_${planId}` : `${netId}_${elementId}`;
+              const cur = { ...(allCounts[storageKey] || {}) };
+              const v = (cur[currentVal] || 0) - 1;
+              if (v <= 0) delete cur[currentVal]; else cur[currentVal] = v;
+              if (Object.keys(cur).length === 0) {
+                delete allCounts[storageKey];
+              } else {
+                allCounts[storageKey] = cur;
+              }
+              saveToStorage(APARATOS_BY_TRAMO_KEY, allCounts);
+
+              // 4. Update sync data for calculations
+              try {
+                writeSanDrawingSync(plans);
+                writeHydroDrawingSync(plans);
+              } catch (e) {
+                if (import.meta.env.DEV) console.error(e);
+              }
+
+              // 5. Dispatch sidebar sync event
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('aparatos-clear'));
+              }
+
+              // 6. Redraw canvas
+              if (engineRef.current) {
+                engineRef.current._markDirty();
+                engineRef.current.render();
+              }
+            }}
+            style={{
+              background: 'transparent', border: 'none', color: '#ffb4ab', fontSize: 9, cursor: 'pointer', padding: '0 2px'
+            }}
+            title="Quitar"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      <select
+        value={currentVal}
+        onChange={(e) => {
+          const apId = e.target.value;
+          const plans = planosCtx?.plans || [];
+          
+          // 1. Update engine memory
+          const updates = { [fieldApp]: apId || null };
+          engineRef.current?.updateElementById(elementId, updates);
+          if (selElement?.id === elementId) {
+            setSelElement({ ...selElement, ...updates });
+          }
+
+          // 2. Update localStorage plans trace data
+          for (const plan of plans) {
+            if (!plan || plan.status !== 'confirmed') continue;
+            const raw = loadFromStorage<any>(TRAZOS_PREFIX + plan.id, null);
+            if (!raw) continue;
+            let data = raw;
+            if (typeof data === 'string') {
+              try { data = JSON.parse(data); } catch { continue; }
+            }
+            let found = false;
+            if (isRamal) {
+              const r = (data.ramales || []).find((x: any) => x.id === elementId);
+              if (r) { r[fieldApp] = apId || undefined; found = true; }
+            } else {
+              const b = (data.bajantes || []).find((x: any) => x.id === elementId);
+              if (b) { b[fieldApp] = apId || undefined; found = true; }
+            }
+            if (found) {
+              data.ts = Date.now();
+              saveToStorage(TRAZOS_PREFIX + plan.id, data);
+            }
+          }
+
+          // 3. Update APARATOS_BY_TRAMO_KEY (aparatos_by_tramo_v2)
+          const allCounts = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {}) || {};
+          const storageKey = planId ? `${netId}_${elementId}_${planId}` : `${netId}_${elementId}`;
+          const cur = { ...(allCounts[storageKey] || {}) };
+          if (currentVal) {
+            const v = (cur[currentVal] || 0) - 1;
+            if (v <= 0) delete cur[currentVal]; else cur[currentVal] = v;
+          }
+          if (apId) {
+            cur[apId] = (cur[apId] || 0) + 1;
+          }
+          if (Object.keys(cur).length === 0) {
+            delete allCounts[storageKey];
+          } else {
+            allCounts[storageKey] = cur;
+          }
+          saveToStorage(APARATOS_BY_TRAMO_KEY, allCounts);
+
+          // 4. Update sync data for calculations
+          try {
+            writeSanDrawingSync(plans);
+            writeHydroDrawingSync(plans);
+          } catch (ev) {
+            if (import.meta.env.DEV) console.error(ev);
+          }
+
+          // 5. Dispatch sidebar sync event
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('aparatos-clear'));
+          }
+
+          // 6. Redraw canvas
+          if (engineRef.current) {
+            engineRef.current._markDirty();
+            engineRef.current.render();
+          }
+        }}
+        style={{ width: '100%', padding: '4px 6px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#e2e2e8', fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
+      >
+        <option value="">— Sin aparato —</option>
+        {applicable.map(ap => (
+          <option key={ap.id} value={ap.id}>{ap.nombre}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 function BajanteMenu() {
-  const ctx = useBajanteContextMenu()
-  const { contextMenuState, bajante } = ctx
+  const ctx = useDrawingElementContextMenu()
+  const { contextMenuState, element } = ctx
   const isGhostClick = contextMenuState.isGhostClick || false
   const isSanOrLl = !isGhostClick && ['san', 'll'].includes(ctx.activeNet)
 
   return (
     <>
       <BajanteDirectionSelector
-        bajante={bajante}
+        element={element}
         isGhostClick={isGhostClick}
         selectedNivel={ctx.selectedNivel}
         pisos={ctx.pisos}
@@ -959,7 +1184,7 @@ function BajanteMenu() {
         setContextMenuState={ctx.setContextMenuState}
       />
       <BajanteDiameterSelector
-        bajante={bajante}
+        element={element}
         isGhostClick={isGhostClick}
         selectedNivel={ctx.selectedNivel}
         engineRef={ctx.engineRef}
@@ -971,7 +1196,7 @@ function BajanteMenu() {
       />
       {isSanOrLl && (
         <BajanteConnectionPanel
-          bajante={bajante}
+          element={element}
           isGhostClick={isGhostClick}
           ramalEndpoint={null}
           engineRef={ctx.engineRef}
@@ -983,15 +1208,26 @@ function BajanteMenu() {
           planosCtx={ctx.planosCtx}
         />
       )}
+      {!isGhostClick && ['san', 'af', 'ac', 'gas'].includes(ctx.activeNet) && (
+        <AparatoSelector
+          netId={ctx.activeNet}
+          elementId={element.id}
+          engineRef={ctx.engineRef}
+          ramalEndpoint={null}
+          planosCtx={ctx.planosCtx}
+          selElement={ctx.selElement}
+          setSelElement={ctx.setSelElement}
+        />
+      )}
     </>
   )
 }
 
 function AreaMenu() {
-  const ctx = useBajanteContextMenu()
+  const ctx = useDrawingElementContextMenu()
   return (
     <BajanteCodeEditor
-      bajante={ctx.bajante}
+      element={ctx.element}
       engineRef={ctx.engineRef}
       selElement={ctx.selElement}
       setSelElement={ctx.setSelElement}
@@ -1005,14 +1241,14 @@ function AreaMenu() {
 }
 
 function RamalMenu() {
-  const ctx = useBajanteContextMenu()
-  const { contextMenuState, bajante, engineRef, selElement, setSelElement } = ctx
+  const ctx = useDrawingElementContextMenu()
+  const { contextMenuState, element, engineRef, selElement, setSelElement } = ctx
 
   return (
     <>
       {contextMenuState.ramalEndpoint && (
         <BajanteConnectionPanel
-          bajante={bajante}
+          element={element}
           isGhostClick={contextMenuState.isGhostClick || false}
           ramalEndpoint={contextMenuState.ramalEndpoint}
           engineRef={ctx.engineRef}
@@ -1025,7 +1261,7 @@ function RamalMenu() {
         />
       )}
       <BajanteCodeEditor
-        bajante={bajante}
+        element={element}
         engineRef={ctx.engineRef}
         selElement={ctx.selElement}
         setSelElement={ctx.setSelElement}
@@ -1040,12 +1276,12 @@ function RamalMenu() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between'
       }}>
         <span style={{ fontSize: 10, color: '#e2e2e8', fontFamily: "'Geist',monospace" }}>Bloquear movimiento</span>
-        <input type="checkbox" checked={!!bajante.bloqueado}
+        <input type="checkbox" checked={!!element.bloqueado}
           onChange={e => {
             const val = e.target.checked;
             if (engineRef.current) {
-              engineRef.current?.updateElementById(bajante.id, { bloqueado: val });
-              if (selElement?.id === bajante.id) {
+              engineRef.current?.updateElementById(element.id, { bloqueado: val });
+              if (selElement?.id === element.id) {
                 setSelElement({ ...selElement, bloqueado: val });
               }
               engineRef.current?.render();
@@ -1060,8 +1296,8 @@ function RamalMenu() {
           <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
             {(() => {
-              const currentId = bajante.id;
-              const netBajantes = (engineRef.current?.bajantes || []).filter((b: any) => b.net === bajante.net && b.id !== bajante.id && b.tipo !== 'tributario');
+              const currentId = element.id;
+              const netBajantes = (engineRef.current?.bajantes || []).filter((b: any) => b.net === element.net && b.id !== element.id && b.tipo !== 'tributario');
               if (netBajantes.length === 0) return <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin bajantes</div>;
               return netBajantes.map((b: any) => {
                 const isAssociated = (b.recibeDeIds || []).includes(currentId);
@@ -1093,15 +1329,26 @@ function RamalMenu() {
           </div>
         </div>
       )}
+      {contextMenuState.ramalEndpoint && ['san', 'af', 'ac', 'gas'].includes(ctx.activeNet) && (
+        <AparatoSelector
+          netId={ctx.activeNet}
+          elementId={element.id}
+          engineRef={ctx.engineRef}
+          ramalEndpoint={contextMenuState.ramalEndpoint}
+          planosCtx={ctx.planosCtx}
+          selElement={ctx.selElement}
+          setSelElement={ctx.setSelElement}
+        />
+      )}
     </>
   )
 }
 
 function ContadorMenu() {
-  const ctx = useBajanteContextMenu()
+  const ctx = useDrawingElementContextMenu()
   return (
     <BajanteCodeEditor
-      bajante={ctx.bajante}
+      element={ctx.element}
       engineRef={ctx.engineRef}
       selElement={ctx.selElement}
       setSelElement={ctx.setSelElement}
@@ -1115,10 +1362,10 @@ function ContadorMenu() {
 }
 
 function CalentadorMenu() {
-  const ctx = useBajanteContextMenu()
+  const ctx = useDrawingElementContextMenu()
   return (
     <BajanteCodeEditor
-      bajante={ctx.bajante}
+      element={ctx.element}
       engineRef={ctx.engineRef}
       selElement={ctx.selElement}
       setSelElement={ctx.setSelElement}
@@ -1131,11 +1378,7 @@ function CalentadorMenu() {
   )
 }
 
-/* ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
- *  Main component — provider wrapper + dispatch
- * ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― */
-
-interface BajanteContextMenuProps {
+interface DrawingElementContextMenuProps {
   contextMenuState: ContextMenuState | null;
   setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
   selectedNivel: number | null;
@@ -1150,14 +1393,14 @@ interface BajanteContextMenuProps {
   setDiamSel: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }
 
-export default memo(function BajanteContextMenu(props: BajanteContextMenuProps) {
+export default memo(function DrawingElementContextMenu(props: DrawingElementContextMenuProps) {
   const state = props.contextMenuState;
   if (!state || !state.visible) return null;
 
-  const ctxValue: BajanteContextMenuContextValue = {
+  const ctxValue: DrawingElementContextMenuContextValue = {
     contextMenuState: state,
     setContextMenuState: props.setContextMenuState,
-    bajante: state.bajante,
+    element: state.element,
     selectedNivel: props.selectedNivel,
     pisos: props.pisos,
     engineRef: props.engineRef,
@@ -1171,14 +1414,14 @@ export default memo(function BajanteContextMenu(props: BajanteContextMenuProps) 
   }
 
   return (
-    <BajanteContextMenuCtx.Provider value={ctxValue}>
-      <BajanteContextMenuInner />
-    </BajanteContextMenuCtx.Provider>
+    <DrawingElementContextMenuCtx.Provider value={ctxValue}>
+      <DrawingElementContextMenuInner />
+    </DrawingElementContextMenuCtx.Provider>
   )
 })
 
-function BajanteContextMenuInner() {
-  const ctx = useBajanteContextMenu()
+function DrawingElementContextMenuInner() {
+  const ctx = useDrawingElementContextMenu()
   const { contextMenuState } = ctx
   const menuRef = useRef<HTMLFormElement>(null);
   const [adjustedPos, setAdjustedPos] = useState({ x: contextMenuState?.x || 0, y: contextMenuState?.y || 0 });
@@ -1226,11 +1469,11 @@ function BajanteContextMenuInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, [ctx.setContextMenuState]);
 
-  const bajante = contextMenuState.bajante;
-  const isBajanteTipo = bajante.tipo === 'bajante' || bajante.tipo === 'montante' || bajante.id?.startsWith('B');
-  const isArea = bajante.id?.startsWith('AR');
-  const hasPts = !!bajante.pts;
-  const tipo = bajante.tipo;
+  const element = contextMenuState.element;
+  const isBajanteTipo = element.tipo === 'bajante' || element.tipo === 'montante' || element.id?.startsWith('B');
+  const isArea = element.id?.startsWith('AR');
+  const hasPts = !!element.pts;
+  const tipo = element.tipo;
 
   return (
     <>
