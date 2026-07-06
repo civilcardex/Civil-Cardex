@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/refs */
+
 import React from 'react';
 import { writeBajantePropToDrawing } from '../../utils/writeDiameterToDrawing';
 import { NETS } from '../../lib/PlanoEngine/PlanoState';
@@ -22,7 +22,7 @@ export default function BajanteAsociacion({
   planosCtx,
   engineRef,
 }: BajanteAsociacionProps) {
-  // eslint-disable-next-line react-hooks/refs
+
   if (!(selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante') && !engineRef.current?._isGhostSel)) {
     return null;
   }

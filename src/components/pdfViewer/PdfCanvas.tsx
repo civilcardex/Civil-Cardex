@@ -113,7 +113,7 @@ function PdfCanvas({
           }}>
             <div style={{fontSize:56,lineHeight:1,filter:'drop-shadow(0 0 12px rgba(245,166,35,0.5))'}}>⚠️</div>
             <div style={{fontSize:18,fontWeight:700,color:'#f5a623',fontFamily:"'Geist',monospace",letterSpacing:0.5,textAlign:'center'}}>
-              {pisoLbl(selectedNivel!)} — Sin plano asociado
+              {pisoLbl(selectedNivel ?? 0)} — Sin plano asociado
             </div>
             <div style={{fontSize:12,color:'#e2e2e8',fontFamily:"'Geist',monospace",textAlign:'center',lineHeight:1.5,maxWidth:360}}>
               El nivel seleccionado no tiene un plano confirmado. Carga un plano desde la pestaña <strong style={{color:'#00dce5'}}>"Carga de planos"</strong> y asígnale este nivel para empezar a dibujar.

@@ -151,6 +151,9 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
       transition: 'background .2s, border-color .2s',
     }}>
       <div
+        role="button"
+        tabIndex={0}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(prev => !prev); } }}
         onClick={() => setOpen(prev => !prev)}
         style={{
           fontFamily: "'Geist',monospace", fontSize: 10,

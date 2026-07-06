@@ -1,8 +1,9 @@
 import { syncExtremeAccessoryToHidroData } from '../../utils/syncExtremeAccessory';
+import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 
 interface ExtremeAccessoryEditorProps {
   selElement: any;
-  engineRef: any;
+  engineRef: React.MutableRefObject<PlanoEngine | null>;
   setSelElement: React.Dispatch<React.SetStateAction<any>>;
   diamList: any[];
   activeNet: string;

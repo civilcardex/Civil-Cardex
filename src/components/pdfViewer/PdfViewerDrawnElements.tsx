@@ -26,14 +26,14 @@ export default function PdfViewerDrawnElements({ drawnElements, activeNet, selEl
                 borderRadius:3,cursor:'pointer',border:`1px solid ${selElement?.id===el.id?'rgba(37,99,235,.4)':'#3a494a'}`,
                 display:'flex',flexDirection:'column',gap:4,
               }}>
-              <div role="button" tabIndex={0} aria-label={`Seleccionar elemento ${el.id}`} aria-selected={el.id === selElement?.id} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();engineRef.current?.selectById(el.id);}}} style={{display:'flex',alignItems:'center',gap:4}} onClick={()=>{if(engineRef.current)engineRef.current.selectById(el.id);}}>
+              <div role="button" tabIndex={0} aria-label={`Seleccionar elemento ${el.id}`} aria-current={el.id === selElement?.id ? 'true' : undefined} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();engineRef.current?.selectById(el.id);}}} style={{display:'flex',alignItems:'center',gap:4}} onClick={()=>{if(engineRef.current)engineRef.current.selectById(el.id);}}>
                 <span style={{fontSize:11,color:el.tipo==='montante'?'#3B82F6':el.type==='bajante'?'#F04545':'#4D8FF7'}}>
                   {el.tipo==='montante'?'\u2B06':el.type==='bajante'?'\u2B07':'\u2571'}
                 </span>
                 <span style={{fontSize:12,fontWeight:600,color:'#b9caca',fontFamily:"'Geist',monospace",flex:1}}>{el.tipo==='tributario'?((()=>{try{const p=drawnElements.find(x=>x.id===el.padre&&x.tipo==='ramal');return p?p.label:el.label;}catch(_){return el.label}})()):el.label}</span>
                 <span style={{fontSize:11,fontWeight:600,color:'#8AB4D6',fontFamily:"'Geist',monospace",textTransform:'uppercase'}}>{(el.tipo==='ramal'?'ramal':el.tipo==='tributario'?el.label:el.tipo==='bajante'?'baj':el.tipo==='montante'?'mon':el.tipo)||''}</span>
                 <button onClick={e=>{e.stopPropagation();if(engineRef.current){engineRef.current.selectById(el.id);engineRef.current.deleteSelected();}}}
-                  style={{padding:'3px 6px',background:'transparent',border:'1px solid #3a494a',borderRadius:2,color:'#ffb4ab',cursor:'pointer',fontSize:10,fontFamily:"'Geist',monospace",flexShrink:0}}>{'\u2715'}</button>
+                  style={{padding:'6px 8px',background:'transparent',border:'1px solid #3a494a',borderRadius:2,color:'#ffb4ab',cursor:'pointer',fontSize:10,fontFamily:"'Geist',monospace",flexShrink:0,lineHeight:1}}>{'\u2715'}</button>
               </div>
               <div style={{
                 display:'flex',flexWrap:'wrap',gap:'2px 8px',fontSize:9,

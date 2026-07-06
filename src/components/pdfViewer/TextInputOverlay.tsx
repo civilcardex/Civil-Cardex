@@ -15,7 +15,7 @@ export default function TextInputOverlay({ textOverlay, setTextOverlay, textInpu
   if (!textOverlay) return null;
 
   return (
-    <div role="presentation" style={{
+    <div aria-hidden="true" style={{
       position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
       zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'rgba(17,19,23,0.5)',
@@ -58,7 +58,9 @@ export default function TextInputOverlay({ textOverlay, setTextOverlay, textInpu
             color: '#e2e2e8', fontSize: 14, fontFamily: "'Geist',monospace",
             outline: 'none',
           }}
+          className="text-input-overlay-input"
         />
+        <style>{`.text-input-overlay-input:focus-visible { outline: 2px solid #4D8FF7; outline-offset: 2px; }`}</style>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button onClick={() => { textOverlay.cb(''); setTextOverlay(null); }} style={{
             padding: '5px 14px', background: 'transparent', border: '1px solid #3a494a',
@@ -66,7 +68,7 @@ export default function TextInputOverlay({ textOverlay, setTextOverlay, textInpu
             cursor: 'pointer',
           }}>Cancelar</button>
           <button onClick={() => { textOverlay.cb(textOverlay.value); setTextOverlay(null); }} style={{
-            padding: '5px 14px', background: '#4D8FF7', border: '1px solid #4D8FF7',
+            padding: '5px 14px', background: '#3578E5', border: '1px solid #3578E5',
             borderRadius: 4, color: '#fff', fontSize: 11, fontFamily: "'Geist',monospace",
             cursor: 'pointer', fontWeight: 600,
           }}>Aceptar</button>

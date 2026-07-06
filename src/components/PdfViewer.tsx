@@ -1,8 +1,8 @@
-/* eslint-disable no-empty, react-hooks/refs, react-hooks/set-state-in-effect, react-hooks/immutability */
+/* eslint-disable no-empty */
 import { memo, useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
 import PlanoEngine from "../lib/PlanoEngine/PlanoEngine";
 import { NETS } from "../lib/PlanoEngine/PlanoState";
-import { matLongName } from "../constants";
+import { matLongName, pisoLbl, GAS, DEFAULT_PENDIENTE_PCT } from "../constants";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync";
@@ -13,11 +13,16 @@ import PdfCanvas from "./pdfViewer/PdfCanvas";
 import PdfViewerNetworkBar from "./pdfViewer/PdfViewerNetworkBar";
 import { usePdfAutoSave } from "./pdfViewer/usePdfAutoSave";
 import { usePdfViewerEngine } from "./pdfViewer/PdfViewerEngineInit";
-import PdfViewerSidebarRight from "./pdfViewer/PdfViewerSidebarRight";
-import PdfViewerDialogs from "./pdfViewer/PdfViewerDialogs";
-import { usePdfViewerActions } from "./pdfViewer/PdfViewerActions";
-
-
+import TextInputOverlay from "./pdfViewer/TextInputOverlay";
+import BajanteContextMenu from "./pdfViewer/BajanteContextMenu";
+import ConfirmDialog from "./pdfViewer/ConfirmDialog";
+import AlertDialog from "./pdfViewer/AlertDialog";
+import TipoTramoSelector from "./pdfViewer/TipoTramoSelector";
+import TramoEditor from "./pdfViewer/TramoEditor";
+import BajanteAsociacion from "./pdfViewer/BajanteAsociacion";
+import PdfViewerDrawnElements from "./pdfViewer/PdfViewerDrawnElements";
+import { CopyFromPlanPanel } from "./pdfViewer/CopyFromPlanPanel";
+import AparatosPanel from "./FixturesPanel";
 
 interface PdfViewerProps {
   files: any[];
@@ -91,9 +96,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
           }
         }
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
     return "af";
   });
 
@@ -127,6 +130,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   const [pendInput, setPendInput] = useState('');
   const [textOverlay, setTextOverlay] = useState<{ x: number; y: number; value: string; cb: (text: string) => void } | null>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
+
   const activeNetRef = useRef(activeNet);
   activeNetRef.current = activeNet;
 
@@ -136,12 +140,10 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     if (!selElement || !(selElement.tipo === 'bajante' || selElement.tipo === 'montante')) return;
     const currentFloor = pisos.find(p => p.n === selectedNivel);
     const currentNpt = currentFloor ? currentFloor.npt : Infinity;
-
     const relevantPlans = planosCtx.plans.filter((plan: any) => {
       const pF = pisos.find(p => String(p.n) === String(plan.nivel));
       return pF && pF.npt <= currentNpt;
     });
-
     const results = relevantPlans.map((plan: any) => {
       const pF = pisos.find(p => String(p.n) === String(plan.nivel))!;
       let ramales: any[] = [];
@@ -156,21 +158,18 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
             const data = JSON.parse(raw);
             ramales = (data.ramales || []).filter((r: any) => r.tipo !== 'tributario' && r.net === (selElement.net || activeNet));
             bajantes = (data.bajantes || []).filter((b: any) => b.net === (selElement.net || activeNet));
-          } catch {
-            // ignore
-          }
+          } catch {}
         }
       }
       return { planId: plan.id, planName: plan.name, npt: pF.npt, ramales, bajantes };
     });
-
     results.sort((a, b) => b.npt - a.npt);
     setLowerFloorsRamales(results);
   }, [selElement?.id, selectedNivel, pisos, planosCtx.plans, activeNet]);
 
-  useEffect(() => { try { sessionStorage.setItem('civilflow_visor_tool', tool); } catch (_) {} }, [tool]);
-  useEffect(() => { try { sessionStorage.setItem('civilflow_visor_tipoTramo', tipoTramo); } catch (_) {} }, [tipoTramo]);
-  useEffect(() => { try { sessionStorage.setItem('civilflow_visor_snapOn', String(snapOn)); } catch (_) {} }, [snapOn]);
+  useEffect(() => { try { sessionStorage.setItem('civilflow_visor_tool', tool); } catch {} }, [tool]);
+  useEffect(() => { try { sessionStorage.setItem('civilflow_visor_tipoTramo', tipoTramo); } catch {} }, [tipoTramo]);
+  useEffect(() => { try { sessionStorage.setItem('civilflow_visor_snapOn', String(snapOn)); } catch {} }, [snapOn]);
 
   useEffect(() => {
     if (selectedNivel !== null) {
@@ -186,16 +185,10 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   }, [selectedNivel, planos]);
 
   useEffect(() => {
-    if (selElement?.net) {
-      setActiveNet(selElement.net);
-    }
+    if (selElement?.net) setActiveNet(selElement.net);
     if (selElement?.id) {
-      if (engineRef.current && engineRef.current.tool !== 'sel') {
-        engineRef.current.setTool('sel');
-      }
-      if (tool !== 'sel') {
-        setTool('sel');
-      }
+      if (engineRef.current && engineRef.current.tool !== 'sel') engineRef.current.setTool('sel');
+      if (tool !== 'sel') setTool('sel');
     }
   }, [selElement]);
 
@@ -217,8 +210,6 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   const pdfCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // ── Engine callbacks (defined before usePdfViewerEngine, no engineRef needed) ──
-
   const loadTrazosForPlan = useCallback(async (eng: PlanoEngine, resolvedId: string): Promise<boolean> => {
     const tryLoad = (id: string): any => {
       const key = `trazos_${id}`;
@@ -226,7 +217,6 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
       return saved || null;
     };
     const localData = tryLoad(resolvedId);
-
     let initiallyLoaded = false;
     if (localData) {
       const workStr = typeof localData === 'string' ? localData : JSON.stringify(localData);
@@ -234,23 +224,17 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
       initiallyLoaded = true;
       requestAnimationFrame(() => { eng.render(); });
     }
-
     try {
       const dbData = await loadTrazosFromDB(resolvedId);
-
       if (dbData) {
         const dbTs = Number(dbData.ts || 0);
         const localTs = Number(localData?.ts || 0);
-
         if (dbTs > localTs || !localData) {
           const workStr = typeof dbData === 'string' ? dbData : JSON.stringify(dbData);
           eng.loadWork(workStr);
-          if (!localData || dbTs > localTs) {
-            saveToStorage(`trazos_${resolvedId}`, dbData);
-          }
+          if (!localData || dbTs > localTs) saveToStorage(`trazos_${resolvedId}`, dbData);
           requestAnimationFrame(() => { eng.render(); });
           initiallyLoaded = true;
-
           const loadedNet = eng.activeNet || activeNetRef.current || 'af';
           const sm = eng.scaleM;
           setActiveNet(loadedNet);
@@ -264,13 +248,11 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     } catch (e) {
       if (import.meta.env.DEV) console.error('[LOAD] Supabase error/sync error:', e);
     }
-
     return initiallyLoaded;
   }, []);
 
   const onDirtyHandler = useCallback((eng: PlanoEngine) => {
     setDrawnElements(eng.getElementsByNet(activeNetRef.current || 'af'));
-
     if (eng.selId) {
       const sel = eng.getSelected();
       if (sel) {
@@ -278,7 +260,6 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
         setSelElement(rest);
       }
     }
-
     if (loadingPlanRef.current) return;
     try {
       const id = eng._loadedPlanId || currentIdRef.current || 'work';
@@ -291,9 +272,9 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
           saveTrazosToDB(id, work);
         }
       }
-    } catch (_) {}
-    try { writeSanDrawingSync(plansRef.current); } catch (_) {}
-    try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
+    } catch {}
+    try { writeSanDrawingSync(plansRef.current); } catch {}
+    try { writeHydroDrawingSync(plansRef.current); } catch {}
   }, []);
 
   const onDeleteHandler = useCallback((ids: string[]) => {
@@ -302,11 +283,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
       let changed = false;
       for (const k of Object.keys(store)) {
         for (const id of ids) {
-          if (k.includes(id)) {
-            delete store[k];
-            changed = true;
-            break;
-          }
+          if (k.includes(id)) { delete store[k]; changed = true; break; }
         }
       }
       if (changed) saveToStorage(key, store);
@@ -315,8 +292,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     cleanStore(APARATOS_BY_TRAMO_KEY);
     cleanStore(HYDRO_DATA_STORAGE_KEY);
     window.dispatchEvent(new CustomEvent('aparatos-clear', { detail: { ids } }));
-    try { writeSanDrawingSync(plansRef.current); } catch (_) {}
-    try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
+    try { writeSanDrawingSync(plansRef.current); } catch {}
+    try { writeHydroDrawingSync(plansRef.current); } catch {}
   }, [plansRef]);
 
   const onRequestTextCb = useCallback((x: number, y: number, cb: (text: string) => void) => {
@@ -324,76 +301,40 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     setTimeout(() => textInputRef.current?.focus(), 50);
   }, []);
 
-  // ── Dialog state registration ──
+  // ── Dialog state ──
+  const [contextMenuState, setContextMenuState] = useState<{ visible: boolean; x: number; y: number; bajante: any; isGhostClick?: boolean; ramalEndpoint?: { idx: number; x: number; y: number } | null } | null>(null);
+  const [confirmState, setConfirmState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({isOpen: false, title: '', message: '', onConfirm: () => {}});
+  const [alertDialogState, setAlertDialogState] = useState<{isOpen: boolean; title: string; message: string}>({isOpen: false, title: '', message: ''});
 
   const contextMenuCbRef = useRef<any>(null);
-  const setConfirmStateRef = useRef<React.Dispatch<React.SetStateAction<any>>>(() => {});
-  const setAlertDialogStateRef = useRef<React.Dispatch<React.SetStateAction<any>>>(() => {});
-
-  const onRegisterContextMenu = useCallback((cb: any) => { contextMenuCbRef.current = cb; }, []);
-  const onRegisterSetConfirmState = useCallback((setter: any) => { setConfirmStateRef.current = setter; }, []);
-  const onRegisterSetAlertDialogState = useCallback((setter: any) => { setAlertDialogStateRef.current = setter; }, []);
-
-  const safeSetConfirmState = useCallback((state: any) => { setConfirmStateRef.current(state); }, []);
-  const safeSetAlertDialogState = useCallback((state: any) => { setAlertDialogStateRef.current(state); }, []);
-
-  const onAlert = useCallback((title: string, msg: string) => {
-    safeSetAlertDialogState({ isOpen: true, title, message: msg });
-  }, [safeSetAlertDialogState]);
+  const onContextMenuCb = useCallback((bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: any) => {
+    setContextMenuState({ visible: true, x, y, bajante, isGhostClick, ramalEndpoint });
+  }, []);
+  contextMenuCbRef.current = onContextMenuCb;
 
   // ── Engine init ──
-
-  const {
-    engineRef,
-    engineReady,
-    loadingPlanRef,
-  } = usePdfViewerEngine({
-    currentFile,
-    currentId,
-    currentIdRef,
-    activeNetRef,
-    cwRef,
-    drawCanvasRef,
-    pdfCanvasRef,
-    onStatus: () => {},
-    onDirty: onDirtyHandler,
-    onSelect: setSelElement,
-    onDelete: onDeleteHandler,
-    onToolChange: setTool,
-    onRequestText: onRequestTextCb,
-    onAlert,
-    loadTrazosForPlan,
-    setActiveNet,
-    setScaleM,
-    setLoading,
-    setError,
-    scale,
+  const { engineRef, engineReady, loadingPlanRef } = usePdfViewerEngine({
+    currentFile, currentId, currentIdRef, activeNetRef, cwRef, drawCanvasRef, pdfCanvasRef,
+    onStatus: () => {}, onDirty: onDirtyHandler, onSelect: setSelElement, onDelete: onDeleteHandler,
+    onToolChange: setTool, onRequestText: onRequestTextCb, onAlert: (title: string, msg: string) => {
+      setAlertDialogState({ isOpen: true, title, message: msg });
+    }, loadTrazosForPlan, setActiveNet, setScaleM, setLoading, setError, scale,
   });
 
-  // ── Register context menu with engine ──
-
   useEffect(() => {
-    if (engineRef.current && engineReady) {
-      engineRef.current.onContextMenu(contextMenuCbRef.current);
-    }
+    if (engineRef.current && engineReady) engineRef.current.onContextMenu(contextMenuCbRef.current);
   }, [engineReady, engineRef]);
 
   useEffect(() => {
-    if (engineRef.current) {
-      (engineRef.current as any).activeNetworks = activeNetworks;
-    }
+    if (engineRef.current) (engineRef.current as any).activeNetworks = activeNetworks;
   }, [activeNetworks, engineRef.current]);
 
   useEffect(() => {
     if (!engineRef.current || !engineReady) return;
     const eng = engineRef.current;
     const prevId = eng._loadedPlanId;
-
     if (prevId && prevId !== currentId) {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-        autoSaveTimerRef.current = null;
-      }
+      if (autoSaveTimerRef.current) { clearTimeout(autoSaveTimerRef.current); autoSaveTimerRef.current = null; }
       if (!loadingPlanRef.current && eng._dirty) {
         const work = eng.saveWork() as any;
         work.ts = Date.now();
@@ -401,97 +342,63 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
         eng._dirty = false;
       }
     }
-
     const resolvedId = currentIdRef.current || currentId || '';
     if (!resolvedId) { loadingPlanRef.current = false; return; }
     eng._loadedPlanId = resolvedId;
-
     loadingPlanRef.current = true;
     (async () => {
       try {
         const loaded = await loadTrazosForPlan(eng, resolvedId);
         const currentRefId = currentIdRef.current || 'work';
         if (resolvedId !== currentRefId) { loadingPlanRef.current = false; return; }
-
         if (loaded) {
           const fallbackNet = activeNetworks && activeNetworks.size > 0 && !activeNetworks.has("af")
-            ? Array.from(activeNetworks)[0]
-            : (activeNetRef.current || 'af');
+            ? Array.from(activeNetworks)[0] : (activeNetRef.current || 'af');
           const loadedNet = eng.activeNet || fallbackNet;
           const sm = eng.scaleM;
           setActiveNet(loadedNet);
           if (sm != null) setScaleM(String(sm));
           requestAnimationFrame(() => { loadingPlanRef.current = false; if (engineRef.current) engineRef.current.render(); });
         } else if (currentId) {
-          eng.ramales = [];
-          eng.bajantes = [];
-          eng.areas = [];
-          eng.dims = [];
-          eng.textAnnots = [];
-          eng.selId = null;
-          eng.activeRamal = null;
-          eng.activeArea = null;
+          eng.ramales = []; eng.bajantes = []; eng.areas = []; eng.dims = []; eng.textAnnots = [];
+          eng.selId = null; eng.activeRamal = null; eng.activeArea = null;
           eng.setActiveNet(activeNetRef.current);
           eng.render();
           loadingPlanRef.current = false;
         }
       } catch (e) { if (import.meta.env.DEV) console.error('[LOAD] error', e); loadingPlanRef.current = false; }
     })();
-
-    try { writeSanDrawingSync(plansRef.current); } catch (_) {}
-    try { writeHydroDrawingSync(plansRef.current); } catch (_) {}
+    try { writeSanDrawingSync(plansRef.current); } catch {}
+    try { writeHydroDrawingSync(plansRef.current); } catch {}
   }, [currentId, engineReady]);
 
   useEffect(() => {
     if (!engineRef.current) return;
     if (loadingPlanRef.current) return;
     const els = engineRef.current.getElementsByNet(activeNet);
-    if (els.length > 0 && selElement?.net !== activeNet) {
-      setSelElement(els[els.length - 1]);
-    } else if (els.length === 0) {
-      setSelElement(null);
-    }
+    if (els.length > 0 && selElement?.net !== activeNet) setSelElement(els[els.length - 1]);
+    else if (els.length === 0) setSelElement(null);
   }, [activeNet]);
 
+  useEffect(() => { try { writeSanDrawingSync(plansRef.current); } catch {} try { writeHydroDrawingSync(plansRef.current); } catch {} }, [planosCtx.plans, currentId, activeNet]);
   useEffect(() => {
-    try { writeSanDrawingSync(plansRef.current); } catch { /* ignore */ }
-    try { writeHydroDrawingSync(plansRef.current); } catch { /* ignore */ }
-  }, [planosCtx.plans, currentId, activeNet]);
-
-  useEffect(() => {
-    const handler = () => {
-      try { writeSanDrawingSync(plansRef.current); } catch { /* ignore */ }
-      try { writeHydroDrawingSync(plansRef.current); } catch { /* ignore */ }
-    };
+    const handler = () => { try { writeSanDrawingSync(plansRef.current); } catch {} try { writeHydroDrawingSync(plansRef.current); } catch {} };
     window.addEventListener('storage', handler);
     return () => window.removeEventListener('storage', handler);
   }, [planosCtx.plans]);
 
   const [liveActiveNets, setLiveActiveNets] = useState<Set<string> | null>(() => {
-    try {
-      const saved = loadFromStorage('active_nets', null);
-      if (saved && Array.isArray(saved)) return new Set(saved);
-    } catch {
-      // ignore
-    }
+    try { const saved = loadFromStorage('active_nets', null); if (saved && Array.isArray(saved)) return new Set(saved); } catch {}
     return null;
   });
 
   useEffect(() => {
     const refresh = () => {
-      try {
-        const saved = loadFromStorage('active_nets', null);
-        setLiveActiveNets(saved && Array.isArray(saved) ? new Set(saved) : null);
-      } catch (_) {
-        setLiveActiveNets(null);
-      }
+      try { const saved = loadFromStorage('active_nets', null); setLiveActiveNets(saved && Array.isArray(saved) ? new Set(saved) : null); } catch { setLiveActiveNets(null); }
     };
     window.addEventListener('civilflow_nets_changed', refresh);
     window.addEventListener('storage', refresh);
-    return () => {
-      window.removeEventListener('civilflow_nets_changed', refresh);
-      window.removeEventListener('storage', refresh);
-    };
+    return () => { window.removeEventListener('civilflow_nets_changed', refresh); window.removeEventListener('storage', refresh); };
   }, []);
 
   const finalVisibleNets = useMemo(() => {
@@ -506,60 +413,99 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
 
   const { saveStatus, doSave, autoSaveTimerRef } = usePdfAutoSave(engineRef, currentIdRef, planosCtx.plans);
 
-  // ── UI Actions (needs engineRef from usePdfViewerEngine) ──
+  // ── Inline actions (was usePdfViewerActions) ──
+  const syncEngine = useCallback(() => {
+    const eng = engineRef.current;
+    if (!eng) return;
+    eng.setTool(tool as any);
+    eng.setActiveNet(activeNet);
+    eng.setTipoTramo(tipoTramo as any);
+    eng.setSnap(snapOn);
+    eng.setScaleM(scaleM);
+    const floorObj = pisos.find(p => p.n === selectedNivel);
+    eng.nivelActual = floorObj ? { ...floorObj, label: pisoLbl(floorObj.n) } : null;
+    eng.nptLevels = pisos.map(p => ({ label: pisoLbl(p.n), npt: p.npt }));
+    const matName = activeNet === 'gas'
+      ? (gasMatSel[activeNet] || GAS[0]?.mat || '')
+      : (mats?.[activeNet] && mats[activeNet][0]?.val) || '';
+    const d = activeNet === 'gas'
+      ? (diamSel[activeNet] || GAS[0]?.rows[0]?.dn || '')
+      : (diamSel[activeNet] || '');
+    const p = (activeNet === 'san' || activeNet === 'll') ? (pendSel[activeNet] !== undefined ? pendSel[activeNet] : DEFAULT_PENDIENTE_PCT) : 0;
+    eng.setRamalDefaults({ material: matName, diametro: d, pendiente: p });
+  }, [tool, activeNet, tipoTramo, snapOn, scaleM, mats, diamSel, pendSel, selectedNivel, pisos, gasMatSel, engineRef]);
 
-  const actions = usePdfViewerActions({
-    engineRef,
-    activeNet,
-    selElement,
-    setSelElement,
-    setConfirmState: safeSetConfirmState,
-    setScale,
-    setSnapOn,
-    pisos,
-    selectedNivel,
-    tool,
-    tipoTramo,
-    snapOn,
-    scaleM,
-    mats,
-    diamSel,
-    gasMatSel,
-    pendSel,
-    hiddenNets,
-    lockedNets,
-    autoSaveTimerRef,
-    doSave,
-    scale,
-    cwRef,
-    setHiddenNets,
-    setLockedNets,
-  });
+  const handleUndo = useCallback(() => { if (engineRef.current) engineRef.current.undoLast(); }, [engineRef]);
+  const handleFit = useCallback(() => {
+    const eng = engineRef.current;
+    const cw = cwRef.current;
+    if (!eng || !cw || !eng.pageW || !eng.pageH) return;
+    const pad = 16;
+    const availW = cw.clientWidth - pad * 2;
+    const availH = cw.clientHeight - pad * 2;
+    const sc = Math.min(availW / eng.pageW, availH / eng.pageH);
+    eng.zoom = sc;
+    eng.offX = eng.pageW * (1 - sc) / 2;
+    eng.offY = (cw.clientHeight - eng.pageH * sc) / 2;
+    eng.render();
+    const newScale = Math.max(1, Math.ceil(sc));
+    if (newScale !== scale) setScale(newScale);
+  }, [engineRef, cwRef, scale, setScale]);
 
-  useEffect(() => { actions.syncEngine(); }, [actions.syncEngine]);
+  const handleClear = useCallback(() => {
+    if (!engineRef.current) return;
+    const netId = activeNet;
+    const netName = NETS.find(n => n.id === netId)?.name || netId;
+    setConfirmState({
+      isOpen: true, title: 'Limpiar red',
+      message: `¿Deseas eliminar todo el trazado de la red activa (${netName})? Esta acción no se puede deshacer.`,
+      onConfirm: () => {
+        engineRef.current?.clearNet(netId);
+        setSelElement(null);
+        setConfirmState((prev: any) => ({...prev, isOpen: false}));
+      }
+    });
+  }, [engineRef, activeNet, setSelElement]);
+
+  const handleSave = useCallback(() => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); doSave(); }, [autoSaveTimerRef, doSave]);
+  const handleSnapToggle = useCallback(() => setSnapOn(prev => !prev), [setSnapOn]);
+  const handleRotateLabel = useCallback(() => { if (engineRef.current) engineRef.current.rotateLabelSnap(); }, [engineRef]);
+  const handleUpdateSel = useCallback((field: string, value: any) => {
+    if (!engineRef.current || !selElement) return;
+    const fields = { [field]: value };
+    engineRef.current.updateSelected(fields);
+    setSelElement({ ...selElement, [field]: fields[field] });
+    engineRef.current.render();
+  }, [engineRef, selElement, setSelElement]);
+
+  const handleToggleHidden = useCallback((id: string) => {
+    const next = new Set(hiddenNets);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setHiddenNets(next);
+    if (engineRef.current) engineRef.current.setNetHidden(id, next.has(id));
+  }, [hiddenNets, setHiddenNets, engineRef]);
+
+  const handleToggleLocked = useCallback((id: string) => {
+    const next = new Set(lockedNets);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setLockedNets(next);
+    if (engineRef.current) engineRef.current.setNetLocked(id, next.has(id));
+  }, [lockedNets, setLockedNets, engineRef]);
+
+  useEffect(() => { syncEngine(); }, [syncEngine]);
 
   useEffect(() => {
     if (finalVisibleNets.length === 0) return;
-    if (!finalVisibleNets.some((n: any) => n.id === activeNet)) {
-      setActiveNet(finalVisibleNets[0].id);
-    }
+    if (!finalVisibleNets.some((n: any) => n.id === activeNet)) setActiveNet(finalVisibleNets[0].id);
     setHiddenNets(prev => {
       const next = new Set(prev);
       let changed = false;
-      for (const id of [...next]) {
-        if (!finalVisibleNets.some(n => n.id === id)) {
-          next.delete(id);
-          changed = true;
-        }
-      }
+      for (const id of [...next]) { if (!finalVisibleNets.some(n => n.id === id)) { next.delete(id); changed = true; } }
       return changed ? next : prev;
     });
   }, [finalVisibleNets, activeNet]);
 
-  useEffect(() => {
-    setPadreTributarioId(null);
-    if (engineRef.current)   engineRef.current!.setPadreTributario(null as any);
-  }, [activeNet, tipoTramo]);
+  useEffect(() => { setPadreTributarioId(null); if (engineRef.current) engineRef.current.setPadreTributario(null as any); }, [activeNet, tipoTramo]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -571,12 +517,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (engineRef.current) {
           const eng = engineRef.current;
-          if (eng.multiSel && eng.multiSel.length > 0) {
-            eng.deleteSelected(eng.multiSel);
-            eng.multiSel = [];
-          } else if (eng.selId) {
-            eng.deleteSelected();
-          }
+          if (eng.multiSel && eng.multiSel.length > 0) { eng.deleteSelected(eng.multiSel); eng.multiSel = []; }
+          else if (eng.selId) eng.deleteSelected();
           e.preventDefault();
         }
       }
@@ -585,27 +527,13 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     return () => document.removeEventListener('keydown', handler);
   }, [setTool]);
 
-  useEffect(() => {
-    if (!engineRef.current) return;
-    setDrawnElements(engineRef.current.getElementsByNet(activeNet));
-  }, [selElement, activeNet]);
-
-  useEffect(() => {
-    const c = drawCanvasRef.current;
-    if (c) {
-      c.style.cursor = tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair';
-    }
-  }, [tool]);
+  useEffect(() => { if (!engineRef.current) return; setDrawnElements(engineRef.current.getElementsByNet(activeNet)); }, [selElement, activeNet]);
+  useEffect(() => { const c = drawCanvasRef.current; if (c) c.style.cursor = tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair'; }, [tool]);
 
   useEffect(() => {
     if (selElement && selElement.net === activeNet && engineRef.current) {
-      if (selElement.diametro) {
-        setDiamSel(prev => ({ ...prev, [activeNet]: selElement.diametro }));
-      }
-      if (selElement.pendiente !== undefined) {
-        setPendSel(prev => ({ ...prev, [activeNet]: selElement.pendiente }));
-        setPendInput(selElement.pendiente > 0 ? String(selElement.pendiente) : '');
-      }
+      if (selElement.diametro) setDiamSel(prev => ({ ...prev, [activeNet]: selElement.diametro }));
+      if (selElement.pendiente !== undefined) { setPendSel(prev => ({ ...prev, [activeNet]: selElement.pendiente })); setPendInput(selElement.pendiente > 0 ? String(selElement.pendiente) : ''); }
       engineRef.current.render();
     } else if (!selElement) {
       const p = pendSel[activeNet];
@@ -626,6 +554,18 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     return <span>{map[scaleM] || '1:100'}</span>;
   }, [selectedNivel, planos, scaleM]);
 
+  const planoAsocInfo = useMemo(() => {
+    if (selectedNivel === null) return null;
+    const planoAsoc = planos.find(p => p.nivel === selectedNivel && p.status === 'confirmed');
+    if (!planoAsoc) return null;
+    return (
+      <div style={{marginTop:8,padding:'6px 10px',background:'#1e2024',borderRadius:3,border:'1px solid rgba(0,220,229,.2)'}}>
+        <div style={{fontSize:11,color:'#00dce5',fontFamily:"'Geist',monospace",fontWeight:600,display:'flex',alignItems:'center',gap:4}}>📄 {planoAsoc.name}</div>
+        <div style={{fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace",marginTop:2}}>Escala 1:{planoAsoc.scale}</div>
+      </div>
+    );
+  }, [selectedNivel, planos]);
+
   return (
     <div style={mainContainerStyle}>
       <PdfViewerNetworkBar
@@ -634,8 +574,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
         hiddenNets={hiddenNets}
         lockedNets={lockedNets}
         onSelectNet={setActiveNet}
-        onToggleHidden={actions.handleToggleHidden}
-        onToggleLocked={actions.handleToggleLocked}
+        onToggleHidden={handleToggleHidden}
+        onToggleLocked={handleToggleLocked}
         scaleText={scaleText}
       />
 
@@ -643,127 +583,103 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
 
       <div className="visor-sidebar" style={dynamicLeftStyle}>
         <h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Panel de capas</h2>
-        <div style={{
-          height: 3, flexShrink: 0, transition: 'background .3s',
-          background: STATUS[saveStatus]?.color || STATUS.error.color,
-        }} />
+        <div style={{height:3,flexShrink:0,transition:'background .3s',background:STATUS[saveStatus]?.color || STATUS.error.color}} />
         <PdfViewerToolbar
-          tool={tool}
-          snapOn={snapOn}
-          activeNet={activeNet}
-          currentFile={currentFile}
-          saveStatus={saveStatus}
-          onSelectTool={setTool}
-           onSnapToggle={actions.handleSnapToggle}
-          onFit={actions.handleFit}
-          onSave={actions.handleSave}
-          onUndo={actions.handleUndo}
-          onClear={actions.handleClear}
-          engineRef={engineRef}
-          currentIdRef={currentIdRef}
-          currentId={currentId}
-          plansRef={plansRef}
+          tool={tool} snapOn={snapOn} activeNet={activeNet} currentFile={currentFile}
+          saveStatus={saveStatus} onSelectTool={setTool} onSnapToggle={handleSnapToggle}
+          onFit={handleFit} onSave={handleSave} onUndo={handleUndo} onClear={handleClear}
+          engineRef={engineRef} currentIdRef={currentIdRef} currentId={currentId} plansRef={plansRef}
         />
       </div>
 
       <div style={{position:'relative',flex:1,display:'flex',minHeight:0,minWidth:0}}>
         <h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Visor de planos</h2>
-      <PdfCanvas
-          cwRef={cwRef}
-          containerRef={containerRef}
-          pdfCanvasRef={pdfCanvasRef}
-          drawCanvasRef={drawCanvasRef}
-          currentFile={currentFile}
-          error={error as any}
-          loading={loading}
-          selectedNivel={selectedNivel}
-          pisos={pisos}
-          planos={planos}
-          tool={tool}
-          snapOn={snapOn}
-      />
+        <PdfCanvas
+          cwRef={cwRef} containerRef={containerRef} pdfCanvasRef={pdfCanvasRef} drawCanvasRef={drawCanvasRef}
+          currentFile={currentFile} error={error as any} loading={loading}
+          selectedNivel={selectedNivel} pisos={pisos} planos={planos} tool={tool} snapOn={snapOn}
+        />
       </div>
 
-      <PdfViewerDialogs
-        engineRef={engineRef}
-        selElement={selElement}
-        setSelElement={setSelElement}
-        selectedNivel={selectedNivel}
-        pisos={pisos}
-        lowerFloorsRamales={lowerFloorsRamales}
-        planosCtx={planosCtx}
-        mats={mats}
-        activeNet={activeNet}
-        setDiamSel={setDiamSel}
-        textOverlay={textOverlay}
-        setTextOverlay={setTextOverlay}
-        textInputRef={textInputRef}
-        onRegisterContextMenu={onRegisterContextMenu}
-        onRegisterSetConfirmState={onRegisterSetConfirmState}
-        onRegisterSetAlertDialogState={onRegisterSetAlertDialogState}
+      {/* Dialogs (was PdfViewerDialogs) */}
+      <TextInputOverlay textOverlay={textOverlay} setTextOverlay={setTextOverlay} textInputRef={textInputRef} />
+      <BajanteContextMenu
+        contextMenuState={contextMenuState} setContextMenuState={setContextMenuState}
+        selectedNivel={selectedNivel} pisos={pisos} engineRef={engineRef}
+        selElement={selElement} setSelElement={setSelElement}
+        lowerFloorsRamales={lowerFloorsRamales} planosCtx={planosCtx}
+        mats={mats} activeNet={activeNet} setDiamSel={setDiamSel}
       />
+      <ConfirmDialog confirmState={confirmState} setConfirmState={setConfirmState} />
+      <AlertDialog alertDialogState={alertDialogState} setAlertDialogState={setAlertDialogState} />
 
-      <PdfViewerSidebarRight
-        dynamicRightStyle={dynamicRightStyle}
-        selectedNivel={selectedNivel}
-        onSelectNivel={(v, idx) => {
-          setSelectedNivel(v);
-          if (idx >= 0 && onSelectPlan) onSelectPlan(idx);
-        }}
-        pisos={pisos}
-        planos={planos}
-        rightSidebarOpacity={rightSidebarOpacity}
-        tipoTramo={tipoTramo}
-        setTipoTramo={setTipoTramo}
-        padreTributarioId={padreTributarioId}
-        setPadreTributarioId={setPadreTributarioId}
-        drawnElements={drawnElements}
-        engineRef={engineRef}
-        selElement={selElement}
-        activeNet={activeNet}
-        diamSel={diamSel}
-        gasMatSel={gasMatSel}
-        pendSel={pendSel}
-        pendInput={pendInput}
-        mats={mats}
-        matLongName={matLongName}
-        setDiamSel={setDiamSel}
-        setGasMatSel={setGasMatSel}
-        setPendSel={setPendSel}
-        setPendInput={setPendInput}
-        setSelElement={setSelElement}
-        handleUpdateSel={actions.handleUpdateSel}
-        handleRotateLabel={actions.handleRotateLabel}
-        lowerFloorsRamales={lowerFloorsRamales}
-        planosCtx={planosCtx}
-        scaleText={scaleText}
-        currentId={currentId}
-        currentIdRef={currentIdRef}
-        finalVisibleNets={finalVisibleNets}
-      />
+      {/* Sidebar Right (was PdfViewerSidebarRight) */}
+      <div className="visor-sidebar-right" style={dynamicRightStyle}>
+        <h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Panel de edición</h2>
+        <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
+          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Nivel</div>
+          <select aria-label="Seleccionar nivel" value={selectedNivel??''} onChange={e=>{
+            const v=e.target.value?Number(e.target.value):null;
+            const idx = v !== null ? planos.findIndex(p => p.nivel === v && p.status === 'confirmed') : -1;
+            setSelectedNivel(v);
+            if (idx >= 0 && onSelectPlan) onSelectPlan(idx);
+          }}
+            style={{width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace",cursor:'pointer'}}>
+            <option value="">— Seleccionar piso —</option>
+            {[...pisos].sort((a,b)=>b.n-a.n).map(s=>{
+              const tienePlano=planos.some(p=>p.nivel===s.n&&p.status==='confirmed');
+              return <option key={s.id} value={s.n}>{tienePlano?'🟢 ':''}{pisoLbl(s.n)} ({s.npt} m)</option>;
+            })}
+          </select>
+          {planoAsocInfo}
+        </div>
 
-      {/* Left Sidebar Toggle Button */}
+        <CopyFromPlanPanel
+          engineRef={engineRef} currentId={currentId} currentIdRef={currentIdRef}
+          planosCtx={planosCtx} pisos={pisos} visibleNets={finalVisibleNets}
+        />
+
+        <div style={rightSidebarOpacity}>
+          <TipoTramoSelector
+            tipoTramo={tipoTramo} setTipoTramo={setTipoTramo}
+            padreTributarioId={padreTributarioId} setPadreTributarioId={setPadreTributarioId}
+            drawnElements={drawnElements} engineRef={engineRef}
+          />
+
+          <TramoEditor
+            selElement={selElement} activeNet={activeNet} engineRef={engineRef}
+            diamSel={diamSel} gasMatSel={gasMatSel} pendSel={pendSel} pendInput={pendInput}
+            mats={mats} matLongName={matLongName}
+            setDiamSel={setDiamSel} setGasMatSel={setGasMatSel} setPendSel={setPendSel} setPendInput={setPendInput}
+            setSelElement={setSelElement} handleUpdateSel={handleUpdateSel} handleRotateLabel={handleRotateLabel}
+            plans={planosCtx.plans} pisos={pisos}
+          />
+
+          <BajanteAsociacion
+            selElement={selElement} setSelElement={setSelElement}
+            selectedNivel={selectedNivel} pisoLbl={pisoLbl}
+            lowerFloorsRamales={lowerFloorsRamales} planosCtx={planosCtx} engineRef={engineRef}
+          />
+
+          {!(selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante' || selElement.tipo === 'area' || selElement.id?.startsWith('AR'))) && (
+            <AparatosPanel activeNet={activeNet} selElement={selElement} planId={currentId} />
+          )}
+
+          <PdfViewerDrawnElements drawnElements={drawnElements} activeNet={activeNet} selElement={selElement} engineRef={engineRef} />
+
+          <div style={{flex:1}}/>
+        </div>
+      </div>
+
       <button
         onClick={() => setLeftCollapsed(!leftCollapsed)}
         style={{
-          position: "absolute",
-          left: leftCollapsed ? 0 : 165,
-          top: 0,
-          zIndex: 40,
-          width: 16,
-          height: 24,
-          background: "#14161a",
-          border: "1px solid #3a494a",
+          position: "absolute", left: leftCollapsed ? 0 : 165, top: 0, zIndex: 40,
+          width: 16, height: 24, background: "#14161a", border: "1px solid #3a494a",
           borderLeft: leftCollapsed ? "1px solid #3a494a" : "none",
-          borderRadius: "0 0 3px 0",
-          color: "#849495",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 0,
-          fontSize: 8,
-          transition: "left 0.2s ease",
+          borderRadius: "0 0 3px 0", color: "#849495", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 0, fontSize: 8, transition: "left 0.2s ease",
         }}
         title={leftCollapsed ? "Expandir barra izquierda" : "Colapsar barra izquierda"}
         aria-label={leftCollapsed ? "Expandir barra izquierda" : "Colapsar barra izquierda"}
@@ -771,28 +687,15 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
         {leftCollapsed ? "▶" : "◀"}
       </button>
 
-      {/* Right Sidebar Toggle Button */}
       <button
         onClick={() => setRightCollapsed(!rightCollapsed)}
         style={{
-          position: "absolute",
-          right: rightCollapsed ? 0 : 210,
-          top: 0,
-          zIndex: 40,
-          width: 16,
-          height: 24,
-          background: "#14161a",
-          border: "1px solid #3a494a",
+          position: "absolute", right: rightCollapsed ? 0 : 210, top: 0, zIndex: 40,
+          width: 16, height: 24, background: "#14161a", border: "1px solid #3a494a",
           borderRight: rightCollapsed ? "1px solid #3a494a" : "none",
-          borderRadius: "0 0 0 3px",
-          color: "#849495",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 0,
-          fontSize: 8,
-          transition: "right 0.2s ease",
+          borderRadius: "0 0 0 3px", color: "#849495", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: 0, fontSize: 8, transition: "right 0.2s ease",
         }}
         title={rightCollapsed ? "Expandir barra derecha" : "Colapsar barra derecha"}
         aria-label={rightCollapsed ? "Expandir barra derecha" : "Colapsar barra derecha"}
@@ -801,7 +704,6 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
       </button>
 
       </div>
-
     </div>
   );
 }

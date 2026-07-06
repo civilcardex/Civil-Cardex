@@ -88,8 +88,8 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                 </tr>
                 <tr>
                   {AP.map(d => (
-                    <th key={d!.id} className={`col-h ${clsHeader}`} style={{minWidth:70,fontSize:9,textAlign:'center',whiteSpace:'nowrap',padding:'4px 2px'}}>
-                      {d!.nombre}<br/><span style={{fontSize:8,fontWeight:400}}>{(d as any)[field]} UC</span>
+                    <th key={d.id} className={`col-h ${clsHeader}`} style={{minWidth:70,fontSize:9,textAlign:'center',whiteSpace:'nowrap',padding:'4px 2px'}}>
+                      {d.nombre}<br/><span style={{fontSize:8,fontWeight:400}}>{(d as any)[field]} UC</span>
                     </th>
                   ))}
                   {showTotal && (
@@ -119,9 +119,9 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2,padding:'2px 4px'}}>{t.ini && typeof t.ini === 'object' ? `${t.ini.x},${t.ini.y}` : t.ini || '\u2014'}</td>
                       <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2,padding:'2px 4px'}}>{t.fin && typeof t.fin === 'object' ? `${t.fin.x},${t.fin.y}` : t.fin || '\u2014'}</td>
                       {AP.map(d => {
-                        const v = t.fixtures?.[d!.id] || 0;
+                        const v = t.fixtures?.[d.id] || 0;
                         return (
-                          <td key={d!.id} className="c" style={{padding:'2px 3px'}}>
+                          <td key={d.id} className="c" style={{padding:'2px 3px'}}>
                             <span style={{fontSize:12,fontFamily:monof,color:(d as any)._disabled?txt2:txt}}>{v}</span>
                           </td>
                         );
