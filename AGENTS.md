@@ -1,4 +1,4 @@
-﻿## graphify
+## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
 
@@ -45,6 +45,16 @@ Configure these in:
 - **Cloudflare**: Add via "HTTP Response Headers" rule
 - **Netlify**: Add via `_headers` file or `netlify.toml`
 - **Vercel**: Add via `vercel.json` `headers` config
+
+### Supabase RLS Policies (plano_trazos table)
+Row Level Security (RLS) is enabled on the `plano_trazos` table. The following policies are implemented to ensure IDOR mitigation:
+- **Insert Policy**: Users can only insert rows if the `user_id` matches their own authenticated ID (`auth.uid() = user_id`).
+- **Select Policy**: Users can only view rows where the `user_id` matches their own authenticated ID (`auth.uid() = user_id`).
+- **Update Policy**: Users can only modify rows where the `user_id` matches their own authenticated ID (`auth.uid() = user_id`).
+- **Delete Policy**: Users can only delete rows where the `user_id` matches their own authenticated ID (`auth.uid() = user_id`).
+
+These policies prevent unauthorized access or tampering with drawing data belonging to other users.
+
 
 
 ## Session Summary — 2026-06-22
@@ -121,27 +131,78 @@ Configure these in:
 - `src/lib/PlanoEngine/renderers/renderBajantes.ts:569` — ghost label unconditional
 - `src/lib/PlanoEngine/handleMouseDown.ts:35` — contador/calentador label drag fallback
 
-## Session Summary — 2026-07-02 (Phase 4 — Component Splitting)
+## Session Summary — 2026-07-06 (SEO, Performance, Security & Verification)
 
 ### Done
-- **4.1 BajanteContextMenu.tsx** (962→218 lines): Extracted `BajanteDirectionSelector` (165l), `BajanteDiameterSelector` (259l), `BajanteConnectionPanel` (299l), `BajanteCodeEditor` (222l). Container renders conditional sections based on element type (bajante/montante, área, ramal/hasPts, contador, calentador).
-- **4.2 TramoEditor.tsx** (852→258 lines): Extracted `ContadorEditor` (93l), `CalentadorEditor` (59l), `BajanteEditor` (234l), `RamalEditor` (212l), `TributarioEditor` (101l). Each handles its own element type with all props/imports.
-- **4.3 PdfViewer.tsx** (932→808 lines): Extracted `PdfViewerDialogs.tsx` (64l — owns contextMenu/confirm/alert dialog state), `PdfViewerActions.ts` (149l — `usePdfViewerActions` hook with 10 handlers), `PdfViewerSidebarRight.tsx` (162l — nivel/tipoTramo/tramoEditor/escala/aparatos sidebar).
-- **Build verified**: `npx vite build` passes clean (442 modules).
+- **Phase 10: SEO**:
+  - Implemented dynamic canonical URL and `og:url` path handling via an immediate-executing inline script in `index.html`'s `<head>`.
+  - Added Product (`Product`) structured data as `ld+json` for the Civil Core Professional tier inside `PricingPage.tsx`.
+  - Added SoftwareApplication (`SoftwareApplication`) structured data dynamically in `ModulePage.tsx` based on `moduleId`.
+  - Added Person (`Person`) structured data dynamically in `ProfilePage.tsx` based on user profile state.
+- **Phase 11: Web Performance**:
+  - Preloaded Google Fonts using `display=swap` instead of `display=optional` in `index.html` to eliminate block rendering behavior.
+  - Verified preconnect and dns-prefetch resource hints pointing to Supabase.
+- **Phase 12: Security**:
+  - Audited localStorage to confirm no secrets are stored (only public JWT tokens by Supabase auth).
+  - Documented Supabase RLS policies for `plano_trazos` table under `AGENTS.md`.
+  - Verified all database query calls are protected against IDOR (using authenticated `user.id`).
+- **Phase 13: Final Verification**:
+  - Ran `tsc --noEmit` which completed successfully with zero type check errors.
+  - Ran `vite build` which generated the production bundle cleanly in 2.06s.
+  - Updated the knowledge graph with `graphify update .`.
 
-### Relevant New Files
-- `src/components/pdfViewer/BajanteDirectionSelector.tsx`
-- `src/components/pdfViewer/BajanteDiameterSelector.tsx`
-- `src/components/pdfViewer/BajanteConnectionPanel.tsx`
-- `src/components/pdfViewer/BajanteCodeEditor.tsx`
-- `src/components/pdfViewer/ContadorEditor.tsx`
-- `src/components/pdfViewer/CalentadorEditor.tsx`
-- `src/components/pdfViewer/BajanteEditor.tsx`
-- `src/components/pdfViewer/RamalEditor.tsx`
-- `src/components/pdfViewer/TributarioEditor.tsx`
-- `src/components/pdfViewer/PdfViewerDialogs.tsx`
-- `src/components/pdfViewer/PdfViewerActions.ts`
-- `src/components/pdfViewer/PdfViewerSidebarRight.tsx`
+### Relevant Files
+- `index.html` — Dynamic canonical & og:url tags, preload display=swap
+- `src/pages/PricingPage.tsx` — Product structured data
+- `src/pages/ModulePage.tsx` — SoftwareApplication structured data
+- `src/pages/ProfilePage.tsx` — Person structured data
+- `AGENTS.md` — Documented RLS policies
+
+## Session Summary — 2026-07-05 (Phase 6 — TypeScript best practices)
+
+### Done
+- **Phase 7: Composition Patterns** — TramoEditor and BajanteContextMenu:
+  - **ExtremeAccessoryEditor**: `engineRef: any` → `React.MutableRefObject<PlanoEngine | null>`
+  - **TramoEditorContext** (new file): Shared context provider for all TramoEditor sub-components; eliminates prop drilling of 16 props across 4 sub-editors (ContadorEditor, CalentadorEditor, BajanteEditor, RamalEditor)
+  - **TramoEditor explicit variants**: `ContadorTramoEditor`, `CalentadorTramoEditor`, `BajanteTramoEditor`, `AreaTramoEditor`, `RamalTramoEditor` — each variant composes only its needed sub-components. Main `TramoEditor` is now a thin provider + dispatcher.
+  - **BajanteContextMenuContext** (new file): Shared context elimintating prop drilling of 12 props across 4 sub-components (BajanteDirectionSelector, BajanteDiameterSelector, BajanteConnectionPanel, BajanteCodeEditor)
+  - **BajanteContextMenu explicit variants**: `BajanteMenu`, `AreaMenu`, `RamalMenu`, `ContadorMenu`, `CalentadorMenu` — 5 explicit variants replacing the 5-arm type switch. Main component is now a provider + dispatcher.
+  - Both `useBajanteContextMenu()` and `useTramoEditor()` hooks throw if used outside their providers.
+- **Phase 6 clean sweep** — Removed every `: any` annotation from `src/lib/PlanoEngine/` and `src/utils/accessoryAbbreviations.ts`. Rerun counted header-level `any` remnants were function parameters (render-only, low impact). Verified with `tsc --noEmit` zero errors.
+- **Phase 6.2: PlanoEngine `any` types** — Cleaned iteration callback `: any` types across 14 files:
+  - `PlanoEngine.ts`: `(n: any) → (n)`
+  - `handleDragMove.ts`: `(bb: any) → (bb)`, `(rr: any) → (rr)`
+  - `handleDragUp.ts`: `(bb: any) → (bb)`, `(r: any) → (r)`
+  - `renderers/drawRamalPath.ts`: `(rm: any) → (rm)` (4 occurrences)
+  - `renderers/renderBajantes.ts`: `(rr: any) → (rr)`, `(n: any) → (n)` (3 occurrences), `v: any → v: unknown`
+  - `renderers/renderRamales.ts`: `(rm: any) → (rm)`, `(sr: any) → (sr)`, `(n: any) → (n)` (2 occurrences), `v: any → v: unknown`
+  - `renderers/renderAreas.ts`: `(p: any) → (p)`
+- **Phase 6.2: Fixed pre-existing TS errors exposed by `any` removal**:
+  - Added `diametro?: string` to `PlanoBajante` interface
+  - Fixed `ghostData.direccion` type: `string` → `'sube' | 'baja' | 'continua' | 'mantiene'`
+  - Fixed 4 `_labelBox = null` → `_labelBox = undefined` (renderBajantes, renderAreas, renderRamales)
+  - Fixed `DIR_MAP[b.direccion]` → `DIR_MAP[b.direccion ?? '']`
+  - Fixed `DIR_MAP[ghostDir]` → `DIR_MAP[ghostDir ?? '']`
+  - Fixed `[px, py]: [number, number]` → `[px, py]` (tuple mismatch with `number[][]`)
+  - Fixed `engine._hiddenNets.has(a.net)` → `a.net && engine._hiddenNets.has(a.net)`
+- **Phase 6.4: utility function types** — Changed `bajanteLabel(b: any)` → typed inline interface with optional chaining
+- **Build verified**: `tsc --noEmit` zero errors, `vite build` 430 modules 2.77s.
+
+### Relevant Files
+- `src/lib/PlanoEngine/PlanoState.ts` — `diametro?: string` on PlanoBajante; `ghostData.direccion` narrowed to union
+- `src/lib/PlanoEngine/PlanoEngine.ts` — any callback fixed
+- `src/lib/PlanoEngine/handleDragMove.ts` — any callbacks fixed
+- `src/lib/PlanoEngine/handleDragUp.ts` — any callbacks fixed
+- `src/lib/PlanoEngine/renderers/drawRamalPath.ts` — any callbacks fixed
+- `src/lib/PlanoEngine/renderers/renderBajantes.ts` — any callbacks + null/undefined fixes
+- `src/lib/PlanoEngine/renderers/renderRamales.ts` — any callbacks + tuple + null fix
+- `src/lib/PlanoEngine/renderers/renderAreas.ts` — any callback + null + optional net fix
+- `src/utils/accessoryAbbreviations.ts` — `b: any` → typed interface
+- `src/components/pdfViewer/TramoEditorContext.tsx` — shared context (new)
+- `src/components/pdfViewer/BajanteContextMenuContext.tsx` — shared context (new)
+- `src/components/pdfViewer/TramoEditor.tsx` — provider + 5 explicit variant components
+- `src/components/pdfViewer/BajanteContextMenu.tsx` — provider + 5 explicit variant components
+- `src/components/pdfViewer/ExtremeAccessoryEditor.tsx` — `engineRef: any` → typed
 
 ### Fixed — drawingAngles.ts:checkRamalAngles
 - **San/ll angle constraint**: Changed from per-segment `deg % 45` check to internal-angle-between-segments check. San/ll only allows `internalAngle ≥ 134°` (straight at 180° or 45° turn at 135°). AF/AC keeps original behavior (multiples of 45° per segment, internal angle ≥ 50°). 90° turns blocked in san/ll.
