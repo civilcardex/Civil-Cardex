@@ -170,12 +170,14 @@ function InfTab({ state }: { state: WorkAreaState }) {
           </h2>
         </div>
         <div className="card-b">
+          <dl style={{ margin: 0 }}>
           {items.map(([k, v]) => (
             <div key={k} style={{ display: 'flex', gap: 12, alignItems: 'baseline', padding: '8px 12px', background: 'var(--bg3)', borderRadius: 'var(--r)', border: '1px solid var(--line)', marginBottom: 6 }}>
-              <span style={{ fontSize: 11, color: 'var(--txt3)', minWidth: 130, flexShrink: 0, textTransform: 'uppercase', fontWeight: 600 }}>{k}</span>
-              <span style={{ fontSize: 14, fontWeight: 500, color: String(v).includes('✗') ? 'var(--err)' : String(v).includes('✓') ? 'var(--ok)' : 'var(--txt)' }}>{v}</span>
+              <dt style={{ fontSize: 11, color: 'var(--txt3)', minWidth: 130, flexShrink: 0, textTransform: 'uppercase', fontWeight: 600 }}>{k}</dt>
+              <dd style={{ fontSize: 14, fontWeight: 500, margin: 0, color: String(v).includes('✗') ? 'var(--err)' : String(v).includes('✓') ? 'var(--ok)' : 'var(--txt)' }}>{v}</dd>
             </div>
           ))}
+          </dl>
         </div>
       </section>
     </div>
@@ -192,7 +194,7 @@ export default function WorkAreaContent({ state }: WorkAreaContentProps) {
       {tab === 'redes' && state.redesActivas.length > 0 && <section aria-label="Diseño de red" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Diseño de red</h2><RedesTab state={state} /></section>}
       {tab === 'datos' && <section aria-label="Parámetros de diseño" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Parámetros de diseño</h2><Suspense fallback={FALLBACK}><BaseDatos redes={redes} /></Suspense></section>}
       {tab === 'crit' && <section aria-label="Criterios y normativa" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Criterios y normativa</h2><Suspense fallback={FALLBACK}><Normativa /></Suspense></section>}
-      {tab === 'inf' && <section aria-label="Resumen del proyecto" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><InfTab state={state} /></section>}
+      {tab === 'inf' && <section aria-label="Resumen del proyecto" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Resumen del proyecto</h2><InfTab state={state} /></section>}
       {tab === 'iso' && <section aria-label="Isometría de red" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Isometría de red</h2><Suspense fallback={FALLBACK}><IsometriaTab state={state} /></Suspense></section>}
     </>
   );

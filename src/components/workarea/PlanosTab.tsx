@@ -309,12 +309,12 @@ function PlanosTab({ state }: PlanosTabProps) {
               )}
             </div>
           ) : (
-            <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 10px' }}>
+            <ul role="list" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 10px', listStyle: 'none', margin: 0 }}>
               {pendingPlanos.map((p: any) => {
                 const calOk = isCalibrated(p.id);
                 const isSelected = selectedPlanId === p.id;
                 return (
-                  <div key={p.id}
+                  <li key={p.id}
                     style={{
                       padding: '10px',
                       borderRadius: 'var(--r)',
@@ -448,10 +448,10 @@ function PlanosTab({ state }: PlanosTabProps) {
                         ELIMINAR
                       </button>
                     </div>
-                  </div>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           )}
         </div>
 
@@ -468,9 +468,9 @@ function PlanosTab({ state }: PlanosTabProps) {
               </div>
             </div>
           ) : (
-            <div style={{ flex: 1, overflowY: 'auto' }}>
+            <ul role="list" style={{ flex: 1, overflowY: 'auto', listStyle: 'none', margin: 0, padding: 0 }}>
               {confirmedPlanos.map((p: any) => (
-                <div key={p.id}
+                <li key={p.id}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderBottom: '1px solid var(--line)', background: selectedPlanId === p.id ? 'rgba(27,110,243,.08)' : 'transparent', transition: 'background .1s' }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
@@ -494,9 +494,9 @@ function PlanosTab({ state }: PlanosTabProps) {
                     style={{ padding: '3px 6px', fontSize: 9, fontWeight: 600, borderRadius: 'var(--r)', border: '1px solid var(--line)', background: 'var(--bg3)', color: '#ef5350', cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s ease', whiteSpace: 'nowrap' }} title="Eliminar">
                     ELIMINAR
                   </button>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           )}
         </div>
       </div>

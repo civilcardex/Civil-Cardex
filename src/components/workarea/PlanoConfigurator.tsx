@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { pisoLbl } from "../../constants";
 import ModalProtocolo from "./ModalProtocolo";
@@ -101,7 +101,7 @@ function PlanoConfiguratorBase({
         showToast(`Diferencia X/Y = ${diff.toFixed(1)}% - Posible distorsión. Re-exportar a 300 DPI`, 'warn');
       }
     } else if (fx || fy) {
-      const f = fx || fy!;
+      const f = fx || fy;
       setScaleM(f);
     }
   }, [showToast]);
@@ -188,7 +188,8 @@ function PlanoConfiguratorBase({
       const img = new Image();
       const url = URL.createObjectURL(planFile);
       img.onload = () => {
-        const canv = pdfCanvRef.current!;
+        const canv = pdfCanvRef.current;
+        if (!canv) return;
         canv.width = img.width;
         canv.height = img.height;
         canv.style.width = img.width + 'px';
@@ -218,12 +219,14 @@ function PlanoConfiguratorBase({
           if (cancelled) return;
           const page = await pdf.getPage(1);
           const vp = page.getViewport({ scale: 1 });
-          const canv = pdfCanvRef.current!;
+          const canv = pdfCanvRef.current;
+          if (!canv) return;
           canv.width = Math.floor(vp.width * dpr);
           canv.height = Math.floor(vp.height * dpr);
           canv.style.width = vp.width + 'px';
           canv.style.height = vp.height + 'px';
-          const ctx = canv.getContext('2d')!;
+          const ctx = canv.getContext('2d');
+          if (!ctx) return;
           ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
           ctx.imageSmoothingEnabled = false;
           await page.render({ canvas: canv as HTMLCanvasElement, viewport: vp }).promise;
@@ -694,7 +697,7 @@ function PlanoConfiguratorBase({
                   ✓ ({origen.x_px.toFixed(0)}, {origen.y_px.toFixed(0)}) px
                 </span>
                 <button onClick={() => { setOrigen(null); setHasSaved(false); }}
-                  style={{ padding: '0 4px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 10, lineHeight: '14px' }}>
+                  style={{ padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>
                   ✕
                 </button>
               </div>
@@ -737,7 +740,7 @@ function PlanoConfiguratorBase({
                 <div style={{ marginTop: 3, fontSize: 10, color: 'var(--ok)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
                   ✓ {factorX.toFixed(4)}
                   <button onClick={() => { setFactorX(null); setLenX(''); if (factorY) { setScaleM(factorY); setDefinedScale(factorY); } else { setScaleM(null); setDefinedScale(null); } setHasSaved(false); }}
-                    style={{ padding: '0 4px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 10, lineHeight: '12px' }}>✕</button>
+                    style={{ padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>✕</button>
                 </div>
               )}
             </div>
@@ -776,7 +779,7 @@ function PlanoConfiguratorBase({
                 <div style={{ marginTop: 3, fontSize: 10, color: 'var(--ok)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
                   ✓ {factorY.toFixed(4)}
                   <button onClick={() => { setFactorY(null); setLenY(''); if (factorX) { setScaleM(factorX); setDefinedScale(factorX); } else { setScaleM(null); setDefinedScale(null); } setHasSaved(false); }}
-                    style={{ padding: '0 4px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 10, lineHeight: '12px' }}>✕</button>
+                    style={{ padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>✕</button>
                 </div>
               )}
             </div>

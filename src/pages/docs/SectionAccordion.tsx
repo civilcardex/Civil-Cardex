@@ -23,6 +23,7 @@ export default function SectionAccordion({ section, sectionKey, isOpen, onToggle
       <button
         onClick={() => onToggle(sectionKey)}
         aria-expanded={isOpen}
+        aria-controls={`section-content-${sectionKey}`}
         className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-container-high"
       >
         <span className={`material-symbols-outlined text-lg transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`}>
@@ -39,7 +40,7 @@ export default function SectionAccordion({ section, sectionKey, isOpen, onToggle
         </span>
       </button>
       {isOpen && (
-        <div className="px-4 pb-4 pt-1 border-t border-outline-variant animate-fade-in">
+        <div id={`section-content-${sectionKey}`} className="px-4 pb-4 pt-1 border-t border-outline-variant animate-fade-in">
           {section.body}
         </div>
       )}

@@ -6,11 +6,24 @@ import { pisoCorto, DIAM_OPTIONS } from "../constants";
 import { diametroManning } from "../utils/calcSanitaryCore";
 import { chequeoBajanteLluvia } from "../utils/calcRainwater";
 import { writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
-import { getTributarioIds } from "../utils/tramoUtils";
 import { calcHydraulicCheck } from "../utils/hydraulicCheck";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
 import { useRainwater } from "../context/RainwaterContext";
+
+function getTributarioIds(tramos: Array<{ recibeDe?: string[]; descripcion?: string }>): Set<string> {
+  const tribSet = new Set<string>();
+  for (const t of tramos) {
+    if (t.recibeDe) {
+      for (const id of t.recibeDe) tribSet.add(id);
+    }
+    if (t.descripcion) {
+      const ids = t.descripcion.split('+').map(s => s.trim()).filter(Boolean);
+      for (const id of ids) tribSet.add(id);
+    }
+  }
+  return tribSet;
+}
 
 export default function DisenoLluvias() {
   const { tramosLl, updTramoLL } = useTramos();
@@ -303,7 +316,7 @@ export default function DisenoLluvias() {
 const n=t.nmaning??0;
 const sVal=t.sPercent??0;
 const S=sVal!=null&&sVal>0?sVal/100:null;
-const Q = qMap[t._key!] || 0;
+const Q = qMap[t._key ?? ''] || 0;
               const dSel=DIAM_OPTIONS.find(d=>d.pulg===(t.diamDisPulg||0))||null;
       let DcalcPulg = 0;
       const DdisPulg = dSel ? dSel.pulg : 0;
@@ -331,7 +344,7 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm });
                   <td className="c" style={{padding:'2px 4px'}}><span style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.hasta || '—'}</span></td>
                   <td className="c" style={{padding:'2px 4px',minWidth:60,maxWidth:120}}>
                     {(() => {
-                      const associatedBajantes = (conexionesDisplay as any)[t._key!] || [];
+                      const associatedBajantes = (conexionesDisplay as any)[t._key ?? ''] || [];
                       return associatedBajantes.length === 0 ? (
                         <span style={{fontSize:9,color:'var(--txt3)'}}>—</span>
                       ) : (
@@ -354,7 +367,7 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm });
           <select
             aria-label="Seleccionar diámetro"
             value={DdisPulg||''}
-            onChange={e=>handleDiamChange(t._key!,t.id,parseFloat(e.target.value)||0)}
+            onChange={e=>handleDiamChange(t._key ?? '',t.id,parseFloat(e.target.value)||0)}
             style={{fontFamily:'var(--mono)',fontSize:9,padding:'1px 1px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer',maxWidth:60}}
           >
             <option value="">—</option>

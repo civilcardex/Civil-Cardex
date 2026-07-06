@@ -39,6 +39,9 @@ export default function ModulePageLayout({ title: _title, children, mainClassNam
 
   return (
     <>
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-on-primary focus:rounded" style={{ fontFamily: 'Geist, monospace' }}>
+        Saltar al contenido principal
+      </a>
       <script ref={breadRef} type="application/ld+json" />
       <Navbar />
       <main id="main-content" className={`flex-grow pt-16 ${mainClassName}`} style={{ background: '#111317', minHeight: '100vh' }}>

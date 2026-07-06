@@ -88,11 +88,32 @@ const FAQ_JSONLD = {
   ],
 };
 
+const PRODUCT_JSONLD = {
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  'name': 'Civil Core Profesional',
+  'image': 'https://civilcore.app/logos/civilCorelogo.svg',
+  'description': 'Plan Profesional para ingenieros civiles independientes y firmas pequeñas. Incluye 9 módulos completos, Red de Gas, Contra Incendio y exportación PDF.',
+  'brand': {
+    '@type': 'Brand',
+    'name': 'Civil Core'
+  },
+  'offers': {
+    '@type': 'Offer',
+    'url': 'https://civilcore.app/pricing',
+    'priceCurrency': 'USD',
+    'price': '19.00',
+    'priceValidUntil': '2027-12-31',
+    'availability': 'https://schema.org/InStock'
+  }
+};
+
 function PricingPage() {
   usePageMeta('Precios', 'Planes y precios de CivilCore. Elija el plan ideal para ingenier\u00eda civil: b\u00e1sico, profesional o empresarial.');
   return (
     <>
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(FAQ_JSONLD) }} />
+    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(PRODUCT_JSONLD) }} />
     <div style={{ background: '#111317', color: '#e2e2e8', minHeight: '100vh' }}>
       <Navbar />
       <div className="container mx-auto px-6 lg:px-8 py-24 pt-28">

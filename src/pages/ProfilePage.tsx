@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
@@ -123,8 +123,19 @@ function ProfilePage() {
     )
   }
 
+  const personJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    'name': nombreCompleto || 'Usuario',
+    'jobTitle': perfil.profesion || undefined,
+    'identifier': perfil.matricula || undefined,
+    'telephone': perfil.telefono || undefined,
+    'email': perfil.email || undefined
+  };
+
   return (
     <div className="space-y-6">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
       <Navbar />
       <header className="border border-outline-variant bg-surface-container p-6 flex items-start gap-6">
         <div className="w-20 h-20 border-2 border-primary bg-surface-container flex items-center justify-center shrink-0">
@@ -147,9 +158,9 @@ function ProfilePage() {
         <h2 id="info-personal-heading" className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant mb-4">
           Información Personal
         </h2>
-  <div className="grid grid-cols-2 gap-4">
+  <ul role="list" className="grid grid-cols-2 gap-4" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
     {campos.map(({ key, label, readonly }) => (
-      <div key={key} className="border-l-2 border-primary pl-3 py-2 group">
+      <li key={key} className="border-l-2 border-primary pl-3 py-2 group">
         <span className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant block mb-1">
           {label}
         </span>
@@ -190,9 +201,9 @@ function ProfilePage() {
             <span className="material-symbols-outlined text-xs text-on-surface-variant opacity-0 group-hover:opacity-60 transition-opacity">edit</span>
           </div>
         )}
-      </div>
+      </li>
     ))}
-        </div>
+  </ul>
       </section>
 
       <section aria-labelledby="proyectos-heading" className="border border-outline-variant bg-surface-container">

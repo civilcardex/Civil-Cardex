@@ -383,7 +383,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
       dNom = dNom.replace('½', '1/2').replace('¾', '3/4');
       const idx = CONTADORES_CAT.findIndex(c => `${c.dn}"` === dNom);
       if (idx !== -1) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+
         setAcoContIx(prev => prev !== idx ? idx : prev);
       }
     }

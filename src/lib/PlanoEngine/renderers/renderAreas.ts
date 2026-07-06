@@ -3,8 +3,8 @@ import { rotatedRectCorners } from '../HitTester';
 import type { IPlanoEngineCore } from '../PlanoState';
 
 export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
-  engine.areas.forEach((a: any) => {
-    if (engine._hiddenNets.has(a.net)) return;
+  engine.areas.forEach((a) => {
+    if (a.net && engine._hiddenNets.has(a.net)) return;
     if (a.pts.length < 3) return;
     const sel = a.id === engine.selId;
     const pts = a.pts.map((p: number[]) => engine.toCvs(p[0], p[1]));
@@ -26,7 +26,7 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
     ctx.stroke();
     ctx.setLineDash([]);
 
-    pts.forEach((p: any) => {
+    pts.forEach((p) => {
       if (p.x < minX) minX = p.x;
       if (p.y < minY) minY = p.y;
       if (p.x > maxX) maxX = p.x;
@@ -63,7 +63,7 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
       }
       ctx.restore();
     } else {
-      a._labelBox = null;
+      a._labelBox = undefined;
     }
 
     if (sel && pts.length >= 2) {
@@ -100,7 +100,7 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
 export function renderActiveArea(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   if (!engine.activeArea || engine.activeArea.pts.length < 1) return;
   const pts = engine.activeArea.pts.map((p: number[]) => engine.toCvs(p[0], p[1]));
-  const col = NETS.find((n: any) => n.id === engine.activeNet)?.col || '#00dce5';
+  const col = NETS.find((n) => n.id === engine.activeNet)?.col || '#00dce5';
 
   ctx.save();
   ctx.fillStyle = col + '22';

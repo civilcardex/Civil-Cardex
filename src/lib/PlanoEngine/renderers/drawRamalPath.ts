@@ -19,10 +19,10 @@ export function drawRamalPath(
   const elbows: ElbowInfo[] = [];
 
   const activeRamal = engine.activeRamal;
-  const r = engine.ramales.find((rm: any) => rm.pts === pts) || (activeRamal?.pts === pts ? activeRamal : null);
+  const r = engine.ramales.find((rm) => rm.pts === pts) || (activeRamal?.pts === pts ? activeRamal : null);
   const netId = r ? r.net : engine.activeNet;
-  const netRamales = engine.ramales.filter((rm: any) => rm.net === netId);
-  if (activeRamal && activeRamal.net === netId && !netRamales.some((rm: any) => rm.pts === activeRamal.pts)) {
+  const netRamales = engine.ramales.filter((rm) => rm.net === netId);
+  if (activeRamal && activeRamal.net === netId && !netRamales.some((rm) => rm.pts === activeRamal.pts)) {
     netRamales.push(activeRamal as any);
   }
 
@@ -56,9 +56,9 @@ export function drawRamalPath(
           }
         }
         if (!isJunc) {
-          const r = engine.ramales.find((rm: any) => rm.pts === pts);
+          const r = engine.ramales.find((rm) => rm.pts === pts);
           if (r) {
-            const hasTrib = engine.ramales.some((other: any) => 
+            const hasTrib = engine.ramales.some((other) => 
               other.padre === r.id && 
               other.pts.length >= 2 && 
               Math.hypot(other.pts[0][0] - pt[0], other.pts[0][1] - pt[1]) < 0.5

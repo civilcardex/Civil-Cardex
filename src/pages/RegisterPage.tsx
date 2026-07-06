@@ -159,7 +159,7 @@ function RegisterPage() {
           {loading ? 'CREANDO CUENTA...' : 'CREAR CUENTA'}
         </button>
         {error && (
-          <div role="alert" aria-live="polite" style={{ color: '#F04545', fontSize: 12, fontFamily: 'Geist, monospace', textAlign: 'center', padding: '8px', background: 'rgba(240,69,69,.08)', border: '1px solid rgba(240,69,69,.2)', borderRadius: 4 }}>
+          <div role="alert" style={{ color: '#F04545', fontSize: 12, fontFamily: 'Geist, monospace', textAlign: 'center', padding: '8px', background: 'rgba(240,69,69,.08)', border: '1px solid rgba(240,69,69,.2)', borderRadius: 4 }}>
             {error}
           </div>
         )}

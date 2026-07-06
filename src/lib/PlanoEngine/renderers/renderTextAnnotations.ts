@@ -1,7 +1,7 @@
 import type { IPlanoEngineCore } from '../PlanoState';
 
 export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
-  engine.textAnnots.forEach((t: any) => {
+  engine.textAnnots.forEach((t) => {
     const c = engine.toCvs(t.x + (t.lblOffX || 0), t.y + (t.lblOffY || 0));
     const sel = t.id === engine.selId;
     const fs = engine.mm2cvs(t.fontMm || 2.5);

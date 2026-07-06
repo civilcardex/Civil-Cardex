@@ -861,7 +861,7 @@ function IsometriaTabBase({ state }: any) {
                       const selKey = `${net.netId}:${r.planId}:${r.id}`;
                       const isSel = selKey === selTramo;
                       return (
-                        <li key={selKey} role="button" tabIndex={0} aria-label={`Seleccionar ${selKey}`} aria-selected={isSel} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelTramo(prev => prev === selKey ? null : selKey);}}} onClick={() => setSelTramo(prev => prev === selKey ? null : selKey)} style={{
+                        <li key={selKey} role="button" tabIndex={0} aria-label={`Seleccionar ${selKey}`} aria-current={isSel ? 'page' : undefined} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelTramo(prev => prev === selKey ? null : selKey);}}} onClick={() => setSelTramo(prev => prev === selKey ? null : selKey)} style={{
                           padding: '3px 10px 3px 26px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                           background: isSel ? '#2563EB22' : 'transparent',
                           borderLeft: isSel ? '2px solid ' + net.netColor : '2px solid transparent',
@@ -880,7 +880,7 @@ function IsometriaTabBase({ state }: any) {
                       const dInches = b.dNominal ? Math.round(Number(b.dNominal) / 25.4) : 0;
                       const lbl = dInches > 0 ? `${b.code || b.id}:${dInches}"` : (b.code || b.id);
                       return (
-                        <li key={selKey} role="button" tabIndex={0} aria-label={`Seleccionar ${selKey}`} aria-selected={isSel} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelTramo(prev => prev === selKey ? null : selKey);}}} onClick={() => setSelTramo(prev => prev === selKey ? null : selKey)} style={{
+                        <li key={selKey} role="button" tabIndex={0} aria-label={`Seleccionar ${selKey}`} aria-current={isSel ? 'page' : undefined} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelTramo(prev => prev === selKey ? null : selKey);}}} onClick={() => setSelTramo(prev => prev === selKey ? null : selKey)} style={{
                           padding: '3px 10px 3px 26px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                           background: isSel ? '#2563EB22' : 'transparent',
                           borderLeft: isSel ? '2px solid ' + net.netColor : '2px solid transparent',

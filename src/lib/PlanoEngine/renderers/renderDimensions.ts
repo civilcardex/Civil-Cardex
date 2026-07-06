@@ -1,7 +1,7 @@
 import type { IPlanoEngineCore } from '../PlanoState';
 
 export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
-  engine.dims.forEach((d: any) => {
+  engine.dims.forEach((d) => {
     const c1 = engine.toCvs(d.x1, d.y1);
     const c2 = engine.toCvs(d.x2, d.y2);
     ctx.save();

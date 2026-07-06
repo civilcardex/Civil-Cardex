@@ -10,9 +10,9 @@ import { renderVentCodos } from './renderVentCodos';
 export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const isTributarioMode = engine.tipoTramo === 'tributario' && engine.tool === 'line';
   const padreId = engine.padreTributario;
-  engine.ramales.forEach((r: any) => {
+  engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
-    const net = NETS.find((n: any) => n.id === r.net);
+    const net = NETS.find((n) => n.id === r.net);
     const col = net ? net.col : '#e2e2e8';
     const sel = r.id === engine.selId;
     const isPadre = r.id === padreId;
@@ -41,7 +41,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     }
 
     if (sel) {
-      r.pts.forEach(([px, py]: [number, number], idx: number) => {
+      r.pts.forEach(([px, py], idx: number) => {
         if (idx > 0 && idx < r.pts.length - 1) {
           const cvsA = engine.toCvs(r.pts[idx - 1][0], r.pts[idx - 1][1]);
           const cvsB = engine.toCvs(px, py);
@@ -98,7 +98,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         flowLen = Math.hypot(flowDx, flowDy);
       }
       
-      const getPisoCorto = (v: any) => {
+      const getPisoCorto = (v: unknown) => {
         const n = typeof v === 'number' ? v : parseInt(String(v), 10);
         if (isNaN(n)) return '';
         if (n < 0) return `S${Math.abs(n)}`;
@@ -226,7 +226,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       }
       ctx.restore();
     } else {
-      r._labelBox = null;
+      r._labelBox = undefined;
     }
 
     ctx.restore();
@@ -234,7 +234,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     if (r.net === 'san' && r.pts.length >= 2) {
       const endpointIndices = [0, r.pts.length - 1];
       for (const idx of endpointIndices) {
-        const connectedBaj = engine.bajantes.find((b: any) => {
+        const connectedBaj = engine.bajantes.find((b) => {
           if (b.net !== 'san') return false;
           const bDisp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
           const bx = b.x + (bDisp ? bDisp.dx : 0);
@@ -266,7 +266,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
 
     if (r.pts.length >= 2 && (r.id === engine.selId || (engine.multiSel || []).includes(r.id))) {
       let desvioBajante: any = null;
-      const isDesvio = engine.bajantes.some((b: any) => {
+      const isDesvio = engine.bajantes.some((b) => {
         const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
         if (!disp || disp.Ldesvio !== r.id) return false;
         const gx = b.x + (disp.dx || 0), gy = b.y + (disp.dy || 0);
@@ -334,13 +334,13 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         let codoEndIdx = -1;
 
         if (r.net === 'vent' || r.net === 'san') {
-          const ventRamales = engine.ramales.filter((rm: any) => rm.net === 'vent');
-          const sanRamales = engine.ramales.filter((rm: any) => rm.net === 'san');
+          const ventRamales = engine.ramales.filter((rm) => rm.net === 'vent');
+          const sanRamales = engine.ramales.filter((rm) => rm.net === 'san');
           
           for (const vr of ventRamales) {
             for (const idx of [0, vr.pts.length - 1]) {
               const pt = vr.pts[idx];
-              const connectsToSan = sanRamales.some((sr: any) =>
+              const connectsToSan = sanRamales.some((sr) =>
                 sr.pts.some((sPt: number[]) => Math.hypot(pt[0] - sPt[0], pt[1] - sPt[1]) < 0.5)
               );
               if (connectsToSan) {
@@ -760,7 +760,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
 export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   if (!engine.activeRamal) return;
   const ar = engine.activeRamal;
-  const net = NETS.find((n: any) => n.id === ar.net);
+  const net = NETS.find((n) => n.id === ar.net);
   const col = net ? net.col : '#e2e2e8';
 
   ctx.save();
@@ -795,7 +795,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
     mp = engine.snapAngle(last[0], last[1], mp.x, mp.y);
   }
 
-  const activeRamales = engine.ramales.filter((r: any) => r.net === engine.activeNet);
+  const activeRamales = engine.ramales.filter((r) => r.net === engine.activeNet);
   for (const r of activeRamales) {
     if (r.id === ar.id) continue;
     let segSp = null;
@@ -817,7 +817,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   }
 
   const bajThresh = 20 / engine.zoom;
-  const nearBaj = engine.bajantes.find((b: any) => {
+  const nearBaj = engine.bajantes.find((b) => {
     if (engine._hiddenNets.has(b.net) || b.net !== ar.net) return false;
     return Math.hypot(origMp.x - b.x, origMp.y - b.y) < bajThresh;
   });

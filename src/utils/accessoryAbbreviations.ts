@@ -24,9 +24,9 @@ export function getAccAbbr(key: string): string {
 /**
  * Get bajante display label with piso suffix (e.g. "BAN2-P1")
  */
-export function bajanteLabel(b: any, nivelLabel?: string): string {
-  const code = b.code || b.id || '';
-  const raw = b.pisoBase || nivelLabel || '';
+export function bajanteLabel(b: { code?: string; id?: string; pisoBase?: string } | null | undefined, nivelLabel?: string): string {
+  const code = b?.code || b?.id || '';
+  const raw = b?.pisoBase || nivelLabel || '';
   const piso = shortenPiso(raw);
   return piso ? `${code}-${piso}` : code;
 }

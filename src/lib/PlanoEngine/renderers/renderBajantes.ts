@@ -4,6 +4,94 @@ import type { IPlanoEngineCore } from '../PlanoState';
 
 const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
 
+function getPisoCorto(v: unknown): string {
+  const n = typeof v === 'number' ? v : parseInt(String(v), 10);
+  if (isNaN(n)) return '';
+  if (n < 0) return `S${Math.abs(n)}`;
+  if (n === 99) return 'C';
+  return `P${n}`;
+}
+
+function renderBajanteLabel(
+  ctx: CanvasRenderingContext2D,
+  engine: IPlanoEngineCore,
+  b: any,
+  c: { x: number; y: number },
+  r: number,
+  angle: number,
+  offDx: number,
+  offDy: number,
+  line1: string,
+  dirText: string,
+  labelBoxProp: '_labelBox' | '_ghostLabelBox',
+  alpha: number
+): void {
+  const hasDir = !!dirText;
+
+  const fsCode = engine.mm2cvs(engine.MM.lblCode * engine.labelScaleM * 1.35);
+  const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35);
+  const lineH = fsCode + 2;
+
+  ctx.save();
+  ctx.font = `bold ${fsCode}px Geist, monospace`;
+  const tw1 = ctx.measureText(line1).width;
+  const boxW = tw1 + engine.mm2cvs(4);
+  const boxH = hasDir ? lineH + 2 + fsDir + engine.mm2cvs(1.5) : lineH + engine.mm2cvs(1);
+  const hh2 = boxH / 2;
+
+  const intersection = getLabelIntersection(offDx, offDy, boxW, boxH, angle);
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(c.x, c.y);
+
+  const distToLabel = Math.hypot(offDx, offDy);
+  let lineStartX = 0, lineStartY = 0;
+  if (distToLabel > 0.1) {
+    const ux = offDx / distToLabel, uy = offDy / distToLabel;
+    lineStartX = r * ux;
+    lineStartY = r * uy;
+  }
+  ctx.beginPath();
+  ctx.moveTo(lineStartX, lineStartY);
+  ctx.lineTo(intersection.x, intersection.y);
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 0.8 * engine.zoom;
+  ctx.stroke();
+
+  ctx.translate(offDx, offDy);
+  ctx.rotate(angle);
+
+  const lbCx = c.x + offDx;
+  const lbCy = c.y + offDy;
+  const { corners: corners2, minX, minY, maxX, maxY } = rotatedRectCorners(lbCx, lbCy - 10 + hh2, boxW, boxH, angle, 2);
+  b[labelBoxProp] = { cx: lbCx, cy: lbCy - 10 + hh2, w: boxW, h: boxH, angle, minX, minY, maxX, maxY, corners: corners2 };
+
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.roundRect(-boxW / 2, -10, boxW, boxH, 0);
+  ctx.fill();
+
+  if (b.tipo === 'contador' || b.tipo === 'calentador') {
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 0.8 * engine.zoom;
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = '#000';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  ctx.fillText(line1, 0, -10 + engine.mm2cvs(0.5));
+
+  if (dirText) {
+    ctx.font = `${fsDir}px Geist, monospace`;
+    ctx.fillStyle = '#000';
+    ctx.fillText(dirText, 0, -10 + lineH + engine.mm2cvs(1));
+  }
+  ctx.restore();
+  ctx.restore();
+}
+
 function getLabelIntersection(
   offDx: number,
   offDy: number,
@@ -55,7 +143,7 @@ function getLabelIntersection(
 }
 
 export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
-  engine.bajantes.forEach((b: any) => {
+  engine.bajantes.forEach((b) => {
     if (engine._hiddenNets.has(b.net)) return;
 
     const c = engine.toCvs(b.x, b.y);
@@ -71,7 +159,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     // Draw green dashed lines from ramales that feed this bajante (recibeDeIds)
     if (b.recibeDeIds?.length) {
       b.recibeDeIds.forEach((rid: string) => {
-        const ram = engine.ramales.find((rr: any) => rr.id === rid);
+        const ram = engine.ramales.find((rr) => rr.id === rid);
         if (ram && ram.pts.length) {
           const pStart = ram.pts[0];
           const pEnd = ram.pts[ram.pts.length - 1];
@@ -100,7 +188,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       // Only draw line if the target is on the CURRENT floor
       if (String(targetPlanId) === String(engine._loadedPlanId)) {
         // Draw line to target RAMAL
-        const ram = engine.ramales.find((rr: any) => rr.id === targetId);
+        const ram = engine.ramales.find((rr) => rr.id === targetId);
         if (ram && ram.pts.length) {
           const pStart = ram.pts[0];
           const pEnd = ram.pts[ram.pts.length - 1];
@@ -119,7 +207,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
           ctx.restore();
         }
         // Draw line to target BAJANTE on same floor
-        const targetBaj = engine.bajantes.find((bb: any) => bb.id === targetId);
+        const targetBaj = engine.bajantes.find((bb) => bb.id === targetId);
         if (targetBaj) {
           const tc = engine.toCvs(targetBaj.x, targetBaj.y);
           ctx.save();
@@ -167,7 +255,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.roundRect(-dispW / 2, -devH / 2 + devH * 0.12, dispW, dispH, 1 * engine.zoom);
       ctx.fill();
     } else if (b.tipo === 'contador') {
-      const netObj = NETS.find((n: any) => n.id === (b.net === 'gas' ? 'gas' : 'af'));
+      const netObj = NETS.find((n) => n.id === (b.net === 'gas' ? 'gas' : 'af'));
       const col = netObj ? netObj.col : '#4D8FF7';
       ctx.fillStyle = col;
       ctx.beginPath();
@@ -179,7 +267,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.arc(0, 0, r * 1.3, 0, Math.PI * 2);
       ctx.stroke();
     } else if (b.tipo === 'calentador') {
-      const netObj = NETS.find((n: any) => n.id === (b.net === 'gas' ? 'gas' : 'ac'));
+      const netObj = NETS.find((n) => n.id === (b.net === 'gas' ? 'gas' : 'ac'));
       const col = netObj ? netObj.col : (b.net === 'gas' ? '#A855F7' : '#F04545');
       ctx.fillStyle = col;
       ctx.beginPath();
@@ -320,13 +408,6 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
         offDy = offDy >= 0 ? minPerpPx : -minPerpPx;
       }
 
-      const getPisoCorto = (v: any) => {
-        const n = typeof v === 'number' ? v : parseInt(String(v), 10);
-        if (isNaN(n)) return '';
-        if (n < 0) return `S${Math.abs(n)}`;
-        if (n === 99) return 'C';
-        return `P${n}`;
-      };
       const pCorto = getPisoCorto(engine.nivelActual?.n);
       const lvlSuffix = pCorto ? `-${pCorto}` : '';
       const codeStr = (b.code ? b.code.replace(/#/g, '').toUpperCase() : '') + (b.code ? lvlSuffix : '');
@@ -350,81 +431,18 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
         diamStr += '"';
       }
       const line1 = diamStr ? `${codeStr}  D=${diamStr}` : (codeStr || '—');
-      
-      const dirText = DIR_MAP[b.direccion] || '';
-      const hasDir = !!dirText;
-
-      const fsCode = engine.mm2cvs(engine.MM.lblCode * engine.labelScaleM * 1.35);
-      const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35);
-      const lineH = fsCode + 2;
-
-      ctx.save();
-      ctx.font = `bold ${fsCode}px Geist, monospace`;
-      const tw1 = ctx.measureText(line1).width;
-      const boxW = tw1 + engine.mm2cvs(4);
-      const boxH = hasDir ? lineH + 2 + fsDir + engine.mm2cvs(1.5) : lineH + engine.mm2cvs(1);
-      const hh2 = boxH / 2;
-
-      const intersection = getLabelIntersection(offDx, offDy, boxW, boxH, angle);
-
-      ctx.save();
-      ctx.translate(c.x, c.y);
-
-      const distToLabel = Math.hypot(offDx, offDy);
-      let lineStartX = 0, lineStartY = 0;
-      if (distToLabel > 0.1) {
-        const ux = offDx / distToLabel, uy = offDy / distToLabel;
-        lineStartX = r * ux;
-        lineStartY = r * uy;
-      }
-      ctx.beginPath();
-      ctx.moveTo(lineStartX, lineStartY);
-      ctx.lineTo(intersection.x, intersection.y);
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 0.8 * engine.zoom;
-      ctx.stroke();
-
-      ctx.translate(offDx, offDy);
-      ctx.rotate(angle);
-      
-      const lbCx = c.x + offDx;
-      const lbCy = c.y + offDy;
-      const { corners: corners2, minX, minY, maxX, maxY } = rotatedRectCorners(lbCx, lbCy - 10 + hh2, boxW, boxH, angle, 2);
-      b._labelBox = { cx: lbCx, cy: lbCy - 10 + hh2, w: boxW, h: boxH, angle, minX, minY, maxX, maxY, corners: corners2 };
-      
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.roundRect(-boxW / 2, -10, boxW, boxH, 0);
-      ctx.fill();
-
-      if (b.tipo === 'contador' || b.tipo === 'calentador') {
-        ctx.strokeStyle = '#cbd5e1';
-        ctx.lineWidth = 0.8 * engine.zoom;
-        ctx.stroke();
-      }
-
-      ctx.fillStyle = '#000';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(line1, 0, -10 + engine.mm2cvs(0.5));
-
-      if (dirText) {
-        ctx.font = `${fsDir}px Geist, monospace`;
-        ctx.fillStyle = '#000';
-        ctx.fillText(dirText, 0, -10 + lineH + engine.mm2cvs(1));
-      }
-      ctx.restore();
-      ctx.restore();
+      const dirText = DIR_MAP[b.direccion ?? ''] || '';
+      renderBajanteLabel(ctx, engine, b, c, r, angle, offDx, offDy, line1, dirText, '_labelBox', 1);
     } else {
-      b._labelBox = null;
+      b._labelBox = undefined;
     }
   });
 }
 
 export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const fg = engine.getBajantesFantasma();
-  fg.forEach((b: any) => {
-    const net = NETS.find((n: any) => n.id === b.net);
+  fg.forEach((b) => {
+    const net = NETS.find((n) => n.id === b.net);
     const col = net ? net.col : '#e2e2e8';
     const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
     const gx = b.x + (disp ? disp.dx : 0);
@@ -531,13 +549,6 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       const offDx = ghostOffX;
       const offDy = ghostOffY;
 
-      const getPisoCorto = (v: any) => {
-        const n = typeof v === 'number' ? v : parseInt(String(v), 10);
-        if (isNaN(n)) return '';
-        if (n < 0) return `S${Math.abs(n)}`;
-        if (n === 99) return 'C';
-        return `P${n}`;
-      };
       const pCorto = getPisoCorto(engine.nivelActual?.n);
       const lvlSuffix = pCorto ? `-${pCorto}` : '';
       const codeStr = (b.code ? b.code.replace(/#/g, '').toUpperCase() : '') + (b.code ? lvlSuffix : '');
@@ -563,72 +574,8 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
         diamStr += '"';
       }
       const line1 = diamStr ? `${codeStr}  D=${diamStr}` : (codeStr || '—');
-
-      const dirText = DIR_MAP[ghostDir] || '';
-      const hasDir = !!dirText;
-
-      const fsCode = engine.mm2cvs(engine.MM.lblCode * engine.labelScaleM * 1.35);
-      const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35);
-      const lineH = fsCode + 2;
-
-      ctx.save();
-      ctx.font = `bold ${fsCode}px Geist, monospace`;
-      const tw1 = ctx.measureText(line1).width;
-      const boxW = tw1 + engine.mm2cvs(4);
-      const boxH = hasDir ? lineH + 2 + fsDir + engine.mm2cvs(1.5) : lineH + engine.mm2cvs(1);
-      const hh2 = boxH / 2;
-
-      const intersection = getLabelIntersection(offDx, offDy, boxW, boxH, ghostAngle);
-
-      ctx.save();
-      ctx.globalAlpha = 0.35;
-      ctx.translate(c.x, c.y);
-
-      const ghostDist = Math.hypot(offDx, offDy);
-      let gLineStartX = 0, gLineStartY = 0;
-      if (ghostDist > 0.1) {
-        const ux = offDx / ghostDist, uy = offDy / ghostDist;
-        gLineStartX = r * ux;
-        gLineStartY = r * uy;
-      }
-      ctx.beginPath();
-      ctx.moveTo(gLineStartX, gLineStartY);
-      ctx.lineTo(intersection.x, intersection.y);
-      ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 0.8 * engine.zoom;
-      ctx.stroke();
-
-      ctx.translate(offDx, offDy);
-      ctx.rotate(ghostAngle);
-
-      const lbCx = c.x + offDx;
-      const lbCy = c.y + offDy;
-      const { corners: corners2, minX, minY, maxX, maxY } = rotatedRectCorners(lbCx, lbCy - 10 + hh2, boxW, boxH, ghostAngle, 2);
-      b._ghostLabelBox = { cx: lbCx, cy: lbCy - 10 + hh2, w: boxW, h: boxH, angle: ghostAngle, minX, minY, maxX, maxY, corners: corners2 };
-
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.roundRect(-boxW / 2, -10, boxW, boxH, 0);
-      ctx.fill();
-
-      if (b.tipo === 'contador' || b.tipo === 'calentador') {
-        ctx.strokeStyle = '#cbd5e1';
-        ctx.lineWidth = 0.8 * engine.zoom;
-        ctx.stroke();
-      }
-
-      ctx.fillStyle = '#000';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(line1, 0, -10 + engine.mm2cvs(0.5));
-
-      if (dirText) {
-        ctx.font = `${fsDir}px Geist, monospace`;
-        ctx.fillStyle = '#000';
-        ctx.fillText(dirText, 0, -10 + lineH + engine.mm2cvs(1));
-      }
-      ctx.restore();
-      ctx.restore();
+      const dirText = DIR_MAP[ghostDir ?? ''] || '';
+      renderBajanteLabel(ctx, engine, b, c, r, ghostAngle, offDx, offDy, line1, dirText, '_ghostLabelBox', 0.35);
     }
   });
 }

@@ -3,14 +3,14 @@ import type { IPlanoEngineCore } from '../PlanoState';
 function renderVentCodos(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   if (engine._hiddenNets.has('vent')) return;
 
-  const ventRamales = engine.ramales.filter((r: any) => r.net === 'vent');
+  const ventRamales = engine.ramales.filter((r) => r.net === 'vent');
   if (ventRamales.length === 0) return;
 
-  const sanRamales = engine.ramales.filter((r: any) => r.net === 'san');
+  const sanRamales = engine.ramales.filter((r) => r.net === 'san');
   if (sanRamales.length === 0) return;
 
   const sanPoints: Set<string> = new Set();
-  sanRamales.forEach((r: any) => {
+  sanRamales.forEach((r) => {
     r.pts.forEach((pt: number[]) => {
       sanPoints.add(`${pt[0].toFixed(3)}_${pt[1].toFixed(3)}`);
     });
@@ -18,7 +18,7 @@ function renderVentCodos(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
 
   const drawn = new Set<string>();
 
-  ventRamales.forEach((r: any) => {
+  ventRamales.forEach((r) => {
     [0, r.pts.length - 1].forEach((idx: number) => {
       const pt = r.pts[idx];
       for (const key of sanPoints) {

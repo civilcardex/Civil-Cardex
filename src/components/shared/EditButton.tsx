@@ -8,7 +8,7 @@ interface EditButtonProps {
 const BASE: React.CSSProperties = {
   border: '1px solid var(--acc)',
   borderRadius: 4,
-  padding: '2px 6px',
+  padding: '7px 10px',
   fontSize: 10,
   cursor: 'pointer',
   fontWeight: 600,

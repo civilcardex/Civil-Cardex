@@ -498,15 +498,15 @@ function LandingPage() {
           <div className="flex flex-col md:flex-row items-center gap-8">
             <Link to="/" className="flex items-center gap-2">
               <img src="/logos/civilCorelogo.svg" alt="CivilCore" className="h-11 w-11 object-contain"  width={44} height={44} loading="lazy" />
-              <span className="text-2xl font-bold uppercase" style={{ color: '#3a494a', fontFamily: 'Hanken Grotesk, sans-serif' }}>CivilCore</span>
+              <span className="text-2xl font-bold uppercase" style={{ color: '#6a8e8e', fontFamily: 'Hanken Grotesk, sans-serif' }}>CivilCore</span>
             </Link>
             <nav className="flex gap-6">
-              <Link to="/docs" className="uppercase tracking-widest transition-colors hover:text-on-surface" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#3a494a' }}>Documentación</Link>
-              <Link to="/pricing" className="uppercase tracking-widest transition-colors hover:text-on-surface" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#3a494a' }}>Precios</Link>
-              <button type="button" className="uppercase tracking-widest cursor-pointer transition-colors hover:text-on-surface" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#3a494a', background: 'none', border: 'none', padding: 0 }}>Contacto Técnico</button>
+              <Link to="/docs" className="uppercase tracking-widest transition-colors hover:text-on-surface" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#6a8e8e' }}>Documentación</Link>
+              <Link to="/pricing" className="uppercase tracking-widest transition-colors hover:text-on-surface" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#6a8e8e' }}>Precios</Link>
+              <button type="button" className="uppercase tracking-widest cursor-pointer transition-colors hover:text-on-surface" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#6a8e8e', background: 'none', border: 'none', padding: 0 }}>Contacto Técnico</button>
             </nav>
           </div>
-          <div style={{ color: '#3a494a', fontSize: 12 }}>
+          <div style={{ color: '#6a8e8e', fontSize: 12 }}>
             © 2026 CivilCore. Ingeniería de Precisión.
           </div>
         </div>

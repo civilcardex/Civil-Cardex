@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/set-state-in-effect */
+
 import React, { useState, useMemo, useEffect } from "react";
 import { LE_K, pisoCorto, GAS_DN_LABELS } from "../constants";
 import { GAS, CAT_GAS } from "../constants/engineeringDataGas";

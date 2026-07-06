@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/refs */
+
 import { createContext, useReducer, useRef, useMemo, useCallback, useContext, useEffect, type ReactNode } from "react";
 import { readSanDrawingSync, readHydroDrawingSync } from "../utils/drawingSync";
 import { diamPulgFromLabel } from "../utils/diamPulgFromLabel";

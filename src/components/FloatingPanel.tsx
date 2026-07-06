@@ -122,12 +122,14 @@ export default function FloatingPanel({ title, icon, count = undefined, onClose,
         </span>
         <div style={{ display: 'flex', gap: 4 }} className="no-drag">
           <button onClick={() => setCollapsed(c => !c)} aria-label={collapsed ? 'Expandir' : 'Colapsar'} aria-expanded={!collapsed} style={{
-            padding: '2px 8px', background: 'transparent', border: '1px solid #3a494a',
+            padding: '6px 8px', background: 'transparent', border: '1px solid #3a494a',
             borderRadius: 4, color: '#849495', cursor: 'pointer', fontSize: 12,
+            lineHeight: 1,
           }}>{collapsed ? '▾' : '_'}</button>
           <button onClick={onClose} aria-label="Cerrar" style={{
-            padding: '2px 8px', background: 'transparent', border: '1px solid #3a494a',
+            padding: '6px 8px', background: 'transparent', border: '1px solid #3a494a',
             borderRadius: 4, color: '#ffb4ab', cursor: 'pointer', fontSize: 12,
+            lineHeight: 1,
           }}>✕</button>
         </div>
       </div>
