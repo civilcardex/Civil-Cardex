@@ -27,7 +27,6 @@ export const SAN_ACCESORIOS = [
   {id:'codo90rmSube',emoji:'🔩',nombre:'Codo medio 90° sube',icono:'/iconos_accesorios/codo90rm.svg', cat: 'Codos'},
   {id:'codo90rmBaja',emoji:'🔩',nombre:'Codo medio 90° baja',icono:'/iconos_accesorios/codo90rm.svg', cat: 'Codos'},
   {id:'codoReventilado',emoji:'🔩',nombre:'Codo reventilado',icono:'/iconos_accesorios/codo90rl.svg', cat: 'Codos'},
-  {id:'sifon',emoji:'🧼',nombre:'Sifón',icono:'/iconos_aparatos/sifon.svg', cat:'Otros'},
   ...ACCESORIOS_YEE,
 ];
 

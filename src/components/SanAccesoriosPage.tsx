@@ -1,9 +1,10 @@
 import { useMemo, useState, useEffect } from 'react';
 import { SAN_ACCESORIOS } from '../constants';
-import { HYDRO_DATA_STORAGE_KEY } from '../constants/storage-keys';
+import { HYDRO_DATA_STORAGE_KEY, TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { useTramos } from '../context/TramosContext';
 import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
+import { usePlans } from '../context/PlansContext';
 
 function loadHidro(): Record<string, any> {
   return loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
@@ -26,9 +27,23 @@ function formatDiamPulg(diam: string, diamPulg?: number): string {
   return str.endsWith('"') ? str : `${str}"`;
 }
 
+function formatDiamFromLabel(label: string): string {
+  if (!label) return '—';
+  const p = diamPulgFromLabel(label);
+  return formatDiamPulg(label, p);
+}
+
+function formatYeeDiam(mainDiam: string, branchDiam: string): string {
+  const m = formatDiamFromLabel(mainDiam);
+  const b = formatDiamFromLabel(branchDiam);
+  if (m === '—' || b === '—') return m;
+  return `${m}×${b}`;
+}
+
 export default function SanAccesoriosPage() {
   const [tick, setTick] = useState(0);
   const { tramosSan } = useTramos();
+  const { plans } = usePlans();
 
   useEffect(() => {
     const handler = () => setTick(t => t + 1);
@@ -36,6 +51,124 @@ export default function SanAccesoriosPage() {
     const iv = setInterval(handler, 10000);
     return () => { window.removeEventListener('storage', handler); clearInterval(iv); };
   }, []);
+
+  const yeeDiams = useMemo(() => {
+    const result: Record<string, { simple: string[]; doble: string[] }> = {};
+    
+    // Helper: distance from point P to segment AB
+    const distToSegment = (P: number[], A: number[], B: number[]) => {
+      const dx = B[0] - A[0], dy = B[1] - A[1];
+      if (dx === 0 && dy === 0) return Math.hypot(P[0] - A[0], P[1] - A[1]);
+      let t = ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / (dx * dx + dy * dy);
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(P[0] - (A[0] + t * dx), P[1] - (A[1] + t * dy));
+    };
+    
+    // Load full drawing data with pts from localStorage
+    const drawingRamales: Array<{ id: string; label: string; diametro: string; pts: number[][]; tipo: string; planId: string }> = [];
+    if (plans) {
+      for (const plan of plans) {
+        if (plan.status !== 'confirmed') continue;
+        const raw = loadFromStorage<any>(TRAZOS_PREFIX + plan.id, null);
+        if (!raw) continue;
+        let data = raw;
+        if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
+        const ramales = (data.ramales || []).filter((r: any) => r.net === 'san' && r.tipo !== 'tributario');
+        for (const r of ramales) {
+          if (r.pts && r.pts.length >= 2) {
+            drawingRamales.push({
+              id: r.id,
+              label: r.label || r.id,
+              diametro: r.diametro || '',
+              pts: r.pts,
+              tipo: r.tipo || 'ramal',
+              planId: plan.id
+            });
+          }
+        }
+      }
+    }
+    
+    // Find all connections: tributarios (via padreTributarioLabel/padre) AND ramales (via geometric proximity)
+    const allConnections: { parentLabel: string; diamStr: string }[] = [];
+    
+    // Case 1: tributarios from tramosSan
+    for (const child of tramosSan) {
+      if (child.esBajante) continue;
+      const childDiam = (child as any).diametro || '';
+      const childDiamStr = formatDiamFromLabel(childDiam);
+      if (!childDiamStr || childDiamStr === '—') continue;
+      
+      const parentLabel = (child as any).padreTributarioLabel || (child as any).padre;
+      if (parentLabel) {
+        allConnections.push({ parentLabel, diamStr: childDiamStr });
+      }
+    }
+    
+    // Case 2: ramal-to-ramal geometric connections from drawing data
+    for (const child of drawingRamales) {
+      const childDiamStr = formatDiamFromLabel(child.diametro);
+      if (!childDiamStr || childDiamStr === '—') continue;
+      
+      const childEndpoints = [child.pts[0], child.pts[child.pts.length - 1]];
+      
+      for (const parent of drawingRamales) {
+        if (parent.id === child.id) continue;
+        
+        for (const ep of childEndpoints) {
+          let nearSegment = false;
+          for (let i = 0; i < parent.pts.length - 1; i++) {
+            const dist = distToSegment(ep, parent.pts[i], parent.pts[i + 1]);
+            if (dist < 0.5) {
+              nearSegment = true;
+              break;
+            }
+          }
+          if (nearSegment) {
+            allConnections.push({ parentLabel: parent.label, diamStr: childDiamStr });
+            break; // Only count once per child-parent pair
+          }
+        }
+      }
+    }
+    
+    // Group connections by parent
+    const byParent: Record<string, { diamStr: string }[]> = {};
+    for (const conn of allConnections) {
+      if (!byParent[conn.parentLabel]) byParent[conn.parentLabel] = [];
+      byParent[conn.parentLabel].push({ diamStr: conn.diamStr });
+    }
+    
+    // Build result
+    for (const t of tramosSan) {
+      if (t.esBajante || t.tipo === 'tributario') continue;
+      const parentLabel = (t as any).label || t.id;
+      const mainDiam = (t as any).diametro || '';
+      const mainDiamStr = formatDiamFromLabel(mainDiam);
+      
+      const myConnections = byParent[parentLabel] || [];
+      if (myConnections.length === 0) continue;
+      
+      // Group by diameter
+      const byDiam: Record<string, number> = {};
+      myConnections.forEach(c => { byDiam[c.diamStr] = (byDiam[c.diamStr] || 0) + 1; });
+      
+      if (!result[parentLabel]) result[parentLabel] = { simple: [], doble: [] };
+      
+      // Pairs form dobles, remainder forms simples
+      for (const [diamStr, count] of Object.entries(byDiam)) {
+        const dobleCount = Math.floor(count / 2);
+        const simpleCount = count % 2;
+        for (let i = 0; i < dobleCount; i++) {
+          result[parentLabel].doble.push(`${mainDiamStr}×${diamStr}`);
+        }
+        if (simpleCount > 0) {
+          result[parentLabel].simple.push(`${mainDiamStr}×${diamStr}`);
+        }
+      }
+    }
+    return result;
+  }, [tick, tramosSan, plans]);
 
   const tramos = useMemo(() => {
     const hidroData = loadHidro();
@@ -84,31 +217,46 @@ export default function SanAccesoriosPage() {
     tramosSan.forEach(t => {
       if (t.esBajante) return;
 
+      const mainDiam = (t as any).diametro || '';
+      const mainDiamStr = formatDiamFromLabel(mainDiam);
+
       if (t.tipo === 'tributario') {
         const accIni = (t as any).accesorioInicio;
         if (accIni) {
-          const dIni = (t as any).diametroInicio || (t as any).diametro || '';
-          const dP = diamPulgFromLabel(dIni);
-          const dStr = formatDiamPulg(dIni, dP);
+          const dIni = (t as any).diametroInicio || mainDiam;
+          const dStr = formatDiamFromLabel(dIni);
           const accId = accIni === 'codoSube' ? 'codo90rmSube' : (accIni === 'codoBaja' ? 'codo90rmBaja' : accIni);
           addAcc(dStr, accId, 1);
         }
         const accFin = (t as any).accesorioFin;
         if (accFin) {
-          const dFin = (t as any).diametroFin || (t as any).diametro || '';
-          const dP = diamPulgFromLabel(dFin);
-          const dStr = formatDiamPulg(dFin, dP);
+          const dFin = (t as any).diametroFin || mainDiam;
+          const dStr = formatDiamFromLabel(dFin);
           const accId = accFin === 'codoSube' ? 'codo90rmSube' : (accFin === 'codoBaja' ? 'codo90rmBaja' : accFin);
           addAcc(dStr, accId, 1);
         }
       } else {
         const key = `san_${t.id}_${t.planId}`;
         const srcAcc = hidroData[key]?.accesorios || {};
-        const dStr = formatDiamPulg((t as any).diametro || '', (t as any).diamPulg);
+        const yd = yeeDiams[(t as any).label || t.id] || { simple: [], doble: [] };
         for (const a of SAN_ACCESORIOS) {
           const v = srcAcc[a.id] || 0;
-          if (v > 0) {
-            addAcc(dStr, a.id, v);
+          if (v <= 0) continue;
+          if (a.id === 'yeeSimple') {
+            if (yd.simple.length > 0) {
+              yd.simple.forEach(diamCombo => addAcc(diamCombo, a.id, 1));
+              void v;
+            } else {
+              addAcc(mainDiamStr, a.id, v);
+            }
+          } else if (a.id === 'yeeDoble') {
+            if (yd.doble.length > 0) {
+              yd.doble.forEach(diamCombo => addAcc(diamCombo, a.id, 1));
+            } else {
+              addAcc(mainDiamStr, a.id, v);
+            }
+          } else {
+            addAcc(mainDiamStr, a.id, v);
           }
         }
       }
@@ -118,8 +266,10 @@ export default function SanAccesoriosPage() {
       .map(([diametro, accesorios]) => ({ diametro, accesorios }))
       .filter(row => Object.values(row.accesorios).some(count => count > 0))
       .sort((a, b) => {
-        const valA = diamPulgFromLabel(a.diametro);
-        const valB = diamPulgFromLabel(b.diametro);
+        const aMain = a.diametro.split('×')[0].trim();
+        const bMain = b.diametro.split('×')[0].trim();
+        const valA = diamPulgFromLabel(aMain);
+        const valB = diamPulgFromLabel(bMain);
         return valB - valA;
       });
   }, [tick, tramosSan]);
@@ -127,68 +277,8 @@ export default function SanAccesoriosPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', flex: 1, paddingBottom: '24px' }}>
       
-      {/* Card 1: Accesorios por ramal */}
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-        <div className="card-h">
-          <h3 className="card-t">
-            <img src="/iconos_diseno_redes/general/Accesorios.svg" alt="Accesorios" width={24} height={24} style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} loading="lazy" />
-            Accesorios por ramal
-          </h3>
-          <span className="card-s">{tramos.length} tramos · Red sanitaria</span>
-        </div>
-        <div className="scroll-top" style={{ padding: '12px', flex: 1, minHeight: 0 }}>
-          <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
-            <table className="tbl" style={{ minWidth: 760, fontSize: 13 }}>
-              <thead>
-                <tr>
-                  <th scope="col" className="col-h" style={{ minWidth: 64, textAlign: 'center', position: 'sticky', left: 0, zIndex: 2, background: 'var(--bg2)', fontSize: 11, padding: '5px 4px' }}>Tramo</th>
-                  <th scope="col" className="col-h" style={{ minWidth: 40, textAlign: 'center', position: 'sticky', left: 64, zIndex: 2, background: 'var(--bg2)', fontSize: 10, padding: '5px 4px' }}>Nivel</th>
-                  <th scope="col" className="col-h" style={{ minWidth: 60, textAlign: 'center', position: 'sticky', left: 104, zIndex: 2, background: 'var(--bg2)', fontSize: 10, padding: '5px 4px' }}>Diámetro</th>
-                  {SAN_ACCESORIOS.map(a => (
-                    <th scope="col" key={a.id} className="col-h" style={{ minWidth: 56, fontSize: 10, textAlign: 'center', whiteSpace: 'nowrap', padding: '5px 2px' }}>
-                      <img src={a.icono} alt={a.nombre} width={24} height={24} style={{ width: 24, height: 24, objectFit: 'contain', display: 'block', margin: '0 auto 2px' }} loading="lazy" />
-                      <span style={{ fontSize: 9, fontWeight: 500 }}>{a.nombre}</span>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {tramos.map((t, i) => (
-                  <tr key={i}>
-                    <td className="c" style={{ fontSize: 13, textAlign: 'center', fontWeight: 600, position: 'sticky', left: 0, background: 'var(--bg2)', zIndex: 1, padding: '4px 4px' }}>
-                      {t.label || t.id}
-                    </td>
-                    <td className="c" style={{ fontSize: 11, textAlign: 'center', position: 'sticky', left: 64, background: 'var(--bg2)', zIndex: 1, padding: '4px 4px', color: 'var(--txt2)' }}>
-                      {t._nivelLabel || (t.piso != null ? (t.piso === 99 ? 'C' : t.piso < 0 ? `S${-t.piso}` : `P${t.piso}`) : '')}
-                    </td>
-                    <td className="c" style={{ fontSize: 12, textAlign: 'center', position: 'sticky', left: 104, background: 'var(--bg2)', zIndex: 1, padding: '4px 4px', color: 'var(--txt)', fontWeight: 600 }}>
-                      {formatDiamPulg(t.diametro, t.diamPulg)}
-                    </td>
-                    {SAN_ACCESORIOS.map(a => {
-                      const v = t.accesorios?.[a.id] || 0;
-                      return (
-                        <td key={a.id} className="c" style={{ padding: '4px 2px' }}>
-                          <span style={{ fontSize: 13, fontFamily: "'Courier New',Courier,monospace", color: v > 0 ? 'var(--txt)' : 'var(--txt3)' }}>{v || '\u2014'}</span>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-                {tramos.length === 0 && (
-                  <tr>
-                    <td className="c" colSpan={3 + SAN_ACCESORIOS.length} style={{ fontSize: 11, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
-                      No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      {/* Card 2: Resumen de accesorios por diámetro */}
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      {/* Card: Resumen de accesorios por diámetro */}
+      <section className="card" style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, maxHeight: '100%', overflow: 'hidden' }}>
         <div className="card-h">
           <h3 className="card-t">
             <img src="/iconos_diseno_redes/general/Accesorios.svg" alt="Totales" width={24} height={24} style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} loading="lazy" />
@@ -196,7 +286,7 @@ export default function SanAccesoriosPage() {
           </h3>
           <span className="card-s">Totales acumulados</span>
         </div>
-        <div className="scroll-top" style={{ padding: '12px', flex: 1, minHeight: 0 }}>
+        <div className="scroll-top" style={{ padding: '12px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
             <table className="tbl" style={{ minWidth: 760, fontSize: 13 }}>
               <thead>
@@ -208,25 +298,30 @@ export default function SanAccesoriosPage() {
                       <span style={{ fontSize: 9, fontWeight: 500 }}>{a.nombre}</span>
                     </th>
                   ))}
+                  <th scope="col" className="col-h" style={{ minWidth: 64, fontSize: 10, textAlign: 'center', background: 'var(--bg2)', padding: '5px 4px', fontWeight: 600 }}>Total</th>
                 </tr>
               </thead>
               <tbody>
-                {totalsByDiameter.map((row, i) => (
-                  <tr key={i}>
-                    <td className="c" style={{ fontSize: 13, textAlign: 'center', fontWeight: 700, background: 'var(--bg2)', padding: '6px 4px' }}>{row.diametro}</td>
-                    {SAN_ACCESORIOS.map(a => {
-                      const v = row.accesorios[a.id] || 0;
-                      return (
-                        <td key={a.id} className="c" style={{ padding: '6px 2px' }}>
-                          <span style={{ fontSize: 13, fontFamily: "'Courier New',Courier,monospace", fontWeight: v > 0 ? 600 : 400, color: v > 0 ? 'var(--txt)' : 'var(--txt3)' }}>{v || '\u2014'}</span>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                {totalsByDiameter.map((row, i) => {
+                  const total = Object.values(row.accesorios).reduce((s, n) => s + n, 0);
+                  return (
+                    <tr key={i}>
+                      <td className="c" style={{ fontSize: 13, textAlign: 'center', fontWeight: 700, background: 'var(--bg2)', padding: '6px 4px' }}>{row.diametro}</td>
+                      {SAN_ACCESORIOS.map(a => {
+                        const v = row.accesorios[a.id] || 0;
+                        return (
+                          <td key={a.id} className="c" style={{ padding: '6px 2px' }}>
+                            <span style={{ fontSize: 13, fontFamily: "'Courier New',Courier,monospace", fontWeight: v > 0 ? 600 : 400, color: v > 0 ? 'var(--txt)' : 'var(--txt3)' }}>{v || '\u2014'}</span>
+                          </td>
+                        );
+                      })}
+                      <td className="c" style={{ fontSize: 13, textAlign: 'center', fontWeight: 700, background: 'var(--bg2)', padding: '6px 4px', color: 'var(--txt)' }}>{total || '\u2014'}</td>
+                    </tr>
+                  );
+                })}
                 {totalsByDiameter.length === 0 && (
                   <tr>
-                    <td className="c" colSpan={1 + SAN_ACCESORIOS.length} style={{ fontSize: 11, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
+                    <td className="c" colSpan={2 + SAN_ACCESORIOS.length} style={{ fontSize: 11, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
                       No hay accesorios.
                     </td>
                   </tr>

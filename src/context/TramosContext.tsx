@@ -51,6 +51,7 @@ export interface Tramo {
   net?: string;
   _net?: string;
   ventRamalKey?: string;
+  caudal?: number;
 }
 
 export type TramosState = {
@@ -405,6 +406,7 @@ useEffect(() => {
           accesorioFin: r.accesorioFin || '',
           diametroInicio: r.diametroInicio || '',
           diametroFin: r.diametroFin || '',
+          caudal: (r as any).caudal ?? undefined,
           padreTributarioLabel: r.padre ? ((plane as any).ramales?.find((pr: any) => pr.id === r.padre)?.label || r.padre) : null,
         };
         if (r._net === 'll') {
@@ -456,10 +458,10 @@ useEffect(() => {
     });
     dispatch({ type: 'SET_TRAMOS', net: 'san', payload: newSan });
 
-    const prevLl = stateRef.current.tramosLl;
+const prevLl = stateRef.current.tramosLl;
     const newLl = llIncoming.length === 0 ? [] : llIncoming.map(i => {
       const ex = prevLl.find(t => t._key === i._key);
-      return ex ? { ...i, descripcion: ex.descripcion || '', desde: ex.desde || '', hasta: ex.hasta || '' } : i;
+      return ex ? { ...i, descripcion: ex.descripcion || '', desde: ex.desde || '', hasta: ex.hasta || '', caudal: ex.caudal ?? i.caudal, diamDisPulg: ex.diamDisPulg ?? i.diamDisPulg } : i;
     });
     dispatch({ type: 'SET_TRAMOS', net: 'll', payload: newLl });
   };

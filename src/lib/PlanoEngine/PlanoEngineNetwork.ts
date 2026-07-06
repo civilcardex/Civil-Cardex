@@ -138,6 +138,7 @@ export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
 
 
 import { ACC_ABBR } from "../../utils/accessoryAbbreviations";
+import { APARATOS_DEF } from "../../constants/engineeringDataFixtures";
 
 export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
   const lvlLabel = engine.nivelActual?.label ?? '';
@@ -191,9 +192,32 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
     const pEnd = pts[pts.length - 1];
 
     const accIni = (r as any).accesorioInicio;
+    const appIni = (r as any).aparatoInicio;
+    let tStart = null;
+    if (appIni) {
+      const def = APARATOS_DEF.find(x => x.id === appIni);
+      const name = def ? def.sigla.replace(':', '').trim() : appIni;
+      tStart = { code: name.toUpperCase(), isAcc: true, ref: null };
+    } else if (accIni) {
+      const name = ACC_LABELS[accIni] || accIni;
+      tStart = { code: name.toUpperCase(), isAcc: true, ref: null };
+    } else {
+      tStart = findEndpointTarget(r, pStart);
+    }
+
     const accFin = (r as any).accesorioFin;
-    const tStart = accIni ? { code: ACC_LABELS[accIni] || accIni, isAcc: true, ref: null } : findEndpointTarget(r, pStart);
-    const tEnd = accFin ? { code: ACC_LABELS[accFin] || accFin, isAcc: true, ref: null } : findEndpointTarget(r, pEnd);
+    const appFin = (r as any).aparatoFin;
+    let tEnd = null;
+    if (appFin) {
+      const def = APARATOS_DEF.find(x => x.id === appFin);
+      const name = def ? def.sigla.replace(':', '').trim() : appFin;
+      tEnd = { code: name.toUpperCase(), isAcc: true, ref: null };
+    } else if (accFin) {
+      const name = ACC_LABELS[accFin] || accFin;
+      tEnd = { code: name.toUpperCase(), isAcc: true, ref: null };
+    } else {
+      tEnd = findEndpointTarget(r, pEnd);
+    }
 
     let newIni = r.ini || '';
     let newFin = r.fin || '';

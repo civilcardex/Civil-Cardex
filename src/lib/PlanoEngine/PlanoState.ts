@@ -84,6 +84,8 @@ export interface PlanoRamal {
   bloqueado?: boolean;
   accesorioInicio?: string;
   accesorioFin?: string;
+  aparatoInicio?: string;
+  aparatoFin?: string;
   nSalidas?: number;
   _labelBox?: LabelBoxCorners;
   _net?: string;
@@ -116,6 +118,7 @@ export interface PlanoBajante {
   labelX: number;
   labelY: number;
   direccion?: 'sube' | 'baja' | 'continua' | 'mantiene';
+  aparato?: string;
   totalL?: number;
   pendiente?: number;
   piso?: string;

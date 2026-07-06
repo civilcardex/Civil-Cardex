@@ -5,6 +5,7 @@ import type { IPlanoEngineCore } from '../PlanoState';
 import { drawRamalPath } from './drawRamalPath';
 import { renderJunctions } from './renderJunctions';
 import { renderVentCodos } from './renderVentCodos';
+import { APARATOS_DEF } from '../../../constants';
 
 
 export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
@@ -410,7 +411,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       }
     }
 
-    if ((r.tipo === 'tributario' || r.tipo === 'ramal') && ['san', 'af', 'ac'].includes(r.net) && r.pts.length >= 2) {
+    if ((r.tipo === 'tributario' || r.tipo === 'ramal') && ['san', 'af', 'ac', 'gas'].includes(r.net) && r.pts.length >= 2) {
       [0, r.pts.length - 1].forEach((idx) => {
         const accType = idx === 0 ? r.accesorioInicio : r.accesorioFin;
         if (!accType) return;
@@ -543,6 +544,41 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           ctx.moveTo(c.x + offset, c.y - offset);
           ctx.lineTo(c.x - offset, c.y + offset);
           ctx.stroke();
+        } else if (accType === 'codo90rmSube') {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#000000';
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, rad * 0.25, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (accType === 'codo90rmBaja') {
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1.5 * engine.zoom;
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+          const aS = rad * 0.7;
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = rad * 0.15;
+          ctx.lineCap = 'butt';
+          ctx.beginPath();
+          ctx.moveTo(c.x, c.y - aS * 0.9);
+          ctx.lineTo(c.x, c.y + aS * 0.5);
+          ctx.stroke();
+          ctx.fillStyle = '#000000';
+          ctx.beginPath();
+          ctx.moveTo(c.x, c.y + aS * 0.9);
+          ctx.lineTo(c.x - aS * 0.4, c.y + aS * 0.3);
+          ctx.lineTo(c.x + aS * 0.4, c.y + aS * 0.3);
+          ctx.closePath();
+          ctx.fill();
         } else if (accType === 'codoReventilado') {
           const rRad = engine.mm2cvs(1.2);
           const vLen = engine.mm2cvs(1.6);
@@ -746,9 +782,65 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           ctx.moveTo(baseHorizX, baseHorizY);
           ctx.lineTo(baseHorizX + perX * L3, baseHorizY + perY * L3);
           ctx.stroke();
+        } else {
+          // Fallback text symbol for any other accessory
+          let label = accType.substring(0, 3).toUpperCase();
+          if (accType.startsWith('codo90')) label = 'C90';
+          else if (accType.startsWith('codo45')) label = 'C45';
+          else if (accType === 'codos_90_std' || accType === 'codos_90_rl') label = 'C90';
+          else if (accType.startsWith('tee')) label = 'T';
+          else if (accType === 'te_linea' || accType === 'te_ramal') label = 'T';
+          else if (accType === 'valvula_bola') label = 'VB';
+          else if (accType.startsWith('yee')) label = 'Y';
+          else if (accType === 'valvPie') label = 'VP';
+          else if (accType === 'reduccion') label = 'RED';
+          else if (accType === 'ampliacion') label = 'AMP';
+
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 1.2 * engine.zoom;
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#000000';
+          ctx.font = `bold ${Math.max(5, 5 * engine.zoom)}px 'Geist', monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(label, c.x, c.y);
         }
         
         ctx.restore();
+      });
+    }
+
+    if (['san', 'af', 'ac', 'gas'].includes(r.net) && r.pts.length >= 2) {
+      [0, r.pts.length - 1].forEach((idx) => {
+        const apId = idx === 0 ? r.aparatoInicio : r.aparatoFin;
+        if (!apId) return;
+
+        const pt = r.pts[idx];
+        const c = engine.toCvs(pt[0], pt[1]);
+
+        let dx = 0, dy = 0;
+        if (idx === 0) {
+          dx = r.pts[1][0] - r.pts[0][0];
+          dy = r.pts[1][1] - r.pts[0][1];
+        } else {
+          dx = r.pts[idx][0] - r.pts[idx - 1][0];
+          dy = r.pts[idx][1] - r.pts[idx - 1][1];
+        }
+        const len = Math.hypot(dx, dy);
+        let outX = -1, outY = 0;
+        if (len > 0.01) {
+          outX = (idx === 0 ? -dx : dx) / len;
+          outY = (idx === 0 ? -dy : dy) / len;
+        }
+
+        const hasAcc = !!(idx === 0 ? r.accesorioInicio : r.accesorioFin);
+
+        drawSingleApplianceSymbol(ctx, engine, apId, c, outX, outY, col, hasAcc);
       });
     }
   });
@@ -882,3 +974,208 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
 
   ctx.restore();
 }
+
+export function drawSingleApplianceSymbol(
+  ctx: CanvasRenderingContext2D,
+  engine: IPlanoEngineCore,
+  apId: string,
+  baseCvs: { x: number; y: number },
+  dirX: number,
+  dirY: number,
+  _accentColor: string,
+  hasAcc: boolean
+): void {
+  const def = APARATOS_DEF.find(x => x.id === apId);
+  if (!def && apId !== 'sifon') return; // Sifon fallback
+
+  const sigla = def ? def.sigla.replace(':', '') : 'Sif';
+
+  ctx.save();
+  ctx.lineWidth = Math.max(0.7, 0.7 * engine.zoom);
+  ctx.strokeStyle = '#000000';
+  ctx.fillStyle = '#ffffff';
+
+  const rad = 7 * engine.zoom * (engine.labelScaleM || 1);
+
+  // Offset the start point to avoid overlapping the pipe end or accessory
+  const startOffset = hasAcc ? Math.max(16, 16 * engine.zoom) : Math.max(8, 8 * engine.zoom);
+  const curX = baseCvs.x + dirX * startOffset;
+  const curY = baseCvs.y + dirY * startOffset;
+
+  // Draw background white circle with drop shadow
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+  ctx.shadowBlur = 4 * engine.zoom;
+  ctx.shadowOffsetX = 1 * engine.zoom;
+  ctx.shadowOffsetY = 1 * engine.zoom;
+  ctx.beginPath();
+  ctx.arc(curX, curY, rad, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  // Draw the symbol outline inside the circle
+  ctx.save();
+  ctx.strokeStyle = '#000000';
+  ctx.fillStyle = '#000000';
+  ctx.lineWidth = Math.max(0.6, 0.6 * engine.zoom);
+
+  const innerRad = rad * 0.7;
+
+  if (apId === 'sif' || apId === 'sifon') {
+    // Siphon: Draw U-bend trap shape
+    ctx.beginPath();
+    ctx.moveTo(curX - innerRad * 0.4, curY - innerRad * 0.6);
+    ctx.lineTo(curX - innerRad * 0.4, curY + innerRad * 0.2);
+    ctx.arc(curX, curY + innerRad * 0.2, innerRad * 0.4, Math.PI, 0, true);
+    ctx.lineTo(curX + innerRad * 0.4, curY - innerRad * 0.2);
+    ctx.stroke();
+  } else if (apId === 'lvm') {
+    // Lavamanos: basin + tap
+    ctx.beginPath();
+    ctx.arc(curX, curY + innerRad * 0.1, innerRad * 0.6, 0, Math.PI);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(curX, curY - innerRad * 0.7);
+    ctx.lineTo(curX, curY - innerRad * 0.2);
+    ctx.lineTo(curX - innerRad * 0.2, curY - innerRad * 0.2);
+    ctx.stroke();
+  } else if (apId === 'san') {
+    // Inodoro: tank + bowl
+    ctx.strokeRect(curX - innerRad * 0.6, curY - innerRad * 0.7, innerRad * 1.2, innerRad * 0.45);
+    ctx.beginPath();
+    ctx.arc(curX, curY + innerRad * 0.2, innerRad * 0.45, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (apId === 'duc') {
+    // Ducha: vertical pipe arm curving at top + dome showerhead + water dots
+    const s = innerRad;
+    // Vertical pipe (body) going up from bottom center
+    ctx.lineWidth = Math.max(0.5, 0.5 * engine.zoom);
+    ctx.beginPath();
+    ctx.moveTo(curX - s * 0.3, curY + s * 0.8);
+    ctx.lineTo(curX - s * 0.3, curY - s * 0.15);
+    // Curved top
+    ctx.quadraticCurveTo(curX - s * 0.3, curY - s * 0.65, curX + s * 0.15, curY - s * 0.65);
+    ctx.stroke();
+    // Dome showerhead
+    ctx.beginPath();
+    ctx.arc(curX + s * 0.15, curY - s * 0.45, s * 0.28, Math.PI, 0);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(curX + s * 0.15, curY - s * 0.45, s * 0.28, Math.PI, 0);
+    ctx.stroke();
+    // Water droplet dots
+    const dotR = Math.max(0.6, 0.6 * engine.zoom);
+    const drops = [
+      [curX - s * 0.02, curY - s * 0.05],
+      [curX + s * 0.15, curY - s * 0.05],
+      [curX + s * 0.32, curY - s * 0.05],
+      [curX + s * 0.06, curY + s * 0.2],
+      [curX + s * 0.24, curY + s * 0.2],
+      [curX - s * 0.02, curY + s * 0.45],
+      [curX + s * 0.15, curY + s * 0.45],
+      [curX + s * 0.32, curY + s * 0.45],
+    ];
+    drops.forEach(([dx, dy]) => {
+      ctx.beginPath();
+      ctx.arc(dx, dy, dotR, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  } else if (apId === 'lvra') {
+    // Lavadora: rounded rectangle body + circle door + control buttons
+    const s = innerRad;
+    const bw = s * 1.4;
+    const bh = s * 1.5;
+    const bx = curX - bw / 2;
+    const by = curY - bh / 2;
+    const cr = Math.max(1.5, 1.5 * engine.zoom);
+    // Body
+    ctx.lineWidth = Math.max(0.5, 0.5 * engine.zoom);
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bw, bh, cr);
+    ctx.stroke();
+    // Door circle (porthole)
+    const doorR = s * 0.42;
+    ctx.beginPath();
+    ctx.arc(curX, curY + s * 0.15, doorR, 0, Math.PI * 2);
+    ctx.stroke();
+    // Inner door ring
+    ctx.beginPath();
+    ctx.arc(curX, curY + s * 0.15, doorR * 0.7, 0, Math.PI * 2);
+    ctx.stroke();
+    // Control panel — small button dots
+    const btnY = by + bh * 0.1;
+    const btnR = Math.max(0.7, 0.7 * engine.zoom);
+    ctx.beginPath();
+    ctx.arc(curX - s * 0.3, btnY, btnR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(curX - s * 0.1, btnY, btnR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(curX + s * 0.1, btnY, btnR, 0, Math.PI * 2);
+    ctx.fill();
+    // Dial knob (right side)
+    ctx.beginPath();
+    ctx.arc(curX + s * 0.4, btnY, btnR * 1.5, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (apId === 'tin') {
+    // Tina / Bathtub: bowl shape + rim + legs + small showerhead
+    const s = innerRad;
+    // Rim (top bar)
+    ctx.lineWidth = Math.max(0.5, 0.5 * engine.zoom);
+    ctx.beginPath();
+    ctx.moveTo(curX - s * 0.8, curY - s * 0.15);
+    ctx.lineTo(curX + s * 0.8, curY - s * 0.15);
+    ctx.stroke();
+    // Bowl (U-shape)
+    ctx.beginPath();
+    ctx.moveTo(curX - s * 0.7, curY - s * 0.15);
+    ctx.quadraticCurveTo(curX - s * 0.7, curY + s * 0.65, curX, curY + s * 0.65);
+    ctx.quadraticCurveTo(curX + s * 0.7, curY + s * 0.65, curX + s * 0.7, curY - s * 0.15);
+    ctx.stroke();
+    // Left leg
+    ctx.beginPath();
+    ctx.moveTo(curX - s * 0.55, curY + s * 0.55);
+    ctx.lineTo(curX - s * 0.65, curY + s * 0.8);
+    ctx.stroke();
+    // Right leg
+    ctx.beginPath();
+    ctx.moveTo(curX + s * 0.55, curY + s * 0.55);
+    ctx.lineTo(curX + s * 0.65, curY + s * 0.8);
+    ctx.stroke();
+    // Small showerhead pipe at left
+    ctx.beginPath();
+    ctx.moveTo(curX - s * 0.5, curY - s * 0.15);
+    ctx.lineTo(curX - s * 0.5, curY - s * 0.55);
+    ctx.quadraticCurveTo(curX - s * 0.5, curY - s * 0.8, curX - s * 0.2, curY - s * 0.8);
+    ctx.stroke();
+    // Showerhead
+    ctx.beginPath();
+    ctx.rect(curX - s * 0.25, curY - s * 0.88, s * 0.2, s * 0.16);
+    ctx.stroke();
+  } else if (apId === 'lvp') {
+    // Lavaplatos
+    ctx.strokeRect(curX - innerRad * 0.7, curY - innerRad * 0.4, innerRad * 1.4, innerRad * 0.8);
+    ctx.strokeRect(curX - innerRad * 0.5, curY - innerRad * 0.3, innerRad * 1.0, innerRad * 0.6);
+  } else if (apId === 'est4' || apId === 'est2') {
+    // Estufa
+    ctx.strokeRect(curX - innerRad * 0.6, curY - innerRad * 0.6, innerRad * 1.2, innerRad * 1.2);
+    ctx.beginPath();
+    ctx.arc(curX - innerRad * 0.3, curY - innerRad * 0.3, innerRad * 0.15, 0, Math.PI * 2);
+    ctx.arc(curX + innerRad * 0.3, curY - innerRad * 0.3, innerRad * 0.15, 0, Math.PI * 2);
+    ctx.arc(curX - innerRad * 0.3, curY + innerRad * 0.3, innerRad * 0.15, 0, Math.PI * 2);
+    ctx.arc(curX + innerRad * 0.3, curY + innerRad * 0.3, innerRad * 0.15, 0, Math.PI * 2);
+    ctx.stroke();
+  } else {
+    // Fallback text
+    ctx.font = `bold ${Math.max(6, 6 * engine.zoom)}px 'Geist', monospace, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(sigla, curX, curY);
+  }
+
+  ctx.restore();
+  ctx.restore();
+}
+
