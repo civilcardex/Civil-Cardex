@@ -1,6 +1,8 @@
 import { NETS } from '../PlanoState';
 import { rotatedRectCorners } from '../HitTester';
 import type { IPlanoEngineCore } from '../PlanoState';
+import { drawSingleApplianceSymbol } from './renderRamales';
+
 
 const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
 
@@ -148,7 +150,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
 
     const c = engine.toCvs(b.x, b.y);
     const sel = b.id === engine.selId;
-    const r = 8 * (engine.labelScaleM || 1) * engine.zoom;
+    const r = 5.5 * (engine.labelScaleM || 1) * engine.zoom;
 
     // Item 2: Label angle + snap constraint (Auto-rotation removed as requested)
     const angle = (b.labelAngle || 0) * Math.PI / 180;
@@ -234,7 +236,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.fill();
       ctx.strokeStyle = sel ? '#FFEB3B' : '#475569';
-      ctx.lineWidth = (sel ? 3.5 : 2) * engine.zoom;
+      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom;
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.stroke();
@@ -245,7 +247,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.rect(-devW / 2, -devH / 2, devW, devH);
       ctx.fill();
       ctx.strokeStyle = sel ? '#FFEB3B' : '#A855F7';
-      ctx.lineWidth = (sel ? 3.5 : 2) * engine.zoom;
+      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom;
       ctx.beginPath();
       ctx.rect(-devW / 2, -devH / 2, devW, devH);
       ctx.stroke();
@@ -262,7 +264,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.arc(0, 0, r * 1.3, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = sel ? '#FFEB3B' : col;
-      ctx.lineWidth = (sel ? 3.5 : 2) * engine.zoom;
+      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom;
       ctx.beginPath();
       ctx.arc(0, 0, r * 1.3, 0, Math.PI * 2);
       ctx.stroke();
@@ -274,7 +276,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.fill();
       ctx.strokeStyle = sel ? '#FFEB3B' : col;
-      ctx.lineWidth = (sel ? 3.5 : 2) * engine.zoom;
+      ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom;
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.stroke();
@@ -283,7 +285,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = b.tipo === 'bajante' ? '#F04545' : '#3B82F6';
-      ctx.lineWidth = (sel ? 3.5 : 2.5) * engine.zoom;
+      ctx.lineWidth = (sel ? 2.5 : 1.5) * engine.zoom;
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.stroke();
@@ -448,7 +450,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const gx = b.x + (disp ? disp.dx : 0);
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
-    const r = 6.5 * engine.zoom;
+    const r = 4.25 * engine.zoom;
     b._ghost = { x: c.x, y: c.y, r: Math.max(24 * engine.zoom, r + 10) };
 
     // Item 6: Label angle — auto-rotate to vertical when displacement is vertical
@@ -576,6 +578,12 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       const line1 = diamStr ? `${codeStr}  D=${diamStr}` : (codeStr || '—');
       const dirText = DIR_MAP[ghostDir ?? ''] || '';
       renderBajanteLabel(ctx, engine, b, c, r, ghostAngle, offDx, offDy, line1, dirText, '_ghostLabelBox', 0.35);
+    }
+
+    if (['san', 'af', 'ac', 'gas'].includes(b.net) && b.aparato) {
+      const net = NETS.find((n) => n.id === b.net);
+      const col = net ? net.col : '#e2e2e8';
+      drawSingleApplianceSymbol(ctx, engine, b.aparato, c, 1, 0, col, false);
     }
   });
 }
