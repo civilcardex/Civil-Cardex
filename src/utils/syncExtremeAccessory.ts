@@ -1,5 +1,5 @@
 import { loadFromStorage, saveToStorage } from '../services/storageService';
-import { HYDRO_DATA_STORAGE_KEY, TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys';
+import { HYDRO_DATA_STORAGE_KEY, TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY, GAS_ACC_KEY } from '../constants/storage-keys';
 import type { SyncPlanInput } from './drawingSync';
 import { writeHydroDrawingSync } from './drawingSync';
 
@@ -14,16 +14,8 @@ interface HidroAccesorios {
   [key: string]: unknown;
 }
 
-const SYNCABLE_ACC: Record<string, string> = {
-  valvCompuerta: 'valvCompuerta',
-  valvGlobo: 'valvGlobo',
-  valvCheque: 'valvCheque',
-  valvAngulo: 'valvAngulo',
-  sifon: 'sifon',
-};
-
 function isSyncableAcc(acc: string): boolean {
-  return Object.prototype.hasOwnProperty.call(SYNCABLE_ACC, acc);
+  return !!acc;
 }
 
 function findRamalInPlan(plan: SyncPlanInput, ramalId: string): { planId: string | number; diam: string; net: string; data: LocalDrawingData } | null {
@@ -39,8 +31,31 @@ function findRamalInPlan(plan: SyncPlanInput, ramalId: string): { planId: string
   return { planId: plan.id, diam, net, data };
 }
 
-function bumpHidroAccesorio(_ramalKey: string, acc: string, delta: number, ramalId: string, planId: string | number): void {
-  const hidroKey = `${ramalId}_${planId}`;
+function bumpGasAccesorio(ramalId: string, acc: string, delta: number): void {
+  const rawGas = loadFromStorage<Record<string, Record<string, number>> | null>(GAS_ACC_KEY, null) || {};
+  const entry = rawGas[ramalId] || {};
+  const accesorios = { ...entry };
+  const cur = accesorios[acc] || 0;
+  const next = cur + delta;
+  if (next <= 0) {
+    delete accesorios[acc];
+  } else {
+    accesorios[acc] = next;
+  }
+  if (Object.keys(accesorios).length === 0) {
+    if (ramalId in rawGas) {
+      const copy = { ...rawGas };
+      delete copy[ramalId];
+      saveToStorage(GAS_ACC_KEY, copy);
+    }
+  } else {
+    rawGas[ramalId] = accesorios;
+    saveToStorage(GAS_ACC_KEY, rawGas);
+  }
+}
+
+function bumpHidroAccesorio(netId: string, acc: string, delta: number, ramalId: string, planId: string | number): void {
+  const hidroKey = `${netId}_${ramalId}_${planId}`;
   const rawHidro = loadFromStorage<Record<string, HidroAccesorios> | null>(HYDRO_DATA_STORAGE_KEY, null) || {};
   const entry = rawHidro[hidroKey] || {};
   const accesorios = { ...(entry.accesorios || {}) };
@@ -90,18 +105,27 @@ export function syncExtremeAccessoryToHidroData(
   plans: SyncPlanInput[]
 ): void {
   if (oldVal === newVal) return;
-  if (!isSyncableAcc(oldVal) && !isSyncableAcc(newVal)) return;
 
   for (const plan of plans) {
     if (!plan || plan.status !== 'confirmed') continue;
     const found = findRamalInPlan(plan, ramalId);
     if (!found) continue;
 
+    const isGas = found.net === 'gas';
+
     if (isSyncableAcc(oldVal)) {
-      bumpHidroAccesorio(`${ramalId}_${found.planId}`, oldVal, -1, ramalId, found.planId);
+      if (isGas) {
+        bumpGasAccesorio(ramalId, oldVal, -1);
+      } else {
+        bumpHidroAccesorio(found.net, oldVal, -1, ramalId, found.planId);
+      }
     }
     if (isSyncableAcc(newVal)) {
-      bumpHidroAccesorio(`${ramalId}_${found.planId}`, newVal, +1, ramalId, found.planId);
+      if (isGas) {
+        bumpGasAccesorio(ramalId, newVal, +1);
+      } else {
+        bumpHidroAccesorio(found.net, newVal, +1, ramalId, found.planId);
+      }
     }
 
     // Auto-bump 'sif' aparato when siphon accessory is added/removed

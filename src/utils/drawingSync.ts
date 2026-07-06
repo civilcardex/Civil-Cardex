@@ -49,6 +49,7 @@ export interface RawElement {
   accesorioFin?: string;
   diametroInicio?: string;
   diametroFin?: string;
+  caudal?: number;
   [key: string]: unknown;
 }
 
@@ -142,6 +143,8 @@ function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): S
             accesorioFin: r.accesorioFin || '',
             diametroInicio: r.diametroInicio || '',
             diametroFin: r.diametroFin || '',
+            aparatoInicio: r.aparatoInicio || '',
+            aparatoFin: r.aparatoFin || '',
           });
         }
       }
@@ -188,7 +191,7 @@ function buildNonPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>)
     for (const r of (data.ramales || [])) {
       if (families.has(r.net)) {
         const rKey = r.net + '_' + r.id + '_' + plan.id;
-        ramales.push({
+        const ramalObj: any = {
           id: r.id, label: r.label || r.id, tipo: r.tipo,
           padre: r.padre || null, totalL: r.totalL || 0,
           ini: r.ini || '', fin: r.fin || '',
@@ -199,7 +202,11 @@ function buildNonPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>)
           _aparatosKey: rKey, _net: r.net,
           nSalidas: r.nSalidas || 0,
           descargaEnId: r.descargaEnId || null,
-        });
+          aparatoInicio: r.aparatoInicio || '',
+          aparatoFin: r.aparatoFin || '',
+        };
+        if (r.caudal !== undefined) ramalObj.caudal = r.caudal;
+        ramales.push(ramalObj);
       }
     }
     for (const b of (data.bajantes || [])) {
@@ -220,6 +227,7 @@ function buildNonPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>)
           ventDprop: b.ventDprop,
           bajLong: b.bajLong,
           bajFDarcy: b.bajFDarcy,
+          aparato: b.aparato || '',
         });
       }
     }

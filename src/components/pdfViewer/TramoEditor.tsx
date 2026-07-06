@@ -123,7 +123,7 @@ function BajanteEditor({
               {([['sube','↑ Sube'],['baja','↓ Baja'],['continua','➜ Continua']] as const).map(([val, lbl]) => {
                 const isActive = currentGhostDir === val;
                 return (
-                  <button key={val} onClick={() => {
+                  <button type="button" key={val} onClick={() => {
                     const gdNew = { ...(selElement.ghostData || {}) };
                     const cd = { ...(gdNew[lvl] || {}) };
                     const newDir = cd.direccion === val ? undefined : val;
@@ -208,7 +208,7 @@ function BajanteEditor({
               const isActive = val === 'desplazamiento' ? hasDesplazamiento : selElement.direccion === val;
               
               return (
-              <button key={val} onClick={() => {
+              <button type="button" key={val} onClick={() => {
                 if (!eng) return;
                 if (val === 'desplazamiento') {
                   if (lvl !== undefined) {
@@ -288,6 +288,35 @@ function BajanteEditor({
   );
 }
 
+function CaudalField({ selElement, engineRef, setSelElement }: { selElement: any; engineRef: React.MutableRefObject<PlanoEngine | null>; setSelElement: React.Dispatch<React.SetStateAction<any>> }) {
+  const [text, setText] = React.useState('');
+  const [editing, setEditing] = React.useState(false);
+  const extVal = selElement?.caudal;
+  const display = editing ? text : (extVal != null && extVal !== '' && !isNaN(Number(extVal)) ? String(extVal) : '');
+  const save = (val: string) => {
+    const v = val === '' || val === '.' ? 0 : parseFloat(val) || 0;
+    if (engineRef.current) {
+      engineRef.current.updateSelected({ caudal: v });
+      setSelElement({ ...selElement, caudal: v });
+      engineRef.current._markDirty();
+    }
+  };
+  return (
+    <div>
+      <div style={{ fontSize: 8.5, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>Caudal (LPS)</div>
+      <input type="text" inputMode="decimal" value={display} placeholder="0.00" aria-label="Caudal en litros por segundo"
+        onFocus={()=>{setEditing(true);setText(display)}}
+        onChange={e=>{
+          const raw = e.target.value.replace(/,/g,'.').replace(/[^0-9.]/g,'');
+          setText(raw);
+          save(raw);
+        }}
+        onBlur={()=>{setEditing(false)}}
+        style={{width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",textAlign:'center'}}/>
+    </div>
+  );
+}
+
 function RamalEditor({
   selElement, activeNet, engineRef, setSelElement,
   isSelActiveNet, diamSel, gasMatSel, pendSel, pendInput,
@@ -328,6 +357,7 @@ function RamalEditor({
   const showPend = activeNet === 'san' || activeNet === 'll';
   const showDeltaZ = activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas';
   const showDescargas = activeNet === 'af' || activeNet === 'ac' || activeNet === 'san';
+  const showCaudal = activeNet === 'll';
   return (
     <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
       <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#9BA8AA", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos específicos</div>
@@ -456,6 +486,9 @@ function RamalEditor({
             </div>
             ) : null}
           </div>
+          {showCaudal && (
+            <CaudalField selElement={selElement} engineRef={engineRef} setSelElement={setSelElement} />
+          )}
           {(showDeltaZ || showDescargas) && (
             <div style={{ display: 'grid', gridTemplateColumns: (showDeltaZ || showDescargas) ? '1fr 1fr' : '1fr', gap: 6 }}>
               {showDeltaZ && (
@@ -593,7 +626,7 @@ function RamalHeaderFields() {
 
   return (
     <div style={{display:'flex',flexDirection:'column',gap:5}}>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1.5fr',gap:3}}>
+      <div style={{display:'grid',gridTemplateColumns:'1.5fr 1fr 1fr',gap:3}}>
         <div>
           <div style={{fontSize:8.5,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.3}}>Nombre</div>
           <input value={displayLabelWithPiso(selElement.label, engineRef.current?.nivelActual?.label ?? '')} placeholder="Tramo" aria-label="Nombre del tramo"
@@ -850,7 +883,7 @@ function TramoEditorInner() {
             {isGhostSel ? 'Datos del bajante fantasma' : (isArea ? 'Datos del área' : 'Datos del tramo')}
           </div>
           {selElement && (selElement.pts || selElement.id?.startsWith('T')) && (
-            <button onClick={handleRotateLabel} title="Rotar etiqueta (0°/45°/90°/-90°/-45°)" style={{
+            <button type="button" onClick={handleRotateLabel} title="Rotar etiqueta (0°/45°/90°/-90°/-45°)" style={{
               display: 'flex', alignItems: 'center', gap: 4,
               padding: '2px 6px', background: 'rgba(168,85,247,.1)',
               border: '1px solid rgba(168,85,247,.35)', borderRadius: 3,
