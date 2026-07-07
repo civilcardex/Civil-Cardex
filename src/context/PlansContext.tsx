@@ -40,11 +40,49 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     (async () => {
       const meta = loadFromStorage<PlanMeta[]>(PLANS_META_KEY, []);
       if (meta.length === 0) { setRestoreDone(true); return; }
-      const files = await Promise.all(meta.map(m => loadPDF(m.id)));
+
+      let metaChanged = false;
+      const sanitizedMeta: PlanMeta[] = [];
+      const files: (File | null)[] = [];
+
+      for (const m of meta) {
+        const isDecimal = !Number.isInteger(m.id);
+        if (isDecimal) {
+          const cleanId = Math.floor(m.id);
+          const file = await loadPDF(m.id);
+          if (file) {
+            // Save under clean integer ID in IndexedDB
+            await storePDF(cleanId, file);
+            await deletePDF(m.id);
+            
+            // Rename localStorage trazos key if present
+            const oldTrazosKey = `trazos_${m.id}`;
+            const newTrazosKey = `trazos_${cleanId}`;
+            const oldTrazos = loadFromStorage(oldTrazosKey, null);
+            if (oldTrazos) {
+              saveToStorage(newTrazosKey, oldTrazos);
+              removeFromStorage(oldTrazosKey);
+            }
+            
+            sanitizedMeta.push({ ...m, id: cleanId });
+            files.push(file);
+            metaChanged = true;
+          }
+        } else {
+          const file = await loadPDF(m.id);
+          sanitizedMeta.push(m);
+          files.push(file);
+        }
+      }
+
+      if (metaChanged) {
+        persistMeta(sanitizedMeta.map(({ id, ...r }) => ({ id, ...r } as any)));
+      }
+
       const restored: PlanItem[] = [];
-      for (let i = 0; i < meta.length; i++) {
+      for (let i = 0; i < sanitizedMeta.length; i++) {
         const file = files[i];
-        const m = meta[i];
+        const m = sanitizedMeta[i];
         if (file) {
           restored.push({
             id: m.id,
@@ -76,7 +114,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     for (const f of newFiles) {
       const isPdf = f.type === 'application/pdf' || f.name?.toLowerCase().endsWith('.pdf');
       if (isPdf) {
-        const id = Date.now() + Math.random();
+        const id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
         pdfs.push({ id, file: f, name: f.name, nivel: null, scale: 100, status: 'pending', origen: null, factorX: null, factorY: null, calGlobal: null });
         storePDF(id, f).catch(e => { if (import.meta.env.DEV) console.error('storePDF error:', e); });
       }
