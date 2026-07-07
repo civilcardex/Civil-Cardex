@@ -203,7 +203,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     }
   }
   // AF/AC: detect codos/tees at angle changes and perpendicular crossings
-  if ((r.net === 'af' || r.net === 'ac') && (engine as any).triggerAccesorioModal) {
+  if ((r.net === 'af' || r.net === 'ac') && engine.triggerAccesorioModal) {
     let modalTriggered = false;
 
     // 1. Detect Tee connections at the endpoints of the ramal

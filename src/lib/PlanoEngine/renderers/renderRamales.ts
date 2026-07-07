@@ -852,12 +852,12 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   // Draw all bilateral crossings (teeBilateral) - white circle with black border and '+' at perpendicular crossings
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
-    if ((r.net === 'af' || r.net === 'ac') && (r as any).bilateralCrossings && (r as any).bilateralCrossings.length > 0) {
+    if ((r.net === 'af' || r.net === 'ac') && r.bilateralCrossings && r.bilateralCrossings.length > 0) {
       const rad = engine.mm2cvs(1.6 * (engine.labelScaleM || 1));
       ctx.save();
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      for (const cp of (r as any).bilateralCrossings) {
+      for (const cp of r.bilateralCrossings) {
         const key = `${cp[0].toFixed(2)},${cp[1].toFixed(2)}`;
         if (drawnCrossings.has(key)) continue;
         drawnCrossings.add(key);
