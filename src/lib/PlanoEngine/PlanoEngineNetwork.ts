@@ -1,6 +1,7 @@
 import { NETS } from './PlanoState';
 import type { PlanoRamal, PlanoBajante } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
+import { segmentStrictIntersectionPoint } from './drawingAngles';
 
 export { _renumberRamales, _renumberBajantes, _renumberMontantes, _renumberAreas } from './networkRenumber';
 export { calcSanitaryAccessories } from './networkSanitary';
@@ -245,6 +246,45 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
     if (r.ini !== newIni || r.fin !== newFin) {
       r.ini = newIni;
       r.fin = newFin;
+    }
+  }
+
+  // Recalculate bilateral crossings for AF/AC ramales
+  for (const r of engine.ramales) {
+    if (r.net !== 'af' && r.net !== 'ac') continue;
+    r.bilateralCrossings = []; // Reset crossings
+    if (!r.pts || r.pts.length < 2) continue;
+    const crossings: number[][] = [];
+    for (let i = 0; i < r.pts.length - 1; i++) {
+      const segA = r.pts[i];
+      const segB = r.pts[i + 1];
+      for (const other of engine.ramales) {
+        if (other.id === r.id) continue;
+        if (other.net !== r.net) continue;
+        if (!other.pts || other.pts.length < 2) continue;
+        for (let j = 0; j < other.pts.length - 1; j++) {
+          const oA = other.pts[j];
+          const oB = other.pts[j + 1];
+          const crossPt = segmentStrictIntersectionPoint(segA, segB, oA, oB);
+          if (!crossPt) continue;
+          
+          // Check perpendicularity: dot product ≈ 0
+          const dxA = segB[0] - segA[0], dyA = segB[1] - segA[1];
+          const dxB = oB[0] - oA[0], dyB = oB[1] - oA[1];
+          const lenA = Math.hypot(dxA, dyA), lenB = Math.hypot(dxB, dyB);
+          if (lenA < 0.001 || lenB < 0.001) continue;
+          const dot = (dxA * dxB + dyA * dyB) / (lenA * lenB);
+          if (Math.abs(dot) < 0.2) {
+            const exists = crossings.some(c => Math.hypot(c[0] - crossPt[0], c[1] - crossPt[1]) < 0.01);
+            if (!exists) {
+              crossings.push([crossPt[0], crossPt[1]]);
+            }
+          }
+        }
+      }
+    }
+    if (crossings.length > 0) {
+      r.bilateralCrossings = crossings;
     }
   }
 }

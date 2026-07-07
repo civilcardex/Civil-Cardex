@@ -83,6 +83,7 @@ export function copyDrawingFromPlan(
     if (!net) { skippedNets.push(netId); continue; }
     const pfx = net.lbl;
     const bmPfx = net.bmPfx;
+    const tPfx = 'T'; // Tributario prefix
 
     const copyRamalTipos = new Set(['ramal', 'tributario'].filter(t => tipos.has(t)));
     const copyBajanteTipos = new Set(['bajante', 'montante'].filter(t => tipos.has(t)));
@@ -164,6 +165,7 @@ export function copyDrawingFromPlan(
     const maxRp = maxForType(engine.bajantes.filter((b) => b.tipo === 'red_publica'), /^RP(\d+)$/);
     const maxCnt = maxForType(engine.bajantes.filter((b) => b.tipo === 'contador'), /^(?:CTNG|CNTAF|cntAF)(\d+)$/);
     const maxCal = maxForType(engine.bajantes.filter((b) => b.tipo === 'calentador'), /^(?:CALENT|calentG)(\d+)$/);
+    const maxTrib = maxForType(engine.ramales.filter((r) => r.net === netId && r.tipo === 'tributario'), /^T(\d+)$/);
 
     let ramalCounter = maxRamal;
     let bajanteCounter = maxBajante;
@@ -171,19 +173,41 @@ export function copyDrawingFromPlan(
     let rpCounter = maxRp;
     let cntCounter = maxCnt;
     let calCounter = maxCal;
+    let tributarioCounter = maxTrib;
+
+    // Build map: oldPadreId -> newLabel of padre in destination
+    const padreLabelMap: Record<string, string> = {};
+    // First process all 'ramal' entries to fill padreLabelMap
+    for (const r of srcRamales) {
+      if (r.tipo === 'ramal' && r.padre) {
+        // Parent exists in source - map its label
+        const padreInSrc = srcRamales.find((x: any) => x.id === r.padre);
+        if (padreInSrc) {
+          padreLabelMap[r.padre] = padreInSrc.label || padreInSrc.id;
+        }
+      }
+    }
 
     for (const r of srcRamales) {
       if (r.tipo === 'ramal') {
+        const oldId = r.id;
         ramalCounter++;
         const newId = pfx + ramalCounter;
-        oldToNew[r.id] = newId;
+        oldToNew[oldId] = newId;
         r.id = newId;
         r.label = newId;
+        // Update father map: future tributarios with this padre should reference new label
+        padreLabelMap[oldId] = newId;
       } else {
-        const newId = 'T' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-        oldToNew[r.id] = newId;
+        const oldId = r.id;
+        const oldPadre = r.padre || '';
+        tributarioCounter++;
+        const newId = tPfx + tributarioCounter;
+        oldToNew[oldId] = newId;
         r.id = newId;
-        r.label = newId;
+        // Tributario label: T#<padreLabel> e.g., T1RS5
+        const padreLabel = oldPadre ? (padreLabelMap[oldPadre] || oldPadre) : '';
+        r.label = padreLabel ? `${newId}${padreLabel}` : newId;
       }
     }
 

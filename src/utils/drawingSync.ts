@@ -50,6 +50,7 @@ export interface RawElement {
   diametroInicio?: string;
   diametroFin?: string;
   caudal?: number;
+  bilateralCrossings?: number[][];
   [key: string]: unknown;
 }
 
@@ -109,6 +110,9 @@ function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): S
   const out: SyncDataResult = { planes: {}, updatedAt: Date.now() };
   if (!Array.isArray(plans)) return out;
 
+  const rawHidro = loadFromStorage<Record<string, any>>(HYDRO_DATA_STORAGE_KEY, {}) || {};
+  let rawHidroChanged = false;
+
   for (const plan of plans) {
     if (!plan || plan.id === undefined) continue;
     const raw = loadFromStorage<TraceData | null>(TRAZOS_PREFIX + plan.id, null);
@@ -124,6 +128,30 @@ function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): S
       for (const r of (data.ramales || [])) {
         if (r.net === family) {
           const rKey = family + '_' + r.id + '_' + plan.id;
+
+          // Auto-sync teeBilateral count to rawHidro
+          const numBilateral = (r.bilateralCrossings || []).length;
+          const entry = rawHidro[rKey] || { accesorios: {}, Lh: 0, nSalidas: 0 };
+          const accs = { ...(entry.accesorios || {}) };
+
+          if (numBilateral > 0) {
+            if (accs.teeBilateral !== numBilateral) {
+              accs.teeBilateral = numBilateral;
+              rawHidro[rKey] = { ...entry, accesorios: accs };
+              rawHidroChanged = true;
+            }
+          } else {
+            if (accs.teeBilateral !== undefined) {
+              delete accs.teeBilateral;
+              if (Object.keys(accs).length === 0) {
+                delete rawHidro[rKey];
+              } else {
+                rawHidro[rKey] = { ...entry, accesorios: accs };
+              }
+              rawHidroChanged = true;
+            }
+          }
+
           ramales.push({
             id: r.id, label: r.label || r.id, tipo: r.tipo,
             padre: r.padre || null, totalL: r.totalL || 0,
@@ -163,7 +191,10 @@ function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): S
 
   collectAparatos(out);
 
-  const rawHidro = loadFromStorage<Record<string, unknown>>(HYDRO_DATA_STORAGE_KEY, {});
+  if (rawHidroChanged) {
+    saveToStorage(HYDRO_DATA_STORAGE_KEY, rawHidro);
+  }
+
   out.hidroData = {};
   for (const [key, val] of Object.entries(rawHidro)) {
     out.hidroData[key] = val;

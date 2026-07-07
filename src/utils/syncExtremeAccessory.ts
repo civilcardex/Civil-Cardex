@@ -54,7 +54,7 @@ function bumpGasAccesorio(ramalId: string, acc: string, delta: number): void {
   }
 }
 
-function bumpHidroAccesorio(netId: string, acc: string, delta: number, ramalId: string, planId: string | number): void {
+export function bumpHidroAccesorio(netId: string, acc: string, delta: number, ramalId: string, planId: string | number): void {
   const hidroKey = `${netId}_${ramalId}_${planId}`;
   const rawHidro = loadFromStorage<Record<string, HidroAccesorios> | null>(HYDRO_DATA_STORAGE_KEY, null) || {};
   const entry = rawHidro[hidroKey] || {};
