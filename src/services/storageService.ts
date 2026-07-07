@@ -70,13 +70,10 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
       .select('data')
       .eq('plano_id', planoId)
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
       
     if (error) {
-      // PGRST116 means zero rows, which is normal for a new plan
-      if (error.code !== 'PGRST116') {
-        if (import.meta.env.DEV) console.error('storageService loadTrazosFromDB:', error);
-      }
+      if (import.meta.env.DEV) console.error('storageService loadTrazosFromDB:', error);
       return null;
     }
     return (data?.data as PlanTrazos) || null;
