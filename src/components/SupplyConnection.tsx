@@ -188,31 +188,31 @@ function Acometida({
                 </tr>
                 {/* ACOM-02 */}
                 <tr>
-                  <td className="c" style={{fontWeight: 600, padding: "2px 4px"}}>AC-02</td>
-                  <td className="c" style={{padding: "2px 4px"}}>Contador</td>
-                  <td className="c" style={{padding: "1px"}}>
+                  <td className="c" style={{fontWeight: 600, padding: "2px 4px", borderBottom: "1px solid var(--line)"}}>AC-02</td>
+                  <td className="c" style={{padding: "2px 4px", borderBottom: "1px solid var(--line)"}}>Contador</td>
+                  <td className="c" style={{padding: "1px", borderBottom: "1px solid var(--line)"}}>
                     {isTr2Drawn ? (
                       <span style={{fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)"}}>{acoMonName || '—'}</span>
                     ) : (
                       <input aria-label="Nombre montante" value={acoMonName} onChange={e=>setAcoMonName(e.target.value)} className="ni" style={{fontSize: 11, padding: "2px"}} placeholder="Mont..." />
                     )}
                   </td>
-                  <td className="c" style={{padding: "1px"}}>
+                  <td className="c" style={{padding: "1px", borderBottom: "1px solid var(--line)"}}>
                     {isTr2Drawn ? (
                       <span style={{fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)"}}>{fmt(acoL2.h, 2)}</span>
                     ) : (
                       <LazyNum ariaLabel="Longitud horizontal ACOM-02" value={acoL2.h} onChange={(v: number)=>setAcoL2(s=>({...s,h:v}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 11, padding: 2}} />
                     )}
                   </td>
-                  <td className="c" style={{padding: "1px"}}>
+                  <td className="c" style={{padding: "1px", borderBottom: "1px solid var(--line)"}}>
                     {isTr2Drawn ? (
                       <span style={{fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)"}}>{fmt(acoL2.le, 2)}</span>
                     ) : (
                       <LazyNum ariaLabel="Longitud equivalente ACOM-02" value={acoL2.le} onChange={(v: number)=>setAcoL2(s=>({...s,le:v}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 11, padding: 2}} />
                     )}
                   </td>
-                  <td className="c" style={{fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)"}}>{Qaco > 0 ? fmt(Math.sqrt(Qaco), 2) : "—"}</td>
-                  <td className="c" style={{padding: "4px 8px", fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)"}}>
+                  <td className="c" style={{fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)", borderBottom: "1px solid var(--line)"}}>{Qaco > 0 ? fmt(Math.sqrt(Qaco), 2) : "—"}</td>
+                  <td className="c" style={{padding: "4px 8px", fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)", borderBottom: "1px solid var(--line)"}}>
                     {AF_DIAM_OPTS.find(o => o.nominal === acoContMonDiam)?.label || acoContMonDiam || "—"}
                   </td>
                 </tr>
@@ -296,14 +296,9 @@ function Acometida({
                   <td className="c" style={TD_PARAM_UNIT}>pulg</td>
                 </tr>
                 <tr>
-                  <td style={TD_PARAM_LABEL}>Caudal nominal (Qn)</td>
-                  <td className="c" colSpan={2} style={{textAlign: "center", fontWeight: 600, padding: "4px", color: "var(--txt2)"}}>{fmt(contadorSel.q || 0)}</td>
-                  <td className="c" style={TD_PARAM_UNIT}>L/s</td>
-                </tr>
-                <tr>
-                  <td style={TD_PARAM_LABEL}>Pérdidas por fricción contador</td>
-                  <td className="c" colSpan={2} style={{textAlign: "center", fontWeight: 600, padding: "4px", color: hfContador > acoHfMax ? "var(--err)" : "var(--txt2)"}}>{fmt(hfContador)}</td>
-                  <td className="c" style={TD_PARAM_UNIT}>mca</td>
+                  <td style={{...TD_PARAM_LABEL, borderBottom: "1px solid var(--line)"}}>Caudal nominal (Qn)</td>
+                  <td className="c" colSpan={2} style={{textAlign: "center", fontWeight: 600, padding: "4px", color: "var(--txt2)", borderBottom: "1px solid var(--line)"}}>{fmt(contadorSel.q || 0)}</td>
+                  <td className="c" style={{...TD_PARAM_UNIT, borderBottom: "1px solid var(--line)"}}>L/s</td>
                 </tr>
 
               </tbody>
@@ -402,8 +397,8 @@ function Acometida({
                   <td style={{textAlign: "right", fontWeight: 700, padding: "6px 8px", color: "var(--txt2)", fontFamily: "var(--mono)"}}>{fmt(pResidual)} <span style={{fontSize: 9, color: "var(--txt3)"}}>mca</span></td>
                 </tr>
                 <tr>
-                  <td style={{fontWeight: 700, padding: "8px", textAlign: "left"}}>ESTADO</td>
-                  <td style={{textAlign: "center", fontWeight: 800, background: okPresion && hfContador <= acoHfMax ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)", color: okPresion && hfContador <= acoHfMax ? "var(--succ)" : "var(--err)", padding: "8px", letterSpacing: 0.5}}>
+                  <td style={{fontWeight: 700, padding: "4px 8px", textAlign: "left", borderBottom: "1px solid var(--line)"}}>ESTADO</td>
+                  <td style={{textAlign: "center", fontWeight: 800, background: okPresion && hfContador <= acoHfMax ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)", color: okPresion && hfContador <= acoHfMax ? "var(--succ)" : "var(--err)", padding: "4px", letterSpacing: 0.5, borderBottom: "1px solid var(--line)"}}>
                     {okPresion && hfContador <= acoHfMax ? "O.K." : "NO CUMPLE"}
                   </td>
                 </tr>

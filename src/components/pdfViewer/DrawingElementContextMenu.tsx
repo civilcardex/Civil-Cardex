@@ -940,7 +940,8 @@ function getAccessoryOptions(netId: string) {
     return GAS_ACCESORIOS.map(a => ({ value: a.id, label: a.nombre }));
   }
   if (['af', 'ac', 'rci', 'rec'].includes(netId)) {
-    return ACCESORIOS_HIDRO.map(a => ({ value: a.id, label: a.nombre }));
+    // AF/AC: Solo válvulas, reducciones, ampliaciones y otros (sin tees ni codos)
+    return ACCESORIOS_HIDRO.filter(a => a.cat !== 'Codos' && a.cat !== 'Tees').map(a => ({ value: a.id, label: a.nombre }));
   }
   return [];
 }

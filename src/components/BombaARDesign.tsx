@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { dec } from "../utils/parseDecimal";
 import PageNav from './PageNav';
 import { SI, TH, TD } from "../styles/sharedTableStyles";

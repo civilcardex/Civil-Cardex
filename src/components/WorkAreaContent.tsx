@@ -88,7 +88,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
         ))}
       </fieldset>
       {redActiva === 'san' && redes.has('san') && (
-        <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <PageNav page={sanPage} setPage={setSanPage} total={4} color="var(--san)" labels={['Cálculo de unidades de descarga', 'Diseño sanitario', 'Bajantes y ventilación', 'Accesorios']} onPageHover={prefetchSan} />
           {sanPage === 1 && <Suspense fallback={FALLBACK}><CalculoUD /></Suspense>}
           {sanPage === 2 && <Suspense fallback={FALLBACK}><DisenosSanitarios /></Suspense>}
@@ -98,7 +98,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
       )}
       {redActiva === 'll' && redes.has('ll') && (
         <RainwaterProvider>
-        <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <PageNav page={llPage} setPage={setLlPage} total={3} color="var(--ll)" labels={['Diseño lluvias', 'Chequeo bajantes', 'Chequeo canales']} onPageHover={prefetchLl} />
           {llPage === 1 && <Suspense fallback={FALLBACK}><DisenoLluvias /></Suspense>}
           {llPage === 2 && <Suspense fallback={FALLBACK}><ChequeoBajantesLluvias /></Suspense>}
@@ -107,7 +107,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
         </RainwaterProvider>
       )}
       {redActiva === 'af' && redes.has('af') && (
-        <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <PageNav page={afPage} setPage={setAfPage} total={3} color="var(--af)" labels={['Cálculo de unidades de consumo', 'Diseño de red agua fría', 'Accesorios']} onPageHover={prefetchAfAc} />
           {afPage === 1 && <Suspense fallback={FALLBACK}><CalculoUC tipo="af" /></Suspense>}
           {afPage === 2 && <Suspense fallback={FALLBACK}><WaterNetworkDesign networkType="af" diamTable={DIAMETROS_AF} lookupFn={lookupInterno as any} /></Suspense>}
@@ -115,7 +115,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
         </div>
       )}
       {redActiva === 'ac' && redes.has('ac') && (
-        <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <PageNav page={acPage} setPage={setAcPage} total={4} color="var(--ac)" labels={['Cálculo de unidades de consumo', 'Diseño de red agua caliente', 'Selección calentador', 'Accesorios']} onPageHover={prefetchAfAc} />
           {acPage === 1 && <Suspense fallback={FALLBACK}><CalculoUC tipo="ac" /></Suspense>}
           {acPage === 2 && <Suspense fallback={FALLBACK}><WaterNetworkDesign networkType="ac" diamTable={DIAMETROS_AC} lookupFn={lookupInternoAC as any} /></Suspense>}

@@ -6,6 +6,7 @@ import { matLongName, pisoLbl, GAS, DEFAULT_PENDIENTE_PCT } from "../constants";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync";
+import { syncExtremeAccessoryToHidroData } from "../utils/syncExtremeAccessory";
 import { loadFromStorage, saveToStorage, saveTrazosToDB, loadTrazosFromDB } from "../services/storageService";
 import { GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY } from "../constants/storage-keys";
 import PdfViewerToolbar, { STATUS } from "./pdfViewer/PdfViewerToolbar";
@@ -18,6 +19,7 @@ import DrawingElementContextMenu from "./pdfViewer/DrawingElementContextMenu";
 import { type ContextMenuState } from "./pdfViewer/DrawingElementContextMenuContext";
 import ConfirmDialog from "./pdfViewer/ConfirmDialog";
 import AlertDialog from "./pdfViewer/AlertDialog";
+import AccesorioModal from "./pdfViewer/AccesorioModal";
 import TipoTramoSelector from "./pdfViewer/TipoTramoSelector";
 import TramoEditor from "./pdfViewer/TramoEditor";
 import BajanteAsociacion from "./pdfViewer/BajanteAsociacion";
@@ -306,6 +308,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   const [contextMenuState, setContextMenuState] = useState<ContextMenuState | null>(null);
   const [confirmState, setConfirmState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({isOpen: false, title: '', message: '', onConfirm: () => {}});
   const [alertDialogState, setAlertDialogState] = useState<{isOpen: boolean; title: string; message: string}>({isOpen: false, title: '', message: ''});
+  const [accesorioModal, setAccesorioModal] = useState<{isOpen: boolean; ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean}>({isOpen: false, ramalId: '', angleDeg: 0, junctionIndex: 0, net: '', isTee: false});
 
   const contextMenuCbRef = useRef<any>(null);
   const onContextMenuCb = useCallback((bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: any) => {
@@ -319,8 +322,43 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     onStatus: () => {}, onDirty: onDirtyHandler, onSelect: setSelElement, onDelete: onDeleteHandler,
     onToolChange: setTool, onRequestText: onRequestTextCb, onAlert: (title: string, msg: string) => {
       setAlertDialogState({ isOpen: true, title, message: msg });
+    }, onAccesorioModal: (data) => {
+      setAccesorioModal({ isOpen: true, ramalId: data.ramalId, angleDeg: data.angleDeg, junctionIndex: data.junctionIndex, net: data.net, isTee: data.isTee });
     }, loadTrazosForPlan, setActiveNet, setScaleM, setLoading, setError, scale,
   });
+
+  // Handler for accesorio modal selection - updates the ramal accesory in engine + hidroData
+  const onAccesorioSelected = useCallback((ramalId: string, junctionIndex: number, _net: string, accId: string) => {
+    const eng = engineRef.current;
+    if (!eng) return;
+    const r = eng.ramales.find(r => r.id === ramalId);
+    if (!r) return;
+    // Save the accessory at the junction point (junction 0 = ini, last = fin)
+    const isIni = junctionIndex === 0;
+    const isFin = junctionIndex === r.pts.length - 1;
+    if (isIni) {
+      (r as any).accesorioInicio = accId;
+    } else if (isFin) {
+      (r as any).accesorioFin = accId;
+    } else {
+      (r as any)[`accMed${junctionIndex}`] = accId;
+    }
+    eng._markDirty();
+
+    // Sync to hidroData so the sidebar accessories count increments
+    try {
+      const planId = eng._loadedPlanId;
+      if (planId && planosCtx.plans) {
+        syncExtremeAccessoryToHidroData(ramalId, 'accesorioInicio', '', accId, planosCtx.plans);
+      }
+    } catch { /* ignore */ }
+    eng.render();
+    // Trigger sidebar refresh
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('aparatos-clear'));
+      setSelElement({ ...(r as any) });
+    }
+  }, [engineRef, planosCtx.plans]);
 
   useEffect(() => {
     if (engineRef.current && engineReady) engineRef.current.onContextMenu(contextMenuCbRef.current);
@@ -613,6 +651,11 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
       />
       <ConfirmDialog confirmState={confirmState} setConfirmState={setConfirmState} />
       <AlertDialog alertDialogState={alertDialogState} setAlertDialogState={setAlertDialogState} />
+      <AccesorioModal
+        modalState={accesorioModal}
+        onClose={() => setAccesorioModal(prev => ({ ...prev, isOpen: false }))}
+        onSelect={onAccesorioSelected}
+      />
 
       {/* Sidebar Right (was PdfViewerSidebarRight) */}
       <div className="visor-sidebar-right" style={dynamicRightStyle}>

@@ -18,6 +18,7 @@ interface UsePdfViewerEngineParams {
   onToolChange: (tool: string) => void;
   onRequestText: (x: number, y: number, cb: (text: string) => void) => void;
   onAlert: (title: string, msg: string) => void;
+  onAccesorioModal: (data: { ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean }) => void;
   loadTrazosForPlan: (eng: PlanoEngine, id: string) => Promise<boolean>;
   setActiveNet: (net: string) => void;
   setScaleM: (sm: string) => void;
@@ -41,6 +42,7 @@ export function usePdfViewerEngine({
   onToolChange,
   onRequestText,
   onAlert,
+  onAccesorioModal,
   loadTrazosForPlan,
   setActiveNet,
   setScaleM,
@@ -149,6 +151,7 @@ export function usePdfViewerEngine({
     eng.onDelete((ids) => onDelete(ids));
     eng.onActiveNetChange((net) => setActiveNet(net));
     eng.onAlert((title, msg) => onAlert(title, msg));
+    eng.onAccesorioModal((data) => onAccesorioModal(data));
     eng.onDirty(() => {
       eng._dirty = true;
       onDirty(eng);
