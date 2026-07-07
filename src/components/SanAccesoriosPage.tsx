@@ -33,12 +33,7 @@ function formatDiamFromLabel(label: string): string {
   return formatDiamPulg(label, p);
 }
 
-function formatYeeDiam(mainDiam: string, branchDiam: string): string {
-  const m = formatDiamFromLabel(mainDiam);
-  const b = formatDiamFromLabel(branchDiam);
-  if (m === '—' || b === '—') return m;
-  return `${m}×${b}`;
-}
+
 
 export default function SanAccesoriosPage() {
   const [tick, setTick] = useState(0);
@@ -48,8 +43,13 @@ export default function SanAccesoriosPage() {
   useEffect(() => {
     const handler = () => setTick(t => t + 1);
     window.addEventListener('storage', handler);
-    const iv = setInterval(handler, 10000);
-    return () => { window.removeEventListener('storage', handler); clearInterval(iv); };
+    window.addEventListener('civilflow_san_sync_changed', handler);
+    const iv = setInterval(handler, 3000);
+    return () => {
+      window.removeEventListener('storage', handler);
+      window.removeEventListener('civilflow_san_sync_changed', handler);
+      clearInterval(iv);
+    };
   }, []);
 
   const yeeDiams = useMemo(() => {
@@ -82,7 +82,7 @@ export default function SanAccesoriosPage() {
               diametro: r.diametro || '',
               pts: r.pts,
               tipo: r.tipo || 'ramal',
-              planId: plan.id
+              planId: String(plan.id)
             });
           }
         }
@@ -90,7 +90,16 @@ export default function SanAccesoriosPage() {
     }
     
     // Find all connections: tributarios (via padreTributarioLabel/padre) AND ramales (via geometric proximity)
-    const allConnections: { parentLabel: string; diamStr: string }[] = [];
+    const allConnections: { parentKey: string; parentLabel: string; diamStr: string }[] = [];
+    
+    // Helper to compute parentKey from label/parent
+    const labelToKey = new Map<string, string>();
+    for (const t of tramosSan) {
+      if (t.esBajante) continue;
+      const lbl = (t as any).label || t.id;
+      const key = String(t._key || `${t.id}-${t.planId}`);
+      if (!labelToKey.has(lbl)) labelToKey.set(lbl, key);
+    }
     
     // Case 1: tributarios from tramosSan
     for (const child of tramosSan) {
@@ -101,7 +110,8 @@ export default function SanAccesoriosPage() {
       
       const parentLabel = (child as any).padreTributarioLabel || (child as any).padre;
       if (parentLabel) {
-        allConnections.push({ parentLabel, diamStr: childDiamStr });
+        const parentKey = labelToKey.get(parentLabel) || parentLabel;
+        allConnections.push({ parentKey, parentLabel, diamStr: childDiamStr });
       }
     }
     
@@ -125,80 +135,54 @@ export default function SanAccesoriosPage() {
             }
           }
           if (nearSegment) {
-            allConnections.push({ parentLabel: parent.label, diamStr: childDiamStr });
-            break; // Only count once per child-parent pair
+            const parentLabel = parent.label;
+            const parentKey = `${parent.id}-${parent.planId}`;
+            allConnections.push({ parentKey, parentLabel, diamStr: childDiamStr });
+            break;
           }
         }
       }
     }
     
-    // Group connections by parent
+    // Group connections by parent (use parentKey for uniqueness)
     const byParent: Record<string, { diamStr: string }[]> = {};
     for (const conn of allConnections) {
-      if (!byParent[conn.parentLabel]) byParent[conn.parentLabel] = [];
-      byParent[conn.parentLabel].push({ diamStr: conn.diamStr });
+      if (!byParent[conn.parentKey]) byParent[conn.parentKey] = [];
+      byParent[conn.parentKey].push({ diamStr: conn.diamStr });
     }
     
     // Build result
     for (const t of tramosSan) {
       if (t.esBajante || t.tipo === 'tributario') continue;
-      const parentLabel = (t as any).label || t.id;
+      const tKey = String(t._key || `${t.id}-${t.planId}`);
       const mainDiam = (t as any).diametro || '';
       const mainDiamStr = formatDiamFromLabel(mainDiam);
       
-      const myConnections = byParent[parentLabel] || [];
+      const myConnections = byParent[tKey] || [];
       if (myConnections.length === 0) continue;
       
       // Group by diameter
       const byDiam: Record<string, number> = {};
       myConnections.forEach(c => { byDiam[c.diamStr] = (byDiam[c.diamStr] || 0) + 1; });
       
-      if (!result[parentLabel]) result[parentLabel] = { simple: [], doble: [] };
+      if (!result[tKey]) result[tKey] = { simple: [], doble: [] };
       
       // Pairs form dobles, remainder forms simples
       for (const [diamStr, count] of Object.entries(byDiam)) {
         const dobleCount = Math.floor(count / 2);
         const simpleCount = count % 2;
         for (let i = 0; i < dobleCount; i++) {
-          result[parentLabel].doble.push(`${mainDiamStr}×${diamStr}`);
+          result[tKey].doble.push(`${mainDiamStr}×${diamStr}`);
         }
         if (simpleCount > 0) {
-          result[parentLabel].simple.push(`${mainDiamStr}×${diamStr}`);
+          result[tKey].simple.push(`${mainDiamStr}×${diamStr}`);
         }
       }
     }
     return result;
   }, [tick, tramosSan, plans]);
 
-  const tramos = useMemo(() => {
-    const hidroData = loadHidro();
-    const result = [];
-    const filtered = tramosSan.filter(t => (t.tipo === 'ramal' || t.tipo === 'tributario') && !t.esBajante);
-    for (const t of filtered) {
-      const key = `san_${t.id}_${t.planId}`;
-      const srcAcc = hidroData[key]?.accesorios || {};
-      const acc: Record<string, number> = {};
-      for (const a of SAN_ACCESORIOS) {
-        acc[a.id] = srcAcc[a.id] || 0;
-      }
-      result.push({
-        id: t.id,
-        label: (t as any).label || t.id,
-        tipo: t.tipo,
-        piso: t.piso,
-        _nivelLabel: (t as any)._nivelLabel,
-        diametro: (t as any).diametro || '',
-        diamPulg: (t as any).diamPulg,
-        accesorios: acc,
-        accesorioInicio: (t as any).accesorioInicio,
-        accesorioFin: (t as any).accesorioFin,
-        diametroInicio: (t as any).diametroInicio,
-        diametroFin: (t as any).diametroFin,
-        padreTributarioLabel: (t as any).padreTributarioLabel
-      });
-    }
-    return result;
-  }, [tick, tramosSan]);
+
 
   const totalsByDiameter = useMemo(() => {
     const hidroData = loadHidro();
@@ -238,7 +222,8 @@ export default function SanAccesoriosPage() {
       } else {
         const key = `san_${t.id}_${t.planId}`;
         const srcAcc = hidroData[key]?.accesorios || {};
-        const yd = yeeDiams[(t as any).label || t.id] || { simple: [], doble: [] };
+        const tKey = String((t as any)._key || `${t.id}-${t.planId}`);
+        const yd = yeeDiams[tKey] || { simple: [], doble: [] };
         for (const a of SAN_ACCESORIOS) {
           const v = srcAcc[a.id] || 0;
           if (v <= 0) continue;
@@ -278,7 +263,7 @@ export default function SanAccesoriosPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', flex: 1, paddingBottom: '24px' }}>
       
       {/* Card: Resumen de accesorios por diámetro */}
-      <section className="card" style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, maxHeight: '100%', overflow: 'hidden' }}>
+      <section className="card" style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'visible' }}>
         <div className="card-h">
           <h3 className="card-t">
             <img src="/iconos_diseno_redes/general/Accesorios.svg" alt="Totales" width={24} height={24} style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} loading="lazy" />
@@ -286,7 +271,7 @@ export default function SanAccesoriosPage() {
           </h3>
           <span className="card-s">Totales acumulados</span>
         </div>
-        <div className="scroll-top" style={{ padding: '12px', flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        <div className="scroll-top" style={{ padding: '12px', flex: 1, minHeight: 0 }}>
           <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
             <table className="tbl" style={{ minWidth: 760, fontSize: 13 }}>
               <thead>
