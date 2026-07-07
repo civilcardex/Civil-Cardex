@@ -6,7 +6,7 @@ import { matLongName, pisoLbl, GAS, DEFAULT_PENDIENTE_PCT } from "../constants";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync";
-import { syncExtremeAccessoryToHidroData } from "../utils/syncExtremeAccessory";
+import { bumpHidroAccesorio } from "../utils/syncExtremeAccessory";
 import { loadFromStorage, saveToStorage, saveTrazosToDB, loadTrazosFromDB } from "../services/storageService";
 import { GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY } from "../constants/storage-keys";
 import PdfViewerToolbar, { STATUS } from "./pdfViewer/PdfViewerToolbar";
@@ -348,8 +348,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     // Sync to hidroData so the sidebar accessories count increments
     try {
       const planId = eng._loadedPlanId;
-      if (planId && planosCtx.plans) {
-        syncExtremeAccessoryToHidroData(ramalId, 'accesorioInicio', '', accId, planosCtx.plans);
+      if (planId) {
+        bumpHidroAccesorio(_net, accId, 1, ramalId, planId);
       }
     } catch { /* ignore */ }
     eng.render();
