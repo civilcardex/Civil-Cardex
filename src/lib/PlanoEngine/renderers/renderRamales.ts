@@ -1,6 +1,6 @@
 import { NETS } from '../PlanoState';
 import { snapTributaryToPadre45Deg } from '../PlanoEngineDrawing';
-import { rotatedRectCorners } from '../HitTester';
+import { rotatedRectCorners, pointToSegmentDist } from '../HitTester';
 import type { IPlanoEngineCore } from '../PlanoState';
 import { drawRamalPath } from './drawRamalPath';
 import { renderJunctions } from './renderJunctions';
@@ -11,6 +11,7 @@ import { APARATOS_DEF } from '../../../constants';
 export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const isTributarioMode = engine.tipoTramo === 'tributario' && engine.tool === 'line';
   const padreId = engine.padreTributario;
+  const drawnCrossings = new Set<string>();
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
     const net = NETS.find((n) => n.id === r.net);
@@ -783,15 +784,16 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           ctx.lineTo(baseHorizX + perX * L3, baseHorizY + perY * L3);
           ctx.stroke();
         } else {
+          if (accType.startsWith('tee') || accType === 'te_linea' || accType === 'te_ramal' || accType.startsWith('yee')) {
+            ctx.restore();
+            return;
+          }
           // Fallback text symbol for any other accessory
           let label = accType.substring(0, 3).toUpperCase();
           if (accType.startsWith('codo90')) label = 'C90';
           else if (accType.startsWith('codo45')) label = 'C45';
           else if (accType === 'codos_90_std' || accType === 'codos_90_rl') label = 'C90';
-          else if (accType.startsWith('tee')) label = 'T';
-          else if (accType === 'te_linea' || accType === 'te_ramal') label = 'T';
           else if (accType === 'valvula_bola') label = 'VB';
-          else if (accType.startsWith('yee')) label = 'Y';
           else if (accType === 'valvPie') label = 'VP';
           else if (accType === 'reduccion') label = 'RED';
           else if (accType === 'ampliacion') label = 'AMP';
@@ -813,6 +815,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         
         ctx.restore();
       });
+
+
     }
 
     if (['san', 'af', 'ac', 'gas'].includes(r.net) && r.pts.length >= 2) {
@@ -842,6 +846,105 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
 
         drawSingleApplianceSymbol(ctx, engine, apId, c, outX, outY, col, hasAcc);
       });
+    }
+  });
+
+  // Draw all bilateral crossings (teeBilateral) - white circle with black border and '+' at perpendicular crossings
+  engine.ramales.forEach((r) => {
+    if (engine._hiddenNets.has(r.net)) return;
+    if ((r.net === 'af' || r.net === 'ac') && (r as any).bilateralCrossings && (r as any).bilateralCrossings.length > 0) {
+      const rad = engine.mm2cvs(1.6 * (engine.labelScaleM || 1));
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (const cp of (r as any).bilateralCrossings) {
+        const key = `${cp[0].toFixed(2)},${cp[1].toFixed(2)}`;
+        if (drawnCrossings.has(key)) continue;
+        drawnCrossings.add(key);
+
+        const c = engine.toCvs(cp[0], cp[1]);
+
+        // Find direction vectors of the crossing
+        let dir1 = { x: 1, y: 0 };
+        let dir2 = { x: 0, y: 1 };
+        let foundCount = 0;
+        const TOL = 0.5;
+
+        for (const rm of engine.ramales) {
+          if (rm.net !== r.net) continue;
+          if (!rm.pts || rm.pts.length < 2) continue;
+          for (let i = 0; i < rm.pts.length - 1; i++) {
+            const p1 = rm.pts[i];
+            const p2 = rm.pts[i + 1];
+            const dist = pointToSegmentDist(cp[0], cp[1], p1[0], p1[1], p2[0], p2[1]);
+            if (dist < TOL) {
+              const dx = p2[0] - p1[0];
+              const dy = p2[1] - p1[1];
+              const len = Math.hypot(dx, dy);
+              if (len > 0.001) {
+                if (foundCount === 0) {
+                  dir1 = { x: dx / len, y: dy / len };
+                  foundCount++;
+                } else {
+                  dir2 = { x: dx / len, y: dy / len };
+                  foundCount++;
+                  break;
+                }
+              }
+            }
+          }
+          if (foundCount >= 2) break;
+        }
+
+        if (foundCount < 2) {
+          dir2 = { x: -dir1.y, y: dir1.x };
+        }
+
+        const armLen = rad * 1.5;
+        const capW = rad * 0.45;
+        const maskW = 3.5 * engine.zoom;
+        const lineW = 1.5 * engine.zoom;
+
+        const dirs = [
+          dir1,
+          { x: -dir1.x, y: -dir1.y },
+          dir2,
+          { x: -dir2.x, y: -dir2.y }
+        ];
+
+        // 1. Draw white mask (thick lines) to clear the pipe underneath
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = maskW;
+        ctx.beginPath();
+        for (const d of dirs) {
+          ctx.moveTo(c.x, c.y);
+          ctx.lineTo(c.x + d.x * armLen, c.y + d.y * armLen);
+        }
+        ctx.stroke();
+
+        // 2. Draw black lines (thinner)
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = lineW;
+        ctx.beginPath();
+        for (const d of dirs) {
+          ctx.moveTo(c.x, c.y);
+          ctx.lineTo(c.x + d.x * armLen, c.y + d.y * armLen);
+        }
+        ctx.stroke();
+
+        // 3. Draw the four T-bar caps at the ends of each arm
+        ctx.beginPath();
+        for (const d of dirs) {
+          const endX = c.x + d.x * armLen;
+          const endY = c.y + d.y * armLen;
+          const perpX = -d.y;
+          const perpY = d.x;
+          ctx.moveTo(endX - perpX * capW, endY - perpY * capW);
+          ctx.lineTo(endX + perpX * capW, endY + perpY * capW);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
     }
   });
 

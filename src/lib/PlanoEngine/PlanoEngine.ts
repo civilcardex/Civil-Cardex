@@ -190,6 +190,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _onDeleteCb: ((ids: string[]) => void) | null;
   _onActiveNetChangeCb: ((net: string) => void) | null;
   _onAlertCb: ((title: string, msg: string) => void) | null;
+  _onAccesorioModalCb: ((data: { ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean }) => void) | null;
   _dirty: boolean;
   _lastRightClickTime: number;
 
@@ -231,6 +232,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._onDeleteCb = null;
     this._onActiveNetChangeCb = null;
     this._onAlertCb = null;
+    this._onAccesorioModalCb = null;
     this._dirty = false;
     this._lastRightClickTime = 0;
     this._onUpdateCb = null;
@@ -246,9 +248,14 @@ export default class PlanoEngine implements IPlanoEngineCore {
   onDelete(cb: (ids: string[]) => void): void { this._onDeleteCb = cb; }
   onActiveNetChange(cb: (net: string) => void): void { this._onActiveNetChangeCb = cb; }
   onAlert(cb: (title: string, msg: string) => void): void { this._onAlertCb = cb; }
+  onAccesorioModal(cb: (data: { ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean }) => void): void { this._onAccesorioModalCb = cb; }
 
   triggerAlert(title: string, msg: string): void {
     if (this._onAlertCb) this._onAlertCb(title, msg);
+  }
+
+  triggerAccesorioModal(data: { ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean }): void {
+    if (this._onAccesorioModalCb) this._onAccesorioModalCb(data);
   }
 
   destroy(): void {

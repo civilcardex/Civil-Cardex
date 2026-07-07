@@ -1,3 +1,6 @@
+import { pointToSegmentDist } from './HitTester';
+import type { IPlanoEngineCore } from './PlanoState';
+
 export function checkRamalAngles(pts: number[][], net: string): boolean {
   if (pts.length < 2) return true;
   const isSanOrLl = net === 'san' || net === 'll';
@@ -61,6 +64,16 @@ export function segmentsIntersect(a1: number[], a2: number[], b1: number[], b2: 
   const dB2 = Math.hypot(ix - x4, iy - y4);
   if (dA1 < 0.001 || dA2 < 0.001 || dB1 < 0.001 || dB2 < 0.001) return false;
   return true;
+}
+
+export function segmentIntersectionPoint(a1: number[], a2: number[], b1: number[], b2: number[]): number[] | null {
+  const [x1, y1] = a1, [x2, y2] = a2, [x3, y3] = b1, [x4, y4] = b2;
+  const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (Math.abs(d) < 1e-10) return null;
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
+  const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / d;
+  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+  return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
 }
 
 export function _firstSegmentAngle(pts: number[][]): number {
@@ -139,3 +152,40 @@ export function snapTributaryToPadre45Deg(cursorX: number, cursorY: number, last
   }
   return best;
 }
+
+export function segmentStrictIntersectionPoint(a1: number[], a2: number[], b1: number[], b2: number[]): number[] | null {
+  const [x1, y1] = a1, [x2, y2] = a2, [x3, y3] = b1, [x4, y4] = b2;
+  const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (Math.abs(d) < 1e-10) return null;
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
+  const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / d;
+  if (t <= 0.01 || t >= 0.99 || u <= 0.01 || u >= 0.99) return null;
+  return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
+}
+
+export function isTeeAtEndpoint(ep: number[], engine: IPlanoEngineCore, _currentRamalId: string, net: string): boolean {
+  const TOL = 0.5;
+  let segmentCount = 0;
+  for (const r of engine.ramales) {
+    if (r.net !== net) continue;
+    if (!r.pts || r.pts.length < 2) continue;
+    for (let i = 0; i < r.pts.length - 1; i++) {
+      const p1 = r.pts[i];
+      const p2 = r.pts[i + 1];
+      const dist = pointToSegmentDist(ep[0], ep[1], p1[0], p1[1], p2[0], p2[1]);
+      if (dist < TOL) {
+        const atP1 = Math.hypot(ep[0] - p1[0], ep[1] - p1[1]) < TOL;
+        const atP2 = Math.hypot(ep[0] - p2[0], ep[1] - p2[1]) < TOL;
+        if (atP1) {
+          segmentCount++;
+        } else if (atP2) {
+          segmentCount++;
+        } else {
+          segmentCount += 2;
+        }
+      }
+    }
+  }
+  return segmentCount >= 3;
+}
+

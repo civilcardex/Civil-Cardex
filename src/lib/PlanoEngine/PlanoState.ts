@@ -90,6 +90,7 @@ export interface PlanoRamal {
   _labelBox?: LabelBoxCorners;
   _net?: string;
   diamPulg?: number;
+  bilateralCrossings?: number[][];
 }
 
 export interface PlanoBajante {
@@ -304,4 +305,5 @@ export interface IPlanoEngineCore {
   deleteSelected(ids?: string[]): void;
   setActiveNet(id: string): void;
   triggerAlert(title: string, msg: string): void;
+  triggerAccesorioModal(data: { ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean }): void;
 }
