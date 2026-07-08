@@ -1,7 +1,7 @@
 import React from 'react';
 
 const TH_DEFAULT: React.CSSProperties = {
-  fontSize: 10, fontWeight: 600, color: 'var(--txt3)', fontFamily: 'var(--mono)',
+  fontSize: 12, fontWeight: 600, color: 'var(--txt3)', fontFamily: 'var(--mono)',
   textAlign: 'center', padding: '2px 6px',
   borderBottom: '1px solid var(--line)', borderRight: '1px solid var(--line)',
   whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: '0.4px',
@@ -9,7 +9,7 @@ const TH_DEFAULT: React.CSSProperties = {
 };
 
 const TD_DEFAULT: React.CSSProperties = {
-  fontSize: 11, fontFamily: 'var(--mono)', padding: '1px 6px',
+  fontSize: 12, fontFamily: 'var(--mono)', padding: '1px 6px',
   borderBottom: '1px solid var(--line)', borderRight: '1px solid var(--line)',
   color: 'var(--txt2)', textAlign: 'center', verticalAlign: 'middle',
 };

@@ -9,11 +9,13 @@ import { writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
 import { calcHydraulicCheck } from "../utils/hydraulicCheck";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
+const SanitaryDesign_S1: React.CSSProperties = { fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer' };
+
 
 const SR_ONLY = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 } as const;
-const EMPTY_ROW = { padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 } as const;
-const TH_HDR = { fontSize:9, textAlign:'center', padding:'2px 3px' } as const;
-const TH_SUB = { fontSize:8, textAlign:'center', padding:'2px 3px' } as const;
+const EMPTY_ROW = { padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 9 } as const;
+const TH_HDR = { fontSize: 9, textAlign:'center', padding:'1px 2px' } as const;
+const TH_SUB = { fontSize: 9, textAlign:'center', padding:'1px 2px' } as const;
 
 export default function DisenosSanitarios() {
   const { tramosSan, updTramoSan } = useTramos();
@@ -351,19 +353,19 @@ export default function DisenosSanitarios() {
     </div>
     <div className="scroll-top" style={{padding:'16px'}}>
       <div className="scroll-inner">
-        <table className="tbl" style={{fontSize:10}}>
+        <table className="tbl" style={{fontSize: 9}}>
           <caption style={SR_ONLY}>Diseño de red sanitaria</caption>
           <thead>
             <tr>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Tramo</th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Nivel</th>
-              <th scope="col" className="col-h san" colSpan={3} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>Unidades de descarga</th>
+              <th scope="col" className="col-h san" colSpan={3} style={{textAlign:'center',fontSize: 9,padding:'1px 2px'}}>Unidades de descarga</th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}># Descargas</th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>K</th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Caudal<br/><small>(LPS)</small></th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Manning<br/></th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Pendiente<br/><small>(%)</small></th>
-              <th scope="col" className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>Diámetro</th>
+              <th scope="col" className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize: 9,padding:'1px 2px'}}>Diámetro</th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Q<sub>o</sub><br/><small>(LPS)</small></th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>V<sub>o</sub><br/><small>(m/s)</small></th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Q/Q<sub>o</sub></th>
@@ -375,7 +377,7 @@ export default function DisenosSanitarios() {
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Flujo</th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Y<sub>max</sub><br/><small>(mm)</small></th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Y<sub>n</sub> vs Y<sub>c</sub></th>
-              <th scope="col" className="col-h ven" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>Fuerza Tractiva</th>
+              <th scope="col" className="col-h ven" colSpan={2} style={{textAlign:'center',fontSize: 9,padding:'1px 2px'}}>Fuerza Tractiva</th>
             </tr>
             <tr>
               <th scope="col" className="col-h san" style={TH_SUB}>Propia</th>
@@ -430,12 +432,12 @@ export default function DisenosSanitarios() {
                 }
                 return (
                 <tr key={tKey}>
-                  <td className="c" style={{padding:'2px 3px'}}><span className="sigla" style={{fontSize:10}}>{t.id}</span></td>
-                  <td className="c" style={{padding:'2px 3px'}}><span style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{pisoCorto(t.piso)}</span></td>
-                  <td className="c" style={{fontFamily:'var(--mono)',padding:'2px 3px'}}>{udPropias}</td>
-                  <td className="c" style={{padding:'2px 3px',minWidth:60,maxWidth:120}}>
+                  <td className="c" style={{padding:'1px 2px'}}><span className="sigla" style={{fontSize: 9}}>{t.id}</span></td>
+                  <td className="c" style={{padding:'1px 2px'}}><span style={{fontSize: 9,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{pisoCorto(t.piso)}</span></td>
+                  <td className="c" style={{fontFamily:'var(--mono)',padding:'1px 2px'}}>{udPropias}</td>
+                  <td className="c" style={{padding:'1px 2px',minWidth:60,maxWidth:120}}>
                     {connectedKeys.length === 0 ? (
-                      <span style={{fontSize:9,color:'var(--txt3)'}}>—</span>
+                      <span style={{fontSize: 9,color:'var(--txt3)'}}>—</span>
                     ) : (
                       <div style={{display:'flex',flexWrap:'wrap',gap:2,justifyContent:'center',alignItems:'center'}}>
                         {connectedKeys.map(childKey => {
@@ -447,7 +449,7 @@ export default function DisenosSanitarios() {
                           return (
                             <span key={childKey}
                               title={`${rId} (${childTotalUd} UD)`}
-                              style={{fontSize:9,padding:'1px 2px',border:'1px solid var(--san)',borderRadius:3,color:'var(--san)',fontFamily:'var(--mono)',lineHeight:1.3}}>
+                              style={{fontSize: 9,padding:'1px 2px',border:'1px solid var(--san)',borderRadius:3,color:'var(--san)',fontFamily:'var(--mono)',lineHeight:1.3}}>
                               {rId}
                             </span>
                           );
@@ -455,38 +457,38 @@ export default function DisenosSanitarios() {
                       </div>
                     )}
                   </td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize:10,padding:'2px 3px'}}>{udAcum}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',padding:'2px 3px'}}>{nSalidas > 0 ? nSalidas : '—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,padding:'2px 3px'}}>{K!=null?K.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,padding:'2px 3px'}}>{Q!=null && Q>0?Q.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',padding:'2px 3px'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',padding:'2px 3px'}}>{sVal > 0 ? sVal : '—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:9,padding:'2px 3px'}}>{DcalcPulg>0?DcalcPulg.toFixed(2)+'"':'—'}</td>
-                  <td className="c" style={{padding:'2px 3px'}}>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize: 9,padding:'1px 2px'}}>{udAcum}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',padding:'1px 2px'}}>{nSalidas > 0 ? nSalidas : '—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,padding:'1px 2px'}}>{K!=null?K.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,padding:'1px 2px'}}>{Q!=null && Q>0?Q.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',padding:'1px 2px'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',padding:'1px 2px'}}>{sVal > 0 ? sVal : '—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{DcalcPulg>0?DcalcPulg.toFixed(2)+'"':'—'}</td>
+                  <td className="c" style={{padding:'1px 2px'}}>
                     <select
                       aria-label="Diámetro diseño"
                       value={DdisPulg||''}
                       onChange={e=>handleDiamChange(tKey,parseFloat(e.target.value)||0)}
-                      style={{fontFamily:'var(--mono)',fontSize:9,padding:'1px 2px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer'}}
+                      style={SanitaryDesign_S1}
                     >
                       <option value="">—</option>
                       {DIAM_OPTIONS.map(o=><option key={o.pulg} value={o.pulg}>{o.label}</option>)}
                     </select>
                   </td>
-                  <td className="c" style={{padding:'2px 3px'}}>{DintMm>0?DintMm:'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',padding:'2px 3px'}}>{Qo>0?Qo.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',padding:'2px 3px'}}>{Vo>0?Vo.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',padding:'2px 3px'}}>{qqo>0?qqo.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',padding:'2px 3px'}}>{Vreal>0?Vreal.toFixed(2):'—'}</td>
-                  <td className="c" style={{padding:'2px 3px'}}>{renderStatus(chequeoV)}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',padding:'2px 3px'}}>{Yc>0?Yc.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',padding:'2px 3px'}}>{Yn>0?Yn.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',padding:'2px 3px'}}>{Froude>0?Froude.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontSize:9,padding:'2px 3px'}}>{tipoFlujo}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',padding:'2px 3px'}}>{Ymax>0?Ymax.toFixed(2):'—'}</td>
-                  <td className="c" style={{padding:'2px 3px'}}>{renderStatus(chequeoYn)}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',padding:'2px 3px'}}>{fuerzaTractiva>0?fuerzaTractiva.toFixed(2):'—'}</td>
-                  <td className="c" style={{padding:'2px 3px'}}>{renderStatus(chequeoFT)}</td>
+                  <td className="c" style={{padding:'1px 2px'}}>{DintMm>0?DintMm:'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',padding:'1px 2px'}}>{Qo>0?Qo.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',padding:'1px 2px'}}>{Vo>0?Vo.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',padding:'1px 2px'}}>{qqo>0?qqo.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',padding:'1px 2px'}}>{Vreal>0?Vreal.toFixed(2):'—'}</td>
+                  <td className="c" style={{padding:'1px 2px'}}>{renderStatus(chequeoV)}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',padding:'1px 2px'}}>{Yc>0?Yc.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',padding:'1px 2px'}}>{Yn>0?Yn.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',padding:'1px 2px'}}>{Froude>0?Froude.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{tipoFlujo}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',padding:'1px 2px'}}>{Ymax>0?Ymax.toFixed(2):'—'}</td>
+                  <td className="c" style={{padding:'1px 2px'}}>{renderStatus(chequeoYn)}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',padding:'1px 2px'}}>{fuerzaTractiva>0?fuerzaTractiva.toFixed(2):'—'}</td>
+                  <td className="c" style={{padding:'1px 2px'}}>{renderStatus(chequeoFT)}</td>
                 </tr>
                 );
               });

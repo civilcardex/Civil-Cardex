@@ -4,6 +4,11 @@ import { REDES, USOS, pisoLbl } from "../../constants";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import type { useWorkAreaState } from "../useWorkAreaState";
 import EditButton from "../shared/EditButton";
+const InfoTab_S1: React.CSSProperties = { padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11, lineHeight: 1, flexShrink: 0, marginLeft: 2 };
+const InfoTab_S2: React.CSSProperties = { flexShrink: 0, padding: '7px 14px', fontSize: 12, fontWeight: 600, background: 'rgba(239,68,68,0.92)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, };
+const InfoTab_S3: React.CSSProperties = { background: 'rgba(255,255,255,.2)', border: 'none', borderRadius: 3, color: '#fff', cursor: 'pointer', fontSize: 11, padding: '2px 8px', flexShrink: 0 };
+const InfoTab_S4: React.CSSProperties = { display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: 6, flex: 1, minHeight: 0, overflowY: 'hidden', overflowX: 'auto', alignItems: 'stretch' };
+
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 
@@ -70,7 +75,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({ redes, setRedes, net
               const cssVar = `--${r.id}`;
               const currentColor = netColors[r.id] || '#666';
               return (
-                <button key={r.id} disabled={!isEditing || (isVent && !sanOn)} onClick={() => { if (isVent && !sanOn) return; const n = new Set(redes); if (on) n.delete(r.id); else n.add(r.id); setRedes(n); }}
+                <button type="button" key={r.id} disabled={!isEditing || (isVent && !sanOn)} onClick={() => { if (isVent && !sanOn) return; const n = new Set(redes); if (on) n.delete(r.id); else n.add(r.id); setRedes(n); }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 3,
                     padding: isVent ? '2px 5px 2px 12px' : '3px 5px',
@@ -129,7 +134,7 @@ const ActiveEquiposCard = React.memo(function ActiveEquiposCard({ redes, setRede
             if (!r) return null;
             const on = redes.has(r.id);
             return (
-              <button key={r.id} disabled={!editing} onClick={() => { if (!editing) return; const n = new Set(redes); if (on) n.delete(r.id); else n.add(r.id); setRedes(n); }}
+              <button type="button" key={r.id} disabled={!editing} onClick={() => { if (!editing) return; const n = new Set(redes); if (on) n.delete(r.id); else n.add(r.id); setRedes(n); }}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 3, padding: '3px 5px', cursor: editing ? 'pointer' : 'default',
                   background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left', opacity: editing ? 1 : 0.5
@@ -178,7 +183,7 @@ const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
             <div className="f" style={{ marginBottom: 0 }}><label htmlFor="fg-altsot" style={{ fontSize: 12 }}>Altura sótano</label><input id="fg-altsot" type="text" disabled={!isEditing} inputMode="decimal" value={props.altSotano} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px', opacity: isEditing ? 1 : 0.7 }} onChange={props.onDecChange(props.setAltSotano)} onBlur={props.onDecBlur(props.setAltSotano)} /></div>
             <div className="f" style={{ marginBottom: 0 }}><label htmlFor="fg-npt" style={{ fontSize: 12 }}>NPT P1</label><input id="fg-npt" type="text" disabled={!isEditing} inputMode="decimal" value={props.nptPiso1} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px', opacity: isEditing ? 1 : 0.7 }} onChange={props.onDecChange(props.setNptPiso1)} onBlur={props.onDecBlur(props.setNptPiso1)} /></div>
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', paddingBottom: 2 }}>
-              <button disabled={!isEditing} role="switch" aria-checked={props.conCubierta} onClick={() => props.setConCubierta(!props.conCubierta)} title="Incluir cubierta" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: isEditing ? 'pointer' : 'default', userSelect: 'none', padding: '4px 8px', borderRadius: 4, flexShrink: 0, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'inherit', opacity: isEditing ? 1 : 0.7 }}>
+              <button type="button" disabled={!isEditing} role="switch" aria-checked={props.conCubierta} onClick={() => props.setConCubierta(!props.conCubierta)} title="Incluir cubierta" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: isEditing ? 'pointer' : 'default', userSelect: 'none', padding: '4px 8px', borderRadius: 4, flexShrink: 0, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'inherit', opacity: isEditing ? 1 : 0.7 }}>
                 <div style={{ width: 28, height: 15, borderRadius: 8, background: props.conCubierta ? 'var(--ll)' : 'var(--line)', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
                   <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: props.conCubierta ? 15 : 2, transition: 'left .2s' }} />
                 </div>
@@ -186,7 +191,7 @@ const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
               </button>
             </div>
           </div>
-          <button disabled={!isEditing} onClick={props.generarPisos} style={{ width: '100%', padding: '6px', marginTop: 6, background: 'var(--acc)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontWeight: 600, fontSize: 12, cursor: isEditing ? 'pointer' : 'default', opacity: isEditing ? 1 : 0.5 }}>Generar niveles automáticamente</button>
+          <button type="button" disabled={!isEditing} onClick={props.generarPisos} style={{ width: '100%', padding: '6px', marginTop: 6, background: 'var(--acc)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontWeight: 600, fontSize: 12, cursor: isEditing ? 'pointer' : 'default', opacity: isEditing ? 1 : 0.5 }}>Generar niveles automáticamente</button>
         </div>
     </section>
   );
@@ -232,13 +237,13 @@ const LevelsCard = React.memo(function LevelsCard({ pisos, delPiso, addPiso, add
                   />
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', height: 20 }}><span style={{ fontSize: 11, color: 'var(--txt3)' }}>m</span></div>
                   <div className={`pdot ${p.ok ? 'ok' : ''}`} />
-                  {isEditing && <button onClick={() => delPiso(p.id)} title="Eliminar nivel" style={{ padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11, lineHeight: 1, flexShrink: 0, marginLeft: 2 }} onMouseEnter={e => { e.currentTarget.style.color = '#ef5350'; e.currentTarget.style.borderColor = 'rgba(211,47,47,.5)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--txt3)'; e.currentTarget.style.borderColor = 'var(--line)'; }}>&#x2715;</button>}
+                  {isEditing && <button type="button" onClick={() => delPiso(p.id)} title="Eliminar nivel" style={InfoTab_S1} onMouseEnter={e => { e.currentTarget.style.color = '#ef5350'; e.currentTarget.style.borderColor = 'rgba(211,47,47,.5)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--txt3)'; e.currentTarget.style.borderColor = 'var(--line)'; }}>&#x2715;</button>}
                 </li>
               ))}
             </ul>
             {isEditing && <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3, marginTop: 2, flexShrink: 0 }}>
-              <button className="btn-xs" onClick={addSotano} style={{ padding: '3px 6px', fontSize: 10 }}>+ Sótano</button>
-              <button className="btn-xs" onClick={addPiso} style={{ padding: '3px 6px', fontSize: 10 }}>+ Piso</button>
+              <button type="button" className="btn-xs" onClick={addSotano} style={{ padding: '3px 6px', fontSize: 10 }}>+ Sótano</button>
+              <button type="button" className="btn-xs" onClick={addPiso} style={{ padding: '3px 6px', fontSize: 10 }}>+ Piso</button>
             </div>}
           </>
         )}
@@ -285,15 +290,12 @@ function InfoTab({ state }: InfoTabProps) {
   return (
     <div className="fu info-gral" style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
       {alertMsg && (
-        <div role="alert" style={{
-          flexShrink: 0, padding: '7px 14px', fontSize: 12, fontWeight: 600,
-          background: 'rgba(239,68,68,0.92)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-        }}>
+        <div role="alert" style={InfoTab_S2}>
           ⚠ {alertMsg}
-          <button onClick={() => setAlertMsg(null)} style={{ background: 'rgba(255,255,255,.2)', border: 'none', borderRadius: 3, color: '#fff', cursor: 'pointer', fontSize: 11, padding: '2px 8px', flexShrink: 0 }}>✕</button>
+          <button type="button" onClick={() => setAlertMsg(null)} style={InfoTab_S3}>✕</button>
         </div>
       )}
-      <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: 6, flex: 1, minHeight: 0, overflowY: 'hidden', overflowX: 'auto', alignItems: 'stretch' }}>
+      <div style={InfoTab_S4}>
         <ProjectIdCard proy={proy} setP={setP} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 auto' }}>
           <ActiveNetsCard redes={redes} setRedes={setRedes} netColors={netColors} setNetColors={setNetColors} />

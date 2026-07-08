@@ -135,6 +135,8 @@ function fmtPiso(val: string, pisos: any[]): string {
 }
 
 import { writeBajantePropToDrawing, writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
+const DownpipesTable_S1: React.CSSProperties = { width: 40, padding: 2, textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 9, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--txt)' };
+
 
 const BajantesTable = memo(function BajantesTable_() {
   const { tramosSan } = useTramos();
@@ -517,48 +519,48 @@ const BajantesTable = memo(function BajantesTable_() {
       </div>
       <div className="scroll-top" style={{padding:'16px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
-        <table className="tbl" style={{fontSize:11}}>
+        <table className="tbl" style={{fontSize: 9}}>
           <caption className="visually-hidden">Bajantes de aguas negras y ventilación</caption>
           <thead>
             <tr>
-              <th scope="col" className="col-h san" colSpan={8} style={{textAlign:'center',padding:'2px 4px',fontSize:10}}>INFORMACIÓN COMÚN</th>
-              <th scope="col" className="col-h ok" colSpan={7} style={{textAlign:'center',padding:'2px 4px',fontSize:10}}>BAJANTES AGUAS NEGRAS</th>
-              <th scope="col" className="col-h ven" colSpan={6} style={{textAlign:'center',padding:'2px 4px',fontSize:10}}>TUBERÍA DE VENTILACIÓN</th>
+              <th scope="col" className="col-h san" colSpan={8} style={{textAlign:'center',padding:'1px 2px',fontSize: 9}}>INFORMACIÓN COMÚN</th>
+              <th scope="col" className="col-h ok" colSpan={7} style={{textAlign:'center',padding:'1px 2px',fontSize: 9}}>BAJANTES AGUAS NEGRAS</th>
+              <th scope="col" className="col-h ven" colSpan={6} style={{textAlign:'center',padding:'1px 2px',fontSize: 9}}>TUBERÍA DE VENTILACIÓN</th>
             </tr>
             <tr>
-              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>No.</th>
-              <th scope="col" className="col-h san" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Nivel</th>
-              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Ramales<br/>Asociados</th>
-              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Unidades<br/>Descarga</th>
-              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Llenado<br/></th>
-              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Caudal<br/><small>(LPS)</small></th>
-              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Manning<br/></th>
-              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Diámetro</th>
-              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Chequeo</th>
-              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Caudal máximo<br/><small>(LPS)</small></th>
-              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Velocidad terminal<br/><small>(m/s)</small></th>
-              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Longitud terminal</th>
-              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Vel. Aire<br/><small>(m/s)</small></th>
-              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Fricción<br/>(ƒ)</th>
-              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Caudal Aire<br/><small>(LPS)</small></th>
-              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Longitud Bajante<br/><small>(m)</small></th>
-              <th scope="col" className="col-h ven" colSpan={2} style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Diámetro Ventilación</th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>No.</th>
+              <th scope="col" className="col-h san" colSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Nivel</th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Ramales<br/>Asociados</th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Unidades<br/>Descarga</th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Llenado<br/></th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Caudal<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h san" rowSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Manning<br/></th>
+              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Diámetro</th>
+              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Chequeo</th>
+              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Caudal máximo<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ok" rowSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Velocidad terminal<br/><small>(m/s)</small></th>
+              <th scope="col" className="col-h ok" colSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Longitud terminal</th>
+              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Vel. Aire<br/><small>(m/s)</small></th>
+              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Fricción<br/>(ƒ)</th>
+              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Caudal Aire<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ven" rowSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Longitud Bajante<br/><small>(m)</small></th>
+              <th scope="col" className="col-h ven" colSpan={2} style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Diámetro Ventilación</th>
             </tr>
             <tr>
-              <th scope="col" className="col-h san" style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Origen</th>
-              <th scope="col" className="col-h san" style={{textAlign:'center',padding:'1px 3px',fontSize:9}}>Destino</th>
-              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Calculado<br/><small>(″)</small></th>
-              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Propuesto<br/><small>(″)</small></th>
-              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Calculada<br/><small>(m)</small></th>
-              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Mínima<br/><small>(m)</small></th>
-              <th scope="col" className="col-h ven" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Calculado<br/><small>(″)</small></th>
-              <th scope="col" className="col-h ven" style={{textAlign:'center',padding:'1px 3px',fontSize:8}}>Propuesto<br/><small>(″)</small></th>
+              <th scope="col" className="col-h san" style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Origen</th>
+              <th scope="col" className="col-h san" style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Destino</th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Calculado<br/><small>(″)</small></th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Propuesto<br/><small>(″)</small></th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Calculada<br/><small>(m)</small></th>
+              <th scope="col" className="col-h ok" style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Mínima<br/><small>(m)</small></th>
+              <th scope="col" className="col-h ven" style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Calculado<br/><small>(″)</small></th>
+              <th scope="col" className="col-h ven" style={{textAlign:'center',padding:'1px 1px',fontSize: 9}}>Propuesto<br/><small>(″)</small></th>
             </tr>
           </thead>
           <tbody>
             {(()=>{
               const banTramos = tramosSan.filter(t => t.esBajante && t.net !== 'vent' && t._net !== 'vent');
-              if (banTramos.length === 0) return <tr><td colSpan={21} style={{textAlign:'center',color:'var(--txt3)',padding:'24px 0',fontSize:11}}>No hay bajantes definidos. Marque un tramo como bajante en la tabla de Cálculo de unidades de descarga.</td></tr>;
+              if (banTramos.length === 0) return <tr><td colSpan={21} style={{textAlign:'center',color:'var(--txt3)',padding:'24px 0',fontSize: 9}}>No hay bajantes definidos. Marque un tramo como bajante en la tabla de Cálculo de unidades de descarga.</td></tr>;
 
               const tramoById: Record<string, any> = {};
               for (const tr of tramosSan) {
@@ -771,20 +773,20 @@ const BajantesTable = memo(function BajantesTable_() {
                 
                 return (
                   <tr key={t._key || `${t.id}-${t.piso}`}>
-                    <td className="c"><span className="sigla" style={{fontSize:9}}>{t.code || t.id}</span></td>
-                    <td className="c" style={{padding:'1px 3px',fontSize:10,fontFamily:'var(--mono)',color:'var(--txt)'}}>{origenVal}</td>
-                    <td className="c" style={{padding:'1px 3px',fontSize:10,fontFamily:'var(--mono)',color:'var(--txt)'}}>{destinoVal}</td>
-                    <td className="c" style={{fontSize:10,color:'var(--txt2)',fontFamily:'var(--mono)',padding:'1px 3px'}}>
+                    <td className="c"><span className="sigla" style={{fontSize: 9}}>{t.code || t.id}</span></td>
+                    <td className="c" style={{padding:'1px 1px',fontSize: 9,fontFamily:'var(--mono)',color:'var(--txt)'}}>{origenVal}</td>
+                    <td className="c" style={{padding:'1px 1px',fontSize: 9,fontFamily:'var(--mono)',color:'var(--txt)'}}>{destinoVal}</td>
+                    <td className="c" style={{fontSize: 9,color:'var(--txt2)',fontFamily:'var(--mono)',padding:'1px 1px'}}>
                       {ramalesAsocVal}
                     </td>
-                    <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize:10,padding:'1px 3px'}}>{totalUD > 0 ? totalUD : '—'}</td>
-                    <td className="c" style={{padding:'1px 3px'}}>
-                      <span style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{rStr || '—'}</span>
+                    <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize: 9,padding:'1px 1px'}}>{totalUD > 0 ? totalUD : '—'}</td>
+                    <td className="c" style={{padding:'1px 1px'}}>
+                      <span style={{fontSize: 9,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{rStr || '—'}</span>
                     </td>
-                    <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,fontSize:10,padding:'1px 3px'}}>{Q > 0 ? Q.toFixed(2) : '—'}</td>
-                    <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'1px 3px'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
-                    <td className="c" style={{fontFamily:'var(--mono)',fontSize:9,padding:'1px 3px'}}>{DcalcPulg > 0 ? DcalcPulg.toFixed(2) + '"' : '—'}</td>
-                    <td className="c" style={{padding:'1px 3px'}}>
+                    <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,fontSize: 9,padding:'1px 1px'}}>{Q > 0 ? Q.toFixed(2) : '—'}</td>
+                    <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 1px'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
+                    <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 1px'}}>{DcalcPulg > 0 ? DcalcPulg.toFixed(2) + '"' : '—'}</td>
+                    <td className="c" style={{padding:'1px 1px'}}>
                        <select
                          aria-label="Diámetro Bajante Propuesto"
                          value={resolvedSanDprop || ''}
@@ -800,7 +802,7 @@ const BajantesTable = memo(function BajantesTable_() {
                            writeBajantePropToDrawing(targetKey, 'san', 'dNominal', nom, plans);
                          }}
                          style={{
-                           fontSize: 10,
+                           fontSize: 9,
                            padding: '2px 4px',
                            background: 'var(--bg2)',
                            border: sanDiamWarn ? '1px solid var(--err)' : '1px solid var(--line)',
@@ -818,26 +820,26 @@ const BajantesTable = memo(function BajantesTable_() {
                          ))}
                        </select>
                        {sanDiamWarn && (
-                         <div style={{fontSize:8,color:'var(--err)',marginTop:2,lineHeight:1.2}}>
+                         <div style={{fontSize: 9,color:'var(--err)',marginTop:2,lineHeight:1.2}}>
                            Debe ser mayor o igual al &oslash; del ramal san. ({maxSanRamalDiamPulg}&quot;)
                          </div>
                        )}
                      </td>
-                     <td className="c" style={{fontSize:10,padding:'1px 3px'}}>{renderStatus(chequeo)}</td>
-                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'1px 3px'}}>{QmaxB > 0 ? QmaxB.toFixed(2) : '—'}</td>
-                     <td className="c" style={{fontSize:10,padding:'1px 3px'}}>{Vt > 0 ? Vt.toFixed(2) : '—'}</td>
-                     <td className="c" style={{fontSize:10,padding:'1px 3px'}}>{Ltcalc > 0 ? Ltcalc.toFixed(2) : '—'}</td>
-                     <td className="c" style={{fontSize:10,padding:'1px 3px'}}>{Ltmin > 0 ? Ltmin.toFixed(2) : '—'}</td>
-                     <td className="c" style={{fontSize:10,padding:'1px 3px'}}>{Vair > 0 ? Vair.toFixed(2) : '—'}</td>
-                     <td className="c" style={{padding:'1px 3px'}}><span style={{fontFamily:'var(--mono)',fontSize:10}}>{fDarcy > 0 ? fDarcy.toFixed(3) : '—'}</span></td>
-                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'1px 3px'}}>{Qair > 0 ? Qair.toFixed(2) : '—'}</td>
-                     <td className="c" style={{padding:'1px 3px'}}>
+                     <td className="c" style={{fontSize: 9,padding:'1px 1px'}}>{renderStatus(chequeo)}</td>
+                     <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 1px'}}>{QmaxB > 0 ? QmaxB.toFixed(2) : '—'}</td>
+                     <td className="c" style={{fontSize: 9,padding:'1px 1px'}}>{Vt > 0 ? Vt.toFixed(2) : '—'}</td>
+                     <td className="c" style={{fontSize: 9,padding:'1px 1px'}}>{Ltcalc > 0 ? Ltcalc.toFixed(2) : '—'}</td>
+                     <td className="c" style={{fontSize: 9,padding:'1px 1px'}}>{Ltmin > 0 ? Ltmin.toFixed(2) : '—'}</td>
+                     <td className="c" style={{fontSize: 9,padding:'1px 1px'}}>{Vair > 0 ? Vair.toFixed(2) : '—'}</td>
+                     <td className="c" style={{padding:'1px 1px'}}><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{fDarcy > 0 ? fDarcy.toFixed(3) : '—'}</span></td>
+                     <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 1px'}}>{Qair > 0 ? Qair.toFixed(2) : '—'}</td>
+                     <td className="c" style={{padding:'1px 1px'}}>
                        <input
                          type="number"
                          min="0"
                          step="0.1"
                          aria-label="Longitud del bajante (m)"
-                         style={{ width: 40, padding: 2, textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 10, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--txt)' }}
+                         style={DownpipesTable_S1}
                          value={t.bajLong ?? 5}
                          onChange={e => {
                             const val = parseFloat(e.target.value) || 5;
@@ -846,8 +848,8 @@ const BajantesTable = memo(function BajantesTable_() {
                          }}
                        />
                      </td>
-                     <td className="c" style={{fontFamily:'var(--mono)',fontSize:9,padding:'1px 3px'}}>{DventCalcPulg > 0 ? DventCalcPulg.toFixed(2) + '"' : '—'}</td>
-                     <td className="c" style={{padding:'1px 3px'}}>
+                     <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 1px'}}>{DventCalcPulg > 0 ? DventCalcPulg.toFixed(2) + '"' : '—'}</td>
+                     <td className="c" style={{padding:'1px 1px'}}>
                        <select
                          aria-label="Diámetro Ventilación Propuesto"
                          value={resolvedVentDprop || ''}
@@ -867,7 +869,7 @@ const BajantesTable = memo(function BajantesTable_() {
                            writeBajantePropToDrawing(tKey, t._net || t.net || 'san', 'ventDprop', nom ? val : 0, plans);
                          }}
                          style={{
-                           fontSize: 10,
+                           fontSize: 9,
                            padding: '2px 4px',
                            background: 'var(--bg2)',
                            border: DventPropPulg < DventCalcPulg || ventDiamWarn ? '1px solid var(--err)' : '1px solid var(--line)',
@@ -885,7 +887,7 @@ const BajantesTable = memo(function BajantesTable_() {
                          ))}
                        </select>
                         {ventDiamWarn && (
-                          <div style={{fontSize:8,color:'var(--err)',marginTop:2,lineHeight:1.2}}>
+                          <div style={{fontSize: 9,color:'var(--err)',marginTop:2,lineHeight:1.2}}>
                             Debe ser mayor o igual al &oslash; del ramal de vent. ({ventRamalDiamPulg}&quot;)
                           </div>
                         )}

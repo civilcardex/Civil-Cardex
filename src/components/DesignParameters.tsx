@@ -5,6 +5,9 @@ import { useApparatus } from "../context/ApparatusContext";
 import { NORM_COL, REDES_MAT, CAT_APS, CAT_GAS } from "../constants";
 import { NumericInput } from "./NumericInput";
 import EditButton from "./shared/EditButton";
+const DesignParameters_S1: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+const DesignParameters_S2: React.CSSProperties = { width: '100%', padding: '8px 10px', background: 'rgba(0,220,229,0.08)', border: 'none', borderTop: '1px solid rgba(0,220,229,0.25)', color: '#00dce5', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all .15s', };
+
 
 export default function BaseDatos({ redes }: { redes: Set<string> }) {
   const navigate = useNavigate();
@@ -78,13 +81,13 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
             <h3 className="card-t" style={{fontSize:13, display: 'flex', alignItems: 'center'}}><img src="/iconos_parametros_de_diseno/materiales_por_red.svg" alt="Materiales por red"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Materiales por red</h3>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="card-s" style={{ fontSize: 10 }}>{activeRedes.length} redes activas</span>
+              <span className="card-s" style={{ fontSize: 12 }}>{activeRedes.length} redes activas</span>
               <EditButton edit={isEditingMateriales} setEdit={setIsEditingMateriales} />
             </div>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
             <table className="tbl" style={{ fontSize: 12 }}>
-              <caption style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Materiales y profundidad de instalación por red</caption>
+              <caption style={DesignParameters_S1}>Materiales y profundidad de instalación por red</caption>
               <thead>
                 <tr>
                   <th scope="col" style={{ width: 28, textAlign: 'center', padding: '4px 6px' }}>#</th>
@@ -99,7 +102,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                   const isLast = ix === merged.length - 1;
                   return (
                     <tr key={r.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)', borderBottom: isLast ? '2px solid var(--line)' : undefined }}>
-                      <td style={{ textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--txt3)', padding: '3px 6px' }}>{ix + 1}</td>
+                      <td style={{ textAlign: 'center', fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--txt3)', padding: '3px 6px' }}>{ix + 1}</td>
                       <td style={{ padding: '3px 8px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <span style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />
@@ -130,7 +133,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                       </td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
                           <input type="text" disabled={!isEditingMateriales} inputMode="decimal" className="ni" aria-label="Profundidad"
-                          style={{ width: 65, padding: '2px 4px', fontSize: 11, textAlign: 'center', color: 'var(--txt)', opacity: isEditingMateriales ? 1 : 0.7 }}
+                          style={{ width: 65, padding: '2px 4px', fontSize: 12, textAlign: 'center', color: 'var(--txt)', opacity: isEditingMateriales ? 1 : 0.7 }}
                           value={profTexts[r.id] !== undefined ? profTexts[r.id] : (r.prof !== undefined && r.prof !== null ? String(r.prof) : '0')}
                           onChange={e => {
                             const raw = e.target.value.replace(',', '.');
@@ -169,15 +172,8 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
               </tbody>
             </table>
           </div>
-          <button onClick={() => navigate('/catalogomaestro')}
-            style={{
-              width: '100%', padding: '8px 10px', background: 'rgba(0,220,229,0.08)',
-              border: 'none', borderTop: '1px solid rgba(0,220,229,0.25)',
-              color: '#00dce5', cursor: 'pointer', fontFamily: 'var(--mono)',
-              fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              transition: 'all .15s',
-            }}
+          <button type="button" onClick={() => navigate('/catalogomaestro')}
+            style={DesignParameters_S2}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.15)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.08)'; }}
             title="Ver catálogo completo de materiales, diámetros y coeficientes">
@@ -189,7 +185,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
             <h3 className="card-t" style={{fontSize:13, display: 'flex', alignItems: 'center'}}><img src="/iconos_parametros_de_diseno/catalogo_aparatos_sanitarios.svg" alt="Catálogo de aparatos sanitarios"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de aparatos sanitarios</h3>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="card-s" style={{ fontSize: 10 }}>NTC 1500 · UC editables</span>
+              <span className="card-s" style={{ fontSize: 12 }}>NTC 1500 · UC editables</span>
               <EditButton edit={isEditingAparatos} setEdit={setIsEditingAparatos} />
             </div>
           </div>
@@ -213,9 +209,9 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                     <tr key={a.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)', borderBottom: isLavavajillas ? '2px solid var(--line)' : undefined }}>
                       <td style={{ padding: '3px 8px', fontWeight: 500 }}>{a.n}</td>
                       <td style={{ padding: '3px 6px' }}>
-                        <span style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 600, color: 'var(--txt2)', padding: '0' }}>{a.s.toUpperCase()}</span>
+                        <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, color: 'var(--txt2)', padding: '0' }}>{a.s.toUpperCase()}</span>
                       </td>
-                      <td style={{ padding: '3px 6px', fontSize: 11, color: 'var(--txt2)' }}>{a.ctrl}</td>
+                      <td style={{ padding: '3px 6px', fontSize: 12, color: 'var(--txt2)' }}>{a.ctrl}</td>
                       <td style={{ textAlign: 'center', padding: '3px 4px' }}>
                         <NumericInput value={a.ucaf} color="var(--acc2)" decimals={1} disabled={!isEditingAparatos || a._blkAf}
                           onCommit={(v) => setApsVal(a.id, 'ucaf', v)} />
@@ -239,7 +235,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
         <section className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
           <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
             <h3 className="card-t" style={{fontSize:13}}><img src="/iconos_parametros_de_diseno/catalogo_gasodomesticos.svg" alt="Catálogo de gasodomésticos"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:2}}  loading="lazy" />Catálogo de gasodomésticos</h3>
-            <span className="card-s" style={{ fontSize: 10 }}>NTC 3728 · m³/hr</span>
+            <span className="card-s" style={{ fontSize: 12 }}>NTC 3728 · m³/hr</span>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
             <table className="tbl" style={{ fontSize: 12 }}>
@@ -256,9 +252,9 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                   <tr key={g.id} style={{ background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)' }}>
                     <td style={{ padding: '3px 8px', fontWeight: 500 }}>{g.n}</td>
                     <td style={{ padding: '3px 6px' }}>
-                      <span style={{ fontFamily: 'var(--mono)', fontSize: 10, fontWeight: 600, color: 'var(--txt2)', padding: '0' }}>{g.s.toUpperCase()}</span>
+                      <span style={{ fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, color: 'var(--txt2)', padding: '0' }}>{g.s.toUpperCase()}</span>
                     </td>
-                    <td style={{ padding: '3px 6px', fontSize: 11, color: 'var(--txt2)' }}>Llave</td>
+                    <td style={{ padding: '3px 6px', fontSize: 12, color: 'var(--txt2)' }}>Llave</td>
                     <td style={{ textAlign: 'center', padding: '3px 6px', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, color: 'var(--txt)' }}>{g.q.toFixed(2)}</td>
                   </tr>
                 ))}

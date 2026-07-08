@@ -125,10 +125,10 @@ function PricingPage() {
             Elija el plan que se adapte a su firma de ingeniería. Todos los planes incluyen verificación automática contra normativa colombiana vigente.
           </p>
           <div className="flex justify-center gap-3 pt-2">
-            <span style={{ borderColor: '#1D4ED8', color: '#3B82F6', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontFamily: 'Geist, monospace', border: '1px solid #1D4ED8' }}>NTC 1500</span>
-            <span style={{ borderColor: '#1D4ED8', color: '#3B82F6', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontFamily: 'Geist, monospace', border: '1px solid #1D4ED8' }}>RAS 2000</span>
-            <span style={{ borderColor: '#1D4ED8', color: '#3B82F6', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontFamily: 'Geist, monospace', border: '1px solid #1D4ED8' }}>NTC 3728</span>
-            <span style={{ borderColor: '#1D4ED8', color: '#3B82F6', padding: '3px 10px', borderRadius: 20, fontSize: 11, fontFamily: 'Geist, monospace', border: '1px solid #1D4ED8' }}>NSR-10</span>
+            <span style={{ borderColor: '#1D4ED8', color: '#3B82F6', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontFamily: 'Geist, monospace', border: '1px solid #1D4ED8' }}>NTC 1500</span>
+            <span style={{ borderColor: '#1D4ED8', color: '#3B82F6', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontFamily: 'Geist, monospace', border: '1px solid #1D4ED8' }}>RAS 2000</span>
+            <span style={{ borderColor: '#1D4ED8', color: '#3B82F6', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontFamily: 'Geist, monospace', border: '1px solid #1D4ED8' }}>NTC 3728</span>
+            <span style={{ borderColor: '#1D4ED8', color: '#3B82F6', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontFamily: 'Geist, monospace', border: '1px solid #1D4ED8' }}>NSR-10</span>
           </div>
         </div>
 
@@ -186,7 +186,7 @@ function PricingPage() {
                 to={plan.to}
                 className="block text-center py-3 uppercase tracking-widest font-bold transition-all"
                 style={{
-                  fontSize: 11,
+                  fontSize: 12,
                   fontFamily: 'Geist, monospace',
                   background: plan.destacado ? plan.color : 'transparent',
                   color: plan.destacado ? '#003739' : plan.color,

@@ -2,6 +2,45 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { pisoLbl } from "../../constants";
 import { loadFromStorage, saveTrazosToDB } from "../../services/storageService";
 import { copyDrawingFromPlan, type CopySourceSelection } from "../../utils/copyDrawingFromPlan";
+const CopyFromPlanPanel_S1: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1a1c21", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer', };
+const CopyFromPlanPanel_S2: React.CSSProperties = { maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, background: '#181a1e', borderRadius: 3, padding: '4px 0', border: '1px solid rgba(0,220,229,.08)', };
+const CopyFromPlanPanel_S3: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12, fontFamily: "'Geist',monospace", color: '#c8c8d0', padding: '2px 2px', borderRadius: 2, userSelect: 'none', };
+const CopyFromPlanPanel_S4: React.CSSProperties = {
+  fontFamily: "'Geist',monospace",
+  fontSize: 12,
+  marginBottom: 6,
+  textTransform: "uppercase",
+  letterSpacing: 1.5,
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  userSelect: 'none',
+  fontWeight: 600,
+  transition: 'color .15s',
+};
+const CopyFromPlanPanel_S5: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 5,
+  cursor: 'pointer',
+  fontSize: 12,
+  userSelect: 'none',
+  padding: '1px 2px',
+  borderRadius: 2,
+  transition: 'background .1s',
+};
+const CopyFromPlanPanel_S6: React.CSSProperties = {
+  flex: 1,
+  padding: '6px 0',
+  border: 'none',
+  borderRadius: 3,
+  fontSize: 12,
+  fontFamily: "'Geist',monospace",
+  fontWeight: 700,
+  letterSpacing: 1,
+  transition: 'all .15s',
+};
 
 const NET_OPTIONS = [
   { id: 'ramal', label: 'Ramales' },
@@ -155,15 +194,7 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
         tabIndex={0}
         onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(prev => !prev); } }}
         onClick={() => setOpen(prev => !prev)}
-        style={{
-          fontFamily: "'Geist',monospace", fontSize: 10,
-          color: open ? '#00dce5' : '#849495',
-          marginBottom: 6,
-          textTransform: "uppercase", letterSpacing: 1.5, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          userSelect: 'none', fontWeight: 600,
-          transition: 'color .15s',
-        }}
+        style={{ ...CopyFromPlanPanel_S4, color: open ? '#00dce5' : '#849495' }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -173,7 +204,7 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
           Copiar elementos
         </span>
         <span style={{
-          fontSize: 9, color: open ? '#00dce5' : '#5a7a7a',
+          fontSize: 12, color: open ? '#00dce5' : '#5a7a7a',
           padding: '1px 5px', borderRadius: 3,
           background: open ? 'rgba(0,220,229,.12)' : 'transparent',
           transition: 'all .15s',
@@ -191,11 +222,7 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
               setNetSelections({});
               setFeedback(null);
             }}
-            style={{
-              width: '100%', padding: "4px 6px", background: "#1a1c21",
-              border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8",
-              fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer',
-            }}
+            style={CopyFromPlanPanel_S1}
           >
             <option value="">— Seleccionar origen —</option>
             {otherPlans.map((p: any) => {
@@ -209,11 +236,7 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
           </select>
 
           {srcPlan && availableNets.length > 0 && (
-            <div style={{
-              maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2,
-              background: '#181a1e', borderRadius: 3, padding: '4px 0',
-              border: '1px solid rgba(0,220,229,.08)',
-            }}>
+            <div style={CopyFromPlanPanel_S2}>
               {availableNets.map((net: any) => {
                 const tipos = getTiposForNet(net.id);
                 const selTipos = netSelections[net.id] || new Set();
@@ -225,11 +248,7 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
                     borderBottom: '1px solid rgba(58,73,74,.3)',
                     padding: '3px 6px',
                   }}>
-                    <label style={{
-                      display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer',
-                      fontSize: 11, fontFamily: "'Geist',monospace", color: '#c8c8d0',
-                      padding: '2px 2px', borderRadius: 2, userSelect: 'none',
-                    }}>
+                    <label style={CopyFromPlanPanel_S3}>
                       <input
                         type="checkbox"
                         checked={allSelected}
@@ -251,14 +270,7 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
                         padding: '2px 0 2px 22px',
                       }}>
                         {NET_OPTIONS.filter(opt => tipos.has(opt.id)).map(opt => (
-                          <label key={opt.id} style={{
-                            display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer',
-                            fontSize: 10, color: selTipos.has(opt.id) ? '#d0d0e0' : '#7a8a8a',
-                            userSelect: 'none', padding: '1px 2px',
-                            borderRadius: 2,
-                            background: selTipos.has(opt.id) ? 'rgba(255,255,255,.03)' : 'transparent',
-                            transition: 'background .1s',
-                          }}>
+                          <label key={opt.id} style={{ ...CopyFromPlanPanel_S5, color: selTipos.has(opt.id) ? '#d0d0e0' : '#7a8a8a', background: selTipos.has(opt.id) ? 'rgba(255,255,255,.03)' : 'transparent' }}>
                             <input
                               type="checkbox"
                               checked={selTipos.has(opt.id)}
@@ -278,7 +290,7 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
 
           {srcPlan && availableNets.length === 0 && (
             <div style={{
-              fontSize: 10, color: '#6b8cae', padding: '6px 8px',
+              fontSize: 12, color: '#6b8cae', padding: '6px 8px',
               background: '#181a1e', borderRadius: 3, textAlign: 'center',
             }}>
               El plano origen no tiene datos de redes
@@ -287,7 +299,7 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
 
           {feedback && (
             <div style={{
-              fontSize: 10, fontFamily: "'Geist',monospace", padding: '4px 6px', borderRadius: 3,
+              fontSize: 12, fontFamily: "'Geist',monospace", padding: '4px 6px', borderRadius: 3,
               background: feedback.ok ? 'rgba(45,125,70,.15)' : 'rgba(220,50,50,.15)',
               color: feedback.ok ? '#4ade80' : '#f87171',
               textAlign: 'center',
@@ -297,22 +309,10 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-            <button
+            <button type="button"
               onClick={handleCopy}
               disabled={!hasSelection || busy}
-              style={{
-                flex: 1, padding: '6px 0', border: 'none', borderRadius: 3,
-                background: hasSelection && !busy
-                  ? 'linear-gradient(135deg, #1a8a4e, #2dbb6a)'
-                  : '#2a2d32',
-                color: hasSelection && !busy ? '#fff' : '#5a5d62',
-                fontSize: 11, fontFamily: "'Geist',monospace", fontWeight: 700,
-                letterSpacing: 1,
-                cursor: hasSelection && !busy ? 'pointer' : 'default',
-                transition: 'all .15s',
-                boxShadow: hasSelection && !busy ? '0 1px 6px rgba(26,138,78,.4)' : 'none',
-                textShadow: hasSelection && !busy ? '0 1px 2px rgba(0,0,0,.3)' : 'none',
-              }}
+              style={{ ...CopyFromPlanPanel_S6, background: hasSelection && !busy ? 'linear-gradient(135deg, #1a8a4e, #2dbb6a)' : '#2a2d32', color: hasSelection && !busy ? '#fff' : '#5a5d62', cursor: hasSelection && !busy ? 'pointer' : 'default', boxShadow: hasSelection && !busy ? '0 1px 6px rgba(26,138,78,.4)' : 'none', textShadow: hasSelection && !busy ? '0 1px 2px rgba(0,0,0,.3)' : 'none' }}
               onMouseEnter={e => {
                 if (hasSelection && !busy) e.currentTarget.style.filter = 'brightness(1.2)';
               }}

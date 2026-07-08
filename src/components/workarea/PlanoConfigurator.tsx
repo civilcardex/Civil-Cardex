@@ -3,6 +3,21 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { pisoLbl } from "../../constants";
 import ModalProtocolo from "./ModalProtocolo";
 import { getPdfjs } from "../../utils/lazyPdfjs";
+const TOAST_BG: Record<string, string> = { err: 'rgba(211,47,47,0.9)', warn: 'rgba(245,158,11,0.9)', ok: 'rgba(14,204,122,0.9)' };
+const PlanoConfigurator_S1: React.CSSProperties = { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, padding: '6px 14px', fontSize: 12, fontWeight: 600, textAlign: 'center', background: TOAST_BG.ok, color: '#fff', };
+const PlanoConfigurator_S2: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, padding: '6px 14px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'var(--bg)', minHeight: 36, flexWrap: 'wrap' };
+const PlanoConfigurator_S3: React.CSSProperties = { width: '50%', padding: '5px 6px', fontSize: 12, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer' };
+const PlanoConfigurator_S4: React.CSSProperties = { width: '100%', padding: '5px 6px', fontSize: 12, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer' };
+const PlanoConfigurator_S5: React.CSSProperties = { padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 12, lineHeight: 1 };
+const PlanoConfigurator_S6: React.CSSProperties = { flex: 1, minWidth: 0, padding: '5px 4px', fontSize: 12, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt)', fontFamily: 'monospace' };
+const PlanoConfigurator_S7: React.CSSProperties = { marginTop: 3, fontSize: 12, color: 'var(--ok)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' };
+const PlanoConfigurator_S8: React.CSSProperties = { padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 12, lineHeight: 1 };
+const PlanoConfigurator_S9: React.CSSProperties = { flex: 1, minWidth: 0, padding: '5px 4px', fontSize: 12, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt)', fontFamily: 'monospace' };
+const PlanoConfigurator_S10: React.CSSProperties = { marginTop: 3, fontSize: 12, color: 'var(--ok)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' };
+const PlanoConfigurator_S11: React.CSSProperties = { padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 12, lineHeight: 1 };
+const PlanoConfigurator_S12: React.CSSProperties = { flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', background: 'var(--bg3)', borderRadius: 'var(--r)', cursor: 'pointer', fontSize: 12, color: 'var(--txt2)' };
+const PlanoConfigurator_S13: React.CSSProperties = { flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', background: 'var(--bg3)', borderRadius: 'var(--r)', cursor: 'pointer', fontSize: 12, color: 'var(--txt2)' };
+
 
 interface PlanoConfiguratorProps {
   planFile: File;
@@ -496,22 +511,17 @@ function PlanoConfiguratorBase({
 
   const diffPct = factorX && factorY && scaleM ? Math.abs(factorX - factorY) / scaleM * 100 : 0;
 
-  const TOAST_BG: Record<string, string> = { err: 'rgba(211,47,47,0.9)', warn: 'rgba(245,158,11,0.9)', ok: 'rgba(14,204,122,0.9)' };
+
 
   return (
     <div className="fu" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {showProtocolo && <ModalProtocolo onClose={() => setShowProtocolo(false)} />}
       {toast && (
-        <div role="alert" style={{
-          position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100,
-          padding: '6px 14px', fontSize: 11, fontWeight: 600, textAlign: 'center',
-          background: TOAST_BG[toast.type] || TOAST_BG.ok,
-          color: '#fff',
-        }}>{toast.msg}</div>
+        <div role="alert" style={{ ...PlanoConfigurator_S1, background: TOAST_BG[toast.type] || TOAST_BG.ok }}>{toast.msg}</div>
       )}
 
       {/* Status bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '6px 14px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'var(--bg)', minHeight: 36, flexWrap: 'wrap' }}>
+      <div style={PlanoConfigurator_S2}>
         <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--txt)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 230 }}>{planName}</span>
         {scaleM && (
           <>
@@ -526,8 +536,8 @@ function PlanoConfiguratorBase({
           </>
         )}
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 11, color: 'var(--txt4)' }}>{Math.round(zoom * 100)}%</span>
-        <button onClick={fitView} title="Ajustar vista" style={{ padding: '2px 8px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 3, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11 }}>
+        <span style={{ fontSize: 12, color: 'var(--txt4)' }}>{Math.round(zoom * 100)}%</span>
+        <button type="button" onClick={fitView} title="Ajustar vista" style={{ padding: '2px 8px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 3, color: 'var(--txt3)', cursor: 'pointer', fontSize: 12 }}>
           ⊞ Ajustar
         </button>
       </div>
@@ -570,7 +580,7 @@ function PlanoConfiguratorBase({
                 borderRadius: 'var(--r)',
                 textAlign: 'center',
                 fontWeight: 700,
-                fontSize: 10.5,
+                fontSize: 12.5,
                 textTransform: 'uppercase',
                 letterSpacing: 0.5,
                 background: pisoCompletado ? 'rgba(14,204,122,0.15)' : 'rgba(245,158,11,0.08)',
@@ -586,7 +596,7 @@ function PlanoConfiguratorBase({
           {/* Step 1: Level */}
           <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
             <div style={{
-              fontSize: 10.5,
+              fontSize: 12.5,
               fontWeight: 700,
               color: planNivel !== null ? 'var(--ok)' : 'var(--txt3)',
               textTransform: 'uppercase',
@@ -605,7 +615,7 @@ function PlanoConfiguratorBase({
               setHasSaved(false);
             }}
               aria-label="Seleccionar nivel de plano"
-              style={{ width: '50%', padding: '5px 6px', fontSize: 11, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer' }}>
+              style={PlanoConfigurator_S3}>
               <option value="">— Nivel —</option>
               {[...pisos].sort((a: any, b: any) => b.n - a.n).map((s: any) => {
                 const ocupado = plans.some((x: any) => x.id !== planId && x.status === 'confirmed' && x.nivel === s.n);
@@ -616,7 +626,7 @@ function PlanoConfiguratorBase({
             {/* Escala - definida y calibrada side-by-side */}
             <div style={{ marginTop: 8, display: 'flex', gap: 10 }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: definedScale ? 'var(--ok)' : 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: definedScale ? 'var(--ok)' : 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, whiteSpace: 'nowrap' }}>
                   Escala definida
                 </div>
                 <select
@@ -635,7 +645,7 @@ function PlanoConfiguratorBase({
                     }
                   }}
                   aria-label="Seleccionar escala definida del plano"
-                  style={{ width: '100%', padding: '5px 6px', fontSize: 11, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer' }}
+                  style={PlanoConfigurator_S4}
                 >
                   <option value="">— Escala —</option>
                   {(() => {
@@ -651,15 +661,15 @@ function PlanoConfiguratorBase({
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: scaleM ? 'var(--ok)' : 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: scaleM ? 'var(--ok)' : 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4, whiteSpace: 'nowrap' }}>
                   Escala calibrada
                 </div>
                 {scaleM ? (
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--acc)', fontFamily: 'monospace', padding: '5px 0', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--acc)', fontFamily: 'monospace', padding: '5px 0', whiteSpace: 'nowrap' }}>
                     1:{Math.round(scaleM * 100)}
                   </div>
                 ) : (
-                  <div style={{ fontSize: 11, color: 'var(--txt4)', padding: '5px 0', whiteSpace: 'nowrap' }}>— Sin calibrar</div>
+                  <div style={{ fontSize: 12, color: 'var(--txt4)', padding: '5px 0', whiteSpace: 'nowrap' }}>— Sin calibrar</div>
                 )}
               </div>
             </div>
@@ -668,7 +678,7 @@ function PlanoConfiguratorBase({
           {/* Step 2: Origin */}
           <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
             <div style={{
-              fontSize: 10.5,
+              fontSize: 12.5,
               fontWeight: 700,
               color: tieneOrigen ? 'var(--ok)' : 'var(--txt3)',
               textTransform: 'uppercase',
@@ -681,9 +691,9 @@ function PlanoConfiguratorBase({
               <span>2. Definir origen</span>
               {tieneOrigen && <span style={{ color: 'var(--ok)' }}>✓</span>}
             </div>
-            <button onClick={activarModoOrigen}
+            <button type="button" onClick={activarModoOrigen}
               style={{
-                width: '100%', padding: '6px 8px', fontSize: 11, fontWeight: 600,
+                width: '100%', padding: '6px 8px', fontSize: 12, fontWeight: 600,
                 background: modoOrigen ? 'rgba(245,166,35,0.15)' : 'var(--bg3)',
                 border: `1.5px solid ${modoOrigen ? '#F5A623' : 'var(--line)'}`,
                 borderRadius: 'var(--r)', color: modoOrigen ? '#F5A623' : 'var(--txt2)',
@@ -693,11 +703,11 @@ function PlanoConfiguratorBase({
             </button>
             {origen && (
               <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 10, color: 'var(--ok)', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: 12, color: 'var(--ok)', fontFamily: 'monospace' }}>
                   ✓ ({origen.x_px.toFixed(0)}, {origen.y_px.toFixed(0)}) px
                 </span>
-                <button onClick={() => { setOrigen(null); setHasSaved(false); }}
-                  style={{ padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>
+                <button type="button" onClick={() => { setOrigen(null); setHasSaved(false); }}
+                  style={PlanoConfigurator_S5}>
                   ✕
                 </button>
               </div>
@@ -708,7 +718,7 @@ function PlanoConfiguratorBase({
           <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)', display: 'flex', gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                fontSize: 10.5,
+                fontSize: 12.5,
                 fontWeight: 700,
                 color: factorX !== null ? 'var(--ok)' : 'var(--txt3)',
                 textTransform: 'uppercase',
@@ -724,10 +734,10 @@ function PlanoConfiguratorBase({
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                 <input type="text" inputMode="decimal" placeholder="(m)" value={lenX} onChange={e => setLenX(e.target.value.replace(/,/g, '.'))} aria-label="Longitud del eje X (m)"
                   disabled={modoCalX}
-                  style={{ flex: 1, minWidth: 0, padding: '5px 4px', fontSize: 11, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt)', fontFamily: 'monospace' }} />
-                <button onClick={activarModoCalX}
+                  style={PlanoConfigurator_S6} />
+                <button type="button" onClick={activarModoCalX}
                   style={{
-                    padding: '5px 4px', fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap',
+                    padding: '5px 4px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
                     background: modoCalX ? 'rgba(77,143,247,0.15)' : 'var(--bg3)',
                     border: `1.5px solid ${modoCalX ? '#4D8FF7' : 'var(--line)'}`,
                     borderRadius: 'var(--r)', color: modoCalX ? '#4D8FF7' : 'var(--txt2)',
@@ -737,17 +747,17 @@ function PlanoConfiguratorBase({
                 </button>
               </div>
               {factorX && (
-                <div style={{ marginTop: 3, fontSize: 10, color: 'var(--ok)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                <div style={PlanoConfigurator_S7}>
                   ✓ {factorX.toFixed(4)}
-                  <button onClick={() => { setFactorX(null); setLenX(''); if (factorY) { setScaleM(factorY); setDefinedScale(factorY); } else { setScaleM(null); setDefinedScale(null); } setHasSaved(false); }}
-                    style={{ padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>✕</button>
+                  <button type="button" onClick={() => { setFactorX(null); setLenX(''); if (factorY) { setScaleM(factorY); setDefinedScale(factorY); } else { setScaleM(null); setDefinedScale(null); } setHasSaved(false); }}
+                    style={PlanoConfigurator_S8}>✕</button>
                 </div>
               )}
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                fontSize: 10.5,
+                fontSize: 12.5,
                 fontWeight: 700,
                 color: factorY !== null ? 'var(--ok)' : 'var(--txt3)',
                 textTransform: 'uppercase',
@@ -763,10 +773,10 @@ function PlanoConfiguratorBase({
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                 <input type="text" inputMode="decimal" placeholder="(m)" value={lenY} onChange={e => setLenY(e.target.value.replace(/,/g, '.'))} aria-label="Longitud del eje Y (m)"
                   disabled={modoCalY}
-                  style={{ flex: 1, minWidth: 0, padding: '5px 4px', fontSize: 11, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt)', fontFamily: 'monospace' }} />
-                <button onClick={activarModoCalY}
+                  style={PlanoConfigurator_S9} />
+                <button type="button" onClick={activarModoCalY}
                   style={{
-                    padding: '5px 4px', fontSize: 10, fontWeight: 600, whiteSpace: 'nowrap',
+                    padding: '5px 4px', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap',
                     background: modoCalY ? 'rgba(14,204,122,0.15)' : 'var(--bg3)',
                     border: `1.5px solid ${modoCalY ? '#0ECC7A' : 'var(--line)'}`,
                     borderRadius: 'var(--r)', color: modoCalY ? '#0ECC7A' : 'var(--txt2)',
@@ -776,10 +786,10 @@ function PlanoConfiguratorBase({
                 </button>
               </div>
               {factorY && (
-                <div style={{ marginTop: 3, fontSize: 10, color: 'var(--ok)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                <div style={PlanoConfigurator_S10}>
                   ✓ {factorY.toFixed(4)}
-                  <button onClick={() => { setFactorY(null); setLenY(''); if (factorX) { setScaleM(factorX); setDefinedScale(factorX); } else { setScaleM(null); setDefinedScale(null); } setHasSaved(false); }}
-                    style={{ padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>✕</button>
+                  <button type="button" onClick={() => { setFactorY(null); setLenY(''); if (factorX) { setScaleM(factorX); setDefinedScale(factorX); } else { setScaleM(null); setDefinedScale(null); } setHasSaved(false); }}
+                    style={PlanoConfigurator_S11}>✕</button>
                 </div>
               )}
             </div>
@@ -789,7 +799,7 @@ function PlanoConfiguratorBase({
           {/* Scope */}
           <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
             <div style={{
-              fontSize: 10.5,
+              fontSize: 12.5,
               fontWeight: 700,
               color: calGlobal !== null ? 'var(--ok)' : 'var(--txt3)',
               textTransform: 'uppercase',
@@ -803,11 +813,11 @@ function PlanoConfiguratorBase({
               {calGlobal !== null && <span style={{ color: 'var(--ok)' }}>✓</span>}
             </div>
             <div style={{ display: 'flex', gap: 4 }}>
-              <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', background: 'var(--bg3)', borderRadius: 'var(--r)', cursor: 'pointer', fontSize: 11, color: 'var(--txt2)' }}>
+              <label style={PlanoConfigurator_S12}>
                 <input type="radio" name="calGlobal" checked={calGlobal === true} onChange={() => { setCalGlobal(true); setHasSaved(false); }} />
                 Todos
               </label>
-              <label style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', background: 'var(--bg3)', borderRadius: 'var(--r)', cursor: 'pointer', fontSize: 11, color: 'var(--txt2)' }}>
+              <label style={PlanoConfigurator_S13}>
                 <input type="radio" name="calGlobal" checked={calGlobal === false} onChange={() => { setCalGlobal(false); setHasSaved(false); }} />
                 Por piso
               </label>
@@ -816,7 +826,7 @@ function PlanoConfiguratorBase({
 
           {/* Actions */}
           <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 8, borderBottom: '1px solid var(--line)' }}>
-            <button onClick={guardarConfig}
+            <button type="button" onClick={guardarConfig}
               style={{
                 width: '100%', padding: '6px 8px',
                 background: saved ? 'rgba(14,204,122,0.15)' : 'var(--acc)',

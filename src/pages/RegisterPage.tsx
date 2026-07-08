@@ -4,6 +4,8 @@ import Navbar from '../components/Navbar';
 import FormField from '../components/FormField';
 import { useAuth } from '../context/AuthContext';
 import { usePageMeta } from '../hooks/usePageMeta';
+const RegisterPage_S1: React.CSSProperties = { color: '#F04545', fontSize: 12, fontFamily: 'Geist, monospace', textAlign: 'center', padding: '8px', background: 'rgba(240,69,69,.08)', border: '1px solid rgba(240,69,69,.2)', borderRadius: 4 };
+
 
 const REGISTER_JSONLD = {
   '@context': 'https://schema.org',
@@ -159,7 +161,7 @@ function RegisterPage() {
           {loading ? 'CREANDO CUENTA...' : 'CREAR CUENTA'}
         </button>
         {error && (
-          <div role="alert" style={{ color: '#F04545', fontSize: 12, fontFamily: 'Geist, monospace', textAlign: 'center', padding: '8px', background: 'rgba(240,69,69,.08)', border: '1px solid rgba(240,69,69,.2)', borderRadius: 4 }}>
+          <div role="alert" style={RegisterPage_S1}>
             {error}
           </div>
         )}

@@ -4,6 +4,8 @@ import Navbar from '../components/Navbar';
 import FormField from '../components/FormField';
 import { useAuth } from '../context/AuthContext';
 import { usePageMeta } from '../hooks/usePageMeta';
+const LoginPage_S1: React.CSSProperties = { color: '#F04545', fontSize: 12, fontFamily: 'Geist, monospace', textAlign: 'center', padding: '8px', background: 'rgba(240,69,69,.08)', border: '1px solid rgba(240,69,69,.2)', borderRadius: 4 };
+
 
 const LOGIN_JSONLD = {
   '@context': 'https://schema.org',
@@ -113,7 +115,7 @@ function LoginPage() {
           {loading ? 'INGRESANDO...' : 'INICIAR SESIÓN'}
         </button>
         {error && (
-          <div role="alert" style={{ color: '#F04545', fontSize: 12, fontFamily: 'Geist, monospace', textAlign: 'center', padding: '8px', background: 'rgba(240,69,69,.08)', border: '1px solid rgba(240,69,69,.2)', borderRadius: 4 }}>
+          <div role="alert" style={LoginPage_S1}>
             {error}
           </div>
         )}

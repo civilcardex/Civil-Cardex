@@ -6,6 +6,8 @@ import { calcUDparcial } from "../utils/componentHelpers";
 import { pisoCorto, APARATOS_DEF, SAN_UC_IDS } from "../constants";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
+const FixtureUnitCalc_S1: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+
 
 function CalculoUD() {
   const { tramosSan } = useTramos();
@@ -289,7 +291,7 @@ function CalculoUD() {
       <div className="scroll-top" style={{padding:'16px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
           <table className="tbl" style={{minWidth:900}}>
-            <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Cálculo de unidades de descarga</caption>
+            <caption style={FixtureUnitCalc_S1}>Cálculo de unidades de descarga</caption>
             <thead>
               <tr>
                 <th scope="col" className="col-h" rowSpan={2} style={{minWidth:70,textAlign:'center'}}>Tramo</th>
@@ -302,7 +304,7 @@ function CalculoUD() {
               </tr>
               <tr>
                 {mergedBase.map(d=>(
-                  <th key={d.id} className="col-h san" style={{minWidth:52,fontSize:9,textAlign:'center'}}>{d.nombre}<br/><span style={{fontSize:8,fontWeight:400}}>{d.ud} UD</span></th>
+                  <th key={d.id} className="col-h san" style={{minWidth:52,fontSize: 12,textAlign:'center'}}>{d.nombre}<br/><span style={{fontSize: 12,fontWeight:400}}>{d.ud} UD</span></th>
                 ))}
                 <th scope="col" className="col-h ok" style={{textAlign:'center'}}>Parcial</th>
                 <th scope="col" className="col-h ok" style={{textAlign:'center'}}>Total</th>
@@ -311,7 +313,7 @@ function CalculoUD() {
             <tbody>
   {displayTramos.length === 0 ? (
                 <tr>
-                    <td colSpan={4 + mergedBase.length + 2} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                    <td colSpan={4 + mergedBase.length + 2} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 12 }}>
                     No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                   </td>
                 </tr>
@@ -321,10 +323,10 @@ function CalculoUD() {
     const acum = (componentTotalMap[tKey] || 0);
     return (
       <tr key={tKey}>
-        <td className="c"><span className="sigla" style={{fontSize:11,fontWeight:600}}>{t.id}</span></td>
-        <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{pisoCorto(t.piso)}</span></td>
-        <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.ini && typeof t.ini === 'object' ? `${t.ini.x},${t.ini.y}` : t.ini || '—'}</span></td>
-        <td className="c"><span style={{fontSize:11,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.fin && typeof t.fin === 'object' ? `${t.fin.x},${t.fin.y}` : t.fin || '—'}</span></td>
+        <td className="c"><span className="sigla" style={{fontSize: 12,fontWeight:600}}>{t.id}</span></td>
+        <td className="c"><span style={{fontSize: 12,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{pisoCorto(t.piso)}</span></td>
+        <td className="c"><span style={{fontSize: 12,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.ini && typeof t.ini === 'object' ? `${t.ini.x},${t.ini.y}` : t.ini || '—'}</span></td>
+        <td className="c"><span style={{fontSize: 12,fontFamily:'var(--mono)',color:'var(--txt)'}}>{t.fin && typeof t.fin === 'object' ? `${t.fin.x},${t.fin.y}` : t.fin || '—'}</span></td>
         {mergedBase.map(d=>(
           <td key={d.id} className="c" style={{padding:'2px 3px'}}>
             <span style={{fontSize:12,fontFamily:'var(--mono)',color:d._disabled?'var(--txt3)':'var(--txt)'}}>{t.fixtures[d.id]??0}</span>
@@ -348,10 +350,10 @@ function CalculoUD() {
                   const subtotal = (d.cant || 0) * (d.ud || 0);
                   return (
                     <td key={d.id} className="c" style={{padding:'4px 3px',borderTop:'2px solid var(--line)'}}>
-                      <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:1,fontSize:10,fontFamily:'var(--mono)'}}>
+                      <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:1,fontSize: 12,fontFamily:'var(--mono)'}}>
                         <span style={{fontWeight:600,color:'var(--txt)',fontSize:12}}>{d.cant}</span>
-                        <span style={{color:'var(--txt3)',fontSize:8}}>× {d.ud} UD</span>
-                        <span style={{fontWeight:700,color:'var(--san)',fontSize:11}}>{subtotal}</span>
+                        <span style={{color:'var(--txt3)',fontSize: 12}}>× {d.ud} UD</span>
+                        <span style={{fontWeight:700,color:'var(--san)',fontSize: 12}}>{subtotal}</span>
                       </div>
                     </td>
                   );

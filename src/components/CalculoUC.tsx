@@ -3,6 +3,8 @@ import { useTramos } from "../context/TramosContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, pisoCorto } from "../constants";
 import { calcUCparcial, calcUCacumulado } from "../utils/componentHelpers";
+const CalculoUC_S1: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+
 
 interface CalculoUCProps {
   tipo: 'af' | 'ac';
@@ -70,7 +72,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
         <div className="scroll-top" style={{padding:'16px'}}>
           <div className="scroll-inner" style={{minWidth:'max-content'}}>
             <table className="tbl" style={{minWidth:800}}>
-              <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>{`Cálculo de unidades de consumo ${title}`}</caption>
+              <caption style={CalculoUC_S1}>{`Cálculo de unidades de consumo ${title}`}</caption>
               <thead>
                 <tr>
                   <th scope="col" className="col-h" rowSpan={2} style={{minWidth:64,textAlign:'center'}}>Tramo</th>
@@ -88,8 +90,8 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                 </tr>
                 <tr>
                   {AP.map(d => (
-                    <th key={d.id} className={`col-h ${clsHeader}`} style={{minWidth:70,fontSize:9,textAlign:'center',whiteSpace:'nowrap',padding:'4px 2px'}}>
-                      {d.nombre}<br/><span style={{fontSize:8,fontWeight:400}}>{(d as any)[field]} UC</span>
+                    <th key={d.id} className={`col-h ${clsHeader}`} style={{minWidth:70,fontSize: 12,textAlign:'center',whiteSpace:'nowrap',padding:'4px 2px'}}>
+                      {d.nombre}<br/><span style={{fontSize: 12,fontWeight:400}}>{(d as any)[field]} UC</span>
                     </th>
                   ))}
                   {showTotal && (
@@ -103,7 +105,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
               <tbody>
                 {tramos.length === 0 ? (
                   <tr>
-                    <td colSpan={showTotal ? 4 + AP.length + 2 + 2 : 4 + AP.length + 3} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                    <td colSpan={showTotal ? 4 + AP.length + 2 + 2 : 4 + AP.length + 3} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 12 }}>
                       No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                     </td>
                   </tr>
@@ -114,10 +116,10 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                   const vNS = t.nSalidas ?? 0;
                   return (
                     <tr key={i}>
-                      <td className="c"><span className="sigla" style={{fontSize:11}}>{t.id}</span></td>
-                      <td className="c"><span style={{fontSize:11,fontFamily:monof,color:txt2}}>{pisoCorto(t.piso)}</span></td>
-                      <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2,padding:'2px 4px'}}>{t.ini && typeof t.ini === 'object' ? `${t.ini.x},${t.ini.y}` : t.ini || '\u2014'}</td>
-                      <td className="c" style={{fontFamily:monof,fontSize:11,color:txt2,padding:'2px 4px'}}>{t.fin && typeof t.fin === 'object' ? `${t.fin.x},${t.fin.y}` : t.fin || '\u2014'}</td>
+                      <td className="c"><span className="sigla" style={{fontSize: 12}}>{t.id}</span></td>
+                      <td className="c"><span style={{fontSize: 12,fontFamily:monof,color:txt2}}>{pisoCorto(t.piso)}</span></td>
+                      <td className="c" style={{fontFamily:monof,fontSize: 12,color:txt2,padding:'2px 4px'}}>{t.ini && typeof t.ini === 'object' ? `${t.ini.x},${t.ini.y}` : t.ini || '\u2014'}</td>
+                      <td className="c" style={{fontFamily:monof,fontSize: 12,color:txt2,padding:'2px 4px'}}>{t.fin && typeof t.fin === 'object' ? `${t.fin.x},${t.fin.y}` : t.fin || '\u2014'}</td>
                       {AP.map(d => {
                         const v = t.fixtures?.[d.id] || 0;
                         return (
@@ -144,11 +146,11 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     const subtotal = (d.cant || 0) * (d.uc || 0);
                     return (
                       <td key={d.id} className="c" style={{padding:'4px 3px',borderTop:'2px solid var(--line)'}}>
-                        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:1,fontSize:10,fontFamily:monof}}>
+                        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:1,fontSize: 12,fontFamily:monof}}>
                           <span style={{fontWeight:600,color:txt,fontSize:12}}>{d.cant}</span>
-                          <span style={{color:txt2,fontSize:8}}>&times; {d.uc} UC</span>
+                          <span style={{color:txt2,fontSize: 12}}>&times; {d.uc} UC</span>
                           {showTotal && (
-                            <span style={{fontWeight:700,color:colorVar,fontSize:11}}>{subtotal}</span>
+                            <span style={{fontWeight:700,color:colorVar,fontSize: 12}}>{subtotal}</span>
                           )}
                         </div>
                       </td>

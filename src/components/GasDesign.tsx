@@ -11,11 +11,13 @@ import PageNav from './PageNav';
 
 import { TRAZOS_PREFIX, GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY } from "../constants/storage-keys";
 import { renouardByType } from "../utils/gasUtils";
-import { SI, SD, TH, TD } from "../styles/sharedTableStyles";
+import { SI, SD, TH as _TH, TD as _TD } from "../styles/sharedTableStyles";
+const TH = { ..._TH, fontSize: 9, padding: '2px 3px' };
+const TD = { ..._TD, fontSize: 9, padding: '1px 2px' };
 
 const ALL_DN: {mat: string; K: number; dn: string; d: number}[] = [];
 const SR_ONLY = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 } as const;
-const EMPTY_ROW = { padding:'24px 0', textAlign:'center', color:'var(--txt3)', fontSize:11, border:'none' } as const;
+const EMPTY_ROW = { padding:'24px 0', textAlign:'center', color:'var(--txt3)', fontSize: 9, border:'none' } as const;
 GAS.forEach(g=>{g.rows.forEach(r=>{ALL_DN.push({mat:g.mat,K:g.K,dn:r.dn,d:r.d});});});
 const ACC_KEYS=['codos_90_std','codos_90_rl','te_linea','te_ramal','valvula_bola'];
 
@@ -51,7 +53,7 @@ function GasDesign(){
         const data = loadFromStorage(TRAZOS_PREFIX + plano.id, null);
         if (!data) continue;
         for (const r of (data as any).ramales || []) {
-          if (r.net === 'gas') existingIds.add(r.id);
+          if (r.net === 'gas' && r.tipo !== 'tributario') existingIds.add(r.id);
         }
       } catch {
         // ignore
@@ -77,6 +79,7 @@ function GasDesign(){
       const data = raw as Record<string, any>;
       for (const r of data.ramales || []) {
         if (r.net !== 'gas') continue;
+        if (r.tipo === 'tributario') continue;
 
 
         tramos.push({
@@ -120,6 +123,7 @@ function GasDesign(){
       const data = raw as Record<string, any>;
       for (const r of data.ramales || []) {
         if (r.net !== 'gas') continue;
+        if (r.tipo === 'tributario') continue;
         const mat = r.material || '';
         const dn = r.diametro || '';
         const opt = lookupDn(mat, dn);
@@ -193,24 +197,24 @@ function GasDesign(){
         </h3>
       </div>
       <div style={{padding:'8px 12px',display:'flex',flexDirection:'column',alignItems:'center'}}>
-        <table className="tbl" style={{fontSize:13,whiteSpace:'nowrap'}}>
-          <caption style={SR_ONLY}>Datos generales</caption>
-          <tbody>
-            {[
-              ['Altitud de la ciudad del proyecto',alt,setAlt,'msnm'],
-              ['Presión atmosférica de la ciudad de diseño',patm,setPatm,'kPa'],
-              ['Temperatura promedio de la ciudad',temp,setTemp,'°C'],
-              ['Presión mínima de la red según operador',pmin,setPmin,'mbar'],
-              ['Densidad relativa del gas a utilizar',densRel,setDensRel,'kPa'],
-            ].map((row, i, arr)=>{const [lbl,val,setVal,uni] = row as [string, string, any, string];return (
-              <tr key={i}>
-                <td style={{padding:'6px 10px',fontWeight:600,color:'var(--txt)',fontSize:13,borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}>{lbl}</td>
-                <td style={{padding:'6px 10px',borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}><input type="text" inputMode="decimal" aria-label={lbl} value={val} onChange={e=>setVal(e.target.value)} style={{...SI,textAlign:'right',fontSize:13,padding:'5px 8px',width:100}}/></td>
-                <td style={{padding:'6px 10px',color:'var(--txt2)',fontSize:13,fontWeight:500,borderBottom:i<arr.length-1?'1px solid var(--line)':'none'}}>{uni}</td>
-              </tr>
-            );})}
-          </tbody>
-            </table>
+<table className="tbl" style={{fontSize: 10,whiteSpace:'nowrap'}}>
+           <caption style={SR_ONLY}>Datos generales</caption>
+           <tbody>
+             {[
+               ['Altitud de la ciudad del proyecto',alt,setAlt,'msnm'],
+               ['Presión atmosférica de la ciudad de diseño',patm,setPatm,'kPa'],
+               ['Temperatura promedio de la ciudad',temp,setTemp,'°C'],
+               ['Presión mínima de la red según operador',pmin,setPmin,'mbar'],
+               ['Densidad relativa del gas a utilizar',densRel,setDensRel,'kPa'],
+             ].map((row, i, arr)=>{const [lbl,val,setVal,uni] = row as [string, string, any, string];return (
+               <tr key={i}>
+                 <td style={{padding:'6px 10px',fontWeight:600,color:'var(--txt)',fontSize: 10,borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}>{lbl}</td>
+                 <td style={{padding:'6px 10px',borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}><input type="text" inputMode="decimal" aria-label={lbl} value={val} onChange={e=>setVal(e.target.value)} style={{...SI,textAlign:'right',fontSize: 10,padding:'5px 8px',width:100}}/></td>
+                 <td style={{padding:'6px 10px',color:'var(--txt2)',fontSize: 10,fontWeight:500,borderBottom:i<arr.length-1?'1px solid var(--line)':'none'}}>{uni}</td>
+               </tr>
+             );})}
+           </tbody>
+             </table>
         </div>
       </section>
   </>);
@@ -228,7 +232,7 @@ function GasDesign(){
           <span className="card-s">{gasTramos.length} tramos</span>
         </div>
         <div style={{padding:6}}>
-            <table className="tbl" style={{fontSize:11,tableLayout:'auto',width:'100%',borderCollapse:'collapse'}}>
+            <table className="tbl" style={{fontSize: 9,tableLayout:'auto',width:'100%',borderCollapse:'collapse'}}>
               <caption style={SR_ONLY}>Diseño de red</caption>
               <colgroup>
                 {colW.map((w,i)=><col key={i} style={{width:w}}/>)}
@@ -247,24 +251,24 @@ function GasDesign(){
                   const kVal=diamK[t.id]||0;
                   return(
                     <tr key={t.id}>
-                      <td className="c" style={{padding:'0 1px'}}><span className="sigla" style={{fontSize:11,padding:'1px 4px'}}>{t.id}</span></td>
-                      <td className="c" style={{padding:'0 1px',color:'var(--txt2)',fontSize:11}}>{pisoCorto(t.piso)}</td>
-                      <td className="c" style={{...TD,padding:'2px 3px'}}>{t.ini||'—'}</td>
-                      <td className="c" style={{...TD,padding:'2px 3px'}}>{t.fin||'—'}</td>
+                      <td className="c" style={{padding:'0 1px'}}><span className="sigla" style={{fontSize: 9,padding:'1px 4px'}}>{t.id}</span></td>
+                      <td className="c" style={{padding:'0 1px',color:'var(--txt2)',fontSize: 9}}>{pisoCorto(t.piso)}</td>
+                      <td className="c" style={{...TD,padding:'1px 2px'}}>{t.ini||'—'}</td>
+                      <td className="c" style={{...TD,padding:'1px 2px'}}>{t.fin||'—'}</td>
                       <td className="c" style={{padding:'0 1px'}}>
                         <select aria-label="Diámetro diseño" value={mat?`${mat}|${dn}`:''} onChange={e=>{
                           const val=e.target.value;
                           if(!val){handleDiamChange(t.id,'','');return;}
                           const sep=val.lastIndexOf('|');
                           handleDiamChange(t.id,val.substring(0,sep),val.substring(sep+1));
-                        }} style={{...SD,width:'100%',fontSize:11}}>
+                        }} style={{...SD,width:'100%',fontSize: 9}}>
                           <option value="">—</option>
                           {ALL_DN.sort((a,b)=>a.mat.localeCompare(b.mat)||a.dn.localeCompare(b.dn)).map(r=><option key={`${r.mat}|${r.dn}`} value={`${r.mat}|${r.dn}`}>{r.mat} D= {r.dn}&quot;</option>)}
                         </select>
                       </td>
-                      <td className="c" style={{...TD,padding:'2px 3px',color:dInt?'var(--txt)':'var(--txt3)'}}>{dInt?dInt.toFixed(2):'—'}</td>
-                      <td className="c" style={{...TD,padding:'2px 3px',color:kVal?'var(--txt)':'var(--txt3)'}}>{kVal||'—'}</td>
-                      <td className="c" style={{...TD,padding:'2px 3px'}}>{t.longitud>0?t.longitud.toFixed(2):'—'}</td>
+                      <td className="c" style={{...TD,padding:'1px 2px',color:dInt?'var(--txt)':'var(--txt3)'}}>{dInt?dInt.toFixed(2):'—'}</td>
+                      <td className="c" style={{...TD,padding:'1px 2px',color:kVal?'var(--txt)':'var(--txt3)'}}>{kVal||'—'}</td>
+                      <td className="c" style={{...TD,padding:'1px 2px'}}>{t.longitud>0?t.longitud.toFixed(2):'—'}</td>
                     </tr>
                   );
                 })}
@@ -282,7 +286,7 @@ function GasDesign(){
             <span className="card-s">{gasContBajantes.length} equipos</span>
           </div>
           <div style={{padding:6}}>
-            <table className="tbl" style={{fontSize:11}}>
+            <table className="tbl" style={{fontSize: 9}}>
               <thead><tr>
                 <th scope="col" style={TH}>ID</th>
                 <th scope="col" style={TH}>Tipo</th>
@@ -295,34 +299,34 @@ function GasDesign(){
                   <tr key={b.id}>
                     <td className="c" style={TD}>{b.code || b.id}</td>
                     <td className="c" style={TD}>{b.tipo === 'contador' ? 'Contador' : 'Calentador'}</td>
-                    <td className="c" style={{padding:'2px 3px'}}>
+                    <td className="c" style={{padding:'1px 2px'}}>
                       {b.tipo === 'contador' ? (
                         <select value={b.dNominal ? b.dNominal.replace(/"/g,'').trim() : ''} onChange={e=>{
                           const dNom = e.target.value ? `${e.target.value}"` : '';
                           writeContadorDiamToDrawing(dNom, plans, 'gas');
-                        }} style={{...SD,fontSize:11}}>
+                        }} style={{...SD,fontSize: 9}}>
                           <option value="">—</option>
                           {CONTADORES_CAT.map((c: any) => <option key={c.dn} value={c.dn}>{c.dn}"</option>)}
                         </select>
                       ) : '—'}
                     </td>
-                    <td className="c" style={{padding:'2px 3px'}}>
+                    <td className="c" style={{padding:'1px 2px'}}>
                       <select value={b.acoDiam || ''} onChange={e=>{
                         const val = e.target.value;
                         const bajKey = `${b.id}-${b.planId}`;
                         writeBajantePropToDrawing(bajKey, 'gas', 'acoDiam', val, plans);
-                      }} style={{...SD,fontSize:11}}>
+                      }} style={{...SD,fontSize: 9}}>
                         <option value="">—</option>
                         {GAS_DN_LABELS.map(d => <option key={d} value={d}>{d}</option>)}
                       </select>
                     </td>
-                    <td className="c" style={{padding:'2px 3px'}}>
+                    <td className="c" style={{padding:'1px 2px'}}>
                       {b.tipo === 'calentador' ? (
                         <select value={b.capacidad || ''} onChange={e=>{
                           const val = e.target.value;
                           const bajKey = `${b.id}-${b.planId}`;
                           writeBajantePropToDrawing(bajKey, 'gas', 'capacidad', val, plans);
-                        }} style={{...SD,fontSize:11}}>
+                        }} style={{...SD,fontSize: 9}}>
                           <option value="">—</option>
                           {CAT_GAS.filter(g => g.id.startsWith('cal')).map(g => <option key={g.id} value={g.id}>{g.n}</option>)}
                         </select>
@@ -344,7 +348,7 @@ function GasDesign(){
           <span className="card-s">{gasTramos.length} tramos</span>
         </div>
         <div style={{padding:6,overflow:'auto'}}>
-            <table className="tbl" style={{fontSize:10,tableLayout:'auto',width:'100%',borderCollapse:'collapse'}}>
+            <table className="tbl" style={{fontSize: 9,tableLayout:'auto',width:'100%',borderCollapse:'collapse'}}>
               <caption style={SR_ONLY}>Chequeo red de gas</caption>
               <thead>
                 <tr>
@@ -359,13 +363,13 @@ function GasDesign(){
                   <th scope="col" style={{...TH}} rowSpan={2}>V {'≤'} 10 m/s</th>
                 </tr>
                 <tr>
-                  <th scope="col" style={{...TH,fontSize:8}}>Codos 90{'°'} std</th>
-                  <th scope="col" style={{...TH,fontSize:8}}>Codos 90{'°'} rl</th>
-                  <th scope="col" style={{...TH,fontSize:8}}>Te en l&iacute;nea (flujo recto)</th>
-                  <th scope="col" style={{...TH,fontSize:8}}>Te ramal (flujo desviado)</th>
-                  <th scope="col" style={{...TH,fontSize:8}}>Válvula de bola (1/4 de vuelta)</th>
-                  <th scope="col" style={{...TH,fontSize:9}}>Inicio</th>
-                  <th scope="col" style={{...TH,fontSize:9}}>Fin</th>
+                  <th scope="col" style={{...TH,fontSize: 9}}>Codos 90{'°'} std</th>
+                  <th scope="col" style={{...TH,fontSize: 9}}>Codos 90{'°'} rl</th>
+                  <th scope="col" style={{...TH,fontSize: 9}}>Te en l&iacute;nea (flujo recto)</th>
+                  <th scope="col" style={{...TH,fontSize: 9}}>Te ramal (flujo desviado)</th>
+                  <th scope="col" style={{...TH,fontSize: 9}}>Válvula de bola (1/4 de vuelta)</th>
+                  <th scope="col" style={{...TH,fontSize: 9}}>Inicio</th>
+                  <th scope="col" style={{...TH,fontSize: 9}}>Fin</th>
                 </tr>
               </thead>
               <tbody>
@@ -384,21 +388,21 @@ function GasDesign(){
                   const acc=getAcc(t.id);
                   return(
                     <tr key={t.id}>
-                      <td className="c" style={{padding:'0 1px'}}><span className="sigla" style={{fontSize:10,padding:'1px 3px'}}>{t.id}</span></td>
-                      <td className="c" style={{...TD,padding:'3px 2px',fontSize:10}}>{t.longitud>0?t.longitud.toFixed(2):'—'}</td>
-                      <td className="c" style={{...TD,padding:'3px 2px',fontSize:10,color:dInt?'var(--txt)':'var(--txt3)'}}>{dInt?dInt.toFixed(2):'—'}</td>
+                      <td className="c" style={{padding:'0 1px'}}><span className="sigla" style={{fontSize: 9,padding:'1px 1px'}}>{t.id}</span></td>
+                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 9}}>{t.longitud>0?t.longitud.toFixed(2):'—'}</td>
+                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 9,color:dInt?'var(--txt)':'var(--txt3)'}}>{dInt?dInt.toFixed(2):'—'}</td>
                       {ACC_KEYS.map(k=>(
-                        <td key={k} className="c" style={{padding:'2px 1px',textAlign:'center',verticalAlign:'middle'}}>
-                          <span style={{fontSize:10,fontWeight:600,fontFamily:'var(--mono)',color:(acc[k]||0)>0?'var(--txt)':'var(--txt3)'}}>{acc[k]||0}</span>
+                        <td key={k} className="c" style={{padding:'1px 1px',textAlign:'center',verticalAlign:'middle'}}>
+                          <span style={{fontSize: 9,fontWeight:600,fontFamily:'var(--mono)',color:(acc[k]||0)>0?'var(--txt)':'var(--txt3)'}}>{acc[k]||0}</span>
                         </td>
                       ))}
-                      <td className="c" style={{...TD,padding:'3px 2px',fontSize:10,fontWeight:600,borderLeft:'2px solid var(--line)'}}>{le.toFixed(2)}</td>
-                      <td className="c" style={{...TD,padding:'3px 2px',fontSize:10,fontWeight:600,color:dP>0?'var(--txt)':'var(--txt3)'}}>{dP.toFixed(2)}</td>
-                      <td className="c" style={{...TD,padding:'3px 2px',fontSize:10,color:vel>0?'var(--txt)':'var(--txt3)'}}>{vel.toFixed(2)}</td>
-                      <td className="c" style={{...TD,padding:'3px 2px',fontSize:10}}>{pIni.toFixed(2)}</td>
-                      <td className="c" style={{...TD,padding:'3px 2px',fontSize:10}}>{pFin.toFixed(2)}</td>
-                      <td className="c" style={{padding:'3px 2px'}}>
-                        <span style={{fontSize:10,fontWeight:700,fontFamily:'var(--mono)',color:ok==='O.K.'?'#22c55e':ok==='NO'?'#ef5350':'var(--txt3)'}}>{ok}</span>
+                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 9,fontWeight:600,borderLeft:'2px solid var(--line)'}}>{le.toFixed(2)}</td>
+                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 9,fontWeight:600,color:dP>0?'var(--txt)':'var(--txt3)'}}>{dP.toFixed(2)}</td>
+                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 9,color:vel>0?'var(--txt)':'var(--txt3)'}}>{vel.toFixed(2)}</td>
+                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 9}}>{pIni.toFixed(2)}</td>
+                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 9}}>{pFin.toFixed(2)}</td>
+                      <td className="c" style={{padding:'1px 1px'}}>
+                        <span style={{fontSize: 9,fontWeight:700,fontFamily:'var(--mono)',color:ok==='O.K.'?'#22c55e':ok==='NO'?'#ef5350':'var(--txt3)'}}>{ok}</span>
                       </td>
                     </tr>
                   );

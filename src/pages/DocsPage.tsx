@@ -78,7 +78,7 @@ function DocsPage() {
         <ul className="flex-1 overflow-auto docs-scroll" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {categories.map((cat) => (
             <li key={cat.id}>
-            <button
+            <button type="button"
               onClick={() => {
                 setActiveCat(cat.id)
                 setOpenSections({})

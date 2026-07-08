@@ -3,6 +3,13 @@ import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys';
 import { writeSanDrawingSync, writeHydroDrawingSync } from '../../utils/drawingSync';
+const ExtremeAccessoryEditor_S1: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const ExtremeAccessoryEditor_S2: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const ExtremeAccessoryEditor_S3: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const ExtremeAccessoryEditor_S4: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const ExtremeAccessoryEditor_S5: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const ExtremeAccessoryEditor_S6: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+
 import {
   APARATOS_DEF,
   AF_UC_IDS,
@@ -158,16 +165,16 @@ export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelEl
 
   return (
     <div style={{ padding: "10px 12px 8px", borderBottom: '1px solid #3a494a', display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1, paddingBottom: 2 }}>Extremos del ramal</div>
+      <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1, paddingBottom: 2 }}>Extremos del ramal</div>
 
       {/* INICIO */}
       <div>
-        <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>INICIO</div>
-        <div style={{ fontSize: 10, color: '#9BA8AA', marginBottom: 2 }}>Seleccionar Accesorio</div>
+        <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>INICIO</div>
+        <div style={{ fontSize: 12, color: '#9BA8AA', marginBottom: 2 }}>Seleccionar Accesorio</div>
         <div style={{ display: 'grid', gridTemplateColumns: selElement.accesorioInicio ? '1fr 1fr' : '1fr', gap: 4, marginBottom: 4 }}>
           <select value={selElement.accesorioInicio || ''} aria-label="Accesorio inicio"
             onChange={onAccChange('accesorioInicio')}
-            style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+            style={ExtremeAccessoryEditor_S1}>
             <option value="">Ninguno</option>
             {accOptions.map(o => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -184,7 +191,7 @@ export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelEl
                   engineRef.current._markDirty();
                 }
               }}
-              style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+              style={ExtremeAccessoryEditor_S2}>
               <option value="">Usar red</option>
               {(selElement.accesorioInicio === 'sifon' 
                 ? diamList.filter((d: any) => { const v = parseFloat(d.n); return v === 2 || v === 3 || v === 4; })
@@ -199,10 +206,10 @@ export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelEl
         {/* Aparato Dropdown */}
         {applicableAps.length > 0 && (
           <div style={{ marginTop: 4 }}>
-            <div style={{ fontSize: 10, color: '#9BA8AA', marginBottom: 2 }}>Seleccionar Aparato</div>
+            <div style={{ fontSize: 12, color: '#9BA8AA', marginBottom: 2 }}>Seleccionar Aparato</div>
             <select value={selElement.aparatoInicio || ''} aria-label="Aparato inicio"
               onChange={onAppChange('aparatoInicio')}
-              style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+              style={ExtremeAccessoryEditor_S3}>
               <option value="">Ninguno</option>
               {applicableAps.map(o => (
                 <option key={o.id} value={o.id}>{o.nombre.toUpperCase()}</option>
@@ -214,12 +221,12 @@ export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelEl
 
       {/* FIN */}
       <div style={{ marginTop: 4 }}>
-        <div style={{ fontSize: 9, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>FIN</div>
-        <div style={{ fontSize: 10, color: '#9BA8AA', marginBottom: 2 }}>Seleccionar Accesorio</div>
+        <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>FIN</div>
+        <div style={{ fontSize: 12, color: '#9BA8AA', marginBottom: 2 }}>Seleccionar Accesorio</div>
         <div style={{ display: 'grid', gridTemplateColumns: selElement.accesorioFin ? '1fr 1fr' : '1fr', gap: 4, marginBottom: 4 }}>
           <select value={selElement.accesorioFin || ''} aria-label="Accesorio fin"
             onChange={onAccChange('accesorioFin')}
-            style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+            style={ExtremeAccessoryEditor_S4}>
             <option value="">Ninguno</option>
             {accOptions.map(o => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -236,7 +243,7 @@ export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelEl
                   engineRef.current._markDirty();
                 }
               }}
-              style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+              style={ExtremeAccessoryEditor_S5}>
               <option value="">Usar red</option>
               {(selElement.accesorioFin === 'sifon' 
                 ? diamList.filter((d: any) => { const v = parseFloat(d.n); return v === 2 || v === 3 || v === 4; })
@@ -251,10 +258,10 @@ export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelEl
         {/* Aparato Dropdown */}
         {applicableAps.length > 0 && (
           <div style={{ marginTop: 4 }}>
-            <div style={{ fontSize: 10, color: '#9BA8AA', marginBottom: 2 }}>Seleccionar Aparato</div>
+            <div style={{ fontSize: 12, color: '#9BA8AA', marginBottom: 2 }}>Seleccionar Aparato</div>
             <select value={selElement.aparatoFin || ''} aria-label="Aparato fin"
               onChange={onAppChange('aparatoFin')}
-              style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+              style={ExtremeAccessoryEditor_S6}>
               <option value="">Ninguno</option>
               {applicableAps.map(o => (
                 <option key={o.id} value={o.id}>{o.nombre.toUpperCase()}</option>

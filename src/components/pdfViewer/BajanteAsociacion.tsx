@@ -2,6 +2,8 @@
 import React from 'react';
 import { writeBajantePropToDrawing } from '../../utils/writeDiameterToDrawing';
 import { NETS } from '../../lib/PlanoEngine/PlanoState';
+const BajanteAsociacion_S1: React.CSSProperties = { flex: 1, padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+
 
 interface BajanteAsociacionProps {
   selElement: Record<string, any> | null;
@@ -29,18 +31,18 @@ export default function BajanteAsociacion({
 
   return (
     <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a", opacity: 1, pointerEvents: 'auto' }}>
-      <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
+      <div style={{ fontFamily: "'Geist',monospace", fontSize: 12, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>
         Asociación de bajante
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div>
-          <div style={{ fontSize: 8, color: '#6b8cae', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: .5 }}>Origen (piso actual)</div>
-          <div style={{ padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#6b8cae", fontSize: 10, fontFamily: "'Geist',monospace" }}>
+          <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: .5 }}>Origen (piso actual)</div>
+          <div style={{ padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#6b8cae", fontSize: 12, fontFamily: "'Geist',monospace" }}>
             {selectedNivel !== null ? pisoLbl(selectedNivel) : '—'}
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 8, color: '#6b8cae', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: .5 }}>Destino</div>
+          <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: .5 }}>Destino</div>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <select aria-label="Seleccionar destino de descarga" value={selElement.descargaEnId || ''}
               onChange={e => {
@@ -99,7 +101,7 @@ export default function BajanteAsociacion({
                   }
                 }
               }}
-              style={{ flex: 1, padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+              style={BajanteAsociacion_S1}>
               <option value="">— Sin destino —</option>
               {lowerFloorsRamales.map(group => {
                 const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
@@ -126,7 +128,7 @@ export default function BajanteAsociacion({
               })}
             </select>
             {selElement.descargaEnId && (
-              <button onClick={() => {
+              <button type="button" onClick={() => {
                 if (engineRef.current) {
                   engineRef.current.updateSelected({ descargaEnId: null });
                   setSelElement({ ...selElement, descargaEnId: null });
@@ -134,7 +136,7 @@ export default function BajanteAsociacion({
                   writeBajantePropToDrawing(bKey, selElement.net || 'san', 'descargaEnId', null, planosCtx.plans);
                 }
               }}
-                style={{ padding: '2px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 10 }}>
+                style={{ padding: '2px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 12 }}>
                 ✕
               </button>
             )}

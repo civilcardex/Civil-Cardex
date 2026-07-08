@@ -1,6 +1,12 @@
 import { memo } from 'react';
 import { ACCESORIOS_HIDRO } from "../constants";
 import { pisoCorto } from "../constants";
+const cBg2 = '#1e293b';
+const AccessoriesTable_S1: React.CSSProperties = { minWidth:36,textAlign:'center',position:'sticky',left:0,zIndex:2,background:cBg2,fontSize: 9,padding:'2px 2px' };
+const AccessoriesTable_S2: React.CSSProperties = { minWidth:36,textAlign:'center',position:'sticky',left:64,zIndex:2,background:cBg2,fontSize: 9,padding:'2px 2px' };
+const AccessoriesTable_S3: React.CSSProperties = { fontSize: 9,textAlign:'center',fontWeight:600,position:'sticky',left:0,background:cBg2,zIndex:1,padding:'2px 2px',whiteSpace:'nowrap' };
+const AccessoriesTable_S4: React.CSSProperties = { fontSize: 9,textAlign:'center',position:'sticky',left:64,background:cBg2,zIndex:1,padding:'2px 2px',color:'var(--txt2)' };
+
 
 const isContador = (s: string) => s.startsWith('CNT') || s.startsWith('cntAF');
 
@@ -18,7 +24,6 @@ const isAC2 = (ini: string, fin: string) => {
 
 const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: any[] }) {
   const cMono = "'Courier New',Courier,monospace";
-  const cBg2 = '#1e293b';
   return (
     <section className="card">
       <div className="card-h">
@@ -27,15 +32,15 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: any[
       </div>
       <div className="scroll-top" style={{padding:'12px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
-          <table className="tbl" style={{minWidth:700,fontSize:13}}>
+          <table className="tbl" style={{minWidth:520,fontSize: 9}}>
             <thead>
               <tr>
-                <th scope="col" className="col-h" style={{minWidth:64,textAlign:'center',position:'sticky',left:0,zIndex:2,background:cBg2,fontSize:11,padding:'5px 4px'}}>Tramo</th>
-                <th scope="col" className="col-h" style={{minWidth:48,textAlign:'center',position:'sticky',left:64,zIndex:2,background:cBg2,fontSize:10,padding:'5px 4px'}}>Nivel</th>
+                <th scope="col" className="col-h" style={AccessoriesTable_S1}>Tramo</th>
+                <th scope="col" className="col-h" style={AccessoriesTable_S2}>Nivel</th>
                 {ACCESORIOS_HIDRO.map(a => (
-                  <th scope="col" key={a.id} className="col-h" style={{minWidth:56,fontSize:10,textAlign:'center',whiteSpace:'nowrap',padding:'5px 2px'}}>
+                  <th scope="col" key={a.id} className="col-h" style={{minWidth:40,fontSize: 9,textAlign:'center',whiteSpace:'nowrap',padding:'2px 1px'}}>
                     <img src={a.icono} alt={a.nombre}  width={24} height={24} style={{width:24,height:24,objectFit:'contain',display:'block',margin:'0 auto 2px'}}  loading="lazy" />
-                    <span style={{fontSize:9,fontWeight:500}}>{a.nombre}</span>
+                    <span style={{fontSize: 9,fontWeight:500}}>{a.nombre}</span>
                   </th>
                 ))}
               </tr>
@@ -48,13 +53,13 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: any[
                 const nivelLbl = t._nivelLabel || (t.piso != null ? pisoCorto(t.piso) : '—');
                 return (
                   <tr key={i}>
-                    <td className="c" style={{fontSize:12,textAlign:'center',fontWeight:600,position:'sticky',left:0,background:cBg2,zIndex:1,padding:'4px 4px',whiteSpace:'nowrap'}}>{lbl}</td>
-                    <td className="c" style={{fontSize:10,textAlign:'center',position:'sticky',left:64,background:cBg2,zIndex:1,padding:'4px 4px',color:'var(--txt2)'}}>{nivelLbl}</td>
+                    <td className="c" style={AccessoriesTable_S3}>{lbl}</td>
+                    <td className="c" style={AccessoriesTable_S4}>{nivelLbl}</td>
                     {ACCESORIOS_HIDRO.map(a => {
                       const v = t.accesorios?.[a.id] || 0;
                       return (
                         <td key={a.id} className="c" style={{padding:'4px 2px'}}>
-                          <span style={{fontSize:13,fontFamily:cMono,color:v>0?'var(--txt)':'var(--txt3)'}}>{v || '\u2014'}</span>
+                          <span style={{fontSize: 9,fontFamily:cMono,color:v>0?'var(--txt)':'var(--txt3)'}}>{v || '\u2014'}</span>
                         </td>
                       );
                     })}
@@ -63,7 +68,7 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: any[
               })}
               {tramos.length === 0 && (
                 <tr>
-                  <td className="c" colSpan={2 + ACCESORIOS_HIDRO.length} style={{fontSize:11,color:'var(--txt3)',padding:'24px 0',textAlign:'center'}}>
+                  <td className="c" colSpan={2 + ACCESORIOS_HIDRO.length} style={{fontSize: 9,color:'var(--txt3)',padding:'24px 0',textAlign:'center'}}>
                     No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                   </td>
                 </tr>

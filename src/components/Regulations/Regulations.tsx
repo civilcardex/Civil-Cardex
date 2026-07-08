@@ -10,6 +10,9 @@ import { NSR10 } from "./sections/NSR10";
 import { NFPA13 } from "./sections/NFPA13";
 import { NTC3096 } from "./sections/NTC3096";
 import { TablasRef } from "./sections/TablasRef";
+const Regulations_S1: React.CSSProperties = { display: "flex", gap: 6, flexWrap: "wrap", padding: "12px 14px", background: "var(--bg2)", border: "1px solid var(--line)", borderRadius: "var(--r2)", marginBottom: 2, flexShrink: 0, };
+const Regulations_S2: React.CSSProperties = { cursor: "pointer", userSelect: "none", width: '100%', border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', textAlign: 'inherit', };
+
 
 export default function Normativa() {
   const [filtro, setFiltro] = useState("todos");
@@ -47,7 +50,7 @@ export default function Normativa() {
         <section className="card" style={{ flexShrink: 0 }}>
           <div className="ch" style={{ padding: "12px 16px" }}>
             <h2 className="ct-t" style={{ fontSize: 14 }}>§ Criterios de diseño — tabla editable</h2>
-            <span className="ct-s" style={{ fontSize: 10 }}>NTC 1500:2020 · RAS 2000 · NTC 3728 · NFPA 13:2022</span>
+            <span className="ct-s" style={{ fontSize: 12 }}>NTC 1500:2020 · RAS 2000 · NTC 3728 · NFPA 13:2022</span>
           </div>
           <div className="cb" style={{ padding: "10px 14px" }}>
             <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center', paddingBottom:10 }}>
@@ -55,14 +58,14 @@ export default function Normativa() {
                 <FilterBtn key={f.k} active={critFil === f.k} onClick={() => setCritFil(f.k)}>{f.l}</FilterBtn>
               ))}
               <div style={{ flex:1, minWidth:8 }} />
-              <button className="btn-ok" style={{ padding:'5px 12px', fontSize:11 }}
+              <button type="button" className="btn-ok" style={{ padding:'5px 12px', fontSize: 12 }}
                 onClick={() => setCrits(p => [...p, {
                   id:'c'+Date.now(), red: critFil === 'todos' ? 'af' : critFil,
                   param:'Nuevo criterio', val:'0', uni:'—', norma:'Norma', art:'§',
                   cumple:'Descripción', nota:'Observación',
                 }])}
               >+ Agregar</button>
-              <button className="btn-g" style={{ padding:'5px 12px', fontSize:11 }}
+              <button type="button" className="btn-g" style={{ padding:'5px 12px', fontSize: 12 }}
                 onClick={() => { if (window.confirm('¿Restaurar valores por defecto?')) setCrits(CRIT0); }}
               >↺ Restaurar</button>
             </div>
@@ -86,32 +89,32 @@ export default function Normativa() {
                 <input className="ni" aria-label="Valor del parámetro" style={{ width:75, fontWeight:700, fontSize:12 }}
                   value={cr.val}
                   onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, val:v} : x)); }} />
-                <input className="ni" aria-label="Unidad del parámetro" style={{ width:56, fontSize:10 }}
+                <input className="ni" aria-label="Unidad del parámetro" style={{ width:56, fontSize: 12 }}
                   value={cr.uni}
                   onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, uni:v} : x)); }} />
-                <button className="btn-del" style={{ padding:'3px 10px', fontSize:11 }} onClick={() => setCrits(p => p.filter(x => x.id !== cr.id))}>✕</button>
+                <button type="button" className="btn-del" style={{ padding:'3px 10px', fontSize: 12 }} onClick={() => setCrits(p => p.filter(x => x.id !== cr.id))}>✕</button>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, padding:'10px 14px' }}>
                 <div style={{ marginBottom:0 }}>
-                  <label style={{ display:'block', fontSize:11, fontWeight:500, marginBottom:2 }}>Norma · Artículo</label>
+                  <label style={{ display:'block', fontSize: 12, fontWeight:500, marginBottom:2 }}>Norma · Artículo</label>
                   <div style={{ display:'flex', gap:5 }}>
-                    <input className="ni" aria-label="Norma" style={{ flex:1, textAlign:'left', fontSize:10 }}
+                    <input className="ni" aria-label="Norma" style={{ flex:1, textAlign:'left', fontSize: 12 }}
                       value={cr.norma}
                       onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, norma:v} : x)); }} />
-                    <input className="ni" aria-label="Artículo" style={{ width:75, textAlign:'center', fontSize:10 }}
+                    <input className="ni" aria-label="Artículo" style={{ width:75, textAlign:'center', fontSize: 12 }}
                       value={cr.art}
                       onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, art:v} : x)); }} />
                   </div>
                 </div>
                 <div style={{ marginBottom:0 }}>
-                  <label style={{ display:'block', fontSize:11, fontWeight:500, marginBottom:2 }}>Evidencia de cumplimiento</label>
-                  <input className="ni" aria-label="Evidencia de cumplimiento" style={{ width:'100%', textAlign:'left', fontSize:11 }}
+                  <label style={{ display:'block', fontSize: 12, fontWeight:500, marginBottom:2 }}>Evidencia de cumplimiento</label>
+                  <input className="ni" aria-label="Evidencia de cumplimiento" style={{ width:'100%', textAlign:'left', fontSize: 12 }}
                     value={cr.cumple}
                     onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, cumple:v} : x)); }} />
                 </div>
                 <div style={{ marginBottom:0, gridColumn:'1 / -1' }}>
-                  <label style={{ display:'block', fontSize:11, fontWeight:500, marginBottom:2 }}>Observación técnica</label>
-                  <input className="ni" aria-label="Observación técnica" style={{ width:'100%', textAlign:'left', fontSize:11, fontStyle:'italic' }}
+                  <label style={{ display:'block', fontSize: 12, fontWeight:500, marginBottom:2 }}>Observación técnica</label>
+                  <input className="ni" aria-label="Observación técnica" style={{ width:'100%', textAlign:'left', fontSize: 12, fontStyle:'italic' }}
                     value={cr.nota}
                     onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, nota:v} : x)); }} />
                 </div>
@@ -128,11 +131,7 @@ export default function Normativa() {
       <style>{localCSS}</style>
       {tabsRow}
 
-      <div style={{
-        display: "flex", gap: 6, flexWrap: "wrap", padding: "12px 14px",
-        background: "var(--bg2)", border: "1px solid var(--line)", borderRadius: "var(--r2)",
-        marginBottom: 2, flexShrink: 0,
-      }}>
+      <div style={Regulations_S1}>
         {FILTROS_NORM.map(f => (
           <FilterBtn key={f.k} active={filtro === f.k} onClick={() => setFiltro(f.k)}>{f.l}</FilterBtn>
         ))}
@@ -193,16 +192,12 @@ function NormaCard({ id, titulo, subt, isOpen, onToggle, children }: NormaCardPr
   return (
     <div className={`card${isOpen ? ' sec-open' : ''}`}
       style={{ borderTop: '1px solid var(--line)', borderRadius: 0 }}>
-      <button className="card-h" onClick={() => onToggle(id)}
+      <button type="button" className="card-h" onClick={() => onToggle(id)}
         aria-expanded={isOpen} aria-controls={`reg-card-content-${id}`}
-        style={{
-          cursor: "pointer", userSelect: "none", width: '100%',
-          border: 'none', background: 'transparent', font: 'inherit', color: 'inherit',
-          textAlign: 'inherit',
-        }}>
+        style={Regulations_S2}>
         <div>
           <h2 className="card-t" style={{ fontSize: 15, color: 'var(--txt)' }}>{titulo}</h2>
-          <span className="td-mono" style={{ display:"block", fontSize:11, marginTop:2 }}>{subt}</span>
+          <span className="td-mono" style={{ display:"block", fontSize: 12, marginTop:2 }}>{subt}</span>
         </div>
         <span style={{ fontSize:14 }}>{isOpen ? '▲' : '▼'}</span>
       </button>

@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import ModulePageLayout from '../components/ModulePageLayout';
 import { usePageMeta } from '../hooks/usePageMeta';
+const ModulePage_S1: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+
 
 interface Feature {
   icon: string;
@@ -260,7 +262,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                 <Link to="/civilflowareatrabajo" className="inline-block bg-primary text-on-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-all" style={{ fontFamily: 'Geist, monospace', background: cfg.accent }}>
                   {cfg.ctaText}
                 </Link>
-                <button className="border text-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container transition-all flex items-center gap-2" style={{ fontFamily: 'Geist, monospace', borderColor: cfg.accent, color: cfg.accent }}>
+                <button type="button" className="border text-primary px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-surface-container transition-all flex items-center gap-2" style={{ fontFamily: 'Geist, monospace', borderColor: cfg.accent, color: cfg.accent }}>
                   <span className="material-symbols-outlined text-base">download</span> DESCARGAR SDK
                 </button>
               </div>
@@ -619,7 +621,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                   </div>
                 )}
                 {cfg.customLayout === 'roads' && f.title.includes('Diseño Geométrico') && (
-                  <div className="mt-8 flex items-center gap-2 uppercase cursor-pointer hover:underline" style={{ fontFamily: 'Geist, monospace', fontSize: 11, fontWeight: 700, color: '#00dce5' }}>
+                  <div className="mt-8 flex items-center gap-2 uppercase cursor-pointer hover:underline" style={{ fontFamily: 'Geist, monospace', fontSize: 12, fontWeight: 700, color: '#00dce5' }}>
                     Explorar Herramientas <span className="material-symbols-outlined text-sm">arrow_outward</span>
                   </div>
                 )}
@@ -700,7 +702,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
           <h2 className="text-xl font-semibold text-on-surface border-b border-outline-variant pb-4 mb-6" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>ESPECIFICACIONES DEL MÓDULO</h2>
           <div className="border border-outline-variant overflow-auto" style={{ background: '#1e2024' }}>
             <table className="w-full text-left text-sm min-w-[600px]">
-              <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Especificaciones del módulo</caption>
+              <caption style={ModulePage_S1}>Especificaciones del módulo</caption>
               <thead className="border-b border-outline-variant" style={{ background: '#282a2e' }}>
                 <tr>
                   <th scope="col" className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase" style={{ fontFamily: 'Geist, monospace' }}>Parámetro</th>
@@ -737,7 +739,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               <p className="text-sm text-on-surface-variant">Solicite acceso a nuestro entorno de pruebas sandbox. Suba un KML de muestra y experimente el ruteo automático y cálculo de presiones en tiempo real.</p>
               <div className="flex gap-4 mt-2">
                 <input aria-label="Correo electrónico corporativo" className="px-4 py-3 flex-grow outline-none text-on-surface border-b border-outline-variant focus:border-primary transition-colors" style={{ fontFamily: 'Geist, monospace', fontSize: 13, background: '#0A0C0E' }} placeholder="INGRESAR_CORREO_CORPORATIVO" type="email" />
-                <button className="px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold text-on-primary flex items-center gap-2" style={{ fontFamily: 'Geist, monospace', background: '#00f5ff' }}>
+                <button type="button" className="px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold text-on-primary flex items-center gap-2" style={{ fontFamily: 'Geist, monospace', background: '#00f5ff' }}>
                   Solicitar Demo <span className="material-symbols-outlined text-sm">arrow_forward</span>
                 </button>
               </div>
@@ -758,7 +760,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
             <p className="text-base text-on-surface-variant mb-8 max-w-2xl mx-auto">
               Únase a los equipos de ingeniería que confían en CivilStructure para validar la seguridad estructural de sus proyectos más exigentes.
             </p>
-            <button className="bg-primary text-on-primary px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-all" style={{ fontFamily: 'Geist, monospace', background: cfg.accent, boxShadow: `0 0 15px ${cfg.accent}4d`, color: '#000' }}>
+            <button type="button" className="bg-primary text-on-primary px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold hover:bg-primary-fixed transition-all" style={{ fontFamily: 'Geist, monospace', background: cfg.accent, boxShadow: `0 0 15px ${cfg.accent}4d`, color: '#000' }}>
               SOLICITAR LICENCIA DE PRUEBA
             </button>
           </div>

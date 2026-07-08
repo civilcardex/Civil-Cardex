@@ -1,4 +1,7 @@
 import type { Tramo } from '../context/TramosContext';
+const componentHelpers_S1: React.CSSProperties = { color: 'var(--ok)', background: 'rgba(47, 248, 1, 0.08)', border: '1px solid rgba(47, 248, 1, 0.15)', padding: '1px 5px', borderRadius: '3px', fontWeight: 600, fontSize: '9px', fontFamily: 'var(--mono)', display: 'inline-block' };
+const componentHelpers_S2: React.CSSProperties = { color: 'var(--err)', background: 'rgba(255, 180, 171, 0.08)', border: '1px solid rgba(255, 180, 171, 0.15)', padding: '1px 5px', borderRadius: '3px', fontWeight: 600, fontSize: '9px', fontFamily: 'var(--mono)', display: 'inline-block', whiteSpace: 'nowrap' };
+
 
 interface UDBase {
   id: string;
@@ -55,35 +58,14 @@ export function renderStatus(val: string) {
   const fail = val === 'NO CUMPLE' || val === 'No cumple' || val === 'NO';
   if (ok) {
     return (
-      <span style={{
-        color: 'var(--ok)',
-        background: 'rgba(47, 248, 1, 0.08)',
-        border: '1px solid rgba(47, 248, 1, 0.15)',
-        padding: '1px 5px',
-        borderRadius: '3px',
-        fontWeight: 600,
-        fontSize: '9px',
-        fontFamily: 'var(--mono)',
-        display: 'inline-block'
-      }}>
+      <span style={componentHelpers_S1}>
         {val}
       </span>
     );
   }
   if (fail) {
     return (
-      <span style={{
-        color: 'var(--err)',
-        background: 'rgba(255, 180, 171, 0.08)',
-        border: '1px solid rgba(255, 180, 171, 0.15)',
-        padding: '1px 5px',
-        borderRadius: '3px',
-        fontWeight: 600,
-        fontSize: '9px',
-        fontFamily: 'var(--mono)',
-        display: 'inline-block',
-        whiteSpace: 'nowrap'
-      }}>
+      <span style={componentHelpers_S2}>
         {val}
       </span>
     );

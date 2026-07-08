@@ -24,10 +24,10 @@ export default function TipoTramoSelector({
 }: TipoTramoSelectorProps) {
   return (
     <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-      <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>¿Qué voy a dibujar?</div>
+      <div style={{ fontFamily: "'Geist',monospace", fontSize: 12, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>¿Qué voy a dibujar?</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         {TIPOS_TRAMO.map(tp => (
-          <button key={tp.id} onClick={() => setTipoTramo(tp.id)}
+          <button type="button" key={tp.id} onClick={() => setTipoTramo(tp.id)}
             style={{
               padding: "7px 10px", background: tipoTramo === tp.id ? "#2563EB22" : "#1e2024",
               border: `1px solid ${tipoTramo === tp.id ? "#2563EB" : "#3a494a"}`,
@@ -35,10 +35,10 @@ export default function TipoTramoSelector({
               display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start",
               transition: "all .12s",
             }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: tipoTramo === tp.id ? "#2563EB" : "#b9caca", fontFamily: "'Geist',monospace" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: tipoTramo === tp.id ? "#2563EB" : "#b9caca", fontFamily: "'Geist',monospace" }}>
               {tp.id === 'ramal' ? '📏 Ramal principal' : tp.id === 'tributario' ? '🔀 Tributario' : tp.label}
             </div>
-            <div style={{ fontSize: 9, color: "#6b8cae", fontFamily: "'Geist',monospace", textAlign: "left" }}>
+            <div style={{ fontSize: 12, color: "#6b8cae", fontFamily: "'Geist',monospace", textAlign: "left" }}>
               {tp.id === 'ramal' ? 'Trazos principales de la red activa' : tp.id === 'tributario' ? 'Ramificaciones que conectan al ramal principal' : ''}
             </div>
           </button>
@@ -46,26 +46,26 @@ export default function TipoTramoSelector({
       </div>
       {tipoTramo === 'tributario' && (
         <div style={{ marginTop: 8, padding: '8px 10px', background: padreTributarioId ? 'rgba(37,99,235,.12)' : '#1e2024', border: `1px solid ${padreTributarioId ? '#2563EB' : '#3a494a'}`, borderRadius: 3 }}>
-          <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Padre (ramal asignado)</div>
+          <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Padre (ramal asignado)</div>
           <select aria-label="Seleccionar ramal padre tributario" value={padreTributarioId || ''}
             onChange={e => {
               const v = e.target.value || null;
               setPadreTributarioId(v);
               if (engineRef.current) engineRef.current.setPadreTributario(v);
             }}
-            style={{ width: '100%', padding: '5px 8px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3, color: padreTributarioId ? '#2563EB' : '#6b8cae', fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+            style={{ width: '100%', padding: '5px 8px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3, color: padreTributarioId ? '#2563EB' : '#6b8cae', fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
             <option value="">— Seleccionar ramal padre —</option>
             {drawnElements.filter(el => el.type === 'ramal' && el.tipo === 'ramal').map(el => (
               <option key={el.id} value={el.id}>{el.label}{el.totalL ? ` · ${typeof el.totalL === 'number' ? el.totalL.toFixed(2) : el.totalL}m` : ''}</option>
             ))}
           </select>
           {drawnElements.filter(el => el.type === 'ramal' && el.tipo === 'ramal').length === 0 && (
-            <div style={{ fontSize: 10, color: '#ffb4ab', fontFamily: "'Geist',monospace", marginTop: 6, lineHeight: 1.4 }}>
+            <div style={{ fontSize: 12, color: '#ffb4ab', fontFamily: "'Geist',monospace", marginTop: 6, lineHeight: 1.4 }}>
               No hay ramales principales en esta red. Dibuja primero un ramal antes de crear tributarios.
             </div>
           )}
           {padreTributarioId && (
-            <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", marginTop: 4, lineHeight: 1.4 }}>
+            <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", marginTop: 4, lineHeight: 1.4 }}>
               El primer punto se conectará automáticamente al ramal seleccionado.
             </div>
           )}

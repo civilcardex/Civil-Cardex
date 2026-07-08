@@ -91,7 +91,7 @@ export function TablasRef() {
                     style={{
                       color: col,
                       fontWeight: 600,
-                      fontSize: 10,
+                      fontSize: 12,
                     }}
                   >
                     {red}
@@ -99,7 +99,7 @@ export function TablasRef() {
                 </td>
                 <td style={{ fontWeight: 500 }}>{param}</td>
                 <td className="c">{crit}</td>
-                <td className="c td-mono" style={{ fontSize: 10 }}>
+                <td className="c td-mono" style={{ fontSize: 12 }}>
                   {norm}
                 </td>
               </tr>

@@ -26,20 +26,14 @@ export function LazyInp({ field, style, ariaLabel, disabled }: { field: keyof EP
   return <input type="text" disabled={disabled} inputMode="decimal" aria-label={ariaLabel} value={val} onChange={handleChange} onBlur={handleBlur} style={{...style || SI, opacity: disabled ? 0.7 : 1, cursor: disabled ? 'default' : 'text'}} />;
 }
 
-export const Fmt = (v: any, u = "") => {
-  if (v === "" || v === null || v === undefined) return <span style={{ color: "var(--txt3)", fontSize: 11 }}>—</span>;
-  const val = typeof v === "number" ? v.toFixed(2) : v;
-  return <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{val}{u ? ` ${u}` : ""}</span>;
-};
-
 export const Param = ({ name, sub }: { name: string; sub?: string }) => (
   <div>
     <div style={{ fontWeight: 600, fontSize: 13, color: "var(--txt)" }}>{name}</div>
-    {sub && <div style={{ fontSize: 10, color: "var(--txt3)", marginTop: 1 }}>{sub}</div>}
+    {sub && <div style={{ fontSize: 12, color: "var(--txt3)", marginTop: 1 }}>{sub}</div>}
   </div>
 );
 
 export const Comment = ({ children }: { children: React.ReactNode }) => (
-  <span style={{ fontSize: 9, color: "var(--txt4)", lineHeight: 1.2, wordBreak: "break-word" }}>{children}</span>
+  <span style={{ fontSize: 12, color: "var(--txt4)", lineHeight: 1.2, wordBreak: "break-word" }}>{children}</span>
 );
 

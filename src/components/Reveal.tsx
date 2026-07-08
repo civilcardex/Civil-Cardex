@@ -25,10 +25,12 @@ export default function Reveal({
     // Check initial user preference
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     setPrefersReducedMotion(mediaQuery.matches);
+    if (mediaQuery.matches) setIsIntersecting(true);
 
     // Listen to changes in preference
     const listener = (event: MediaQueryListEvent) => {
       setPrefersReducedMotion(event.matches);
+      if (event.matches) setIsIntersecting(true);
     };
 
     mediaQuery.addEventListener('change', listener);
@@ -38,10 +40,7 @@ export default function Reveal({
   }, []);
 
   useEffect(() => {
-    if (prefersReducedMotion) {
-      setIsIntersecting(true);
-      return;
-    }
+    if (prefersReducedMotion) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -62,7 +61,7 @@ export default function Reveal({
     return () => {
       observer.disconnect();
     };
-  }, [threshold, prefersReducedMotion]);
+  }, [threshold]);
 
   if (prefersReducedMotion) {
     return <div className={className}>{children}</div>;

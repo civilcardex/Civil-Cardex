@@ -11,7 +11,7 @@ export const subHeadingStyle = {
 
 export function TabBtn({ active, onClick, children, id }: { active: boolean; onClick: () => void; children?: ReactNode; key?: any; id?: string }) {
   return (
-    <button id={id} onClick={onClick} role="tab" aria-selected={active}
+    <button type="button" id={id} onClick={onClick} role="tab" aria-selected={active}
       style={{
         flex: 1, padding: "14px 18px", borderRadius: "var(--r)",
         border: "1px solid", cursor: "pointer", fontSize: 15,
@@ -25,7 +25,7 @@ export function TabBtn({ active, onClick, children, id }: { active: boolean; onC
 
 export function FilterBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children?: ReactNode; key?: any }) {
   return (
-    <button onClick={onClick}
+    <button type="button" onClick={onClick}
       style={{
         flex: 1, padding: "12px 16px", borderRadius: "var(--r)",
         border: "1px solid", cursor: "pointer", fontSize: 14,

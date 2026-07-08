@@ -2,6 +2,9 @@ import React from "react";
 import { COEF_HAZEN } from "../constants/hydraulicData";
 import { fmt } from "../utils/formatUtils";
 import { CONTADORES as CONTADORES_CAT } from "../pages/catalog/catalogData";
+const SupplyConnection_S1: React.CSSProperties = { fontFamily: "monospace", fontSize: 9, lineHeight: 1.4, color: "var(--txt2)", background: "var(--bg3)", padding: "8px", borderRadius: "4px", border: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center" };
+const SupplyConnection_S2: React.CSSProperties = { width:"100%",padding:"3px 4px",border:"1px solid #3a494a",borderRadius:3,background:"#1e2024",color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",cursor:"pointer",textAlign:"center",textAlignLast:"center" };
+
 
 const C = COEF_HAZEN;
 
@@ -64,11 +67,11 @@ interface AcometidaProps {
 
 const SECTION_COL: React.CSSProperties = { display: "flex", flexDirection: "column", border: "1px solid var(--line)", borderRadius: "var(--r)", overflow: "hidden", background: "var(--bg)" };
 const SECTION_HDR: React.CSSProperties = { padding: "8px 12px", borderBottom: "1px solid var(--line)", background: "var(--bg2)" };
-const SECTION_H4: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: "var(--txt)", margin: 0, textTransform: "uppercase", letterSpacing: 0.5 };
-const TH_CENTER: React.CSSProperties = { textAlign: "center", padding: "4px" };
-const TD_PARAM_LABEL: React.CSSProperties = { padding: "4px", textAlign: "left", fontWeight: 600 };
-const TD_PARAM_VALUE: React.CSSProperties = { textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "4px" };
-const TD_PARAM_UNIT: React.CSSProperties = { textAlign: "center", color: "var(--txt3)", padding: "4px" };
+const SECTION_H4: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: "var(--txt)", margin: 0, textTransform: "uppercase", letterSpacing: 0.5 };
+const TH_CENTER: React.CSSProperties = { textAlign: "center", padding: "2px" };
+const TD_PARAM_LABEL: React.CSSProperties = { padding: "1px 2px", textAlign: "left", fontWeight: 600 };
+const TD_PARAM_VALUE: React.CSSProperties = { textAlign: "center", color: "var(--txt2)", fontWeight: 600, padding: "1px 2px" };
+const TD_PARAM_UNIT: React.CSSProperties = { textAlign: "center", color: "var(--txt3)", padding: "1px 2px" };
 const SCROLL_INNER: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "stretch", paddingBottom: "16px" };
 
 function LazyNum({ value, onChange, ariaLabel, style, className }: any) {
@@ -140,7 +143,7 @@ function Acometida({
             
             <div style={{ padding: "12px", borderBottom: "1px solid var(--line)" }}>
               {/* Text Diagram */}
-              <div style={{fontFamily: "monospace", fontSize: 9, lineHeight: 1.4, color: "var(--txt2)", background: "var(--bg3)", padding: "8px", borderRadius: "4px", border: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center"}}>
+              <div style={SupplyConnection_S1}>
                 <span style={{fontWeight: 700, color: "var(--txt)"}}>RED PÚBLICA</span>
                 <span style={{color: "var(--txt3)"}}>→</span>
                 <span style={{fontWeight: 700, color: "var(--txt)"}}>CONTADOR</span>
@@ -150,7 +153,7 @@ function Acometida({
             </div>
 
             {/* Tramos Table */}
-            <table className="tbl" style={{ fontSize: 11, width: "100%", tableLayout: "fixed", borderBottom: "none" }}>
+            <table className="tbl" style={{ fontSize: 10, width: "100%", tableLayout: "fixed", borderBottom: "none" }}>
               <thead>
                 <tr>
                   <th scope="col" className="col-h" rowSpan={2} style={{...TH_CENTER, width: "10%"}}>Tramo</th>
@@ -172,17 +175,17 @@ function Acometida({
                   <td className="c" style={{padding: "2px 4px"}}>Red Pública</td>
                   <td className="c" style={{padding: "2px 4px"}}>Contador</td>
                   <td className="c" style={{padding: "1px"}}>
-                    <LazyNum ariaLabel="Longitud horizontal ACOM-01" value={acoL1.h} onChange={(v: number)=>setAcoL1(s=>({...s,h:v}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 11, padding: 2}} />
+                    <LazyNum ariaLabel="Longitud horizontal ACOM-01" value={acoL1.h} onChange={(v: number)=>setAcoL1(s=>({...s,h:v}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} />
                   </td>
                   <td className="c" style={{padding: "1px"}}>
                     {isTr1Drawn ? (
-                      <span style={{fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)"}}>{fmt(acoL1.le, 2)}</span>
+                      <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{fmt(acoL1.le, 2)}</span>
                     ) : (
-                      <LazyNum ariaLabel="Longitud equivalente ACOM-01" value={acoL1.le} onChange={(v: number)=>setAcoL1(s=>({...s,le:v}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 11, padding: 2}} />
+                      <LazyNum ariaLabel="Longitud equivalente ACOM-01" value={acoL1.le} onChange={(v: number)=>setAcoL1(s=>({...s,le:v}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} />
                     )}
                   </td>
-                  <td className="c" style={{fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)"}}>{Qaco > 0 ? fmt(Math.sqrt(Qaco), 2) : "—"}</td>
-                  <td className="c" style={{padding: "4px 8px", fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)"}}>
+                  <td className="c" style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{Qaco > 0 ? fmt(Math.sqrt(Qaco), 2) : "—"}</td>
+                  <td className="c" style={{padding: "2px 4px", fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>
                     {AF_DIAM_OPTS.find(o => o.nominal === acoRedContDiam)?.label || acoRedContDiam || "—"}
                   </td>
                 </tr>
@@ -192,27 +195,27 @@ function Acometida({
                   <td className="c" style={{padding: "2px 4px", borderBottom: "1px solid var(--line)"}}>Contador</td>
                   <td className="c" style={{padding: "1px", borderBottom: "1px solid var(--line)"}}>
                     {isTr2Drawn ? (
-                      <span style={{fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)"}}>{acoMonName || '—'}</span>
+                      <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{acoMonName || '—'}</span>
                     ) : (
-                      <input aria-label="Nombre montante" value={acoMonName} onChange={e=>setAcoMonName(e.target.value)} className="ni" style={{fontSize: 11, padding: "2px"}} placeholder="Mont..." />
+                      <input aria-label="Nombre montante" value={acoMonName} onChange={e=>setAcoMonName(e.target.value)} className="ni" style={{fontSize: 10, padding: "2px"}} placeholder="Mont..." />
                     )}
                   </td>
                   <td className="c" style={{padding: "1px", borderBottom: "1px solid var(--line)"}}>
                     {isTr2Drawn ? (
-                      <span style={{fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)"}}>{fmt(acoL2.h, 2)}</span>
+                      <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{fmt(acoL2.h, 2)}</span>
                     ) : (
-                      <LazyNum ariaLabel="Longitud horizontal ACOM-02" value={acoL2.h} onChange={(v: number)=>setAcoL2(s=>({...s,h:v}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 11, padding: 2}} />
+                      <LazyNum ariaLabel="Longitud horizontal ACOM-02" value={acoL2.h} onChange={(v: number)=>setAcoL2(s=>({...s,h:v}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} />
                     )}
                   </td>
                   <td className="c" style={{padding: "1px", borderBottom: "1px solid var(--line)"}}>
                     {isTr2Drawn ? (
-                      <span style={{fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)"}}>{fmt(acoL2.le, 2)}</span>
+                      <span style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)"}}>{fmt(acoL2.le, 2)}</span>
                     ) : (
-                      <LazyNum ariaLabel="Longitud equivalente ACOM-02" value={acoL2.le} onChange={(v: number)=>setAcoL2(s=>({...s,le:v}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 11, padding: 2}} />
+                      <LazyNum ariaLabel="Longitud equivalente ACOM-02" value={acoL2.le} onChange={(v: number)=>setAcoL2(s=>({...s,le:v}))} className="ni" style={{width: "100%", textAlign: "center", fontSize: 10, padding: 2}} />
                     )}
                   </td>
-                  <td className="c" style={{fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)", borderBottom: "1px solid var(--line)"}}>{Qaco > 0 ? fmt(Math.sqrt(Qaco), 2) : "—"}</td>
-                  <td className="c" style={{padding: "4px 8px", fontFamily: "var(--mono)", fontSize: 11, color: "var(--txt2)", borderBottom: "1px solid var(--line)"}}>
+                  <td className="c" style={{fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)", borderBottom: "1px solid var(--line)"}}>{Qaco > 0 ? fmt(Math.sqrt(Qaco), 2) : "—"}</td>
+                  <td className="c" style={{padding: "2px 4px", fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt2)", borderBottom: "1px solid var(--line)"}}>
                     {AF_DIAM_OPTS.find(o => o.nominal === acoContMonDiam)?.label || acoContMonDiam || "—"}
                   </td>
                 </tr>
@@ -226,7 +229,7 @@ function Acometida({
               <h4 style={SECTION_H4}>2. Resumen de Parámetros</h4>
             </div>
             
-            <table className="tbl" style={{ fontSize: 11, width: "100%", tableLayout: "fixed", borderBottom: "none" }}>
+            <table className="tbl" style={{ fontSize: 12, width: "100%", tableLayout: "fixed", borderBottom: "none" }}>
               <thead>
                 <tr>
                   <th scope="col" className="col-h" style={{ ...TH_CENTER, width: "45%" }}>Parámetro</th>
@@ -287,7 +290,7 @@ function Acometida({
                         onContDiamChange(`${CONTADORES_CAT[i].dn}"`);
                       }
                     }}
-                      style={{width:"100%",padding:"3px 4px",border:"1px solid #3a494a",borderRadius:3,background:"#1e2024",color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",cursor:"pointer",textAlign:"center",textAlignLast:"center"}}>
+                      style={SupplyConnection_S2}>
                       {CONTADORES_CAT.map((c, i) => (
                         <option key={i} value={i}>{c.dn}</option>
                       ))}
@@ -311,7 +314,7 @@ function Acometida({
               <h4 style={SECTION_H4}>3. Verificación</h4>
             </div>
             
-            <table className="tbl" style={{ fontSize: 10, width: "100%", tableLayout: "fixed", borderBottom: "none" }}>
+            <table className="tbl" style={{ fontSize: 12, width: "100%", tableLayout: "fixed", borderBottom: "none" }}>
               <thead>
                 <tr>
                   <th scope="col" className="col-h" style={{ ...TH_CENTER, width: "55%" }}>Parámetro</th>
@@ -320,44 +323,44 @@ function Acometida({
               </thead>
               <tbody>
                 <tr>
-                  <td style={{fontWeight: 600, padding: "6px 8px", textAlign: "left"}}>AC-01 Presión Inicial</td>
-                  <td style={{textAlign: "right", padding: "4px 8px"}}>
+                  <td style={{fontWeight: 600, padding: "3px 4px", textAlign: "left"}}>AC-01 Presión Inicial</td>
+                  <td style={{textAlign: "right", padding: "2px 4px"}}>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", justifyContent: "flex-end", width: "100%" }}>
                       <LazyNum 
                         ariaLabel="AC-01 Presión Inicial" 
                         value={acoPini} 
                         onChange={(v: number)=>setAcoPini(v)} 
                         className="ni" 
-                        style={{width: "60px", textAlign: "center", fontSize: 11, fontWeight: 700, padding: "2px 4px"}} 
+                        style={{width: "60px", textAlign: "center", fontSize: 12, fontWeight: 700, padding: "2px 4px"}} 
                       />
                       <span style={{fontSize: 9, color: "var(--txt3)", fontFamily: "var(--mono)"}}>mca</span>
                     </div>
                   </td>
                 </tr>
                 <tr>
-                  <td style={{fontWeight: 600, padding: "6px 8px", textAlign: "left"}}>AC-01 Presión Final</td>
-                  <td style={{textAlign: "right", fontWeight: 700, padding: "6px 8px", color: "var(--txt2)", fontFamily: "var(--mono)"}}>{fmt(f1.Pfin)} <span style={{fontSize: 9, color: "var(--txt3)"}}>mca</span></td>
+                  <td style={{fontWeight: 600, padding: "3px 4px", textAlign: "left"}}>AC-01 Presión Final</td>
+                  <td style={{textAlign: "right", fontWeight: 700, padding: "3px 4px", color: "var(--txt2)", fontFamily: "var(--mono)"}}>{fmt(f1.Pfin)} <span style={{fontSize: 9, color: "var(--txt3)"}}>mca</span></td>
                 </tr>
                 <tr>
-                  <td style={{fontWeight: 600, padding: "6px 8px", textAlign: "left"}}>AC-02 Presión Inicial</td>
-                  <td style={{textAlign: "right", fontWeight: 700, padding: "6px 8px", color: "var(--txt2)", fontFamily: "var(--mono)"}}>{fmt(f1.Pfin)} <span style={{fontSize: 9, color: "var(--txt3)"}}>mca</span></td>
+                  <td style={{fontWeight: 600, padding: "3px 4px", textAlign: "left"}}>AC-02 Presión Inicial</td>
+                  <td style={{textAlign: "right", fontWeight: 700, padding: "3px 4px", color: "var(--txt2)", fontFamily: "var(--mono)"}}>{fmt(f1.Pfin)} <span style={{fontSize: 9, color: "var(--txt3)"}}>mca</span></td>
                 </tr>
                 <tr>
-                  <td style={{fontWeight: 600, padding: "6px 8px", textAlign: "left"}}>AC-02 Presión Final</td>
-                  <td style={{textAlign: "right", fontWeight: 700, padding: "6px 8px", color: "var(--txt2)", fontFamily: "var(--mono)"}}>{fmt(f2.Pfin)} <span style={{fontSize: 9, color: "var(--txt3)"}}>mca</span></td>
+                  <td style={{fontWeight: 600, padding: "3px 4px", textAlign: "left"}}>AC-02 Presión Final</td>
+                  <td style={{textAlign: "right", fontWeight: 700, padding: "3px 4px", color: "var(--txt2)", fontFamily: "var(--mono)"}}>{fmt(f2.Pfin)} <span style={{fontSize: 9, color: "var(--txt3)"}}>mca</span></td>
                 </tr>
                 <tr>
-                  <td style={{fontWeight: 600, padding: "6px 8px", textAlign: "left"}}>Pérdidas en contador &le; Pérdidas máximas</td>
-                  <td style={{textAlign: "right", padding: "4px 8px"}}>
+                  <td style={{fontWeight: 600, padding: "3px 4px", textAlign: "left"}}>Pérdidas en contador &le; Pérdidas máximas</td>
+                  <td style={{textAlign: "right", padding: "2px 4px"}}>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", justifyContent: "flex-end", width: "100%" }}>
                       <span style={{fontFamily: "var(--mono)", fontWeight: 700, color: hfContador <= acoHfMax ? "var(--succ)" : "var(--err)"}}>{fmt(hfContador)}</span>
-                      <span style={{fontSize: 11, color: "var(--txt3)"}}>&le;</span>
+                      <span style={{fontSize: 12, color: "var(--txt3)"}}>&le;</span>
                       <LazyNum 
                         ariaLabel="Hf max permitida contador" 
                         value={acoHfMax} 
                         onChange={(v: number)=>setAcoHfMax(v)} 
                         className="ni" 
-                        style={{width: "44px", textAlign: "center", fontSize: 11, fontWeight: 700, padding: "2px"}} 
+                        style={{width: "44px", textAlign: "center", fontSize: 12, fontWeight: 700, padding: "2px"}} 
                       />
                       <span style={{fontSize: 9, color: "var(--txt3)", fontFamily: "var(--mono)"}}>mca</span>
                     </div>
@@ -365,8 +368,8 @@ function Acometida({
                 </tr>
 
                 <tr>
-                  <td style={{fontWeight: 600, padding: "6px 8px", textAlign: "left"}}>Diámetro acometida vs Contador</td>
-                  <td style={{textAlign: "right", padding: "6px 8px", fontWeight: 700, fontFamily: "var(--mono)"}}>
+                  <td style={{fontWeight: 600, padding: "3px 4px", textAlign: "left"}}>Diámetro acometida vs Contador</td>
+                  <td style={{textAlign: "right", padding: "3px 4px", fontWeight: 700, fontFamily: "var(--mono)"}}>
                     {(() => {
                       const getDiamVal = (valStr: string) => {
                         if (!valStr) return 0;
@@ -393,11 +396,11 @@ function Acometida({
                 </tr>
 
                 <tr>
-                  <td style={{fontWeight: 600, padding: "6px 8px", textAlign: "left"}}>Presión residual final</td>
-                  <td style={{textAlign: "right", fontWeight: 700, padding: "6px 8px", color: "var(--txt2)", fontFamily: "var(--mono)"}}>{fmt(pResidual)} <span style={{fontSize: 9, color: "var(--txt3)"}}>mca</span></td>
+                  <td style={{fontWeight: 600, padding: "3px 4px", textAlign: "left"}}>Presión residual final</td>
+                  <td style={{textAlign: "right", fontWeight: 700, padding: "3px 4px", color: "var(--txt2)", fontFamily: "var(--mono)"}}>{fmt(pResidual)} <span style={{fontSize: 9, color: "var(--txt3)"}}>mca</span></td>
                 </tr>
                 <tr>
-                  <td style={{fontWeight: 700, padding: "4px 8px", textAlign: "left", borderBottom: "1px solid var(--line)"}}>ESTADO</td>
+                  <td style={{fontWeight: 700, padding: "2px 4px", textAlign: "left", borderBottom: "1px solid var(--line)"}}>ESTADO</td>
                   <td style={{textAlign: "center", fontWeight: 800, background: okPresion && hfContador <= acoHfMax ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)", color: okPresion && hfContador <= acoHfMax ? "var(--succ)" : "var(--err)", padding: "4px", letterSpacing: 0.5, borderBottom: "1px solid var(--line)"}}>
                     {okPresion && hfContador <= acoHfMax ? "O.K." : "NO CUMPLE"}
                   </td>

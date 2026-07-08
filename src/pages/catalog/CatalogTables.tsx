@@ -1,6 +1,13 @@
 import React from 'react'
 import { GAS } from '../../constants/engineeringDataGas'
 import { CONTADORES, MATERIALES_POR_RED, COEF_FRICCION } from './catalogData'
+const CatalogTables_S1: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
+const CatalogTables_S2: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
+const CatalogTables_S3: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
+const CatalogTables_S4: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
+const CatalogTables_S5: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
+const CatalogTables_S6: React.CSSProperties = { padding: '2px 8px', textAlign: 'center', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.3, background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--txt)', };
+
 
 const HEADER_BG = 'var(--bg3)'
 const HEADER_TXT = '#00dce5'
@@ -10,7 +17,7 @@ function Th({ children, style }: { children?: React.ReactNode; style?: React.CSS
     <th scope="col" className="td-mono-b" style={{
       background: HEADER_BG,
       color: HEADER_TXT,
-      fontSize: 10,
+      fontSize: 12,
       fontWeight: 700,
       textTransform: 'uppercase',
       letterSpacing: 0.6,
@@ -53,7 +60,7 @@ export function PipeTable({ groups, compact }: { groups: GroupType[]; compact?: 
   const cp = compact ? { thPad: '3px 8px', thFs: 11, thLs: 0.5, tdPad: '3px 8px', tdFs: 12, matFs: 14, matPad: '3px 8px', matFw: 700 } : { thPad: '4px 8px', thFs: 10, thLs: 0.6, tdPad: '5px 10px', tdFs: 12, matFs: 11, matPad: '4px 8px', matFw: 600 }
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', border: '1px solid var(--line)' }}>
-      <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+      <caption style={CatalogTables_S1}>
         Diámetros nominales e interiores por material
       </caption>
       <thead>
@@ -89,7 +96,7 @@ export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact
   const cp = compact ? { thPad: '3px 8px', thFs: 11, thLs: 0.5, tdPad: '3px 8px', tdFs: 12, matFs: 14, matPad: '3px 8px', matFw: 700 } : { thPad: '4px 8px', thFs: 10, thLs: 0.6, tdPad: '5px 10px', tdFs: 12, matFs: 11, matPad: '4px 8px', matFw: 600 }
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', border: '1px solid var(--line)' }}>
-      <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+      <caption style={CatalogTables_S2}>
         Diámetros nominales, interiores y coeficiente K para gas
       </caption>
       <thead>
@@ -121,7 +128,7 @@ export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact
 export function ContadoresTable() {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-      <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+      <caption style={CatalogTables_S3}>
         Caudales nominales de contadores por diámetro
       </caption>
       <thead>
@@ -156,7 +163,7 @@ const cmpTd = { padding: '2px 6px', fontSize: 13 }
 export function MaterialesPorRedTable() {
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-      <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+      <caption style={CatalogTables_S4}>
         Materiales recomendados por tipo de red
       </caption>
       <thead>
@@ -207,16 +214,12 @@ export function CoefFriccionTable() {
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-        <caption style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+        <caption style={CatalogTables_S5}>
           Coeficientes de fricción por tipo de tubería
         </caption>
         <thead>
           <tr>
-            <th scope="colgroup" colSpan={9} style={{
-              padding: '2px 8px', textAlign: 'center', fontWeight: 700, fontSize: 12,
-              textTransform: 'uppercase', letterSpacing: 0.3,
-              background: 'var(--bg2)', border: '1px solid var(--line)', color: 'var(--txt)',
-            }}>
+            <th scope="colgroup" colSpan={9} style={CatalogTables_S6}>
               Coeficiente fricción tuberías
             </th>
           </tr>

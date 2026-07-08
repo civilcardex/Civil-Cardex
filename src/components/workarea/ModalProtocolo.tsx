@@ -1,5 +1,10 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+const ModalProtocolo_S1: React.CSSProperties = { background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 'var(--r2)', maxWidth: 720, maxHeight: '85vh', width: '90%', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 48px rgba(0,0,0,0.5)', };
+const ModalProtocolo_S2: React.CSSProperties = { padding: '14px 18px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, background: 'var(--bg)', position: 'relative', zIndex: 10, };
+const ModalProtocolo_S3: React.CSSProperties = { padding: '7px 24px', background: 'var(--acc)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' };
+const ModalProtocolo_S4: React.CSSProperties = { display: 'flex', gap: 10, padding: '6px 8px', background: 'var(--bg3)', borderRadius: 'var(--r)', border: '1px solid var(--line)', marginBottom: 4, alignItems: 'flex-start' };
+
 
 interface ModalProtocoloProps {
   onClose: () => void;
@@ -48,22 +53,13 @@ export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
       background: 'rgba(0,0,0,0.7)', display: 'flex',
       alignItems: 'center', justifyContent: 'center',
     }} onClick={onClose}>
-      <div style={{
-        background: 'var(--bg)', border: '1px solid var(--line)',
-        borderRadius: 'var(--r2)', maxWidth: 720, maxHeight: '85vh',
-        width: '90%', overflow: 'hidden', display: 'flex',
-        flexDirection: 'column', boxShadow: '0 8px 48px rgba(0,0,0,0.5)',
-      }} onClick={e => e.stopPropagation()}>
-        <div style={{
-          padding: '14px 18px', borderBottom: '1px solid var(--line)',
-          display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
-          background: 'var(--bg)', position: 'relative', zIndex: 10,
-        }}>
+      <div style={ModalProtocolo_S1} onClick={e => e.stopPropagation()}>
+        <div style={ModalProtocolo_S2}>
           <span style={{ fontSize: 18 }}>📋</span>
           <span id="modal-protocolo-title" style={{ fontSize: 15, fontWeight: 700, color: '#e2e2e8' }}>Requisitos para carga de planos</span>
           <div style={{ flex: 1 }} />
-          <button onClick={onClose} aria-label="Cerrar"
-            style={{ padding: '4px 10px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: '#b9caca', cursor: 'pointer', fontSize: 11 }}>
+          <button type="button" onClick={onClose} aria-label="Cerrar"
+            style={{ padding: '4px 10px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: '#b9caca', cursor: 'pointer', fontSize: 12 }}>
             &#x2715;
           </button>
         </div>
@@ -99,7 +95,7 @@ export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
             <div style={{ padding: '8px 12px', background: 'var(--bg3)', borderRadius: 'var(--r)', fontFamily: 'monospace', fontSize: 12, color: 'var(--acc)' }}>
               Factor final = (FX + FY) / 2
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
               <DiffRow diff="< 3%" label="Calibración excelente, proceder" color="var(--ok)" />
               <DiffRow diff="3 – 5%" label="Aceptable, verificar visualmente" color="#f59e0b" />
               <DiffRow diff={'> 5%'} label="Posible distorsión, revisar exportación" color="var(--err)" />
@@ -124,8 +120,8 @@ export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
           </Section>
         </div>
         <div style={{ padding: '10px 18px', borderTop: '1px solid var(--line)', flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>
-          <button onClick={onClose}
-            style={{ padding: '7px 24px', background: 'var(--acc)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+          <button type="button" onClick={onClose}
+            style={ModalProtocolo_S3}>
             &#x2713; Entendido
           </button>
         </div>
@@ -147,11 +143,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Item({ icon, rule, detail }: { icon: string; rule: string; detail: string }) {
   return (
-    <div style={{ display: 'flex', gap: 10, padding: '6px 8px', background: 'var(--bg3)', borderRadius: 'var(--r)', border: '1px solid var(--line)', marginBottom: 4, alignItems: 'flex-start' }}>
+    <div style={ModalProtocolo_S4}>
       <span style={{ fontSize: 16, flexShrink: 0 }}>{icon}</span>
       <div>
         <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e2e8' }}>{rule}</div>
-        <div style={{ fontSize: 11, color: '#b0b8b9', lineHeight: 1.5, marginTop: 2 }}>{detail}</div>
+        <div style={{ fontSize: 12, color: '#b0b8b9', lineHeight: 1.5, marginTop: 2 }}>{detail}</div>
       </div>
     </div>
   );
@@ -160,8 +156,8 @@ function Item({ icon, rule, detail }: { icon: string; rule: string; detail: stri
 function DiffRow({ diff, label, color }: { diff: string; label: string; color: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 8px', background: 'var(--bg3)', borderRadius: 'var(--r)', border: '1px solid var(--line)' }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color, width: 50 }}>{diff}</span>
-      <span style={{ fontSize: 11, color: '#b9caca' }}>→ {label}</span>
+      <span style={{ fontSize: 12, fontWeight: 700, color, width: 50 }}>{diff}</span>
+      <span style={{ fontSize: 12, color: '#b9caca' }}>→ {label}</span>
     </div>
   );
 }

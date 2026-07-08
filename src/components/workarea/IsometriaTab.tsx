@@ -4,6 +4,14 @@ import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import { TRAZOS_PREFIX } from "../../constants/storage-keys";
 import { loadFromStorage } from "../../services/storageService";
 import { loadPDF } from "../../services/idbStorage";
+const IsometriaTab_S1: React.CSSProperties = { padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' };
+const IsometriaTab_S2: React.CSSProperties = { padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' };
+const IsometriaTab_S3: React.CSSProperties = { padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' };
+const IsometriaTab_S4: React.CSSProperties = { position: 'absolute', top: '100%', left: 0, zIndex: 100, background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, display: 'flex', flexDirection: 'column', minWidth: 80 };
+const IsometriaTab_S5: React.CSSProperties = { padding: '4px 8px', fontSize: 12, fontFamily: 'Geist,monospace', border: 'none', background: 'transparent', color: '#b9caca', cursor: 'pointer', textAlign: 'left' };
+const IsometriaTab_S6: React.CSSProperties = { padding: '4px 8px', fontSize: 12, fontFamily: 'Geist,monospace', border: 'none', background: 'transparent', color: '#b9caca', cursor: 'pointer', textAlign: 'left' };
+const IsometriaTab_S7: React.CSSProperties = { padding: '7px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid #2a3a3b', fontFamily: 'Geist,monospace', userSelect: 'none', };
+
 
 const ISO_NETS_KEY = 'civilflow_iso_activeNets';
 
@@ -769,8 +777,8 @@ function IsometriaTabBase({ state }: any) {
           {(populatedNets.length === 0 ? NETS : populatedNets.map(nid => NETS.find(x => x.id === nid)!).filter(Boolean)).map(n => {
             const isOn = activeNets.has(n.id);
             return (
-              <button key={n.id} onClick={() => toggleNet(n.id)} aria-pressed={isOn} style={{
-                padding: '3px 8px', fontSize: 11, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid', cursor: 'pointer',
+              <button type="button" key={n.id} onClick={() => toggleNet(n.id)} aria-pressed={isOn} style={{
+                padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid', cursor: 'pointer',
                 background: isOn ? n.col + '33' : '#1e2024',
                 borderColor: isOn ? n.col : '#3a494a',
                 color: isOn ? n.col : '#849495',
@@ -780,44 +788,44 @@ function IsometriaTabBase({ state }: any) {
           })}
         </div>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', cursor: 'pointer', marginLeft: 8, padding: '3px 8px', borderRadius: 3, border: `1px solid ${showPlanos ? '#4D8FF7' : '#3a494a'}`, background: showPlanos ? 'rgba(77,143,247,.15)' : 'transparent' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', cursor: 'pointer', marginLeft: 8, padding: '3px 8px', borderRadius: 3, border: `1px solid ${showPlanos ? '#4D8FF7' : '#3a494a'}`, background: showPlanos ? 'rgba(77,143,247,.15)' : 'transparent' }}>
           <input type="checkbox" checked={showPlanos} onChange={e => setShowPlanos(e.target.checked)} style={{ accentColor: '#4D8FF7', margin: 0 }} />
           Planos ({planosCount})
         </label>
 
         <div style={{ flex: 1 }} />
 
-        <label style={{ fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <label style={{ fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
           Giro vertical 
-          <button onClick={() => setRotX(-30)} style={{ padding: '2px 4px', fontSize: 9, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotX === -30 ? '#4D8FF7' : '#1e2024', color: rotX === -30 ? '#fff' : '#b9caca' }}>-30°</button>
-          <button onClick={() => setRotX(-45)} style={{ padding: '2px 4px', fontSize: 9, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotX === -45 ? '#4D8FF7' : '#1e2024', color: rotX === -45 ? '#fff' : '#b9caca' }}>-45°</button>
+          <button type="button" onClick={() => setRotX(-30)} style={{ padding: '2px 4px', fontSize: 12, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotX === -30 ? '#4D8FF7' : '#1e2024', color: rotX === -30 ? '#fff' : '#b9caca' }}>-30°</button>
+          <button type="button" onClick={() => setRotX(-45)} style={{ padding: '2px 4px', fontSize: 12, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotX === -45 ? '#4D8FF7' : '#1e2024', color: rotX === -45 ? '#fff' : '#b9caca' }}>-45°</button>
           <input type="range" min={-90} max={90} value={rotX} onChange={e => setRotX(Number(e.target.value))} style={{ width: 60 }} />
           <span style={{ width: 28, textAlign: 'right' }}>{rotX}°</span>
         </label>
-        <label style={{ fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <label style={{ fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
           Giro horizontal 
-          <button onClick={() => setRotZ(30)} style={{ padding: '2px 4px', fontSize: 9, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotZ === 30 ? '#4D8FF7' : '#1e2024', color: rotZ === 30 ? '#fff' : '#b9caca' }}>30°</button>
-          <button onClick={() => setRotZ(45)} style={{ padding: '2px 4px', fontSize: 9, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotZ === 45 ? '#4D8FF7' : '#1e2024', color: rotZ === 45 ? '#fff' : '#b9caca' }}>45°</button>
+          <button type="button" onClick={() => setRotZ(30)} style={{ padding: '2px 4px', fontSize: 12, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotZ === 30 ? '#4D8FF7' : '#1e2024', color: rotZ === 30 ? '#fff' : '#b9caca' }}>30°</button>
+          <button type="button" onClick={() => setRotZ(45)} style={{ padding: '2px 4px', fontSize: 12, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotZ === 45 ? '#4D8FF7' : '#1e2024', color: rotZ === 45 ? '#fff' : '#b9caca' }}>45°</button>
           <input type="range" min={0} max={360} value={rotZ} onChange={e => setRotZ(Number(e.target.value))} style={{ width: 60 }} />
           <span style={{ width: 32, textAlign: 'right' }}>{rotZ}°</span>
         </label>
-        <label style={{ fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <label style={{ fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
           Distancia entre pisos <input type="range" min={0.1} max={5} step={0.1} value={scaleZ} onChange={e => setScaleZ(Number(e.target.value))} style={{ width: 50 }} />
           <span style={{ width: 24, textAlign: 'right' }}>{scaleZ.toFixed(1)}</span>
         </label>
-        <label style={{ fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <label style={{ fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
           Zoom <input type="range" min={5} max={200} value={Math.round(zoom * 100)} onChange={e => setZoom(Number(e.target.value) / 100)} style={{ width: 50 }} />
           <span style={{ width: 36, textAlign: 'right' }}>{Math.round(zoom * 100)}%</span>
         </label>
 
-        <button onClick={resetView} title="Reiniciar vista" style={{ padding: '3px 8px', fontSize: 10, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' }}>⟲</button>
-        <button onClick={fitView} title="Encuadrar todo" style={{ padding: '3px 8px', fontSize: 10, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' }}>⊞</button>
+        <button type="button" onClick={resetView} title="Reiniciar vista" style={IsometriaTab_S1}>⟲</button>
+        <button type="button" onClick={fitView} title="Encuadrar todo" style={IsometriaTab_S2}>⊞</button>
         <div ref={exportRef} style={{ position: 'relative', display: 'inline-block' }}>
-          <button onClick={() => setShowExportMenu(p => !p)} title="Descargar" style={{ padding: '3px 8px', fontSize: 10, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' }}>⬇ Descargar</button>
+          <button type="button" onClick={() => setShowExportMenu(p => !p)} title="Descargar" style={IsometriaTab_S3}>⬇ Descargar</button>
           {showExportMenu && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, display: 'flex', flexDirection: 'column', minWidth: 80 }}>
-              <button onClick={() => { setShowExportMenu(false); exportPdf(); }} style={{ padding: '4px 8px', fontSize: 10, fontFamily: 'Geist,monospace', border: 'none', background: 'transparent', color: '#b9caca', cursor: 'pointer', textAlign: 'left' }}>PDF</button>
-              <button onClick={() => { setShowExportMenu(false); exportPng(); }} style={{ padding: '4px 8px', fontSize: 10, fontFamily: 'Geist,monospace', border: 'none', background: 'transparent', color: '#b9caca', cursor: 'pointer', textAlign: 'left' }}>PNG</button>
+            <div style={IsometriaTab_S4}>
+              <button type="button" onClick={() => { setShowExportMenu(false); exportPdf(); }} style={IsometriaTab_S5}>PDF</button>
+              <button type="button" onClick={() => { setShowExportMenu(false); exportPng(); }} style={IsometriaTab_S6}>PNG</button>
             </div>
           )}
         </div>
@@ -827,11 +835,11 @@ function IsometriaTabBase({ state }: any) {
       <div className="fu" style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         {/* Tramos sidebar — grouped by network then floor */}
         <div style={{ width: 200, flexShrink: 0, background: '#0d0f12', borderRight: '1px solid #3a494a', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '10px 12px 6px', fontSize: 10, color: '#849495', fontFamily: 'Geist,monospace', textTransform: 'uppercase', letterSpacing: 1 }}>
+          <div style={{ padding: '10px 12px 6px', fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', textTransform: 'uppercase', letterSpacing: 1 }}>
             Isometría
           </div>
           {tramoTree.length === 0 && (
-            <div style={{ padding: '20px 12px', fontSize: 11, color: '#5a6a6b', fontFamily: 'Geist,monospace', textAlign: 'center' }}>
+            <div style={{ padding: '20px 12px', fontSize: 12, color: '#5a6a6b', fontFamily: 'Geist,monospace', textAlign: 'center' }}>
               Sin datos
             </div>
           )}
@@ -841,19 +849,15 @@ function IsometriaTabBase({ state }: any) {
             const netBajantes = net.niveles.reduce((s, nv) => s + nv.bajantes.length, 0);
             return (
               <div key={net.netId}>
-                <div role="button" tabIndex={0} aria-label={`Alternar visibilidad de red ${net.netId}`} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCollapsedNet(net.netId);}}} onClick={() => toggleCollapsedNet(net.netId)} style={{
-                  padding: '7px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-                  borderBottom: '1px solid #2a3a3b', fontFamily: 'Geist,monospace',
-                  userSelect: 'none',
-                }}>
+                <div role="button" tabIndex={0} aria-label={`Alternar visibilidad de red ${net.netId}`} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCollapsedNet(net.netId);}}} onClick={() => toggleCollapsedNet(net.netId)} style={IsometriaTab_S7}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: net.netColor, flexShrink: 0 }} />
-                  <span style={{ fontSize: 11, color: net.netColor, fontWeight: 700, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{net.netName}</span>
-                  <span style={{ fontSize: 9, color: '#5a6a6b', whiteSpace: 'nowrap' }}>{netRamales + netBajantes}</span>
-                  <span style={{ fontSize: 9, color: '#5a6a6b', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform .15s' }}>▾</span>
+                  <span style={{ fontSize: 12, color: net.netColor, fontWeight: 700, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{net.netName}</span>
+                  <span style={{ fontSize: 12, color: '#5a6a6b', whiteSpace: 'nowrap' }}>{netRamales + netBajantes}</span>
+                  <span style={{ fontSize: 12, color: '#5a6a6b', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform .15s' }}>▾</span>
                 </div>
                 {!isCollapsed && net.niveles.map(nv => (
                   <div key={nv.nivel}>
-                    <div style={{ padding: '3px 10px 2px 20px', fontSize: 9, color: '#5a6a6b', fontFamily: 'Geist,monospace', fontWeight: 600, letterSpacing: 0.5 }}>
+                    <div style={{ padding: '3px 10px 2px 20px', fontSize: 12, color: '#5a6a6b', fontFamily: 'Geist,monospace', fontWeight: 600, letterSpacing: 0.5 }}>
                       {nv.label}
                     </div>
                     <ul style={{listStyle:'none',margin:0,padding:0}}>
@@ -865,10 +869,10 @@ function IsometriaTabBase({ state }: any) {
                           padding: '3px 10px 3px 26px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                           background: isSel ? '#2563EB22' : 'transparent',
                           borderLeft: isSel ? '2px solid ' + net.netColor : '2px solid transparent',
-                          fontFamily: 'Geist,monospace', fontSize: 10,
+                          fontFamily: 'Geist,monospace', fontSize: 12,
                         }}>
                           <span style={{ color: net.netColor, fontWeight: 600, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label || r.id}</span>
-                          <span style={{ fontSize: 9, color: '#5a6a6b' }}>L={r.totalL}m</span>
+                          <span style={{ fontSize: 12, color: '#5a6a6b' }}>L={r.totalL}m</span>
                         </li>
                       );
                     })}
@@ -884,10 +888,10 @@ function IsometriaTabBase({ state }: any) {
                           padding: '3px 10px 3px 26px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                           background: isSel ? '#2563EB22' : 'transparent',
                           borderLeft: isSel ? '2px solid ' + net.netColor : '2px solid transparent',
-                          fontFamily: 'Geist,monospace', fontSize: 10,
+                          fontFamily: 'Geist,monospace', fontSize: 12,
                         }}>
                           <span style={{ color: net.netColor, fontWeight: 600, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lbl}</span>
-                          {!(b.tipo === 'contador' || b.tipo === 'calentador') && <span style={{ fontSize: 9, color: '#5a6a6b' }}>h={b.hVert}m</span>}
+                          {!(b.tipo === 'contador' || b.tipo === 'calentador') && <span style={{ fontSize: 12, color: '#5a6a6b' }}>h={b.hVert}m</span>}
                         </li>
                       );
                     })}
@@ -897,7 +901,7 @@ function IsometriaTabBase({ state }: any) {
               </div>
             );
           })}
-          <div style={{ marginTop: 'auto', padding: '8px 12px', borderTop: '1px solid #3a494a', fontSize: 10, color: '#5a6a6b', fontFamily: 'Geist,monospace' }}>
+          <div style={{ marginTop: 'auto', padding: '8px 12px', borderTop: '1px solid #3a494a', fontSize: 12, color: '#5a6a6b', fontFamily: 'Geist,monospace' }}>
             Tramos: {totals.ramales} · Bajantes: {totals.bajantes} · Long: {totals.len}m
           </div>
         </div>

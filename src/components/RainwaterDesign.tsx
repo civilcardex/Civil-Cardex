@@ -11,6 +11,9 @@ import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage, savePlanTrazos } from "../services/storageService";
 import { writeSanDrawingSync } from "../utils/drawingSync";
 import { useRainwater } from "../context/RainwaterContext";
+const RainwaterDesign_S1: React.CSSProperties = { width: '60px', padding: '2px 4px', background: 'transparent', border: '1px solid transparent', borderRadius: 2, color: 'var(--txt)', fontSize: 9, fontFamily: 'var(--mono)', fontWeight: 600, textAlign: 'center' };
+const RainwaterDesign_S2: React.CSSProperties = { fontFamily:'var(--mono)',fontSize: 9,padding:'1px 1px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer',maxWidth:60 };
+
 
 function getTributarioIds(tramos: Array<{ recibeDe?: string[]; descripcion?: string }>): Set<string> {
   const tribSet = new Set<string>();
@@ -47,7 +50,7 @@ const CaudalCell = React.memo(function CaudalCell({ tramoKey, value, onCaudalCha
         const finalVal = text === '' ? 0 : v;
         onCaudalChange(tramoKey, finalVal);
       }}
-      style={{ width: '60px', padding: '2px 4px', background: 'transparent', border: '1px solid transparent', borderRadius: 2, color: 'var(--txt)', fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 600, textAlign: 'center' }}
+      style={RainwaterDesign_S1}
     />
   );
 });
@@ -325,43 +328,43 @@ export default function DisenoLluvias() {
       </div>
       <div className="scroll-top" style={{padding:'12px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
-          <table className="tbl" style={{fontSize:11}}>
+          <table className="tbl" style={{fontSize: 9}}>
           <thead>
             <tr>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Tramo</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Nivel</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Inicio</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Fin</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Bajantes<br/>asociadas</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Caudal<br/><small>(LPS)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Manning<br/></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Pendiente<br/><small>(%)</small></th>
-              <th scope="col" className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>Diámetro</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Qo<br/><small>(LPS)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Vo<br/><small>(m/s)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Q/Qo</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Vr<br/><small>(m/s)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>CHEQUEO VELOCIDAD</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Yc<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Yn<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>FROUDE</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px'}}>Flujo</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Ymax<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'2px 3px',textTransform:'none'}}>Yn vs Yc</th>
-              <th scope="col" className="col-h ven" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'2px 3px'}}>Fuerza Tractiva</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Tramo</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Nivel</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Inicio</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Fin</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Bajantes<br/>asociadas</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Caudal<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Manning<br/></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Pendiente<br/><small>(%)</small></th>
+              <th scope="col" className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize: 9,padding:'1px 2px'}}>Diámetro</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Qo<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Vo<br/><small>(m/s)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Q/Qo</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Vr<br/><small>(m/s)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>CHEQUEO VELOCIDAD</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Yc<br/><small>(mm)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Yn<br/><small>(mm)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>FROUDE</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Flujo</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Ymax<br/><small>(mm)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Yn vs Yc</th>
+              <th scope="col" className="col-h ven" colSpan={2} style={{textAlign:'center',fontSize: 9,padding:'1px 2px'}}>Fuerza Tractiva</th>
             </tr>
             <tr>
-              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Calculado<br/><small>(")</small></th>
-              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Diseño<br/><small>(")</small></th>
-              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Interior<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h ven" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>Real<br/><small>(kg/m²)</small></th>
-              <th scope="col" className="col-h ven" style={{fontSize:8,textAlign:'center',padding:'2px 3px'}}>&gt;0.15</th>
+              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Calculado<br/><small>(")</small></th>
+              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Diseño<br/><small>(")</small></th>
+              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Interior<br/><small>(mm)</small></th>
+              <th scope="col" className="col-h ven" style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Real<br/><small>(kg/m²)</small></th>
+              <th scope="col" className="col-h ven" style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>&gt;0.15</th>
             </tr>
           </thead>
           <tbody>
             {displayTramos.length === 0 ? (
               <tr>
-                <td colSpan={24} style={{ padding: "16px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                <td colSpan={24} style={{ padding: "16px 0", textAlign: "center", color: "var(--txt3)", fontSize: 9 }}>
                   No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                 </td>
               </tr>
@@ -391,20 +394,20 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm });
 }
               return(
                 <tr key={t._key}>
-                  <td className="c" style={{padding:'2px 4px'}}><span className="sigla" style={{fontSize:10}}>{t.id || t._key}</span></td>
-                  <td className="c" style={{padding:'2px 4px'}}><span style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.piso ? pisoCorto(t.piso) : '—'}</span></td>
-                  <td className="c" style={{padding:'2px 4px'}}><span style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.desde || '—'}</span></td>
-                  <td className="c" style={{padding:'2px 4px'}}><span style={{fontSize:10,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.hasta || '—'}</span></td>
-                  <td className="c" style={{padding:'2px 4px',minWidth:60,maxWidth:120}}>
+                  <td className="c" style={{padding:'1px 2px'}}><span className="sigla" style={{fontSize: 9}}>{t.id || t._key}</span></td>
+                  <td className="c" style={{padding:'1px 2px'}}><span style={{fontSize: 9,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.piso ? pisoCorto(t.piso) : '—'}</span></td>
+                  <td className="c" style={{padding:'1px 2px'}}><span style={{fontSize: 9,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.desde || '—'}</span></td>
+                  <td className="c" style={{padding:'1px 2px'}}><span style={{fontSize: 9,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.hasta || '—'}</span></td>
+                  <td className="c" style={{padding:'1px 2px',minWidth:60,maxWidth:120}}>
                     {(() => {
                       const associatedBajantes = (conexionesDisplay as any)[t._key ?? ''] || [];
                       return associatedBajantes.length === 0 ? (
-                        <span style={{fontSize:9,color:'var(--txt3)'}}>—</span>
+                        <span style={{fontSize: 9,color:'var(--txt3)'}}>—</span>
                       ) : (
                         <div style={{display:'flex',flexWrap:'wrap',gap:2,justifyContent:'center',alignItems:'center'}}>
                           {associatedBajantes.map((bajName: string) => (
                             <span key={bajName}
-                              style={{fontSize:9,padding:'1px 3px',border:'1px solid var(--ll)',borderRadius:3,color:'var(--ll)',fontFamily:'var(--mono)',lineHeight:1.3}}>
+                              style={{fontSize: 9,padding:'1px 1px',border:'1px solid var(--ll)',borderRadius:3,color:'var(--ll)',fontFamily:'var(--mono)',lineHeight:1.3}}>
                               {bajName}
                             </span>
                           ))}
@@ -412,37 +415,37 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm });
                       );
                     })()}
                   </td>
-                  <td className="c" style={{padding:'2px 4px',minWidth:60}}>
+                  <td className="c" style={{padding:'1px 2px',minWidth:60}}>
                     <CaudalCell tramoKey={t._key ?? ''} value={Q} onCaudalChange={handleCaudalChange} />
                   </td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{sVal > 0 ? sVal : '—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:9,padding:'2px 4px'}}>{DcalcPulg>0?DcalcPulg.toFixed(2)+'"':'—'}</td>
-                  <td className="c" style={{padding:'2px 2px'}}>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{sVal > 0 ? sVal : '—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{DcalcPulg>0?DcalcPulg.toFixed(2)+'"':'—'}</td>
+                  <td className="c" style={{padding:'1px 1px'}}>
           <select
             aria-label="Seleccionar diámetro"
             value={DdisPulg||''}
             onChange={e=>handleDiamChange(t._key ?? '',t.id,parseFloat(e.target.value)||0)}
-            style={{fontFamily:'var(--mono)',fontSize:9,padding:'1px 1px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer',maxWidth:60}}
+            style={RainwaterDesign_S2}
           >
             <option value="">—</option>
             {DIAM_OPTIONS.map(o=><option key={o.pulg} value={o.pulg}>{o.label}</option>)}
           </select>
         </td>
-                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{DintMm>0?DintMm:'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{Qo>0?Qo.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{Vo>0?Vo.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{qqo>0?qqo.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{Vreal>0?Vreal.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{renderStatus(chequeoV)}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{Yc>0?Yc.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{Yn>0?Yn.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize:10,padding:'2px 4px'}}>{Froude>0?Froude.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontSize:9,padding:'2px 4px'}}>{tipoFlujo}</td>
-                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{Ymax>0?Ymax.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{renderStatus(chequeoYn)}</td>
-                  <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{fuerzaTractiva>0?fuerzaTractiva.toFixed(2):'—'}</td>
-        <td className="c" style={{fontSize:10,padding:'2px 4px'}}>{renderStatus(chequeoFT)}</td>
+                  <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{DintMm>0?DintMm:'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{Qo>0?Qo.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{Vo>0?Vo.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{qqo>0?qqo.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{Vreal>0?Vreal.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{renderStatus(chequeoV)}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{Yc>0?Yc.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{Yn>0?Yn.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{Froude>0?Froude.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{tipoFlujo}</td>
+                  <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{Ymax>0?Ymax.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{renderStatus(chequeoYn)}</td>
+                  <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{fuerzaTractiva>0?fuerzaTractiva.toFixed(2):'—'}</td>
+        <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{renderStatus(chequeoFT)}</td>
       </tr>
               );
             })}

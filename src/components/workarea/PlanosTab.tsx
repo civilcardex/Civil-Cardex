@@ -7,6 +7,21 @@ import { REQ_ITEMS, pisoLbl } from "../../constants";
 import { PlanoConfigurator } from "./PlanoConfigurator";
 import type { useWorkAreaState } from "../useWorkAreaState";
 import ModalProtocolo from "./ModalProtocolo";
+const PlanosTab_S1: React.CSSProperties = { padding: '4px 12px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 };
+const PlanosTab_S2: React.CSSProperties = { padding: '4px 14px', background: 'rgba(14,204,122,0.12)', border: '1.5px solid rgba(14,204,122,0.3)', borderRadius: 'var(--r)', color: '#0ECC7A', cursor: 'pointer', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' };
+const PlanosTab_S3: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'var(--bg)', minHeight: 36 };
+const PlanosTab_S4: React.CSSProperties = { padding: '3px 10px', background: 'rgba(0,220,229,0.08)', border: '1px solid rgba(0,220,229,0.3)', borderRadius: 'var(--r)', color: '#00dce5', fontWeight: 600, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' };
+const PlanosTab_S5: React.CSSProperties = { position: 'absolute', inset: 0, zIndex: 10, background: 'rgba(0,220,229,.12)', border: '3px dashed rgba(0,220,229,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' };
+const PlanosTab_S6: React.CSSProperties = { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, background: 'var(--bg)', cursor: 'pointer', position: 'relative' };
+const PlanosTab_S7: React.CSSProperties = { width: '100%', padding: '10px', background: 'rgba(0,220,229,0.06)', border: '1.5px dashed rgba(0,220,229,0.3)', borderRadius: 'var(--r)', color: '#00dce5', fontWeight: 600, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all .15s' };
+const PlanosTab_S8: React.CSSProperties = { padding: '7px 10px', fontSize: 12, fontWeight: 700, color: 'var(--txt3)', borderBottom: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: .5 };
+const PlanosTab_S9: React.CSSProperties = { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, gap: 8, cursor: 'pointer', fontSize: 12, color: 'var(--txt4)', textAlign: 'center', lineHeight: 1.6 };
+const PlanosTab_S10: React.CSSProperties = { flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 10px', listStyle: 'none', margin: 0 };
+const PlanosTab_S11: React.CSSProperties = { padding: '1px 6px', background: 'rgba(14,204,122,0.12)', border: '1px solid rgba(14,204,122,0.3)', borderRadius: 'var(--r)', color: '#0ECC7A', cursor: 'pointer', fontSize: 12, fontWeight: 700, transition: 'all 0.15s ease', whiteSpace: 'nowrap' };
+const PlanosTab_S12: React.CSSProperties = { padding: '3px 6px', fontSize: 12, fontWeight: 600, borderRadius: 'var(--r)', border: '1px solid var(--line)', background: 'var(--bg3)', color: '#ef5350', cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap' };
+const PlanosTab_S13: React.CSSProperties = { padding: '7px 10px', fontSize: 12, fontWeight: 700, color: 'var(--txt3)', borderBottom: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: .5 };
+const PlanosTab_S14: React.CSSProperties = { padding: '3px 6px', fontSize: 12, fontWeight: 600, borderRadius: 'var(--r)', border: '1px solid var(--line)', background: 'var(--bg3)', color: '#ef5350', cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s ease', whiteSpace: 'nowrap' };
+
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 
@@ -123,30 +138,30 @@ function PlanosTab({ state }: PlanosTabProps) {
     return (
       <div className="fu" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'var(--bg)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button onClick={() => { setCalibrating(false); }}
-            style={{ padding: '4px 12px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer', fontSize: 10, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button type="button" onClick={() => { setCalibrating(false); }}
+            style={PlanosTab_S1}>
             ← VOLVER A CARGA DE PLANOS
           </button>
-          <span style={{ fontSize: 11, color: 'var(--txt3)' }}>|</span>
-          <span style={{ fontSize: 11, fontWeight: 600 }}>{selectedPlan.name}</span>
+          <span style={{ fontSize: 12, color: 'var(--txt3)' }}>|</span>
+          <span style={{ fontSize: 12, fontWeight: 600 }}>{selectedPlan.name}</span>
           {calDone && (
-            <span style={{ fontSize: 9, color: 'var(--ok)', marginLeft: 4 }}>✓ Calibrado</span>
+            <span style={{ fontSize: 12, color: 'var(--ok)', marginLeft: 4 }}>✓ Calibrado</span>
           )}
           <div style={{ flex: 1 }} />
           {selectedPlan.nivel !== null && calDone && (
-            <button onClick={() => {
+            <button type="button" onClick={() => {
               if (plans.some((x: any) => x.id !== selectedPlan.id && x.status === 'confirmed' && x.nivel === selectedPlan.nivel)) {
                 alert('Este nivel ya tiene un plano asociado.');
                 return;
               }
               confirmPlan(selectedPlan.id);
               setCalibrating(false);
-            }} style={{ padding: '4px 14px', background: 'rgba(14,204,122,0.12)', border: '1.5px solid rgba(14,204,122,0.3)', borderRadius: 'var(--r)', color: '#0ECC7A', cursor: 'pointer', fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>
+            }} style={PlanosTab_S2}>
               ✓ CONFIRMAR PLANO
             </button>
           )}
           {(!calDone || selectedPlan.nivel === null || selectedPlan.nivel === undefined) && (
-            <span style={{ fontSize: 9, color: 'var(--txt4)', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--txt4)', whiteSpace: 'nowrap' }}>
               {!calDone ? 'Define origen y calibración' : 'Asigna un nivel en Paso 0'}
             </span>
           )}
@@ -177,7 +192,7 @@ function PlanosTab({ state }: PlanosTabProps) {
           </h3>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <button onClick={() => setShowProtocolo(true)}
+          <button type="button" onClick={() => setShowProtocolo(true)}
             onMouseEnter={() => setBtnHover(true)}
             onMouseLeave={() => setBtnHover(false)}
             style={{
@@ -202,7 +217,7 @@ function PlanosTab({ state }: PlanosTabProps) {
           {REQ_ITEMS.map(({ ico, icoImg, t, s }) => (
             <div key={t} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 12px', background: 'var(--bg3)', borderRadius: 'var(--r)', border: '1px solid var(--line)' }}>
               <span style={{ fontSize: 16, flexShrink: 0 }}>{icoImg ? <img src={icoImg} alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" /> : ico}</span>
-              <div><div style={{ fontSize: 14, fontWeight: 500 }}>{t}</div><div style={{ fontSize: 11.5, color: 'var(--txt3)', marginTop: 2, lineHeight: 1.4 }}>{s}</div></div>
+              <div><div style={{ fontSize: 14, fontWeight: 500 }}>{t}</div><div style={{ fontSize: 12.5, color: 'var(--txt3)', marginTop: 2, lineHeight: 1.4 }}>{s}</div></div>
             </div>
           ))}
         </div>
@@ -215,15 +230,15 @@ function PlanosTab({ state }: PlanosTabProps) {
         onDrop={e => { e.preventDefault(); setPlanDrag(false); const fl = e.dataTransfer?.files; if (fl && fl.length > 0) addPlans(fl); }}>
         <input ref={fileRef} type="file" accept=".pdf" multiple style={{ display: 'none' }} onChange={e => { if (e.target.files) addPlans(e.target.files); e.target.value = ''; }} />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'var(--bg)', minHeight: 36 }}>
+        <div style={PlanosTab_S3}>
           {selectedPlan ? (
             <>
               <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedPlan.name}</span>
-              {selectedPlan.nivel !== null && <span style={{ fontSize: 9, padding: '1px 6px', background: 'var(--bg3)', borderRadius: 'var(--r)', color: 'var(--txt3)', flexShrink: 0 }}>{pisoLbl(selectedPlan.nivel)}</span>}
-              {isCalibrated(selectedPlan.id) && <span style={{ fontSize: 9, color: 'var(--ok)', flexShrink: 0 }}>✓</span>}
+              {selectedPlan.nivel !== null && <span style={{ fontSize: 12, padding: '1px 6px', background: 'var(--bg3)', borderRadius: 'var(--r)', color: 'var(--txt3)', flexShrink: 0 }}>{pisoLbl(selectedPlan.nivel)}</span>}
+              {isCalibrated(selectedPlan.id) && <span style={{ fontSize: 12, color: 'var(--ok)', flexShrink: 0 }}>✓</span>}
               <div style={{ flex: 1 }} />
               {selectedPlan.status === 'confirmed' && (
-                <button onClick={() => {
+                <button type="button" onClick={() => {
                     const idx = plans.findIndex(p => p.id === selectedPlanId);
                     if (idx >= 0) {
                       try {
@@ -235,27 +250,27 @@ function PlanosTab({ state }: PlanosTabProps) {
                     }
                     navigate('/visor');
                   }}
-                  style={{ padding: '3px 10px', background: 'rgba(0,220,229,0.08)', border: '1px solid rgba(0,220,229,0.3)', borderRadius: 'var(--r)', color: '#00dce5', fontWeight: 600, fontSize: 9, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  style={PlanosTab_S4}>
                   IR A DIBUJO DE REDES &rarr;
                 </button>
               )}
             </>
           ) : (
-            <span style={{ fontSize: 11, color: 'var(--txt3)' }}>Vista previa del plano</span>
+            <span style={{ fontSize: 12, color: 'var(--txt3)' }}>Vista previa del plano</span>
           )}
         </div>
 
         {selectedPlan && selectedPlanUrl ? (
           <div style={{ flex: 1, background: '#141416', position: 'relative' }}>
             {planDrag && (
-              <div style={{ position: 'absolute', inset: 0, zIndex: 10, background: 'rgba(0,220,229,.12)', border: '3px dashed rgba(0,220,229,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <div style={PlanosTab_S5}>
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#00dce5' }}>&#x1F4D0; SOLTAR PARA SUBIR</span>
               </div>
             )}
             <embed key={selectedPlanUrl} src={`${selectedPlanUrl}#toolbar=0`} type="application/pdf" title="Plano seleccionado" style={{ width: '100%', height: '100%' }} />
           </div>
         ) : (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, background: 'var(--bg)', cursor: 'pointer', position: 'relative' }}
+          <div style={PlanosTab_S6}
             role="button" tabIndex={0} aria-label="Seleccionar archivo de plano"
             onClick={() => fileRef.current?.click()}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}>
@@ -267,7 +282,7 @@ function PlanosTab({ state }: PlanosTabProps) {
               <>
                 <div style={{ fontSize: 40, opacity: .25 }}>&#x1F4D0;</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--txt3)' }}>Vista previa del plano</div>
-                <div style={{ fontSize: 10, color: 'var(--txt4)', textAlign: 'center', maxWidth: 260, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 12, color: 'var(--txt4)', textAlign: 'center', maxWidth: 260, lineHeight: 1.5 }}>
                   Sube un plano desde el panel derecho o arrastra un PDF aquí
                 </div>
               </>
@@ -278,8 +293,8 @@ function PlanosTab({ state }: PlanosTabProps) {
 
       <div style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--line)', background: 'var(--bg)' }}>
         <div style={{ padding: '10px 10px', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
-          <button onClick={() => fileRef.current?.click()}
-            style={{ width: '100%', padding: '10px', background: 'rgba(0,220,229,0.06)', border: '1.5px dashed rgba(0,220,229,0.3)', borderRadius: 'var(--r)', color: '#00dce5', fontWeight: 600, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all .15s' }}
+          <button type="button" onClick={() => fileRef.current?.click()}
+            style={PlanosTab_S7}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.12)'; e.currentTarget.style.borderColor = 'rgba(0,220,229,0.5)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.06)'; e.currentTarget.style.borderColor = 'rgba(0,220,229,0.3)'; }}>
             <img src="/iconos_carga_planos/subir_plano.svg" alt="Subir plano"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" /> SUBIR PLANO
@@ -290,12 +305,12 @@ function PlanosTab({ state }: PlanosTabProps) {
           onDragOver={e => { e.preventDefault(); setPlanDrag(true); }}
           onDragLeave={() => setPlanDrag(false)}
           onDrop={e => { e.preventDefault(); setPlanDrag(false); const fl = e.dataTransfer?.files; if (fl && fl.length > 0) addPlans(fl); }}>
-          <div style={{ padding: '7px 10px', fontSize: 11, fontWeight: 700, color: 'var(--txt3)', borderBottom: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: .5 }}>
+          <div style={PlanosTab_S8}>
             <img src="/iconos_carga_planos/pendientes.svg" alt="Pendientes"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" />
             Pendientes {pendingPlanos.length > 0 && `(${pendingPlanos.length})`}
           </div>
           {pendingPlanos.length === 0 ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, gap: 8, cursor: 'pointer', fontSize: 11, color: 'var(--txt4)', textAlign: 'center', lineHeight: 1.6 }}
+            <div style={PlanosTab_S9}
               role="button" tabIndex={0} aria-label="Subir planos"
               onClick={() => fileRef.current?.click()}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}>
@@ -309,7 +324,7 @@ function PlanosTab({ state }: PlanosTabProps) {
               )}
             </div>
           ) : (
-            <ul role="list" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 10px', listStyle: 'none', margin: 0 }}>
+            <ul role="list" style={PlanosTab_S10}>
               {pendingPlanos.map((p: any) => {
                 const calOk = isCalibrated(p.id);
                 const isSelected = selectedPlanId === p.id;
@@ -335,29 +350,29 @@ function PlanosTab({ state }: PlanosTabProps) {
                           {p.name}
                         </span>
                         {p.nivel !== null && (
-                          <span style={{ fontSize: 9, padding: '1px 5px', background: 'var(--bg3)', borderRadius: 'var(--r)', color: 'var(--txt3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          <span style={{ fontSize: 12, padding: '1px 5px', background: 'var(--bg3)', borderRadius: 'var(--r)', color: 'var(--txt3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                             {pisoLbl(p.nivel)}
                           </span>
                         )}
                       </div>
 
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <div style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 3 }}>
                           {calOk ? (
                             <span style={{ color: 'var(--ok)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}><span style={{ fontSize: 8 }}>●</span> Calibrado</span>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}><span style={{ fontSize: 12 }}>●</span> Calibrado</span>
                               {p.definedScale ? <span style={{ color: 'var(--txt3)' }}>Diseño 1:{Math.round(p.definedScale * 100)}</span> : null}
                               <span style={{ color: 'var(--txt2)' }}>| Calibrada 1:{Math.round(p.scale/100 * 100)}</span>
                             </span>
                           ) : (
                             <span style={{ color: '#F5A623', display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <span style={{ fontSize: 8 }}>●</span> Sin calibrar
+                              <span style={{ fontSize: 12 }}>●</span> Sin calibrar
                             </span>
                           )}
                         </div>
 
                         {calOk && p.nivel !== null && p.nivel !== undefined && (
-                          <button
+                          <button type="button"
                             onClick={() => {
                               if (plans.some((x: any) => x.id !== p.id && x.status === 'confirmed' && x.nivel === p.nivel)) {
                                 alert('Este nivel ya tiene un plano asociado.');
@@ -365,18 +380,7 @@ function PlanosTab({ state }: PlanosTabProps) {
                               }
                               confirmPlan(p.id);
                             }}
-                            style={{
-                              padding: '1px 6px',
-                              background: 'rgba(14,204,122,0.12)',
-                              border: '1px solid rgba(14,204,122,0.3)',
-                              borderRadius: 'var(--r)',
-                              color: '#0ECC7A',
-                              cursor: 'pointer',
-                              fontSize: 9,
-                              fontWeight: 700,
-                              transition: 'all 0.15s ease',
-                              whiteSpace: 'nowrap'
-                            }}
+                            style={PlanosTab_S11}
                           >
                             CONFIRMAR
                           </button>
@@ -386,11 +390,11 @@ function PlanosTab({ state }: PlanosTabProps) {
 
                     {/* Right Side: Horizontal row of 3 text buttons */}
                     <div style={{ display: 'flex', flexDirection: 'row', gap: 3, flexShrink: 0 }}>
-                      <button
+                      <button type="button"
                         onClick={() => { setSelectedPlanId(p.id); setCalibrating(false); }}
                         style={{
                           padding: '3px 6px',
-                          fontSize: 9,
+                          fontSize: 12,
                           fontWeight: 600,
                           borderRadius: 'var(--r)',
                           border: '1px solid var(--line)',
@@ -405,11 +409,11 @@ function PlanosTab({ state }: PlanosTabProps) {
                         VER
                       </button>
 
-                      <button
+                      <button type="button"
                         onClick={() => { setSelectedPlanId(p.id); setCalibrating(true); }}
                         style={{
                           padding: '3px 6px',
-                          fontSize: 9,
+                          fontSize: 12,
                           fontWeight: 600,
                           borderRadius: 'var(--r)',
                           border: '1px solid var(--line)',
@@ -424,25 +428,14 @@ function PlanosTab({ state }: PlanosTabProps) {
                         CALIBRAR
                       </button>
 
-                      <button
+                      <button type="button"
                         onClick={() => {
                           removePlan(p.id);
                           if (selectedPlanId === p.id) {
                             setSelectedPlanId(null);
                           }
                         }}
-                        style={{
-                          padding: '3px 6px',
-                          fontSize: 9,
-                          fontWeight: 600,
-                          borderRadius: 'var(--r)',
-                          border: '1px solid var(--line)',
-                          background: 'var(--bg3)',
-                          color: '#ef5350',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                          whiteSpace: 'nowrap'
-                        }}
+                        style={PlanosTab_S12}
                         title="Eliminar plano"
                       >
                         ELIMINAR
@@ -456,13 +449,13 @@ function PlanosTab({ state }: PlanosTabProps) {
         </div>
 
         <div style={{ flex: '1 1 50%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ padding: '7px 10px', fontSize: 11, fontWeight: 700, color: 'var(--txt3)', borderBottom: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: .5 }}>
+          <div style={PlanosTab_S13}>
             <img src="/iconos_carga_planos/cargados.svg" alt="Cargados"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" />
             Cargados {confirmedPlanos.length > 0 && `(${confirmedPlanos.length})`}
           </div>
           {confirmedPlanos.length === 0 ? (
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--txt3)', fontSize: 11 }}>
+              <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--txt3)', fontSize: 12 }}>
                 <div style={{ fontSize: 24, marginBottom: 4 }}>{'\u{1F4CB}'}</div>
                 Aún no hay planos cargados
               </div>
@@ -474,7 +467,7 @@ function PlanosTab({ state }: PlanosTabProps) {
                   style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderBottom: '1px solid var(--line)', background: selectedPlanId === p.id ? 'rgba(27,110,243,.08)' : 'transparent', transition: 'background .1s' }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                    <div style={{ fontSize: 10, color: 'var(--txt3)', display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ fontSize: 12, color: 'var(--txt3)', display: 'flex', gap: 5, alignItems: 'center', flexWrap: 'wrap' }}>
                       {p.nivel !== null && <span>{pisoLbl(p.nivel)}</span>}
                       {p.scale ? (
                         <>
@@ -486,12 +479,12 @@ function PlanosTab({ state }: PlanosTabProps) {
                       ) : null}
                     </div>
                   </div>
-                  <button onClick={() => setSelectedPlanId(p.id)}
-                    style={{ padding: '3px 6px', fontSize: 9, fontWeight: 600, borderRadius: 'var(--r)', border: '1px solid var(--line)', background: selectedPlanId === p.id ? 'rgba(0, 220, 229, 0.12)' : 'var(--bg3)', color: selectedPlanId === p.id ? '#00dce5' : 'var(--txt2)', cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s ease', whiteSpace: 'nowrap' }} title="Vista previa">
+                  <button type="button" onClick={() => setSelectedPlanId(p.id)}
+                    style={{ padding: '3px 6px', fontSize: 12, fontWeight: 600, borderRadius: 'var(--r)', border: '1px solid var(--line)', background: selectedPlanId === p.id ? 'rgba(0, 220, 229, 0.12)' : 'var(--bg3)', color: selectedPlanId === p.id ? '#00dce5' : 'var(--txt2)', cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s ease', whiteSpace: 'nowrap' }} title="Vista previa">
                     VER
                   </button>
-                  <button onClick={() => removePlan(p.id)}
-                    style={{ padding: '3px 6px', fontSize: 9, fontWeight: 600, borderRadius: 'var(--r)', border: '1px solid var(--line)', background: 'var(--bg3)', color: '#ef5350', cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s ease', whiteSpace: 'nowrap' }} title="Eliminar">
+                  <button type="button" onClick={() => removePlan(p.id)}
+                    style={PlanosTab_S14} title="Eliminar">
                     ELIMINAR
                   </button>
                 </li>

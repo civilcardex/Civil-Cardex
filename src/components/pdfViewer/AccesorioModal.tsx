@@ -1,5 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
 import { ACCESORIOS_HIDRO } from '../../constants';
+const AccesorioModal_S1: React.CSSProperties = { background: 'linear-gradient(135deg, #1e222b 0%, #15181f 100%)', padding: '24px', borderRadius: '12px', minWidth: 420, maxWidth: 520, border: '1px solid rgba(99, 165, 255, 0.3)', boxShadow: '0 20px 40px rgba(0,0,0,0.6), 0 0 15px rgba(99, 165, 255, 0.1)', display: 'flex', flexDirection: 'column', gap: 16, color: '#e2e2e8', margin: 'auto', };
+const AccesorioModal_S2: React.CSSProperties = { fontSize: 16, fontWeight: 700, color: '#63A5FF', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 10 };
+const AccesorioModal_S3: React.CSSProperties = { padding: '8px 18px', background: 'transparent', border: '1px solid #3a494a', borderRadius: 6, color: '#a9b8bd', cursor: 'pointer', fontWeight: 600, fontSize: 12, fontFamily: "'Geist', monospace", textTransform: 'uppercase' };
+const AccesorioModal_S4: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 10,
+  padding: '10px 12px',
+  borderRadius: 4,
+  cursor: 'pointer',
+  fontFamily: "'Geist', monospace",
+  fontSize: 12,
+  textAlign: 'left',
+  transition: 'all 0.15s ease'
+};
+const AccesorioModal_S5: React.CSSProperties = {
+  padding: '8px 18px',
+  border: 'none',
+  borderRadius: 6,
+  fontWeight: 700,
+  fontSize: 12,
+  fontFamily: "'Geist', monospace",
+  textTransform: 'uppercase',
+  transition: 'all 0.15s ease'
+};
 
 interface AccesorioModalState {
   isOpen: boolean;
@@ -19,16 +42,15 @@ interface AccesorioModalProps {
 export default function AccesorioModal({ modalState, onClose, onSelect }: AccesorioModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [selectedAccId, setSelectedAccId] = useState<string | null>(null);
+  const prevIsOpenRef = useRef(modalState.isOpen);
+  if (modalState.isOpen !== prevIsOpenRef.current) {
+    prevIsOpenRef.current = modalState.isOpen;
+    if (modalState.isOpen) setSelectedAccId(null);
+  }
 
   useEffect(() => {
     if (modalState.isOpen && dialogRef.current) {
       if (!dialogRef.current.open) dialogRef.current.showModal();
-    }
-  }, [modalState.isOpen]);
-
-  useEffect(() => {
-    if (modalState.isOpen) {
-      setSelectedAccId(null);
     }
   }, [modalState.isOpen]);
 
@@ -58,20 +80,7 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
       ref={dialogRef}
       onCancel={(e) => { e.preventDefault(); onClose(); }}
       onClose={onClose}
-      style={{
-        background: 'linear-gradient(135deg, #1e222b 0%, #15181f 100%)',
-        padding: '24px',
-        borderRadius: '12px',
-        minWidth: 420,
-        maxWidth: 520,
-        border: '1px solid rgba(99, 165, 255, 0.3)',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.6), 0 0 15px rgba(99, 165, 255, 0.1)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 16,
-        color: '#e2e2e8',
-        margin: 'auto',
-      }}
+      style={AccesorioModal_S1}
     >
       <style>{`
         dialog::backdrop {
@@ -79,12 +88,7 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
           backdrop-filter: blur(8px);
         }
       `}</style>
-      <div style={{
-        fontSize: 16, fontWeight: 700, color: '#63A5FF',
-        display: 'flex', alignItems: 'center', gap: 8,
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        paddingBottom: 10
-      }}>
+      <div style={AccesorioModal_S2}>
         <span style={{ fontSize: 22 }}>{modalState.isTee ? '🔧' : '📐'}</span> {modalState.isTee ? 'Conexión tipo Tee detectada' : `Cambio de dirección detectado (${modalState.angleDeg}°)`}
       </div>
       <div style={{ fontSize: 13, color: '#a9b8bd', lineHeight: 1.5, fontFamily: "'Geist', sans-serif" }}>
@@ -104,21 +108,8 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
         {showAll.map(t => {
           const isSelected = selectedAccId === t.id;
           return (
-            <button key={t.id} onClick={() => setSelectedAccId(t.id)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '10px 12px',
-                background: isSelected ? 'rgba(99, 165, 255, 0.12)' : '#1e2024',
-                border: isSelected ? '1px solid #63A5FF' : '1px solid #3a494a',
-                borderRadius: 4,
-                color: isSelected ? '#63A5FF' : '#e2e2e8',
-                cursor: 'pointer',
-                fontFamily: "'Geist', monospace",
-                fontSize: 12,
-                textAlign: 'left',
-                boxShadow: isSelected ? '0 0 8px rgba(99, 165, 255, 0.2)' : 'none',
-                transition: 'all 0.15s ease'
-              }}>
+            <button type="button" key={t.id} onClick={() => setSelectedAccId(t.id)}
+              style={{ ...AccesorioModal_S4, background: isSelected ? 'rgba(99, 165, 255, 0.12)' : '#1e2024', border: isSelected ? '1px solid #63A5FF' : '1px solid #3a494a', color: isSelected ? '#63A5FF' : '#e2e2e8', boxShadow: isSelected ? '0 0 8px rgba(99, 165, 255, 0.2)' : 'none' }}>
               <img src={t.icono} alt={t.nombre} width={24} height={24} style={{ objectFit: 'contain' }} />
               <span>{t.nombre}</span>
             </button>
@@ -127,32 +118,14 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
-        <button onClick={onClose}
-          style={{
-            padding: '8px 18px', background: 'transparent',
-            border: '1px solid #3a494a', borderRadius: 6,
-            color: '#a9b8bd', cursor: 'pointer',
-            fontWeight: 600, fontSize: 12, fontFamily: "'Geist', monospace",
-            textTransform: 'uppercase'
-          }}>
+        <button type="button" onClick={onClose}
+          style={AccesorioModal_S3}>
           Cancelar
         </button>
-        <button
+        <button type="button"
           disabled={!selectedAccId}
           onClick={handleConfirm}
-          style={{
-            padding: '8px 18px',
-            background: selectedAccId ? '#63A5FF' : 'rgba(99, 165, 255, 0.15)',
-            border: 'none',
-            borderRadius: 6,
-            color: selectedAccId ? '#0f1115' : '#a9b8bd66',
-            cursor: selectedAccId ? 'pointer' : 'not-allowed',
-            fontWeight: 700,
-            fontSize: 12,
-            fontFamily: "'Geist', monospace",
-            textTransform: 'uppercase',
-            transition: 'all 0.15s ease'
-          }}>
+          style={{ ...AccesorioModal_S5, background: selectedAccId ? '#63A5FF' : 'rgba(99, 165, 255, 0.15)', color: selectedAccId ? '#0f1115' : '#a9b8bd66', cursor: selectedAccId ? 'pointer' : 'not-allowed' }}>
           Confirmar
         </button>
       </div>

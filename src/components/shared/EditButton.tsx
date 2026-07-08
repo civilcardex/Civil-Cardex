@@ -7,8 +7,8 @@ interface EditButtonProps {
 
 const BASE: React.CSSProperties = {
   border: '1px solid var(--acc)',
-  borderRadius: 4,
-  padding: '7px 10px',
+  borderRadius: 3,
+  padding: '2px 6px',
   fontSize: 10,
   cursor: 'pointer',
   fontWeight: 600,
@@ -17,7 +17,7 @@ const BASE: React.CSSProperties = {
 
 export default function EditButton({ edit, setEdit }: EditButtonProps) {
   return (
-    <button
+    <button type="button"
       onClick={() => setEdit(prev => !prev)}
       style={edit ? { ...BASE, background: 'var(--acc)', color: '#fff' } : { ...BASE, background: 'transparent', color: 'var(--acc)' }}
     >

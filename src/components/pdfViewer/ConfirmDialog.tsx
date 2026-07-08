@@ -1,4 +1,8 @@
 import React, { useEffect, useRef } from 'react';
+const ConfirmDialog_S1: React.CSSProperties = { background: 'var(--bg2)', padding: '20px', borderRadius: 'var(--r)', minWidth: 320, maxWidth: 400, border: '1px solid var(--line)', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', color: 'var(--txt)', margin: 'auto', display: 'flex', flexDirection: 'column', };
+const ConfirmDialog_S2: React.CSSProperties = { padding: '6px 12px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 4, color: 'var(--txt)', cursor: 'pointer', fontWeight: 600, fontSize: 12 };
+const ConfirmDialog_S3: React.CSSProperties = { padding: '6px 12px', background: '#ef5350', border: 'none', borderRadius: 4, color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 12 };
+
 
 interface ConfirmState {
   isOpen: boolean;
@@ -39,19 +43,7 @@ export default function ConfirmDialog({ confirmState, setConfirmState }: Confirm
       onClose={handleClose}
       role="alertdialog"
       aria-labelledby="confirm-dialog-title"
-      style={{
-        background: 'var(--bg2)',
-        padding: '20px',
-        borderRadius: 'var(--r)',
-        minWidth: 320,
-        maxWidth: 400,
-        border: '1px solid var(--line)',
-        boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
-        color: 'var(--txt)',
-        margin: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
+      style={ConfirmDialog_S1}
     >
       <style>{`
         dialog::backdrop {
@@ -65,8 +57,8 @@ export default function ConfirmDialog({ confirmState, setConfirmState }: Confirm
         {confirmState.message}
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-        <button onClick={handleClose} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 4, color: 'var(--txt)', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Cancelar</button>
-        <button autoFocus onClick={() => { confirmState.onConfirm(); handleClose(); }} style={{ padding: '6px 12px', background: '#ef5350', border: 'none', borderRadius: 4, color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>Eliminar</button>
+        <button type="button" onClick={handleClose} style={ConfirmDialog_S2}>Cancelar</button>
+        <button type="button" autoFocus onClick={() => { confirmState.onConfirm(); handleClose(); }} style={ConfirmDialog_S3}>Eliminar</button>
       </div>
     </dialog>
   );

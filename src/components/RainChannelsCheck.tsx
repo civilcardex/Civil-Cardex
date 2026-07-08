@@ -12,33 +12,33 @@ export default function ChequeoCanalesLluvias() {
       </div>
       <div className="scroll-top" style={{padding:'16px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
-        <table className="tbl" style={{fontSize:10, tableLayout:'auto', width:'100%', borderCollapse:'collapse'}}>
+        <table className="tbl" style={{fontSize: 9, tableLayout:'auto', width:'100%', borderCollapse:'collapse'}}>
           <thead>
             <tr>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Sector</th>
-              <th scope="col" className="col-h ll" colSpan={2} style={{textAlign:'center',fontSize:9,padding:'3px 2px'}}>Área (m²)</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Intensidad (I)<br/><small>mm/hr</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Coeficiente<br/>Escorrentía</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Caudal real<br/><small>(LPS)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Manning</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Pendiente<br/><small>(%)</small></th>
-              <th scope="col" className="col-h ok" colSpan={4} style={{textAlign:'center',fontSize:9,padding:'3px 2px'}}>Sección propuesta (cm)</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Caudal máximo<br/><small>(LPS)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize:9,textAlign:'center',padding:'3px 2px'}}>Chequeo<br/>Qreal &lt; Qmax</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Sector</th>
+              <th scope="col" className="col-h ll" colSpan={2} style={{textAlign:'center',fontSize: 9,padding:'1px 1px'}}>Área (m²)</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Intensidad (I)<br/><small>mm/hr</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Coeficiente<br/>Escorrentía</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Caudal real<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Manning</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Pendiente<br/><small>(%)</small></th>
+              <th scope="col" className="col-h ok" colSpan={4} style={{textAlign:'center',fontSize: 9,padding:'1px 1px'}}>Sección propuesta (cm)</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Caudal máximo<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Chequeo<br/>Qreal &lt; Qmax</th>
             </tr>
             <tr>
-              <th scope="col" className="col-h ll" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Parcial</th>
-              <th scope="col" className="col-h ll" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Acumulada</th>
-              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>b</th>
-              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>h</th>
-              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>bl</th>
-              <th scope="col" className="col-h ok" style={{fontSize:8,textAlign:'center',padding:'2px 2px'}}>Total</th>
+              <th scope="col" className="col-h ll" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Parcial</th>
+              <th scope="col" className="col-h ll" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Acumulada</th>
+              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>b</th>
+              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>h</th>
+              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>bl</th>
+              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Total</th>
             </tr>
           </thead>
           <tbody>
 {canalesLl.length === 0 ? (
               <tr>
-                <td colSpan={14} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                <td colSpan={14} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 9 }}>
                   No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                 </td>
               </tr>
@@ -46,20 +46,20 @@ export default function ChequeoCanalesLluvias() {
 const { Qreal, Qmax, chequeo, totalStr } = chequeoCanalLluvia(c);
 return(
                 <tr key={c.id}>
-                  <td className="c"><span className="sigla" style={{fontSize:11}}>{c.sector || '—'}</span></td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{c.areaParcial||'—'}</span></td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{c.areaAcumulada||'—'}</span></td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{c.intensidad||'—'}</span></td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{c.coeficienteC||'—'}</span></td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize:13}}>{Qreal>0?Qreal.toFixed(2):'—'}</td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{c.manning||'—'}</span></td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{c.pendiente||'—'}</span></td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{c.b||'—'}</span></td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{c.h||'—'}</span></td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize:11}}>{c.bl||'—'}</span></td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,fontSize:11}}>{totalStr}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize:12}}>{Qmax > 0 ? Qmax.toFixed(2) : '—'}</td>
-                  <td className="c" style={{fontSize:11}}>{renderStatus(chequeo)}</td>
+                  <td className="c"><span className="sigla" style={{fontSize: 9}}>{c.sector || '—'}</span></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.areaParcial||'—'}</span></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.areaAcumulada||'—'}</span></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.intensidad||'—'}</span></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.coeficienteC||'—'}</span></td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize: 9}}>{Qreal>0?Qreal.toFixed(2):'—'}</td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.manning||'—'}</span></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.pendiente||'—'}</span></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.b||'—'}</span></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.h||'—'}</span></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.bl||'—'}</span></td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,fontSize: 9}}>{totalStr}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize: 9}}>{Qmax > 0 ? Qmax.toFixed(2) : '—'}</td>
+                  <td className="c" style={{fontSize: 9}}>{renderStatus(chequeo)}</td>
                 </tr>
               );
             })}

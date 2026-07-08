@@ -38,5 +38,4 @@ function WorkAreaSidebar({ tab, setTab }: WorkAreaSidebarProps) {
   );
 }
 
-export default WorkAreaSidebar;
 export { WorkAreaSidebar };

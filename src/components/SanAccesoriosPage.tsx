@@ -276,14 +276,14 @@ export default function SanAccesoriosPage() {
             <table className="tbl" style={{ minWidth: 760, fontSize: 13 }}>
               <thead>
                 <tr>
-                  <th scope="col" className="col-h" style={{ minWidth: 168, textAlign: 'center', background: 'var(--bg2)', fontSize: 11, padding: '5px 4px' }}>Diámetro</th>
+                  <th scope="col" className="col-h" style={{ minWidth: 168, textAlign: 'center', background: 'var(--bg2)', fontSize: 12, padding: '5px 4px' }}>Diámetro</th>
                   {SAN_ACCESORIOS.map(a => (
-                    <th scope="col" key={a.id} className="col-h" style={{ minWidth: 56, fontSize: 10, textAlign: 'center', whiteSpace: 'nowrap', padding: '5px 2px' }}>
+                    <th scope="col" key={a.id} className="col-h" style={{ minWidth: 56, fontSize: 12, textAlign: 'center', whiteSpace: 'nowrap', padding: '5px 2px' }}>
                       <img src={a.icono} alt={a.nombre} width={24} height={24} style={{ width: 24, height: 24, objectFit: 'contain', display: 'block', margin: '0 auto 2px' }} loading="lazy" />
-                      <span style={{ fontSize: 9, fontWeight: 500 }}>{a.nombre}</span>
+                      <span style={{ fontSize: 12, fontWeight: 500 }}>{a.nombre}</span>
                     </th>
                   ))}
-                  <th scope="col" className="col-h" style={{ minWidth: 64, fontSize: 10, textAlign: 'center', background: 'var(--bg2)', padding: '5px 4px', fontWeight: 600 }}>Total</th>
+                  <th scope="col" className="col-h" style={{ minWidth: 64, fontSize: 12, textAlign: 'center', background: 'var(--bg2)', padding: '5px 4px', fontWeight: 600 }}>Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -306,7 +306,7 @@ export default function SanAccesoriosPage() {
                 })}
                 {totalsByDiameter.length === 0 && (
                   <tr>
-                    <td className="c" colSpan={2 + SAN_ACCESORIOS.length} style={{ fontSize: 11, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
+                    <td className="c" colSpan={2 + SAN_ACCESORIOS.length} style={{ fontSize: 12, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
                       No hay accesorios.
                     </td>
                   </tr>

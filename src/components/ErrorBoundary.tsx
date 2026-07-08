@@ -25,9 +25,9 @@ export class ErrorBoundary extends Component<Props, State> {
           <p style={{ fontSize: 12, color: 'var(--outline)', marginBottom: 16 }}>
             {this.state.error?.message || 'Error inesperado'}
           </p>
-          <button
+          <button type="button"
             onClick={() => this.setState({ hasError: false, error: null })}
-            style={{ padding: '8px 16px', background: 'var(--surface-tint)', color: '#000', border: 'none', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 11 }}>
+            style={{ padding: '8px 16px', background: 'var(--surface-tint)', color: '#000', border: 'none', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12 }}>
             Reintentar
           </button>
         </div>

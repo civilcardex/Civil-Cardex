@@ -12,6 +12,11 @@ const HIDROSAN_IDS = new Set(['af', 'ac', 'san']);
 const GAS_ID = 'gas';
 
 import { TRAZOS_PREFIX, GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY } from "../constants/storage-keys";
+const FixturesPanel_S1: React.CSSProperties = { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px 8px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', };
+const FixturesPanel_S2: React.CSSProperties = { fontFamily: "'Geist',monospace", fontSize: 12, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+const FixturesPanel_S3: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--txt2)', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, padding: '0 2px', };
+const FixturesPanel_S4: React.CSSProperties = { background: 'transparent', border: 'none', color: '#ffb4ab', fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer', textTransform: 'uppercase', letterSpacing: 1, padding: 0, };
+
 
 const UNIDAD = {
   uc: 'UC',
@@ -103,7 +108,7 @@ const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, plan
         const data = loadFromStorage(TRAZOS_PREFIX + plano.id, null);
         if (!data) continue;
         for (const r of (data as any).ramales || []) {
-          if (r.net === 'gas') existingIds.add(r.id);
+          if (r.net === 'gas' && r.tipo !== 'tributario') existingIds.add(r.id);
         }
       } catch {
         // ignore
@@ -315,10 +320,10 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
   if (!visible) {
     return (
       <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-        <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: 'var(--txt3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
+        <div style={{ fontFamily: "'Geist',monospace", fontSize: 12, color: 'var(--txt3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
           Cuantificación de aparatos
         </div>
-        <div style={{ fontSize: 11, color: 'var(--txt2)', fontFamily: "'Geist',monospace", padding: '4px 0', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 12, color: 'var(--txt2)', fontFamily: "'Geist',monospace", padding: '4px 0', lineHeight: 1.5 }}>
           Esta red no cuantifica aparatos sanitarios.
         </div>
       </div>
@@ -339,11 +344,7 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
 
   return (
     <div ref={containerRef} style={containerStyle}>
-      <button onClick={() => setOpen(o => !o)} aria-expanded={open} style={{
-        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 12px 8px', background: 'transparent', border: 'none', cursor: 'pointer',
-        textAlign: 'left', overflow: 'hidden',
-      }}>
+      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} style={FixturesPanel_S1}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
           <span style={{
             display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
@@ -352,20 +353,20 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
             flexShrink: 0,
             boxShadow: isActive ? `0 0 8px ${accent}` : 'none',
           }} />
-          <span style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <span style={FixturesPanel_S2}>
             {headerLbl}
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0 }}>
           <span style={{
-            fontSize: 11, fontWeight: 700, color: accent,
+            fontSize: 12, fontWeight: 700, color: accent,
             fontFamily: "'Geist',monospace", background: 'rgba(37,99,235,.1)',
             border: `1px solid ${accent}55`,
             borderRadius: 3, padding: '1px 7px', whiteSpace: 'nowrap',
           }}>
             {totalStr} {unidadLbl}
           </span>
-          <span style={{ fontSize: 10, color: 'var(--txt2)', fontFamily: "'Geist',monospace", flexShrink: 0 }}>
+          <span style={{ fontSize: 12, color: 'var(--txt2)', fontFamily: "'Geist',monospace", flexShrink: 0 }}>
             {open ? '▾' : '▸'}
           </span>
         </div>
@@ -374,23 +375,15 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
       {open && (
         <div style={{ padding: '0 10px 10px' }}>
           {targetId ? (
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              fontSize: 9, color: 'var(--txt2)', fontFamily: "'Geist',monospace",
-              textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, padding: '0 2px',
-            }}>
+            <div style={FixturesPanel_S3}>
               <span>Asignado a <span style={{ color: accent, fontWeight: 700 }}>{targetLbl}</span></span>
               {Object.keys(currentMap).some(k => currentMap[k] > 0) && (
-                <button onClick={reset} style={{
-                  background: 'transparent', border: 'none', color: '#ffb4ab',
-                  fontSize: 9, fontFamily: "'Geist',monospace", cursor: 'pointer',
-                  textTransform: 'uppercase', letterSpacing: 1, padding: 0,
-                }}>↺ Restablecer</button>
+                <button type="button" onClick={reset} style={FixturesPanel_S4}>↺ Restablecer</button>
               )}
             </div>
           ) : (
             <div style={{
-              fontSize: 9, color: 'var(--txt2)', fontFamily: "'Geist',monospace",
+              fontSize: 12, color: 'var(--txt2)', fontFamily: "'Geist',monospace",
               textAlign: 'center', marginBottom: 6, padding: '2px 0',
             }}>
               {isGas ? 'Selecciona un tramo de gas' : 'Selecciona un ramal/bajante en el dibujo'}
@@ -404,7 +397,7 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
             filter: targetId ? 'none' : 'grayscale(.6)',
           }}>
             {selElement?.tipo === 'contador' ? (
-              <div style={{ fontSize: 11, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
+              <div style={{ fontSize: 12, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
                 La sección de aparatos no aplica para el contador.
               </div>
             ) : (
@@ -420,7 +413,7 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
                   accent={accent}
                 />
                 {items.length === 0 && (
-                  <div style={{ fontSize: 11, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
+                  <div style={{ fontSize: 12, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
                     No hay aparatos en esta red. Dibuje ramales en el visor para agregarlos.
                   </div>
                 )}

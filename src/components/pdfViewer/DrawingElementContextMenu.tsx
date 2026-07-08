@@ -12,6 +12,30 @@ import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { loadFromStorage, saveToStorage } from "../../services/storageService";
 import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from "../../constants/storage-keys";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../../utils/drawingSync";
+const DrawingElementContextMenu_S1: React.CSSProperties = { background: 'transparent', border: 'none', color: '#e2e2e8', padding: '6px 8px', textAlign: 'left', fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer', borderRadius: 3, display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, borderTop: '1px solid #3a494a' };
+const DrawingElementContextMenu_S2: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const DrawingElementContextMenu_S3: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const DrawingElementContextMenu_S4: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const DrawingElementContextMenu_S5: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const DrawingElementContextMenu_S6: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const DrawingElementContextMenu_S7: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 };
+const DrawingElementContextMenu_S8: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 };
+const DrawingElementContextMenu_S9: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 };
+const DrawingElementContextMenu_S10: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 };
+const DrawingElementContextMenu_S11: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const DrawingElementContextMenu_S12: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const DrawingElementContextMenu_S13: React.CSSProperties = { width: '100%', padding: '6px 8px', cursor: 'pointer', background: '#1e2024', border: '1px dashed #00dce5', borderRadius: 4, color: '#00dce5', fontSize: 12, fontFamily: "'Geist',monospace", textAlign: 'center', fontWeight: 600, };
+const DrawingElementContextMenu_S14: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const DrawingElementContextMenu_S15: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const DrawingElementContextMenu_S16: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const DrawingElementContextMenu_S17: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const DrawingElementContextMenu_S18: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const DrawingElementContextMenu_S19: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: '#e2e2e8', background: 'rgba(255,255,255,0.03)', padding: '2px 4px', borderRadius: 3, marginBottom: 6 };
+const DrawingElementContextMenu_S20: React.CSSProperties = { width: '100%', padding: '4px 6px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#e2e2e8', fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const DrawingElementContextMenu_S21: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 };
+const DrawingElementContextMenu_S22: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 };
+const DrawingElementContextMenu_S23: React.CSSProperties = { position: 'absolute', zIndex: 101, background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.4)', padding: '4px', minWidth: 150, maxWidth: 280, display: 'flex', flexDirection: 'column', gap: 2, };
+
 
 
 
@@ -63,7 +87,7 @@ function BajanteDirectionSelector({
 
   return (
     <>
-      <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+      <div style={{ fontSize: 12, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
         Dirección de flujo
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: '0 8px 4px' }}>
@@ -72,7 +96,7 @@ function BajanteDirectionSelector({
             ? (!ghostDir && !!(element.desplazamientos && element.desplazamientos[currentGhostLabel]))
             : (ghostDir === opt.toLowerCase());
           return (
-            <button
+            <button type="button"
               key={opt}
               onClick={() => {
                 if (engineRef.current) {
@@ -123,7 +147,7 @@ function BajanteDirectionSelector({
                 border: `1px solid ${isActive ? '#2563eb' : '#3a494a'}`,
                 color: isActive ? '#3b82f6' : '#e2e2e8',
                 padding: '6px 8px',
-                textAlign: 'left', fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer',
+                textAlign: 'left', fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer',
                 borderRadius: 3, display: 'flex', alignItems: 'center', gap: 6,
                 transition: 'all 0.1s',
               }}
@@ -140,7 +164,7 @@ function BajanteDirectionSelector({
       </div>
 
       {!isGhostClick && (
-        <button
+        <button type="button"
           onClick={() => {
             if (engineRef.current) {
               const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
@@ -161,12 +185,7 @@ function BajanteDirectionSelector({
               engineRef.current?.render();
             }
           }}
-          style={{
-            background: 'transparent', border: 'none', color: '#e2e2e8', padding: '6px 8px',
-            textAlign: 'left', fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer',
-            borderRadius: 3, display: 'flex', alignItems: 'center', gap: 6,
-            marginTop: 4, borderTop: '1px solid #3a494a'
-          }}
+          style={DrawingElementContextMenu_S1}
           onMouseEnter={e => e.currentTarget.style.background = '#2563eb33'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
         >
@@ -206,7 +225,7 @@ function BajanteDiameterSelector({
         <>
           <div style={{ display: 'flex', gap: 6, padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Destino</div>
+              <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Destino</div>
               <select value={element.descargaEnId || ''}
                 onChange={e => {
                   const v = e.target.value || null;
@@ -266,7 +285,7 @@ function BajanteDiameterSelector({
                     }
                   }
                 }}
-                style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                style={DrawingElementContextMenu_S2}>
                 <option value="">— Sin destino —</option>
                 {lowerFloorsRamales.map(group => {
                   const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
@@ -294,7 +313,7 @@ function BajanteDiameterSelector({
               </select>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Diámetro</div>
+              <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Diámetro</div>
               <select value={(() => {
                 const gd = element.ghostData?.[currentGhostLabel];
                 return isGhostClick ? (gd && gd.dNominal !== undefined ? gd.dNominal : (element.dNominal || '')) : (element.dNominal || '');
@@ -327,7 +346,7 @@ function BajanteDiameterSelector({
                     }
                   }
                 }}
-                style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                style={DrawingElementContextMenu_S3}>
                 <option value="">—</option>
                 {(element.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
                   <option key={d.pulg} value={d.nom}>{d.nom}</option>
@@ -337,7 +356,7 @@ function BajanteDiameterSelector({
           </div>
           <div style={{ display: 'flex', gap: 6, padding: '0 8px 4px' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Llenado (R)</div>
+              <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Llenado (R)</div>
               <select value={element.bajR != null ? (Math.abs(element.bajR - 7 / 24) < 0.001 ? '7/24' : '1/4') : '7/24'}
                 onChange={e => {
                   const val = e.target.value;
@@ -349,13 +368,13 @@ function BajanteDiameterSelector({
                     setSelElement({ ...selElement, bajR: valNum });
                   }
                 }}
-                style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                style={DrawingElementContextMenu_S4}>
                 <option value="7/24">7/24</option>
                 <option value="1/4">1/4</option>
               </select>
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Área asociada</div>
+              <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Área asociada</div>
               <select value={element.area_m2 || ''}
                 onChange={e => {
                   const val = parseFloat(e.target.value) || 0;
@@ -365,7 +384,7 @@ function BajanteDiameterSelector({
                     setSelElement({ ...selElement, area_m2: val });
                   }
                 }}
-                style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+                style={DrawingElementContextMenu_S5}>
                 <option value="">— Sin área —</option>
                 {(engineRef.current?.areas || []).filter((a: any) => a.net === element.net).map((a: any) => (
                   <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
@@ -376,7 +395,7 @@ function BajanteDiameterSelector({
         </>
       ) : (
         <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
-          <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Diámetro</div>
+          <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Diámetro</div>
           <select value={(() => {
             const gd = element.ghostData?.[currentGhostLabel];
             return isGhostClick ? (gd && gd.dNominal !== undefined ? gd.dNominal : (element.dNominal || '')) : (element.dNominal || '');
@@ -411,7 +430,7 @@ function BajanteDiameterSelector({
                 }
               }
             }}
-            style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+            style={DrawingElementContextMenu_S6}>
             <option value="">—</option>
             {(element.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
               <option key={d.pulg} value={d.nom}>{d.nom}</option>
@@ -456,11 +475,11 @@ function BajanteConnectionPanel({
             display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 8px',
             borderTop: '1px solid #3a494a', marginTop: 4
           }}>
-            <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Ramales asociados</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
+            <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Ramales asociados</div>
+            <div style={DrawingElementContextMenu_S7}>
               {(() => {
                 const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === activeNet && r.tipo !== 'tributario');
-                if (bajRamales.length === 0) return <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin ramales</div>;
+                if (bajRamales.length === 0) return <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin ramales</div>;
                 const recibidos = (element.recibeDeIds || []);
                 return bajRamales.map((r: any) => {
                   const isAssociated = recibidos.includes(r.id);
@@ -470,7 +489,7 @@ function BajanteConnectionPanel({
                   const distEnd = rEnd ? Math.hypot(rEnd[0] - element.x, rEnd[1] - element.y) : Infinity;
                   const isAtStart = distStart <= distEnd;
                   return (
-                    <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
+                    <label key={r.id} style={DrawingElementContextMenu_S8}>
                       <input type="checkbox" checked={isAssociated}
                         onChange={e => {
                           const checked = e.target.checked;
@@ -507,17 +526,17 @@ function BajanteConnectionPanel({
           <div style={{
             display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4
           }}>
-            <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
+            <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
+            <div style={DrawingElementContextMenu_S9}>
               {(() => {
                 const netBajantes = (engineRef.current?.bajantes || []).filter((b: any) => b.net === element.net && b.id !== element.id && b.tipo !== 'tributario');
-                if (netBajantes.length === 0) return <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin bajantes</div>;
+                if (netBajantes.length === 0) return <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin bajantes</div>;
                 const currentId = element.id;
                 return netBajantes.map((b: any) => {
                   const isAssociated = (element.recibeDeIds || []).includes(b.id)
                     || (b.recibeDeIds || []).includes(currentId);
                   return (
-                    <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
+                    <label key={b.id} style={DrawingElementContextMenu_S10}>
                       <input type="checkbox" checked={isAssociated}
                         onChange={e => {
                           const checked = e.target.checked;
@@ -580,12 +599,12 @@ function BajanteConnectionPanel({
 
               return (
                 <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 6, borderBottom: '1px solid #3a494a', marginBottom: 4 }}>
-                  <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     Extremo {isStart ? 'Inicio (Aparato)' : 'Fin (Ramal)'}
                   </div>
 
                   <div>
-                    <div style={{ fontSize: 9, color: '#849495', marginBottom: 2 }}>Seleccionar Accesorio</div>
+                    <div style={{ fontSize: 12, color: '#849495', marginBottom: 2 }}>Seleccionar Accesorio</div>
                     <select
                       value={currentAcc}
                       onChange={(e) => {
@@ -608,7 +627,7 @@ function BajanteConnectionPanel({
                           }
                         }
                       }}
-                      style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
+                      style={DrawingElementContextMenu_S11}
                     >
                       <option value="">Ninguno</option>
                       {accOptions.map(o => (
@@ -619,7 +638,7 @@ function BajanteConnectionPanel({
 
                   {currentAcc && (
                     <div>
-                      <div style={{ fontSize: 9, color: '#849495', marginBottom: 2 }}>Diametro de Accesorio</div>
+                      <div style={{ fontSize: 12, color: '#849495', marginBottom: 2 }}>Diametro de Accesorio</div>
                       <select
                         value={currentDiam ? currentDiam.split(' — ')[0].trim() : ''}
                         onChange={(e) => {
@@ -635,7 +654,7 @@ function BajanteConnectionPanel({
                             engineRef.current._markDirty();
                           }
                         }}
-                        style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
+                        style={DrawingElementContextMenu_S12}
                       >
                         <option value="">Usar diametro de red</option>
                         {(currentAcc === 'sifon'
@@ -653,7 +672,7 @@ function BajanteConnectionPanel({
             })()}
 
             <div style={{ padding: '4px 8px' }}>
-              <button onClick={() => {
+              <button type="button" onClick={() => {
                 const eng = engineRef.current;
                 if (!eng) return;
                 const isMon = bmLabel === 'montante';
@@ -694,12 +713,7 @@ function BajanteConnectionPanel({
                 eng.render();
                 eng._markDirty();
                 setContextMenuState(null);
-              }} style={{
-                width: '100%', padding: '6px 8px', cursor: 'pointer',
-                background: '#1e2024', border: '1px dashed #00dce5', borderRadius: 4,
-                color: '#00dce5', fontSize: 11, fontFamily: "'Geist',monospace",
-                textAlign: 'center', fontWeight: 600,
-              }}>+ Crear {bmLabel}</button>
+              }} style={DrawingElementContextMenu_S13}>+ Crear {bmLabel}</button>
             </div>
           </>
         );
@@ -736,7 +750,7 @@ function BajanteCodeEditor({
   if (isArea) {
     return (
       <>
-        <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        <div style={{ fontSize: 12, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Asociar Bajante
         </div>
         <div style={{ padding: '0 8px 8px' }}>
@@ -755,7 +769,7 @@ function BajanteCodeEditor({
               engineRef.current?.render();
               setContextMenuState(null);
             }}
-            style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+            style={DrawingElementContextMenu_S14}>
             <option value="">— Sin bajante —</option>
             {(engineRef.current?.bajantes || []).filter((b: any) => b.net === element.net).map((b: any) => (
               <option key={b.id} value={b.id}>{b.code || b.id}</option>
@@ -782,7 +796,7 @@ function BajanteCodeEditor({
 
     return (
       <>
-        <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        <div style={{ fontSize: 12, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Diámetro de ramal
         </div>
         <div style={{ padding: '0 8px 8px' }}>
@@ -802,7 +816,7 @@ function BajanteCodeEditor({
                 engineRef.current?.render();
               }
             }}
-            style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
+            style={DrawingElementContextMenu_S15}
           >
             <option value="">— Sin diámetro —</option>
             {diamList.map((d: any) => {
@@ -818,10 +832,10 @@ function BajanteCodeEditor({
   if (tipo === 'contador') {
     return (
       <>
-        <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        <div style={{ fontSize: 12, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Contador: {element.code || element.id}
         </div>
-        <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px 0', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        <div style={{ fontSize: 12, color: '#849495', padding: '4px 8px 0', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Diámetro del Contador
         </div>
         <div style={{ padding: '0 8px 8px' }}>
@@ -844,7 +858,7 @@ function BajanteCodeEditor({
                 writeContadorDiamToDrawing(dNom, planosCtx.plans, element.net || 'af');
               }
             }}
-            style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
+            style={DrawingElementContextMenu_S16}
           >
             <option value="">— Sin diámetro —</option>
             {CONTADORES_CAT.map((c: any) => (
@@ -854,11 +868,11 @@ function BajanteCodeEditor({
         </div>
         {(element.net === 'af' || element.net === 'gas') && (
           <div style={{ borderTop: '1px solid #3a494a', marginTop: 4 }}>
-            <div style={{ fontSize: 9, color: '#22D3EE', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <div style={{ fontSize: 12, color: '#22D3EE', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
               {element.net === 'gas' ? 'Conexión (Red → Contador)' : 'AC-01 (Red Pública → Contador)'}
             </div>
             <div style={{ padding: '0 8px 8px' }}>
-              <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4 }}>Diámetro</div>
+              <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4 }}>Diámetro</div>
               <select
                 value={element.acoDiam || ''}
                 onChange={(e) => {
@@ -873,7 +887,7 @@ function BajanteCodeEditor({
                     writeAcoDiamToDrawing(val, planosCtx.plans, element.net || 'af');
                   }
                 }}
-                style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
+                style={DrawingElementContextMenu_S17}
               >
                 <option value="">— Sin diámetro —</option>
                 {(element.net === 'gas' ? GAS_DN_LABELS : DIAMETROS_AF.map(d => d.nominal)).map(d => (
@@ -890,10 +904,10 @@ function BajanteCodeEditor({
   if (tipo === 'calentador') {
     return (
       <>
-        <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        <div style={{ fontSize: 12, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Calentador: {element.code || element.id}
         </div>
-        <div style={{ fontSize: 9, color: '#849495', padding: '4px 8px 0', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        <div style={{ fontSize: 12, color: '#849495', padding: '4px 8px 0', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Equipo (Capacidad)
         </div>
         <div style={{ padding: '0 8px 8px' }}>
@@ -914,7 +928,7 @@ function BajanteCodeEditor({
                 engineRef.current?.render();
               }
             }}
-            style={{ width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
+            style={DrawingElementContextMenu_S18}
           >
             <option value="">— Seleccionar —</option>
             {CAT_GAS.filter(g => g.id.startsWith('cal')).map(g => (
@@ -999,14 +1013,14 @@ function AparatoSelector({
 
   return (
     <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
-      <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+      <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
         Aparato {isRamal ? (isStart ? '(Inicio)' : '(Fin)') : ''}
       </div>
 
       {currentVal && (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, color: '#e2e2e8', background: 'rgba(255,255,255,0.03)', padding: '2px 4px', borderRadius: 3, marginBottom: 6 }}>
+        <div style={DrawingElementContextMenu_S19}>
           <span>{currentName}</span>
-          <button
+          <button type="button"
             onClick={() => {
               const plans = planosCtx?.plans || [];
               
@@ -1073,7 +1087,7 @@ function AparatoSelector({
               }
             }}
             style={{
-              background: 'transparent', border: 'none', color: '#ffb4ab', fontSize: 9, cursor: 'pointer', padding: '0 2px'
+              background: 'transparent', border: 'none', color: '#ffb4ab', fontSize: 12, cursor: 'pointer', padding: '0 2px'
             }}
             title="Quitar"
           >
@@ -1155,7 +1169,7 @@ function AparatoSelector({
             engineRef.current.render();
           }
         }}
-        style={{ width: '100%', padding: '4px 6px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#e2e2e8', fontSize: 11, fontFamily: "'Geist',monospace", cursor: 'pointer' }}
+        style={DrawingElementContextMenu_S20}
       >
         <option value="">— Sin aparato —</option>
         {applicable.map(ap => (
@@ -1276,7 +1290,7 @@ function RamalMenu() {
         padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between'
       }}>
-        <span style={{ fontSize: 10, color: '#e2e2e8', fontFamily: "'Geist',monospace" }}>Bloquear movimiento</span>
+        <span style={{ fontSize: 12, color: '#e2e2e8', fontFamily: "'Geist',monospace" }}>Bloquear movimiento</span>
         <input type="checkbox" checked={!!element.bloqueado}
           onChange={e => {
             const val = e.target.checked;
@@ -1294,16 +1308,16 @@ function RamalMenu() {
         <div style={{
           display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4
         }}>
-          <div style={{ fontSize: 9, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 }}>
+          <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
+          <div style={DrawingElementContextMenu_S21}>
             {(() => {
               const currentId = element.id;
               const netBajantes = (engineRef.current?.bajantes || []).filter((b: any) => b.net === element.net && b.id !== element.id && b.tipo !== 'tributario');
-              if (netBajantes.length === 0) return <div style={{ fontSize: 9, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin bajantes</div>;
+              if (netBajantes.length === 0) return <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin bajantes</div>;
               return netBajantes.map((b: any) => {
                 const isAssociated = (b.recibeDeIds || []).includes(currentId);
                 return (
-                  <label key={b.id} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 9, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 }}>
+                  <label key={b.id} style={DrawingElementContextMenu_S22}>
                     <input type="checkbox" checked={isAssociated}
                       onChange={e => {
                         const recibidos = b.recibeDeIds || [];
@@ -1493,12 +1507,7 @@ function DrawingElementContextMenuInner() {
               if (document.activeElement === last) { first.focus(); e.preventDefault(); }
             }
           }
-        }} style={{
-        position: 'absolute', left: adjustedPos.x, top: adjustedPos.y, zIndex: 101,
-        background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 6,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.4)', padding: '4px', minWidth: 150, maxWidth: 280,
-        display: 'flex', flexDirection: 'column', gap: 2,
-      }} onContextMenu={(e) => e.preventDefault()}>
+        }} style={{ ...DrawingElementContextMenu_S23, left: adjustedPos.x, top: adjustedPos.y }} onContextMenu={(e) => e.preventDefault()}>
         {isBajanteTipo && !hasPts ? <BajanteMenu /> :
          isArea ? <AreaMenu /> :
          hasPts ? <RamalMenu /> :

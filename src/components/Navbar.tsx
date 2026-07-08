@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getCurrentUser } from '../context/AuthContext';
+const Navbar_S1: React.CSSProperties = { width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#3B82F6,#1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#fff', fontSize: 12, fontWeight: 700, fontFamily: 'Geist, monospace', };
+
 
 function Navbar() {
   const location = useLocation();
@@ -55,7 +57,7 @@ function Navbar() {
         backdropFilter: isLandingTop ? 'none' : 'blur(12px)'
       }}>
       <div className="flex items-center gap-4 md:gap-6">
-<button className="md:hidden text-on-surface-variant p-1" 
+<button type="button" className="md:hidden text-on-surface-variant p-1" 
           onClick={() => setMenuOpen(o => !o)} aria-label="Menú" aria-expanded={menuOpen}>
           <span aria-hidden="true" className="material-symbols-outlined text-xl">{menuOpen ? 'close' : 'menu'}</span>
         </button>
@@ -77,11 +79,7 @@ function Navbar() {
         ) : user ? (
           <Link to="/perfil" className="flex items-center gap-2 px-3 py-1.5 rounded-md transition-all hover:bg-white/5"
             style={{ border: '1px solid rgba(59,130,246,0.25)', background: 'rgba(59,130,246,0.06)' }}>
-            <div style={{
-              width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#3B82F6,#1D4ED8)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              color: '#fff', fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace',
-            }}>
+            <div style={Navbar_S1}>
               {(user.user_metadata?.name || user.email || '?')[0].toUpperCase()}
             </div>
             <span className="text-xs font-semibold text-on-surface-variant hidden sm:inline" style={{ fontFamily: 'Geist, monospace' }}>

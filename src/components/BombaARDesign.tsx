@@ -3,6 +3,12 @@ import { dec } from "../utils/parseDecimal";
 import PageNav from './PageNav';
 import { SI, TH, TD } from "../styles/sharedTableStyles";
 import EditButton from "./shared/EditButton";
+const BombaARDesign_S1: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+const BombaARDesign_S2: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+const BombaARDesign_S3: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+const BombaARDesign_S4: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+const BombaARDesign_S5: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+
 
 const nv=(s: string)=>s===''?'':/^[\d]*\.?[\d]*$/.test(s)?s:false;
 const oc=(set: (v: any) => void)=>(e: React.ChangeEvent<HTMLInputElement>)=>{const v=nv(e.target.value);if(v!==false)set(v)};
@@ -10,13 +16,13 @@ const oc=(set: (v: any) => void)=>(e: React.ChangeEvent<HTMLInputElement>)=>{con
 const TDBom: React.CSSProperties = {...TD,background:'#1a1c20'};
 const TDL: React.CSSProperties={...TDBom,textAlign:'left',fontFamily:'var(--body)'};
 const Fmt=(v: any,u='')=>{
-  if(v===''||v===null||v===undefined)return <span style={{color:'var(--txt3)',fontSize:10}}>—</span>;
+  if(v===''||v===null||v===undefined)return <span style={{color:'var(--txt3)',fontSize: 12}}>—</span>;
   const val=typeof v==='number'?v.toFixed(2):v;
   return <span style={{fontFamily:'var(--mono)'}}>{val}{u?` ${u}`:''}</span>;
 };
 
 const SI2={...SI,fontSize:13,padding:'4px 6px'};
-const TH2={...TH,fontSize:11};
+const TH2={...TH,fontSize: 12};
 const TD2={...TDBom,fontSize:13};
 const TDL2={...TDL,fontSize:13,fontWeight:700,color:'var(--txt)'};
 const Fmt2=(v: any,u='')=>{
@@ -30,7 +36,7 @@ function Tbl({cols,rows,th,td,tdl,fontSize,center,valueCol,caption}: {cols: stri
   const h=th||TH,d=td||TDBom,dl=tdl||TDL;
   const vc = valueCol ?? 2;
   return <table className="tbl" style={{fontSize:fontSize||11,width:center?'90%':'100%',maxWidth:900,borderCollapse:'collapse',margin:center?'0 auto':0}}>
-    {caption && <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>{caption}</caption>}
+    {caption && <caption style={BombaARDesign_S1}>{caption}</caption>}
     <thead><tr>{cols.map((c,i)=><th scope="col" key={i} style={h}>{c}</th>)}</tr></thead>
     <tbody>{rows.map((r,i)=><tr key={i}>{r.map((c,j)=>{
       const s = j===0 ? dl : j===vc ? {...d,width:'1%',whiteSpace:'nowrap'} : d;
@@ -87,7 +93,7 @@ function BombaARDesign(){
   const Vgeo=bc>0&&lc>0&&(hmx-hmn)>0?+(bc*lc*(hmx-hmn)).toFixed(2):0;
   const Vchk=Vgeo>0&&Vcam>0?Vgeo>=(Vcam/1000)?'O.K.':'AMPLIAR CÁMARA':'';
 
-  const Nota=<div style={{fontSize:11,color:'var(--txt3)',lineHeight:1.6,padding:'8px 12px',marginTop:6,borderRadius:'var(--r)',background:'var(--bg2)'}}>
+  const Nota=<div style={{fontSize: 12,color:'var(--txt3)',lineHeight:1.6,padding:'8px 12px',marginTop:6,borderRadius:'var(--r)',background:'var(--bg2)'}}>
     <b style={{color:'var(--txt)'}}>Nota normativa</b> — Diseño conforme <b style={{color:'var(--txt)'}}>NTC 1500 §8</b> y <b style={{color:'var(--txt)'}}>RAS 2000 Título D</b>. La bomba trituradora es obligatoria para sólidos fecales. Verificar caudal con empresa de servicios (EMAB/AMB) antes de definir acometida.
   </div>;
 
@@ -135,18 +141,18 @@ function BombaARDesign(){
         <EditButton edit={editP3} setEdit={setEditP3} />
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Parámetros de diseño bomba sumergible</caption>
+        <caption style={BombaARDesign_S2}>Parámetros de diseño bomba sumergible</caption>
         <thead><tr>{COLS1.map((c,i)=><th scope="col" key={i} style={TH2}>{c}</th>)}</tr></thead>
         <tbody>{[
           ['Caudal nominal bomba','Q b',Fmt(Qb),'lps',Fmt((Qb*15.8503).toFixed(2),'GPM'),'Incluye reserva 25%'],
-          ['Altura manométrica Hm','H m',Fmt(Hm),'m.c.a.',Hm?Fmt((Hm*1.42).toFixed(2),'psi'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'Tomado de bloque 2'],
-          ['Potencia hidráulica','P hid',Fmt(Ph),'W',Ph?Fmt((Ph/746).toFixed(2),'HP'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'Ph = ρ·g·Q·Hm / 1000'],
-          ['Potencia en el eje','P eje',Fmt(Peje),'W',Peje?Fmt((Peje/746).toFixed(2),'HP'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'P eje = Ph / η bomba'],
-          ['Potencia comercial (×f srv)','P com',Fmt(Pcom),'W',Pcom?Fmt(php.toFixed(2),'HP'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'Motor seleccionar ≥ este valor'],
+          ['Altura manométrica Hm','H m',Fmt(Hm),'m.c.a.',Hm?Fmt((Hm*1.42).toFixed(2),'psi'):<span style={{color:'var(--txt3)',fontSize: 12}}>—</span>,'Tomado de bloque 2'],
+          ['Potencia hidráulica','P hid',Fmt(Ph),'W',Ph?Fmt((Ph/746).toFixed(2),'HP'):<span style={{color:'var(--txt3)',fontSize: 12}}>—</span>,'Ph = ρ·g·Q·Hm / 1000'],
+          ['Potencia en el eje','P eje',Fmt(Peje),'W',Peje?Fmt((Peje/746).toFixed(2),'HP'):<span style={{color:'var(--txt3)',fontSize: 12}}>—</span>,'P eje = Ph / η bomba'],
+          ['Potencia comercial (×f srv)','P com',Fmt(Pcom),'W',Pcom?Fmt(php.toFixed(2),'HP'):<span style={{color:'var(--txt3)',fontSize: 12}}>—</span>,'Motor seleccionar ≥ este valor'],
           ['Selección comercial automática','Sel',<span style={{color:'var(--acc2)',fontWeight:700,fontFamily:'var(--mono)'}}>{Sel}</span>,'HP','—','Estándar: 0.5 / 1 / 2 / 3 / 5 HP'],
           ['Tipo de bomba','Tipo','Sumergible trituradora','—','—','NTC 1500 §8.5 — residuales con sólidos'],
-          ['NPSH disponible mínimo','NPSH',<Inp disabled={!editP3} v={npsh} set={setNpsh} ariaLabel="NPSH disponible mínimo" style={{...SI, width: 35, fontSize: 10, padding: '2px 3px'}}/>,'m','—','Verificar con curva del fabricante'],
-        ].map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j} style={j===0?{...TDL2, color: '#fff'}:j===2?{...TDBom,fontSize:10,width:'35px',whiteSpace:'nowrap'}:j===5?{...TD2, width: '30%'}:TD2}>{c}</td>)}</tr>)}</tbody>
+          ['NPSH disponible mínimo','NPSH',<Inp disabled={!editP3} v={npsh} set={setNpsh} ariaLabel="NPSH disponible mínimo" style={{...SI, width: 35, fontSize: 12, padding: '2px 3px'}}/>,'m','—','Verificar con curva del fabricante'],
+        ].map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j} style={j===0?{...TDL2, color: '#fff'}:j===2?{...TDBom,fontSize: 12,width:'35px',whiteSpace:'nowrap'}:j===5?{...TD2, width: '30%'}:TD2}>{c}</td>)}</tr>)}</tbody>
       </table>
     </div>
     
@@ -155,7 +161,7 @@ function BombaARDesign(){
         <h3 className="card-t"><img src="/iconos_diseno_redes/equipos/especificacion_camara_trituradora.svg" alt="Especificación cámara trituradora"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />Especificación — Bomba sumergible trituradora</h3>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Especificación — Bomba sumergible trituradora</caption>
+        <caption style={BombaARDesign_S3}>Especificación — Bomba sumergible trituradora</caption>
         <thead><tr>{['Ítem','Valor'].map((c,i)=><th scope="col" key={i} style={TH2}>{c}</th>)}</tr></thead>
         <tbody>{[
           ['Caudal nominal',Fmt((Qb*15.8503).toFixed(2),'GPM')],
@@ -176,16 +182,16 @@ function BombaARDesign(){
         <EditButton edit={editP4} setEdit={setEditP4} />
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Parámetros de diseño cámara de bombeo</caption>
+        <caption style={BombaARDesign_S4}>Parámetros de diseño cámara de bombeo</caption>
         <thead><tr>{COLS1.map((c,i)=><th scope="col" key={i} style={TH2}>{c}</th>)}</tr></thead>
         <tbody>{[
           ['Tiempo mínimo ciclo arranque','t cic',<Inp disabled={!editP4} v={tCic} set={setTCic} ariaLabel="Tiempo mínimo ciclo arranque" style={SI}/>,'min','—','Mínimo 5 min entre arranques'],
-          ['Volumen útil cámara mínimo','V cam',Fmt(Vcam),'lts',Vcam?Fmt((Vcam/1000).toFixed(2),'m³'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'V = Qb(lps) × t(s)'],
+          ['Volumen útil cámara mínimo','V cam',Fmt(Vcam),'lts',Vcam?Fmt((Vcam/1000).toFixed(2),'m³'):<span style={{color:'var(--txt3)',fontSize: 12}}>—</span>,'V = Qb(lps) × t(s)'],
           ['Tirante mínimo sobre bomba','h min',<Inp disabled={!editP4} v={hMin} set={setHMin} ariaLabel="Tirante mínimo sobre bomba" style={SI}/>,'m','—','Evita cavitación'],
           ['Tirante máximo antes de arrancar','h max',<Inp disabled={!editP4} v={hMax} set={setHMax} ariaLabel="Tirante máximo" style={SI}/>,'m','—','Nivel activación flotador'],
           ['Ancho mínimo cámara','b cam',<Inp disabled={!editP4} v={bCam} set={setBCam} ariaLabel="Ancho mínimo cámara" style={SI}/>,'m','—','NTC 1500 §8.5 — mínimo 60 cm'],
           ['Largo mínimo cámara','l cam',<Inp disabled={!editP4} v={lCam} set={setLCam} ariaLabel="Largo mínimo cámara" style={SI}/>,'m','—','Verificar con dimensiones bomba'],
-          ['Volumen geométrico disponible','V geo',Fmt(Vgeo),'m³',Vgeo?Fmt((Vgeo*1000).toFixed(2),'lts'):<span style={{color:'var(--txt3)',fontSize:10}}>—</span>,'b×l×(h max−h min)'],
+          ['Volumen geométrico disponible','V geo',Fmt(Vgeo),'m³',Vgeo?Fmt((Vgeo*1000).toFixed(2),'lts'):<span style={{color:'var(--txt3)',fontSize: 12}}>—</span>,'b×l×(h max−h min)'],
           ['Chequeo volumen','V chk',<span style={{color:Vchk==='O.K.'?'#22c55e':'#ef5350',fontWeight:700,fontFamily:'var(--mono)'}}>{Vchk||'—'}</span>,'—','—','V geo ≥ V cam requerido'],
         ].map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j} style={j===0?{...TDL2, color: '#fff'}:j===2?{...TD2,width:'1%',whiteSpace:'nowrap'}:TD2}>{c}</td>)}</tr>)}</tbody>
       </table>
@@ -196,11 +202,11 @@ function BombaARDesign(){
         <h3 className="card-t"><img src="/iconos_diseno_redes/equipos/especificacion_camara_bombeo.svg" alt="Especificación cámara de bombeo"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />Especificación — Cámara de bombeo</h3>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-        <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Especificación — Cámara de bombeo</caption>
+        <caption style={BombaARDesign_S5}>Especificación — Cámara de bombeo</caption>
         <thead><tr>{['Ítem','Valor'].map((c,i)=><th scope="col" key={i} style={TH2}>{c}</th>)}</tr></thead>
         <tbody>{[
           ['Volumen útil requerido',Fmt(Vcam,'lts')],
-          ['Dimensiones mínimas (m)',bc&&lc&&(hmx-hmn)?<span style={{fontFamily:'var(--mono)'}}>{`${bc} x ${lc} x ${(hmx-hmn).toFixed(2)}`}</span>:<span style={{color:'var(--txt3)',fontSize:10}}>—</span>],
+          ['Dimensiones mínimas (m)',bc&&lc&&(hmx-hmn)?<span style={{fontFamily:'var(--mono)'}}>{`${bc} x ${lc} x ${(hmx-hmn).toFixed(2)}`}</span>:<span style={{color:'var(--txt3)',fontSize: 12}}>—</span>],
           ['Material','Concreto impermeabilizado o polietileno PEAD'],
           ['Accesorios obligatorios','Rejilla aguas arriba + ventilación Ø2" + alarma nivel alto'],
         ].map((r,i)=><tr key={i}>{r.map((c,j)=><td key={j} style={j===0?{...TDL2, color: '#fff'}:TD2}>{c}</td>)}</tr>)}</tbody>

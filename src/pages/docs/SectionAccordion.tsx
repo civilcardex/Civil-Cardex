@@ -20,7 +20,7 @@ export default function SectionAccordion({ section, sectionKey, isOpen, onToggle
       data-section-color
       style={{ '--section-color': section.categoryColor } as React.CSSProperties}
     >
-      <button
+      <button type="button"
         onClick={() => onToggle(sectionKey)}
         aria-expanded={isOpen}
         aria-controls={`section-content-${sectionKey}`}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
@@ -12,6 +12,9 @@ import { fmt } from "../utils/formatUtils";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
 import Acometida from "./SupplyConnection";
+const WaterNetworkDesign_S1: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+const WaterNetworkDesign_S2: React.CSSProperties = { width:"100%",padding:"3px 4px",border:"1px solid #3a494a",borderRadius:3,background:"#1e2024",color:"#e2e2e8",fontSize: 9,fontFamily:"'Geist',monospace",cursor:"pointer",maxWidth:120 };
+
 
 function LazyNumInput({ val, onSave, label }: { val: number | string; onSave: (v: number | undefined) => void; label?: string }) {
   const [str, setStr] = React.useState(val != null ? val.toString() : "");
@@ -26,7 +29,7 @@ function LazyNumInput({ val, onSave, label }: { val: number | string; onSave: (v
     if (!isNaN(n)) onSave(n);
     else setStr(val != null ? val.toString() : "");
   };
-  return <input type="number" aria-label={label} step="any" className="ni" style={{width:44,textAlign:"center",padding:0,fontSize:11}}
+  return <input type="number" aria-label={label} step="any" className="ni" style={{width:44,textAlign:"center",padding:0,fontSize: 9}}
     value={str} onChange={e=>setStr(e.target.value)} onBlur={blur} onKeyDown={e => e.key === 'Enter' && blur()} />;
 }
 
@@ -368,6 +371,22 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   );
 
   const [acoContIx, setAcoContIx] = useState(2);
+  const contIxRef = useRef('');
+  const contIxDeps = networkType === 'af' ? String((plans as any[])?.length ?? 0) + '|' + networkType : '';
+  if (contIxDeps !== contIxRef.current) {
+    contIxRef.current = contIxDeps;
+    if (networkType === 'af') {
+      const found = findContadorBajante(plans, networkType);
+      if (found && found.bajante.dNominal) {
+        let dNom = found.bajante.dNominal;
+        dNom = dNom.replace('½', '1/2').replace('¾', '3/4');
+        const idx = CONTADORES_CAT.findIndex(c => `${c.dn}"` === dNom);
+        if (idx !== -1) {
+          setAcoContIx(prev => prev !== idx ? idx : prev);
+        }
+      }
+    }
+  }
   const [acoMonName, setAcoMonName] = useState('Mon');
   const acoContMonDiam = 1.25;
   const [acoL1, setAcoL1] = useState({ h: 10.00, v: 0.00, le: 0.47 });
@@ -375,19 +394,6 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   const [acoPini, setAcoPini] = useState(20.00);
   const [acoLeMed, setAcoLeMed] = useState(0);
   const [acoHfMax, setAcoHfMax] = useState(5.0);
-  React.useEffect(() => {
-    if (networkType !== 'af') return;
-    const found = findContadorBajante(plans, networkType);
-    if (found && found.bajante.dNominal) {
-      let dNom = found.bajante.dNominal;
-      dNom = dNom.replace('½', '1/2').replace('¾', '3/4');
-      const idx = CONTADORES_CAT.findIndex(c => `${c.dn}"` === dNom);
-      if (idx !== -1) {
-
-        setAcoContIx(prev => prev !== idx ? idx : prev);
-      }
-    }
-  }, [plans, networkType]);
 
   const handleContDiamChange = React.useCallback((dNom: string) => {
     writeContadorDiamToDrawing(dNom, plans, networkType);
@@ -505,47 +511,47 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         </div>
         <div className="scroll-top" style={{ padding: "6px" }}>
           <div className="scroll-inner" style={{ minWidth: "max-content" }}>
-            <table className="tbl" style={{ fontSize: 11, tableLayout: "auto", width: "100%" }}>
-              <caption style={{position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>{`Diseño de red ${title}`}</caption>
+            <table className="tbl" style={{ fontSize: 9, tableLayout: "auto", width: "100%" }}>
+              <caption style={WaterNetworkDesign_S1}>{`Diseño de red ${title}`}</caption>
 
               <thead>
                 <tr>
-                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Tramo</th>
-                  <th scope="col" className={`col-h ${cssClass}`} rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Inicio</th>
-                  <th scope="col" className={`col-h ${cssClass}`} rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Final</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Piso</th>
-                  <th scope="col" className={`col-h ${cssClass}`} colSpan={3} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Unidades Consumo</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>No. de descargas</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>K</th>
-                  <th scope="col" className={`col-h ${cssClass}`} rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Caudal<br/>(lps)</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Diámetro<br/> estimado</th>
-                  <th scope="col" className="col-h ok" colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Diámetro</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Coeficiente<br/>C</th>
-                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Vel. <br/>(mm/s)</th>
-                  <th scope="col" className="col-h" colSpan={4} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Longitud (m)</th>
-                  <th scope="col" className="col-h" colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Pérdidas por fricción</th>
-                  <th scope="col" className={`col-h ${cssClass}`} colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize:9 }}>Presión</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Tramo</th>
+                  <th scope="col" className={`col-h ${cssClass}`} rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Inicio</th>
+                  <th scope="col" className={`col-h ${cssClass}`} rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Final</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Piso</th>
+                  <th scope="col" className={`col-h ${cssClass}`} colSpan={3} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Unidades Consumo</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>No. de descargas</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>K</th>
+                  <th scope="col" className={`col-h ${cssClass}`} rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Caudal<br/>(lps)</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Diámetro<br/> estimado</th>
+                  <th scope="col" className="col-h ok" colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Diámetro</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Coeficiente<br/>C</th>
+                  <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Vel. <br/>(mm/s)</th>
+                  <th scope="col" className="col-h" colSpan={4} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Longitud (m)</th>
+                  <th scope="col" className="col-h" colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Pérdidas por fricción</th>
+                  <th scope="col" className={`col-h ${cssClass}`} colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Presión</th>
                 </tr>
                 <tr>
-                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Propia</th>
-                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Otros Ramales</th>
-                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Total</th>
-                  <th scope="col" className="col-h ok" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Diseño</th>
-                  <th scope="col" className="col-h ok" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Interno</th>
-                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Horizontal</th>
-                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Vertical</th>
-                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Eq. Accesorios</th>
-                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Total</th>
-                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>%</th>
-                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>m</th>
-                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Inicial</th>
-                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize:8 }}>Final</th>
+                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize: 9 }}>Propia</th>
+                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize: 9 }}>Otros Ramales</th>
+                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize: 9 }}>Total</th>
+                  <th scope="col" className="col-h ok" style={{ textAlign: "center", padding: "0 1px", fontSize: 9 }}>Diseño</th>
+                  <th scope="col" className="col-h ok" style={{ textAlign: "center", padding: "0 1px", fontSize: 9 }}>Interno</th>
+                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize: 9 }}>Horizontal</th>
+                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize: 9 }}>Vertical</th>
+                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize: 9 }}>Eq. Accesorios</th>
+                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize: 9 }}>Total</th>
+                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize: 9 }}>%</th>
+                  <th scope="col" className="col-h" style={{ textAlign: "center", padding: "0 1px", fontSize: 9 }}>m</th>
+                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize: 9 }}>Inicial</th>
+                  <th scope="col" className={`col-h ${cssClass}`} style={{ textAlign: "center", padding: "0 1px", fontSize: 9 }}>Final</th>
                 </tr>
               </thead>
               <tbody>
                 {tramosOrden.length === 0 && (
                   <tr>
-                    <td colSpan={23} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 11 }}>
+                    <td colSpan={23} style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 9 }}>
                       No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                     </td>
                   </tr>
@@ -587,16 +593,16 @@ const total = (componentTotalMap[ownKey] || 0);
                   const vCumple = Vmms >= 500 && Vmms <= 2500;
                   return (
                     <tr key={ownKey}>
-                      <td className="c" style={{ padding: "0 1px"}}><span className="sigla" style={{fontSize:11, padding:"1px 4px"}}>{t.id}</span></td>
-                      <td className="c td-mono" style={{padding:"0 1px",fontSize:10}}>{t.ini && typeof t.ini === 'object' ? `${t.ini.x},${t.ini.y}` : t.ini || '—'}</td>
-                      <td className="c td-mono" style={{padding:"0 1px",fontSize:10}}>{t.fin && typeof t.fin === 'object' ? `${t.fin.x},${t.fin.y}` : t.fin || '—'}</td>
-                      <td className="c" style={{padding:"0 1px",color:"var(--txt2)",fontSize:11}}>{pisoCorto(t.piso)}</td>
+                      <td className="c" style={{ padding: "0 1px"}}><span className="sigla" style={{fontSize: 9, padding:"1px 4px"}}>{t.id}</span></td>
+                      <td className="c td-mono" style={{padding:"0 1px",fontSize: 9}}>{t.ini && typeof t.ini === 'object' ? `${t.ini.x},${t.ini.y}` : t.ini || '—'}</td>
+                      <td className="c td-mono" style={{padding:"0 1px",fontSize: 9}}>{t.fin && typeof t.fin === 'object' ? `${t.fin.x},${t.fin.y}` : t.fin || '—'}</td>
+                      <td className="c" style={{padding:"0 1px",color:"var(--txt2)",fontSize: 9}}>{pisoCorto(t.piso)}</td>
                       <td className="c td-mono">{fmt(propia,2)}</td>
-                      <td className="c" style={{padding:'2px 4px',minWidth:60,maxWidth:120}}>
+                      <td className="c" style={{padding:'1px 2px',minWidth:60,maxWidth:120}}>
                         {(() => {
                           const connectedKeys = conexionesDisplay[ownKey] || [];
                           return connectedKeys.length === 0 ? (
-                            <span style={{fontSize:9,color:'var(--txt3)'}}>—</span>
+                            <span style={{fontSize: 9,color:'var(--txt3)'}}>—</span>
                           ) : (
                             <div style={{display:'flex',flexWrap:'wrap',gap:2,justifyContent:'center',alignItems:'center'}}>
                               {connectedKeys.map(childKey => {
@@ -608,7 +614,7 @@ const total = (componentTotalMap[ownKey] || 0);
                                 return (
                                   <span key={childKey}
                                     title={`${rId} (${childTotalUd.toFixed(2)} UC)`}
-                                    style={{fontSize:9,padding:'1px 3px',border:`1px solid ${colorVar}`,borderRadius:3,color:colorVar,fontFamily:'var(--mono)',lineHeight:1.3}}>
+                                    style={{fontSize: 9,padding:'1px 1px',border:`1px solid ${colorVar}`,borderRadius:3,color:colorVar,fontFamily:'var(--mono)',lineHeight:1.3}}>
                                     {rId}
                                   </span>
                                 );
@@ -624,14 +630,14 @@ const total = (componentTotalMap[ownKey] || 0);
                       <td className="c td-mono">{raizQ>0?fmt(raizQ,2):"—"}</td>
                       <td className="c" style={{padding:"0 1px"}}>
                         <select aria-label="Diámetro diseño" value={matchedOpt?.nominal || ''} onChange={e=>handleDiamChange(ownKey, e.target.value)}
-                        style={{width:"100%",padding:"3px 4px",border:"1px solid #3a494a",borderRadius:3,background:"#1e2024",color:"#e2e2e8",fontSize:10,fontFamily:"'Geist',monospace",cursor:"pointer",maxWidth:120}}>
+                        style={WaterNetworkDesign_S2}>
                           <option value="">—</option>
                           {DIAM_OPTS.map(o=><option key={o.nominal} value={o.nominal}>{o.label}</option>)}
                         </select>
                       </td>
                       <td className="c td-mono">{internoMm>0?fmt(internoMm,2):"—"}</td>
                       <td className="c td-mono">{C}</td>
-                      <td className="c" style={{fontWeight:600,padding:"0 1px",fontSize:11,background:Vmms>0&&vCumple?"rgba(34,197,94,.25)":Vmms>0?"rgba(239,68,68,.25)":"transparent"}}>{Vmms>0?fmt(Vmms,2):"—"}</td>
+                      <td className="c" style={{fontWeight:600,padding:"0 1px",fontSize: 9,background:Vmms>0&&vCumple?"rgba(34,197,94,.25)":Vmms>0?"rgba(239,68,68,.25)":"transparent"}}>{Vmms>0?fmt(Vmms,2):"—"}</td>
                       <td className="c td-mono">{H>0?fmt(H,2):"—"}</td>
                       <td className="c td-mono">{Vvert != null ? fmt(Vvert, 2) : "—"}</td>
                       <td className="c td-mono">{Le>0?fmt(Le,2):"—"}</td>

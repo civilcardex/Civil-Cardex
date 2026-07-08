@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+const NumericInput_S1: React.CSSProperties = { display: 'inline-block', textAlign: 'center', fontSize: 12, color: '#3a494a', fontFamily: "'Geist',monospace", padding: '2px 4px', border: '1px solid transparent', cursor: 'not-allowed' };
+
 
 interface NumericInputProps {
   value: number;
@@ -32,7 +34,7 @@ export function NumericInput({ value, onCommit, decimals = 2, width = 52, disabl
 
   if (disabled) {
     return (
-      <span style={{ width, display: 'inline-block', textAlign: 'center', fontSize: 11, color: '#3a494a', fontFamily: "'Geist',monospace", padding: '2px 4px', border: '1px solid transparent', cursor: 'not-allowed' }}>
+      <span style={{ ...NumericInput_S1, width }}>
         {formatVal(value || 0, decimals)}
       </span>
     );
@@ -62,7 +64,7 @@ export function NumericInput({ value, onCommit, decimals = 2, width = 52, disabl
       inputMode="decimal"
       className="ni"
       aria-label={decimals === 0 ? 'Valor entero' : 'Valor numérico'}
-      style={{ width, padding: '2px 4px', fontSize: 11, textAlign: 'center', color: color || 'var(--txt)', ...(inputStyle as React.CSSProperties || {}) }}
+      style={{ width, padding: '2px 4px', fontSize: 12, textAlign: 'center', color: color || 'var(--txt)', ...(inputStyle as React.CSSProperties || {}) }}
       value={text}
       onChange={handleChange}
       onFocus={(e: React.FocusEvent<HTMLInputElement>) => { setFocused(true); e.target.select(); onFocus?.(e); }}

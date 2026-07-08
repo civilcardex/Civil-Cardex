@@ -26,6 +26,12 @@ import BajanteAsociacion from "./pdfViewer/BajanteAsociacion";
 import PdfViewerDrawnElements from "./pdfViewer/PdfViewerDrawnElements";
 import { CopyFromPlanPanel } from "./pdfViewer/CopyFromPlanPanel";
 import AparatosPanel from "./FixturesPanel";
+const PdfViewer_S1: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+const PdfViewer_S2: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+const PdfViewer_S3: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+const PdfViewer_S4: React.CSSProperties = { width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace",cursor:'pointer' };
+const PdfViewer_S5: React.CSSProperties = { position:"absolute",top:0,zIndex:40,width:16,height:24,background:"#14161a",border:"1px solid #3a494a",color:"#849495",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,fontSize:12 } as const;
+
 
 interface PdfViewerProps {
   files: any[];
@@ -137,10 +143,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   const activeNetRef = useRef(activeNet);
   activeNetRef.current = activeNet;
 
-  const [lowerFloorsRamales, setLowerFloorsRamales] = useState<Array<{ planId: string; planName: string; npt: number; ramales: any[]; bajantes: any[] }>>([]);
-
-  useEffect(() => {
-    if (!selElement || !(selElement.tipo === 'bajante' || selElement.tipo === 'montante')) return;
+  const lowerFloorsRamales = useMemo(() => {
+    if (!selElement || !(selElement.tipo === 'bajante' || selElement.tipo === 'montante')) return [];
     const currentFloor = pisos.find(p => p.n === selectedNivel);
     const currentNpt = currentFloor ? currentFloor.npt : Infinity;
     const relevantPlans = planosCtx.plans.filter((plan: any) => {
@@ -167,7 +171,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
       return { planId: plan.id, planName: plan.name, npt: pF.npt, ramales, bajantes };
     });
     results.sort((a, b) => b.npt - a.npt);
-    setLowerFloorsRamales(results);
+    return results;
   }, [selElement?.id, selectedNivel, pisos, planosCtx.plans, activeNet]);
 
   useEffect(() => { try { sessionStorage.setItem('civilflow_visor_tool', tool); } catch {} }, [tool]);
@@ -411,13 +415,15 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     try { writeHydroDrawingSync(plansRef.current); } catch {}
   }, [currentId, engineReady]);
 
-  useEffect(() => {
-    if (!engineRef.current) return;
-    if (loadingPlanRef.current) return;
-    const els = engineRef.current.getElementsByNet(activeNet);
-    if (els.length > 0 && selElement?.net !== activeNet) setSelElement(els[els.length - 1]);
-    else if (els.length === 0) setSelElement(null);
-  }, [activeNet]);
+  const prevActiveNetForSel = useRef(activeNet);
+  if (activeNet !== prevActiveNetForSel.current) {
+    prevActiveNetForSel.current = activeNet;
+    if (engineRef.current && !loadingPlanRef.current) {
+      const els = engineRef.current.getElementsByNet(activeNet);
+      if (els.length > 0 && selElement?.net !== activeNet) setSelElement(els[els.length - 1]);
+      else if (els.length === 0) setSelElement(null);
+    }
+  }
 
   useEffect(() => { try { writeSanDrawingSync(plansRef.current); } catch {} try { writeHydroDrawingSync(plansRef.current); } catch {} }, [planosCtx.plans, currentId, activeNet]);
   useEffect(() => {
@@ -544,7 +550,13 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     });
   }, [finalVisibleNets, activeNet]);
 
-  useEffect(() => { setPadreTributarioId(null); if (engineRef.current) engineRef.current.setPadreTributario(null as any); }, [activeNet, tipoTramo]);
+  const prevResetKey = useRef('');
+  const resetKey = activeNet + '|' + tipoTramo;
+  if (resetKey !== prevResetKey.current) {
+    prevResetKey.current = resetKey;
+    setPadreTributarioId(null);
+    if (engineRef.current) engineRef.current.setPadreTributario(null as any);
+  }
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -566,19 +578,35 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     return () => document.removeEventListener('keydown', handler);
   }, [setTool]);
 
-  useEffect(() => { if (!engineRef.current) return; setDrawnElements(engineRef.current.getElementsByNet(activeNet)); }, [selElement, activeNet]);
-  useEffect(() => { const c = drawCanvasRef.current; if (c) c.style.cursor = tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair'; }, [tool]);
-
-  useEffect(() => {
-    if (selElement && selElement.net === activeNet && engineRef.current) {
+  const prevSelId = useRef(selElement?.id);
+  const prevActiveNetForDiam = useRef(activeNet);
+  if (selElement?.id !== prevSelId.current || activeNet !== prevActiveNetForDiam.current) {
+    prevSelId.current = selElement?.id;
+    prevActiveNetForDiam.current = activeNet;
+    if (engineRef.current && selElement && selElement.net === activeNet) {
       if (selElement.diametro) setDiamSel(prev => ({ ...prev, [activeNet]: selElement.diametro }));
-      if (selElement.pendiente !== undefined) { setPendSel(prev => ({ ...prev, [activeNet]: selElement.pendiente })); setPendInput(selElement.pendiente > 0 ? String(selElement.pendiente) : ''); }
-      engineRef.current.render();
+      if (selElement.pendiente !== undefined) {
+        setPendSel(prev => ({ ...prev, [activeNet]: selElement.pendiente }));
+        setPendInput(selElement.pendiente > 0 ? String(selElement.pendiente) : '');
+      }
     } else if (!selElement) {
       const p = pendSel[activeNet];
       setPendInput(p !== undefined && p > 0 ? String(p) : '');
     }
-  }, [selElement?.id, activeNet]);
+  }
+  const prevSelIdForRender = useRef(selElement?.id);
+  if (selElement?.id !== prevSelIdForRender.current) {
+    prevSelIdForRender.current = selElement?.id;
+    engineRef.current?.render();
+  }
+  const prevSelForDrawn = useRef(selElement);
+  const prevActiveForDrawn = useRef(activeNet);
+  if (selElement !== prevSelForDrawn.current || activeNet !== prevActiveForDrawn.current) {
+    prevSelForDrawn.current = selElement;
+    prevActiveForDrawn.current = activeNet;
+    if (engineRef.current) setDrawnElements(engineRef.current.getElementsByNet(activeNet));
+  }
+  useEffect(() => { const c = drawCanvasRef.current; if (c) c.style.cursor = tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair'; }, [tool]);
 
   const rightSidebarOpacity = useMemo(() => ({
     opacity: (!selElement) ? 0.35 : 1,
@@ -599,8 +627,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     if (!planoAsoc) return null;
     return (
       <div style={{marginTop:8,padding:'6px 10px',background:'#1e2024',borderRadius:3,border:'1px solid rgba(0,220,229,.2)'}}>
-        <div style={{fontSize:11,color:'#00dce5',fontFamily:"'Geist',monospace",fontWeight:600,display:'flex',alignItems:'center',gap:4}}>📄 {planoAsoc.name}</div>
-        <div style={{fontSize:10,color:'#6b8cae',fontFamily:"'Geist',monospace",marginTop:2}}>Escala 1:{planoAsoc.scale}</div>
+        <div style={{fontSize: 12,color:'#00dce5',fontFamily:"'Geist',monospace",fontWeight:600,display:'flex',alignItems:'center',gap:4}}>📄 {planoAsoc.name}</div>
+        <div style={{fontSize: 12,color:'#6b8cae',fontFamily:"'Geist',monospace",marginTop:2}}>Escala 1:{planoAsoc.scale}</div>
       </div>
     );
   }, [selectedNivel, planos]);
@@ -621,7 +649,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
       <div style={{flex:1,display:"flex",minHeight:0,position:"relative",minWidth:0}}>
 
       <div className="visor-sidebar" style={dynamicLeftStyle}>
-        <h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Panel de capas</h2>
+        <h2 style={PdfViewer_S1}>Panel de capas</h2>
         <div style={{height:3,flexShrink:0,transition:'background .3s',background:STATUS[saveStatus]?.color || STATUS.error.color}} />
         <PdfViewerToolbar
           tool={tool} snapOn={snapOn} activeNet={activeNet} currentFile={currentFile}
@@ -632,7 +660,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
       </div>
 
       <div style={{position:'relative',flex:1,display:'flex',minHeight:0,minWidth:0}}>
-        <h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Visor de planos</h2>
+        <h2 style={PdfViewer_S2}>Visor de planos</h2>
         <PdfCanvas
           cwRef={cwRef} containerRef={containerRef} pdfCanvasRef={pdfCanvasRef} drawCanvasRef={drawCanvasRef}
           currentFile={currentFile} error={error as any} loading={loading}
@@ -659,16 +687,16 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
 
       {/* Sidebar Right (was PdfViewerSidebarRight) */}
       <div className="visor-sidebar-right" style={dynamicRightStyle}>
-        <h2 style={{position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0}}>Panel de edición</h2>
+        <h2 style={PdfViewer_S3}>Panel de edición</h2>
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
-          <div style={{ fontFamily: "'Geist',monospace", fontSize: 10, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Nivel</div>
+          <div style={{ fontFamily: "'Geist',monospace", fontSize: 12, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Nivel</div>
           <select aria-label="Seleccionar nivel" value={selectedNivel??''} onChange={e=>{
             const v=e.target.value?Number(e.target.value):null;
             const idx = v !== null ? planos.findIndex(p => p.nivel === v && p.status === 'confirmed') : -1;
             setSelectedNivel(v);
             if (idx >= 0 && onSelectPlan) onSelectPlan(idx);
           }}
-            style={{width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace",cursor:'pointer'}}>
+            style={PdfViewer_S4}>
             <option value="">— Seleccionar piso —</option>
             {[...pisos].sort((a,b)=>b.n-a.n).map(s=>{
               const tienePlano=planos.some(p=>p.nivel===s.n&&p.status==='confirmed');
@@ -715,32 +743,18 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
         </div>
       </div>
 
-      <button
+      <button type="button"
         onClick={() => setLeftCollapsed(!leftCollapsed)}
-        style={{
-          position: "absolute", left: leftCollapsed ? 0 : 165, top: 0, zIndex: 40,
-          width: 16, height: 24, background: "#14161a", border: "1px solid #3a494a",
-          borderLeft: leftCollapsed ? "1px solid #3a494a" : "none",
-          borderRadius: "0 0 3px 0", color: "#849495", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          padding: 0, fontSize: 8, transition: "left 0.2s ease",
-        }}
+        style={{ ...PdfViewer_S5, left: leftCollapsed ? 0 : 165, borderLeft: leftCollapsed ? "1px solid #3a494a" : "none", borderRadius: "0 0 3px 0", transition: "left 0.2s ease" }}
         title={leftCollapsed ? "Expandir barra izquierda" : "Colapsar barra izquierda"}
         aria-label={leftCollapsed ? "Expandir barra izquierda" : "Colapsar barra izquierda"}
       >
         {leftCollapsed ? "▶" : "◀"}
       </button>
 
-      <button
+      <button type="button"
         onClick={() => setRightCollapsed(!rightCollapsed)}
-        style={{
-          position: "absolute", right: rightCollapsed ? 0 : 210, top: 0, zIndex: 40,
-          width: 16, height: 24, background: "#14161a", border: "1px solid #3a494a",
-          borderRight: rightCollapsed ? "1px solid #3a494a" : "none",
-          borderRadius: "0 0 0 3px", color: "#849495", cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          padding: 0, fontSize: 8, transition: "right 0.2s ease",
-        }}
+        style={{ ...PdfViewer_S5, right: rightCollapsed ? 0 : 210, borderRight: rightCollapsed ? "1px solid #3a494a" : "none", borderRadius: "0 0 0 3px", transition: "right 0.2s ease" }}
         title={rightCollapsed ? "Expandir barra derecha" : "Colapsar barra derecha"}
         aria-label={rightCollapsed ? "Expandir barra derecha" : "Colapsar barra derecha"}
       >

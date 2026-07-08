@@ -393,7 +393,7 @@ function LandingPage() {
                     {(MOD_SUB as Record<string, string>)[m.id]}
                   </span>
                   
-                  <button 
+                  <button type="button" 
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
                     aria-label={`${m.name}: ${m.desc}`}
                     onClick={() => handleClick(m.path)}
@@ -501,9 +501,9 @@ function LandingPage() {
               <span className="text-2xl font-bold uppercase" style={{ color: '#6a8e8e', fontFamily: 'Hanken Grotesk, sans-serif' }}>CivilCore</span>
             </Link>
             <nav className="flex gap-6">
-              <Link to="/docs" className="uppercase tracking-widest transition-colors hover:text-on-surface" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#6a8e8e' }}>Documentación</Link>
-              <Link to="/pricing" className="uppercase tracking-widest transition-colors hover:text-on-surface" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#6a8e8e' }}>Precios</Link>
-              <button type="button" className="uppercase tracking-widest cursor-pointer transition-colors hover:text-on-surface" style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#6a8e8e', background: 'none', border: 'none', padding: 0 }}>Contacto Técnico</button>
+              <Link to="/docs" className="uppercase tracking-widest transition-colors hover:text-on-surface" style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#6a8e8e' }}>Documentación</Link>
+              <Link to="/pricing" className="uppercase tracking-widest transition-colors hover:text-on-surface" style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#6a8e8e' }}>Precios</Link>
+              <button type="button" className="uppercase tracking-widest cursor-pointer transition-colors hover:text-on-surface" style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Geist, monospace', color: '#6a8e8e', background: 'none', border: 'none', padding: 0 }}>Contacto Técnico</button>
             </nav>
           </div>
           <div style={{ color: '#6a8e8e', fontSize: 12 }}>

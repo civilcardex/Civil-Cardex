@@ -5,10 +5,12 @@ import { SANITARIAS, RCI, AGUA_FRIA, AGUA_CALIENTE, VENTILACION } from './catalo
 import SectionCard from './catalog/SectionCard';
 import { PipeTable, GasTable, ContadoresTable, MaterialesPorRedTable, CoefFriccionTable } from './catalog/CatalogTables';
 import { usePageMeta } from '../hooks/usePageMeta';
+const CatalogMasterPage_S1: React.CSSProperties = { position: 'absolute', left: 0, padding: '5px 11px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 3, color: 'var(--txt2)', cursor: 'pointer', fontWeight: 600, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, };
+
 
 const pageBtn = {
   padding: '5px 12px', border: '1px solid var(--line)', borderRadius: 3,
-  fontFamily: 'var(--mono)', fontSize: 11, cursor: 'pointer',
+  fontFamily: 'var(--mono)', fontSize: 12, cursor: 'pointer',
   background: 'var(--bg3)', color: 'var(--txt2)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
   transition: 'all .15s', minWidth: 30,
@@ -30,14 +32,8 @@ export default function CatalogMasterPage() {
 }) }} />
       <div style={{ padding: '14px 16px 0', display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexShrink: 0, position: 'relative', marginBottom: 12 }}>
-          <button className="td-mono" onClick={() => { sessionStorage.setItem('openTab', 'datos'); navigate('/civilflowareatrabajo'); }}
-            style={{
-              position: 'absolute', left: 0,
-              padding: '5px 11px', background: 'var(--bg3)', border: '1px solid var(--line)',
-              borderRadius: 3, color: 'var(--txt2)', cursor: 'pointer',
-              fontWeight: 600, fontSize: 11,
-              display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
-            }}>
+          <button type="button" className="td-mono" onClick={() => { sessionStorage.setItem('openTab', 'datos'); navigate('/civilflowareatrabajo'); }}
+            style={CatalogMasterPage_S1}>
             ← VOLVER
           </button>
           <h1 className="td-mono" style={{ fontSize: 16, fontWeight: 700, color: 'var(--txt)', margin: 0, letterSpacing: 0.5, textTransform: 'uppercase' }}>
@@ -113,12 +109,12 @@ export default function CatalogMasterPage() {
         </div>
 
         <nav aria-label="Paginación de catálogo" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, flexShrink: 0, padding: '8px 0 12px', borderTop: '1px solid var(--line)' }}>
-          <button onClick={() => setSubpage(Math.max(1, subpage - 1))}
+          <button type="button" onClick={() => setSubpage(Math.max(1, subpage - 1))}
             style={{ ...pageBtn, opacity: subpage === 1 ? 0.3 : 1, cursor: subpage === 1 ? 'default' : 'pointer' }}>
             ←
           </button>
           {[1, 2, 3, 4].map(n => (
-            <button key={n} onClick={() => setSubpage(n)}
+            <button type="button" key={n} onClick={() => setSubpage(n)}
               style={{
                 ...pageBtn,
                 background: subpage === n ? 'rgba(0,220,229,0.15)' : 'var(--bg3)',
@@ -129,7 +125,7 @@ export default function CatalogMasterPage() {
               {n}
             </button>
           ))}
-          <button onClick={() => setSubpage(Math.min(4, subpage + 1))}
+          <button type="button" onClick={() => setSubpage(Math.min(4, subpage + 1))}
             style={{ ...pageBtn, opacity: subpage === 4 ? 0.3 : 1, cursor: subpage === 4 ? 'default' : 'pointer' }}>
             →
           </button>

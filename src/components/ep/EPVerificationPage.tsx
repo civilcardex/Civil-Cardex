@@ -103,18 +103,18 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 12, alignItems: "start" }}>
         <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/parametros_equipo.svg" iconImgStyle={{ width: 22, height: 22 }} title="Parámetros del equipo — Datos del fabricante" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editParams} setEdit={setEditParams} />}>
           <Tbl caption="Parámetros del equipo" cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
-            [<Param name="Eficiencia bomba (η_b)" />, <LazyInp disabled={!editParams} field="etab" ariaLabel="Eficiencia bomba" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>0.55 – 0.80</span> Verificar en curva característica del fabricante para el punto Qd / HMT.</Comment>],
-            [<Param name="Eficiencia motor (η_m)" />, <LazyInp disabled={!editParams} field="etam" ariaLabel="Eficiencia motor" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>0.85 – 0.95</span> Motores IE2 o IE3 recomendados para uso con VFD.</Comment>],
-            [<Param name="Factor de seguridad potencia" />, <LazyInp disabled={!editParams} field="fs" ariaLabel="Factor de seguridad potencia" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>+25%</span> Margen sobre P_freno para selección de motor comercial estándar.</Comment>],
-            [<Param name="Ciclos/hora (n)" sub="Arranques permitidos por hora" />, <LazyInp disabled={!editParams} field="ciclos" ariaLabel="Ciclos por hora" />, "arr/h", <Comment>{ciclos > 10 ? <span style={{ background: "rgba(239,83,80,0.15)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "#ef5350" }}>No O.K.</span> : <span style={{ background: "rgba(34,197,94,0.15)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "#22c55e" }}>OK</span>} Máximo 10 arranques/hora. Verificar especificación del motor.</Comment>],
-            [<Param name="Fracción útil tanque (α)" />, <LazyInp disabled={!editParams} field="alfa" ariaLabel="Fracción útil tanque" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>0.25 – 0.35</span> Fracción del volumen del acumulador disponible para agua. Típico 30%.</Comment>],
-            [<Param name="Velocidad succión (V_suc)" sub="Para selección diámetro" />, <LazyInp disabled={!editParams} field="vsuc" ariaLabel="Velocidad succión" />, "m/s", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>0.5 – 1.5 m/s</span> RAS 2000. Velocidad de diseño para tubería de succión del equipo.</Comment>],
-            [<Param name="Velocidad impulsión (V_imp)" sub="Para selección diámetro" />, <LazyInp disabled={!editParams} field="vimp" ariaLabel="Velocidad impulsión" />, "m/s", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 10, color: "var(--txt2)" }}>1.5 – 3.5 m/s</span> RAS 2000. Velocidad de diseño para tubería de impulsión del equipo.</Comment>],
+            [<Param name="Eficiencia bomba (η_b)" />, <LazyInp disabled={!editParams} field="etab" ariaLabel="Eficiencia bomba" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "var(--txt2)" }}>0.55 – 0.80</span> Verificar en curva característica del fabricante para el punto Qd / HMT.</Comment>],
+            [<Param name="Eficiencia motor (η_m)" />, <LazyInp disabled={!editParams} field="etam" ariaLabel="Eficiencia motor" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "var(--txt2)" }}>0.85 – 0.95</span> Motores IE2 o IE3 recomendados para uso con VFD.</Comment>],
+            [<Param name="Factor de seguridad potencia" />, <LazyInp disabled={!editParams} field="fs" ariaLabel="Factor de seguridad potencia" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "var(--txt2)" }}>+25%</span> Margen sobre P_freno para selección de motor comercial estándar.</Comment>],
+            [<Param name="Ciclos/hora (n)" sub="Arranques permitidos por hora" />, <LazyInp disabled={!editParams} field="ciclos" ariaLabel="Ciclos por hora" />, "arr/h", <Comment>{ciclos > 10 ? <span style={{ background: "rgba(239,83,80,0.15)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "#ef5350" }}>No O.K.</span> : <span style={{ background: "rgba(34,197,94,0.15)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "#22c55e" }}>OK</span>} Máximo 10 arranques/hora. Verificar especificación del motor.</Comment>],
+            [<Param name="Fracción útil tanque (α)" />, <LazyInp disabled={!editParams} field="alfa" ariaLabel="Fracción útil tanque" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "var(--txt2)" }}>0.25 – 0.35</span> Fracción del volumen del acumulador disponible para agua. Típico 30%.</Comment>],
+            [<Param name="Velocidad succión (V_suc)" sub="Para selección diámetro" />, <LazyInp disabled={!editParams} field="vsuc" ariaLabel="Velocidad succión" />, "m/s", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "var(--txt2)" }}>0.5 – 1.5 m/s</span> RAS 2000. Velocidad de diseño para tubería de succión del equipo.</Comment>],
+            [<Param name="Velocidad impulsión (V_imp)" sub="Para selección diámetro" />, <LazyInp disabled={!editParams} field="vimp" ariaLabel="Velocidad impulsión" />, "m/s", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "var(--txt2)" }}>1.5 – 3.5 m/s</span> RAS 2000. Velocidad de diseño para tubería de impulsión del equipo.</Comment>],
           ]} />
         </Card>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/caudales.svg" iconImgStyle={{ width: 22, height: 22 }} title="Caudales" bodyStyle={{ padding: 0 }}>
-            <Tbl caption="Caudales" thStyle={{ fontSize: 10, padding: "1px 4px" }} tdStyle={{ fontSize: 11, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
+            <Tbl caption="Caudales" thStyle={{ fontSize: 12, padding: "1px 4px" }} tdStyle={{ fontSize: 12, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
               ["Qd = MAX(Qac, Qasc)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qd > 0 ? Qd.toFixed(3) : "—"}</span>, "L/s"],
               ["Qd en m³/h", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qd > 0 ? Qm3h.toFixed(2) : "—"}</span>, "m³/h"],
               ["Qd en GPM", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qd > 0 ? Qgpm.toFixed(1) : "—"}</span>, "GPM"],
@@ -122,7 +122,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
             ]} />
           </Card>
           <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/altura_manometrica.svg" iconImgStyle={{ width: 22, height: 22 }} title={`${isRed ? "HMT = Hg + Hf + Pmin − Pred" : "HMT = Hg_total + Hf_red + Hf_suc + Pmin"}`} bodyStyle={{ padding: 0 }}>
-            <Tbl caption="Altura manométrica total" thStyle={{ fontSize: 10, padding: "1px 4px" }} tdStyle={{ fontSize: 11, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
+            <Tbl caption="Altura manométrica total" thStyle={{ fontSize: 12, padding: "1px 4px" }} tdStyle={{ fontSize: 12, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
               ["Desnivel Hg = z_top − z_bomba", <span  style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hgOk ? "var(--ok)" : "#ef5350" }}>{hgOk ? "OK" : "NO CUMPLE"} {Hg.toFixed(2)}</span>, "m.c.a."],
               ["Hf crítica = MAX(Hf_ac, Hf_acs) + Hf_otros", <span  style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hfOk ? "var(--ok)" : "#ef5350" }}>{hfOk ? "OK" : "NO CUMPLE"} {Hf.toFixed(2)}</span>, "m.c.a."],
               ["Pmin punto crítico", <span  style={{ fontFamily: "var(--mono)", fontWeight: 700, color: pminOk ? "var(--ok)" : "#ef5350" }}>{pminOk ? "OK" : "NO CUMPLE"} {pmin.toFixed(2)}</span>, "m.c.a."],
@@ -143,23 +143,23 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
             ]} />
           </Card>
           <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/pot_comercial_seleccionada.svg" iconImgStyle={{ width: 22, height: 22 }} title="Potencia comercial seleccionada" bodyStyle={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 6 }} headerRight={<EditButton edit={editPComercial} setEdit={setEditPComercial} />}>
-            <div style={{ fontSize: 11, color: "var(--txt3)" }}>
+            <div style={{ fontSize: 12, color: "var(--txt3)" }}>
               P calculada = <strong style={{ color: "var(--txt)" }}>{Pins_hp > 0 ? Pins_hp.toFixed(2) : "—"} HP</strong> · Comercial inmediata superior: <strong style={{ color: "var(--txt)", fontWeight: 700 }}>{autoNema} HP</strong>
             </div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <select aria-label="Potencia comercial" disabled={!editPComercial} value={ep.pcomercial || ""} onChange={(e) => updEP("pcomercial", e.target.value)} style={{ flex: 1, padding: "5px 8px", borderRadius: "var(--r)", border: "1px solid var(--line)", background: "var(--bg2)", color: "var(--txt)", fontFamily: "var(--mono)", fontSize: 11, fontWeight: 600, cursor: editPComercial ? "pointer" : "default", outline: "none", boxSizing: "border-box", opacity: editPComercial ? 1 : 0.7 }}>
+              <select aria-label="Potencia comercial" disabled={!editPComercial} value={ep.pcomercial || ""} onChange={(e) => updEP("pcomercial", e.target.value)} style={{ flex: 1, padding: "5px 8px", borderRadius: "var(--r)", border: "1px solid var(--line)", background: "var(--bg2)", color: "var(--txt)", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, cursor: editPComercial ? "pointer" : "default", outline: "none", boxSizing: "border-box", opacity: editPComercial ? 1 : 0.7 }}>
                 <option value="">Seleccione</option>
                 {COMM_HP.map(({ hp, kw }) => (<option key={hp} value={String(hp)}>{hp} HP ({kw} kW)</option>))}
               </select>
-              <span style={{ fontSize: 10, color: "var(--txt3)", whiteSpace: "nowrap" }}>O ingrese valor:</span>
-              <LazyInp disabled={!editPComercial} field="pcomercial" ariaLabel="Potencia comercial" style={{ ...SI, width: 50, fontSize: 11, padding: "2px 4px" }} />
-              <span style={{ fontFamily: "var(--mono)", fontWeight: 600, fontSize: 10, whiteSpace: "nowrap" }}>HP</span>
+              <span style={{ fontSize: 12, color: "var(--txt3)", whiteSpace: "nowrap" }}>O ingrese valor:</span>
+              <LazyInp disabled={!editPComercial} field="pcomercial" ariaLabel="Potencia comercial" style={{ ...SI, width: 50, fontSize: 12, padding: "2px 4px" }} />
+              <span style={{ fontFamily: "var(--mono)", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>HP</span>
             </div>
             <div style={{ padding: "6px 8px", background: "var(--bg3)", borderRadius: "var(--r)", border: "1px solid var(--line)" }}>
-              <div style={{ fontSize: 9, color: "var(--txt4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Potencia seleccionada</div>
+              <div style={{ fontSize: 12, color: "var(--txt4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Potencia seleccionada</div>
               <div style={{ fontSize: 16, fontWeight: 700, color: "var(--txt)", fontFamily: "var(--mono)" }}>{nemaSel} HP</div>
-              <div style={{ fontSize: 11, color: "var(--txt3)", fontFamily: "var(--mono)", fontWeight: 600 }}>{(nemaSel * 0.7457).toFixed(2)} kW (IEC)</div>
-              <div style={{ fontSize: 11, color: "var(--txt3)" }}>Margen: <span style={{ color: "var(--txt)", fontWeight: 700 }}>+{Pins_hp > 0 ? (((nemaSel - Pins_hp) / Pins_hp) * 100).toFixed(1) : "—"}%</span><span style={{ color: "var(--txt4)", marginLeft: 4 }}>· sobre presión calculada</span></div>
+              <div style={{ fontSize: 12, color: "var(--txt3)", fontFamily: "var(--mono)", fontWeight: 600 }}>{(nemaSel * 0.7457).toFixed(2)} kW (IEC)</div>
+              <div style={{ fontSize: 12, color: "var(--txt3)" }}>Margen: <span style={{ color: "var(--txt)", fontWeight: 700 }}>+{Pins_hp > 0 ? (((nemaSel - Pins_hp) / Pins_hp) * 100).toFixed(1) : "—"}%</span><span style={{ color: "var(--txt4)", marginLeft: 4 }}>· sobre presión calculada</span></div>
             </div>
           </Card>
         </div>
@@ -170,7 +170,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(360px, 100%), 1fr))", gap: 16, justifyContent: "center", alignItems: "start" }}>
       <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.svg" iconImgStyle={{ width: 22, height: 22 }} title="Presostato y tanque hidroneumático" bodyStyle={{ padding: 0 }}>
-        <Tbl caption="Presostato y tanque hidroneumático" thStyle={{ fontSize: 11, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud.", "Fórmula"]} rows={[
+        <Tbl caption="Presostato y tanque hidroneumático" thStyle={{ fontSize: 12, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud.", "Fórmula"]} rows={[
           ["P_on (arranque)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Pon.toFixed(2)}</span>, "m.c.a.", "P_on = HMT"],
           ["P_off (paro)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Poff.toFixed(2)}</span>, "m.c.a.", "P_off = P_on × 1.10"],
           ["P_on / P_off (presostato)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Pon_bar.toFixed(2)} / {Poff_bar.toFixed(2)}</span>, "bar", "÷ 10.2 → bar"],
@@ -180,7 +180,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
         ]} />
       </Card>
       <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/diametros_velocidades.svg" iconImgStyle={{ width: 22, height: 22 }} title="Diámetros y velocidades" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editDiametros} setEdit={setEditDiametros} />}>
-        <Tbl caption="Diámetros y velocidades" thStyle={{ fontSize: 11, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud."]} rows={[
+        <Tbl caption="Diámetros y velocidades" thStyle={{ fontSize: 12, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud."]} rows={[
           [<Param name="Tubería succión" sub="DN comercial" />, <LazyInp disabled={!editDiametros} field="dnsuc" ariaLabel="Tubería succión" />, "mm DN"],
           ["Velocidad real succión", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{sucDiam.Vreal ? sucDiam.Vreal.toFixed(2) : "—"}</span>, "m/s"],
           [<Param name="Tubería impulsión" sub="DN comercial" />, <LazyInp disabled={!editDiametros} field="dnimp" ariaLabel="Tubería impulsión" />, "mm DN"],

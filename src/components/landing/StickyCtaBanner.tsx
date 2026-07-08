@@ -85,7 +85,7 @@ export default function StickyCtaBanner({ heroId, ctaId }: StickyCtaBannerProps)
         >
           EMPEZAR AHORA
         </Link>
-        <button 
+        <button type="button" 
           onClick={() => setIsDismissed(true)}
           className="w-8 h-8 flex items-center justify-center rounded-full border border-outline-variant text-outline hover:text-on-surface hover:border-primary transition-colors"
           aria-label="Cerrar banner"
