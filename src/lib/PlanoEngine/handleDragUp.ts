@@ -68,6 +68,8 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       if (Math.abs(d.dx) < 1 && Math.abs(d.dy) < 1) {
         delete (b as any).desplazamientos[engine.nivelActual.label ?? ''];
       } else {
+        // Create the "Ldesvio" ramal between parent (b.x, b.y) and ghost (b.x + d.dx, b.y + d.dy)
+        // if it doesn't exist yet — this is the visual connector between the parent and the ghost.
         const oldLdesvio = d.Ldesvio;
         if (!oldLdesvio) {
           const net = NETS.find(n => n.id === (b as any).net);

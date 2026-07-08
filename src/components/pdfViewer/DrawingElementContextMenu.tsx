@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { bajanteLabel } from "../../utils/accessoryAbbreviations";
+import { normalizeDnLabel } from "../../utils/formatUtils";
 import { pisoLbl, DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS_DN_LABELS, APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, SAN_UC_IDS, ACCESORIOS_HIDRO, SAN_ACCESORIOS, GAS_ACCESORIOS } from "../../constants";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import { writeBajantePropToDrawing, writeAcoDiamToDrawing, writeContadorDiamToDrawing } from "../../utils/writeDiameterToDrawing";
@@ -12,16 +13,15 @@ import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { loadFromStorage, saveToStorage } from "../../services/storageService";
 import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from "../../constants/storage-keys";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../../utils/drawingSync";
-const DrawingElementContextMenu_S1: React.CSSProperties = { background: 'transparent', border: 'none', color: '#e2e2e8', padding: '6px 8px', textAlign: 'left', fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer', borderRadius: 3, display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, borderTop: '1px solid #3a494a' };
 const DrawingElementContextMenu_S2: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const DrawingElementContextMenu_S3: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const DrawingElementContextMenu_S4: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const DrawingElementContextMenu_S5: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const DrawingElementContextMenu_S6: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const DrawingElementContextMenu_S7: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 };
-const DrawingElementContextMenu_S8: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 };
-const DrawingElementContextMenu_S9: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 };
-const DrawingElementContextMenu_S10: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 };
+const DrawingElementContextMenu_S7: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 };
+const DrawingElementContextMenu_S8: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 11, color: '#b9caca', fontFamily: "'Geist',monospace" };
+const DrawingElementContextMenu_S9: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px', maxHeight: 160, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 };
+const DrawingElementContextMenu_S10: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 11, color: '#b9caca', fontFamily: "'Geist',monospace" };
 const DrawingElementContextMenu_S11: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const DrawingElementContextMenu_S12: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const DrawingElementContextMenu_S13: React.CSSProperties = { width: '100%', padding: '6px 8px', cursor: 'pointer', background: '#1e2024', border: '1px dashed #00dce5', borderRadius: 4, color: '#00dce5', fontSize: 12, fontFamily: "'Geist',monospace", textAlign: 'center', fontWeight: 600, };
@@ -32,9 +32,9 @@ const DrawingElementContextMenu_S17: React.CSSProperties = { width: '100%', padd
 const DrawingElementContextMenu_S18: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const DrawingElementContextMenu_S19: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: '#e2e2e8', background: 'rgba(255,255,255,0.03)', padding: '2px 4px', borderRadius: 3, marginBottom: 6 };
 const DrawingElementContextMenu_S20: React.CSSProperties = { width: '100%', padding: '4px 6px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#e2e2e8', fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const DrawingElementContextMenu_S21: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 };
+const DrawingElementContextMenu_S21: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px', maxHeight: 160, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 };
 const DrawingElementContextMenu_S22: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 };
-const DrawingElementContextMenu_S23: React.CSSProperties = { position: 'absolute', zIndex: 101, background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.4)', padding: '4px', minWidth: 150, maxWidth: 280, display: 'flex', flexDirection: 'column', gap: 2, };
+const DrawingElementContextMenu_S23: React.CSSProperties = { position: 'absolute', zIndex: 101, background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.4)', padding: '4px', minWidth: 170, maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden' };
 
 
 
@@ -90,55 +90,40 @@ function BajanteDirectionSelector({
       <div style={{ fontSize: 12, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
         Dirección de flujo
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: '0 8px 4px' }}>
-        {(isGhostClick ? ['Sube', 'Baja', 'Continua'] : ['Sube', 'Baja', 'Continua', 'Desplazamiento']).map(opt => {
-          const isActive = opt === 'Desplazamiento'
-            ? (!ghostDir && !!(element.desplazamientos && element.desplazamientos[currentGhostLabel]))
-            : (ghostDir === opt.toLowerCase());
+       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 3, padding: '0 6px 4px', boxSizing: 'border-box', overflow: 'hidden', width: '100%' }}>
+        {(isGhostClick ? ['Sube', 'Baja', 'Continua'] : ['Sube', 'Baja', 'Continua']).map(opt => {
+          const isActive = (ghostDir === opt.toLowerCase());
           return (
             <button type="button"
               key={opt}
               onClick={() => {
-                if (engineRef.current) {
-                  if (isGhostClick && opt !== 'Desplazamiento') {
-                    updateGhostField('direccion', opt.toLowerCase());
-                    engineRef.current?.render();
-                    return;
-                  }
-                  const currentNpt = pisos.find(p => p.n === selectedNivel)?.npt || 0;
-                  const allNpts = pisos.map(p => p.npt).sort((a, b) => a - b);
-                  const maxNpt = allNpts[allNpts.length - 1] || 0;
-                  const minNpt = allNpts[0] || 0;
-                  let updates: any = {};
+                if (!engineRef.current) return;
+                if (isGhostClick) {
+                  updateGhostField('direccion', opt.toLowerCase());
+                  engineRef.current?.render();
+                  return;
+                }
+                const currentNpt = pisos.find(p => p.n === selectedNivel)?.npt || 0;
+                const allNpts = pisos.map(p => p.npt).sort((a, b) => a - b);
+                const maxNpt = allNpts[allNpts.length - 1] || 0;
+                const minNpt = allNpts[0] || 0;
+                let updates: any = {};
 
-                  if (opt === 'Sube') {
-                    updates = { direccion: 'sube', nptBase: currentNpt, nptCima: maxNpt, desplazamientos: { ...(element.desplazamientos || {}) } };
-                  } else if (opt === 'Baja') {
-                    updates = { direccion: 'baja', nptBase: minNpt, nptCima: currentNpt, desplazamientos: { ...(element.desplazamientos || {}) } };
-                  } else if (opt === 'Continua') {
-                    updates = { direccion: 'continua', desplazamientos: { ...(element.desplazamientos || {}) } };
-                  } else if (opt === 'Desplazamiento') {
-                    const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-                    if (lvl) {
-                      const currentDesp = element.desplazamientos || {};
-                      updates = {
-                        direccion: undefined,
-                        desplazamientos: {
-                          ...currentDesp,
-                          [lvl]: { dx: currentDesp[lvl]?.dx ?? 2, dy: currentDesp[lvl]?.dy ?? 0, Ldesvio: currentDesp[lvl]?.Ldesvio }
-                        }
-                      };
-                    }
+                if (opt === 'Sube') {
+                  updates = { direccion: 'sube', nptBase: currentNpt, nptCima: maxNpt, desplazamientos: { ...(element.desplazamientos || {}) } };
+                } else if (opt === 'Baja') {
+                  updates = { direccion: 'baja', nptBase: minNpt, nptCima: currentNpt, desplazamientos: { ...(element.desplazamientos || {}) } };
+                } else if (opt === 'Continua') {
+                  updates = { direccion: 'continua', desplazamientos: { ...(element.desplazamientos || {}) } };
+                }
+                if (Object.keys(updates).length > 0) {
+                  engineRef.current?.updateElementById(element.id, updates);
+                  const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
+                  if (fresh) {
+                    setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
                   }
-                  if (Object.keys(updates).length > 0) {
-                    engineRef.current?.updateElementById(element.id, updates);
-                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
-                    if (fresh) {
-                      setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
-                    }
-                    if (selElement?.id === element.id) {
-                      setSelElement({ ...selElement, ...updates });
-                    }
+                  if (selElement?.id === element.id) {
+                    setSelElement({ ...selElement, ...updates });
                   }
                 }
               }}
@@ -146,48 +131,70 @@ function BajanteDirectionSelector({
                 background: isActive ? 'rgba(37,99,235,0.15)' : '#1e2024',
                 border: `1px solid ${isActive ? '#2563eb' : '#3a494a'}`,
                 color: isActive ? '#3b82f6' : '#e2e2e8',
-                padding: '6px 8px',
-                textAlign: 'left', fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer',
-                borderRadius: 3, display: 'flex', alignItems: 'center', gap: 6,
-                transition: 'all 0.1s',
+                padding: '3px 5px',
+                textAlign: 'left', fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer',
+                borderRadius: 3, display: 'flex', alignItems: 'center', gap: 3,
+                transition: 'all 0.1s', boxSizing: 'border-box', overflow: 'hidden', whiteSpace: 'nowrap',
+                textOverflow: 'ellipsis', minWidth: 0,
               }}
               onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#2563eb33'; }}
               onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = '#1e2024'; }}
             >
-              <div style={{ color: opt === 'Sube' ? '#00dce5' : opt === 'Baja' ? '#F04545' : '#FFEB3B' }}>
-                {opt === 'Sube' ? '\u2B06' : opt === 'Baja' ? '\u2B07' : opt === 'Continua' ? '\u279C' : '\u27A1'}
+              <div style={{ color: opt === 'Sube' ? '#00dce5' : opt === 'Baja' ? '#F04545' : '#FFEB3B', flexShrink: 0 }}>
+                {opt === 'Sube' ? '\u2B06' : opt === 'Baja' ? '\u2B07' : '\u279C'}
               </div>
-              {opt}
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{opt}</span>
             </button>
           );
         })}
       </div>
-
       {!isGhostClick && (
         <button type="button"
           onClick={() => {
-            if (engineRef.current) {
-              const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
-              const isFantasma = element.isFantasma;
-              const updates: any = { isFantasma: !isFantasma };
-              if (!isFantasma && lvl) {
-                const currentDesp = { ...(element.desplazamientos || {}) };
-                if (!currentDesp[lvl]) {
-                  currentDesp[lvl] = { dx: 2, dy: 0 };
-                  updates.desplazamientos = currentDesp;
-                }
+            if (!engineRef.current) return;
+            const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
+            const isFantasma = element.isFantasma;
+            const updates: any = { isFantasma: !isFantasma };
+            if (!isFantasma && lvl) {
+              const currentDesp = { ...(element.desplazamientos || {}) };
+              if (!currentDesp[lvl]) {
+                // Place ghost far to the right, outside the parent circle
+                const r = (element.bajR || 7/24) * 40;
+                currentDesp[lvl] = { dx: r, dy: 0 };
+                updates.desplazamientos = currentDesp;
               }
-              engineRef.current?.updateElementById(element.id, updates);
+            }
+            engineRef.current?.updateElementById(element.id, updates);
+            setTimeout(() => {
               const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
               if (fresh) {
                 setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                if (selElement?.id === element.id) {
+                  setSelElement({ ...selElement, ...updates });
+                }
               }
-              engineRef.current?.render();
-            }
+            }, 50);
+            engineRef.current?.render();
           }}
-          style={DrawingElementContextMenu_S1}
-          onMouseEnter={e => e.currentTarget.style.background = '#2563eb33'}
-          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          style={{
+            background: element.isFantasma ? 'rgba(245,166,35,0.12)' : 'transparent',
+            border: 'none',
+            color: element.isFantasma ? '#F5A623' : '#e2e2e8',
+            padding: '6px 8px',
+            textAlign: 'left',
+            fontSize: 11,
+            fontFamily: "'Geist',monospace",
+            cursor: 'pointer',
+            borderRadius: 3,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            marginTop: 4,
+            borderTop: '1px solid #3a494a',
+            width: '100%',
+          }}
+          onMouseEnter={e => { if (!element.isFantasma) e.currentTarget.style.background = '#2563eb33'; }}
+          onMouseLeave={e => { if (!element.isFantasma) e.currentTarget.style.background = element.isFantasma ? 'rgba(245,166,35,0.12)' : 'transparent'; }}
         >
           {element.isFantasma ? 'Desactivar desplazamiento del bajante' : 'Activar desplazamiento del bajante'}
         </button>
@@ -285,8 +292,8 @@ function BajanteDiameterSelector({
                     }
                   }
                 }}
-                style={DrawingElementContextMenu_S2}>
-                <option value="">— Sin destino —</option>
+                style={{ ...DrawingElementContextMenu_S2, width: '85%' }}>
+                <option value="">Sin destino</option>
                 {lowerFloorsRamales.map(group => {
                   const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
                   const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
@@ -305,7 +312,7 @@ function BajanteDiameterSelector({
                         </option>
                       ))}
                       {!hasRamales && !hasBajantes && (
-                        <option value="" disabled>— Sin elementos disponibles —</option>
+                        <option value="" disabled>Sin elementos disponibles</option>
                       )}
                     </optgroup>
                   );
@@ -349,7 +356,7 @@ function BajanteDiameterSelector({
                 style={DrawingElementContextMenu_S3}>
                 <option value="">—</option>
                 {(element.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
-                  <option key={d.pulg} value={d.nom}>{d.nom}</option>
+                  <option key={d.pulg} value={d.nom}>{normalizeDnLabel(d.nom)}</option>
                 ))}
               </select>
             </div>
@@ -385,7 +392,7 @@ function BajanteDiameterSelector({
                   }
                 }}
                 style={DrawingElementContextMenu_S5}>
-                <option value="">— Sin área —</option>
+                <option value="">Sin área</option>
                 {(engineRef.current?.areas || []).filter((a: any) => a.net === element.net).map((a: any) => (
                   <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
                 ))}
@@ -433,7 +440,7 @@ function BajanteDiameterSelector({
             style={DrawingElementContextMenu_S6}>
             <option value="">—</option>
             {(element.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
-              <option key={d.pulg} value={d.nom}>{d.nom}</option>
+              <option key={d.pulg} value={d.nom}>{normalizeDnLabel(d.nom)}</option>
             ))}
           </select>
         </div>
@@ -479,7 +486,7 @@ function BajanteConnectionPanel({
             <div style={DrawingElementContextMenu_S7}>
               {(() => {
                 const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === activeNet && r.tipo !== 'tributario');
-                if (bajRamales.length === 0) return <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin ramales</div>;
+                if (bajRamales.length === 0) return <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 2' }}>Sin ramales</div>;
                 const recibidos = (element.recibeDeIds || []);
                 return bajRamales.map((r: any) => {
                   const isAssociated = recibidos.includes(r.id);
@@ -515,7 +522,9 @@ function BajanteConnectionPanel({
                           engineRef.current?._markDirty();
                         }}
                         style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
-                      <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label || r.id}</span>
+                      <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                        {r.label || r.id}{r.ini ? ` — ini: ${r.ini}` : ''}{r.fin ? ` / fin: ${r.fin}` : ''}
+                      </span>
                     </label>
                   );
                 });
@@ -563,7 +572,7 @@ function BajanteConnectionPanel({
                           engineRef.current?.render();
                         }}
                         style={{ accentColor: '#2563eb', margin: 0, flexShrink: 0 }} />
-                      <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={bajanteLabel(b, engineRef.current?.nivelActual?.label)}>{bajanteLabel(b, engineRef.current?.nivelActual?.label)}</span>
+                      <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>{bajanteLabel(b, engineRef.current?.nivelActual?.label)}</span>
                     </label>
                   );
                 });
@@ -579,10 +588,74 @@ function BajanteConnectionPanel({
         const ep = ramalEndpoint;
 
         const netDef = NETS.find((n: any) => n.id === element.net);
-        const bmLabel = netDef?.bmType === 'bajante' ? 'bajante' : 'montante';
 
         return (
           <>
+            <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
+              {(['bajante', 'montante'] as const).map((bmLabel) => {
+                const isMon = bmLabel === 'montante';
+                const pfx = isMon
+                  ? (netDef?.bmType === 'montante' ? (netDef?.bmPfx || 'MON') : ('M' + (netDef?.lbl || 'MON')))
+                  : (netDef?.bmPfx || 'B');
+                const existingExtreme = (engineRef.current?.bajantes || []).find((b: any) =>
+                  Math.abs(b.x - ep.x) < 0.5 && Math.abs(b.y - ep.y) < 0.5
+                  && b.net === element.net
+                );
+                if (existingExtreme) return null;
+                const fieldAcc = ep.idx === 0 ? 'accesorioInicio' : 'accesorioFin';
+                const fieldApp = ep.idx === 0 ? 'aparatoInicio' : 'aparatoFin';
+                if (element[fieldAcc] || element[fieldApp]) return null;
+                return (
+                  <button type="button" key={bmLabel} onClick={() => {
+                    const eng = engineRef.current;
+                    if (!eng) return;
+                    const cnt = eng.bajantes.filter((b: any) => b.tipo === bmLabel && (!isMon || b.net === element.net)).length + 1;
+                    const id = isMon ? pfx + cnt + '_' + element.net : (pfx + cnt);
+                    const code = isMon ? pfx + cnt : id;
+                    const nl = eng.nivelActual;
+                    eng.bajantes.push({
+                      id, net: element.net,
+                      tipo: bmLabel,
+                      code: code,
+                      direccion: bmLabel === 'bajante' ? 'baja' : 'sube',
+                      x: ep.x, y: ep.y,
+                      pisoBase: nl?.label ?? '',
+                      pisoCima: nl?.label ?? '',
+                      nptBase: nl?.npt ?? 0,
+                      nptCima: nl?.npt ?? 0,
+                      hVert: 0,
+                      dNominal: '0', recibeDeIds: [element.id], alimentaIds: [], descargaEnId: null,
+                      ucAcum: 0, ucExtra: 0, area_m2: 0,
+                      desplazamientos: {},
+                      lblOffX: 0, lblOffY: 0, labelAngle: 0,
+                      labelX: ep.x, labelY: ep.y + 20,
+                      bajR: 7 / 24,
+                    });
+                    // Auto-fill ramal's ini/fin
+                    if (ep.idx === 0) {
+                      eng.updateElementById(element.id, { ini: code });
+                    } else {
+                      eng.updateElementById(element.id, { fin: code });
+                    }
+                    if (bmLabel === 'montante') {
+                      eng._renumberMontantes();
+                    } else {
+                      eng._renumberBajantes(element.net);
+                    }
+                    const newlyCreated = eng.bajantes.find((b: any) => b.tipo === bmLabel && b.x === ep.x && b.y === ep.y);
+                    if (newlyCreated) {
+                      eng.selId = newlyCreated.id;
+                      eng._emitSelect(newlyCreated);
+                    }
+                    eng._isGhostSel = false;
+                    eng.render();
+                    eng._markDirty();
+                    setContextMenuState(null);
+                  }} style={DrawingElementContextMenu_S13}>+ Crear {bmLabel}</button>
+                );
+              })}
+            </div>
+
             {(element.tipo === 'tributario' || element.tipo === 'ramal') && ['san', 'af', 'ac', 'gas'].includes(element.net) && (() => {
               const isStart = ep.idx === 0;
               const fieldAcc = isStart ? 'accesorioInicio' : 'accesorioFin';
@@ -609,6 +682,21 @@ function BajanteConnectionPanel({
                       value={currentAcc}
                       onChange={(e) => {
                         const val = e.target.value;
+                        if (val) {
+                          const fieldApp = isStart ? 'aparatoInicio' : 'aparatoFin';
+                          if (element[fieldApp]) {
+                            alert(`Este extremo ya tiene un aparato. Elimínalo antes de asignar un accesorio.`);
+                            return;
+                          }
+                          const existingBm = (engineRef.current?.bajantes || []).find((b: any) =>
+                            Math.abs(b.x - ep.x) < 0.5 && Math.abs(b.y - ep.y) < 0.5
+                            && b.net === element.net
+                          );
+                          if (existingBm) {
+                            alert(`Ya existe un ${existingBm.tipo} (${existingBm.code || existingBm.id}) en este extremo. Elimínalo antes de asignar un accesorio.`);
+                            return;
+                          }
+                        }
                         if (engineRef.current) {
                           const oldVal = element[fieldAcc] || '';
                           const updates: any = { [fieldAcc]: val };
@@ -662,7 +750,7 @@ function BajanteConnectionPanel({
                           : diamList
                         ).map((d: any) => {
                           const valClean = d.n.split(' — ')[0].trim();
-                          return <option key={d.n} value={valClean}>{valClean}</option>;
+                          return <option key={d.n} value={valClean}>{normalizeDnLabel(valClean)}</option>;
                         })}
                       </select>
                     </div>
@@ -670,51 +758,6 @@ function BajanteConnectionPanel({
                 </div>
               );
             })()}
-
-            <div style={{ padding: '4px 8px' }}>
-              <button type="button" onClick={() => {
-                const eng = engineRef.current;
-                if (!eng) return;
-                const isMon = bmLabel === 'montante';
-                const pfx = netDef?.bmPfx || (isMon ? 'MON' : 'B');
-                const cnt = eng.bajantes.filter((b: any) => b.tipo === bmLabel && (!isMon || b.net === element.net)).length + 1;
-                const id = isMon ? pfx + cnt + '_' + element.net : (pfx + cnt);
-                const code = isMon ? pfx + cnt : id;
-                const nl = eng.nivelActual;
-                eng.bajantes.push({
-                  id, net: element.net,
-                  tipo: bmLabel,
-                  code: code,
-                  direccion: bmLabel === 'bajante' ? 'baja' : 'sube',
-                  x: ep.x, y: ep.y,
-                  pisoBase: nl?.label ?? '',
-                  pisoCima: nl?.label ?? '',
-                  nptBase: nl?.npt ?? 0,
-                  nptCima: nl?.npt ?? 0,
-                  hVert: 0,
-                  dNominal: '0', recibeDeIds: [element.id], alimentaIds: [], descargaEnId: null,
-                  ucAcum: 0, ucExtra: 0, area_m2: 0,
-                  desplazamientos: {},
-                  lblOffX: 0, lblOffY: 0, labelAngle: 0,
-                  labelX: ep.x, labelY: ep.y + 20,
-                  bajR: 7 / 24,
-                });
-                if (bmLabel === 'montante') {
-                  eng._renumberMontantes();
-                } else {
-                  eng._renumberBajantes(element.net);
-                }
-                const newlyCreated = eng.bajantes.find((b: any) => b.tipo === bmLabel && b.x === ep.x && b.y === ep.y);
-                if (newlyCreated) {
-                  eng.selId = newlyCreated.id;
-                  eng._emitSelect(newlyCreated);
-                }
-                eng._isGhostSel = false;
-                eng.render();
-                eng._markDirty();
-                setContextMenuState(null);
-              }} style={DrawingElementContextMenu_S13}>+ Crear {bmLabel}</button>
-            </div>
           </>
         );
       })()}
@@ -821,7 +864,7 @@ function BajanteCodeEditor({
             <option value="">— Sin diámetro —</option>
             {diamList.map((d: any) => {
               const valClean = d.n.split(' — ')[0].trim();
-              return <option key={d.n} value={valClean}>{valClean}{isGas ? '"' : ''}</option>;
+              return <option key={d.n} value={valClean}>{normalizeDnLabel(valClean)}</option>;
             })}
           </select>
         </div>
@@ -861,9 +904,9 @@ function BajanteCodeEditor({
             style={DrawingElementContextMenu_S16}
           >
             <option value="">— Sin diámetro —</option>
-            {CONTADORES_CAT.map((c: any) => (
-              <option key={c.dn} value={c.dn}>{c.dn}"</option>
-            ))}
+              {CONTADORES_CAT.map((c: any) => (
+                <option key={c.dn} value={c.dn}>{normalizeDnLabel(c.dn)}"</option>
+              ))}
           </select>
         </div>
         {(element.net === 'af' || element.net === 'gas') && (
@@ -891,7 +934,7 @@ function BajanteCodeEditor({
               >
                 <option value="">— Sin diámetro —</option>
                 {(element.net === 'gas' ? GAS_DN_LABELS : DIAMETROS_AF.map(d => d.nominal)).map(d => (
-                  <option key={d} value={d}>{d}</option>
+                  <option key={d} value={d}>{normalizeDnLabel(d)}</option>
                 ))}
               </select>
             </div>
@@ -1100,6 +1143,24 @@ function AparatoSelector({
         value={currentVal}
         onChange={(e) => {
           const apId = e.target.value;
+          if (apId) {
+            const existingBm = (engineRef.current?.bajantes || []).find((b: any) =>
+              typeof ramalEndpoint === 'object'
+              && ramalEndpoint
+              && Math.abs(b.x - ramalEndpoint.x) < 0.5
+              && Math.abs(b.y - ramalEndpoint.y) < 0.5
+              && b.net === netId
+            );
+            if (existingBm) {
+              alert(`Ya existe un ${existingBm.tipo} en este extremo. Elimínalo antes de asignar un aparato.`);
+              return;
+            }
+            const fieldAcc = isRamal ? (isStart ? 'accesorioInicio' : 'accesorioFin') : null;
+            if (fieldAcc && (fresh as any)[fieldAcc]) {
+              alert(`Este extremo ya tiene un accesorio. Elimínalo antes de asignar un aparato.`);
+              return;
+            }
+          }
           const plans = planosCtx?.plans || [];
           
           // 1. Update engine memory
@@ -1336,7 +1397,7 @@ function RamalMenu() {
                         }
                       }}
                       style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
-                    <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bajanteLabel(b, engineRef.current?.nivelActual?.label)}</span>
+                    <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>{bajanteLabel(b, engineRef.current?.nivelActual?.label)}</span>
                   </label>
                 );
               });

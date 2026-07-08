@@ -1,6 +1,7 @@
 import { NETS } from '../PlanoState';
 import { rotatedRectCorners } from '../HitTester';
 import type { IPlanoEngineCore } from '../PlanoState';
+import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { drawSingleApplianceSymbol } from './renderRamales';
 
 
@@ -149,14 +150,16 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     if (engine._hiddenNets.has(b.net)) return;
 
     const c = engine.toCvs(b.x, b.y);
-    const sel = b.id === engine.selId;
+    // When bajante has active displacement (isFantasma), never draw the thick yellow
+    // selection border on the parent circle — keeps it the same visual size as the ghost.
+    const sel = b.id === engine.selId && !engine._isGhostSel && !b.isFantasma;
     const r = 5.5 * (engine.labelScaleM || 1) * engine.zoom;
 
     // Item 2: Label angle + snap constraint (Auto-rotation removed as requested)
     const angle = (b.labelAngle || 0) * Math.PI / 180;
 
 
-    b._circ = { x: c.x, y: c.y, r: Math.max(24 * engine.zoom, r + 10) };
+    b._circ = { x: c.x, y: c.y, r: Math.max(8 * engine.zoom, r) };
 
     // Draw green dashed lines from ramales that feed this bajante (recibeDeIds)
     if (b.recibeDeIds?.length) {
@@ -281,13 +284,14 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.rect(-r, -r, r * 2, r * 2);
       ctx.stroke();
     } else {
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = b.tipo === 'bajante' ? '#F04545' : '#3B82F6';
+      const netObj = NETS.find((n) => n.id === b.net);
+      const col = netObj ? netObj.col : '#e2e2e8';
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = sel ? '#FFEB3B' : col;
       ctx.lineWidth = (sel ? 2.5 : 1.5) * engine.zoom;
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
       ctx.stroke();
     }
 
@@ -394,11 +398,13 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     }
     ctx.restore();
 
-    const isGhostOnThisLevel = b.tipo === 'contador' || b.tipo === 'calentador' || b.tipo === 'red_publica'
+    const isDisplacedOnThisLevel = b.tipo === 'contador' || b.tipo === 'calentador' || b.tipo === 'red_publica'
       ? false
-      : (!!b.desplazamientos?.[engine.nivelActual?.label ?? '']
-      || b.pisoBase !== engine.nivelActual?.label);
-    if (!isGhostOnThisLevel && (b.code || b.code === '')) {
+      : (!!b.desplazamientos?.[engine.nivelActual?.label ?? '']);
+    // The parent label is drawn EXCEPT when this is a direction-based ghost on a remote floor
+    // (pisoBase !== current nivel means the bajante belongs to another floor)
+    const isDirectionGhost = !isDisplacedOnThisLevel && b.pisoBase !== engine.nivelActual?.label;
+    if (!isDirectionGhost && (b.code || b.code === '')) {
       const lx = b.labelX ?? b.x;
       const ly = b.labelY ?? (b.y + 20);
       const offDx = (lx - b.x) * engine.zoom;
@@ -417,20 +423,17 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       if (b.dNominal && b.dNominal !== '0') {
         const v = String(b.dNominal).trim();
         if (v.includes('"') || v.includes('mm')) {
-          diamStr = v;
+          diamStr = normalizeDnLabel(v);
         } else {
           const numV = Number(v);
           if (!isNaN(numV)) {
             diamStr = numV < 20 ? `${numV}"` : `${numV}mm`;
           } else {
-            diamStr = v;
+            diamStr = normalizeDnLabel(v);
           }
         }
       } else if (b.diametro) {
-        diamStr = b.diametro.split(' — ')[0];
-      }
-      if (b.net === 'gas' && diamStr && !diamStr.endsWith('"')) {
-        diamStr += '"';
+        diamStr = normalizeDnLabel(b.diametro.split(' — ')[0]);
       }
       const line1 = diamStr ? `${codeStr}  D=${diamStr}` : (codeStr || '—');
       const dirText = DIR_MAP[b.direccion ?? ''] || '';
@@ -450,17 +453,13 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const gx = b.x + (disp ? disp.dx : 0);
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
-    const r = 4.25 * engine.zoom;
-    b._ghost = { x: c.x, y: c.y, r: Math.max(24 * engine.zoom, r + 10) };
+    const r = 5.5 * (engine.labelScaleM || 1) * engine.zoom;
+    b._ghost = { x: c.x, y: c.y, r: Math.max(8 * engine.zoom, r) };
 
-    // Item 6: Label angle — auto-rotate to vertical when displacement is vertical
-    const ghostAngle = (disp && Math.abs(disp.dy) > Math.abs(disp.dx))
-      ? Math.PI / 2
-      : (b.direccion === 'sube' || b.direccion === 'baja')
-        ? Math.PI / 2
-        : (b.labelAngle || 0) * Math.PI / 180;
+    // Ghost label always horizontal
+    const ghostAngle = 0;
 
-    // Ghost circle + symbol
+    // Ghost circle always visible, dotted style
     ctx.save();
     ctx.globalAlpha = 0.35;
     ctx.strokeStyle = col;
@@ -558,22 +557,19 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       const ghostDNom = gd?.dNominal || b.dNominal;
       let diamStr = '';
       if (b.diametro) {
-        diamStr = b.diametro.split(' — ')[0];
+        diamStr = normalizeDnLabel(b.diametro.split(' — ')[0]);
       } else if (ghostDNom && ghostDNom !== '0') {
         const v = String(ghostDNom).trim();
         if (v.includes('"') || v.includes('mm')) {
-          diamStr = v;
+          diamStr = normalizeDnLabel(v);
         } else {
           const numV = Number(v);
           if (!isNaN(numV)) {
             diamStr = numV < 20 ? `${numV}"` : `${numV}mm`;
           } else {
-            diamStr = v;
+            diamStr = normalizeDnLabel(v);
           }
         }
-      }
-      if (b.net === 'gas' && diamStr && !diamStr.endsWith('"')) {
-        diamStr += '"';
       }
       const line1 = diamStr ? `${codeStr}  D=${diamStr}` : (codeStr || '—');
       const dirText = DIR_MAP[ghostDir ?? ''] || '';

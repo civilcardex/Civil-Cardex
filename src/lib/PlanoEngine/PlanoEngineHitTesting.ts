@@ -18,11 +18,16 @@ export function hitTestRightClick(
 ): ContextMenuHitResult | null {
   const zoom = engine.zoom;
 
-  // Check ghost bajantes first (top priority)
+  // Check ghost bajantes first (top priority), unless overlapping a real bajante without displacement
   const fg = engine.getBajantesFantasma() as any[];
   for (const b of fg) {
     if (b._ghost) {
       const d = Math.hypot(x - b._ghost.x, y - b._ghost.y);
+      // If ghost is not displaced from its parent (same position), skip ghost detection
+      // so the parent bajante can be right-clicked normally
+      const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
+      const isDisplaced = disp && (Math.abs(disp.dx) > 0.5 || Math.abs(disp.dy) > 0.5);
+      if (!isDisplaced) continue;
       if (d <= b._ghost.r) {
         return { element: b, isGhostClick: true, clientX, clientY };
       }
@@ -52,7 +57,18 @@ export function hitTestRightClick(
     }
   }
 
-  // Check ramales — segments should win over bajante circles
+  // Check real bajantes (circle or label) BEFORE ramales so bajante wins when overlapping
+  for (const b of engine.bajantes) {
+    const c = engine.toCvs(b.x, b.y);
+    const hitR = b._circ?.r || Math.max(8 * zoom, 10 * zoom);
+    const hitOnCircle = Math.hypot(x - c.x, y - c.y) <= hitR;
+    const hitOnLabel = b._labelBox && pointInLabelBox(x, y, b._labelBox);
+    if (hitOnCircle || hitOnLabel) {
+      return { element: b, isGhostClick: false, clientX, clientY };
+    }
+  }
+
+  // Check ramales
   for (const r of engine.ramales) {
     let hitOnRamal = false;
     let ramalEndpoint: { idx: number; x: number; y: number } | null = null;
@@ -89,18 +105,6 @@ export function hitTestRightClick(
     const hitOnLabel = r._labelBox && pointInLabelBox(x, y, r._labelBox);
     if (hitOnRamal || hitOnLabel) {
       return { element: r, isGhostClick: false, ramalEndpoint, clientX, clientY };
-    }
-  }
-
-  // Check real bajantes (circle or label) - only if ramal didn't win
-  for (const b of engine.bajantes) {
-    const c = engine.toCvs(b.x, b.y);
-    const hitR = b._circ?.r || Math.max(50 * zoom, 10 * zoom + 14);
-    const hitOnCircle = Math.hypot(x - c.x, y - c.y) <= hitR;
-    const hitOnLabel = b._labelBox && pointInLabelBox(x, y, b._labelBox);
-    if (hitOnCircle || hitOnLabel) {
-      const isArrowZone = b.tipo === 'contador' && y > c.y + hitR * 0.3;
-      return { element: b, isGhostClick: isArrowZone, clientX, clientY };
     }
   }
 

@@ -582,8 +582,9 @@ function IsometriaTabBase({ state }: any) {
 
         const lo = Math.min(currentZ, targetZ);
         const hi = Math.max(currentZ, targetZ);
-        const baseZ = (lo === hi ? lo : lo) + profB * 1000;
-        const cimaZ = (lo === hi ? hi + 1000 : hi) + profB * 1000;
+        const isSube = b.direccion === 'sube' || b.tipo === 'montante';
+        const baseZ = (lo === hi ? (isSube ? lo : lo - 1000) : lo) + profB * 1000;
+        const cimaZ = (lo === hi ? (isSube ? hi + 1000 : hi) : hi) + profB * 1000;
 
         const baseZ_pix = getZPix(baseZ, b.planNivel);
         const cimaZ_pix = getZPix(cimaZ, b.planNivel);
@@ -770,8 +771,6 @@ function IsometriaTabBase({ state }: any) {
     <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minHeight: 0 }}>
       {/* Toolbar */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: '#0d0f12', borderBottom: '1px solid #3a494a', flexWrap: 'wrap' }}>
-        <img src="/isometria.svg" alt="" width={24} height={24} style={{ width: 24, height: 24, objectFit: 'contain' }} />
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e2e8', fontFamily: 'Geist,monospace', marginRight: 12 }}>Isometría</span>
 
         <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
           {(populatedNets.length === 0 ? NETS : populatedNets.map(nid => NETS.find(x => x.id === nid)!).filter(Boolean)).map(n => {
@@ -835,9 +834,6 @@ function IsometriaTabBase({ state }: any) {
       <div className="fu" style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         {/* Tramos sidebar — grouped by network then floor */}
         <div style={{ width: 200, flexShrink: 0, background: '#0d0f12', borderRight: '1px solid #3a494a', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '10px 12px 6px', fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', textTransform: 'uppercase', letterSpacing: 1 }}>
-            Isometría
-          </div>
           {tramoTree.length === 0 && (
             <div style={{ padding: '20px 12px', fontSize: 12, color: '#5a6a6b', fontFamily: 'Geist,monospace', textAlign: 'center' }}>
               Sin datos

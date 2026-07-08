@@ -25,6 +25,8 @@ interface UsePdfViewerEngineParams {
   setLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
   scale: number;
+  engineRef?: React.MutableRefObject<PlanoEngine | null>;
+  loadingPlanRef?: React.MutableRefObject<boolean>;
 }
 
 export function usePdfViewerEngine({
@@ -49,8 +51,10 @@ export function usePdfViewerEngine({
   setLoading,
   setError,
   scale,
+  engineRef: externalEngineRef,
+  loadingPlanRef: externalLoadingPlanRef,
 }: UsePdfViewerEngineParams) {
-  const engineRef = useRef<PlanoEngine | null>(null);
+  const engineRef = externalEngineRef ?? useRef<PlanoEngine | null>(null);
   const pdfDocRef = useRef<any>(null);
   const mountId = useRef(0);
   const renderTaskRef = useRef<any>(null);
@@ -58,7 +62,7 @@ export function usePdfViewerEngine({
   const [numPages, setNumPages] = useState(0);
   const [engineReady, setEngineReady] = useState(false);
   const pdfRenderedRef = useRef(false);
-  const loadingPlanRef = useRef(false);
+  const loadingPlanRef = externalLoadingPlanRef ?? useRef(false);
 
   const renderPage = useCallback(async (pageNum: number, sc: number, mountCheck: number) => {
     if (renderingRef.current) return;

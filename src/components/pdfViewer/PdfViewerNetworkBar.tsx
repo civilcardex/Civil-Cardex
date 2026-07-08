@@ -11,6 +11,7 @@ interface PdfViewerNetworkBarProps {
   onToggleHidden: (id: string) => void;
   onToggleLocked: (id: string) => void;
   scaleText?: React.ReactNode;
+  onClose?: () => void;
 }
 
 export default function PdfViewerNetworkBar({
@@ -22,6 +23,7 @@ export default function PdfViewerNetworkBar({
   onToggleHidden,
   onToggleLocked,
   scaleText,
+  onClose,
 }: PdfViewerNetworkBarProps) {
   return (
     <div style={PdfViewerNetworkBar_S1}>
@@ -87,6 +89,34 @@ export default function PdfViewerNetworkBar({
         );
       })}
       <div style={{ flex: 1, minWidth: 4 }} />
+      {onClose && (
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            padding: "4px 10px",
+            background: "rgba(211,47,47,.15)",
+            border: "1px solid rgba(211,47,47,.4)",
+            borderRadius: "3px",
+            color: "#ef5350",
+            cursor: "pointer",
+            fontFamily: "'Geist',monospace",
+            fontWeight: 600,
+            fontSize: 11,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            transition: "all .15s",
+            marginRight: 6,
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>)=>{e.currentTarget.style.background='rgba(211,47,47,.25)';e.currentTarget.style.borderColor='rgba(211,47,47,.5)'}}
+          onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>)=>{e.currentTarget.style.background='rgba(211,47,47,.15)';e.currentTarget.style.borderColor='rgba(211,47,47,.4)'}}
+        >
+          <svg viewBox="0 0 22 22" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M9 3H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          Cerrar dibujo
+        </button>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { matManning } from '../constants';
 import { loadFromStorage, saveToStorage } from '../services/storageService';
 import {
   TRAZOS_PREFIX,
+  GAS_ACC_KEY,
   APARATOS_BY_TRAMO_KEY,
   HYDRO_DATA_STORAGE_KEY,
   HYDRO_SYNC_KEY,
@@ -271,7 +272,90 @@ function buildNonPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>)
   return out;
 }
 
+function performGarbageCollection(plans: SyncPlanInput[]) {
+  if (!Array.isArray(plans)) return;
+  const validKeys = new Set<string>();
+  const validGasRamales = new Set<string>();
+
+  for (const plan of plans) {
+    if (!plan || plan.id === undefined) continue;
+    const raw = loadFromStorage<TraceData | null>(TRAZOS_PREFIX + plan.id, null);
+    if (!raw) continue;
+
+    let data = raw;
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data) as TraceData; } catch { continue; }
+    }
+
+    for (const r of (data.ramales || [])) {
+      if (r && r.id && r.net) {
+        const key = `${r.net}_${r.id}_${plan.id}`;
+        validKeys.add(key);
+        if (r.net === 'gas') {
+          validGasRamales.add(r.id);
+        }
+      }
+    }
+
+    for (const b of (data.bajantes || [])) {
+      if (b && b.id && b.net) {
+        validKeys.add(`${b.net}_${b.id}_${plan.id}`);
+        if (b.tipo === 'contador') {
+          validKeys.add(`af_${b.id}_${plan.id}`);
+        } else if (b.tipo === 'calentador') {
+          validKeys.add(`ac_${b.id}_${plan.id}`);
+        }
+      }
+    }
+  }
+
+  // 1. Clean APARATOS_BY_TRAMO_KEY
+  const rawAparatos = loadFromStorage<Record<string, unknown>>(APARATOS_BY_TRAMO_KEY, {});
+  let aparatosChanged = false;
+  for (const key of Object.keys(rawAparatos)) {
+    if (!validKeys.has(key)) {
+      delete rawAparatos[key];
+      aparatosChanged = true;
+    }
+  }
+  if (aparatosChanged) {
+    saveToStorage(APARATOS_BY_TRAMO_KEY, rawAparatos);
+  }
+
+  // 2. Clean HYDRO_DATA_STORAGE_KEY
+  const rawHidro = loadFromStorage<Record<string, unknown>>(HYDRO_DATA_STORAGE_KEY, {});
+  let hidroChanged = false;
+  for (const key of Object.keys(rawHidro)) {
+    if (!validKeys.has(key)) {
+      delete rawHidro[key];
+      hidroChanged = true;
+    }
+  }
+  if (hidroChanged) {
+    saveToStorage(HYDRO_DATA_STORAGE_KEY, rawHidro);
+  }
+
+  // 3. Clean GAS_ACC_KEY
+  const rawGas = loadFromStorage<Record<string, unknown>>(GAS_ACC_KEY, {});
+  let gasChanged = false;
+  for (const ramalId of Object.keys(rawGas)) {
+    if (!validGasRamales.has(ramalId)) {
+      delete rawGas[ramalId];
+      gasChanged = true;
+    }
+  }
+  if (gasChanged) {
+    saveToStorage(GAS_ACC_KEY, rawGas);
+  }
+}
+
 function buildSyncData(plans: SyncPlanInput[], families: Set<string>, prefix: string, _storageKey: string): SyncDataResult {
+  try {
+    performGarbageCollection(plans);
+  } catch (e) {
+    if (import.meta.env.DEV) console.error('Garbage collection error:', e);
+  }
+
   return prefix
     ? buildPrefixedSyncData(plans, families)
     : buildNonPrefixedSyncData(plans, families);

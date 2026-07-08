@@ -1,4 +1,5 @@
 import { syncExtremeAccessoryToHidroData } from '../../utils/syncExtremeAccessory';
+import { normalizeDnLabel } from '../../utils/formatUtils';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys';
@@ -198,7 +199,7 @@ export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelEl
                 : diamList
               ).map((d: any) => {
                 const valClean = d.n.split(' — ')[0].trim();
-                return <option key={d.n} value={valClean}>{valClean}</option>;
+                return <option key={d.n} value={valClean}>{normalizeDnLabel(valClean)}</option>;
               })}
             </select>
           )}
@@ -250,7 +251,7 @@ export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelEl
                 : diamList
               ).map((d: any) => {
                 const valClean = d.n.split(' — ')[0].trim();
-                return <option key={d.n} value={valClean}>{valClean}</option>;
+                return <option key={d.n} value={valClean}>{normalizeDnLabel(valClean)}</option>;
               })}
             </select>
           )}

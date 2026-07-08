@@ -23,6 +23,7 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any
         engine.render();
       }
       const lPos = engine.toCvs(b.labelX ?? b.x, b.labelY ?? (b.y + 20));
+      (engine as any)._lblDragIsParent = true;
       engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
       return true;
     }
@@ -49,7 +50,7 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any
         return true;
       }
     }
-    if (b._circ && !b.isFantasma && Math.hypot(x - b._circ.x, y - b._circ.y) < b._circ.r) {
+    if (b._circ && Math.hypot(x - b._circ.x, y - b._circ.y) < b._circ.r) {
       if (b.net !== engine.activeNet) {
         if (!checkActiveNet(engine, b.net)) {
           const netObj = NETS.find(n => n.id === b.net);
@@ -64,8 +65,26 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any
         engine._emitSelect(b);
         engine.render();
       }
-      if (!b.isFantasma) {
-        engine.bajDrag = { id: b.id, offX: x - b._circ.x, offY: y - b._circ.y };
+      if (b.isFantasma) {
+        // Allow parent bajante to be moved normally via bajDrag
+        const assocIds = [...(b.recibeDeIds || [])];
+        if (b.descargaEnId) assocIds.push(b.descargaEnId);
+        const hasLockedRamal = (engine.ramales || []).some(r =>
+          assocIds.includes(r.id) && r.bloqueado
+        );
+        if (!hasLockedRamal) {
+          engine.bajDrag = { id: b.id, offX: x - b._circ.x, offY: y - b._circ.y };
+        }
+      } else {
+        // Don't allow dragging if associated ramales are bloqueados
+        const assocIds = [...(b.recibeDeIds || [])];
+        if (b.descargaEnId) assocIds.push(b.descargaEnId);
+        const hasLockedRamal = (engine.ramales || []).some(r =>
+          assocIds.includes(r.id) && r.bloqueado
+        );
+        if (!hasLockedRamal) {
+          engine.bajDrag = { id: b.id, offX: x - b._circ.x, offY: y - b._circ.y };
+        }
       }
       return true;
     }
@@ -77,6 +96,7 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any
           engine._emitSelect(b);
           engine.render();
         }
+        (engine as any)._lblDragIsParent = true;
         engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
         return true;
       }
@@ -228,26 +248,46 @@ function _trySelBajanteDrag(engine: IPlanoEngineCore, x: number, y: number, sel:
   }
   if (sel._labelBox && pointInLabelBox(x, y, sel._labelBox)) {
     const lPos = engine.toCvs(sel.labelX, sel.labelY);
+    (engine as any)._lblDragIsParent = true;
     engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
     return true;
   }
   if (sel.labelX != null && sel.labelY != null) {
     const lPos = engine.toCvs(sel.labelX, sel.labelY);
     if (Math.hypot(x - lPos.x, y - lPos.y) < 30) {
+      (engine as any)._lblDragIsParent = true;
       engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
       return true;
     }
   }
   const circ = sel._circ!;
   const d = Math.hypot(x - circ.x, y - circ.y);
-  if (d < circ.r && !sel.isFantasma) {
-    if (wasGhostSel) {
+  if (d < circ.r) {
+    if (wasGhostSel && !sel.isFantasma) {
       engine._isGhostSel = false;
       engine._emitSelect(sel);
       engine.render();
     }
-    if (!sel.isFantasma) {
-      engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
+      if (sel.isFantasma) {
+        // Allow parent bajante to be moved normally via bajDrag
+        const assocIds2 = [...(sel.recibeDeIds || [])];
+        if (sel.descargaEnId) assocIds2.push(sel.descargaEnId);
+        const hasLockedRamal2 = (engine.ramales || []).some(r =>
+          assocIds2.includes(r.id) && r.bloqueado
+        );
+        if (!hasLockedRamal2) {
+          engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
+        }
+      } else {
+      // Don't allow dragging if associated ramales are bloqueados
+      const assocIds = [...(sel.recibeDeIds || [])];
+      if (sel.descargaEnId) assocIds.push(sel.descargaEnId);
+      const hasLockedRamal = (engine.ramales || []).some(r =>
+        assocIds.includes(r.id) && r.bloqueado
+      );
+      if (!hasLockedRamal) {
+        engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
+      }
     }
     return true;
   }
@@ -313,6 +353,7 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: a
 export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number, isMultiSelectModifier: boolean = false): void {
   const wasGhostSel = engine._isGhostSel;
   engine._isGhostSel = false;
+  (engine as any)._lblDragIsParent = false;
   const sel = getSelected(engine);
 
   if (engine.tool === 'sel' && !isMultiSelectModifier) {
@@ -487,6 +528,14 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
       }
       engine.selId = b.id;
       engine._isGhostSel = true;
+      if (b.isFantasma) {
+        const pLPos = engine.toCvs(b.labelX ?? b.x, b.labelY ?? (b.y + 20));
+        (engine as any)._lblDragIsParent = true;
+        engine.lblDrag = { id: b.id, offX: x - pLPos.x, offY: y - pLPos.y };
+        engine._emitSelect(b);
+        engine.render();
+        return;
+      }
       const gd = b.ghostData?.[engine.nivelActual?.label ?? ''] || {};
       let lx: number, ly: number;
       if (gd.labelX != null && gd.labelY != null) {
@@ -545,14 +594,12 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     engine._isGhostSel = true;
     engine._emitSelect(gFound);
     engine.render();
-    if (gFound.isFantasma) {
-      engine.ghostDrag = {
-        id: gFound.id,
-        startX: x, startY: y,
-        baseDx: gFound.desplazamientos?.[engine.nivelActual?.label ?? '']?.dx || 0,
-        baseDy: gFound.desplazamientos?.[engine.nivelActual?.label ?? '']?.dy || 0,
-      };
-    }
+    engine.ghostDrag = {
+      id: gFound.id,
+      startX: x, startY: y,
+      baseDx: gFound.desplazamientos?.[engine.nivelActual?.label ?? '']?.dx || 0,
+      baseDy: gFound.desplazamientos?.[engine.nivelActual?.label ?? '']?.dy || 0,
+    };
     return;
   }
   selectAt(engine, x, y, isMultiSelectModifier);

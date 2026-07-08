@@ -1,6 +1,7 @@
 import React from 'react'
 import { GAS } from '../../constants/engineeringDataGas'
 import { CONTADORES, MATERIALES_POR_RED, COEF_FRICCION } from './catalogData'
+import { normalizeDnLabel } from '../../utils/formatUtils'
 const CatalogTables_S1: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
 const CatalogTables_S2: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
 const CatalogTables_S3: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
@@ -80,7 +81,7 @@ export function PipeTable({ groups, compact }: { groups: GroupType[]; compact?: 
                   {grp.mat}
                 </td>
               )}
-              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.dn}</Td>
+              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{normalizeDnLabel(r.dn)}</Td>
               <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.d.toFixed(2)}</Td>
             </Tr>
           ))
@@ -115,7 +116,7 @@ export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact
                 {grp.mat}
               </td>
             )}
-            <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.dn}</Td>
+            <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{normalizeDnLabel(r.dn)}</Td>
             <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{r.d.toFixed(2)}</Td>
             <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>{grp.K.toFixed(2)}</Td>
           </Tr>
@@ -139,13 +140,8 @@ export function ContadoresTable() {
       </thead>
       <tbody>
         {CONTADORES.map((c, i) => {
-          let label = c.dn;
-          if (label === '1/2') label = '½"';
-          else if (label === '3/4') label = '¾"';
-          else if (label === '1') label = '1"';
-          else if (label === '1 1/2') label = '1 ½"';
-          else if (label === '2') label = '2"';
-          else if (!label.endsWith('"')) label += '"';
+          let label = normalizeDnLabel(c.dn);
+          if (!label.endsWith('"') && !label.endsWith('mm')) label += '"';
           return (
             <tr key={i} style={{ background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
               <Td mono>{label}</Td>

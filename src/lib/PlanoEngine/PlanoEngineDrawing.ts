@@ -199,6 +199,13 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       );
       if (baj && !baj.recibeDeIds.includes(r.id)) {
         baj.recibeDeIds.push(r.id);
+        // Auto-fill ramal's ini/fin
+        const bajCode = baj.code || baj.id;
+        if (epIdx === 0) {
+          r.ini = bajCode;
+        } else {
+          r.fin = bajCode;
+        }
       }
     }
   }

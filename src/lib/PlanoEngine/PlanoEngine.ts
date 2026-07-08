@@ -324,7 +324,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   snapAngle(x0: number, y0: number, x1: number, y1: number): Point {
     const dx = x1 - x0, dy = y1 - y0;
     const dist = Math.hypot(dx, dy);
-    if (dist < 2) return { x: x1, y: y1 };
+    if (dist < 0.001) return { x: x1, y: y1 };
     const deg = Math.atan2(dy, dx) * 180 / Math.PI;
     const allowed = [0, 45, 90, 135, 180, -135, -90, -45];
     let best = 0, minDiff = 999;
@@ -604,10 +604,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       const hit = hitTestRightClick(this, x, y, e.clientX, e.clientY);
       if (hit) {
         const el = hit.element as any;
-        this.selId = el.id ?? el.label ?? null;
-        this.multiSel = [];
-        this._isGhostSel = hit.isGhostClick || false;
-        this._emitSelect(el);
+        // Don't change selection on right-click — just show the context menu
         if (this._onContextMenuCb) {
           this._onContextMenuCb(
             el,

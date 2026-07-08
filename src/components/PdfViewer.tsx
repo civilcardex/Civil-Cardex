@@ -1,5 +1,6 @@
 /* eslint-disable no-empty */
 import { memo, useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
+import { useNavigate } from "react-router-dom";
 import PlanoEngine from "../lib/PlanoEngine/PlanoEngine";
 import { NETS } from "../lib/PlanoEngine/PlanoState";
 import { matLongName, pisoLbl, GAS, DEFAULT_PENDIENTE_PCT } from "../constants";
@@ -49,7 +50,7 @@ const mainContainerStyle: CSSProperties = {
   background: "#111317", border: "1px solid #3a494a", overflow: "hidden",
 };
 const leftSidebarStyle: CSSProperties = {
-  width: 165, flexShrink: 0, display: "flex", flexDirection: "column",
+  width: 180, flexShrink: 0, display: "flex", flexDirection: "column",
   background: "#14161a", borderRight: "1px solid #3a494a",
   overflowY: "auto", overflowX: "hidden",
 };
@@ -61,6 +62,7 @@ const rightSidebarStyle: CSSProperties = {
 };
 
 function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], activeNetworks }: PdfViewerProps) {
+  const navigate = useNavigate();
   const { mats } = useProject();
   const planosCtx = usePlans();
   const plansRef = useRef(planosCtx.plans);
@@ -69,15 +71,17 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   const [leftCollapsed, setLeftCollapsed] = useState(() => window.innerWidth < 1024);
   const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 1024);
 
-  const dynamicLeftStyle = useMemo(() => ({
+  const dynamicLeftStyle: CSSProperties = useMemo(() => ({
     ...leftSidebarStyle,
-    width: leftCollapsed ? 0 : 165,
+    width: leftCollapsed ? 0 : 180,
     borderRight: leftCollapsed ? "none" : "1px solid #3a494a",
-    overflow: leftCollapsed ? "hidden" : "auto",
+    overflowX: "hidden",
+    overflowY: leftCollapsed ? "hidden" : "auto",
+    scrollbarGutter: "stable",
     transition: "width 0.2s ease, border-right 0.2s ease",
   }), [leftCollapsed]);
 
-  const dynamicRightStyle = useMemo(() => ({
+  const dynamicRightStyle: CSSProperties = useMemo(() => ({
     ...rightSidebarStyle,
     width: rightCollapsed ? 0 : 210,
     borderLeft: rightCollapsed ? "none" : "1px solid #3a494a",
@@ -143,6 +147,18 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   const activeNetRef = useRef(activeNet);
   activeNetRef.current = activeNet;
 
+  const currentFile = files[activeIndex]?.file;
+  const currentId = files[activeIndex]?.id;
+  const currentIdRef = useRef(currentId);
+  currentIdRef.current = currentId;
+
+  const engineRef = useRef<PlanoEngine | null>(null);
+  const loadingPlanRef = useRef(false);
+  const cwRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const pdfCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
   const lowerFloorsRamales = useMemo(() => {
     if (!selElement || !(selElement.tipo === 'bajante' || selElement.tipo === 'montante')) return [];
     const currentFloor = pisos.find(p => p.n === selectedNivel);
@@ -199,11 +215,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     }
   }, [selElement]);
 
-  const currentFile = files[activeIndex]?.file;
-  const currentId = files[activeIndex]?.id;
-  const currentIdRef = useRef(currentId);
-  currentIdRef.current = currentId;
-
+  
   useEffect(() => {
     if (currentId == null) return;
     const pl = planos.find(p => p.id === currentId);
@@ -211,11 +223,6 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
       setSelectedNivel(pl.nivel ?? null);
     }
   }, [currentId, planos]);
-
-  const cwRef = useRef<HTMLDivElement | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const pdfCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const drawCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const loadTrazosForPlan = useCallback(async (eng: PlanoEngine, resolvedId: string): Promise<boolean> => {
     const tryLoad = (id: string): any => {
@@ -321,7 +328,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   contextMenuCbRef.current = onContextMenuCb;
 
   // ── Engine init ──
-  const { engineRef, engineReady, loadingPlanRef } = usePdfViewerEngine({
+  const { engineReady } = usePdfViewerEngine({
     currentFile, currentId, currentIdRef, activeNetRef, cwRef, drawCanvasRef, pdfCanvasRef,
     onStatus: () => {}, onDirty: onDirtyHandler, onSelect: setSelElement, onDelete: onDeleteHandler,
     onToolChange: setTool, onRequestText: onRequestTextCb, onAlert: (title: string, msg: string) => {
@@ -329,6 +336,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     }, onAccesorioModal: (data) => {
       setAccesorioModal({ isOpen: true, ramalId: data.ramalId, angleDeg: data.angleDeg, junctionIndex: data.junctionIndex, net: data.net, isTee: data.isTee });
     }, loadTrazosForPlan, setActiveNet, setScaleM, setLoading, setError, scale,
+    engineRef: engineRef as React.MutableRefObject<PlanoEngine | null>,
+    loadingPlanRef,
   });
 
   // Handler for accesorio modal selection - updates the ramal accesory in engine + hidroData
@@ -633,6 +642,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
     );
   }, [selectedNivel, planos]);
 
+
+
   return (
     <div style={mainContainerStyle}>
       <PdfViewerNetworkBar
@@ -644,6 +655,10 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
         onToggleHidden={handleToggleHidden}
         onToggleLocked={handleToggleLocked}
         scaleText={scaleText}
+        onClose={() => {
+          handleSave();
+          navigate('/civilflowareatrabajo');
+        }}
       />
 
       <div style={{flex:1,display:"flex",minHeight:0,position:"relative",minWidth:0}}>
@@ -655,7 +670,6 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
           tool={tool} snapOn={snapOn} activeNet={activeNet} currentFile={currentFile}
           saveStatus={saveStatus} onSelectTool={setTool} onSnapToggle={handleSnapToggle}
           onFit={handleFit} onSave={handleSave} onUndo={handleUndo} onClear={handleClear}
-          engineRef={engineRef} currentIdRef={currentIdRef} currentId={currentId} plansRef={plansRef}
         />
       </div>
 
@@ -745,7 +759,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
 
       <button type="button"
         onClick={() => setLeftCollapsed(!leftCollapsed)}
-        style={{ ...PdfViewer_S5, left: leftCollapsed ? 0 : 165, borderLeft: leftCollapsed ? "1px solid #3a494a" : "none", borderRadius: "0 0 3px 0", transition: "left 0.2s ease" }}
+        style={{ ...PdfViewer_S5, left: leftCollapsed ? 0 : 180, borderLeft: leftCollapsed ? "1px solid #3a494a" : "none", borderRadius: "0 0 3px 0", transition: "left 0.2s ease" }}
         title={leftCollapsed ? "Expandir barra izquierda" : "Colapsar barra izquierda"}
         aria-label={leftCollapsed ? "Expandir barra izquierda" : "Colapsar barra izquierda"}
       >

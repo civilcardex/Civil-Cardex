@@ -4,6 +4,7 @@ import { VENTILACION } from '../../pages/catalog/catalogData'
 import { DIAMETROS_AF } from '../../constants/hydraulicData'
 import { CAT_GAS, GAS_DN_LABELS, GAS } from '../../constants/engineeringDataGas'
 import { writeBajantePropToDrawing } from '../../utils/writeDiameterToDrawing'
+import { normalizeDnLabel } from '../../utils/formatUtils'
 import ExtremeAccessoryEditor from './ExtremeAccessoryEditor'
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine'
 import { bajanteLabel } from '../../utils/accessoryAbbreviations'
@@ -15,7 +16,7 @@ const TramoEditor_S4: React.CSSProperties = { width: '100%', padding: "4px 6px",
 const TramoEditor_S5: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const TramoEditor_S6: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const TramoEditor_S7: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const TramoEditor_S8: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 };
+const TramoEditor_S8: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 };
 const TramoEditor_S9: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 };
 const TramoEditor_S10: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 };
 const TramoEditor_S11: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 };
@@ -69,8 +70,8 @@ function ContadorEditor({ selElement, activeNet, handleUpdateSel }: { selElement
           >
             <option value="">— Seleccionar —</option>
             {activeNet === 'gas'
-              ? GAS_DN_LABELS.map(d => <option key={d} value={d}>{d}</option>)
-              : DIAMETROS_AF.map(d => <option key={d.nominal} value={d.nominal}>{d.nominal}</option>)
+              ? GAS_DN_LABELS.map(d => <option key={d} value={d}>{normalizeDnLabel(d)}</option>)
+              : DIAMETROS_AF.map(d => <option key={d.nominal} value={d.nominal}>{normalizeDnLabel(d.nominal)}</option>)
             }
           </select>
       </div>
@@ -145,7 +146,7 @@ function BajanteEditor({
               style={TramoEditor_S3}>
               <option value="">—</option>
               {(selElement.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
-                <option key={d.pulg} value={d.nom}>{d.nom}</option>
+                <option key={d.pulg} value={d.nom}>{normalizeDnLabel(d.nom)}</option>
               ))}
             </select>
           </div>
@@ -200,7 +201,7 @@ function BajanteEditor({
             style={TramoEditor_S5}>
             <option value="">—</option>
             {(selElement.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
-              <option key={d.pulg} value={d.nom}>{d.nom}</option>
+              <option key={d.pulg} value={d.nom}>{normalizeDnLabel(d.nom)}</option>
             ))}
           </select>
         </div>
@@ -219,8 +220,8 @@ function BajanteEditor({
           </select>
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Área asociada</div>
-          <select value={selElement.area_m2 ? String(selElement.area_m2) : ''} aria-label="Área asociada"
+          <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Área</div>
+          <select value={selElement.area_m2 ? String(selElement.area_m2) : ''} aria-label="Área"
             onChange={e => { handleUpdateSel('area_m2', parseFloat(e.target.value) || 0); }}
             style={TramoEditor_S7}>
             <option value="">— Sin área —</option>
@@ -233,30 +234,17 @@ function BajanteEditor({
         <div>
           <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Dirección</div>
           <div style={{ display: 'flex', gap: 3 }}>
-            {([['sube','↑ Sube'],['baja','↓ Baja'],['continua','➜ Continua'],['desplazamiento','↔ Desplaz.']] as const).map(([val, lbl]) => {
+            {([['sube','↑ Sube'],['baja','↓ Baja'],['continua','➜ Continua']] as const).map(([val, lbl]) => {
               const eng = engineRef.current;
-              const lvl = eng?.nivelActual?.label ?? '';
-              const hasDesplazamiento = val === 'desplazamiento' && !!(selElement.desplazamientos && selElement.desplazamientos[lvl]);
-              const isActive = val === 'desplazamiento' ? hasDesplazamiento : selElement.direccion === val;
+              const isActive = selElement.direccion === val;
               
               return (
               <button type="button" key={val} onClick={() => {
                 if (!eng) return;
-                if (val === 'desplazamiento') {
-                  if (lvl !== undefined) {
-                    const currentDesp = { ...(selElement.desplazamientos || {}) };
-                    if (currentDesp[lvl] && !selElement.direccion) { delete currentDesp[lvl]; }
-                    else if (!currentDesp[lvl]) { currentDesp[lvl] = { dx: 2, dy: 0 }; }
-                    eng.updateSelected({ desplazamientos: currentDesp, direccion: undefined });
-                    setSelElement({ ...selElement, desplazamientos: currentDesp, direccion: undefined });
-                    eng.render();
-                  }
-                } else {
-                  const newDir = selElement.direccion === val ? undefined : val;
-                  eng.updateSelected({ direccion: newDir, desplazamientos: { ...(selElement.desplazamientos || {}) } });
-                  setSelElement({ ...selElement, direccion: newDir });
-                  eng.render();
-                }
+                const newDir = selElement.direccion === val ? undefined : val;
+                eng.updateSelected({ direccion: newDir, desplazamientos: { ...(selElement.desplazamientos || {}) } });
+                setSelElement({ ...selElement, direccion: newDir });
+                eng.render();
               }} style={{
                 flex: 1, padding: '4px 6px', fontSize: 12, fontFamily: "'Geist',monospace", borderRadius: 3,
                 border: `1px solid ${isActive ? '#F5A623' : '#3a494a'}`,
@@ -447,7 +435,7 @@ function RamalEditor({
         {(() => {
           const gasMat = GAS.find((g: any) => g.mat === currentMat);
           return gasMat ? gasMat.rows.map((r: any) => (
-            <option key={r.dn} value={r.dn}>{r.dn}"</option>
+            <option key={r.dn} value={r.dn}>{normalizeDnLabel(r.dn)}</option>
           )) : <option value="">—</option>;
         })()}
       </select>
@@ -474,7 +462,7 @@ function RamalEditor({
       <option value="">Sin diámetro</option>
       {diamList.map((d: any) => {
         const valClean = d.n.split(' — ')[0].trim();
-        return <option key={d.n} value={valClean}>{valClean}</option>;
+        return <option key={d.n} value={valClean}>{normalizeDnLabel(valClean)}</option>;
       })}
       </select>
                 ) : (
@@ -483,7 +471,7 @@ function RamalEditor({
             </div>
     {showPend ? (
       <div>
-        <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Pendiente %</div>
+        <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1, whiteSpace: 'nowrap' }}>Pendiente %</div>
         <input type="text" inputMode="decimal" value={pendInput} aria-label="Pendiente (%)"
           onChange={e => {
             const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
@@ -828,7 +816,7 @@ function RamalEditorSection() {
                         engineRef.current?._markDirty();
                       }}
                       style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
-                    <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bajanteLabel(b, engineRef.current?.nivelActual?.label)}</span>
+                    <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>{bajanteLabel(b, engineRef.current?.nivelActual?.label)}</span>
                   </label>
                 );
               });

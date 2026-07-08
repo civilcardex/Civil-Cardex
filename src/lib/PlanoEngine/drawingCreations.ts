@@ -30,6 +30,7 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     net: engine.activeNet,
     tipo: 'bajante',
     code: bajId,
+    direccion: 'baja',
     x: px, y: py,
     pisoBase: engine.nivelActual?.label ?? '',
     pisoCima: engine.nivelActual?.label ?? '',
@@ -44,6 +45,19 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     labelX: px, labelY: py + 20,
     bajR: 7/24,
   });
+  // Auto-fill ini/fin on associated ramales
+  for (const rid of assocRamales) {
+    const r = engine.ramales.find(rr => rr.id === rid);
+    if (!r || !r.pts) continue;
+    const distStart = Math.hypot(r.pts[0][0] - px, r.pts[0][1] - py);
+    const lastIdx = r.pts.length - 1;
+    const distEnd = Math.hypot(r.pts[lastIdx][0] - px, r.pts[lastIdx][1] - py);
+    if (distStart <= distEnd) {
+      r.ini = bajId;
+    } else {
+      r.fin = bajId;
+    }
+  }
   engine.selId = bajId;
   engine._isGhostSel = false;
   engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
@@ -56,6 +70,21 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     const sp = engine.snapToExisting(px, py);
     if (sp) { px = sp.x; py = sp.y; }
   }
+  const ASSOC_THRESH = 20 / engine.zoom;
+  const assocRamales: string[] = [];
+  for (const r of engine.ramales) {
+    if (r.net !== engine.activeNet || !r.pts?.length) continue;
+    const startDist = Math.hypot(px - r.pts[0][0], py - r.pts[0][1]);
+    const li = r.pts.length - 1;
+    const endDist = Math.hypot(px - r.pts[li][0], py - r.pts[li][1]);
+    if (startDist < ASSOC_THRESH && startDist <= endDist) {
+      px = r.pts[0][0]; py = r.pts[0][1];
+      assocRamales.push(r.id);
+    } else if (endDist < ASSOC_THRESH) {
+      px = r.pts[li][0]; py = r.pts[li][1];
+      assocRamales.push(r.id);
+    }
+  }
   const netDef = NETS.find(n => n.id === engine.activeNet);
   const pfx = netDef?.bmPfx || 'MON';
   const cnt = engine.bajantes.filter(b => b.tipo === 'montante' && b.net === engine.activeNet).length + 1;
@@ -66,13 +95,14 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     net: engine.activeNet,
     tipo: 'montante',
     code: code,
+    direccion: 'sube',
     x: px, y: py,
     pisoBase: engine.nivelActual?.label ?? '',
     pisoCima: engine.nivelActual?.label ?? '',
     nptBase: engine.nivelActual?.npt ?? 0,
     nptCima: engine.nivelActual?.npt ?? 0,
     hVert: 0, dNominal: '0',
-    recibeDeIds: [], alimentaIds: [], descargaEnId: null,
+    recibeDeIds: assocRamales, alimentaIds: [], descargaEnId: null,
     ucAcum: 0, ucExtra: 0, area_m2: 0,
     desplazamientos: {},
     lblOffX: 0, lblOffY: 0,
@@ -80,6 +110,19 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     labelX: px, labelY: py + 20,
     bajR: 7/24,
   });
+  // Auto-fill ini/fin on associated ramales
+  for (const rid of assocRamales) {
+    const r = engine.ramales.find(rr => rr.id === rid);
+    if (!r || !r.pts) continue;
+    const distStart = Math.hypot(r.pts[0][0] - px, r.pts[0][1] - py);
+    const lastIdx = r.pts.length - 1;
+    const distEnd = Math.hypot(r.pts[lastIdx][0] - px, r.pts[lastIdx][1] - py);
+    if (distStart <= distEnd) {
+      r.ini = code;
+    } else {
+      r.fin = code;
+    }
+  }
   engine._renumberMontantes();
   const newlyCreated = engine.bajantes.find(b => b.tipo === 'montante' && b.x === px && b.y === py);
   if (newlyCreated) {

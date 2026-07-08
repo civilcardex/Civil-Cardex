@@ -57,29 +57,29 @@ export default function ViewerPage() {
   const [planIdResolved, setPlanIdResolved] = useState(false);
   usePageMeta('Visor de planos', 'Visor de planos PDF con superposición de redes hidrosanitarias. Herramientas de dibujo, calibración y medición.');
 
-  // Adjust state during render-phase if rawActiveIndex is out of bounds
-  let activeIndex = rawActiveIndex;
-  if (files.length > 0 && rawActiveIndex >= files.length) {
-    activeIndex = Math.max(0, files.length - 1);
-    setActiveIndex(activeIndex);
-  }
+  // Clamped activeIndex for safe rendering
+  const activeIndex = plans.length > 0 ? Math.min(rawActiveIndex, plans.length - 1) : 0;
 
-  // Resolve saved plan ID once when plans become available
-  if (!planIdResolved && plans.length > 0) {
-    setPlanIdResolved(true);
-    try {
-      const savedId = localStorage.getItem('civilflow_visor_activePlanId');
-      if (savedId) {
-        const idx = plans.findIndex(p => String(p.id) === savedId);
-        if (idx >= 0 && idx !== rawActiveIndex) {
-          activeIndex = idx;
-          setActiveIndex(idx);
+  // Resolve saved plan ID once when plans become available, and check bounds
+  useEffect(() => {
+    if (plans.length === 0) return;
+    if (rawActiveIndex >= plans.length) {
+      setActiveIndex(plans.length - 1);
+    } else if (!planIdResolved) {
+      setPlanIdResolved(true);
+      try {
+        const savedId = localStorage.getItem('civilflow_visor_activePlanId');
+        if (savedId) {
+          const idx = plans.findIndex(p => String(p.id) === savedId);
+          if (idx >= 0 && idx !== rawActiveIndex) {
+            setActiveIndex(idx);
+          }
         }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
     }
-  }
+  }, [plans, rawActiveIndex, planIdResolved]);
 
   useEffect(() => {
     try {

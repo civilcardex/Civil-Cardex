@@ -466,7 +466,7 @@ const prevLl = stateRef.current.tramosLl;
     dispatch({ type: 'SET_TRAMOS', net: 'll', payload: newLl });
   };
   load();
-  const handler = () => load();
+  const handler = () => { setTimeout(load, 0); };
   ['civilflow_san_sync_changed', 'storage'].forEach(e => window.addEventListener(e, handler));
   return () => ['civilflow_san_sync_changed', 'storage'].forEach(e => window.removeEventListener(e, handler));
 }, []);
@@ -496,7 +496,7 @@ useEffect(() => {
     dispatch({ type: 'SET_TRAMOS', net: 'ac', payload: newAc });
   };
   load();
-  const handler = () => load();
+  const handler = () => { setTimeout(load, 0); };
   ['civilflow_hidro_sync_changed', 'storage'].forEach(e => window.addEventListener(e, handler));
   return () => ['civilflow_hidro_sync_changed', 'storage'].forEach(e => window.removeEventListener(e, handler));
 }, []);

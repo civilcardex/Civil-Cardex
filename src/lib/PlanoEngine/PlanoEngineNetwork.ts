@@ -179,7 +179,7 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
     }
     if (bestRam && bestRamDist <= 0.5) {
       const code = bestRam.label || bestRam.id;
-      return { code: `${code}-CI`, isAcc: false, ref: bestRam };
+      return { code, isAcc: false, ref: bestRam };
     }
 
     return null;

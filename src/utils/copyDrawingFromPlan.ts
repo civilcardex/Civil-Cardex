@@ -83,6 +83,9 @@ export function copyDrawingFromPlan(
     if (!net) { skippedNets.push(netId); continue; }
     const pfx = net.lbl;
     const bmPfx = net.bmPfx;
+    // Montante prefix: for networks where bmType === 'montante', use net.bmPfx (MAF, MAC, etc.)
+    // For networks where bmType === 'bajante' (sanitary, ll), montantes get their own 'M'+lbl prefix
+    const monPfx = net.bmType === 'montante' ? (net.bmPfx || 'MON') : ('M' + (net.lbl || 'MON'));
     const tPfx = 'T'; // Tributario prefix
 
     const copyRamalTipos = new Set(['ramal', 'tributario'].filter(t => tipos.has(t)));
@@ -161,7 +164,7 @@ export function copyDrawingFromPlan(
 
     const maxRamal = maxForType(engine.ramales.filter((r) => r.net === netId && r.tipo === 'ramal'), new RegExp('^' + pfx + '(\\d+)$'));
     const maxBajante = maxForType(engine.bajantes.filter((b) => b.net === netId && b.tipo === 'bajante'), new RegExp('^' + bmPfx + '(\\d+)$'));
-    const maxMontante = maxForType(engine.bajantes.filter((b) => b.net === netId && b.tipo === 'montante'), new RegExp('^' + bmPfx + '(\\d+)_' + netId + '$'));
+    const maxMontante = maxForType(engine.bajantes.filter((b) => b.net === netId && b.tipo === 'montante'), new RegExp('^' + monPfx + '(\\d+)_' + netId + '$'));
     const maxRp = maxForType(engine.bajantes.filter((b) => b.tipo === 'red_publica'), /^RP(\d+)$/);
     const maxCnt = maxForType(engine.bajantes.filter((b) => b.tipo === 'contador'), /^(?:CTNG|CNTAF|cntAF)(\d+)$/);
     const maxCal = maxForType(engine.bajantes.filter((b) => b.tipo === 'calentador'), /^(?:CALENT|calentG)(\d+)$/);
@@ -221,10 +224,10 @@ export function copyDrawingFromPlan(
         b.code = newId;
       } else if (b.tipo === 'montante') {
         montanteCounter++;
-        const newId = bmPfx + montanteCounter + '_' + netId;
+        const newId = monPfx + montanteCounter + '_' + netId;
         oldToNew[origId] = newId;
         b.id = newId;
-        b.code = bmPfx + montanteCounter;
+        b.code = monPfx + montanteCounter;
       }
     }
 

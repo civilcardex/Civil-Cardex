@@ -1,12 +1,4 @@
 import { memo } from "react";
-import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
-import { useNavigate } from 'react-router-dom';
-import { saveToStorage } from "../../services/storageService";
-import { writeSanDrawingSync, writeHydroDrawingSync } from "../../utils/drawingSync";
-const PdfViewerToolbar_S1: React.CSSProperties = { padding: "8px", background: "rgba(211,47,47,.12)", border: "1px solid rgba(211,47,47,.3)", borderRadius: "3px", color: "#ef5350", cursor: "pointer", fontFamily: "'Geist',monospace", fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", fontSize: 12, transition:"all .15s", };
-const PdfViewerToolbar_S2: React.CSSProperties = { padding: "5px 8px", fontFamily: "'Geist',monospace", fontWeight: 600, transition: "all .12s", display: "flex", alignItems: "center", gap: 6, width: "100%", };
-const PdfViewerToolbar_S3: React.CSSProperties = { padding: "5px 8px", fontFamily: "'Geist',monospace", fontWeight: 600, transition: "all .12s", display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 12, };
-
 
 export interface ToolDef {
   id: string;
@@ -18,7 +10,7 @@ export interface ToolDef {
 }
 
 export const TOOLS: ToolDef[] = [
-  { id: "sel", label: "Seleccionar elemento", ico: "\uD83D\uDC46", key: "S", icoCol: "#9BA8AA", shortcut: "S" },
+  { id: "sel", label: "Seleccionar", ico: "\uD83D\uDC46", key: "S", icoCol: "#9BA8AA", shortcut: "S" },
   { id: "line", label: "Ramal/Tributario", ico: "\u2571", key: "L", icoCol: "#4D8FF7", shortcut: "L" },
   { id: "area", label: "Área", ico: "\u2B21", key: "A", icoCol: "#22D3EE", shortcut: "A" },
   { id: "dim", label: "Cota", ico: "\uD83D\uDCCF", key: "D", icoCol: "#22D3EE", shortcut: "D" },
@@ -28,6 +20,9 @@ export const TOOLS: ToolDef[] = [
   { id: "erase", label: "Borrador", ico: "🧽", key: "E", icoCol: "#ffb4ab", shortcut: "E" },
   { id: "pan", label: "Mover", ico: "\u270B", key: "Espacio", icoCol: "#10B981", shortcut: "Espacio" },
 ];
+
+const PdfViewerToolbar_S2: React.CSSProperties = { padding: "5px 8px", fontFamily: "'Geist',monospace", fontWeight: 600, transition: "all .12s", display: "flex", alignItems: "center", gap: 6, width: "100%", };
+const PdfViewerToolbar_S3: React.CSSProperties = { padding: "5px 8px", fontFamily: "'Geist',monospace", fontWeight: 600, transition: "all .12s", display: "flex", alignItems: "center", gap: 6, width: "100%", fontSize: 12, };
 
 export const STATUS: Record<string, { color: string; label: string }> = {
   saved: { color: '#22c55e', label: '\u2714 Guardado' },
@@ -56,18 +51,12 @@ export type PdfViewerToolbarProps = {
   onSave: NavFn;
   onUndo: NavFn;
   onClear: NavFn;
-  engineRef: React.MutableRefObject<PlanoEngine | null>;
-  currentIdRef: React.MutableRefObject<string | undefined>;
-  currentId: string | undefined;
-  plansRef: React.MutableRefObject<any[]>;
 };
 
 function PdfViewerToolbar_({
   tool, snapOn, activeNet, currentFile, saveStatus,
   onSelectTool, onSnapToggle, onFit, onSave, onUndo, onClear,
-  engineRef, currentIdRef, currentId, plansRef,
 }: PdfViewerToolbarProps) {
-  const navigate = useNavigate();
   const netTools = [...TOOLS];
   if (activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas') {
     netTools.splice(7, 0,
@@ -164,25 +153,6 @@ function PdfViewerToolbar_({
         </div>
       </div>
 
-      <div style={{ flex: 1 }} />
-      <div style={{padding:"6px 8px",borderTop:"1px solid #3a494a"}}>
-      <button type="button" onClick={()=>{
-        const eng = engineRef.current;
-        const key = `trazos_${currentIdRef.current || currentId || 'work'}`;
-        if (eng) {
-          const work = eng.saveWork();
-          saveToStorage(key, work);
-          try { writeSanDrawingSync(plansRef.current); } catch { /* ignore */ }
-          try { writeHydroDrawingSync(plansRef.current); } catch { /* ignore */ }
-        }
-        navigate('/civilflowareatrabajo');
-      }}
-          style={PdfViewerToolbar_S1}
-          onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>)=>{e.currentTarget.style.background='rgba(211,47,47,.25)';e.currentTarget.style.borderColor='rgba(211,47,47,.5)'}}
-          onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>)=>{e.currentTarget.style.background='rgba(211,47,47,.12)';e.currentTarget.style.borderColor='rgba(211,47,47,.3)'}}>
-          <svg viewBox="0 0 22 22" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M9 3H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Cerrar dibujo
-        </button>
-      </div>
     </>
   );
 }

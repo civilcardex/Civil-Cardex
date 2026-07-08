@@ -12,13 +12,24 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
         const deleted = engine.ramales[idxR];
         engine.ramales = engine.ramales.filter(r => r.id !== deleted.id && r.padre !== deleted.id);
         netsToRenumber.add(deleted.net);
+        // Clean up bajante references to deleted ramal
+        for (const b of engine.bajantes) {
+          if (b.recibeDeIds) {
+            b.recibeDeIds = b.recibeDeIds.filter(rid => rid !== deleted.id);
+          }
+          if (b.descargaEnId) {
+            const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [engine._loadedPlanId, b.descargaEnId];
+            if (parts[parts.length - 1] === deleted.id) b.descargaEnId = null;
+          }
+        }
         continue;
       }
       const idxB = engine.bajantes.findIndex(b => b.id === id);
       if (idxB >= 0) {
         const deleted: PlanoBajante = engine.bajantes[idxB];
         const lvl = engine.nivelActual?.label ?? '';
-        if (engine._isGhostSel && deleted.desplazamientos?.[lvl]) {
+        // When isFantasma=true, treat as parent delete (clean ALL levels)
+        if (!deleted.isFantasma && engine._isGhostSel && deleted.desplazamientos?.[lvl]) {
           const lDesvioId = deleted.desplazamientos[lvl].Ldesvio;
           if (lDesvioId) {
             engine.ramales = engine.ramales.filter(r => r.id !== lDesvioId);
@@ -27,6 +38,28 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
           delete deleted.desplazamientos[lvl];
           if (deleted.ghostData) delete deleted.ghostData[lvl];
         } else {
+          // Clean up Ldesvio ramales and ghost displacements
+          if (deleted.desplazamientos) {
+            for (const lvlKey of Object.keys(deleted.desplazamientos)) {
+              const d = deleted.desplazamientos[lvlKey];
+              if (d.Ldesvio) {
+                engine.ramales = engine.ramales.filter(r => r.id !== d.Ldesvio);
+                netsToRenumber.add(deleted.net);
+              }
+            }
+          }
+          // Clean up references in other bajantes
+          for (const other of engine.bajantes) {
+            if (other.recibeDeIds) {
+              other.recibeDeIds = other.recibeDeIds.filter(rid => rid !== deleted.id);
+            }
+            if (other.descargaEnId === deleted.id) {
+              other.descargaEnId = null;
+            } else if (other.descargaEnId?.includes('|')) {
+              const parts = other.descargaEnId.split('|');
+              if (parts[1] === deleted.id) other.descargaEnId = null;
+            }
+          }
           engine.bajantes.splice(idxB, 1);
           if (deleted.tipo === 'bajante') bajNetsToRenumber.add(deleted.net);
           else if (deleted.tipo === 'montante') bajNetsToRenumber.add('montante');
@@ -70,6 +103,16 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
     const deleted = engine.ramales[idxR];
     const deletedId = deleted.id;
     engine.ramales = engine.ramales.filter(r => r.id !== deleted.id && r.padre !== deleted.id);
+    // Clean up bajante references to deleted ramal
+    for (const b of engine.bajantes) {
+      if (b.recibeDeIds) {
+        b.recibeDeIds = b.recibeDeIds.filter(rid => rid !== deletedId);
+      }
+      if (b.descargaEnId) {
+        const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [engine._loadedPlanId, b.descargaEnId];
+        if (parts[parts.length - 1] === deletedId) b.descargaEnId = null;
+      }
+    }
     engine._renumberRamales(deleted.net);
     engine.selId = null;
     engine._emitSelect(null);
@@ -83,7 +126,8 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
     const deleted: PlanoBajante = engine.bajantes[idxB];
     const deletedId = deleted.id;
     const lvl = engine.nivelActual?.label ?? '';
-    if (engine._isGhostSel && deleted.desplazamientos?.[lvl]) {
+    // When isFantasma=true, treat as parent delete (clean ALL levels)
+    if (!deleted.isFantasma && engine._isGhostSel && deleted.desplazamientos?.[lvl]) {
       const lDesvioId = deleted.desplazamientos[lvl].Ldesvio;
       if (lDesvioId) {
         engine.ramales = engine.ramales.filter(r => r.id !== lDesvioId);
@@ -92,6 +136,28 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       delete deleted.desplazamientos[lvl];
       if (deleted.ghostData) delete deleted.ghostData[lvl];
       engine.selId = null; engine._isGhostSel = false; engine._emitSelect(null); engine.render(); engine._markDirty(); return;
+    }
+    // Delete parent bajante: also clean up any Ldesvio ramales and ghost displacements
+    if (deleted.desplazamientos) {
+      for (const lvlKey of Object.keys(deleted.desplazamientos)) {
+        const d = deleted.desplazamientos[lvlKey];
+        if (d.Ldesvio) {
+          engine.ramales = engine.ramales.filter(r => r.id !== d.Ldesvio);
+          engine._renumberRamales(deleted.net);
+        }
+      }
+    }
+    // Clean up references in other bajantes' recibeDeIds and descargaEnId
+    for (const other of engine.bajantes) {
+      if (other.recibeDeIds) {
+        other.recibeDeIds = other.recibeDeIds.filter(rid => rid !== deletedId);
+      }
+      if (other.descargaEnId === deletedId) {
+        other.descargaEnId = null;
+      } else if (other.descargaEnId?.includes('|')) {
+        const parts = other.descargaEnId.split('|');
+        if (parts[1] === deletedId) other.descargaEnId = null;
+      }
     }
     engine.bajantes.splice(idxB, 1); 
     if (deleted.tipo === 'bajante') {

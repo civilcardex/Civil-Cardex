@@ -84,7 +84,7 @@ export function _renumberMontantes(engine: IPlanoEngineCore): void {
   const nets = Array.from(new Set(engine.bajantes.filter(b => b.tipo === 'montante').map(b => b.net || 'af')));
   for (const netId of nets) {
     const netDef = NETS.find(n => n.id === netId);
-    const pfx = netDef?.bmPfx || 'MON';
+    const pfx = netDef?.bmType === 'montante' ? (netDef?.bmPfx || 'MON') : ('M' + (netDef?.lbl || 'MON'));
     const montantes = engine.bajantes.filter(b => b.tipo === 'montante' && (b.net || 'af') === netId);
     montantes.sort((a, b) => {
       const na = parseInt((a.code || a.id || '').replace(pfx, '').replace('MON', ''), 10) || 0;
