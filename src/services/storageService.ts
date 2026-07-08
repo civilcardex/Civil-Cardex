@@ -51,7 +51,7 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
     if (!user) return;
     const { error } = await supabase
       .from('plano_trazos')
-      .upsert({ plano_id: planoId, data, user_id: user.id }, { onConflict: 'plano_id' })
+      .upsert({ plano_id: planoId, data }, { onConflict: 'plano_id' })
       .eq('user_id', user.id);
     if (error) {
       if (import.meta.env.DEV) console.error('storageService saveTrazosToDB:', error);
