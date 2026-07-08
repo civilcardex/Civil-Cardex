@@ -207,6 +207,26 @@ These policies prevent unauthorized access or tampering with drawing data belong
 ### Fixed — drawingAngles.ts:checkRamalAngles
 - **San/ll angle constraint**: Changed from per-segment `deg % 45` check to internal-angle-between-segments check. San/ll only allows `internalAngle ≥ 134°` (straight at 180° or 45° turn at 135°). AF/AC keeps original behavior (multiples of 45° per segment, internal angle ≥ 50°). 90° turns blocked in san/ll.
 
+## Session Summary — 2026-07-06 (react-doctor score 34 — Large inline styles extraction)
+
+### Done
+- **DrawingElementContextMenu.tsx** — Extracted 22+ large inline style objects (8+ properties) to 8 module-scope constants:
+  - `SELECT_SMALL_STYLE` (fontSize:10, 5× reuse), `SELECT_STANDARD_STYLE` (fontSize:11, 8× reuse)
+  - `GRID_4COL_STYLE` (3×), `LABEL_ROW_STYLE` (3×), `BTN_CREATE_BAJANTE`, `BTN_DESPACHO`, `APARATO_BADGE`, `FORM_BASE`
+- **TramoEditor.tsx** — Extracted ~21 large inline styles to module-scope constants:
+  - `SELECT_STANDARD_STYLE`, `SELECT_CENTER_STYLE` (3×), `INPUT_CENTER_STYLE` (2×)
+  - `GRID_GAP_STYLE` (3×), `LABEL_ROW_STYLE` (3×), `MAT_DISPLAY_STYLE`, `MAT_NAME_STYLE`
+- **PlanoConfigurator.tsx** — Extracted ~12 large inline styles (CSS var-based) to 7 constants:
+  - `STATUS_BAR_STYLE`, `SELECT_50_STYLE`, `SELECT_100_STYLE`, `BTN_CLOSE_STYLE` (3×), `INPUT_FLEX_STYLE` (2×), `OK_LABEL_STYLE` (2×), `RADIO_LABEL_STYLE` (2×)
+- Build verified: `tsc --noEmit` zero errors on all three files, `vite build` passes.
+
+### Relevant Files
+- `src/components/pdfViewer/DrawingElementContextMenu.tsx` — 8 module-scope style constants
+- `src/components/pdfViewer/TramoEditor.tsx` — 7 module-scope style constants
+- `src/components/workarea/PlanoConfigurator.tsx` — 7 module-scope style constants
+- `src/components/workarea/PlanosTab.tsx` — 7 module-scope style constants
+- `src/components/workarea/InfoTab.tsx` — 3 module-scope style constants
+
 ## Session Summary — 2026-06-11
 
 ### Done
