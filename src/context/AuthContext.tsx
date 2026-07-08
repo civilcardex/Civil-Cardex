@@ -40,19 +40,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    return data;
-  };
-
-  const signUp = async (email: string, password: string, options?: { data?: Record<string, string> }) => {
-    const { data, error } = await supabase.auth.signUp({ email, password, options });
-    if (error) throw error;
-    return data;
-  };
-
-  const value = useMemo(() => ({ user, loading, signIn, signUp }), [user, loading, signIn, signUp]);
+  const value = useMemo(() => ({
+    user,
+    loading,
+    signIn: async (email: string, password: string) => {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      return data;
+    },
+    signUp: async (email: string, password: string, options?: { data?: Record<string, string> }) => {
+      const { data, error } = await supabase.auth.signUp({ email, password, options });
+      if (error) throw error;
+      return data;
+    },
+  }), [user, loading]);
 
   return (
     <AuthContext.Provider value={value}>

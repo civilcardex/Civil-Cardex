@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
@@ -19,7 +19,7 @@ function ProfilePage() {
   const [editField, setEditField] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [proyectosOpen, setProyectosOpen] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const userIdRef = useRef<string | null>(null);
 
   const proyectosActivos = [
     { id: 1, codigo: 'CR-97', nombre: 'Casa de Roca No. 97 - Redes Sanitarias y Lluvias', progreso: 100, estado: 'completo' },
@@ -41,7 +41,7 @@ function ProfilePage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      setUserId(user.id)
+      userIdRef.current = user.id
 
       const { data, error } = await supabase
         .from('perfiles')
@@ -87,7 +87,7 @@ function ProfilePage() {
       const { error } = await supabase
         .from('perfiles')
         .update({ [field]: editValue })
-        .eq('id', userId)
+        .eq('id', userIdRef.current)
       if (error) { if (import.meta.env.DEV) console.error('Error guardando:', error.message); return }
       setPerfil(prev => ({ ...prev, [field]: editValue }))
     } catch (err) {
@@ -175,12 +175,12 @@ function ProfilePage() {
               className="flex-1 h-8 px-2 border text-sm bg-surface-container-low text-on-surface focus:outline-none"
               style={{ borderColor: 'var(--primary)', fontFamily: 'var(--mono)' }}
             />
-            <button
+            <button type="button"
               onClick={() => handleEditSave(key)}
               disabled={saving === key}
               className="h-8 w-8 flex items-center justify-center bg-primary text-on-primary text-sm"
             >✓</button>
-            <button
+            <button type="button"
               onClick={handleEditCancel}
               className="h-8 w-8 flex items-center justify-center border border-outline-variant text-on-surface-variant text-sm hover:text-error"
             >✕</button>
@@ -207,7 +207,7 @@ function ProfilePage() {
       </section>
 
       <section aria-labelledby="proyectos-heading" className="border border-outline-variant bg-surface-container">
-        <button
+        <button type="button"
           onClick={() => setProyectosOpen(prev => !prev)}
           aria-expanded={proyectosOpen}
           className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-surface-container-low transition-colors"
@@ -229,7 +229,7 @@ function ProfilePage() {
         {proyectosOpen && (
           <div className="border-t border-outline-variant">
             <div className="px-6 py-3 border-b border-outline-variant bg-surface-container-low">
-              <button
+              <button type="button"
                 className="flex items-center gap-2 text-primary hover:text-primary-fixed text-[13px] font-medium transition-colors"
                 onClick={() => navigate('/civilflowareatrabajo')}
               >
@@ -272,7 +272,7 @@ function ProfilePage() {
       </section>
 
       <div className="border border-outline-variant bg-surface-container p-6 flex justify-end">
-        <button
+        <button type="button"
           onClick={async () => {
             if (!supabase) return
             await supabase.auth.signOut()
