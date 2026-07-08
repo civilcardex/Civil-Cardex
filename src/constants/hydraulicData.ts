@@ -52,14 +52,3 @@ export const DIAMETROS_AC: DiametroComercialAF[] = AGUA_CALIENTE[0].rows.map(r =
   };
 });
 
-export const CONTADORES: { diaPulg: number; qn_lps: number }[] = [
-  { diaPulg: 0.5, qn_lps: 0.84 },
-  { diaPulg: 0.5, qn_lps: 0.92 },
-  { diaPulg: 0.75, qn_lps: 1.40 },
-  { diaPulg: 0.75, qn_lps: 1.58 },
-  { diaPulg: 1.0, qn_lps: 1.96 },
-  { diaPulg: 1.0, qn_lps: 2.70 },
-  { diaPulg: 1.0, qn_lps: 2.80 },
-  { diaPulg: 1.5, qn_lps: 5.60 },
-  { diaPulg: 2.0, qn_lps: 8.40 },
-];
