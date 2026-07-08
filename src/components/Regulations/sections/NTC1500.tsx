@@ -142,7 +142,7 @@ export function NTC1500() {
           ))}
         </tbody>
       </table>
-      <div className="ib warn" style={{ fontSize: 11, padding: "8px 12px", marginTop: 6 }}>
+      <div className="ib warn" style={{ fontSize: 12, padding: "8px 12px", marginTop: 6 }}>
         <span>⚠</span>
         <span>NTC 1500 permite S = 1% para D ≥ 2" con justificación hidráulica.</span>
       </div>
