@@ -4,6 +4,7 @@ import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import { TRAZOS_PREFIX } from "../../constants/storage-keys";
 import { loadFromStorage } from "../../services/storageService";
 import { loadPDF } from "../../services/idbStorage";
+import { loadPlanCrop } from "../../utils/planCrop";
 const IsometriaTab_S1: React.CSSProperties = { padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' };
 const IsometriaTab_S2: React.CSSProperties = { padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' };
 const IsometriaTab_S3: React.CSSProperties = { padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' };
@@ -465,6 +466,7 @@ function IsometriaTabBase({ state }: any) {
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = '#14161a';
     ctx.fillRect(0, 0, W, H);
+    const planCrop = loadPlanCrop();
 
     const cx = W / 2, cy = H / 2;
 
@@ -483,26 +485,34 @@ function IsometriaTabBase({ state }: any) {
         const scale = 1.5;
         const pageW = imgW / scale;
         const pageH = imgH / scale;
-        const tl_iso = getIsoCoords(0, 0, plan.nivel);
-        const tr_iso = getIsoCoords(pageW, 0, plan.nivel);
-        const bl_iso = getIsoCoords(0, pageH, plan.nivel);
-        const label_iso = getIsoCoords(pageW / 2, -30, plan.nivel);
+        // Crop is normalized (0-1) against the FULL page — only the visible sub-rect of the
+        // source image is drawn, warped to its correct real-world position within the same
+        // (uncropped) coordinate frame used by all network elements.
+        const crop = planCrop || { x: 0, y: 0, w: 1, h: 1 };
+        const cx0 = crop.x * pageW, cy0 = crop.y * pageH;
+        const cx1 = (crop.x + crop.w) * pageW, cy1 = (crop.y + crop.h) * pageH;
+        const tl_iso = getIsoCoords(cx0, cy0, plan.nivel);
+        const tr_iso = getIsoCoords(cx1, cy0, plan.nivel);
+        const bl_iso = getIsoCoords(cx0, cy1, plan.nivel);
+        const label_iso = getIsoCoords((cx0 + cx1) / 2, cy0 - 30, plan.nivel);
 
         const tl = project(tl_iso.x, tl_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
         const tr = project(tr_iso.x, tr_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
         const bl = project(bl_iso.x, bl_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const ax = (tr.sx - tl.sx) / imgW * dpr;
-        const ay = (tr.sy - tl.sy) / imgW * dpr;
-        const bx = (bl.sx - tl.sx) / imgH * dpr;
-        const by = (bl.sy - tl.sy) / imgH * dpr;
+        const srcX = crop.x * imgW, srcY = crop.y * imgH;
+        const srcW = crop.w * imgW, srcH = crop.h * imgH;
+        const ax = (tr.sx - tl.sx) / srcW * dpr;
+        const ay = (tr.sy - tl.sy) / srcW * dpr;
+        const bx = (bl.sx - tl.sx) / srcH * dpr;
+        const by = (bl.sy - tl.sy) / srcH * dpr;
         ctx.save();
         ctx.globalAlpha = 0.35;
         ctx.setTransform(ax, ay, bx, by, tl.sx * dpr, tl.sy * dpr);
-        ctx.drawImage(img, 0, 0, imgW, imgH);
+        ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
         ctx.globalAlpha = 0.6;
         ctx.strokeStyle = '#5a6a6b';
         ctx.lineWidth = 1 / (zoom || 1);
-        ctx.strokeRect(0.5, 0.5, imgW - 1, imgH - 1);
+        ctx.strokeRect(0.5, 0.5, srcW - 1, srcH - 1);
         ctx.restore();
         const midPt = project(label_iso.x, label_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
         ctx.save();

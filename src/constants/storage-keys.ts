@@ -7,6 +7,7 @@ export const SAN_SYNC_KEY = 'dibujo_sanitario_v1';
 export const APS_STORAGE_KEY = 'aps_v5';
 
 export const PLANS_META_KEY = 'plans_meta';
+export const PLAN_CROP_KEY = 'plan_crop_v1';
 
 export const HYDRO_FAMILIES = new Set(['af', 'ac']);
 export const SAN_FAMILIES = new Set(['san', 'll', 'vent']);
