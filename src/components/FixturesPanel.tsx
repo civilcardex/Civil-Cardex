@@ -15,7 +15,6 @@ import { TRAZOS_PREFIX, GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_K
 const FixturesPanel_S1: React.CSSProperties = { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px 8px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', };
 const FixturesPanel_S2: React.CSSProperties = { fontFamily: "'Geist',monospace", fontSize: 12, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 const FixturesPanel_S3: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--txt2)', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, padding: '0 2px', };
-const FixturesPanel_S4: React.CSSProperties = { background: 'transparent', border: 'none', color: '#ffb4ab', fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer', textTransform: 'uppercase', letterSpacing: 1, padding: 0, };
 
 
 const UNIDAD = {
@@ -254,20 +253,6 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
     });
   };
 
-  const reset = () => {
-    if (!storageKey) return;
-    setCounts(prev => {
-      const next = { ...prev };
-      delete next[storageKey];
-      return next;
-    });
-    setHidroData(prev => {
-      const next = { ...prev };
-      delete next[storageKey];
-      return next;
-    });
-  };
-
   const incAcc = (accId: string) => {
     if (!storageKey) return;
     setHidroData(prev => {
@@ -377,9 +362,6 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
           {targetId ? (
             <div style={FixturesPanel_S3}>
               <span>Asignado a <span style={{ color: accent, fontWeight: 700 }}>{targetLbl}</span></span>
-              {Object.keys(currentMap).some(k => currentMap[k] > 0) && (
-                <button type="button" onClick={reset} style={FixturesPanel_S4}>↺ Restablecer</button>
-              )}
             </div>
           ) : (
             <div style={{
