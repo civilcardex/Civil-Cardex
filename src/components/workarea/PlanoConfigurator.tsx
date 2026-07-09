@@ -300,8 +300,11 @@ function PlanoConfiguratorBase({
     }
 
     if (calStart) {
-      ctx.fillStyle = modoCalX ? '#4D8FF7' : '#0ECC7A';
-      ctx.beginPath(); ctx.arc(calStart.x_px, calStart.y_px, 2.5, 0, Math.PI * 2); ctx.fill();
+      const csColor = modoCalX ? '#4D8FF7' : '#0ECC7A';
+      ctx.strokeStyle = csColor; ctx.lineWidth = 1.5;
+      const cs = 5;
+      ctx.beginPath(); ctx.moveTo(calStart.x_px - cs, calStart.y_px); ctx.lineTo(calStart.x_px + cs, calStart.y_px); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(calStart.x_px, calStart.y_px - cs); ctx.lineTo(calStart.x_px, calStart.y_px + cs); ctx.stroke();
     }
 
     if (calPreview && calStart) {
@@ -350,8 +353,10 @@ function PlanoConfiguratorBase({
         ctx.setLineDash([2, 3]);
         ctx.beginPath(); ctx.moveTo(calPreview.x, calPreview.y - 10); ctx.lineTo(calPreview.x, calPreview.y + 10); ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillStyle = color;
-        ctx.beginPath(); ctx.arc(calPreview.x, calPreview.y, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+        const ps = 5;
+        ctx.beginPath(); ctx.moveTo(calPreview.x - ps, calPreview.y); ctx.lineTo(calPreview.x + ps, calPreview.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(calPreview.x, calPreview.y - ps); ctx.lineTo(calPreview.x, calPreview.y + ps); ctx.stroke();
       }
     }
 
@@ -363,8 +368,10 @@ function PlanoConfiguratorBase({
       ctx.beginPath(); ctx.moveTo(0, cursorPos.y); ctx.lineTo(pageWRef.current, cursorPos.y); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(cursorPos.x, 0); ctx.lineTo(cursorPos.x, pageHRef.current); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(0,220,229,0.6)';
-      ctx.beginPath(); ctx.arc(cursorPos.x, cursorPos.y, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,220,229,0.9)'; ctx.lineWidth = 1.5;
+      const xs = 6;
+      ctx.beginPath(); ctx.moveTo(cursorPos.x - xs, cursorPos.y); ctx.lineTo(cursorPos.x + xs, cursorPos.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cursorPos.x, cursorPos.y - xs); ctx.lineTo(cursorPos.x, cursorPos.y + xs); ctx.stroke();
       ctx.restore();
     }
 
