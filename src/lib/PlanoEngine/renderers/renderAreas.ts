@@ -73,7 +73,7 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
       const alen = Math.hypot(adx, ady);
       if (alen > 2) {
         const unx = adx / alen, uny = ady / alen;
-        const arrowR = 14 * engine.zoom;
+        const arrowR = 10 * engine.zoom;
         const cx = firstC.x - unx * arrowR * 0.3;
         const cy = firstC.y - uny * arrowR * 0.3;
         ctx.save();

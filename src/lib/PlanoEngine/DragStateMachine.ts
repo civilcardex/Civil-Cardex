@@ -11,6 +11,7 @@ export function initEngineState(engine: IPlanoEngineCore): void {
   (engine as any).tipoTramo = 'ramal';
   engine.snapMode = true;
   engine.scaleM = 0.5;
+  engine.definedScaleM = 0;
   engine.pageW = 0;
   engine.pageH = 0;
 
@@ -26,6 +27,7 @@ export function initEngineState(engine: IPlanoEngineCore): void {
   (engine as any)._isGhostSel = false;
   (engine as any)._yeeFlashKey = null;
   engine.areaDrag = null;
+  engine.dimDrag = null;
   engine.panning = false;
   (engine as any).panX0 = 0;
   (engine as any).panY0 = 0;

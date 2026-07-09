@@ -5,6 +5,10 @@ export interface ContextMenuHitResult {
   element: unknown;
   isGhostClick: boolean;
   ramalEndpoint?: { idx: number; x: number; y: number } | null;
+  /** Click landed on the ramal's body (not near an existing vertex). segmentIdx/x/y describe
+   *  where a new vertex would need to be inserted (between pts[segmentIdx] and pts[segmentIdx+1])
+   *  if the user assigns a mid-ramal accessory there. */
+  midRamalHit?: { segmentIdx: number; x: number; y: number } | null;
   clientX: number;
   clientY: number;
 }
@@ -72,15 +76,37 @@ export function hitTestRightClick(
   for (const r of engine.ramales) {
     let hitOnRamal = false;
     let ramalEndpoint: { idx: number; x: number; y: number } | null = null;
+    let midRamalHit: { segmentIdx: number; x: number; y: number } | null = null;
 
     if (r.pts) {
+      // Check existing mid-ramal accessory vertices first (12px radius). The segment check below
+      // only reports a midRamalHit for 0.05 < t < 0.95 (to avoid colliding with endpoint hits),
+      // which means a click landing right on an existing accMed vertex would otherwise never be
+      // detected at all — this made editing/removing an existing mid-ramal accessory impossible.
+      if (r.accMed) {
+        for (const key of Object.keys(r.accMed)) {
+          const m = key.match(/^accMed(\d+)$/);
+          if (!m) continue;
+          const idx = parseInt(m[1], 10);
+          if (idx <= 0 || idx >= r.pts.length - 1) continue;
+          const ep = engine.toCvs(r.pts[idx][0], r.pts[idx][1]);
+          if (Math.hypot(x - ep.x, y - ep.y) <= 12) {
+            hitOnRamal = true;
+            midRamalHit = { segmentIdx: idx - 1, x: r.pts[idx][0], y: r.pts[idx][1] };
+            break;
+          }
+        }
+      }
+
       // Check endpoints first (12px radius)
-      for (const epIdx of [0, r.pts.length - 1]) {
-        const ep = engine.toCvs(r.pts[epIdx][0], r.pts[epIdx][1]);
-        if (Math.hypot(x - ep.x, y - ep.y) <= 12) {
-          hitOnRamal = true;
-          ramalEndpoint = { idx: epIdx, x: r.pts[epIdx][0], y: r.pts[epIdx][1] };
-          break;
+      if (!hitOnRamal) {
+        for (const epIdx of [0, r.pts.length - 1]) {
+          const ep = engine.toCvs(r.pts[epIdx][0], r.pts[epIdx][1]);
+          if (Math.hypot(x - ep.x, y - ep.y) <= 12) {
+            hitOnRamal = true;
+            ramalEndpoint = { idx: epIdx, x: r.pts[epIdx][0], y: r.pts[epIdx][1] };
+            break;
+          }
         }
       }
 
@@ -96,6 +122,13 @@ export function hitTestRightClick(
           const projY = p1.y + t * (p2.y - p1.y);
           if (Math.hypot(x - projX, y - projY) <= 12) {
             hitOnRamal = true;
+            // Only offer a mid-ramal insertion point when it's not effectively on top of
+            // one of the segment's own endpoints (those are covered by ramalEndpoint / an
+            // adjacent segment's own check).
+            if (t > 0.05 && t < 0.95) {
+              const [ax, ay] = r.pts[i], [bx, by] = r.pts[i + 1];
+              midRamalHit = { segmentIdx: i, x: ax + t * (bx - ax), y: ay + t * (by - ay) };
+            }
             break;
           }
         }
@@ -104,7 +137,7 @@ export function hitTestRightClick(
 
     const hitOnLabel = r._labelBox && pointInLabelBox(x, y, r._labelBox);
     if (hitOnRamal || hitOnLabel) {
-      return { element: r, isGhostClick: false, ramalEndpoint, clientX, clientY };
+      return { element: r, isGhostClick: false, ramalEndpoint, midRamalHit, clientX, clientY };
     }
   }
 

@@ -49,6 +49,14 @@ export function checkActiveNet(engine: IPlanoEngineCore, netId: string): boolean
   return activeNets ? activeNets.has(netId) : true;
 }
 
+// Used ONLY for snapping the cursor while drawing (snapToExisting): ventilación is designed to
+// land its risers exactly on a sanitaria point so the existing reventilado marker (renderVentCodos)
+// lines up. It must NOT be used for any rigid "move together" / auto-connect mechanism — those
+// stay strictly same-net so unrelated networks never get welded together just by proximity.
+export function netsSnapLinked(a: string, b: string): boolean {
+  return a === b || (a === 'vent' && b === 'san') || (a === 'san' && b === 'vent');
+}
+
 export function isBajante(el: PlanoElement | null): el is PlanoBajante {
   return el != null && '_circ' in el;
 }
@@ -91,6 +99,7 @@ export interface PlanoRamal {
   _net?: string;
   diamPulg?: number;
   bilateralCrossings?: number[][];
+  accMed?: Record<string, string>;
 }
 
 export interface PlanoBajante {
@@ -237,6 +246,7 @@ export interface IPlanoEngineCore {
   tool: string;
   tipoTramo: string;
   scaleM: number;
+  definedScaleM: number;
   canv: HTMLCanvasElement;
   dpr: number;
   pageW: number;
@@ -266,9 +276,10 @@ export interface IPlanoEngineCore {
   lblDrag: { id: string; offX: number; offY: number } | null;
   txtDrag: { id: string; startX: number; startY: number; origX: number; origY: number } | null;
   bajDrag: { id: string; offX: number; offY: number } | null;
-  ptDrag: { id: string; ptIdx: number; slideConstraint?: { otherId: string; segmentIdx: number } } | null;
+  ptDrag: { id: string; ptIdx: number; slideConstraint?: { otherId: string; segmentIdx: number }; accMedSlide?: { ax: number; ay: number; bx: number; by: number } } | null;
   areaDrag: { id: string; startX: number; startY: number } | null;
-  ramalDrag: { id: string; startX: number; startY: number; origPts: [number, number][]; origLabelX?: number; origLabelY?: number; connBaj?: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[] } | null;
+  dimDrag: { id: string; startX: number; startY: number } | null;
+  ramalDrag: { id: string; startX: number; startY: number; origPts: [number, number][]; origLabelX?: number; origLabelY?: number; connBaj?: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[]; connRamales?: { id: string; origPts: [number, number][] }[] } | null;
   multiSel: string[];
   multiDrag: { startX: number; startY: number; origData: MultiDragOrigData } | null;
   marqueeRect: { x1: number; y1: number; x2: number; y2: number } | null;
@@ -285,6 +296,7 @@ export interface IPlanoEngineCore {
   toPlane(cx: number, cy: number): { x: number; y: number };
   mm2cvs(mm: number): number;
   pxToM(px: number): number;
+  realMmToCanvasPx(realRadiusMm: number): number;
   snapAngle(x0: number, y0: number, x1: number, y1: number): { x: number; y: number };
   snapToExisting(x: number, y: number): { x: number; y: number } | null;
   snapPreviewToPadre(x: number, y: number): { x: number; y: number } | null;

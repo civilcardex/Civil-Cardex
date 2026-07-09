@@ -3,6 +3,7 @@ import type {
   PlanoBajante,
   PlanoArea,
   PlanoTextAnnotation,
+  PlanoDimension,
   PlanoElement,
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
@@ -83,6 +84,15 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMul
   if (foundBaj) {
     if (!checkAndSwitchNet(foundBaj)) return;
     return applySelection(foundBaj.id, foundBaj, foundBajIsGhost);
+  }
+
+  let foundDim: PlanoDimension | null = null, minDimD = 20;
+  for (const d of engine.dims) {
+    const dist = distanceToRamal(cx, cy, [[d.x1, d.y1], [d.x2, d.y2]], (x, y) => engine.toCvs(x, y), 2);
+    if (dist < minDimD) { minDimD = dist; foundDim = d as PlanoDimension; }
+  }
+  if (foundDim) {
+    return applySelection(foundDim.id, foundDim);
   }
 
   let found: PlanoRamal | null = null, minD = 20;

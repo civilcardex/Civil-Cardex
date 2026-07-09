@@ -3,6 +3,7 @@ import { NETS } from './PlanoState';
 export interface PlanoWorkData {
   v: number;
   scaleM: number;
+  definedScaleM: number;
   activeNet: string;
   zoom: number;
   offX: number;
@@ -18,6 +19,7 @@ export interface PlanoWorkData {
 
 export function serializeWork(engine: {
   scaleM: number;
+  definedScaleM: number;
   activeNet: string;
   zoom: number;
   offX: number;
@@ -30,7 +32,7 @@ export function serializeWork(engine: {
   nptLevels: unknown[];
 }): PlanoWorkData {
   return {
-    v: 6, scaleM: engine.scaleM, activeNet: engine.activeNet,
+    v: 6, scaleM: engine.scaleM, definedScaleM: engine.definedScaleM, activeNet: engine.activeNet,
     zoom: engine.zoom, offX: engine.offX, offY: engine.offY,
     nets: NETS.map(n => ({ id: n.id, col: n.col })),
     ramales: engine.ramales, dims: engine.dims, textAnnots: engine.textAnnots,
@@ -42,6 +44,7 @@ export function serializeWork(engine: {
 export function applyWorkData(
   engine: {
     scaleM: number;
+    definedScaleM: number;
     activeNet: string;
     ramales: unknown[];
     dims: unknown[];
@@ -60,6 +63,7 @@ export function applyWorkData(
   d: PlanoWorkData
 ) {
   engine.scaleM = d.scaleM || 0.5;
+  engine.definedScaleM = d.definedScaleM || 0;
   engine.activeNet = d.activeNet || 'af';
   engine.zoom = d.zoom ?? 1;
   engine.offX = d.offX ?? 0;

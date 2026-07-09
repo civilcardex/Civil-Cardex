@@ -25,7 +25,7 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
 
     // Yellow selection arrow (same style as ramales/bajantes)
     if (sel) {
-      const arrowR = 10 * engine.zoom;
+      const arrowR = 7 * engine.zoom;
       const ox = boxW + 16 * engine.zoom;
       ctx.fillStyle = '#FFEB3B';
       ctx.strokeStyle = '#000';

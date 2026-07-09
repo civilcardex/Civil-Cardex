@@ -290,6 +290,17 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
       let countSifonRamal = 0;
       if (r.accesorioInicio === 'sifon') countSifonRamal++;
       if (r.accesorioFin === 'sifon') countSifonRamal++;
+
+      // Count explicit mid-ramal accessories (accMed*, assigned via right-click on the ramal body)
+      if (r.accMed) {
+        for (const val of Object.values(r.accMed)) {
+          if (val === 'sifon') countSifonRamal++;
+          else if (val === 'codoReventilado') countVent++;
+          else if (val === 'codo90rmSube') countSube++;
+          else if (val === 'codo90rmBaja') countBaja++;
+        }
+      }
+
       if (acc['sifon'] !== (countSifonRamal || undefined)) {
         if (countSifonRamal > 0) acc['sifon'] = countSifonRamal; else delete acc['sifon'];
         changed = true;

@@ -6,8 +6,419 @@ import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { drawRamalPath } from './drawRamalPath';
 import { renderJunctions } from './renderJunctions';
 import { renderVentCodos } from './renderVentCodos';
-import { APARATOS_DEF } from '../../../constants';
 
+// Shared by both extreme (accesorioInicio/Fin) and mid-ramal (accMed*) accessory rendering.
+// `outX,outY` is the "pointing away from the pipe" direction — for an extreme it's away from
+// the ramal's own body; for a mid-ramal vertex it's the perpendicular normal (px,py) since
+// there's no single "outward" side there. Caller is responsible for ctx.save()/restore().
+function drawExtremeAccessorySymbol(
+  ctx: CanvasRenderingContext2D,
+  engine: IPlanoEngineCore,
+  accType: string,
+  c: { x: number; y: number },
+  dx: number, dy: number, px: number, py: number,
+  outX: number, outY: number,
+  rad: number
+): void {
+  if (accType === 'sifon') {
+    const perX = -outY;
+    const perY = outX;
+
+    const L1 = rad * 1.6;
+    const tickL = rad * 0.45;
+    const H1 = rad * 0.4;
+    const R = rad * 0.6;
+    const H2 = rad * 1.0;
+    const capW = rad * 0.35;
+
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // 1. Long segment: from c to pt_corner1
+    const pt_corner1X = c.x + outX * L1;
+    const pt_corner1Y = c.y + outY * L1;
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(pt_corner1X, pt_corner1Y);
+    ctx.stroke();
+
+    // 2. Tick line crossing the long segment
+    const pt_tickX = c.x + outX * (rad * 0.9);
+    const pt_tickY = c.y + outY * (rad * 0.9);
+    ctx.beginPath();
+    ctx.moveTo(pt_tickX + perX * tickL, pt_tickY + perY * tickL);
+    ctx.lineTo(pt_tickX - perX * tickL, pt_tickY - perY * tickL);
+    ctx.stroke();
+
+    // 3. Turn down: from pt_corner1 to pt_corner2
+    const pt_corner2X = pt_corner1X + perX * H1;
+    const pt_corner2Y = pt_corner1Y + perY * H1;
+    ctx.beginPath();
+    ctx.moveTo(pt_corner1X, pt_corner1Y);
+    ctx.lineTo(pt_corner2X, pt_corner2Y);
+    ctx.stroke();
+
+    // 4. Semi-circular U-bend centered at cArc
+    const cArcX = pt_corner2X + outX * R;
+    const cArcY = pt_corner2Y + outY * R;
+    ctx.beginPath();
+    for (let step = 0; step <= 16; step++) {
+      const angleVal = Math.PI + (step / 16) * Math.PI;
+      const cosA = Math.cos(angleVal);
+      const sinA = Math.sin(angleVal);
+      const px_arc = cArcX + outX * R * cosA - perX * R * sinA;
+      const py_arc = cArcY + outY * R * cosA - perY * R * sinA;
+      if (step === 0) ctx.moveTo(px_arc, py_arc);
+      else ctx.lineTo(px_arc, py_arc);
+    }
+    ctx.stroke();
+
+    // 5. Riser going up from end of arc
+    const pt_end_arcX = pt_corner2X + outX * (2 * R);
+    const pt_end_arcY = pt_corner2Y + outY * (2 * R);
+    const pt_riser_topX = pt_end_arcX - perX * H2;
+    const pt_riser_topY = pt_end_arcY - perY * H2;
+    ctx.beginPath();
+    ctx.moveTo(pt_end_arcX, pt_end_arcY);
+    ctx.lineTo(pt_riser_topX, pt_riser_topY);
+    ctx.stroke();
+
+    // 6. Cap line at the top of the riser
+    ctx.beginPath();
+    ctx.moveTo(pt_riser_topX + outX * capW, pt_riser_topY + outY * capW);
+    ctx.lineTo(pt_riser_topX - outX * capW, pt_riser_topY - outY * capW);
+    ctx.stroke();
+  } else if (accType === 'codoSube') {
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, rad * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (accType === 'codoBaja') {
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    const offset = rad * Math.SQRT1_2;
+    ctx.moveTo(c.x - offset, c.y - offset);
+    ctx.lineTo(c.x + offset, c.y + offset);
+    ctx.moveTo(c.x + offset, c.y - offset);
+    ctx.lineTo(c.x - offset, c.y + offset);
+    ctx.stroke();
+  } else if (accType === 'codo90rmSube') {
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, rad * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (accType === 'codo90rmBaja') {
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    const aS = rad * 0.7;
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = rad * 0.15;
+    ctx.lineCap = 'butt';
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y - aS * 0.9);
+    ctx.lineTo(c.x, c.y + aS * 0.5);
+    ctx.stroke();
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y + aS * 0.9);
+    ctx.lineTo(c.x - aS * 0.4, c.y + aS * 0.3);
+    ctx.lineTo(c.x + aS * 0.4, c.y + aS * 0.3);
+    ctx.closePath();
+    ctx.fill();
+  } else if (accType === 'codoReventilado') {
+    // Proportioned off `rad` (real-world accessory size) rather than a fixed paper-mm constant,
+    // so this scales down together with the wall-fitting fix like every other accessory symbol.
+    const rf = rad / 1.6;
+    const rRad = 1.2 * rf;
+    const vLen = 1.6 * rf;
+    const offset = rRad + 0.5 * rf;
+    const cx1 = c.x - dx * offset, cy1 = c.y - dy * offset;
+    const cx2 = c.x + dx * offset, cy2 = c.y + dy * offset;
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3.5 * engine.zoom;
+    ctx.beginPath();
+    ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
+    ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx2 - px * vLen, cy2 - py * vLen);
+    ctx.lineTo(cx2 + px * vLen, cy2 + py * vLen);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.beginPath();
+    ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
+    ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx2 - px * vLen, cy2 - py * vLen);
+    ctx.lineTo(cx2 + px * vLen, cy2 + py * vLen);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, rRad + 0.2 * rf, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, rRad, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 0.35 * rf, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (accType === 'valvCompuerta') {
+    const triH = rad * 0.9;
+    const triW = rad * 0.7;
+    const stem = rad * 1.5;
+    const capW = rad * 0.7;
+
+    ctx.fillStyle = '#000000';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Filled triangle pointing perpendicular to ramal (along px,py)
+    ctx.beginPath();
+    ctx.moveTo(c.x + px * triH, c.y + py * triH);
+    ctx.lineTo(c.x + dx * triW, c.y + dy * triW);
+    ctx.lineTo(c.x - dx * triW, c.y - dy * triW);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Stem from center perpendicular to ramal
+    const stemEndX = c.x + px * stem;
+    const stemEndY = c.y + py * stem;
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(stemEndX, stemEndY);
+    ctx.stroke();
+
+    // T-bar cap at end of stem
+    ctx.beginPath();
+    ctx.moveTo(stemEndX - dx * capW, stemEndY - dy * capW);
+    ctx.lineTo(stemEndX + dx * capW, stemEndY + dy * capW);
+    ctx.stroke();
+  } else if (accType === 'valvGlobo') {
+    const circR = rad * 0.55;
+    const stem = rad * 1.5;
+    const capW = rad * 0.7;
+
+    ctx.fillStyle = '#000000';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // Filled circle centered on endpoint
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, circR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Stem from center perpendicular to ramal
+    const stemEndX = c.x + px * stem;
+    const stemEndY = c.y + py * stem;
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(stemEndX, stemEndY);
+    ctx.stroke();
+
+    // T-bar cap at end of stem
+    ctx.beginPath();
+    ctx.moveTo(stemEndX - dx * capW, stemEndY - dy * capW);
+    ctx.lineTo(stemEndX + dx * capW, stemEndY + dy * capW);
+    ctx.stroke();
+  } else if (accType === 'valvCheque') {
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, rad * 0.9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    const tipX = c.x + dx * rad * 0.65;
+    const tipY = c.y + dy * rad * 0.65;
+    const baseX = c.x - dx * rad * 0.4;
+    const baseY = c.y - dy * rad * 0.4;
+    const perpX = px * rad * 0.3;
+    const perpY = py * rad * 0.3;
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(baseX - perpX, baseY - perpY);
+    ctx.lineTo(baseX + perpX, baseY + perpY);
+    ctx.closePath();
+    ctx.fill();
+  } else if (accType === 'valvAngulo') {
+    const perX = -outY;
+    const perY = outX;
+
+    const vRad = rad * 1.35;
+    const capW = vRad * 0.4;
+    const L1 = vRad * 0.55;
+    const triH = vRad * 0.65;
+    const triW = vRad * 0.35;
+    const L2 = vRad * 0.65;
+    const L3 = vRad * 0.8;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.0 * engine.zoom;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // 1. T-bar cap at the connection point c
+    ctx.beginPath();
+    ctx.moveTo(c.x + perX * capW, c.y + perY * capW);
+    ctx.lineTo(c.x - perX * capW, c.y - perY * capW);
+    ctx.stroke();
+
+    // 2. Vertical line from c to junction P
+    const pX = c.x + outX * L1;
+    const pY = c.y + outY * L1;
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(pX, pY);
+    ctx.stroke();
+
+    // 3. Vertical triangle (pointing down along out)
+    const v1X = pX + outX * triH + perX * triW;
+    const v1Y = pY + outY * triH + perY * triW;
+    const v2X = pX + outX * triH - perX * triW;
+    const v2Y = pY + outY * triH - perY * triW;
+
+    ctx.beginPath();
+    ctx.moveTo(pX, pY);
+    ctx.lineTo(v1X, v1Y);
+    ctx.lineTo(v2X, v2Y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 4. Line below the vertical triangle
+    const baseVertX = pX + outX * triH;
+    const baseVertY = pY + outY * triH;
+    ctx.beginPath();
+    ctx.moveTo(baseVertX, baseVertY);
+    ctx.lineTo(baseVertX + outX * L2, baseVertY + outY * L2);
+    ctx.stroke();
+
+    // 5. Horizontal triangle (pointing right along per)
+    const h1X = pX + perX * triH + outX * triW;
+    const h1Y = pY + perY * triH + outY * triW;
+    const h2X = pX + perX * triH - outX * triW;
+    const h2Y = pY + perY * triH - outY * triW;
+
+    ctx.beginPath();
+    ctx.moveTo(pX, pY);
+    ctx.lineTo(h1X, h1Y);
+    ctx.lineTo(h2X, h2Y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // 6. Line extending from the horizontal triangle
+    const baseHorizX = pX + perX * triH;
+    const baseHorizY = pY + perY * triH;
+    ctx.beginPath();
+    ctx.moveTo(baseHorizX, baseHorizY);
+    ctx.lineTo(baseHorizX + perX * L3, baseHorizY + perY * L3);
+    ctx.stroke();
+  } else if (accType === 'llaveTerminal') {
+    const circR = rad * 0.5;
+    const stem = rad * 1.5;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // White circle at the connection point (valve body)
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, circR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Stem from center perpendicular to ramal
+    const stemEndX = c.x + px * stem;
+    const stemEndY = c.y + py * stem;
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(stemEndX, stemEndY);
+    ctx.stroke();
+
+    // "T" terminal mark at the end of the stem
+    ctx.fillStyle = '#000000';
+    ctx.font = `bold ${rad * 0.8}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('T', stemEndX, stemEndY);
+  } else {
+    if (accType.startsWith('tee') || accType === 'te_linea' || accType === 'te_ramal' || accType.startsWith('yee')) {
+      return;
+    }
+    // Fallback text symbol for any other accessory
+    let label = accType.substring(0, 3).toUpperCase();
+    if (accType.startsWith('codo90')) label = 'C90';
+    else if (accType.startsWith('codo45')) label = 'C45';
+    else if (accType === 'codos_90_std' || accType === 'codos_90_rl') label = 'C90';
+    else if (accType === 'valvula_bola') label = 'VB';
+    else if (accType === 'valvPie') label = 'VP';
+    else if (accType === 'reduccion') label = 'RED';
+    else if (accType === 'ampliacion') label = 'AMP';
+
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1.2 * engine.zoom;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#000000';
+    // Sized off the circle's own radius (like every other accessory glyph) — a fixed zoom-based
+    // minimum here would overflow the circle once it shrinks to a real-world-accurate size.
+    ctx.font = `bold ${rad * 0.6}px 'Geist', monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, c.x, c.y);
+  }
+}
 
 export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const isTributarioMode = engine.tipoTramo === 'tributario' && engine.tool === 'line';
@@ -214,7 +625,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         ctx.moveTo(-halfSize * dir, 0);
         ctx.lineTo(halfSize * dir, 0);
         ctx.stroke();
-        const aSize = Math.min(8 * engine.zoom, halfSize * 0.8);
+        const aSize = Math.min(6 * engine.zoom, halfSize * 0.6);
         ctx.fillStyle = col;
         ctx.beginPath();
         ctx.moveTo(halfSize * dir, 0);
@@ -308,7 +719,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         
         if (alen > 2) {
           const unx = adx / alen, uny = ady / alen;
-          const arrowR = 14 * engine.zoom;
+          const arrowR = 10 * engine.zoom;
           const cx = firstC.x;
           const cy = firstC.y;
           ctx.save();
@@ -389,7 +800,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         const alen = Math.hypot(adx, ady);
         if (alen > 2) {
           const unx = adx / alen, uny = ady / alen;
-          const arrowR = 14 * engine.zoom;
+          const arrowR = 10 * engine.zoom;
           const cx = firstC.x;
           const cy = firstC.y;
           ctx.save();
@@ -414,10 +825,10 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       [0, r.pts.length - 1].forEach((idx) => {
         const accType = idx === 0 ? r.accesorioInicio : r.accesorioFin;
         if (!accType) return;
-        
+
         const pt = r.pts[idx];
         const c = engine.toCvs(pt[0], pt[1]);
-        
+
         let dx = 0, dy = 0;
         if (idx === 0) {
           dx = r.pts[1][0] - r.pts[0][0];
@@ -435,415 +846,59 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           dy = 0;
         }
         const px = -dy, py = dx;
-        
-        const rad = engine.mm2cvs(1.6 * (engine.labelScaleM || 1));
-        
+        const outX = idx === 0 ? -dx : dx;
+        const outY = idx === 0 ? -dy : dy;
+
+        const rad = engine.realMmToCanvasPx(23);
+
         ctx.save();
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-        
-        if (accType === 'sifon') {
-          const outX = idx === 0 ? -dx : dx;
-          const outY = idx === 0 ? -dy : dy;
-          const perX = -outY;
-          const perY = outX;
-
-          const L1 = rad * 1.6;
-          const tickL = rad * 0.45;
-          const H1 = rad * 0.4;
-          const R = rad * 0.6;
-          const H2 = rad * 1.0;
-          const capW = rad * 0.35;
-
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 1.5 * engine.zoom;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-
-          // 1. Long segment: from c to pt_corner1
-          const pt_corner1X = c.x + outX * L1;
-          const pt_corner1Y = c.y + outY * L1;
-          ctx.beginPath();
-          ctx.moveTo(c.x, c.y);
-          ctx.lineTo(pt_corner1X, pt_corner1Y);
-          ctx.stroke();
-
-          // 2. Tick line crossing the long segment
-          const pt_tickX = c.x + outX * (rad * 0.9);
-          const pt_tickY = c.y + outY * (rad * 0.9);
-          ctx.beginPath();
-          ctx.moveTo(pt_tickX + perX * tickL, pt_tickY + perY * tickL);
-          ctx.lineTo(pt_tickX - perX * tickL, pt_tickY - perY * tickL);
-          ctx.stroke();
-
-          // 3. Turn down: from pt_corner1 to pt_corner2
-          const pt_corner2X = pt_corner1X + perX * H1;
-          const pt_corner2Y = pt_corner1Y + perY * H1;
-          ctx.beginPath();
-          ctx.moveTo(pt_corner1X, pt_corner1Y);
-          ctx.lineTo(pt_corner2X, pt_corner2Y);
-          ctx.stroke();
-
-          // 4. Semi-circular U-bend centered at cArc
-          const cArcX = pt_corner2X + outX * R;
-          const cArcY = pt_corner2Y + outY * R;
-          ctx.beginPath();
-          for (let step = 0; step <= 16; step++) {
-            const angleVal = Math.PI + (step / 16) * Math.PI;
-            const cosA = Math.cos(angleVal);
-            const sinA = Math.sin(angleVal);
-            const px_arc = cArcX + outX * R * cosA - perX * R * sinA;
-            const py_arc = cArcY + outY * R * cosA - perY * R * sinA;
-            if (step === 0) ctx.moveTo(px_arc, py_arc);
-            else ctx.lineTo(px_arc, py_arc);
-          }
-          ctx.stroke();
-
-          // 5. Riser going up from end of arc
-          const pt_end_arcX = pt_corner2X + outX * (2 * R);
-          const pt_end_arcY = pt_corner2Y + outY * (2 * R);
-          const pt_riser_topX = pt_end_arcX - perX * H2;
-          const pt_riser_topY = pt_end_arcY - perY * H2;
-          ctx.beginPath();
-          ctx.moveTo(pt_end_arcX, pt_end_arcY);
-          ctx.lineTo(pt_riser_topX, pt_riser_topY);
-          ctx.stroke();
-
-          // 6. Cap line at the top of the riser
-          ctx.beginPath();
-          ctx.moveTo(pt_riser_topX + outX * capW, pt_riser_topY + outY * capW);
-          ctx.lineTo(pt_riser_topX - outX * capW, pt_riser_topY - outY * capW);
-          ctx.stroke();
-        } else if (accType === 'codoSube') {
-          ctx.fillStyle = '#ffffff';
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 1.5 * engine.zoom;
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-          
-          ctx.fillStyle = '#000000';
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, rad * 0.3, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (accType === 'codoBaja') {
-          ctx.fillStyle = '#ffffff';
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 1.5 * engine.zoom;
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-          
-          ctx.beginPath();
-          const offset = rad * Math.SQRT1_2;
-          ctx.moveTo(c.x - offset, c.y - offset);
-          ctx.lineTo(c.x + offset, c.y + offset);
-          ctx.moveTo(c.x + offset, c.y - offset);
-          ctx.lineTo(c.x - offset, c.y + offset);
-          ctx.stroke();
-        } else if (accType === 'codo90rmSube') {
-          ctx.fillStyle = '#ffffff';
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 1.5 * engine.zoom;
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-          ctx.fillStyle = '#000000';
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, rad * 0.25, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (accType === 'codo90rmBaja') {
-          ctx.fillStyle = '#ffffff';
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 1.5 * engine.zoom;
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-          const aS = rad * 0.7;
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = rad * 0.15;
-          ctx.lineCap = 'butt';
-          ctx.beginPath();
-          ctx.moveTo(c.x, c.y - aS * 0.9);
-          ctx.lineTo(c.x, c.y + aS * 0.5);
-          ctx.stroke();
-          ctx.fillStyle = '#000000';
-          ctx.beginPath();
-          ctx.moveTo(c.x, c.y + aS * 0.9);
-          ctx.lineTo(c.x - aS * 0.4, c.y + aS * 0.3);
-          ctx.lineTo(c.x + aS * 0.4, c.y + aS * 0.3);
-          ctx.closePath();
-          ctx.fill();
-        } else if (accType === 'codoReventilado') {
-          const rRad = engine.mm2cvs(1.2);
-          const vLen = engine.mm2cvs(1.6);
-          const offset = rRad + engine.mm2cvs(0.5);
-          const cx1 = c.x - dx * offset, cy1 = c.y - dy * offset;
-          const cx2 = c.x + dx * offset, cy2 = c.y + dy * offset;
-          
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 3.5 * engine.zoom;
-          ctx.beginPath();
-          ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
-          ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(cx2 - px * vLen, cy2 - py * vLen);
-          ctx.lineTo(cx2 + px * vLen, cy2 + py * vLen);
-          ctx.stroke();
-          
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 1.5 * engine.zoom;
-          ctx.beginPath();
-          ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
-          ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(cx2 - px * vLen, cy2 - py * vLen);
-          ctx.lineTo(cx2 + px * vLen, cy2 + py * vLen);
-          ctx.stroke();
-
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, rRad + engine.mm2cvs(0.2), 0, Math.PI * 2);
-          ctx.fill();
-
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, rRad, 0, Math.PI * 2);
-          ctx.stroke();
-
-          ctx.fillStyle = '#000000';
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, engine.mm2cvs(0.35), 0, Math.PI * 2);
-          ctx.fill();
-        } else if (accType === 'valvCompuerta') {
-          const triH = rad * 0.9;
-          const triW = rad * 0.7;
-          const stem = rad * 1.5;
-          const capW = rad * 0.7;
-
-          ctx.fillStyle = '#000000';
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 1.5 * engine.zoom;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-
-          // Filled triangle pointing perpendicular to ramal (along px,py)
-          ctx.beginPath();
-          ctx.moveTo(c.x + px * triH, c.y + py * triH);
-          ctx.lineTo(c.x + dx * triW, c.y + dy * triW);
-          ctx.lineTo(c.x - dx * triW, c.y - dy * triW);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-
-          // Stem from center perpendicular to ramal
-          const stemEndX = c.x + px * stem;
-          const stemEndY = c.y + py * stem;
-          ctx.beginPath();
-          ctx.moveTo(c.x, c.y);
-          ctx.lineTo(stemEndX, stemEndY);
-          ctx.stroke();
-
-          // T-bar cap at end of stem
-          ctx.beginPath();
-          ctx.moveTo(stemEndX - dx * capW, stemEndY - dy * capW);
-          ctx.lineTo(stemEndX + dx * capW, stemEndY + dy * capW);
-          ctx.stroke();
-        } else if (accType === 'valvGlobo') {
-          const circR = rad * 0.55;
-          const stem = rad * 1.5;
-          const capW = rad * 0.7;
-
-          ctx.fillStyle = '#000000';
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 1.5 * engine.zoom;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-
-          // Filled circle centered on endpoint
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, circR, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Stem from center perpendicular to ramal
-          const stemEndX = c.x + px * stem;
-          const stemEndY = c.y + py * stem;
-          ctx.beginPath();
-          ctx.moveTo(c.x, c.y);
-          ctx.lineTo(stemEndX, stemEndY);
-          ctx.stroke();
-
-          // T-bar cap at end of stem
-          ctx.beginPath();
-          ctx.moveTo(stemEndX - dx * capW, stemEndY - dy * capW);
-          ctx.lineTo(stemEndX + dx * capW, stemEndY + dy * capW);
-          ctx.stroke();
-        } else if (accType === 'valvCheque') {
-          ctx.fillStyle = '#ffffff';
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 1.5 * engine.zoom;
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, rad * 0.9, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-          ctx.fillStyle = '#000000';
-          ctx.beginPath();
-          const tipX = c.x + dx * rad * 0.65;
-          const tipY = c.y + dy * rad * 0.65;
-          const baseX = c.x - dx * rad * 0.4;
-          const baseY = c.y - dy * rad * 0.4;
-          const perpX = px * rad * 0.3;
-          const perpY = py * rad * 0.3;
-          ctx.moveTo(tipX, tipY);
-          ctx.lineTo(baseX - perpX, baseY - perpY);
-          ctx.lineTo(baseX + perpX, baseY + perpY);
-          ctx.closePath();
-          ctx.fill();
-        } else if (accType === 'valvAngulo') {
-          const outX = idx === 0 ? -dx : dx;
-          const outY = idx === 0 ? -dy : dy;
-          const perX = -outY;
-          const perY = outX;
-
-          const vRad = rad * 1.35;
-          const capW = vRad * 0.4;
-          const L1 = vRad * 0.55;
-          const triH = vRad * 0.65;
-          const triW = vRad * 0.35;
-          const L2 = vRad * 0.65;
-          const L3 = vRad * 0.8;
-
-          ctx.fillStyle = '#ffffff';
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 1.0 * engine.zoom;
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-
-          // 1. T-bar cap at the connection point c
-          ctx.beginPath();
-          ctx.moveTo(c.x + perX * capW, c.y + perY * capW);
-          ctx.lineTo(c.x - perX * capW, c.y - perY * capW);
-          ctx.stroke();
-
-          // 2. Vertical line from c to junction P
-          const pX = c.x + outX * L1;
-          const pY = c.y + outY * L1;
-          ctx.beginPath();
-          ctx.moveTo(c.x, c.y);
-          ctx.lineTo(pX, pY);
-          ctx.stroke();
-
-          // 3. Vertical triangle (pointing down along out)
-          const v1X = pX + outX * triH + perX * triW;
-          const v1Y = pY + outY * triH + perY * triW;
-          const v2X = pX + outX * triH - perX * triW;
-          const v2Y = pY + outY * triH - perY * triW;
-
-          ctx.beginPath();
-          ctx.moveTo(pX, pY);
-          ctx.lineTo(v1X, v1Y);
-          ctx.lineTo(v2X, v2Y);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-
-          // 4. Line below the vertical triangle
-          const baseVertX = pX + outX * triH;
-          const baseVertY = pY + outY * triH;
-          ctx.beginPath();
-          ctx.moveTo(baseVertX, baseVertY);
-          ctx.lineTo(baseVertX + outX * L2, baseVertY + outY * L2);
-          ctx.stroke();
-
-          // 5. Horizontal triangle (pointing right along per)
-          const h1X = pX + perX * triH + outX * triW;
-          const h1Y = pY + perY * triH + outY * triW;
-          const h2X = pX + perX * triH - outX * triW;
-          const h2Y = pY + perY * triH - outY * triW;
-
-          ctx.beginPath();
-          ctx.moveTo(pX, pY);
-          ctx.lineTo(h1X, h1Y);
-          ctx.lineTo(h2X, h2Y);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-
-          // 6. Line extending from the horizontal triangle
-          const baseHorizX = pX + perX * triH;
-          const baseHorizY = pY + perY * triH;
-          ctx.beginPath();
-          ctx.moveTo(baseHorizX, baseHorizY);
-          ctx.lineTo(baseHorizX + perX * L3, baseHorizY + perY * L3);
-          ctx.stroke();
-        } else {
-          if (accType.startsWith('tee') || accType === 'te_linea' || accType === 'te_ramal' || accType.startsWith('yee')) {
-            ctx.restore();
-            return;
-          }
-          // Fallback text symbol for any other accessory
-          let label = accType.substring(0, 3).toUpperCase();
-          if (accType.startsWith('codo90')) label = 'C90';
-          else if (accType.startsWith('codo45')) label = 'C45';
-          else if (accType === 'codos_90_std' || accType === 'codos_90_rl') label = 'C90';
-          else if (accType === 'valvula_bola') label = 'VB';
-          else if (accType === 'valvPie') label = 'VP';
-          else if (accType === 'reduccion') label = 'RED';
-          else if (accType === 'ampliacion') label = 'AMP';
-
-          ctx.fillStyle = '#ffffff';
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 1.2 * engine.zoom;
-          ctx.beginPath();
-          ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-
-          ctx.fillStyle = '#000000';
-          ctx.font = `bold ${Math.max(5, 5 * engine.zoom)}px 'Geist', monospace`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(label, c.x, c.y);
-        }
-        
+        drawExtremeAccessorySymbol(ctx, engine, accType, c, dx, dy, px, py, outX, outY, rad);
         ctx.restore();
       });
 
-
     }
 
-    if (['san', 'af', 'ac', 'gas'].includes(r.net) && r.pts.length >= 2) {
-      [0, r.pts.length - 1].forEach((idx) => {
-        const apId = idx === 0 ? r.aparatoInicio : r.aparatoFin;
-        if (!apId) return;
+  });
 
-        const pt = r.pts[idx];
-        const c = engine.toCvs(pt[0], pt[1]);
+  // Draw mid-ramal accessories (accMed*) — accessories assigned to interior vertices via right-click
+  // on the body of a ramal, instead of an endpoint. Direction is the bisector of the two adjacent
+  // segments (an interior vertex has both an "in" and an "out" segment, unlike an endpoint).
+  engine.ramales.forEach((r) => {
+    if (engine._hiddenNets.has(r.net)) return;
+    if (!r.accMed || !r.pts || r.pts.length < 3) return;
 
-        let dx = 0, dy = 0;
-        if (idx === 0) {
-          dx = r.pts[1][0] - r.pts[0][0];
-          dy = r.pts[1][1] - r.pts[0][1];
-        } else {
-          dx = r.pts[idx][0] - r.pts[idx - 1][0];
-          dy = r.pts[idx][1] - r.pts[idx - 1][1];
-        }
-        const len = Math.hypot(dx, dy);
-        let outX = -1, outY = 0;
-        if (len > 0.01) {
-          outX = (idx === 0 ? -dx : dx) / len;
-          outY = (idx === 0 ? -dy : dy) / len;
-        }
+    for (const key of Object.keys(r.accMed)) {
+      const m = key.match(/^accMed(\d+)$/);
+      if (!m) continue;
+      const idx = parseInt(m[1], 10);
+      if (idx <= 0 || idx >= r.pts.length - 1) continue;
+      const accType = r.accMed[key];
+      if (!accType) continue;
 
-        const hasAcc = !!(idx === 0 ? r.accesorioInicio : r.accesorioFin);
+      const pt = r.pts[idx];
+      const c = engine.toCvs(pt[0], pt[1]);
 
-        drawSingleApplianceSymbol(ctx, engine, apId, c, outX, outY, col, hasAcc);
-      });
+      const dxIn = pt[0] - r.pts[idx - 1][0], dyIn = pt[1] - r.pts[idx - 1][1];
+      const lenIn = Math.hypot(dxIn, dyIn);
+      const dxOut = r.pts[idx + 1][0] - pt[0], dyOut = r.pts[idx + 1][1] - pt[1];
+      const lenOut = Math.hypot(dxOut, dyOut);
+      const uxIn = lenIn > 0.01 ? dxIn / lenIn : 1, uyIn = lenIn > 0.01 ? dyIn / lenIn : 0;
+      const uxOut = lenOut > 0.01 ? dxOut / lenOut : uxIn, uyOut = lenOut > 0.01 ? dyOut / lenOut : uyIn;
+
+      let dx = uxIn + uxOut, dy = uyIn + uyOut;
+      const bisLen = Math.hypot(dx, dy);
+      if (bisLen > 0.01) { dx /= bisLen; dy /= bisLen; } else { dx = uxIn; dy = uyIn; }
+      const px = -dy, py = dx;
+
+      const rad = engine.realMmToCanvasPx(23);
+
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      drawExtremeAccessorySymbol(ctx, engine, accType, c, dx, dy, px, py, px, py, rad);
+      ctx.restore();
     }
   });
 
@@ -851,7 +906,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
     if ((r.net === 'af' || r.net === 'ac') && r.bilateralCrossings && r.bilateralCrossings.length > 0) {
-      const rad = engine.mm2cvs(1.6 * (engine.labelScaleM || 1));
+      const rad = engine.realMmToCanvasPx(23);
       ctx.save();
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -1075,208 +1130,3 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
 
   ctx.restore();
 }
-
-export function drawSingleApplianceSymbol(
-  ctx: CanvasRenderingContext2D,
-  engine: IPlanoEngineCore,
-  apId: string,
-  baseCvs: { x: number; y: number },
-  dirX: number,
-  dirY: number,
-  _accentColor: string,
-  hasAcc: boolean
-): void {
-  const def = APARATOS_DEF.find(x => x.id === apId);
-  if (!def && apId !== 'sifon') return; // Sifon fallback
-
-  const sigla = def ? def.sigla.replace(':', '') : 'Sif';
-
-  ctx.save();
-  ctx.lineWidth = Math.max(0.7, 0.7 * engine.zoom);
-  ctx.strokeStyle = '#000000';
-  ctx.fillStyle = '#ffffff';
-
-  const rad = 7 * engine.zoom * (engine.labelScaleM || 1);
-
-  // Offset the start point to avoid overlapping the pipe end or accessory
-  const startOffset = hasAcc ? Math.max(16, 16 * engine.zoom) : Math.max(8, 8 * engine.zoom);
-  const curX = baseCvs.x + dirX * startOffset;
-  const curY = baseCvs.y + dirY * startOffset;
-
-  // Draw background white circle with drop shadow
-  ctx.save();
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
-  ctx.shadowBlur = 4 * engine.zoom;
-  ctx.shadowOffsetX = 1 * engine.zoom;
-  ctx.shadowOffsetY = 1 * engine.zoom;
-  ctx.beginPath();
-  ctx.arc(curX, curY, rad, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.restore();
-
-  // Draw the symbol outline inside the circle
-  ctx.save();
-  ctx.strokeStyle = '#000000';
-  ctx.fillStyle = '#000000';
-  ctx.lineWidth = Math.max(0.6, 0.6 * engine.zoom);
-
-  const innerRad = rad * 0.7;
-
-  if (apId === 'sif' || apId === 'sifon') {
-    // Siphon: Draw U-bend trap shape
-    ctx.beginPath();
-    ctx.moveTo(curX - innerRad * 0.4, curY - innerRad * 0.6);
-    ctx.lineTo(curX - innerRad * 0.4, curY + innerRad * 0.2);
-    ctx.arc(curX, curY + innerRad * 0.2, innerRad * 0.4, Math.PI, 0, true);
-    ctx.lineTo(curX + innerRad * 0.4, curY - innerRad * 0.2);
-    ctx.stroke();
-  } else if (apId === 'lvm') {
-    // Lavamanos: basin + tap
-    ctx.beginPath();
-    ctx.arc(curX, curY + innerRad * 0.1, innerRad * 0.6, 0, Math.PI);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(curX, curY - innerRad * 0.7);
-    ctx.lineTo(curX, curY - innerRad * 0.2);
-    ctx.lineTo(curX - innerRad * 0.2, curY - innerRad * 0.2);
-    ctx.stroke();
-  } else if (apId === 'san') {
-    // Inodoro: tank + bowl
-    ctx.strokeRect(curX - innerRad * 0.6, curY - innerRad * 0.7, innerRad * 1.2, innerRad * 0.45);
-    ctx.beginPath();
-    ctx.arc(curX, curY + innerRad * 0.2, innerRad * 0.45, 0, Math.PI * 2);
-    ctx.stroke();
-  } else if (apId === 'duc') {
-    // Ducha: vertical pipe arm curving at top + dome showerhead + water dots
-    const s = innerRad;
-    // Vertical pipe (body) going up from bottom center
-    ctx.lineWidth = Math.max(0.5, 0.5 * engine.zoom);
-    ctx.beginPath();
-    ctx.moveTo(curX - s * 0.3, curY + s * 0.8);
-    ctx.lineTo(curX - s * 0.3, curY - s * 0.15);
-    // Curved top
-    ctx.quadraticCurveTo(curX - s * 0.3, curY - s * 0.65, curX + s * 0.15, curY - s * 0.65);
-    ctx.stroke();
-    // Dome showerhead
-    ctx.beginPath();
-    ctx.arc(curX + s * 0.15, curY - s * 0.45, s * 0.28, Math.PI, 0);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(curX + s * 0.15, curY - s * 0.45, s * 0.28, Math.PI, 0);
-    ctx.stroke();
-    // Water droplet dots
-    const dotR = Math.max(0.6, 0.6 * engine.zoom);
-    const drops = [
-      [curX - s * 0.02, curY - s * 0.05],
-      [curX + s * 0.15, curY - s * 0.05],
-      [curX + s * 0.32, curY - s * 0.05],
-      [curX + s * 0.06, curY + s * 0.2],
-      [curX + s * 0.24, curY + s * 0.2],
-      [curX - s * 0.02, curY + s * 0.45],
-      [curX + s * 0.15, curY + s * 0.45],
-      [curX + s * 0.32, curY + s * 0.45],
-    ];
-    drops.forEach(([dx, dy]) => {
-      ctx.beginPath();
-      ctx.arc(dx, dy, dotR, 0, Math.PI * 2);
-      ctx.fill();
-    });
-  } else if (apId === 'lvra') {
-    // Lavadora: rounded rectangle body + circle door + control buttons
-    const s = innerRad;
-    const bw = s * 1.4;
-    const bh = s * 1.5;
-    const bx = curX - bw / 2;
-    const by = curY - bh / 2;
-    const cr = Math.max(1.5, 1.5 * engine.zoom);
-    // Body
-    ctx.lineWidth = Math.max(0.5, 0.5 * engine.zoom);
-    ctx.beginPath();
-    ctx.roundRect(bx, by, bw, bh, cr);
-    ctx.stroke();
-    // Door circle (porthole)
-    const doorR = s * 0.42;
-    ctx.beginPath();
-    ctx.arc(curX, curY + s * 0.15, doorR, 0, Math.PI * 2);
-    ctx.stroke();
-    // Inner door ring
-    ctx.beginPath();
-    ctx.arc(curX, curY + s * 0.15, doorR * 0.7, 0, Math.PI * 2);
-    ctx.stroke();
-    // Control panel — small button dots
-    const btnY = by + bh * 0.1;
-    const btnR = Math.max(0.7, 0.7 * engine.zoom);
-    ctx.beginPath();
-    ctx.arc(curX - s * 0.3, btnY, btnR, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(curX - s * 0.1, btnY, btnR, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(curX + s * 0.1, btnY, btnR, 0, Math.PI * 2);
-    ctx.fill();
-    // Dial knob (right side)
-    ctx.beginPath();
-    ctx.arc(curX + s * 0.4, btnY, btnR * 1.5, 0, Math.PI * 2);
-    ctx.stroke();
-  } else if (apId === 'tin') {
-    // Tina / Bathtub: bowl shape + rim + legs + small showerhead
-    const s = innerRad;
-    // Rim (top bar)
-    ctx.lineWidth = Math.max(0.5, 0.5 * engine.zoom);
-    ctx.beginPath();
-    ctx.moveTo(curX - s * 0.8, curY - s * 0.15);
-    ctx.lineTo(curX + s * 0.8, curY - s * 0.15);
-    ctx.stroke();
-    // Bowl (U-shape)
-    ctx.beginPath();
-    ctx.moveTo(curX - s * 0.7, curY - s * 0.15);
-    ctx.quadraticCurveTo(curX - s * 0.7, curY + s * 0.65, curX, curY + s * 0.65);
-    ctx.quadraticCurveTo(curX + s * 0.7, curY + s * 0.65, curX + s * 0.7, curY - s * 0.15);
-    ctx.stroke();
-    // Left leg
-    ctx.beginPath();
-    ctx.moveTo(curX - s * 0.55, curY + s * 0.55);
-    ctx.lineTo(curX - s * 0.65, curY + s * 0.8);
-    ctx.stroke();
-    // Right leg
-    ctx.beginPath();
-    ctx.moveTo(curX + s * 0.55, curY + s * 0.55);
-    ctx.lineTo(curX + s * 0.65, curY + s * 0.8);
-    ctx.stroke();
-    // Small showerhead pipe at left
-    ctx.beginPath();
-    ctx.moveTo(curX - s * 0.5, curY - s * 0.15);
-    ctx.lineTo(curX - s * 0.5, curY - s * 0.55);
-    ctx.quadraticCurveTo(curX - s * 0.5, curY - s * 0.8, curX - s * 0.2, curY - s * 0.8);
-    ctx.stroke();
-    // Showerhead
-    ctx.beginPath();
-    ctx.rect(curX - s * 0.25, curY - s * 0.88, s * 0.2, s * 0.16);
-    ctx.stroke();
-  } else if (apId === 'lvp') {
-    // Lavaplatos
-    ctx.strokeRect(curX - innerRad * 0.7, curY - innerRad * 0.4, innerRad * 1.4, innerRad * 0.8);
-    ctx.strokeRect(curX - innerRad * 0.5, curY - innerRad * 0.3, innerRad * 1.0, innerRad * 0.6);
-  } else if (apId === 'est4' || apId === 'est2') {
-    // Estufa
-    ctx.strokeRect(curX - innerRad * 0.6, curY - innerRad * 0.6, innerRad * 1.2, innerRad * 1.2);
-    ctx.beginPath();
-    ctx.arc(curX - innerRad * 0.3, curY - innerRad * 0.3, innerRad * 0.15, 0, Math.PI * 2);
-    ctx.arc(curX + innerRad * 0.3, curY - innerRad * 0.3, innerRad * 0.15, 0, Math.PI * 2);
-    ctx.arc(curX - innerRad * 0.3, curY + innerRad * 0.3, innerRad * 0.15, 0, Math.PI * 2);
-    ctx.arc(curX + innerRad * 0.3, curY + innerRad * 0.3, innerRad * 0.15, 0, Math.PI * 2);
-    ctx.stroke();
-  } else {
-    // Fallback text
-    ctx.font = `bold ${Math.max(6, 6 * engine.zoom)}px 'Geist', monospace, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(sigla, curX, curY);
-  }
-
-  ctx.restore();
-  ctx.restore();
-}
-

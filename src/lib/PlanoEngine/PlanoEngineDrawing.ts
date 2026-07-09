@@ -174,11 +174,13 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     bloqueado: true,
   };
   engine.ramales.push(r);
-  if (!checkRamalAngles(r.pts, r.net)) {
+  if (!checkRamalAngles(r.pts, r.net, r.tipo)) {
     engine.triggerAlert(
       'Ángulo no recomendado',
       (r.net === 'san' || r.net === 'll')
         ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 0° y 45°.'
+        : ((r.net === 'af' || r.net === 'ac') && r.tipo === 'tributario')
+        ? 'Los tributarios de AF/AC solo permiten ángulos de 90°.'
         : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
     );
     engine.ramales.pop();
@@ -375,6 +377,11 @@ export function setScaleM(engine: IPlanoEngineCore, v: string | number): void {
   engine.render();
 }
 
+export function setDefinedScaleM(engine: IPlanoEngineCore, v: string | number): void {
+  engine.definedScaleM = parseFloat(String(v)) || 0;
+  engine.render();
+}
+
 function checkCrossRamalAngle(engine: IPlanoEngineCore, pA: number[], pB: number[], skipId: string): boolean {
   for (const r of engine.ramales) {
     if (r.id === skipId || !r.pts || r.pts.length < 2) continue;
@@ -419,47 +426,74 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     return;
   }
   if (!engine.activeRamal) {
+    // Look for an existing ramal to CONTINUE from before doing any generic snapping — this
+    // must win over snapToExisting picking a nearby-but-different target (e.g. a bajante
+    // displaced away from this same endpoint), otherwise clicking back onto an endpoint that
+    // carries an accessory silently starts an unrelated new ramal instead of continuing it.
+    let activeNetsRamales = engine.ramales.filter((rm: any) => rm.net === engine.activeNet);
+    if (engine.tipoTramo === 'tributario') {
+      activeNetsRamales = activeNetsRamales.filter((rm: any) => rm.id === engine.padreTributario);
+    }
+    let continueRamal: any = null;
+    let reversePoints = false;
+    const CONTINUE_THRESH = 30 / engine.zoom;
+    for (const rm of activeNetsRamales) {
+      const firstPt = rm.pts[0];
+      const lastPt = rm.pts[rm.pts.length - 1];
+      const dFirst = Math.hypot(px - firstPt[0], py - firstPt[1]);
+      const dLast = Math.hypot(px - lastPt[0], py - lastPt[1]);
+      if (dFirst < CONTINUE_THRESH && dFirst <= dLast) {
+        continueRamal = rm;
+        reversePoints = true;
+        break;
+      } else if (dLast < CONTINUE_THRESH) {
+        continueRamal = rm;
+        break;
+      }
+    }
+
+    if (continueRamal) {
+      if (reversePoints) {
+        // Swap endpoint-symmetric fields so they still refer to the correct
+        // physical point after pts.reverse() (previously a latent bug: these
+        // fields stayed put while the points array flipped under them).
+        const tmpAcc = continueRamal.accesorioInicio;
+        continueRamal.accesorioInicio = continueRamal.accesorioFin;
+        continueRamal.accesorioFin = tmpAcc;
+        const tmpDiam = continueRamal.diametroInicio;
+        continueRamal.diametroInicio = continueRamal.diametroFin;
+        continueRamal.diametroFin = tmpDiam;
+        const tmpApp = continueRamal.aparatoInicio;
+        continueRamal.aparatoInicio = continueRamal.aparatoFin;
+        continueRamal.aparatoFin = tmpApp;
+        continueRamal.pts.reverse();
+      }
+
+      // If the point we're continuing from carries an endpoint accessory, convert it
+      // to a fixed mid-ramal accessory (accMed) before it stops being the last point.
+      if (continueRamal.accesorioFin) {
+        const oldLastIdx = continueRamal.pts.length - 1;
+        continueRamal.accMed = { ...(continueRamal.accMed || {}), [`accMed${oldLastIdx}`]: continueRamal.accesorioFin };
+        continueRamal.accesorioFin = '';
+        continueRamal.diametroFin = '';
+      }
+
+      engine.activeRamal = {
+        id: continueRamal.id,
+        net: continueRamal.net,
+        tipo: continueRamal.tipo,
+        padre: continueRamal.padre,
+        pts: [...continueRamal.pts],
+        totalL: continueRamal.totalL,
+      };
+      engine._emitStatus(`Continuando ramal: ${continueRamal.id}`);
+      engine.render();
+      return;
+    }
+
     const sp = engine.snapToExisting(pt.x, pt.y);
     if (sp) {
       pt = sp;
-      let activeNetsRamales = engine.ramales.filter((rm: any) => rm.net === engine.activeNet);
-      if (engine.tipoTramo === 'tributario') {
-        activeNetsRamales = activeNetsRamales.filter((rm: any) => rm.id === engine.padreTributario);
-      }
-      let continueRamal: any = null;
-      let reversePoints = false;
-      const SNAP_THRESH = 0.25;
-      for (const rm of activeNetsRamales) {
-        const firstPt = rm.pts[0];
-        const lastPt = rm.pts[rm.pts.length - 1];
-        const dFirst = Math.hypot(pt.x - firstPt[0], pt.y - firstPt[1]);
-        const dLast = Math.hypot(pt.x - lastPt[0], pt.y - lastPt[1]);
-        if (dFirst < SNAP_THRESH) {
-          continueRamal = rm;
-          reversePoints = true;
-          break;
-        } else if (dLast < SNAP_THRESH) {
-          continueRamal = rm;
-          break;
-        }
-      }
-
-      if (continueRamal) {
-        if (reversePoints) {
-          continueRamal.pts.reverse();
-        }
-        engine.activeRamal = {
-          id: continueRamal.id,
-          net: continueRamal.net,
-          tipo: continueRamal.tipo,
-          padre: continueRamal.padre,
-          pts: [...continueRamal.pts],
-          totalL: continueRamal.totalL,
-        };
-        engine._emitStatus(`Continuando ramal: ${continueRamal.id}`);
-        engine.render();
-        return;
-      }
     } else {
       let activeNetsRamales = engine.ramales.filter((r) => r.net === engine.activeNet);
       if (engine.tipoTramo === 'tributario') {
@@ -569,11 +603,13 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     }
     if (engine.activeRamal.pts.length >= 2) {
       const testPts = [...engine.activeRamal.pts, [pt.x, pt.y]];
-      if (!checkRamalAngles(testPts, engine.activeNet)) {
+      if (!checkRamalAngles(testPts, engine.activeNet, engine.activeRamal.tipo)) {
         engine.triggerAlert(
           'Ángulo no recomendado',
           (engine.activeNet === 'san' || engine.activeNet === 'll')
             ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
+            : ((engine.activeNet === 'af' || engine.activeNet === 'ac') && engine.activeRamal.tipo === 'tributario')
+            ? 'Los tributarios de AF/AC solo permiten ángulos de 90°.'
             : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
         );
         return;

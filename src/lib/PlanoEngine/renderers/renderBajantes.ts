@@ -2,7 +2,6 @@ import { NETS } from '../PlanoState';
 import { rotatedRectCorners } from '../HitTester';
 import type { IPlanoEngineCore } from '../PlanoState';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
-import { drawSingleApplianceSymbol } from './renderRamales';
 
 
 const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
@@ -149,17 +148,26 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
   engine.bajantes.forEach((b) => {
     if (engine._hiddenNets.has(b.net)) return;
 
+    // A bajante displaced on ITS OWN level still needs its solid circle here — displacement
+    // just repositions the ghost decoration elsewhere for decluttering, it doesn't replace the
+    // real symbol. Only a genuine pass-through ghost on a REMOTE floor (not this bajante's own
+    // pisoBase, and not explicitly displaced on this level) should skip the solid circle.
+    const isDisplacedOnThisLevel = b.tipo === 'contador' || b.tipo === 'calentador' || b.tipo === 'red_publica'
+      ? false
+      : (!!b.desplazamientos?.[engine.nivelActual?.label ?? '']);
+    const isDirectionGhost = !isDisplacedOnThisLevel && b.pisoBase !== engine.nivelActual?.label;
+
     const c = engine.toCvs(b.x, b.y);
-    // When bajante has active displacement (isFantasma), never draw the thick yellow
-    // selection border on the parent circle — keeps it the same visual size as the ghost.
-    const sel = b.id === engine.selId && !engine._isGhostSel && !b.isFantasma;
-    const r = 5.5 * (engine.labelScaleM || 1) * engine.zoom;
+    // When this bajante is a remote-floor ghost, never draw the thick yellow selection border.
+    const sel = b.id === engine.selId && !engine._isGhostSel && !isDirectionGhost;
+    const r = engine.realMmToCanvasPx(20);
 
     // Item 2: Label angle + snap constraint (Auto-rotation removed as requested)
     const angle = (b.labelAngle || 0) * Math.PI / 180;
 
 
-    b._circ = { x: c.x, y: c.y, r: Math.max(8 * engine.zoom, r) };
+    b._circ = { x: c.x, y: c.y, r };
+    if (isDirectionGhost) return;
 
     // Draw green dashed lines from ramales that feed this bajante (recibeDeIds)
     if (b.recibeDeIds?.length) {
@@ -339,7 +347,9 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.fill();
     } else if (b.direccion === 'continua') {
       ctx.fillStyle = arrowCol;
-      ctx.font = `${engine.mm2cvs(engine.MM.flowEmoji * engine.labelScaleM)}px sans-serif`;
+      // Sized off the circle radius (like the other direction symbols), not the independent
+      // label font scale — otherwise this arrow doesn't shrink along with the real-world circle.
+      ctx.font = `${r * 1.1}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('➜', 0, 0);
@@ -379,7 +389,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     // Yellow selection arrow (same style as ramales)
     const inMultiSel = (engine.multiSel || []).includes(b.id);
     if ((sel || inMultiSel) && !engine._isGhostSel) {
-      const arrowR = 12 * engine.zoom;
+      const arrowR = 8 * engine.zoom;
       const ox = r + 14 * engine.zoom;
       ctx.save();
       ctx.fillStyle = '#FFEB3B';
@@ -398,12 +408,9 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     }
     ctx.restore();
 
-    const isDisplacedOnThisLevel = b.tipo === 'contador' || b.tipo === 'calentador' || b.tipo === 'red_publica'
-      ? false
-      : (!!b.desplazamientos?.[engine.nivelActual?.label ?? '']);
     // The parent label is drawn EXCEPT when this is a direction-based ghost on a remote floor
-    // (pisoBase !== current nivel means the bajante belongs to another floor)
-    const isDirectionGhost = !isDisplacedOnThisLevel && b.pisoBase !== engine.nivelActual?.label;
+    // (pisoBase !== current nivel means the bajante belongs to another floor) — isDirectionGhost
+    // computed above; this whole block is unreachable for that case anyway (early return above).
     if (!isDirectionGhost && (b.code || b.code === '')) {
       const lx = b.labelX ?? b.x;
       const ly = b.labelY ?? (b.y + 20);
@@ -453,8 +460,8 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const gx = b.x + (disp ? disp.dx : 0);
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
-    const r = 5.5 * (engine.labelScaleM || 1) * engine.zoom;
-    b._ghost = { x: c.x, y: c.y, r: Math.max(8 * engine.zoom, r) };
+    const r = engine.realMmToCanvasPx(20);
+    b._ghost = { x: c.x, y: c.y, r };
 
     // Ghost label always horizontal
     const ghostAngle = 0;
@@ -483,7 +490,8 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     else ghostSymbol = b.tipo === 'bajante' ? '⬇' : '⬆';
 
     if (ghostSymbol) {
-      ctx.font = `${engine.mm2cvs(engine.MM.flowEmoji * engine.labelScaleM)}px sans-serif`;
+      // Sized off the ghost's own circle radius, not the independent label font scale.
+      ctx.font = `${r * 1.1}px sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       if (ghostSymbol === '•') {
@@ -522,7 +530,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       ctx.lineWidth = 1.5 * engine.zoom;
       ctx.shadowColor = '#000';
       ctx.shadowBlur = 6 * engine.zoom;
-      const arrowR = 12 * engine.zoom;
+      const arrowR = 8 * engine.zoom;
       const ox = r + 14 * engine.zoom;
       ctx.beginPath();
       ctx.moveTo(ox - arrowR, 0);
@@ -576,10 +584,5 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       renderBajanteLabel(ctx, engine, b, c, r, ghostAngle, offDx, offDy, line1, dirText, '_ghostLabelBox', 0.35);
     }
 
-    if (['san', 'af', 'ac', 'gas'].includes(b.net) && b.aparato) {
-      const net = NETS.find((n) => n.id === b.net);
-      const col = net ? net.col : '#e2e2e8';
-      drawSingleApplianceSymbol(ctx, engine, b.aparato, c, 1, 0, col, false);
-    }
   });
 }

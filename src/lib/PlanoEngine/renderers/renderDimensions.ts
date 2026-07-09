@@ -18,7 +18,7 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
     const len = Math.hypot(dx, dy);
     if (len < 1) { ctx.restore(); return; }
     const nx = -dy / len, ny = dx / len;
-    const mk = 9 * engine.zoom;
+    const mk = 6 * engine.zoom;
     [c1, c2].forEach((pt: any) => {
       ctx.beginPath();
       ctx.moveTo(pt.x - nx * mk, pt.y - ny * mk);
@@ -28,16 +28,19 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
 
     const mx = (c1.x + c2.x) / 2, my = (c1.y + c2.y) / 2;
     const txt = `${d.L}m`;
-    ctx.font = `${engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM)}px Geist, monospace`;
-    const tw = ctx.measureText(txt).width;
-    const padX = 4 * engine.zoom;
-    const padY = 8 * engine.zoom;
-    ctx.fillStyle = 'rgba(17,19,23,0.75)';
-    ctx.fillRect(mx - tw / 2 - padX, my - padY, tw + padX * 2, padY * 2);
-    ctx.fillStyle = '#F5A623';
+    ctx.font = `${engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 0.8)}px Geist, monospace`;
+    let onx = nx, ony = ny;
+    if (ony > 0) { onx = -nx; ony = -ny; }
+    const offset = mk + 3 * engine.zoom;
+    const lx = mx + onx * offset, ly = my + ony * offset;
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(txt, mx, my);
+    ctx.textBaseline = 'bottom';
+    ctx.lineWidth = 3 * engine.zoom;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#ffffff';
+    ctx.strokeText(txt, lx, ly);
+    ctx.fillStyle = '#F5A623';
+    ctx.fillText(txt, lx, ly);
     ctx.restore();
   });
 }
@@ -62,7 +65,7 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
   const len = Math.hypot(dx, dy);
   if (len > 1) {
     const nx = -dy / len, ny = dx / len;
-    const mk = 9 * engine.zoom;
+    const mk = 6 * engine.zoom;
     [s, e].forEach((pt: any) => {
       ctx.beginPath();
       ctx.moveTo(pt.x - nx * mk, pt.y - ny * mk);
@@ -73,16 +76,19 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     const mx = (s.x + e.x) / 2, my = (s.y + e.y) / 2;
     const px = Math.hypot(mp.x - engine._dimStart.x, mp.y - engine._dimStart.y);
     const txt = `${engine.pxToM(px).toFixed(2)}m`;
-    ctx.font = `${engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM)}px Geist, monospace`;
-    const tw = ctx.measureText(txt).width;
-    const padX = 4 * engine.zoom;
-    const padY = 8 * engine.zoom;
-    ctx.fillStyle = 'rgba(17,19,23,0.75)';
-    ctx.fillRect(mx - tw / 2 - padX, my - padY, tw + padX * 2, padY * 2);
-    ctx.fillStyle = '#F5A623';
+    ctx.font = `${engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 0.8)}px Geist, monospace`;
+    let onx = nx, ony = ny;
+    if (ony > 0) { onx = -nx; ony = -ny; }
+    const offset = mk + 3 * engine.zoom;
+    const lx = mx + onx * offset, ly = my + ony * offset;
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(txt, mx, my);
+    ctx.textBaseline = 'bottom';
+    ctx.lineWidth = 3 * engine.zoom;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#ffffff';
+    ctx.strokeText(txt, lx, ly);
+    ctx.fillStyle = '#F5A623';
+    ctx.fillText(txt, lx, ly);
   }
 
   ctx.fillStyle = '#F5A623';

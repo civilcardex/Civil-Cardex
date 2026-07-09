@@ -2,11 +2,9 @@ import { NETS } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 
 export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: number): void {
-  if (engine.snapMode) {
-    const sp = engine.snapToExisting(px, py);
-    if (sp) { px = sp.x; py = sp.y; }
-  }
-  const ASSOC_THRESH = 20 / engine.zoom;
+  const sp = engine.snapToExisting(px, py);
+  if (sp) { px = sp.x; py = sp.y; }
+  const ASSOC_THRESH = 30 / engine.zoom;
   const assocRamales: string[] = [];
   for (const r of engine.ramales) {
     if (r.net !== engine.activeNet || !r.pts?.length) continue;
@@ -57,6 +55,8 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     } else {
       r.fin = bajId;
     }
+    // Lock the ramal so this newly snapped bajante can't be dragged away independently
+    r.bloqueado = true;
   }
   engine.selId = bajId;
   engine._isGhostSel = false;

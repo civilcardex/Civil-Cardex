@@ -50,6 +50,7 @@ export interface RawElement {
   accesorioFin?: string;
   diametroInicio?: string;
   diametroFin?: string;
+  accMed?: Record<string, string>;
   caudal?: number;
   bilateralCrossings?: number[][];
   [key: string]: unknown;
@@ -238,6 +239,7 @@ function buildNonPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>)
           aparatoFin: r.aparatoFin || '',
         };
         if (r.caudal !== undefined) ramalObj.caudal = r.caudal;
+        if (r.accMed) ramalObj.accMed = r.accMed;
         ramales.push(ramalObj);
       }
     }

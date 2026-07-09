@@ -148,10 +148,12 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
   }
 
   let slideConstraint = undefined;
-  if (bestRamal.net !== 'vent') {
+  {
+    // Strictly same-net only — an endpoint must never slide-constrain against a segment from a
+    // different red just because it happens to be visually close.
     const pt = bestRamal.pts[bestPtIdx];
     for (const other of engine.ramales) {
-      if (other.id === bestRamal.id) continue;
+      if (other.id === bestRamal.id || other.net !== bestRamal.net) continue;
       for (let si = 0; si < other.pts.length - 1; si++) {
         const [ax, ay] = other.pts[si], [bx, by] = other.pts[si+1];
         const sDx = bx - ax, sDy = by - ay;
@@ -294,6 +296,17 @@ function _trySelBajanteDrag(engine: IPlanoEngineCore, x: number, y: number, sel:
   return false;
 }
 
+function _trySelDimDrag(engine: IPlanoEngineCore, x: number, y: number, sel: any): boolean {
+  if (!sel || sel.L === undefined || sel.x1 === undefined) return false;
+  const dist = distanceToRamal(x, y, [[sel.x1, sel.y1], [sel.x2, sel.y2]], (px, py) => engine.toCvs(px, py), 2);
+  if (dist < 15) {
+    const tp = engine.toPlane(x, y);
+    engine.dimDrag = { id: sel.id, startX: tp.x, startY: tp.y };
+    return true;
+  }
+  return false;
+}
+
 function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: any): boolean {
   if (!isRamal(sel) || !sel.id?.startsWith('R') || sel.bloqueado) return false;
 
@@ -302,10 +315,22 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: a
     if (Math.hypot(x - pc.x, y - pc.y) < 15) {
       let slideConstraint = undefined;
       const isEndpoint = i === 0 || i === sel.pts.length - 1;
+      // An accessory drawn mid-body (accMed) can be moved, but only sliding along the straight
+      // line to its neighbors — it must not bend the ramal's actual path.
+      if (!isEndpoint && sel.accMed && sel.accMed[`accMed${i}`]) {
+        const a = sel.pts[i - 1], b = sel.pts[i + 1];
+        (engine as any)._dragBackupPts = JSON.parse(JSON.stringify(sel.pts));
+        engine.ptDrag = { id: sel.id, ptIdx: i, accMedSlide: { ax: a[0], ay: a[1], bx: b[0], by: b[1] } };
+        return true;
+      }
       if (isEndpoint) {
+        // A connected endpoint (bajante or accessory) is NOT blocked from dragging — it goes
+        // through the exact same snap-angle-constrained ptDrag path as a free endpoint (below),
+        // which already propagates the move rigidly to any attached bajante/ramal. Blocking it
+        // outright just pushed users onto the unconstrained body-drag path instead.
         const pt = sel.pts[i];
         for (const other of engine.ramales) {
-          if (other.id === sel.id) continue;
+          if (other.id === sel.id || other.net !== sel.net) continue;
           for (let si = 0; si < other.pts.length - 1; si++) {
             const [ax, ay] = other.pts[si], [bx, by] = other.pts[si+1];
             const sDx = bx - ax, sDy = by - ay;
@@ -343,7 +368,23 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: a
           connBaj.push({ id: b.id, origX: b.x, origY: b.y, origLblX: b.labelX ?? b.x, origLblY: b.labelY ?? b.y, atIdx: lastIdx });
         }
       }
-      engine.ramalDrag = { id: sel.id, startX: tp.x, startY: tp.y, origPts, connBaj, origLabelX: sel.labelX, origLabelY: sel.labelY };
+      // Ramales/tributarios sharing an endpoint with this one should move together as a rigid
+      // body, so the connection doesn't tear apart when dragging an unlocked ramal.
+      const lastIdx = sel.pts.length - 1;
+      const selStart = sel.pts[0], selEnd = sel.pts[lastIdx];
+      const connRamales: { id: string; origPts: [number, number][] }[] = [];
+      for (const other of engine.ramales) {
+        if (other.id === sel.id || other.net !== sel.net || !other.pts?.length) continue;
+        const oStart = other.pts[0], oEnd = other.pts[other.pts.length - 1];
+        const touches = [oStart, oEnd].some(op =>
+          Math.hypot(op[0] - selStart[0], op[1] - selStart[1]) < 0.5 ||
+          Math.hypot(op[0] - selEnd[0], op[1] - selEnd[1]) < 0.5
+        );
+        if (touches) {
+          connRamales.push({ id: other.id, origPts: other.pts.map((pt: number[]) => [...pt] as [number, number]) });
+        }
+      }
+      engine.ramalDrag = { id: sel.id, startX: tp.x, startY: tp.y, origPts, connBaj, connRamales, origLabelX: sel.labelX, origLabelY: sel.labelY };
       return true;
     }
   }
@@ -371,6 +412,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
   }
 
   if (_trySelBajanteDrag(engine, x, y, sel, wasGhostSel)) return;
+  if (_trySelDimDrag(engine, x, y, sel)) return;
   if (_trySelRamalDrag(engine, x, y, sel)) return;
 
   if (sel && 'labelX' in sel && !(sel.id?.startsWith('T'))) {
@@ -528,14 +570,8 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
       }
       engine.selId = b.id;
       engine._isGhostSel = true;
-      if (b.isFantasma) {
-        const pLPos = engine.toCvs(b.labelX ?? b.x, b.labelY ?? (b.y + 20));
-        (engine as any)._lblDragIsParent = true;
-        engine.lblDrag = { id: b.id, offX: x - pLPos.x, offY: y - pLPos.y };
-        engine._emitSelect(b);
-        engine.render();
-        return;
-      }
+      // The ghost always gets its own independent label position (ghostData per level) — it
+      // must never be redirected to drag the parent's label instead.
       const gd = b.ghostData?.[engine.nivelActual?.label ?? ''] || {};
       let lx: number, ly: number;
       if (gd.labelX != null && gd.labelY != null) {
@@ -603,7 +639,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     return;
   }
   selectAt(engine, x, y, isMultiSelectModifier);
-  if (engine.tool === 'sel' && !engine.ptDrag && !engine.ramalDrag && !engine.bajDrag && !engine.ghostDrag && !engine.lblDrag && !engine.txtDrag && !engine.areaDrag && !engine.multiDrag && !engine.selId) {
+  if (engine.tool === 'sel' && !engine.ptDrag && !engine.ramalDrag && !engine.bajDrag && !engine.ghostDrag && !engine.lblDrag && !engine.txtDrag && !engine.areaDrag && !engine.dimDrag && !engine.multiDrag && !engine.selId) {
     if (!isMultiSelectModifier) {
       engine.multiSel = [];
     }

@@ -47,7 +47,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
 
       let slideDx = dx, slideDy = dy;
       for (const other of engine.ramales) {
-        if (other.id === r.id) continue;
+        if (other.id === r.id || other.net !== r.net) continue;
         for (let si = 0; si < other.pts.length - 1; si++) {
           const [ax, ay] = other.pts[si], [bx, by] = other.pts[si+1];
           const sDx = bx - ax, sDy = by - ay;
@@ -77,7 +77,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         r.labelY = engine.ramalDrag.origLabelY + slideDy;
       }
       r.totalL = calculateRamalLength(r.pts, engine);
-      checkRamalAngles(r.pts, r.net);
+      checkRamalAngles(r.pts, r.net, r.tipo);
       if (engine.ramalDrag.connBaj) {
         for (const cb of engine.ramalDrag.connBaj) {
           const b = engine.bajantes.find(bb => bb.id === cb.id);
@@ -86,6 +86,17 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           b.y = cb.origY + slideDy;
           b.labelX = cb.origLblX + slideDx;
           b.labelY = cb.origLblY + slideDy;
+        }
+      }
+      if (engine.ramalDrag.connRamales) {
+        for (const cr of engine.ramalDrag.connRamales) {
+          const other = engine.ramales.find(rr => rr.id === cr.id);
+          if (!other) continue;
+          for (let i = 0; i < other.pts.length && i < cr.origPts.length; i++) {
+            other.pts[i][0] = cr.origPts[i][0] + slideDx;
+            other.pts[i][1] = cr.origPts[i][1] + slideDy;
+          }
+          other.totalL = calculateRamalLength(other.pts, engine);
         }
       }
       if (engine.nivelActual) {
@@ -164,31 +175,23 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const oldX = b.x;
       const oldY = b.y;
 
-      // Snap mode: snap to angle constraints from BOTH ends of associated ramales
+      // Snap mode: constrain the new bajante position to a 45°-multiple angle measured from
+      // the ramal's OTHER (fixed) endpoint. Picking whichever candidate anchor landed closer to
+      // the raw cursor (the old approach) almost always chose the near/self anchor instead —
+      // on a slow continuous drag each frame's delta is tiny, so snapping "from itself" barely
+      // constrains anything and the ramal effectively drifted freely.
       if (engine.snapMode) {
         const assocIds = [...(b.recibeDeIds || [])];
         if (b.descargaEnId) assocIds.push(b.descargaEnId);
         const assocRamales = (engine.ramales || []).filter(r => assocIds.includes(r.id) && r.pts && r.pts.length >= 2);
-        // Snap from both opposite and same end, pick closest to cursor position
         if (assocRamales.length > 0) {
           const r = assocRamales[0];
           const pStart = r.pts[0];
           const pEnd = r.pts[r.pts.length - 1];
           const distStart = Math.hypot(pStart[0] - oldX, pStart[1] - oldY);
           const distEnd = Math.hypot(pEnd[0] - oldX, pEnd[1] - oldY);
-          if (distStart < 0.5) {
-            const oppSnap = engine.snapAngle(pEnd[0], pEnd[1], p.x, p.y);
-            const sameSnap = engine.snapAngle(pStart[0], pStart[1], p.x, p.y);
-            const dOpp = Math.hypot(oppSnap.x - p.x, oppSnap.y - p.y);
-            const dSame = Math.hypot(sameSnap.x - p.x, sameSnap.y - p.y);
-            p = dSame <= dOpp ? sameSnap : oppSnap;
-          } else if (distEnd < 0.5) {
-            const oppSnap = engine.snapAngle(pStart[0], pStart[1], p.x, p.y);
-            const sameSnap = engine.snapAngle(pEnd[0], pEnd[1], p.x, p.y);
-            const dOpp = Math.hypot(oppSnap.x - p.x, oppSnap.y - p.y);
-            const dSame = Math.hypot(sameSnap.x - p.x, sameSnap.y - p.y);
-            p = dSame <= dOpp ? sameSnap : oppSnap;
-          }
+          const anchor = distStart <= distEnd ? pEnd : pStart;
+          p = engine.snapAngle(anchor[0], anchor[1], p.x, p.y);
         }
       }
 
@@ -234,6 +237,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const autoThresh = 20 / engine.zoom;
       for (const r of (engine.ramales || [])) {
         if (!r.pts || r.pts.length === 0) continue;
+        if (r.net !== b.net) continue;
         if ((b.recibeDeIds || []).includes(r.id)) continue;
         const pStart = r.pts[0];
         const pEnd = r.pts[r.pts.length - 1];
@@ -280,7 +284,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             const [mx, my] = _midpoint(r.pts);
             r.labelX = mx;
             r.labelY = my;
-            checkRamalAngles(r.pts, r.net);
+            checkRamalAngles(r.pts, r.net, r.tipo);
           }
         });
       }
@@ -323,6 +327,20 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     }
     return;
   }
+  if (engine.dimDrag) {
+    const d = engine.dims.find(dd => dd.id === engine.dimDrag!.id);
+    if (d) {
+      const p = engine.toPlane(x, y);
+      const dx = p.x - engine.dimDrag.startX;
+      const dy = p.y - engine.dimDrag.startY;
+      d.x1 += dx; d.y1 += dy;
+      d.x2 += dx; d.y2 += dy;
+      engine.dimDrag.startX = p.x;
+      engine.dimDrag.startY = p.y;
+      engine.scheduleRender();
+    }
+    return;
+  }
   if (engine.areaDrag) {
     const a = engine.areas.find(aa => aa.id === engine.areaDrag!.id);
     if (a) {
@@ -343,6 +361,20 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       let p = engine.toPlane(x, y);
       const idx = engine.ptDrag.ptIdx;
       const isEndpoint = idx === 0 || idx === r.pts.length - 1;
+
+      // Mid-ramal accessory: slide along the straight line to its neighbors only, clamped
+      // between them, so the ramal's actual path never bends because of this drag.
+      const accSlide = engine.ptDrag.accMedSlide;
+      if (accSlide) {
+        const sDx = accSlide.bx - accSlide.ax, sDy = accSlide.by - accSlide.ay;
+        const sLen2 = sDx * sDx + sDy * sDy;
+        let t = sLen2 > 0.0001 ? ((p.x - accSlide.ax) * sDx + (p.y - accSlide.ay) * sDy) / sLen2 : 0;
+        t = Math.max(0.02, Math.min(0.98, t));
+        r.pts[idx][0] = accSlide.ax + t * sDx;
+        r.pts[idx][1] = accSlide.ay + t * sDy;
+        engine.scheduleRender();
+        return;
+      }
 
       if (engine.snapMode) {
         const constraint = engine.ptDrag.slideConstraint;
@@ -407,11 +439,12 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         }
 
         // Also snap to other bajantes/points in the canvas (snapToExisting), excluding own ones
-        if (engine.snapMode && !snapped) {
+        if (!snapped) {
           const snapThresh2 = 16 / engine.zoom;
           // Snap to other bajantes
           for (const b of engine.bajantes) {
             if (b.id === r.id) continue;
+            if (b.net !== r.net) continue;
             if (engine._hiddenNets.has(b.net)) continue;
             const lvlLabel = engine.nivelActual?.label ?? '';
             const disp = b.desplazamientos?.[lvlLabel] || {};
@@ -429,6 +462,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           if (!snapped) {
             for (const other of engine.ramales) {
               if (other.id === r.id) continue;
+              if (other.net !== r.net) continue;
               for (const [rx, ry] of other.pts) {
                 const dist = Math.hypot(rx - p.x, ry - p.y);
                 if (dist < snapThresh2) {
@@ -450,7 +484,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const dPx = p.x - oldP[0], dPy = p.y - oldP[1];
       if (Math.abs(dPx) + Math.abs(dPy) > 0.001) {
         for (const other of engine.ramales) {
-          if (other.id === r.id) continue;
+          if (other.id === r.id || other.net !== r.net) continue;
           let changed = false;
           for (let i = 0; i < other.pts.length; i++) {
             if (Math.hypot(other.pts[i][0] - oldP[0], other.pts[i][1] - oldP[1]) < 0.5) {
@@ -511,7 +545,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const [mx, my] = _midpoint(r.pts);
       r.labelX = mx;
       r.labelY = my;
-      checkRamalAngles(r.pts, r.net);
+      checkRamalAngles(r.pts, r.net, r.tipo);
       engine.scheduleRender();
     }
     return;

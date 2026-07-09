@@ -1,4 +1,4 @@
-import { NETS } from './PlanoState';
+import { NETS, netsSnapLinked } from './PlanoState';
 import type {
   PlanoRamal,
   PlanoBajante,
@@ -45,6 +45,7 @@ import {
   handleDoubleClick,
   deleteSegmentAt as _deleteSegmentAt,
   setScaleM as _setScaleM,
+  setDefinedScaleM as _setDefinedScaleM,
 } from './PlanoEngineDrawing';
 import {
   selectAt as _selectAt,
@@ -121,6 +122,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   tipoTramo!: TramoType;
   snapMode!: boolean;
   scaleM!: number;
+  definedScaleM!: number;
   pageW!: number;
   pageH!: number;
 
@@ -134,6 +136,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   activeArea!: PlanoActiveArea | null;
   selId!: string | null;
   areaDrag!: { id: string; startX: number; startY: number } | null;
+  dimDrag!: { id: string; startX: number; startY: number } | null;
   panning!: boolean;
   panX0!: number;
   panY0!: number;
@@ -186,7 +189,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _onStatusCb: StatusCallback | null;
   _onUpdateCb: UpdateCallback | null;
   _onRequestTextCb: ((x: number, y: number, cb: (text: string) => void) => void) | null;
-  _onContextMenuCb: ((bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null) => void) | null;
+  _onContextMenuCb: ((bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null, midRamalHit?: { segmentIdx: number; x: number; y: number } | null) => void) | null;
   _onDeleteCb: ((ids: string[]) => void) | null;
   _onActiveNetChangeCb: ((net: string) => void) | null;
   _onAlertCb: ((title: string, msg: string) => void) | null;
@@ -242,7 +245,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   onSelect(cb: SelectCallback): void { this._onSelectCb = cb; }
   onStatus(cb: StatusCallback): void { this._onStatusCb = cb; }
   onRequestText(cb: (x: number, y: number, cb: (text: string) => void) => void): void { this._onRequestTextCb = cb; }
-  onContextMenu(cb: (b: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null) => void): void { this._onContextMenuCb = cb; }
+  onContextMenu(cb: (b: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null, midRamalHit?: { segmentIdx: number; x: number; y: number } | null) => void): void { this._onContextMenuCb = cb; }
   onUpdate(cb: UpdateCallback): void { this._onUpdateCb = cb; }
   onDirty(cb: DirtyCallback): void { this._onDirtyCb = cb; }
   onDelete(cb: (ids: string[]) => void): void { this._onDeleteCb = cb; }
@@ -286,8 +289,19 @@ export default class PlanoEngine implements IPlanoEngineCore {
   pxToM(px: number): number { return +(px / 96 * 2.54 * this.scaleM).toFixed(3); }
   mm2cvs(mm: number): number { return mm * 96 / 25.4 * this.zoom; }
 
+  realMmToCanvasPx(realRadiusMm: number): number {
+    // Floor kept small on purpose: at common architectural scales (1:50 etc.) these symbols
+    // must fit inside a ~15cm wall, which is only ~3mm on paper at 1:50 — a generous floor here
+    // would make them scale-inaccurate (visibly larger than the wall they sit inside).
+    const MIN_PAPER_MM = 1;
+    const defScale = this.definedScaleM || this.scaleM || 0.5;
+    const paperMm = realRadiusMm / (100 * defScale);
+    return this.mm2cvs(Math.max(MIN_PAPER_MM, paperMm));
+  }
+
   get labelScaleM(): number {
-    return Math.max(0.1, Math.min(3.0, 0.5 / this.scaleM));
+    const defScale = this.definedScaleM || this.scaleM;
+    return Math.max(0.1, Math.min(3.0, 0.5 / defScale));
   }
 
   _emitStatus(msg: string): void {
@@ -340,6 +354,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
     let best: Point | null = null;
     let minD = 16 / this.zoom;
     this.ramales.forEach(r => {
+      // Never snap across networks — elements from different redes must not connect just
+      // because they're visually close. Exception: ventilación is meant to land exactly on a
+      // sanitaria point (the existing reventilado marker relies on that), so allow that one pair.
+      if (!netsSnapLinked(r.net, this.activeNet)) return;
       r.pts.forEach(([rx, ry], idx) => {
         let thresh = 16 / this.zoom;
         if (idx > 0 && idx < r.pts.length - 1) {
@@ -367,6 +385,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     const lvlLabel = this.nivelActual?.label ?? '';
     this.bajantes.forEach(b => {
       if (this._hiddenNets.has(b.net)) return;
+      if (!netsSnapLinked(b.net, this.activeNet)) return;
       const disp = b.desplazamientos?.[lvlLabel] || {};
       const bx = b.x + (disp.dx || 0);
       const by = b.y + (disp.dy || 0);
@@ -454,6 +473,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   setRamalDefaults(d: Partial<PlanoRamalDefaults> | null): void { _setRamalDefaults(this, d); }
 
   setScaleM(v: string | number): void { _setScaleM(this, v); }
+  setDefinedScaleM(v: string | number): void { _setDefinedScaleM(this, v); }
 
   setNetHidden(netId: string, hidden: boolean): void { _setNetHidden(this, netId, hidden); }
   setNetLocked(netId: string, locked: boolean): void { _setNetLocked(this, netId, locked); }
@@ -496,6 +516,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
         : json) as unknown as import('./PlanoPersistence').PlanoWorkData;
       applyWorkData(this as unknown as {
         scaleM: number;
+        definedScaleM: number;
         activeNet: string;
         ramales: unknown[];
         dims: unknown[];
@@ -611,7 +632,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
             hit.clientX,
             hit.clientY,
             hit.isGhostClick,
-            hit.ramalEndpoint || null
+            hit.ramalEndpoint || null,
+            hit.midRamalHit || null
           );
         }
         this.render();

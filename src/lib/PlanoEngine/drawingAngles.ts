@@ -1,19 +1,21 @@
 import { pointToSegmentDist } from './HitTester';
 import type { IPlanoEngineCore } from './PlanoState';
 
-export function checkRamalAngles(pts: number[][], net: string): boolean {
+export function checkRamalAngles(pts: number[][], net: string, tipo?: string): boolean {
   if (pts.length < 2) return true;
   const isSanOrLl = net === 'san' || net === 'll';
+  const isTributarioAcAf = (net === 'af' || net === 'ac') && tipo === 'tributario';
 
   if (!isSanOrLl) {
+    const requiredStep = isTributarioAcAf ? 90 : 45;
     for (let i = 0; i < pts.length - 1; i++) {
       const [x1, y1] = pts[i];
       const [x2, y2] = pts[i + 1];
       const dx = x2 - x1, dy = y2 - y1;
       if (Math.hypot(dx, dy) < 0.1) continue;
       const deg = Math.round(((Math.atan2(dy, dx) * 180 / Math.PI) % 360 + 360) % 360);
-      const rem = deg % 45;
-      if (rem > 1 && rem < 44) {
+      const rem = deg % requiredStep;
+      if (rem > 1 && rem < requiredStep - 1) {
         return false;
       }
     }

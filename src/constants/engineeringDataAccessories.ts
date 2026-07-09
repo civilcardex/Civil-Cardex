@@ -3,6 +3,8 @@ export const ACCESORIOS_HIDRO = [
   {id:'codo45rc',emoji:'🔩',nombre:'Codo corto 45°',icono:'/iconos_accesorios/codo45rc.svg', cat: 'Codos'},
   {id:'codo90rm',emoji:'🔩',nombre:'Codo medio 90°',icono:'/iconos_accesorios/codo90rm.svg', cat: 'Codos'},
   {id:'codo90rl',emoji:'🔩',nombre:'Codo largo 90°',icono:'/iconos_accesorios/codo90rl.svg', cat: 'Codos'},
+  {id:'codo90rmSube',emoji:'🔩',nombre:'Codo medio 90° sube',icono:'/iconos_accesorios/codo90rm.svg', cat: 'Codos'},
+  {id:'codo90rmBaja',emoji:'🔩',nombre:'Codo medio 90° baja',icono:'/iconos_accesorios/codo90rm.svg', cat: 'Codos'},
   {id:'teeDirecto',emoji:'🔧',nombre:'Tee paso directo',icono:'/iconos_accesorios/teeDirecto.svg', cat: 'Tees'},
   {id:'teeReduccion',emoji:'🔧',nombre:'Tee c/ reducción',icono:'/iconos_accesorios/teeReduccion.svg', cat: 'Tees'},
   {id:'teeLado',emoji:'🔧',nombre:'Tee paso lado',icono:'/iconos_accesorios/teeLado.svg', cat: 'Tees'},
@@ -12,6 +14,7 @@ export const ACCESORIOS_HIDRO = [
   {id:'valvCheque',emoji:'✔️',nombre:'Válvula cheque',icono:'/iconos_accesorios/valvCheque.svg', cat: 'Válvulas'},
   {id:'valvPie',emoji:'🪣',nombre:'Válvula pie',icono:'/iconos_accesorios/valvPie.svg', cat: 'Válvulas'},
   {id:'valvAngulo',emoji:'🚰',nombre:'Válvula ángulo',icono:'/iconos_accesorios/valvAngulo.svg', cat: 'Válvulas'},
+  {id:'llaveTerminal',emoji:'🚰',nombre:'Llave Terminal',icono:'/iconos_accesorios/valvCompuerta.svg', cat: 'Válvulas'},
   {id:'reduccion',emoji:'🔽',nombre:'Reducción',icono:'/iconos_accesorios/reduccion.svg', cat: 'Otros'},
   {id:'ampliacion',emoji:'🔼',nombre:'Ampliación',icono:'/iconos_accesorios/ampliacion.svg', cat: 'Otros'},
   {id:'otros',emoji:'➕',nombre:'Otros',icono:'/iconos_accesorios/otros.svg', cat: 'Otros'},
@@ -27,6 +30,7 @@ export const SAN_ACCESORIOS = [
   {id:'codo90rmSube',emoji:'🔩',nombre:'Codo medio 90° sube',icono:'/iconos_accesorios/codo90rm.svg', cat: 'Codos'},
   {id:'codo90rmBaja',emoji:'🔩',nombre:'Codo medio 90° baja',icono:'/iconos_accesorios/codo90rm.svg', cat: 'Codos'},
   {id:'codoReventilado',emoji:'🔩',nombre:'Codo reventilado',icono:'/iconos_accesorios/codo90rl.svg', cat: 'Codos'},
+  {id:'sifon',emoji:'🪤',nombre:'Sifón',icono:'/iconos_accesorios/otros.svg', cat: 'Otros'},
   ...ACCESORIOS_YEE,
 ];
 

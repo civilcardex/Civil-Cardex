@@ -112,12 +112,13 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
   if (engine.txtDrag) engine.txtDrag = null;
   if (engine.bajDrag) engine.bajDrag = null;
   if (engine.areaDrag) engine.areaDrag = null;
+  if (engine.dimDrag) { engine._markDirty(); engine.dimDrag = null; }
   if (engine.ptDrag) {
     const rId = engine.ptDrag.id;
     engine.ptDrag = null;
     engine._markDirty();
     const ram = engine.ramales.find((r) => r.id === rId);
-    if (ram && !checkRamalAngles(ram.pts, ram.net)) {
+    if (ram && !checkRamalAngles(ram.pts, ram.net, ram.tipo)) {
       engine.triggerAlert(
         'Ángulo no recomendado',
         (ram.net === 'san' || ram.net === 'll')
@@ -138,7 +139,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     engine.ramalDrag = null;
     engine._markDirty();
     const ram = engine.ramales.find((r) => r.id === rId);
-    if (ram && !checkRamalAngles(ram.pts, ram.net)) {
+    if (ram && !checkRamalAngles(ram.pts, ram.net, ram.tipo)) {
       engine.triggerAlert(
         'Ángulo no recomendado',
         (ram.net === 'san' || ram.net === 'll')
