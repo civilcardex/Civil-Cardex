@@ -101,14 +101,12 @@ function RedesTab({ state }: { state: WorkAreaState }) {
         </div>
       )}
       {redActiva === 'll' && redes.has('ll') && (
-        <RainwaterProvider>
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <PageNav page={llPage} setPage={setLlPage} total={3} color="var(--ll)" labels={['Diseño lluvias', 'Chequeo bajantes', 'Chequeo canales']} onPageHover={prefetchLl} />
           {llPage === 1 && <Suspense fallback={FALLBACK}><DisenoLluvias /></Suspense>}
           {llPage === 2 && <Suspense fallback={FALLBACK}><ChequeoBajantesLluvias /></Suspense>}
           {llPage === 3 && <Suspense fallback={FALLBACK}><ChequeoCanalesLluvias /></Suspense>}
         </div>
-        </RainwaterProvider>
       )}
       {redActiva === 'af' && redes.has('af') && (
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
@@ -192,7 +190,7 @@ export default function WorkAreaContent({ state }: WorkAreaContentProps) {
   const { tab, redes } = state;
 
   return (
-    <>
+    <RainwaterProvider>
       {tab === 'info' && <section aria-label="Información del proyecto" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_S3}>Información del proyecto</h2><InfoTab state={state} /></section>}
       {tab === 'planos' && <section aria-label="Carga de planos" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_S4}>Carga de planos</h2><Suspense fallback={FALLBACK}><PlanosTab state={state} /></Suspense></section>}
       {tab === 'redes' && state.redesActivas.length > 0 && <section aria-label="Diseño de red" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_S5}>Diseño de red</h2><RedesTab state={state} /></section>}
@@ -200,6 +198,6 @@ export default function WorkAreaContent({ state }: WorkAreaContentProps) {
       {tab === 'crit' && <section aria-label="Criterios y normativa" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_S7}>Criterios y normativa</h2><Suspense fallback={FALLBACK}><Normativa /></Suspense></section>}
       {tab === 'inf' && <section aria-label="Resumen del proyecto" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_S8}>Resumen del proyecto</h2><InfTab state={state} /></section>}
       {tab === 'iso' && <section aria-label="Isometría de red" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_S9}>Isometría de red</h2><Suspense fallback={FALLBACK}><IsometriaTab state={state} /></Suspense></section>}
-    </>
+    </RainwaterProvider>
   );
 }

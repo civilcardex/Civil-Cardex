@@ -4,6 +4,7 @@ import { REDES, USOS, pisoLbl } from "../../constants";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import type { useWorkAreaState } from "../useWorkAreaState";
 import EditButton from "../shared/EditButton";
+import { useRainwater } from "../../context/RainwaterContext";
 const InfoTab_S1: React.CSSProperties = { padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11, lineHeight: 1, flexShrink: 0, marginLeft: 2 };
 const InfoTab_S2: React.CSSProperties = { flexShrink: 0, padding: '7px 14px', fontSize: 12, fontWeight: 600, background: 'rgba(239,68,68,0.92)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, };
 const InfoTab_S3: React.CSSProperties = { background: 'rgba(255,255,255,.2)', border: 'none', borderRadius: 3, color: '#fff', cursor: 'pointer', fontSize: 11, padding: '2px 8px', flexShrink: 0 };
@@ -278,6 +279,7 @@ const UsageGuideCard = React.memo(function UsageGuideCard() {
 });
 
 function InfoTab({ state }: InfoTabProps) {
+  const { conRecolectora, setConRecolectora } = useRainwater();
   const {
     proy, setP,
     redes, setRedes, netColors, setNetColors,
@@ -285,7 +287,9 @@ function InfoTab({ state }: InfoTabProps) {
     generarPisos, alertMsg, setAlertMsg,
     onIntChange, onIntBlur, onDecChange, onDecBlur,
     pisos, delPiso, addPiso, addSotano,
+    redActiva,
   } = state;
+  const showRecolectora = conCubierta && redActiva === 'll';
 
   return (
     <div className="fu info-gral" style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
@@ -312,6 +316,21 @@ function InfoTab({ state }: InfoTabProps) {
           generarPisos={generarPisos}
         />
         <LevelsCard pisos={pisos} delPiso={delPiso} addPiso={addPiso} addSotano={addSotano} setPisos={state.setPisos} />
+        {showRecolectora && (
+          <section className="card" style={{ flex: '0 1 auto', minWidth: 160 }}>
+            <div className="card-h" style={{ padding: '4px 8px' }}>
+              <h3 className="card-t" style={{ fontSize: 13 }}>Canal recolectora</h3>
+            </div>
+            <div style={{ padding: '4px 8px' }}>
+              <button type="button" role="switch" aria-checked={conRecolectora} onClick={() => setConRecolectora(!conRecolectora)} title="Canal recolectora" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', padding: '4px 8px', borderRadius: 4, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'inherit' }}>
+                <div style={{ width: 28, height: 15, borderRadius: 8, background: conRecolectora ? 'var(--ll)' : 'var(--line)', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
+                  <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: conRecolectora ? 15 : 2, transition: 'left .2s' }} />
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--txt2)' }}>Activar canal recolectora</span>
+              </button>
+            </div>
+          </section>
+        )}
         <UsageGuideCard />
       </div>
     </div>

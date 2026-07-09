@@ -55,10 +55,37 @@ const CaudalCell = React.memo(function CaudalCell({ tramoKey, value, onCaudalCha
   );
 });
 
+const RecolectoraField = React.memo(function RecolectoraField({ label, value, onValueChange }: { label: string; value: number; onValueChange: (val: number) => void }) {
+  const [text, setText] = React.useState('');
+  const [editing, setEditing] = React.useState(false);
+  const display = editing ? text : (value > 0 ? String(value) : '');
+  return (
+    <div className="f" style={{ marginBottom: 0 }}>
+      <label style={{ fontSize: 12 }}>{label}</label>
+      <input type="text" inputMode="decimal"
+        value={display}
+        placeholder="0.00"
+        aria-label={label}
+        onFocus={() => { setEditing(true); setText(display); }}
+        onChange={e => {
+          const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+          setText(raw);
+        }}
+        onBlur={() => {
+          setEditing(false);
+          const v = parseFloat(text) || 0;
+          onValueChange(text === '' ? 0 : v);
+        }}
+        style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }}
+      />
+    </div>
+  );
+});
+
 export default function DisenoLluvias() {
   const { tramosLl, updTramoLL } = useTramos();
   const { plans } = usePlans();
-  const { bajantesLl } = useRainwater();
+  const { bajantesLl, conRecolectora, recolectora, updRecolectora } = useRainwater();
 
   const [, , conexionesDisplay] = useMemo(() => {
     const calculoMap: Record<string, string[]> = {};
@@ -454,5 +481,17 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm });
         </div>
       </div>
     </section>
+    {conRecolectora && (
+      <section className="card">
+        <div className="card-h">
+          <h3 className="card-t">Canal recolectora</h3>
+        </div>
+        <div style={{ padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, maxWidth: 320 }}>
+          <RecolectoraField label="Ancho (b, cm)" value={recolectora.b} onValueChange={v => updRecolectora('b', v)} />
+          <RecolectoraField label="Alto (h, cm)" value={recolectora.h} onValueChange={v => updRecolectora('h', v)} />
+          <RecolectoraField label="Pendiente (%)" value={recolectora.pendiente} onValueChange={v => updRecolectora('pendiente', v)} />
+        </div>
+      </section>
+    )}
   </>);
 }
