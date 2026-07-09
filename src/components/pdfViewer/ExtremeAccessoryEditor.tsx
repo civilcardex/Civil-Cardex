@@ -1,21 +1,12 @@
 import { syncExtremeAccessoryToHidroData } from '../../utils/syncExtremeAccessory';
 import { normalizeDnLabel } from '../../utils/formatUtils';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
-import { loadFromStorage, saveToStorage } from '../../services/storageService';
-import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys';
-import { writeSanDrawingSync, writeHydroDrawingSync } from '../../utils/drawingSync';
 const ExtremeAccessoryEditor_S1: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const ExtremeAccessoryEditor_S2: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const ExtremeAccessoryEditor_S3: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const ExtremeAccessoryEditor_S4: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const ExtremeAccessoryEditor_S5: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const ExtremeAccessoryEditor_S6: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 
 import {
-  APARATOS_DEF,
-  AF_UC_IDS,
-  AC_UC_IDS,
-  SAN_UC_IDS,
   ACCESORIOS_HIDRO,
   SAN_ACCESORIOS,
   GAS_ACCESORIOS
@@ -32,7 +23,7 @@ interface ExtremeAccessoryEditorProps {
 
 function getAccessoryOptions(netId: string) {
   if (netId === 'san') {
-    return SAN_ACCESORIOS.filter(a => a.id === 'codo90rmSube' || a.id === 'codo90rmBaja').map(a => ({ value: a.id, label: a.nombre.toUpperCase() }));
+    return SAN_ACCESORIOS.filter(a => a.id === 'codo90rmSube' || a.id === 'codo90rmBaja' || a.id === 'codoReventilado' || a.id === 'sifon').map(a => ({ value: a.id, label: a.nombre.toUpperCase() }));
   }
   if (['ll', 'vent'].includes(netId)) {
     return SAN_ACCESORIOS.map(a => ({ value: a.id, label: a.nombre.toUpperCase() }));
@@ -41,31 +32,14 @@ function getAccessoryOptions(netId: string) {
     return GAS_ACCESORIOS.map(a => ({ value: a.id, label: a.nombre.toUpperCase() }));
   }
   if (['af', 'ac', 'rci', 'rec'].includes(netId)) {
-    // AF/AC: Solo válvulas, válvulas de pie, reducciones, ampliaciones y otros (sin tees ni codos)
-    return ACCESORIOS_HIDRO.filter(a => a.cat !== 'Codos' && a.cat !== 'Tees').map(a => ({ value: a.id, label: a.nombre.toUpperCase() }));
-  }
-  return [];
-}
-
-function getApplicableAppliances(netId: string) {
-  if (netId === 'gas') {
-    return APARATOS_DEF.filter(ap => ap.grupo === 'g' && (ap.qgas || 0) > 0);
-  }
-  if (netId === 'san') {
-    return APARATOS_DEF.filter(ap => SAN_UC_IDS.includes(ap.id));
-  }
-  if (netId === 'af') {
-    return APARATOS_DEF.filter(ap => AF_UC_IDS.includes(ap.id));
-  }
-  if (netId === 'ac') {
-    return APARATOS_DEF.filter(ap => AC_UC_IDS.includes(ap.id));
+    // AF/AC: válvulas, válvulas de pie, reducciones, ampliaciones, otros, y codos de subida/bajada (sin tees ni el resto de codos)
+    return ACCESORIOS_HIDRO.filter(a => (a.cat !== 'Codos' && a.cat !== 'Tees') || a.id === 'codo90rmSube' || a.id === 'codo90rmBaja').map(a => ({ value: a.id, label: a.nombre.toUpperCase() }));
   }
   return [];
 }
 
 export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelElement, diamList, activeNet, plans }: ExtremeAccessoryEditorProps) {
   const accOptions = getAccessoryOptions(activeNet);
-  const applicableAps = getApplicableAppliances(activeNet);
 
   const onAccChange = (field: 'accesorioInicio' | 'accesorioFin') => (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
@@ -87,79 +61,6 @@ export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelEl
       engineRef.current._markDirty();
       if (val !== oldVal && plans) {
         syncExtremeAccessoryToHidroData(selElement.id, field, oldVal, val, plans);
-      }
-    }
-  };
-
-  const onAppChange = (field: 'aparatoInicio' | 'aparatoFin') => (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
-    if (engineRef.current) {
-      const oldVal = selElement[field] || '';
-      const updates: any = { [field]: val || null };
-      // Mutually exclusive with accessory — clear accesorio when aparato is selected
-      const fieldAcc = field === 'aparatoInicio' ? 'accesorioInicio' : 'accesorioFin';
-      if (val && selElement[fieldAcc]) {
-        updates[fieldAcc] = '';
-        updates[fieldAcc === 'accesorioInicio' ? 'diametroInicio' : 'diametroFin'] = '';
-      }
-      
-      // Update engine
-      engineRef.current.updateSelected(updates);
-      setSelElement({ ...selElement, ...updates });
-      engineRef.current.render();
-      engineRef.current._markDirty();
-
-      // Sync to plans trace data
-      if (val !== oldVal && plans) {
-        for (const plan of plans) {
-          if (!plan || plan.status !== 'confirmed') continue;
-          const raw = loadFromStorage<any>(TRAZOS_PREFIX + plan.id, null);
-          if (!raw) continue;
-          let data = raw;
-          if (typeof data === 'string') {
-            try { data = JSON.parse(data); } catch { continue; }
-          }
-          const r = (data.ramales || []).find((x: any) => x.id === selElement.id);
-          if (r) {
-            r[field] = val || undefined;
-            data.ts = Date.now();
-            saveToStorage(TRAZOS_PREFIX + plan.id, data);
-          }
-        }
-
-        // Update counts in localStorage APARATOS_BY_TRAMO_KEY (aparatos_by_tramo_v2)
-        const planId = engineRef.current._loadedPlanId;
-        const allCounts = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {}) || {};
-        const storageKey = planId ? `${activeNet}_${selElement.id}_${planId}` : `${activeNet}_${selElement.id}`;
-        const cur = { ...(allCounts[storageKey] || {}) };
-        
-        if (oldVal) {
-          const v = (cur[oldVal] || 0) - 1;
-          if (v <= 0) delete cur[oldVal]; else cur[oldVal] = v;
-        }
-        if (val) {
-          cur[val] = (cur[val] || 0) + 1;
-        }
-
-        if (Object.keys(cur).length === 0) {
-          delete allCounts[storageKey];
-        } else {
-          allCounts[storageKey] = cur;
-        }
-        saveToStorage(APARATOS_BY_TRAMO_KEY, allCounts);
-
-        // Update sync data for calculations
-        try {
-          writeSanDrawingSync(plans);
-          writeHydroDrawingSync(plans);
-        } catch (err) {
-          if (import.meta.env.DEV) console.error(err);
-        }
-
-        // Dispatch sidebar event
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('aparatos-clear'));
-        }
       }
     }
   };
@@ -204,20 +105,6 @@ export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelEl
             </select>
           )}
         </div>
-        {/* Aparato Dropdown */}
-        {applicableAps.length > 0 && (
-          <div style={{ marginTop: 4 }}>
-            <div style={{ fontSize: 12, color: '#9BA8AA', marginBottom: 2 }}>Seleccionar Aparato</div>
-            <select value={selElement.aparatoInicio || ''} aria-label="Aparato inicio"
-              onChange={onAppChange('aparatoInicio')}
-              style={ExtremeAccessoryEditor_S3}>
-              <option value="">Ninguno</option>
-              {applicableAps.map(o => (
-                <option key={o.id} value={o.id}>{o.nombre.toUpperCase()}</option>
-              ))}
-            </select>
-          </div>
-        )}
       </div>
 
       {/* FIN */}
@@ -256,20 +143,6 @@ export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelEl
             </select>
           )}
         </div>
-        {/* Aparato Dropdown */}
-        {applicableAps.length > 0 && (
-          <div style={{ marginTop: 4 }}>
-            <div style={{ fontSize: 12, color: '#9BA8AA', marginBottom: 2 }}>Seleccionar Aparato</div>
-            <select value={selElement.aparatoFin || ''} aria-label="Aparato fin"
-              onChange={onAppChange('aparatoFin')}
-              style={ExtremeAccessoryEditor_S6}>
-              <option value="">Ninguno</option>
-              {applicableAps.map(o => (
-                <option key={o.id} value={o.id}>{o.nombre.toUpperCase()}</option>
-              ))}
-            </select>
-          </div>
-        )}
       </div>
     </div>
   );

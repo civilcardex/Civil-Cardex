@@ -204,6 +204,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
           if (engineRef.current) engineRef.current.setScaleM(derived);
         }
       }
+      const dScale = plano && plano.definedScale ? plano.definedScale : 0;
+      if (engineRef.current) engineRef.current.setDefinedScaleM(dScale);
     }
   }, [selectedNivel, planos]);
 
@@ -322,8 +324,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
   const [accesorioModal, setAccesorioModal] = useState<{isOpen: boolean; ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean}>({isOpen: false, ramalId: '', angleDeg: 0, junctionIndex: 0, net: '', isTee: false});
 
   const contextMenuCbRef = useRef<any>(null);
-  const onContextMenuCb = useCallback((bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: any) => {
-    setContextMenuState({ visible: true, x, y, element: bajante, isGhostClick, ramalEndpoint });
+  const onContextMenuCb = useCallback((bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: any, midRamalHit?: { segmentIdx: number; x: number; y: number } | null) => {
+    setContextMenuState({ visible: true, x, y, element: bajante, isGhostClick, ramalEndpoint, midRamalHit });
   }, []);
   contextMenuCbRef.current = onContextMenuCb;
 
@@ -599,7 +601,10 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
         setPendInput(selElement.pendiente > 0 ? String(selElement.pendiente) : '');
       }
     } else if (!selElement) {
-      const p = pendSel[activeNet];
+      // Mirror the actual default used at ramal-creation time (setRamalDefaults / syncEngine)
+      // so the field doesn't show blank while a new san/ll ramal would in fact be drawn at 2%.
+      const fallback = (activeNet === 'san' || activeNet === 'll') ? DEFAULT_PENDIENTE_PCT : undefined;
+      const p = pendSel[activeNet] !== undefined ? pendSel[activeNet] : fallback;
       setPendInput(p !== undefined && p > 0 ? String(p) : '');
     }
   }

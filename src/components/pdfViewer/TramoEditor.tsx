@@ -5,10 +5,19 @@ import { DIAMETROS_AF } from '../../constants/hydraulicData'
 import { CAT_GAS, GAS_DN_LABELS, GAS } from '../../constants/engineeringDataGas'
 import { writeBajantePropToDrawing } from '../../utils/writeDiameterToDrawing'
 import { normalizeDnLabel } from '../../utils/formatUtils'
+import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel'
 import ExtremeAccessoryEditor from './ExtremeAccessoryEditor'
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine'
 import { bajanteLabel } from '../../utils/accessoryAbbreviations'
 import { TramoEditorCtx, type TramoEditorContextValue } from './TramoEditorContext'
+
+// A sanitary main only needs the 3" minimum when it actually carries a codo reventilado
+// connection (endpoint or mid-body) — not every main-line ramal in the network.
+function ramalHasCodoReventilado(r: any): boolean {
+  if (!r) return false;
+  if (r.accesorioInicio === 'codoReventilado' || r.accesorioFin === 'codoReventilado') return true;
+  return Object.values(r.accMed || {}).includes('codoReventilado');
+}
 const TramoEditor_S1: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const TramoEditor_S2: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const TramoEditor_S3: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
@@ -197,7 +206,17 @@ function BajanteEditor({
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Diámetro</div>
           <select value={selElement.dNominal !== undefined && selElement.dNominal !== '0' && selElement.dNominal !== '' ? selElement.dNominal : ''} aria-label="Diámetro"
-            onChange={e => { handleUpdateSel('dNominal', e.target.value); }}
+            onChange={e => {
+              const val = e.target.value;
+              if (selElement.net === 'vent') {
+                const opt = DIAM_VENT.find((d: any) => d.nom === val);
+                if (opt && opt.pulg > 2) {
+                  engineRef.current?.triggerAlert('Diámetro no permitido', 'Los ramales de ventilación no pueden superar 2" de diámetro.');
+                  return;
+                }
+              }
+              handleUpdateSel('dNominal', val);
+            }}
             style={TramoEditor_S5}>
             <option value="">—</option>
             {(selElement.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
@@ -443,6 +462,12 @@ function RamalEditor({
       <select value={currentDiam} aria-label="Diámetro"
       onChange={e => {
         const v = e.target.value;
+        const targetRamal = selElement || (engineRef.current && [...engineRef.current.ramales].reverse().find((r: any) => r.net === activeNet));
+        if (activeNet === 'san' && diamPulgFromLabel(v) < 3 &&
+            targetRamal?.tipo === 'ramal' && ramalHasCodoReventilado(targetRamal)) {
+          engineRef.current?.triggerAlert('Diámetro mínimo', 'La tubería principal sanitaria con codo reventilado requiere mínimo 3" de diámetro.');
+          return;
+        }
         setDiamSel(prev => ({ ...prev, [activeNet]: v }));
         if (engineRef.current && selElement) {
           engineRef.current.updateSelected({ diametro: v });

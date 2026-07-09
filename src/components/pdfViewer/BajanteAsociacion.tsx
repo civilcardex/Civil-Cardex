@@ -102,7 +102,7 @@ export default function BajanteAsociacion({
                 }
               }}
               style={BajanteAsociacion_S1}>
-              <option value="">— Sin destino —</option>
+              <option value="">Sin destino</option>
               {lowerFloorsRamales.map(group => {
                 const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
                 const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;

@@ -8,6 +8,7 @@ export interface ContextMenuState {
   element: any; // was bajante
   isGhostClick?: boolean;
   ramalEndpoint?: { idx: number; x: number; y: number } | null;
+  midRamalHit?: { segmentIdx: number; x: number; y: number } | null;
 }
 
 export interface DrawingElementContextMenuContextValue {
