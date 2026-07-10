@@ -11,8 +11,8 @@ import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage, savePlanTrazos } from "../services/storageService";
 import { writeSanDrawingSync } from "../utils/drawingSync";
 import { useRainwater } from "../context/RainwaterContext";
-const RainwaterDesign_S1: React.CSSProperties = { width: '60px', padding: '2px 4px', background: 'transparent', border: '1px solid transparent', borderRadius: 2, color: 'var(--txt)', fontSize: 9, fontFamily: 'var(--mono)', fontWeight: 600, textAlign: 'center' };
-const RainwaterDesign_S2: React.CSSProperties = { fontFamily:'var(--mono)',fontSize: 9,padding:'1px 1px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer',maxWidth:60 };
+const RainwaterDesign_S1: React.CSSProperties = { width: '60px', padding: '2px 4px', background: 'transparent', border: '1px solid transparent', borderRadius: 2, color: 'var(--txt)', fontSize: 9.5, fontFamily: 'var(--mono)', fontWeight: 600, textAlign: 'center' };
+const RainwaterDesign_S2: React.CSSProperties = { fontFamily:'var(--mono)',fontSize: 9.5,padding:'1px 1px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer',maxWidth:60 };
 
 
 function getTributarioIds(tramos: Array<{ recibeDe?: string[]; descripcion?: string }>): Set<string> {
@@ -61,7 +61,7 @@ const RecolectoraField = React.memo(function RecolectoraField({ label, value, on
   const display = editing ? text : (value > 0 ? String(value) : '');
   return (
     <div className="f" style={{ marginBottom: 0 }}>
-      <label style={{ fontSize: 12 }}>{label}</label>
+      <span style={{ fontSize: 12 }}>{label}</span>
       <input type="text" inputMode="decimal"
         value={display}
         placeholder="0.00"
@@ -95,7 +95,7 @@ export default function DisenoLluvias() {
       const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
       if (!raw) continue;
       let data = raw as Record<string, any>;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { continue; } }
+      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
 
       const ramales = (data.ramales || []).filter((r: any) => r.net === 'll');
       const bajantes = (data.bajantes || []).filter((b: any) => b.net === 'll');
@@ -253,7 +253,7 @@ export default function DisenoLluvias() {
       const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
       if (!raw) continue;
       let data = raw as Record<string, any>;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { continue; } }
+      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
       const totalArea = (data.areas || []).reduce((s: number, a: any) => s + (a.areaM2 || 0), 0);
       areaAcumMap[String(plan.nivel)] = totalArea;
     }
@@ -330,7 +330,7 @@ export default function DisenoLluvias() {
       const raw = loadFromStorage<any>(TRAZOS_PREFIX + planId, null);
       if (raw) {
         let data = raw;
-        if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { return; } }
+        if (typeof data === 'string') { try { data = JSON.parse(data); } catch { return; } }
         const r = (data.ramales || []).find((x: any) => x.id === ramalId);
         if (r) {
           r.caudal = newCaudal;
@@ -353,49 +353,57 @@ export default function DisenoLluvias() {
       <div className="card-h">
         <h3 className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Diseno_red.svg" alt="Diseño red aguas lluvias"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red aguas lluvias</h3>
       </div>
-      <div className="scroll-top" style={{padding:'12px'}}>
-        <div className="scroll-inner" style={{minWidth:'max-content'}}>
-          <table className="tbl" style={{fontSize: 9}}>
+      <div style={{padding:'12px'}}>
+        <table className="tbl" style={{width:'100%',tableLayout:'fixed',borderCollapse:'collapse',fontSize: 9.5}}>
+          <colgroup>
+            <col style={{width:'4.3%'}} /><col style={{width:'3.5%'}} /><col style={{width:'4.3%'}} /><col style={{width:'3.5%'}} />
+            <col style={{width:'5.5%'}} /><col style={{width:'4.3%'}} /><col style={{width:'3.5%'}} /><col style={{width:'4.3%'}} />
+            <col style={{width:'5.5%'}} /><col style={{width:'4.3%'}} /><col style={{width:'5.5%'}} />
+            <col style={{width:'4.3%'}} /><col style={{width:'4.3%'}} /><col style={{width:'3.5%'}} /><col style={{width:'4.3%'}} />
+            <col style={{width:'5.5%'}} /><col style={{width:'3.5%'}} /><col style={{width:'3.5%'}} /><col style={{width:'3.5%'}} />
+            <col style={{width:'3.5%'}} /><col style={{width:'3.5%'}} /><col style={{width:'4.3%'}} />
+            <col style={{width:'4.3%'}} /><col style={{width:'3.5%'}} />
+          </colgroup>
           <thead>
             <tr>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Tramo</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Nivel</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Inicio</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Fin</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Bajantes<br/>asociadas</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Caudal<br/><small>(LPS)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Manning<br/></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Pendiente<br/><small>(%)</small></th>
-              <th scope="col" className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize: 9,padding:'1px 2px'}}>Diámetro</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Qo<br/><small>(LPS)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Vo<br/><small>(m/s)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Q/Qo</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Vr<br/><small>(m/s)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>CHEQUEO VELOCIDAD</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Yc<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Yn<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>FROUDE</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Flujo</th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Ymax<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 2px',textTransform:'none'}}>Yn vs Yc</th>
-              <th scope="col" className="col-h ven" colSpan={2} style={{textAlign:'center',fontSize: 9,padding:'1px 2px'}}>Fuerza Tractiva</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Tramo</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Nivel</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Inicio</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Fin</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Bajantes<br/>asociadas</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Caudal<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Manning<br/></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Pendiente<br/><small>(%)</small></th>
+              <th scope="col" className="col-h ok" colSpan={3} style={{textAlign:'center',fontSize: 8,padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Diámetro</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',textTransform:'none',whiteSpace:'normal',overflow:'hidden'}}>Qo<br/><small>(LPS)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',textTransform:'none',whiteSpace:'normal',overflow:'hidden'}}>Vo<br/><small>(m/s)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',textTransform:'none',whiteSpace:'normal',overflow:'hidden'}}>Q/Qo</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',textTransform:'none',whiteSpace:'normal',overflow:'hidden'}}>Vr<br/><small>(m/s)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',textTransform:'none',whiteSpace:'normal',overflow:'hidden'}}>CHEQUEO VELOCIDAD</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',textTransform:'none',whiteSpace:'normal',overflow:'hidden'}}>Yc<br/><small>(mm)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',textTransform:'none',whiteSpace:'normal',overflow:'hidden'}}>Yn<br/><small>(mm)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',textTransform:'none',whiteSpace:'normal',overflow:'hidden'}}>FROUDE</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Flujo</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',textTransform:'none',whiteSpace:'normal',overflow:'hidden'}}>Ymax<br/><small>(mm)</small></th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 8,textAlign:'center',padding:'1px 2px',textTransform:'none',whiteSpace:'normal',overflow:'hidden'}}>Yn vs Yc</th>
+              <th scope="col" className="col-h ven" colSpan={2} style={{textAlign:'center',fontSize: 8,padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Fuerza Tractiva</th>
             </tr>
             <tr>
-              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Calculado<br/><small>(")</small></th>
-              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Diseño<br/><small>(")</small></th>
-              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Interior<br/><small>(mm)</small></th>
-              <th scope="col" className="col-h ven" style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>Real<br/><small>(kg/m²)</small></th>
-              <th scope="col" className="col-h ven" style={{fontSize: 9,textAlign:'center',padding:'1px 2px'}}>&gt;0.15</th>
+              <th scope="col" className="col-h ok" style={{fontSize: 8,textAlign:'center',padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Calculado<br/><small>(")</small></th>
+              <th scope="col" className="col-h ok" style={{fontSize: 8,textAlign:'center',padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Diseño<br/><small>(")</small></th>
+              <th scope="col" className="col-h ok" style={{fontSize: 8,textAlign:'center',padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Interior<br/><small>(mm)</small></th>
+              <th scope="col" className="col-h ven" style={{fontSize: 8,textAlign:'center',padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>Real<br/><small>(kg/m²)</small></th>
+              <th scope="col" className="col-h ven" style={{fontSize: 8,textAlign:'center',padding:'1px 2px',whiteSpace:'normal',overflow:'hidden'}}>&gt;0.15</th>
             </tr>
           </thead>
           <tbody>
             {displayTramos.length === 0 ? (
               <tr>
-                <td colSpan={24} style={{ padding: "16px 0", textAlign: "center", color: "var(--txt3)", fontSize: 9 }}>
+                <td colSpan={24} style={{ padding: "16px 0", textAlign: "center", color: "var(--txt3)", fontSize: 9.5 }}>
                   No hay tramos. Dibuja ramales en el visor para que aparezcan aquí.
                 </td>
               </tr>
-            ) : [...displayTramos].sort((a,b)=>(a.piso||0)-(b.piso||0)).map(t=>{
+            ) : displayTramos.toSorted((a,b)=>(a.piso||0)-(b.piso||0)).map(t=>{
 const n=t.nmaning??0;
 const sVal=t.sPercent??0;
 const S=sVal!=null&&sVal>0?sVal/100:null;
@@ -421,20 +429,20 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm });
 }
               return(
                 <tr key={t._key}>
-                  <td className="c" style={{padding:'1px 2px'}}><span className="sigla" style={{fontSize: 9}}>{t.id || t._key}</span></td>
-                  <td className="c" style={{padding:'1px 2px'}}><span style={{fontSize: 9,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.piso ? pisoCorto(t.piso) : '—'}</span></td>
-                  <td className="c" style={{padding:'1px 2px'}}><span style={{fontSize: 9,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.desde || '—'}</span></td>
-                  <td className="c" style={{padding:'1px 2px'}}><span style={{fontSize: 9,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.hasta || '—'}</span></td>
+                  <td className="c" style={{padding:'1px 2px'}}><span className="sigla" style={{fontSize: 9.5}}>{t.id || t._key}</span></td>
+                  <td className="c" style={{padding:'1px 2px'}}><span style={{fontSize: 9.5,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.piso ? pisoCorto(t.piso) : '—'}</span></td>
+                  <td className="c" style={{padding:'1px 2px'}}><span style={{fontSize: 9.5,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.desde || '—'}</span></td>
+                  <td className="c" style={{padding:'1px 2px'}}><span style={{fontSize: 9.5,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.hasta || '—'}</span></td>
                   <td className="c" style={{padding:'1px 2px',minWidth:60,maxWidth:120}}>
                     {(() => {
                       const associatedBajantes = (conexionesDisplay as any)[t._key ?? ''] || [];
                       return associatedBajantes.length === 0 ? (
-                        <span style={{fontSize: 9,color:'var(--txt3)'}}>—</span>
+                        <span style={{fontSize: 9.5,color:'var(--txt3)'}}>—</span>
                       ) : (
                         <div style={{display:'flex',flexWrap:'wrap',gap:2,justifyContent:'center',alignItems:'center'}}>
                           {associatedBajantes.map((bajName: string) => (
                             <span key={bajName}
-                              style={{fontSize: 9,padding:'1px 1px',border:'1px solid var(--ll)',borderRadius:3,color:'var(--ll)',fontFamily:'var(--mono)',lineHeight:1.3}}>
+                              style={{fontSize: 9.5,padding:'1px 1px',border:'1px solid var(--ll)',borderRadius:3,color:'var(--ll)',fontFamily:'var(--mono)',lineHeight:1.3}}>
                               {bajName}
                             </span>
                           ))}
@@ -445,9 +453,9 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm });
                   <td className="c" style={{padding:'1px 2px',minWidth:60}}>
                     <CaudalCell tramoKey={t._key ?? ''} value={Q} onCaudalChange={handleCaudalChange} />
                   </td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{sVal > 0 ? sVal : '—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{DcalcPulg>0?DcalcPulg.toFixed(2)+'"':'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9.5,padding:'1px 2px'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9.5,padding:'1px 2px'}}>{sVal > 0 ? sVal : '—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9.5,padding:'1px 2px'}}>{DcalcPulg>0?DcalcPulg.toFixed(2)+'"':'—'}</td>
                   <td className="c" style={{padding:'1px 1px'}}>
           <select
             aria-label="Seleccionar diámetro"
@@ -459,26 +467,25 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm });
             {DIAM_OPTIONS.map(o=><option key={o.pulg} value={o.pulg}>{o.label}</option>)}
           </select>
         </td>
-                  <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{DintMm>0?DintMm:'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{Qo>0?Qo.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{Vo>0?Vo.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{qqo>0?qqo.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{Vreal>0?Vreal.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{renderStatus(chequeoV)}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{Yc>0?Yc.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{Yn>0?Yn.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px'}}>{Froude>0?Froude.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{tipoFlujo}</td>
-                  <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{Ymax>0?Ymax.toFixed(2):'—'}</td>
-                  <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{renderStatus(chequeoYn)}</td>
-                  <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{fuerzaTractiva>0?fuerzaTractiva.toFixed(2):'—'}</td>
-        <td className="c" style={{fontSize: 9,padding:'1px 2px'}}>{renderStatus(chequeoFT)}</td>
+                  <td className="c" style={{fontSize: 9.5,padding:'1px 2px'}}>{DintMm>0?DintMm:'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9.5,padding:'1px 2px'}}>{Qo>0?Qo.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9.5,padding:'1px 2px'}}>{Vo>0?Vo.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9.5,padding:'1px 2px'}}>{qqo>0?qqo.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9.5,padding:'1px 2px'}}>{Vreal>0?Vreal.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontSize: 9.5,padding:'1px 2px'}}>{renderStatus(chequeoV)}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9.5,padding:'1px 2px'}}>{Yc>0?Yc.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9.5,padding:'1px 2px'}}>{Yn>0?Yn.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 9.5,padding:'1px 2px'}}>{Froude>0?Froude.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontSize: 9.5,padding:'1px 2px'}}>{tipoFlujo}</td>
+                  <td className="c" style={{fontSize: 9.5,padding:'1px 2px'}}>{Ymax>0?Ymax.toFixed(2):'—'}</td>
+                  <td className="c" style={{fontSize: 9.5,padding:'1px 2px'}}>{renderStatus(chequeoYn)}</td>
+                  <td className="c" style={{fontSize: 9.5,padding:'1px 2px'}}>{fuerzaTractiva>0?fuerzaTractiva.toFixed(2):'—'}</td>
+        <td className="c" style={{fontSize: 9.5,padding:'1px 2px'}}>{renderStatus(chequeoFT)}</td>
       </tr>
               );
             })}
           </tbody>
         </table>
-        </div>
       </div>
     </section>
     {conRecolectora && (
