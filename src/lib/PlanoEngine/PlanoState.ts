@@ -6,6 +6,7 @@ export const NETS = [
   { id: 'san', lbl: 'RS', col: '#F5A623', ucType: 'ud', bmType: 'bajante', bmPfx: 'BAN', bmIco: '⬇', emoji: '🚽', name: 'Sanitaria' },
   { id: 'vent', lbl: 'REV', col: '#808080', ucType: null, bmType: 'bajante', bmPfx: 'BREV', bmIco: '⬇', emoji: '🌬', name: 'Ventilación' },
   { id: 'll', lbl: 'RALL', col: '#8B5CF6', ucType: 'ud', bmType: 'bajante', bmPfx: 'BALL', bmIco: '⬇', emoji: '🌧', name: 'Aguas lluvias' },
+  { id: 'recolectora', lbl: 'RECOLL', col: '#7C3AED', ucType: null, bmType: 'bajante', bmPfx: 'RECOLL', bmIco: '⬇', emoji: '🏠', name: 'Canal recolectora' },
   { id: 'gas', lbl: 'RG', col: '#A855F7', ucType: null, bmType: 'montante', bmPfx: 'MG', bmIco: '⬆', emoji: '⛽', name: 'Gas' },
   { id: 'rci', lbl: 'RRCI', col: '#F87171', ucType: null, bmType: 'montante', bmPfx: 'MRCI', bmIco: '⬆', emoji: '🔴', name: 'Contra incendio' },
   { id: 'rec', lbl: 'RREC', col: '#22D3EE', ucType: null, bmType: 'montante', bmPfx: 'MREC', bmIco: '⬆', emoji: '🔄', name: 'Recirculación' },

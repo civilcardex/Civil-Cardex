@@ -1,4 +1,4 @@
-import { useState, useMemo, createContext, useContext, type ReactNode } from "react";
+import { useState, useMemo, useEffect, createContext, useContext, type ReactNode } from "react";
 import { useTramos } from "./TramosContext";
 import { usePlans } from "./PlansContext";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
@@ -27,9 +27,24 @@ const [bajantesLl, setBajantesLl] = useState<BajanteLL[]>([]);
 
 const [canalesLl, setCanalesLl] = useState<CanalLL[]>([]);
 
-const [conRecolectora, setConRecolectora] = useState<boolean>(false);
+const [conRecolectora, setConRecolectora] = useState<boolean>(() => {
+  try {
+    const saved = loadFromStorage<string[]>('active_nets', [] as unknown as string[]);
+    if (saved && Array.isArray(saved)) return saved.includes('recolectora');
+  } catch { /* ignore */ }
+  return false;
+});
 const [recolectora, setRecolectora] = useState<RecolectoraData>({ b: 0, h: 0, pendiente: 0 });
 const updRecolectora = (field: keyof RecolectoraData, val: number) => setRecolectora(p => ({ ...p, [field]: val }));
+
+useEffect(() => {
+  const handler = (e: Event) => {
+    const nets = (e as CustomEvent).detail;
+    if (Array.isArray(nets)) setConRecolectora(nets.includes('recolectora'));
+  };
+  window.addEventListener('civilflow_nets_changed', handler);
+  return () => window.removeEventListener('civilflow_nets_changed', handler);
+}, []);
 
 const addCanalLL = () => setCanalesLl(p => [...p, {
   id:`CLL-${p.length+1}`,sector:'',areaParcial:0,areaAcumulada:0,intensidad:0,coeficienteC:0,manning:0,pendiente:0,b:0,h:0,bl:0,

@@ -4,7 +4,6 @@ import { REDES, USOS, pisoLbl } from "../../constants";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import type { useWorkAreaState } from "../useWorkAreaState";
 import EditButton from "../shared/EditButton";
-import { useRainwater } from "../../context/RainwaterContext";
 const InfoTab_S1: React.CSSProperties = { padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11, lineHeight: 1, flexShrink: 0, marginLeft: 2 };
 const InfoTab_S2: React.CSSProperties = { flexShrink: 0, padding: '7px 14px', fontSize: 12, fontWeight: 600, background: 'rgba(239,68,68,0.92)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, };
 const InfoTab_S3: React.CSSProperties = { background: 'rgba(255,255,255,.2)', border: 'none', borderRadius: 3, color: '#fff', cursor: 'pointer', fontSize: 11, padding: '2px 8px', flexShrink: 0 };
@@ -20,7 +19,6 @@ const InfoTab_equipoBtn: React.CSSProperties = {
 const InfoTab_cubiertaToggle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none', padding: '4px 8px', borderRadius: 4, flexShrink: 0, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'inherit' };
 const InfoTab_generarBtn: React.CSSProperties = { width: '100%', padding: '6px', marginTop: 6, background: 'var(--acc)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontWeight: 600, fontSize: 12 };
 const InfoTab_pisoLi: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 3, padding: '2px 4px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', marginBottom: 2 };
-const InfoTab_recolectoraToggle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', padding: '4px 8px', borderRadius: 4, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'inherit' };
 
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
@@ -67,51 +65,63 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({ redes, setRedes, net
             <EditButton edit={isEditing} setEdit={setIsEditing} />
           </h3>
           <span className="card-s" style={{ fontSize: 11 }}>
-            {[...redes].filter(id => id !== 'ep' && id !== 'bom' && id !== 'vent').length} de {REDES.filter(r => r.id !== 'ep' && r.id !== 'bom' && r.id !== 'vent').length}
+            {[...redes].filter(id => id !== 'ep' && id !== 'bom' && id !== 'vent' && id !== 'recolectora').length} de {REDES.filter(r => r.id !== 'ep' && r.id !== 'bom' && r.id !== 'vent' && r.id !== 'recolectora').length}
           </span>
         </div>
       </div>
       <div style={{ padding: '4px 6px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 2 }}>
           {(() => {
-            const mainNets = REDES.filter(r => r.id !== 'ep' && r.id !== 'bom' && r.id !== 'san' && r.id !== 'vent');
+            const mainNets = REDES.filter(r => r.id !== 'ep' && r.id !== 'bom' && r.id !== 'san' && r.id !== 'vent' && r.id !== 'recolectora');
             const sanRede = REDES.find(x => x.id === 'san');
             const ventRede = REDES.find(x => x.id === 'vent');
+            const llRede = REDES.find(x => x.id === 'll');
+            const recolectoraRede = REDES.find(x => x.id === 'recolectora');
             const ordered = [...mainNets];
             if (sanRede) ordered.push(sanRede);
             if (ventRede) ordered.push(ventRede);
+            if (llRede && recolectoraRede) {
+              const llIdx = ordered.indexOf(llRede);
+              if (llIdx >= 0) ordered.splice(llIdx + 1, 0, recolectoraRede);
+            }
 
             return ordered.map(r => {
               const isVent = r.id === 'vent';
+              const isRecolectora = r.id === 'recolectora';
+              const isSub = isVent || isRecolectora;
               const on = redes.has(r.id);
               const sanOn = redes.has('san');
-              const cssVar = `--${r.id}`;
-              const currentColor = netColors[r.id] || '#666';
+              const llOn = redes.has('ll');
+              const parentOn = isVent ? sanOn : isRecolectora ? llOn : true;
+              const cssVar = `--${r.id === 'recolectora' ? 'll' : r.id}`;
+              const currentColor = r.id === 'recolectora' ? (netColors['ll'] || '#8B5CF6') : (netColors[r.id] || '#666');
               return (
-                <button type="button" key={r.id} disabled={!isEditing || (isVent && !sanOn)} onClick={() => { if (isVent && !sanOn) return; const n = new Set(redes); if (on) n.delete(r.id); else n.add(r.id); setRedes(n); }}
+                <button type="button" key={r.id} disabled={!isEditing || (isSub && !parentOn)} onClick={() => { if (isSub && !parentOn) return; const n = new Set(redes); if (isRecolectora && !llOn && !on) { n.add('ll'); n.add(r.id); } else if (isVent && !sanOn && !on) { n.add(r.id); } else { if (on) n.delete(r.id); else n.add(r.id); } setRedes(n); }}
                   style={{
                     ...InfoTab_netBtn,
-                    padding: isVent ? '2px 5px 2px 12px' : '3px 5px',
-                    marginLeft: isVent ? 10 : 0,
-                    cursor: isEditing && (!isVent || sanOn) ? 'pointer' : 'default',
-                    width: isVent ? 'calc(100% - 10px)' : '100%',
-                    opacity: (isEditing && (!isVent || sanOn)) ? 1 : 0.5
+                    padding: isSub ? '2px 5px 2px 12px' : '3px 5px',
+                    marginLeft: isSub ? 10 : 0,
+                    cursor: isEditing && (!isSub || parentOn) ? 'pointer' : 'default',
+                    width: isSub ? 'calc(100% - 10px)' : '100%',
+                    opacity: (isEditing && (!isSub || parentOn)) ? 1 : 0.5
                   }}>
                   {r.icoImg ? <img src={r.icoImg} alt="" width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle' }} loading="lazy" /> : <span style={{ fontSize: 13 }}>{r.ico}</span>}
                   <span style={{ fontWeight: 600, fontSize: 12, color: on ? currentColor : 'var(--txt2)', whiteSpace: 'nowrap', flex: 1 }}>{r.lbl}</span>
-                  <input type="color" value={currentColor} disabled={!isEditing || (isVent && !sanOn)} aria-label="Color de red"
-                    onClick={e => e.stopPropagation()}
-                    onChange={e => {
-                      const c = e.target.value;
-                      setNetColors(prev => ({ ...prev, [r.id]: c }));
-                      document.documentElement.style.setProperty(cssVar, c);
-                      try {
-                        const net = NETS.find((n: any) => n.id === r.id);
-                        if (net) net.col = c;
-                      } catch (e) { if (import.meta.env.DEV) console.error(e); }
-                      try { localStorage.setItem('civilflow_net_' + r.id, c); } catch { /* ignore */ }
-                    }}
-                    style={{ width: 14, height: 14, border: 'none', padding: 0, cursor: isEditing && (!isVent || sanOn) ? 'pointer' : 'default', background: 'none', flexShrink: 0, opacity: isEditing && (!isVent || sanOn) ? 1 : 0.5 }} />
+                  {!isRecolectora && (
+                    <input type="color" value={currentColor} disabled={!isEditing || (isSub && !parentOn)} aria-label="Color de red"
+                      onClick={e => e.stopPropagation()}
+                      onChange={e => {
+                        const c = e.target.value;
+                        setNetColors(prev => ({ ...prev, [r.id]: c }));
+                        document.documentElement.style.setProperty(cssVar, c);
+                        try {
+                          const net = NETS.find((n: any) => n.id === r.id);
+                          if (net) net.col = c;
+                        } catch (e) { if (import.meta.env.DEV) console.error(e); }
+                        try { localStorage.setItem('civilflow_net_' + r.id, c); } catch { /* ignore */ }
+                      }}
+                      style={{ width: 14, height: 14, border: 'none', padding: 0, cursor: isEditing && (!isSub || parentOn) ? 'pointer' : 'default', background: 'none', flexShrink: 0, opacity: isEditing && (!isSub || parentOn) ? 1 : 0.5 }} />
+                  )}
                   <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: on ? currentColor : 'transparent', border: '1.5px solid ' + (on ? currentColor : 'var(--txt3)') }} />
                   <span className="visually-hidden">{on ? 'Activa' : 'Inactiva'}</span>
                 </button>
@@ -150,8 +160,8 @@ const ActiveEquiposCard = React.memo(function ActiveEquiposCard({ redes, setRede
               <button type="button" key={r.id} disabled={!editing} onClick={() => { if (!editing) return; const n = new Set(redes); if (on) n.delete(r.id); else n.add(r.id); setRedes(n); }}
                 style={{ ...InfoTab_equipoBtn, cursor: editing ? 'pointer' : 'default', opacity: editing ? 1 : 0.5 }}>
                 {r.icoImg ? <img src={r.icoImg} alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle' }}  loading="lazy" /> : <span style={{ fontSize: 13 }}>{r.ico}</span>}
-                <span style={{ fontWeight: 600, fontSize: 12, color: on ? '#22c55e' : 'var(--txt2)', whiteSpace: 'nowrap', flex: 1 }}>{r.lbl}</span>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: on ? '#22c55e' : 'transparent', border: '1.5px solid ' + (on ? '#22c55e' : 'var(--txt3)') }} />
+                <span style={{ fontWeight: 600, fontSize: 12, color: on ? '#ffffff' : 'var(--txt2)', whiteSpace: 'nowrap', flex: 1 }}>{r.lbl}</span>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: on ? '#ffffff' : 'transparent', border: '1.5px solid ' + (on ? '#ffffff' : 'var(--txt3)') }} />
               </button>
             );
           })}
@@ -288,7 +298,6 @@ const UsageGuideCard = React.memo(function UsageGuideCard() {
 });
 
 function InfoTab({ state }: InfoTabProps) {
-  const { conRecolectora, setConRecolectora } = useRainwater();
   const {
     proy, setP,
     redes, setRedes, netColors, setNetColors,
@@ -296,9 +305,7 @@ function InfoTab({ state }: InfoTabProps) {
     generarPisos, alertMsg, setAlertMsg,
     onIntChange, onIntBlur, onDecChange, onDecBlur,
     pisos, delPiso, addPiso, addSotano,
-    redActiva,
   } = state;
-  const showRecolectora = conCubierta && redActiva === 'll';
 
   return (
     <div className="fu info-gral" style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
@@ -325,21 +332,6 @@ function InfoTab({ state }: InfoTabProps) {
           generarPisos={generarPisos}
         />
         <LevelsCard pisos={pisos} delPiso={delPiso} addPiso={addPiso} addSotano={addSotano} setPisos={state.setPisos} />
-        {showRecolectora && (
-          <section className="card" style={{ flex: '0 1 auto', minWidth: 160 }}>
-            <div className="card-h" style={{ padding: '4px 8px' }}>
-              <h3 className="card-t" style={{ fontSize: 13 }}>Canal recolectora</h3>
-            </div>
-            <div style={{ padding: '4px 8px' }}>
-              <button type="button" role="switch" aria-checked={conRecolectora} onClick={() => setConRecolectora(!conRecolectora)} title="Canal recolectora" style={InfoTab_recolectoraToggle}>
-                <div style={{ width: 28, height: 15, borderRadius: 8, background: conRecolectora ? 'var(--ll)' : 'var(--line)', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
-                  <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: conRecolectora ? 15 : 2, transition: 'left .2s' }} />
-                </div>
-                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--txt2)' }}>Activar canal recolectora</span>
-              </button>
-            </div>
-          </section>
-        )}
         <UsageGuideCard />
       </div>
     </div>
