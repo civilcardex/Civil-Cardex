@@ -9,6 +9,7 @@ const WorkAreaCivilFlow_S2: React.CSSProperties = { maxWidth: '360px', width: '1
 const WorkAreaCivilFlow_S3: React.CSSProperties = { width: '64px', height: '64px', background: 'rgba(37, 99, 235, 0.1)', border: '1px solid rgba(37, 99, 235, 0.3)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: '#3B82F6', };
 const WorkAreaCivilFlow_S4: React.CSSProperties = { background: 'var(--acc)', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, fontFamily: 'Geist, monospace', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)', };
 const WorkAreaCivilFlow_S5: React.CSSProperties = { background: 'transparent', color: '#849495', border: '1px solid #3a494a', padding: '9px 16px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, fontFamily: 'Geist, monospace', textDecoration: 'none', transition: 'all 0.2s', display: 'inline-block', };
+const WorkAreaCivilFlow_S6: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 'var(--r)', border: '1px solid', flexShrink: 0, cursor: 'pointer', fontSize: 12, fontFamily: 'var(--body)', fontWeight: 600 };
 
 
 interface NetworkBarProps {
@@ -30,9 +31,7 @@ function NetworkBar({ redesActivas, tab, redActiva, setTab, setRedActiva }: Netw
             key={r.id}
             onClick={() => { setTab('redes'); setRedActiva(r.id); }}
             style={{
-              display: 'flex', alignItems: 'center', gap: 5, padding: '6px 11px', borderRadius: 'var(--r)',
-              border: '1px solid', flexShrink: 0, cursor: 'pointer', fontSize: 12,
-              fontFamily: 'var(--body)', fontWeight: 600,
+              ...WorkAreaCivilFlow_S6,
               borderColor: active ? netColor : 'var(--line)',
               color: active ? netColor : 'var(--txt3)',
               background: active ? 'rgba(0,0,0,.15)' : 'transparent',
@@ -122,6 +121,8 @@ function MobileGate({ children }: { children: React.ReactNode }) {
               style={WorkAreaCivilFlow_S4}
               onMouseOver={(e) => (e.currentTarget.style.background = 'var(--acc2)')}
               onMouseOut={(e) => (e.currentTarget.style.background = 'var(--acc)')}
+              onFocus={(e) => (e.currentTarget.style.background = 'var(--acc2)')}
+              onBlur={(e) => (e.currentTarget.style.background = 'var(--acc)')}
             >
               CONTINUAR DE TODOS MODOS
             </button>

@@ -6,6 +6,7 @@ import { CAT_GAS } from '../constants/engineeringDataGas';
 import { fmt } from '../utils/formatUtils';
 import { usePlans } from '../context/PlansContext';
 import { writeBajantePropToDrawing } from '../utils/writeDiameterToDrawing';
+const HeaterSelection_S1: React.CSSProperties = { width: '100%', minWidth: 150, textAlign: 'center', background: 'var(--bg2)', padding: '6px 10px', border: '1px solid var(--bd)', borderRadius: 4, outline: 'none' };
 
 export default function HeaterSelection() {
   const { tramosAc } = useTramos();
@@ -94,7 +95,7 @@ export default function HeaterSelection() {
     }
 
     return <span style={{ color: '#fff', fontWeight: 'normal' }}>{recText}</span>;
-  }, [caudalAjustado, selectedHeaterId, selectedHeater, tramosAc]);
+  }, [caudalAjustado, tramosAc]);
 
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -151,11 +152,12 @@ export default function HeaterSelection() {
             <tr>
               <td className="c">Factor de simultaneidad (%)</td>
               <td className="c">
-                <input 
-                  type="number" 
-                  className="ni" 
-                  style={{ width: 60, textAlign: 'center' }} 
+                <input
+                  type="number"
+                  className="ni"
+                  style={{ width: 60, textAlign: 'center' }}
                   value={factorSim}
+                  aria-label="Factor de simultaneidad (%)"
                   onChange={e => setFactorSim(parseFloat(e.target.value) || 0)}
                   min="0" max="100"
                 />
@@ -170,18 +172,12 @@ export default function HeaterSelection() {
               <td className="c" style={{ fontWeight: 'bold' }}>
                 <select
                   className="ni"
-                  style={{ 
-                    width: '100%', 
-                    minWidth: 150, 
-                    textAlign: 'center', 
-                    background: 'var(--bg2)', 
+                  style={{
+                    ...HeaterSelection_S1,
                     color: selectedHeater ? 'var(--fg1)' : 'var(--txt2)',
-                    padding: '6px 10px',
-                    border: '1px solid var(--bd)',
-                    borderRadius: 4,
                     cursor: selectedHeaterTram ? 'pointer' : 'not-allowed',
-                    outline: 'none',
                   }}
+                  aria-label="Calentador seleccionado"
                   value={selectedHeaterId || ''}
                   onChange={e => {
                     const val = e.target.value;

@@ -36,14 +36,6 @@ export const ACC_ABBR: Record<string, string> = {
 };
 
 /**
- * Get abbreviated label for an accessory key.
- * Falls back to original value if not found.
- */
-export function getAccAbbr(key: string): string {
-  return ACC_ABBR[key] || key;
-}
-
-/**
  * Get bajante display label with piso suffix (e.g. "BAN2-P1")
  */
 export function bajanteLabel(b: { code?: string; id?: string; pisoBase?: string } | null | undefined, nivelLabel?: string): string {
@@ -61,36 +53,3 @@ function shortenPiso(s: string): string {
   if (/^Cubierta$/i.test(s)) return 'C';
   return s;
 }
-
-/**
- * Reverse mapping: full label → key
- */
-export const ACC_LABEL_TO_KEY: Record<string, string> = {
-  'SIF': 'sifon',
-  'CSUB': 'codoSube',
-  'CBAJ': 'codoBaja',
-  'CREV': 'codoReventilado',
-  'VCOM': 'valvCompuerta',
-  'VGLO': 'valvGlobo',
-  'VCHE': 'valvCheque',
-  'VANG': 'valvAngulo',
-  'LLT': 'llaveTerminal',
-  'C90C': 'codo90rc',
-  'C45C': 'codo45rc',
-  'C90M': 'codo90rm',
-  'C90L': 'codo90rl',
-  'TDIR': 'teeDirecto',
-  'TRED': 'teeReduccion',
-  'TLAD': 'teeLado',
-  'TBIL': 'teeBilateral',
-  'VPIE': 'valvPie',
-  'RED': 'reduccion',
-  'AMP': 'ampliacion',
-  'OTR': 'otros',
-  'YSIM': 'yeeSimple',
-  'YDOB': 'yeeDoble',
-  'C90S': 'codos_90_std',
-  'TLIN': 'te_linea',
-  'TRAM': 'te_ramal',
-  'VBOL': 'valvula_bola',
-};

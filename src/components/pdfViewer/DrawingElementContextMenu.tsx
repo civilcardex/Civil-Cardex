@@ -12,6 +12,28 @@ import { DrawingElementContextMenuCtx, useDrawingElementContextMenu, type Drawin
 import { diamPulgFromLabel } from "../../utils/diamPulgFromLabel";
 import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 const DrawingElementContextMenu_S2: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+const DrawingElementContextMenu_dirBtn: React.CSSProperties = {
+  padding: '3px 5px',
+  textAlign: 'left', fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer',
+  borderRadius: 3, display: 'flex', alignItems: 'center', gap: 3,
+  transition: 'all 0.1s', boxSizing: 'border-box', overflow: 'hidden', whiteSpace: 'nowrap',
+  textOverflow: 'ellipsis', minWidth: 0,
+};
+const DrawingElementContextMenu_fantasmaBtn: React.CSSProperties = {
+  border: 'none',
+  padding: '6px 8px',
+  textAlign: 'left',
+  fontSize: 11,
+  fontFamily: "'Geist',monospace",
+  cursor: 'pointer',
+  borderRadius: 3,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  marginTop: 4,
+  borderTop: '1px solid #3a494a',
+  width: '100%',
+};
 const DrawingElementContextMenu_S3: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const DrawingElementContextMenu_S4: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const DrawingElementContextMenu_S5: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
@@ -124,14 +146,10 @@ function BajanteDirectionSelector({
                 }
               }}
               style={{
+                ...DrawingElementContextMenu_dirBtn,
                 background: isActive ? 'rgba(37,99,235,0.15)' : '#1e2024',
                 border: `1px solid ${isActive ? '#2563eb' : '#3a494a'}`,
                 color: isActive ? '#3b82f6' : '#e2e2e8',
-                padding: '3px 5px',
-                textAlign: 'left', fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer',
-                borderRadius: 3, display: 'flex', alignItems: 'center', gap: 3,
-                transition: 'all 0.1s', boxSizing: 'border-box', overflow: 'hidden', whiteSpace: 'nowrap',
-                textOverflow: 'ellipsis', minWidth: 0,
               }}
               onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#2563eb33'; }}
               onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = '#1e2024'; }}
@@ -171,21 +189,9 @@ function BajanteDirectionSelector({
             engineRef.current?.render();
           }}
           style={{
+            ...DrawingElementContextMenu_fantasmaBtn,
             background: element.isFantasma ? 'rgba(245,166,35,0.12)' : 'transparent',
-            border: 'none',
             color: element.isFantasma ? '#F5A623' : '#e2e2e8',
-            padding: '6px 8px',
-            textAlign: 'left',
-            fontSize: 11,
-            fontFamily: "'Geist',monospace",
-            cursor: 'pointer',
-            borderRadius: 3,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            marginTop: 4,
-            borderTop: '1px solid #3a494a',
-            width: '100%',
           }}
           onMouseEnter={e => { if (!element.isFantasma) e.currentTarget.style.background = '#2563eb33'; }}
           onMouseLeave={e => { if (!element.isFantasma) e.currentTarget.style.background = element.isFantasma ? 'rgba(245,166,35,0.12)' : 'transparent'; }}
@@ -227,7 +233,7 @@ function BajanteDiameterSelector({
           <div style={{ display: 'flex', gap: 6, padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Destino</div>
-              <select value={element.descargaEnId || ''}
+              <select value={element.descargaEnId || ''} aria-label="Destino"
                 onChange={e => {
                   const v = e.target.value || null;
                   engineRef.current?.updateElementById(element.id, { descargaEnId: v });
@@ -319,6 +325,7 @@ function BajanteDiameterSelector({
                 const gd = element.ghostData?.[currentGhostLabel];
                 return isGhostClick ? (gd && gd.dNominal !== undefined ? gd.dNominal : (element.dNominal || '')) : (element.dNominal || '');
               })()}
+                aria-label="Diámetro"
                 onChange={e => {
                   const val = e.target.value;
                   if (isGhostClick && engineRef.current) {
@@ -358,7 +365,7 @@ function BajanteDiameterSelector({
           <div style={{ display: 'flex', gap: 6, padding: '0 8px 4px' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Llenado (R)</div>
-              <select value={element.bajR != null ? (Math.abs(element.bajR - 7 / 24) < 0.001 ? '7/24' : '1/4') : '7/24'}
+              <select value={element.bajR != null ? (Math.abs(element.bajR - 7 / 24) < 0.001 ? '7/24' : '1/4') : '7/24'} aria-label="Llenado (R)"
                 onChange={e => {
                   const val = e.target.value;
                   const valNum = val === '7/24' ? 7 / 24 : 0.25;
@@ -376,7 +383,7 @@ function BajanteDiameterSelector({
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Área asociada</div>
-              <select value={element.area_m2 || ''}
+              <select value={element.area_m2 || ''} aria-label="Área asociada"
                 onChange={e => {
                   const val = parseFloat(e.target.value) || 0;
                   engineRef.current?.updateElementById(element.id, { area_m2: val });
@@ -401,6 +408,7 @@ function BajanteDiameterSelector({
             const gd = element.ghostData?.[currentGhostLabel];
             return isGhostClick ? (gd && gd.dNominal !== undefined ? gd.dNominal : (element.dNominal || '')) : (element.dNominal || '');
           })()}
+            aria-label="Diámetro"
             onChange={e => {
               const val = e.target.value;
               if (engineRef.current) {
@@ -676,6 +684,7 @@ function BajanteConnectionPanel({
                     <div style={{ fontSize: 12, color: '#849495', marginBottom: 2 }}>Seleccionar Accesorio</div>
                     <select
                       value={currentAcc}
+                      aria-label="Seleccionar Accesorio"
                       onChange={(e) => {
                         const val = e.target.value;
                         if (val) {
@@ -731,6 +740,7 @@ function BajanteConnectionPanel({
                       <div style={{ fontSize: 12, color: '#849495', marginBottom: 2 }}>Diametro de Accesorio</div>
                       <select
                         value={currentDiam ? currentDiam.split(' — ')[0].trim() : ''}
+                        aria-label="Diametro de Accesorio"
                         onChange={(e) => {
                           const val = e.target.value;
                           if (engineRef.current) {
@@ -801,6 +811,7 @@ function BajanteCodeEditor({
         <div style={{ padding: '0 8px 8px' }}>
           <select
             value={(engineRef.current?.bajantes || []).find((b: any) => b.area_m2 === element.areaM2)?.id || ''}
+            aria-label="Asociar Bajante"
             onChange={e => {
               const bajanteId = e.target.value;
               (engineRef.current?.bajantes || []).forEach((b: any) => {
@@ -847,6 +858,7 @@ function BajanteCodeEditor({
         <div style={{ padding: '0 8px 8px' }}>
           <select
             value={element.diametro ? element.diametro.split(' — ')[0].trim() : ''}
+            aria-label="Diámetro de ramal"
             onChange={(e) => {
               const val = e.target.value;
               if (engineRef.current) {
@@ -886,6 +898,7 @@ function BajanteCodeEditor({
         <div style={{ padding: '0 8px 8px' }}>
           <select
             value={element.dNominal ? element.dNominal.replace(/"/g, '').trim() : ''}
+            aria-label="Diámetro del Contador"
             onChange={(e) => {
               const val = e.target.value;
               const dNom = val ? `${val}"` : '';
@@ -920,6 +933,7 @@ function BajanteCodeEditor({
               <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4 }}>Diámetro</div>
               <select
                 value={element.acoDiam || ''}
+                aria-label="Diámetro"
                 onChange={(e) => {
                   const val = e.target.value;
                   if (engineRef.current) {
@@ -958,6 +972,7 @@ function BajanteCodeEditor({
         <div style={{ padding: '0 8px 8px' }}>
           <select
             value={element.capacidad || ''}
+            aria-label="Equipo (Capacidad)"
             onChange={(e) => {
               const val = e.target.value;
               if (engineRef.current) {
@@ -1101,6 +1116,7 @@ function MidRamalAccessorySelector({ element, midRamalHit, engineRef, selElement
       </div>
       <select
         value={currentVal}
+        aria-label="Accesorio en cuerpo del ramal"
         onChange={(e) => {
           const accId = e.target.value;
           const eng = engineRef.current;
@@ -1195,7 +1211,7 @@ function RamalMenu() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between'
       }}>
         <span style={{ fontSize: 12, color: '#e2e2e8', fontFamily: "'Geist',monospace" }}>Bloquear movimiento</span>
-        <input type="checkbox" checked={!!element.bloqueado}
+        <input type="checkbox" checked={!!element.bloqueado} aria-label="Bloquear movimiento"
           onChange={e => {
             const val = e.target.checked;
             if (engineRef.current) {

@@ -20,6 +20,8 @@ const SR_ONLY = { position:'absolute',width:'1px',height:'1px',padding:0,margin:
 const EMPTY_ROW = { padding:'24px 0', textAlign:'center', color:'var(--txt3)', fontSize: 9, border:'none' } as const;
 GAS.forEach(g=>{g.rows.forEach(r=>{ALL_DN.push({mat:g.mat,K:g.K,dn:r.dn,d:r.d});});});
 const ACC_KEYS=['codos_90_std','codos_90_rl','te_linea','te_ramal','valvula_bola'];
+const GasDesign_COLS=['Tramo','Nivel','Inicio','Fin','Material y Diámetro','Ø interno (mm)','Coeficiente K','Longitud (m)'];
+const GasDesign_colW=['8%','5%','8%','8%','18%','10%','8%','12%'];
 
 function lookupDn(mat: string, dn: string){
   const match=ALL_DN.find(x=>x.mat===mat&&x.dn===dn);
@@ -59,6 +61,10 @@ function GasDesign(){
         // ignore
       }
     }
+    // Pruning gasAcc against localStorage-derived plan data (an external source React can't
+    // observe reactively) — this is the legitimate "synchronize with an external system" use
+    // of an effect, not state derived from props/state already available during render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setGasAcc(prev => {
       let changed = false;
     const next: Record<string, any> = {};
@@ -93,7 +99,7 @@ function GasDesign(){
       }
     }
     return tramos.sort((a, b) => (b.piso || 0) - (a.piso || 0));
-  }, [plans, gasRefreshKey]);
+  }, [plans]);
 
   const gasContBajantes = useMemo(() => {
     const items: any[] = [];
@@ -109,7 +115,7 @@ function GasDesign(){
       }
     }
     return items;
-  }, [plans, gasRefreshKey]);
+  }, [plans]);
 
   useEffect(() => {
     const toSetMat: Record<string, string> = {};
@@ -135,6 +141,8 @@ function GasDesign(){
         }
       }
     }
+    // Same external-sync rationale as gasAcc above.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDiamMat(prev => { let n = prev; for (const [id, v] of Object.entries(toSetMat)) if (!(id in prev)) n = { ...n, [id]: v }; return n; });
     setDiamDn(prev => { let n = prev; for (const [id, v] of Object.entries(toSetDn)) if (!(id in prev)) n = { ...n, [id]: v }; return n; });
     setDiamInt(prev => { let n = prev; for (const [id, v] of Object.entries(toSetInt)) if (!(id in prev)) n = { ...n, [id]: v }; return n; });
@@ -183,10 +191,10 @@ function GasDesign(){
       result.push({ id: t.id, le, dP, vel, pIni, pFin, chequeo: ok });
     }
     return result;
-  }, [gasTramos, diamInt, diamK, gasAcc, pmin, temp, densRel, patm]);
+  }, [gasTramos, diamInt, gasAcc, pmin, temp, densRel, patm]);
 
-  const COLS=['Tramo','Nivel','Inicio','Fin','Material y Diámetro','Ø interno (mm)','Coeficiente K','Longitud (m)'];
-  const colW=['8%','5%','8%','8%','18%','10%','8%','12%'];
+  const COLS=GasDesign_COLS;
+  const colW=GasDesign_colW;
 
   const page1 = (<>
     <section className="card" style={{flexShrink:0,alignSelf:'center'}}>
@@ -301,7 +309,7 @@ function GasDesign(){
                     <td className="c" style={TD}>{b.tipo === 'contador' ? 'Contador' : 'Calentador'}</td>
                     <td className="c" style={{padding:'1px 2px'}}>
                       {b.tipo === 'contador' ? (
-                        <select value={b.dNominal ? b.dNominal.replace(/"/g,'').trim() : ''} onChange={e=>{
+                        <select value={b.dNominal ? b.dNominal.replace(/"/g,'').trim() : ''} aria-label="Diámetro" onChange={e=>{
                           const dNom = e.target.value ? `${e.target.value}"` : '';
                           writeContadorDiamToDrawing(dNom, plans, 'gas');
                         }} style={{...SD,fontSize: 9}}>
@@ -311,7 +319,7 @@ function GasDesign(){
                       ) : '—'}
                     </td>
                     <td className="c" style={{padding:'1px 2px'}}>
-                      <select value={b.acoDiam || ''} onChange={e=>{
+                      <select value={b.acoDiam || ''} aria-label="Conexión" onChange={e=>{
                         const val = e.target.value;
                         const bajKey = `${b.id}-${b.planId}`;
                         writeBajantePropToDrawing(bajKey, 'gas', 'acoDiam', val, plans);
@@ -322,7 +330,7 @@ function GasDesign(){
                     </td>
                     <td className="c" style={{padding:'1px 2px'}}>
                       {b.tipo === 'calentador' ? (
-                        <select value={b.capacidad || ''} onChange={e=>{
+                        <select value={b.capacidad || ''} aria-label="Capacidad" onChange={e=>{
                           const val = e.target.value;
                           const bajKey = `${b.id}-${b.planId}`;
                           writeBajantePropToDrawing(bajKey, 'gas', 'capacidad', val, plans);

@@ -12,6 +12,7 @@ const IsometriaTab_S4: React.CSSProperties = { position: 'absolute', top: '100%'
 const IsometriaTab_S5: React.CSSProperties = { padding: '4px 8px', fontSize: 12, fontFamily: 'Geist,monospace', border: 'none', background: 'transparent', color: '#b9caca', cursor: 'pointer', textAlign: 'left' };
 const IsometriaTab_S6: React.CSSProperties = { padding: '4px 8px', fontSize: 12, fontFamily: 'Geist,monospace', border: 'none', background: 'transparent', color: '#b9caca', cursor: 'pointer', textAlign: 'left' };
 const IsometriaTab_S7: React.CSSProperties = { padding: '7px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid #2a3a3b', fontFamily: 'Geist,monospace', userSelect: 'none', };
+const IsometriaTab_planosLabel: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', cursor: 'pointer', marginLeft: 8, padding: '3px 8px', borderRadius: 3 };
 
 
 const ISO_NETS_KEY = 'civilflow_iso_activeNets';
@@ -137,6 +138,9 @@ function IsometriaTabBase({ state }: any) {
   const [renderTick, setRenderTick] = useState(0);
   const [cursorStyle, setCursorStyle] = useState('grab');
   const [planosCount, setPlanosCount] = useState('0/0');
+  // Deliberately runs every render (dragRef is a ref, not a reactive dependency) — setState
+  // bails out when the value is unchanged, so this isn't an infinite loop, just a plain sync.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setCursorStyle(dragRef.current ? 'grabbing' : 'grab'); });
 
   useEffect(() => {
@@ -158,7 +162,7 @@ function IsometriaTabBase({ state }: any) {
     const m: Record<number, number> = {};
     const pisosArr = pisos || [];
     const defaultSpacingMm = 2700;
-    const sorted = [...pisosArr].sort((a: any, b: any) => a.n - b.n);
+    const sorted = pisosArr.toSorted((a: any, b: any) => a.n - b.n);
     for (const p of sorted) {
       const floorIdx = p.n >= 0 && p.n < 90 ? p.n : p.n === 99 ? (sorted.filter((x: any) => x.n > 0 && x.n < 90).length + 1) : -(Math.abs(p.n));
       m[p.n] = floorIdx * defaultSpacingMm;
@@ -797,7 +801,7 @@ function IsometriaTabBase({ state }: any) {
           })}
         </div>
 
-        <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', cursor: 'pointer', marginLeft: 8, padding: '3px 8px', borderRadius: 3, border: `1px solid ${showPlanos ? '#4D8FF7' : '#3a494a'}`, background: showPlanos ? 'rgba(77,143,247,.15)' : 'transparent' }}>
+        <label style={{ ...IsometriaTab_planosLabel, border: `1px solid ${showPlanos ? '#4D8FF7' : '#3a494a'}`, background: showPlanos ? 'rgba(77,143,247,.15)' : 'transparent' }}>
           <input type="checkbox" checked={showPlanos} onChange={e => setShowPlanos(e.target.checked)} style={{ accentColor: '#4D8FF7', margin: 0 }} />
           Planos ({planosCount})
         </label>
@@ -855,23 +859,23 @@ function IsometriaTabBase({ state }: any) {
             const netBajantes = net.niveles.reduce((s, nv) => s + nv.bajantes.length, 0);
             return (
               <div key={net.netId}>
-                <div role="button" tabIndex={0} aria-label={`Alternar visibilidad de red ${net.netId}`} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCollapsedNet(net.netId);}}} onClick={() => toggleCollapsedNet(net.netId)} style={IsometriaTab_S7}>
+                <button type="button" aria-label={`Alternar visibilidad de red ${net.netId}`} onClick={() => toggleCollapsedNet(net.netId)} style={{ ...IsometriaTab_S7, background: 'none', border: 'none', width: '100%', textAlign: 'left', font: 'inherit' }}>
                   <span style={{ width: 8, height: 8, borderRadius: '50%', background: net.netColor, flexShrink: 0 }} />
                   <span style={{ fontSize: 12, color: net.netColor, fontWeight: 700, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{net.netName}</span>
                   <span style={{ fontSize: 12, color: '#5a6a6b', whiteSpace: 'nowrap' }}>{netRamales + netBajantes}</span>
                   <span style={{ fontSize: 12, color: '#5a6a6b', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform .15s' }}>▾</span>
-                </div>
+                </button>
                 {!isCollapsed && net.niveles.map(nv => (
                   <div key={nv.nivel}>
                     <div style={{ padding: '3px 10px 2px 20px', fontSize: 12, color: '#5a6a6b', fontFamily: 'Geist,monospace', fontWeight: 600, letterSpacing: 0.5 }}>
                       {nv.label}
                     </div>
-                    <ul style={{listStyle:'none',margin:0,padding:0}}>
+                    <ul role="listbox" aria-label="Ramales" style={{listStyle:'none',margin:0,padding:0}}>
                     {nv.ramales.map(r => {
                       const selKey = `${net.netId}:${r.planId}:${r.id}`;
                       const isSel = selKey === selTramo;
                       return (
-                        <li key={selKey} role="button" tabIndex={0} aria-label={`Seleccionar ${selKey}`} aria-current={isSel ? 'page' : undefined} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelTramo(prev => prev === selKey ? null : selKey);}}} onClick={() => setSelTramo(prev => prev === selKey ? null : selKey)} style={{
+                        <li key={selKey} role="option" tabIndex={0} aria-label={`Seleccionar ${selKey}`} aria-selected={isSel} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelTramo(prev => prev === selKey ? null : selKey);}}} onClick={() => setSelTramo(prev => prev === selKey ? null : selKey)} style={{
                           padding: '3px 10px 3px 26px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                           background: isSel ? '#2563EB22' : 'transparent',
                           borderLeft: isSel ? '2px solid ' + net.netColor : '2px solid transparent',
@@ -883,14 +887,14 @@ function IsometriaTabBase({ state }: any) {
                       );
                     })}
                     </ul>
-                    <ul style={{listStyle:'none',margin:0,padding:0}}>
+                    <ul role="listbox" aria-label="Bajantes" style={{listStyle:'none',margin:0,padding:0}}>
                     {nv.bajantes.map(b => {
                       const selKey = `${net.netId}:${b.planId}:${b.id}`;
                       const isSel = selKey === selTramo;
                       const dInches = b.dNominal ? Math.round(Number(b.dNominal) / 25.4) : 0;
                       const lbl = dInches > 0 ? `${b.code || b.id}:${dInches}"` : (b.code || b.id);
                       return (
-                        <li key={selKey} role="button" tabIndex={0} aria-label={`Seleccionar ${selKey}`} aria-current={isSel ? 'page' : undefined} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelTramo(prev => prev === selKey ? null : selKey);}}} onClick={() => setSelTramo(prev => prev === selKey ? null : selKey)} style={{
+                        <li key={selKey} role="option" tabIndex={0} aria-label={`Seleccionar ${selKey}`} aria-selected={isSel} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelTramo(prev => prev === selKey ? null : selKey);}}} onClick={() => setSelTramo(prev => prev === selKey ? null : selKey)} style={{
                           padding: '3px 10px 3px 26px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                           background: isSel ? '#2563EB22' : 'transparent',
                           borderLeft: isSel ? '2px solid ' + net.netColor : '2px solid transparent',

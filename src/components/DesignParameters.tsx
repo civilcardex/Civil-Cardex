@@ -7,6 +7,7 @@ import { NumericInput } from "./NumericInput";
 import EditButton from "./shared/EditButton";
 const DesignParameters_S1: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 const DesignParameters_S2: React.CSSProperties = { width: '100%', padding: '8px 10px', background: 'rgba(0,220,229,0.08)', border: 'none', borderTop: '1px solid rgba(0,220,229,0.25)', color: '#00dce5', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all .15s', };
+const DesignParameters_S3: React.CSSProperties = { width: '100%', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, color: 'var(--txt2)', border: 'none', padding: '2px 4px', background: 'transparent' };
 
 
 export default function BaseDatos({ redes }: { redes: Set<string> }) {
@@ -117,11 +118,9 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                             aria-label="Seleccionar material"
                             disabled={!isEditingMateriales}
                             style={{
-                              width: '100%', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600,
-                              color: 'var(--txt2)',
-                              border: 'none',
-                              padding: '2px 4px', cursor: isEditingMateriales ? 'pointer' : 'default', background: 'transparent',
-                              opacity: isEditingMateriales ? 1 : 0.7
+                              ...DesignParameters_S3,
+                              cursor: isEditingMateriales ? 'pointer' : 'default',
+                              opacity: isEditingMateriales ? 1 : 0.7,
                             }}
                             value={r.matSel}
                             onChange={e => setMatSel(r.id, e.target.value)}>

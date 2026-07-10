@@ -7,6 +7,7 @@ import { LazyInp, Param, Comment } from "./EPShared";
 import { SI } from "../../styles/sharedTableStyles";
 import { dec } from "../../utils/parseDecimal";
 const EPInputPage_S1: React.CSSProperties = { marginTop: 6, padding: "6px 10px", background: "var(--bg3)", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "var(--r)", border: "1px solid var(--line)", };
+const EPInputPage_modoBtn: React.CSSProperties = { padding: "8px 14px", borderRadius: "var(--r)", cursor: "pointer", fontFamily: "var(--mono)", fontWeight: 700, fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6, textTransform: "uppercase" };
 
 
 function EPInputPage() {
@@ -28,8 +29,8 @@ function EPInputPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minHeight: 0 }}>
       <div style={{ display: "flex", gap: 6, justifyContent: "flex-start" }}>
-        <button type="button" onClick={() => updEP("modo", "red")} style={{ padding: "8px 14px", background: isRed ? "rgba(0,220,229,0.1)" : "transparent", border: `1.5px solid ${isRed ? "#00dce5" : "var(--line)"}`, borderRadius: "var(--r)", color: isRed ? "#00dce5" : "var(--txt3)", cursor: "pointer", fontFamily: "var(--mono)", fontWeight: 700, fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6, textTransform: "uppercase"}}><img src="/iconos_diseno_redes/equipos/succion_red.svg" alt="Succión directa"  width={22} height={22} style={{width:22,height:22}}  loading="lazy" /> Succión directa (red)</button>
-        <button type="button" onClick={() => updEP("modo", "cisterna")} style={{ padding: "8px 14px", background: !isRed ? "rgba(255,152,0,0.1)" : "transparent", border: `1.5px solid ${!isRed ? "#ff9800" : "var(--line)"}`, borderRadius: "var(--r)", color: !isRed ? "#ff9800" : "var(--txt3)", cursor: "pointer", fontFamily: "var(--mono)", fontWeight: 700, fontSize: 12, display: "inline-flex", alignItems: "center", gap: 6, textTransform: "uppercase" }}><img src="/iconos_diseno_redes/equipos/succion_cisterna.svg" alt="Succión cisterna"  width={22} height={22} style={{width:22,height:22}}  loading="lazy" /> Succión cisterna</button>
+        <button type="button" onClick={() => updEP("modo", "red")} style={{ ...EPInputPage_modoBtn, background: isRed ? "rgba(0,220,229,0.1)" : "transparent", border: `1.5px solid ${isRed ? "#00dce5" : "var(--line)"}`, color: isRed ? "#00dce5" : "var(--txt3)" }}><img src="/iconos_diseno_redes/equipos/succion_red.svg" alt="Succión directa"  width={22} height={22} style={{width:22,height:22}}  loading="lazy" /> Succión directa (red)</button>
+        <button type="button" onClick={() => updEP("modo", "cisterna")} style={{ ...EPInputPage_modoBtn, background: !isRed ? "rgba(255,152,0,0.1)" : "transparent", border: `1.5px solid ${!isRed ? "#ff9800" : "var(--line)"}`, color: !isRed ? "#ff9800" : "var(--txt3)" }}><img src="/iconos_diseno_redes/equipos/succion_cisterna.svg" alt="Succión cisterna"  width={22} height={22} style={{width:22,height:22}}  loading="lazy" /> Succión cisterna</button>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "start" }}>

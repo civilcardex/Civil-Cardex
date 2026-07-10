@@ -51,10 +51,22 @@ export default function ViewerPage() {
   });
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const dropdownNavRef = useRef<HTMLElement>(null);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (dropdownNavRef.current && !dropdownNavRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [dropdownOpen]);
+
   const files = plans.map(p => ({ id: p.id, file: p.file }));
-  const [planIdResolved, setPlanIdResolved] = useState(false);
+  const planIdResolvedRef = useRef(false);
   usePageMeta('Visor de planos', 'Visor de planos PDF con superposición de redes hidrosanitarias. Herramientas de dibujo, calibración y medición.');
 
   // Clamped activeIndex for safe rendering
@@ -64,9 +76,12 @@ export default function ViewerPage() {
   useEffect(() => {
     if (plans.length === 0) return;
     if (rawActiveIndex >= plans.length) {
+      // Render already uses the clamped `activeIndex` above — this only corrects the
+      // persisted rawActiveIndex so it doesn't keep re-deriving every render.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveIndex(plans.length - 1);
-    } else if (!planIdResolved) {
-      setPlanIdResolved(true);
+    } else if (!planIdResolvedRef.current) {
+      planIdResolvedRef.current = true;
       try {
         const savedId = localStorage.getItem('civilflow_visor_activePlanId');
         if (savedId) {
@@ -79,7 +94,7 @@ export default function ViewerPage() {
         // ignore
       }
     }
-  }, [plans, rawActiveIndex, planIdResolved]);
+  }, [plans, rawActiveIndex]);
 
   useEffect(() => {
     try {
@@ -117,7 +132,7 @@ export default function ViewerPage() {
       <input ref={fileRef} type="file" accept=".pdf" multiple style={{ display: 'none' }} aria-label="Cargar planos PDF"
         onChange={handleFileInput} />
 
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(VIEWER_JSONLD) }} />
+      <script type="application/ld+json">{JSON.stringify(VIEWER_JSONLD)}</script>
       <header style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50 }}>
         <Navbar />
         <h1 style={ViewerPage_S1}>
@@ -127,7 +142,7 @@ export default function ViewerPage() {
           <span style={{ fontFamily: 'Geist, monospace', fontSize: 12, color: '#8AB4D6', textTransform: 'uppercase', letterSpacing: 1 }}>
             Plano:
           </span>
-          <nav aria-label="Selector de planos" style={{ position: 'relative' }}>
+          <nav ref={dropdownNavRef} aria-label="Selector de planos" style={{ position: 'relative' }}>
             <button type="button" onClick={() => setDropdownOpen(p => !p)} aria-expanded={dropdownOpen} aria-haspopup="listbox"
               style={ViewerPage_S3}>
               <span style={{ color: '#00dce5' }}>📄</span>
@@ -153,7 +168,7 @@ export default function ViewerPage() {
                       padding: '8px 12px', cursor: 'pointer',
                       background: i === activeIndex ? 'rgba(0,220,229,0.06)' : 'transparent',
                       borderLeft: i === activeIndex ? '3px solid #00dce5' : '3px solid transparent',
-                      transition: 'all 0.12s',
+                      transition: 'background-color 0.12s, border-color 0.12s',
                     }}
                     onMouseEnter={(e) => { if (i !== activeIndex) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
                     onMouseLeave={(e) => { if (i !== activeIndex) e.currentTarget.style.background = 'transparent'; }}>
@@ -193,8 +208,7 @@ export default function ViewerPage() {
         </div>
       </header>
 
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingTop: 84, overflow: 'hidden', position: 'relative' }}
-        onClick={() => setDropdownOpen(false)}>
+      <main style={{ flex: 1, display: 'flex', flexDirection: 'column', paddingTop: 84, overflow: 'hidden', position: 'relative' }}>
         <PdfViewer
           files={files}
           activeIndex={activeIndex}

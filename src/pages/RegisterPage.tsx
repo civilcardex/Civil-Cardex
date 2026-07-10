@@ -76,7 +76,7 @@ function RegisterPage() {
         }
       `}</style>
 
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(REGISTER_JSONLD) }} />
+      <script type="application/ld+json">{JSON.stringify(REGISTER_JSONLD)}</script>
       <Navbar />
 
       <div className="flex-1 flex items-center justify-center relative pt-16 py-12">
@@ -142,6 +142,7 @@ function RegisterPage() {
 
                 <div className="flex items-start gap-2 pt-1">
                   <input type="checkbox" checked={aceptaTerminos} onChange={(e) => setAceptaTerminos(e.target.checked)}
+                    aria-label="Acepto los Términos de Servicio y la Política de Privacidad"
                     className="w-4 h-4 mt-0.5 border accent-[#00dce5]"
                     style={{ borderColor: '#3a494a', background: '#0a0e14' }} />
                   <span className="text-[11px] leading-tight" style={{ color: '#8AB4D6' }}>

@@ -75,7 +75,7 @@ const TD_PARAM_UNIT: React.CSSProperties = { textAlign: "center", color: "var(--
 const SCROLL_INNER: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "stretch", paddingBottom: "16px" };
 
 function LazyNum({ value, onChange, ariaLabel, style, className }: any) {
-  const [val, setVal] = React.useState(value?.toString() || "");
+  const [val, setVal] = React.useState(() => value?.toString() || "");
   const [prevValue, setPrevValue] = React.useState(value);
 
   if (value !== prevValue) {
@@ -283,7 +283,7 @@ function Acometida({
                 <tr>
                   <td style={TD_PARAM_LABEL}>Diámetro del contador</td>
                   <td className="c" colSpan={2} style={{textAlign: "center", padding: "2px"}}>
-                    <select value={acoContIx} onChange={e => {
+                    <select value={acoContIx} aria-label="Diámetro del contador" onChange={e => {
                       const i = parseInt(e.target.value);
                       setAcoContIx(i);
                       if (onContDiamChange && CONTADORES_CAT[i]) {

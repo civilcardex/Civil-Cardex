@@ -57,9 +57,9 @@ export function EPProvider({ children }: { children?: ReactNode }) {
 
   const updEP = useCallback((field: keyof EPData, val: any) => {
     setEP(prev => ({ ...prev, [field]: val }));
-  }, []);
+  }, [setEP]);
 
-  const value = useMemo(() => ({ ep, updEP }), [ep]);
+  const value = useMemo(() => ({ ep, updEP }), [ep, updEP]);
 
   return (
     <EPContext.Provider value={value}>

@@ -158,7 +158,7 @@ function InfTab({ state }: { state: WorkAreaState }) {
     ['P RED', proy.p_red + ' mca'],
     ['DOTACIÓN', proy.dot + ' L/hab/d'],
     ['REDES', redesActivas.map((r: any) => r.lbl).join(' · ')],
-    ['NIVELES', [...pisos].sort((a: any, b: any) => a.n - b.n).map((p: any) => pisoLbl(p.n)).join(' · ')],
+    ['NIVELES', pisos.toSorted((a: any, b: any) => a.n - b.n).map((p: any) => pisoLbl(p.n)).join(' · ')],
     ['SANITARIA', okSAN ? '✓ OK' : '✗ Revisar'],
     ['AGUAS LLUVIAS', okLL ? '✓ OK' : '✗ Revisar'],
   ], [proy, redesActivas, pisos, okSAN, okLL]);

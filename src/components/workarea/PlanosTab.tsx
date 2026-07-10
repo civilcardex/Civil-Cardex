@@ -23,6 +23,13 @@ const PlanosTab_S11: React.CSSProperties = { padding: '1px 6px', background: 'rg
 const PlanosTab_S12: React.CSSProperties = { padding: '3px 6px', fontSize: 12, fontWeight: 600, borderRadius: 'var(--r)', border: '1px solid var(--line)', background: 'var(--bg3)', color: '#ef5350', cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap' };
 const PlanosTab_S13: React.CSSProperties = { padding: '7px 10px', fontSize: 12, fontWeight: 700, color: 'var(--txt3)', borderBottom: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: .5 };
 const PlanosTab_S14: React.CSSProperties = { padding: '3px 6px', fontSize: 12, fontWeight: 600, borderRadius: 'var(--r)', border: '1px solid var(--line)', background: 'var(--bg3)', color: '#ef5350', cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s ease', whiteSpace: 'nowrap' };
+const PlanosTab_hintChip: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 5, padding: '3px 9px 3px 7px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 999, fontSize: 12, whiteSpace: 'nowrap' };
+const PlanosTab_modalSecondaryBtn: React.CSSProperties = { padding: '5px 12px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', cursor: 'pointer', fontSize: 12, fontWeight: 700 };
+const PlanosTab_recortarBtn: React.CSSProperties = { flex: 1, padding: '4px 6px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer', fontSize: 12, fontWeight: 700 };
+const PlanosTab_quitarBtn: React.CSSProperties = { padding: '4px 6px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: '#ef5350', cursor: 'pointer', fontSize: 12, fontWeight: 700 };
+const PlanosTab_reqBtnBase: React.CSSProperties = { width: '100%', padding: '6px 8px', borderRadius: 'var(--r)', cursor: 'pointer', fontSize: 12, transition: 'all .2s ease', marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 };
+const PlanosTab_pendingLi: React.CSSProperties = { padding: '10px', borderRadius: 'var(--r)', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, transition: 'all 0.15s ease' };
+const PlanosTab_verBtn: React.CSSProperties = { padding: '3px 6px', fontSize: 12, fontWeight: 600, borderRadius: 'var(--r)', border: '1px solid var(--line)', cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap' };
 
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
@@ -298,11 +305,7 @@ function PlanCropModal({ planFile, initialCrop, onClose, onSave }: {
             { ico: '🖲️', lbl: 'Clic central', desc: 'mover el plano' },
             { ico: '🔍', lbl: 'Rueda', desc: 'zoom' },
           ].map(h => (
-            <span key={h.lbl} style={{
-              display: 'flex', alignItems: 'center', gap: 5, padding: '3px 9px 3px 7px',
-              background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 999,
-              fontSize: 12, whiteSpace: 'nowrap',
-            }}>
+            <span key={h.lbl} style={PlanosTab_hintChip}>
               <span style={{ fontSize: 12 }}>{h.ico}</span>
               <span style={{ color: 'var(--txt)', fontWeight: 600 }}>{h.lbl}</span>
               <span style={{ color: 'var(--txt3)' }}>{h.desc}</span>
@@ -315,12 +318,12 @@ function PlanCropModal({ planFile, initialCrop, onClose, onSave }: {
         <div style={{ flex: 1 }} />
         {rectNorm && (
           <button type="button" onClick={() => setRect(null)}
-            style={{ padding: '5px 12px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: '#ef5350', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+            style={{ ...PlanosTab_modalSecondaryBtn, color: '#ef5350' }}>
             Borrar rectángulo
           </button>
         )}
         <button type="button" onClick={onClose}
-          style={{ padding: '5px 12px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+          style={{ ...PlanosTab_modalSecondaryBtn, color: 'var(--txt2)' }}>
           Cancelar
         </button>
         <button type="button"
@@ -386,7 +389,7 @@ function PlanCropPanel({ selectedPlanUrl, planFile }: { selectedPlanUrl: string;
         <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: .5 }}>✂ Recorte (isometría)</span>
       </div>
       <div style={{ position: 'relative', width: '100%', height: 110, background: '#141416', borderRadius: 'var(--r)', overflow: 'hidden', border: '1px solid var(--line)' }}>
-        <embed key={selectedPlanUrl} src={`${selectedPlanUrl}#toolbar=0`} type="application/pdf" title="Miniatura del plano" style={{ width: '100%', height: '100%', pointerEvents: 'none' }} />
+        <embed key={selectedPlanUrl} src={`${selectedPlanUrl}#toolbar=0`} type="application/pdf" title="Miniatura del plano" aria-label="Miniatura del plano" style={{ width: '100%', height: '100%', pointerEvents: 'none' }} />
         {planCrop && (
           <div style={{
             position: 'absolute', pointerEvents: 'none',
@@ -399,12 +402,12 @@ function PlanCropPanel({ selectedPlanUrl, planFile }: { selectedPlanUrl: string;
       </div>
       <div style={{ display: 'flex', gap: 4 }}>
         <button type="button" onClick={() => setModalOpen(true)}
-          style={{ flex: 1, padding: '4px 6px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+          style={PlanosTab_recortarBtn}>
           Recortar
         </button>
         {planCrop && (
           <button type="button" onClick={() => applyCrop(null)}
-            style={{ padding: '4px 6px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: '#ef5350', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
+            style={PlanosTab_quitarBtn}>
             Quitar
           </button>
         )}
@@ -579,21 +582,11 @@ function PlanosTab({ state }: PlanosTabProps) {
             onMouseEnter={() => setBtnHover(true)}
             onMouseLeave={() => setBtnHover(false)}
             style={{
-              width: '100%', 
-              padding: '6px 8px', 
-              background: btnHover ? 'rgba(0, 220, 229, 0.1)' : 'var(--bg3)', 
-              border: `1.5px solid ${btnHover ? '#00dce5' : 'var(--line)'}`, 
-              borderRadius: 'var(--r)', 
-              color: btnHover ? '#00dce5' : 'var(--txt2)', 
-              cursor: 'pointer', 
-              fontSize: 12, 
+              ...PlanosTab_reqBtnBase,
+              background: btnHover ? 'rgba(0, 220, 229, 0.1)' : 'var(--bg3)',
+              border: `1.5px solid ${btnHover ? '#00dce5' : 'var(--line)'}`,
+              color: btnHover ? '#00dce5' : 'var(--txt2)',
               fontWeight: btnHover ? 600 : 400,
-              transition: 'all .2s ease',
-              marginBottom: 4, 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              gap: 4
             }}>
             📋 Requisitos para carga
           </button>
@@ -653,7 +646,7 @@ function PlanosTab({ state }: PlanosTabProps) {
                 <span style={{ fontSize: 14, fontWeight: 600, color: '#00dce5' }}>&#x1F4D0; SOLTAR PARA SUBIR</span>
               </div>
             )}
-            <embed key={selectedPlanUrl} src={`${selectedPlanUrl}#toolbar=0`} type="application/pdf" title="Plano seleccionado" style={{ width: '100%', height: '100%' }} />
+            <embed key={selectedPlanUrl} src={`${selectedPlanUrl}#toolbar=0`} type="application/pdf" title="Plano seleccionado" aria-label="Plano seleccionado" style={{ width: '100%', height: '100%' }} />
           </div>
         ) : (
           <div style={PlanosTab_S6}
@@ -717,16 +710,9 @@ function PlanosTab({ state }: PlanosTabProps) {
                 return (
                   <li key={p.id}
                     style={{
-                      padding: '10px',
-                      borderRadius: 'var(--r)',
+                      ...PlanosTab_pendingLi,
                       border: isSelected ? '1px solid rgba(0, 220, 229, 0.35)' : '1px solid var(--line)',
                       background: isSelected ? 'rgba(0, 220, 229, 0.03)' : 'transparent',
-                      display: 'flex',
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: 8,
-                      transition: 'all 0.15s ease',
                     }}>
                     
                     {/* Left Side: Info and Confirm */}
@@ -779,16 +765,9 @@ function PlanosTab({ state }: PlanosTabProps) {
                       <button type="button"
                         onClick={() => { setSelectedPlanId(p.id); setCalibrating(false); }}
                         style={{
-                          padding: '3px 6px',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          borderRadius: 'var(--r)',
-                          border: '1px solid var(--line)',
+                          ...PlanosTab_verBtn,
                           background: isSelected && !calibrating ? 'rgba(0, 220, 229, 0.12)' : 'var(--bg3)',
                           color: isSelected && !calibrating ? '#00dce5' : 'var(--txt2)',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                          whiteSpace: 'nowrap'
                         }}
                         title="Vista previa"
                       >
@@ -798,16 +777,9 @@ function PlanosTab({ state }: PlanosTabProps) {
                       <button type="button"
                         onClick={() => { setSelectedPlanId(p.id); setCalibrating(true); }}
                         style={{
-                          padding: '3px 6px',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          borderRadius: 'var(--r)',
-                          border: '1px solid var(--line)',
+                          ...PlanosTab_verBtn,
                           background: isSelected && calibrating ? 'rgba(245, 166, 35, 0.12)' : 'var(--bg3)',
                           color: isSelected && calibrating ? '#F5A623' : 'var(--txt2)',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                          whiteSpace: 'nowrap'
                         }}
                         title="Calibrar plano"
                       >
@@ -866,7 +838,7 @@ function PlanosTab({ state }: PlanosTabProps) {
                     </div>
                   </div>
                   <button type="button" onClick={() => setSelectedPlanId(p.id)}
-                    style={{ padding: '3px 6px', fontSize: 12, fontWeight: 600, borderRadius: 'var(--r)', border: '1px solid var(--line)', background: selectedPlanId === p.id ? 'rgba(0, 220, 229, 0.12)' : 'var(--bg3)', color: selectedPlanId === p.id ? '#00dce5' : 'var(--txt2)', cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s ease', whiteSpace: 'nowrap' }} title="Vista previa">
+                    style={{ ...PlanosTab_verBtn, background: selectedPlanId === p.id ? 'rgba(0, 220, 229, 0.12)' : 'var(--bg3)', color: selectedPlanId === p.id ? '#00dce5' : 'var(--txt2)', flexShrink: 0 }} title="Vista previa">
                     VER
                   </button>
                   <button type="button" onClick={() => removePlan(p.id)}

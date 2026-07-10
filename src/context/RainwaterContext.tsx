@@ -46,7 +46,7 @@ const areaAcumMap = useMemo(() => {
     const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
     let data = raw as Record<string, any>;
-    if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { continue; } }
+    if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
     const totalArea = (data.areas || []).reduce((s: number, a: any) => s + (a.areaM2 || 0), 0);
     map[String(plan.nivel)] = totalArea;
   }

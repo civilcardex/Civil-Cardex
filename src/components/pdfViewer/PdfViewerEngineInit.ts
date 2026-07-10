@@ -54,7 +54,10 @@ export function usePdfViewerEngine({
   engineRef: externalEngineRef,
   loadingPlanRef: externalLoadingPlanRef,
 }: UsePdfViewerEngineParams) {
-  const engineRef = externalEngineRef ?? useRef<PlanoEngine | null>(null);
+  // useRef is called unconditionally every render (rules-of-hooks) — the ?? merge picks which
+  // ref object to use, it never decides whether the hook itself runs.
+  const internalEngineRef = useRef<PlanoEngine | null>(null);
+  const engineRef = externalEngineRef ?? internalEngineRef;
   const pdfDocRef = useRef<any>(null);
   const mountId = useRef(0);
   const renderTaskRef = useRef<any>(null);
@@ -62,7 +65,8 @@ export function usePdfViewerEngine({
   const [numPages, setNumPages] = useState(0);
   const [engineReady, setEngineReady] = useState(false);
   const pdfRenderedRef = useRef(false);
-  const loadingPlanRef = externalLoadingPlanRef ?? useRef(false);
+  const internalLoadingPlanRef = useRef(false);
+  const loadingPlanRef = externalLoadingPlanRef ?? internalLoadingPlanRef;
 
   const renderPage = useCallback(async (pageNum: number, sc: number, mountCheck: number) => {
     if (renderingRef.current) return;
@@ -80,6 +84,7 @@ export function usePdfViewerEngine({
     const dpr = window.devicePixelRatio || 1;
 
     try {
+      if (mountCheck && mountCheck !== mountId.current) return;
       const page = await pdf.getPage(pageNum);
       if (mountCheck && mountCheck !== mountId.current) return;
       const viewport = page.getViewport({ scale: sc });

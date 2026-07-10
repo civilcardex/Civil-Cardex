@@ -46,7 +46,7 @@ function deleteKeys(store: Record<string, unknown>, pred: (k: string) => boolean
 }
 
 function deepClone<T>(v: T): T {
-  return JSON.parse(JSON.stringify(v));
+  return structuredClone(v);
 }
 
 export function copyDrawingFromPlan(

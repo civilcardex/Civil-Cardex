@@ -46,6 +46,9 @@ function Tbl({cols,rows,th,td,tdl,fontSize,center,valueCol,caption}: {cols: stri
 }
 
 
+const BombaARDesign_COLS1=['Parámetro','Símbolo','Valor','Unidad','Equivalencia','Fuente / norma'];
+const BombaARDesign_COLS2=['Componente','Símbolo','Valor','Unidad','Equivalencia','Observación'];
+
 function BombaARDesign(){
   const [bp,setBp]=useState(1);
   const [salSim,setSalSim]=useState('');
@@ -97,8 +100,8 @@ function BombaARDesign(){
     <b style={{color:'var(--txt)'}}>Nota normativa</b> — Diseño conforme <b style={{color:'var(--txt)'}}>NTC 1500 §8</b> y <b style={{color:'var(--txt)'}}>RAS 2000 Título D</b>. La bomba trituradora es obligatoria para sólidos fecales. Verificar caudal con empresa de servicios (EMAB/AMB) antes de definir acometida.
   </div>;
 
-  const COLS1=['Parámetro','Símbolo','Valor','Unidad','Equivalencia','Fuente / norma'];
-  const COLS2=['Componente','Símbolo','Valor','Unidad','Equivalencia','Observación'];
+  const COLS1=BombaARDesign_COLS1;
+  const COLS2=BombaARDesign_COLS2;
 
   const page1=(
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

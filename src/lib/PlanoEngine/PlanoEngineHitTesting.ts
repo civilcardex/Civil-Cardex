@@ -186,21 +186,3 @@ export function hitTestBajanteLabelForDrag(
   }
   return null;
 }
-
-export type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont';
-
-export function getToolFromKey(key: string): ToolType | null {
-  const map: Record<string, ToolType> = {
-    's': 'sel',
-    'l': 'line',
-    'd': 'dim',
-    't': 'text',
-    'b': 'baj',
-    'm': 'mon',
-    'a': 'area',
-    'e': 'erase',
-    'x': 'delm',
-    'k': 'segdel',
-  };
-  return map[key] ?? null;
-}

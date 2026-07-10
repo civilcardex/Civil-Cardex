@@ -19,7 +19,7 @@ interface PlansContextValue {
 const PlansContext = createContext<PlansContextValue | null>(null);
 
 function persistMeta(plans: PlanItem[]) {
-  const meta: PlanMeta[] = plans.map(({ file, ...meta }) => meta);
+  const meta: PlanMeta[] = plans.map(({ file: _file, ...meta }) => meta);
   if (meta.length === 0) {
     removeFromStorage(PLANS_META_KEY);
   } else {
@@ -36,6 +36,9 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
   useEffect(() => {
     if (restoredRef.current) return;
     restoredRef.current = true;
+    // One-time mount guard for an async localStorage restore below — not derivable from
+    // props/state available during render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (plans.length > 0) { setRestoreDone(true); return; }
     (async () => {
       const meta = loadFromStorage<PlanMeta[]>(PLANS_META_KEY, []);
@@ -102,6 +105,9 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       if (restored.length > 0) setPlans(restored);
       setRestoreDone(true);
     })();
+    // Intentionally mount-once (guarded by restoredRef above) — plans.length is only read for
+    // the guard's current value at that single execution, not meant to re-run on every change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -142,7 +148,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     setPlans(prev => prev.map(p => p.id === id && p.status === 'pending' ? { ...p, status: 'confirmed' } : p));
   }, []);
 
-  const value = useMemo(() => ({ plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan }), [plans, error]);
+  const value = useMemo(() => ({ plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan }), [plans, error, addPlans, removePlan, updatePlan, confirmPlan]);
 
   return (
     <PlansContext.Provider value={value}>

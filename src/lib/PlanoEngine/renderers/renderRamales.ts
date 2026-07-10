@@ -523,7 +523,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const lvlSuffix = pCorto ? `-${pCorto}` : '';
       const lbl = r.label ? `${r.label}${lvlSuffix}` : '';
       const matPart = r.material || '';
-      let dPart = r.diametro ? `D=${normalizeDnLabel(r.diametro.split(' — ')[0])}` : '';
+      const dPart = r.diametro ? `D=${normalizeDnLabel(r.diametro.split(' — ')[0])}` : '';
       const pPart = r.pendiente ? `S=${r.pendiente}%` : '';
       const showPend = (r.net === 'san' || r.net === 'll');
       const pendPart = showPend && pPart ? pPart : '';

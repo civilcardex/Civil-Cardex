@@ -4,14 +4,16 @@ import PageNav from "./PageNav";
 import EPInputPage from "./ep/EPInputPage";
 import EPVerificationPage from "./ep/EPVerificationPage";
 
+const PressureEquipmentDesign_pages = [
+  { t: "Datos de entrada", icon: "/iconos_diseno_redes/general/datos_de_entrada.svg", c: <EPInputPage /> },
+  { t: "Parámetros del equipo", icon: "/iconos_diseno_redes/general/datos_de_entrada.svg", c: <EPVerificationPage section="params" /> },
+  { t: "Resultados y Resumen", icon: "/iconos_diseno_redes/general/datos_de_entrada.svg", c: <EPVerificationPage section="results" /> },
+];
+
 const EPContent = function PressureEquipmentDesign() {
   const [page, setPage] = useState(1);
 
-  const pages = [
-    { t: "Datos de entrada", icon: "/iconos_diseno_redes/general/datos_de_entrada.svg", c: <EPInputPage /> },
-    { t: "Parámetros del equipo", icon: "/iconos_diseno_redes/general/datos_de_entrada.svg", c: <EPVerificationPage section="params" /> },
-    { t: "Resultados y Resumen", icon: "/iconos_diseno_redes/general/datos_de_entrada.svg", c: <EPVerificationPage section="results" /> },
-  ];
+  const pages = PressureEquipmentDesign_pages;
 
   return (
     <div className="fu" style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minHeight: 0 }}>

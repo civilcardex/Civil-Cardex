@@ -9,6 +9,18 @@ const InfoTab_S1: React.CSSProperties = { padding: '3px 6px', background: 'trans
 const InfoTab_S2: React.CSSProperties = { flexShrink: 0, padding: '7px 14px', fontSize: 12, fontWeight: 600, background: 'rgba(239,68,68,0.92)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, };
 const InfoTab_S3: React.CSSProperties = { background: 'rgba(255,255,255,.2)', border: 'none', borderRadius: 3, color: '#fff', cursor: 'pointer', fontSize: 11, padding: '2px 8px', flexShrink: 0 };
 const InfoTab_S4: React.CSSProperties = { display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: 6, flex: 1, minHeight: 0, overflowY: 'hidden', overflowX: 'auto', alignItems: 'stretch' };
+const InfoTab_netBtn: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 3,
+  background: 'var(--bg3)', borderTop: '1px solid var(--line)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)', borderLeft: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', font: 'inherit', color: 'inherit', textAlign: 'left',
+};
+const InfoTab_equipoBtn: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 3, padding: '3px 5px',
+  background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left',
+};
+const InfoTab_cubiertaToggle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, userSelect: 'none', padding: '4px 8px', borderRadius: 4, flexShrink: 0, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'inherit' };
+const InfoTab_generarBtn: React.CSSProperties = { width: '100%', padding: '6px', marginTop: 6, background: 'var(--acc)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontWeight: 600, fontSize: 12 };
+const InfoTab_pisoLi: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 3, padding: '2px 4px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', marginBottom: 2 };
+const InfoTab_recolectoraToggle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', padding: '4px 8px', borderRadius: 4, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'inherit' };
 
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
@@ -78,11 +90,11 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({ redes, setRedes, net
               return (
                 <button type="button" key={r.id} disabled={!isEditing || (isVent && !sanOn)} onClick={() => { if (isVent && !sanOn) return; const n = new Set(redes); if (on) n.delete(r.id); else n.add(r.id); setRedes(n); }}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 3,
+                    ...InfoTab_netBtn,
                     padding: isVent ? '2px 5px 2px 12px' : '3px 5px',
                     marginLeft: isVent ? 10 : 0,
                     cursor: isEditing && (!isVent || sanOn) ? 'pointer' : 'default',
-                    background: 'var(--bg3)', borderTop: '1px solid var(--line)', borderRight: '1px solid var(--line)', borderBottom: '1px solid var(--line)', borderLeft: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: isVent ? 'calc(100% - 10px)' : '100%', font: 'inherit', color: 'inherit', textAlign: 'left',
+                    width: isVent ? 'calc(100% - 10px)' : '100%',
                     opacity: (isEditing && (!isVent || sanOn)) ? 1 : 0.5
                   }}>
                   {r.icoImg ? <img src={r.icoImg} alt="" width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle' }} loading="lazy" /> : <span style={{ fontSize: 13 }}>{r.ico}</span>}
@@ -136,10 +148,7 @@ const ActiveEquiposCard = React.memo(function ActiveEquiposCard({ redes, setRede
             const on = redes.has(r.id);
             return (
               <button type="button" key={r.id} disabled={!editing} onClick={() => { if (!editing) return; const n = new Set(redes); if (on) n.delete(r.id); else n.add(r.id); setRedes(n); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 3, padding: '3px 5px', cursor: editing ? 'pointer' : 'default',
-                  background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', transition: 'all .15s', width: '100%', font: 'inherit', color: 'inherit', textAlign: 'left', opacity: editing ? 1 : 0.5
-                }}>
+                style={{ ...InfoTab_equipoBtn, cursor: editing ? 'pointer' : 'default', opacity: editing ? 1 : 0.5 }}>
                 {r.icoImg ? <img src={r.icoImg} alt=""  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle' }}  loading="lazy" /> : <span style={{ fontSize: 13 }}>{r.ico}</span>}
                 <span style={{ fontWeight: 600, fontSize: 12, color: on ? '#22c55e' : 'var(--txt2)', whiteSpace: 'nowrap', flex: 1 }}>{r.lbl}</span>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: on ? '#22c55e' : 'transparent', border: '1.5px solid ' + (on ? '#22c55e' : 'var(--txt3)') }} />
@@ -184,7 +193,7 @@ const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
             <div className="f" style={{ marginBottom: 0 }}><label htmlFor="fg-altsot" style={{ fontSize: 12 }}>Altura sótano</label><input id="fg-altsot" type="text" disabled={!isEditing} inputMode="decimal" value={props.altSotano} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px', opacity: isEditing ? 1 : 0.7 }} onChange={props.onDecChange(props.setAltSotano)} onBlur={props.onDecBlur(props.setAltSotano)} /></div>
             <div className="f" style={{ marginBottom: 0 }}><label htmlFor="fg-npt" style={{ fontSize: 12 }}>NPT P1</label><input id="fg-npt" type="text" disabled={!isEditing} inputMode="decimal" value={props.nptPiso1} style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px', opacity: isEditing ? 1 : 0.7 }} onChange={props.onDecChange(props.setNptPiso1)} onBlur={props.onDecBlur(props.setNptPiso1)} /></div>
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end', paddingBottom: 2 }}>
-              <button type="button" disabled={!isEditing} role="switch" aria-checked={props.conCubierta} onClick={() => props.setConCubierta(!props.conCubierta)} title="Incluir cubierta" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: isEditing ? 'pointer' : 'default', userSelect: 'none', padding: '4px 8px', borderRadius: 4, flexShrink: 0, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'inherit', opacity: isEditing ? 1 : 0.7 }}>
+              <button type="button" disabled={!isEditing} role="switch" aria-checked={props.conCubierta} onClick={() => props.setConCubierta(!props.conCubierta)} title="Incluir cubierta" style={{ ...InfoTab_cubiertaToggle, cursor: isEditing ? 'pointer' : 'default', opacity: isEditing ? 1 : 0.7 }}>
                 <div style={{ width: 28, height: 15, borderRadius: 8, background: props.conCubierta ? 'var(--ll)' : 'var(--line)', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
                   <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: props.conCubierta ? 15 : 2, transition: 'left .2s' }} />
                 </div>
@@ -192,7 +201,7 @@ const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
               </button>
             </div>
           </div>
-          <button type="button" disabled={!isEditing} onClick={props.generarPisos} style={{ width: '100%', padding: '6px', marginTop: 6, background: 'var(--acc)', border: 'none', borderRadius: 'var(--r)', color: '#fff', fontWeight: 600, fontSize: 12, cursor: isEditing ? 'pointer' : 'default', opacity: isEditing ? 1 : 0.5 }}>Generar niveles automáticamente</button>
+          <button type="button" disabled={!isEditing} onClick={props.generarPisos} style={{ ...InfoTab_generarBtn, cursor: isEditing ? 'pointer' : 'default', opacity: isEditing ? 1 : 0.5 }}>Generar niveles automáticamente</button>
         </div>
     </section>
   );
@@ -219,8 +228,8 @@ const LevelsCard = React.memo(function LevelsCard({ pisos, delPiso, addPiso, add
         {pisos.length > 0 && (
           <>
             <ul role="list" style={{ flex: 1, overflowY: 'auto', minHeight: 0, listStyle: 'none', margin: 0, padding: 0 }}>
-              {[...pisos].sort((a, b) => (b.tipo === 'cubierta' ? 999 : b.n) - (a.tipo === 'cubierta' ? 999 : a.n)).map((p: any) => (
-                <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '2px 4px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', borderLeft: '3px solid ' + (p.tipo === 'cubierta' ? 'var(--ll)' : p.n < 0 ? 'var(--txt3)' : 'var(--acc2)'), marginBottom: 2 }}>
+              {pisos.toSorted((a, b) => (b.tipo === 'cubierta' ? 999 : b.n) - (a.tipo === 'cubierta' ? 999 : a.n)).map((p: any) => (
+                <li key={p.id} style={{ ...InfoTab_pisoLi, borderLeft: '3px solid ' + (p.tipo === 'cubierta' ? 'var(--ll)' : p.n < 0 ? 'var(--txt3)' : 'var(--acc2)') }}>
                   <span className={p.tipo === 'cubierta' ? 'piso-tag cub' : p.n < 0 ? 'piso-tag sot' : 'piso-tag'} style={{ fontSize: 11, padding: '2px 5px', minWidth: 48 }}>{pisoLbl(p.n)}</span>
                   <input type="text" disabled={!isEditing} inputMode="decimal" value={p.npt ?? ''} key={p.id + 'npt'} className="npt-in" aria-label={`NPT para ${pisoLbl(p.n)}`} style={{ fontSize: 12, width: 52, padding: '2px 4px', opacity: isEditing ? 1 : 0.7 }}
                     onChange={e => {
@@ -322,7 +331,7 @@ function InfoTab({ state }: InfoTabProps) {
               <h3 className="card-t" style={{ fontSize: 13 }}>Canal recolectora</h3>
             </div>
             <div style={{ padding: '4px 8px' }}>
-              <button type="button" role="switch" aria-checked={conRecolectora} onClick={() => setConRecolectora(!conRecolectora)} title="Canal recolectora" style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none', padding: '4px 8px', borderRadius: 4, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%', textAlign: 'inherit' }}>
+              <button type="button" role="switch" aria-checked={conRecolectora} onClick={() => setConRecolectora(!conRecolectora)} title="Canal recolectora" style={InfoTab_recolectoraToggle}>
                 <div style={{ width: 28, height: 15, borderRadius: 8, background: conRecolectora ? 'var(--ll)' : 'var(--line)', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
                   <div style={{ width: 11, height: 11, borderRadius: '50%', background: '#fff', position: 'absolute', top: 2, left: conRecolectora ? 15 : 2, transition: 'left .2s' }} />
                 </div>

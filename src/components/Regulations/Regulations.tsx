@@ -96,7 +96,7 @@ export default function Normativa() {
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, padding:'10px 14px' }}>
                 <div style={{ marginBottom:0 }}>
-                  <label style={{ display:'block', fontSize: 12, fontWeight:500, marginBottom:2 }}>Norma · Artículo</label>
+                  <span style={{ display:'block', fontSize: 12, fontWeight:500, marginBottom:2 }}>Norma · Artículo</span>
                   <div style={{ display:'flex', gap:5 }}>
                     <input className="ni" aria-label="Norma" style={{ flex:1, textAlign:'left', fontSize: 12 }}
                       value={cr.norma}
@@ -107,13 +107,13 @@ export default function Normativa() {
                   </div>
                 </div>
                 <div style={{ marginBottom:0 }}>
-                  <label style={{ display:'block', fontSize: 12, fontWeight:500, marginBottom:2 }}>Evidencia de cumplimiento</label>
+                  <span style={{ display:'block', fontSize: 12, fontWeight:500, marginBottom:2 }}>Evidencia de cumplimiento</span>
                   <input className="ni" aria-label="Evidencia de cumplimiento" style={{ width:'100%', textAlign:'left', fontSize: 12 }}
                     value={cr.cumple}
                     onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, cumple:v} : x)); }} />
                 </div>
                 <div style={{ marginBottom:0, gridColumn:'1 / -1' }}>
-                  <label style={{ display:'block', fontSize: 12, fontWeight:500, marginBottom:2 }}>Observación técnica</label>
+                  <span style={{ display:'block', fontSize: 12, fontWeight:500, marginBottom:2 }}>Observación técnica</span>
                   <input className="ni" aria-label="Observación técnica" style={{ width:'100%', textAlign:'left', fontSize: 12, fontStyle:'italic' }}
                     value={cr.nota}
                     onChange={e => { const v=e.target.value; setCrits(p => p.map(x => x.id===cr.id ? {...x, nota:v} : x)); }} />

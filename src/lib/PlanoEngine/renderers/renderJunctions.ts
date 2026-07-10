@@ -128,8 +128,9 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         const distMm = Math.hypot(a.P[0] - b.P[0], a.P[1] - b.P[1]);
         if (distMm > DOUBLE_YEE_THRESHOLD_MM) continue;
 
-        const dotMain = a.uA.x * b.uA.x + a.uA.y * b.uA.y;
-        const dotMain2 = a.uA.x * b.uB.x + a.uA.y * b.uB.y;
+        const auA = a.uA, buA = b.uA, buB = b.uB;
+        const dotMain = auA.x * buA.x + auA.y * buA.y;
+        const dotMain2 = auA.x * buB.x + auA.y * buB.y;
         const aligned = Math.abs(Math.abs(dotMain) - 1) < 0.15 || Math.abs(Math.abs(dotMain2) - 1) < 0.15;
         if (!aligned) continue;
 

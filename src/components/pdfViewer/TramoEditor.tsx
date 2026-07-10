@@ -726,7 +726,7 @@ function BajanteEditorSection() {
               });
             }
           }
-        } catch (_) {}
+        } catch { /* ignore */ }
       }
     }
     return list;
@@ -737,7 +737,7 @@ function BajanteEditorSection() {
     const currentPlanNivel = engineRef.current?.nivelActual?.n;
     if (typeof currentPlanNivel !== 'number') return [];
     if (ctx.pisos && ctx.pisos.length > 0) {
-      const sorted = [...ctx.pisos].sort((a: any, b: any) => a.n - b.n);
+      const sorted = ctx.pisos.toSorted((a: any, b: any) => a.n - b.n);
       const currIdx = sorted.findIndex((s: any) => s.n === currentPlanNivel);
       if (currIdx !== -1) {
         if (currIdx > 0) list.push(sorted[currIdx - 1].n);

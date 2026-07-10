@@ -184,7 +184,7 @@ export function useWorkAreaState() {
   useEffect(() => {
     REDES.forEach(r => {
       const raw = localStorage.getItem('civilflow_net_' + r.id);
-      const saved = raw ? (() => { try { return JSON.parse(raw); } catch (_) { return raw; } })() : null;
+      const saved = raw ? (() => { try { return JSON.parse(raw); } catch { return raw; } })() : null;
       if (saved && typeof saved === 'string') {
         document.documentElement.style.setProperty('--' + r.id, saved);
         try {
@@ -220,6 +220,10 @@ export function useWorkAreaState() {
       setSelectedPlanId(null);
     }
     prevPlansLenRef.current = len;
+    // Deliberately keyed off plans.length only (compared against the ref-tracked previous
+    // length) to detect "a plan was added" vs. other cases; selectedPlanId is also *set* here,
+    // so adding it as a dep would make this effect re-fire on its own writes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [plansCtx.plans.length]);
 
   const fileRef = useRef<HTMLInputElement>(null);

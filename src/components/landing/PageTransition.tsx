@@ -13,12 +13,14 @@ export default function PageTransition({ children }: Props) {
   const prefersReducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
-    if (prefersReducedMotion) {
-      setDisplayLocation(location);
-      return;
-    }
+    // When reduced motion is on, the render path below uses `location` directly (not
+    // displayLocation), so there's nothing to synchronize here.
+    if (prefersReducedMotion) return;
 
     if (location.pathname !== displayLocation.pathname) {
+      // Triggers a CSS transition sequence in response to a route change — inherently a
+      // side effect over time, not a value derivable during render.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTransitionStage('fadeOut');
     }
   }, [location, displayLocation, prefersReducedMotion]);

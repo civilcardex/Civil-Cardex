@@ -180,6 +180,9 @@ export default function SanAccesoriosPage() {
       }
     }
     return result;
+    // tick is an intentional cache-busting signal (storage/custom-event/3s poll above) for
+    // localStorage-derived data React can't observe reactively — not read in the body itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick, tramosSan, plans]);
 
 
@@ -257,7 +260,7 @@ export default function SanAccesoriosPage() {
         const valB = diamPulgFromLabel(bMain);
         return valB - valA;
       });
-  }, [tick, tramosSan]);
+  }, [tick, tramosSan, yeeDiams]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', flex: 1, paddingBottom: '24px' }}>

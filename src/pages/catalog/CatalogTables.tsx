@@ -12,25 +12,25 @@ const CatalogTables_S6: React.CSSProperties = { padding: '2px 8px', textAlign: '
 
 const HEADER_BG = 'var(--bg3)'
 const HEADER_TXT = '#00dce5'
+const CatalogTables_thBase: React.CSSProperties = {
+  background: HEADER_BG,
+  color: HEADER_TXT,
+  fontSize: 12,
+  fontWeight: 700,
+  textTransform: 'uppercase',
+  letterSpacing: 0.6,
+  padding: '4px 8px',
+  border: '1px solid var(--line)',
+  textAlign: 'center',
+  whiteSpace: 'nowrap',
+  position: 'sticky',
+  top: 0,
+  zIndex: 5,
+};
 
 function Th({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <th scope="col" className="td-mono-b" style={{
-      background: HEADER_BG,
-      color: HEADER_TXT,
-      fontSize: 12,
-      fontWeight: 700,
-      textTransform: 'uppercase',
-      letterSpacing: 0.6,
-      padding: '4px 8px',
-      border: '1px solid var(--line)',
-      textAlign: 'center',
-      whiteSpace: 'nowrap',
-      position: 'sticky',
-      top: 0,
-      zIndex: 5,
-      ...style,
-    }}>{children}</th>
+    <th scope="col" className="td-mono-b" style={{ ...CatalogTables_thBase, ...style }}>{children}</th>
   )
 }
 

@@ -352,6 +352,9 @@ const [state, dispatch] = useReducer(tramosReducer, {
   tramosLl: [],
 } as TramosState);
 const stateRef = useRef(state);
+// "useLatest" pattern: keep a ref mirroring the latest state for callbacks/effects that
+// need the current value without listing it as a dependency.
+// eslint-disable-next-line react-hooks/refs
 stateRef.current = state;
 
 useEffect(() => {
@@ -523,7 +526,13 @@ const value = useMemo(() => ({
   delTramoAf, updTramoAf, updTramoAfAcc,
   delTramoAc, updTramoAc, updTramoAcAcc,
   delTramoLL, updTramoLL,
-}), [tramosSan, tramosAf, tramosAc, tramosLl]);
+}), [
+  tramosSan, tramosAf, tramosAc, tramosLl,
+  delTramoSan, updTramoSan,
+  delTramoAf, updTramoAf, updTramoAfAcc,
+  delTramoAc, updTramoAc, updTramoAcAcc,
+  delTramoLL, updTramoLL,
+]);
 
 return (
 <TramosContext.Provider value={value}>

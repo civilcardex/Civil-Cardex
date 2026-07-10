@@ -150,7 +150,7 @@ const BajantesTable = memo(function BajantesTable_() {
       const raw = loadFromStorage(TRAZOS_PREFIX + p.id, null);
       if (raw) {
         let d: any = raw;
-        if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_) { continue; } }
+        if (typeof d === 'string') { try { d = JSON.parse(d); } catch { continue; } }
         cache[String(p.id)] = d;
       }
     }
@@ -167,7 +167,7 @@ const BajantesTable = memo(function BajantesTable_() {
       const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
       if (!raw) continue;
       let data = raw as Record<string, any>;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { continue; } }
+      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
 
       const ramales = data.ramales || [];
       const bajantes = data.bajantes || [];
@@ -707,7 +707,7 @@ const BajantesTable = memo(function BajantesTable_() {
                     const raw = storageByPlan[vPlanId];
                     if (!raw) return 0;
                     let d = raw as any;
-                    if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_) { return 0; } }
+                    if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return 0; } }
                     for (const vr of (d.ramales || [])) {
                       if (vr.id === vrId && (vr._net === 'vent' || vr.net === 'vent')) {
                         return vr.diamPulg || (vr.diametro ? parseFloat(String(vr.diametro).replace(/[^0-9.]/g, '')) : 0);
@@ -727,7 +727,7 @@ const BajantesTable = memo(function BajantesTable_() {
                     const raw = storageByPlan[planIdStr];
                     if (!raw) return 0;
                    let d = raw as any;
-                   if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_) { return 0; } }
+                   if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return 0; } }
                    
                    const planRamales = d.ramales || [];
                    for (const rId of rIds) {

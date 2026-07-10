@@ -131,7 +131,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
       const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
       if (!raw) continue;
       let data = raw as Record<string, any>;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { continue; } }
+      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
 
       const ramales = (data.ramales || []).filter((r: any) => r.net === networkType);
       const bajantes = (data.bajantes || []).filter((b: any) => b.net === networkType);
@@ -352,7 +352,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     }
 
     return [orientedConexiones, displayMap, componentTotalMap] as const;
-  }, [plans, tramos, networkType]);
+  }, [plans, tramos, networkType, AP]);
 
   const propiaMap = useMemo(() => {
     const m: Record<string, number> = {};
@@ -373,8 +373,11 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   const [acoContIx, setAcoContIx] = useState(2);
   const contIxRef = useRef('');
   const contIxDeps = networkType === 'af' ? String((plans as any[])?.length ?? 0) + '|' + networkType : '';
+  /* eslint-disable react-hooks/refs -- ref-as-memoization-guard: recompute only when
+     contIxDeps actually changes, without a full effect round-trip. */
   if (contIxDeps !== contIxRef.current) {
     contIxRef.current = contIxDeps;
+  /* eslint-enable react-hooks/refs */
     if (networkType === 'af') {
       const found = findContadorBajante(plans, networkType);
       if (found && found.bajante.dNominal) {
@@ -441,7 +444,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
       return { h: tr1.totalL || tr1.Lh || 0, v: 0.00, le };
     }
     return acoL1;
-  }, [tr1, acoL1, resolvedRedContDiam, diamTable]);
+  }, [tr1, acoL1, resolvedRedContDiam, diamTable, C]);
 
   const resolvedL2 = useMemo(() => {
     if (tr2) {
@@ -451,7 +454,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
       return { h: tr2.totalL || tr2.Lh || 0, v: 0.00, le };
     }
     return acoL2;
-  }, [tr2, acoL2, resolvedContMonDiam, diamTable]);
+  }, [tr2, acoL2, resolvedContMonDiam, diamTable, C]);
 
   const contadorSel = CONTADORES_CAT[acoContIx] || CONTADORES_CAT[0];
 

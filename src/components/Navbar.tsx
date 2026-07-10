@@ -3,6 +3,11 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getCurrentUser } from '../context/AuthContext';
 const Navbar_S1: React.CSSProperties = { width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#3B82F6,#1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#fff', fontSize: 12, fontWeight: 700, fontFamily: 'Geist, monospace', };
+const Navbar_navLinks = [
+  { to: '/', label: 'INICIO' },
+  { to: '/pricing', label: 'PRECIOS' },
+  { to: '/docs', label: 'DOCUMENTACIÓN' },
+];
 
 
 function Navbar() {
@@ -12,6 +17,13 @@ function Navbar() {
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrollY, setScrollY] = useState(0);
+  const [prevPath, setPrevPath] = useState(path);
+  // Close the mobile menu on navigation — adjusted during render (React's documented pattern
+  // for resetting state on a prop change) instead of an effect, avoiding an extra commit.
+  if (path !== prevPath) {
+    setPrevPath(path);
+    setMenuOpen(false);
+  }
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -37,16 +49,10 @@ function Navbar() {
     return () => subscription?.unsubscribe();
   }, []);
 
-  useEffect(() => { setMenuOpen(false); }, [path]);
-
   const active = 'text-primary border-b border-primary pb-1 uppercase text-xs tracking-[0.08em] font-bold cursor-pointer active-nav-glow transition-all';
   const inactive = 'text-on-surface-variant uppercase text-xs tracking-[0.08em] font-bold hover:text-primary transition-colors px-3 py-1';
 
-  const navLinks = [
-    { to: '/', label: 'INICIO' },
-    { to: '/pricing', label: 'PRECIOS' },
-    { to: '/docs', label: 'DOCUMENTACIÓN' },
-  ];
+  const navLinks = Navbar_navLinks;
 
   const isLandingTop = path === '/' && scrollY < 50;
 

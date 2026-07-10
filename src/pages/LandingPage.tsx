@@ -84,7 +84,7 @@ function LandingPage() {
 
   return (
     <div className="min-h-screen" style={{ background: '#0a0e14', color: '#e2e2e8' }}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+      <script type="application/ld+json">{JSON.stringify({
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "CivilFlow",
@@ -95,8 +95,8 @@ function LandingPage() {
     "target": "https://civilcore.app/docs?q={search_term_string}",
     "query-input": "required name=search_term_string"
   }
-}) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+})}</script>
+      <script type="application/ld+json">{JSON.stringify({
   "@context": "https://schema.org",
   "@type": "Organization",
   "name": "CivilFlow",
@@ -104,7 +104,7 @@ function LandingPage() {
   "logo": "https://civilcore.app/logo.svg",
   "description": "Software de ingeniería civil e hidrosanitaria. Cumplimiento NTC 1500, RAS 2000, NSR-10.",
   "foundingDate": "2024"
-}) }} />
+})}</script>
       <style>{`
         .hero-mod-card {
           transition: border-color 0.35s, box-shadow 0.35s;

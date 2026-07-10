@@ -5,6 +5,13 @@ const TIPOS_TRAMO = [
   { id: "tributario", label: "Tributario" },
 ];
 
+const TipoTramoSelector_btn: React.CSSProperties = {
+  padding: "7px 10px", borderRadius: "3px", cursor: "pointer", width: "100%",
+  display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start",
+  transition: "all .12s",
+};
+const TipoTramoSelector_select: React.CSSProperties = { width: '100%', padding: '5px 8px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3, fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
+
 interface TipoTramoSelectorProps {
   tipoTramo: string;
   setTipoTramo: (v: string) => void;
@@ -29,11 +36,9 @@ export default function TipoTramoSelector({
         {TIPOS_TRAMO.map(tp => (
           <button type="button" key={tp.id} onClick={() => setTipoTramo(tp.id)}
             style={{
-              padding: "7px 10px", background: tipoTramo === tp.id ? "#2563EB22" : "#1e2024",
+              ...TipoTramoSelector_btn,
+              background: tipoTramo === tp.id ? "#2563EB22" : "#1e2024",
               border: `1px solid ${tipoTramo === tp.id ? "#2563EB" : "#3a494a"}`,
-              borderRadius: "3px", cursor: "pointer", width: "100%",
-              display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start",
-              transition: "all .12s",
             }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: tipoTramo === tp.id ? "#2563EB" : "#b9caca", fontFamily: "'Geist',monospace" }}>
               {tp.id === 'ramal' ? '📏 Ramal principal' : tp.id === 'tributario' ? '🔀 Tributario' : tp.label}
@@ -53,7 +58,7 @@ export default function TipoTramoSelector({
               setPadreTributarioId(v);
               if (engineRef.current) engineRef.current.setPadreTributario(v);
             }}
-            style={{ width: '100%', padding: '5px 8px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3, color: padreTributarioId ? '#2563EB' : '#6b8cae', fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' }}>
+            style={{ ...TipoTramoSelector_select, color: padreTributarioId ? '#2563EB' : '#6b8cae' }}>
             <option value="">— Seleccionar ramal padre —</option>
             {drawnElements.filter(el => el.type === 'ramal' && el.tipo === 'ramal').map(el => (
               <option key={el.id} value={el.id}>{el.label}{el.totalL ? ` · ${typeof el.totalL === 'number' ? el.totalL.toFixed(2) : el.totalL}m` : ''}</option>

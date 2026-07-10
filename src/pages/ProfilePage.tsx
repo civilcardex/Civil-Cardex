@@ -5,6 +5,28 @@ import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { usePageMeta } from '../hooks/usePageMeta'
 
+const ProfilePage_proyectosActivos = [
+  { id: 1, codigo: 'CR-97', nombre: 'Casa de Roca No. 97 - Redes Sanitarias y Lluvias', progreso: 100, estado: 'completo' },
+  { id: 2, codigo: 'AF-AC-01', nombre: 'Red Hidráulica AF y AC - Casa Roca 97', progreso: 98, estado: 'completo' },
+  { id: 3, codigo: 'CR-98', nombre: 'Casa de Roca No. 98 - Redes Sanitarias', progreso: 65, estado: 'activo' },
+  { id: 4, codigo: 'TOR-01', nombre: 'Torre Residencial - Hidroneumático y bombas', progreso: 80, estado: 'revision' },
+]
+
+const ProfilePage_estadoConfig: Record<string, { color: string; label: string }> = {
+  completo: { color: 'bg-secondary text-on-secondary-container', label: 'COMPLETO' },
+  revision: { color: 'bg-tertiary text-on-tertiary-container', label: 'EN REVISIÓN' },
+  activo: { color: 'bg-primary text-on-primary-container', label: 'ACTIVO' },
+}
+
+const ProfilePage_campos = [
+  { key: 'nombre', label: 'Nombre' },
+  { key: 'apellido', label: 'Apellido' },
+  { key: 'email', label: 'Correo Electrónico', readonly: true },
+  { key: 'profesion', label: 'Profesión' },
+  { key: 'matricula', label: 'Matrícula Profesional' },
+  { key: 'telefono', label: 'Teléfono' },
+]
+
 function ProfilePage() {
   const [perfil, setPerfil] = useState({
     nombre: '',
@@ -21,20 +43,11 @@ function ProfilePage() {
   const [proyectosOpen, setProyectosOpen] = useState(false);
   const userIdRef = useRef<string | null>(null);
 
-  const proyectosActivos = [
-    { id: 1, codigo: 'CR-97', nombre: 'Casa de Roca No. 97 - Redes Sanitarias y Lluvias', progreso: 100, estado: 'completo' },
-    { id: 2, codigo: 'AF-AC-01', nombre: 'Red Hidráulica AF y AC - Casa Roca 97', progreso: 98, estado: 'completo' },
-    { id: 3, codigo: 'CR-98', nombre: 'Casa de Roca No. 98 - Redes Sanitarias', progreso: 65, estado: 'activo' },
-    { id: 4, codigo: 'TOR-01', nombre: 'Torre Residencial - Hidroneumático y bombas', progreso: 80, estado: 'revision' },
-  ]
+  const proyectosActivos = ProfilePage_proyectosActivos
 
   const navigate = useNavigate()
 
-  const estadoConfig: Record<string, { color: string; label: string }> = {
-    completo: { color: 'bg-secondary text-on-secondary-container', label: 'COMPLETO' },
-    revision: { color: 'bg-tertiary text-on-tertiary-container', label: 'EN REVISIÓN' },
-    activo: { color: 'bg-primary text-on-primary-container', label: 'ACTIVO' },
-  }
+  const estadoConfig = ProfilePage_estadoConfig
 
   async function fetchPerfil() {
     if (!supabase) return
@@ -68,6 +81,9 @@ function ProfilePage() {
   }
 
   usePageMeta('Perfil', 'Gestione su perfil de CivilCore: datos personales, proyectos activos y configuración de cuenta de ingeniería.');
+  // fetchPerfil is async and only calls setState after awaiting Supabase — standard
+  // fetch-on-mount, not a synchronous cascading update.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchPerfil() }, [])
 
   function handleEditStart(field: string) {
@@ -106,14 +122,7 @@ function ProfilePage() {
 
   const nombreCompleto = [perfil.nombre, perfil.apellido].filter(Boolean).join(' ')
 
-  const campos = [
-    { key: 'nombre', label: 'Nombre' },
-    { key: 'apellido', label: 'Apellido' },
-    { key: 'email', label: 'Correo Electrónico', readonly: true },
-    { key: 'profesion', label: 'Profesión' },
-    { key: 'matricula', label: 'Matrícula Profesional' },
-    { key: 'telefono', label: 'Teléfono' },
-  ]
+  const campos = ProfilePage_campos
 
   if (loading) {
     return (
@@ -135,7 +144,7 @@ function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }} />
+      <script type="application/ld+json">{JSON.stringify(personJsonLd)}</script>
       <Navbar />
       <header className="border border-outline-variant bg-surface-container p-6 flex items-start gap-6">
         <div className="w-20 h-20 border-2 border-primary bg-surface-container flex items-center justify-center shrink-0">
@@ -169,6 +178,7 @@ function ProfilePage() {
             <input
               type={key === 'email' ? 'email' : 'text'}
               value={editValue}
+              aria-label={label}
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={(e) => handleEditKeyDown(e, key)}
               autoFocus
@@ -188,18 +198,16 @@ function ProfilePage() {
         ) : readonly ? (
           <span className="text-[13px] text-on-surface font-medium">{(perfil as Record<string, string>)[key]}</span>
         ) : (
-          <div
-            role="button"
-            tabIndex={0}
-            className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors"
+          <button
+            type="button"
+            className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors bg-transparent border-0 p-0 text-left font-inherit"
             onClick={() => handleEditStart(key)}
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleEditStart(key); } }}
           >
             <span className="text-[13px] text-on-surface font-medium">
               {(perfil as Record<string, string>)[key] || <span className="text-on-surface-variant italic opacity-50">Click para editar</span>}
             </span>
             <span className="material-symbols-outlined text-xs text-on-surface-variant opacity-0 group-hover:opacity-60 transition-opacity">edit</span>
-          </div>
+          </button>
         )}
       </li>
     ))}

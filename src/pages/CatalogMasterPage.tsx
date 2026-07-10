@@ -23,13 +23,13 @@ export default function CatalogMasterPage() {
 
   return (
     <div style={{ height: '100%', background: 'var(--bg)', color: 'var(--txt)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+      <script type="application/ld+json">{JSON.stringify({
   "@context": "https://schema.org",
   "@type": "ItemList",
   "name": "Catálogo maestro — CivilFlow",
   "description": "Catálogo de materiales, tuberías, accesorios y equipos para diseño hidrosanitario.",
   "numberOfItems": [...SANITARIAS, ...VENTILACION, ...AGUA_FRIA, ...AGUA_CALIENTE, ...RCI, ...GAS].reduce((acc, g) => acc + g.rows.length, 0)
-}) }} />
+})}</script>
       <div style={{ padding: '14px 16px 0', display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minHeight: 0, overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexShrink: 0, position: 'relative', marginBottom: 12 }}>
           <button type="button" className="td-mono" onClick={() => { sessionStorage.setItem('openTab', 'datos'); navigate('/civilflowareatrabajo'); }}

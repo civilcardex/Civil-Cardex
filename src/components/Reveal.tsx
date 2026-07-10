@@ -18,14 +18,14 @@ export default function Reveal({
   direction = 'up',
 }: RevealProps) {
   const [isIntersecting, setIsIntersecting] = useState(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  // Lazy-initialized from the media query directly instead of an effect + setState on mount —
+  // the render path below never reads isIntersecting when reduced motion is on, so there's
+  // nothing else to synchronize for the initial value.
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Check initial user preference
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
-    if (mediaQuery.matches) setIsIntersecting(true);
 
     // Listen to changes in preference
     const listener = (event: MediaQueryListEvent) => {
@@ -61,7 +61,7 @@ export default function Reveal({
     return () => {
       observer.disconnect();
     };
-  }, [threshold]);
+  }, [threshold, prefersReducedMotion]);
 
   if (prefersReducedMotion) {
     return <div className={className}>{children}</div>;

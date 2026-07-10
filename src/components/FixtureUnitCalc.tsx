@@ -30,7 +30,7 @@ function CalculoUD() {
       const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
       if (!raw) continue;
       let data = raw as Record<string, any>;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { continue; } }
+      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
 
       const ramales = data.ramales || [];
       const bajantes = data.bajantes || [];

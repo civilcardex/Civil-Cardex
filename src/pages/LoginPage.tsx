@@ -51,7 +51,7 @@ function LoginPage() {
         }
       `}</style>
 
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(LOGIN_JSONLD) }} />
+      <script type="application/ld+json">{JSON.stringify(LOGIN_JSONLD)}</script>
       <Navbar />
 
       <div className="flex-1 flex items-center justify-center relative pt-16">

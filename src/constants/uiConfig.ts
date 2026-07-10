@@ -29,8 +29,6 @@ export const FILTROS_NORM=[{k:'todos',l:'Todos'},{k:'af',l:'AF/AC'},{k:'san',l:'
 
 export const NORM_COL={af:'var(--af)',ac:'var(--ac)',san:'var(--san)',vent:'var(--vent)',ll:'var(--ll)',gas:'var(--gas)',rci:'var(--rci)',ep:'var(--ep)',bom:'var(--bom)'};
 
-export const R_OPTIONS=[{value:'1/4',label:'1/4'},{value:'7/24',label:'7/24'}];
-
 export const REQ_ITEMS=[
   {ico:'📏', icoImg:'/iconos_carga_planos/escala.svg', t:'Escala', s:'Definir escala a trabajar'},
   {ico:'📄', icoImg:'/iconos_carga_planos/plano_por_nivel.svg', t:'1 plano', s:'Por nivel'},

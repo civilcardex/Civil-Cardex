@@ -13,6 +13,8 @@ interface EPVerificationPageProps {
   section?: "params" | "results";
 }
 
+const EPVerificationPage_selStyle: React.CSSProperties = { flex: 1, padding: "5px 8px", borderRadius: "var(--r)", border: "1px solid var(--line)", background: "var(--bg2)", color: "var(--txt)", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, outline: "none", boxSizing: "border-box" };
+
 export default function EPVerificationPage({ section = "results" }: EPVerificationPageProps) {
   const { ep, updEP } = useEP();
 
@@ -147,7 +149,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
               P calculada = <strong style={{ color: "var(--txt)" }}>{Pins_hp > 0 ? Pins_hp.toFixed(2) : "—"} HP</strong> · Comercial inmediata superior: <strong style={{ color: "var(--txt)", fontWeight: 700 }}>{autoNema} HP</strong>
             </div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <select aria-label="Potencia comercial" disabled={!editPComercial} value={ep.pcomercial || ""} onChange={(e) => updEP("pcomercial", e.target.value)} style={{ flex: 1, padding: "5px 8px", borderRadius: "var(--r)", border: "1px solid var(--line)", background: "var(--bg2)", color: "var(--txt)", fontFamily: "var(--mono)", fontSize: 12, fontWeight: 600, cursor: editPComercial ? "pointer" : "default", outline: "none", boxSizing: "border-box", opacity: editPComercial ? 1 : 0.7 }}>
+              <select aria-label="Potencia comercial" disabled={!editPComercial} value={ep.pcomercial || ""} onChange={(e) => updEP("pcomercial", e.target.value)} style={{ ...EPVerificationPage_selStyle, cursor: editPComercial ? "pointer" : "default", opacity: editPComercial ? 1 : 0.7 }}>
                 <option value="">Seleccione</option>
                 {COMM_HP.map(({ hp, kw }) => (<option key={hp} value={String(hp)}>{hp} HP ({kw} kW)</option>))}
               </select>

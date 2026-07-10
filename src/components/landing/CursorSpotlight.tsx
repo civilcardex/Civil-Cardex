@@ -7,12 +7,11 @@ interface CursorSpotlightProps {
 export default function CursorSpotlight({ containerRef }: CursorSpotlightProps) {
   const spotlightRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  // Lazy-initialized from the media query directly instead of an effect + setState on mount.
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
   useEffect(() => {
-    // Check initial user preference
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setPrefersReducedMotion(mediaQuery.matches);
 
     // Listen to changes in preference
     const listener = (event: MediaQueryListEvent) => {

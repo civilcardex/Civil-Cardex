@@ -113,24 +113,19 @@ function getLabelIntersection(
   const yMax = -10 + boxH;
 
   let tEnter = 0;
-  let tExit = 1;
 
   if (localStartX !== 0) {
     const t1 = 1 - (xMin / localStartX);
     const t2 = 1 - (xMax / localStartX);
     const tMin = Math.min(t1, t2);
-    const tMax = Math.max(t1, t2);
     tEnter = Math.max(tEnter, tMin);
-    tExit = Math.min(tExit, tMax);
   }
 
   if (localStartY !== 0) {
     const t1 = 1 - (yMin / localStartY);
     const t2 = 1 - (yMax / localStartY);
     const tMin = Math.min(t1, t2);
-    const tMax = Math.max(t1, t2);
     tEnter = Math.max(tEnter, tMin);
-    tExit = Math.min(tExit, tMax);
   }
 
   tEnter = Math.max(0, Math.min(1, tEnter));

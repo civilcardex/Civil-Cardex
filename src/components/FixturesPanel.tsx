@@ -42,7 +42,16 @@ function saveHidroData(map: Record<string, any>) {
 }
 
 function loadGasAcc(): Record<string, any> {
-  return loadFromStorage(GAS_ACC_KEY, {});
+  const raw = loadFromStorage<Record<string, any>>(GAS_ACC_KEY, {});
+  const next: Record<string, any> = { ...raw };
+  for (const [tramoId, map] of Object.entries(next)) {
+    if (!map || typeof map !== 'object') continue;
+    const vals = Object.values(map).filter(v => typeof v === 'number');
+    if (vals.length === 0 || vals.every(v => v <= 0)) {
+      delete next[tramoId];
+    }
+  }
+  return next;
 }
 
 function saveGasAcc(map: Record<string, any>) {
@@ -82,22 +91,6 @@ const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, plan
   const containerRef = useRef<HTMLDivElement | null>(null);
   const lastTargetRef = useRef<any>(null);
 
-
-  useEffect(() => {
-    setGasAcc(prev => {
-      const next = { ...prev };
-      let changed = false;
-      for (const [tramoId, map] of Object.entries(next)) {
-        if (!map || typeof map !== 'object') continue;
-        const vals = Object.values(map).filter(v => typeof v === 'number');
-        if (vals.length === 0 || vals.every(v => v <= 0)) {
-          delete next[tramoId];
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, []);
 
   useEffect(() => {
     const existingIds = new Set<string>();
@@ -147,7 +140,7 @@ const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, plan
   useEffect(() => {
     try { writeSanDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console.error('AparatosPanel:', e); }
     try { writeHydroDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console.error('AparatosPanel:', e); }
-  }, [counts, hidroData, plans.length]);
+  }, [counts, hidroData, plans]);
 
   const netId = activeNet;
   const isGas = netId === GAS_ID;

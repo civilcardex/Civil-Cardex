@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react'
+import { createContext } from 'react'
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine'
 
 export interface TramoEditorContextValue {
@@ -23,9 +23,3 @@ export interface TramoEditorContextValue {
 }
 
 export const TramoEditorCtx = createContext<TramoEditorContextValue | null>(null)
-
-export function useTramoEditor(): TramoEditorContextValue {
-  const ctx = useContext(TramoEditorCtx)
-  if (!ctx) throw new Error('useTramoEditor must be used within TramoEditorProvider')
-  return ctx
-}

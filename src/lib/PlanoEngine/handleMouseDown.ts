@@ -50,7 +50,8 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any
         return true;
       }
     }
-    if (b._circ && Math.hypot(x - b._circ.x, y - b._circ.y) < b._circ.r) {
+    const circ = b._circ;
+    if (circ && Math.hypot(x - circ.x, y - circ.y) < circ.r) {
       if (b.net !== engine.activeNet) {
         if (!checkActiveNet(engine, b.net)) {
           const netObj = NETS.find(n => n.id === b.net);
@@ -73,7 +74,7 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any
           assocIds.includes(r.id) && r.bloqueado
         );
         if (!hasLockedRamal) {
-          engine.bajDrag = { id: b.id, offX: x - b._circ.x, offY: y - b._circ.y };
+          engine.bajDrag = { id: b.id, offX: x - circ.x, offY: y - circ.y };
         }
       } else {
         // Don't allow dragging if associated ramales are bloqueados
@@ -83,7 +84,7 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any
           assocIds.includes(r.id) && r.bloqueado
         );
         if (!hasLockedRamal) {
-          engine.bajDrag = { id: b.id, offX: x - b._circ.x, offY: y - b._circ.y };
+          engine.bajDrag = { id: b.id, offX: x - circ.x, offY: y - circ.y };
         }
       }
       return true;
@@ -169,7 +170,7 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
     }
   }
 
-  (engine as any)._dragBackupPts = JSON.parse(JSON.stringify(bestRamal.pts));
+  (engine as any)._dragBackupPts = structuredClone(bestRamal.pts);
   engine.ptDrag = { id: bestRamal.id, ptIdx: bestPtIdx, slideConstraint };
   engine.render();
   return true;
@@ -319,7 +320,7 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: a
       // line to its neighbors — it must not bend the ramal's actual path.
       if (!isEndpoint && sel.accMed && sel.accMed[`accMed${i}`]) {
         const a = sel.pts[i - 1], b = sel.pts[i + 1];
-        (engine as any)._dragBackupPts = JSON.parse(JSON.stringify(sel.pts));
+        (engine as any)._dragBackupPts = structuredClone(sel.pts);
         engine.ptDrag = { id: sel.id, ptIdx: i, accMedSlide: { ax: a[0], ay: a[1], bx: b[0], by: b[1] } };
         return true;
       }
@@ -345,7 +346,7 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: a
           if (slideConstraint) break;
         }
       }
-      (engine as any)._dragBackupPts = JSON.parse(JSON.stringify(sel.pts));
+      (engine as any)._dragBackupPts = structuredClone(sel.pts);
       engine.ptDrag = { id: sel.id, ptIdx: i, slideConstraint };
       return true;
     }

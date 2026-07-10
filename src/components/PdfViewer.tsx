@@ -32,6 +32,7 @@ const PdfViewer_S2: React.CSSProperties = { position:'absolute',width:1,height:1
 const PdfViewer_S3: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 const PdfViewer_S4: React.CSSProperties = { width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace",cursor:'pointer' };
 const PdfViewer_S5: React.CSSProperties = { position:"absolute",top:0,zIndex:40,width:16,height:24,background:"#14161a",border:"1px solid #3a494a",color:"#849495",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,fontSize:12 } as const;
+const PdfViewer_EMPTY_PISOS: any[] = [];
 
 
 interface PdfViewerProps {
@@ -61,7 +62,7 @@ const rightSidebarStyle: CSSProperties = {
   transition: 'opacity 0.2s',
 };
 
-function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], activeNetworks }: PdfViewerProps) {
+function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PISOS, planos=[], activeNetworks }: PdfViewerProps) {
   const navigate = useNavigate();
   const { mats } = useProject();
   const planosCtx = usePlans();
@@ -121,14 +122,14 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
 
   const [tipoTramo, setTipoTramo] = useState(() => {
     try { return sessionStorage.getItem('civilflow_visor_tipoTramo') || 'ramal'; }
-    catch (_) { return 'ramal'; }
+    catch { return 'ramal'; }
   });
   const [padreTributarioId, setPadreTributarioId] = useState<string | null>(null);
   const [snapOn, setSnapOn] = useState(() => {
     try {
       const v = sessionStorage.getItem('civilflow_visor_snapOn');
       return v !== null ? v === 'true' : true;
-    } catch (_) { return true; }
+    } catch { return true; }
   });
   const [scaleM, setScaleM] = useState("0.5");
   const [selectedNivel, setSelectedNivel] = useState<number | null>(null);
@@ -381,7 +382,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
 
   useEffect(() => {
     if (engineRef.current) (engineRef.current as any).activeNetworks = activeNetworks;
-  }, [activeNetworks, engineRef.current]);
+  }, [activeNetworks, engineReady]);
 
   useEffect(() => {
     if (!engineRef.current || !engineReady) return;
@@ -717,7 +718,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=[], planos=[], act
           }}
             style={PdfViewer_S4}>
             <option value="">— Seleccionar piso —</option>
-            {[...pisos].sort((a,b)=>b.n-a.n).map(s=>{
+            {pisos.toSorted((a,b)=>b.n-a.n).map(s=>{
               const tienePlano=planos.some(p=>p.nivel===s.n&&p.status==='confirmed');
               return <option key={s.id} value={s.n}>{tienePlano?'🟢 ':''}{pisoLbl(s.n)} ({s.npt} m)</option>;
             })}

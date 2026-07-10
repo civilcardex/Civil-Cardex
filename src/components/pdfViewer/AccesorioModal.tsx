@@ -78,6 +78,7 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
   return (
     <dialog
       ref={dialogRef}
+      aria-label={modalState.isTee ? 'Conexión tipo Tee detectada' : `Cambio de dirección detectado (${modalState.angleDeg}°)`}
       onCancel={(e) => { e.preventDefault(); onClose(); }}
       onClose={onClose}
       style={AccesorioModal_S1}

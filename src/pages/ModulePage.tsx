@@ -210,7 +210,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
 
   return (
     <ModulePageLayout title={cfg.title} mainClassName={cfg.customLayout === 'terrain' ? 'pt-20 px-6 lg:px-8 pb-12 relative overflow-hidden' : (cfg.customLayout === 'roads' ? 'flex flex-col relative z-0' : 'flex flex-col w-full')}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareAppJsonLd) }} />
+      <script type="application/ld+json">{JSON.stringify(softwareAppJsonLd)}</script>
       {/* Hero Section */}
       {cfg.customLayout === 'terrain' && (
         <div className="absolute inset-0 pointer-events-none z-0" style={{ opacity: 0.1, backgroundImage: 'linear-gradient(to right, #3a494a 1px, transparent 1px), linear-gradient(to bottom, #3a494a 1px, transparent 1px)', backgroundSize: '40px 40px' }} />

@@ -23,7 +23,6 @@ export {
   DIAM_BAN,
   DIAM_VENT,
   DIAM_BY_MAT,
-  DIAM_DEFAULT_BY_NET,
 } from './engineeringDataMaterials';
 
 export {
@@ -39,7 +38,6 @@ export {
   REQ_ITEMS,
   NORM_COL,
   USOS,
-  R_OPTIONS,
 } from './uiConfig';
 
 export {

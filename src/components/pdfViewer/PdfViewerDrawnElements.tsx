@@ -32,7 +32,7 @@ export default function PdfViewerDrawnElements({ drawnElements, activeNet, selEl
                 <span style={{fontSize: 12,color:el.tipo==='montante'?'#3B82F6':el.type==='bajante'?'#F04545':'#4D8FF7'}}>
                   {el.tipo==='montante'?'\u2B06':el.type==='bajante'?'\u2B07':'\u2571'}
                 </span>
-                <span style={{fontSize:12,fontWeight:600,color:'#b9caca',fontFamily:"'Geist',monospace",flex:1}}>{el.tipo==='tributario'?((()=>{try{const p=drawnElements.find(x=>x.id===el.padre&&x.tipo==='ramal');return p?p.label:el.label;}catch(_){return el.label}})()):el.label}</span>
+                <span style={{fontSize:12,fontWeight:600,color:'#b9caca',fontFamily:"'Geist',monospace",flex:1}}>{el.tipo==='tributario'?((()=>{try{const p=drawnElements.find(x=>x.id===el.padre&&x.tipo==='ramal');return p?p.label:el.label;}catch{return el.label}})()):el.label}</span>
                 <span style={{fontSize: 12,fontWeight:600,color:'#8AB4D6',fontFamily:"'Geist',monospace",textTransform:'uppercase'}}>{(el.tipo==='ramal'?'ramal':el.tipo==='tributario'?el.label:el.tipo==='bajante'?'baj':el.tipo==='montante'?'mon':el.tipo)||''}</span>
                 <button type="button" onClick={e=>{e.stopPropagation();if(engineRef.current){engineRef.current.selectById(el.id);engineRef.current.deleteSelected();}}}
                   style={PdfViewerDrawnElements_S1}>{'\u2715'}</button>

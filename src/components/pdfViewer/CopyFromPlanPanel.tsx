@@ -163,14 +163,14 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
             (work as any).ts = Date.now();
             await saveTrazosToDB(targetId, work);
           }
-        } catch { }
+        } catch { /* ignore */ }
         setFeedback({ ok: true, msg: `✓ ${result.copied} elemento${result.copied !== 1 ? 's' : ''} copiado${result.copied !== 1 ? 's' : ''}` });
       } else {
         let msg = 'No se copiaron elementos';
         if (result.skippedNets.length > 0) msg += ': ' + result.skippedNets.join(', ');
         setFeedback({ ok: false, msg });
       }
-    } catch (e) {
+    } catch {
       setFeedback({ ok: false, msg: 'Error al copiar' });
     } finally {
       setBusy(false);
@@ -189,12 +189,10 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
       borderLeft: open ? '2px solid #00dce5' : '2px solid transparent',
       transition: 'background .2s, border-color .2s',
     }}>
-      <div
-        role="button"
-        tabIndex={0}
-        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(prev => !prev); } }}
+      <button
+        type="button"
         onClick={() => setOpen(prev => !prev)}
-        style={{ ...CopyFromPlanPanel_S4, color: open ? '#00dce5' : '#849495' }}
+        style={{ ...CopyFromPlanPanel_S4, color: open ? '#00dce5' : '#849495', background: 'none', border: 'none', padding: 0, width: '100%', textAlign: 'left', font: 'inherit' }}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -207,16 +205,17 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
           fontSize: 12, color: open ? '#00dce5' : '#5a7a7a',
           padding: '1px 5px', borderRadius: 3,
           background: open ? 'rgba(0,220,229,.12)' : 'transparent',
-          transition: 'all .15s',
+          transition: 'color .15s, background-color .15s',
         }}>
           {open ? '▼' : '▶'}
         </span>
-      </div>
+      </button>
 
       {open && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
           <select
             value={srcPlanId || ''}
+            aria-label="Seleccionar plano de origen"
             onChange={e => {
               setSrcPlanId(e.target.value || null);
               setNetSelections({});

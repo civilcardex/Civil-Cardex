@@ -68,16 +68,6 @@ export function segmentsIntersect(a1: number[], a2: number[], b1: number[], b2: 
   return true;
 }
 
-export function segmentIntersectionPoint(a1: number[], a2: number[], b1: number[], b2: number[]): number[] | null {
-  const [x1, y1] = a1, [x2, y2] = a2, [x3, y3] = b1, [x4, y4] = b2;
-  const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-  if (Math.abs(d) < 1e-10) return null;
-  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
-  const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / d;
-  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
-  return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
-}
-
 export function _firstSegmentAngle(pts: number[][]): number {
   if (pts.length < 2) return 0;
   const dx = pts[1][0] - pts[0][0];

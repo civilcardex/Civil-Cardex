@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useCallback, type ReactNode } from "react";
 import { MATS_DEFAULT, PROFS_DEFAULT, CRIT0 } from "../constants";
 import { usePersistedState } from "../hooks/usePersistedState";
 
@@ -53,12 +53,12 @@ const [mats, setMats] = usePersistedState<Record<string, MaterialItem[]>>('civil
 const [profs, setProfs] = usePersistedState<ProfItem[]>('civilflow_profs', PROFS_CLONED);
 const [crits, setCrits] = usePersistedState<CritItem[]>('civilflow_crits', CRITS_CLONED);
 
-const setP = (k: string, v: any) => setProy(p => ({ ...p, [k]: v }));
+const setP = useCallback((k: string, v: any) => setProy(p => ({ ...p, [k]: v })), [setProy]);
 
 const value = useMemo(() => ({
   pisos, proy, mats, profs, crits,
   setPisos, setP, setMats, setProfs, setCrits,
-}), [pisos, proy, mats, profs, crits]);
+}), [pisos, proy, mats, profs, crits, setPisos, setP, setMats, setProfs, setCrits]);
 
 return (
 <ProjectContext.Provider value={value}>

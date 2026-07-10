@@ -9,20 +9,18 @@ interface Props {
 }
 
 export default function TypewriterText({ text, delay = 800, className, style }: Props) {
-  const [displayedText, setDisplayedText] = useState('');
-  const [showCursor, setShowCursor] = useState(false);
   const prefersReducedMotion = usePrefersReducedMotion();
+  // usePrefersReducedMotion is already accurate on the first render (its own lazy useState
+  // init), so the reduced-motion case can be seeded here instead of set in an effect.
+  const [displayedText, setDisplayedText] = useState(() => prefersReducedMotion ? text : '');
+  const [showCursor, setShowCursor] = useState(false);
 
   useEffect(() => {
-    if (prefersReducedMotion) {
-      setDisplayedText(text);
-      return;
-    }
+    if (prefersReducedMotion) return;
 
-    let timeoutId: number;
     let typeInterval: number;
 
-    timeoutId = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       setShowCursor(true);
       let i = 0;
       typeInterval = window.setInterval(() => {
@@ -39,7 +37,7 @@ export default function TypewriterText({ text, delay = 800, className, style }: 
       clearTimeout(timeoutId);
       clearInterval(typeInterval);
     };
-  }, [text, delay]);
+  }, [text, delay, prefersReducedMotion]);
 
   return (
     <p className={className} style={style}>

@@ -166,11 +166,3 @@ export const DIAM_BY_MAT: Record<string, Array<{ n: string }>> = {
     { n: '6" — 110.0 mm' },
   ],
 };
-
-export const DIAM_DEFAULT_BY_NET: Record<string, string> = {
-  san: '',
-  ll: '',
-  af: '',
-  ac: '',
-  rci: '',
-};

@@ -59,7 +59,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
   }, [showTotal, tramos, AP, field]);
 
   const sortedTramos = useMemo(() => {
-    return [...tramos].sort((a, b) => (a.piso || 0) - (b.piso || 0));
+    return tramos.toSorted((a, b) => (a.piso || 0) - (b.piso || 0));
   }, [tramos]);
 
   return (

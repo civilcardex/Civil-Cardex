@@ -72,7 +72,7 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
     });
 
     return { tramos, totalByAp, tramoTotals, tramoAppCounts };
-  }, [plans, patm, temp, densRel]);
+  }, [plans]);
 
   const globalTotal = useMemo(() => tramoTotals.reduce((s, q) => s + q, 0), [tramoTotals]);
 

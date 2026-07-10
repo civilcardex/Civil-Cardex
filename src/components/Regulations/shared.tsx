@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, CSSProperties } from "react";
 
 export const subHeadingStyle = {
   fontFamily: "var(--mono)",
@@ -9,15 +9,20 @@ export const subHeadingStyle = {
   letterSpacing: "0.3px",
 };
 
+const tabBtnBaseStyle: CSSProperties = {
+  flex: 1, padding: "14px 18px", borderRadius: "var(--r)",
+  border: "1px solid", cursor: "pointer", fontSize: 15,
+  fontFamily: "var(--body)", transition: "all .15s",
+};
+
 export function TabBtn({ active, onClick, children, id }: { active: boolean; onClick: () => void; children?: ReactNode; key?: any; id?: string }) {
   return (
     <button type="button" id={id} onClick={onClick} role="tab" aria-selected={active}
       style={{
-        flex: 1, padding: "14px 18px", borderRadius: "var(--r)",
-        border: "1px solid", cursor: "pointer", fontSize: 15,
-        fontFamily: "var(--body)", fontWeight: active ? 700 : 400,
+        ...tabBtnBaseStyle,
+        fontWeight: active ? 700 : 400,
         borderColor: active ? "var(--acc2)" : "var(--line)",
-        background: active ? "var(--bg3)" : "transparent", transition: "all .15s",
+        background: active ? "var(--bg3)" : "transparent",
       }}
     >{children}</button>
   );
@@ -32,7 +37,7 @@ export function FilterBtn({ active, onClick, children }: { active: boolean; onCl
         fontWeight: active ? 600 : 400,
         borderColor: active ? "var(--acc2)" : "var(--line)",
         background: active ? "rgba(27,110,243,.08)" : "transparent",
-        transition: "all .15s",
+        transition: "background-color .15s, border-color .15s",
       }}
     >{children}</button>
   );

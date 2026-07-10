@@ -53,7 +53,7 @@ export default function DisenosSanitarios() {
       const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
       if (!raw) continue;
       let data = raw as Record<string, any>;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch (_) { continue; } }
+      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
 
       const ramales = data.ramales || [];
       const bajantes = data.bajantes || [];
@@ -398,7 +398,7 @@ export default function DisenosSanitarios() {
                 </td>
               </tr>
             ) : (()=>{
-              return [...displayTramos].sort((a,b)=>(a.piso||0)-(b.piso||0)).map(t=>{
+              return displayTramos.toSorted((a,b)=>(a.piso||0)-(b.piso||0)).map(t=>{
                 const tKey = t._key || `${t.id}-${t.piso}`;
                 
                 const udPropias=calcUDparcial(t,mergedBase);
