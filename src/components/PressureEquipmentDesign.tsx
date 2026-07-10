@@ -6,8 +6,8 @@ import EPVerificationPage from "./ep/EPVerificationPage";
 
 const PressureEquipmentDesign_pages = [
   { t: "Datos de entrada", icon: "/iconos_diseno_redes/general/datos_de_entrada.svg", c: <EPInputPage /> },
-  { t: "Parámetros del equipo", icon: "/iconos_diseno_redes/general/datos_de_entrada.svg", c: <EPVerificationPage section="params" /> },
-  { t: "Resultados y Resumen", icon: "/iconos_diseno_redes/general/datos_de_entrada.svg", c: <EPVerificationPage section="results" /> },
+  { t: "Cálculo hidráulico y potencia", icon: "/iconos_diseno_redes/general/datos_de_entrada.svg", c: <EPVerificationPage section="params" /> },
+  { t: "Diámetros y especificación", icon: "/iconos_diseno_redes/general/datos_de_entrada.svg", c: <EPVerificationPage section="results" /> },
 ];
 
 const EPContent = function PressureEquipmentDesign() {
@@ -17,7 +17,7 @@ const EPContent = function PressureEquipmentDesign() {
 
   return (
     <div className="fu" style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minHeight: 0 }}>
-      <PageNav page={page} setPage={setPage} total={3} color="var(--ep)" labels={["Datos de entrada", "Parámetros", "Resultados"]} />
+      <PageNav page={page} setPage={setPage} total={3} color="var(--ep)" labels={["Datos de entrada", "Cálculo hidráulico y potencia", "Diámetros y especificación"]} />
       <div style={{ flex: 1, padding: 6, overflow: "auto" }}>
         {pages[page - 1].c}
       </div>

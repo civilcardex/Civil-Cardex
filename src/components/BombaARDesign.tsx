@@ -104,12 +104,7 @@ function BombaARDesign(){
   const COLS2=BombaARDesign_COLS2;
 
   const page1=(
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <EditButton edit={editP1} setEdit={setEditP1} />
-      </div>
-      <div style={{ border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--bg)' }}>
-      <Tbl th={TH2} td={TD2} tdl={TDL2} fontSize={13} valueCol={2} caption="Datos de entrada" cols={COLS1} rows={[
+    <Tbl th={TH2} td={TD2} tdl={TDL2} fontSize={13} valueCol={2} caption="Datos de entrada" cols={COLS1} rows={[
         ['Número de salidas simultáneas','Sal sim',<Inp disabled={!editP1} v={salSim} set={setSalSim} ariaLabel="Número de salidas simultáneas" style={SI2}/>,'und','—','Probabilidad de trabajar al máximo'],
         ['UD acumuladas en sótano','UD tot',<Inp disabled={!editP1} v={udTot} set={setUdTot} ariaLabel="UD acumuladas en sótano" style={SI2}/>,'UD','—','NTC 1500'],
         ['Coeficiente K simultaneidad Hunter','K',Fmt2(K),'—','—','K = 1/√(n−1)'],
@@ -123,8 +118,6 @@ function BombaARDesign(){
         ['Eficiencia bomba η','eta b',<Inp disabled={!editP1} v={etaB} set={setEtaB} ariaLabel="Eficiencia bomba" style={SI2}/>,'—','—','Bomba sumergible trituradora típica: 60–70%'],
         ['Factor de servicio motor','f srv',<Inp disabled={!editP1} v={fSrv} set={setFSrv} ariaLabel="Factor de servicio motor" style={SI2}/>,'—','—','NEMA MG1: reserva 25% sobre P calculada'],
       ]}/>
-      </div>
-    </div>
   );
 
   const page2=<Tbl th={TH2} td={TD2} tdl={TDL2} fontSize={13} caption="Cálculo de pérdidas de carga" cols={COLS2} rows={[
@@ -235,8 +228,9 @@ function BombaARDesign(){
           </div>
         ) : (
           <div style={{width:'90%',maxWidth:900,overflow:'hidden',borderRadius:'var(--r)',border:'1px solid var(--line)'}}>
-            <div className="card-h" style={{padding:'8px 8px'}}>
+            <div className="card-h" style={{padding:'8px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
               <h3 className="card-t"><img src={pages[bp-1].icon} alt=""  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />{pages[bp-1].t}</h3>
+              {bp === 1 && <EditButton edit={editP1} setEdit={setEditP1} />}
             </div>
             <div style={{flex:1,padding:0,overflow:'auto'}}>
               {pages[bp-1].c}

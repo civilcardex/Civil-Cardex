@@ -194,11 +194,7 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
         onClick={() => setOpen(prev => !prev)}
         style={{ ...CopyFromPlanPanel_S4, color: open ? '#00dce5' : '#849495', background: 'none', border: 'none', padding: 0, width: '100%', textAlign: 'left', font: 'inherit' }}
       >
-        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14" />
-            <path d="M12 5l7 7-7 7" />
-          </svg>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10.5}}>
           Copiar elementos
         </span>
         <span style={{
