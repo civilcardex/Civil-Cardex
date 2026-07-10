@@ -33,16 +33,16 @@ function EPInputPage() {
         <button type="button" onClick={() => updEP("modo", "cisterna")} style={{ ...EPInputPage_modoBtn, background: !isRed ? "rgba(255,152,0,0.1)" : "transparent", border: `1.5px solid ${!isRed ? "#ff9800" : "var(--line)"}`, color: !isRed ? "#ff9800" : "var(--txt3)" }}><img src="/iconos_diseno_redes/equipos/succion_cisterna.svg" alt="Succión cisterna"  width={22} height={22} style={{width:22,height:22}}  loading="lazy" /> Succión cisterna</button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "start" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/caudales_diseno.svg" iconImgStyle={{ width: 22, height: 22 }} title="Caudales de diseño" subtitle="Del diseño de redes" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editCaudales} setEdit={setEditCaudales} />}>
-            <Tbl caption="Caudales de diseño" thStyle={{ fontSize: 13 }} tdStyle={{ fontSize: 14 }} tdlStyle={{ fontSize: 15 }} cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, alignItems: "start" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/caudales_diseno.svg" iconImgStyle={{ width: 22, height: 22 }} title="1. Caudales de diseño" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editCaudales} setEdit={setEditCaudales} />}>
+            <Tbl caption="Caudales de diseño" thStyle={{ fontSize: 11 }} tdStyle={{ fontSize: 12 }} tdlStyle={{ fontSize: 13 }} cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
               [<Param name="Caudal diseño AF" sub="Red agua fría" />, <LazyInp disabled={!editCaudales} field="qac" ariaLabel="Caudal diseño AF" />, "L/s", <Comment><span style={{ color: "var(--txt3)", fontWeight: 600 }}>Hunter / RAS 2000</span> · Caudal probable de la red de agua fría. Obtenido del diseño hidráulico.</Comment>],
               [<Param name="Caudal diseño ACS" sub="Red agua caliente" />, <LazyInp disabled={!editCaudales} field="qasc" ariaLabel="Caudal diseño ACS" />, "L/s", <Comment><span style={{ color: "var(--txt3)", fontWeight: 600 }}>Hunter / RAS 2000</span> · Típico 60–70% del Qac. Del diseño de red ACS.</Comment>],
             ]} />
           </Card>
-          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/presiones_y_cotas.svg" iconImgStyle={{ width: 22, height: 22 }} title="Presiones y cotas" subtitle="NTC 1500 + levantamiento" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editPresiones} setEdit={setEditPresiones} />}>
-            <Tbl caption="Presiones y cotas" thStyle={{ fontSize: 13 }} tdStyle={{ fontSize: 14 }} tdlStyle={{ fontSize: 15 }} cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/presiones_y_cotas.svg" iconImgStyle={{ width: 22, height: 22 }} title="3. Presiones y cotas" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editPresiones} setEdit={setEditPresiones} />}>
+            <Tbl caption="Presiones y cotas" thStyle={{ fontSize: 11 }} tdStyle={{ fontSize: 12 }} tdlStyle={{ fontSize: 13 }} cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
               ...(isRed ? [[
                 <Param name="Presión acometida" sub="Red pública en entrega" />,
                 <LazyInp disabled={!editPresiones} field="pred" ariaLabel="Presión acometida" />,
@@ -77,33 +77,33 @@ function EPInputPage() {
           </Card>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/perdidas_de_carga.svg" iconImgStyle={{ width: 22, height: 22 }} title="Pérdidas de carga" subtitle="Del diseño de redes" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editPerdidas} setEdit={setEditPerdidas} />}>
-            <Tbl caption="Pérdidas de carga" thStyle={{ fontSize: 13 }} tdStyle={{ fontSize: 14 }} tdlStyle={{ fontSize: 15 }} cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/perdidas_de_carga.svg" iconImgStyle={{ width: 22, height: 22 }} title="2. Pérdidas de carga" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editPerdidas} setEdit={setEditPerdidas} />}>
+            <Tbl caption="Pérdidas de carga" thStyle={{ fontSize: 11 }} tdStyle={{ fontSize: 12 }} tdlStyle={{ fontSize: 13 }} cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
               [<Param name="Pérdidas red AF" sub="Tramos + accesorios" />, <LazyInp disabled={!editPerdidas} field="hfac" ariaLabel="Pérdidas red AF" />, "m.c.a.", <Comment><span style={{ color: "var(--txt3)", fontWeight: 600 }}>Darcy-Weisbach</span> · Sumatoria pérdidas tramo más desfavorable de la red AC.</Comment>],
               [<Param name="Pérdidas red ACS" sub="Tramos + accesorios" />, <LazyInp disabled={!editPerdidas} field="hfacs" ariaLabel="Pérdidas red ACS" />, "m.c.a.", <Comment><span style={{ color: "var(--txt3)", fontWeight: 600 }}>Darcy-Weisbach</span> · El módulo usa MAX(Hf_ac, Hf_acs) como pérdida crítica de diseño.</Comment>],
               [<Param name="Pérdidas adicionales" sub="Intercambiador, filtros, zonas" />, <LazyInp disabled={!editPerdidas} field="hfotros" ariaLabel="Pérdidas adicionales" />, "m.c.a.", <Comment><span style={{ color: "var(--txt3)", fontWeight: 600 }}>Opcional</span> · Calentador, filtros multimedia, válvulas de zona u otros no incluidos en el diseño de redes.</Comment>],
             ]} />
           </Card>
-          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/config_bombas.svg" iconImgStyle={{ width: 22, height: 22 }} title="Configuración de bombas" bodyStyle={{ padding: 6, display: "flex", flexDirection: "column", gap: 0 }} headerRight={<EditButton edit={editBombas} setEdit={setEditBombas} />}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <div style={{ border: "1px solid var(--line)", borderRadius: "var(--r)", background: "var(--bg2)", padding: "8px 10px" }}>
-                <div style={{ fontSize: 12, color: "var(--txt3)", marginBottom: 4, fontWeight: 600 }}>Bombas en trabajo</div>
-                <div style={{ padding: "2px 0" }}>
-                  <LazyInp disabled={!editBombas} field="nt" ariaLabel="Bombas en trabajo" style={{ ...SI, fontSize: 14, padding: "6px 8px", fontWeight: 700 }} />
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/config_bombas.svg" iconImgStyle={{ width: 22, height: 22 }} title="4. Configuración de bombas" bodyStyle={{ padding: 4, display: "flex", flexDirection: "column", gap: 0 }} headerRight={<EditButton edit={editBombas} setEdit={setEditBombas} />}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              <div style={{ border: "1px solid var(--line)", borderRadius: "var(--r)", background: "var(--bg2)", padding: "6px 8px" }}>
+                <div style={{ fontSize: 11, color: "var(--txt3)", marginBottom: 2, fontWeight: 600 }}>Bombas en trabajo</div>
+                <div style={{ padding: "1px 0" }}>
+                  <LazyInp disabled={!editBombas} field="nt" ariaLabel="Bombas en trabajo" style={{ ...SI, fontSize: 13, padding: "4px 6px", fontWeight: 700 }} />
                 </div>
-                <div style={{ fontSize: 12, color: "var(--txt4)", marginTop: 4 }}>Operan simultáneamente en régimen normal</div>
+                <div style={{ fontSize: 10, color: "var(--txt4)", marginTop: 2 }}>Operan simultáneamente en régimen normal</div>
               </div>
-              <div style={{ border: "1px solid var(--line)", borderRadius: "var(--r)", background: "var(--bg2)", padding: "8px 10px" }}>
-                <div style={{ fontSize: 12, color: "var(--txt3)", marginBottom: 4, fontWeight: 600 }}>Bombas en reserva</div>
-                <div style={{ padding: "2px 0" }}>
-                  <LazyInp disabled={!editBombas} field="nr" ariaLabel="Bombas en reserva" style={{ ...SI, fontSize: 14, padding: "6px 8px", fontWeight: 700 }} />
+              <div style={{ border: "1px solid var(--line)", borderRadius: "var(--r)", background: "var(--bg2)", padding: "6px 8px" }}>
+                <div style={{ fontSize: 11, color: "var(--txt3)", marginBottom: 2, fontWeight: 600 }}>Bombas en reserva</div>
+                <div style={{ padding: "1px 0" }}>
+                  <LazyInp disabled={!editBombas} field="nr" ariaLabel="Bombas en reserva" style={{ ...SI, fontSize: 13, padding: "4px 6px", fontWeight: 700 }} />
                 </div>
-                <div style={{ fontSize: 12, color: "var(--txt4)", marginTop: 4 }}>Reserva · arranque automático por falla</div>
+                <div style={{ fontSize: 10, color: "var(--txt4)", marginTop: 2 }}>Reserva · arranque automático por falla</div>
               </div>
             </div>
             <div style={EPInputPage_S1}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--acc2)", fontFamily: "var(--mono)" }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--acc2)", fontFamily: "var(--mono)" }}>
                 Total: {ntot} bombas · {nt} trabajo + {nr} reserva · Qb = {Qb > 0 ? Qb.toFixed(3) : "—"} L/s c/u
               </span>
             </div>

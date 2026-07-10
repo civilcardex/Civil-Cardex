@@ -26,7 +26,7 @@ export function LazyInp({ field, style, ariaLabel, disabled }: { field: keyof EP
   return <input type="text" disabled={disabled} inputMode="decimal" aria-label={ariaLabel} value={val} onChange={handleChange} onBlur={handleBlur} style={{...style || SI, opacity: disabled ? 0.7 : 1, cursor: disabled ? 'default' : 'text'}} />;
 }
 
-export const Param = ({ name, sub }: { name: string; sub?: string }) => (
+export const Param = ({ name, sub }: { name: string; sub?: React.ReactNode }) => (
   <div>
     <div style={{ fontWeight: 600, fontSize: 13, color: "var(--txt)" }}>{name}</div>
     {sub && <div style={{ fontSize: 12, color: "var(--txt3)", marginTop: 1 }}>{sub}</div>}
@@ -34,6 +34,6 @@ export const Param = ({ name, sub }: { name: string; sub?: string }) => (
 );
 
 export const Comment = ({ children }: { children: React.ReactNode }) => (
-  <span style={{ fontSize: 12, color: "var(--txt4)", lineHeight: 1.2, wordBreak: "break-word" }}>{children}</span>
+  <span style={{ fontSize: 12, color: "var(--txt3)", lineHeight: 1.2, wordBreak: "break-word", whiteSpace: "normal" }}>{children}</span>
 );
 

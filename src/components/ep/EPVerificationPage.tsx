@@ -4,7 +4,7 @@ import Card from "../shared/Card";
 import Tbl from "../shared/Tbl";
 import EditButton from "../shared/EditButton";
 import { PVC_SCH40, NEMA_HP, COMM_HP, selectDN } from "./calculations";
-import { LazyInp, Param, Comment } from "./EPShared";
+import { LazyInp, Param } from "./EPShared";
 import { SI } from "../../styles/sharedTableStyles";
 import { dec } from "../../utils/parseDecimal";
 import { AGUA_DENSIDAD, GRAVEDAD } from "../../utils/calcSanitaryCore";
@@ -44,10 +44,38 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
   const HMT = isRed ? (Hg + Hf + pmin - pred) : (Hg + Hf + pmin);
 
   const Phid = AGUA_DENSIDAD * GRAVEDAD * (Qd / 1000) * (HMT > 0 ? HMT : 0);
-  const Pfreno = (etab * etam * 745.7) > 0 ? Phid / (etab * etam * 745.7) : 0;
-  const Pins_hp = Pfreno * fs;
-  const Pins_kw = (Pfreno * 745.7 * fs) / 1000;
+  const Pfreno_w = (etab * etam) > 0 ? Phid / (etab * etam) : 0;
+  const Pfreno_hp = Pfreno_w / 745.7;
+  const Pins_hp = Pfreno_hp * fs;
+  const Pins_kw = (Pfreno_hp * 745.7 * fs) / 1000;
 
+  const ramalCol = (qLps: number, vDiseno: number) => {
+    const Qm3s = qLps / 1000;
+    const diamCalcM = Math.sqrt((4 * Qm3s) / (Math.PI * vDiseno));
+    const diamCalcMm = diamCalcM * 1000;
+    const entry = selectDN(qLps, vDiseno);
+    return { diamCalcMm, dn: entry.dn, vReal: entry.Vreal };
+  };
+  const rSucColector = ramalCol(Qd, vsuc);
+  const rImpColector = ramalCol(Qd, vimp);
+  const rSucBomba = ramalCol(Qb, vsuc);
+  const rImpBomba = ramalCol(Qb, vimp);
+
+  const fmtMm = (v: number) => v > 0 ? v.toFixed(1) : "—";
+  const fmtMs = (v: number) => v > 0 ? v.toFixed(2) : "—";
+  const fmtHp = (v: number) => v > 0 ? v.toFixed(3) : "—";
+  const fmtBar = (v: number) => v !== 0 ? v.toFixed(2) : "—";
+  const fmtLps = (v: number) => v > 0 ? v.toFixed(3) : "—";
+  const fmtM3h = (v: number) => v > 0 ? v.toFixed(2) : "—";
+  const fmtGpm = (v: number) => v > 0 ? v.toFixed(1) : "—";
+  const fmtMca = (v: number) => v !== 0 ? v.toFixed(2) : "—";
+  const fmtL = (v: number) => v > 0 ? v.toFixed(1) : "—";
+  const fmtW = (v: number) => v > 0 ? v.toFixed(0) : "—";
+
+  const M = { fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" } as const;
+  const MB = { fontFamily: "var(--mono)", fontWeight: 700, color: "var(--txt)" } as const;
+  const OK = { fontFamily: "var(--mono)", fontWeight: 700, color: "var(--ok)" };
+  const ERR = { fontFamily: "var(--mono)", fontWeight: 700, color: "#ef5350" };
   const autoNema = useMemo(() => {
     for (const h of NEMA_HP) { if (h >= Pins_hp) return h; }
     return NEMA_HP[NEMA_HP.length - 1];
@@ -58,6 +86,9 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
     if (custom > 0) return custom;
     return autoNema;
   }, [autoNema, ep.pcomercial]);
+
+  const margenPct = Pins_hp > 0 ? ((nemaSel - Pins_hp) / Pins_hp) * 100 : 0;
+  const pComercialOk = nemaSel >= Pins_hp;
 
   const Pon = HMT;
   const Poff = Pon * 1.10;
@@ -76,7 +107,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
   const pminOk = pmin > 0;
   const predOk = pred > 0;
 
-  const sucDiam = useMemo(() => {
+  const sucDiam = (() => {
     const userDN = dec(ep.dnsuc);
     if (userDN > 0) {
       const entry = PVC_SCH40.find(t => t.dn === userDN);
@@ -86,9 +117,9 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
       }
     }
     return selectDN(Qd, vsuc);
-  }, [Qd, vsuc, ep.dnsuc]);
+  })();
 
-  const impDiam = useMemo(() => {
+  const impDiam = (() => {
     const userDN = dec(ep.dnimp);
     if (userDN > 0) {
       const entry = PVC_SCH40.find(t => t.dn === userDN);
@@ -98,97 +129,131 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
       }
     }
     return selectDN(Qd, vimp);
-  }, [Qd, vimp, ep.dnimp]);
+  })();
 
   if (section === "params") {
+    const TH_S = { fontSize: 10, padding: "2px 4px" };
+    const TD_S = { fontSize: 10, padding: "2px 4px" };
     return (
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 12, alignItems: "start" }}>
-        <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/parametros_equipo.svg" iconImgStyle={{ width: 22, height: 22 }} title="Parámetros del equipo — Datos del fabricante" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editParams} setEdit={setEditParams} />}>
-          <Tbl caption="Parámetros del equipo" cols={["Parámetro", "Valor", "Ud.", "Comentario / Referencia"]} rows={[
-            [<Param name="Eficiencia bomba (η_b)" />, <LazyInp disabled={!editParams} field="etab" ariaLabel="Eficiencia bomba" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "var(--txt2)" }}>0.55 – 0.80</span> Verificar en curva característica del fabricante para el punto Qd / HMT.</Comment>],
-            [<Param name="Eficiencia motor (η_m)" />, <LazyInp disabled={!editParams} field="etam" ariaLabel="Eficiencia motor" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "var(--txt2)" }}>0.85 – 0.95</span> Motores IE2 o IE3 recomendados para uso con VFD.</Comment>],
-            [<Param name="Factor de seguridad potencia" />, <LazyInp disabled={!editParams} field="fs" ariaLabel="Factor de seguridad potencia" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "var(--txt2)" }}>+25%</span> Margen sobre P_freno para selección de motor comercial estándar.</Comment>],
-            [<Param name="Ciclos/hora (n)" sub="Arranques permitidos por hora" />, <LazyInp disabled={!editParams} field="ciclos" ariaLabel="Ciclos por hora" />, "arr/h", <Comment>{ciclos > 10 ? <span style={{ background: "rgba(239,83,80,0.15)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "#ef5350" }}>No O.K.</span> : <span style={{ background: "rgba(34,197,94,0.15)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "#22c55e" }}>OK</span>} Máximo 10 arranques/hora. Verificar especificación del motor.</Comment>],
-            [<Param name="Fracción útil tanque (α)" />, <LazyInp disabled={!editParams} field="alfa" ariaLabel="Fracción útil tanque" />, "dec", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "var(--txt2)" }}>0.25 – 0.35</span> Fracción del volumen del acumulador disponible para agua. Típico 30%.</Comment>],
-            [<Param name="Velocidad succión (V_suc)" sub="Para selección diámetro" />, <LazyInp disabled={!editParams} field="vsuc" ariaLabel="Velocidad succión" />, "m/s", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "var(--txt2)" }}>0.5 – 1.5 m/s</span> RAS 2000. Velocidad de diseño para tubería de succión del equipo.</Comment>],
-            [<Param name="Velocidad impulsión (V_imp)" sub="Para selección diámetro" />, <LazyInp disabled={!editParams} field="vimp" ariaLabel="Velocidad impulsión" />, "m/s", <Comment><span style={{ background: "var(--bg3)", padding: "2px 6px", borderRadius: 3, fontWeight: 600, fontSize: 12, color: "var(--txt2)" }}>1.5 – 3.5 m/s</span> RAS 2000. Velocidad de diseño para tubería de impulsión del equipo.</Comment>],
-          ]} />
-        </Card>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/caudales.svg" iconImgStyle={{ width: 22, height: 22 }} title="Caudales" bodyStyle={{ padding: 0 }}>
-            <Tbl caption="Caudales" thStyle={{ fontSize: 12, padding: "1px 4px" }} tdStyle={{ fontSize: 12, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
-              ["Qd = MAX(Qac, Qasc)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qd > 0 ? Qd.toFixed(3) : "—"}</span>, "L/s"],
-              ["Qd en m³/h", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qd > 0 ? Qm3h.toFixed(2) : "—"}</span>, "m³/h"],
-              ["Qd en GPM", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qd > 0 ? Qgpm.toFixed(1) : "—"}</span>, "GPM"],
-              ["Caudal por bomba Qb = Qd / Nt", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Qb > 0 ? Qb.toFixed(3) : "—"}</span>, "L/s"],
+      <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minWidth: 0 }}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/parametros_equipo.svg" iconImgStyle={{ width: 20, height: 20 }} title="Parámetros del equipo — Datos del fabricante" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editParams} setEdit={setEditParams} />}>
+            <Tbl caption="Parámetros del equipo" thStyle={TH_S} tdStyle={TD_S} cols={["Parámetro", "Valor", "Unidad"]} rows={[
+              ["Eficiencia bomba (η_b)", <LazyInp disabled={!editParams} field="etab" ariaLabel="Eficiencia bomba" />, "dec"],
+              ["Eficiencia motor (η_m)", <LazyInp disabled={!editParams} field="etam" ariaLabel="Eficiencia motor" />, "dec"],
+              ["Factor de seguridad potencia", <LazyInp disabled={!editParams} field="fs" ariaLabel="Factor de seguridad potencia" />, "dec"],
+              [<span style={{ fontWeight: 600 }}>{`Ciclos/hora (n)  `}{ciclos > 10 ? <span style={{ fontWeight: 700, color: "#ef5350" }}>No O.K.</span> : <span style={{ fontWeight: 700, color: "#22c55e" }}>OK</span>}</span>, <LazyInp disabled={!editParams} field="ciclos" ariaLabel="Ciclos por hora" />, "arr/h"],
+              ["Fracción útil tanque (α)", <LazyInp disabled={!editParams} field="alfa" ariaLabel="Fracción útil tanque" />, "dec"],
+              ["Velocidad succión (V_suc)", <LazyInp disabled={!editParams} field="vsuc" ariaLabel="Velocidad succión" />, "m/s"],
+              ["Velocidad impulsión (V_imp)", <LazyInp disabled={!editParams} field="vimp" ariaLabel="Velocidad impulsión" />, "m/s"],
             ]} />
           </Card>
-          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/altura_manometrica.svg" iconImgStyle={{ width: 22, height: 22 }} title={`${isRed ? "HMT = Hg + Hf + Pmin − Pred" : "HMT = Hg_total + Hf_red + Hf_suc + Pmin"}`} bodyStyle={{ padding: 0 }}>
-            <Tbl caption="Altura manométrica total" thStyle={{ fontSize: 12, padding: "1px 4px" }} tdStyle={{ fontSize: 12, padding: "1px 4px" }} cols={["Parámetro", "Valor", "UNIDAD"]} rows={[
-              ["Desnivel Hg = z_top − z_bomba", <span  style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hgOk ? "var(--ok)" : "#ef5350" }}>{hgOk ? "OK" : "NO CUMPLE"} {Hg.toFixed(2)}</span>, "m.c.a."],
-              ["Hf crítica = MAX(Hf_ac, Hf_acs) + Hf_otros", <span  style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hfOk ? "var(--ok)" : "#ef5350" }}>{hfOk ? "OK" : "NO CUMPLE"} {Hf.toFixed(2)}</span>, "m.c.a."],
-              ["Pmin punto crítico", <span  style={{ fontFamily: "var(--mono)", fontWeight: 700, color: pminOk ? "var(--ok)" : "#ef5350" }}>{pminOk ? "OK" : "NO CUMPLE"} {pmin.toFixed(2)}</span>, "m.c.a."],
-              ...(isRed ? [] : [["Nivel mínimo cisterna (z_cis)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{zcis.toFixed(2)}</span>, "m"], ["Hf succión cisterna", <span  style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hfcis >= 0 ? "var(--ok)" : "#ef5350" }}>{hfcis >= 0 ? "OK" : "NO CUMPLE"} {hfcis.toFixed(2)}</span>, "m.c.a."]] as any[][]),
-              ...(!isRed ? [] : [["Pred. disponible", <span  style={{ fontFamily: "var(--mono)", fontWeight: 700, color: predOk ? "var(--ok)" : "#ef5350" }}>{predOk ? "OK" : "NO CUMPLE"} {pred.toFixed(2)}</span>, "m.c.a."]] as any[][]),
-              [<span style={{ fontWeight: 700 }}>HMT total</span>, <span  style={{ fontFamily: "var(--mono)", fontWeight: 700, color: hmtOk ? "var(--ok)" : "#ef5350" }}>{hmtOk ? "OK" : "NO CUMPLE"}  {HMT.toFixed(2)}</span>, "m.c.a."],
-              ["Verificación Pmáx", alertaPmax ? <span style={{ color: "#ef5350", fontWeight: 700, fontFamily: "var(--mono)" }}>⚠ {HMT.toFixed(2)} &gt; {pmax.toFixed(2)}</span> : <span style={{ color: "var(--ok)", fontWeight: 700, fontFamily: "var(--mono)" }}>✓ OK ({HMT.toFixed(2)} ≤ {pmax.toFixed(2)})</span>, "m.c.a."],
-            ]} />
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/altura_manometrica.svg" iconImgStyle={{ width: 20, height: 20 }} title={`${isRed ? "Altura manométrica total — Succión directa" : "Altura manométrica total — Succión desde cisterna"}`} bodyStyle={{ padding: 0 }}>
+            <Tbl caption="Altura manométrica total" thStyle={TH_S} tdStyle={TD_S} cols={["Parámetro", "Valor", "Unidad"]} rows={(() => {
+              const r: any[][] = [];
+              r.push(["Desnivel geométrico", <span style={hgOk ? OK : ERR}>{hgOk ? `✓ ${(ztop - zbomba).toFixed(2)}` : `✗ ${(ztop - zbomba).toFixed(2)}`}</span>, "m.c.a."]);
+              if (!isRed) r.push(["Desnivel total", <span style={M}>{fmtMca(Hg)}</span>, "m.c.a."]);
+              r.push(["Pérdidas de carga críticas", <span style={hfOk ? OK : ERR}>{hfOk ? `✓ ${HfCrit.toFixed(2)}` : `✗ ${HfCrit.toFixed(2)}`}</span>, "m.c.a."]);
+              if (!isRed) r.push(["Pérdidas de carga totales", <span style={hfOk ? OK : ERR}>{hfOk ? `✓ ${Hf.toFixed(2)}` : `✗ ${Hf.toFixed(2)}`}</span>, "m.c.a."]);
+              r.push(["Presión mínima punto crítico", <span style={pminOk ? OK : ERR}>{pminOk ? `✓ ${pmin.toFixed(2)}` : `✗ ${pmin.toFixed(2)}`}</span>, "m.c.a."]);
+              if (isRed) r.push(["Presión disponible acometida", <span style={predOk ? OK : ERR}>{predOk ? `✓ ${pred.toFixed(2)}` : `✗ ${pred.toFixed(2)}`}</span>, "m.c.a."]);
+              r.push([<span style={{ fontWeight: 700 }}>Altura manométrica total HMT</span>, <span style={hmtOk ? OK : ERR}>{hmtOk ? `✓ ${HMT.toFixed(2)}` : `✗ ${HMT.toFixed(2)}`}</span>, "m.c.a."]);
+              r.push(["Verificación presión máxima del sistema", alertaPmax ? <span style={ERR}>⚠ {HMT.toFixed(2)} &gt; {pmax.toFixed(2)}</span> : <span style={OK}>✓ HMT dentro del límite</span>, "m.c.a."]);
+              return r;
+            })()} />
           </Card>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/potencia_bomba.svg" iconImgStyle={{ width: 22, height: 22 }} title="Potencia de la bomba" bodyStyle={{ padding: 0 }}>
-            <Tbl caption="Potencia de la bomba" cols={["Parámetro", "Valor", "Ud."]} rows={[
-              ["P_hid = γ · Qd · HMT", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Phid > 0 ? Phid.toFixed(0) : "—"}</span>, "W"],
-              ["P_freno = P_hid / (η_b · η_m)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Pfreno > 0 ? Pfreno.toFixed(3) : "—"}</span>, "HP"],
-              ["P calculada (× F.S.)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Pins_hp > 0 ? Pins_hp.toFixed(2) : "—"}</span>, "HP"],
-              ["P calculada (× F.S.)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{Pins_kw > 0 ? Pins_kw.toFixed(2) : "—"}</span>, "kW"],
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minWidth: 0 }}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/potencia_bomba.svg" iconImgStyle={{ width: 20, height: 20 }} title="Potencia de la bomba" bodyStyle={{ padding: 0 }}>
+            <Tbl caption="Potencia de la bomba" thStyle={TH_S} tdStyle={TD_S} cols={["Parámetro", "Valor", "Ud."]} rows={[
+              ["Potencia hidráulica", <span style={M}>{fmtW(Phid)}</span>, "W"],
+              ["Potencia al freno", <span style={M}>{fmtW(Pfreno_w)}</span>, "W"],
+              ["Potencia al freno", <span style={M}>{fmtHp(Pfreno_hp)}</span>, "HP"],
+              ["Potencia calculada con factor de seguridad", <span style={M}>{Pins_hp > 0 ? `${Pins_hp.toFixed(2)} HP / ${Pins_kw > 0 ? Pins_kw.toFixed(2) : "—"} kW` : "—"}</span>, ""],
+              ["Potencia comercial seleccionada", <span style={MB}>{nemaSel}</span>, "HP"],
+              ["Margen potencia comercial vs calculada", <span style={pComercialOk ? OK : ERR}>{pComercialOk ? `+${margenPct.toFixed(1)}%` : `${margenPct.toFixed(1)}%`}</span>, "%"],
+              ["Verificación potencia comercial", <span style={pComercialOk ? OK : ERR}>{pComercialOk ? "✓ Adecuada" : "⚠ Insuficiente"}</span>, ""],
             ]} />
           </Card>
-          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/pot_comercial_seleccionada.svg" iconImgStyle={{ width: 22, height: 22 }} title="Potencia comercial seleccionada" bodyStyle={{ padding: "6px 8px", display: "flex", flexDirection: "column", gap: 6 }} headerRight={<EditButton edit={editPComercial} setEdit={setEditPComercial} />}>
-            <div style={{ fontSize: 12, color: "var(--txt3)" }}>
-              P calculada = <strong style={{ color: "var(--txt)" }}>{Pins_hp > 0 ? Pins_hp.toFixed(2) : "—"} HP</strong> · Comercial inmediata superior: <strong style={{ color: "var(--txt)", fontWeight: 700 }}>{autoNema} HP</strong>
-            </div>
-            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-              <select aria-label="Potencia comercial" disabled={!editPComercial} value={ep.pcomercial || ""} onChange={(e) => updEP("pcomercial", e.target.value)} style={{ ...EPVerificationPage_selStyle, cursor: editPComercial ? "pointer" : "default", opacity: editPComercial ? 1 : 0.7 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <Card style={{display:'flex',flexDirection:'column', flex: 1, minWidth: 0}} iconImg="/iconos_diseno_redes/equipos/caudales.svg" iconImgStyle={{ width: 20, height: 20 }} title="Caudales" bodyStyle={{ padding: 0 }}>
+              <Tbl caption="Caudales" thStyle={TH_S} tdStyle={TD_S} cols={["Parámetro", "Valor", "Ud."]} rows={[
+                ["Qd = MAX(Qac, Qasc)", <span style={M}>{fmtLps(Qd)}</span>, "L/s"],
+                ["Qd en m³/h", <span style={M}>{fmtM3h(Qm3h)}</span>, "m³/h"],
+                ["Qd en GPM", <span style={M}>{fmtGpm(Qgpm)}</span>, "GPM"],
+                ["Qb = Qd / Nt", <span style={M}>{fmtLps(Qb)}</span>, "L/s"],
+              ]} />
+            </Card>
+            <Card style={{display:'flex',flexDirection:'column', flex: 1, minWidth: 0}} iconImg="/iconos_diseno_redes/equipos/pot_comercial_seleccionada.svg" iconImgStyle={{ width: 20, height: 20 }} title="Potencia comercial seleccionada" bodyStyle={{ padding: "5px 8px", display: "flex", flexDirection: "column", gap: 5 }} headerRight={<EditButton edit={editPComercial} setEdit={setEditPComercial} />}>
+              <div style={{ fontSize: 10, color: "var(--txt3)" }}>
+                P calculada = <strong style={{ color: "var(--txt)" }}>{Pins_hp > 0 ? Pins_hp.toFixed(2) : "—"} HP</strong> · Comercial superior: <strong style={{ color: "var(--txt)", fontWeight: 700 }}>{autoNema} HP</strong>
+              </div>
+              <select aria-label="Potencia comercial" disabled={!editPComercial} value={ep.pcomercial || ""} onChange={(e) => updEP("pcomercial", e.target.value)} style={{ ...EPVerificationPage_selStyle, fontSize: 10, padding: "4px 6px", cursor: editPComercial ? "pointer" : "default", opacity: editPComercial ? 1 : 0.7 }}>
                 <option value="">Seleccione</option>
                 {COMM_HP.map(({ hp, kw }) => (<option key={hp} value={String(hp)}>{hp} HP ({kw} kW)</option>))}
               </select>
-              <span style={{ fontSize: 12, color: "var(--txt3)", whiteSpace: "nowrap" }}>O ingrese valor:</span>
-              <LazyInp disabled={!editPComercial} field="pcomercial" ariaLabel="Potencia comercial" style={{ ...SI, width: 50, fontSize: 12, padding: "2px 4px" }} />
-              <span style={{ fontFamily: "var(--mono)", fontWeight: 600, fontSize: 12, whiteSpace: "nowrap" }}>HP</span>
-            </div>
-            <div style={{ padding: "6px 8px", background: "var(--bg3)", borderRadius: "var(--r)", border: "1px solid var(--line)" }}>
-              <div style={{ fontSize: 12, color: "var(--txt4)", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>Potencia seleccionada</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--txt)", fontFamily: "var(--mono)" }}>{nemaSel} HP</div>
-              <div style={{ fontSize: 12, color: "var(--txt3)", fontFamily: "var(--mono)", fontWeight: 600 }}>{(nemaSel * 0.7457).toFixed(2)} kW (IEC)</div>
-              <div style={{ fontSize: 12, color: "var(--txt3)" }}>Margen: <span style={{ color: "var(--txt)", fontWeight: 700 }}>+{Pins_hp > 0 ? (((nemaSel - Pins_hp) / Pins_hp) * 100).toFixed(1) : "—"}%</span><span style={{ color: "var(--txt4)", marginLeft: 4 }}>· sobre presión calculada</span></div>
-            </div>
-          </Card>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ fontSize: 10, color: "var(--txt3)", whiteSpace: "nowrap" }}>O ingrese valor:</span>
+                <LazyInp disabled={!editPComercial} field="pcomercial" ariaLabel="Potencia comercial" style={{ ...SI, width: 46, fontSize: 10, padding: "2px 4px" }} />
+                <span style={{ fontFamily: "var(--mono)", fontWeight: 600, fontSize: 10, whiteSpace: "nowrap" }}>HP</span>
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
     );
   }
 
+  const TH_R = { fontSize: 11, padding: "2px 4px" };
+  const TD_R = { fontSize: 11, padding: "3px 4px" };
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(360px, 100%), 1fr))", gap: 16, justifyContent: "center", alignItems: "start" }}>
-      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.svg" iconImgStyle={{ width: 22, height: 22 }} title="Presostato y tanque hidroneumático" bodyStyle={{ padding: 0 }}>
-        <Tbl caption="Presostato y tanque hidroneumático" thStyle={{ fontSize: 12, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud.", "Fórmula"]} rows={[
-          ["P_on (arranque)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Pon.toFixed(2)}</span>, "m.c.a.", "P_on = HMT"],
-          ["P_off (paro)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Poff.toFixed(2)}</span>, "m.c.a.", "P_off = P_on × 1.10"],
-          ["P_on / P_off (presostato)", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Pon_bar.toFixed(2)} / {Poff_bar.toFixed(2)}</span>, "bar", "÷ 10.2 → bar"],
-          ["Precarga N₂ = 0.90 × P_on", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{PN2_bar.toFixed(2)}</span>, "bar", "—"],
-          [<span style={{ fontWeight: 600 }}>Volumen útil Vu = Qd·60 / (4·n)</span>, <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{Vu.toFixed(1)}</span>, "L", "Vu = Qd×60 / (4×n)"],
-          [<span style={{ fontWeight: 700, color: "var(--txt)" }}>Volumen tanque Vt = Vu / α</span>, <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: "var(--txt)" }}>{Vt.toFixed(1)}</span>, "L", "Vt = Vu / α"]
+    <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minWidth: 0 }}>
+      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.svg" iconImgStyle={{ width: 22, height: 22 }} title="Presión de setpoint y tanque hidroneumático" bodyStyle={{ padding: 0 }}>
+        <Tbl caption="Presión de setpoint y tanque hidroneumático" thStyle={TH_R} tdStyle={TD_R} cols={["Parámetro", "Valor", "Unidad", "Fórmula"]} rows={[
+          ["Presión de arranque", <span style={M}>{fmtMca(Pon)}</span>, "m.c.a.", "P_arranque = HMT"],
+          ["Presión de paro", <span style={M}>{fmtMca(Poff)}</span>, "m.c.a.", "P_paro = P_arranque × 1.10"],
+          ["Presión de arranque en bar", <span style={M}>{fmtBar(Pon_bar)}</span>, "bar", "P_arranque = HMT / 10.2"],
+          ["Presión de paro en bar", <span style={M}>{fmtBar(Poff_bar)}</span>, "bar", "P_paro = P_arranque × 1.10"],
+          ["Precarga de nitrógeno N₂ = 0.90 × P_arranque", <span style={M}>{fmtBar(PN2_bar)}</span>, "bar", "P_precarga = 0.90 × P_arranque"],
+          [<span style={{ fontWeight: 600 }}>Volumen útil Vu = Qd × 60 / (4 × n)</span>, <span style={M}>{fmtL(Vu)}</span>, "L", "Vu = Qd × 60 / (4 × n)"],
+          [<span style={{ fontWeight: 700, color: "var(--txt)" }}>Volumen total tanque Vt = Vu / α</span>, <span style={MB}>{fmtL(Vt)}</span>, "L", "Vt = Vu / α"],
+          ["Volumen total tanque Vt", <span style={M}>{Vt > 0 ? (Vt / 1000).toFixed(3) : "—"}</span>, "m³", "Vt / 1000"],
         ]} />
       </Card>
-      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/diametros_velocidades.svg" iconImgStyle={{ width: 22, height: 22 }} title="Diámetros y velocidades" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editDiametros} setEdit={setEditDiametros} />}>
-        <Tbl caption="Diámetros y velocidades" thStyle={{ fontSize: 12, padding: "3px 6px" }} tdStyle={{ fontSize: 12, padding: "4px 6px" }} tdlStyle={{ fontSize: 13, padding: "4px 6px" }} cols={["Parámetro", "Valor", "Ud."]} rows={[
-          [<Param name="Tubería succión" sub="DN comercial" />, <LazyInp disabled={!editDiametros} field="dnsuc" ariaLabel="Tubería succión" />, "mm DN"],
-          ["Velocidad real succión", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{sucDiam.Vreal ? sucDiam.Vreal.toFixed(2) : "—"}</span>, "m/s"],
-          [<Param name="Tubería impulsión" sub="DN comercial" />, <LazyInp disabled={!editDiametros} field="dnimp" ariaLabel="Tubería impulsión" />, "mm DN"],
-          ["Velocidad real impulsión", <span style={{ fontFamily: "var(--mono)", fontWeight: 600, color: "var(--txt)" }}>{impDiam.Vreal ? impDiam.Vreal.toFixed(2) : "—"}</span>, "m/s"]
+      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/diametros_velocidades.svg" iconImgStyle={{ width: 22, height: 22 }} title="Diámetros seleccionados por el usuario (anulan los recomendados)" bodyStyle={{ padding: 0 }}>
+        <Tbl caption="Diámetros seleccionados por el usuario" thStyle={TH_R} tdStyle={TD_R} cols={["Parámetro", "Valor", "Unidad"]} rows={[
+          [<Param name="Tubería de succión" sub="Diámetro nominal comercial" />, <LazyInp disabled={!editDiametros} field="dnsuc" ariaLabel="Tubería de succión" />, "mm DN"],
+          ["Velocidad real en succión", <span style={M}>{fmtMs(sucDiam.Vreal)}</span>, "m/s"],
+          [<Param name="Tubería de impulsión" sub="Diámetro nominal comercial" />, <LazyInp disabled={!editDiametros} field="dnimp" ariaLabel="Tubería de impulsión" />, "mm DN"],
+          ["Velocidad real en impulsión", <span style={M}>{fmtMs(impDiam.Vreal)}</span>, "m/s"],
         ]} />
       </Card>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minWidth: 0 }}>
+      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/diametros_velocidades.svg" iconImgStyle={{ width: 22, height: 22 }} title="Diámetros nominales de tuberías del equipo" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editDiametros} setEdit={setEditDiametros} />}>
+        <Tbl caption="Diámetros nominales de tuberías del equipo" thStyle={TH_R} tdStyle={{ ...TD_R, width: '1%', whiteSpace: 'nowrap' }} cols={["Ramal", "Q (L/s)", "V diseño (m/s)", "D calc (mm)", "DN (mm)", "V real (m/s)"]} rows={[
+          ["Succión colector (Qd)", <span style={M}>{fmtLps(Qd)}</span>, <span style={M}>{vsuc}</span>, <span style={M}>{fmtMm(rSucColector.diamCalcMm)}</span>, <span style={MB}>{rSucColector.dn}</span>, <span style={M}>{fmtMs(rSucColector.vReal)}</span>],
+          ["Impulsión colector (Qd)", <span style={M}>{fmtLps(Qd)}</span>, <span style={M}>{vimp}</span>, <span style={M}>{fmtMm(rImpColector.diamCalcMm)}</span>, <span style={MB}>{rImpColector.dn}</span>, <span style={M}>{fmtMs(rImpColector.vReal)}</span>],
+          ["Succión por bomba (Qb)", <span style={M}>{fmtLps(Qb)}</span>, <span style={M}>{vsuc}</span>, <span style={M}>{fmtMm(rSucBomba.diamCalcMm)}</span>, <span style={MB}>{rSucBomba.dn}</span>, <span style={M}>{fmtMs(rSucBomba.vReal)}</span>],
+          ["Impulsión por bomba (Qb)", <span style={M}>{fmtLps(Qb)}</span>, <span style={M}>{vimp}</span>, <span style={M}>{fmtMm(rImpBomba.diamCalcMm)}</span>, <span style={MB}>{rImpBomba.dn}</span>, <span style={M}>{fmtMs(rImpBomba.vReal)}</span>],
+        ]} />
+      </Card>
+      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.svg" iconImgStyle={{ width: 22, height: 22 }} title="Especificación técnica del equipo" bodyStyle={{ padding: 0 }}>
+        <Tbl caption="Especificación técnica del equipo" thStyle={TH_R} tdStyle={TD_R} cols={["Parámetro", "Valor"]} rows={[
+          ["Caudal nominal", <span style={M}>{fmtLps(Qd)} L/s = {fmtM3h(Qm3h)} m³/h = {fmtGpm(Qgpm)} GPM</span>],
+          ["Altura manométrica total", <span style={M}>{fmtMca(HMT)} m.c.a. = {fmtBar(HMT / 10.2)} bar</span>],
+          ["Configuración de bombas", <span style={M}>{nt + dec(ep.nr)} uds: {nt} trabajo + {dec(ep.nr)} reserva · Qb = {fmtLps(Qb)} L/s c/u</span>],
+          ["Potencia comercial", <span style={M}>{nemaSel} HP = {(nemaSel * 0.7457).toFixed(0)} kW (calc: {Pins_hp > 0 ? Pins_hp.toFixed(2) : "—"} HP)</span>],
+          ["Setpoint P_arranque / P_paro", <span style={M}>{fmtBar(Pon_bar)} / {fmtBar(Poff_bar)} bar</span>],
+          ["Tanque acumulador", <span style={M}>{fmtL(Vt)} L · Precarga N₂ = {fmtBar(PN2_bar)} bar</span>],
+          ["DN succión / impulsión", <span style={M}>DN {rSucColector.dn} / DN {rImpColector.dn} mm (PVC Sch 40)</span>],
+          ["Control", <span style={M}>VFD × {nt + dec(ep.nr)} · Transductor 4–20 mA · PLC/SCADA</span>],
+          ["Normas", <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--txt4)" }}>NTC 1500:2018 · RAS 2000 Tít. B · NSR-10 Tít. H · NFPA 20</span>],
+        ]} />
+      </Card>
+      </div>
     </div>
   );
 }
