@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { pisoLbl } from "../../constants";
 import ModalProtocolo from "./ModalProtocolo";
 import { getPdfjs } from "../../utils/lazyPdfjs";
+import { devError } from "../../utils/devError";
 const TOAST_BG: Record<string, string> = { err: 'rgba(211,47,47,0.9)', warn: 'rgba(245,158,11,0.9)', ok: 'rgba(14,204,122,0.9)' };
 const PlanoConfigurator_S1: React.CSSProperties = { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, padding: '6px 14px', fontSize: 12, fontWeight: 600, textAlign: 'center', background: TOAST_BG.ok, color: '#fff', };
 const PlanoConfigurator_S2: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, padding: '6px 14px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'var(--bg)', minHeight: 36, flexWrap: 'wrap' };
@@ -265,7 +266,7 @@ function PlanoConfiguratorBase({
           setLoading(false);
           requestAnimationFrame(() => fitView());
         } catch (e) {
-          if (!cancelled) { if (import.meta.env.DEV) console.error('Error loading PDF:', e); setLoading(false); }
+          if (!cancelled) { devError('Error loading PDF:', e); setLoading(false); }
         }
       })();
       return () => { cancelled = true; };

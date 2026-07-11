@@ -1,5 +1,6 @@
 import { matManning } from '../constants';
 import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { devError } from './devError';
 import {
   TRAZOS_PREFIX,
   GAS_ACC_KEY,
@@ -355,7 +356,7 @@ function buildSyncData(plans: SyncPlanInput[], families: Set<string>, prefix: st
   try {
     performGarbageCollection(plans);
   } catch (e) {
-    if (import.meta.env.DEV) console.error('Garbage collection error:', e);
+    devError('Garbage collection error:', e);
   }
 
   return prefix
@@ -370,7 +371,7 @@ export function writeHydroDrawingSync(plans: SyncPlanInput[]) {
     window.dispatchEvent(new CustomEvent('civilflow_hidro_sync_changed', { detail: data }));
     return data;
   } catch (e) {
-    if (import.meta.env.DEV) console.error('writeHydroDrawingSync error:', e);
+    devError('writeHydroDrawingSync error:', e);
     return null;
   }
 }
@@ -391,7 +392,7 @@ export function writeSanDrawingSync(plans: SyncPlanInput[]) {
     window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed', { detail: data }));
     return data;
   } catch (e) {
-    if (import.meta.env.DEV) console.error('writeSanDrawingSync error:', e);
+    devError('writeSanDrawingSync error:', e);
     return null;
   }
 }

@@ -1,6 +1,7 @@
 import { NETS } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
+import { devError } from '../../utils/devError';
 
 export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void {
   const net = NETS.find(n => n.id === netId);
@@ -26,7 +27,7 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
         }
       }
       if (changed) saveToStorage(storageKey, data);
-    } catch (e) { if (import.meta.env.DEV) console.error('PlanoEngine:', e); }
+    } catch (e) { devError('PlanoEngine:', e); }
   };
   cleanOrphans('aparatos_by_tramo_v2');
   cleanOrphans('tramo_hidro_data_v3');
@@ -51,7 +52,7 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
             }
           }
           if (changed) saveToStorage(storageKey, data);
-        } catch (e) { if (import.meta.env.DEV) console.error('PlanoEngine:', e); }
+        } catch (e) { devError('PlanoEngine:', e); }
       };
       migrateKeys('aparatos_by_tramo_v2');
       migrateKeys('tramo_hidro_data_v3');

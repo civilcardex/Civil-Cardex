@@ -5,6 +5,7 @@ import { TRAZOS_PREFIX } from "../../constants/storage-keys";
 import { loadFromStorage } from "../../services/storageService";
 import { loadPDF } from "../../services/idbStorage";
 import { loadPlanCrop } from "../../utils/planCrop";
+import { parseDescargaEnId } from "../../utils/parseDescargaEnId";
 const IsometriaTab_S1: React.CSSProperties = { padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' };
 const IsometriaTab_S2: React.CSSProperties = { padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' };
 const IsometriaTab_S3: React.CSSProperties = { padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' };
@@ -317,7 +318,7 @@ function IsometriaTabBase({ state }: any) {
         const currentZ = nptMap[b.planNivel] || 0;
         let targetZ = currentZ;
         if (b.descargaEnId) {
-          const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [b.planId, b.descargaEnId];
+          const parts = parseDescargaEnId(b.descargaEnId, b.planId);
           const targetPlanId = parts[0];
           const targetId = parts[1];
           const targetRamal = netData.ramales.find((rr: any) => rr.id === targetId && String(rr.planId) === String(targetPlanId));
@@ -585,7 +586,7 @@ function IsometriaTabBase({ state }: any) {
 
         let targetRamal = null;
         if (b.descargaEnId) {
-          const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [b.planId, b.descargaEnId];
+          const parts = parseDescargaEnId(b.descargaEnId, b.planId);
           const targetPlanId = parts[0];
           const targetId = parts[1];
           targetRamal = netData.ramales.find((rr: any) => rr.id === targetId && String(rr.planId) === String(targetPlanId));

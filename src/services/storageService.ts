@@ -1,3 +1,5 @@
+import { devError } from '../utils/devError';
+
 const PREFIX = 'civilflow_';
 
 export function loadFromStorage<T>(key: string, fallback: T): T {
@@ -7,7 +9,7 @@ export function loadFromStorage<T>(key: string, fallback: T): T {
     if (raw === null) return fallback;
     return JSON.parse(raw) as T;
   } catch (e) {
-    if (import.meta.env.DEV) console.error('storageService load:', key, e);
+    devError('storageService load:', key, e);
     return fallback;
   }
 }
@@ -16,7 +18,7 @@ export function saveToStorage(key: string, data: unknown): void {
   try {
     localStorage.setItem(PREFIX + key, JSON.stringify(data));
   } catch (e) {
-    if (import.meta.env.DEV) console.error('storageService save:', key, e);
+    devError('storageService save:', key, e);
   }
 }
 
@@ -24,7 +26,7 @@ export function removeFromStorage(key: string): void {
   try {
     localStorage.removeItem(PREFIX + key);
   } catch (e) {
-    if (import.meta.env.DEV) console.error('storageService remove:', key, e);
+    devError('storageService remove:', key, e);
   }
 }
 
@@ -55,10 +57,10 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
       .from('plano_trazos')
       .upsert({ plano_id: dbPlanoId, data, user_id: user.id }, { onConflict: 'plano_id' });
     if (error) {
-      if (import.meta.env.DEV) console.error('storageService saveTrazosToDB:', error);
+      devError('storageService saveTrazosToDB:', error);
     }
   } catch (e) {
-    if (import.meta.env.DEV) console.error('storageService saveTrazosToDB exception:', e);
+    devError('storageService saveTrazosToDB exception:', e);
   }
 }
 
@@ -75,12 +77,12 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
       .maybeSingle();
       
     if (error) {
-      if (import.meta.env.DEV) console.error('storageService loadTrazosFromDB:', error);
+      devError('storageService loadTrazosFromDB:', error);
       return null;
     }
     return (data?.data as PlanTrazos) || null;
   } catch (e) {
-    if (import.meta.env.DEV) console.error('storageService loadTrazosFromDB exception:', e);
+    devError('storageService loadTrazosFromDB exception:', e);
     return null;
   }
 }

@@ -1,6 +1,7 @@
 import type { IPlanoEngineCore, PlanoRamal, PlanoBajante, PlanoArea } from './PlanoState';
 import { calculateRamalLength, _midpoint, _firstSegmentAngle } from './PlanoEngineDrawing';
 import { checkRamalAngles } from './drawingAngles';
+import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 
 export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): void {
   if (engine.multiDrag) {
@@ -203,7 +204,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         });
       }
       if (b.descargaEnId) {
-        const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [engine._loadedPlanId, b.descargaEnId];
+        const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
         const targetPlanId = parts[0];
         const targetId = parts[1];
         if (String(targetPlanId) === String(engine._loadedPlanId)) {
@@ -414,7 +415,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           const isRecibe = b.recibeDeIds?.includes(r.id);
           let isDescarga = false;
           if (b.descargaEnId) {
-            const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [engine._loadedPlanId, b.descargaEnId];
+            const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
             const targetPlanId = parts[0];
             const targetId = parts[1];
             if (String(targetPlanId) === String(engine._loadedPlanId) && targetId === r.id) {
@@ -515,7 +516,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           // Also move descargaEnId bajantes connected to this endpoint
           for (const b of engine.bajantes) {
             if (b.descargaEnId) {
-              const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [engine._loadedPlanId, b.descargaEnId];
+              const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
               if (String(parts[0]) === String(engine._loadedPlanId) && parts[1] === r.id) {
                 if (Math.hypot(oldP[0] - b.x, oldP[1] - b.y) < 0.5 || Math.hypot(p.x - b.x, p.y - b.y) < 0.5) {
                   b.x += dPx;

@@ -1,4 +1,5 @@
 import type { IPlanoEngineCore, PlanoBajante } from './PlanoState';
+import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 
 export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
   if (ids && ids.length > 0) {
@@ -18,7 +19,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
             b.recibeDeIds = b.recibeDeIds.filter(rid => rid !== deleted.id);
           }
           if (b.descargaEnId) {
-            const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [engine._loadedPlanId, b.descargaEnId];
+            const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
             if (parts[parts.length - 1] === deleted.id) b.descargaEnId = null;
           }
         }
@@ -109,7 +110,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
         b.recibeDeIds = b.recibeDeIds.filter(rid => rid !== deletedId);
       }
       if (b.descargaEnId) {
-        const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [engine._loadedPlanId, b.descargaEnId];
+        const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
         if (parts[parts.length - 1] === deletedId) b.descargaEnId = null;
       }
     }

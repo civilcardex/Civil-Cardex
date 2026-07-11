@@ -2,6 +2,7 @@ import { NETS } from '../PlanoState';
 import { rotatedRectCorners } from '../HitTester';
 import type { IPlanoEngineCore } from '../PlanoState';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
+import { parseDescargaEnId } from '../../../utils/parseDescargaEnId';
 
 
 const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
@@ -189,7 +190,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     }
 
     if (b.descargaEnId) {
-      const parts = b.descargaEnId.includes('|') ? b.descargaEnId.split('|') : [engine._loadedPlanId, b.descargaEnId];
+      const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
       const targetPlanId = parts[0];
       const targetId = parts[1];
 

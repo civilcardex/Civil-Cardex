@@ -8,6 +8,7 @@ import { usePlans } from "../context/PlansContext";
 import { REDES } from "../constants";
 import { parseDecimalInput, parseIntInput } from "../utils/parseDecimal";
 import { NETS } from "../lib/PlanoEngine/PlanoState";
+import { devError } from "../utils/devError";
 import { loadFromStorage, saveToStorage } from "../services/storageService";
 
 function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject<T>] {
@@ -191,7 +192,7 @@ export function useWorkAreaState() {
           const nets = NETS;
           const net = nets.find((n: any) => n.id === r.id);
           if (net) net.col = saved;
-        } catch (e) { if (import.meta.env.DEV) console.error(e); }
+        } catch (e) { devError(e); }
       }
     });
   }, []);

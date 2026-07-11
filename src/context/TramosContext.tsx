@@ -5,6 +5,7 @@ import { diamPulgFromLabel } from "../utils/diamPulgFromLabel";
 import { HYDRO_DATA_STORAGE_KEY } from "../constants/storage-keys";
 import { loadFromStorage, loadPlanTrazos, savePlanTrazos } from "../services/storageService";
 import { pisoLbl, pisoCorto } from "../constants";
+import { parseDescargaEnId } from "../utils/parseDescargaEnId";
 
 export interface Tramo {
   id: string;
@@ -380,7 +381,7 @@ useEffect(() => {
       const venMap = new Map();
       for (const vr of venRamales) {
         if (vr.descargaEnId) {
-          const parts = vr.descargaEnId.includes('|') ? vr.descargaEnId.split('|') : [planId, vr.descargaEnId];
+          const parts = parseDescargaEnId(vr.descargaEnId, planId);
           if (parts[0] === planId) venMap.set(parts[1], { diametro: vr.diametro || '', rId: vr.id, rPlanId: planId });
         }
       }

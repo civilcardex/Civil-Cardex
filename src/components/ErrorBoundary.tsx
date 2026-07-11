@@ -1,4 +1,5 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react';
+import { devError } from '../utils/devError';
 
 interface Props { children?: ReactNode; }
 interface State { readonly hasError: boolean; readonly error: Error | null; }
@@ -14,7 +15,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    if (import.meta.env.DEV) console.error('ErrorBoundary:', error, info.componentStack);
+    devError('ErrorBoundary:', error, info.componentStack);
   }
 
   render() {

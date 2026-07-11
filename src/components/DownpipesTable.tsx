@@ -9,6 +9,8 @@ import { renderStatus, calcUDparcial } from "../utils/componentHelpers";
 import { pisoLbl, pisoCorto, DIAM_BAN, DIAM_VENT } from "../constants";
 import { diamPulgFromLabel } from "../utils/diamPulgFromLabel";
 import { manning_SAN, caudalHunterLPS } from "../utils/calcSanitaryCore";
+import { distToPolyline } from "../lib/shared/geometry";
+import { parseDescargaEnId } from "../utils/parseDescargaEnId";
 
 interface BajanteVentilacionParams {
   bajante?: string;
@@ -181,24 +183,6 @@ const BajantesTable = memo(function BajantesTable_() {
         };
       };
 
-      const distToSegment = (p: number[], a: number[], b: number[]) => {
-        const dx = b[0] - a[0];
-        const dy = b[1] - a[1];
-        if (dx === 0 && dy === 0) return Math.hypot(p[0] - a[0], p[1] - a[1]);
-        let t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy);
-        t = Math.max(0, Math.min(1, t));
-        return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
-      };
-
-      const distToPolyline = (p: number[], pts: number[][]) => {
-        let minDist = Infinity;
-        for (let i = 0; i < pts.length - 1; i++) {
-          const d = distToSegment(p, pts[i], pts[i + 1]);
-          if (d < minDist) minDist = d;
-        }
-        return minDist;
-      };
-
       for (const r of ramales) {
         if (!r.pts || r.pts.length < 2) continue;
         const pStart = r.pts[0];
@@ -271,7 +255,7 @@ const BajantesTable = memo(function BajantesTable_() {
                let foundSanId: string | null = null;
                
                if (vr.descargaEnId) {
-                  const parts = vr.descargaEnId.includes('|') ? vr.descargaEnId.split('|') : [plan.id, vr.descargaEnId];
+                  const parts = parseDescargaEnId(vr.descargaEnId, plan.id);
                   if (parts[1] !== vb.id && parts[1] !== vb.label) {
                      const sanKey = `${parts[1]}-${parts[0]}`;
                      if (!vMap[vbKey].includes(sanKey)) vMap[vbKey].push(sanKey);
@@ -352,7 +336,7 @@ const BajantesTable = memo(function BajantesTable_() {
     // Add discharge connections (descargaEnId) of bajantes into lower ramales
     for (const t of tramosSan) {
       if (t.esBajante && t.descargaEnId && t._key) {
-        const parts = t.descargaEnId.includes('|') ? t.descargaEnId.split('|') : ['', t.descargaEnId];
+        const parts = parseDescargaEnId(t.descargaEnId, '');
         const dPlanId = parts[0];
         const targetRamalId = parts[1];
         if (targetRamalId) {
@@ -578,7 +562,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 let targetPiso = '';
                 let destinoVal = '—';
                 if (t.descargaEnId) {
-                  const parts = t.descargaEnId.includes('|') ? t.descargaEnId.split('|') : ['', t.descargaEnId];
+                  const parts = parseDescargaEnId(t.descargaEnId, '');
                   const dPlanId = parts[0];
                   const targetRamal = parts[1] || '';
                   const targetPlan = plans?.find((p: any) => String(p.id) === String(dPlanId));

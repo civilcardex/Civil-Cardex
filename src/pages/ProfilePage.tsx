@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { usePageMeta } from '../hooks/usePageMeta'
+import { devError } from '../utils/devError'
 
 const proyectosActivos = [
   { id: 1, codigo: 'CR-97', nombre: 'Casa de Roca No. 97 - Redes Sanitarias y Lluvias', progreso: 100, estado: 'completo' },
@@ -58,7 +59,7 @@ function ProfilePage() {
         .eq('id', user.id)
         .single()
 
-      if (error) { if (import.meta.env.DEV) console.error('Error cargando perfil:', error.message); return }
+      if (error) { devError('Error cargando perfil:', error.message); return }
       if (data) {
         setPerfil({
           nombre: data.nombre || '',
@@ -70,7 +71,7 @@ function ProfilePage() {
         })
       }
     } catch (err) {
-      if (import.meta.env.DEV) console.error('Error:', err)
+      devError('Error:', err)
     } finally {
       setLoading(false)
     }
@@ -100,10 +101,10 @@ function ProfilePage() {
         .from('perfiles')
         .update({ [field]: editValue })
         .eq('id', userIdRef.current)
-      if (error) { if (import.meta.env.DEV) console.error('Error guardando:', error.message); return }
+      if (error) { devError('Error guardando:', error.message); return }
       setPerfil(prev => ({ ...prev, [field]: editValue }))
     } catch (err) {
-      if (import.meta.env.DEV) console.error('Error:', err)
+      devError('Error:', err)
     } finally {
       setSaving(null)
       setEditField(null)

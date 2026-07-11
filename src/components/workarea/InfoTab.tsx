@@ -4,6 +4,7 @@ import { REDES, USOS, pisoLbl } from "../../constants";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import type { useWorkAreaState } from "../useWorkAreaState";
 import EditButton from "../shared/EditButton";
+import { devError } from "../../utils/devError";
 const InfoTab_S1: React.CSSProperties = { padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11, lineHeight: 1, flexShrink: 0, marginLeft: 2 };
 const InfoTab_S2: React.CSSProperties = { flexShrink: 0, padding: '7px 14px', fontSize: 12, fontWeight: 600, background: 'rgba(239,68,68,0.92)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, };
 const InfoTab_S3: React.CSSProperties = { background: 'rgba(255,255,255,.2)', border: 'none', borderRadius: 3, color: '#fff', cursor: 'pointer', fontSize: 11, padding: '2px 8px', flexShrink: 0 };
@@ -117,7 +118,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({ redes, setRedes, net
                         try {
                           const net = NETS.find((n: any) => n.id === r.id);
                           if (net) net.col = c;
-                        } catch (e) { if (import.meta.env.DEV) console.error(e); }
+                        } catch (e) { devError(e); }
                         try { localStorage.setItem('civilflow_net_' + r.id, c); } catch { /* ignore */ }
                       }}
                       style={{ width: 14, height: 14, border: 'none', padding: 0, cursor: isEditing && (!isSub || parentOn) ? 'pointer' : 'default', background: 'none', flexShrink: 0, opacity: isEditing && (!isSub || parentOn) ? 1 : 0.5 }} />

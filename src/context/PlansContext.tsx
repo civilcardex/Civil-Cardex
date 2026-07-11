@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, createContext, useCo
 import { saveToStorage, loadFromStorage, removeFromStorage } from '../services/storageService';
 import { storePDF, loadPDF, deletePDF } from '../services/idbStorage';
 import { PLANS_META_KEY } from '../constants/storage-keys';
+import { devError } from '../utils/devError';
 
 interface PlanMeta { id: number; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null; definedScale?: number | null }
 interface PlanItem { id: number; file: File; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null; definedScale?: number | null }
@@ -122,7 +123,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       if (isPdf) {
         const id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
         pdfs.push({ id, file: f, name: f.name, nivel: null, scale: 100, status: 'pending', origen: null, factorX: null, factorY: null, calGlobal: null });
-        storePDF(id, f).catch(e => { if (import.meta.env.DEV) console.error('storePDF error:', e); });
+        storePDF(id, f).catch(e => { devError('storePDF error:', e); });
       }
     }
     if (pdfs.length === 0 && newFiles.length > 0) {
@@ -137,7 +138,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
 
   const removePlan = useCallback((id: number) => {
     setPlans(prev => prev.filter(p => p.id !== id));
-    deletePDF(id).catch(e => { if (import.meta.env.DEV) console.error('deletePDF error:', e); });
+    deletePDF(id).catch(e => { devError('deletePDF error:', e); });
   }, []);
 
   const updatePlan = useCallback((id: number, updates: Partial<PlanItem>) => {

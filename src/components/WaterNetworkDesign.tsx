@@ -11,6 +11,7 @@ import { calcLeAcces } from "../utils/accesoriosUtils";
 import { fmt } from "../utils/formatUtils";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
+import { distToPolyline } from "../lib/shared/geometry";
 import Acometida from "./SupplyConnection";
 const WaterNetworkDesign_S1: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 const WaterNetworkDesign_S2: React.CSSProperties = { width:"100%",padding:"3px 4px",border:"1px solid #3a494a",borderRadius:3,background:"#1e2024",color:"#e2e2e8",fontSize: 9,fontFamily:"'Geist',monospace",cursor:"pointer",maxWidth:120 };
@@ -135,24 +136,6 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
 
       const ramales = (data.ramales || []).filter((r: any) => r.net === networkType);
       const bajantes = (data.bajantes || []).filter((b: any) => b.net === networkType);
-
-      const distToSegment = (p: number[], a: number[], b: number[]) => {
-        const dx = b[0] - a[0];
-        const dy = b[1] - a[1];
-        if (dx === 0 && dy === 0) return Math.hypot(p[0] - a[0], p[1] - a[1]);
-        let t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy);
-        t = Math.max(0, Math.min(1, t));
-        return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
-      };
-
-      const distToPolyline = (p: number[], pts: number[][]) => {
-        let minDist = Infinity;
-        for (let i = 0; i < pts.length - 1; i++) {
-          const d = distToSegment(p, pts[i], pts[i + 1]);
-          if (d < minDist) minDist = d;
-        }
-        return minDist;
-      };
 
       for (const r of ramales) {
         if (!r.pts || r.pts.length < 2) continue;

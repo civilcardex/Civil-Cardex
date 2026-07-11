@@ -1,3 +1,5 @@
+import { devError } from '../utils/devError';
+
 const DB_NAME = 'civilflow_plans';
 const STORE_NAME = 'pdfs';
 const DB_VERSION = 1;
@@ -39,7 +41,7 @@ export async function storePDF(id: number, file: File): Promise<void> {
       tx.onabort = () => reject(tx.error);
     });
   } catch (e) {
-    if (import.meta.env.DEV) console.error('idbStorage storePDF:', id, e);
+    devError('idbStorage storePDF:', id, e);
   }
 }
 
@@ -57,7 +59,7 @@ export async function loadPDF(id: number): Promise<File | null> {
       req.onerror = () => reject(req.error);
     });
   } catch (e) {
-    if (import.meta.env.DEV) console.error('idbStorage loadPDF:', id, e);
+    devError('idbStorage loadPDF:', id, e);
     return null;
   }
 }
@@ -73,6 +75,6 @@ export async function deletePDF(id: number): Promise<void> {
       tx.onabort = () => reject(tx.error);
     });
   } catch (e) {
-    if (import.meta.env.DEV) console.error('idbStorage deletePDF:', id, e);
+    devError('idbStorage deletePDF:', id, e);
   }
 }

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { getPdfjs } from "../../utils/lazyPdfjs";
 import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { saveToStorage, saveTrazosToDB } from "../../services/storageService";
+import { devError } from "../../utils/devError";
 
 interface UsePdfViewerEngineParams {
   currentFile: File | null;
@@ -137,7 +138,7 @@ export function usePdfViewerEngine({
     } catch (err) {
       if ((err as any)?.name === 'RenderingCancelledException') return;
       if (mountCheck && mountCheck !== mountId.current) return;
-      if (import.meta.env.DEV) console.error("Error renderizando pagina:", err);
+      devError("Error renderizando pagina:", err);
       setError(String(err));
     } finally {
       renderingRef.current = false;
@@ -183,7 +184,7 @@ export function usePdfViewerEngine({
             saveTrazosToDB(id, work);
           }
         }
-      } catch (e) { if (import.meta.env.DEV) console.error('[CLEANUP] error', e); }
+      } catch (e) { devError('[CLEANUP] error', e); }
       eng.setTool = origSetTool;
       eng.destroy();
       engineRef.current = null;
@@ -211,7 +212,7 @@ export function usePdfViewerEngine({
         await renderPage(1, scale, thisMount);
       } catch (err) {
         if (thisMount === mountId.current) {
-          if (import.meta.env.DEV) console.error("Error cargando PDF:", err);
+          devError("Error cargando PDF:", err);
           setError("Error cargando PDF");
           setLoading(false);
         }

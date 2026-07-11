@@ -7,6 +7,7 @@ import { writeSanDrawingSync, writeHydroDrawingSync } from '../utils/drawingSync
 import { loadFromStorage, saveToStorage } from '../services/storageService';
 import FixtureGrid from './fixtures/FixtureGrid';
 import AccesoriosSection from './fixtures/AccessoriesSection';
+import { devError } from '../utils/devError';
 
 const HIDROSAN_IDS = new Set(['af', 'ac', 'san']);
 const GAS_ID = 'gas';
@@ -138,8 +139,8 @@ const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, plan
   }, [counts, hidroData, gasAcc]);
 
   useEffect(() => {
-    try { writeSanDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console.error('AparatosPanel:', e); }
-    try { writeHydroDrawingSync(plans); } catch (e) { if (import.meta.env.DEV) console.error('AparatosPanel:', e); }
+    try { writeSanDrawingSync(plans); } catch (e) { devError('AparatosPanel:', e); }
+    try { writeHydroDrawingSync(plans); } catch (e) { devError('AparatosPanel:', e); }
   }, [counts, hidroData, plans]);
 
   const netId = activeNet;

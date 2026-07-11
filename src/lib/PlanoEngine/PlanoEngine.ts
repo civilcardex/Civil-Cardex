@@ -1,4 +1,5 @@
 import { NETS, netsSnapLinked } from './PlanoState';
+import { devError } from '../../utils/devError';
 import type {
   PlanoRamal,
   PlanoBajante,
@@ -594,7 +595,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       if (this._history) {
         this._history.saveSnapshot();
       }
-    } catch (e) { if (import.meta.env.DEV) console.error('Error loading work:', e); }
+    } catch (e) { devError('Error loading work:', e); }
   }
 
   doZoom(delta: number, cx?: number, cy?: number): void {

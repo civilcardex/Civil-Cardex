@@ -5,6 +5,7 @@ import { loadFromStorage } from '../services/storageService';
 import { useTramos } from '../context/TramosContext';
 import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
 import { usePlans } from '../context/PlansContext';
+import { distToSegment } from '../lib/shared/geometry';
 
 function loadHidro(): Record<string, any> {
   return loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
@@ -54,15 +55,6 @@ export default function SanAccesoriosPage() {
 
   const yeeDiams = useMemo(() => {
     const result: Record<string, { simple: string[]; doble: string[] }> = {};
-    
-    // Helper: distance from point P to segment AB
-    const distToSegment = (P: number[], A: number[], B: number[]) => {
-      const dx = B[0] - A[0], dy = B[1] - A[1];
-      if (dx === 0 && dy === 0) return Math.hypot(P[0] - A[0], P[1] - A[1]);
-      let t = ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / (dx * dx + dy * dy);
-      t = Math.max(0, Math.min(1, t));
-      return Math.hypot(P[0] - (A[0] + t * dx), P[1] - (A[1] + t * dy));
-    };
     
     // Load full drawing data with pts from localStorage
     const drawingRamales: Array<{ id: string; label: string; diametro: string; pts: number[][]; tipo: string; planId: string }> = [];

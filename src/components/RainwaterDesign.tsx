@@ -11,6 +11,7 @@ import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage, savePlanTrazos } from "../services/storageService";
 import { writeSanDrawingSync } from "../utils/drawingSync";
 import { useRainwater } from "../context/RainwaterContext";
+import { distToPolyline } from "../lib/shared/geometry";
 const RainwaterDesign_S1: React.CSSProperties = { width: '60px', padding: '2px 4px', background: 'transparent', border: '1px solid transparent', borderRadius: 2, color: 'var(--txt)', fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 600, textAlign: 'center' };
 const RainwaterDesign_S2: React.CSSProperties = { fontFamily:'var(--mono)',fontSize: 10,padding:'1px 1px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer',maxWidth:60 };
 const TH_HDR = { fontSize: 9, textAlign:'center', padding:'1px 2px' } as const;
@@ -100,24 +101,6 @@ export default function DisenoLluvias() {
 
       const ramales = (data.ramales || []).filter((r: any) => r.net === 'll');
       const bajantes = (data.bajantes || []).filter((b: any) => b.net === 'll');
-
-      const distToSegment = (p: number[], a: number[], b: number[]) => {
-        const dx = b[0] - a[0];
-        const dy = b[1] - a[1];
-        if (dx === 0 && dy === 0) return Math.hypot(p[0] - a[0], p[1] - a[1]);
-        let t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy);
-        t = Math.max(0, Math.min(1, t));
-        return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
-      };
-
-      const distToPolyline = (p: number[], pts: number[][]) => {
-        let minDist = Infinity;
-        for (let i = 0; i < pts.length - 1; i++) {
-          const d = distToSegment(p, pts[i], pts[i + 1]);
-          if (d < minDist) minDist = d;
-        }
-        return minDist;
-      };
 
       for (const r of ramales) {
         if (!r.pts || r.pts.length < 2) continue;

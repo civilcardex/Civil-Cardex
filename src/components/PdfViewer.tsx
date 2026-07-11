@@ -10,6 +10,7 @@ import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync
 import { bumpHidroAccesorio } from "../utils/syncExtremeAccessory";
 import { loadFromStorage, saveToStorage, saveTrazosToDB, loadTrazosFromDB } from "../services/storageService";
 import { GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY } from "../constants/storage-keys";
+import { devError } from "../utils/devError";
 import PdfViewerToolbar, { STATUS } from "./pdfViewer/PdfViewerToolbar";
 import PdfCanvas from "./pdfViewer/PdfCanvas";
 import PdfViewerNetworkBar from "./pdfViewer/PdfViewerNetworkBar";
@@ -260,7 +261,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
         saveTrazosToDB(resolvedId, localData);
       }
     } catch (e) {
-      if (import.meta.env.DEV) console.error('[LOAD] Supabase error/sync error:', e);
+      devError('[LOAD] Supabase error/sync error:', e);
     }
     return initiallyLoaded;
   }, []);
@@ -418,7 +419,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
           eng.render();
           loadingPlanRef.current = false;
         }
-      } catch (e) { if (import.meta.env.DEV) console.error('[LOAD] error', e); loadingPlanRef.current = false; }
+      } catch (e) { devError('[LOAD] error', e); loadingPlanRef.current = false; }
     })();
     try { writeSanDrawingSync(plansRef.current); } catch {}
     try { writeHydroDrawingSync(plansRef.current); } catch {}

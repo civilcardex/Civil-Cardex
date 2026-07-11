@@ -9,6 +9,7 @@ import type { useWorkAreaState } from "../useWorkAreaState";
 import ModalProtocolo from "./ModalProtocolo";
 import { loadPlanCrop, savePlanCrop, type PlanCrop } from "../../utils/planCrop";
 import { getPdfjs } from "../../utils/lazyPdfjs";
+import { devError } from "../../utils/devError";
 const PlanosTab_S1: React.CSSProperties = { padding: '4px 12px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 };
 const PlanosTab_S2: React.CSSProperties = { padding: '4px 14px', background: 'rgba(14,204,122,0.12)', border: '1.5px solid rgba(14,204,122,0.3)', borderRadius: 'var(--r)', color: '#0ECC7A', cursor: 'pointer', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' };
 const PlanosTab_S3: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'var(--bg)', minHeight: 36 };
@@ -496,9 +497,9 @@ function PlanosTab({ state }: PlanosTabProps) {
       data.factorY = config.factorY;
       data.definedScale = config.definedScale;
       saveToStorage(trazosKey, data);
-      saveTrazosToDB(String(config.planId), data).catch(e => { if (import.meta.env.DEV) console.error('saveTrazosToDB error:', e); });
+      saveTrazosToDB(String(config.planId), data).catch(e => { devError('saveTrazosToDB error:', e); });
     } catch (e) {
-      if (import.meta.env.DEV) console.error('Error syncing calibration to Supabase:', e);
+      devError('Error syncing calibration to Supabase:', e);
     }
   };
 
