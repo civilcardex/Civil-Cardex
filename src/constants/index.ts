@@ -55,6 +55,7 @@ export {
 export {
   pisoLbl,
   pisoCorto,
+  pisoCortoLoose,
 } from './helpers';
 
 export const LE_K = { codos_90_std: 30, codos_90_rl: 20, te_linea: 20, te_ramal: 20, valvula_bola: 8 };

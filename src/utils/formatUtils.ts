@@ -1,12 +1,11 @@
-const FRAC: Record<number, string> = {
-  0.5: '½',
-  0.75: '¾',
-  0.25: '¼',
-  0.125: '⅛',
-  0.375: '⅜',
-  0.625: '⅝',
-  0.875: '⅞'
-};
+import { FRAC_CHAR_TO_DEC } from './diamPulgFromLabel';
+
+const DEC_KEYS = [0.5, 0.75, 0.25, 0.125, 0.375, 0.625, 0.875];
+const FRAC: Record<number, string> = Object.fromEntries(
+  Object.entries(FRAC_CHAR_TO_DEC)
+    .filter(([, dec]) => DEC_KEYS.includes(dec))
+    .map(([ch, dec]) => [dec, ch])
+);
 
 export const fmt = (v: unknown, d = 2) => v == null || Number.isNaN(Number(v)) ? "—" : Number(v).toFixed(d);
 

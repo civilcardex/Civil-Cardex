@@ -66,6 +66,10 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
   const planosCtx = usePlans();
   const plansRef = useRef(planosCtx.plans);
   plansRef.current = planosCtx.plans;
+  const syncDrawings = useCallback(() => {
+    try { writeSanDrawingSync(plansRef.current); } catch {}
+    try { writeHydroDrawingSync(plansRef.current); } catch {}
+  }, []);
   const [scale, setScale] = useState(1);
   const [leftCollapsed, setLeftCollapsed] = useState(() => window.innerWidth < 1024);
   const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 1024);
@@ -288,8 +292,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
         }
       }
     } catch {}
-    try { writeSanDrawingSync(plansRef.current); } catch {}
-    try { writeHydroDrawingSync(plansRef.current); } catch {}
+    syncDrawings();
   }, []);
 
   const onDeleteHandler = useCallback((ids: string[]) => {
@@ -307,9 +310,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
     cleanStore(APARATOS_BY_TRAMO_KEY);
     cleanStore(HYDRO_DATA_STORAGE_KEY);
     window.dispatchEvent(new CustomEvent('aparatos-clear', { detail: { ids } }));
-    try { writeSanDrawingSync(plansRef.current); } catch {}
-    try { writeHydroDrawingSync(plansRef.current); } catch {}
-  }, [plansRef]);
+    syncDrawings();
+  }, [plansRef, syncDrawings]);
 
   const onRequestTextCb = useCallback((x: number, y: number, cb: (text: string) => void) => {
     setTextOverlay({ x, y, value: '', cb });
@@ -421,9 +423,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
         }
       } catch (e) { devError('[LOAD] error', e); loadingPlanRef.current = false; }
     })();
-    try { writeSanDrawingSync(plansRef.current); } catch {}
-    try { writeHydroDrawingSync(plansRef.current); } catch {}
-  }, [currentId, engineReady]);
+    syncDrawings();
+  }, [currentId, engineReady, syncDrawings]);
 
   const prevActiveNetForSel = useRef(activeNet);
   if (activeNet !== prevActiveNetForSel.current) {
@@ -435,12 +436,11 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
     }
   }
 
-  useEffect(() => { try { writeSanDrawingSync(plansRef.current); } catch {} try { writeHydroDrawingSync(plansRef.current); } catch {} }, [planosCtx.plans, currentId, activeNet]);
+  useEffect(() => { syncDrawings(); }, [planosCtx.plans, currentId, activeNet, syncDrawings]);
   useEffect(() => {
-    const handler = () => { try { writeSanDrawingSync(plansRef.current); } catch {} try { writeHydroDrawingSync(plansRef.current); } catch {} };
-    window.addEventListener('storage', handler);
-    return () => window.removeEventListener('storage', handler);
-  }, [planosCtx.plans]);
+    window.addEventListener('storage', syncDrawings);
+    return () => window.removeEventListener('storage', syncDrawings);
+  }, [syncDrawings]);
 
   const [liveActiveNets, setLiveActiveNets] = useState<Set<string> | null>(() => {
     try { const saved = loadFromStorage('active_nets', null); if (saved && Array.isArray(saved)) return new Set(saved); } catch {}

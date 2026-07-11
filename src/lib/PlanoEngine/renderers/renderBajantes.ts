@@ -3,17 +3,10 @@ import { rotatedRectCorners } from '../HitTester';
 import type { IPlanoEngineCore } from '../PlanoState';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { parseDescargaEnId } from '../../../utils/parseDescargaEnId';
+import { pisoCortoLoose as getPisoCorto } from '../../../constants';
 
 
 const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
-
-function getPisoCorto(v: unknown): string {
-  const n = typeof v === 'number' ? v : parseInt(String(v), 10);
-  if (isNaN(n)) return '';
-  if (n < 0) return `S${Math.abs(n)}`;
-  if (n === 99) return 'C';
-  return `P${n}`;
-}
 
 function renderBajanteLabel(
   ctx: CanvasRenderingContext2D,

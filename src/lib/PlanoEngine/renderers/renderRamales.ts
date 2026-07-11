@@ -3,6 +3,7 @@ import { snapTributaryToPadre45Deg } from '../PlanoEngineDrawing';
 import { rotatedRectCorners, pointToSegmentDist } from '../HitTester';
 import type { IPlanoEngineCore } from '../PlanoState';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
+import { pisoCortoLoose as getPisoCorto } from '../../../constants';
 import { drawRamalPath } from './drawRamalPath';
 import { renderJunctions } from './renderJunctions';
 import { renderVentCodos } from './renderVentCodos';
@@ -512,13 +513,6 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         flowLen = Math.hypot(flowDx, flowDy);
       }
       
-      const getPisoCorto = (v: unknown) => {
-        const n = typeof v === 'number' ? v : parseInt(String(v), 10);
-        if (isNaN(n)) return '';
-        if (n < 0) return `S${Math.abs(n)}`;
-        if (n === 99) return 'C';
-        return `P${n}`;
-      };
       const pCorto = getPisoCorto(engine.nivelActual?.n);
       const lvlSuffix = pCorto ? `-${pCorto}` : '';
       const lbl = r.label ? `${r.label}${lvlSuffix}` : '';
