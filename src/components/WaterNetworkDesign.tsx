@@ -12,6 +12,7 @@ import { fmt } from "../utils/formatUtils";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
 import { distToPolyline } from "../lib/shared/geometry";
+import { computeComponentTotals } from "../lib/shared/connectionGraph";
 import Acometida from "./SupplyConnection";
 const WaterNetworkDesign_S1: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 const WaterNetworkDesign_S2: React.CSSProperties = { width:"100%",padding:"3px 4px",border:"1px solid #3a494a",borderRadius:3,background:"#1e2024",color:"#e2e2e8",fontSize: 9,fontFamily:"'Geist',monospace",cursor:"pointer",maxWidth:120 };
@@ -233,38 +234,12 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     }
 
     // Compute connected-component totals: each tramo's Total = sum of all tramos in its component
-    const tramoById: Record<string, any> = {};
-    for (const t of tramos) {
-      const key = t._key || t.id;
-      tramoById[key] = t;
-    }
-    const parcialMap: Record<string, number> = {};
-    for (const t of tramos) {
-      const key = t._key || t.id;
-      parcialMap[key] = calcUCparcial(t, AP as any, "uc");
-    }
-    const componentTotalMap: Record<string, number> = {};
-    const compVisited2 = new Set<string>();
-    for (const t of tramos) {
-      const startKey = t._key || t.id;
-      if (compVisited2.has(startKey)) continue;
-      // BFS to find all nodes in this connected component
-      const comp: string[] = [];
-      const q = [startKey];
-      compVisited2.add(startKey);
-      while (q.length > 0) {
-        const cur = q.shift()!;
-        comp.push(cur);
-        for (const nb of adj[cur] || []) {
-          if (!compVisited2.has(nb) && tramoById[nb]) {
-            compVisited2.add(nb);
-            q.push(nb);
-          }
-        }
-      }
-      const compTotal = comp.reduce((s, k) => s + (parcialMap[k] || 0), 0);
-      for (const k of comp) componentTotalMap[k] = compTotal;
-    }
+    const componentTotalMap = computeComponentTotals(
+      tramos,
+      t => t._key || t.id,
+      adj,
+      t => calcUCparcial(t, AP as any, "uc"),
+    );
 
     return [displayMap, componentTotalMap] as const;
   }, [plans, tramos, networkType, AP]);

@@ -8,6 +8,7 @@ import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
 import { distToPolyline } from "../lib/shared/geometry";
 import { parseDescargaEnId } from "../utils/parseDescargaEnId";
+import { computeComponentTotals } from "../lib/shared/connectionGraph";
 const FixtureUnitCalc_S1: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 
 
@@ -149,38 +150,12 @@ function CalculoUD() {
     }
 
     // Compute connected-component totals
-    const tramoById: Record<string, any> = {};
-    for (const t of tramosSan) {
-      const key = t._key || t.id;
-      if (key) tramoById[key] = t;
-    }
-    const parcialMap: Record<string, number> = {};
-    for (const t of tramosSan) {
-      const key = t._key || t.id;
-      if (key) parcialMap[key] = calcUDparcial(t, mergedBase);
-    }
-    const componentTotalMap: Record<string, number> = {};
-    const compVisited2 = new Set<string>();
-    for (const t of tramosSan) {
-      const startKey = t._key || t.id;
-      if (!startKey || compVisited2.has(startKey)) continue;
-      
-      const comp: string[] = [];
-      const q = [startKey];
-      compVisited2.add(startKey);
-      while (q.length > 0) {
-        const cur = q.shift()!;
-        comp.push(cur);
-        for (const nb of adj[cur] || []) {
-          if (!compVisited2.has(nb) && tramoById[nb]) {
-            compVisited2.add(nb);
-            q.push(nb);
-          }
-        }
-      }
-      const compTotal = comp.reduce((s, k) => s + (parcialMap[k] || 0), 0);
-      for (const k of comp) componentTotalMap[k] = compTotal;
-    }
+    const componentTotalMap = computeComponentTotals(
+      tramosSan,
+      t => t._key || t.id,
+      adj,
+      t => calcUDparcial(t, mergedBase),
+    );
 
     return [componentTotalMap];
   }, [plans, tramosSan, mergedBase]);
