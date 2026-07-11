@@ -1,16 +1,11 @@
 import { syncExtremeAccessoryToHidroData } from '../../utils/syncExtremeAccessory';
 import { normalizeDnLabel } from '../../utils/formatUtils';
+import { getAccessoryOptions } from '../../utils/accessoryOptions';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 const ExtremeAccessoryEditor_S1: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const ExtremeAccessoryEditor_S2: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const ExtremeAccessoryEditor_S4: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const ExtremeAccessoryEditor_S5: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-
-import {
-  ACCESORIOS_HIDRO,
-  SAN_ACCESORIOS,
-  GAS_ACCESORIOS
-} from '../../constants';
 
 interface ExtremeAccessoryEditorProps {
   selElement: any;
@@ -21,25 +16,8 @@ interface ExtremeAccessoryEditorProps {
   plans?: any[];
 }
 
-function getAccessoryOptions(netId: string) {
-  if (netId === 'san') {
-    return SAN_ACCESORIOS.filter(a => a.id === 'codo90rmSube' || a.id === 'codo90rmBaja' || a.id === 'codoReventilado' || a.id === 'sifon').map(a => ({ value: a.id, label: a.nombre.toUpperCase() }));
-  }
-  if (['ll', 'vent'].includes(netId)) {
-    return SAN_ACCESORIOS.map(a => ({ value: a.id, label: a.nombre.toUpperCase() }));
-  }
-  if (netId === 'gas') {
-    return GAS_ACCESORIOS.map(a => ({ value: a.id, label: a.nombre.toUpperCase() }));
-  }
-  if (['af', 'ac', 'rci', 'rec'].includes(netId)) {
-    // AF/AC: válvulas, válvulas de pie, reducciones, ampliaciones, otros, y codos de subida/bajada (sin tees ni el resto de codos)
-    return ACCESORIOS_HIDRO.filter(a => (a.cat !== 'Codos' && a.cat !== 'Tees') || a.id === 'codo90rmSube' || a.id === 'codo90rmBaja').map(a => ({ value: a.id, label: a.nombre.toUpperCase() }));
-  }
-  return [];
-}
-
 export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelElement, diamList, activeNet, plans }: ExtremeAccessoryEditorProps) {
-  const accOptions = getAccessoryOptions(activeNet);
+  const accOptions = getAccessoryOptions(activeNet).map(o => ({ ...o, label: o.label.toUpperCase() }));
 
   const onAccChange = (field: 'accesorioInicio' | 'accesorioFin') => (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;

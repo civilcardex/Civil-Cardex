@@ -68,14 +68,6 @@ function RegisterPage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#0a0e14', color: '#e2e2e8' }}>
-      <style>{`
-        .login-grid {
-          background-image: linear-gradient(rgba(0,170,255,0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0,170,255,0.03) 1px, transparent 1px);
-          background-size: 60px 60px;
-        }
-      `}</style>
-
       <script type="application/ld+json">{JSON.stringify(REGISTER_JSONLD)}</script>
       <Navbar />
 

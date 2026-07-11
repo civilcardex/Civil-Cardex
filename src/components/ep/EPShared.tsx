@@ -1,29 +1,20 @@
-import React, { useState, useRef, useEffect } from "react";
+import React from "react";
 import { useEP, type EPData } from "../../context/EPContext";
 
 import { SI } from "../../styles/sharedTableStyles";
+import { LazyDecimalInput } from "../shared/LazyDecimalInput";
 
 export function LazyInp({ field, style, ariaLabel, disabled }: { field: keyof EPData; style?: React.CSSProperties; ariaLabel?: string; disabled?: boolean }) {
   const { ep, updEP } = useEP();
-  const [val, setVal] = useState(() => String(ep[field] ?? ""));
-  const isDirty = useRef(false);
-
-  useEffect(() => {
-    if (!isDirty.current) setVal(String(ep[field] ?? ""));
-  }, [ep, field]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    isDirty.current = true;
-    const v = e.target.value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
-    setVal(v);
-  };
-
-  const handleBlur = () => {
-    isDirty.current = false;
-    updEP(field, val);
-  };
-
-  return <input type="text" disabled={disabled} inputMode="decimal" aria-label={ariaLabel} value={val} onChange={handleChange} onBlur={handleBlur} style={{...style || SI, opacity: disabled ? 0.7 : 1, cursor: disabled ? 'default' : 'text'}} />;
+  return (
+    <LazyDecimalInput
+      value={String(ep[field] ?? "")}
+      onCommit={(v) => updEP(field, v)}
+      ariaLabel={ariaLabel}
+      disabled={disabled}
+      style={{ ...(style || SI), opacity: disabled ? 0.7 : 1, cursor: disabled ? 'default' : 'text' }}
+    />
+  );
 }
 
 export const Param = ({ name, sub }: { name: string; sub?: React.ReactNode }) => (

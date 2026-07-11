@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { writeBajantePropToDrawing } from '../../utils/writeDiameterToDrawing';
-import { NETS } from '../../lib/PlanoEngine/PlanoState';
+import { createConnectingRamalIfNeeded } from '../../utils/createConnectingRamal';
 const BajanteAsociacion_S1: React.CSSProperties = { flex: 1, padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 
 
@@ -54,50 +54,7 @@ export default function BajanteAsociacion({
                   writeBajantePropToDrawing(bKey, selElement.net || 'san', 'descargaEnId', v, planosCtx.plans);
 
                   if (v) {
-                    const oParts = v.split('|');
-                    const oPlanId = oParts[0];
-                    const oTgtId = oParts[1];
-                    const lowerPl = lowerFloorsRamales.find((g: any) => String(g.planId) === String(oPlanId));
-                    const targetBaj = lowerPl?.bajantes?.find((b: any) => String(b.id) === String(oTgtId));
-                    if (targetBaj) {
-                      const dist = Math.hypot(selElement.x - targetBaj.x, selElement.y - targetBaj.y);
-                      if (dist > 0.05) {
-                        const exists = engineRef.current.ramales.some((r: any) => 
-                          (Math.hypot(r.pts[0][0] - selElement.x, r.pts[0][1] - selElement.y) < 0.5 &&
-                           Math.hypot(r.pts[r.pts.length - 1][0] - targetBaj.x, r.pts[r.pts.length - 1][1] - targetBaj.y) < 0.5) ||
-                          (Math.hypot(r.pts[0][0] - targetBaj.x, r.pts[0][1] - targetBaj.y) < 0.5 &&
-                           Math.hypot(r.pts[r.pts.length - 1][0] - selElement.x, r.pts[r.pts.length - 1][1] - selElement.y) < 0.5)
-                        );
-                        if (!exists) {
-                          const net = selElement.net || 'san';
-                          const cnt = ++(engineRef.current._netCounts[net]['ramal']);
-                          const newRamalId = 'R' + Date.now();
-                          const netPfx = NETS.find(n => n.id === net)?.lbl || 'R';
-                          const newRamal: any = {
-                            id: newRamalId,
-                            net,
-                            tipo: 'ramal',
-                            padre: null,
-                            pts: [[selElement.x, selElement.y], [targetBaj.x, targetBaj.y]],
-                            totalL: +(engineRef.current.pxToM(dist)).toFixed(3),
-                            label: netPfx + cnt,
-                            ini: '', fin: '',
-                            piso: engineRef.current.nivelActual?.n ?? '',
-                            dz: '', uc: 0,
-                            labelX: (selElement.x + targetBaj.x) / 2,
-                            labelY: (selElement.y + targetBaj.y) / 2,
-                            labelAngle: 0,
-                            material: '',
-                            diametro: '',
-                            pendiente: 1.5,
-                            bloqueado: true,
-                          };
-                          engineRef.current.ramales.push(newRamal);
-                          engineRef.current._markDirty();
-                          engineRef.current.render();
-                        }
-                      }
-                    }
+                    createConnectingRamalIfNeeded(engineRef.current, selElement.x, selElement.y, selElement.net, v, lowerFloorsRamales);
                   }
                 }
               }}

@@ -1,7 +1,9 @@
 import { createContext, memo, useContext, useEffect, useRef, useState } from "react";
 import { bajanteLabel } from "../../utils/accessoryAbbreviations";
 import { normalizeDnLabel } from "../../utils/formatUtils";
-import { pisoLbl, DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS_DN_LABELS, ACCESORIOS_HIDRO, SAN_ACCESORIOS, GAS_ACCESORIOS } from "../../constants";
+import { pisoLbl, DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS_DN_LABELS } from "../../constants";
+import { getAccessoryOptions } from "../../utils/accessoryOptions";
+import { createConnectingRamalIfNeeded } from "../../utils/createConnectingRamal";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import { writeBajantePropToDrawing, writeAcoDiamToDrawing, writeContadorDiamToDrawing } from "../../utils/writeDiameterToDrawing";
 import { syncExtremeAccessoryToHidroData } from "../../utils/syncExtremeAccessory";
@@ -279,50 +281,7 @@ function BajanteDiameterSelector({
                   writeBajantePropToDrawing(bKey, element.net || 'san', 'descargaEnId', v, planosCtx.plans);
 
                   if (v && engineRef.current) {
-                    const oParts = v.split('|');
-                    const oPlanId = oParts[0];
-                    const oTgtId = oParts[1];
-                    const lowerPl = lowerFloorsRamales.find((g: any) => String(g.planId) === String(oPlanId));
-                    const targetBaj = lowerPl?.bajantes?.find((b: any) => String(b.id) === String(oTgtId));
-                    if (targetBaj) {
-                      const dist = Math.hypot(element.x - targetBaj.x, element.y - targetBaj.y);
-                      if (dist > 0.05) {
-                        const exists = engineRef.current.ramales.some((r: any) => 
-                          (Math.hypot(r.pts[0][0] - element.x, r.pts[0][1] - element.y) < 0.5 &&
-                           Math.hypot(r.pts[r.pts.length - 1][0] - targetBaj.x, r.pts[r.pts.length - 1][1] - targetBaj.y) < 0.5) ||
-                          (Math.hypot(r.pts[0][0] - targetBaj.x, r.pts[0][1] - targetBaj.y) < 0.5 &&
-                           Math.hypot(r.pts[r.pts.length - 1][0] - element.x, r.pts[r.pts.length - 1][1] - element.y) < 0.5)
-                        );
-                        if (!exists) {
-                          const net = element.net || 'san';
-                          const cnt = ++(engineRef.current._netCounts[net]['ramal']);
-                          const newRamalId = 'R' + Date.now();
-                          const netPfx = NETS.find(n => n.id === net)?.lbl || 'R';
-                          const newRamal: any = {
-                            id: newRamalId,
-                            net,
-                            tipo: 'ramal',
-                            padre: null,
-                            pts: [[element.x, element.y], [targetBaj.x, targetBaj.y]],
-                            totalL: +(engineRef.current.pxToM(dist)).toFixed(3),
-                            label: netPfx + cnt,
-                            ini: '', fin: '',
-                            piso: engineRef.current.nivelActual?.n ?? '',
-                            dz: '', uc: 0,
-                            labelX: (element.x + targetBaj.x) / 2,
-                            labelY: (element.y + targetBaj.y) / 2,
-                            labelAngle: 0,
-                            material: '',
-                            diametro: '',
-                            pendiente: 1.5,
-                            bloqueado: true,
-                          };
-                          engineRef.current.ramales.push(newRamal);
-                          engineRef.current._markDirty();
-                          engineRef.current.render();
-                        }
-                      }
-                    }
+                    createConnectingRamalIfNeeded(engineRef.current, element.x, element.y, element.net, v, lowerFloorsRamales);
                   }
                 }}
                 style={{ ...DrawingElementContextMenu_S2, width: '85%' }}>
@@ -1034,23 +993,6 @@ function BajanteCodeEditor({
   }
 
   return null;
-}
-
-function getAccessoryOptions(netId: string) {
-  if (netId === 'san') {
-    return SAN_ACCESORIOS.filter(a => a.id === 'codo90rmSube' || a.id === 'codo90rmBaja' || a.id === 'codoReventilado' || a.id === 'sifon').map(a => ({ value: a.id, label: a.nombre }));
-  }
-  if (['ll', 'vent'].includes(netId)) {
-    return SAN_ACCESORIOS.map(a => ({ value: a.id, label: a.nombre }));
-  }
-  if (netId === 'gas') {
-    return GAS_ACCESORIOS.map(a => ({ value: a.id, label: a.nombre }));
-  }
-  if (['af', 'ac', 'rci', 'rec'].includes(netId)) {
-    // AF/AC: válvulas, reducciones, ampliaciones, otros, y codos de subida/bajada (sin tees ni el resto de codos)
-    return ACCESORIOS_HIDRO.filter(a => (a.cat !== 'Codos' && a.cat !== 'Tees') || a.id === 'codo90rmSube' || a.id === 'codo90rmBaja').map(a => ({ value: a.id, label: a.nombre }));
-  }
-  return [];
 }
 
 function BajanteMenu() {

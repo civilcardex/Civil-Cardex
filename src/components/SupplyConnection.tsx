@@ -2,6 +2,7 @@ import React from "react";
 import { COEF_HAZEN } from "../constants/hydraulicData";
 import { fmt } from "../utils/formatUtils";
 import { CONTADORES as CONTADORES_CAT } from "../pages/catalog/catalogData";
+import { LazyDecimalInput } from "./shared/LazyDecimalInput";
 const SupplyConnection_S1: React.CSSProperties = { fontFamily: "monospace", fontSize: 9, lineHeight: 1.4, color: "var(--txt2)", background: "var(--bg3)", padding: "8px", borderRadius: "4px", border: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center" };
 const SupplyConnection_S2: React.CSSProperties = { width:"100%",padding:"3px 4px",border:"1px solid #3a494a",borderRadius:3,background:"#1e2024",color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",cursor:"pointer",textAlign:"center",textAlignLast:"center" };
 
@@ -74,34 +75,17 @@ const TD_PARAM_VALUE: React.CSSProperties = { textAlign: "center", color: "var(-
 const TD_PARAM_UNIT: React.CSSProperties = { textAlign: "center", color: "var(--txt3)", padding: "1px 2px" };
 const SCROLL_INNER: React.CSSProperties = { display: "flex", flexWrap: "wrap", gap: "16px", alignItems: "stretch", paddingBottom: "16px" };
 
-function LazyNum({ value, onChange, ariaLabel, style, className }: any) {
-  const [val, setVal] = React.useState(() => value?.toString() || "");
-  const [prevValue, setPrevValue] = React.useState(value);
-
-  if (value !== prevValue) {
-    setPrevValue(value);
-    if (parseFloat(val) !== value && !(val === "" && value === 0)) {
-      setVal(value?.toString() || "0");
-    }
-  }
+function LazyNum({ value, onChange, ariaLabel, style, className }: { value: number; onChange: (v: number) => void; ariaLabel?: string; style?: React.CSSProperties; className?: string }) {
   return (
-    <input 
-      type="number" 
-      step={0.01} 
-      aria-label={ariaLabel} 
-      className={className} 
-      style={style} 
-      value={val} 
-      onChange={e => setVal(e.target.value)} 
-      onBlur={() => { 
-        const p = parseFloat(val); 
-        if (isNaN(p)) {
-          setVal("0");
-          onChange(0);
-        } else {
-          onChange(p);
-        }
-      }} 
+    <LazyDecimalInput
+      value={value?.toString() ?? ""}
+      onCommit={(raw) => {
+        const p = parseFloat(raw);
+        onChange(Number.isFinite(p) ? p : 0);
+      }}
+      ariaLabel={ariaLabel}
+      style={style}
+      className={className}
     />
   );
 }

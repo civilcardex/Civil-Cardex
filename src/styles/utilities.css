@@ -28,3 +28,9 @@
   animation: rot .5s linear infinite;
   display: inline-block;
 }
+
+.login-grid {
+  background-image: linear-gradient(rgba(0,170,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,170,255,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
