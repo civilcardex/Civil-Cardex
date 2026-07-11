@@ -41,35 +41,17 @@ function ramalHasCodoReventilado(r: any): boolean {
   return Object.values(r.accMed || {}).includes('codoReventilado');
 }
 const TramoEditor_S1: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const TramoEditor_S2: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const TramoEditor_S3: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const TramoEditor_S4: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", textAlign: 'center' };
-const TramoEditor_S5: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const TramoEditor_S6: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const TramoEditor_S7: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const TramoEditor_S8: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 };
 const TramoEditor_S9: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 };
-const TramoEditor_S10: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 };
-const TramoEditor_S11: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 };
 const TramoEditor_S12: React.CSSProperties = { width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize: 12,fontFamily:"'Geist',monospace",textAlign:'center' };
 const TramoEditor_S13: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' };
 const TramoEditor_S14: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, padding: '3px 8px', background: '#1a1c20', border: '1px solid #282a2e', borderRadius: 3 };
 const TramoEditor_S15: React.CSSProperties = { fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", fontWeight: 600, textAlign: 'right', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
-const TramoEditor_S16: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' };
-const TramoEditor_S17: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer', textAlign: 'center' };
-const TramoEditor_S18: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", textAlign: 'center' };
-const TramoEditor_S19: React.CSSProperties = { width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize: 12,fontFamily:"'Geist',monospace",textAlign:'center' };
-const TramoEditor_S20: React.CSSProperties = { width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize: 12,fontFamily:"'Geist',monospace",textAlign:'center' };
 const TramoEditor_S21: React.CSSProperties = { width:'50%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize: 12,fontFamily:"'Geist',monospace" };
 const TramoEditor_S22: React.CSSProperties = { width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize: 12,fontFamily:"'Geist',monospace",minWidth:0 };
 const TramoEditor_S23: React.CSSProperties = { width:'100%',padding:"3px 5px",background:"#1a1c1f",border:"1px solid #2a3435",borderRadius:3,color:"#b9caca",fontSize: 12,fontFamily:"'Geist',monospace" };
 const TramoEditor_S24: React.CSSProperties = { width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize: 12,fontFamily:"'Geist',monospace" };
-const TramoEditor_S25: React.CSSProperties = { width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize: 12,fontFamily:"'Geist',monospace" };
-const TramoEditor_S26: React.CSSProperties = { width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize: 12,fontFamily:"'Geist',monospace",minWidth:0 };
-const TramoEditor_S27: React.CSSProperties = { width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize: 12,fontFamily:"'Geist',monospace",minWidth:0 };
-const TramoEditor_S28: React.CSSProperties = { width:'100%',padding:"3px 5px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize: 12,fontFamily:"'Geist',monospace",minWidth:0 };
-const TramoEditor_S29: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', padding: '4px', background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 3 };
-const TramoEditor_S30: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 };
 const TramoEditor_S31: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, padding: '2px 6px', background: 'rgba(168,85,247,.1)', border: '1px solid rgba(168,85,247,.35)', borderRadius: 3, color: '#C084FC', cursor: 'pointer', fontFamily: "'Geist',monospace", fontSize: 12, fontWeight: 700, };
 
 
@@ -130,7 +112,7 @@ function CalentadorEditor({ selElement, handleUpdateSel }: { selElement: any; ha
         <div style={{ fontFamily: "'Geist',monospace", fontSize: 12, color: "#9BA8AA", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Capacidad</div>
           <select value={selElement.capacidad ?? ''} aria-label="Capacidad"
             onChange={e => { handleUpdateSel('capacidad', e.target.value); }}
-            style={TramoEditor_S2}
+            style={TramoEditor_S1}
           >
             <option value="">— Seleccionar —</option>
             {CAT_GAS.filter(g => g.id.startsWith('cal')).map(g => (
@@ -174,7 +156,7 @@ function BajanteEditor({
                   engineRef.current.render();
                 }
               }}
-              style={TramoEditor_S3}>
+              style={TramoEditor_S1}>
               <option value="">—</option>
               {(selElement.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
                 <option key={d.pulg} value={d.nom}>{normalizeDnLabel(d.nom)}</option>
@@ -239,7 +221,7 @@ function BajanteEditor({
               }
               handleUpdateSel('dNominal', val);
             }}
-            style={TramoEditor_S5}>
+            style={TramoEditor_S1}>
             <option value="">—</option>
             {(selElement.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
               <option key={d.pulg} value={d.nom}>{normalizeDnLabel(d.nom)}</option>
@@ -255,7 +237,7 @@ function BajanteEditor({
               const val = e.target.value;
               handleUpdateSel('bajR', val === '7/24' ? 7/24 : 0.25);
             }}
-            style={TramoEditor_S6}>
+            style={TramoEditor_S1}>
             <option value="7/24">7/24</option>
             <option value="1/4">1/4</option>
           </select>
@@ -264,7 +246,7 @@ function BajanteEditor({
           <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Área</div>
           <select value={selElement.area_m2 ? String(selElement.area_m2) : ''} aria-label="Área"
             onChange={e => { handleUpdateSel('area_m2', parseFloat(e.target.value) || 0); }}
-            style={TramoEditor_S7}>
+            style={TramoEditor_S1}>
             <option value="">— Sin área —</option>
             {(engineRef.current?.areas || []).filter((a: any) => a.net === selElement.net).map((a: any) => (
               <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
@@ -321,14 +303,14 @@ function BajanteEditor({
         {activeNet === 'san' && (
           <div style={{ width: '100%', marginTop: 8 }}>
             <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Bajantes asociadas</div>
-            <div style={TramoEditor_S10}>
+            <div style={TramoEditor_S8}>
               {(() => {
                 const others = allBajantes.filter((b: any) => selElement && b.key !== `${selElement.id}-${engineRef.current?.planId}`);
                 if (others.length === 0) return <div style={{ fontSize: 12, color: '#8AB4D6', fontFamily: "'Geist',monospace", padding: '4px', gridColumn: 'span 2' }}>Sin otras bajantes en esta red</div>;
                 return others.map((b: any) => {
                   const isAssoc = b.descargaEnId === `${engineRef.current?.planId}|${selElement.id}`;
                   return (
-                    <label key={b.key} style={TramoEditor_S11}>
+                    <label key={b.key} style={TramoEditor_S9}>
                       <input type="checkbox" checked={isAssoc}
                         onChange={e => {
                           const val = e.target.checked ? `${engineRef.current?.planId}|${selElement.id}` : null;
@@ -472,7 +454,7 @@ function RamalEditor({
           }
         }
       }}
-      style={TramoEditor_S16}>
+      style={TramoEditor_S13}>
         {(() => {
           const gasMat = GAS.find((g: any) => g.mat === currentMat);
           return gasMat ? gasMat.rows.map((r: any) => (
@@ -505,7 +487,7 @@ function RamalEditor({
           }
         }
       }}
-      style={TramoEditor_S17}>
+      style={TramoEditor_S13}>
       <option value="">Sin diámetro</option>
       {diamList.map((d: any) => {
         const valClean = d.n.split(' — ')[0].trim();
@@ -548,7 +530,7 @@ function RamalEditor({
               : (pendSel[activeNet] !== undefined ? pendSel[activeNet] : 2.0);
             setPendInput(current > 0 ? String(current) : '');
           }}
-        style={TramoEditor_S18}
+        style={TramoEditor_S4}
         />
             </div>
             ) : null}
@@ -563,7 +545,7 @@ function RamalEditor({
                 <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>Altura (m)</div>
                 <input type="number" step="0.01" value={selElement?.dz ?? ''} placeholder="0.00" aria-label="Delta Z o longitud vertical (m)"
                   onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({dz:v,lvert:v});setSelElement({...selElement,dz:v,lvert:v})}}}
-                  style={TramoEditor_S19}/>
+                  style={TramoEditor_S12}/>
               </div>
               )}
               {showDescargas && (
@@ -571,7 +553,7 @@ function RamalEditor({
                   <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>Descargas</div>
                   <input type="number" step="1" min="1" value={selElement?.nSalidas ?? 1} placeholder="1" aria-label="Número de descargas en simultáneo"
                     onChange={e=>{if(engineRef.current){const v=parseInt(e.target.value)||1;engineRef.current.updateSelected({nSalidas:v});setSelElement({...selElement,nSalidas:v})}}}
-                    style={TramoEditor_S20}/>
+                    style={TramoEditor_S12}/>
                 </div>
               )}
             </div>
@@ -657,7 +639,7 @@ function TextHeaderFields() {
       <div style={{fontSize: 12,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.3}}>Texto</div>
       <input value={selElement.text||''} placeholder="Texto" aria-label="Texto adicional"
         onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({text:v});setSelElement({...selElement,text:v})}}}
-        style={TramoEditor_S25}/>
+        style={TramoEditor_S24}/>
     </div>
   )
 }
@@ -698,19 +680,19 @@ function RamalHeaderFields() {
           <div style={{fontSize: 12,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.3}}>Nombre</div>
           <input value={displayLabelWithPiso(selElement.label, engineRef.current?.nivelActual?.label ?? '')} placeholder="Tramo" aria-label="Nombre del tramo"
             onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({label:v});setSelElement({...selElement,label:v})}}}
-            style={TramoEditor_S26}/>
+            style={TramoEditor_S22}/>
         </div>
         <div>
           <div style={{fontSize: 12,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.3}}>Inicio</div>
           <input value={selElement.ini||''} placeholder="— inicial —" aria-label="Conexión de inicio"
             onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({ini:v});setSelElement({...selElement,ini:v})}}}
-            style={TramoEditor_S27}/>
+            style={TramoEditor_S22}/>
         </div>
         <div>
           <div style={{fontSize: 12,color:'#8AB4D6',fontFamily:"'Geist',monospace",marginBottom:2,textTransform:'uppercase',letterSpacing:.3}}>Final</div>
           <input value={selElement.fin||''} placeholder="— final —" aria-label="Conexión de fin"
             onChange={e=>{if(engineRef.current){const v=e.target.value;engineRef.current.updateSelected({fin:v});setSelElement({...selElement,fin:v})}}}
-            style={TramoEditor_S28}/>
+            style={TramoEditor_S22}/>
         </div>
       </div>
     </div>
@@ -845,14 +827,14 @@ function RamalEditorSection() {
       {selElement?.pts && (engineRef.current?.bajantes?.length ?? 0) > 0 && ['san', 'll'].includes(activeNet) && (
         <div style={{ padding: "10px 12px 8px", borderBottom: '1px solid #3a494a' }}>
           <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
-          <div style={TramoEditor_S29}>
+          <div style={TramoEditor_S8}>
             {(() => {
               const netBajs = (engineRef.current?.bajantes || []).filter((b: any) => b.net === activeNet && b.tipo !== 'tributario');
               if (netBajs.length === 0) return <div style={{ fontSize: 12, color: '#8AB4D6', fontFamily: "'Geist',monospace", padding: '4px', gridColumn: 'span 2' }}>Sin bajantes en esta red</div>;
               return netBajs.map((b: any) => {
                 const isAssoc = (b.recibeDeIds || []).includes(selElement.id);
                 return (
-                  <label key={b.id} style={TramoEditor_S30}>
+                  <label key={b.id} style={TramoEditor_S9}>
                     <input type="checkbox" checked={isAssoc}
                       onChange={e => {
                         const newRecibe = e.target.checked

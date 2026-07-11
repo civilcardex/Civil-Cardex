@@ -41,32 +41,6 @@
 
 /* ── Validation Results ── */
 
-.val-r {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  padding: 8px 11px;
-  border-radius: var(--r);
-  margin-bottom: 4px;
-  font-size: 13px;
-}
-
-.val-r.ok {
-  background: var(--ok-bg);
-  border: 1px solid var(--ok-b);
-}
-
-.val-r.warn {
-  background: var(--warn-bg);
-  border: 1px solid var(--warn-b);
-}
-
-.val-r.idle {
-  background: var(--bg3);
-  border: 1px solid var(--line);
-  color: var(--txt3);
-}
-
 .val-ico {
   font-size: 12px;
   flex-shrink: 0;
@@ -74,15 +48,6 @@
 }
 
 /* ── Normativa ── */
-
-.norm-ley {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 8px 13px;
-  border-top: 1px solid var(--line);
-  background: var(--bg);
-}
 
 .nli {
   display: flex;

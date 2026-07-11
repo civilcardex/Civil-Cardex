@@ -1,11 +1,5 @@
 /* ── Toggle Grid ── */
 
-.tg-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 .tg {
   display: flex;
   align-items: center;
@@ -201,24 +195,6 @@
   outline-offset: 1px;
 }
 
-.fdc11 .ni {
-  width: auto;
-  padding: 5px 8px;
-  background: var(--bg4);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--txt);
-  outline: none;
-  text-align: right;
-}
-
-.fdc11 .ni:focus-visible {
-  outline: 2px solid var(--acc2);
-  outline-offset: 1px;
-}
-
 input[type="number"].ni::-webkit-outer-spin-button,
 input[type="number"].ni::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -229,34 +205,3 @@ input[type="number"].ni {
   -moz-appearance: textfield;
 }
 
-/* ── Badges & Pills ── */
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  padding: 2px 8px;
-  border-radius: 20px;
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.badge.af { background: var(--af-bg); color: var(--txt); }
-.badge.san { background: var(--san-bg); color: var(--txt); }
-.badge.gas { background: var(--gas-bg); color: var(--txt); }
-.badge.ok { background: var(--ok-bg); color: var(--txt); }
-.badge.warn { background: var(--warn-bg); color: var(--txt); }
-.badge.err { background: var(--err-bg); color: var(--txt); }
-.badge.ll { background: var(--ll-bg); color: var(--txt); }
-
-.pill {
-  font-family: var(--mono);
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 20px;
-  background: var(--bg4);
-  color: var(--txt3);
-  border: 1px solid var(--line);
-}

@@ -26,9 +26,7 @@ import BajanteAsociacion from "./pdfViewer/BajanteAsociacion";
 import PdfViewerDrawnElements from "./pdfViewer/PdfViewerDrawnElements";
 import { CopyFromPlanPanel } from "./pdfViewer/CopyFromPlanPanel";
 import AparatosPanel from "./FixturesPanel";
-const PdfViewer_S1: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
-const PdfViewer_S2: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
-const PdfViewer_S3: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+const PdfViewer_SR_ONLY: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 const PdfViewer_S4: React.CSSProperties = { width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace",cursor:'pointer' };
 const PdfViewer_S5: React.CSSProperties = { position:"absolute",top:0,zIndex:40,width:16,height:24,background:"#14161a",border:"1px solid #3a494a",color:"#849495",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,fontSize:12 } as const;
 const PdfViewer_EMPTY_PISOS: any[] = [];
@@ -669,7 +667,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
       <div style={{flex:1,display:"flex",minHeight:0,position:"relative",minWidth:0}}>
 
       <div className="visor-sidebar" style={dynamicLeftStyle}>
-        <h2 style={PdfViewer_S1}>Panel de capas</h2>
+        <h2 style={PdfViewer_SR_ONLY}>Panel de capas</h2>
         <div style={{height:3,flexShrink:0,transition:'background .3s',background:STATUS[saveStatus]?.color || STATUS.error.color}} />
         <PdfViewerToolbar
           tool={tool} snapOn={snapOn} activeNet={activeNet} currentFile={currentFile}
@@ -679,7 +677,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
       </div>
 
       <div style={{position:'relative',flex:1,display:'flex',minHeight:0,minWidth:0}}>
-        <h2 style={PdfViewer_S2}>Visor de planos</h2>
+        <h2 style={PdfViewer_SR_ONLY}>Visor de planos</h2>
         <PdfCanvas
           cwRef={cwRef} containerRef={containerRef} pdfCanvasRef={pdfCanvasRef} drawCanvasRef={drawCanvasRef}
           currentFile={currentFile} error={error as any} loading={loading}
@@ -706,7 +704,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
 
       {/* Sidebar Right (was PdfViewerSidebarRight) */}
       <div className="visor-sidebar-right" style={dynamicRightStyle}>
-        <h2 style={PdfViewer_S3}>Panel de edición</h2>
+        <h2 style={PdfViewer_SR_ONLY}>Panel de edición</h2>
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ fontFamily: "'Geist',monospace", fontSize: 12, color: "#849495", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Nivel</div>
           <select aria-label="Seleccionar nivel" value={selectedNivel??''} onChange={e=>{

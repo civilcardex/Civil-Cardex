@@ -6,15 +6,8 @@ import { DIAMETROS_AF, DIAMETROS_AC } from "../constants/hydraulicData";
 import { lookupInterno, lookupInternoAC } from "../utils/accesoriosUtils";
 import InfoTab from "./workarea/InfoTab";
 import type { useWorkAreaState } from "./useWorkAreaState";
-const WorkAreaContent_S1: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+const WorkAreaContent_SR_ONLY: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 const WorkAreaContent_S2: React.CSSProperties = { display: 'flex', gap: 12, alignItems: 'baseline', padding: '8px 12px', background: 'var(--bg3)', borderRadius: 'var(--r)', border: '1px solid var(--line)', marginBottom: 6 };
-const WorkAreaContent_S3: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
-const WorkAreaContent_S4: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
-const WorkAreaContent_S5: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
-const WorkAreaContent_S6: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
-const WorkAreaContent_S7: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
-const WorkAreaContent_S8: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
-const WorkAreaContent_S9: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 const WorkAreaContent_S10: React.CSSProperties = { display:'flex',alignItems:'center',gap:8,padding:'8px 14px',borderRadius:'var(--r)',border:'1px solid',cursor:'pointer',fontSize:13,fontFamily:'var(--body)',flex:1,justifyContent:'center' } as const;
 
 
@@ -83,7 +76,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
   return (
     <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}>
       <fieldset style={{ display: 'flex', gap: 6, flexWrap: 'wrap', border: 'none', padding: 0, margin: 0 }}>
-        <legend style={WorkAreaContent_S1}>Redes</legend>
+        <legend style={WorkAreaContent_SR_ONLY}>Redes</legend>
         {redesActivas.map(r => (
           <button type="button" key={r.id} onClick={() => setRedActiva(r.id)} onMouseEnter={() => { if (r.id === 'bom' || r.id === 'ep' || r.id === 'gas') prefetchHeavy(); }} aria-pressed={redActiva === r.id} aria-label={r.lbl} style={{ ...WorkAreaContent_S10, borderColor: redActiva === r.id ? r.col : 'var(--line)', color: redActiva === r.id ? r.col : 'var(--txt3)', background: redActiva === r.id ? 'rgba(0,0,0,.15)' : 'transparent', fontWeight: redActiva === r.id ? 700 : 400 }}>
             {r.icoImg ? <img src={r.icoImg} alt=""  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" /> : <span style={{ fontSize: 18 }}>{r.ico}</span>}
@@ -191,13 +184,13 @@ export default function WorkAreaContent({ state }: WorkAreaContentProps) {
 
   return (
     <RainwaterProvider>
-      {tab === 'info' && <section aria-label="Información del proyecto" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_S3}>Información del proyecto</h2><InfoTab state={state} /></section>}
-      {tab === 'planos' && <section aria-label="Carga de planos" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_S4}>Carga de planos</h2><Suspense fallback={FALLBACK}><PlanosTab state={state} /></Suspense></section>}
-      {tab === 'redes' && state.redesActivas.length > 0 && <section aria-label="Diseño de red" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_S5}>Diseño de red</h2><RedesTab state={state} /></section>}
-      {tab === 'datos' && <section aria-label="Parámetros de diseño" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_S6}>Parámetros de diseño</h2><Suspense fallback={FALLBACK}><BaseDatos redes={redes} /></Suspense></section>}
-      {tab === 'crit' && <section aria-label="Criterios y normativa" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_S7}>Criterios y normativa</h2><Suspense fallback={FALLBACK}><Normativa /></Suspense></section>}
-      {tab === 'inf' && <section aria-label="Resumen del proyecto" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_S8}>Resumen del proyecto</h2><InfTab state={state} /></section>}
-      {tab === 'iso' && <section aria-label="Isometría de red" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_S9}>Isometría de red</h2><Suspense fallback={FALLBACK}><IsometriaTab state={state} /></Suspense></section>}
+      {tab === 'info' && <section aria-label="Información del proyecto" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_SR_ONLY}>Información del proyecto</h2><InfoTab state={state} /></section>}
+      {tab === 'planos' && <section aria-label="Carga de planos" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_SR_ONLY}>Carga de planos</h2><Suspense fallback={FALLBACK}><PlanosTab state={state} /></Suspense></section>}
+      {tab === 'redes' && state.redesActivas.length > 0 && <section aria-label="Diseño de red" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_SR_ONLY}>Diseño de red</h2><RedesTab state={state} /></section>}
+      {tab === 'datos' && <section aria-label="Parámetros de diseño" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_SR_ONLY}>Parámetros de diseño</h2><Suspense fallback={FALLBACK}><BaseDatos redes={redes} /></Suspense></section>}
+      {tab === 'crit' && <section aria-label="Criterios y normativa" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_SR_ONLY}>Criterios y normativa</h2><Suspense fallback={FALLBACK}><Normativa /></Suspense></section>}
+      {tab === 'inf' && <section aria-label="Resumen del proyecto" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_SR_ONLY}>Resumen del proyecto</h2><InfTab state={state} /></section>}
+      {tab === 'iso' && <section aria-label="Isometría de red" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}><h2 style={WorkAreaContent_SR_ONLY}>Isometría de red</h2><Suspense fallback={FALLBACK}><IsometriaTab state={state} /></Suspense></section>}
     </RainwaterProvider>
   );
 }

@@ -69,23 +69,10 @@ const DrawingElementContextMenu_fantasmaBtn: React.CSSProperties = {
   borderTop: '1px solid #3a494a',
   width: '100%',
 };
-const DrawingElementContextMenu_S3: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const DrawingElementContextMenu_S4: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const DrawingElementContextMenu_S5: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const DrawingElementContextMenu_S6: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const DrawingElementContextMenu_S7: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px', maxHeight: 120, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 };
 const DrawingElementContextMenu_S8: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 11, color: '#b9caca', fontFamily: "'Geist',monospace" };
 const DrawingElementContextMenu_S9: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px', maxHeight: 160, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 };
-const DrawingElementContextMenu_S10: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 11, color: '#b9caca', fontFamily: "'Geist',monospace" };
-const DrawingElementContextMenu_S11: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const DrawingElementContextMenu_S12: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const DrawingElementContextMenu_S13: React.CSSProperties = { width: '100%', padding: '6px 8px', cursor: 'pointer', background: '#1e2024', border: '1px dashed #00dce5', borderRadius: 4, color: '#00dce5', fontSize: 12, fontFamily: "'Geist',monospace", textAlign: 'center', fontWeight: 600, };
-const DrawingElementContextMenu_S14: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const DrawingElementContextMenu_S15: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const DrawingElementContextMenu_S16: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const DrawingElementContextMenu_S17: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const DrawingElementContextMenu_S18: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
-const DrawingElementContextMenu_S21: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px 8px', maxHeight: 160, overflowY: 'auto', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, padding: 4 };
 const DrawingElementContextMenu_S22: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", minWidth: 0 };
 const DrawingElementContextMenu_S23: React.CSSProperties = { position: 'absolute', zIndex: 101, background: '#1a1c20', border: '1px solid #3a494a', borderRadius: 6, boxShadow: '0 4px 16px rgba(0,0,0,0.4)', padding: '4px', minWidth: 170, maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden' };
 
@@ -346,7 +333,7 @@ function BajanteDiameterSelector({
                     }
                   }
                 }}
-                style={DrawingElementContextMenu_S3}>
+                style={DrawingElementContextMenu_S2}>
                 <option value="">—</option>
                 {(element.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
                   <option key={d.pulg} value={d.nom}>{normalizeDnLabel(d.nom)}</option>
@@ -368,7 +355,7 @@ function BajanteDiameterSelector({
                     setSelElement({ ...selElement, bajR: valNum });
                   }
                 }}
-                style={DrawingElementContextMenu_S4}>
+                style={DrawingElementContextMenu_S2}>
                 <option value="7/24">7/24</option>
                 <option value="1/4">1/4</option>
               </select>
@@ -384,7 +371,7 @@ function BajanteDiameterSelector({
                     setSelElement({ ...selElement, area_m2: val });
                   }
                 }}
-                style={DrawingElementContextMenu_S5}>
+                style={DrawingElementContextMenu_S2}>
                 <option value="">Sin área</option>
                 {(engineRef.current?.areas || []).filter((a: any) => a.net === element.net).map((a: any) => (
                   <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
@@ -431,7 +418,7 @@ function BajanteDiameterSelector({
                 }
               } 
             }}
-            style={DrawingElementContextMenu_S6}>
+            style={DrawingElementContextMenu_S2}>
             <option value="">—</option>
             {(element.net === 'vent' ? DIAM_VENT : DIAM_BAN).map(d => (
               <option key={d.pulg} value={d.nom}>{normalizeDnLabel(d.nom)}</option>
@@ -539,7 +526,7 @@ function BajanteConnectionPanel({
                   const isAssociated = (element.recibeDeIds || []).includes(b.id)
                     || (b.recibeDeIds || []).includes(currentId);
                   return (
-                    <label key={b.id} style={DrawingElementContextMenu_S10}>
+                    <label key={b.id} style={DrawingElementContextMenu_S8}>
                       <input type="checkbox" checked={isAssociated}
                         onChange={e => {
                           const checked = e.target.checked;
@@ -718,7 +705,7 @@ function BajanteConnectionPanel({
                           }
                         }
                       }}
-                      style={DrawingElementContextMenu_S11}
+                      style={DrawingElementContextMenu_S2}
                     >
                       <option value="">Ninguno</option>
                       {accOptions.map(o => (
@@ -746,7 +733,7 @@ function BajanteConnectionPanel({
                             engineRef.current._markDirty();
                           }
                         }}
-                        style={DrawingElementContextMenu_S12}
+                        style={DrawingElementContextMenu_S2}
                       >
                         <option value="">Usar diametro de red</option>
                         {(currentAcc === 'sifon'
@@ -817,7 +804,7 @@ function BajanteCodeEditor({
               engineRef.current?.render();
               setContextMenuState(null);
             }}
-            style={DrawingElementContextMenu_S14}>
+            style={DrawingElementContextMenu_S2}>
             <option value="">— Sin bajante —</option>
             {(engineRef.current?.bajantes || []).filter((b: any) => b.net === element.net).map((b: any) => (
               <option key={b.id} value={b.id}>{b.code || b.id}</option>
@@ -865,7 +852,7 @@ function BajanteCodeEditor({
                 engineRef.current?.render();
               }
             }}
-            style={DrawingElementContextMenu_S15}
+            style={DrawingElementContextMenu_S2}
           >
             <option value="">— Sin diámetro —</option>
             {diamList.map((d: any) => {
@@ -908,7 +895,7 @@ function BajanteCodeEditor({
                 writeContadorDiamToDrawing(dNom, planosCtx.plans, element.net || 'af');
               }
             }}
-            style={DrawingElementContextMenu_S16}
+            style={DrawingElementContextMenu_S2}
           >
             <option value="">— Sin diámetro —</option>
               {CONTADORES_CAT.map((c: any) => (
@@ -938,7 +925,7 @@ function BajanteCodeEditor({
                     writeAcoDiamToDrawing(val, planosCtx.plans, element.net || 'af');
                   }
                 }}
-                style={DrawingElementContextMenu_S17}
+                style={DrawingElementContextMenu_S2}
               >
                 <option value="">— Sin diámetro —</option>
                 {(element.net === 'gas' ? GAS_DN_LABELS : DIAMETROS_AF.map(d => d.nominal)).map(d => (
@@ -980,7 +967,7 @@ function BajanteCodeEditor({
                 engineRef.current?.render();
               }
             }}
-            style={DrawingElementContextMenu_S18}
+            style={DrawingElementContextMenu_S2}
           >
             <option value="">— Seleccionar —</option>
             {CAT_GAS.filter(g => g.id.startsWith('cal')).map(g => (
@@ -1130,7 +1117,7 @@ function MidRamalAccessorySelector({ element, midRamalHit, engineRef, selElement
           eng.render();
           eng._markDirty();
         }}
-        style={DrawingElementContextMenu_S17}
+        style={DrawingElementContextMenu_S2}
       >
         <option value="">Ninguno</option>
         {options.map(o => (
@@ -1204,7 +1191,7 @@ function RamalMenu() {
           display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4
         }}>
           <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
-          <div style={DrawingElementContextMenu_S21}>
+          <div style={DrawingElementContextMenu_S9}>
             {(() => {
               const currentId = element.id;
               const netBajantes = (engineRef.current?.bajantes || []).filter((b: any) => b.net === element.net && b.id !== element.id && b.tipo !== 'tributario');

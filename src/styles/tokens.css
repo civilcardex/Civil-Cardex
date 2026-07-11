@@ -7,7 +7,6 @@
   --bg2: #1a1c20;
   --bg3: #1e2024;
   --bg4: #282a2e;
-  --bg5: #333539;
 
   --line: #3a494a;
 
@@ -42,7 +41,6 @@
   --san-bg: rgba(245, 166, 35, .07);
 
   --vent: #808080;
-  --vent-bg: rgba(128, 128, 128, .08);
 
   --ll: #22d3ee;
   --ll-bg: rgba(34, 211, 238, .07);
@@ -52,15 +50,10 @@
   --gas-b: rgba(168, 85, 247, .25);
 
   --rci: #F87171;
-  --rci-bg: rgba(248, 113, 113, .08);
 
   --ep: #cca043;
-  --ep-bg: rgba(204, 160, 67, .08);
 
   --bom: #8A9BB8;
-  --bom-bg: rgba(138, 155, 184, .08);
-
-  --gold: #c9a227;
 
   --mono: 'Geist', monospace;
   --head: 'Hanken Grotesk', sans-serif;
@@ -69,8 +62,6 @@
   --r: 6px;
   --r2: 8px;
   --r3: 12px;
-  --pdf-left-sidebar-w: 165px;
-  --pdf-right-sidebar-w: 210px;
 }
 
 @media (prefers-reduced-motion: reduce) {

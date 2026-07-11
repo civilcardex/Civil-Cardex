@@ -1,14 +1,5 @@
 /* ── Totals Bar ── */
 
-.tot-bar {
-  display: flex;
-  gap: 7px;
-  flex-wrap: wrap;
-  padding: 9px 13px;
-  background: var(--bg3);
-  border-top: 1px solid var(--line);
-}
-
 .tot {
   flex: 1;
   min-width: 80px;
@@ -40,14 +31,6 @@
 }
 
 /* ── Tramos ── */
-
-.tramo-card {
-  background: var(--bg3);
-  border: 1px solid var(--line);
-  border-radius: var(--r2);
-  margin-bottom: 7px;
-  overflow: hidden;
-}
 
 .tramo-hdr {
   display: flex;
@@ -108,12 +91,6 @@
 }
 
 /* ── Calentadores ── */
-
-.cal-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 7px;
-}
 
 .cal-card {
   padding: 9px 11px;
@@ -208,12 +185,6 @@
 
 /* ── Meta & Results ── */
 
-.meta-g {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
-  gap: 7px;
-}
-
 .meta-c {
   padding: 9px 11px;
   background: var(--bg3);
@@ -271,13 +242,6 @@
 
 /* ── Presión ── */
 
-.pres-g {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
-  gap: 7px;
-  margin-bottom: 12px;
-}
-
 .pres-c {
   padding: 9px;
   background: var(--bg3);
@@ -306,16 +270,6 @@
 
 /* ── Action Bar & Buttons ── */
 
-.act-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 9px 16px;
-  background: var(--bg2);
-  border-top: 1px solid var(--line);
-  flex-shrink: 0;
-}
-
 .act-info {
   font-family: var(--mono);
   font-size: 11px;
@@ -339,17 +293,6 @@
   display: flex;
   align-items: center;
   gap: 5px;
-}
-
-.btn-ghost {
-  background: transparent;
-  border: 1px solid var(--line);
-  color: var(--txt2);
-}
-
-.btn-ghost:hover {
-  border-color: var(--txt3);
-  background: var(--bg3);
 }
 
 .btn-pri {
