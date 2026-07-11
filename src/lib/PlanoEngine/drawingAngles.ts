@@ -78,32 +78,6 @@ export function _firstSegmentAngle(pts: number[][]): number {
   return Math.round(angle);
 }
 
-export function _strokeAngle(pts: number[][]): number {
-  if (pts.length < 2) return 0;
-  let totalLen = 0;
-  const segLens: number[] = [];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const l = Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
-    segLens.push(l);
-    totalLen += l;
-  }
-  const half = totalLen / 2;
-  let acc = 0;
-  for (let i = 0; i < segLens.length; i++) {
-    if (acc + segLens[i] >= half) {
-      const dx = pts[i + 1][0] - pts[i][0];
-      const dy = pts[i + 1][1] - pts[i][1];
-      if (segLens[i] < 1) return 0;
-      let angle = Math.atan2(dy, dx) * 180 / Math.PI;
-      if (angle > 90) angle -= 180;
-      if (angle < -90) angle += 180;
-      return Math.round(angle);
-    }
-    acc += segLens[i];
-  }
-  return 0;
-}
-
 export function snapTributaryToPadre45Deg(cursorX: number, cursorY: number, lastX: number, lastY: number, pts: number[][], threshold: number): { x: number; y: number } | null {
   let best: { x: number; y: number } | null = null;
   let minD = Infinity;

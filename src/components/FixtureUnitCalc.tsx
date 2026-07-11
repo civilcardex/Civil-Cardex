@@ -22,7 +22,7 @@ function CalculoUD() {
     });
   }, [aps]);
 
-  const [, componentTotalMap] = useMemo(() => {
+  const [componentTotalMap] = useMemo(() => {
     const map: Record<string, string[]> = {}; // parentKey -> childKeys[]
 
     for (const plan of plans || []) {
@@ -164,69 +164,6 @@ function CalculoUD() {
       }
     }
 
-    // Find connected components in the full graph `adj`
-    const compVisited = new Set<string>();
-    const components: string[][] = [];
-
-    for (const node of Object.keys(adj)) {
-      if (!compVisited.has(node)) {
-        const comp: string[] = [];
-        const q = [node];
-        compVisited.add(node);
-        while (q.length > 0) {
-          const curr = q.shift()!;
-          comp.push(curr);
-          for (const neigh of adj[curr] || []) {
-            if (!compVisited.has(neigh)) {
-              compVisited.add(neigh);
-              q.push(neigh);
-            }
-          }
-        }
-        components.push(comp);
-      }
-    }
-
-    const getRootScore = (key: string): number => {
-      const tr = tramosSan.find(x => x._key === key);
-      if (!tr) return 99999999;
-      const piso = tr.piso || 0;
-      const isBajante = tr.esBajante;
-      const id = tr.id || '';
-      const match = id.match(/^([a-zA-Z]+)(\d+)?$/);
-      const num = match && match[2] ? parseInt(match[2]) : 999;
-      return (piso * 100000) + (isBajante ? 0 : 10000) + num;
-    };
-
-    const orientedConexiones: Record<string, string[]> = {};
-    const orientedVisited = new Set<string>();
-
-    for (const comp of components) {
-      let root = comp[0];
-      let minScore = getRootScore(root);
-      for (const node of comp) {
-        const score = getRootScore(node);
-        if (score < minScore) {
-          minScore = score;
-          root = node;
-        }
-      }
-
-      const q = [root];
-      orientedVisited.add(root);
-      while (q.length > 0) {
-        const parent = q.shift()!;
-        if (!orientedConexiones[parent]) orientedConexiones[parent] = [];
-        for (const child of adj[parent] || []) {
-          if (!orientedVisited.has(child)) {
-            orientedVisited.add(child);
-            orientedConexiones[parent].push(child);
-            q.push(child);
-          }
-        }
-      }
-    }
-
     // Compute connected-component totals
     const tramoById: Record<string, any> = {};
     for (const t of tramosSan) {
@@ -261,7 +198,7 @@ function CalculoUD() {
       for (const k of comp) componentTotalMap[k] = compTotal;
     }
 
-    return [orientedConexiones, componentTotalMap];
+    return [componentTotalMap];
   }, [plans, tramosSan, mergedBase]);
 
 

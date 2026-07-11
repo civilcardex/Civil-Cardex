@@ -421,7 +421,6 @@ export default function DisenosSanitarios() {
                 let fuerzaTractiva=0,chequeoFT='—';
                 if(Q!=null&&Q>0&&S!=null&&S>0&&n!=null&&n>0){
                   DcalcPulg=Math.round(diametroManning(Q/1000,n,S)*1000/25.4*100)/100;
-                  if(DdisPulg>0){const ok=DcalcPulg<=DdisPulg?'O.K.':'NO CUMPLE'; void ok;}
                 }
                 if(Q!=null&&Q>0&&S!=null&&S>0&&n!=null&&n>0&&DintMm>0){
                   const hc = calcHydraulicCheck({ Q, S, n, DintMm });

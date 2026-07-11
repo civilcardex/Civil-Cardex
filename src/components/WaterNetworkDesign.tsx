@@ -123,7 +123,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     });
   };
 
-  const [, conexionesDisplay, componentTotalMap] = useMemo(() => {
+  const [conexionesDisplay, componentTotalMap] = useMemo(() => {
     const calculoMap: Record<string, string[]> = {};
 
     for (const plan of plans || []) {
@@ -249,74 +249,6 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
       }
     }
 
-    // Find connected components in the undirected display graph
-    const compVisited = new Set<string>();
-    const components: string[][] = [];
-
-    for (const node of Object.keys(displayMap)) {
-      if (!compVisited.has(node)) {
-        const comp: string[] = [];
-        const q = [node];
-        compVisited.add(node);
-        while (q.length > 0) {
-          const curr = q.shift()!;
-          comp.push(curr);
-          for (const neigh of displayMap[curr] || []) {
-            if (!compVisited.has(neigh)) {
-              compVisited.add(neigh);
-              q.push(neigh);
-            }
-          }
-        }
-        components.push(comp);
-      }
-    }
-
-    const getRootScore = (key: string): number => {
-      const parts = key.split('-');
-      const id = parts[0];
-      const match = id.match(/^([a-zA-Z]+)(\d+)?$/);
-      if (!match) return 99999999;
-      const prefix = match[1].toUpperCase();
-      const num = match[2] ? parseInt(match[2]) : 99999999;
-      if (prefix === 'RAF' || prefix === 'RAC' || prefix === 'RS' || prefix === 'RALL') {
-        return num; // main inputs have lowest scores
-      }
-      if (prefix === 'MAF' || prefix === 'MAC' || prefix === 'BAN' || prefix === 'BALL') {
-        return num + 1000;
-      }
-      return num + 1000000;
-    };
-
-    const orientedConexiones: Record<string, string[]> = {};
-    const orientedVisited = new Set<string>();
-
-    for (const comp of components) {
-      let root = comp[0];
-      let minScore = getRootScore(root);
-      for (const node of comp) {
-        const score = getRootScore(node);
-        if (score < minScore) {
-          minScore = score;
-          root = node;
-        }
-      }
-
-      const q = [root];
-      orientedVisited.add(root);
-      while (q.length > 0) {
-        const parent = q.shift()!;
-        if (!orientedConexiones[parent]) orientedConexiones[parent] = [];
-        for (const child of displayMap[parent] || []) {
-          if (!orientedVisited.has(child)) {
-            orientedVisited.add(child);
-            orientedConexiones[parent].push(child);
-            q.push(child);
-          }
-        }
-      }
-    }
-
     // Compute connected-component totals: each tramo's Total = sum of all tramos in its component
     const tramoById: Record<string, any> = {};
     for (const t of tramos) {
@@ -351,7 +283,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
       for (const k of comp) componentTotalMap[k] = compTotal;
     }
 
-    return [orientedConexiones, displayMap, componentTotalMap] as const;
+    return [displayMap, componentTotalMap] as const;
   }, [plans, tramos, networkType, AP]);
 
   const propiaMap = useMemo(() => {

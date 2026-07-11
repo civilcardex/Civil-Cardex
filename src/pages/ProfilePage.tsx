@@ -5,20 +5,20 @@ import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { usePageMeta } from '../hooks/usePageMeta'
 
-const ProfilePage_proyectosActivos = [
+const proyectosActivos = [
   { id: 1, codigo: 'CR-97', nombre: 'Casa de Roca No. 97 - Redes Sanitarias y Lluvias', progreso: 100, estado: 'completo' },
   { id: 2, codigo: 'AF-AC-01', nombre: 'Red Hidráulica AF y AC - Casa Roca 97', progreso: 98, estado: 'completo' },
   { id: 3, codigo: 'CR-98', nombre: 'Casa de Roca No. 98 - Redes Sanitarias', progreso: 65, estado: 'activo' },
   { id: 4, codigo: 'TOR-01', nombre: 'Torre Residencial - Hidroneumático y bombas', progreso: 80, estado: 'revision' },
 ]
 
-const ProfilePage_estadoConfig: Record<string, { color: string; label: string }> = {
+const estadoConfig: Record<string, { color: string; label: string }> = {
   completo: { color: 'bg-secondary text-on-secondary-container', label: 'COMPLETO' },
   revision: { color: 'bg-tertiary text-on-tertiary-container', label: 'EN REVISIÓN' },
   activo: { color: 'bg-primary text-on-primary-container', label: 'ACTIVO' },
 }
 
-const ProfilePage_campos = [
+const campos = [
   { key: 'nombre', label: 'Nombre' },
   { key: 'apellido', label: 'Apellido' },
   { key: 'email', label: 'Correo Electrónico', readonly: true },
@@ -43,11 +43,7 @@ function ProfilePage() {
   const [proyectosOpen, setProyectosOpen] = useState(false);
   const userIdRef = useRef<string | null>(null);
 
-  const proyectosActivos = ProfilePage_proyectosActivos
-
   const navigate = useNavigate()
-
-  const estadoConfig = ProfilePage_estadoConfig
 
   async function fetchPerfil() {
     if (!supabase) return
@@ -121,8 +117,6 @@ function ProfilePage() {
   }
 
   const nombreCompleto = [perfil.nombre, perfil.apellido].filter(Boolean).join(' ')
-
-  const campos = ProfilePage_campos
 
   if (loading) {
     return (

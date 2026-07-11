@@ -45,10 +45,6 @@ function deleteKeys(store: Record<string, unknown>, pred: (k: string) => boolean
   }
 }
 
-function deepClone<T>(v: T): T {
-  return structuredClone(v);
-}
-
 export function copyDrawingFromPlan(
   engine: ExtendedEngine,
   targetPlanId: string,
@@ -106,12 +102,12 @@ export function copyDrawingFromPlan(
       srcSnapshot[el.id] = {};
 
       const apKey = `${netId}_${el.id}_${srcPid}`;
-      if (aparatos[apKey] !== undefined) srcSnapshot[el.id].aparato = deepClone(aparatos[apKey]);
+      if (aparatos[apKey] !== undefined) srcSnapshot[el.id].aparato = structuredClone(aparatos[apKey]);
 
       const hdKey = `${netId}_${el.id}_${srcPid}`;
-      if (hidroData[hdKey] !== undefined) srcSnapshot[el.id].hidro = deepClone(hidroData[hdKey]);
+      if (hidroData[hdKey] !== undefined) srcSnapshot[el.id].hidro = structuredClone(hidroData[hdKey]);
 
-      if (gasAcc[el.id] !== undefined) srcSnapshot[el.id].gasAcc = deepClone(gasAcc[el.id]);
+      if (gasAcc[el.id] !== undefined) srcSnapshot[el.id].gasAcc = structuredClone(gasAcc[el.id]);
     }
 
     /* ── Remove existing matching elements from engine ── */

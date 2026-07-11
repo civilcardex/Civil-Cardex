@@ -29,7 +29,6 @@ import {
   _statusMsg,
   _nextLabel,
   _midpoint,
-  _strokeAngle,
   _calcPolyArea,
   handleLineDown,
   handleDimDown,
@@ -79,7 +78,6 @@ import {
   ensureRpCntRamal,
 } from './PlanoEngineNetwork';
 import { PlanoHistory } from './PlanoHistory';
-import { initEngineState } from './DragStateMachine';
 import { hitTestRightClick, hitTestBajanteLabelForDrag } from './PlanoEngineHitTesting';
 
 export { NETS };
@@ -215,7 +213,67 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.canv = canv;
     this.ctx = canv.getContext('2d')!;
 
-    initEngineState(this);
+    this.zoom = 1;
+    this.offX = 0;
+    this.offY = 0;
+    this.dpr = 1;
+    this.tool = 'sel';
+    this.activeNet = 'af';
+    (this as any).tipoTramo = 'ramal';
+    this.snapMode = true;
+    this.scaleM = 0.5;
+    this.definedScaleM = 0;
+    this.pageW = 0;
+    this.pageH = 0;
+
+    this.ramales = [];
+    this.dims = [];
+    this.textAnnots = [];
+    this.bajantes = [];
+    this.areas = [];
+    this.activeRamal = null;
+    this.padreTributario = null;
+    this.activeArea = null;
+    this.selId = null;
+    this._isGhostSel = false;
+    this._yeeFlashKey = null;
+    this.areaDrag = null;
+    this.dimDrag = null;
+    this.panning = false;
+    (this as any).panX0 = 0;
+    (this as any).panY0 = 0;
+    this.mouseX = 0;
+    this.mouseY = 0;
+    this.ghostDrag = null;
+    this.lblDrag = null;
+    this.txtDrag = null;
+    this.bajDrag = null;
+    this.ptDrag = null;
+    this.ramalDrag = null;
+    this.multiSel = [];
+    this.multiDrag = null;
+    this.marqueeRect = null;
+    this._dimStart = null;
+    this.nivelActual = null;
+    this.nptLevels = [];
+    this._hiddenNets = new Set<string>();
+    this._lockedNets = new Set<string>();
+    this._loadedPlanId = null;
+    this._onDirtyCb = null;
+    this._lastMouseCvs = { x: 0, y: 0 };
+
+    this._netCounts = {};
+    NETS.forEach(n => { this._netCounts[n.id] = { ramal: 0, tributario: 0 }; });
+
+    this.MM = {
+      lblName: 1.5,
+      lblInfo: 1.2,
+      lblCode: 1.4,
+      flowEmoji: 2.0,
+      coord: 1.2,
+    };
+
+    this._ramalDefaults = null;
 
     this._history = new PlanoHistory(this);
 
@@ -452,7 +510,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _statusMsg(): string { return _statusMsg(this); }
   _nextLabel(): string { return _nextLabel(this); }
   _midpoint(pts: number[][]): [number, number] { return _midpoint(pts); }
-  _strokeAngle(pts: number[][]): number { return _strokeAngle(pts); }
   _calcPolyArea(pts: number[][]): number { return _calcPolyArea(this, pts); }
 
   setTool(t: ToolType): void { _setTool(this, t); }

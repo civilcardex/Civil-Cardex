@@ -404,6 +404,3 @@ export function readSanDrawingSync() {
   };
 }
 
-export { HYDRO_SYNC_KEY, SAN_SYNC_KEY, APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys';
-
-export { HYDRO_DATA_STORAGE_KEY } from '../constants/storage-keys';

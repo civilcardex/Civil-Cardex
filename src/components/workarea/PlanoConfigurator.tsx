@@ -61,8 +61,6 @@ interface PlanoConfiguratorProps {
   plans: any[];
   planNivel: number | null;
   onUpdateNivel: (planId: number, nivel: number | null) => void;
-  onChangePisoCorto?: (planId: number, pisoId: number) => void;
-  onCopyPisoCorto?: (planId: number) => void;
 }
 
 function PlanoConfiguratorBase({

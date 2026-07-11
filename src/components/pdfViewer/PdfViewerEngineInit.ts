@@ -62,7 +62,6 @@ export function usePdfViewerEngine({
   const mountId = useRef(0);
   const renderTaskRef = useRef<any>(null);
   const renderingRef = useRef(false);
-  const [numPages, setNumPages] = useState(0);
   const [engineReady, setEngineReady] = useState(false);
   const pdfRenderedRef = useRef(false);
   const internalLoadingPlanRef = useRef(false);
@@ -208,7 +207,6 @@ export function usePdfViewerEngine({
         const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
         if (thisMount !== mountId.current) return;
         pdfDocRef.current = pdf;
-        setNumPages(pdf.numPages);
         setLoading(false);
         await renderPage(1, scale, thisMount);
       } catch (err) {
@@ -237,10 +235,7 @@ export function usePdfViewerEngine({
 
   return {
     engineRef,
-    numPages,
     engineReady,
-    renderPage,
-    mountId,
     loadingPlanRef,
   };
 }

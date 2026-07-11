@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { createContext, memo, useContext, useEffect, useRef, useState } from "react";
 import { bajanteLabel } from "../../utils/accessoryAbbreviations";
 import { normalizeDnLabel } from "../../utils/formatUtils";
 import { pisoLbl, DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS_DN_LABELS, ACCESORIOS_HIDRO, SAN_ACCESORIOS, GAS_ACCESORIOS } from "../../constants";
@@ -8,9 +8,42 @@ import { syncExtremeAccessoryToHidroData } from "../../utils/syncExtremeAccessor
 import { GAS, CAT_GAS } from "../../constants/engineeringDataGas";
 import { VENTILACION, CONTADORES as CONTADORES_CAT } from "../../pages/catalog/catalogData";
 import { DIAMETROS_AF } from "../../constants/hydraulicData";
-import { DrawingElementContextMenuCtx, useDrawingElementContextMenu, type DrawingElementContextMenuContextValue, type ContextMenuState } from "./DrawingElementContextMenuContext";
 import { diamPulgFromLabel } from "../../utils/diamPulgFromLabel";
 import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
+
+export interface ContextMenuState {
+  visible: boolean;
+  x: number;
+  y: number;
+  element: any; // was bajante
+  isGhostClick?: boolean;
+  ramalEndpoint?: { idx: number; x: number; y: number } | null;
+  midRamalHit?: { segmentIdx: number; x: number; y: number } | null;
+}
+
+interface DrawingElementContextMenuContextValue {
+  contextMenuState: ContextMenuState
+  setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
+  element: any // was bajante
+  selectedNivel: number | null
+  pisos: any[]
+  engineRef: React.MutableRefObject<PlanoEngine | null>
+  selElement: Record<string, any> | null
+  setSelElement: (el: Record<string, any> | null) => void
+  lowerFloorsRamales: any[]
+  planosCtx: { plans: any[] }
+  mats: Record<string, any[]>
+  activeNet: string
+  setDiamSel: React.Dispatch<React.SetStateAction<Record<string, string>>>
+}
+
+const DrawingElementContextMenuCtx = createContext<DrawingElementContextMenuContextValue | null>(null)
+
+function useDrawingElementContextMenu(): DrawingElementContextMenuContextValue {
+  const ctx = useContext(DrawingElementContextMenuCtx)
+  if (!ctx) throw new Error('useDrawingElementContextMenu must be used within DrawingElementContextMenuProvider')
+  return ctx
+}
 const DrawingElementContextMenu_S2: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const DrawingElementContextMenu_dirBtn: React.CSSProperties = {
   padding: '3px 5px',

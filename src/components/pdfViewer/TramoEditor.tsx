@@ -1,4 +1,4 @@
-import React, { type RefObject, useMemo } from 'react'
+import React, { type RefObject, useMemo, createContext } from 'react'
 import { DIAM_BY_MAT, DIAM_BAN, DIAM_VENT } from '../../constants'
 import { VENTILACION } from '../../pages/catalog/catalogData'
 import { DIAMETROS_AF } from '../../constants/hydraulicData'
@@ -9,7 +9,29 @@ import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel'
 import ExtremeAccessoryEditor from './ExtremeAccessoryEditor'
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine'
 import { bajanteLabel } from '../../utils/accessoryAbbreviations'
-import { TramoEditorCtx, type TramoEditorContextValue } from './TramoEditorContext'
+
+interface TramoEditorContextValue {
+  engineRef: React.MutableRefObject<PlanoEngine | null>
+  selElement: any
+  setSelElement: React.Dispatch<React.SetStateAction<any>>
+  activeNet: string
+  handleUpdateSel: (field: string, value: any) => void
+  handleRotateLabel: () => void
+  diamSel: Record<string, string>
+  setDiamSel: React.Dispatch<React.SetStateAction<Record<string, string>>>
+  gasMatSel: Record<string, string>
+  setGasMatSel: React.Dispatch<React.SetStateAction<Record<string, string>>>
+  pendSel: Record<string, number>
+  setPendSel: React.Dispatch<React.SetStateAction<Record<string, number>>>
+  pendInput: string
+  setPendInput: React.Dispatch<React.SetStateAction<string>>
+  mats: Record<string, Array<{ val: string }>> | null
+  matLongName: (short: string) => string
+  plans?: any[]
+  pisos?: any[]
+}
+
+const TramoEditorCtx = createContext<TramoEditorContextValue | null>(null)
 
 // A sanitary main only needs the 3" minimum when it actually carries a codo reventilado
 // connection (endpoint or mid-body) — not every main-line ramal in the network.

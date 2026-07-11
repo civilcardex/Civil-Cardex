@@ -7,12 +7,12 @@ import type { IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
 import { _firstSegmentAngle, checkRamalAngles, segmentsIntersect, snapTributaryToPadre45Deg, isTeeAtEndpoint } from './drawingAngles';
 
-export { checkRamalAngles, _firstSegmentAngle, _strokeAngle, segmentsIntersect, snapTributaryToPadre45Deg } from './drawingAngles';
+export { checkRamalAngles, _firstSegmentAngle, segmentsIntersect, snapTributaryToPadre45Deg } from './drawingAngles';
 export { handleBajanteDown, handleMontanteDown, handleCalentadorDown, handleRedPublicaDown, handleContadorDown } from './drawingCreations';
 
 type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont' | 'calent';
 
-export function toolCursor(tool: string): string {
+function toolCursor(tool: string): string {
   return tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair';
 }
 
