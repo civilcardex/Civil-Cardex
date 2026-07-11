@@ -1,4 +1,4 @@
-import { NETS, netsSnapLinked } from './PlanoState';
+import { NETS, netsSnapLinked, initNetCounts } from './PlanoState';
 import { devError } from '../../utils/devError';
 import type {
   PlanoRamal,
@@ -263,8 +263,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._onDirtyCb = null;
     this._lastMouseCvs = { x: 0, y: 0 };
 
-    this._netCounts = {};
-    NETS.forEach(n => { this._netCounts[n.id] = { ramal: 0, tributario: 0 }; });
+    initNetCounts(this);
 
     this.MM = {
       lblName: 1.5,

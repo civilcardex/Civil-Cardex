@@ -50,6 +50,26 @@ export function checkActiveNet(engine: IPlanoEngineCore, netId: string): boolean
   return activeNets ? activeNets.has(netId) : true;
 }
 
+// If `netId` isn't the currently active drawing net, either auto-switches to it (when the net
+// is enabled for the project) or alerts the user and signals the caller to abort. Returns true
+// when the caller should abort (return/return true from its own handler); false when it's safe
+// to proceed (net was already active, or the switch succeeded).
+export function ensureActiveNet(engine: IPlanoEngineCore, netId: string): boolean {
+  if (netId === engine.activeNet) return false;
+  if (!checkActiveNet(engine, netId)) {
+    const netObj = NETS.find(n => n.id === netId);
+    engine.triggerAlert('Red inactiva', `Debe activar la red de ${netObj ? netObj.name : netId} en la información general`);
+    return true;
+  }
+  engine.setActiveNet(netId);
+  return false;
+}
+
+export function initNetCounts(target: { _netCounts: Record<string, PlanoNetCounts> }): void {
+  target._netCounts = {};
+  NETS.forEach(n => { target._netCounts[n.id] = { ramal: 0, tributario: 0 }; });
+}
+
 // Used ONLY for snapping the cursor while drawing (snapToExisting): ventilación is designed to
 // land its risers exactly on a sanitaria point so the existing reventilado marker (renderVentCodos)
 // lines up. It must NOT be used for any rigid "move together" / auto-connect mechanism — those

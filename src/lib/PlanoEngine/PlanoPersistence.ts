@@ -1,4 +1,4 @@
-import { NETS } from './PlanoState';
+import { NETS, initNetCounts } from './PlanoState';
 
 export interface PlanoWorkData {
   v: number;
@@ -77,8 +77,7 @@ export function applyWorkData(
   engine.selId = null;
   engine.activeRamal = null;
   engine.activeArea = null;
-  engine._netCounts = {};
-  NETS.forEach(n => { engine._netCounts[n.id] = { ramal: 0, tributario: 0 }; });
+  initNetCounts(engine);
   for (const r of engine.ramales as Array<{ net?: string; tipo?: string; id?: string }>) {
     const net = NETS.find(n => n.id === r.net);
     if (net && r.tipo !== 'tributario') {

@@ -248,6 +248,22 @@ function BajanteDiameterSelector({
 }) {
   const currentGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
 
+  const updateGhostField = (field: string, val: string) => {
+    if (!engineRef.current) return;
+    const gd2 = { ...(element.ghostData || {}) };
+    const cd = { ...(gd2[currentGhostLabel] || {}) };
+    (cd as any)[field] = val;
+    gd2[currentGhostLabel] = cd;
+    engineRef.current.updateElementById(element.id, { ghostData: gd2 });
+    const fresh = engineRef.current.bajantes.find((b: any) => b.id === element.id);
+    if (fresh) {
+      setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+      if (selElement?.id === element.id) {
+        setSelElement({ ...selElement, ghostData: gd2 });
+      }
+    }
+  };
+
   return (
     <>
       {!isGhostClick ? (
@@ -307,20 +323,8 @@ function BajanteDiameterSelector({
                 aria-label="Diámetro"
                 onChange={e => {
                   const val = e.target.value;
-                  if (isGhostClick && engineRef.current) {
-                    const gd2 = { ...(element.ghostData || {}) };
-                    const cd = { ...(gd2[currentGhostLabel] || {}) };
-                    cd.dNominal = val;
-                    gd2[currentGhostLabel] = cd;
-                    const fields = { ghostData: gd2 };
-                    engineRef.current?.updateElementById(element.id, fields);
-                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
-                    if (fresh) {
-                      setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
-                      if (selElement?.id === element.id) {
-                        setSelElement({ ...selElement, ghostData: fields.ghostData });
-                      }
-                    }
+                  if (isGhostClick) {
+                    updateGhostField('dNominal', val);
                   } else {
                     const fields = { dNominal: val };
                     engineRef.current?.updateElementById(element.id, fields);
@@ -392,19 +396,7 @@ function BajanteDiameterSelector({
               const val = e.target.value;
               if (engineRef.current) {
                 if (isGhostClick) {
-                  const gd2 = { ...(element.ghostData || {}) };
-                  const cd = { ...(gd2[currentGhostLabel] || {}) };
-                  cd.dNominal = val;
-                  gd2[currentGhostLabel] = cd;
-                  const fields = { ghostData: gd2 };
-                  engineRef.current?.updateElementById(element.id, fields);
-                  const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
-                  if (fresh) {
-                    setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
-                    if (selElement?.id === element.id) {
-                      setSelElement({ ...selElement, ghostData: fields.ghostData });
-                    }
-                  }
+                  updateGhostField('dNominal', val);
                 } else {
                   const fields = { dNominal: val };
                   engineRef.current?.updateElementById(element.id, fields);

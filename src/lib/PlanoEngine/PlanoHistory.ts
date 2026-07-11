@@ -1,4 +1,4 @@
-import { NETS } from './PlanoState';
+import { NETS, initNetCounts } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import type { PlanoRamal, PlanoBajante, PlanoArea, PlanoDimension, PlanoTextAnnotation } from './PlanoState';
 import { cancelRamal, cancelArea } from './PlanoEngineDrawing';
@@ -95,8 +95,7 @@ export class PlanoHistory {
     e.activeRamal = null;
     e.activeArea = null;
     e.selId = null;
-    e._netCounts = {};
-    NETS.forEach(n => { e._netCounts[n.id] = { ramal: 0, tributario: 0 }; });
+    initNetCounts(e);
     e._emitSelect(null);
     e.render();
     this._undoStack = [];

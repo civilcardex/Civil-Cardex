@@ -1,22 +1,13 @@
 import type { IPlanoEngineCore, PlanoBajante, MultiDragOrigData } from './PlanoState';
-import { NETS, isBajante, isRamal, isTextAnnotation, isArea } from './PlanoState';
+import { isBajante, isRamal, isTextAnnotation, isArea, ensureActiveNet } from './PlanoState';
 import { pointInLabelBox, pointToSegmentDist, distanceToRamal } from './HitTester';
 import { getSelected } from './PlanoEngineSelection';
 import { selectAt } from './PlanoEngineSelection';
-import { checkActiveNet } from './PlanoState';
 
 function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any): boolean {
   for (const b of engine.bajantes) {
     if (b._labelBox && pointInLabelBox(x, y, b._labelBox)) {
-      if (b.net !== engine.activeNet) {
-        if (!checkActiveNet(engine, b.net)) {
-          const netObj = NETS.find(n => n.id === b.net);
-          engine.triggerAlert('Red inactiva', `Debe activar la red de ${netObj ? netObj.name : b.net} en la información general`);
-          return true;
-        } else {
-          engine.setActiveNet(b.net);
-        }
-      }
+      if (ensureActiveNet(engine, b.net)) return true;
       if (b.id !== sel?.id) {
         engine.selId = b.id;
         engine._emitSelect(b);
@@ -32,15 +23,7 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any
       const ly = b.labelY ?? b.y;
       const lPos = engine.toCvs(lx, ly);
       if (Math.hypot(x - lPos.x, y - lPos.y) < 50) {
-        if (b.net !== engine.activeNet) {
-          if (!checkActiveNet(engine, b.net)) {
-            const netObj = NETS.find(n => n.id === b.net);
-            engine.triggerAlert('Red inactiva', `Debe activar la red de ${netObj ? netObj.name : b.net} en la información general`);
-            return true;
-          } else {
-            engine.setActiveNet(b.net);
-          }
-        }
+        if (ensureActiveNet(engine, b.net)) return true;
         if (b.id !== sel?.id) {
           engine.selId = b.id;
           engine._emitSelect(b);
@@ -52,15 +35,7 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any
     }
     const circ = b._circ;
     if (circ && Math.hypot(x - circ.x, y - circ.y) < circ.r) {
-      if (b.net !== engine.activeNet) {
-        if (!checkActiveNet(engine, b.net)) {
-          const netObj = NETS.find(n => n.id === b.net);
-          engine.triggerAlert('Red inactiva', `Debe activar la red de ${netObj ? netObj.name : b.net} en la información general`);
-          return true;
-        } else {
-          engine.setActiveNet(b.net);
-        }
-      }
+      if (ensureActiveNet(engine, b.net)) return true;
       if (b.id !== sel?.id) {
         engine.selId = b.id;
         engine._emitSelect(b);
@@ -131,15 +106,7 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
   }
   if (!bestRamal) return false;
 
-  if (bestRamal.net !== engine.activeNet) {
-    if (!checkActiveNet(engine, bestRamal.net)) {
-      const netObj = NETS.find(n => n.id === bestRamal.net);
-      engine.triggerAlert('Red inactiva', `Debe activar la red de ${netObj ? netObj.name : bestRamal.net} en la información general`);
-      return true;
-    } else {
-      engine.setActiveNet(bestRamal.net);
-    }
-  }
+  if (ensureActiveNet(engine, bestRamal.net)) return true;
   engine.selId = bestRamal.id;
   engine.multiSel = [];
   engine._emitSelect(bestRamal);
@@ -240,15 +207,7 @@ function _tryMultiSelDrag(engine: IPlanoEngineCore, x: number, y: number, isMult
 function _trySelBajanteDrag(engine: IPlanoEngineCore, x: number, y: number, sel: any, wasGhostSel: boolean): boolean {
   if (!isBajante(sel) || !(sel.tipo === 'bajante' || sel.tipo === 'montante' || sel.tipo === 'red_publica' || sel.tipo === 'contador' || sel.tipo === 'calentador' || sel.id?.startsWith('B'))) return false;
 
-  if (sel.net !== engine.activeNet) {
-    if (!checkActiveNet(engine, sel.net)) {
-      const netObj = NETS.find(n => n.id === sel.net);
-      engine.triggerAlert('Red inactiva', `Debe activar la red de ${netObj ? netObj.name : sel.net} en la información general`);
-      return true;
-    } else {
-      engine.setActiveNet(sel.net);
-    }
-  }
+  if (ensureActiveNet(engine, sel.net)) return true;
   if (sel._labelBox && pointInLabelBox(x, y, sel._labelBox)) {
     const lPos = engine.toCvs(sel.labelX, sel.labelY);
     (engine as any)._lblDragIsParent = true;
@@ -515,15 +474,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     const inBox = r._labelBox && pointInLabelBox(x, y, r._labelBox);
     const nearPoint = Math.hypot(x - lPos.x, y - lPos.y) < 12;
     if (inBox || nearPoint) {
-      if (r.net !== engine.activeNet) {
-        if (!checkActiveNet(engine, r.net)) {
-          const netObj = NETS.find(n => n.id === r.net);
-          engine.triggerAlert('Red inactiva', `Debe activar la red de ${netObj ? netObj.name : r.net} en la información general`);
-          return;
-        } else {
-          engine.setActiveNet(r.net);
-        }
-      }
+      if (ensureActiveNet(engine, r.net)) return;
       engine.selId = r.id;
       engine.lblDrag = { id: r.id, offX: x - lPos.x, offY: y - lPos.y };
       engine._emitSelect(r);
@@ -538,15 +489,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     const lPos = engine.toCvs(b.labelX, b.labelY);
     const nearLabel = Math.hypot(x - lPos.x, y - lPos.y) < 20;
     if (lbHit || nearLabel) {
-      if (b.net !== engine.activeNet) {
-        if (!checkActiveNet(engine, b.net)) {
-          const netObj = NETS.find(n => n.id === b.net);
-          engine.triggerAlert('Red inactiva', `Debe activar la red de ${netObj ? netObj.name : b.net} en la información general`);
-          return;
-        } else {
-          engine.setActiveNet(b.net);
-        }
-      }
+      if (ensureActiveNet(engine, b.net)) return;
       engine.selId = b.id;
       engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
       engine._emitSelect(b);
@@ -560,15 +503,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
 
   for (const b of fg) {
     if (b._ghostLabelBox && pointInLabelBox(x, y, b._ghostLabelBox)) {
-      if (b.net !== engine.activeNet) {
-        if (!checkActiveNet(engine, b.net)) {
-          const netObj = NETS.find(n => n.id === b.net);
-          engine.triggerAlert('Red inactiva', `Debe activar la red de ${netObj ? netObj.name : b.net} en la información general`);
-          return;
-        } else {
-          engine.setActiveNet(b.net);
-        }
-      }
+      if (ensureActiveNet(engine, b.net)) return;
       engine.selId = b.id;
       engine._isGhostSel = true;
       // The ghost always gets its own independent label position (ghostData per level) — it
@@ -618,15 +553,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     }
   }
   if (gFound) {
-    if (gFound.net !== engine.activeNet) {
-      if (!checkActiveNet(engine, gFound.net)) {
-        const netObj = NETS.find(n => n.id === gFound.net);
-        engine.triggerAlert('Red inactiva', `Debe activar la red de ${netObj ? netObj.name : gFound.net} en la información general`);
-        return;
-      } else {
-        engine.setActiveNet(gFound.net);
-      }
-    }
+    if (ensureActiveNet(engine, gFound.net)) return;
     engine.selId = gFound.id;
     engine._isGhostSel = true;
     engine._emitSelect(gFound);

@@ -136,6 +136,18 @@ function BajanteEditor({
     const currentGhostDiam = gd.dNominal || '';
     const currentGhostDir = gd.direccion || '';
 
+    const updateGhostField = (mutate: (cd: Record<string, any>) => void) => {
+      const gdNew = { ...(selElement.ghostData || {}) };
+      const cd = { ...(gdNew[lvl] || {}) };
+      mutate(cd);
+      gdNew[lvl] = cd;
+      if (engineRef.current) {
+        engineRef.current.updateSelected({ ghostData: gdNew });
+        setSelElement({ ...selElement, ghostData: gdNew });
+        engineRef.current.render();
+      }
+    };
+
     return (
       <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
         <div style={{ fontFamily: "'Geist',monospace", fontSize: 12, color: "#9BA8AA", marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 }}>Datos específicos (Fantasma)</div>
@@ -145,16 +157,7 @@ function BajanteEditor({
             <select value={currentGhostDiam} aria-label="Diámetro"
               onChange={e => {
                 const val = e.target.value;
-                const gdNew = { ...(selElement.ghostData || {}) };
-                const cd = { ...(gdNew[lvl] || {}) };
-                cd.dNominal = val;
-                gdNew[lvl] = cd;
-                if (engineRef.current) {
-                  const fields = { ghostData: gdNew };
-                  engineRef.current.updateSelected(fields);
-                  setSelElement({ ...selElement, ghostData: fields.ghostData });
-                  engineRef.current.render();
-                }
+                updateGhostField(cd => { cd.dNominal = val; });
               }}
               style={TramoEditor_S1}>
               <option value="">—</option>
@@ -170,16 +173,10 @@ function BajanteEditor({
                 const isActive = currentGhostDir === val;
                 return (
                   <button type="button" key={val} onClick={() => {
-                    const gdNew = { ...(selElement.ghostData || {}) };
-                    const cd = { ...(gdNew[lvl] || {}) };
-                    const newDir = cd.direccion === val ? undefined : val;
-                    if (newDir) { cd.direccion = newDir; } else { delete cd.direccion; }
-                    gdNew[lvl] = cd;
-                    if (engineRef.current) {
-                      engineRef.current.updateSelected({ ghostData: gdNew });
-                      setSelElement({ ...selElement, ghostData: gdNew });
-                      engineRef.current.render();
-                    }
+                    updateGhostField(cd => {
+                      const newDir = cd.direccion === val ? undefined : val;
+                      if (newDir) { cd.direccion = newDir; } else { delete cd.direccion; }
+                    });
                   }} style={{
                     flex: 1, padding: '4px 6px', fontSize: 12, fontFamily: "'Geist',monospace", borderRadius: 3,
                     border: `1px solid ${isActive ? '#F5A623' : '#3a494a'}`,
