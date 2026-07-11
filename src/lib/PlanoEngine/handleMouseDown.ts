@@ -1,6 +1,6 @@
 import type { IPlanoEngineCore, PlanoBajante, MultiDragOrigData } from './PlanoState';
 import { isBajante, isRamal, isTextAnnotation, isArea, ensureActiveNet } from './PlanoState';
-import { pointInLabelBox, pointToSegmentDist, distanceToRamal } from './HitTester';
+import { pointInLabelBox, pointToSegmentDist, distanceToRamal, findAccMedVertexHit } from './HitTester';
 import { getSelected } from './PlanoEngineSelection';
 import { selectAt } from './PlanoEngineSelection';
 
@@ -268,7 +268,23 @@ function _trySelDimDrag(engine: IPlanoEngineCore, x: number, y: number, sel: any
 }
 
 function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: any): boolean {
-  if (!isRamal(sel) || !sel.id?.startsWith('R') || sel.bloqueado) return false;
+  if (!isRamal(sel) || !sel.id?.startsWith('R')) return false;
+
+  // Mid-ramal accessory icons are drawn offset from the pipe centerline (renderRamales.ts), so a
+  // click on the visible icon can miss the tight per-vertex radius below. Check the icon's wider
+  // footprint first so clicking the icon itself — not just the exact underlying vertex — starts
+  // the slide-along-body drag. This is allowed on bloqueado ramales because the slide never
+  // bends the ramal's actual path — only the accessory position changes.
+  const accIdx = findAccMedVertexHit(sel.pts, sel.accMed, (px, py) => engine.toCvs(px, py), x, y, engine.realMmToCanvasPx(23) + 8);
+  if (accIdx !== null) {
+    const a = sel.pts[accIdx - 1], b = sel.pts[accIdx + 1];
+    (engine as any)._dragBackupPts = structuredClone(sel.pts);
+    engine.ptDrag = { id: sel.id, ptIdx: accIdx, accMedSlide: { ax: a[0], ay: a[1], bx: b[0], by: b[1] } };
+    return true;
+  }
+
+  // From here on, any drag bends the ramal's actual path — bloqueado must block these.
+  if (sel.bloqueado) return false;
 
   for (let i = 0; i < sel.pts.length; i++) {
     const pc = engine.toCvs(sel.pts[i][0], sel.pts[i][1]);

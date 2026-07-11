@@ -10,7 +10,7 @@ import type { IPlanoEngineCore } from './PlanoState';
 import { NETS, checkActiveNet } from './PlanoState';
 import { _midpoint } from './PlanoEngineDrawing';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
-import { pointInPoly, pointInLabelBox, distanceToRamal } from './HitTester';
+import { pointInPoly, pointInLabelBox, distanceToRamal, findAccMedVertexHit } from './HitTester';
 
 export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMultiSelectModifier: boolean = false): void {
   engine._isGhostSel = false;
@@ -100,6 +100,9 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMul
     if (r._labelBox && pointInLabelBox(cx, cy, r._labelBox)) {
       const d = Math.hypot(cx - r._labelBox.cx, cy - r._labelBox.cy);
       if (d < minD) { minD = d; found = r as PlanoRamal; }
+    }
+    if (findAccMedVertexHit(r.pts, (r as any).accMed, (x, y) => engine.toCvs(x, y), cx, cy, engine.realMmToCanvasPx(23) + 8) !== null) {
+      if (0.01 < minD) { minD = 0.01; found = r as PlanoRamal; }
     }
     let d = distanceToRamal(cx, cy, r.pts, (x, y) => engine.toCvs(x, y), engine.mm2cvs(3));
     if (r.pts && r.pts.length > 0) {

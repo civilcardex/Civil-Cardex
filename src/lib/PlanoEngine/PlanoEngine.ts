@@ -75,6 +75,7 @@ import {
   _renumberMontantes as _doRenumberMontantes,
   _renumberAreas as _doRenumberAreas,
   calcSanitaryAccessories,
+  calcHydroAccessories,
   autoDetectRamalConnections,
   ensureRpCntRamal,
 } from './PlanoEngineNetwork';
@@ -387,6 +388,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     autoDetectRamalConnections(this);
     ensureRpCntRamal(this);
     calcSanitaryAccessories(this);
+    calcHydroAccessories(this);
     if (this._history) {
       this._history.saveSnapshot();
     }

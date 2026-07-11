@@ -4,7 +4,7 @@ import type { IPlanoEngineCore } from './PlanoState';
 import { segmentStrictIntersectionPoint } from './drawingAngles';
 
 export { _renumberRamales, _renumberBajantes, _renumberMontantes, _renumberAreas } from './networkRenumber';
-export { calcSanitaryAccessories } from './networkSanitary';
+export { calcSanitaryAccessories, calcHydroAccessories } from './networkSanitary';
 
 export function getElementsByNet(engine: IPlanoEngineCore, netId: string): Array<{
   type: string;

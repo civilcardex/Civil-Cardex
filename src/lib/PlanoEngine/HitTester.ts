@@ -28,6 +28,32 @@ export function pointToSegmentDist(px: number, py: number, x1: number, y1: numbe
   return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }
 
+// Mid-ramal accessory icons (renderRamales.ts) are drawn offset from the pipe centerline by
+// `radius`, pointing along the perpendicular bisector of the vertex's two adjacent segments —
+// so a click on the visible icon can land well outside a tolerance centered on the vertex
+// itself. This checks proximity to the vertex with a radius wide enough to also cover the icon,
+// and returns the vertex index hit (or null).
+export function findAccMedVertexHit(
+  pts: number[][],
+  accMed: Record<string, string> | undefined | null,
+  toCvs: (px: number, py: number) => { x: number; y: number },
+  cx: number,
+  cy: number,
+  radius: number
+): number | null {
+  if (!accMed || !pts || pts.length < 3) return null;
+  for (const key of Object.keys(accMed)) {
+    const m = key.match(/^accMed(\d+)$/);
+    if (!m) continue;
+    const idx = parseInt(m[1], 10);
+    if (idx <= 0 || idx >= pts.length - 1) continue;
+    if (!accMed[key]) continue;
+    const pc = toCvs(pts[idx][0], pts[idx][1]);
+    if (Math.hypot(cx - pc.x, cy - pc.y) < radius) return idx;
+  }
+  return null;
+}
+
 export function snapToSegment(x: number, y: number, pts: number[][], threshold: number = Infinity) {
   let best: { x: number; y: number } | null = null;
   let minD = Infinity;

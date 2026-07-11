@@ -336,3 +336,64 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
     try { window.dispatchEvent(new Event('storage')); } catch { /* ignore */ }
   }
 }
+
+/**
+ * Counts mid-ramal (accMed*) and endpoint (accesorioInicio/Fin) accessories on
+ * the water networks (AF, AC, LL) and writes them into tramo_hidro_data_v3 so the
+ * "Accesorios por ramal" table populates correctly for those networks.
+ * Mirrors the structure used by calcSanitaryAccessories but generalized so any
+ * accMed value (e.g. codo90rmSube, valvCompuerta, llaveTerminal) is counted.
+ */
+export function calcHydroAccessories(engine: IPlanoEngineCore): void {
+  const planId = engine._loadedPlanId;
+  if (!planId) return;
+
+  const HYDRO_NETS = ['af', 'ac', 'll'];
+  const ramales = engine.ramales.filter(r => HYDRO_NETS.includes(r.net));
+  if (ramales.length === 0) return;
+
+  const storageKey = 'tramo_hidro_data_v3';
+  let hidroData: Record<string, any>;
+  try {
+    hidroData = loadFromStorage(storageKey, {}) as Record<string, any>;
+  } catch {
+    hidroData = {};
+  }
+
+  let changed = false;
+
+  for (const r of ramales) {
+    const rKey = `${r.net}_${r.id}_${planId}`;
+    if (!hidroData[rKey]) hidroData[rKey] = { accesorios: {}, Lh: 0, nSalidas: 0 };
+    if (!hidroData[rKey].accesorios) hidroData[rKey].accesorios = {};
+    const acc = hidroData[rKey].accesorios;
+
+    const counts: Record<string, number> = {};
+    if (r.accesorioInicio) counts[r.accesorioInicio] = (counts[r.accesorioInicio] || 0) + 1;
+    if (r.accesorioFin) counts[r.accesorioFin] = (counts[r.accesorioFin] || 0) + 1;
+    if (r.accMed) {
+      for (const val of Object.values(r.accMed)) {
+        if (!val) continue;
+        counts[val] = (counts[val] || 0) + 1;
+      }
+    }
+
+    const customKeys = new Set(Object.keys(counts));
+    const storedKeys = new Set(Object.keys(acc));
+    const allKeys = new Set([...customKeys, ...storedKeys]);
+    for (const k of allKeys) {
+      const desired = counts[k] || 0;
+      const current = acc[k] || 0;
+      if (desired !== current) {
+        if (desired > 0) acc[k] = desired;
+        else delete acc[k];
+        changed = true;
+      }
+    }
+  }
+
+  if (changed) {
+    saveToStorage(storageKey, hidroData);
+    try { window.dispatchEvent(new Event('storage')); } catch { /* ignore */ }
+  }
+}
