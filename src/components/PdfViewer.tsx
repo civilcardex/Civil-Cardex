@@ -457,7 +457,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
   }, []);
 
   const finalVisibleNets = useMemo(() => {
-    const excludeEquipment = (nets: any[]) => nets.filter((n: any) => n.id !== 'ep' && n.id !== 'bom');
+    const excludeEquipment = (nets: any[]) => nets.filter((n: any) => n.id !== 'ep' && n.id !== 'bom' && n.id !== 'recolectora');
     const getNets = () => {
       if (activeNetworks && activeNetworks.size > 0) return excludeEquipment(NETS.filter(n => activeNetworks.has(n.id)));
       if (liveActiveNets) return excludeEquipment(NETS.filter(n => liveActiveNets.has(n.id)));
