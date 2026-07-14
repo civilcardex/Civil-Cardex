@@ -49,7 +49,16 @@ const ProjectContext = createContext<ProjectContextValue | null>(null);
 export function ProjectProvider({ children }: { children?: ReactNode }) {
 const [pisos, setPisos] = usePersistedState<any[]>('civilflow_pisos', []);
 const [proy, setProy] = usePersistedState<Proyecto>('civilflow_proy', PROY_DEFAULTS);
-const [mats, setMats] = usePersistedState<Record<string, MaterialItem[]>>('civilflow_mats', MATS_CLONED);
+const [mats, setMats] = usePersistedState<Record<string, MaterialItem[]>>('civilflow_mats', MATS_CLONED,
+  (saved) => {
+    const savedMats = saved as Record<string, MaterialItem[]>;
+    const merged = { ...MATS_CLONED };
+    for (const k of Object.keys(savedMats)) {
+      merged[k] = savedMats[k];
+    }
+    return merged;
+  }
+);
 const [profs, setProfs] = usePersistedState<ProfItem[]>('civilflow_profs', PROFS_CLONED);
 const [crits, setCrits] = usePersistedState<CritItem[]>('civilflow_crits', CRITS_CLONED);
 
