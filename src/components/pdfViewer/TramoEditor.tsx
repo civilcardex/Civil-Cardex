@@ -328,31 +328,13 @@ function BajanteEditor({
   );
 }
 
-function CaudalField({ selElement, engineRef, setSelElement }: { selElement: any; engineRef: React.MutableRefObject<PlanoEngine | null>; setSelElement: React.Dispatch<React.SetStateAction<any>> }) {
-  const [text, setText] = React.useState('');
-  const [editing, setEditing] = React.useState(false);
+function CaudalField({ selElement }: { selElement: any }) {
   const extVal = selElement?.caudal;
-  const display = editing ? text : (extVal != null && extVal !== '' && !isNaN(Number(extVal)) ? String(extVal) : '');
-  const save = (val: string) => {
-    const v = val === '' || val === '.' ? 0 : parseFloat(val) || 0;
-    if (engineRef.current) {
-      engineRef.current.updateSelected({ caudal: v });
-      setSelElement({ ...selElement, caudal: v });
-      engineRef.current._markDirty();
-    }
-  };
+  const display = extVal != null && extVal !== '' && !isNaN(Number(extVal)) ? Number(extVal).toFixed(2) : '—';
   return (
     <div>
       <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0, whiteSpace: 'nowrap' }}>Caudal (LPS)</div>
-      <input type="text" inputMode="decimal" value={display} placeholder="0.00" aria-label="Caudal en litros por segundo"
-        onFocus={()=>{setEditing(true);setText(display)}}
-        onChange={e=>{
-          const raw = e.target.value.replace(/,/g,'.').replace(/[^0-9.]/g,'');
-          setText(raw);
-          save(raw);
-        }}
-        onBlur={()=>{setEditing(false)}}
-        style={TramoEditor_S12}/>
+      <div style={{ ...TramoEditor_S12, display: 'flex', alignItems: 'center' }}>{display}</div>
     </div>
   );
 }
@@ -533,7 +515,7 @@ function RamalEditor({
             ) : null}
           </div>
           {showCaudal && (
-            <CaudalField selElement={selElement} engineRef={engineRef} setSelElement={setSelElement} />
+            <CaudalField selElement={selElement} />
           )}
           {(showDeltaZ || showDescargas) && (
             <div style={{ display: 'grid', gridTemplateColumns: (showDeltaZ || showDescargas) ? '1fr 1fr' : '1fr', gap: 6 }}>
