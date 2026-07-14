@@ -5,15 +5,13 @@ import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
 
 interface BajanteLL { id: string; bajante: string; areaParcial: number; areaAcumulada: number; intensidad: number; coeficienteC: number; R: string; manning: number; diamPropuesto: number }
-interface CanalLL { id: string; sector: string; areaParcial: number; areaAcumulada: number; intensidad: number; coeficienteC: number; manning: number; pendiente: number; b: number; h: number; bl: number }
-interface RecolectoraData { b: number; h: number; pendiente: number }
+interface CanalLL { id: string; sector: string; areaParcial: number; areaAcumulada: number; intensidad: number; coeficienteC: number; manning: number; pendiente: number; b: number; h: number }
 interface RainwaterContextValue {
   bajantesLl: BajanteLL[];
   addBajanteLL: () => void; delBajanteLL: (id: string) => void; updBajanteLL: (id: string, field: string, val: any) => void;
   canalesLl: CanalLL[];
   addCanalLL: () => void; delCanalLL: (id: string) => void; updCanalLL: (id: string, field: string, val: any) => void;
   conRecolectora: boolean; setConRecolectora: (v: boolean) => void;
-  recolectora: RecolectoraData; updRecolectora: (field: keyof RecolectoraData, val: number) => void;
 }
 
 const RainwaterContext = createContext<RainwaterContextValue | null>(null);
@@ -34,9 +32,6 @@ const [conRecolectora, setConRecolectora] = useState<boolean>(() => {
   } catch { /* ignore */ }
   return false;
 });
-const [recolectora, setRecolectora] = useState<RecolectoraData>({ b: 0, h: 0, pendiente: 0 });
-const updRecolectora = (field: keyof RecolectoraData, val: number) => setRecolectora(p => ({ ...p, [field]: val }));
-
 useEffect(() => {
   const handler = (e: Event) => {
     const nets = (e as CustomEvent).detail;
@@ -47,7 +42,7 @@ useEffect(() => {
 }, []);
 
 const addCanalLL = () => setCanalesLl(p => [...p, {
-  id:`CLL-${p.length+1}`,sector:'',areaParcial:0,areaAcumulada:0,intensidad:0,coeficienteC:0,manning:0,pendiente:0,b:0,h:0,bl:0,
+  id:`CLL-${p.length+1}`,sector:'',areaParcial:0,areaAcumulada:0,intensidad:0,coeficienteC:0,manning:0,pendiente:0,b:0,h:0,
 }]);
 const delCanalLL = (id: string) => setCanalesLl(p => p.filter(t => t.id !== id));
 const updCanalLL = (id: string, field: string, val: any) => setCanalesLl(p => p.map(t => t.id === id ? { ...t, [field]: val } : t));
@@ -92,7 +87,6 @@ const canalesLlAuto = useMemo(() => {
       pendiente: manual?.pendiente ?? 0,
       b: manual?.b ?? 0,
       h: manual?.h ?? 0,
-      bl: manual?.bl ?? 0,
     });
   }
 
@@ -131,8 +125,7 @@ const value = useMemo(() => ({
   bajantesLl, addBajanteLL, delBajanteLL, updBajanteLL,
   canalesLl: canalesLlAuto, addCanalLL, delCanalLL, updCanalLL,
   conRecolectora, setConRecolectora,
-  recolectora, updRecolectora,
-}), [bajantesLl, canalesLlAuto, conRecolectora, recolectora]);
+}), [bajantesLl, canalesLlAuto, conRecolectora]);
 
 return (
 <RainwaterContext.Provider value={value}>

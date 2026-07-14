@@ -19,6 +19,10 @@ export function chequeoBajanteLluvia({ areaAcumulada = 0, intensidad = 0, coefic
   return { Q, dCalc, chequeo };
 }
 
+// Borde libre (freeboard) added on top of the hydraulic depth for the built cross-section —
+// always fixed, not user-editable (canal recolectora requirement).
+export const BORDE_LIBRE_CANAL_CM = 10;
+
 // ─── Chequeo canal cubierta Aguas lluvias (UI inline formula) ───
 export function chequeoCanalLluvia({ areaAcumulada = 0, intensidad = 0, coeficienteC = 0, manning = 0, pendiente = 0, b = 0, h = 0 }: {
   areaAcumulada?: number;
@@ -42,6 +46,6 @@ export function chequeoCanalLluvia({ areaAcumulada = 0, intensidad = 0, coeficie
   const chequeo = Qmax > 0 && Qreal > 0
     ? (Qmax > Qreal ? 'Ok' : 'No cumple')
     : (Qreal > 0 ? 'Sin sección' : '—');
-  const totalStr = b > 0 || h > 0 ? `${b} x ${h}` : '—';
+  const totalStr = b > 0 || h > 0 ? `${b} x ${h + BORDE_LIBRE_CANAL_CM}` : '—';
   return { Qreal, Qmax, chequeo, totalStr };
 }

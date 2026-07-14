@@ -1,21 +1,53 @@
-﻿import { renderStatus } from "../utils/componentHelpers";
+import React from "react";
+import { renderStatus } from "../utils/componentHelpers";
 import { useRainwater } from "../context/RainwaterContext";
-import { chequeoCanalLluvia } from "../utils/calcRainwater";
+import { chequeoCanalLluvia, BORDE_LIBRE_CANAL_CM } from "../utils/calcRainwater";
+
+const CANAL_FIELD_LABELS: Record<'b' | 'h' | 'pendiente', string> = { b: 'Base (cm)', h: 'Altura (cm)', pendiente: 'Pendiente (%)' };
+
+const CanalDimField = React.memo(function CanalDimField({ id, field, value, onChange }: { id: string; field: 'b' | 'h' | 'pendiente'; value: number; onChange: (id: string, field: string, val: number) => void }) {
+  const [text, setText] = React.useState('');
+  const [editing, setEditing] = React.useState(false);
+  const display = editing ? text : (value > 0 ? String(value) : '');
+  return (
+    <input type="text" inputMode="decimal"
+      value={display}
+      placeholder="0"
+      aria-label={CANAL_FIELD_LABELS[field]}
+      onFocus={() => { setEditing(true); setText(display); }}
+      onChange={e => {
+        const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+        setText(raw);
+      }}
+      onBlur={() => {
+        setEditing(false);
+        const v = parseFloat(text) || 0;
+        onChange(id, field, text === '' ? 0 : v);
+      }}
+      style={{ textAlign: 'center', fontSize: 9, padding: '1px 2px', width: 36, fontFamily: 'var(--mono)', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt)' }}
+    />
+  );
+});
 
 export default function ChequeoCanalesLluvias() {
-  const { canalesLl } = useRainwater();
+  const { canalesLl, updCanalLL, conRecolectora } = useRainwater();
 
   return (
     <section className="card">
       <div className="card-h">
-        <h3 className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Chequeo_canal_cubierta.svg" alt="Chequeo canal cubierta"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Chequeo capacidad canal cubierta aguas lluvias</h3>
+        <h3 className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Chequeo_canal_cubierta.svg" alt="Chequeo canal cubierta"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Chequeo capacidad canal recolectora cubierta aguas lluvias</h3>
       </div>
+      {!conRecolectora ? (
+        <div style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 12 }}>
+          Activa el canal recolectora para ver este chequeo.
+        </div>
+      ) : (
       <div className="scroll-top" style={{padding:'16px'}}>
         <div className="scroll-inner" style={{minWidth:'max-content'}}>
         <table className="tbl" style={{fontSize: 9, tableLayout:'auto', width:'100%', borderCollapse:'collapse'}}>
           <thead>
             <tr>
-              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Sector</th>
+              <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Ramal</th>
               <th scope="col" className="col-h ll" colSpan={2} style={{textAlign:'center',fontSize: 9,padding:'1px 1px'}}>Área (m²)</th>
               <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Intensidad (I)<br/><small>mm/hr</small></th>
               <th scope="col" className="col-h ll" rowSpan={2} style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Coeficiente<br/>Escorrentía</th>
@@ -29,9 +61,9 @@ export default function ChequeoCanalesLluvias() {
             <tr>
               <th scope="col" className="col-h ll" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Parcial</th>
               <th scope="col" className="col-h ll" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Acumulada</th>
-              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>b</th>
-              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>h</th>
-              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>bl</th>
+              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Base</th>
+              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Altura</th>
+              <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Borde libre</th>
               <th scope="col" className="col-h ok" style={{fontSize: 9,textAlign:'center',padding:'1px 1px'}}>Total</th>
             </tr>
           </thead>
@@ -53,10 +85,10 @@ return(
                   <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.coeficienteC||'—'}</span></td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize: 9}}>{Qreal>0?Qreal.toFixed(2):'—'}</td>
                   <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.manning||'—'}</span></td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.pendiente||'—'}</span></td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.b||'—'}</span></td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.h||'—'}</span></td>
-                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{c.bl||'—'}</span></td>
+                  <td className="c"><CanalDimField id={c.id} field="pendiente" value={c.pendiente} onChange={updCanalLL} /></td>
+                  <td className="c"><CanalDimField id={c.id} field="b" value={c.b} onChange={updCanalLL} /></td>
+                  <td className="c"><CanalDimField id={c.id} field="h" value={c.h} onChange={updCanalLL} /></td>
+                  <td className="c"><span style={{fontFamily:'var(--mono)',fontSize: 9}}>{BORDE_LIBRE_CANAL_CM}</span></td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontWeight:600,fontSize: 9}}>{totalStr}</td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontWeight:700,fontSize: 9}}>{Qmax > 0 ? Qmax.toFixed(2) : '—'}</td>
                   <td className="c" style={{fontSize: 9}}>{renderStatus(chequeo)}</td>
@@ -67,6 +99,7 @@ return(
         </table>
         </div>
       </div>
+      )}
     </section>
   );
 }

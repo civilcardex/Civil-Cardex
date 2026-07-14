@@ -89,9 +89,9 @@
 }
 
 .piso-tag.cub {
-  background: rgba(34, 211, 238, .12);
-  color: var(--ll);
-  border: 1px solid rgba(34, 211, 238, .3);
+  background: rgba(255, 255, 255, .12);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, .3);
 }
 
 .npt-in {

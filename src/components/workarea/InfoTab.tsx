@@ -240,7 +240,7 @@ const LevelsCard = React.memo(function LevelsCard({ pisos, delPiso, addPiso, add
           <>
             <ul role="list" style={{ flex: 1, overflowY: 'auto', minHeight: 0, listStyle: 'none', margin: 0, padding: 0 }}>
               {pisos.toSorted((a, b) => (b.tipo === 'cubierta' ? 999 : b.n) - (a.tipo === 'cubierta' ? 999 : a.n)).map((p: any) => (
-                <li key={p.id} style={{ ...InfoTab_pisoLi, borderLeft: '3px solid ' + (p.tipo === 'cubierta' ? 'var(--ll)' : p.n < 0 ? 'var(--txt3)' : 'var(--acc2)') }}>
+                <li key={p.id} style={{ ...InfoTab_pisoLi, borderLeft: '3px solid ' + (p.tipo === 'cubierta' ? '#ffffff' : p.n < 0 ? 'var(--txt3)' : 'var(--acc2)') }}>
                   <span className={p.tipo === 'cubierta' ? 'piso-tag cub' : p.n < 0 ? 'piso-tag sot' : 'piso-tag'} style={{ fontSize: 11, padding: '2px 5px', minWidth: 48 }}>{pisoLbl(p.n)}</span>
                   <input type="text" disabled={!isEditing} inputMode="decimal" value={p.npt ?? ''} key={p.id + 'npt'} className="npt-in" aria-label={`NPT para ${pisoLbl(p.n)}`} style={{ fontSize: 12, width: 52, padding: '2px 4px', opacity: isEditing ? 1 : 0.7 }}
                     onChange={e => {
