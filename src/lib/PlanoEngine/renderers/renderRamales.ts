@@ -516,7 +516,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const pCorto = getPisoCorto(engine.nivelActual?.n);
       const lvlSuffix = pCorto ? `-${pCorto}` : '';
       const lbl = r.label ? `${r.label}${lvlSuffix}` : '';
-      const matPart = r.material || '';
+      const matPart = r.material || (r.net === 'vent' ? 'PVC-V' : '');
       const dPart = r.diametro ? `D=${normalizeDnLabel(r.diametro.split(' — ')[0])}` : '';
       const pPart = r.pendiente ? `S=${r.pendiente}%` : '';
       const showPend = (r.net === 'san' || r.net === 'll');
@@ -815,45 +815,50 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       }
     }
 
-    if ((r.tipo === 'tributario' || r.tipo === 'ramal') && ['san', 'af', 'ac', 'gas'].includes(r.net) && r.pts.length >= 2) {
-      [0, r.pts.length - 1].forEach((idx) => {
-        const accType = idx === 0 ? r.accesorioInicio : r.accesorioFin;
-        if (!accType) return;
+  });
 
-        const pt = r.pts[idx];
-        const c = engine.toCvs(pt[0], pt[1]);
+  // Draw extreme accessories (accesorioInicio/Fin) in their own pass, after every ramal's path
+  // line has been stroked — otherwise a later-iterated ramal's line (e.g. a vent ramal sharing
+  // a san ramal's endpoint) paints over an earlier ramal's accessory symbol at that same point.
+  engine.ramales.forEach((r) => {
+    if (engine._hiddenNets.has(r.net)) return;
+    if (!((r.tipo === 'tributario' || r.tipo === 'ramal') && ['san', 'af', 'ac', 'gas'].includes(r.net) && r.pts.length >= 2)) return;
 
-        let dx = 0, dy = 0;
-        if (idx === 0) {
-          dx = r.pts[1][0] - r.pts[0][0];
-          dy = r.pts[1][1] - r.pts[0][1];
-        } else {
-          dx = r.pts[idx][0] - r.pts[idx - 1][0];
-          dy = r.pts[idx][1] - r.pts[idx - 1][1];
-        }
-        const len = Math.hypot(dx, dy);
-        if (len > 0.01) {
-          dx /= len;
-          dy /= len;
-        } else {
-          dx = 1;
-          dy = 0;
-        }
-        const px = -dy, py = dx;
-        const outX = idx === 0 ? -dx : dx;
-        const outY = idx === 0 ? -dy : dy;
+    [0, r.pts.length - 1].forEach((idx) => {
+      const accType = idx === 0 ? r.accesorioInicio : r.accesorioFin;
+      if (!accType) return;
 
-        const rad = engine.realMmToCanvasPx(23);
+      const pt = r.pts[idx];
+      const c = engine.toCvs(pt[0], pt[1]);
 
-        ctx.save();
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        drawExtremeAccessorySymbol(ctx, engine, accType, c, dx, dy, px, py, outX, outY, rad);
-        ctx.restore();
-      });
+      let dx = 0, dy = 0;
+      if (idx === 0) {
+        dx = r.pts[1][0] - r.pts[0][0];
+        dy = r.pts[1][1] - r.pts[0][1];
+      } else {
+        dx = r.pts[idx][0] - r.pts[idx - 1][0];
+        dy = r.pts[idx][1] - r.pts[idx - 1][1];
+      }
+      const len = Math.hypot(dx, dy);
+      if (len > 0.01) {
+        dx /= len;
+        dy /= len;
+      } else {
+        dx = 1;
+        dy = 0;
+      }
+      const px = -dy, py = dx;
+      const outX = idx === 0 ? -dx : dx;
+      const outY = idx === 0 ? -dy : dy;
 
-    }
+      const rad = engine.realMmToCanvasPx(23);
 
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      drawExtremeAccessorySymbol(ctx, engine, accType, c, dx, dy, px, py, outX, outY, rad);
+      ctx.restore();
+    });
   });
 
   // Draw mid-ramal accessories (accMed*) — accessories assigned to interior vertices via right-click

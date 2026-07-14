@@ -3,6 +3,7 @@ import { isBajante, isRamal, isTextAnnotation, isArea, ensureActiveNet } from '.
 import { pointInLabelBox, pointToSegmentDist, distanceToRamal, findAccMedVertexHit } from './HitTester';
 import { getSelected } from './PlanoEngineSelection';
 import { selectAt } from './PlanoEngineSelection';
+import { findCodoReventiladoLinks } from './PlanoEngineNetwork';
 
 function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any): boolean {
   for (const b of engine.bajantes) {
@@ -137,8 +138,20 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
     }
   }
 
+  const codoLinks = findCodoReventiladoLinks(engine, bestRamal, bestPtIdx);
+  if (codoLinks.length > 0) {
+    const backups: Record<string, number[][]> = {};
+    for (const link of codoLinks) {
+      const other = engine.ramales.find((r) => r.id === link.id);
+      if (other) backups[link.id] = structuredClone(other.pts);
+    }
+    (engine as any)._dragLinkedBackupPts = backups;
+  } else {
+    (engine as any)._dragLinkedBackupPts = null;
+  }
+
   (engine as any)._dragBackupPts = structuredClone(bestRamal.pts);
-  engine.ptDrag = { id: bestRamal.id, ptIdx: bestPtIdx, slideConstraint };
+  engine.ptDrag = { id: bestRamal.id, ptIdx: bestPtIdx, slideConstraint, linkedPts: codoLinks.length > 0 ? codoLinks : undefined };
   engine.render();
   return true;
 }
@@ -321,8 +334,20 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: a
           if (slideConstraint) break;
         }
       }
+      const codoLinks = findCodoReventiladoLinks(engine, sel, i);
+      if (codoLinks.length > 0) {
+        const backups: Record<string, number[][]> = {};
+        for (const link of codoLinks) {
+          const other = engine.ramales.find((r) => r.id === link.id);
+          if (other) backups[link.id] = structuredClone(other.pts);
+        }
+        (engine as any)._dragLinkedBackupPts = backups;
+      } else {
+        (engine as any)._dragLinkedBackupPts = null;
+      }
+
       (engine as any)._dragBackupPts = structuredClone(sel.pts);
-      engine.ptDrag = { id: sel.id, ptIdx: i, slideConstraint };
+      engine.ptDrag = { id: sel.id, ptIdx: i, slideConstraint, linkedPts: codoLinks.length > 0 ? codoLinks : undefined };
       return true;
     }
   }

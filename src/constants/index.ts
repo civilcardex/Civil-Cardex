@@ -19,6 +19,8 @@ export {
   matLongName,
   MAT_MANNING,
   matManning,
+  MAT_HAZEN_C,
+  matHazenC,
   DIAM_OPTIONS,
   DIAM_BAN,
   DIAM_VENT,

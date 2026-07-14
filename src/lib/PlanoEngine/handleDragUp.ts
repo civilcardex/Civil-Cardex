@@ -115,10 +115,20 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
   if (engine.dimDrag) { engine._markDirty(); engine.dimDrag = null; }
   if (engine.ptDrag) {
     const rId = engine.ptDrag.id;
+    const linkedPts = engine.ptDrag.linkedPts;
     engine.ptDrag = null;
     engine._markDirty();
     const ram = engine.ramales.find((r) => r.id === rId);
-    if (ram && !checkRamalAngles(ram.pts, ram.net, ram.tipo)) {
+    const linkedRamales = (linkedPts || [])
+      .map((l) => engine.ramales.find((r) => r.id === l.id))
+      .filter((r): r is PlanoRamal => !!r);
+
+    // A codo reventilado's san/vent pair must be rolled back together — if only one side
+    // reverted, the drag would leave the junction split apart instead of just undone.
+    const primaryOk = ram ? checkRamalAngles(ram.pts, ram.net, ram.tipo) : true;
+    const linkedOk = linkedRamales.every((r) => checkRamalAngles(r.pts, r.net, r.tipo));
+
+    if (ram && (!primaryOk || !linkedOk)) {
       engine.triggerAlert(
         'Ángulo no recomendado',
         (ram.net === 'san' || ram.net === 'll')
@@ -128,9 +138,18 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       if ((engine as any)._dragBackupPts) {
         ram.pts = (engine as any)._dragBackupPts;
         (engine as any)._dragBackupPts = null;
-        engine._markDirty();
-        engine.render();
       }
+      const linkedBackups = (engine as any)._dragLinkedBackupPts as Record<string, number[][]> | undefined;
+      if (linkedBackups) {
+        for (const r of linkedRamales) {
+          if (linkedBackups[r.id]) r.pts = linkedBackups[r.id];
+        }
+      }
+      (engine as any)._dragLinkedBackupPts = null;
+      engine._markDirty();
+      engine.render();
+    } else {
+      (engine as any)._dragLinkedBackupPts = null;
     }
   }
   if (engine.ramalDrag) {

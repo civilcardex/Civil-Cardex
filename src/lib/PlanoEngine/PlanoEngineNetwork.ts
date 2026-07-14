@@ -141,6 +141,42 @@ export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
 import { ACC_ABBR } from "../../utils/accessoryAbbreviations";
 import { APARATOS_DEF } from "../../constants/engineeringDataFixtures";
 
+// A codo reventilado junction is a 'vent' ramal endpoint coincident with a 'san' ramal point
+// (see renderVentCodos.ts, which uses the same 0.5-unit threshold to draw the symbol there).
+// Every other coincident-point drag sync in this engine (handleDragMove.ts) is same-net only,
+// so dragging either side of this specific cross-net junction would otherwise tear it apart.
+export function findCodoReventiladoLinks(
+  engine: IPlanoEngineCore,
+  ramal: PlanoRamal,
+  ptIdx: number
+): { id: string; ptIdx: number }[] {
+  const pt = ramal.pts[ptIdx];
+  if (!pt) return [];
+  const links: { id: string; ptIdx: number }[] = [];
+  const isEndpoint = ptIdx === 0 || ptIdx === ramal.pts.length - 1;
+
+  if (ramal.net === 'vent' && isEndpoint) {
+    for (const other of engine.ramales) {
+      if (other.net !== 'san' || !other.pts?.length) continue;
+      for (let i = 0; i < other.pts.length; i++) {
+        if (Math.hypot(other.pts[i][0] - pt[0], other.pts[i][1] - pt[1]) < 0.5) {
+          links.push({ id: other.id, ptIdx: i });
+        }
+      }
+    }
+  } else if (ramal.net === 'san') {
+    for (const other of engine.ramales) {
+      if (other.net !== 'vent' || !other.pts?.length) continue;
+      [0, other.pts.length - 1].forEach((oi) => {
+        if (Math.hypot(other.pts[oi][0] - pt[0], other.pts[oi][1] - pt[1]) < 0.5) {
+          links.push({ id: other.id, ptIdx: oi });
+        }
+      });
+    }
+  }
+  return links;
+}
+
 export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
   const lvlLabel = engine.nivelActual?.label ?? '';
   const ACC_LABELS = ACC_ABBR;

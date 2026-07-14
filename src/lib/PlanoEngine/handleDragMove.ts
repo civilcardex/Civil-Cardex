@@ -502,6 +502,22 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             other.labelY = my;
           }
         }
+
+        // Codo reventilado: the vent ramal's endpoint and the san ramal's coincident point
+        // must stay exactly together, so move the linked point to the same absolute position
+        // rather than by delta (avoids drift if they weren't pixel-perfect coincident already).
+        if (engine.ptDrag.linkedPts) {
+          for (const link of engine.ptDrag.linkedPts) {
+            const other = engine.ramales.find((o) => o.id === link.id);
+            if (!other || !other.pts[link.ptIdx]) continue;
+            other.pts[link.ptIdx] = [p.x, p.y];
+            other.totalL = calculateRamalLength(other.pts, engine);
+            other.labelAngle = _firstSegmentAngle(other.pts);
+            const [mx, my] = _midpoint(other.pts);
+            other.labelX = mx;
+            other.labelY = my;
+          }
+        }
           const bajForRamal = engine.bajantes.find(b =>
             b.recibeDeIds?.includes(r.id) &&
             (Math.hypot(oldP[0] - b.x, oldP[1] - b.y) < 0.5 ||

@@ -6,6 +6,7 @@ const MATS_RAW = {
   ac: ['PVC-PR','CPVC','Cobre rígido','Polipropileno PP-R','PEX'],
   san: ['PVC-S','Novatec','Hierro fundido','Concreto'],
   ll: ['PVC-S','Novatec','Hierro fundido','Concreto','Gres cerámico'],
+  vent: ['PVC-V'],
   gas: ['PE al PE','Cobre rígido','A.C.','Acero HG','Polipropileno PP-R'],
   rci: ['A.C. SCH 40','A.C. SCH 10','Acero HG','CPVC CPVC-CI','PVC C900 RDE 14'],
 };
@@ -67,6 +68,36 @@ export const MAT_MANNING = {
 export function matManning(short: string) {
   if (!short) return null;
   return (MAT_MANNING as Record<string, number>)[short] ?? null;
+}
+
+export const MAT_HAZEN_C: Record<string, number> = {
+  'PVC-S': 150,
+  'PVC-V': 150,
+  'PVC-PR': 150,
+  'PVC C900 RDE 14': 150,
+  'PVC C900 RDE 18': 150,
+  'Novatec': 150,
+  'CPVC': 150,
+  'CPVC CPVC-CI': 150,
+  'Hierro fundido': 100,
+  'Concreto': 100,
+  'Gres cerámico': 100,
+  'Cobre rígido': 140,
+  'Cobre flexible': 130,
+  'Polipropileno PP-R': 140,
+  'PEX': 140,
+  'PE al PE': 150,
+  'Polietileno': 150,
+  'PEAD': 150,
+  'A.C.': 120,
+  'A.C. SCH 10': 120,
+  'A.C. SCH 40': 120,
+  'Acero HG': 120,
+};
+
+export function matHazenC(short: string): number | null {
+  if (!short) return null;
+  return (MAT_HAZEN_C as Record<string, number>)[short] ?? null;
 }
 
 export const DIAM_BAN=[

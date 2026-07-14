@@ -1,13 +1,10 @@
 import React from "react";
-import { COEF_HAZEN } from "../constants/hydraulicData";
 import { fmt } from "../utils/formatUtils";
 import { CONTADORES as CONTADORES_CAT } from "../pages/catalog/catalogData";
 import { LazyDecimalInput } from "./shared/LazyDecimalInput";
 const SupplyConnection_S1: React.CSSProperties = { fontFamily: "monospace", fontSize: 9, lineHeight: 1.4, color: "var(--txt2)", background: "var(--bg3)", padding: "8px", borderRadius: "4px", border: "1px solid var(--line)", display: "flex", justifyContent: "space-between", alignItems: "center" };
 const SupplyConnection_S2: React.CSSProperties = { width:"100%",padding:"3px 4px",border:"1px solid #3a494a",borderRadius:3,background:"#1e2024",color:"#e2e2e8",fontSize:11,fontFamily:"'Geist',monospace",cursor:"pointer",textAlign:"center",textAlignLast:"center" };
 
-
-const C = COEF_HAZEN;
 
 interface FilaResult {
   dInt: number;
@@ -55,6 +52,8 @@ interface AcometidaProps {
   setAcoHfMax: (v: number) => void;
   acoLeMed: number;
   setAcoLeMed: (le: number) => void;
+  cHW1: number;
+  cHW2: number;
   f1: FilaResult;
   f2: FilaResult;
   hfContador: number;
@@ -101,6 +100,7 @@ function Acometida({
   acoL2, setAcoL2,
   acoPini, setAcoPini,
   acoHfMax, setAcoHfMax,
+  cHW1, cHW2,
   f1, f2,
   pResidual, okPresion,
   AF_DIAM_OPTS,
@@ -261,7 +261,8 @@ function Acometida({
                 </tr>
                 <tr>
                   <td style={TD_PARAM_LABEL}>Coeficiente C</td>
-                  <td className="c" colSpan={2} style={{textAlign: "center", fontWeight: 600, padding: "4px", color: "var(--txt2)"}}>{C}</td>
+                  <td className="c" style={{textAlign: "center", fontWeight: 600, padding: "4px", color: "var(--txt2)"}}>{cHW1}</td>
+                  <td className="c" style={{textAlign: "center", fontWeight: 600, padding: "4px", color: "var(--txt2)"}}>{cHW2}</td>
                   <td className="c" style={TD_PARAM_UNIT}>—</td>
                 </tr>
                 <tr>
