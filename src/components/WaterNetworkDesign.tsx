@@ -2,9 +2,8 @@ import React, { useState, useMemo, useRef } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
-import { AF_UC_IDS, AC_UC_IDS, APARATOS_DEF, pisoCorto } from "../constants";
+import { AF_UC_IDS, AC_UC_IDS, APARATOS_DEF, pisoCorto, matHazenC } from "../constants";
 import { calcUCparcial } from "../utils/componentHelpers";
-import { COEF_HAZEN } from "../constants/hydraulicData";
 import { CONTADORES as CONTADORES_CAT } from "../pages/catalog/catalogData";
 import { writeDiametroToDrawing, writeContadorDiamToDrawing, findContadorBajante } from "../utils/writeDiameterToDrawing";
 import { calcLeAcces } from "../utils/accesoriosUtils";
@@ -71,7 +70,6 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   const updTramo = isAf(networkType) ? updTramoAf : updTramoAc;
   
   const ucIds = isAf(networkType) ? AF_UC_IDS : AC_UC_IDS;
-  const C = COEF_HAZEN;
   const cssClass = networkType;
   const colorVar = `var(--${networkType})`;
   const ucField = isAf(networkType) ? 'uc_af' : 'uc_ac';
@@ -144,13 +142,19 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         const pEnd = r.pts[r.pts.length - 1];
         const rKey = `${r.id}-${plan.id}`;
 
-        let connection: { type: 'bajante' | 'ramal'; id: string } | null = null;
-
         const checkEndpoint = (pt: number[]) => {
           for (const b of bajantes) {
             const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
             const dist = Math.hypot(pt[0] - b.x, pt[1] - b.y);
-            if (isExplicit || dist < 2.0) {
+            if (isExplicit) {
+              // Explicit link doesn't say which end — assign it to whichever endpoint is
+              // geometrically closer, so a bajante at each end each claims its own.
+              const otherPt = pt === pEnd ? pStart : pEnd;
+              const otherDist = Math.hypot(otherPt[0] - b.x, otherPt[1] - b.y);
+              if (dist < otherDist) return { type: 'bajante' as const, id: b.id };
+              continue;
+            }
+            if (dist < 2.0) {
               return { type: 'bajante' as const, id: b.id };
             }
           }
@@ -171,12 +175,17 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
           return null;
         };
 
-        connection = checkEndpoint(pEnd) || checkEndpoint(pStart);
+        // A ramal can have a bajante at EACH end — check both endpoints independently instead
+        // of short-circuiting on the first match, otherwise the second bajante is silently
+        // dropped from calculoMap.
+        const connections = [checkEndpoint(pEnd), checkEndpoint(pStart)].filter(
+          (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null
+        );
 
-        if (connection) {
+        for (const connection of connections) {
           const targetKey = `${connection.id}-${plan.id}`;
           if (!calculoMap[targetKey]) calculoMap[targetKey] = [];
-          calculoMap[targetKey].push(rKey);
+          if (!calculoMap[targetKey].includes(rKey)) calculoMap[targetKey].push(rKey);
         }
       }
     }
@@ -330,21 +339,23 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     if (tr1) {
       const opt = resolvedRedContDiam ? diamTable.find(d => d.nominal === resolvedRedContDiam) : null;
       const realPulg = opt ? opt.pulg : (tr1.diamDisPulg || 0);
-      const le = calcLeAcces(tr1.accesorios ?? {}, realPulg, C);
+      const cHW = matHazenC(tr1.material || '') ?? 150;
+      const le = calcLeAcces(tr1.accesorios ?? {}, realPulg, cHW);
       return { h: tr1.totalL || tr1.Lh || 0, v: 0.00, le };
     }
     return acoL1;
-  }, [tr1, acoL1, resolvedRedContDiam, diamTable, C]);
+  }, [tr1, acoL1, resolvedRedContDiam, diamTable]);
 
   const resolvedL2 = useMemo(() => {
     if (tr2) {
       const opt = resolvedContMonDiam ? diamTable.find(d => d.nominal === resolvedContMonDiam) : null;
       const realPulg = opt ? opt.pulg : (tr2.diamDisPulg || 0);
-      const le = calcLeAcces(tr2.accesorios ?? {}, realPulg, C);
+      const cHW = matHazenC(tr2.material || '') ?? 150;
+      const le = calcLeAcces(tr2.accesorios ?? {}, realPulg, cHW);
       return { h: tr2.totalL || tr2.Lh || 0, v: 0.00, le };
     }
     return acoL2;
-  }, [tr2, acoL2, resolvedContMonDiam, diamTable, C]);
+  }, [tr2, acoL2, resolvedContMonDiam, diamTable]);
 
   const contadorSel = CONTADORES_CAT[acoContIx] || CONTADORES_CAT[0];
 
@@ -373,22 +384,24 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   }, [ucTotal, tr2, componentTotalMap]);
   
 
-  const calcFila = (nominal: string, h: number, v: number, le: number, pIn: number) => {
+  const calcFila = (nominal: string, h: number, v: number, le: number, pIn: number, cHW: number) => {
     const opt = nominal ? diamTable.find(d => d.nominal === nominal) : null;
     const dInt = opt ? opt.dInt : 0;
     const V = Qaco > 0 && dInt > 0
       ? Math.round((1000000 * Qaco) / ((Math.PI / 4) * dInt * dInt) * 10) / 10
       : 0;
     const Lt = (h || 0) + (v || 0) + (le || 0);
-    const hfPct = Math.round(((60.1 * Math.pow(V, 1.852)) / (Math.pow(C, 1.852) * Math.pow(dInt, 1.167))) * 100) / 100;
+    const hfPct = Math.round(((60.1 * Math.pow(V, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(dInt, 1.167))) * 100) / 100;
     const hfM = Math.round((hfPct / 100) * Lt * 100) / 100;
     const Pfin = +(pIn - (v || 0) - hfM).toFixed(2);
     return { dInt, V, Lt, hfPct, hfM, Pfin };
   };
 
+  const cHW1 = matHazenC(tr1?.material || '') ?? 150;
+  const cHW2 = matHazenC(tr2?.material || '') ?? 150;
   const acoL1LeTotal = resolvedL1.le + acoLeMed;
-  const f1 = calcFila(resolvedRedContDiam || '', resolvedL1.h, resolvedL1.v, acoL1LeTotal, acoPini);
-  const f2 = calcFila(resolvedContMonDiam || '', resolvedL2.h, resolvedL2.v, resolvedL2.le, f1.Pfin);
+  const f1 = calcFila(resolvedRedContDiam || '', resolvedL1.h, resolvedL1.v, acoL1LeTotal, acoPini, cHW1);
+  const f2 = calcFila(resolvedContMonDiam || '', resolvedL2.h, resolvedL2.v, resolvedL2.le, f1.Pfin, cHW2);
   const hfContador = Qaco > 0 && contadorSel.q > 0
     ? Math.round(10 * Math.pow(Qaco / contadorSel.q, 2) * 100) / 100
     : 0;
@@ -475,9 +488,10 @@ const total = (componentTotalMap[ownKey] || 0);
                   const H = t.totalL || t.Lh || 0;
                   const Vvert = t.Lv != null ? Number(t.Lv) : (t.deltaZ != null ? Number(t.deltaZ) : 0);
                   const realPulg = matchedOpt ? matchedOpt.pulg : disPulg;
-                  const Le = calcLeAcces(t.accesorios ?? {}, realPulg, C);
+                  const cHW = matHazenC(t.material || '') ?? 150;
+                  const Le = calcLeAcces(t.accesorios ?? {}, realPulg, cHW);
                   const Lt = H + Vvert + Le;
-                  const hfPct = Vmms > 0 && C > 0 && internoMm > 0 ? Math.round(((60.1 * Math.pow(Vmms, 1.852)) / (Math.pow(C, 1.852) * Math.pow(internoMm, 1.167))) * 100) / 100 : 0;
+                  const hfPct = Vmms > 0 && cHW > 0 && internoMm > 0 ? Math.round(((60.1 * Math.pow(Vmms, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(internoMm, 1.167))) * 100) / 100 : 0;
                   const hfM = Lt > 0 && hfPct > 0 ? Math.round((Lt * hfPct) / 1000 * 100) / 100 : 0;
                   const PinCalc = isTr2 ? f1.Pfin : pRed;
                   const Pin = presIniEdit.has(ownKey) ? presIniEdit.get(ownKey) : PinCalc;
@@ -529,7 +543,7 @@ const total = (componentTotalMap[ownKey] || 0);
                         </select>
                       </td>
                       <td className="c td-mono">{internoMm>0?fmt(internoMm,2):"—"}</td>
-                      <td className="c td-mono">{C}</td>
+                      <td className="c td-mono">{cHW}</td>
                       <td className="c" style={{fontWeight:600,padding:"0 1px",fontSize: 9,background:Vmms>0&&vCumple?"rgba(34,197,94,.25)":Vmms>0?"rgba(239,68,68,.25)":"transparent"}}>{Vmms>0?fmt(Vmms,2):"—"}</td>
                       <td className="c td-mono">{H>0?fmt(H,2):"—"}</td>
                       <td className="c td-mono">{Vvert != null ? fmt(Vvert, 2) : "—"}</td>
@@ -564,6 +578,7 @@ const total = (componentTotalMap[ownKey] || 0);
           acoHfMax={acoHfMax} setAcoHfMax={setAcoHfMax}
           f1={f1 as any} f2={f2 as any} hfContador={hfContador}
           pResidual={pResidual} okPresion={okPresion}
+          cHW1={cHW1} cHW2={cHW2}
           AF_DIAM_OPTS={DIAM_OPTS}
           isTr1Drawn={isTr1Drawn}
           isTr2Drawn={isTr2Drawn}

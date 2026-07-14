@@ -68,8 +68,6 @@ export default function DisenosSanitarios() {
         const pEnd = r.pts[r.pts.length - 1];
         const rKey = `${r.id}-${plan.id}`;
 
-        let connection: { type: 'bajante' | 'ramal'; id: string } | null = null;
-
         const checkEndpoint = (pt: number[]) => {
           for (const b of bajantes) {
             const isDischargingIntoR = b.descargaEnId && (
@@ -81,7 +79,15 @@ export default function DisenosSanitarios() {
 
             const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
             const dist = Math.hypot(pt[0] - b.x, pt[1] - b.y);
-            if (isExplicit || dist < 2.0) {
+            if (isExplicit) {
+              // Explicit link doesn't say which end — assign it to whichever endpoint is
+              // geometrically closer, so a bajante at each end each claims its own.
+              const otherPt = pt === pEnd ? pStart : pEnd;
+              const otherDist = Math.hypot(otherPt[0] - b.x, otherPt[1] - b.y);
+              if (dist < otherDist) return { type: 'bajante' as const, id: b.id };
+              continue;
+            }
+            if (dist < 2.0) {
               return { type: 'bajante' as const, id: b.id };
             }
           }
@@ -102,9 +108,14 @@ export default function DisenosSanitarios() {
           return null;
         };
 
-        connection = checkEndpoint(pEnd) || checkEndpoint(pStart);
+        // A ramal can have a bajante at EACH end — check both endpoints independently instead
+        // of short-circuiting on the first match, otherwise the second bajante is silently
+        // dropped from calculoMap and its discharge units never get counted.
+        const connections = [checkEndpoint(pEnd), checkEndpoint(pStart)].filter(
+          (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null
+        );
 
-        if (connection) {
+        for (const connection of connections) {
           const targetKey = `${connection.id}-${plan.id}`;
           if (!calculoMap[targetKey]) calculoMap[targetKey] = [];
           if (!calculoMap[targetKey].includes(rKey)) {
@@ -320,7 +331,7 @@ export default function DisenosSanitarios() {
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Tramo</th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Nivel</th>
               <th scope="col" className="col-h san" colSpan={3} style={{textAlign:'center',fontSize: 9,padding:'1px 2px'}}>Unidades de descarga</th>
-              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}># Descargas</th>
+              <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>No. Descargas</th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>K</th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Caudal<br/><small>(LPS)</small></th>
               <th scope="col" className="col-h" rowSpan={2} style={TH_HDR}>Manning<br/></th>

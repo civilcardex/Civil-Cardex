@@ -44,8 +44,6 @@ function CalculoUD() {
         const pEnd = r.pts[r.pts.length - 1];
         const rKey = `${r.id}-${plan.id}`;
 
-        let connection: { type: 'bajante' | 'ramal'; id: string } | null = null;
-
         const checkEndpoint = (pt: number[]) => {
           for (const b of bajantes) {
             const isDischargingIntoR = b.descargaEnId && (
@@ -57,7 +55,15 @@ function CalculoUD() {
 
             const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
             const dist = Math.hypot(pt[0] - b.x, pt[1] - b.y);
-            if (isExplicit || dist < 2.0) {
+            if (isExplicit) {
+              // Explicit link doesn't say which end — assign it to whichever endpoint is
+              // geometrically closer, so a bajante at each end each claims its own.
+              const otherPt = pt === pEnd ? pStart : pEnd;
+              const otherDist = Math.hypot(otherPt[0] - b.x, otherPt[1] - b.y);
+              if (dist < otherDist) return { type: 'bajante' as const, id: b.id };
+              continue;
+            }
+            if (dist < 2.0) {
               return { type: 'bajante' as const, id: b.id };
             }
           }
@@ -78,9 +84,14 @@ function CalculoUD() {
           return null;
         };
 
-        connection = checkEndpoint(pEnd) || checkEndpoint(pStart);
+        // A ramal can have a bajante at EACH end — check both endpoints independently instead
+        // of short-circuiting on the first match, otherwise the second bajante is silently
+        // dropped and its discharge units never get counted.
+        const connections = [checkEndpoint(pEnd), checkEndpoint(pStart)].filter(
+          (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null
+        );
 
-        if (connection) {
+        for (const connection of connections) {
           const targetKey = `${connection.id}-${plan.id}`;
           if (!map[targetKey]) map[targetKey] = [];
           if (!map[targetKey].includes(rKey)) {

@@ -8,11 +8,9 @@ import { chequeoBajanteLluvia } from "../utils/calcRainwater";
 import { writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
 import { calcHydraulicCheck } from "../utils/hydraulicCheck";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
-import { loadFromStorage, savePlanTrazos } from "../services/storageService";
-import { writeSanDrawingSync } from "../utils/drawingSync";
+import { loadFromStorage } from "../services/storageService";
 import { useRainwater } from "../context/RainwaterContext";
 import { distToPolyline } from "../lib/shared/geometry";
-const RainwaterDesign_S1: React.CSSProperties = { width: '60px', padding: '2px 4px', background: 'transparent', border: '1px solid transparent', borderRadius: 2, color: 'var(--txt)', fontSize: 10, fontFamily: 'var(--mono)', fontWeight: 600, textAlign: 'center' };
 const RainwaterDesign_S2: React.CSSProperties = { fontFamily:'var(--mono)',fontSize: 10,padding:'1px 1px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer',maxWidth:60 };
 const TH_HDR = { fontSize: 9, textAlign:'center', padding:'1px 2px' } as const;
 
@@ -31,63 +29,10 @@ function getTributarioIds(tramos: Array<{ recibeDe?: string[]; descripcion?: str
   return tribSet;
 }
 
-const CaudalCell = React.memo(function CaudalCell({ tramoKey, value, onCaudalChange }: { tramoKey: string; value: number; onCaudalChange: (key: string, val: number) => void }) {
-  const [text, setText] = React.useState('');
-  const [editing, setEditing] = React.useState(false);
-  const ref = React.useRef<HTMLInputElement>(null);
-  const display = editing ? text : (value > 0 ? value.toFixed(2) : '');
-  return (
-    <input ref={ref} type="text" inputMode="decimal" 
-      value={display} 
-      placeholder="0.00"
-      aria-label="Caudal (LPS)"
-      onFocus={() => { setEditing(true); setText(display); }}
-      onChange={e => {
-        const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-        setText(raw);
-      }}
-      onBlur={() => {
-        setEditing(false);
-        const v = parseFloat(text) || 0;
-        const finalVal = text === '' ? 0 : v;
-        onCaudalChange(tramoKey, finalVal);
-      }}
-      style={RainwaterDesign_S1}
-    />
-  );
-});
-
-const RecolectoraField = React.memo(function RecolectoraField({ label, value, onValueChange }: { label: string; value: number; onValueChange: (val: number) => void }) {
-  const [text, setText] = React.useState('');
-  const [editing, setEditing] = React.useState(false);
-  const display = editing ? text : (value > 0 ? String(value) : '');
-  return (
-    <div className="f" style={{ marginBottom: 0 }}>
-      <span style={{ fontSize: 12 }}>{label}</span>
-      <input type="text" inputMode="decimal"
-        value={display}
-        placeholder="0.00"
-        aria-label={label}
-        onFocus={() => { setEditing(true); setText(display); }}
-        onChange={e => {
-          const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-          setText(raw);
-        }}
-        onBlur={() => {
-          setEditing(false);
-          const v = parseFloat(text) || 0;
-          onValueChange(text === '' ? 0 : v);
-        }}
-        style={{ textAlign: 'center', fontSize: 12, padding: '3px 5px' }}
-      />
-    </div>
-  );
-});
-
 export default function DisenoLluvias() {
   const { tramosLl, updTramoLL } = useTramos();
   const { plans } = usePlans();
-  const { bajantesLl, conRecolectora, recolectora, updRecolectora } = useRainwater();
+  const { bajantesLl } = useRainwater();
 
   const [, , conexionesDisplay] = useMemo(() => {
     const calculoMap: Record<string, string[]> = {};
@@ -108,13 +53,19 @@ export default function DisenoLluvias() {
         const pEnd = r.pts[r.pts.length - 1];
         const rKey = `${r.id}-${plan.id}`;
 
-        let connection: { type: 'bajante' | 'ramal'; id: string } | null = null;
-
         const checkEndpoint = (pt: number[]) => {
           for (const b of bajantes) {
             const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
             const dist = Math.hypot(pt[0] - b.x, pt[1] - b.y);
-            if (isExplicit || dist < 2.0) {
+            if (isExplicit) {
+              // Explicit link doesn't say which end — assign it to whichever endpoint is
+              // geometrically closer, so a bajante at each end each claims its own.
+              const otherPt = pt === pEnd ? pStart : pEnd;
+              const otherDist = Math.hypot(otherPt[0] - b.x, otherPt[1] - b.y);
+              if (dist < otherDist) return { type: 'bajante' as const, id: b.id };
+              continue;
+            }
+            if (dist < 2.0) {
               return { type: 'bajante' as const, id: b.id };
             }
           }
@@ -135,12 +86,19 @@ export default function DisenoLluvias() {
           return null;
         };
 
-        connection = checkEndpoint(pEnd) || checkEndpoint(pStart);
+        // A ramal can have a bajante at EACH end (e.g. connecting two downpipes) — check both
+        // endpoints independently instead of short-circuiting on the first match, otherwise the
+        // second bajante is silently dropped from calculoMap/ramalToBajantes.
+        const endConnection = checkEndpoint(pEnd);
+        const startConnection = checkEndpoint(pStart);
+        const connections = [endConnection, startConnection].filter(
+          (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null
+        );
 
-        if (connection) {
+        for (const connection of connections) {
           const targetKey = `${connection.id}-${plan.id}`;
           if (!calculoMap[targetKey]) calculoMap[targetKey] = [];
-          calculoMap[targetKey].push(rKey);
+          if (!calculoMap[targetKey].includes(rKey)) calculoMap[targetKey].push(rKey);
         }
       }
     }
@@ -267,10 +225,7 @@ export default function DisenoLluvias() {
       if (!t._key) continue;
       
       let total = 0;
-      // Prioritize manual caudal override
-      if (t.caudal != null && t.caudal > 0) {
-        total = t.caudal;
-      } else if (t.tipo === 'ramal' && !t.esBajante) {
+      if (t.tipo === 'ramal' && !t.esBajante) {
         const associatedCodes = getAssociatedBajantes(t._key);
         for (const code of associatedCodes) {
           const bajante = bajantesLl.find(b => b.bajante === code || b.id === code);
@@ -303,26 +258,6 @@ export default function DisenoLluvias() {
     const opt = DIAM_OPTIONS.find(o => o.pulg === newPulg);
     if (opt && tramoId) {
       writeDiametroToDrawing(tramoId, 'll', opt.label, plans);
-    }
-  }, [updTramoLL, plans]);
-
-  const handleCaudalChange = useCallback((tramoKey: string, newCaudal: number) => {
-    updTramoLL(tramoKey, 'caudal', newCaudal);
-    // Sync to drawing plan trace data (bidirectional)
-    const [ramalId, planId] = tramoKey.split('-');
-    if (planId) {
-      const raw = loadFromStorage<any>(TRAZOS_PREFIX + planId, null);
-      if (raw) {
-        let data = raw;
-        if (typeof data === 'string') { try { data = JSON.parse(data); } catch { return; } }
-        const r = (data.ramales || []).find((x: any) => x.id === ramalId);
-        if (r) {
-          r.caudal = newCaudal;
-          data.ts = Date.now();
-          savePlanTrazos(planId, data);
-          writeSanDrawingSync(plans);
-        }
-      }
     }
   }, [updTramoLL, plans]);
 
@@ -425,9 +360,7 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm });
                       );
                     })()}
                   </td>
-                  <td className="c" style={{padding:'1px 2px',minWidth:60}}>
-                    <CaudalCell tramoKey={t._key ?? ''} value={Q} onCaudalChange={handleCaudalChange} />
-                  </td>
+                  <td className="c" style={{fontFamily:'var(--mono)',fontSize: 10,padding:'1px 2px'}}>{Q>0?Q.toFixed(2):'—'}</td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontSize: 10,padding:'1px 2px'}}>{n > 0 ? n.toFixed(3) : '—'}</td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontSize: 10,padding:'1px 2px'}}>{sVal > 0 ? sVal : '—'}</td>
                   <td className="c" style={{fontFamily:'var(--mono)',fontSize: 10,padding:'1px 2px'}}>{DcalcPulg>0?DcalcPulg.toFixed(2)+'"':'—'}</td>
@@ -464,17 +397,5 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm });
         </div>
       </div>
     </section>
-    {conRecolectora && (
-      <section className="card">
-        <div className="card-h">
-          <h3 className="card-t">Canal recolectora</h3>
-        </div>
-        <div style={{ padding: '12px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, maxWidth: 320 }}>
-          <RecolectoraField label="Ancho (b, cm)" value={recolectora.b} onValueChange={v => updRecolectora('b', v)} />
-          <RecolectoraField label="Alto (h, cm)" value={recolectora.h} onValueChange={v => updRecolectora('h', v)} />
-          <RecolectoraField label="Pendiente (%)" value={recolectora.pendiente} onValueChange={v => updRecolectora('pendiente', v)} />
-        </div>
-      </section>
-    )}
   </>);
 }
