@@ -31,3 +31,7 @@ graphify-out/
 *.sw?
 
 .opencode/plugins/graphify.js
+
+# Agent skill files
+.agents/
+.claude/
