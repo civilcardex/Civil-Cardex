@@ -1,85 +1,13 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
-import { getPdfjs } from "../../utils/lazyPdfjs";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
-import { TRAZOS_PREFIX } from "../../constants/storage-keys";
-import { loadFromStorage } from "../../services/storageService";
-import { loadPDF } from "../../services/idbStorage";
+import { TRAZOS_PREFIX, ISO_COLLAPSED_KEY, ISO_ACTIVE_NETS_KEY } from "../../constants/storage-keys";
 import { loadPlanCrop } from "../../utils/planCrop";
 import { parseDescargaEnId } from "../../utils/parseDescargaEnId";
-const IsometriaTab_S1: React.CSSProperties = { padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' };
-const IsometriaTab_S2: React.CSSProperties = { padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' };
-const IsometriaTab_S3: React.CSSProperties = { padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' };
-const IsometriaTab_S4: React.CSSProperties = { position: 'absolute', top: '100%', left: 0, zIndex: 100, background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, display: 'flex', flexDirection: 'column', minWidth: 80 };
-const IsometriaTab_S5: React.CSSProperties = { padding: '4px 8px', fontSize: 12, fontFamily: 'Geist,monospace', border: 'none', background: 'transparent', color: '#b9caca', cursor: 'pointer', textAlign: 'left' };
-const IsometriaTab_S6: React.CSSProperties = { padding: '4px 8px', fontSize: 12, fontFamily: 'Geist,monospace', border: 'none', background: 'transparent', color: '#b9caca', cursor: 'pointer', textAlign: 'left' };
-const IsometriaTab_S7: React.CSSProperties = { padding: '7px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid #2a3a3b', fontFamily: 'Geist,monospace', userSelect: 'none', };
-const IsometriaTab_planosLabel: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', cursor: 'pointer', marginLeft: 8, padding: '3px 8px', borderRadius: 3 };
+import { project, readDrawingAll, loadPlanImage, type ProjPt } from "./isometria/geometry";
+import IsometriaToolbar from "./IsometriaToolbar";
+import IsometriaSidebar from "./IsometriaSidebar";
 
 
-const ISO_NETS_KEY = 'civilflow_iso_activeNets';
-
-interface ProjPt { sx: number; sy: number }
-
-function project(
-  x: number, y: number, z: number,
-  rotZDeg: number, rotXDeg: number,
-  scaleZ: number, zoom: number,
-  offX: number, offY: number,
-  cx: number, cy: number
-): ProjPt {
-  const rZ = rotZDeg * Math.PI / 180;
-  const rX = rotXDeg * Math.PI / 180;
-  const x1 = x * Math.cos(rZ) - y * Math.sin(rZ);
-  const y1 = x * Math.sin(rZ) + y * Math.cos(rZ);
-  const y2 = y1 * Math.cos(rX) - z * scaleZ * Math.sin(rX);
-  return { sx: x1 * zoom + offX + cx, sy: y2 * zoom + offY + cy };
-}
-
-function readDrawingAll(plans: any[], netIds: string[]) {
-  const dataByNet: Record<string, { ramales: any[]; bajantes: any[] }> = {};
-  for (const nid of netIds) dataByNet[nid] = { ramales: [], bajantes: [] };
-  const scaleMap: Record<number, number> = {};
-  const origenMap: Record<number, { x_px: number; y_px: number }> = {};
-  for (const plan of plans) {
-    if (plan.nivel == null) continue;
-    const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
-    if (!raw) continue;
-    const data = (typeof raw === 'string') ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
-    if (!data) continue;
-    if (data.scaleM) scaleMap[plan.nivel] = data.scaleM;
-    if (data.origen) origenMap[plan.nivel] = data.origen;
-    for (const netId of netIds) {
-      for (const r of (data.ramales || [])) {
-        if (r.net === netId && r.tipo === 'ramal')
-          dataByNet[netId].ramales.push({ ...r, planNivel: plan.nivel, planId: String(plan.id) });
-      }
-      for (const b of (data.bajantes || [])) {
-        if (b.net === netId)
-          dataByNet[netId].bajantes.push({ ...b, planNivel: plan.nivel, planId: String(plan.id) });
-      }
-    }
-  }
-  return { dataByNet, scaleMap, origenMap };
-}
-
-async function loadPlanImage(plan: any): Promise<{ nivel: number; img: HTMLCanvasElement; w: number; h: number } | null> {
-  try {
-    const file = await loadPDF(plan.id);
-    if (!file) return null;
-    const buf = await file.arrayBuffer();
-    const pdfjsLib = await getPdfjs();
-    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    const page = await pdf.getPage(1);
-    const vp = page.getViewport({ scale: 1.5 });
-    const c = document.createElement('canvas');
-    c.width = Math.floor(vp.width);
-    c.height = Math.floor(vp.height);
-    await page.render({ canvas: c, viewport: vp }).promise;
-    return { nivel: plan.nivel, img: c, w: vp.width, h: vp.height };
-  } catch {
-    return null;
-  }
-}
 
 function IsometriaTabBase({ state }: any) {
   const { plans, pisos, profs, proy } = state;
@@ -88,7 +16,7 @@ function IsometriaTabBase({ state }: any) {
   const dragRef = useRef<{ mode: 'rot' | 'pan'; sx: number; sy: number; rx0: number; rz0: number; ox0: number; oy0: number } | null>(null);
 
   const [activeNets, _setActiveNets] = useState<Set<string>>(() => {
-    const saved = (() => { try { return JSON.parse(localStorage.getItem(ISO_NETS_KEY) || 'null'); } catch { return null; } })();
+    const saved = (() => { try { return JSON.parse(localStorage.getItem(ISO_ACTIVE_NETS_KEY) || 'null'); } catch { return null; } })();
     if (Array.isArray(saved) && saved.length > 0) return new Set(saved);
     if (!state.plans) return new Set();
     const withData: string[] = [];
@@ -111,7 +39,7 @@ function IsometriaTabBase({ state }: any) {
   const setActiveNets = useCallback((fn: Set<string> | ((prev: Set<string>) => Set<string>)) => {
     _setActiveNets(prev => {
       const next = typeof fn === 'function' ? (fn as (prev: Set<string>) => Set<string>)(prev) : fn;
-      localStorage.setItem(ISO_NETS_KEY, JSON.stringify([...next]));
+      localStorage.setItem(ISO_ACTIVE_NETS_KEY, JSON.stringify([...next]));
       return next;
     });
   }, []);
@@ -166,7 +94,7 @@ function IsometriaTabBase({ state }: any) {
     const sorted = pisosArr.toSorted((a: any, b: any) => a.n - b.n);
     for (const p of sorted) {
       const floorIdx = p.n >= 0 && p.n < 90 ? p.n : p.n === 99 ? (sorted.filter((x: any) => x.n > 0 && x.n < 90).length + 1) : -(Math.abs(p.n));
-      m[p.n] = floorIdx * defaultSpacingMm;
+      m[p.n] = -floorIdx * defaultSpacingMm;
     }
     return m;
   }, [pisos]);
@@ -178,14 +106,14 @@ function IsometriaTabBase({ state }: any) {
   }, [profs]);
 
   const [collapsedNets, _setCollapsedNets] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('civilflow_iso_collapsed') || '[]')); }
+    try { return new Set(JSON.parse(localStorage.getItem(ISO_COLLAPSED_KEY) || '[]')); }
     catch { return new Set(); }
   });
   const toggleCollapsedNet = useCallback((netId: string) => {
     _setCollapsedNets(prev => {
       const next = new Set(prev);
       if (next.has(netId)) next.delete(netId); else next.add(netId);
-      localStorage.setItem('civilflow_iso_collapsed', JSON.stringify([...next]));
+      localStorage.setItem(ISO_COLLAPSED_KEY, JSON.stringify([...next]));
       return next;
     });
   }, []);
@@ -387,10 +315,6 @@ function IsometriaTabBase({ state }: any) {
     setOffY(newOffY);
     return true;
   }, [dataByNet, activeNets, profByNet, nptMap, rotZ, rotX, scaleZ, zoom, offX, offY, size, showPlanos, confirmedPlanos, getIsoCoords, getZPix]);
-
-  const resetView = useCallback(() => {
-    setRotX(-45); setRotZ(45); setScaleZ(1); setZoom(1); setOffX(0); setOffY(0);
-  }, []);
 
   const totals = useMemo(() => {
     let ramales = 0, bajantes = 0, len = 0;
@@ -785,137 +709,40 @@ function IsometriaTabBase({ state }: any) {
   return (
     <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minHeight: 0 }}>
       {/* Toolbar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: '#0d0f12', borderBottom: '1px solid #3a494a', flexWrap: 'wrap' }}>
-
-        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-          {(populatedNets.length === 0 ? NETS : populatedNets.map(nid => NETS.find(x => x.id === nid)!).filter(Boolean)).map(n => {
-            const isOn = activeNets.has(n.id);
-            return (
-              <button type="button" key={n.id} onClick={() => toggleNet(n.id)} aria-pressed={isOn} style={{
-                padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid', cursor: 'pointer',
-                background: isOn ? n.col + '33' : '#1e2024',
-                borderColor: isOn ? n.col : '#3a494a',
-                color: isOn ? n.col : '#849495',
-                fontWeight: isOn ? 600 : 400,
-              }}>{n.emoji} {n.lbl}</button>
-            );
-          })}
-        </div>
-
-        <label style={{ ...IsometriaTab_planosLabel, border: `1px solid ${showPlanos ? '#4D8FF7' : '#3a494a'}`, background: showPlanos ? 'rgba(77,143,247,.15)' : 'transparent' }}>
-          <input type="checkbox" checked={showPlanos} onChange={e => setShowPlanos(e.target.checked)} style={{ accentColor: '#4D8FF7', margin: 0 }} />
-          Planos ({planosCount})
-        </label>
-
-        <div style={{ flex: 1 }} />
-
-        <label style={{ fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
-          Giro vertical 
-          <button type="button" onClick={() => setRotX(-30)} style={{ padding: '2px 4px', fontSize: 12, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotX === -30 ? '#4D8FF7' : '#1e2024', color: rotX === -30 ? '#fff' : '#b9caca' }}>-30°</button>
-          <button type="button" onClick={() => setRotX(-45)} style={{ padding: '2px 4px', fontSize: 12, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotX === -45 ? '#4D8FF7' : '#1e2024', color: rotX === -45 ? '#fff' : '#b9caca' }}>-45°</button>
-          <input type="range" min={-90} max={90} value={rotX} onChange={e => setRotX(Number(e.target.value))} style={{ width: 60 }} />
-          <span style={{ width: 28, textAlign: 'right' }}>{rotX}°</span>
-        </label>
-        <label style={{ fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
-          Giro horizontal 
-          <button type="button" onClick={() => setRotZ(30)} style={{ padding: '2px 4px', fontSize: 12, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotZ === 30 ? '#4D8FF7' : '#1e2024', color: rotZ === 30 ? '#fff' : '#b9caca' }}>30°</button>
-          <button type="button" onClick={() => setRotZ(45)} style={{ padding: '2px 4px', fontSize: 12, borderRadius: 2, border: '1px solid #3a494a', cursor: 'pointer', background: rotZ === 45 ? '#4D8FF7' : '#1e2024', color: rotZ === 45 ? '#fff' : '#b9caca' }}>45°</button>
-          <input type="range" min={0} max={360} value={rotZ} onChange={e => setRotZ(Number(e.target.value))} style={{ width: 60 }} />
-          <span style={{ width: 32, textAlign: 'right' }}>{rotZ}°</span>
-        </label>
-        <label style={{ fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
-          Distancia entre pisos <input type="range" min={0.1} max={5} step={0.1} value={scaleZ} onChange={e => setScaleZ(Number(e.target.value))} style={{ width: 50 }} />
-          <span style={{ width: 24, textAlign: 'right' }}>{scaleZ.toFixed(1)}</span>
-        </label>
-        <label style={{ fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', display: 'flex', alignItems: 'center', gap: 4 }}>
-          Zoom <input type="range" min={5} max={200} value={Math.round(zoom * 100)} onChange={e => setZoom(Number(e.target.value) / 100)} style={{ width: 50 }} />
-          <span style={{ width: 36, textAlign: 'right' }}>{Math.round(zoom * 100)}%</span>
-        </label>
-
-        <button type="button" onClick={resetView} title="Reiniciar vista" style={IsometriaTab_S1}>⟲</button>
-        <button type="button" onClick={fitView} title="Encuadrar todo" style={IsometriaTab_S2}>⊞</button>
-        <div ref={exportRef} style={{ position: 'relative', display: 'inline-block' }}>
-          <button type="button" onClick={() => setShowExportMenu(p => !p)} title="Descargar" style={IsometriaTab_S3}>⬇ Descargar</button>
-          {showExportMenu && (
-            <div style={IsometriaTab_S4}>
-              <button type="button" onClick={() => { setShowExportMenu(false); exportPdf(); }} style={IsometriaTab_S5}>PDF</button>
-              <button type="button" onClick={() => { setShowExportMenu(false); exportPng(); }} style={IsometriaTab_S6}>PNG</button>
-            </div>
-          )}
-        </div>
-      </div>
+      <IsometriaToolbar
+        nets={populatedNets.length === 0 ? NETS : populatedNets.map(nid => NETS.find(x => x.id === nid)!).filter(Boolean)}
+        activeNets={activeNets}
+        toggleNet={toggleNet}
+        showPlanos={showPlanos}
+        setShowPlanos={setShowPlanos}
+        planosCount={planosCount}
+        rotX={rotX}
+        setRotX={setRotX}
+        rotZ={rotZ}
+        setRotZ={setRotZ}
+        scaleZ={scaleZ}
+        setScaleZ={setScaleZ}
+        zoom={zoom}
+        setZoom={setZoom}
+        fitView={fitView}
+        showExportMenu={showExportMenu}
+        setShowExportMenu={setShowExportMenu}
+        exportRef={exportRef}
+        exportPdf={exportPdf}
+        exportPng={exportPng}
+      />
 
       {/* Main area */}
       <div className="fu" style={{ display: 'flex', flex: 1, minHeight: 0 }}>
         {/* Tramos sidebar — grouped by network then floor */}
-        <div style={{ width: 200, flexShrink: 0, background: '#0d0f12', borderRight: '1px solid #3a494a', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          {tramoTree.length === 0 && (
-            <div style={{ padding: '20px 12px', fontSize: 12, color: '#5a6a6b', fontFamily: 'Geist,monospace', textAlign: 'center' }}>
-              Sin datos
-            </div>
-          )}
-          {tramoTree.map(net => {
-            const isCollapsed = collapsedNets.has(net.netId);
-            const netRamales = net.niveles.reduce((s, nv) => s + nv.ramales.length, 0);
-            const netBajantes = net.niveles.reduce((s, nv) => s + nv.bajantes.length, 0);
-            return (
-              <div key={net.netId}>
-                <button type="button" aria-label={`Alternar visibilidad de red ${net.netId}`} onClick={() => toggleCollapsedNet(net.netId)} style={{ ...IsometriaTab_S7, background: 'none', border: 'none', width: '100%', textAlign: 'left', font: 'inherit' }}>
-                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: net.netColor, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: net.netColor, fontWeight: 700, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{net.netName}</span>
-                  <span style={{ fontSize: 12, color: '#5a6a6b', whiteSpace: 'nowrap' }}>{netRamales + netBajantes}</span>
-                  <span style={{ fontSize: 12, color: '#5a6a6b', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform .15s' }}>▾</span>
-                </button>
-                {!isCollapsed && net.niveles.map(nv => (
-                  <div key={nv.nivel}>
-                    <div style={{ padding: '3px 10px 2px 20px', fontSize: 12, color: '#5a6a6b', fontFamily: 'Geist,monospace', fontWeight: 600, letterSpacing: 0.5 }}>
-                      {nv.label}
-                    </div>
-                    <ul role="listbox" aria-label="Ramales" style={{listStyle:'none',margin:0,padding:0}}>
-                    {nv.ramales.map(r => {
-                      const selKey = `${net.netId}:${r.planId}:${r.id}`;
-                      const isSel = selKey === selTramo;
-                      return (
-                        <li key={selKey} role="option" tabIndex={0} aria-label={`Seleccionar ${selKey}`} aria-selected={isSel} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelTramo(prev => prev === selKey ? null : selKey);}}} onClick={() => setSelTramo(prev => prev === selKey ? null : selKey)} style={{
-                          padding: '3px 10px 3px 26px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                          background: isSel ? '#2563EB22' : 'transparent',
-                          borderLeft: isSel ? '2px solid ' + net.netColor : '2px solid transparent',
-                          fontFamily: 'Geist,monospace', fontSize: 12,
-                        }}>
-                          <span style={{ color: net.netColor, fontWeight: 600, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label || r.id}</span>
-                          <span style={{ fontSize: 12, color: '#5a6a6b' }}>L={r.totalL}m</span>
-                        </li>
-                      );
-                    })}
-                    </ul>
-                    <ul role="listbox" aria-label="Bajantes" style={{listStyle:'none',margin:0,padding:0}}>
-                    {nv.bajantes.map(b => {
-                      const selKey = `${net.netId}:${b.planId}:${b.id}`;
-                      const isSel = selKey === selTramo;
-                      const dInches = b.dNominal ? Math.round(Number(b.dNominal) / 25.4) : 0;
-                      const lbl = dInches > 0 ? `${b.code || b.id}:${dInches}"` : (b.code || b.id);
-                      return (
-                        <li key={selKey} role="option" tabIndex={0} aria-label={`Seleccionar ${selKey}`} aria-selected={isSel} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();setSelTramo(prev => prev === selKey ? null : selKey);}}} onClick={() => setSelTramo(prev => prev === selKey ? null : selKey)} style={{
-                          padding: '3px 10px 3px 26px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-                          background: isSel ? '#2563EB22' : 'transparent',
-                          borderLeft: isSel ? '2px solid ' + net.netColor : '2px solid transparent',
-                          fontFamily: 'Geist,monospace', fontSize: 12,
-                        }}>
-                          <span style={{ color: net.netColor, fontWeight: 600, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lbl}</span>
-                          {!(b.tipo === 'contador' || b.tipo === 'calentador') && <span style={{ fontSize: 12, color: '#5a6a6b' }}>h={b.hVert}m</span>}
-                        </li>
-                      );
-                    })}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-          <div style={{ marginTop: 'auto', padding: '8px 12px', borderTop: '1px solid #3a494a', fontSize: 12, color: '#5a6a6b', fontFamily: 'Geist,monospace' }}>
-            Tramos: {totals.ramales} · Bajantes: {totals.bajantes} · Long: {totals.len}m
-          </div>
-        </div>
+        <IsometriaSidebar
+          tramoTree={tramoTree}
+          collapsedNets={collapsedNets}
+          toggleCollapsedNet={toggleCollapsedNet}
+          selTramo={selTramo}
+          setSelTramo={setSelTramo}
+          totals={totals}
+        />
 
         {/* Canvas */}
         <div ref={containerRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>

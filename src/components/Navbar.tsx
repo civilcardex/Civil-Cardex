@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { getCurrentUser } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 const Navbar_S1: React.CSSProperties = { width: 26, height: 26, borderRadius: '50%', background: 'linear-gradient(135deg,#3B82F6,#1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: '#fff', fontSize: 12, fontWeight: 700, fontFamily: 'Geist, monospace', };
 const Navbar_navLinks = [
   { to: '/', label: 'INICIO' },
@@ -11,15 +10,12 @@ const Navbar_navLinks = [
 
 
 function Navbar() {
+  const { user, loading } = useAuth();
   const location = useLocation();
   const path = location.pathname;
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrollY, setScrollY] = useState(0);
   const [prevPath, setPrevPath] = useState(path);
-  // Close the mobile menu on navigation — adjusted during render (React's documented pattern
-  // for resetting state on a prop change) instead of an effect, avoiding an extra commit.
   if (path !== prevPath) {
     setPrevPath(path);
     setMenuOpen(false);
@@ -28,25 +24,8 @@ function Navbar() {
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll(); // init
+    handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  useEffect(() => {
-    let subscription: { unsubscribe: () => void } | null = null;
-
-    (async () => {
-      const user = await getCurrentUser();
-      setUser(user);
-      setLoading(false);
-
-      const { supabase } = await import('../lib/supabase');
-      subscription = supabase.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user ?? null);
-      }).data.subscription;
-    })();
-
-    return () => subscription?.unsubscribe();
   }, []);
 
   const active = 'text-primary border-b border-primary pb-1 uppercase text-xs tracking-[0.08em] font-bold cursor-pointer active-nav-glow transition-all';
@@ -68,7 +47,7 @@ function Navbar() {
           <span aria-hidden="true" className="material-symbols-outlined text-xl">{menuOpen ? 'close' : 'menu'}</span>
         </button>
         <Link to="/" className="flex items-center gap-2">
-          <img src="/logos/civilCorelogo.svg" alt="CivilCore" className="h-9 w-9 md:h-12 md:w-12 object-contain"  width={36} height={36} loading="lazy" />
+          <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="h-9 w-9 md:h-12 md:w-12 object-contain"  width={36} height={36} loading="lazy" />
           <span className="font-bold text-xl md:text-2xl tracking-tighter uppercase text-primary" style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>CivilCore</span>
         </Link>
         <ul className="hidden md:flex gap-4 items-center h-full" style={{ listStyle: 'none', margin: 0, padding: 0 }}>

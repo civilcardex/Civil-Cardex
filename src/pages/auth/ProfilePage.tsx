@@ -1,10 +1,10 @@
 
 import React, { useEffect, useState, useRef } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import { useNavigate } from 'react-router-dom'
-import Navbar from '../components/Navbar'
-import { usePageMeta } from '../hooks/usePageMeta'
-import { devError } from '../utils/devError'
+import { usePageMeta } from '../../hooks/usePageMeta'
+import { devError } from '../../utils/devError'
+import { useAuth } from '../../context/AuthContext'
 
 const proyectosActivos = [
   { id: 1, codigo: 'CR-97', nombre: 'Casa de Roca No. 97 - Redes Sanitarias y Lluvias', progreso: 100, estado: 'completo' },
@@ -29,6 +29,7 @@ const campos = [
 ]
 
 function ProfilePage() {
+  const { user } = useAuth();
   const [perfil, setPerfil] = useState({
     nombre: '',
     apellido: '',
@@ -47,10 +48,8 @@ function ProfilePage() {
   const navigate = useNavigate()
 
   async function fetchPerfil() {
-    if (!supabase) return
+    if (!supabase || !user) return
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
       userIdRef.current = user.id
 
       const { data, error } = await supabase
@@ -78,10 +77,7 @@ function ProfilePage() {
   }
 
   usePageMeta('Perfil', 'Gestione su perfil de CivilCore: datos personales, proyectos activos y configuración de cuenta de ingeniería.');
-  // fetchPerfil is async and only calls setState after awaiting Supabase — standard
-  // fetch-on-mount, not a synchronous cascading update.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchPerfil() }, [])
+  useEffect(() => { fetchPerfil() }, [user])
 
   function handleEditStart(field: string) {
     setEditField(field)
@@ -140,7 +136,6 @@ function ProfilePage() {
   return (
     <div className="space-y-6">
       <script type="application/ld+json">{JSON.stringify(personJsonLd)}</script>
-      <Navbar />
       <header className="border border-outline-variant bg-surface-container p-6 flex items-start gap-6">
         <div className="w-20 h-20 border-2 border-primary bg-surface-container flex items-center justify-center shrink-0">
           <span className="material-symbols-outlined text-4xl text-primary">person</span>

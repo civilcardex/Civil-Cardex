@@ -2,6 +2,7 @@ import {  useState, useCallback, useEffect, useRef  } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { LANDING_STYLES } from './landingStyles';
 import Reveal from '../components/Reveal';
 import BlueprintParticles from '../components/landing/BlueprintParticles';
 import CursorSpotlight from '../components/landing/CursorSpotlight';
@@ -15,25 +16,25 @@ import RotatingWireframe from '../components/landing/RotatingWireframe';
 
 
 const MODULOS_HERO = [
-  { id: 'flow', logo: '/logos/civilFlowlogo.svg', name: 'CivilFlow', color: '#00aaff', path: '/civilflow',
+  { id: 'flow', logo: '/logos/civilFlowlogo.webp', name: 'CivilFlow', color: '#00aaff', path: '/civilflow',
     desc: 'Diseño y análisis de redes hidráulicas, sanitarias y de gas. Modelado de flujos, presiones y caudales.',
     cats: ['Modelado de redes', 'Análisis de presiones', 'Cálculo de caudales', 'Normativas integradas'] },
-  { id: 'manage', logo: '/logos/civilManagelogo.svg', name: 'Manager', color: '#e67e22', path: '/civilmanage',
+  { id: 'manage', logo: '/logos/civilManagelogo.webp', name: 'Manager', color: '#e67e22', path: '/civilmanage',
     desc: 'Gestión de proyectos, presupuestos, cronogramas y seguimiento de avance de obra.',
     cats: ['Control de costos', 'Gestión de cronogramas', 'Avance de obra', 'Integración ERP'] },
-  { id: 'structure', logo: '/logos/civilStructurelogo.svg', name: 'CivilStructure', color: '#7f8c8d', path: '/civilstructure',
+  { id: 'structure', logo: '/logos/civilStructurelogo.webp', name: 'CivilStructure', color: '#7f8c8d', path: '/civilstructure',
     desc: 'Diseño estructural y análisis de elementos como puentes, losas y marcos. Cálculo de cargas y resistencia.',
     cats: ['Análisis FEM', 'Diseño de elementos', 'Cálculo de cargas', 'Normativas NTC'] },
-  { id: 'terrain', logo: '/logos/civilTerrainlogo.svg', name: 'CivilTerrain', color: '#27ae60', path: '/civilterrain',
+  { id: 'terrain', logo: '/logos/civilTerrainlogo.webp', name: 'CivilTerrain', color: '#27ae60', path: '/civilterrain',
     desc: 'Topografía digital, perfiles de terreno y cálculo de movimiento de tierras. Modelos 3D del suelo.',
     cats: ['Modelos 3D', 'Curvas de nivel', 'Volúmenes corte/relleno', 'Integración LiDAR'] },
-  { id: 'bim', logo: '/logos/civilBIMlogo.svg', name: 'CivilBIM', color: '#8e44ad', path: '/civilbim',
+  { id: 'bim', logo: '/logos/civilBIMlogo.webp', name: 'CivilBIM', color: '#8e44ad', path: '/civilbim',
     desc: 'Integración BIM para coordinación multidisciplinar. Visualización y gestión de modelos 3D inteligentes.',
     cats: ['Importación IFC', 'Detección de colisiones', 'Coordinación BIM', 'Vinculación Revit'] },
-  { id: 'mep', logo: '/logos/civilMEPlogo.svg', name: 'CivilMEP', color: '#16a085', path: '/civilmep',
+  { id: 'mep', logo: '/logos/civilMEPlogo.webp', name: 'CivilMEP', color: '#16a085', path: '/civilmep',
     desc: 'Diseño de instalaciones mecánicas, eléctricas y de plomería integradas al modelo civil.',
     cats: ['Ruteo inteligente', 'Análisis de cargas', 'Dimensionamiento', 'Coordination MEP'] },
-  { id: 'roads', logo: '/logos/civilRoadslogo.svg', name: 'CivilRoads', color: '#f1c40f', path: '/civilroads',
+  { id: 'roads', logo: '/logos/civilRoadslogo.webp', name: 'CivilRoads', color: '#f1c40f', path: '/civilroads',
     desc: 'Diseño geométrico de vías, urbanismo, peraltes y alineamientos horizontales y verticales.',
     cats: ['Alineamientos', 'Diseño geométrico', 'Señalización', 'Análisis de tráfico'] },
 ];
@@ -105,195 +106,7 @@ function LandingPage() {
   "description": "Software de ingeniería civil e hidrosanitaria. Cumplimiento NTC 1500, RAS 2000, NSR-10.",
   "foundingDate": "2024"
 })}</script>
-      <style>{`
-        .hero-mod-card {
-          transition: border-color 0.35s, box-shadow 0.35s;
-          cursor: pointer;
-        }
-        .hero-mod-card .mod-glow {
-          opacity: 0;
-          transition: opacity 0.4s ease;
-        }
-        .hero-mod-card:hover .mod-glow {
-          opacity: 1;
-        }
-        .hero-mod-card .mod-logo {
-          transition: filter 0.4s ease, transform 0.4s ease;
-          filter: brightness(1);
-        }
-        .hero-mod-card:hover .mod-logo {
-          filter: brightness(1.15) drop-shadow(0 0 12px var(--mod-color));
-          transform: scale(1.08);
-        }
-        
-        /* Tooltip */
-        @keyframes tooltipBounce {
-          0% { opacity: 0; transform: translate(-50%, 10px) scale(0.9); }
-          60% { opacity: 1; transform: translate(-50%, -4px) scale(1.02); }
-          100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
-        }
-        .mod-tooltip {
-          display: none;
-          position: absolute;
-          bottom: calc(100% + 12px);
-          left: 50%;
-          transform: translateX(-50%);
-          width: 320px;
-          background: rgba(10, 14, 20, 0.95);
-          backdrop-filter: blur(12px);
-          border: 1px solid var(--mod-color);
-          border-radius: 8px;
-          padding: 16px;
-          z-index: 50;
-          text-align: left;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.5);
-          pointer-events: none;
-        }
-        .hero-mod-card:hover .mod-tooltip, .hero-mod-card:focus-within .mod-tooltip {
-          display: block;
-          animation: tooltipBounce 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-        }
-        .mod-tooltip::after {
-          content: '';
-          position: absolute;
-          top: 100%;
-          left: 50%;
-          transform: translateX(-50%);
-          border-width: 6px;
-          border-style: solid;
-          border-color: var(--mod-color) transparent transparent transparent;
-        }
-
-        .hero-logo-glow { animation: logoPulse 4s ease-in-out infinite; }
-        @keyframes logoPulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.6; } }
-        .hero-bg-grid {
-          position: absolute;
-          inset: -50%;
-          width: 200%;
-          height: 200%;
-          background-size: 60px 60px;
-          background-image: 
-            linear-gradient(to right, rgba(0,220,229,0.03) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(0,220,229,0.03) 1px, transparent 1px);
-          transform: perspective(1000px) rotateX(60deg) rotateZ(-45deg);
-          transform-origin: center;
-        }
-        .section-divider { background: linear-gradient(90deg, transparent, rgba(0,170,255,0.15), transparent); height: 1px; border: none; margin: 0; }
-
-        html {
-          scroll-snap-type: y proximity;
-        }
-        section {
-          scroll-snap-align: start;
-        }
-        .will-change-transform {
-          will-change: transform;
-        }
-
-        /* Shimmer */
-        @keyframes shimmer {
-          0% { background-position: -200% center; }
-          100% { background-position: 200% center; }
-        }
-        .core-shimmer {
-          background: linear-gradient(90deg, #00dce5 0%, #00aaff 25%, #00f5ff 50%, #00aaff 75%, #00dce5 100%);
-          background-size: 200% auto;
-          color: transparent;
-          -webkit-background-clip: text;
-          background-clip: text;
-          animation: shimmer 6s linear infinite;
-        }
-
-        /* Skeleton */
-        @keyframes skeletonPulse {
-          0% { opacity: 0.5; }
-          50% { opacity: 0.8; }
-          100% { opacity: 0.5; }
-        }
-        .skeleton-block {
-          background: linear-gradient(90deg, #111317, #1a1c20, #111317);
-          background-size: 200% 100%;
-          animation: skeletonPulse 1.5s ease-in-out infinite;
-          border-radius: 8px;
-        }
-
-        /* Icon morphing */
-        .pilar-card .material-symbols-outlined, 
-        .why-card .material-symbols-outlined {
-          transition: font-variation-settings 0.4s ease;
-        }
-        .pilar-card:hover .material-symbols-outlined, 
-        .why-card:hover .material-symbols-outlined {
-          font-variation-settings: 'FILL' 1 !important;
-        }
-
-        /* Entrance and hover animations */
-        @keyframes heroEntrance {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        .hero-enter-logo {
-          opacity: 0;
-          animation: heroEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-        .hero-enter-title {
-          opacity: 0;
-          animation: heroEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
-        }
-        .hero-enter-subtitle {
-          opacity: 0;
-          animation: heroEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
-        }
-        @keyframes cardEntrance {
-          from {
-            opacity: 0;
-            transform: translateY(16px) scale(0.96);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-        .hero-card-entrance {
-          opacity: 0;
-          animation: cardEntrance 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-        .pilar-card, .why-card {
-          transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.3s, box-shadow 0.3s;
-        }
-        .pilar-card:hover, .why-card:hover {
-          transform: translateY(-4px);
-          border-color: rgba(0, 220, 229, 0.3) !important;
-          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 220, 229, 0.05);
-        }
-        @media (prefers-reduced-motion: reduce) {
-          html { scroll-snap-type: none !important; }
-          .core-shimmer { animation: none !important; }
-          .skeleton-block { animation: none !important; }
-          .pilar-card .material-symbols-outlined, 
-          .why-card .material-symbols-outlined { transition: none !important; }
-          
-          .hero-enter-logo,
-          .hero-enter-title,
-          .hero-enter-subtitle,
-          .hero-card-entrance {
-            animation: none !important;
-            opacity: 1 !important;
-            transform: none !important;
-          }
-          .hero-mod-card:hover,
-          .pilar-card:hover,
-          .why-card:hover {
-            transform: none !important;
-          }
-        }
-      `}</style>
+      <style>{LANDING_STYLES}</style>
 
       <Navbar />
 
@@ -327,9 +140,9 @@ function LandingPage() {
             <div className="flex flex-col items-center text-center">
               <div className="hero-enter-logo relative mb-4 md:mb-6 p-4 md:p-5 rounded-2xl"
                 style={{ background: 'radial-gradient(circle at center, rgba(0,170,255,0.08) 0%, transparent 70%)', backdropFilter: 'blur(4px)', border: '1px solid rgba(0,170,255,0.1)' }}>
-                <img src="/logos/civilCorelogo.svg" alt="CivilCore"
+                <img src="/logos/civilCorelogo.webp" alt="CivilCore"
                   className="w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 object-contain"
-                  style={{ filter: 'drop-shadow(0 0 80px rgba(0,170,255,0.5))' }}  width={112} height={112} loading="lazy" />
+                  style={{ filter: 'drop-shadow(0 0 80px rgba(0,170,255,0.5))' }}  width={112} height={112} fetchPriority="high" />
               </div>
               <h1 className="hero-enter-title text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black tracking-tight uppercase mb-3 md:mb-4"
                 style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}>
@@ -368,7 +181,7 @@ function LandingPage() {
                     animationDelay: `${450 + i * 80}ms` } as any}>
                   
                   <div className="mod-tooltip">
-                    <h3 className="text-base font-bold mb-2" style={{ color: m.color, fontFamily: 'Hanken Grotesk, sans-serif' }}>{m.name}</h3>
+                    <p className="text-base font-bold mb-2" style={{ color: m.color, fontFamily: 'Hanken Grotesk, sans-serif' }}>{m.name}</p>
                     <p className="text-xs leading-relaxed" style={{ color: '#8a9bb0' }}>{m.desc}</p>
                   </div>
 
@@ -497,7 +310,7 @@ function LandingPage() {
         <div className="flex flex-col md:flex-row justify-between items-center py-8 px-6 lg:px-8 gap-4 max-w-7xl mx-auto w-full">
           <div className="flex flex-col md:flex-row items-center gap-8">
             <Link to="/" className="flex items-center gap-2">
-              <img src="/logos/civilCorelogo.svg" alt="CivilCore" className="h-11 w-11 object-contain"  width={44} height={44} loading="lazy" />
+              <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="h-11 w-11 object-contain"  width={44} height={44} loading="lazy" />
               <span className="text-2xl font-bold uppercase" style={{ color: '#6a8e8e', fontFamily: 'Hanken Grotesk, sans-serif' }}>CivilCore</span>
             </Link>
             <nav className="flex gap-6">

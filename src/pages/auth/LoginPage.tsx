@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import FormField from '../components/FormField';
-import { useAuth } from '../context/AuthContext';
-import { usePageMeta } from '../hooks/usePageMeta';
+import Navbar from '../../components/Navbar';
+import FormField from '../../components/FormField';
+import { useAuth } from '../../context/AuthContext';
+import { usePageMeta } from '../../hooks/usePageMeta';
 const LoginPage_S1: React.CSSProperties = { color: '#F04545', fontSize: 12, fontFamily: 'Geist, monospace', textAlign: 'center', padding: '8px', background: 'rgba(240,69,69,.08)', border: '1px solid rgba(240,69,69,.2)', borderRadius: 4 };
 
 
@@ -56,7 +56,7 @@ function LoginPage() {
 
             <div className="px-8 pt-10 pb-6 text-center">
               <div className="flex justify-center mb-5">
-                <img src="/logos/civilCorelogo.svg" alt="CivilCore" className="w-24 h-24 object-contain"
+                <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="w-24 h-24 object-contain"
                   style={{ filter: 'drop-shadow(0 0 20px rgba(0,170,255,0.25))' }}  width={96} height={96} loading="lazy" />
               </div>
               <h1 className="text-2xl font-black tracking-tight uppercase mb-1"

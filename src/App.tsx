@@ -13,13 +13,13 @@ const Fallback = () => (
 
 // Rutas ligeras - import estatico
 import LandingPage from './pages/LandingPage'
-import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
+import LoginPage from './pages/auth/LoginPage'
+import RegisterPage from './pages/auth/RegisterPage'
 import PricingPage from './pages/PricingPage'
 
 import NotFound from './pages/NotFound'
 
-const ProfilePage = React.lazy(() => import('./pages/ProfilePage'))
+const ProfilePage = React.lazy(() => import('./pages/auth/ProfilePage'))
 
 // Rutas pesadas - lazy
 const ViewerPage = React.lazy(() => import('./pages/ViewerPage'))
@@ -38,7 +38,7 @@ function App() {
           onBlur={(e) => { e.currentTarget.style.left = '-9999px'; }}>
           Saltar al contenido principal
         </a>
-        <main id="app-content" className="min-h-screen bg-surface-bg text-on-surface font-sans flex flex-col">
+        <div id="app-content" className="min-h-screen bg-surface-bg text-on-surface font-sans flex flex-col">
           <PageTransition>
             {(displayLocation) => (
               <Routes location={displayLocation}>
@@ -77,7 +77,7 @@ function App() {
               </Routes>
             )}
           </PageTransition>
-        </main>
+        </div>
       </ErrorBoundary>
     </AppProviders>
   )
