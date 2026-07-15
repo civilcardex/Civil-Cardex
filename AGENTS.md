@@ -19,26 +19,26 @@ Rules:
   - XSS via dependency compromise could exfiltrate tokens from localStorage.
   - No token encryption at rest.
   - ProtectedRoute.tsx explicitly reads `sb-*-auth-token` from localStorage as an optimistic cache check (lines 9-21).
-  - **Mitigation**: The CSP meta tag blocks `object-src`, restricts `script-src`, and `frame-src` is `'self'`, reducing injection vectors. For production, consider migrating to a BFF pattern or Supabase SSR.
+  - **Mitigation**: The CSP (kept in sync between the `index.html` meta tag and the `vercel.json` HTTP header) restricts `object-src` to `'self' blob:`, restricts `script-src`, and sets `frame-src 'self' blob:` (the `blob:` is required for in-app PDF rendering), reducing injection vectors. For production, consider migrating to a BFF pattern or Supabase SSR.
 
 - **Sensitive app data in localStorage**: Application state (plan selections, trazo data, network configuration) is stored under `civilflow_*` keys and in sessionStorage. Not encrypted but does not contain secrets.
 
 - **No CSRF token**: This SPA uses Supabase JWT bearer tokens in the `Authorization` header, providing inherent CSRF protection. No additional CSRF mechanism is needed.
 
 ### Security Headers (Deployment Note)
-- The CSP `frame-ancestors` directive and `Strict-Transport-Security` (HSTS) must be set at the CDN/reverse proxy level (nginx, Cloudflare, Netlify, Vercel) — they do not work via `<meta>` tags.
-- `X-Frame-Options: DENY` is set via `<meta>` tag but should also be sent as an HTTP header.
+- The CSP `frame-ancestors` directive and `Strict-Transport-Security` (HSTS) must be set at the CDN/reverse proxy level (nginx, Cloudflare, Netlify, Vercel) — they do not work via `<meta>` tags. Both are configured in `vercel.json`.
+- `X-Frame-Options: DENY` is set via the `vercel.json` HTTP header only — there is no `<meta>` tag for it in `index.html` (browsers ignore `X-Frame-Options` delivered via `<meta>` anyway, so this is correct as-is).
 - `.env` is git-ignored. Supabase anon key is public by design. `VITE_` prefix correctly marks client-exposed env vars.
 
 ### Deployment Headers (Required at CDN/Reverse Proxy)
 
-These security headers cannot be set via `<meta>` tags and MUST be configured at the deployment layer:
+These security headers cannot be set via `<meta>` tags and MUST be configured at the deployment layer. All three are configured in `vercel.json`:
 
 | Header | Value | Origin |
 |--------|-------|--------|
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | index.html comment |
-| `X-Frame-Options` | `DENY` | index.html meta tag + HTTP header |
-| `Content-Security-Policy: frame-ancestors` | `'none'` | HTTP header only |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | vercel.json HTTP header |
+| `X-Frame-Options` | `DENY` | vercel.json HTTP header |
+| `Content-Security-Policy: frame-ancestors` | `'none'` | vercel.json HTTP header |
 
 Configure these in:
 - **Nginx**: Add to `server {}` block
