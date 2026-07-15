@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { getPdfjs } from "../../utils/lazyPdfjs";
 import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { saveToStorage, saveTrazosToDB } from "../../services/storageService";
-import { devError } from "../../utils/devError";
+import { devError } from "../../../../utils/devError";
 import { TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from "../../constants/storage-keys";
 
 interface UsePdfViewerEngineParams {

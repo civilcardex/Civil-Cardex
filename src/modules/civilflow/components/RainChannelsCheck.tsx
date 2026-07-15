@@ -35,7 +35,7 @@ export default function ChequeoCanalesLluvias() {
   return (
     <section className="card">
       <div className="card-h">
-        <h3 className="card-t"><img src="/iconos_diseno_redes/aguas_lluvias/RALL_Chequeo_canal_cubierta.webp" alt="Chequeo canal cubierta"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Chequeo capacidad canal recolectora cubierta aguas lluvias</h3>
+        <h3 className="card-t"><img src="/iconos_civilflow/diseno_redes/aguas_lluvias/RALL_Chequeo_canal_cubierta.webp" alt="Chequeo canal cubierta"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Chequeo capacidad canal recolectora cubierta aguas lluvias</h3>
       </div>
       {!conRecolectora ? (
         <div style={{ padding: "24px 0", textAlign: "center", color: "var(--txt3)", fontSize: 12 }}>

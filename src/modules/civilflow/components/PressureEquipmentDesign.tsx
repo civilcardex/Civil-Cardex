@@ -5,9 +5,9 @@ import EPInputPage from "./ep/EPInputPage";
 import EPVerificationPage from "./ep/EPVerificationPage";
 
 const PressureEquipmentDesign_pages = [
-  { t: "Datos de entrada", icon: "/iconos_diseno_redes/general/datos_de_entrada.webp", c: <EPInputPage /> },
-  { t: "Cálculo hidráulico y potencia", icon: "/iconos_diseno_redes/general/datos_de_entrada.webp", c: <EPVerificationPage section="params" /> },
-  { t: "Diámetros y especificación", icon: "/iconos_diseno_redes/general/datos_de_entrada.webp", c: <EPVerificationPage section="results" /> },
+  { t: "Datos de entrada", icon: "/iconos_civilflow/diseno_redes/general/datos_de_entrada.webp", c: <EPInputPage /> },
+  { t: "Cálculo hidráulico y potencia", icon: "/iconos_civilflow/diseno_redes/general/datos_de_entrada.webp", c: <EPVerificationPage section="params" /> },
+  { t: "Diámetros y especificación", icon: "/iconos_civilflow/diseno_redes/general/datos_de_entrada.webp", c: <EPVerificationPage section="results" /> },
 ];
 
 const EPContent = function PressureEquipmentDesign() {

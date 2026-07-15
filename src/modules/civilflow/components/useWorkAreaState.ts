@@ -8,7 +8,7 @@ import { usePlans } from "../context/PlansContext";
 import { REDES } from "../constants";
 import { parseDecimalInput, parseIntInput } from "../utils/parseDecimal";
 import { NETS } from "../lib/PlanoEngine/PlanoState";
-import { devError } from "../utils/devError";
+import { devError } from "../../../utils/devError";
 import { loadFromStorage, saveToStorage } from "../services/storageService";
 import { ACTIVE_NETS_KEY, OPEN_TAB_KEY, NET_COLOR_PREFIX, NETS_CHANGED_EVENT } from "../constants/storage-keys";
 

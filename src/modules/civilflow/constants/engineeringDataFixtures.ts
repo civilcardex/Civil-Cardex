@@ -32,17 +32,17 @@ export const AC_UC_IDS = ['lvm', 'duc', 'lvp', 'tin', 'lvra', 'lvro', 'lavav'];
 export const SAN_UC_IDS = ['sif', 'lvm', 'san', 'duc', 'lvra', 'tin', 'lvp', 'lvro', 'lavav'];
 
 export const APARATO_IMG = {
-  sif:'/iconos_aparatos/sifon.webp', lvm:'/iconos_aparatos/lavamanos.webp', san:'/iconos_aparatos/inodoro.webp',
-  lvp:'/iconos_aparatos/lavaplatos.webp', duc:'/iconos_aparatos/ducha.webp', tin:'/iconos_aparatos/tina.webp',
-  lvra:'/iconos_aparatos/lavadora.webp', lvro:'/iconos_aparatos/lavadero.webp', nev:'/iconos_aparatos/nevera.webp',
-  lavav:'/iconos_aparatos/lavavajillas.webp',
-  est4:'/iconos_aparatos/estufa_4_puestos.webp', est2:'/iconos_aparatos/estufa_2_puestos.webp',
-  hor_g:'/iconos_aparatos/horno_grande.webp', hor_m:'/iconos_aparatos/horno_mediano.webp',
-  hor_p:'/iconos_aparatos/horno_pequeño.webp', sec_g:'/iconos_aparatos/secadora_grande.webp',
-  sec_p:'/iconos_aparatos/secadora_pequeña.webp',
-  cal6:'/iconos_aparatos/calentador_6LPM.webp', cal11:'/iconos_aparatos/calentador_11LPM.webp', cal21:'/iconos_aparatos/calentador_21LPM.webp',
-  jac:'/iconos_aparatos/jacuzzi.webp', pisc:'/iconos_aparatos/calentador_piscina.webp',
-  sauna:'/iconos_aparatos/sauna.webp', turco:'/iconos_aparatos/turco.webp',
+  sif:'/iconos_civilflow/aparatos/sifon.webp', lvm:'/iconos_civilflow/aparatos/lavamanos.webp', san:'/iconos_civilflow/aparatos/inodoro.webp',
+  lvp:'/iconos_civilflow/aparatos/lavaplatos.webp', duc:'/iconos_civilflow/aparatos/ducha.webp', tin:'/iconos_civilflow/aparatos/tina.webp',
+  lvra:'/iconos_civilflow/aparatos/lavadora.webp', lvro:'/iconos_civilflow/aparatos/lavadero.webp', nev:'/iconos_civilflow/aparatos/nevera.webp',
+  lavav:'/iconos_civilflow/aparatos/lavavajillas.webp',
+  est4:'/iconos_civilflow/aparatos/estufa_4_puestos.webp', est2:'/iconos_civilflow/aparatos/estufa_2_puestos.webp',
+  hor_g:'/iconos_civilflow/aparatos/horno_grande.webp', hor_m:'/iconos_civilflow/aparatos/horno_mediano.webp',
+  hor_p:'/iconos_civilflow/aparatos/horno_pequeño.webp', sec_g:'/iconos_civilflow/aparatos/secadora_grande.webp',
+  sec_p:'/iconos_civilflow/aparatos/secadora_pequeña.webp',
+  cal6:'/iconos_civilflow/aparatos/calentador_6LPM.webp', cal11:'/iconos_civilflow/aparatos/calentador_11LPM.webp', cal21:'/iconos_civilflow/aparatos/calentador_21LPM.webp',
+  jac:'/iconos_civilflow/aparatos/jacuzzi.webp', pisc:'/iconos_civilflow/aparatos/calentador_piscina.webp',
+  sauna:'/iconos_civilflow/aparatos/sauna.webp', turco:'/iconos_civilflow/aparatos/turco.webp',
 };
 
 export const CAT_APS = [

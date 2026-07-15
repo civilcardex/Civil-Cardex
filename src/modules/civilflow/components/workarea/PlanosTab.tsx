@@ -8,7 +8,7 @@ import { PlanoConfigurator } from "./PlanoConfigurator";
 import type { useWorkAreaState } from "../useWorkAreaState";
 import ModalProtocolo from "./ModalProtocolo";
 import { PlanCropPanel } from "./PlanCropPanel";
-import { devError } from "../../utils/devError";
+import { devError } from "../../../../utils/devError";
 const PlanosTab_S1: React.CSSProperties = { padding: '4px 12px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 };
 const PlanosTab_S2: React.CSSProperties = { padding: '4px 14px', background: 'rgba(14,204,122,0.12)', border: '1.5px solid rgba(14,204,122,0.3)', borderRadius: 'var(--r)', color: '#0ECC7A', cursor: 'pointer', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap' };
 const PlanosTab_S3: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'var(--bg)', minHeight: 36 };
@@ -192,7 +192,7 @@ function PlanosTab({ state }: PlanosTabProps) {
       <div style={{ width: 215, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--line)' }}>
         <div className="card-h" style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'none' }}>
           <h3 className="card-t" style={{ fontSize: 15 }}>
-            <img src="/iconos_carga_planos/requisitos_del_plano.webp" alt="Requisitos del plano"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
+            <img src="/iconos_civilflow/carga_planos/requisitos_del_plano.webp" alt="Requisitos del plano"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" />
             Requisitos del plano
           </h3>
         </div>
@@ -295,7 +295,7 @@ function PlanosTab({ state }: PlanosTabProps) {
             style={PlanosTab_S7}
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.12)'; e.currentTarget.style.borderColor = 'rgba(0,220,229,0.5)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,220,229,0.06)'; e.currentTarget.style.borderColor = 'rgba(0,220,229,0.3)'; }}>
-            <img src="/iconos_carga_planos/subir_plano.webp" alt="Subir plano"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" /> SUBIR PLANO
+            <img src="/iconos_civilflow/carga_planos/subir_plano.webp" alt="Subir plano"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle', marginRight: 4 }}  loading="lazy" /> SUBIR PLANO
           </button>
         </div>
 
@@ -304,7 +304,7 @@ function PlanosTab({ state }: PlanosTabProps) {
           onDragLeave={() => setPlanDrag(false)}
           onDrop={e => { e.preventDefault(); setPlanDrag(false); const fl = e.dataTransfer?.files; if (fl && fl.length > 0) addPlans(fl); }}>
           <div style={PlanosTab_S8}>
-            <img src="/iconos_carga_planos/pendientes.webp" alt="Pendientes"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" />
+            <img src="/iconos_civilflow/carga_planos/pendientes.webp" alt="Pendientes"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" />
             Pendientes {pendingPlanos.length > 0 && `(${pendingPlanos.length})`}
           </div>
           {pendingPlanos.length === 0 ? (
@@ -427,7 +427,7 @@ function PlanosTab({ state }: PlanosTabProps) {
 
         <div style={{ flex: '1 1 50%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={PlanosTab_S13}>
-            <img src="/iconos_carga_planos/cargados.webp" alt="Cargados"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" />
+            <img src="/iconos_civilflow/carga_planos/cargados.webp" alt="Cargados"  width={24} height={24} style={{width:24,height:24, verticalAlign: 'middle' }}  loading="lazy" />
             Cargados {confirmedPlanos.length > 0 && `(${confirmedPlanos.length})`}
           </div>
           {confirmedPlanos.length === 0 ? (

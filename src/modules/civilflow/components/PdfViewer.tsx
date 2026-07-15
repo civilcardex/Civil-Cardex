@@ -10,7 +10,7 @@ import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync
 import { bumpHidroAccesorio } from "../utils/syncExtremeAccessory";
 import { loadFromStorage, saveToStorage, saveTrazosToDB, loadTrazosFromDB } from "../services/storageService";
 import { GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY, ACTIVE_NETS_KEY, TRAZOS_PLAN_PREFIX, VISOR_TOOL_KEY, VISOR_TIPO_TRAMO_KEY, VISOR_SNAP_ON_KEY, NETS_CHANGED_EVENT, TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from "../constants/storage-keys";
-import { devError } from "../utils/devError";
+import { devError } from "../../../utils/devError";
 import PdfViewerToolbar, { STATUS } from "./pdfViewer/PdfViewerToolbar";
 import PdfCanvas from "./pdfViewer/PdfCanvas";
 import PdfViewerNetworkBar from "./pdfViewer/PdfViewerNetworkBar";

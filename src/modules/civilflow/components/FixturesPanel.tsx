@@ -7,7 +7,7 @@ import { writeSanDrawingSync, writeHydroDrawingSync } from '../utils/drawingSync
 import { loadFromStorage, saveToStorage } from '../services/storageService';
 import FixtureGrid from './fixtures/FixtureGrid';
 import AccesoriosSection from './fixtures/AccessoriesSection';
-import { devError } from '../utils/devError';
+import { devError } from '../../../utils/devError';
 
 const HIDROSAN_IDS = new Set(['af', 'ac', 'san']);
 const GAS_ID = 'gas';

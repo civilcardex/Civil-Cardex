@@ -117,7 +117,7 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
       <section className="card">
         <div className="card-h">
           <h3 className="card-t">
-            <img src="/iconos_diseno_redes/gas/calculo_UC_gas.webp" alt="Cálculo UC gas"  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
+            <img src="/iconos_civilflow/diseno_redes/gas/calculo_UC_gas.webp" alt="Cálculo UC gas"  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
             Cálculo de unidades de consumo gas
           </h3>
           <span className="card-s">0 tramos</span>
@@ -139,7 +139,7 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
     <section className="card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
       <div className="card-h">
         <h3 className="card-t">
-          <img src="/iconos_diseno_redes/gas/calculo_UC_gas.webp" alt="Cálculo UC gas"  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
+          <img src="/iconos_civilflow/diseno_redes/gas/calculo_UC_gas.webp" alt="Cálculo UC gas"  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
           Cálculo de unidades de consumo gas
         </h3>
         <span className="card-s">{tramos.length} tramos</span>
@@ -194,7 +194,7 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
     <section className="card" style={{ flexShrink: 0, alignSelf: "stretch" }}>
       <div className="card-h">
         <h3 className="card-t">
-          <img src="/iconos_diseno_redes/general/calculo_perdidas_de_carga.webp" alt="Cálculo pérdidas de carga"  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
+          <img src="/iconos_civilflow/diseno_redes/general/calculo_perdidas_de_carga.webp" alt="Cálculo pérdidas de carga"  width={24} height={24} style={{width:24,height:24, verticalAlign: "middle", marginRight: 4 }}  loading="lazy" />
           Factores de correcci&oacute;n
         </h3>
       </div>

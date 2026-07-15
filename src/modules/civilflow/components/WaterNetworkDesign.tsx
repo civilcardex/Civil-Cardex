@@ -412,7 +412,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     <>
       <section className="card">
         <div className="card-h">
-          <h3 className="card-t"><img src={`/iconos_diseno_redes/${icon}`} alt={`${title}`}  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red {title}</h3>
+          <h3 className="card-t"><img src={`/iconos_civilflow/diseno_redes/${icon}`} alt={`${title}`}  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" /> Diseño de red {title}</h3>
           <span className="card-s">{tramosOrden.length} tramos</span>
         </div>
         <div className="scroll-top" style={{ padding: "6px" }}>
