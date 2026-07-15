@@ -263,6 +263,29 @@ Ran `npx react-doctor@latest` and executed a phased plan (Fase 0-6) to raise the
 - Cada decisión de alcance grande (deshabilitar reglas ESLint, tocar o no el clúster frágil del motor CAD, tocar o no cálculos de ingeniería) se presentó vía pregunta explícita en vez de asumirse.
 - Verificación de cierre de cada fase: `tsc --noEmit` + `npm run lint` + `vite build` + `vitest run`, todos en verde en el estado final.
 
+## Session Summary — 2026-07-15
+
+### Done
+- **ProjectCreateDialog.tsx** (new shared component): Extracted from ProfilePage inline dialog. Creates project in DB, clears all `civilflow_*` localStorage keys, clears IndexedDB PDFs, AND deletes all `plano_trazos` from Supabase for the user. Used in both ProfilePage and ModulePage.
+- **FlowHero.tsx**: Changed `<Link to="/civilflowareatrabajo">` → `<button onClick={onCtaClick}>`. When `onCtaClick` is set (only for `flow` module), clicking "Iniciar nuevo proyecto" shows the project name modal instead of navigating directly.
+- **ModulePage.tsx**: Added `ProjectCreateDialog` state + renders dialog for `flow` module. Passes `onCtaClick` to hero.
+- **heroByLayout.tsx**: Updated `HeroProps` interface to include optional `onCtaClick`.
+- **ProfilePage.tsx**: 
+  - Uses `ProjectCreateDialog` shared component instead of inline dialog.
+  - Added "Eliminar" button per project + confirmation modal (`setDeleteConfirm`).
+  - `handleDeleteProject` calls `deleteProyecto` from `proyectosService`.
+- **idbStorage.ts**: Added `clearAllPDFs()` (clears entire IndexedDB object store).
+- **ProjectCreateDialog cache fix**: `clearAllPDFs()` is now awaited. Also deletes all `plano_trazos` from Supabase DB (fixes re-sync issue where old trazos were reloaded from DB after localStorage clear).
+
+### Relevant Files
+- `src/components/shared/ProjectCreateDialog.tsx` — New shared component
+- `src/components/modulePage/FlowHero.tsx` — Accepts `onCtaClick`, uses button
+- `src/components/modulePage/heroByLayout.tsx` — Updated HeroProps type
+- `src/pages/ModulePage.tsx` — Project dialog for flow module
+- `src/pages/auth/ProfilePage.tsx` — Shared dialog + delete project
+- `src/services/idbStorage.ts` — Added clearAllPDFs()
+- `src/services/proyectosService.ts` — deleteProyecto (existing)
+
 ### Limitación conocida
 No se pudo hacer una pasada de regresión manual completa en navegador sobre el motor de dibujo (trazar/conectar/recortar/calibrar) porque `/civilflowareatrabajo` requiere sesión autenticada con un proyecto y plano PDF reales, que esta sesión no tiene. Las ediciones que sí tocan lógica del motor CAD (`handleMouseDown.ts`, `renderJunctions.ts` en Fase 4) son cacheos de propiedades ya leídas repetidamente — refactors mecánicos verificables por inspección, sin cambio de comportamiento — pero valdría la pena que el usuario haga una pasada rápida de trazar/conectar/mover bajantes en su próxima sesión con datos reales.
 
