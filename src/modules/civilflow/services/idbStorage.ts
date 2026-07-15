@@ -1,4 +1,4 @@
-import { devError } from '../utils/devError';
+import { devError } from '../../../utils/devError';
 
 const DB_NAME = 'civilflow_plans';
 const STORE_NAME = 'pdfs';
@@ -61,6 +61,21 @@ export async function loadPDF(id: number): Promise<File | null> {
   } catch (e) {
     devError('idbStorage loadPDF:', id, e);
     return null;
+  }
+}
+
+export async function clearAllPDFs(): Promise<void> {
+  try {
+    const db = await openDB();
+    return new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  } catch (e) {
+    devError('idbStorage clearAllPDFs:', e);
   }
 }
 

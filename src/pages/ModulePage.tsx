@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import ModulePageLayout from '../components/ModulePageLayout';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { MODULES_DATA } from './moduleData';
 import { HERO_BY_LAYOUT } from '../components/modulePage/heroByLayout';
+import ProjectCreateDialog from '../modules/civilflow/components/shared/ProjectCreateDialog';
 const ModulePage_S1: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 
 interface ModulePageProps {
@@ -10,6 +12,7 @@ interface ModulePageProps {
 
 export default function ModulePage({ moduleId }: ModulePageProps) {
   const cfg = MODULES_DATA[moduleId];
+  const [showCreate, setShowCreate] = useState(false)
   usePageMeta(cfg?.metaTitle ?? '', cfg?.metaDesc ?? '');
   const softwareAppJsonLd = {
     '@context': 'https://schema.org',
@@ -33,7 +36,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
     <ModulePageLayout title={cfg.title} mainClassName={cfg.customLayout === 'terrain' ? 'pt-20 px-6 lg:px-8 pb-12 relative overflow-hidden' : (cfg.customLayout === 'roads' ? 'flex flex-col relative z-0' : 'flex flex-col w-full')}>
       <script type="application/ld+json">{JSON.stringify(softwareAppJsonLd)}</script>
       {/* Hero Section */}
-      <Hero cfg={cfg} />
+      <Hero cfg={cfg} onCtaClick={moduleId === 'flow' ? () => setShowCreate(true) : undefined} />
 
       {/* Features / Details Section */}
       <section className={cfg.customLayout === 'terrain' ? 'relative z-10 max-w-7xl mx-auto' : (cfg.customLayout === 'roads' ? 'py-20 px-6 lg:px-8' : (cfg.customLayout === 'manage' ? 'py-20 px-6 lg:px-8' : 'w-full px-6 lg:px-8 py-20 border-b border-outline-variant'))} style={cfg.customLayout === 'roads' ? { background: '#0F1115' } : (cfg.customLayout === 'manage' ? { background: '#1a1c20' } : (cfg.customLayout === 'terrain' ? {} : { background: '#111317' }))}>
@@ -290,6 +293,10 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
           </div>
         </section>
       ) : null}
+      <ProjectCreateDialog
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+      />
     </ModulePageLayout>
   );
 }

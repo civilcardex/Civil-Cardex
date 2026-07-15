@@ -17,7 +17,7 @@ export default function ManageHero({ cfg }: { cfg: ModuleConfig }) {
           {cfg.description}
         </p>
         <div className="flex flex-col sm:flex-row gap-4 mt-8">
-          <Link to="/civilflowareatrabajo" className="inline-flex px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2" style={{ fontFamily: 'Geist, monospace', background: cfg.accent, color: '#111317' }}>
+          <Link to="/civilmanageareatrabajo" className="inline-flex px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2" style={{ fontFamily: 'Geist, monospace', background: cfg.accent, color: '#111317' }}>
             <span className="material-symbols-outlined text-sm">rocket_launch</span> {cfg.ctaText}
           </Link>
           <Link to="/docs" className="border border-outline-variant text-on-surface px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold flex items-center gap-2 hover:border-primary transition-colors" style={{ fontFamily: 'Geist, monospace' }}>

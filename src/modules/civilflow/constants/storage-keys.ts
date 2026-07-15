@@ -25,6 +25,8 @@ export const VISOR_SNAP_ON_KEY = 'civilflow_visor_snapOn';
 export const ISO_COLLAPSED_KEY = 'civilflow_iso_collapsed';
 export const ISO_ACTIVE_NETS_KEY = 'civilflow_iso_activeNets';
 
+export const ACTIVE_PROYECTO_ID_KEY = 'civilflow_active_proyecto_id';
+
 export const PROJECT_PISOS_KEY = 'civilflow_pisos';
 export const PROJECT_PROY_KEY = 'civilflow_proy';
 export const PROJECT_MATS_KEY = 'civilflow_mats';

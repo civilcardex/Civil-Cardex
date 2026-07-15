@@ -1,6 +1,8 @@
-import { createContext, useContext, useMemo, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useCallback, useEffect, type ReactNode } from "react";
 import { MATS_DEFAULT, PROFS_DEFAULT, CRIT0 } from "../constants";
-import { usePersistedState } from "../hooks/usePersistedState";
+import { usePersistedState } from "../../../hooks/usePersistedState";
+import { ACTIVE_PROYECTO_ID_KEY } from "../constants/storage-keys";
+import { saveProyectoCoreData } from "../services/proyectoDataService";
 
 interface Proyecto {
   nombre: string; dir: string; mun: string; dep: string;
@@ -19,12 +21,14 @@ interface ProjectContextValue {
   profs: ProfItem[]; crits: CritItem[];
   setPisos: React.Dispatch<React.SetStateAction<any[]>>;
   setP: (k: string, v: any) => void;
+  setProyAll: (p: Proyecto) => void;
   setMats: React.Dispatch<React.SetStateAction<Record<string, MaterialItem[]>>>;
   setProfs: React.Dispatch<React.SetStateAction<ProfItem[]>>;
   setCrits: React.Dispatch<React.SetStateAction<CritItem[]>>;
+  resetToDefaults: () => void;
 }
 
-const PROY_DEFAULTS: Proyecto = {
+export const PROY_DEFAULTS: Proyecto = {
   nombre:'', dir:'',
   mun:'', dep:'',
   uso:'', empresa:'',
@@ -37,14 +41,19 @@ const PROY_DEFAULTS: Proyecto = {
   C_escorrentia:0.95, pendienteSan:0.02,
 };
 
-const MATS_CLONED: Record<string, MaterialItem[]> = Object.fromEntries(
-  Object.entries(MATS_DEFAULT).map(([k, v]) => [k, v.map(item => ({...item}))])
-);
+function cloneMats(): Record<string, MaterialItem[]> {
+  return Object.fromEntries(
+    Object.entries(MATS_DEFAULT).map(([k, v]) => [k, v.map(item => ({...item}))])
+  );
+}
+function cloneProfs(): ProfItem[] { return PROFS_DEFAULT.map(p => ({...p})); }
+function cloneCrits(): CritItem[] { return CRIT0.map(c => ({...c})); }
 
-const PROFS_CLONED: ProfItem[] = PROFS_DEFAULT.map(p => ({...p}));
-const CRITS_CLONED: CritItem[] = CRIT0.map(c => ({...c}));
+const MATS_CLONED = cloneMats();
+const PROFS_CLONED = cloneProfs();
+const CRITS_CLONED = cloneCrits();
 
-const ProjectContext = createContext<ProjectContextValue | null>(null);
+export const ProjectContext = createContext<ProjectContextValue | null>(null);
 
 export function ProjectProvider({ children }: { children?: ReactNode }) {
 const [pisos, setPisos] = usePersistedState<any[]>('civilflow_pisos', []);
@@ -63,11 +72,32 @@ const [profs, setProfs] = usePersistedState<ProfItem[]>('civilflow_profs', PROFS
 const [crits, setCrits] = usePersistedState<CritItem[]>('civilflow_crits', CRITS_CLONED);
 
 const setP = useCallback((k: string, v: any) => setProy(p => ({ ...p, [k]: v })), [setProy]);
+const setProyAll = useCallback((p: Proyecto) => setProy(p), [setProy]);
+
+const resetToDefaults = useCallback(() => {
+  setPisos([]);
+  setProy({ ...PROY_DEFAULTS });
+  setMats(cloneMats());
+  setProfs(cloneProfs());
+  setCrits(cloneCrits());
+}, [setPisos, setProy, setMats, setProfs, setCrits]);
+
+// Debounced cloud backup of everything project-scoped besides trazos and plan PDFs
+// (those save through their own dedicated paths). Mirrors usePersistedState's own
+// localStorage debounce, just with a longer window since this hits the network.
+useEffect(() => {
+  const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+  if (!proyectoId) return;
+  const timer = setTimeout(() => {
+    saveProyectoCoreData(Number(proyectoId), { pisos, proy, mats, profs, crits });
+  }, 1200);
+  return () => clearTimeout(timer);
+}, [pisos, proy, mats, profs, crits]);
 
 const value = useMemo(() => ({
   pisos, proy, mats, profs, crits,
-  setPisos, setP, setMats, setProfs, setCrits,
-}), [pisos, proy, mats, profs, crits, setPisos, setP, setMats, setProfs, setCrits]);
+  setPisos, setP, setProyAll, setMats, setProfs, setCrits, resetToDefaults,
+}), [pisos, proy, mats, profs, crits, setPisos, setP, setProyAll, setMats, setProfs, setCrits, resetToDefaults]);
 
 return (
 <ProjectContext.Provider value={value}>

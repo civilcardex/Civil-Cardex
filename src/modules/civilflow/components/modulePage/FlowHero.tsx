@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
-import type { ModuleConfig } from '../../pages/moduleData';
+import type { ModuleConfig } from '../../../../pages/moduleData';
 
-export default function FlowHero({ cfg }: { cfg: ModuleConfig }) {
+interface Props { cfg: ModuleConfig; onCtaClick?: () => void }
+export default function FlowHero({ cfg, onCtaClick }: Props) {
   return (
     <section className="relative w-full overflow-hidden border-b border-outline-variant" style={{ minHeight: 500, background: '#1a1c20' }}>
       <div className="absolute inset-0" style={{ background: 'linear-gradient(0deg, #111317 0%, rgba(17,19,23,0) 100%)' }} />
@@ -17,9 +18,9 @@ export default function FlowHero({ cfg }: { cfg: ModuleConfig }) {
           {cfg.description}
         </p>
         <div className="flex flex-col sm:flex-row gap-4 mt-4">
-          <Link to="/civilflowareatrabajo" className="inline-block px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold text-on-primary transition-all" style={{ fontFamily: 'Geist, monospace', background: cfg.accent, boxShadow: `0 0 15px ${cfg.accent}4d` }}>
+          <button type="button" onClick={onCtaClick} className="inline-block px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold text-on-primary transition-all" style={{ fontFamily: 'Geist, monospace', background: cfg.accent, boxShadow: `0 0 15px ${cfg.accent}4d`, cursor: 'pointer', border: 'none' }}>
             {cfg.ctaText}
-          </Link>
+          </button>
           <Link to="/docs" className="border border-outline-variant text-on-surface px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold hover:border-primary transition-all" style={{ fontFamily: 'Geist, monospace', background: 'rgba(17,19,23,0.5)' }}>
             Ver Documentación
           </Link>

@@ -57,7 +57,7 @@ function RegisterPage() {
           telefono: form.telefono,
         }
       });
-      navigate('/civilflowareatrabajo');
+      navigate('/profile');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al crear la cuenta';
       setError(message);

@@ -46,7 +46,7 @@ export const MODULES_DATA: Record<string, ModuleConfig> = {
     badgeLabel: 'Módulo Principal',
     headline: 'CivilFlow: Redes de Fluidos con Precisión KML',
     description: 'Diseño, análisis y optimización de redes hidráulicas, sanitarias y de gas. Integre flujos de trabajo de ingeniería de alta precisión directamente con modelos de terreno KML.',
-    ctaText: 'Explorar Funciones',
+    ctaText: 'Iniciar nuevo proyecto',
     features: [
       { icon: 'speed', title: 'Cálculo Hidráulico en Tiempo Real', desc: 'Análisis nodal instantáneo para redes presurizadas. Visualización de pérdida de carga y velocidades críticas durante la fase de diseño iterativo.', badge: 'STATUS: ACTIVE_SIM', badgeColor: '#79ff5b' },
       { icon: 'mode_fan', title: 'Modelado de Gas de Alta Presión', desc: 'Módulos específicos para termodinámica de gases compresibles. Ruteo inteligente de tuberías considerando normativas de distanciamiento.', badge: 'PRESSURE: >100_BAR', badgeColor: '#ffb4ab' },

@@ -1,4 +1,4 @@
-import { devError } from '../utils/devError';
+import { devError } from '../../../utils/devError';
 
 const PREFIX = 'civilflow_';
 
@@ -30,8 +30,12 @@ export function removeFromStorage(key: string): void {
   }
 }
 
-import { supabase } from '../lib/supabase';
-import { TRAZOS_PREFIX } from '../constants/storage-keys';
+import { supabase } from '../../../lib/supabase';
+import { TRAZOS_PREFIX, ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
+
+function getActiveProyectoId(): string | null {
+  return localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+}
 
 export interface PlanTrazos {
   ts?: number;
@@ -52,10 +56,14 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const dbPlanoId = user.id + '_' + planoId;
+    const proyectoId = getActiveProyectoId();
+    const dbPlanoId = user.id + '_' + (proyectoId || 'default') + '_' + planoId;
     const { error } = await supabase
       .from('plano_trazos')
-      .upsert({ plano_id: dbPlanoId, data, user_id: user.id }, { onConflict: 'plano_id' });
+      .upsert(
+        { plano_id: dbPlanoId, data, user_id: user.id, proyecto_id: proyectoId ? Number(proyectoId) : null },
+        { onConflict: 'plano_id' }
+      );
     if (error) {
       devError('storageService saveTrazosToDB:', error);
     }
@@ -68,7 +76,8 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    const dbPlanoId = user.id + '_' + planoId;
+    const proyectoId = getActiveProyectoId();
+    const dbPlanoId = user.id + '_' + (proyectoId || 'default') + '_' + planoId;
     const { data, error } = await supabase
       .from('plano_trazos')
       .select('data')

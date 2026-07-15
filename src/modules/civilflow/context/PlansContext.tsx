@@ -2,8 +2,15 @@
 import { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext, type ReactNode } from 'react';
 import { saveToStorage, loadFromStorage, removeFromStorage } from '../services/storageService';
 import { storePDF, loadPDF, deletePDF } from '../services/idbStorage';
-import { PLANS_META_KEY } from '../constants/storage-keys';
-import { devError } from '../utils/devError';
+import { uploadPlanPDF, deletePlanPDF } from '../services/pdfStorageService';
+import { saveProyectoPlansMeta } from '../services/proyectoDataService';
+import { PLANS_META_KEY, ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
+import { devError } from '../../../utils/devError';
+
+function getActiveProyectoId(): number | null {
+  const raw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+  return raw ? Number(raw) : null;
+}
 
 interface PlanMeta { id: number; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null; definedScale?: number | null }
 interface PlanItem { id: number; file: File; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null; definedScale?: number | null }
@@ -15,9 +22,11 @@ interface PlansContextValue {
   removePlan: (id: number) => void;
   updatePlan: (id: number, updates: Partial<PlanItem>) => void;
   confirmPlan: (id: number) => void;
+  resetPlans: () => void;
+  restorePlans: (items: PlanItem[]) => void;
 }
 
-const PlansContext = createContext<PlansContextValue | null>(null);
+export const PlansContext = createContext<PlansContextValue | null>(null);
 
 function persistMeta(plans: PlanItem[]) {
   const meta: PlanMeta[] = plans.map(({ file: _file, ...meta }) => meta);
@@ -116,14 +125,31 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     persistMeta(plans);
   }, [plans, restoreDone]);
 
+  // Debounced cloud backup of the plans list (metadata only — PDF binaries upload
+  // separately as they're added). Same debounce spirit as usePersistedState, just
+  // gated on restoreDone so it never fires with a stale empty list before the
+  // local IndexedDB restore above has had a chance to populate `plans`.
+  useEffect(() => {
+    if (!restoreDone) return;
+    const proyectoId = getActiveProyectoId();
+    if (!proyectoId) return;
+    const timer = setTimeout(() => {
+      const meta = plans.map(({ file: _file, ...m }) => m);
+      saveProyectoPlansMeta(proyectoId, meta);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [plans, restoreDone]);
+
   const addPlans = useCallback((newFiles: FileList | File[]) => {
     const pdfs: PlanItem[] = [];
+    const proyectoId = getActiveProyectoId();
     for (const f of newFiles) {
       const isPdf = f.type === 'application/pdf' || f.name?.toLowerCase().endsWith('.pdf');
       if (isPdf) {
         const id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
         pdfs.push({ id, file: f, name: f.name, nivel: null, scale: 100, status: 'pending', origen: null, factorX: null, factorY: null, calGlobal: null });
         storePDF(id, f).catch(e => { devError('storePDF error:', e); });
+        if (proyectoId) uploadPlanPDF(proyectoId, id, f);
       }
     }
     if (pdfs.length === 0 && newFiles.length > 0) {
@@ -139,6 +165,8 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
   const removePlan = useCallback((id: number) => {
     setPlans(prev => prev.filter(p => p.id !== id));
     deletePDF(id).catch(e => { devError('deletePDF error:', e); });
+    const proyectoId = getActiveProyectoId();
+    if (proyectoId) deletePlanPDF(proyectoId, id);
   }, []);
 
   const updatePlan = useCallback((id: number, updates: Partial<PlanItem>) => {
@@ -149,7 +177,16 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     setPlans(prev => prev.map(p => p.id === id && p.status === 'pending' ? { ...p, status: 'confirmed' } : p));
   }, []);
 
-  const value = useMemo(() => ({ plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan }), [plans, error, addPlans, removePlan, updatePlan, confirmPlan]);
+  const resetPlans = useCallback(() => {
+    setPlans([]);
+    removeFromStorage(PLANS_META_KEY);
+  }, []);
+
+  const restorePlans = useCallback((items: PlanItem[]) => {
+    setPlans(items);
+  }, []);
+
+  const value = useMemo(() => ({ plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan, resetPlans, restorePlans }), [plans, error, addPlans, removePlan, updatePlan, confirmPlan, resetPlans, restorePlans]);
 
   return (
     <PlansContext.Provider value={value}>

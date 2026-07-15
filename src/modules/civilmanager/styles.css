@@ -1,0 +1,311 @@
+/* CivilManager — chrome tipo tabla-Excel y utilidades compartidas. Usa los tokens reales de src/styles/tokens.css. */
+
+.cm-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--txt);
+}
+
+.cm-nav {
+  flex-shrink: 0;
+  display: flex;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--line);
+  gap: 2px;
+  overflow-x: auto;
+}
+
+.cm-nav button {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--txt2);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 10px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.5px;
+}
+
+.cm-nav button:hover:not(:disabled) {
+  color: var(--acc);
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.cm-nav button.cm-active {
+  color: var(--acc);
+  border-bottom-color: var(--acc);
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.cm-nav button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cm-main {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 16px;
+}
+
+.cm-xl-wrap {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--bg2);
+  margin-bottom: 10px;
+}
+
+.cm-xl-scroll {
+  overflow-y: auto;
+  overflow-x: auto;
+  max-height: calc(100vh - 260px);
+}
+
+.cm-xl-scroll table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 11px;
+}
+
+.cm-xl-scroll thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.cm-xl-scroll th {
+  background: var(--bg3);
+  color: var(--txt2);
+  font-weight: 700;
+  padding: 5px 6px;
+  text-align: center;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.cm-xl-scroll td {
+  padding: 4px 6px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.cm-xl-scroll tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.cm-xl-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--line);
+  background: var(--bg3);
+  flex-shrink: 0;
+}
+
+.cm-col-rn {
+  width: 34px;
+  text-align: center;
+  color: var(--txt3);
+  background: var(--bg3);
+}
+
+.cm-col-act {
+  width: 64px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.cm-flex-1 {
+  flex: 1;
+}
+
+.cm-btn {
+  font-size: 11px;
+  border-radius: var(--r);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--txt);
+  cursor: pointer;
+}
+
+.cm-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cm-btn-ok { border-color: var(--ok); }
+.cm-btn-err { border-color: var(--err); }
+.cm-btn-ac { border-color: var(--acc); }
+.cm-btn-warn { border-color: var(--warn); }
+.cm-btn-primary { background: var(--acc); border-color: var(--acc); color: #fff; }
+
+.cm-btn-icon {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+}
+
+.cm-ni {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--txt);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 6px;
+  width: 100%;
+}
+
+.cm-search {
+  width: 160px;
+}
+
+.cm-sel {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--txt);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 6px;
+}
+
+.cm-ni-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--warn);
+  pointer-events: none;
+  font-weight: 700;
+}
+
+.cm-toast {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 10000;
+  background: var(--bg3);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--txt);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.cm-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.cm-modal-box {
+  width: 420px;
+  max-width: 90vw;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+.cm-modal-wide {
+  width: 700px;
+}
+
+.cm-modal-head {
+  padding: 8px 14px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--line);
+  border-radius: var(--r) var(--r) 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--txt2);
+  letter-spacing: 0.5px;
+}
+
+.cm-modal-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cm-modal-body {
+  padding: 16px 14px;
+  font-size: 12px;
+  color: var(--txt);
+  line-height: 1.5;
+}
+
+.cm-modal-scroll {
+  max-height: 55vh;
+  overflow: auto;
+}
+
+.cm-modal-actions {
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cm-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.cm-tbl th {
+  background: var(--bg3);
+  color: var(--txt2);
+  padding: 5px 6px;
+  border: 1px solid var(--line);
+}
+
+.cm-tbl td {
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+}
+
+.cm-empty-row {
+  text-align: center;
+  color: var(--txt3);
+  padding: 12px;
+}
+
+.cm-stub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  color: var(--txt2);
+  text-align: center;
+}
