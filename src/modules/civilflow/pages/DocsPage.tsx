@@ -1,8 +1,8 @@
 import {  useState  } from 'react';
-import Navbar from '../components/Navbar'
+import Navbar from '../../../components/Navbar'
 import { docData } from './docs/docData'
 import SectionAccordion from './docs/SectionAccordion'
-import { usePageMeta } from '../hooks/usePageMeta'
+import { usePageMeta } from '../../../hooks/usePageMeta'
 
 function DocsPage() {
   const [activeCat, setActiveCat] = useState('hidraulica')

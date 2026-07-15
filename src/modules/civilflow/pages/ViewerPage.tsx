@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+import Navbar from '../../../components/Navbar';
 import PdfViewer from '../components/PdfViewer';
 import { usePlans } from '../context/PlansContext';
 import { useProject } from '../context/ProjectContext';
-import { usePageMeta } from '../hooks/usePageMeta';
+import { usePageMeta } from '../../../hooks/usePageMeta';
 import { loadFromStorage } from '../services/storageService';
 import { ACTIVE_NETS_KEY, VISOR_ACTIVE_PLAN_ID_KEY, VISOR_ACTIVE_INDEX_KEY } from '../constants/storage-keys';
 const ViewerPage_S1: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };

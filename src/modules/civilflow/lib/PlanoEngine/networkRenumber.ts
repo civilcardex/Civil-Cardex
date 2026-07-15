@@ -1,7 +1,7 @@
 import { NETS } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
-import { devError } from '../../utils/devError';
+import { devError } from '../../../../utils/devError';
 
 export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void {
   const net = NETS.find(n => n.id === netId);

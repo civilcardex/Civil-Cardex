@@ -25,14 +25,14 @@ module.exports = {
       // react-hooks/immutability are meant to catch. Re-architecting this into synced state
       // would be a large rewrite of the app's most fragile surface for no behavioral gain.
       files: [
-        'src/components/PdfViewer.tsx',
-        'src/components/pdfViewer/TramoEditor.tsx',
-        'src/components/pdfViewer/PdfViewerEngineInit.ts',
-        'src/components/pdfViewer/DrawingElementContextMenu.tsx',
-        'src/components/pdfViewer/CopyFromPlanPanel.tsx',
-        'src/components/pdfViewer/AccesorioModal.tsx',
-        'src/components/pdfViewer/BajanteAsociacion.tsx',
-        'src/components/pdfViewer/ExtremeAccessoryEditor.tsx',
+        'src/modules/civilflow/components/PdfViewer.tsx',
+        'src/modules/civilflow/components/pdfViewer/TramoEditor.tsx',
+        'src/modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts',
+        'src/modules/civilflow/components/pdfViewer/DrawingElementContextMenu.tsx',
+        'src/modules/civilflow/components/pdfViewer/CopyFromPlanPanel.tsx',
+        'src/modules/civilflow/components/pdfViewer/AccesorioModal.tsx',
+        'src/modules/civilflow/components/pdfViewer/BajanteAsociacion.tsx',
+        'src/modules/civilflow/components/pdfViewer/ExtremeAccessoryEditor.tsx',
       ],
       rules: {
         'react-hooks/refs': 'off',

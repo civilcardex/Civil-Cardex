@@ -4,7 +4,7 @@ import { GAS } from '../constants/engineeringDataGas';
 import { SANITARIAS, RCI, AGUA_FRIA, AGUA_CALIENTE, VENTILACION } from './catalog/catalogData';
 import SectionCard from './catalog/SectionCard';
 import { PipeTable, GasTable, ContadoresTable, MaterialesPorRedTable, CoefFriccionTable } from './catalog/CatalogTables';
-import { usePageMeta } from '../hooks/usePageMeta';
+import { usePageMeta } from '../../../hooks/usePageMeta';
 const CatalogMasterPage_S1: React.CSSProperties = { position: 'absolute', left: 0, padding: '5px 11px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 3, color: 'var(--txt2)', cursor: 'pointer', fontWeight: 600, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, };
 
 

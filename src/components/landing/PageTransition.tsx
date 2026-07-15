@@ -40,7 +40,7 @@ export default function PageTransition({ children }: Props) {
     <div
       style={{
         opacity: transitionStage === 'fadeIn' ? 1 : 0,
-        transform: transitionStage === 'fadeIn' ? 'translateY(0)' : 'translateY(-10px)',
+        transform: transitionStage === 'fadeIn' ? 'none' : 'translateY(-10px)',
         transition: transitionStage === 'fadeOut' ? 'all 0.2s ease-out' : 'all 0.3s ease-in',
         minHeight: '100vh',
         width: '100%'

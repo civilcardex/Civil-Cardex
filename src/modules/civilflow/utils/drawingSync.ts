@@ -1,6 +1,6 @@
 import { matManning } from '../constants';
 import { loadFromStorage, saveToStorage } from '../services/storageService';
-import { devError } from './devError';
+import { devError } from '../../../utils/devError';
 import {
   TRAZOS_PREFIX,
   GAS_ACC_KEY,

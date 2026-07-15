@@ -22,10 +22,11 @@ import NotFound from './pages/NotFound'
 const ProfilePage = React.lazy(() => import('./pages/auth/ProfilePage'))
 
 // Rutas pesadas - lazy
-const ViewerPage = React.lazy(() => import('./pages/ViewerPage'))
-const DocsPage = React.lazy(() => import('./pages/DocsPage'))
-const WorkAreaCivilFlowPage = React.lazy(() => import('./pages/WorkAreaCivilFlowPage'))
-const CatalogoMaestroPage = React.lazy(() => import('./pages/CatalogMasterPage'))
+const ViewerPage = React.lazy(() => import('./modules/civilflow/pages/ViewerPage'))
+const DocsPage = React.lazy(() => import('./modules/civilflow/pages/DocsPage'))
+const WorkAreaCivilFlowPage = React.lazy(() => import('./modules/civilflow/pages/WorkAreaCivilFlowPage'))
+const WorkAreaCivilManagerPage = React.lazy(() => import('./pages/WorkAreaCivilManagerPage'))
+const CatalogoMaestroPage = React.lazy(() => import('./modules/civilflow/pages/CatalogMasterPage'))
 const ModulePage = React.lazy(() => import('./pages/ModulePage'))
 
 function App() {
@@ -67,6 +68,7 @@ function App() {
                 <Route element={<ProtectedRoute />}>
                   <Route element={<Layout />}>
                     <Route path="/civilflowareatrabajo" element={<Suspense fallback={<Fallback />}><WorkAreaCivilFlowPage /></Suspense>} />
+                    <Route path="/civilmanageareatrabajo" element={<Suspense fallback={<Fallback />}><WorkAreaCivilManagerPage /></Suspense>} />
                     <Route path="/perfil" element={<Suspense fallback={<Fallback />}><ProfilePage /></Suspense>} />
                     <Route path="/catalogomaestro" element={<Suspense fallback={<Fallback />}><CatalogoMaestroPage /></Suspense>} />
                   </Route>
