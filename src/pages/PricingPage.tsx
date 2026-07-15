@@ -92,7 +92,7 @@ const PRODUCT_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'Product',
   'name': 'Civil Core Profesional',
-  'image': 'https://civilcore.app/logos/civilCorelogo.svg',
+  'image': 'https://civilcore.app/logos/civilCorelogo.webp',
   'description': 'Plan Profesional para ingenieros civiles independientes y firmas pequeñas. Incluye 9 módulos completos, Red de Gas, Contra Incendio y exportación PDF.',
   'brand': {
     '@type': 'Brand',

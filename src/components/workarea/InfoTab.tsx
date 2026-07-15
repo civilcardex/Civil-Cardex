@@ -5,6 +5,7 @@ import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import type { useWorkAreaState } from "../useWorkAreaState";
 import EditButton from "../shared/EditButton";
 import { devError } from "../../utils/devError";
+import { NET_COLOR_PREFIX } from "../../constants/storage-keys";
 const InfoTab_S1: React.CSSProperties = { padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 11, lineHeight: 1, flexShrink: 0, marginLeft: 2 };
 const InfoTab_S2: React.CSSProperties = { flexShrink: 0, padding: '7px 14px', fontSize: 12, fontWeight: 600, background: 'rgba(239,68,68,0.92)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, };
 const InfoTab_S3: React.CSSProperties = { background: 'rgba(255,255,255,.2)', border: 'none', borderRadius: 3, color: '#fff', cursor: 'pointer', fontSize: 11, padding: '2px 8px', flexShrink: 0 };
@@ -35,7 +36,7 @@ const ProjectIdCard = React.memo(function ProjectIdCard({ proy, setP }: { proy: 
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
           <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
-            <img src="/iconos_info_general/identificacion_del_proyecto.svg" alt="Identificación del proyecto"  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
+            <img src="/iconos_info_general/identificacion_del_proyecto.webp" alt="Identificación del proyecto"  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Identificación del proyecto
             <EditButton edit={isEditing} setEdit={setIsEditing} />
           </h3>
@@ -61,7 +62,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({ redes, setRedes, net
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
           <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
-            <img src="/iconos_info_general/redes_activas.svg" alt="Redes activas"  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
+            <img src="/iconos_info_general/redes_activas.webp" alt="Redes activas"  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Redes activas
             <EditButton edit={isEditing} setEdit={setIsEditing} />
           </h3>
@@ -119,7 +120,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({ redes, setRedes, net
                           const net = NETS.find((n: any) => n.id === r.id);
                           if (net) net.col = c;
                         } catch (e) { devError(e); }
-                        try { localStorage.setItem('civilflow_net_' + r.id, c); } catch { /* ignore */ }
+                        try { localStorage.setItem(NET_COLOR_PREFIX + r.id, c); } catch { /* ignore */ }
                       }}
                       style={{ width: 14, height: 14, border: 'none', padding: 0, cursor: isEditing && (!isSub || parentOn) ? 'pointer' : 'default', background: 'none', flexShrink: 0, opacity: isEditing && (!isSub || parentOn) ? 1 : 0.5 }} />
                   )}
@@ -143,7 +144,7 @@ const ActiveEquiposCard = React.memo(function ActiveEquiposCard({ redes, setRede
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <h3 className="card-t" style={{ fontSize: 13, flex: 1, whiteSpace: 'nowrap' }}>
-              <img src="/iconos_info_general/equipos_activos.svg" alt="Equipos activos"  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
+              <img src="/iconos_info_general/equipos_activos.webp" alt="Equipos activos"  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
               Equipos activos
             </h3>
             <EditButton edit={editing} setEdit={setEditing} />
@@ -189,7 +190,7 @@ const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
           <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
-            <img src="/iconos_info_general/generador_de_pisos.svg" alt="Generador de pisos"  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
+            <img src="/iconos_info_general/generador_de_pisos.webp" alt="Generador de pisos"  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Generador de pisos
             <EditButton edit={isEditing} setEdit={setIsEditing} />
           </h3>
@@ -225,7 +226,7 @@ const LevelsCard = React.memo(function LevelsCard({ pisos, delPiso, addPiso, add
       <div className="card-h" style={{ padding: '4px 8px', flexShrink: 0 }}>
         <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
           <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
-            <img src="/iconos_info_general/niveles_generados.svg" alt="Niveles generados"  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
+            <img src="/iconos_info_general/niveles_generados.webp" alt="Niveles generados"  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Niveles generados
             <EditButton edit={isEditing} setEdit={setIsEditing} />
           </h3>
@@ -279,7 +280,7 @@ const UsageGuideCard = React.memo(function UsageGuideCard() {
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <h3 className="card-t" style={{ fontSize: 13 }}>
-            <img src="/iconos_info_general/guia_de_uso.svg" alt="Guía de uso"  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
+            <img src="/iconos_info_general/guia_de_uso.webp" alt="Guía de uso"  width={22} height={22} style={{width:22,height:22, verticalAlign: 'middle', marginRight: 2 }}  loading="lazy" />
             Guía de uso
           </h3>
           <span className="card-s" style={{ fontSize: 11 }}>Recomendaciones</span>

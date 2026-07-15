@@ -19,6 +19,7 @@ import { renderTexts } from './renderers/renderTextAnnotations';
 import { renderAreas, renderActiveArea } from './renderers/renderAreas';
 import { renderBajantes, renderGhosts } from './renderers/renderBajantes';
 import { renderRamales, renderActiveRamal } from './renderers/renderRamales';
+import { renderNetCrossings } from './renderers/renderNetCrossings';
 import { snapToSegment } from './HitTester';
 import { serializeWork, applyWorkData } from './PlanoPersistence';
 import {
@@ -145,6 +146,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   ghostDrag!: { id: string; startX: number; startY: number; baseDx: number; baseDy: number } | null;
   lblDrag!: { id: string; offX: number; offY: number } | null;
   txtDrag!: { id: string; startX: number; startY: number; origX: number; origY: number } | null;
+  txtResize!: { id: string; boxX: number; boxY: number; startDist: number; origFontMm: number; origBoxWpx: number } | null;
   bajDrag!: { id: string; offX: number; offY: number } | null;
   ptDrag!: { id: string; ptIdx: number; slideConstraint?: { otherId: string; segmentIdx: number } } | null;
   ramalDrag!: { id: string; startX: number; startY: number; origPts: [number, number][]; connBaj?: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[] } | null;
@@ -249,6 +251,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.ghostDrag = null;
     this.lblDrag = null;
     this.txtDrag = null;
+    this.txtResize = null;
     this.bajDrag = null;
     this.ptDrag = null;
     this.ramalDrag = null;
@@ -635,6 +638,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     renderTexts(ctx, this);
     renderAreas(ctx, this);
     renderRamales(ctx, this);
+    renderNetCrossings(ctx, this);
     renderBajantes(ctx, this);
     renderGhosts(ctx, this);
     renderDimGhost(ctx, this);
@@ -756,7 +760,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.scheduleRender();
       return;
     }
-    const hasDrag = this.ghostDrag || this.bajDrag || this.lblDrag || this.txtDrag || this.areaDrag || this.ptDrag || this.ramalDrag || this.multiDrag;
+    const hasDrag = this.ghostDrag || this.bajDrag || this.lblDrag || this.txtDrag || this.txtResize || this.areaDrag || this.ptDrag || this.ramalDrag || this.multiDrag;
     if (hasDrag) {
       handleDragMove(this, x, y);
     } else if (this.marqueeRect) {

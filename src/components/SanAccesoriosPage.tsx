@@ -4,36 +4,13 @@ import { HYDRO_DATA_STORAGE_KEY, TRAZOS_PREFIX } from '../constants/storage-keys
 import { loadFromStorage } from '../services/storageService';
 import { useTramos } from '../context/TramosContext';
 import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
+import { fmtPulg } from '../utils/formatUtils';
 import { usePlans } from '../context/PlansContext';
 import { distToSegment } from '../lib/shared/geometry';
 
 function loadHidro(): Record<string, any> {
   return loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
 }
-
-function formatDiamPulg(diam: string, diamPulg?: number): string {
-  const dVal = diamPulg || diamPulgFromLabel(diam);
-  if (!dVal) return '—';
-  if (dVal === 0.5) return '½"';
-  if (dVal === 0.75) return '¾"';
-  if (dVal === 1) return '1"';
-  if (dVal === 1.25) return '1 ¼"';
-  if (dVal === 1.5) return '1 ½"';
-  if (dVal === 2) return '2"';
-  if (dVal === 2.5) return '2 ½"';
-  if (dVal === 3) return '3"';
-  if (dVal === 4) return '4"';
-  if (dVal === 6) return '6"';
-  const str = String(dVal);
-  return str.endsWith('"') ? str : `${str}"`;
-}
-
-function formatDiamFromLabel(label: string): string {
-  if (!label) return '—';
-  const p = diamPulgFromLabel(label);
-  return formatDiamPulg(label, p);
-}
-
 
 
 export default function SanAccesoriosPage() {
@@ -97,7 +74,7 @@ export default function SanAccesoriosPage() {
     for (const child of tramosSan) {
       if (child.esBajante) continue;
       const childDiam = (child as any).diametro || '';
-      const childDiamStr = formatDiamFromLabel(childDiam);
+      const childDiamStr = fmtPulg(diamPulgFromLabel(childDiam));
       if (!childDiamStr || childDiamStr === '—') continue;
       
       const parentLabel = (child as any).padreTributarioLabel || (child as any).padre;
@@ -109,7 +86,7 @@ export default function SanAccesoriosPage() {
     
     // Case 2: ramal-to-ramal geometric connections from drawing data
     for (const child of drawingRamales) {
-      const childDiamStr = formatDiamFromLabel(child.diametro);
+      const childDiamStr = fmtPulg(diamPulgFromLabel(child.diametro));
       if (!childDiamStr || childDiamStr === '—') continue;
       
       const childEndpoints = [child.pts[0], child.pts[child.pts.length - 1]];
@@ -148,7 +125,7 @@ export default function SanAccesoriosPage() {
       if (t.esBajante || t.tipo === 'tributario') continue;
       const tKey = String(t._key || `${t.id}-${t.planId}`);
       const mainDiam = (t as any).diametro || '';
-      const mainDiamStr = formatDiamFromLabel(mainDiam);
+      const mainDiamStr = fmtPulg(diamPulgFromLabel(mainDiam));
       
       const myConnections = byParent[tKey] || [];
       if (myConnections.length === 0) continue;
@@ -197,20 +174,20 @@ export default function SanAccesoriosPage() {
       if (t.esBajante) return;
 
       const mainDiam = (t as any).diametro || '';
-      const mainDiamStr = formatDiamFromLabel(mainDiam);
+      const mainDiamStr = fmtPulg(diamPulgFromLabel(mainDiam));
 
       if (t.tipo === 'tributario') {
         const accIni = (t as any).accesorioInicio;
         if (accIni) {
           const dIni = (t as any).diametroInicio || mainDiam;
-          const dStr = formatDiamFromLabel(dIni);
+          const dStr = fmtPulg(diamPulgFromLabel(dIni));
           const accId = accIni === 'codoSube' ? 'codo90rmSube' : (accIni === 'codoBaja' ? 'codo90rmBaja' : accIni);
           addAcc(dStr, accId, 1);
         }
         const accFin = (t as any).accesorioFin;
         if (accFin) {
           const dFin = (t as any).diametroFin || mainDiam;
-          const dStr = formatDiamFromLabel(dFin);
+          const dStr = fmtPulg(diamPulgFromLabel(dFin));
           const accId = accFin === 'codoSube' ? 'codo90rmSube' : (accFin === 'codoBaja' ? 'codo90rmBaja' : accFin);
           addAcc(dStr, accId, 1);
         }
@@ -261,7 +238,7 @@ export default function SanAccesoriosPage() {
       <section className="card" style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'visible' }}>
         <div className="card-h">
           <h3 className="card-t">
-            <img src="/iconos_diseno_redes/general/Accesorios.svg" alt="Totales" width={24} height={24} style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} loading="lazy" />
+            <img src="/iconos_diseno_redes/general/Accesorios.webp" alt="Totales" width={24} height={24} style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }} loading="lazy" />
             Resumen de accesorios por diámetro
           </h3>
           <span className="card-s">Totales acumulados</span>

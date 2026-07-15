@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { LE_K, pisoCorto, GAS_DN_LABELS } from "../constants";
 import { GAS, CAT_GAS } from "../constants/engineeringDataGas";
+import { normalizeDnLabel } from "../utils/formatUtils";
 import { CONTADORES as CONTADORES_CAT } from "../pages/catalog/catalogData";
 import { usePlans } from "../context/PlansContext";
 import { writeDiametroToDrawing, writeContadorDiamToDrawing, writeBajantePropToDrawing } from "../utils/writeDiameterToDrawing";
@@ -24,7 +25,8 @@ const GasDesign_COLS=['Tramo','Nivel','Inicio','Fin','Material y Diámetro','Ø 
 const GasDesign_colW=['8%','5%','8%','8%','18%','10%','8%','12%'];
 
 function lookupDn(mat: string, dn: string){
-  const match=ALL_DN.find(x=>x.mat===mat&&x.dn===dn);
+  const normDn = normalizeDnLabel(dn);
+  const match=ALL_DN.find(x=>x.mat===mat&&(x.dn===dn||x.dn===normDn));
   return match||null;
 }
 
@@ -135,7 +137,7 @@ function GasDesign(){
         const opt = lookupDn(mat, dn);
         if (opt) {
           toSetMat[r.id] = mat;
-          toSetDn[r.id] = dn;
+          toSetDn[r.id] = opt.dn;
           toSetInt[r.id] = opt.d;
           toSetK[r.id] = opt.K;
         }
@@ -200,7 +202,7 @@ function GasDesign(){
     <section className="card" style={{flexShrink:0,alignSelf:'center'}}>
       <div className="card-h" style={{padding:'6px 12px'}}>
         <h3 className="card-t">
-          <img src="/iconos_diseno_redes/gas/datos_generales_red_gas.svg" alt="Datos generales red de gas"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
+          <img src="/iconos_diseno_redes/gas/datos_generales_red_gas.webp" alt="Datos generales red de gas"  width={24} height={24} style={{width:24,height:24,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
           Datos generales
         </h3>
       </div>
@@ -234,7 +236,7 @@ function GasDesign(){
       <section className="card" style={{display:'flex',flexDirection:'column'}}>
         <div className="card-h" style={{justifyContent:'space-between'}}>
           <h3 className="card-t">
-            <img src="/iconos_diseno_redes/gas/diseno_red_gas.svg" alt="Diseño red de gas"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
+            <img src="/iconos_diseno_redes/gas/diseno_red_gas.webp" alt="Diseño red de gas"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
             Diseño de red de gas
           </h3>
           <span className="card-s">{gasTramos.length} tramos</span>
@@ -271,7 +273,7 @@ function GasDesign(){
                           handleDiamChange(t.id,val.substring(0,sep),val.substring(sep+1));
                         }} style={{...SD,width:'100%',fontSize: 9}}>
                           <option value="">—</option>
-                          {ALL_DN.sort((a,b)=>a.mat.localeCompare(b.mat)||a.dn.localeCompare(b.dn)).map(r=><option key={`${r.mat}|${r.dn}`} value={`${r.mat}|${r.dn}`}>{r.mat} D= {r.dn}&quot;</option>)}
+                          {ALL_DN.sort((a,b)=>a.mat.localeCompare(b.mat)||a.dn.localeCompare(b.dn)).map(r=><option key={`${r.mat}|${r.dn}`} value={`${r.mat}|${r.dn}`}>{r.mat} D= {r.dn}</option>)}
                         </select>
                       </td>
                       <td className="c" style={{...TD,padding:'1px 2px',color:dInt?'var(--txt)':'var(--txt3)'}}>{dInt?dInt.toFixed(2):'—'}</td>
@@ -288,7 +290,7 @@ function GasDesign(){
         <section className="card" style={{flexShrink:0}}>
           <div className="card-h" style={{justifyContent:'space-between'}}>
             <h3 className="card-t">
-              <img src="/iconos_diseno_redes/hidraulica/red_agua_fria.svg" alt="Contador / Calentador"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
+              <img src="/iconos_diseno_redes/hidraulica/red_agua_fria.webp" alt="Contador / Calentador"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
               Contador / Calentador
             </h3>
             <span className="card-s">{gasContBajantes.length} equipos</span>
@@ -350,7 +352,7 @@ function GasDesign(){
       <section className="card" style={{display:'flex',flexDirection:'column',minWidth:0,overflow:'hidden',...(gasTramos.length===0?{}:{flex:1})}}>
         <div className="card-h" style={{justifyContent:'space-between'}}>
           <h3 className="card-t">
-            <img src="/iconos_diseno_redes/gas/chequeo_red_gas.svg" alt="Chequeo red de gas"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
+            <img src="/iconos_diseno_redes/gas/chequeo_red_gas.webp" alt="Chequeo red de gas"  width={20} height={20} style={{width:20,height:20,verticalAlign:'middle',marginRight:4}}  loading="lazy" />
             Chequeo red de gas
           </h3>
           <span className="card-s">{gasTramos.length} tramos</span>

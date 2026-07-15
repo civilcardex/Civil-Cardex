@@ -71,7 +71,7 @@ export default function StickyCtaBanner({ heroId, ctaId }: StickyCtaBannerProps)
       style={style}
     >
       <div className="flex items-center gap-4">
-        <img src="/logos/civilCorelogo.svg" alt="CivilCore" className="w-8 h-8 object-contain" />
+        <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="w-8 h-8 object-contain" />
         <span className="text-sm font-bold uppercase" style={{ color: '#e8f4fd', fontFamily: 'Hanken Grotesk, sans-serif' }}>
           Lleve sus diseños al siguiente nivel
         </span>

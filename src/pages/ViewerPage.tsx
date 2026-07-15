@@ -5,6 +5,8 @@ import PdfViewer from '../components/PdfViewer';
 import { usePlans } from '../context/PlansContext';
 import { useProject } from '../context/ProjectContext';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { loadFromStorage } from '../services/storageService';
+import { ACTIVE_NETS_KEY, VISOR_ACTIVE_PLAN_ID_KEY, VISOR_ACTIVE_INDEX_KEY } from '../constants/storage-keys';
 const ViewerPage_S1: React.CSSProperties = { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 };
 const ViewerPage_S2: React.CSSProperties = { height: 36, display: 'flex', alignItems: 'center', gap: 8, padding: '0 16px', background: '#111317', borderBottom: '1px solid #3a494a', position: 'relative', };
 const ViewerPage_S3: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', background: '#1e2024', border: '1px solid #3a494a', borderRadius: 3, color: '#e2e2e8', cursor: 'pointer', fontFamily: 'Geist, monospace', fontSize: 12, };
@@ -29,8 +31,8 @@ export default function ViewerPage() {
   const { pisos } = useProject();
   const [rawActiveIndex, setActiveIndex] = useState(() => {
     try {
-      const savedId = localStorage.getItem('civilflow_visor_activePlanId');
-      const saved = localStorage.getItem('civilflow_visor_activeIndex');
+      const savedId = localStorage.getItem(VISOR_ACTIVE_PLAN_ID_KEY);
+      const saved = localStorage.getItem(VISOR_ACTIVE_INDEX_KEY);
       if (savedId && plans.length > 0) {
         const idx = plans.findIndex(p => String(p.id) === savedId);
         if (idx >= 0) return idx;
@@ -42,8 +44,8 @@ export default function ViewerPage() {
   });
   const [activeNetworks] = useState<Set<string>>(() => {
     try {
-      const saved = localStorage.getItem('civilflow_active_nets');
-      if (saved) return new Set(JSON.parse(saved));
+      const saved = loadFromStorage<string[] | null>(ACTIVE_NETS_KEY, null);
+      if (saved) return new Set(saved);
     } catch {
       // ignore
     }
@@ -83,7 +85,7 @@ export default function ViewerPage() {
     } else if (!planIdResolvedRef.current) {
       planIdResolvedRef.current = true;
       try {
-        const savedId = localStorage.getItem('civilflow_visor_activePlanId');
+        const savedId = localStorage.getItem(VISOR_ACTIVE_PLAN_ID_KEY);
         if (savedId) {
           const idx = plans.findIndex(p => String(p.id) === savedId);
           if (idx >= 0 && idx !== rawActiveIndex) {
@@ -98,9 +100,9 @@ export default function ViewerPage() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('civilflow_visor_activeIndex', String(activeIndex));
+      localStorage.setItem(VISOR_ACTIVE_INDEX_KEY, String(activeIndex));
       const plan = plans[activeIndex];
-      if (plan) localStorage.setItem('civilflow_visor_activePlanId', String(plan.id));
+      if (plan) localStorage.setItem(VISOR_ACTIVE_PLAN_ID_KEY, String(plan.id));
     } catch {
       // ignore
     }

@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, createContext, useContext, type ReactNode } from "react";
 import { useTramos } from "./TramosContext";
 import { usePlans } from "./PlansContext";
-import { TRAZOS_PREFIX } from "../constants/storage-keys";
+import { TRAZOS_PREFIX, ACTIVE_NETS_KEY } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
 
 interface BajanteLL { id: string; bajante: string; areaParcial: number; areaAcumulada: number; intensidad: number; coeficienteC: number; R: string; manning: number; diamPropuesto: number }
@@ -27,7 +27,7 @@ const [canalesLl, setCanalesLl] = useState<CanalLL[]>([]);
 
 const [conRecolectora, setConRecolectora] = useState<boolean>(() => {
   try {
-    const saved = loadFromStorage<string[]>('active_nets', [] as unknown as string[]);
+    const saved = loadFromStorage<string[]>(ACTIVE_NETS_KEY, [] as unknown as string[]);
     if (saved && Array.isArray(saved)) return saved.includes('recolectora');
   } catch { /* ignore */ }
   return false;

@@ -328,6 +328,18 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     }
     return;
   }
+  if (engine.txtResize) {
+    const t = engine.textAnnots.find(tt => tt.id === engine.txtResize!.id);
+    if (t) {
+      const { boxX, boxY, startDist, origFontMm, origBoxWpx } = engine.txtResize;
+      const dist = Math.hypot(x - boxX, y - boxY);
+      const scale = startDist > 0.01 ? Math.max(0.2, Math.min(6, dist / startDist)) : 1;
+      t.fontMm = Math.max(1, Math.min(40, origFontMm * scale));
+      t.boxW = (origBoxWpx * scale) / engine.zoom;
+      engine.scheduleRender();
+    }
+    return;
+  }
   if (engine.dimDrag) {
     const d = engine.dims.find(dd => dd.id === engine.dimDrag!.id);
     if (d) {

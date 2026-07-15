@@ -21,7 +21,7 @@ export default function TextInputOverlay({ textOverlay, setTextOverlay, textInpu
   if (!textOverlay) return null;
 
   return (
-    <div aria-hidden="true" style={TextInputOverlay_S1} onClick={() => { textOverlay.cb(''); setTextOverlay(null); }}>
+    <div style={TextInputOverlay_S1} onClick={() => { textOverlay.cb(''); setTextOverlay(null); }}>
       <div role="dialog" aria-modal="true" aria-label="Ingresar texto" onClick={e => e.stopPropagation()} onKeyDown={e => {
           if (e.key === 'Tab') {
             const focusable = e.currentTarget.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');

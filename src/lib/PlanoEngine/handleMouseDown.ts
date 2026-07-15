@@ -433,6 +433,18 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
 
   if (isTextAnnotation(sel) && sel._box && sel.id?.startsWith('T')) {
     const b = sel._box;
+    const cornerX = b.x + b.w, cornerY = b.y + b.h;
+    if (Math.hypot(x - cornerX, y - cornerY) < 10) {
+      engine.txtResize = {
+        id: sel.id,
+        boxX: b.x,
+        boxY: b.y,
+        startDist: Math.hypot(cornerX - b.x, cornerY - b.y),
+        origFontMm: sel.fontMm || 2.5,
+        origBoxWpx: b.w,
+      };
+      return;
+    }
     if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
       const tp = engine.toPlane(x, y);
       engine.txtDrag = { id: sel.id, startX: tp.x, startY: tp.y, origX: sel.x, origY: sel.y };

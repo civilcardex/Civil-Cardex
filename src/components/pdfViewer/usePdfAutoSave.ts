@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { saveToStorage, saveTrazosToDB } from "../../services/storageService";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../../utils/drawingSync";
+import { TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from "../../constants/storage-keys";
 
 export function usePdfAutoSave(
   engineRef: React.MutableRefObject<PlanoEngine | null>,
@@ -15,9 +16,9 @@ export function usePdfAutoSave(
     try {
       const work = eng.saveWork() as any;
       work.ts = Date.now();
-      saveToStorage(`trazos_${id}`, work);
+      saveToStorage(`${TRAZOS_PREFIX}${id}`, work);
       if (id !== 'work') {
-        saveToStorage('last_tracos_id', id);
+        saveToStorage(LAST_TRAZOS_ID_KEY, id);
         saveTrazosToDB(id, work);
       }
     } catch {

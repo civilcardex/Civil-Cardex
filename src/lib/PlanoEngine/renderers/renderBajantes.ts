@@ -24,8 +24,9 @@ function renderBajanteLabel(
 ): void {
   const hasDir = !!dirText;
 
-  const fsCode = engine.mm2cvs(engine.MM.lblCode * engine.labelScaleM * 1.35);
-  const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35);
+  const labelSizeMul = (b.tipo === 'contador' || b.tipo === 'calentador') ? 0.75 : 1;
+  const fsCode = engine.mm2cvs(engine.MM.lblCode * engine.labelScaleM * 1.35 * labelSizeMul);
+  const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35 * labelSizeMul);
   const lineH = fsCode + 2;
 
   ctx.save();

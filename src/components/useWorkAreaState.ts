@@ -10,6 +10,7 @@ import { parseDecimalInput, parseIntInput } from "../utils/parseDecimal";
 import { NETS } from "../lib/PlanoEngine/PlanoState";
 import { devError } from "../utils/devError";
 import { loadFromStorage, saveToStorage } from "../services/storageService";
+import { ACTIVE_NETS_KEY, OPEN_TAB_KEY, NET_COLOR_PREFIX, NETS_CHANGED_EVENT } from "../constants/storage-keys";
 
 function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject<T>] {
   const [val, _set] = useState<T>(initial);
@@ -31,15 +32,15 @@ export function useWorkAreaState() {
   const [tab, setTab] = useState<string>('info');
 
   useEffect(() => {
-    const openTab = sessionStorage.getItem('openTab');
+    const openTab = sessionStorage.getItem(OPEN_TAB_KEY);
     if (openTab) {
       setTab(openTab);
-      sessionStorage.removeItem('openTab');
+      sessionStorage.removeItem(OPEN_TAB_KEY);
     }
   }, []);
 
   const [redes, setRedes] = useState<Set<string>>(() => {
-    const saved = loadFromStorage('active_nets', null);
+    const saved = loadFromStorage(ACTIVE_NETS_KEY, null);
     if (saved && Array.isArray(saved)) return new Set(saved);
     return new Set(['san', 'll']);
   });
@@ -47,8 +48,8 @@ export function useWorkAreaState() {
   const redesActivas = useMemo(() => REDES.filter(r => redes.has(r.id) && r.id !== 'vent' && r.id !== 'recolectora'), [redes]);
 
   useEffect(() => {
-    saveToStorage('active_nets', [...redes]);
-    window.dispatchEvent(new CustomEvent('civilflow_nets_changed', { detail: [...redes] }));
+    saveToStorage(ACTIVE_NETS_KEY, [...redes]);
+    window.dispatchEvent(new CustomEvent(NETS_CHANGED_EVENT, { detail: [...redes] }));
   }, [redes]);
 
   const [redActiva, setRedActiva] = useState<string>('san');
@@ -184,7 +185,7 @@ export function useWorkAreaState() {
 
   useEffect(() => {
     REDES.forEach(r => {
-      const raw = localStorage.getItem('civilflow_net_' + r.id);
+      const raw = localStorage.getItem(NET_COLOR_PREFIX + r.id);
       const saved = raw ? (() => { try { return JSON.parse(raw); } catch { return raw; } })() : null;
       if (saved && typeof saved === 'string') {
         document.documentElement.style.setProperty('--' + r.id, saved);

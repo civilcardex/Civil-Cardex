@@ -10,7 +10,7 @@ const NOTFOUND_JSONLD = {
 };
 
 export default function NotFound() {
-  usePageMeta('Página no encontrada', 'La página solicitada no existe en CivilCore. Verifique la URL o vuelva al inicio.');
+  usePageMeta('Página no encontrada', 'La página solicitada no existe en CivilCore. Verifique la URL o vuelva al inicio.', true);
   return (
     <div className="min-h-screen bg-surface-bg text-on-surface font-sans flex items-center justify-center">
       <script type="application/ld+json">{JSON.stringify(NOTFOUND_JSONLD)}</script>

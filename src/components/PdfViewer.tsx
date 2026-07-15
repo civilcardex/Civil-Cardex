@@ -9,7 +9,7 @@ import { usePlans } from "../context/PlansContext";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync";
 import { bumpHidroAccesorio } from "../utils/syncExtremeAccessory";
 import { loadFromStorage, saveToStorage, saveTrazosToDB, loadTrazosFromDB } from "../services/storageService";
-import { GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY } from "../constants/storage-keys";
+import { GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY, ACTIVE_NETS_KEY, TRAZOS_PLAN_PREFIX, VISOR_TOOL_KEY, VISOR_TIPO_TRAMO_KEY, VISOR_SNAP_ON_KEY, NETS_CHANGED_EVENT, TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from "../constants/storage-keys";
 import { devError } from "../utils/devError";
 import PdfViewerToolbar, { STATUS } from "./pdfViewer/PdfViewerToolbar";
 import PdfCanvas from "./pdfViewer/PdfCanvas";
@@ -101,15 +101,12 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
       return Array.from(activeNetworks)[0];
     }
     try {
-      const saved = localStorage.getItem('active_nets');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const valid = parsed.filter(id => id !== 'ep' && id !== 'bom');
-          if (valid.length > 0) {
-            if (parsed.includes("af")) return "af";
-            return valid[0];
-          }
+      const parsed = loadFromStorage<string[] | null>(ACTIVE_NETS_KEY, null);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const valid = parsed.filter(id => id !== 'ep' && id !== 'bom');
+        if (valid.length > 0) {
+          if (parsed.includes("af")) return "af";
+          return valid[0];
         }
       }
     } catch {}
@@ -123,13 +120,13 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
   }, [activeNetworks, activeNet]);
 
   const [tipoTramo, setTipoTramo] = useState(() => {
-    try { return sessionStorage.getItem('civilflow_visor_tipoTramo') || 'ramal'; }
+    try { return sessionStorage.getItem(VISOR_TIPO_TRAMO_KEY) || 'ramal'; }
     catch { return 'ramal'; }
   });
   const [padreTributarioId, setPadreTributarioId] = useState<string | null>(null);
   const [snapOn, setSnapOn] = useState(() => {
     try {
-      const v = sessionStorage.getItem('civilflow_visor_snapOn');
+      const v = sessionStorage.getItem(VISOR_SNAP_ON_KEY);
       return v !== null ? v === 'true' : true;
     } catch { return true; }
   });
@@ -178,7 +175,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
         ramales = engineRef.current?.ramales?.filter((r: any) => r.tipo !== 'tributario' && r.net === (selElement.net || activeNet)) || [];
         bajantes = engineRef.current?.bajantes?.filter((b: any) => b.net === (selElement.net || activeNet)) || [];
       } else {
-        const raw = localStorage.getItem('civilflow_trazos_' + plan.id);
+        const raw = localStorage.getItem(TRAZOS_PLAN_PREFIX + plan.id);
         if (raw) {
           try {
             const data = JSON.parse(raw);
@@ -193,9 +190,9 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
     return results;
   }, [selElement?.id, selectedNivel, pisos, planosCtx.plans, activeNet]);
 
-  useEffect(() => { try { sessionStorage.setItem('civilflow_visor_tool', tool); } catch {} }, [tool]);
-  useEffect(() => { try { sessionStorage.setItem('civilflow_visor_tipoTramo', tipoTramo); } catch {} }, [tipoTramo]);
-  useEffect(() => { try { sessionStorage.setItem('civilflow_visor_snapOn', String(snapOn)); } catch {} }, [snapOn]);
+  useEffect(() => { try { sessionStorage.setItem(VISOR_TOOL_KEY, tool); } catch {} }, [tool]);
+  useEffect(() => { try { sessionStorage.setItem(VISOR_TIPO_TRAMO_KEY, tipoTramo); } catch {} }, [tipoTramo]);
+  useEffect(() => { try { sessionStorage.setItem(VISOR_SNAP_ON_KEY, String(snapOn)); } catch {} }, [snapOn]);
 
   useEffect(() => {
     if (selectedNivel !== null) {
@@ -285,9 +282,9 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
       if (id) {
         const work = eng.saveWork() as any;
         work.ts = Date.now();
-        saveToStorage(`trazos_${id}`, work);
+        saveToStorage(TRAZOS_PREFIX + id, work);
         if (id !== 'work') {
-          saveToStorage('last_tracos_id', id);
+          saveToStorage(LAST_TRAZOS_ID_KEY, id);
           saveTrazosToDB(id, work);
         }
       }
@@ -443,17 +440,17 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
   }, [syncDrawings]);
 
   const [liveActiveNets, setLiveActiveNets] = useState<Set<string> | null>(() => {
-    try { const saved = loadFromStorage('active_nets', null); if (saved && Array.isArray(saved)) return new Set(saved); } catch {}
+    try { const saved = loadFromStorage(ACTIVE_NETS_KEY, null); if (saved && Array.isArray(saved)) return new Set(saved); } catch {}
     return null;
   });
 
   useEffect(() => {
     const refresh = () => {
-      try { const saved = loadFromStorage('active_nets', null); setLiveActiveNets(saved && Array.isArray(saved) ? new Set(saved) : null); } catch { setLiveActiveNets(null); }
+      try { const saved = loadFromStorage(ACTIVE_NETS_KEY, null); setLiveActiveNets(saved && Array.isArray(saved) ? new Set(saved) : null); } catch { setLiveActiveNets(null); }
     };
-    window.addEventListener('civilflow_nets_changed', refresh);
+    window.addEventListener(NETS_CHANGED_EVENT, refresh);
     window.addEventListener('storage', refresh);
-    return () => { window.removeEventListener('civilflow_nets_changed', refresh); window.removeEventListener('storage', refresh); };
+    return () => { window.removeEventListener(NETS_CHANGED_EVENT, refresh); window.removeEventListener('storage', refresh); };
   }, []);
 
   const finalVisibleNets = useMemo(() => {

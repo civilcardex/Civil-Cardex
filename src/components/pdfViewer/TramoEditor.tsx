@@ -9,6 +9,7 @@ import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel'
 import ExtremeAccessoryEditor from './ExtremeAccessoryEditor'
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine'
 import { bajanteLabel } from '../../utils/accessoryAbbreviations'
+import { TRAZOS_PLAN_PREFIX, NETS_CHANGED_EVENT } from '../../constants/storage-keys'
 
 interface TramoEditorContextValue {
   engineRef: React.MutableRefObject<PlanoEngine | null>
@@ -312,7 +313,7 @@ function BajanteEditor({
                         onChange={e => {
                           const val = e.target.checked ? `${engineRef.current?.planId}|${selElement.id}` : null;
                           writeBajantePropToDrawing(b.key, activeNet, 'descargaEnId', val, plans || []);
-                          window.dispatchEvent(new CustomEvent('civilflow_nets_changed', { detail: [activeNet] }));
+                          window.dispatchEvent(new CustomEvent(NETS_CHANGED_EVENT, { detail: [activeNet] }));
                         }}
                         style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
                       <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={b.label}>{b.label}</span>
@@ -690,7 +691,7 @@ function BajanteEditorSection() {
     const list: Array<{ key: string; id: string; label: string; planId: string; planName: string; planNivel: number; descargaEnId: string | null }> = [];
     for (const plan of plans) {
       if (plan.status !== 'confirmed') continue;
-      const key = 'civilflow_trazos_' + plan.id;
+      const key = TRAZOS_PLAN_PREFIX + plan.id;
       const raw = localStorage.getItem(key);
       if (raw) {
         try {

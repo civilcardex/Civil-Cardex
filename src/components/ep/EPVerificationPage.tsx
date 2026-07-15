@@ -137,7 +137,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
     return (
       <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minWidth: 0 }}>
-          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/parametros_equipo.svg" iconImgStyle={{ width: 20, height: 20 }} title="Parámetros del equipo — Datos del fabricante" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editParams} setEdit={setEditParams} />}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/parametros_equipo.webp" iconImgStyle={{ width: 20, height: 20 }} title="Parámetros del equipo — Datos del fabricante" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editParams} setEdit={setEditParams} />}>
             <Tbl caption="Parámetros del equipo" thStyle={TH_S} tdStyle={TD_S} cols={["Parámetro", "Valor", "Unidad"]} rows={[
               ["Eficiencia bomba (η_b)", <LazyInp disabled={!editParams} field="etab" ariaLabel="Eficiencia bomba" />, "dec"],
               ["Eficiencia motor (η_m)", <LazyInp disabled={!editParams} field="etam" ariaLabel="Eficiencia motor" />, "dec"],
@@ -148,7 +148,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
               ["Velocidad impulsión (V_imp)", <LazyInp disabled={!editParams} field="vimp" ariaLabel="Velocidad impulsión" />, "m/s"],
             ]} />
           </Card>
-          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/altura_manometrica.svg" iconImgStyle={{ width: 20, height: 20 }} title={`${isRed ? "Altura manométrica total — Succión directa" : "Altura manométrica total — Succión desde cisterna"}`} bodyStyle={{ padding: 0 }}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/altura_manometrica.webp" iconImgStyle={{ width: 20, height: 20 }} title={`${isRed ? "Altura manométrica total — Succión directa" : "Altura manométrica total — Succión desde cisterna"}`} bodyStyle={{ padding: 0 }}>
             <Tbl caption="Altura manométrica total" thStyle={TH_S} tdStyle={TD_S} cols={["Parámetro", "Valor", "Unidad"]} rows={(() => {
               const r: any[][] = [];
               r.push(["Desnivel geométrico", <span style={hgOk ? OK : ERR}>{hgOk ? `✓ ${(ztop - zbomba).toFixed(2)}` : `✗ ${(ztop - zbomba).toFixed(2)}`}</span>, "m.c.a."]);
@@ -164,7 +164,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
           </Card>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minWidth: 0 }}>
-          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/potencia_bomba.svg" iconImgStyle={{ width: 20, height: 20 }} title="Potencia de la bomba" bodyStyle={{ padding: 0 }}>
+          <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/potencia_bomba.webp" iconImgStyle={{ width: 20, height: 20 }} title="Potencia de la bomba" bodyStyle={{ padding: 0 }}>
             <Tbl caption="Potencia de la bomba" thStyle={TH_S} tdStyle={TD_S} cols={["Parámetro", "Valor", "Ud."]} rows={[
               ["Potencia hidráulica", <span style={M}>{fmtW(Phid)}</span>, "W"],
               ["Potencia al freno", <span style={M}>{fmtW(Pfreno_w)}</span>, "W"],
@@ -176,7 +176,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
             ]} />
           </Card>
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-            <Card style={{display:'flex',flexDirection:'column', flex: 1, minWidth: 0}} iconImg="/iconos_diseno_redes/equipos/caudales.svg" iconImgStyle={{ width: 20, height: 20 }} title="Caudales" bodyStyle={{ padding: 0 }}>
+            <Card style={{display:'flex',flexDirection:'column', flex: 1, minWidth: 0}} iconImg="/iconos_diseno_redes/equipos/caudales.webp" iconImgStyle={{ width: 20, height: 20 }} title="Caudales" bodyStyle={{ padding: 0 }}>
               <Tbl caption="Caudales" thStyle={TH_S} tdStyle={TD_S} cols={["Parámetro", "Valor", "Ud."]} rows={[
                 ["Qd = MAX(Qac, Qasc)", <span style={M}>{fmtLps(Qd)}</span>, "L/s"],
                 ["Qd en m³/h", <span style={M}>{fmtM3h(Qm3h)}</span>, "m³/h"],
@@ -184,7 +184,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
                 ["Qb = Qd / Nt", <span style={M}>{fmtLps(Qb)}</span>, "L/s"],
               ]} />
             </Card>
-            <Card style={{display:'flex',flexDirection:'column', flex: 1, minWidth: 0}} iconImg="/iconos_diseno_redes/equipos/pot_comercial_seleccionada.svg" iconImgStyle={{ width: 20, height: 20 }} title="Potencia comercial seleccionada" bodyStyle={{ padding: "5px 8px", display: "flex", flexDirection: "column", gap: 5 }} headerRight={<EditButton edit={editPComercial} setEdit={setEditPComercial} />}>
+            <Card style={{display:'flex',flexDirection:'column', flex: 1, minWidth: 0}} iconImg="/iconos_diseno_redes/equipos/pot_comercial_seleccionada.webp" iconImgStyle={{ width: 20, height: 20 }} title="Potencia comercial seleccionada" bodyStyle={{ padding: "5px 8px", display: "flex", flexDirection: "column", gap: 5 }} headerRight={<EditButton edit={editPComercial} setEdit={setEditPComercial} />}>
               <div style={{ fontSize: 10, color: "var(--txt3)" }}>
                 P calculada = <strong style={{ color: "var(--txt)" }}>{Pins_hp > 0 ? Pins_hp.toFixed(2) : "—"} HP</strong> · Comercial superior: <strong style={{ color: "var(--txt)", fontWeight: 700 }}>{autoNema} HP</strong>
               </div>
@@ -210,7 +210,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
   return (
     <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minWidth: 0 }}>
-      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.svg" iconImgStyle={{ width: 22, height: 22 }} title="Presión de setpoint y tanque hidroneumático" bodyStyle={{ padding: 0 }}>
+      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.webp" iconImgStyle={{ width: 22, height: 22 }} title="Presión de setpoint y tanque hidroneumático" bodyStyle={{ padding: 0 }}>
         <Tbl caption="Presión de setpoint y tanque hidroneumático" thStyle={TH_R} tdStyle={TD_R} cols={["Parámetro", "Valor", "Unidad", "Fórmula"]} rows={[
           ["Presión de arranque", <span style={M}>{fmtMca(Pon)}</span>, "m.c.a.", "P_arranque = HMT"],
           ["Presión de paro", <span style={M}>{fmtMca(Poff)}</span>, "m.c.a.", "P_paro = P_arranque × 1.10"],
@@ -222,7 +222,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
           ["Volumen total tanque Vt", <span style={M}>{Vt > 0 ? (Vt / 1000).toFixed(3) : "—"}</span>, "m³", "Vt / 1000"],
         ]} />
       </Card>
-      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/diametros_velocidades.svg" iconImgStyle={{ width: 22, height: 22 }} title="Diámetros seleccionados por el usuario (anulan los recomendados)" bodyStyle={{ padding: 0 }}>
+      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/diametros_velocidades.webp" iconImgStyle={{ width: 22, height: 22 }} title="Diámetros seleccionados por el usuario (anulan los recomendados)" bodyStyle={{ padding: 0 }}>
         <Tbl caption="Diámetros seleccionados por el usuario" thStyle={TH_R} tdStyle={TD_R} cols={["Parámetro", "Valor", "Unidad"]} rows={[
           [<Param name="Tubería de succión" sub="Diámetro nominal comercial" />, <LazyInp disabled={!editDiametros} field="dnsuc" ariaLabel="Tubería de succión" />, "mm DN"],
           ["Velocidad real en succión", <span style={M}>{fmtMs(sucDiam.Vreal)}</span>, "m/s"],
@@ -232,7 +232,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
       </Card>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1, minWidth: 0 }}>
-      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/diametros_velocidades.svg" iconImgStyle={{ width: 22, height: 22 }} title="Diámetros nominales de tuberías del equipo" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editDiametros} setEdit={setEditDiametros} />}>
+      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/diametros_velocidades.webp" iconImgStyle={{ width: 22, height: 22 }} title="Diámetros nominales de tuberías del equipo" bodyStyle={{ padding: 0 }} headerRight={<EditButton edit={editDiametros} setEdit={setEditDiametros} />}>
         <Tbl caption="Diámetros nominales de tuberías del equipo" thStyle={TH_R} tdStyle={{ ...TD_R, width: '1%', whiteSpace: 'nowrap' }} cols={["Ramal", "Q (L/s)", "V diseño (m/s)", "D calc (mm)", "DN (mm)", "V real (m/s)"]} rows={[
           ["Succión colector (Qd)", <span style={M}>{fmtLps(Qd)}</span>, <span style={M}>{vsuc}</span>, <span style={M}>{fmtMm(rSucColector.diamCalcMm)}</span>, <span style={MB}>{rSucColector.dn}</span>, <span style={M}>{fmtMs(rSucColector.vReal)}</span>],
           ["Impulsión colector (Qd)", <span style={M}>{fmtLps(Qd)}</span>, <span style={M}>{vimp}</span>, <span style={M}>{fmtMm(rImpColector.diamCalcMm)}</span>, <span style={MB}>{rImpColector.dn}</span>, <span style={M}>{fmtMs(rImpColector.vReal)}</span>],
@@ -240,7 +240,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
           ["Impulsión por bomba (Qb)", <span style={M}>{fmtLps(Qb)}</span>, <span style={M}>{vimp}</span>, <span style={M}>{fmtMm(rImpBomba.diamCalcMm)}</span>, <span style={MB}>{rImpBomba.dn}</span>, <span style={M}>{fmtMs(rImpBomba.vReal)}</span>],
         ]} />
       </Card>
-      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.svg" iconImgStyle={{ width: 22, height: 22 }} title="Especificación técnica del equipo" bodyStyle={{ padding: 0 }}>
+      <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_diseno_redes/equipos/setpoint_tanque.webp" iconImgStyle={{ width: 22, height: 22 }} title="Especificación técnica del equipo" bodyStyle={{ padding: 0 }}>
         <Tbl caption="Especificación técnica del equipo" thStyle={TH_R} tdStyle={TD_R} cols={["Parámetro", "Valor"]} rows={[
           ["Caudal nominal", <span style={M}>{fmtLps(Qd)} L/s = {fmtM3h(Qm3h)} m³/h = {fmtGpm(Qgpm)} GPM</span>],
           ["Altura manométrica total", <span style={M}>{fmtMca(HMT)} m.c.a. = {fmtBar(HMT / 10.2)} bar</span>],

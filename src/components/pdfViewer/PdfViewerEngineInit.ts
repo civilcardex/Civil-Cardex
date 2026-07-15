@@ -3,6 +3,7 @@ import { getPdfjs } from "../../utils/lazyPdfjs";
 import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { saveToStorage, saveTrazosToDB } from "../../services/storageService";
 import { devError } from "../../utils/devError";
+import { TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from "../../constants/storage-keys";
 
 interface UsePdfViewerEngineParams {
   currentFile: File | null;
@@ -178,9 +179,9 @@ export function usePdfViewerEngine({
           const id = eng._loadedPlanId || currentIdRef.current || 'work';
           const work = eng.saveWork() as any;
           work.ts = Date.now();
-          saveToStorage(`trazos_${id}`, work);
+          saveToStorage(TRAZOS_PREFIX + id, work);
           if (id !== 'work') {
-            saveToStorage('last_tracos_id', id);
+            saveToStorage(LAST_TRAZOS_ID_KEY, id);
             saveTrazosToDB(id, work);
           }
         }

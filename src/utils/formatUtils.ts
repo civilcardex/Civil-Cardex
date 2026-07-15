@@ -27,8 +27,9 @@ const FRAC_MAP: Record<string, string> = {
 export function normalizeDnLabel(dn: string): string {
   let out = dn;
   for (const [uni, ascii] of Object.entries(FRAC_MAP)) {
-    if (out.includes(uni)) out = out.split(uni).join(ascii);
+    out = out.replace(new RegExp(`(\\d)(${uni})`, 'g'), `$1-${ascii}`);
+    out = out.split(uni).join(ascii);
   }
-  out = out.replace(/^(\d+) (\d+\/\d+)/, '$1-$2');
+  out = out.replace(/(\d+) (\d+\/\d+)/, '$1-$2');
   return out;
 }

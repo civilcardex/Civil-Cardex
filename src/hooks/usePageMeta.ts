@@ -12,22 +12,26 @@ function setMeta(prop: string, name: string, content: string, prev: Record<strin
   el.setAttribute('content', content);
 }
 
-export function usePageMeta(title: string, description?: string) {
+export function usePageMeta(title: string, description?: string, noindex?: boolean) {
   useEffect(() => {
     const prev: Record<string, string | null> = {};
     const fullTitle = title ? `${title} | Civil Core` : 'Civil Core';
-    
+
     const prevTitle = document.title;
     document.title = fullTitle;
     setMeta('property', 'og:title', fullTitle, prev);
     setMeta('name', 'twitter:title', fullTitle, prev);
-    
+
     if (description) {
       setMeta('name', 'description', description, prev);
       setMeta('property', 'og:description', description, prev);
       setMeta('name', 'twitter:description', description, prev);
     }
-    
+
+    if (noindex) {
+      setMeta('name', 'robots', 'noindex, nofollow', prev);
+    }
+
     const url = window.location.href.split('?')[0];
     setMeta('property', 'og:url', url, prev);
     
@@ -50,5 +54,5 @@ export function usePageMeta(title: string, description?: string) {
       }
       if (prevHref && link) link.setAttribute('href', prevHref);
     };
-  }, [title, description]);
+  }, [title, description, noindex]);
 }

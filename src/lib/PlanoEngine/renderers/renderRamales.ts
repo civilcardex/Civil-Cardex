@@ -360,35 +360,42 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(baseHorizX + perX * L3, baseHorizY + perY * L3);
     ctx.stroke();
   } else if (accType === 'llaveTerminal') {
-    const circR = rad * 0.5;
-    const stem = rad * 1.5;
+    const domeR = rad * 0.6;
+    const stemLen = rad * 1.3;
+    const capHalf = rad * 0.45;
 
-    ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 1.5 * engine.zoom;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // White circle at the connection point (valve body)
+    // Dome center sits one radius out from the ramal end, so its near foot
+    // lands exactly on the connection point c (widest part touches the ramal)
+    // and the far foot floats free.
+    const domeCX = c.x + outX * domeR;
+    const domeCY = c.y + outY * domeR;
+
+    // Dome (semicircle) astride the ramal direction, bulging toward the stem
+    const domeAngle = Math.atan2(py, px);
     ctx.beginPath();
-    ctx.arc(c.x, c.y, circR, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.arc(domeCX, domeCY, domeR, domeAngle - Math.PI / 2, domeAngle + Math.PI / 2);
     ctx.stroke();
 
-    // Stem from center perpendicular to ramal
-    const stemEndX = c.x + px * stem;
-    const stemEndY = c.y + py * stem;
+    // Stem from the apex of the dome outward
+    const apexX = domeCX + px * domeR;
+    const apexY = domeCY + py * domeR;
+    const stemEndX = domeCX + px * stemLen;
+    const stemEndY = domeCY + py * stemLen;
     ctx.beginPath();
-    ctx.moveTo(c.x, c.y);
+    ctx.moveTo(apexX, apexY);
     ctx.lineTo(stemEndX, stemEndY);
     ctx.stroke();
 
-    // "T" terminal mark at the end of the stem
-    ctx.fillStyle = '#000000';
-    ctx.font = `bold ${rad * 0.8}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('T', stemEndX, stemEndY);
+    // T-bar cap at the end of the stem
+    ctx.beginPath();
+    ctx.moveTo(stemEndX - outX * capHalf, stemEndY - outY * capHalf);
+    ctx.lineTo(stemEndX + outX * capHalf, stemEndY + outY * capHalf);
+    ctx.stroke();
   } else {
     if (accType.startsWith('tee') || accType === 'te_linea' || accType === 'te_ramal' || accType.startsWith('yee')) {
       return;

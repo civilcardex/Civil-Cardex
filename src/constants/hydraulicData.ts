@@ -1,8 +1,6 @@
 import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
 import { AGUA_CALIENTE } from '../pages/catalog/catalogData';
 
-export const COEF_HAZEN: number = 150;
-
 export interface DiametroComercialAF {
   nominal: string;
   pulg: number;

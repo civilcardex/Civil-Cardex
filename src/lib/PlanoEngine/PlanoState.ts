@@ -296,6 +296,7 @@ export interface IPlanoEngineCore {
   ghostDrag: { id: string; startX: number; startY: number; baseDx: number; baseDy: number } | null;
   lblDrag: { id: string; offX: number; offY: number } | null;
   txtDrag: { id: string; startX: number; startY: number; origX: number; origY: number } | null;
+  txtResize: { id: string; boxX: number; boxY: number; startDist: number; origFontMm: number; origBoxWpx: number } | null;
   bajDrag: { id: string; offX: number; offY: number } | null;
   ptDrag: { id: string; ptIdx: number; slideConstraint?: { otherId: string; segmentIdx: number }; accMedSlide?: { ax: number; ay: number; bx: number; by: number }; linkedPts?: { id: string; ptIdx: number }[] } | null;
   areaDrag: { id: string; startX: number; startY: number } | null;
