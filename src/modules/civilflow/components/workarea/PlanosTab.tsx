@@ -24,7 +24,7 @@ const PlanosTab_S12: React.CSSProperties = { padding: '3px 6px', fontSize: 12, f
 const PlanosTab_S13: React.CSSProperties = { padding: '7px 10px', fontSize: 12, fontWeight: 700, color: 'var(--txt3)', borderBottom: '1px solid var(--line)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, textTransform: 'uppercase', letterSpacing: .5 };
 const PlanosTab_S14: React.CSSProperties = { padding: '3px 6px', fontSize: 12, fontWeight: 600, borderRadius: 'var(--r)', border: '1px solid var(--line)', background: 'var(--bg3)', color: '#ef5350', cursor: 'pointer', flexShrink: 0, transition: 'all 0.15s ease', whiteSpace: 'nowrap' };
 const PlanosTab_reqBtnBase: React.CSSProperties = { width: '100%', padding: '6px 8px', borderRadius: 'var(--r)', cursor: 'pointer', fontSize: 12, transition: 'all .2s ease', marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 };
-const PlanosTab_pendingLi: React.CSSProperties = { padding: '10px', borderRadius: 'var(--r)', display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, transition: 'all 0.15s ease' };
+const PlanosTab_pendingLi: React.CSSProperties = { padding: '10px', borderRadius: 'var(--r)', display: 'flex', flexDirection: 'column', gap: 6, transition: 'all 0.15s ease' };
 const PlanosTab_verBtn: React.CSSProperties = { padding: '3px 6px', fontSize: 12, fontWeight: 600, borderRadius: 'var(--r)', border: '1px solid var(--line)', cursor: 'pointer', transition: 'all 0.15s ease', whiteSpace: 'nowrap' };
 
 
@@ -334,53 +334,49 @@ function PlanosTab({ state }: PlanosTabProps) {
                       background: isSelected ? 'rgba(0, 220, 229, 0.03)' : 'transparent',
                     }}>
                     
-                    {/* Left Side: Info and Confirm */}
-                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--txt)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }} title={p.name}>
-                          {p.name}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--txt)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }} title={p.name}>
+                        {p.name}
+                      </span>
+                      {p.nivel !== null && (
+                        <span style={{ fontSize: 12, padding: '1px 5px', background: 'var(--bg3)', borderRadius: 'var(--r)', color: 'var(--txt3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          {pisoLbl(p.nivel)}
                         </span>
-                        {p.nivel !== null && (
-                          <span style={{ fontSize: 12, padding: '1px 5px', background: 'var(--bg3)', borderRadius: 'var(--r)', color: 'var(--txt3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                            {pisoLbl(p.nivel)}
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 3 }}>
+                        {calOk ? (
+                          <span style={{ color: 'var(--ok)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}><span style={{ fontSize: 12 }}>●</span> Calibrado</span>
+                            {p.definedScale ? <span style={{ color: 'var(--txt3)' }}>Diseño 1:{Math.round(p.definedScale * 100)}</span> : null}
+                            <span style={{ color: 'var(--txt2)' }}>| Calibrada 1:{Math.round(p.scale/100 * 100)}</span>
+                          </span>
+                        ) : (
+                          <span style={{ color: '#F5A623', display: 'flex', alignItems: 'center', gap: 2 }}>
+                            <span style={{ fontSize: 12 }}>●</span> Sin calibrar
                           </span>
                         )}
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 3 }}>
-                          {calOk ? (
-                            <span style={{ color: 'var(--ok)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <span style={{ display: 'flex', alignItems: 'center', gap: 2 }}><span style={{ fontSize: 12 }}>●</span> Calibrado</span>
-                              {p.definedScale ? <span style={{ color: 'var(--txt3)' }}>Diseño 1:{Math.round(p.definedScale * 100)}</span> : null}
-                              <span style={{ color: 'var(--txt2)' }}>| Calibrada 1:{Math.round(p.scale/100 * 100)}</span>
-                            </span>
-                          ) : (
-                            <span style={{ color: '#F5A623', display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <span style={{ fontSize: 12 }}>●</span> Sin calibrar
-                            </span>
-                          )}
-                        </div>
-
-                        {calOk && p.nivel !== null && p.nivel !== undefined && (
-                          <button type="button"
-                            onClick={() => {
-                              if (plans.some((x: any) => x.id !== p.id && x.status === 'confirmed' && x.nivel === p.nivel)) {
-                                alert('Este nivel ya tiene un plano asociado.');
-                                return;
-                              }
-                              confirmPlan(p.id);
-                            }}
-                            style={PlanosTab_S11}
-                          >
-                            CONFIRMAR
-                          </button>
-                        )}
-                      </div>
+                      {calOk && p.nivel !== null && p.nivel !== undefined && (
+                        <button type="button"
+                          onClick={() => {
+                            if (plans.some((x: any) => x.id !== p.id && x.status === 'confirmed' && x.nivel === p.nivel)) {
+                              alert('Este nivel ya tiene un plano asociado.');
+                              return;
+                            }
+                            confirmPlan(p.id);
+                          }}
+                          style={PlanosTab_S11}
+                        >
+                          CONFIRMAR
+                        </button>
+                      )}
                     </div>
 
-                    {/* Right Side: Horizontal row of 3 text buttons */}
-                    <div style={{ display: 'flex', flexDirection: 'row', gap: 3, flexShrink: 0 }}>
+                    <div style={{ display: 'flex', flexDirection: 'row', gap: 3 }}>
                       <button type="button"
                         onClick={() => { setSelectedPlanId(p.id); setCalibrating(false); }}
                         style={{
