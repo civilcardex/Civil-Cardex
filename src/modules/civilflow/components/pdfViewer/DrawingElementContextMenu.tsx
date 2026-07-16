@@ -672,8 +672,8 @@ function BajanteConnectionPanel({
                             engineRef.current?.triggerAlert('Elemento existente', `Ya existe un ${existingBm.tipo} (${existingBm.code || existingBm.id}) en este extremo. Elimínalo antes de asignar un accesorio.`);
                             return;
                           }
-                          if (val === 'codoReventilado' && diamPulgFromLabel(element.diametro || '') < 3) {
-                            engineRef.current?.triggerAlert('Diámetro mínimo', 'La tubería principal sanitaria con codo reventilado requiere mínimo 3" de diámetro.');
+                          if (val === 'codoReventilado' && (diamPulgFromLabel(element.diametro || '') < 3 || diamPulgFromLabel(element.diametro || '') > 4)) {
+                            engineRef.current?.triggerAlert('Diámetro no permitido', 'La tubería principal sanitaria con codo reventilado solo admite diámetro de 3" o 4".');
                             return;
                           }
                           // If this extreme already has a different accessory, just replace it
@@ -1078,8 +1078,8 @@ function MidRamalAccessorySelector({ element, midRamalHit, engineRef, selElement
           const fresh = eng.ramales.find((r: any) => r.id === element.id);
           if (!fresh) return;
 
-          if (accId === 'codoReventilado' && diamPulgFromLabel(fresh.diametro || '') < 3) {
-            eng.triggerAlert('Diámetro mínimo', 'La tubería principal sanitaria con codo reventilado requiere mínimo 3" de diámetro.');
+          if (accId === 'codoReventilado' && (diamPulgFromLabel(fresh.diametro || '') < 3 || diamPulgFromLabel(fresh.diametro || '') > 4)) {
+            eng.triggerAlert('Diámetro no permitido', 'La tubería principal sanitaria con codo reventilado solo admite diámetro de 3" o 4".');
             return;
           }
 

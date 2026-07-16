@@ -447,9 +447,9 @@ function RamalEditor({
       onChange={e => {
         const v = e.target.value;
         const targetRamal = selElement || (engineRef.current && [...engineRef.current.ramales].reverse().find((r: any) => r.net === activeNet));
-        if (activeNet === 'san' && diamPulgFromLabel(v) < 3 &&
+        if (activeNet === 'san' && (diamPulgFromLabel(v) < 3 || diamPulgFromLabel(v) > 4) &&
             targetRamal?.tipo === 'ramal' && ramalHasCodoReventilado(targetRamal)) {
-          engineRef.current?.triggerAlert('Diámetro mínimo', 'La tubería principal sanitaria con codo reventilado requiere mínimo 3" de diámetro.');
+          engineRef.current?.triggerAlert('Diámetro no permitido', 'La tubería principal sanitaria con codo reventilado solo admite diámetro de 3" o 4".');
           return;
         }
         setDiamSel(prev => ({ ...prev, [activeNet]: v }));
