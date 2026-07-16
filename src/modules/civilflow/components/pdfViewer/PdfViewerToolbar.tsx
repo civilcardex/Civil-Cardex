@@ -50,12 +50,13 @@ export type PdfViewerToolbarProps = {
   onFit: NavFn;
   onSave: NavFn;
   onUndo: NavFn;
+  onRedo: NavFn;
   onClear: NavFn;
 };
 
 function PdfViewerToolbar_({
   tool, snapOn, activeNet, currentFile, saveStatus,
-  onSelectTool, onSnapToggle, onFit, onSave, onUndo, onClear,
+  onSelectTool, onSnapToggle, onFit, onSave, onUndo, onRedo, onClear,
 }: PdfViewerToolbarProps) {
   const netTools = [...TOOLS];
   if (activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas') {
@@ -141,6 +142,13 @@ function PdfViewerToolbar_({
             <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 0, lineHeight: 1.1, flex: 1 }}>
               <span style={{ fontSize: 12, fontWeight: 700, textAlign: "left" }}>Deshacer</span>
               <span style={{ fontSize: 12, opacity: 0.7, fontWeight: 400, textAlign: "left" }}>Último trazo · Ctrl+Z</span>
+            </div>
+          </button>
+          <button type="button" onClick={onRedo} style={{ ...accBtn, width: "100%" }} title="Revierte el último cambio deshecho: restaura el ramal, bajante, área, cota o texto que se deshizo. (Ctrl+Y)">
+            <span style={{ fontSize: 14 }}>{'\u21AA'}</span>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "stretch", gap: 0, lineHeight: 1.1, flex: 1 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, textAlign: "left" }}>Rehacer</span>
+              <span style={{ fontSize: 12, opacity: 0.7, fontWeight: 400, textAlign: "left" }}>Revertir deshacer · Ctrl+Y</span>
             </div>
           </button>
           <button type="button" onClick={onClear} style={{ ...accBtn, width: "100%", borderColor: "rgba(255,180,171,.3)", color: "#ffb4ab" }} title="Eliminar todo el trazado de la red activa">

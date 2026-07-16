@@ -556,6 +556,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   cancelArea(): void { _cancelArea(this); }
   finishArea(): void { _finishArea(this); }
   undoLast(): void { this._history.undoLast(); }
+  redoLast(): void { this._history.redoLast(); }
   clearAll(): void { this._history.clearAll(); }
   clearNet(netId: string): void { _clearNet(this, netId); }
   deleteSegmentAt(cx: number, cy: number): void { _deleteSegmentAt(this, cx, cy); }
@@ -803,6 +804,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'SELECT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
     const k = e.key.toLowerCase();
     if (e.ctrlKey && k === 'z') { this.undoLast(); e.preventDefault(); return; }
+    if (e.ctrlKey && k === 'y') { this.redoLast(); e.preventDefault(); return; }
     if (e.ctrlKey && k === 's') { e.preventDefault(); return; }
     if (k === 's') { this.setTool('sel'); e.preventDefault(); }
     else if (k === 'l') { this.setTool('line'); e.preventDefault(); }

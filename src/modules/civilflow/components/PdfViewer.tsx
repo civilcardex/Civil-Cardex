@@ -488,6 +488,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
   }, [tool, activeNet, tipoTramo, snapOn, scaleM, mats, diamSel, pendSel, selectedNivel, pisos, gasMatSel, engineRef]);
 
   const handleUndo = useCallback(() => { if (engineRef.current) engineRef.current.undoLast(); }, [engineRef]);
+  const handleRedo = useCallback(() => { if (engineRef.current) engineRef.current.redoLast(); }, [engineRef]);
   const handleFit = useCallback(() => {
     const eng = engineRef.current;
     const cw = cwRef.current;
@@ -597,6 +598,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
         setPendInput(selElement.pendiente > 0 ? String(selElement.pendiente) : '');
       }
     } else if (!selElement) {
+      setDiamSel(prev => prev[activeNet] ? { ...prev, [activeNet]: '' } : prev);
       // Mirror the actual default used at ramal-creation time (setRamalDefaults / syncEngine)
       // so the field doesn't show blank while a new san/ll ramal would in fact be drawn at 2%.
       const fallback = (activeNet === 'san' || activeNet === 'll') ? DEFAULT_PENDIENTE_PCT : undefined;
@@ -670,7 +672,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
         <PdfViewerToolbar
           tool={tool} snapOn={snapOn} activeNet={activeNet} currentFile={currentFile}
           saveStatus={saveStatus} onSelectTool={setTool} onSnapToggle={handleSnapToggle}
-          onFit={handleFit} onSave={handleSave} onUndo={handleUndo} onClear={handleClear}
+          onFit={handleFit} onSave={handleSave} onUndo={handleUndo} onRedo={handleRedo} onClear={handleClear}
         />
       </div>
 

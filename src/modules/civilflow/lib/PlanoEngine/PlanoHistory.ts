@@ -1,4 +1,4 @@
-import { NETS, initNetCounts } from './PlanoState';
+import { initNetCounts } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import type { PlanoRamal, PlanoBajante, PlanoArea, PlanoDimension, PlanoTextAnnotation } from './PlanoState';
 import { cancelRamal, cancelArea } from './PlanoEngineDrawing';
@@ -14,9 +14,30 @@ interface HistorySnapshot {
   _netCounts: Record<string, { ramal: number; tributario: number }>;
 }
 
+function captureSnapshot(e: IPlanoEngineCore): HistorySnapshot {
+  return {
+    ramales: structuredClone(e.ramales),
+    bajantes: structuredClone(e.bajantes),
+    areas: structuredClone(e.areas),
+    dims: structuredClone(e.dims),
+    textAnnots: structuredClone(e.textAnnots),
+    _netCounts: structuredClone(e._netCounts),
+  };
+}
+
+function restoreSnapshot(e: IPlanoEngineCore, snap: HistorySnapshot): void {
+  e.ramales = structuredClone(snap.ramales);
+  e.bajantes = structuredClone(snap.bajantes);
+  e.areas = structuredClone(snap.areas);
+  e.dims = structuredClone(snap.dims);
+  e.textAnnots = structuredClone(snap.textAnnots);
+  e._netCounts = structuredClone(snap._netCounts);
+}
+
 export class PlanoHistory {
   private _engine: IPlanoEngineCore;
   private _undoStack: HistorySnapshot[] = [];
+  private _redoStack: HistorySnapshot[] = [];
   private _isRestoring = false;
 
   constructor(engine: IPlanoEngineCore) {
@@ -25,15 +46,8 @@ export class PlanoHistory {
 
   saveSnapshot(): void {
     if (this._isRestoring) return;
-    const e = this._engine;
-    const snap: HistorySnapshot = {
-      ramales: structuredClone(e.ramales),
-      bajantes: structuredClone(e.bajantes),
-      areas: structuredClone(e.areas),
-      dims: structuredClone(e.dims),
-      textAnnots: structuredClone(e.textAnnots),
-      _netCounts: structuredClone(e._netCounts),
-    };
+    this._redoStack = [];
+    const snap = captureSnapshot(this._engine);
     this._undoStack.push(snap);
     if (this._undoStack.length > MAX_UNDO_STACK) this._undoStack.shift();
   }
@@ -57,24 +71,17 @@ export class PlanoHistory {
     if (e.activeRamal) { cancelRamal(e); return; }
     if (e.activeArea) { cancelArea(e); return; }
 
-    if (this._undoStack.length === 0) return;
+    if (this._undoStack.length < 2) return;
 
     this._isRestoring = true;
-    
-    // Discard the current state
-    this._undoStack.pop(); 
-    
-    const snap = this._undoStack.length > 0 ? this._undoStack[this._undoStack.length - 1] : {
-      ramales: [], bajantes: [], areas: [], dims: [], textAnnots: [], 
-      _netCounts: Object.fromEntries(NETS.map(n => [n.id, { ramal: 0, tributario: 0 }]))
-    };
 
-    e.ramales = structuredClone(snap.ramales);
-    e.bajantes = structuredClone(snap.bajantes);
-    e.areas = structuredClone(snap.areas);
-    e.dims = structuredClone(snap.dims);
-    e.textAnnots = structuredClone(snap.textAnnots);
-    e._netCounts = structuredClone(snap._netCounts);
+    // Push current (top) state to redo stack before discarding it
+    const currentSnap = this._undoStack.pop()!;
+    this._redoStack.push(currentSnap);
+
+    // Restore previous state (now at top)
+    const snap = this._undoStack[this._undoStack.length - 1];
+    restoreSnapshot(e, snap);
 
     e.selId = null;
     e._emitSelect(null);
@@ -82,6 +89,29 @@ export class PlanoHistory {
     
     this._isRestoring = false;
     
+    if (e._onDirtyCb) e._onDirtyCb();
+  }
+
+  redoLast(): void {
+    const e = this._engine;
+    if (this._redoStack.length === 0) return;
+
+    this._isRestoring = true;
+
+    // Push current state to undo stack
+    const currentSnap = captureSnapshot(e);
+    this._undoStack.push(currentSnap);
+
+    // Restore redo state
+    const snap = this._redoStack.pop()!;
+    restoreSnapshot(e, snap);
+
+    e.selId = null;
+    e._emitSelect(null);
+    e.render();
+
+    this._isRestoring = false;
+
     if (e._onDirtyCb) e._onDirtyCb();
   }
 
@@ -99,6 +129,7 @@ export class PlanoHistory {
     e._emitSelect(null);
     e.render();
     this._undoStack = [];
+    this._redoStack = [];
     this.saveSnapshot();
   }
 }

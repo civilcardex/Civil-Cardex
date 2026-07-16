@@ -109,10 +109,10 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     engine._markDirty();
   }
   if (engine.lblDrag) { engine._markDirty(); engine.lblDrag = null; }
-  if (engine.txtDrag) engine.txtDrag = null;
+  if (engine.txtDrag) { engine._markDirty(); engine.txtDrag = null; }
   if (engine.txtResize) { engine._markDirty(); engine.txtResize = null; }
-  if (engine.bajDrag) engine.bajDrag = null;
-  if (engine.areaDrag) engine.areaDrag = null;
+  if (engine.bajDrag) { engine._markDirty(); engine.bajDrag = null; }
+  if (engine.areaDrag) { engine._markDirty(); engine.areaDrag = null; }
   if (engine.dimDrag) { engine._markDirty(); engine.dimDrag = null; }
   if (engine.ptDrag) {
     const rId = engine.ptDrag.id;
