@@ -12,8 +12,8 @@ function getActiveProyectoId(): number | null {
   return raw ? Number(raw) : null;
 }
 
-interface PlanMeta { id: number; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null; definedScale?: number | null }
-interface PlanItem { id: number; file: File; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null; definedScale?: number | null }
+export interface PlanMeta { id: number; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null; definedScale?: number | null }
+export interface PlanItem { id: number; file: File; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null; definedScale?: number | null }
 interface PlansContextValue {
   plans: PlanItem[];
   error: string | null;
@@ -28,8 +28,14 @@ interface PlansContextValue {
 
 export const PlansContext = createContext<PlansContextValue | null>(null);
 
-function persistMeta(plans: PlanItem[]) {
-  const meta: PlanMeta[] = plans.map(({ file: _file, ...meta }) => meta);
+function persistMeta(plans: (PlanItem | PlanMeta)[]) {
+  const meta: PlanMeta[] = plans.map((p) => {
+    if ('file' in p) {
+      const { file: _file, ...meta } = p;
+      return meta;
+    }
+    return p;
+  });
   if (meta.length === 0) {
     removeFromStorage(PLANS_META_KEY);
   } else {
@@ -89,7 +95,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       }
 
       if (metaChanged) {
-        persistMeta(sanitizedMeta.map(({ id, ...r }) => ({ id, ...r } as any)));
+        persistMeta(sanitizedMeta.map(({ id, ...r }) => ({ id, ...r })));
       }
 
       const restored: PlanItem[] = [];

@@ -178,7 +178,7 @@ function LandingPage() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     textAlign: 'center',
-                    animationDelay: `${450 + i * 80}ms` } as any}>
+                    animationDelay: `${450 + i * 80}ms` } as React.CSSProperties & Record<'--mod-color', string>}>
                   
                   <div className="mod-tooltip">
                     <p className="text-base font-bold mb-2" style={{ color: m.color, fontFamily: 'Hanken Grotesk, sans-serif' }}>{m.name}</p>

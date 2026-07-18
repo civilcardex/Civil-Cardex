@@ -1,5 +1,6 @@
 import { memo, useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
+import type { Tramo } from "../context/tramosReducer";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
 import { useApparatus } from "../context/ApparatusContext";
@@ -11,6 +12,9 @@ import { diamPulgFromLabel } from "../utils/diamPulgFromLabel";
 import { manning_SAN, caudalHunterLPS } from "../utils/calcSanitaryCore";
 import { parseDescargaEnId } from "../utils/parseDescargaEnId";
 import { buildBajanteGraph } from "../utils/buildBajanteGraph";
+import type { DrawingData, RawElement } from "../utils/drawingSync";
+
+interface RamalWithDiam extends RawElement { diamPulg?: number }
 
 interface BajanteVentilacionParams {
   bajante?: string;
@@ -125,7 +129,7 @@ function calculateVentStack(params: BajanteVentilacionParams): BajanteVentilacio
   };
 }
 
-function fmtPiso(val: string, pisos: any[]): string {
+function fmtPiso(val: string, pisos: { n: number }[]): string {
   if (!val) return '—';
   const num = parseInt(val);
   if (!isNaN(num) && pisos.some(p => p.n === num)) return pisoCorto(num);
@@ -147,12 +151,12 @@ const BajantesTable = memo(function BajantesTable_() {
   const { plans } = usePlans();
 
   const storageByPlan = useMemo(() => {
-    const cache: Record<string, any> = {};
+    const cache: Record<string, DrawingData> = {};
     for (const p of plans || []) {
-      const raw = loadFromStorage(TRAZOS_PREFIX + p.id, null);
+      const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + p.id, null);
       if (raw) {
-        let d: any = raw;
-        if (typeof d === 'string') { try { d = JSON.parse(d); } catch { continue; } }
+        let d: DrawingData = raw as DrawingData;
+        if (typeof raw === 'string') { try { d = JSON.parse(raw); } catch { continue; } }
         cache[String(p.id)] = d;
       }
     }
@@ -187,7 +191,7 @@ const BajantesTable = memo(function BajantesTable_() {
     const planId = parts[1];
 
     const planData = storageByPlan[planId];
-    const bObj = planData?.bajantes?.find((b: any) => b.id === bId);
+    const bObj = planData?.bajantes?.find((b) => b.id === bId);
     
     const tr = tramosSan.find(x => x._key === bKey);
     const propiasUD = tr ? calcUDparcial(tr, udBase) : 0;
@@ -264,7 +268,7 @@ const BajantesTable = memo(function BajantesTable_() {
               const banTramos = tramosSan.filter(t => t.esBajante && t.net !== 'vent' && t._net !== 'vent');
               if (banTramos.length === 0) return <tr><td colSpan={21} style={{textAlign:'center',color:'var(--txt3)',padding:'24px 0',fontSize: 9}}>No hay bajantes definidos. Marque un tramo como bajante en la tabla de Cálculo de unidades de descarga.</td></tr>;
 
-              const tramoById: Record<string, any> = {};
+              const tramoById: Record<string, Tramo> = {};
               for (const tr of tramosSan) {
                 const k = tr._key || `${tr.id}-${tr.planId}`;
                 if (k) tramoById[k] = tr;
@@ -283,7 +287,7 @@ const BajantesTable = memo(function BajantesTable_() {
                   const parts = parseDescargaEnId(t.descargaEnId, '');
                   const dPlanId = parts[0];
                   const targetRamal = parts[1] || '';
-                  const targetPlan = plans?.find((p: any) => String(p.id) === String(dPlanId));
+                  const targetPlan = plans?.find((p) => String(p.id) === String(dPlanId));
                   if (targetPlan && targetPlan.nivel != null) {
                     targetPiso = targetPlan.nivel.toString();
                     const targetPisoVal = fmtPiso(targetPiso, pisos);
@@ -315,7 +319,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 const pisosRange = targetPiso ? `${t.piso}-${targetPiso}` : `${t.piso}-${t.piso}`;
 
                 const tKey = t._key || `${t.id}-${planIdStr}`;
-                const tComp = components.find((c: any) => c.includes(tKey)) || [tKey];
+                const tComp = components.find((c) => c.includes(tKey)) || [tKey];
 
                 const isVent = t.net === 'vent' || t._net === 'vent';
 
@@ -332,7 +336,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 if (isVent) {
                     const sanKeys = ventToSanMap[tKey] || [];
                   for (const sk of sanKeys) {
-                    const comp = components.find((c: any) => c.includes(sk)) || [sk];
+                    const comp = components.find((c) => c.includes(sk)) || [sk];
                     for (const k of comp) {
                       const x = tramoById[k];
                       if (x && x.esBajante && x.net !== 'vent' && x._net !== 'vent') {
@@ -408,9 +412,7 @@ const BajantesTable = memo(function BajantesTable_() {
                    const vPlanId = parts.slice(1).join('-');
                     const raw = storageByPlan[vPlanId];
                     if (!raw) return 0;
-                    let d = raw as any;
-                    if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return 0; } }
-                    for (const vr of (d.ramales || [])) {
+                    for (const vr of (raw.ramales || []) as RamalWithDiam[]) {
                       if (vr.id === vrId && (vr._net === 'vent' || vr.net === 'vent')) {
                         return vr.diamPulg || (vr.diametro ? parseFloat(String(vr.diametro).replace(/[^0-9.]/g, '')) : 0);
                       }
@@ -428,12 +430,10 @@ const BajantesTable = memo(function BajantesTable_() {
                     
                     const raw = storageByPlan[planIdStr];
                     if (!raw) return 0;
-                   let d = raw as any;
-                   if (typeof d === 'string') { try { d = JSON.parse(d); } catch { return 0; } }
-                   
-                   const planRamales = d.ramales || [];
+
+                   const planRamales = (raw.ramales || []) as RamalWithDiam[];
                    for (const rId of rIds) {
-                     const ram = planRamales.find((r: any) => r.id === rId && (r.net === 'san' || r._net === 'san'));
+                     const ram = planRamales.find((r) => r.id === rId && (r.net === 'san' || r._net === 'san'));
                      if (ram) {
                        const dVal = ram.diamPulg || diamPulgFromLabel(ram.diametro);
                        if (dVal > maxD) {

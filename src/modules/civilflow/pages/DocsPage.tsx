@@ -10,10 +10,10 @@ function DocsPage() {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
   usePageMeta('Documentación', 'Guía completa de CivilCore. Normas NTC 1500, RAS 2000, NTC 3728. Tutoriales de diseño hidrosanitario y estructural.');
 
-  const categories = Object.entries(docData).map(([id, data]: [string, any]) => ({
+  const categories = Object.entries(docData).map(([id, data]) => ({
     id,
     ...data,
-    sections: data.sections.map((s: any) => ({
+    sections: data.sections.map((s) => ({
       ...s,
       categoryColor: data.color,
       categoryName: data.name,
@@ -128,7 +128,7 @@ function DocsPage() {
         </div>
 
         <div className="flex-1 overflow-auto space-y-2 pr-1 docs-scroll">
-          {filteredSections.map((section: any) => {
+          {filteredSections.map((section) => {
             const sectionKey = `${section.categoryId}:${section.title}`
             return (
               <div key={sectionKey}>

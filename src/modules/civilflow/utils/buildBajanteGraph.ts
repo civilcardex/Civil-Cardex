@@ -3,10 +3,24 @@ import { loadFromStorage } from "../services/storageService";
 import { pisoLbl } from "../constants";
 import { distToPolyline } from "../lib/shared/geometry";
 import { parseDescargaEnId } from "./parseDescargaEnId";
-import { calcUDparcial } from "./componentHelpers";
+import { calcUDparcial, type UDBase } from "./componentHelpers";
 import type { Tramo } from "../context/tramosReducer";
+import type { RawElement } from "./drawingSync";
 
-export function buildBajanteGraph(plans: any[], tramosSan: Tramo[], udBase: any) {
+interface PlanEntry {
+  id: string | number;
+  nivel: number | null;
+}
+interface RamalRaw extends RawElement {
+  diamPulg?: number;
+}
+interface BajanteRaw extends RawElement {
+  x?: number;
+  y?: number;
+  desplazamientos?: Record<string, { dx?: number; dy?: number }>;
+}
+
+export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase: UDBase[]) {
   const map: Record<string, string[]> = {};
   const vMap: Record<string, string[]> = {};
   const ventRamalDiamMap: Record<string, number> = {};
@@ -15,18 +29,18 @@ export function buildBajanteGraph(plans: any[], tramosSan: Tramo[], udBase: any)
     if (plan.nivel == null) continue;
     const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
-    let data = raw as Record<string, any>;
+    let data = raw as { ramales?: RamalRaw[]; bajantes?: BajanteRaw[] };
     if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
 
     const ramales = data.ramales || [];
     const bajantes = data.bajantes || [];
 
-    const getBajantePos = (b: any) => {
+    const getBajantePos = (b: BajanteRaw) => {
       const lvl = pisoLbl(plan.nivel ?? 0);
       const disp = b.desplazamientos?.[lvl] || {};
       return {
-        x: b.x + (disp.dx || 0),
-        y: b.y + (disp.dy || 0)
+        x: (b.x || 0) + (disp.dx || 0),
+        y: (b.y || 0) + (disp.dy || 0)
       };
     };
 
@@ -60,7 +74,7 @@ export function buildBajanteGraph(plans: any[], tramosSan: Tramo[], udBase: any)
             return { type: 'bajante' as const, id: b.id };
           }
         }
-        let bestRx: any = null;
+        let bestRx: RamalRaw | null = null;
         let minDist = Infinity;
         for (const rx of ramales) {
           if (rx.id === r.id) continue;
@@ -93,8 +107,8 @@ export function buildBajanteGraph(plans: any[], tramosSan: Tramo[], udBase: any)
       }
     }
 
-    const ventBajantes = bajantes.filter((b: any) => b.net === 'vent');
-    const ventRamales = ramales.filter((r: any) => r.net === 'vent');
+    const ventBajantes = bajantes.filter((b: BajanteRaw) => b.net === 'vent');
+    const ventRamales = ramales.filter((r: RamalRaw) => r.net === 'vent');
 
     for (const vb of ventBajantes) {
        const vbKey = `${vb.id}-${plan.id}`;
@@ -121,8 +135,8 @@ export function buildBajanteGraph(plans: any[], tramosSan: Tramo[], udBase: any)
                 }
              }
 
-             const sanRamales = ramales.filter((r: any) => r.net === 'san');
-             const sanBajantes = bajantes.filter((b: any) => b.net === 'san');
+             const sanRamales = ramales.filter((r: RamalRaw) => r.net === 'san');
+             const sanBajantes = bajantes.filter((b: BajanteRaw) => b.net === 'san');
 
              if (vr.pts && vr.pts.length >= 2) {
                 const pt1 = vr.pts[0];
@@ -291,7 +305,7 @@ export function buildBajanteGraph(plans: any[], tramosSan: Tramo[], udBase: any)
   }
 
   // Compute connected-component totals
-  const tramoById: Record<string, any> = {};
+  const tramoById: Record<string, Tramo> = {};
   for (const t of tramosSan) {
     const key = t._key || t.id;
     if (key) tramoById[key] = t;

@@ -3,7 +3,7 @@ const componentHelpers_S1: React.CSSProperties = { color: 'var(--ok)', backgroun
 const componentHelpers_S2: React.CSSProperties = { color: 'var(--err)', background: 'rgba(255, 180, 171, 0.08)', border: '1px solid rgba(255, 180, 171, 0.15)', padding: '1px 5px', borderRadius: '3px', fontWeight: 600, fontSize: '9px', fontFamily: 'var(--mono)', display: 'inline-block', whiteSpace: 'nowrap' };
 
 
-interface UDBase {
+export interface UDBase {
   id: string;
   ud: number;
 }

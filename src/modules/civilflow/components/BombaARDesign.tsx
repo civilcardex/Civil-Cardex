@@ -11,11 +11,11 @@ const BombaARDesign_S5: React.CSSProperties = { position:'absolute',width:'1px',
 
 
 const nv=(s: string)=>s===''?'':/^[\d]*\.?[\d]*$/.test(s)?s:false;
-const oc=(set: (v: any) => void)=>(e: React.ChangeEvent<HTMLInputElement>)=>{const v=nv(e.target.value);if(v!==false)set(v)};
+const oc=(set: (v: string) => void)=>(e: React.ChangeEvent<HTMLInputElement>)=>{const v=nv(e.target.value);if(v!==false)set(v)};
 
 const TDBom: React.CSSProperties = {...TD,background:'#1a1c20'};
 const TDL: React.CSSProperties={...TDBom,textAlign:'left',fontFamily:'var(--body)'};
-const Fmt=(v: any,u='')=>{
+const Fmt=(v: string | number,u='')=>{
   if(v===''||v===null||v===undefined)return <span style={{color:'var(--txt3)',fontSize: 12}}>—</span>;
   const val=typeof v==='number'?v.toFixed(2):v;
   return <span style={{fontFamily:'var(--mono)'}}>{val}{u?` ${u}`:''}</span>;
@@ -25,14 +25,14 @@ const SI2={...SI,fontSize:13,padding:'4px 6px'};
 const TH2={...TH,fontSize: 12};
 const TD2={...TDBom,fontSize:13};
 const TDL2={...TDL,fontSize:13,fontWeight:700,color:'var(--txt)'};
-const Fmt2=(v: any,u='')=>{
+const Fmt2=(v: string | number,u='')=>{
   if(v===''||v===null||v===undefined)return <span style={{color:'var(--txt3)',fontSize:12}}>—</span>;
   const val=typeof v==='number'?v.toFixed(2):v;
   return <span style={{fontFamily:'var(--mono)',fontSize:13}}>{val}{u?` ${u}`:''}</span>;
 };
 
-function Inp({v,set,style,disabled,ariaLabel}: {v: any; set: (v: any) => void; style?: React.CSSProperties; disabled?: boolean; ariaLabel?: string}){return <input type="text" inputMode="decimal" aria-label={ariaLabel} value={v} onChange={oc(set)} disabled={disabled} style={{...(style||SI), opacity: disabled ? 0.6 : 1, cursor: disabled ? 'default' : 'text'}}/>;}
-function Tbl({cols,rows,th,td,tdl,fontSize,center,valueCol,caption}: {cols: string[]; rows: any[][]; th?: any; td?: any; tdl?: any; fontSize?: number; center?: boolean; valueCol?: number; caption?: string}){
+function Inp({v,set,style,disabled,ariaLabel}: {v: string; set: (v: string) => void; style?: React.CSSProperties; disabled?: boolean; ariaLabel?: string}){return <input type="text" inputMode="decimal" aria-label={ariaLabel} value={v} onChange={oc(set)} disabled={disabled} style={{...(style||SI), opacity: disabled ? 0.6 : 1, cursor: disabled ? 'default' : 'text'}}/>;}
+function Tbl({cols,rows,th,td,tdl,fontSize,center,valueCol,caption}: {cols: string[]; rows: React.ReactNode[][]; th?: React.CSSProperties; td?: React.CSSProperties; tdl?: React.CSSProperties; fontSize?: number; center?: boolean; valueCol?: number; caption?: string}){
   const h=th||TH,d=td||TDBom,dl=tdl||TDL;
   const vc = valueCol ?? 2;
   return <table className="tbl" style={{fontSize:fontSize||11,width:center?'90%':'100%',maxWidth:900,borderCollapse:'collapse',margin:center?'0 auto':0}}>

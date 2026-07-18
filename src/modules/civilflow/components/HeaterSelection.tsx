@@ -32,7 +32,7 @@ export default function HeaterSelection() {
 
     const summary = Object.keys(counts).map(k => {
       const apCat = CAT_APS.find(a => a.id === k);
-      const nombre = apCat ? apCat.n : ((APARATOS_DEF as any)[k]?.nombre || k);
+      const nombre = apCat ? apCat.n : ((APARATOS_DEF as unknown as Record<string, { nombre?: string }>)[k]?.nombre || k);
       const cant = counts[k].cant;
       const uc = counts[k].uc;
       return { id: k, nombre, cant, uc, total: cant * uc };
@@ -183,7 +183,7 @@ export default function HeaterSelection() {
                     const val = e.target.value;
                     if (selectedHeaterTram) {
                       const calId = selectedHeaterTram.fin;
-                      const planId = (selectedHeaterTram as any).planId;
+                      const planId = selectedHeaterTram.planId;
                       const bajanteKey = `${calId}-${planId}`;
                       writeBajantePropToDrawing(bajanteKey, 'ac', 'capacidad', val, plans);
                     }

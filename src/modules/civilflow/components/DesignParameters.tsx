@@ -9,6 +9,8 @@ const DesignParameters_S1: React.CSSProperties = { position:'absolute',width:1,h
 const DesignParameters_S2: React.CSSProperties = { width: '100%', padding: '8px 10px', background: 'rgba(0,220,229,0.08)', border: 'none', borderTop: '1px solid rgba(0,220,229,0.25)', color: '#00dce5', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, transition: 'all .15s', };
 const DesignParameters_S3: React.CSSProperties = { width: '100%', fontFamily: 'var(--mono)', fontSize: 12, fontWeight: 600, color: 'var(--txt2)', border: 'none', padding: '2px 4px', background: 'transparent' };
 
+interface RedMat { id: string; lbl: string; mat: string; prof: number; fixed?: boolean; opts?: string[] }
+
 
 export default function BaseDatos({ redes }: { redes: Set<string> }) {
   const navigate = useNavigate();
@@ -18,14 +20,14 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
 
   const activeRedes = REDES_MAT.filter(r => redes?.has(r.id));
 
-  const matMap = Object.fromEntries(activeRedes.map((r: any) => [r.id, r]));
+  const matMap = Object.fromEntries(activeRedes.map((r: RedMat) => [r.id, r]));
   const merged = activeRedes.map(r => ({
     ...r,
     matSel: (mats[r.id] && mats[r.id][0]?.val) || r.mat,
     prof: (profs.find(p => p.id === r.id)?.prof) ?? r.prof,
   }));
 
-  const getOpts = (r: any) => r.opts || (mats[r.id] && mats[r.id].length > 0 ? mats[r.id].map(o => o.val) : [r.mat]);
+  const getOpts = (r: RedMat) => r.opts || (mats[r.id] && mats[r.id].length > 0 ? mats[r.id].map(o => o.val) : [r.mat]);
 
   const setMatSel = (redId: string, newVal: string) => {
     setMats(prev => {
@@ -66,7 +68,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
         const def = apsMap[id];
         return [...prev, { id, s: def.s, n: def.n, g: 'h', ucaf: def.af, ucac: def.ac, ud: 0, pmin: 0, pmax: 0, qg: 0, [key]: v } as any];
       }
-      return prev.map(a => a.id === id ? { ...a, [key]: v } as any : a);
+      return prev.map(a => a.id === id ? { ...a, [key]: v } : a);
     });
   };
 

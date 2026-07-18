@@ -48,7 +48,7 @@ function EPInputPage() {
                 <LazyInp disabled={!editPresiones} field="pred" ariaLabel="Presión acometida" />,
                 "m.c.a.",
                 <Comment><span style={{ color: "var(--txt3)", fontWeight: 600 }}>Medida en campo</span> · Usar convertidor 1. Ej: 200 kPa = 20.39 m.c.a.</Comment>
-              ]] as any[][] : []),
+              ]] as React.ReactNode[][] : []),
               [
                 <Param name="Presión mínima punto crítico" sub="Aparato más desfavorable" />,
                 <LazyInp disabled={!editPresiones} field="pmin" ariaLabel="Presión mínima punto crítico" />,

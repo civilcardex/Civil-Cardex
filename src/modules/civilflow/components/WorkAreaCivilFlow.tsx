@@ -4,6 +4,7 @@ import { useWorkAreaState } from "./useWorkAreaState";
 import { WorkAreaSidebar } from "./WorkAreaSidebar";
 import WorkAreaContent from "./WorkAreaContent";
 import { ErrorBoundary } from "../../../components/ErrorBoundary";
+import { REDES } from "../constants";
 const WorkAreaCivilFlow_S1: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: 'var(--bg2)', borderTop: '1px solid var(--line)', flexShrink: 0, overflowX: 'auto' };
 const WorkAreaCivilFlow_S2: React.CSSProperties = { maxWidth: '360px', width: '100%', background: 'rgba(20, 24, 33, 0.85)', border: '1px solid rgba(58, 73, 74, 0.6)', borderRadius: '16px', padding: '32px 24px', textAlign: 'center', boxShadow: '0 12px 40px rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(12px)', };
 const WorkAreaCivilFlow_S3: React.CSSProperties = { width: '64px', height: '64px', background: 'rgba(37, 99, 235, 0.1)', border: '1px solid rgba(37, 99, 235, 0.3)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: '#3B82F6', };
@@ -13,7 +14,7 @@ const WorkAreaCivilFlow_S6: React.CSSProperties = { display: 'flex', alignItems:
 
 
 interface NetworkBarProps {
-  redesActivas: any[];
+  redesActivas: (typeof REDES)[number][];
   tab: string;
   redActiva: string;
   setTab: (v: string) => void;
@@ -23,7 +24,7 @@ interface NetworkBarProps {
 function NetworkBar({ redesActivas, tab, redActiva, setTab, setRedActiva }: NetworkBarProps) {
   return (
     <div style={WorkAreaCivilFlow_S1}>
-      {redesActivas.map((r: any) => {
+      {redesActivas.map((r) => {
         const active = tab === 'redes' && redActiva === r.id;
         const netColor = r.col || '#666';
         return (

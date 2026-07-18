@@ -22,7 +22,7 @@ const TDL_DEFAULT: React.CSSProperties = {
 
 interface TblProps {
   cols: string[];
-  rows: any[][];
+  rows: React.ReactNode[][];
   thStyle?: React.CSSProperties;
   tdStyle?: React.CSSProperties;
   tdlStyle?: React.CSSProperties;

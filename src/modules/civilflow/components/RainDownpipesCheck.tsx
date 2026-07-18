@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useRainwater } from "../context/RainwaterContext";
+import { useRainwater, type BajanteLL } from "../context/RainwaterContext";
 import { useTramos } from "../context/TramosContext";
 import { usePlans } from "../context/PlansContext";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
@@ -7,6 +7,13 @@ import { loadFromStorage } from "../services/storageService";
 import { chequeoBajanteLluvia } from "../utils/calcRainwater";
 import { renderStatus } from "../utils/componentHelpers";
 import { parseDecimalInput } from "../utils/parseDecimal";
+import type { DrawingData } from "../utils/drawingSync";
+
+interface AreaRaw { areaM2?: number }
+interface Row {
+  key: string; bajante: string; areaParcial: number; areaAcum: number;
+  intensidad: number; coeficienteC: number; R: string; manning: number; diamPropuesto: number;
+}
 const RainDownpipesCheck_S1: React.CSSProperties = { width: 56, padding: '2px 4px', background: 'var(--bg2)', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt)', fontFamily: 'var(--mono)', fontSize: 10, textAlign: 'center', };
 
 
@@ -16,17 +23,17 @@ export default function ChequeoBajantesLluvias() {
   const { plans } = usePlans();
 
   const drawingBajantes = useMemo(() => {
-    return tramosLl.filter((t: any) => t.esBajante);
+    return tramosLl.filter((t) => t.esBajante);
   }, [tramosLl]);
 
   const areaDibujoMap = useMemo(() => {
     const map: Record<string, number> = {};
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
-      const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
+      const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
       if (!raw) continue;
-      let data = raw as Record<string, any>;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
+      let data: DrawingData = raw as DrawingData;
+      if (typeof raw === 'string') { try { data = JSON.parse(raw); } catch { continue; } }
       for (const b of (data.bajantes || [])) {
         if (b.net === 'll' && b.area_m2) {
           map[b.code || b.id] = b.area_m2;
@@ -41,25 +48,25 @@ export default function ChequeoBajantesLluvias() {
     const map: Record<string, number> = {};
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
-      const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
+      const raw = loadFromStorage<(DrawingData & { areas?: AreaRaw[] }) | string | null>(TRAZOS_PREFIX + plan.id, null);
       if (!raw) continue;
-      let data = raw as Record<string, any>;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
-      const totalArea = (data.areas || []).reduce((s: number, a: any) => s + (a.areaM2 || 0), 0);
+      let data: DrawingData & { areas?: AreaRaw[] } = raw as DrawingData & { areas?: AreaRaw[] };
+      if (typeof raw === 'string') { try { data = JSON.parse(raw); } catch { continue; } }
+      const totalArea = (data.areas || []).reduce((s, a) => s + (a.areaM2 || 0), 0);
       map[String(plan.nivel)] = totalArea;
     }
     return map;
   }, [plans]);
 
   const rows = useMemo(() => {
-    const manualMap = new Map<string, any>();
+    const manualMap = new Map<string, BajanteLL>();
     for (const m of bajantesLl) {
       const key = m.bajante || m.id;
       manualMap.set(key, m);
     }
 
     const usedManual = new Set<string>();
-    const out: any[] = [];
+    const out: Row[] = [];
 
     for (const d of drawingBajantes) {
       const code = d.code || d.id;
@@ -85,7 +92,7 @@ export default function ChequeoBajantesLluvias() {
     for (const m of bajantesLl) {
       const key = m.bajante || m.id;
       if (usedManual.has(key)) continue;
-      const bajDib = drawingBajantes.find((d: any) => d.code === m.bajante || d.id === m.bajante);
+      const bajDib = drawingBajantes.find((d) => d.code === m.bajante || d.id === m.bajante);
       const areaDib = areaDibujoMap[m.bajante] || 0;
       const areaParcial = areaDib || bajDib?.area_m2 || m.areaParcial || 0;
       const areaAcum = areaAcumMap[String(bajDib?.piso)] || m.areaAcumulada || 0;

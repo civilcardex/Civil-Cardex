@@ -45,7 +45,7 @@ const EP_DEFAULTS: EPData = {
 
 interface EPContextValue {
   ep: EPData;
-  updEP: (field: keyof EPData, val: any) => void;
+  updEP: (field: keyof EPData, val: EPData[keyof EPData]) => void;
 }
 
 const EPContext = createContext<EPContextValue | null>(null);
@@ -55,7 +55,7 @@ export function EPProvider({ children }: { children?: ReactNode }) {
     (saved) => ({ ...EP_DEFAULTS, ...(saved as Partial<EPData>) })
   );
 
-  const updEP = useCallback((field: keyof EPData, val: any) => {
+  const updEP = useCallback((field: keyof EPData, val: EPData[keyof EPData]) => {
     setEP(prev => ({ ...prev, [field]: val }));
   }, [setEP]);
 

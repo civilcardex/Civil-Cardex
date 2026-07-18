@@ -30,7 +30,10 @@ interface InfoTabProps {
   state: WorkAreaState;
 }
 
-const ProjectIdCard = React.memo(function ProjectIdCard({ proy, setP }: { proy: any; setP: (k: string, v: any) => void }) {
+interface ProjectIdInfo { nombre: string; dir: string; mun: string; dep: string; uso: string }
+interface Piso { id: string | number; n: number; npt?: string | number; ok?: boolean; tipo?: string }
+
+const ProjectIdCard = React.memo(function ProjectIdCard({ proy, setP }: { proy: ProjectIdInfo; setP: (k: string, v: string) => void }) {
   const [isEditing, setIsEditing] = React.useState(false);
   const wasEditingRef = React.useRef(isEditing);
 
@@ -131,7 +134,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({ redes, setRedes, net
                         setNetColors(prev => ({ ...prev, [r.id]: c }));
                         document.documentElement.style.setProperty(cssVar, c);
                         try {
-                          const net = NETS.find((n: any) => n.id === r.id);
+                          const net = NETS.find((n) => n.id === r.id);
                           if (net) net.col = c;
                         } catch (e) { devError(e); }
                         try { localStorage.setItem(NET_COLOR_PREFIX + r.id, c); } catch { /* ignore */ }
@@ -233,7 +236,7 @@ const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
   );
 });
 
-const LevelsCard = React.memo(function LevelsCard({ pisos, delPiso, addPiso, addSotano, setPisos }: { pisos: any[]; delPiso: (id: string | number) => void; addPiso: () => void; addSotano: () => void; setPisos: (p: any[] | ((prev: any[]) => any[])) => void }) {
+const LevelsCard = React.memo(function LevelsCard({ pisos, delPiso, addPiso, addSotano, setPisos }: { pisos: Piso[]; delPiso: (id: string | number) => void; addPiso: () => void; addSotano: () => void; setPisos: (p: Piso[] | ((prev: Piso[]) => Piso[])) => void }) {
   const [isEditing, setIsEditing] = React.useState(false);
   return (
     <section className="card" style={{ flex: '1 1 auto', minWidth: 220, display: 'flex', flexDirection: 'column' }}>
@@ -254,20 +257,20 @@ const LevelsCard = React.memo(function LevelsCard({ pisos, delPiso, addPiso, add
         {pisos.length > 0 && (
           <>
             <ul role="list" style={{ flex: 1, overflowY: 'auto', minHeight: 0, listStyle: 'none', margin: 0, padding: 0 }}>
-              {pisos.toSorted((a, b) => (b.tipo === 'cubierta' ? 999 : b.n) - (a.tipo === 'cubierta' ? 999 : a.n)).map((p: any) => (
+              {pisos.toSorted((a, b) => (b.tipo === 'cubierta' ? 999 : b.n) - (a.tipo === 'cubierta' ? 999 : a.n)).map((p) => (
                 <li key={p.id} style={{ ...InfoTab_pisoLi, borderLeft: '3px solid ' + (p.tipo === 'cubierta' ? '#ffffff' : p.n < 0 ? 'var(--txt3)' : 'var(--acc2)') }}>
                   <span className={p.tipo === 'cubierta' ? 'piso-tag cub' : p.n < 0 ? 'piso-tag sot' : 'piso-tag'} style={{ fontSize: 11, padding: '2px 5px', minWidth: 48 }}>{pisoLbl(p.n)}</span>
                   <input type="text" disabled={!isEditing} inputMode="decimal" value={p.npt ?? ''} key={p.id + 'npt'} className="npt-in" aria-label={`NPT para ${pisoLbl(p.n)}`} style={{ fontSize: 12, width: 52, padding: '2px 4px', opacity: isEditing ? 1 : 0.7 }}
                     onChange={e => {
                       const raw = e.target.value.replace(/,/g, '.');
                       if (raw === '' || raw === '-' || raw === '.' || /^-?\d*\.?\d*$/.test(raw)) {
-                        setPisos((prev: any[]) => prev.map(x => x.id === p.id ? { ...x, npt: raw } : x));
+                        setPisos((prev) => prev.map(x => x.id === p.id ? { ...x, npt: raw } : x));
                       }
                     }}
                     onBlur={e => {
                       const v = parseFloat(e.target.value);
                       if (!isNaN(v)) {
-                        setPisos((prev: any[]) => prev.map(x => x.id === p.id ? { ...x, npt: v.toFixed(2) } : x));
+                        setPisos((prev) => prev.map(x => x.id === p.id ? { ...x, npt: v.toFixed(2) } : x));
                       }
                     }}
                   />

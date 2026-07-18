@@ -38,7 +38,7 @@ export function getElementsByNet(engine: IPlanoEngineCore, netId: string): Array
         label: r.label || r.id,
         totalL: r.totalL || 0,
         segs: r.pts ? Math.max(0, r.pts.length - 1) : 0,
-        piso: (r as any).piso || '',
+        piso: r.piso || '',
         tipo: r.tipo || 'ramal',
         padre: r.padre || null,
         pendiente: r.pendiente,
@@ -52,11 +52,11 @@ export function getElementsByNet(engine: IPlanoEngineCore, netId: string): Array
         type: 'bajante',
         id: b.id,
         label: b.code || b.id,
-        totalL: (b as any).totalL || 0,
+        totalL: b.totalL || 0,
         segs: 0,
-        piso: (b as any).piso || '',
+        piso: b.piso || '',
         tipo: b.tipo || 'bajante',
-        pendiente: (b as any).pendiente,
+        pendiente: b.pendiente,
         diametro: b.dNominal,
       });
     }
@@ -127,7 +127,7 @@ export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
     const npt = engine.nivelActual!.npt || 0;
     if (npt >= base && npt <= cima) {
       // Don't show direction ghost on the parent's own level
-      if ((b as any).pisoBase === engine.nivelActual!.label) return false;
+      if (b.pisoBase === engine.nivelActual!.label) return false;
       return true;
     }
     const superior = engine.nptLevels
@@ -184,7 +184,7 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
   const findEndpointTarget = (r: PlanoRamal, pt: number[]): { code: string; isAcc: boolean; ref: PlanoBajante | PlanoRamal | null } | null => {
     const ptDist = (b: { x: number; y: number }) => Math.hypot(pt[0] - b.x, pt[1] - b.y);
 
-    const dispMap = (b: any) => {
+    const dispMap = (b: PlanoBajante) => {
       const disp = b.desplazamientos?.[lvlLabel] || {};
       return { x: b.x + (disp.dx || 0), y: b.y + (disp.dy || 0) };
     };
@@ -228,8 +228,8 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
     const pStart = pts[0];
     const pEnd = pts[pts.length - 1];
 
-    const accIni = (r as any).accesorioInicio;
-    const appIni = (r as any).aparatoInicio;
+    const accIni = r.accesorioInicio;
+    const appIni = r.aparatoInicio;
     let tStart = null;
     if (appIni) {
       const def = APARATOS_DEF.find(x => x.id === appIni);
@@ -242,8 +242,8 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
       tStart = findEndpointTarget(r, pStart);
     }
 
-    const accFin = (r as any).accesorioFin;
-    const appFin = (r as any).aparatoFin;
+    const accFin = r.accesorioFin;
+    const appFin = r.aparatoFin;
     let tEnd = null;
     if (appFin) {
       const def = APARATOS_DEF.find(x => x.id === appFin);
@@ -260,8 +260,8 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
     let newFin = r.fin || '';
 
     if (tStart && tEnd && tStart.ref && tEnd.ref) {
-      const refS = tStart.ref as any;
-      const refE = tEnd.ref as any;
+      const refS = tStart.ref;
+      const refE = tEnd.ref;
       const isStartCont = refS.tipo === 'contador';
       const isStartMon = refS.tipo === 'montante';
       const isEndCont = refE.tipo === 'contador';

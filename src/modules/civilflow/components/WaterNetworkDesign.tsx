@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef } from "react";
 import { useTramos } from "../context/TramosContext";
+import type { Tramo } from "../context/tramosReducer";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
 import { AF_UC_IDS, AC_UC_IDS, APARATOS_DEF, pisoCorto, matHazenC } from "../constants";
@@ -12,7 +13,10 @@ import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
 import { distToPolyline } from "../lib/shared/geometry";
 import { computeComponentTotals } from "../lib/shared/connectionGraph";
+import type { DrawingData, RawElement } from "../utils/drawingSync";
 import Acometida from "./SupplyConnection";
+
+interface BajanteRaw extends RawElement { x?: number; y?: number }
 const WaterNetworkDesign_S1: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 const WaterNetworkDesign_S2: React.CSSProperties = { width:"100%",padding:"3px 4px",border:"1px solid #3a494a",borderRadius:3,background:"#1e2024",color:"#e2e2e8",fontSize: 9,fontFamily:"'Geist',monospace",cursor:"pointer",maxWidth:120 };
 
@@ -44,7 +48,7 @@ const isAf = (t: string) => t === 'af';
 
 const isContador = (s: string) => s.startsWith('CNT') || s.startsWith('cntAF');
 
-const isAC1 = (t: any) => {
+const isAC1 = (t: Tramo) => {
   const ini = String(t.ini || '');
   const fin = String(t.fin || '');
   if (ini.startsWith('RP') || fin.startsWith('RP')) return true;
@@ -52,7 +56,7 @@ const isAC1 = (t: any) => {
   return false;
 };
 
-const isAC2 = (t: any) => {
+const isAC2 = (t: Tramo) => {
   const ini = String(t.ini || '');
   const fin = String(t.fin || '');
   if (ini.startsWith('RP') || fin.startsWith('RP')) return false;
@@ -98,7 +102,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
       ucIds.map((id) => {
         const a = APARATOS_DEF.find((x) => x.id === id);
         return a ? { id: a.id, uc: a[ucField] } : null;
-      }).filter(Boolean),
+      }).filter((x): x is { id: string; uc: number } => x !== null),
     [ucIds, ucField]
   );
 
@@ -128,13 +132,13 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
 
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
-      const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
+      const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
       if (!raw) continue;
-      let data = raw as Record<string, any>;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
+      let data: DrawingData = raw as DrawingData;
+      if (typeof raw === 'string') { try { data = JSON.parse(raw); } catch { continue; } }
 
-      const ramales = (data.ramales || []).filter((r: any) => r.net === networkType);
-      const bajantes = (data.bajantes || []).filter((b: any) => b.net === networkType);
+      const ramales = (data.ramales || []).filter((r) => r.net === networkType);
+      const bajantes = (data.bajantes || []).filter((b): b is BajanteRaw => b.net === networkType);
 
       for (const r of ramales) {
         if (!r.pts || r.pts.length < 2) continue;
@@ -145,12 +149,12 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         const checkEndpoint = (pt: number[]) => {
           for (const b of bajantes) {
             const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
-            const dist = Math.hypot(pt[0] - b.x, pt[1] - b.y);
+            const dist = Math.hypot(pt[0] - b.x!, pt[1] - b.y!);
             if (isExplicit) {
               // Explicit link doesn't say which end — assign it to whichever endpoint is
               // geometrically closer, so a bajante at each end each claims its own.
               const otherPt = pt === pEnd ? pStart : pEnd;
-              const otherDist = Math.hypot(otherPt[0] - b.x, otherPt[1] - b.y);
+              const otherDist = Math.hypot(otherPt[0] - b.x!, otherPt[1] - b.y!);
               if (dist < otherDist) return { type: 'bajante' as const, id: b.id };
               continue;
             }
@@ -158,7 +162,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
               return { type: 'bajante' as const, id: b.id };
             }
           }
-          let bestRx: any = null;
+          let bestRx: RawElement | null = null;
           let minDist = Infinity;
           for (const rx of ramales) {
             if (rx.id === r.id) continue;
@@ -247,7 +251,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
       tramos,
       t => t._key || t.id,
       adj,
-      t => calcUCparcial(t, AP as any, "uc"),
+      t => calcUCparcial(t, AP, "uc"),
     );
 
     return [displayMap, componentTotalMap] as const;
@@ -257,7 +261,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     const m: Record<string, number> = {};
     for (const t of tramos) {
       const key = t._key || t.id;
-      m[key] = calcUCparcial(t, AP as any, "uc");
+      m[key] = calcUCparcial(t, AP, "uc");
     }
     return m;
   }, [tramos, AP]);
@@ -271,7 +275,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
 
   const [acoContIx, setAcoContIx] = useState(2);
   const contIxRef = useRef('');
-  const contIxDeps = networkType === 'af' ? String((plans as any[])?.length ?? 0) + '|' + networkType : '';
+  const contIxDeps = networkType === 'af' ? String(plans?.length ?? 0) + '|' + networkType : '';
   /* eslint-disable react-hooks/refs -- ref-as-memoization-guard: recompute only when
      contIxDeps actually changes, without a full effect round-trip. */
   if (contIxDeps !== contIxRef.current) {
@@ -576,7 +580,7 @@ const total = (componentTotalMap[ownKey] || 0);
           acoPini={acoPini} setAcoPini={setAcoPini}
           acoLeMed={acoLeMed} setAcoLeMed={setAcoLeMed}
           acoHfMax={acoHfMax} setAcoHfMax={setAcoHfMax}
-          f1={f1 as any} f2={f2 as any} hfContador={hfContador}
+          f1={f1} f2={f2} hfContador={hfContador}
           pResidual={pResidual} okPresion={okPresion}
           cHW1={cHW1} cHW2={cHW2}
           AF_DIAM_OPTS={DIAM_OPTS}

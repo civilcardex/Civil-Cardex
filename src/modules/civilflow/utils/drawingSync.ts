@@ -49,6 +49,8 @@ export interface RawElement {
   acoDiam?: string;
   accesorioInicio?: string;
   accesorioFin?: string;
+  aparatoInicio?: string;
+  aparatoFin?: string;
   diametroInicio?: string;
   diametroFin?: string;
   accMed?: Record<string, string>;
@@ -85,6 +87,18 @@ interface TraceData {
   [key: string]: unknown;
 }
 
+interface HidroDataEntry { accesorios: Record<string, number>; Lh: number; nSalidas: number }
+
+interface RamalSyncObj {
+  id: string; label: string; tipo: string; padre: string | null; totalL: number;
+  ini: string; fin: string; diametro: string; diamPulg: number;
+  pendiente: number; material: string; maning: number | null;
+  piso: string; _aparatosKey: string; _net: string;
+  nSalidas: number; descargaEnId: string | null;
+  aparatoInicio: string; aparatoFin: string;
+  caudal?: number; accMed?: Record<string, string>;
+}
+
 interface SyncDataResult {
   planes: Record<string, unknown>;
   aparatosByTramo?: Record<string, unknown>;
@@ -113,7 +127,7 @@ function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): S
   const out: SyncDataResult = { planes: {}, updatedAt: Date.now() };
   if (!Array.isArray(plans)) return out;
 
-  const rawHidro = loadFromStorage<Record<string, any>>(HYDRO_DATA_STORAGE_KEY, {}) || {};
+  const rawHidro = loadFromStorage<Record<string, HidroDataEntry>>(HYDRO_DATA_STORAGE_KEY, {}) || {};
   let rawHidroChanged = false;
 
   for (const plan of plans) {
@@ -225,7 +239,7 @@ function buildNonPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>)
     for (const r of (data.ramales || [])) {
       if (families.has(r.net)) {
         const rKey = r.net + '_' + r.id + '_' + plan.id;
-        const ramalObj: any = {
+        const ramalObj: RamalSyncObj = {
           id: r.id, label: r.label || r.id, tipo: r.tipo,
           padre: r.padre || null, totalL: r.totalL || 0,
           ini: r.ini || '', fin: r.fin || '',

@@ -12,6 +12,9 @@ import { loadFromStorage } from "../services/storageService";
 import { distToPolyline } from "../lib/shared/geometry";
 import { parseDescargaEnId } from "../utils/parseDescargaEnId";
 import { computeComponentTotals } from "../lib/shared/connectionGraph";
+import type { DrawingData, RawElement } from "../utils/drawingSync";
+
+interface BajanteRaw extends RawElement { x?: number; y?: number }
 const SanitaryDesign_S1: React.CSSProperties = { fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer' };
 
 
@@ -53,13 +56,13 @@ export default function DisenosSanitarios() {
 
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
-      const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
+      const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
       if (!raw) continue;
-      let data = raw as Record<string, any>;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
+      let data: DrawingData = raw as DrawingData;
+      if (typeof raw === 'string') { try { data = JSON.parse(raw); } catch { continue; } }
 
       const ramales = data.ramales || [];
-      const bajantes = data.bajantes || [];
+      const bajantes = (data.bajantes || []) as BajanteRaw[];
 
 
       for (const r of ramales) {
@@ -78,12 +81,12 @@ export default function DisenosSanitarios() {
             if (isDischargingIntoR) continue;
 
             const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
-            const dist = Math.hypot(pt[0] - b.x, pt[1] - b.y);
+            const dist = Math.hypot(pt[0] - b.x!, pt[1] - b.y!);
             if (isExplicit) {
               // Explicit link doesn't say which end — assign it to whichever endpoint is
               // geometrically closer, so a bajante at each end each claims its own.
               const otherPt = pt === pEnd ? pStart : pEnd;
-              const otherDist = Math.hypot(otherPt[0] - b.x, otherPt[1] - b.y);
+              const otherDist = Math.hypot(otherPt[0] - b.x!, otherPt[1] - b.y!);
               if (dist < otherDist) return { type: 'bajante' as const, id: b.id };
               continue;
             }
@@ -91,7 +94,7 @@ export default function DisenosSanitarios() {
               return { type: 'bajante' as const, id: b.id };
             }
           }
-          let bestRx: any = null;
+          let bestRx: RawElement | null = null;
           let minDist = Infinity;
           for (const rx of ramales) {
             if (rx.id === r.id) continue;

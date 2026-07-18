@@ -105,7 +105,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <PageNav page={afPage} setPage={setAfPage} total={3} color="var(--af)" labels={['Cálculo de unidades de consumo', 'Diseño de red agua fría', 'Accesorios']} onPageHover={prefetchAfAc} />
           {afPage === 1 && <Suspense fallback={FALLBACK}><CalculoUC tipo="af" /></Suspense>}
-          {afPage === 2 && <Suspense fallback={FALLBACK}><WaterNetworkDesign networkType="af" diamTable={DIAMETROS_AF} lookupFn={lookupInterno as any} /></Suspense>}
+          {afPage === 2 && <Suspense fallback={FALLBACK}><WaterNetworkDesign networkType="af" diamTable={DIAMETROS_AF} lookupFn={lookupInterno as (pulg: number) => number} /></Suspense>}
           {afPage === 3 && <Suspense fallback={FALLBACK}><AccesoriosTable tramos={tramosAf} /></Suspense>}
         </div>
       )}
@@ -113,7 +113,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
         <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <PageNav page={acPage} setPage={setAcPage} total={4} color="var(--ac)" labels={['Cálculo de unidades de consumo', 'Diseño de red agua caliente', 'Selección calentador', 'Accesorios']} onPageHover={prefetchAfAc} />
           {acPage === 1 && <Suspense fallback={FALLBACK}><CalculoUC tipo="ac" /></Suspense>}
-          {acPage === 2 && <Suspense fallback={FALLBACK}><WaterNetworkDesign networkType="ac" diamTable={DIAMETROS_AC} lookupFn={lookupInternoAC as any} /></Suspense>}
+          {acPage === 2 && <Suspense fallback={FALLBACK}><WaterNetworkDesign networkType="ac" diamTable={DIAMETROS_AC} lookupFn={lookupInternoAC as (pulg: number) => number} /></Suspense>}
           {acPage === 3 && <Suspense fallback={FALLBACK}><HeaterSelection /></Suspense>}
           {acPage === 4 && <Suspense fallback={FALLBACK}><AccesoriosTable tramos={tramosAc} /></Suspense>}
         </div>
@@ -150,8 +150,8 @@ function InfTab({ state }: { state: WorkAreaState }) {
     ['EMPRESA', proy.empresa],
     ['P RED', proy.p_red + ' mca'],
     ['DOTACIÓN', proy.dot + ' L/hab/d'],
-    ['REDES', redesActivas.map((r: any) => r.lbl).join(' · ')],
-    ['NIVELES', pisos.toSorted((a: any, b: any) => a.n - b.n).map((p: any) => pisoLbl(p.n)).join(' · ')],
+    ['REDES', redesActivas.map((r) => r.lbl).join(' · ')],
+    ['NIVELES', pisos.toSorted((a, b) => a.n - b.n).map((p) => pisoLbl(p.n)).join(' · ')],
     ['SANITARIA', okSAN ? '✓ OK' : '✗ Revisar'],
     ['AGUAS LLUVIAS', okLL ? '✓ OK' : '✗ Revisar'],
   ], [proy, redesActivas, pisos, okSAN, okLL]);

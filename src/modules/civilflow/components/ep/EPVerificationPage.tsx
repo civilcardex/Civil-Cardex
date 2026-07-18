@@ -150,7 +150,7 @@ export default function EPVerificationPage({ section = "results" }: EPVerificati
           </Card>
           <Card style={{display:'flex',flexDirection:'column'}} iconImg="/iconos_civilflow/diseno_redes/equipos/altura_manometrica.webp" iconImgStyle={{ width: 20, height: 20 }} title={`${isRed ? "Altura manométrica total — Succión directa" : "Altura manométrica total — Succión desde cisterna"}`} bodyStyle={{ padding: 0 }}>
             <Tbl caption="Altura manométrica total" thStyle={TH_S} tdStyle={TD_S} cols={["Parámetro", "Valor", "Unidad"]} rows={(() => {
-              const r: any[][] = [];
+              const r: React.ReactNode[][] = [];
               r.push(["Desnivel geométrico", <span style={hgOk ? OK : ERR}>{hgOk ? `✓ ${(ztop - zbomba).toFixed(2)}` : `✗ ${(ztop - zbomba).toFixed(2)}`}</span>, "m.c.a."]);
               if (!isRed) r.push(["Desnivel total", <span style={M}>{fmtMca(Hg)}</span>, "m.c.a."]);
               r.push(["Pérdidas de carga críticas", <span style={hfOk ? OK : ERR}>{hfOk ? `✓ ${HfCrit.toFixed(2)}` : `✗ ${HfCrit.toFixed(2)}`}</span>, "m.c.a."]);

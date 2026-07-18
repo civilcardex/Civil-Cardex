@@ -12,6 +12,8 @@ import { devError } from "../../../utils/devError";
 import { loadFromStorage, saveToStorage } from "../services/storageService";
 import { ACTIVE_NETS_KEY, OPEN_TAB_KEY, NET_COLOR_PREFIX, NETS_CHANGED_EVENT } from "../constants/storage-keys";
 
+interface Piso { id: string | number; n: number; npt: number | string; ok: boolean; tipo: string; h: string }
+
 function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject<T>] {
   const [val, _set] = useState<T>(initial);
   const ref = useRef(val);
@@ -71,10 +73,10 @@ export function useWorkAreaState() {
 
   const [planDrag, setPlanDrag] = useState<boolean>(false);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
-  const selectedPlan = useMemo(() => plansCtx.plans.find((p: any) => p.id === selectedPlanId) || null, [plansCtx.plans, selectedPlanId]);
+  const selectedPlan = useMemo(() => plansCtx.plans.find((p) => p.id === selectedPlanId) || null, [plansCtx.plans, selectedPlanId]);
   const [selectedPlanUrl, setSelectedPlanUrl] = useState<string | null>(null);
-  const pendingPlanos = useMemo(() => plansCtx.plans.filter((p: any) => p.status === 'pending'), [plansCtx.plans]);
-  const confirmedPlanos = useMemo(() => plansCtx.plans.filter((p: any) => p.status === 'confirmed'), [plansCtx.plans]);
+  const pendingPlanos = useMemo(() => plansCtx.plans.filter((p) => p.status === 'pending'), [plansCtx.plans]);
+  const confirmedPlanos = useMemo(() => plansCtx.plans.filter((p) => p.status === 'confirmed'), [plansCtx.plans]);
 
   const [nSotanos, setNSotanos, nSotanosRef] = useSyncedRef<string>('');
   const [nPisos, setNPisos, nPisosRef] = useSyncedRef<string>('');
@@ -111,7 +113,7 @@ export function useWorkAreaState() {
     const hPis = parseDecimalInput(altPisoRef.current) || 0;
     const hSot = parseDecimalInput(altSotanoRef.current) || 0;
     const npt1 = parseDecimalInput(nptPiso1Ref.current) || 0;
-    const l: any[] = [];
+    const l: Piso[] = [];
     for (let i = nSotFinal; i >= 1; i--)
       l.push({ id: 's' + i, n: -i, npt: +((npt1 - (i * hSot)).toFixed(2)), ok: false, tipo: 'sotano', h: hSot.toFixed(2) });
     for (let i = 1; i <= nPis; i++)
@@ -141,19 +143,19 @@ export function useWorkAreaState() {
     }
   }, []);
 
-  const delPiso = (id: string | number) => projectCtx.setPisos((prev: any[]) => prev.filter(p => p.id !== id));
+  const delPiso = (id: string | number) => projectCtx.setPisos((prev: Piso[]) => prev.filter(p => p.id !== id));
 
   const addPiso = () => {
     if (!altPisoRef.current.trim()) {
       setAlertMsg('Ingrese la altura de entrepiso');
       return;
     }
-    projectCtx.setPisos((prev: any[]) => {
+    projectCtx.setPisos((prev: Piso[]) => {
       const pisosPOS = prev.filter(p => p.tipo === 'piso').sort((a, b) => b.n - a.n);
       const maxN = pisosPOS.length ? Math.max(...pisosPOS.map(p => p.n)) : 0;
       const hPis = parseFloat(altPisoRef.current) || 0;
       const baseNpt = pisosPOS.length
-        ? parseFloat(pisosPOS[0].npt) || 0
+        ? parseFloat(String(pisosPOS[0].npt)) || 0
         : parseFloat(nptPiso1Ref.current) || 0;
       const newNpt = +(baseNpt + (pisosPOS.length > 0 ? hPis : 0)).toFixed(2);
       const newPiso = { id: Date.now(), n: maxN + 1, npt: newNpt, ok: false, tipo: 'piso', h: hPis.toFixed(2) };
@@ -170,12 +172,12 @@ export function useWorkAreaState() {
       setAlertMsg('Ingrese la altura de sótano');
       return;
     }
-    projectCtx.setPisos((prev: any[]) => {
+    projectCtx.setPisos((prev: Piso[]) => {
       const pisoNEG = prev.filter(p => p.tipo === 'sotano').sort((a, b) => a.n - b.n);
       const minN = pisoNEG.length ? Math.min(...pisoNEG.map(p => p.n)) : 0;
       const hSot = parseFloat(altSotanoRef.current) || 0;
       const baseNpt = pisoNEG.length
-        ? parseFloat(pisoNEG[0].npt) || 0
+        ? parseFloat(String(pisoNEG[0].npt)) || 0
         : parseFloat(nptPiso1Ref.current) || 0;
       const newNpt = +(baseNpt - hSot).toFixed(2);
       const newSotano = { id: Date.now(), n: minN === 0 ? -1 : minN - 1, npt: newNpt, ok: false, tipo: 'sotano', h: hSot.toFixed(2) };
@@ -191,7 +193,7 @@ export function useWorkAreaState() {
         document.documentElement.style.setProperty('--' + r.id, saved);
         try {
           const nets = NETS;
-          const net = nets.find((n: any) => n.id === r.id);
+          const net = nets.find((n) => n.id === r.id);
           if (net) net.col = saved;
         } catch (e) { devError(e); }
       }
@@ -216,7 +218,7 @@ export function useWorkAreaState() {
     const len = plansCtx.plans.length;
     if (len > 0 && len > prevPlansLenRef.current) {
       setSelectedPlanId(plansCtx.plans[len - 1].id);
-    } else if (len > 0 && !plansCtx.plans.some((p: any) => p.id === selectedPlanId)) {
+    } else if (len > 0 && !plansCtx.plans.some((p) => p.id === selectedPlanId)) {
       setSelectedPlanId(plansCtx.plans[0].id);
     } else if (len === 0) {
       setSelectedPlanId(null);

@@ -110,7 +110,7 @@ export const DIAM_BAN=[
 
 export const DIAM_OPTIONS = DIAM_BAN.map(d => ({pulg: d.pulg, label: d.nom, mm: d.mm}));
 
-export const DIAM_VENT = (VENTILACION[0]?.rows || []).map((r: any) => ({
+export const DIAM_VENT = (VENTILACION[0]?.rows || []).map((r) => ({
   pulg: diamPulgFromLabel(r.dn),
   mm: r.d,
   nom: r.dn

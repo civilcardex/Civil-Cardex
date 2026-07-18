@@ -3,14 +3,16 @@ import { useTramos } from "./TramosContext";
 import { usePlans } from "./PlansContext";
 import { TRAZOS_PREFIX, ACTIVE_NETS_KEY } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
+import type { DrawingData } from "../utils/drawingSync";
 
-interface BajanteLL { id: string; bajante: string; areaParcial: number; areaAcumulada: number; intensidad: number; coeficienteC: number; R: string; manning: number; diamPropuesto: number }
+interface AreaRaw { areaM2?: number }
+export interface BajanteLL { id: string; bajante: string; areaParcial: number; areaAcumulada: number; intensidad: number; coeficienteC: number; R: string; manning: number; diamPropuesto: number }
 interface CanalLL { id: string; sector: string; areaParcial: number; areaAcumulada: number; intensidad: number; coeficienteC: number; manning: number; pendiente: number; b: number; h: number }
 interface RainwaterContextValue {
   bajantesLl: BajanteLL[];
-  addBajanteLL: () => void; delBajanteLL: (id: string) => void; updBajanteLL: (id: string, field: string, val: any) => void;
+  addBajanteLL: () => void; delBajanteLL: (id: string) => void; updBajanteLL: (id: string, field: string, val: string | number) => void;
   canalesLl: CanalLL[];
-  addCanalLL: () => void; delCanalLL: (id: string) => void; updCanalLL: (id: string, field: string, val: any) => void;
+  addCanalLL: () => void; delCanalLL: (id: string) => void; updCanalLL: (id: string, field: string, val: string | number) => void;
   conRecolectora: boolean; setConRecolectora: (v: boolean) => void;
 }
 
@@ -45,7 +47,7 @@ const addCanalLL = () => setCanalesLl(p => [...p, {
   id:`CLL-${p.length+1}`,sector:'',areaParcial:0,areaAcumulada:0,intensidad:0,coeficienteC:0,manning:0,pendiente:0,b:0,h:0,
 }]);
 const delCanalLL = (id: string) => setCanalesLl(p => p.filter(t => t.id !== id));
-const updCanalLL = (id: string, field: string, val: any) => setCanalesLl(p => p.map(t => t.id === id ? { ...t, [field]: val } : t));
+const updCanalLL = (id: string, field: string, val: string | number) => setCanalesLl(p => p.map(t => t.id === id ? { ...t, [field]: val } : t));
 
 // Auto-populate canal rows from drawn 'll' ramales (net==='ll', non-bajante), using the
 // same floor-area lookup pattern as ChequeoBajantesLluvias, instead of starting from zeros.
@@ -53,17 +55,17 @@ const areaAcumMap = useMemo(() => {
   const map: Record<string, number> = {};
   for (const plan of plans || []) {
     if (plan.nivel == null) continue;
-    const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
+    const raw = loadFromStorage<(DrawingData & { areas?: AreaRaw[] }) | string | null>(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
-    let data = raw as Record<string, any>;
-    if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
-    const totalArea = (data.areas || []).reduce((s: number, a: any) => s + (a.areaM2 || 0), 0);
+    let data: DrawingData & { areas?: AreaRaw[] } = raw as DrawingData & { areas?: AreaRaw[] };
+    if (typeof raw === 'string') { try { data = JSON.parse(raw); } catch { continue; } }
+    const totalArea = (data.areas || []).reduce((s, a) => s + (a.areaM2 || 0), 0);
     map[String(plan.nivel)] = totalArea;
   }
   return map;
 }, [plans]);
 
-const drawingCanales = useMemo(() => tramosLl.filter((t: any) => !t.esBajante), [tramosLl]);
+const drawingCanales = useMemo(() => tramosLl.filter((t) => !t.esBajante), [tramosLl]);
 
 const canalesLlAuto = useMemo(() => {
   const manualMap = new Map<string, CanalLL>();
@@ -71,7 +73,7 @@ const canalesLlAuto = useMemo(() => {
   const usedManual = new Set<string>();
   const out: CanalLL[] = [];
 
-  for (const d of drawingCanales as any[]) {
+  for (const d of drawingCanales) {
     const sector = d.label || d.id;
     const manual = manualMap.get(sector);
     if (manual) usedManual.add(manual.sector || manual.id);
@@ -103,7 +105,7 @@ const addBajanteLL = () => setBajantesLl(p => [...p, {
   id:`BLL-${p.length+1}`,bajante:'',areaParcial:0,areaAcumulada:0,intensidad:100,coeficienteC:0.0278,R:'',manning:0,diamPropuesto:0,
 }]);
 const delBajanteLL = (id: string) => setBajantesLl(p => p.filter(t => t.id !== id));
-const updBajanteLL = (id: string, field: string, val: any) => setBajantesLl(p => {
+const updBajanteLL = (id: string, field: string, val: string | number) => setBajantesLl(p => {
   const exists = p.some(t => t.id === id || (t.bajante && t.bajante === id));
   if (!exists && id) {
     return [...p, {
@@ -111,11 +113,11 @@ const updBajanteLL = (id: string, field: string, val: any) => setBajantesLl(p =>
       bajante: id,
       areaParcial: 0,
       areaAcumulada: 0,
-      intensidad: field === 'intensidad' ? val : 100,
+      intensidad: field === 'intensidad' ? (val as number) : 100,
       coeficienteC: 0.0278,
-      R: field === 'R' ? val : '',
-      manning: field === 'manning' ? val : 0,
-      diamPropuesto: field === 'diamPropuesto' ? val : 0,
+      R: field === 'R' ? (val as string) : '',
+      manning: field === 'manning' ? (val as number) : 0,
+      diamPropuesto: field === 'diamPropuesto' ? (val as number) : 0,
     }];
   }
   return p.map(t => (t.id === id || (t.bajante && t.bajante === id)) ? { ...t, [field]: val } : t);

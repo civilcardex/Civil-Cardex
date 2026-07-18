@@ -6,6 +6,7 @@ import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from "../constants/storage-keys"
 import { GAS_APPARATUS, renouardByType } from "../utils/gasUtils";
 import { pisoCorto } from "../constants";
 import { TH, TD } from "../styles/sharedTableStyles";
+import type { DrawingData } from "../utils/drawingSync";
 const GasCalcUC_S1: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 const GasCalcUC_S2: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 
@@ -21,21 +22,20 @@ function GasCalcUC({ patm, temp, densRel }: { patm: string; temp: string; densRe
   const { plans } = usePlans();
 
   const { tramos, totalByAp, tramoTotals, tramoAppCounts } = useMemo(() => {
-    const aparatos: Record<string, any> = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
+    const aparatos: Record<string, Record<string, number>> = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
     const tramosMap: Record<string, { id: string; piso: number | string; ini: string; fin: string; counts: Record<string, number> }> = {};
 
     for (const plano of plans) {
       if (!plano || plano.status !== "confirmed" || plano.nivel == null) continue;
-      const raw = loadFromStorage(TRAZOS_PREFIX + plano.id, null);
-      if (!raw) continue;
-      const data = raw as Record<string, any>;
+      const data = loadFromStorage<DrawingData | null>(TRAZOS_PREFIX + plano.id, null);
+      if (!data) continue;
 
       for (const r of data.ramales || []) {
         if (r.net !== "gas") continue;
         const pid = plano.id ? String(plano.id) : '';
         const key = `gas_${r.id}`;
         const keyPid = pid ? `gas_${r.id}_${pid}` : '';
-        const counts = (aparatos as Record<string, any>)[keyPid] || (aparatos as Record<string, any>)[key] || {};
+        const counts = aparatos[keyPid] || aparatos[key] || {};
         const hasData = Object.values(counts).some((v) => (Number(v) || 0) > 0);
         if (!hasData) continue;
 

@@ -8,15 +8,15 @@ export type { Tramo, TramosState };
 interface TramosContextValue {
   tramosSan: Tramo[]; tramosAf: Tramo[]; tramosAc: Tramo[]; tramosLl: Tramo[];
   delTramoSan: (id: string) => void;
-  updTramoSan: (id: string, field: string, val: any) => void;
+  updTramoSan: (id: string, field: string, val: string | number | boolean) => void;
   delTramoAf: (id: string) => void;
-  updTramoAf: (id: string, field: string, val: any) => void;
-  updTramoAfAcc: (id: string, accId: string, val: any) => void;
+  updTramoAf: (id: string, field: string, val: string | number | boolean) => void;
+  updTramoAfAcc: (id: string, accId: string, val: number) => void;
   delTramoAc: (id: string) => void;
-  updTramoAc: (id: string, field: string, val: any) => void;
-  updTramoAcAcc: (id: string, accId: string, val: any) => void;
+  updTramoAc: (id: string, field: string, val: string | number | boolean) => void;
+  updTramoAcAcc: (id: string, accId: string, val: number) => void;
   delTramoLL: (key: string) => void;
-  updTramoLL: (key: string, field: string, val: any) => void;
+  updTramoLL: (key: string, field: string, val: string | number | boolean) => void;
 }
 
 const TramosContext = createContext<TramosContextValue | null>(null);
@@ -85,18 +85,18 @@ useEffect(() => {
 const { tramosSan, tramosAf, tramosAc, tramosLl } = state;
 
 const delTramoSan = useCallback((id: string) => dispatch({ type: 'DEL_TRAMO', net: 'san', id }), []);
-const updTramoSan = useCallback((id: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'san', id, field, val }), []);
+const updTramoSan = useCallback((id: string, field: string, val: string | number | boolean) => dispatch({ type: 'UPD_TRAMO', net: 'san', id, field, val }), []);
 
 const delTramoAf = useCallback((id: string) => dispatch({ type: 'DEL_TRAMO', net: 'af', id }), []);
-const updTramoAf = useCallback((id: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'af', id, field, val }), []);
-const updTramoAfAcc = useCallback((id: string, accId: string, val: any) => dispatch({ type: 'UPD_TRAMO_ACC', net: 'af', id, accId, val }), []);
+const updTramoAf = useCallback((id: string, field: string, val: string | number | boolean) => dispatch({ type: 'UPD_TRAMO', net: 'af', id, field, val }), []);
+const updTramoAfAcc = useCallback((id: string, accId: string, val: number) => dispatch({ type: 'UPD_TRAMO_ACC', net: 'af', id, accId, val }), []);
 
 const delTramoAc = useCallback((id: string) => dispatch({ type: 'DEL_TRAMO', net: 'ac', id }), []);
-const updTramoAc = useCallback((id: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'ac', id, field, val }), []);
-const updTramoAcAcc = useCallback((id: string, accId: string, val: any) => dispatch({ type: 'UPD_TRAMO_ACC', net: 'ac', id, accId, val }), []);
+const updTramoAc = useCallback((id: string, field: string, val: string | number | boolean) => dispatch({ type: 'UPD_TRAMO', net: 'ac', id, field, val }), []);
+const updTramoAcAcc = useCallback((id: string, accId: string, val: number) => dispatch({ type: 'UPD_TRAMO_ACC', net: 'ac', id, accId, val }), []);
 
 const delTramoLL = useCallback((key: string) => dispatch({ type: 'DEL_TRAMO', net: 'll', id: key }), []);
-const updTramoLL = useCallback((key: string, field: string, val: any) => dispatch({ type: 'UPD_TRAMO', net: 'll', id: key, field, val }), []);
+const updTramoLL = useCallback((key: string, field: string, val: string | number | boolean) => dispatch({ type: 'UPD_TRAMO', net: 'll', id: key, field, val }), []);
 
 const value = useMemo(() => ({
   tramosSan, tramosAf, tramosAc, tramosLl,

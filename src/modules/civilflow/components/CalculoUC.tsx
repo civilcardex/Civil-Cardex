@@ -45,7 +45,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
 
   const totales = useMemo(() => {
     return AP.map(d => ({
-      id: d.id, nombre: d.nombre, uc: (d as any)[field],
+      id: d.id, nombre: d.nombre, uc: d[field],
       cant: tramos.reduce((s, t) => s + ((t.fixtures?.[d.id] || 0)), 0)
     }));
   }, [AP, tramos, field]);
@@ -55,7 +55,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
   }, [totales]);
 
   const acumMap = useMemo(() => {
-    return showTotal ? calcUCacumulado(tramos, AP as any, field) : {};
+    return showTotal ? calcUCacumulado(tramos, AP, field) : {};
   }, [showTotal, tramos, AP, field]);
 
   const sortedTramos = useMemo(() => {
@@ -91,7 +91,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                 <tr>
                   {AP.map(d => (
                     <th key={d.id} className={`col-h ${clsHeader}`} style={{minWidth:70,fontSize: 12,textAlign:'center',whiteSpace:'nowrap',padding:'4px 2px'}}>
-                      {d.nombre}<br/><span style={{fontSize: 12,fontWeight:400}}>{(d as any)[field]} UC</span>
+                      {d.nombre}<br/><span style={{fontSize: 12,fontWeight:400}}>{d[field]} UC</span>
                     </th>
                   ))}
                   {showTotal && (
@@ -110,7 +110,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     </td>
                   </tr>
                 ) : sortedTramos.map((t, i) => {
-                  const parcial = calcUCparcial(t, AP as any, field);
+                  const parcial = calcUCparcial(t, AP, field);
                   const acum = showTotal ? (acumMap[t.id] || 0) : 0;
                   const vLh = t.totalL || t.Lh || 0;
                   const vNS = t.nSalidas ?? 0;
@@ -124,7 +124,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                         const v = t.fixtures?.[d.id] || 0;
                         return (
                           <td key={d.id} className="c" style={{padding:'2px 3px'}}>
-                            <span style={{fontSize:12,fontFamily:monof,color:(d as any)._disabled?txt2:txt}}>{v}</span>
+                            <span style={{fontSize:12,fontFamily:monof,color:d._disabled?txt2:txt}}>{v}</span>
                           </td>
                         );
                       })}

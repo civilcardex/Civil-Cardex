@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { usePageMeta } from '../../hooks/usePageMeta'
 import { devError } from '../../utils/devError'
 import { useAuth } from '../../context/AuthContext'
-import { ProjectContext, PROY_DEFAULTS } from '../../modules/civilflow/context/ProjectContext'
-import { PlansContext } from '../../modules/civilflow/context/PlansContext'
+import { ProjectContext, PROY_DEFAULTS, type Proyecto, type MaterialItem, type ProfItem, type CritItem } from '../../modules/civilflow/context/ProjectContext'
+import { PlansContext, type PlanItem, type PlanMeta } from '../../modules/civilflow/context/PlansContext'
 import { fetchProyectos, deleteProyecto, type ProyectoRow } from '../../modules/civilflow/services/proyectosService'
 import { loadProyectoData } from '../../modules/civilflow/services/proyectoDataService'
 import { downloadPlanPDF } from '../../modules/civilflow/services/pdfStorageService'
@@ -63,25 +63,25 @@ function ProfilePage() {
       const data = await loadProyectoData(proy.id)
 
       if (data) {
-        if (data.pisos) projectCtx?.setPisos(data.pisos as any[])
+        if (data.pisos) projectCtx?.setPisos(data.pisos as unknown[])
         if (data.proy && Object.keys(data.proy).length) {
-          projectCtx?.setProyAll({ ...PROY_DEFAULTS, ...(data.proy as any) })
+          projectCtx?.setProyAll({ ...PROY_DEFAULTS, ...(data.proy as Partial<Proyecto>) })
         } else {
           projectCtx?.setP('nombre', proy.nombre)
         }
         if (data.mats && Object.keys(data.mats).length) {
-          projectCtx?.setMats(prev => ({ ...prev, ...(data.mats as any) }))
+          projectCtx?.setMats(prev => ({ ...prev, ...(data.mats as Record<string, MaterialItem[]>) }))
         }
-        if (data.profs && data.profs.length) projectCtx?.setProfs(data.profs as any[])
-        if (data.crits && data.crits.length) projectCtx?.setCrits(data.crits as any[])
+        if (data.profs && data.profs.length) projectCtx?.setProfs(data.profs as ProfItem[])
+        if (data.crits && data.crits.length) projectCtx?.setCrits(data.crits as CritItem[])
       } else {
         // No saved data yet for this project (created before this feature, or never
         // touched) — at least show the right name instead of the reset default.
         projectCtx?.setP('nombre', proy.nombre)
       }
 
-      const plansMeta = (data?.plans_meta as any[]) || []
-      const restored: any[] = []
+      const plansMeta = (data?.plans_meta as PlanMeta[]) || []
+      const restored: PlanItem[] = []
       for (const m of plansMeta) {
         const file = await downloadPlanPDF(proy.id, m.id, m.name || `plano_${m.id}.pdf`)
         if (file) {
@@ -133,7 +133,12 @@ function ProfilePage() {
   }
 
   usePageMeta('Perfil', 'Gestione su perfil de CivilCore: datos personales, proyectos activos y configuración de cuenta de ingeniería.');
+  // Fetch-on-mount from Supabase — a legitimate external-system sync, not state
+  // derivable from props/state already available during render.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchPerfil() }, [user])
+  // Fetch-on-open from Supabase — same rationale as above.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (proyectosOpen) loadProyectos() }, [proyectosOpen])
 
   function handleEditStart(field: string) {

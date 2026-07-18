@@ -1,12 +1,13 @@
 import { memo } from 'react';
 import { ACCESORIOS_HIDRO, pisoCorto } from "../constants";
+import type { Tramo } from "../context/tramosReducer";
 const AccessoriesTable_S1: React.CSSProperties = { width:76,textAlign:'center',fontSize: 9,padding:'2px 2px' };
 const AccessoriesTable_S3: React.CSSProperties = { fontSize: 9,textAlign:'center',fontWeight:600,padding:'2px 2px',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' };
 const AccessoriesTable_S5: React.CSSProperties = { fontSize: 8,textAlign:'center',whiteSpace:'normal',wordBreak:'break-word',padding:'2px 1px',overflow:'hidden' };
 
 const ACCESORIOS_COLS = ACCESORIOS_HIDRO.filter(a => a.id !== 'llaveTerminal');
 
-const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: any[] }) {
+const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: Tramo[] }) {
   const cMono = "'Courier New',Courier,monospace";
   return (
     <section className="card">

@@ -20,7 +20,7 @@ export interface Tramo {
   recibeDeIds?: string[];
   descargaEnId?: string | null;
   fixtures: Record<string, number>;
-  accesorios?: Record<string, any>;
+  accesorios?: Record<string, number>;
   ini?: { x: number; y: number } | null;
   fin?: { x: number; y: number } | null;
   totalL?: number;
@@ -65,8 +65,8 @@ export function idMatch(t: Tramo, id: string): boolean {
 export type TramosAction =
   | { type: 'SET_TRAMOS'; net: string; payload: Tramo[] }
   | { type: 'DEL_TRAMO'; net: string; id: string }
-  | { type: 'UPD_TRAMO'; net: string; id: string; field: string; val: any }
-  | { type: 'UPD_TRAMO_ACC'; net: string; id: string; accId: string; val: any };
+  | { type: 'UPD_TRAMO'; net: string; id: string; field: string; val: string | number | boolean }
+  | { type: 'UPD_TRAMO_ACC'; net: string; id: string; accId: string; val: number };
 
 export function tramosReducer(state: TramosState, action: TramosAction): TramosState {
   switch (action.type) {

@@ -9,6 +9,9 @@ import { loadFromStorage } from "../services/storageService";
 import { distToPolyline } from "../lib/shared/geometry";
 import { parseDescargaEnId } from "../utils/parseDescargaEnId";
 import { computeComponentTotals } from "../lib/shared/connectionGraph";
+import type { DrawingData, RawElement } from "../utils/drawingSync";
+
+interface BajanteRaw extends RawElement { x?: number; y?: number }
 const FixtureUnitCalc_S1: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 
 
@@ -30,13 +33,13 @@ function CalculoUD() {
 
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
-      const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
+      const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
       if (!raw) continue;
-      let data = raw as Record<string, any>;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
+      let data: DrawingData = raw as DrawingData;
+      if (typeof raw === 'string') { try { data = JSON.parse(raw); } catch { continue; } }
 
       const ramales = data.ramales || [];
-      const bajantes = data.bajantes || [];
+      const bajantes = (data.bajantes || []) as BajanteRaw[];
 
       for (const r of ramales) {
         if (!r.pts || r.pts.length < 2) continue;
@@ -54,12 +57,12 @@ function CalculoUD() {
             if (isDischargingIntoR) continue;
 
             const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
-            const dist = Math.hypot(pt[0] - b.x, pt[1] - b.y);
+            const dist = Math.hypot(pt[0] - b.x!, pt[1] - b.y!);
             if (isExplicit) {
               // Explicit link doesn't say which end — assign it to whichever endpoint is
               // geometrically closer, so a bajante at each end each claims its own.
               const otherPt = pt === pEnd ? pStart : pEnd;
-              const otherDist = Math.hypot(otherPt[0] - b.x, otherPt[1] - b.y);
+              const otherDist = Math.hypot(otherPt[0] - b.x!, otherPt[1] - b.y!);
               if (dist < otherDist) return { type: 'bajante' as const, id: b.id };
               continue;
             }
@@ -67,7 +70,7 @@ function CalculoUD() {
               return { type: 'bajante' as const, id: b.id };
             }
           }
-          let bestRx: any = null;
+          let bestRx: RawElement | null = null;
           let minDist = Infinity;
           for (const rx of ramales) {
             if (rx.id === r.id) continue;

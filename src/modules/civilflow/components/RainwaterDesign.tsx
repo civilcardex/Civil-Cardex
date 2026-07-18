@@ -11,6 +11,10 @@ import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage } from "../services/storageService";
 import { useRainwater } from "../context/RainwaterContext";
 import { distToPolyline } from "../lib/shared/geometry";
+import type { DrawingData, RawElement } from "../utils/drawingSync";
+
+interface BajanteRaw extends RawElement { x?: number; y?: number }
+interface AreaRaw { areaM2?: number }
 const RainwaterDesign_S2: React.CSSProperties = { fontFamily:'var(--mono)',fontSize: 10,padding:'1px 1px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer',maxWidth:60 };
 const TH_HDR = { fontSize: 9, textAlign:'center', padding:'1px 2px' } as const;
 
@@ -39,13 +43,13 @@ export default function DisenoLluvias() {
 
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
-      const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
+      const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
       if (!raw) continue;
-      let data = raw as Record<string, any>;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
+      let data: DrawingData = raw as DrawingData;
+      if (typeof raw === 'string') { try { data = JSON.parse(raw); } catch { continue; } }
 
-      const ramales = (data.ramales || []).filter((r: any) => r.net === 'll');
-      const bajantes = (data.bajantes || []).filter((b: any) => b.net === 'll');
+      const ramales = (data.ramales || []).filter((r) => r.net === 'll');
+      const bajantes = (data.bajantes || []).filter((b): b is BajanteRaw => b.net === 'll');
 
       for (const r of ramales) {
         if (!r.pts || r.pts.length < 2) continue;
@@ -56,12 +60,12 @@ export default function DisenoLluvias() {
         const checkEndpoint = (pt: number[]) => {
           for (const b of bajantes) {
             const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
-            const dist = Math.hypot(pt[0] - b.x, pt[1] - b.y);
+            const dist = Math.hypot(pt[0] - b.x!, pt[1] - b.y!);
             if (isExplicit) {
               // Explicit link doesn't say which end — assign it to whichever endpoint is
               // geometrically closer, so a bajante at each end each claims its own.
               const otherPt = pt === pEnd ? pStart : pEnd;
-              const otherDist = Math.hypot(otherPt[0] - b.x, otherPt[1] - b.y);
+              const otherDist = Math.hypot(otherPt[0] - b.x!, otherPt[1] - b.y!);
               if (dist < otherDist) return { type: 'bajante' as const, id: b.id };
               continue;
             }
@@ -69,7 +73,7 @@ export default function DisenoLluvias() {
               return { type: 'bajante' as const, id: b.id };
             }
           }
-          let bestRx: any = null;
+          let bestRx: RawElement | null = null;
           let minDist = Infinity;
           for (const rx of ramales) {
             if (rx.id === r.id) continue;
@@ -131,7 +135,7 @@ export default function DisenoLluvias() {
         const node = queue.shift()!;
         if (node !== startKey) {
           const tr = tramosLl.find(x => x._key === node);
-          const isMainRamal = tr && (tr as any).tipo === 'ramal' && !(tr as any).esBajante;
+          const isMainRamal = tr && tr.tipo === 'ramal' && !tr.esBajante;
           if (isMainRamal) {
             results.add(node);
             continue; // Stop traversal at this main ramal
@@ -179,11 +183,11 @@ export default function DisenoLluvias() {
       }
     }
 
-    return [calculoMap, displayMap, ramalToBajantes];
+    return [calculoMap, displayMap, ramalToBajantes] as const;
   }, [plans, tramosLl]);
 
   const getAssociatedBajantes = useCallback((tKey: string): string[] => {
-    return (conexionesDisplay as any)[tKey] || [];
+    return conexionesDisplay[tKey] || [];
   }, [conexionesDisplay]);
 
 
@@ -192,11 +196,11 @@ export default function DisenoLluvias() {
     const areaAcumMap: Record<string, number> = {};
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
-      const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
+      const raw = loadFromStorage<(DrawingData & { areas?: AreaRaw[] }) | string | null>(TRAZOS_PREFIX + plan.id, null);
       if (!raw) continue;
-      let data = raw as Record<string, any>;
-      if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
-      const totalArea = (data.areas || []).reduce((s: number, a: any) => s + (a.areaM2 || 0), 0);
+      let data: DrawingData & { areas?: AreaRaw[] } = raw as DrawingData & { areas?: AreaRaw[] };
+      if (typeof raw === 'string') { try { data = JSON.parse(raw); } catch { continue; } }
+      const totalArea = (data.areas || []).reduce((s, a) => s + (a.areaM2 || 0), 0);
       areaAcumMap[String(plan.nivel)] = totalArea;
     }
 
@@ -345,7 +349,7 @@ const hc = calcHydraulicCheck({ Q, S, n, DintMm });
                   <td className="c" style={{padding:'1px 2px'}}><span style={{fontSize: 10,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{t.hasta || '—'}</span></td>
                   <td className="c" style={{padding:'1px 2px',minWidth:60,maxWidth:120}}>
                     {(() => {
-                      const associatedBajantes = (conexionesDisplay as any)[t._key ?? ''] || [];
+                      const associatedBajantes = conexionesDisplay[t._key ?? ''] || [];
                       return associatedBajantes.length === 0 ? (
                         <span style={{fontSize: 10,color:'var(--txt3)'}}>—</span>
                       ) : (

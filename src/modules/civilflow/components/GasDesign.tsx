@@ -9,9 +9,14 @@ import { writeDiametroToDrawing, writeContadorDiamToDrawing, writeBajantePropToD
 import { loadFromStorage } from "../services/storageService";
 import GasCalcUC from "./GasCalcUC";
 import PageNav from './PageNav';
+import type { DrawingData, RawElement } from "../utils/drawingSync";
 
 import { TRAZOS_PREFIX, GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY } from "../constants/storage-keys";
 import { renouardByType } from "../utils/gasUtils";
+
+type GasAccMap = Record<string, Record<string, number>>;
+interface GasRamalRaw extends RawElement { Lh?: number }
+interface GasBajanteRaw extends RawElement { capacidad?: string }
 import { SI, SD, TH as _TH, TD as _TD } from "../styles/sharedTableStyles";
 const TH = { ..._TH, fontSize: 9, padding: '2px 3px' };
 const TD = { ..._TD, fontSize: 9, padding: '1px 2px' };
@@ -45,7 +50,7 @@ function GasDesign(){
   const [diamInt, setDiamInt] = useState<Record<string, number>>(() => ({}));
   const [diamK, setDiamK] = useState<Record<string, number>>(() => ({}));
 
-  const [gasAcc, setGasAcc] = useState<Record<string, any>>(() => {
+  const [gasAcc, setGasAcc] = useState<GasAccMap>(() => {
     return loadFromStorage(GAS_ACC_KEY, {});
   });
 
@@ -54,9 +59,9 @@ function GasDesign(){
     for (const plano of plans) {
       if (!plano || plano.status !== 'confirmed') continue;
       try {
-        const data = loadFromStorage(TRAZOS_PREFIX + plano.id, null);
+        const data = loadFromStorage<DrawingData | null>(TRAZOS_PREFIX + plano.id, null);
         if (!data) continue;
-        for (const r of (data as any).ramales || []) {
+        for (const r of data.ramales || []) {
           if (r.net === 'gas' && r.tipo !== 'tributario') existingIds.add(r.id);
         }
       } catch {
@@ -69,7 +74,7 @@ function GasDesign(){
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setGasAcc(prev => {
       let changed = false;
-    const next: Record<string, any> = {};
+    const next: GasAccMap = {};
       for (const id of existingIds) {
         if (prev[id]) next[id] = prev[id];
       }
@@ -82,10 +87,9 @@ function GasDesign(){
     const tramos = [];
     for (const plano of plans) {
       if (!plano || plano.status !== 'confirmed' || plano.nivel == null) continue;
-      const raw = loadFromStorage(TRAZOS_PREFIX + plano.id, null);
-      if (!raw) continue;
-      const data = raw as Record<string, any>;
-      for (const r of data.ramales || []) {
+      const data = loadFromStorage<DrawingData | null>(TRAZOS_PREFIX + plano.id, null);
+      if (!data) continue;
+      for (const r of (data.ramales || []) as GasRamalRaw[]) {
         if (r.net !== 'gas') continue;
         if (r.tipo === 'tributario') continue;
 
@@ -93,7 +97,7 @@ function GasDesign(){
         tramos.push({
           id: r.id,
           planId: plano.id,
-          piso: r.piso ?? plano.nivel,
+          piso: Number(r.piso ?? plano.nivel) || 0,
           ini: r.ini || '',
           fin: r.fin || '',
           longitud: r.totalL || r.Lh || 0,
@@ -104,12 +108,12 @@ function GasDesign(){
   }, [plans]);
 
   const gasContBajantes = useMemo(() => {
-    const items: any[] = [];
+    const items: (GasBajanteRaw & { planId: string | number })[] = [];
     for (const plano of plans) {
       if (!plano || plano.status !== 'confirmed') continue;
-      const data = loadFromStorage(TRAZOS_PREFIX + plano.id, null);
+      const data = loadFromStorage<DrawingData | null>(TRAZOS_PREFIX + plano.id, null);
       if (!data) continue;
-      for (const b of (data as any).bajantes || []) {
+      for (const b of (data.bajantes || []) as GasBajanteRaw[]) {
         if (b.net !== 'gas') continue;
         if (b.tipo === 'contador' || b.tipo === 'calentador') {
           items.push({ ...b, planId: plano.id });
@@ -126,9 +130,8 @@ function GasDesign(){
     const toSetK: Record<string, number> = {};
     for (const plano of plans) {
       if (!plano || plano.status !== 'confirmed' || plano.nivel == null) continue;
-      const raw = loadFromStorage(TRAZOS_PREFIX + plano.id, null);
-      if (!raw) continue;
-      const data = raw as Record<string, any>;
+      const data = loadFromStorage<DrawingData | null>(TRAZOS_PREFIX + plano.id, null);
+      if (!data) continue;
       for (const r of data.ramales || []) {
         if (r.net !== 'gas') continue;
         if (r.tipo === 'tributario') continue;
@@ -170,7 +173,7 @@ function GasDesign(){
     const fAlt = 101.325 / pAtm;
     const fTemp = Math.sqrt(288 / (273 + T));
     const fDens = Math.sqrt(0.67 / DR);
-  const aparatos: Record<string, any> = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
+  const aparatos: Record<string, Record<string, number>> = loadFromStorage(APARATOS_BY_TRAMO_KEY, {});
     const result = [];
     let pAcum = pMin;
     for (const t of gasTramos) {
@@ -216,7 +219,7 @@ function GasDesign(){
                ['Temperatura promedio de la ciudad',temp,setTemp,'°C'],
                ['Presión mínima de la red según operador',pmin,setPmin,'mbar'],
                ['Densidad relativa del gas a utilizar',densRel,setDensRel,'kPa'],
-             ].map((row, i, arr)=>{const [lbl,val,setVal,uni] = row as [string, string, any, string];return (
+             ].map((row, i, arr)=>{const [lbl,val,setVal,uni] = row as [string, string, (v: string) => void, string];return (
                <tr key={i}>
                  <td style={{padding:'6px 10px',fontWeight:600,color:'var(--txt)',fontSize: 10,borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}>{lbl}</td>
                  <td style={{padding:'6px 10px',borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}><input type="text" inputMode="decimal" aria-label={lbl} value={val} onChange={e=>setVal(e.target.value)} style={{...SI,textAlign:'right',fontSize: 10,padding:'5px 8px',width:100}}/></td>
@@ -316,7 +319,7 @@ function GasDesign(){
                           writeContadorDiamToDrawing(dNom, plans, 'gas');
                         }} style={{...SD,fontSize: 9}}>
                           <option value="">—</option>
-                          {CONTADORES_CAT.map((c: any) => <option key={c.dn} value={c.dn}>{c.dn}"</option>)}
+                          {CONTADORES_CAT.map((c) => <option key={c.dn} value={c.dn}>{c.dn}"</option>)}
                         </select>
                       ) : '—'}
                     </td>

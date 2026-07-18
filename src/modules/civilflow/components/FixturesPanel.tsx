@@ -4,6 +4,7 @@ import { NETS } from '../lib/PlanoEngine/PlanoState';
 import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { writeSanDrawingSync, writeHydroDrawingSync } from '../utils/drawingSync';
+import type { DrawingData } from '../utils/drawingSync';
 import { loadFromStorage, saveToStorage } from '../services/storageService';
 import FixtureGrid from './fixtures/FixtureGrid';
 import AccesoriosSection from './fixtures/AccessoriesSection';
@@ -26,25 +27,30 @@ const UNIDAD = {
 
 const SAN_UD_IDS = new Set(UD_BASE_INIT.map(d => d.id));
 
-function loadAll(): Record<string, any> {
-  return loadFromStorage(APARATOS_BY_TRAMO_KEY, {}) as Record<string, any>;
+type CountsMap = Record<string, Record<string, number>>;
+interface HidroDataEntry { accesorios: Record<string, number>; Lh: number; nSalidas: number }
+type HidroDataMap = Record<string, HidroDataEntry>;
+type GasAccMap = Record<string, Record<string, number>>;
+
+function loadAll(): CountsMap {
+  return loadFromStorage(APARATOS_BY_TRAMO_KEY, {}) as CountsMap;
 }
 
-function saveAll(map: Record<string, any>) {
+function saveAll(map: CountsMap) {
   saveToStorage(APARATOS_BY_TRAMO_KEY, map);
 }
 
-function loadHidroData(): Record<string, any> {
+function loadHidroData(): HidroDataMap {
   return loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
 }
 
-function saveHidroData(map: Record<string, any>) {
+function saveHidroData(map: HidroDataMap) {
   saveToStorage(HYDRO_DATA_STORAGE_KEY, map);
 }
 
-function loadGasAcc(): Record<string, any> {
-  const raw = loadFromStorage<Record<string, any>>(GAS_ACC_KEY, {});
-  const next: Record<string, any> = { ...raw };
+function loadGasAcc(): GasAccMap {
+  const raw = loadFromStorage<GasAccMap>(GAS_ACC_KEY, {});
+  const next: GasAccMap = { ...raw };
   for (const [tramoId, map] of Object.entries(next)) {
     if (!map || typeof map !== 'object') continue;
     const vals = Object.values(map).filter(v => typeof v === 'number');
@@ -55,11 +61,13 @@ function loadGasAcc(): Record<string, any> {
   return next;
 }
 
-function saveGasAcc(map: Record<string, any>) {
+function saveGasAcc(map: GasAccMap) {
   saveToStorage(GAS_ACC_KEY, map);
 }
 
-function unitFor(netId: string): string | null {
+type ApUnitKey = 'qgas' | 'uc_ac' | 'uc_af' | 'ud';
+
+function unitFor(netId: string): ApUnitKey | null {
   const net = NETS.find(n => n.id === netId);
   if (!net) return null;
   if (netId === GAS_ID) return 'qgas';
@@ -68,7 +76,7 @@ function unitFor(netId: string): string | null {
   return null;
 }
 
-function esAplicable(ap: any, netId: string, unitKey: string | null) {
+function esAplicable(ap: (typeof APARATOS_DEF)[number], netId: string, unitKey: ApUnitKey | null) {
   if (netId === GAS_ID) return ap.grupo === 'g' && (ap.qgas || 0) > 0;
   if (unitKey === 'ud') return SAN_UD_IDS.has(ap.id);
   if (unitKey === 'uc_af') return AF_UC_IDS.includes(ap.id);
@@ -76,21 +84,28 @@ function esAplicable(ap: any, netId: string, unitKey: string | null) {
   return false;
 }
 
-function isCountableTarget(el: any): boolean {
+interface SelectableTarget {
+  id?: string;
+  tipo?: string;
+  label?: string;
+  code?: string;
+}
+
+function isCountableTarget(el: SelectableTarget | null): boolean {
   if (!el) return false;
   return el.id?.startsWith('R') || el.id?.startsWith('B') || el.id?.startsWith('T') || el.tipo === 'calentador';
 }
 
-const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, planId }: { activeNet: string; selElement: any; planId?: string | number }) {
+const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, planId }: { activeNet: string; selElement: SelectableTarget | null; planId?: string | number }) {
   const { plans } = usePlans();
   const { aps } = useApparatus();
-  const [counts, setCounts] = useState<Record<string, any>>(loadAll);
-  const [hidroData, setHidroData] = useState<Record<string, any>>(loadHidroData);
-  const [gasAcc, setGasAcc] = useState<Record<string, any>>(loadGasAcc);
+  const [counts, setCounts] = useState<CountsMap>(loadAll);
+  const [hidroData, setHidroData] = useState<HidroDataMap>(loadHidroData);
+  const [gasAcc, setGasAcc] = useState<GasAccMap>(loadGasAcc);
   const [open, setOpen] = useState(true);
   const [pulse, setPulse] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const lastTargetRef = useRef<any>(null);
+  const lastTargetRef = useRef<string | null>(null);
 
 
   useEffect(() => {
@@ -98,9 +113,9 @@ const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, plan
     for (const plano of plans) {
       if (!plano || plano.status !== 'confirmed') continue;
       try {
-        const data = loadFromStorage(TRAZOS_PREFIX + plano.id, null);
+        const data = loadFromStorage<DrawingData | null>(TRAZOS_PREFIX + plano.id, null);
         if (!data) continue;
-        for (const r of (data as any).ramales || []) {
+        for (const r of data.ramales || []) {
           if (r.net === 'gas' && r.tipo !== 'tributario') existingIds.add(r.id);
         }
       } catch {
@@ -109,7 +124,7 @@ const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, plan
     }
     setGasAcc(prev => {
       let changed = false;
-      const next: Record<string, any> = {};
+      const next: GasAccMap = {};
       for (const id of existingIds) {
         if (prev[id]) next[id] = prev[id];
       }
@@ -155,13 +170,13 @@ const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, plan
   const items = useMemo(() => {
     if (!unitKey) return [];
     const filtered = APARATOS_DEF.filter(ap => esAplicable(ap, netId, unitKey));
-    const APS_FIELD: Record<string, string> = { ud: 'ud', uc_af: 'ucaf', uc_ac: 'ucac' };
+    const APS_FIELD: Record<string, 'ud' | 'ucaf' | 'ucac'> = { ud: 'ud', uc_af: 'ucaf', uc_ac: 'ucac' };
     const apsField = APS_FIELD[unitKey || ''] || null;
     let result = filtered;
-    if (apsField) {
+    if (apsField && unitKey) {
       result = filtered.map(ap => {
         const fromAps = aps.find(p => p.id === ap.id);
-        return fromAps ? { ...ap, [unitKey]: (fromAps as any)[apsField] || (ap as any)[unitKey] } : ap;
+        return fromAps ? { ...ap, [unitKey]: fromAps[apsField] || ap[unitKey] } : ap;
       });
     }
     if (unitKey === 'ud') {
@@ -216,7 +231,7 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
     if (!storageKey) return 0;
     let s = 0;
     for (const ap of items) {
-      const u = (ap as any)[unitKey || ''] || 0;
+      const u = (unitKey ? ap[unitKey] : undefined) || 0;
       s += (currentMap[ap.id] || 0) * u;
     }
     return s;

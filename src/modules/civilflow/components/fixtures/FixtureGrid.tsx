@@ -1,4 +1,4 @@
-import { APARATO_IMG } from '../../constants';
+import { APARATO_IMG, APARATOS_DEF } from '../../constants';
 const FixtureGrid_S1: React.CSSProperties = { fontSize: 12, fontWeight: 600, lineHeight: 1, color: 'var(--txt2)', fontFamily: "'Geist',monospace", padding: '1px 4px', marginTop: 1, background: 'rgba(0,0,0,.25)', border: '1px solid var(--bg4)', borderRadius: 2 } as const;
 const FixtureGrid_S2: React.CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'stretch', borderRadius: 4, overflow: 'hidden', transition: 'all .12s' } as const;
 const FixtureGrid_S3: React.CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4px 2px 2px', gap: 1, minHeight: 48, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%' } as const;
@@ -10,8 +10,8 @@ function corto(sigla: string) {
 }
 
 interface FixtureGridProps {
-  items: any[];
-  currentMap: Record<string, any>;
+  items: (typeof APARATOS_DEF)[number][];
+  currentMap: Record<string, number>;
   unitKey: string | null;
   unidadLbl: string;
   inc: (apId: string) => void;
@@ -27,7 +27,7 @@ export default function FixtureGrid({ items, currentMap, unitKey, unidadLbl, inc
     }}>
       {items.map(ap => {
         const c = currentMap[ap.id] || 0;
-        const u = unitKey ? ((ap as any)[unitKey] || 0) : 0;
+        const u = unitKey ? ((ap as unknown as Record<string, number>)[unitKey] || 0) : 0;
         const abbr = corto(ap.sigla);
         const active = c > 0;
         const uStr = Number.isInteger(u) ? String(u) : u.toFixed(2).replace(/\.?0+$/, '');

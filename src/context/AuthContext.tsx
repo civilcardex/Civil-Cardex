@@ -10,8 +10,8 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<any>;
-  signUp: (email: string, password: string, options?: { data?: Record<string, string> }) => Promise<any>;
+  signIn: (email: string, password: string) => Promise<Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>['data']>;
+  signUp: (email: string, password: string, options?: { data?: Record<string, string> }) => Promise<Awaited<ReturnType<typeof supabase.auth.signUp>>['data']>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);

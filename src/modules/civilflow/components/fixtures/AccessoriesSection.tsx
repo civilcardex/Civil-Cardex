@@ -4,13 +4,14 @@ const AccessoriesSection_S2: React.CSSProperties = { flex: 1, padding: '1px 0', 
 const AccessoriesSection_S3: React.CSSProperties = { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '3px 2px 1px', gap: 1, minHeight: 42, border: 'none', background: 'transparent', font: 'inherit', color: 'inherit', width: '100%' } as const;
 
 
+interface AccessoryDef { id: string; nombre: string; icono: string }
 interface AccessoriesSectionProps {
   targetId: string | null;
-  curHidro: Record<string, any>;
+  curHidro: { accesorios: Record<string, number> };
   incAcc: (accId: string) => void;
   decAcc: (accId: string) => void;
   accent: string;
-  items: any[];
+  items: AccessoryDef[];
 }
 
 export default function AccessoriesSection({ targetId, curHidro, incAcc, decAcc, accent, items }: AccessoriesSectionProps) {
@@ -34,7 +35,7 @@ export default function AccessoriesSection({ targetId, curHidro, incAcc, decAcc,
           transition: 'opacity .25s',
         }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
-            {items.map((a: any) => {
+            {items.map((a) => {
               const v = acc[a.id] || 0;
               return (
                 <div key={a.id} style={{

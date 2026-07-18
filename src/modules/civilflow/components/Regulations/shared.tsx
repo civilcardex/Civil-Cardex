@@ -15,7 +15,7 @@ const tabBtnBaseStyle: CSSProperties = {
   fontFamily: "var(--body)", transition: "all .15s",
 };
 
-export function TabBtn({ active, onClick, children, id }: { active: boolean; onClick: () => void; children?: ReactNode; key?: any; id?: string }) {
+export function TabBtn({ active, onClick, children, id }: { active: boolean; onClick: () => void; children?: ReactNode; id?: string }) {
   return (
     <button type="button" id={id} onClick={onClick} role="tab" aria-selected={active}
       style={{
@@ -28,7 +28,7 @@ export function TabBtn({ active, onClick, children, id }: { active: boolean; onC
   );
 }
 
-export function FilterBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children?: ReactNode; key?: any }) {
+export function FilterBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children?: ReactNode }) {
   return (
     <button type="button" onClick={onClick}
       style={{

@@ -4,7 +4,7 @@ import { usePersistedState } from "../../../hooks/usePersistedState";
 import { ACTIVE_PROYECTO_ID_KEY } from "../constants/storage-keys";
 import { saveProyectoCoreData } from "../services/proyectoDataService";
 
-interface Proyecto {
+export interface Proyecto {
   nombre: string; dir: string; mun: string; dep: string;
   uso: string; empresa: string; p_red: string; dot: string;
   mat_af: string; mat_ac: string; mat_rci: string;
@@ -13,14 +13,14 @@ interface Proyecto {
   poblFija: number; poblFlot: number; areaPiscina: number; areaVerdes: number;
   C_escorrentia: number; pendienteSan: number;
 }
-interface MaterialItem { id: string; val: string }
-interface ProfItem { id: string; red: string; col: string; prof: number; norma: string; nota: string }
-interface CritItem { id: string; red: string; param: string; val: string; uni: string; norma: string; art: string; cumple: string; nota: string }
+export interface MaterialItem { id: string; val: string }
+export interface ProfItem { id: string; red: string; col: string; prof: number; norma: string; nota: string }
+export interface CritItem { id: string; red: string; param: string; val: string; uni: string; norma: string; art: string; cumple: string; nota: string }
 interface ProjectContextValue {
   pisos: any[]; proy: Proyecto; mats: Record<string, MaterialItem[]>;
   profs: ProfItem[]; crits: CritItem[];
   setPisos: React.Dispatch<React.SetStateAction<any[]>>;
-  setP: (k: string, v: any) => void;
+  setP: (k: string, v: string | number) => void;
   setProyAll: (p: Proyecto) => void;
   setMats: React.Dispatch<React.SetStateAction<Record<string, MaterialItem[]>>>;
   setProfs: React.Dispatch<React.SetStateAction<ProfItem[]>>;
@@ -71,7 +71,7 @@ const [mats, setMats] = usePersistedState<Record<string, MaterialItem[]>>('civil
 const [profs, setProfs] = usePersistedState<ProfItem[]>('civilflow_profs', PROFS_CLONED);
 const [crits, setCrits] = usePersistedState<CritItem[]>('civilflow_crits', CRITS_CLONED);
 
-const setP = useCallback((k: string, v: any) => setProy(p => ({ ...p, [k]: v })), [setProy]);
+const setP = useCallback((k: string, v: string | number) => setProy(p => ({ ...p, [k]: v })), [setProy]);
 const setProyAll = useCallback((p: Proyecto) => setProy(p), [setProy]);
 
 const resetToDefaults = useCallback(() => {

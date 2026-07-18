@@ -101,7 +101,7 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMul
       const d = Math.hypot(cx - r._labelBox.cx, cy - r._labelBox.cy);
       if (d < minD) { minD = d; found = r as PlanoRamal; }
     }
-    if (findAccMedVertexHit(r.pts, (r as any).accMed, (x, y) => engine.toCvs(x, y), cx, cy, engine.realMmToCanvasPx(23) + 8) !== null) {
+    if (findAccMedVertexHit(r.pts, r.accMed, (x, y) => engine.toCvs(x, y), cx, cy, engine.realMmToCanvasPx(23) * 0.6 + 8) !== null) {
       if (0.01 < minD) { minD = 0.01; found = r as PlanoRamal; }
     }
     let d = distanceToRamal(cx, cy, r.pts, (x, y) => engine.toCvs(x, y), engine.mm2cvs(3));
@@ -167,10 +167,15 @@ export function getSelected(engine: IPlanoEngineCore): PlanoRamal | PlanoBajante
     || null) as PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null;
 }
 
-function checkVentDiameterLimits(engine: IPlanoEngineCore, el: any, fields: Record<string, unknown>): boolean {
+function checkVentDiameterLimits(
+  engine: IPlanoEngineCore,
+  el: PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea,
+  fields: Record<string, unknown>
+): boolean {
   if (!el || !fields) return true;
+  if (!('tipo' in el)) return true; // text annotations / areas never trigger vent-diameter checks
 
-  const getConnectedVentRamales = (b: any) => {
+  const getConnectedVentRamales = (b: PlanoBajante) => {
     const ventRamales = engine.ramales.filter((r) => r.net === 'vent');
     const connected: PlanoRamal[] = [];
     const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
@@ -189,7 +194,7 @@ function checkVentDiameterLimits(engine: IPlanoEngineCore, el: any, fields: Reco
     return connected;
   };
 
-  const getConnectedVentBajantes = (r: any) => {
+  const getConnectedVentBajantes = (r: PlanoRamal) => {
     const ventBajantes = engine.bajantes.filter((b) => b.net === 'vent');
     const connected: PlanoBajante[] = [];
     for (const vb of ventBajantes) {
@@ -208,7 +213,7 @@ function checkVentDiameterLimits(engine: IPlanoEngineCore, el: any, fields: Reco
     return connected;
   };
 
-  const isVent = el.net === 'vent' || el._net === 'vent';
+  const isVent = el.net === 'vent' || ('_net' in el && el._net === 'vent');
   if (isVent) {
     if (el.tipo === 'bajante' || el.tipo === 'montante') {
       let newDNom = '';
@@ -216,13 +221,13 @@ function checkVentDiameterLimits(engine: IPlanoEngineCore, el: any, fields: Reco
         newDNom = String(fields.dNominal || '');
       } else if (fields.ghostData !== undefined) {
         const lvl = engine.nivelActual?.label ?? '';
-        const gd = (fields.ghostData as any)[lvl] || {};
+        const gd = (fields.ghostData as Record<string, { dNominal?: string; d_nominal?: string }>)[lvl] || {};
         newDNom = String(gd.dNominal || gd.d_nominal || '');
       }
       if (newDNom) {
         const bDVal = diamPulgFromLabel(newDNom);
         if (bDVal > 0) {
-          const connected = getConnectedVentRamales(el);
+          const connected = getConnectedVentRamales(el as PlanoBajante);
           for (const vr of connected) {
             const rDVal = vr.diamPulg || diamPulgFromLabel(vr.diametro);
             if (rDVal > 0 && bDVal < rDVal) {
@@ -234,7 +239,7 @@ function checkVentDiameterLimits(engine: IPlanoEngineCore, el: any, fields: Reco
                 fields.dNominal = '';
               } else if (fields.ghostData !== undefined) {
                 const lvl = engine.nivelActual?.label ?? '';
-                const gd = (fields.ghostData as any)[lvl] || {};
+                const gd = (fields.ghostData as Record<string, { dNominal?: string; d_nominal?: string }>)[lvl] || {};
                 gd.dNominal = '';
                 gd.d_nominal = '';
               }
@@ -247,7 +252,7 @@ function checkVentDiameterLimits(engine: IPlanoEngineCore, el: any, fields: Reco
       const newDiam = String(fields.diametro || '');
       const rDVal = diamPulgFromLabel(newDiam);
       if (rDVal > 0) {
-        const connected = getConnectedVentBajantes(el);
+        const connected = getConnectedVentBajantes(el as PlanoRamal);
         for (const vb of connected) {
           const lvl = engine.nivelActual?.label ?? '';
           const gd = vb.ghostData?.[lvl];
@@ -290,7 +295,7 @@ export function updateElementById(engine: IPlanoEngineCore, id: string, fields: 
     (engine.ramales.find((r) => r.id === id)
       || engine.bajantes.find((b) => b.id === id)
       || engine.textAnnots.find((t) => t.id === id)
-      || engine.areas.find((a) => a.id === id)) as any;
+      || engine.areas.find((a) => a.id === id));
   if (el) {
     checkVentDiameterLimits(engine, el, fields);
     Object.assign(el, fields);
@@ -313,9 +318,10 @@ export function rotateLabelSnap(engine: IPlanoEngineCore): void {
     const idx = ANGLES.reduce((b, a, i) => Math.abs(cur - a) < Math.abs(cur - ANGLES[b]) ? i : b, 0);
     (el as PlanoTextAnnotation).textAngle = ANGLES[(idx + 1) % ANGLES.length];
   } else {
-    const cur = (el as any).labelAngle || 0;
+    const elLabeled = el as PlanoRamal | PlanoBajante | PlanoArea;
+    const cur = elLabeled.labelAngle || 0;
     const idx = ANGLES.reduce((b, a, i) => Math.abs(cur - a) < Math.abs(cur - ANGLES[b]) ? i : b, 0);
-    (el as any).labelAngle = ANGLES[(idx + 1) % ANGLES.length];
+    elLabeled.labelAngle = ANGLES[(idx + 1) % ANGLES.length];
   }
   engine._emitSelect(el);
   engine.render();
@@ -326,13 +332,17 @@ export function resetLabel(engine: IPlanoEngineCore): void {
   if (!el) return;
   if ((el as PlanoRamal).pts) {
     const [mx, my] = _midpoint((el as PlanoRamal).pts);
-    (el as any).labelX = mx;
-    (el as any).labelY = my;
-    (el as any).labelAngle = 0;
+    const elRamal = el as PlanoRamal;
+    elRamal.labelX = mx;
+    elRamal.labelY = my;
+    elRamal.labelAngle = 0;
   } else {
-    (el as any).labelX = (el as any).x;
-    (el as any).labelY = (el as any).y;
-    (el as any).labelAngle = 0;
+    // Bajantes/areas carry their own labelX/Y; text annotations position via x/y
+    // instead — this cast reflects that genuinely mixed shape, not uncertainty.
+    const elPositionable = el as { labelX?: number; labelY?: number; labelAngle?: number; x?: number; y?: number };
+    elPositionable.labelX = elPositionable.x;
+    elPositionable.labelY = elPositionable.y;
+    elPositionable.labelAngle = 0;
   }
   engine.render();
 }
