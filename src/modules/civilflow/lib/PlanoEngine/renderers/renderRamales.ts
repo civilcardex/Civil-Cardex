@@ -22,8 +22,15 @@ function drawExtremeAccessorySymbol(
   rad: number
 ): void {
   if (accType === 'sifon') {
+    // A sifón (P-trap) always dips down and rises back up under gravity — it must render in a
+    // FIXED vertical orientation regardless of which way the ramal runs in plan. Only the entry
+    // segment (step 1) and its crossing tick (step 2) follow the ramal's own direction (`out`);
+    // the turn/U-bend/riser (steps 3-5) always use fixed screen-down (dnX,dnY), never a
+    // ramal-relative perpendicular — otherwise the trap rotated sideways or upside-down
+    // depending on the ramal's orientation.
     const perX = -outY;
     const perY = outX;
+    const dnX = 0, dnY = 1;
 
     const L1 = rad * 1.6;
     const tickL = rad * 0.45;
@@ -33,7 +40,7 @@ function drawExtremeAccessorySymbol(
     const capW = rad * 0.35;
 
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineWidth = 0.6 * engine.zoom;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -53,15 +60,15 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(pt_tickX - perX * tickL, pt_tickY - perY * tickL);
     ctx.stroke();
 
-    // 3. Turn down: from pt_corner1 to pt_corner2
-    const pt_corner2X = pt_corner1X + perX * H1;
-    const pt_corner2Y = pt_corner1Y + perY * H1;
+    // 3. Turn down (always screen-down): from pt_corner1 to pt_corner2
+    const pt_corner2X = pt_corner1X + dnX * H1;
+    const pt_corner2Y = pt_corner1Y + dnY * H1;
     ctx.beginPath();
     ctx.moveTo(pt_corner1X, pt_corner1Y);
     ctx.lineTo(pt_corner2X, pt_corner2Y);
     ctx.stroke();
 
-    // 4. Semi-circular U-bend centered at cArc
+    // 4. Semi-circular U-bend centered at cArc, always dipping further screen-down
     const cArcX = pt_corner2X + outX * R;
     const cArcY = pt_corner2Y + outY * R;
     ctx.beginPath();
@@ -69,18 +76,18 @@ function drawExtremeAccessorySymbol(
       const angleVal = Math.PI + (step / 16) * Math.PI;
       const cosA = Math.cos(angleVal);
       const sinA = Math.sin(angleVal);
-      const px_arc = cArcX + outX * R * cosA - perX * R * sinA;
-      const py_arc = cArcY + outY * R * cosA - perY * R * sinA;
+      const px_arc = cArcX + outX * R * cosA - dnX * R * sinA;
+      const py_arc = cArcY + outY * R * cosA - dnY * R * sinA;
       if (step === 0) ctx.moveTo(px_arc, py_arc);
       else ctx.lineTo(px_arc, py_arc);
     }
     ctx.stroke();
 
-    // 5. Riser going up from end of arc
+    // 5. Riser going back up (always screen-up) from end of arc
     const pt_end_arcX = pt_corner2X + outX * (2 * R);
     const pt_end_arcY = pt_corner2Y + outY * (2 * R);
-    const pt_riser_topX = pt_end_arcX - perX * H2;
-    const pt_riser_topY = pt_end_arcY - perY * H2;
+    const pt_riser_topX = pt_end_arcX - dnX * H2;
+    const pt_riser_topY = pt_end_arcY - dnY * H2;
     ctx.beginPath();
     ctx.moveTo(pt_end_arcX, pt_end_arcY);
     ctx.lineTo(pt_riser_topX, pt_riser_topY);
@@ -94,7 +101,7 @@ function drawExtremeAccessorySymbol(
   } else if (accType === 'codoSube') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineWidth = 0.6 * engine.zoom;
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
     ctx.fill();
@@ -107,7 +114,7 @@ function drawExtremeAccessorySymbol(
   } else if (accType === 'codoBaja') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineWidth = 0.6 * engine.zoom;
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
     ctx.fill();
@@ -123,7 +130,7 @@ function drawExtremeAccessorySymbol(
   } else if (accType === 'codo90rmSube') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineWidth = 0.6 * engine.zoom;
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
     ctx.fill();
@@ -135,7 +142,7 @@ function drawExtremeAccessorySymbol(
   } else if (accType === 'codo90rmBaja') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineWidth = 0.6 * engine.zoom;
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
     ctx.fill();
@@ -177,7 +184,7 @@ function drawExtremeAccessorySymbol(
     ctx.stroke();
 
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineWidth = 0.6 * engine.zoom;
     ctx.beginPath();
     ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
     ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
@@ -208,7 +215,7 @@ function drawExtremeAccessorySymbol(
 
     ctx.fillStyle = '#000000';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineWidth = 0.6 * engine.zoom;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -241,7 +248,7 @@ function drawExtremeAccessorySymbol(
 
     ctx.fillStyle = '#000000';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineWidth = 0.6 * engine.zoom;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -266,7 +273,7 @@ function drawExtremeAccessorySymbol(
   } else if (accType === 'valvCheque') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineWidth = 0.6 * engine.zoom;
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad * 0.9, 0, Math.PI * 2);
     ctx.fill();
@@ -298,7 +305,7 @@ function drawExtremeAccessorySymbol(
 
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.0 * engine.zoom;
+    ctx.lineWidth = 0.6 * engine.zoom;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -360,20 +367,37 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(baseHorizX + perX * L3, baseHorizY + perY * L3);
     ctx.stroke();
   } else if (accType === 'llaveTerminal') {
-    const domeR = rad * 0.6;
-    const stemLen = rad * 1.3;
-    const capHalf = rad * 0.45;
+    // Reference: a wide, SYMMETRIC semicircular arch — both feet at the same baseline height —
+    // with a short T-capped stem rising from its apex. One foot is the connection point `c`
+    // itself (the real ramal line, drawn elsewhere, ends exactly there — that's the "longer
+    // segment" that must touch the ramal); the other foot is free, the arc just ends there with
+    // nothing beyond it.
+    const domeR = rad * 0.9;
+    const stemLen = rad * 0.5;
+    const capHalf = rad * 0.5;
+    const capTick = rad * 0.12;
 
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineWidth = 0.6 * engine.zoom;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Dome center sits one radius out from the ramal end, so its near foot
-    // lands exactly on the connection point c (widest part touches the ramal)
-    // and the far foot floats free.
-    const domeCX = c.x + outX * domeR;
-    const domeCY = c.y + outY * domeR;
+    // Long straight stub starting exactly where the ramal ends (c) and continuing forward, away
+    // from the ramal (`out`) — into empty space, never back over the ramal's own path. Drawn
+    // explicitly as part of the symbol (per the reference image) rather than assuming the
+    // underlying ramal polyline already reaches far enough to read as connected.
+    const stubLen = domeR * 1.6;
+    const stubEndX = c.x + outX * stubLen;
+    const stubEndY = c.y + outY * stubLen;
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(stubEndX, stubEndY);
+    ctx.stroke();
+
+    // Dome center sits one radius further out from the end of the stub, so its near foot lands
+    // exactly there, and the far foot (2*domeR further along `out`) floats free.
+    const domeCX = stubEndX + outX * domeR;
+    const domeCY = stubEndY + outY * domeR;
 
     // Dome (semicircle) astride the ramal direction, bulging toward the stem
     const domeAngle = Math.atan2(py, px);
@@ -384,17 +408,23 @@ function drawExtremeAccessorySymbol(
     // Stem from the apex of the dome outward
     const apexX = domeCX + px * domeR;
     const apexY = domeCY + py * domeR;
-    const stemEndX = domeCX + px * stemLen;
-    const stemEndY = domeCY + py * stemLen;
+    const stemEndX = apexX + px * stemLen;
+    const stemEndY = apexY + py * stemLen;
     ctx.beginPath();
     ctx.moveTo(apexX, apexY);
     ctx.lineTo(stemEndX, stemEndY);
     ctx.stroke();
 
-    // T-bar cap at the end of the stem
+    // T-bar cap, with a small tick at each end (handle marks).
+    const capLX = stemEndX - outX * capHalf, capLY = stemEndY - outY * capHalf;
+    const capRX = stemEndX + outX * capHalf, capRY = stemEndY + outY * capHalf;
     ctx.beginPath();
-    ctx.moveTo(stemEndX - outX * capHalf, stemEndY - outY * capHalf);
-    ctx.lineTo(stemEndX + outX * capHalf, stemEndY + outY * capHalf);
+    ctx.moveTo(capLX, capLY);
+    ctx.lineTo(capRX, capRY);
+    ctx.moveTo(capLX, capLY);
+    ctx.lineTo(capLX + px * capTick, capLY + py * capTick);
+    ctx.moveTo(capRX, capRY);
+    ctx.lineTo(capRX + px * capTick, capRY + py * capTick);
     ctx.stroke();
   } else {
     if (accType.startsWith('tee') || accType === 'te_linea' || accType === 'te_ramal' || accType.startsWith('yee')) {
@@ -412,7 +442,7 @@ function drawExtremeAccessorySymbol(
 
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.2 * engine.zoom;
+    ctx.lineWidth = 0.5 * engine.zoom;
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
     ctx.fill();
@@ -643,39 +673,6 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
 
     ctx.restore();
 
-    if (r.net === 'san' && r.pts.length >= 2) {
-      const endpointIndices = [0, r.pts.length - 1];
-      for (const idx of endpointIndices) {
-        const connectedBaj = engine.bajantes.find((b) => {
-          if (b.net !== 'san') return false;
-          const bDisp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
-          const bx = b.x + (bDisp ? bDisp.dx : 0);
-          const by = b.y + (bDisp ? bDisp.dy : 0);
-          return Math.hypot(bx - r.pts[idx][0], by - r.pts[idx][1]) < 0.5;
-        });
-        if (connectedBaj && connectedBaj.direccion) {
-          const v = engine.toCvs(r.pts[idx][0], r.pts[idx][1]);
-          const rad = engine.mm2cvs(2);
-          const isSube = connectedBaj.direccion === 'sube';
-          ctx.save();
-          ctx.strokeStyle = col;
-          ctx.fillStyle = '#ffffff';
-          ctx.lineWidth = 2 * engine.zoom;
-          ctx.beginPath();
-          ctx.arc(v.x, v.y, rad, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-          if (isSube) {
-            ctx.fillStyle = col;
-            ctx.beginPath();
-            ctx.arc(v.x, v.y, rad * 0.25, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          ctx.restore();
-        }
-      }
-    }
-
     if (r.pts.length >= 2 && (r.id === engine.selId || (engine.multiSel || []).includes(r.id))) {
       let desvioBajante: any = null;
       const isDesvio = engine.bajantes.some((b) => {
@@ -858,7 +855,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const outX = idx === 0 ? -dx : dx;
       const outY = idx === 0 ? -dy : dy;
 
-      const rad = engine.realMmToCanvasPx(23);
+      // realMmToCanvasPx floors at 1mm paper (see PlanoEngine.ts) — halving the mm argument
+      // alone is invisible at common scales, since both land on that floor. Halve the px result.
+      const rad = engine.realMmToCanvasPx(23) * 0.6;
 
       ctx.save();
       ctx.lineCap = 'round';
@@ -898,7 +897,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       if (bisLen > 0.01) { dx /= bisLen; dy /= bisLen; } else { dx = uxIn; dy = uyIn; }
       const px = -dy, py = dx;
 
-      const rad = engine.realMmToCanvasPx(23);
+      // realMmToCanvasPx floors at 1mm paper (see PlanoEngine.ts) — halving the mm argument
+      // alone is invisible at common scales, since both land on that floor. Halve the px result.
+      const rad = engine.realMmToCanvasPx(23) * 0.6;
 
       ctx.save();
       ctx.lineCap = 'round';
@@ -1046,7 +1047,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   let snapped = false;
 
   if (engine.snapMode) {
-    mp = engine.snapAngle(last[0], last[1], mp.x, mp.y);
+    mp = engine.snapAngle(last[0], last[1], mp.x, mp.y, ar.net, ar.tipo);
   }
 
   const activeRamales = engine.ramales.filter((r) => r.net === engine.activeNet);

@@ -138,19 +138,18 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
   engine.bajantes.forEach((b) => {
     if (engine._hiddenNets.has(b.net)) return;
 
-    // A bajante displaced on ITS OWN level still needs its solid circle here — displacement
-    // just repositions the ghost decoration elsewhere for decluttering, it doesn't replace the
-    // real symbol. Only a genuine pass-through ghost on a REMOTE floor (not this bajante's own
-    // pisoBase, and not explicitly displaced on this level) should skip the solid circle.
-    const isDisplacedOnThisLevel = b.tipo === 'contador' || b.tipo === 'calentador' || b.tipo === 'red_publica'
-      ? false
-      : (!!b.desplazamientos?.[engine.nivelActual?.label ?? '']);
-    const isDirectionGhost = !isDisplacedOnThisLevel && b.pisoBase !== engine.nivelActual?.label;
+    // A bajante only gets its solid circle on ITS OWN floor (pisoBase). A displacement entry
+    // for the current level doesn't mean anything about which floor it belongs to — it's also
+    // how ghosts get positioned on remote floors — so it must never suppress the ghost check.
+    const isDirectionGhost = b.pisoBase !== engine.nivelActual?.label;
 
     const c = engine.toCvs(b.x, b.y);
     // When this bajante is a remote-floor ghost, never draw the thick yellow selection border.
     const sel = b.id === engine.selId && !engine._isGhostSel && !isDirectionGhost;
-    const r = engine.realMmToCanvasPx(20);
+    // realMmToCanvasPx floors at 1mm paper (see PlanoEngine.ts) — at common architectural
+    // scales a 20mm or 10mm real radius both land on that floor and render identically, so
+    // halving the mm argument alone is invisible. Halve the resulting px value instead.
+    const r = engine.realMmToCanvasPx(20) * 0.6;
 
     // Item 2: Label angle + snap constraint (Auto-rotation removed as requested)
     const angle = (b.labelAngle || 0) * Math.PI / 180;
@@ -286,7 +285,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       const col = netObj ? netObj.col : '#e2e2e8';
       ctx.fillStyle = '#ffffff';
       ctx.strokeStyle = sel ? '#FFEB3B' : col;
-      ctx.lineWidth = (sel ? 2.5 : 1.5) * engine.zoom;
+      ctx.lineWidth = (sel ? 1.2 : 0.6) * engine.zoom;
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.fill();
@@ -450,23 +449,43 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const gx = b.x + (disp ? disp.dx : 0);
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
-    const r = engine.realMmToCanvasPx(20);
+    // realMmToCanvasPx floors at 1mm paper (see PlanoEngine.ts) — at common architectural
+    // scales a 20mm or 10mm real radius both land on that floor and render identically, so
+    // halving the mm argument alone is invisible. Halve the resulting px value instead.
+    const r = engine.realMmToCanvasPx(20) * 0.6;
     b._ghost = { x: c.x, y: c.y, r };
 
     // Ghost label always horizontal
     const ghostAngle = 0;
 
-    // Ghost circle always visible, dotted style
+    // Ghost circle: same size and fill as the parent's own circle (solid, continuous outline
+    // so it reads as directly connected to the desvío ramal drawn between parent and ghost),
+    // but the border/symbol use a muted tint of the network color instead of full strength —
+    // that's what distinguishes it as a ghost rather than the parent's real symbol.
+    // Exception: a ghost with no real displacement on the parent's OWN floor sits at the exact
+    // same (x,y) as the parent, which already draws its own solid circle there — skip the extra
+    // ring so it doesn't look like an oversized halo. A ghost created by dragging (dx/dy set)
+    // is a different point in space even on the parent's own floor, so it must still be drawn.
+    const hasDisplacement = !!disp && (Math.abs(disp.dx) >= 1 || Math.abs(disp.dy) >= 1);
+    const isOwnFloorGhost = b.pisoBase === engine.nivelActual?.label && !hasDisplacement;
+    if (!isOwnFloorGhost) {
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.45;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 1.5 * engine.zoom;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.save();
-    ctx.globalAlpha = 0.35;
+    ctx.globalAlpha = 0.45;
     ctx.strokeStyle = col;
     ctx.fillStyle = col;
-    ctx.lineWidth = 1.5 * engine.zoom;
-    ctx.setLineDash([5 * engine.zoom, 4 * engine.zoom]);
-    ctx.beginPath();
-    ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
     const gd = b.ghostData?.[engine.nivelActual?.label ?? ''];
     let ghostDir = b.direccion;
     if (gd && gd.direccion !== undefined) {
@@ -493,20 +512,6 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       }
     }
     ctx.restore();
-
-    // Displacement line
-    if (disp && (Math.abs(disp.dx) > 1 || Math.abs(disp.dy) > 1)) {
-      const orig = engine.toCvs(b.x, b.y);
-      ctx.save();
-      ctx.strokeStyle = col + '66';
-      ctx.lineWidth = 1 * engine.zoom;
-      ctx.setLineDash([3 * engine.zoom, 3 * engine.zoom]);
-      ctx.beginPath();
-      ctx.moveTo(orig.x, orig.y);
-      ctx.lineTo(c.x, c.y);
-      ctx.stroke();
-      ctx.restore();
-    }
 
     // Item 4: Yellow selection arrow for ghost bajante selection
     const inMultiSel = (engine.multiSel || []).includes(b.id);
