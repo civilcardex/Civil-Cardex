@@ -22,6 +22,16 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
             const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
             if (parts[parts.length - 1] === deleted.id) b.descargaEnId = null;
           }
+          // If this ramal was the Ldesvio connector for a ghost displacement, the ghost
+          // has no parent-facing pipe left — remove the displacement (and its ghost) too.
+          if (b.desplazamientos) {
+            for (const lvlKey of Object.keys(b.desplazamientos)) {
+              if (b.desplazamientos[lvlKey].Ldesvio === deleted.id) {
+                delete b.desplazamientos[lvlKey];
+                if (b.ghostData) delete b.ghostData[lvlKey];
+              }
+            }
+          }
         }
         continue;
       }
@@ -112,6 +122,16 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       if (b.descargaEnId) {
         const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
         if (parts[parts.length - 1] === deletedId) b.descargaEnId = null;
+      }
+      // If this ramal was the Ldesvio connector for a ghost displacement, the ghost
+      // has no parent-facing pipe left — remove the displacement (and its ghost) too.
+      if (b.desplazamientos) {
+        for (const lvlKey of Object.keys(b.desplazamientos)) {
+          if (b.desplazamientos[lvlKey].Ldesvio === deletedId) {
+            delete b.desplazamientos[lvlKey];
+            if (b.ghostData) delete b.ghostData[lvlKey];
+          }
+        }
       }
     }
     engine._renumberRamales(deleted.net);

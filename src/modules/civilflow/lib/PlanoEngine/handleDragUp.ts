@@ -1,7 +1,7 @@
 import type { IPlanoEngineCore } from './PlanoState';
 import type { PlanoRamal } from './PlanoState';
 import { NETS } from './PlanoState';
-import { checkRamalAngles } from './drawingAngles';
+import { checkRamalAngles, _firstSegmentAngle } from './drawingAngles';
 
 export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false): void {
   if (engine.marqueeRect) {
@@ -63,26 +63,27 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
   if (engine.multiDrag) { engine.multiDrag = null; engine._markDirty(); engine.render(); }
   if (engine.ghostDrag) {
     const b = engine.bajantes.find((bb) => bb.id === engine.ghostDrag!.id);
-    if (b && engine.nivelActual && (b as any).desplazamientos?.[engine.nivelActual.label ?? '']) {
-      const d = (b as any).desplazamientos[engine.nivelActual.label ?? ''];
+    if (b && engine.nivelActual && b.desplazamientos?.[engine.nivelActual.label ?? '']) {
+      const d = b.desplazamientos[engine.nivelActual.label ?? ''];
       if (Math.abs(d.dx) < 1 && Math.abs(d.dy) < 1) {
-        delete (b as any).desplazamientos[engine.nivelActual.label ?? ''];
+        delete b.desplazamientos[engine.nivelActual.label ?? ''];
       } else {
         // Create the "Ldesvio" ramal between parent (b.x, b.y) and ghost (b.x + d.dx, b.y + d.dy)
         // if it doesn't exist yet — this is the visual connector between the parent and the ghost.
         const oldLdesvio = d.Ldesvio;
         if (!oldLdesvio) {
-          const net = NETS.find(n => n.id === (b as any).net);
+          const net = NETS.find(n => n.id === b.net);
           const pfx = net ? net.lbl : 'R';
-          const cnt = ++(engine._netCounts[(b as any).net].ramal);
+          const cnt = ++(engine._netCounts[b.net].ramal);
           const ramId = pfx + cnt;
-          const diam = (b as any).dNominal || '0';
+          const diam = b.dNominal || '0';
+          const ldesvioPts = [[b.x, b.y], [b.x + d.dx, b.y + d.dy]];
           const ramal: PlanoRamal = {
             id: ramId,
-            net: (b as any).net,
+            net: b.net,
             tipo: 'ramal',
             padre: null,
-            pts: [[b.x, b.y], [b.x + d.dx, b.y + d.dy]],
+            pts: ldesvioPts,
             totalL: +(engine.pxToM(Math.hypot(d.dx, d.dy))).toFixed(3),
             label: pfx + cnt,
             ini: '',
@@ -92,10 +93,10 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
             uc: 0,
             labelX: (b.x + b.x + d.dx) / 2,
             labelY: (b.y + b.y + d.dy) / 2,
-            labelAngle: 0,
+            labelAngle: _firstSegmentAngle(ldesvioPts),
             material: '',
             diametro: diam !== '0' ? diam : '',
-            pendiente: 1.5,
+            pendiente: 2,
             bloqueado: true,
           };
           engine.ramales.push(ramal);
@@ -111,7 +112,42 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
   if (engine.lblDrag) { engine._markDirty(); engine.lblDrag = null; }
   if (engine.txtDrag) { engine._markDirty(); engine.txtDrag = null; }
   if (engine.txtResize) { engine._markDirty(); engine.txtResize = null; }
-  if (engine.bajDrag) { engine._markDirty(); engine.bajDrag = null; }
+  if (engine.bajDrag) {
+    const bId = engine.bajDrag.id;
+    engine.bajDrag = null;
+    engine._markDirty();
+    const b = engine.bajantes.find((bb) => bb.id === bId);
+    const backupPts = engine._bajDragBackupPts;
+    const backupXY = engine._bajDragBackupXY;
+    engine._bajDragBackupPts = null;
+    engine._bajDragBackupXY = null;
+    if (b && backupPts) {
+      const assocIds = Object.keys(backupPts);
+      const assocRamales = assocIds
+        .map((rid) => engine.ramales.find((r) => r.id === rid))
+        .filter((r): r is PlanoRamal => !!r);
+      const allOk = assocRamales.every((r) => checkRamalAngles(r.pts, r.net, r.tipo));
+      if (!allOk) {
+        const bad = assocRamales.find((r) => !checkRamalAngles(r.pts, r.net, r.tipo))!;
+        engine.triggerAlert(
+          'Ángulo no recomendado',
+          (bad.net === 'san' || bad.net === 'll')
+            ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
+            : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
+        );
+        if (backupXY) {
+          b.x = backupXY.x; b.y = backupXY.y;
+          if (backupXY.labelX !== undefined) b.labelX = backupXY.labelX;
+          if (backupXY.labelY !== undefined) b.labelY = backupXY.labelY;
+        }
+        for (const r of assocRamales) {
+          if (backupPts[r.id]) r.pts = backupPts[r.id];
+        }
+        engine._markDirty();
+        engine.render();
+      }
+    }
+  }
   if (engine.areaDrag) { engine._markDirty(); engine.areaDrag = null; }
   if (engine.dimDrag) { engine._markDirty(); engine.dimDrag = null; }
   if (engine.ptDrag) {
@@ -136,21 +172,21 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
           ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
           : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
       );
-      if ((engine as any)._dragBackupPts) {
-        ram.pts = (engine as any)._dragBackupPts;
-        (engine as any)._dragBackupPts = null;
+      if (engine._dragBackupPts) {
+        ram.pts = engine._dragBackupPts;
+        engine._dragBackupPts = null;
       }
-      const linkedBackups = (engine as any)._dragLinkedBackupPts as Record<string, number[][]> | undefined;
+      const linkedBackups = engine._dragLinkedBackupPts;
       if (linkedBackups) {
         for (const r of linkedRamales) {
           if (linkedBackups[r.id]) r.pts = linkedBackups[r.id];
         }
       }
-      (engine as any)._dragLinkedBackupPts = null;
+      engine._dragLinkedBackupPts = null;
       engine._markDirty();
       engine.render();
     } else {
-      (engine as any)._dragLinkedBackupPts = null;
+      engine._dragLinkedBackupPts = null;
     }
   }
   if (engine.ramalDrag) {

@@ -87,6 +87,9 @@ export function isRamal(el: PlanoElement | null): el is PlanoRamal {
 export function isTextAnnotation(el: PlanoElement | null): el is PlanoTextAnnotation {
   return el != null && '_box' in el;
 }
+export function isDimension(el: PlanoElement | null): el is PlanoDimension {
+  return el != null && 'L' in el;
+}
 export function isArea(el: PlanoElement | null): el is PlanoArea {
   return el != null && '_polyBox' in el;
 }
@@ -142,7 +145,7 @@ export interface PlanoBajante {
   ucAcum: number;
   ucExtra: number;
   area_m2: number;
-  desplazamientos: Record<string, { dx: number; dy: number; Ldesvio: null }>;
+  desplazamientos: Record<string, { dx: number; dy: number; Ldesvio: string | null }>;
   lblOffX: number;
   lblOffY: number;
   labelAngle: number;
@@ -283,6 +286,13 @@ export interface IPlanoEngineCore {
   padreTributario: string | null;
   nivelActual: PlanoLevel | null;
   _dimStart: { x: number; y: number } | null;
+  // Transient per-drag scratch state (set in handleMouseDown, consumed in
+  // handleDragUp/handleDragMove; always reset to null at drag end).
+  _bajDragBackupXY?: { x: number; y: number; labelX?: number; labelY?: number } | null;
+  _bajDragBackupPts?: Record<string, number[][]> | null;
+  _lblDragIsParent?: boolean;
+  _dragBackupPts?: number[][] | null;
+  _dragLinkedBackupPts?: Record<string, number[][]> | null;
   _netCounts: Record<string, PlanoNetCounts>;
   _ramalDefaults: PlanoRamalDefaults | null;
   _dirty: boolean;
@@ -319,7 +329,7 @@ export interface IPlanoEngineCore {
   mm2cvs(mm: number): number;
   pxToM(px: number): number;
   realMmToCanvasPx(realRadiusMm: number): number;
-  snapAngle(x0: number, y0: number, x1: number, y1: number): { x: number; y: number };
+  snapAngle(x0: number, y0: number, x1: number, y1: number, net?: string, tipo?: string): { x: number; y: number };
   snapToExisting(x: number, y: number): { x: number; y: number } | null;
   snapPreviewToPadre(x: number, y: number): { x: number; y: number } | null;
   getBajantesFantasma(): PlanoBajante[];

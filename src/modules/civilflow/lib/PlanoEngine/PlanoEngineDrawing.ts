@@ -546,7 +546,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
 
     let snappedToSeg = false;
     if (engine.snapMode) {
-      pt = engine.snapAngle(last[0], last[1], pt.x, pt.y);
+      pt = engine.snapAngle(last[0], last[1], pt.x, pt.y, engine.activeRamal.net, engine.activeRamal.tipo);
     }
     
     const activeRamales = engine.tipoTramo === 'tributario'

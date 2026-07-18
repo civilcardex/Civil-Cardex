@@ -2,8 +2,10 @@ import { NETS } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 
 export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: number): void {
-  const sp = engine.snapToExisting(px, py);
-  if (sp) { px = sp.x; py = sp.y; }
+  if (engine.snapMode) {
+    const sp = engine.snapToExisting(px, py);
+    if (sp) { px = sp.x; py = sp.y; }
+  }
   const ASSOC_THRESH = 30 / engine.zoom;
   const assocRamales: string[] = [];
   for (const r of engine.ramales) {

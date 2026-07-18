@@ -398,12 +398,16 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (this._onDirtyCb) this._onDirtyCb();
   }
 
-  snapAngle(x0: number, y0: number, x1: number, y1: number): Point {
+  snapAngle(x0: number, y0: number, x1: number, y1: number, net?: string, tipo?: string): Point {
     const dx = x1 - x0, dy = y1 - y0;
     const dist = Math.hypot(dx, dy);
     if (dist < 0.001) return { x: x1, y: y1 };
     const deg = Math.atan2(dy, dx) * 180 / Math.PI;
-    const allowed = [0, 45, 90, 135, 180, -135, -90, -45];
+    // Some redes only permit certain headings (see checkRamalAngles): af/ac tributarios must
+    // land on a 90° grid, everything else (incl. san/ll, which has no fixed-heading rule of its
+    // own) uses the looser 45° grid — snapping to 45° there never produces an invalid angle.
+    const isTributarioAcAf = (net === 'af' || net === 'ac') && tipo === 'tributario';
+    const allowed = isTributarioAcAf ? [0, 90, 180, -90] : [0, 45, 90, 135, 180, -135, -90, -45];
     let best = 0, minDiff = 999;
     allowed.forEach(a => {
       const diff = Math.abs(((deg - a) + 540) % 360 - 180);

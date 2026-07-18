@@ -1,11 +1,29 @@
-import type { IPlanoEngineCore, PlanoBajante, MultiDragOrigData } from './PlanoState';
-import { isBajante, isRamal, isTextAnnotation, isArea, ensureActiveNet } from './PlanoState';
+import type { IPlanoEngineCore, PlanoBajante, PlanoElement, MultiDragOrigData } from './PlanoState';
+import { isBajante, isRamal, isTextAnnotation, isArea, isDimension, ensureActiveNet } from './PlanoState';
 import { pointInLabelBox, pointToSegmentDist, distanceToRamal, findAccMedVertexHit } from './HitTester';
 import { getSelected } from './PlanoEngineSelection';
 import { selectAt } from './PlanoEngineSelection';
 import { findCodoReventiladoLinks } from './PlanoEngineNetwork';
 
-function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any): boolean {
+// Snapshot the bajante's position and every ramal it touches (recibeDeIds, descargaEnId, and
+// its own Ldesvio ghost-connector) before a bajDrag starts, so handleDragUp can validate the
+// resulting angles the same way ptDrag/ramalDrag already do — and revert + alert if invalid.
+function _captureBajDragBackup(engine: IPlanoEngineCore, b: PlanoBajante): void {
+  engine._bajDragBackupXY = { x: b.x, y: b.y, labelX: b.labelX, labelY: b.labelY };
+  const assocIds = [...(b.recibeDeIds || [])];
+  if (b.descargaEnId) assocIds.push(b.descargaEnId);
+  const lvl = engine.nivelActual?.label ?? '';
+  const ldesvioId = b.desplazamientos?.[lvl]?.Ldesvio;
+  if (ldesvioId) assocIds.push(ldesvioId);
+  const backup: Record<string, number[][]> = {};
+  for (const rid of assocIds) {
+    const r = engine.ramales.find(rr => rr.id === rid);
+    if (r) backup[rid] = structuredClone(r.pts);
+  }
+  engine._bajDragBackupPts = backup;
+}
+
+function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: PlanoElement | null): boolean {
   for (const b of engine.bajantes) {
     if (b._labelBox && pointInLabelBox(x, y, b._labelBox)) {
       if (ensureActiveNet(engine, b.net)) return true;
@@ -15,7 +33,7 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any
         engine.render();
       }
       const lPos = engine.toCvs(b.labelX ?? b.x, b.labelY ?? (b.y + 20));
-      (engine as any)._lblDragIsParent = true;
+      engine._lblDragIsParent = true;
       engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
       return true;
     }
@@ -30,6 +48,7 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any
           engine._emitSelect(b);
           engine.render();
         }
+        engine._lblDragIsParent = true;
         engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
         return true;
       }
@@ -51,6 +70,7 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any
         );
         if (!hasLockedRamal) {
           engine.bajDrag = { id: b.id, offX: x - circ.x, offY: y - circ.y };
+          _captureBajDragBackup(engine, b);
         }
       } else {
         // Don't allow dragging if associated ramales are bloqueados
@@ -61,6 +81,7 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any
         );
         if (!hasLockedRamal) {
           engine.bajDrag = { id: b.id, offX: x - circ.x, offY: y - circ.y };
+          _captureBajDragBackup(engine, b);
         }
       }
       return true;
@@ -73,7 +94,7 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: any
           engine._emitSelect(b);
           engine.render();
         }
-        (engine as any)._lblDragIsParent = true;
+        engine._lblDragIsParent = true;
         engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
         return true;
       }
@@ -130,8 +151,16 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
         if (sLen < 0.001) continue;
         const cross = Math.abs(sDx * (ay - pt[1]) - sDy * (ax - pt[0])) / sLen;
         if (cross < 0.05) {
-          slideConstraint = { otherId: other.id, segmentIdx: si };
-          break;
+          // Only a genuine T-junction (pt sitting on the INTERIOR of the other segment)
+          // should slide-constrain. Two ramales that merely converge at a shared bajante
+          // corner also pass the cross check here since they touch at that segment's own
+          // endpoint — excluding the outer margin tells those two cases apart.
+          const t = ((pt[0] - ax) * sDx + (pt[1] - ay) * sDy) / (sLen * sLen);
+          const marginT = Math.min(0.45, 2 / sLen);
+          if (t > marginT && t < 1 - marginT) {
+            slideConstraint = { otherId: other.id, segmentIdx: si };
+            break;
+          }
         }
       }
       if (slideConstraint) break;
@@ -145,12 +174,12 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
       const other = engine.ramales.find((r) => r.id === link.id);
       if (other) backups[link.id] = structuredClone(other.pts);
     }
-    (engine as any)._dragLinkedBackupPts = backups;
+    engine._dragLinkedBackupPts = backups;
   } else {
-    (engine as any)._dragLinkedBackupPts = null;
+    engine._dragLinkedBackupPts = null;
   }
 
-  (engine as any)._dragBackupPts = structuredClone(bestRamal.pts);
+  engine._dragBackupPts = structuredClone(bestRamal.pts);
   engine.ptDrag = { id: bestRamal.id, ptIdx: bestPtIdx, slideConstraint, linkedPts: codoLinks.length > 0 ? codoLinks : undefined };
   engine.render();
   return true;
@@ -217,20 +246,20 @@ function _tryMultiSelDrag(engine: IPlanoEngineCore, x: number, y: number, isMult
   return false;
 }
 
-function _trySelBajanteDrag(engine: IPlanoEngineCore, x: number, y: number, sel: any, wasGhostSel: boolean): boolean {
+function _trySelBajanteDrag(engine: IPlanoEngineCore, x: number, y: number, sel: PlanoElement | null, wasGhostSel: boolean): boolean {
   if (!isBajante(sel) || !(sel.tipo === 'bajante' || sel.tipo === 'montante' || sel.tipo === 'red_publica' || sel.tipo === 'contador' || sel.tipo === 'calentador' || sel.id?.startsWith('B'))) return false;
 
   if (ensureActiveNet(engine, sel.net)) return true;
   if (sel._labelBox && pointInLabelBox(x, y, sel._labelBox)) {
     const lPos = engine.toCvs(sel.labelX, sel.labelY);
-    (engine as any)._lblDragIsParent = true;
+    engine._lblDragIsParent = true;
     engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
     return true;
   }
   if (sel.labelX != null && sel.labelY != null) {
     const lPos = engine.toCvs(sel.labelX, sel.labelY);
     if (Math.hypot(x - lPos.x, y - lPos.y) < 30) {
-      (engine as any)._lblDragIsParent = true;
+      engine._lblDragIsParent = true;
       engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
       return true;
     }
@@ -252,6 +281,7 @@ function _trySelBajanteDrag(engine: IPlanoEngineCore, x: number, y: number, sel:
         );
         if (!hasLockedRamal2) {
           engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
+          _captureBajDragBackup(engine, sel);
         }
       } else {
       // Don't allow dragging if associated ramales are bloqueados
@@ -262,6 +292,7 @@ function _trySelBajanteDrag(engine: IPlanoEngineCore, x: number, y: number, sel:
       );
       if (!hasLockedRamal) {
         engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
+        _captureBajDragBackup(engine, sel);
       }
     }
     return true;
@@ -269,8 +300,8 @@ function _trySelBajanteDrag(engine: IPlanoEngineCore, x: number, y: number, sel:
   return false;
 }
 
-function _trySelDimDrag(engine: IPlanoEngineCore, x: number, y: number, sel: any): boolean {
-  if (!sel || sel.L === undefined || sel.x1 === undefined) return false;
+function _trySelDimDrag(engine: IPlanoEngineCore, x: number, y: number, sel: PlanoElement | null): boolean {
+  if (!isDimension(sel)) return false;
   const dist = distanceToRamal(x, y, [[sel.x1, sel.y1], [sel.x2, sel.y2]], (px, py) => engine.toCvs(px, py), 2);
   if (dist < 15) {
     const tp = engine.toPlane(x, y);
@@ -280,7 +311,7 @@ function _trySelDimDrag(engine: IPlanoEngineCore, x: number, y: number, sel: any
   return false;
 }
 
-function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: any): boolean {
+function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: PlanoElement | null): boolean {
   if (!isRamal(sel) || !sel.id?.startsWith('R')) return false;
 
   // Mid-ramal accessory icons are drawn offset from the pipe centerline (renderRamales.ts), so a
@@ -288,10 +319,10 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: a
   // footprint first so clicking the icon itself — not just the exact underlying vertex — starts
   // the slide-along-body drag. This is allowed on bloqueado ramales because the slide never
   // bends the ramal's actual path — only the accessory position changes.
-  const accIdx = findAccMedVertexHit(sel.pts, sel.accMed, (px, py) => engine.toCvs(px, py), x, y, engine.realMmToCanvasPx(23) + 8);
+  const accIdx = findAccMedVertexHit(sel.pts, sel.accMed, (px, py) => engine.toCvs(px, py), x, y, engine.realMmToCanvasPx(23) * 0.6 + 8);
   if (accIdx !== null) {
     const a = sel.pts[accIdx - 1], b = sel.pts[accIdx + 1];
-    (engine as any)._dragBackupPts = structuredClone(sel.pts);
+    engine._dragBackupPts = structuredClone(sel.pts);
     engine.ptDrag = { id: sel.id, ptIdx: accIdx, accMedSlide: { ax: a[0], ay: a[1], bx: b[0], by: b[1] } };
     return true;
   }
@@ -308,7 +339,7 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: a
       // line to its neighbors — it must not bend the ramal's actual path.
       if (!isEndpoint && sel.accMed && sel.accMed[`accMed${i}`]) {
         const a = sel.pts[i - 1], b = sel.pts[i + 1];
-        (engine as any)._dragBackupPts = structuredClone(sel.pts);
+        engine._dragBackupPts = structuredClone(sel.pts);
         engine.ptDrag = { id: sel.id, ptIdx: i, accMedSlide: { ax: a[0], ay: a[1], bx: b[0], by: b[1] } };
         return true;
       }
@@ -327,8 +358,15 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: a
             if (sLen < 0.001) continue;
             const cross = Math.abs(sDx * (ay - pt[1]) - sDy * (ax - pt[0])) / sLen;
             if (cross < 0.05) {
-              slideConstraint = { otherId: other.id, segmentIdx: si };
-              break;
+              // Same T-junction-only rule as the other slideConstraint computation above —
+              // exclude the case where pt just touches the OTHER segment's own endpoint
+              // (e.g. two ramales converging at the same bajante).
+              const t = ((pt[0] - ax) * sDx + (pt[1] - ay) * sDy) / (sLen * sLen);
+              const marginT = Math.min(0.45, 2 / sLen);
+              if (t > marginT && t < 1 - marginT) {
+                slideConstraint = { otherId: other.id, segmentIdx: si };
+                break;
+              }
             }
           }
           if (slideConstraint) break;
@@ -341,12 +379,12 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: a
           const other = engine.ramales.find((r) => r.id === link.id);
           if (other) backups[link.id] = structuredClone(other.pts);
         }
-        (engine as any)._dragLinkedBackupPts = backups;
+        engine._dragLinkedBackupPts = backups;
       } else {
-        (engine as any)._dragLinkedBackupPts = null;
+        engine._dragLinkedBackupPts = null;
       }
 
-      (engine as any)._dragBackupPts = structuredClone(sel.pts);
+      engine._dragBackupPts = structuredClone(sel.pts);
       engine.ptDrag = { id: sel.id, ptIdx: i, slideConstraint, linkedPts: codoLinks.length > 0 ? codoLinks : undefined };
       return true;
     }
@@ -395,7 +433,7 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: a
 export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number, isMultiSelectModifier: boolean = false): void {
   const wasGhostSel = engine._isGhostSel;
   engine._isGhostSel = false;
-  (engine as any)._lblDragIsParent = false;
+  engine._lblDragIsParent = false;
   const sel = getSelected(engine);
 
   if (engine.tool === 'sel' && !isMultiSelectModifier) {

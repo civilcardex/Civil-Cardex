@@ -1,4 +1,5 @@
 import type { IPlanoEngineCore, PlanoRamal, PlanoBajante, PlanoArea } from './PlanoState';
+import { isBajante } from './PlanoState';
 import { calculateRamalLength, _midpoint, _firstSegmentAngle } from './PlanoEngineDrawing';
 import { checkRamalAngles } from './drawingAngles';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
@@ -57,6 +58,12 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           const origFirst = engine.ramalDrag.origPts[0];
           const cross = Math.abs(sDx * (ay - origFirst[1]) - sDy * (ax - origFirst[0])) / sLen;
           if (cross < 0.05) {
+            // Only slide-constrain against a genuine T-junction (origFirst on the interior of
+            // the other segment) — not against a shared bajante corner where two ramales just
+            // happen to touch at that segment's own endpoint.
+            const tCheck = ((origFirst[0] - ax) * sDx + (origFirst[1] - ay) * sDy) / (sLen * sLen);
+            const marginT = Math.min(0.45, 2 / sLen);
+            if (tCheck <= marginT || tCheck >= 1 - marginT) continue;
             const proposedX = origFirst[0] + dx, proposedY = origFirst[1] + dy;
             let t = ((proposedX - ax) * sDx + (proposedY - ay) * sDy) / (sLen * sLen);
             t = Math.max(0, Math.min(1, t));
@@ -122,7 +129,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       let dx = (x - engine.ghostDrag.startX) / engine.zoom + engine.ghostDrag.baseDx;
       let dy = (y - engine.ghostDrag.startY) / engine.zoom + engine.ghostDrag.baseDy;
       if (engine.snapMode) {
-        let snappedPt = engine.snapAngle(b.x, b.y, b.x + dx, b.y + dy);
+        let snappedPt = engine.snapAngle(b.x, b.y, b.x + dx, b.y + dy, b.net);
         const sp = engine.snapToExisting(snappedPt.x, snappedPt.y);
         if (sp) {
           snappedPt = sp;
@@ -177,10 +184,20 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const oldY = b.y;
 
       // Snap mode: constrain the new bajante position to a 45°-multiple angle measured from
-      // the ramal's OTHER (fixed) endpoint. Picking whichever candidate anchor landed closer to
-      // the raw cursor (the old approach) almost always chose the near/self anchor instead —
-      // on a slow continuous drag each frame's delta is tiny, so snapping "from itself" barely
-      // constrains anything and the ramal effectively drifted freely.
+      // the FIXED vertex adjacent to the endpoint touching this bajante — for a bent ramal
+      // (3+ points) that's the neighboring bend point, NOT the polyline's opposite terminus.
+      // Anchoring on the far terminus of a multi-segment ramal measures the angle across every
+      // intermediate bend, producing an arbitrary-looking angle on the segment that actually
+      // moves. Picking whichever candidate anchor landed closer to the raw cursor (an even
+      // older approach) almost always chose the near/self anchor instead — on a slow continuous
+      // drag each frame's delta is tiny, so snapping "from itself" barely constrains anything
+      // and the ramal effectively drifted freely.
+      // Deliberately NOT passing the "incoming" segment to snapEndpointAngle here: filtering to
+      // only turn-angle-valid candidates during the drag makes invalid angles unreachable, which
+      // silently swallows the "Ángulo no recomendado" alert (checkRamalAngles on mouseup, below
+      // in handleDragUp, never sees an invalid state to catch). Grid-only snapping during the
+      // drag + validate-and-revert-with-alert on release matches how ptDrag/ramalDrag/drawing
+      // already surface this warning.
       if (engine.snapMode) {
         const assocIds = [...(b.recibeDeIds || [])];
         if (b.descargaEnId) assocIds.push(b.descargaEnId);
@@ -191,8 +208,10 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           const pEnd = r.pts[r.pts.length - 1];
           const distStart = Math.hypot(pStart[0] - oldX, pStart[1] - oldY);
           const distEnd = Math.hypot(pEnd[0] - oldX, pEnd[1] - oldY);
-          const anchor = distStart <= distEnd ? pEnd : pStart;
-          p = engine.snapAngle(anchor[0], anchor[1], p.x, p.y);
+          const anchor = distStart <= distEnd
+            ? (r.pts.length > 2 ? r.pts[1] : pEnd)
+            : (r.pts.length > 2 ? r.pts[r.pts.length - 2] : pStart);
+          p = engine.snapAngle(anchor[0], anchor[1], p.x, p.y, r.net, r.tipo);
         }
       }
 
@@ -289,7 +308,25 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           }
         });
       }
-      
+
+      // Keep every level's ghost-connector ramal (Ldesvio) attached to this bajante as it
+      // moves — the ghost's offset (d.dx, d.dy) from the parent stays constant, so only the
+      // ramal's endpoints (parent pos + ghost pos) need to be re-derived from the new b.x/b.y.
+      if (b.desplazamientos) {
+        for (const d of Object.values(b.desplazamientos)) {
+          if (!d.Ldesvio) continue;
+          const r = engine.ramales.find(rr => rr.id === d.Ldesvio);
+          if (!r) continue;
+          r.pts[0] = [b.x, b.y];
+          r.pts[r.pts.length - 1] = [b.x + d.dx, b.y + d.dy];
+          r.totalL = calculateRamalLength(r.pts, engine);
+          r.labelAngle = _firstSegmentAngle(r.pts);
+          const [mx, my] = _midpoint(r.pts);
+          r.labelX = mx;
+          r.labelY = my;
+        }
+      }
+
       engine.scheduleRender();
     }
     return;
@@ -300,11 +337,16 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       || engine.areas.find(a => a.id === engine.lblDrag!.id);
     if (el) {
       const p = engine.toPlane(x - engine.lblDrag.offX, y - engine.lblDrag.offY);
-      // Use _lblDragIsParent flag: if the drag started on the parent label,
-      // update labelX/labelY; otherwise (ghost label), update ghostData.
-      const isParentDrag = !!(engine as any)._lblDragIsParent;
-      if (!isParentDrag && engine.nivelActual) {
-        const baj = el as PlanoBajante;
+      // Only a bajante has cross-floor "ghost" label positions (ghostData, keyed per floor) —
+      // ramales/areas never do. Use _lblDragIsParent flag: if the drag started on the parent
+      // label, update labelX/labelY; otherwise (ghost label), update ghostData. Gate on
+      // isBajante(el) too, so a ramal/area label drag always writes labelX/labelY directly —
+      // without it, every ramal/area label drag fell into the ghost branch (isParentDrag is
+      // never set true for them) and wrote to a bogus ghostData property instead, so the label
+      // never actually moved.
+      const isParentDrag = !!engine._lblDragIsParent;
+      if (!isParentDrag && engine.nivelActual && isBajante(el)) {
+        const baj = el;
         const lbl = engine.nivelActual.label ?? '';
         if (!baj.ghostData) baj.ghostData = {};
         if (!baj.ghostData[lbl]) baj.ghostData[lbl] = {};
@@ -412,17 +454,20 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           }
         }
 
+        // Grid-only snapping (no turn-angle filtering) so an invalid turn can still form here —
+        // see the matching comment on the bajDrag branch above for why: it needs to be reachable
+        // so checkRamalAngles-on-release can catch it and show "Ángulo no recomendado".
         if (!snappedToConstraint) {
           if (idx === 0 && r.pts.length > 1) {
-            p = engine.snapAngle(r.pts[1][0], r.pts[1][1], p.x, p.y);
+            p = engine.snapAngle(r.pts[1][0], r.pts[1][1], p.x, p.y, r.net, r.tipo);
           } else if (idx > 0) {
-            p = engine.snapAngle(r.pts[idx - 1][0], r.pts[idx - 1][1], p.x, p.y);
+            p = engine.snapAngle(r.pts[idx - 1][0], r.pts[idx - 1][1], p.x, p.y, r.net, r.tipo);
           }
         }
       }
 
       if (isEndpoint) {
-        const associatedBajantes: any[] = [];
+        const associatedBajantes: PlanoBajante[] = [];
         engine.bajantes.forEach(b => {
           const isRecibe = b.recibeDeIds?.includes(r.id);
           let isDescarga = false;
