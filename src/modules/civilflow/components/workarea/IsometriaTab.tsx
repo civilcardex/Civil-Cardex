@@ -232,7 +232,12 @@ function IsometriaTabBase({ state }: any) {
       if (!activeNets.has(netId)) continue;
       const prof = profByNet[netId] ?? 0;
       for (const r of netData.ramales) {
-        const z = (nptMap[r.planNivel] || 0) + prof * 1000;
+        // `prof` (Parámetros de Diseño > Materiales por red > "Profundidad de instalación
+        // respecto a NPT") is stored NEGATIVE for below-slab (e.g. sanitaria -0.70). In this
+        // projection a MORE POSITIVE z renders LOWER on screen (see project() in geometry.ts:
+        // y2 grows with z at the default rotX=-45°), so a negative depth must be SUBTRACTED to
+        // push the trace down — adding it (the old behavior) pushed traces up instead.
+        const z = (nptMap[r.planNivel] || 0) - prof * 1000;
         const z_pix = getZPix(z, r.planNivel);
         for (const p of r.pts) {
           const iso = getIsoCoords(p[0], p[1], r.planNivel);
@@ -252,6 +257,10 @@ function IsometriaTabBase({ state }: any) {
           const targetRamal = netData.ramales.find((rr: any) => rr.id === targetId && String(rr.planId) === String(targetPlanId));
           if (targetRamal) {
             targetZ = nptMap[targetRamal.planNivel] || 0;
+          } else {
+            // "Destino" can also be another bajante on a lower floor, not just a ramal.
+            const targetBajante = netData.bajantes.find((bb: any) => bb.id === targetId && String(bb.planId) === String(targetPlanId));
+            if (targetBajante) targetZ = nptMap[targetBajante.planNivel] || 0;
           }
         }
         if (baseZ === 0 && cimaZ === 0) {
@@ -466,7 +475,12 @@ function IsometriaTabBase({ state }: any) {
       ctx.lineCap = 'round';
 
       for (const r of netData.ramales) {
-        const z = (nptMap[r.planNivel] || 0) + prof * 1000;
+        // `prof` (Parámetros de Diseño > Materiales por red > "Profundidad de instalación
+        // respecto a NPT") is stored NEGATIVE for below-slab (e.g. sanitaria -0.70). In this
+        // projection a MORE POSITIVE z renders LOWER on screen (see project() in geometry.ts:
+        // y2 grows with z at the default rotX=-45°), so a negative depth must be SUBTRACTED to
+        // push the trace down — adding it (the old behavior) pushed traces up instead.
+        const z = (nptMap[r.planNivel] || 0) - prof * 1000;
         const z_pix = getZPix(z, r.planNivel);
         const pts = r.pts;
         if (pts.length < 2) continue;
@@ -508,7 +522,12 @@ function IsometriaTabBase({ state }: any) {
         const currentZ = nptMap[b.planNivel] || 0;
         let targetZ = currentZ;
 
+        // "Destino" (descargaEnId) can point at either a ramal OR another bajante on a lower
+        // floor (BajanteAsociacion.tsx lists both as options) — searching only netData.ramales
+        // meant a bajante-to-bajante association was silently never found, leaving targetZ at
+        // currentZ (no cross-floor span) and skipping the connector line entirely.
         let targetRamal = null;
+        let targetBajante = null;
         if (b.descargaEnId) {
           const parts = parseDescargaEnId(b.descargaEnId, b.planId);
           const targetPlanId = parts[0];
@@ -516,14 +535,20 @@ function IsometriaTabBase({ state }: any) {
           targetRamal = netData.ramales.find((rr: any) => rr.id === targetId && String(rr.planId) === String(targetPlanId));
           if (targetRamal) {
             targetZ = nptMap[targetRamal.planNivel] || 0;
+          } else {
+            targetBajante = netData.bajantes.find((bb: any) => bb.id === targetId && String(bb.planId) === String(targetPlanId));
+            if (targetBajante) {
+              targetZ = nptMap[targetBajante.planNivel] || 0;
+            }
           }
         }
 
         const lo = Math.min(currentZ, targetZ);
         const hi = Math.max(currentZ, targetZ);
         const isSube = b.direccion === 'sube' || b.tipo === 'montante';
-        const baseZ = (lo === hi ? (isSube ? lo : lo - 1000) : lo) + profB * 1000;
-        const cimaZ = (lo === hi ? (isSube ? hi + 1000 : hi) : hi) + profB * 1000;
+        // Same sign fix as the ramal z above: profB is negative-for-below, so subtract it.
+        const baseZ = (lo === hi ? (isSube ? lo : lo - 1000) : lo) - profB * 1000;
+        const cimaZ = (lo === hi ? (isSube ? hi + 1000 : hi) : hi) - profB * 1000;
 
         const baseZ_pix = getZPix(baseZ, b.planNivel);
         const cimaZ_pix = getZPix(cimaZ, b.planNivel);
@@ -541,11 +566,31 @@ function IsometriaTabBase({ state }: any) {
         ctx.stroke();
         segments.push({ sx1: pBase.sx, sy1: pBase.sy, sx2: pCima.sx, sy2: pCima.sy, z: (baseZ_pix + cimaZ_pix) / 2, id: selKey, label: b.code || b.id, isBaj: true, netId });
 
+        let targetPt: number[] | null = null;
+        let targetPlanNivel: number | null = null;
         if (targetRamal && targetRamal.pts.length > 0) {
-          const rIso = getIsoCoords(targetRamal.pts[0][0], targetRamal.pts[0][1], targetRamal.planNivel);
-          const rZ_pix = getZPix(targetZ, targetRamal.planNivel);
+          // Nearest endpoint of the target ramal to the bajante's own (x,y) — not always pts[0],
+          // which could be the far end of a long ramal and point the connector the wrong way.
+          const distToFirst = Math.hypot(targetRamal.pts[0][0] - b.x, targetRamal.pts[0][1] - b.y);
+          const distToLast = Math.hypot(targetRamal.pts[targetRamal.pts.length - 1][0] - b.x, targetRamal.pts[targetRamal.pts.length - 1][1] - b.y);
+          targetPt = distToFirst <= distToLast ? targetRamal.pts[0] : targetRamal.pts[targetRamal.pts.length - 1];
+          targetPlanNivel = targetRamal.planNivel;
+        } else if (targetBajante) {
+          targetPt = [targetBajante.x, targetBajante.y];
+          targetPlanNivel = targetBajante.planNivel;
+        }
+
+        if (targetPt && targetPlanNivel !== null) {
+          const rIso = getIsoCoords(targetPt[0], targetPt[1], targetPlanNivel);
+          // Same net as the bajante (target comes from this netId's own netData), so the same
+          // depth offset (profB) applies — matches the offset already baked into baseZ/cimaZ.
+          const rZ_pix = getZPix(targetZ - profB * 1000, targetPlanNivel);
           const rProj = project(rIso.x, rIso.y, rZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-          const connectionPoint = (targetZ === baseZ) ? pBase : pCima;
+          // Compare RAW (pre-offset) targetZ against `lo`/`hi` — baseZ/cimaZ already have
+          // profB*1000 baked in, so comparing targetZ straight against baseZ was comparing
+          // pre-offset to post-offset and (whenever profB != 0, the normal case) almost never
+          // matched, silently picking the wrong end most of the time.
+          const connectionPoint = (targetZ === lo) ? pBase : pCima;
           ctx.save();
           ctx.beginPath();
           ctx.moveTo(connectionPoint.sx, connectionPoint.sy);

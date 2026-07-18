@@ -169,22 +169,24 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
     });
     const results = relevantPlans.map((plan: any) => {
       const pF = pisos.find(p => String(p.n) === String(plan.nivel))!;
-      let ramales: any[] = [];
       let bajantes: any[] = [];
+      // Only real floor-spanning risers (bajante/montante) belong in the "Destino" dropdown —
+      // contador/calentador/red_publica are point fixtures, not trunk lines a pipe cascades
+      // down into. Ramales aren't offered either: the association models a riser continuing
+      // down into the NEXT riser below, cascading floor by floor.
+      const isRiser = (b: any) => b.tipo === 'bajante' || b.tipo === 'montante';
       if (plan.id === currentIdRef.current) {
-        ramales = engineRef.current?.ramales?.filter((r: any) => r.tipo !== 'tributario' && r.net === (selElement.net || activeNet)) || [];
-        bajantes = engineRef.current?.bajantes?.filter((b: any) => b.net === (selElement.net || activeNet)) || [];
+        bajantes = engineRef.current?.bajantes?.filter((b: any) => b.net === (selElement.net || activeNet) && isRiser(b)) || [];
       } else {
         const raw = localStorage.getItem(TRAZOS_PLAN_PREFIX + plan.id);
         if (raw) {
           try {
             const data = JSON.parse(raw);
-            ramales = (data.ramales || []).filter((r: any) => r.tipo !== 'tributario' && r.net === (selElement.net || activeNet));
-            bajantes = (data.bajantes || []).filter((b: any) => b.net === (selElement.net || activeNet));
+            bajantes = (data.bajantes || []).filter((b: any) => b.net === (selElement.net || activeNet) && isRiser(b));
           } catch {}
         }
       }
-      return { planId: plan.id, planName: plan.name, npt: pF.npt, ramales, bajantes };
+      return { planId: plan.id, planName: plan.name, npt: pF.npt, bajantes };
     });
     results.sort((a, b) => b.npt - a.npt);
     return results;

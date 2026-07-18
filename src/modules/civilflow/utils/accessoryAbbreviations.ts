@@ -45,6 +45,17 @@ export function bajanteLabel(b: { code?: string; id?: string; pisoBase?: string 
   return piso ? `${code}-${piso}` : code;
 }
 
+/**
+ * Get ramal display label with the current-floor suffix (e.g. "RS1-P1") — matches the label
+ * drawn on canvas by renderRamales, which always suffixes with the CURRENT floor (a ramal has
+ * no pisoBase of its own, unlike a bajante).
+ */
+export function ramalLabel(r: { label?: string; id?: string } | null | undefined, nivelLabel?: string): string {
+  const code = r?.label || r?.id || '';
+  const piso = nivelLabel ? shortenPiso(nivelLabel) : '';
+  return piso ? `${code}-${piso}` : code;
+}
+
 function shortenPiso(s: string): string {
   const m = s.match(/^Piso\s+(\d+)$/i);
   if (m) return `P${m[1]}`;

@@ -1,5 +1,5 @@
 import { createContext, memo, useContext, useEffect, useRef, useState } from "react";
-import { bajanteLabel } from "../../utils/accessoryAbbreviations";
+import { bajanteLabel, ramalLabel } from "../../utils/accessoryAbbreviations";
 import { normalizeDnLabel } from "../../utils/formatUtils";
 import { pisoLbl, DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS_DN_LABELS } from "../../constants";
 import { getAccessoryOptions } from "../../utils/accessoryOptions";
@@ -83,7 +83,7 @@ interface LowerFloorRamales {
   planId: string;
   planName: string;
   npt: number;
-  ramales: any[];
+  bajantes: any[];
 }
 
 function BajanteDirectionSelector({
@@ -292,21 +292,15 @@ function BajanteDiameterSelector({
                 {lowerFloorsRamales.map(group => {
                   const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
                   const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
-                  const hasRamales = group.ramales && group.ramales.length > 0;
                   const hasBajantes = group.bajantes && group.bajantes.filter((b: any) => b.id !== element.id).length > 0;
                   return (
                     <optgroup key={group.planId} label={pLabel}>
-                      {hasRamales && group.ramales.map((r: any) => (
-                        <option key={`${group.planId}|${r.id}`} value={`${group.planId}|${r.id}`}>
-                          Ramal: {r.label || r.id}
-                        </option>
-                      ))}
                       {hasBajantes && group.bajantes.filter((b: any) => b.id !== element.id).map((b: any) => (
                         <option key={`${group.planId}|${b.id}`} value={`${group.planId}|${b.id}`}>
                           Bajante: {b.code || b.id}
                         </option>
                       ))}
-                      {!hasRamales && !hasBajantes && (
+                      {!hasBajantes && (
                         <option value="" disabled>Sin elementos disponibles</option>
                       )}
                     </optgroup>
@@ -473,9 +467,15 @@ function BajanteConnectionPanel({
                       <input type="checkbox" checked={isAssociated}
                         onChange={e => {
                           const checked = e.target.checked;
+                          // Read the live recibeDeIds off the engine's own bajante object rather
+                          // than the closed-over `recibidos` snapshot — two checkboxes toggled
+                          // before React re-renders between them would otherwise each compute
+                          // newRecibe from the same stale array and clobber each other's change.
+                          const liveBaj = engineRef.current?.bajantes.find((bb: any) => bb.id === element.id);
+                          const liveRecibe: string[] = liveBaj?.recibeDeIds || recibidos;
                           const newRecibe = checked
-                            ? [...recibidos, r.id]
-                            : recibidos.filter((id: string) => id !== r.id);
+                            ? [...liveRecibe, r.id]
+                            : liveRecibe.filter((id: string) => id !== r.id);
                           engineRef.current?.updateElementById(element.id, { recibeDeIds: newRecibe });
                           setContextMenuState((prev: any) => prev ? { ...prev, element: { ...prev.element, recibeDeIds: newRecibe } } : null);
                           if (selElement?.id === element.id) {
@@ -496,7 +496,7 @@ function BajanteConnectionPanel({
                         }}
                         style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
                       <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                        {r.label || r.id}{r.ini ? ` — ini: ${r.ini}` : ''}{r.fin ? ` / fin: ${r.fin}` : ''}
+                        {ramalLabel(r, engineRef.current?.nivelActual?.label)}
                       </span>
                     </label>
                   );

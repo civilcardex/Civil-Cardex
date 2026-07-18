@@ -63,21 +63,15 @@ export default function BajanteAsociacion({
               {lowerFloorsRamales.map(group => {
                 const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
                 const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
-                const hasRamales = group.ramales && group.ramales.length > 0;
                 const hasBajantes = group.bajantes && group.bajantes.filter((b: any) => b.id !== selElement.id).length > 0;
                 return (
                   <optgroup key={group.planId} label={pLabel}>
-                    {hasRamales && group.ramales.map((r: any) => (
-                      <option key={`${group.planId}|${r.id}`} value={`${group.planId}|${r.id}`}>
-                        Ramal: {r.label || r.id}
-                      </option>
-                    ))}
                     {hasBajantes && group.bajantes.filter((b: any) => b.id !== selElement.id).map((b: any) => (
                       <option key={`${group.planId}|${b.id}`} value={`${group.planId}|${b.id}`}>
                         Bajante: {b.code || b.id}
                       </option>
                     ))}
-                    {!hasRamales && !hasBajantes && (
+                    {!hasBajantes && (
                       <option value="" disabled>— Sin elementos disponibles —</option>
                     )}
                   </optgroup>
