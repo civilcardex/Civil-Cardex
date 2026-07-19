@@ -61,6 +61,10 @@ export function selectAt(engine: IPlanoEngineCore, cx: number, cy: number, isMul
   }
   const fg = engine.getBajantesFantasma();
   for (const b of fg) {
+    if (b._ghostLabelBox && pointInLabelBox(cx, cy, b._ghostLabelBox)) {
+      const d = Math.hypot(cx - b._ghostLabelBox.cx, cy - b._ghostLabelBox.cy);
+      if (d < minBD) { minBD = d; foundBaj = b as PlanoBajante; foundBajIsGhost = true; }
+    }
     if (b._ghost) {
       const d = Math.hypot(cx - b._ghost.x, cy - b._ghost.y);
       if (d < b._ghost.r && d < minBD) { minBD = d; foundBaj = b as PlanoBajante; foundBajIsGhost = true; }

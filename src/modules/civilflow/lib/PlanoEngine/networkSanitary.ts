@@ -1,6 +1,8 @@
 import type { IPlanoEngineCore } from './PlanoState';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 
+interface HidroTramoEntry { accesorios: Record<string, number>; Lh: number; nSalidas: number }
+
 export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
   const planId = engine._loadedPlanId;
   if (!planId) return;
@@ -8,9 +10,9 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
   const sanRamales = engine.ramales.filter(r => r.net === 'san');
   const ventRamales = engine.ramales.filter(r => r.net === 'vent');
   const storageKey = 'tramo_hidro_data_v3';
-  let hidroData: Record<string, any>;
+  let hidroData: Record<string, HidroTramoEntry>;
   try {
-    hidroData = loadFromStorage(storageKey, {}) as Record<string, any>;
+    hidroData = loadFromStorage(storageKey, {}) as Record<string, HidroTramoEntry>;
   } catch {
     hidroData = {};
   }
@@ -353,9 +355,9 @@ export function calcHydroAccessories(engine: IPlanoEngineCore): void {
   if (ramales.length === 0) return;
 
   const storageKey = 'tramo_hidro_data_v3';
-  let hidroData: Record<string, any>;
+  let hidroData: Record<string, HidroTramoEntry>;
   try {
-    hidroData = loadFromStorage(storageKey, {}) as Record<string, any>;
+    hidroData = loadFromStorage(storageKey, {}) as Record<string, HidroTramoEntry>;
   } catch {
     hidroData = {};
   }

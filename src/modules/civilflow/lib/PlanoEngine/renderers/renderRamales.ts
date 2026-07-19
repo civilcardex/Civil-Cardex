@@ -1,7 +1,7 @@
 import { NETS } from '../PlanoState';
 import { snapTributaryToPadre45Deg } from '../PlanoEngineDrawing';
 import { rotatedRectCorners, pointToSegmentDist } from '../HitTester';
-import type { IPlanoEngineCore } from '../PlanoState';
+import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { pisoCortoLoose as getPisoCorto } from '../../../constants';
 import { drawRamalPath } from './drawRamalPath';
@@ -477,14 +477,14 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     if (r.pts.length > 1) {
       if (isPadre && isTributarioMode) {
         ctx.save();
-        ctx.setLineDash([6, 4]);
+        ctx.setLineDash([6 * engine.zoom, 4 * engine.zoom]);
         ctx.lineWidth = 3 * engine.zoom;
         ctx.strokeStyle = col;
         drawRamalPath(ctx, r.pts, engine, col);
         ctx.restore();
       } else if (r.tipo === 'tributario') {
         ctx.save();
-        ctx.setLineDash([6, 4]);
+        ctx.setLineDash([6 * engine.zoom, 4 * engine.zoom]);
         drawRamalPath(ctx, r.pts, engine, col);
         ctx.restore();
       } else {
@@ -674,7 +674,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     ctx.restore();
 
     if (r.pts.length >= 2 && (r.id === engine.selId || (engine.multiSel || []).includes(r.id))) {
-      let desvioBajante: any = null;
+      let desvioBajante: PlanoBajante | null = null;
       const isDesvio = engine.bajantes.some((b) => {
         const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
         if (!disp || disp.Ldesvio !== r.id) return false;
@@ -690,12 +690,13 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       });
       
       if (isDesvio && desvioBajante) {
+        const baj: PlanoBajante = desvioBajante;
         const firstPt = r.pts[0];
-        const isSube = desvioBajante.direccion === 'sube';
-        
+        const isSube = baj.direccion === 'sube';
+
         let startIdx = 0, nextIdx = 1;
-        
-        const firstIsParent = Math.hypot(firstPt[0] - desvioBajante.x, firstPt[1] - desvioBajante.y) < 0.5;
+
+        const firstIsParent = Math.hypot(firstPt[0] - baj.x, firstPt[1] - baj.y) < 0.5;
         if (isSube) {
           if (firstIsParent) {
             startIdx = r.pts.length - 1; nextIdx = r.pts.length - 2;

@@ -240,7 +240,7 @@ export function handleContadorDown(engine: IPlanoEngineCore, px: number, py: num
       if (d < minDist) { minDist = d; nearestRP = rp; }
     }
     const rpId = nearestRP.code || nearestRP.id;
-    const alreadyConnected = engine.ramales.some((r: any) =>
+    const alreadyConnected = engine.ramales.some((r) =>
       r.net === engine.activeNet && ((r.ini === rpId && r.fin === cntId) || (r.ini === cntId && r.fin === rpId))
     );
     if (!alreadyConnected) {
@@ -260,7 +260,7 @@ export function handleContadorDown(engine: IPlanoEngineCore, px: number, py: num
         label: pfx + ramCnt,
         ini: rpId,
         fin: cntId,
-        piso: engine.nivelActual?.n ?? '',
+        piso: String(engine.nivelActual?.n ?? ''),
         dz: '',
         uc: 0,
         labelX: (nearestRP.x + px) / 2,

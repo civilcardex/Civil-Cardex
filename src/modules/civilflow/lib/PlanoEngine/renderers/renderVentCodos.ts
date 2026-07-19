@@ -1,8 +1,8 @@
-import type { IPlanoEngineCore } from '../PlanoState';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
 
 // Same field a manually-placed accessory would occupy at this vertex, so we can detect
 // whether a codo reventilado is already drawn there before auto-generating another one.
-function accessoryAt(r: any, idx: number): string | undefined {
+function accessoryAt(r: PlanoRamal, idx: number): string | undefined {
   if (idx === 0) return r.accesorioInicio;
   if (idx === r.pts.length - 1) return r.accesorioFin;
   return r.accMed ? r.accMed[`accMed${idx}`] : undefined;
@@ -17,7 +17,7 @@ function renderVentCodos(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
   const sanRamales = engine.ramales.filter((r) => r.net === 'san');
   if (sanRamales.length === 0) return;
 
-  const sanPointOwners: Map<string, { r: any; idx: number }[]> = new Map();
+  const sanPointOwners: Map<string, { r: PlanoRamal; idx: number }[]> = new Map();
   sanRamales.forEach((r) => {
     r.pts.forEach((pt: number[], idx: number) => {
       const key = `${pt[0].toFixed(3)}_${pt[1].toFixed(3)}`;

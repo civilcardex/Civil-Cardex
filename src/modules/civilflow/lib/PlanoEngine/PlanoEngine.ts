@@ -1,6 +1,7 @@
 import { NETS, netsSnapLinked, initNetCounts } from './PlanoState';
 import { devError } from '../../../../utils/devError';
 import type {
+  PlanoElement,
   PlanoRamal,
   PlanoBajante,
   PlanoArea,
@@ -85,8 +86,8 @@ import { hitTestRightClick, hitTestBajanteLabelForDrag } from './PlanoEngineHitT
 
 export { NETS };
 
-type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont' | 'calent';
-type TramoType = 'ramal' | 'tributario';
+export type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont' | 'calent';
+export type TramoType = 'ramal' | 'tributario';
 
 interface Point { x: number; y: number }
 
@@ -95,7 +96,7 @@ type StatusCallback = (msg: string) => void;
 type UpdateCallback = (data: unknown) => void;
 type DirtyCallback = () => void;
 
-interface ElementItem {
+export interface ElementItem {
   type: string;
   id: string;
   label: string;
@@ -159,8 +160,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
   private _touchStartHandler?: (e: TouchEvent) => void;
   private _touchMoveHandler?: (e: TouchEvent) => void;
   private _touchEndHandler?: (e: TouchEvent) => void;
-  _loadedPlanId!: string | null;
-  planId?: string;
+  _loadedPlanId!: string | number | null;
+  planId?: string | number;
   _onDirtyCb!: DirtyCallback | null;
   _lastMouseCvs!: Point;
 
@@ -191,7 +192,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _onStatusCb: StatusCallback | null;
   _onUpdateCb: UpdateCallback | null;
   _onRequestTextCb: ((x: number, y: number, cb: (text: string) => void) => void) | null;
-  _onContextMenuCb: ((bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null, midRamalHit?: { segmentIdx: number; x: number; y: number } | null) => void) | null;
+  _onContextMenuCb: ((bajante: PlanoElement, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null, midRamalHit?: { segmentIdx: number; x: number; y: number } | null) => void) | null;
   _onDeleteCb: ((ids: string[]) => void) | null;
   _onActiveNetChangeCb: ((net: string) => void) | null;
   _onAlertCb: ((title: string, msg: string) => void) | null;
@@ -223,7 +224,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.dpr = 1;
     this.tool = 'sel';
     this.activeNet = 'af';
-    (this as any).tipoTramo = 'ramal';
+    this.tipoTramo = 'ramal';
     this.snapMode = true;
     this.scaleM = 0.5;
     this.definedScaleM = 0;
@@ -244,8 +245,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.areaDrag = null;
     this.dimDrag = null;
     this.panning = false;
-    (this as any).panX0 = 0;
-    (this as any).panY0 = 0;
+    this.panX0 = 0;
+    this.panY0 = 0;
     this.mouseX = 0;
     this.mouseY = 0;
     this.ghostDrag = null;
@@ -307,7 +308,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   onSelect(cb: SelectCallback): void { this._onSelectCb = cb; }
   onStatus(cb: StatusCallback): void { this._onStatusCb = cb; }
   onRequestText(cb: (x: number, y: number, cb: (text: string) => void) => void): void { this._onRequestTextCb = cb; }
-  onContextMenu(cb: (b: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null, midRamalHit?: { segmentIdx: number; x: number; y: number } | null) => void): void { this._onContextMenuCb = cb; }
+  onContextMenu(cb: (b: PlanoElement, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null, midRamalHit?: { segmentIdx: number; x: number; y: number } | null) => void): void { this._onContextMenuCb = cb; }
   onUpdate(cb: UpdateCallback): void { this._onUpdateCb = cb; }
   onDirty(cb: DirtyCallback): void { this._onDirtyCb = cb; }
   onDelete(cb: (ids: string[]) => void): void { this._onDeleteCb = cb; }
@@ -373,7 +374,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _emitSelect(el: PlanoRamal | PlanoBajante | PlanoArea | PlanoTextAnnotation | PlanoDimension | null): void {
     if (!this._onSelectCb) return;
     if (!el) { this._onSelectCb(null); return; }
-    const rest = { ...el } as any;
+    const rest: Record<string, unknown> = { ...el };
     delete rest._circ;
     delete rest._ghost;
     delete rest._box;
@@ -533,7 +534,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   setTipoTramo(t: TramoType): void { this.tipoTramo = t; }
   setSnap(v: boolean): void { this.snapMode = v; }
 
-  setPadreTributario(ramalId: string): void { _setPadreTributario(this, ramalId); }
+  setPadreTributario(ramalId: string | null): void { _setPadreTributario(this, ramalId); }
   getPadreTributario(): PlanoRamal | null { return _getPadreTributario(this); }
   getRamalesPadre(): PlanoRamal[] { return _getRamalesPadre(this); }
   setRamalDefaults(d: Partial<PlanoRamalDefaults> | null): void { _setRamalDefaults(this, d); }
@@ -692,7 +693,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       }
       const hit = hitTestRightClick(this, x, y, e.clientX, e.clientY);
       if (hit) {
-        const el = hit.element as any;
+        const el = hit.element;
         // Don't change selection on right-click — just show the context menu
         if (this._onContextMenuCb) {
           this._onContextMenuCb(

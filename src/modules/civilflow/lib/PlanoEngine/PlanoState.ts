@@ -116,6 +116,8 @@ export interface PlanoRamal {
   bloqueado?: boolean;
   accesorioInicio?: string;
   accesorioFin?: string;
+  diametroInicio?: string;
+  diametroFin?: string;
   aparatoInicio?: string;
   aparatoFin?: string;
   nSalidas?: number;
@@ -124,6 +126,8 @@ export interface PlanoRamal {
   diamPulg?: number;
   bilateralCrossings?: number[][];
   accMed?: Record<string, string>;
+  caudal?: number;
+  lvert?: string;
 }
 
 export interface PlanoBajante {
@@ -145,7 +149,7 @@ export interface PlanoBajante {
   ucAcum: number;
   ucExtra: number;
   area_m2: number;
-  desplazamientos: Record<string, { dx: number; dy: number; Ldesvio: string | null }>;
+  desplazamientos: Record<string, { dx: number; dy: number; Ldesvio?: string | null }>;
   lblOffX: number;
   lblOffY: number;
   labelAngle: number;
@@ -165,6 +169,8 @@ export interface PlanoBajante {
   isFantasma?: boolean;
   diamPulg?: number;
   diametro?: string;
+  acoDiam?: string;
+  capacidad?: string;
 }
 
 export interface PlanoArea {
@@ -206,7 +212,7 @@ export interface PlanoTextAnnotation {
 export interface PlanoLevel {
   label?: string;
   npt?: number;
-  n?: string;
+  n?: string | number;
 }
 
 export interface PlanoNetCounts {
@@ -297,8 +303,8 @@ export interface IPlanoEngineCore {
   _ramalDefaults: PlanoRamalDefaults | null;
   _dirty: boolean;
   _onRequestTextCb: ((x: number, y: number, cb: (text: string) => void) => void) | null;
-  _loadedPlanId: string | null;
-  planId?: string;
+  _loadedPlanId: string | number | null;
+  planId?: string | number;
   _onDirtyCb: (() => void) | null;
   _lastMouseCvs: { x: number; y: number };
   _snapToSegment(x: number, y: number, pts: number[][], threshold?: number): { x: number; y: number } | null;

@@ -88,7 +88,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
             label: pfx + cnt,
             ini: '',
             fin: '',
-            piso: engine.nivelActual?.n ?? '',
+            piso: String(engine.nivelActual?.n ?? ''),
             dz: '',
             uc: 0,
             labelX: (b.x + b.x + d.dx) / 2,

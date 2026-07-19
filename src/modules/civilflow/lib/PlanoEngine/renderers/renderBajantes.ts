@@ -4,6 +4,7 @@ import type { IPlanoEngineCore } from '../PlanoState';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { parseDescargaEnId } from '../../../utils/parseDescargaEnId';
 import { pisoCortoLoose as getPisoCorto } from '../../../constants';
+import type { PlanoBajante } from '../PlanoState';
 
 
 const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
@@ -11,7 +12,7 @@ const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 
 function renderBajanteLabel(
   ctx: CanvasRenderingContext2D,
   engine: IPlanoEngineCore,
-  b: any,
+  b: PlanoBajante,
   c: { x: number; y: number },
   r: number,
   angle: number,

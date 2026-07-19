@@ -107,6 +107,14 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
   let bestRamal = null;
   let bestPtIdx = -1;
   let minPtDist = 15;
+  // A ghost bajante's desvío ramal has an endpoint sitting exactly at the ghost's displaced
+  // position, so a click on the ghost symbol also falls within this endpoint's tolerance —
+  // without this, the endpoint hit below wins first and steals the click from the ghost.
+  const lvl = engine.nivelActual?.label ?? '';
+  const ghostPts = engine.getBajantesFantasma().map(b => {
+    const disp = b.desplazamientos?.[lvl];
+    return { x: b.x + (disp ? disp.dx : 0), y: b.y + (disp ? disp.dy : 0) };
+  });
   for (const r of engine.ramales) {
     if (engine._hiddenNets.has(r.net)) continue;
     if (r.pts && r.pts.length >= 2) {
@@ -118,7 +126,10 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
           const bajAtEp = engine.bajantes.find(b =>
             Math.abs(b.x - epP[0]) < 0.1 && Math.abs(b.y - epP[1]) < 0.1
           );
-          if (bajAtEp) continue;
+          const ghostAtEp = ghostPts.some(g =>
+            Math.abs(g.x - epP[0]) < 0.1 && Math.abs(g.y - epP[1]) < 0.1
+          );
+          if (bajAtEp || ghostAtEp) continue;
           minPtDist = d;
           bestRamal = r;
           bestPtIdx = i;

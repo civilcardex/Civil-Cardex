@@ -6,7 +6,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
 
   NETS.forEach(net => {
     if (engine._hiddenNets.has(net.id)) return;
-    const netRamales = engine.ramales.filter((r: any) => r.net === net.id);
+    const netRamales = engine.ramales.filter((r) => r.net === net.id);
     if (netRamales.length === 0) return;
 
     const getPointKey = (x: number, y: number) => `${x.toFixed(3)}_${y.toFixed(3)}`;

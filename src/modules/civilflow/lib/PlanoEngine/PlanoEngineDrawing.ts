@@ -1,6 +1,7 @@
 import { NETS } from './PlanoState';
 import type {
   PlanoRamal,
+  PlanoBajante,
   PlanoArea,
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
@@ -165,7 +166,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     pts: engine.activeRamal!.pts,
     totalL: calculateRamalLength(engine.activeRamal!.pts, engine),
     label: _nextLabel(engine),
-    ini: '', fin: '', piso: engine.nivelActual?.n ?? '', dz: '', uc: 0, nSalidas: 1,
+    ini: '', fin: '', piso: String(engine.nivelActual?.n ?? ''), dz: '', uc: 0, nSalidas: 1,
     labelX: labelX, labelY: labelY,
     labelAngle: firstAngle,
     material: def.material || '',
@@ -194,7 +195,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     const TOLLERANCE = 0.5;
     for (const epIdx of [0, r.pts.length - 1]) {
       const ep = r.pts[epIdx];
-      const baj = engine.bajantes.find((b: any) =>
+      const baj = engine.bajantes.find((b) =>
         Math.hypot(b.x - ep[0], b.y - ep[1]) < TOLLERANCE &&
         b.net === r.net &&
         !engine._hiddenNets.has(b.net)
@@ -317,7 +318,7 @@ export function finishArea(engine: IPlanoEngineCore): void {
 export function deleteSegmentAt(engine: IPlanoEngineCore, cx: number, cy: number): void {
   const plane = engine.toPlane(cx, cy);
   const HIT_DIST = 10 / engine.zoom;
-  let bestR: any = null, bestIdx = -1, bestD = Infinity;
+  let bestR: PlanoRamal | null = null, bestIdx = -1, bestD = Infinity;
 
   for (const r of engine.ramales) {
     if (!r.pts || r.pts.length < 2) continue;
@@ -430,11 +431,11 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     // must win over snapToExisting picking a nearby-but-different target (e.g. a bajante
     // displaced away from this same endpoint), otherwise clicking back onto an endpoint that
     // carries an accessory silently starts an unrelated new ramal instead of continuing it.
-    let activeNetsRamales = engine.ramales.filter((rm: any) => rm.net === engine.activeNet);
+    let activeNetsRamales = engine.ramales.filter((rm) => rm.net === engine.activeNet);
     if (engine.tipoTramo === 'tributario') {
-      activeNetsRamales = activeNetsRamales.filter((rm: any) => rm.id === engine.padreTributario);
+      activeNetsRamales = activeNetsRamales.filter((rm) => rm.id === engine.padreTributario);
     }
-    let continueRamal: any = null;
+    let continueRamal: PlanoRamal | null = null;
     let reversePoints = false;
     const CONTINUE_THRESH = 30 / engine.zoom;
     for (const rm of activeNetsRamales) {
@@ -573,7 +574,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     }
     const lvlLabel = engine.nivelActual?.label ?? '';
     const bajThresh = 20 / engine.zoom;
-    const nearBaj = engine.bajantes.find((b: any) => {
+    const nearBaj = engine.bajantes.find((b) => {
       if (engine._hiddenNets.has(b.net) || b.net !== engine.activeNet) return false;
       const disp = b.desplazamientos?.[lvlLabel] || {};
       const bx = b.x + (disp.dx || 0);
@@ -722,7 +723,7 @@ export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number
   
   const isText = engine.textAnnots.some((t) => t.id === selId);
   const isArea = engine.areas.some((a) => a.id === selId);
-  const tipo = (sel as any).tipo;
+  const tipo = (sel as Partial<PlanoBajante & PlanoRamal>).tipo;
   
   if (tipo === 'bajante' || tipo === 'montante' || tipo === 'red_publica' || tipo === 'contador' || tipo === 'calentador' || isArea || isText || selId.startsWith('DIM')) {
     engine.deleteSelected();
@@ -737,7 +738,7 @@ export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number
   if (tipo === 'ramal' || tipo === 'tributario') {
     const plane = engine.toPlane(cx, cy);
     const HIT_DIST = 10 / engine.zoom;
-    const r = sel as any;
+    const r = sel as PlanoRamal;
     
     let bestIdx = -1, bestD = Infinity;
     for (let i = 0; i < r.pts.length; i++) {

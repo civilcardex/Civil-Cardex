@@ -2,6 +2,7 @@ import { NETS, initNetCounts } from './PlanoState';
 
 export interface PlanoWorkData {
   v: number;
+  ts?: number;
   scaleM: number;
   definedScaleM: number;
   activeNet: string;
@@ -84,9 +85,10 @@ export function applyWorkData(
       const m = r.id?.match(new RegExp('^' + net.lbl + '(\\d+)$'));
       if (m) {
         const n = parseInt(m[1], 10);
-        if (n > ((engine._netCounts[r.net!] as any)?.[r.tipo!] || 0)) {
-          if (!engine._netCounts[r.net!]) (engine._netCounts[r.net!] as any) = { ramal: 0, tributario: 0 };
-          (engine._netCounts[r.net!] as any)[r.tipo!] = n;
+        const counts = engine._netCounts[r.net!] as unknown as Record<string, number> | undefined;
+        if (n > (counts?.[r.tipo!] || 0)) {
+          if (!engine._netCounts[r.net!]) engine._netCounts[r.net!] = { ramal: 0, tributario: 0 };
+          (engine._netCounts[r.net!] as unknown as Record<string, number>)[r.tipo!] = n;
         }
       }
     }

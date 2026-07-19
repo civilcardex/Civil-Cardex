@@ -93,7 +93,7 @@ export function clearNet(engine: IPlanoEngineCore, netId: string): void {
   engine._markDirty();
 }
 
-export function setPadreTributario(engine: IPlanoEngineCore, ramalId: string): void {
+export function setPadreTributario(engine: IPlanoEngineCore, ramalId: string | null): void {
   if (engine.tipoTramo !== 'tributario') return;
   const padre = engine.ramales.find(r => r.id === ramalId && r.net === engine.activeNet && r.tipo === 'ramal');
   engine.padreTributario = padre ? padre.id : null;
@@ -365,7 +365,7 @@ export function ensureRpCntRamal(engine: IPlanoEngineCore): void {
         label: pfx + ramCnt,
         ini: rpId,
         fin: cntId,
-        piso: engine.nivelActual?.n ?? '',
+        piso: String(engine.nivelActual?.n ?? ''),
         dz: '',
         uc: 0,
         labelX: (nearestRP.x + cnt.x) / 2,

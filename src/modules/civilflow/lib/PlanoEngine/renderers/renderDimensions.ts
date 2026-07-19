@@ -19,7 +19,7 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
     if (len < 1) { ctx.restore(); return; }
     const nx = -dy / len, ny = dx / len;
     const mk = 6 * engine.zoom;
-    [c1, c2].forEach((pt: any) => {
+    [c1, c2].forEach((pt) => {
       ctx.beginPath();
       ctx.moveTo(pt.x - nx * mk, pt.y - ny * mk);
       ctx.lineTo(pt.x + nx * mk, pt.y + ny * mk);
@@ -66,7 +66,7 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
   if (len > 1) {
     const nx = -dy / len, ny = dx / len;
     const mk = 6 * engine.zoom;
-    [s, e].forEach((pt: any) => {
+    [s, e].forEach((pt) => {
       ctx.beginPath();
       ctx.moveTo(pt.x - nx * mk, pt.y - ny * mk);
       ctx.lineTo(pt.x + nx * mk, pt.y + ny * mk);

@@ -1,8 +1,8 @@
-import type { IPlanoEngineCore } from './PlanoState';
+import type { IPlanoEngineCore, PlanoElement } from './PlanoState';
 import { pointInLabelBox, pointInPoly } from './HitTester';
 
 export interface ContextMenuHitResult {
-  element: unknown;
+  element: PlanoElement;
   isGhostClick: boolean;
   ramalEndpoint?: { idx: number; x: number; y: number } | null;
   /** Click landed on the ramal's body (not near an existing vertex). segmentIdx/x/y describe
@@ -23,7 +23,7 @@ export function hitTestRightClick(
   const zoom = engine.zoom;
 
   // Check ghost bajantes first (top priority), unless overlapping a real bajante without displacement
-  const fg = engine.getBajantesFantasma() as any[];
+  const fg = engine.getBajantesFantasma();
   for (const b of fg) {
     if (b._ghost) {
       const d = Math.hypot(x - b._ghost.x, y - b._ghost.y);

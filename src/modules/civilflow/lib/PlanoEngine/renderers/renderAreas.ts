@@ -117,7 +117,7 @@ export function renderActiveArea(ctx: CanvasRenderingContext2D, engine: IPlanoEn
   ctx.stroke();
   ctx.setLineDash([]);
 
-  pts.forEach((p: any, idx: number) => {
+  pts.forEach((p, idx) => {
     ctx.fillStyle = idx === 0 ? '#fff' : col;
     ctx.beginPath();
     ctx.arc(p.x, p.y, 4 * engine.zoom, 0, Math.PI * 2);

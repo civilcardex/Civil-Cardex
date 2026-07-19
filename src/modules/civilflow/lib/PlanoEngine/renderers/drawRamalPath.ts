@@ -1,4 +1,4 @@
-import type { IPlanoEngineCore } from '../PlanoState';
+import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
 
 export interface ElbowInfo {
   T_A: { x: number; y: number };
@@ -23,7 +23,7 @@ export function drawRamalPath(
   const netId = r ? r.net : engine.activeNet;
   const netRamales = engine.ramales.filter((rm) => rm.net === netId);
   if (activeRamal && activeRamal.net === netId && !netRamales.some((rm) => rm.pts === activeRamal.pts)) {
-    netRamales.push(activeRamal as any);
+    netRamales.push(activeRamal as unknown as PlanoRamal);
   }
 
   ctx.beginPath();
