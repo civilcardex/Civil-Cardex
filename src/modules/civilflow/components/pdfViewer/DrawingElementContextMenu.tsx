@@ -12,12 +12,21 @@ import { VENTILACION, CONTADORES as CONTADORES_CAT } from "../../pages/catalog/c
 import { DIAMETROS_AF } from "../../constants/hydraulicData";
 import { diamPulgFromLabel } from "../../utils/diamPulgFromLabel";
 import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
+import type { PlanoElement, PlanoRamal, PlanoBajante, PlanoArea } from "../../lib/PlanoEngine/PlanoState";
+import type { Piso } from "../useWorkAreaState";
+import type { PlanItem } from "../../context/PlansContext";
+import type { MaterialItem } from "../../context/ProjectContext";
+
+// Structural probe of a PlanoElement union: lets code sniff `tipo`/`pts` (present on some
+// element kinds, absent on others) the same way the engine's own runtime dispatch does,
+// without narrowing via the exported type guards at every access site.
+type ProbedElement = PlanoElement & { tipo?: string; pts?: number[][] };
 
 export interface ContextMenuState {
   visible: boolean;
   x: number;
   y: number;
-  element: any; // was bajante
+  element: PlanoElement;
   isGhostClick?: boolean;
   ramalEndpoint?: { idx: number; x: number; y: number } | null;
   midRamalHit?: { segmentIdx: number; x: number; y: number } | null;
@@ -26,15 +35,15 @@ export interface ContextMenuState {
 interface DrawingElementContextMenuContextValue {
   contextMenuState: ContextMenuState
   setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
-  element: any // was bajante
+  element: PlanoElement
   selectedNivel: number | null
-  pisos: any[]
+  pisos: Piso[]
   engineRef: React.MutableRefObject<PlanoEngine | null>
-  selElement: Record<string, any> | null
-  setSelElement: (el: Record<string, any> | null) => void
-  lowerFloorsRamales: any[]
-  planosCtx: { plans: any[] }
-  mats: Record<string, any[]>
+  selElement: PlanoElement | null
+  setSelElement: (el: PlanoElement | null) => void
+  lowerFloorsRamales: LowerFloorRamales[]
+  planosCtx: { plans: PlanItem[] }
+  mats: Record<string, MaterialItem[]>
   activeNet: string
   setDiamSel: React.Dispatch<React.SetStateAction<Record<string, string>>>
 }
@@ -49,7 +58,7 @@ function useDrawingElementContextMenu(): DrawingElementContextMenuContextValue {
 const DrawingElementContextMenu_S2: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const DrawingElementContextMenu_dirBtn: React.CSSProperties = {
   padding: '3px 5px',
-  textAlign: 'left', fontSize: 10, fontFamily: "'Geist',monospace", cursor: 'pointer',
+  textAlign: 'left', fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer',
   borderRadius: 3, display: 'flex', alignItems: 'center', gap: 3,
   transition: 'all 0.1s', boxSizing: 'border-box', overflow: 'hidden', whiteSpace: 'nowrap',
   textOverflow: 'ellipsis', minWidth: 0,
@@ -79,11 +88,11 @@ const DrawingElementContextMenu_S23: React.CSSProperties = { position: 'absolute
 
 
 
-interface LowerFloorRamales {
-  planId: string;
+export interface LowerFloorRamales {
+  planId: string | number;
   planName: string;
-  npt: number;
-  bajantes: any[];
+  npt: number | string;
+  bajantes: PlanoBajante[];
 }
 
 function BajanteDirectionSelector({
@@ -96,14 +105,14 @@ function BajanteDirectionSelector({
   setSelElement,
   setContextMenuState,
 }: {
-  element: any;
+  element: PlanoBajante;
   isGhostClick?: boolean;
   selectedNivel: number | null;
-  pisos: any[];
+  pisos: Piso[];
   engineRef: React.MutableRefObject<PlanoEngine | null>;
-  selElement: Record<string, any> | null;
-  setSelElement: (el: Record<string, any> | null) => void;
-  setContextMenuState: React.Dispatch<React.SetStateAction<any>>;
+  selElement: PlanoElement | null;
+  setSelElement: (el: PlanoElement | null) => void;
+  setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
 }) {
   const currentGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
   const gd = element.ghostData?.[currentGhostLabel];
@@ -113,12 +122,12 @@ function BajanteDirectionSelector({
     if (!engineRef.current) return;
     const gd2 = { ...(element.ghostData || {}) };
     const cd = { ...(gd2[currentGhostLabel] || {}) };
-    (cd as any)[field] = val;
+    (cd as Record<string, string>)[field] = val;
     gd2[currentGhostLabel] = cd;
     engineRef.current?.updateElementById(element.id, { ghostData: gd2 });
-    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
+    const fresh = engineRef.current?.bajantes.find((b) => b.id === element.id);
     if (fresh) {
-      setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+      setContextMenuState((prev) => prev ? { ...prev, element: { ...fresh } } : null);
       if (selElement?.id === element.id) {
         setSelElement({ ...selElement, ghostData: gd2 });
       }
@@ -144,10 +153,10 @@ function BajanteDirectionSelector({
                   return;
                 }
                 const currentNpt = pisos.find(p => p.n === selectedNivel)?.npt || 0;
-                const allNpts = pisos.map(p => p.npt).sort((a, b) => a - b);
+                const allNpts = pisos.map(p => p.npt).sort((a, b) => Number(a) - Number(b));
                 const maxNpt = allNpts[allNpts.length - 1] || 0;
                 const minNpt = allNpts[0] || 0;
-                let updates: any = {};
+                let updates: Record<string, unknown> = {};
 
                 if (opt === 'Sube') {
                   updates = { direccion: 'sube', nptBase: currentNpt, nptCima: maxNpt, desplazamientos: { ...(element.desplazamientos || {}) } };
@@ -158,9 +167,9 @@ function BajanteDirectionSelector({
                 }
                 if (Object.keys(updates).length > 0) {
                   engineRef.current?.updateElementById(element.id, updates);
-                  const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
+                  const fresh = engineRef.current?.bajantes.find((b) => b.id === element.id);
                   if (fresh) {
-                    setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                    setContextMenuState((prev) => prev ? { ...prev, element: { ...fresh } } : null);
                   }
                   if (selElement?.id === element.id) {
                     setSelElement({ ...selElement, ...updates });
@@ -190,7 +199,7 @@ function BajanteDirectionSelector({
             if (!engineRef.current) return;
             const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
             const isFantasma = element.isFantasma;
-            const updates: any = { isFantasma: !isFantasma };
+            const updates: Record<string, unknown> = { isFantasma: !isFantasma };
             if (!isFantasma && lvl) {
               const currentDesp = { ...(element.desplazamientos || {}) };
               if (!currentDesp[lvl]) {
@@ -200,9 +209,9 @@ function BajanteDirectionSelector({
             }
             engineRef.current?.updateElementById(element.id, updates);
             setTimeout(() => {
-              const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
+              const fresh = engineRef.current?.bajantes.find((b) => b.id === element.id);
               if (fresh) {
-                setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                setContextMenuState((prev) => prev ? { ...prev, element: { ...fresh } } : null);
                 if (selElement?.id === element.id) {
                   setSelElement({ ...selElement, ...updates });
                 }
@@ -236,15 +245,15 @@ function BajanteDiameterSelector({
   lowerFloorsRamales,
   planosCtx,
 }: {
-  element: any;
+  element: PlanoBajante;
   isGhostClick?: boolean;
   selectedNivel: number | null;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
-  selElement: Record<string, any> | null;
-  setSelElement: (el: Record<string, any> | null) => void;
-  setContextMenuState: React.Dispatch<React.SetStateAction<any>>;
-  lowerFloorsRamales: any[];
-  planosCtx: { plans: any[] };
+  selElement: PlanoElement | null;
+  setSelElement: (el: PlanoElement | null) => void;
+  setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
+  lowerFloorsRamales: LowerFloorRamales[];
+  planosCtx: { plans: PlanItem[] };
 }) {
   const currentGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
 
@@ -252,12 +261,12 @@ function BajanteDiameterSelector({
     if (!engineRef.current) return;
     const gd2 = { ...(element.ghostData || {}) };
     const cd = { ...(gd2[currentGhostLabel] || {}) };
-    (cd as any)[field] = val;
+    (cd as Record<string, string>)[field] = val;
     gd2[currentGhostLabel] = cd;
     engineRef.current.updateElementById(element.id, { ghostData: gd2 });
-    const fresh = engineRef.current.bajantes.find((b: any) => b.id === element.id);
+    const fresh = engineRef.current.bajantes.find((b) => b.id === element.id);
     if (fresh) {
-      setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+      setContextMenuState((prev) => prev ? { ...prev, element: { ...fresh } } : null);
       if (selElement?.id === element.id) {
         setSelElement({ ...selElement, ghostData: gd2 });
       }
@@ -275,8 +284,8 @@ function BajanteDiameterSelector({
                 onChange={e => {
                   const v = e.target.value || null;
                   engineRef.current?.updateElementById(element.id, { descargaEnId: v });
-                  const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
-                  if (fresh) setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                  const fresh = engineRef.current?.bajantes.find((b) => b.id === element.id);
+                  if (fresh) setContextMenuState((prev) => prev ? { ...prev, element: { ...fresh } } : null);
                   if (selElement?.id === element.id) {
                     setSelElement({ ...selElement, descargaEnId: v });
                   }
@@ -290,12 +299,12 @@ function BajanteDiameterSelector({
                 style={{ ...DrawingElementContextMenu_S2, width: '85%' }}>
                 <option value="">Sin destino</option>
                 {lowerFloorsRamales.map(group => {
-                  const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
+                  const plano = planosCtx.plans.find((pl) => (pl.id as unknown as string) === group.planId);
                   const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
-                  const hasBajantes = group.bajantes && group.bajantes.filter((b: any) => b.id !== element.id).length > 0;
+                  const hasBajantes = group.bajantes && group.bajantes.filter((b) => b.id !== element.id).length > 0;
                   return (
                     <optgroup key={group.planId} label={pLabel}>
-                      {hasBajantes && group.bajantes.filter((b: any) => b.id !== element.id).map((b: any) => (
+                      {hasBajantes && group.bajantes.filter((b) => b.id !== element.id).map((b) => (
                         <option key={`${group.planId}|${b.id}`} value={`${group.planId}|${b.id}`}>
                           Bajante: {b.code || b.id}
                         </option>
@@ -322,9 +331,9 @@ function BajanteDiameterSelector({
                   } else {
                     const fields = { dNominal: val };
                     engineRef.current?.updateElementById(element.id, fields);
-                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
+                    const fresh = engineRef.current?.bajantes.find((b) => b.id === element.id);
                     if (fresh) {
-                      setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                      setContextMenuState((prev) => prev ? { ...prev, element: { ...fresh } } : null);
                       if (selElement?.id === element.id) {
                         setSelElement({ ...selElement, dNominal: fields.dNominal });
                       }
@@ -347,8 +356,8 @@ function BajanteDiameterSelector({
                   const val = e.target.value;
                   const valNum = val === '7/24' ? 7 / 24 : 0.25;
                   engineRef.current?.updateElementById(element.id, { bajR: valNum });
-                  const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
-                  if (fresh) setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                  const fresh = engineRef.current?.bajantes.find((b) => b.id === element.id);
+                  if (fresh) setContextMenuState((prev) => prev ? { ...prev, element: { ...fresh } } : null);
                   if (selElement?.id === element.id) {
                     setSelElement({ ...selElement, bajR: valNum });
                   }
@@ -364,14 +373,14 @@ function BajanteDiameterSelector({
                 onChange={e => {
                   const val = parseFloat(e.target.value) || 0;
                   engineRef.current?.updateElementById(element.id, { area_m2: val });
-                  setContextMenuState((prev: any) => prev ? { ...prev, element: { ...prev.element, area_m2: val } } : null);
+                  setContextMenuState((prev) => prev ? { ...prev, element: { ...prev.element, area_m2: val } } : null);
                   if (selElement?.id === element.id) {
                     setSelElement({ ...selElement, area_m2: val });
                   }
                 }}
                 style={DrawingElementContextMenu_S2}>
                 <option value="">Sin área</option>
-                {(engineRef.current?.areas || []).filter((a: any) => a.net === element.net).map((a: any) => (
+                {(engineRef.current?.areas || []).filter((a) => a.net === element.net).map((a) => (
                   <option key={a.id} value={a.areaM2}>{a.label} · {a.areaM2} m²</option>
                 ))}
               </select>
@@ -394,9 +403,9 @@ function BajanteDiameterSelector({
                 } else {
                   const fields = { dNominal: val };
                   engineRef.current?.updateElementById(element.id, fields);
-                  const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
+                  const fresh = engineRef.current?.bajantes.find((b) => b.id === element.id);
                   if (fresh) {
-                    setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                    setContextMenuState((prev) => prev ? { ...prev, element: { ...fresh } } : null);
                     if (selElement?.id === element.id) {
                       setSelElement({ ...selElement, dNominal: fields.dNominal });
                     }
@@ -428,18 +437,20 @@ function BajanteConnectionPanel({
   activeNet,
   planosCtx,
 }: {
-  element: any;
+  element: PlanoBajante | PlanoRamal;
   isGhostClick?: boolean;
   ramalEndpoint?: { idx: number; x: number; y: number } | null;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
-  selElement: Record<string, any> | null;
-  setSelElement: (el: Record<string, any> | null) => void;
-  setContextMenuState: React.Dispatch<React.SetStateAction<any>>;
-  mats: Record<string, any[]>;
+  selElement: PlanoElement | null;
+  setSelElement: (el: PlanoElement | null) => void;
+  setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
+  mats: Record<string, MaterialItem[]>;
   activeNet: string;
-  planosCtx?: { plans: any[] };
+  planosCtx?: { plans: PlanItem[] };
 }) {
-  const hasPts = !!element.pts;
+  const hasPts = !!(element as Partial<PlanoRamal>).pts;
+  const bajEl = element as PlanoBajante;
+  const ramalEl = element as PlanoRamal;
 
   return (
     <>
@@ -452,15 +463,15 @@ function BajanteConnectionPanel({
             <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Ramales asociados</div>
             <div style={DrawingElementContextMenu_S7}>
               {(() => {
-                const bajRamales = (engineRef.current?.ramales || []).filter((r: any) => r.net === activeNet && r.tipo !== 'tributario');
+                const bajRamales = (engineRef.current?.ramales || []).filter((r) => r.net === activeNet && r.tipo !== 'tributario');
                 if (bajRamales.length === 0) return <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 2' }}>Sin ramales</div>;
-                const recibidos = (element.recibeDeIds || []);
-                return bajRamales.map((r: any) => {
+                const recibidos = (bajEl.recibeDeIds || []);
+                return bajRamales.map((r) => {
                   const isAssociated = recibidos.includes(r.id);
                   const rStart = r.pts?.[0];
                   const rEnd = r.pts?.[r.pts.length - 1];
-                  const distStart = rStart ? Math.hypot(rStart[0] - element.x, rStart[1] - element.y) : Infinity;
-                  const distEnd = rEnd ? Math.hypot(rEnd[0] - element.x, rEnd[1] - element.y) : Infinity;
+                  const distStart = rStart ? Math.hypot(rStart[0] - bajEl.x, rStart[1] - bajEl.y) : Infinity;
+                  const distEnd = rEnd ? Math.hypot(rEnd[0] - bajEl.x, rEnd[1] - bajEl.y) : Infinity;
                   const isAtStart = distStart <= distEnd;
                   return (
                     <label key={r.id} style={DrawingElementContextMenu_S8}>
@@ -471,17 +482,17 @@ function BajanteConnectionPanel({
                           // than the closed-over `recibidos` snapshot — two checkboxes toggled
                           // before React re-renders between them would otherwise each compute
                           // newRecibe from the same stale array and clobber each other's change.
-                          const liveBaj = engineRef.current?.bajantes.find((bb: any) => bb.id === element.id);
+                          const liveBaj = engineRef.current?.bajantes.find((bb) => bb.id === bajEl.id);
                           const liveRecibe: string[] = liveBaj?.recibeDeIds || recibidos;
                           const newRecibe = checked
                             ? [...liveRecibe, r.id]
                             : liveRecibe.filter((id: string) => id !== r.id);
-                          engineRef.current?.updateElementById(element.id, { recibeDeIds: newRecibe });
-                          setContextMenuState((prev: any) => prev ? { ...prev, element: { ...prev.element, recibeDeIds: newRecibe } } : null);
-                          if (selElement?.id === element.id) {
+                          engineRef.current?.updateElementById(bajEl.id, { recibeDeIds: newRecibe });
+                          setContextMenuState((prev) => prev ? { ...prev, element: { ...prev.element, recibeDeIds: newRecibe } } : null);
+                          if (selElement?.id === bajEl.id) {
                             setSelElement({ ...selElement, recibeDeIds: newRecibe });
                           }
-                          const bajCode = element.code || element.id;
+                          const bajCode = bajEl.code || bajEl.id;
                           const currentIni = r.ini || '';
                           const currentFin = r.fin || '';
                           if (isAtStart) {
@@ -511,18 +522,18 @@ function BajanteConnectionPanel({
             <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
             <div style={DrawingElementContextMenu_S9}>
               {(() => {
-                const netBajantes = (engineRef.current?.bajantes || []).filter((b: any) => b.net === element.net && b.id !== element.id && b.tipo !== 'tributario');
+                const netBajantes = (engineRef.current?.bajantes || []).filter((b) => b.net === bajEl.net && b.id !== bajEl.id && b.tipo !== 'tributario');
                 if (netBajantes.length === 0) return <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin bajantes</div>;
-                const currentId = element.id;
-                return netBajantes.map((b: any) => {
-                  const isAssociated = (element.recibeDeIds || []).includes(b.id)
+                const currentId = bajEl.id;
+                return netBajantes.map((b) => {
+                  const isAssociated = (bajEl.recibeDeIds || []).includes(b.id)
                     || (b.recibeDeIds || []).includes(currentId);
                   return (
                     <label key={b.id} style={DrawingElementContextMenu_S8}>
                       <input type="checkbox" checked={isAssociated}
                         onChange={e => {
                           const checked = e.target.checked;
-                          const bajFresh = element.recibeDeIds || [];
+                          const bajFresh = bajEl.recibeDeIds || [];
                           const otherFresh = b.recibeDeIds || [];
 
                           const newBajRecibe = checked
@@ -534,8 +545,8 @@ function BajanteConnectionPanel({
 
                           engineRef.current?.updateElementById(currentId, { recibeDeIds: newBajRecibe });
                           engineRef.current?.updateElementById(b.id, { recibeDeIds: newOtherRecibe });
-                          const refreshed = engineRef.current?.bajantes.find((x: any) => x.id === currentId);
-                          if (refreshed) setContextMenuState((prev: any) => prev ? { ...prev, element: { ...refreshed } } : null);
+                          const refreshed = engineRef.current?.bajantes.find((x) => x.id === currentId);
+                          if (refreshed) setContextMenuState((prev) => prev ? { ...prev, element: { ...refreshed } } : null);
                           if (selElement?.id === currentId) {
                             setSelElement({ ...selElement, recibeDeIds: newBajRecibe });
                           }
@@ -557,10 +568,10 @@ function BajanteConnectionPanel({
 
       {hasPts && ramalEndpoint && (() => {
         const supNets = ['san', 'll', 'vent', 'af', 'ac', 'gas', 'rci', 'rec'];
-        if (!supNets.includes(element.net)) return null;
+        if (!supNets.includes(ramalEl.net)) return null;
         const ep = ramalEndpoint;
 
-        const netDef = NETS.find((n: any) => n.id === element.net);
+        const netDef = NETS.find((n) => n.id === ramalEl.net);
 
         return (
           <>
@@ -570,24 +581,24 @@ function BajanteConnectionPanel({
                 const pfx = isMon
                   ? (netDef?.bmType === 'montante' ? (netDef?.bmPfx || 'MON') : ('M' + (netDef?.lbl || 'MON')))
                   : (netDef?.bmPfx || 'B');
-                const existingExtreme = (engineRef.current?.bajantes || []).find((b: any) =>
+                const existingExtreme = (engineRef.current?.bajantes || []).find((b) =>
                   Math.abs(b.x - ep.x) < 0.5 && Math.abs(b.y - ep.y) < 0.5
-                  && b.net === element.net
+                  && b.net === ramalEl.net
                 );
                 if (existingExtreme) return null;
                 const fieldAcc = ep.idx === 0 ? 'accesorioInicio' : 'accesorioFin';
                 const fieldApp = ep.idx === 0 ? 'aparatoInicio' : 'aparatoFin';
-                if (element[fieldAcc] || element[fieldApp]) return null;
+                if (ramalEl[fieldAcc] || ramalEl[fieldApp]) return null;
                 return (
                   <button type="button" key={bmLabel} onClick={() => {
                     const eng = engineRef.current;
                     if (!eng) return;
-                    const cnt = eng.bajantes.filter((b: any) => b.tipo === bmLabel && (!isMon || b.net === element.net)).length + 1;
-                    const id = isMon ? pfx + cnt + '_' + element.net : (pfx + cnt);
+                    const cnt = eng.bajantes.filter((b) => b.tipo === bmLabel && (!isMon || b.net === ramalEl.net)).length + 1;
+                    const id = isMon ? pfx + cnt + '_' + ramalEl.net : (pfx + cnt);
                     const code = isMon ? pfx + cnt : id;
                     const nl = eng.nivelActual;
                     eng.bajantes.push({
-                      id, net: element.net,
+                      id, net: ramalEl.net,
                       tipo: bmLabel,
                       code: code,
                       direccion: bmLabel === 'bajante' ? 'baja' : 'sube',
@@ -597,7 +608,7 @@ function BajanteConnectionPanel({
                       nptBase: nl?.npt ?? 0,
                       nptCima: nl?.npt ?? 0,
                       hVert: 0,
-                      dNominal: '0', recibeDeIds: [element.id], alimentaIds: [], descargaEnId: null,
+                      dNominal: '0', recibeDeIds: [ramalEl.id], alimentaIds: [], descargaEnId: null,
                       ucAcum: 0, ucExtra: 0, area_m2: 0,
                       desplazamientos: {},
                       lblOffX: 0, lblOffY: 0, labelAngle: 0,
@@ -606,18 +617,18 @@ function BajanteConnectionPanel({
                     });
                     // Auto-fill ramal's ini/fin
                     if (ep.idx === 0) {
-                      eng.updateElementById(element.id, { ini: code });
+                      eng.updateElementById(ramalEl.id, { ini: code });
                     } else {
-                      eng.updateElementById(element.id, { fin: code });
+                      eng.updateElementById(ramalEl.id, { fin: code });
                     }
                     // Lock the ramal so the newly snapped bajante can't be dragged away independently
-                    eng.updateElementById(element.id, { bloqueado: true });
+                    eng.updateElementById(ramalEl.id, { bloqueado: true });
                     if (bmLabel === 'montante') {
                       eng._renumberMontantes();
                     } else {
-                      eng._renumberBajantes(element.net);
+                      eng._renumberBajantes(ramalEl.net);
                     }
-                    const newlyCreated = eng.bajantes.find((b: any) => b.tipo === bmLabel && b.x === ep.x && b.y === ep.y);
+                    const newlyCreated = eng.bajantes.find((b) => b.tipo === bmLabel && b.x === ep.x && b.y === ep.y);
                     if (newlyCreated) {
                       eng.selId = newlyCreated.id;
                       eng._emitSelect(newlyCreated);
@@ -631,19 +642,19 @@ function BajanteConnectionPanel({
               })}
             </div>
 
-            {(element.tipo === 'tributario' || element.tipo === 'ramal') && ['san', 'af', 'ac', 'gas'].includes(element.net) && (() => {
+            {(ramalEl.tipo === 'tributario' || ramalEl.tipo === 'ramal') && ['san', 'af', 'ac', 'gas'].includes(ramalEl.net) && (() => {
               const isStart = ep.idx === 0;
-              const fieldAcc = isStart ? 'accesorioInicio' : 'accesorioFin';
-              const fieldDiam = isStart ? 'diametroInicio' : 'diametroFin';
+              const fieldAcc: 'accesorioInicio' | 'accesorioFin' = isStart ? 'accesorioInicio' : 'accesorioFin';
+              const fieldDiam: 'diametroInicio' | 'diametroFin' = isStart ? 'diametroInicio' : 'diametroFin';
 
-              const currentAcc = element[fieldAcc] || '';
-              const currentDiam = element[fieldDiam] || element.diametro || '';
+              const currentAcc = ramalEl[fieldAcc] || '';
+              const currentDiam = ramalEl[fieldDiam] || ramalEl.diametro || '';
 
-              const matList = mats?.[element.net] || [];
-              const matShort = element.material || matList[0]?.val || '';
+              const matList = mats?.[ramalEl.net] || [];
+              const matShort = ramalEl.material || matList[0]?.val || '';
               const diamList = DIAM_BY_MAT[matShort] || [];
 
-              const accOptions = getAccessoryOptions(element.net);
+              const accOptions = getAccessoryOptions(ramalEl.net);
 
               return (
                 <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 6, borderBottom: '1px solid #3a494a', marginBottom: 4 }}>
@@ -659,20 +670,20 @@ function BajanteConnectionPanel({
                       onChange={(e) => {
                         const val = e.target.value;
                         if (val) {
-                          const fieldApp = isStart ? 'aparatoInicio' : 'aparatoFin';
-                          if (element[fieldApp]) {
+                          const fieldApp: 'aparatoInicio' | 'aparatoFin' = isStart ? 'aparatoInicio' : 'aparatoFin';
+                          if (ramalEl[fieldApp]) {
                             engineRef.current?.triggerAlert('Aparato existente', 'Este extremo ya tiene un aparato. Elimínalo antes de asignar un accesorio.');
                             return;
                           }
-                          const existingBm = (engineRef.current?.bajantes || []).find((b: any) =>
+                          const existingBm = (engineRef.current?.bajantes || []).find((b) =>
                             Math.abs(b.x - ep.x) < 0.5 && Math.abs(b.y - ep.y) < 0.5
-                            && b.net === element.net
+                            && b.net === ramalEl.net
                           );
                           if (existingBm) {
                             engineRef.current?.triggerAlert('Elemento existente', `Ya existe un ${existingBm.tipo} (${existingBm.code || existingBm.id}) en este extremo. Elimínalo antes de asignar un accesorio.`);
                             return;
                           }
-                          if (val === 'codoReventilado' && (diamPulgFromLabel(element.diametro || '') < 3 || diamPulgFromLabel(element.diametro || '') > 4)) {
+                          if (val === 'codoReventilado' && (diamPulgFromLabel(ramalEl.diametro || '') < 3 || diamPulgFromLabel(ramalEl.diametro || '') > 4)) {
                             engineRef.current?.triggerAlert('Diámetro no permitido', 'La tubería principal sanitaria con codo reventilado solo admite diámetro de 3" o 4".');
                             return;
                           }
@@ -680,20 +691,20 @@ function BajanteConnectionPanel({
                           // with the new selection instead of blocking with an alert.
                         }
                         if (engineRef.current) {
-                          const oldVal = element[fieldAcc] || '';
-                          const updates: any = { [fieldAcc]: val };
-                          if (val && !element[fieldDiam]) {
-                            updates[fieldDiam] = element.diametro || '';
+                          const oldVal = ramalEl[fieldAcc] || '';
+                          const updates: Record<string, unknown> = { [fieldAcc]: val };
+                          if (val && !ramalEl[fieldDiam]) {
+                            updates[fieldDiam] = ramalEl.diametro || '';
                           }
-                          engineRef.current.updateElementById(element.id, updates);
-                          setContextMenuState((prev: any) => prev ? { ...prev, element: { ...prev.element, ...updates } } : null);
-                          if (selElement?.id === element.id) {
+                          engineRef.current.updateElementById(ramalEl.id, updates);
+                          setContextMenuState((prev) => prev ? { ...prev, element: { ...prev.element, ...updates } } : null);
+                          if (selElement?.id === ramalEl.id) {
                             setSelElement({ ...selElement, ...updates });
                           }
                           engineRef.current.render();
                           engineRef.current._markDirty();
                           if (val !== oldVal && planosCtx?.plans) {
-                            syncExtremeAccessoryToHidroData(element.id, fieldAcc, oldVal, val, planosCtx.plans);
+                            syncExtremeAccessoryToHidroData(ramalEl.id, fieldAcc, oldVal, val, planosCtx.plans);
                           }
                         }
                       }}
@@ -716,9 +727,9 @@ function BajanteConnectionPanel({
                           const val = e.target.value;
                           if (engineRef.current) {
                             const updates = { [fieldDiam]: val };
-                            engineRef.current.updateElementById(element.id, updates);
-                            setContextMenuState((prev: any) => prev ? { ...prev, element: { ...prev.element, ...updates } } : null);
-                            if (selElement?.id === element.id) {
+                            engineRef.current.updateElementById(ramalEl.id, updates);
+                            setContextMenuState((prev) => prev ? { ...prev, element: { ...prev.element, ...updates } } : null);
+                            if (selElement?.id === ramalEl.id) {
                               setSelElement({ ...selElement, ...updates });
                             }
                             engineRef.current.render();
@@ -729,9 +740,9 @@ function BajanteConnectionPanel({
                       >
                         <option value="">Usar diametro de red</option>
                         {(currentAcc === 'sifon'
-                          ? diamList.filter((d: any) => { const v = parseFloat(d.n); return v === 2 || v === 3 || v === 4; })
+                          ? diamList.filter((d) => { const v = parseFloat(d.n); return v === 2 || v === 3 || v === 4; })
                           : diamList
-                        ).map((d: any) => {
+                        ).map((d) => {
                           const valClean = d.n.split(' — ')[0].trim();
                           return <option key={d.n} value={valClean}>{normalizeDnLabel(valClean)}</option>;
                         })}
@@ -759,21 +770,23 @@ function BajanteCodeEditor({
   setDiamSel,
   planosCtx,
 }: {
-  element: any;
+  element: PlanoElement;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
-  selElement: Record<string, any> | null;
-  setSelElement: (el: Record<string, any> | null) => void;
-  setContextMenuState: React.Dispatch<React.SetStateAction<any>>;
-  mats: Record<string, any[]>;
+  selElement: PlanoElement | null;
+  setSelElement: (el: PlanoElement | null) => void;
+  setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
+  mats: Record<string, MaterialItem[]>;
   activeNet: string;
   setDiamSel: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  planosCtx: { plans: any[] };
+  planosCtx: { plans: PlanItem[] };
 }) {
-  const isArea = element.id?.startsWith('AR');
-  const hasPts = !!element.pts;
-  const tipo = element.tipo;
+  const probed = element as ProbedElement;
+  const isArea = probed.id?.startsWith('AR');
+  const hasPts = !!probed.pts;
+  const tipo = probed.tipo;
 
   if (isArea) {
+    const areaEl = element as PlanoArea;
     return (
       <>
         <div style={{ fontSize: 12, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
@@ -781,24 +794,24 @@ function BajanteCodeEditor({
         </div>
         <div style={{ padding: '0 8px 8px' }}>
           <select
-            value={(engineRef.current?.bajantes || []).find((b: any) => b.area_m2 === element.areaM2)?.id || ''}
+            value={(engineRef.current?.bajantes || []).find((b) => b.area_m2 === areaEl.areaM2)?.id || ''}
             aria-label="Asociar Bajante"
             onChange={e => {
               const bajanteId = e.target.value;
-              (engineRef.current?.bajantes || []).forEach((b: any) => {
-                if (b.area_m2 === element.areaM2) {
+              (engineRef.current?.bajantes || []).forEach((b) => {
+                if (b.area_m2 === areaEl.areaM2) {
                   engineRef.current?.updateElementById(b.id, { area_m2: 0 });
                 }
               });
               if (bajanteId) {
-                engineRef.current?.updateElementById(bajanteId, { area_m2: element.areaM2 });
+                engineRef.current?.updateElementById(bajanteId, { area_m2: areaEl.areaM2 });
               }
               engineRef.current?.render();
               setContextMenuState(null);
             }}
             style={DrawingElementContextMenu_S2}>
             <option value="">— Sin bajante —</option>
-            {(engineRef.current?.bajantes || []).filter((b: any) => b.net === element.net).map((b: any) => (
+            {(engineRef.current?.bajantes || []).filter((b) => b.net === areaEl.net).map((b) => (
               <option key={b.id} value={b.id}>{b.code || b.id}</option>
             ))}
           </select>
@@ -808,13 +821,14 @@ function BajanteCodeEditor({
   }
 
   if (hasPts) {
-    const isGas = element.net === 'gas';
-    const isVen = element.net === 'vent';
-    const matList = mats?.[element.net] || [];
-    const matShort = element.material || matList[0]?.val || '—';
-    let diamList: any[] = [];
+    const ramalEl = element as PlanoRamal;
+    const isGas = ramalEl.net === 'gas';
+    const isVen = ramalEl.net === 'vent';
+    const matList = mats?.[ramalEl.net] || [];
+    const matShort = ramalEl.material || matList[0]?.val || '—';
+    let diamList: Array<{ n: string }> = [];
     if (isVen) {
-      diamList = VENTILACION[0]?.rows.map((r: any) => ({ n: r.dn })) || [];
+      diamList = VENTILACION[0]?.rows.map((r) => ({ n: r.dn })) || [];
     } else if (isGas) {
       diamList = GAS[0]?.rows.map(r => ({ n: r.dn })) || [];
     } else {
@@ -828,18 +842,18 @@ function BajanteCodeEditor({
         </div>
         <div style={{ padding: '0 8px 8px' }}>
           <select
-            value={element.diametro ? element.diametro.split(' — ')[0].trim() : ''}
+            value={ramalEl.diametro ? ramalEl.diametro.split(' — ')[0].trim() : ''}
             aria-label="Diámetro de ramal"
             onChange={(e) => {
               const val = e.target.value;
               if (engineRef.current) {
-                engineRef.current?.updateElementById(element.id, { diametro: val });
-                setContextMenuState((prev: any) => prev ? { ...prev, element: { ...prev.element, diametro: val } } : null);
-                if (selElement?.id === element.id) {
+                engineRef.current?.updateElementById(ramalEl.id, { diametro: val });
+                setContextMenuState((prev) => prev ? { ...prev, element: { ...prev.element, diametro: val } } : null);
+                if (selElement?.id === ramalEl.id) {
                   setSelElement({ ...selElement, diametro: val });
                 }
-                if (activeNet === element.net) {
-                  setDiamSel((prev: any) => ({ ...prev, [activeNet]: val }));
+                if (activeNet === ramalEl.net) {
+                  setDiamSel((prev) => ({ ...prev, [activeNet]: val }));
                 }
                 engineRef.current?.render();
               }
@@ -847,7 +861,7 @@ function BajanteCodeEditor({
             style={DrawingElementContextMenu_S2}
           >
             <option value="">— Sin diámetro —</option>
-            {diamList.map((d: any) => {
+            {diamList.map((d) => {
               const valClean = d.n.split(' — ')[0].trim();
               return <option key={d.n} value={valClean}>{normalizeDnLabel(valClean)}</option>;
             })}
@@ -858,69 +872,70 @@ function BajanteCodeEditor({
   }
 
   if (tipo === 'contador') {
+    const bajEl = element as PlanoBajante;
     return (
       <>
         <div style={{ fontSize: 12, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
-          Contador: {element.code || element.id}
+          Contador: {bajEl.code || bajEl.id}
         </div>
         <div style={{ fontSize: 12, color: '#849495', padding: '4px 8px 0', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Diámetro del Contador
         </div>
         <div style={{ padding: '0 8px 8px' }}>
           <select
-            value={element.dNominal ? element.dNominal.replace(/"/g, '').trim() : ''}
+            value={bajEl.dNominal ? bajEl.dNominal.replace(/"/g, '').trim() : ''}
             aria-label="Diámetro del Contador"
             onChange={(e) => {
               const val = e.target.value;
               const dNom = val ? `${val}"` : '';
               if (engineRef.current) {
                 const fields = { dNominal: dNom };
-                engineRef.current?.updateElementById(element.id, fields);
-                const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
+                engineRef.current?.updateElementById(bajEl.id, fields);
+                const fresh = engineRef.current?.bajantes.find((b) => b.id === bajEl.id);
                 if (fresh) {
-                  setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
-                  if (selElement?.id === element.id) {
+                  setContextMenuState((prev) => prev ? { ...prev, element: { ...fresh } } : null);
+                  if (selElement?.id === bajEl.id) {
                     setSelElement({ ...selElement, dNominal: fields.dNominal });
                   }
                 }
                 engineRef.current?.render();
-                writeContadorDiamToDrawing(dNom, planosCtx.plans, element.net || 'af');
+                writeContadorDiamToDrawing(dNom, planosCtx.plans, bajEl.net || 'af');
               }
             }}
             style={DrawingElementContextMenu_S2}
           >
             <option value="">— Sin diámetro —</option>
-              {CONTADORES_CAT.map((c: any) => (
+              {CONTADORES_CAT.map((c) => (
                 <option key={c.dn} value={c.dn}>{normalizeDnLabel(c.dn)}"</option>
               ))}
           </select>
         </div>
-        {(element.net === 'af' || element.net === 'gas') && (
+        {(bajEl.net === 'af' || bajEl.net === 'gas') && (
           <div style={{ borderTop: '1px solid #3a494a', marginTop: 4 }}>
             <div style={{ fontSize: 12, color: '#22D3EE', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
-              {element.net === 'gas' ? 'Conexión (Red → Contador)' : 'AC-01 (Red Pública → Contador)'}
+              {bajEl.net === 'gas' ? 'Conexión (Red → Contador)' : 'AC-01 (Red Pública → Contador)'}
             </div>
             <div style={{ padding: '0 8px 8px' }}>
               <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4 }}>Diámetro</div>
               <select
-                value={element.acoDiam || ''}
+                value={bajEl.acoDiam || ''}
                 aria-label="Diámetro"
                 onChange={(e) => {
                   const val = e.target.value;
                   if (engineRef.current) {
-                    engineRef.current?.updateElementById(element.id, { acoDiam: val });
-                    const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
+                    engineRef.current?.updateElementById(bajEl.id, { acoDiam: val });
+                    const fresh = engineRef.current?.bajantes.find((b) => b.id === bajEl.id);
                     if (fresh) {
-                      setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
+                      setContextMenuState((prev) => prev ? { ...prev, element: { ...fresh } } : null);
                     }
                     engineRef.current?.render();
-                    writeAcoDiamToDrawing(val, planosCtx.plans, element.net || 'af');
+                    writeAcoDiamToDrawing(val, planosCtx.plans, bajEl.net || 'af');
                   }
                 }}
                 style={DrawingElementContextMenu_S2}
               >
                 <option value="">— Sin diámetro —</option>
-                {(element.net === 'gas' ? GAS_DN_LABELS : DIAMETROS_AF.map(d => d.nominal)).map(d => (
+                {(bajEl.net === 'gas' ? GAS_DN_LABELS : DIAMETROS_AF.map(d => d.nominal)).map(d => (
                   <option key={d} value={d}>{normalizeDnLabel(d)}</option>
                 ))}
               </select>
@@ -932,27 +947,28 @@ function BajanteCodeEditor({
   }
 
   if (tipo === 'calentador') {
+    const bajEl = element as PlanoBajante;
     return (
       <>
         <div style={{ fontSize: 12, color: '#849495', padding: '4px 8px', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
-          Calentador: {element.code || element.id}
+          Calentador: {bajEl.code || bajEl.id}
         </div>
         <div style={{ fontSize: 12, color: '#849495', padding: '4px 8px 0', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Equipo (Capacidad)
         </div>
         <div style={{ padding: '0 8px 8px' }}>
           <select
-            value={element.capacidad || ''}
+            value={bajEl.capacidad || ''}
             aria-label="Equipo (Capacidad)"
             onChange={(e) => {
               const val = e.target.value;
               if (engineRef.current) {
                 const fields = { capacidad: val };
-                engineRef.current?.updateElementById(element.id, fields);
-                const fresh = engineRef.current?.bajantes.find((b: any) => b.id === element.id);
+                engineRef.current?.updateElementById(bajEl.id, fields);
+                const fresh = engineRef.current?.bajantes.find((b) => b.id === bajEl.id);
                 if (fresh) {
-                  setContextMenuState((prev: any) => prev ? { ...prev, element: { ...fresh } } : null);
-                  if (selElement?.id === element.id) {
+                  setContextMenuState((prev) => prev ? { ...prev, element: { ...fresh } } : null);
+                  if (selElement?.id === bajEl.id) {
                     setSelElement({ ...selElement, capacidad: val });
                   }
                 }
@@ -977,13 +993,14 @@ function BajanteCodeEditor({
 function BajanteMenu() {
   const ctx = useDrawingElementContextMenu()
   const { contextMenuState, element } = ctx
+  const bajEl = element as PlanoBajante
   const isGhostClick = contextMenuState.isGhostClick || false
   const isSanOrLl = !isGhostClick && ['san', 'll'].includes(ctx.activeNet)
 
   return (
     <>
       <BajanteDirectionSelector
-        element={element}
+        element={bajEl}
         isGhostClick={isGhostClick}
         selectedNivel={ctx.selectedNivel}
         pisos={ctx.pisos}
@@ -993,7 +1010,7 @@ function BajanteMenu() {
         setContextMenuState={ctx.setContextMenuState}
       />
       <BajanteDiameterSelector
-        element={element}
+        element={bajEl}
         isGhostClick={isGhostClick}
         selectedNivel={ctx.selectedNivel}
         engineRef={ctx.engineRef}
@@ -1005,7 +1022,7 @@ function BajanteMenu() {
       />
       {isSanOrLl && (
         <BajanteConnectionPanel
-          element={element}
+          element={bajEl}
           isGhostClick={isGhostClick}
           ramalEndpoint={null}
           engineRef={ctx.engineRef}
@@ -1039,11 +1056,11 @@ function AreaMenu() {
 }
 
 function MidRamalAccessorySelector({ element, midRamalHit, engineRef, selElement, setSelElement }: {
-  element: any;
+  element: PlanoRamal;
   midRamalHit: { segmentIdx: number; x: number; y: number };
   engineRef: React.MutableRefObject<PlanoEngine | null>;
-  selElement: Record<string, any> | null;
-  setSelElement: (el: Record<string, any> | null) => void;
+  selElement: PlanoElement | null;
+  setSelElement: (el: PlanoElement | null) => void;
 }) {
   const options = getAccessoryOptions(element.net);
   if (options.length === 0) return null;
@@ -1075,7 +1092,7 @@ function MidRamalAccessorySelector({ element, midRamalHit, engineRef, selElement
           const accId = e.target.value;
           const eng = engineRef.current;
           if (!eng) return;
-          const fresh = eng.ramales.find((r: any) => r.id === element.id);
+          const fresh = eng.ramales.find((r) => r.id === element.id);
           if (!fresh) return;
 
           if (accId === 'codoReventilado' && (diamPulgFromLabel(fresh.diametro || '') < 3 || diamPulgFromLabel(fresh.diametro || '') > 4)) {
@@ -1123,12 +1140,13 @@ function MidRamalAccessorySelector({ element, midRamalHit, engineRef, selElement
 function RamalMenu() {
   const ctx = useDrawingElementContextMenu()
   const { contextMenuState, element, engineRef, selElement, setSelElement } = ctx
+  const ramalEl = element as PlanoRamal
 
   return (
     <>
-      {contextMenuState.midRamalHit && !contextMenuState.ramalEndpoint && getAccessoryOptions(element.net).length > 0 && (
+      {contextMenuState.midRamalHit && !contextMenuState.ramalEndpoint && getAccessoryOptions(ramalEl.net).length > 0 && (
         <MidRamalAccessorySelector
-          element={element}
+          element={ramalEl}
           midRamalHit={contextMenuState.midRamalHit}
           engineRef={ctx.engineRef}
           selElement={ctx.selElement}
@@ -1137,7 +1155,7 @@ function RamalMenu() {
       )}
       {contextMenuState.ramalEndpoint && (
         <BajanteConnectionPanel
-          element={element}
+          element={ramalEl}
           isGhostClick={contextMenuState.isGhostClick || false}
           ramalEndpoint={contextMenuState.ramalEndpoint}
           engineRef={ctx.engineRef}
@@ -1165,12 +1183,12 @@ function RamalMenu() {
         display: 'flex', alignItems: 'center', justifyContent: 'space-between'
       }}>
         <span style={{ fontSize: 12, color: '#e2e2e8', fontFamily: "'Geist',monospace" }}>Bloquear movimiento</span>
-        <input type="checkbox" checked={!!element.bloqueado} aria-label="Bloquear movimiento"
+        <input type="checkbox" checked={!!ramalEl.bloqueado} aria-label="Bloquear movimiento"
           onChange={e => {
             const val = e.target.checked;
             if (engineRef.current) {
-              engineRef.current?.updateElementById(element.id, { bloqueado: val });
-              if (selElement?.id === element.id) {
+              engineRef.current?.updateElementById(ramalEl.id, { bloqueado: val });
+              if (selElement?.id === ramalEl.id) {
                 setSelElement({ ...selElement, bloqueado: val });
               }
               engineRef.current?.render();
@@ -1185,10 +1203,10 @@ function RamalMenu() {
           <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
           <div style={DrawingElementContextMenu_S9}>
             {(() => {
-              const currentId = element.id;
-              const netBajantes = (engineRef.current?.bajantes || []).filter((b: any) => b.net === element.net && b.id !== element.id && b.tipo !== 'tributario');
+              const currentId = ramalEl.id;
+              const netBajantes = (engineRef.current?.bajantes || []).filter((b) => b.net === ramalEl.net && b.id !== ramalEl.id && b.tipo !== 'tributario');
               if (netBajantes.length === 0) return <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin bajantes</div>;
-              return netBajantes.map((b: any) => {
+              return netBajantes.map((b) => {
                 const isAssociated = (b.recibeDeIds || []).includes(currentId);
                 return (
                   <label key={b.id} style={DrawingElementContextMenu_S22}>
@@ -1198,7 +1216,7 @@ function RamalMenu() {
                         const newRecibe = e.target.checked
                           ? [...recibidos, currentId]
                           : recibidos.filter((id: string) => id !== currentId);
-                        const extraFields: Record<string, any> = { recibeDeIds: newRecibe };
+                        const extraFields: Record<string, unknown> = { recibeDeIds: newRecibe };
                         if (e.target.checked) {
                           extraFields.descargaEnId = currentId;
                         } else if (b.descargaEnId === currentId || b.descargaEnId?.endsWith('|' + currentId)) {
@@ -1260,13 +1278,13 @@ interface DrawingElementContextMenuProps {
   contextMenuState: ContextMenuState | null;
   setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
   selectedNivel: number | null;
-  pisos: any[];
+  pisos: Piso[];
   engineRef: React.MutableRefObject<PlanoEngine | null>;
-  selElement: Record<string, any> | null;
-  setSelElement: (el: Record<string, any> | null) => void;
+  selElement: PlanoElement | null;
+  setSelElement: (el: PlanoElement | null) => void;
   lowerFloorsRamales: LowerFloorRamales[];
-  planosCtx: { plans: any[] };
-  mats: Record<string, any[]>;
+  planosCtx: { plans: PlanItem[] };
+  mats: Record<string, MaterialItem[]>;
   activeNet: string;
   setDiamSel: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }
@@ -1347,7 +1365,7 @@ function DrawingElementContextMenuInner() {
     return () => window.removeEventListener('keydown', onKey);
   }, [ctx.setContextMenuState]);
 
-  const element = contextMenuState.element;
+  const element = contextMenuState.element as ProbedElement;
   const isBajanteTipo = element.tipo === 'bajante' || element.tipo === 'montante' || element.id?.startsWith('B');
   const isArea = element.id?.startsWith('AR');
   const hasPts = !!element.pts;
