@@ -1,9 +1,10 @@
 import type { Dispatch, SetStateAction } from "react";
+import type { IsoRamal, IsoBajante } from "./isometria/geometry";
 
 const IsometriaSidebar_S7: React.CSSProperties = { padding: '7px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid #2a3a3b', fontFamily: 'Geist,monospace', userSelect: 'none', };
 
 interface IsometriaSidebarProps {
-  tramoTree: { netId: string; netName: string; netColor: string; niveles: { nivel: number; label: string; ramales: any[]; bajantes: any[] }[] }[];
+  tramoTree: { netId: string; netName: string; netColor: string; niveles: { nivel: number; label: string; ramales: IsoRamal[]; bajantes: IsoBajante[] }[] }[];
   collapsedNets: Set<string>;
   toggleCollapsedNet: (netId: string) => void;
   selTramo: string | null;

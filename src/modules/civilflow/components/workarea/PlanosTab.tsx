@@ -84,9 +84,10 @@ function PlanosTab({ state }: PlanosTabProps) {
 
   const handleSaveConfig = (config: CalibrationData & { planId: number }) => {
     setCalData(prev => ({ ...prev, [config.planId]: config }));
-    if (!(window as any)._planosConfig) (window as any)._planosConfig = {};
+    const win = window as unknown as { _planosConfig?: Record<string, unknown> };
+    if (!win._planosConfig) win._planosConfig = {};
     const key = `${selectedPlan?.name || 'plan'}_${config.planId}`;
-    (window as any)._planosConfig[key] = {
+    win._planosConfig[key] = {
       nombre: selectedPlan?.name || '',
       origen: config.origen,
       scaleM: config.scaleM,
@@ -106,7 +107,7 @@ function PlanosTab({ state }: PlanosTabProps) {
 
     try {
       const trazosKey = TRAZOS_PREFIX + config.planId;
-      const data = loadFromStorage<any>(trazosKey, {});
+      const data = loadFromStorage<Record<string, unknown>>(trazosKey, {});
       data.origen = config.origen;
       if (config.scaleM) {
         data.scaleM = config.scaleM;
@@ -155,7 +156,7 @@ function PlanosTab({ state }: PlanosTabProps) {
           <div style={{ flex: 1 }} />
           {selectedPlan.nivel !== null && calDone && (
             <button type="button" onClick={() => {
-              if (plans.some((x: any) => x.id !== selectedPlan.id && x.status === 'confirmed' && x.nivel === selectedPlan.nivel)) {
+              if (plans.some((x) => x.id !== selectedPlan.id && x.status === 'confirmed' && x.nivel === selectedPlan.nivel)) {
                 alert('Este nivel ya tiene un plano asociado.');
                 return;
               }
@@ -323,7 +324,7 @@ function PlanosTab({ state }: PlanosTabProps) {
             </div>
           ) : (
             <ul role="list" style={PlanosTab_S10}>
-              {pendingPlanos.map((p: any) => {
+              {pendingPlanos.map((p) => {
                 const calOk = isCalibrated(p.id);
                 const isSelected = selectedPlanId === p.id;
                 return (
@@ -363,7 +364,7 @@ function PlanosTab({ state }: PlanosTabProps) {
                       {calOk && p.nivel !== null && p.nivel !== undefined && (
                         <button type="button"
                           onClick={() => {
-                            if (plans.some((x: any) => x.id !== p.id && x.status === 'confirmed' && x.nivel === p.nivel)) {
+                            if (plans.some((x) => x.id !== p.id && x.status === 'confirmed' && x.nivel === p.nivel)) {
                               alert('Este nivel ya tiene un plano asociado.');
                               return;
                             }
@@ -435,7 +436,7 @@ function PlanosTab({ state }: PlanosTabProps) {
             </div>
           ) : (
             <ul role="list" style={{ flex: 1, overflowY: 'auto', listStyle: 'none', margin: 0, padding: 0 }}>
-              {confirmedPlanos.map((p: any) => (
+              {confirmedPlanos.map((p) => (
                 <li key={p.id}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderBottom: '1px solid var(--line)', background: selectedPlanId === p.id ? 'rgba(27,110,243,.08)' : 'transparent', transition: 'background .1s' }}>
                   <div style={{ minWidth: 0, flex: 1 }}>

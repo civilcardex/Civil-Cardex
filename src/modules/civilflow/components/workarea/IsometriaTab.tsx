@@ -1,32 +1,36 @@
 import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import { TRAZOS_PREFIX, ISO_COLLAPSED_KEY, ISO_ACTIVE_NETS_KEY } from "../../constants/storage-keys";
-import { loadPlanCrop } from "../../utils/planCrop";
 import { parseDescargaEnId } from "../../utils/parseDescargaEnId";
-import { project, readDrawingAll, loadPlanImage, type ProjPt } from "./isometria/geometry";
+import { readDrawingAll, loadPlanImage, type ProjPt, project, type IsoRamal, type IsoBajante } from "./isometria/geometry";
+import { useIsometriaRender } from "./isometria/useIsometriaRender";
+import { useIsometriaInteraction } from "./isometria/useIsometriaInteraction";
+import { exportPdf, exportPng } from "./isometria/export";
 import IsometriaToolbar from "./IsometriaToolbar";
 import IsometriaSidebar from "./IsometriaSidebar";
+import type { useWorkAreaState } from "../useWorkAreaState";
 
+interface IsometriaTabProps {
+  state: ReturnType<typeof useWorkAreaState>;
+}
 
-
-function IsometriaTabBase({ state }: any) {
+function IsometriaTabBase({ state }: IsometriaTabProps) {
   const { plans, pisos, profs, proy } = state;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ mode: 'rot' | 'pan'; sx: number; sy: number; rx0: number; rz0: number; ox0: number; oy0: number } | null>(null);
 
   const [activeNets, _setActiveNets] = useState<Set<string>>(() => {
     const saved = (() => { try { return JSON.parse(localStorage.getItem(ISO_ACTIVE_NETS_KEY) || 'null'); } catch { return null; } })();
     if (Array.isArray(saved) && saved.length > 0) return new Set(saved);
-    if (!state.plans) return new Set();
+    if (!plans) return new Set();
     const withData: string[] = [];
     for (const n of NETS) {
-      for (const plan of state.plans) {
+      for (const plan of plans) {
         const raw = localStorage.getItem(TRAZOS_PREFIX + plan.id);
         if (raw) {
           try {
             const data = JSON.parse(raw);
-            if ((data.ramales || []).some((r: any) => r.net === n.id) || (data.bajantes || []).some((b: any) => b.net === n.id)) {
+            if ((data.ramales || []).some((r: { net: string }) => r.net === n.id) || (data.bajantes || []).some((b: { net: string }) => b.net === n.id)) {
               withData.push(n.id);
               break;
             }
@@ -63,14 +67,9 @@ function IsometriaTabBase({ state }: any) {
   const exportRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 800, h: 500 });
   const [showPlanos, setShowPlanos] = useState(true);
-  const planImagesRef = useRef<Map<any, { img: HTMLCanvasElement; w: number; h: number }>>(new Map());
+  const planImagesRef = useRef<Map<number, { img: HTMLCanvasElement; w: number; h: number }>>(new Map());
   const [renderTick, setRenderTick] = useState(0);
-  const [cursorStyle, setCursorStyle] = useState('grab');
   const [planosCount, setPlanosCount] = useState('0/0');
-  // Deliberately runs every render (dragRef is a ref, not a reactive dependency) — setState
-  // bails out when the value is unchanged, so this isn't an infinite loop, just a plain sync.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setCursorStyle(dragRef.current ? 'grabbing' : 'grab'); });
 
   useEffect(() => {
     const el = containerRef.current;
@@ -91,9 +90,9 @@ function IsometriaTabBase({ state }: any) {
     const m: Record<number, number> = {};
     const pisosArr = pisos || [];
     const defaultSpacingMm = 2700;
-    const sorted = pisosArr.toSorted((a: any, b: any) => a.n - b.n);
+    const sorted = pisosArr.toSorted((a, b) => a.n - b.n);
     for (const p of sorted) {
-      const floorIdx = p.n >= 0 && p.n < 90 ? p.n : p.n === 99 ? (sorted.filter((x: any) => x.n > 0 && x.n < 90).length + 1) : -(Math.abs(p.n));
+      const floorIdx = p.n >= 0 && p.n < 90 ? p.n : p.n === 99 ? (sorted.filter((x) => x.n > 0 && x.n < 90).length + 1) : -(Math.abs(p.n));
       m[p.n] = -floorIdx * defaultSpacingMm;
     }
     return m;
@@ -101,7 +100,7 @@ function IsometriaTabBase({ state }: any) {
 
   const profByNet = useMemo(() => {
     const m: Record<string, number> = {};
-    (profs || []).forEach((p: any) => { m[p.id] = p.prof ?? 0; });
+    (profs || []).forEach((p) => { m[p.id] = p.prof ?? 0; });
     return m;
   }, [profs]);
 
@@ -119,13 +118,13 @@ function IsometriaTabBase({ state }: any) {
   }, []);
 
   const tramoTree = useMemo(() => {
-    const tree: { netId: string; netName: string; netColor: string; niveles: { nivel: number; label: string; ramales: any[]; bajantes: any[] }[] }[] = [];
+    const tree: { netId: string; netName: string; netColor: string; niveles: { nivel: number; label: string; ramales: IsoRamal[]; bajantes: IsoBajante[] }[] }[] = [];
     for (const n of NETS) {
       if (!activeNets.has(n.id)) continue;
       const netData = dataByNet[n.id];
       if (!netData || (netData.ramales.length === 0 && netData.bajantes.length === 0)) continue;
       const netColor = n.col || '#888';
-      const nivelMap: Record<number, { ramales: any[]; bajantes: any[] }> = {};
+      const nivelMap: Record<number, { ramales: IsoRamal[]; bajantes: IsoBajante[] }> = {};
       for (const r of netData.ramales) {
         const niv = r.planNivel;
         if (!nivelMap[niv]) nivelMap[niv] = { ramales: [], bajantes: [] };
@@ -159,11 +158,11 @@ function IsometriaTabBase({ state }: any) {
     return netsWithData;
   }, [plans]);
 
-  const confirmedPlanos = useMemo(() => (plans || []).filter((p: any) => p.status === 'confirmed' && p.nivel != null), [plans]);
+  const confirmedPlanos = useMemo(() => (plans || []).filter((p) => p.status === 'confirmed' && p.nivel != null), [plans]);
 
   const getIsoCoords = useCallback((px: number, py: number, nivel: number) => {
-    const plan = confirmedPlanos.find((p: any) => p.nivel !== null && String(p.nivel) === String(nivel));
-    const scaleM = (plan?.scale ? plan.scale / 100 : null) || plan?.scaleM || readScaleMap?.[nivel] || 0.5;
+    const plan = confirmedPlanos.find((p) => p.nivel !== null && String(p.nivel) === String(nivel));
+    const scaleM = (plan?.scale ? plan.scale / 100 : null) || readScaleMap?.[nivel] || 0.5;
     const planData = plan ? planImagesRef.current.get(plan.id) : null;
     const scale = 1.5;
     let pageW = 842;
@@ -254,12 +253,12 @@ function IsometriaTabBase({ state }: any) {
           const parts = parseDescargaEnId(b.descargaEnId, b.planId);
           const targetPlanId = parts[0];
           const targetId = parts[1];
-          const targetRamal = netData.ramales.find((rr: any) => rr.id === targetId && String(rr.planId) === String(targetPlanId));
+          const targetRamal = netData.ramales.find((rr) => rr.id === targetId && String(rr.planId) === String(targetPlanId));
           if (targetRamal) {
             targetZ = nptMap[targetRamal.planNivel] || 0;
           } else {
             // "Destino" can also be another bajante on a lower floor, not just a ramal.
-            const targetBajante = netData.bajantes.find((bb: any) => bb.id === targetId && String(bb.planId) === String(targetPlanId));
+            const targetBajante = netData.bajantes.find((bb) => bb.id === targetId && String(bb.planId) === String(targetPlanId));
             if (targetBajante) targetZ = nptMap[targetBajante.planNivel] || 0;
           }
         }
@@ -282,7 +281,7 @@ function IsometriaTabBase({ state }: any) {
 
     if (showPlanos && planImagesRef.current.size > 0) {
       for (const [planId, planData] of planImagesRef.current) {
-        const plan = confirmedPlanos.find((p: any) => p.id === planId);
+        const plan = confirmedPlanos.find((p) => p.id === planId);
         if (!plan || plan.nivel == null) continue;
         const z = nptMap[plan.nivel] || 0;
         const z_pix = getZPix(z, plan.nivel);
@@ -334,53 +333,15 @@ function IsometriaTabBase({ state }: any) {
     return { ramales, bajantes, len: len.toFixed(1) };
   }, [dataByNet]);
 
-  const exportPdf = useCallback(async () => {
-    const canvas = canvasRef.current;
-    if (!canvas || size.w < 10) return;
-    const { jsPDF } = await import('jspdf');
-    const dataUrl = canvas.toDataURL('image/png', 1.0);
-    const doc = new jsPDF({ orientation: 'landscape', format: 'a3' });
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
+  const { cursorStyle, handleMouseDown } = useIsometriaInteraction({
+    canvasRef, rotX, setRotX, rotZ, setRotZ, offX, setOffX, offY, setOffY, setZoom, setSelTramo,
+  });
 
-    doc.setFontSize(16);
-    doc.text('Civil Flow', 15, 15);
-    doc.setFontSize(11);
-    const netNames = [...activeNets].map(id => NETS.find(n => n.id === id)?.name).filter(Boolean).join(', ');
-    doc.text(`Proyecto: ${proy?.nombre || '—'}`, 15, 23);
-    doc.text(`Redes: ${netNames || '—'}`, 15, 31);
-
-    doc.setDrawColor(180, 180, 180);
-    doc.line(14, 35, pageW - 14, 35);
-
-    const margin = 14;
-    const usableW = pageW - margin * 2;
-    const aspect = canvas.width / canvas.height;
-    let imgW = usableW;
-    let imgH = usableW / aspect;
-    const maxImgH = pageH - 40 - margin;
-    if (imgH > maxImgH) { imgH = maxImgH; imgW = imgH * aspect; }
-    const imgX = margin + (usableW - imgW) / 2;
-    const imgY = 40 + (maxImgH - imgH) / 2;
-    doc.addImage(dataUrl, 'PNG', imgX, imgY, imgW, imgH);
-
-    doc.setFontSize(9);
-    doc.text(`Vista: rotX=${rotX}° rotZ=${rotZ}° scaleZ=${scaleZ.toFixed(1)} zoom=${Math.round(zoom * 100)}%`, margin, pageH - 8);
-    const dateStr = new Date().toLocaleDateString('es-CO');
-    doc.text(`Tramos: ${totals.ramales} · Bajantes: ${totals.bajantes} · Long: ${totals.len}m`, pageW / 2, pageH - 8, { align: 'center' } as any);
-    doc.text(dateStr, pageW - margin, pageH - 8, { align: 'right' } as any);
-
-    doc.save(`civilflow_isometria_${(proy?.nombre || 'proyecto').replace(/[^a-zA-Z0-9_-]/g, '_')}_${dateStr.replace(/\//g, '-')}.pdf`);
-  }, [activeNets, proy, rotX, rotZ, scaleZ, zoom, size, totals]);
-
-  const exportPng = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || size.w < 10) return;
-    const link = document.createElement('a');
-    link.download = `civilflow_isometria_${(proy?.nombre || 'proyecto').replace(/[^a-zA-Z0-9_-]/g, '_')}_${new Date().toLocaleDateString('es-CO').replace(/\//g, '-')}.png`;
-    link.href = canvas.toDataURL('image/png', 1.0);
-    link.click();
-  }, [proy, size]);
+  useIsometriaRender({
+    canvasRef, planImagesRef, dataByNet, activeNets, profByNet, nptMap, pisos,
+    rotZ, rotX, scaleZ, zoom, offX, offY, size, selTramo, showPlanos, confirmedPlanos, renderTick,
+    getIsoCoords, getZPix,
+  });
 
   useEffect(() => {
     if (!showExportMenu) return;
@@ -391,345 +352,11 @@ function IsometriaTabBase({ state }: any) {
     return () => document.removeEventListener('mousedown', handler);
   }, [showExportMenu]);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const W = size.w, H = size.h;
-    const dpr = devicePixelRatio || 1;
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    ctx.scale(dpr, dpr);
-    ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#14161a';
-    ctx.fillRect(0, 0, W, H);
-    const planCrop = loadPlanCrop();
+  const handleExportPdf = useCallback(() => exportPdf({
+    canvasRef, size, activeNets, nets: NETS, proyNombre: proy?.nombre, rotX, rotZ, scaleZ, zoom, totals,
+  }), [size, activeNets, proy, rotX, rotZ, scaleZ, zoom, totals]);
 
-    const cx = W / 2, cy = H / 2;
-
-    const segments: { sx1: number; sy1: number; sx2: number; sy2: number; z: number; id: string; label: string; isBaj: boolean; netId: string }[] = [];
-
-    // Draw planos as semi-transparent background sheets
-    if (showPlanos && planImagesRef.current.size > 0) {
-      for (const [planId, planData] of planImagesRef.current) {
-        const plan = confirmedPlanos.find((p: any) => p.id === planId);
-        if (!plan || plan.nivel == null) continue;
-        const z = nptMap[plan.nivel] || 0;
-        const z_pix = getZPix(z, plan.nivel);
-        const img = planData.img;
-        const imgW = planData.w;
-        const imgH = planData.h;
-        const scale = 1.5;
-        const pageW = imgW / scale;
-        const pageH = imgH / scale;
-        // Crop is normalized (0-1) against the FULL page — only the visible sub-rect of the
-        // source image is drawn, warped to its correct real-world position within the same
-        // (uncropped) coordinate frame used by all network elements.
-        const crop = planCrop || { x: 0, y: 0, w: 1, h: 1 };
-        const cx0 = crop.x * pageW, cy0 = crop.y * pageH;
-        const cx1 = (crop.x + crop.w) * pageW, cy1 = (crop.y + crop.h) * pageH;
-        const tl_iso = getIsoCoords(cx0, cy0, plan.nivel);
-        const tr_iso = getIsoCoords(cx1, cy0, plan.nivel);
-        const bl_iso = getIsoCoords(cx0, cy1, plan.nivel);
-        const label_iso = getIsoCoords((cx0 + cx1) / 2, cy0 - 30, plan.nivel);
-
-        const tl = project(tl_iso.x, tl_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const tr = project(tr_iso.x, tr_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const bl = project(bl_iso.x, bl_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const srcX = crop.x * imgW, srcY = crop.y * imgH;
-        const srcW = crop.w * imgW, srcH = crop.h * imgH;
-        const ax = (tr.sx - tl.sx) / srcW * dpr;
-        const ay = (tr.sy - tl.sy) / srcW * dpr;
-        const bx = (bl.sx - tl.sx) / srcH * dpr;
-        const by = (bl.sy - tl.sy) / srcH * dpr;
-        ctx.save();
-        ctx.globalAlpha = 0.35;
-        ctx.setTransform(ax, ay, bx, by, tl.sx * dpr, tl.sy * dpr);
-        ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
-        ctx.globalAlpha = 0.6;
-        ctx.strokeStyle = '#5a6a6b';
-        ctx.lineWidth = 1 / (zoom || 1);
-        ctx.strokeRect(0.5, 0.5, srcW - 1, srcH - 1);
-        ctx.restore();
-        const midPt = project(label_iso.x, label_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        ctx.save();
-        ctx.fillStyle = '#5a6a6bcc';
-        ctx.font = `bold ${Math.max(10, 11 * zoom)}px Geist,monospace`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        const pisoLabel = plan.nivel < 0 ? `S${Math.abs(plan.nivel)}` : plan.nivel === 99 ? 'C' : `P${plan.nivel}`;
-        ctx.fillText(pisoLabel, midPt.sx, midPt.sy);
-        ctx.restore();
-      }
-    }
-
-    // Draw each active network
-    for (const [netId, netData] of Object.entries(dataByNet)) {
-      if (!activeNets.has(netId)) continue;
-      const netColor = NETS.find(n => n.id === netId)?.col || '#888';
-      const prof = profByNet[netId] ?? 0;
-
-      ctx.strokeStyle = netColor;
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-
-      for (const r of netData.ramales) {
-        // `prof` (Parámetros de Diseño > Materiales por red > "Profundidad de instalación
-        // respecto a NPT") is stored NEGATIVE for below-slab (e.g. sanitaria -0.70). In this
-        // projection a MORE POSITIVE z renders LOWER on screen (see project() in geometry.ts:
-        // y2 grows with z at the default rotX=-45°), so a negative depth must be SUBTRACTED to
-        // push the trace down — adding it (the old behavior) pushed traces up instead.
-        const z = (nptMap[r.planNivel] || 0) - prof * 1000;
-        const z_pix = getZPix(z, r.planNivel);
-        const pts = r.pts;
-        if (pts.length < 2) continue;
-        const selKey = `${netId}:${r.planId}:${r.id}`;
-        const isSel = selKey === selTramo;
-        ctx.beginPath();
-        for (let i = 0; i < pts.length; i++) {
-          const iso = getIsoCoords(pts[i][0], pts[i][1], r.planNivel);
-          const pr = project(iso.x, iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-          if (i === 0) ctx.moveTo(pr.sx, pr.sy); else ctx.lineTo(pr.sx, pr.sy);
-        }
-        ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
-        ctx.lineWidth = isSel ? 3.5 : 2;
-        ctx.stroke();
-
-        for (let i = 1; i < pts.length; i++) {
-          const iso1 = getIsoCoords(pts[i - 1][0], pts[i - 1][1], r.planNivel);
-          const iso2 = getIsoCoords(pts[i][0], pts[i][1], r.planNivel);
-          const a = project(iso1.x, iso1.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-          const b = project(iso2.x, iso2.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-          segments.push({ sx1: a.sx, sy1: a.sy, sx2: b.sx, sy2: b.sy, z: z_pix, id: selKey, label: r.label || r.id, isBaj: false, netId });
-        }
-
-        if (isSel) {
-          const midI = Math.floor(pts.length / 2);
-          const isoMid = getIsoCoords(pts[midI][0], pts[midI][1], r.planNivel);
-          const mp = project(isoMid.x, isoMid.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-          ctx.fillStyle = '#FFEB3B';
-          ctx.font = 'bold 11px Geist,monospace';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'bottom';
-          const lbl = `${r.label || r.id} L=${r.totalL}m`;
-          ctx.fillText(lbl, mp.sx, mp.sy - 8);
-        }
-      }
-
-      for (const b of netData.bajantes) {
-        const profB = profByNet[b.net] ?? 0;
-        const currentZ = nptMap[b.planNivel] || 0;
-        let targetZ = currentZ;
-
-        // "Destino" (descargaEnId) can point at either a ramal OR another bajante on a lower
-        // floor (BajanteAsociacion.tsx lists both as options) — searching only netData.ramales
-        // meant a bajante-to-bajante association was silently never found, leaving targetZ at
-        // currentZ (no cross-floor span) and skipping the connector line entirely.
-        let targetRamal = null;
-        let targetBajante = null;
-        if (b.descargaEnId) {
-          const parts = parseDescargaEnId(b.descargaEnId, b.planId);
-          const targetPlanId = parts[0];
-          const targetId = parts[1];
-          targetRamal = netData.ramales.find((rr: any) => rr.id === targetId && String(rr.planId) === String(targetPlanId));
-          if (targetRamal) {
-            targetZ = nptMap[targetRamal.planNivel] || 0;
-          } else {
-            targetBajante = netData.bajantes.find((bb: any) => bb.id === targetId && String(bb.planId) === String(targetPlanId));
-            if (targetBajante) {
-              targetZ = nptMap[targetBajante.planNivel] || 0;
-            }
-          }
-        }
-
-        const lo = Math.min(currentZ, targetZ);
-        const hi = Math.max(currentZ, targetZ);
-        const isSube = b.direccion === 'sube' || b.tipo === 'montante';
-        // Same sign fix as the ramal z above: profB is negative-for-below, so subtract it.
-        const baseZ = (lo === hi ? (isSube ? lo : lo - 1000) : lo) - profB * 1000;
-        const cimaZ = (lo === hi ? (isSube ? hi + 1000 : hi) : hi) - profB * 1000;
-
-        const baseZ_pix = getZPix(baseZ, b.planNivel);
-        const cimaZ_pix = getZPix(cimaZ, b.planNivel);
-        const iso = getIsoCoords(b.x, b.y, b.planNivel);
-        const pBase = project(iso.x, iso.y, baseZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const pCima = project(iso.x, iso.y, cimaZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const selKey = `${netId}:${b.planId}:${b.id}`;
-        const isSel = selKey === selTramo;
-
-        ctx.beginPath();
-        ctx.moveTo(pBase.sx, pBase.sy);
-        ctx.lineTo(pCima.sx, pCima.sy);
-        ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
-        ctx.lineWidth = isSel ? 3.5 : 2;
-        ctx.stroke();
-        segments.push({ sx1: pBase.sx, sy1: pBase.sy, sx2: pCima.sx, sy2: pCima.sy, z: (baseZ_pix + cimaZ_pix) / 2, id: selKey, label: b.code || b.id, isBaj: true, netId });
-
-        let targetPt: number[] | null = null;
-        let targetPlanNivel: number | null = null;
-        if (targetRamal && targetRamal.pts.length > 0) {
-          // Nearest endpoint of the target ramal to the bajante's own (x,y) — not always pts[0],
-          // which could be the far end of a long ramal and point the connector the wrong way.
-          const distToFirst = Math.hypot(targetRamal.pts[0][0] - b.x, targetRamal.pts[0][1] - b.y);
-          const distToLast = Math.hypot(targetRamal.pts[targetRamal.pts.length - 1][0] - b.x, targetRamal.pts[targetRamal.pts.length - 1][1] - b.y);
-          targetPt = distToFirst <= distToLast ? targetRamal.pts[0] : targetRamal.pts[targetRamal.pts.length - 1];
-          targetPlanNivel = targetRamal.planNivel;
-        } else if (targetBajante) {
-          targetPt = [targetBajante.x, targetBajante.y];
-          targetPlanNivel = targetBajante.planNivel;
-        }
-
-        if (targetPt && targetPlanNivel !== null) {
-          const rIso = getIsoCoords(targetPt[0], targetPt[1], targetPlanNivel);
-          // Same net as the bajante (target comes from this netId's own netData), so the same
-          // depth offset (profB) applies — matches the offset already baked into baseZ/cimaZ.
-          const rZ_pix = getZPix(targetZ - profB * 1000, targetPlanNivel);
-          const rProj = project(rIso.x, rIso.y, rZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-          // Compare RAW (pre-offset) targetZ against `lo`/`hi` — baseZ/cimaZ already have
-          // profB*1000 baked in, so comparing targetZ straight against baseZ was comparing
-          // pre-offset to post-offset and (whenever profB != 0, the normal case) almost never
-          // matched, silently picking the wrong end most of the time.
-          const connectionPoint = (targetZ === lo) ? pBase : pCima;
-          ctx.save();
-          ctx.beginPath();
-          ctx.moveTo(connectionPoint.sx, connectionPoint.sy);
-          ctx.lineTo(rProj.sx, rProj.sy);
-          ctx.strokeStyle = '#0ECC7A';
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([4, 4]);
-          ctx.stroke();
-          ctx.restore();
-        }
-
-        if (isSel) {
-          const mid = { sx: (pBase.sx + pCima.sx) / 2, sy: (pBase.sy + pCima.sy) / 2 };
-          const dInches = b.dNominal ? Math.round(Number(b.dNominal) / 25.4) : 0;
-          const lbl1 = dInches > 0 ? `${b.code || b.id}:${dInches}"` : `${b.code || b.id}`;
-          const dirText = b.direccion === 'sube' ? 'Sube' : b.direccion === 'baja' ? 'Baja' : '';
-          ctx.fillStyle = '#FFEB3B';
-          ctx.font = 'bold 11px Geist,monospace';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'bottom';
-          ctx.fillText(lbl1, mid.sx, mid.sy - 8);
-          if (dirText) {
-            ctx.font = '10px Geist,monospace';
-            ctx.fillText(dirText, mid.sx, mid.sy - 8 + 13);
-          }
-        }
-      }
-    }
-
-    // Axis indicator (bottom-left)
-    const axCx = 50, axCy = H - 50;
-    const axLen = 25;
-    const axisColors = ['#ff4444', '#44ff44', '#4488ff'];
-    const axisLabels = ['X', 'Y', 'Z'];
-    const axisDirs: [number, number, number][] = [[axLen, 0, 0], [0, axLen, 0], [0, 0, axLen]];
-    for (let i = 0; i < 3; i++) {
-      const from = project(0, 0, 0, rotZ, rotX, scaleZ, zoom, offX - cx + axCx, offY - cy + axCy, 0, 0);
-      const to = project(axisDirs[i][0], axisDirs[i][1], axisDirs[i][2], rotZ, rotX, scaleZ, zoom, offX - cx + axCx, offY - cy + axCy, 0, 0);
-      ctx.beginPath();
-      ctx.moveTo(from.sx, from.sy);
-      ctx.lineTo(to.sx, to.sy);
-      ctx.strokeStyle = axisColors[i];
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.fillStyle = axisColors[i];
-      ctx.font = 'bold 10px Geist,monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(axisLabels[i], to.sx, to.sy - 3);
-    }
-    ctx.fillStyle = '#5a6a6b';
-    ctx.font = '9px Geist,monospace';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`${rotX}°/${rotZ}° z${scaleZ.toFixed(1)}`, 6, 6);
-
-    // Store segments for hit testing
-    (canvas as any).__isoSegments = segments;
-    (canvas as any).__isoCx = W / 2;
-    (canvas as any).__isoCy = H / 2;
-  }, [dataByNet, activeNets, profByNet, nptMap, pisos, rotZ, rotX, scaleZ, zoom, offX, offY, size, selTramo, showPlanos, confirmedPlanos, renderTick, getIsoCoords, getZPix]);
-
-  const getTramoAt = useCallback((clientX: number, clientY: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
-    const mx = clientX - rect.left, my = clientY - rect.top;
-    const segs: any[] = (canvas as any).__isoSegments || [];
-    const hit = 6;
-    let best: string | null = null;
-    let bestDist = Infinity;
-    for (const s of segs) {
-      const dx = s.sx2 - s.sx1, dy = s.sy2 - s.sy1;
-      const len2 = dx * dx + dy * dy;
-      let t = ((mx - s.sx1) * dx + (my - s.sy1) * dy) / (len2 || 1);
-      t = Math.max(0, Math.min(1, t));
-      const px = s.sx1 + t * dx, py = s.sy1 + t * dy;
-      const d = Math.hypot(mx - px, my - py);
-      if (d < hit && d < bestDist) { bestDist = d; best = s.id; }
-    }
-    return best;
-  }, []);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.button === 2) { e.preventDefault(); return; }
-    if (e.shiftKey || e.button === 1) {
-      dragRef.current = { mode: 'pan', sx: e.clientX, sy: e.clientY, rx0: rotX, rz0: rotZ, ox0: offX, oy0: offY };
-      return;
-    }
-    const hit = getTramoAt(e.clientX, e.clientY);
-    if (hit) { setSelTramo(prev => prev === hit ? null : hit); return; }
-    setSelTramo(null);
-    dragRef.current = { mode: 'rot', sx: e.clientX, sy: e.clientY, rx0: rotX, rz0: rotZ, ox0: offX, oy0: offY };
-  }, [rotX, rotZ, offX, offY, getTramoAt]);
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const d = dragRef.current;
-      if (!d) return;
-      const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
-      if (d.mode === 'rot') {
-        setRotZ(d.rz0 + dx * 0.5);
-        setRotX(Math.max(-90, Math.min(90, d.rx0 + dy * 0.5)));
-      } else {
-        setOffX(d.ox0 + dx);
-        setOffY(d.oy0 + dy);
-      }
-    };
-    const handleMouseUp = () => { dragRef.current = null; };
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
-  }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      const cx = rect.width / 2;
-      const cy = rect.height / 2;
-
-      const factor = e.deltaY > 0 ? 0.9 : 1.1;
-      setZoom(z => {
-        const newZ = Math.max(0.05, Math.min(20, z * factor));
-        const actF = newZ / z;
-        if (actF !== 1) {
-          setOffX(ox => (mx - cx) - (mx - ox - cx) * actF);
-          setOffY(oy => (my - cy) - (my - oy - cy) * actF);
-        }
-        return newZ;
-      });
-    };
-    canvas.addEventListener('wheel', onWheel, { passive: false });
-    return () => canvas.removeEventListener('wheel', onWheel);
-  }, []);
+  const handleExportPng = useCallback(() => exportPng({ canvasRef, size, proyNombre: proy?.nombre }), [size, proy]);
 
   const hasAnyData = useMemo(() => {
     for (const nd of Object.values(dataByNet)) {
@@ -773,8 +400,8 @@ function IsometriaTabBase({ state }: any) {
         showExportMenu={showExportMenu}
         setShowExportMenu={setShowExportMenu}
         exportRef={exportRef}
-        exportPdf={exportPdf}
-        exportPng={exportPng}
+        exportPdf={handleExportPdf}
+        exportPng={handleExportPng}
       />
 
       {/* Main area */}

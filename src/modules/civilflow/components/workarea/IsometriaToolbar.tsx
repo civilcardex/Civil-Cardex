@@ -1,4 +1,5 @@
 import type { RefObject, Dispatch, SetStateAction } from "react";
+import type { PlanoNet } from "../../lib/PlanoEngine/PlanoState";
 
 const IsometriaToolbar_S2: React.CSSProperties = { padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' };
 const IsometriaToolbar_S3: React.CSSProperties = { padding: '3px 8px', fontSize: 12, fontFamily: 'Geist,monospace', borderRadius: 3, border: '1px solid #3a494a', cursor: 'pointer', background: '#1e2024', color: '#b9caca' };
@@ -8,7 +9,7 @@ const IsometriaToolbar_S6: React.CSSProperties = { padding: '4px 8px', fontSize:
 const IsometriaToolbar_planosLabel: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#849495', fontFamily: 'Geist,monospace', cursor: 'pointer', marginLeft: 8, padding: '3px 8px', borderRadius: 3 };
 
 interface IsometriaToolbarProps {
-  nets: any[];
+  nets: PlanoNet[];
   activeNets: Set<string>;
   toggleNet: (netId: string) => void;
   showPlanos: boolean;

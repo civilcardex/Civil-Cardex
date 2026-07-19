@@ -2,8 +2,13 @@ import { TRAZOS_PREFIX } from "../../../constants/storage-keys";
 import { loadFromStorage } from "../../../services/storageService";
 import { loadPDF } from "../../../services/idbStorage";
 import { getPdfjs } from "../../../utils/lazyPdfjs";
+import type { PlanoRamal, PlanoBajante } from "../../../lib/PlanoEngine/PlanoState";
+import type { PlanItem } from "../../../context/PlansContext";
 
 interface ProjPt { sx: number; sy: number }
+
+export type IsoRamal = PlanoRamal & { planNivel: number; planId: string };
+export type IsoBajante = PlanoBajante & { planNivel: number; planId: string };
 
 function project(
   x: number, y: number, z: number,
@@ -20,16 +25,23 @@ function project(
   return { sx: x1 * zoom + offX + cx, sy: y2 * zoom + offY + cy };
 }
 
-function readDrawingAll(plans: any[], netIds: string[]) {
-  const dataByNet: Record<string, { ramales: any[]; bajantes: any[] }> = {};
+interface StoredDrawing {
+  scaleM?: number;
+  origen?: { x_px: number; y_px: number };
+  ramales?: PlanoRamal[];
+  bajantes?: PlanoBajante[];
+}
+
+function readDrawingAll(plans: PlanItem[], netIds: string[]) {
+  const dataByNet: Record<string, { ramales: IsoRamal[]; bajantes: IsoBajante[] }> = {};
   for (const nid of netIds) dataByNet[nid] = { ramales: [], bajantes: [] };
   const scaleMap: Record<number, number> = {};
   const origenMap: Record<number, { x_px: number; y_px: number }> = {};
   for (const plan of plans) {
     if (plan.nivel == null) continue;
-    const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
+    const raw = loadFromStorage<StoredDrawing | string | null>(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
-    const data = (typeof raw === 'string') ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
+    const data: StoredDrawing | null = (typeof raw === 'string') ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
     if (!data) continue;
     if (data.scaleM) scaleMap[plan.nivel] = data.scaleM;
     if (data.origen) origenMap[plan.nivel] = data.origen;
@@ -47,7 +59,7 @@ function readDrawingAll(plans: any[], netIds: string[]) {
   return { dataByNet, scaleMap, origenMap };
 }
 
-async function loadPlanImage(plan: any): Promise<{ nivel: number; img: HTMLCanvasElement; w: number; h: number } | null> {
+async function loadPlanImage(plan: PlanItem): Promise<{ nivel: number; img: HTMLCanvasElement; w: number; h: number } | null> {
   try {
     const file = await loadPDF(plan.id);
     if (!file) return null;
@@ -60,7 +72,7 @@ async function loadPlanImage(plan: any): Promise<{ nivel: number; img: HTMLCanva
     c.width = Math.floor(vp.width);
     c.height = Math.floor(vp.height);
     await page.render({ canvas: c, viewport: vp }).promise;
-    return { nivel: plan.nivel, img: c, w: vp.width, h: vp.height };
+    return { nivel: plan.nivel as number, img: c, w: vp.width, h: vp.height };
   } catch {
     return null;
   }
