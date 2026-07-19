@@ -141,8 +141,8 @@ function RedesTab({ state }: { state: WorkAreaState }) {
 
 function InfTab({ state }: { state: WorkAreaState }) {
   const { proy, redesActivas, pisos, tramosSan, tramosLl } = state;
-  const okSAN = tramosSan.length > 0 && tramosSan.every(t => { const r = t as any; const v=r.v_real||0; const y=r.yD||0; const q=r.qQ0||0; return v>=0.45&&v<=4.0&&y<=0.75&&q<=1.0; });
-  const okLL = tramosLl.length > 0 && tramosLl.every(t => { const r = t as any; const v=r.v_real||0; const y=r.yD||0; const q=r.qQ0||0; return v>=0.45&&v<=4.0&&y<=0.75&&q<=1.0; });
+  const okSAN = tramosSan.length > 0 && tramosSan.every(t => { const v=t.v_real||0; const y=t.yD||0; const q=t.qQ0||0; return v>=0.45&&v<=4.0&&y<=0.75&&q<=1.0; });
+  const okLL = tramosLl.length > 0 && tramosLl.every(t => { const v=t.v_real||0; const y=t.yD||0; const q=t.qQ0||0; return v>=0.45&&v<=4.0&&y<=0.75&&q<=1.0; });
   const items = useMemo<[string, string][]>(() => [
     ['PROYECTO', proy.nombre],
     ['UBICACIÓN', [proy.mun, proy.dep].filter(Boolean).join(', ')],

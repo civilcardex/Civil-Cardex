@@ -1,14 +1,18 @@
 /* eslint-disable no-empty */
 import { memo, useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
-import PlanoEngine from "../lib/PlanoEngine/PlanoEngine";
+import PlanoEngine, { type ElementItem, type ToolType, type TramoType } from "../lib/PlanoEngine/PlanoEngine";
 import { NETS } from "../lib/PlanoEngine/PlanoState";
+import type { PlanoElement, PlanoNet, PlanoBajante } from "../lib/PlanoEngine/PlanoState";
+import type { Piso } from "./useWorkAreaState";
+import type { PlanItem } from "../context/PlansContext";
 import { matLongName, pisoLbl, GAS, DEFAULT_PENDIENTE_PCT } from "../constants";
 import { useProject } from "../context/ProjectContext";
 import { usePlans } from "../context/PlansContext";
 import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync";
 import { bumpHidroAccesorio } from "../utils/syncExtremeAccessory";
 import { loadFromStorage, saveToStorage, saveTrazosToDB, loadTrazosFromDB } from "../services/storageService";
+import type { PlanTrazos } from "../services/storageService";
 import { GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY, ACTIVE_NETS_KEY, TRAZOS_PLAN_PREFIX, VISOR_TOOL_KEY, VISOR_TIPO_TRAMO_KEY, VISOR_SNAP_ON_KEY, NETS_CHANGED_EVENT, TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from "../constants/storage-keys";
 import { devError } from "../../../utils/devError";
 import PdfViewerToolbar, { STATUS } from "./pdfViewer/PdfViewerToolbar";
@@ -30,17 +34,22 @@ import AparatosPanel from "./FixturesPanel";
 const PdfViewer_SR_ONLY: React.CSSProperties = { position:'absolute',width:1,height:1,padding:0,margin:-1,overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 const PdfViewer_S4: React.CSSProperties = { width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace",cursor:'pointer' };
 const PdfViewer_S5: React.CSSProperties = { position:"absolute",top:0,zIndex:40,width:16,height:24,background:"#14161a",border:"1px solid #3a494a",color:"#849495",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,fontSize:12 } as const;
-const PdfViewer_EMPTY_PISOS: any[] = [];
+const PdfViewer_EMPTY_PISOS: Piso[] = [];
+
+// Structural probe of a PlanoElement union: lets code sniff `tipo`/`net`/`diametro`/`pendiente`
+// (present on some element kinds, absent on others) without narrowing via the exported type
+// guards at every access site.
+type ProbedElement = PlanoElement & { tipo?: string; net?: string; diametro?: string; pendiente?: number };
 
 
 interface PdfViewerProps {
-  files: any[];
+  files: Array<{ id: number; file: File }>;
   activeIndex: number;
   onSelectPlan: (idx: number) => void;
   onAddPlan: () => void;
   onRemovePlan: (idx: number) => void;
-  pisos?: any[];
-  planos?: any[];
+  pisos?: Piso[];
+  planos?: PlanItem[];
   activeNetworks: Set<string>;
 }
 
@@ -135,8 +144,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
   const [hiddenNets, setHiddenNets] = useState<Set<string>>(new Set());
   const [lockedNets, setLockedNets] = useState<Set<string>>(new Set());
 
-  const [selElement, setSelElement] = useState<Record<string, any> | null>(null);
-  const [drawnElements, setDrawnElements] = useState<any[]>([]);
+  const [selElement, setSelElement] = useState<ProbedElement | null>(null);
+  const [drawnElements, setDrawnElements] = useState<ElementItem[]>([]);
   const [diamSel, setDiamSel] = useState<Record<string, string>>({});
   const [gasMatSel, setGasMatSel] = useState<Record<string, string>>({});
   const [pendSel, setPendSel] = useState<Record<string, number>>({});
@@ -163,32 +172,32 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
     if (!selElement || !(selElement.tipo === 'bajante' || selElement.tipo === 'montante')) return [];
     const currentFloor = pisos.find(p => p.n === selectedNivel);
     const currentNpt = currentFloor ? currentFloor.npt : Infinity;
-    const relevantPlans = planosCtx.plans.filter((plan: any) => {
+    const relevantPlans = planosCtx.plans.filter((plan) => {
       const pF = pisos.find(p => String(p.n) === String(plan.nivel));
       return pF && pF.npt <= currentNpt;
     });
-    const results = relevantPlans.map((plan: any) => {
+    const results = relevantPlans.map((plan) => {
       const pF = pisos.find(p => String(p.n) === String(plan.nivel))!;
-      let bajantes: any[] = [];
+      let bajantes: PlanoBajante[] = [];
       // Only real floor-spanning risers (bajante/montante) belong in the "Destino" dropdown —
       // contador/calentador/red_publica are point fixtures, not trunk lines a pipe cascades
       // down into. Ramales aren't offered either: the association models a riser continuing
       // down into the NEXT riser below, cascading floor by floor.
-      const isRiser = (b: any) => b.tipo === 'bajante' || b.tipo === 'montante';
+      const isRiser = (b: PlanoBajante) => b.tipo === 'bajante' || b.tipo === 'montante';
       if (plan.id === currentIdRef.current) {
-        bajantes = engineRef.current?.bajantes?.filter((b: any) => b.net === (selElement.net || activeNet) && isRiser(b)) || [];
+        bajantes = engineRef.current?.bajantes?.filter((b) => b.net === (selElement.net || activeNet) && isRiser(b)) || [];
       } else {
         const raw = localStorage.getItem(TRAZOS_PLAN_PREFIX + plan.id);
         if (raw) {
           try {
             const data = JSON.parse(raw);
-            bajantes = (data.bajantes || []).filter((b: any) => b.net === (selElement.net || activeNet) && isRiser(b));
+            bajantes = (data.bajantes || []).filter((b: PlanoBajante) => b.net === (selElement.net || activeNet) && isRiser(b));
           } catch {}
         }
       }
       return { planId: plan.id, planName: plan.name, npt: pF.npt, bajantes };
     });
-    results.sort((a, b) => b.npt - a.npt);
+    results.sort((a, b) => Number(b.npt) - Number(a.npt));
     return results;
   }, [selElement?.id, selectedNivel, pisos, planosCtx.plans, activeNet]);
 
@@ -228,10 +237,10 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
     }
   }, [currentId, planos]);
 
-  const loadTrazosForPlan = useCallback(async (eng: PlanoEngine, resolvedId: string): Promise<boolean> => {
-    const tryLoad = (id: string): any => {
+  const loadTrazosForPlan = useCallback(async (eng: PlanoEngine, resolvedId: string | number): Promise<boolean> => {
+    const tryLoad = (id: string | number): PlanTrazos | string | null => {
       const key = `trazos_${id}`;
-      const saved = loadFromStorage(key, null);
+      const saved = loadFromStorage<PlanTrazos | string | null>(key, null);
       return saved || null;
     };
     const localData = tryLoad(resolvedId);
@@ -243,10 +252,10 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
       requestAnimationFrame(() => { eng.render(); });
     }
     try {
-      const dbData = await loadTrazosFromDB(resolvedId);
+      const dbData = await loadTrazosFromDB(String(resolvedId));
       if (dbData) {
         const dbTs = Number(dbData.ts || 0);
-        const localTs = Number(localData?.ts || 0);
+        const localTs = Number((typeof localData === 'string' ? null : localData)?.ts || 0);
         if (dbTs > localTs || !localData) {
           const workStr = typeof dbData === 'string' ? dbData : JSON.stringify(dbData);
           eng.loadWork(workStr);
@@ -258,10 +267,10 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
           setActiveNet(loadedNet);
           if (sm != null) setScaleM(String(sm));
         } else if (localTs > dbTs && localData) {
-          saveTrazosToDB(resolvedId, localData);
+          saveTrazosToDB(String(resolvedId), localData);
         }
       } else if (localData) {
-        saveTrazosToDB(resolvedId, localData);
+        saveTrazosToDB(String(resolvedId), localData);
       }
     } catch (e) {
       devError('[LOAD] Supabase error/sync error:', e);
@@ -274,20 +283,20 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
     if (eng.selId) {
       const sel = eng.getSelected();
       if (sel) {
-        const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = sel as any;
-        setSelElement(rest);
+        const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = sel as unknown as Record<string, unknown>;
+        setSelElement(rest as unknown as ProbedElement);
       }
     }
     if (loadingPlanRef.current) return;
     try {
       const id = eng._loadedPlanId || currentIdRef.current || 'work';
       if (id) {
-        const work = eng.saveWork() as any;
+        const work = eng.saveWork();
         work.ts = Date.now();
-        saveToStorage(TRAZOS_PREFIX + id, work);
+        saveToStorage(TRAZOS_PREFIX + String(id), work);
         if (id !== 'work') {
           saveToStorage(LAST_TRAZOS_ID_KEY, id);
-          saveTrazosToDB(id, work);
+          saveTrazosToDB(String(id), work);
         }
       }
     } catch {}
@@ -296,7 +305,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
 
   const onDeleteHandler = useCallback((ids: string[]) => {
     const cleanStore = (key: string) => {
-      const store = loadFromStorage(key, {}) as Record<string, any>;
+      const store = loadFromStorage(key, {}) as Record<string, unknown>;
       let changed = false;
       for (const k of Object.keys(store)) {
         for (const id of ids) {
@@ -323,8 +332,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
   const [alertDialogState, setAlertDialogState] = useState<{isOpen: boolean; title: string; message: string}>({isOpen: false, title: '', message: ''});
   const [accesorioModal, setAccesorioModal] = useState<{isOpen: boolean; ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean}>({isOpen: false, ramalId: '', angleDeg: 0, junctionIndex: 0, net: '', isTee: false});
 
-  const contextMenuCbRef = useRef<any>(null);
-  const onContextMenuCb = useCallback((bajante: any, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: any, midRamalHit?: { segmentIdx: number; x: number; y: number } | null) => {
+  const contextMenuCbRef = useRef<((bajante: PlanoElement, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null, midRamalHit?: { segmentIdx: number; x: number; y: number } | null) => void) | null>(null);
+  const onContextMenuCb = useCallback((bajante: PlanoElement, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null, midRamalHit?: { segmentIdx: number; x: number; y: number } | null) => {
     setContextMenuState({ visible: true, x, y, element: bajante, isGhostClick, ramalEndpoint, midRamalHit });
   }, []);
   contextMenuCbRef.current = onContextMenuCb;
@@ -332,7 +341,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
   // ── Engine init ──
   const { engineReady } = usePdfViewerEngine({
     currentFile, currentId, currentIdRef, activeNetRef, cwRef, drawCanvasRef, pdfCanvasRef,
-    onStatus: () => {}, onDirty: onDirtyHandler, onSelect: setSelElement, onDelete: onDeleteHandler,
+    onStatus: () => {}, onDirty: onDirtyHandler, onSelect: (el) => setSelElement(el as ProbedElement | null), onDelete: onDeleteHandler,
     onToolChange: setTool, onRequestText: onRequestTextCb, onAlert: (title: string, msg: string) => {
       setAlertDialogState({ isOpen: true, title, message: msg });
     }, onAccesorioModal: (data) => {
@@ -352,11 +361,11 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
     const isIni = junctionIndex === 0;
     const isFin = junctionIndex === r.pts.length - 1;
     if (isIni) {
-      (r as any).accesorioInicio = accId;
+      r.accesorioInicio = accId;
     } else if (isFin) {
-      (r as any).accesorioFin = accId;
+      r.accesorioFin = accId;
     } else {
-      (r as any)[`accMed${junctionIndex}`] = accId;
+      (r as unknown as Record<string, unknown>)[`accMed${junctionIndex}`] = accId;
     }
     eng._markDirty();
 
@@ -371,16 +380,16 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
     // Trigger sidebar refresh
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('aparatos-clear'));
-      setSelElement({ ...(r as any) });
+      setSelElement({ ...r });
     }
   }, [engineRef, planosCtx.plans]);
 
   useEffect(() => {
-    if (engineRef.current && engineReady) engineRef.current.onContextMenu(contextMenuCbRef.current);
+    if (engineRef.current && engineReady && contextMenuCbRef.current) engineRef.current.onContextMenu(contextMenuCbRef.current);
   }, [engineReady, engineRef]);
 
   useEffect(() => {
-    if (engineRef.current) (engineRef.current as any).activeNetworks = activeNetworks;
+    if (engineRef.current) engineRef.current.activeNetworks = activeNetworks;
   }, [activeNetworks, engineReady]);
 
   useEffect(() => {
@@ -390,7 +399,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
     if (prevId && prevId !== currentId) {
       if (autoSaveTimerRef.current) { clearTimeout(autoSaveTimerRef.current); autoSaveTimerRef.current = null; }
       if (!loadingPlanRef.current && eng._dirty) {
-        const work = eng.saveWork() as any;
+        const work = eng.saveWork();
         work.ts = Date.now();
         saveToStorage(`trazos_${prevId}`, work);
         eng._dirty = false;
@@ -430,7 +439,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
     prevActiveNetForSel.current = activeNet;
     if (engineRef.current && !loadingPlanRef.current) {
       const els = engineRef.current.getElementsByNet(activeNet);
-      if (els.length > 0 && selElement?.net !== activeNet) setSelElement(els[els.length - 1]);
+      if (els.length > 0 && selElement?.net !== activeNet) setSelElement(els[els.length - 1] as unknown as ProbedElement);
       else if (els.length === 0) setSelElement(null);
     }
   }
@@ -456,7 +465,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
   }, []);
 
   const finalVisibleNets = useMemo(() => {
-    const excludeEquipment = (nets: any[]) => nets.filter((n: any) => n.id !== 'ep' && n.id !== 'bom' && n.id !== 'recolectora');
+    const excludeEquipment = (nets: PlanoNet[]) => nets.filter((n) => n.id !== 'ep' && n.id !== 'bom' && n.id !== 'recolectora');
     const getNets = () => {
       if (activeNetworks && activeNetworks.size > 0) return excludeEquipment(NETS.filter(n => activeNetworks.has(n.id)));
       if (liveActiveNets) return excludeEquipment(NETS.filter(n => liveActiveNets.has(n.id)));
@@ -467,18 +476,18 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
 
   const { saveStatus, doSave, autoSaveTimerRef } = usePdfAutoSave(engineRef, currentIdRef, planosCtx.plans);
 
-  // ── Inline actions (was usePdfViewerActions) ──
+  // ── Inline actions ──
   const syncEngine = useCallback(() => {
     const eng = engineRef.current;
     if (!eng) return;
-    eng.setTool(tool as any);
+    eng.setTool(tool as ToolType);
     eng.setActiveNet(activeNet);
-    eng.setTipoTramo(tipoTramo as any);
+    eng.setTipoTramo(tipoTramo as TramoType);
     eng.setSnap(snapOn);
     eng.setScaleM(scaleM);
     const floorObj = pisos.find(p => p.n === selectedNivel);
-    eng.nivelActual = floorObj ? { ...floorObj, label: pisoLbl(floorObj.n) } : null;
-    eng.nptLevels = pisos.map(p => ({ label: pisoLbl(p.n), npt: p.npt }));
+    eng.nivelActual = floorObj ? { ...floorObj, label: pisoLbl(floorObj.n), npt: Number(floorObj.npt) } : null;
+    eng.nptLevels = pisos.map(p => ({ label: pisoLbl(p.n), npt: Number(p.npt) }));
     const matName = activeNet === 'gas'
       ? (gasMatSel[activeNet] || GAS[0]?.mat || '')
       : (mats?.[activeNet] && mats[activeNet][0]?.val) || '';
@@ -517,7 +526,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
       onConfirm: () => {
         engineRef.current?.clearNet(netId);
         setSelElement(null);
-        setConfirmState((prev: any) => ({...prev, isOpen: false}));
+        setConfirmState((prev) => ({...prev, isOpen: false}));
       }
     });
   }, [engineRef, activeNet, setSelElement]);
@@ -525,7 +534,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
   const handleSave = useCallback(() => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); doSave(); }, [autoSaveTimerRef, doSave]);
   const handleSnapToggle = useCallback(() => setSnapOn(prev => !prev), [setSnapOn]);
   const handleRotateLabel = useCallback(() => { if (engineRef.current) engineRef.current.rotateLabelSnap(); }, [engineRef]);
-  const handleUpdateSel = useCallback((field: string, value: any) => {
+  const handleUpdateSel = useCallback((field: string, value: unknown) => {
     if (!engineRef.current || !selElement) return;
     const fields = { [field]: value };
     engineRef.current.updateSelected(fields);
@@ -551,7 +560,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
 
   useEffect(() => {
     if (finalVisibleNets.length === 0) return;
-    if (!finalVisibleNets.some((n: any) => n.id === activeNet)) setActiveNet(finalVisibleNets[0].id);
+    if (!finalVisibleNets.some((n) => n.id === activeNet)) setActiveNet(finalVisibleNets[0].id);
     setHiddenNets(prev => {
       const next = new Set(prev);
       let changed = false;
@@ -565,7 +574,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
   if (resetKey !== prevResetKey.current) {
     prevResetKey.current = resetKey;
     setPadreTributarioId(null);
-    if (engineRef.current) engineRef.current.setPadreTributario(null as any);
+    if (engineRef.current) engineRef.current.setPadreTributario(null);
   }
 
   useEffect(() => {
@@ -594,10 +603,12 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
     prevSelId.current = selElement?.id;
     prevActiveNetForDiam.current = activeNet;
     if (engineRef.current && selElement && selElement.net === activeNet) {
-      if (selElement.diametro) setDiamSel(prev => ({ ...prev, [activeNet]: selElement.diametro }));
-      if (selElement.pendiente !== undefined) {
-        setPendSel(prev => ({ ...prev, [activeNet]: selElement.pendiente }));
-        setPendInput(selElement.pendiente > 0 ? String(selElement.pendiente) : '');
+      const diametro = selElement.diametro;
+      if (diametro) setDiamSel(prev => ({ ...prev, [activeNet]: diametro }));
+      const pendiente = selElement.pendiente;
+      if (pendiente !== undefined) {
+        setPendSel(prev => ({ ...prev, [activeNet]: pendiente }));
+        setPendInput(pendiente > 0 ? String(pendiente) : '');
       }
     } else if (!selElement) {
       setDiamSel(prev => prev[activeNet] ? { ...prev, [activeNet]: '' } : prev);
@@ -682,17 +693,17 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
         <h2 style={PdfViewer_SR_ONLY}>Visor de planos</h2>
         <PdfCanvas
           cwRef={cwRef} containerRef={containerRef} pdfCanvasRef={pdfCanvasRef} drawCanvasRef={drawCanvasRef}
-          currentFile={currentFile} error={error as any} loading={loading}
+          currentFile={currentFile} error={error} loading={loading}
           selectedNivel={selectedNivel} pisos={pisos} planos={planos} tool={tool} snapOn={snapOn}
         />
       </div>
 
-      {/* Dialogs (was PdfViewerDialogs) */}
+      {/* Dialogs */}
       <TextInputOverlay textOverlay={textOverlay} setTextOverlay={setTextOverlay} textInputRef={textInputRef} />
       <DrawingElementContextMenu
         contextMenuState={contextMenuState} setContextMenuState={setContextMenuState}
         selectedNivel={selectedNivel} pisos={pisos} engineRef={engineRef}
-        selElement={selElement} setSelElement={setSelElement}
+        selElement={selElement as PlanoElement | null} setSelElement={setSelElement}
         lowerFloorsRamales={lowerFloorsRamales} planosCtx={planosCtx}
         mats={mats} activeNet={activeNet} setDiamSel={setDiamSel}
       />
@@ -704,7 +715,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
         onSelect={onAccesorioSelected}
       />
 
-      {/* Sidebar Right (was PdfViewerSidebarRight) */}
+      {/* Sidebar Right */}
       <div className="visor-sidebar-right" style={dynamicRightStyle}>
         <h2 style={PdfViewer_SR_ONLY}>Panel de edición</h2>
         <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a" }}>
@@ -738,7 +749,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
           />
 
           <TramoEditor
-            selElement={selElement} activeNet={activeNet} engineRef={engineRef}
+            selElement={selElement as PlanoElement | null} activeNet={activeNet} engineRef={engineRef}
             diamSel={diamSel} gasMatSel={gasMatSel} pendSel={pendSel} pendInput={pendInput}
             mats={mats} matLongName={matLongName}
             setDiamSel={setDiamSel} setGasMatSel={setGasMatSel} setPendSel={setPendSel} setPendInput={setPendInput}

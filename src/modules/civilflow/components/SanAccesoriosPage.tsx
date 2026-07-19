@@ -8,7 +8,9 @@ import { fmtPulg } from '../utils/formatUtils';
 import { usePlans } from '../context/PlansContext';
 import { distToSegment } from '../lib/shared/geometry';
 
-function loadHidro(): Record<string, any> {
+interface HidroEntry { accesorios?: Record<string, number> }
+
+function loadHidro(): Record<string, HidroEntry> {
   return loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
 }
 
@@ -38,11 +40,11 @@ export default function SanAccesoriosPage() {
     if (plans) {
       for (const plan of plans) {
         if (plan.status !== 'confirmed') continue;
-        const raw = loadFromStorage<any>(TRAZOS_PREFIX + plan.id, null);
+        const raw = loadFromStorage<unknown>(TRAZOS_PREFIX + plan.id, null);
         if (!raw) continue;
-        let data = raw;
+        let data = raw as { ramales?: Array<{ id: string; label?: string; diametro?: string; pts?: number[][]; tipo?: string; net?: string }> } | string;
         if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
-        const ramales = (data.ramales || []).filter((r: any) => r.net === 'san' && r.tipo !== 'tributario');
+        const ramales = ((data as { ramales?: Array<{ id: string; label?: string; diametro?: string; pts?: number[][]; tipo?: string; net?: string }> }).ramales || []).filter((r) => r.net === 'san' && r.tipo !== 'tributario');
         for (const r of ramales) {
           if (r.pts && r.pts.length >= 2) {
             drawingRamales.push({
@@ -65,7 +67,7 @@ export default function SanAccesoriosPage() {
     const labelToKey = new Map<string, string>();
     for (const t of tramosSan) {
       if (t.esBajante) continue;
-      const lbl = (t as any).label || t.id;
+      const lbl = t.label || t.id;
       const key = String(t._key || `${t.id}-${t.planId}`);
       if (!labelToKey.has(lbl)) labelToKey.set(lbl, key);
     }
@@ -73,11 +75,11 @@ export default function SanAccesoriosPage() {
     // Case 1: tributarios from tramosSan
     for (const child of tramosSan) {
       if (child.esBajante) continue;
-      const childDiam = (child as any).diametro || '';
+      const childDiam = child.diametro || '';
       const childDiamStr = fmtPulg(diamPulgFromLabel(childDiam));
       if (!childDiamStr || childDiamStr === '—') continue;
       
-      const parentLabel = (child as any).padreTributarioLabel || (child as any).padre;
+      const parentLabel = child.padreTributarioLabel || child.padre;
       if (parentLabel) {
         const parentKey = labelToKey.get(parentLabel) || parentLabel;
         allConnections.push({ parentKey, parentLabel, diamStr: childDiamStr });
@@ -124,7 +126,7 @@ export default function SanAccesoriosPage() {
     for (const t of tramosSan) {
       if (t.esBajante || t.tipo === 'tributario') continue;
       const tKey = String(t._key || `${t.id}-${t.planId}`);
-      const mainDiam = (t as any).diametro || '';
+      const mainDiam = t.diametro || '';
       const mainDiamStr = fmtPulg(diamPulgFromLabel(mainDiam));
       
       const myConnections = byParent[tKey] || [];
@@ -173,20 +175,20 @@ export default function SanAccesoriosPage() {
     tramosSan.forEach(t => {
       if (t.esBajante) return;
 
-      const mainDiam = (t as any).diametro || '';
+      const mainDiam = t.diametro || '';
       const mainDiamStr = fmtPulg(diamPulgFromLabel(mainDiam));
 
       if (t.tipo === 'tributario') {
-        const accIni = (t as any).accesorioInicio;
+        const accIni = t.accesorioInicio;
         if (accIni) {
-          const dIni = (t as any).diametroInicio || mainDiam;
+          const dIni = t.diametroInicio || mainDiam;
           const dStr = fmtPulg(diamPulgFromLabel(dIni));
           const accId = accIni === 'codoSube' ? 'codo90rmSube' : (accIni === 'codoBaja' ? 'codo90rmBaja' : accIni);
           addAcc(dStr, accId, 1);
         }
-        const accFin = (t as any).accesorioFin;
+        const accFin = t.accesorioFin;
         if (accFin) {
-          const dFin = (t as any).diametroFin || mainDiam;
+          const dFin = t.diametroFin || mainDiam;
           const dStr = fmtPulg(diamPulgFromLabel(dFin));
           const accId = accFin === 'codoSube' ? 'codo90rmSube' : (accFin === 'codoBaja' ? 'codo90rmBaja' : accFin);
           addAcc(dStr, accId, 1);
@@ -194,7 +196,7 @@ export default function SanAccesoriosPage() {
       } else {
         const key = `san_${t.id}_${t.planId}`;
         const srcAcc = hidroData[key]?.accesorios || {};
-        const tKey = String((t as any)._key || `${t.id}-${t.planId}`);
+        const tKey = String(t._key || `${t.id}-${t.planId}`);
         const yd = yeeDiams[tKey] || { simple: [], doble: [] };
         for (const a of SAN_ACCESORIOS) {
           const v = srcAcc[a.id] || 0;

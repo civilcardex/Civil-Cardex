@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useProject } from "../context/ProjectContext";
-import { useApparatus } from "../context/ApparatusContext";
+import { useApparatus, type ApsItem } from "../context/ApparatusContext";
 import { NORM_COL, REDES_MAT, CAT_APS, CAT_GAS } from "../constants";
 import { NumericInput } from "./NumericInput";
 import EditButton from "./shared/EditButton";
@@ -66,7 +66,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
       const ix = prev.findIndex(a => a.id === id);
       if (ix < 0) {
         const def = apsMap[id];
-        return [...prev, { id, s: def.s, n: def.n, g: 'h', ucaf: def.af, ucac: def.ac, ud: 0, pmin: 0, pmax: 0, qg: 0, [key]: v } as any];
+        return [...prev, { id, s: def.s, n: def.n, g: 'h', ucaf: def.af, ucac: def.ac, ud: 0, pmin: 0, pmax: 0, qg: 0, [key]: v } as unknown as ApsItem];
       }
       return prev.map(a => a.id === id ? { ...a, [key]: v } : a);
     });

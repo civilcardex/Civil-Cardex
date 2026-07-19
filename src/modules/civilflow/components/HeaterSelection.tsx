@@ -11,10 +11,10 @@ const HeaterSelection_S1: React.CSSProperties = { width: '100%', minWidth: 150, 
 export default function HeaterSelection() {
   const { tramosAc } = useTramos();
   const { plans } = usePlans();
-  const [factorSim, setFactorSim] = useState(50); // 50%
+  const [factorSim, setFactorSim] = useState(50);
 
-  const selectedHeaterTram = useMemo(() => tramosAc.find(t => (t as any).calCapacidad !== undefined), [tramosAc]);
-  const selectedHeaterId = selectedHeaterTram ? (selectedHeaterTram as any).calCapacidad : '';
+  const selectedHeaterTram = useMemo(() => tramosAc.find(t => t.calCapacidad !== undefined), [tramosAc]);
+  const selectedHeaterId = selectedHeaterTram ? selectedHeaterTram.calCapacidad : '';
   const selectedHeater = useMemo(() => CAT_GAS.find(g => g.id === selectedHeaterId), [selectedHeaterId]);
 
   // Agrupar aparatos y calcular UC totales
@@ -50,19 +50,16 @@ export default function HeaterSelection() {
 
   const caudalAjustado = caudalProbableLpm * (factorSim / 100);
 
-  // Seleccionar equipo del catálogo
-  // Filter CAT_GAS for heaters (Calentador P.D.) which are cal6, cal11, cal21
   const heaterRecommendation = useMemo(() => {
     const heaters = CAT_GAS.filter(g => g.id.startsWith('cal')); // cal6, cal11, cal21
-    // Parse LPM from name or ID
     const parsedHeaters = heaters.map(h => {
       const match = h.id.match(/\d+/);
       const cap = match ? parseInt(match[0]) : 0;
       return { ...h, cap };
     }).sort((a, b) => a.cap - b.cap);
     
-    const selectedHeaterTram = tramosAc.find(t => (t as any).calCapacidad);
-    const selectedHeaterId = selectedHeaterTram ? (selectedHeaterTram as any).calCapacidad : '';
+    const selectedHeaterTram = tramosAc.find(t => t.calCapacidad);
+    const selectedHeaterId = selectedHeaterTram ? selectedHeaterTram.calCapacidad : '';
     const selectedHeater = CAT_GAS.find(g => g.id === selectedHeaterId);
 
     let recText = '';
