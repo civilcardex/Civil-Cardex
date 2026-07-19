@@ -12,7 +12,7 @@ import { devError } from "../../../utils/devError";
 import { loadFromStorage, saveToStorage } from "../services/storageService";
 import { ACTIVE_NETS_KEY, OPEN_TAB_KEY, NET_COLOR_PREFIX, NETS_CHANGED_EVENT } from "../constants/storage-keys";
 
-interface Piso { id: string | number; n: number; npt: number | string; ok: boolean; tipo: string; h: string }
+export interface Piso { id: string | number; n: number; npt: number | string; ok: boolean; tipo: string; h: string }
 
 function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject<T>] {
   const [val, _set] = useState<T>(initial);

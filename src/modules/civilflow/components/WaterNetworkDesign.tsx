@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef } from "react";
 import { useTramos } from "../context/TramosContext";
 import type { Tramo } from "../context/tramosReducer";
-import { useProject } from "../context/ProjectContext";
+import { useProyecto } from "../context/ProyectoContext";
 import { usePlans } from "../context/PlansContext";
 import { AF_UC_IDS, AC_UC_IDS, APARATOS_DEF, pisoCorto, matHazenC } from "../constants";
 import { calcUCparcial } from "../utils/componentHelpers";
@@ -67,7 +67,7 @@ const isAC2 = (t: Tramo) => {
 
 function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDesignProps) {
   const { tramosAf, tramosAc, updTramoAf, updTramoAc } = useTramos();
-  const { proy } = useProject();
+  const { proy } = useProyecto();
   const { plans } = usePlans();
 
   const tramos = isAf(networkType) ? tramosAf : tramosAc;

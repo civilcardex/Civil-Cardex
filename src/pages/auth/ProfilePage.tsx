@@ -5,6 +5,7 @@ import { usePageMeta } from '../../hooks/usePageMeta'
 import { devError } from '../../utils/devError'
 import { useAuth } from '../../context/AuthContext'
 import { ProjectContext, PROY_DEFAULTS, type Proyecto, type MaterialItem, type ProfItem, type CritItem } from '../../modules/civilflow/context/ProjectContext'
+import type { Piso } from '../../modules/civilflow/components/useWorkAreaState'
 import { PlansContext, type PlanItem, type PlanMeta } from '../../modules/civilflow/context/PlansContext'
 import { fetchProyectos, deleteProyecto, type ProyectoRow } from '../../modules/civilflow/services/proyectosService'
 import { loadProyectoData } from '../../modules/civilflow/services/proyectoDataService'
@@ -63,7 +64,7 @@ function ProfilePage() {
       const data = await loadProyectoData(proy.id)
 
       if (data) {
-        if (data.pisos) projectCtx?.setPisos(data.pisos as unknown[])
+        if (data.pisos) projectCtx?.setPisos(data.pisos as Piso[])
         if (data.proy && Object.keys(data.proy).length) {
           projectCtx?.setProyAll({ ...PROY_DEFAULTS, ...(data.proy as Partial<Proyecto>) })
         } else {

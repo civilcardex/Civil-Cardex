@@ -1,7 +1,7 @@
 import { memo, useMemo, useCallback } from "react";
 import { useTramos } from "../context/TramosContext";
 import type { Tramo } from "../context/tramosReducer";
-import { useProject } from "../context/ProjectContext";
+import { usePisos } from "../context/PisosContext";
 import { usePlans } from "../context/PlansContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
@@ -147,7 +147,7 @@ const DownpipesTable_S1: React.CSSProperties = { width: 40, padding: 2, textAlig
 const BajantesTable = memo(function BajantesTable_() {
   const { tramosSan } = useTramos();
   const { udBase } = useApparatus();
-  const { pisos } = useProject();
+  const { pisos } = usePisos();
   const { plans } = usePlans();
 
   const storageByPlan = useMemo(() => {

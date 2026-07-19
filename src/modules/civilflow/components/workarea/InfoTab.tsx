@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import type { Dispatch, SetStateAction, ChangeEvent, FocusEvent } from "react";
 import { REDES, USOS, pisoLbl } from "../../constants";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
-import type { useWorkAreaState } from "../useWorkAreaState";
+import type { useWorkAreaState, Piso } from "../useWorkAreaState";
 import EditButton from "../shared/EditButton";
 import { devError } from "../../../../utils/devError";
 import { NET_COLOR_PREFIX, ACTIVE_PROYECTO_ID_KEY } from "../../constants/storage-keys";
@@ -31,7 +31,6 @@ interface InfoTabProps {
 }
 
 interface ProjectIdInfo { nombre: string; dir: string; mun: string; dep: string; uso: string }
-interface Piso { id: string | number; n: number; npt?: string | number; ok?: boolean; tipo?: string }
 
 const ProjectIdCard = React.memo(function ProjectIdCard({ proy, setP }: { proy: ProjectIdInfo; setP: (k: string, v: string) => void }) {
   const [isEditing, setIsEditing] = React.useState(false);
