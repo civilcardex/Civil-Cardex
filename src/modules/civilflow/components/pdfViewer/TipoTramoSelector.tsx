@@ -1,4 +1,6 @@
 import React from 'react';
+import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
+import type { ElementItem } from '../../lib/PlanoEngine/PlanoEngine';
 
 const TIPOS_TRAMO = [
   { id: "ramal", label: "Ramal" },
@@ -17,8 +19,8 @@ interface TipoTramoSelectorProps {
   setTipoTramo: (v: string) => void;
   padreTributarioId: string | null;
   setPadreTributarioId: (v: string | null) => void;
-  drawnElements: any[];
-  engineRef: React.RefObject<any>;
+  drawnElements: ElementItem[];
+  engineRef: React.RefObject<PlanoEngine | null>;
 }
 
 export default function TipoTramoSelector({

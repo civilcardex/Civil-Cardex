@@ -2,6 +2,13 @@ import { memo, useCallback, useMemo, useState } from "react";
 import { pisoLbl } from "../../constants";
 import { loadFromStorage, saveTrazosToDB } from "../../services/storageService";
 import { copyDrawingFromPlan, type CopySourceSelection } from "../../utils/copyDrawingFromPlan";
+import type PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
+import type { PlanoNet } from "../../lib/PlanoEngine/PlanoState";
+import type { Piso } from "../useWorkAreaState";
+import type { PlanItem } from "../../context/PlansContext";
+
+interface SrcPlanElement { net: string; tipo: string }
+interface SrcPlanData { ramales?: SrcPlanElement[]; bajantes?: SrcPlanElement[] }
 const CopyFromPlanPanel_S1: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1a1c21", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer', };
 const CopyFromPlanPanel_S2: React.CSSProperties = { maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, background: '#181a1e', borderRadius: 3, padding: '4px 0', border: '1px solid rgba(0,220,229,.08)', };
 const CopyFromPlanPanel_S3: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', fontSize: 12, fontFamily: "'Geist',monospace", color: '#c8c8d0', padding: '2px 2px', borderRadius: 2, userSelect: 'none', };
@@ -53,12 +60,12 @@ const NET_OPTIONS = [
 ];
 
 interface CopyFromPlanPanelProps {
-  engineRef: React.MutableRefObject<any>;
-  currentId: string | undefined;
-  currentIdRef: React.MutableRefObject<string | undefined>;
-  planosCtx: { plans: any[] };
-  pisos: any[];
-  visibleNets: any[];
+  engineRef: React.MutableRefObject<PlanoEngine | null>;
+  currentId: string | number | undefined;
+  currentIdRef: React.MutableRefObject<string | number | undefined>;
+  planosCtx: { plans: PlanItem[] };
+  pisos: Piso[];
+  visibleNets: PlanoNet[];
 }
 
 function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pisos, visibleNets }: CopyFromPlanPanelProps) {
@@ -71,12 +78,12 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
   const currentNivel = useMemo(() => {
     const targetId = currentId || currentIdRef.current;
     if (!targetId) return undefined;
-    const p = planosCtx.plans.find((pl: any) => String(pl.id) === String(targetId));
+    const p = planosCtx.plans.find((pl) => String(pl.id) === String(targetId));
     return p ? p.nivel : undefined;
   }, [planosCtx.plans, currentId, currentIdRef]);
 
   const otherPlans = useMemo(() =>
-    planosCtx.plans.filter((p: any) => {
+    planosCtx.plans.filter((p) => {
       if (p.nivel == null) return false;
       const isSame = String(p.id) === String(currentId || currentIdRef.current);
       const sameFloor = currentNivel !== undefined && p.nivel === currentNivel;
@@ -84,36 +91,36 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
     }),
   [planosCtx.plans, currentId, currentIdRef, currentNivel]);
 
-  const srcPlan = useMemo(() => otherPlans.find((p: any) => String(p.id) === srcPlanId), [otherPlans, srcPlanId]);
+  const srcPlan = useMemo(() => otherPlans.find((p) => String(p.id) === srcPlanId), [otherPlans, srcPlanId]);
 
-  const srcPlanData = useMemo(() => {
+  const srcPlanData = useMemo((): SrcPlanData | null => {
     if (!srcPlanId) return null;
     const raw = loadFromStorage(`trazos_${srcPlanId}`, null);
     if (!raw) return null;
     const d = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    return d;
+    return d as SrcPlanData;
   }, [srcPlanId]);
 
   const availableNets = useMemo(() => {
     if (!srcPlanData) return [];
-    const srcRams: any[] = srcPlanData.ramales || [];
-    const srcBajs: any[] = srcPlanData.bajantes || [];
+    const srcRams: SrcPlanElement[] = srcPlanData.ramales || [];
+    const srcBajs: SrcPlanElement[] = srcPlanData.bajantes || [];
     const allNets = new Set<string>();
     for (const r of srcRams) allNets.add(r.net);
     for (const b of srcBajs) allNets.add(b.net);
-    return visibleNets.filter((n: any) => allNets.has(n.id));
+    return visibleNets.filter((n) => allNets.has(n.id));
   }, [srcPlanData, visibleNets]);
 
   const getTiposForNet = useCallback((netId: string) => {
     if (!srcPlanData) return new Set<string>();
-    const srcRams: any[] = srcPlanData.ramales || [];
-    const srcBajs: any[] = srcPlanData.bajantes || [];
+    const srcRams: SrcPlanElement[] = srcPlanData.ramales || [];
+    const srcBajs: SrcPlanElement[] = srcPlanData.bajantes || [];
     const tipos = new Set<string>();
     for (const r of srcRams) { if (r.net === netId) tipos.add(r.tipo); }
     for (const b of srcBajs) { if (b.net === netId) tipos.add(b.tipo); }
-    if (srcBajs.some((b: any) => b.tipo === 'red_publica')) tipos.add('red_publica');
-    if (srcBajs.some((b: any) => b.tipo === 'contador')) tipos.add('contador');
-    if (srcBajs.some((b: any) => b.tipo === 'calentador')) tipos.add('calentador');
+    if (srcBajs.some((b) => b.tipo === 'red_publica')) tipos.add('red_publica');
+    if (srcBajs.some((b) => b.tipo === 'contador')) tipos.add('contador');
+    if (srcBajs.some((b) => b.tipo === 'calentador')) tipos.add('calentador');
     return tipos;
   }, [srcPlanData]);
 
@@ -153,15 +160,15 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
         tipos: new Set(tipos),
       }));
 
-      const result = copyDrawingFromPlan(eng, targetId, srcPlanId, selections);
+      const result = copyDrawingFromPlan(eng, String(targetId), srcPlanId, selections);
 
       if (result.copied > 0) {
         try {
 
           const work = eng.saveWork();
           if (work) {
-            (work as any).ts = Date.now();
-            await saveTrazosToDB(targetId, work);
+            work.ts = Date.now();
+            await saveTrazosToDB(String(targetId), work);
           }
         } catch { /* ignore */ }
         setFeedback({ ok: true, msg: `✓ ${result.copied} elemento${result.copied !== 1 ? 's' : ''} copiado${result.copied !== 1 ? 's' : ''}` });
@@ -220,7 +227,7 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
             style={CopyFromPlanPanel_S1}
           >
             <option value="">— Seleccionar origen —</option>
-            {otherPlans.map((p: any) => {
+            {otherPlans.map((p) => {
               const piso = pisos.find(s => String(s.n) === String(p.nivel));
               return (
                 <option key={p.id} value={p.id}>
@@ -232,7 +239,7 @@ function CopyFromPlanPanel_({ engineRef, currentId, currentIdRef, planosCtx, pis
 
           {srcPlan && availableNets.length > 0 && (
             <div style={CopyFromPlanPanel_S2}>
-              {availableNets.map((net: any) => {
+              {availableNets.map((net) => {
                 const tipos = getTiposForNet(net.id);
                 const selTipos = netSelections[net.id] || new Set();
                 const allSelected = tipos.size > 0 && [...tipos].every(t => selTipos.has(t));

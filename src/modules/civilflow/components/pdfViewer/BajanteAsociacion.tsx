@@ -2,21 +2,25 @@
 import React from 'react';
 import { writeBajantePropToDrawing } from '../../utils/writeDiameterToDrawing';
 import { createConnectingRamalIfNeeded } from '../../utils/createConnectingRamal';
+import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
+import type { PlanoBajante, PlanoElement } from '../../lib/PlanoEngine/PlanoState';
+import type { PlanItem } from '../../context/PlansContext';
+import type { LowerFloorRamales } from './DrawingElementContextMenu';
 const BajanteAsociacion_S1: React.CSSProperties = { flex: 1, padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 
 
 interface BajanteAsociacionProps {
-  selElement: Record<string, any> | null;
-  setSelElement: (el: any) => void;
+  selElement: PlanoElement | null;
+  setSelElement: (el: PlanoElement | null) => void;
   selectedNivel: number | null;
   pisoLbl: (n: number) => string;
-  lowerFloorsRamales: any[];
-  planosCtx: any;
-  engineRef: React.RefObject<any>;
+  lowerFloorsRamales: LowerFloorRamales[];
+  planosCtx: { plans: PlanItem[] };
+  engineRef: React.RefObject<PlanoEngine | null>;
 }
 
 export default function BajanteAsociacion({
-  selElement,
+  selElement: rawSelElement,
   setSelElement,
   selectedNivel,
   pisoLbl,
@@ -25,9 +29,10 @@ export default function BajanteAsociacion({
   engineRef,
 }: BajanteAsociacionProps) {
 
-  if (!(selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante') && !engineRef.current?._isGhostSel)) {
+  if (!(rawSelElement && ((rawSelElement as { tipo?: string }).tipo === 'bajante' || (rawSelElement as { tipo?: string }).tipo === 'montante') && !engineRef.current?._isGhostSel)) {
     return null;
   }
+  const selElement = rawSelElement as PlanoBajante;
 
   return (
     <div style={{ padding: "10px 12px 8px", borderBottom: "1px solid #3a494a", opacity: 1, pointerEvents: 'auto' }}>
@@ -61,12 +66,12 @@ export default function BajanteAsociacion({
               style={BajanteAsociacion_S1}>
               <option value="">Sin destino</option>
               {lowerFloorsRamales.map(group => {
-                const plano = planosCtx.plans.find((pl: any) => pl.id === group.planId);
+                const plano = planosCtx.plans.find((pl) => (pl.id as unknown as string) === group.planId);
                 const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
-                const hasBajantes = group.bajantes && group.bajantes.filter((b: any) => b.id !== selElement.id).length > 0;
+                const hasBajantes = group.bajantes && group.bajantes.filter((b) => b.id !== selElement.id).length > 0;
                 return (
                   <optgroup key={group.planId} label={pLabel}>
-                    {hasBajantes && group.bajantes.filter((b: any) => b.id !== selElement.id).map((b: any) => (
+                    {hasBajantes && group.bajantes.filter((b) => b.id !== selElement.id).map((b) => (
                       <option key={`${group.planId}|${b.id}`} value={`${group.planId}|${b.id}`}>
                         Bajante: {b.code || b.id}
                       </option>

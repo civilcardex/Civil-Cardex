@@ -4,24 +4,25 @@ import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
 import { saveToStorage, saveTrazosToDB } from "../../services/storageService";
 import { devError } from "../../../../utils/devError";
 import { TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from "../../constants/storage-keys";
+import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 
 interface UsePdfViewerEngineParams {
   currentFile: File | null;
-  currentId: string | undefined;
-  currentIdRef: React.MutableRefObject<string | undefined>;
+  currentId: string | number | undefined;
+  currentIdRef: React.MutableRefObject<string | number | undefined>;
   activeNetRef: React.MutableRefObject<string>;
   cwRef: React.RefObject<HTMLDivElement | null>;
   drawCanvasRef: React.RefObject<HTMLCanvasElement | null>;
   pdfCanvasRef: React.RefObject<HTMLCanvasElement | null>;
   onStatus: (msg: string) => void;
   onDirty: (eng: PlanoEngine) => void;
-  onSelect: (el: any) => void;
+  onSelect: (el: Record<string, unknown> | null) => void;
   onDelete: (ids: string[]) => void;
   onToolChange: (tool: string) => void;
   onRequestText: (x: number, y: number, cb: (text: string) => void) => void;
   onAlert: (title: string, msg: string) => void;
   onAccesorioModal: (data: { ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean }) => void;
-  loadTrazosForPlan: (eng: PlanoEngine, id: string) => Promise<boolean>;
+  loadTrazosForPlan: (eng: PlanoEngine, id: string | number) => Promise<boolean>;
   setActiveNet: (net: string) => void;
   setScaleM: (sm: string) => void;
   setLoading: (v: boolean) => void;
@@ -60,9 +61,9 @@ export function usePdfViewerEngine({
   // ref object to use, it never decides whether the hook itself runs.
   const internalEngineRef = useRef<PlanoEngine | null>(null);
   const engineRef = externalEngineRef ?? internalEngineRef;
-  const pdfDocRef = useRef<any>(null);
+  const pdfDocRef = useRef<PDFDocumentProxy | null>(null);
   const mountId = useRef(0);
-  const renderTaskRef = useRef<any>(null);
+  const renderTaskRef = useRef<RenderTask | null>(null);
   const renderingRef = useRef(false);
   const [engineReady, setEngineReady] = useState(false);
   const pdfRenderedRef = useRef(false);
@@ -102,7 +103,7 @@ export function usePdfViewerEngine({
       try {
         await task.promise;
       } catch (rerr) {
-        if ((rerr as any)?.name === 'RenderingCancelledException') { renderingRef.current = false; return; }
+        if ((rerr as { name?: string })?.name === 'RenderingCancelledException') { renderingRef.current = false; return; }
         throw rerr;
       }
       renderTaskRef.current = null;
@@ -137,7 +138,7 @@ export function usePdfViewerEngine({
         }
       }
     } catch (err) {
-      if ((err as any)?.name === 'RenderingCancelledException') return;
+      if ((err as { name?: string })?.name === 'RenderingCancelledException') return;
       if (mountCheck && mountCheck !== mountId.current) return;
       devError("Error renderizando pagina:", err);
       setError(String(err));
@@ -177,12 +178,12 @@ export function usePdfViewerEngine({
       try {
         if (!loadingPlanRef.current && eng._dirty) {
           const id = eng._loadedPlanId || currentIdRef.current || 'work';
-          const work = eng.saveWork() as any;
+          const work = eng.saveWork();
           work.ts = Date.now();
           saveToStorage(TRAZOS_PREFIX + id, work);
           if (id !== 'work') {
             saveToStorage(LAST_TRAZOS_ID_KEY, id);
-            saveTrazosToDB(id, work);
+            saveTrazosToDB(String(id), work);
           }
         }
       } catch (e) { devError('[CLEANUP] error', e); }

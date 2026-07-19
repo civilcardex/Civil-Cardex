@@ -1,6 +1,8 @@
 import { memo, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom'
 import { pisoLbl } from '../../constants'
+import type { Piso } from '../useWorkAreaState'
+import type { PlanItem } from '../../context/PlansContext'
 const PdfCanvas_S1: React.CSSProperties = { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(17,19,23,0.8)", };
 const PdfCanvas_S2: React.CSSProperties = { position:"absolute",top:0,left:0,right:0,bottom:0,zIndex:10, display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14,padding:40, background:"rgba(17,19,23,0.95)" };
 const PdfCanvas_S3: React.CSSProperties = { display:'flex',flexDirection:'column',alignItems:'center',gap:14, padding:'32px 48px',maxWidth:480, background:'linear-gradient(135deg,rgba(77,143,247,0.15),rgba(0,220,229,0.08))', border:'2px solid rgba(77,143,247,0.4)',borderRadius:12, boxShadow:'0 8px 40px rgba(77,143,247,0.15),inset 0 1px 0 rgba(77,143,247,0.1)', };
@@ -18,11 +20,11 @@ interface PdfCanvasProps {
   pdfCanvasRef: RefObject<HTMLCanvasElement | null>
   drawCanvasRef: RefObject<HTMLCanvasElement | null>
   currentFile: File | null
-  error: Error | null
+  error: Error | string | null
   loading: boolean
   selectedNivel: number | null
-  pisos: any[]
-  planos: any[]
+  pisos: Piso[]
+  planos: PlanItem[]
   tool: string
   snapOn: boolean
 }
@@ -81,11 +83,11 @@ function PdfCanvas({
         <div style={PdfCanvas_S5}>
           <div style={{ fontSize: 40 }}>⚠</div>
           <div style={{ color: "#ffb4ab", fontFamily: "'Geist',monospace", fontSize: 13 }}>Error al cargar el PDF</div>
-          <div style={{ color: "#9BA8AA", fontFamily: "'Geist',monospace", fontSize: 12 }}>{error.message || String(error)}</div>
+          <div style={{ color: "#9BA8AA", fontFamily: "'Geist',monospace", fontSize: 12 }}>{(typeof error === 'string' ? error : error.message) || String(error)}</div>
         </div>
       )}
 
-      {currentFile && !error && selectedNivel !== null && selectedNivel !== undefined && !planos.some((p: { nivel: number; status: string }) => p.nivel === selectedNivel && p.status === 'confirmed') && (
+      {currentFile && !error && selectedNivel !== null && selectedNivel !== undefined && !planos.some((p) => p.nivel === selectedNivel && p.status === 'confirmed') && (
         <div style={PdfCanvas_S6}>
           <div style={PdfCanvas_S7}>
             <div style={{fontSize:56,lineHeight:1,filter:'drop-shadow(0 0 12px rgba(245,166,35,0.5))'}}>⚠️</div>

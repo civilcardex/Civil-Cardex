@@ -1,10 +1,11 @@
+import type { PlanoNet } from "../../lib/PlanoEngine/PlanoState";
 
 const PdfViewerNetworkBar_S1: React.CSSProperties = { height: 38, flexShrink: 0, display: "flex", alignItems: "center", gap: 8, padding: "0 10px", background: "#14161a", borderBottom: "1px solid #3a494a", overflowX: "auto", overflowY: "hidden", };
 const PdfViewerNetworkBar_S2: React.CSSProperties = { padding:"2px 8px", background:"#1e2024", border:"1px solid #2a3435", borderRadius:2, color:"#8AB4D6", fontSize: 12, fontFamily:"'Geist',monospace", fontWeight: 600 };
 const PdfViewerNetworkBar_closeBtn: React.CSSProperties = { padding: "4px 10px", background: "rgba(211,47,47,.15)", border: "1px solid rgba(211,47,47,.4)", borderRadius: "3px", color: "#ef5350", cursor: "pointer", fontFamily: "'Geist',monospace", fontWeight: 600, fontSize: 11, display: "flex", alignItems: "center", gap: 4, transition: "all .15s", marginRight: 6, flexShrink: 0 };
 
 interface PdfViewerNetworkBarProps {
-  nets: any[];
+  nets: PlanoNet[];
   activeNet: string;
   hiddenNets: Set<string>;
   lockedNets: Set<string>;
@@ -36,7 +37,7 @@ export default function PdfViewerNetworkBar({
       </div>
       <div style={{ width: 12 }} />
       <div style={{ flex: 1, minWidth: 4 }} />
-      {nets.map((n: any) => {
+      {nets.map((n) => {
         const isActive = activeNet === n.id;
         const isHidden = hiddenNets.has(n.id);
         const isLocked = lockedNets.has(n.id);

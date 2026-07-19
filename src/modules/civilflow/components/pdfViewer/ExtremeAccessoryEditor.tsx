@@ -2,18 +2,20 @@ import { syncExtremeAccessoryToHidroData } from '../../utils/syncExtremeAccessor
 import { normalizeDnLabel } from '../../utils/formatUtils';
 import { getAccessoryOptions } from '../../utils/accessoryOptions';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
+import type { PlanoRamal } from '../../lib/PlanoEngine/PlanoState';
+import type { PlanItem } from '../../context/PlansContext';
 const ExtremeAccessoryEditor_S1: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const ExtremeAccessoryEditor_S2: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const ExtremeAccessoryEditor_S4: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 const ExtremeAccessoryEditor_S5: React.CSSProperties = { width: '100%', padding: "4px 6px", background: "#1e2024", border: "1px solid #3a494a", borderRadius: 3, color: "#e2e2e8", fontSize: 12, fontFamily: "'Geist',monospace", cursor: 'pointer' };
 
 interface ExtremeAccessoryEditorProps {
-  selElement: any;
+  selElement: PlanoRamal;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
-  setSelElement: React.Dispatch<React.SetStateAction<any>>;
-  diamList: any[];
+  setSelElement: (el: PlanoRamal | null) => void;
+  diamList: Array<{ n: string }>;
   activeNet: string;
-  plans?: any[];
+  plans?: PlanItem[];
 }
 
 export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelElement, diamList, activeNet, plans }: ExtremeAccessoryEditorProps) {
@@ -23,10 +25,10 @@ export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelEl
     const val = e.target.value;
     if (engineRef.current) {
       const oldVal = selElement[field] || '';
-      const updates: any = { [field]: val };
-      const fieldDiam = field === 'accesorioInicio' ? 'diametroInicio' : 'diametroFin';
+      const updates: Record<string, unknown> = { [field]: val };
+      const fieldDiam: 'diametroInicio' | 'diametroFin' = field === 'accesorioInicio' ? 'diametroInicio' : 'diametroFin';
       // Mutually exclusive with appliance — clear aparato when accesorio is selected
-      const fieldApp = field === 'accesorioInicio' ? 'aparatoInicio' : 'aparatoFin';
+      const fieldApp: 'aparatoInicio' | 'aparatoFin' = field === 'accesorioInicio' ? 'aparatoInicio' : 'aparatoFin';
       if (val && selElement[fieldApp]) {
         updates[fieldApp] = null;
       }
@@ -73,10 +75,10 @@ export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelEl
               }}
               style={ExtremeAccessoryEditor_S2}>
               <option value="">Usar red</option>
-              {(selElement.accesorioInicio === 'sifon' 
-                ? diamList.filter((d: any) => { const v = parseFloat(d.n); return v === 2 || v === 3 || v === 4; })
+              {(selElement.accesorioInicio === 'sifon'
+                ? diamList.filter((d) => { const v = parseFloat(d.n); return v === 2 || v === 3 || v === 4; })
                 : diamList
-              ).map((d: any) => {
+              ).map((d) => {
                 const valClean = d.n.split(' — ')[0].trim();
                 return <option key={d.n} value={valClean}>{normalizeDnLabel(valClean)}</option>;
               })}
@@ -111,10 +113,10 @@ export default function ExtremeAccessoryEditor({ selElement, engineRef, setSelEl
               }}
               style={ExtremeAccessoryEditor_S5}>
               <option value="">Usar red</option>
-              {(selElement.accesorioFin === 'sifon' 
-                ? diamList.filter((d: any) => { const v = parseFloat(d.n); return v === 2 || v === 3 || v === 4; })
+              {(selElement.accesorioFin === 'sifon'
+                ? diamList.filter((d) => { const v = parseFloat(d.n); return v === 2 || v === 3 || v === 4; })
                 : diamList
-              ).map((d: any) => {
+              ).map((d) => {
                 const valClean = d.n.split(' — ')[0].trim();
                 return <option key={d.n} value={valClean}>{normalizeDnLabel(valClean)}</option>;
               })}

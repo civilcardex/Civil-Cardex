@@ -1,11 +1,12 @@
-import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
+import PlanoEngine, { type ElementItem } from "../../lib/PlanoEngine/PlanoEngine";
+import type { PlanoElement } from "../../lib/PlanoEngine/PlanoState";
 const PdfViewerDrawnElements_S1: React.CSSProperties = { padding:'6px 8px',background:'transparent',border:'1px solid #3a494a',borderRadius:2,color:'#ffb4ab',cursor:'pointer',fontSize: 12,fontFamily:"'Geist',monospace",flexShrink:0,lineHeight:1 };
 
 
 interface PdfViewerDrawnElementsProps {
-  drawnElements: any[];
+  drawnElements: ElementItem[];
   activeNet: string;
-  selElement: Record<string, any> | null;
+  selElement: PlanoElement | null;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
 }
 
