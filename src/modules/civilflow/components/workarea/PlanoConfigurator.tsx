@@ -1,40 +1,17 @@
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { pisoLbl } from "../../constants";
 import ModalProtocolo from "./ModalProtocolo";
-import { getPdfjs } from "../../utils/lazyPdfjs";
-import { devError } from "../../../../utils/devError";
-const TOAST_BG: Record<string, string> = { err: 'rgba(211,47,47,0.9)', warn: 'rgba(245,158,11,0.9)', ok: 'rgba(14,204,122,0.9)' };
-const PlanoConfigurator_S1: React.CSSProperties = { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, padding: '6px 14px', fontSize: 12, fontWeight: 600, textAlign: 'center', background: TOAST_BG.ok, color: '#fff', };
-const PlanoConfigurator_S2: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, padding: '6px 14px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'var(--bg)', minHeight: 36, flexWrap: 'wrap' };
-const PlanoConfigurator_S3: React.CSSProperties = { width: '50%', padding: '5px 6px', fontSize: 12, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer' };
-const PlanoConfigurator_S4: React.CSSProperties = { width: '100%', padding: '5px 6px', fontSize: 12, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer' };
-const PlanoConfigurator_S5: React.CSSProperties = { padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 12, lineHeight: 1 };
-const PlanoConfigurator_S6: React.CSSProperties = { flex: 1, minWidth: 0, padding: '5px 4px', fontSize: 12, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt)', fontFamily: 'monospace' };
-const PlanoConfigurator_S7: React.CSSProperties = { marginTop: 3, fontSize: 12, color: 'var(--ok)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' };
-const PlanoConfigurator_S8: React.CSSProperties = { padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 12, lineHeight: 1 };
-const PlanoConfigurator_S9: React.CSSProperties = { flex: 1, minWidth: 0, padding: '5px 4px', fontSize: 12, background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt)', fontFamily: 'monospace' };
-const PlanoConfigurator_S10: React.CSSProperties = { marginTop: 3, fontSize: 12, color: 'var(--ok)', fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' };
-const PlanoConfigurator_S11: React.CSSProperties = { padding: '3px 6px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 2, color: 'var(--txt3)', cursor: 'pointer', fontSize: 12, lineHeight: 1 };
-const PlanoConfigurator_bannerBase: React.CSSProperties = {
-  margin: '8px 10px', padding: '6px 8px', borderRadius: 'var(--r)', textAlign: 'center',
-  fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, transition: 'all 0.2s ease',
-};
-const PlanoConfigurator_stepHeader: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4,
-  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-};
-const PlanoConfigurator_origenBtn: React.CSSProperties = {
-  width: '100%', padding: '6px 8px', fontSize: 10.5, fontWeight: 600, borderRadius: 'var(--r)',
-  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, transition: 'all .15s',
-};
-const PlanoConfigurator_trazarBtn: React.CSSProperties = {
-  padding: '5px 4px', fontSize: 10.5, fontWeight: 600, whiteSpace: 'nowrap', borderRadius: 'var(--r)',
-  cursor: 'pointer', display: 'flex', alignItems: 'center', transition: 'all .15s',
-};
-const PlanoConfigurator_S12: React.CSSProperties = { flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', background: 'var(--bg3)', borderRadius: 'var(--r)', cursor: 'pointer', fontSize: 12, color: 'var(--txt2)' };
-const PlanoConfigurator_S13: React.CSSProperties = { flex: 1, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 6px', background: 'var(--bg3)', borderRadius: 'var(--r)', cursor: 'pointer', fontSize: 12, color: 'var(--txt2)' };
-
+import type { Piso } from "../useWorkAreaState";
+import type { PlanItem } from "../../context/PlansContext";
+import { useCalibration, type ExistingCal } from "./useCalibration";
+import { usePlanFileLoader } from "./usePlanFileLoader";
+import {
+  TOAST_BG, PlanoConfigurator_S1, PlanoConfigurator_S2, PlanoConfigurator_S3, PlanoConfigurator_S4,
+  PlanoConfigurator_S5, PlanoConfigurator_S6, PlanoConfigurator_S7, PlanoConfigurator_S8, PlanoConfigurator_S9,
+  PlanoConfigurator_S10, PlanoConfigurator_S11, PlanoConfigurator_bannerBase, PlanoConfigurator_stepHeader,
+  PlanoConfigurator_origenBtn, PlanoConfigurator_trazarBtn, PlanoConfigurator_S12, PlanoConfigurator_S13,
+} from "./PlanoConfigurator.styles";
 
 interface PlanoConfiguratorProps {
   planFile: File;
@@ -50,16 +27,9 @@ interface PlanoConfiguratorProps {
     definedScale: number | null;
   }) => void;
   onIrADibujo: () => void;
-  existingCal?: {
-    origen: { x_px: number; y_px: number } | null;
-    scaleM: number | null;
-    factorX: number | null;
-    factorY: number | null;
-    calGlobal: boolean | null;
-    definedScale?: number | null;
-  } | null;
-  pisos: any[];
-  plans: any[];
+  existingCal?: ExistingCal | null;
+  pisos: Piso[];
+  plans: PlanItem[];
   planNivel: number | null;
   onUpdateNivel: (planId: number, nivel: number | null) => void;
 }
@@ -71,29 +41,7 @@ function PlanoConfiguratorBase({
 
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
-  const [origen, setOrigen] = useState<{ x_px: number; y_px: number } | null>(existingCal?.origen || null);
-  const [modoOrigen, setModoOrigen] = useState(false);
 
-  const [modoCalX, setModoCalX] = useState(false);
-  const [modoCalY, setModoCalY] = useState(false);
-  const [calStart, setCalStart] = useState<{ x_px: number; y_px: number } | null>(null);
-  const [calPreview, setCalPreview] = useState<{ x: number; y: number } | null>(null);
-  const [lenX, setLenX] = useState('');
-  const [lenY, setLenY] = useState('');
-  const [factorX, setFactorX] = useState<number | null>(existingCal?.factorX ?? null);
-  const [factorY, setFactorY] = useState<number | null>(existingCal?.factorY ?? null);
-  const [scaleM, setScaleM] = useState<number | null>(existingCal?.scaleM || null);
-  const [definedScale, setDefinedScale] = useState<number | null>(existingCal?.definedScale || existingCal?.scaleM || null);
-  const [calGlobal, setCalGlobal] = useState<boolean | null>(existingCal?.calGlobal ?? null);
-
-  const isPdf = planFile.type === 'application/pdf' || planFile.name.toLowerCase().endsWith('.pdf');
-  const isImage = /\.(png|jpe?g|webp|bmp|gif)$/i.test(planFile.name);
-
-  const [preScaleM, setPreScaleM] = useState<number | null>(() => {
-    if (existingCal?.definedScale) return existingCal.definedScale * (96 / (isPdf ? 72 : 96));
-    if (existingCal?.scaleM) return existingCal.scaleM;
-    return null;
-  });
   const [showProtocolo, setShowProtocolo] = useState(false);
   const [saved, setSaved] = useState(false);
   const [hasSaved, setHasSaved] = useState(!!existingCal);
@@ -101,84 +49,17 @@ function PlanoConfiguratorBase({
 
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
-  const [loading, setLoading] = useState(true);
   const [panning, setPanning] = useState(false);
   const panStartRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
-  const [imgLoaded, setImgLoaded] = useState(false);
 
   const overlayContRef = useRef<HTMLDivElement | null>(null);
   const canvRef = useRef<HTMLCanvasElement | null>(null);
-  const pdfCanvRef = useRef<HTMLCanvasElement | null>(null);
   const pageWRef = useRef(0);
   const pageHRef = useRef(0);
 
   const showToast = useCallback((msg: string, type: 'err' | 'ok' | 'warn' = 'err') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 8000);
-  }, []);
-
-  const canvasToPlane = useCallback((cx: number, cy: number) => ({
-    x: (cx - offset.x) / zoom,
-    y: (cy - offset.y) / zoom,
-  }), [zoom, offset]);
-
-  const calcularPromedio = useCallback((fx: number | null, fy: number | null) => {
-    if (fx && fy) {
-      const f = (fx + fy) / 2;
-      setScaleM(f);
-      const diff = Math.abs(fx - fy) / f * 100;
-      if (diff > 5) {
-        showToast(`Diferencia X/Y = ${diff.toFixed(1)}% - Posible distorsión. Re-exportar a 300 DPI`, 'warn');
-      }
-    } else if (fx || fy) {
-      const f = fx || fy;
-      setScaleM(f);
-    }
-  }, [showToast]);
-
-  const activarModoOrigen = () => {
-    setModoOrigen(prev => !prev);
-    setModoCalX(false);
-    setModoCalY(false);
-    setCalStart(null);
-    setCalPreview(null);
-  };
-
-  const activarModoCalX = () => {
-    if (modoCalX) { setModoCalX(false); setCalStart(null); setCalPreview(null); return; }
-    if (!definedScale && !scaleM && !factorX && !factorY && !preScaleM) {
-      showToast('Seleccione primero la "Escala definida" aproximada del plano', 'err');
-      return;
-    }
-    const lr = parseFloat(lenX);
-    if (!lr || lr <= 0) { showToast('Ingrese la longitud real X', 'err'); return; }
-    setModoCalX(true);
-    setModoCalY(false);
-    setModoOrigen(false);
-    setCalStart(null);
-    setCalPreview(null);
-  };
-
-  const activarModoCalY = () => {
-    if (modoCalY) { setModoCalY(false); setCalStart(null); setCalPreview(null); return; }
-    if (!definedScale && !scaleM && !factorX && !factorY && !preScaleM) {
-      showToast('Seleccione primero la "Escala definida" aproximada del plano', 'err');
-      return;
-    }
-    const lr = parseFloat(lenY);
-    if (!lr || lr <= 0) { showToast('Ingrese la longitud real Y', 'err'); return; }
-    setModoCalY(true);
-    setModoCalX(false);
-    setModoOrigen(false);
-    setCalStart(null);
-    setCalPreview(null);
-  };
-
-  const getCursorPos = useCallback((e: React.MouseEvent | MouseEvent): { x: number; y: number } => {
-    const el = overlayContRef.current;
-    if (!el) return { x: 0, y: 0 };
-    const rect = el.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }, []);
 
   const fitView = useCallback(() => {
@@ -194,90 +75,29 @@ function PlanoConfiguratorBase({
     });
   }, []);
 
-  // Listen for Escape key to cancel active calibration/origin modes
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (modoCalX) { setModoCalX(false); setCalStart(null); setCalPreview(null); }
-        if (modoCalY) { setModoCalY(false); setCalStart(null); setCalPreview(null); }
-        if (modoOrigen) { setModoOrigen(false); }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [modoCalX, modoCalY, modoOrigen]);
+  const { isPdf, loading, imgLoaded, pdfCanvRef } = usePlanFileLoader({ planFile, pageWRef, pageHRef, onLoaded: fitView });
 
-  // Load image/PDF
-  useEffect(() => {
-    if (!planFile || !pdfCanvRef.current) return;
-    setLoading(true);
-    setImgLoaded(false);
-    const dpr = window.devicePixelRatio || 1;
-
-    if (isImage) {
-      const img = new Image();
-      const url = URL.createObjectURL(planFile);
-      img.onload = () => {
-        const canv = pdfCanvRef.current;
-        if (!canv) return;
-        canv.width = img.width;
-        canv.height = img.height;
-        canv.style.width = img.width + 'px';
-        canv.style.height = img.height + 'px';
-        const ctx = canv.getContext('2d')!;
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(img, 0, 0);
-        pageWRef.current = img.width;
-        pageHRef.current = img.height;
-        setImgLoaded(true);
-        setLoading(false);
-        URL.revokeObjectURL(url);
-        requestAnimationFrame(() => fitView());
-      };
-      img.onerror = () => { setLoading(false); URL.revokeObjectURL(url); };
-      img.src = url;
-      return;
-    }
-
-    if (isPdf) {
-      let cancelled = false;
-      (async () => {
-        try {
-          const pdfjsLib = await getPdfjs();
-          const data = await planFile.arrayBuffer();
-          const pdf = await pdfjsLib.getDocument({ data }).promise;
-          if (cancelled) return;
-          const page = await pdf.getPage(1);
-          const vp = page.getViewport({ scale: 1 });
-          const canv = pdfCanvRef.current;
-          if (!canv) return;
-          canv.width = Math.floor(vp.width * dpr);
-          canv.height = Math.floor(vp.height * dpr);
-          canv.style.width = vp.width + 'px';
-          canv.style.height = vp.height + 'px';
-          const ctx = canv.getContext('2d');
-          if (!ctx) return;
-          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-          ctx.imageSmoothingEnabled = false;
-          await page.render({ canvas: canv as HTMLCanvasElement, viewport: vp }).promise;
-          pageWRef.current = vp.width;
-          pageHRef.current = vp.height;
-          setImgLoaded(true);
-          setLoading(false);
-          requestAnimationFrame(() => fitView());
-        } catch (e) {
-          if (!cancelled) { devError('Error loading PDF:', e); setLoading(false); }
-        }
-      })();
-      return () => { cancelled = true; };
-    }
-    // Non-PDF fallback path of an async file-loading effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(false);
-  }, [planFile]);
+  const {
+    origen, setOrigen,
+    modoOrigen, setModoOrigen,
+    modoCalX, setModoCalX, modoCalY, setModoCalY,
+    calStart, setCalStart,
+    calPreview, setCalPreview,
+    lenX, setLenX,
+    lenY, setLenY,
+    factorX, setFactorX,
+    factorY, setFactorY,
+    scaleM, setScaleM,
+    definedScale, setDefinedScale,
+    calGlobal, setCalGlobal,
+    preScaleM, setPreScaleM,
+    canvasToPlane, calcularPromedio,
+    activarModoOrigen, activarModoCalX, activarModoCalY,
+    getCursorPos,
+  } = useCalibration({ zoom, offset, overlayContRef, isPdf, existingCal, showToast });
 
   // Overlay render
-  useEffect(() => {
+  React.useEffect(() => {
     const canv = canvRef.current;
     if (!canv || !imgLoaded || !pageWRef.current || !pageHRef.current) return;
     const dpr = window.devicePixelRatio || 1;
@@ -410,6 +230,10 @@ function PlanoConfiguratorBase({
         ctx.fillText(txt, 22, 30);
       }
     }
+    // Overlay repaint deliberately keys off the drawn values only (not factorX/factorY/lenX/
+    // lenY/isPdf/preScaleM, which feed the label text computed inline above) — pre-existing
+    // behavior carried over unchanged from before this effect was split out of the component.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [origen, calStart, calPreview, modoOrigen, modoCalX, modoCalY, scaleM, imgLoaded, cursorPos]);
 
   const onMouseDown = (e: React.MouseEvent) => {
@@ -489,7 +313,7 @@ function PlanoConfiguratorBase({
 
   const onWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    const { x, y } = getCursorPos(e as any);
+    const { x, y } = getCursorPos(e);
     const d = e.deltaY > 0 ? -0.1 : 0.1;
     const nz = Math.max(0.05, Math.min(8, zoom + d));
     setOffset(o => ({
@@ -506,7 +330,7 @@ function PlanoConfiguratorBase({
   };
 
   const tieneOrigen = origen !== null;
-  
+
   const escalaDisponible = scaleM !== null || preScaleM !== null;
 
   const guardarConfig = () => {
@@ -532,11 +356,7 @@ function PlanoConfiguratorBase({
     setTimeout(() => setSaved(false), 2500);
   };
 
-
-
   const diffPct = factorX && factorY && scaleM ? Math.abs(factorX - factorY) / scaleM * 100 : 0;
-
-
 
   return (
     <div className="fu" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -624,12 +444,12 @@ function PlanoConfiguratorBase({
               aria-label="Seleccionar nivel de plano"
               style={PlanoConfigurator_S3}>
               <option value="">— Nivel —</option>
-              {pisos.toSorted((a: any, b: any) => b.n - a.n).map((s: any) => {
-                const ocupado = plans.some((x: any) => x.id !== planId && x.status === 'confirmed' && x.nivel === s.n);
+              {pisos.toSorted((a, b) => b.n - a.n).map((s) => {
+                const ocupado = plans.some((x) => x.id !== planId && x.status === 'confirmed' && x.nivel === s.n);
                 return <option key={s.id} value={s.n} disabled={ocupado}>{pisoLbl(s.n)} ({s.npt} m){ocupado ? ' (ocupado)' : ''}</option>;
               })}
             </select>
-            
+
             {/* Escala - definida y calibrada side-by-side */}
             <div style={{ marginTop: 8, display: 'flex', gap: 10 }}>
               <div style={{ flex: 1 }}>
@@ -769,7 +589,6 @@ function PlanoConfiguratorBase({
             </div>
           </div>
 
-          {/* Scope */}
           {/* Scope */}
           <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
             <div style={{ ...PlanoConfigurator_stepHeader, color: calGlobal !== null ? 'var(--ok)' : 'var(--txt3)' }}>
