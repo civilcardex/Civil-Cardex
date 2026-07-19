@@ -16,13 +16,16 @@ export interface Tramo {
   nmaning?: number;
   sPercent?: number;
   qLps?: number;
+  v_real?: number;
+  yD?: number;
+  qQ0?: number;
   recibeDe?: string[];
   recibeDeIds?: string[];
   descargaEnId?: string | null;
   fixtures: Record<string, number>;
   accesorios?: Record<string, number>;
-  ini?: { x: number; y: number } | null;
-  fin?: { x: number; y: number } | null;
+  ini?: string | { x: number; y: number } | null;
+  fin?: string | { x: number; y: number } | null;
   totalL?: number;
   Lh?: number;
   Lv?: number;
@@ -42,8 +45,20 @@ export interface Tramo {
   diametro_interno?: number;
   net?: string;
   _net?: string;
-  ventRamalKey?: string;
+  ventRamalKey?: string | null;
+  ventRamalDiamPulg?: number;
   caudal?: number;
+  diametro?: string;
+  diamPulg?: number;
+  accesorioInicio?: string;
+  accesorioFin?: string;
+  diametroInicio?: string;
+  diametroFin?: string;
+  padre?: string | null;
+  padreTributarioLabel?: string | null;
+  calCapacidad?: string;
+  _nivelLabel?: string;
+  _aparatosKey?: string;
 }
 
 export type TramosState = {

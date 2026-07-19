@@ -180,7 +180,7 @@ export function copyDrawingFromPlan(
     for (const r of srcRamales) {
       if (r.tipo === 'ramal' && r.padre) {
         // Parent exists in source - map its label
-        const padreInSrc = srcRamales.find((x: any) => x.id === r.padre);
+        const padreInSrc = srcRamales.find((x) => x.id === r.padre);
         if (padreInSrc) {
           padreLabelMap[r.padre] = padreInSrc.label || padreInSrc.id;
         }

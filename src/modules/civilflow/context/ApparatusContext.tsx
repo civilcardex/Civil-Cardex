@@ -4,7 +4,7 @@ import { loadFromStorage, saveToStorage } from "../services/storageService";
 import { APS_STORAGE_KEY } from "../constants/storage-keys";
 
 interface UdBaseItem { id: string; nombre: string; ud: number }
-interface ApsItem { id: string; s: string; n: string; g: string; ucaf: number; ucac: number; ud: number; pmin: number; pmax: number; qg: number; ctrl: string; _blkUd: boolean }
+export interface ApsItem { id: string; s: string; n: string; g: string; ucaf: number; ucac: number; ud: number; pmin: number; pmax: number; qg: number; ctrl: string; _blkUd: boolean }
 interface ApparatusContextValue {
   udBase: UdBaseItem[];
   aps: ApsItem[];

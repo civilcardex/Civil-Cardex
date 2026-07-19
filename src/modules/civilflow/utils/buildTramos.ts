@@ -4,31 +4,64 @@ import { parseDescargaEnId } from "./parseDescargaEnId";
 import { HYDRO_DATA_STORAGE_KEY } from "../constants/storage-keys";
 import { loadFromStorage, loadPlanTrazos, savePlanTrazos } from "../services/storageService";
 import { pisoLbl, pisoCorto } from "../constants";
+import type { Tramo } from "../context/tramosReducer";
+
+interface DrawingRamal {
+  id: string; label?: string; ini?: string; fin?: string; pts?: number[][]; piso?: number | string;
+  tipo?: string; net?: string; _net?: string; diametro?: string; diamPulg?: number; material?: string;
+  totalL?: number; nSalidas?: number; lvert?: string | number; dz?: string | number; _aparatosKey?: string;
+  padre?: string | null; caudal?: number; maning?: number; pendiente?: number;
+  accesorioInicio?: string; accesorioFin?: string; diametroInicio?: string; diametroFin?: string;
+  descargaEnId?: string | null; recibeDeIds?: string[];
+}
+
+interface DrawingBajante {
+  id: string; code?: string; tipo?: string; net?: string; _net?: string; x: number; y: number;
+  piso?: number | string; pisoBase?: string | number; pisoCima?: string | number;
+  desplazamientos?: Record<string, { dx?: number; dy?: number }>;
+  recibeDeIds?: string[]; ini?: string; fin?: string; capacidad?: string; diamPulg?: number; area_m2?: number; nSalidas?: number;
+  bajR?: number; bajLong?: number; bajFDarcy?: number; ventDprop?: number; maning?: number;
+  descargaEnId?: string | null; _aparatosKey?: string;
+}
+
+interface DrawingPlane {
+  planoId?: string | number;
+  ramales?: DrawingRamal[];
+  bajantes?: DrawingBajante[];
+}
+
+interface HidroEntry {
+  accesorios?: Record<string, number>;
+  Lh?: number;
+  dNominal?: string | number;
+  material?: string;
+  nSalidas?: number;
+}
 
 export function buildTramos(
   family: string,
-  planes: Record<string, any>,
-  hidroData: Record<string, any>,
-  aparatos: Record<string, any>,
+  planes: Record<string, DrawingPlane>,
+  hidroData: Record<string, HidroEntry>,
+  aparatos: Record<string, Record<string, number>>,
 ) {
-  const incoming: any[] = [];
+  const incoming: Tramo[] = [];
 
   for (const [key, plane] of Object.entries(planes)) {
     if (!key.startsWith(family + '_')) continue;
     const nivel = parseInt(key.slice(family.length + 1));
-    const planId = (plane as any).planoId || '';
-    const raw = loadPlanTrazos(planId);
-    let drawingBajantes: any[] = [];
-    let drawingData: any = null;
+    const planId = plane.planoId || '';
+    const raw = loadPlanTrazos(String(planId));
+    let drawingBajantes: DrawingBajante[] = [];
+    let drawingData: { ramales?: DrawingRamal[]; bajantes?: DrawingBajante[] } | null = null;
     if (raw) {
-      drawingData = raw;
+      drawingData = raw as unknown as { ramales?: DrawingRamal[]; bajantes?: DrawingBajante[] };
       if (typeof drawingData === 'string') {
         try { drawingData = JSON.parse(drawingData); } catch { /* ignore */ }
       }
       drawingBajantes = drawingData?.bajantes || [];
     }
 
-    for (const r of ((plane as any).ramales || [])) {
+    for (const r of (plane.ramales || [])) {
       const rId = r.id;
       let ini = String(r.ini || '');
       let fin = String(r.fin || '');
@@ -38,7 +71,7 @@ export function buildTramos(
         if (pts.length >= 2) {
           const pStart = pts[0];
           const pEnd = pts[pts.length - 1];
-          const floorNum = typeof r.piso === 'number' ? r.piso : parseInt(r.piso || String(nivel));
+          const floorNum = typeof r.piso === 'number' ? r.piso : parseInt(String(r.piso || nivel));
           const lvlLabel = pisoLbl(floorNum);
 
           const findConnectedBajante = (pt: number[]) => {
@@ -101,7 +134,7 @@ export function buildTramos(
                   break;
                 }
               }
-              savePlanTrazos(planId, drawingData);
+              savePlanTrazos(String(planId), drawingData);
             }
           }
           ini = newIni;
@@ -132,17 +165,17 @@ export function buildTramos(
       }
       const extra = hidroData[apKey] || {};
       let dznSalidas = r.nSalidas || 1;
-      let dzLvert = r.lvert ?? r.dz ?? 0;
+      let dzLvert = Number(r.lvert ?? r.dz ?? 0);
       if (drawingData) {
-        const dr = (drawingData.ramales || []).find((x: any) => x.id === r.id);
+        const dr = (drawingData.ramales || []).find((x) => x.id === r.id);
         if (dr) {
           if (!dznSalidas) dznSalidas = dr.nSalidas || 1;
-          if (dzLvert === 0 || dzLvert === undefined) dzLvert = parseFloat(dr.lvert ?? dr.dz) || 0;
+          if (dzLvert === 0 || dzLvert === undefined) dzLvert = parseFloat(String(dr.lvert ?? dr.dz)) || 0;
         }
       }
           incoming.push({
             _key: `${rId}-${planId}`,
-            id: rId, label: r.label || r.id, piso: nivel, planId,
+            id: rId, label: r.label || r.id, piso: nivel, planId: String(planId),
             _net: r._net || family,
             tipo: r.tipo || 'ramal',
             esBajante: false,
@@ -152,9 +185,9 @@ export function buildTramos(
             nSalidas: dznSalidas,
             recibeDe: [], descripcion: '',
             ini: ini, fin: fin,
-            diamDisPulg: diamPulgFromLabel(r.diametro) || r.diamPulg || 0, diametroOriginal: r.diametro || '', material: r.material || '',
+            diamDisPulg: diamPulgFromLabel(r.diametro || '') || r.diamPulg || 0, diametroOriginal: r.diametro || '', material: r.material || '',
             totalL: r.totalL || 0,
-            _nivelLabel: pisoLbl(typeof r.piso === 'number' ? r.piso : parseInt(r.piso || String(nivel)))
+            _nivelLabel: pisoLbl(typeof r.piso === 'number' ? r.piso : parseInt(String(r.piso || nivel)))
           });
     }
 
@@ -162,15 +195,15 @@ export function buildTramos(
       const contadores = drawingBajantes.filter(b => b.tipo === 'contador' && (b.net === 'af' || !b.net));
       for (const cnt of contadores) {
         const cntId = cnt.code || cnt.id;
-        const hasAC1 = incoming.some(r => r.fin === cntId && (r.ini.startsWith('RP') || r.ini === 'RP'));
+        const hasAC1 = incoming.some(r => r.fin === cntId && ((r.ini as string || '').startsWith('RP') || r.ini === 'RP'));
         if (!hasAC1) {
           const rId = `AC-01-${cntId}`;
           const apKey = `af_${cntId}_${planId}`;
           const extra = hidroData[apKey] || {};
-          const pisoCnt = typeof cnt.piso === 'number' ? cnt.piso : parseInt(cnt.pisoBase || String(nivel));
+          const pisoCnt = typeof cnt.piso === 'number' ? cnt.piso : parseInt(String(cnt.pisoBase || nivel));
           incoming.push({
             _key: `${rId}-${planId}`,
-            id: rId, piso: isNaN(pisoCnt) ? nivel : pisoCnt, planId,
+            id: rId, piso: isNaN(pisoCnt) ? nivel : pisoCnt, planId: String(planId),
             _net: 'af',
             tipo: 'ramal',
             esBajante: false,
@@ -197,10 +230,10 @@ export function buildTramos(
           const rId = `AC-01-${calId}`;
           const apKey = `ac_${calId}_${planId}`;
           const extra = hidroData[apKey] || {};
-          const pisoCal = typeof cal.piso === 'number' ? cal.piso : parseInt(cal.pisoBase || String(nivel));
+          const pisoCal = typeof cal.piso === 'number' ? cal.piso : parseInt(String(cal.pisoBase || nivel));
           incoming.push({
             _key: `${rId}-${planId}`,
-            id: rId, piso: isNaN(pisoCal) ? nivel : pisoCal, planId,
+            id: rId, piso: isNaN(pisoCal) ? nivel : pisoCal, planId: String(planId),
             _net: 'ac',
             tipo: 'ramal',
             esBajante: false,
@@ -226,14 +259,14 @@ export function buildTramos(
 
 export function loadSanLlTramos() {
   const sync = readSanDrawingSync();
-  const planes = sync.planes || {};
-  const hidroData: Record<string, any> = loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
-  const sanIncoming: any[] = [];
-  const llIncoming: any[] = [];
+  const planes = sync.planes as unknown as Record<string, DrawingPlane>;
+  const hidroData = loadFromStorage<Record<string, HidroEntry>>(HYDRO_DATA_STORAGE_KEY, {});
+  const sanIncoming: Tramo[] = [];
+  const llIncoming: Tramo[] = [];
   const tribIds = new Set<string>();
   for (const [nivel, plane] of Object.entries(planes)) {
-    const planId = (plane as any).planoId || nivel;
-    for (const r of ((plane as any).ramales || [])) {
+    const planId = plane.planoId || nivel;
+    for (const r of (plane.ramales || [])) {
       if (r.tipo === 'tributario') tribIds.add(`${r.id}-${planId}`);
     }
     const piso = parseInt(nivel);
@@ -242,31 +275,31 @@ export function loadSanLlTramos() {
       if (!isNaN(n)) return pisoCorto(n);
       return String(v ?? '');
     };
-    const venRamales = ((plane as any).ramales || []).filter((r: any) => r._net === 'vent' || r.net === 'vent');
-    const venMap = new Map();
+    const venRamales = (plane.ramales || []).filter((r) => r._net === 'vent' || r.net === 'vent');
+    const venMap = new Map<string, { diametro: string; rId: string; rPlanId: string | number }>();
     for (const vr of venRamales) {
       if (vr.descargaEnId) {
-        const parts = parseDescargaEnId(vr.descargaEnId, planId);
-        if (parts[0] === planId) venMap.set(parts[1], { diametro: vr.diametro || '', rId: vr.id, rPlanId: planId });
+        const parts = parseDescargaEnId(vr.descargaEnId, String(planId));
+        if (parts[0] === String(planId)) venMap.set(parts[1], { diametro: vr.diametro || '', rId: vr.id, rPlanId: planId });
       }
     }
 
-    for (const r of ((plane as any).ramales || [])) {
+    for (const r of (plane.ramales || [])) {
       if (r._net === 'vent' || r.net === 'vent') continue;
       const apKey = r._aparatosKey || `${r._net || 'san'}_${r.id}_${planId}`;
       const hd = hidroData[apKey] || {};
-      const tramo = {
+      const tramo: Tramo = {
         _key: `${r.id}-${planId}`,
-        id: r.id, piso, planId, _nivelLabel: fmtNivel(r.piso || nivel),
+        id: r.id, piso, planId: String(planId), _nivelLabel: fmtNivel(r.piso || nivel),
         _net: r._net || r.net || '',
         tipo: r.tipo || 'ramal',
-        fixtures: sync.aparatosByTramo?.[apKey] || {},
+        fixtures: (sync.aparatosByTramo as Record<string, Record<string, number>> | undefined)?.[apKey] || {},
         recibeDe: [], esBajante: false, descripcion: '',
         ini: r.ini || '', fin: r.fin || '',
         diamDisPulg: r.diamPulg || 0, nSalidas: r.nSalidas || hd.nSalidas || 1,
         totalL: r.totalL || 0,
         nmaning: r.maning ?? 0, sPercent: r.pendiente ?? 0,
-        bajR: 7/24, bajLong: 5, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
+        bajR: 7 / 24, bajLong: 5, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
         ventRamalKey: null,
         label: r.label || r.id,
         diametro: r.diametro || '',
@@ -275,8 +308,8 @@ export function loadSanLlTramos() {
         accesorioFin: r.accesorioFin || '',
         diametroInicio: r.diametroInicio || '',
         diametroFin: r.diametroFin || '',
-        caudal: (r as any).caudal ?? undefined,
-        padreTributarioLabel: r.padre ? ((plane as any).ramales?.find((pr: any) => pr.id === r.padre)?.label || r.padre) : null,
+        caudal: r.caudal ?? undefined,
+        padreTributarioLabel: r.padre ? ((plane.ramales || []).find((pr) => pr.id === r.padre)?.label || r.padre) : null,
       };
       if (r._net === 'll') {
         llIncoming.push({ ...tramo, desde: r.ini || '', hasta: r.fin || '' });
@@ -284,33 +317,34 @@ export function loadSanLlTramos() {
         sanIncoming.push(tramo);
       }
     }
-    for (const b of ((plane as any).bajantes || [])) {
+    for (const b of (plane.bajantes || [])) {
       const apKey = b._aparatosKey || `${b._net || 'san'}_${b.id}_${planId}`;
       const hd = hidroData[apKey] || {};
 
       let ventData = venMap.get(b.id);
       if (!ventData) {
-        const cVent = venRamales.find((vr: any) => vr.ini === b.id || vr.fin === b.id || (b.recibeDeIds && b.recibeDeIds.includes(vr.id)));
+        const cVent = venRamales.find((vr) => vr.ini === b.id || vr.fin === b.id || (b.recibeDeIds && b.recibeDeIds.includes(vr.id)));
         if (cVent) ventData = { diametro: cVent.diametro || '', rId: cVent.id, rPlanId: planId };
       }
 
       const ventRamalDiam = ventData && ventData.diametro ? parseFloat(ventData.diametro) : 0;
       const ventRamalKey = ventData ? `${ventData.rId}-${ventData.rPlanId}` : null;
-      const tramo = {
+      const tramo: Tramo = {
         _key: `${b.id}-${planId}`,
-        id: b.id, piso, planId, _nivelLabel: fmtNivel(b.piso || nivel),
+        id: b.id, piso, planId: String(planId), _nivelLabel: fmtNivel(b.piso || nivel),
         _net: b._net || b.net || '',
         tipo: 'bajante',
-        fixtures: sync.aparatosByTramo?.[apKey] || {},
+        fixtures: (sync.aparatosByTramo as Record<string, Record<string, number>> | undefined)?.[apKey] || {},
         recibeDe: [], esBajante: true, descripcion: '',
         diamDisPulg: b.diamPulg || 0, nSalidas: b.nSalidas || hd.nSalidas || 1,
         nmaning: b.maning ?? 0, sPercent: 0,
-        bajR: b.bajR ?? 7/24, bajLong: b.bajLong ?? 5, bajFDarcy: b.bajFDarcy ?? 0.025, bajDprop: b.diamPulg || 0, ventDprop: b.ventDprop ?? 0, ventRamalDiamPulg: ventRamalDiam,
+        bajR: b.bajR ?? 7 / 24, bajLong: b.bajLong ?? 5, bajFDarcy: b.bajFDarcy ?? 0.025, bajDprop: b.diamPulg || 0, ventDprop: b.ventDprop ?? 0, ventRamalDiamPulg: ventRamalDiam,
         ventRamalKey,
         recibeDeIds: b.recibeDeIds || [],
         descargaEnId: b.descargaEnId || null,
         area_m2: b.area_m2 || 0,
-        pisoBase: b.pisoBase || '', pisoCima: b.pisoCima || '',
+        pisoBase: (b.pisoBase || '') as unknown as number,
+        pisoCima: (b.pisoCima || '') as unknown as number,
         code: b.code || b.id,
       };
       if (b._net === 'll') {
@@ -325,9 +359,9 @@ export function loadSanLlTramos() {
 
 export function loadAfAcTramos() {
   const sync = readHydroDrawingSync();
-  const planes = sync.planes || {};
-  const hidroData: Record<string, any> = (sync.hidroData as Record<string, any>) || {};
-  const aparatos: Record<string, any> = (sync.aparatosByTramo as Record<string, any>) || {};
+  const planes = sync.planes as unknown as Record<string, DrawingPlane>;
+  const hidroData = (sync.hidroData as Record<string, HidroEntry>) || {};
+  const aparatos = (sync.aparatosByTramo as Record<string, Record<string, number>>) || {};
 
   const afIncoming = buildTramos('af', planes, hidroData, aparatos);
   const acIncoming = buildTramos('ac', planes, hidroData, aparatos);
