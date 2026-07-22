@@ -1,6 +1,7 @@
 export const TRAZOS_PREFIX = 'trazos_';
 export const GAS_ACC_KEY = 'gas_accesorios';
 export const APARATOS_BY_TRAMO_KEY = 'aparatos_by_tramo_v2';
+export const GAS_DATOS_KEY = 'gas_datos_generales';
 export const HYDRO_DATA_STORAGE_KEY = 'tramo_hidro_data_v3';
 export const HYDRO_SYNC_KEY = 'dibujo_hidro_v1';
 export const SAN_SYNC_KEY = 'dibujo_sanitario_v1';

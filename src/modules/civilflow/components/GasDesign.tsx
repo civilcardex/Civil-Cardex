@@ -6,27 +6,28 @@ import { normalizeDnLabel } from "../utils/formatUtils";
 import { CONTADORES as CONTADORES_CAT } from "../pages/catalog/catalogData";
 import { usePlans } from "../context/PlansContext";
 import { writeDiametroToDrawing, writeContadorDiamToDrawing, writeBajantePropToDrawing } from "../utils/writeDiameterToDrawing";
-import { loadFromStorage } from "../services/storageService";
+import { loadFromStorage, saveToStorage } from "../services/storageService";
 import GasCalcUC from "./GasCalcUC";
 import PageNav from './PageNav';
 import type { DrawingData, RawElement } from "../utils/drawingSync";
 
-import { TRAZOS_PREFIX, GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY } from "../constants/storage-keys";
+import { TRAZOS_PREFIX, GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, GAS_DATOS_KEY } from "../constants/storage-keys";
 import { renouardByType } from "../utils/gasUtils";
+import { GAS_DATOS_DEFAULT } from "../utils/gasRows";
 
 type GasAccMap = Record<string, Record<string, number>>;
 interface GasRamalRaw extends RawElement { Lh?: number }
 interface GasBajanteRaw extends RawElement { capacidad?: string }
 import { SI, SD, TH as _TH, TD as _TD } from "../styles/sharedTableStyles";
-const TH = { ..._TH, fontSize: 9, padding: '2px 3px' };
-const TD = { ..._TD, fontSize: 9, padding: '1px 2px' };
+const TH = { ..._TH, fontSize: 10, padding: '2px 3px' };
+const TD = { ..._TD, fontSize: 10, padding: '1px 2px' };
 
 const ALL_DN: {mat: string; K: number; dn: string; d: number}[] = [];
 const SR_ONLY = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 } as const;
-const EMPTY_ROW = { padding:'24px 0', textAlign:'center', color:'var(--txt3)', fontSize: 9, border:'none' } as const;
+const EMPTY_ROW = { padding:'24px 0', textAlign:'center', color:'var(--txt3)', fontSize: 10, border:'none' } as const;
 GAS.forEach(g=>{g.rows.forEach(r=>{ALL_DN.push({mat:g.mat,K:g.K,dn:r.dn,d:r.d});});});
 const ACC_KEYS=['codos_90_std','codos_90_rl','te_linea','te_ramal','valvula_bola'];
-const GasDesign_COLS=['Tramo','Nivel','Inicio','Fin','Material y Diámetro','Ø interno (mm)','Coeficiente K','Longitud (m)'];
+const GasDesign_COLS=['Tramo','Nivel','Inicio','Fin','Material y Diámetro','Diámetro interno (mm)','Coeficiente K','Longitud (m)'];
 const GasDesign_colW=['8%','5%','8%','8%','18%','10%','8%','12%'];
 
 function lookupDn(mat: string, dn: string){
@@ -37,12 +38,17 @@ function lookupDn(mat: string, dn: string){
 
 function GasDesign(){
   const [gp,setGp]=useState(1);
-  const [alt,setAlt]=useState('959');
-  const [patm,setPatm]=useState('90.32');
-  const [temp,setTemp]=useState('23');
-  const [pmin,setPmin]=useState('17');
-  const [densRel,setDensRel]=useState('0.67');
+  const datosGeneralesInit = loadFromStorage(GAS_DATOS_KEY, GAS_DATOS_DEFAULT);
+  const [alt,setAlt]=useState(datosGeneralesInit.alt);
+  const [patm,setPatm]=useState(datosGeneralesInit.patm);
+  const [temp,setTemp]=useState(datosGeneralesInit.temp);
+  const [pmin,setPmin]=useState(datosGeneralesInit.pmin);
+  const [densRel,setDensRel]=useState(datosGeneralesInit.densRel);
   const { plans } = usePlans();
+
+  useEffect(() => {
+    saveToStorage(GAS_DATOS_KEY, { alt, patm, temp, pmin, densRel });
+  }, [alt, patm, temp, pmin, densRel]);
 
   const [gasRefreshKey] = useState(0);
   const [diamMat, setDiamMat] = useState<Record<string, string>>(() => ({}));
@@ -198,6 +204,23 @@ function GasDesign(){
     return result;
   }, [gasTramos, diamInt, gasAcc, pmin, temp, densRel, patm]);
 
+  // Persist complete row data for memoria final tables
+  useEffect(() => {
+    const rows = gasTramos.map(t => {
+      const chk = checkRows.find(r => r.id === t.id);
+      return {
+        id: t.id, piso: t.piso, ini: t.ini || '', fin: t.fin || '',
+        material: diamMat[t.id] || '', dn: diamDn[t.id] || '',
+        dInt: diamInt[t.id] || 0, K: diamK[t.id] || 0,
+        longitud: t.longitud || 0,
+        le: chk ? chk.le : 0, dP: chk ? chk.dP : 0,
+        vel: chk ? chk.vel : 0, pIni: chk ? chk.pIni : 0,
+        pFin: chk ? chk.pFin : 0, chequeo: chk ? chk.chequeo : '—',
+      };
+    });
+    saveToStorage('civilflow_memoria_gas_rows', rows);
+  }, [gasTramos, diamMat, diamDn, diamInt, diamK, checkRows]);
+
   const COLS=GasDesign_COLS;
   const colW=GasDesign_colW;
 
@@ -210,7 +233,7 @@ function GasDesign(){
         </h3>
       </div>
       <div style={{padding:'8px 12px',display:'flex',flexDirection:'column',alignItems:'center'}}>
-<table className="tbl" style={{fontSize: 10,whiteSpace:'nowrap'}}>
+<table className="tbl" style={{fontSize: 13,whiteSpace:'nowrap'}}>
            <caption style={SR_ONLY}>Datos generales</caption>
            <tbody>
              {[
@@ -221,9 +244,9 @@ function GasDesign(){
                ['Densidad relativa del gas a utilizar',densRel,setDensRel,'kPa'],
              ].map((row, i, arr)=>{const [lbl,val,setVal,uni] = row as [string, string, (v: string) => void, string];return (
                <tr key={i}>
-                 <td style={{padding:'6px 10px',fontWeight:600,color:'var(--txt)',fontSize: 10,borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}>{lbl}</td>
-                 <td style={{padding:'6px 10px',borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}><input type="text" inputMode="decimal" aria-label={lbl} value={val} onChange={e=>setVal(e.target.value)} style={{...SI,textAlign:'right',fontSize: 10,padding:'5px 8px',width:100}}/></td>
-                 <td style={{padding:'6px 10px',color:'var(--txt2)',fontSize: 10,fontWeight:500,borderBottom:i<arr.length-1?'1px solid var(--line)':'none'}}>{uni}</td>
+                 <td style={{padding:'6px 10px',fontWeight:600,color:'var(--txt)',fontSize: 13,borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}>{lbl}</td>
+                 <td style={{padding:'6px 10px',borderBottom:i<arr.length-1?'1px solid var(--line)':'none',borderRight:'1px solid var(--line)'}}><input type="text" inputMode="decimal" aria-label={lbl} value={val} onChange={e=>setVal(e.target.value)} style={{...SI,textAlign:'right',fontSize: 13,padding:'5px 8px',width:100}}/></td>
+                 <td style={{padding:'6px 10px',color:'var(--txt2)',fontSize: 13,fontWeight:500,borderBottom:i<arr.length-1?'1px solid var(--line)':'none'}}>{uni}</td>
                </tr>
              );})}
            </tbody>
@@ -245,7 +268,7 @@ function GasDesign(){
           <span className="card-s">{gasTramos.length} tramos</span>
         </div>
         <div style={{padding:6}}>
-            <table className="tbl" style={{fontSize: 9,tableLayout:'auto',width:'100%',borderCollapse:'collapse'}}>
+            <table className="tbl" style={{fontSize: 10,tableLayout:'auto',width:'100%',borderCollapse:'collapse'}}>
               <caption style={SR_ONLY}>Diseño de red</caption>
               <colgroup>
                 {colW.map((w,i)=><col key={i} style={{width:w}}/>)}
@@ -264,8 +287,8 @@ function GasDesign(){
                   const kVal=diamK[t.id]||0;
                   return(
                     <tr key={t.id}>
-                      <td className="c" style={{padding:'0 1px'}}><span className="sigla" style={{fontSize: 9,padding:'1px 4px'}}>{t.id}</span></td>
-                      <td className="c" style={{padding:'0 1px',color:'var(--txt2)',fontSize: 9}}>{pisoCorto(t.piso)}</td>
+                      <td className="c" style={{padding:'0 1px'}}><span className="sigla" style={{fontSize: 10,padding:'1px 4px'}}>{t.id}</span></td>
+                      <td className="c" style={{padding:'0 1px',color:'var(--txt2)',fontSize: 10}}>{pisoCorto(t.piso)}</td>
                       <td className="c" style={{...TD,padding:'1px 2px'}}>{t.ini||'—'}</td>
                       <td className="c" style={{...TD,padding:'1px 2px'}}>{t.fin||'—'}</td>
                       <td className="c" style={{padding:'0 1px'}}>
@@ -274,7 +297,7 @@ function GasDesign(){
                           if(!val){handleDiamChange(t.id,'','');return;}
                           const sep=val.lastIndexOf('|');
                           handleDiamChange(t.id,val.substring(0,sep),val.substring(sep+1));
-                        }} style={{...SD,width:'100%',fontSize: 9}}>
+                        }} style={{...SD,width:'100%',fontSize: 10}}>
                           <option value="">—</option>
                           {ALL_DN.sort((a,b)=>a.mat.localeCompare(b.mat)||a.dn.localeCompare(b.dn)).map(r=><option key={`${r.mat}|${r.dn}`} value={`${r.mat}|${r.dn}`}>{r.mat} D= {r.dn}</option>)}
                         </select>
@@ -299,7 +322,7 @@ function GasDesign(){
             <span className="card-s">{gasContBajantes.length} equipos</span>
           </div>
           <div style={{padding:6}}>
-            <table className="tbl" style={{fontSize: 9}}>
+            <table className="tbl" style={{fontSize: 10}}>
               <thead><tr>
                 <th scope="col" style={TH}>ID</th>
                 <th scope="col" style={TH}>Tipo</th>
@@ -317,7 +340,7 @@ function GasDesign(){
                         <select value={b.dNominal ? b.dNominal.replace(/"/g,'').trim() : ''} aria-label="Diámetro" onChange={e=>{
                           const dNom = e.target.value ? `${e.target.value}"` : '';
                           writeContadorDiamToDrawing(dNom, plans, 'gas');
-                        }} style={{...SD,fontSize: 9}}>
+                        }} style={{...SD,fontSize: 10}}>
                           <option value="">—</option>
                           {CONTADORES_CAT.map((c) => <option key={c.dn} value={c.dn}>{c.dn}"</option>)}
                         </select>
@@ -328,7 +351,7 @@ function GasDesign(){
                         const val = e.target.value;
                         const bajKey = `${b.id}-${b.planId}`;
                         writeBajantePropToDrawing(bajKey, 'gas', 'acoDiam', val, plans);
-                      }} style={{...SD,fontSize: 9}}>
+                      }} style={{...SD,fontSize: 10}}>
                         <option value="">—</option>
                         {GAS_DN_LABELS.map(d => <option key={d} value={d}>{d}</option>)}
                       </select>
@@ -339,7 +362,7 @@ function GasDesign(){
                           const val = e.target.value;
                           const bajKey = `${b.id}-${b.planId}`;
                           writeBajantePropToDrawing(bajKey, 'gas', 'capacidad', val, plans);
-                        }} style={{...SD,fontSize: 9}}>
+                        }} style={{...SD,fontSize: 10}}>
                           <option value="">—</option>
                           {CAT_GAS.filter(g => g.id.startsWith('cal')).map(g => <option key={g.id} value={g.id}>{g.n}</option>)}
                         </select>
@@ -361,7 +384,7 @@ function GasDesign(){
           <span className="card-s">{gasTramos.length} tramos</span>
         </div>
         <div style={{padding:6,overflow:'auto'}}>
-            <table className="tbl" style={{fontSize: 9,tableLayout:'auto',width:'100%',borderCollapse:'collapse'}}>
+            <table className="tbl" style={{fontSize: 10,tableLayout:'auto',width:'100%',borderCollapse:'collapse'}}>
               <caption style={SR_ONLY}>Chequeo red de gas</caption>
               <thead>
                 <tr>
@@ -376,13 +399,13 @@ function GasDesign(){
                   <th scope="col" style={{...TH}} rowSpan={2}>V {'≤'} 10 m/s</th>
                 </tr>
                 <tr>
-                  <th scope="col" style={{...TH,fontSize: 9}}>Codos 90{'°'} std</th>
-                  <th scope="col" style={{...TH,fontSize: 9}}>Codos 90{'°'} rl</th>
-                  <th scope="col" style={{...TH,fontSize: 9}}>Te en l&iacute;nea (flujo recto)</th>
-                  <th scope="col" style={{...TH,fontSize: 9}}>Te ramal (flujo desviado)</th>
-                  <th scope="col" style={{...TH,fontSize: 9}}>Válvula de bola (1/4 de vuelta)</th>
-                  <th scope="col" style={{...TH,fontSize: 9}}>Inicio</th>
-                  <th scope="col" style={{...TH,fontSize: 9}}>Fin</th>
+                  <th scope="col" style={{...TH,fontSize: 10}}>Codos 90{'°'} std</th>
+                  <th scope="col" style={{...TH,fontSize: 10}}>Codos 90{'°'} rl</th>
+                  <th scope="col" style={{...TH,fontSize: 10}}>Te en l&iacute;nea (flujo recto)</th>
+                  <th scope="col" style={{...TH,fontSize: 10}}>Te ramal (flujo desviado)</th>
+                  <th scope="col" style={{...TH,fontSize: 10}}>Válvula de bola (1/4 de vuelta)</th>
+                  <th scope="col" style={{...TH,fontSize: 10}}>Inicio</th>
+                  <th scope="col" style={{...TH,fontSize: 10}}>Fin</th>
                 </tr>
               </thead>
               <tbody>
@@ -401,21 +424,21 @@ function GasDesign(){
                   const acc=getAcc(t.id);
                   return(
                     <tr key={t.id}>
-                      <td className="c" style={{padding:'0 1px'}}><span className="sigla" style={{fontSize: 9,padding:'1px 1px'}}>{t.id}</span></td>
-                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 9}}>{t.longitud>0?t.longitud.toFixed(2):'—'}</td>
-                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 9,color:dInt?'var(--txt)':'var(--txt3)'}}>{dInt?dInt.toFixed(2):'—'}</td>
+                      <td className="c" style={{padding:'0 1px'}}><span className="sigla" style={{fontSize: 10,padding:'1px 1px'}}>{t.id}</span></td>
+                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 10}}>{t.longitud>0?t.longitud.toFixed(2):'—'}</td>
+                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 10,color:dInt?'var(--txt)':'var(--txt3)'}}>{dInt?dInt.toFixed(2):'—'}</td>
                       {ACC_KEYS.map(k=>(
                         <td key={k} className="c" style={{padding:'1px 1px',textAlign:'center',verticalAlign:'middle'}}>
-                          <span style={{fontSize: 9,fontWeight:600,fontFamily:'var(--mono)',color:(acc[k]||0)>0?'var(--txt)':'var(--txt3)'}}>{acc[k]||0}</span>
+                          <span style={{fontSize: 10,fontWeight:600,fontFamily:'var(--mono)',color:(acc[k]||0)>0?'var(--txt)':'var(--txt3)'}}>{acc[k]||0}</span>
                         </td>
                       ))}
-                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 9,fontWeight:600,borderLeft:'2px solid var(--line)'}}>{le.toFixed(2)}</td>
-                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 9,fontWeight:600,color:dP>0?'var(--txt)':'var(--txt3)'}}>{dP.toFixed(2)}</td>
-                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 9,color:vel>0?'var(--txt)':'var(--txt3)'}}>{vel.toFixed(2)}</td>
-                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 9}}>{pIni.toFixed(2)}</td>
-                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 9}}>{pFin.toFixed(2)}</td>
+                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 10,fontWeight:600,borderLeft:'2px solid var(--line)'}}>{le.toFixed(2)}</td>
+                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 10,fontWeight:600,color:dP>0?'var(--txt)':'var(--txt3)'}}>{dP.toFixed(2)}</td>
+                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 10,color:vel>0?'var(--txt)':'var(--txt3)'}}>{vel.toFixed(2)}</td>
+                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 10}}>{pIni.toFixed(2)}</td>
+                      <td className="c" style={{...TD,padding:'1px 1px',fontSize: 10}}>{pFin.toFixed(2)}</td>
                       <td className="c" style={{padding:'1px 1px'}}>
-                        <span style={{fontSize: 9,fontWeight:700,fontFamily:'var(--mono)',color:ok==='O.K.'?'#22c55e':ok==='NO'?'#ef5350':'var(--txt3)'}}>{ok}</span>
+                        <span style={{fontSize: 10,fontWeight:700,fontFamily:'var(--mono)',color:ok==='O.K.'?'#22c55e':ok==='NO'?'#ef5350':'var(--txt3)'}}>{ok}</span>
                       </td>
                     </tr>
                   );
