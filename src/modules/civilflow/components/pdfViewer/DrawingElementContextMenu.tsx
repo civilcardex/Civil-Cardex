@@ -2,8 +2,8 @@ import { createContext, memo, useContext, useEffect, useRef, useState } from "re
 import { bajanteLabel, ramalLabel } from "../../utils/accessoryAbbreviations";
 import { normalizeDnLabel } from "../../utils/formatUtils";
 import { pisoLbl, DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS_DN_LABELS } from "../../constants";
+import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, SAN_UC_IDS } from "../../constants/engineeringDataFixtures";
 import { getAccessoryOptions } from "../../utils/accessoryOptions";
-import { createConnectingRamalIfNeeded } from "../../utils/createConnectingRamal";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
 import { writeBajantePropToDrawing, writeAcoDiamToDrawing, writeContadorDiamToDrawing } from "../../utils/writeDiameterToDrawing";
 import { syncExtremeAccessoryToHidroData } from "../../utils/syncExtremeAccessory";
@@ -291,10 +291,6 @@ function BajanteDiameterSelector({
                   }
                   const bKey = `${element.id}-${engineRef.current?.planId}`;
                   writeBajantePropToDrawing(bKey, element.net || 'san', 'descargaEnId', v, planosCtx.plans);
-
-                  if (v && engineRef.current) {
-                    createConnectingRamalIfNeeded(engineRef.current, element.x, element.y, element.net, v, lowerFloorsRamales);
-                  }
                 }}
                 style={{ ...DrawingElementContextMenu_S2, width: '85%' }}>
                 <option value="">Sin destino</option>
@@ -515,54 +511,6 @@ function BajanteConnectionPanel({
               })()}
             </div>
           </div>
-
-          <div style={{
-            display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4
-          }}>
-            <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
-            <div style={DrawingElementContextMenu_S9}>
-              {(() => {
-                const netBajantes = (engineRef.current?.bajantes || []).filter((b) => b.net === bajEl.net && b.id !== bajEl.id && b.tipo !== 'tributario');
-                if (netBajantes.length === 0) return <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", gridColumn: 'span 4' }}>Sin bajantes</div>;
-                const currentId = bajEl.id;
-                return netBajantes.map((b) => {
-                  const isAssociated = (bajEl.recibeDeIds || []).includes(b.id)
-                    || (b.recibeDeIds || []).includes(currentId);
-                  return (
-                    <label key={b.id} style={DrawingElementContextMenu_S8}>
-                      <input type="checkbox" checked={isAssociated}
-                        onChange={e => {
-                          const checked = e.target.checked;
-                          const bajFresh = bajEl.recibeDeIds || [];
-                          const otherFresh = b.recibeDeIds || [];
-
-                          const newBajRecibe = checked
-                            ? (bajFresh.includes(b.id) ? bajFresh : [...bajFresh, b.id])
-                            : bajFresh.filter((id: string) => id !== b.id);
-                          const newOtherRecibe = checked
-                            ? (otherFresh.includes(currentId) ? otherFresh : [...otherFresh, currentId])
-                            : otherFresh.filter((id: string) => id !== currentId);
-
-                          engineRef.current?.updateElementById(currentId, { recibeDeIds: newBajRecibe });
-                          engineRef.current?.updateElementById(b.id, { recibeDeIds: newOtherRecibe });
-                          const refreshed = engineRef.current?.bajantes.find((x) => x.id === currentId);
-                          if (refreshed) setContextMenuState((prev) => prev ? { ...prev, element: { ...refreshed } } : null);
-                          if (selElement?.id === currentId) {
-                            setSelElement({ ...selElement, recibeDeIds: newBajRecibe });
-                          }
-                          if (selElement?.id === b.id) {
-                            setSelElement({ ...selElement, recibeDeIds: newOtherRecibe });
-                          }
-                          engineRef.current?.render();
-                        }}
-                        style={{ accentColor: '#2563eb', margin: 0, flexShrink: 0 }} />
-                      <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>{bajanteLabel(b, engineRef.current?.nivelActual?.label)}</span>
-                    </label>
-                  );
-                });
-              })()}
-            </div>
-          </div>
         </>
       )}
 
@@ -646,15 +594,19 @@ function BajanteConnectionPanel({
               const isStart = ep.idx === 0;
               const fieldAcc: 'accesorioInicio' | 'accesorioFin' = isStart ? 'accesorioInicio' : 'accesorioFin';
               const fieldDiam: 'diametroInicio' | 'diametroFin' = isStart ? 'diametroInicio' : 'diametroFin';
+              const fieldApp: 'aparatoInicio' | 'aparatoFin' = isStart ? 'aparatoInicio' : 'aparatoFin';
 
               const currentAcc = ramalEl[fieldAcc] || '';
               const currentDiam = ramalEl[fieldDiam] || ramalEl.diametro || '';
+              const currentApp = ramalEl[fieldApp] || '';
 
               const matList = mats?.[ramalEl.net] || [];
               const matShort = ramalEl.material || matList[0]?.val || '';
               const diamList = DIAM_BY_MAT[matShort] || [];
 
               const accOptions = getAccessoryOptions(ramalEl.net);
+              const aparatoIds = ramalEl.net === 'af' ? AF_UC_IDS : ramalEl.net === 'ac' ? AC_UC_IDS : ramalEl.net === 'san' ? SAN_UC_IDS : APARATOS_DEF.filter(a => a.grupo === 'g').map(a => a.id);
+              const aparatoOptions = aparatoIds.map(id => APARATOS_DEF.find(a => a.id === id)).filter((a): a is typeof APARATOS_DEF[number] => !!a);
 
               return (
                 <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 6, borderBottom: '1px solid #3a494a', marginBottom: 4 }}>
@@ -670,7 +622,6 @@ function BajanteConnectionPanel({
                       onChange={(e) => {
                         const val = e.target.value;
                         if (val) {
-                          const fieldApp: 'aparatoInicio' | 'aparatoFin' = isStart ? 'aparatoInicio' : 'aparatoFin';
                           if (ramalEl[fieldApp]) {
                             engineRef.current?.triggerAlert('Aparato existente', 'Este extremo ya tiene un aparato. Elimínalo antes de asignar un accesorio.');
                             return;
@@ -749,6 +700,47 @@ function BajanteConnectionPanel({
                       </select>
                     </div>
                   )}
+
+                  <div>
+                    <div style={{ fontSize: 12, color: '#849495', marginBottom: 2 }}>Seleccionar Aparato</div>
+                    <select
+                      value={currentApp}
+                      aria-label="Seleccionar Aparato"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val) {
+                          if (ramalEl[fieldAcc]) {
+                            engineRef.current?.triggerAlert('Accesorio existente', 'Este extremo ya tiene un accesorio. Elimínalo antes de asignar un aparato.');
+                            return;
+                          }
+                          const existingBm = (engineRef.current?.bajantes || []).find((b) =>
+                            Math.abs(b.x - ep.x) < 0.5 && Math.abs(b.y - ep.y) < 0.5
+                            && b.net === ramalEl.net
+                          );
+                          if (existingBm) {
+                            engineRef.current?.triggerAlert('Elemento existente', `Ya existe un ${existingBm.tipo} (${existingBm.code || existingBm.id}) en este extremo. Elimínalo antes de asignar un aparato.`);
+                            return;
+                          }
+                        }
+                        if (engineRef.current) {
+                          const updates: Record<string, unknown> = { [fieldApp]: val || null };
+                          engineRef.current.updateElementById(ramalEl.id, updates);
+                          setContextMenuState((prev) => prev ? { ...prev, element: { ...prev.element, ...updates } } : null);
+                          if (selElement?.id === ramalEl.id) {
+                            setSelElement({ ...selElement, ...updates });
+                          }
+                          engineRef.current.render();
+                          engineRef.current._markDirty();
+                        }
+                      }}
+                      style={DrawingElementContextMenu_S2}
+                    >
+                      <option value="">Ninguno</option>
+                      {aparatoOptions.map(a => (
+                        <option key={a.id} value={a.id}>{a.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               );
             })()}
@@ -1200,7 +1192,7 @@ function RamalMenu() {
         <div style={{
           display: 'flex', flexDirection: 'column', gap: 4, padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4
         }}>
-          <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
+          <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociados</div>
           <div style={DrawingElementContextMenu_S9}>
             {(() => {
               const currentId = ramalEl.id;
