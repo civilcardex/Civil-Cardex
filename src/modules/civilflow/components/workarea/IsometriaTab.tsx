@@ -15,11 +15,11 @@ interface IsometriaTabProps {
 }
 
 function IsometriaTabBase({ state }: IsometriaTabProps) {
-  const { plans, pisos, profs, proy } = state;
+  const { plans, pisos, profs, proy, redes } = state;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const [activeNets, _setActiveNets] = useState<Set<string>>(() => {
+  const [activeNets, setActiveNets] = useState<Set<string>>(() => {
     const saved = (() => { try { return JSON.parse(localStorage.getItem(ISO_ACTIVE_NETS_KEY) || 'null'); } catch { return null; } })();
     if (Array.isArray(saved) && saved.length > 0) return new Set(saved);
     if (!plans) return new Set();
@@ -40,13 +40,9 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
     }
     return new Set(withData);
   });
-  const setActiveNets = useCallback((fn: Set<string> | ((prev: Set<string>) => Set<string>)) => {
-    _setActiveNets(prev => {
-      const next = typeof fn === 'function' ? (fn as (prev: Set<string>) => Set<string>)(prev) : fn;
-      localStorage.setItem(ISO_ACTIVE_NETS_KEY, JSON.stringify([...next]));
-      return next;
-    });
-  }, []);
+  useEffect(() => {
+    localStorage.setItem(ISO_ACTIVE_NETS_KEY, JSON.stringify([...activeNets]));
+  }, [activeNets]);
 
   const toggleNet = useCallback((netId: string) => {
     setActiveNets(prev => {
@@ -54,7 +50,7 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
       if (next.has(netId)) next.delete(netId); else next.add(netId);
       return next;
     });
-  }, [setActiveNets]);
+  }, []);
 
   const [rotX, setRotX] = useState(-45);
   const [rotZ, setRotZ] = useState(45);
@@ -104,15 +100,17 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
     return m;
   }, [profs]);
 
-  const [collapsedNets, _setCollapsedNets] = useState<Set<string>>(() => {
+  const [collapsedNets, setCollapsedNets] = useState<Set<string>>(() => {
     try { return new Set(JSON.parse(localStorage.getItem(ISO_COLLAPSED_KEY) || '[]')); }
     catch { return new Set(); }
   });
+  useEffect(() => {
+    localStorage.setItem(ISO_COLLAPSED_KEY, JSON.stringify([...collapsedNets]));
+  }, [collapsedNets]);
   const toggleCollapsedNet = useCallback((netId: string) => {
-    _setCollapsedNets(prev => {
+    setCollapsedNets(prev => {
       const next = new Set(prev);
       if (next.has(netId)) next.delete(netId); else next.add(netId);
-      localStorage.setItem(ISO_COLLAPSED_KEY, JSON.stringify([...next]));
       return next;
     });
   }, []);
@@ -382,7 +380,7 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
     <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minHeight: 0 }}>
       {/* Toolbar */}
       <IsometriaToolbar
-        nets={populatedNets.length === 0 ? NETS : populatedNets.map(nid => NETS.find(x => x.id === nid)!).filter(Boolean)}
+        nets={(populatedNets.length === 0 ? NETS : populatedNets.map(nid => NETS.find(x => x.id === nid)!).filter(Boolean)).filter(n => redes.has(n.id))}
         activeNets={activeNets}
         toggleNet={toggleNet}
         showPlanos={showPlanos}

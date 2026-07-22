@@ -45,6 +45,7 @@ export type PdfViewerToolbarProps = {
   activeNet: string;
   currentFile: File | null;
   saveStatus: string;
+  collapsed?: boolean;
   onSelectTool: SelToolFn;
   onSnapToggle: NavFn;
   onFit: NavFn;
@@ -54,8 +55,19 @@ export type PdfViewerToolbarProps = {
   onClear: NavFn;
 };
 
+const compactBtn: React.CSSProperties = {
+  width: "100%", padding: "3px 0", background: "#1e2024", border: "1px solid #3a494a",
+  borderRadius: "3px", color: "#b9caca", cursor: "pointer",
+  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+  gap: 1, fontFamily: "'Geist',monospace", transition: "all .12s",
+};
+
+// "Espacio" doesn't fit under a 44px-wide icon column — abbreviate just for the collapsed strip;
+// the full word still shows in the title tooltip and in the expanded toolbar.
+const compactShortcut = (s: string) => s === 'Espacio' ? 'Esp' : s;
+
 function PdfViewerToolbar_({
-  tool, snapOn, activeNet, currentFile, saveStatus,
+  tool, snapOn, activeNet, currentFile, saveStatus, collapsed,
   onSelectTool, onSnapToggle, onFit, onSave, onUndo, onRedo, onClear,
 }: PdfViewerToolbarProps) {
   const netTools = [...TOOLS];
@@ -67,6 +79,66 @@ function PdfViewerToolbar_({
   if (activeNet === 'af' || activeNet === 'gas') {
     netTools.splice(7, 0,
       { id: "cont", label: "Contador", ico: "🔳", key: "C", icoCol: "#4D8FF7", shortcut: "C" }
+    );
+  }
+
+  if (collapsed) {
+    return (
+      <>
+        <div style={{ padding: "4px 4px", borderBottom: "1px solid #3a494a" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            {netTools.map(t => {
+              const isBajanteDisabled = t.id === 'baj' && (activeNet === 'af' || activeNet === 'ac');
+              return (
+                <button type="button" key={t.id} disabled={isBajanteDisabled} onClick={() => onSelectTool(t.id)}
+                  title={t.shortcut ? `${t.label} (${t.shortcut})` : t.label}
+                  style={{
+                    ...compactBtn,
+                    background: tool === t.id ? "#2563EB" : "#1e2024",
+                    border: `1px solid ${tool === t.id ? "#2563EB" : "#3a494a"}`,
+                    cursor: isBajanteDisabled ? "not-allowed" : "pointer",
+                    opacity: isBajanteDisabled ? 0.3 : 1,
+                  }}>
+                  <span style={{ fontSize: 14, color: tool === t.id ? "#fff" : t.icoCol }}>{t.ico}</span>
+                  <span style={{ fontSize: 9, color: tool === t.id ? "rgba(255,255,255,.6)" : "#8AB4D6" }}>{compactShortcut(t.shortcut)}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: 2 }}>
+            <button type="button" onClick={onSnapToggle} title={`Snap (${'G'})`}
+              style={{
+                ...compactBtn,
+                background: snapOn ? "#10B98122" : "#1e2024",
+                border: `1px solid ${snapOn ? "#10B981" : "#3a494a"}`,
+                color: snapOn ? "#10B981" : "#9BA8AA",
+              }}>
+              <span style={{ fontSize: 14, color: snapOn ? "#10B981" : "#8AB4D6" }}>{snapOn ? '◉' : '○'}</span>
+              <span style={{ fontSize: 9, color: snapOn ? 'rgba(255,255,255,.6)' : '#8AB4D6' }}>G</span>
+            </button>
+          </div>
+        </div>
+
+        <div style={{ padding: "4px 4px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <button type="button" onClick={onFit} disabled={!currentFile} style={{ ...compactBtn, borderColor: "#10B98155", color: "#10B981", opacity: !currentFile ? 0.4 : 1, cursor: !currentFile ? 'not-allowed' : 'pointer' }} title={currentFile ? "Ajustar PDF al visor" : "Carga un plano para poder ajustarlo"}>
+              <span style={{ fontSize: 14 }}>{'⛶'}</span>
+            </button>
+            <button type="button" onClick={onSave} style={compactBtn} title="Guarda los trazados y cambios realizados en el plano para la red activa">
+              <span style={{ fontSize: 14, color: STATUS[saveStatus]?.color || STATUS.error.color }}>{'💾'}</span>
+            </button>
+            <button type="button" onClick={onUndo} style={compactBtn} title="Deshace el último elemento dibujado: ramal, bajante, área, cota o texto. (Ctrl+Z)">
+              <span style={{ fontSize: 14 }}>{'↩'}</span>
+            </button>
+            <button type="button" onClick={onRedo} style={compactBtn} title="Revierte el último cambio deshecho: restaura el ramal, bajante, área, cota o texto que se deshizo. (Ctrl+Y)">
+              <span style={{ fontSize: 14 }}>{'↪'}</span>
+            </button>
+            <button type="button" onClick={onClear} style={{ ...compactBtn, borderColor: "rgba(255,180,171,.3)", color: "#ffb4ab" }} title="Eliminar todo el trazado de la red activa">
+              <span style={{ fontSize: 14 }}>{'🗑'}</span>
+            </button>
+          </div>
+        </div>
+      </>
     );
   }
 

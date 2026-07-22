@@ -35,6 +35,9 @@ const PdfViewer_SR_ONLY: React.CSSProperties = { position:'absolute',width:1,hei
 const PdfViewer_S4: React.CSSProperties = { width:'100%',padding:"5px 8px",background:"#1e2024",border:"1px solid #3a494a",borderRadius:3,color:"#e2e2e8",fontSize:12,fontFamily:"'Geist',monospace",cursor:'pointer' };
 const PdfViewer_S5: React.CSSProperties = { position:"absolute",top:0,zIndex:40,width:16,height:24,background:"#14161a",border:"1px solid #3a494a",color:"#849495",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,fontSize:12 } as const;
 const PdfViewer_EMPTY_PISOS: Piso[] = [];
+// Collapsed left sidebar keeps a narrow icon strip (tools + snap + actions) instead of vanishing
+// to 0 — matches the toolbar's own collapsed rendering in PdfViewerToolbar.tsx.
+const LEFT_COLLAPSED_WIDTH = 44;
 
 // Structural probe of a PlanoElement union: lets code sniff `tipo`/`net`/`diametro`/`pendiente`
 // (present on some element kinds, absent on others) without narrowing via the exported type
@@ -85,10 +88,10 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
 
   const dynamicLeftStyle: CSSProperties = useMemo(() => ({
     ...leftSidebarStyle,
-    width: leftCollapsed ? 0 : 180,
-    borderRight: leftCollapsed ? "none" : "1px solid #3a494a",
+    width: leftCollapsed ? LEFT_COLLAPSED_WIDTH : 180,
+    borderRight: "1px solid #3a494a",
     overflowX: "hidden",
-    overflowY: leftCollapsed ? "hidden" : "auto",
+    overflowY: "auto",
     scrollbarGutter: "stable",
     transition: "width 0.2s ease, border-right 0.2s ease",
   }), [leftCollapsed]);
@@ -684,7 +687,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
         <div style={{height:3,flexShrink:0,transition:'background .3s',background:STATUS[saveStatus]?.color || STATUS.error.color}} />
         <PdfViewerToolbar
           tool={tool} snapOn={snapOn} activeNet={activeNet} currentFile={currentFile}
-          saveStatus={saveStatus} onSelectTool={setTool} onSnapToggle={handleSnapToggle}
+          saveStatus={saveStatus} collapsed={leftCollapsed} onSelectTool={setTool} onSnapToggle={handleSnapToggle}
           onFit={handleFit} onSave={handleSave} onUndo={handleUndo} onRedo={handleRedo} onClear={handleClear}
         />
       </div>
@@ -775,7 +778,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
 
       <button type="button"
         onClick={() => setLeftCollapsed(!leftCollapsed)}
-        style={{ ...PdfViewer_S5, left: leftCollapsed ? 0 : 180, borderLeft: leftCollapsed ? "1px solid #3a494a" : "none", borderRadius: "0 0 3px 0", transition: "left 0.2s ease" }}
+        style={{ ...PdfViewer_S5, left: leftCollapsed ? LEFT_COLLAPSED_WIDTH : 180, borderLeft: "1px solid #3a494a", borderRadius: "0 0 3px 0", transition: "left 0.2s ease" }}
         title={leftCollapsed ? "Expandir barra izquierda" : "Colapsar barra izquierda"}
         aria-label={leftCollapsed ? "Expandir barra izquierda" : "Colapsar barra izquierda"}
       >

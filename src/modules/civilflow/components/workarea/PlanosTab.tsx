@@ -82,6 +82,24 @@ function PlanosTab({ state }: PlanosTabProps) {
     return cd && cd.origen && cd.scaleM;
   }, [calData]);
 
+  // A plan calibrated with "Alcance: Todos" is meant to apply to every floor going forward — but
+  // until now nothing actually offered it to a newly-uploaded plan; each one still had to be
+  // calibrated by hand. Surface it as a one-click alternative to CALIBRAR.
+  const globalCal = Object.values(calData).find(cd => cd.calGlobal === true && cd.origen && cd.scaleM) || null;
+
+  const handleUsarCalibracionPrevia = (planId: number) => {
+    if (!globalCal) return;
+    handleSaveConfig({
+      planId,
+      origen: globalCal.origen,
+      scaleM: globalCal.scaleM,
+      factorX: globalCal.factorX,
+      factorY: globalCal.factorY,
+      calGlobal: true,
+      definedScale: globalCal.definedScale,
+    });
+  };
+
   const handleSaveConfig = (config: CalibrationData & { planId: number }) => {
     setCalData(prev => ({ ...prev, [config.planId]: config }));
     const win = window as unknown as { _planosConfig?: Record<string, unknown> };
@@ -401,6 +419,16 @@ function PlanosTab({ state }: PlanosTabProps) {
                       >
                         CALIBRAR
                       </button>
+
+                      {!calOk && globalCal && (
+                        <button type="button"
+                          onClick={() => handleUsarCalibracionPrevia(p.id)}
+                          style={{ ...PlanosTab_verBtn, background: 'rgba(14,204,122,0.1)', color: '#0ECC7A', borderColor: 'rgba(14,204,122,0.3)' }}
+                          title="Reusar la calibración ya aplicada a todos los pisos"
+                        >
+                          USAR CALIBRACIÓN PREVIA
+                        </button>
+                      )}
 
                       <button type="button"
                         onClick={() => {

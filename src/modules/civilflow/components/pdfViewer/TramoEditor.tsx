@@ -1,15 +1,13 @@
-import React, { type RefObject, useMemo, createContext } from 'react'
+import React, { type RefObject, createContext } from 'react'
 import { DIAM_BY_MAT, DIAM_BAN, DIAM_VENT } from '../../constants'
 import { VENTILACION } from '../../pages/catalog/catalogData'
 import { DIAMETROS_AF } from '../../constants/hydraulicData'
 import { CAT_GAS, GAS_DN_LABELS, GAS } from '../../constants/engineeringDataGas'
-import { writeBajantePropToDrawing } from '../../utils/writeDiameterToDrawing'
 import { normalizeDnLabel } from '../../utils/formatUtils'
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel'
 import ExtremeAccessoryEditor from './ExtremeAccessoryEditor'
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine'
 import { bajanteLabel } from '../../utils/accessoryAbbreviations'
-import { TRAZOS_PLAN_PREFIX, NETS_CHANGED_EVENT } from '../../constants/storage-keys'
 import type { PlanoElement, PlanoRamal, PlanoBajante, PlanoArea, PlanoTextAnnotation } from '../../lib/PlanoEngine/PlanoState'
 import type { Piso } from '../useWorkAreaState'
 import type { PlanItem } from '../../context/PlansContext'
@@ -18,10 +16,6 @@ import type { PlanItem } from '../../context/PlansContext'
 // element kinds, absent on others) without narrowing via the exported type guards at every
 // access site.
 type ProbedElement = PlanoElement & { tipo?: string; pts?: number[][]; labelAngle?: number; textAngle?: number; totalL?: number; net?: string };
-
-interface AdjacentBajanteInfo {
-  key: string; id: string; label: string; planId: string; planName: string; planNivel: number; descargaEnId: string | null;
-}
 
 interface TramoEditorContextValue {
   engineRef: React.MutableRefObject<PlanoEngine | null>
@@ -138,11 +132,10 @@ function CalentadorEditor({ selElement, handleUpdateSel }: { selElement: PlanoBa
 }
 
 function BajanteEditor({
-  selElement, activeNet, engineRef, setSelElement, handleUpdateSel, isGhostSel, lvl, allBajantes, plans
+  selElement, activeNet, engineRef, setSelElement, handleUpdateSel, isGhostSel, lvl
 }: {
   selElement: PlanoBajante; activeNet: string; engineRef: React.MutableRefObject<PlanoEngine | null>; setSelElement: React.Dispatch<React.SetStateAction<PlanoElement | null>>;
   handleUpdateSel: (field: string, value: unknown) => void; isGhostSel: boolean; lvl: string;
-  allBajantes: AdjacentBajanteInfo[]; plans?: PlanItem[];
 }) {
   if (isGhostSel) {
     const gd = selElement.ghostData?.[lvl] || {};
@@ -300,38 +293,17 @@ function BajanteEditor({
                   <label key={r.id} style={TramoEditor_S9}>
                     <input type="checkbox" checked={recibidos.includes(r.id)}
                       onChange={e => {
-                        handleUpdateSel('recibeDeIds', e.target.checked ? [...recibidos, r.id] : recibidos.filter((id: string) => id !== r.id));
+                        const newRecibe = e.target.checked ? [...recibidos, r.id] : recibidos.filter((id: string) => id !== r.id);
+                        engineRef.current?.updateElementById(selElement.id, { recibeDeIds: newRecibe });
+                        const fresh = engineRef.current?.bajantes.find((bb) => bb.id === selElement.id);
+                        if (fresh) setSelElement({ ...fresh });
+                        engineRef.current?.render();
+                        engineRef.current?._markDirty();
                       }}
                       style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
                     <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label || r.id}</span>
                   </label>
                 ));
-              })()}
-            </div>
-          </div>
-        )}
-        {activeNet === 'san' && (
-          <div style={{ width: '100%', marginTop: 8 }}>
-            <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Bajantes asociadas</div>
-            <div style={TramoEditor_S8}>
-              {(() => {
-                const others = allBajantes.filter((b) => selElement && b.key !== `${selElement.id}-${engineRef.current?.planId}`);
-                if (others.length === 0) return <div style={{ fontSize: 12, color: '#8AB4D6', fontFamily: "'Geist',monospace", padding: '4px', gridColumn: 'span 2' }}>Sin otras bajantes en esta red</div>;
-                return others.map((b) => {
-                  const isAssoc = b.descargaEnId === `${engineRef.current?.planId}|${selElement.id}`;
-                  return (
-                    <label key={b.key} style={TramoEditor_S9}>
-                      <input type="checkbox" checked={isAssoc}
-                        onChange={e => {
-                          const val = e.target.checked ? `${engineRef.current?.planId}|${selElement.id}` : null;
-                          writeBajantePropToDrawing(b.key, activeNet, 'descargaEnId', val, plans || []);
-                          window.dispatchEvent(new CustomEvent(NETS_CHANGED_EVENT, { detail: [activeNet] }));
-                        }}
-                        style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }} />
-                      <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={b.label}>{b.label}</span>
-                    </label>
-                  );
-                });
               })()}
             </div>
           </div>
@@ -699,70 +671,9 @@ function RamalHeaderFields() {
 
 function BajanteEditorSection() {
   const ctx = React.useContext(TramoEditorCtx)!
-  const { engineRef, activeNet, plans } = ctx
+  const { engineRef, activeNet } = ctx
   const selElement = ctx.selElement as ProbedElement | null
   const lvl = engineRef.current?.nivelActual?.label ?? ''
-
-  const allBajantes = useMemo(() => {
-    if (!plans) return [];
-    const list: Array<{ key: string; id: string; label: string; planId: string; planName: string; planNivel: number; descargaEnId: string | null }> = [];
-    for (const plan of plans) {
-      if (plan.status !== 'confirmed') continue;
-      const key = TRAZOS_PLAN_PREFIX + plan.id;
-      const raw = localStorage.getItem(key);
-      if (raw) {
-        try {
-          const data = JSON.parse(raw);
-          const bajs = data.bajantes || [];
-          for (const b of bajs) {
-            if (b.net === activeNet) {
-              list.push({
-                key: `${b.id}-${plan.id}`,
-                id: b.id,
-                label: b.code || b.id,
-                planId: String(plan.id),
-                planName: plan.name,
-                planNivel: plan.nivel as number,
-                descargaEnId: b.descargaEnId || null
-              });
-            }
-          }
-        } catch { /* ignore */ }
-      }
-    }
-    return list;
-  }, [plans, activeNet]);
-
-  const adjacentLevels = useMemo(() => {
-    const list: number[] = [];
-    const currentPlanNivel = engineRef.current?.nivelActual?.n;
-    if (typeof currentPlanNivel !== 'number') return [];
-    if (ctx.pisos && ctx.pisos.length > 0) {
-      const sorted = ctx.pisos.toSorted((a, b) => a.n - b.n);
-      const currIdx = sorted.findIndex((s) => s.n === currentPlanNivel);
-      if (currIdx !== -1) {
-        if (currIdx > 0) list.push(sorted[currIdx - 1].n);
-        if (currIdx < sorted.length - 1) list.push(sorted[currIdx + 1].n);
-        return list;
-      }
-    }
-    if (plans && plans.length > 0) {
-      const uniqueLevels = Array.from(new Set(plans.map(p => p.nivel).filter((n) => typeof n === 'number'))) as number[];
-      uniqueLevels.sort((a, b) => a - b);
-      const currIdx = uniqueLevels.indexOf(currentPlanNivel);
-      if (currIdx !== -1) {
-        if (currIdx > 0) list.push(uniqueLevels[currIdx - 1]);
-        if (currIdx < uniqueLevels.length - 1) list.push(uniqueLevels[currIdx + 1]);
-      }
-    }
-    return list;
-  }, [ctx.pisos, plans, engineRef.current?.nivelActual?.n]);
-
-  const adjacentBajantes = useMemo(() => {
-    if (adjacentLevels.length === 0) return allBajantes;
-    const allowed = new Set(adjacentLevels);
-    return allBajantes.filter(b => allowed.has(b.planNivel));
-  }, [allBajantes, adjacentLevels]);
 
   const isGhostSel = (selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante') && engineRef.current?._isGhostSel) || false
 
@@ -775,8 +686,6 @@ function BajanteEditorSection() {
       handleUpdateSel={ctx.handleUpdateSel}
       isGhostSel={isGhostSel}
       lvl={lvl}
-      allBajantes={adjacentBajantes}
-      plans={plans}
     />
   )
 }
@@ -824,7 +733,7 @@ function RamalEditorSection() {
       )}
       {selElement?.pts && (engineRef.current?.bajantes?.length ?? 0) > 0 && ['san', 'll'].includes(activeNet) && (
         <div style={{ padding: "10px 12px 8px", borderBottom: '1px solid #3a494a' }}>
-          <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociadas</div>
+          <div style={{ fontSize: 12, color: '#9BA8AA', fontFamily: "'Geist',monospace", marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bajantes asociados</div>
           <div style={TramoEditor_S8}>
             {(() => {
               const netBajs = (engineRef.current?.bajantes || []).filter((b) => b.net === activeNet && b.tipo !== 'tributario');

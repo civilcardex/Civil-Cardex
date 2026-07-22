@@ -188,22 +188,6 @@ export function useIsometriaRender({
         const baseZ = (lo === hi ? (isSube ? lo : lo - 1000) : lo) - profB * 1000;
         const cimaZ = (lo === hi ? (isSube ? hi + 1000 : hi) : hi) - profB * 1000;
 
-        const baseZ_pix = getZPix(baseZ, b.planNivel);
-        const cimaZ_pix = getZPix(cimaZ, b.planNivel);
-        const iso = getIsoCoords(b.x, b.y, b.planNivel);
-        const pBase = project(iso.x, iso.y, baseZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const pCima = project(iso.x, iso.y, cimaZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const selKey = `${netId}:${b.planId}:${b.id}`;
-        const isSel = selKey === selTramo;
-
-        ctx.beginPath();
-        ctx.moveTo(pBase.sx, pBase.sy);
-        ctx.lineTo(pCima.sx, pCima.sy);
-        ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
-        ctx.lineWidth = isSel ? 3.5 : 2;
-        ctx.stroke();
-        segments.push({ sx1: pBase.sx, sy1: pBase.sy, sx2: pCima.sx, sy2: pCima.sy, z: (baseZ_pix + cimaZ_pix) / 2, id: selKey, label: b.code || b.id, isBaj: true, netId });
-
         let targetPt: number[] | null = null;
         let targetPlanNivel: number | null = null;
         if (targetRamal && targetRamal.pts.length > 0) {
@@ -217,27 +201,61 @@ export function useIsometriaRender({
           targetPt = [targetBajante.x, targetBajante.y];
           targetPlanNivel = targetBajante.planNivel;
         }
+        // When the target is a bajante stacked directly below/above this one in plan (x,y match
+        // within a small tolerance — the common "montante lines up with the bajante on the next
+        // floor" case), project THAT end of the solid segment using the target's OWN (x,y,floor) —
+        // each floor plan can carry its own scale/origin calibration, so projecting both ends from
+        // this bajante's floor alone can land the far end a few pixels off from where the target
+        // bajante itself actually draws, reading as a broken/kinked line instead of one continuous
+        // pipe. Anchoring the far end on the target's own projection guarantees the two meet exactly.
+        const isAlignedBajanteStack = !!targetBajante && targetPt != null && Math.hypot(targetPt[0] - b.x, targetPt[1] - b.y) < 3;
+
+        const baseZ_pix = getZPix(baseZ, b.planNivel);
+        const cimaZ_pix = getZPix(cimaZ, b.planNivel);
+        const ownIso = getIsoCoords(b.x, b.y, b.planNivel);
+        const targetIso = (isAlignedBajanteStack && targetPt && targetPlanNivel !== null)
+          ? getIsoCoords(targetPt[0], targetPt[1], targetPlanNivel)
+          : null;
+        const baseIso = (targetIso && targetZ === lo) ? targetIso : ownIso;
+        const cimaIso = (targetIso && targetZ === hi) ? targetIso : ownIso;
+        const pBase = project(baseIso.x, baseIso.y, baseZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        const pCima = project(cimaIso.x, cimaIso.y, cimaZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        const selKey = `${netId}:${b.planId}:${b.id}`;
+        const isSel = selKey === selTramo;
+
+        ctx.beginPath();
+        ctx.moveTo(pBase.sx, pBase.sy);
+        ctx.lineTo(pCima.sx, pCima.sy);
+        ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
+        ctx.lineWidth = isSel ? 3.5 : 2;
+        ctx.stroke();
+        segments.push({ sx1: pBase.sx, sy1: pBase.sy, sx2: pCima.sx, sy2: pCima.sy, z: (baseZ_pix + cimaZ_pix) / 2, id: selKey, label: b.code || b.id, isBaj: true, netId });
 
         if (targetPt && targetPlanNivel !== null) {
-          const rIso = getIsoCoords(targetPt[0], targetPt[1], targetPlanNivel);
-          // Same net as the bajante (target comes from this netId's own netData), so the same
-          // depth offset (profB) applies — matches the offset already baked into baseZ/cimaZ.
-          const rZ_pix = getZPix(targetZ - profB * 1000, targetPlanNivel);
-          const rProj = project(rIso.x, rIso.y, rZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-          // Compare RAW (pre-offset) targetZ against `lo`/`hi` — baseZ/cimaZ already have
-          // profB*1000 baked in, so comparing targetZ straight against baseZ was comparing
-          // pre-offset to post-offset and (whenever profB != 0, the normal case) almost never
-          // matched, silently picking the wrong end most of the time.
-          const connectionPoint = (targetZ === lo) ? pBase : pCima;
-          ctx.save();
-          ctx.beginPath();
-          ctx.moveTo(connectionPoint.sx, connectionPoint.sy);
-          ctx.lineTo(rProj.sx, rProj.sy);
-          ctx.strokeStyle = '#0ECC7A';
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([4, 4]);
-          ctx.stroke();
-          ctx.restore();
+          // The dashed green connector is redundant (and reads as a kink) once the solid segment
+          // above already reaches the target's own projected position — only draw it for a genuine
+          // offset target (a different ramal, or a bajante that isn't plan-aligned).
+          if (!isAlignedBajanteStack) {
+            const rIso = getIsoCoords(targetPt[0], targetPt[1], targetPlanNivel);
+            // Same net as the bajante (target comes from this netId's own netData), so the same
+            // depth offset (profB) applies — matches the offset already baked into baseZ/cimaZ.
+            const rZ_pix = getZPix(targetZ - profB * 1000, targetPlanNivel);
+            const rProj = project(rIso.x, rIso.y, rZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+            // Compare RAW (pre-offset) targetZ against `lo`/`hi` — baseZ/cimaZ already have
+            // profB*1000 baked in, so comparing targetZ straight against baseZ was comparing
+            // pre-offset to post-offset and (whenever profB != 0, the normal case) almost never
+            // matched, silently picking the wrong end most of the time.
+            const connectionPoint = (targetZ === lo) ? pBase : pCima;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(connectionPoint.sx, connectionPoint.sy);
+            ctx.lineTo(rProj.sx, rProj.sy);
+            ctx.strokeStyle = '#0ECC7A';
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.restore();
+          }
         }
 
         if (isSel) {

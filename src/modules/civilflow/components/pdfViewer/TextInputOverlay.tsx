@@ -50,6 +50,7 @@ export default function TextInputOverlay({ textOverlay, setTextOverlay, textInpu
             }
           }}
           placeholder="Escribe el texto..."
+          aria-label="Texto"
           style={TextInputOverlay_S3}
           className="text-input-overlay-input"
         />
