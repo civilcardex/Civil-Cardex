@@ -1,20 +1,14 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useEffect } from "react";
 import { useTramos } from "../context/TramosContext";
 import { useApparatus } from "../context/ApparatusContext";
 import { usePlans } from "../context/PlansContext";
 import { calcUDparcial, renderStatus } from "../utils/componentHelpers";
 import { pisoCorto, DIAM_OPTIONS, SAN_UC_IDS, APARATOS_DEF } from "../constants";
-import { diametroManning, caudalHunterLPS, factorSimultaneidad } from "../utils/calcSanitaryCore";
+import { caudalHunterLPS, factorSimultaneidad } from "../utils/calcSanitaryCore";
 import { writeDiametroToDrawing } from "../utils/writeDiameterToDrawing";
 import { calcHydraulicCheck } from "../utils/hydraulicCheck";
-import { TRAZOS_PREFIX } from "../constants/storage-keys";
-import { loadFromStorage } from "../services/storageService";
-import { distToPolyline } from "../lib/shared/geometry";
-import { parseDescargaEnId } from "../utils/parseDescargaEnId";
-import { computeComponentTotals } from "../lib/shared/connectionGraph";
-import type { DrawingData, RawElement } from "../utils/drawingSync";
+import { buildSanConnectivity, computeSanRows } from "../utils/sanitaryRows";
 
-interface BajanteRaw extends RawElement { x?: number; y?: number }
 const SanitaryDesign_S1: React.CSSProperties = { fontFamily:'var(--mono)',fontSize: 9,padding:'1px 2px',border:'1px solid var(--line)',borderRadius:2,background:'var(--bg2)',color:'var(--txt)',cursor:'pointer' };
 
 
@@ -51,249 +45,38 @@ export default function DisenosSanitarios() {
     return tramosSan.filter(t => t.tipo === 'ramal' && !t.esBajante);
   }, [tramosSan]);
 
-  const [conexiones, conexionesDisplay, componentTotalMap] = useMemo(() => {
-    const calculoMap: Record<string, string[]> = {};
+  const { orientedConexiones: conexiones, displayMap: conexionesDisplay, componentTotalMap } = useMemo(
+    () => buildSanConnectivity(tramosSan, plans, mergedBase),
+    [plans, tramosSan, mergedBase]
+  );
 
-    for (const plan of plans || []) {
-      if (plan.nivel == null) continue;
-      const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
-      if (!raw) continue;
-      let data: DrawingData = raw as DrawingData;
-      if (typeof raw === 'string') { try { data = JSON.parse(raw); } catch { continue; } }
-
-      const ramales = data.ramales || [];
-      const bajantes = (data.bajantes || []) as BajanteRaw[];
-
-
-      for (const r of ramales) {
-        if (!r.pts || r.pts.length < 2) continue;
-        const pStart = r.pts[0];
-        const pEnd = r.pts[r.pts.length - 1];
-        const rKey = `${r.id}-${plan.id}`;
-
-        const checkEndpoint = (pt: number[]) => {
-          for (const b of bajantes) {
-            const isDischargingIntoR = b.descargaEnId && (
-              b.descargaEnId === `${plan.id}|${r.id}` ||
-              b.descargaEnId === r.id ||
-              (r.label && (b.descargaEnId === `${plan.id}|${r.label}` || b.descargaEnId === r.label))
-            );
-            if (isDischargingIntoR) continue;
-
-            const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
-            const dist = Math.hypot(pt[0] - b.x!, pt[1] - b.y!);
-            if (isExplicit) {
-              // Explicit link doesn't say which end — assign it to whichever endpoint is
-              // geometrically closer, so a bajante at each end each claims its own.
-              const otherPt = pt === pEnd ? pStart : pEnd;
-              const otherDist = Math.hypot(otherPt[0] - b.x!, otherPt[1] - b.y!);
-              if (dist < otherDist) return { type: 'bajante' as const, id: b.id };
-              continue;
-            }
-            if (dist < 2.0) {
-              return { type: 'bajante' as const, id: b.id };
-            }
-          }
-          let bestRx: RawElement | null = null;
-          let minDist = Infinity;
-          for (const rx of ramales) {
-            if (rx.id === r.id) continue;
-            if (!rx.pts || rx.pts.length < 2) continue;
-            const dist = distToPolyline(pt, rx.pts);
-            if (dist < 2.0 && dist < minDist) {
-              minDist = dist;
-              bestRx = rx;
-            }
-          }
-          if (bestRx) {
-            return { type: 'ramal' as const, id: bestRx.id };
-          }
-          return null;
-        };
-
-        // A ramal can have a bajante at EACH end — check both endpoints independently instead
-        // of short-circuiting on the first match, otherwise the second bajante is silently
-        // dropped from calculoMap and its discharge units never get counted.
-        const connections = [checkEndpoint(pEnd), checkEndpoint(pStart)].filter(
-          (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null
-        );
-
-        for (const connection of connections) {
-          const targetKey = `${connection.id}-${plan.id}`;
-          if (!calculoMap[targetKey]) calculoMap[targetKey] = [];
-          if (!calculoMap[targetKey].includes(rKey)) {
-            calculoMap[targetKey].push(rKey);
-          }
-        }
+  // Persist the hydraulic checkpoint (velocity + fill ratio) onto each Tramo so InfTab's
+  // SANITARIA badge can read a real result instead of the permanently-undefined defaults.
+  useEffect(() => {
+    for (const t of displayTramos) {
+      const tKey = t._key || `${t.id}-${t.piso}`;
+      const idKey = t._key || t.id;
+      const udAcum = componentTotalMap[tKey] || 0;
+      const nSalidas = t.nSalidas ?? 0;
+      const K = nSalidas > 0 ? Math.round(factorSimultaneidad(nSalidas) * 100) / 100 : null;
+      const n = t.nmaning || 0.009;
+      const sVal = t.sPercent ?? 0;
+      const S = sVal > 0 ? sVal / 100 : null;
+      const Q = udAcum > 0 && K != null ? Math.round(caudalHunterLPS(udAcum, K) * 1000) / 1000 : null;
+      const dSel = DIAM_OPTIONS.find(d => d.pulg === (t.diamDisPulg || 0)) || null;
+      const DintMm = dSel ? dSel.mm : 0;
+      let v_real = 0, yD = 0, qQ0 = 0;
+      if (Q != null && Q > 0 && S != null && S > 0 && n > 0 && DintMm > 0) {
+        const hc = calcHydraulicCheck({ Q, S, n, DintMm });
+        v_real = hc.Vreal;
+        yD = Math.round((Math.max(hc.Yc, hc.Yn) / DintMm) * 1000) / 1000;
+        qQ0 = hc.qqo;
       }
+      if (t.v_real !== v_real) updTramoSan(idKey, 'v_real', v_real);
+      if (t.yD !== yD) updTramoSan(idKey, 'yD', yD);
+      if (t.qQ0 !== qQ0) updTramoSan(idKey, 'qQ0', qQ0);
     }
-
-    // Add vertical connections for bajantes (from upper to lower sections)
-    const bajantesGroups: Record<string, typeof tramosSan> = {};
-    for (const t of tramosSan) {
-      if (t.esBajante && t.id) {
-        if (!bajantesGroups[t.id]) bajantesGroups[t.id] = [];
-        bajantesGroups[t.id].push(t);
-      }
-    }
-
-    for (const sections of Object.values(bajantesGroups)) {
-      sections.sort((a, b) => (a.piso || 0) - (b.piso || 0));
-      for (let i = 0; i < sections.length - 1; i++) {
-        const lowerKey = sections[i]._key;
-        const upperKey = sections[i + 1]._key;
-        if (lowerKey && upperKey) {
-          if (!calculoMap[lowerKey]) calculoMap[lowerKey] = [];
-          if (!calculoMap[lowerKey].includes(upperKey)) {
-            calculoMap[lowerKey].push(upperKey);
-          }
-        }
-      }
-    }
-
-    // Add discharge connections (descargaEnId) of bajantes into lower ramales
-    for (const t of tramosSan) {
-      if (t.esBajante && t.descargaEnId && t._key) {
-        const parts = parseDescargaEnId(t.descargaEnId, '');
-        const dPlanId = parts[0];
-        const targetRamalId = parts[1];
-        if (targetRamalId) {
-          const targetKey = `${targetRamalId}-${dPlanId}`;
-          const targetExists = tramosSan.some(x => x._key === targetKey);
-          if (targetExists) {
-            if (!calculoMap[targetKey]) calculoMap[targetKey] = [];
-            if (!calculoMap[targetKey].includes(t._key)) {
-              calculoMap[targetKey].push(t._key);
-            }
-          }
-        }
-      }
-    }
-
-    // Build undirected adjacency list for all tramos
-    const adj: Record<string, string[]> = {};
-    for (const t of tramosSan) {
-      if (t._key) {
-        adj[t._key] = [];
-      }
-    }
-
-    for (const [parentKey, children] of Object.entries(calculoMap)) {
-      if (!adj[parentKey]) adj[parentKey] = [];
-      for (const childKey of children) {
-        if (!adj[childKey]) adj[childKey] = [];
-        if (!adj[parentKey].includes(childKey)) adj[parentKey].push(childKey);
-        if (!adj[childKey].includes(parentKey)) adj[childKey].push(parentKey);
-      }
-    }
-
-    // Helper to run BFS to get direct neighbors (excluding startKey, stopping traversal at any main ramal node)
-    const getConnectedNeighbors = (startKey: string): string[] => {
-      const results = new Set<string>();
-      const visited = new Set<string>();
-      const queue = [startKey];
-      visited.add(startKey);
-
-      while (queue.length > 0) {
-        const node = queue.shift()!;
-        if (node !== startKey) {
-          const tr = tramosSan.find(x => x._key === node);
-          if (tr && tr.tipo === 'ramal' && !tr.esBajante) {
-            results.add(node);
-            continue; // Stop traversal at this main ramal
-          }
-        }
-        for (const neighbor of adj[node] || []) {
-          if (!visited.has(neighbor)) {
-            visited.add(neighbor);
-            queue.push(neighbor);
-          }
-        }
-      }
-
-      return Array.from(results);
-    };
-
-    const displayMap: Record<string, string[]> = {};
-    for (const t of tramosSan) {
-      if (t._key && t.tipo === 'ramal' && !t.esBajante) {
-        displayMap[t._key] = getConnectedNeighbors(t._key);
-      }
-    }
-
-    // Find connected components in the full graph `adj`
-    const compVisited = new Set<string>();
-    const components: string[][] = [];
-
-    for (const node of Object.keys(adj)) {
-      if (!compVisited.has(node)) {
-        const comp: string[] = [];
-        const q = [node];
-        compVisited.add(node);
-        while (q.length > 0) {
-          const curr = q.shift()!;
-          comp.push(curr);
-          for (const neigh of adj[curr] || []) {
-            if (!compVisited.has(neigh)) {
-              compVisited.add(neigh);
-              q.push(neigh);
-            }
-          }
-        }
-        components.push(comp);
-      }
-    }
-
-    const getRootScore = (key: string): number => {
-      const tr = tramosSan.find(x => x._key === key);
-      if (!tr) return 99999999;
-      const piso = tr.piso || 0;
-      const isBajante = tr.esBajante;
-      const id = tr.id || '';
-      const match = id.match(/^([a-zA-Z]+)(\d+)?$/);
-      const num = match && match[2] ? parseInt(match[2]) : 999;
-      return (piso * 100000) + (isBajante ? 0 : 10000) + num;
-    };
-
-    const orientedConexiones: Record<string, string[]> = {};
-    const orientedVisited = new Set<string>();
-
-    for (const comp of components) {
-      let root = comp[0];
-      let minScore = getRootScore(root);
-      for (const node of comp) {
-        const score = getRootScore(node);
-        if (score < minScore) {
-          minScore = score;
-          root = node;
-        }
-      }
-
-      const q = [root];
-      orientedVisited.add(root);
-      while (q.length > 0) {
-        const parent = q.shift()!;
-        if (!orientedConexiones[parent]) orientedConexiones[parent] = [];
-        for (const child of adj[parent] || []) {
-          if (!orientedVisited.has(child)) {
-            orientedVisited.add(child);
-            orientedConexiones[parent].push(child);
-            q.push(child);
-          }
-        }
-      }
-    }
-
-    // Compute connected-component totals: each tramo's Total = sum of all tramos in its component
-    const componentTotalMap = computeComponentTotals(
-      tramosSan,
-      t => t._key || t.id,
-      adj,
-      t => calcUDparcial(t, mergedBase),
-    );
-
-    return [orientedConexiones, displayMap, componentTotalMap];
-  }, [plans, tramosSan, mergedBase]);
+  }, [displayTramos, componentTotalMap, updTramoSan]);
 
   function getDescendantsUD(tKey: string, visited = new Set<string>()): number {
     if (visited.has(tKey)) return 0;
@@ -317,6 +100,11 @@ export default function DisenosSanitarios() {
   const totalUD = useMemo(() =>
     totales.reduce((s, d) => s + (d.cant || 0) * (d.ud || 0), 0),
   [totales]);
+
+  const sanRows = useMemo(
+    () => computeSanRows(displayTramos, componentTotalMap, mergedBase),
+    [displayTramos, componentTotalMap, mergedBase]
+  );
 
   return (
   <>
@@ -372,41 +160,14 @@ export default function DisenosSanitarios() {
                 </td>
               </tr>
             ) : (()=>{
-              return displayTramos.toSorted((a,b)=>(a.piso||0)-(b.piso||0)).map(t=>{
-                const tKey = t._key || `${t.id}-${t.piso}`;
-                
-                const udPropias=calcUDparcial(t,mergedBase);
+              return sanRows.map(row=>{
+                const tKey = row.tKey;
                 const connectedKeys = conexionesDisplay[tKey] || [];
-                const udAcum = (componentTotalMap[tKey] || 0);
-
-                const nSalidas=t.nSalidas??0;
-                const K=nSalidas!=null&&nSalidas>0?Math.round(factorSimultaneidad(nSalidas)*100)/100:null;
-                const n=t.nmaning || 0.009;
-                const sVal=t.sPercent??0;
-                const S=sVal!=null&&sVal>0?sVal/100:null;
-                const Q=udAcum>0&&K!=null?Math.round(caudalHunterLPS(udAcum,K)*1000)/1000:null;
-                const dSel=DIAM_OPTIONS.find(d=>d.pulg===(t.diamDisPulg||0))||null;
-                let DcalcPulg = 0;
-                const DdisPulg = dSel ? dSel.pulg : 0;
-                const DintMm = dSel ? dSel.mm : 0;
-                let Qo=0,Vo=0,qqo=0;
-                let Vreal=0,chequeoV='—';
-                let Yc=0,Yn=0,Froude=0,tipoFlujo='—',Ymax=0,chequeoYn='—';
-                let fuerzaTractiva=0,chequeoFT='—';
-                if(Q!=null&&Q>0&&S!=null&&S>0&&n!=null&&n>0){
-                  DcalcPulg=Math.round(diametroManning(Q/1000,n,S)*1000/25.4*100)/100;
-                }
-                if(Q!=null&&Q>0&&S!=null&&S>0&&n!=null&&n>0&&DintMm>0){
-                  const hc = calcHydraulicCheck({ Q, S, n, DintMm });
-                  Qo = hc.Qo; Vo = hc.Vo; qqo = hc.qqo;
-                  Vreal = hc.Vreal; chequeoV = hc.chequeoV;
-                  Yc = hc.Yc; Yn = hc.Yn; Froude = hc.Froude; tipoFlujo = hc.tipoFlujo;
-                  Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; chequeoFT = hc.chequeoFT;
-                }
+                const { udPropias, udAcum, nSalidas, K, Q, n, sVal, DcalcPulg, DdisPulg, DintMm, Qo, Vo, qqo, Vreal, chequeoV, Yc, Yn, Froude, tipoFlujo, Ymax, chequeoYn, fuerzaTractiva, chequeoFT } = row;
                 return (
                 <tr key={tKey}>
-                  <td className="c" style={{padding:'1px 2px'}}><span className="sigla" style={{fontSize: 9}}>{t.id}</span></td>
-                  <td className="c" style={{padding:'1px 2px'}}><span style={{fontSize: 9,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{pisoCorto(t.piso)}</span></td>
+                  <td className="c" style={{padding:'1px 2px'}}><span className="sigla" style={{fontSize: 9}}>{row.id}</span></td>
+                  <td className="c" style={{padding:'1px 2px'}}><span style={{fontSize: 9,fontFamily:'var(--mono)',color:'var(--txt2)'}}>{pisoCorto(row.piso)}</span></td>
                   <td className="c" style={{fontFamily:'var(--mono)',padding:'1px 2px'}}>{udPropias}</td>
                   <td className="c" style={{padding:'1px 2px',minWidth:60,maxWidth:120}}>
                     {connectedKeys.length === 0 ? (

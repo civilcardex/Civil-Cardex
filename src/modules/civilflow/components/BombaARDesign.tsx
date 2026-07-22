@@ -1,17 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { dec } from "../utils/parseDecimal";
+import { saveToStorage } from "../services/storageService";
 import PageNav from './PageNav';
 import { SI, TH, TD } from "../styles/sharedTableStyles";
 import EditButton from "./shared/EditButton";
-const BombaARDesign_S1: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
+import Inp from "./bombaAR/Inp";
+import Tbl from "./bombaAR/Tbl";
 const BombaARDesign_S2: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 const BombaARDesign_S3: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 const BombaARDesign_S4: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
 const BombaARDesign_S5: React.CSSProperties = { position:'absolute',width:'1px',height:'1px',padding:0,margin:'-1px',overflow:'hidden',clip:'rect(0,0,0,0)',whiteSpace:'nowrap',border:0 };
-
-
-const nv=(s: string)=>s===''?'':/^[\d]*\.?[\d]*$/.test(s)?s:false;
-const oc=(set: (v: string) => void)=>(e: React.ChangeEvent<HTMLInputElement>)=>{const v=nv(e.target.value);if(v!==false)set(v)};
 
 const TDBom: React.CSSProperties = {...TD,background:'#1a1c20'};
 const TDL: React.CSSProperties={...TDBom,textAlign:'left',fontFamily:'var(--body)'};
@@ -30,20 +28,6 @@ const Fmt2=(v: string | number,u='')=>{
   const val=typeof v==='number'?v.toFixed(2):v;
   return <span style={{fontFamily:'var(--mono)',fontSize:13}}>{val}{u?` ${u}`:''}</span>;
 };
-
-function Inp({v,set,style,disabled,ariaLabel}: {v: string; set: (v: string) => void; style?: React.CSSProperties; disabled?: boolean; ariaLabel?: string}){return <input type="text" inputMode="decimal" aria-label={ariaLabel} value={v} onChange={oc(set)} disabled={disabled} style={{...(style||SI), opacity: disabled ? 0.6 : 1, cursor: disabled ? 'default' : 'text'}}/>;}
-function Tbl({cols,rows,th,td,tdl,fontSize,center,valueCol,caption}: {cols: string[]; rows: React.ReactNode[][]; th?: React.CSSProperties; td?: React.CSSProperties; tdl?: React.CSSProperties; fontSize?: number; center?: boolean; valueCol?: number; caption?: string}){
-  const h=th||TH,d=td||TDBom,dl=tdl||TDL;
-  const vc = valueCol ?? 2;
-  return <table className="tbl" style={{fontSize:fontSize||11,width:center?'90%':'100%',maxWidth:900,borderCollapse:'collapse',margin:center?'0 auto':0}}>
-    {caption && <caption style={BombaARDesign_S1}>{caption}</caption>}
-    <thead><tr>{cols.map((c,i)=><th scope="col" key={i} style={h}>{c}</th>)}</tr></thead>
-    <tbody>{rows.map((r,i)=><tr key={i}>{r.map((c,j)=>{
-      const s = j===0 ? dl : j===vc ? {...d,width:'1%',whiteSpace:'nowrap'} : d;
-      return <td key={j} style={s}>{c}</td>;
-    })}</tr>)}</tbody>
-  </table>;
-}
 
 
 const BombaARDesign_COLS1=['Parámetro','Símbolo','Valor','Unidad','Equivalencia','Fuente / norma'];
@@ -95,6 +79,14 @@ function BombaARDesign(){
   const Vcam=Qb>0&&tc>0?+(Qb*tc*60).toFixed(2):0;
   const Vgeo=bc>0&&lc>0&&(hmx-hmn)>0?+(bc*lc*(hmx-hmn)).toFixed(2):0;
   const Vchk=Vgeo>0&&Vcam>0?Vgeo>=(Vcam/1000)?'O.K.':'AMPLIAR CÁMARA':'';
+
+  // Persist computed data for memoria final tables
+  useEffect(() => {
+    saveToStorage('civilflow_memoria_bomba_data', {
+      inputs: { salSim, udTot, hz, lImp, dImp, cHW, pDesc, etaB, fSrv, tCic, hMin, hMax, bCam, lCam, npsh, sal, ud },
+      outputs: { K, Qd, Qb, Vi, Hf, Hac, Hfri, Hest, Hm, Vch, Ph, Peje, Pcom, php, Sel, Vcam, Vchk },
+    });
+  }, [salSim, udTot, hz, lImp, dImp, cHW, pDesc, etaB, fSrv, tCic, hMin, hMax, bCam, lCam, npsh, sal, ud, K, Qd, Qb, Vi, Hf, Hac, Hfri, Hest, Hm, Vch, Ph, Peje, Pcom, php, Sel, Vcam, Vchk]);
 
   const Nota=<div style={{fontSize: 12,color:'var(--txt3)',lineHeight:1.6,padding:'8px 12px',marginTop:6,borderRadius:'var(--r)',background:'var(--bg2)'}}>
     <b style={{color:'var(--txt)'}}>Nota normativa</b> — Diseño conforme <b style={{color:'var(--txt)'}}>NTC 1500 §8</b> y <b style={{color:'var(--txt)'}}>RAS 2000 Título D</b>. La bomba trituradora es obligatoria para sólidos fecales. Verificar caudal con empresa de servicios (EMAB/AMB) antes de definir acometida.
