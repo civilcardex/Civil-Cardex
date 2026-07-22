@@ -19,6 +19,9 @@ export interface Tramo {
   v_real?: number;
   yD?: number;
   qQ0?: number;
+  velCumple?: boolean;
+  presionOk?: boolean;
+  pFin?: number;
   recibeDe?: string[];
   recibeDeIds?: string[];
   descargaEnId?: string | null;

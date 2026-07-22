@@ -87,6 +87,7 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
           onKeyDown={e => { if (e.key === 'Enter') handleCreate(); if (e.key === 'Escape') { onClose(); setName(''); } }}
           placeholder="Nombre del proyecto"
           aria-label="Nombre del proyecto"
+          className="project-create-dialog-input"
           style={{
             width: '100%', padding: '8px 10px', fontSize: 13,
             background: 'var(--surface-container-low, #141418)',
@@ -96,6 +97,7 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
             fontFamily: 'Geist, monospace',
           }}
         />
+        <style>{`.project-create-dialog-input:focus-visible { outline: 2px solid var(--color-accent, #4D8FF7); outline-offset: 2px; }`}</style>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
           <button type="button"
             onClick={() => { onClose(); setName('') }}

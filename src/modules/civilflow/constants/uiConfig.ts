@@ -8,7 +8,7 @@ export const REDES=[
   {id:'af', lbl:'Agua fría', sub:'NTC 1500 · Hazen-Williams', ico:'💧', icoImg:'/iconos_civilflow/diseno_redes/hidraulica/red_agua_fria.webp', col:'var(--af)'},
   {id:'ac', lbl:'Agua caliente', sub:'NTC 1500 · CPVC RDE 11', ico:'🔥', icoImg:'/iconos_civilflow/diseno_redes/hidraulica/red_agua_caliente.webp', col:'var(--ac)'},
   {id:'ep', lbl:'Equipo presión', sub:'Bomba + recipiente vejiga', ico:'⚡', icoImg:'/iconos_civilflow/diseno_redes/equipos/red_equipo_presion.webp', col:'var(--ep)'},
-  {id:'bom',lbl:'Bomba AR', sub:'Aguas residuales presión', ico:'⬆️', icoImg:'/iconos_civilflow/diseno_redes/equipos/red_bomba_ar.webp', col:'var(--bom)'},
+  {id:'bom',lbl:'Bomba aguas residuales', sub:'Aguas residuales presión', ico:'⬆️', icoImg:'/iconos_civilflow/diseno_redes/equipos/red_bomba_ar.webp', col:'var(--bom)'},
   {id:'rci',lbl:'Contra incendio', sub:'NSR-10 J · NFPA 13:2022', ico:'🔴', icoImg:'/iconos_civilflow/diseno_redes/rci/red_contra_incendio.webp', col:'var(--rci)'},
   {id:'gas',lbl:'Gas', sub:'NTC 3728 · Baja presión', ico:'⛽', icoImg:'/iconos_civilflow/diseno_redes/gas/red_de_gas.webp', col:'var(--gas)'},
 ];
