@@ -89,7 +89,7 @@ export function ApuCatalog() {
             <tbody>
               {filtered.length === 0 && <tr><td colSpan={7} className="cm-empty-row">Sin APU</td></tr>}
               {filtered.map((a, i) => (
-                <tr key={a.id} style={{ background: selId === a.id ? 'rgba(37,99,235,.1)' : undefined, cursor: 'pointer' }} onClick={() => setSelId(a.id)}>
+                <tr key={a.id} style={{ background: selId === a.id ? 'rgba(37,99,235,.1)' : undefined, cursor: 'pointer' }} tabIndex={0} onClick={() => setSelId(a.id)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelId(a.id); } }}>
                   <XlRowNum n={i + 1} />
                   <td>{a.codigo}</td>
                   <td>{a.nombre}</td>

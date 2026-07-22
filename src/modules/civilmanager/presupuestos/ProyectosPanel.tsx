@@ -84,7 +84,7 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
                 <td style={{ paddingLeft: level ? 24 : undefined }}>{level > 0 ? '↳ ' : ''}{pres.nombre}</td>
                 <td>{getTipoProyecto(pres, state.presupuestos)}</td>
                 <td>
-                  <select className="cm-sel" value={pres.estado} onClick={e => e.stopPropagation()} onChange={e => upd(pres.id, 'estado', e.target.value)}>
+                  <select className="cm-sel" aria-label="Estado" value={pres.estado} onClick={e => e.stopPropagation()} onChange={e => upd(pres.id, 'estado', e.target.value)}>
                     {Object.entries(ESTADO_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                   </select>
                 </td>

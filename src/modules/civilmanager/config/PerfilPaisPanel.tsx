@@ -46,7 +46,7 @@ export function PerfilPaisPanel() {
                   <td><NumInput value={p.dias_mes} decimals={0} onChange={v => upd(i, 'dias_mes', v)} /></td>
                   <td><NumInput value={p.horas_mes} decimals={0} onChange={v => upd(i, 'horas_mes', v)} /></td>
                   <td>
-                    <select className="cm-sel" value={p.unidad} onChange={e => upd(i, 'unidad', e.target.value)}>
+                    <select className="cm-sel" aria-label="Unidad" value={p.unidad} onChange={e => upd(i, 'unidad', e.target.value)}>
                       <option value="mes">Mes</option>
                       <option value="hora">Hora</option>
                     </select>

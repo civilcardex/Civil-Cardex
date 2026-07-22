@@ -80,14 +80,14 @@ export function EquiposTab() {
                     <td>{e.codigo}</td>
                     <td>
                       {editing ? (
-                        <input className="cm-ni" value={e.nombre} onChange={ev => upd(i, 'nombre', ev.target.value)} onKeyDown={ev => handleKeyDown(i, ev)} />
+                        <input className="cm-ni" aria-label="Nombre" value={e.nombre} onChange={ev => upd(i, 'nombre', ev.target.value)} onKeyDown={ev => handleKeyDown(i, ev)} />
                       ) : (
                         <span onDoubleClick={() => setEditIdx(i)}>{e.nombre}</span>
                       )}
                     </td>
                     <td>
                       {editing ? (
-                        <select className="cm-sel" value={e.tipo} onChange={ev => upd(i, 'tipo', ev.target.value)}>
+                        <select className="cm-sel" aria-label="Tipo" value={e.tipo} onChange={ev => upd(i, 'tipo', ev.target.value)}>
                           {state.config_listas.tipos_equipo.map(t => <option key={t.codigo} value={t.nombre}>{t.nombre}</option>)}
                         </select>
                       ) : e.tipo}

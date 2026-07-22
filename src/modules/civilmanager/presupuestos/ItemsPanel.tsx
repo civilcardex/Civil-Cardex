@@ -74,11 +74,11 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
               return (
                 <tr key={it.id} style={esCap ? { fontWeight: 700, background: 'var(--bg3)' } : undefined}>
                   <XlRowNum n={i + 1} />
-                  <td><input className="cm-ni" value={it.num_item} onChange={e => upd(i, 'num_item', e.target.value)} /></td>
-                  <td><input className="cm-ni" value={it.descripcion} onChange={e => upd(i, 'descripcion', e.target.value)} /></td>
+                  <td><input className="cm-ni" aria-label="Ítem" value={it.num_item} onChange={e => upd(i, 'num_item', e.target.value)} /></td>
+                  <td><input className="cm-ni" aria-label="Descripción" value={it.descripcion} onChange={e => upd(i, 'descripcion', e.target.value)} /></td>
                   <td>
                     {!esCap && (
-                      <select className="cm-sel" value={it.unidad} onChange={e => upd(i, 'unidad', e.target.value)}>
+                      <select className="cm-sel" aria-label="Unidad" value={it.unidad} onChange={e => upd(i, 'unidad', e.target.value)}>
                         {state.config_listas.unidades.map(u => <option key={u.abreviatura} value={u.abreviatura}>{u.abreviatura}</option>)}
                       </select>
                     )}
@@ -88,6 +88,7 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
                     {!esCap && (
                       <select
                         className="cm-sel"
+                        aria-label="APU"
                         value={it.apu_id}
                         onChange={e => upd(i, 'apu_id', e.target.value)}
                         style={{ borderColor: it.alerta_sin_apu ? 'var(--err)' : undefined }}
@@ -101,7 +102,7 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
                   <td>{fmt(calc.valorTotal)}</td>
                   <td className="cm-col-act">
                     <label style={{ display: 'inline-flex', alignItems: 'center', gap: 2, fontSize: 9 }}>
-                      <input type="checkbox" checked={esCap} onChange={e => upd(i, 'es_capitulo_manual', e.target.checked)} title="Marcar como capítulo" />
+                      <input type="checkbox" checked={esCap} onChange={e => upd(i, 'es_capitulo_manual', e.target.checked)} title="Marcar como capítulo" aria-label="Marcar como capítulo" />
                     </label>
                     <button type="button" className="cm-btn-icon" onClick={() => del(i)} aria-label="Eliminar ítem">
                       <ActionIcon name="delete" label="Eliminar ítem" color="var(--err)" />

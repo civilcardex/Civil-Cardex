@@ -1,12 +1,15 @@
+import { cloneElement, isValidElement, useId } from 'react';
 import { useCivilManager } from '../context';
 import { NumInput } from '../shared/NumInput';
 import type { CivilManagerConfig } from '../types';
 
 function Field({ label, help, children }: { label: string; help?: string; children: React.ReactNode }) {
+  const id = useId();
+  const control = isValidElement(children) ? cloneElement(children as React.ReactElement<{ id?: string }>, { id }) : children;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 180 }}>
-      <label style={{ fontSize: 10, color: 'var(--txt2)', fontWeight: 700 }}>{label}</label>
-      {children}
+      <label htmlFor={id} style={{ fontSize: 10, color: 'var(--txt2)', fontWeight: 700 }}>{label}</label>
+      {control}
       {help && <span style={{ fontSize: 9, color: 'var(--txt3)' }}>{help}</span>}
     </div>
   );

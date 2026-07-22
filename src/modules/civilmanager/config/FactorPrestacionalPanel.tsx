@@ -73,7 +73,7 @@ export function FactorPrestacionalPanel() {
                         <td>{f.codigo}</td>
                         <td>
                           {editing ? (
-                            <input className="cm-ni" value={f.nombre} onChange={e => upd(i, 'nombre', e.target.value)} />
+                            <input className="cm-ni" aria-label="Nombre" value={f.nombre} onChange={e => upd(i, 'nombre', e.target.value)} />
                           ) : (
                             <span onDoubleClick={() => setEditIdx(i)}>{f.nombre}</span>
                           )}

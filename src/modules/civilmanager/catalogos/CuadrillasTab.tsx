@@ -84,7 +84,7 @@ export function CuadrillasTab() {
             <tbody>
               {filtered.length === 0 && <tr><td colSpan={5} className="cm-empty-row">Sin cuadrillas</td></tr>}
               {filtered.map((c, i) => (
-                <tr key={c.id} onClick={() => setSelIdx(i)} style={{ cursor: 'pointer', background: selIdx === i ? 'rgba(37,99,235,.12)' : undefined }}>
+                <tr key={c.id} onClick={() => setSelIdx(i)} tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelIdx(i); } }} style={{ cursor: 'pointer', background: selIdx === i ? 'rgba(37,99,235,.12)' : undefined }}>
                   <XlRowNum n={i + 1} />
                   <td>{c.codigo}</td>
                   <td>{c.descripcion}</td>

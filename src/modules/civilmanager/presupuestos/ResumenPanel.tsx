@@ -29,20 +29,20 @@ export function ResumenPanel({ pres, onUpdate }: Props) {
         {aiu.activo && (
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             <div>
-              <label style={{ fontSize: 10, color: 'var(--txt2)' }}>Administración %</label>
-              <NumInput value={aiu.pct_a} decimals={2} onChange={v => updAiu('pct_a', v)} />
+              <label htmlFor="aiu-pct-a" style={{ fontSize: 10, color: 'var(--txt2)' }}>Administración %</label>
+              <NumInput id="aiu-pct-a" value={aiu.pct_a} decimals={2} onChange={v => updAiu('pct_a', v)} />
             </div>
             <div>
-              <label style={{ fontSize: 10, color: 'var(--txt2)' }}>Imprevistos %</label>
-              <NumInput value={aiu.pct_i} decimals={2} onChange={v => updAiu('pct_i', v)} />
+              <label htmlFor="aiu-pct-i" style={{ fontSize: 10, color: 'var(--txt2)' }}>Imprevistos %</label>
+              <NumInput id="aiu-pct-i" value={aiu.pct_i} decimals={2} onChange={v => updAiu('pct_i', v)} />
             </div>
             <div>
-              <label style={{ fontSize: 10, color: 'var(--txt2)' }}>Utilidad %</label>
-              <NumInput value={aiu.pct_u} decimals={2} onChange={v => updAiu('pct_u', v)} />
+              <label htmlFor="aiu-pct-u" style={{ fontSize: 10, color: 'var(--txt2)' }}>Utilidad %</label>
+              <NumInput id="aiu-pct-u" value={aiu.pct_u} decimals={2} onChange={v => updAiu('pct_u', v)} />
             </div>
             <div>
-              <label style={{ fontSize: 10, color: 'var(--txt2)' }}>IVA sobre utilidad %</label>
-              <NumInput value={aiu.iva_pct} decimals={2} onChange={v => updAiu('iva_pct', v)} />
+              <label htmlFor="aiu-iva-pct" style={{ fontSize: 10, color: 'var(--txt2)' }}>IVA sobre utilidad %</label>
+              <NumInput id="aiu-iva-pct" value={aiu.iva_pct} decimals={2} onChange={v => updAiu('iva_pct', v)} />
             </div>
           </div>
         )}

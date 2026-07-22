@@ -71,14 +71,14 @@ export function ListaItemPanel({ title, items, onChange, prefix, labelField, lab
                   <td>{it.codigo}</td>
                   <td>
                     {editing ? (
-                      <input className="cm-ni" value={it[labelField] ?? ''} onChange={e => upd(i, labelField, e.target.value)} />
+                      <input className="cm-ni" aria-label={labelHeader} value={it[labelField] ?? ''} onChange={e => upd(i, labelField, e.target.value)} />
                     ) : (
                       <span onDoubleClick={() => setEditIdx(i)}>{it[labelField]}</span>
                     )}
                   </td>
                   <td>
                     {editing ? (
-                      <input className="cm-ni" value={it.desc} onChange={e => upd(i, 'desc', e.target.value)} />
+                      <input className="cm-ni" aria-label="Descripción" value={it.desc} onChange={e => upd(i, 'desc', e.target.value)} />
                     ) : (
                       <span onDoubleClick={() => setEditIdx(i)} style={{ color: 'var(--txt2)' }}>{it.desc}</span>
                     )}

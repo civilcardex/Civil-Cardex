@@ -103,21 +103,21 @@ export function InsumosTab() {
                     <td>{x.codigo}</td>
                     <td>
                       {editing ? (
-                        <input className="cm-ni" value={x.nombre} onChange={e => upd(i, 'nombre', e.target.value)} onKeyDown={e => handleKeyDown(i, e)} />
+                        <input className="cm-ni" aria-label="Nombre" value={x.nombre} onChange={e => upd(i, 'nombre', e.target.value)} onKeyDown={e => handleKeyDown(i, e)} />
                       ) : (
                         <span onDoubleClick={() => setEditIdx(i)}>{x.nombre}</span>
                       )}
                     </td>
                     <td>
                       {editing ? (
-                        <select className="cm-sel" value={x.unidad} onChange={e => upd(i, 'unidad', e.target.value)}>
+                        <select className="cm-sel" aria-label="Unidad" value={x.unidad} onChange={e => upd(i, 'unidad', e.target.value)}>
                           {state.config_listas.unidades.map(u => <option key={u.abreviatura} value={u.abreviatura}>{u.abreviatura}</option>)}
                         </select>
                       ) : x.unidad}
                     </td>
                     <td>
                       {editing ? (
-                        <select className="cm-sel" value={x.origen} onChange={e => upd(i, 'origen', e.target.value)}>
+                        <select className="cm-sel" aria-label="Origen" value={x.origen} onChange={e => upd(i, 'origen', e.target.value)}>
                           {state.config_listas.origenes.map(o => <option key={o.codigo} value={o.nombre}>{o.nombre}</option>)}
                         </select>
                       ) : x.origen}
@@ -125,7 +125,7 @@ export function InsumosTab() {
                     <td>
                       {preparado ? (
                         editing ? (
-                          <select className="cm-sel" value={x.apu_basico_id} onChange={e => upd(i, 'apu_basico_id', e.target.value)}>
+                          <select className="cm-sel" aria-label="APU básico" value={x.apu_basico_id} onChange={e => upd(i, 'apu_basico_id', e.target.value)}>
                             <option value="">— seleccionar APU básico —</option>
                             {apusBasico.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
                           </select>

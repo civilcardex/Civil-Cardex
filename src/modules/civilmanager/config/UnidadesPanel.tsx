@@ -59,17 +59,17 @@ export function UnidadesPanel() {
               return (
                 <tr key={u.abreviatura + i}>
                   <XlRowNum n={i + 1} />
-                  <td>{editing ? <input className="cm-ni" value={u.abreviatura} onChange={e => upd(i, 'abreviatura', e.target.value)} /> : u.abreviatura}</td>
+                  <td>{editing ? <input className="cm-ni" aria-label="Abreviatura" value={u.abreviatura} onChange={e => upd(i, 'abreviatura', e.target.value)} /> : u.abreviatura}</td>
                   <td>
                     {editing ? (
-                      <input className="cm-ni" value={u.descripcion} onChange={e => upd(i, 'descripcion', e.target.value)} />
+                      <input className="cm-ni" aria-label="Descripción" value={u.descripcion} onChange={e => upd(i, 'descripcion', e.target.value)} />
                     ) : (
                       <span onDoubleClick={() => setEditIdx(i)}>{u.descripcion}</span>
                     )}
                   </td>
                   <td>
                     {editing ? (
-                      <select className="cm-sel" value={u.tipo} onChange={e => upd(i, 'tipo', e.target.value)}>
+                      <select className="cm-sel" aria-label="Tipo" value={u.tipo} onChange={e => upd(i, 'tipo', e.target.value)}>
                         {TIPOS_UNIDAD_PRE.map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
                     ) : u.tipo}

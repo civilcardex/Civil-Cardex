@@ -84,7 +84,7 @@ export function ColaboradoresTab() {
                     <td>{c.codigo}</td>
                     <td>
                       {editing ? (
-                        <input className="cm-ni" value={c.descripcion} onChange={e => upd(i, 'descripcion', e.target.value)} onKeyDown={e => handleKeyDown(i, e)} />
+                        <input className="cm-ni" aria-label="Descripción" value={c.descripcion} onChange={e => upd(i, 'descripcion', e.target.value)} onKeyDown={e => handleKeyDown(i, e)} />
                       ) : (
                         <span onDoubleClick={() => setEditIdx(i)}>{c.descripcion}</span>
                       )}

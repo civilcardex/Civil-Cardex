@@ -98,22 +98,22 @@ export function ProveedoresTab() {
                     <td>{p.codigo}</td>
                     <td>
                       {editing ? (
-                        <input className="cm-ni" value={p.nombre} onChange={e => upd(i, 'nombre', e.target.value)} onKeyDown={e => handleKeyDown(i, e)} />
+                        <input className="cm-ni" aria-label="Nombre" value={p.nombre} onChange={e => upd(i, 'nombre', e.target.value)} onKeyDown={e => handleKeyDown(i, e)} />
                       ) : (
                         <span onDoubleClick={() => setEditIdx(i)}>{p.nombre}</span>
                       )}
                     </td>
                     <td>
-                      {editing ? <input className="cm-ni" value={p.nit} onChange={e => upd(i, 'nit', e.target.value)} /> : p.nit}
+                      {editing ? <input className="cm-ni" aria-label="NIT" value={p.nit} onChange={e => upd(i, 'nit', e.target.value)} /> : p.nit}
                     </td>
                     <td>
-                      {editing ? <input className="cm-ni" value={p.contacto} onChange={e => upd(i, 'contacto', e.target.value)} /> : p.contacto}
+                      {editing ? <input className="cm-ni" aria-label="Contacto" value={p.contacto} onChange={e => upd(i, 'contacto', e.target.value)} /> : p.contacto}
                     </td>
                     <td>
-                      {editing ? <input className="cm-ni" value={p.tel1} onChange={e => upd(i, 'tel1', e.target.value)} /> : p.tel1}
+                      {editing ? <input className="cm-ni" aria-label="Teléfono" value={p.tel1} onChange={e => upd(i, 'tel1', e.target.value)} /> : p.tel1}
                     </td>
                     <td>
-                      {editing ? <input className="cm-ni" value={p.ciudad} onChange={e => upd(i, 'ciudad', e.target.value)} /> : p.ciudad}
+                      {editing ? <input className="cm-ni" aria-label="Ciudad" value={p.ciudad} onChange={e => upd(i, 'ciudad', e.target.value)} /> : p.ciudad}
                     </td>
                     <XlAct onEdit={() => setEditIdx(editing ? null : i)} onDelete={() => del(i)} />
                   </tr>
