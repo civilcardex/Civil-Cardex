@@ -129,6 +129,104 @@ export function segmentStrictIntersectionPoint(a1: number[], a2: number[], b1: n
   return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
 }
 
+// Detects a codo formed where this ramal's endpoint meets ANOTHER ramal's endpoint at (roughly)
+// the same point — unlike an internal-vertex check (consecutive points of the SAME ramal), this
+// covers two separately-drawn ramales joining end-to-end, or a drag that newly aligns one
+// ramal's endpoint with another's.
+export function detectJunctionAccesorio(
+  engine: IPlanoEngineCore,
+  ramalId: string,
+  epIdx: number
+): { angleDeg: number; otherRamalId: string } | null {
+  const r = engine.ramales.find(x => x.id === ramalId);
+  if (!r || !r.pts || r.pts.length < 2) return null;
+  const ep = r.pts[epIdx];
+  const otherIdxInR = epIdx === 0 ? 1 : r.pts.length - 2;
+  const awayRx = r.pts[otherIdxInR][0] - ep[0], awayRy = r.pts[otherIdxInR][1] - ep[1];
+  const lenR = Math.hypot(awayRx, awayRy);
+  if (lenR < 0.001) return null;
+
+  const TOL = 0.5;
+  for (const r2 of engine.ramales) {
+    if (r2.id === r.id || r2.net !== r.net) continue;
+    if (!r2.pts || r2.pts.length < 2) continue;
+    for (const j of [0, r2.pts.length - 1]) {
+      const p2 = r2.pts[j];
+      if (Math.hypot(p2[0] - ep[0], p2[1] - ep[1]) >= TOL) continue;
+      const otherIdxInR2 = j === 0 ? 1 : r2.pts.length - 2;
+      const awayR2x = r2.pts[otherIdxInR2][0] - p2[0], awayR2y = r2.pts[otherIdxInR2][1] - p2[1];
+      const lenR2 = Math.hypot(awayR2x, awayR2y);
+      if (lenR2 < 0.001) continue;
+      const dot = (awayRx * awayR2x + awayRy * awayR2y) / (lenR * lenR2);
+      const rawAngle = Math.acos(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI;
+      const turnAngle = 180 - rawAngle;
+      if (Math.abs(turnAngle - 45) < 5 || Math.abs(turnAngle - 90) < 5) {
+        return { angleDeg: Math.round(turnAngle), otherRamalId: r2.id };
+      }
+    }
+  }
+  return null;
+}
+
+export interface AccesorioTrigger {
+  ramalId: string;
+  angleDeg: number;
+  junctionIndex: number;
+  net: string;
+  isTee: boolean;
+}
+
+// Single source of truth for "does this ramal need the accesorio-selection modal right now",
+// used both right after a ramal is drawn and after a drag ends — a junction can be created
+// either way (two separate ramales joined by drawing, or by dragging one into a new ramal).
+// Skips a junction that already has a resolved accesorio/aparato there, so it doesn't nag on
+// every subsequent drag once the user has answered it.
+export function detectAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string): AccesorioTrigger | null {
+  const r = engine.ramales.find(x => x.id === ramalId);
+  if (!r || !r.pts || r.pts.length < 2 || (r.net !== 'af' && r.net !== 'ac')) return null;
+
+  const lastIdx = r.pts.length - 1;
+  const endpointResolved = (idx: number) =>
+    idx === 0 ? !!(r.accesorioInicio || r.aparatoInicio) : !!(r.accesorioFin || r.aparatoFin);
+
+  for (const epIdx of [0, lastIdx]) {
+    if (endpointResolved(epIdx)) continue;
+    const ep = r.pts[epIdx];
+    if (isTeeAtEndpoint(ep, engine, r.id, r.net)) {
+      return { ramalId: r.id, angleDeg: 90, junctionIndex: epIdx, net: r.net, isTee: true };
+    }
+  }
+
+  for (const epIdx of [0, lastIdx]) {
+    if (endpointResolved(epIdx)) continue;
+    const junction = detectJunctionAccesorio(engine, r.id, epIdx);
+    if (junction) {
+      return { ramalId: r.id, angleDeg: junction.angleDeg, junctionIndex: epIdx, net: r.net, isTee: false };
+    }
+  }
+
+  if (r.pts.length >= 3) {
+    for (let i = 1; i < lastIdx; i++) {
+      if ((r as unknown as Record<string, unknown>)[`accMed${i}`]) continue;
+      const prev = r.pts[i - 1];
+      const curr = r.pts[i];
+      const next = r.pts[i + 1];
+      const d1x = curr[0] - prev[0], d1y = curr[1] - prev[1];
+      const d2x = next[0] - curr[0], d2y = next[1] - curr[1];
+      const len1 = Math.hypot(d1x, d1y), len2 = Math.hypot(d2x, d2y);
+      if (len1 < 0.001 || len2 < 0.001) continue;
+      const dot = (d1x * d2x + d1y * d2y) / (len1 * len2);
+      const cosVal = Math.max(-1, Math.min(1, dot));
+      const angleDeg = Math.acos(cosVal) * 180 / Math.PI;
+      if (Math.abs(angleDeg - 45) < 5 || Math.abs(angleDeg - 90) < 5) {
+        return { ramalId: r.id, angleDeg: Math.round(angleDeg), junctionIndex: i, net: r.net, isTee: false };
+      }
+    }
+  }
+
+  return null;
+}
+
 export function isTeeAtEndpoint(ep: number[], engine: IPlanoEngineCore, _currentRamalId: string, net: string): boolean {
   const TOL = 0.5;
   let segmentCount = 0;

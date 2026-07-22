@@ -4,6 +4,32 @@ import { pointInLabelBox, pointToSegmentDist, distanceToRamal, findAccMedVertexH
 import { getSelected } from './PlanoEngineSelection';
 import { selectAt } from './PlanoEngineSelection';
 import { findCodoReventiladoLinks } from './PlanoEngineNetwork';
+import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
+
+// True only when the bajante actually sits ON one of the ramal's endpoints — i.e. the connection
+// is rigid, not just the green dashed guide line drawn between two separate points. A bloqueado
+// ramal should only block the bajante's own move when the two are already touching; while a
+// dashed line is still showing (not yet snapped) the designer needs to freely slide the bajante
+// over to connect it, lock or no lock.
+function _bajanteTouchesRamalEnd(b: PlanoBajante, r: { pts: number[][] } | undefined): boolean {
+  if (!r || !r.pts?.length) return false;
+  const pStart = r.pts[0];
+  const pEnd = r.pts[r.pts.length - 1];
+  return Math.hypot(pStart[0] - b.x, pStart[1] - b.y) < 0.5 || Math.hypot(pEnd[0] - b.x, pEnd[1] - b.y) < 0.5;
+}
+
+function _bajanteBlockedByRamalLock(engine: IPlanoEngineCore, b: PlanoBajante): boolean {
+  const ramalIds = new Set<string>(b.recibeDeIds || []);
+  if (b.descargaEnId) {
+    const [targetPlanId, targetId] = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
+    if (String(targetPlanId) === String(engine._loadedPlanId)) ramalIds.add(targetId);
+  }
+  for (const rid of ramalIds) {
+    const r = engine.ramales.find(rr => rr.id === rid);
+    if (r?.bloqueado && _bajanteTouchesRamalEnd(b, r)) return true;
+  }
+  return false;
+}
 
 // Snapshot the bajante's position and every ramal it touches (recibeDeIds, descargaEnId, and
 // its own Ldesvio ghost-connector) before a bajDrag starts, so handleDragUp can validate the
@@ -61,28 +87,9 @@ function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: Pla
         engine._emitSelect(b);
         engine.render();
       }
-      if (b.isFantasma) {
-        // Allow parent bajante to be moved normally via bajDrag
-        const assocIds = [...(b.recibeDeIds || [])];
-        if (b.descargaEnId) assocIds.push(b.descargaEnId);
-        const hasLockedRamal = (engine.ramales || []).some(r =>
-          assocIds.includes(r.id) && r.bloqueado
-        );
-        if (!hasLockedRamal) {
-          engine.bajDrag = { id: b.id, offX: x - circ.x, offY: y - circ.y };
-          _captureBajDragBackup(engine, b);
-        }
-      } else {
-        // Don't allow dragging if associated ramales are bloqueados
-        const assocIds = [...(b.recibeDeIds || [])];
-        if (b.descargaEnId) assocIds.push(b.descargaEnId);
-        const hasLockedRamal = (engine.ramales || []).some(r =>
-          assocIds.includes(r.id) && r.bloqueado
-        );
-        if (!hasLockedRamal) {
-          engine.bajDrag = { id: b.id, offX: x - circ.x, offY: y - circ.y };
-          _captureBajDragBackup(engine, b);
-        }
+      if (!_bajanteBlockedByRamalLock(engine, b)) {
+        engine.bajDrag = { id: b.id, offX: x - circ.x, offY: y - circ.y };
+        _captureBajDragBackup(engine, b);
       }
       return true;
     }
@@ -285,23 +292,12 @@ function _trySelBajanteDrag(engine: IPlanoEngineCore, x: number, y: number, sel:
     }
       if (sel.isFantasma) {
         // Allow parent bajante to be moved normally via bajDrag
-        const assocIds2 = [...(sel.recibeDeIds || [])];
-        if (sel.descargaEnId) assocIds2.push(sel.descargaEnId);
-        const hasLockedRamal2 = (engine.ramales || []).some(r =>
-          assocIds2.includes(r.id) && r.bloqueado
-        );
-        if (!hasLockedRamal2) {
+        if (!_bajanteBlockedByRamalLock(engine, sel)) {
           engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
           _captureBajDragBackup(engine, sel);
         }
       } else {
-      // Don't allow dragging if associated ramales are bloqueados
-      const assocIds = [...(sel.recibeDeIds || [])];
-      if (sel.descargaEnId) assocIds.push(sel.descargaEnId);
-      const hasLockedRamal = (engine.ramales || []).some(r =>
-        assocIds.includes(r.id) && r.bloqueado
-      );
-      if (!hasLockedRamal) {
+      if (!_bajanteBlockedByRamalLock(engine, sel)) {
         engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
         _captureBajDragBackup(engine, sel);
       }
@@ -419,18 +415,21 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: P
         }
       }
       // Ramales/tributarios sharing an endpoint with this one should move together as a rigid
-      // body, so the connection doesn't tear apart when dragging an unlocked ramal.
+      // body, so the connection doesn't tear apart when dragging an unlocked ramal. A tributario
+      // (other.padre === sel.id) attaches mid-body, not at sel's own endpoint, so it needs its
+      // own check — it always moves with its padre regardless of where along it it's tapped in.
       const lastIdx = sel.pts.length - 1;
       const selStart = sel.pts[0], selEnd = sel.pts[lastIdx];
       const connRamales: { id: string; origPts: [number, number][] }[] = [];
       for (const other of engine.ramales) {
         if (other.id === sel.id || other.net !== sel.net || !other.pts?.length) continue;
         const oStart = other.pts[0], oEnd = other.pts[other.pts.length - 1];
-        const touches = [oStart, oEnd].some(op =>
+        const touchesEndpoint = [oStart, oEnd].some(op =>
           Math.hypot(op[0] - selStart[0], op[1] - selStart[1]) < 0.5 ||
           Math.hypot(op[0] - selEnd[0], op[1] - selEnd[1]) < 0.5
         );
-        if (touches) {
+        const isTributarioChild = other.padre === sel.id;
+        if (touchesEndpoint || isTributarioChild) {
           connRamales.push({ id: other.id, origPts: other.pts.map((pt: number[]) => [...pt] as [number, number]) });
         }
       }

@@ -6,7 +6,7 @@ import type {
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
-import { _firstSegmentAngle, checkRamalAngles, segmentsIntersect, snapTributaryToPadre45Deg, isTeeAtEndpoint } from './drawingAngles';
+import { _firstSegmentAngle, checkRamalAngles, segmentsIntersect, snapTributaryToPadre45Deg, detectAccesorioTrigger } from './drawingAngles';
 
 export { checkRamalAngles, _firstSegmentAngle, segmentsIntersect, snapTributaryToPadre45Deg } from './drawingAngles';
 export { handleBajanteDown, handleMontanteDown, handleCalentadorDown, handleRedPublicaDown, handleContadorDown } from './drawingCreations';
@@ -212,57 +212,12 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       }
     }
   }
-  // AF/AC: detect codos/tees at angle changes and perpendicular crossings
+  // AF/AC: detect codos/tees at angle changes, perpendicular crossings, and junctions formed
+  // with another separately-drawn ramal — shared with handleDragUp so a drag can trigger the
+  // same modal when it newly creates one of these junctions.
   if ((r.net === 'af' || r.net === 'ac') && engine.triggerAccesorioModal) {
-    let modalTriggered = false;
-
-    // 1. Detect Tee connections at the endpoints of the ramal
-    const epIdxs = [0, r.pts.length - 1];
-    for (const epIdx of epIdxs) {
-      if (modalTriggered) break;
-      const ep = r.pts[epIdx];
-      if (isTeeAtEndpoint(ep, engine, r.id, r.net)) {
-        engine.triggerAccesorioModal({
-          ramalId: r.id,
-          angleDeg: 90, // Tee connection is represented as 90 degrees
-          junctionIndex: epIdx,
-          net: r.net,
-          isTee: true
-        });
-        modalTriggered = true;
-        break;
-      }
-    }
-
-    // 2. Detect codos/tees at angle changes (requires ≥3 points = 2 segments)
-    if (!modalTriggered && r.pts.length >= 3) {
-      for (let i = 1; i < r.pts.length - 1; i++) {
-        const prev = r.pts[i - 1];
-        const curr = r.pts[i];
-        const next = r.pts[i + 1];
-        const d1x = curr[0] - prev[0];
-        const d1y = curr[1] - prev[1];
-        const d2x = next[0] - curr[0];
-        const d2y = next[1] - curr[1];
-        const len1 = Math.hypot(d1x, d1y);
-        const len2 = Math.hypot(d2x, d2y);
-        if (len1 < 0.001 || len2 < 0.001) continue;
-        const dot = (d1x * d2x + d1y * d2y) / (len1 * len2);
-        const cosVal = Math.max(-1, Math.min(1, dot));
-        const angleDeg = Math.acos(cosVal) * 180 / Math.PI;
-        if (Math.abs(angleDeg - 45) < 5 || Math.abs(angleDeg - 90) < 5) {
-          engine.triggerAccesorioModal({
-            ramalId: r.id,
-            angleDeg: Math.round(angleDeg),
-            junctionIndex: i,
-            net: r.net,
-            isTee: false
-          });
-          modalTriggered = true;
-          break;
-        }
-      }
-    }
+    const trigger = detectAccesorioTrigger(engine, r.id);
+    if (trigger) engine.triggerAccesorioModal(trigger);
   }
   engine.activeRamal = null;
   engine.selId = r.id;

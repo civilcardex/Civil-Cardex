@@ -168,17 +168,6 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
   if (engine.bajDrag) {
     const b = engine.bajantes.find(bb => bb.id === engine.bajDrag!.id);
     if (b) {
-      // Check if any associated ramal is bloqueado
-      const allAssocIds = [...(b.recibeDeIds || [])];
-      if (b.descargaEnId) allAssocIds.push(b.descargaEnId);
-      const asociadoBloqueado = (engine.ramales || []).some(r =>
-        allAssocIds.includes(r.id) && r.bloqueado
-      );
-      if (asociadoBloqueado) {
-        // Don't move: snap to current position
-        engine.scheduleRender();
-        return;
-      }
       let p = engine.toPlane(x - engine.bajDrag.offX, y - engine.bajDrag.offY);
       const oldX = b.x;
       const oldY = b.y;
@@ -290,6 +279,10 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         b.recibeDeIds.forEach(rid => {
           const r = engine.ramales.find(rr => rr.id === rid);
           if (!r || !r.pts) return;
+          // Defensive: handleMouseDown already refuses to start bajDrag when recibeDeIds points
+          // at a bloqueado ramal, so this shouldn't fire in practice — kept in case bloqueado
+          // gets toggled mid-drag.
+          if (r.bloqueado) return;
           let changed = false;
           if (Math.hypot(r.pts[0][0] - oldX, r.pts[0][1] - oldY) < 0.5) {
             r.pts[0][0] = p.x; r.pts[0][1] = p.y; changed = true;

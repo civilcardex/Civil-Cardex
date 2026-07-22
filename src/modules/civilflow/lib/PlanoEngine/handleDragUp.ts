@@ -1,7 +1,13 @@
 import type { IPlanoEngineCore } from './PlanoState';
 import type { PlanoRamal } from './PlanoState';
 import { NETS } from './PlanoState';
-import { checkRamalAngles, _firstSegmentAngle } from './drawingAngles';
+import { checkRamalAngles, _firstSegmentAngle, detectAccesorioTrigger } from './drawingAngles';
+
+function checkAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string): void {
+  if (!engine.triggerAccesorioModal) return;
+  const trigger = detectAccesorioTrigger(engine, ramalId);
+  if (trigger) engine.triggerAccesorioModal(trigger);
+}
 
 export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false): void {
   if (engine.marqueeRect) {
@@ -187,6 +193,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       engine.render();
     } else {
       engine._dragLinkedBackupPts = null;
+      if (ram) checkAccesorioTrigger(engine, ram.id);
     }
   }
   if (engine.ramalDrag) {
@@ -207,6 +214,8 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         engine._markDirty();
         engine.render();
       }
+    } else if (ram) {
+      checkAccesorioTrigger(engine, ram.id);
     }
   }
 }

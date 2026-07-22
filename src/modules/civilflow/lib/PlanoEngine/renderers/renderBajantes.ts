@@ -135,7 +135,36 @@ function getLabelIntersection(
   return { x: intersectDx, y: intersectDy };
 }
 
+interface OtherFloorBajante { planId: string; id: string; code?: string; x: number; y: number; descargaEnId?: string; net?: string }
+
+// Read every OTHER floor's persisted bajantes once so the render pass below can draw vertical
+// alignment guides to cross-floor associated stacks. Floors share one plane coordinate space (the
+// isometry stacks them on it), so toCvs maps an other-floor (x,y) to the correct on-screen spot.
+function collectOtherFloorBajantes(engine: IPlanoEngineCore): OtherFloorBajante[] {
+  const out: OtherFloorBajante[] = [];
+  try {
+    const curKey = 'civilflow_trazos_' + String(engine._loadedPlanId);
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith('civilflow_trazos_') || k === curKey) continue;
+      const planId = k.slice('civilflow_trazos_'.length);
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      let data: { bajantes?: OtherFloorBajante[] };
+      try { data = JSON.parse(raw); } catch { continue; }
+      for (const ob of data.bajantes || []) {
+        if (ob.x == null || ob.y == null) continue;
+        out.push({ planId, id: ob.id, code: ob.code, x: ob.x, y: ob.y, descargaEnId: ob.descargaEnId, net: ob.net });
+      }
+    }
+  } catch { /* localStorage unavailable */ }
+  return out;
+}
+
 export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
+  const otherFloorBajantes = collectOtherFloorBajantes(engine);
+  const curPlan = String(engine._loadedPlanId);
+
   engine.bajantes.forEach((b) => {
     if (engine._hiddenNets.has(b.net)) return;
 
@@ -158,6 +187,57 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
 
     b._circ = { x: c.x, y: c.y, r };
     if (isDirectionGhost) return;
+
+    // Vertical-alignment guide: dashed net-color line to the position of any cross-floor bajante
+    // this one is explicitly associated with (via descargaEnId, in either direction). Lets the
+    // designer slide this floor's bajante until it sits vertically over the other floor's — the
+    // line shrinks to nothing once they're aligned.
+    if (otherFloorBajantes.length) {
+      const netObj = NETS.find((n) => n.id === b.net);
+      const guideCol = netObj ? netObj.col : '#e2e2e8';
+      const targets: { x: number; y: number }[] = [];
+      // forward: this bajante discharges into an element on another floor
+      if (b.descargaEnId) {
+        const [tp, tid] = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
+        if (String(tp) !== curPlan) {
+          const t = otherFloorBajantes.find(o => String(o.planId) === String(tp) && (o.id === tid || o.code === tid));
+          if (t) targets.push({ x: Number(t.x), y: Number(t.y) });
+        }
+      }
+      // reverse: a bajante on another floor discharges into this one. `net` is only used as a
+      // secondary filter when present on both sides — some persisted records predate that field,
+      // and requiring an exact match there silently dropped otherwise-valid matches.
+      for (const o of otherFloorBajantes) {
+        if (!o.descargaEnId) continue;
+        if (o.net && b.net && o.net !== b.net) continue;
+        const [tp, tid] = parseDescargaEnId(o.descargaEnId, o.planId);
+        if (String(tp) === curPlan && (tid === b.id || (b.code && tid === b.code))) targets.push({ x: Number(o.x), y: Number(o.y) });
+      }
+      for (const t of targets) {
+        if (!Number.isFinite(t.x) || !Number.isFinite(t.y)) continue;
+        const oc = engine.toCvs(t.x, t.y);
+        // Fixed screen-pixel tolerance (both oc/c are already in canvas space, post-zoom) so the
+        // "close enough, guide gone" feel is the same at any zoom level — 1px was pixel-perfect-only
+        // and never actually cleared in practice.
+        if (Math.hypot(oc.x - c.x, oc.y - c.y) < 6) continue;
+        ctx.save();
+        ctx.strokeStyle = guideCol;
+        // Tenue on purpose — this is a positioning aid, not a real pipe run, so it should read
+        // clearly weaker than the net's actual solid-line color.
+        ctx.globalAlpha = 0.3;
+        ctx.lineWidth = 1 * engine.zoom;
+        ctx.setLineDash([6 * engine.zoom, 5 * engine.zoom]);
+        ctx.beginPath();
+        ctx.moveTo(c.x, c.y);
+        ctx.lineTo(oc.x, oc.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(oc.x, oc.y, r * 0.5, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
 
     // Draw green dashed lines from ramales that feed this bajante (recibeDeIds)
     if (b.recibeDeIds?.length) {
