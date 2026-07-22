@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useTramos } from "../context/TramosContext";
 import type { Tramo } from "../context/tramosReducer";
 import { useProyecto } from "../context/ProyectoContext";
@@ -10,7 +10,7 @@ import { writeDiametroToDrawing, writeContadorDiamToDrawing, findContadorBajante
 import { calcLeAcces } from "../utils/accesoriosUtils";
 import { fmt } from "../utils/formatUtils";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
-import { loadFromStorage } from "../services/storageService";
+import { loadFromStorage, saveToStorage } from "../services/storageService";
 import { distToPolyline } from "../lib/shared/geometry";
 import { computeComponentTotals } from "../lib/shared/connectionGraph";
 import type { DrawingData, RawElement } from "../utils/drawingSync";
@@ -48,6 +48,14 @@ const isAf = (t: string) => t === 'af';
 
 const isContador = (s: string) => s.startsWith('CNT') || s.startsWith('cntAF');
 
+// Same sigla → code transform the drawing engine already applies when it writes a fixture's
+// abbreviation into a ramal's ini/fin (PlanoEngineNetwork.ts): "Duc:" -> "DUC". Reusing it here
+// means a tramo's ini/fin matches directly, no separate lookup table to keep in sync.
+const APARATO_PMAX_BY_CODE: Record<string, number> = Object.fromEntries(
+  APARATOS_DEF.map(a => [a.sigla.replace(':', '').trim().toUpperCase(), a.pmax])
+);
+const HEATER_LOSS_FACTOR = 0.9;
+
 const isAC1 = (t: Tramo) => {
   const ini = String(t.ini || '');
   const fin = String(t.fin || '');
@@ -78,7 +86,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   const colorVar = `var(--${networkType})`;
   const ucField = isAf(networkType) ? 'uc_af' : 'uc_ac';
   const title = isAf(networkType) ? 'agua fr\u00EDa' : 'agua caliente';
-  const icon = isAf(networkType) ? 'hidraulica/RAF_Diseno.svg' : 'hidraulica/RAC_Diseno.svg';
+  const icon = isAf(networkType) ? 'hidraulica/RAF_Diseno.webp' : 'hidraulica/RAC_Diseno.webp';
 
   const DIAM_OPTS = diamTable.map(d => ({ pulg: d.pulg, nominal: d.nominal, label: d.nominal, dInt: d.dInt }));
 
@@ -127,8 +135,13 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     });
   };
 
-  const [conexionesDisplay, componentTotalMap] = useMemo(() => {
+  const [conexionesDisplay, componentTotalMap, tramoParentOf, pressureRootKey] = useMemo(() => {
     const calculoMap: Record<string, string[]> = {};
+    // A montante/bajante has no identity preserved across floors — copying a trazo between plans
+    // assigns it a brand new id/code (see copyDrawingFromPlan.ts). The only reliable signal that
+    // two per-floor elements are the same physical riser is sitting at (roughly) the same x/y on
+    // different floors — collected here, linked once every plan has been scanned.
+    const bajanteNodes: Array<{ key: string; x: number; y: number; nivel: number }> = [];
 
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
@@ -139,6 +152,10 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
 
       const ramales = (data.ramales || []).filter((r) => r.net === networkType);
       const bajantes = (data.bajantes || []).filter((b): b is BajanteRaw => b.net === networkType);
+      for (const b of bajantes) {
+        if (b.x == null || b.y == null) continue;
+        bajanteNodes.push({ key: `${b.id}-${plan.id}`, x: b.x, y: b.y, nivel: plan.nivel });
+      }
 
       for (const r of ramales) {
         if (!r.pts || r.pts.length < 2) continue;
@@ -191,6 +208,29 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
           if (!calculoMap[targetKey]) calculoMap[targetKey] = [];
           if (!calculoMap[targetKey].includes(rKey)) calculoMap[targetKey].push(rKey);
         }
+      }
+    }
+
+    // Bridge same-position montante/bajante nodes across consecutive floors (see comment above)
+    // so a ramal ending at one floor's riser connects through to the next floor's.
+    const usedNode = new Set<number>();
+    for (let i = 0; i < bajanteNodes.length; i++) {
+      if (usedNode.has(i)) continue;
+      const group = [bajanteNodes[i]];
+      usedNode.add(i);
+      for (let j = i + 1; j < bajanteNodes.length; j++) {
+        if (usedNode.has(j)) continue;
+        if (Math.hypot(bajanteNodes[j].x - bajanteNodes[i].x, bajanteNodes[j].y - bajanteNodes[i].y) < 2.0) {
+          group.push(bajanteNodes[j]);
+          usedNode.add(j);
+        }
+      }
+      if (group.length < 2) continue;
+      group.sort((a, b) => a.nivel - b.nivel);
+      for (let k = 0; k < group.length - 1; k++) {
+        const a = group[k].key, b = group[k + 1].key;
+        if (!calculoMap[a]) calculoMap[a] = [];
+        if (!calculoMap[a].includes(b)) calculoMap[a].push(b);
       }
     }
 
@@ -254,7 +294,44 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
       t => calcUCparcial(t, AP, "uc"),
     );
 
-    return [displayMap, componentTotalMap] as const;
+    // Direct the same adjacency from the network's pressure source outward, so each tramo's
+    // Pinicial can chain from its actual upstream tramo's Pfinal instead of the flat acometida
+    // pressure. AF's source is the trunk tramo (Contador→Mon, isAC2); AC has no acometida of its
+    // own — its source is the tramo reaching the calentador, fed from AF (see pressure section).
+    const rootT = isAf(networkType)
+      ? tramos.find(isAC2)
+      : tramos.find(t => String(t.ini || '').startsWith('CALENT') || String(t.fin || '').startsWith('CALENT'));
+    const rootKey = rootT ? (rootT._key || rootT.id) : null;
+
+    const nodeParentOf: Record<string, string> = {};
+    if (rootKey) {
+      const visited = new Set<string>([rootKey]);
+      const queue = [rootKey];
+      while (queue.length > 0) {
+        const node = queue.shift()!;
+        for (const neighbor of adj[node] || []) {
+          if (!visited.has(neighbor)) {
+            visited.add(neighbor);
+            nodeParentOf[neighbor] = node;
+            queue.push(neighbor);
+          }
+        }
+      }
+    }
+
+    // The BFS above walks through bajante/contador/montante junction points too (they're nodes
+    // in `adj` but not Tramo objects) — collapse those into the nearest real upstream tramo so
+    // callers can go straight from a tramo's key to its governing tramo's key.
+    const tramoKeySet = new Set(tramos.map(t => t._key || t.id));
+    const tramoParentOf: Record<string, string> = {};
+    for (const t of tramos) {
+      const key = t._key || t.id;
+      let cur = nodeParentOf[key];
+      while (cur && !tramoKeySet.has(cur)) cur = nodeParentOf[cur];
+      if (cur) tramoParentOf[key] = cur;
+    }
+
+    return [displayMap, componentTotalMap, tramoParentOf, rootKey] as const;
   }, [plans, tramos, networkType, AP]);
 
   const propiaMap = useMemo(() => {
@@ -412,6 +489,164 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   const pResidual = +((f1.Pfin - f2.Pfin).toFixed(2));
   const okPresion = f1.Pfin > f2.Pfin;
 
+  // AC has no acometida of its own — it's fed from the water heater, which is itself fed from
+  // AF. Read AF's own resolved pressure at that shared calentador node (persisted below) so
+  // AC's root tramo can seed from it instead of the flat pRed fallback.
+  const afHeaterPfin = useMemo(() => {
+    if (isAf(networkType)) return null;
+    const heaterTramo = tramosAf.find(t => String(t.ini || '').startsWith('CALENT') || String(t.fin || '').startsWith('CALENT'));
+    return heaterTramo?.pFin ?? null;
+  }, [networkType, tramosAf]);
+
+  // Real tree-based pressure propagation, resolved once per render (recursively, memoized as it
+  // goes) instead of every tramo flatly reading the acometida pressure:
+  //   1. The network's root (tr2 for AF, the calentador tramo for AC) seeds from its own source.
+  //   2. A tramo that begins at a fixture (t.ini matches an aparato sigla) seeds from that
+  //      fixture's Pmax — same rule the reference calculation sheet uses.
+  //   3. Anything else inherits Pinicial from its actual upstream tramo's Pfinal (tramoParentOf,
+  //      the directed version of the same connectivity graph used for UD totals).
+  //   4. Orphan/disconnected tramos fall back to pRed, same as today.
+  const pressureByKey = useMemo(() => {
+    const keyOf = (t: Tramo) => t._key || t.id;
+    const byKey = new Map(tramosOrden.map(t => [keyOf(t), t]));
+
+    // Friction loss / elevation drop for a tramo — same formulas as the table's own
+    // Vertical/Pérdidas columns. Needed here (ahead of the row loop) because a child's
+    // Pinicial depends on its parent's Pfinal, and tramosOrden is sorted by piso for display,
+    // not in tree order.
+    const pipeLoss = (t: Tramo) => {
+      const ownKey = keyOf(t);
+      const isTr2Row = t === tr2;
+      const total = componentTotalMap[ownKey] || 0;
+      const nDesc = t.nSalidas || 0;
+      const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
+      const Qprob = isTr2Row ? Qaco : (total > 0 && K > 0 ? Math.round(K * (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000) / 1000 : 0);
+      const disPulg = t.diamDisPulg || 0;
+      const matchedOpt = diamNomMap[ownKey]
+        ? DIAM_OPTS.find(o => o.nominal === diamNomMap[ownKey])
+        : (t.diametroOriginal ? DIAM_OPTS.find(o => t.diametroOriginal?.startsWith(o.nominal)) : undefined) || DIAM_OPTS.find(o => Math.abs(o.pulg - disPulg) < 0.01);
+      const internoMm = diamIntMap[ownKey] || (matchedOpt ? matchedOpt.dInt : lookupFn(disPulg) || 0);
+      const Vmms = Qprob > 0 && internoMm > 0 ? Math.round((1000000 * Qprob) / ((Math.PI / 4) * internoMm * internoMm) * 10) / 10 : 0;
+      const H = t.totalL || t.Lh || 0;
+      const Vvert = t.Lv != null ? Number(t.Lv) : (t.deltaZ != null ? Number(t.deltaZ) : 0);
+      const realPulg = matchedOpt ? matchedOpt.pulg : disPulg;
+      const cHW = matHazenC(t.material || '') ?? 150;
+      const Le = calcLeAcces(t.accesorios ?? {}, realPulg, cHW);
+      const Lt = H + Vvert + Le;
+      const hfPct = Vmms > 0 && cHW > 0 && internoMm > 0 ? Math.round(((60.1 * Math.pow(Vmms, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(internoMm, 1.167))) * 100) / 100 : 0;
+      const hfM = Lt > 0 && hfPct > 0 ? Math.round((Lt * hfPct) / 1000 * 100) / 100 : 0;
+      return { Vvert, hfM };
+    };
+
+    const result: Record<string, { Pin: number; Pfin: number }> = {};
+    const resolving = new Set<string>();
+
+    const resolve = (key: string): { Pin: number; Pfin: number } => {
+      if (result[key]) return result[key];
+      if (resolving.has(key)) return { Pin: pRed, Pfin: pRed }; // cycle guard, shouldn't trigger
+      resolving.add(key);
+
+      const t = byKey.get(key);
+      if (!t) { resolving.delete(key); return { Pin: pRed, Pfin: pRed }; }
+
+      let PinCalc: number;
+      if (key === pressureRootKey) {
+        PinCalc = isAf(networkType) ? f1.Pfin : (afHeaterPfin != null ? afHeaterPfin * HEATER_LOSS_FACTOR : pRed);
+      } else {
+        const fixturePmax = APARATO_PMAX_BY_CODE[String(t.ini || '').toUpperCase()];
+        if (fixturePmax !== undefined) {
+          PinCalc = fixturePmax;
+        } else {
+          const parentKey = tramoParentOf[key];
+          PinCalc = parentKey ? resolve(parentKey).Pfin : pRed;
+        }
+      }
+
+      const Pin = presIniEdit.has(key) ? presIniEdit.get(key)! : PinCalc;
+      const { Vvert, hfM } = pipeLoss(t);
+      const PfinCalc = Pin - Vvert - hfM;
+      const Pfin = presFinEdit.has(key) ? presFinEdit.get(key)! : PfinCalc;
+
+      resolving.delete(key);
+      result[key] = { Pin, Pfin };
+      return result[key];
+    };
+
+    for (const t of tramosOrden) resolve(keyOf(t));
+    return result;
+  }, [tramosOrden, tr2, componentTotalMap, Qaco, diamNomMap, diamIntMap, DIAM_OPTS, lookupFn, tramoParentOf, pressureRootKey, networkType, f1.Pfin, afHeaterPfin, pRed, presIniEdit, presFinEdit]);
+
+  // Persist each tramo's resolved Pfinal so the AC instance of this same component can read
+  // AF's pressure at the shared calentador node (see afHeaterPfin above).
+  useEffect(() => {
+    for (const t of tramosOrden) {
+      const ownKey = t._key || t.id;
+      const resolved = pressureByKey[ownKey];
+      if (resolved && t.pFin !== resolved.Pfin) updTramo(ownKey, 'pFin', resolved.Pfin);
+    }
+  }, [tramosOrden, pressureByKey, updTramo]);
+
+  // Persist complete row data for memoria final tables
+  useEffect(() => {
+    const rows = tramosOrden.map(t => {
+      const ownKey = t._key || t.id;
+      const propia = propiaMap[ownKey] || 0;
+      const total = componentTotalMap[ownKey] || 0;
+      const isTr2 = t === tr2;
+      const nDesc = t.nSalidas || 0;
+      const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
+      const Qprob2 = isTr2 ? Qaco : (total > 0 && K > 0 ? Math.round(K * (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000) / 1000 : 0);
+      const raizQ = Qprob2 > 0 ? Math.round(Math.sqrt(Qprob2) * 100) / 100 : 0;
+      const disPulg = t.diamDisPulg || 0;
+      const matchedOpt = diamNomMap[ownKey]
+        ? DIAM_OPTS.find(o => o.nominal === diamNomMap[ownKey])
+        : (t.diametroOriginal ? DIAM_OPTS.find(o => t.diametroOriginal?.startsWith(o.nominal)) : undefined) || DIAM_OPTS.find(o => Math.abs(o.pulg - disPulg) < 0.01);
+      const internoMm = diamIntMap[ownKey] || (matchedOpt ? matchedOpt.dInt : lookupFn(disPulg) || 0);
+      const Vmms2 = Qprob2 > 0 && internoMm > 0 ? Math.round((1000000 * Qprob2) / ((Math.PI / 4) * internoMm * internoMm) * 10) / 10 : 0;
+      const H = t.totalL || t.Lh || 0;
+      const Vvert = t.Lv != null ? Number(t.Lv) : (t.deltaZ != null ? Number(t.deltaZ) : 0);
+      const realPulg = matchedOpt ? matchedOpt.pulg : disPulg;
+      const cHW2 = matHazenC(t.material || '') ?? 150;
+      const Le2 = calcLeAcces(t.accesorios ?? {}, realPulg, cHW2);
+      const Lt2 = H + Vvert + Le2;
+      const hfPct2 = Vmms2 > 0 && cHW2 > 0 && internoMm > 0 ? Math.round(((60.1 * Math.pow(Vmms2, 1.852)) / (Math.pow(cHW2, 1.852) * Math.pow(internoMm, 1.167))) * 100) / 100 : 0;
+      const hfM2 = Lt2 > 0 && hfPct2 > 0 ? Math.round((Lt2 * hfPct2) / 1000 * 100) / 100 : 0;
+      const { Pin, Pfin } = pressureByKey[ownKey] ?? { Pin: pRed, Pfin: pRed };
+      return {
+        id: t.id, ini: typeof t.ini === 'string' ? t.ini : '—', fin: typeof t.fin === 'string' ? t.fin : '—',
+        piso: t.piso, udPropia: propia, udTotal: total,
+        nDesc, K, Qprob: Qprob2, diamEst: raizQ,
+        diamDis: matchedOpt?.nominal || '—', dInt: internoMm, cHW: cHW2, Vmms: Vmms2,
+        Lh: H, Lv: Vvert, Le: Le2, Lt: Lt2,
+        hfPct: hfPct2, hfM: hfM2, Pin, Pfin,
+      };
+    });
+    saveToStorage(`civilflow_memoria_${networkType}_rows`, rows);
+  }, [tramosOrden, componentTotalMap, diamNomMap, diamIntMap, Qaco, DIAM_OPTS, lookupFn, propiaMap, tramos, pRed, pressureByKey, networkType, tr2]);
+
+  // Persist the velocity checkpoint (and, for AF, the acometida pressure checkpoint) onto
+  // each Tramo so InfTab can show a real OK/Revisar badge instead of nothing at all.
+  useEffect(() => {
+    for (const t of tramosOrden) {
+      const ownKey = t._key || t.id;
+      const isTr2 = t === tr2;
+      const total = componentTotalMap[ownKey] || 0;
+      const nDesc = t.nSalidas || 0;
+      const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
+      const Qprob = isTr2 ? Qaco : (total > 0 && K > 0 ? Math.round(K * (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000) / 1000 : 0);
+      const disPulg = t.diamDisPulg || 0;
+      const matchedOpt = diamNomMap[ownKey]
+        ? DIAM_OPTS.find(o => o.nominal === diamNomMap[ownKey])
+        : (t.diametroOriginal ? DIAM_OPTS.find(o => t.diametroOriginal?.startsWith(o.nominal)) : undefined) || DIAM_OPTS.find(o => Math.abs(o.pulg - disPulg) < 0.01);
+      const internoMm = diamIntMap[ownKey] || (matchedOpt ? matchedOpt.dInt : lookupFn(disPulg) || 0);
+      const Vmms = Qprob > 0 && internoMm > 0 ? Math.round((1000000 * Qprob) / ((Math.PI / 4) * internoMm * internoMm) * 10) / 10 : 0;
+      const velCumple = Vmms > 0 ? (Vmms >= 500 && Vmms <= 2500) : true;
+      if (t.velCumple !== velCumple) updTramo(ownKey, 'velCumple', velCumple);
+      if (isAf(networkType) && t.presionOk !== okPresion) updTramo(ownKey, 'presionOk', okPresion);
+      if (t.qLps !== Qprob) updTramo(ownKey, 'qLps', Qprob);
+    }
+  }, [tramosOrden, tr2, componentTotalMap, diamNomMap, diamIntMap, Qaco, DIAM_OPTS, lookupFn, okPresion, networkType, updTramo]);
+
   return (
     <>
       <section className="card">
@@ -497,10 +732,7 @@ const total = (componentTotalMap[ownKey] || 0);
                   const Lt = H + Vvert + Le;
                   const hfPct = Vmms > 0 && cHW > 0 && internoMm > 0 ? Math.round(((60.1 * Math.pow(Vmms, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(internoMm, 1.167))) * 100) / 100 : 0;
                   const hfM = Lt > 0 && hfPct > 0 ? Math.round((Lt * hfPct) / 1000 * 100) / 100 : 0;
-                  const PinCalc = isTr2 ? f1.Pfin : pRed;
-                  const Pin = presIniEdit.has(ownKey) ? presIniEdit.get(ownKey) : PinCalc;
-                  const PfinCalc = Pin - Vvert - hfM;
-                  const Pfin = presFinEdit.has(ownKey) ? presFinEdit.get(ownKey) : PfinCalc;
+                  const { Pin, Pfin } = pressureByKey[ownKey] ?? { Pin: pRed, Pfin: pRed };
                   const vCumple = Vmms >= 500 && Vmms <= 2500;
                   return (
                     <tr key={ownKey}>
