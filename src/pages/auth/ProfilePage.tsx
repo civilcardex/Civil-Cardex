@@ -100,47 +100,58 @@ function ProfilePage() {
     }
   }
 
-  async function fetchPerfil() {
-    if (!supabase || !user) return
-    try {
-      userIdRef.current = user.id
-      const { data, error } = await supabase
-        .from('perfiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-      if (error) { devError('Error cargando perfil:', error.message); return }
-      if (data) {
-        setPerfil({
-          nombre: data.nombre || '',
-          apellido: data.apellido || '',
-          profesion: data.profesion || '',
-          matricula: data.matricula || '',
-          telefono: data.telefono || '',
-        })
-      }
-    } catch (err) {
-      devError('Error:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function loadProyectos() {
-    setProyLoading(true);
-    const data = await fetchProyectos();
-    setProyectos(data);
-    setProyLoading(false);
-  }
-
   usePageMeta('Perfil', 'Gestione su perfil de CivilCore: datos personales, proyectos activos y configuración de cuenta de ingeniería.');
   // Fetch-on-mount from Supabase — a legitimate external-system sync, not state
   // derivable from props/state already available during render.
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchPerfil() }, [user])
+  useEffect(() => {
+    let ignore = false
+    async function fetchPerfil() {
+      if (!supabase || !user) { setLoading(false); return }
+      try {
+        userIdRef.current = user.id
+        const { data, error } = await supabase
+          .from('perfiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+        if (ignore) return
+        if (error) { devError('Error cargando perfil:', error.message); return }
+        if (data) {
+          setPerfil({
+            nombre: data.nombre || '',
+            apellido: data.apellido || '',
+            profesion: data.profesion || '',
+            matricula: data.matricula || '',
+            telefono: data.telefono || '',
+          })
+        }
+      } catch (err) {
+        if (!ignore) devError('Error:', err)
+      } finally {
+        if (!ignore) setLoading(false)
+      }
+    }
+    fetchPerfil()
+    return () => { ignore = true }
+  }, [user])
   // Fetch-on-open from Supabase — same rationale as above.
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { if (proyectosOpen) loadProyectos() }, [proyectosOpen])
+  useEffect(() => {
+    if (!proyectosOpen) return
+    let ignore = false
+    async function loadProyectos() {
+      setProyLoading(true)
+      try {
+        const data = await fetchProyectos()
+        if (!ignore) setProyectos(data)
+      } finally {
+        if (!ignore) setProyLoading(false)
+      }
+    }
+    loadProyectos()
+    return () => { ignore = true }
+  }, [proyectosOpen])
 
   function handleEditStart(field: string) {
     setEditField(field)
@@ -364,7 +375,7 @@ function ProfilePage() {
                 {proyectos.map((proy) => (
                   <li key={proy.id} className="px-6 py-3 flex items-center gap-4 hover:bg-surface-container-low transition-colors"
                   >
-                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openProyecto(proy)} style={{ opacity: openingId != null && openingId !== proy.id ? 0.5 : 1 }}>
+                    <div className="flex-1 min-w-0 cursor-pointer" role="button" tabIndex={0} onClick={() => openProyecto(proy)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProyecto(proy); } }} style={{ opacity: openingId != null && openingId !== proy.id ? 0.5 : 1 }}>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[13px] font-bold font-mono text-on-surface">{proy.codigo}</span>
                       </div>
@@ -379,7 +390,7 @@ function ProfilePage() {
                         color: 'var(--text-error, #ff4444)', fontSize: 11,
                       }}
                     >Eliminar</button>
-                    <span className="material-symbols-outlined text-on-surface-variant text-lg cursor-pointer" onClick={() => openProyecto(proy)}>arrow_forward</span>
+                    <span className="material-symbols-outlined text-on-surface-variant text-lg cursor-pointer" aria-hidden="true" onClick={() => openProyecto(proy)}>arrow_forward</span>
                   </li>
                 ))}
               </ul>
