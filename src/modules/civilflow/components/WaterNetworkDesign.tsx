@@ -12,7 +12,7 @@ import { fmt } from "../utils/formatUtils";
 import { TRAZOS_PREFIX } from "../constants/storage-keys";
 import { loadFromStorage, saveToStorage } from "../services/storageService";
 import { distToPolyline } from "../lib/shared/geometry";
-import { computeComponentTotals } from "../lib/shared/connectionGraph";
+import { computeDirectedTotals } from "../lib/shared/connectionGraph";
 import type { DrawingData, RawElement } from "../utils/drawingSync";
 import Acometida from "./SupplyConnection";
 
@@ -135,13 +135,18 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     });
   };
 
-  const [conexionesDisplay, componentTotalMap, tramoParentOf, pressureRootKey] = useMemo(() => {
+  const [conexionesDisplay, componentTotalMap, tramoParentOf, pressureRootKey, qpropMap] = useMemo(() => {
     const calculoMap: Record<string, string[]> = {};
     // A montante/bajante has no identity preserved across floors — copying a trazo between plans
     // assigns it a brand new id/code (see copyDrawingFromPlan.ts). The only reliable signal that
     // two per-floor elements are the same physical riser is sitting at (roughly) the same x/y on
     // different floors — collected here, linked once every plan has been scanned.
     const bajanteNodes: Array<{ key: string; x: number; y: number; nivel: number }> = [];
+    // A ramal auto-created at a T/Y junction (autoSplitJunctionAndSumFlow, PlanoEngineDrawing.ts)
+    // carries mergesFrom = [idA, idB] — the two ramales it received from. Its UC total must be
+    // forced to their sum regardless of which way the general root-rooted directed tree happens
+    // to run through that point (see waterNetworkRows.ts for the full rationale).
+    const mergeOverrides: Record<string, [string, string]> = {};
 
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
@@ -152,6 +157,11 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
 
       const ramales = (data.ramales || []).filter((r) => r.net === networkType);
       const bajantes = (data.bajantes || []).filter((b): b is BajanteRaw => b.net === networkType);
+      for (const r of ramales) {
+        if (r.mergesFrom) {
+          mergeOverrides[`${r.id}-${plan.id}`] = [`${r.mergesFrom[0]}-${plan.id}`, `${r.mergesFrom[1]}-${plan.id}`];
+        }
+      }
       for (const b of bajantes) {
         if (b.x == null || b.y == null) continue;
         bajanteNodes.push({ key: `${b.id}-${plan.id}`, x: b.x, y: b.y, nivel: plan.nivel });
@@ -249,6 +259,21 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         if (!adj[childKey].includes(parentKey)) adj[childKey].push(parentKey);
       }
     }
+    // Sever the edges a mergeOverride will handle explicitly — otherwise the general BFS tree
+    // below would ALSO make whichever of the two merging ramales sits closer to root fold the
+    // other one (and the merged ramal itself) into IT, on top of the override forcing the merged
+    // ramal's total to their sum: the same demand would get counted twice.
+    // Also sever any DIRECT k1<->k2 edge: at a 3-way merge point all three ramales' endpoints sit
+    // at the exact same coordinate, so the proximity match above (checkEndpoint / distToPolyline)
+    // can resolve a source ramal's nearest-neighbor to the OTHER source instead of to the merged
+    // ramal (a distance tie broken by array order). Left alone, that stray edge lets one source's
+    // total leak into the other's — e.g. RAF1 picking up RAF2's total — even though the merged
+    // ramal's own total is already correctly forced to their sum right below.
+    for (const [mergedKey, [k1, k2]] of Object.entries(mergeOverrides)) {
+      adj[mergedKey] = (adj[mergedKey] || []).filter((k) => k !== k1 && k !== k2);
+      if (adj[k1]) adj[k1] = adj[k1].filter((k) => k !== mergedKey && k !== k2);
+      if (adj[k2]) adj[k2] = adj[k2].filter((k) => k !== mergedKey && k !== k1);
+    }
 
     // Helper to run BFS to get direct neighbors (excluding startKey, stopping traversal at any main ramal node)
     const getConnectedNeighbors = (startKey: string): string[] => {
@@ -285,23 +310,50 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         displayMap[key] = getConnectedNeighbors(key);
       }
     }
-
-    // Compute connected-component totals: each tramo's Total = sum of all tramos in its component
-    const componentTotalMap = computeComponentTotals(
-      tramos,
-      t => t._key || t.id,
-      adj,
-      t => calcUCparcial(t, AP, "uc"),
-    );
+    // The mergeOverride edges got severed from `adj` above so the directed-tree BFS wouldn't
+    // double-count the merged ramal's UC through the general path — but that also hid the two
+    // source ramales from "Otros Ramales" here, since this reads the same severed `adj`. Add
+    // them back explicitly: the merged ramal must display the ramales it was created from.
+    for (const [mergedKey, [k1, k2]] of Object.entries(mergeOverrides)) {
+      if (!displayMap[mergedKey]) continue;
+      for (const k of [k1, k2]) {
+        if (!displayMap[mergedKey].includes(k)) displayMap[mergedKey].push(k);
+      }
+    }
 
     // Direct the same adjacency from the network's pressure source outward, so each tramo's
     // Pinicial can chain from its actual upstream tramo's Pfinal instead of the flat acometida
     // pressure. AF's source is the trunk tramo (Contador→Mon, isAC2); AC has no acometida of its
     // own — its source is the tramo reaching the calentador, fed from AF (see pressure section).
-    const rootT = isAf(networkType)
-      ? tramos.find(isAC2)
-      : tramos.find(t => String(t.ini || '').startsWith('CALENT') || String(t.fin || '').startsWith('CALENT'));
-    const rootKey = rootT ? (rootT._key || rootT.id) : null;
+    const rootT = tramos.find(isAC2)
+      || tramos.find(t => String(t.ini || '').startsWith('CALENT') || String(t.fin || '').startsWith('CALENT'));
+    let rootKey = rootT ? (rootT._key || rootT.id) : null;
+    // Neither heuristic found a root — falls all the way back to computeComponentTotals's
+    // undirected whole-component sum otherwise (every tramo showing the identical grand total).
+    // Approximate the trunk with the most-connected tramo instead of giving up on direction.
+    if (!rootKey) {
+      let bestKey: string | null = null, bestDeg = -1;
+      for (const k of Object.keys(adj)) {
+        const deg = adj[k]?.length || 0;
+        if (deg > bestDeg) { bestDeg = deg; bestKey = k; }
+      }
+      if (bestDeg > 0) rootKey = bestKey;
+    }
+
+    // Rooted at the actual supply source, not the whole undirected connected component — a branch
+    // feeding one fixture must only show its OWN accumulated total, not the entire building's
+    // demand just because it's hydraulically part of the same network (see connectionGraph.ts).
+    const componentTotalMap = computeDirectedTotals(
+      tramos,
+      t => t._key || t.id,
+      adj,
+      t => calcUCparcial(t, AP, "uc"),
+      rootKey,
+    );
+    for (const [key, [k1, k2]] of Object.entries(mergeOverrides)) {
+      if (componentTotalMap[key] === undefined) continue;
+      componentTotalMap[key] = (componentTotalMap[k1] || 0) + (componentTotalMap[k2] || 0);
+    }
 
     const nodeParentOf: Record<string, string> = {};
     if (rootKey) {
@@ -331,7 +383,28 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
       if (cur) tramoParentOf[key] = cur;
     }
 
-    return [displayMap, componentTotalMap, tramoParentOf, rootKey] as const;
+    // Probable-flow (Hunter curve, K·f(UC)) per tramo — the auto-created ramal at a T/Y junction
+    // must show the actual conserved flow (sum of what feeds it), not its own UC-derived estimate:
+    // its combined UC total doesn't correspond to a single Hunter-curve population, so running the
+    // formula on that combined total systematically underestimates real converging flow. Compute
+    // the formula for every tramo first, then override merged keys to the sum of their sources'
+    // (already-formula-computed) flows, same pattern as the componentTotalMap override above.
+    const qpropMap: Record<string, number> = {};
+    for (const t of tramos) {
+      const key = t._key || t.id;
+      const nDesc = t.nSalidas || 0;
+      const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
+      const total = componentTotalMap[key] || 0;
+      qpropMap[key] = total > 0 && K > 0
+        ? Math.round(K * (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000) / 1000
+        : 0;
+    }
+    for (const [key, [k1, k2]] of Object.entries(mergeOverrides)) {
+      if (qpropMap[key] === undefined) continue;
+      qpropMap[key] = (qpropMap[k1] || 0) + (qpropMap[k2] || 0);
+    }
+
+    return [displayMap, componentTotalMap, tramoParentOf, rootKey, qpropMap] as const;
   }, [plans, tramos, networkType, AP]);
 
   const propiaMap = useMemo(() => {
@@ -674,7 +747,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
                   <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Coeficiente<br/>C</th>
                   <th scope="col" className="col-h" rowSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Vel. <br/>(mm/s)</th>
                   <th scope="col" className="col-h" colSpan={4} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Longitud (m)</th>
-                  <th scope="col" className="col-h" colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Pérdidas por fricción</th>
+                  <th scope="col" className="col-h" colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9, whiteSpace: "nowrap", minWidth: 56 }}>Pérdidas<br/>por<br/>fricción</th>
                   <th scope="col" className={`col-h ${cssClass}`} colSpan={2} style={{ textAlign: "center", padding: "2px 1px", fontSize: 9 }}>Presión</th>
                 </tr>
                 <tr>
@@ -708,7 +781,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
 const total = (componentTotalMap[ownKey] || 0);
                   const nDesc = t.nSalidas || 0;
                   const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
-                  const Qprob = isTr2 ? Qaco : (total > 0 && K > 0 ? Math.round(K * (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000) / 1000 : 0);
+                  const Qprob = isTr2 ? Qaco : (qpropMap[ownKey] || 0);
                   const raizQ = Qprob > 0 ? Math.round(Math.sqrt(Qprob) * 100) / 100 : 0;
                   const disPulg = t.diamDisPulg || 0;
                   
@@ -769,7 +842,7 @@ const total = (componentTotalMap[ownKey] || 0);
                       <td className="c td-mono-b">{fmt(total,2)}</td>
                       <td className="c td-mono">{nDesc>0?nDesc:"—"}</td>
                       <td className="c td-mono-b">{K>0?fmt(K,2):"—"}</td>
-                      <td className="c td-mono-b">{Qprob>0?fmt(Qprob,2):"—"}</td>
+                      <td className="c td-mono-b">{Qprob>0?fmt(Qprob,3):"—"}</td>
                       <td className="c td-mono">{raizQ>0?fmt(raizQ,2):"—"}</td>
                       <td className="c" style={{padding:"0 1px"}}>
                         <select aria-label="Diámetro diseño" value={matchedOpt?.nominal || ''} onChange={e=>handleDiamChange(ownKey, e.target.value)}

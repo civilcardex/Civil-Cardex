@@ -3,7 +3,7 @@ import type { PlanItem } from '../context/PlansContext';
 import { AF_UC_IDS, AC_UC_IDS, APARATOS_DEF, matHazenC } from '../constants';
 import { calcUCparcial } from './componentHelpers';
 import { calcLeAcces } from './accesoriosUtils';
-import { computeComponentTotals } from '../lib/shared/connectionGraph';
+import { computeComponentTotals, computeDirectedTotals } from '../lib/shared/connectionGraph';
 import { distToPolyline } from '../lib/shared/geometry';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
@@ -77,6 +77,12 @@ export function computeWaterNetworkRows(
   // ── Connectivity graph + directed pressure tree (mirrors the useMemo in WaterNetworkDesign.tsx) ──
   const calculoMap: Record<string, string[]> = {};
   const bajanteNodes: Array<{ key: string; x: number; y: number; nivel: number }> = [];
+  // A ramal auto-created at a T/Y junction (autoSplitJunctionAndSumFlow, PlanoEngineDrawing.ts)
+  // carries mergesFrom = [idA, idB] — the two ramales it received from. Its UC total must be
+  // forced to their sum regardless of which way the general root-rooted directed tree happens to
+  // run through that point, since that tree's direction reflects the WHOLE network's actual
+  // supply source, which for an arbitrary local merge may point either way relative to it.
+  const mergeOverrides: Record<string, [string, string]> = {};
 
   for (const plan of plans || []) {
     if (plan.nivel == null) continue;
@@ -87,6 +93,11 @@ export function computeWaterNetworkRows(
 
     const ramales = (data.ramales || []).filter((r) => r.net === networkType);
     const bajantes = (data.bajantes || []).filter((b): b is BajanteRaw => b.net === networkType);
+    for (const r of ramales) {
+      if (r.mergesFrom) {
+        mergeOverrides[`${r.id}-${plan.id}`] = [`${r.mergesFrom[0]}-${plan.id}`, `${r.mergesFrom[1]}-${plan.id}`];
+      }
+    }
     for (const b of bajantes) {
       if (b.x == null || b.y == null) continue;
       bajanteNodes.push({ key: `${b.id}-${plan.id}`, x: b.x, y: b.y, nivel: plan.nivel });
@@ -173,18 +184,78 @@ export function computeWaterNetworkRows(
       if (!adj[childKey].includes(parentKey)) adj[childKey].push(parentKey);
     }
   }
+  // Sever the edges a mergeOverride will handle explicitly — otherwise the general BFS tree below
+  // would ALSO make whichever of the two merging ramales sits closer to root fold the other one
+  // (and the merged ramal itself) into IT, on top of the override forcing the merged ramal's total
+  // to their sum: the same demand would get counted twice, once on each of the two.
+  // Also sever any DIRECT k1<->k2 edge: at a 3-way merge point all three ramales' endpoints sit
+  // at the exact same coordinate, so the proximity match above can resolve a source ramal's
+  // nearest-neighbor to the OTHER source instead of to the merged ramal (a distance tie broken
+  // by array order), letting one source's total leak into the other's.
+  for (const [mergedKey, [k1, k2]] of Object.entries(mergeOverrides)) {
+    adj[mergedKey] = (adj[mergedKey] || []).filter((k) => k !== k1 && k !== k2);
+    if (adj[k1]) adj[k1] = adj[k1].filter((k) => k !== mergedKey && k !== k2);
+    if (adj[k2]) adj[k2] = adj[k2].filter((k) => k !== mergedKey && k !== k1);
+  }
 
-  const componentTotalMap = computeComponentTotals(
+  // Try both root heuristics regardless of network type (not just "AF uses isAC2, AC uses
+  // CALENT") — an AC network fed indirectly, or one whose trunk tramo doesn't literally carry a
+  // 'CALENT' code, previously found no root at all here and silently fell back to
+  // computeComponentTotals's undirected whole-component sum (every tramo showing the same grand
+  // total) with no indication anything had gone wrong.
+  const rootT = tramos.find(isAC2)
+    || tramos.find(t => String(t.ini || '').startsWith('CALENT') || String(t.fin || '').startsWith('CALENT'));
+  let rootKey = rootT ? (rootT._key || rootT.id) : null;
+  // Neither heuristic found a root (e.g. an AC network with no calentador tramo drawn yet, or a
+  // non-standard ini/fin naming) — falling back to no root at all meant computeDirectedTotals
+  // fell all the way back to computeComponentTotals's undirected whole-component sum (every tramo
+  // showing the identical grand total, which is the exact "todos con el mismo caudal" symptom).
+  // Approximate the trunk instead: the tramo with the most connections is the best available
+  // stand-in for "closest to the source" without one being explicitly identifiable.
+  if (!rootKey) {
+    let bestKey: string | null = null, bestDeg = -1;
+    for (const k of Object.keys(adj)) {
+      const deg = adj[k]?.length || 0;
+      if (deg > bestDeg) { bestDeg = deg; bestKey = k; }
+    }
+    if (bestDeg > 0) rootKey = bestKey;
+  }
+
+  // Directed (rooted at the actual supply source), not the whole undirected connected component —
+  // see connectionGraph.ts. A branch feeding one fixture must show only ITS OWN accumulated total,
+  // not the entire building's demand just because it's hydraulically part of the same network.
+  const componentTotalMap = computeDirectedTotals(
     tramos,
     t => t._key || t.id,
     adj,
     t => calcUCparcial(t, AP, 'uc'),
+    rootKey,
   );
+  for (const [key, [k1, k2]] of Object.entries(mergeOverrides)) {
+    if (componentTotalMap[key] === undefined) continue;
+    componentTotalMap[key] = (componentTotalMap[k1] || 0) + (componentTotalMap[k2] || 0);
+  }
 
-  const rootT = isAf(networkType)
-    ? tramos.find(isAC2)
-    : tramos.find(t => String(t.ini || '').startsWith('CALENT') || String(t.fin || '').startsWith('CALENT'));
-  const rootKey = rootT ? (rootT._key || rootT.id) : null;
+  // Probable-flow (Hunter curve, K·f(UC)) per tramo — the auto-created ramal at a T/Y junction
+  // must show the actual conserved flow (sum of what feeds it), not its own UC-derived estimate:
+  // its combined UC total doesn't correspond to a single Hunter-curve population, so running the
+  // formula on that combined total systematically underestimates real converging flow. Compute
+  // the formula for every tramo first, then override merged keys to the sum of their sources'
+  // (already-formula-computed) flows, mirroring the componentTotalMap override above.
+  const qpropMap: Record<string, number> = {};
+  for (const t of tramos) {
+    const key = t._key || t.id;
+    const nDesc = t.nSalidas || 0;
+    const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
+    const total = componentTotalMap[key] || 0;
+    qpropMap[key] = total > 0 && K > 0
+      ? Math.round(K * (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000) / 1000
+      : 0;
+  }
+  for (const [key, [k1, k2]] of Object.entries(mergeOverrides)) {
+    if (qpropMap[key] === undefined) continue;
+    qpropMap[key] = (qpropMap[k1] || 0) + (qpropMap[k2] || 0);
+  }
 
   const nodeParentOf: Record<string, string> = {};
   if (rootKey) {
@@ -295,10 +366,7 @@ export function computeWaterNetworkRows(
   const pipeLoss = (t: Tramo) => {
     const ownKey = t._key || t.id;
     const isTr2Row = t === tr2;
-    const total = componentTotalMap[ownKey] || 0;
-    const nDesc = t.nSalidas || 0;
-    const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
-    const Qprob = isTr2Row ? Qaco : (total > 0 && K > 0 ? Math.round(K * (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000) / 1000 : 0);
+    const Qprob = isTr2Row ? Qaco : (qpropMap[ownKey] || 0);
     const disPulg = t.diamDisPulg || 0;
     const matchedOpt = (t.diametroOriginal ? DIAM_OPTS.find(o => t.diametroOriginal?.startsWith(o.nominal)) : undefined) || DIAM_OPTS.find(o => Math.abs(o.pulg - disPulg) < 0.01);
     const internoMm = matchedOpt ? matchedOpt.dInt : (lookupFn(disPulg) || 0);
@@ -352,7 +420,7 @@ export function computeWaterNetworkRows(
     const isTr2Row = t === tr2;
     const nDesc = t.nSalidas || 0;
     const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
-    const Qprob = isTr2Row ? Qaco : (total > 0 && K > 0 ? Math.round(K * (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000) / 1000 : 0);
+    const Qprob = isTr2Row ? Qaco : (qpropMap[ownKey] || 0);
     const raizQ = Qprob > 0 ? Math.round(Math.sqrt(Qprob) * 100) / 100 : 0;
     const disPulg = t.diamDisPulg || 0;
     const matchedOpt = (t.diametroOriginal ? DIAM_OPTS.find(o => t.diametroOriginal?.startsWith(o.nominal)) : undefined) || DIAM_OPTS.find(o => Math.abs(o.pulg - disPulg) < 0.01);
