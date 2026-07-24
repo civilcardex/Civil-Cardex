@@ -17,6 +17,7 @@ import type {
 import type { IPlanoEngineCore } from './PlanoState';
 import { renderDims, renderDimGhost } from './renderers/renderDimensions';
 import { renderTexts } from './renderers/renderTextAnnotations';
+import { renderGrid } from './renderers/renderGrid';
 import { renderAreas, renderActiveArea } from './renderers/renderAreas';
 import { renderBajantes, renderGhosts } from './renderers/renderBajantes';
 import { renderRamales, renderActiveRamal } from './renderers/renderRamales';
@@ -38,6 +39,8 @@ import {
   handleTextDown,
   handleBajanteDown,
   handleMontanteDown,
+  handleCreateMontanteMidBody,
+  handleCreateTeeCapStub,
   handleRedPublicaDown,
   handleContadorDown,
   handleCalentadorDown,
@@ -135,6 +138,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   areas!: PlanoArea[];
   activeRamal!: PlanoActiveRamal | null;
   padreTributario!: string | null;
+  _ventFirstSegDir?: { x: number; y: number } | null;
   activeArea!: PlanoActiveArea | null;
   selId!: string | null;
   areaDrag!: { id: string; startX: number; startY: number } | null;
@@ -196,7 +200,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _onDeleteCb: ((ids: string[]) => void) | null;
   _onActiveNetChangeCb: ((net: string) => void) | null;
   _onAlertCb: ((title: string, msg: string) => void) | null;
-  _onAccesorioModalCb: ((data: { ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean }) => void) | null;
+  _onAccesorioModalCb: ((data: { ramalId: string; angleDeg: number; junctionIndex: number; point: number[]; net: string; isTee?: boolean }) => void) | null;
   _dirty: boolean;
   _lastRightClickTime: number;
 
@@ -238,6 +242,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.areas = [];
     this.activeRamal = null;
     this.padreTributario = null;
+    this._ventFirstSegDir = null;
     this.activeArea = null;
     this.selId = null;
     this._isGhostSel = false;
@@ -314,13 +319,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
   onDelete(cb: (ids: string[]) => void): void { this._onDeleteCb = cb; }
   onActiveNetChange(cb: (net: string) => void): void { this._onActiveNetChangeCb = cb; }
   onAlert(cb: (title: string, msg: string) => void): void { this._onAlertCb = cb; }
-  onAccesorioModal(cb: (data: { ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean }) => void): void { this._onAccesorioModalCb = cb; }
+  onAccesorioModal(cb: (data: { ramalId: string; angleDeg: number; junctionIndex: number; point: number[]; net: string; isTee?: boolean }) => void): void { this._onAccesorioModalCb = cb; }
 
   triggerAlert(title: string, msg: string): void {
     if (this._onAlertCb) this._onAlertCb(title, msg);
   }
 
-  triggerAccesorioModal(data: { ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean }): void {
+  triggerAccesorioModal(data: { ramalId: string; angleDeg: number; junctionIndex: number; point: number[]; net: string; isTee?: boolean }): void {
     if (this._onAccesorioModalCb) this._onAccesorioModalCb(data);
   }
 
@@ -552,6 +557,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
   getSelected(): PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null { return _getSelected(this); }
   updateSelected(fields: Record<string, unknown>): void { _updateSelected(this, fields); }
   updateElementById(id: string, fields: Record<string, unknown>): void { _updateElementById(this, id, fields); }
+  createMontanteMidBody(ramalId: string, x: number, y: number, segmentIdx: number): void { handleCreateMontanteMidBody(this, ramalId, x, y, segmentIdx); }
+  createTeeCapStub(ramalId: string, accMedIdx: number, accId: 'tapon' | 'llaveTerminal'): void { handleCreateTeeCapStub(this, ramalId, accMedIdx, accId); }
   rotateLabelSnap(): void { _rotateLabelSnap(this); }
   resetLabel(): void { _resetLabel(this); }
   deleteSelected(ids?: string[]): void { _deleteSelected(this, ids); }
@@ -640,6 +647,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.pdfWrap.style.willChange = 'transform';
     }
 
+    renderGrid(ctx, this);
     renderDims(ctx, this);
     renderTexts(ctx, this);
     renderAreas(ctx, this);
@@ -817,8 +825,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
     else if (k === 'h') { this.setTool('calent'); e.preventDefault(); }
     else if (k === 'd') { this.setTool('dim'); e.preventDefault(); }
     else if (k === 't') { this.setTool('text'); e.preventDefault(); }
-    else if (k === 'b') { this.setTool('baj'); e.preventDefault(); }
-    else if (k === 'm') { this.setTool('mon'); e.preventDefault(); }
+    // Bajante only on san/vent/ll, montante only on gas/ac/af — same rule PdfViewerToolbar.tsx
+    // enforces on its buttons (isToolDisabledForNet); duplicated here as a plain check rather than
+    // imported, since lib/PlanoEngine must not depend on components/.
+    else if (k === 'b') { if (['san', 'vent', 'll'].includes(this.activeNet)) { this.setTool('baj'); } e.preventDefault(); }
+    else if (k === 'm') { if (['gas', 'ac', 'af'].includes(this.activeNet)) { this.setTool('mon'); } e.preventDefault(); }
     else if (k === 'a') { this.setTool('area'); e.preventDefault(); }
     else if (k === 'e') { this.setTool('erase'); e.preventDefault(); }
     else if (k === 'x') { this.setTool('delm'); e.preventDefault(); }

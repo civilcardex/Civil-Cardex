@@ -1,6 +1,43 @@
 import type { IPlanoEngineCore, PlanoBajante } from './PlanoState';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 
+const TEE_TYPES = ['teeDirecto', 'teeSube', 'teeBaja', 'te_linea', 'te_ramal'];
+
+// A tee marker (accesorioInicio/Fin or accMed) at a junction point outlives the ramal that formed
+// that junction — deleting the OTHER branch of a T/Y left the remaining ramal's tee glyph/count
+// sitting there with nothing actually connected anymore. Clears it, but only when NOTHING else
+// (another ramal's endpoint, or a montante bajante — mid-body montante creation writes this same
+// marker) still touches that exact point, so a legitimately-still-junctioned tee is untouched.
+function cleanupTeeMarkersAt(engine: IPlanoEngineCore, pt: number[]): void {
+  const TOL = 0.5;
+  for (const hostR of engine.ramales) {
+    if (!hostR.pts?.length) continue;
+    const stillConnected =
+      engine.ramales.some((other) => other.id !== hostR.id && other.pts?.some(([x, y]) => Math.hypot(x - pt[0], y - pt[1]) < TOL)) ||
+      engine.bajantes.some((b) => Math.hypot(b.x - pt[0], b.y - pt[1]) < TOL);
+    if (stillConnected) continue;
+
+    if (hostR.accesorioInicio && TEE_TYPES.includes(hostR.accesorioInicio) && Math.hypot(hostR.pts[0][0] - pt[0], hostR.pts[0][1] - pt[1]) < TOL) {
+      hostR.accesorioInicio = '';
+    }
+    const li = hostR.pts.length - 1;
+    if (hostR.accesorioFin && TEE_TYPES.includes(hostR.accesorioFin) && Math.hypot(hostR.pts[li][0] - pt[0], hostR.pts[li][1] - pt[1]) < TOL) {
+      hostR.accesorioFin = '';
+    }
+    if (hostR.accMed) {
+      for (const key of Object.keys(hostR.accMed)) {
+        const m = key.match(/^accMed(\d+)$/);
+        if (!m) continue;
+        const idx = parseInt(m[1], 10);
+        const p = hostR.pts[idx];
+        if (p && TEE_TYPES.includes(hostR.accMed[key]) && Math.hypot(p[0] - pt[0], p[1] - pt[1]) < TOL) {
+          delete hostR.accMed[key];
+        }
+      }
+    }
+  }
+}
+
 export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
   if (ids && ids.length > 0) {
     engine._yeeFlashKey = null;
@@ -12,6 +49,10 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       if (idxR >= 0) {
         const deleted = engine.ramales[idxR];
         engine.ramales = engine.ramales.filter(r => r.id !== deleted.id && r.padre !== deleted.id);
+        if (deleted.pts?.length) {
+          cleanupTeeMarkersAt(engine, deleted.pts[0]);
+          cleanupTeeMarkersAt(engine, deleted.pts[deleted.pts.length - 1]);
+        }
         netsToRenumber.add(deleted.net);
         // Clean up bajante references to deleted ramal
         for (const b of engine.bajantes) {
@@ -114,6 +155,10 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
     const deleted = engine.ramales[idxR];
     const deletedId = deleted.id;
     engine.ramales = engine.ramales.filter(r => r.id !== deleted.id && r.padre !== deleted.id);
+    if (deleted.pts?.length) {
+      cleanupTeeMarkersAt(engine, deleted.pts[0]);
+      cleanupTeeMarkersAt(engine, deleted.pts[deleted.pts.length - 1]);
+    }
     // Clean up bajante references to deleted ramal
     for (const b of engine.bajantes) {
       if (b.recibeDeIds) {

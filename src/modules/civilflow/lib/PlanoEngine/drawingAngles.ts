@@ -172,6 +172,7 @@ export interface AccesorioTrigger {
   ramalId: string;
   angleDeg: number;
   junctionIndex: number;
+  point: number[];
   net: string;
   isTee: boolean;
 }
@@ -183,7 +184,7 @@ export interface AccesorioTrigger {
 // every subsequent drag once the user has answered it.
 export function detectAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string): AccesorioTrigger | null {
   const r = engine.ramales.find(x => x.id === ramalId);
-  if (!r || !r.pts || r.pts.length < 2 || (r.net !== 'af' && r.net !== 'ac')) return null;
+  if (!r || !r.pts || r.pts.length < 2 || !['af', 'ac', 'gas'].includes(r.net)) return null;
 
   const lastIdx = r.pts.length - 1;
   const endpointResolved = (idx: number) =>
@@ -192,8 +193,12 @@ export function detectAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string
   for (const epIdx of [0, lastIdx]) {
     if (endpointResolved(epIdx)) continue;
     const ep = r.pts[epIdx];
-    if (isTeeAtEndpoint(ep, engine, r.id, r.net)) {
-      return { ramalId: r.id, angleDeg: 90, junctionIndex: epIdx, net: r.net, isTee: true };
+    const tee = isTeeAtEndpoint(ep, engine, r.id, r.net);
+    if (tee.isTee && tee.throughRamalId) {
+      // The accessory belongs to the ramal that was already there, not the one just drawn/dragged
+      // (r.id) — junctionIndex is meaningless for the existing ramal (its own vertex list doesn't
+      // necessarily have an index at this point), so the modal writes via a position match instead.
+      return { ramalId: tee.throughRamalId, angleDeg: 90, junctionIndex: -1, point: ep, net: r.net, isTee: true };
     }
   }
 
@@ -201,7 +206,7 @@ export function detectAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string
     if (endpointResolved(epIdx)) continue;
     const junction = detectJunctionAccesorio(engine, r.id, epIdx);
     if (junction) {
-      return { ramalId: r.id, angleDeg: junction.angleDeg, junctionIndex: epIdx, net: r.net, isTee: false };
+      return { ramalId: junction.otherRamalId, angleDeg: junction.angleDeg, junctionIndex: -1, point: r.pts[epIdx], net: r.net, isTee: false };
     }
   }
 
@@ -219,7 +224,7 @@ export function detectAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string
       const cosVal = Math.max(-1, Math.min(1, dot));
       const angleDeg = Math.acos(cosVal) * 180 / Math.PI;
       if (Math.abs(angleDeg - 45) < 5 || Math.abs(angleDeg - 90) < 5) {
-        return { ramalId: r.id, angleDeg: Math.round(angleDeg), junctionIndex: i, net: r.net, isTee: false };
+        return { ramalId: r.id, angleDeg: Math.round(angleDeg), junctionIndex: i, point: curr, net: r.net, isTee: false };
       }
     }
   }
@@ -227,9 +232,17 @@ export function detectAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string
   return null;
 }
 
-export function isTeeAtEndpoint(ep: number[], engine: IPlanoEngineCore, _currentRamalId: string, net: string): boolean {
+// Returns which EXISTING ramal (not the one just drawn/dragged, `currentRamalId`) the tee should
+// be assigned to — the accessory always belongs to the ramal that was already there, never the
+// one that was just created. Prefers the ramal whose BODY (mid-segment, not one of its own
+// endpoints) the junction point lies on — that's unambiguously "the one being tee'd into" — and
+// falls back to any other ramal sharing the point when all three segments meet exactly endpoint
+// to endpoint (no single ramal's body is the "through" one in that case).
+export function isTeeAtEndpoint(ep: number[], engine: IPlanoEngineCore, currentRamalId: string, net: string): { isTee: boolean; throughRamalId: string | null } {
   const TOL = 0.5;
   let segmentCount = 0;
+  let throughRamalId: string | null = null;
+  let anyOtherRamalId: string | null = null;
   for (const r of engine.ramales) {
     if (r.net !== net) continue;
     if (!r.pts || r.pts.length < 2) continue;
@@ -240,16 +253,16 @@ export function isTeeAtEndpoint(ep: number[], engine: IPlanoEngineCore, _current
       if (dist < TOL) {
         const atP1 = Math.hypot(ep[0] - p1[0], ep[1] - p1[1]) < TOL;
         const atP2 = Math.hypot(ep[0] - p2[0], ep[1] - p2[1]) < TOL;
-        if (atP1) {
+        if (atP1 || atP2) {
           segmentCount++;
-        } else if (atP2) {
-          segmentCount++;
+          if (r.id !== currentRamalId && !anyOtherRamalId) anyOtherRamalId = r.id;
         } else {
           segmentCount += 2;
+          if (r.id !== currentRamalId) throughRamalId = r.id;
         }
       }
     }
   }
-  return segmentCount >= 3;
+  return { isTee: segmentCount >= 3, throughRamalId: throughRamalId ?? anyOtherRamalId };
 }
 

@@ -1,4 +1,4 @@
-import { NETS } from './PlanoState';
+import { NETS, netsSnapLinked } from './PlanoState';
 import type {
   PlanoRamal,
   PlanoBajante,
@@ -7,9 +7,10 @@ import type {
 import type { IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
 import { _firstSegmentAngle, checkRamalAngles, segmentsIntersect, snapTributaryToPadre45Deg, detectAccesorioTrigger } from './drawingAngles';
+import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 
 export { checkRamalAngles, _firstSegmentAngle, segmentsIntersect, snapTributaryToPadre45Deg } from './drawingAngles';
-export { handleBajanteDown, handleMontanteDown, handleCalentadorDown, handleRedPublicaDown, handleContadorDown } from './drawingCreations';
+export { handleBajanteDown, handleMontanteDown, handleCreateMontanteMidBody, handleCreateTeeCapStub, handleCalentadorDown, handleRedPublicaDown, handleContadorDown } from './drawingCreations';
 
 type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont' | 'calent';
 
@@ -115,6 +116,115 @@ export function calculateRamalLength(pts: number[][], engine: IPlanoEngineCore):
   return +len.toFixed(3);
 }
 
+function maxDiametroLabel(a: string, b: string): string {
+  const va = diamPulgFromLabel(a);
+  const vb = diamPulgFromLabel(b);
+  if (!va) return b || a;
+  if (!vb) return a || b;
+  return vb > va ? b : a;
+}
+
+// When a newly finished (or dragged) ramal's endpoint lands mid-body on an EXISTING ramal — a
+// true T/Y tee, not an end-to-end join — split that existing ramal at the junction into an
+// upstream portion (kept, unchanged) and a brand-new downstream ramal carrying the combined load:
+// diámetro = the larger of the two converging ramales, uc = their sum. Applies uniformly across
+// every net (san/ll accumulate UC, af/ac/gas accumulate their own load figure — all stored in the
+// same generic `uc` field), matching how a real hydraulic design increases pipe size/rating past
+// a confluence point rather than assuming the upstream run's own rating still applies beyond it.
+// Only the mid-body case is handled — an endpoint-to-endpoint join has no "rest of the path"
+// beyond the junction to split off, so there's nothing to auto-create there.
+export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: PlanoRamal): void {
+  if (!incoming.pts || incoming.pts.length < 2) return;
+  const TOL = 0.5;
+  const endpoints = [incoming.pts[0], incoming.pts[incoming.pts.length - 1]];
+  for (const ep of endpoints) {
+    for (const existing of engine.ramales) {
+      if (existing.id === incoming.id || existing.net !== incoming.net) continue;
+      if (!existing.pts || existing.pts.length < 2) continue;
+      if (existing.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL)) {
+        // Endpoint-to-endpoint (or endpoint-onto-a-vertex) join — not a mid-body tee, so nothing
+        // to split, but a tributario landing here still must be its own padre and nowhere else.
+        // Without this, ARRIVING at a wrong ramal's vertex (as opposed to starting there, or
+        // hitting its body mid-run) went completely unchecked — draw-time snap validation only
+        // fires while a point is being freshly placed, and can miss this if angle-snap shifted the
+        // click slightly off the exact vertex before that check ran; this is the final say,
+        // checked directly against the finished ramal's actual endpoint position.
+        if (incoming.tipo === 'tributario' && existing.id !== incoming.padre) {
+          engine.triggerAlert('Ramal padre incorrecto', 'Solo puedes conectar el tributario al ramal padre seleccionado.');
+        }
+        continue;
+      }
+      let segIdx = -1;
+      for (let i = 0; i < existing.pts.length - 1; i++) {
+        const [ax, ay] = existing.pts[i], [bx, by] = existing.pts[i + 1];
+        const dx = bx - ax, dy = by - ay;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq < 0.0001) continue;
+        const t = ((ep[0] - ax) * dx + (ep[1] - ay) * dy) / lenSq;
+        if (t < 0.02 || t > 0.98) continue;
+        const projX = ax + t * dx, projY = ay + t * dy;
+        if (Math.hypot(ep[0] - projX, ep[1] - projY) < TOL) { segIdx = i; break; }
+      }
+      if (segIdx === -1) continue;
+      // A tributario reaching a T/Y junction mid-body on some ramal OTHER than its own selected
+      // padre is the exact same "wrong ramal" case handleLineDown already blocks with a modal when
+      // it happens at a vertex — this is the same violation landing on a ramal's BODY instead, and
+      // this function runs unconditionally for every net/tipo, so without this it silently split
+      // and merged flow into whatever ramal the tributario happened to touch, no alert at all.
+      if (incoming.tipo === 'tributario' && existing.id !== incoming.padre) {
+        engine.triggerAlert('Ramal padre incorrecto', 'Solo puedes conectar el tributario al ramal padre seleccionado.');
+        continue;
+      }
+
+      const downstreamPts = [[ep[0], ep[1]], ...existing.pts.slice(segIdx + 1)];
+      existing.pts = [...existing.pts.slice(0, segIdx + 1), [ep[0], ep[1]]];
+      existing.totalL = calculateRamalLength(existing.pts, engine);
+      // The truncated `existing` always ends EXACTLY at the junction (its new last point) — that's
+      // its own endpoint now, never an interior vertex, so this belongs in accesorioFin, not
+      // accMed. accMed here was silently invisible: the render pass explicitly skips any accMed
+      // index that equals a ramal's own last index (accMed is for INTERIOR vertices only), so the
+      // tee glyph never actually drew, and delete-cleanup's endpoint-position matching never
+      // resolved it as an endpoint marker either — accessory tallies (which don't apply that
+      // bounds check) still silently counted it forever, even after the junction was long deleted.
+      // Gas uses its own tee catalog id (te_linea/te_ramal), not teeDirecto — writing teeDirecto
+      // there wasn't a valid gas accessory at all, so gas's own accessory tally never counted it
+      // and delete-cleanup never recognized it either.
+      existing.accesorioFin = existing.net === 'gas' ? 'te_linea' : 'teeDirecto';
+      existing.diametroFin = existing.diametro || '';
+
+      const netDef = NETS.find((n) => n.id === existing.net);
+      const pfx = netDef ? netDef.lbl : 'R';
+      const cnt = ++(engine._netCounts[existing.net][existing.tipo as keyof typeof engine._netCounts[string]]);
+      const newId = existing.tipo === 'tributario' ? 'T' + Date.now() : pfx + cnt;
+      // Own label position/angle from the downstream segment's own midpoint — spreading
+      // `...existing` alone kept the label at the UPSTREAM portion's old position, landing right
+      // on top of `existing`'s own (unchanged) label since both objects then shared one spot.
+      const [downLabelX, downLabelY] = _midpoint(downstreamPts);
+      const downLabelAngle = _firstSegmentAngle(downstreamPts);
+      const downstream: PlanoRamal = {
+        ...existing,
+        id: newId,
+        pts: downstreamPts,
+        totalL: calculateRamalLength(downstreamPts, engine),
+        label: existing.tipo === 'tributario' ? `T${cnt}${existing.label || ''}` : `${pfx}${cnt}`,
+        labelX: downLabelX,
+        labelY: downLabelY,
+        labelAngle: downLabelAngle,
+        diametro: maxDiametroLabel(existing.diametro, incoming.diametro),
+        uc: (existing.uc || 0) + (incoming.uc || 0),
+        ini: '', fin: '',
+        accesorioInicio: '', accesorioFin: '', accMed: {},
+        diametroInicio: '', diametroFin: '',
+        aparatoInicio: '', aparatoFin: '',
+        bloqueado: true,
+        mergesFrom: [existing.id, incoming.id],
+      };
+      engine.ramales.push(downstream);
+      break;
+    }
+  }
+}
+
 export function finishRamal(engine: IPlanoEngineCore): void {
   engine._yeeFlashKey = null;
   if (!engine.activeRamal || engine.activeRamal.pts.length < 1) return;
@@ -129,6 +239,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     if (existing) {
       existing.pts = engine.activeRamal.pts;
       existing.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
+      autoSplitJunctionAndSumFlow(engine, existing);
       engine.activeRamal = null;
       engine.selId = existing.id;
       engine._emitSelect(existing);
@@ -190,16 +301,39 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     engine.render();
     return;
   }
-  // Associate ramal with bajante if endpoint is at bajante center
+  autoSplitJunctionAndSumFlow(engine, r);
+  // Associate ramal with bajante if endpoint is at bajante center. A ramal may only ARRIVE at a
+  // bajante (real or fantasma) — never START there — per explicit request; handleLineDown already
+  // blocks the click itself from starting a fresh ramal there, this is the belt-and-suspenders
+  // match on the FINISHED ramal's endpoints (also covers drag-created connections). A displaced
+  // fantasma is matched against its own displaced position for the current floor; an undisplaced
+  // ghost or a real bajante both match at their plain (b.x,b.y).
   if (r.pts.length >= 2) {
     const TOLLERANCE = 0.5;
-    for (const epIdx of [0, r.pts.length - 1]) {
+    const lastIdx = r.pts.length - 1;
+    const lvl = engine.nivelActual?.label ?? '';
+    const displacedFantasmaIds = new Set(
+      engine.getBajantesFantasma()
+        .filter((b) => {
+          const disp = b.desplazamientos?.[lvl];
+          return !!disp && (Math.abs(disp.dx) > 0.5 || Math.abs(disp.dy) > 0.5);
+        })
+        .map((b) => b.id)
+    );
+    for (const epIdx of [0, lastIdx]) {
+      const isArrival = epIdx === lastIdx;
+      if (!isArrival) continue;
       const ep = r.pts[epIdx];
-      const baj = engine.bajantes.find((b) =>
-        Math.hypot(b.x - ep[0], b.y - ep[1]) < TOLLERANCE &&
-        b.net === r.net &&
-        !engine._hiddenNets.has(b.net)
-      );
+      const baj = engine.bajantes.find((b) => {
+        if (b.net !== r.net || engine._hiddenNets.has(b.net)) return false;
+        if (displacedFantasmaIds.has(b.id)) {
+          const disp = b.desplazamientos?.[lvl];
+          const bx = b.x + (disp?.dx || 0);
+          const by = b.y + (disp?.dy || 0);
+          return Math.hypot(bx - ep[0], by - ep[1]) < TOLLERANCE;
+        }
+        return Math.hypot(b.x - ep[0], b.y - ep[1]) < TOLLERANCE;
+      });
       if (baj && !baj.recibeDeIds.includes(r.id)) {
         baj.recibeDeIds.push(r.id);
         // Auto-fill ramal's ini/fin
@@ -212,10 +346,10 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       }
     }
   }
-  // AF/AC: detect codos/tees at angle changes, perpendicular crossings, and junctions formed
+  // AF/AC/gas: detect codos/tees at angle changes, perpendicular crossings, and junctions formed
   // with another separately-drawn ramal — shared with handleDragUp so a drag can trigger the
   // same modal when it newly creates one of these junctions.
-  if ((r.net === 'af' || r.net === 'ac') && engine.triggerAccesorioModal) {
+  if (['af', 'ac', 'gas'].includes(r.net) && engine.triggerAccesorioModal) {
     const trigger = detectAccesorioTrigger(engine, r.id);
     if (trigger) engine.triggerAccesorioModal(trigger);
   }
@@ -341,7 +475,9 @@ export function setDefinedScaleM(engine: IPlanoEngineCore, v: string | number): 
 function checkCrossRamalAngle(engine: IPlanoEngineCore, pA: number[], pB: number[], skipId: string): boolean {
   for (const r of engine.ramales) {
     if (r.id === skipId || !r.pts || r.pts.length < 2) continue;
-    const isSanOrLl = (r.net || engine.activeNet) === 'san' || (r.net || engine.activeNet) === 'll';
+    const netId = r.net || engine.activeNet;
+    const isSanOrLl = netId === 'san' || netId === 'll';
+    const isAfAc = netId === 'af' || netId === 'ac';
     for (let si = 0; si < r.pts.length - 1; si++) {
       const [ax, ay] = r.pts[si], [bx, by] = r.pts[si + 1];
       const segLen = Math.hypot(bx - ax, by - ay);
@@ -358,13 +494,19 @@ function checkCrossRamalAngle(engine: IPlanoEngineCore, pA: number[], pB: number
           let isAllowed = false;
           if (isSanOrLl) {
             isAllowed = (diff <= 46) || (diff >= 134) || (Math.abs(diff - 45) <= 10) || (Math.abs(diff - 135) <= 10);
+          } else if (isAfAc) {
+            // AF/AC only forms a tee (90°) at a junction — no 45°-ish yee-style merge, per
+            // explicit request. Same tolerance renderJunctions.ts's isTee detection uses.
+            isAllowed = Math.abs(internalAngle - 90) <= 15;
           } else {
             isAllowed = (internalAngle >= 50);
           }
           if (!isAllowed) {
             engine.triggerAlert(
               'Ángulo no recomendado',
-              isSanOrLl ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.' : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
+              isSanOrLl ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
+                : isAfAc ? 'Las redes de agua caliente o agua fria no permiten uniones de 45° entre trazos'
+                : 'Esta red debe diseñarse con ángulos de 45° o 90°.'
             );
             return false;
           }
@@ -388,7 +530,13 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     // carries an accessory silently starts an unrelated new ramal instead of continuing it.
     let activeNetsRamales = engine.ramales.filter((rm) => rm.net === engine.activeNet);
     if (engine.tipoTramo === 'tributario') {
-      activeNetsRamales = activeNetsRamales.filter((rm) => rm.id === engine.padreTributario);
+      // Continuing an existing tributario (from its own endpoint) must stay possible, not just
+      // continuing the padre itself — restricting to only `id === padreTributario` meant clicking
+      // near an existing tributario's own endpoint fell through to "start a new ramal" instead of
+      // extending it.
+      activeNetsRamales = activeNetsRamales.filter((rm) =>
+        rm.id === engine.padreTributario || (rm.tipo === 'tributario' && rm.padre === engine.padreTributario)
+      );
     }
     let continueRamal: PlanoRamal | null = null;
     let reversePoints = false;
@@ -398,11 +546,18 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       const lastPt = rm.pts[rm.pts.length - 1];
       const dFirst = Math.hypot(px - firstPt[0], py - firstPt[1]);
       const dLast = Math.hypot(px - lastPt[0], py - lastPt[1]);
+      // An endpoint that already discharges into a bajante (rm.ini/fin holds the bajante's code)
+      // must NOT be treated as a "continue this ramal" target — that silently let a click there
+      // slide right past the bajante-start block below (continueRamal wins first), same as
+      // clicking the bajante's own circle would otherwise be blocked. Falls through instead, so
+      // the bajante check further down catches it and alerts.
       if (dFirst < CONTINUE_THRESH && dFirst <= dLast) {
+        if (rm.ini) continue;
         continueRamal = rm;
         reversePoints = true;
         break;
       } else if (dLast < CONTINUE_THRESH) {
+        if (rm.fin) continue;
         continueRamal = rm;
         break;
       }
@@ -447,27 +602,91 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       return;
     }
 
+    // A ramal may only ARRIVE at a bajante — real (own floor) or fantasma (ghost, any kind) —
+    // never START there. Checked against the raw click (before any snapping): merely dropping the
+    // snap-to-bajante below isn't enough, since the raw click point is already sitting right on
+    // top of the circle and would still start a ramal there, just unassociated. Block outright.
+    // Uses the same cached hit-circles (_circ for the real bajante, _ghost for any fantasma) the
+    // render pass already computes every frame, so this always matches exactly what's on screen.
+    {
+      const rawC = engine.toCvs(pt.x, pt.y);
+      const onBajante = engine.bajantes.some((b) => {
+        if (!netsSnapLinked(b.net, engine.activeNet) || engine._hiddenNets.has(b.net)) return false;
+        if (b._circ && Math.hypot(b._circ.x - rawC.x, b._circ.y - rawC.y) < b._circ.r + 6 * engine.zoom) return true;
+        return false;
+      });
+      const onFantasma = !onBajante && engine.getBajantesFantasma().some((b) => {
+        if (!netsSnapLinked(b.net, engine.activeNet)) return false;
+        if (!b._ghost) return false;
+        return Math.hypot(b._ghost.x - rawC.x, b._ghost.y - rawC.y) < b._ghost.r + 6 * engine.zoom;
+      });
+      if (onBajante || onFantasma) {
+        engine.triggerAlert('No se puede iniciar aquí', 'Un ramal solo puede conectarse a un bajante como punto de llegada. Empieza el trazo en otro punto y termínalo en el bajante.');
+        return;
+      }
+    }
+
     const sp = engine.snapToExisting(pt.x, pt.y);
     if (sp) {
+      // snapToExisting will happily snap onto ANY nearby ramal's vertex, regardless of which
+      // ramal was picked as the tributario's padre — so a click near a different ramal than the
+      // selected padre silently created the tributario against the wrong one. Block it instead.
+      if (engine.tipoTramo === 'tributario') {
+        const snappedRamal = engine.ramales.find((r) =>
+          r.net === engine.activeNet && r.pts.some(([rx, ry]) => Math.hypot(rx - sp.x, ry - sp.y) < 0.5)
+        );
+        if (snappedRamal && snappedRamal.id !== engine.padreTributario) {
+          engine.triggerAlert('Ramal padre incorrecto', 'Solo puedes conectar el tributario al ramal padre seleccionado.');
+          return;
+        }
+      }
+      // A ventilación ramal starting exactly on a sanitaria point (a codo reventilado junction)
+      // must have its FIRST segment follow the sanitaria pipe's own local direction there — not
+      // an arbitrary 45°-grid angle. Find which san segment owns this vertex and remember its
+      // heading; consumed (and cleared) the moment the first segment is placed, below.
+      engine._ventFirstSegDir = null;
+      if (engine.activeNet === 'vent') {
+        for (const sr of engine.ramales) {
+          if (sr.net !== 'san' || !sr.pts?.length) continue;
+          const idx = sr.pts.findIndex(([sx, sy]) => Math.hypot(sx - sp.x, sy - sp.y) < 0.5);
+          if (idx === -1) continue;
+          const a = idx > 0 ? sr.pts[idx - 1] : sr.pts[idx + 1];
+          const b = sr.pts[idx];
+          if (a && b) {
+            const ddx = b[0] - a[0], ddy = b[1] - a[1];
+            const len = Math.hypot(ddx, ddy);
+            if (len > 0.01) engine._ventFirstSegDir = { x: ddx / len, y: ddy / len };
+          }
+          break;
+        }
+      }
       pt = sp;
     } else {
       let activeNetsRamales = engine.ramales.filter((r) => r.net === engine.activeNet);
       if (engine.tipoTramo === 'tributario') {
         activeNetsRamales = activeNetsRamales.filter((r) => r.id !== engine.padreTributario);
       }
-      let isOnSegment = false;
+      let onSegmentRamal: PlanoRamal | null = null;
       const SNAP_THRESH = 12 / engine.zoom;
-      
+
       for (const r of activeNetsRamales) {
         const segSnap = engine._snapToSegment(pt.x, pt.y, r.pts, SNAP_THRESH);
         if (segSnap) {
-          isOnSegment = true;
+          onSegmentRamal = r;
           break;
         }
       }
-      
-      if (isOnSegment) {
-        engine._emitStatus('No puedes iniciar un ramal sobre un segmento. Inicia en espacio libre o en un vértice.');
+
+      if (onSegmentRamal) {
+        // Same click that would trip the vertex-based padre guard above, just landing on the
+        // ramal's body instead of a vertex — must show the same modal, not the unrelated generic
+        // "can't start on a segment" status-bar text (which for a tributario is misleading: the
+        // real problem is which ramal it's on, not that it's on a segment at all).
+        if (engine.tipoTramo === 'tributario') {
+          engine.triggerAlert('Ramal padre incorrecto', 'Solo puedes conectar el tributario al ramal padre seleccionado.');
+        } else {
+          engine._emitStatus('No puedes iniciar un ramal sobre un segmento. Inicia en espacio libre o en un vértice.');
+        }
         return;
       }
     }
@@ -501,7 +720,30 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     const rawPt = { x: pt.x, y: pt.y };
 
     let snappedToSeg = false;
-    if (engine.snapMode) {
+    if (engine._ventFirstSegDir && engine.activeRamal.pts.length === 1) {
+      // First segment of a ventilación ramal that started at a codo reventilado — lock it to the
+      // sanitary ramal's own heading there instead of the generic 45° grid. Only applies to this
+      // one segment; consumed immediately so later segments snap normally.
+      const dirv = engine._ventFirstSegDir;
+      const relX = pt.x - last[0], relY = pt.y - last[1];
+      const relLen = Math.hypot(relX, relY);
+      if (relLen > 0.01) {
+        const proj = relX * dirv.x + relY * dirv.y;
+        const perpDist = Math.abs(relX * dirv.y - relY * dirv.x);
+        if (perpDist / relLen > 0.15) {
+          engine.triggerAlert(
+            'Ángulo bloqueado',
+            'El primer trazo de ventilación en un codo reventilado sigue la dirección del ramal sanitario — no puede cambiar de ángulo aquí.'
+          );
+        }
+        // Keep the actual cursor distance (relLen) as the segment length, only the direction gets
+        // locked to dirv — projecting to `proj` alone collapsed the segment near-to-zero whenever
+        // the cursor moved close to perpendicular to dirv, creating a degenerate zero-length point.
+        const sign = proj >= 0 ? 1 : -1;
+        pt = { x: last[0] + dirv.x * relLen * sign, y: last[1] + dirv.y * relLen * sign };
+      }
+      engine._ventFirstSegDir = null;
+    } else if (engine.snapMode) {
       pt = engine.snapAngle(last[0], last[1], pt.x, pt.y, engine.activeRamal.net, engine.activeRamal.tipo);
     }
     
@@ -525,7 +767,24 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
 
     if (!snappedToSeg) {
       const sp = engine.snapToExisting(pt.x, pt.y);
-      if (sp) pt = sp;
+      if (sp) {
+        // Same guard as the "start a new tributario" branch above — snapToExisting is unrestricted
+        // and will happily snap onto ANY ramal's vertex, not just the selected padre. Without this,
+        // clicking near a different ramal while continuing an in-progress tributario silently
+        // latched onto the wrong ramal (or fell through to the angle check, which fired an
+        // unrelated "Ángulo no recomendado" alert instead of explaining the real problem).
+        if (engine.tipoTramo === 'tributario') {
+          const snappedRamal = engine.ramales.find((r) =>
+            r.net === engine.activeNet && r.id !== engine.activeRamal!.id &&
+            r.pts.some(([rx, ry]) => Math.hypot(rx - sp.x, ry - sp.y) < 0.5)
+          );
+          if (snappedRamal && snappedRamal.id !== engine.padreTributario) {
+            engine.triggerAlert('Ramal padre incorrecto', 'Solo puedes conectar el tributario al ramal padre seleccionado.');
+            return;
+          }
+        }
+        pt = sp;
+      }
     }
     const lvlLabel = engine.nivelActual?.label ?? '';
     const bajThresh = 20 / engine.zoom;
@@ -586,6 +845,15 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
           if (!r.pts || r.pts.length < 2) continue;
           for (let si = 0; si < r.pts.length - 1; si++) {
             if (segmentsIntersect(segStart, segEnd, r.pts[si], r.pts[si + 1])) {
+              // A tributario crossing any ramal other than its own padre is the padre violation,
+              // not a generic crossing — this geometric check ran BEFORE the vertex-snap padre
+              // check above ever got a chance (that one only fires on an exact vertex match; a
+              // mere crossing through the wrong ramal's body doesn't end exactly on a vertex, so
+              // it landed here first with a message that didn't explain the real problem).
+              if (engine.tipoTramo === 'tributario' && r.id !== engine.padreTributario) {
+                engine.triggerAlert('Ramal padre incorrecto', 'Solo puedes conectar el tributario al ramal padre seleccionado.');
+                return;
+              }
               engine.triggerAlert(
                 'Cruce de líneas no permitido',
                 'El trazo cruza otro trazo de la misma red. No se permite el cruce de líneas en la misma cota de dibujo.'

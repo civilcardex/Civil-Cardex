@@ -260,13 +260,17 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
 
     if (r.tipo === 'tributario') {
       let countSifonTrib = 0;
-      let countVentTrib = 0;
+      // Reuse the geometric vent→san detection above (identical to the non-tributario branch
+      // below) instead of reading a stored accesorioInicio/Fin value — tributarios never had that
+      // field auto-written for this junction type, so relying on it left the count permanently at
+      // zero whenever the sanitary side of a codo reventilado was a tributario rather than a plain
+      // ramal.
+      const countVentTrib = countVent;
       let countSubeTrib = 0;
       let countBajaTrib = 0;
 
       const processAcc = (accType: string | undefined) => {
         if (accType === 'sifon') countSifonTrib++;
-        else if (accType === 'codoReventilado') countVentTrib++;
         else if (accType === 'codoSube') countSubeTrib++;
         else if (accType === 'codoBaja') countBajaTrib++;
       };
@@ -293,11 +297,14 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
       if (r.accesorioInicio === 'sifon') countSifonRamal++;
       if (r.accesorioFin === 'sifon') countSifonRamal++;
 
-      // Count explicit mid-ramal accessories (accMed*, assigned via right-click on the ramal body)
+      // Count explicit mid-ramal accessories (accMed*, assigned via right-click on the ramal body).
+      // codoReventilado is deliberately excluded here — it's already counted above via the
+      // geometric vent→san detection (countVent), and mid-ramal accessories can no longer be
+      // manually assigned on san bodies, so any accMed codoReventilado is that same auto-detected
+      // junction; counting it again here would double it.
       if (r.accMed) {
         for (const val of Object.values(r.accMed)) {
           if (val === 'sifon') countSifonRamal++;
-          else if (val === 'codoReventilado') countVent++;
           else if (val === 'codo90rmSube') countSube++;
           else if (val === 'codo90rmBaja') countBaja++;
         }
@@ -370,13 +377,35 @@ export function calcHydroAccessories(engine: IPlanoEngineCore): void {
     if (!hidroData[rKey].accesorios) hidroData[rKey].accesorios = {};
     const acc = hidroData[rKey].accesorios;
 
+    const TEE_LADO_ALIAS = new Set(['teeTapon', 'teeLlaveTerminal']);
     const counts: Record<string, number> = {};
-    if (r.accesorioInicio) counts[r.accesorioInicio] = (counts[r.accesorioInicio] || 0) + 1;
-    if (r.accesorioFin) counts[r.accesorioFin] = (counts[r.accesorioFin] || 0) + 1;
+    const bump = (acc: string | undefined) => {
+      if (!acc) return;
+      counts[acc] = (counts[acc] || 0) + 1;
+      if (TEE_LADO_ALIAS.has(acc)) counts['teeLado'] = (counts['teeLado'] || 0) + 1;
+    };
+    bump(r.accesorioInicio);
+    bump(r.accesorioFin);
     if (r.accMed) {
       for (const val of Object.values(r.accMed)) {
         if (!val) continue;
-        counts[val] = (counts[val] || 0) + 1;
+        bump(val);
+      }
+    }
+
+    // LL (aguas lluvias) bajantes work the same as SAN's — a codo90rmSube/Baja is implied by
+    // whichever direction the connected bajante is CURRENTLY set to, computed fresh every time
+    // (like calcSanitaryAccessories does for SAN) rather than a one-time write that goes stale if
+    // the direction changes later. AF/AC's montante equivalent instead re-syncs a written
+    // accesorioInicio/Fin value on direction change (DrawingElementContextMenu.tsx's
+    // BajanteDirectionSelector) since a montante's codo lives on a visual glyph field already —
+    // LL bajantes don't have that write at all, so nothing to sync; compute it here instead.
+    if (r.net === 'll') {
+      for (const baj of engine.bajantes) {
+        if (baj.net !== 'll' || baj.tipo !== 'bajante') continue;
+        if (!baj.recibeDeIds?.includes(r.id)) continue;
+        const codoId = baj.direccion === 'sube' ? 'codo90rmSube' : baj.direccion === 'baja' ? 'codo90rmBaja' : null;
+        if (codoId) counts[codoId] = (counts[codoId] || 0) + 1;
       }
     }
 

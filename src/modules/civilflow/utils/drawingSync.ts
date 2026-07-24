@@ -34,6 +34,7 @@ export interface RawElement {
   dNominal?: string;
   hVert?: number;
   recibeDeIds?: string[];
+  mergesFrom?: [string, string];
   alimentaIds?: string[];
   area_m2?: number;
   pisoBase?: string;

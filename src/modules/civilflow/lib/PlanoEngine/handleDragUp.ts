@@ -2,11 +2,30 @@ import type { IPlanoEngineCore } from './PlanoState';
 import type { PlanoRamal } from './PlanoState';
 import { NETS } from './PlanoState';
 import { checkRamalAngles, _firstSegmentAngle, detectAccesorioTrigger } from './drawingAngles';
+import { autoSplitJunctionAndSumFlow } from './PlanoEngineDrawing';
 
 function checkAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string): void {
   if (!engine.triggerAccesorioModal) return;
   const trigger = detectAccesorioTrigger(engine, ramalId);
   if (trigger) engine.triggerAccesorioModal(trigger);
+}
+
+// Draw-time (handleLineDown) already blocks connecting a tributario to any ramal other than its
+// selected padre, but that only guards fresh drawing — dragging an EXISTING tributario's endpoint
+// (or its whole body) onto a different ramal had no equivalent check at all, silently letting a
+// drag re-anchor it to the wrong ramal. Fires only when an endpoint now sits on another ramal's
+// own vertex (a real reconnection), not just anywhere near it.
+function draggedOntoWrongPadre(engine: IPlanoEngineCore, ram: PlanoRamal): boolean {
+  if (!ram.pts || ram.pts.length < 2) return false;
+  const TOL = 0.5;
+  for (const ep of [ram.pts[0], ram.pts[ram.pts.length - 1]]) {
+    for (const other of engine.ramales) {
+      if (other.id === ram.id || other.net !== ram.net) continue;
+      const touches = other.pts?.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL);
+      if (touches && other.id !== ram.padre) return true;
+    }
+  }
+  return false;
 }
 
 export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false): void {
@@ -191,9 +210,21 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       engine._dragLinkedBackupPts = null;
       engine._markDirty();
       engine.render();
+    } else if (ram && ram.tipo === 'tributario' && draggedOntoWrongPadre(engine, ram)) {
+      engine.triggerAlert('Ramal padre incorrecto', 'Solo puedes conectar el tributario al ramal padre seleccionado.');
+      if (engine._dragBackupPts) {
+        ram.pts = engine._dragBackupPts;
+        engine._dragBackupPts = null;
+      }
+      engine._dragLinkedBackupPts = null;
+      engine._markDirty();
+      engine.render();
     } else {
       engine._dragLinkedBackupPts = null;
-      if (ram) checkAccesorioTrigger(engine, ram.id);
+      if (ram) {
+        autoSplitJunctionAndSumFlow(engine, ram);
+        checkAccesorioTrigger(engine, ram.id);
+      }
     }
   }
   if (engine.ramalDrag) {
@@ -214,7 +245,15 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         engine._markDirty();
         engine.render();
       }
+    } else if (ram && ram.tipo === 'tributario' && draggedOntoWrongPadre(engine, ram)) {
+      engine.triggerAlert('Ramal padre incorrecto', 'Solo puedes conectar el tributario al ramal padre seleccionado.');
+      if (origPts) {
+        ram.pts = origPts;
+        engine._markDirty();
+        engine.render();
+      }
     } else if (ram) {
+      autoSplitJunctionAndSumFlow(engine, ram);
       checkAccesorioTrigger(engine, ram.id);
     }
   }
