@@ -128,6 +128,13 @@ export interface PlanoRamal {
   accMed?: Record<string, string>;
   caudal?: number;
   lvert?: string;
+  // Set only on a ramal auto-created by autoSplitJunctionAndSumFlow (PlanoEngineDrawing.ts) at a
+  // T/Y junction — the ids of the two ramales that merge into it. Read by waterNetworkRows.ts /
+  // WaterNetworkDesign.tsx to force THIS specific ramal's UC total to be the sum of those two,
+  // regardless of which way the general root-rooted directed tree happens to run through this
+  // point (that tree is oriented toward the real supply source for the WHOLE network, which for
+  // an arbitrary local merge may run either direction relative to it).
+  mergesFrom?: [string, string];
 }
 
 export interface PlanoBajante {
@@ -278,6 +285,7 @@ export interface IPlanoEngineCore {
   scaleM: number;
   definedScaleM: number;
   canv: HTMLCanvasElement;
+  cw: HTMLElement;
   dpr: number;
   pageW: number;
   pageH: number;
@@ -291,6 +299,11 @@ export interface IPlanoEngineCore {
   offCtx: CanvasRenderingContext2D | null;
   padreTributario: string | null;
   nivelActual: PlanoLevel | null;
+  // Transient: set right after a new vent ramal's first point snaps onto a sanitaria vertex
+  // (a codo reventilado junction) — forces the FIRST segment's direction to match the sanitary
+  // ramal's own local heading there instead of the generic 45°-grid snap. Cleared once that first
+  // segment is placed.
+  _ventFirstSegDir?: { x: number; y: number } | null;
   _dimStart: { x: number; y: number } | null;
   // Transient per-drag scratch state (set in handleMouseDown, consumed in
   // handleDragUp/handleDragMove; always reset to null at drag end).
@@ -355,5 +368,5 @@ export interface IPlanoEngineCore {
   deleteSelected(ids?: string[]): void;
   setActiveNet(id: string): void;
   triggerAlert(title: string, msg: string): void;
-  triggerAccesorioModal(data: { ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean }): void;
+  triggerAccesorioModal(data: { ramalId: string; angleDeg: number; junctionIndex: number; point: number[]; net: string; isTee?: boolean }): void;
 }
