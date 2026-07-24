@@ -421,7 +421,7 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
           incAcc={incAcc}
           decAcc={decAcc}
           accent={accent}
-          items={ACCESORIOS_HIDRO}
+          items={ACCESORIOS_HIDRO.filter(a => !['teeDirecto', 'teeSube', 'teeBaja', 'teeTapon', 'teeLlaveTerminal', 'tapon', 'llaveTerminal'].includes(a.id))}
         />
       )}
       {isGas && (

@@ -39,7 +39,7 @@ const AccesoriosTable = memo(function AccesoriosTable({ tramos }: { tramos: Tram
                     const v = t.accesorios?.[a.id] || 0;
                     return (
                       <td key={a.id} className="c" style={{padding:'4px 1px',overflow:'hidden'}}>
-                        <span style={{fontSize: 9,fontFamily:cMono,color:v>0?'var(--txt)':'var(--txt3)'}}>{v || '—'}</span>
+                        <span style={{fontSize: 12,fontWeight:600,fontFamily:cMono,color:v>0?'var(--txt)':'var(--txt3)'}}>{v || '—'}</span>
                       </td>
                     );
                   })}

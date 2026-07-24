@@ -21,7 +21,7 @@ interface UsePdfViewerEngineParams {
   onToolChange: (tool: string) => void;
   onRequestText: (x: number, y: number, cb: (text: string) => void) => void;
   onAlert: (title: string, msg: string) => void;
-  onAccesorioModal: (data: { ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean }) => void;
+  onAccesorioModal: (data: { ramalId: string; angleDeg: number; junctionIndex: number; point: number[]; net: string; isTee?: boolean }) => void;
   loadTrazosForPlan: (eng: PlanoEngine, id: string | number) => Promise<boolean>;
   setActiveNet: (net: string) => void;
   setScaleM: (sm: string) => void;

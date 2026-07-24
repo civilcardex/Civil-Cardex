@@ -9,6 +9,15 @@ export interface ToolDef {
   shortcut: string;
 }
 
+// Bajante only makes sense on san/vent/ll (downpipes); montante only on gas/ac/af (risers) —
+// centralized here so the toolbar's two render paths (expanded/collapsed) and PlanoEngine.ts's
+// keyboard shortcuts all enforce the exact same rule instead of drifting apart.
+export function isToolDisabledForNet(toolId: string, net: string): boolean {
+  if (toolId === 'baj') return !['san', 'vent', 'll'].includes(net);
+  if (toolId === 'mon') return !['gas', 'ac', 'af'].includes(net);
+  return false;
+}
+
 export const TOOLS: ToolDef[] = [
   { id: "sel", label: "Seleccionar", ico: "\uD83D\uDC46", key: "S", icoCol: "#9BA8AA", shortcut: "S" },
   { id: "line", label: "Ramal/Tributario", ico: "\u2571", key: "L", icoCol: "#4D8FF7", shortcut: "L" },
@@ -88,16 +97,16 @@ function PdfViewerToolbar_({
         <div style={{ padding: "4px 4px", borderBottom: "1px solid #3a494a" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {netTools.map(t => {
-              const isBajanteDisabled = t.id === 'baj' && (activeNet === 'af' || activeNet === 'ac');
+              const isToolDisabled = isToolDisabledForNet(t.id, activeNet);
               return (
-                <button type="button" key={t.id} disabled={isBajanteDisabled} onClick={() => onSelectTool(t.id)}
-                  title={t.shortcut ? `${t.label} (${t.shortcut})` : t.label}
+                <button type="button" key={t.id} disabled={isToolDisabled} onClick={() => onSelectTool(t.id)}
+                  title={isToolDisabled ? "No disponible para esta red" : (t.shortcut ? `${t.label} (${t.shortcut})` : t.label)}
                   style={{
                     ...compactBtn,
                     background: tool === t.id ? "#2563EB" : "#1e2024",
                     border: `1px solid ${tool === t.id ? "#2563EB" : "#3a494a"}`,
-                    cursor: isBajanteDisabled ? "not-allowed" : "pointer",
-                    opacity: isBajanteDisabled ? 0.3 : 1,
+                    cursor: isToolDisabled ? "not-allowed" : "pointer",
+                    opacity: isToolDisabled ? 0.3 : 1,
                   }}>
                   <span style={{ fontSize: 14, color: tool === t.id ? "#fff" : t.icoCol }}>{t.ico}</span>
                   <span style={{ fontSize: 9, color: tool === t.id ? "rgba(255,255,255,.6)" : "#8AB4D6" }}>{compactShortcut(t.shortcut)}</span>
@@ -148,16 +157,16 @@ function PdfViewerToolbar_({
         <div style={{ fontFamily: "'Geist',monospace", fontSize: 12, color: "#9BA8AA", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>Herramientas</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           {netTools.map(t => {
-            const isBajanteDisabled = t.id === 'baj' && (activeNet === 'af' || activeNet === 'ac');
+            const isToolDisabled = isToolDisabledForNet(t.id, activeNet);
             return (
-              <button type="button" key={t.id} disabled={isBajanteDisabled} onClick={() => onSelectTool(t.id)} title={isBajanteDisabled ? "No disponible para esta red" : t.shortcut ? `${t.label} (${t.shortcut})` : t.label} style={{
+              <button type="button" key={t.id} disabled={isToolDisabled} onClick={() => onSelectTool(t.id)} title={isToolDisabled ? "No disponible para esta red" : t.shortcut ? `${t.label} (${t.shortcut})` : t.label} style={{
                 ...PdfViewerToolbar_S2,
                 background: tool === t.id ? "#2563EB" : "#1e2024",
                 border: `1px solid ${tool === t.id ? "#2563EB" : "#3a494a"}`,
                 borderRadius: "3px",
                 color: "#b9caca",
-                cursor: isBajanteDisabled ? "not-allowed" : "pointer",
-                opacity: isBajanteDisabled ? 0.3 : 1,
+                cursor: isToolDisabled ? "not-allowed" : "pointer",
+                opacity: isToolDisabled ? 0.3 : 1,
               }}>
                 <span style={{ fontSize: 14, width: 18, textAlign: "center", color: tool === t.id ? "#fff" : t.icoCol }}>{t.ico}</span>
                 <span style={{ fontSize: 12, flex: 1, textAlign: 'left' }}>{t.label}</span>

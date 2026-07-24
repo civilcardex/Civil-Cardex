@@ -404,17 +404,19 @@ function RamalEditor({
       onChange={e => {
         const dn = e.target.value;
         setDiamSel(prev => ({ ...prev, [activeNet]: dn }));
+        // Accessory diameter (diametroInicio/Fin) has no picker of its own anymore — it always
+        // mirrors the ramal's own diameter, so it must be kept in sync on every change here too.
         if (engineRef.current && selElement) {
-          engineRef.current.updateSelected({ diametro: dn });
-          setSelElement({ ...selElement, diametro: dn });
+          engineRef.current.updateSelected({ diametro: dn, diametroInicio: dn, diametroFin: dn });
+          setSelElement({ ...selElement, diametro: dn, diametroInicio: dn, diametroFin: dn });
         } else if (engineRef.current && !selElement) {
           const eng = engineRef.current;
           const lastRamal = [...eng.ramales].reverse().find((r) => r.net === activeNet);
           if (lastRamal) {
             eng.selId = lastRamal.id;
-            eng.updateSelected({ diametro: dn });
+            eng.updateSelected({ diametro: dn, diametroInicio: dn, diametroFin: dn });
             const { _labelBox, ...rest } = lastRamal;
-            setSelElement({ ...rest, diametro: dn });
+            setSelElement({ ...rest, diametro: dn, diametroInicio: dn, diametroFin: dn });
           }
         }
       }}
@@ -437,17 +439,19 @@ function RamalEditor({
           return;
         }
         setDiamSel(prev => ({ ...prev, [activeNet]: v }));
+        // Accessory diameter (diametroInicio/Fin) has no picker of its own anymore — it always
+        // mirrors the ramal's own diameter, so it must be kept in sync on every change here too.
         if (engineRef.current && selElement) {
-          engineRef.current.updateSelected({ diametro: v });
-          setSelElement({ ...selElement, diametro: v });
+          engineRef.current.updateSelected({ diametro: v, diametroInicio: v, diametroFin: v });
+          setSelElement({ ...selElement, diametro: v, diametroInicio: v, diametroFin: v });
         } else if (engineRef.current && !selElement) {
           const eng = engineRef.current;
           const lastRamal = [...eng.ramales].reverse().find((r) => r.net === activeNet);
           if (lastRamal) {
             eng.selId = lastRamal.id;
-            eng.updateSelected({ diametro: v });
+            eng.updateSelected({ diametro: v, diametroInicio: v, diametroFin: v });
             const { _labelBox, ...rest } = lastRamal;
-            setSelElement({ ...rest, diametro: v });
+            setSelElement({ ...rest, diametro: v, diametroInicio: v, diametroFin: v });
           }
         }
       }}
@@ -720,13 +724,6 @@ function RamalEditorSection() {
           selElement={selElement as PlanoRamal}
           engineRef={engineRef}
           setSelElement={(el) => setSelElement(el)}
-          diamList={(() => {
-            const matList = mats?.[activeNet] || [];
-            const matShort = matList[0]?.val || '—';
-            return activeNet === 'vent'
-              ? VENTILACION[0]?.rows.map((r) => ({ n: r.dn })) || []
-              : DIAM_BY_MAT[matShort] || [];
-          })()}
           activeNet={activeNet}
           plans={plans}
         />

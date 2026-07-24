@@ -13,7 +13,7 @@ import { writeSanDrawingSync, writeHydroDrawingSync } from "../utils/drawingSync
 import { bumpHidroAccesorio } from "../utils/syncExtremeAccessory";
 import { loadFromStorage, saveToStorage, saveTrazosToDB, loadTrazosFromDB } from "../services/storageService";
 import type { PlanTrazos } from "../services/storageService";
-import { GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY, ACTIVE_NETS_KEY, TRAZOS_PLAN_PREFIX, VISOR_TOOL_KEY, VISOR_TIPO_TRAMO_KEY, VISOR_SNAP_ON_KEY, NETS_CHANGED_EVENT, TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from "../constants/storage-keys";
+import { GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY, ACTIVE_NETS_KEY, VISOR_TOOL_KEY, VISOR_TIPO_TRAMO_KEY, VISOR_SNAP_ON_KEY, NETS_CHANGED_EVENT, TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from "../constants/storage-keys";
 import { devError } from "../../../utils/devError";
 import PdfViewerToolbar, { STATUS } from "./pdfViewer/PdfViewerToolbar";
 import PdfCanvas from "./pdfViewer/PdfCanvas";
@@ -21,7 +21,7 @@ import PdfViewerNetworkBar from "./pdfViewer/PdfViewerNetworkBar";
 import { usePdfAutoSave } from "./pdfViewer/usePdfAutoSave";
 import { usePdfViewerEngine } from "./pdfViewer/PdfViewerEngineInit";
 import TextInputOverlay from "./pdfViewer/TextInputOverlay";
-import DrawingElementContextMenu, { type ContextMenuState } from "./pdfViewer/DrawingElementContextMenu";
+import DrawingElementContextMenu, { type ContextMenuState, type LowerFloorRamales } from "./pdfViewer/DrawingElementContextMenu";
 import ConfirmDialog from "./pdfViewer/ConfirmDialog";
 import AlertDialog from "./pdfViewer/AlertDialog";
 import AccesorioModal from "./pdfViewer/AccesorioModal";
@@ -171,37 +171,65 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
   const pdfCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const lowerFloorsRamales = useMemo(() => {
-    if (!selElement || !(selElement.tipo === 'bajante' || selElement.tipo === 'montante')) return [];
-    const currentFloor = pisos.find(p => p.n === selectedNivel);
+  const [lowerFloorsRamales, setLowerFloorsRamales] = useState<LowerFloorRamales[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!selElement || !(selElement.tipo === 'bajante' || selElement.tipo === 'montante')) {
+      setLowerFloorsRamales([]);
+      return;
+    }
+    // Coerce to String, same as the plan-matching lookup below — selectedNivel and piso.n don't
+    // always agree on number-vs-string, and a strict === miss here silently made currentFloor
+    // undefined, falling back to Infinity: harmless on its own, but inconsistent with whichever
+    // OTHER lookup in this function DOES resolve correctly, making the dropdown's floor list
+    // flip between right and empty depending on which comparison happened to line up that time.
+    const currentFloor = pisos.find(p => String(p.n) === String(selectedNivel));
     const currentNpt = currentFloor ? currentFloor.npt : Infinity;
     const relevantPlans = planosCtx.plans.filter((plan) => {
       const pF = pisos.find(p => String(p.n) === String(plan.nivel));
       return pF && pF.npt <= currentNpt;
     });
-    const results = relevantPlans.map((plan) => {
-      const pF = pisos.find(p => String(p.n) === String(plan.nivel))!;
-      let bajantes: PlanoBajante[] = [];
-      // Only real floor-spanning risers (bajante/montante) belong in the "Destino" dropdown —
-      // contador/calentador/red_publica are point fixtures, not trunk lines a pipe cascades
-      // down into. Ramales aren't offered either: the association models a riser continuing
-      // down into the NEXT riser below, cascading floor by floor.
-      const isRiser = (b: PlanoBajante) => b.tipo === 'bajante' || b.tipo === 'montante';
-      if (plan.id === currentIdRef.current) {
-        bajantes = engineRef.current?.bajantes?.filter((b) => b.net === (selElement.net || activeNet) && isRiser(b)) || [];
-      } else {
-        const raw = localStorage.getItem(TRAZOS_PLAN_PREFIX + plan.id);
-        if (raw) {
-          try {
-            const data = JSON.parse(raw);
-            bajantes = (data.bajantes || []).filter((b: PlanoBajante) => b.net === (selElement.net || activeNet) && isRiser(b));
-          } catch {}
+    // Only real floor-spanning risers (bajante/montante) belong in the "Destino" dropdown —
+    // contador/calentador/red_publica are point fixtures, not trunk lines a pipe cascades
+    // down into. Ramales aren't offered either: the association models a riser continuing
+    // down into the NEXT riser below, cascading floor by floor.
+    const isRiser = (b: PlanoBajante) => b.tipo === 'bajante' || b.tipo === 'montante';
+
+    (async () => {
+      const results = await Promise.all(relevantPlans.map(async (plan) => {
+        const pF = pisos.find(p => String(p.n) === String(plan.nivel))!;
+        let bajantes: PlanoBajante[] = [];
+        if (plan.id === currentIdRef.current) {
+          bajantes = engineRef.current?.bajantes?.filter((b) => b.net === (selElement.net || activeNet) && isRiser(b)) || [];
+        } else {
+          // Must match the prefix trazos are actually SAVED under (usePdfAutoSave.ts uses
+          // TRAZOS_PREFIX) — TRAZOS_PLAN_PREFIX is a stale legacy key nothing writes to anymore.
+          const raw = localStorage.getItem(TRAZOS_PREFIX + plan.id);
+          let data: { bajantes?: PlanoBajante[] } | null = null;
+          if (raw) {
+            try { data = JSON.parse(raw); } catch { data = null; }
+          }
+          // Local storage only has whatever this browser actually loaded/saved this floor as —
+          // a floor last edited on another device, or before a local cache clear, has nothing
+          // here yet even though its bajantes genuinely exist in the cloud, silently showing
+          // "sin elementos disponibles" for a floor that really does have them. Fall back to
+          // the DB the same way loadTrazosForPlan already does for the currently loaded plan.
+          if (!data?.bajantes?.length) {
+            try {
+              const dbData = await loadTrazosFromDB(String(plan.id));
+              if (dbData) data = typeof dbData === 'string' ? JSON.parse(dbData) : (dbData as { bajantes?: PlanoBajante[] });
+            } catch { /* ignore */ }
+          }
+          bajantes = (data?.bajantes || []).filter((b: PlanoBajante) => b.net === (selElement.net || activeNet) && isRiser(b));
         }
-      }
-      return { planId: plan.id, planName: plan.name, npt: pF.npt, bajantes };
-    });
-    results.sort((a, b) => Number(b.npt) - Number(a.npt));
-    return results;
+        return { planId: plan.id, planName: plan.name, npt: pF.npt, bajantes };
+      }));
+      if (cancelled) return;
+      results.sort((a, b) => Number(b.npt) - Number(a.npt));
+      setLowerFloorsRamales(results);
+    })();
+
+    return () => { cancelled = true; };
   }, [selElement?.id, selectedNivel, pisos, planosCtx.plans, activeNet]);
 
   useEffect(() => { try { sessionStorage.setItem(VISOR_TOOL_KEY, tool); } catch {} }, [tool]);
@@ -333,7 +361,7 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
   const [contextMenuState, setContextMenuState] = useState<ContextMenuState | null>(null);
   const [confirmState, setConfirmState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({isOpen: false, title: '', message: '', onConfirm: () => {}});
   const [alertDialogState, setAlertDialogState] = useState<{isOpen: boolean; title: string; message: string}>({isOpen: false, title: '', message: ''});
-  const [accesorioModal, setAccesorioModal] = useState<{isOpen: boolean; ramalId: string; angleDeg: number; junctionIndex: number; net: string; isTee?: boolean}>({isOpen: false, ramalId: '', angleDeg: 0, junctionIndex: 0, net: '', isTee: false});
+  const [accesorioModal, setAccesorioModal] = useState<{isOpen: boolean; ramalId: string; angleDeg: number; junctionIndex: number; point: number[]; net: string; isTee?: boolean}>({isOpen: false, ramalId: '', angleDeg: 0, junctionIndex: 0, point: [], net: '', isTee: false});
 
   const contextMenuCbRef = useRef<((bajante: PlanoElement, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null, midRamalHit?: { segmentIdx: number; x: number; y: number } | null) => void) | null>(null);
   const onContextMenuCb = useCallback((bajante: PlanoElement, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null, midRamalHit?: { segmentIdx: number; x: number; y: number } | null) => {
@@ -348,19 +376,58 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
     onToolChange: setTool, onRequestText: onRequestTextCb, onAlert: (title: string, msg: string) => {
       setAlertDialogState({ isOpen: true, title, message: msg });
     }, onAccesorioModal: (data) => {
-      setAccesorioModal({ isOpen: true, ramalId: data.ramalId, angleDeg: data.angleDeg, junctionIndex: data.junctionIndex, net: data.net, isTee: data.isTee });
+      setAccesorioModal({ isOpen: true, ramalId: data.ramalId, angleDeg: data.angleDeg, junctionIndex: data.junctionIndex, point: data.point, net: data.net, isTee: data.isTee });
     }, loadTrazosForPlan, setActiveNet, setScaleM, setLoading, setError, scale,
     engineRef: engineRef as React.MutableRefObject<PlanoEngine | null>,
     loadingPlanRef,
   });
 
   // Handler for accesorio modal selection - updates the ramal accesory in engine + hidroData
-  const onAccesorioSelected = useCallback((ramalId: string, junctionIndex: number, _net: string, accId: string) => {
+  const onAccesorioSelected = useCallback((ramalId: string, point: number[], _net: string, accId: string) => {
     const eng = engineRef.current;
     if (!eng) return;
     const r = eng.ramales.find(r => r.id === ramalId);
-    if (!r) return;
-    // Save the accessory at the junction point (junction 0 = ini, last = fin)
+    if (!r || !r.pts?.length) return;
+    // Locate the junction by POSITION on the target ramal (ramalId is now always the ramal that
+    // was already there before the connecting one was drawn — its own pts array may have no
+    // relation whatsoever to whatever index the triggering ramal's endpoint had).
+    const TOL = 0.5;
+    let junctionIndex = r.pts.findIndex(([px, py]) => Math.hypot(px - point[0], py - point[1]) < TOL);
+    if (junctionIndex === -1) {
+      // A true tee onto a straight run has no vertex at the junction at all (the connecting
+      // ramal's endpoint touches the middle of a segment) — insert one, splitting that segment,
+      // same as the existing mid-body accessory/montante insertion pattern elsewhere.
+      let segIdx = -1;
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const [ax, ay] = r.pts[i], [bx, by] = r.pts[i + 1];
+        const dx = bx - ax, dy = by - ay;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq < 0.0001) continue;
+        const t = ((point[0] - ax) * dx + (point[1] - ay) * dy) / lenSq;
+        if (t < 0.02 || t > 0.98) continue;
+        const projX = ax + t * dx, projY = ay + t * dy;
+        if (Math.hypot(point[0] - projX, point[1] - projY) < TOL) { segIdx = i; break; }
+      }
+      if (segIdx === -1) {
+        junctionIndex = 0;
+      } else {
+        const newIdx = segIdx + 1;
+        const newPts = [...r.pts];
+        newPts.splice(newIdx, 0, [point[0], point[1]]);
+        const shiftedAccMed: Record<string, string> = {};
+        if (r.accMed) {
+          for (const [key, val] of Object.entries(r.accMed)) {
+            const m = key.match(/^accMed(\d+)$/);
+            if (!m) continue;
+            const idx = parseInt(m[1], 10);
+            shiftedAccMed[`accMed${idx >= newIdx ? idx + 1 : idx}`] = val;
+          }
+        }
+        r.pts = newPts;
+        r.accMed = shiftedAccMed;
+        junctionIndex = newIdx;
+      }
+    }
     const isIni = junctionIndex === 0;
     const isFin = junctionIndex === r.pts.length - 1;
     if (isIni) {
@@ -368,7 +435,8 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
     } else if (isFin) {
       r.accesorioFin = accId;
     } else {
-      (r as unknown as Record<string, unknown>)[`accMed${junctionIndex}`] = accId;
+      if (!r.accMed) r.accMed = {};
+      r.accMed[`accMed${junctionIndex}`] = accId;
     }
     eng._markDirty();
 
@@ -744,13 +812,13 @@ function PdfViewer_({ files, activeIndex, onSelectPlan, pisos=PdfViewer_EMPTY_PI
           planosCtx={planosCtx} pisos={pisos} visibleNets={finalVisibleNets}
         />
 
-        <div style={rightSidebarOpacity}>
-          <TipoTramoSelector
-            tipoTramo={tipoTramo} setTipoTramo={setTipoTramo}
-            padreTributarioId={padreTributarioId} setPadreTributarioId={setPadreTributarioId}
-            drawnElements={drawnElements} engineRef={engineRef}
-          />
+        <TipoTramoSelector
+          tipoTramo={tipoTramo} setTipoTramo={setTipoTramo}
+          padreTributarioId={padreTributarioId} setPadreTributarioId={setPadreTributarioId}
+          drawnElements={drawnElements} engineRef={engineRef}
+        />
 
+        <div style={rightSidebarOpacity}>
           <TramoEditor
             selElement={selElement as PlanoElement | null} activeNet={activeNet} engineRef={engineRef}
             diamSel={diamSel} gasMatSel={gasMatSel} pendSel={pendSel} pendInput={pendInput}
