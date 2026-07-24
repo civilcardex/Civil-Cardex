@@ -156,13 +156,11 @@ export function buildTramos(
         return false;
       })();
 
-      let apKey = r._aparatosKey || `${family}_${r.id}_${planId}`;
-      if (family === 'af' && isAC1) {
-        const cntId = isContador(fin) ? fin : (isContador(ini) ? ini : null);
-        if (cntId) {
-          apKey = `${family}_${cntId}_${planId}`;
-        }
-      }
+      // Always read this ramal's OWN key — FixturesPanel writes fixtures/hidroData keyed by the
+      // selected element's own id (storageKey = `${net}_${targetId}_${planId}`). Remapping an
+      // isAC1 ramal's key to the contador's key here made it silently read whatever stray data
+      // sat under `af_${cntId}_${planId}` instead of its own assigned fixtures (phantom UD).
+      const apKey = r._aparatosKey || `${family}_${r.id}_${planId}`;
       const extra = hidroData[apKey] || {};
       let dznSalidas = r.nSalidas || 1;
       let dzLvert = Number(r.lvert ?? r.dz ?? 0);
