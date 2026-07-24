@@ -50,8 +50,8 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
       const aBoxW = tw + 10, aBoxH = areaLabel ? aFs + aFsSub + 10 : aFs + 8;
       const { corners: aCorners, minX, minY, maxX, maxY } = rotatedRectCorners(lx.x, lx.y - 16 + aBoxH / 2, aBoxW, aBoxH, aAngle, 2);
       a._labelBox = { cx: lx.x, cy: lx.y - 16 + aBoxH / 2, w: aBoxW, h: aBoxH, angle: aAngle, minX, minY, maxX, maxY, corners: aCorners };
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-tw / 2 - 5, -16, aBoxW, aBoxH);
+      // Deliberately no background fill anymore — labels used to sit on a solid white plate; now
+      // they read directly over whatever's underneath, per explicit request.
       ctx.fillStyle = '#000';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';

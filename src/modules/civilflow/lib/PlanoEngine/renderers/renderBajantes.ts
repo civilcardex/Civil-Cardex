@@ -4,6 +4,7 @@ import type { IPlanoEngineCore } from '../PlanoState';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { parseDescargaEnId } from '../../../utils/parseDescargaEnId';
 import { pisoCortoLoose as getPisoCorto } from '../../../constants';
+import { TRAZOS_PREFIX } from '../../../constants/storage-keys';
 import type { PlanoBajante } from '../PlanoState';
 
 
@@ -65,10 +66,10 @@ function renderBajanteLabel(
   const { corners: corners2, minX, minY, maxX, maxY } = rotatedRectCorners(lbCx, lbCy - 10 + hh2, boxW, boxH, angle, 2);
   b[labelBoxProp] = { cx: lbCx, cy: lbCy - 10 + hh2, w: boxW, h: boxH, angle, minX, minY, maxX, maxY, corners: corners2 };
 
-  ctx.fillStyle = '#ffffff';
+  // Deliberately no fill here anymore — labels used to sit on a solid white plate; now they read
+  // directly over whatever's underneath (transparent background), per explicit request.
   ctx.beginPath();
   ctx.roundRect(-boxW / 2, -10, boxW, boxH, 0);
-  ctx.fill();
 
   if (b.tipo === 'contador' || b.tipo === 'calentador') {
     ctx.strokeStyle = '#cbd5e1';
@@ -143,11 +144,16 @@ interface OtherFloorBajante { planId: string; id: string; code?: string; x: numb
 function collectOtherFloorBajantes(engine: IPlanoEngineCore): OtherFloorBajante[] {
   const out: OtherFloorBajante[] = [];
   try {
-    const curKey = 'civilflow_trazos_' + String(engine._loadedPlanId);
+    // Must match the prefix trazos are actually SAVED under (usePdfAutoSave.ts) — this used to
+    // read the old 'civilflow_trazos_' key, which nothing writes to anymore, so cross-floor
+    // bajante data here was always stale or empty: other floors' entries in the "Destino"
+    // dropdown came and went based on leftover legacy data, and the alignment guide line never
+    // saw a freshly-aligned position, so it never shrank away.
+    const curKey = TRAZOS_PREFIX + String(engine._loadedPlanId);
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (!k || !k.startsWith('civilflow_trazos_') || k === curKey) continue;
-      const planId = k.slice('civilflow_trazos_'.length);
+      if (!k || !k.startsWith(TRAZOS_PREFIX) || k === curKey) continue;
+      const planId = k.slice(TRAZOS_PREFIX.length);
       const raw = localStorage.getItem(k);
       if (!raw) continue;
       let data: { bajantes?: OtherFloorBajante[] };
@@ -159,6 +165,74 @@ function collectOtherFloorBajantes(engine: IPlanoEngineCore): OtherFloorBajante[
     }
   } catch { /* localStorage unavailable */ }
   return out;
+}
+
+// Shared by the parent bajante's own circle AND its ghost — draws the interior direction glyph
+// (arrow up/down, dot, or "continua" arrow) the exact same vector-drawn way in both places.
+// Previously the ghost used unicode text glyphs (⬇/•/➜) filled with the net color instead of
+// this vector shape in arrowCol (red for bajante, blue for montante), so it never actually looked
+// like its parent despite the size/opacity already matching. Caller must already have translated
+// ctx to the symbol's local origin (0,0) and rotated as needed.
+function drawDireccionSymbol(ctx: CanvasRenderingContext2D, tipo: string, r: number, direccion: string | undefined): void {
+  const arrowCol = tipo === 'bajante' ? '#F04545' : '#3B82F6';
+  if (direccion === 'sube') {
+    ctx.fillStyle = arrowCol;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.25, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (direccion === 'baja') {
+    const aS = r * 0.7;
+    ctx.strokeStyle = arrowCol;
+    ctx.lineWidth = r * 0.15;
+    ctx.lineCap = 'butt';
+    ctx.beginPath();
+    ctx.moveTo(0, -aS * 0.9);
+    ctx.lineTo(0, aS * 0.5);
+    ctx.stroke();
+    ctx.fillStyle = arrowCol;
+    ctx.beginPath();
+    ctx.moveTo(0, aS * 0.9);
+    ctx.lineTo(-aS * 0.4, aS * 0.3);
+    ctx.lineTo(aS * 0.4, aS * 0.3);
+    ctx.closePath();
+    ctx.fill();
+  } else if (direccion === 'continua') {
+    ctx.fillStyle = arrowCol;
+    ctx.font = `${r * 1.1}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('➜', 0, 0);
+  } else {
+    // No direction resolved: default fallback arrow, down for bajante / up for montante.
+    const aS = r * 0.7;
+    ctx.strokeStyle = arrowCol;
+    ctx.lineWidth = r * 0.15;
+    ctx.lineCap = 'butt';
+    ctx.beginPath();
+    if (tipo === 'bajante') {
+      ctx.moveTo(0, -aS * 0.9);
+      ctx.lineTo(0, aS * 0.5);
+      ctx.stroke();
+      ctx.fillStyle = arrowCol;
+      ctx.beginPath();
+      ctx.moveTo(0, aS * 0.9);
+      ctx.lineTo(-aS * 0.4, aS * 0.3);
+      ctx.lineTo(aS * 0.4, aS * 0.3);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.moveTo(0, aS * 0.9);
+      ctx.lineTo(0, -aS * 0.5);
+      ctx.stroke();
+      ctx.fillStyle = arrowCol;
+      ctx.beginPath();
+      ctx.moveTo(0, -aS * 0.9);
+      ctx.lineTo(-aS * 0.4, -aS * 0.3);
+      ctx.lineTo(aS * 0.4, -aS * 0.3);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
 }
 
 export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
@@ -239,11 +313,21 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       }
     }
 
-    // Draw green dashed lines from ramales that feed this bajante (recibeDeIds)
+    // Draw green dashed lines from ramales that feed this bajante (recibeDeIds) — this is a
+    // guide for when the bajante sits AWAY from the ramal (e.g. an offset/ghost position), so
+    // skip it whenever the bajante/montante's own point already coincides with ANY point of the
+    // ramal (not just its two endpoints): a montante created mid-body (createMontanteMidBody)
+    // sits on an INTERIOR vertex, not an endpoint, so comparing only against the closest endpoint
+    // never matched and always drew a pointless line back from wherever that endpoint was; same
+    // fix also covers a ramal arriving at this bajante's ghost/displaced position on this floor.
     if (b.recibeDeIds?.length) {
+      const ghostDisp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
+      const bPos = ghostDisp ? { x: b.x + ghostDisp.dx, y: b.y + ghostDisp.dy } : { x: b.x, y: b.y };
       b.recibeDeIds.forEach((rid: string) => {
         const ram = engine.ramales.find((rr) => rr.id === rid);
         if (ram && ram.pts.length) {
+          const touchesDirectly = ram.pts.some(([px, py]) => Math.hypot(px - bPos.x, py - bPos.y) < 0.5);
+          if (touchesDirectly) return;
           const pStart = ram.pts[0];
           const pEnd = ram.pts[ram.pts.length - 1];
           const distStart = Math.hypot(pStart[0] - b.x, pStart[1] - b.y);
@@ -373,7 +457,6 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.stroke();
     }
 
-    const arrowCol = b.tipo === 'bajante' ? '#F04545' : '#3B82F6';
     if (b.tipo === 'red_publica') {
       ctx.fillStyle = '#ffffff';
       ctx.font = `bold ${r * 0.9}px sans-serif`;
@@ -394,66 +477,8 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('C', 0, 0);
-    } else if (b.direccion === 'sube') {
-      ctx.fillStyle = arrowCol;
-      ctx.beginPath();
-      ctx.arc(0, 0, r * 0.25, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (b.direccion === 'baja') {
-      const aS = r * 0.7;
-      ctx.strokeStyle = arrowCol;
-      ctx.lineWidth = r * 0.15;
-      ctx.lineCap = 'butt';
-      ctx.beginPath();
-      ctx.moveTo(0, -aS * 0.9);
-      ctx.lineTo(0, aS * 0.5);
-      ctx.stroke();
-      ctx.fillStyle = arrowCol;
-      ctx.beginPath();
-      ctx.moveTo(0, aS * 0.9);
-      ctx.lineTo(-aS * 0.4, aS * 0.3);
-      ctx.lineTo(aS * 0.4, aS * 0.3);
-      ctx.closePath();
-      ctx.fill();
-    } else if (b.direccion === 'continua') {
-      ctx.fillStyle = arrowCol;
-      // Sized off the circle radius (like the other direction symbols), not the independent
-      // label font scale — otherwise this arrow doesn't shrink along with the real-world circle.
-      ctx.font = `${r * 1.1}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('➜', 0, 0);
-    } else if (!b.direccion && !b.desplazamientos?.[engine.nivelActual?.label ?? '']) {
-      // Default fallback if no direction and no displacement:
-      // draw down arrow for bajante, up arrow for montante
-      const aS = r * 0.7;
-      ctx.strokeStyle = arrowCol;
-      ctx.lineWidth = r * 0.15;
-      ctx.lineCap = 'butt';
-      ctx.beginPath();
-      if (b.tipo === 'bajante') {
-        ctx.moveTo(0, -aS * 0.9);
-        ctx.lineTo(0, aS * 0.5);
-        ctx.stroke();
-        ctx.fillStyle = arrowCol;
-        ctx.beginPath();
-        ctx.moveTo(0, aS * 0.9);
-        ctx.lineTo(-aS * 0.4, aS * 0.3);
-        ctx.lineTo(aS * 0.4, aS * 0.3);
-        ctx.closePath();
-        ctx.fill();
-      } else {
-        ctx.moveTo(0, aS * 0.9);
-        ctx.lineTo(0, -aS * 0.5);
-        ctx.stroke();
-        ctx.fillStyle = arrowCol;
-        ctx.beginPath();
-        ctx.moveTo(0, -aS * 0.9);
-        ctx.lineTo(-aS * 0.4, -aS * 0.3);
-        ctx.lineTo(aS * 0.4, -aS * 0.3);
-        ctx.closePath();
-        ctx.fill();
-      }
+    } else {
+      drawDireccionSymbol(ctx, b.tipo, r, b.direccion);
     }
 
     // Yellow selection arrow (same style as ramales)
@@ -539,10 +564,8 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     // Ghost label always horizontal
     const ghostAngle = 0;
 
-    // Ghost circle: same size and fill as the parent's own circle (solid, continuous outline
-    // so it reads as directly connected to the desvío ramal drawn between parent and ghost),
-    // but the border/symbol use a muted tint of the network color instead of full strength —
-    // that's what distinguishes it as a ghost rather than the parent's real symbol.
+    // Ghost circle: same size, color and full opacity as the parent's own circle (per explicit
+    // request — the ghost should look exactly like its parent, size and intensity alike).
     // Exception: a ghost with no real displacement on the parent's OWN floor sits at the exact
     // same (x,y) as the parent, which already draws its own solid circle there — skip the extra
     // ring so it doesn't look like an oversized halo. A ghost created by dragging (dx/dy set)
@@ -555,44 +578,32 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       ctx.beginPath();
       ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.globalAlpha = 0.45;
+      ctx.globalAlpha = 1;
       ctx.strokeStyle = col;
-      ctx.lineWidth = 1.5 * engine.zoom;
+      // Must match the parent's own non-selected circle stroke exactly (0.6*zoom, set in the
+      // default bajante/montante branch above) — this was 1.5, 2.5x thicker than the parent,
+      // which is exactly the "ghost looks thicker" complaint.
+      ctx.lineWidth = 0.6 * engine.zoom;
       ctx.beginPath();
       ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
-    ctx.save();
-    ctx.globalAlpha = 0.45;
-    ctx.strokeStyle = col;
-    ctx.fillStyle = col;
     const gd = b.ghostData?.[engine.nivelActual?.label ?? ''];
     let ghostDir = b.direccion;
     if (gd && gd.direccion !== undefined) {
       ghostDir = gd.direccion;
     }
-    let ghostSymbol = '';
-    if (ghostDir === 'sube') ghostSymbol = '•';
-    else if (ghostDir === 'baja') ghostSymbol = '⬇';
-    else if (ghostDir === 'continua') ghostSymbol = '➜';
-    else if (!ghostDir && b.desplazamientos?.[engine.nivelActual?.label ?? '']) ghostSymbol = '';
-    else ghostSymbol = b.tipo === 'bajante' ? '⬇' : '⬆';
-
-    if (ghostSymbol) {
-      // Sized off the ghost's own circle radius, not the independent label font scale.
-      ctx.font = `${r * 1.1}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      if (ghostSymbol === '•') {
-         ctx.beginPath();
-         ctx.arc(c.x, c.y, r * 0.25, 0, Math.PI * 2);
-         ctx.fill();
-      } else {
-         ctx.fillText(ghostSymbol, c.x, c.y);
-      }
+    // Same vector-drawn symbol as the parent's own circle (drawDireccionSymbol), not the old
+    // unicode-glyph rendering — that was the actual visual mismatch with the parent.
+    const skipSymbol = !ghostDir && !!b.desplazamientos?.[engine.nivelActual?.label ?? ''];
+    if (!skipSymbol) {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.translate(c.x, c.y);
+      drawDireccionSymbol(ctx, b.tipo, r, ghostDir);
+      ctx.restore();
     }
-    ctx.restore();
 
     // Item 4: Yellow selection arrow for ghost bajante selection
     const inMultiSel = (engine.multiSel || []).includes(b.id);
@@ -657,7 +668,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       }
       const line1 = diamStr ? `${codeStr}  D=${diamStr}` : (codeStr || '—');
       const dirText = DIR_MAP[ghostDir ?? ''] || '';
-      renderBajanteLabel(ctx, engine, b, c, r, ghostAngle, offDx, offDy, line1, dirText, '_ghostLabelBox', 0.35);
+      renderBajanteLabel(ctx, engine, b, c, r, ghostAngle, offDx, offDy, line1, dirText, '_ghostLabelBox', 1);
     }
 
   });

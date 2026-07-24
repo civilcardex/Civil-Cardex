@@ -4,16 +4,42 @@ import type { IPlanoEngineCore } from '../PlanoState';
 function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const DOUBLE_YEE_THRESHOLD_MM = 10;
 
+  // Ventilación is a subnet of sanitaria — a vent ramal tying into a san run must produce the
+  // same geometric tee/yee glyph a san-san junction would, not a forced codo reventilado. Pool
+  // both into a single detection pass so their shared vertices are seen together; every other net
+  // stays on its own.
+  const processed = new Set<string>();
   NETS.forEach(net => {
-    if (engine._hiddenNets.has(net.id)) return;
-    const netRamales = engine.ramales.filter((r) => r.net === net.id);
+    if (processed.has(net.id)) return;
+    const group = (net.id === 'san' || net.id === 'vent') ? ['san', 'vent'] : [net.id];
+    group.forEach((g) => processed.add(g));
+    const netRamales = engine.ramales.filter((r) => group.includes(r.net) && !engine._hiddenNets.has(r.net));
     if (netRamales.length === 0) return;
 
     const getPointKey = (x: number, y: number) => `${x.toFixed(3)}_${y.toFixed(3)}`;
     const vertexMap = new Map<string, number[]>();
 
+    // A bajante (real, on its own floor) or fantasma (ghost, at its displaced position) sitting
+    // where 2+ ramales converge is a bajante convergence, not a ramal-to-ramal tee/yee — without
+    // this exclusion, e.g. two branches feeding the same bajante fantasma got mistaken for a
+    // geometric junction and drew a nonsensical tee/yee glyph on top of the bajante's own symbol.
+    const lvl = engine.nivelActual?.label ?? '';
+    const fantasmaIds = new Set(engine.getBajantesFantasma().map((b) => b.id));
+    const bajantePts: number[][] = [];
+    engine.bajantes.forEach((b) => {
+      if (!group.includes(b.net) || engine._hiddenNets.has(b.net)) return;
+      if (fantasmaIds.has(b.id)) {
+        const disp = b.desplazamientos?.[lvl];
+        bajantePts.push([b.x + (disp?.dx || 0), b.y + (disp?.dy || 0)]);
+      } else if (b.pisoBase === lvl) {
+        bajantePts.push([b.x, b.y]);
+      }
+    });
+    const nearBajante = (x: number, y: number) => bajantePts.some(([bx, by]) => Math.hypot(bx - x, by - y) < 0.5);
+
     netRamales.forEach(r => {
       r.pts.forEach((pt: number[]) => {
+        if (nearBajante(pt[0], pt[1])) return;
         vertexMap.set(getPointKey(pt[0], pt[1]), pt);
       });
     });
@@ -110,7 +136,13 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
 
           const cosVal = branches[0].x * uB.x + branches[0].y * uB.y;
           const isTee = Math.abs(cosVal) < 0.15;
-          const isYee = Math.abs(cosVal) >= 0.4 && Math.abs(cosVal) <= 0.85;
+          // AF/AC never form a yee (45°-ish branch) glyph — only a 90° tee. A 45° branch there
+          // is disallowed at the angle-check level too (checkRamalAngles/checkCrossRamalAngle in
+          // drawingAngles.ts), so this is belt-and-suspenders: even if one somehow exists (e.g.
+          // pre-existing data from before that restriction), it renders as nothing rather than a
+          // yee that shouldn't be possible on this net.
+          const isAfAc = group.includes('af') || group.includes('ac');
+          const isYee = !isAfAc && Math.abs(cosVal) >= 0.4 && Math.abs(cosVal) <= 0.85;
 
           if (isTee || isYee) {
             junctions.push({ P, uA, uB, branches, isTee, isYee });

@@ -84,6 +84,10 @@ export function drawRamalPath(
             ctx.lineWidth = 2 * engine.zoom;
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
+            // Must reset dash explicitly — ctx.save() preserves whatever dash the caller set for
+            // the body (e.g. a tributario's dashed line), so without this the elbow symbol itself
+            // inherits it and renders dashed too.
+            ctx.setLineDash([]);
             ctx.beginPath();
             ctx.moveTo(T_A.x, T_A.y);
             ctx.lineTo(cvsB.x, cvsB.y);
@@ -121,6 +125,8 @@ export function drawRamalPath(
             ctx.save();
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 2 * engine.zoom;
+            // Same dash-inheritance issue as the 45° bevel case above — reset explicitly.
+            ctx.setLineDash([]);
             ctx.beginPath();
             ctx.arc(ccx, ccy, actualRad, angle_TA, angle_TC, counterclockwise);
             ctx.stroke();
