@@ -5,8 +5,9 @@ import { pisoLbl, DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS_DN_LABELS } from "../../
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, SAN_UC_IDS } from "../../constants/engineeringDataFixtures";
 import { getAccessoryOptions } from "../../utils/accessoryOptions";
 import { NETS } from "../../lib/PlanoEngine/PlanoState";
+import { BAJANTE_NETS, MONTANTE_NETS } from "../../lib/PlanoEngine/drawingCreations";
 import { writeBajantePropToDrawing, writeAcoDiamToDrawing, writeContadorDiamToDrawing } from "../../utils/writeDiameterToDrawing";
-import { syncExtremeAccessoryToHidroData } from "../../utils/syncExtremeAccessory";
+import { syncExtremeAccessoryToHidroData, bumpHidroAccesorio } from "../../utils/syncExtremeAccessory";
 import { GAS, CAT_GAS } from "../../constants/engineeringDataGas";
 import { VENTILACION, CONTADORES as CONTADORES_CAT } from "../../pages/catalog/catalogData";
 import { DIAMETROS_AF } from "../../constants/hydraulicData";
@@ -167,6 +168,27 @@ function BajanteDirectionSelector({
                 }
                 if (Object.keys(updates).length > 0) {
                   engineRef.current?.updateElementById(element.id, updates);
+                  // A montante's accessory (codo90rmSube/Baja at a ramal endpoint, or teeSube/Baja
+                  // at a mid-body split) was written once at creation time and never re-synced when
+                  // the direction changed afterward — always stayed whatever it was first set to.
+                  // Re-derive it from the CURRENT direction here instead, locating the exact point
+                  // by position (endpoint → codo, interior vertex → tee) rather than assuming it's
+                  // always an endpoint.
+                  if (element.tipo === 'montante' && (updates.direccion === 'sube' || updates.direccion === 'baja')) {
+                    const isSube = updates.direccion === 'sube';
+                    const codoId = isSube ? 'codo90rmSube' : 'codo90rmBaja';
+                    const teeId = isSube ? 'teeSube' : 'teeBaja';
+                    const TOL = 0.5;
+                    for (const rid of element.recibeDeIds || []) {
+                      const ram = engineRef.current?.ramales.find((r) => r.id === rid);
+                      if (!ram || !ram.pts?.length) continue;
+                      const idx = ram.pts.findIndex(([px, py]) => Math.hypot(px - element.x, py - element.y) < TOL);
+                      if (idx === -1) continue;
+                      if (idx === 0) engineRef.current?.updateElementById(ram.id, { accesorioInicio: codoId });
+                      else if (idx === ram.pts.length - 1) engineRef.current?.updateElementById(ram.id, { accesorioFin: codoId });
+                      else engineRef.current?.updateElementById(ram.id, { accMed: { ...(ram.accMed || {}), [`accMed${idx}`]: teeId } });
+                    }
+                  }
                   const fresh = engineRef.current?.bajantes.find((b) => b.id === element.id);
                   if (fresh) {
                     setContextMenuState((prev) => prev ? { ...prev, element: { ...fresh } } : null);
@@ -199,6 +221,13 @@ function BajanteDirectionSelector({
             if (!engineRef.current) return;
             const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
             const isFantasma = element.isFantasma;
+            // A bajante that already has a ramal/tributario connected to it can't become a
+            // fantasma — the desplazamiento would visually detach it from what it's really
+            // feeding, so block activation with an explicit warning instead.
+            if (!isFantasma && (element.recibeDeIds?.length ?? 0) > 0) {
+              engineRef.current.triggerAlert('No se puede activar fantasma', 'Este bajante ya tiene un ramal o tributario conectado. Desconéctalo antes de activar el desplazamiento.');
+              return;
+            }
             const updates: Record<string, unknown> = { isFantasma: !isFantasma };
             if (!isFantasma && lvl) {
               const currentDesp = { ...(element.desplazamientos || {}) };
@@ -291,6 +320,37 @@ function BajanteDiameterSelector({
                   }
                   const bKey = `${element.id}-${engineRef.current?.planId}`;
                   writeBajantePropToDrawing(bKey, element.net || 'san', 'descargaEnId', v, planosCtx.plans);
+                  // Associating stacks THIS bajante (current floor, in the viewer) on top of a
+                  // lower-floor one — a real riser is a straight vertical pipe, so this one must
+                  // sit at the exact same plan x/y as the lower-floor target. The target stays
+                  // put; this one (the floor being viewed/edited) snaps to it immediately.
+                  if (v) {
+                    const [targetPlanId, targetBajanteId] = v.split('|');
+                    const targetGroup = lowerFloorsRamales.find((g) => String(g.planId) === targetPlanId);
+                    const targetBaj = targetGroup?.bajantes.find((b) => b.id === targetBajanteId);
+                    if (targetBaj && targetBaj.x != null && targetBaj.y != null) {
+                      // Shift the label by the same delta as the bajante itself — labelX/labelY
+                      // are an absolute plan position, not an offset relative to x/y, so moving
+                      // x/y alone left the label sitting back at the old spot (same delta pattern
+                      // handleDragMove.ts already uses when dragging a bajante by hand).
+                      const dxMove = targetBaj.x - element.x;
+                      const dyMove = targetBaj.y - element.y;
+                      const newLabelX = element.labelX != null ? element.labelX + dxMove : undefined;
+                      const newLabelY = element.labelY != null ? element.labelY + dyMove : undefined;
+                      const moveFields: Record<string, number> = { x: targetBaj.x, y: targetBaj.y };
+                      if (newLabelX != null) moveFields.labelX = newLabelX;
+                      if (newLabelY != null) moveFields.labelY = newLabelY;
+                      engineRef.current?.updateElementById(element.id, moveFields);
+                      const moved = engineRef.current?.bajantes.find((b) => b.id === element.id);
+                      if (moved) setContextMenuState((prev) => prev ? { ...prev, element: { ...moved } } : null);
+                      if (selElement?.id === element.id) {
+                        setSelElement({ ...selElement, ...moveFields });
+                      }
+                      for (const [field, val] of Object.entries(moveFields)) {
+                        writeBajantePropToDrawing(bKey, element.net || 'san', field, val, planosCtx.plans);
+                      }
+                    }
+                  }
                 }}
                 style={{ ...DrawingElementContextMenu_S2, width: '85%' }}>
                 <option value="">Sin destino</option>
@@ -302,7 +362,7 @@ function BajanteDiameterSelector({
                     <optgroup key={group.planId} label={pLabel}>
                       {hasBajantes && group.bajantes.filter((b) => b.id !== element.id).map((b) => (
                         <option key={`${group.planId}|${b.id}`} value={`${group.planId}|${b.id}`}>
-                          Bajante: {b.code || b.id}
+                          {b.code || b.id}
                         </option>
                       ))}
                       {!hasBajantes && (
@@ -429,7 +489,6 @@ function BajanteConnectionPanel({
   selElement,
   setSelElement,
   setContextMenuState,
-  mats,
   activeNet,
   planosCtx,
 }: {
@@ -440,7 +499,6 @@ function BajanteConnectionPanel({
   selElement: PlanoElement | null;
   setSelElement: (el: PlanoElement | null) => void;
   setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
-  mats: Record<string, MaterialItem[]>;
   activeNet: string;
   planosCtx?: { plans: PlanItem[] };
 }) {
@@ -524,7 +582,9 @@ function BajanteConnectionPanel({
         return (
           <>
             <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
-              {(['bajante', 'montante'] as const).map((bmLabel) => {
+              {(['bajante', 'montante'] as const)
+                .filter((bmLabel) => bmLabel === 'montante' ? MONTANTE_NETS.includes(ramalEl.net) : BAJANTE_NETS.includes(ramalEl.net))
+                .map((bmLabel) => {
                 const isMon = bmLabel === 'montante';
                 const pfx = isMon
                   ? (netDef?.bmType === 'montante' ? (netDef?.bmPfx || 'MON') : ('M' + (netDef?.lbl || 'MON')))
@@ -597,12 +657,7 @@ function BajanteConnectionPanel({
               const fieldApp: 'aparatoInicio' | 'aparatoFin' = isStart ? 'aparatoInicio' : 'aparatoFin';
 
               const currentAcc = ramalEl[fieldAcc] || '';
-              const currentDiam = ramalEl[fieldDiam] || ramalEl.diametro || '';
               const currentApp = ramalEl[fieldApp] || '';
-
-              const matList = mats?.[ramalEl.net] || [];
-              const matShort = ramalEl.material || matList[0]?.val || '';
-              const diamList = DIAM_BY_MAT[matShort] || [];
 
               const accOptions = getAccessoryOptions(ramalEl.net);
               const aparatoIds = ramalEl.net === 'af' ? AF_UC_IDS : ramalEl.net === 'ac' ? AC_UC_IDS : ramalEl.net === 'san' ? SAN_UC_IDS : APARATOS_DEF.filter(a => a.grupo === 'g').map(a => a.id);
@@ -615,7 +670,7 @@ function BajanteConnectionPanel({
                   </div>
 
                   <div>
-                    <div style={{ fontSize: 12, color: '#849495', marginBottom: 2 }}>Seleccionar Accesorio</div>
+                    <div style={{ fontSize: 12, color: '#849495', marginBottom: 2, textTransform: 'uppercase' }}>Seleccionar Accesorio</div>
                     <select
                       value={currentAcc}
                       aria-label="Seleccionar Accesorio"
@@ -668,39 +723,11 @@ function BajanteConnectionPanel({
                     </select>
                   </div>
 
-                  {currentAcc && (
-                    <div>
-                      <div style={{ fontSize: 12, color: '#849495', marginBottom: 2 }}>Diametro de Accesorio</div>
-                      <select
-                        value={currentDiam ? currentDiam.split(' — ')[0].trim() : ''}
-                        aria-label="Diametro de Accesorio"
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (engineRef.current) {
-                            const updates = { [fieldDiam]: val };
-                            engineRef.current.updateElementById(ramalEl.id, updates);
-                            setContextMenuState((prev) => prev ? { ...prev, element: { ...prev.element, ...updates } } : null);
-                            if (selElement?.id === ramalEl.id) {
-                              setSelElement({ ...selElement, ...updates });
-                            }
-                            engineRef.current.render();
-                            engineRef.current._markDirty();
-                          }
-                        }}
-                        style={DrawingElementContextMenu_S2}
-                      >
-                        <option value="">Usar diametro de red</option>
-                        {(currentAcc === 'sifon'
-                          ? diamList.filter((d) => { const v = parseFloat(d.n); return v === 2 || v === 3 || v === 4; })
-                          : diamList
-                        ).map((d) => {
-                          const valClean = d.n.split(' — ')[0].trim();
-                          return <option key={d.n} value={valClean}>{normalizeDnLabel(valClean)}</option>;
-                        })}
-                      </select>
-                    </div>
-                  )}
+                  {/* Diámetro de accesorio ya no es editable por separado — siempre es el
+                      diámetro del ramal (ver el "Diámetro de ramal" selector y el onChange que
+                      mantiene diametroInicio/diametroFin sincronizados). */}
 
+                  {ramalEl.net !== 'san' && (
                   <div>
                     <div style={{ fontSize: 12, color: '#849495', marginBottom: 2 }}>Seleccionar Aparato</div>
                     <select
@@ -741,6 +768,7 @@ function BajanteConnectionPanel({
                       ))}
                     </select>
                   </div>
+                  )}
                 </div>
               );
             })()}
@@ -839,10 +867,14 @@ function BajanteCodeEditor({
             onChange={(e) => {
               const val = e.target.value;
               if (engineRef.current) {
-                engineRef.current?.updateElementById(ramalEl.id, { diametro: val });
-                setContextMenuState((prev) => prev ? { ...prev, element: { ...prev.element, diametro: val } } : null);
+                // Accessory diameter (diametroInicio/Fin) no longer has its own picker — it always
+                // mirrors the ramal's own diameter, so it must be kept in sync here too, not just
+                // set once when the accessory is first created.
+                const updates = { diametro: val, diametroInicio: val, diametroFin: val };
+                engineRef.current?.updateElementById(ramalEl.id, updates);
+                setContextMenuState((prev) => prev ? { ...prev, element: { ...prev.element, ...updates } } : null);
                 if (selElement?.id === ramalEl.id) {
-                  setSelElement({ ...selElement, diametro: val });
+                  setSelElement({ ...selElement, ...updates });
                 }
                 if (activeNet === ramalEl.net) {
                   setDiamSel((prev) => ({ ...prev, [activeNet]: val }));
@@ -1021,7 +1053,6 @@ function BajanteMenu() {
           selElement={ctx.selElement}
           setSelElement={ctx.setSelElement}
           setContextMenuState={ctx.setContextMenuState}
-          mats={ctx.mats}
           activeNet={ctx.activeNet}
           planosCtx={ctx.planosCtx}
         />
@@ -1047,12 +1078,13 @@ function AreaMenu() {
   )
 }
 
-function MidRamalAccessorySelector({ element, midRamalHit, engineRef, selElement, setSelElement }: {
+function MidRamalAccessorySelector({ element, midRamalHit, engineRef, selElement, setSelElement, setContextMenuState }: {
   element: PlanoRamal;
   midRamalHit: { segmentIdx: number; x: number; y: number };
   engineRef: React.MutableRefObject<PlanoEngine | null>;
   selElement: PlanoElement | null;
   setSelElement: (el: PlanoElement | null) => void;
+  setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
 }) {
   const options = getAccessoryOptions(element.net);
   if (options.length === 0) return null;
@@ -1097,6 +1129,12 @@ function MidRamalAccessorySelector({ element, midRamalHit, engineRef, selElement
             if (accId) { newAccMed[existingKey] = accId; } else { delete newAccMed[existingKey]; }
             eng.updateElementById(element.id, { accMed: newAccMed });
             if (selElement?.id === element.id) setSelElement({ ...selElement, accMed: newAccMed });
+            // Without this, `element` (contextMenuState's frozen snapshot from when the menu
+            // opened) never reflects the write: the dropdown kept showing "Ninguno" after the
+            // FIRST pick, and every pick after that fell into the "insert new vertex" branch
+            // below instead of updating this one — leaving the old glyph on screen alongside
+            // the new one, and "Ninguno" unable to find anything to delete.
+            setContextMenuState((prev) => prev ? { ...prev, element: { ...prev.element, accMed: newAccMed } } : null);
           } else if (accId) {
             // Insert a new vertex at the clicked point (splitting the segment, not the ramal)
             // and attach the accessory there.
@@ -1114,6 +1152,27 @@ function MidRamalAccessorySelector({ element, midRamalHit, engineRef, selElement
             shiftedAccMed[`accMed${newIdx}`] = accId;
             eng.updateElementById(element.id, { pts: newPts, accMed: shiftedAccMed });
             if (selElement?.id === element.id) setSelElement({ ...selElement, pts: newPts, accMed: shiftedAccMed });
+            setContextMenuState((prev) => prev ? { ...prev, element: { ...prev.element, pts: newPts, accMed: shiftedAccMed } } : null);
+          }
+          // teeTapon/teeLlaveTerminal aren't offered in the sidebar accessory counter anymore
+          // (they're pure body glyphs, chosen only from this dropdown) — but they still count as
+          // a through-tee for friction-loss purposes, same as a manually-tallied "Tee paso
+          // lado". Bump/unbump that tally automatically so switching away from one of these two
+          // doesn't leave an orphaned count behind.
+          const TEE_LADO_LINKED = new Set(['teeTapon', 'teeLlaveTerminal']);
+          if (currentVal !== accId) {
+            // _loadedPlanId, NOT eng.planId — the latter is declared on the engine but never
+            // assigned, so it's always undefined; using it wrote the tally under key
+            // `${net}_${id}_` (empty planId) while the sidebar reads `${net}_${id}_${realPlanId}`,
+            // so the count landed in a key nothing ever displayed.
+            const planId = eng._loadedPlanId ?? '';
+            if (TEE_LADO_LINKED.has(currentVal)) bumpHidroAccesorio(element.net || 'af', 'teeLado', -1, element.id, planId);
+            if (TEE_LADO_LINKED.has(accId)) bumpHidroAccesorio(element.net || 'af', 'teeLado', 1, element.id, planId);
+            // bumpHidroAccesorio writes straight to localStorage — FixturesPanel's sidebar
+            // accessory counter only re-reads localStorage in response to this event (or its own
+            // inc/dec calls), so without dispatching it here the count updates on disk but the
+            // sidebar keeps showing the stale number until something else happens to trigger it.
+            if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('aparatos-clear'));
           }
           eng.render();
           eng._markDirty();
@@ -1134,16 +1193,63 @@ function RamalMenu() {
   const { contextMenuState, element, engineRef, selElement, setSelElement } = ctx
   const ramalEl = element as PlanoRamal
 
+  // A midRamalHit landing exactly on an EXISTING accMed vertex (PlanoEngineHitTesting.ts checks
+  // these before segment-body hits) reports segmentIdx = accMedIdx - 1 — i.e. accMedIdx =
+  // segmentIdx + 1, same convention handleCreateMontanteMidBody/handleCreateTeeCapStub use.
+  const hit = contextMenuState.midRamalHit;
+  const existingTeeIdx = hit ? hit.segmentIdx + 1 : -1;
+  const existingTeeType = hit ? ramalEl.accMed?.[`accMed${existingTeeIdx}`] : undefined;
+  const isExistingTee = existingTeeType === 'teeDirecto' || existingTeeType === 'teeSube' || existingTeeType === 'teeBaja';
+  // teeTapon/teeLlaveTerminal are self-contained glyphs (the free leg is already capped in the
+  // marker itself, no real stub ramal) — they don't get the "+Tapón/+Llave" stub buttons below,
+  // but the point is still occupied, so "Crear montante" must stay hidden there too.
+  const isOccupiedTee = isExistingTee || existingTeeType === 'teeTapon' || existingTeeType === 'teeLlaveTerminal';
+
   return (
     <>
-      {contextMenuState.midRamalHit && !contextMenuState.ramalEndpoint && getAccessoryOptions(ramalEl.net).length > 0 && (
+      {contextMenuState.midRamalHit && !contextMenuState.ramalEndpoint && !['san', 'll'].includes(ramalEl.net) && getAccessoryOptions(ramalEl.net).length > 0 && (
         <MidRamalAccessorySelector
           element={ramalEl}
           midRamalHit={contextMenuState.midRamalHit}
           engineRef={ctx.engineRef}
           selElement={ctx.selElement}
           setSelElement={ctx.setSelElement}
+          setContextMenuState={ctx.setContextMenuState}
         />
+      )}
+      {contextMenuState.midRamalHit && !contextMenuState.ramalEndpoint && ['af', 'ac'].includes(ramalEl.net) && !isOccupiedTee && (
+        <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
+          <button type="button"
+            onClick={() => {
+              const eng = engineRef.current;
+              const hit = contextMenuState.midRamalHit;
+              if (!eng || !hit) return;
+              eng.createMontanteMidBody(ramalEl.id, hit.x, hit.y, hit.segmentIdx);
+              ctx.setContextMenuState(null);
+            }}
+            style={DrawingElementContextMenu_S13}>
+            + Crear montante (auto-tee)
+          </button>
+        </div>
+      )}
+      {contextMenuState.midRamalHit && !contextMenuState.ramalEndpoint && ['af', 'ac'].includes(ramalEl.net) && isExistingTee && (
+        <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ fontSize: 12, color: '#849495', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Segmento libre de la tee
+          </div>
+          {(['tapon', 'llaveTerminal'] as const).map((accId) => (
+            <button type="button" key={accId}
+              onClick={() => {
+                const eng = engineRef.current;
+                if (!eng) return;
+                eng.createTeeCapStub(ramalEl.id, existingTeeIdx, accId);
+                ctx.setContextMenuState(null);
+              }}
+              style={DrawingElementContextMenu_S13}>
+              + {accId === 'tapon' ? 'Tapón' : 'Llave Terminal'}
+            </button>
+          ))}
+        </div>
       )}
       {contextMenuState.ramalEndpoint && (
         <BajanteConnectionPanel
@@ -1154,7 +1260,6 @@ function RamalMenu() {
           selElement={ctx.selElement}
           setSelElement={ctx.setSelElement}
           setContextMenuState={ctx.setContextMenuState}
-          mats={ctx.mats}
           activeNet={ctx.activeNet}
           planosCtx={ctx.planosCtx}
         />

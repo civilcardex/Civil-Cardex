@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ACCESORIOS_HIDRO } from '../../constants';
+import { ACCESORIOS_HIDRO, GAS_ACCESORIOS } from '../../constants';
 const AccesorioModal_S1: React.CSSProperties = { background: 'linear-gradient(135deg, #1e222b 0%, #15181f 100%)', padding: '24px', borderRadius: '12px', minWidth: 420, maxWidth: 520, border: '1px solid rgba(99, 165, 255, 0.3)', boxShadow: '0 20px 40px rgba(0,0,0,0.6), 0 0 15px rgba(99, 165, 255, 0.1)', display: 'flex', flexDirection: 'column', gap: 16, color: '#e2e2e8', margin: 'auto', };
 const AccesorioModal_S2: React.CSSProperties = { fontSize: 16, fontWeight: 700, color: '#63A5FF', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: 10 };
 const AccesorioModal_S3: React.CSSProperties = { padding: '8px 18px', background: 'transparent', border: '1px solid #3a494a', borderRadius: 6, color: '#a9b8bd', cursor: 'pointer', fontWeight: 600, fontSize: 12, fontFamily: "'Geist', monospace", textTransform: 'uppercase' };
@@ -29,6 +29,7 @@ interface AccesorioModalState {
   ramalId: string;
   angleDeg: number;
   junctionIndex: number;
+  point: number[];
   net: string;
   isTee?: boolean;
 }
@@ -36,7 +37,7 @@ interface AccesorioModalState {
 interface AccesorioModalProps {
   modalState: AccesorioModalState;
   onClose: () => void;
-  onSelect: (ramalId: string, junctionIndex: number, net: string, accId: string) => void;
+  onSelect: (ramalId: string, point: number[], net: string, accId: string) => void;
 }
 
 export default function AccesorioModal({ modalState, onClose, onSelect }: AccesorioModalProps) {
@@ -59,18 +60,31 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
   const angle = modalState.angleDeg;
   const is45 = Math.abs(angle - 45) < 15;
   const is90 = Math.abs(angle - 90) < 15;
-  
+  const isGas = modalState.net === 'gas';
+
+  // Gas has its own accessory catalog (GAS_ACCESORIOS) — different ids entirely from
+  // ACCESORIOS_HIDRO, so it needs its own choice list rather than sharing AF/AC's.
+  const gasCodos = GAS_ACCESORIOS.filter(a => a.cat === 'Codos');
+  const gasTees = GAS_ACCESORIOS.filter(a => a.cat === 'Tees');
+
   const codos45 = ACCESORIOS_HIDRO.filter(a => a.cat === 'Codos' && a.id === 'codo45rc');
   const codos90 = ACCESORIOS_HIDRO.filter(a => a.cat === 'Codos' && a.id.startsWith('codo90'));
-  const tees = ACCESORIOS_HIDRO.filter(a => a.cat === 'Tees' && a.id !== 'teeBilateral');
-  
-  const showCodos = modalState.isTee ? [] : (is45 ? codos45 : is90 ? codos90 : []);
-  const showTees = modalState.isTee ? tees : [];
+  // teeDirecto/teeSube/teeBaja excluded — those only get created automatically (montante en
+  // cuerpo de ramal, o unión T/Y entre dos ramales), never chosen by hand here. teeTapon/
+  // teeLlaveTerminal are only offered from the mid-body accessory dropdown (sidebar/menú
+  // contextual), not from this junction-detection modal. Reducción/lado stay, those genuinely
+  // are a manual choice.
+  const tees = ACCESORIOS_HIDRO.filter(a =>
+    a.cat === 'Tees' && !['teeBilateral', 'teeDirecto', 'teeSube', 'teeBaja', 'teeTapon', 'teeLlaveTerminal'].includes(a.id)
+  );
+
+  const showCodos = modalState.isTee ? [] : isGas ? gasCodos : (is45 ? codos45 : is90 ? codos90 : []);
+  const showTees = modalState.isTee ? (isGas ? gasTees : tees) : [];
   const showAll = [...showCodos, ...showTees];
 
   const handleConfirm = () => {
     if (selectedAccId) {
-      onSelect(modalState.ramalId, modalState.junctionIndex, modalState.net, selectedAccId);
+      onSelect(modalState.ramalId, modalState.point, modalState.net, selectedAccId);
       onClose();
     }
   };
@@ -103,6 +117,9 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
             </div>
           </>
         )}
+        <div style={{ marginTop: 8, fontSize: 12, color: '#8AB4D6' }}>
+          Este accesorio se agregará al ramal <strong style={{ color: '#fff' }}>{modalState.ramalId}</strong> (el ramal existente que recibe la conexión), no al ramal que estás dibujando.
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
