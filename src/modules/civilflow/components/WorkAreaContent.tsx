@@ -1,5 +1,5 @@
 import { Suspense, lazy, useMemo, useState } from "react";
-import { generateMemoriaExcel, generateMemoriaDocx, type MemoriaTable, type MemoriaData } from "../utils/exportMemoriaFinal";
+import { generateMemoriaExcel, generateMemoriaDocx, generateMemoriaPdf, type MemoriaTable, type MemoriaData } from "../utils/exportMemoriaFinal";
 import { pisoLbl, SAN_UC_IDS, APARATOS_DEF } from "../constants";
 import PageNav from "./PageNav";
 import { RainwaterProvider, useRainwater } from "../context/RainwaterContext";
@@ -207,7 +207,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
 }
 
 function InfTab({ state }: { state: WorkAreaState }) {
-  const [memoriaFmt, setMemoriaFmt] = useState<'xlsx' | 'docx'>('xlsx');
+  const [memoriaFmt, setMemoriaFmt] = useState<'xlsx' | 'docx' | 'pdf'>('xlsx');
   const [memoriaBusy, setMemoriaBusy] = useState(false);
   const [anexoBusy, setAnexoBusy] = useState(false);
   const [planosBusy, setPlanosBusy] = useState(false);
@@ -523,6 +523,7 @@ function InfTab({ state }: { state: WorkAreaState }) {
       if (tables.length === 0) { throw new Error('No hay tablas para generar. Asegúrate de que las redes tengan datos dibujados.'); }
       const data: MemoriaData = { proyNombre: proy.nombre, rows: items.slice(0, 5), tables };
       if (memoriaFmt === 'xlsx') await generateMemoriaExcel(data);
+      else if (memoriaFmt === 'pdf') await generateMemoriaPdf(data);
       else await generateMemoriaDocx(data);
     } catch (e) {
       alert(`Error generando memorias: ${e instanceof Error ? e.message : 'Error desconocido'}`);
@@ -598,7 +599,7 @@ function InfTab({ state }: { state: WorkAreaState }) {
                 aria-label="Formato de descarga"
                 disabled={!allOk || memoriaBusy}
                 value={memoriaFmt}
-                onChange={e => setMemoriaFmt(e.target.value as 'xlsx' | 'docx')}
+                onChange={e => setMemoriaFmt(e.target.value as 'xlsx' | 'docx' | 'pdf')}
                 style={{
                   padding: '6px 6px 6px 10px', fontSize: 13, fontWeight: 600, border: 'none', borderRight: '1px solid var(--line)',
                   background: 'var(--bg2)', color: 'var(--txt)', cursor: allOk ? 'pointer' : 'not-allowed',
@@ -606,6 +607,7 @@ function InfTab({ state }: { state: WorkAreaState }) {
               >
                 <option value="xlsx">Excel</option>
                 <option value="docx">Word</option>
+                <option value="pdf">PDF</option>
               </select>
               <button type="button"
                 disabled={!allOk || memoriaBusy}

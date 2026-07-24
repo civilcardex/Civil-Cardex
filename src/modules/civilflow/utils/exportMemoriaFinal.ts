@@ -328,3 +328,102 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
   link.click();
   URL.revokeObjectURL(link.href);
 }
+
+// Turns a table's headerGroups (the same grouped-column model the Excel/Word exports share) into
+// jspdf-autotable's two-header-row format: a spanning group cell uses colSpan across its leaf
+// columns; a plain (ungrouped) header uses rowSpan to cover both header rows — and, per
+// autotable's own convention for rowSpan, must NOT get a second cell in the row it spans into.
+function buildAutoTableHead(table: MemoriaTable): Record<string, unknown>[][] {
+  if (!table.headerGroups) return [table.headers.map(h => ({ content: h }))];
+  const row1: Record<string, unknown>[] = [];
+  const row2: Record<string, unknown>[] = [];
+  let leafIdx = 0;
+  for (const g of table.headerGroups) {
+    if (typeof g === 'string') {
+      row1.push({ content: g, rowSpan: 2, styles: { valign: 'middle' } });
+      leafIdx += 1;
+    } else {
+      row1.push({ content: g.label, colSpan: g.span });
+      for (let i = 0; i < g.span; i++) row2.push({ content: table.headers[leafIdx + i] });
+      leafIdx += g.span;
+    }
+  }
+  return [row1, row2];
+}
+
+const PDF_NAVY: [number, number, number] = [40, 60, 90];
+
+export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
+  const { jsPDF } = await import('jspdf');
+  const autoTable = (await import('jspdf-autotable')).default;
+
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(PDF_NAVY[0], PDF_NAVY[1], PDF_NAVY[2]);
+  doc.text('Memorias Finales', pageW / 2, 50, { align: 'center' });
+  doc.setFontSize(13);
+  doc.setTextColor(80, 80, 80);
+  doc.text(data.proyNombre || 'Proyecto', pageW / 2, 72, { align: 'center' });
+
+  autoTable(doc, {
+    startY: 95,
+    head: [['Campo', 'Valor']],
+    body: data.rows,
+    styles: { fontSize: 10, cellPadding: 5 },
+    headStyles: { fillColor: PDF_NAVY, textColor: [255, 255, 255], fontStyle: 'bold' },
+    theme: 'grid',
+  });
+
+  for (const { key, label } of REDES_ORDEN) {
+    const tables = (data.tables || []).filter(t => t.red === key);
+    if (tables.length === 0) continue;
+
+    doc.addPage('a4', 'landscape');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(PDF_NAVY[0], PDF_NAVY[1], PDF_NAVY[2]);
+    doc.text(label, 30, 40);
+    let cursorY = 55;
+
+    for (const table of tables) {
+      const pageH = doc.internal.pageSize.getHeight();
+      // Leave room for a title line + at least a header + one body row, otherwise start this
+      // table fresh on a new page instead of squeezing/orphaning it against the bottom edge.
+      if (cursorY > pageH - 100) {
+        doc.addPage('a4', 'landscape');
+        cursorY = 40;
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(30, 30, 30);
+      doc.text(table.title, 30, cursorY);
+      cursorY += 8;
+
+      autoTable(doc, {
+        startY: cursorY,
+        margin: { left: 30, right: 30 },
+        head: buildAutoTableHead(table),
+        body: table.rows,
+        // minCellWidth guarantees every column (including narrow ones like "%"/"m" under a much
+        // longer spanning group header like "Pérdidas por fricción") has enough room for at least
+        // one full word per line — without it, autotable sizes columns purely off body-cell
+        // content, and squeezed the long group header into a couple of points, wrapping mid-word.
+        styles: { fontSize: 7.5, cellPadding: 3, overflow: 'linebreak', minCellWidth: 22 },
+        headStyles: { fillColor: PDF_NAVY, textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', valign: 'middle' },
+        bodyStyles: { valign: 'middle' },
+        theme: 'grid',
+        didDrawPage: () => { cursorY = 40; },
+      });
+
+      // autoTable advances doc.lastAutoTable internally; read the actual end position for the
+      // next table's start, falling back if a page break occurred mid-table (didDrawPage reset).
+      const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY;
+      cursorY = (finalY ?? cursorY) + 22;
+    }
+  }
+
+  doc.save(`${fileBase(data.proyNombre)}.pdf`);
+}
