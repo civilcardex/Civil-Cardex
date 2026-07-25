@@ -1,14 +1,26 @@
-import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
-import { NETS } from "../../lib/PlanoEngine/PlanoState";
-import { TRAZOS_PREFIX, ISO_COLLAPSED_KEY, ISO_ACTIVE_NETS_KEY } from "../../constants/storage-keys";
-import { parseDescargaEnId } from "../../utils/parseDescargaEnId";
-import { readDrawingAll, loadPlanImage, type ProjPt, project, type IsoRamal, type IsoBajante } from "./isometria/geometry";
-import { useIsometriaRender } from "./isometria/useIsometriaRender";
-import { useIsometriaInteraction } from "./isometria/useIsometriaInteraction";
-import { exportPdf, exportPng } from "./isometria/export";
-import IsometriaToolbar from "./IsometriaToolbar";
-import IsometriaSidebar from "./IsometriaSidebar";
-import type { useWorkAreaState } from "../useWorkAreaState";
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import { NETS } from '../../lib/PlanoEngine/PlanoState';
+import {
+  TRAZOS_PREFIX,
+  ISO_COLLAPSED_KEY,
+  ISO_ACTIVE_NETS_KEY,
+} from '../../constants/storage-keys';
+import { loadFromStorage } from '../../services/storageService';
+import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
+import {
+  readDrawingAll,
+  loadPlanImage,
+  type ProjPt,
+  project,
+  type IsoRamal,
+  type IsoBajante,
+} from './isometria/geometry';
+import { useIsometriaRender } from './isometria/useIsometriaRender';
+import { useIsometriaInteraction } from './isometria/useIsometriaInteraction';
+import { exportPdf, exportPng } from './isometria/export';
+import IsometriaToolbar from './IsometriaToolbar';
+import IsometriaSidebar from './IsometriaSidebar';
+import type { useWorkAreaState } from '../useWorkAreaState';
 
 interface IsometriaTabProps {
   state: ReturnType<typeof useWorkAreaState>;
@@ -20,21 +32,33 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [activeNets, setActiveNets] = useState<Set<string>>(() => {
-    const saved = (() => { try { return JSON.parse(localStorage.getItem(ISO_ACTIVE_NETS_KEY) || 'null'); } catch { return null; } })();
+    const saved = (() => {
+      try {
+        return JSON.parse(localStorage.getItem(ISO_ACTIVE_NETS_KEY) || 'null');
+      } catch {
+        return null;
+      }
+    })();
     if (Array.isArray(saved) && saved.length > 0) return new Set(saved);
     if (!plans) return new Set();
     const withData: string[] = [];
     for (const n of NETS) {
       for (const plan of plans) {
-        const raw = localStorage.getItem(TRAZOS_PREFIX + plan.id);
-        if (raw) {
-          try {
-            const data = JSON.parse(raw);
-            if ((data.ramales || []).some((r: { net: string }) => r.net === n.id) || (data.bajantes || []).some((b: { net: string }) => b.net === n.id)) {
-              withData.push(n.id);
-              break;
-            }
-          } catch { /* empty */ }
+        // Must go through the civilflow_-prefixed accessor everything writes with
+        // (storageService.ts) — a raw localStorage.getItem here was missing that prefix, always
+        // reading a key nothing writes to.
+        const data = loadFromStorage<{
+          ramales?: { net: string }[];
+          bajantes?: { net: string }[];
+        } | null>(TRAZOS_PREFIX + plan.id, null);
+        if (data) {
+          if (
+            (data.ramales || []).some((r) => r.net === n.id) ||
+            (data.bajantes || []).some((b) => b.net === n.id)
+          ) {
+            withData.push(n.id);
+            break;
+          }
         }
       }
     }
@@ -45,9 +69,10 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
   }, [activeNets]);
 
   const toggleNet = useCallback((netId: string) => {
-    setActiveNets(prev => {
+    setActiveNets((prev) => {
       const next = new Set(prev);
-      if (next.has(netId)) next.delete(netId); else next.add(netId);
+      if (next.has(netId)) next.delete(netId);
+      else next.add(netId);
       return next;
     });
   }, []);
@@ -63,14 +88,16 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
   const exportRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 800, h: 500 });
   const [showPlanos, setShowPlanos] = useState(true);
-  const planImagesRef = useRef<Map<number, { img: HTMLCanvasElement; w: number; h: number }>>(new Map());
+  const planImagesRef = useRef<Map<number, { img: HTMLCanvasElement; w: number; h: number }>>(
+    new Map(),
+  );
   const [renderTick, setRenderTick] = useState(0);
   const [planosCount, setPlanosCount] = useState('0/0');
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(entries => {
+    const ro = new ResizeObserver((entries) => {
       const { width, height } = entries[0].contentRect;
       if (width > 0 && height > 0) setSize({ w: Math.floor(width), h: Math.floor(height) });
     });
@@ -88,7 +115,12 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
     const defaultSpacingMm = 2700;
     const sorted = pisosArr.toSorted((a, b) => a.n - b.n);
     for (const p of sorted) {
-      const floorIdx = p.n >= 0 && p.n < 90 ? p.n : p.n === 99 ? (sorted.filter((x) => x.n > 0 && x.n < 90).length + 1) : -(Math.abs(p.n));
+      const floorIdx =
+        p.n >= 0 && p.n < 90
+          ? p.n
+          : p.n === 99
+            ? sorted.filter((x) => x.n > 0 && x.n < 90).length + 1
+            : -Math.abs(p.n);
       m[p.n] = -floorIdx * defaultSpacingMm;
     }
     return m;
@@ -96,27 +128,38 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
 
   const profByNet = useMemo(() => {
     const m: Record<string, number> = {};
-    (profs || []).forEach((p) => { m[p.id] = p.prof ?? 0; });
+    (profs || []).forEach((p) => {
+      m[p.id] = p.prof ?? 0;
+    });
     return m;
   }, [profs]);
 
   const [collapsedNets, setCollapsedNets] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(ISO_COLLAPSED_KEY) || '[]')); }
-    catch { return new Set(); }
+    try {
+      return new Set(JSON.parse(localStorage.getItem(ISO_COLLAPSED_KEY) || '[]'));
+    } catch {
+      return new Set();
+    }
   });
   useEffect(() => {
     localStorage.setItem(ISO_COLLAPSED_KEY, JSON.stringify([...collapsedNets]));
   }, [collapsedNets]);
   const toggleCollapsedNet = useCallback((netId: string) => {
-    setCollapsedNets(prev => {
+    setCollapsedNets((prev) => {
       const next = new Set(prev);
-      if (next.has(netId)) next.delete(netId); else next.add(netId);
+      if (next.has(netId)) next.delete(netId);
+      else next.add(netId);
       return next;
     });
   }, []);
 
   const tramoTree = useMemo(() => {
-    const tree: { netId: string; netName: string; netColor: string; niveles: { nivel: number; label: string; ramales: IsoRamal[]; bajantes: IsoBajante[] }[] }[] = [];
+    const tree: {
+      netId: string;
+      netName: string;
+      netColor: string;
+      niveles: { nivel: number; label: string; ramales: IsoRamal[]; bajantes: IsoBajante[] }[];
+    }[] = [];
     for (const n of NETS) {
       if (!activeNets.has(n.id)) continue;
       const netData = dataByNet[n.id];
@@ -137,7 +180,12 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
         .sort(([a], [b]) => Number(a) - Number(b))
         .map(([nivel, data]) => ({
           nivel: Number(nivel),
-          label: Number(nivel) < 0 ? `S${Math.abs(Number(nivel))}` : Number(nivel) === 99 ? 'C' : `P${Number(nivel)}`,
+          label:
+            Number(nivel) < 0
+              ? `S${Math.abs(Number(nivel))}`
+              : Number(nivel) === 99
+                ? 'C'
+                : `P${Number(nivel)}`,
           ...data,
         }));
       tree.push({ netId: n.id, netName: n.name, netColor, niveles });
@@ -148,7 +196,7 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
   const populatedNets = useMemo(() => {
     const netsWithData: string[] = [];
     for (const n of NETS) {
-      const nId = typeof n.id === 'string' ? n.id : (n.id || '');
+      const nId = typeof n.id === 'string' ? n.id : n.id || '';
       const d = readDrawingAll(plans || [], [nId]);
       const nd = d.dataByNet[nId];
       if (nd && (nd.ramales.length > 0 || nd.bajantes.length > 0)) netsWithData.push(n.id);
@@ -156,36 +204,44 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
     return netsWithData;
   }, [plans]);
 
-  const confirmedPlanos = useMemo(() => (plans || []).filter((p) => p.status === 'confirmed' && p.nivel != null), [plans]);
+  const confirmedPlanos = useMemo(
+    () => (plans || []).filter((p) => p.status === 'confirmed' && p.nivel != null),
+    [plans],
+  );
 
-  const getIsoCoords = useCallback((px: number, py: number, nivel: number) => {
-    const plan = confirmedPlanos.find((p) => p.nivel !== null && String(p.nivel) === String(nivel));
-    const scaleM = (plan?.scale ? plan.scale / 100 : null) || readScaleMap?.[nivel] || 0.5;
-    const planData = plan ? planImagesRef.current.get(plan.id) : null;
-    const scale = 1.5;
-    let pageW = 842;
-    let pageH = 595;
-    if (planData) {
-      pageW = planData.w / scale;
-      pageH = planData.h / scale;
-    } else {
-      for (const [, pd] of planImagesRef.current) {
-        pageW = pd.w / scale;
-        pageH = pd.h / scale;
-        break;
+  const getIsoCoords = useCallback(
+    (px: number, py: number, nivel: number) => {
+      const plan = confirmedPlanos.find(
+        (p) => p.nivel !== null && String(p.nivel) === String(nivel),
+      );
+      const scaleM = (plan?.scale ? plan.scale / 100 : null) || readScaleMap?.[nivel] || 0.5;
+      const planData = plan ? planImagesRef.current.get(plan.id) : null;
+      const scale = 1.5;
+      let pageW = 842;
+      let pageH = 595;
+      if (planData) {
+        pageW = planData.w / scale;
+        pageH = planData.h / scale;
+      } else {
+        for (const [, pd] of planImagesRef.current) {
+          pageW = pd.w / scale;
+          pageH = pd.h / scale;
+          break;
+        }
       }
-    }
-    const ox = plan?.origen?.x_px ?? readOrigenMap?.[nivel]?.x_px ?? (pageW / 2);
-    const oy = plan?.origen?.y_px ?? readOrigenMap?.[nivel]?.y_px ?? (pageH / 2);
+      const ox = plan?.origen?.x_px ?? readOrigenMap?.[nivel]?.x_px ?? pageW / 2;
+      const oy = plan?.origen?.y_px ?? readOrigenMap?.[nivel]?.y_px ?? pageH / 2;
 
-    const x_m = (px - ox) * (2.54 * scaleM / 96);
-    const y_m = (py - oy) * (2.54 * scaleM / 96);
-    const isoScale = 150;
-    return {
-      x: x_m * isoScale,
-      y: y_m * isoScale
-    };
-  }, [confirmedPlanos, readScaleMap, readOrigenMap]);
+      const x_m = (px - ox) * ((2.54 * scaleM) / 96);
+      const y_m = (py - oy) * ((2.54 * scaleM) / 96);
+      const isoScale = 150;
+      return {
+        x: x_m * isoScale,
+        y: y_m * isoScale,
+      };
+    },
+    [confirmedPlanos, readScaleMap, readOrigenMap],
+  );
 
   const getZPix = useCallback((zMm: number, _nivel?: number) => {
     const zMeters = zMm / 1000;
@@ -212,17 +268,21 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
       }
       if (!cancelled) {
         planImagesRef.current = newImages;
-        setRenderTick(n => n + 1);
+        setRenderTick((n) => n + 1);
         setPlanosCount(`${newImages.size}/${confirmedPlanos.length}`);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [confirmedPlanos, showPlanos]);
 
   const fitView = useCallback(() => {
-    const W = size.w, H = size.h;
+    const W = size.w,
+      H = size.h;
     if (W < 10 || H < 10) return;
-    const cx = W / 2, cy = H / 2;
+    const cx = W / 2,
+      cy = H / 2;
     const pts: ProjPt[] = [];
 
     for (const [netId, netData] of Object.entries(dataByNet)) {
@@ -251,22 +311,29 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
           const parts = parseDescargaEnId(b.descargaEnId, b.planId);
           const targetPlanId = parts[0];
           const targetId = parts[1];
-          const targetRamal = netData.ramales.find((rr) => rr.id === targetId && String(rr.planId) === String(targetPlanId));
+          const targetRamal = netData.ramales.find(
+            (rr) => rr.id === targetId && String(rr.planId) === String(targetPlanId),
+          );
           if (targetRamal) {
             targetZ = nptMap[targetRamal.planNivel] || 0;
           } else {
             // "Destino" can also be another bajante on a lower floor, not just a ramal.
-            const targetBajante = netData.bajantes.find((bb) => bb.id === targetId && String(bb.planId) === String(targetPlanId));
+            const targetBajante = netData.bajantes.find(
+              (bb) => bb.id === targetId && String(bb.planId) === String(targetPlanId),
+            );
             if (targetBajante) targetZ = nptMap[targetBajante.planNivel] || 0;
           }
         }
         if (baseZ === 0 && cimaZ === 0) {
           if (targetZ < currentZ) {
-            cimaZ = currentZ; baseZ = targetZ;
+            cimaZ = currentZ;
+            baseZ = targetZ;
           } else if (targetZ > currentZ) {
-            baseZ = currentZ; cimaZ = targetZ;
+            baseZ = currentZ;
+            cimaZ = targetZ;
           } else {
-            baseZ = currentZ; cimaZ = currentZ + 1000;
+            baseZ = currentZ;
+            cimaZ = currentZ + 1000;
           }
         }
         const baseZ_pix = getZPix(baseZ, b.planNivel);
@@ -300,14 +367,18 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
     }
 
     if (pts.length === 0) return false;
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
     for (const p of pts) {
       if (p.sx < minX) minX = p.sx;
       if (p.sx > maxX) maxX = p.sx;
       if (p.sy < minY) minY = p.sy;
       if (p.sy > maxY) maxY = p.sy;
     }
-    const bw = maxX - minX || 1, bh = maxY - minY || 1;
+    const bw = maxX - minX || 1,
+      bh = maxY - minY || 1;
     const pad = 60;
     const newZoom = Math.min((W - pad * 2) / bw, (H - pad * 2) / bh) * zoom;
     const cx_screen = (minX + maxX) / 2;
@@ -320,41 +391,106 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
     setOffX(newOffX);
     setOffY(newOffY);
     return true;
-  }, [dataByNet, activeNets, profByNet, nptMap, rotZ, rotX, scaleZ, zoom, offX, offY, size, showPlanos, confirmedPlanos, getIsoCoords, getZPix]);
+  }, [
+    dataByNet,
+    activeNets,
+    profByNet,
+    nptMap,
+    rotZ,
+    rotX,
+    scaleZ,
+    zoom,
+    offX,
+    offY,
+    size,
+    showPlanos,
+    confirmedPlanos,
+    getIsoCoords,
+    getZPix,
+  ]);
 
   const totals = useMemo(() => {
-    let ramales = 0, bajantes = 0, len = 0;
+    let ramales = 0,
+      bajantes = 0,
+      len = 0;
     for (const nd of Object.values(dataByNet)) {
-      for (const r of nd.ramales) { ramales++; len += r.totalL || 0; }
+      for (const r of nd.ramales) {
+        ramales++;
+        len += r.totalL || 0;
+      }
       bajantes += nd.bajantes.length;
     }
     return { ramales, bajantes, len: len.toFixed(1) };
   }, [dataByNet]);
 
   const { cursorStyle, handleMouseDown } = useIsometriaInteraction({
-    canvasRef, rotX, setRotX, rotZ, setRotZ, offX, setOffX, offY, setOffY, setZoom, setSelTramo,
+    canvasRef,
+    rotX,
+    setRotX,
+    rotZ,
+    setRotZ,
+    offX,
+    setOffX,
+    offY,
+    setOffY,
+    setZoom,
+    setSelTramo,
   });
 
   useIsometriaRender({
-    canvasRef, planImagesRef, dataByNet, activeNets, profByNet, nptMap, pisos,
-    rotZ, rotX, scaleZ, zoom, offX, offY, size, selTramo, showPlanos, confirmedPlanos, renderTick,
-    getIsoCoords, getZPix,
+    canvasRef,
+    planImagesRef,
+    dataByNet,
+    activeNets,
+    profByNet,
+    nptMap,
+    pisos,
+    rotZ,
+    rotX,
+    scaleZ,
+    zoom,
+    offX,
+    offY,
+    size,
+    selTramo,
+    showPlanos,
+    confirmedPlanos,
+    renderTick,
+    getIsoCoords,
+    getZPix,
   });
 
   useEffect(() => {
     if (!showExportMenu) return;
     const handler = (e: MouseEvent) => {
-      if (exportRef.current && !exportRef.current.contains(e.target as Node)) setShowExportMenu(false);
+      if (exportRef.current && !exportRef.current.contains(e.target as Node))
+        setShowExportMenu(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [showExportMenu]);
 
-  const handleExportPdf = useCallback(() => exportPdf({
-    canvasRef, size, activeNets, nets: NETS, proyNombre: proy?.nombre, rotX, rotZ, scaleZ, zoom, totals,
-  }), [size, activeNets, proy, rotX, rotZ, scaleZ, zoom, totals]);
+  const handleExportPdf = useCallback(
+    () =>
+      exportPdf({
+        canvasRef,
+        size,
+        activeNets,
+        nets: NETS,
+        proyNombre: proy?.nombre,
+        rotX,
+        rotZ,
+        scaleZ,
+        zoom,
+        totals,
+      }),
+    [size, activeNets, proy, rotX, rotZ, scaleZ, zoom, totals],
+  );
 
-  const handleExportPng = useCallback(() => exportPng({ canvasRef, size, proyNombre: proy?.nombre }), [size, proy]);
+  const handleExportPng = useCallback(
+    () => exportPng({ canvasRef, size, proyNombre: proy?.nombre }),
+    [size, proy],
+  );
 
   const hasAnyData = useMemo(() => {
     for (const nd of Object.values(dataByNet)) {
@@ -377,10 +513,16 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
   }, [dataByNet, hasAnyData, showPlanos, confirmedPlanos.length, renderTick, fitView]);
 
   return (
-    <div className="fu" style={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minHeight: 0 }}>
+    <div
+      className="fu"
+      style={{ display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minHeight: 0 }}
+    >
       {/* Toolbar */}
       <IsometriaToolbar
-        nets={(populatedNets.length === 0 ? NETS : populatedNets.map(nid => NETS.find(x => x.id === nid)!).filter(Boolean)).filter(n => redes.has(n.id))}
+        nets={(populatedNets.length === 0
+          ? NETS
+          : populatedNets.map((nid) => NETS.find((x) => x.id === nid)!).filter(Boolean)
+        ).filter((n) => redes.has(n.id))}
         activeNets={activeNets}
         toggleNet={toggleNet}
         showPlanos={showPlanos}
@@ -415,12 +557,15 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
         />
 
         {/* Canvas */}
-        <div ref={containerRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}>
+        <div
+          ref={containerRef}
+          style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}
+        >
           <canvas
             ref={canvasRef}
             style={{ width: '100%', height: '100%', display: 'block', cursor: cursorStyle }}
             onMouseDown={handleMouseDown}
-            onContextMenu={e => e.preventDefault()}
+            onContextMenu={(e) => e.preventDefault()}
           />
         </div>
       </div>

@@ -23,12 +23,23 @@ function openDB(): Promise<IDBDatabase> {
       }
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => { dbPromise = null; reject(request.error); };
-    request.onblocked = () => { dbPromise = null; reject(new Error('IndexedDB blocked')); };
+    request.onerror = () => {
+      dbPromise = null;
+      reject(request.error);
+    };
+    request.onblocked = () => {
+      dbPromise = null;
+      reject(new Error('IndexedDB blocked'));
+    };
   });
   return dbPromise;
 }
 
+/**
+ * Stores a PDF file in IndexedDB keyed by numeric id.
+ * @param id - Numeric plan identifier.
+ * @param file - PDF File object to persist.
+ */
 export async function storePDF(id: number, file: File): Promise<void> {
   try {
     const data = await file.arrayBuffer();
@@ -45,6 +56,11 @@ export async function storePDF(id: number, file: File): Promise<void> {
   }
 }
 
+/**
+ * Loads a PDF file from IndexedDB by id. Returns a File object with original name and MIME type.
+ * @param id - Numeric plan identifier.
+ * @returns File object or null if not found.
+ */
 export async function loadPDF(id: number): Promise<File | null> {
   try {
     const db = await openDB();
@@ -53,7 +69,10 @@ export async function loadPDF(id: number): Promise<File | null> {
       const req = tx.objectStore(STORE_NAME).get(id);
       req.onsuccess = () => {
         const record = req.result as PDFRecord | undefined;
-        if (!record) { resolve(null); return; }
+        if (!record) {
+          resolve(null);
+          return;
+        }
         resolve(new File([record.data], record.name, { type: 'application/pdf' }));
       };
       req.onerror = () => reject(req.error);
@@ -64,6 +83,9 @@ export async function loadPDF(id: number): Promise<File | null> {
   }
 }
 
+/**
+ * Deletes all PDF records from the IndexedDB store.
+ */
 export async function clearAllPDFs(): Promise<void> {
   try {
     const db = await openDB();
@@ -79,6 +101,10 @@ export async function clearAllPDFs(): Promise<void> {
   }
 }
 
+/**
+ * Deletes a single PDF record from IndexedDB by id.
+ * @param id - Numeric plan identifier.
+ */
 export async function deletePDF(id: number): Promise<void> {
   try {
     const db = await openDB();

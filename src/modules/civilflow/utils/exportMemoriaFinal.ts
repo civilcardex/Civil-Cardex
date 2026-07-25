@@ -1,4 +1,7 @@
-export interface MemoriaHeaderGroup { label: string; span: number }
+export interface MemoriaHeaderGroup {
+  label: string;
+  span: number;
+}
 
 export interface MemoriaTable {
   title: string;
@@ -27,19 +30,40 @@ function fileBase(proyNombre: string): string {
 interface XlsxCellStyle {
   font?: { bold?: boolean; sz?: number; color?: { rgb: string }; italic?: boolean };
   fill?: { fgColor: { rgb: string } };
-  alignment?: { horizontal?: 'left' | 'center' | 'right'; vertical?: 'top' | 'center' | 'bottom'; wrapText?: boolean };
+  alignment?: {
+    horizontal?: 'left' | 'center' | 'right';
+    vertical?: 'top' | 'center' | 'bottom';
+    wrapText?: boolean;
+  };
   border?: Record<'top' | 'bottom' | 'left' | 'right', { style: string; color: { rgb: string } }>;
 }
 
 const XLSX_THIN_BORDER = { style: 'thin', color: { rgb: 'D9D9D9' } };
-const XLSX_CELL_BORDER = { top: XLSX_THIN_BORDER, bottom: XLSX_THIN_BORDER, left: XLSX_THIN_BORDER, right: XLSX_THIN_BORDER };
-const xlsxTitleStyle = (): XlsxCellStyle => ({ font: { bold: true, sz: 13, color: { rgb: '283C5A' } }, alignment: { horizontal: 'left', vertical: 'center' } });
-const xlsxHeaderStyle = (): XlsxCellStyle => ({ font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } }, fill: { fgColor: { rgb: '283C5A' } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: XLSX_CELL_BORDER });
+const XLSX_CELL_BORDER = {
+  top: XLSX_THIN_BORDER,
+  bottom: XLSX_THIN_BORDER,
+  left: XLSX_THIN_BORDER,
+  right: XLSX_THIN_BORDER,
+};
+const xlsxTitleStyle = (): XlsxCellStyle => ({
+  font: { bold: true, sz: 13, color: { rgb: '283C5A' } },
+  alignment: { horizontal: 'left', vertical: 'center' },
+});
+const xlsxHeaderStyle = (): XlsxCellStyle => ({
+  font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } },
+  fill: { fgColor: { rgb: '283C5A' } },
+  alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+  border: XLSX_CELL_BORDER,
+});
 // wrapText:true is what keeps long body text (comments, spec sentences) inside its own cell —
 // without it, Excel doesn't truncate, it lets the text visually overflow into whatever neighboring
 // cells happen to be empty (common when several differently-shaped tables share one sheet's
 // columns), which reads as columns being misaligned/missing even though the underlying data is fine.
-const xlsxBodyStyle = (): XlsxCellStyle => ({ font: { sz: 10 }, alignment: { vertical: 'center', wrapText: true }, border: XLSX_CELL_BORDER });
+const xlsxBodyStyle = (): XlsxCellStyle => ({
+  font: { sz: 10 },
+  alignment: { vertical: 'center', wrapText: true },
+  border: XLSX_CELL_BORDER,
+});
 
 const REDES_ORDEN: { key: string; label: string }[] = [
   { key: 'san', label: 'Sanitaria' },
@@ -55,7 +79,10 @@ const REDES_ORDEN: { key: string; label: string }[] = [
 // header row(s) (respecting headerGroups the same way the DOCX/PDF renderers do — a spanning
 // group label merged across its leaf columns, a plain header vertically merged across both header
 // rows), then its body rows, then a blank spacer row before the next table.
-function buildRedSheet(tables: MemoriaTable[], encodeCell: (c: { r: number; c: number }) => string) {
+function buildRedSheet(
+  tables: MemoriaTable[],
+  encodeCell: (c: { r: number; c: number }) => string,
+) {
   const aoa: (string | number)[][] = [];
   const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [];
   const styleCells: { ref: string; style: XlsxCellStyle }[] = [];
@@ -83,7 +110,11 @@ function buildRedSheet(tables: MemoriaTable[], encodeCell: (c: { r: number; c: n
           leafIdx += 1;
         } else {
           row1[leafIdx] = g.label;
-          if (g.span > 1) merges.push({ s: { r: row1Idx, c: leafIdx }, e: { r: row1Idx, c: leafIdx + g.span - 1 } });
+          if (g.span > 1)
+            merges.push({
+              s: { r: row1Idx, c: leafIdx },
+              e: { r: row1Idx, c: leafIdx + g.span - 1 },
+            });
           for (let i = 0; i < g.span; i++) row2[leafIdx + i] = table.headers[leafIdx + i];
           leafIdx += g.span;
         }
@@ -97,13 +128,15 @@ function buildRedSheet(tables: MemoriaTable[], encodeCell: (c: { r: number; c: n
     } else {
       const headerRowIdx = aoa.length;
       aoa.push([...table.headers]);
-      for (let c = 0; c < nCols; c++) styleCells.push({ ref: encodeCell({ r: headerRowIdx, c }), style: xlsxHeaderStyle() });
+      for (let c = 0; c < nCols; c++)
+        styleCells.push({ ref: encodeCell({ r: headerRowIdx, c }), style: xlsxHeaderStyle() });
     }
 
     for (const row of table.rows) {
       const bodyRowIdx = aoa.length;
       aoa.push(row);
-      for (let c = 0; c < row.length; c++) styleCells.push({ ref: encodeCell({ r: bodyRowIdx, c }), style: xlsxBodyStyle() });
+      for (let c = 0; c < row.length; c++)
+        styleCells.push({ ref: encodeCell({ r: bodyRowIdx, c }), style: xlsxBodyStyle() });
     }
 
     aoa.push([]);
@@ -119,10 +152,15 @@ const XLSX_COL_MAX_WIDTH = 34;
 function computeXlsxColWidths(tables: MemoriaTable[], maxCols: number): number[] {
   const widths = new Array(maxCols).fill(9);
   for (const table of tables) {
-    table.headers.forEach((h, i) => { widths[i] = Math.max(widths[i], Math.min(XLSX_COL_MAX_WIDTH, h.length + 2)); });
-    table.rows.forEach(row => row.forEach((cell, i) => {
-      if (i < maxCols) widths[i] = Math.max(widths[i], Math.min(XLSX_COL_MAX_WIDTH, String(cell).length + 2));
-    }));
+    table.headers.forEach((h, i) => {
+      widths[i] = Math.max(widths[i], Math.min(XLSX_COL_MAX_WIDTH, h.length + 2));
+    });
+    table.rows.forEach((row) =>
+      row.forEach((cell, i) => {
+        if (i < maxCols)
+          widths[i] = Math.max(widths[i], Math.min(XLSX_COL_MAX_WIDTH, String(cell).length + 2));
+      }),
+    );
   }
   return widths;
 }
@@ -140,10 +178,14 @@ export async function generateMemoriaExcel(data: MemoriaData): Promise<void> {
   ];
   const wsResumen = XLSX.utils.aoa_to_sheet(resumenAoa);
   wsResumen['!cols'] = [{ wch: 28 }, { wch: 30 }];
-  wsResumen['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 1 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } }];
+  wsResumen['!merges'] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 1 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 1 } },
+  ];
   const titleRef = XLSX.utils.encode_cell({ r: 0, c: 0 });
   const subRef = XLSX.utils.encode_cell({ r: 1, c: 0 });
-  if (wsResumen[titleRef]) wsResumen[titleRef].s = { font: { bold: true, sz: 16, color: { rgb: '283C5A' } } };
+  if (wsResumen[titleRef])
+    wsResumen[titleRef].s = { font: { bold: true, sz: 16, color: { rgb: '283C5A' } } };
   if (wsResumen[subRef]) wsResumen[subRef].s = { font: { sz: 12, color: { rgb: '555555' } } };
   for (let c = 0; c < 2; c++) {
     const ref = XLSX.utils.encode_cell({ r: 3, c });
@@ -158,12 +200,12 @@ export async function generateMemoriaExcel(data: MemoriaData): Promise<void> {
   XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
 
   for (const { key, label } of REDES_ORDEN) {
-    const tables = (data.tables || []).filter(t => t.red === key);
+    const tables = (data.tables || []).filter((t) => t.red === key);
     if (tables.length === 0) continue;
     const { aoa, merges, styleCells, maxCols } = buildRedSheet(tables, XLSX.utils.encode_cell);
     const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!merges'] = merges;
-    ws['!cols'] = computeXlsxColWidths(tables, maxCols).map(w => ({ wch: w }));
+    ws['!cols'] = computeXlsxColWidths(tables, maxCols).map((w) => ({ wch: w }));
     for (const { ref, style } of styleCells) {
       if (!ws[ref]) ws[ref] = { t: 's', v: '' };
       ws[ref].s = style;
@@ -186,8 +228,11 @@ function computeColumnWidthsDxa(headers: string[]): number[] {
   const twipsPerChar = 105;
   const minWidth = 650;
   const padding = 180;
-  return headers.map(h => {
-    const longestWord = h.split(' ').filter(Boolean).reduce((max, w) => Math.max(max, w.length), 0);
+  return headers.map((h) => {
+    const longestWord = h
+      .split(' ')
+      .filter(Boolean)
+      .reduce((max, w) => Math.max(max, w.length), 0);
     return Math.max(minWidth, longestWord * twipsPerChar + padding);
   });
 }
@@ -206,14 +251,37 @@ const DOCX_SIDE_MARGIN_TWIP = 360;
 const DOCX_MIN_PAGE_WIDTH_TWIP = 15840; // 11in
 
 export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
-  const { Document, Packer, Paragraph, HeadingLevel, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType, PageOrientation, VerticalMergeType, TableLayoutType } = await import('docx');
+  const {
+    Document,
+    Packer,
+    Paragraph,
+    HeadingLevel,
+    Table,
+    TableRow,
+    TableCell,
+    TextRun,
+    WidthType,
+    AlignmentType,
+    PageOrientation,
+    VerticalMergeType,
+    TableLayoutType,
+  } = await import('docx');
 
-  const summaryRows = data.rows.map(([k, v]) => new TableRow({
-    children: [
-      new TableCell({ width: { size: 35, type: WidthType.PERCENTAGE }, children: [new Paragraph({ children: [new TextRun({ text: k, bold: true })] })] }),
-      new TableCell({ width: { size: 65, type: WidthType.PERCENTAGE }, children: [new Paragraph(String(v))] }),
-    ],
-  }));
+  const summaryRows = data.rows.map(
+    ([k, v]) =>
+      new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 35, type: WidthType.PERCENTAGE },
+            children: [new Paragraph({ children: [new TextRun({ text: k, bold: true })] })],
+          }),
+          new TableCell({
+            width: { size: 65, type: WidthType.PERCENTAGE },
+            children: [new Paragraph(String(v))],
+          }),
+        ],
+      }),
+  );
 
   const cellMargins = { top: 40, bottom: 40, left: 60, right: 60 };
   // `columnWidths` on the Table only fills in `w:tblGrid` (a hint) — Word only actually honors it
@@ -230,21 +298,37 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
   // line holds a whole word.
   const headerWordRuns = (text: string) => {
     const words = text.split(' ').filter(Boolean);
-    if (words.length === 0) return [new TextRun({ text, bold: true, color: 'FFFFFF', size: HEADER_FONT_SIZE, font: 'Arial' })];
-    return words.map((w, i) => new TextRun({ text: w, bold: true, color: 'FFFFFF', size: HEADER_FONT_SIZE, font: 'Arial', break: i > 0 ? 1 : 0 }));
+    if (words.length === 0)
+      return [
+        new TextRun({ text, bold: true, color: 'FFFFFF', size: HEADER_FONT_SIZE, font: 'Arial' }),
+      ];
+    return words.map(
+      (w, i) =>
+        new TextRun({
+          text: w,
+          bold: true,
+          color: 'FFFFFF',
+          size: HEADER_FONT_SIZE,
+          font: 'Arial',
+          break: i > 0 ? 1 : 0,
+        }),
+    );
   };
-  const headerCell = (text: string, widthDxa: number, extra: Record<string, unknown> = {}) => new TableCell({
-    shading: { fill: '283C5A' },
-    margins: cellMargins,
-    width: { size: widthDxa, type: WidthType.DXA },
-    children: [new Paragraph({ alignment: AlignmentType.CENTER, children: headerWordRuns(text) })],
-    ...extra,
-  });
+  const headerCell = (text: string, widthDxa: number, extra: Record<string, unknown> = {}) =>
+    new TableCell({
+      shading: { fill: '283C5A' },
+      margins: cellMargins,
+      width: { size: widthDxa, type: WidthType.DXA },
+      children: [
+        new Paragraph({ alignment: AlignmentType.CENTER, children: headerWordRuns(text) }),
+      ],
+      ...extra,
+    });
 
   // Each table becomes its OWN section with a page sized to fit exactly that table's total width —
   // this is what keeps every table on a single sheet regardless of column count, instead of clipping
   // a wide table against a fixed letter page (the multi-page-per-table regression).
-  const tableSections = (data.tables || []).map(table => {
+  const tableSections = (data.tables || []).map((table) => {
     let columnWidths = computeColumnWidthsDxa(table.headers);
     const availableWidth = DOCX_PAGE_MAX_TWIP - DOCX_SIDE_MARGIN_TWIP * 2;
     const rawSum = columnWidths.reduce((a, b) => a + b, 0);
@@ -254,7 +338,7 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
     // between short/long headers — are preserved) so the whole table always lands on one sheet.
     if (rawSum > availableWidth) {
       const scale = availableWidth / rawSum;
-      columnWidths = columnWidths.map(w => Math.max(400, Math.round(w * scale)));
+      columnWidths = columnWidths.map((w) => Math.max(400, Math.round(w * scale)));
     }
     const tableWidth = columnWidths.reduce((a, b) => a + b, 0);
     const headerRows: InstanceType<typeof TableRow>[] = [];
@@ -264,35 +348,77 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
       let leafIdx = 0;
       for (const g of table.headerGroups) {
         if (typeof g === 'string') {
-          row1.push(headerCell(g, columnWidths[leafIdx], { verticalMerge: VerticalMergeType.RESTART }));
-          row2.push(headerCell('', columnWidths[leafIdx], { verticalMerge: VerticalMergeType.CONTINUE }));
+          row1.push(
+            headerCell(g, columnWidths[leafIdx], { verticalMerge: VerticalMergeType.RESTART }),
+          );
+          row2.push(
+            headerCell('', columnWidths[leafIdx], { verticalMerge: VerticalMergeType.CONTINUE }),
+          );
           leafIdx += 1;
         } else {
-          const groupWidth = columnWidths.slice(leafIdx, leafIdx + g.span).reduce((a, b) => a + b, 0);
+          const groupWidth = columnWidths
+            .slice(leafIdx, leafIdx + g.span)
+            .reduce((a, b) => a + b, 0);
           row1.push(headerCell(g.label, groupWidth, { columnSpan: g.span }));
-          for (let i = 0; i < g.span; i++) row2.push(headerCell(table.headers[leafIdx + i], columnWidths[leafIdx + i]));
+          for (let i = 0; i < g.span; i++)
+            row2.push(headerCell(table.headers[leafIdx + i], columnWidths[leafIdx + i]));
           leafIdx += g.span;
         }
       }
       headerRows.push(new TableRow({ tableHeader: true, children: row1 }));
       headerRows.push(new TableRow({ tableHeader: true, children: row2 }));
     } else {
-      headerRows.push(new TableRow({ tableHeader: true, children: table.headers.map((h, i) => headerCell(h, columnWidths[i])) }));
+      headerRows.push(
+        new TableRow({
+          tableHeader: true,
+          children: table.headers.map((h, i) => headerCell(h, columnWidths[i])),
+        }),
+      );
     }
-    const bodyRows = table.rows.map(r => new TableRow({
-      children: r.map((cell, i) => new TableCell({ margins: cellMargins, width: { size: columnWidths[i], type: WidthType.DXA }, children: [new Paragraph({ children: [new TextRun({ text: String(cell), size: HEADER_FONT_SIZE, font: 'Arial' })] })] })),
-    }));
-    const pageWidth = Math.min(DOCX_PAGE_MAX_TWIP, Math.max(DOCX_MIN_PAGE_WIDTH_TWIP, tableWidth + DOCX_SIDE_MARGIN_TWIP * 2));
+    const bodyRows = table.rows.map(
+      (r) =>
+        new TableRow({
+          children: r.map(
+            (cell, i) =>
+              new TableCell({
+                margins: cellMargins,
+                width: { size: columnWidths[i], type: WidthType.DXA },
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({ text: String(cell), size: HEADER_FONT_SIZE, font: 'Arial' }),
+                    ],
+                  }),
+                ],
+              }),
+          ),
+        }),
+    );
+    const pageWidth = Math.min(
+      DOCX_PAGE_MAX_TWIP,
+      Math.max(DOCX_MIN_PAGE_WIDTH_TWIP, tableWidth + DOCX_SIDE_MARGIN_TWIP * 2),
+    );
     return {
-      properties: { page: {
-        // docx's createPageSize SWAPS width/height when orientation is LANDSCAPE (it expects
-        // portrait-shaped input and rotates it) — so the final wide dimension must be passed as
-        // `height` here for it to land as `w:w` in the actual XML. Passing the already-wide
-        // pageWidth as `width` (as before) made the real rendered page only 8.5in wide, clipping
-        // every table wider than that regardless of how carefully columnWidths was computed.
-        size: { width: DOCX_PAGE_HEIGHT_TWIP, height: pageWidth, orientation: PageOrientation.LANDSCAPE },
-        margin: { top: 400, right: DOCX_SIDE_MARGIN_TWIP, bottom: 400, left: DOCX_SIDE_MARGIN_TWIP },
-      } },
+      properties: {
+        page: {
+          // docx's createPageSize SWAPS width/height when orientation is LANDSCAPE (it expects
+          // portrait-shaped input and rotates it) — so the final wide dimension must be passed as
+          // `height` here for it to land as `w:w` in the actual XML. Passing the already-wide
+          // pageWidth as `width` (as before) made the real rendered page only 8.5in wide, clipping
+          // every table wider than that regardless of how carefully columnWidths was computed.
+          size: {
+            width: DOCX_PAGE_HEIGHT_TWIP,
+            height: pageWidth,
+            orientation: PageOrientation.LANDSCAPE,
+          },
+          margin: {
+            top: 400,
+            right: DOCX_SIDE_MARGIN_TWIP,
+            bottom: 400,
+            left: DOCX_SIDE_MARGIN_TWIP,
+          },
+        },
+      },
       children: [
         new Paragraph({ text: table.title, heading: HeadingLevel.HEADING_2 }),
         new Table({
@@ -309,12 +435,29 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
     sections: [
       {
         children: [
-          new Paragraph({ text: 'Memorias Finales', heading: HeadingLevel.TITLE, alignment: AlignmentType.CENTER }),
-          new Paragraph({ text: data.proyNombre || 'Proyecto', heading: HeadingLevel.HEADING_2, alignment: AlignmentType.CENTER }),
+          new Paragraph({
+            text: 'Memorias Finales',
+            heading: HeadingLevel.TITLE,
+            alignment: AlignmentType.CENTER,
+          }),
+          new Paragraph({
+            text: data.proyNombre || 'Proyecto',
+            heading: HeadingLevel.HEADING_2,
+            alignment: AlignmentType.CENTER,
+          }),
           new Paragraph({ text: '' }),
           new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: summaryRows }),
           new Paragraph({ text: '' }),
-          new Paragraph({ children: [new TextRun({ text: `Generado: ${new Date().toLocaleDateString('es-CO')}`, italics: true, size: 18, color: '888888' })] }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: `Generado: ${new Date().toLocaleDateString('es-CO')}`,
+                italics: true,
+                size: 18,
+                color: '888888',
+              }),
+            ],
+          }),
         ],
       },
       ...tableSections,
@@ -334,7 +477,7 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
 // columns; a plain (ungrouped) header uses rowSpan to cover both header rows — and, per
 // autotable's own convention for rowSpan, must NOT get a second cell in the row it spans into.
 function buildAutoTableHead(table: MemoriaTable): Record<string, unknown>[][] {
-  if (!table.headerGroups) return [table.headers.map(h => ({ content: h }))];
+  if (!table.headerGroups) return [table.headers.map((h) => ({ content: h }))];
   const row1: Record<string, unknown>[] = [];
   const row2: Record<string, unknown>[] = [];
   let leafIdx = 0;
@@ -373,12 +516,17 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
     head: [['Campo', 'Valor']],
     body: data.rows,
     styles: { fontSize: 10, cellPadding: 5 },
-    headStyles: { fillColor: PDF_NAVY, textColor: [255, 255, 255], fontStyle: 'bold' },
+    headStyles: {
+      fillColor: PDF_NAVY,
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      lineWidth: 0.1,
+    },
     theme: 'grid',
   });
 
   for (const { key, label } of REDES_ORDEN) {
-    const tables = (data.tables || []).filter(t => t.red === key);
+    const tables = (data.tables || []).filter((t) => t.red === key);
     if (tables.length === 0) continue;
 
     doc.addPage('a4', 'landscape');
@@ -412,15 +560,25 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
         // one full word per line — without it, autotable sizes columns purely off body-cell
         // content, and squeezed the long group header into a couple of points, wrapping mid-word.
         styles: { fontSize: 7.5, cellPadding: 3, overflow: 'linebreak', minCellWidth: 22 },
-        headStyles: { fillColor: PDF_NAVY, textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', valign: 'middle' },
+        headStyles: {
+          fillColor: PDF_NAVY,
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+          valign: 'middle',
+          lineWidth: 0.1,
+        },
         bodyStyles: { valign: 'middle' },
         theme: 'grid',
-        didDrawPage: () => { cursorY = 40; },
+        didDrawPage: () => {
+          cursorY = 40;
+        },
       });
 
       // autoTable advances doc.lastAutoTable internally; read the actual end position for the
       // next table's start, falling back if a page break occurred mid-table (didDrawPage reset).
-      const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY;
+      const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable
+        ?.finalY;
       cursorY = (finalY ?? cursorY) + 22;
     }
   }

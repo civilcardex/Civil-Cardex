@@ -1,19 +1,33 @@
-import { createContext, useContext, useMemo, useCallback, useEffect, type ReactNode } from "react";
-import { ACTIVE_PROYECTO_ID_KEY } from "../constants/storage-keys";
-import { saveProyectoCoreData } from "../services/proyectoDataService";
-import type { Piso } from "../components/useWorkAreaState";
-import { PisosProvider, usePisos } from "./PisosContext";
-import { ProyectoProvider, useProyecto, type Proyecto, PROY_DEFAULTS } from "./ProyectoContext";
-import { MaterialesProvider, useMateriales, type MaterialItem, cloneMats } from "./MaterialesContext";
-import { ProfundidadesProvider, useProfundidades, type ProfItem, cloneProfs } from "./ProfundidadesContext";
-import { CriteriosProvider, useCriterios, type CritItem, cloneCrits } from "./CriteriosContext";
+import { createContext, useContext, useMemo, useCallback, useEffect, type ReactNode } from 'react';
+import { ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
+import { saveProyectoCoreData } from '../services/proyectoDataService';
+import type { Piso } from '../components/useWorkAreaState';
+import { PisosProvider, usePisos } from './PisosContext';
+import { ProyectoProvider, useProyecto, type Proyecto, PROY_DEFAULTS } from './ProyectoContext';
+import {
+  MaterialesProvider,
+  useMateriales,
+  type MaterialItem,
+  cloneMats,
+} from './MaterialesContext';
+import {
+  ProfundidadesProvider,
+  useProfundidades,
+  type ProfItem,
+  cloneProfs,
+} from './ProfundidadesContext';
+import { CriteriosProvider, useCriterios, type CritItem, cloneCrits } from './CriteriosContext';
 
 export type { Proyecto, MaterialItem, ProfItem, CritItem };
 export { PROY_DEFAULTS };
 
+/** Aggregated project-scoped state: pisos, proyecto, materiales, profundidades, criterios. */
 interface ProjectContextValue {
-  pisos: Piso[]; proy: Proyecto; mats: Record<string, MaterialItem[]>;
-  profs: ProfItem[]; crits: CritItem[];
+  pisos: Piso[];
+  proy: Proyecto;
+  mats: Record<string, MaterialItem[]>;
+  profs: ProfItem[];
+  crits: CritItem[];
   setPisos: React.Dispatch<React.SetStateAction<Piso[]>>;
   setP: (k: string, v: string | number) => void;
   setProyAll: (p: Proyecto) => void;
@@ -52,18 +66,41 @@ function ProjectContextBridge({ children }: { children?: ReactNode }) {
     return () => clearTimeout(timer);
   }, [pisos, proy, mats, profs, crits]);
 
-  const value = useMemo(() => ({
-    pisos, proy, mats, profs, crits,
-    setPisos, setP, setProyAll, setMats, setProfs, setCrits, resetToDefaults,
-  }), [pisos, proy, mats, profs, crits, setPisos, setP, setProyAll, setMats, setProfs, setCrits, resetToDefaults]);
-
-  return (
-    <ProjectContext.Provider value={value}>
-      {children}
-    </ProjectContext.Provider>
+  const value = useMemo(
+    () => ({
+      pisos,
+      proy,
+      mats,
+      profs,
+      crits,
+      setPisos,
+      setP,
+      setProyAll,
+      setMats,
+      setProfs,
+      setCrits,
+      resetToDefaults,
+    }),
+    [
+      pisos,
+      proy,
+      mats,
+      profs,
+      crits,
+      setPisos,
+      setP,
+      setProyAll,
+      setMats,
+      setProfs,
+      setCrits,
+      resetToDefaults,
+    ],
   );
+
+  return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 }
 
+/** Root project provider composing Pisos, Proyecto, Materiales, Profundidades, Criterios sub-contexts. */
 export function ProjectProvider({ children }: { children?: ReactNode }) {
   return (
     <PisosProvider>
@@ -71,9 +108,7 @@ export function ProjectProvider({ children }: { children?: ReactNode }) {
         <MaterialesProvider>
           <ProfundidadesProvider>
             <CriteriosProvider>
-              <ProjectContextBridge>
-                {children}
-              </ProjectContextBridge>
+              <ProjectContextBridge>{children}</ProjectContextBridge>
             </CriteriosProvider>
           </ProfundidadesProvider>
         </MaterialesProvider>
@@ -82,6 +117,7 @@ export function ProjectProvider({ children }: { children?: ReactNode }) {
   );
 }
 
+/** Hook to read/write aggregated project state. @returns {ProjectContextValue} */
 export function useProject() {
   const ctx = useContext(ProjectContext);
   if (!ctx) throw new Error('useProject must be used within ProjectProvider');

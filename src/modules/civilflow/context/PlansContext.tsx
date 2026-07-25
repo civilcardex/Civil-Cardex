@@ -1,5 +1,13 @@
-
-import { useState, useEffect, useRef, useMemo, useCallback, createContext, useContext, type ReactNode } from 'react';
+import {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+  createContext,
+  useContext,
+  type ReactNode,
+} from 'react';
 import { saveToStorage, loadFromStorage, removeFromStorage } from '../services/storageService';
 import { storePDF, loadPDF, deletePDF } from '../services/idbStorage';
 import { uploadPlanPDF, deletePlanPDF } from '../services/pdfStorageService';
@@ -12,8 +20,32 @@ function getActiveProyectoId(): number | null {
   return raw ? Number(raw) : null;
 }
 
-export interface PlanMeta { id: number; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null; definedScale?: number | null }
-export interface PlanItem { id: number; file: File; name: string; nivel: number | null; scale: number; status: string; origen?: { x_px: number; y_px: number } | null; factorX?: number | null; factorY?: number | null; calGlobal?: boolean | null; definedScale?: number | null }
+export interface PlanMeta {
+  id: number;
+  name: string;
+  nivel: number | null;
+  scale: number;
+  status: string;
+  origen?: { x_px: number; y_px: number } | null;
+  factorX?: number | null;
+  factorY?: number | null;
+  calGlobal?: boolean | null;
+  definedScale?: number | null;
+}
+export interface PlanItem {
+  id: number;
+  file: File;
+  name: string;
+  nivel: number | null;
+  scale: number;
+  status: string;
+  origen?: { x_px: number; y_px: number } | null;
+  factorX?: number | null;
+  factorY?: number | null;
+  calGlobal?: boolean | null;
+  definedScale?: number | null;
+}
+/** Plan state management API — provides plan list, error state, and CRUD operations (add, remove, update, confirm, reset, restore). */
 interface PlansContextValue {
   plans: PlanItem[];
   error: string | null;
@@ -43,11 +75,20 @@ function persistMeta(plans: (PlanItem | PlanMeta)[]) {
   }
 }
 
+/** Wraps children with plan state, restoring PDFs from IndexedDB on mount and persisting metadata to localStorage + cloud backup. Debounces cloud saves (1200ms) after restore is done. */
 export function PlansProvider({ children }: { children?: ReactNode }) {
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const restoredRef = useRef(false);
   const [restoreDone, setRestoreDone] = useState(false);
+  const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (restoredRef.current) return;
@@ -55,10 +96,16 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     // One-time mount guard for an async localStorage restore below — not derivable from
     // props/state available during render.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (plans.length > 0) { setRestoreDone(true); return; }
+    if (plans.length > 0) {
+      setRestoreDone(true);
+      return;
+    }
     (async () => {
       const meta = loadFromStorage<PlanMeta[]>(PLANS_META_KEY, []);
-      if (meta.length === 0) { setRestoreDone(true); return; }
+      if (meta.length === 0) {
+        setRestoreDone(true);
+        return;
+      }
 
       let metaChanged = false;
       const sanitizedMeta: PlanMeta[] = [];
@@ -73,7 +120,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
             // Save under clean integer ID in IndexedDB
             await storePDF(cleanId, file);
             await deletePDF(m.id);
-            
+
             // Rename localStorage trazos key if present
             const oldTrazosKey = `trazos_${m.id}`;
             const newTrazosKey = `trazos_${cleanId}`;
@@ -82,7 +129,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
               saveToStorage(newTrazosKey, oldTrazos);
               removeFromStorage(oldTrazosKey);
             }
-            
+
             sanitizedMeta.push({ ...m, id: cleanId });
             files.push(file);
             metaChanged = true;
@@ -153,34 +200,55 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       const isPdf = f.type === 'application/pdf' || f.name?.toLowerCase().endsWith('.pdf');
       if (isPdf) {
         const id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
-        pdfs.push({ id, file: f, name: f.name, nivel: null, scale: 100, status: 'pending', origen: null, factorX: null, factorY: null, calGlobal: null });
-        storePDF(id, f).catch(e => { devError('storePDF error:', e); });
+        pdfs.push({
+          id,
+          file: f,
+          name: f.name,
+          nivel: null,
+          scale: 100,
+          status: 'pending',
+          origen: null,
+          factorX: null,
+          factorY: null,
+          calGlobal: null,
+        });
+        storePDF(id, f).catch((e) => {
+          devError('storePDF error:', e);
+        });
         if (proyectoId) uploadPlanPDF(proyectoId, id, f);
       }
     }
     if (pdfs.length === 0 && newFiles.length > 0) {
       setError('Solo se permiten archivos PDF.');
-      setTimeout(() => setError(null), 3000);
+      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+      errorTimerRef.current = setTimeout(() => {
+        setError(null);
+        errorTimerRef.current = null;
+      }, 3000);
       return [];
     }
     if (pdfs.length === 0) return [];
-    setPlans(prev => [...prev, ...pdfs]);
+    setPlans((prev) => [...prev, ...pdfs]);
     return pdfs;
   }, []);
 
   const removePlan = useCallback((id: number) => {
-    setPlans(prev => prev.filter(p => p.id !== id));
-    deletePDF(id).catch(e => { devError('deletePDF error:', e); });
+    setPlans((prev) => prev.filter((p) => p.id !== id));
+    deletePDF(id).catch((e) => {
+      devError('deletePDF error:', e);
+    });
     const proyectoId = getActiveProyectoId();
     if (proyectoId) deletePlanPDF(proyectoId, id);
   }, []);
 
   const updatePlan = useCallback((id: number, updates: Partial<PlanItem>) => {
-    setPlans(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    setPlans((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
   }, []);
 
   const confirmPlan = useCallback((id: number) => {
-    setPlans(prev => prev.map(p => p.id === id && p.status === 'pending' ? { ...p, status: 'confirmed' } : p));
+    setPlans((prev) =>
+      prev.map((p) => (p.id === id && p.status === 'pending' ? { ...p, status: 'confirmed' } : p)),
+    );
   }, []);
 
   const resetPlans = useCallback(() => {
@@ -192,15 +260,25 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     setPlans(items);
   }, []);
 
-  const value = useMemo(() => ({ plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan, resetPlans, restorePlans }), [plans, error, addPlans, removePlan, updatePlan, confirmPlan, resetPlans, restorePlans]);
-
-  return (
-    <PlansContext.Provider value={value}>
-      {children}
-    </PlansContext.Provider>
+  const value = useMemo(
+    () => ({
+      plans,
+      error,
+      setError,
+      addPlans,
+      removePlan,
+      updatePlan,
+      confirmPlan,
+      resetPlans,
+      restorePlans,
+    }),
+    [plans, error, addPlans, removePlan, updatePlan, confirmPlan, resetPlans, restorePlans],
   );
+
+  return <PlansContext.Provider value={value}>{children}</PlansContext.Provider>;
 }
 
+/** Consumer hook for PlansContext — returns {plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan, resetPlans, restorePlans}. Throws if used outside PlansProvider. */
 export function usePlans() {
   const ctx = useContext(PlansContext);
   if (!ctx) throw new Error('usePlans must be used within PlansProvider');

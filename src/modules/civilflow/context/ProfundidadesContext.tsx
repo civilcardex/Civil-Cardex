@@ -1,10 +1,19 @@
-import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { PROFS_DEFAULT } from "../constants";
-import { usePersistedState } from "../../../hooks/usePersistedState";
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { PROFS_DEFAULT } from '../constants';
+import { usePersistedState } from '../../../hooks/usePersistedState';
 
-export interface ProfItem { id: string; red: string; col: string; prof: number; norma: string; nota: string }
+export interface ProfItem {
+  id: string;
+  red: string;
+  col: string;
+  prof: number;
+  norma: string;
+  nota: string;
+}
 
-function cloneProfs(): ProfItem[] { return PROFS_DEFAULT.map(p => ({...p})); }
+function cloneProfs(): ProfItem[] {
+  return PROFS_DEFAULT.map((p) => ({ ...p }));
+}
 
 const PROFS_CLONED = cloneProfs();
 
@@ -15,18 +24,16 @@ interface ProfundidadesContextValue {
 
 export const ProfundidadesContext = createContext<ProfundidadesContextValue | null>(null);
 
+/** Provides burial depth specifications per network/column with localStorage persistence. */
 export function ProfundidadesProvider({ children }: { children?: ReactNode }) {
   const [profs, setProfs] = usePersistedState<ProfItem[]>('civilflow_profs', PROFS_CLONED);
 
   const value = useMemo(() => ({ profs, setProfs }), [profs, setProfs]);
 
-  return (
-    <ProfundidadesContext.Provider value={value}>
-      {children}
-    </ProfundidadesContext.Provider>
-  );
+  return <ProfundidadesContext.Provider value={value}>{children}</ProfundidadesContext.Provider>;
 }
 
+/** Hook to access depth specifications. @returns {ProfundidadesContextValue} */
 export function useProfundidades() {
   const ctx = useContext(ProfundidadesContext);
   if (!ctx) throw new Error('useProfundidades must be used within ProfundidadesProvider');

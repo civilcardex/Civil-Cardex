@@ -36,9 +36,15 @@ export const ACC_ABBR: Record<string, string> = {
 };
 
 /**
- * Get bajante display label with piso suffix (e.g. "BAN2-P1")
+ * Get bajante display label with piso suffix (e.g. "BAN2-P1").
+ * @param b - Bajante-like object with optional code, id, pisoBase.
+ * @param nivelLabel - Fallback level label if pisoBase is absent.
+ * @returns Formatted label like "BAN2-P1" or bare code.
  */
-export function bajanteLabel(b: { code?: string; id?: string; pisoBase?: string } | null | undefined, nivelLabel?: string): string {
+export function bajanteLabel(
+  b: { code?: string; id?: string; pisoBase?: string } | null | undefined,
+  nivelLabel?: string,
+): string {
   const code = b?.code || b?.id || '';
   const raw = b?.pisoBase || nivelLabel || '';
   const piso = shortenPiso(raw);
@@ -49,8 +55,14 @@ export function bajanteLabel(b: { code?: string; id?: string; pisoBase?: string 
  * Get ramal display label with the current-floor suffix (e.g. "RS1-P1") — matches the label
  * drawn on canvas by renderRamales, which always suffixes with the CURRENT floor (a ramal has
  * no pisoBase of its own, unlike a bajante).
+ * @param r - Ramal-like object with optional label, id.
+ * @param nivelLabel - Current floor label for suffix.
+ * @returns Formatted label like "RS1-P1" or bare id.
  */
-export function ramalLabel(r: { label?: string; id?: string } | null | undefined, nivelLabel?: string): string {
+export function ramalLabel(
+  r: { label?: string; id?: string } | null | undefined,
+  nivelLabel?: string,
+): string {
   const code = r?.label || r?.id || '';
   const piso = nivelLabel ? shortenPiso(nivelLabel) : '';
   return piso ? `${code}-${piso}` : code;

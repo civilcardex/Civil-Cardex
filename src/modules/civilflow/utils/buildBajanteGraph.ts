@@ -1,11 +1,11 @@
-import { TRAZOS_PREFIX } from "../constants/storage-keys";
-import { loadFromStorage } from "../services/storageService";
-import { pisoLbl } from "../constants";
-import { distToPolyline } from "../lib/shared/geometry";
-import { parseDescargaEnId } from "./parseDescargaEnId";
-import { calcUDparcial, type UDBase } from "./componentHelpers";
-import type { Tramo } from "../context/tramosReducer";
-import type { RawElement } from "./drawingSync";
+import { TRAZOS_PREFIX } from '../constants/storage-keys';
+import { loadFromStorage } from '../services/storageService';
+import { pisoLbl } from '../constants';
+import { distToPolyline } from '../lib/shared/geometry';
+import { parseDescargaEnId } from './parseDescargaEnId';
+import { calcUDparcial, type UDBase } from './componentHelpers';
+import type { Tramo } from '../context/tramosReducer';
+import type { RawElement } from './drawingSync';
 
 interface PlanEntry {
   id: string | number;
@@ -20,6 +20,16 @@ interface BajanteRaw extends RawElement {
   desplazamientos?: Record<string, { dx?: number; dy?: number }>;
 }
 
+/**
+ * Builds an oriented adjacency graph and vent connection map from drawing plans and sanitary tramos.
+ * Detects ramal-to-bajante and ramal-to-ramal connections via endpoint proximity (2px threshold),
+ * adds vertical bajante section links, and resolves descargaEnId discharge targets.
+ * Orients each connected component by lowest (piso, bajante-first) root score.
+ * @param plans - Plan entries with id and nivel.
+ * @param tramosSan - Sanitary tramo objects.
+ * @param udBase - UD base definitions for per-element UD calculation.
+ * @returns Tuple of [orientedConexiones, vMap, ventRamalDiamMap, components].
+ */
 export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase: UDBase[]) {
   const map: Record<string, string[]> = {};
   const vMap: Record<string, string[]> = {};
@@ -30,7 +40,13 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
     const raw = loadFromStorage(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
     let data = raw as { ramales?: RamalRaw[]; bajantes?: BajanteRaw[] };
-    if (typeof data === 'string') { try { data = JSON.parse(data); } catch { continue; } }
+    if (typeof data === 'string') {
+      try {
+        data = JSON.parse(data);
+      } catch {
+        continue;
+      }
+    }
 
     const ramales = data.ramales || [];
     const bajantes = data.bajantes || [];
@@ -40,7 +56,7 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
       const disp = b.desplazamientos?.[lvl] || {};
       return {
         x: (b.x || 0) + (disp.dx || 0),
-        y: (b.y || 0) + (disp.dy || 0)
+        y: (b.y || 0) + (disp.dy || 0),
       };
     };
 
@@ -52,14 +68,17 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
 
       const checkEndpoint = (pt: number[]) => {
         for (const b of bajantes) {
-          const isDischargingIntoR = b.descargaEnId && (
-            b.descargaEnId === `${plan.id}|${r.id}` ||
-            b.descargaEnId === r.id ||
-            (r.label && (b.descargaEnId === `${plan.id}|${r.label}` || b.descargaEnId === r.label))
-          );
+          const isDischargingIntoR =
+            b.descargaEnId &&
+            (b.descargaEnId === `${plan.id}|${r.id}` ||
+              b.descargaEnId === r.id ||
+              (r.label &&
+                (b.descargaEnId === `${plan.id}|${r.label}` || b.descargaEnId === r.label)));
           if (isDischargingIntoR) continue;
 
-          const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
+          const isExplicit =
+            b.recibeDeIds &&
+            (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
           const bPos = getBajantePos(b);
           const dist = Math.hypot(pt[0] - bPos.x, pt[1] - bPos.y);
           if (isExplicit) {
@@ -95,7 +114,7 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
       // of short-circuiting on the first match, otherwise the second bajante is silently
       // dropped and its discharge units never get counted.
       const connections = [checkEndpoint(pEnd), checkEndpoint(pStart)].filter(
-        (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null
+        (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null,
       );
 
       for (const connection of connections) {
@@ -111,76 +130,83 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
     const ventRamales = ramales.filter((r: RamalRaw) => r.net === 'vent');
 
     for (const vb of ventBajantes) {
-       const vbKey = `${vb.id}-${plan.id}`;
-       if (!vMap[vbKey]) vMap[vbKey] = [];
+      const vbKey = `${vb.id}-${plan.id}`;
+      if (!vMap[vbKey]) vMap[vbKey] = [];
 
-       for (const vr of ventRamales) {
-          const isExplicit = vb.recibeDeIds && (vb.recibeDeIds.includes(vr.id) || (vr.label && vb.recibeDeIds.includes(vr.label)));
-          let isConnected = isExplicit;
-          if (!isConnected && vr.pts && vr.pts.length >= 2) {
-             const vbPos = getBajantePos(vb);
-             const d1 = Math.hypot(vr.pts[0][0] - vbPos.x, vr.pts[0][1] - vbPos.y);
-             const d2 = Math.hypot(vr.pts[vr.pts.length-1][0] - vbPos.x, vr.pts[vr.pts.length-1][1] - vbPos.y);
-             if (d1 < 2.0 || d2 < 2.0) isConnected = true;
+      for (const vr of ventRamales) {
+        const isExplicit =
+          vb.recibeDeIds &&
+          (vb.recibeDeIds.includes(vr.id) || (vr.label && vb.recibeDeIds.includes(vr.label)));
+        let isConnected = isExplicit;
+        if (!isConnected && vr.pts && vr.pts.length >= 2) {
+          const vbPos = getBajantePos(vb);
+          const d1 = Math.hypot(vr.pts[0][0] - vbPos.x, vr.pts[0][1] - vbPos.y);
+          const d2 = Math.hypot(
+            vr.pts[vr.pts.length - 1][0] - vbPos.x,
+            vr.pts[vr.pts.length - 1][1] - vbPos.y,
+          );
+          if (d1 < 2.0 || d2 < 2.0) isConnected = true;
+        }
+        if (isConnected) {
+          let foundSanId: string | null = null;
+
+          if (vr.descargaEnId) {
+            const parts = parseDescargaEnId(vr.descargaEnId, plan.id);
+            if (parts[1] !== vb.id && parts[1] !== vb.label) {
+              const sanKey = `${parts[1]}-${parts[0]}`;
+              if (!vMap[vbKey].includes(sanKey)) vMap[vbKey].push(sanKey);
+              continue;
+            }
           }
-          if (isConnected) {
-             let foundSanId: string | null = null;
 
-             if (vr.descargaEnId) {
-                const parts = parseDescargaEnId(vr.descargaEnId, plan.id);
-                if (parts[1] !== vb.id && parts[1] !== vb.label) {
-                   const sanKey = `${parts[1]}-${parts[0]}`;
-                   if (!vMap[vbKey].includes(sanKey)) vMap[vbKey].push(sanKey);
-                   continue;
+          const sanRamales = ramales.filter((r: RamalRaw) => r.net === 'san');
+          const sanBajantes = bajantes.filter((b: BajanteRaw) => b.net === 'san');
+
+          if (vr.pts && vr.pts.length >= 2) {
+            const pt1 = vr.pts[0];
+            const pt2 = vr.pts[vr.pts.length - 1];
+
+            for (const sb of sanBajantes) {
+              const sbPos = getBajantePos(sb);
+              if (
+                Math.hypot(pt1[0] - sbPos.x, pt1[1] - sbPos.y) < 2.0 ||
+                Math.hypot(pt2[0] - sbPos.x, pt2[1] - sbPos.y) < 2.0
+              ) {
+                foundSanId = sb.id;
+                break;
+              }
+            }
+
+            if (!foundSanId) {
+              for (const sr of sanRamales) {
+                if (!sr.pts || sr.pts.length < 2) continue;
+                const d1 = distToPolyline(pt1, sr.pts);
+                const d2 = distToPolyline(pt2, sr.pts);
+                if (d1 < 2.0 || d2 < 2.0) {
+                  foundSanId = sr.id;
+                  break;
                 }
-             }
-
-             const sanRamales = ramales.filter((r: RamalRaw) => r.net === 'san');
-             const sanBajantes = bajantes.filter((b: BajanteRaw) => b.net === 'san');
-
-             if (vr.pts && vr.pts.length >= 2) {
-                const pt1 = vr.pts[0];
-                const pt2 = vr.pts[vr.pts.length - 1];
-
-                for (const sb of sanBajantes) {
-                   const sbPos = getBajantePos(sb);
-                   if (Math.hypot(pt1[0] - sbPos.x, pt1[1] - sbPos.y) < 2.0 || Math.hypot(pt2[0] - sbPos.x, pt2[1] - sbPos.y) < 2.0) {
-                      foundSanId = sb.id;
-                      break;
-                   }
-                }
-
-                if (!foundSanId) {
-                   for (const sr of sanRamales) {
-                      if (!sr.pts || sr.pts.length < 2) continue;
-                      const d1 = distToPolyline(pt1, sr.pts);
-                      const d2 = distToPolyline(pt2, sr.pts);
-                      if (d1 < 2.0 || d2 < 2.0) {
-                         foundSanId = sr.id;
-                         break;
-                      }
-                   }
-                }
-             }
-
-             if (foundSanId) {
-                const sk = `${foundSanId}-${plan.id}`;
-                if (!vMap[vbKey].includes(sk)) vMap[vbKey].push(sk);
-             }
+              }
+            }
           }
-       }
+
+          if (foundSanId) {
+            const sk = `${foundSanId}-${plan.id}`;
+            if (!vMap[vbKey].includes(sk)) vMap[vbKey].push(sk);
+          }
+        }
+      }
     }
 
     // Build vent ramal diameter map from drawing data
     for (const vr of ventRamales) {
-      const diam = vr.diamPulg || (vr.diametro ? parseFloat(String(vr.diametro).replace(/[^0-9.]/g, '')) : 0);
+      const diam =
+        vr.diamPulg || (vr.diametro ? parseFloat(String(vr.diametro).replace(/[^0-9.]/g, '')) : 0);
       if (diam > 0) {
         ventRamalDiamMap[`${vr.id}-${plan.id}`] = diam;
       }
     }
   }
-
-
 
   // Add vertical connections for bajantes (from upper to lower sections)
   const bajantesGroups: Record<string, typeof tramosSan> = {};
@@ -213,7 +239,7 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
       const targetRamalId = parts[1];
       if (targetRamalId) {
         const targetKey = `${targetRamalId}-${dPlanId}`;
-        const targetExists = tramosSan.some(x => x._key === targetKey);
+        const targetExists = tramosSan.some((x) => x._key === targetKey);
         if (targetExists) {
           if (!map[targetKey]) map[targetKey] = [];
           if (!map[targetKey].includes(t._key)) {
@@ -265,14 +291,14 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
   }
 
   const getRootScore = (key: string): number => {
-    const tr = tramosSan.find(x => x._key === key);
+    const tr = tramosSan.find((x) => x._key === key);
     if (!tr) return 99999999;
     const piso = tr.piso || 0;
     const isBajante = tr.esBajante;
     const id = tr.id || '';
     const match = id.match(/^([a-zA-Z]+)(\d+)?$/);
     const num = match && match[2] ? parseInt(match[2]) : 999;
-    return (piso * 100000) + (isBajante ? 0 : 10000) + num;
+    return piso * 100000 + (isBajante ? 0 : 10000) + num;
   };
 
   const orientedConexiones: Record<string, string[]> = {};

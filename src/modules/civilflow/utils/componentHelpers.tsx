@@ -1,8 +1,29 @@
 import type { Tramo } from '../context/TramosContext';
-const componentHelpers_S1: React.CSSProperties = { color: 'var(--ok)', background: 'rgba(47, 248, 1, 0.08)', border: '1px solid rgba(47, 248, 1, 0.15)', padding: '1px 5px', borderRadius: '3px', fontWeight: 600, fontSize: '9px', fontFamily: 'var(--mono)', display: 'inline-block' };
-const componentHelpers_S2: React.CSSProperties = { color: 'var(--err)', background: 'rgba(255, 180, 171, 0.08)', border: '1px solid rgba(255, 180, 171, 0.15)', padding: '1px 5px', borderRadius: '3px', fontWeight: 600, fontSize: '9px', fontFamily: 'var(--mono)', display: 'inline-block', whiteSpace: 'nowrap' };
+const componentHelpers_S1: React.CSSProperties = {
+  color: 'var(--ok)',
+  background: 'rgba(47, 248, 1, 0.08)',
+  border: '1px solid rgba(47, 248, 1, 0.15)',
+  padding: '1px 5px',
+  borderRadius: '3px',
+  fontWeight: 600,
+  fontSize: '9px',
+  fontFamily: 'var(--mono)',
+  display: 'inline-block',
+};
+const componentHelpers_S2: React.CSSProperties = {
+  color: 'var(--err)',
+  background: 'rgba(255, 180, 171, 0.08)',
+  border: '1px solid rgba(255, 180, 171, 0.15)',
+  padding: '1px 5px',
+  borderRadius: '3px',
+  fontWeight: 600,
+  fontSize: '9px',
+  fontFamily: 'var(--mono)',
+  display: 'inline-block',
+  whiteSpace: 'nowrap',
+};
 
-
+/** Base entry for Unidad de Descarga (UD) calculation: fixture id → unit value. */
 export interface UDBase {
   id: string;
   ud: number;
@@ -13,12 +34,25 @@ interface UCBase {
   [key: string]: unknown;
 }
 
+/**
+ * Calculates a tramo's partial UD by summing (fixture count × unit value) across all UD base entries.
+ * @param tramo - Tramo with fixtures map.
+ * @param udB - Array of UD base definitions.
+ * @returns Partial UD total.
+ */
 export function calcUDparcial(tramo: Tramo, udB: UDBase[]): number {
-  return udB.reduce((s, d) => s + ((tramo.fixtures[d.id] || 0) * d.ud), 0);
+  return udB.reduce((s, d) => s + (tramo.fixtures[d.id] || 0) * d.ud, 0);
 }
 
+/**
+ * Calculates a tramo's partial UC value for a given field by summing (fixture count × field value) across base entries.
+ * @param tramo - Tramo with fixtures map.
+ * @param baseArr - Array of UC base definitions.
+ * @param field - Field name on each base entry to multiply.
+ * @returns Partial UC total.
+ */
 export function calcUCparcial(tramo: Tramo, baseArr: UCBase[], field: string): number {
-  return baseArr.reduce((s, d) => s + ((tramo.fixtures[d.id] || 0) * (Number(d[field]) || 0)), 0);
+  return baseArr.reduce((s, d) => s + (tramo.fixtures[d.id] || 0) * (Number(d[field]) || 0), 0);
 }
 
 function calcAcumulado(tramos: Tramo[], calcParcial: (t: Tramo) => number): Record<string, number> {
@@ -34,7 +68,7 @@ function calcAcumulado(tramos: Tramo[], calcParcial: (t: Tramo) => number): Reco
         changed = true;
       } else {
         const deps = t.recibeDe || [];
-        if (deps.every(d => resueltos[d] !== undefined)) {
+        if (deps.every((d) => resueltos[d] !== undefined)) {
           const otros = deps.reduce((s, d) => s + (resueltos[d] || 0), 0);
           resueltos[t.id] = parcial + otros;
           changed = true;
@@ -49,27 +83,35 @@ function calcAcumulado(tramos: Tramo[], calcParcial: (t: Tramo) => number): Reco
   return resueltos;
 }
 
-export function calcUCacumulado(tramos: Tramo[], baseArr: UCBase[], field: string): Record<string, number> {
+/**
+ * Computes accumulated UC values across a dependency graph of tramos (recibeDe links).
+ * Resolves in topological order; unresolvable tramos fall back to their partial value.
+ * @param tramos - Array of tramos with recibeDe dependency lists.
+ * @param baseArr - Array of UC base definitions.
+ * @param field - Field name on each base entry to multiply.
+ * @returns Map of tramo id → accumulated UC value.
+ */
+export function calcUCacumulado(
+  tramos: Tramo[],
+  baseArr: UCBase[],
+  field: string,
+): Record<string, number> {
   return calcAcumulado(tramos, (t) => calcUCparcial(t, baseArr, field));
 }
 
+/**
+ * Renders a compliance status badge: green for "O.K.", red for "NO CUMPLE", neutral otherwise.
+ * @param val - Status string to render.
+ * @returns JSX span element with appropriate styling.
+ */
 export function renderStatus(val: string) {
   const ok = val === 'O.K.' || val === 'Ok' || val === 'OK';
   const fail = val === 'NO CUMPLE' || val === 'No cumple' || val === 'NO';
   if (ok) {
-    return (
-      <span style={componentHelpers_S1}>
-        {val}
-      </span>
-    );
+    return <span style={componentHelpers_S1}>{val}</span>;
   }
   if (fail) {
-    return (
-      <span style={componentHelpers_S2}>
-        {val}
-      </span>
-    );
+    return <span style={componentHelpers_S2}>{val}</span>;
   }
   return <span style={{ color: 'var(--txt3)' }}>{val}</span>;
 }
-
