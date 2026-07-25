@@ -1,6 +1,24 @@
-import type { IPlanoEngineCore, PlanoBajante, PlanoElement, MultiDragOrigData } from './PlanoState';
-import { isBajante, isRamal, isTextAnnotation, isArea, isDimension, ensureActiveNet } from './PlanoState';
-import { pointInLabelBox, pointToSegmentDist, distanceToRamal, findAccMedVertexHit } from './HitTester';
+import type {
+  IPlanoEngineCore,
+  PlanoBajante,
+  PlanoElement,
+  PlanoRamal,
+  MultiDragOrigData,
+} from './PlanoState';
+import {
+  isBajante,
+  isRamal,
+  isTextAnnotation,
+  isArea,
+  isDimension,
+  ensureActiveNet,
+} from './PlanoState';
+import {
+  pointInLabelBox,
+  pointToSegmentDist,
+  distanceToRamal,
+  findAccMedVertexHit,
+} from './HitTester';
 import { getSelected } from './PlanoEngineSelection';
 import { selectAt } from './PlanoEngineSelection';
 import { findCodoReventiladoLinks } from './PlanoEngineNetwork';
@@ -11,11 +29,94 @@ import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 // ramal should only block the bajante's own move when the two are already touching; while a
 // dashed line is still showing (not yet snapped) the designer needs to freely slide the bajante
 // over to connect it, lock or no lock.
+// BFS over shared endpoints, transitively — starting from a ramal being dragged, finds every
+// ramal reachable by a chain of touching endpoints (or tributario-of-a-reachable-ramal), plus
+// every bajante that discharges from any ramal in that reachable set. Used so dragging one ramal
+// carries its whole connected network with it instead of only its direct (1-hop) neighbors.
+export function collectConnectedGraph(
+  engine: IPlanoEngineCore,
+  startRamal: PlanoRamal,
+): {
+  ramales: { id: string; origPts: [number, number][]; origLabelX?: number; origLabelY?: number }[];
+  bajantes: {
+    id: string;
+    origX: number;
+    origY: number;
+    origLblX: number;
+    origLblY: number;
+    atIdx: number;
+  }[];
+} {
+  const TOL = 0.5;
+  const visitedRamales = new Set<string>([startRamal.id]);
+  let frontier: number[][] = [startRamal.pts[0], startRamal.pts[startRamal.pts.length - 1]];
+  const resultRamales: {
+    id: string;
+    origPts: [number, number][];
+    origLabelX?: number;
+    origLabelY?: number;
+  }[] = [];
+
+  while (frontier.length > 0) {
+    const nextFrontier: number[][] = [];
+    for (const other of engine.ramales) {
+      if (visitedRamales.has(other.id) || other.net !== startRamal.net || !other.pts?.length)
+        continue;
+      const oStart = other.pts[0],
+        oEnd = other.pts[other.pts.length - 1];
+      const touchesFrontier = frontier.some(
+        (fp) =>
+          Math.hypot(oStart[0] - fp[0], oStart[1] - fp[1]) < TOL ||
+          Math.hypot(oEnd[0] - fp[0], oEnd[1] - fp[1]) < TOL,
+      );
+      const isTributarioChild = !!other.padre && visitedRamales.has(other.padre);
+      if (touchesFrontier || isTributarioChild) {
+        visitedRamales.add(other.id);
+        resultRamales.push({
+          id: other.id,
+          origPts: other.pts.map((pt) => [...pt] as [number, number]),
+          origLabelX: other.labelX,
+          origLabelY: other.labelY,
+        });
+        nextFrontier.push(oStart, oEnd);
+      }
+    }
+    frontier = nextFrontier;
+  }
+
+  const resultBajantes: {
+    id: string;
+    origX: number;
+    origY: number;
+    origLblX: number;
+    origLblY: number;
+    atIdx: number;
+  }[] = [];
+  for (const b of engine.bajantes) {
+    if (b.net !== startRamal.net) continue;
+    if (!b.recibeDeIds?.some((rid) => visitedRamales.has(rid))) continue;
+    // atIdx is legacy/unused downstream — kept only to satisfy the existing ramalDrag.connBaj shape.
+    resultBajantes.push({
+      id: b.id,
+      origX: b.x,
+      origY: b.y,
+      origLblX: b.labelX ?? b.x,
+      origLblY: b.labelY ?? b.y,
+      atIdx: 0,
+    });
+  }
+
+  return { ramales: resultRamales, bajantes: resultBajantes };
+}
+
 function _bajanteTouchesRamalEnd(b: PlanoBajante, r: { pts: number[][] } | undefined): boolean {
   if (!r || !r.pts?.length) return false;
   const pStart = r.pts[0];
   const pEnd = r.pts[r.pts.length - 1];
-  return Math.hypot(pStart[0] - b.x, pStart[1] - b.y) < 0.5 || Math.hypot(pEnd[0] - b.x, pEnd[1] - b.y) < 0.5;
+  return (
+    Math.hypot(pStart[0] - b.x, pStart[1] - b.y) < 0.5 ||
+    Math.hypot(pEnd[0] - b.x, pEnd[1] - b.y) < 0.5
+  );
 }
 
 function _bajanteBlockedByRamalLock(engine: IPlanoEngineCore, b: PlanoBajante): boolean {
@@ -25,7 +126,7 @@ function _bajanteBlockedByRamalLock(engine: IPlanoEngineCore, b: PlanoBajante): 
     if (String(targetPlanId) === String(engine._loadedPlanId)) ramalIds.add(targetId);
   }
   for (const rid of ramalIds) {
-    const r = engine.ramales.find(rr => rr.id === rid);
+    const r = engine.ramales.find((rr) => rr.id === rid);
     if (r?.bloqueado && _bajanteTouchesRamalEnd(b, r)) return true;
   }
   return false;
@@ -43,69 +144,79 @@ function _captureBajDragBackup(engine: IPlanoEngineCore, b: PlanoBajante): void 
   if (ldesvioId) assocIds.push(ldesvioId);
   const backup: Record<string, number[][]> = {};
   for (const rid of assocIds) {
-    const r = engine.ramales.find(rr => rr.id === rid);
+    const r = engine.ramales.find((rr) => rr.id === rid);
     if (r) backup[rid] = structuredClone(r.pts);
   }
   engine._bajDragBackupPts = backup;
 }
 
-function _tryBajanteHit(engine: IPlanoEngineCore, x: number, y: number, sel: PlanoElement | null): boolean {
+function _tryBajanteHit(
+  engine: IPlanoEngineCore,
+  x: number,
+  y: number,
+  sel: PlanoElement | null,
+): boolean {
+  // Scan all bajantes, pick best label match (parent preferred over ghost, closer preferred)
+  let bestB: (typeof engine.bajantes)[0] | null = null;
+  let bestDist = Infinity;
+  let bestIsGhost = false;
   for (const b of engine.bajantes) {
-    if (b._labelBox && pointInLabelBox(x, y, b._labelBox)) {
+    const lx = b.labelX ?? b.x;
+    const ly = b.labelY ?? b.y + 20;
+    const lPos = engine.toCvs(lx, ly);
+    const d = Math.hypot(x - lPos.x, y - lPos.y);
+    if (d < 40) {
       if (ensureActiveNet(engine, b.net)) return true;
-      if (b.id !== sel?.id) {
-        engine.selId = b.id;
-        engine._emitSelect(b);
-        engine.render();
+      const isGhost = b.pisoBase !== engine.nivelActual?.label;
+      if (!bestB || (!isGhost && bestIsGhost) || (isGhost === bestIsGhost && d < bestDist)) {
+        bestB = b;
+        bestDist = d;
+        bestIsGhost = isGhost;
       }
-      const lPos = engine.toCvs(b.labelX ?? b.x, b.labelY ?? (b.y + 20));
-      engine._lblDragIsParent = true;
-      engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
-      return true;
     }
+    // Contador/calentador label at offset position
     if (b.tipo === 'contador' || b.tipo === 'calentador') {
-      const lx = b.labelX ?? (b.x - 25);
-      const ly = b.labelY ?? b.y;
-      const lPos = engine.toCvs(lx, ly);
-      if (Math.hypot(x - lPos.x, y - lPos.y) < 50) {
+      const clx = b.labelX ?? b.x - 25;
+      const cly = b.labelY ?? b.y;
+      const clPos = engine.toCvs(clx, cly);
+      const cd = Math.hypot(x - clPos.x, y - clPos.y);
+      if (cd < 50) {
+        if (ensureActiveNet(engine, b.net)) return true;
+        if (!bestB || cd < bestDist) {
+          bestB = b;
+          bestDist = cd;
+          bestIsGhost = false;
+        }
+      }
+    }
+    // Symbol hit (only if no label match found)
+    if (!bestB) {
+      const circ = b._circ;
+      if (circ && Math.hypot(x - circ.x, y - circ.y) < circ.r) {
         if (ensureActiveNet(engine, b.net)) return true;
         if (b.id !== sel?.id) {
           engine.selId = b.id;
           engine._emitSelect(b);
           engine.render();
         }
-        engine._lblDragIsParent = true;
-        engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
-        return true;
-      }
-    }
-    const circ = b._circ;
-    if (circ && Math.hypot(x - circ.x, y - circ.y) < circ.r) {
-      if (ensureActiveNet(engine, b.net)) return true;
-      if (b.id !== sel?.id) {
-        engine.selId = b.id;
-        engine._emitSelect(b);
-        engine.render();
-      }
-      if (!_bajanteBlockedByRamalLock(engine, b)) {
-        engine.bajDrag = { id: b.id, offX: x - circ.x, offY: y - circ.y };
-        _captureBajDragBackup(engine, b);
-      }
-      return true;
-    }
-    if (b.labelX != null && b.labelY != null) {
-      const lPos = engine.toCvs(b.labelX, b.labelY);
-      if (Math.hypot(x - lPos.x, y - lPos.y) < 30) {
-        if (b.id !== sel?.id) {
-          engine.selId = b.id;
-          engine._emitSelect(b);
-          engine.render();
+        if (!_bajanteBlockedByRamalLock(engine, b)) {
+          engine.bajDrag = { id: b.id, offX: x - circ.x, offY: y - circ.y };
+          _captureBajDragBackup(engine, b);
         }
-        engine._lblDragIsParent = true;
-        engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
         return true;
       }
     }
+  }
+  if (bestB) {
+    const lPos = engine.toCvs(bestB.labelX ?? bestB.x, bestB.labelY ?? bestB.y + 20);
+    if (bestB.id !== sel?.id) {
+      engine.selId = bestB.id;
+      engine._emitSelect(bestB);
+      engine.render();
+    }
+    engine._lblDragIsParent = true;
+    engine.lblDrag = { id: bestB.id, offX: x - lPos.x, offY: y - lPos.y };
+    return true;
   }
   return false;
 }
@@ -118,7 +229,7 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
   // position, so a click on the ghost symbol also falls within this endpoint's tolerance —
   // without this, the endpoint hit below wins first and steals the click from the ghost.
   const lvl = engine.nivelActual?.label ?? '';
-  const ghostPts = engine.getBajantesFantasma().map(b => {
+  const ghostPts = engine.getBajantesFantasma().map((b) => {
     const disp = b.desplazamientos?.[lvl];
     return { x: b.x + (disp ? disp.dx : 0), y: b.y + (disp ? disp.dy : 0) };
   });
@@ -130,11 +241,11 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
         const d = Math.hypot(x - pc.x, y - pc.y);
         if (d < minPtDist) {
           const epP = r.pts[i];
-          const bajAtEp = engine.bajantes.find(b =>
-            Math.abs(b.x - epP[0]) < 0.1 && Math.abs(b.y - epP[1]) < 0.1
+          const bajAtEp = engine.bajantes.find(
+            (b) => Math.abs(b.x - epP[0]) < 0.1 && Math.abs(b.y - epP[1]) < 0.1,
           );
-          const ghostAtEp = ghostPts.some(g =>
-            Math.abs(g.x - epP[0]) < 0.1 && Math.abs(g.y - epP[1]) < 0.1
+          const ghostAtEp = ghostPts.some(
+            (g) => Math.abs(g.x - epP[0]) < 0.1 && Math.abs(g.y - epP[1]) < 0.1,
           );
           if (bajAtEp || ghostAtEp) continue;
           minPtDist = d;
@@ -163,8 +274,10 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
     for (const other of engine.ramales) {
       if (other.id === bestRamal.id || other.net !== bestRamal.net) continue;
       for (let si = 0; si < other.pts.length - 1; si++) {
-        const [ax, ay] = other.pts[si], [bx, by] = other.pts[si+1];
-        const sDx = bx - ax, sDy = by - ay;
+        const [ax, ay] = other.pts[si],
+          [bx, by] = other.pts[si + 1];
+        const sDx = bx - ax,
+          sDy = by - ay;
         const sLen = Math.hypot(sDx, sDy);
         if (sLen < 0.001) continue;
         const cross = Math.abs(sDx * (ay - pt[1]) - sDy * (ax - pt[0])) / sLen;
@@ -198,27 +311,43 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
   }
 
   engine._dragBackupPts = structuredClone(bestRamal.pts);
-  engine.ptDrag = { id: bestRamal.id, ptIdx: bestPtIdx, slideConstraint, linkedPts: codoLinks.length > 0 ? codoLinks : undefined };
+  engine.ptDrag = {
+    id: bestRamal.id,
+    ptIdx: bestPtIdx,
+    slideConstraint,
+    linkedPts: codoLinks.length > 0 ? codoLinks : undefined,
+  };
   engine.render();
   return true;
 }
 
-function _tryMultiSelDrag(engine: IPlanoEngineCore, x: number, y: number, isMultiSelectModifier: boolean): boolean {
+function _tryMultiSelDrag(
+  engine: IPlanoEngineCore,
+  x: number,
+  y: number,
+  isMultiSelectModifier: boolean,
+): boolean {
   if (engine.multiSel.length === 0 || engine.tool !== 'sel') return false;
 
   for (const id of engine.multiSel) {
     let hit = false;
-    const re = engine.ramales.find(r => r.id === id);
+    const re = engine.ramales.find((r) => r.id === id);
     if (re && re.pts) {
       for (let i = 0; i < re.pts.length; i++) {
         const pc = engine.toCvs(re.pts[i][0], re.pts[i][1]);
-        if (Math.hypot(x - pc.x, y - pc.y) < 12) { hit = true; break; }
+        if (Math.hypot(x - pc.x, y - pc.y) < 12) {
+          hit = true;
+          break;
+        }
       }
       if (!hit) {
         for (let i = 0; i < re.pts.length - 1; i++) {
           const p1 = engine.toCvs(re.pts[i][0], re.pts[i][1]);
-          const p2 = engine.toCvs(re.pts[i+1][0], re.pts[i+1][1]);
-          if (pointToSegmentDist(x, y, p1.x, p1.y, p2.x, p2.y) < 8) { hit = true; break; }
+          const p2 = engine.toCvs(re.pts[i + 1][0], re.pts[i + 1][1]);
+          if (pointToSegmentDist(x, y, p1.x, p1.y, p2.x, p2.y) < 8) {
+            hit = true;
+            break;
+          }
         }
       }
       if (!hit) {
@@ -227,31 +356,47 @@ function _tryMultiSelDrag(engine: IPlanoEngineCore, x: number, y: number, isMult
       }
       if (!hit && re._labelBox && pointInLabelBox(x, y, re._labelBox)) hit = true;
     }
-    const be = engine.bajantes.find(b => b.id === id);
+    const be = engine.bajantes.find((b) => b.id === id);
     if (!hit && be) {
       if (be._circ) hit = Math.hypot(x - be._circ.x, y - be._circ.y) < be._circ.r;
       if (!hit && be._labelBox && pointInLabelBox(x, y, be._labelBox)) hit = true;
     }
-    const te = engine.textAnnots.find(t => t.id === id);
+    const te = engine.textAnnots.find((t) => t.id === id);
     if (!hit && te && te._box) {
-      hit = x >= te._box.x && x <= te._box.x + te._box.w && y >= te._box.y && y <= te._box.y + te._box.h;
+      hit =
+        x >= te._box.x &&
+        x <= te._box.x + te._box.w &&
+        y >= te._box.y &&
+        y <= te._box.y + te._box.h;
     }
     if (hit) {
       if (!isMultiSelectModifier) {
         const tp = engine.toPlane(x, y);
         const origData: MultiDragOrigData = {};
         for (const mid of engine.multiSel) {
-          const mel = engine.ramales.find(r => r.id === mid);
+          const mel = engine.ramales.find((r) => r.id === mid);
           if (mel) {
-            origData[mid] = { type: 'ramal', origPts: mel.pts.map(p => [...p]), origLabelX: mel.labelX, origLabelY: mel.labelY, origLabelAngle: mel.labelAngle || 0 };
+            origData[mid] = {
+              type: 'ramal',
+              origPts: mel.pts.map((p) => [...p]),
+              origLabelX: mel.labelX,
+              origLabelY: mel.labelY,
+              origLabelAngle: mel.labelAngle || 0,
+            };
             continue;
           }
-          const mba = engine.bajantes.find(b => b.id === mid);
+          const mba = engine.bajantes.find((b) => b.id === mid);
           if (mba) {
-            origData[mid] = { type: 'bajante', origX: mba.x, origY: mba.y, origLabelX: mba.labelX, origLabelY: mba.labelY };
+            origData[mid] = {
+              type: 'bajante',
+              origX: mba.x,
+              origY: mba.y,
+              origLabelX: mba.labelX,
+              origLabelY: mba.labelY,
+            };
             continue;
           }
-          const mtx = engine.textAnnots.find(t => t.id === mid);
+          const mtx = engine.textAnnots.find((t) => t.id === mid);
           if (mtx) {
             origData[mid] = { type: 'text', origX: mtx.x, origY: mtx.y };
           }
@@ -264,8 +409,25 @@ function _tryMultiSelDrag(engine: IPlanoEngineCore, x: number, y: number, isMult
   return false;
 }
 
-function _trySelBajanteDrag(engine: IPlanoEngineCore, x: number, y: number, sel: PlanoElement | null, wasGhostSel: boolean): boolean {
-  if (!isBajante(sel) || !(sel.tipo === 'bajante' || sel.tipo === 'montante' || sel.tipo === 'red_publica' || sel.tipo === 'contador' || sel.tipo === 'calentador' || sel.id?.startsWith('B'))) return false;
+function _trySelBajanteDrag(
+  engine: IPlanoEngineCore,
+  x: number,
+  y: number,
+  sel: PlanoElement | null,
+  wasGhostSel: boolean,
+): boolean {
+  if (
+    !isBajante(sel) ||
+    !(
+      sel.tipo === 'bajante' ||
+      sel.tipo === 'montante' ||
+      sel.tipo === 'red_publica' ||
+      sel.tipo === 'contador' ||
+      sel.tipo === 'calentador' ||
+      sel.id?.startsWith('B')
+    )
+  )
+    return false;
 
   if (ensureActiveNet(engine, sel.net)) return true;
   if (sel._labelBox && pointInLabelBox(x, y, sel._labelBox)) {
@@ -290,13 +452,13 @@ function _trySelBajanteDrag(engine: IPlanoEngineCore, x: number, y: number, sel:
       engine._emitSelect(sel);
       engine.render();
     }
-      if (sel.isFantasma) {
-        // Allow parent bajante to be moved normally via bajDrag
-        if (!_bajanteBlockedByRamalLock(engine, sel)) {
-          engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
-          _captureBajDragBackup(engine, sel);
-        }
-      } else {
+    if (sel.isFantasma) {
+      // Allow parent bajante to be moved normally via bajDrag
+      if (!_bajanteBlockedByRamalLock(engine, sel)) {
+        engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
+        _captureBajDragBackup(engine, sel);
+      }
+    } else {
       if (!_bajanteBlockedByRamalLock(engine, sel)) {
         engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
         _captureBajDragBackup(engine, sel);
@@ -307,9 +469,23 @@ function _trySelBajanteDrag(engine: IPlanoEngineCore, x: number, y: number, sel:
   return false;
 }
 
-function _trySelDimDrag(engine: IPlanoEngineCore, x: number, y: number, sel: PlanoElement | null): boolean {
+function _trySelDimDrag(
+  engine: IPlanoEngineCore,
+  x: number,
+  y: number,
+  sel: PlanoElement | null,
+): boolean {
   if (!isDimension(sel)) return false;
-  const dist = distanceToRamal(x, y, [[sel.x1, sel.y1], [sel.x2, sel.y2]], (px, py) => engine.toCvs(px, py), 2);
+  const dist = distanceToRamal(
+    x,
+    y,
+    [
+      [sel.x1, sel.y1],
+      [sel.x2, sel.y2],
+    ],
+    (px, py) => engine.toCvs(px, py),
+    2,
+  );
   if (dist < 15) {
     const tp = engine.toPlane(x, y);
     engine.dimDrag = { id: sel.id, startX: tp.x, startY: tp.y };
@@ -318,7 +494,12 @@ function _trySelDimDrag(engine: IPlanoEngineCore, x: number, y: number, sel: Pla
   return false;
 }
 
-function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: PlanoElement | null): boolean {
+function _trySelRamalDrag(
+  engine: IPlanoEngineCore,
+  x: number,
+  y: number,
+  sel: PlanoElement | null,
+): boolean {
   if (!isRamal(sel) || !sel.id?.startsWith('R')) return false;
 
   // Mid-ramal accessory icons are drawn offset from the pipe centerline (renderRamales.ts), so a
@@ -326,11 +507,23 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: P
   // footprint first so clicking the icon itself — not just the exact underlying vertex — starts
   // the slide-along-body drag. This is allowed on bloqueado ramales because the slide never
   // bends the ramal's actual path — only the accessory position changes.
-  const accIdx = findAccMedVertexHit(sel.pts, sel.accMed, (px, py) => engine.toCvs(px, py), x, y, engine.realMmToCanvasPx(23) * 0.6 + 8);
+  const accIdx = findAccMedVertexHit(
+    sel.pts,
+    sel.accMed,
+    (px, py) => engine.toCvs(px, py),
+    x,
+    y,
+    engine.realMmToCanvasPx(23) * 0.6 + 8,
+  );
   if (accIdx !== null) {
-    const a = sel.pts[accIdx - 1], b = sel.pts[accIdx + 1];
+    const a = sel.pts[accIdx - 1],
+      b = sel.pts[accIdx + 1];
     engine._dragBackupPts = structuredClone(sel.pts);
-    engine.ptDrag = { id: sel.id, ptIdx: accIdx, accMedSlide: { ax: a[0], ay: a[1], bx: b[0], by: b[1] } };
+    engine.ptDrag = {
+      id: sel.id,
+      ptIdx: accIdx,
+      accMedSlide: { ax: a[0], ay: a[1], bx: b[0], by: b[1] },
+    };
     return true;
   }
 
@@ -345,9 +538,14 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: P
       // An accessory drawn mid-body (accMed) can be moved, but only sliding along the straight
       // line to its neighbors — it must not bend the ramal's actual path.
       if (!isEndpoint && sel.accMed && sel.accMed[`accMed${i}`]) {
-        const a = sel.pts[i - 1], b = sel.pts[i + 1];
+        const a = sel.pts[i - 1],
+          b = sel.pts[i + 1];
         engine._dragBackupPts = structuredClone(sel.pts);
-        engine.ptDrag = { id: sel.id, ptIdx: i, accMedSlide: { ax: a[0], ay: a[1], bx: b[0], by: b[1] } };
+        engine.ptDrag = {
+          id: sel.id,
+          ptIdx: i,
+          accMedSlide: { ax: a[0], ay: a[1], bx: b[0], by: b[1] },
+        };
         return true;
       }
       if (isEndpoint) {
@@ -359,8 +557,10 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: P
         for (const other of engine.ramales) {
           if (other.id === sel.id || other.net !== sel.net) continue;
           for (let si = 0; si < other.pts.length - 1; si++) {
-            const [ax, ay] = other.pts[si], [bx, by] = other.pts[si+1];
-            const sDx = bx - ax, sDy = by - ay;
+            const [ax, ay] = other.pts[si],
+              [bx, by] = other.pts[si + 1];
+            const sDx = bx - ax,
+              sDy = by - ay;
             const sLen = Math.hypot(sDx, sDy);
             if (sLen < 0.001) continue;
             const cross = Math.abs(sDx * (ay - pt[1]) - sDy * (ax - pt[0])) / sLen;
@@ -392,59 +592,123 @@ function _trySelRamalDrag(engine: IPlanoEngineCore, x: number, y: number, sel: P
       }
 
       engine._dragBackupPts = structuredClone(sel.pts);
-      engine.ptDrag = { id: sel.id, ptIdx: i, slideConstraint, linkedPts: codoLinks.length > 0 ? codoLinks : undefined };
+      engine.ptDrag = {
+        id: sel.id,
+        ptIdx: i,
+        slideConstraint,
+        linkedPts: codoLinks.length > 0 ? codoLinks : undefined,
+      };
       return true;
     }
   }
   for (let i = 0; i < sel.pts.length - 1; i++) {
     const p1 = engine.toCvs(sel.pts[i][0], sel.pts[i][1]);
-    const p2 = engine.toCvs(sel.pts[i+1][0], sel.pts[i+1][1]);
+    const p2 = engine.toCvs(sel.pts[i + 1][0], sel.pts[i + 1][1]);
     if (pointToSegmentDist(x, y, p1.x, p1.y, p2.x, p2.y) < 6) {
       const tp = engine.toPlane(x, y);
       const origPts = sel.pts.map((pt: number[]) => [...pt] as [number, number]);
-      const connBaj: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[] = [];
-      for (const b of engine.bajantes) {
-        if (!b.recibeDeIds?.includes(sel.id)) continue;
-        const startDist = Math.hypot(b.x - sel.pts[0][0], b.y - sel.pts[0][1]);
-        const lastIdx = sel.pts.length - 1;
-        const endDist = Math.hypot(b.x - sel.pts[lastIdx][0], b.y - sel.pts[lastIdx][1]);
-        if (startDist < 0.5) {
-          connBaj.push({ id: b.id, origX: b.x, origY: b.y, origLblX: b.labelX ?? b.x, origLblY: b.labelY ?? b.y, atIdx: 0 });
-        } else if (endDist < 0.5) {
-          connBaj.push({ id: b.id, origX: b.x, origY: b.y, origLblX: b.labelX ?? b.x, origLblY: b.labelY ?? b.y, atIdx: lastIdx });
-        }
-      }
-      // Ramales/tributarios sharing an endpoint with this one should move together as a rigid
-      // body, so the connection doesn't tear apart when dragging an unlocked ramal. A tributario
-      // (other.padre === sel.id) attaches mid-body, not at sel's own endpoint, so it needs its
-      // own check — it always moves with its padre regardless of where along it it's tapped in.
-      const lastIdx = sel.pts.length - 1;
-      const selStart = sel.pts[0], selEnd = sel.pts[lastIdx];
-      const connRamales: { id: string; origPts: [number, number][] }[] = [];
-      for (const other of engine.ramales) {
-        if (other.id === sel.id || other.net !== sel.net || !other.pts?.length) continue;
-        const oStart = other.pts[0], oEnd = other.pts[other.pts.length - 1];
-        const touchesEndpoint = [oStart, oEnd].some(op =>
-          Math.hypot(op[0] - selStart[0], op[1] - selStart[1]) < 0.5 ||
-          Math.hypot(op[0] - selEnd[0], op[1] - selEnd[1]) < 0.5
-        );
-        const isTributarioChild = other.padre === sel.id;
-        if (touchesEndpoint || isTributarioChild) {
-          connRamales.push({ id: other.id, origPts: other.pts.map((pt: number[]) => [...pt] as [number, number]) });
-        }
-      }
-      engine.ramalDrag = { id: sel.id, startX: tp.x, startY: tp.y, origPts, connBaj, connRamales, origLabelX: sel.labelX, origLabelY: sel.labelY };
+      // Ramales/tributarios connected transitively (through a chain of shared endpoints, or as a
+      // tributario of anything in that chain) move together as a rigid body, so the connection
+      // doesn't tear apart when dragging an unlocked ramal — not just its direct (1-hop) neighbors.
+      const { ramales: connRamales, bajantes: connBaj } = collectConnectedGraph(engine, sel);
+      engine.ramalDrag = {
+        id: sel.id,
+        startX: tp.x,
+        startY: tp.y,
+        origPts,
+        connBaj,
+        connRamales,
+        origLabelX: sel.labelX,
+        origLabelY: sel.labelY,
+      };
       return true;
     }
   }
   return false;
 }
 
-export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number, isMultiSelectModifier: boolean = false): void {
+export function handleSelectDown(
+  engine: IPlanoEngineCore,
+  x: number,
+  y: number,
+  isMultiSelectModifier: boolean = false,
+): void {
   const wasGhostSel = engine._isGhostSel;
   engine._isGhostSel = false;
   engine._lblDragIsParent = false;
+  // A cross-floor association ghost's selection (selectedGhostId) must never survive past this
+  // click — cleared unconditionally up front so ANY other hit below (a real bajante's label, a
+  // ramal, etc.) starts from a clean slate. Re-set below only if THIS click actually lands on a
+  // ghost's own circle.
+  if (engine.tool === 'sel' && !isMultiSelectModifier && engine.selectedGhostId) {
+    engine.selectedGhostId = null;
+  }
+  // FIRST: check all bajante labels — simple, no prioritisation games
+  let labelBest: { id: string; x: number; y: number; isParent: boolean } | null = null;
+  let labelBestDist = Infinity;
+  for (const b of engine.bajantes) {
+    const lx = b.labelX ?? b.x;
+    const ly = b.labelY ?? b.y + 20;
+    const lPos = engine.toCvs(lx, ly);
+    const d = Math.hypot(x - lPos.x, y - lPos.y);
+    if (d < 30) {
+      if (ensureActiveNet(engine, b.net)) return;
+      const isParent = b.pisoBase === engine.nivelActual?.label;
+      if (
+        !labelBest ||
+        (isParent && !labelBest.isParent) ||
+        (isParent === labelBest.isParent && d < labelBestDist)
+      ) {
+        labelBest = { id: b.id, x: x - lPos.x, y: y - lPos.y, isParent };
+        labelBestDist = d;
+      }
+    }
+  }
+  if (labelBest) {
+    engine.selId = labelBest.id;
+    engine._lblDragIsParent = labelBest.isParent;
+    const b = engine.bajantes.find((bb) => bb.id === labelBest!.id);
+    if (b) engine._emitSelect(b);
+    engine.lblDrag = { id: labelBest.id, offX: labelBest.x, offY: labelBest.y };
+    engine.render();
+    return;
+  }
   const sel = getSelected(engine);
+
+  // Cross-floor association ghost (associateBajanteAcrossFloors.ts) — pure reference marker, its
+  // own selection state (selectedGhostId), never drives ramal/bajante selection or dragging.
+  // selectedGhostId was already cleared unconditionally above; only re-set it if THIS click
+  // actually lands on a ghost's own circle.
+  if (engine.tool === 'sel' && !isMultiSelectModifier) {
+    for (const g of engine.crossFloorGhosts) {
+      if (!g._hitCircle) continue;
+      const gDist = Math.hypot(x - g._hitCircle.x, y - g._hitCircle.y);
+      if (gDist >= g._hitCircle.r) continue;
+      // A real bajante sitting right next to this reference marker must always win if it's
+      // genuinely closer to the click — the ghost is secondary, never allowed to eclipse a real,
+      // editable element.
+      let realIsCloser = false;
+      for (const b of engine.bajantes) {
+        const c = engine.toCvs(b.x, b.y);
+        if (Math.hypot(x - c.x, y - c.y) < gDist) {
+          realIsCloser = true;
+          break;
+        }
+        const lx = b.labelX ?? b.x,
+          ly = b.labelY ?? b.y + 20;
+        const lPos = engine.toCvs(lx, ly);
+        if (Math.hypot(x - lPos.x, y - lPos.y) < gDist) {
+          realIsCloser = true;
+          break;
+        }
+      }
+      if (realIsCloser) continue;
+      engine.selectedGhostId = g.id;
+      engine.selId = null;
+      engine.render();
+      return;
+    }
+  }
 
   if (engine.tool === 'sel' && !isMultiSelectModifier) {
     if (_tryBajanteHit(engine, x, y, sel)) return;
@@ -464,13 +728,23 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
   if (_trySelDimDrag(engine, x, y, sel)) return;
   if (_trySelRamalDrag(engine, x, y, sel)) return;
 
-  if (sel && 'labelX' in sel && !(sel.id?.startsWith('T'))) {
+  if (sel && 'labelX' in sel && !sel.id?.startsWith('T')) {
     if (sel._labelBox && pointInLabelBox(x, y, sel._labelBox)) {
       const lPos = engine.toCvs(sel.labelX!, sel.labelY!);
       engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
       return;
     }
-    if (!(isBajante(sel) && (sel.tipo === 'bajante' || sel.tipo === 'montante' || sel.tipo === 'red_publica' || sel.tipo === 'contador' || sel.tipo === 'calentador' || sel.id?.startsWith('B')))) {
+    if (
+      !(
+        isBajante(sel) &&
+        (sel.tipo === 'bajante' ||
+          sel.tipo === 'montante' ||
+          sel.tipo === 'red_publica' ||
+          sel.tipo === 'contador' ||
+          sel.tipo === 'calentador' ||
+          sel.id?.startsWith('B'))
+      )
+    ) {
       const lPos = engine.toCvs(sel.labelX!, sel.labelY!);
       if (Math.hypot(x - lPos.x, y - lPos.y) < 12) {
         engine.lblDrag = { id: sel.id, offX: x - lPos.x, offY: y - lPos.y };
@@ -481,7 +755,8 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
 
   if (isTextAnnotation(sel) && sel._box && sel.id?.startsWith('T')) {
     const b = sel._box;
-    const cornerX = b.x + b.w, cornerY = b.y + b.h;
+    const cornerX = b.x + b.w,
+      cornerY = b.y + b.h;
     if (Math.hypot(x - cornerX, y - cornerY) < 10) {
       engine.txtResize = {
         id: sel.id,
@@ -506,14 +781,20 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
       for (const b of engine.bajantes) {
         if (b._circ) {
           const d = Math.hypot(x - b._circ.x, y - b._circ.y);
-          if (d < b._circ.r) { selectAt(engine, x, y, isMultiSelectModifier); return; }
+          if (d < b._circ.r) {
+            selectAt(engine, x, y, isMultiSelectModifier);
+            return;
+          }
         }
       }
       const fg = engine.getBajantesFantasma();
       for (const b of fg) {
         if (b._ghost) {
           const d = Math.hypot(x - b._ghost.x, y - b._ghost.y);
-          if (d < b._ghost.r) { selectAt(engine, x, y, isMultiSelectModifier); return; }
+          if (d < b._ghost.r) {
+            selectAt(engine, x, y, isMultiSelectModifier);
+            return;
+          }
         }
       }
       const tp = engine.toPlane(x, y);
@@ -553,11 +834,19 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
       if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
         let bajAtPos = false;
         for (const bb of engine.bajantes) {
-          if (bb._circ && Math.hypot(x - bb._circ.x, y - bb._circ.y) < bb._circ.r) { bajAtPos = true; break; }
+          if (bb._circ && Math.hypot(x - bb._circ.x, y - bb._circ.y) < bb._circ.r) {
+            bajAtPos = true;
+            break;
+          }
         }
         if (!bajAtPos) {
           const fg = engine.getBajantesFantasma();
-          for (const bb of fg) { if (bb._ghost && Math.hypot(x - bb._ghost.x, y - bb._ghost.y) < bb._ghost.r) { bajAtPos = true; break; } }
+          for (const bb of fg) {
+            if (bb._ghost && Math.hypot(x - bb._ghost.x, y - bb._ghost.y) < bb._ghost.r) {
+              bajAtPos = true;
+              break;
+            }
+          }
         }
         if (bajAtPos) break;
         engine.selId = a.id;
@@ -584,23 +873,57 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     }
   }
 
-  for (const b of engine.bajantes) {
-    const lb = b._labelBox;
-    const lbHit = lb && pointInLabelBox(x, y, lb);
-    const lPos = engine.toCvs(b.labelX, b.labelY);
-    const nearLabel = Math.hypot(x - lPos.x, y - lPos.y) < 20;
-    if (lbHit || nearLabel) {
-      if (ensureActiveNet(engine, b.net)) return;
-      engine.selId = b.id;
-      engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
-      engine._emitSelect(b);
+  // Sifón accessory label ("S D=...") — its own draggable box, separate from the ramal's main
+  // label, one per end since a ramal can carry a sifón at both extremes.
+  for (const r of engine.ramales) {
+    const slots: Array<{ slot: 'ini' | 'fin'; box: typeof r._sifonLabelBoxIni }> = [
+      { slot: 'ini', box: r._sifonLabelBoxIni },
+      { slot: 'fin', box: r._sifonLabelBoxFin },
+    ];
+    for (const { slot, box } of slots) {
+      if (!box || !pointInLabelBox(x, y, box)) continue;
+      if (ensureActiveNet(engine, r.net)) return;
+      engine.selId = r.id;
+      engine.lblDrag = { id: r.id, offX: x - box.cx, offY: y - box.cy, slot };
+      engine._emitSelect(r);
       engine.render();
       return;
     }
   }
 
+  // Direct label hit test using only labelX/labelY — bypasses potential _labelBox issues.
+  let bestB: (typeof engine.bajantes)[0] | null = null;
+  let bestDist = Infinity;
+  let bestIsGhost = false;
+  for (const b of engine.bajantes) {
+    const lx = b.labelX ?? b.x;
+    const ly = b.labelY ?? b.y + 20;
+    const lPos = engine.toCvs(lx, ly);
+    const d = Math.hypot(x - lPos.x, y - lPos.y);
+    if (d < 40) {
+      if (ensureActiveNet(engine, b.net)) return;
+      const isGhost = b.pisoBase !== engine.nivelActual?.label;
+      // Prefer non-ghost (parent) over ghost, and closer over farther
+      if (!bestB || (!isGhost && bestIsGhost) || (isGhost === bestIsGhost && d < bestDist)) {
+        bestB = b;
+        bestDist = d;
+        bestIsGhost = isGhost;
+      }
+    }
+  }
+  if (bestB) {
+    const lPos = engine.toCvs(bestB.labelX ?? bestB.x, bestB.labelY ?? bestB.y + 20);
+    engine.selId = bestB.id;
+    engine._emitSelect(bestB);
+    engine._lblDragIsParent = true;
+    engine.lblDrag = { id: bestB.id, offX: x - lPos.x, offY: y - lPos.y };
+    engine.render();
+    return;
+  }
+
   const fg = engine.getBajantesFantasma();
-  let gFound: PlanoBajante | null = null, gMin = Infinity;
+  let gFound: PlanoBajante | null = null,
+    gMin = Infinity;
 
   for (const b of fg) {
     if (b._ghostLabelBox && pointInLabelBox(x, y, b._ghostLabelBox)) {
@@ -620,8 +943,10 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
         const gy = b.y + (disp ? disp.dy : 0);
         let ghostAngle = 0;
         const firstRamal = b.recibeDeIds?.length
-          ? engine.ramales.find(rr => rr.id === b.recibeDeIds![0])
-          : engine.ramales.find(rr => rr.pts?.length && Math.hypot(rr.pts[0][0] - gx, rr.pts[0][1] - gy) < 12);
+          ? engine.ramales.find((rr) => rr.id === b.recibeDeIds![0])
+          : engine.ramales.find(
+              (rr) => rr.pts?.length && Math.hypot(rr.pts[0][0] - gx, rr.pts[0][1] - gy) < 12,
+            );
         if (firstRamal && firstRamal.pts && firstRamal.pts.length >= 2) {
           const dx = firstRamal.pts[1][0] - firstRamal.pts[0][0];
           const dy = firstRamal.pts[1][1] - firstRamal.pts[0][1];
@@ -629,7 +954,7 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
             ghostAngle = Math.atan2(dy, dx);
           }
         } else {
-          ghostAngle = (b.labelAngle || 0) * Math.PI / 180;
+          ghostAngle = ((b.labelAngle || 0) * Math.PI) / 180;
         }
         const c = engine.toCvs(gx, gy);
         const distPx = engine.mm2cvs(15);
@@ -640,6 +965,34 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
         ly = pL.y;
       }
       const lPos = engine.toCvs(lx, ly);
+      const dGhost = Math.hypot(x - lPos.x, y - lPos.y);
+      // Before committing to ghost: check if any non-ghost parent label is closer
+      let bestParent: typeof b | null = null,
+        bestPDist = Infinity;
+      for (const pb of engine.bajantes) {
+        if (pb.pisoBase !== engine.nivelActual?.label) continue;
+        const plx = pb.labelX ?? pb.x;
+        const ply = pb.labelY ?? pb.y + 20;
+        const pp = engine.toCvs(plx, ply);
+        const pd = Math.hypot(x - pp.x, y - pp.y);
+        if (pd < 40 && pd < bestPDist) {
+          bestParent = pb;
+          bestPDist = pd;
+        }
+      }
+      if (bestParent && bestPDist < dGhost) {
+        engine._isGhostSel = false;
+        engine._lblDragIsParent = true;
+        const pp = engine.toCvs(
+          bestParent.labelX ?? bestParent.x,
+          bestParent.labelY ?? bestParent.y + 20,
+        );
+        engine.lblDrag = { id: bestParent.id, offX: x - pp.x, offY: y - pp.y };
+        engine._emitSelect(bestParent);
+        engine.render();
+        return;
+      }
+      engine._lblDragIsParent = false;
       engine.lblDrag = { id: b.id, offX: x - lPos.x, offY: y - lPos.y };
       engine._emitSelect(b);
       engine.render();
@@ -650,7 +1003,10 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
   for (const b of fg) {
     if (b._ghost) {
       const d = Math.hypot(x - b._ghost.x, y - b._ghost.y);
-      if (d < b._ghost.r && d < gMin) { gMin = d; gFound = b as PlanoBajante; }
+      if (d < b._ghost.r && d < gMin) {
+        gMin = d;
+        gFound = b as PlanoBajante;
+      }
     }
   }
   if (gFound) {
@@ -661,14 +1017,27 @@ export function handleSelectDown(engine: IPlanoEngineCore, x: number, y: number,
     engine.render();
     engine.ghostDrag = {
       id: gFound.id,
-      startX: x, startY: y,
+      startX: x,
+      startY: y,
       baseDx: gFound.desplazamientos?.[engine.nivelActual?.label ?? '']?.dx || 0,
       baseDy: gFound.desplazamientos?.[engine.nivelActual?.label ?? '']?.dy || 0,
     };
     return;
   }
   selectAt(engine, x, y, isMultiSelectModifier);
-  if (engine.tool === 'sel' && !engine.ptDrag && !engine.ramalDrag && !engine.bajDrag && !engine.ghostDrag && !engine.lblDrag && !engine.txtDrag && !engine.areaDrag && !engine.dimDrag && !engine.multiDrag && !engine.selId) {
+  if (
+    engine.tool === 'sel' &&
+    !engine.ptDrag &&
+    !engine.ramalDrag &&
+    !engine.bajDrag &&
+    !engine.ghostDrag &&
+    !engine.lblDrag &&
+    !engine.txtDrag &&
+    !engine.areaDrag &&
+    !engine.dimDrag &&
+    !engine.multiDrag &&
+    !engine.selId
+  ) {
     if (!isMultiSelectModifier) {
       engine.multiSel = [];
     }

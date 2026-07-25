@@ -13,16 +13,16 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const orig = engine.multiDrag.origData[id];
       if (!orig) continue;
       if (orig.type === 'ramal') {
-        const r = engine.ramales.find(rr => rr.id === id);
+        const r = engine.ramales.find((rr) => rr.id === id);
         if (r && !r.bloqueado) {
-          r.pts = (orig.origPts || []).map(p => [p[0] + dx, p[1] + dy]);
+          r.pts = (orig.origPts || []).map((p) => [p[0] + dx, p[1] + dy]);
           r.labelX = (orig.origLabelX || 0) + dx;
           r.labelY = (orig.origLabelY || 0) + dy;
           r.labelAngle = orig.origLabelAngle || 0;
           r.totalL = calculateRamalLength(r.pts, engine);
         }
       } else if (orig.type === 'bajante') {
-        const b = engine.bajantes.find(bb => bb.id === id);
+        const b = engine.bajantes.find((bb) => bb.id === id);
         if (b) {
           b.x = (orig.origX || 0) + dx;
           b.y = (orig.origY || 0) + dy;
@@ -30,7 +30,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           b.labelY = (orig.origLabelY || 0) + dy;
         }
       } else if (orig.type === 'text') {
-        const t = engine.textAnnots.find(tt => tt.id === id);
+        const t = engine.textAnnots.find((tt) => tt.id === id);
         if (t) {
           t.x = (orig.origX || 0) + dx;
           t.y = (orig.origY || 0) + dy;
@@ -41,18 +41,21 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     return;
   }
   if (engine.ramalDrag) {
-    const r = engine.ramales.find(rr => rr.id === engine.ramalDrag!.id);
+    const r = engine.ramales.find((rr) => rr.id === engine.ramalDrag!.id);
     if (r && !r.bloqueado) {
       const tp = engine.toPlane(x, y);
       const dx = tp.x - engine.ramalDrag.startX;
       const dy = tp.y - engine.ramalDrag.startY;
 
-      let slideDx = dx, slideDy = dy;
+      let slideDx = dx,
+        slideDy = dy;
       for (const other of engine.ramales) {
         if (other.id === r.id || other.net !== r.net) continue;
         for (let si = 0; si < other.pts.length - 1; si++) {
-          const [ax, ay] = other.pts[si], [bx, by] = other.pts[si+1];
-          const sDx = bx - ax, sDy = by - ay;
+          const [ax, ay] = other.pts[si],
+            [bx, by] = other.pts[si + 1];
+          const sDx = bx - ax,
+            sDy = by - ay;
           const sLen = Math.hypot(sDx, sDy);
           if (sLen < 0.001) continue;
           const origFirst = engine.ramalDrag.origPts[0];
@@ -64,11 +67,12 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             const tCheck = ((origFirst[0] - ax) * sDx + (origFirst[1] - ay) * sDy) / (sLen * sLen);
             const marginT = Math.min(0.45, 2 / sLen);
             if (tCheck <= marginT || tCheck >= 1 - marginT) continue;
-            const proposedX = origFirst[0] + dx, proposedY = origFirst[1] + dy;
+            const proposedX = origFirst[0] + dx,
+              proposedY = origFirst[1] + dy;
             let t = ((proposedX - ax) * sDx + (proposedY - ay) * sDy) / (sLen * sLen);
             t = Math.max(0, Math.min(1, t));
-            slideDx = (ax + t * sDx) - origFirst[0];
-            slideDy = (ay + t * sDy) - origFirst[1];
+            slideDx = ax + t * sDx - origFirst[0];
+            slideDy = ay + t * sDy - origFirst[1];
             break;
           }
         }
@@ -88,7 +92,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       checkRamalAngles(r.pts, r.net, r.tipo);
       if (engine.ramalDrag.connBaj) {
         for (const cb of engine.ramalDrag.connBaj) {
-          const b = engine.bajantes.find(bb => bb.id === cb.id);
+          const b = engine.bajantes.find((bb) => bb.id === cb.id);
           if (!b) continue;
           b.x = cb.origX + slideDx;
           b.y = cb.origY + slideDy;
@@ -98,13 +102,22 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       }
       if (engine.ramalDrag.connRamales) {
         for (const cr of engine.ramalDrag.connRamales) {
-          const other = engine.ramales.find(rr => rr.id === cr.id);
+          const other = engine.ramales.find((rr) => rr.id === cr.id);
           if (!other) continue;
           for (let i = 0; i < other.pts.length && i < cr.origPts.length; i++) {
             other.pts[i][0] = cr.origPts[i][0] + slideDx;
             other.pts[i][1] = cr.origPts[i][1] + slideDy;
           }
           other.totalL = calculateRamalLength(other.pts, engine);
+          // Its label must ride along with its body — previously left behind since only the
+          // ramal's points were translated here, so a tributario's own label stayed put while its
+          // pipe moved out from under it.
+          if (cr.origLabelX !== undefined && other.labelX !== undefined) {
+            other.labelX = cr.origLabelX + slideDx;
+          }
+          if (cr.origLabelY !== undefined && other.labelY !== undefined) {
+            other.labelY = cr.origLabelY + slideDy;
+          }
         }
       }
       if (engine.nivelActual) {
@@ -166,7 +179,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     return;
   }
   if (engine.bajDrag) {
-    const b = engine.bajantes.find(bb => bb.id === engine.bajDrag!.id);
+    const b = engine.bajantes.find((bb) => bb.id === engine.bajDrag!.id);
     if (b) {
       let p = engine.toPlane(x - engine.bajDrag.offX, y - engine.bajDrag.offY);
       const oldX = b.x;
@@ -190,24 +203,31 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       if (engine.snapMode) {
         const assocIds = [...(b.recibeDeIds || [])];
         if (b.descargaEnId) assocIds.push(b.descargaEnId);
-        const assocRamales = (engine.ramales || []).filter(r => assocIds.includes(r.id) && r.pts && r.pts.length >= 2);
+        const assocRamales = (engine.ramales || []).filter(
+          (r) => assocIds.includes(r.id) && r.pts && r.pts.length >= 2,
+        );
         if (assocRamales.length > 0) {
           const r = assocRamales[0];
           const pStart = r.pts[0];
           const pEnd = r.pts[r.pts.length - 1];
           const distStart = Math.hypot(pStart[0] - oldX, pStart[1] - oldY);
           const distEnd = Math.hypot(pEnd[0] - oldX, pEnd[1] - oldY);
-          const anchor = distStart <= distEnd
-            ? (r.pts.length > 2 ? r.pts[1] : pEnd)
-            : (r.pts.length > 2 ? r.pts[r.pts.length - 2] : pStart);
+          const anchor =
+            distStart <= distEnd
+              ? r.pts.length > 2
+                ? r.pts[1]
+                : pEnd
+              : r.pts.length > 2
+                ? r.pts[r.pts.length - 2]
+                : pStart;
           p = engine.snapAngle(anchor[0], anchor[1], p.x, p.y, r.net, r.tipo);
         }
       }
 
       const associatedRamales: PlanoRamal[] = [];
       if (b.recibeDeIds?.length) {
-        b.recibeDeIds.forEach(rid => {
-          const r = engine.ramales.find(rr => rr.id === rid);
+        b.recibeDeIds.forEach((rid) => {
+          const r = engine.ramales.find((rr) => rr.id === rid);
           if (r) associatedRamales.push(r);
         });
       }
@@ -216,12 +236,12 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         const targetPlanId = parts[0];
         const targetId = parts[1];
         if (String(targetPlanId) === String(engine._loadedPlanId)) {
-          const r = engine.ramales.find(rr => rr.id === targetId);
+          const r = engine.ramales.find((rr) => rr.id === targetId);
           if (r) associatedRamales.push(r);
         }
       }
 
-       // Snap to the RAMAL ENDPOINT — always active
+      // Snap to the RAMAL ENDPOINT — always active
       {
         const snapThresh = 20 / engine.zoom;
         for (const r of associatedRamales) {
@@ -244,7 +264,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
 
       // Auto-connect: detect nearby ramal endpoints and auto-associate during drag
       const autoThresh = 20 / engine.zoom;
-      for (const r of (engine.ramales || [])) {
+      for (const r of engine.ramales || []) {
         if (!r.pts || r.pts.length === 0) continue;
         if (r.net !== b.net) continue;
         if ((b.recibeDeIds || []).includes(r.id)) continue;
@@ -256,13 +276,15 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           if (!b.recibeDeIds) b.recibeDeIds = [];
           b.recibeDeIds.push(r.id);
           r.ini = b.code || b.id;
-          p.x = pStart[0]; p.y = pStart[1];
+          p.x = pStart[0];
+          p.y = pStart[1];
           break;
         } else if (dEnd < autoThresh) {
           if (!b.recibeDeIds) b.recibeDeIds = [];
           b.recibeDeIds.push(r.id);
           r.fin = b.code || b.id;
-          p.x = pEnd[0]; p.y = pEnd[1];
+          p.x = pEnd[0];
+          p.y = pEnd[1];
           break;
         }
       }
@@ -274,10 +296,10 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       b.y = p.y;
       b.labelX = (b.labelX || 0) + dx;
       b.labelY = (b.labelY || 0) + dy;
-      
+
       if (b.recibeDeIds?.length) {
-        b.recibeDeIds.forEach(rid => {
-          const r = engine.ramales.find(rr => rr.id === rid);
+        b.recibeDeIds.forEach((rid) => {
+          const r = engine.ramales.find((rr) => rr.id === rid);
           if (!r || !r.pts) return;
           // Defensive: handleMouseDown already refuses to start bajDrag when recibeDeIds points
           // at a bloqueado ramal, so this shouldn't fire in practice — kept in case bloqueado
@@ -285,11 +307,15 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           if (r.bloqueado) return;
           let changed = false;
           if (Math.hypot(r.pts[0][0] - oldX, r.pts[0][1] - oldY) < 0.5) {
-            r.pts[0][0] = p.x; r.pts[0][1] = p.y; changed = true;
+            r.pts[0][0] = p.x;
+            r.pts[0][1] = p.y;
+            changed = true;
           }
           const lastIdx = r.pts.length - 1;
           if (Math.hypot(r.pts[lastIdx][0] - oldX, r.pts[lastIdx][1] - oldY) < 0.5) {
-            r.pts[lastIdx][0] = p.x; r.pts[lastIdx][1] = p.y; changed = true;
+            r.pts[lastIdx][0] = p.x;
+            r.pts[lastIdx][1] = p.y;
+            changed = true;
           }
           if (changed) {
             r.totalL = calculateRamalLength(r.pts, engine);
@@ -302,15 +328,19 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         });
       }
 
-      // Keep every level's ghost-connector ramal (Ldesvio) attached to this bajante as it
-      // moves — the ghost's offset (d.dx, d.dy) from the parent stays constant, so only the
-      // ramal's endpoints (parent pos + ghost pos) need to be re-derived from the new b.x/b.y.
+      // Keep the ghost-connector ramal (Ldesvio) attached: first endpoint follows
+      // the parent, second endpoint stays at fixed absolute position (ghost doesn't
+      // drift with the parent — offset is compensated by the movement delta).
       if (b.desplazamientos) {
+        const dxMove = p.x - oldX;
+        const dyMove = p.y - oldY;
         for (const d of Object.values(b.desplazamientos)) {
           if (!d.Ldesvio) continue;
-          const r = engine.ramales.find(rr => rr.id === d.Ldesvio);
+          const r = engine.ramales.find((rr) => rr.id === d.Ldesvio);
           if (!r) continue;
           r.pts[0] = [b.x, b.y];
+          d.dx -= dxMove;
+          d.dy -= dyMove;
           r.pts[r.pts.length - 1] = [b.x + d.dx, b.y + d.dy];
           r.totalL = calculateRamalLength(r.pts, engine);
           r.labelAngle = _firstSegmentAngle(r.pts);
@@ -325,9 +355,10 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     return;
   }
   if (engine.lblDrag) {
-    const el = engine.ramales.find(r => r.id === engine.lblDrag!.id)
-      || engine.bajantes.find(b => b.id === engine.lblDrag!.id)
-      || engine.areas.find(a => a.id === engine.lblDrag!.id);
+    const el =
+      engine.ramales.find((r) => r.id === engine.lblDrag!.id) ||
+      engine.bajantes.find((b) => b.id === engine.lblDrag!.id) ||
+      engine.areas.find((a) => a.id === engine.lblDrag!.id);
     if (el) {
       const p = engine.toPlane(x - engine.lblDrag.offX, y - engine.lblDrag.offY);
       // Only a bajante has cross-floor "ghost" label positions (ghostData, keyed per floor) —
@@ -338,7 +369,11 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       // never set true for them) and wrote to a bogus ghostData property instead, so the label
       // never actually moved.
       const isParentDrag = !!engine._lblDragIsParent;
-      if (!isParentDrag && engine.nivelActual && isBajante(el)) {
+      if (engine.lblDrag.slot && !isBajante(el)) {
+        const ramal = el as PlanoRamal;
+        if (engine.lblDrag.slot === 'ini') ramal.sifonLabelIni = [p.x, p.y];
+        else ramal.sifonLabelFin = [p.x, p.y];
+      } else if (!isParentDrag && engine.nivelActual && isBajante(el)) {
         const baj = el;
         const lbl = engine.nivelActual.label ?? '';
         if (!baj.ghostData) baj.ghostData = {};
@@ -354,7 +389,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     return;
   }
   if (engine.txtDrag) {
-    const t = engine.textAnnots.find(tt => tt.id === engine.txtDrag!.id);
+    const t = engine.textAnnots.find((tt) => tt.id === engine.txtDrag!.id);
     if (t) {
       const p = engine.toPlane(x, y);
       t.x = engine.txtDrag.origX + (p.x - engine.txtDrag.startX);
@@ -364,7 +399,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     return;
   }
   if (engine.txtResize) {
-    const t = engine.textAnnots.find(tt => tt.id === engine.txtResize!.id);
+    const t = engine.textAnnots.find((tt) => tt.id === engine.txtResize!.id);
     if (t) {
       const { boxX, boxY, startDist, origFontMm, origBoxWpx } = engine.txtResize;
       const dist = Math.hypot(x - boxX, y - boxY);
@@ -376,13 +411,15 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     return;
   }
   if (engine.dimDrag) {
-    const d = engine.dims.find(dd => dd.id === engine.dimDrag!.id);
+    const d = engine.dims.find((dd) => dd.id === engine.dimDrag!.id);
     if (d) {
       const p = engine.toPlane(x, y);
       const dx = p.x - engine.dimDrag.startX;
       const dy = p.y - engine.dimDrag.startY;
-      d.x1 += dx; d.y1 += dy;
-      d.x2 += dx; d.y2 += dy;
+      d.x1 += dx;
+      d.y1 += dy;
+      d.x2 += dx;
+      d.y2 += dy;
       engine.dimDrag.startX = p.x;
       engine.dimDrag.startY = p.y;
       engine.scheduleRender();
@@ -390,13 +427,19 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     return;
   }
   if (engine.areaDrag) {
-    const a = engine.areas.find(aa => aa.id === engine.areaDrag!.id);
+    const a = engine.areas.find((aa) => aa.id === engine.areaDrag!.id);
     if (a) {
       const p = engine.toPlane(x, y);
       const dx = p.x - engine.areaDrag.startX;
       const dy = p.y - engine.areaDrag.startY;
-      a.pts.forEach(pt => { pt[0] += dx; pt[1] += dy; });
-      if (a.labelX !== undefined) { a.labelX += dx; a.labelY += dy; }
+      a.pts.forEach((pt) => {
+        pt[0] += dx;
+        pt[1] += dy;
+      });
+      if (a.labelX !== undefined) {
+        a.labelX += dx;
+        a.labelY += dy;
+      }
       engine.areaDrag.startX = p.x;
       engine.areaDrag.startY = p.y;
       engine.scheduleRender();
@@ -404,7 +447,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     return;
   }
   if (engine.ptDrag) {
-    const r = engine.ramales.find(rr => rr.id === engine.ptDrag!.id);
+    const r = engine.ramales.find((rr) => rr.id === engine.ptDrag!.id);
     if (r) {
       let p = engine.toPlane(x, y);
       const idx = engine.ptDrag.ptIdx;
@@ -414,9 +457,11 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       // between them, so the ramal's actual path never bends because of this drag.
       const accSlide = engine.ptDrag.accMedSlide;
       if (accSlide) {
-        const sDx = accSlide.bx - accSlide.ax, sDy = accSlide.by - accSlide.ay;
+        const sDx = accSlide.bx - accSlide.ax,
+          sDy = accSlide.by - accSlide.ay;
         const sLen2 = sDx * sDx + sDy * sDy;
-        let t = sLen2 > 0.0001 ? ((p.x - accSlide.ax) * sDx + (p.y - accSlide.ay) * sDy) / sLen2 : 0;
+        let t =
+          sLen2 > 0.0001 ? ((p.x - accSlide.ax) * sDx + (p.y - accSlide.ay) * sDy) / sLen2 : 0;
         t = Math.max(0.02, Math.min(0.98, t));
         r.pts[idx][0] = accSlide.ax + t * sDx;
         r.pts[idx][1] = accSlide.ay + t * sDy;
@@ -427,13 +472,14 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       if (engine.snapMode) {
         const constraint = engine.ptDrag.slideConstraint;
         let snappedToConstraint = false;
-        
+
         if (isEndpoint && constraint) {
-          const other = engine.ramales.find(o => o.id === constraint.otherId);
+          const other = engine.ramales.find((o) => o.id === constraint.otherId);
           if (other && other.pts && other.pts.length > constraint.segmentIdx) {
             const [ax, ay] = other.pts[constraint.segmentIdx];
             const [bx, by] = other.pts[constraint.segmentIdx + 1] || [ax, ay];
-            const sDx = bx - ax, sDy = by - ay;
+            const sDx = bx - ax,
+              sDy = by - ay;
             const sLen = Math.hypot(sDx, sDy);
             if (sLen > 0.001) {
               const crossPlane = Math.abs(sDx * (ay - p.y) - sDy * (ax - p.x)) / sLen;
@@ -461,7 +507,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
 
       if (isEndpoint) {
         const associatedBajantes: PlanoBajante[] = [];
-        engine.bajantes.forEach(b => {
+        engine.bajantes.forEach((b) => {
           const isRecibe = b.recibeDeIds?.includes(r.id);
           let isDescarga = false;
           if (b.descargaEnId) {
@@ -532,25 +578,44 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const oldP = [...r.pts[idx]];
       r.pts[idx] = [p.x, p.y];
 
-      const dPx = p.x - oldP[0], dPy = p.y - oldP[1];
+      const dPx = p.x - oldP[0],
+        dPy = p.y - oldP[1];
       if (Math.abs(dPx) + Math.abs(dPy) > 0.001) {
-        for (const other of engine.ramales) {
-          if (other.id === r.id || other.net !== r.net) continue;
-          let changed = false;
-          for (let i = 0; i < other.pts.length; i++) {
-            if (Math.hypot(other.pts[i][0] - oldP[0], other.pts[i][1] - oldP[1]) < 0.5) {
-              other.pts[i][0] += dPx;
-              other.pts[i][1] += dPy;
-              changed = true;
+        // Transitive cascade: repeatedly sweep for any not-yet-moved ramal point coincident with
+        // an already-moved point's OLD position, so a whole chain of connected ramales moves
+        // together (not just the ones directly touching the dragged vertex). Every point in the
+        // cascade shifts by the exact same (dPx, dPy), so this is a plain rigid-body propagation.
+        const movedRamalIds = new Set<string>([r.id]);
+        const allOldPositions: number[][] = [oldP];
+        let frontier: number[][] = [oldP];
+        while (frontier.length > 0) {
+          const nextFrontier: number[][] = [];
+          for (const other of engine.ramales) {
+            if (other.id === r.id || other.net !== r.net) continue;
+            let changed = false;
+            for (let i = 0; i < other.pts.length; i++) {
+              const matches = frontier.some(
+                (fp) => Math.hypot(other.pts[i][0] - fp[0], other.pts[i][1] - fp[1]) < 0.5,
+              );
+              if (matches) {
+                const before: [number, number] = [other.pts[i][0], other.pts[i][1]];
+                other.pts[i][0] += dPx;
+                other.pts[i][1] += dPy;
+                changed = true;
+                nextFrontier.push(before);
+                allOldPositions.push(before);
+              }
+            }
+            if (changed) {
+              movedRamalIds.add(other.id);
+              other.totalL = calculateRamalLength(other.pts, engine);
+              other.labelAngle = _firstSegmentAngle(other.pts);
+              const [mx, my] = _midpoint(other.pts);
+              other.labelX = mx;
+              other.labelY = my;
             }
           }
-          if (changed) {
-            other.totalL = calculateRamalLength(other.pts, engine);
-            other.labelAngle = _firstSegmentAngle(other.pts);
-            const [mx, my] = _midpoint(other.pts);
-            other.labelX = mx;
-            other.labelY = my;
-          }
+          frontier = nextFrontier;
         }
 
         // Codo reventilado: the vent ramal's endpoint and the san ramal's coincident point
@@ -568,32 +633,33 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             other.labelY = my;
           }
         }
-          const bajForRamal = engine.bajantes.find(b =>
-            b.recibeDeIds?.includes(r.id) &&
-            (Math.hypot(oldP[0] - b.x, oldP[1] - b.y) < 0.5 ||
-             Math.hypot(p.x - b.x, p.y - b.y) < 0.5)
-          );
-          if (bajForRamal) {
-            bajForRamal.x += dPx;
-            bajForRamal.y += dPy;
-            bajForRamal.labelX = (bajForRamal.labelX || 0) + dPx;
-            bajForRamal.labelY = (bajForRamal.labelY || 0) + dPy;
+        // Move every bajante that discharges from any ramal swept up in the cascade above (not
+        // just the directly-dragged one), matched against the cascade's old positions.
+        for (const b of engine.bajantes) {
+          const feedsMoved = b.recibeDeIds?.some((rid) => movedRamalIds.has(rid));
+          const nearOld = allOldPositions.some((op) => Math.hypot(b.x - op[0], b.y - op[1]) < 0.5);
+          if (feedsMoved && nearOld) {
+            b.x += dPx;
+            b.y += dPy;
+            b.labelX = (b.labelX || 0) + dPx;
+            b.labelY = (b.labelY || 0) + dPy;
+            continue;
           }
-          // Also move descargaEnId bajantes connected to this endpoint
-          for (const b of engine.bajantes) {
-            if (b.descargaEnId) {
-              const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
-              if (String(parts[0]) === String(engine._loadedPlanId) && parts[1] === r.id) {
-                if (Math.hypot(oldP[0] - b.x, oldP[1] - b.y) < 0.5 || Math.hypot(p.x - b.x, p.y - b.y) < 0.5) {
-                  b.x += dPx;
-                  b.y += dPy;
-                  b.labelX = (b.labelX || 0) + dPx;
-                  b.labelY = (b.labelY || 0) + dPy;
-                }
-              }
+          if (b.descargaEnId) {
+            const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
+            if (
+              String(parts[0]) === String(engine._loadedPlanId) &&
+              movedRamalIds.has(parts[1]) &&
+              nearOld
+            ) {
+              b.x += dPx;
+              b.y += dPy;
+              b.labelX = (b.labelX || 0) + dPx;
+              b.labelY = (b.labelY || 0) + dPy;
             }
           }
         }
+      }
 
       if (engine.nivelActual) {
         const lvl = engine.nivelActual.label ?? '';

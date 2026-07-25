@@ -1,16 +1,118 @@
-// NETS: Drawing-engine network definitions (ucType, bmType, bmPfx, etc).
-// For UI display use uiConfig.REDES instead (has lbl, sub, ico, icoImg).
+import type { CrossFloorGhost } from '../../utils/associateBajanteAcrossFloors';
+
+/** Drawing-engine network definitions (color, prefix, riser type, icon).
+ *  For UI display labels/icons use uiConfig.REDES instead. */
 export const NETS = [
-  { id: 'af', lbl: 'RAF', col: '#4D8FF7', ucType: 'uc', bmType: 'montante', bmPfx: 'MAF', bmIco: '⬆', emoji: '💧', name: 'Agua fría' },
-  { id: 'ac', lbl: 'RAC', col: '#F04545', ucType: 'uc', bmType: 'montante', bmPfx: 'MAC', bmIco: '⬆', emoji: '🔥', name: 'Agua caliente' },
-  { id: 'san', lbl: 'RS', col: '#F5A623', ucType: 'ud', bmType: 'bajante', bmPfx: 'BAN', bmIco: '⬇', emoji: '🚽', name: 'Sanitaria' },
-  { id: 'vent', lbl: 'REV', col: '#808080', ucType: null, bmType: 'bajante', bmPfx: 'BREV', bmIco: '⬇', emoji: '🌬', name: 'Ventilación' },
-  { id: 'll', lbl: 'RALL', col: '#8B5CF6', ucType: 'ud', bmType: 'bajante', bmPfx: 'BALL', bmIco: '⬇', emoji: '🌧', name: 'Aguas lluvias' },
-  { id: 'recolectora', lbl: 'RECOLL', col: '#7C3AED', ucType: null, bmType: 'bajante', bmPfx: 'RECOLL', bmIco: '⬇', emoji: '🏠', name: 'Canal recolectora' },
-  { id: 'gas', lbl: 'RG', col: '#A855F7', ucType: null, bmType: 'montante', bmPfx: 'MG', bmIco: '⬆', emoji: '⛽', name: 'Gas' },
-  { id: 'rci', lbl: 'RRCI', col: '#F87171', ucType: null, bmType: 'montante', bmPfx: 'MRCI', bmIco: '⬆', emoji: '🔴', name: 'Contra incendio' },
-  { id: 'rec', lbl: 'RREC', col: '#22D3EE', ucType: null, bmType: 'montante', bmPfx: 'MREC', bmIco: '⬆', emoji: '🔄', name: 'Recirculación' },
-  { id: 'bom', lbl: 'RBOM', col: '#8A9BB8', ucType: null, bmType: 'bajante', bmPfx: 'BOM', bmIco: '⬇', emoji: '⬆️', name: 'Bombeo' },
+  {
+    id: 'af',
+    lbl: 'RAF',
+    col: '#4D8FF7',
+    ucType: 'uc',
+    bmType: 'montante',
+    bmPfx: 'MAF',
+    bmIco: '⬆',
+    emoji: '💧',
+    name: 'Agua fría',
+  },
+  {
+    id: 'ac',
+    lbl: 'RAC',
+    col: '#F04545',
+    ucType: 'uc',
+    bmType: 'montante',
+    bmPfx: 'MAC',
+    bmIco: '⬆',
+    emoji: '🔥',
+    name: 'Agua caliente',
+  },
+  {
+    id: 'san',
+    lbl: 'RS',
+    col: '#F5A623',
+    ucType: 'ud',
+    bmType: 'bajante',
+    bmPfx: 'BAN',
+    bmIco: '⬇',
+    emoji: '🚽',
+    name: 'Sanitaria',
+  },
+  {
+    id: 'vent',
+    lbl: 'REV',
+    col: '#808080',
+    ucType: null,
+    bmType: 'bajante',
+    bmPfx: 'BREV',
+    bmIco: '⬇',
+    emoji: '🌬',
+    name: 'Ventilación',
+  },
+  {
+    id: 'll',
+    lbl: 'RALL',
+    col: '#8B5CF6',
+    ucType: 'ud',
+    bmType: 'bajante',
+    bmPfx: 'BALL',
+    bmIco: '⬇',
+    emoji: '🌧',
+    name: 'Aguas lluvias',
+  },
+  {
+    id: 'recolectora',
+    lbl: 'RECOLL',
+    col: '#7C3AED',
+    ucType: null,
+    bmType: 'bajante',
+    bmPfx: 'RECOLL',
+    bmIco: '⬇',
+    emoji: '🏠',
+    name: 'Canal recolectora',
+  },
+  {
+    id: 'gas',
+    lbl: 'RG',
+    col: '#A855F7',
+    ucType: null,
+    bmType: 'montante',
+    bmPfx: 'MG',
+    bmIco: '⬆',
+    emoji: '⛽',
+    name: 'Gas',
+  },
+  {
+    id: 'rci',
+    lbl: 'RRCI',
+    col: '#F87171',
+    ucType: null,
+    bmType: 'montante',
+    bmPfx: 'MRCI',
+    bmIco: '⬆',
+    emoji: '🔴',
+    name: 'Contra incendio',
+  },
+  {
+    id: 'rec',
+    lbl: 'RREC',
+    col: '#22D3EE',
+    ucType: null,
+    bmType: 'montante',
+    bmPfx: 'MREC',
+    bmIco: '⬆',
+    emoji: '🔄',
+    name: 'Recirculación',
+  },
+  {
+    id: 'bom',
+    lbl: 'RBOM',
+    col: '#8A9BB8',
+    ucType: null,
+    bmType: 'bajante',
+    bmPfx: 'BOM',
+    bmIco: '⬇',
+    emoji: '⬆️',
+    name: 'Bombeo',
+  },
 ];
 
 export interface PlanoNet {
@@ -45,20 +147,30 @@ export interface CanvasBox {
   h: number;
 }
 
+/** Checks whether a network id is in the engine's active-network set.
+ *  @param engine Engine instance
+ *  @param netId Network id to check
+ *  @returns true if the net is active (or no active-set exists) */
 export function checkActiveNet(engine: IPlanoEngineCore, netId: string): boolean {
   const activeNets = engine.activeNetworks as Set<string> | undefined;
   return activeNets ? activeNets.has(netId) : true;
 }
 
-// If `netId` isn't the currently active drawing net, either auto-switches to it (when the net
-// is enabled for the project) or alerts the user and signals the caller to abort. Returns true
-// when the caller should abort (return/return true from its own handler); false when it's safe
-// to proceed (net was already active, or the switch succeeded).
+/**
+ * Signals the caller to abort if `netId` is inactive (alerts user).
+ * Auto-switches if the net is enabled but not currently active.
+ * @param engine Engine instance
+ * @param netId Target network id
+ * @returns true if caller should abort; false if safe to proceed
+ */
 export function ensureActiveNet(engine: IPlanoEngineCore, netId: string): boolean {
   if (netId === engine.activeNet) return false;
   if (!checkActiveNet(engine, netId)) {
-    const netObj = NETS.find(n => n.id === netId);
-    engine.triggerAlert('Red inactiva', `Debe activar la red de ${netObj ? netObj.name : netId} en la información general`);
+    const netObj = NETS.find((n) => n.id === netId);
+    engine.triggerAlert(
+      'Red inactiva',
+      `Debe activar la red de ${netObj ? netObj.name : netId} en la información general`,
+    );
     return true;
   }
   engine.setActiveNet(netId);
@@ -67,13 +179,16 @@ export function ensureActiveNet(engine: IPlanoEngineCore, netId: string): boolea
 
 export function initNetCounts(target: { _netCounts: Record<string, PlanoNetCounts> }): void {
   target._netCounts = {};
-  NETS.forEach(n => { target._netCounts[n.id] = { ramal: 0, tributario: 0 }; });
+  NETS.forEach((n) => {
+    target._netCounts[n.id] = { ramal: 0, tributario: 0 };
+  });
 }
 
-// Used ONLY for snapping the cursor while drawing (snapToExisting): ventilación is designed to
-// land its risers exactly on a sanitaria point so the existing reventilado marker (renderVentCodos)
-// lines up. It must NOT be used for any rigid "move together" / auto-connect mechanism — those
-// stay strictly same-net so unrelated networks never get welded together just by proximity.
+/** Snaps vent to san (and vice versa) during drawing only — must NOT be used for
+ *  auto-connect or move-together. Those stay strictly same-net.
+ *  @param a First net id
+ *  @param b Second net id
+ *  @returns true if the two nets snap-link during cursor snapping */
 export function netsSnapLinked(a: string, b: string): boolean {
   return a === b || (a === 'vent' && b === 'san') || (a === 'san' && b === 'vent');
 }
@@ -94,6 +209,7 @@ export function isArea(el: PlanoElement | null): el is PlanoArea {
   return el != null && '_polyBox' in el;
 }
 
+/** Pipeline/polyline segment (ramal) with nodes, labels, and hydraulic data. */
 export interface PlanoRamal {
   id: string;
   net: string;
@@ -135,8 +251,15 @@ export interface PlanoRamal {
   // point (that tree is oriented toward the real supply source for the WHOLE network, which for
   // an arbitrary local merge may run either direction relative to it).
   mergesFrom?: [string, string];
+  // Absolute plane position of a sifón accessory's "S D=..." label, once the user has dragged it
+  // away from its default computed position (renderRamales.ts). Undefined = use the default.
+  sifonLabelIni?: [number, number];
+  sifonLabelFin?: [number, number];
+  _sifonLabelBoxIni?: LabelBoxCorners;
+  _sifonLabelBoxFin?: LabelBoxCorners;
 }
 
+/** Vertical riser/downpipe (bajante/montante) element connecting across building levels. */
 export interface PlanoBajante {
   id: string;
   net: string;
@@ -172,7 +295,15 @@ export interface PlanoBajante {
   _ghost?: { x: number; y: number; r: number };
   _ghostLabelBox?: LabelBoxCorners;
   _labelBox?: LabelBoxCorners;
-  ghostData?: Record<string, { dNominal?: string; direccion?: 'sube' | 'baja' | 'continua' | 'mantiene'; labelX?: number; labelY?: number }>;
+  ghostData?: Record<
+    string,
+    {
+      dNominal?: string;
+      direccion?: 'sube' | 'baja' | 'continua' | 'mantiene';
+      labelX?: number;
+      labelY?: number;
+    }
+  >;
   isFantasma?: boolean;
   diamPulg?: number;
   diametro?: string;
@@ -180,6 +311,7 @@ export interface PlanoBajante {
   capacidad?: string;
 }
 
+/** Polygon area region drawn on the canvas (e.g. roofs, drainage zones). */
 export interface PlanoArea {
   id: string;
   pts: number[][];
@@ -194,6 +326,7 @@ export interface PlanoArea {
   _polyBox?: CanvasBox;
 }
 
+/** Linear dimension measurement between two points on the canvas. */
 export interface PlanoDimension {
   id: string;
   x1: number;
@@ -203,6 +336,7 @@ export interface PlanoDimension {
   L: number;
 }
 
+/** Free-text annotation placed on the drawing canvas. */
 export interface PlanoTextAnnotation {
   id: string;
   x: number;
@@ -216,6 +350,7 @@ export interface PlanoTextAnnotation {
   _box?: CanvasBox;
 }
 
+/** Building level definition — label, NPT elevation, and ordinal index. */
 export interface PlanoLevel {
   label?: string;
   npt?: number;
@@ -227,7 +362,13 @@ export interface PlanoNetCounts {
   tributario: number;
 }
 
-export type PlanoElement = PlanoRamal | PlanoBajante | PlanoArea | PlanoTextAnnotation | PlanoDimension;
+/** Union of all drawable/selectable element types in the engine. */
+export type PlanoElement =
+  | PlanoRamal
+  | PlanoBajante
+  | PlanoArea
+  | PlanoTextAnnotation
+  | PlanoDimension;
 
 export interface PlanoActiveRamal {
   id?: string;
@@ -249,25 +390,32 @@ export interface PlanoRamalDefaults {
   pendiente: number;
 }
 
-export type MultiDragOrigData = Record<string, {
-  type: 'ramal' | 'bajante' | 'text';
-  origPts?: number[][];
-  origLabelX?: number;
-  origLabelY?: number;
-  origLabelAngle?: number;
-  origX?: number;
-  origY?: number;
-}>;
+export type MultiDragOrigData = Record<
+  string,
+  {
+    type: 'ramal' | 'bajante' | 'text';
+    origPts?: number[][];
+    origLabelX?: number;
+    origLabelY?: number;
+    origLabelAngle?: number;
+    origX?: number;
+    origY?: number;
+  }
+>;
 
+/** Public API contract for the PlanoEngine drawing engine. Exposes state, coordinates transforms,
+ *  snapping, rendering, selection/drag helpers, and transient drag/interaction slots. */
 export interface IPlanoEngineCore {
   dims: PlanoDimension[];
   textAnnots: PlanoTextAnnotation[];
   areas: PlanoArea[];
   ramales: PlanoRamal[];
   bajantes: PlanoBajante[];
+  crossFloorGhosts: CrossFloorGhost[];
   activeRamal: PlanoActiveRamal | null;
   activeArea: PlanoActiveArea | null;
   selId: string | null;
+  selectedGhostId: string | null;
   _isGhostSel: boolean;
   _yeeFlashKey: string | null;
   _hiddenNets: Set<string>;
@@ -310,6 +458,7 @@ export interface IPlanoEngineCore {
   _bajDragBackupXY?: { x: number; y: number; labelX?: number; labelY?: number } | null;
   _bajDragBackupPts?: Record<string, number[][]> | null;
   _lblDragIsParent?: boolean;
+  _pendingLblDrag?: { id: string; offX: number; offY: number; dist: number; isGhost: boolean };
   _dragBackupPts?: number[][] | null;
   _dragLinkedBackupPts?: Record<string, number[][]> | null;
   _netCounts: Record<string, PlanoNetCounts>;
@@ -320,17 +469,56 @@ export interface IPlanoEngineCore {
   planId?: string | number;
   _onDirtyCb: (() => void) | null;
   _lastMouseCvs: { x: number; y: number };
-  _snapToSegment(x: number, y: number, pts: number[][], threshold?: number): { x: number; y: number } | null;
+  _snapToSegment(
+    x: number,
+    y: number,
+    pts: number[][],
+    threshold?: number,
+  ): { x: number; y: number } | null;
   nptLevels: PlanoLevel[];
   ghostDrag: { id: string; startX: number; startY: number; baseDx: number; baseDy: number } | null;
-  lblDrag: { id: string; offX: number; offY: number } | null;
+  lblDrag: { id: string; offX: number; offY: number; slot?: 'ini' | 'fin' } | null;
   txtDrag: { id: string; startX: number; startY: number; origX: number; origY: number } | null;
-  txtResize: { id: string; boxX: number; boxY: number; startDist: number; origFontMm: number; origBoxWpx: number } | null;
+  txtResize: {
+    id: string;
+    boxX: number;
+    boxY: number;
+    startDist: number;
+    origFontMm: number;
+    origBoxWpx: number;
+  } | null;
   bajDrag: { id: string; offX: number; offY: number } | null;
-  ptDrag: { id: string; ptIdx: number; slideConstraint?: { otherId: string; segmentIdx: number }; accMedSlide?: { ax: number; ay: number; bx: number; by: number }; linkedPts?: { id: string; ptIdx: number }[] } | null;
+  ptDrag: {
+    id: string;
+    ptIdx: number;
+    slideConstraint?: { otherId: string; segmentIdx: number };
+    accMedSlide?: { ax: number; ay: number; bx: number; by: number };
+    linkedPts?: { id: string; ptIdx: number }[];
+  } | null;
   areaDrag: { id: string; startX: number; startY: number } | null;
   dimDrag: { id: string; startX: number; startY: number } | null;
-  ramalDrag: { id: string; startX: number; startY: number; origPts: [number, number][]; origLabelX?: number; origLabelY?: number; connBaj?: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[]; connRamales?: { id: string; origPts: [number, number][] }[] } | null;
+  ramalDrag: {
+    id: string;
+    startX: number;
+    startY: number;
+    origPts: [number, number][];
+    origLabelX?: number;
+    origLabelY?: number;
+    connBaj?: {
+      id: string;
+      origX: number;
+      origY: number;
+      origLblX: number;
+      origLblY: number;
+      atIdx: number;
+    }[];
+    connRamales?: {
+      id: string;
+      origPts: [number, number][];
+      origLabelX?: number;
+      origLabelY?: number;
+    }[];
+  } | null;
   multiSel: string[];
   multiDrag: { startX: number; startY: number; origData: MultiDragOrigData } | null;
   marqueeRect: { x1: number; y1: number; x2: number; y2: number } | null;
@@ -348,7 +536,14 @@ export interface IPlanoEngineCore {
   mm2cvs(mm: number): number;
   pxToM(px: number): number;
   realMmToCanvasPx(realRadiusMm: number): number;
-  snapAngle(x0: number, y0: number, x1: number, y1: number, net?: string, tipo?: string): { x: number; y: number };
+  snapAngle(
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    net?: string,
+    tipo?: string,
+  ): { x: number; y: number };
   snapToExisting(x: number, y: number): { x: number; y: number } | null;
   snapPreviewToPadre(x: number, y: number): { x: number; y: number } | null;
   getBajantesFantasma(): PlanoBajante[];
@@ -368,5 +563,12 @@ export interface IPlanoEngineCore {
   deleteSelected(ids?: string[]): void;
   setActiveNet(id: string): void;
   triggerAlert(title: string, msg: string): void;
-  triggerAccesorioModal(data: { ramalId: string; angleDeg: number; junctionIndex: number; point: number[]; net: string; isTee?: boolean }): void;
+  triggerAccesorioModal(data: {
+    ramalId: string;
+    angleDeg: number;
+    junctionIndex: number;
+    point: number[];
+    net: string;
+    isTee?: boolean;
+  }): void;
 }

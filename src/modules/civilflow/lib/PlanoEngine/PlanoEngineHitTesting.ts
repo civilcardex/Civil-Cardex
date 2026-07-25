@@ -18,7 +18,7 @@ export function hitTestRightClick(
   x: number,
   y: number,
   clientX: number,
-  clientY: number
+  clientY: number,
 ): ContextMenuHitResult | null {
   const zoom = engine.zoom;
 
@@ -126,7 +126,8 @@ export function hitTestRightClick(
             // one of the segment's own endpoints (those are covered by ramalEndpoint / an
             // adjacent segment's own check).
             if (t > 0.05 && t < 0.95) {
-              const [ax, ay] = r.pts[i], [bx, by] = r.pts[i + 1];
+              const [ax, ay] = r.pts[i],
+                [bx, by] = r.pts[i + 1];
               midRamalHit = { segmentIdx: i, x: ax + t * (bx - ax), y: ay + t * (by - ay) };
             }
             break;
@@ -157,32 +158,45 @@ export function hitTestRightClick(
   return null;
 }
 
-
 export function hitTestBajanteLabelForDrag(
   engine: IPlanoEngineCore,
   x: number,
-  y: number
+  y: number,
 ): { id: string; offX: number; offY: number } | null {
-  const selEl = engine.bajantes.find(b => b.id === engine.selId);
-  if (selEl) {
-    if (selEl._labelBox && pointInLabelBox(x, y, selEl._labelBox)) {
-      const lPos = engine.toCvs(selEl.labelX ?? selEl.x, selEl.labelY ?? (selEl.y + 20));
-      return { id: selEl.id, offX: x - lPos.x, offY: y - lPos.y };
-    }
-    if (selEl.labelX != null && selEl.labelY != null) {
-      const lPos = engine.toCvs(selEl.labelX, selEl.labelY);
-      if (Math.hypot(x - lPos.x, y - lPos.y) < 40) {
-        return { id: selEl.id, offX: x - lPos.x, offY: y - lPos.y };
-      }
-    }
-    if (selEl.tipo === 'contador' || selEl.tipo === 'calentador') {
-      const lx = selEl.labelX ?? (selEl.x - 25);
-      const ly = selEl.labelY ?? selEl.y;
-      const lPos = engine.toCvs(lx, ly);
-      if (Math.hypot(x - lPos.x, y - lPos.y) < 60) {
-        return { id: selEl.id, offX: x - lPos.x, offY: y - lPos.y };
-      }
-    }
+  const selEl = engine.bajantes.find((b) => b.id === engine.selId);
+  if (!selEl) return null;
+
+  let candidate: { offX: number; offY: number; dist: number } | null = null;
+  if (selEl._labelBox && pointInLabelBox(x, y, selEl._labelBox)) {
+    const lPos = engine.toCvs(selEl.labelX ?? selEl.x, selEl.labelY ?? selEl.y + 20);
+    candidate = { offX: x - lPos.x, offY: y - lPos.y, dist: Math.hypot(x - lPos.x, y - lPos.y) };
+  } else if (selEl.labelX != null && selEl.labelY != null) {
+    const lPos = engine.toCvs(selEl.labelX, selEl.labelY);
+    const d = Math.hypot(x - lPos.x, y - lPos.y);
+    if (d < 40) candidate = { offX: x - lPos.x, offY: y - lPos.y, dist: d };
+  } else if (selEl.tipo === 'contador' || selEl.tipo === 'calentador') {
+    const lx = selEl.labelX ?? selEl.x - 25;
+    const ly = selEl.labelY ?? selEl.y;
+    const lPos = engine.toCvs(lx, ly);
+    const d = Math.hypot(x - lPos.x, y - lPos.y);
+    if (d < 60) candidate = { offX: x - lPos.x, offY: y - lPos.y, dist: d };
   }
-  return null;
+  if (!candidate) return null;
+
+  // The currently-selected bajante's own label always won here before, even when the click was
+  // actually much closer to a DIFFERENT bajante's label sitting right next to it (e.g. a real
+  // bajante next to an associated one on another floor) — this ran BEFORE handleSelectDown's own
+  // fair nearest-label comparison ever got a chance, so clicking near a neighboring bajante's
+  // label just kept dragging whatever was already selected instead. Only win here if nothing else
+  // is genuinely closer; otherwise bail out so the normal (fair, distance-compared) selection path
+  // in handleSelectDown picks the correct one.
+  for (const other of engine.bajantes) {
+    if (other.id === selEl.id) continue;
+    const lx = other.labelX ?? other.x;
+    const ly = other.labelY ?? other.y + 20;
+    const lPos = engine.toCvs(lx, ly);
+    const d = Math.hypot(x - lPos.x, y - lPos.y);
+    if (d < candidate.dist) return null;
+  }
+  return { id: selEl.id, offX: candidate.offX, offY: candidate.offY };
 }

@@ -1,19 +1,22 @@
 import { pointToSegmentDist } from './HitTester';
 import type { IPlanoEngineCore } from './PlanoState';
 
+/** Validates that all segment angles and internal turn angles in a ramal's point list conform to network-specific constraints. @returns true if valid. */
 export function checkRamalAngles(pts: number[][], net: string, tipo?: string): boolean {
   if (pts.length < 2) return true;
   const isSanOrLl = net === 'san' || net === 'll';
+  const isGas = net === 'gas';
   const isTributarioAcAf = (net === 'af' || net === 'ac') && tipo === 'tributario';
 
   if (!isSanOrLl) {
-    const requiredStep = isTributarioAcAf ? 90 : 45;
+    const requiredStep = isTributarioAcAf || isGas ? 90 : 45;
     for (let i = 0; i < pts.length - 1; i++) {
       const [x1, y1] = pts[i];
       const [x2, y2] = pts[i + 1];
-      const dx = x2 - x1, dy = y2 - y1;
+      const dx = x2 - x1,
+        dy = y2 - y1;
       if (Math.hypot(dx, dy) < 0.1) continue;
-      const deg = Math.round(((Math.atan2(dy, dx) * 180 / Math.PI) % 360 + 360) % 360);
+      const deg = Math.round(((((Math.atan2(dy, dx) * 180) / Math.PI) % 360) + 360) % 360);
       const rem = deg % requiredStep;
       if (rem > 1 && rem < requiredStep - 1) {
         return false;
@@ -26,19 +29,25 @@ export function checkRamalAngles(pts: number[][], net: string, tipo?: string): b
     const [x2, y2] = pts[i + 1];
     const [x3, y3] = pts[i + 2];
 
-    const dx1 = x2 - x1, dy1 = y2 - y1;
-    const dx2 = x3 - x2, dy2 = y3 - y2;
+    const dx1 = x2 - x1,
+      dy1 = y2 - y1;
+    const dx2 = x3 - x2,
+      dy2 = y3 - y2;
     if (Math.hypot(dx1, dy1) < 0.1 || Math.hypot(dx2, dy2) < 0.1) continue;
 
     const len1 = Math.hypot(dx1, dy1);
     const len2 = Math.hypot(dx2, dy2);
     const dot = dx1 * dx2 + dy1 * dy2;
     const cosVal = dot / (len1 * len2);
-    const turnAngle = Math.acos(Math.max(-1, Math.min(1, cosVal))) * 180 / Math.PI;
+    const turnAngle = (Math.acos(Math.max(-1, Math.min(1, cosVal))) * 180) / Math.PI;
     const internalAngle = 180 - turnAngle;
 
     if (isSanOrLl) {
       if (internalAngle < 134) {
+        return false;
+      }
+    } else if (isGas) {
+      if (Math.abs(internalAngle - 90) > 10 && Math.abs(internalAngle - 180) > 1) {
         return false;
       }
     } else {
@@ -51,8 +60,12 @@ export function checkRamalAngles(pts: number[][], net: string, tipo?: string): b
   return true;
 }
 
+/** Tests whether two line segments (a1-a2, b1-b2) intersect, excluding endpoint-touching. @returns true if they cross strictly in the interior. */
 export function segmentsIntersect(a1: number[], a2: number[], b1: number[], b2: number[]): boolean {
-  const [x1, y1] = a1, [x2, y2] = a2, [x3, y3] = b1, [x4, y4] = b2;
+  const [x1, y1] = a1,
+    [x2, y2] = a2,
+    [x3, y3] = b1,
+    [x4, y4] = b2;
   const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
   if (Math.abs(d) < 1e-10) return false;
   const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
@@ -68,28 +81,39 @@ export function segmentsIntersect(a1: number[], a2: number[], b1: number[], b2: 
   return true;
 }
 
+/** Returns the angle (in degrees, -90..90) of the first segment in a point list, for label orientation. */
 export function _firstSegmentAngle(pts: number[][]): number {
   if (pts.length < 2) return 0;
   const dx = pts[1][0] - pts[0][0];
   const dy = pts[1][1] - pts[0][1];
-  let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
   if (angle > 90) angle -= 180;
   if (angle < -90) angle += 180;
   return Math.round(angle);
 }
 
-export function snapTributaryToPadre45Deg(cursorX: number, cursorY: number, lastX: number, lastY: number, pts: number[][], threshold: number): { x: number; y: number } | null {
+/** Snaps a cursor to 45° projection points along another ramal's segments (for tributary-to-padre connections). @returns snapped point or null. */
+export function snapTributaryToPadre45Deg(
+  cursorX: number,
+  cursorY: number,
+  lastX: number,
+  lastY: number,
+  pts: number[][],
+  threshold: number,
+): { x: number; y: number } | null {
   let best: { x: number; y: number } | null = null;
   let minD = Infinity;
 
   for (let i = 0; i < pts.length - 1; i++) {
     const [x1, y1] = pts[i];
     const [x2, y2] = pts[i + 1];
-    const dx = x2 - x1, dy = y2 - y1;
+    const dx = x2 - x1,
+      dy = y2 - y1;
     const lenSq = dx * dx + dy * dy;
     if (lenSq < 1) continue;
     const len = Math.sqrt(lenSq);
-    const ux = dx / len, uy = dy / len;
+    const ux = dx / len,
+      uy = dy / len;
 
     const tLast = ((lastX - x1) * dx + (lastY - y1) * dy) / lenSq;
     const projX = x1 + tLast * dx;
@@ -119,8 +143,17 @@ export function snapTributaryToPadre45Deg(cursorX: number, cursorY: number, last
   return best;
 }
 
-export function segmentStrictIntersectionPoint(a1: number[], a2: number[], b1: number[], b2: number[]): number[] | null {
-  const [x1, y1] = a1, [x2, y2] = a2, [x3, y3] = b1, [x4, y4] = b2;
+/** Computes the strict intersection point of two segments (excluding endpoints at t=0 or t=1). @returns [x, y] or null. */
+export function segmentStrictIntersectionPoint(
+  a1: number[],
+  a2: number[],
+  b1: number[],
+  b2: number[],
+): number[] | null {
+  const [x1, y1] = a1,
+    [x2, y2] = a2,
+    [x3, y3] = b1,
+    [x4, y4] = b2;
   const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
   if (Math.abs(d) < 1e-10) return null;
   const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
@@ -133,16 +166,18 @@ export function segmentStrictIntersectionPoint(a1: number[], a2: number[], b1: n
 // the same point — unlike an internal-vertex check (consecutive points of the SAME ramal), this
 // covers two separately-drawn ramales joining end-to-end, or a drag that newly aligns one
 // ramal's endpoint with another's.
+/** Detects when a ramal's endpoint meets another separately-drawn ramal's endpoint, forming a codo (elbow) junction. @returns angle and other ramal id, or null. */
 export function detectJunctionAccesorio(
   engine: IPlanoEngineCore,
   ramalId: string,
-  epIdx: number
+  epIdx: number,
 ): { angleDeg: number; otherRamalId: string } | null {
-  const r = engine.ramales.find(x => x.id === ramalId);
+  const r = engine.ramales.find((x) => x.id === ramalId);
   if (!r || !r.pts || r.pts.length < 2) return null;
   const ep = r.pts[epIdx];
   const otherIdxInR = epIdx === 0 ? 1 : r.pts.length - 2;
-  const awayRx = r.pts[otherIdxInR][0] - ep[0], awayRy = r.pts[otherIdxInR][1] - ep[1];
+  const awayRx = r.pts[otherIdxInR][0] - ep[0],
+    awayRy = r.pts[otherIdxInR][1] - ep[1];
   const lenR = Math.hypot(awayRx, awayRy);
   if (lenR < 0.001) return null;
 
@@ -154,11 +189,12 @@ export function detectJunctionAccesorio(
       const p2 = r2.pts[j];
       if (Math.hypot(p2[0] - ep[0], p2[1] - ep[1]) >= TOL) continue;
       const otherIdxInR2 = j === 0 ? 1 : r2.pts.length - 2;
-      const awayR2x = r2.pts[otherIdxInR2][0] - p2[0], awayR2y = r2.pts[otherIdxInR2][1] - p2[1];
+      const awayR2x = r2.pts[otherIdxInR2][0] - p2[0],
+        awayR2y = r2.pts[otherIdxInR2][1] - p2[1];
       const lenR2 = Math.hypot(awayR2x, awayR2y);
       if (lenR2 < 0.001) continue;
       const dot = (awayRx * awayR2x + awayRy * awayR2y) / (lenR * lenR2);
-      const rawAngle = Math.acos(Math.max(-1, Math.min(1, dot))) * 180 / Math.PI;
+      const rawAngle = (Math.acos(Math.max(-1, Math.min(1, dot))) * 180) / Math.PI;
       const turnAngle = 180 - rawAngle;
       if (Math.abs(turnAngle - 45) < 5 || Math.abs(turnAngle - 90) < 5) {
         return { angleDeg: Math.round(turnAngle), otherRamalId: r2.id };
@@ -182,8 +218,12 @@ export interface AccesorioTrigger {
 // either way (two separate ramales joined by drawing, or by dragging one into a new ramal).
 // Skips a junction that already has a resolved accesorio/aparato there, so it doesn't nag on
 // every subsequent drag once the user has answered it.
-export function detectAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string): AccesorioTrigger | null {
-  const r = engine.ramales.find(x => x.id === ramalId);
+/** Determines whether a ramal needs the accesorio-selection modal (tee/codo/yee) at any of its unresolved endpoints or interior vertices. @returns trigger info or null. */
+export function detectAccesorioTrigger(
+  engine: IPlanoEngineCore,
+  ramalId: string,
+): AccesorioTrigger | null {
+  const r = engine.ramales.find((x) => x.id === ramalId);
   if (!r || !r.pts || r.pts.length < 2 || !['af', 'ac', 'gas'].includes(r.net)) return null;
 
   const lastIdx = r.pts.length - 1;
@@ -195,18 +235,62 @@ export function detectAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string
     const ep = r.pts[epIdx];
     const tee = isTeeAtEndpoint(ep, engine, r.id, r.net);
     if (tee.isTee && tee.throughRamalId) {
-      // The accessory belongs to the ramal that was already there, not the one just drawn/dragged
-      // (r.id) — junctionIndex is meaningless for the existing ramal (its own vertex list doesn't
-      // necessarily have an index at this point), so the modal writes via a position match instead.
-      return { ramalId: tee.throughRamalId, angleDeg: 90, junctionIndex: -1, point: ep, net: r.net, isTee: true };
+      // Already-resolved tee: if ANY ramal at this junction point already has an accessory
+      // (placed by a previous modal selection), don't re-trigger the popup.
+      const TOL = 0.5;
+      let alreadyResolved = false;
+      for (const rr of engine.ramales) {
+        if (rr.net !== r.net || !rr.pts) continue;
+        if (rr.accesorioInicio && Math.hypot(rr.pts[0][0] - ep[0], rr.pts[0][1] - ep[1]) < TOL) {
+          alreadyResolved = true;
+          break;
+        }
+        if (
+          rr.accesorioFin &&
+          Math.hypot(rr.pts[rr.pts.length - 1][0] - ep[0], rr.pts[rr.pts.length - 1][1] - ep[1]) <
+            TOL
+        ) {
+          alreadyResolved = true;
+          break;
+        }
+        if (rr.accMed) {
+          for (const [k, v] of Object.entries(rr.accMed)) {
+            const m = k.match(/^accMed(\d+)$/);
+            if (!m || !v) continue;
+            const p = rr.pts[parseInt(m[1], 10)];
+            if (p && Math.hypot(p[0] - ep[0], p[1] - ep[1]) < TOL) {
+              alreadyResolved = true;
+              break;
+            }
+          }
+          if (alreadyResolved) break;
+        }
+      }
+      if (alreadyResolved) continue;
+      return {
+        ramalId: tee.throughRamalId,
+        angleDeg: 90,
+        junctionIndex: -1,
+        point: ep,
+        net: r.net,
+        isTee: true,
+      };
     }
   }
 
+  const isGas = r.net === 'gas';
   for (const epIdx of [0, lastIdx]) {
     if (endpointResolved(epIdx)) continue;
     const junction = detectJunctionAccesorio(engine, r.id, epIdx);
     if (junction) {
-      return { ramalId: junction.otherRamalId, angleDeg: junction.angleDeg, junctionIndex: -1, point: r.pts[epIdx], net: r.net, isTee: false };
+      return {
+        ramalId: junction.otherRamalId,
+        angleDeg: junction.angleDeg,
+        junctionIndex: -1,
+        point: r.pts[epIdx],
+        net: r.net,
+        isTee: isGas ? true : false,
+      };
     }
   }
 
@@ -216,15 +300,25 @@ export function detectAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string
       const prev = r.pts[i - 1];
       const curr = r.pts[i];
       const next = r.pts[i + 1];
-      const d1x = curr[0] - prev[0], d1y = curr[1] - prev[1];
-      const d2x = next[0] - curr[0], d2y = next[1] - curr[1];
-      const len1 = Math.hypot(d1x, d1y), len2 = Math.hypot(d2x, d2y);
+      const d1x = curr[0] - prev[0],
+        d1y = curr[1] - prev[1];
+      const d2x = next[0] - curr[0],
+        d2y = next[1] - curr[1];
+      const len1 = Math.hypot(d1x, d1y),
+        len2 = Math.hypot(d2x, d2y);
       if (len1 < 0.001 || len2 < 0.001) continue;
       const dot = (d1x * d2x + d1y * d2y) / (len1 * len2);
       const cosVal = Math.max(-1, Math.min(1, dot));
-      const angleDeg = Math.acos(cosVal) * 180 / Math.PI;
+      const angleDeg = (Math.acos(cosVal) * 180) / Math.PI;
       if (Math.abs(angleDeg - 45) < 5 || Math.abs(angleDeg - 90) < 5) {
-        return { ramalId: r.id, angleDeg: Math.round(angleDeg), junctionIndex: i, point: curr, net: r.net, isTee: false };
+        return {
+          ramalId: r.id,
+          angleDeg: Math.round(angleDeg),
+          junctionIndex: i,
+          point: curr,
+          net: r.net,
+          isTee: isGas ? true : false,
+        };
       }
     }
   }
@@ -238,7 +332,13 @@ export function detectAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string
 // endpoints) the junction point lies on — that's unambiguously "the one being tee'd into" — and
 // falls back to any other ramal sharing the point when all three segments meet exactly endpoint
 // to endpoint (no single ramal's body is the "through" one in that case).
-export function isTeeAtEndpoint(ep: number[], engine: IPlanoEngineCore, currentRamalId: string, net: string): { isTee: boolean; throughRamalId: string | null } {
+/** Checks whether a point forms a tee junction: at least 3 segments from existing ramales meet here, and which ramal's body the junction lies on. @returns isTee flag and the through-ramal id. */
+export function isTeeAtEndpoint(
+  ep: number[],
+  engine: IPlanoEngineCore,
+  currentRamalId: string,
+  net: string,
+): { isTee: boolean; throughRamalId: string | null } {
   const TOL = 0.5;
   let segmentCount = 0;
   let throughRamalId: string | null = null;
@@ -265,4 +365,3 @@ export function isTeeAtEndpoint(ep: number[], engine: IPlanoEngineCore, currentR
   }
   return { isTee: segmentCount >= 3, throughRamalId: throughRamalId ?? anyOtherRamalId };
 }
-

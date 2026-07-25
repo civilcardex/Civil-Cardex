@@ -7,7 +7,6 @@ import { pisoCortoLoose as getPisoCorto } from '../../../constants';
 import { TRAZOS_PREFIX } from '../../../constants/storage-keys';
 import type { PlanoBajante } from '../PlanoState';
 
-
 const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
 
 function renderBajanteLabel(
@@ -22,13 +21,15 @@ function renderBajanteLabel(
   line1: string,
   dirText: string,
   labelBoxProp: '_labelBox' | '_ghostLabelBox',
-  alpha: number
+  alpha: number,
 ): void {
   const hasDir = !!dirText;
 
-  const labelSizeMul = (b.tipo === 'contador' || b.tipo === 'calentador') ? 0.75 : 1;
-  const fsCode = engine.mm2cvs(engine.MM.lblCode * engine.labelScaleM * 1.35 * labelSizeMul);
-  const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.35 * labelSizeMul);
+  const labelSizeMul = b.tipo === 'contador' || b.tipo === 'calentador' ? 0.75 : 1;
+  // Bajante/montante code label uses the exact same size formula as a ramal's own name label
+  // (renderRamales.ts fsName/fsInfo) so the two read as objectively equal in size.
+  const fsCode = engine.mm2cvs(engine.MM.lblName * engine.labelScaleM * labelSizeMul);
+  const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * labelSizeMul);
   const lineH = fsCode + 2;
 
   ctx.save();
@@ -45,9 +46,11 @@ function renderBajanteLabel(
   ctx.translate(c.x, c.y);
 
   const distToLabel = Math.hypot(offDx, offDy);
-  let lineStartX = 0, lineStartY = 0;
+  let lineStartX = 0,
+    lineStartY = 0;
   if (distToLabel > 0.1) {
-    const ux = offDx / distToLabel, uy = offDy / distToLabel;
+    const ux = offDx / distToLabel,
+      uy = offDy / distToLabel;
     lineStartX = r * ux;
     lineStartY = r * uy;
   }
@@ -63,8 +66,25 @@ function renderBajanteLabel(
 
   const lbCx = c.x + offDx;
   const lbCy = c.y + offDy;
-  const { corners: corners2, minX, minY, maxX, maxY } = rotatedRectCorners(lbCx, lbCy - 10 + hh2, boxW, boxH, angle, 2);
-  b[labelBoxProp] = { cx: lbCx, cy: lbCy - 10 + hh2, w: boxW, h: boxH, angle, minX, minY, maxX, maxY, corners: corners2 };
+  const {
+    corners: corners2,
+    minX,
+    minY,
+    maxX,
+    maxY,
+  } = rotatedRectCorners(lbCx, lbCy - 10 + hh2, boxW, boxH, angle, 2);
+  b[labelBoxProp] = {
+    cx: lbCx,
+    cy: lbCy - 10 + hh2,
+    w: boxW,
+    h: boxH,
+    angle,
+    minX,
+    minY,
+    maxX,
+    maxY,
+    corners: corners2,
+  };
 
   // Deliberately no fill here anymore — labels used to sit on a solid white plate; now they read
   // directly over whatever's underneath (transparent background), per explicit request.
@@ -96,13 +116,13 @@ function getLabelIntersection(
   offDy: number,
   boxW: number,
   boxH: number,
-  angle: number
+  angle: number,
 ): { x: number; y: number } {
   const cosA = Math.cos(angle);
   const sinA = Math.sin(angle);
 
   const localStartX = -offDx * cosA - offDy * sinA;
-  const localStartY =  offDx * sinA - offDy * cosA;
+  const localStartY = offDx * sinA - offDy * cosA;
 
   const xMin = -boxW / 2;
   const xMax = boxW / 2;
@@ -112,15 +132,15 @@ function getLabelIntersection(
   let tEnter = 0;
 
   if (localStartX !== 0) {
-    const t1 = 1 - (xMin / localStartX);
-    const t2 = 1 - (xMax / localStartX);
+    const t1 = 1 - xMin / localStartX;
+    const t2 = 1 - xMax / localStartX;
     const tMin = Math.min(t1, t2);
     tEnter = Math.max(tEnter, tMin);
   }
 
   if (localStartY !== 0) {
-    const t1 = 1 - (yMin / localStartY);
-    const t2 = 1 - (yMax / localStartY);
+    const t1 = 1 - yMin / localStartY;
+    const t2 = 1 - yMax / localStartY;
     const tMin = Math.min(t1, t2);
     tEnter = Math.max(tEnter, tMin);
   }
@@ -136,7 +156,15 @@ function getLabelIntersection(
   return { x: intersectDx, y: intersectDy };
 }
 
-interface OtherFloorBajante { planId: string; id: string; code?: string; x: number; y: number; descargaEnId?: string; net?: string }
+interface OtherFloorBajante {
+  planId: string;
+  id: string;
+  code?: string;
+  x: number;
+  y: number;
+  descargaEnId?: string;
+  net?: string;
+}
 
 // Read every OTHER floor's persisted bajantes once so the render pass below can draw vertical
 // alignment guides to cross-floor associated stacks. Floors share one plane coordinate space (the
@@ -157,13 +185,27 @@ function collectOtherFloorBajantes(engine: IPlanoEngineCore): OtherFloorBajante[
       const raw = localStorage.getItem(k);
       if (!raw) continue;
       let data: { bajantes?: OtherFloorBajante[] };
-      try { data = JSON.parse(raw); } catch { continue; }
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        continue;
+      }
       for (const ob of data.bajantes || []) {
         if (ob.x == null || ob.y == null) continue;
-        out.push({ planId, id: ob.id, code: ob.code, x: ob.x, y: ob.y, descargaEnId: ob.descargaEnId, net: ob.net });
+        out.push({
+          planId,
+          id: ob.id,
+          code: ob.code,
+          x: ob.x,
+          y: ob.y,
+          descargaEnId: ob.descargaEnId,
+          net: ob.net,
+        });
       }
     }
-  } catch { /* localStorage unavailable */ }
+  } catch {
+    /* localStorage unavailable */
+  }
   return out;
 }
 
@@ -173,7 +215,12 @@ function collectOtherFloorBajantes(engine: IPlanoEngineCore): OtherFloorBajante[
 // this vector shape in arrowCol (red for bajante, blue for montante), so it never actually looked
 // like its parent despite the size/opacity already matching. Caller must already have translated
 // ctx to the symbol's local origin (0,0) and rotated as needed.
-function drawDireccionSymbol(ctx: CanvasRenderingContext2D, tipo: string, r: number, direccion: string | undefined): void {
+function drawDireccionSymbol(
+  ctx: CanvasRenderingContext2D,
+  tipo: string,
+  r: number,
+  direccion: string | undefined,
+): void {
   const arrowCol = tipo === 'bajante' ? '#F04545' : '#3B82F6';
   if (direccion === 'sube') {
     ctx.fillStyle = arrowCol;
@@ -256,8 +303,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     const r = engine.realMmToCanvasPx(20) * 0.6;
 
     // Item 2: Label angle + snap constraint (Auto-rotation removed as requested)
-    const angle = (b.labelAngle || 0) * Math.PI / 180;
-
+    const angle = ((b.labelAngle || 0) * Math.PI) / 180;
 
     b._circ = { x: c.x, y: c.y, r };
     if (isDirectionGhost) return;
@@ -274,7 +320,9 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       if (b.descargaEnId) {
         const [tp, tid] = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
         if (String(tp) !== curPlan) {
-          const t = otherFloorBajantes.find(o => String(o.planId) === String(tp) && (o.id === tid || o.code === tid));
+          const t = otherFloorBajantes.find(
+            (o) => String(o.planId) === String(tp) && (o.id === tid || o.code === tid),
+          );
           if (t) targets.push({ x: Number(t.x), y: Number(t.y) });
         }
       }
@@ -285,7 +333,8 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
         if (!o.descargaEnId) continue;
         if (o.net && b.net && o.net !== b.net) continue;
         const [tp, tid] = parseDescargaEnId(o.descargaEnId, o.planId);
-        if (String(tp) === curPlan && (tid === b.id || (b.code && tid === b.code))) targets.push({ x: Number(o.x), y: Number(o.y) });
+        if (String(tp) === curPlan && (tid === b.id || (b.code && tid === b.code)))
+          targets.push({ x: Number(o.x), y: Number(o.y) });
       }
       for (const t of targets) {
         if (!Number.isFinite(t.x) || !Number.isFinite(t.y)) continue;
@@ -322,11 +371,15 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     // fix also covers a ramal arriving at this bajante's ghost/displaced position on this floor.
     if (b.recibeDeIds?.length) {
       const ghostDisp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
-      const bPos = ghostDisp ? { x: b.x + ghostDisp.dx, y: b.y + ghostDisp.dy } : { x: b.x, y: b.y };
+      const bPos = ghostDisp
+        ? { x: b.x + ghostDisp.dx, y: b.y + ghostDisp.dy }
+        : { x: b.x, y: b.y };
       b.recibeDeIds.forEach((rid: string) => {
         const ram = engine.ramales.find((rr) => rr.id === rid);
         if (ram && ram.pts.length) {
-          const touchesDirectly = ram.pts.some(([px, py]) => Math.hypot(px - bPos.x, py - bPos.y) < 0.5);
+          const touchesDirectly = ram.pts.some(
+            ([px, py]) => Math.hypot(px - bPos.x, py - bPos.y) < 1.5,
+          );
           if (touchesDirectly) return;
           const pStart = ram.pts[0];
           const pEnd = ram.pts[ram.pts.length - 1];
@@ -407,7 +460,8 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.stroke();
     } else if (b.tipo === 'contador' && b.net === 'gas') {
       ctx.fillStyle = '#A855F7';
-      const devW = r * 2; const devH = r * 2.4;
+      const devW = r * 2;
+      const devH = r * 2.4;
       ctx.beginPath();
       ctx.rect(-devW / 2, -devH / 2, devW, devH);
       ctx.fill();
@@ -416,7 +470,8 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.beginPath();
       ctx.rect(-devW / 2, -devH / 2, devW, devH);
       ctx.stroke();
-      const dispW = devW * 0.6; const dispH = devH * 0.12;
+      const dispW = devW * 0.6;
+      const dispH = devH * 0.12;
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.roundRect(-dispW / 2, -devH / 2 + devH * 0.12, dispW, dispH, 1 * engine.zoom);
@@ -435,7 +490,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.stroke();
     } else if (b.tipo === 'calentador') {
       const netObj = NETS.find((n) => n.id === (b.net === 'gas' ? 'gas' : 'ac'));
-      const col = netObj ? netObj.col : (b.net === 'gas' ? '#A855F7' : '#F04545');
+      const col = netObj ? netObj.col : b.net === 'gas' ? '#A855F7' : '#F04545';
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.rect(-r, -r, r * 2, r * 2);
@@ -508,7 +563,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     // computed above; this whole block is unreachable for that case anyway (early return above).
     if (!isDirectionGhost && (b.code || b.code === '')) {
       const lx = b.labelX ?? b.x;
-      const ly = b.labelY ?? (b.y + 20);
+      const ly = b.labelY ?? b.y + 20;
       const offDx = (lx - b.x) * engine.zoom;
       let offDy = (ly - b.y) * engine.zoom;
 
@@ -520,7 +575,8 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
 
       const pCorto = getPisoCorto(engine.nivelActual?.n);
       const lvlSuffix = pCorto ? `-${pCorto}` : '';
-      const codeStr = (b.code ? b.code.replace(/#/g, '').toUpperCase() : '') + (b.code ? lvlSuffix : '');
+      const codeStr =
+        (b.code ? b.code.replace(/#/g, '').toUpperCase() : '') + (b.code ? lvlSuffix : '');
       let diamStr = '';
       if (b.dNominal && b.dNominal !== '0') {
         const v = String(b.dNominal).trim();
@@ -537,8 +593,11 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       } else if (b.diametro) {
         diamStr = normalizeDnLabel(b.diametro.split(' — ')[0]);
       }
-      const line1 = diamStr ? `${codeStr}  D=${diamStr}` : (codeStr || '—');
-      const dirText = DIR_MAP[b.direccion ?? ''] || '';
+      // Bold big line is just the code — mirrors a ramal's own label, which keeps its bold name
+      // line to the short code alone and pushes diametro into the smaller info line below.
+      const line1 = codeStr || '—';
+      const dirWord = DIR_MAP[b.direccion ?? ''] || '';
+      const dirText = diamStr ? `D=${diamStr}${dirWord ? '  ' + dirWord : ''}` : dirWord;
       renderBajanteLabel(ctx, engine, b, c, r, angle, offDx, offDy, line1, dirText, '_labelBox', 1);
     } else {
       b._labelBox = undefined;
@@ -647,7 +706,8 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
 
       const pCorto = getPisoCorto(engine.nivelActual?.n);
       const lvlSuffix = pCorto ? `-${pCorto}` : '';
-      const codeStr = (b.code ? b.code.replace(/#/g, '').toUpperCase() : '') + (b.code ? lvlSuffix : '');
+      const codeStr =
+        (b.code ? b.code.replace(/#/g, '').toUpperCase() : '') + (b.code ? lvlSuffix : '');
       const ghostDir = gd?.direccion || b.direccion;
       const ghostDNom = gd?.dNominal || b.dNominal;
       let diamStr = '';
@@ -666,10 +726,70 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
           }
         }
       }
-      const line1 = diamStr ? `${codeStr}  D=${diamStr}` : (codeStr || '—');
-      const dirText = DIR_MAP[ghostDir ?? ''] || '';
-      renderBajanteLabel(ctx, engine, b, c, r, ghostAngle, offDx, offDy, line1, dirText, '_ghostLabelBox', 1);
+      const line1 = codeStr || '—';
+      const dirWord = DIR_MAP[ghostDir ?? ''] || '';
+      const dirText = diamStr ? `D=${diamStr}${dirWord ? '  ' + dirWord : ''}` : dirWord;
+      renderBajanteLabel(
+        ctx,
+        engine,
+        b,
+        c,
+        r,
+        ghostAngle,
+        offDx,
+        offDy,
+        line1,
+        dirText,
+        '_ghostLabelBox',
+        1,
+      );
     }
+  });
+}
 
+// Cross-floor association ghosts (associateBajanteAcrossFloors.ts) — pure positional reference
+// markers written directly into this floor's own `crossFloorGhosts` array, separate from
+// `bajantes`. Rendered as a dashed circle (distinct from a same-floor fantasma's solid one) with
+// the source bajante's code + inherited diameter, so the connection is visible without needing to
+// switch floors.
+export function renderCrossFloorGhosts(
+  ctx: CanvasRenderingContext2D,
+  engine: IPlanoEngineCore,
+): void {
+  (engine.crossFloorGhosts || []).forEach((g) => {
+    if (engine._hiddenNets.has(g.net)) return;
+    const net = NETS.find((n) => n.id === g.net);
+    const col = net ? net.col : '#e2e2e8';
+    const c = engine.toCvs(g.x, g.y);
+    const r = engine.realMmToCanvasPx(20) * 0.6;
+    g._hitCircle = { x: c.x, y: c.y, r };
+
+    ctx.save();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1 * engine.zoom;
+    ctx.setLineDash([4 * engine.zoom, 3 * engine.zoom]);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    const fsCode = engine.mm2cvs(engine.MM.lblName * engine.labelScaleM);
+    const fsInfo = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM);
+    const codeStr = (g.code || '').replace(/#/g, '').toUpperCase();
+    const diamStr = g.dNominal && g.dNominal !== '0' ? normalizeDnLabel(g.dNominal) : '';
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = col;
+    ctx.font = `bold ${fsCode}px Geist, monospace`;
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(codeStr, c.x, c.y - r - engine.mm2cvs(1));
+    if (diamStr) {
+      ctx.font = `${fsInfo}px Geist, monospace`;
+      ctx.textBaseline = 'top';
+      ctx.fillText(`D=${diamStr}`, c.x, c.y + r + engine.mm2cvs(1));
+    }
+    ctx.restore();
   });
 }

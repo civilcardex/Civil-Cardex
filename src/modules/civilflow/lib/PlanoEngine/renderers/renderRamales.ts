@@ -1,7 +1,7 @@
 import { NETS } from '../PlanoState';
 import { snapTributaryToPadre45Deg } from '../PlanoEngineDrawing';
 import { rotatedRectCorners, pointToSegmentDist } from '../HitTester';
-import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState';
+import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from '../PlanoState';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { pisoCortoLoose as getPisoCorto } from '../../../constants';
 import { drawRamalPath } from './drawRamalPath';
@@ -16,9 +16,16 @@ function drawExtremeAccessorySymbol(
   engine: IPlanoEngineCore,
   accType: string,
   c: { x: number; y: number },
-  dx: number, dy: number, px: number, py: number,
-  outX: number, outY: number,
-  rad: number
+  dx: number,
+  dy: number,
+  px: number,
+  py: number,
+  outX: number,
+  outY: number,
+  rad: number,
+  diamLabel?: string,
+  ramal?: PlanoRamal,
+  slot?: 'ini' | 'fin',
 ): void {
   if (accType === 'sifon') {
     // This is a PLAN view (looking straight down) — the trap's 2D "dip" has no actual relation to
@@ -34,7 +41,8 @@ function drawExtremeAccessorySymbol(
     const snapY = outY / dirLen;
     const perX = -snapY;
     const perY = snapX;
-    const dnX = perX, dnY = perY;
+    const dnX = perX,
+      dnY = perY;
 
     const L1 = rad * 1.6;
     const tickL = rad * 0.45;
@@ -102,6 +110,53 @@ function drawExtremeAccessorySymbol(
     ctx.moveTo(pt_riser_topX + snapX * capW, pt_riser_topY + snapY * capW);
     ctx.lineTo(pt_riser_topX - snapX * capW, pt_riser_topY - snapY * capW);
     ctx.stroke();
+
+    // 7. "S  D=<diametro>"" label next to the cap — draggable: uses the stored plane position
+    // once the user has moved it (sifonLabelIni/Fin), otherwise the default computed position.
+    if (diamLabel) {
+      const fs = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM);
+      ctx.font = `bold ${fs}px Geist, monospace`;
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const labelOff = H2 * 0.9 + fs * 0.6;
+      const defaultLabelX = pt_riser_topX - dnX * labelOff;
+      const defaultLabelY = pt_riser_topY - dnY * labelOff;
+      const storedPlane =
+        ramal && slot ? (slot === 'ini' ? ramal.sifonLabelIni : ramal.sifonLabelFin) : undefined;
+      const labelCvs = storedPlane
+        ? engine.toCvs(storedPlane[0], storedPlane[1])
+        : { x: defaultLabelX, y: defaultLabelY };
+      const text = `S  D=${normalizeDnLabel(diamLabel.split(' — ')[0])}"`;
+      ctx.fillText(text, labelCvs.x, labelCvs.y);
+
+      if (ramal && slot) {
+        const tw = ctx.measureText(text).width;
+        const boxW = tw + engine.mm2cvs(2);
+        const boxH = fs + engine.mm2cvs(1);
+        const { corners, minX, minY, maxX, maxY } = rotatedRectCorners(
+          labelCvs.x,
+          labelCvs.y,
+          boxW,
+          boxH,
+          0,
+        );
+        const box = {
+          cx: labelCvs.x,
+          cy: labelCvs.y,
+          w: boxW,
+          h: boxH,
+          angle: 0,
+          minX,
+          minY,
+          maxX,
+          maxY,
+          corners,
+        };
+        if (slot === 'ini') ramal._sifonLabelBoxIni = box;
+        else ramal._sifonLabelBoxFin = box;
+      }
+    }
   } else if (accType === 'codoSube') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
@@ -183,7 +238,9 @@ function drawExtremeAccessorySymbol(
     const tickLen = engine.mm2cvs(0.8);
     const armW = 2 * engine.zoom; // matches drawRamalPath's own (unselected) pipe line width
     const arms: { x: number; y: number }[] = [
-      { x: dx, y: dy }, { x: -dx, y: -dy }, { x: px, y: py },
+      { x: dx, y: dy },
+      { x: -dx, y: -dy },
+      { x: px, y: py },
     ];
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = armW;
@@ -198,10 +255,12 @@ function drawExtremeAccessorySymbol(
     ctx.lineWidth = armW;
     ctx.beginPath();
     for (const a of arms) {
-      const ex = c.x + a.x * juncRad, ey = c.y + a.y * juncRad;
-      const perpX = -a.y, perpY = a.x;
-      ctx.moveTo(ex - perpX * tickLen / 2, ey - perpY * tickLen / 2);
-      ctx.lineTo(ex + perpX * tickLen / 2, ey + perpY * tickLen / 2);
+      const ex = c.x + a.x * juncRad,
+        ey = c.y + a.y * juncRad;
+      const perpX = -a.y,
+        perpY = a.x;
+      ctx.moveTo(ex - (perpX * tickLen) / 2, ey - (perpY * tickLen) / 2);
+      ctx.lineTo(ex + (perpX * tickLen) / 2, ey + (perpY * tickLen) / 2);
     }
     ctx.stroke();
 
@@ -253,7 +312,8 @@ function drawExtremeAccessorySymbol(
     const capHalf = rad * 0.9;
     const capTick = rad * 1.1;
     const jointHalf = rad * 0.7;
-    const stemEndX = c.x + outX * stemLen, stemEndY = c.y + outY * stemLen;
+    const stemEndX = c.x + outX * stemLen,
+      stemEndY = c.y + outY * stemLen;
     ctx.strokeStyle = '#000000';
     ctx.lineCap = 'round';
     // Junction mark on the ramal itself — same thickness as the ramal pipe, not the (thinner)
@@ -270,8 +330,10 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(stemEndX, stemEndY);
     ctx.stroke();
     // Cap bar
-    const capLX = stemEndX + dx * capHalf, capLY = stemEndY + dy * capHalf;
-    const capRX = stemEndX - dx * capHalf, capRY = stemEndY - dy * capHalf;
+    const capLX = stemEndX + dx * capHalf,
+      capLY = stemEndY + dy * capHalf;
+    const capRX = stemEndX - dx * capHalf,
+      capRY = stemEndY - dy * capHalf;
     ctx.beginPath();
     ctx.moveTo(capLX, capLY);
     ctx.lineTo(capRX, capRY);
@@ -311,9 +373,12 @@ function drawExtremeAccessorySymbol(
     // Tee bar sitting on the ramal, with a tick crossing it at each end — same thickness as the
     // ramal pipe itself, not the (thinner) symbol lines above it.
     ctx.lineWidth = 2 * engine.zoom; // matches drawRamalPath's own (unselected) pipe line width
-    const barL = P(-1, 0), barR = P(1, 0);
-    const tickLA = P(-1, -0.46), tickLB = P(-1, 0.46);
-    const tickRA = P(1, -0.46), tickRB = P(1, 0.46);
+    const barL = P(-1, 0),
+      barR = P(1, 0);
+    const tickLA = P(-1, -0.46),
+      tickLB = P(-1, 0.46);
+    const tickRA = P(1, -0.46),
+      tickRB = P(1, 0.46);
     ctx.beginPath();
     ctx.moveTo(barL.x, barL.y);
     ctx.lineTo(barR.x, barR.y);
@@ -330,7 +395,8 @@ function drawExtremeAccessorySymbol(
     // arm so the llave body sits noticeably clear of the tee, still joined by this one line.
     const crossB = 3.0;
     const cross = P(0, crossB);
-    const crossL = P(-0.3, crossB), crossR = P(0.3, crossB);
+    const crossL = P(-0.3, crossB),
+      crossR = P(0.3, crossB);
     ctx.beginPath();
     ctx.moveTo(c.x, c.y);
     ctx.lineTo(cross.x, cross.y);
@@ -352,14 +418,16 @@ function drawExtremeAccessorySymbol(
     for (let i = 0; i <= steps; i++) {
       const t = startT - (i / steps) * sweep;
       const pt = P(domeR * Math.cos(t), centerB + domeR * Math.sin(t));
-      if (i === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+      if (i === 0) ctx.moveTo(pt.x, pt.y);
+      else ctx.lineTo(pt.x, pt.y);
     }
     ctx.stroke();
 
     // Handle branching off the curve's leftmost point (t=-π), capped with its own end tick.
     const apex = P(-domeR, centerB);
     const handleEnd = P(-domeR * 1.9, centerB);
-    const handleTickA = P(-domeR * 1.9, centerB - 0.32), handleTickB = P(-domeR * 1.9, centerB + 0.32);
+    const handleTickA = P(-domeR * 1.9, centerB - 0.32),
+      handleTickB = P(-domeR * 1.9, centerB + 0.32);
     ctx.beginPath();
     ctx.moveTo(apex.x, apex.y);
     ctx.lineTo(handleEnd.x, handleEnd.y);
@@ -383,8 +451,10 @@ function drawExtremeAccessorySymbol(
     const rRad = 1.2 * rf;
     const vLen = 1.6 * rf;
     const offset = rRad + 0.5 * rf;
-    const cx1 = c.x - dx * offset, cy1 = c.y - dy * offset;
-    const cx2 = c.x + dx * offset, cy2 = c.y + dy * offset;
+    const cx1 = c.x - dx * offset,
+      cy1 = c.y - dy * offset;
+    const cx2 = c.x + dx * offset,
+      cy2 = c.y + dy * offset;
 
     // Fill the disc BEFORE stroking anything on top — the ramal line underneath is drawn first
     // (separate earlier pass) and without this backdrop it shows through the unfilled ring,
@@ -623,8 +693,10 @@ function drawExtremeAccessorySymbol(
     ctx.stroke();
 
     // T-bar cap, with a small tick at each end (handle marks).
-    const capLX = stemEndX - outX * capHalf, capLY = stemEndY - outY * capHalf;
-    const capRX = stemEndX + outX * capHalf, capRY = stemEndY + outY * capHalf;
+    const capLX = stemEndX - outX * capHalf,
+      capLY = stemEndY - outY * capHalf;
+    const capRX = stemEndX + outX * capHalf,
+      capRY = stemEndY + outY * capHalf;
     ctx.beginPath();
     ctx.moveTo(capLX, capLY);
     ctx.lineTo(capRX, capRY);
@@ -634,7 +706,12 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(capRX + px * capTick, capRY + py * capTick);
     ctx.stroke();
   } else {
-    if (accType.startsWith('tee') || accType === 'te_linea' || accType === 'te_ramal' || accType.startsWith('yee')) {
+    if (
+      accType.startsWith('tee') ||
+      accType === 'te_linea' ||
+      accType === 'te_ramal' ||
+      accType.startsWith('yee')
+    ) {
       return;
     }
     // Fallback text symbol for any other accessory
@@ -677,7 +754,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     const isPadre = r.id === padreId;
     ctx.save();
     ctx.strokeStyle = col;
-            ctx.lineWidth = (sel ? 3 : 2) * engine.zoom;
+    ctx.lineWidth = (sel ? 3 : 2) * engine.zoom;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -705,12 +782,17 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           const cvsA = engine.toCvs(r.pts[idx - 1][0], r.pts[idx - 1][1]);
           const cvsB = engine.toCvs(px, py);
           const cvsC = engine.toCvs(r.pts[idx + 1][0], r.pts[idx + 1][1]);
-          const ax = cvsB.x - cvsA.x, ay = cvsB.y - cvsA.y;
-          const bx = cvsC.x - cvsB.x, by = cvsC.y - cvsB.y;
-          const lenA = Math.hypot(ax, ay), lenB = Math.hypot(bx, by);
+          const ax = cvsB.x - cvsA.x,
+            ay = cvsB.y - cvsA.y;
+          const bx = cvsC.x - cvsB.x,
+            by = cvsC.y - cvsB.y;
+          const lenA = Math.hypot(ax, ay),
+            lenB = Math.hypot(bx, by);
           if (lenA > 0 && lenB > 0) {
-            const ux = -ax / lenA, uy = -ay / lenA;
-            const vx = bx / lenB, vy = by / lenB;
+            const ux = -ax / lenA,
+              uy = -ay / lenA;
+            const vx = bx / lenB,
+              vy = by / lenB;
             const cosAngle = ux * vx + uy * vy;
             // Hide intermediate collinear selection dots (straight line)
             if (cosAngle < -0.95) {
@@ -742,13 +824,13 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       }
     }
 
-
-
     if (r.label || r.totalL || r.material || r.diametro || r.pendiente) {
       const lc = engine.toCvs(r.labelX, r.labelY);
       const FLOW_NETS = ['san', 'll', 'af', 'ac'];
       const showFlow = FLOW_NETS.includes(r.net) && r.pts.length >= 2;
-      let flowDx = 0, flowDy = 0, flowLen = 0;
+      let flowDx = 0,
+        flowDy = 0,
+        flowLen = 0;
       if (showFlow) {
         const fc = engine.toCvs(r.pts[0][0], r.pts[0][1]);
         const lastc = engine.toCvs(r.pts[r.pts.length - 1][0], r.pts[r.pts.length - 1][1]);
@@ -756,14 +838,14 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         flowDy = lastc.y - fc.y;
         flowLen = Math.hypot(flowDx, flowDy);
       }
-      
+
       const pCorto = getPisoCorto(engine.nivelActual?.n);
       const lvlSuffix = pCorto ? `-${pCorto}` : '';
       const lbl = r.label ? `${r.label}${lvlSuffix}` : '';
       const matPart = r.material || (r.net === 'vent' ? 'PVC-V' : '');
       const dPart = r.diametro ? `D=${normalizeDnLabel(r.diametro.split(' — ')[0])}` : '';
       const pPart = r.pendiente ? `S=${r.pendiente}%` : '';
-      const showPend = (r.net === 'san' || r.net === 'll');
+      const showPend = r.net === 'san' || r.net === 'll';
       const pendPart = showPend && pPart ? pPart : '';
       const lblPart = r.totalL ? `L=${r.totalL.toFixed(2)}m` : '';
 
@@ -785,10 +867,15 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       ctx.font = `600 ${fsInfo}px Geist, monospace`;
       if (infoSegs.length > 1) sepW = ctx.measureText(segSep).width;
       for (const s of infoSegs) {
-        ctx.font = s!.bold ? `bold ${fsInfo}px Geist, monospace` : `600 ${fsInfo}px Geist, monospace`;
+        ctx.font = s!.bold
+          ? `bold ${fsInfo}px Geist, monospace`
+          : `600 ${fsInfo}px Geist, monospace`;
         s!.w = ctx.measureText(s!.text).width;
       }
-      const totalInfoW = infoSegs.reduce((sum: number, s, i) => sum + s!.w + (i < infoSegs.length - 1 ? sepW : 0), 0);
+      const totalInfoW = infoSegs.reduce(
+        (sum: number, s, i) => sum + s!.w + (i < infoSegs.length - 1 ? sepW : 0),
+        0,
+      );
 
       ctx.font = `bold ${fsName}px Geist, monospace`;
       const nameW = lbl ? ctx.measureText(lbl).width : 0;
@@ -805,16 +892,34 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           labelAngleDeg = 90;
         }
       }
-      const labelAngle = labelAngleDeg * Math.PI / 180;
-      const cosA = Math.cos(labelAngle), sinA = Math.sin(labelAngle);
+      const labelAngle = (labelAngleDeg * Math.PI) / 180;
+      const cosA = Math.cos(labelAngle),
+        sinA = Math.sin(labelAngle);
       const labelGap = -engine.mm2cvs(5);
       const gapOffX = -labelGap * sinA;
       const gapOffY = labelGap * cosA;
       const adjCx = drawX + gapOffX;
       const adjCy = drawY + gapOffY;
 
-      const { corners, minX, minY, maxX, maxY } = rotatedRectCorners(adjCx, adjCy, boxW, boxH, labelAngle);
-      r._labelBox = { cx: adjCx, cy: adjCy, w: boxW, h: boxH, angle: labelAngle, minX, minY, maxX, maxY, corners };
+      const { corners, minX, minY, maxX, maxY } = rotatedRectCorners(
+        adjCx,
+        adjCy,
+        boxW,
+        boxH,
+        labelAngle,
+      );
+      r._labelBox = {
+        cx: adjCx,
+        cy: adjCy,
+        w: boxW,
+        h: boxH,
+        angle: labelAngle,
+        minX,
+        minY,
+        maxX,
+        maxY,
+        corners,
+      };
 
       ctx.save();
       ctx.translate(drawX, drawY);
@@ -834,7 +939,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         let xCursor = -totalInfoW / 2;
         for (let i = 0; i < infoSegs.length; i++) {
           const s = infoSegs[i];
-          ctx.font = s!.bold ? `bold ${fsInfo}px Geist, monospace` : `600 ${fsInfo}px Geist, monospace`;
+          ctx.font = s!.bold
+            ? `bold ${fsInfo}px Geist, monospace`
+            : `600 ${fsInfo}px Geist, monospace`;
           ctx.fillStyle = s!.bold ? '#000000' : '#1a1a1a';
           ctx.textAlign = 'left';
           ctx.fillText(s!.text, xCursor, yInfo);
@@ -885,8 +992,10 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const isDesvio = engine.bajantes.some((b) => {
         const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
         if (!disp || disp.Ldesvio !== r.id) return false;
-        const gx = b.x + (disp.dx || 0), gy = b.y + (disp.dy || 0);
-        const firstPt = r.pts[0], lastPt = r.pts[r.pts.length - 1];
+        const gx = b.x + (disp.dx || 0),
+          gy = b.y + (disp.dy || 0);
+        const firstPt = r.pts[0],
+          lastPt = r.pts[r.pts.length - 1];
         const nearParent = Math.hypot(firstPt[0] - b.x, firstPt[1] - b.y) < 0.5;
         const nearGhost = Math.hypot(lastPt[0] - gx, lastPt[1] - gy) < 0.5;
         if (nearParent && nearGhost) {
@@ -895,36 +1004,43 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         }
         return false;
       });
-      
+
       if (isDesvio && desvioBajante) {
         const baj: PlanoBajante = desvioBajante;
         const firstPt = r.pts[0];
         const isSube = baj.direccion === 'sube';
 
-        let startIdx = 0, nextIdx = 1;
+        let startIdx = 0,
+          nextIdx = 1;
 
         const firstIsParent = Math.hypot(firstPt[0] - baj.x, firstPt[1] - baj.y) < 0.5;
         if (isSube) {
           if (firstIsParent) {
-            startIdx = r.pts.length - 1; nextIdx = r.pts.length - 2;
+            startIdx = r.pts.length - 1;
+            nextIdx = r.pts.length - 2;
           } else {
-            startIdx = 0; nextIdx = 1;
+            startIdx = 0;
+            nextIdx = 1;
           }
         } else {
           if (firstIsParent) {
-            startIdx = 0; nextIdx = 1;
+            startIdx = 0;
+            nextIdx = 1;
           } else {
-            startIdx = r.pts.length - 1; nextIdx = r.pts.length - 2;
+            startIdx = r.pts.length - 1;
+            nextIdx = r.pts.length - 2;
           }
         }
-        
+
         const firstC = engine.toCvs(r.pts[startIdx][0], r.pts[startIdx][1]);
         const secondC = engine.toCvs(r.pts[nextIdx][0], r.pts[nextIdx][1]);
-        const adx = secondC.x - firstC.x, ady = secondC.y - firstC.y;
+        const adx = secondC.x - firstC.x,
+          ady = secondC.y - firstC.y;
         const alen = Math.hypot(adx, ady);
-        
+
         if (alen > 2) {
-          const unx = adx / alen, uny = ady / alen;
+          const unx = adx / alen,
+            uny = ady / alen;
           const arrowR = 10 * engine.zoom;
           const cx = firstC.x;
           const cy = firstC.y;
@@ -936,8 +1052,14 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           ctx.shadowBlur = 6 * engine.zoom;
           ctx.beginPath();
           ctx.moveTo(cx, cy);
-          ctx.lineTo(cx - unx * arrowR + uny * arrowR * 0.4, cy - uny * arrowR - unx * arrowR * 0.4);
-          ctx.lineTo(cx - unx * arrowR - uny * arrowR * 0.4, cy - uny * arrowR + unx * arrowR * 0.4);
+          ctx.lineTo(
+            cx - unx * arrowR + uny * arrowR * 0.4,
+            cy - uny * arrowR - unx * arrowR * 0.4,
+          );
+          ctx.lineTo(
+            cx - unx * arrowR - uny * arrowR * 0.4,
+            cy - uny * arrowR + unx * arrowR * 0.4,
+          );
           ctx.closePath();
           ctx.fill();
           ctx.stroke();
@@ -946,22 +1068,24 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       } else {
         let startIdx = 0;
         let nextIdx = 1;
-        
+
         let isCodoReventiladoConnection = false;
         let codoEndIdx = -1;
 
         if (r.net === 'vent' || r.net === 'san') {
           const ventRamales = engine.ramales.filter((rm) => rm.net === 'vent');
           const sanRamales = engine.ramales.filter((rm) => rm.net === 'san');
-          
+
           for (const vr of ventRamales) {
             for (const idx of [0, vr.pts.length - 1]) {
               const pt = vr.pts[idx];
               const connectsToSan = sanRamales.some((sr) =>
-                sr.pts.some((sPt: number[]) => Math.hypot(pt[0] - sPt[0], pt[1] - sPt[1]) < 0.5)
+                sr.pts.some((sPt: number[]) => Math.hypot(pt[0] - sPt[0], pt[1] - sPt[1]) < 0.5),
               );
               if (connectsToSan) {
-                const rEndIdx = [0, r.pts.length - 1].find(eIdx => Math.hypot(r.pts[eIdx][0] - pt[0], r.pts[eIdx][1] - pt[1]) < 0.5);
+                const rEndIdx = [0, r.pts.length - 1].find(
+                  (eIdx) => Math.hypot(r.pts[eIdx][0] - pt[0], r.pts[eIdx][1] - pt[1]) < 0.5,
+                );
                 if (rEndIdx !== undefined) {
                   isCodoReventiladoConnection = true;
                   codoEndIdx = rEndIdx;
@@ -974,7 +1098,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         }
 
         if (r.net === 'san' && !isCodoReventiladoConnection) {
-          for (const b of (engine.bajantes || [])) {
+          for (const b of engine.bajantes || []) {
             if (b.net !== 'san') continue;
             if (!b.recibeDeIds?.includes(r.id)) continue;
             const firstPt = r.pts[0];
@@ -999,13 +1123,15 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           startIdx = r.pts.length - 1;
           nextIdx = r.pts.length - 2;
         }
-        
+
         const firstC = engine.toCvs(r.pts[startIdx][0], r.pts[startIdx][1]);
         const secondC = engine.toCvs(r.pts[nextIdx][0], r.pts[nextIdx][1]);
-        const adx = secondC.x - firstC.x, ady = secondC.y - firstC.y;
+        const adx = secondC.x - firstC.x,
+          ady = secondC.y - firstC.y;
         const alen = Math.hypot(adx, ady);
         if (alen > 2) {
-          const unx = adx / alen, uny = ady / alen;
+          const unx = adx / alen,
+            uny = ady / alen;
           const arrowR = 10 * engine.zoom;
           const cx = firstC.x;
           const cy = firstC.y;
@@ -1017,8 +1143,14 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           ctx.shadowBlur = 6 * engine.zoom;
           ctx.beginPath();
           ctx.moveTo(cx, cy);
-          ctx.lineTo(cx - unx * arrowR + uny * arrowR * 0.4, cy - uny * arrowR - unx * arrowR * 0.4);
-          ctx.lineTo(cx - unx * arrowR - uny * arrowR * 0.4, cy - uny * arrowR + unx * arrowR * 0.4);
+          ctx.lineTo(
+            cx - unx * arrowR + uny * arrowR * 0.4,
+            cy - uny * arrowR - unx * arrowR * 0.4,
+          );
+          ctx.lineTo(
+            cx - unx * arrowR - uny * arrowR * 0.4,
+            cy - uny * arrowR + unx * arrowR * 0.4,
+          );
           ctx.closePath();
           ctx.fill();
           ctx.stroke();
@@ -1026,7 +1158,6 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         }
       }
     }
-
   });
 
   // Draw extreme accessories (accesorioInicio/Fin) in their own pass, after every ramal's path
@@ -1034,7 +1165,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   // a san ramal's endpoint) paints over an earlier ramal's accessory symbol at that same point.
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
-    if (!((r.tipo === 'tributario' || r.tipo === 'ramal') && ['san', 'af', 'ac', 'gas'].includes(r.net) && r.pts.length >= 2)) return;
+    if (!((r.tipo === 'tributario' || r.tipo === 'ramal') && r.pts.length >= 2)) return;
 
     [0, r.pts.length - 1].forEach((idx) => {
       const accType = idx === 0 ? r.accesorioInicio : r.accesorioFin;
@@ -1043,7 +1174,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const pt = r.pts[idx];
       const c = engine.toCvs(pt[0], pt[1]);
 
-      let dx = 0, dy = 0;
+      let dx = 0,
+        dy = 0;
       if (idx === 0) {
         dx = r.pts[1][0] - r.pts[0][0];
         dy = r.pts[1][1] - r.pts[0][1];
@@ -1059,11 +1191,17 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         dx = 1;
         dy = 0;
       }
-      let px = -dy, py = dx;
+      let px = -dy,
+        py = dx;
       // Normalize perpendicular same convention as mid-body loop
       const PERP_EPS = 0.1;
-      if (py > PERP_EPS) { px = -px; py = -py; }
-      else if (Math.abs(py) <= PERP_EPS && px < 0) { px = -px; py = -py; }
+      if (py > PERP_EPS) {
+        px = -px;
+        py = -py;
+      } else if (Math.abs(py) <= PERP_EPS && px < 0) {
+        px = -px;
+        py = -py;
+      }
       const outX = idx === 0 ? -dx : dx;
       const outY = idx === 0 ? -dy : dy;
 
@@ -1071,10 +1209,27 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       // alone is invisible at common scales, since both land on that floor. Halve the px result.
       const rad = engine.realMmToCanvasPx(23) * 0.6;
 
+      const diamLabel = (idx === 0 ? r.diametroInicio : r.diametroFin) || r.diametro;
+
       ctx.save();
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      drawExtremeAccessorySymbol(ctx, engine, accType, c, dx, dy, px, py, outX, outY, rad);
+      drawExtremeAccessorySymbol(
+        ctx,
+        engine,
+        accType,
+        c,
+        dx,
+        dy,
+        px,
+        py,
+        outX,
+        outY,
+        rad,
+        diamLabel,
+        r,
+        idx === 0 ? 'ini' : 'fin',
+      );
       ctx.restore();
     });
   });
@@ -1100,29 +1255,48 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       // "implies a tee" bookkeeping, but the montante's own bajante circle+direction symbol
       // already renders right on top of this same point — drawing the full tee glyph too just
       // looked like a bold line stamped over the montante. Skip the glyph wherever a bajante sits.
-      const hasBajanteHere = engine.bajantes.some((b) => Math.hypot(b.x - pt[0], b.y - pt[1]) < 0.5);
+      const hasBajanteHere = engine.bajantes.some(
+        (b) => Math.hypot(b.x - pt[0], b.y - pt[1]) < 0.5,
+      );
       if (hasBajanteHere) continue;
 
       const c = engine.toCvs(pt[0], pt[1]);
 
-      const dxIn = pt[0] - r.pts[idx - 1][0], dyIn = pt[1] - r.pts[idx - 1][1];
+      const dxIn = pt[0] - r.pts[idx - 1][0],
+        dyIn = pt[1] - r.pts[idx - 1][1];
       const lenIn = Math.hypot(dxIn, dyIn);
-      const dxOut = r.pts[idx + 1][0] - pt[0], dyOut = r.pts[idx + 1][1] - pt[1];
+      const dxOut = r.pts[idx + 1][0] - pt[0],
+        dyOut = r.pts[idx + 1][1] - pt[1];
       const lenOut = Math.hypot(dxOut, dyOut);
-      const uxIn = lenIn > 0.01 ? dxIn / lenIn : 1, uyIn = lenIn > 0.01 ? dyIn / lenIn : 0;
-      const uxOut = lenOut > 0.01 ? dxOut / lenOut : uxIn, uyOut = lenOut > 0.01 ? dyOut / lenOut : uyIn;
+      const uxIn = lenIn > 0.01 ? dxIn / lenIn : 1,
+        uyIn = lenIn > 0.01 ? dyIn / lenIn : 0;
+      const uxOut = lenOut > 0.01 ? dxOut / lenOut : uxIn,
+        uyOut = lenOut > 0.01 ? dyOut / lenOut : uyIn;
 
-      let dx = uxIn + uxOut, dy = uyIn + uyOut;
+      let dx = uxIn + uxOut,
+        dy = uyIn + uyOut;
       const bisLen = Math.hypot(dx, dy);
-      if (bisLen > 0.01) { dx /= bisLen; dy /= bisLen; } else { dx = uxIn; dy = uyIn; }
-      let px = -dy, py = dx;
+      if (bisLen > 0.01) {
+        dx /= bisLen;
+        dy /= bisLen;
+      } else {
+        dx = uxIn;
+        dy = uyIn;
+      }
+      let px = -dy,
+        py = dx;
       // Normalize perpendicular so branch points consistent side regardless of ramal drawing
       // direction: toward screen-up (negative Y) for horizontal-ish, right (positive X) for
       // vertical-ish — matches the user's expected convention (branch goes UP from horizontal
       // ramal).
       const PERP_EPS = 0.1;
-      if (py > PERP_EPS) { px = -px; py = -py; }
-      else if (Math.abs(py) <= PERP_EPS && px < 0) { px = -px; py = -py; }
+      if (py > PERP_EPS) {
+        px = -px;
+        py = -py;
+      } else if (Math.abs(py) <= PERP_EPS && px < 0) {
+        px = -px;
+        py = -py;
+      }
 
       // realMmToCanvasPx floors at 1mm paper (see PlanoEngine.ts) — halving the mm argument
       // alone is invisible at common scales, since both land on that floor. Halve the px result.
@@ -1139,7 +1313,11 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   // Draw all bilateral crossings (teeBilateral) - white circle with black border and '+' at perpendicular crossings
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
-    if ((r.net === 'af' || r.net === 'ac') && r.bilateralCrossings && r.bilateralCrossings.length > 0) {
+    if (
+      (r.net === 'af' || r.net === 'ac') &&
+      r.bilateralCrossings &&
+      r.bilateralCrossings.length > 0
+    ) {
       const rad = engine.realMmToCanvasPx(23);
       ctx.save();
       ctx.lineCap = 'round';
@@ -1192,12 +1370,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         const maskW = 3.5 * engine.zoom;
         const lineW = 1.5 * engine.zoom;
 
-        const dirs = [
-          dir1,
-          { x: -dir1.x, y: -dir1.y },
-          dir2,
-          { x: -dir2.x, y: -dir2.y }
-        ];
+        const dirs = [dir1, { x: -dir1.x, y: -dir1.y }, dir2, { x: -dir2.x, y: -dir2.y }];
 
         // 1. Draw white mask (thick lines) to clear the pipe underneath
         ctx.strokeStyle = '#ffffff';
@@ -1258,7 +1431,8 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   }
 
   ar.pts.forEach((pt: number[], idx: number) => {
-    const px = pt[0], py = pt[1];
+    const px = pt[0],
+      py = pt[1];
     const c = engine.toCvs(px, py);
     ctx.save();
     ctx.fillStyle = idx === 0 ? '#fff' : col;
@@ -1272,7 +1446,7 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   const last = ar.pts[ar.pts.length - 1];
   let mp = engine.toPlane(engine.mouseX, engine.mouseY);
   const origMp = { x: mp.x, y: mp.y };
-  
+
   let snapped = false;
 
   if (engine.snapMode) {
@@ -1352,8 +1526,8 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   ctx.setLineDash([]);
 
   const segPx = Math.hypot(mp.x - last[0], mp.y - last[1]);
-  const segM = +(engine.pxToM(segPx).toFixed(2));
-  const deg = Math.atan2(mp.y - last[1], mp.x - last[0]) * 180 / Math.PI;
+  const segM = +engine.pxToM(segPx).toFixed(2);
+  const deg = (Math.atan2(mp.y - last[1], mp.x - last[0]) * 180) / Math.PI;
   const cursorLabel = `${segM} m  ${Math.round(((deg % 360) + 360) % 360)}°`;
   ctx.font = `${engine.mm2cvs(engine.MM.coord * engine.labelScaleM)}px Geist, monospace`;
   const tw = ctx.measureText(cursorLabel).width;

@@ -15,11 +15,12 @@ import type {
   MultiDragOrigData,
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
+import type { CrossFloorGhost } from '../../utils/associateBajanteAcrossFloors';
 import { renderDims, renderDimGhost } from './renderers/renderDimensions';
 import { renderTexts } from './renderers/renderTextAnnotations';
 import { renderGrid } from './renderers/renderGrid';
 import { renderAreas, renderActiveArea } from './renderers/renderAreas';
-import { renderBajantes, renderGhosts } from './renderers/renderBajantes';
+import { renderBajantes, renderGhosts, renderCrossFloorGhosts } from './renderers/renderBajantes';
 import { renderRamales, renderActiveRamal } from './renderers/renderRamales';
 import { renderNetCrossings } from './renderers/renderNetCrossings';
 import { snapToSegment } from './HitTester';
@@ -89,10 +90,27 @@ import { hitTestRightClick, hitTestBajanteLabelForDrag } from './PlanoEngineHitT
 
 export { NETS };
 
-export type ToolType = 'sel' | 'line' | 'dim' | 'text' | 'baj' | 'mon' | 'pan' | 'area' | 'erase' | 'segdel' | 'delm' | 'red_pub' | 'cont' | 'calent';
+export type ToolType =
+  | 'sel'
+  | 'line'
+  | 'dim'
+  | 'text'
+  | 'baj'
+  | 'mon'
+  | 'pan'
+  | 'area'
+  | 'erase'
+  | 'segdel'
+  | 'delm'
+  | 'red_pub'
+  | 'cont'
+  | 'calent';
 export type TramoType = 'ramal' | 'tributario';
 
-interface Point { x: number; y: number }
+interface Point {
+  x: number;
+  y: number;
+}
 
 type SelectCallback = (el: Record<string, unknown> | null) => void;
 type StatusCallback = (msg: string) => void;
@@ -112,6 +130,11 @@ export interface ElementItem {
   diametro?: string;
 }
 
+/**
+ * Core CAD engine for civil engineering plan drafting.
+ * Manages zoom/pan, tool state, element arrays (ramales, bajantes, areas, dims, text),
+ * snap logic, network layering, undo/redo history, and canvas rendering pipeline.
+ */
 export default class PlanoEngine implements IPlanoEngineCore {
   cw: HTMLElement;
   pdfWrap: HTMLElement | null;
@@ -135,12 +158,14 @@ export default class PlanoEngine implements IPlanoEngineCore {
   dims!: PlanoDimension[];
   textAnnots!: PlanoTextAnnotation[];
   bajantes!: PlanoBajante[];
+  crossFloorGhosts!: CrossFloorGhost[];
   areas!: PlanoArea[];
   activeRamal!: PlanoActiveRamal | null;
   padreTributario!: string | null;
   _ventFirstSegDir?: { x: number; y: number } | null;
   activeArea!: PlanoActiveArea | null;
   selId!: string | null;
+  selectedGhostId!: string | null;
   areaDrag!: { id: string; startX: number; startY: number } | null;
   dimDrag!: { id: string; startX: number; startY: number } | null;
   panning!: boolean;
@@ -149,12 +174,36 @@ export default class PlanoEngine implements IPlanoEngineCore {
   mouseX!: number;
   mouseY!: number;
   ghostDrag!: { id: string; startX: number; startY: number; baseDx: number; baseDy: number } | null;
-  lblDrag!: { id: string; offX: number; offY: number } | null;
+  lblDrag!: { id: string; offX: number; offY: number; slot?: 'ini' | 'fin' } | null;
   txtDrag!: { id: string; startX: number; startY: number; origX: number; origY: number } | null;
-  txtResize!: { id: string; boxX: number; boxY: number; startDist: number; origFontMm: number; origBoxWpx: number } | null;
+  txtResize!: {
+    id: string;
+    boxX: number;
+    boxY: number;
+    startDist: number;
+    origFontMm: number;
+    origBoxWpx: number;
+  } | null;
   bajDrag!: { id: string; offX: number; offY: number } | null;
-  ptDrag!: { id: string; ptIdx: number; slideConstraint?: { otherId: string; segmentIdx: number } } | null;
-  ramalDrag!: { id: string; startX: number; startY: number; origPts: [number, number][]; connBaj?: { id: string; origX: number; origY: number; origLblX: number; origLblY: number; atIdx: number }[] } | null;
+  ptDrag!: {
+    id: string;
+    ptIdx: number;
+    slideConstraint?: { otherId: string; segmentIdx: number };
+  } | null;
+  ramalDrag!: {
+    id: string;
+    startX: number;
+    startY: number;
+    origPts: [number, number][];
+    connBaj?: {
+      id: string;
+      origX: number;
+      origY: number;
+      origLblX: number;
+      origLblY: number;
+      atIdx: number;
+    }[];
+  } | null;
   _dimStart!: Point | null;
   nivelActual!: PlanoLevel | null;
   nptLevels!: PlanoLevel[];
@@ -196,11 +245,29 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _onStatusCb: StatusCallback | null;
   _onUpdateCb: UpdateCallback | null;
   _onRequestTextCb: ((x: number, y: number, cb: (text: string) => void) => void) | null;
-  _onContextMenuCb: ((bajante: PlanoElement, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null, midRamalHit?: { segmentIdx: number; x: number; y: number } | null) => void) | null;
+  _onContextMenuCb:
+    | ((
+        bajante: PlanoElement,
+        x: number,
+        y: number,
+        isGhostClick?: boolean,
+        ramalEndpoint?: { idx: number; x: number; y: number } | null,
+        midRamalHit?: { segmentIdx: number; x: number; y: number } | null,
+      ) => void)
+    | null;
   _onDeleteCb: ((ids: string[]) => void) | null;
   _onActiveNetChangeCb: ((net: string) => void) | null;
   _onAlertCb: ((title: string, msg: string) => void) | null;
-  _onAccesorioModalCb: ((data: { ramalId: string; angleDeg: number; junctionIndex: number; point: number[]; net: string; isTee?: boolean }) => void) | null;
+  _onAccesorioModalCb:
+    | ((data: {
+        ramalId: string;
+        angleDeg: number;
+        junctionIndex: number;
+        point: number[];
+        net: string;
+        isTee?: boolean;
+      }) => void)
+    | null;
   _dirty: boolean;
   _lastRightClickTime: number;
 
@@ -209,6 +276,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _history: PlanoHistory;
 
   _isGhostSel!: boolean;
+  _lblDragIsParent?: boolean;
   _yeeFlashKey!: string | null;
   multiSel!: string[];
   multiDrag!: { startX: number; startY: number; origData: MultiDragOrigData } | null;
@@ -216,6 +284,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
   private _needsRender = false;
   private _rafId: number | null = null;
 
+  /**
+   * @param cw - Container element (the viewport wrapper).
+   * @param pdfWrap - PDF canvas wrapper element (for PDF background).
+   * @param canv - Drawing canvas element.
+   */
   constructor(cw: HTMLElement, pdfWrap: HTMLElement | null, canv: HTMLCanvasElement) {
     this.cw = cw;
     this.pdfWrap = pdfWrap;
@@ -239,12 +312,14 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.dims = [];
     this.textAnnots = [];
     this.bajantes = [];
+    this.crossFloorGhosts = [];
     this.areas = [];
     this.activeRamal = null;
     this.padreTributario = null;
     this._ventFirstSegDir = null;
     this.activeArea = null;
     this.selId = null;
+    this.selectedGhostId = null;
     this._isGhostSel = false;
     this._yeeFlashKey = null;
     this.areaDrag = null;
@@ -310,22 +385,71 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._loadedPlanId = null;
   }
 
-  onSelect(cb: SelectCallback): void { this._onSelectCb = cb; }
-  onStatus(cb: StatusCallback): void { this._onStatusCb = cb; }
-  onRequestText(cb: (x: number, y: number, cb: (text: string) => void) => void): void { this._onRequestTextCb = cb; }
-  onContextMenu(cb: (b: PlanoElement, x: number, y: number, isGhostClick?: boolean, ramalEndpoint?: { idx: number; x: number; y: number } | null, midRamalHit?: { segmentIdx: number; x: number; y: number } | null) => void): void { this._onContextMenuCb = cb; }
-  onUpdate(cb: UpdateCallback): void { this._onUpdateCb = cb; }
-  onDirty(cb: DirtyCallback): void { this._onDirtyCb = cb; }
-  onDelete(cb: (ids: string[]) => void): void { this._onDeleteCb = cb; }
-  onActiveNetChange(cb: (net: string) => void): void { this._onActiveNetChangeCb = cb; }
-  onAlert(cb: (title: string, msg: string) => void): void { this._onAlertCb = cb; }
-  onAccesorioModal(cb: (data: { ramalId: string; angleDeg: number; junctionIndex: number; point: number[]; net: string; isTee?: boolean }) => void): void { this._onAccesorioModalCb = cb; }
+  /** Register callback for element selection changes. */
+  onSelect(cb: SelectCallback): void {
+    this._onSelectCb = cb;
+  }
+  /** Register callback for status bar messages. */
+  onStatus(cb: StatusCallback): void {
+    this._onStatusCb = cb;
+  }
+  onRequestText(cb: (x: number, y: number, cb: (text: string) => void) => void): void {
+    this._onRequestTextCb = cb;
+  }
+  onContextMenu(
+    cb: (
+      b: PlanoElement,
+      x: number,
+      y: number,
+      isGhostClick?: boolean,
+      ramalEndpoint?: { idx: number; x: number; y: number } | null,
+      midRamalHit?: { segmentIdx: number; x: number; y: number } | null,
+    ) => void,
+  ): void {
+    this._onContextMenuCb = cb;
+  }
+  onUpdate(cb: UpdateCallback): void {
+    this._onUpdateCb = cb;
+  }
+  /** Register callback for dirty state (work modified). */
+  onDirty(cb: DirtyCallback): void {
+    this._onDirtyCb = cb;
+  }
+  /** Register callback for element deletion events. */
+  onDelete(cb: (ids: string[]) => void): void {
+    this._onDeleteCb = cb;
+  }
+  onActiveNetChange(cb: (net: string) => void): void {
+    this._onActiveNetChangeCb = cb;
+  }
+  onAlert(cb: (title: string, msg: string) => void): void {
+    this._onAlertCb = cb;
+  }
+  onAccesorioModal(
+    cb: (data: {
+      ramalId: string;
+      angleDeg: number;
+      junctionIndex: number;
+      point: number[];
+      net: string;
+      isTee?: boolean;
+    }) => void,
+  ): void {
+    this._onAccesorioModalCb = cb;
+  }
 
   triggerAlert(title: string, msg: string): void {
     if (this._onAlertCb) this._onAlertCb(title, msg);
   }
 
-  triggerAccesorioModal(data: { ramalId: string; angleDeg: number; junctionIndex: number; point: number[]; net: string; isTee?: boolean }): void {
+  triggerAccesorioModal(data: {
+    ramalId: string;
+    angleDeg: number;
+    junctionIndex: number;
+    point: number[];
+    net: string;
+    isTee?: boolean;
+  }): void {
     if (this._onAccesorioModalCb) this._onAccesorioModalCb(data);
   }
 
@@ -352,10 +476,18 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.render();
   }
 
-  toCvs(px: number, py: number): Point { return { x: px * this.zoom + this.offX, y: py * this.zoom + this.offY }; }
-  toPlane(cx: number, cy: number): Point { return { x: (cx - this.offX) / this.zoom, y: (cy - this.offY) / this.zoom }; }
-  pxToM(px: number): number { return +(px / 96 * 2.54 * this.scaleM).toFixed(3); }
-  mm2cvs(mm: number): number { return mm * 96 / 25.4 * this.zoom; }
+  toCvs(px: number, py: number): Point {
+    return { x: px * this.zoom + this.offX, y: py * this.zoom + this.offY };
+  }
+  toPlane(cx: number, cy: number): Point {
+    return { x: (cx - this.offX) / this.zoom, y: (cy - this.offY) / this.zoom };
+  }
+  pxToM(px: number): number {
+    return +((px / 96) * 2.54 * this.scaleM).toFixed(3);
+  }
+  mm2cvs(mm: number): number {
+    return ((mm * 96) / 25.4) * this.zoom;
+  }
 
   realMmToCanvasPx(realRadiusMm: number): number {
     // Floor kept small on purpose: at common architectural scales (1:50 etc.) these symbols
@@ -376,9 +508,14 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (this._onStatusCb) this._onStatusCb(msg);
   }
 
-  _emitSelect(el: PlanoRamal | PlanoBajante | PlanoArea | PlanoTextAnnotation | PlanoDimension | null): void {
+  _emitSelect(
+    el: PlanoRamal | PlanoBajante | PlanoArea | PlanoTextAnnotation | PlanoDimension | null,
+  ): void {
     if (!this._onSelectCb) return;
-    if (!el) { this._onSelectCb(null); return; }
+    if (!el) {
+      this._onSelectCb(null);
+      return;
+    }
     const rest: Record<string, unknown> = { ...el };
     delete rest._circ;
     delete rest._ghost;
@@ -392,6 +529,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (this._onDeleteCb) this._onDeleteCb(ids);
   }
 
+  /** Mark work as dirty: recalculate network connections, accessories, save history snapshot, fire onDirty callback. */
   _markDirty(): void {
     this._dirty = true;
     autoDetectRamalConnections(this);
@@ -405,28 +543,33 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   snapAngle(x0: number, y0: number, x1: number, y1: number, net?: string, tipo?: string): Point {
-    const dx = x1 - x0, dy = y1 - y0;
+    const dx = x1 - x0,
+      dy = y1 - y0;
     const dist = Math.hypot(dx, dy);
     if (dist < 0.001) return { x: x1, y: y1 };
-    const deg = Math.atan2(dy, dx) * 180 / Math.PI;
+    const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
     // Some redes only permit certain headings (see checkRamalAngles): af/ac tributarios must
     // land on a 90° grid, everything else (incl. san/ll, which has no fixed-heading rule of its
     // own) uses the looser 45° grid — snapping to 45° there never produces an invalid angle.
     const isTributarioAcAf = (net === 'af' || net === 'ac') && tipo === 'tributario';
     const allowed = isTributarioAcAf ? [0, 90, 180, -90] : [0, 45, 90, 135, 180, -135, -90, -45];
-    let best = 0, minDiff = 999;
-    allowed.forEach(a => {
-      const diff = Math.abs(((deg - a) + 540) % 360 - 180);
-      if (diff < minDiff) { minDiff = diff; best = a; }
+    let best = 0,
+      minDiff = 999;
+    allowed.forEach((a) => {
+      const diff = Math.abs(((deg - a + 540) % 360) - 180);
+      if (diff < minDiff) {
+        minDiff = diff;
+        best = a;
+      }
     });
-    const sr = best * Math.PI / 180;
+    const sr = (best * Math.PI) / 180;
     return { x: x0 + dist * Math.cos(sr), y: y0 + dist * Math.sin(sr) };
   }
 
   snapToExisting(x: number, y: number): Point | null {
     let best: Point | null = null;
     let minD = 16 / this.zoom;
-    this.ramales.forEach(r => {
+    this.ramales.forEach((r) => {
       // Never snap across networks — elements from different redes must not connect just
       // because they're visually close. Exception: ventilación is meant to land exactly on a
       // sanitaria point (the existing reventilado marker relies on that), so allow that one pair.
@@ -437,9 +580,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
           const ptA = r.pts[idx - 1];
           const ptB = r.pts[idx];
           const ptC = r.pts[idx + 1];
-          const ax = ptB[0] - ptA[0], ay = ptB[1] - ptA[1];
-          const bx = ptC[0] - ptB[0], by = ptC[1] - ptB[1];
-          const lenA = Math.hypot(ax, ay), lenB = Math.hypot(bx, by);
+          const ax = ptB[0] - ptA[0],
+            ay = ptB[1] - ptA[1];
+          const bx = ptC[0] - ptB[0],
+            by = ptC[1] - ptB[1];
+          const lenA = Math.hypot(ax, ay),
+            lenB = Math.hypot(bx, by);
           if (lenA > 0 && lenB > 0) {
             const cosAngle = (-ax * bx - ay * by) / (lenA * lenB);
             if (Math.abs(cosAngle) < 0.05) {
@@ -456,7 +602,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     });
     const bajThresh = 20 / this.zoom;
     const lvlLabel = this.nivelActual?.label ?? '';
-    this.bajantes.forEach(b => {
+    this.bajantes.forEach((b) => {
       if (this._hiddenNets.has(b.net)) return;
       if (!netsSnapLinked(b.net, this.activeNet)) return;
       const disp = b.desplazamientos?.[lvlLabel] || {};
@@ -471,31 +617,42 @@ export default class PlanoEngine implements IPlanoEngineCore {
     return best;
   }
 
-  _snapToSegment(x: number, y: number, pts: number[][], threshold: number = Infinity): Point | null {
+  _snapToSegment(
+    x: number,
+    y: number,
+    pts: number[][],
+    threshold: number = Infinity,
+  ): Point | null {
     return snapToSegment(x, y, pts, threshold);
   }
 
   snapPreviewToPadre(x: number, y: number): Point | null {
     if (this.tipoTramo !== 'tributario' || !this.padreTributario || this.activeRamal) return null;
-    const padre = this.ramales.find(r => r.id === this.padreTributario);
+    const padre = this.ramales.find((r) => r.id === this.padreTributario);
     if (!padre) return null;
     return this._snapToSegment(x, y, padre.pts, 20 / this.zoom);
   }
 
   _wrapTouch(fn: (e: TouchEvent) => void): (e: TouchEvent) => void {
-    return (e: TouchEvent) => { e.preventDefault(); fn(e); };
+    return (e: TouchEvent) => {
+      e.preventDefault();
+      fn(e);
+    };
   }
 
   _getPos(e: MouseEvent | TouchEvent): Point {
     const r = this.canv.getBoundingClientRect();
-    const t = e instanceof TouchEvent ? (e as TouchEvent).touches[0] : e as MouseEvent;
+    const t = e instanceof TouchEvent ? (e as TouchEvent).touches[0] : (e as MouseEvent);
     return { x: t.clientX - r.left, y: t.clientY - r.top };
   }
 
   private _setupCanvasEvents(): void {
     this._touchStartHandler = this._wrapTouch(this._onDown as (e: TouchEvent) => void);
     this._touchMoveHandler = this._wrapTouch(this._onMove as (e: TouchEvent) => void);
-    this._touchEndHandler = (e: TouchEvent) => { e.preventDefault(); this._onUp(e); };
+    this._touchEndHandler = (e: TouchEvent) => {
+      e.preventDefault();
+      this._onUp(e);
+    };
 
     this.canv.addEventListener('mousedown', this._onDown);
     this.canv.addEventListener('mousemove', this._onMove);
@@ -516,18 +673,31 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.canv.removeEventListener('mouseleave', this._onUp);
     this.canv.removeEventListener('dblclick', this._onDblClick);
     this.canv.removeEventListener('wheel', this._onWheel);
-    if (this._touchStartHandler) this.canv.removeEventListener('touchstart', this._touchStartHandler);
+    if (this._touchStartHandler)
+      this.canv.removeEventListener('touchstart', this._touchStartHandler);
     if (this._touchMoveHandler) this.canv.removeEventListener('touchmove', this._touchMoveHandler);
     if (this._touchEndHandler) this.canv.removeEventListener('touchend', this._touchEndHandler);
     document.removeEventListener('keydown', this._onKeyDown);
   }
 
-  _statusMsg(): string { return _statusMsg(this); }
-  _nextLabel(): string { return _nextLabel(this); }
-  _midpoint(pts: number[][]): [number, number] { return _midpoint(pts); }
-  _calcPolyArea(pts: number[][]): number { return _calcPolyArea(this, pts); }
+  _statusMsg(): string {
+    return _statusMsg(this);
+  }
+  _nextLabel(): string {
+    return _nextLabel(this);
+  }
+  _midpoint(pts: number[][]): [number, number] {
+    return _midpoint(pts);
+  }
+  _calcPolyArea(pts: number[][]): number {
+    return _calcPolyArea(this, pts);
+  }
 
-  setTool(t: ToolType): void { _setTool(this, t); }
+  /** @param t - Tool to activate (sel, line, dim, text, baj, mon, pan, area, erase, etc). */
+  setTool(t: ToolType): void {
+    _setTool(this, t);
+  }
+  /** @param id - Network ID to set as active (af, ac, san, vent, ll, gas). Fires active net change callback. */
   setActiveNet(id: string): void {
     if (this.activeNet !== id) {
       this.activeNet = id;
@@ -536,87 +706,178 @@ export default class PlanoEngine implements IPlanoEngineCore {
       }
     }
   }
-  setTipoTramo(t: TramoType): void { this.tipoTramo = t; }
-  setSnap(v: boolean): void { this.snapMode = v; }
+  setTipoTramo(t: TramoType): void {
+    this.tipoTramo = t;
+  }
+  /** @param v - Enable/disable angle snapping. */
+  setSnap(v: boolean): void {
+    this.snapMode = v;
+  }
 
-  setPadreTributario(ramalId: string | null): void { _setPadreTributario(this, ramalId); }
-  getPadreTributario(): PlanoRamal | null { return _getPadreTributario(this); }
-  getRamalesPadre(): PlanoRamal[] { return _getRamalesPadre(this); }
-  setRamalDefaults(d: Partial<PlanoRamalDefaults> | null): void { _setRamalDefaults(this, d); }
+  setPadreTributario(ramalId: string | null): void {
+    _setPadreTributario(this, ramalId);
+  }
+  getPadreTributario(): PlanoRamal | null {
+    return _getPadreTributario(this);
+  }
+  getRamalesPadre(): PlanoRamal[] {
+    return _getRamalesPadre(this);
+  }
+  setRamalDefaults(d: Partial<PlanoRamalDefaults> | null): void {
+    _setRamalDefaults(this, d);
+  }
 
-  setScaleM(v: string | number): void { _setScaleM(this, v); }
-  setDefinedScaleM(v: string | number): void { _setDefinedScaleM(this, v); }
+  /** @param v - Scale factor (e.g. 1 for 1:100, 0.5 for 1:50). Accepts string or number. */
+  setScaleM(v: string | number): void {
+    _setScaleM(this, v);
+  }
+  setDefinedScaleM(v: string | number): void {
+    _setDefinedScaleM(this, v);
+  }
 
-  setNetHidden(netId: string, hidden: boolean): void { _setNetHidden(this, netId, hidden); }
-  setNetLocked(netId: string, locked: boolean): void { _setNetLocked(this, netId, locked); }
+  setNetHidden(netId: string, hidden: boolean): void {
+    _setNetHidden(this, netId, hidden);
+  }
+  setNetLocked(netId: string, locked: boolean): void {
+    _setNetLocked(this, netId, locked);
+  }
 
-  getElementsByNet(netId: string): ElementItem[] { return _getElementsByNet(this, netId); }
+  /** @param netId - Network ID. Returns flattened element list (ramales, bajantes, areas) for that network. */
+  getElementsByNet(netId: string): ElementItem[] {
+    return _getElementsByNet(this, netId);
+  }
 
-  selectById(id: string): void { _selectById(this, id); }
-  selectAt(cx: number, cy: number): void { _selectAt(this, cx, cy); }
-  getSelected(): PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null { return _getSelected(this); }
-  updateSelected(fields: Record<string, unknown>): void { _updateSelected(this, fields); }
-  updateElementById(id: string, fields: Record<string, unknown>): void { _updateElementById(this, id, fields); }
-  createMontanteMidBody(ramalId: string, x: number, y: number, segmentIdx: number): void { handleCreateMontanteMidBody(this, ramalId, x, y, segmentIdx); }
-  createTeeCapStub(ramalId: string, accMedIdx: number, accId: 'tapon' | 'llaveTerminal'): void { handleCreateTeeCapStub(this, ramalId, accMedIdx, accId); }
-  rotateLabelSnap(): void { _rotateLabelSnap(this); }
-  resetLabel(): void { _resetLabel(this); }
-  deleteSelected(ids?: string[]): void { _deleteSelected(this, ids); }
+  selectById(id: string): void {
+    _selectById(this, id);
+  }
+  selectAt(cx: number, cy: number): void {
+    _selectAt(this, cx, cy);
+  }
+  getSelected(): PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null {
+    return _getSelected(this);
+  }
+  updateSelected(fields: Record<string, unknown>): void {
+    _updateSelected(this, fields);
+  }
+  updateElementById(id: string, fields: Record<string, unknown>): void {
+    _updateElementById(this, id, fields);
+  }
+  createMontanteMidBody(ramalId: string, x: number, y: number, segmentIdx: number): void {
+    handleCreateMontanteMidBody(this, ramalId, x, y, segmentIdx);
+  }
+  createTeeCapStub(ramalId: string, accMedIdx: number, accId: 'tapon' | 'llaveTerminal'): void {
+    handleCreateTeeCapStub(this, ramalId, accMedIdx, accId);
+  }
+  rotateLabelSnap(): void {
+    _rotateLabelSnap(this);
+  }
+  resetLabel(): void {
+    _resetLabel(this);
+  }
+  deleteSelected(ids?: string[]): void {
+    _deleteSelected(this, ids);
+  }
 
-  finishRamal(): void { _finishRamal(this); }
-  cancelRamal(): void { _cancelRamal(this); }
-  cancelArea(): void { _cancelArea(this); }
-  finishArea(): void { _finishArea(this); }
-  undoLast(): void { this._history.undoLast(); }
-  redoLast(): void { this._history.redoLast(); }
-  clearAll(): void { this._history.clearAll(); }
-  clearNet(netId: string): void { _clearNet(this, netId); }
-  deleteSegmentAt(cx: number, cy: number): void { _deleteSegmentAt(this, cx, cy); }
+  finishRamal(): void {
+    _finishRamal(this);
+  }
+  cancelRamal(): void {
+    _cancelRamal(this);
+  }
+  cancelArea(): void {
+    _cancelArea(this);
+  }
+  finishArea(): void {
+    _finishArea(this);
+  }
+  /** Undo last history snapshot. */
+  undoLast(): void {
+    this._history.undoLast();
+  }
+  /** Redo last undone snapshot. */
+  redoLast(): void {
+    this._history.redoLast();
+  }
+  clearAll(): void {
+    this._history.clearAll();
+  }
+  clearNet(netId: string): void {
+    _clearNet(this, netId);
+  }
+  deleteSegmentAt(cx: number, cy: number): void {
+    _deleteSegmentAt(this, cx, cy);
+  }
 
-  getBajantesFantasma(): PlanoBajante[] { return _getBajantesFantasma(this); }
+  getBajantesFantasma(): PlanoBajante[] {
+    return _getBajantesFantasma(this);
+  }
+  getSelectedGhost(): CrossFloorGhost | null {
+    if (!this.selectedGhostId) return null;
+    return this.crossFloorGhosts.find((g) => g.id === this.selectedGhostId) || null;
+  }
 
-  _renumberRamales(netId: string): void { _doRenumberRamales(this, netId); }
-  _renumberBajantes(netId: string): void { _doRenumberBajantes(this, netId); }
-  _renumberMontantes(): void { _doRenumberMontantes(this); }
-  _renumberAreas(): void { _doRenumberAreas(this); }
+  _renumberRamales(netId: string): void {
+    _doRenumberRamales(this, netId);
+  }
+  _renumberBajantes(netId: string): void {
+    _doRenumberBajantes(this, netId);
+  }
+  _renumberMontantes(): void {
+    _doRenumberMontantes(this);
+  }
+  _renumberAreas(): void {
+    _doRenumberAreas(this);
+  }
 
+  /** Serialize all work data (elements, state, levels) to a JSON-serializable object. */
   saveWork(): import('./PlanoPersistence').PlanoWorkData {
     return serializeWork(this);
   }
 
+  /** Deserialize and apply a previously saved work object. @param json - JSON string or parsed object. */
   loadWork(json: string | object): void {
     try {
       const d = (typeof json === 'string'
         ? JSON.parse(json)
         : json) as unknown as import('./PlanoPersistence').PlanoWorkData;
-      applyWorkData(this as unknown as {
-        scaleM: number;
-        definedScaleM: number;
-        activeNet: string;
-        ramales: unknown[];
-        dims: unknown[];
-        textAnnots: unknown[];
-        bajantes: unknown[];
-        areas: unknown[];
-        nptLevels: unknown[];
-        selId: string | null;
-        activeRamal: unknown;
-        activeArea: unknown;
-        _netCounts: Record<string, PlanoNetCounts>;
-        _dirty: boolean;
-        render: () => void;
-        [key: string]: unknown;
-      }, d);
+      applyWorkData(
+        this as unknown as {
+          scaleM: number;
+          definedScaleM: number;
+          activeNet: string;
+          ramales: unknown[];
+          dims: unknown[];
+          textAnnots: unknown[];
+          bajantes: unknown[];
+          areas: unknown[];
+          nptLevels: unknown[];
+          crossFloorGhosts: unknown[];
+          selId: string | null;
+          activeRamal: unknown;
+          activeArea: unknown;
+          _netCounts: Record<string, PlanoNetCounts>;
+          _dirty: boolean;
+          render: () => void;
+          [key: string]: unknown;
+        },
+        d,
+      );
       autoDetectRamalConnections(this);
       ensureRpCntRamal(this);
       if (this._history) {
         this._history.saveSnapshot();
       }
-    } catch (e) { devError('Error loading work:', e); }
+    } catch (e) {
+      devError('Error loading work:', e);
+    }
   }
 
+  /** @param delta - Zoom increment (positive = zoom in). @param cx - Center X in canvas coords (defaults to center). @param cy - Center Y. */
   doZoom(delta: number, cx?: number, cy?: number): void {
-    if (cx === undefined) { cx = this.cw.clientWidth / 2; cy = this.cw.clientHeight / 2; }
+    if (cx === undefined) {
+      cx = this.cw.clientWidth / 2;
+      cy = this.cw.clientHeight / 2;
+    }
     const nz = Math.max(0.05, Math.min(6, this.zoom + delta));
     this.offX = cx - (cx - this.offX) * (nz / this.zoom);
     this.offY = cy! - (cy! - this.offY) * (nz / this.zoom);
@@ -624,6 +885,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.render();
   }
 
+  /** Fit the PDF page within the viewport with padding. */
   fitPage(): void {
     if (!this.pageW || !this.pageH) return;
     const s = Math.min(
@@ -631,14 +893,16 @@ export default class PlanoEngine implements IPlanoEngineCore {
       (this.cw.clientHeight - 36) / this.pageH,
     );
     this.zoom = s;
-    this.offX = this.pageW * (1 - s) / 2;
+    this.offX = (this.pageW * (1 - s)) / 2;
     this.offY = (this.cw.clientHeight - this.pageH * s) / 2;
     this.render();
   }
 
+  /** Full redraw: clear canvas, reposition PDF wrap, render all layers (grid, dims, texts, areas, ramales, crossings, bajantes, ghosts, active elements). */
   render(): void {
     const ctx = this.ctx;
-    const w = this.canv.width, h = this.canv.height;
+    const w = this.canv.width,
+      h = this.canv.height;
     ctx.clearRect(0, 0, w, h);
 
     if (this.pdfWrap) {
@@ -655,6 +919,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     renderNetCrossings(ctx, this);
     renderBajantes(ctx, this);
     renderGhosts(ctx, this);
+    renderCrossFloorGhosts(ctx, this);
     renderDimGhost(ctx, this);
     renderActiveArea(ctx, this);
     renderActiveRamal(ctx, this);
@@ -685,7 +950,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _onDownHandler(e: MouseEvent | TouchEvent): void {
     const { x, y } = this._getPos(e);
 
-    if (e instanceof MouseEvent && e.button === 1 || this.tool === 'pan') {
+    if ((e instanceof MouseEvent && e.button === 1) || this.tool === 'pan') {
       this.panning = true;
       this.panX0 = x - this.offX;
       this.panY0 = y - this.offY;
@@ -710,7 +975,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
             hit.clientY,
             hit.isGhostClick,
             hit.ramalEndpoint || null,
-            hit.midRamalHit || null
+            hit.midRamalHit || null,
           );
         }
         this.render();
@@ -729,7 +994,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (this.activeNetworks && !this.activeNetworks.has(this.activeNet)) {
       const netObj = NETS.find((n) => n.id === this.activeNet);
       const netName = netObj ? netObj.name : this.activeNet;
-      this.triggerAlert('Red inactiva', `Debe activar la red de ${netName} en la información general`);
+      this.triggerAlert(
+        'Red inactiva',
+        `Debe activar la red de ${netName} en la información general`,
+      );
       return;
     }
 
@@ -738,6 +1006,15 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (this.tool === 'sel') {
       const lblDragResult = hitTestBajanteLabelForDrag(this, x, y);
       if (lblDragResult) {
+        // This hit-test only ever matches the bajante's own REAL label position (_labelBox /
+        // labelX,Y) — it never checks the ghost's displaced _ghostLabelBox — so it is always a
+        // parent-label drag. _lblDragIsParent must be set here explicitly: this path bypasses
+        // handleSelectDown entirely (early return), so without this it kept whatever stale value
+        // was left over from the PREVIOUS interaction. If that previous interaction had selected
+        // the same bajante's GHOST rendering (_lblDragIsParent left false), dragging what looked
+        // like the real label here silently wrote into ghostData instead — moving the ghost to
+        // the click position rather than the real label the user was actually dragging.
+        this._lblDragIsParent = true;
         this.lblDrag = lblDragResult;
         return;
       }
@@ -774,7 +1051,16 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.scheduleRender();
       return;
     }
-    const hasDrag = this.ghostDrag || this.bajDrag || this.lblDrag || this.txtDrag || this.txtResize || this.areaDrag || this.ptDrag || this.ramalDrag || this.multiDrag;
+    const hasDrag =
+      this.ghostDrag ||
+      this.bajDrag ||
+      this.lblDrag ||
+      this.txtDrag ||
+      this.txtResize ||
+      this.areaDrag ||
+      this.ptDrag ||
+      this.ramalDrag ||
+      this.multiDrag;
     if (hasDrag) {
       handleDragMove(this, x, y);
     } else if (this.marqueeRect) {
@@ -789,9 +1075,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _onMouseUpHandler(e: MouseEvent | TouchEvent): void {
     if (this.panning) {
       this.panning = false;
-      this.canv.style.cursor = this.tool === 'pan' ? 'grab' : this.tool === 'sel' ? 'default' : 'crosshair';
+      this.canv.style.cursor =
+        this.tool === 'pan' ? 'grab' : this.tool === 'sel' ? 'default' : 'crosshair';
     }
-    const isCtrl = e instanceof MouseEvent && e.ctrlKey || false;
+    const isCtrl = (e instanceof MouseEvent && e.ctrlKey) || false;
     handleDragUp(this, isCtrl);
   }
 
@@ -814,36 +1101,94 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   _onKeyDownHandler(e: KeyboardEvent): void {
-    if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'SELECT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+    if (
+      (e.target as HTMLElement).tagName === 'INPUT' ||
+      (e.target as HTMLElement).tagName === 'SELECT' ||
+      (e.target as HTMLElement).tagName === 'TEXTAREA'
+    )
+      return;
     const k = e.key.toLowerCase();
-    if (e.ctrlKey && k === 'z') { this.undoLast(); e.preventDefault(); return; }
-    if (e.ctrlKey && k === 'y') { this.redoLast(); e.preventDefault(); return; }
-    if (e.ctrlKey && k === 's') { e.preventDefault(); return; }
-    if (k === 's') { this.setTool('sel'); e.preventDefault(); }
-    else if (k === 'l') { this.setTool('line'); e.preventDefault(); }
-    else if (k === 'c') { this.setTool('cont'); e.preventDefault(); }
-    else if (k === 'h') { this.setTool('calent'); e.preventDefault(); }
-    else if (k === 'd') { this.setTool('dim'); e.preventDefault(); }
-    else if (k === 't') { this.setTool('text'); e.preventDefault(); }
+    if (e.ctrlKey && k === 'z') {
+      this.undoLast();
+      e.preventDefault();
+      return;
+    }
+    if (e.ctrlKey && k === 'y') {
+      this.redoLast();
+      e.preventDefault();
+      return;
+    }
+    if (e.ctrlKey && k === 's') {
+      e.preventDefault();
+      return;
+    }
+    if (k === 's') {
+      this.setTool('sel');
+      e.preventDefault();
+    } else if (k === 'l') {
+      this.setTool('line');
+      e.preventDefault();
+    } else if (k === 'c') {
+      this.setTool('cont');
+      e.preventDefault();
+    } else if (k === 'h') {
+      this.setTool('calent');
+      e.preventDefault();
+    } else if (k === 'd') {
+      this.setTool('dim');
+      e.preventDefault();
+    } else if (k === 't') {
+      this.setTool('text');
+      e.preventDefault();
+    }
     // Bajante only on san/vent/ll, montante only on gas/ac/af — same rule PdfViewerToolbar.tsx
     // enforces on its buttons (isToolDisabledForNet); duplicated here as a plain check rather than
     // imported, since lib/PlanoEngine must not depend on components/.
-    else if (k === 'b') { if (['san', 'vent', 'll'].includes(this.activeNet)) { this.setTool('baj'); } e.preventDefault(); }
-    else if (k === 'm') { if (['gas', 'ac', 'af'].includes(this.activeNet)) { this.setTool('mon'); } e.preventDefault(); }
-    else if (k === 'a') { this.setTool('area'); e.preventDefault(); }
-    else if (k === 'e') { this.setTool('erase'); e.preventDefault(); }
-    else if (k === 'x') { this.setTool('delm'); e.preventDefault(); }
-    else if (k === 'k') { this.setTool('segdel'); e.preventDefault(); }
-    else if (k === ' ') { this.setTool(this.tool === 'pan' ? 'sel' : 'pan'); e.preventDefault(); }
-    else if (k === 'enter') {
-      if (this.activeRamal) { this.finishRamal(); e.preventDefault(); }
-      else if (this.activeArea) { this.finishArea(); e.preventDefault(); }
-    }
-    else if (k === 'escape') {
-      if (this.activeRamal) { this.cancelRamal(); e.preventDefault(); }
-      else if (this.activeArea) { this.cancelArea(); e.preventDefault(); }
-      else if (this._dimStart) { this._dimStart = null; this.render(); e.preventDefault(); }
-      else {
+    else if (k === 'b') {
+      if (['san', 'vent', 'll'].includes(this.activeNet)) {
+        this.setTool('baj');
+      }
+      e.preventDefault();
+    } else if (k === 'm') {
+      if (['gas', 'ac', 'af'].includes(this.activeNet)) {
+        this.setTool('mon');
+      }
+      e.preventDefault();
+    } else if (k === 'a') {
+      this.setTool('area');
+      e.preventDefault();
+    } else if (k === 'e') {
+      this.setTool('erase');
+      e.preventDefault();
+    } else if (k === 'x') {
+      this.setTool('delm');
+      e.preventDefault();
+    } else if (k === 'k') {
+      this.setTool('segdel');
+      e.preventDefault();
+    } else if (k === ' ') {
+      this.setTool(this.tool === 'pan' ? 'sel' : 'pan');
+      e.preventDefault();
+    } else if (k === 'enter') {
+      if (this.activeRamal) {
+        this.finishRamal();
+        e.preventDefault();
+      } else if (this.activeArea) {
+        this.finishArea();
+        e.preventDefault();
+      }
+    } else if (k === 'escape') {
+      if (this.activeRamal) {
+        this.cancelRamal();
+        e.preventDefault();
+      } else if (this.activeArea) {
+        this.cancelArea();
+        e.preventDefault();
+      } else if (this._dimStart) {
+        this._dimStart = null;
+        this.render();
+        e.preventDefault();
+      } else {
         if (this.tool !== 'sel') {
           this.setTool('sel');
           e.preventDefault();
@@ -853,8 +1198,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
           this.render();
         }
       }
-    }
-    else if (k === 'delete') {
+    } else if (k === 'delete') {
       if (!this.activeRamal && !this.activeArea) {
         if (this.multiSel && this.multiSel.length > 0) {
           this.deleteSelected(this.multiSel);

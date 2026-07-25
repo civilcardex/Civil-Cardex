@@ -1,14 +1,18 @@
 import type { IPlanoEngineCore } from './PlanoState';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 
-interface HidroTramoEntry { accesorios: Record<string, number>; Lh: number; nSalidas: number }
+interface HidroTramoEntry {
+  accesorios: Record<string, number>;
+  Lh: number;
+  nSalidas: number;
+}
 
 export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
   const planId = engine._loadedPlanId;
   if (!planId) return;
 
-  const sanRamales = engine.ramales.filter(r => r.net === 'san');
-  const ventRamales = engine.ramales.filter(r => r.net === 'vent');
+  const sanRamales = engine.ramales.filter((r) => r.net === 'san');
+  const ventRamales = engine.ramales.filter((r) => r.net === 'vent');
   const storageKey = 'tramo_hidro_data_v3';
   let hidroData: Record<string, HidroTramoEntry>;
   try {
@@ -27,8 +31,8 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
 
   const getPointKey = (x: number, y: number) => `${x.toFixed(3)}_${y.toFixed(3)}`;
   const vertexMap = new Map<string, number[]>();
-  sanRamales.forEach(r => {
-    (r.pts || []).forEach(pt => {
+  sanRamales.forEach((r) => {
+    (r.pts || []).forEach((pt) => {
       vertexMap.set(getPointKey(pt[0], pt[1]), pt);
     });
   });
@@ -36,19 +40,21 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
   vertexMap.forEach((P) => {
     const vectors: { x: number; y: number }[] = [];
 
-    sanRamales.forEach(rr => {
+    sanRamales.forEach((rr) => {
       if (!rr.pts) return;
       let isVertex = false;
       for (let i = 0; i < rr.pts.length; i++) {
         if (Math.hypot(rr.pts[i][0] - P[0], rr.pts[i][1] - P[1]) < 0.5) {
           isVertex = true;
           if (i > 0) {
-            const dx = rr.pts[i - 1][0] - P[0], dy = rr.pts[i - 1][1] - P[1];
+            const dx = rr.pts[i - 1][0] - P[0],
+              dy = rr.pts[i - 1][1] - P[1];
             const len = Math.hypot(dx, dy);
             if (len > 0.1) vectors.push({ x: dx / len, y: dy / len });
           }
           if (i < rr.pts.length - 1) {
-            const dx = rr.pts[i + 1][0] - P[0], dy = rr.pts[i + 1][1] - P[1];
+            const dx = rr.pts[i + 1][0] - P[0],
+              dy = rr.pts[i + 1][1] - P[1];
             const len = Math.hypot(dx, dy);
             if (len > 0.1) vectors.push({ x: dx / len, y: dy / len });
           }
@@ -56,13 +62,16 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
       }
       if (!isVertex) {
         for (let i = 0; i < rr.pts.length - 1; i++) {
-          const A = rr.pts[i], B = rr.pts[i + 1];
-          const dx = B[0] - A[0], dy = B[1] - A[1];
+          const A = rr.pts[i],
+            B = rr.pts[i + 1];
+          const dx = B[0] - A[0],
+            dy = B[1] - A[1];
           const lenSq = dx * dx + dy * dy;
           if (lenSq > 0.001) {
             let t = ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / lenSq;
             t = Math.max(0, Math.min(1, t));
-            const projX = A[0] + t * dx, projY = A[1] + t * dy;
+            const projX = A[0] + t * dx,
+              projY = A[1] + t * dy;
             const dist = Math.hypot(P[0] - projX, P[1] - projY);
             const lenA = Math.hypot(A[0] - P[0], A[1] - P[1]);
             const lenB = Math.hypot(B[0] - P[0], B[1] - P[1]);
@@ -76,7 +85,9 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
     });
 
     const uniq: typeof vectors = [];
-    vectors.forEach(v => { if (!uniq.some(u => u.x * v.x + u.y * v.y > 0.99)) uniq.push(v); });
+    vectors.forEach((v) => {
+      if (!uniq.some((u) => u.x * v.x + u.y * v.y > 0.99)) uniq.push(v);
+    });
     if (uniq.length < 3 || uniq.length > 4) return;
 
     let bestPair = { i: -1, j: -1, dot: 1 };
@@ -105,13 +116,16 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
           }
         }
         for (let k = 0; k < rr.pts.length - 1; k++) {
-          const A = rr.pts[k], B = rr.pts[k + 1];
-          const sdx = B[0] - A[0], sdy = B[1] - A[1];
+          const A = rr.pts[k],
+            B = rr.pts[k + 1];
+          const sdx = B[0] - A[0],
+            sdy = B[1] - A[1];
           const sLenSq = sdx * sdx + sdy * sdy;
           if (sLenSq > 0.001) {
             let t = ((P[0] - A[0]) * sdx + (P[1] - A[1]) * sdy) / sLenSq;
             t = Math.max(0, Math.min(1, t));
-            const projX = A[0] + t * sdx, projY = A[1] + t * sdy;
+            const projX = A[0] + t * sdx,
+              projY = A[1] + t * sdy;
             if (Math.hypot(P[0] - projX, P[1] - projY) < 0.5) {
               junctionRamalIds.push(String(rr.id));
               junctionPositions.push({ x: P[0], y: P[1] });
@@ -133,13 +147,16 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
           }
         }
         for (let k = 0; k < rr.pts.length - 1; k++) {
-          const A = rr.pts[k], B = rr.pts[k + 1];
-          const sdx = B[0] - A[0], sdy = B[1] - A[1];
+          const A = rr.pts[k],
+            B = rr.pts[k + 1];
+          const sdx = B[0] - A[0],
+            sdy = B[1] - A[1];
           const sLenSq = sdx * sdx + sdy * sdy;
           if (sLenSq > 0.001) {
             let t = ((P[0] - A[0]) * sdx + (P[1] - A[1]) * sdy) / sLenSq;
             t = Math.max(0, Math.min(1, t));
-            const projX = A[0] + t * sdx, projY = A[1] + t * sdy;
+            const projX = A[0] + t * sdx,
+              projY = A[1] + t * sdy;
             if (Math.hypot(P[0] - projX, P[1] - projY) < 0.5) {
               teeRamalIds.push(String(rr.id));
               return;
@@ -156,13 +173,23 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
   for (let i = 0; i < junctionPositions.length; i++) {
     for (let j = i + 1; j < junctionPositions.length; j++) {
       if (usedInDouble.has(i) || usedInDouble.has(j)) continue;
-      const dist = Math.hypot(junctionPositions[j].x - junctionPositions[i].x, junctionPositions[j].y - junctionPositions[i].y);
+      const dist = Math.hypot(
+        junctionPositions[j].x - junctionPositions[i].x,
+        junctionPositions[j].y - junctionPositions[i].y,
+      );
       if (dist > DOUBLE_YEE_MM) continue;
       const dx = junctionPositions[j].x - junctionPositions[i].x;
       const dy = junctionPositions[j].y - junctionPositions[i].y;
       const len = Math.hypot(dx, dy);
       if (len > 0.1) {
-        const sepDot = Math.abs(dx / len * (junctionPositions[i].x / Math.hypot(junctionPositions[i].x, junctionPositions[i].y || 1)) + dy / len * (junctionPositions[i].y / Math.hypot(junctionPositions[i].x, junctionPositions[i].y || 1)));
+        const sepDot = Math.abs(
+          (dx / len) *
+            (junctionPositions[i].x /
+              Math.hypot(junctionPositions[i].x, junctionPositions[i].y || 1)) +
+            (dy / len) *
+              (junctionPositions[i].y /
+                Math.hypot(junctionPositions[i].x, junctionPositions[i].y || 1)),
+        );
         if (sepDot < 0.85) continue;
       }
       usedInDouble.add(i);
@@ -192,13 +219,20 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
 
     if (r.pts && r.pts.length >= 3) {
       for (let i = 1; i < r.pts.length - 1; i++) {
-        const p0 = r.pts[i - 1], p1 = r.pts[i], p2 = r.pts[i + 1];
-        const ax = p1[0] - p0[0], ay = p1[1] - p0[1];
-        const bx = p2[0] - p1[0], by = p2[1] - p1[1];
-        const lenA = Math.hypot(ax, ay), lenB = Math.hypot(bx, by);
+        const p0 = r.pts[i - 1],
+          p1 = r.pts[i],
+          p2 = r.pts[i + 1];
+        const ax = p1[0] - p0[0],
+          ay = p1[1] - p0[1];
+        const bx = p2[0] - p1[0],
+          by = p2[1] - p1[1];
+        const lenA = Math.hypot(ax, ay),
+          lenB = Math.hypot(bx, by);
         if (lenA > 0 && lenB > 0) {
-          const ux = -ax / lenA, uy = -ay / lenA;
-          const vx = bx / lenB, vy = by / lenB;
+          const ux = -ax / lenA,
+            uy = -ay / lenA;
+          const vx = bx / lenB,
+            vy = by / lenB;
           const cosAngle = ux * vx + uy * vy;
           if (Math.abs(cosAngle + Math.cos(Math.PI / 4)) < 0.05) {
             count45++;
@@ -216,15 +250,17 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
 
         for (let i = 0; i < r.pts.length - 1; i++) {
           const [ax, ay] = r.pts[i];
-          const [bx, by] = r.pts[i+1];
-          const sDx = bx - ax, sDy = by - ay;
+          const [bx, by] = r.pts[i + 1];
+          const sDx = bx - ax,
+            sDy = by - ay;
           const sLenSq = sDx * sDx + sDy * sDy;
           if (sLenSq < 0.0001) continue;
 
           for (const end of [end1, end2]) {
             let t = ((end[0] - ax) * sDx + (end[1] - ay) * sDy) / sLenSq;
             t = Math.max(0, Math.min(1, t));
-            const projX = ax + t * sDx, projY = ay + t * sDy;
+            const projX = ax + t * sDx,
+              projY = ay + t * sDy;
             if (Math.hypot(end[0] - projX, end[1] - projY) < 0.5) {
               connected = true;
               break;
@@ -241,12 +277,16 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
 
     let countSube = 0;
     let countBaja = 0;
-    for (const baj of (engine.bajantes || [])) {
+    for (const baj of engine.bajantes || []) {
       if (baj.net !== 'san') continue;
       if (baj.recibeDeIds?.includes(r.id)) {
         if (baj.direccion === 'sube') {
           countSube++;
-        } else if (baj.direccion === 'baja' || baj.direccion === undefined || baj.direccion === 'continua') {
+        } else if (
+          baj.direccion === 'baja' ||
+          baj.direccion === undefined ||
+          baj.direccion === 'continua'
+        ) {
           countBaja++;
         }
       }
@@ -278,19 +318,39 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
       processAcc(r.accesorioInicio);
       processAcc(r.accesorioFin);
 
-      if (acc['sifon'] !== countSifonTrib || acc['codoReventilado'] !== countVentTrib ||
-          acc['codo90rmSube'] !== countSubeTrib || acc['codo90rmBaja'] !== countBajaTrib) {
-        if (countSifonTrib > 0) acc['sifon'] = countSifonTrib; else delete acc['sifon'];
-        if (countVentTrib > 0) acc['codoReventilado'] = countVentTrib; else delete acc['codoReventilado'];
-        if (countSubeTrib > 0) acc['codo90rmSube'] = countSubeTrib; else delete acc['codo90rmSube'];
-        if (countBajaTrib > 0) acc['codo90rmBaja'] = countBajaTrib; else delete acc['codo90rmBaja'];
+      if (
+        acc['sifon'] !== countSifonTrib ||
+        acc['codoReventilado'] !== countVentTrib ||
+        acc['codo90rmSube'] !== countSubeTrib ||
+        acc['codo90rmBaja'] !== countBajaTrib
+      ) {
+        if (countSifonTrib > 0) acc['sifon'] = countSifonTrib;
+        else delete acc['sifon'];
+        if (countVentTrib > 0) acc['codoReventilado'] = countVentTrib;
+        else delete acc['codoReventilado'];
+        if (countSubeTrib > 0) acc['codo90rmSube'] = countSubeTrib;
+        else delete acc['codo90rmSube'];
+        if (countBajaTrib > 0) acc['codo90rmBaja'] = countBajaTrib;
+        else delete acc['codo90rmBaja'];
         changed = true;
       }
 
-      if ('codo45rc' in acc) { delete acc['codo45rc']; changed = true; }
-      if ('yeeSimple' in acc) { delete acc['yeeSimple']; changed = true; }
-      if ('yeeDoble' in acc) { delete acc['yeeDoble']; changed = true; }
-      if ('tee' in acc) { delete acc['tee']; changed = true; }
+      if ('codo45rc' in acc) {
+        delete acc['codo45rc'];
+        changed = true;
+      }
+      if ('yeeSimple' in acc) {
+        delete acc['yeeSimple'];
+        changed = true;
+      }
+      if ('yeeDoble' in acc) {
+        delete acc['yeeDoble'];
+        changed = true;
+      }
+      if ('tee' in acc) {
+        delete acc['tee'];
+        changed = true;
+      }
     } else {
       // Count siphons from extreme accessories on ramales
       let countSifonRamal = 0;
@@ -311,30 +371,52 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
       }
 
       if (acc['sifon'] !== (countSifonRamal || undefined)) {
-        if (countSifonRamal > 0) acc['sifon'] = countSifonRamal; else delete acc['sifon'];
+        if (countSifonRamal > 0) acc['sifon'] = countSifonRamal;
+        else delete acc['sifon'];
         changed = true;
       }
-      if (acc['codo45rc'] !== count45 || acc['codoReventilado'] !== countVent ||
-          acc['codo90rmSube'] !== countSube || acc['codo90rmBaja'] !== countBaja) {
-        if (count45 > 0) acc['codo45rc'] = count45; else delete acc['codo45rc'];
-        if (countVent > 0) acc['codoReventilado'] = countVent; else delete acc['codoReventilado'];
-        if (countSube > 0) acc['codo90rmSube'] = countSube; else delete acc['codo90rmSube'];
-        if (countBaja > 0) acc['codo90rmBaja'] = countBaja; else delete acc['codo90rmBaja'];
+      if (
+        acc['codo45rc'] !== count45 ||
+        acc['codoReventilado'] !== countVent ||
+        acc['codo90rmSube'] !== countSube ||
+        acc['codo90rmBaja'] !== countBaja
+      ) {
+        if (count45 > 0) acc['codo45rc'] = count45;
+        else delete acc['codo45rc'];
+        if (countVent > 0) acc['codoReventilado'] = countVent;
+        else delete acc['codoReventilado'];
+        if (countSube > 0) acc['codo90rmSube'] = countSube;
+        else delete acc['codo90rmSube'];
+        if (countBaja > 0) acc['codo90rmBaja'] = countBaja;
+        else delete acc['codo90rmBaja'];
         changed = true;
       }
 
       const yee = yeeCounts[String(r.id)];
       if (yee) {
-        if (acc['yeeSimple'] !== yee.simple) { acc['yeeSimple'] = yee.simple; changed = true; }
-        if (acc['yeeDoble'] !== yee.doble) { acc['yeeDoble'] = yee.doble; changed = true; }
+        if (acc['yeeSimple'] !== yee.simple) {
+          acc['yeeSimple'] = yee.simple;
+          changed = true;
+        }
+        if (acc['yeeDoble'] !== yee.doble) {
+          acc['yeeDoble'] = yee.doble;
+          changed = true;
+        }
       } else {
-        if ('yeeSimple' in acc) { delete acc['yeeSimple']; changed = true; }
-        if ('yeeDoble' in acc) { delete acc['yeeDoble']; changed = true; }
+        if ('yeeSimple' in acc) {
+          delete acc['yeeSimple'];
+          changed = true;
+        }
+        if ('yeeDoble' in acc) {
+          delete acc['yeeDoble'];
+          changed = true;
+        }
       }
 
       const tee = teeCounts[String(r.id)] || 0;
       if (acc['tee'] !== tee) {
-        if (tee > 0) acc['tee'] = tee; else delete acc['tee'];
+        if (tee > 0) acc['tee'] = tee;
+        else delete acc['tee'];
         changed = true;
       }
     }
@@ -342,7 +424,11 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
 
   if (changed) {
     saveToStorage(storageKey, hidroData);
-    try { window.dispatchEvent(new Event('storage')); } catch { /* ignore */ }
+    try {
+      window.dispatchEvent(new Event('storage'));
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -357,8 +443,10 @@ export function calcHydroAccessories(engine: IPlanoEngineCore): void {
   const planId = engine._loadedPlanId;
   if (!planId) return;
 
-  const HYDRO_NETS = ['af', 'ac', 'll'];
-  const ramales = engine.ramales.filter(r => HYDRO_NETS.includes(r.net));
+  // Generic accMed/endpoint accessory tally — applies to every net except 'san', which has its
+  // own angle-based junction detection in calcSanitaryAccessories above.
+  const HYDRO_NETS = ['af', 'ac', 'll', 'vent', 'gas', 'recolectora', 'rci', 'rec', 'bom'];
+  const ramales = engine.ramales.filter((r) => HYDRO_NETS.includes(r.net));
   if (ramales.length === 0) return;
 
   const storageKey = 'tramo_hidro_data_v3';
@@ -377,7 +465,7 @@ export function calcHydroAccessories(engine: IPlanoEngineCore): void {
     if (!hidroData[rKey].accesorios) hidroData[rKey].accesorios = {};
     const acc = hidroData[rKey].accesorios;
 
-    const TEE_LADO_ALIAS = new Set(['teeTapon', 'teeLlaveTerminal']);
+    const TEE_LADO_ALIAS = new Set(['teeTapon', 'teeLlaveTerminal', 'teeSube', 'teeBaja']);
     const counts: Record<string, number> = {};
     const bump = (acc: string | undefined) => {
       if (!acc) return;
@@ -404,7 +492,12 @@ export function calcHydroAccessories(engine: IPlanoEngineCore): void {
       for (const baj of engine.bajantes) {
         if (baj.net !== 'll' || baj.tipo !== 'bajante') continue;
         if (!baj.recibeDeIds?.includes(r.id)) continue;
-        const codoId = baj.direccion === 'sube' ? 'codo90rmSube' : baj.direccion === 'baja' ? 'codo90rmBaja' : null;
+        const codoId =
+          baj.direccion === 'sube'
+            ? 'codo90rmSube'
+            : baj.direccion === 'baja'
+              ? 'codo90rmBaja'
+              : null;
         if (codoId) counts[codoId] = (counts[codoId] || 0) + 1;
       }
     }
@@ -425,6 +518,10 @@ export function calcHydroAccessories(engine: IPlanoEngineCore): void {
 
   if (changed) {
     saveToStorage(storageKey, hidroData);
-    try { window.dispatchEvent(new Event('storage')); } catch { /* ignore */ }
+    try {
+      window.dispatchEvent(new Event('storage'));
+    } catch {
+      /* ignore */
+    }
   }
 }
