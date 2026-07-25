@@ -1,20 +1,61 @@
 import React, { useEffect, useRef } from 'react';
-const ConfirmDialog_S1: React.CSSProperties = { background: 'var(--bg2)', padding: '20px', borderRadius: 'var(--r)', minWidth: 320, maxWidth: 400, border: '1px solid var(--line)', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', color: 'var(--txt)', margin: 'auto', display: 'flex', flexDirection: 'column', };
-const ConfirmDialog_S2: React.CSSProperties = { padding: '6px 12px', background: 'transparent', border: '1px solid var(--line)', borderRadius: 4, color: 'var(--txt)', cursor: 'pointer', fontWeight: 600, fontSize: 12 };
-const ConfirmDialog_S3: React.CSSProperties = { padding: '6px 12px', background: '#ef5350', border: 'none', borderRadius: 4, color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 12 };
-
+const ConfirmDialog_S1: React.CSSProperties = {
+  background: 'var(--bg2)',
+  padding: '20px',
+  borderRadius: 'var(--r)',
+  minWidth: 320,
+  maxWidth: 400,
+  border: '1px solid var(--line)',
+  boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
+  color: 'var(--txt)',
+  margin: 'auto',
+  display: 'flex',
+  flexDirection: 'column',
+};
+const ConfirmDialog_S2: React.CSSProperties = {
+  padding: '6px 12px',
+  background: 'transparent',
+  border: '1px solid var(--line)',
+  borderRadius: 4,
+  color: 'var(--txt)',
+  cursor: 'pointer',
+  fontWeight: 600,
+  fontSize: 12,
+};
+const ConfirmDialog_S3: React.CSSProperties = {
+  padding: '6px 12px',
+  background: '#ef5350',
+  border: 'none',
+  borderRadius: 4,
+  color: '#fff',
+  cursor: 'pointer',
+  fontWeight: 600,
+  fontSize: 12,
+};
 
 interface ConfirmState {
   isOpen: boolean;
   title: string;
   message: string;
   onConfirm: () => void;
+  confirmLabel?: string;
 }
 
 interface ConfirmDialogProps {
   confirmState: ConfirmState;
   setConfirmState: React.Dispatch<React.SetStateAction<ConfirmState>>;
 }
+
+const ConfirmDialog_S4: React.CSSProperties = {
+  padding: '6px 12px',
+  background: '#2e7d32',
+  border: 'none',
+  borderRadius: 4,
+  color: '#fff',
+  cursor: 'pointer',
+  fontWeight: 600,
+  fontSize: 12,
+};
 
 export default function ConfirmDialog({ confirmState, setConfirmState }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -30,8 +71,10 @@ export default function ConfirmDialog({ confirmState, setConfirmState }: Confirm
   if (!confirmState.isOpen) return null;
 
   const handleClose = () => {
-    setConfirmState(prev => ({ ...prev, isOpen: false }));
+    setConfirmState((prev) => ({ ...prev, isOpen: false }));
   };
+
+  const isDelete = !confirmState.confirmLabel || confirmState.confirmLabel === 'Eliminar';
 
   return (
     <dialog
@@ -50,15 +93,38 @@ export default function ConfirmDialog({ confirmState, setConfirmState }: Confirm
           background: rgba(0,0,0,0.6);
         }
       `}</style>
-      <div id="confirm-dialog-title" style={{ fontSize: 16, fontWeight: 700, color: '#ef5350', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 20 }}>⚠</span> {confirmState.title}
+      <div
+        id="confirm-dialog-title"
+        style={{
+          fontSize: 16,
+          fontWeight: 700,
+          color: isDelete ? '#ef5350' : '#66BB6A',
+          marginBottom: 8,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+        }}
+      >
+        <span style={{ fontSize: 20 }}>{isDelete ? '⚠' : 'ℹ'}</span> {confirmState.title}
       </div>
       <div style={{ fontSize: 13, color: 'var(--txt2)', marginBottom: 20, lineHeight: 1.5 }}>
         {confirmState.message}
       </div>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-        <button type="button" onClick={handleClose} style={ConfirmDialog_S2}>Cancelar</button>
-        <button type="button" autoFocus onClick={() => { confirmState.onConfirm(); handleClose(); }} style={ConfirmDialog_S3}>Eliminar</button>
+        <button type="button" onClick={handleClose} style={ConfirmDialog_S2}>
+          Cancelar
+        </button>
+        <button
+          type="button"
+          autoFocus
+          onClick={() => {
+            confirmState.onConfirm();
+            handleClose();
+          }}
+          style={isDelete ? ConfirmDialog_S3 : ConfirmDialog_S4}
+        >
+          {confirmState.confirmLabel || 'Eliminar'}
+        </button>
       </div>
     </dialog>
   );

@@ -1,16 +1,16 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
-import { saveToStorage, saveTrazosToDB } from "../../services/storageService";
-import { writeSanDrawingSync, writeHydroDrawingSync } from "../../utils/drawingSync";
-import { TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from "../../constants/storage-keys";
-import type { PlanItem } from "../../context/PlansContext";
+import { useState, useRef, useEffect, useCallback } from 'react';
+import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
+import { saveToStorage, saveTrazosToDB } from '../../services/storageService';
+import { writeSanDrawingSync, writeHydroDrawingSync } from '../../utils/drawingSync';
+import { TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from '../../constants/storage-keys';
+import type { PlanItem } from '../../context/PlansContext';
 
 export function usePdfAutoSave(
   engineRef: React.MutableRefObject<PlanoEngine | null>,
   currentIdRef: React.MutableRefObject<string | number | undefined>,
   plans: PlanItem[],
 ) {
-  const [saveStatus, setSaveStatus] = useState("saved");
+  const [saveStatus, setSaveStatus] = useState('saved');
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const performSave = useCallback((eng: PlanoEngine, id: string | number) => {
@@ -40,8 +40,16 @@ export function usePdfAutoSave(
     const id = eng._loadedPlanId || currentIdRef.current || 'work';
     eng._dirty = false;
     performSave(eng, id);
-    try { writeSanDrawingSync(plans); } catch { /* ignore */ }
-    try { writeHydroDrawingSync(plans); } catch { /* ignore */ }
+    try {
+      writeSanDrawingSync(plans);
+    } catch {
+      /* ignore */
+    }
+    try {
+      writeHydroDrawingSync(plans);
+    } catch {
+      /* ignore */
+    }
     setSaveStatus('saved');
   }, [plans, performSave]);
 
@@ -70,19 +78,13 @@ export function usePdfAutoSave(
 
   // Guardar al desmontar el hook (cambio de ruta, hot-reload, etc.)
   useEffect(() => {
-    return () => { saveTrazosToStorage(); };
+    return () => {
+      saveTrazosToStorage();
+    };
   }, [saveTrazosToStorage]);
 
-  // Observar _dirty cada 300 ms y pasar a 'unsaved' cuando haya cambios pendientes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const eng = engineRef.current;
-      if (!eng) return;
-      if (eng._dirty && saveStatus === 'saved') {
-        setSaveStatus('unsaved');
-      }
-    }, 300);
-    return () => clearInterval(interval);
+  const markDirty = useCallback(() => {
+    if (saveStatus === 'saved') setSaveStatus('unsaved');
   }, [saveStatus]);
 
   // Auto-save con debounce de 1500 ms tras detectar estado 'unsaved'
@@ -91,12 +93,17 @@ export function usePdfAutoSave(
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     autoSaveTimerRef.current = setTimeout(() => {
       const eng = engineRef.current;
-      if (!eng?._dirty) { setSaveStatus('saved'); return; }
+      if (!eng?._dirty) {
+        setSaveStatus('saved');
+        return;
+      }
       setSaveStatus('saving');
       doSave();
     }, 1500);
-    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
   }, [saveStatus, doSave]);
 
-  return { saveStatus, setSaveStatus, doSave, saveTrazosToStorage, autoSaveTimerRef };
+  return { saveStatus, setSaveStatus, doSave, saveTrazosToStorage, autoSaveTimerRef, markDirty };
 }
