@@ -16,6 +16,11 @@ export interface PlanoWorkData {
   bajantes: unknown[];
   areas: unknown[];
   nptLevels: unknown[];
+  // Cross-floor ghost markers (associateBajanteAcrossFloors.ts) can be written onto a floor other
+  // than the one currently loaded, by patching its raw storage directly. When THIS floor is later
+  // loaded normally, they must be read back in here — and included in serializeWork's own output —
+  // or the very next autosave (which overwrites the whole storage entry) would silently wipe them.
+  crossFloorGhosts?: unknown[];
 }
 
 export function serializeWork(engine: {
@@ -31,16 +36,26 @@ export function serializeWork(engine: {
   bajantes: unknown[];
   areas: unknown[];
   nptLevels: unknown[];
+  crossFloorGhosts: unknown[];
 }): PlanoWorkData {
   return {
-    v: 6, scaleM: engine.scaleM, definedScaleM: engine.definedScaleM, activeNet: engine.activeNet,
-    zoom: engine.zoom, offX: engine.offX, offY: engine.offY,
-    nets: NETS.map(n => ({ id: n.id, col: n.col })),
-    ramales: engine.ramales, dims: engine.dims, textAnnots: engine.textAnnots,
-    bajantes: engine.bajantes, areas: engine.areas, nptLevels: engine.nptLevels,
+    v: 6,
+    scaleM: engine.scaleM,
+    definedScaleM: engine.definedScaleM,
+    activeNet: engine.activeNet,
+    zoom: engine.zoom,
+    offX: engine.offX,
+    offY: engine.offY,
+    nets: NETS.map((n) => ({ id: n.id, col: n.col })),
+    ramales: engine.ramales,
+    dims: engine.dims,
+    textAnnots: engine.textAnnots,
+    bajantes: engine.bajantes,
+    areas: engine.areas,
+    nptLevels: engine.nptLevels,
+    crossFloorGhosts: engine.crossFloorGhosts,
   };
 }
-
 
 export function applyWorkData(
   engine: {
@@ -53,6 +68,7 @@ export function applyWorkData(
     bajantes: unknown[];
     areas: unknown[];
     nptLevels: unknown[];
+    crossFloorGhosts: unknown[];
     selId: string | null;
     activeRamal: unknown;
     activeArea: unknown;
@@ -61,7 +77,7 @@ export function applyWorkData(
     render: () => void;
     [key: string]: unknown;
   },
-  d: PlanoWorkData
+  d: PlanoWorkData,
 ) {
   engine.scaleM = d.scaleM || 0.5;
   engine.definedScaleM = d.definedScaleM || 0;
@@ -75,12 +91,13 @@ export function applyWorkData(
   engine.bajantes = d.bajantes || [];
   engine.areas = d.areas || [];
   engine.nptLevels = d.nptLevels || [];
+  engine.crossFloorGhosts = d.crossFloorGhosts || [];
   engine.selId = null;
   engine.activeRamal = null;
   engine.activeArea = null;
   initNetCounts(engine);
   for (const r of engine.ramales as Array<{ net?: string; tipo?: string; id?: string }>) {
-    const net = NETS.find(n => n.id === r.net);
+    const net = NETS.find((n) => n.id === r.net);
     if (net && r.tipo !== 'tributario') {
       const m = r.id?.match(new RegExp('^' + net.lbl + '(\\d+)$'));
       if (m) {
