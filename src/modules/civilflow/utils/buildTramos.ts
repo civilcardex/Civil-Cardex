@@ -1,27 +1,67 @@
-import { readSanDrawingSync, readHydroDrawingSync } from "./drawingSync";
-import { diamPulgFromLabel } from "./diamPulgFromLabel";
-import { parseDescargaEnId } from "./parseDescargaEnId";
-import { HYDRO_DATA_STORAGE_KEY } from "../constants/storage-keys";
-import { loadFromStorage, loadPlanTrazos, savePlanTrazos } from "../services/storageService";
-import { pisoLbl, pisoCorto } from "../constants";
-import type { Tramo } from "../context/tramosReducer";
+import { readSanDrawingSync, readHydroDrawingSync } from './drawingSync';
+import { diamPulgFromLabel } from './diamPulgFromLabel';
+import { parseDescargaEnId } from './parseDescargaEnId';
+import { HYDRO_DATA_STORAGE_KEY } from '../constants/storage-keys';
+import { loadFromStorage, loadPlanTrazos, savePlanTrazos } from '../services/storageService';
+import { pisoLbl, pisoCorto } from '../constants';
+import type { Tramo } from '../context/tramosReducer';
 
 interface DrawingRamal {
-  id: string; label?: string; ini?: string; fin?: string; pts?: number[][]; piso?: number | string;
-  tipo?: string; net?: string; _net?: string; diametro?: string; diamPulg?: number; material?: string;
-  totalL?: number; nSalidas?: number; lvert?: string | number; dz?: string | number; _aparatosKey?: string;
-  padre?: string | null; caudal?: number; maning?: number; pendiente?: number;
-  accesorioInicio?: string; accesorioFin?: string; diametroInicio?: string; diametroFin?: string;
-  descargaEnId?: string | null; recibeDeIds?: string[];
+  id: string;
+  label?: string;
+  ini?: string;
+  fin?: string;
+  pts?: number[][];
+  piso?: number | string;
+  tipo?: string;
+  net?: string;
+  _net?: string;
+  diametro?: string;
+  diamPulg?: number;
+  material?: string;
+  totalL?: number;
+  nSalidas?: number;
+  lvert?: string | number;
+  dz?: string | number;
+  _aparatosKey?: string;
+  padre?: string | null;
+  caudal?: number;
+  maning?: number;
+  pendiente?: number;
+  accesorioInicio?: string;
+  accesorioFin?: string;
+  diametroInicio?: string;
+  diametroFin?: string;
+  descargaEnId?: string | null;
+  recibeDeIds?: string[];
 }
 
 interface DrawingBajante {
-  id: string; code?: string; tipo?: string; net?: string; _net?: string; x: number; y: number;
-  piso?: number | string; pisoBase?: string | number; pisoCima?: string | number;
+  id: string;
+  code?: string;
+  tipo?: string;
+  net?: string;
+  _net?: string;
+  x: number;
+  y: number;
+  piso?: number | string;
+  pisoBase?: string | number;
+  pisoCima?: string | number;
   desplazamientos?: Record<string, { dx?: number; dy?: number }>;
-  recibeDeIds?: string[]; ini?: string; fin?: string; capacidad?: string; diamPulg?: number; area_m2?: number; nSalidas?: number;
-  bajR?: number; bajLong?: number; bajFDarcy?: number; ventDprop?: number; maning?: number;
-  descargaEnId?: string | null; _aparatosKey?: string;
+  recibeDeIds?: string[];
+  ini?: string;
+  fin?: string;
+  capacidad?: string;
+  diamPulg?: number;
+  area_m2?: number;
+  nSalidas?: number;
+  bajR?: number;
+  bajLong?: number;
+  bajFDarcy?: number;
+  ventDprop?: number;
+  maning?: number;
+  descargaEnId?: string | null;
+  _aparatosKey?: string;
 }
 
 interface DrawingPlane {
@@ -38,6 +78,15 @@ interface HidroEntry {
   nSalidas?: number;
 }
 
+/**
+ * Builds tramo objects for a given family (af/ac) from drawing planes, hydro data, and fixture counts.
+ * Auto-detects contador/calentador connections at ramal endpoints and generates AC-01 filler ramales.
+ * @param family - Network family: 'af' or 'ac'.
+ * @param planes - Drawing planes keyed by `family_level`.
+ * @param hidroData - Hydro accessory data keyed by `family_elementId_planId`.
+ * @param aparatos - Fixture counts keyed by aparatos key.
+ * @returns Array of Tramo objects for the family.
+ */
 export function buildTramos(
   family: string,
   planes: Record<string, DrawingPlane>,
@@ -56,17 +105,21 @@ export function buildTramos(
     if (raw) {
       drawingData = raw as unknown as { ramales?: DrawingRamal[]; bajantes?: DrawingBajante[] };
       if (typeof drawingData === 'string') {
-        try { drawingData = JSON.parse(drawingData); } catch { /* ignore */ }
+        try {
+          drawingData = JSON.parse(drawingData);
+        } catch {
+          /* ignore */
+        }
       }
       drawingBajantes = drawingData?.bajantes || [];
     }
 
-    for (const r of (plane.ramales || [])) {
+    for (const r of plane.ramales || []) {
       const rId = r.id;
       let ini = String(r.ini || '');
       let fin = String(r.fin || '');
 
-      if (family === 'af' && drawingBajantes.length > 0) {
+      if ((family === 'af' || family === 'ac') && drawingBajantes.length > 0) {
         const pts = r.pts || [];
         if (pts.length >= 2) {
           const pStart = pts[0];
@@ -79,7 +132,9 @@ export function buildTramos(
               const disp = b.desplazamientos?.[lvlLabel] || {};
               const bx = b.x + (disp.dx || 0);
               const by = b.y + (disp.dy || 0);
-              const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
+              const isExplicit =
+                b.recibeDeIds &&
+                (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
               const dist = Math.hypot(pt[0] - bx, pt[1] - by);
               if (isExplicit) {
                 const otherPt = pt === pStart ? pEnd : pStart;
@@ -127,7 +182,7 @@ export function buildTramos(
             r.fin = newFin;
 
             if (drawingData) {
-              for (const drawingRamal of (drawingData.ramales || [])) {
+              for (const drawingRamal of drawingData.ramales || []) {
                 if (drawingRamal.id === r.id) {
                   drawingRamal.ini = newIni;
                   drawingRamal.fin = newFin;
@@ -146,7 +201,8 @@ export function buildTramos(
 
       const isAC1 = (() => {
         if (ini.startsWith('RP') || fin.startsWith('RP')) return true;
-        if (isContador(fin) && !isContador(ini) && !ini.startsWith('M') && !ini.startsWith('B')) return true;
+        if (isContador(fin) && !isContador(ini) && !ini.startsWith('M') && !ini.startsWith('B'))
+          return true;
         return false;
       })();
       const isAC2 = (() => {
@@ -168,85 +224,114 @@ export function buildTramos(
         const dr = (drawingData.ramales || []).find((x) => x.id === r.id);
         if (dr) {
           if (!dznSalidas) dznSalidas = dr.nSalidas || 1;
-          if (dzLvert === 0 || dzLvert === undefined) dzLvert = parseFloat(String(dr.lvert ?? dr.dz)) || 0;
+          if (dzLvert === 0 || dzLvert === undefined)
+            dzLvert = parseFloat(String(dr.lvert ?? dr.dz)) || 0;
         }
       }
-          incoming.push({
-            _key: `${rId}-${planId}`,
-            id: rId, label: r.label || r.id, piso: nivel, planId: String(planId),
-            _net: r._net || family,
-            tipo: r.tipo || 'ramal',
-            esBajante: false,
-            fixtures: aparatos[apKey] || {},
-            accesorios: extra.accesorios || {},
-            Lh: extra.Lh || 0, Lv: (family === 'ac' && (isAC1 || isAC2)) ? 0 : dzLvert,
-            nSalidas: dznSalidas,
-            recibeDe: [], descripcion: '',
-            ini: ini, fin: fin,
-            diamDisPulg: diamPulgFromLabel(r.diametro || '') || r.diamPulg || 0, diametroOriginal: r.diametro || '', material: r.material || '',
-            totalL: r.totalL || 0,
-            _nivelLabel: pisoLbl(typeof r.piso === 'number' ? r.piso : parseInt(String(r.piso || nivel)))
-          });
+      incoming.push({
+        _key: `${rId}-${planId}`,
+        id: rId,
+        label: r.label || r.id,
+        piso: nivel,
+        planId: String(planId),
+        _net: r._net || family,
+        tipo: r.tipo || 'ramal',
+        esBajante: false,
+        fixtures: aparatos[apKey] || {},
+        accesorios: extra.accesorios || {},
+        Lh: extra.Lh || 0,
+        Lv: family === 'ac' && (isAC1 || isAC2) ? 0 : dzLvert,
+        nSalidas: dznSalidas,
+        recibeDe: [],
+        descripcion: '',
+        ini: ini,
+        fin: fin,
+        diamDisPulg: diamPulgFromLabel(r.diametro || '') || r.diamPulg || 0,
+        diametroOriginal: r.diametro || '',
+        material: r.material || '',
+        totalL: r.totalL || 0,
+        _nivelLabel: pisoLbl(
+          typeof r.piso === 'number' ? r.piso : parseInt(String(r.piso || nivel)),
+        ),
+      });
     }
 
     if (family === 'af') {
-      const contadores = drawingBajantes.filter(b => b.tipo === 'contador' && (b.net === 'af' || !b.net));
+      const contadores = drawingBajantes.filter(
+        (b) => b.tipo === 'contador' && (b.net === 'af' || !b.net),
+      );
       for (const cnt of contadores) {
         const cntId = cnt.code || cnt.id;
-        const hasAC1 = incoming.some(r => r.fin === cntId && ((r.ini as string || '').startsWith('RP') || r.ini === 'RP'));
+        const hasAC1 = incoming.some(
+          (r) => r.fin === cntId && (((r.ini as string) || '').startsWith('RP') || r.ini === 'RP'),
+        );
         if (!hasAC1) {
           const rId = `AC-01-${cntId}`;
           const apKey = `af_${cntId}_${planId}`;
           const extra = hidroData[apKey] || {};
-          const pisoCnt = typeof cnt.piso === 'number' ? cnt.piso : parseInt(String(cnt.pisoBase || nivel));
+          const pisoCnt =
+            typeof cnt.piso === 'number' ? cnt.piso : parseInt(String(cnt.pisoBase || nivel));
           incoming.push({
             _key: `${rId}-${planId}`,
-            id: rId, piso: isNaN(pisoCnt) ? nivel : pisoCnt, planId: String(planId),
+            id: rId,
+            piso: isNaN(pisoCnt) ? nivel : pisoCnt,
+            planId: String(planId),
             _net: 'af',
             tipo: 'ramal',
             esBajante: false,
             fixtures: aparatos[apKey] || {},
             accesorios: extra.accesorios || {},
-            Lh: extra.Lh || 0, Lv: 0,
+            Lh: extra.Lh || 0,
+            Lv: 0,
             nSalidas: 1,
-            recibeDe: [], descripcion: '',
-            ini: 'RP', fin: cntId,
+            recibeDe: [],
+            descripcion: '',
+            ini: 'RP',
+            fin: cntId,
             diamDisPulg: extra.dNominal ? diamPulgFromLabel(String(extra.dNominal)) : 0,
             diametroOriginal: extra.dNominal ? String(extra.dNominal) : '',
             material: extra.material || '',
             totalL: 0,
-            _nivelLabel: pisoLbl(isNaN(pisoCnt) ? nivel : pisoCnt)
+            _nivelLabel: pisoLbl(isNaN(pisoCnt) ? nivel : pisoCnt),
           });
         }
       }
     } else if (family === 'ac') {
-      const calentadores = drawingBajantes.filter(b => b.tipo === 'calentador' && (b.net === 'ac' || !b.net));
+      const calentadores = drawingBajantes.filter(
+        (b) => b.tipo === 'calentador' && (b.net === 'ac' || !b.net),
+      );
       for (const cal of calentadores) {
         const calId = cal.code || cal.id;
-        const hasAC1 = incoming.some(r => r.fin === calId && r.ini === 'AF');
+        const hasAC1 = incoming.some((r) => r.fin === calId && r.ini === 'AF');
         if (!hasAC1) {
           const rId = `AC-01-${calId}`;
           const apKey = `ac_${calId}_${planId}`;
           const extra = hidroData[apKey] || {};
-          const pisoCal = typeof cal.piso === 'number' ? cal.piso : parseInt(String(cal.pisoBase || nivel));
+          const pisoCal =
+            typeof cal.piso === 'number' ? cal.piso : parseInt(String(cal.pisoBase || nivel));
           incoming.push({
             _key: `${rId}-${planId}`,
-            id: rId, piso: isNaN(pisoCal) ? nivel : pisoCal, planId: String(planId),
+            id: rId,
+            piso: isNaN(pisoCal) ? nivel : pisoCal,
+            planId: String(planId),
             _net: 'ac',
             tipo: 'ramal',
             esBajante: false,
             fixtures: aparatos[apKey] || {},
             accesorios: extra.accesorios || {},
-            Lh: extra.Lh || 0, Lv: 0,
+            Lh: extra.Lh || 0,
+            Lv: 0,
             nSalidas: 1,
-            recibeDe: [], descripcion: '',
-            ini: 'AF', fin: calId,
+            recibeDe: [],
+            descripcion: '',
+            ini: 'AF',
+            fin: calId,
             diamDisPulg: extra.dNominal ? diamPulgFromLabel(String(extra.dNominal)) : 0,
             diametroOriginal: extra.dNominal ? String(extra.dNominal) : '',
             material: extra.material || '',
             totalL: 0,
             _nivelLabel: pisoLbl(isNaN(pisoCal) ? nivel : pisoCal),
-            calCapacidad: cal.capacidad || ''
+            calCapacidad: cal.capacidad || '',
           });
         }
       }
@@ -255,6 +340,11 @@ export function buildTramos(
   return incoming;
 }
 
+/**
+ * Loads sanitary and rainwater (san/ll) tramos from drawing sync data.
+ * Separates into sanIncoming (sanitary) and llIncoming (rainwater) arrays.
+ * @returns Object with `sanIncoming` and `llIncoming` arrays of Tramo objects.
+ */
 export function loadSanLlTramos() {
   const sync = readSanDrawingSync();
   const planes = sync.planes as unknown as Record<string, DrawingPlane>;
@@ -264,7 +354,7 @@ export function loadSanLlTramos() {
   const tribIds = new Set<string>();
   for (const [nivel, plane] of Object.entries(planes)) {
     const planId = plane.planoId || nivel;
-    for (const r of (plane.ramales || [])) {
+    for (const r of plane.ramales || []) {
       if (r.tipo === 'tributario') tribIds.add(`${r.id}-${planId}`);
     }
     const piso = parseInt(nivel);
@@ -278,26 +368,41 @@ export function loadSanLlTramos() {
     for (const vr of venRamales) {
       if (vr.descargaEnId) {
         const parts = parseDescargaEnId(vr.descargaEnId, String(planId));
-        if (parts[0] === String(planId)) venMap.set(parts[1], { diametro: vr.diametro || '', rId: vr.id, rPlanId: planId });
+        if (parts[0] === String(planId))
+          venMap.set(parts[1], { diametro: vr.diametro || '', rId: vr.id, rPlanId: planId });
       }
     }
 
-    for (const r of (plane.ramales || [])) {
+    for (const r of plane.ramales || []) {
       if (r._net === 'vent' || r.net === 'vent') continue;
       const apKey = r._aparatosKey || `${r._net || 'san'}_${r.id}_${planId}`;
       const hd = hidroData[apKey] || {};
       const tramo: Tramo = {
         _key: `${r.id}-${planId}`,
-        id: r.id, piso, planId: String(planId), _nivelLabel: fmtNivel(r.piso || nivel),
+        id: r.id,
+        piso,
+        planId: String(planId),
+        _nivelLabel: fmtNivel(r.piso || nivel),
         _net: r._net || r.net || '',
         tipo: r.tipo || 'ramal',
-        fixtures: (sync.aparatosByTramo as Record<string, Record<string, number>> | undefined)?.[apKey] || {},
-        recibeDe: [], esBajante: false, descripcion: '',
-        ini: r.ini || '', fin: r.fin || '',
-        diamDisPulg: r.diamPulg || 0, nSalidas: r.nSalidas || hd.nSalidas || 1,
+        fixtures:
+          (sync.aparatosByTramo as Record<string, Record<string, number>> | undefined)?.[apKey] ||
+          {},
+        recibeDe: [],
+        esBajante: false,
+        descripcion: '',
+        ini: r.ini || '',
+        fin: r.fin || '',
+        diamDisPulg: r.diamPulg || 0,
+        nSalidas: r.nSalidas || hd.nSalidas || 1,
         totalL: r.totalL || 0,
-        nmaning: r.maning ?? 0, sPercent: r.pendiente ?? 0,
-        bajR: 7 / 24, bajLong: 5, bajFDarcy: 0.025, bajDprop: 0, ventDprop: 0,
+        nmaning: r.maning ?? 0,
+        sPercent: r.pendiente ?? 0,
+        bajR: 7 / 24,
+        bajLong: 5,
+        bajFDarcy: 0.025,
+        bajDprop: 0,
+        ventDprop: 0,
         ventRamalKey: null,
         label: r.label || r.id,
         diametro: r.diametro || '',
@@ -307,7 +412,9 @@ export function loadSanLlTramos() {
         diametroInicio: r.diametroInicio || '',
         diametroFin: r.diametroFin || '',
         caudal: r.caudal ?? undefined,
-        padreTributarioLabel: r.padre ? ((plane.ramales || []).find((pr) => pr.id === r.padre)?.label || r.padre) : null,
+        padreTributarioLabel: r.padre
+          ? (plane.ramales || []).find((pr) => pr.id === r.padre)?.label || r.padre
+          : null,
       };
       if (r._net === 'll') {
         llIncoming.push({ ...tramo, desde: r.ini || '', hasta: r.fin || '' });
@@ -315,13 +422,16 @@ export function loadSanLlTramos() {
         sanIncoming.push(tramo);
       }
     }
-    for (const b of (plane.bajantes || [])) {
+    for (const b of plane.bajantes || []) {
       const apKey = b._aparatosKey || `${b._net || 'san'}_${b.id}_${planId}`;
       const hd = hidroData[apKey] || {};
 
       let ventData = venMap.get(b.id);
       if (!ventData) {
-        const cVent = venRamales.find((vr) => vr.ini === b.id || vr.fin === b.id || (b.recibeDeIds && b.recibeDeIds.includes(vr.id)));
+        const cVent = venRamales.find(
+          (vr) =>
+            vr.ini === b.id || vr.fin === b.id || (b.recibeDeIds && b.recibeDeIds.includes(vr.id)),
+        );
         if (cVent) ventData = { diametro: cVent.diametro || '', rId: cVent.id, rPlanId: planId };
       }
 
@@ -329,14 +439,28 @@ export function loadSanLlTramos() {
       const ventRamalKey = ventData ? `${ventData.rId}-${ventData.rPlanId}` : null;
       const tramo: Tramo = {
         _key: `${b.id}-${planId}`,
-        id: b.id, piso, planId: String(planId), _nivelLabel: fmtNivel(b.piso || nivel),
+        id: b.id,
+        piso,
+        planId: String(planId),
+        _nivelLabel: fmtNivel(b.piso || nivel),
         _net: b._net || b.net || '',
         tipo: 'bajante',
-        fixtures: (sync.aparatosByTramo as Record<string, Record<string, number>> | undefined)?.[apKey] || {},
-        recibeDe: [], esBajante: true, descripcion: '',
-        diamDisPulg: b.diamPulg || 0, nSalidas: b.nSalidas || hd.nSalidas || 1,
-        nmaning: b.maning ?? 0, sPercent: 0,
-        bajR: b.bajR ?? 7 / 24, bajLong: b.bajLong ?? 5, bajFDarcy: b.bajFDarcy ?? 0.025, bajDprop: b.diamPulg || 0, ventDprop: b.ventDprop ?? 0, ventRamalDiamPulg: ventRamalDiam,
+        fixtures:
+          (sync.aparatosByTramo as Record<string, Record<string, number>> | undefined)?.[apKey] ||
+          {},
+        recibeDe: [],
+        esBajante: true,
+        descripcion: '',
+        diamDisPulg: b.diamPulg || 0,
+        nSalidas: b.nSalidas || hd.nSalidas || 1,
+        nmaning: b.maning ?? 0,
+        sPercent: 0,
+        bajR: b.bajR ?? 7 / 24,
+        bajLong: b.bajLong ?? 5,
+        bajFDarcy: b.bajFDarcy ?? 0.025,
+        bajDprop: b.diamPulg || 0,
+        ventDprop: b.ventDprop ?? 0,
+        ventRamalDiamPulg: ventRamalDiam,
         ventRamalKey,
         recibeDeIds: b.recibeDeIds || [],
         descargaEnId: b.descargaEnId || null,
@@ -355,6 +479,11 @@ export function loadSanLlTramos() {
   return { sanIncoming, llIncoming };
 }
 
+/**
+ * Loads cold water (af) and hot water (ac) tramos from hydro drawing sync data.
+ * Delegates to {@link buildTramos} for each family.
+ * @returns Object with `afIncoming` and `acIncoming` arrays of Tramo objects.
+ */
 export function loadAfAcTramos() {
   const sync = readHydroDrawingSync();
   const planes = sync.planes as unknown as Record<string, DrawingPlane>;

@@ -11,7 +11,10 @@ import type { DrawingData, RawElement } from './drawingSync';
 import { CONTADORES as CONTADORES_CAT } from '../pages/catalog/catalogData';
 import { findContadorBajante } from './writeDiameterToDrawing';
 
-interface BajanteRaw extends RawElement { x?: number; y?: number }
+interface BajanteRaw extends RawElement {
+  x?: number;
+  y?: number;
+}
 
 const isAf = (t: string) => t === 'af';
 const isContador = (s: string) => s.startsWith('CNT') || s.startsWith('cntAF');
@@ -20,7 +23,8 @@ const isAC1 = (t: Tramo) => {
   const ini = String(t.ini || '');
   const fin = String(t.fin || '');
   if (ini.startsWith('RP') || fin.startsWith('RP')) return true;
-  if (isContador(fin) && !isContador(ini) && !ini.startsWith('M') && !ini.startsWith('B')) return true;
+  if (isContador(fin) && !isContador(ini) && !ini.startsWith('M') && !ini.startsWith('B'))
+    return true;
   return false;
 };
 
@@ -36,17 +40,33 @@ const isAC2 = (t: Tramo) => {
 // Same sigla → code transform PlanoEngineNetwork.ts applies when writing a fixture's abbreviation
 // into a ramal's ini/fin: "Duc:" -> "DUC".
 const APARATO_PMAX_BY_CODE: Record<string, number> = Object.fromEntries(
-  APARATOS_DEF.map(a => [a.sigla.replace(':', '').trim().toUpperCase(), a.pmax])
+  APARATOS_DEF.map((a) => [a.sigla.replace(':', '').trim().toUpperCase(), a.pmax]),
 );
 const HEATER_LOSS_FACTOR = 0.9;
 
 export interface WnRow {
-  id: string; ini: string; fin: string; piso: number;
-  udPropia: number; udTotal: number; nDesc: number; K: number;
-  Qprob: number; diamEst: number; diamDis: string; dInt: number;
-  cHW: number; Vmms: number;
-  Lh: number; Lv: number; Le: number; Lt: number;
-  hfPct: number; hfM: number; Pin: number; Pfin: number;
+  id: string;
+  ini: string;
+  fin: string;
+  piso: number;
+  udPropia: number;
+  udTotal: number;
+  nDesc: number;
+  K: number;
+  Qprob: number;
+  diamEst: number;
+  diamDis: string;
+  dInt: number;
+  cHW: number;
+  Vmms: number;
+  Lh: number;
+  Lv: number;
+  Le: number;
+  Lt: number;
+  hfPct: number;
+  hfM: number;
+  Pin: number;
+  Pfin: number;
 }
 
 // Snapshot version of WaterNetworkDesign.tsx's own row computation (connectivity graph, pressure
@@ -64,7 +84,12 @@ export function computeWaterNetworkRows(
   lookupFn: (pulg: number) => number,
 ): WnRow[] {
   const tramos = tramosOwn;
-  const DIAM_OPTS = diamTable.map(d => ({ pulg: d.pulg, nominal: d.nominal, label: d.nominal, dInt: d.dInt }));
+  const DIAM_OPTS = diamTable.map((d) => ({
+    pulg: d.pulg,
+    nominal: d.nominal,
+    label: d.nominal,
+    dInt: d.dInt,
+  }));
   const ucIds = isAf(networkType) ? AF_UC_IDS : AC_UC_IDS;
   const ucField = isAf(networkType) ? 'uc_af' : 'uc_ac';
   const AP = ucIds
@@ -78,29 +103,72 @@ export function computeWaterNetworkRows(
   const calculoMap: Record<string, string[]> = {};
   const bajanteNodes: Array<{ key: string; x: number; y: number; nivel: number }> = [];
   // A ramal auto-created at a T/Y junction (autoSplitJunctionAndSumFlow, PlanoEngineDrawing.ts)
-  // carries mergesFrom = [idA, idB] — the two ramales it received from. Its UC total must be
-  // forced to their sum regardless of which way the general root-rooted directed tree happens to
-  // run through that point, since that tree's direction reflects the WHOLE network's actual
-  // supply source, which for an arbitrary local merge may point either way relative to it.
-  const mergeOverrides: Record<string, [string, string]> = {};
+  // carries mergesFrom = [idA, idB] — but that only records the ONE pair that triggered the
+  // mid-body split. A third (or fourth) ramal terminating at the exact same coordinate attaches
+  // via a plain endpoint-to-endpoint join and never gets into mergesFrom at all — yet its
+  // proximity-based adjacency edge still needs severing from the OTHER branches at that same
+  // point, or its UC leaks into whichever branch it ties-break-connects to. So the real set of
+  // "branches at this junction" is discovered by coordinate, not just read off mergesFrom.
+  const mergeBranches: Record<string, string[]> = {};
+  // Every ramal endpoint, tagged with its plan — used below to find PLAIN (non-mergesFrom)
+  // junctions where 3+ ramales meet at one coordinate via ordinary endpoint-to-endpoint drawing.
+  // Mirrors WaterNetworkDesign.tsx's cycle-pruning — see the comment there for the full rationale.
+  const ramalEndpoints: Array<{ key: string; x: number; y: number; planId: string }> = [];
 
   for (const plan of plans || []) {
     if (plan.nivel == null) continue;
     const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
     let data: DrawingData = raw as DrawingData;
-    if (typeof raw === 'string') { try { data = JSON.parse(raw); } catch { continue; } }
+    if (typeof raw === 'string') {
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+    }
 
     const ramales = (data.ramales || []).filter((r) => r.net === networkType);
     const bajantes = (data.bajantes || []).filter((b): b is BajanteRaw => b.net === networkType);
     for (const r of ramales) {
-      if (r.mergesFrom) {
-        mergeOverrides[`${r.id}-${plan.id}`] = [`${r.mergesFrom[0]}-${plan.id}`, `${r.mergesFrom[1]}-${plan.id}`];
+      if (!r.mergesFrom || !r.pts || r.pts.length === 0) continue;
+      const mergedKeyFull = `${r.id}-${plan.id}`;
+      // The auto-created ramal always starts exactly at the junction coordinate
+      // (autoSplitJunctionAndSumFlow: downstreamPts = [[ep[0],ep[1]], ...]).
+      const jc = r.pts[0];
+      const branchIds: string[] = [];
+      for (const other of ramales) {
+        if (other.id === r.id || !other.pts || other.pts.length < 2) continue;
+        const oStart = other.pts[0],
+          oEnd = other.pts[other.pts.length - 1];
+        if (
+          Math.hypot(oStart[0] - jc[0], oStart[1] - jc[1]) < 2.0 ||
+          Math.hypot(oEnd[0] - jc[0], oEnd[1] - jc[1]) < 2.0
+        ) {
+          branchIds.push(`${other.id}-${plan.id}`);
+        }
       }
+      if (branchIds.length > 0) mergeBranches[mergedKeyFull] = branchIds;
     }
     for (const b of bajantes) {
       if (b.x == null || b.y == null) continue;
       bajanteNodes.push({ key: `${b.id}-${plan.id}`, x: b.x, y: b.y, nivel: plan.nivel });
+    }
+    for (const r of ramales) {
+      if (!r.pts || r.pts.length < 2) continue;
+      const rKeyFull = `${r.id}-${plan.id}`;
+      ramalEndpoints.push({
+        key: rKeyFull,
+        x: r.pts[0][0],
+        y: r.pts[0][1],
+        planId: String(plan.id),
+      });
+      ramalEndpoints.push({
+        key: rKeyFull,
+        x: r.pts[r.pts.length - 1][0],
+        y: r.pts[r.pts.length - 1][1],
+        planId: String(plan.id),
+      });
     }
 
     for (const r of ramales) {
@@ -111,7 +179,9 @@ export function computeWaterNetworkRows(
 
       const checkEndpoint = (pt: number[]) => {
         for (const b of bajantes) {
-          const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
+          const isExplicit =
+            b.recibeDeIds &&
+            (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
           const dist = Math.hypot(pt[0] - b.x!, pt[1] - b.y!);
           if (isExplicit) {
             const otherPt = pt === pEnd ? pStart : pEnd;
@@ -139,7 +209,7 @@ export function computeWaterNetworkRows(
       };
 
       const connections = [checkEndpoint(pEnd), checkEndpoint(pStart)].filter(
-        (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null
+        (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null,
       );
 
       for (const connection of connections) {
@@ -157,7 +227,10 @@ export function computeWaterNetworkRows(
     usedNode.add(i);
     for (let j = i + 1; j < bajanteNodes.length; j++) {
       if (usedNode.has(j)) continue;
-      if (Math.hypot(bajanteNodes[j].x - bajanteNodes[i].x, bajanteNodes[j].y - bajanteNodes[i].y) < 2.0) {
+      if (
+        Math.hypot(bajanteNodes[j].x - bajanteNodes[i].x, bajanteNodes[j].y - bajanteNodes[i].y) <
+        2.0
+      ) {
         group.push(bajanteNodes[j]);
         usedNode.add(j);
       }
@@ -165,7 +238,8 @@ export function computeWaterNetworkRows(
     if (group.length < 2) continue;
     group.sort((a, b) => a.nivel - b.nivel);
     for (let k = 0; k < group.length - 1; k++) {
-      const a = group[k].key, b = group[k + 1].key;
+      const a = group[k].key,
+        b = group[k + 1].key;
       if (!calculoMap[a]) calculoMap[a] = [];
       if (!calculoMap[a].includes(b)) calculoMap[a].push(b);
     }
@@ -192,10 +266,56 @@ export function computeWaterNetworkRows(
   // at the exact same coordinate, so the proximity match above can resolve a source ramal's
   // nearest-neighbor to the OTHER source instead of to the merged ramal (a distance tie broken
   // by array order), letting one source's total leak into the other's.
-  for (const [mergedKey, [k1, k2]] of Object.entries(mergeOverrides)) {
-    adj[mergedKey] = (adj[mergedKey] || []).filter((k) => k !== k1 && k !== k2);
-    if (adj[k1]) adj[k1] = adj[k1].filter((k) => k !== mergedKey && k !== k2);
-    if (adj[k2]) adj[k2] = adj[k2].filter((k) => k !== mergedKey && k !== k1);
+  for (const [mergedKey, branches] of Object.entries(mergeBranches)) {
+    adj[mergedKey] = (adj[mergedKey] || []).filter((k) => !branches.includes(k));
+    for (const b of branches) {
+      if (adj[b]) adj[b] = adj[b].filter((k) => k !== mergedKey && !branches.includes(k));
+    }
+  }
+
+  // Plain (non-mergesFrom) junctions — mirrors WaterNetworkDesign.tsx's cycle-pruning, see the
+  // comment there for the full rationale. Groups every ramal endpoint by coordinate (same-plan
+  // only) and, within each 3+-way cluster, removes any adjacency edge that would close a cycle
+  // (via union-find), never disconnecting anyone.
+  const usedEp = new Set<number>();
+  for (let i = 0; i < ramalEndpoints.length; i++) {
+    if (usedEp.has(i)) continue;
+    const cluster = [ramalEndpoints[i]];
+    usedEp.add(i);
+    for (let j = i + 1; j < ramalEndpoints.length; j++) {
+      if (usedEp.has(j)) continue;
+      if (ramalEndpoints[j].planId !== ramalEndpoints[i].planId) continue;
+      if (
+        Math.hypot(
+          ramalEndpoints[j].x - ramalEndpoints[i].x,
+          ramalEndpoints[j].y - ramalEndpoints[i].y,
+        ) < 2.0
+      ) {
+        cluster.push(ramalEndpoints[j]);
+        usedEp.add(j);
+      }
+    }
+    const memberKeys = Array.from(new Set(cluster.map((c) => c.key)));
+    if (memberKeys.length < 2) continue;
+    const memberSet = new Set(memberKeys);
+    const parent = new Map(memberKeys.map((k) => [k, k]));
+    const find = (x: string): string => {
+      while (parent.get(x) !== x) x = parent.get(x)!;
+      return x;
+    };
+    for (const a of memberKeys) {
+      for (const b of [...(adj[a] || [])]) {
+        if (!memberSet.has(b) || a >= b) continue;
+        const ra = find(a),
+          rb = find(b);
+        if (ra === rb) {
+          adj[a] = adj[a].filter((k) => k !== b);
+          if (adj[b]) adj[b] = adj[b].filter((k) => k !== a);
+        } else {
+          parent.set(ra, rb);
+        }
+      }
+    }
   }
 
   // Try both root heuristics regardless of network type (not just "AF uses isAC2, AC uses
@@ -203,9 +323,12 @@ export function computeWaterNetworkRows(
   // 'CALENT' code, previously found no root at all here and silently fell back to
   // computeComponentTotals's undirected whole-component sum (every tramo showing the same grand
   // total) with no indication anything had gone wrong.
-  const rootT = tramos.find(isAC2)
-    || tramos.find(t => String(t.ini || '').startsWith('CALENT') || String(t.fin || '').startsWith('CALENT'));
-  let rootKey = rootT ? (rootT._key || rootT.id) : null;
+  const rootT =
+    tramos.find(isAC2) ||
+    tramos.find(
+      (t) => String(t.ini || '').startsWith('CALENT') || String(t.fin || '').startsWith('CALENT'),
+    );
+  let rootKey = rootT ? rootT._key || rootT.id : null;
   // Neither heuristic found a root (e.g. an AC network with no calentador tramo drawn yet, or a
   // non-standard ini/fin naming) — falling back to no root at all meant computeDirectedTotals
   // fell all the way back to computeComponentTotals's undirected whole-component sum (every tramo
@@ -213,10 +336,15 @@ export function computeWaterNetworkRows(
   // Approximate the trunk instead: the tramo with the most connections is the best available
   // stand-in for "closest to the source" without one being explicitly identifiable.
   if (!rootKey) {
-    let bestKey: string | null = null, bestDeg = -1;
+    let bestKey: string | null = null,
+      bestDeg = -1;
     for (const k of Object.keys(adj)) {
+      if (!tramos.some((t) => (t._key || t.id) === k)) continue;
       const deg = adj[k]?.length || 0;
-      if (deg > bestDeg) { bestDeg = deg; bestKey = k; }
+      if (deg > bestDeg) {
+        bestDeg = deg;
+        bestKey = k;
+      }
     }
     if (bestDeg > 0) rootKey = bestKey;
   }
@@ -226,35 +354,61 @@ export function computeWaterNetworkRows(
   // not the entire building's demand just because it's hydraulically part of the same network.
   const componentTotalMap = computeDirectedTotals(
     tramos,
-    t => t._key || t.id,
+    (t) => t._key || t.id,
     adj,
-    t => calcUCparcial(t, AP, 'uc'),
+    (t) => calcUCparcial(t, AP, 'uc'),
     rootKey,
   );
-  for (const [key, [k1, k2]] of Object.entries(mergeOverrides)) {
-    if (componentTotalMap[key] === undefined) continue;
-    componentTotalMap[key] = (componentTotalMap[k1] || 0) + (componentTotalMap[k2] || 0);
+  // A chain of merges (R1+R2→R5, then R5+R3→R6) needs R5's own override resolved before R6 reads
+  // it as a source — Object.entries() has no guarantee of processing sources before their
+  // consumers, so a single pass could read a not-yet-overridden (still tree-based, wrong) value
+  // for a source that is itself a merge. Iterate to a fixed point instead of a single pass.
+  const mergeEntries = Object.entries(mergeBranches);
+  for (let pass = 0; pass <= mergeEntries.length; pass++) {
+    let changedAny = false;
+    for (const [key, branches] of mergeEntries) {
+      if (componentTotalMap[key] === undefined) continue;
+      const next = branches.reduce((sum, b) => sum + (componentTotalMap[b] || 0), 0);
+      if (next !== componentTotalMap[key]) {
+        componentTotalMap[key] = next;
+        changedAny = true;
+      }
+    }
+    if (!changedAny) break;
+  }
+  // A ramal that FEEDS a merge (a branch in mergeBranches) must never show a different total
+  // just because it happens to be a merge source — its own displayed total stays exactly its
+  // own UC/UD, regardless of anything the directed-tree fold picked up for it through some
+  // other, non-severed path. Skip branches that are themselves a merge target (nested chains) —
+  // those legitimately keep the summed value from the loop above, not their raw own value.
+  const allBranchIds = new Set<string>();
+  for (const branches of Object.values(mergeBranches)) {
+    for (const b of branches) allBranchIds.add(b);
+  }
+  for (const branchId of allBranchIds) {
+    if (mergeBranches[branchId]) continue;
+    const t = tramos.find((x) => (x._key || x.id) === branchId);
+    if (t) componentTotalMap[branchId] = calcUCparcial(t, AP, 'uc');
   }
 
-  // Probable-flow (Hunter curve, K·f(UC)) per tramo — the auto-created ramal at a T/Y junction
-  // must show the actual conserved flow (sum of what feeds it), not its own UC-derived estimate:
-  // its combined UC total doesn't correspond to a single Hunter-curve population, so running the
-  // formula on that combined total systematically underestimates real converging flow. Compute
-  // the formula for every tramo first, then override merged keys to the sum of their sources'
-  // (already-formula-computed) flows, mirroring the componentTotalMap override above.
+  // Probable-flow (Hunter curve, K·f(UC)) per tramo — for an auto-created ramal at a T/Y
+  // junction, `total` already reads componentTotalMap[key], which was overridden above (line
+  // 234-237) to the sum of the two merging branches' UC. So the formula here runs on the
+  // correctly combined UC total for every tramo, merged or not — no separate override needed.
   const qpropMap: Record<string, number> = {};
   for (const t of tramos) {
     const key = t._key || t.id;
     const nDesc = t.nSalidas || 0;
     const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
     const total = componentTotalMap[key] || 0;
-    qpropMap[key] = total > 0 && K > 0
-      ? Math.round(K * (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000) / 1000
-      : 0;
-  }
-  for (const [key, [k1, k2]] of Object.entries(mergeOverrides)) {
-    if (qpropMap[key] === undefined) continue;
-    qpropMap[key] = (qpropMap[k1] || 0) + (qpropMap[k2] || 0);
+    qpropMap[key] =
+      total > 0 && K > 0
+        ? Math.round(
+            K *
+              (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) *
+              1000,
+          ) / 1000
+        : 0;
   }
 
   const nodeParentOf: Record<string, string> = {};
@@ -273,7 +427,7 @@ export function computeWaterNetworkRows(
     }
   }
 
-  const tramoKeySet = new Set(tramos.map(t => t._key || t.id));
+  const tramoKeySet = new Set(tramos.map((t) => t._key || t.id));
   const tramoParentOf: Record<string, string> = {};
   for (const t of tramos) {
     const key = t._key || t.id;
@@ -288,38 +442,42 @@ export function computeWaterNetworkRows(
   }
 
   const pRed = parseFloat(pRedStr) || 20;
-  const tramosOrden = tramos.filter(t => t.tipo !== 'tributario' && !t.esBajante && !isAC1(t)).sort((a, b) => (b.piso || 0) - (a.piso || 0));
+  const tramosOrden = tramos
+    .filter((t) => t.tipo !== 'tributario' && !t.esBajante && !isAC1(t))
+    .sort((a, b) => (b.piso || 0) - (a.piso || 0));
 
   // ── Acometida (AF only) — same defaults WaterNetworkDesign.tsx's own useState starts with ──
   const tr1 = isAf(networkType) ? tramos.find(isAC1) : null;
   const tr2 = isAf(networkType) ? tramos.find(isAC2) : null;
   const acoContMonDiam = 1.25;
-  const acoL1Default = { h: 10.00, v: 0.00, le: 0.47 };
-  const acoPini = 20.00;
+  const acoL1Default = { h: 10.0, v: 0.0, le: 0.47 };
+  const acoPini = 20.0;
   const acoLeMed = 0;
 
   const resolvedContMonDiam = (() => {
     if (tr2) {
       if (tr2.diametroOriginal) {
-        const match = diamTable.find(o => tr2.diametroOriginal?.startsWith(o.nominal));
+        const match = diamTable.find((o) => tr2.diametroOriginal?.startsWith(o.nominal));
         if (match) return match.nominal;
       }
-      const match = diamTable.find(o => Math.abs(o.pulg - (tr2.diamDisPulg ?? 0)) < 0.01);
+      const match = diamTable.find((o) => Math.abs(o.pulg - (tr2.diamDisPulg ?? 0)) < 0.01);
       if (match) return match.nominal;
     }
     const fallbackPulg = acoContMonDiam || 0.75;
-    const match = diamTable.find(o => Math.abs(o.pulg - fallbackPulg) < 0.01);
+    const match = diamTable.find((o) => Math.abs(o.pulg - fallbackPulg) < 0.01);
     return match ? match.nominal : '3/4" RDE 11';
   })();
   const resolvedRedContDiam = resolvedContMonDiam;
 
   const resolvedL1 = (() => {
     if (tr1) {
-      const opt = resolvedRedContDiam ? diamTable.find(d => d.nominal === resolvedRedContDiam) : null;
-      const realPulg = opt ? opt.pulg : (tr1.diamDisPulg || 0);
+      const opt = resolvedRedContDiam
+        ? diamTable.find((d) => d.nominal === resolvedRedContDiam)
+        : null;
+      const realPulg = opt ? opt.pulg : tr1.diamDisPulg || 0;
       const cHW = matHazenC(tr1.material || '') ?? 150;
       const le = calcLeAcces(tr1.accesorios ?? {}, realPulg, cHW);
-      return { h: tr1.totalL || tr1.Lh || 0, v: 0.00, le };
+      return { h: tr1.totalL || tr1.Lh || 0, v: 0.0, le };
     }
     return acoL1Default;
   })();
@@ -332,20 +490,40 @@ export function computeWaterNetworkRows(
       const ownKey = tr2._key || tr2.id;
       const total = componentTotalMap[ownKey] || 0;
       const nDesc = tr2.nSalidas || 0;
-      const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
+      const K =
+        nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
       if (total > 0 && K > 0) {
-        return Math.round(K * (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000) / 1000;
+        return (
+          Math.round(
+            K *
+              (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) *
+              1000,
+          ) / 1000
+        );
       }
     }
-    return ucTotal > 0 ? Math.round((0.1163 * Math.pow(ucTotal, 0.6875)) * 1000) / 1000 : 0;
+    return ucTotal > 0 ? Math.round(0.1163 * Math.pow(ucTotal, 0.6875) * 1000) / 1000 : 0;
   })();
 
-  const calcFila = (nominal: string, h: number, v: number, le: number, pIn: number, cHW: number) => {
-    const opt = nominal ? diamTable.find(d => d.nominal === nominal) : null;
+  const calcFila = (
+    nominal: string,
+    h: number,
+    v: number,
+    le: number,
+    pIn: number,
+    cHW: number,
+  ) => {
+    const opt = nominal ? diamTable.find((d) => d.nominal === nominal) : null;
     const dInt = opt ? opt.dInt : 0;
-    const V = Qaco > 0 && dInt > 0 ? Math.round((1000000 * Qaco) / ((Math.PI / 4) * dInt * dInt) * 10) / 10 : 0;
+    const V =
+      Qaco > 0 && dInt > 0
+        ? Math.round(((1000000 * Qaco) / ((Math.PI / 4) * dInt * dInt)) * 10) / 10
+        : 0;
     const Lt = (h || 0) + (v || 0) + (le || 0);
-    const hfPct = Math.round(((60.1 * Math.pow(V, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(dInt, 1.167))) * 100) / 100;
+    const hfPct =
+      Math.round(
+        ((60.1 * Math.pow(V, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(dInt, 1.167))) * 100,
+      ) / 100;
     const hfM = Math.round((hfPct / 100) * Lt * 100) / 100;
     const Pfin = +(pIn - (v || 0) - hfM).toFixed(2);
     return { dInt, V, Lt, hfPct, hfM, Pfin };
@@ -353,32 +531,53 @@ export function computeWaterNetworkRows(
 
   const cHW1 = matHazenC(tr1?.material || '') ?? 150;
   const acoL1LeTotal = resolvedL1.le + acoLeMed;
-  const f1 = calcFila(resolvedRedContDiam || '', resolvedL1.h, resolvedL1.v, acoL1LeTotal, acoPini, cHW1);
+  const f1 = calcFila(
+    resolvedRedContDiam || '',
+    resolvedL1.h,
+    resolvedL1.v,
+    acoL1LeTotal,
+    acoPini,
+    cHW1,
+  );
 
   // AC has no acometida of its own — fed from the water heater, itself fed from AF's own
   // resolved pressure at the shared calentador node (persisted onto the AF Tramo as `pFin`).
   const afHeaterPfin = isAf(networkType)
     ? null
-    : (tramosAf.find(t => String(t.ini || '').startsWith('CALENT') || String(t.fin || '').startsWith('CALENT'))?.pFin ?? null);
+    : (tramosAf.find(
+        (t) => String(t.ini || '').startsWith('CALENT') || String(t.fin || '').startsWith('CALENT'),
+      )?.pFin ?? null);
 
-  const byKey = new Map(tramosOrden.map(t => [t._key || t.id, t]));
+  const byKey = new Map(tramosOrden.map((t) => [t._key || t.id, t]));
 
   const pipeLoss = (t: Tramo) => {
     const ownKey = t._key || t.id;
     const isTr2Row = t === tr2;
-    const Qprob = isTr2Row ? Qaco : (qpropMap[ownKey] || 0);
+    const Qprob = isTr2Row ? Qaco : qpropMap[ownKey] || 0;
     const disPulg = t.diamDisPulg || 0;
-    const matchedOpt = (t.diametroOriginal ? DIAM_OPTS.find(o => t.diametroOriginal?.startsWith(o.nominal)) : undefined) || DIAM_OPTS.find(o => Math.abs(o.pulg - disPulg) < 0.01);
-    const internoMm = matchedOpt ? matchedOpt.dInt : (lookupFn(disPulg) || 0);
-    const Vmms = Qprob > 0 && internoMm > 0 ? Math.round((1000000 * Qprob) / ((Math.PI / 4) * internoMm * internoMm) * 10) / 10 : 0;
+    const matchedOpt =
+      (t.diametroOriginal
+        ? DIAM_OPTS.find((o) => t.diametroOriginal?.startsWith(o.nominal))
+        : undefined) || DIAM_OPTS.find((o) => Math.abs(o.pulg - disPulg) < 0.01);
+    const internoMm = matchedOpt ? matchedOpt.dInt : lookupFn(disPulg) || 0;
+    const Vmms =
+      Qprob > 0 && internoMm > 0
+        ? Math.round(((1000000 * Qprob) / ((Math.PI / 4) * internoMm * internoMm)) * 10) / 10
+        : 0;
     const H = t.totalL || t.Lh || 0;
-    const Vvert = t.Lv != null ? Number(t.Lv) : (t.deltaZ != null ? Number(t.deltaZ) : 0);
+    const Vvert = t.Lv != null ? Number(t.Lv) : t.deltaZ != null ? Number(t.deltaZ) : 0;
     const realPulg = matchedOpt ? matchedOpt.pulg : disPulg;
     const cHW = matHazenC(t.material || '') ?? 150;
     const Le = calcLeAcces(t.accesorios ?? {}, realPulg, cHW);
     const Lt = H + Vvert + Le;
-    const hfPct = Vmms > 0 && cHW > 0 && internoMm > 0 ? Math.round(((60.1 * Math.pow(Vmms, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(internoMm, 1.167))) * 100) / 100 : 0;
-    const hfM = Lt > 0 && hfPct > 0 ? Math.round((Lt * hfPct) / 1000 * 100) / 100 : 0;
+    const hfPct =
+      Vmms > 0 && cHW > 0 && internoMm > 0
+        ? Math.round(
+            ((60.1 * Math.pow(Vmms, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(internoMm, 1.167))) *
+              100,
+          ) / 100
+        : 0;
+    const hfM = Lt > 0 && hfPct > 0 ? Math.round(((Lt * hfPct) / 1000) * 100) / 100 : 0;
     return { Vvert, hfM };
   };
 
@@ -389,11 +588,18 @@ export function computeWaterNetworkRows(
     if (resolving.has(key)) return { Pin: pRed, Pfin: pRed };
     resolving.add(key);
     const t = byKey.get(key);
-    if (!t) { resolving.delete(key); return { Pin: pRed, Pfin: pRed }; }
+    if (!t) {
+      resolving.delete(key);
+      return { Pin: pRed, Pfin: pRed };
+    }
 
     let PinCalc: number;
     if (key === rootKey) {
-      PinCalc = isAf(networkType) ? f1.Pfin : (afHeaterPfin != null ? afHeaterPfin * HEATER_LOSS_FACTOR : pRed);
+      PinCalc = isAf(networkType)
+        ? f1.Pfin
+        : afHeaterPfin != null
+          ? afHeaterPfin * HEATER_LOSS_FACTOR
+          : pRed;
     } else {
       const fixturePmax = APARATO_PMAX_BY_CODE[String(t.ini || '').toUpperCase()];
       if (fixturePmax !== undefined) {
@@ -413,47 +619,108 @@ export function computeWaterNetworkRows(
   };
   for (const t of tramosOrden) resolve(t._key || t.id);
 
-  return tramosOrden.map(t => {
+  return tramosOrden.map((t) => {
     const ownKey = t._key || t.id;
     const propia = propiaMap[ownKey] || 0;
     const total = componentTotalMap[ownKey] || 0;
     const isTr2Row = t === tr2;
     const nDesc = t.nSalidas || 0;
     const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
-    const Qprob = isTr2Row ? Qaco : (qpropMap[ownKey] || 0);
+    const Qprob = isTr2Row ? Qaco : qpropMap[ownKey] || 0;
     const raizQ = Qprob > 0 ? Math.round(Math.sqrt(Qprob) * 100) / 100 : 0;
     const disPulg = t.diamDisPulg || 0;
-    const matchedOpt = (t.diametroOriginal ? DIAM_OPTS.find(o => t.diametroOriginal?.startsWith(o.nominal)) : undefined) || DIAM_OPTS.find(o => Math.abs(o.pulg - disPulg) < 0.01);
-    const internoMm = matchedOpt ? matchedOpt.dInt : (lookupFn(disPulg) || 0);
-    const Vmms = Qprob > 0 && internoMm > 0 ? Math.round((1000000 * Qprob) / ((Math.PI / 4) * internoMm * internoMm) * 10) / 10 : 0;
+    const matchedOpt =
+      (t.diametroOriginal
+        ? DIAM_OPTS.find((o) => t.diametroOriginal?.startsWith(o.nominal))
+        : undefined) || DIAM_OPTS.find((o) => Math.abs(o.pulg - disPulg) < 0.01);
+    const internoMm = matchedOpt ? matchedOpt.dInt : lookupFn(disPulg) || 0;
+    const Vmms =
+      Qprob > 0 && internoMm > 0
+        ? Math.round(((1000000 * Qprob) / ((Math.PI / 4) * internoMm * internoMm)) * 10) / 10
+        : 0;
     const H = t.totalL || t.Lh || 0;
-    const Vvert = t.Lv != null ? Number(t.Lv) : (t.deltaZ != null ? Number(t.deltaZ) : 0);
+    const Vvert = t.Lv != null ? Number(t.Lv) : t.deltaZ != null ? Number(t.deltaZ) : 0;
     const realPulg = matchedOpt ? matchedOpt.pulg : disPulg;
     const cHW = matHazenC(t.material || '') ?? 150;
     const Le = calcLeAcces(t.accesorios ?? {}, realPulg, cHW);
     const Lt = H + Vvert + Le;
-    const hfPct = Vmms > 0 && cHW > 0 && internoMm > 0 ? Math.round(((60.1 * Math.pow(Vmms, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(internoMm, 1.167))) * 100) / 100 : 0;
-    const hfM = Lt > 0 && hfPct > 0 ? Math.round((Lt * hfPct) / 1000 * 100) / 100 : 0;
+    const hfPct =
+      Vmms > 0 && cHW > 0 && internoMm > 0
+        ? Math.round(
+            ((60.1 * Math.pow(Vmms, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(internoMm, 1.167))) *
+              100,
+          ) / 100
+        : 0;
+    const hfM = Lt > 0 && hfPct > 0 ? Math.round(((Lt * hfPct) / 1000) * 100) / 100 : 0;
     const { Pin, Pfin } = result[ownKey] ?? { Pin: pRed, Pfin: pRed };
     return {
-      id: t.id, ini: typeof t.ini === 'string' ? t.ini : '—', fin: typeof t.fin === 'string' ? t.fin : '—',
-      piso: t.piso, udPropia: propia, udTotal: total,
-      nDesc, K, Qprob, diamEst: raizQ,
-      diamDis: matchedOpt?.nominal || '—', dInt: internoMm, cHW, Vmms,
-      Lh: H, Lv: Vvert, Le, Lt,
-      hfPct, hfM, Pin, Pfin,
+      id: t.id,
+      ini: typeof t.ini === 'string' ? t.ini : '—',
+      fin: typeof t.fin === 'string' ? t.fin : '—',
+      piso: t.piso,
+      udPropia: propia,
+      udTotal: total,
+      nDesc,
+      K,
+      Qprob,
+      diamEst: raizQ,
+      diamDis: matchedOpt?.nominal || '—',
+      dInt: internoMm,
+      cHW,
+      Vmms,
+      Lh: H,
+      Lv: Vvert,
+      Le,
+      Lt,
+      hfPct,
+      hfM,
+      Pin,
+      Pfin,
     };
   });
 }
 
 export interface AcometidaSummary {
-  tr1: { desde: string; hasta: string; h: number; le: number; diamEstimado: number; diamPropuesto: string };
-  tr2: { desde: string; hasta: string; h: number; le: number; diamEstimado: number; diamPropuesto: string };
-  Qaco: number; dInt1: number; dInt2: number; V1: number; V2: number; Lt1: number; Lt2: number;
-  hfPct1: number; hfPct2: number; hfM1: number; hfM2: number; cHW1: number; cHW2: number;
-  diamContador: string; Qn: number;
-  p1Ini: number; p1Fin: number; p2Ini: number; p2Fin: number;
-  hfContador: number; hfMax: number; diamConformeOk: boolean; diamDiff: number; pResidual: number;
+  tr1: {
+    desde: string;
+    hasta: string;
+    h: number;
+    le: number;
+    diamEstimado: number;
+    diamPropuesto: string;
+  };
+  tr2: {
+    desde: string;
+    hasta: string;
+    h: number;
+    le: number;
+    diamEstimado: number;
+    diamPropuesto: string;
+  };
+  Qaco: number;
+  dInt1: number;
+  dInt2: number;
+  V1: number;
+  V2: number;
+  Lt1: number;
+  Lt2: number;
+  hfPct1: number;
+  hfPct2: number;
+  hfM1: number;
+  hfM2: number;
+  cHW1: number;
+  cHW2: number;
+  diamContador: string;
+  Qn: number;
+  p1Ini: number;
+  p1Fin: number;
+  p2Ini: number;
+  p2Fin: number;
+  hfContador: number;
+  hfMax: number;
+  diamConformeOk: boolean;
+  diamDiff: number;
+  pResidual: number;
   estadoOk: boolean;
 }
 
@@ -480,13 +747,16 @@ export function computeAcometidaSummary(
   diamTable: Array<{ pulg: number; nominal: string; label?: string; dInt: number }>,
 ): AcometidaSummary | null {
   const networkType = 'af';
-  const DIAM_OPTS = diamTable.map(d => ({ pulg: d.pulg, nominal: d.nominal, label: d.nominal, dInt: d.dInt }));
-  const AP = AF_UC_IDS
-    .map((id) => {
-      const a = APARATOS_DEF.find((x) => x.id === id);
-      return a ? { id: a.id, uc: a.uc_af } : null;
-    })
-    .filter((x): x is { id: string; uc: number } => x !== null);
+  const DIAM_OPTS = diamTable.map((d) => ({
+    pulg: d.pulg,
+    nominal: d.nominal,
+    label: d.nominal,
+    dInt: d.dInt,
+  }));
+  const AP = AF_UC_IDS.map((id) => {
+    const a = APARATOS_DEF.find((x) => x.id === id);
+    return a ? { id: a.id, uc: a.uc_af } : null;
+  }).filter((x): x is { id: string; uc: number } => x !== null);
 
   const tramos = tramosAf;
   const tr1 = tramos.find(isAC1);
@@ -503,7 +773,13 @@ export function computeAcometidaSummary(
     const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
     let data: DrawingData = raw as DrawingData;
-    if (typeof raw === 'string') { try { data = JSON.parse(raw); } catch { continue; } }
+    if (typeof raw === 'string') {
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+    }
     const ramales = (data.ramales || []).filter((r) => r.net === networkType);
     const bajantes = (data.bajantes || []).filter((b): b is BajanteRaw => b.net === networkType);
     for (const b of bajantes) {
@@ -517,7 +793,9 @@ export function computeAcometidaSummary(
       const rKey = `${r.id}-${plan.id}`;
       const checkEndpoint = (pt: number[]) => {
         for (const b of bajantes) {
-          const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
+          const isExplicit =
+            b.recibeDeIds &&
+            (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
           const dist = Math.hypot(pt[0] - b.x!, pt[1] - b.y!);
           if (isExplicit) {
             const otherPt = pt === pEnd ? pStart : pEnd;
@@ -533,13 +811,16 @@ export function computeAcometidaSummary(
           if (rx.id === r.id) continue;
           if (!rx.pts || rx.pts.length < 2) continue;
           const dist = distToPolyline(pt, rx.pts);
-          if (dist < 2.0 && dist < minDist) { minDist = dist; bestRx = rx; }
+          if (dist < 2.0 && dist < minDist) {
+            minDist = dist;
+            bestRx = rx;
+          }
         }
         if (bestRx) return { type: 'ramal' as const, id: bestRx.id };
         return null;
       };
       const connections = [checkEndpoint(pEnd), checkEndpoint(pStart)].filter(
-        (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null
+        (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null,
       );
       for (const connection of connections) {
         const targetKey = `${connection.id}-${plan.id}`;
@@ -555,7 +836,10 @@ export function computeAcometidaSummary(
     usedNode.add(i);
     for (let j = i + 1; j < bajanteNodes.length; j++) {
       if (usedNode.has(j)) continue;
-      if (Math.hypot(bajanteNodes[j].x - bajanteNodes[i].x, bajanteNodes[j].y - bajanteNodes[i].y) < 2.0) {
+      if (
+        Math.hypot(bajanteNodes[j].x - bajanteNodes[i].x, bajanteNodes[j].y - bajanteNodes[i].y) <
+        2.0
+      ) {
         group.push(bajanteNodes[j]);
         usedNode.add(j);
       }
@@ -563,7 +847,8 @@ export function computeAcometidaSummary(
     if (group.length < 2) continue;
     group.sort((a, b) => a.nivel - b.nivel);
     for (let k = 0; k < group.length - 1; k++) {
-      const a = group[k].key, b = group[k + 1].key;
+      const a = group[k].key,
+        b = group[k + 1].key;
       if (!calculoMap[a]) calculoMap[a] = [];
       if (!calculoMap[a].includes(b)) calculoMap[a].push(b);
     }
@@ -583,9 +868,9 @@ export function computeAcometidaSummary(
   }
   const componentTotalMap = computeComponentTotals(
     tramos,
-    t => t._key || t.id,
+    (t) => t._key || t.id,
     adj,
-    t => calcUCparcial(t, AP, 'uc'),
+    (t) => calcUCparcial(t, AP, 'uc'),
   );
 
   // ── Acometida-specific resolution (mirrors SupplyConnection.tsx's props exactly) ──
@@ -602,31 +887,35 @@ export function computeAcometidaSummary(
   const resolvedContMonDiam = (() => {
     if (tr2) {
       if (tr2.diametroOriginal) {
-        const match = diamTable.find(o => tr2.diametroOriginal?.startsWith(o.nominal));
+        const match = diamTable.find((o) => tr2.diametroOriginal?.startsWith(o.nominal));
         if (match) return match.nominal;
       }
-      const match = diamTable.find(o => Math.abs(o.pulg - (tr2.diamDisPulg ?? 0)) < 0.01);
+      const match = diamTable.find((o) => Math.abs(o.pulg - (tr2.diamDisPulg ?? 0)) < 0.01);
       if (match) return match.nominal;
     }
-    const match = diamTable.find(o => Math.abs(o.pulg - 1.25) < 0.01);
+    const match = diamTable.find((o) => Math.abs(o.pulg - 1.25) < 0.01);
     return match ? match.nominal : '3/4" RDE 11';
   })();
   const resolvedRedContDiam = resolvedContMonDiam;
 
   const resolvedL1 = (() => {
     if (tr1) {
-      const opt = resolvedRedContDiam ? diamTable.find(d => d.nominal === resolvedRedContDiam) : null;
-      const realPulg = opt ? opt.pulg : (tr1.diamDisPulg || 0);
+      const opt = resolvedRedContDiam
+        ? diamTable.find((d) => d.nominal === resolvedRedContDiam)
+        : null;
+      const realPulg = opt ? opt.pulg : tr1.diamDisPulg || 0;
       const cHW = matHazenC(tr1.material || '') ?? 150;
       const le = calcLeAcces(tr1.accesorios ?? {}, realPulg, cHW);
       return { h: tr1.totalL || tr1.Lh || 0, v: 0, le };
     }
-    return { h: 10.00, v: 0, le: 0.47 };
+    return { h: 10.0, v: 0, le: 0.47 };
   })();
   const resolvedL2 = (() => {
     if (tr2) {
-      const opt = resolvedContMonDiam ? diamTable.find(d => d.nominal === resolvedContMonDiam) : null;
-      const realPulg = opt ? opt.pulg : (tr2.diamDisPulg || 0);
+      const opt = resolvedContMonDiam
+        ? diamTable.find((d) => d.nominal === resolvedContMonDiam)
+        : null;
+      const realPulg = opt ? opt.pulg : tr2.diamDisPulg || 0;
       const cHW = matHazenC(tr2.material || '') ?? 150;
       const le = calcLeAcces(tr2.accesorios ?? {}, realPulg, cHW);
       return { h: tr2.totalL || tr2.Lh || 0, v: 0, le };
@@ -642,20 +931,40 @@ export function computeAcometidaSummary(
       const ownKey = tr2._key || tr2.id;
       const total = componentTotalMap[ownKey] || 0;
       const nDesc = tr2.nSalidas || 0;
-      const K = nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
+      const K =
+        nDesc > 0 ? Math.round((nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) * 100) / 100 : 0;
       if (total > 0 && K > 0) {
-        return Math.round(K * (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000) / 1000;
+        return (
+          Math.round(
+            K *
+              (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) *
+              1000,
+          ) / 1000
+        );
       }
     }
-    return ucTotal > 0 ? Math.round((0.1163 * Math.pow(ucTotal, 0.6875)) * 1000) / 1000 : 0;
+    return ucTotal > 0 ? Math.round(0.1163 * Math.pow(ucTotal, 0.6875) * 1000) / 1000 : 0;
   })();
 
-  const calcFila = (nominal: string, h: number, v: number, le: number, pIn: number, cHW: number) => {
-    const opt = nominal ? diamTable.find(d => d.nominal === nominal) : null;
+  const calcFila = (
+    nominal: string,
+    h: number,
+    v: number,
+    le: number,
+    pIn: number,
+    cHW: number,
+  ) => {
+    const opt = nominal ? diamTable.find((d) => d.nominal === nominal) : null;
     const dInt = opt ? opt.dInt : 0;
-    const V = Qaco > 0 && dInt > 0 ? Math.round((1000000 * Qaco) / ((Math.PI / 4) * dInt * dInt) * 10) / 10 : 0;
+    const V =
+      Qaco > 0 && dInt > 0
+        ? Math.round(((1000000 * Qaco) / ((Math.PI / 4) * dInt * dInt)) * 10) / 10
+        : 0;
     const Lt = (h || 0) + (v || 0) + (le || 0);
-    const hfPct = Math.round(((60.1 * Math.pow(V, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(dInt, 1.167))) * 100) / 100;
+    const hfPct =
+      Math.round(
+        ((60.1 * Math.pow(V, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(dInt, 1.167))) * 100,
+      ) / 100;
     const hfM = Math.round((hfPct / 100) * Lt * 100) / 100;
     const Pfin = +(pIn - (v || 0) - hfM).toFixed(2);
     return { dInt, V, Lt, hfPct, hfM, Pfin };
@@ -663,43 +972,93 @@ export function computeAcometidaSummary(
 
   const cHW1 = matHazenC(tr1?.material || '') ?? 150;
   const cHW2 = matHazenC(tr2?.material || '') ?? 150;
-  const acoPini = 20.00;
+  const acoPini = 20.0;
   const acoLeMed = 0;
   const acoL1LeTotal = resolvedL1.le + acoLeMed;
-  const f1 = calcFila(resolvedRedContDiam || '', resolvedL1.h, resolvedL1.v, acoL1LeTotal, acoPini, cHW1);
-  const f2 = calcFila(resolvedContMonDiam || '', resolvedL2.h, resolvedL2.v, resolvedL2.le, f1.Pfin, cHW2);
+  const f1 = calcFila(
+    resolvedRedContDiam || '',
+    resolvedL1.h,
+    resolvedL1.v,
+    acoL1LeTotal,
+    acoPini,
+    cHW1,
+  );
+  const f2 = calcFila(
+    resolvedContMonDiam || '',
+    resolvedL2.h,
+    resolvedL2.v,
+    resolvedL2.le,
+    f1.Pfin,
+    cHW2,
+  );
 
   // ── Contador selection: dynamic from a bajante's diameter, mirroring WaterNetworkDesign.tsx ──
   let acoContIx = 2;
   const found = findContadorBajante(plans, networkType);
   if (found && found.bajante.dNominal) {
     const dNom = String(found.bajante.dNominal).replace('½', '1/2').replace('¾', '3/4');
-    const idx = CONTADORES_CAT.findIndex(c => `${c.dn}"` === dNom);
+    const idx = CONTADORES_CAT.findIndex((c) => `${c.dn}"` === dNom);
     if (idx !== -1) acoContIx = idx;
   }
   const contadorSel = CONTADORES_CAT[acoContIx] || CONTADORES_CAT[0];
-  const hfContador = Qaco > 0 && contadorSel.q > 0
-    ? Math.round(10 * Math.pow(Qaco / contadorSel.q, 2) * 100) / 100
-    : 0;
+  const hfContador =
+    Qaco > 0 && contadorSel.q > 0
+      ? Math.round(10 * Math.pow(Qaco / contadorSel.q, 2) * 100) / 100
+      : 0;
   const acoHfMax = 5.0;
-  const pResidual = +((f1.Pfin - f2.Pfin).toFixed(2));
+  const pResidual = +(f1.Pfin - f2.Pfin).toFixed(2);
   const okPresion = f1.Pfin > f2.Pfin;
 
-  const diamPropuesto1 = DIAM_OPTS.find(o => o.nominal === resolvedRedContDiam)?.label || resolvedRedContDiam || '';
-  const diamPropuesto2 = DIAM_OPTS.find(o => o.nominal === resolvedContMonDiam)?.label || resolvedContMonDiam || '';
+  const diamPropuesto1 =
+    DIAM_OPTS.find((o) => o.nominal === resolvedRedContDiam)?.label || resolvedRedContDiam || '';
+  const diamPropuesto2 =
+    DIAM_OPTS.find((o) => o.nominal === resolvedContMonDiam)?.label || resolvedContMonDiam || '';
   const dValAco = diamFractionValue(resolvedRedContDiam || '');
   const dValCont = diamFractionValue(contadorSel.dn || '0');
   const diamDiff = dValAco - dValCont;
   const diamConformeOk = diamDiff <= 0.5;
 
   return {
-    tr1: { desde: 'Red Pública', hasta: 'Contador', h: resolvedL1.h, le: acoL1LeTotal, diamEstimado: Qaco > 0 ? Math.sqrt(Qaco) : 0, diamPropuesto: diamPropuesto1 },
-    tr2: { desde: 'Contador', hasta: resolvedMonName || '—', h: resolvedL2.h, le: resolvedL2.le, diamEstimado: Qaco > 0 ? Math.sqrt(Qaco) : 0, diamPropuesto: diamPropuesto2 },
-    Qaco, dInt1: f1.dInt, dInt2: f2.dInt, V1: f1.V, V2: f2.V, Lt1: f1.Lt, Lt2: f2.Lt,
-    hfPct1: f1.hfPct, hfPct2: f2.hfPct, hfM1: f1.hfM, hfM2: f2.hfM, cHW1, cHW2,
-    diamContador: contadorSel.dn || '—', Qn: contadorSel.q || 0,
-    p1Ini: acoPini, p1Fin: f1.Pfin, p2Ini: f1.Pfin, p2Fin: f2.Pfin,
-    hfContador, hfMax: acoHfMax, diamConformeOk, diamDiff, pResidual,
+    tr1: {
+      desde: 'Red Pública',
+      hasta: 'Contador',
+      h: resolvedL1.h,
+      le: acoL1LeTotal,
+      diamEstimado: Qaco > 0 ? Math.sqrt(Qaco) : 0,
+      diamPropuesto: diamPropuesto1,
+    },
+    tr2: {
+      desde: 'Contador',
+      hasta: resolvedMonName || '—',
+      h: resolvedL2.h,
+      le: resolvedL2.le,
+      diamEstimado: Qaco > 0 ? Math.sqrt(Qaco) : 0,
+      diamPropuesto: diamPropuesto2,
+    },
+    Qaco,
+    dInt1: f1.dInt,
+    dInt2: f2.dInt,
+    V1: f1.V,
+    V2: f2.V,
+    Lt1: f1.Lt,
+    Lt2: f2.Lt,
+    hfPct1: f1.hfPct,
+    hfPct2: f2.hfPct,
+    hfM1: f1.hfM,
+    hfM2: f2.hfM,
+    cHW1,
+    cHW2,
+    diamContador: contadorSel.dn || '—',
+    Qn: contadorSel.q || 0,
+    p1Ini: acoPini,
+    p1Fin: f1.Pfin,
+    p2Ini: f1.Pfin,
+    p2Fin: f2.Pfin,
+    hfContador,
+    hfMax: acoHfMax,
+    diamConformeOk,
+    diamDiff,
+    pResidual,
     estadoOk: okPresion && hfContador <= acoHfMax,
   };
 }

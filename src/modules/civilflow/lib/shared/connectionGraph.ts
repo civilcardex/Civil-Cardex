@@ -2,6 +2,11 @@
  * Sums each tramo's "partial" value across its connected component (via `adj`) and returns
  * a map from tramo key to that component-wide total. Used to show, per tramo, the accumulated
  * demand (UC/UD) of everything hydraulically connected to it.
+ * @param tramos - Array of tramo objects.
+ * @param getKey - Extracts a unique key string from a tramo.
+ * @param adj - Undirected adjacency map (key → neighbor keys).
+ * @param getPartial - Extracts the partial value from a tramo.
+ * @returns Map of tramo key → component-wide total.
  */
 export function computeComponentTotals<T>(
   tramos: T[],
@@ -58,6 +63,12 @@ export function computeComponentTotals<T>(
  * feeding one fixture showed the entire building's demand, same as the main trunk near the source.
  * Falls back to computeComponentTotals when no root can be identified (network without a
  * detectable contador/calentador), so it still returns something sensible.
+ * @param tramos - Array of tramo objects.
+ * @param getKey - Extracts a unique key string from a tramo.
+ * @param adj - Undirected adjacency map (key → neighbor keys).
+ * @param getPartial - Extracts the partial value from a tramo.
+ * @param rootKey - Key of the root node (contador/calentador); falls back to undirected totals if null/missing.
+ * @returns Map of tramo key → directed accumulated total.
  */
 export function computeDirectedTotals<T>(
   tramos: T[],
@@ -81,31 +92,42 @@ export function computeDirectedTotals<T>(
     if (key) totals[key] = getPartial(t);
   }
 
+  // BFS that traverses through EVERY node (including bajante/junction nodes that have no
+  // tramo entry). Those non-tramo junction points previously blocked the walk entirely
+  // (the old guard `tramoById[nb]` filtered them out), so the BFS couldn't reach tramos
+  // beyond a junction — the root ended up alone and totals contained only its own partial,
+  // effectively the same stale value for every visible tramo.
   const parentOf: Record<string, string> = {};
-  const order: string[] = [rootKey];
+  const order: string[] = [];
   const visited = new Set<string>([rootKey]);
   const queue = [rootKey];
   while (queue.length > 0) {
     const node = queue.shift()!;
+    order.push(node);
     for (const nb of adj[node] || []) {
-      if (!visited.has(nb) && tramoById[nb]) {
-        visited.add(nb);
-        parentOf[nb] = node;
-        order.push(nb);
-        queue.push(nb);
-      }
+      if (visited.has(nb)) continue;
+      visited.add(nb);
+      parentOf[nb] = node;
+      queue.push(nb);
     }
   }
 
-  // Reverse BFS order = deepest (furthest from root) nodes first, so each node's accumulated
-  // total is already complete by the time it gets folded into its own parent.
+  // Reverse BFS order — deepest first. Non-tramo junction nodes start at 0; their totals
+  // are accumulated from their children and then propagated upward to their own parent.
   for (let i = order.length - 1; i >= 0; i--) {
     const node = order[i];
+    if (totals[node] === undefined) totals[node] = 0;
     const parent = parentOf[node];
-    if (parent !== undefined && totals[parent] !== undefined) {
+    if (parent !== undefined) {
+      if (totals[parent] === undefined) totals[parent] = 0;
       totals[parent] += totals[node];
     }
   }
 
-  return totals;
+  // Return only tramo keys (exclude junction/non-tramo accumulator keys).
+  const result: Record<string, number> = {};
+  for (const key of Object.keys(totals)) {
+    if (tramoById[key]) result[key] = totals[key];
+  }
+  return result;
 }

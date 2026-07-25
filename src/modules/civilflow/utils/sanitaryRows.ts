@@ -6,16 +6,23 @@ import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoriaFinal';
 import { diametroManning, caudalHunterLPS, factorSimultaneidad } from './calcSanitaryCore';
 import { calcHydraulicCheck } from './hydraulicCheck';
 import { DIAM_OPTIONS } from '../constants';
-import { computeComponentTotals } from '../lib/shared/connectionGraph';
+import { computeComponentTotals, computeDirectedTotals } from '../lib/shared/connectionGraph';
 import { distToPolyline } from '../lib/shared/geometry';
 import { parseDescargaEnId } from './parseDescargaEnId';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import type { DrawingData, RawElement } from './drawingSync';
 
-interface BajanteRaw extends RawElement { x?: number; y?: number }
+interface BajanteRaw extends RawElement {
+  x?: number;
+  y?: number;
+}
 
-export interface MergedApBase { id: string; nombre: string; ud: number }
+export interface MergedApBase {
+  id: string;
+  nombre: string;
+  ud: number;
+}
 
 export interface SanConnectivity {
   orientedConexiones: Record<string, string[]>;
@@ -26,7 +33,11 @@ export interface SanConnectivity {
 // Single source of truth for the sanitary network's connectivity graph (which tramo discharges
 // into which, used to accumulate UD totals) — shared between the on-screen DisenosSanitarios
 // table and the Memorias Finales export, so both always show the same numbers.
-export function buildSanConnectivity(tramosSan: Tramo[], plans: PlanItem[], mergedBase: MergedApBase[]): SanConnectivity {
+export function buildSanConnectivity(
+  tramosSan: Tramo[],
+  plans: PlanItem[],
+  mergedBase: MergedApBase[],
+): SanConnectivity {
   const calculoMap: Record<string, string[]> = {};
 
   for (const plan of plans || []) {
@@ -34,7 +45,13 @@ export function buildSanConnectivity(tramosSan: Tramo[], plans: PlanItem[], merg
     const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
     if (!raw) continue;
     let data: DrawingData = raw as DrawingData;
-    if (typeof raw === 'string') { try { data = JSON.parse(raw); } catch { continue; } }
+    if (typeof raw === 'string') {
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        continue;
+      }
+    }
 
     const ramales = data.ramales || [];
     const bajantes = (data.bajantes || []) as BajanteRaw[];
@@ -47,14 +64,17 @@ export function buildSanConnectivity(tramosSan: Tramo[], plans: PlanItem[], merg
 
       const checkEndpoint = (pt: number[]) => {
         for (const b of bajantes) {
-          const isDischargingIntoR = b.descargaEnId && (
-            b.descargaEnId === `${plan.id}|${r.id}` ||
-            b.descargaEnId === r.id ||
-            (r.label && (b.descargaEnId === `${plan.id}|${r.label}` || b.descargaEnId === r.label))
-          );
+          const isDischargingIntoR =
+            b.descargaEnId &&
+            (b.descargaEnId === `${plan.id}|${r.id}` ||
+              b.descargaEnId === r.id ||
+              (r.label &&
+                (b.descargaEnId === `${plan.id}|${r.label}` || b.descargaEnId === r.label)));
           if (isDischargingIntoR) continue;
 
-          const isExplicit = b.recibeDeIds && (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
+          const isExplicit =
+            b.recibeDeIds &&
+            (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
           const dist = Math.hypot(pt[0] - b.x!, pt[1] - b.y!);
           if (isExplicit) {
             const otherPt = pt === pEnd ? pStart : pEnd;
@@ -84,7 +104,7 @@ export function buildSanConnectivity(tramosSan: Tramo[], plans: PlanItem[], merg
       };
 
       const connections = [checkEndpoint(pEnd), checkEndpoint(pStart)].filter(
-        (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null
+        (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null,
       );
 
       for (const connection of connections) {
@@ -126,7 +146,7 @@ export function buildSanConnectivity(tramosSan: Tramo[], plans: PlanItem[], merg
       const targetRamalId = parts[1];
       if (targetRamalId) {
         const targetKey = `${targetRamalId}-${dPlanId}`;
-        const targetExists = tramosSan.some(x => x._key === targetKey);
+        const targetExists = tramosSan.some((x) => x._key === targetKey);
         if (targetExists) {
           if (!calculoMap[targetKey]) calculoMap[targetKey] = [];
           if (!calculoMap[targetKey].includes(t._key)) {
@@ -162,11 +182,10 @@ export function buildSanConnectivity(tramosSan: Tramo[], plans: PlanItem[], merg
     while (queue.length > 0) {
       const node = queue.shift()!;
       if (node !== startKey) {
-        const tr = tramosSan.find(x => x._key === node);
+        const tr = tramosSan.find((x) => x._key === node);
         const isMainRamal = tr && tr.tipo === 'ramal' && !tr.esBajante;
         if (isMainRamal) {
           results.add(node);
-          continue;
         }
       }
       for (const neighbor of adj[node] || []) {
@@ -210,14 +229,14 @@ export function buildSanConnectivity(tramosSan: Tramo[], plans: PlanItem[], merg
   }
 
   const getRootScore = (key: string): number => {
-    const tr = tramosSan.find(x => x._key === key);
+    const tr = tramosSan.find((x) => x._key === key);
     if (!tr) return 99999999;
     const piso = tr.piso || 0;
     const isBajante = tr.esBajante;
     const id = tr.id || '';
     const match = id.match(/^([a-zA-Z]+)(\d+)?$/);
     const num = match && match[2] ? parseInt(match[2]) : 999;
-    return (piso * 100000) + (isBajante ? 0 : 10000) + num;
+    return piso * 100000 + (isBajante ? 0 : 10000) + num;
   };
 
   const orientedConexiones: Record<string, string[]> = {};
@@ -249,95 +268,311 @@ export function buildSanConnectivity(tramosSan: Tramo[], plans: PlanItem[], merg
     }
   }
 
-  const componentTotalMap = computeComponentTotals(
-    tramosSan,
-    t => t._key || t.id,
-    adj,
-    t => calcUDparcial(t, mergedBase),
-  );
+  // Root = tramo discharging to a bajante (fin/ini code starts with 'B').
+  // Directed: that root aggregates everything feeding into it, so upstream
+  // leaf branches keep only their own UDs and don't show each other's totals.
+  const keyOf = (t: Tramo) => t._key || t.id;
+  const byKey = new Map(tramosSan.map((t) => [keyOf(t), t]));
+  let rootKey: string | null = null;
+  for (const t of tramosSan) {
+    const fin = String(t.fin || '');
+    const ini = String(t.ini || '');
+    if (!fin.startsWith('B') && !ini.startsWith('B')) continue;
+    const k = keyOf(t);
+    if (!rootKey) {
+      rootKey = k;
+      continue;
+    }
+    const bestT = byKey.get(rootKey);
+    if ((t.piso || 0) >= (bestT?.piso || 0)) rootKey = k;
+  }
+  // If no tramo discharges to a bajante, use most-connected tramo (only tramo keys) as root.
+  if (!rootKey) {
+    let bestKey: string | null = null,
+      bestDeg = -1;
+    for (const k of Object.keys(adj)) {
+      const t = byKey.get(k);
+      if (!t) continue;
+      const deg = adj[k]?.length || 0;
+      if (deg > bestDeg) {
+        bestDeg = deg;
+        bestKey = k;
+      }
+    }
+    if (bestDeg > 0) rootKey = bestKey;
+  }
+  const componentTotalMap = rootKey
+    ? computeDirectedTotals(
+        tramosSan,
+        (t) => keyOf(t),
+        adj,
+        (t) => calcUDparcial(t, mergedBase),
+        rootKey,
+      )
+    : computeComponentTotals(
+        tramosSan,
+        (t) => keyOf(t),
+        adj,
+        (t) => calcUDparcial(t, mergedBase),
+      );
+
+  // Merge-branches correction (same as AF/AC): merge points accumulate feeder UDs.
+  // Prefer mergesFrom from raw data; fall back to connectivity graph detection.
+  const mergeBranches: Record<string, string[]> = {};
+  for (const plan of plans || []) {
+    if (plan.nivel == null) continue;
+    const raw = loadFromStorage<{ ramales?: RawElement[] } | string | null>(
+      TRAZOS_PREFIX + plan.id,
+      null,
+    );
+    if (!raw) continue;
+    const data: { ramales?: RawElement[] } = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    for (const r of data.ramales || []) {
+      if (!r.mergesFrom || !r.pts || r.pts.length === 0) continue;
+      const mergedKeyFull = `${r.id}-${plan.id}`;
+      if (!componentTotalMap[mergedKeyFull] && componentTotalMap[mergedKeyFull] !== 0) continue;
+      const jc = r.pts[0];
+      const branchIds: string[] = [];
+      for (const other of data.ramales || []) {
+        if (other.id === r.id || !other.pts || other.pts.length < 2) continue;
+        const oStart = other.pts[0],
+          oEnd = other.pts[other.pts.length - 1];
+        if (
+          Math.hypot(oStart[0] - jc[0], oStart[1] - jc[1]) < 2.0 ||
+          Math.hypot(oEnd[0] - jc[0], oEnd[1] - jc[1]) < 2.0
+        ) {
+          branchIds.push(`${other.id}-${plan.id}`);
+        }
+      }
+      if (branchIds.length > 0) mergeBranches[mergedKeyFull] = branchIds;
+    }
+  }
+  // Fallback: detect merge points from connectivity graph (tramo appearing as target
+  // in calculoMap with >1 feeder).
+  if (Object.keys(mergeBranches).length === 0) {
+    for (const [parentKey, children] of Object.entries(calculoMap)) {
+      const parentTramo = byKey.get(parentKey);
+      if (!parentTramo) continue;
+      const tramoChildren = children.filter((c) => byKey.has(c));
+      if (tramoChildren.length > 1) {
+        mergeBranches[parentKey] = tramoChildren;
+      }
+    }
+  }
+  const mergeEntries = Object.entries(mergeBranches);
+  for (let pass = 0; pass <= mergeEntries.length; pass++) {
+    let changedAny = false;
+    for (const [key, branches] of mergeEntries) {
+      if (componentTotalMap[key] === undefined) continue;
+      const next = branches.reduce((sum, b) => sum + (componentTotalMap[b] || 0), 0);
+      if (next !== componentTotalMap[key]) {
+        componentTotalMap[key] = next;
+        changedAny = true;
+      }
+    }
+    if (!changedAny) break;
+  }
+  const allBranchIds = new Set<string>();
+  for (const branches of Object.values(mergeBranches)) {
+    for (const b of branches) allBranchIds.add(b);
+  }
+  for (const branchId of allBranchIds) {
+    if (mergeBranches[branchId]) continue;
+    const t = tramosSan.find((x) => (x._key || x.id) === branchId);
+    if (t) componentTotalMap[branchId] = calcUDparcial(t, mergedBase);
+  }
+
+  // Clear "Otros Ramales" for merge sources — they keep only their own UDs
+  // and show nothing in the connections column (same as AF/AC behavior).
+  for (const branchId of allBranchIds) {
+    if (mergeBranches[branchId]) continue;
+    if (displayMap[branchId]) displayMap[branchId] = [];
+  }
 
   return { orientedConexiones, displayMap, componentTotalMap };
 }
 
 export interface SanRow {
-  tKey: string; id: string; piso: number;
-  udPropias: number; udAcum: number;
-  nSalidas: number; K: number | null; Q: number | null; n: number; sVal: number;
-  DcalcPulg: number; DdisPulg: number; DintMm: number;
-  Qo: number; Vo: number; qqo: number; Vreal: number; chequeoV: string;
-  Yc: number; Yn: number; Froude: number; tipoFlujo: string; Ymax: number; chequeoYn: string;
-  fuerzaTractiva: number; chequeoFT: string;
+  tKey: string;
+  id: string;
+  piso: number;
+  udPropias: number;
+  udAcum: number;
+  nSalidas: number;
+  K: number | null;
+  Q: number | null;
+  n: number;
+  sVal: number;
+  DcalcPulg: number;
+  DdisPulg: number;
+  DintMm: number;
+  Qo: number;
+  Vo: number;
+  qqo: number;
+  Vreal: number;
+  chequeoV: string;
+  Yc: number;
+  Yn: number;
+  Froude: number;
+  tipoFlujo: string;
+  Ymax: number;
+  chequeoYn: string;
+  fuerzaTractiva: number;
+  chequeoFT: string;
 }
 
 // Per-tramo hydraulic design row — same formulas as the DisenosSanitarios table (Manning
 // diameter estimate + calcHydraulicCheck for the full checkpoint), shared with the memoria export.
-export function computeSanRows(displayTramos: Tramo[], componentTotalMap: Record<string, number>, mergedBase: MergedApBase[]): SanRow[] {
-  return displayTramos.toSorted((a, b) => (a.piso || 0) - (b.piso || 0)).map(t => {
-    const tKey = t._key || `${t.id}-${t.piso}`;
-    const udPropias = calcUDparcial(t, mergedBase);
-    const udAcum = componentTotalMap[tKey] || 0;
+export function computeSanRows(
+  displayTramos: Tramo[],
+  componentTotalMap: Record<string, number>,
+  mergedBase: MergedApBase[],
+): SanRow[] {
+  return displayTramos
+    .toSorted((a, b) => (a.piso || 0) - (b.piso || 0))
+    .map((t) => {
+      const tKey = t._key || `${t.id}-${t.piso}`;
+      const udPropias = calcUDparcial(t, mergedBase);
+      const udAcum = componentTotalMap[tKey] || 0;
 
-    const nSalidas = t.nSalidas ?? 0;
-    const K = nSalidas != null && nSalidas > 0 ? Math.round(factorSimultaneidad(nSalidas) * 100) / 100 : null;
-    const n = t.nmaning || 0.009;
-    const sVal = t.sPercent ?? 0;
-    const S = sVal != null && sVal > 0 ? sVal / 100 : null;
-    const Q = udAcum > 0 && K != null ? Math.round(caudalHunterLPS(udAcum, K) * 1000) / 1000 : null;
-    const dSel = DIAM_OPTIONS.find(d => d.pulg === (t.diamDisPulg || 0)) || null;
-    let DcalcPulg = 0;
-    const DdisPulg = dSel ? dSel.pulg : 0;
-    const DintMm = dSel ? dSel.mm : 0;
-    let Qo = 0, Vo = 0, qqo = 0;
-    let Vreal = 0, chequeoV = '—';
-    let Yc = 0, Yn = 0, Froude = 0, tipoFlujo = '—', Ymax = 0, chequeoYn = '—';
-    let fuerzaTractiva = 0, chequeoFT = '—';
-    if (Q != null && Q > 0 && S != null && S > 0 && n != null && n > 0) {
-      DcalcPulg = Math.round(diametroManning(Q / 1000, n, S) * 1000 / 25.4 * 100) / 100;
-    }
-    if (Q != null && Q > 0 && S != null && S > 0 && n != null && n > 0 && DintMm > 0) {
-      const hc = calcHydraulicCheck({ Q, S, n, DintMm });
-      Qo = hc.Qo; Vo = hc.Vo; qqo = hc.qqo;
-      Vreal = hc.Vreal; chequeoV = hc.chequeoV;
-      Yc = hc.Yc; Yn = hc.Yn; Froude = hc.Froude; tipoFlujo = hc.tipoFlujo;
-      Ymax = hc.Ymax; chequeoYn = hc.chequeoYn; fuerzaTractiva = hc.fuerzaTractiva; chequeoFT = hc.chequeoFT;
-    }
-    return {
-      tKey, id: t.id, piso: t.piso,
-      udPropias, udAcum, nSalidas, K, Q, n, sVal,
-      DcalcPulg, DdisPulg, DintMm,
-      Qo, Vo, qqo, Vreal, chequeoV,
-      Yc, Yn, Froude, tipoFlujo, Ymax, chequeoYn,
-      fuerzaTractiva, chequeoFT,
-    };
-  });
+      const nSalidas = t.nSalidas ?? 0;
+      const K =
+        nSalidas != null && nSalidas > 0
+          ? Math.round(factorSimultaneidad(nSalidas) * 100) / 100
+          : null;
+      const n = t.nmaning || 0.009;
+      const sVal = t.sPercent ?? 0;
+      const S = sVal != null && sVal > 0 ? sVal / 100 : null;
+      const Q =
+        udAcum > 0 && K != null ? Math.round(caudalHunterLPS(udAcum, K) * 1000) / 1000 : null;
+      const dSel = DIAM_OPTIONS.find((d) => d.pulg === (t.diamDisPulg || 0)) || null;
+      let DcalcPulg = 0;
+      const DdisPulg = dSel ? dSel.pulg : 0;
+      const DintMm = dSel ? dSel.mm : 0;
+      let Qo = 0,
+        Vo = 0,
+        qqo = 0;
+      let Vreal = 0,
+        chequeoV = '—';
+      let Yc = 0,
+        Yn = 0,
+        Froude = 0,
+        tipoFlujo = '—',
+        Ymax = 0,
+        chequeoYn = '—';
+      let fuerzaTractiva = 0,
+        chequeoFT = '—';
+      if (Q != null && Q > 0 && S != null && S > 0 && n != null && n > 0) {
+        DcalcPulg = Math.round(((diametroManning(Q / 1000, n, S) * 1000) / 25.4) * 100) / 100;
+      }
+      if (Q != null && Q > 0 && S != null && S > 0 && n != null && n > 0 && DintMm > 0) {
+        const hc = calcHydraulicCheck({ Q, S, n, DintMm });
+        Qo = hc.Qo;
+        Vo = hc.Vo;
+        qqo = hc.qqo;
+        Vreal = hc.Vreal;
+        chequeoV = hc.chequeoV;
+        Yc = hc.Yc;
+        Yn = hc.Yn;
+        Froude = hc.Froude;
+        tipoFlujo = hc.tipoFlujo;
+        Ymax = hc.Ymax;
+        chequeoYn = hc.chequeoYn;
+        fuerzaTractiva = hc.fuerzaTractiva;
+        chequeoFT = hc.chequeoFT;
+      }
+      return {
+        tKey,
+        id: t.id,
+        piso: t.piso,
+        udPropias,
+        udAcum,
+        nSalidas,
+        K,
+        Q,
+        n,
+        sVal,
+        DcalcPulg,
+        DdisPulg,
+        DintMm,
+        Qo,
+        Vo,
+        qqo,
+        Vreal,
+        chequeoV,
+        Yc,
+        Yn,
+        Froude,
+        tipoFlujo,
+        Ymax,
+        chequeoYn,
+        fuerzaTractiva,
+        chequeoFT,
+      };
+    });
 }
 
 // Cálculo de unidades de descarga — same connectivity graph as computeSanRows, different columns
 // (aparato counts per tramo instead of the hydraulic design check).
-export function computeUdTable(tramosSan: Tramo[], plans: PlanItem[], mergedBase: MergedApBase[]): MemoriaTable | null {
-  const displayTramos = tramosSan.filter(t => t.tipo === 'ramal' && !t.esBajante).toSorted((a, b) => (a.piso || 0) - (b.piso || 0));
+export function computeUdTable(
+  tramosSan: Tramo[],
+  plans: PlanItem[],
+  mergedBase: MergedApBase[],
+): MemoriaTable | null {
+  const displayTramos = tramosSan
+    .filter((t) => t.tipo === 'ramal' && !t.esBajante)
+    .toSorted((a, b) => (a.piso || 0) - (b.piso || 0));
   if (displayTramos.length === 0) return null;
   const { componentTotalMap } = buildSanConnectivity(tramosSan, plans, mergedBase);
 
-  const headers = ['Tramo', 'Nivel', 'Inicio', 'Fin', ...mergedBase.map(d => `${d.nombre} (${d.ud} UD)`), 'Parcial', 'Total'];
-  const headerGroups: (string | MemoriaHeaderGroup)[] = ['Tramo', 'Nivel', 'Inicio', 'Fin', { label: 'Aparatos', span: mergedBase.length }, { label: 'Unidades de descarga', span: 2 }];
-  const rows = displayTramos.map(t => {
+  const headers = [
+    'Tramo',
+    'Nivel',
+    'Inicio',
+    'Fin',
+    ...mergedBase.map((d) => `${d.nombre} (${d.ud} UD)`),
+    'Parcial',
+    'Total',
+  ];
+  const headerGroups: (string | MemoriaHeaderGroup)[] = [
+    'Tramo',
+    'Nivel',
+    'Inicio',
+    'Fin',
+    { label: 'Aparatos', span: mergedBase.length },
+    { label: 'Unidades de descarga', span: 2 },
+  ];
+  const rows = displayTramos.map((t) => {
     const tKey = t._key || `${t.id}-${t.piso}`;
     const parcial = calcUDparcial(t, mergedBase);
     const acum = componentTotalMap[tKey] || 0;
-    const ini = t.ini && typeof t.ini === 'object' ? `${(t.ini as { x: number; y: number }).x},${(t.ini as { x: number; y: number }).y}` : t.ini || '—';
-    const fin = t.fin && typeof t.fin === 'object' ? `${(t.fin as { x: number; y: number }).x},${(t.fin as { x: number; y: number }).y}` : t.fin || '—';
-    return [t.id, pisoLbl(t.piso), ini, fin, ...mergedBase.map(d => t.fixtures[d.id] ?? 0), parcial, acum];
+    const ini =
+      t.ini && typeof t.ini === 'object'
+        ? `${(t.ini as { x: number; y: number }).x},${(t.ini as { x: number; y: number }).y}`
+        : t.ini || '—';
+    const fin =
+      t.fin && typeof t.fin === 'object'
+        ? `${(t.fin as { x: number; y: number }).x},${(t.fin as { x: number; y: number }).y}`
+        : t.fin || '—';
+    return [
+      t.id,
+      pisoLbl(t.piso),
+      ini,
+      fin,
+      ...mergedBase.map((d) => t.fixtures[d.id] ?? 0),
+      parcial,
+      acum,
+    ];
   });
 
   // Sumatoria row — matches the on-screen table's tfoot: per-aparato "cant × UD" subtotal, plus
   // the grand total UD for the whole network.
-  const totales = mergedBase.map(d => {
+  const totales = mergedBase.map((d) => {
     const cant = tramosSan.reduce((s, t) => s + (t.fixtures[d.id] || 0), 0);
     return { cant, ud: d.ud, subtotal: cant * d.ud };
   });
   const totalUD = totales.reduce((s, d) => s + d.subtotal, 0);
-  rows.push(['Σ', '', '', '', ...totales.map(d => `${d.cant} × ${d.ud} UD`), '', totalUD]);
+  rows.push(['Σ', '', '', '', ...totales.map((d) => `${d.cant} × ${d.ud} UD`), '', totalUD]);
 
   return { title: 'Cálculo de unidades de descarga', headerGroups, headers, rows };
 }
