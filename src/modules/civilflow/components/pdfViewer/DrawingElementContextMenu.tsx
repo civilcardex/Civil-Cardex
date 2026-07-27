@@ -227,10 +227,16 @@ function BajanteDirectionSelector({
 }) {
   const currentGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
   const gd = element.ghostData?.[currentGhostLabel];
+  const oppositeParentDir =
+    element.direccion === 'sube'
+      ? 'baja'
+      : element.direccion === 'baja'
+        ? 'sube'
+        : element.direccion;
   const ghostDir = isGhostClick
     ? gd && gd.direccion !== undefined
       ? gd.direccion
-      : element.direccion
+      : oppositeParentDir
     : element.direccion;
 
   const updateGhostField = (field: string, val: string) => {
@@ -1250,6 +1256,25 @@ function BajanteConnectionPanel({
                               // with the new selection instead of blocking with an alert.
                             }
                             if (engineRef.current) {
+                              const accessoryVal = val as string;
+                              if (accessoryVal === 'sifon' && ramalEl.net === 'san' && !isStart) {
+                                engineRef.current.triggerAlert(
+                                  'Sifón al revés',
+                                  'El sifón debe ir en el extremo de ENTRADA (inicio del ramal). Colócalo en el otro extremo.',
+                                );
+                                return;
+                              }
+                              if (
+                                (accessoryVal === 'llaveTerminal' ||
+                                  accessoryVal === 'teeLlaveTerminal') &&
+                                isStart
+                              ) {
+                                engineRef.current.triggerAlert(
+                                  'Llave terminal al revés',
+                                  'La llave terminal debe ir en el extremo de SALIDA (fin del ramal). Colócala en el otro extremo.',
+                                );
+                                return;
+                              }
                               const oldVal = ramalEl[fieldAcc] || '';
                               const updates: Record<string, unknown> = { [fieldAcc]: val };
                               if (val && !ramalEl[fieldDiam]) {
@@ -1286,9 +1311,64 @@ function BajanteConnectionPanel({
                         </select>
                       </div>
 
-                      {/* Diámetro de accesorio ya no es editable por separado — siempre es el
-                      diámetro del ramal (ver el "Diámetro de ramal" selector y el onChange que
-                      mantiene diametroInicio/diametroFin sincronizados). */}
+                      {/* Diámetro del accesorio — defaults to ramal's own diameter, validates
+                          the chosen value is not smaller than the ramal's. */}
+                      {ramalEl[fieldAcc] &&
+                        (() => {
+                          const matShort = ramalEl.material || (ramalEl.net === 'san' ? 'PVC' : '');
+                          const diamList =
+                            (ramalEl.net === 'san' && DIAM_BY_MAT['PVC']) ||
+                            DIAM_BY_MAT[matShort] ||
+                            [];
+                          if (diamList.length === 0) return null;
+                          const mainDiam = ramalEl.diametro || '';
+                          const currentDiam = ramalEl[fieldDiam] || mainDiam;
+                          return (
+                            <div style={{ marginTop: 6 }}>
+                              <div style={{ fontSize: 12, color: '#849495', marginBottom: 2 }}>
+                                Diámetro del accesorio
+                              </div>
+                              <select
+                                value={currentDiam}
+                                aria-label="Diámetro del accesorio"
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  if (v && mainDiam) {
+                                    const inchFrom = (d: string) => {
+                                      const q = d.indexOf('"');
+                                      return q > 0 ? d.slice(0, q) : d;
+                                    };
+                                    if (
+                                      diamPulgFromLabel(inchFrom(v)) <
+                                      diamPulgFromLabel(inchFrom(mainDiam))
+                                    ) {
+                                      engineRef.current?.triggerAlert(
+                                        'Diámetro no permitido',
+                                        'El diámetro del accesorio no puede ser menor al diámetro del ramal.',
+                                      );
+                                      return;
+                                    }
+                                  }
+                                  const u: Record<string, unknown> = { [fieldDiam]: v || mainDiam };
+                                  engineRef.current?.updateElementById(ramalEl.id, u);
+                                  setContextMenuState((prev) =>
+                                    prev ? { ...prev, element: { ...prev.element, ...u } } : null,
+                                  );
+                                  if (selElement?.id === ramalEl.id) {
+                                    setSelElement({ ...selElement, ...u });
+                                  }
+                                }}
+                                style={DrawingElementContextMenu_S2}
+                              >
+                                {diamList.map((d) => (
+                                  <option key={d.n} value={d.n}>
+                                    {d.n}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          );
+                        })()}
 
                       {ramalEl.net !== 'san' && (
                         <div>
@@ -2026,6 +2106,59 @@ function RamalMenu() {
         setDiamSel={ctx.setDiamSel}
         planosCtx={ctx.planosCtx}
       />
+      <div
+        style={{
+          padding: '4px 8px',
+          borderTop: '1px solid #3a494a',
+          marginTop: 4,
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => {
+            const eng = engineRef.current;
+            if (!eng) return;
+            // Flip the ramal in place: reverses pts + swaps every endpoint-symmetric field.
+            // Flow-direction arrow (rendered live from pts[0] vs pts[last]) flips automatically.
+            const r = eng.ramales.find((x) => x.id === ramalEl.id);
+            if (!r) return;
+            const tmpPts = r.pts.map((p) => [...p]);
+            r.pts = tmpPts.reverse();
+            const tmpAcc = r.accesorioInicio;
+            r.accesorioInicio = r.accesorioFin;
+            r.accesorioFin = tmpAcc;
+            const tmpDiam = r.diametroInicio;
+            r.diametroInicio = r.diametroFin;
+            r.diametroFin = tmpDiam;
+            const tmpApp = r.aparatoInicio;
+            r.aparatoInicio = r.aparatoFin;
+            r.aparatoFin = tmpApp;
+            const tmpIniFin = r.ini;
+            r.ini = r.fin;
+            r.fin = tmpIniFin;
+            // accMed keys shift because interior vertices index in the new order.
+            if (r.accMed) {
+              const oldMed = r.accMed;
+              const len = r.pts.length;
+              const newMed: Record<string, string> = {};
+              for (const [k, v] of Object.entries(oldMed)) {
+                const m = k.match(/^accMed(\d+)$/);
+                if (!m) continue;
+                const oldIdx = parseInt(m[1], 10);
+                const newIdx = len - 1 - oldIdx;
+                newMed[`accMed${newIdx}`] = v;
+              }
+              r.accMed = newMed;
+            }
+            eng.render();
+            eng._markDirty();
+            ctx.setContextMenuState(null);
+          }}
+          style={DrawingElementContextMenu_S13}
+        >
+          ⇄ Invertir dirección del flujo
+        </button>
+      </div>
       <div
         style={{
           padding: '4px 8px',
