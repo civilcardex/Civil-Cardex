@@ -202,10 +202,13 @@ function maxDiametroLabel(a: string, b: string): string {
 export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: PlanoRamal): void {
   if (!incoming.pts || incoming.pts.length < 2) return;
   const TOL = 0.5;
+  // San + vent share junctions as one subnet — allow cross-net endpoint detection here too.
+  const sameNetGroup = (a: string, b: string) =>
+    a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
   const endpoints = [incoming.pts[0], incoming.pts[incoming.pts.length - 1]];
   for (const ep of endpoints) {
     for (const existing of engine.ramales) {
-      if (existing.id === incoming.id || existing.net !== incoming.net) continue;
+      if (existing.id === incoming.id || !sameNetGroup(existing.net, incoming.net)) continue;
       if (!existing.pts || existing.pts.length < 2) continue;
       if (existing.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL)) {
         // Endpoint-to-endpoint (or endpoint-onto-a-vertex) join — not a mid-body tee, so nothing
@@ -268,18 +271,9 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       const downstreamPts = [[ep[0], ep[1]], ...existing.pts.slice(segIdx + 1)];
       existing.pts = [...existing.pts.slice(0, segIdx + 1), [ep[0], ep[1]]];
       existing.totalL = calculateRamalLength(existing.pts, engine);
-      // The truncated `existing` always ends EXACTLY at the junction (its new last point) — that's
-      // its own endpoint now, never an interior vertex, so this belongs in accesorioFin, not
-      // accMed. accMed here was silently invisible: the render pass explicitly skips any accMed
-      // index that equals a ramal's own last index (accMed is for INTERIOR vertices only), so the
-      // tee glyph never actually drew, and delete-cleanup's endpoint-position matching never
-      // resolved it as an endpoint marker either — accessory tallies (which don't apply that
-      // bounds check) still silently counted it forever, even after the junction was long deleted.
-      // Gas uses its own tee catalog id (te_linea/te_ramal), not teeDirecto — writing teeDirecto
-      // there wasn't a valid gas accessory at all, so gas's own accessory tally never counted it
-      // and delete-cleanup never recognized it either.
-      existing.accesorioFin = existing.net === 'gas' ? 'te_linea' : 'teeDirecto';
-      existing.diametroFin = existing.diametro || '';
+      // DO NOT set accesorioFin here — let detectAccesorioTrigger + the modal assign it.
+      // Setting it prematurely makes the alreadyResolved sweep skip the modal entirely,
+      // so the user never gets to pick the actual tee type (teeSube, teeBaja, yee, etc.).
 
       const netDef = NETS.find((n) => n.id === existing.net);
       const pfx = netDef ? netDef.lbl : 'R';
@@ -454,19 +448,38 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       }
     }
   }
-  // AF/AC/gas: detect codos/tees at angle changes, perpendicular crossings, and junctions formed
-  // with another separately-drawn ramal — shared with handleDragUp so a drag can trigger the
-  // same modal when it newly creates one of these junctions.
-  if (['af', 'ac', 'gas'].includes(r.net) && engine.triggerAccesorioModal) {
-    const trigger = detectAccesorioTrigger(engine, r.id);
-    if (trigger) engine.triggerAccesorioModal(trigger);
-  }
+  // Run _markDirty BEFORE checking the modal so autoDetectRamalConnections has a chance to
+  // detect any new bilateral crossing the user just created by finishing the ramal.
   engine.activeRamal = null;
   engine.selId = r.id;
   engine._emitSelect(r);
   engine._emitStatus(_statusMsg(engine));
   engine.render();
   engine._markDirty();
+
+  // AF/AC/gas: detect codos/tees at angle changes, perpendicular crossings, and junctions formed
+  // with another separately-drawn ramal — shared with handleDragUp so a drag can trigger the
+  // same modal when it newly creates one of these junctions. San/ll/vent junctions auto-create
+  // via calcSanitaryAccessories + renderJunctions — no modal needed.
+  if ((r.net === 'af' || r.net === 'ac' || r.net === 'gas') && engine.triggerAccesorioModal) {
+    // Tee salida bilateral: fire if a NEW perpendicular crossing was just detected on this ramal.
+    const bilateral = engine._pendingBilateral;
+    if (bilateral) {
+      engine._pendingBilateral = null;
+      engine.triggerAccesorioModal({
+        ramalId: bilateral.ramalId,
+        angleDeg: 90,
+        junctionIndex: -1,
+        point: bilateral.point,
+        net: r.net,
+        isTee: true,
+        isBilateral: true,
+      });
+    } else {
+      const trigger = detectAccesorioTrigger(engine, r.id);
+      if (trigger) engine.triggerAccesorioModal(trigger);
+    }
+  }
 }
 
 /** Cancels the active ramal drawing without persisting. @param engine Engine core instance. */

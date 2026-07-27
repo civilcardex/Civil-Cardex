@@ -3,10 +3,18 @@ import type { PlanoRamal, PlanoBajante } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { segmentStrictIntersectionPoint } from './drawingAngles';
 
-export { _renumberRamales, _renumberBajantes, _renumberMontantes, _renumberAreas } from './networkRenumber';
+export {
+  _renumberRamales,
+  _renumberBajantes,
+  _renumberMontantes,
+  _renumberAreas,
+} from './networkRenumber';
 export { calcSanitaryAccessories, calcHydroAccessories } from './networkSanitary';
 
-export function getElementsByNet(engine: IPlanoEngineCore, netId: string): Array<{
+export function getElementsByNet(
+  engine: IPlanoEngineCore,
+  netId: string,
+): Array<{
   type: string;
   id: string;
   label: string;
@@ -77,17 +85,21 @@ export function setNetLocked(engine: IPlanoEngineCore, netId: string, locked: bo
 }
 
 export function clearNet(engine: IPlanoEngineCore, netId: string): void {
-  engine.ramales = engine.ramales.filter(r => r.net !== netId);
-  engine.bajantes = engine.bajantes.filter(b => b.net !== netId);
-  engine.areas = engine.areas.filter(a => a.net !== netId);
+  engine.ramales = engine.ramales.filter((r) => r.net !== netId);
+  engine.bajantes = engine.bajantes.filter((b) => b.net !== netId);
+  engine.areas = engine.areas.filter((a) => a.net !== netId);
   if (engine.textAnnots) engine.textAnnots.length = 0;
   if (engine.dims) engine.dims.length = 0;
   engine._netCounts[netId] = { ramal: 0, tributario: 0 };
   engine.activeRamal = null;
   if (engine.selId) {
-    const stillExists = engine.ramales.find((r) => r.id === engine.selId)
-      || engine.bajantes.find((b) => b.id === engine.selId);
-    if (!stillExists) { engine.selId = null; engine._emitSelect(null); }
+    const stillExists =
+      engine.ramales.find((r) => r.id === engine.selId) ||
+      engine.bajantes.find((b) => b.id === engine.selId);
+    if (!stillExists) {
+      engine.selId = null;
+      engine._emitSelect(null);
+    }
   }
   engine.render();
   engine._markDirty();
@@ -95,21 +107,28 @@ export function clearNet(engine: IPlanoEngineCore, netId: string): void {
 
 export function setPadreTributario(engine: IPlanoEngineCore, ramalId: string | null): void {
   if (engine.tipoTramo !== 'tributario') return;
-  const padre = engine.ramales.find(r => r.id === ramalId && r.net === engine.activeNet && r.tipo === 'ramal');
+  const padre = engine.ramales.find(
+    (r) => r.id === ramalId && r.net === engine.activeNet && r.tipo === 'ramal',
+  );
   engine.padreTributario = padre ? padre.id : null;
   engine.render();
 }
 
 export function getPadreTributario(engine: IPlanoEngineCore): PlanoRamal | null {
   if (!engine.padreTributario) return null;
-  return engine.ramales.find(r => r.id === engine.padreTributario) as PlanoRamal || null;
+  return (engine.ramales.find((r) => r.id === engine.padreTributario) as PlanoRamal) || null;
 }
 
 export function getRamalesPadre(engine: IPlanoEngineCore): PlanoRamal[] {
-  return engine.ramales.filter(r => r.net === engine.activeNet && r.tipo === 'ramal') as unknown as PlanoRamal[];
+  return engine.ramales.filter(
+    (r) => r.net === engine.activeNet && r.tipo === 'ramal',
+  ) as unknown as PlanoRamal[];
 }
 
-export function setRamalDefaults(engine: IPlanoEngineCore, d: Partial<{ material: string; diametro: string; pendiente: number }> | null): void {
+export function setRamalDefaults(
+  engine: IPlanoEngineCore,
+  d: Partial<{ material: string; diametro: string; pendiente: number }> | null,
+): void {
   engine._ramalDefaults = {
     material: d?.material || '',
     diametro: d?.diametro || '',
@@ -119,7 +138,7 @@ export function setRamalDefaults(engine: IPlanoEngineCore, d: Partial<{ material
 
 export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
   if (!engine.nivelActual) return [];
-  return engine.bajantes.filter(b => {
+  return engine.bajantes.filter((b) => {
     if (b.tipo === 'contador' || b.tipo === 'calentador' || b.tipo === 'red_publica') return false;
     if (b.desplazamientos && b.desplazamientos[engine.nivelActual!.label || '']) return true;
     const base = Math.min(b.nptBase || 0, b.nptCima || 0);
@@ -131,15 +150,14 @@ export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
       return true;
     }
     const superior = engine.nptLevels
-      .filter(l => (l.npt || 0) > npt)
+      .filter((l) => (l.npt || 0) > npt)
       .sort((a, b) => (a.npt || 0) - (b.npt || 0))[0]?.npt;
     return superior !== undefined && (b.nptBase === superior || b.nptCima === superior);
   }) as unknown as PlanoBajante[];
 }
 
-
-import { ACC_ABBR } from "../../utils/accessoryAbbreviations";
-import { APARATOS_DEF } from "../../constants/engineeringDataFixtures";
+import { ACC_ABBR } from '../../utils/accessoryAbbreviations';
+import { APARATOS_DEF } from '../../constants/engineeringDataFixtures';
 
 // A codo reventilado junction is a 'vent' ramal endpoint coincident with a 'san' ramal point
 // (see renderVentCodos.ts, which uses the same 0.5-unit threshold to draw the symbol there).
@@ -148,7 +166,7 @@ import { APARATOS_DEF } from "../../constants/engineeringDataFixtures";
 export function findCodoReventiladoLinks(
   engine: IPlanoEngineCore,
   ramal: PlanoRamal,
-  ptIdx: number
+  ptIdx: number,
 ): { id: string; ptIdx: number }[] {
   const pt = ramal.pts[ptIdx];
   if (!pt) return [];
@@ -181,7 +199,10 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
   const lvlLabel = engine.nivelActual?.label ?? '';
   const ACC_LABELS = ACC_ABBR;
 
-  const findEndpointTarget = (r: PlanoRamal, pt: number[]): { code: string; isAcc: boolean; ref: PlanoBajante | PlanoRamal | null } | null => {
+  const findEndpointTarget = (
+    r: PlanoRamal,
+    pt: number[],
+  ): { code: string; isAcc: boolean; ref: PlanoBajante | PlanoRamal | null } | null => {
     const ptDist = (b: { x: number; y: number }) => Math.hypot(pt[0] - b.x, pt[1] - b.y);
 
     const dispMap = (b: PlanoBajante) => {
@@ -195,7 +216,10 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
       if (b.net !== r.net) continue;
       const pos = dispMap(b);
       const d = ptDist(pos);
-      if (d < bestBajDist) { bestBajDist = d; bestBaj = b; }
+      if (d < bestBajDist) {
+        bestBajDist = d;
+        bestBaj = b;
+      }
     }
     if (bestBaj && bestBajDist <= 0.5) {
       const code = bestBaj.code || bestBaj.id;
@@ -210,7 +234,10 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
       if (!rr.pts || rr.pts.length < 1) continue;
       for (const pt2 of rr.pts) {
         const d = ptDist({ x: pt2[0], y: pt2[1] });
-        if (d < bestRamDist) { bestRamDist = d; bestRam = rr; }
+        if (d < bestRamDist) {
+          bestRamDist = d;
+          bestRam = rr;
+        }
       }
     }
     if (bestRam && bestRamDist <= 0.5) {
@@ -232,7 +259,7 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
     const appIni = r.aparatoInicio;
     let tStart = null;
     if (appIni) {
-      const def = APARATOS_DEF.find(x => x.id === appIni);
+      const def = APARATOS_DEF.find((x) => x.id === appIni);
       const name = def ? def.sigla.replace(':', '').trim() : appIni;
       tStart = { code: name.toUpperCase(), isAcc: true, ref: null };
     } else if (accIni) {
@@ -246,7 +273,7 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
     const appFin = r.aparatoFin;
     let tEnd = null;
     if (appFin) {
-      const def = APARATOS_DEF.find(x => x.id === appFin);
+      const def = APARATOS_DEF.find((x) => x.id === appFin);
       const name = def ? def.sigla.replace(':', '').trim() : appFin;
       tEnd = { code: name.toUpperCase(), isAcc: true, ref: null };
     } else if (accFin) {
@@ -285,10 +312,15 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
     }
   }
 
-  // Recalculate bilateral crossings for AF/AC ramales
+  // Recalculate bilateral crossings for AF/AC ramales — two-pass: first collect into a map, then
+  // assign to BOTH ramales (each ramal must keep its own crossings so collectConnectedGraph can
+  // find the perpendicular neighbour during cascade drag). Doing this in one pass with a per-ramal
+  // `bilateralCrossings = []` reset wiped out the OTHER ramal's crossings because we were setting
+  // them inline — now we collect into a map and assign at the end so each ramal keeps its own.
+  const crossingsByRamal = new Map<string, number[][]>();
+
   for (const r of engine.ramales) {
     if (r.net !== 'af' && r.net !== 'ac') continue;
-    r.bilateralCrossings = []; // Reset crossings
     if (!r.pts || r.pts.length < 2) continue;
     const crossings: number[][] = [];
     for (let i = 0; i < r.pts.length - 1; i++) {
@@ -303,25 +335,80 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
           const oB = other.pts[j + 1];
           const crossPt = segmentStrictIntersectionPoint(segA, segB, oA, oB);
           if (!crossPt) continue;
-          
+
           // Check perpendicularity: dot product ≈ 0
-          const dxA = segB[0] - segA[0], dyA = segB[1] - segA[1];
-          const dxB = oB[0] - oA[0], dyB = oB[1] - oA[1];
-          const lenA = Math.hypot(dxA, dyA), lenB = Math.hypot(dxB, dyB);
+          const dxA = segB[0] - segA[0],
+            dyA = segB[1] - segA[1];
+          const dxB = oB[0] - oA[0],
+            dyB = oB[1] - oA[1];
+          const lenA = Math.hypot(dxA, dyA),
+            lenB = Math.hypot(dxB, dyB);
           if (lenA < 0.001 || lenB < 0.001) continue;
           const dot = (dxA * dxB + dyA * dyB) / (lenA * lenB);
           if (Math.abs(dot) < 0.2) {
-            const exists = crossings.some(c => Math.hypot(c[0] - crossPt[0], c[1] - crossPt[1]) < 0.01);
+            const exists = crossings.some(
+              (c) => Math.hypot(c[0] - crossPt[0], c[1] - crossPt[1]) < 0.01,
+            );
             if (!exists) {
               crossings.push([crossPt[0], crossPt[1]]);
+              // Track by PAIR (sorted "idA|idB") rather than by position. Positions change when the
+              // ramales move (the original crossing slides to a new spot), but the PAIR stays stable
+              // so we don't re-fire the modal after every drag.
+              const [idA, idB] = [r.id, other.id].sort();
+              const pairKey = `${idA}|${idB}`;
+              const seenR = (r as unknown as { _seenBilateral?: string[] })._seenBilateral || [];
+              const seenO =
+                (other as unknown as { _seenBilateral?: string[] })._seenBilateral || [];
+              const alreadySeen = seenR.includes(pairKey) || seenO.includes(pairKey);
+              if (!seenR.includes(pairKey)) seenR.push(pairKey);
+              if (!seenO.includes(pairKey)) seenO.push(pairKey);
+              (r as unknown as { _seenBilateral?: string[] })._seenBilateral = seenR;
+              (other as unknown as { _seenBilateral?: string[] })._seenBilateral = seenO;
+              // Same pair-key for rejections: the rejection survives a drag too.
+              const rejectedR =
+                (r as unknown as { _rejectedBilateral?: string[] })._rejectedBilateral || [];
+              const rejectedOther =
+                (other as unknown as { _rejectedBilateral?: string[] })._rejectedBilateral || [];
+              const alreadyRejected =
+                rejectedR.includes(pairKey) || rejectedOther.includes(pairKey);
+              if (!alreadySeen && !alreadyRejected) {
+                // Modal target = the EXISTING ramal. Heuristic: if either side has prior pair-keys
+                // (a previously-confirmed crossing), it's the existing one. Otherwise pick the
+                // one that isn't the freshly drawn ramal — but we don't track draw time. Default
+                // to `other` (the one iterated through in the inner loop).
+                const targetId = other.id;
+                const targetPoint = [crossPt[0], crossPt[1]];
+                if (!engine._pendingBilateral || engine._pendingBilateral.ramalId === targetId) {
+                  engine._pendingBilateral = { ramalId: targetId, point: targetPoint };
+                }
+              }
             }
           }
         }
       }
     }
     if (crossings.length > 0) {
-      r.bilateralCrossings = crossings;
+      crossingsByRamal.set(r.id, crossings);
     }
+  }
+
+  // Second pass: assign crossings to each ramal (and merge in crossings found from the OTHER side).
+  // Each crossing is shared between both ramales — we union both sides' detections.
+  for (const r of engine.ramales) {
+    if (r.net !== 'af' && r.net !== 'ac') continue;
+    const own = crossingsByRamal.get(r.id) || [];
+    const merged: number[][] = [...own];
+    for (const other of engine.ramales) {
+      if (other.id === r.id) continue;
+      if (other.net !== r.net) continue;
+      const otherCross = crossingsByRamal.get(other.id) || [];
+      for (const c of otherCross) {
+        if (!merged.some((m) => Math.hypot(m[0] - c[0], m[1] - c[1]) < 0.01)) {
+          merged.push([c[0], c[1]]);
+        }
+      }
+    }
+    r.bilateralCrossings = merged;
   }
 }
 
@@ -332,23 +419,28 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
 export function ensureRpCntRamal(engine: IPlanoEngineCore): void {
   const nets = ['af', 'ac'];
   for (const netId of nets) {
-    const contadores = engine.bajantes.filter(b => b.tipo === 'contador' && b.net === netId);
+    const contadores = engine.bajantes.filter((b) => b.tipo === 'contador' && b.net === netId);
     for (const cnt of contadores) {
-      const rps = engine.bajantes.filter(b => b.tipo === 'red_publica' && b.net === netId);
+      const rps = engine.bajantes.filter((b) => b.tipo === 'red_publica' && b.net === netId);
       if (rps.length === 0) continue;
       let nearestRP = rps[0];
       let minDist = Infinity;
       for (const rp of rps) {
         const d = Math.hypot(rp.x - cnt.x, rp.y - cnt.y);
-        if (d < minDist) { minDist = d; nearestRP = rp; }
+        if (d < minDist) {
+          minDist = d;
+          nearestRP = rp;
+        }
       }
       const rpId = nearestRP.code || nearestRP.id;
       const cntId = cnt.code || cnt.id;
-      const alreadyConnected = engine.ramales.some((r) =>
-        r.net === netId && ((r.ini === rpId && r.fin === cntId) || (r.ini === cntId && r.fin === rpId))
+      const alreadyConnected = engine.ramales.some(
+        (r) =>
+          r.net === netId &&
+          ((r.ini === rpId && r.fin === cntId) || (r.ini === cntId && r.fin === rpId)),
       );
       if (alreadyConnected) continue;
-      const net = NETS.find(n => n.id === netId);
+      const net = NETS.find((n) => n.id === netId);
       const pfx = net ? net.lbl : 'R';
       if (!engine._netCounts[netId]) engine._netCounts[netId] = { ramal: 0, tributario: 0 };
       engine._netCounts[netId].ramal++;
@@ -360,8 +452,11 @@ export function ensureRpCntRamal(engine: IPlanoEngineCore): void {
         _net: netId,
         tipo: 'ramal',
         padre: null,
-        pts: [[nearestRP.x, nearestRP.y], [cnt.x, cnt.y]],
-        totalL: +(engine.pxToM(Math.hypot(cnt.x - nearestRP.x, cnt.y - nearestRP.y))).toFixed(3),
+        pts: [
+          [nearestRP.x, nearestRP.y],
+          [cnt.x, cnt.y],
+        ],
+        totalL: +engine.pxToM(Math.hypot(cnt.x - nearestRP.x, cnt.y - nearestRP.y)).toFixed(3),
         label: pfx + ramCnt,
         ini: rpId,
         fin: cntId,

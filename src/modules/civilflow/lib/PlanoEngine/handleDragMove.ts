@@ -5,6 +5,8 @@ import { checkRamalAngles } from './drawingAngles';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 
 export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): void {
+  const sameNetGroup = (a: string, b: string) =>
+    a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
   if (engine.multiDrag) {
     const tp = engine.toPlane(x, y);
     const dx = tp.x - engine.multiDrag.startX;
@@ -14,7 +16,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       if (!orig) continue;
       if (orig.type === 'ramal') {
         const r = engine.ramales.find((rr) => rr.id === id);
-        if (r && !r.bloqueado) {
+        if (r) {
           r.pts = (orig.origPts || []).map((p) => [p[0] + dx, p[1] + dy]);
           r.labelX = (orig.origLabelX || 0) + dx;
           r.labelY = (orig.origLabelY || 0) + dy;
@@ -50,7 +52,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       let slideDx = dx,
         slideDy = dy;
       for (const other of engine.ramales) {
-        if (other.id === r.id || other.net !== r.net) continue;
+        if (other.id === r.id || !sameNetGroup(other.net, r.net)) continue;
         for (let si = 0; si < other.pts.length - 1; si++) {
           const [ax, ay] = other.pts[si],
             [bx, by] = other.pts[si + 1];
@@ -591,7 +593,8 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         while (frontier.length > 0) {
           const nextFrontier: number[][] = [];
           for (const other of engine.ramales) {
-            if (other.id === r.id || other.net !== r.net) continue;
+            if (other.id === r.id || !sameNetGroup(other.net, r.net) || movedRamalIds.has(other.id))
+              continue;
             let changed = false;
             for (let i = 0; i < other.pts.length; i++) {
               const matches = frontier.some(

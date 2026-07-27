@@ -29,6 +29,12 @@ import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 // ramal should only block the bajante's own move when the two are already touching; while a
 // dashed line is still showing (not yet snapped) the designer needs to freely slide the bajante
 // over to connect it, lock or no lock.
+// Ventilación is a subnet of sanitaria — san and vent ramales can connect at shared bajantes and
+// move as a single connected network, so the cascade treats them as one net group everywhere.
+function sameNetGroup(a: string, b: string): boolean {
+  return a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
+}
+
 // BFS over shared endpoints, transitively — starting from a ramal being dragged, finds every
 // ramal reachable by a chain of touching endpoints (or tributario-of-a-reachable-ramal), plus
 // every bajante that discharges from any ramal in that reachable set. Used so dragging one ramal
@@ -49,7 +55,14 @@ export function collectConnectedGraph(
 } {
   const TOL = 0.5;
   const visitedRamales = new Set<string>([startRamal.id]);
-  let frontier: number[][] = [startRamal.pts[0], startRamal.pts[startRamal.pts.length - 1]];
+  // Frontier tracks each frontier point alongside the ramal id it came from — required so we
+  // can check the ramal's bilateralCrossings (cross-perpendicular tee salida bilateral links)
+  // when deciding which neighbour to pull into the cascade next.
+  type FrontierPt = { pt: number[]; fromId: string };
+  let frontier: FrontierPt[] = [
+    { pt: startRamal.pts[0], fromId: startRamal.id },
+    { pt: startRamal.pts[startRamal.pts.length - 1], fromId: startRamal.id },
+  ];
   const resultRamales: {
     id: string;
     origPts: [number, number][];
@@ -57,28 +70,92 @@ export function collectConnectedGraph(
     origLabelY?: number;
   }[] = [];
 
+  const startNet = startRamal.net;
+
+  // A ramal "touches" the cascade frontier if ANY of its points (not just endpoints) is on top
+  // of a frontier point. Critical for the san↔vent case: a vent ramal that passes THROUGH a
+  // san ramal's junction (interior vertex, not endpoint) would be missed by endpoint-only checks.
+  const touchesAt = (other: PlanoRamal, pt: number[]) =>
+    other.pts.some((p) => Math.hypot(p[0] - pt[0], p[1] - pt[1]) < TOL);
+
+  // Same-direction check: does the OTHER ramal have a bilateral crossing at any frontier point?
+  const nearBilateral = (other: PlanoRamal, fp: number[]) =>
+    (other.bilateralCrossings || []).some((c) => Math.hypot(c[0] - fp[0], c[1] - fp[1]) < TOL);
+
+  // Quick lookup of any visited ramal by id for the reverse-direction check below.
+  const allRamalesById = new Map(engine.ramales.map((rr) => [rr.id, rr]));
+
   while (frontier.length > 0) {
-    const nextFrontier: number[][] = [];
+    const nextFrontier: FrontierPt[] = [];
     for (const other of engine.ramales) {
-      if (visitedRamales.has(other.id) || other.net !== startRamal.net || !other.pts?.length)
+      if (visitedRamales.has(other.id) || !sameNetGroup(other.net, startNet) || !other.pts?.length)
         continue;
-      const oStart = other.pts[0],
-        oEnd = other.pts[other.pts.length - 1];
-      const touchesFrontier = frontier.some(
-        (fp) =>
-          Math.hypot(oStart[0] - fp[0], oStart[1] - fp[1]) < TOL ||
-          Math.hypot(oEnd[0] - fp[0], oEnd[1] - fp[1]) < TOL,
-      );
+      const touchesFrontier = frontier.some((fp) => touchesAt(other, fp.pt));
+      // Bilateral tee salida bilateral: the FROM ramal owns a bilateralCrossings entry at some
+      // frontier point AND the OTHER ramal has the matching crossing. The crossing is at the
+      // INTERIOR of both ramales (perpendicular tee), not at endpoints — that's why we add the
+      // crossing points to the frontier when a ramal joins, so the perpendicular neighbour can
+      // find the link next iteration.
+      const fromBilateral = frontier.some((fp) => {
+        const fromR = allRamalesById.get(fp.fromId);
+        return !!fromR && nearBilateral(fromR, fp.pt) && nearBilateral(other, fp.pt);
+      });
       const isTributarioChild = !!other.padre && visitedRamales.has(other.padre);
-      if (touchesFrontier || isTributarioChild) {
+      if (touchesFrontier || fromBilateral || isTributarioChild) {
         visitedRamales.add(other.id);
+        const oStart = other.pts[0],
+          oEnd = other.pts[other.pts.length - 1];
         resultRamales.push({
           id: other.id,
           origPts: other.pts.map((pt) => [...pt] as [number, number]),
           origLabelX: other.labelX,
           origLabelY: other.labelY,
         });
-        nextFrontier.push(oStart, oEnd);
+        nextFrontier.push({ pt: oStart, fromId: other.id });
+        nextFrontier.push({ pt: oEnd, fromId: other.id });
+        // Also seed the frontier with this ramal's bilateral crossings — the perpendicular
+        // neighbour must be discoverable from the next iteration's BFS. Without this, a tee
+        // bilateral crossing (which sits in the INTERIOR of both ramales, not at any endpoint)
+        // never makes it into the frontier and the perpendicular ramal never joins the cascade.
+        for (const cp of other.bilateralCrossings || []) {
+          nextFrontier.push({ pt: cp, fromId: other.id });
+        }
+      }
+    }
+    // Also walk THROUGH bajantes: a ramal connected to a bajante at the frontier position joins
+    // the cascade too. This is the san→bajante→vent hop that direct endpoint sharing misses.
+    for (const b of engine.bajantes) {
+      if (!sameNetGroup(b.net, startNet)) continue;
+      const touchesFrontier = frontier.some(
+        (fp) => Math.hypot(b.x - fp.pt[0], b.y - fp.pt[1]) < TOL,
+      );
+      if (!touchesFrontier) continue;
+      for (const other of engine.ramales) {
+        if (
+          visitedRamales.has(other.id) ||
+          !sameNetGroup(other.net, startNet) ||
+          !other.pts?.length
+        )
+          continue;
+        const oStart = other.pts[0],
+          oEnd = other.pts[other.pts.length - 1];
+        const nearBaj =
+          Math.hypot(oStart[0] - b.x, oStart[1] - b.y) < TOL ||
+          Math.hypot(oEnd[0] - b.x, oEnd[1] - b.y) < TOL ||
+          other.pts.some((p) => Math.hypot(p[0] - b.x, p[1] - b.y) < TOL);
+        if (!nearBaj) continue;
+        const isTributarioChild = !!other.padre && visitedRamales.has(other.padre);
+        if (nearBaj || isTributarioChild) {
+          visitedRamales.add(other.id);
+          resultRamales.push({
+            id: other.id,
+            origPts: other.pts.map((pt) => [...pt] as [number, number]),
+            origLabelX: other.labelX,
+            origLabelY: other.labelY,
+          });
+          nextFrontier.push({ pt: oStart, fromId: other.id });
+          nextFrontier.push({ pt: oEnd, fromId: other.id });
+        }
       }
     }
     frontier = nextFrontier;
@@ -93,7 +170,7 @@ export function collectConnectedGraph(
     atIdx: number;
   }[] = [];
   for (const b of engine.bajantes) {
-    if (b.net !== startRamal.net) continue;
+    if (!sameNetGroup(b.net, startNet)) continue;
     if (!b.recibeDeIds?.some((rid) => visitedRamales.has(rid))) continue;
     // atIdx is legacy/unused downstream — kept only to satisfy the existing ramalDrag.connBaj shape.
     resultBajantes.push({
@@ -527,12 +604,11 @@ function _trySelRamalDrag(
     return true;
   }
 
-  // From here on, any drag bends the ramal's actual path — bloqueado must block these.
-  if (sel.bloqueado) return false;
-
   for (let i = 0; i < sel.pts.length; i++) {
     const pc = engine.toCvs(sel.pts[i][0], sel.pts[i][1]);
     if (Math.hypot(x - pc.x, y - pc.y) < 15) {
+      // Endpoint/vertex drag bends the ramal's shape — bloqueado blocks this.
+      if (sel.bloqueado) return false;
       let slideConstraint = undefined;
       const isEndpoint = i === 0 || i === sel.pts.length - 1;
       // An accessory drawn mid-body (accMed) can be moved, but only sliding along the straight
@@ -555,7 +631,7 @@ function _trySelRamalDrag(
         // outright just pushed users onto the unconstrained body-drag path instead.
         const pt = sel.pts[i];
         for (const other of engine.ramales) {
-          if (other.id === sel.id || other.net !== sel.net) continue;
+          if (other.id === sel.id || !sameNetGroup(other.net, sel.net)) continue;
           for (let si = 0; si < other.pts.length - 1; si++) {
             const [ax, ay] = other.pts[si],
               [bx, by] = other.pts[si + 1];

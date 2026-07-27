@@ -418,6 +418,9 @@ export interface IPlanoEngineCore {
   selectedGhostId: string | null;
   _isGhostSel: boolean;
   _yeeFlashKey: string | null;
+  // A bilateral crossing (tee salida bilateral) the engine just detected and wants the user to
+  // confirm via the accesorio modal — stores the existing ramal's id and the crossing point.
+  _pendingBilateral: { ramalId: string; point: number[] } | null;
   _hiddenNets: Set<string>;
   _lockedNets: Set<string>;
   activeNetworks: Set<string> | undefined;
@@ -570,5 +573,6 @@ export interface IPlanoEngineCore {
     point: number[];
     net: string;
     isTee?: boolean;
+    isBilateral?: boolean;
   }): void;
 }
