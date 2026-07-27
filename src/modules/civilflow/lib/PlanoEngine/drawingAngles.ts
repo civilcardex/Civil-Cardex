@@ -1,6 +1,12 @@
 import { pointToSegmentDist } from './HitTester';
 import type { IPlanoEngineCore } from './PlanoState';
 
+// San + vent share junctions as one subnet — the same accessor helper the cascade drag uses,
+// hoisted here so every detection path can check the resolved-accesorio sweep against both.
+function sameNetGroup(a: string, b: string): boolean {
+  return a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
+}
+
 /** Validates that all segment angles and internal turn angles in a ramal's point list conform to network-specific constraints. @returns true if valid. */
 export function checkRamalAngles(pts: number[][], net: string, tipo?: string): boolean {
   if (pts.length < 2) return true;
@@ -183,7 +189,7 @@ export function detectJunctionAccesorio(
 
   const TOL = 0.5;
   for (const r2 of engine.ramales) {
-    if (r2.id === r.id || r2.net !== r.net) continue;
+    if (r2.id === r.id || !sameNetGroup(r2.net, r.net)) continue;
     if (!r2.pts || r2.pts.length < 2) continue;
     for (const j of [0, r2.pts.length - 1]) {
       const p2 = r2.pts[j];
@@ -197,7 +203,8 @@ export function detectJunctionAccesorio(
       const rawAngle = (Math.acos(Math.max(-1, Math.min(1, dot))) * 180) / Math.PI;
       const turnAngle = 180 - rawAngle;
       if (Math.abs(turnAngle - 45) < 5 || Math.abs(turnAngle - 90) < 5) {
-        return { angleDeg: Math.round(turnAngle), otherRamalId: r2.id };
+        const snapped = Math.abs(turnAngle - 45) < Math.abs(turnAngle - 90) ? 45 : 90;
+        return { angleDeg: snapped, otherRamalId: r2.id };
       }
     }
   }
@@ -211,6 +218,7 @@ export interface AccesorioTrigger {
   point: number[];
   net: string;
   isTee: boolean;
+  isBilateral?: boolean;
 }
 
 // Single source of truth for "does this ramal need the accesorio-selection modal right now",
@@ -224,7 +232,7 @@ export function detectAccesorioTrigger(
   ramalId: string,
 ): AccesorioTrigger | null {
   const r = engine.ramales.find((x) => x.id === ramalId);
-  if (!r || !r.pts || r.pts.length < 2 || !['af', 'ac', 'gas'].includes(r.net)) return null;
+  if (!r || !r.pts || r.pts.length < 2) return null;
 
   const lastIdx = r.pts.length - 1;
   const endpointResolved = (idx: number) =>
@@ -240,7 +248,7 @@ export function detectAccesorioTrigger(
       const TOL = 0.5;
       let alreadyResolved = false;
       for (const rr of engine.ramales) {
-        if (rr.net !== r.net || !rr.pts) continue;
+        if (!sameNetGroup(rr.net, r.net) || !rr.pts || rr.id === r.id) continue;
         if (rr.accesorioInicio && Math.hypot(rr.pts[0][0] - ep[0], rr.pts[0][1] - ep[1]) < TOL) {
           alreadyResolved = true;
           break;
@@ -281,6 +289,41 @@ export function detectAccesorioTrigger(
   const isGas = r.net === 'gas';
   for (const epIdx of [0, lastIdx]) {
     if (endpointResolved(epIdx)) continue;
+    const ep = r.pts[epIdx];
+    // If ANY other ramal at this endpoint already wears an accesorio, the junction is resolved —
+    // don't pop the modal again just because a codo angle happens to exist here too.
+    let epAlreadyResolved = false;
+    {
+      const TOL = 0.5;
+      for (const rr of engine.ramales) {
+        if (!sameNetGroup(rr.net, r.net) || !rr.pts || rr.id === r.id) continue;
+        if (rr.accesorioInicio && Math.hypot(rr.pts[0][0] - ep[0], rr.pts[0][1] - ep[1]) < TOL) {
+          epAlreadyResolved = true;
+          break;
+        }
+        if (
+          rr.accesorioFin &&
+          Math.hypot(rr.pts[rr.pts.length - 1][0] - ep[0], rr.pts[rr.pts.length - 1][1] - ep[1]) <
+            TOL
+        ) {
+          epAlreadyResolved = true;
+          break;
+        }
+        if (rr.accMed) {
+          for (const [k, v] of Object.entries(rr.accMed)) {
+            const m = k.match(/^accMed(\d+)$/);
+            if (!m || !v) continue;
+            const p = rr.pts[parseInt(m[1], 10)];
+            if (p && Math.hypot(p[0] - ep[0], p[1] - ep[1]) < TOL) {
+              epAlreadyResolved = true;
+              break;
+            }
+          }
+          if (epAlreadyResolved) break;
+        }
+      }
+    }
+    if (epAlreadyResolved) continue;
     const junction = detectJunctionAccesorio(engine, r.id, epIdx);
     if (junction) {
       return {
@@ -311,9 +354,10 @@ export function detectAccesorioTrigger(
       const cosVal = Math.max(-1, Math.min(1, dot));
       const angleDeg = (Math.acos(cosVal) * 180) / Math.PI;
       if (Math.abs(angleDeg - 45) < 5 || Math.abs(angleDeg - 90) < 5) {
+        const snapped = Math.abs(angleDeg - 45) < Math.abs(angleDeg - 90) ? 45 : 90;
         return {
           ramalId: r.id,
-          angleDeg: Math.round(angleDeg),
+          angleDeg: snapped,
           junctionIndex: i,
           point: curr,
           net: r.net,
@@ -344,7 +388,7 @@ export function isTeeAtEndpoint(
   let throughRamalId: string | null = null;
   let anyOtherRamalId: string | null = null;
   for (const r of engine.ramales) {
-    if (r.net !== net) continue;
+    if (!sameNetGroup(r.net, net)) continue;
     if (!r.pts || r.pts.length < 2) continue;
     for (let i = 0; i < r.pts.length - 1; i++) {
       const p1 = r.pts[i];
@@ -355,7 +399,16 @@ export function isTeeAtEndpoint(
         const atP2 = Math.hypot(ep[0] - p2[0], ep[1] - p2[1]) < TOL;
         if (atP1 || atP2) {
           segmentCount++;
-          if (r.id !== currentRamalId && !anyOtherRamalId) anyOtherRamalId = r.id;
+          if (r.id !== currentRamalId) {
+            // Prefer a ramal that was NOT auto-created by a split (no mergesFrom) over a
+            // downstream stub that was — the accesorio must go on the genuine existing ramal.
+            if (
+              !anyOtherRamalId ||
+              (!r.mergesFrom && engine.ramales.find((x) => x.id === anyOtherRamalId)?.mergesFrom)
+            ) {
+              anyOtherRamalId = r.id;
+            }
+          }
         } else {
           segmentCount += 2;
           if (r.id !== currentRamalId) throughRamalId = r.id;
@@ -364,4 +417,99 @@ export function isTeeAtEndpoint(
     }
   }
   return { isTee: segmentCount >= 3, throughRamalId: throughRamalId ?? anyOtherRamalId };
+}
+
+// When two yee (45°) branch points sit within 10mm on the same ramal, they form a "tee salida
+// bilateral" (double yee). Detects whether ramalId belongs to such a pair.
+export function detectDoubleYeeTrigger(
+  engine: IPlanoEngineCore,
+  ramalId: string,
+): AccesorioTrigger | null {
+  const r = engine.ramales.find((x) => x.id === ramalId);
+  if (!r || !r.pts || r.pts.length < 2) return null;
+  const DOUBLE_YEE_MM = 10;
+  const TOL = 0.5;
+
+  // Collect yee-eligible vertices: must be on san/ll/vent, non-endpoint, with a 45° internal angle
+  type YeeVertex = { ramalId: string; idx: number; point: number[] };
+  const yeeVertices: YeeVertex[] = [];
+  const nets = ['san', 'll', 'vent'];
+  if (!nets.includes(r.net)) return null;
+
+  for (const rr of engine.ramales) {
+    if (!nets.includes(rr.net) || !rr.pts || rr.pts.length < 3) continue;
+    for (let i = 1; i < rr.pts.length - 1; i++) {
+      const prev = rr.pts[i - 1],
+        curr = rr.pts[i],
+        next = rr.pts[i + 1];
+      const d1x = curr[0] - prev[0],
+        d1y = curr[1] - prev[1];
+      const d2x = next[0] - curr[0],
+        d2y = next[1] - curr[1];
+      const len1 = Math.hypot(d1x, d1y),
+        len2 = Math.hypot(d2x, d2y);
+      if (len1 < 0.001 || len2 < 0.001) continue;
+      const dot = (d1x * d2x + d1y * d2y) / (len1 * len2);
+      const cosVal = Math.max(-1, Math.min(1, dot));
+      const angleDeg = (Math.acos(cosVal) * 180) / Math.PI;
+      if (Math.abs(angleDeg - 45) < 5) {
+        yeeVertices.push({ ramalId: rr.id, idx: i, point: curr });
+      }
+    }
+  }
+
+  // Find pairs of same-ramal yee vertices within DOUBLE_YEE_MM
+  for (let i = 0; i < yeeVertices.length; i++) {
+    for (let j = i + 1; j < yeeVertices.length; j++) {
+      const a = yeeVertices[i],
+        b = yeeVertices[j];
+      if (a.ramalId !== b.ramalId) continue;
+      const dist = Math.hypot(b.point[0] - a.point[0], b.point[1] - a.point[1]);
+      if (dist > DOUBLE_YEE_MM) continue;
+      // This ramal has a double yee — check if ramalId is one of the two yee-forming ramales
+      // or the through-ramal of one of them
+      if (
+        a.ramalId === ramalId ||
+        b.ramalId === ramalId ||
+        engine.ramales.some(
+          (rx) =>
+            rx.id === ramalId &&
+            rx.pts.some(
+              (pt) =>
+                Math.hypot(pt[0] - a.point[0], pt[1] - a.point[1]) < TOL ||
+                Math.hypot(pt[0] - b.point[0], pt[1] - b.point[1]) < TOL,
+            ),
+        )
+      ) {
+        // Check not already resolved
+        const ep = a.point;
+        let alreadyResolved = false;
+        for (const rr of engine.ramales) {
+          if (!sameNetGroup(rr.net, r.net) || !rr.pts) continue;
+          if (rr.accesorioInicio && Math.hypot(rr.pts[0][0] - ep[0], rr.pts[0][1] - ep[1]) < TOL) {
+            alreadyResolved = true;
+            break;
+          }
+          if (
+            rr.accesorioFin &&
+            Math.hypot(rr.pts[rr.pts.length - 1][0] - ep[0], rr.pts[rr.pts.length - 1][1] - ep[1]) <
+              TOL
+          ) {
+            alreadyResolved = true;
+            break;
+          }
+        }
+        if (alreadyResolved) continue;
+        return {
+          ramalId: a.ramalId,
+          angleDeg: 45,
+          junctionIndex: -1,
+          point: a.point,
+          net: r.net,
+          isTee: true,
+        };
+      }
+    }
+  }
+  return null;
 }
