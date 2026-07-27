@@ -652,6 +652,10 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     let ghostDir = b.direccion;
     if (gd && gd.direccion !== undefined) {
       ghostDir = gd.direccion;
+    } else if (b.direccion === 'sube') {
+      ghostDir = 'baja';
+    } else if (b.direccion === 'baja') {
+      ghostDir = 'sube';
     }
     // Same vector-drawn symbol as the parent's own circle (drawDireccionSymbol), not the old
     // unicode-glyph rendering — that was the actual visual mismatch with the parent.
@@ -708,7 +712,14 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       const lvlSuffix = pCorto ? `-${pCorto}` : '';
       const codeStr =
         (b.code ? b.code.replace(/#/g, '').toUpperCase() : '') + (b.code ? lvlSuffix : '');
-      const ghostDir = gd?.direccion || b.direccion;
+      let ghostDir = b.direccion;
+      if (gd?.direccion !== undefined) {
+        ghostDir = gd.direccion;
+      } else if (b.direccion === 'sube') {
+        ghostDir = 'baja';
+      } else if (b.direccion === 'baja') {
+        ghostDir = 'sube';
+      }
       const ghostDNom = gd?.dNominal || b.dNominal;
       let diamStr = '';
       if (b.diametro) {

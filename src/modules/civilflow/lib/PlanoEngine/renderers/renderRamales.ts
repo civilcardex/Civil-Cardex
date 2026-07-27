@@ -370,22 +370,14 @@ function drawExtremeAccessorySymbol(
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Tee bar sitting on the ramal, with a tick crossing it at each end — same thickness as the
-    // ramal pipe itself, not the (thinner) symbol lines above it.
-    ctx.lineWidth = 2 * engine.zoom; // matches drawRamalPath's own (unselected) pipe line width
+    // Tee bar sitting on the ramal — same thickness as the ramal pipe itself.
+    // (No end ticks — user requested they be removed for a cleaner teeLlaveTerminal look.)
+    ctx.lineWidth = 2 * engine.zoom;
     const barL = P(-1, 0),
       barR = P(1, 0);
-    const tickLA = P(-1, -0.46),
-      tickLB = P(-1, 0.46);
-    const tickRA = P(1, -0.46),
-      tickRB = P(1, 0.46);
     ctx.beginPath();
     ctx.moveTo(barL.x, barL.y);
     ctx.lineTo(barR.x, barR.y);
-    ctx.moveTo(tickLA.x, tickLA.y);
-    ctx.lineTo(tickLB.x, tickLB.y);
-    ctx.moveTo(tickRA.x, tickRA.y);
-    ctx.lineTo(tickRB.x, tickRB.y);
     ctx.stroke();
 
     // Everything above the ramal — thinner than the ramal bar itself.
@@ -1310,7 +1302,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     }
   });
 
-  // Draw all bilateral crossings (teeBilateral) - white circle with black border and '+' at perpendicular crossings
+  // Draw all bilateral crossings (teeBilateral) - black '+' at perpendicular crossings,
+  // no white mask/halo around it. Just the black glyph over the ramales.
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
     if (
@@ -1320,8 +1313,10 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     ) {
       const rad = engine.realMmToCanvasPx(23);
       ctx.save();
+      ctx.strokeStyle = '#000000';
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
+      ctx.lineWidth = 1.5 * engine.zoom;
       for (const cp of r.bilateralCrossings) {
         const key = `${cp[0].toFixed(2)},${cp[1].toFixed(2)}`;
         if (drawnCrossings.has(key)) continue;
@@ -1367,14 +1362,10 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
 
         const armLen = rad * 1.5;
         const capW = rad * 0.45;
-        const maskW = 3.5 * engine.zoom;
-        const lineW = 1.5 * engine.zoom;
 
         const dirs = [dir1, { x: -dir1.x, y: -dir1.y }, dir2, { x: -dir2.x, y: -dir2.y }];
 
-        // 1. Draw white mask (thick lines) to clear the pipe underneath
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = maskW;
+        // Black arms
         ctx.beginPath();
         for (const d of dirs) {
           ctx.moveTo(c.x, c.y);
@@ -1382,17 +1373,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         }
         ctx.stroke();
 
-        // 2. Draw black lines (thinner)
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = lineW;
-        ctx.beginPath();
-        for (const d of dirs) {
-          ctx.moveTo(c.x, c.y);
-          ctx.lineTo(c.x + d.x * armLen, c.y + d.y * armLen);
-        }
-        ctx.stroke();
-
-        // 3. Draw the four T-bar caps at the ends of each arm
+        // Black T-bar caps at the end of each arm
         ctx.beginPath();
         for (const d of dirs) {
           const endX = c.x + d.x * armLen;
