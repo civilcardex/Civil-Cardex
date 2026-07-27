@@ -564,6 +564,7 @@ function PdfViewer_({
     point: number[];
     net: string;
     isTee?: boolean;
+    isBilateral?: boolean;
   }>({
     isOpen: false,
     ramalId: '',
@@ -635,6 +636,7 @@ function PdfViewer_({
         point: data.point,
         net: data.net,
         isTee: data.isTee,
+        isBilateral: data.isBilateral,
       });
     },
     loadTrazosForPlan,
@@ -704,6 +706,32 @@ function PdfViewer_({
       }
       const isIni = junctionIndex === 0;
       const isFin = junctionIndex === r.pts.length - 1;
+      // San flow direction alert: in a san ramal, flow goes FROM the open end (the aparato) TOWARD
+      // the bajante end. So:
+      //   - sifón (backflow prevention) MUST sit at the ENTRANCE end — opposite the bajante.
+      //   - llave terminal (line termination) MUST sit at the EXIT end — at the bajante.
+      // If the user drops them at the wrong end, block the placement with an alert.
+      // sifón: san only, must go at ENTRADA (inicio). llaveTerminal: any net, must go at SALIDA (fin).
+      if (accId === 'sifon' && r.net === 'san' && !isIni) {
+        setAlertDialogState({
+          isOpen: true,
+          title: 'Sifón al revés',
+          message:
+            'El sifón debe ir en el extremo de ENTRADA (inicio del ramal). Colócalo en el otro extremo.',
+        });
+        return;
+      }
+      if (accId === 'llaveTerminal' || accId === 'teeLlaveTerminal') {
+        if (isIni) {
+          setAlertDialogState({
+            isOpen: true,
+            title: 'Llave terminal al revés',
+            message:
+              'La llave terminal debe ir en el extremo de SALIDA (fin del ramal). Colócala en el otro extremo.',
+          });
+          return;
+        }
+      }
       if (isIni) {
         r.accesorioInicio = accId;
       } else if (isFin) {
@@ -1267,7 +1295,53 @@ function PdfViewer_({
         />
         <AccesorioModal
           modalState={accesorioModal}
-          onClose={() => setAccesorioModal((prev) => ({ ...prev, isOpen: false }))}
+          onClose={() => {
+            // Bilateral cancellation: drop the pending crossing from the existing ramal so the
+            // symbol doesn't draw and the count doesn't increment. Also mark BOTH ramales of the
+            // pair as "rejected" (by PAIR key, not position) so the same perpendicular ramales
+            // don't re-trigger the modal when the user drags later and the position shifts.
+            if (accesorioModal.isBilateral && engineRef.current) {
+              const eng = engineRef.current;
+              const p = accesorioModal.point;
+              // Find the other ramal of the crossing (perpendicular to accesorioModal.ramalId at p).
+              const A = eng.ramales.find((x) => x.id === accesorioModal.ramalId);
+              let pairKey: string | null = null;
+              if (A) {
+                const other = eng.ramales.find(
+                  (x) =>
+                    x.id !== A.id &&
+                    x.net === A.net &&
+                    (x.bilateralCrossings || []).some(
+                      (c) => Math.hypot(c[0] - p[0], c[1] - p[1]) < 0.01,
+                    ),
+                );
+                if (other) {
+                  const [idA, idB] = [A.id, other.id].sort();
+                  pairKey = `${idA}|${idB}`;
+                }
+                // Drop the crossing point from the existing ramal.
+                A.bilateralCrossings = (A.bilateralCrossings || []).filter(
+                  (c) => Math.hypot(c[0] - p[0], c[1] - p[1]) > 0.01,
+                );
+                if (other) {
+                  other.bilateralCrossings = (other.bilateralCrossings || []).filter(
+                    (c) => Math.hypot(c[0] - p[0], c[1] - p[1]) > 0.01,
+                  );
+                }
+              }
+              if (pairKey) {
+                for (const r of eng.ramales) {
+                  const rejected =
+                    (r as unknown as { _rejectedBilateral?: string[] })._rejectedBilateral || [];
+                  if (!rejected.includes(pairKey)) rejected.push(pairKey);
+                  (r as unknown as { _rejectedBilateral?: string[] })._rejectedBilateral = rejected;
+                }
+              }
+              eng.render();
+              eng._markDirty();
+            }
+            setAccesorioModal((prev) => ({ ...prev, isOpen: false }));
+          }}
           onSelect={onAccesorioSelected}
         />
 

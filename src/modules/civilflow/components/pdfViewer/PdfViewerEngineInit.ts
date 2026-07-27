@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import { getPdfjs } from "../../utils/lazyPdfjs";
-import PlanoEngine from "../../lib/PlanoEngine/PlanoEngine";
-import { saveToStorage, saveTrazosToDB } from "../../services/storageService";
-import { devError } from "../../../../utils/devError";
-import { TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from "../../constants/storage-keys";
-import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { getPdfjs } from '../../utils/lazyPdfjs';
+import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
+import { saveToStorage, saveTrazosToDB } from '../../services/storageService';
+import { devError } from '../../../../utils/devError';
+import { TRAZOS_PREFIX, LAST_TRAZOS_ID_KEY } from '../../constants/storage-keys';
+import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 
 interface UsePdfViewerEngineParams {
   currentFile: File | null;
@@ -21,7 +21,15 @@ interface UsePdfViewerEngineParams {
   onToolChange: (tool: string) => void;
   onRequestText: (x: number, y: number, cb: (text: string) => void) => void;
   onAlert: (title: string, msg: string) => void;
-  onAccesorioModal: (data: { ramalId: string; angleDeg: number; junctionIndex: number; point: number[]; net: string; isTee?: boolean }) => void;
+  onAccesorioModal: (data: {
+    ramalId: string;
+    angleDeg: number;
+    junctionIndex: number;
+    point: number[];
+    net: string;
+    isTee?: boolean;
+    isBilateral?: boolean;
+  }) => void;
   loadTrazosForPlan: (eng: PlanoEngine, id: string | number) => Promise<boolean>;
   setActiveNet: (net: string) => void;
   setScaleM: (sm: string) => void;
@@ -70,82 +78,111 @@ export function usePdfViewerEngine({
   const internalLoadingPlanRef = useRef(false);
   const loadingPlanRef = externalLoadingPlanRef ?? internalLoadingPlanRef;
 
-  const renderPage = useCallback(async (pageNum: number, sc: number, mountCheck: number) => {
-    if (renderingRef.current) return;
-    const pdf = pdfDocRef.current;
-    const pdfCanvas = pdfCanvasRef.current;
-    if (!pdf || !pdfCanvas) return;
+  const renderPage = useCallback(
+    async (pageNum: number, sc: number, mountCheck: number) => {
+      if (renderingRef.current) return;
+      const pdf = pdfDocRef.current;
+      const pdfCanvas = pdfCanvasRef.current;
+      if (!pdf || !pdfCanvas) return;
 
-    if (renderTaskRef.current) {
-      try { renderTaskRef.current.cancel(); } catch { /* ignore */ }
-      try { await renderTaskRef.current.promise; } catch { /* ignore */ }
-      renderTaskRef.current = null;
-    }
-    renderingRef.current = true;
-
-    const dpr = window.devicePixelRatio || 1;
-
-    try {
-      if (mountCheck && mountCheck !== mountId.current) return;
-      const page = await pdf.getPage(pageNum);
-      if (mountCheck && mountCheck !== mountId.current) return;
-      const viewport = page.getViewport({ scale: sc });
-      pdfCanvas.width = Math.floor(viewport.width * dpr);
-      pdfCanvas.height = Math.floor(viewport.height * dpr);
-      pdfCanvas.style.width = viewport.width + 'px';
-      pdfCanvas.style.height = viewport.height + 'px';
-      const ctx = pdfCanvas.getContext("2d")!;
-      ctx!.imageSmoothingEnabled = false;
-      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx!.clearRect(0, 0, viewport.width, viewport.height);
-      const task = page.render({ canvas: pdfCanvas, viewport });
-      renderTaskRef.current = task;
-      try {
-        await task.promise;
-      } catch (rerr) {
-        if ((rerr as { name?: string })?.name === 'RenderingCancelledException') { renderingRef.current = false; return; }
-        throw rerr;
-      }
-      renderTaskRef.current = null;
-
-      const drawCanvas = drawCanvasRef.current;
-      if (drawCanvas) {
-        drawCanvas.width = Math.floor(viewport.width * dpr);
-        drawCanvas.height = Math.floor(viewport.height * dpr);
-        drawCanvas.style.width = viewport.width + 'px';
-        drawCanvas.style.height = viewport.height + 'px';
-        const dctx = drawCanvas.getContext('2d');
-        dctx!.imageSmoothingEnabled = false;
-        dctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
-        if (engineRef.current) {
-          const eng = engineRef.current;
-          eng.dpr = dpr;
-          eng.setPageSize(viewport.width, viewport.height);
-          eng.resizeCanvas(viewport.width, viewport.height);
-
-          const resolvedId = eng._loadedPlanId || currentIdRef.current || 'work';
-          if (eng.ramales.length === 0 && eng.bajantes.length === 0 && eng.dims.length === 0 && eng.textAnnots.length === 0 && eng.areas.length === 0) {
-            const loaded = await loadTrazosForPlan(eng, resolvedId);
-            if (loaded) {
-              const loadedNet = eng.activeNet || activeNetRef.current || 'af';
-              const sm = eng.scaleM;
-              setActiveNet(loadedNet);
-              if (sm != null) setScaleM(String(sm));
-              eng.render();
-            }
-          }
-          pdfRenderedRef.current = true;
+      if (renderTaskRef.current) {
+        try {
+          renderTaskRef.current.cancel();
+        } catch {
+          /* ignore */
         }
+        try {
+          await renderTaskRef.current.promise;
+        } catch {
+          /* ignore */
+        }
+        renderTaskRef.current = null;
       }
-    } catch (err) {
-      if ((err as { name?: string })?.name === 'RenderingCancelledException') return;
-      if (mountCheck && mountCheck !== mountId.current) return;
-      devError("Error renderizando pagina:", err);
-      setError(String(err));
-    } finally {
-      renderingRef.current = false;
-    }
-  }, [currentIdRef, activeNetRef, loadTrazosForPlan, setActiveNet, setScaleM, setError, pdfCanvasRef, drawCanvasRef]);
+      renderingRef.current = true;
+
+      const dpr = window.devicePixelRatio || 1;
+
+      try {
+        if (mountCheck && mountCheck !== mountId.current) return;
+        const page = await pdf.getPage(pageNum);
+        if (mountCheck && mountCheck !== mountId.current) return;
+        const viewport = page.getViewport({ scale: sc });
+        pdfCanvas.width = Math.floor(viewport.width * dpr);
+        pdfCanvas.height = Math.floor(viewport.height * dpr);
+        pdfCanvas.style.width = viewport.width + 'px';
+        pdfCanvas.style.height = viewport.height + 'px';
+        const ctx = pdfCanvas.getContext('2d')!;
+        ctx!.imageSmoothingEnabled = false;
+        ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx!.clearRect(0, 0, viewport.width, viewport.height);
+        const task = page.render({ canvas: pdfCanvas, viewport });
+        renderTaskRef.current = task;
+        try {
+          await task.promise;
+        } catch (rerr) {
+          if ((rerr as { name?: string })?.name === 'RenderingCancelledException') {
+            renderingRef.current = false;
+            return;
+          }
+          throw rerr;
+        }
+        renderTaskRef.current = null;
+
+        const drawCanvas = drawCanvasRef.current;
+        if (drawCanvas) {
+          drawCanvas.width = Math.floor(viewport.width * dpr);
+          drawCanvas.height = Math.floor(viewport.height * dpr);
+          drawCanvas.style.width = viewport.width + 'px';
+          drawCanvas.style.height = viewport.height + 'px';
+          const dctx = drawCanvas.getContext('2d');
+          dctx!.imageSmoothingEnabled = false;
+          dctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+          if (engineRef.current) {
+            const eng = engineRef.current;
+            eng.dpr = dpr;
+            eng.setPageSize(viewport.width, viewport.height);
+            eng.resizeCanvas(viewport.width, viewport.height);
+
+            const resolvedId = eng._loadedPlanId || currentIdRef.current || 'work';
+            if (
+              eng.ramales.length === 0 &&
+              eng.bajantes.length === 0 &&
+              eng.dims.length === 0 &&
+              eng.textAnnots.length === 0 &&
+              eng.areas.length === 0
+            ) {
+              const loaded = await loadTrazosForPlan(eng, resolvedId);
+              if (loaded) {
+                const loadedNet = eng.activeNet || activeNetRef.current || 'af';
+                const sm = eng.scaleM;
+                setActiveNet(loadedNet);
+                if (sm != null) setScaleM(String(sm));
+                eng.render();
+              }
+            }
+            pdfRenderedRef.current = true;
+          }
+        }
+      } catch (err) {
+        if ((err as { name?: string })?.name === 'RenderingCancelledException') return;
+        if (mountCheck && mountCheck !== mountId.current) return;
+        devError('Error renderizando pagina:', err);
+        setError(String(err));
+      } finally {
+        renderingRef.current = false;
+      }
+    },
+    [
+      currentIdRef,
+      activeNetRef,
+      loadTrazosForPlan,
+      setActiveNet,
+      setScaleM,
+      setError,
+      pdfCanvasRef,
+      drawCanvasRef,
+    ],
+  );
 
   useEffect(() => {
     if (!cwRef.current || !drawCanvasRef.current) return;
@@ -186,7 +223,9 @@ export function usePdfViewerEngine({
             saveTrazosToDB(String(id), work);
           }
         }
-      } catch (e) { devError('[CLEANUP] error', e); }
+      } catch (e) {
+        devError('[CLEANUP] error', e);
+      }
       eng.setTool = origSetTool;
       eng.destroy();
       engineRef.current = null;
@@ -214,15 +253,15 @@ export function usePdfViewerEngine({
         await renderPage(1, scale, thisMount);
       } catch (err) {
         if (thisMount === mountId.current) {
-          devError("Error cargando PDF:", err);
-          setError("Error cargando PDF");
+          devError('Error cargando PDF:', err);
+          setError('Error cargando PDF');
           setLoading(false);
         }
       }
     };
 
     reader.onerror = () => {
-      setError("No se pudo leer el archivo.");
+      setError('No se pudo leer el archivo.');
       setLoading(false);
     };
 
