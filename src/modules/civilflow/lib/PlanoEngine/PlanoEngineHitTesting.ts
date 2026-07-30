@@ -142,6 +142,13 @@ export function hitTestRightClick(
     }
   }
 
+  // Check guide lines
+  for (const g of engine.guideLines) {
+    if (g._labelBox && pointInLabelBox(x, y, g._labelBox)) {
+      return { element: g, isGhostClick: false, clientX, clientY };
+    }
+  }
+
   // Check areas
   for (const a of engine.areas) {
     let hitOnArea = false;

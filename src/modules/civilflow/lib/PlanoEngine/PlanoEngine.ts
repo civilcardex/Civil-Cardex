@@ -12,11 +12,13 @@ import type {
   PlanoActiveRamal,
   PlanoActiveArea,
   PlanoRamalDefaults,
+  PlanoGuideLine,
   MultiDragOrigData,
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import type { CrossFloorGhost } from '../../utils/associateBajanteAcrossFloors';
 import { renderDims, renderDimGhost } from './renderers/renderDimensions';
+import { renderGuideLines, renderGuideGhost } from './renderers/renderGuideLines';
 import { renderTexts } from './renderers/renderTextAnnotations';
 import { renderGrid } from './renderers/renderGrid';
 import { renderAreas, renderActiveArea } from './renderers/renderAreas';
@@ -37,6 +39,7 @@ import {
   _calcPolyArea,
   handleLineDown,
   handleDimDown,
+  handleGuideDown,
   handleTextDown,
   handleBajanteDown,
   handleMontanteDown,
@@ -47,6 +50,7 @@ import {
   handleCalentadorDown,
   handleEraseDown,
   handleAreaDown,
+  eraseRamalAt,
   handleDrawingMouseMove,
   handleDoubleClick,
   deleteSegmentAt as _deleteSegmentAt,
@@ -104,7 +108,8 @@ export type ToolType =
   | 'delm'
   | 'red_pub'
   | 'cont'
-  | 'calent';
+  | 'calent'
+  | 'guide';
 export type TramoType = 'ramal' | 'tributario';
 
 interface Point {
@@ -159,6 +164,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   textAnnots!: PlanoTextAnnotation[];
   bajantes!: PlanoBajante[];
   crossFloorGhosts!: CrossFloorGhost[];
+  guideLines!: PlanoGuideLine[];
   areas!: PlanoArea[];
   activeRamal!: PlanoActiveRamal | null;
   padreTributario!: string | null;
@@ -176,10 +182,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
   ghostDrag!: { id: string; startX: number; startY: number; baseDx: number; baseDy: number } | null;
   lblDrag!: { id: string; offX: number; offY: number; slot?: 'ini' | 'fin' } | null;
   txtDrag!: { id: string; startX: number; startY: number; origX: number; origY: number } | null;
+  dimLblDrag!: { id: string; offX: number; offY: number } | null;
   txtResize!: {
     id: string;
-    boxX: number;
-    boxY: number;
+    corner: 'tl' | 'tr' | 'bl' | 'br';
+    anchorX: number;
+    anchorY: number;
     startDist: number;
     origFontMm: number;
     origBoxWpx: number;
@@ -205,6 +213,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     }[];
   } | null;
   _dimStart!: Point | null;
+  _guideStart!: Point | null;
   nivelActual!: PlanoLevel | null;
   nptLevels!: PlanoLevel[];
   _hiddenNets!: Set<string>;
@@ -315,6 +324,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.textAnnots = [];
     this.bajantes = [];
     this.crossFloorGhosts = [];
+    this.guideLines = [];
     this.areas = [];
     this.activeRamal = null;
     this.padreTributario = null;
@@ -336,6 +346,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.lblDrag = null;
     this.txtDrag = null;
     this.txtResize = null;
+    this.dimLblDrag = null;
     this.bajDrag = null;
     this.ptDrag = null;
     this.ramalDrag = null;
@@ -343,6 +354,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.multiDrag = null;
     this.marqueeRect = null;
     this._dimStart = null;
+    this._guideStart = null;
     this.nivelActual = null;
     this.nptLevels = [];
     this._hiddenNets = new Set<string>();
@@ -758,7 +770,14 @@ export default class PlanoEngine implements IPlanoEngineCore {
   selectAt(cx: number, cy: number): void {
     _selectAt(this, cx, cy);
   }
-  getSelected(): PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null {
+  getSelected():
+    | PlanoRamal
+    | PlanoBajante
+    | PlanoTextAnnotation
+    | PlanoArea
+    | PlanoDimension
+    | PlanoGuideLine
+    | null {
     return _getSelected(this);
   }
   updateSelected(fields: Record<string, unknown>): void {
@@ -781,6 +800,24 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
   deleteSelected(ids?: string[]): void {
     _deleteSelected(this, ids);
+  }
+
+  /**
+   * Erase / trim logic used by the borrador tool — exposed publicly so the keyboard handler
+   * can route Supr/Delete through the same "trim endpoint segment when there is one, otherwise
+   * delete the whole element" rule instead of always calling deleteSelected.
+   */
+  handleEraseDown(x: number, y: number): void {
+    handleEraseDown(this, x, y);
+  }
+
+  /**
+   * Same trim-or-delete rule applied directly to a known-selected ramal — used by the keyboard
+   * handler, which already has `sel` and cannot run handleEraseDown (it would re-run selectAt
+   * against the cursor and lose the selection when the cursor had moved off the ramal).
+   */
+  eraseRamalAt(r: unknown, x: number, y: number): void {
+    eraseRamalAt(this, r as Parameters<typeof eraseRamalAt>[1], x, y);
   }
 
   finishRamal(): void {
@@ -857,6 +894,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
           areas: unknown[];
           nptLevels: unknown[];
           crossFloorGhosts: unknown[];
+          guideLines: unknown[];
           selId: string | null;
           activeRamal: unknown;
           activeArea: unknown;
@@ -917,6 +955,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     }
 
     renderGrid(ctx, this);
+    renderGuideLines(ctx, this);
     renderDims(ctx, this);
     renderTexts(ctx, this);
     renderAreas(ctx, this);
@@ -926,6 +965,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     renderGhosts(ctx, this);
     renderCrossFloorGhosts(ctx, this);
     renderDimGhost(ctx, this);
+    renderGuideGhost(ctx, this);
     renderActiveArea(ctx, this);
     renderActiveRamal(ctx, this);
 
@@ -1028,6 +1068,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
       handleLineDown(this, p.x, p.y);
     } else if (this.tool === 'dim') {
       handleDimDown(this, p.x, p.y);
+    } else if (this.tool === 'guide') {
+      handleGuideDown(this, p.x, p.y);
     } else if (this.tool === 'text') {
       handleTextDown(this, p.x, p.y);
     } else if (this.tool === 'baj') {
@@ -1062,6 +1104,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.lblDrag ||
       this.txtDrag ||
       this.txtResize ||
+      this.dimLblDrag ||
       this.areaDrag ||
       this.ptDrag ||
       this.ramalDrag ||
@@ -1072,7 +1115,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.marqueeRect.x2 = x;
       this.marqueeRect.y2 = y;
       this.scheduleRender();
-    } else if (this.activeRamal || this._dimStart || this.activeArea) {
+    } else if (this.activeRamal || this._dimStart || this._guideStart || this.activeArea) {
       handleDrawingMouseMove(this, x, y);
     }
   }
@@ -1142,6 +1185,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
     } else if (k === 'd') {
       this.setTool('dim');
       e.preventDefault();
+    } else if (k === 'g') {
+      this.setTool('guide');
+      e.preventDefault();
     } else if (k === 't') {
       this.setTool('text');
       e.preventDefault();
@@ -1193,6 +1239,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
         this._dimStart = null;
         this.render();
         e.preventDefault();
+      } else if (this._guideStart) {
+        this._guideStart = null;
+        this.render();
+        e.preventDefault();
       } else {
         if (this.tool !== 'sel') {
           this.setTool('sel');
@@ -1203,13 +1253,22 @@ export default class PlanoEngine implements IPlanoEngineCore {
           this.render();
         }
       }
-    } else if (k === 'delete') {
+    } else if (k === 'delete' || k === 'backspace') {
       if (!this.activeRamal && !this.activeArea) {
         if (this.multiSel && this.multiSel.length > 0) {
           this.deleteSelected(this.multiSel);
           this.multiSel = [];
         } else if (this.selId) {
-          this.deleteSelected();
+          const sel = this.getSelected() as Record<string, unknown> | null;
+          // Single ramal with >2 pts: trim last segment (most intuitive keyboard undo)
+          if (sel?.tipo === 'ramal' && Array.isArray(sel.pts) && sel.pts.length > 2) {
+            const lastPx = (sel.pts[sel.pts.length - 1] as number[])[0];
+            const lastPy = (sel.pts[sel.pts.length - 1] as number[])[1];
+            const cv = this.toCvs(lastPx, lastPy);
+            eraseRamalAt(this, sel as never, cv.x, cv.y);
+          } else {
+            this.deleteSelected();
+          }
         }
         e.preventDefault();
       }

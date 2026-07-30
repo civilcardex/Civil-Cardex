@@ -241,6 +241,15 @@ export interface PlanoRamal {
   _net?: string;
   diamPulg?: number;
   bilateralCrossings?: number[][];
+  // Sticky, append-only membership of a bilateral-tee group — unlike bilateralCrossings (which
+  // recalcBilateralCrossings recomputes from scratch every drag using a strict perpendicular-
+  // intersection test), this never gets cleared just because a move nudged the geometry past that
+  // strict test. Without it, the FIRST drag correctly limits its cascade to the tee's own ramales,
+  // but by the time it ends the strict re-test can already fail — leaving the group with an empty
+  // bilateralCrossings, so the very NEXT drag reads hasBilateral=false and cascades unbounded
+  // through the whole network.
+  bilateralPairIds?: string[];
+  _tribReversed?: boolean;
   accMed?: Record<string, string>;
   caudal?: number;
   lvert?: string;
@@ -276,6 +285,10 @@ export interface PlanoBajante {
   recibeDeIds: string[];
   alimentaIds: string[];
   descargaEnId: string | null;
+  /** Reverse pointer: `${originPlanId}|${originBajanteId}` of the upper-floor bajante that
+   * discharges INTO this one, set via the "Origen" selector. Purely a display/lookup aid — the
+   * actual link lives on the origin's own `descargaEnId` (written to its floor's storage). */
+  origenId?: string | null;
   ucAcum: number;
   ucExtra: number;
   area_m2: number;
@@ -334,6 +347,11 @@ export interface PlanoDimension {
   x2: number;
   y2: number;
   L: number;
+  // Absolute plane position of the label, once the user has dragged it away from the
+  // auto-computed midpoint+offset position. Undefined until first dragged.
+  lblX?: number;
+  lblY?: number;
+  _labelPos?: { x: number; y: number };
 }
 
 /** Free-text annotation placed on the drawing canvas. */
@@ -348,6 +366,16 @@ export interface PlanoTextAnnotation {
   lblOffY: number;
   textAngle: number;
   _box?: CanvasBox;
+}
+
+/** Construction/reference line drawn freely over the plan — NOT a real ramal: excluded from every
+ *  hydraulic/network calc, table, and export. Purely a scratch aid the user can rotate in 45°/90°
+ *  steps and later convert into a real ramal on the net it was drawn for. */
+export interface PlanoGuideLine {
+  id: string;
+  net: string;
+  pts: [number, number][];
+  _labelBox?: LabelBoxCorners;
 }
 
 /** Building level definition — label, NPT elevation, and ordinal index. */
@@ -368,7 +396,8 @@ export type PlanoElement =
   | PlanoBajante
   | PlanoArea
   | PlanoTextAnnotation
-  | PlanoDimension;
+  | PlanoDimension
+  | PlanoGuideLine;
 
 export interface PlanoActiveRamal {
   id?: string;
@@ -412,6 +441,8 @@ export interface IPlanoEngineCore {
   ramales: PlanoRamal[];
   bajantes: PlanoBajante[];
   crossFloorGhosts: CrossFloorGhost[];
+  guideLines: PlanoGuideLine[];
+  _guideStart: { x: number; y: number } | null;
   activeRamal: PlanoActiveRamal | null;
   activeArea: PlanoActiveArea | null;
   selId: string | null;
@@ -482,10 +513,12 @@ export interface IPlanoEngineCore {
   ghostDrag: { id: string; startX: number; startY: number; baseDx: number; baseDy: number } | null;
   lblDrag: { id: string; offX: number; offY: number; slot?: 'ini' | 'fin' } | null;
   txtDrag: { id: string; startX: number; startY: number; origX: number; origY: number } | null;
+  dimLblDrag: { id: string; offX: number; offY: number } | null;
   txtResize: {
     id: string;
-    boxX: number;
-    boxY: number;
+    corner: 'tl' | 'tr' | 'bl' | 'br';
+    anchorX: number;
+    anchorY: number;
     startDist: number;
     origFontMm: number;
     origBoxWpx: number;
@@ -497,6 +530,10 @@ export interface IPlanoEngineCore {
     slideConstraint?: { otherId: string; segmentIdx: number };
     accMedSlide?: { ax: number; ay: number; bx: number; by: number };
     linkedPts?: { id: string; ptIdx: number }[];
+    /** Captured at drag-start — keeps BFS limited to 1 hop throughout the gesture even
+     *  after recalcBilateralCrossings (which runs every frame and clears the crossings
+     *  once geometry shifts) loses the perpendicular-intersection condition. */
+    _bilateralDrag?: boolean;
   } | null;
   areaDrag: { id: string; startX: number; startY: number } | null;
   dimDrag: { id: string; startX: number; startY: number } | null;
@@ -562,7 +599,14 @@ export interface IPlanoEngineCore {
   _renumberMontantes(): void;
   _renumberAreas(): void;
   selectAt(cx: number, cy: number): void;
-  getSelected(): PlanoRamal | PlanoBajante | PlanoTextAnnotation | PlanoArea | null;
+  getSelected():
+    | PlanoRamal
+    | PlanoBajante
+    | PlanoTextAnnotation
+    | PlanoArea
+    | PlanoDimension
+    | PlanoGuideLine
+    | null;
   deleteSelected(ids?: string[]): void;
   setActiveNet(id: string): void;
   triggerAlert(title: string, msg: string): void;

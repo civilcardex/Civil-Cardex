@@ -1,6 +1,7 @@
 import { NETS } from './PlanoState';
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState';
 import { calculateRamalLength } from './PlanoEngineDrawing';
+import { isRamalBajanteConnectionAllowed } from '../../utils/flowDirection';
 
 // Bajante only belongs on san/vent/ll, montante only on gas/ac/af — same rule enforced at the
 // toolbar (isToolDisabledForNet in PdfViewerToolbar.tsx) and the keyboard shortcuts (PlanoEngine.ts
@@ -24,18 +25,23 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
   }
   const ASSOC_THRESH = 30 / engine.zoom;
   const assocRamales: string[] = [];
+  // A freshly-created bajante has NO direction yet (the user picks Sube/Baja/Continua
+  // afterward) — so there's nothing to guard against here at creation time. Just associate
+  // with whichever nearby ramal endpoint (start or end) is closest; the flow-direction guard
+  // (flowDirection.ts) re-validates properly once the user actually sets "Baja" on this
+  // bajante, against whatever ramales are connected by then.
   for (const r of engine.ramales) {
     if (r.net !== engine.activeNet || !r.pts?.length) continue;
     const startDist = Math.hypot(px - r.pts[0][0], py - r.pts[0][1]);
     const li = r.pts.length - 1;
     const endDist = Math.hypot(px - r.pts[li][0], py - r.pts[li][1]);
-    if (startDist < ASSOC_THRESH && startDist <= endDist) {
-      px = r.pts[0][0];
-      py = r.pts[0][1];
-      assocRamales.push(r.id);
-    } else if (endDist < ASSOC_THRESH) {
+    if (endDist < ASSOC_THRESH && endDist <= startDist) {
       px = r.pts[li][0];
       py = r.pts[li][1];
+      assocRamales.push(r.id);
+    } else if (startDist < ASSOC_THRESH) {
+      px = r.pts[0][0];
+      py = r.pts[0][1];
       assocRamales.push(r.id);
     }
   }
@@ -44,17 +50,13 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
   const cnt =
     engine.bajantes.filter((b) => b.tipo === 'bajante' && b.net === engine.activeNet).length + 1;
   const bajId = netPfx + cnt;
-  // Default diameter to the associated ramal's own diameter, not a placeholder '0'.
-  const assocDiam =
-    assocRamales.length > 0
-      ? engine.ramales.find((r) => r.id === assocRamales[0])?.diametro || '0'
-      : '0';
   engine.bajantes.push({
     id: bajId,
     net: engine.activeNet,
     tipo: 'bajante',
     code: bajId,
-    direccion: 'baja',
+    // No direccion by default — the user must explicitly pick Sube/Baja/Continua for this
+    // bajante; see the BajanteDirectionSelector buttons.
     x: px,
     y: py,
     pisoBase: engine.nivelActual?.label ?? '',
@@ -62,7 +64,7 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     nptBase: engine.nivelActual?.npt ?? 0,
     nptCima: engine.nivelActual?.npt ?? 0,
     hVert: 0,
-    dNominal: assocDiam,
+    dNominal: '',
     recibeDeIds: assocRamales,
     alimentaIds: [],
     descargaEnId: null,
@@ -78,13 +80,23 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     bajR: 7 / 24,
   });
   // Auto-fill ini/fin on associated ramales
+  const newBaj = engine.bajantes[engine.bajantes.length - 1];
   for (const rid of assocRamales) {
     const r = engine.ramales.find((rr) => rr.id === rid);
     if (!r || !r.pts) continue;
     const distStart = Math.hypot(r.pts[0][0] - px, r.pts[0][1] - py);
     const lastIdx = r.pts.length - 1;
     const distEnd = Math.hypot(r.pts[lastIdx][0] - px, r.pts[lastIdx][1] - py);
-    if (distStart <= distEnd) {
+    const epIdx: 0 | number = distStart <= distEnd ? 0 : lastIdx;
+    // Centralized direction guard — a no-op today since a freshly-created bajante has no
+    // direction yet, but kept as defense-in-depth in case that ever changes; if it ever does
+    // reject, also drop the association from `newBaj.recibeDeIds` (already pushed above as
+    // part of the initial bajante payload).
+    if (!isRamalBajanteConnectionAllowed(engine, r, epIdx, newBaj)) {
+      if (newBaj.recibeDeIds) newBaj.recibeDeIds = newBaj.recibeDeIds.filter((id) => id !== rid);
+      continue;
+    }
+    if (epIdx === 0) {
       r.ini = bajId;
     } else {
       r.fin = bajId;
@@ -135,17 +147,12 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     engine.bajantes.filter((b) => b.tipo === 'montante' && b.net === engine.activeNet).length + 1;
   const monId = `${pfx}${cnt}_${engine.activeNet}`;
   const code = `${pfx}${cnt}`;
-  // Default diameter to the associated ramal's own diameter, not a placeholder '0'.
-  const assocDiam =
-    assocRamales.length > 0
-      ? engine.ramales.find((r) => r.id === assocRamales[0])?.diametro || '0'
-      : '0';
   engine.bajantes.push({
     id: monId,
     net: engine.activeNet,
     tipo: 'montante',
     code: code,
-    direccion: 'sube',
+    // No direccion by default — user must pick Sube/Baja/Continua
     x: px,
     y: py,
     pisoBase: engine.nivelActual?.label ?? '',
@@ -153,7 +160,7 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     nptBase: engine.nivelActual?.npt ?? 0,
     nptCima: engine.nivelActual?.npt ?? 0,
     hVert: 0,
-    dNominal: assocDiam,
+    dNominal: '',
     recibeDeIds: assocRamales,
     alimentaIds: [],
     descargaEnId: null,
@@ -182,13 +189,13 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
       r.ini = code;
       if (!r.accesorioInicio) {
         r.accesorioInicio = codoAccId;
-        r.diametroInicio = r.diametro || '';
+        r.diametroInicio = '';
       }
     } else {
       r.fin = code;
       if (!r.accesorioFin) {
         r.accesorioFin = codoAccId;
-        r.diametroFin = r.diametro || '';
+        r.diametroFin = '';
       }
     }
   }
@@ -255,7 +262,7 @@ export function handleCreateMontanteMidBody(
     net: r.net,
     tipo: 'montante',
     code,
-    direccion: 'sube',
+    // No direccion by default — user must pick Sube/Baja/Continua
     x,
     y,
     pisoBase: engine.nivelActual?.label ?? '',
@@ -263,7 +270,7 @@ export function handleCreateMontanteMidBody(
     nptBase: engine.nivelActual?.npt ?? 0,
     nptCima: engine.nivelActual?.npt ?? 0,
     hVert: 0,
-    dNominal: r.diametro || '0',
+    dNominal: '',
     recibeDeIds: [r.id],
     alimentaIds: [],
     descargaEnId: null,
@@ -366,11 +373,11 @@ export function handleCreateTeeCapStub(
     labelY: (pt[1] + endY) / 2,
     labelAngle: 0,
     material: r.material || '',
-    diametro: r.diametro || '',
+    diametro: '',
     pendiente: 0,
     bloqueado: true,
     accesorioFin: accId,
-    diametroFin: r.diametro || '',
+    diametroFin: '',
   };
   engine.ramales.push(stub);
   engine._renumberRamales(r.net);
@@ -403,7 +410,7 @@ export function handleCalentadorDown(engine: IPlanoEngineCore, px: number, py: n
     nptBase: engine.nivelActual?.npt ?? 0,
     nptCima: engine.nivelActual?.npt ?? 0,
     hVert: 0,
-    dNominal: '0',
+    dNominal: '',
     recibeDeIds: [],
     alimentaIds: [],
     descargaEnId: null,
@@ -446,7 +453,7 @@ export function handleRedPublicaDown(engine: IPlanoEngineCore, px: number, py: n
     nptBase: engine.nivelActual?.npt ?? 0,
     nptCima: engine.nivelActual?.npt ?? 0,
     hVert: 0,
-    dNominal: '0',
+    dNominal: '',
     recibeDeIds: [],
     alimentaIds: [],
     descargaEnId: null,
@@ -492,7 +499,7 @@ export function handleContadorDown(engine: IPlanoEngineCore, px: number, py: num
     nptBase: engine.nivelActual?.npt ?? 0,
     nptCima: engine.nivelActual?.npt ?? 0,
     hVert: 0,
-    dNominal: '0',
+    dNominal: '',
     recibeDeIds: [],
     alimentaIds: [],
     descargaEnId: null,

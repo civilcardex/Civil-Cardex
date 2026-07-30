@@ -1,7 +1,7 @@
 import { NETS } from './PlanoState';
 import type { PlanoRamal, PlanoBajante } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
-import { segmentStrictIntersectionPoint } from './drawingAngles';
+import { segmentLooseIntersectionPoint, segmentStrictIntersectionPoint } from './drawingAngles';
 
 export {
   _renumberRamales,
@@ -267,6 +267,12 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
       tStart = { code: name.toUpperCase(), isAcc: true, ref: null };
     } else {
       tStart = findEndpointTarget(r, pStart);
+      // Flow-direction guard: a 'baja' bajante at pts[0] would create the exact invalid state
+      // shown in the issue report (RS5-P1 with arrow leaving a BAN4-P1 "Baja"). Drop tStart if
+      // the auto-detected target is a 'baja' bajante — same rule the active-create path uses.
+      if (tStart && tStart.ref && (tStart.ref as PlanoBajante).direccion === 'baja') {
+        tStart = null;
+      }
     }
 
     const accFin = r.accesorioFin;
@@ -303,7 +309,9 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
       }
     } else {
       if (tStart) newIni = tStart.code;
+      else newIni = '';
       if (tEnd) newFin = tEnd.code;
+      else newFin = '';
     }
 
     if (r.ini !== newIni || r.fin !== newFin) {
@@ -416,6 +424,82 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
  * Auto-create a ramal between the nearest Red Pública and each Contador
  * that doesn't already have a connecting ramal. Runs on load for existing data.
  */
+export function recalcBilateralCrossings(engine: IPlanoEngineCore): void {
+  const crossingsByRamal = new Map<string, number[][]>();
+  const newPairs: [string, string][] = [];
+
+  for (const r of engine.ramales) {
+    if (r.net !== 'af' && r.net !== 'ac') continue;
+    if (!r.pts || r.pts.length < 2) continue;
+    const crossings: number[][] = [];
+    for (let i = 0; i < r.pts.length - 1; i++) {
+      const segA = r.pts[i];
+      const segB = r.pts[i + 1];
+      for (const other of engine.ramales) {
+        if (other.id === r.id) continue;
+        if (other.net !== r.net) continue;
+        if (!other.pts || other.pts.length < 2) continue;
+        for (let j = 0; j < other.pts.length - 1; j++) {
+          const oA = other.pts[j];
+          const oB = other.pts[j + 1];
+          const crossPt = segmentLooseIntersectionPoint(segA, segB, oA, oB);
+          if (!crossPt) continue;
+          const dxA = segB[0] - segA[0];
+          const dyA = segB[1] - segA[1];
+          const dxB = oB[0] - oA[0];
+          const dyB = oB[1] - oA[1];
+          const lenA = Math.hypot(dxA, dyA);
+          const lenB = Math.hypot(dxB, dyB);
+          if (lenA < 0.001 || lenB < 0.001) continue;
+          const dot = (dxA * dxB + dyA * dyB) / (lenA * lenB);
+          if (Math.abs(dot) < 0.2) {
+            const exists = crossings.some(
+              (c) => Math.hypot(c[0] - crossPt[0], c[1] - crossPt[1]) < 0.01,
+            );
+            if (!exists) {
+              crossings.push([crossPt[0], crossPt[1]]);
+              newPairs.push([r.id, other.id]);
+            }
+          }
+        }
+      }
+    }
+    if (crossings.length > 0) {
+      crossingsByRamal.set(r.id, crossings);
+    }
+  }
+
+  for (const r of engine.ramales) {
+    if (r.net !== 'af' && r.net !== 'ac') continue;
+    const own = crossingsByRamal.get(r.id) || [];
+    const merged: number[][] = [...own];
+    for (const other of engine.ramales) {
+      if (other.id === r.id) continue;
+      if (other.net !== r.net) continue;
+      const otherCross = crossingsByRamal.get(other.id) || [];
+      for (const c of otherCross) {
+        if (!merged.some((m) => Math.hypot(m[0] - c[0], m[1] - c[1]) < 0.01)) {
+          merged.push([c[0], c[1]]);
+        }
+      }
+    }
+    r.bilateralCrossings = merged;
+  }
+
+  // Membership is sticky/append-only: once two ramales are ever caught in a strict perpendicular
+  // crossing, they stay linked for drag-cascade-limiting purposes even if a later move nudges them
+  // just past the strict re-test (see the field comment on bilateralPairIds in PlanoState.ts).
+  for (const [aId, bId] of newPairs) {
+    const a = engine.ramales.find((x) => x.id === aId);
+    const b = engine.ramales.find((x) => x.id === bId);
+    if (!a || !b) continue;
+    if (!a.bilateralPairIds) a.bilateralPairIds = [];
+    if (!a.bilateralPairIds.includes(bId)) a.bilateralPairIds.push(bId);
+    if (!b.bilateralPairIds) b.bilateralPairIds = [];
+    if (!b.bilateralPairIds.includes(aId)) b.bilateralPairIds.push(aId);
+  }
+}
+
 export function ensureRpCntRamal(engine: IPlanoEngineCore): void {
   const nets = ['af', 'ac'];
   for (const netId of nets) {

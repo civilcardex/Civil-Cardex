@@ -3,6 +3,9 @@ import { isBajante } from './PlanoState';
 import { calculateRamalLength, _midpoint, _firstSegmentAngle } from './PlanoEngineDrawing';
 import { checkRamalAngles } from './drawingAngles';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
+import { recalcBilateralCrossings } from './PlanoEngineNetwork';
+import { oppositeTextCorner, textLocalCorner, rotateLocalPoint } from './textAnnotationGeometry';
+import { isRamalBajanteConnectionAllowed } from '../../utils/flowDirection';
 
 export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): void {
   const sameNetGroup = (a: string, b: string) =>
@@ -44,7 +47,13 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
   }
   if (engine.ramalDrag) {
     const r = engine.ramales.find((rr) => rr.id === engine.ramalDrag!.id);
-    if (r && !r.bloqueado) {
+    // bloqueado is set to true on every ramal at creation and never unset anywhere in the
+    // codebase, so gating this whole-body drag on `!r.bloqueado` silently made body-drag a
+    // no-op for every ramal — including the connRamales/connBaj cascade a few lines down that's
+    // the actual mechanism for moving a connected san/vent network together. A rigid whole-body
+    // translation never bends the ramal's shape, so bloqueado (meant to block bending) shouldn't
+    // gate it at all — matches the same fix already applied to the vertex/endpoint drag path.
+    if (r) {
       const tp = engine.toPlane(x, y);
       const dx = tp.x - engine.ramalDrag.startX;
       const dy = tp.y - engine.ramalDrag.startY;
@@ -111,9 +120,6 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             other.pts[i][1] = cr.origPts[i][1] + slideDy;
           }
           other.totalL = calculateRamalLength(other.pts, engine);
-          // Its label must ride along with its body — previously left behind since only the
-          // ramal's points were translated here, so a tributario's own label stayed put while its
-          // pipe moved out from under it.
           if (cr.origLabelX !== undefined && other.labelX !== undefined) {
             other.labelX = cr.origLabelX + slideDx;
           }
@@ -122,6 +128,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           }
         }
       }
+      recalcBilateralCrossings(engine);
       if (engine.nivelActual) {
         const lvl = engine.nivelActual.label ?? '';
         for (const b of engine.bajantes) {
@@ -274,7 +281,13 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         const pEnd = r.pts[r.pts.length - 1];
         const dStart = Math.hypot(pStart[0] - p.x, pStart[1] - p.y);
         const dEnd = Math.hypot(pEnd[0] - p.x, pEnd[1] - p.y);
+        // Flow-direction guard (centralized in flowDirection.ts): a 'baja' bajante must only
+        // RECEIVE flow — never START a ramal. The guard fires once for the offending endpoint
+        // and continues looking for the next ramal's FIN, so other valid associations in the
+        // same drag motion are not blocked.
         if (dStart < autoThresh && dStart <= dEnd) {
+          const allowed = isRamalBajanteConnectionAllowed(engine, r, 0, b);
+          if (!allowed) continue;
           if (!b.recibeDeIds) b.recibeDeIds = [];
           b.recibeDeIds.push(r.id);
           r.ini = b.code || b.id;
@@ -303,10 +316,6 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         b.recibeDeIds.forEach((rid) => {
           const r = engine.ramales.find((rr) => rr.id === rid);
           if (!r || !r.pts) return;
-          // Defensive: handleMouseDown already refuses to start bajDrag when recibeDeIds points
-          // at a bloqueado ramal, so this shouldn't fire in practice — kept in case bloqueado
-          // gets toggled mid-drag.
-          if (r.bloqueado) return;
           let changed = false;
           if (Math.hypot(r.pts[0][0] - oldX, r.pts[0][1] - oldY) < 0.5) {
             r.pts[0][0] = p.x;
@@ -403,11 +412,37 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
   if (engine.txtResize) {
     const t = engine.textAnnots.find((tt) => tt.id === engine.txtResize!.id);
     if (t) {
-      const { boxX, boxY, startDist, origFontMm, origBoxWpx } = engine.txtResize;
-      const dist = Math.hypot(x - boxX, y - boxY);
+      const { corner, anchorX, anchorY, startDist, origFontMm, origBoxWpx } = engine.txtResize;
+      const dist = Math.hypot(x - anchorX, y - anchorY);
       const scale = startDist > 0.01 ? Math.max(0.2, Math.min(6, dist / startDist)) : 1;
-      t.fontMm = Math.max(1, Math.min(40, origFontMm * scale));
-      t.boxW = (origBoxWpx * scale) / engine.zoom;
+      const newFontMm = Math.max(1, Math.min(40, origFontMm * scale));
+      const pad = 5 * engine.zoom;
+      const newBoxWFull = Math.max(pad * 2 + 4, origBoxWpx * scale);
+      t.fontMm = newFontMm;
+      t.boxW = (newBoxWFull - pad * 2) / engine.zoom;
+
+      // Keep the anchor corner (opposite of the one being dragged) pinned at its original
+      // canvas position — recompute where the box's translate origin (t.x/t.y) must land so
+      // the anchor corner of the NEW (resized) box still lands exactly there.
+      const fs2 = engine.mm2cvs(newFontMm);
+      const boxHFull2 = fs2 + pad * 2;
+      const angle = ((t.textAngle || 0) * Math.PI) / 180;
+      const anchorCorner = oppositeTextCorner(corner);
+      const local = textLocalCorner(anchorCorner, fs2, pad, newBoxWFull, boxHFull2);
+      const rot = rotateLocalPoint(local.lx, local.ly, angle);
+      const newC = engine.toPlane(anchorX - rot.x, anchorY - rot.y);
+      t.x = newC.x - (t.lblOffX || 0);
+      t.y = newC.y - (t.lblOffY || 0);
+      engine.scheduleRender();
+    }
+    return;
+  }
+  if (engine.dimLblDrag) {
+    const d = engine.dims.find((dd) => dd.id === engine.dimLblDrag!.id);
+    if (d) {
+      const p = engine.toPlane(x - engine.dimLblDrag.offX, y - engine.dimLblDrag.offY);
+      d.lblX = p.x;
+      d.lblY = p.y;
       engine.scheduleRender();
     }
     return;
@@ -422,6 +457,10 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       d.y1 += dy;
       d.x2 += dx;
       d.y2 += dy;
+      if (d.lblX != null && d.lblY != null) {
+        d.lblX += dx;
+        d.lblY += dy;
+      }
       engine.dimDrag.startX = p.x;
       engine.dimDrag.startY = p.y;
       engine.scheduleRender();
@@ -583,19 +622,45 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const dPx = p.x - oldP[0],
         dPy = p.y - oldP[1];
       if (Math.abs(dPx) + Math.abs(dPy) > 0.001) {
-        // Transitive cascade: repeatedly sweep for any not-yet-moved ramal point coincident with
-        // an already-moved point's OLD position, so a whole chain of connected ramales moves
-        // together (not just the ones directly touching the dragged vertex). Every point in the
-        // cascade shifts by the exact same (dPx, dPy), so this is a plain rigid-body propagation.
         const movedRamalIds = new Set<string>([r.id]);
         const allOldPositions: number[][] = [oldP];
         let frontier: number[][] = [oldP];
+        const hasBilateral = engine.ptDrag?._bilateralDrag ?? false;
+
+        // A bilateral-tee partner crosses r at a perpendicular INTERSECTION point, which is a
+        // computed geometric crossing, not necessarily an actual vertex stored in either ramal's
+        // pts — so the generic "does some point of the other ramal sit exactly on the moved
+        // point" cascade below can never find it, no matter how many hops it's allowed. Move
+        // every ramal in r's sticky bilateralPairIds rigidly by the same delta up front, keyed
+        // purely on that membership list (same source of truth collectConnectedGraph's own
+        // bilateral branch uses for the whole-body drag), instead of depending on coincidence.
+        if (hasBilateral) {
+          for (const partnerId of r.bilateralPairIds || []) {
+            if (movedRamalIds.has(partnerId)) continue;
+            const partner = engine.ramales.find((rr) => rr.id === partnerId);
+            if (!partner) continue;
+            for (const pt of partner.pts) {
+              pt[0] += dPx;
+              pt[1] += dPy;
+            }
+            partner.totalL = calculateRamalLength(partner.pts, engine);
+            partner.labelAngle = _firstSegmentAngle(partner.pts);
+            const [mx, my] = _midpoint(partner.pts);
+            partner.labelX = mx;
+            partner.labelY = my;
+            movedRamalIds.add(partnerId);
+          }
+        }
+
+        let bfsIter = 0;
         while (frontier.length > 0) {
+          bfsIter++;
           const nextFrontier: number[][] = [];
           for (const other of engine.ramales) {
             if (other.id === r.id || !sameNetGroup(other.net, r.net) || movedRamalIds.has(other.id))
               continue;
             let changed = false;
+            // Point-vs-point: does a moved frontier point match a vertex of `other`?
             for (let i = 0; i < other.pts.length; i++) {
               const matches = frontier.some(
                 (fp) => Math.hypot(other.pts[i][0] - fp[0], other.pts[i][1] - fp[1]) < 0.5,
@@ -609,6 +674,37 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
                 allOldPositions.push(before);
               }
             }
+            // Point-vs-body: does a frontier point land on `other`'s body segment (vent endpoint
+            // on san body)? Mirrors frontierOnOtherBody in collectConnectedGraph.
+            if (!changed) {
+              frontier.some((fp) => {
+                if (!other.pts || other.pts.length < 2) return false;
+                for (let si = 0; si < other.pts.length - 1; si++) {
+                  const [ax, ay] = other.pts[si],
+                    [bx, by] = other.pts[si + 1];
+                  const sDx = bx - ax,
+                    sDy = by - ay;
+                  const sLen = Math.hypot(sDx, sDy);
+                  if (sLen < 0.001) continue;
+                  const cross = Math.abs(sDx * (ay - fp[1]) - sDy * (ax - fp[0])) / sLen;
+                  if (cross >= 0.5) continue;
+                  const t = ((fp[0] - ax) * sDx + (fp[1] - ay) * sDy) / (sLen * sLen);
+                  if (t >= -0.02 && t <= 1.02) {
+                    // Shift every point of `other` rigidly
+                    for (let pi = 0; pi < other.pts.length; pi++) {
+                      const origPt: [number, number] = [other.pts[pi][0], other.pts[pi][1]];
+                      other.pts[pi][0] += dPx;
+                      other.pts[pi][1] += dPy;
+                      nextFrontier.push(origPt);
+                      allOldPositions.push(origPt);
+                    }
+                    changed = true;
+                    break;
+                  }
+                }
+                return false;
+              });
+            }
             if (changed) {
               movedRamalIds.add(other.id);
               other.totalL = calculateRamalLength(other.pts, engine);
@@ -618,6 +714,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
               other.labelY = my;
             }
           }
+          if (hasBilateral && bfsIter >= 1) break;
           frontier = nextFrontier;
         }
 
@@ -636,6 +733,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             other.labelY = my;
           }
         }
+        recalcBilateralCrossings(engine);
         // Move every bajante that discharges from any ramal swept up in the cascade above (not
         // just the directly-dragged one), matched against the cascade's old positions.
         for (const b of engine.bajantes) {

@@ -1,18 +1,19 @@
 import { NETS } from '../PlanoState';
 import { rotatedRectCorners } from '../HitTester';
 import type { IPlanoEngineCore } from '../PlanoState';
+import type { PlanoBajante } from '../PlanoState';
+import type { CrossFloorGhost } from '../../../utils/associateBajanteAcrossFloors';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { parseDescargaEnId } from '../../../utils/parseDescargaEnId';
 import { pisoCortoLoose as getPisoCorto } from '../../../constants';
-import { TRAZOS_PREFIX } from '../../../constants/storage-keys';
-import type { PlanoBajante } from '../PlanoState';
+import { MONTANTE_NETS } from '../drawingCreations';
 
 const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
 
 function renderBajanteLabel(
   ctx: CanvasRenderingContext2D,
   engine: IPlanoEngineCore,
-  b: PlanoBajante,
+  b: PlanoBajante | CrossFloorGhost,
   c: { x: number; y: number },
   r: number,
   angle: number,
@@ -20,12 +21,15 @@ function renderBajanteLabel(
   offDy: number,
   line1: string,
   dirText: string,
-  labelBoxProp: '_labelBox' | '_ghostLabelBox',
+  labelBoxProp: '_labelBox' | '_ghostLabelBox' | '_crossFloorLabelBox',
   alpha: number,
+  opts?: { skipLeader?: boolean; textColor?: string },
 ): void {
+  const { skipLeader = false, textColor = '#000' } = opts || {};
   const hasDir = !!dirText;
 
-  const labelSizeMul = b.tipo === 'contador' || b.tipo === 'calentador' ? 0.75 : 1;
+  const bTipo2 = 'tipo' in b ? b.tipo : undefined;
+  const labelSizeMul = bTipo2 === 'contador' || bTipo2 === 'calentador' ? 0.75 : 1;
   // Bajante/montante code label uses the exact same size formula as a ramal's own name label
   // (renderRamales.ts fsName/fsInfo) so the two read as objectively equal in size.
   const fsCode = engine.mm2cvs(engine.MM.lblName * engine.labelScaleM * labelSizeMul);
@@ -39,27 +43,31 @@ function renderBajanteLabel(
   const boxH = hasDir ? lineH + 2 + fsDir + engine.mm2cvs(1.5) : lineH + engine.mm2cvs(1);
   const hh2 = boxH / 2;
 
-  const intersection = getLabelIntersection(offDx, offDy, boxW, boxH, angle);
-
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(c.x, c.y);
 
-  const distToLabel = Math.hypot(offDx, offDy);
-  let lineStartX = 0,
-    lineStartY = 0;
-  if (distToLabel > 0.1) {
-    const ux = offDx / distToLabel,
-      uy = offDy / distToLabel;
-    lineStartX = r * ux;
-    lineStartY = r * uy;
+  if (!skipLeader) {
+    const intersection = getLabelIntersection(offDx, offDy, boxW, boxH, angle);
+    const distToLabel = Math.hypot(offDx, offDy);
+    let lineStartX = 0,
+      lineStartY = 0;
+    if (distToLabel > 0.1) {
+      const ux = offDx / distToLabel,
+        uy = offDy / distToLabel;
+      lineStartX = r * ux;
+      lineStartY = r * uy;
+    }
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.35;
+    ctx.beginPath();
+    ctx.moveTo(lineStartX, lineStartY);
+    ctx.lineTo(intersection.x, intersection.y);
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 0.8 * engine.zoom;
+    ctx.stroke();
+    ctx.restore();
   }
-  ctx.beginPath();
-  ctx.moveTo(lineStartX, lineStartY);
-  ctx.lineTo(intersection.x, intersection.y);
-  ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 0.8 * engine.zoom;
-  ctx.stroke();
 
   ctx.translate(offDx, offDy);
   ctx.rotate(angle);
@@ -73,7 +81,7 @@ function renderBajanteLabel(
     maxX,
     maxY,
   } = rotatedRectCorners(lbCx, lbCy - 10 + hh2, boxW, boxH, angle, 2);
-  b[labelBoxProp] = {
+  (b as unknown as Record<string, unknown>)[labelBoxProp] = {
     cx: lbCx,
     cy: lbCy - 10 + hh2,
     w: boxW,
@@ -91,20 +99,21 @@ function renderBajanteLabel(
   ctx.beginPath();
   ctx.roundRect(-boxW / 2, -10, boxW, boxH, 0);
 
-  if (b.tipo === 'contador' || b.tipo === 'calentador') {
+  const bTipo = 'tipo' in b ? b.tipo : undefined;
+  if (bTipo === 'contador' || bTipo === 'calentador') {
     ctx.strokeStyle = '#cbd5e1';
     ctx.lineWidth = 0.8 * engine.zoom;
     ctx.stroke();
   }
 
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = textColor;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   ctx.fillText(line1, 0, -10 + engine.mm2cvs(0.5));
 
   if (dirText) {
     ctx.font = `${fsDir}px Geist, monospace`;
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = textColor;
     ctx.fillText(dirText, 0, -10 + lineH + engine.mm2cvs(1));
   }
   ctx.restore();
@@ -154,59 +163,6 @@ function getLabelIntersection(
   const intersectDy = localIntersectX * sinA + localIntersectY * cosA + offDy;
 
   return { x: intersectDx, y: intersectDy };
-}
-
-interface OtherFloorBajante {
-  planId: string;
-  id: string;
-  code?: string;
-  x: number;
-  y: number;
-  descargaEnId?: string;
-  net?: string;
-}
-
-// Read every OTHER floor's persisted bajantes once so the render pass below can draw vertical
-// alignment guides to cross-floor associated stacks. Floors share one plane coordinate space (the
-// isometry stacks them on it), so toCvs maps an other-floor (x,y) to the correct on-screen spot.
-function collectOtherFloorBajantes(engine: IPlanoEngineCore): OtherFloorBajante[] {
-  const out: OtherFloorBajante[] = [];
-  try {
-    // Must match the prefix trazos are actually SAVED under (usePdfAutoSave.ts) — this used to
-    // read the old 'civilflow_trazos_' key, which nothing writes to anymore, so cross-floor
-    // bajante data here was always stale or empty: other floors' entries in the "Destino"
-    // dropdown came and went based on leftover legacy data, and the alignment guide line never
-    // saw a freshly-aligned position, so it never shrank away.
-    const curKey = TRAZOS_PREFIX + String(engine._loadedPlanId);
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (!k || !k.startsWith(TRAZOS_PREFIX) || k === curKey) continue;
-      const planId = k.slice(TRAZOS_PREFIX.length);
-      const raw = localStorage.getItem(k);
-      if (!raw) continue;
-      let data: { bajantes?: OtherFloorBajante[] };
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        continue;
-      }
-      for (const ob of data.bajantes || []) {
-        if (ob.x == null || ob.y == null) continue;
-        out.push({
-          planId,
-          id: ob.id,
-          code: ob.code,
-          x: ob.x,
-          y: ob.y,
-          descargaEnId: ob.descargaEnId,
-          net: ob.net,
-        });
-      }
-    }
-  } catch {
-    /* localStorage unavailable */
-  }
-  return out;
 }
 
 // Shared by the parent bajante's own circle AND its ghost — draws the interior direction glyph
@@ -283,9 +239,6 @@ function drawDireccionSymbol(
 }
 
 export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
-  const otherFloorBajantes = collectOtherFloorBajantes(engine);
-  const curPlan = String(engine._loadedPlanId);
-
   engine.bajantes.forEach((b) => {
     if (engine._hiddenNets.has(b.net)) return;
 
@@ -307,60 +260,6 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
 
     b._circ = { x: c.x, y: c.y, r };
     if (isDirectionGhost) return;
-
-    // Vertical-alignment guide: dashed net-color line to the position of any cross-floor bajante
-    // this one is explicitly associated with (via descargaEnId, in either direction). Lets the
-    // designer slide this floor's bajante until it sits vertically over the other floor's — the
-    // line shrinks to nothing once they're aligned.
-    if (otherFloorBajantes.length) {
-      const netObj = NETS.find((n) => n.id === b.net);
-      const guideCol = netObj ? netObj.col : '#e2e2e8';
-      const targets: { x: number; y: number }[] = [];
-      // forward: this bajante discharges into an element on another floor
-      if (b.descargaEnId) {
-        const [tp, tid] = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
-        if (String(tp) !== curPlan) {
-          const t = otherFloorBajantes.find(
-            (o) => String(o.planId) === String(tp) && (o.id === tid || o.code === tid),
-          );
-          if (t) targets.push({ x: Number(t.x), y: Number(t.y) });
-        }
-      }
-      // reverse: a bajante on another floor discharges into this one. `net` is only used as a
-      // secondary filter when present on both sides — some persisted records predate that field,
-      // and requiring an exact match there silently dropped otherwise-valid matches.
-      for (const o of otherFloorBajantes) {
-        if (!o.descargaEnId) continue;
-        if (o.net && b.net && o.net !== b.net) continue;
-        const [tp, tid] = parseDescargaEnId(o.descargaEnId, o.planId);
-        if (String(tp) === curPlan && (tid === b.id || (b.code && tid === b.code)))
-          targets.push({ x: Number(o.x), y: Number(o.y) });
-      }
-      for (const t of targets) {
-        if (!Number.isFinite(t.x) || !Number.isFinite(t.y)) continue;
-        const oc = engine.toCvs(t.x, t.y);
-        // Fixed screen-pixel tolerance (both oc/c are already in canvas space, post-zoom) so the
-        // "close enough, guide gone" feel is the same at any zoom level — 1px was pixel-perfect-only
-        // and never actually cleared in practice.
-        if (Math.hypot(oc.x - c.x, oc.y - c.y) < 6) continue;
-        ctx.save();
-        ctx.strokeStyle = guideCol;
-        // Tenue on purpose — this is a positioning aid, not a real pipe run, so it should read
-        // clearly weaker than the net's actual solid-line color.
-        ctx.globalAlpha = 0.3;
-        ctx.lineWidth = 1 * engine.zoom;
-        ctx.setLineDash([6 * engine.zoom, 5 * engine.zoom]);
-        ctx.beginPath();
-        ctx.moveTo(c.x, c.y);
-        ctx.lineTo(oc.x, oc.y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.beginPath();
-        ctx.arc(oc.x, oc.y, r * 0.5, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
 
     // Draw green dashed lines from ramales that feed this bajante (recibeDeIds) — this is a
     // guide for when the bajante sits AWAY from the ramal (e.g. an offset/ghost position), so
@@ -759,10 +658,17 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
 }
 
 // Cross-floor association ghosts (associateBajanteAcrossFloors.ts) — pure positional reference
-// markers written directly into this floor's own `crossFloorGhosts` array, separate from
-// `bajantes`. Rendered as a dashed circle (distinct from a same-floor fantasma's solid one) with
-// the source bajante's code + inherited diameter, so the connection is visible without needing to
-// switch floors.
+// markers written directly into this floor's own `crossFloorGhosts` array. Dashed circle + full
+// bajante label above (code-Piso, D=, dir) in network color, matching source bajante format.
+function toShortPiso(label: string): string {
+  if (!label) return '';
+  if (label.includes('Cubierta')) return 'C';
+  const m = label.match(/(\d+)/);
+  if (label.includes('Sótano')) return `S${m?.[1] || ''}`;
+  if (label.includes('Piso')) return `P${m?.[1] || ''}`;
+  return label;
+}
+
 export function renderCrossFloorGhosts(
   ctx: CanvasRenderingContext2D,
   engine: IPlanoEngineCore,
@@ -775,6 +681,27 @@ export function renderCrossFloorGhosts(
     const r = engine.realMmToCanvasPx(20) * 0.6;
     g._hitCircle = { x: c.x, y: c.y, r };
 
+    // Dashed line to target bajante on this floor
+    if (g.targetBajanteId) {
+      const targetB = engine.bajantes.find((b) => b.id === g.targetBajanteId);
+      if (targetB) {
+        const tc = engine.toCvs(targetB.x, targetB.y);
+        ctx.save();
+        ctx.strokeStyle = col;
+        ctx.globalAlpha = 0.3;
+        ctx.lineWidth = 1 * engine.zoom;
+        ctx.setLineDash([6 * engine.zoom, 4 * engine.zoom]);
+        ctx.beginPath();
+        ctx.moveTo(c.x, c.y);
+        ctx.lineTo(tc.x, tc.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
+    }
+
+    // Dashed circle
     ctx.save();
     ctx.strokeStyle = col;
     ctx.lineWidth = 1 * engine.zoom;
@@ -785,22 +712,54 @@ export function renderCrossFloorGhosts(
     ctx.setLineDash([]);
     ctx.restore();
 
-    const fsCode = engine.mm2cvs(engine.MM.lblName * engine.labelScaleM);
-    const fsInfo = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM);
-    const codeStr = (g.code || '').replace(/#/g, '').toUpperCase();
-    const diamStr = g.dNominal && g.dNominal !== '0' ? normalizeDnLabel(g.dNominal) : '';
-
+    // Direction glyph inside the circle — same vector shape as the real bajante's, reading the
+    // SOURCE (parent) direction so the arrow matches the text label above.
+    const ghostTipo = MONTANTE_NETS.includes(g.net) ? 'montante' : 'bajante';
     ctx.save();
-    ctx.textAlign = 'center';
-    ctx.fillStyle = col;
-    ctx.font = `bold ${fsCode}px Geist, monospace`;
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(codeStr, c.x, c.y - r - engine.mm2cvs(1));
-    if (diamStr) {
-      ctx.font = `${fsInfo}px Geist, monospace`;
-      ctx.textBaseline = 'top';
-      ctx.fillText(`D=${diamStr}`, c.x, c.y + r + engine.mm2cvs(1));
-    }
+    ctx.translate(c.x, c.y);
+    drawDireccionSymbol(ctx, ghostTipo, r, g.parentDireccion ?? g.direccion);
     ctx.restore();
+
+    // Label: BAN2-P2 / D=4" Baja (short piso, diameter shown)
+    const shortPiso = toShortPiso(g.piso || '');
+    const codeStr = (g.code || '').replace(/#/g, '').toUpperCase();
+    const line1 = codeStr ? `${codeStr}${shortPiso ? '-' + shortPiso : ''}` : shortPiso || '—';
+    let diamStr = '';
+    if (g.dNominal && g.dNominal !== '0') {
+      const v = String(g.dNominal).trim();
+      if (v.includes('"') || v.includes('mm')) {
+        diamStr = normalizeDnLabel(v);
+      } else {
+        const numV = Number(v);
+        diamStr = !isNaN(numV) ? (numV < 20 ? `${numV}"` : `${numV}mm`) : normalizeDnLabel(v);
+      }
+    }
+    // Show the SOURCE (upper-floor) parent's direction in the label, not the ghost's own counter-
+    // direction. Falls back to ghost.direccion for legacy ghosts written before this field existed.
+    const dirWord = DIR_MAP[g.parentDireccion ?? g.direccion ?? ''] || '';
+    const dirText = diamStr ? `D=${diamStr}${dirWord ? '  ' + dirWord : ''}` : dirWord;
+
+    // Label above the circle, centered, no leader line, network color. Tighter offset than a
+    // regular bajante label — the ghost sits alongside its dashed line and the source's parent
+    // symbol, so an extra 8 mm of breathing room just pushes it onto adjacent annotations.
+    const offDy = -(r + engine.mm2cvs(3));
+    renderBajanteLabel(
+      ctx,
+      engine,
+      g,
+      c,
+      r,
+      0,
+      0,
+      offDy,
+      line1,
+      dirText,
+      '_crossFloorLabelBox',
+      1,
+      {
+        skipLeader: true,
+        textColor: col,
+      },
+    );
   });
 }

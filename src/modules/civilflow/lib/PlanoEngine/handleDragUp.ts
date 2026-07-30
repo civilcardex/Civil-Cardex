@@ -3,6 +3,12 @@ import type { PlanoRamal } from './PlanoState';
 import { NETS } from './PlanoState';
 import { checkRamalAngles, _firstSegmentAngle, detectAccesorioTrigger } from './drawingAngles';
 import { autoSplitJunctionAndSumFlow } from './PlanoEngineDrawing';
+import {
+  updateCrossFloorGhostPositionBySource,
+  updateCrossFloorLdesvioFarEndpoint,
+  buildLdesvioRamal,
+  ldesvioIdFor,
+} from '../../utils/associateBajanteAcrossFloors';
 
 // San/ll/vent junctions (tee/codo/yee) auto-create via calcSanitaryAccessories + renderJunctions
 // — only AF/AC/gas need user selection for tee tipo.
@@ -149,7 +155,6 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
           const pfx = net ? net.lbl : 'R';
           const cnt = ++engine._netCounts[b.net].ramal;
           const ramId = pfx + cnt;
-          const diam = b.dNominal || '0';
           const ldesvioPts = [
             [b.x, b.y],
             [b.x + d.dx, b.y + d.dy],
@@ -171,7 +176,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
             labelY: (b.y + b.y + d.dy) / 2,
             labelAngle: _firstSegmentAngle(ldesvioPts),
             material: '',
-            diametro: diam !== '0' ? diam : '',
+            diametro: '',
             pendiente: 2,
             bloqueado: true,
           };
@@ -196,6 +201,10 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
   if (engine.txtResize) {
     engine._markDirty();
     engine.txtResize = null;
+  }
+  if (engine.dimLblDrag) {
+    engine._markDirty();
+    engine.dimLblDrag = null;
   }
   if (engine.bajDrag) {
     const bId = engine.bajDrag.id;
@@ -231,6 +240,52 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         }
         engine._markDirty();
         engine.render();
+      }
+    }
+    // Whatever the final x/y ended up being (post-rollback included), push it to any cross-floor
+    // ghost this bajante is the source of, so the mirror on the other floor stays aligned — and
+    // to its own Ldesvio connector's near end, which lives on this SAME floor (live array) since
+    // the connector always belongs to the source's own floor.
+    if (b && b.descargaEnId) {
+      const [targetPlanId] = b.descargaEnId.split('|');
+      const sourcePlanId = String(engine._loadedPlanId ?? '');
+      if (targetPlanId) {
+        updateCrossFloorGhostPositionBySource(sourcePlanId, b.id, b.x, b.y);
+        if (String(targetPlanId) === sourcePlanId) {
+          engine.crossFloorGhosts = engine.crossFloorGhosts.map((g) =>
+            g.sourcePlanId === sourcePlanId && g.sourceBajanteId === b.id
+              ? { ...g, x: b.x, y: b.y }
+              : g,
+          );
+        }
+        const ldId = ldesvioIdFor(b.id);
+        const ld = engine.ramales.find((r) => r.id === ldId);
+        if (ld && ld.pts?.length === 2) {
+          const [, far] = ld.pts;
+          const updated = buildLdesvioRamal(
+            ldId,
+            ld.label || ldId,
+            ld.net,
+            b.x,
+            b.y,
+            far[0],
+            far[1],
+            ld.diametro || '',
+            Number(ld.piso) || 0,
+            engine.scaleM || 0.5,
+          );
+          Object.assign(ld, updated);
+        }
+        engine.render();
+      }
+    }
+    // This bajante is the TARGET side of some other (possibly remote-floor) bajante's link — its
+    // Ldesvio's far endpoint lives over there, unreachable through the live engine, so it's synced
+    // via a direct storage write instead.
+    if (b && b.origenId) {
+      const [originPlanId, originBajanteId] = b.origenId.split('|');
+      if (originPlanId && originBajanteId) {
+        updateCrossFloorLdesvioFarEndpoint(originPlanId, originBajanteId, b.x, b.y);
       }
     }
   }

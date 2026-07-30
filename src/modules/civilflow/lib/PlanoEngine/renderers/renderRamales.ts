@@ -30,19 +30,18 @@ function drawExtremeAccessorySymbol(
   if (accType === 'sifon') {
     // This is a PLAN view (looking straight down) — the trap's 2D "dip" has no actual relation to
     // real gravity (which is perpendicular to the page here, not drawn at all); it's a purely
-    // conventional glyph shape. Previously the entry (steps 1-2) followed the ramal's real
-    // direction while the dip (steps 3-6) stayed fixed screen-down — for any angle other than
-    // perfectly horizontal that put entry and dip at an inconsistent relative angle, producing a
-    // kink/wrong-oriented arc. Rotating the whole symbol as one rigid shape — dip always
-    // perpendicular to the entry, in the SAME rotating frame — removes the kink at any angle while
-    // still having the entry visually continue the ramal's own direction.
+    // conventional glyph shape. The dip MUST stay perpendicular to the entry direction (snap) —
+    // a fixed screen-down dip degenerates into a straight line for a vertical ramal (dip parallel
+    // to entry) and skews into a parallelogram for a diagonal one. Of the two perpendicular
+    // choices, pick whichever leans more toward screen-down so a near-horizontal entry still
+    // reads as "dipping down" at a glance, without distorting the shape at any angle.
     const dirLen = Math.hypot(outX, outY) || 1;
     const snapX = outX / dirLen;
     const snapY = outY / dirLen;
     const perX = -snapY;
     const perY = snapX;
-    const dnX = perX,
-      dnY = perY;
+    const dnX = perY >= 0 ? perX : -perX;
+    const dnY = perY >= 0 ? perY : -perY;
 
     const L1 = rad * 1.6;
     const tickL = rad * 0.45;
@@ -824,8 +823,14 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         flowDy = 0,
         flowLen = 0;
       if (showFlow) {
-        const fc = engine.toCvs(r.pts[0][0], r.pts[0][1]);
-        const lastc = engine.toCvs(r.pts[r.pts.length - 1][0], r.pts[r.pts.length - 1][1]);
+        let flowFromIdx = 0;
+        let flowToIdx = r.pts.length - 1;
+        if (r.tipo === 'tributario' && r._tribReversed) {
+          flowFromIdx = flowToIdx;
+          flowToIdx = 0;
+        }
+        const fc = engine.toCvs(r.pts[flowFromIdx][0], r.pts[flowFromIdx][1]);
+        const lastc = engine.toCvs(r.pts[flowToIdx][0], r.pts[flowToIdx][1]);
         flowDx = lastc.x - fc.x;
         flowDy = lastc.y - fc.y;
         flowLen = Math.hypot(flowDx, flowDy);
@@ -1061,6 +1066,11 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         let startIdx = 0;
         let nextIdx = 1;
 
+        if (r.tipo === 'tributario' && r._tribReversed) {
+          startIdx = r.pts.length - 1;
+          nextIdx = r.pts.length - 2;
+        }
+
         let isCodoReventiladoConnection = false;
         let codoEndIdx = -1;
 
@@ -1201,7 +1211,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       // alone is invisible at common scales, since both land on that floor. Halve the px result.
       const rad = engine.realMmToCanvasPx(23) * 0.6;
 
-      const diamLabel = (idx === 0 ? r.diametroInicio : r.diametroFin) || r.diametro;
+      const diamLabel = idx === 0 ? r.diametroInicio : r.diametroFin;
 
       ctx.save();
       ctx.lineCap = 'round';
@@ -1373,7 +1383,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         }
         ctx.stroke();
 
-        // Black T-bar caps at the end of each arm
+        // Black T-bar caps on ALL 4 arms
         ctx.beginPath();
         for (const d of dirs) {
           const endX = c.x + d.x * armLen;

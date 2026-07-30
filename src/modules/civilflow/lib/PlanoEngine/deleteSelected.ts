@@ -1,5 +1,56 @@
 import type { IPlanoEngineCore, PlanoBajante } from './PlanoState';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
+import {
+  removeCrossFloorGhostsBySource,
+  removeCrossFloorGhost,
+  removeCrossFloorLdesvioRamal,
+  deleteBajanteFromStorage,
+} from '../../utils/associateBajanteAcrossFloors';
+
+// A bajante/montante riser tied to another floor's via "Origen"/"Destino" is the same physical
+// pipe continuing there — deleting one side's symbol while the other stays behind (still pointing
+// at an id that no longer exists) makes no sense, so deleting either end cascades to remove the
+// other too, wherever its floor's data lives. Applies to both bajante and montante.
+function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: PlanoBajante): void {
+  if (deleted.tipo !== 'montante' && deleted.tipo !== 'bajante') return;
+  const thisPlanId = String(engine._loadedPlanId ?? '');
+
+  if (deleted.descargaEnId) {
+    const [targetPlanId, targetBajanteId] = deleted.descargaEnId.includes('|')
+      ? deleted.descargaEnId.split('|')
+      : [thisPlanId, deleted.descargaEnId];
+    if (targetPlanId && targetBajanteId) {
+      removeCrossFloorGhost(targetPlanId, thisPlanId, deleted.id);
+      removeCrossFloorLdesvioRamal(thisPlanId, deleted.id);
+      if (targetPlanId === thisPlanId) {
+        const t = engine.bajantes.find((b) => b.id === targetBajanteId);
+        if (t?.tipo === 'montante' || t?.tipo === 'bajante') {
+          engine.bajantes = engine.bajantes.filter((b) => b.id !== targetBajanteId);
+        } else if (t) t.origenId = null;
+      } else {
+        deleteBajanteFromStorage(targetPlanId, targetBajanteId);
+      }
+    }
+  }
+
+  if (deleted.origenId) {
+    const [originPlanId, originBajanteId] = deleted.origenId.includes('|')
+      ? deleted.origenId.split('|')
+      : [thisPlanId, deleted.origenId];
+    if (originPlanId && originBajanteId) {
+      removeCrossFloorGhost(thisPlanId, originPlanId, originBajanteId);
+      removeCrossFloorLdesvioRamal(originPlanId, originBajanteId);
+      if (originPlanId === thisPlanId) {
+        const o = engine.bajantes.find((b) => b.id === originBajanteId);
+        if (o?.tipo === 'montante' || o?.tipo === 'bajante') {
+          engine.bajantes = engine.bajantes.filter((b) => b.id !== originBajanteId);
+        } else if (o) o.descargaEnId = null;
+      } else {
+        deleteBajanteFromStorage(originPlanId, originBajanteId);
+      }
+    }
+  }
+}
 
 const TEE_TYPES = ['teeDirecto', 'teeSube', 'teeBaja', 'te_linea', 'te_ramal'];
 
@@ -59,10 +110,16 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
     const netsToRenumber = new Set<string>();
     const bajNetsToRenumber = new Set<string>();
     let renumberAreas = false;
+    const deletedRamalIds = new Set<string>();
     for (const id of ids) {
       const idxR = engine.ramales.findIndex((r) => r.id === id);
       if (idxR >= 0) {
         const deleted = engine.ramales[idxR];
+        // Deleting a ramal in a bilateral tee only removes that one ramal — its bilateral
+        // partner is a separate physical pipe and must stay, so only the selected ids get
+        // removed. bilateralPairIds references to it on OTHER ramales still need pruning below
+        // so nothing keeps pointing at a now-deleted id.
+        deletedRamalIds.add(deleted.id);
         engine.ramales = engine.ramales.filter(
           (r) => r.id !== deleted.id && r.padre !== deleted.id,
         );
@@ -130,6 +187,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
             }
           }
           engine.bajantes.splice(idxB, 1);
+          cascadeMontanteAssociation(engine, deleted);
           // A mid-body montante always wrote a tee marker (accMed) on its host ramal at creation
           // — deleting the montante without this left that tee glyph/count behind forever, since
           // nothing else ever revisits accMed once it's written.
@@ -138,6 +196,9 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
           else if (deleted.tipo === 'montante') bajNetsToRenumber.add('montante');
           else if (deleted.tipo === 'red_publica') bajNetsToRenumber.add('red_publica');
           else if (deleted.tipo === 'contador') bajNetsToRenumber.add('contador');
+          // Clean up cross-floor ghosts on other floors referencing this bajante
+          if (engine._loadedPlanId != null)
+            removeCrossFloorGhostsBySource(engine._loadedPlanId, deleted.id);
         }
         continue;
       }
@@ -156,6 +217,19 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       if (idxD >= 0) {
         engine.dims.splice(idxD, 1);
         continue;
+      }
+      const idxG = engine.guideLines.findIndex((g) => g.id === id);
+      if (idxG >= 0) {
+        engine.guideLines.splice(idxG, 1);
+        continue;
+      }
+    }
+    // Prune bilateralPairIds references to whatever just got deleted — no cascade, just cleanup.
+    if (deletedRamalIds.size > 0) {
+      for (const r of engine.ramales) {
+        if (r.bilateralPairIds) {
+          r.bilateralPairIds = r.bilateralPairIds.filter((pid) => !deletedRamalIds.has(pid));
+        }
       }
     }
     for (const net of netsToRenumber) engine._renumberRamales(net);
@@ -190,7 +264,14 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
   if (idxR >= 0) {
     const deleted = engine.ramales[idxR];
     const deletedId = deleted.id;
-    engine.ramales = engine.ramales.filter((r) => r.id !== deleted.id && r.padre !== deleted.id);
+    // No bilateral-partner cascade — only the selected ramal is removed, even at a bilateral
+    // tee crossing (the partner is a separate physical pipe).
+    engine.ramales = engine.ramales.filter((r) => r.id !== deletedId && r.padre !== deleted.id);
+    for (const r of engine.ramales) {
+      if (r.bilateralPairIds) {
+        r.bilateralPairIds = r.bilateralPairIds.filter((pid) => pid !== deletedId);
+      }
+    }
     if (deleted.pts?.length) {
       cleanupTeeMarkersAt(engine, deleted.pts[0]);
       cleanupTeeMarkersAt(engine, deleted.pts[deleted.pts.length - 1]);
@@ -198,14 +279,12 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
     // Clean up bajante references to deleted ramal
     for (const b of engine.bajantes) {
       if (b.recibeDeIds) {
-        b.recibeDeIds = b.recibeDeIds.filter((rid) => rid !== deletedId);
+        b.recibeDeIds = b.recibeDeIds.filter((r) => r !== deletedId);
       }
       if (b.descargaEnId) {
         const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
         if (parts[parts.length - 1] === deletedId) b.descargaEnId = null;
       }
-      // If this ramal was the Ldesvio connector for a ghost displacement, the ghost
-      // has no parent-facing pipe left — remove the displacement (and its ghost) too.
       if (b.desplazamientos) {
         for (const lvlKey of Object.keys(b.desplazamientos)) {
           if (b.desplazamientos[lvlKey].Ldesvio === deletedId) {
@@ -267,6 +346,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       }
     }
     engine.bajantes.splice(idxB, 1);
+    cascadeMontanteAssociation(engine, deleted);
     if (deleted.tipo === 'bajante') {
       engine._renumberBajantes(deleted.net);
     } else if (deleted.tipo === 'montante') {
@@ -288,6 +368,9 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
         b.code = pfx + (i + 1);
       });
     }
+    // Clean up cross-floor ghosts on other floors referencing this bajante
+    if (engine._loadedPlanId != null)
+      removeCrossFloorGhostsBySource(engine._loadedPlanId, deleted.id);
     engine.selId = null;
     engine._emitSelect(null);
     engine._emitDelete([deletedId]);
@@ -322,6 +405,17 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
   if (idxD >= 0) {
     const deletedId = engine.dims[idxD].id;
     engine.dims.splice(idxD, 1);
+    engine.selId = null;
+    engine._emitSelect(null);
+    engine._emitDelete([deletedId]);
+    engine.render();
+    engine._markDirty();
+    return;
+  }
+  const idxG = engine.guideLines.findIndex((g) => g.id === engine.selId);
+  if (idxG >= 0) {
+    const deletedId = engine.guideLines[idxG].id;
+    engine.guideLines.splice(idxG, 1);
     engine.selId = null;
     engine._emitSelect(null);
     engine._emitDelete([deletedId]);
