@@ -1,7 +1,7 @@
 import type { Tramo } from '../context/tramosReducer';
 import type { PlanItem } from '../context/PlansContext';
 import { calcUDparcial } from './componentHelpers';
-import { pisoLbl } from '../constants';
+import { pisoCorto } from '../constants';
 import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoriaFinal';
 import { diametroManning, caudalHunterLPS, factorSimultaneidad } from './calcSanitaryCore';
 import { calcHydraulicCheck } from './hydraulicCheck';
@@ -556,7 +556,7 @@ export function computeUdTable(
         : t.fin || '—';
     return [
       t.id,
-      pisoLbl(t.piso),
+      pisoCorto(t.piso),
       ini,
       fin,
       ...mergedBase.map((d) => t.fixtures[d.id] ?? 0),
@@ -572,7 +572,7 @@ export function computeUdTable(
     return { cant, ud: d.ud, subtotal: cant * d.ud };
   });
   const totalUD = totales.reduce((s, d) => s + d.subtotal, 0);
-  rows.push(['Σ', '', '', '', ...totales.map((d) => `${d.cant} × ${d.ud} UD`), '', totalUD]);
+  rows.push(['Total', '', '', '', ...totales.map((d) => `${d.cant} × ${d.ud} UD`), '', totalUD]);
 
   return { title: 'Cálculo de unidades de descarga', headerGroups, headers, rows };
 }

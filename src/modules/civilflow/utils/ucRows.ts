@@ -1,6 +1,6 @@
 import type { Tramo } from '../context/tramosReducer';
 import type { ApsItem } from '../context/ApparatusContext';
-import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, pisoLbl } from '../constants';
+import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS, pisoCorto } from '../constants';
 import { calcUCparcial, calcUCacumulado } from './componentHelpers';
 import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoriaFinal';
 
@@ -82,7 +82,7 @@ export function computeUcTable(
         : t.fin || '—';
     const row: (string | number)[] = [
       t.id,
-      pisoLbl(t.piso),
+      pisoCorto(t.piso),
       ini,
       fin,
       ...AP.map((d) => t.fixtures?.[d.id] || 0),
@@ -105,7 +105,7 @@ export function computeUcTable(
   });
   const totalUC = totales.reduce((s, d) => s + d.subtotal, 0);
   const sumRow: (string | number)[] = [
-    'Σ',
+    'Total',
     '',
     '',
     '',

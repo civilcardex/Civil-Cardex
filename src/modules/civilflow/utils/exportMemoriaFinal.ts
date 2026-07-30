@@ -17,6 +17,32 @@ export interface MemoriaTable {
   red?: string;
 }
 
+// Drops columns that are all-zero across every row — used for accessory-count tables where most
+// accessory types don't apply to a given project and printing an all-zero column is just noise.
+// `labelCols`/`trailingCols` protect leading label columns and trailing computed-total columns
+// from being dropped even if they happen to be all zero. Skips tables with headerGroups (span
+// math would need adjusting too, and none of today's accessory tables use them).
+export function dropAllZeroColumns(
+  table: MemoriaTable,
+  labelCols = 1,
+  trailingCols = 0,
+): MemoriaTable {
+  if (table.headerGroups) return table;
+  const lastProtected = table.headers.length - trailingCols;
+  const keepIdx: number[] = [];
+  for (let i = 0; i < table.headers.length; i++) {
+    if (i < labelCols || i >= lastProtected || table.rows.some((r) => Number(r[i]) !== 0)) {
+      keepIdx.push(i);
+    }
+  }
+  if (keepIdx.length === table.headers.length) return table;
+  return {
+    ...table,
+    headers: keepIdx.map((i) => table.headers[i]),
+    rows: table.rows.map((r) => keepIdx.map((i) => r[i])),
+  };
+}
+
 export interface MemoriaData {
   proyNombre: string;
   rows: [string, string][];
@@ -69,6 +95,7 @@ const REDES_ORDEN: { key: string; label: string }[] = [
   { key: 'san', label: 'Sanitaria' },
   { key: 'll', label: 'Aguas Lluvias' },
   { key: 'af', label: 'Agua Fría' },
+  { key: 'aco', label: 'Acometida' },
   { key: 'ac', label: 'Agua Caliente' },
   { key: 'gas', label: 'Gas' },
   { key: 'bom', label: 'Bomba aguas residuales' },
@@ -570,6 +597,11 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
         },
         bodyStyles: { valign: 'middle' },
         theme: 'grid',
+        // Dash cells ("—") mark a missing/not-applicable value — center just that cell,
+        // leave every other cell's alignment (left for text, right for numbers) untouched.
+        didParseCell: (data) => {
+          if (data.cell.raw === '—' || data.cell.raw === '-') data.cell.styles.halign = 'center';
+        },
         didDrawPage: () => {
           cursorY = 40;
         },
@@ -581,6 +613,21 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
         ?.finalY;
       cursorY = (finalY ?? cursorY) + 22;
     }
+  }
+
+  const pageCount = (
+    doc.internal as unknown as { getNumberOfPages: () => number }
+  ).getNumberOfPages();
+  const pageH = doc.internal.pageSize.getHeight();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`CivilFlow ${new Date().getFullYear()}`, pageW / 2, 18, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.text(data.proyNombre || 'Proyecto', 30, pageH - 15);
+    doc.text(`${i} / ${pageCount}`, pageW - 30, pageH - 15, { align: 'right' });
   }
 
   doc.save(`${fileBase(data.proyNombre)}.pdf`);
