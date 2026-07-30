@@ -4,8 +4,8 @@ import { usePersistedState } from '../../../hooks/usePersistedState';
 export interface Proyecto {
   nombre: string;
   dir: string;
-  mun: string;
-  dep: string;
+  ciudad: string;
+  pais: string;
   uso: string;
   empresa: string;
   p_red: string;
@@ -30,8 +30,8 @@ export interface Proyecto {
 export const PROY_DEFAULTS: Proyecto = {
   nombre: '',
   dir: '',
-  mun: '',
-  dep: '',
+  ciudad: '',
+  pais: '',
   uso: '',
   empresa: '',
   p_red: '',
@@ -62,9 +62,25 @@ interface ProyectoContextValue {
 
 export const ProyectoContext = createContext<ProyectoContextValue | null>(null);
 
+// Projects saved before the ciudad/pais rename still have the old 'mun'/'dep' keys — map them
+// across once on load so existing projects don't appear to lose their city/country.
+function recoverProyecto(saved: unknown): Proyecto {
+  const s = saved as Partial<Proyecto> & { mun?: string; dep?: string };
+  return {
+    ...PROY_DEFAULTS,
+    ...s,
+    ciudad: s.ciudad ?? s.mun ?? PROY_DEFAULTS.ciudad,
+    pais: s.pais ?? s.dep ?? PROY_DEFAULTS.pais,
+  };
+}
+
 /** Provides proyecto master data (location, usage, materials, defaults) persisted to localStorage. */
 export function ProyectoProvider({ children }: { children?: ReactNode }) {
-  const [proy, setProy] = usePersistedState<Proyecto>('civilflow_proy', PROY_DEFAULTS);
+  const [proy, setProy] = usePersistedState<Proyecto>(
+    'civilflow_proy',
+    PROY_DEFAULTS,
+    recoverProyecto,
+  );
 
   const setP = useCallback(
     (k: string, v: string | number) => setProy((p) => ({ ...p, [k]: v })),
