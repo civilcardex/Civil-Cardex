@@ -20,11 +20,7 @@ const plans = [
       'Tabla de aparatos NTC 1500',
       'Soporte por comunidad',
     ],
-missing: [
-'Módulo Red de Gas',
-'Módulo contra incendio',
-'Soporte técnico dedicado',
-],
+    missing: ['Módulo Red de Gas', 'Módulo contra incendio', 'Soporte técnico dedicado'],
   },
   {
     id: 'profesional',
@@ -40,18 +36,14 @@ missing: [
       'Proyectos ilimitados',
       '9 módulos completos',
       'Red de Gas (Renouard NTC 3728)',
-'Contra incendio (NSR-10 + NFPA 13)',
-'Exportación PDF memorias de cálculo',
+      'Contra incendio (NSR-10 + NFPA 13)',
+      'Exportación PDF memorias de cálculo',
       'Selección de calentadores (HACEB, BOSCH, RHEEM)',
       'Cálculo de bombas y equipos de presión',
       'Soporte por email < 24h',
       'Actualizaciones automáticas de normas NTC',
     ],
-    missing: [
-      'API de integración',
-      'Multi-usuario',
-      'Branding personalizado',
-    ],
+    missing: ['API de integración', 'Multi-usuario', 'Branding personalizado'],
   },
   {
     id: 'empresarial',
@@ -82,131 +74,250 @@ const FAQ_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'FAQPage',
   mainEntity: [
-    { '@type': 'Question', name: '\u00bfQu\u00e9 incluye el plan gratuito?', acceptedAnswer: { '@type': 'Answer', text: 'El plan gratuito incluye acceso a herramientas b\u00e1sicas de dise\u00f1o hidrosanitario con l\u00edmite de proyectos.' } },
-    { '@type': 'Question', name: '\u00bfPuedo cambiar de plan en cualquier momento?', acceptedAnswer: { '@type': 'Answer', text: 'S\u00ed, puede actualizar o cancelar su plan en cualquier momento desde su perfil. El cambio es inmediato.' } },
-    { '@type': 'Question', name: '\u00bfOfrecen descuentos para firmas de ingenier\u00eda?', acceptedAnswer: { '@type': 'Answer', text: 'S\u00ed, contamos con planes empresariales con descuento por volumen. Cont\u00e1ctenos para una cotizaci\u00f3n personalizada.' } },
+    {
+      '@type': 'Question',
+      name: '\u00bfQu\u00e9 incluye el plan gratuito?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'El plan gratuito incluye acceso a herramientas b\u00e1sicas de dise\u00f1o hidrosanitario con l\u00edmite de proyectos.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: '\u00bfPuedo cambiar de plan en cualquier momento?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'S\u00ed, puede actualizar o cancelar su plan en cualquier momento desde su perfil. El cambio es inmediato.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: '\u00bfOfrecen descuentos para firmas de ingenier\u00eda?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'S\u00ed, contamos con planes empresariales con descuento por volumen. Cont\u00e1ctenos para una cotizaci\u00f3n personalizada.',
+      },
+    },
   ],
 };
 
 const PRODUCT_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'Product',
-  'name': 'Civil Core Profesional',
-  'image': 'https://civilcore.app/logos/civilCorelogo.webp',
-  'description': 'Plan Profesional para ingenieros civiles independientes y firmas pequeñas. Incluye 9 módulos completos, Red de Gas, Contra Incendio y exportación PDF.',
-  'brand': {
+  name: 'Civil Cardex Profesional',
+  image: 'https://civilcardex.app/logos/civilCardexlogo.webp',
+  description:
+    'Plan Profesional para ingenieros civiles independientes y firmas pequeñas. Incluye 9 módulos completos, Red de Gas, Contra Incendio y exportación PDF.',
+  brand: {
     '@type': 'Brand',
-    'name': 'Civil Core'
+    name: 'Civil Cardex',
   },
-  'offers': {
+  offers: {
     '@type': 'Offer',
-    'url': 'https://civilcore.app/pricing',
-    'priceCurrency': 'USD',
-    'price': '19.00',
-    'priceValidUntil': '2027-12-31',
-    'availability': 'https://schema.org/InStock'
-  }
+    url: 'https://civilcardex.app/pricing',
+    priceCurrency: 'USD',
+    price: '19.00',
+    priceValidUntil: '2027-12-31',
+    availability: 'https://schema.org/InStock',
+  },
 };
 
 function PricingPage() {
-  usePageMeta('Precios', 'Planes y precios de CivilCore. Elija el plan ideal para ingenier\u00eda civil: b\u00e1sico, profesional o empresarial.');
+  usePageMeta(
+    'Precios',
+    'Planes y precios de CivilCardex. Elija el plan ideal para ingenier\u00eda civil: b\u00e1sico, profesional o empresarial.',
+  );
   return (
     <>
-    <script type="application/ld+json">{JSON.stringify(FAQ_JSONLD)}</script>
-    <script type="application/ld+json">{JSON.stringify(PRODUCT_JSONLD)}</script>
-    <div style={{ background: '#111317', color: '#e2e2e8', minHeight: '100vh' }}>
-      <Navbar />
-      <div className="container mx-auto px-6 lg:px-8 py-24 pt-28">
-        <div className="text-center space-y-4 mb-20">
-          <h1 className="text-primary uppercase" style={{ fontSize: 40, fontWeight: 700, fontFamily: 'Hanken Grotesk, sans-serif' }}>
-            Planes y Precios
-          </h1>
-          <p className="text-base text-on-surface-variant max-w-xl mx-auto">
-            Elija el plan que se adapte a su firma de ingeniería. Todos los planes incluyen verificación automática contra normativa colombiana vigente.
-          </p>
-          <div className="flex justify-center gap-3 pt-2">
-            <span style={{ borderColor: '#1D4ED8', color: '#3B82F6', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontFamily: 'Geist, monospace', border: '1px solid #1D4ED8' }}>NTC 1500</span>
-            <span style={{ borderColor: '#1D4ED8', color: '#3B82F6', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontFamily: 'Geist, monospace', border: '1px solid #1D4ED8' }}>RAS 2000</span>
-            <span style={{ borderColor: '#1D4ED8', color: '#3B82F6', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontFamily: 'Geist, monospace', border: '1px solid #1D4ED8' }}>NTC 3728</span>
-            <span style={{ borderColor: '#1D4ED8', color: '#3B82F6', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontFamily: 'Geist, monospace', border: '1px solid #1D4ED8' }}>NSR-10</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {plans.map(plan => (
-            <div key={plan.id} className="border p-8 flex flex-col relative"
-              style={{
-                background: plan.destacado ? '#1a1c20' : '#111317',
-                borderColor: plan.destacado ? plan.color : '#3a494a',
-                borderWidth: plan.destacado ? 2 : 1,
-              }}>
-              {plan.destacado && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-[10px] font-bold uppercase tracking-widest"
-                  style={{ background: plan.color, color: '#003739', fontFamily: 'Geist, monospace' }}>
-                  Recomendado
-                </div>
-              )}
-              <div className="text-center mb-8">
-                <h2 className="uppercase tracking-widest mb-2" style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Geist, monospace', color: plan.color }}>
-                  {plan.nombre}
-                </h2>
-                <div className="flex items-baseline justify-center gap-1">
-                  <span style={{ fontSize: 40, fontWeight: 700, fontFamily: 'Hanken Grotesk, sans-serif', color: plan.color }}>
-                    {plan.precio}
-                  </span>
-                  {plan.periodo && (
-                    <span className="text-on-surface-variant" style={{ fontSize: 14, fontFamily: 'Hanken Grotesk, sans-serif' }}>
-                      {plan.periodo}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-on-surface-variant mt-3" style={{ minHeight: 40 }}>
-                  {plan.desc}
-                </p>
-              </div>
-              <div className="flex-1 space-y-3 mb-8">
-                {plan.features.map((f, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <span className="material-symbols-outlined text-sm mt-0.5" style={{ color: '#2ff801', fontSize: 16 }}>
-                      check_circle
-                    </span>
-                    <span className="text-[13px] text-on-surface-variant">{f}</span>
-                  </div>
-                ))}
-                {plan.missing.map((f, i) => (
-                  <div key={'m' + i} className="flex items-start gap-2 opacity-40">
-                    <span className="material-symbols-outlined text-sm mt-0.5" style={{ color: '#849495', fontSize: 16 }}>
-                      remove
-                    </span>
-                    <span className="text-[13px] text-on-surface-variant">{f}</span>
-                  </div>
-                ))}
-              </div>
-              <Link
-                to={plan.to}
-                className="block text-center py-3 uppercase tracking-widest font-bold transition-all"
+      <script type="application/ld+json">{JSON.stringify(FAQ_JSONLD)}</script>
+      <script type="application/ld+json">{JSON.stringify(PRODUCT_JSONLD)}</script>
+      <div style={{ background: '#111317', color: '#e2e2e8', minHeight: '100vh' }}>
+        <Navbar />
+        <div className="container mx-auto px-6 lg:px-8 py-24 pt-28">
+          <div className="text-center space-y-4 mb-20">
+            <h1
+              className="text-primary uppercase"
+              style={{ fontSize: 40, fontWeight: 700, fontFamily: 'Hanken Grotesk, sans-serif' }}
+            >
+              Planes y Precios
+            </h1>
+            <p className="text-base text-on-surface-variant max-w-xl mx-auto">
+              Elija el plan que se adapte a su firma de ingeniería. Todos los planes incluyen
+              verificación automática contra normativa colombiana vigente.
+            </p>
+            <div className="flex justify-center gap-3 pt-2">
+              <span
                 style={{
+                  borderColor: '#1D4ED8',
+                  color: '#3B82F6',
+                  padding: '3px 10px',
+                  borderRadius: 20,
                   fontSize: 12,
                   fontFamily: 'Geist, monospace',
-                  background: plan.destacado ? plan.color : 'transparent',
-                  color: plan.destacado ? '#003739' : plan.color,
-                  border: plan.destacado ? 'none' : `1px solid ${plan.color}`,
-                }}>
-                {plan.cta}
-              </Link>
+                  border: '1px solid #1D4ED8',
+                }}
+              >
+                NTC 1500
+              </span>
+              <span
+                style={{
+                  borderColor: '#1D4ED8',
+                  color: '#3B82F6',
+                  padding: '3px 10px',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontFamily: 'Geist, monospace',
+                  border: '1px solid #1D4ED8',
+                }}
+              >
+                RAS 2000
+              </span>
+              <span
+                style={{
+                  borderColor: '#1D4ED8',
+                  color: '#3B82F6',
+                  padding: '3px 10px',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontFamily: 'Geist, monospace',
+                  border: '1px solid #1D4ED8',
+                }}
+              >
+                NTC 3728
+              </span>
+              <span
+                style={{
+                  borderColor: '#1D4ED8',
+                  color: '#3B82F6',
+                  padding: '3px 10px',
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontFamily: 'Geist, monospace',
+                  border: '1px solid #1D4ED8',
+                }}
+              >
+                NSR-10
+              </span>
             </div>
-          ))}
-        </div>
+          </div>
 
-        <div className="text-center mt-20 space-y-2" style={{ borderTop: '1px solid #3a494a', paddingTop: 40 }}>
-          <p className="text-[13px] text-on-surface-variant">
-            ¿Necesita algo más específico?{' '}
-            <Link to="/civilflowareatrabajo" className="text-primary hover:underline">Contáctenos</Link> para un plan a medida para su firma.
-          </p>
-          <p className="text-[12px] text-outline">Precios en USD. Facturación mensual. Cancele cuando quiera.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {plans.map((plan) => (
+              <div
+                key={plan.id}
+                className="border p-8 flex flex-col relative"
+                style={{
+                  background: plan.destacado ? '#1a1c20' : '#111317',
+                  borderColor: plan.destacado ? plan.color : '#3a494a',
+                  borderWidth: plan.destacado ? 2 : 1,
+                }}
+              >
+                {plan.destacado && (
+                  <div
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-[10px] font-bold uppercase tracking-widest"
+                    style={{
+                      background: plan.color,
+                      color: '#003739',
+                      fontFamily: 'Geist, monospace',
+                    }}
+                  >
+                    Recomendado
+                  </div>
+                )}
+                <div className="text-center mb-8">
+                  <h2
+                    className="uppercase tracking-widest mb-2"
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      fontFamily: 'Geist, monospace',
+                      color: plan.color,
+                    }}
+                  >
+                    {plan.nombre}
+                  </h2>
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span
+                      style={{
+                        fontSize: 40,
+                        fontWeight: 700,
+                        fontFamily: 'Hanken Grotesk, sans-serif',
+                        color: plan.color,
+                      }}
+                    >
+                      {plan.precio}
+                    </span>
+                    {plan.periodo && (
+                      <span
+                        className="text-on-surface-variant"
+                        style={{ fontSize: 14, fontFamily: 'Hanken Grotesk, sans-serif' }}
+                      >
+                        {plan.periodo}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-on-surface-variant mt-3" style={{ minHeight: 40 }}>
+                    {plan.desc}
+                  </p>
+                </div>
+                <div className="flex-1 space-y-3 mb-8">
+                  {plan.features.map((f, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span
+                        className="material-symbols-outlined text-sm mt-0.5"
+                        style={{ color: '#2ff801', fontSize: 16 }}
+                      >
+                        check_circle
+                      </span>
+                      <span className="text-[13px] text-on-surface-variant">{f}</span>
+                    </div>
+                  ))}
+                  {plan.missing.map((f, i) => (
+                    <div key={'m' + i} className="flex items-start gap-2 opacity-40">
+                      <span
+                        className="material-symbols-outlined text-sm mt-0.5"
+                        style={{ color: '#849495', fontSize: 16 }}
+                      >
+                        remove
+                      </span>
+                      <span className="text-[13px] text-on-surface-variant">{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link
+                  to={plan.to}
+                  className="block text-center py-3 uppercase tracking-widest font-bold transition-all"
+                  style={{
+                    fontSize: 12,
+                    fontFamily: 'Geist, monospace',
+                    background: plan.destacado ? plan.color : 'transparent',
+                    color: plan.destacado ? '#003739' : plan.color,
+                    border: plan.destacado ? 'none' : `1px solid ${plan.color}`,
+                  }}
+                >
+                  {plan.cta}
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          <div
+            className="text-center mt-20 space-y-2"
+            style={{ borderTop: '1px solid #3a494a', paddingTop: 40 }}
+          >
+            <p className="text-[13px] text-on-surface-variant">
+              ¿Necesita algo más específico?{' '}
+              <Link to="/civilflowareatrabajo" className="text-primary hover:underline">
+                Contáctenos
+              </Link>{' '}
+              para un plan a medida para su firma.
+            </p>
+            <p className="text-[12px] text-outline">
+              Precios en USD. Facturación mensual. Cancele cuando quiera.
+            </p>
+          </div>
         </div>
       </div>
-    </div>
     </>
   );
 }

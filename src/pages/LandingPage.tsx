@@ -224,8 +224,8 @@ function LandingPage() {
                 }}
               >
                 <img
-                  src="/logos/civilCorelogo.webp"
-                  alt="CivilCore"
+                  src="/logos/civilCardexlogo.webp"
+                  alt="CivilCardex"
                   className="w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 object-contain"
                   style={{ filter: 'drop-shadow(0 0 80px rgba(0,170,255,0.5))' }}
                   width={112}
@@ -238,7 +238,7 @@ function LandingPage() {
                 style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
               >
                 <span style={{ color: '#e8f4fd' }}>CIVIL</span>
-                <span className="core-shimmer">CORE</span>
+                <span className="core-shimmer">CARDEX</span>
               </h1>
               <TypewriterText
                 text="DISEÑA. ANALIZA. OPTIMIZA. CONSTRUYE."
@@ -402,7 +402,7 @@ function LandingPage() {
                 className="text-xl font-semibold uppercase tracking-widest px-4"
                 style={{ color: '#e8f4fd', fontFamily: 'Hanken Grotesk, sans-serif' }}
               >
-                ¿Por qué CivilCore?
+                ¿Por qué CivilCardex?
               </h2>
               <div className="h-px bg-outline-variant flex-grow" />
             </div>
@@ -466,7 +466,7 @@ function LandingPage() {
             <span style={{ color: '#00dce5' }}>memorias de cálculo?</span>
           </h2>
           <p className="text-sm max-w-xl mx-auto" style={{ color: '#8AB4D6' }}>
-            CivilCore — de los datos del proyecto a la memoria de cálculo exportable, con
+            CivilCardex — de los datos del proyecto a la memoria de cálculo exportable, con
             verificación normativa automática.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
@@ -505,8 +505,8 @@ function LandingPage() {
           <div className="flex flex-col md:flex-row items-center gap-8">
             <Link to="/" className="flex items-center gap-2">
               <img
-                src="/logos/civilCorelogo.webp"
-                alt="CivilCore"
+                src="/logos/civilCardexlogo.webp"
+                alt="CivilCardex"
                 className="h-11 w-11 object-contain"
                 width={44}
                 height={44}
@@ -516,7 +516,7 @@ function LandingPage() {
                 className="text-2xl font-bold uppercase"
                 style={{ color: '#6a8e8e', fontFamily: 'Hanken Grotesk, sans-serif' }}
               >
-                CivilCore
+                CivilCardex
               </span>
             </Link>
             <nav className="flex gap-6">
@@ -562,7 +562,7 @@ function LandingPage() {
             </nav>
           </div>
           <div style={{ color: '#6a8e8e', fontSize: 12 }}>
-            © 2026 CivilCore. Ingeniería de Precisión.
+            © 2026 CivilCardex. Ingeniería de Precisión.
           </div>
         </div>
       </footer>

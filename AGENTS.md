@@ -136,7 +136,7 @@ These policies prevent unauthorized access or tampering with drawing data belong
 ### Done
 - **Phase 10: SEO**:
   - Implemented dynamic canonical URL and `og:url` path handling via an immediate-executing inline script in `index.html`'s `<head>`.
-  - Added Product (`Product`) structured data as `ld+json` for the Civil Core Professional tier inside `PricingPage.tsx`.
+  - Added Product (`Product`) structured data as `ld+json` for the Civil Cardex Professional tier inside `PricingPage.tsx`.
   - Added SoftwareApplication (`SoftwareApplication`) structured data dynamically in `ModulePage.tsx` based on `moduleId`.
   - Added Person (`Person`) structured data dynamically in `ProfilePage.tsx` based on user profile state.
 - **Phase 11: Web Performance**:

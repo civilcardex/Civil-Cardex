@@ -120,7 +120,7 @@ function ProfilePage() {
 
   usePageMeta(
     'Perfil',
-    'Gestione su perfil de CivilCore: datos personales, proyectos activos y configuración de cuenta de ingeniería.',
+    'Gestione su perfil de CivilCardex: datos personales, proyectos activos y configuración de cuenta de ingeniería.',
   );
   // Fetch-on-mount from Supabase — a legitimate external-system sync, not state
   // derivable from props/state already available during render.

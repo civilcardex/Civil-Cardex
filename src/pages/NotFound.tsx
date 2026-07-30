@@ -4,13 +4,18 @@ import { usePageMeta } from '../hooks/usePageMeta';
 const NOTFOUND_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'WebPage',
-  name: 'Página no encontrada — CivilCore',
-  description: 'La página solicitada no existe. Verifique la URL o vuelva al inicio de CivilCore.',
-  url: 'https://civilcore.app/404',
+  name: 'Página no encontrada — CivilCardex',
+  description:
+    'La página solicitada no existe. Verifique la URL o vuelva al inicio de CivilCardex.',
+  url: 'https://civilcardex.app/404',
 };
 
 export default function NotFound() {
-  usePageMeta('Página no encontrada', 'La página solicitada no existe en CivilCore. Verifique la URL o vuelva al inicio.', true);
+  usePageMeta(
+    'Página no encontrada',
+    'La página solicitada no existe en CivilCardex. Verifique la URL o vuelva al inicio.',
+    true,
+  );
   return (
     <div className="min-h-screen bg-surface-bg text-on-surface font-sans flex items-center justify-center">
       <script type="application/ld+json">{JSON.stringify(NOTFOUND_JSONLD)}</script>

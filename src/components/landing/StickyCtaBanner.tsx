@@ -34,7 +34,7 @@ export default function StickyCtaBanner({ heroId, ctaId }: StickyCtaBannerProps)
         isPastHero = entry.boundingClientRect.bottom < 0;
         updateVisibility();
       },
-      { threshold: 0 } // Trigger as soon as 1px is off screen
+      { threshold: 0 }, // Trigger as soon as 1px is off screen
     );
 
     const ctaObserver = new IntersectionObserver(
@@ -42,7 +42,7 @@ export default function StickyCtaBanner({ heroId, ctaId }: StickyCtaBannerProps)
         isCtaVisible = entry.isIntersecting;
         updateVisibility();
       },
-      { threshold: 0 }
+      { threshold: 0 },
     );
 
     heroObserver.observe(heroEl);
@@ -71,21 +71,29 @@ export default function StickyCtaBanner({ heroId, ctaId }: StickyCtaBannerProps)
       style={style}
     >
       <div className="flex items-center gap-4">
-        <img src="/logos/civilCorelogo.webp" alt="CivilCore" className="w-8 h-8 object-contain" />
-        <span className="text-sm font-bold uppercase" style={{ color: '#e8f4fd', fontFamily: 'Hanken Grotesk, sans-serif' }}>
+        <img
+          src="/logos/civilCardexlogo.webp"
+          alt="CivilCardex"
+          className="w-8 h-8 object-contain"
+        />
+        <span
+          className="text-sm font-bold uppercase"
+          style={{ color: '#e8f4fd', fontFamily: 'Hanken Grotesk, sans-serif' }}
+        >
           Lleve sus diseños al siguiente nivel
         </span>
       </div>
-      
+
       <div className="flex items-center gap-4">
-        <Link 
-          to="/civilflowareatrabajo" 
+        <Link
+          to="/civilflowareatrabajo"
           className="bg-primary text-on-primary px-8 py-3 uppercase text-[11px] tracking-[0.1em] font-bold hover:bg-primary-container transition-all"
           style={{ fontFamily: 'Geist, monospace', boxShadow: '0 0 15px rgba(0,245,255,0.2)' }}
         >
           EMPEZAR AHORA
         </Link>
-        <button type="button" 
+        <button
+          type="button"
           onClick={() => setIsDismissed(true)}
           className="w-8 h-8 flex items-center justify-center rounded-full border border-outline-variant text-outline hover:text-on-surface hover:border-primary transition-colors"
           aria-label="Cerrar banner"

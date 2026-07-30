@@ -15,7 +15,7 @@ function setMeta(prop: string, name: string, content: string, prev: Record<strin
 export function usePageMeta(title: string, description?: string, noindex?: boolean) {
   useEffect(() => {
     const prev: Record<string, string | null> = {};
-    const fullTitle = title ? `${title} | Civil Core` : 'Civil Core';
+    const fullTitle = title ? `${title} | Civil Cardex` : 'Civil Cardex';
 
     const prevTitle = document.title;
     document.title = fullTitle;
@@ -34,7 +34,7 @@ export function usePageMeta(title: string, description?: string, noindex?: boole
 
     const url = window.location.href.split('?')[0];
     setMeta('property', 'og:url', url, prev);
-    
+
     const canonical = window.location.origin + window.location.pathname;
     let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
     if (!link) {
@@ -44,7 +44,7 @@ export function usePageMeta(title: string, description?: string, noindex?: boole
     }
     const prevHref = link.getAttribute('href');
     link.setAttribute('href', canonical);
-    
+
     return () => {
       document.title = prevTitle;
       for (const [name, val] of Object.entries(prev)) {
