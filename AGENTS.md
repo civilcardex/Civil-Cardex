@@ -295,3 +295,13 @@ No se pudo hacer una pasada de regresión manual completa en navegador sobre el 
 - `src/components/pdfViewer/DrawingElementContextMenu.tsx` — mayor concentración de fixes de accesibilidad (14 `aria-label`)
 - `src/pages/ViewerPage.tsx` — patrón "click afuera para cerrar" reescrito con `mousedown` a nivel documento
 - Build verified: `npx vite build` passes clean.
+
+## Session Summary — 2026-07-30
+
+### Done
+- **Bug 1 — Viewer color restore**: Added `useEffect` in `PdfViewer.tsx` (after activeNetworks sync) that reads saved colors from `localStorage` key `civilflow_net_<netId>` and syncs into `NETS[].col` + CSS variable `--<netId>`.
+- **Bug 2 — Double accessory count via modal**: Removed `bumpHidroAccesorio()` call from `onAccesorioSelected` handler. Redundant — `_markDirty()` already triggers `calcHydroAccessories`/`calcSanitaryAccessories` which rebuild counts from ramal fields. Sequence bug: set accessory → _markDirty writes count=1 → bumpHidroAccesorio increments to 2.
+- Build verified: `npx vite build` passes clean.
+
+### Relevant Files
+- `src/modules/civilflow/components/PdfViewer.tsx` — Color restore effect; removed bumpHidroAccesorio call + import
