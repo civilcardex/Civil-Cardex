@@ -6,7 +6,11 @@ import { CrudFooter } from '../shared/CrudFooter';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable';
 import type { EstadoPresupuesto, Presupuesto } from '../types';
 
-const ESTADO_LABEL: Record<EstadoPresupuesto, string> = { borrador: 'Borrador', en_revision: 'En Revisión', cerrado: 'Cerrado' };
+const ESTADO_LABEL: Record<EstadoPresupuesto, string> = {
+  borrador: 'Borrador',
+  en_revision: 'En Revisión',
+  cerrado: 'Cerrado',
+};
 
 interface Props {
   selId: string | null;
@@ -37,7 +41,13 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
       fecha_cierre: '',
       observaciones: '',
       items: [],
-      aiu_override: { activo: false, pct_a: state.config.pct_administracion, pct_i: state.config.pct_imprevistos, pct_u: state.config.pct_utilidad, iva_pct: 19 },
+      aiu_override: {
+        activo: false,
+        pct_a: state.config.pct_administracion,
+        pct_i: state.config.pct_imprevistos,
+        pct_u: state.config.pct_utilidad,
+        iva_pct: 19,
+      },
       factores_snap: state.factoresPrestaciones,
       cargos_snap: state.cargos,
       apus_snap: state.apus,
@@ -47,17 +57,22 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
   }
 
   async function eliminar(id: string) {
-    const tieneHijos = state.presupuestos.some(p => p.parent_id === id);
+    const tieneHijos = state.presupuestos.some((p) => p.parent_id === id);
     if (tieneHijos) {
-      if (!(await askConfirm('Este presupuesto tiene sub-proyectos. ¿Eliminar de todas formas? (los sub-proyectos quedarán huérfanos)'))) return;
+      if (
+        !(await askConfirm(
+          'Este presupuesto tiene sub-proyectos. ¿Eliminar de todas formas? (los sub-proyectos quedarán huérfanos)',
+        ))
+      )
+        return;
     } else if (!(await askConfirm('¿Eliminar este presupuesto?'))) {
       return;
     }
-    patch({ presupuestos: state.presupuestos.filter(p => p.id !== id) });
+    patch({ presupuestos: state.presupuestos.filter((p) => p.id !== id) });
   }
 
   function upd(id: string, k: keyof Presupuesto, v: string | boolean) {
-    patch({ presupuestos: state.presupuestos.map(p => (p.id === id ? { ...p, [k]: v } : p)) });
+    patch({ presupuestos: state.presupuestos.map((p) => (p.id === id ? { ...p, [k]: v } : p)) });
   }
 
   return (
@@ -76,16 +91,49 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
             </tr>
           </thead>
           <tbody>
-            {flat.length === 0 && <tr><td colSpan={7} className="cm-empty-row">Sin presupuestos</td></tr>}
+            {flat.length === 0 && (
+              <tr>
+                <td colSpan={7} className="cm-empty-row">
+                  Sin presupuestos
+                </td>
+              </tr>
+            )}
             {flat.map(({ pres, level }, i) => (
-              <tr key={pres.id} style={{ background: selId === pres.id ? 'rgba(37,99,235,.1)' : undefined, cursor: 'pointer' }} onClick={() => onSelect(pres.id)}>
+              <tr
+                key={pres.id}
+                style={{
+                  background: selId === pres.id ? 'rgba(37,99,235,.1)' : undefined,
+                  cursor: 'pointer',
+                }}
+                tabIndex={0}
+                onClick={() => onSelect(pres.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSelect(pres.id);
+                  }
+                }}
+              >
                 <XlRowNum n={i + 1} />
                 <td>{pres.codigo}</td>
-                <td style={{ paddingLeft: level ? 24 : undefined }}>{level > 0 ? '↳ ' : ''}{pres.nombre}</td>
+                <td style={{ paddingLeft: level ? 24 : undefined }}>
+                  {level > 0 ? '↳ ' : ''}
+                  {pres.nombre}
+                </td>
                 <td>{getTipoProyecto(pres, state.presupuestos)}</td>
                 <td>
-                  <select className="cm-sel" aria-label="Estado" value={pres.estado} onClick={e => e.stopPropagation()} onChange={e => upd(pres.id, 'estado', e.target.value)}>
-                    {Object.entries(ESTADO_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                  <select
+                    className="cm-sel"
+                    aria-label="Estado"
+                    value={pres.estado}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => upd(pres.id, 'estado', e.target.value)}
+                  >
+                    {Object.entries(ESTADO_LABEL).map(([k, l]) => (
+                      <option key={k} value={k}>
+                        {l}
+                      </option>
+                    ))}
                   </select>
                 </td>
                 <td>{pres.items.length}</td>
@@ -95,7 +143,12 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
           </tbody>
         </table>
       </XlScroll>
-      <CrudFooter onAdd={crear} addLabel="Nuevo Presupuesto" countLabel="Total:" count={state.presupuestos.length} />
+      <CrudFooter
+        onAdd={crear}
+        addLabel="Nuevo Presupuesto"
+        countLabel="Total:"
+        count={state.presupuestos.length}
+      />
     </XlWrap>
   );
 }

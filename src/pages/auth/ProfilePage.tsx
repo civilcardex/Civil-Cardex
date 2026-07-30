@@ -472,7 +472,7 @@ function ProfilePage() {
                 onClick={() => setShowCreate(true)}
               >
                 <span className="material-symbols-outlined text-lg">add_circle</span>
-                Nuevo Proyecto
+                Nuevo proyecto
               </button>
             </div>
 
@@ -482,7 +482,7 @@ function ProfilePage() {
               </div>
             ) : proyectos.length === 0 ? (
               <div className="px-6 py-8 text-center text-on-surface-variant text-sm">
-                Aún no hay proyectos. Crea uno desde "Nuevo Proyecto".
+                Aún no hay proyectos. Crea uno desde "Nuevo proyecto".
               </div>
             ) : (
               <ul

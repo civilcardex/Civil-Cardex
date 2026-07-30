@@ -168,6 +168,25 @@ export function segmentStrictIntersectionPoint(
   return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
 }
 
+/** Like segmentStrictIntersectionPoint but allows endpoint intersections (t/u in [0,1], not just (0.01,0.99)). Catches TEE formations where one ramal ends at the crossing point. */
+export function segmentLooseIntersectionPoint(
+  a1: number[],
+  a2: number[],
+  b1: number[],
+  b2: number[],
+): number[] | null {
+  const [x1, y1] = a1,
+    [x2, y2] = a2,
+    [x3, y3] = b1,
+    [x4, y4] = b2;
+  const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (Math.abs(d) < 1e-10) return null;
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
+  const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / d;
+  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+  return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
+}
+
 // Detects a codo formed where this ramal's endpoint meets ANOTHER ramal's endpoint at (roughly)
 // the same point — unlike an internal-vertex check (consecutive points of the SAME ramal), this
 // covers two separately-drawn ramales joining end-to-end, or a drag that newly aligns one
@@ -339,7 +358,10 @@ export function detectAccesorioTrigger(
 
   if (r.pts.length >= 3) {
     for (let i = 1; i < lastIdx; i++) {
-      if ((r as unknown as Record<string, unknown>)[`accMed${i}`]) continue;
+      // accMed is a nested map keyed by 'accMed<i>' on PlanoRamal (PlanoState.ts:245) — the
+      // previous flat r['accMed<i>'] read silently never matched, so vertices that already had
+      // an accessory could still re-trigger the junction/accesorio modal. Read the nested key.
+      if (r.accMed?.[`accMed${i}`]) continue;
       const prev = r.pts[i - 1];
       const curr = r.pts[i];
       const next = r.pts[i + 1];

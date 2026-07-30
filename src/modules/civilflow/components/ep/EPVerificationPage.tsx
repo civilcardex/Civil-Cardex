@@ -24,7 +24,6 @@ const EPVerificationPage_selStyle: React.CSSProperties = {
   fontFamily: 'var(--mono)',
   fontSize: 12,
   fontWeight: 600,
-  outline: 'none',
   boxSizing: 'border-box',
 };
 
