@@ -5,7 +5,7 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
     const c = engine.toCvs(t.x + (t.lblOffX || 0), t.y + (t.lblOffY || 0));
     const sel = t.id === engine.selId;
     const fs = engine.mm2cvs(t.fontMm || 2.5);
-    const angle = (t.textAngle || 0) * Math.PI / 180;
+    const angle = ((t.textAngle || 0) * Math.PI) / 180;
     ctx.save();
     ctx.translate(c.x, c.y);
     ctx.rotate(angle);
@@ -14,14 +14,6 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
     const pad = 5 * engine.zoom;
     const boxW = tw + pad * 2;
     const boxH = fs + pad * 2;
-
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = sel ? '#4D8FF7' : '#3a494a';
-    ctx.lineWidth = (sel ? 2 : 1) * engine.zoom;
-    ctx.beginPath();
-    ctx.rect(-pad, -fs - pad, boxW, boxH);
-    ctx.fill();
-    ctx.stroke();
 
     // Yellow selection arrow (same style as ramales/bajantes)
     if (sel) {
@@ -47,9 +39,12 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
     ctx.fillText(t.text, 0, -fs);
     ctx.restore();
 
-    const cos = Math.cos(angle), sin = Math.sin(angle);
-    const absCos = Math.abs(cos), absSin = Math.abs(sin);
-    const boxW2 = boxW / 2, boxH2 = boxH / 2;
+    const cos = Math.cos(angle),
+      sin = Math.sin(angle);
+    const absCos = Math.abs(cos),
+      absSin = Math.abs(sin);
+    const boxW2 = boxW / 2,
+      boxH2 = boxH / 2;
     const cxRot = -pad + boxW2;
     const cyRot = -fs - pad + boxH2;
     const cxCanvas = c.x + cxRot * cos - cyRot * sin;
@@ -62,5 +57,28 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
       w: aW,
       h: aH,
     };
+
+    // Resize handles — small squares at each of the 4 corners, in the same axis-aligned space
+    // handleMouseDown.ts hit-tests against, so what's drawn is exactly what's grabbable.
+    if (sel) {
+      const b = t._box;
+      const hs = 4 * engine.zoom;
+      ctx.save();
+      ctx.fillStyle = '#4D8FF7';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1 * engine.zoom;
+      [
+        [b.x, b.y],
+        [b.x + b.w, b.y],
+        [b.x, b.y + b.h],
+        [b.x + b.w, b.y + b.h],
+      ].forEach(([hx, hy]) => {
+        ctx.beginPath();
+        ctx.rect(hx - hs / 2, hy - hs / 2, hs, hs);
+        ctx.fill();
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
   });
 }

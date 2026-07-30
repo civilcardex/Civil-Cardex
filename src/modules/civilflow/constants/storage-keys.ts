@@ -40,3 +40,5 @@ export const LAST_TRAZOS_ID_KEY = 'last_tracos_id';
 export const NETS_CHANGED_EVENT = 'civilflow_nets_changed';
 export const SAN_SYNC_CHANGED_EVENT = 'civilflow_san_sync_changed';
 export const HIDRO_SYNC_CHANGED_EVENT = 'civilflow_hidro_sync_changed';
+export const PDF_HIDDEN_NETS_KEY = 'pdf_hidden_nets';
+export const PDF_LOCKED_NETS_KEY = 'pdf_locked_nets';

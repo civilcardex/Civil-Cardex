@@ -9,14 +9,21 @@ import {
   SAN_UC_IDS,
 } from '../../constants/engineeringDataFixtures';
 import { getAccessoryOptions } from '../../utils/accessoryOptions';
-import { NETS } from '../../lib/PlanoEngine/PlanoState';
+import { NETS, type PlanoBajante } from '../../lib/PlanoEngine/PlanoState';
 import { BAJANTE_NETS, MONTANTE_NETS } from '../../lib/PlanoEngine/drawingCreations';
+import { maxDiametroLabel } from '../../lib/PlanoEngine/PlanoEngineDrawing';
+import { checkRamalAngles } from '../../lib/PlanoEngine/drawingAngles';
 import {
   writeBajantePropToDrawing,
   writeAcoDiamToDrawing,
   writeContadorDiamToDrawing,
 } from '../../utils/writeDiameterToDrawing';
-import { writeCrossFloorGhost } from '../../utils/associateBajanteAcrossFloors';
+import {
+  applyBajanteAssociation,
+  clearBajanteAssociation,
+  areEndpointsAligned,
+  type AssocEndpoint,
+} from '../../utils/bajanteAssociation';
 import {
   syncExtremeAccessoryToHidroData,
   bumpHidroAccesorio,
@@ -29,8 +36,8 @@ import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type {
   PlanoElement,
   PlanoRamal,
-  PlanoBajante,
   PlanoArea,
+  PlanoGuideLine,
 } from '../../lib/PlanoEngine/PlanoState';
 import type { Piso } from '../useWorkAreaState';
 import type { PlanItem } from '../../context/PlansContext';
@@ -61,6 +68,7 @@ interface DrawingElementContextMenuContextValue {
   selElement: PlanoElement | null;
   setSelElement: (el: PlanoElement | null) => void;
   lowerFloorsRamales: LowerFloorRamales[];
+  upperFloorGroup: LowerFloorRamales | null;
   planosCtx: { plans: PlanItem[] };
   mats: Record<string, MaterialItem[]>;
   activeNet: string;
@@ -307,6 +315,25 @@ function BajanteDirectionSelector({
                     desplazamientos: { ...(element.desplazamientos || {}) },
                   };
                 } else if (opt === 'Baja') {
+                  // Flow-direction guard, second half: isRamalBajanteConnectionAllowed (in
+                  // flowDirection.ts) only fires when a ramal endpoint is FIRST connected to a
+                  // bajante. It never re-validates existing connections when the bajante's own
+                  // direction is changed afterward — which is the far more common order in
+                  // practice (draw the geometry, then set "Baja" here). Without this check, a
+                  // bajante that already receives a ramal at that ramal's START (i.e. the ramal
+                  // originates FROM the bajante, not into it) could silently be marked "baja"
+                  // even though it would then be emitting flow instead of only receiving it.
+                  const bajCode = element.code || element.id;
+                  const emittingRamal = (element.recibeDeIds || [])
+                    .map((rid) => engineRef.current?.ramales.find((r) => r.id === rid))
+                    .find((ram) => ram && ram.ini === bajCode);
+                  if (emittingRamal) {
+                    engineRef.current?.triggerAlert(
+                      'Dirección de flujo inconsistente',
+                      `El ramal ${emittingRamal.label || emittingRamal.id} sale de este bajante (está conectado por su extremo inicial). Un bajante con dirección "baja" solo puede recibir flujo — desconecta o invierte ese ramal antes de cambiar la dirección.`,
+                    );
+                    return;
+                  }
                   updates = {
                     direccion: 'baja',
                     nptBase: minNpt,
@@ -461,6 +488,7 @@ function BajanteDiameterSelector({
   setSelElement,
   setContextMenuState,
   lowerFloorsRamales,
+  upperFloorGroup,
   planosCtx,
   triggerConfirm,
 }: {
@@ -472,6 +500,7 @@ function BajanteDiameterSelector({
   setSelElement: (el: PlanoElement | null) => void;
   setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
   lowerFloorsRamales: LowerFloorRamales[];
+  upperFloorGroup: LowerFloorRamales | null;
   planosCtx: { plans: PlanItem[] };
   triggerConfirm: (
     title: string,
@@ -496,6 +525,110 @@ function BajanteDiameterSelector({
         setSelElement({ ...selElement, ghostData: gd2 });
       }
     }
+  };
+
+  // Mirror of the "Destino" onChange below but for the immediate-upper-floor "Origen" selector —
+  // same logic as BajanteAsociacion.tsx's associateOrigin, duplicated here (not shared) because
+  // this one reads/writes `element` (whatever was right-clicked, not necessarily selElement) and
+  // syncs contextMenuState the same way the rest of this component's handlers do.
+  const associateOrigin = (v: string | null) => {
+    if (!engineRef.current) return;
+    const eng = engineRef.current;
+    const currentPlanId = String(eng._loadedPlanId ?? '');
+    const target: AssocEndpoint = {
+      planId: currentPlanId,
+      id: element.id,
+      x: element.x,
+      y: element.y,
+      net: element.net || 'san',
+      dNominal: element.dNominal || '',
+      code: element.code || element.id,
+      nivelN: Number(eng.nivelActual?.n ?? 0),
+      npt: Number(eng.nivelActual?.npt ?? 0),
+    };
+    const prevOrigen = element.origenId;
+    const syncLocal = () => {
+      const fresh = eng.bajantes.find((b) => b.id === element.id);
+      if (fresh) setContextMenuState((prev) => (prev ? { ...prev, element: { ...fresh } } : null));
+    };
+
+    if (!v) {
+      if (prevOrigen) {
+        const [prevPlanId, prevBajId] = prevOrigen.split('|');
+        if (prevPlanId && prevBajId)
+          clearBajanteAssociation(
+            eng,
+            prevPlanId,
+            prevBajId,
+            element.net || 'san',
+            `${currentPlanId}|${element.id}`,
+            planosCtx.plans,
+          );
+      }
+      eng.updateElementById(element.id, { origenId: null });
+      syncLocal();
+      if (selElement?.id === element.id) setSelElement({ ...selElement, origenId: null });
+      writeBajantePropToDrawing(
+        `${element.id}-${currentPlanId}`,
+        element.net || 'san',
+        'origenId',
+        null,
+        planosCtx.plans,
+      );
+      eng.render();
+      return;
+    }
+
+    const [originPlanId, originBajanteId] = v.split('|');
+    const originBaj = upperFloorGroup?.bajantes.find((b) => b.id === originBajanteId);
+    if (!originBaj || originBaj.x == null || originBaj.y == null) {
+      eng.triggerAlert(
+        'No se pudo asociar',
+        `No se encontró el bajante de origen (${originBajanteId}) en el piso superior. Intenta reabrir el panel o recargar el piso.`,
+      );
+      return;
+    }
+    const originPlan = planosCtx.plans.find((pl) => String(pl.id) === originPlanId);
+    const source: AssocEndpoint = {
+      planId: originPlanId,
+      id: originBajanteId,
+      x: originBaj.x,
+      y: originBaj.y,
+      net: target.net,
+      dNominal: originBaj.dNominal || '',
+      code: originBaj.code || originBajanteId,
+      nivelN: originPlan?.nivel ?? 0,
+      npt: Number(upperFloorGroup?.npt ?? 0),
+    };
+
+    const commit = () => {
+      if (prevOrigen) {
+        const [prevPlanId, prevBajId] = prevOrigen.split('|');
+        if (prevPlanId && prevBajId)
+          clearBajanteAssociation(
+            eng,
+            prevPlanId,
+            prevBajId,
+            element.net || 'san',
+            `${currentPlanId}|${element.id}`,
+            planosCtx.plans,
+          );
+      }
+      applyBajanteAssociation(eng, source, target, planosCtx.plans);
+      syncLocal();
+      if (selElement?.id === element.id) setSelElement({ ...selElement, origenId: v });
+    };
+
+    if (areEndpointsAligned(source, target)) {
+      commit();
+      return;
+    }
+    triggerConfirm(
+      'Crear fantasma de asociación',
+      `${source.code} y ${target.code} no están alineados. Se creará un bajante fantasma en este piso, en la posición de ${source.code}. ¿Continuar?`,
+      commit,
+      'Aceptar',
+    );
   };
 
   return (
@@ -529,141 +662,104 @@ function BajanteDiameterSelector({
                 aria-label="Destino"
                 onChange={(e) => {
                   const v = e.target.value || null;
-                  engineRef.current?.updateElementById(element.id, { descargaEnId: v });
-                  const fresh = engineRef.current?.bajantes.find((b) => b.id === element.id);
-                  if (fresh)
-                    setContextMenuState((prev) =>
-                      prev ? { ...prev, element: { ...fresh } } : null,
+                  const eng = engineRef.current;
+                  if (!eng) return;
+                  const currentPlanId = String(eng._loadedPlanId ?? '');
+                  const prevV = element.descargaEnId;
+                  const syncLocal = () => {
+                    const fresh = eng.bajantes.find((b) => b.id === element.id);
+                    if (fresh)
+                      setContextMenuState((prev) =>
+                        prev ? { ...prev, element: { ...fresh } } : null,
+                      );
+                  };
+
+                  if (!v) {
+                    if (prevV)
+                      clearBajanteAssociation(
+                        eng,
+                        currentPlanId,
+                        element.id,
+                        element.net || 'san',
+                        prevV,
+                        planosCtx.plans,
+                      );
+                    eng.updateElementById(element.id, { descargaEnId: null });
+                    syncLocal();
+                    if (selElement?.id === element.id)
+                      setSelElement({ ...selElement, descargaEnId: null });
+                    writeBajantePropToDrawing(
+                      `${element.id}-${currentPlanId}`,
+                      element.net || 'san',
+                      'descargaEnId',
+                      null,
+                      planosCtx.plans,
                     );
-                  if (selElement?.id === element.id) {
-                    setSelElement({ ...selElement, descargaEnId: v });
+                    eng.render();
+                    return;
                   }
-                  const bKey = `${element.id}-${engineRef.current?.planId}`;
-                  writeBajantePropToDrawing(
-                    bKey,
-                    element.net || 'san',
-                    'descargaEnId',
-                    v,
-                    planosCtx.plans,
+
+                  const [targetPlanId, targetBajanteId] = v.split('|');
+                  const targetGroup = lowerFloorsRamales.find(
+                    (g) => String(g.planId) === targetPlanId,
                   );
-                  if (v) {
-                    const [targetPlanId, targetBajanteId] = v.split('|');
-                    const targetGroup = lowerFloorsRamales.find(
-                      (g) => String(g.planId) === targetPlanId,
-                    );
-                    const targetBaj = targetGroup?.bajantes.find((b) => b.id === targetBajanteId);
-                    if (targetBaj && targetBaj.x != null && targetBaj.y != null) {
-                      const samePos =
-                        Math.abs(targetBaj.x - element.x) < 0.5 &&
-                        Math.abs(targetBaj.y - element.y) < 0.5;
-                      if (!samePos) {
-                        const sourcePlanId = String(engineRef.current?._loadedPlanId ?? '');
-                        triggerConfirm(
-                          'Crear fantasma de asociación',
-                          `${element.code || element.id} y ${targetBaj.code || targetBajanteId} no están alineados. Se creará un bajante fantasma en el piso de ${targetBaj.code || targetBajanteId}, en la posición de ${element.code || element.id}. ¿Continuar?`,
-                          () => {
-                            const eng = engineRef.current;
-                            if (!eng) return;
-                            const curNpt = Number(eng.nivelActual?.npt ?? 0);
-                            const targetNpt = Number(targetGroup?.npt ?? 0);
-                            const targetIsBelow = targetNpt < curNpt;
-                            const parentDir = element.direccion;
-                            const ghostDireccion: 'sube' | 'baja' =
-                              parentDir === 'baja'
-                                ? 'sube'
-                                : parentDir === 'sube'
-                                  ? 'baja'
-                                  : targetIsBelow
-                                    ? 'baja'
-                                    : 'sube';
-                            const dx = targetBaj.x - element.x;
-                            const dy = targetBaj.y - element.y;
-                            const lvl = eng.nivelActual?.label ?? '';
-                            // Set desplazamiento on the bajante (same as manual ghost drag)
-                            if (!element.desplazamientos) element.desplazamientos = {};
-                            element.desplazamientos[lvl] = { dx, dy };
-                            eng.updateElementById(element.id, {
-                              desplazamientos: { ...element.desplazamientos },
-                              direccion: parentDir,
-                            });
-                            // Create Ldesvio ramal (same as handleDragUp ghost creation)
-                            const nId = element.net || 'san';
-                            const netDef = NETS.find((n) => n.id === nId);
-                            const pfx = netDef?.lbl || 'R';
-                            if (!eng._netCounts[nId])
-                              eng._netCounts[nId] = { ramal: 0, tributario: 0 };
-                            const cnt = ++eng._netCounts[nId].ramal;
-                            const ramId = `${pfx}${cnt}`;
-                            const ldesvioPts = [
-                              [element.x, element.y],
-                              [targetBaj.x, targetBaj.y],
-                            ];
-                            const distMm = Math.hypot(dx, dy);
-                            let lblAngle = (Math.atan2(dy, dx) * 180) / Math.PI;
-                            if (lblAngle > 90) lblAngle -= 180;
-                            if (lblAngle < -90) lblAngle += 180;
-                            // Offset label perpendicular to the ramal direction
-                            const perpX = -dy / (distMm || 1);
-                            const perpY = dx / (distMm || 1);
-                            eng.ramales.push({
-                              id: ramId,
-                              net: element.net || 'san',
-                              tipo: 'ramal',
-                              padre: null,
-                              pts: ldesvioPts,
-                              totalL: +eng.pxToM(distMm).toFixed(3),
-                              label: `${pfx}${cnt}`,
-                              ini: '',
-                              fin: '',
-                              piso: String(eng.nivelActual?.n ?? ''),
-                              dz: '',
-                              uc: 0,
-                              labelX: (element.x + targetBaj.x) / 2 + perpX * 25,
-                              labelY: (element.y + targetBaj.y) / 2 + perpY * 25,
-                              labelAngle: Math.round(lblAngle),
-                              material: '',
-                              diametro: element.dNominal || '',
-                              pendiente: 2,
-                              bloqueado: false,
-                            });
-                            element.desplazamientos[lvl].Ldesvio = ramId;
-                            eng.updateElementById(element.id, {
-                              desplazamientos: { ...element.desplazamientos },
-                            });
-                            // Cross-floor ghost written to the TARGET floor only (visible when viewing that floor)
-                            writeCrossFloorGhost(targetPlanId, {
-                              id: `XFG_${element.id}_${sourcePlanId}`,
-                              net: element.net || 'san',
-                              code: element.code || element.id,
-                              x: element.x,
-                              y: element.y,
-                              dNominal: element.dNominal || '',
-                              direccion: ghostDireccion,
-                              sourcePlanId,
-                              sourceBajanteId: element.id,
-                            });
-                            if (selElement?.id === element.id) {
-                              setSelElement({
-                                ...selElement,
-                                direccion: parentDir,
-                                desplazamientos: { ...element.desplazamientos },
-                              });
-                            }
-                            writeBajantePropToDrawing(
-                              bKey,
-                              element.net || 'san',
-                              'direccion',
-                              parentDir,
-                              planosCtx.plans,
-                            );
-                            eng.render();
-                            eng._markDirty();
-                          },
-                          'Aceptar',
-                        );
-                      }
+                  const targetBaj = targetGroup?.bajantes.find((b) => b.id === targetBajanteId);
+                  if (!targetBaj || targetBaj.x == null || targetBaj.y == null) return;
+                  const targetPlan = planosCtx.plans.find((pl) => String(pl.id) === targetPlanId);
+                  const source: AssocEndpoint = {
+                    planId: currentPlanId,
+                    id: element.id,
+                    x: element.x,
+                    y: element.y,
+                    net: element.net || 'san',
+                    dNominal: element.dNominal || '',
+                    code: element.code || element.id,
+                    nivelN: Number(eng.nivelActual?.n ?? 0),
+                    npt: Number(eng.nivelActual?.npt ?? 0),
+                  };
+                  const target: AssocEndpoint = {
+                    planId: targetPlanId,
+                    id: targetBajanteId,
+                    x: targetBaj.x,
+                    y: targetBaj.y,
+                    net: source.net,
+                    dNominal: targetBaj.dNominal || '',
+                    code: targetBaj.code || targetBajanteId,
+                    nivelN: targetPlan?.nivel ?? 0,
+                    npt: Number(targetGroup?.npt ?? 0),
+                  };
+
+                  const commit = () => {
+                    if (prevV)
+                      clearBajanteAssociation(
+                        eng,
+                        currentPlanId,
+                        element.id,
+                        element.net || 'san',
+                        prevV,
+                        planosCtx.plans,
+                      );
+                    applyBajanteAssociation(eng, source, target, planosCtx.plans);
+                    syncLocal();
+                    if (selElement?.id === element.id) {
+                      setSelElement({
+                        ...selElement,
+                        descargaEnId: v,
+                        direccion: target.npt < source.npt ? 'baja' : 'sube',
+                      });
                     }
+                  };
+
+                  if (areEndpointsAligned(source, target)) {
+                    commit();
+                    return;
                   }
+                  triggerConfirm(
+                    'Crear fantasma de asociación',
+                    `${source.code} y ${target.code} no están alineados. Se creará un bajante fantasma en el piso de ${target.code}, en la posición de ${source.code}. ¿Continuar?`,
+                    commit,
+                    'Aceptar',
+                  );
                 }}
                 style={{ ...DrawingElementContextMenu_S2, width: '85%' }}
               >
@@ -723,6 +819,25 @@ function BajanteDiameterSelector({
                   if (isGhostClick) {
                     updateGhostField('dNominal', val);
                   } else {
+                    // Validate: bajante diameter must not be smaller than connected ramales
+                    if (val && element.recibeDeIds?.length && engineRef.current) {
+                      const bajIn = diamPulgFromLabel(val.replace(/-/g, ' '));
+                      if (bajIn > 0) {
+                        for (const rid of element.recibeDeIds) {
+                          const ram = engineRef.current.ramales.find((r) => r.id === rid);
+                          if (!ram || !ram.diametro) continue;
+                          const ramIn = diamPulgFromLabel(ram.diametro.replace(/-/g, ' '));
+                          if (ramIn > 0 && ramIn > bajIn) {
+                            engineRef.current?.triggerAlert(
+                              'Diámetro no permitido',
+                              `Diámetro del bajante no puede ser menor al del ramal conectado (${ram.diametro})`,
+                            );
+                            e.target.value = element.dNominal || '';
+                            return;
+                          }
+                        }
+                      }
+                    }
                     const fields = { dNominal: val };
                     engineRef.current?.updateElementById(element.id, fields);
                     const fresh = engineRef.current?.bajantes.find((b) => b.id === element.id);
@@ -747,6 +862,57 @@ function BajanteDiameterSelector({
               </select>
             </div>
           </div>
+          {upperFloorGroup && (
+            <div style={{ padding: '0 8px 4px' }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: '#849495',
+                  fontFamily: "'Geist',monospace",
+                  marginBottom: 4,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                }}
+              >
+                Origen (piso superior)
+              </div>
+              <select
+                value={element.origenId || ''}
+                aria-label="Origen"
+                onChange={(e) => associateOrigin(e.target.value || null)}
+                style={DrawingElementContextMenu_S2}
+              >
+                <option value="">Sin origen</option>
+                {(() => {
+                  const plano = planosCtx.plans.find(
+                    (pl) => (pl.id as unknown as string) === upperFloorGroup.planId,
+                  );
+                  const pLabel =
+                    plano?.nivel != null ? pisoLbl(plano.nivel) : upperFloorGroup.planName;
+                  const bajantesToShow = upperFloorGroup.bajantes || [];
+                  const hasBajantes = bajantesToShow.length > 0;
+                  return (
+                    <optgroup label={pLabel}>
+                      {hasBajantes &&
+                        bajantesToShow.map((b) => (
+                          <option
+                            key={`${upperFloorGroup.planId}|${b.id}`}
+                            value={`${upperFloorGroup.planId}|${b.id}`}
+                          >
+                            {b.code || b.id}
+                          </option>
+                        ))}
+                      {!hasBajantes && (
+                        <option value="" disabled>
+                          Sin elementos disponibles
+                        </option>
+                      )}
+                    </optgroup>
+                  );
+                })()}
+              </select>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 6, padding: '0 8px 4px' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
@@ -800,11 +966,11 @@ function BajanteDiameterSelector({
                   letterSpacing: 0.5,
                 }}
               >
-                Área asociada
+                Área
               </div>
               <select
                 value={element.area_m2 || ''}
-                aria-label="Área asociada"
+                aria-label="Área"
                 onChange={(e) => {
                   const val = parseFloat(e.target.value) || 0;
                   engineRef.current?.updateElementById(element.id, { area_m2: val });
@@ -859,6 +1025,25 @@ function BajanteDiameterSelector({
                 if (isGhostClick) {
                   updateGhostField('dNominal', val);
                 } else {
+                  // Validate: bajante diameter must not be smaller than connected ramales
+                  if (val && element.recibeDeIds?.length) {
+                    const bajIn = diamPulgFromLabel(val.replace(/-/g, ' '));
+                    if (bajIn > 0) {
+                      for (const rid of element.recibeDeIds) {
+                        const ram = engineRef.current.ramales.find((r) => r.id === rid);
+                        if (!ram || !ram.diametro) continue;
+                        const ramIn = diamPulgFromLabel(ram.diametro.replace(/-/g, ' '));
+                        if (ramIn > 0 && ramIn > bajIn) {
+                          engineRef.current?.triggerAlert(
+                            'Diámetro no permitido',
+                            `Diámetro del bajante no puede ser menor al del ramal conectado (${ram.diametro})`,
+                          );
+                          e.target.value = element.dNominal || '';
+                          return;
+                        }
+                      }
+                    }
+                  }
                   const fields = { dNominal: val };
                   engineRef.current?.updateElementById(element.id, fields);
                   const fresh = engineRef.current?.bajantes.find((b) => b.id === element.id);
@@ -1259,8 +1444,8 @@ function BajanteConnectionPanel({
                               const accessoryVal = val as string;
                               if (accessoryVal === 'sifon' && ramalEl.net === 'san' && !isStart) {
                                 engineRef.current.triggerAlert(
-                                  'Sifón al revés',
-                                  'El sifón debe ir en el extremo de ENTRADA (inicio del ramal). Colócalo en el otro extremo.',
+                                  'Revisar ubicación del sifón',
+                                  'El sifón no puede recibir flujo.',
                                 );
                                 return;
                               }
@@ -1270,16 +1455,15 @@ function BajanteConnectionPanel({
                                 isStart
                               ) {
                                 engineRef.current.triggerAlert(
-                                  'Llave terminal al revés',
-                                  'La llave terminal debe ir en el extremo de SALIDA (fin del ramal). Colócala en el otro extremo.',
+                                  'Revisar ubicación llave terminal',
+                                  'La llave terminal debe recibir el flujo.',
                                 );
                                 return;
                               }
                               const oldVal = ramalEl[fieldAcc] || '';
                               const updates: Record<string, unknown> = { [fieldAcc]: val };
-                              if (val && !ramalEl[fieldDiam]) {
-                                updates[fieldDiam] = ramalEl.diametro || '';
-                              }
+                              // Accessories no longer inherit the ramal's own diameter as a
+                              // default — every accessory starts with no diameter selected.
                               engineRef.current.updateElementById(ramalEl.id, updates);
                               setContextMenuState((prev) =>
                                 prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
@@ -1321,11 +1505,18 @@ function BajanteConnectionPanel({
                             DIAM_BY_MAT[matShort] ||
                             [];
                           if (diamList.length === 0) return null;
-                          const mainDiam = ramalEl.diametro || '';
-                          const currentDiam = ramalEl[fieldDiam] || mainDiam;
+                          const currentDiam = ramalEl[fieldDiam] || '';
                           return (
                             <div style={{ marginTop: 6 }}>
-                              <div style={{ fontSize: 12, color: '#849495', marginBottom: 2 }}>
+                              <div
+                                style={{
+                                  fontSize: 12,
+                                  color: '#849495',
+                                  marginBottom: 2,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: 0.5,
+                                }}
+                              >
                                 Diámetro del accesorio
                               </div>
                               <select
@@ -1333,23 +1524,23 @@ function BajanteConnectionPanel({
                                 aria-label="Diámetro del accesorio"
                                 onChange={(e) => {
                                   const v = e.target.value;
-                                  if (v && mainDiam) {
+                                  if (v && ramalEl.diametro) {
                                     const inchFrom = (d: string) => {
                                       const q = d.indexOf('"');
                                       return q > 0 ? d.slice(0, q) : d;
                                     };
                                     if (
-                                      diamPulgFromLabel(inchFrom(v)) <
-                                      diamPulgFromLabel(inchFrom(mainDiam))
+                                      diamPulgFromLabel(inchFrom(v)) >
+                                      diamPulgFromLabel(inchFrom(ramalEl.diametro))
                                     ) {
                                       engineRef.current?.triggerAlert(
                                         'Diámetro no permitido',
-                                        'El diámetro del accesorio no puede ser menor al diámetro del ramal.',
+                                        'El diámetro del accesorio no puede ser mayor al diámetro del ramal.',
                                       );
                                       return;
                                     }
                                   }
-                                  const u: Record<string, unknown> = { [fieldDiam]: v || mainDiam };
+                                  const u: Record<string, unknown> = { [fieldDiam]: v };
                                   engineRef.current?.updateElementById(ramalEl.id, u);
                                   setContextMenuState((prev) =>
                                     prev ? { ...prev, element: { ...prev.element, ...u } } : null,
@@ -1360,11 +1551,16 @@ function BajanteConnectionPanel({
                                 }}
                                 style={DrawingElementContextMenu_S2}
                               >
-                                {diamList.map((d) => (
-                                  <option key={d.n} value={d.n}>
-                                    {d.n}
-                                  </option>
-                                ))}
+                                <option value="">— Sin diámetro —</option>
+                                {diamList.map((d) => {
+                                  const idx = d.n.indexOf(' — ');
+                                  const lbl = idx > 0 ? d.n.slice(0, idx) : d.n;
+                                  return (
+                                    <option key={d.n} value={d.n}>
+                                      {lbl}
+                                    </option>
+                                  );
+                                })}
                               </select>
                             </div>
                           );
@@ -1372,7 +1568,15 @@ function BajanteConnectionPanel({
 
                       {ramalEl.net !== 'san' && (
                         <div>
-                          <div style={{ fontSize: 12, color: '#849495', marginBottom: 2 }}>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: '#849495',
+                              marginBottom: 2,
+                              textTransform: 'uppercase',
+                              letterSpacing: 0.5,
+                            }}
+                          >
                             Seleccionar Aparato
                           </div>
                           <select
@@ -1553,11 +1757,32 @@ function BajanteCodeEditor({
             onChange={(e) => {
               const val = e.target.value;
               if (engineRef.current) {
+                // Single invariant: ramal.diam >= accesorio.diam, enforced here on the RAMAL
+                // side (not on the accessory selectors, which allow picking any accessory
+                // diameter freely) — a ramal can never be shrunk below whatever accessory
+                // diameter is already attached to it.
+                const inchFrom = (d: string) => {
+                  const q = d.indexOf('"');
+                  return q > 0 ? d.slice(0, q) : d;
+                };
+                const accDiamI = ramalEl.diametroInicio || '';
+                const accDiamF = ramalEl.diametroFin || '';
+                const accDiamNum = Math.max(
+                  accDiamI ? diamPulgFromLabel(inchFrom(accDiamI)) : 0,
+                  accDiamF ? diamPulgFromLabel(inchFrom(accDiamF)) : 0,
+                );
+                if (val && accDiamNum > 0 && diamPulgFromLabel(inchFrom(val)) < accDiamNum) {
+                  engineRef.current.triggerAlert(
+                    'Diámetro no permitido',
+                    'El diámetro del ramal no puede ser menor al diámetro del accesorio conectado.',
+                  );
+                  return;
+                }
                 // Accessory diameter (diametroInicio/Fin) no longer has its own picker — it always
                 // mirrors the ramal's own diameter, so it must be kept in sync here too, not just
                 // set once when the accessory is first created.
                 const updates = { diametro: val, diametroInicio: val, diametroFin: val };
-                engineRef.current?.updateElementById(ramalEl.id, updates);
+                engineRef.current.updateElementById(ramalEl.id, updates);
                 setContextMenuState((prev) =>
                   prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
                 );
@@ -1567,7 +1792,33 @@ function BajanteCodeEditor({
                 if (activeNet === ramalEl.net) {
                   setDiamSel((prev) => ({ ...prev, [activeNet]: val }));
                 }
-                engineRef.current?.render();
+                // Propagate to any downstream ramal auto-created by a tee-split merge FROM this
+                // one — mergesFrom stores the [upstream, incoming] parent ids at the moment of
+                // the split (PlanoEngineDrawing.ts), and that child's diametro was only ever
+                // computed once, at creation time. Without this, changing a parent's diameter
+                // afterward never reaches the already-created merged/auto-created ramal.
+                const eng = engineRef.current;
+                for (const child of eng.ramales) {
+                  if (!child.mergesFrom || !child.mergesFrom.includes(ramalEl.id)) continue;
+                  const [pid1, pid2] = child.mergesFrom;
+                  const d1 =
+                    pid1 === ramalEl.id
+                      ? val
+                      : eng.ramales.find((r) => r.id === pid1)?.diametro || '';
+                  const d2 =
+                    pid2 === ramalEl.id
+                      ? val
+                      : eng.ramales.find((r) => r.id === pid2)?.diametro || '';
+                  const newChildDiam = maxDiametroLabel(d1, d2);
+                  if (newChildDiam && newChildDiam !== child.diametro) {
+                    eng.updateElementById(child.id, {
+                      diametro: newChildDiam,
+                      diametroInicio: newChildDiam,
+                      diametroFin: newChildDiam,
+                    });
+                  }
+                }
+                eng.render();
               }
             }}
             style={DrawingElementContextMenu_S2}
@@ -1667,6 +1918,8 @@ function BajanteCodeEditor({
                   color: '#849495',
                   fontFamily: "'Geist',monospace",
                   marginBottom: 4,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
                 }}
               >
                 Diámetro
@@ -1798,6 +2051,7 @@ function BajanteMenu() {
         setSelElement={ctx.setSelElement}
         setContextMenuState={ctx.setContextMenuState}
         lowerFloorsRamales={ctx.lowerFloorsRamales}
+        upperFloorGroup={ctx.upperFloorGroup}
         planosCtx={ctx.planosCtx}
         triggerConfirm={ctx.triggerConfirm}
       />
@@ -1832,6 +2086,265 @@ function AreaMenu() {
       setDiamSel={ctx.setDiamSel}
       planosCtx={ctx.planosCtx}
     />
+  );
+}
+
+// Rotates pts[1] around pts[0] (the fixed pivot) by the given signed degree step, validating the
+// result against the same angle rules a real ramal on that net would have to obey — so a guide
+// line can never be rotated into an angle its later "Crear ramal" conversion wouldn't accept.
+// Standard infinite-line/bounded-segment intersection: the guide is treated as an infinite line
+// (it's a construction aid, often drawn short of the ramal it's meant to reference) while the
+// ramal segment stays bounded to its own actual extent (s must land within [0,1], with a small
+// tolerance for the ramal's own vertex sitting almost exactly on the guide's line).
+function intersectGuideWithSegment(
+  p0: number[],
+  p1: number[],
+  q0: number[],
+  q1: number[],
+): { x: number; y: number } | null {
+  const dx1 = p1[0] - p0[0];
+  const dy1 = p1[1] - p0[1];
+  const dx2 = q1[0] - q0[0];
+  const dy2 = q1[1] - q0[1];
+  const denom = dx1 * dy2 - dy1 * dx2;
+  if (Math.abs(denom) < 1e-9) return null;
+  const dx3 = q0[0] - p0[0];
+  const dy3 = q0[1] - p0[1];
+  const s = (dx3 * dy1 - dy3 * dx1) / denom;
+  if (s < -0.02 || s > 1.02) return null;
+  return { x: q0[0] + s * dx2, y: q0[1] + s * dy2 };
+}
+
+// Finds the nearest ramal the guide line's (infinite) line crosses, returning that crossing point
+// and the ramal segment's own direction — the rotate buttons form their angle relative to THIS,
+// not to the guide's own current orientation, per the whole point of drawing a guide across a
+// ramal in the first place.
+function findGuideCrossing(
+  eng: PlanoEngine,
+  guide: PlanoGuideLine,
+): { point: [number, number]; angle: number } | null {
+  const [p0, p1] = guide.pts;
+  let best: { point: [number, number]; angle: number; dist: number } | null = null;
+  for (const r of eng.ramales) {
+    if (!r.pts || r.pts.length < 2) continue;
+    for (let i = 0; i < r.pts.length - 1; i++) {
+      const hit = intersectGuideWithSegment(p0, p1, r.pts[i], r.pts[i + 1]);
+      if (!hit) continue;
+      const dist = Math.hypot(hit.x - p0[0], hit.y - p0[1]);
+      if (!best || dist < best.dist) {
+        const dx = r.pts[i + 1][0] - r.pts[i][0];
+        const dy = r.pts[i + 1][1] - r.pts[i][1];
+        best = { point: [hit.x, hit.y], angle: Math.atan2(dy, dx), dist };
+      }
+    }
+  }
+  return best;
+}
+
+// A crossed ramal segment gives TWO possible reference rays from the crossing point (its own
+// direction, and the reverse) — "Superior"/"Inferior" lets the user pick which one the angle is
+// measured from, since rotating 45° off one ray vs the other produces a mirrored result. Screen Y
+// grows downward, so "Superior" = whichever ray points up (negative Y); ties (a horizontal ramal)
+// fall back to whichever ray points left, an arbitrary but stable choice.
+function pickSideAngle(rayAngle: number, side: 'sup' | 'inf'): number {
+  const reverse = rayAngle + Math.PI;
+  const raySinY = Math.sin(rayAngle);
+  const upIsRay = Math.abs(raySinY) > 1e-6 ? raySinY < 0 : Math.cos(rayAngle) < 0;
+  const upAngle = upIsRay ? rayAngle : reverse;
+  const downAngle = upIsRay ? reverse : rayAngle;
+  return side === 'sup' ? upAngle : downAngle;
+}
+
+// san/ll pipe only turns in 45° fittings, gas only in 90° — matches the same per-net rule
+// `checkRamalAngles`/`drawingAngles.ts` uses elsewhere for real ramales, applied here as a UX
+// filter over which rotate buttons even get shown (see GuideLineMenu below).
+function netAllowedSteps(net: string): (45 | 90)[] {
+  if (net === 'san' || net === 'll') return [45];
+  if (net === 'gas') return [90];
+  return [45, 90];
+}
+
+function rotateGuideLine(
+  eng: PlanoEngine,
+  guide: PlanoGuideLine,
+  deg: number,
+  side: 'sup' | 'inf',
+  setSelElement: (el: PlanoElement | null) => void,
+  selElement: PlanoElement | null,
+): void {
+  const [p0, p1] = guide.pts;
+  const crossing = findGuideCrossing(eng, guide);
+
+  let pivot: [number, number];
+  let farPt: number[];
+  let baseAngle: number;
+  if (crossing) {
+    pivot = crossing.point;
+    baseAngle = pickSideAngle(crossing.angle, side);
+    const d0 = Math.hypot(p0[0] - pivot[0], p0[1] - pivot[1]);
+    const d1 = Math.hypot(p1[0] - pivot[0], p1[1] - pivot[1]);
+    farPt = d1 >= d0 ? p1 : p0;
+  } else {
+    pivot = [p0[0], p0[1]];
+    baseAngle = Math.atan2(p1[1] - p0[1], p1[0] - p0[0]);
+    farPt = p1;
+  }
+  const dist = Math.hypot(farPt[0] - pivot[0], farPt[1] - pivot[1]);
+  const newAngle = baseAngle + (deg * Math.PI) / 180;
+  const newFar: [number, number] = [
+    pivot[0] + dist * Math.cos(newAngle),
+    pivot[1] + dist * Math.sin(newAngle),
+  ];
+  // Pivot snaps exactly onto the crossing point (if one was found) — the guide should visibly
+  // touch the ramal precisely at the angle it now forms with it, not wherever it happened to be
+  // drawn originally.
+  const newPts: [number, number][] = [pivot, newFar];
+
+  if (!crossing && !checkRamalAngles(newPts, guide.net)) {
+    eng.triggerAlert(
+      'Ángulo no permitido',
+      guide.net === 'san' || guide.net === 'll'
+        ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
+        : guide.net === 'gas'
+          ? 'La red de gas solo permite ángulos de 90°.'
+          : 'Esta red debe diseñarse con ángulos de 45° o 90°.',
+    );
+    return;
+  }
+  guide.pts = newPts;
+  if (selElement?.id === guide.id) setSelElement({ ...guide });
+  eng.render();
+  eng._markDirty();
+}
+
+function GuideLineMenu() {
+  const ctx = useDrawingElementContextMenu();
+  const guide = ctx.element as PlanoGuideLine;
+  const [side, setSide] = useState<'sup' | 'inf'>('sup');
+  const allowedSteps = netAllowedSteps(guide.net);
+
+  return (
+    <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div
+        style={{
+          fontSize: 12,
+          color: '#849495',
+          fontFamily: "'Geist',monospace",
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+        }}
+      >
+        Línea guía
+      </div>
+      <div
+        style={{
+          fontSize: 11,
+          color: '#6b7280',
+          fontFamily: "'Geist',monospace",
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+        }}
+      >
+        Lado del cruce
+      </div>
+      <div style={{ display: 'flex', gap: 4 }}>
+        {(['sup', 'inf'] as const).map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setSide(s)}
+            style={{
+              ...DrawingElementContextMenu_S13,
+              flex: 1,
+              textAlign: 'center',
+              background:
+                side === s ? 'rgba(245,166,35,0.18)' : DrawingElementContextMenu_S13.background,
+              borderColor: side === s ? '#F5A623' : undefined,
+            }}
+          >
+            {s === 'sup' ? 'Superior' : 'Inferior'}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 4 }}>
+        {[
+          { lbl: '45° izq', deg: -45, step: 45 as const },
+          { lbl: '45° der', deg: 45, step: 45 as const },
+          { lbl: '90° izq', deg: -90, step: 90 as const },
+          { lbl: '90° der', deg: 90, step: 90 as const },
+        ]
+          .filter(({ step }) => allowedSteps.includes(step))
+          .map(({ lbl, deg }) => (
+            <button
+              key={lbl}
+              type="button"
+              onClick={() => {
+                const eng = ctx.engineRef.current;
+                if (!eng) return;
+                rotateGuideLine(eng, guide, deg, side, ctx.setSelElement, ctx.selElement);
+              }}
+              style={{ ...DrawingElementContextMenu_S13, flex: 1, textAlign: 'center' }}
+            >
+              {lbl}
+            </button>
+          ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          const eng = ctx.engineRef.current;
+          if (!eng) return;
+          const netDef = NETS.find((n) => n.id === guide.net);
+          const pfx = netDef?.lbl || 'R';
+          if (!eng._netCounts[guide.net]) eng._netCounts[guide.net] = { ramal: 0, tributario: 0 };
+          const cnt = ++eng._netCounts[guide.net].ramal;
+          const ramId = `${pfx}${cnt}`;
+          const [p0, p1] = guide.pts;
+          const dx = p1[0] - p0[0];
+          const dy = p1[1] - p0[1];
+          const distMm = Math.hypot(dx, dy);
+          let lblAngle = (Math.atan2(dy, dx) * 180) / Math.PI;
+          if (lblAngle > 90) lblAngle -= 180;
+          if (lblAngle < -90) lblAngle += 180;
+          const perpX = -dy / (distMm || 1);
+          const perpY = dx / (distMm || 1);
+          eng.ramales.push({
+            id: ramId,
+            net: guide.net,
+            tipo: 'ramal',
+            padre: null,
+            pts: [
+              [p0[0], p0[1]],
+              [p1[0], p1[1]],
+            ],
+            totalL: +eng.pxToM(distMm).toFixed(3),
+            label: ramId,
+            ini: '',
+            fin: '',
+            piso: String(eng.nivelActual?.n ?? ''),
+            dz: '',
+            uc: 0,
+            labelX: (p0[0] + p1[0]) / 2 + perpX * 25,
+            labelY: (p0[1] + p1[1]) / 2 + perpY * 25,
+            labelAngle: Math.round(lblAngle),
+            material: '',
+            diametro: '',
+            pendiente: 2,
+            bloqueado: false,
+          });
+          eng.guideLines = eng.guideLines.filter((g) => g.id !== guide.id);
+          eng.selId = ramId;
+          if (ctx.selElement?.id === guide.id) ctx.setSelElement(null);
+          eng._emitSelect(eng.ramales[eng.ramales.length - 1]);
+          eng.render();
+          eng._markDirty();
+          ctx.setContextMenuState(null);
+        }}
+        style={DrawingElementContextMenu_S13}
+      >
+        + Crear ramal a partir de línea guía
+      </button>
+    </div>
   );
 }
 
@@ -1938,10 +2451,17 @@ function MidRamalAccessorySelector({
             shiftedAccMed[`accMed${newIdx}`] = accId;
             eng.updateElementById(element.id, { pts: newPts, accMed: shiftedAccMed });
             if (selElement?.id === element.id)
-              setSelElement({ ...selElement, pts: newPts, accMed: shiftedAccMed });
+              setSelElement({ ...(selElement as PlanoRamal), pts: newPts, accMed: shiftedAccMed });
             setContextMenuState((prev) =>
               prev
-                ? { ...prev, element: { ...prev.element, pts: newPts, accMed: shiftedAccMed } }
+                ? {
+                    ...prev,
+                    element: {
+                      ...(prev.element as PlanoRamal),
+                      pts: newPts,
+                      accMed: shiftedAccMed,
+                    },
+                  }
                 : null,
             );
           }
@@ -2316,6 +2836,7 @@ interface DrawingElementContextMenuProps {
   selElement: PlanoElement | null;
   setSelElement: (el: PlanoElement | null) => void;
   lowerFloorsRamales: LowerFloorRamales[];
+  upperFloorGroup: LowerFloorRamales | null;
   planosCtx: { plans: PlanItem[] };
   mats: Record<string, MaterialItem[]>;
   activeNet: string;
@@ -2342,6 +2863,7 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
     selElement: props.selElement,
     setSelElement: props.setSelElement,
     lowerFloorsRamales: props.lowerFloorsRamales,
+    upperFloorGroup: props.upperFloorGroup,
     planosCtx: props.planosCtx,
     mats: props.mats,
     activeNet: props.activeNet,
@@ -2412,7 +2934,10 @@ function DrawingElementContextMenuInner() {
   const isBajanteTipo =
     element.tipo === 'bajante' || element.tipo === 'montante' || element.id?.startsWith('B');
   const isArea = element.id?.startsWith('AR');
-  const hasPts = !!element.pts;
+  // Guide lines also carry `pts` (reused for hit-testing) but must never fall into RamalMenu,
+  // which assumes every PlanoRamal-only field (net-specific accessories, diameter, etc.) exists.
+  const isGuide = element.id?.startsWith('GL');
+  const hasPts = !!element.pts && !isGuide;
   const tipo = element.tipo;
 
   return (
@@ -2464,6 +2989,8 @@ function DrawingElementContextMenuInner() {
           <BajanteMenu />
         ) : isArea ? (
           <AreaMenu />
+        ) : isGuide ? (
+          <GuideLineMenu />
         ) : hasPts ? (
           <RamalMenu />
         ) : tipo === 'contador' ? (

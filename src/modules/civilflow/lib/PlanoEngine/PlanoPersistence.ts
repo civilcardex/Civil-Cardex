@@ -1,4 +1,8 @@
 import { NETS, initNetCounts } from './PlanoState';
+import {
+  enrichCrossFloorGhosts,
+  type CrossFloorGhost,
+} from '../../utils/associateBajanteAcrossFloors';
 
 export interface PlanoWorkData {
   v: number;
@@ -16,6 +20,7 @@ export interface PlanoWorkData {
   bajantes: unknown[];
   areas: unknown[];
   nptLevels: unknown[];
+  guideLines?: unknown[];
   // Cross-floor ghost markers (associateBajanteAcrossFloors.ts) can be written onto a floor other
   // than the one currently loaded, by patching its raw storage directly. When THIS floor is later
   // loaded normally, they must be read back in here — and included in serializeWork's own output —
@@ -37,6 +42,7 @@ export function serializeWork(engine: {
   areas: unknown[];
   nptLevels: unknown[];
   crossFloorGhosts: unknown[];
+  guideLines: unknown[];
 }): PlanoWorkData {
   return {
     v: 6,
@@ -54,6 +60,7 @@ export function serializeWork(engine: {
     areas: engine.areas,
     nptLevels: engine.nptLevels,
     crossFloorGhosts: engine.crossFloorGhosts,
+    guideLines: engine.guideLines,
   };
 }
 
@@ -69,6 +76,7 @@ export function applyWorkData(
     areas: unknown[];
     nptLevels: unknown[];
     crossFloorGhosts: unknown[];
+    guideLines: unknown[];
     selId: string | null;
     activeRamal: unknown;
     activeArea: unknown;
@@ -91,7 +99,10 @@ export function applyWorkData(
   engine.bajantes = d.bajantes || [];
   engine.areas = d.areas || [];
   engine.nptLevels = d.nptLevels || [];
-  engine.crossFloorGhosts = d.crossFloorGhosts || [];
+  engine.crossFloorGhosts = d.crossFloorGhosts?.length
+    ? enrichCrossFloorGhosts(d.crossFloorGhosts as unknown as CrossFloorGhost[])
+    : [];
+  engine.guideLines = d.guideLines || [];
   engine.selId = null;
   engine.activeRamal = null;
   engine.activeArea = null;

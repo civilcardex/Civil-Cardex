@@ -14,7 +14,6 @@ import { matLongName, pisoLbl, GAS, DEFAULT_PENDIENTE_PCT } from '../constants';
 import { useProject } from '../context/ProjectContext';
 import { usePlans } from '../context/PlansContext';
 import { writeSanDrawingSync, writeHydroDrawingSync } from '../utils/drawingSync';
-import { bumpHidroAccesorio } from '../utils/syncExtremeAccessory';
 import {
   loadFromStorage,
   saveToStorage,
@@ -33,6 +32,9 @@ import {
   NETS_CHANGED_EVENT,
   TRAZOS_PREFIX,
   LAST_TRAZOS_ID_KEY,
+  NET_COLOR_PREFIX,
+  PDF_HIDDEN_NETS_KEY,
+  PDF_LOCKED_NETS_KEY,
 } from '../constants/storage-keys';
 import { devError } from '../../../utils/devError';
 import PdfViewerToolbar, { STATUS } from './pdfViewer/PdfViewerToolbar';
@@ -41,8 +43,6 @@ import PdfViewerNetworkBar from './pdfViewer/PdfViewerNetworkBar';
 import { usePdfAutoSave } from './pdfViewer/usePdfAutoSave';
 import { usePdfViewerEngine } from './pdfViewer/PdfViewerEngineInit';
 import TextInputOverlay from './pdfViewer/TextInputOverlay';
-import CrossFloorGhostPanel from './pdfViewer/CrossFloorGhostPanel';
-import type { CrossFloorGhost } from '../utils/associateBajanteAcrossFloors';
 import DrawingElementContextMenu, {
   type ContextMenuState,
   type LowerFloorRamales,
@@ -246,13 +246,26 @@ function PdfViewer_({
   });
   const [scaleM, setScaleM] = useState('0.5');
   const [selectedNivel, setSelectedNivel] = useState<number | null>(null);
-  const [hiddenNets, setHiddenNets] = useState<Set<string>>(new Set());
-  const [lockedNets, setLockedNets] = useState<Set<string>>(new Set());
+  const [hiddenNets, setHiddenNets] = useState<Set<string>>(() => {
+    try {
+      const saved = loadFromStorage<string[] | null>(PDF_HIDDEN_NETS_KEY, null);
+      if (saved) return new Set(saved);
+    } catch {
+      /* ignore */
+    }
+    return new Set();
+  });
+  const [lockedNets, setLockedNets] = useState<Set<string>>(() => {
+    try {
+      const saved = loadFromStorage<string[] | null>(PDF_LOCKED_NETS_KEY, null);
+      if (saved) return new Set(saved);
+    } catch {
+      /* ignore */
+    }
+    return new Set();
+  });
 
   const [selElement, setSelElement] = useState<ProbedElement | null>(null);
-  const [selectedCrossFloorGhost, setSelectedCrossFloorGhost] = useState<CrossFloorGhost | null>(
-    null,
-  );
   const [drawnElements, setDrawnElements] = useState<ElementItem[]>([]);
   const [diamSel, setDiamSel] = useState<Record<string, string>>({});
   const [gasMatSel, setGasMatSel] = useState<Record<string, string>>({});
@@ -384,6 +397,86 @@ function PdfViewer_({
     };
   }, [selElement, selectedNivel, pisos, planosCtx.plans, activeNet]);
 
+  // Mirror of the lowerFloorsRamales effect above, but for the "Origen" selector — only the
+  // SINGLE floor immediately above (smallest npt strictly greater than the current one), not
+  // every floor above. A bajante only ever receives from the riser directly overhead.
+  const [upperFloorGroup, setUpperFloorGroup] = useState<LowerFloorRamales | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!selElement || !(selElement.tipo === 'bajante' || selElement.tipo === 'montante')) {
+      setUpperFloorGroup(null);
+      return;
+    }
+    const currentFloor = pisos.find((p) => String(p.n) === String(selectedNivel));
+    const currentNpt = currentFloor ? Number(currentFloor.npt) : -Infinity;
+    const isRiser = (b: PlanoBajante) =>
+      b.tipo !== 'contador' && b.tipo !== 'calentador' && b.tipo !== 'red_publica';
+
+    let best: { plan: (typeof planosCtx.plans)[number]; npt: number } | null = null;
+    for (const plan of planosCtx.plans) {
+      const pF = pisos.find((p) => String(p.n) === String(plan.nivel));
+      if (!pF) continue;
+      const npt = Number(pF.npt);
+      if (!(npt > currentNpt)) continue;
+      if (!best || npt < best.npt) best = { plan, npt };
+    }
+    if (!best) {
+      setUpperFloorGroup(null);
+      return;
+    }
+    const { plan, npt } = best;
+    let bajantes: PlanoBajante[] = [];
+    let needsDbFallback = false;
+    if (plan.id === currentIdRef.current) {
+      bajantes =
+        engineRef.current?.bajantes?.filter(
+          (b) => b.net === (selElement.net || activeNet) && isRiser(b),
+        ) || [];
+    } else {
+      const data = loadFromStorage<{ bajantes?: PlanoBajante[] } | null>(
+        TRAZOS_PREFIX + plan.id,
+        null,
+      );
+      needsDbFallback = !data?.bajantes?.length;
+      bajantes = (data?.bajantes || []).filter(
+        (b: PlanoBajante) => b.net === (selElement.net || activeNet) && isRiser(b),
+      );
+    }
+    setUpperFloorGroup({
+      planId: plan.id,
+      planName: plan.name,
+      npt,
+      bajantes,
+      isCurrent: plan.id === currentIdRef.current,
+    });
+
+    if (needsDbFallback) {
+      (async () => {
+        try {
+          const dbData = await loadTrazosFromDB(String(plan.id));
+          if (cancelled || !dbData) return;
+          const data =
+            typeof dbData === 'string'
+              ? JSON.parse(dbData)
+              : (dbData as { bajantes?: PlanoBajante[] });
+          const bj = (data?.bajantes || []).filter(
+            (b: PlanoBajante) => b.net === (selElement.net || activeNet) && isRiser(b),
+          );
+          if (bj.length === 0) return;
+          setUpperFloorGroup((prev) =>
+            prev && prev.planId === plan.id ? { ...prev, bajantes: bj } : prev,
+          );
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selElement, selectedNivel, pisos, planosCtx.plans, activeNet]);
+
   useEffect(() => {
     try {
       sessionStorage.setItem(VISOR_TOOL_KEY, tool);
@@ -418,10 +511,18 @@ function PdfViewer_({
   useEffect(() => {
     if (selElement?.net) setActiveNet(selElement.net);
     if (selElement?.id) {
-      if (engineRef.current && engineRef.current.tool !== 'sel') engineRef.current.setTool('sel');
-      if (tool !== 'sel') setTool('sel');
+      // Selecting the guide line itself (for its rotate/crear-ramal context menu) must not kick
+      // the user out of guide mode — otherwise the locked sidebar reappears the instant they
+      // interact with anything while the tool is active.
+      if (
+        engineRef.current &&
+        engineRef.current.tool !== 'sel' &&
+        engineRef.current.tool !== 'guide'
+      )
+        engineRef.current.setTool('sel');
+      if (tool !== 'sel' && tool !== 'guide') setTool('sel');
     }
-  }, [selElement]);
+  }, [selElement, tool]);
 
   useEffect(() => {
     if (currentId == null) return;
@@ -494,7 +595,6 @@ function PdfViewer_({
         setSelElement(rest as unknown as ProbedElement);
       }
     }
-    setSelectedCrossFloorGhost(eng.getSelectedGhost());
     if (loadingPlanRef.current) return;
     try {
       const id = eng._loadedPlanId || currentIdRef.current || 'work';
@@ -715,9 +815,8 @@ function PdfViewer_({
       if (accId === 'sifon' && r.net === 'san' && !isIni) {
         setAlertDialogState({
           isOpen: true,
-          title: 'Sifón al revés',
-          message:
-            'El sifón debe ir en el extremo de ENTRADA (inicio del ramal). Colócalo en el otro extremo.',
+          title: 'Revisar ubicación del sifón',
+          message: 'El sifón no puede recibir flujo.',
         });
         return;
       }
@@ -725,9 +824,8 @@ function PdfViewer_({
         if (isIni) {
           setAlertDialogState({
             isOpen: true,
-            title: 'Llave terminal al revés',
-            message:
-              'La llave terminal debe ir en el extremo de SALIDA (fin del ramal). Colócala en el otro extremo.',
+            title: 'Revisar ubicación llave terminal',
+            message: 'La llave terminal debe recibir el flujo.',
           });
           return;
         }
@@ -741,16 +839,6 @@ function PdfViewer_({
         r.accMed[`accMed${junctionIndex}`] = accId;
       }
       eng._markDirty();
-
-      // Sync to hidroData so the sidebar accessories count increments
-      try {
-        const planId = eng._loadedPlanId;
-        if (planId) {
-          bumpHidroAccesorio(_net, accId, 1, ramalId, planId);
-        }
-      } catch {
-        /* ignore */
-      }
       eng.render();
       // Trigger sidebar refresh
       if (typeof window !== 'undefined') {
@@ -769,6 +857,37 @@ function PdfViewer_({
   useEffect(() => {
     if (engineRef.current) engineRef.current.activeNetworks = activeNetworks;
   }, [activeNetworks, engineReady]);
+
+  // Restore saved network colors into NETS[] and CSS vars on mount
+  useEffect(() => {
+    for (const net of NETS) {
+      try {
+        const raw = localStorage.getItem(NET_COLOR_PREFIX + net.id);
+        if (raw) {
+          const c = (() => {
+            try {
+              return JSON.parse(raw);
+            } catch {
+              return raw;
+            }
+          })();
+          if (typeof c === 'string') {
+            document.documentElement.style.setProperty('--' + net.id, c);
+            net.col = c;
+          }
+        } else {
+          // No saved override — sync CSS var default into NETS[].col so lluvias (default
+          // #22d3ee cyan in CSS) doesn't render as hardcoded #8B5CF6 purple in PlanoState.ts.
+          const cssVal = getComputedStyle(document.documentElement)
+            .getPropertyValue('--' + net.id)
+            .trim();
+          if (cssVal) net.col = cssVal;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (!engineRef.current || !engineReady) return;
@@ -853,6 +972,9 @@ function PdfViewer_({
     window.addEventListener('storage', syncDrawings);
     return () => window.removeEventListener('storage', syncDrawings);
   }, [syncDrawings]);
+  // Note: the `civilflow_diametro_validation` listener lives in GlobalAlertDialogProvider at
+  // the app root — it stays mounted across route changes so design-table edits always surface
+  // their alert, not only when the PDF viewer happens to be on screen.
 
   const [liveActiveNets, setLiveActiveNets] = useState<Set<string> | null>(() => {
     try {
@@ -1004,6 +1126,7 @@ function PdfViewer_({
       if (next.has(id)) next.delete(id);
       else next.add(id);
       setHiddenNets(next);
+      saveToStorage(PDF_HIDDEN_NETS_KEY, [...next]);
       if (engineRef.current) engineRef.current.setNetHidden(id, next.has(id));
     },
     [hiddenNets, setHiddenNets, engineRef],
@@ -1015,6 +1138,7 @@ function PdfViewer_({
       if (next.has(id)) next.delete(id);
       else next.add(id);
       setLockedNets(next);
+      saveToStorage(PDF_LOCKED_NETS_KEY, [...next]);
       if (engineRef.current) engineRef.current.setNetLocked(id, next.has(id));
     },
     [lockedNets, setLockedNets, engineRef],
@@ -1072,6 +1196,35 @@ function PdfViewer_({
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (engineRef.current) {
           const eng = engineRef.current;
+          // Supr on a selected ramal: mirror the borrador's behavior exactly (eraseRamalAt in
+          // PlanoEngineDrawing.ts) — trim the endpoint segment closest to the last cursor
+          // position instead of always deleting the whole ramal. eraseRamalAt already falls
+          // back to a full delete on its own when there's nothing left to trim (a straight
+          // 2-point ramal) — the same as handleEraseDown (the actual borrador tool) does, which
+          // calls it unconditionally with no point-count pre-check. Gating on pts.length>2 here
+          // too was redundant AND meant every 2-point ramal (the most common case — a straight
+          // run with no bends) skipped eraseRamalAt entirely, straight to a full delete, even
+          // when the click was nowhere near either endpoint.
+          const sel = eng.getSelected();
+          // Only ramal/tributario objects carry a `pts` polyline at all (bajantes, montantes,
+          // contadores, etc. are point elements with x/y, never pts) — checking for `pts`
+          // directly is equivalent to the tipo check but also covers any legacy ramal saved
+          // before the `tipo` field existed (tipo undefined), which the exact-match tipo check
+          // silently excluded, always falling through to a full delete for those.
+          // Guide lines also carry a `pts` polyline (reused for the same distanceToRamal-based
+          // hit-testing as a real ramal) but aren't in engine.ramales at all — eraseRamalAt would
+          // find nothing to trim/delete. Excluded by id prefix (guide lines are always "GL...").
+          const isRamal =
+            sel &&
+            'pts' in sel &&
+            Array.isArray((sel as { pts?: unknown }).pts) &&
+            (sel as { pts: unknown[] }).pts.length > 0 &&
+            !String((sel as { id?: unknown }).id ?? '').startsWith('GL');
+          if (isRamal && eng._lastMouseCvs) {
+            eng.eraseRamalAt(sel as never, eng._lastMouseCvs.x, eng._lastMouseCvs.y);
+            e.preventDefault();
+            return;
+          }
           if (eng.multiSel && eng.multiSel.length > 0) {
             eng.deleteSelected(eng.multiSel);
             eng.multiSel = [];
@@ -1132,7 +1285,6 @@ function PdfViewer_({
     }),
     [selElement],
   );
-
   const scaleText = useMemo(() => {
     const planoAsoc = planos.find((p) => p.nivel === selectedNivel && p.status === 'confirmed');
     if (planoAsoc && planoAsoc.scale) return <span>1:{planoAsoc.scale}</span>;
@@ -1260,6 +1412,7 @@ function PdfViewer_({
           selElement={selElement as PlanoElement | null}
           setSelElement={setSelElement}
           lowerFloorsRamales={lowerFloorsRamales}
+          upperFloorGroup={upperFloorGroup}
           planosCtx={planosCtx}
           mats={mats}
           activeNet={activeNet}
@@ -1278,17 +1431,6 @@ function PdfViewer_({
           }}
         />
         <ConfirmDialog confirmState={confirmState} setConfirmState={setConfirmState} />
-        <CrossFloorGhostPanel
-          ghost={selectedCrossFloorGhost}
-          engineRef={engineRef}
-          onClose={() => {
-            setSelectedCrossFloorGhost(null);
-            if (engineRef.current) {
-              engineRef.current.selectedGhostId = null;
-              engineRef.current.render();
-            }
-          }}
-        />
         <AlertDialog
           alertDialogState={alertDialogState}
           setAlertDialogState={setAlertDialogState}
@@ -1411,66 +1553,71 @@ function PdfViewer_({
             engineRef={engineRef}
           />
 
-          <div style={rightSidebarOpacity}>
-            <TramoEditor
-              selElement={selElement as PlanoElement | null}
-              activeNet={activeNet}
-              engineRef={engineRef}
-              diamSel={diamSel}
-              gasMatSel={gasMatSel}
-              pendSel={pendSel}
-              pendInput={pendInput}
-              mats={mats}
-              matLongName={matLongName}
-              setDiamSel={setDiamSel}
-              setGasMatSel={setGasMatSel}
-              setPendSel={setPendSel}
-              setPendInput={setPendInput}
-              setSelElement={setSelElement}
-              handleUpdateSel={handleUpdateSel}
-              handleRotateLabel={handleRotateLabel}
-              plans={planosCtx.plans}
-              pisos={pisos}
-            />
+          {tool !== 'guide' && (
+            <div style={rightSidebarOpacity}>
+              <TramoEditor
+                selElement={selElement as PlanoElement | null}
+                activeNet={activeNet}
+                engineRef={engineRef}
+                diamSel={diamSel}
+                gasMatSel={gasMatSel}
+                pendSel={pendSel}
+                pendInput={pendInput}
+                mats={mats}
+                matLongName={matLongName}
+                setDiamSel={setDiamSel}
+                setGasMatSel={setGasMatSel}
+                setPendSel={setPendSel}
+                setPendInput={setPendInput}
+                setSelElement={setSelElement}
+                handleUpdateSel={handleUpdateSel}
+                handleRotateLabel={handleRotateLabel}
+                plans={planosCtx.plans}
+                pisos={pisos}
+              />
 
-            <BajanteAsociacion
-              selElement={selElement}
-              setSelElement={setSelElement}
-              selectedNivel={selectedNivel}
-              pisoLbl={pisoLbl}
-              lowerFloorsRamales={lowerFloorsRamales}
-              planosCtx={planosCtx}
-              engineRef={engineRef}
-              triggerConfirm={(title, message, onConfirm) => {
-                setConfirmState({
-                  isOpen: true,
-                  title,
-                  message,
-                  onConfirm: () => {
-                    onConfirm();
-                    setConfirmState((prev) => ({ ...prev, isOpen: false }));
-                  },
-                });
-              }}
-            />
+              <BajanteAsociacion
+                selElement={selElement}
+                setSelElement={setSelElement}
+                selectedNivel={selectedNivel}
+                pisoLbl={pisoLbl}
+                lowerFloorsRamales={lowerFloorsRamales}
+                upperFloorGroup={upperFloorGroup}
+                planosCtx={planosCtx}
+                engineRef={engineRef}
+                triggerConfirm={(title, message, onConfirm) => {
+                  setConfirmState({
+                    isOpen: true,
+                    title,
+                    message,
+                    onConfirm: () => {
+                      onConfirm();
+                      setConfirmState((prev) => ({ ...prev, isOpen: false }));
+                    },
+                  });
+                }}
+              />
 
-            {!(
-              selElement &&
-              (selElement.tipo === 'bajante' ||
-                selElement.tipo === 'montante' ||
-                selElement.tipo === 'area' ||
-                selElement.id?.startsWith('AR'))
-            ) && <AparatosPanel activeNet={activeNet} selElement={selElement} planId={currentId} />}
+              {!(
+                selElement &&
+                (selElement.tipo === 'bajante' ||
+                  selElement.tipo === 'montante' ||
+                  selElement.tipo === 'area' ||
+                  selElement.id?.startsWith('AR'))
+              ) && (
+                <AparatosPanel activeNet={activeNet} selElement={selElement} planId={currentId} />
+              )}
 
-            <PdfViewerDrawnElements
-              drawnElements={drawnElements}
-              activeNet={activeNet}
-              selElement={selElement}
-              engineRef={engineRef}
-            />
+              <PdfViewerDrawnElements
+                drawnElements={drawnElements}
+                activeNet={activeNet}
+                selElement={selElement}
+                engineRef={engineRef}
+              />
 
-            <div style={{ flex: 1 }} />
-          </div>
+              <div style={{ flex: 1 }} />
+            </div>
+          )}
         </div>
 
         <button

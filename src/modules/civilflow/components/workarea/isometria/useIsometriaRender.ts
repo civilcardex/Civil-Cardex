@@ -1,10 +1,10 @@
-import { useEffect, type RefObject } from "react";
-import { NETS } from "../../../lib/PlanoEngine/PlanoState";
-import { loadPlanCrop } from "../../../utils/planCrop";
-import { parseDescargaEnId } from "../../../utils/parseDescargaEnId";
-import { project, type IsoRamal, type IsoBajante } from "./geometry";
-import type { IsoCanvas, IsoSegment } from "./useIsometriaInteraction";
-import type { PlanItem } from "../../../context/PlansContext";
+import { useEffect, type RefObject } from 'react';
+import { NETS } from '../../../lib/PlanoEngine/PlanoState';
+import { loadPlanCrop } from '../../../utils/planCrop';
+import { parseDescargaEnId } from '../../../utils/parseDescargaEnId';
+import { project, type IsoRamal, type IsoBajante } from './geometry';
+import type { IsoCanvas, IsoSegment } from './useIsometriaInteraction';
+import type { PlanItem } from '../../../context/PlansContext';
 
 interface UseIsometriaRenderParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -14,7 +14,12 @@ interface UseIsometriaRenderParams {
   profByNet: Record<string, number>;
   nptMap: Record<number, number>;
   pisos: unknown;
-  rotZ: number; rotX: number; scaleZ: number; zoom: number; offX: number; offY: number;
+  rotZ: number;
+  rotX: number;
+  scaleZ: number;
+  zoom: number;
+  offX: number;
+  offY: number;
   size: { w: number; h: number };
   selTramo: string | null;
   showPlanos: boolean;
@@ -25,16 +30,34 @@ interface UseIsometriaRenderParams {
 }
 
 export function useIsometriaRender({
-  canvasRef, planImagesRef, dataByNet, activeNets, profByNet, nptMap, pisos,
-  rotZ, rotX, scaleZ, zoom, offX, offY, size, selTramo, showPlanos, confirmedPlanos, renderTick,
-  getIsoCoords, getZPix,
+  canvasRef,
+  planImagesRef,
+  dataByNet,
+  activeNets,
+  profByNet,
+  nptMap,
+  pisos,
+  rotZ,
+  rotX,
+  scaleZ,
+  zoom,
+  offX,
+  offY,
+  size,
+  selTramo,
+  showPlanos,
+  confirmedPlanos,
+  renderTick,
+  getIsoCoords,
+  getZPix,
 }: UseIsometriaRenderParams) {
   useEffect(() => {
     const canvas = canvasRef.current as IsoCanvas | null;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    const W = size.w, H = size.h;
+    const W = size.w,
+      H = size.h;
     const dpr = devicePixelRatio || 1;
     canvas.width = W * dpr;
     canvas.height = H * dpr;
@@ -44,7 +67,8 @@ export function useIsometriaRender({
     ctx.fillRect(0, 0, W, H);
     const planCrop = loadPlanCrop();
 
-    const cx = W / 2, cy = H / 2;
+    const cx = W / 2,
+      cy = H / 2;
 
     const segments: IsoSegment[] = [];
 
@@ -65,8 +89,10 @@ export function useIsometriaRender({
         // source image is drawn, warped to its correct real-world position within the same
         // (uncropped) coordinate frame used by all network elements.
         const crop = planCrop || { x: 0, y: 0, w: 1, h: 1 };
-        const cx0 = crop.x * pageW, cy0 = crop.y * pageH;
-        const cx1 = (crop.x + crop.w) * pageW, cy1 = (crop.y + crop.h) * pageH;
+        const cx0 = crop.x * pageW,
+          cy0 = crop.y * pageH;
+        const cx1 = (crop.x + crop.w) * pageW,
+          cy1 = (crop.y + crop.h) * pageH;
         const tl_iso = getIsoCoords(cx0, cy0, plan.nivel);
         const tr_iso = getIsoCoords(cx1, cy0, plan.nivel);
         const bl_iso = getIsoCoords(cx0, cy1, plan.nivel);
@@ -75,12 +101,14 @@ export function useIsometriaRender({
         const tl = project(tl_iso.x, tl_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
         const tr = project(tr_iso.x, tr_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
         const bl = project(bl_iso.x, bl_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const srcX = crop.x * imgW, srcY = crop.y * imgH;
-        const srcW = crop.w * imgW, srcH = crop.h * imgH;
-        const ax = (tr.sx - tl.sx) / srcW * dpr;
-        const ay = (tr.sy - tl.sy) / srcW * dpr;
-        const bx = (bl.sx - tl.sx) / srcH * dpr;
-        const by = (bl.sy - tl.sy) / srcH * dpr;
+        const srcX = crop.x * imgW,
+          srcY = crop.y * imgH;
+        const srcW = crop.w * imgW,
+          srcH = crop.h * imgH;
+        const ax = ((tr.sx - tl.sx) / srcW) * dpr;
+        const ay = ((tr.sy - tl.sy) / srcW) * dpr;
+        const bx = ((bl.sx - tl.sx) / srcH) * dpr;
+        const by = ((bl.sy - tl.sy) / srcH) * dpr;
         ctx.save();
         ctx.globalAlpha = 0.35;
         ctx.setTransform(ax, ay, bx, by, tl.sx * dpr, tl.sy * dpr);
@@ -90,13 +118,26 @@ export function useIsometriaRender({
         ctx.lineWidth = 1 / (zoom || 1);
         ctx.strokeRect(0.5, 0.5, srcW - 1, srcH - 1);
         ctx.restore();
-        const midPt = project(label_iso.x, label_iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        const midPt = project(
+          label_iso.x,
+          label_iso.y,
+          z_pix,
+          rotZ,
+          rotX,
+          scaleZ,
+          zoom,
+          offX,
+          offY,
+          cx,
+          cy,
+        );
         ctx.save();
         ctx.fillStyle = '#5a6a6bcc';
         ctx.font = `bold ${Math.max(10, 11 * zoom)}px Geist,monospace`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
-        const pisoLabel = plan.nivel < 0 ? `S${Math.abs(plan.nivel)}` : plan.nivel === 99 ? 'C' : `P${plan.nivel}`;
+        const pisoLabel =
+          plan.nivel < 0 ? `S${Math.abs(plan.nivel)}` : plan.nivel === 99 ? 'C' : `P${plan.nivel}`;
         ctx.fillText(pisoLabel, midPt.sx, midPt.sy);
         ctx.restore();
       }
@@ -105,7 +146,7 @@ export function useIsometriaRender({
     // Draw each active network
     for (const [netId, netData] of Object.entries(dataByNet)) {
       if (!activeNets.has(netId)) continue;
-      const netColor = NETS.find(n => n.id === netId)?.col || '#888';
+      const netColor = NETS.find((n) => n.id === netId)?.col || '#888';
       const prof = profByNet[netId] ?? 0;
 
       ctx.strokeStyle = netColor;
@@ -128,7 +169,8 @@ export function useIsometriaRender({
         for (let i = 0; i < pts.length; i++) {
           const iso = getIsoCoords(pts[i][0], pts[i][1], r.planNivel);
           const pr = project(iso.x, iso.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-          if (i === 0) ctx.moveTo(pr.sx, pr.sy); else ctx.lineTo(pr.sx, pr.sy);
+          if (i === 0) ctx.moveTo(pr.sx, pr.sy);
+          else ctx.lineTo(pr.sx, pr.sy);
         }
         ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
         ctx.lineWidth = isSel ? 3.5 : 2;
@@ -139,13 +181,35 @@ export function useIsometriaRender({
           const iso2 = getIsoCoords(pts[i][0], pts[i][1], r.planNivel);
           const a = project(iso1.x, iso1.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
           const b = project(iso2.x, iso2.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-          segments.push({ sx1: a.sx, sy1: a.sy, sx2: b.sx, sy2: b.sy, z: z_pix, id: selKey, label: r.label || r.id, isBaj: false, netId });
+          segments.push({
+            sx1: a.sx,
+            sy1: a.sy,
+            sx2: b.sx,
+            sy2: b.sy,
+            z: z_pix,
+            id: selKey,
+            label: r.label || r.id,
+            isBaj: false,
+            netId,
+          });
         }
 
         if (isSel) {
           const midI = Math.floor(pts.length / 2);
           const isoMid = getIsoCoords(pts[midI][0], pts[midI][1], r.planNivel);
-          const mp = project(isoMid.x, isoMid.y, z_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+          const mp = project(
+            isoMid.x,
+            isoMid.y,
+            z_pix,
+            rotZ,
+            rotX,
+            scaleZ,
+            zoom,
+            offX,
+            offY,
+            cx,
+            cy,
+          );
           ctx.fillStyle = '#FFEB3B';
           ctx.font = 'bold 11px Geist,monospace';
           ctx.textAlign = 'center';
@@ -156,27 +220,67 @@ export function useIsometriaRender({
       }
 
       for (const b of netData.bajantes) {
+        // A CrossFloorGhost is only ever consulted as a lookup (which real target does this
+        // source connect to, on which floor) — see the `netData.bajantes.find` calls below. It no
+        // longer needs any visual representation of its own: the real source-to-target connector
+        // now anchors directly on the real target bajante's own position, so drawing the ghost's
+        // default single-floor stub here on top of that just left an orphaned extra riser segment
+        // sitting at the ghost's (= the source's raw) coordinates, unconnected to anything.
+        if (b._isCrossFloorGhost) continue;
+
         const profB = profByNet[b.net] ?? 0;
         const currentZ = nptMap[b.planNivel] || 0;
         let targetZ = currentZ;
 
-        // "Destino" (descargaEnId) can point at either a ramal OR another bajante on a lower
-        // floor (BajanteAsociacion.tsx lists both as options) — searching only netData.ramales
-        // meant a bajante-to-bajante association was silently never found, leaving targetZ at
-        // currentZ (no cross-floor span) and skipping the connector line entirely.
+        // Resolve the REAL target bajante for a bajante-to-bajante association via its
+        // CrossFloorGhost (applyBajanteAssociation always writes one, on the target's own floor,
+        // recording ghost.targetBajanteId) — the ghost's OWN (x,y) mirrors the SOURCE's raw
+        // coordinates and is only useful here to find which floor/bajante it points at, never as
+        // the connector's own anchor: the two ends below are both forced onto the REAL target
+        // bajante's own (x,y), producing one straight vertical run (same x,y throughout, only z
+        // differs) that lands exactly on the target bajante's own drawn position, matching how a
+        // riser diagram is meant to read regardless of any incidental offset in the source's raw
+        // plan coordinates. `_isCrossFloorGhost` bajantes never resolve their own reverse-pointing
+        // descargaEnId here — that would draw this same connection a second time, from the other end.
         let targetRamal = null;
         let targetBajante = null;
-        if (b.descargaEnId) {
-          const parts = parseDescargaEnId(b.descargaEnId, b.planId);
-          const targetPlanId = parts[0];
-          const targetId = parts[1];
-          targetRamal = netData.ramales.find((rr) => rr.id === targetId && String(rr.planId) === String(targetPlanId));
-          if (targetRamal) {
-            targetZ = nptMap[targetRamal.planNivel] || 0;
+        if (b.descargaEnId && !b._isCrossFloorGhost) {
+          const ownRef = `${b.planId}|${b.id}`;
+          const ghost = netData.bajantes.find(
+            (bb) => bb._isCrossFloorGhost && bb.descargaEnId === ownRef,
+          );
+          if (ghost?.targetBajanteId) {
+            targetBajante =
+              netData.bajantes.find(
+                (bb) =>
+                  !bb._isCrossFloorGhost &&
+                  bb.id === ghost.targetBajanteId &&
+                  bb.planId === ghost.planId,
+              ) || null;
+          }
+          if (targetBajante) {
+            targetZ = nptMap[targetBajante.planNivel] || 0;
           } else {
-            targetBajante = netData.bajantes.find((bb) => bb.id === targetId && String(bb.planId) === String(targetPlanId));
-            if (targetBajante) {
-              targetZ = nptMap[targetBajante.planNivel] || 0;
+            // Defensive fallback for stale/incomplete data missing its ghost.
+            const parts = parseDescargaEnId(b.descargaEnId, b.planId);
+            const targetPlanId = parts[0];
+            const targetId = parts[1];
+            targetRamal = netData.ramales.find(
+              (rr) => rr.id === targetId && String(rr.planId) === String(targetPlanId),
+            );
+            if (targetRamal) {
+              targetZ = nptMap[targetRamal.planNivel] || 0;
+            } else {
+              targetBajante =
+                netData.bajantes.find(
+                  (bb) =>
+                    !bb._isCrossFloorGhost &&
+                    bb.id === targetId &&
+                    String(bb.planId) === String(targetPlanId),
+                ) || null;
+              if (targetBajante) {
+                targetZ = nptMap[targetBajante.planNivel] || 0;
+              }
             }
           }
         }
@@ -194,32 +298,73 @@ export function useIsometriaRender({
           // Nearest endpoint of the target ramal to the bajante's own (x,y) — not always pts[0],
           // which could be the far end of a long ramal and point the connector the wrong way.
           const distToFirst = Math.hypot(targetRamal.pts[0][0] - b.x, targetRamal.pts[0][1] - b.y);
-          const distToLast = Math.hypot(targetRamal.pts[targetRamal.pts.length - 1][0] - b.x, targetRamal.pts[targetRamal.pts.length - 1][1] - b.y);
-          targetPt = distToFirst <= distToLast ? targetRamal.pts[0] : targetRamal.pts[targetRamal.pts.length - 1];
+          const distToLast = Math.hypot(
+            targetRamal.pts[targetRamal.pts.length - 1][0] - b.x,
+            targetRamal.pts[targetRamal.pts.length - 1][1] - b.y,
+          );
+          targetPt =
+            distToFirst <= distToLast
+              ? targetRamal.pts[0]
+              : targetRamal.pts[targetRamal.pts.length - 1];
           targetPlanNivel = targetRamal.planNivel;
         } else if (targetBajante) {
           targetPt = [targetBajante.x, targetBajante.y];
           targetPlanNivel = targetBajante.planNivel;
         }
-        // When the target is a bajante stacked directly below/above this one in plan (x,y match
-        // within a small tolerance — the common "montante lines up with the bajante on the next
-        // floor" case), project THAT end of the solid segment using the target's OWN (x,y,floor) —
-        // each floor plan can carry its own scale/origin calibration, so projecting both ends from
-        // this bajante's floor alone can land the far end a few pixels off from where the target
-        // bajante itself actually draws, reading as a broken/kinked line instead of one continuous
-        // pipe. Anchoring the far end on the target's own projection guarantees the two meet exactly.
-        const isAlignedBajanteStack = !!targetBajante && targetPt != null && Math.hypot(targetPt[0] - b.x, targetPt[1] - b.y) < 3;
+        // When the target is a real bajante, the WHOLE segment — both ends, not just the one at
+        // the target's own floor — is projected using the target bajante's own (x,y). That makes
+        // the connector a single straight vertical run (one x,y throughout, only z differs),
+        // landing exactly on the target bajante's own drawn position regardless of any offset in
+        // the source's raw plan coordinates (a Ldesvio deviation, or simply two independently
+        // drawn floors) — the isometric riser is meant to show connectivity, not the source's
+        // real, incidental 2D routing detail.
+        const hasBajanteTarget = !!targetBajante && targetPt != null && targetPlanNivel !== null;
 
         const baseZ_pix = getZPix(baseZ, b.planNivel);
         const cimaZ_pix = getZPix(cimaZ, b.planNivel);
         const ownIso = getIsoCoords(b.x, b.y, b.planNivel);
-        const targetIso = (isAlignedBajanteStack && targetPt && targetPlanNivel !== null)
-          ? getIsoCoords(targetPt[0], targetPt[1], targetPlanNivel)
-          : null;
-        const baseIso = (targetIso && targetZ === lo) ? targetIso : ownIso;
-        const cimaIso = (targetIso && targetZ === hi) ? targetIso : ownIso;
-        const pBase = project(baseIso.x, baseIso.y, baseZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-        const pCima = project(cimaIso.x, cimaIso.y, cimaZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+        const targetIsoAtOwnFloor =
+          hasBajanteTarget && targetPt ? getIsoCoords(targetPt[0], targetPt[1], b.planNivel) : null;
+        const targetIsoAtTargetFloor =
+          hasBajanteTarget && targetPt && targetPlanNivel !== null
+            ? getIsoCoords(targetPt[0], targetPt[1], targetPlanNivel)
+            : null;
+        const baseIso = !hasBajanteTarget
+          ? ownIso
+          : targetZ === lo
+            ? targetIsoAtTargetFloor!
+            : targetIsoAtOwnFloor!;
+        const cimaIso = !hasBajanteTarget
+          ? ownIso
+          : targetZ === hi
+            ? targetIsoAtTargetFloor!
+            : targetIsoAtOwnFloor!;
+        const pBase = project(
+          baseIso.x,
+          baseIso.y,
+          baseZ_pix,
+          rotZ,
+          rotX,
+          scaleZ,
+          zoom,
+          offX,
+          offY,
+          cx,
+          cy,
+        );
+        const pCima = project(
+          cimaIso.x,
+          cimaIso.y,
+          cimaZ_pix,
+          rotZ,
+          rotX,
+          scaleZ,
+          zoom,
+          offX,
+          offY,
+          cx,
+          cy,
+        );
         const selKey = `${netId}:${b.planId}:${b.id}`;
         const isSel = selKey === selTramo;
 
@@ -229,23 +374,62 @@ export function useIsometriaRender({
         ctx.strokeStyle = isSel ? '#FFEB3B' : netColor;
         ctx.lineWidth = isSel ? 3.5 : 2;
         ctx.stroke();
-        segments.push({ sx1: pBase.sx, sy1: pBase.sy, sx2: pCima.sx, sy2: pCima.sy, z: (baseZ_pix + cimaZ_pix) / 2, id: selKey, label: b.code || b.id, isBaj: true, netId });
 
-        if (targetPt && targetPlanNivel !== null) {
-          // The dashed green connector is redundant (and reads as a kink) once the solid segment
-          // above already reaches the target's own projected position — only draw it for a genuine
-          // offset target (a different ramal, or a bajante that isn't plan-aligned).
-          if (!isAlignedBajanteStack) {
-            const rIso = getIsoCoords(targetPt[0], targetPt[1], targetPlanNivel);
-            // Same net as the bajante (target comes from this netId's own netData), so the same
-            // depth offset (profB) applies — matches the offset already baked into baseZ/cimaZ.
-            const rZ_pix = getZPix(targetZ - profB * 1000, targetPlanNivel);
-            const rProj = project(rIso.x, rIso.y, rZ_pix, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
-            // Compare RAW (pre-offset) targetZ against `lo`/`hi` — baseZ/cimaZ already have
-            // profB*1000 baked in, so comparing targetZ straight against baseZ was comparing
-            // pre-offset to post-offset and (whenever profB != 0, the normal case) almost never
-            // matched, silently picking the wrong end most of the time.
-            const connectionPoint = (targetZ === lo) ? pBase : pCima;
+        // Circle + direction indicator at floor level (pBase for sube, pCima for baja)
+        const isSubeDir = b.direccion === 'sube' || b.tipo === 'montante';
+        const floorPt = isSubeDir ? pBase : pCima;
+        const circR = 6 * zoom;
+        ctx.save();
+        ctx.strokeStyle = netColor;
+        ctx.lineWidth = 1.5;
+        ctx.fillStyle = '#14161a';
+        ctx.beginPath();
+        ctx.arc(floorPt.sx, floorPt.sy, circR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Direction triangle inside circle
+        ctx.fillStyle = netColor;
+        ctx.beginPath();
+        const triS = circR * 0.5;
+        const dirY = isSubeDir ? -1 : 1;
+        ctx.moveTo(floorPt.sx, floorPt.sy + dirY * triS);
+        ctx.lineTo(floorPt.sx - triS, floorPt.sy - dirY * triS * 0.3);
+        ctx.lineTo(floorPt.sx + triS, floorPt.sy - dirY * triS * 0.3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        segments.push({
+          sx1: pBase.sx,
+          sy1: pBase.sy,
+          sx2: pCima.sx,
+          sy2: pCima.sy,
+          z: (baseZ_pix + cimaZ_pix) / 2,
+          id: selKey,
+          label: b.code || b.id,
+          isBaj: true,
+          netId,
+        });
+
+        if (targetPt && targetPlanNivel !== null && !targetBajante) {
+          const rIso = getIsoCoords(targetPt[0], targetPt[1], targetPlanNivel);
+          const rZ_pix = getZPix(targetZ - profB * 1000, targetPlanNivel);
+          const rProj = project(
+            rIso.x,
+            rIso.y,
+            rZ_pix,
+            rotZ,
+            rotX,
+            scaleZ,
+            zoom,
+            offX,
+            offY,
+            cx,
+            cy,
+          );
+          const connectionPoint = targetZ === lo ? pBase : pCima;
+          const dConn = Math.hypot(rProj.sx - connectionPoint.sx, rProj.sy - connectionPoint.sy);
+          if (dConn > 2) {
             ctx.save();
             ctx.beginPath();
             ctx.moveTo(connectionPoint.sx, connectionPoint.sy);
@@ -277,14 +461,43 @@ export function useIsometriaRender({
     }
 
     // Axis indicator (bottom-left)
-    const axCx = 50, axCy = H - 50;
+    const axCx = 50,
+      axCy = H - 50;
     const axLen = 25;
     const axisColors = ['#ff4444', '#44ff44', '#4488ff'];
     const axisLabels = ['X', 'Y', 'Z'];
-    const axisDirs: [number, number, number][] = [[axLen, 0, 0], [0, axLen, 0], [0, 0, axLen]];
+    const axisDirs: [number, number, number][] = [
+      [axLen, 0, 0],
+      [0, axLen, 0],
+      [0, 0, axLen],
+    ];
     for (let i = 0; i < 3; i++) {
-      const from = project(0, 0, 0, rotZ, rotX, scaleZ, zoom, offX - cx + axCx, offY - cy + axCy, 0, 0);
-      const to = project(axisDirs[i][0], axisDirs[i][1], axisDirs[i][2], rotZ, rotX, scaleZ, zoom, offX - cx + axCx, offY - cy + axCy, 0, 0);
+      const from = project(
+        0,
+        0,
+        0,
+        rotZ,
+        rotX,
+        scaleZ,
+        zoom,
+        offX - cx + axCx,
+        offY - cy + axCy,
+        0,
+        0,
+      );
+      const to = project(
+        axisDirs[i][0],
+        axisDirs[i][1],
+        axisDirs[i][2],
+        rotZ,
+        rotX,
+        scaleZ,
+        zoom,
+        offX - cx + axCx,
+        offY - cy + axCy,
+        0,
+        0,
+      );
       ctx.beginPath();
       ctx.moveTo(from.sx, from.sy);
       ctx.lineTo(to.sx, to.sy);
@@ -307,5 +520,26 @@ export function useIsometriaRender({
     canvas.__isoSegments = segments;
     canvas.__isoCx = W / 2;
     canvas.__isoCy = H / 2;
-  }, [canvasRef, planImagesRef, dataByNet, activeNets, profByNet, nptMap, pisos, rotZ, rotX, scaleZ, zoom, offX, offY, size, selTramo, showPlanos, confirmedPlanos, renderTick, getIsoCoords, getZPix]);
+  }, [
+    canvasRef,
+    planImagesRef,
+    dataByNet,
+    activeNets,
+    profByNet,
+    nptMap,
+    pisos,
+    rotZ,
+    rotX,
+    scaleZ,
+    zoom,
+    offX,
+    offY,
+    size,
+    selTramo,
+    showPlanos,
+    confirmedPlanos,
+    renderTick,
+    getIsoCoords,
+    getZPix,
+  ]);
 }

@@ -9,11 +9,13 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
   // both into a single detection pass so their shared vertices are seen together; every other net
   // stays on its own.
   const processed = new Set<string>();
-  NETS.forEach(net => {
+  NETS.forEach((net) => {
     if (processed.has(net.id)) return;
-    const group = (net.id === 'san' || net.id === 'vent') ? ['san', 'vent'] : [net.id];
+    const group = net.id === 'san' || net.id === 'vent' ? ['san', 'vent'] : [net.id];
     group.forEach((g) => processed.add(g));
-    const netRamales = engine.ramales.filter((r) => group.includes(r.net) && !engine._hiddenNets.has(r.net));
+    const netRamales = engine.ramales.filter(
+      (r) => group.includes(r.net) && !engine._hiddenNets.has(r.net),
+    );
     if (netRamales.length === 0) return;
 
     const getPointKey = (x: number, y: number) => `${x.toFixed(3)}_${y.toFixed(3)}`;
@@ -35,9 +37,10 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         bajantePts.push([b.x, b.y]);
       }
     });
-    const nearBajante = (x: number, y: number) => bajantePts.some(([bx, by]) => Math.hypot(bx - x, by - y) < 0.5);
+    const nearBajante = (x: number, y: number) =>
+      bajantePts.some(([bx, by]) => Math.hypot(bx - x, by - y) < 0.5);
 
-    netRamales.forEach(r => {
+    netRamales.forEach((r) => {
       r.pts.forEach((pt: number[]) => {
         if (nearBajante(pt[0], pt[1])) return;
         vertexMap.set(getPointKey(pt[0], pt[1]), pt);
@@ -58,20 +61,22 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
     vertexMap.forEach((P) => {
       const outgoingVectors: { x: number; y: number }[] = [];
 
-      netRamales.forEach(r => {
+      netRamales.forEach((r) => {
         let isVertex = false;
         for (let i = 0; i < r.pts.length; i++) {
           if (Math.hypot(r.pts[i][0] - P[0], r.pts[i][1] - P[1]) < 0.5) {
             isVertex = true;
             if (i > 0) {
               const prev = r.pts[i - 1];
-              const dx = prev[0] - P[0], dy = prev[1] - P[1];
+              const dx = prev[0] - P[0],
+                dy = prev[1] - P[1];
               const len = Math.hypot(dx, dy);
               if (len > 0.1) outgoingVectors.push({ x: dx / len, y: dy / len });
             }
             if (i < r.pts.length - 1) {
               const next = r.pts[i + 1];
-              const dx = next[0] - P[0], dy = next[1] - P[1];
+              const dx = next[0] - P[0],
+                dy = next[1] - P[1];
               const len = Math.hypot(dx, dy);
               if (len > 0.1) outgoingVectors.push({ x: dx / len, y: dy / len });
             }
@@ -82,7 +87,8 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           for (let i = 0; i < r.pts.length - 1; i++) {
             const A = r.pts[i];
             const B = r.pts[i + 1];
-            const dx = B[0] - A[0], dy = B[1] - A[1];
+            const dx = B[0] - A[0],
+              dy = B[1] - A[1];
             const lenSq = dx * dx + dy * dy;
             if (lenSq > 0.001) {
               let t = ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / lenSq;
@@ -90,7 +96,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
               const projX = A[0] + t * dx;
               const projY = A[1] + t * dy;
               const dist = Math.hypot(P[0] - projX, P[1] - projY);
-              
+
               const lenA = Math.hypot(A[0] - P[0], A[1] - P[1]);
               const lenB = Math.hypot(B[0] - P[0], B[1] - P[1]);
 
@@ -104,8 +110,8 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       });
 
       const uniqueVectors: { x: number; y: number }[] = [];
-      outgoingVectors.forEach(v => {
-        const isDup = uniqueVectors.some(uv => {
+      outgoingVectors.forEach((v) => {
+        const isDup = uniqueVectors.some((uv) => {
           const dot = uv.x * v.x + uv.y * v.y;
           return dot > 0.99;
         });
@@ -116,7 +122,8 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         let bestPair = { i: -1, j: -1, dot: 1 };
         for (let i = 0; i < uniqueVectors.length; i++) {
           for (let j = i + 1; j < uniqueVectors.length; j++) {
-            const dot = uniqueVectors[i].x * uniqueVectors[j].x + uniqueVectors[i].y * uniqueVectors[j].y;
+            const dot =
+              uniqueVectors[i].x * uniqueVectors[j].x + uniqueVectors[i].y * uniqueVectors[j].y;
             if (dot < bestPair.dot) {
               bestPair = { i, j, dot };
             }
@@ -126,7 +133,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         if (bestPair.dot < -0.9) {
           const uA = uniqueVectors[bestPair.i];
           const uB = uniqueVectors[bestPair.j];
-          
+
           const branches: { x: number; y: number }[] = [];
           for (let k = 0; k < uniqueVectors.length; k++) {
             if (k !== bestPair.i && k !== bestPair.j) {
@@ -144,7 +151,9 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           const isAfAc = group.includes('af') || group.includes('ac');
           const isYee = !isAfAc && Math.abs(cosVal) >= 0.4 && Math.abs(cosVal) <= 0.85;
 
-          if (isTee || isYee) {
+          // For AF/AC, perpendicular (tee) junctions are drawn by the bilateral-crossing
+          // renderer in renderRamales.ts — skip them here to avoid double symbols.
+          if ((isTee && !isAfAc) || isYee) {
             junctions.push({ P, uA, uB, branches, isTee, isYee });
           }
         }
@@ -156,14 +165,18 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
     for (let i = 0; i < junctions.length; i++) {
       for (let j = i + 1; j < junctions.length; j++) {
         if (usedInDouble.has(i) || usedInDouble.has(j)) continue;
-        const a = junctions[i], b = junctions[j];
+        const a = junctions[i],
+          b = junctions[j];
         const distMm = Math.hypot(a.P[0] - b.P[0], a.P[1] - b.P[1]);
         if (distMm > DOUBLE_YEE_THRESHOLD_MM) continue;
 
-        const auA = a.uA, buA = b.uA, buB = b.uB;
+        const auA = a.uA,
+          buA = b.uA,
+          buB = b.uB;
         const dotMain = auA.x * buA.x + auA.y * buA.y;
         const dotMain2 = auA.x * buB.x + auA.y * buB.y;
-        const aligned = Math.abs(Math.abs(dotMain) - 1) < 0.15 || Math.abs(Math.abs(dotMain2) - 1) < 0.15;
+        const aligned =
+          Math.abs(Math.abs(dotMain) - 1) < 0.15 || Math.abs(Math.abs(dotMain2) - 1) < 0.15;
         if (!aligned) continue;
 
         usedInDouble.add(i);
@@ -184,37 +197,39 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         const vectorsA = [];
         const vecAB = { x: b.P[0] - a.P[0], y: b.P[1] - a.P[1] };
         const dotAa = a.uA.x * vecAB.x + a.uA.y * vecAB.y;
-        if (dotAa <= 0) vectorsA.push(a.uA); else vectorsA.push(a.uB);
-        a.branches.forEach(uC => vectorsA.push(uC));
+        if (dotAa <= 0) vectorsA.push(a.uA);
+        else vectorsA.push(a.uB);
+        a.branches.forEach((uC) => vectorsA.push(uC));
 
         const vectorsB = [];
         const vecBA = { x: a.P[0] - b.P[0], y: a.P[1] - b.P[1] };
         const dotBa = b.uA.x * vecBA.x + b.uA.y * vecBA.y;
-        if (dotBa <= 0) vectorsB.push(b.uA); else vectorsB.push(b.uB);
-        b.branches.forEach(uC => vectorsB.push(uC));
+        if (dotBa <= 0) vectorsB.push(b.uA);
+        else vectorsB.push(b.uB);
+        b.branches.forEach((uC) => vectorsB.push(uC));
 
         ctx.beginPath();
         if (vectorsA.length > 0) {
           ctx.moveTo(cvsA.x + rad * vectorsA[0].x, cvsA.y + rad * vectorsA[0].y);
-          for(let i=1; i<vectorsA.length; i++) {
-             ctx.lineTo(cvsA.x, cvsA.y);
-             ctx.lineTo(cvsA.x + rad * vectorsA[i].x, cvsA.y + rad * vectorsA[i].y);
+          for (let i = 1; i < vectorsA.length; i++) {
+            ctx.lineTo(cvsA.x, cvsA.y);
+            ctx.lineTo(cvsA.x + rad * vectorsA[i].x, cvsA.y + rad * vectorsA[i].y);
           }
           ctx.lineTo(cvsA.x, cvsA.y);
         } else {
           ctx.moveTo(cvsA.x, cvsA.y);
         }
-        
+
         ctx.lineTo(cvsB.x, cvsB.y);
 
         if (vectorsB.length > 0) {
           ctx.lineTo(cvsB.x + rad * vectorsB[0].x, cvsB.y + rad * vectorsB[0].y);
-          for(let i=1; i<vectorsB.length; i++) {
-             ctx.lineTo(cvsB.x, cvsB.y);
-             ctx.lineTo(cvsB.x + rad * vectorsB[i].x, cvsB.y + rad * vectorsB[i].y);
+          for (let i = 1; i < vectorsB.length; i++) {
+            ctx.lineTo(cvsB.x, cvsB.y);
+            ctx.lineTo(cvsB.x + rad * vectorsB[i].x, cvsB.y + rad * vectorsB[i].y);
           }
         }
-        
+
         ctx.lineWidth = 3 * engine.zoom;
         ctx.strokeStyle = '#ffffff';
         ctx.stroke();
@@ -236,17 +251,17 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         ctx.lineWidth = 2 * engine.zoom;
         ctx.strokeStyle = '#000000';
         ctx.beginPath();
-        vectorsA.forEach(u => {
+        vectorsA.forEach((u) => {
           const T_pt = { x: cvsA.x + rad * u.x, y: cvsA.y + rad * u.y };
           const perp = { x: -u.y, y: u.x };
-          ctx.moveTo(T_pt.x - perp.x * tickLen / 2, T_pt.y - perp.y * tickLen / 2);
-          ctx.lineTo(T_pt.x + perp.x * tickLen / 2, T_pt.y + perp.y * tickLen / 2);
+          ctx.moveTo(T_pt.x - (perp.x * tickLen) / 2, T_pt.y - (perp.y * tickLen) / 2);
+          ctx.lineTo(T_pt.x + (perp.x * tickLen) / 2, T_pt.y + (perp.y * tickLen) / 2);
         });
-        vectorsB.forEach(u => {
+        vectorsB.forEach((u) => {
           const T_pt = { x: cvsB.x + rad * u.x, y: cvsB.y + rad * u.y };
           const perp = { x: -u.y, y: u.x };
-          ctx.moveTo(T_pt.x - perp.x * tickLen / 2, T_pt.y - perp.y * tickLen / 2);
-          ctx.lineTo(T_pt.x + perp.x * tickLen / 2, T_pt.y + perp.y * tickLen / 2);
+          ctx.moveTo(T_pt.x - (perp.x * tickLen) / 2, T_pt.y - (perp.y * tickLen) / 2);
+          ctx.lineTo(T_pt.x + (perp.x * tickLen) / 2, T_pt.y + (perp.y * tickLen) / 2);
         });
         ctx.stroke();
 
@@ -272,9 +287,9 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       ctx.beginPath();
       if (vectors.length > 0) {
         ctx.moveTo(cvsP.x + rad * vectors[0].x, cvsP.y + rad * vectors[0].y);
-        for(let i=1; i<vectors.length; i++) {
-           ctx.lineTo(cvsP.x, cvsP.y);
-           ctx.lineTo(cvsP.x + rad * vectors[i].x, cvsP.y + rad * vectors[i].y);
+        for (let i = 1; i < vectors.length; i++) {
+          ctx.lineTo(cvsP.x, cvsP.y);
+          ctx.lineTo(cvsP.x + rad * vectors[i].x, cvsP.y + rad * vectors[i].y);
         }
       }
 
@@ -287,11 +302,11 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       ctx.stroke();
 
       ctx.beginPath();
-      vectors.forEach(u => {
+      vectors.forEach((u) => {
         const T_pt = { x: cvsP.x + rad * u.x, y: cvsP.y + rad * u.y };
         const perp = { x: -u.y, y: u.x };
-        ctx.moveTo(T_pt.x - perp.x * tickLen / 2, T_pt.y - perp.y * tickLen / 2);
-        ctx.lineTo(T_pt.x + perp.x * tickLen / 2, T_pt.y + perp.y * tickLen / 2);
+        ctx.moveTo(T_pt.x - (perp.x * tickLen) / 2, T_pt.y - (perp.y * tickLen) / 2);
+        ctx.lineTo(T_pt.x + (perp.x * tickLen) / 2, T_pt.y + (perp.y * tickLen) / 2);
       });
       ctx.stroke();
 

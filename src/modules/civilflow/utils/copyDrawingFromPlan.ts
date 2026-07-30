@@ -1,7 +1,11 @@
-import { loadFromStorage, saveToStorage } from "../services/storageService";
-import { APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY, GAS_ACC_KEY } from "../constants/storage-keys";
-import { NETS } from "../lib/PlanoEngine/PlanoState";
-import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from "../lib/PlanoEngine/PlanoState";
+import { loadFromStorage, saveToStorage } from '../services/storageService';
+import {
+  APARATOS_BY_TRAMO_KEY,
+  HYDRO_DATA_STORAGE_KEY,
+  GAS_ACC_KEY,
+} from '../constants/storage-keys';
+import { NETS } from '../lib/PlanoEngine/PlanoState';
+import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../lib/PlanoEngine/PlanoState';
 
 export interface CopySourceSelection {
   netId: string;
@@ -76,20 +80,27 @@ export function copyDrawingFromPlan(
     if (tipos.size === 0) continue;
 
     const net = NETS.find((n) => n.id === netId);
-    if (!net) { skippedNets.push(netId); continue; }
+    if (!net) {
+      skippedNets.push(netId);
+      continue;
+    }
     const pfx = net.lbl;
     const bmPfx = net.bmPfx;
     // Montante prefix: for networks where bmType === 'montante', use net.bmPfx (MAF, MAC, etc.)
     // For networks where bmType === 'bajante' (sanitary, ll), montantes get their own 'M'+lbl prefix
-    const monPfx = net.bmType === 'montante' ? (net.bmPfx || 'MON') : ('M' + (net.lbl || 'MON'));
+    const monPfx = net.bmType === 'montante' ? net.bmPfx || 'MON' : 'M' + (net.lbl || 'MON');
     const tPfx = 'T'; // Tributario prefix
 
-    const copyRamalTipos = new Set(['ramal', 'tributario'].filter(t => tipos.has(t)));
-    const copyBajanteTipos = new Set(['bajante', 'montante'].filter(t => tipos.has(t)));
-    const copyGlobalTipos = new Set(['red_publica', 'contador', 'calentador'].filter(t => tipos.has(t)));
+    const copyRamalTipos = new Set(['ramal', 'tributario'].filter((t) => tipos.has(t)));
+    const copyBajanteTipos = new Set(['bajante', 'montante'].filter((t) => tipos.has(t)));
+    const copyGlobalTipos = new Set(
+      ['red_publica', 'contador', 'calentador'].filter((t) => tipos.has(t)),
+    );
 
     const srcRamales = sourceRamales.filter((r) => r.net === netId && copyRamalTipos.has(r.tipo));
-    const srcBajantes = sourceBajantes.filter((b) => b.net === netId && copyBajanteTipos.has(b.tipo));
+    const srcBajantes = sourceBajantes.filter(
+      (b) => b.net === netId && copyBajanteTipos.has(b.tipo),
+    );
     const srcGlobals = sourceBajantes.filter((b) => copyGlobalTipos.has(b.tipo) && b.net === netId);
 
     if (srcRamales.length === 0 && srcBajantes.length === 0 && srcGlobals.length === 0) continue;
@@ -97,15 +108,18 @@ export function copyDrawingFromPlan(
     const srcAll = [...srcRamales, ...srcBajantes, ...srcGlobals];
 
     /* ── CAPTURE source data from all 3 stores BEFORE any deletion ── */
-    const srcSnapshot: Record<string, { aparato?: unknown; hidro?: unknown; gasAcc?: unknown }> = {};
+    const srcSnapshot: Record<string, { aparato?: unknown; hidro?: unknown; gasAcc?: unknown }> =
+      {};
     for (const el of srcAll) {
       srcSnapshot[el.id] = {};
 
       const apKey = `${netId}_${el.id}_${srcPid}`;
-      if (aparatos[apKey] !== undefined) srcSnapshot[el.id].aparato = structuredClone(aparatos[apKey]);
+      if (aparatos[apKey] !== undefined)
+        srcSnapshot[el.id].aparato = structuredClone(aparatos[apKey]);
 
       const hdKey = `${netId}_${el.id}_${srcPid}`;
-      if (hidroData[hdKey] !== undefined) srcSnapshot[el.id].hidro = structuredClone(hidroData[hdKey]);
+      if (hidroData[hdKey] !== undefined)
+        srcSnapshot[el.id].hidro = structuredClone(hidroData[hdKey]);
 
       if (gasAcc[el.id] !== undefined) srcSnapshot[el.id].gasAcc = structuredClone(gasAcc[el.id]);
     }
@@ -113,10 +127,14 @@ export function copyDrawingFromPlan(
     /* ── Remove existing matching elements from engine ── */
     const existingToRemove: (PlanoRamal | PlanoBajante)[] = [];
     if (copyRamalTipos.size > 0) {
-      existingToRemove.push(...engine.ramales.filter((r) => r.net === netId && copyRamalTipos.has(r.tipo)));
+      existingToRemove.push(
+        ...engine.ramales.filter((r) => r.net === netId && copyRamalTipos.has(r.tipo)),
+      );
     }
     if (copyBajanteTipos.size > 0) {
-      existingToRemove.push(...engine.bajantes.filter((b) => b.net === netId && copyBajanteTipos.has(b.tipo)));
+      existingToRemove.push(
+        ...engine.bajantes.filter((b) => b.net === netId && copyBajanteTipos.has(b.tipo)),
+      );
     }
     if (copyGlobalTipos.size > 0) {
       existingToRemove.push(...engine.bajantes.filter((b) => copyGlobalTipos.has(b.tipo)));
@@ -158,13 +176,34 @@ export function copyDrawingFromPlan(
         return mr ? Math.max(m, parseInt(mr[1], 10)) : m;
       }, 0);
 
-    const maxRamal = maxForType(engine.ramales.filter((r) => r.net === netId && r.tipo === 'ramal'), new RegExp('^' + pfx + '(\\d+)$'));
-    const maxBajante = maxForType(engine.bajantes.filter((b) => b.net === netId && b.tipo === 'bajante'), new RegExp('^' + bmPfx + '(\\d+)$'));
-    const maxMontante = maxForType(engine.bajantes.filter((b) => b.net === netId && b.tipo === 'montante'), new RegExp('^' + monPfx + '(\\d+)_' + netId + '$'));
-    const maxRp = maxForType(engine.bajantes.filter((b) => b.tipo === 'red_publica'), /^RP(\d+)$/);
-    const maxCnt = maxForType(engine.bajantes.filter((b) => b.tipo === 'contador'), /^(?:CTNG|CNTAF|cntAF)(\d+)$/);
-    const maxCal = maxForType(engine.bajantes.filter((b) => b.tipo === 'calentador'), /^(?:CALENT|calentG)(\d+)$/);
-    const maxTrib = maxForType(engine.ramales.filter((r) => r.net === netId && r.tipo === 'tributario'), /^T(\d+)$/);
+    const maxRamal = maxForType(
+      engine.ramales.filter((r) => r.net === netId && r.tipo === 'ramal'),
+      new RegExp('^' + pfx + '(\\d+)$'),
+    );
+    const maxBajante = maxForType(
+      engine.bajantes.filter((b) => b.net === netId && b.tipo === 'bajante'),
+      new RegExp('^' + bmPfx + '(\\d+)$'),
+    );
+    const maxMontante = maxForType(
+      engine.bajantes.filter((b) => b.net === netId && b.tipo === 'montante'),
+      new RegExp('^' + monPfx + '(\\d+)_' + netId + '$'),
+    );
+    const maxRp = maxForType(
+      engine.bajantes.filter((b) => b.tipo === 'red_publica'),
+      /^RP(\d+)$/,
+    );
+    const maxCnt = maxForType(
+      engine.bajantes.filter((b) => b.tipo === 'contador'),
+      /^(?:CTNG|CNTAF|cntAF)(\d+)$/,
+    );
+    const maxCal = maxForType(
+      engine.bajantes.filter((b) => b.tipo === 'calentador'),
+      /^(?:CALENT|calentG)(\d+)$/,
+    );
+    const maxTrib = maxForType(
+      engine.ramales.filter((r) => r.net === netId && r.tipo === 'tributario'),
+      /^T(\d+)$/,
+    );
 
     let ramalCounter = maxRamal;
     let bajanteCounter = maxBajante;
@@ -205,7 +244,7 @@ export function copyDrawingFromPlan(
         oldToNew[oldId] = newId;
         r.id = newId;
         // Tributario label: T#<padreLabel> e.g., T1RS5
-        const padreLabel = oldPadre ? (padreLabelMap[oldPadre] || oldPadre) : '';
+        const padreLabel = oldPadre ? padreLabelMap[oldPadre] || oldPadre : '';
         r.label = padreLabel ? `${newId}${padreLabel}` : newId;
       }
     }
@@ -252,6 +291,12 @@ export function copyDrawingFromPlan(
     }
 
     /* ── Remap internal references ── */
+    // The referenced ramal/bajante may be one being copied in THIS SAME batch — it won't exist in
+    // engine.ramales/engine.bajantes yet (that push happens further down), so the existence check
+    // must also accept anything oldToNew is about to introduce. Without this, a bajante's own
+    // recibeDeIds pointing at a ramal copied alongside it always failed the live-array check and
+    // got silently stripped — the bajante symbol copied, but its hydraulic connection didn't.
+    const willExist = new Set(Object.values(oldToNew));
     for (const el of srcAll) {
       if (el.ini && oldToNew[el.ini]) el.ini = oldToNew[el.ini];
       if (el.fin && oldToNew[el.fin]) el.fin = oldToNew[el.fin];
@@ -259,12 +304,22 @@ export function copyDrawingFromPlan(
       if (el.recibeDeIds) {
         el.recibeDeIds = el.recibeDeIds
           .map((id: string) => oldToNew[id] || id)
-          .filter((id: string) => engine.ramales.some((r) => r.id === id) || engine.bajantes.some((b) => b.id === id));
+          .filter(
+            (id: string) =>
+              willExist.has(id) ||
+              engine.ramales.some((r) => r.id === id) ||
+              engine.bajantes.some((b) => b.id === id),
+          );
       }
       if (el.alimentaIds) {
         el.alimentaIds = el.alimentaIds
           .map((id: string) => oldToNew[id] || id)
-          .filter((id: string) => engine.ramales.some((r) => r.id === id) || engine.bajantes.some((b) => b.id === id));
+          .filter(
+            (id: string) =>
+              willExist.has(id) ||
+              engine.ramales.some((r) => r.id === id) ||
+              engine.bajantes.some((b) => b.id === id),
+          );
       }
       if (el.descargaEnId && oldToNew[el.descargaEnId]) {
         el.descargaEnId = oldToNew[el.descargaEnId];
@@ -280,9 +335,36 @@ export function copyDrawingFromPlan(
       delete el.isFantasma;
       delete el.ghostData;
     }
+    // Cross-floor association pointers (descargaEnId/origenId) reference a specific bajante on a
+    // specific OTHER floor — copying the element to a new floor under a new id makes any such
+    // pointer stale (it either points nowhere, or worse, at some unrelated bajante that now
+    // happens to share the old id). Neither this tool nor its caller has any way to know what the
+    // copied element's association should be on the new floor, so drop it entirely rather than
+    // carry over a link that no longer means anything.
+    for (const b of [...srcBajantes, ...srcGlobals] as unknown as {
+      descargaEnId?: string | null;
+      origenId?: string | null;
+      desplazamientos?: unknown;
+      pisoBase?: string;
+    }[]) {
+      b.descargaEnId = null;
+      b.origenId = null;
+      delete b.desplazamientos;
+      // pisoBase records the floor a bajante/montante/global "belongs to" — renderBajantes.ts
+      // never draws the element's own circle when it differs from the currently loaded floor's
+      // label (that mismatch is how a cross-floor ghost stays invisible except as a ghost marker).
+      // Left at the SOURCE floor's label, every copied element silently failed to render at all
+      // on the destination floor even though it existed in engine.bajantes. Must be stamped with
+      // the target floor's label, which is whatever floor is currently loaded (copy always runs
+      // into the open plan).
+      b.pisoBase = engine.nivelActual?.label ?? '';
+    }
 
     engine.ramales.push(...(srcRamales as unknown as PlanoRamal[]));
-    engine.bajantes.push(...(srcBajantes as unknown as PlanoBajante[]), ...(srcGlobals as unknown as PlanoBajante[]));
+    engine.bajantes.push(
+      ...(srcBajantes as unknown as PlanoBajante[]),
+      ...(srcGlobals as unknown as PlanoBajante[]),
+    );
 
     engine._netCounts[netId] = engine._netCounts[netId] || { ramal: 0, tributario: 0 };
     if (ramalCounter > engine._netCounts[netId].ramal) {

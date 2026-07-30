@@ -1,10 +1,11 @@
 import React from 'react';
 import { writeBajantePropToDrawing } from '../../utils/writeDiameterToDrawing';
 import {
-  writeCrossFloorGhost,
-  removeCrossFloorGhost,
-  type CrossFloorGhost,
-} from '../../utils/associateBajanteAcrossFloors';
+  applyBajanteAssociation,
+  clearBajanteAssociation,
+  areEndpointsAligned,
+  type AssocEndpoint,
+} from '../../utils/bajanteAssociation';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoBajante, PlanoElement } from '../../lib/PlanoEngine/PlanoState';
 import type { PlanItem } from '../../context/PlansContext';
@@ -28,6 +29,7 @@ interface BajanteAsociacionProps {
   selectedNivel: number | null;
   pisoLbl: (n: number) => string;
   lowerFloorsRamales: LowerFloorRamales[];
+  upperFloorGroup: LowerFloorRamales | null;
   planosCtx: { plans: PlanItem[] };
   engineRef: React.RefObject<PlanoEngine | null>;
   triggerConfirm: (
@@ -44,6 +46,7 @@ export default function BajanteAsociacion({
   selectedNivel,
   pisoLbl,
   lowerFloorsRamales,
+  upperFloorGroup,
   planosCtx,
   engineRef,
   triggerConfirm,
@@ -60,68 +63,181 @@ export default function BajanteAsociacion({
   }
   const selElement = rawSelElement as PlanoBajante;
 
-  const clearGhostFor = (destino: string | null) => {
-    if (!destino || !engineRef.current) return;
-    const [prevPlanId] = destino.split('|');
-    if (prevPlanId)
-      removeCrossFloorGhost(prevPlanId, String(engineRef.current.planId ?? ''), selElement.id);
-  };
+  const currentPlanId = String(engineRef.current?._loadedPlanId ?? '');
+  const currentEndpoint = (): AssocEndpoint => ({
+    planId: currentPlanId,
+    id: selElement.id,
+    x: selElement.x,
+    y: selElement.y,
+    net: selElement.net || 'san',
+    dNominal: selElement.dNominal || '',
+    code: selElement.code || selElement.id,
+    nivelN: selectedNivel ?? 0,
+    npt: Number(engineRef.current?.nivelActual?.npt ?? 0),
+  });
 
   const associate = (v: string | null) => {
     if (!engineRef.current) return;
+    const eng = engineRef.current;
     const prevV = selElement.descargaEnId;
-    clearGhostFor(prevV ?? null);
 
-    engineRef.current.updateSelected({ descargaEnId: v });
-    setSelElement({ ...selElement, descargaEnId: v });
-    const sourcePlanId = String(engineRef.current.planId ?? '');
-    const bKey = `${selElement.id}-${sourcePlanId}`;
-    writeBajantePropToDrawing(bKey, selElement.net || 'san', 'descargaEnId', v, planosCtx.plans);
+    if (!v) {
+      if (prevV)
+        clearBajanteAssociation(
+          eng,
+          currentPlanId,
+          selElement.id,
+          selElement.net || 'san',
+          prevV,
+          planosCtx.plans,
+        );
+      eng.updateElementById(selElement.id, { descargaEnId: null });
+      setSelElement({ ...selElement, descargaEnId: null });
+      writeBajantePropToDrawing(
+        `${selElement.id}-${currentPlanId}`,
+        selElement.net || 'san',
+        'descargaEnId',
+        null,
+        planosCtx.plans,
+      );
+      eng.render();
+      return;
+    }
 
-    if (!v) return;
     const [targetPlanId, targetBajanteId] = v.split('|');
     const targetGroup = lowerFloorsRamales.find((g) => String(g.planId) === targetPlanId);
     const targetBaj = targetGroup?.bajantes.find((b) => b.id === targetBajanteId);
     if (!targetBaj || targetBaj.x == null || targetBaj.y == null) return;
-    const samePos =
-      Math.abs(targetBaj.x - selElement.x) < 0.5 && Math.abs(targetBaj.y - selElement.y) < 0.5;
-    if (samePos) return;
+    const targetPlan = planosCtx.plans.find((pl) => String(pl.id) === targetPlanId);
+    const source = currentEndpoint();
+    const target: AssocEndpoint = {
+      planId: targetPlanId,
+      id: targetBajanteId,
+      x: targetBaj.x,
+      y: targetBaj.y,
+      net: source.net,
+      dNominal: targetBaj.dNominal || '',
+      code: targetBaj.code || targetBajanteId,
+      nivelN: targetPlan?.nivel ?? 0,
+      npt: Number(targetGroup?.npt ?? 0),
+    };
 
-    triggerConfirm(
-      'Crear fantasma de asociación',
-      `${selElement.code || selElement.id} y ${targetBaj.code || targetBajanteId} no están alineados. Se creará un bajante fantasma en el piso de ${targetBaj.code || targetBajanteId}, en la posición de ${selElement.code || selElement.id}. ¿Continuar?`,
-      () => {
-        const eng = engineRef.current;
-        if (!eng) return;
-        const curNpt = Number(eng.nivelActual?.npt ?? 0);
-        const targetNpt = Number(targetGroup?.npt ?? 0);
-        const targetIsBelow = targetNpt < curNpt;
-        const sourceDireccion: 'sube' | 'baja' = targetIsBelow ? 'baja' : 'sube';
-        const ghostDireccion: 'sube' | 'baja' = targetIsBelow ? 'sube' : 'baja';
-
-        const ghost: CrossFloorGhost = {
-          id: `XFG_${selElement.id}_${sourcePlanId}`,
-          net: selElement.net || 'san',
-          code: selElement.code || selElement.id,
-          x: selElement.x,
-          y: selElement.y,
-          dNominal: selElement.dNominal || '',
-          direccion: ghostDireccion,
-          sourcePlanId,
-          sourceBajanteId: selElement.id,
-        };
-        writeCrossFloorGhost(targetPlanId, ghost);
-
-        eng.updateSelected({ direccion: sourceDireccion });
-        setSelElement({ ...selElement, descargaEnId: v, direccion: sourceDireccion });
-        writeBajantePropToDrawing(
-          bKey,
+    const commit = () => {
+      if (prevV)
+        clearBajanteAssociation(
+          eng,
+          currentPlanId,
+          selElement.id,
           selElement.net || 'san',
-          'direccion',
-          sourceDireccion,
+          prevV,
           planosCtx.plans,
         );
-      },
+      applyBajanteAssociation(eng, source, target, planosCtx.plans);
+      setSelElement({
+        ...selElement,
+        descargaEnId: v,
+        direccion: target.npt < source.npt ? 'baja' : 'sube',
+      });
+    };
+
+    if (areEndpointsAligned(source, target)) {
+      commit();
+      return;
+    }
+    triggerConfirm(
+      'Crear fantasma de asociación',
+      `${source.code} y ${target.code} no están alineados. Se creará un bajante fantasma en el piso de ${target.code}, en la posición de ${source.code}. ¿Continuar?`,
+      commit,
+      'Aceptar',
+    );
+  };
+
+  // Mirror of associate() above but for the immediate-upper-floor "Origen" selector — from the
+  // shared association model's point of view this is the exact same operation with source/target
+  // swapped: the ORIGIN bajante (upper floor) becomes the source (its descargaEnId gets set), and
+  // the currently selected bajante becomes the target (gets the reverse origenId pointer).
+  const associateOrigin = (v: string | null) => {
+    if (!engineRef.current) return;
+    const eng = engineRef.current;
+    const target = currentEndpoint();
+    const prevOrigen = selElement.origenId;
+
+    if (!v) {
+      if (prevOrigen) {
+        const [prevPlanId, prevBajId] = prevOrigen.split('|');
+        if (prevPlanId && prevBajId)
+          clearBajanteAssociation(
+            eng,
+            prevPlanId,
+            prevBajId,
+            selElement.net || 'san',
+            `${currentPlanId}|${selElement.id}`,
+            planosCtx.plans,
+          );
+      }
+      eng.updateElementById(selElement.id, { origenId: null });
+      setSelElement({ ...selElement, origenId: null });
+      writeBajantePropToDrawing(
+        `${selElement.id}-${currentPlanId}`,
+        selElement.net || 'san',
+        'origenId',
+        null,
+        planosCtx.plans,
+      );
+      eng.render();
+      return;
+    }
+
+    const [originPlanId, originBajanteId] = v.split('|');
+    const originBaj = upperFloorGroup?.bajantes.find((b) => b.id === originBajanteId);
+    if (!originBaj || originBaj.x == null || originBaj.y == null) {
+      // Was silently returning here — the dropdown looked like it accepted the selection
+      // (origenId gets written above regardless) but no ghost/Ldesvio ever followed, with no
+      // indication anything went wrong. Surface it instead of failing invisibly.
+      engineRef.current.triggerAlert(
+        'No se pudo asociar',
+        `No se encontró el bajante de origen (${originBajanteId}) en el piso superior. Intenta reabrir el panel o recargar el piso.`,
+      );
+      return;
+    }
+    const originPlan = planosCtx.plans.find((pl) => String(pl.id) === originPlanId);
+    const source: AssocEndpoint = {
+      planId: originPlanId,
+      id: originBajanteId,
+      x: originBaj.x,
+      y: originBaj.y,
+      net: target.net,
+      dNominal: originBaj.dNominal || '',
+      code: originBaj.code || originBajanteId,
+      nivelN: originPlan?.nivel ?? 0,
+      npt: Number(upperFloorGroup?.npt ?? 0),
+    };
+
+    const commit = () => {
+      if (prevOrigen) {
+        const [prevPlanId, prevBajId] = prevOrigen.split('|');
+        if (prevPlanId && prevBajId)
+          clearBajanteAssociation(
+            eng,
+            prevPlanId,
+            prevBajId,
+            selElement.net || 'san',
+            `${currentPlanId}|${selElement.id}`,
+            planosCtx.plans,
+          );
+      }
+      applyBajanteAssociation(eng, source, target, planosCtx.plans);
+      setSelElement({ ...selElement, origenId: v });
+    };
+
+    if (areEndpointsAligned(source, target)) {
+      commit();
+      return;
+    }
+    triggerConfirm(
+      'Crear fantasma de asociación',
+      `${source.code} y ${target.code} no están alineados. Se creará un bajante fantasma en este piso, en la posición de ${source.code}. ¿Continuar?`,
+      commit,
       'Aceptar',
     );
   };
@@ -249,6 +365,84 @@ export default function BajanteAsociacion({
             )}
           </div>
         </div>
+        {upperFloorGroup && (
+          <div>
+            <div
+              style={{
+                fontSize: 12,
+                color: '#6b8cae',
+                fontFamily: "'Geist',monospace",
+                marginBottom: 2,
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+            >
+              Origen (piso superior)
+            </div>
+            <div style={{ position: 'relative', width: '100%' }}>
+              <select
+                aria-label="Seleccionar origen de descarga"
+                value={selElement.origenId || ''}
+                onChange={(e) => associateOrigin(e.target.value || null)}
+                style={{
+                  ...BajanteAsociacion_S1,
+                  paddingRight: selElement.origenId ? 26 : undefined,
+                }}
+              >
+                <option value="">Sin origen</option>
+                {(() => {
+                  const plano = planosCtx.plans.find(
+                    (pl) => (pl.id as unknown as string) === upperFloorGroup.planId,
+                  );
+                  const pLabel =
+                    plano?.nivel != null ? pisoLbl(plano.nivel) : upperFloorGroup.planName;
+                  const bajantesToShow = upperFloorGroup.bajantes || [];
+                  const hasBajantes = bajantesToShow.length > 0;
+                  return (
+                    <optgroup label={pLabel}>
+                      {hasBajantes &&
+                        bajantesToShow.map((b) => (
+                          <option
+                            key={`${upperFloorGroup.planId}|${b.id}`}
+                            value={`${upperFloorGroup.planId}|${b.id}`}
+                          >
+                            Bajante: {b.code || b.id}
+                          </option>
+                        ))}
+                      {!hasBajantes && (
+                        <option value="" disabled>
+                          — Sin elementos disponibles —
+                        </option>
+                      )}
+                    </optgroup>
+                  );
+                })()}
+              </select>
+              {selElement.origenId && (
+                <button
+                  type="button"
+                  onClick={() => associateOrigin(null)}
+                  style={{
+                    position: 'absolute',
+                    right: 4,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    padding: '1px 5px',
+                    background: '#1e2024',
+                    border: '1px solid var(--line)',
+                    borderRadius: 2,
+                    color: 'var(--txt3)',
+                    cursor: 'pointer',
+                    fontSize: 11,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

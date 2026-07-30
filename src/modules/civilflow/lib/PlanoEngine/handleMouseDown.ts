@@ -14,6 +14,12 @@ import {
   ensureActiveNet,
 } from './PlanoState';
 import {
+  type TextCorner,
+  oppositeTextCorner,
+  textLocalCorner,
+  rotateLocalPoint,
+} from './textAnnotationGeometry';
+import {
   pointInLabelBox,
   pointToSegmentDist,
   distanceToRamal,
@@ -21,8 +27,7 @@ import {
 } from './HitTester';
 import { getSelected } from './PlanoEngineSelection';
 import { selectAt } from './PlanoEngineSelection';
-import { findCodoReventiladoLinks } from './PlanoEngineNetwork';
-import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
+import { findCodoReventiladoLinks, recalcBilateralCrossings } from './PlanoEngineNetwork';
 
 // True only when the bajante actually sits ON one of the ramal's endpoints — i.e. the connection
 // is rigid, not just the green dashed guide line drawn between two separate points. A bloqueado
@@ -59,10 +64,10 @@ export function collectConnectedGraph(
   // can check the ramal's bilateralCrossings (cross-perpendicular tee salida bilateral links)
   // when deciding which neighbour to pull into the cascade next.
   type FrontierPt = { pt: number[]; fromId: string };
-  let frontier: FrontierPt[] = [
-    { pt: startRamal.pts[0], fromId: startRamal.id },
-    { pt: startRamal.pts[startRamal.pts.length - 1], fromId: startRamal.id },
-  ];
+  // Seeded with EVERY point of the dragged ramal, not just its two endpoints — a vent ramal
+  // almost always taps into a san ramal's INTERIOR vertex (a codo/tee), not its polyline ends, so
+  // endpoint-only seeding silently missed the most common san↔vent connection shape.
+  let frontier: FrontierPt[] = startRamal.pts.map((pt) => ({ pt, fromId: startRamal.id }));
   const resultRamales: {
     id: string;
     origPts: [number, number][];
@@ -78,12 +83,60 @@ export function collectConnectedGraph(
   const touchesAt = (other: PlanoRamal, pt: number[]) =>
     other.pts.some((p) => Math.hypot(p[0] - pt[0], p[1] - pt[1]) < TOL);
 
-  // Same-direction check: does the OTHER ramal have a bilateral crossing at any frontier point?
-  const nearBilateral = (other: PlanoRamal, fp: number[]) =>
-    (other.bilateralCrossings || []).some((c) => Math.hypot(c[0] - fp[0], c[1] - fp[1]) < TOL);
+  // A vent tap can also land on the plain BODY of a straight two-point san run that has no bend
+  // at the tap location at all — the connection is only ever "point near line", never an actual
+  // shared vertex. touchesAt (point-vs-point) can never catch this no matter how many vertices are
+  // seeded into the frontier, since the trunk simply has no vertex there to match against. Check
+  // point-vs-SEGMENT distance too: does `pt` (an endpoint of `other`) sit on top of any segment of
+  // an already-visited same-net-group ramal, not just on one of its stored points.
+  const touchesSegmentOfVisited = (pt: number[]): boolean => {
+    for (const vid of visitedRamales) {
+      const v = engine.ramales.find((rr) => rr.id === vid);
+      if (!v?.pts || v.pts.length < 2) continue;
+      for (let si = 0; si < v.pts.length - 1; si++) {
+        const [ax, ay] = v.pts[si];
+        const [bx, by] = v.pts[si + 1];
+        const sDx = bx - ax,
+          sDy = by - ay;
+        const sLen = Math.hypot(sDx, sDy);
+        if (sLen < 0.001) continue;
+        const cross = Math.abs(sDx * (ay - pt[1]) - sDy * (ax - pt[0])) / sLen;
+        if (cross >= TOL) continue;
+        const t = ((pt[0] - ax) * sDx + (pt[1] - ay) * sDy) / (sLen * sLen);
+        if (t >= -0.02 && t <= 1.02) return true;
+      }
+    }
+    return false;
+  };
 
-  // Quick lookup of any visited ramal by id for the reverse-direction check below.
-  const allRamalesById = new Map(engine.ramales.map((rr) => [rr.id, rr]));
+  // ── Pre-pass: bilateral crossing links ──
+  // Capture ramales in the startRamal's sticky bilateralPairIds group BEFORE the BFS runs — a
+  // durable membership list (see PlanoState.ts), not the live-recomputed bilateralCrossings
+  // coordinates, so the group survives even if a previous move nudged the geometry just past the
+  // strict perpendicular re-test in recalcBilateralCrossings.
+  for (const otherId of startRamal.bilateralPairIds || []) {
+    const other = engine.ramales.find((rr) => rr.id === otherId);
+    if (!other || !sameNetGroup(other.net, startNet) || !other.pts?.length) continue;
+    if (!visitedRamales.has(other.id)) {
+      visitedRamales.add(other.id);
+      resultRamales.push({
+        id: other.id,
+        origPts: other.pts.map((pt) => [...pt] as [number, number]),
+        origLabelX: other.labelX,
+        origLabelY: other.labelY,
+      });
+    }
+  }
+
+  const hasBilateral = (startRamal.bilateralPairIds || []).length > 0;
+
+  // Tee salida bilateral: drag only the two bilateral ramales. The whole rest of the network
+  // must stay rigid — users explicitly do NOT want endpoints that just happen to share a vertex
+  // with the dragged ramal to be carried along, which is what the full BFS would otherwise pull
+  // in (the shared-vertex neighbours, their bajante-relatives, etc.).
+  if (hasBilateral) {
+    return { ramales: resultRamales, bajantes: [] };
+  }
 
   while (frontier.length > 0) {
     const nextFrontier: FrontierPt[] = [];
@@ -91,35 +144,40 @@ export function collectConnectedGraph(
       if (visitedRamales.has(other.id) || !sameNetGroup(other.net, startNet) || !other.pts?.length)
         continue;
       const touchesFrontier = frontier.some((fp) => touchesAt(other, fp.pt));
-      // Bilateral tee salida bilateral: the FROM ramal owns a bilateralCrossings entry at some
-      // frontier point AND the OTHER ramal has the matching crossing. The crossing is at the
-      // INTERIOR of both ramales (perpendicular tee), not at endpoints — that's why we add the
-      // crossing points to the frontier when a ramal joins, so the perpendicular neighbour can
-      // find the link next iteration.
-      const fromBilateral = frontier.some((fp) => {
-        const fromR = allRamalesById.get(fp.fromId);
-        return !!fromR && nearBilateral(fromR, fp.pt) && nearBilateral(other, fp.pt);
+      const tapsIntoVisitedBody =
+        touchesSegmentOfVisited(other.pts[0]) ||
+        touchesSegmentOfVisited(other.pts[other.pts.length - 1]);
+      // Reverse direction: a frontier point (e.g. vent endpoint on san body segment) that
+      // has no vertex on the candidate — only touchesSegmentOfVisited is ever checked, but
+      // that's candidate-endpoint-on-VISITED-body, not frontier-point-on-CANDIDATE-body.
+      const frontierOnOtherBody = frontier.some((fp) => {
+        if (!other.pts || other.pts.length < 2) return false;
+        for (let si = 0; si < other.pts.length - 1; si++) {
+          const [ax, ay] = other.pts[si],
+            [bx, by] = other.pts[si + 1];
+          const sDx = bx - ax,
+            sDy = by - ay;
+          const sLen = Math.hypot(sDx, sDy);
+          if (sLen < 0.001) continue;
+          const cross = Math.abs(sDx * (ay - fp.pt[1]) - sDy * (ax - fp.pt[0])) / sLen;
+          if (cross >= TOL) continue;
+          const t = ((fp.pt[0] - ax) * sDx + (fp.pt[1] - ay) * sDy) / (sLen * sLen);
+          if (t >= -0.02 && t <= 1.02) return true;
+        }
+        return false;
       });
       const isTributarioChild = !!other.padre && visitedRamales.has(other.padre);
-      if (touchesFrontier || fromBilateral || isTributarioChild) {
+      if (touchesFrontier || tapsIntoVisitedBody || frontierOnOtherBody || isTributarioChild) {
         visitedRamales.add(other.id);
-        const oStart = other.pts[0],
-          oEnd = other.pts[other.pts.length - 1];
         resultRamales.push({
           id: other.id,
           origPts: other.pts.map((pt) => [...pt] as [number, number]),
           origLabelX: other.labelX,
           origLabelY: other.labelY,
         });
-        nextFrontier.push({ pt: oStart, fromId: other.id });
-        nextFrontier.push({ pt: oEnd, fromId: other.id });
-        // Also seed the frontier with this ramal's bilateral crossings — the perpendicular
-        // neighbour must be discoverable from the next iteration's BFS. Without this, a tee
-        // bilateral crossing (which sits in the INTERIOR of both ramales, not at any endpoint)
-        // never makes it into the frontier and the perpendicular ramal never joins the cascade.
-        for (const cp of other.bilateralCrossings || []) {
-          nextFrontier.push({ pt: cp, fromId: other.id });
-        }
+        // Every point of `other` re-enters the frontier (not just its endpoints) so a further
+        // ramal tapping into ITS interior — another san↔vent codo, one hop deeper — is found too.
+        for (const pt of other.pts) nextFrontier.push({ pt, fromId: other.id });
       }
     }
     // Also walk THROUGH bajantes: a ramal connected to a bajante at the frontier position joins
@@ -153,8 +211,7 @@ export function collectConnectedGraph(
             origLabelX: other.labelX,
             origLabelY: other.labelY,
           });
-          nextFrontier.push({ pt: oStart, fromId: other.id });
-          nextFrontier.push({ pt: oEnd, fromId: other.id });
+          for (const pt of other.pts) nextFrontier.push({ pt, fromId: other.id });
         }
       }
     }
@@ -184,29 +241,6 @@ export function collectConnectedGraph(
   }
 
   return { ramales: resultRamales, bajantes: resultBajantes };
-}
-
-function _bajanteTouchesRamalEnd(b: PlanoBajante, r: { pts: number[][] } | undefined): boolean {
-  if (!r || !r.pts?.length) return false;
-  const pStart = r.pts[0];
-  const pEnd = r.pts[r.pts.length - 1];
-  return (
-    Math.hypot(pStart[0] - b.x, pStart[1] - b.y) < 0.5 ||
-    Math.hypot(pEnd[0] - b.x, pEnd[1] - b.y) < 0.5
-  );
-}
-
-function _bajanteBlockedByRamalLock(engine: IPlanoEngineCore, b: PlanoBajante): boolean {
-  const ramalIds = new Set<string>(b.recibeDeIds || []);
-  if (b.descargaEnId) {
-    const [targetPlanId, targetId] = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
-    if (String(targetPlanId) === String(engine._loadedPlanId)) ramalIds.add(targetId);
-  }
-  for (const rid of ramalIds) {
-    const r = engine.ramales.find((rr) => rr.id === rid);
-    if (r?.bloqueado && _bajanteTouchesRamalEnd(b, r)) return true;
-  }
-  return false;
 }
 
 // Snapshot the bajante's position and every ramal it touches (recibeDeIds, descargaEnId, and
@@ -276,10 +310,8 @@ function _tryBajanteHit(
           engine._emitSelect(b);
           engine.render();
         }
-        if (!_bajanteBlockedByRamalLock(engine, b)) {
-          engine.bajDrag = { id: b.id, offX: x - circ.x, offY: y - circ.y };
-          _captureBajDragBackup(engine, b);
-        }
+        engine.bajDrag = { id: b.id, offX: x - circ.x, offY: y - circ.y };
+        _captureBajDragBackup(engine, b);
         return true;
       }
     }
@@ -338,10 +370,13 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
   engine.selId = bestRamal.id;
   engine.multiSel = [];
   engine._emitSelect(bestRamal);
-  if (bestRamal.bloqueado) {
-    engine.render();
-    return true;
-  }
+  // This is the first-click path for grabbing a ramal's endpoint (it runs before
+  // _trySelRamalDrag, which only handles a SECOND click on an already-selected ramal) — so this
+  // bloqueado check used to be the very first thing standing between "click a joint" and any
+  // drag ever starting. Since bloqueado defaults to true on every ramal and is never unset
+  // anywhere in the codebase, returning early here silently killed endpoint dragging for every
+  // ramal in the app, not just san/vent. An endpoint drag rigidly propagates (see the matching
+  // fix in _trySelRamalDrag below) rather than bending anything, so bloqueado shouldn't gate it.
 
   let slideConstraint = undefined;
   {
@@ -393,6 +428,7 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
     ptIdx: bestPtIdx,
     slideConstraint,
     linkedPts: codoLinks.length > 0 ? codoLinks : undefined,
+    _bilateralDrag: (bestRamal.bilateralPairIds || []).length > 0,
   };
   engine.render();
   return true;
@@ -529,18 +565,8 @@ function _trySelBajanteDrag(
       engine._emitSelect(sel);
       engine.render();
     }
-    if (sel.isFantasma) {
-      // Allow parent bajante to be moved normally via bajDrag
-      if (!_bajanteBlockedByRamalLock(engine, sel)) {
-        engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
-        _captureBajDragBackup(engine, sel);
-      }
-    } else {
-      if (!_bajanteBlockedByRamalLock(engine, sel)) {
-        engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
-        _captureBajDragBackup(engine, sel);
-      }
-    }
+    engine.bajDrag = { id: sel.id, offX: x - circ.x, offY: y - circ.y };
+    _captureBajDragBackup(engine, sel);
     return true;
   }
   return false;
@@ -553,6 +579,18 @@ function _trySelDimDrag(
   sel: PlanoElement | null,
 ): boolean {
   if (!isDimension(sel)) return false;
+  if (sel._labelPos) {
+    // 22px tolerance (was 14) — the dim label is short text ("3.50m") but the readable hit
+    // area for a click target is the surrounding bbox, not just the glyph extent; 14 was too
+    // tight to land on the small numeric label, especially when the dim is perpendicular to
+    // the user's viewing angle and the rendered text reads small.
+    const lx = sel._labelPos.x;
+    const ly = sel._labelPos.y;
+    if (Math.hypot(x - lx, y - ly) < 22) {
+      engine.dimLblDrag = { id: sel.id, offX: x - lx, offY: y - ly };
+      return true;
+    }
+  }
   const dist = distanceToRamal(
     x,
     y,
@@ -577,14 +615,21 @@ function _trySelRamalDrag(
   y: number,
   sel: PlanoElement | null,
 ): boolean {
-  if (!isRamal(sel) || !sel.id?.startsWith('R')) return false;
+  // isRamal() (structural: 'pts' in el) already tells a ramal-like element apart from every other
+  // selectable type, so the id-prefix check only ever needs to exclude non-ramal shapes — it must
+  // NOT also exclude tributarios (id prefix 'T'). A tributario is exactly how this app models a
+  // branch tapping into a parent ramal's interior vertex — e.g. the common vent-into-san
+  // connection — so rejecting 'T'-prefixed ids here silently made whole-body dragging a no-op
+  // for every tributario in the app, which in turn meant its parent ramal never saw it as
+  // something to cascade either way.
+  if (!isRamal(sel) || (sel.tipo !== 'ramal' && sel.tipo !== 'tributario')) return false;
 
   // Mid-ramal accessory icons are drawn offset from the pipe centerline (renderRamales.ts), so a
   // click on the visible icon can miss the tight per-vertex radius below. Check the icon's wider
   // footprint first so clicking the icon itself — not just the exact underlying vertex — starts
   // the slide-along-body drag. This is allowed on bloqueado ramales because the slide never
   // bends the ramal's actual path — only the accessory position changes.
-  const accIdx = findAccMedVertexHit(
+  const accIdxRaw = findAccMedVertexHit(
     sel.pts,
     sel.accMed,
     (px, py) => engine.toCvs(px, py),
@@ -592,6 +637,12 @@ function _trySelRamalDrag(
     y,
     engine.realMmToCanvasPx(23) * 0.6 + 8,
   );
+  // 'teeBilateral' is a tiny glyph drawn exactly at a perpendicular crossing (renderRamales.ts),
+  // not a real accessory icon — giving it this same wide slide-drag radius meant grabbing
+  // anywhere near the crossing to move the whole ramal instead slid just that marker point,
+  // same oversized-hitbox effect fixed in selectAt (PlanoEngineSelection.ts).
+  const accIdx =
+    accIdxRaw !== null && sel.accMed?.[`accMed${accIdxRaw}`] === 'teeBilateral' ? null : accIdxRaw;
   if (accIdx !== null) {
     const a = sel.pts[accIdx - 1],
       b = sel.pts[accIdx + 1];
@@ -600,6 +651,7 @@ function _trySelRamalDrag(
       id: sel.id,
       ptIdx: accIdx,
       accMedSlide: { ax: a[0], ay: a[1], bx: b[0], by: b[1] },
+      _bilateralDrag: (sel.bilateralPairIds || []).length > 0,
     };
     return true;
   }
@@ -607,10 +659,11 @@ function _trySelRamalDrag(
   for (let i = 0; i < sel.pts.length; i++) {
     const pc = engine.toCvs(sel.pts[i][0], sel.pts[i][1]);
     if (Math.hypot(x - pc.x, y - pc.y) < 15) {
-      // Endpoint/vertex drag bends the ramal's shape — bloqueado blocks this.
+      const isEndpoint = i === 0 || i === sel.pts.length - 1;
+      // bloquear movimiento checked → block all direct drag (vertex, endpoint, body).
+      // Cascade (dragged by connected ramal) is NOT blocked — see collectConnectedGraph.
       if (sel.bloqueado) return false;
       let slideConstraint = undefined;
-      const isEndpoint = i === 0 || i === sel.pts.length - 1;
       // An accessory drawn mid-body (accMed) can be moved, but only sliding along the straight
       // line to its neighbors — it must not bend the ramal's actual path.
       if (!isEndpoint && sel.accMed && sel.accMed[`accMed${i}`]) {
@@ -621,6 +674,7 @@ function _trySelRamalDrag(
           id: sel.id,
           ptIdx: i,
           accMedSlide: { ax: a[0], ay: a[1], bx: b[0], by: b[1] },
+          _bilateralDrag: (sel.bilateralPairIds || []).length > 0,
         };
         return true;
       }
@@ -673,6 +727,7 @@ function _trySelRamalDrag(
         ptIdx: i,
         slideConstraint,
         linkedPts: codoLinks.length > 0 ? codoLinks : undefined,
+        _bilateralDrag: (sel.bilateralPairIds || []).length > 0,
       };
       return true;
     }
@@ -681,6 +736,7 @@ function _trySelRamalDrag(
     const p1 = engine.toCvs(sel.pts[i][0], sel.pts[i][1]);
     const p2 = engine.toCvs(sel.pts[i + 1][0], sel.pts[i + 1][1]);
     if (pointToSegmentDist(x, y, p1.x, p1.y, p2.x, p2.y) < 6) {
+      if (sel.bloqueado) return false;
       const tp = engine.toPlane(x, y);
       const origPts = sel.pts.map((pt: number[]) => [...pt] as [number, number]);
       // Ramales/tributarios connected transitively (through a chain of shared endpoints, or as a
@@ -709,6 +765,12 @@ export function handleSelectDown(
   y: number,
   isMultiSelectModifier: boolean = false,
 ): void {
+  // Bilateral-tee membership (bilateralPairIds) only gets (re)computed as a side effect of a
+  // drag finishing — so a tee that was just created/loaded and never dragged yet still has it
+  // empty. Refreshing it here, before any drag-starting sub-handler below reads it, means the
+  // very FIRST drag on a fresh tee already sees the correct group instead of only catching up
+  // after that first (uncascaded) gesture completes.
+  recalcBilateralCrossings(engine);
   const wasGhostSel = engine._isGhostSel;
   engine._isGhostSel = false;
   engine._lblDragIsParent = false;
@@ -831,16 +893,37 @@ export function handleSelectDown(
 
   if (isTextAnnotation(sel) && sel._box && sel.id?.startsWith('T')) {
     const b = sel._box;
-    const cornerX = b.x + b.w,
-      cornerY = b.y + b.h;
-    if (Math.hypot(x - cornerX, y - cornerY) < 10) {
+    // Any of the 4 corners can be dragged to resize. The anchor is the OPPOSITE corner in the
+    // box's own local (unrotated) frame — computed with the same formulas renderTextAnnotations.ts
+    // uses to draw it — so that corner's canvas position stays exactly fixed while resizing,
+    // regardless of which corner was grabbed or whether the text is rotated.
+    const corners: { x: number; y: number; corner: TextCorner }[] = [
+      { x: b.x, y: b.y, corner: 'tl' },
+      { x: b.x + b.w, y: b.y, corner: 'tr' },
+      { x: b.x, y: b.y + b.h, corner: 'bl' },
+      { x: b.x + b.w, y: b.y + b.h, corner: 'br' },
+    ];
+    const grabbed = corners.find((c) => Math.hypot(x - c.x, y - c.y) < 10);
+    if (grabbed) {
+      const fs = engine.mm2cvs(sel.fontMm || 2.5);
+      const pad = 5 * engine.zoom;
+      const boxWFull = (sel.boxW > 0 ? sel.boxW * engine.zoom : b.w - pad * 2) + pad * 2;
+      const boxHFull = fs + pad * 2;
+      const angle = ((sel.textAngle || 0) * Math.PI) / 180;
+      const c = engine.toCvs(sel.x + (sel.lblOffX || 0), sel.y + (sel.lblOffY || 0));
+      const anchorCorner = oppositeTextCorner(grabbed.corner);
+      const local = textLocalCorner(anchorCorner, fs, pad, boxWFull, boxHFull);
+      const rot = rotateLocalPoint(local.lx, local.ly, angle);
+      const anchorX = c.x + rot.x;
+      const anchorY = c.y + rot.y;
       engine.txtResize = {
         id: sel.id,
-        boxX: b.x,
-        boxY: b.y,
-        startDist: Math.hypot(cornerX - b.x, cornerY - b.y),
+        corner: grabbed.corner,
+        anchorX,
+        anchorY,
+        startDist: Math.hypot(x - anchorX, y - anchorY),
         origFontMm: sel.fontMm || 2.5,
-        origBoxWpx: b.w,
+        origBoxWpx: boxWFull,
       };
       return;
     }
