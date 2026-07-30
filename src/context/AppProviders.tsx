@@ -3,6 +3,7 @@ import { ProjectProvider } from '../modules/civilflow/context/ProjectContext';
 import { ApparatusProvider } from '../modules/civilflow/context/ApparatusContext';
 import { PlansProvider } from '../modules/civilflow/context/PlansContext';
 import { AuthProvider } from './AuthContext';
+import { GlobalAlertDialogProvider } from '../modules/civilflow/components/GlobalAlertDialogProvider';
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -11,7 +12,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
         <ProjectProvider>
           <ApparatusProvider>
             <PlansProvider>
-              {children}
+              <GlobalAlertDialogProvider>{children}</GlobalAlertDialogProvider>
             </PlansProvider>
           </ApparatusProvider>
         </ProjectProvider>

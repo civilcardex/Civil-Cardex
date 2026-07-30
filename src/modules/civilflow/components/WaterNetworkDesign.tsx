@@ -149,10 +149,25 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     const opt = DIAM_OPTS.find((o) => o.nominal === nominal);
     if (!opt) return;
     const pulg = opt.pulg;
+    const res = writeDiametroToDrawing(tramoId, networkType, opt.label, plans);
+    if (!res.ok && res.reason === 'accessory-larger') {
+      // Show the same in-app AlertDialog as the engine path (mirrors
+      // ExtremeAccessoryEditor.tsx:110-117 which validates the inverse direction). Without this
+      // the design-table write would silently succeed and a wider accessory would later end up
+      // drawn around a thinner pipe — physically nonsensical.
+      window.dispatchEvent(
+        new CustomEvent('civilflow_diametro_validation', {
+          detail: {
+            title: 'Diámetro no permitido',
+            message: `El diámetro del ramal no puede ser menor al del accesorio conectado (${res.accessoryDiam}).`,
+          },
+        }),
+      );
+      return;
+    }
     updTramo(tramoId, 'diamDisPulg', pulg);
     setDiamIntMap((prev) => ({ ...prev, [tramoId]: opt.dInt }));
     setDiamNomMap((prev) => ({ ...prev, [tramoId]: opt.nominal }));
-    writeDiametroToDrawing(tramoId, networkType, opt.label, plans);
   };
 
   const AP = useMemo(

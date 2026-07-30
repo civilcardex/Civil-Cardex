@@ -49,7 +49,6 @@ export default function ExtremeAccessoryEditor({
   }));
   const matShort = selElement.material || (selElement.net === 'san' ? 'PVC' : '');
   const diamList = (selElement.net === 'san' && DIAM_BY_MAT['PVC']) || DIAM_BY_MAT[matShort] || [];
-  const mainDiamRaw = selElement.diametro || '';
 
   const onAccChange =
     (field: 'accesorioInicio' | 'accesorioFin') => (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -58,10 +57,7 @@ export default function ExtremeAccessoryEditor({
         const eng = engineRef.current;
         if (val === 'sifon' && selElement.net === 'san') {
           if (field === 'accesorioFin') {
-            eng.triggerAlert(
-              'Sifón al revés',
-              'El sifón debe ir en el extremo de ENTRADA (inicio del ramal). Colócalo en el otro extremo.',
-            );
+            eng.triggerAlert('Revisar ubicación del sifón', 'El sifón no puede recibir flujo.');
             return;
           }
         }
@@ -70,23 +66,20 @@ export default function ExtremeAccessoryEditor({
           field === 'accesorioInicio'
         ) {
           eng.triggerAlert(
-            'Llave terminal al revés',
-            'La llave terminal debe ir en el extremo de SALIDA (fin del ramal). Colócala en el otro extremo.',
+            'Revisar ubicación llave terminal',
+            'La llave terminal debe recibir el flujo.',
           );
           return;
         }
         const oldVal = selElement[field] || '';
         const updates: Record<string, unknown> = { [field]: val };
-        const fieldDiam: 'diametroInicio' | 'diametroFin' =
-          field === 'accesorioInicio' ? 'diametroInicio' : 'diametroFin';
         const fieldApp: 'aparatoInicio' | 'aparatoFin' =
           field === 'accesorioInicio' ? 'aparatoInicio' : 'aparatoFin';
         if (val && selElement[fieldApp]) {
           updates[fieldApp] = null;
         }
-        if (val && !selElement[fieldDiam]) {
-          updates[fieldDiam] = selElement.diametro || '';
-        }
+        // Accessories no longer inherit the ramal's own diameter as a default — every accessory
+        // (sifón included) starts with no diameter selected until the user explicitly picks one.
         engineRef.current.updateSelected(updates);
         setSelElement({ ...selElement, ...updates });
         engineRef.current.render();
@@ -101,17 +94,15 @@ export default function ExtremeAccessoryEditor({
     (fieldDiam: 'diametroInicio' | 'diametroFin') => (e: React.ChangeEvent<HTMLSelectElement>) => {
       const val = e.target.value;
       if (!engineRef.current) return;
-      const eng = engineRef.current;
-      // Extract inch part from formatted strings like '1-1/2" — 42.7 mm' → '1-1/2'
-      const inchFromDiam = (d: string) => {
-        const q = d.indexOf('"');
-        return q > 0 ? d.slice(0, q) : d;
-      };
-      if (val && mainDiamRaw) {
-        if (diamPulgFromLabel(inchFromDiam(val)) < diamPulgFromLabel(inchFromDiam(mainDiamRaw))) {
-          eng.triggerAlert(
+      if (val && selElement.diametro) {
+        const inchFrom = (d: string) => {
+          const q = d.indexOf('"');
+          return q > 0 ? d.slice(0, q) : d;
+        };
+        if (diamPulgFromLabel(inchFrom(val)) > diamPulgFromLabel(inchFrom(selElement.diametro))) {
+          engineRef.current.triggerAlert(
             'Diámetro no permitido',
-            'El diámetro del accesorio no puede ser menor al diámetro del ramal.',
+            'El diámetro del accesorio no puede ser mayor al diámetro del ramal.',
           );
           return;
         }
@@ -122,7 +113,11 @@ export default function ExtremeAccessoryEditor({
       engineRef.current._markDirty();
     };
 
-  const diamOptions = diamList.map((d) => ({ n: d.n }));
+  const diamLabel = (dn: string) => {
+    const idx = dn.indexOf(' — ');
+    return idx > 0 ? dn.slice(0, idx) : dn;
+  };
+  const diamOptions = diamList.map((d) => ({ n: d.n, label: diamLabel(d.n) }));
 
   return (
     <div
@@ -191,7 +186,7 @@ export default function ExtremeAccessoryEditor({
             >
               {diamOptions.map((o) => (
                 <option key={o.n} value={o.n}>
-                  {o.n}
+                  {o.label}
                 </option>
               ))}
             </select>
@@ -243,7 +238,7 @@ export default function ExtremeAccessoryEditor({
             >
               {diamOptions.map((o) => (
                 <option key={o.n} value={o.n}>
-                  {o.n}
+                  {o.label}
                 </option>
               ))}
             </select>

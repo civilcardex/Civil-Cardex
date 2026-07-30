@@ -1,88 +1,257 @@
-import React, { Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import Layout from './layouts/Layout'
-import { ErrorBoundary } from './components/ErrorBoundary'
-import { ProtectedRoute } from './components/ProtectedRoute'
-import { AppProviders } from './context/AppProviders'
-import PageTransition from './components/landing/PageTransition'
+import React, { Suspense } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Layout from './layouts/Layout';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { AppProviders } from './context/AppProviders';
+import PageTransition from './components/landing/PageTransition';
 
 const Fallback = () => (
-  <div className="flex items-center justify-center min-h-screen" role="status" aria-live="polite"
-    style={{color:'var(--on-surface)'}}>Cargando...</div>
+  <div
+    className="flex items-center justify-center min-h-screen"
+    role="status"
+    aria-live="polite"
+    style={{ color: 'var(--on-surface)' }}
+  >
+    Cargando...
+  </div>
 );
 
 // Rutas ligeras - import estatico
-import LandingPage from './pages/LandingPage'
-import LoginPage from './pages/auth/LoginPage'
-import RegisterPage from './pages/auth/RegisterPage'
-import PricingPage from './pages/PricingPage'
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/auth/LoginPage';
+import RegisterPage from './pages/auth/RegisterPage';
+import PricingPage from './pages/PricingPage';
 
-import NotFound from './pages/NotFound'
+import NotFound from './pages/NotFound';
 
-const ProfilePage = React.lazy(() => import('./pages/auth/ProfilePage'))
+const ProfilePage = React.lazy(() => import('./pages/auth/ProfilePage'));
 
 // Rutas pesadas - lazy
-const ViewerPage = React.lazy(() => import('./modules/civilflow/pages/ViewerPage'))
-const DocsPage = React.lazy(() => import('./modules/civilflow/pages/DocsPage'))
-const WorkAreaCivilFlowPage = React.lazy(() => import('./modules/civilflow/pages/WorkAreaCivilFlowPage'))
-const WorkAreaCivilManagerPage = React.lazy(() => import('./pages/WorkAreaCivilManagerPage'))
-const CatalogoMaestroPage = React.lazy(() => import('./modules/civilflow/pages/CatalogMasterPage'))
-const ModulePage = React.lazy(() => import('./pages/ModulePage'))
+const ViewerPage = React.lazy(() => import('./modules/civilflow/pages/ViewerPage'));
+const DocsPage = React.lazy(() => import('./modules/civilflow/pages/DocsPage'));
+const WorkAreaCivilFlowPage = React.lazy(
+  () => import('./modules/civilflow/pages/WorkAreaCivilFlowPage'),
+);
+const WorkAreaCivilManagerPage = React.lazy(() => import('./pages/WorkAreaCivilManagerPage'));
+const CatalogoMaestroPage = React.lazy(() => import('./modules/civilflow/pages/CatalogMasterPage'));
+const ModulePage = React.lazy(() => import('./pages/ModulePage'));
 
 function App() {
   return (
     <AppProviders>
-      <ErrorBoundary>
-        <a href="#app-content" className="skip-link"
-          style={{ position: 'absolute', left: '-9999px', zIndex: 9999 }}
-          onFocus={(e) => { e.currentTarget.style.left = '16px'; e.currentTarget.style.top = '16px'; }}
-          onBlur={(e) => { e.currentTarget.style.left = '-9999px'; }}>
-          Saltar al contenido principal
-        </a>
-        <div id="app-content" className="min-h-screen bg-surface-bg text-on-surface font-sans flex flex-col">
-          <PageTransition>
-            {(displayLocation) => (
-              <Routes location={displayLocation}>
-                {/* Rutas públicas ligeras */}
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/pricing" element={<PricingPage />} />
-                <Route path="/visor" element={<Suspense fallback={<Fallback />}><ViewerPage /></Suspense>} />
+      <a
+        href="#app-content"
+        className="skip-link"
+        style={{ position: 'absolute', left: '-9999px', zIndex: 9999 }}
+        onFocus={(e) => {
+          e.currentTarget.style.left = '16px';
+          e.currentTarget.style.top = '16px';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.left = '-9999px';
+        }}
+      >
+        Saltar al contenido principal
+      </a>
+      <div
+        id="app-content"
+        className="min-h-screen bg-surface-bg text-on-surface font-sans flex flex-col"
+      >
+        <PageTransition>
+          {(displayLocation) => (
+            <Routes location={displayLocation}>
+              {/* Rutas públicas ligeras */}
+              <Route
+                path="/"
+                element={
+                  <ErrorBoundary>
+                    <LandingPage />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/login"
+                element={
+                  <ErrorBoundary>
+                    <LoginPage />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/register"
+                element={
+                  <ErrorBoundary>
+                    <RegisterPage />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/pricing"
+                element={
+                  <ErrorBoundary>
+                    <PricingPage />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/visor"
+                element={
+                  <ErrorBoundary>
+                    <Suspense fallback={<Fallback />}>
+                      <ViewerPage />
+                    </Suspense>
+                  </ErrorBoundary>
+                }
+              />
 
-                {/* Rutas lazy públicas */}
-                <Route path="/docs" element={<Suspense fallback={<Fallback />}><DocsPage /></Suspense>} />
-                <Route path="/civilflow" element={<Suspense fallback={<Fallback />}><ModulePage moduleId="flow" /></Suspense>} />
-                <Route path="/civilstructure" element={<Suspense fallback={<Fallback />}><ModulePage moduleId="structure" /></Suspense>} />
-                <Route path="/civilterrain" element={<Suspense fallback={<Fallback />}><ModulePage moduleId="terrain" /></Suspense>} />
-                <Route path="/civilbim" element={<Suspense fallback={<Fallback />}><ModulePage moduleId="bim" /></Suspense>} />
-                <Route path="/civilmanage" element={<Suspense fallback={<Fallback />}><ModulePage moduleId="manage" /></Suspense>} />
-                <Route path="/civilmep" element={<Suspense fallback={<Fallback />}><ModulePage moduleId="mep" /></Suspense>} />
-                <Route path="/civilroads" element={<Suspense fallback={<Fallback />}><ModulePage moduleId="roads" /></Suspense>} />
+              {/* Rutas lazy públicas */}
+              <Route
+                path="/docs"
+                element={
+                  <ErrorBoundary>
+                    <Suspense fallback={<Fallback />}>
+                      <DocsPage />
+                    </Suspense>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/civilflow"
+                element={
+                  <ErrorBoundary>
+                    <Suspense fallback={<Fallback />}>
+                      <ModulePage moduleId="flow" />
+                    </Suspense>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/civilstructure"
+                element={
+                  <ErrorBoundary>
+                    <Suspense fallback={<Fallback />}>
+                      <ModulePage moduleId="structure" />
+                    </Suspense>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/civilterrain"
+                element={
+                  <ErrorBoundary>
+                    <Suspense fallback={<Fallback />}>
+                      <ModulePage moduleId="terrain" />
+                    </Suspense>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/civilbim"
+                element={
+                  <ErrorBoundary>
+                    <Suspense fallback={<Fallback />}>
+                      <ModulePage moduleId="bim" />
+                    </Suspense>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/civilmanage"
+                element={
+                  <ErrorBoundary>
+                    <Suspense fallback={<Fallback />}>
+                      <ModulePage moduleId="manage" />
+                    </Suspense>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/civilmep"
+                element={
+                  <ErrorBoundary>
+                    <Suspense fallback={<Fallback />}>
+                      <ModulePage moduleId="mep" />
+                    </Suspense>
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="/civilroads"
+                element={
+                  <ErrorBoundary>
+                    <Suspense fallback={<Fallback />}>
+                      <ModulePage moduleId="roads" />
+                    </Suspense>
+                  </ErrorBoundary>
+                }
+              />
 
-                {/* Redirects */}
-                <Route path="/planos" element={<Navigate to="/civilflowareatrabajo" replace />} />
-                <Route path="/dashboard" element={<Navigate to="/civilflowareatrabajo" replace />} />
+              {/* Redirects */}
+              <Route path="/planos" element={<Navigate to="/civilflowareatrabajo" replace />} />
+              <Route path="/dashboard" element={<Navigate to="/civilflowareatrabajo" replace />} />
 
-                {/* Rutas protegidas */}
-                <Route element={<ProtectedRoute />}>
-                  <Route element={<Layout />}>
-                    <Route path="/civilflowareatrabajo" element={<Suspense fallback={<Fallback />}><WorkAreaCivilFlowPage /></Suspense>} />
-                    <Route path="/civilmanageareatrabajo" element={<Suspense fallback={<Fallback />}><WorkAreaCivilManagerPage /></Suspense>} />
-                    <Route path="/perfil" element={<Suspense fallback={<Fallback />}><ProfilePage /></Suspense>} />
-                    <Route path="/catalogomaestro" element={<Suspense fallback={<Fallback />}><CatalogoMaestroPage /></Suspense>} />
-                  </Route>
+              {/* Rutas protegidas */}
+              <Route element={<ProtectedRoute />}>
+                <Route element={<Layout />}>
+                  <Route
+                    path="/civilflowareatrabajo"
+                    element={
+                      <ErrorBoundary>
+                        <Suspense fallback={<Fallback />}>
+                          <WorkAreaCivilFlowPage />
+                        </Suspense>
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/civilmanageareatrabajo"
+                    element={
+                      <ErrorBoundary>
+                        <Suspense fallback={<Fallback />}>
+                          <WorkAreaCivilManagerPage />
+                        </Suspense>
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/perfil"
+                    element={
+                      <ErrorBoundary>
+                        <Suspense fallback={<Fallback />}>
+                          <ProfilePage />
+                        </Suspense>
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/catalogomaestro"
+                    element={
+                      <ErrorBoundary>
+                        <Suspense fallback={<Fallback />}>
+                          <CatalogoMaestroPage />
+                        </Suspense>
+                      </ErrorBoundary>
+                    }
+                  />
                 </Route>
+              </Route>
 
-                {/* 404 catch-all */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            )}
-          </PageTransition>
-        </div>
-      </ErrorBoundary>
+              {/* 404 catch-all */}
+              <Route
+                path="*"
+                element={
+                  <ErrorBoundary>
+                    <NotFound />
+                  </ErrorBoundary>
+                }
+              />
+            </Routes>
+          )}
+        </PageTransition>
+      </div>
     </AppProviders>
-  )
+  );
 }
 
-export default App
+export default App;
