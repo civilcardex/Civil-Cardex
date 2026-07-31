@@ -8,10 +8,9 @@ const manual = {
       body: (
         <div className="space-y-3">
           <p>
-            CIVILFLOW KML 2026 es un aplicativo web de diseño hidrosanitario desarrollado por el
-            Ing. Camilo Cárdenas Chacón. Permite elaborar memorias de cálculo completas para redes
-            de Agua fría, Agua caliente, Sanitaria, Aguas lluvias, Gas combustible y Red contra
-            incendio.
+            CIVILFLOW 2026 es un aplicativo web de diseño hidrosanitario desarrollado por el Ing.
+            Camilo Cárdenas Chacón. Permite elaborar memorias de cálculo completas para redes de
+            agua fría, agua caliente, sanitaria, aguas lluvias, gas y red contra incendio.
           </p>
           <p className="text-[13px] font-semibold">Normas aplicadas:</p>
           <div className="flex flex-wrap gap-2">
@@ -39,7 +38,7 @@ const manual = {
       body: (
         <div className="space-y-4">
           <p>
-            La interfaz de CIVILFLOW KML 2026 se divide en cinco zonas principales, cada una con
+            La interfaz de CIVILFLOW 2026 se divide en cinco zonas principales, cada una con
             funciones específicas para facilitar el diseño hidrosanitario:
           </p>
 
@@ -49,7 +48,7 @@ const manual = {
                 Topbar
               </div>
               <div className="px-3 py-2 border-b border-outline-variant">
-                Barra superior con el logo de la firma KML, el nombre del sistema Civil Flow, los
+                Barra superior con el logo de CivilCardex, el nombre del sistema Civil Flow, los
                 datos del ingeniero responsable (nombre, título, número de matrícula profesional) y
                 las normas técnicas aplicables (NTC 1500, RAS 2000, NTC 3728, NSR-10). Se muestra
                 también el nombre del proyecto activo.

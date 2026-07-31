@@ -1,25 +1,74 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
-import { loadPlanCrop, savePlanCrop, type PlanCrop } from "../../utils/planCrop";
-import { getPdfjs } from "../../utils/lazyPdfjs";
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { loadPlanCrop, savePlanCrop, type PlanCrop } from '../../utils/planCrop';
+import { getPdfjs } from '../../utils/lazyPdfjs';
 
-const hintChipStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 5, padding: '3px 9px 3px 7px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 999, fontSize: 12, whiteSpace: 'nowrap' };
-const modalSecondaryBtnStyle: React.CSSProperties = { padding: '5px 12px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', cursor: 'pointer', fontSize: 12, fontWeight: 700 };
-const recortarBtnStyle: React.CSSProperties = { flex: 1, padding: '4px 6px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: 'var(--txt2)', cursor: 'pointer', fontSize: 12, fontWeight: 700 };
-const quitarBtnStyle: React.CSSProperties = { padding: '4px 6px', background: 'var(--bg3)', border: '1px solid var(--line)', borderRadius: 'var(--r)', color: '#ef5350', cursor: 'pointer', fontSize: 12, fontWeight: 700 };
+const hintChipStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 5,
+  padding: '3px 9px 3px 7px',
+  background: 'var(--bg3)',
+  border: '1px solid var(--line)',
+  borderRadius: 999,
+  fontSize: 12,
+  whiteSpace: 'nowrap',
+};
+const modalSecondaryBtnStyle: React.CSSProperties = {
+  padding: '5px 12px',
+  background: 'var(--bg3)',
+  border: '1px solid var(--line)',
+  borderRadius: 'var(--r)',
+  cursor: 'pointer',
+  fontSize: 12,
+  fontWeight: 700,
+};
+const recortarBtnStyle: React.CSSProperties = {
+  flex: 1,
+  padding: '4px 6px',
+  background: 'var(--bg3)',
+  border: '1px solid var(--line)',
+  borderRadius: 'var(--r)',
+  color: 'var(--txt2)',
+  cursor: 'pointer',
+  fontSize: 12,
+  fontWeight: 700,
+};
+const quitarBtnStyle: React.CSSProperties = {
+  padding: '4px 6px',
+  background: 'var(--bg3)',
+  border: '1px solid var(--line)',
+  borderRadius: 'var(--r)',
+  color: '#ef5350',
+  cursor: 'pointer',
+  fontSize: 12,
+  fontWeight: 700,
+};
 
 // Full-screen crop editor — opened from the small panel so there's room to drag a precise
 // rectangle. Only affects the isometría; the main preview and the drawing visor are untouched.
 // Renders the plan onto a canvas (via pdf.js) instead of an <embed> so the view can be panned
 // and zoomed — an <embed> only ever shows the first fit-to-container view of the page, which
 // left the crop rectangle stuck to that one region.
-function PlanCropModal({ planFile, initialCrop, onClose, onSave }: {
+function PlanCropModal({
+  planFile,
+  initialCrop,
+  onClose,
+  onSave,
+}: {
   planFile: File;
   initialCrop: PlanCrop | null;
   onClose: () => void;
   onSave: (crop: PlanCrop) => void;
 }) {
   const [rect, setRect] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(
-    initialCrop ? { x0: initialCrop.x, y0: initialCrop.y, x1: initialCrop.x + initialCrop.w, y1: initialCrop.y + initialCrop.h } : null
+    initialCrop
+      ? {
+          x0: initialCrop.x,
+          y0: initialCrop.y,
+          x1: initialCrop.x + initialCrop.w,
+          y1: initialCrop.y + initialCrop.h,
+        }
+      : null,
   );
   const [pageCanvas, setPageCanvas] = useState<HTMLCanvasElement | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -27,12 +76,14 @@ function PlanCropModal({ planFile, initialCrop, onClose, onSave }: {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewRef = useRef({ zoom: 1, offX: 0, offY: 0 });
-  const dragRef = useRef<{ kind: 'pan' | 'rect' | 'resize'; lastX: number; lastY: number } | null>(null);
+  const dragRef = useRef<{ kind: 'pan' | 'rect' | 'resize'; lastX: number; lastY: number } | null>(
+    null,
+  );
   const resizeAnchorRef = useRef<{ x: number; y: number } | null>(null);
   const hoverRef = useRef<{ x: number; y: number } | null>(null);
   const [hoverCorner, setHoverCorner] = useState(false);
   const [, setTick] = useState(0);
-  const rerender = () => setTick(n => n + 1);
+  const rerender = () => setTick((n) => n + 1);
 
   // Load the PDF's first page into an offscreen canvas once.
   useEffect(() => {
@@ -54,7 +105,9 @@ function PlanCropModal({ planFile, initialCrop, onClose, onSave }: {
         if (!cancelled) setLoadError('No se pudo cargar el plano.');
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [planFile]);
 
   // Fit the view once the page and container are both ready.
@@ -71,10 +124,14 @@ function PlanCropModal({ planFile, initialCrop, onClose, onSave }: {
     rerender();
   }, [pageCanvas]);
 
-  const rectNorm = rect ? {
-    x: Math.min(rect.x0, rect.x1), y: Math.min(rect.y0, rect.y1),
-    w: Math.abs(rect.x1 - rect.x0), h: Math.abs(rect.y1 - rect.y0),
-  } : null;
+  const rectNorm = rect
+    ? {
+        x: Math.min(rect.x0, rect.x1),
+        y: Math.min(rect.y0, rect.y1),
+        w: Math.abs(rect.x1 - rect.x0),
+        h: Math.abs(rect.y1 - rect.y0),
+      }
+    : null;
 
   // Draw the page + crop overlay on every relevant change.
   useEffect(() => {
@@ -114,7 +171,12 @@ function PlanCropModal({ planFile, initialCrop, onClose, onSave }: {
         ctx.strokeStyle = '#141416';
         ctx.lineWidth = 1;
         const hs = 4;
-        for (const [hx, hy] of [[p0.x, p0.y], [p1.x, p0.y], [p0.x, p1.y], [p1.x, p1.y]]) {
+        for (const [hx, hy] of [
+          [p0.x, p0.y],
+          [p1.x, p0.y],
+          [p0.x, p1.y],
+          [p1.x, p1.y],
+        ]) {
           ctx.beginPath();
           ctx.rect(hx - hs, hy - hs, hs * 2, hs * 2);
           ctx.fill();
@@ -131,52 +193,72 @@ function PlanCropModal({ planFile, initialCrop, onClose, onSave }: {
         ctx.lineWidth = 1;
         ctx.setLineDash([4, 3]);
         ctx.beginPath();
-        ctx.moveTo(hx, 0); ctx.lineTo(hx, canvas.height);
-        ctx.moveTo(0, hy); ctx.lineTo(canvas.width, hy);
+        ctx.moveTo(hx, 0);
+        ctx.lineTo(hx, canvas.height);
+        ctx.moveTo(0, hy);
+        ctx.lineTo(canvas.width, hy);
         ctx.stroke();
         ctx.restore();
       }
     }
   });
 
-  const toPageFrac = useCallback((clientX: number, clientY: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas || !pageCanvas) return { x: 0, y: 0 };
-    const c = canvas.getBoundingClientRect();
-    const sx = clientX - c.left, sy = clientY - c.top;
-    const { zoom, offX, offY } = viewRef.current;
-    return {
-      x: Math.min(1, Math.max(0, (sx - offX) / (pageCanvas.width * zoom))),
-      y: Math.min(1, Math.max(0, (sy - offY) / (pageCanvas.height * zoom))),
-    };
-  }, [pageCanvas]);
+  const toPageFrac = useCallback(
+    (clientX: number, clientY: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas || !pageCanvas) return { x: 0, y: 0 };
+      const c = canvas.getBoundingClientRect();
+      const sx = clientX - c.left,
+        sy = clientY - c.top;
+      const { zoom, offX, offY } = viewRef.current;
+      return {
+        x: Math.min(1, Math.max(0, (sx - offX) / (pageCanvas.width * zoom))),
+        y: Math.min(1, Math.max(0, (sy - offY) / (pageCanvas.height * zoom))),
+      };
+    },
+    [pageCanvas],
+  );
 
   // Page-fraction → screen px, using the page's real pixel size (mirrors the draw effect).
-  const toScreenPage = useCallback((fx: number, fy: number) => {
-    const { zoom, offX, offY } = viewRef.current;
-    return { x: offX + fx * (pageCanvas?.width ?? 0) * zoom, y: offY + fy * (pageCanvas?.height ?? 0) * zoom };
-  }, [pageCanvas]);
+  const toScreenPage = useCallback(
+    (fx: number, fy: number) => {
+      const { zoom, offX, offY } = viewRef.current;
+      return {
+        x: offX + fx * (pageCanvas?.width ?? 0) * zoom,
+        y: offY + fy * (pageCanvas?.height ?? 0) * zoom,
+      };
+    },
+    [pageCanvas],
+  );
 
   const CORNER_HIT_PX = 10;
-  const rectCorners = useCallback((rn: { x: number; y: number; w: number; h: number }) => ([
-    { x: rn.x, y: rn.y, opp: { x: rn.x + rn.w, y: rn.y + rn.h } },
-    { x: rn.x + rn.w, y: rn.y, opp: { x: rn.x, y: rn.y + rn.h } },
-    { x: rn.x, y: rn.y + rn.h, opp: { x: rn.x + rn.w, y: rn.y } },
-    { x: rn.x + rn.w, y: rn.y + rn.h, opp: { x: rn.x, y: rn.y } },
-  ]), []);
+  const rectCorners = useCallback(
+    (rn: { x: number; y: number; w: number; h: number }) => [
+      { x: rn.x, y: rn.y, opp: { x: rn.x + rn.w, y: rn.y + rn.h } },
+      { x: rn.x + rn.w, y: rn.y, opp: { x: rn.x, y: rn.y + rn.h } },
+      { x: rn.x, y: rn.y + rn.h, opp: { x: rn.x + rn.w, y: rn.y } },
+      { x: rn.x + rn.w, y: rn.y + rn.h, opp: { x: rn.x, y: rn.y } },
+    ],
+    [],
+  );
 
-  const onWheel = useCallback((e: WheelEvent) => {
-    if (!pageCanvas || !canvasRef.current) return;
-    e.preventDefault();
-    const c = canvasRef.current.getBoundingClientRect();
-    const mx = e.clientX - c.left, my = e.clientY - c.top;
-    const { zoom, offX, offY } = viewRef.current;
-    const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
-    const newZoom = Math.min(10, Math.max(0.2, zoom * factor));
-    const pageX = (mx - offX) / zoom, pageY = (my - offY) / zoom;
-    viewRef.current = { zoom: newZoom, offX: mx - pageX * newZoom, offY: my - pageY * newZoom };
-    rerender();
-  }, [pageCanvas]);
+  const onWheel = useCallback(
+    (e: WheelEvent) => {
+      if (!pageCanvas || !canvasRef.current) return;
+      e.preventDefault();
+      const c = canvasRef.current.getBoundingClientRect();
+      const mx = e.clientX - c.left,
+        my = e.clientY - c.top;
+      const { zoom, offX, offY } = viewRef.current;
+      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+      const newZoom = Math.min(10, Math.max(0.2, zoom * factor));
+      const pageX = (mx - offX) / zoom,
+        pageY = (my - offY) / zoom;
+      viewRef.current = { zoom: newZoom, offX: mx - pageX * newZoom, offY: my - pageY * newZoom };
+      rerender();
+    },
+    [pageCanvas],
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -208,7 +290,8 @@ function PlanCropModal({ planFile, initialCrop, onClose, onSave }: {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const c = canvas.getBoundingClientRect();
-      const sx = e.clientX - c.left, sy = e.clientY - c.top;
+      const sx = e.clientX - c.left,
+        sy = e.clientY - c.top;
       for (const corner of rectCorners(rectNorm)) {
         const s = toScreenPage(corner.x, corner.y);
         if (Math.hypot(sx - s.x, sy - s.y) <= CORNER_HIT_PX) {
@@ -231,8 +314,9 @@ function PlanCropModal({ planFile, initialCrop, onClose, onSave }: {
     if (!dragRef.current) {
       let onCorner = false;
       if (rectNorm) {
-        const sx = e.clientX - c.left, sy = e.clientY - c.top;
-        onCorner = rectCorners(rectNorm).some(corner => {
+        const sx = e.clientX - c.left,
+          sy = e.clientY - c.top;
+        onCorner = rectCorners(rectNorm).some((corner) => {
           const s = toScreenPage(corner.x, corner.y);
           return Math.hypot(sx - s.x, sy - s.y) <= CORNER_HIT_PX;
         });
@@ -244,7 +328,11 @@ function PlanCropModal({ planFile, initialCrop, onClose, onSave }: {
     if (dragRef.current.kind === 'pan') {
       const dx = e.clientX - dragRef.current.lastX;
       const dy = e.clientY - dragRef.current.lastY;
-      viewRef.current = { ...viewRef.current, offX: viewRef.current.offX + dx, offY: viewRef.current.offY + dy };
+      viewRef.current = {
+        ...viewRef.current,
+        offX: viewRef.current.offX + dx,
+        offY: viewRef.current.offY + dy,
+      };
       dragRef.current.lastX = e.clientX;
       dragRef.current.lastY = e.clientY;
       rerender();
@@ -254,81 +342,223 @@ function PlanCropModal({ planFile, initialCrop, onClose, onSave }: {
       if (anchor) setRect({ x0: anchor.x, y0: anchor.y, x1: p.x, y1: p.y });
     } else {
       const p = toPageFrac(e.clientX, e.clientY);
-      setRect(prev => prev ? { ...prev, x1: p.x, y1: p.y } : null);
+      setRect((prev) => (prev ? { ...prev, x1: p.x, y1: p.y } : null));
     }
   };
-  const onPointerUp = () => { dragRef.current = null; setIsPanning(false); resizeAnchorRef.current = null; };
-  const onPointerLeave = () => { dragRef.current = null; setIsPanning(false); resizeAnchorRef.current = null; hoverRef.current = null; rerender(); };
+  const onPointerUp = () => {
+    dragRef.current = null;
+    setIsPanning(false);
+    resizeAnchorRef.current = null;
+  };
+  const onPointerLeave = () => {
+    dragRef.current = null;
+    setIsPanning(false);
+    resizeAnchorRef.current = null;
+    hoverRef.current = null;
+    rerender();
+  };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(10,11,13,0.96)', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 16px', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#F5A623', whiteSpace: 'nowrap' }}>✂ Definir recorte</span>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        background: 'rgba(10,11,13,0.96)',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 14,
+          padding: '10px 16px',
+          borderBottom: '1px solid var(--line)',
+          flexShrink: 0,
+        }}
+      >
+        <span style={{ fontSize: 14, fontWeight: 700, color: '#F5A623', whiteSpace: 'nowrap' }}>
+          Definir recorte
+        </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
           {[
-            { ico: '🖱️', lbl: 'Clic izquierdo', desc: 'dibujar / mover esquina' },
-            { ico: '🖲️', lbl: 'Clic central', desc: 'mover el plano' },
-            { ico: '🔍', lbl: 'Rueda', desc: 'zoom' },
-          ].map(h => (
+            { lbl: 'Clic izquierdo', desc: 'dibujar / mover esquina' },
+            { lbl: 'Clic central', desc: 'mover el plano' },
+            { lbl: 'Rueda', desc: 'zoom' },
+          ].map((h) => (
             <span key={h.lbl} style={hintChipStyle}>
-              <span style={{ fontSize: 12 }}>{h.ico}</span>
               <span style={{ color: 'var(--txt)', fontWeight: 600 }}>{h.lbl}</span>
               <span style={{ color: 'var(--txt3)' }}>{h.desc}</span>
             </span>
           ))}
-          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#F5A623', opacity: 0.85 }}>
-            <span>ℹ</span> Solo se aplica en la isometría
-          </span>
         </div>
         <div style={{ flex: 1 }} />
         {rectNorm && (
-          <button type="button" onClick={() => setRect(null)}
-            style={{ ...modalSecondaryBtnStyle, color: '#ef5350' }}>
+          <button
+            type="button"
+            onClick={() => setRect(null)}
+            style={{ ...modalSecondaryBtnStyle, color: '#ef5350' }}
+          >
             Borrar rectángulo
           </button>
         )}
-        <button type="button" onClick={onClose}
-          style={{ ...modalSecondaryBtnStyle, color: 'var(--txt2)' }}>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{ ...modalSecondaryBtnStyle, color: 'var(--txt2)' }}
+        >
           Cancelar
         </button>
-        <button type="button"
+        <button
+          type="button"
           disabled={!rectNorm || rectNorm.w < 0.02 || rectNorm.h < 0.02}
-          onClick={() => { if (rectNorm && rectNorm.w >= 0.02 && rectNorm.h >= 0.02) onSave(rectNorm); }}
-          style={{ padding: '5px 14px', background: 'rgba(14,204,122,0.15)', border: '1.5px solid rgba(14,204,122,0.4)', borderRadius: 'var(--r)', color: '#0ECC7A', cursor: rectNorm ? 'pointer' : 'default', opacity: rectNorm ? 1 : 0.5, fontSize: 12, fontWeight: 700 }}>
-          ✓ Guardar recorte
+          onClick={() => {
+            if (rectNorm && rectNorm.w >= 0.02 && rectNorm.h >= 0.02) onSave(rectNorm);
+          }}
+          style={{
+            padding: '5px 14px',
+            background: 'rgba(14,204,122,0.15)',
+            border: '1.5px solid rgba(14,204,122,0.4)',
+            borderRadius: 'var(--r)',
+            color: '#0ECC7A',
+            cursor: rectNorm ? 'pointer' : 'default',
+            opacity: rectNorm ? 1 : 0.5,
+            fontSize: 12,
+            fontWeight: 700,
+          }}
+        >
+          Guardar recorte
         </button>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '7px 16px', borderBottom: '1px solid var(--line)', flexShrink: 0, background: 'rgba(245,166,35,0.06)' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#F5A623' }}>
-          <span style={{ fontSize: 13 }}>⚠</span>
-          <span><strong>Este recorte es global:</strong> se aplicará a todos los planos ya cargados, no solo al que estás viendo ahora.</span>
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--txt3)' }}>
-          <span style={{ fontSize: 13 }}>💡</span>
-          <span>Recomendación: define el recorte al final, cuando ya hayas cargado todos los planos, para no repetir el ajuste.</span>
-        </span>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flexShrink: 0,
+          background: '#141416',
+          borderBottom: '1px solid var(--line)',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '8px 16px',
+            borderLeft: '3px solid #F5A623',
+            background: 'rgba(245,166,35,0.08)',
+          }}
+        >
+          <span
+            style={{
+              flexShrink: 0,
+              padding: '2px 8px',
+              borderRadius: 999,
+              background: 'rgba(245,166,35,0.18)',
+              color: '#F5A623',
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: 0.6,
+              textTransform: 'uppercase',
+            }}
+          >
+            Solo isometría
+          </span>
+          <span style={{ fontSize: 12, lineHeight: 1.4, color: 'var(--txt)' }}>
+            No afecta el visor de dibujo ni el plano original. Es un ajuste <strong>global</strong>:
+            se aplica a todos los planos ya cargados, no solo al que estás viendo ahora.
+          </span>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '8px 16px',
+            borderLeft: '3px solid var(--line)',
+          }}
+        >
+          <span
+            style={{
+              flexShrink: 0,
+              padding: '2px 8px',
+              borderRadius: 999,
+              background: 'var(--bg3)',
+              color: 'var(--txt3)',
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: 0.6,
+              textTransform: 'uppercase',
+            }}
+          >
+            Recomendación
+          </span>
+          <span style={{ fontSize: 12, lineHeight: 1.4, color: 'var(--txt3)' }}>
+            Define el recorte al final, cuando ya hayas cargado todos los planos, para no repetir el
+            ajuste.
+          </span>
+        </div>
       </div>
       <div style={{ flex: 1, minHeight: 0, padding: 20, display: 'flex' }}>
-        <div ref={containerRef} style={{ position: 'relative', flex: 1, background: '#141416', border: '1px solid var(--line)', borderRadius: 'var(--r)', overflow: 'hidden' }}>
+        <div
+          ref={containerRef}
+          style={{
+            position: 'relative',
+            flex: 1,
+            background: '#141416',
+            border: '1px solid var(--line)',
+            borderRadius: 'var(--r)',
+            overflow: 'hidden',
+          }}
+        >
           {!pageCanvas && !loadError && (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--txt3)', fontSize: 13 }}>
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--txt3)',
+                fontSize: 13,
+              }}
+            >
               Cargando plano…
             </div>
           )}
           {loadError && (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef5350', fontSize: 13 }}>
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ef5350',
+                fontSize: 13,
+              }}
+            >
               {loadError}
             </div>
           )}
           <canvas
             ref={canvasRef}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', touchAction: 'none', cursor: isPanning ? 'grabbing' : (hoverCorner ? 'nwse-resize' : 'crosshair') }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              touchAction: 'none',
+              cursor: isPanning ? 'grabbing' : hoverCorner ? 'nwse-resize' : 'crosshair',
+            }}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerLeave={onPointerLeave}
-            onContextMenu={e => e.preventDefault()}
-            onAuxClick={e => e.preventDefault()}
+            onContextMenu={(e) => e.preventDefault()}
+            onAuxClick={(e) => e.preventDefault()}
           />
         </div>
       </div>
@@ -339,7 +569,13 @@ function PlanCropModal({ planFile, initialCrop, onClose, onSave }: {
 // Self-contained crop tool, docked at the bottom-left of "Carga de planos". This only affects
 // how the plano renders in the isometría — the main preview here and the drawing visor always
 // show the plan complete, uncropped.
-export function PlanCropPanel({ selectedPlanUrl, planFile }: { selectedPlanUrl: string; planFile: File }) {
+export function PlanCropPanel({
+  selectedPlanUrl,
+  planFile,
+}: {
+  selectedPlanUrl: string;
+  planFile: File;
+}) {
   const [modalOpen, setModalOpen] = useState(false);
   const [planCrop, setPlanCropState] = useState<PlanCrop | null>(() => loadPlanCrop());
 
@@ -349,30 +585,69 @@ export function PlanCropPanel({ selectedPlanUrl, planFile }: { selectedPlanUrl: 
   }, []);
 
   return (
-    <div style={{ flexShrink: 0, borderTop: '1px solid var(--line)', padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div
+      style={{
+        flexShrink: 0,
+        borderTop: '1px solid var(--line)',
+        padding: '8px 10px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: .5 }}>✂ Recorte (isometría)</span>
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: 'var(--txt3)',
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+          }}
+        >
+          Recorte (isometría)
+        </span>
       </div>
-      <div style={{ position: 'relative', width: '100%', height: 110, background: '#141416', borderRadius: 'var(--r)', overflow: 'hidden', border: '1px solid var(--line)' }}>
-        <embed key={selectedPlanUrl} src={`${selectedPlanUrl}#toolbar=0`} type="application/pdf" title="Miniatura del plano" aria-label="Miniatura del plano" style={{ width: '100%', height: '100%', pointerEvents: 'none' }} />
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: 110,
+          background: '#141416',
+          borderRadius: 'var(--r)',
+          overflow: 'hidden',
+          border: '1px solid var(--line)',
+        }}
+      >
+        <embed
+          key={selectedPlanUrl}
+          src={`${selectedPlanUrl}#toolbar=0`}
+          type="application/pdf"
+          title="Miniatura del plano"
+          aria-label="Miniatura del plano"
+          style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
+        />
         {planCrop && (
-          <div style={{
-            position: 'absolute', pointerEvents: 'none',
-            left: `${planCrop.x * 100}%`, top: `${planCrop.y * 100}%`,
-            width: `${planCrop.w * 100}%`, height: `${planCrop.h * 100}%`,
-            border: '2px solid #F5A623',
-            boxShadow: '0 0 0 1000px rgba(0,0,0,0.5)',
-          }} />
+          <div
+            style={{
+              position: 'absolute',
+              pointerEvents: 'none',
+              left: `${planCrop.x * 100}%`,
+              top: `${planCrop.y * 100}%`,
+              width: `${planCrop.w * 100}%`,
+              height: `${planCrop.h * 100}%`,
+              border: '2px solid #F5A623',
+              boxShadow: '0 0 0 1000px rgba(0,0,0,0.5)',
+            }}
+          />
         )}
       </div>
       <div style={{ display: 'flex', gap: 4 }}>
-        <button type="button" onClick={() => setModalOpen(true)}
-          style={recortarBtnStyle}>
+        <button type="button" onClick={() => setModalOpen(true)} style={recortarBtnStyle}>
           Recortar
         </button>
         {planCrop && (
-          <button type="button" onClick={() => applyCrop(null)}
-            style={quitarBtnStyle}>
+          <button type="button" onClick={() => applyCrop(null)} style={quitarBtnStyle}>
             Quitar
           </button>
         )}
@@ -382,7 +657,10 @@ export function PlanCropPanel({ selectedPlanUrl, planFile }: { selectedPlanUrl: 
           planFile={planFile}
           initialCrop={planCrop}
           onClose={() => setModalOpen(false)}
-          onSave={crop => { applyCrop(crop); setModalOpen(false); }}
+          onSave={(crop) => {
+            applyCrop(crop);
+            setModalOpen(false);
+          }}
         />
       )}
     </div>

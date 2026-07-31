@@ -994,11 +994,33 @@ function PlanoConfiguratorBase({
                   onChange={() => {
                     setCalGlobal(false);
                     setHasSaved(false);
+                    showToast(
+                      'Calibración por piso: cada plano puede quedar a una escala distinta y eso puede desalinear la isometría. Se recomienda "Todos".',
+                      'warn',
+                    );
                   }}
                 />
                 Por piso
               </label>
             </div>
+            {calGlobal === false && (
+              <div
+                style={{
+                  marginTop: 6,
+                  padding: '6px 8px',
+                  borderLeft: '2px solid var(--warn, #F5A623)',
+                  background: 'rgba(245,166,35,0.08)',
+                  borderRadius: 'var(--r)',
+                  fontSize: 11,
+                  lineHeight: 1.4,
+                  color: 'var(--txt2)',
+                }}
+              >
+                Con calibración por piso, cada plano puede quedar a una escala distinta — eso puede
+                afectar la alineación de la isometría. Se recomienda usar{' '}
+                <strong style={{ color: 'var(--txt)' }}>Todos</strong>.
+              </div>
+            )}
           </div>
 
           {/* Actions */}
