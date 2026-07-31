@@ -176,6 +176,16 @@ function PdfViewerToolbar_({
       shortcut: 'C',
     });
   }
+  if (activeNet === 'll') {
+    netTools.splice(7, 0, {
+      id: 'canal',
+      label: 'Canal',
+      ico: '▭',
+      key: 'N',
+      icoCol: '#8B5CF6',
+      shortcut: 'N',
+    });
+  }
 
   if (collapsed) {
     return (

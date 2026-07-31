@@ -26,6 +26,7 @@ export {
   handleCalentadorDown,
   handleRedPublicaDown,
   handleContadorDown,
+  handleCanalDown,
 } from './drawingCreations';
 
 type ToolType =
@@ -43,6 +44,7 @@ type ToolType =
   | 'red_pub'
   | 'cont'
   | 'calent'
+  | 'canal'
   | 'guide';
 
 function toolCursor(tool: string): string {
@@ -64,6 +66,7 @@ export function _statusMsg(engine: IPlanoEngineCore): string {
     red_pub: 'Red Pública',
     cont: 'Contador',
     guide: 'Línea guía',
+    canal: 'Canal',
   };
   let m = names[engine.tool] || engine.tool;
   if (engine.tool === 'line') {
@@ -74,6 +77,12 @@ export function _statusMsg(engine: IPlanoEngineCore): string {
   }
   if (engine.tool === 'area' && engine.activeArea) {
     m += ` (${engine.activeArea.pts.length} pts)`;
+  }
+  if (engine.tool === 'canal' && engine._canalStart) {
+    const mp = engine.toPlane(engine.mouseX, engine.mouseY);
+    const base = Math.round(engine.pxToM(Math.abs(mp.x - engine._canalStart.x)) * 100);
+    const altura = Math.round(engine.pxToM(Math.abs(mp.y - engine._canalStart.y)) * 100);
+    m += ` (${base} x ${altura} cm)`;
   }
   return m;
 }
@@ -155,6 +164,7 @@ export function setTool(engine: IPlanoEngineCore, t: ToolType): void {
   if (engine.activeArea && t !== 'area') finishArea(engine);
   if (t !== 'dim') engine._dimStart = null;
   if (t !== 'guide') engine._guideStart = null;
+  if (t !== 'canal') engine._canalStart = null;
   engine.tool = t;
   engine.canv.style.cursor = toolCursor(t);
   engine._emitStatus(_statusMsg(engine));
@@ -1253,6 +1263,7 @@ export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number
     tipo === 'red_publica' ||
     tipo === 'contador' ||
     tipo === 'calentador' ||
+    tipo === 'canal' ||
     isArea ||
     isText ||
     isGuide ||
@@ -1377,7 +1388,13 @@ export function handleAreaDown(engine: IPlanoEngineCore, px: number, py: number)
 
 /** Requests a render on mouse move when an active draw (ramal, dim, or area) is in progress. @param engine Engine core instance. @param x Canvas X coordinate. @param y Canvas Y coordinate. */
 export function handleDrawingMouseMove(engine: IPlanoEngineCore, x: number, y: number): void {
-  if (engine.activeRamal || engine._dimStart || engine._guideStart || engine.activeArea) {
+  if (
+    engine.activeRamal ||
+    engine._dimStart ||
+    engine._guideStart ||
+    engine._canalStart ||
+    engine.activeArea
+  ) {
     engine.mouseX = x;
     engine.mouseY = y;
     engine.scheduleRender();

@@ -139,7 +139,13 @@ export function setRamalDefaults(
 export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
   if (!engine.nivelActual) return [];
   return engine.bajantes.filter((b) => {
-    if (b.tipo === 'contador' || b.tipo === 'calentador' || b.tipo === 'red_publica') return false;
+    if (
+      b.tipo === 'contador' ||
+      b.tipo === 'calentador' ||
+      b.tipo === 'red_publica' ||
+      b.tipo === 'canal'
+    )
+      return false;
     if (b.desplazamientos && b.desplazamientos[engine.nivelActual!.label || '']) return true;
     const base = Math.min(b.nptBase || 0, b.nptCima || 0);
     const cima = Math.max(b.nptBase || 0, b.nptCima || 0);

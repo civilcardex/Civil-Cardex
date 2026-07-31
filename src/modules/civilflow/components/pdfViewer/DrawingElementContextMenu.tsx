@@ -2827,6 +2827,93 @@ function CalentadorMenu() {
   );
 }
 
+const CanalMenu_FIELD_LABELS: Record<'base' | 'altura', string> = {
+  base: 'Base (cm)',
+  altura: 'Altura (cm)',
+};
+
+// Free-text commit pattern (local edit buffer, commit on blur) — same as CanalDimField in
+// RainChannelsCheck.tsx, since this file's other numeric fields are all <select> dropdowns and
+// base/altura need arbitrary decimal entry instead.
+function CanalDimInput({
+  field,
+  value,
+  onCommit,
+}: {
+  field: 'base' | 'altura';
+  value: number;
+  onCommit: (v: number) => void;
+}) {
+  const [text, setText] = useState('');
+  const [editing, setEditing] = useState(false);
+  const display = editing ? text : value > 0 ? String(value) : '';
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={display}
+      placeholder="0"
+      aria-label={CanalMenu_FIELD_LABELS[field]}
+      onFocus={() => {
+        setEditing(true);
+        setText(display);
+      }}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+        setText(raw);
+      }}
+      onBlur={() => {
+        setEditing(false);
+        const v = parseFloat(text) || 0;
+        onCommit(text === '' ? 0 : v);
+      }}
+      style={DrawingElementContextMenu_S2}
+    />
+  );
+}
+
+function CanalMenu() {
+  const { element, engineRef, selElement, setSelElement, setContextMenuState } =
+    useDrawingElementContextMenu();
+  const canal = element as PlanoBajante;
+
+  const commit = (field: 'base' | 'altura', v: number) => {
+    engineRef.current?.updateElementById(canal.id, { [field]: v });
+    setContextMenuState((prev) =>
+      prev ? { ...prev, element: { ...prev.element, [field]: v } } : null,
+    );
+    if (selElement?.id === canal.id) {
+      setSelElement({ ...selElement, [field]: v });
+    }
+  };
+
+  return (
+    <>
+      {(['base', 'altura'] as const).map((field) => (
+        <div key={field} style={{ padding: '0 8px 8px' }}>
+          <div
+            style={{
+              fontSize: 12,
+              color: '#849495',
+              fontFamily: "'Geist',monospace",
+              marginBottom: 4,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
+          >
+            {CanalMenu_FIELD_LABELS[field]}
+          </div>
+          <CanalDimInput
+            field={field}
+            value={canal[field] || 0}
+            onCommit={(v) => commit(field, v)}
+          />
+        </div>
+      ))}
+    </>
+  );
+}
+
 interface DrawingElementContextMenuProps {
   contextMenuState: ContextMenuState | null;
   setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
@@ -2997,6 +3084,8 @@ function DrawingElementContextMenuInner() {
           <ContadorMenu />
         ) : tipo === 'calentador' ? (
           <CalentadorMenu />
+        ) : tipo === 'canal' ? (
+          <CanalMenu />
         ) : null}
       </form>
     </>

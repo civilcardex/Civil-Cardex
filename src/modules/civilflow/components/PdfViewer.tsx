@@ -1603,7 +1603,8 @@ function PdfViewer_({
                 (selElement.tipo === 'bajante' ||
                   selElement.tipo === 'montante' ||
                   selElement.tipo === 'area' ||
-                  selElement.id?.startsWith('AR'))
+                  selElement.id?.startsWith('AR') ||
+                  selElement.id?.startsWith('GL'))
               ) && (
                 <AparatosPanel activeNet={activeNet} selElement={selElement} planId={currentId} />
               )}

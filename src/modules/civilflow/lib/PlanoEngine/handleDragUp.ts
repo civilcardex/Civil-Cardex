@@ -202,6 +202,10 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     engine._markDirty();
     engine.txtResize = null;
   }
+  if (engine.canalResizeDrag) {
+    engine._markDirty();
+    engine.canalResizeDrag = null;
+  }
   if (engine.dimLblDrag) {
     engine._markDirty();
     engine.dimLblDrag = null;

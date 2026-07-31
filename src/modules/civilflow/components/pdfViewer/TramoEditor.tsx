@@ -1257,6 +1257,121 @@ function CalentadorTramoEditor() {
   );
 }
 
+// Free-text commit pattern (local edit buffer, commit on blur) — same as CanalDimField in
+// RainChannelsCheck.tsx and CanalDimInput in DrawingElementContextMenu.tsx, since a plain
+// per-keystroke controlled input fights decimal typing (trailing '.', partial numbers).
+function CanalNumField({
+  label,
+  value,
+  onCommit,
+}: {
+  label: string;
+  value: number;
+  onCommit: (v: number) => void;
+}) {
+  const [text, setText] = React.useState('');
+  const [editing, setEditing] = React.useState(false);
+  const display = editing ? text : value > 0 ? String(value) : '';
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={display}
+      placeholder="0"
+      aria-label={label}
+      onFocus={() => {
+        setEditing(true);
+        setText(display);
+      }}
+      onChange={(e) => {
+        const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+        setText(raw);
+      }}
+      onBlur={() => {
+        setEditing(false);
+        const v = parseFloat(text) || 0;
+        onCommit(text === '' ? 0 : v);
+      }}
+      style={TramoEditor_S4}
+    />
+  );
+}
+
+function CanalTramoEditor() {
+  const { selElement: rawSelElement, handleUpdateSel } = React.useContext(TramoEditorCtx)!;
+  if (!rawSelElement) return null;
+  const selElement = rawSelElement as PlanoBajante;
+  return (
+    <>
+      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+        <div
+          style={{
+            fontFamily: "'Geist',monospace",
+            fontSize: 12,
+            color: '#9BA8AA',
+            marginBottom: 6,
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+          }}
+        >
+          Datos del canal
+        </div>
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: '#b9caca',
+            fontFamily: "'Geist',monospace",
+            padding: '2px 0',
+          }}
+        >
+          {selElement.code || selElement.id}
+        </div>
+      </div>
+
+      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+        <div
+          style={{
+            fontFamily: "'Geist',monospace",
+            fontSize: 12,
+            color: '#9BA8AA',
+            marginBottom: 6,
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+          }}
+        >
+          Base (cm)
+        </div>
+        <CanalNumField
+          label="Base (cm)"
+          value={selElement.base || 0}
+          onCommit={(v) => handleUpdateSel('base', v)}
+        />
+      </div>
+
+      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+        <div
+          style={{
+            fontFamily: "'Geist',monospace",
+            fontSize: 12,
+            color: '#9BA8AA',
+            marginBottom: 6,
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+          }}
+        >
+          Altura (cm)
+        </div>
+        <CanalNumField
+          label="Altura (cm)"
+          value={selElement.altura || 0}
+          onCommit={(v) => handleUpdateSel('altura', v)}
+        />
+      </div>
+    </>
+  );
+}
+
 function BajanteHeaderFields() {
   const { selElement: rawSelElement, engineRef, setSelElement } = React.useContext(TramoEditorCtx)!;
   if (!rawSelElement) return null;
@@ -1751,6 +1866,7 @@ function TramoEditorInner() {
 
   if (selElement && selElement.tipo === 'contador') return <ContadorTramoEditor />;
   if (selElement && selElement.tipo === 'calentador') return <CalentadorTramoEditor />;
+  if (selElement && selElement.tipo === 'canal') return <CanalTramoEditor />;
 
   const isGhostSel =
     (selElement &&
@@ -1760,8 +1876,14 @@ function TramoEditorInner() {
   const isBajMont = selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante');
   const isArea = selElement && selElement.id?.startsWith('AR');
   const isText = selElement && selElement.id?.startsWith('T');
+  // Guide lines carry a `pts` polyline too (reused for hit-testing like a ramal) but have no
+  // `tipo` and aren't in engine.ramales — without this exclusion, selecting one fell through to
+  // the `selElement.pts` fallback below and rendered the full ramal editor (material/diámetro/
+  // pendiente) plus the Aparatos panel (PdfViewer.tsx), none of which apply to a guide line.
+  const isGuide = !!selElement?.id?.startsWith('GL');
   const isRamal =
     selElement &&
+    !isGuide &&
     (selElement.tipo === 'ramal' || selElement.tipo === 'tributario' || selElement.pts);
 
   return (
@@ -1788,7 +1910,9 @@ function TramoEditorInner() {
               ? 'Datos del bajante fantasma'
               : isArea
                 ? 'Datos del área'
-                : 'Datos del tramo'}
+                : isGuide
+                  ? 'Línea guía'
+                  : 'Datos del tramo'}
           </div>
           {selElement && (selElement.pts || selElement.id?.startsWith('T')) && (
             <button
@@ -1830,7 +1954,7 @@ function TramoEditorInner() {
       </div>
 
       {selElement && !isArea && isBajMont && <BajanteEditorSection />}
-      {selElement && !isArea && !isBajMont && <RamalEditorSection />}
+      {selElement && !isArea && !isBajMont && !isGuide && <RamalEditorSection />}
     </form>
   );
 }

@@ -7,6 +7,7 @@ import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { parseDescargaEnId } from '../../../utils/parseDescargaEnId';
 import { pisoCortoLoose as getPisoCorto } from '../../../constants';
 import { MONTANTE_NETS } from '../drawingCreations';
+import { BORDE_LIBRE_CANAL_CM } from '../../../utils/calcRainwater';
 
 const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
 
@@ -238,9 +239,153 @@ function drawDireccionSymbol(
   }
 }
 
+// Canal is a corner+size rectangle (b.x/b.y = top-left plane corner, b.base/b.altura = real cm
+// size) rather than a point+radius symbol — drawn in absolute canvas space, never rotated (unlike
+// every other bajante-array glyph, whose shape rotates with labelAngle), since a non-square
+// rectangle rotating with the label would visually contradict its own resize handles, which are
+// always axis-aligned. Selected corners get a small square handle (grabbed by
+// handleMouseDown.ts's _tryCanalResizeHit) to resize independently of the label rotation.
+function renderCanalGlyph(
+  ctx: CanvasRenderingContext2D,
+  engine: IPlanoEngineCore,
+  b: PlanoBajante,
+): void {
+  if (engine._hiddenNets.has(b.net)) return;
+  const tl = engine.toCvs(b.x, b.y);
+  const w = Math.max(engine.cmToCanvasPx(b.base || 0), 20);
+  const h = Math.max(engine.cmToCanvasPx(b.altura || 0), 14);
+  const sel = b.id === engine.selId && !engine._isGhostSel;
+  const col = NETS.find((n) => n.id === 'll')?.col || '#8B5CF6';
+
+  ctx.save();
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.rect(tl.x, tl.y, w, h);
+  ctx.fill();
+  ctx.strokeStyle = sel ? '#FFEB3B' : col;
+  ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom;
+  ctx.beginPath();
+  ctx.rect(tl.x, tl.y, w, h);
+  ctx.stroke();
+  const midY = tl.y + h * 0.25;
+  ctx.beginPath();
+  ctx.moveTo(tl.x, midY);
+  ctx.lineTo(tl.x + w, midY);
+  ctx.stroke();
+
+  if (sel) {
+    const handleR = 4 * engine.zoom;
+    const corners = [
+      { x: tl.x, y: tl.y },
+      { x: tl.x + w, y: tl.y },
+      { x: tl.x, y: tl.y + h },
+      { x: tl.x + w, y: tl.y + h },
+    ];
+    ctx.fillStyle = '#FFEB3B';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1 * engine.zoom;
+    for (const cnr of corners) {
+      ctx.beginPath();
+      ctx.rect(cnr.x - handleR, cnr.y - handleR, handleR * 2, handleR * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  // Yellow selection arrow — same style/shape every other bajante-array glyph shows when
+  // selected (renderBajantes' main loop below), pointing in from the right edge.
+  const inMultiSel = (engine.multiSel || []).includes(b.id);
+  if ((sel || inMultiSel) && !engine._isGhostSel) {
+    const arrowR = 8 * engine.zoom;
+    const cy = tl.y + h / 2;
+    const ox = tl.x + w + 14 * engine.zoom;
+    ctx.fillStyle = '#FFEB3B';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.shadowColor = '#000';
+    ctx.shadowBlur = 6 * engine.zoom;
+    ctx.beginPath();
+    ctx.moveTo(ox - arrowR, cy);
+    ctx.lineTo(ox, cy - arrowR * 0.5);
+    ctx.lineTo(ox, cy + arrowR * 0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  b._canalBox = { x: tl.x, y: tl.y, w, h };
+  // Centered on the rectangle (not the top-left corner) so the shared circular hit-test every
+  // other bajante-array tipo already uses (selectAt, hitTestRightClick, _tryBajanteHit) covers
+  // the whole visible shape for click-anywhere selection.
+  b._circ = { x: tl.x + w / 2, y: tl.y + h / 2, r: Math.hypot(w, h) / 2 };
+
+  if (b.code || b.code === '') {
+    const lx = b.labelX ?? b.x;
+    const ly = b.labelY ?? b.y + 20;
+    const offDx = (lx - b.x) * engine.zoom;
+    let offDy = (ly - b.y) * engine.zoom;
+    const minPerpPx = engine.mm2cvs(3);
+    if (Math.abs(offDy) < minPerpPx) {
+      offDy = offDy >= 0 ? minPerpPx : -minPerpPx;
+    }
+    // Floor suffix is already baked into b.code at creation (CALL{n}-P{piso}) — a canal lives
+    // on a single floor, unlike bajante's dynamic per-render lvlSuffix.
+    const line1 = b.code || '—';
+    const dirText = `${b.base || 0} x ${(b.altura || 0) + BORDE_LIBRE_CANAL_CM}`;
+    const angle = ((b.labelAngle || 0) * Math.PI) / 180;
+    renderBajanteLabel(ctx, engine, b, tl, 0, angle, offDx, offDy, line1, dirText, '_labelBox', 1);
+  } else {
+    b._labelBox = undefined;
+  }
+}
+
+// Live rubber-band preview while the canal tool is mid-drag (_canalStart set, first corner
+// placed, second click not yet made) — same dashed-preview pattern as renderGuideGhost/
+// renderDimGhost, plus a live cm dimension readout (also shown in the status bar via
+// _statusMsg) so the user can see the exact size before committing the second click.
+export function renderCanalGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
+  if (!engine._canalStart || engine.tool !== 'canal') return;
+  const mp = engine.toPlane(engine.mouseX, engine.mouseY);
+  const x = Math.min(engine._canalStart.x, mp.x);
+  const y = Math.min(engine._canalStart.y, mp.y);
+  const w = Math.abs(mp.x - engine._canalStart.x);
+  const h = Math.abs(mp.y - engine._canalStart.y);
+  const tl = engine.toCvs(x, y);
+  const cw = w * engine.zoom;
+  const ch = h * engine.zoom;
+
+  ctx.save();
+  ctx.strokeStyle = '#8B5CF6';
+  ctx.lineWidth = 1 * engine.zoom;
+  ctx.setLineDash([6 * engine.zoom, 4 * engine.zoom]);
+  ctx.beginPath();
+  ctx.rect(tl.x, tl.y, cw, ch);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const baseCm = Math.round(engine.pxToM(w) * 100);
+  const alturaCm = Math.round(engine.pxToM(h) * 100);
+  ctx.font = `${11 * engine.zoom}px Geist, monospace`;
+  ctx.fillStyle = '#8B5CF6';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(`${baseCm} x ${alturaCm} cm`, tl.x, tl.y - 4 * engine.zoom);
+  ctx.restore();
+}
+
 export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.bajantes.forEach((b) => {
     if (engine._hiddenNets.has(b.net)) return;
+
+    // Canal is a corner+size rectangle, not a point+radius symbol like every other tipo in this
+    // array — it never rotates (labelAngle only affects its label position, not the shape) and
+    // has its own hit-test box (_canalBox) instead of the generic ctx.rotate glyph pipeline
+    // below, so it's handled entirely separately.
+    if (b.tipo === 'canal') {
+      renderCanalGlyph(ctx, engine, b);
+      return;
+    }
 
     // A bajante only gets its solid circle on ITS OWN floor (pisoBase). A displacement entry
     // for the current level doesn't mean anything about which floor it belongs to — it's also
@@ -492,8 +637,8 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       } else if (b.diametro) {
         diamStr = normalizeDnLabel(b.diametro.split(' — ')[0]);
       }
-      // Bold big line is just the code — mirrors a ramal's own label, which keeps its bold name
-      // line to the short code alone and pushes diametro into the smaller info line below.
+      // Bold big line is just the code — mirrors a ramal's own label, which keeps its bold
+      // name line to the short code alone and pushes diametro into the smaller info line below.
       const line1 = codeStr || '—';
       const dirWord = DIR_MAP[b.direccion ?? ''] || '';
       const dirText = diamStr ? `D=${diamStr}${dirWord ? '  ' + dirWord : ''}` : dirWord;

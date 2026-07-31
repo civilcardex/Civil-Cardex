@@ -1,7 +1,8 @@
 import { NETS } from './PlanoState';
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState';
-import { calculateRamalLength } from './PlanoEngineDrawing';
+import { calculateRamalLength, _statusMsg } from './PlanoEngineDrawing';
 import { isRamalBajanteConnectionAllowed } from '../../utils/flowDirection';
+import { pisoCortoLoose } from '../../constants';
 
 // Bajante only belongs on san/vent/ll, montante only on gas/ac/af — same rule enforced at the
 // toolbar (isToolDisabledForNet in PdfViewerToolbar.tsx) and the keyboard shortcuts (PlanoEngine.ts
@@ -426,6 +427,87 @@ export function handleCalentadorDown(engine: IPlanoEngineCore, px: number, py: n
     bajR: 7 / 24,
   });
   engine.selId = calentId;
+  engine.render();
+  engine._markDirty();
+}
+
+// Canal recolectora (roof gutter/channel) — a standalone symbol, same array/no-ramal-association
+// pattern as contador/calentador, exclusive to the 'll' (aguas lluvias) net. Unlike every other
+// point-glyph tool, it's a drag-drawn RECTANGLE: first click sets corner 1 (_canalStart, same
+// click-then-move-then-click rubber-band pattern as _dimStart/_guideStart), a live preview
+// follows the cursor (renderCanalGhost), second click sets corner 2 and computes base/altura from
+// the real-world distance between the two corners (via pxToM, at the plan's drawing scale) — so
+// the rectangle is scaled to the plan from the moment it's drawn, not typed in afterward. Once
+// created it can still be resized from its corners (handleMouseDown.ts's _tryCanalResizeHit) or
+// edited precisely via the context menu (CanalMenu). Unlike bajante (which appends its floor
+// suffix only at render time, since a riser can span floors), the floor is baked into the
+// code/id here at creation — a canal lives on a single floor only.
+/** Handles a click while the canal tool is active: sets corner 1 on first click, creates the canal rectangle on second click. Exclusive to the aguas lluvias (ll) network. @param engine Engine core instance. @param px Plane X coordinate. @param py Plane Y coordinate. */
+export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number): void {
+  if (engine.activeNet !== 'll') {
+    engine._emitStatus('Canal no disponible para esta red');
+    return;
+  }
+  if (engine.snapMode) {
+    const sp = engine.snapToExisting(px, py);
+    if (sp) {
+      px = sp.x;
+      py = sp.y;
+    }
+  }
+  if (!engine._canalStart) {
+    engine._canalStart = { x: px, y: py };
+    engine._emitStatus('Canal — clic para la esquina opuesta');
+    engine.render();
+    return;
+  }
+  const s = engine._canalStart;
+  engine._canalStart = null;
+  const base = +(engine.pxToM(Math.abs(px - s.x)) * 100).toFixed(1);
+  const altura = +(engine.pxToM(Math.abs(py - s.y)) * 100).toFixed(1);
+  // Guard against an accidental double-click-in-place producing a degenerate 0x0 rectangle.
+  if (base < 1 && altura < 1) {
+    engine._emitStatus(_statusMsg(engine));
+    engine.render();
+    return;
+  }
+  const x = Math.min(s.x, px);
+  const y = Math.min(s.y, py);
+  const cnt = engine.bajantes.filter((b) => b.tipo === 'canal').length + 1;
+  const code = `CALL${cnt}-${pisoCortoLoose(engine.nivelActual?.n ?? 0)}`;
+  engine.bajantes.push({
+    id: code,
+    net: 'll',
+    tipo: 'canal',
+    code,
+    x,
+    y,
+    pisoBase: engine.nivelActual?.label ?? '',
+    pisoCima: engine.nivelActual?.label ?? '',
+    nptBase: engine.nivelActual?.npt ?? 0,
+    nptCima: engine.nivelActual?.npt ?? 0,
+    hVert: 0,
+    dNominal: '',
+    recibeDeIds: [],
+    alimentaIds: [],
+    descargaEnId: null,
+    ucAcum: 0,
+    ucExtra: 0,
+    area_m2: 0,
+    desplazamientos: {},
+    lblOffX: 0,
+    lblOffY: 0,
+    labelAngle: 0,
+    labelX: x,
+    labelY: y + Math.abs(py - s.y) + 20,
+    bajR: 7 / 24,
+    base,
+    altura,
+  });
+  engine.selId = code;
+  engine._isGhostSel = false;
+  engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
+  engine._emitStatus(_statusMsg(engine));
   engine.render();
   engine._markDirty();
 }

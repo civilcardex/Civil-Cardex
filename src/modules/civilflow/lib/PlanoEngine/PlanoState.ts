@@ -322,6 +322,14 @@ export interface PlanoBajante {
   diametro?: string;
   acoDiam?: string;
   capacidad?: string;
+  /** Canal recolectora (tipo:'canal', red 'll' only) cross-section, in cm — imported into the
+   * "canal recolectora" hydraulic check table (RainChannelsCheck.tsx). x/y is the rectangle's
+   * top-left plane corner (not centered, unlike every other bajante-array glyph). */
+  base?: number;
+  altura?: number;
+  /** Canvas-px bounding box (axis-aligned, no rotation) set at render time — used for the
+   * corner resize-handle hit-test and the body-drag hit-test. */
+  _canalBox?: { x: number; y: number; w: number; h: number };
 }
 
 /** Polygon area region drawn on the canvas (e.g. roofs, drainage zones). */
@@ -487,6 +495,9 @@ export interface IPlanoEngineCore {
   // segment is placed.
   _ventFirstSegDir?: { x: number; y: number } | null;
   _dimStart: { x: number; y: number } | null;
+  // First-corner scratch state for the canal (roof channel) drag-rectangle tool — same
+  // click-then-move-then-click rubber-band pattern as _dimStart/_guideStart above.
+  _canalStart: { x: number; y: number } | null;
   // Transient per-drag scratch state (set in handleMouseDown, consumed in
   // handleDragUp/handleDragMove; always reset to null at drag end).
   _bajDragBackupXY?: { x: number; y: number; labelX?: number; labelY?: number } | null;
@@ -524,6 +535,16 @@ export interface IPlanoEngineCore {
     origBoxWpx: number;
   } | null;
   bajDrag: { id: string; offX: number; offY: number } | null;
+  // Corner-handle resize for a selected canal rectangle — anchorX/anchorY are the OPPOSITE
+  // corner's plane coordinates (not canvas px, unlike txtResize), captured at grab time and kept
+  // fixed for the whole gesture; base/altura and the dragged corner's x/y are recomputed live
+  // from the current cursor's plane position each move.
+  canalResizeDrag: {
+    id: string;
+    corner: 'tl' | 'tr' | 'bl' | 'br';
+    anchorX: number;
+    anchorY: number;
+  } | null;
   ptDrag: {
     id: string;
     ptIdx: number;
@@ -576,6 +597,8 @@ export interface IPlanoEngineCore {
   mm2cvs(mm: number): number;
   pxToM(px: number): number;
   realMmToCanvasPx(realRadiusMm: number): number;
+  cmToCanvasPx(cm: number): number;
+  cmToPlanePx(cm: number): number;
   snapAngle(
     x0: number,
     y0: number,

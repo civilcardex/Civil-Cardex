@@ -310,7 +310,14 @@ function _tryBajanteHit(
           engine._emitSelect(b);
           engine.render();
         }
-        engine.bajDrag = { id: b.id, offX: x - circ.x, offY: y - circ.y };
+        // handleDragMove's bajDrag assigns `b.x = toPlane(cursor - offX/Y).x` directly, so the
+        // offset must be measured from toCvs(b.x, b.y) — true by construction for every
+        // point-glyph tipo (their _circ IS centered there), but canal's _circ is deliberately
+        // centered on the rectangle's visual middle instead (for click-anywhere selection),
+        // which sits at (b.x + w/2, b.y + h/2) since b.x/y is the top-left corner. Using circ
+        // directly here would offset the drag by half the rectangle's size the instant it starts.
+        const dragAnchor = b.tipo === 'canal' ? engine.toCvs(b.x, b.y) : circ;
+        engine.bajDrag = { id: b.id, offX: x - dragAnchor.x, offY: y - dragAnchor.y };
         _captureBajDragBackup(engine, b);
         return true;
       }
@@ -328,6 +335,39 @@ function _tryBajanteHit(
     return true;
   }
   return false;
+}
+
+// Corner-handle resize for a selected canal rectangle. Must run BEFORE _tryBajanteHit's generic
+// symbol-circle check (which would otherwise treat any click inside the bounding circle —
+// including one right on a corner — as a whole-body move via bajDrag) so grabbing a corner
+// resizes instead of moving the whole rectangle.
+function _tryCanalResizeHit(
+  engine: IPlanoEngineCore,
+  x: number,
+  y: number,
+  sel: PlanoElement | null,
+): boolean {
+  const canal = sel as
+    | (PlanoBajante & { _canalBox?: { x: number; y: number; w: number; h: number } })
+    | null;
+  if (!canal || canal.tipo !== 'canal' || !canal._canalBox) return false;
+  const box = canal._canalBox;
+  const corners: { x: number; y: number; corner: 'tl' | 'tr' | 'bl' | 'br' }[] = [
+    { x: box.x, y: box.y, corner: 'tl' },
+    { x: box.x + box.w, y: box.y, corner: 'tr' },
+    { x: box.x, y: box.y + box.h, corner: 'bl' },
+    { x: box.x + box.w, y: box.y + box.h, corner: 'br' },
+  ];
+  const grabbed = corners.find((c) => Math.hypot(x - c.x, y - c.y) < 10);
+  if (!grabbed) return false;
+  const wPlane = engine.cmToPlanePx(canal.base || 0);
+  const hPlane = engine.cmToPlanePx(canal.altura || 0);
+  // Opposite corner, in PLANE coordinates (canal.x/y is always the top-left corner) — stays
+  // fixed for the whole gesture regardless of which corner was grabbed.
+  const anchorX = grabbed.corner === 'tl' || grabbed.corner === 'bl' ? canal.x + wPlane : canal.x;
+  const anchorY = grabbed.corner === 'tl' || grabbed.corner === 'tr' ? canal.y + hPlane : canal.y;
+  engine.canalResizeDrag = { id: canal.id, corner: grabbed.corner, anchorX, anchorY };
+  return true;
 }
 
 function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): boolean {
@@ -812,6 +852,10 @@ export function handleSelectDown(
     return;
   }
   const sel = getSelected(engine);
+
+  if (engine.tool === 'sel' && !isMultiSelectModifier) {
+    if (_tryCanalResizeHit(engine, x, y, sel)) return;
+  }
 
   // Cross-floor association ghost (associateBajanteAcrossFloors.ts) — pure reference marker, its
   // own selection state (selectedGhostId), never drives ramal/bajante selection or dragging.

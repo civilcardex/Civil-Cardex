@@ -22,7 +22,12 @@ import { renderGuideLines, renderGuideGhost } from './renderers/renderGuideLines
 import { renderTexts } from './renderers/renderTextAnnotations';
 import { renderGrid } from './renderers/renderGrid';
 import { renderAreas, renderActiveArea } from './renderers/renderAreas';
-import { renderBajantes, renderGhosts, renderCrossFloorGhosts } from './renderers/renderBajantes';
+import {
+  renderBajantes,
+  renderGhosts,
+  renderCrossFloorGhosts,
+  renderCanalGhost,
+} from './renderers/renderBajantes';
 import { renderRamales, renderActiveRamal } from './renderers/renderRamales';
 import { renderNetCrossings } from './renderers/renderNetCrossings';
 import { snapToSegment } from './HitTester';
@@ -48,6 +53,7 @@ import {
   handleRedPublicaDown,
   handleContadorDown,
   handleCalentadorDown,
+  handleCanalDown,
   handleEraseDown,
   handleAreaDown,
   eraseRamalAt,
@@ -90,6 +96,7 @@ import {
   ensureRpCntRamal,
 } from './PlanoEngineNetwork';
 import { PlanoHistory } from './PlanoHistory';
+import { PlanoNetworkModel } from './PlanoNetworkModel';
 import { hitTestRightClick, hitTestBajanteLabelForDrag } from './PlanoEngineHitTesting';
 
 export { NETS };
@@ -109,6 +116,7 @@ export type ToolType =
   | 'red_pub'
   | 'cont'
   | 'calent'
+  | 'canal'
   | 'guide';
 export type TramoType = 'ramal' | 'tributario';
 
@@ -162,7 +170,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
   ramales!: PlanoRamal[];
   dims!: PlanoDimension[];
   textAnnots!: PlanoTextAnnotation[];
-  bajantes!: PlanoBajante[];
+  private _networkModel = new PlanoNetworkModel();
+  get bajantes(): PlanoBajante[] {
+    return this._networkModel.bajantes;
+  }
+  set bajantes(v: PlanoBajante[]) {
+    this._networkModel.bajantes = v;
+  }
   crossFloorGhosts!: CrossFloorGhost[];
   guideLines!: PlanoGuideLine[];
   areas!: PlanoArea[];
@@ -193,6 +207,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
     origBoxWpx: number;
   } | null;
   bajDrag!: { id: string; offX: number; offY: number } | null;
+  canalResizeDrag!: {
+    id: string;
+    corner: 'tl' | 'tr' | 'bl' | 'br';
+    anchorX: number;
+    anchorY: number;
+  } | null;
   ptDrag!: {
     id: string;
     ptIdx: number;
@@ -214,6 +234,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   } | null;
   _dimStart!: Point | null;
   _guideStart!: Point | null;
+  _canalStart!: Point | null;
   nivelActual!: PlanoLevel | null;
   nptLevels!: PlanoLevel[];
   _hiddenNets!: Set<string>;
@@ -348,6 +369,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.txtResize = null;
     this.dimLblDrag = null;
     this.bajDrag = null;
+    this.canalResizeDrag = null;
     this.ptDrag = null;
     this.ramalDrag = null;
     this.multiSel = [];
@@ -355,6 +377,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.marqueeRect = null;
     this._dimStart = null;
     this._guideStart = null;
+    this._canalStart = null;
     this.nivelActual = null;
     this.nptLevels = [];
     this._hiddenNets = new Set<string>();
@@ -504,6 +527,20 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
   mm2cvs(mm: number): number {
     return ((mm * 96) / 25.4) * this.zoom;
+  }
+
+  // Inverse of pxToM: converts a REAL length in cm to plane-coordinate px (same space as
+  // ramal/bajante x/y — zoom/pan-independent), so a canal's drawn base/altura rectangle scales
+  // with the plan's real drawing scale the same way ramal totalL (via pxToM) already ties
+  // plane-coordinate distance to real-world length.
+  cmToPlanePx(cm: number): number {
+    return ((cm / 100) * 96) / (2.54 * (this.scaleM || 0.5));
+  }
+
+  // cmToPlanePx then applied to the current canvas transform — for rendering only; never use
+  // this to store geometry (it changes with zoom).
+  cmToCanvasPx(cm: number): number {
+    return this.cmToPlanePx(cm) * this.zoom;
   }
 
   realMmToCanvasPx(realRadiusMm: number): number {
@@ -966,6 +1003,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     renderCrossFloorGhosts(ctx, this);
     renderDimGhost(ctx, this);
     renderGuideGhost(ctx, this);
+    renderCanalGhost(ctx, this);
     renderActiveArea(ctx, this);
     renderActiveRamal(ctx, this);
 
@@ -1082,6 +1120,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
       handleContadorDown(this, p.x, p.y);
     } else if (this.tool === 'calent') {
       handleCalentadorDown(this, p.x, p.y);
+    } else if (this.tool === 'canal') {
+      handleCanalDown(this, p.x, p.y);
     } else if (this.tool === 'area') {
       handleAreaDown(this, p.x, p.y);
     } else if (this.tool === 'erase') {
@@ -1101,6 +1141,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     const hasDrag =
       this.ghostDrag ||
       this.bajDrag ||
+      this.canalResizeDrag ||
       this.lblDrag ||
       this.txtDrag ||
       this.txtResize ||
@@ -1115,7 +1156,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.marqueeRect.x2 = x;
       this.marqueeRect.y2 = y;
       this.scheduleRender();
-    } else if (this.activeRamal || this._dimStart || this._guideStart || this.activeArea) {
+    } else if (
+      this.activeRamal ||
+      this._dimStart ||
+      this._guideStart ||
+      this._canalStart ||
+      this.activeArea
+    ) {
       handleDrawingMouseMove(this, x, y);
     }
   }
@@ -1182,6 +1229,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
     } else if (k === 'h') {
       this.setTool('calent');
       e.preventDefault();
+    } else if (k === 'n') {
+      if (this.activeNet === 'll') this.setTool('canal');
+      e.preventDefault();
     } else if (k === 'd') {
       this.setTool('dim');
       e.preventDefault();
@@ -1241,6 +1291,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
         e.preventDefault();
       } else if (this._guideStart) {
         this._guideStart = null;
+        this.render();
+        e.preventDefault();
+      } else if (this._canalStart) {
+        this._canalStart = null;
         this.render();
         e.preventDefault();
       } else {

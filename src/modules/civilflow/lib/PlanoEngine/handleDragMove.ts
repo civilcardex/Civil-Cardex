@@ -271,9 +271,11 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         }
       }
 
-      // Auto-connect: detect nearby ramal endpoints and auto-associate during drag
+      // Auto-connect: detect nearby ramal endpoints and auto-associate during drag — canal is a
+      // standalone symbol (same as contador/calentador/red_publica) and never associates with a
+      // ramal, so it must never fall into this bajante-only auto-connect behavior.
       const autoThresh = 20 / engine.zoom;
-      for (const r of engine.ramales || []) {
+      for (const r of b.tipo === 'canal' ? [] : engine.ramales || []) {
         if (!r.pts || r.pts.length === 0) continue;
         if (r.net !== b.net) continue;
         if ((b.recibeDeIds || []).includes(r.id)) continue;
@@ -433,6 +435,22 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const newC = engine.toPlane(anchorX - rot.x, anchorY - rot.y);
       t.x = newC.x - (t.lblOffX || 0);
       t.y = newC.y - (t.lblOffY || 0);
+      engine.scheduleRender();
+    }
+    return;
+  }
+  if (engine.canalResizeDrag) {
+    // Generic in every direction: the dragged corner always becomes whichever plane point is
+    // NOT the fixed anchor, so no per-corner branching is needed here — grabbing any of the 4
+    // corners resolves to the same min/abs math against that corner's own fixed opposite.
+    const { id, anchorX, anchorY } = engine.canalResizeDrag;
+    const canal = engine.bajantes.find((b) => b.id === id);
+    if (canal) {
+      const p = engine.toPlane(x, y);
+      canal.x = Math.min(anchorX, p.x);
+      canal.y = Math.min(anchorY, p.y);
+      canal.base = Math.max(1, +(engine.pxToM(Math.abs(p.x - anchorX)) * 100).toFixed(1));
+      canal.altura = Math.max(1, +(engine.pxToM(Math.abs(p.y - anchorY)) * 100).toFixed(1));
       engine.scheduleRender();
     }
     return;

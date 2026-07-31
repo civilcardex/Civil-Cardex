@@ -3,7 +3,7 @@ import { useTramos } from './TramosContext';
 import { usePlans } from './PlansContext';
 import { TRAZOS_PREFIX, ACTIVE_NETS_KEY } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
-import type { DrawingData } from '../utils/drawingSync';
+import type { DrawingData, RawElement } from '../utils/drawingSync';
 
 interface AreaRaw {
   areaM2?: number;
@@ -30,6 +30,10 @@ interface CanalLL {
   pendiente: number;
   b: number;
   h: number;
+  /** True when b/h come from a drawn canal glyph (tipo:'canal' on the 'll' net) — the table
+   * should show those two fields read-only in that case, since the drawing is the source of
+   * truth for them (see canalesLlAuto below). */
+  fromCanal?: boolean;
 }
 interface RainwaterContextValue {
   bajantesLl: BajanteLL[];
@@ -95,8 +99,13 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
 
   // Auto-populate canal rows from drawn 'll' ramales (net==='ll', non-bajante), using the
   // same floor-area lookup pattern as ChequeoBajantesLluvias, instead of starting from zeros.
-  const areaAcumMap = useMemo(() => {
+  // Also collects drawn canal glyphs (tipo:'canal', PlanoEngine's handleCanalDown) per floor in
+  // the same pass, since both need the same raw per-plan storage read — canal glyphs don't go
+  // through TramosContext/buildTramos.ts (that pipeline only models ramales/bajantes with
+  // sanitary/riser semantics), so they're read directly here instead, same as `areas` above.
+  const { areaAcumMap, drawnCanalGlyphs } = useMemo(() => {
     const map: Record<string, number> = {};
+    const glyphs: (RawElement & { piso: string })[] = [];
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
       const raw = loadFromStorage<(DrawingData & { areas?: AreaRaw[] }) | string | null>(
@@ -114,8 +123,11 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       }
       const totalArea = (data.areas || []).reduce((s, a) => s + (a.areaM2 || 0), 0);
       map[String(plan.nivel)] = totalArea;
+      for (const b of data.bajantes || []) {
+        if (b.tipo === 'canal' && b.net === 'll') glyphs.push({ ...b, piso: String(plan.nivel) });
+      }
     }
-    return map;
+    return { areaAcumMap: map, drawnCanalGlyphs: glyphs };
   }, [plans]);
 
   const drawingCanales = useMemo(() => tramosLl.filter((t) => !t.esBajante), [tramosLl]);
@@ -145,6 +157,29 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       });
     }
 
+    for (const glyph of drawnCanalGlyphs) {
+      const sector = glyph.code || glyph.id;
+      const manual = manualMap.get(sector);
+      if (manual) usedManual.add(manual.sector || manual.id);
+      const areaAcum = areaAcumMap[glyph.piso] || manual?.areaAcumulada || 0;
+      out.push({
+        id: 'cg_' + glyph.id,
+        sector,
+        areaParcial: manual?.areaParcial || areaAcum,
+        areaAcumulada: areaAcum,
+        intensidad: manual?.intensidad ?? 100,
+        coeficienteC: manual?.coeficienteC ?? 0.0278,
+        manning: manual?.manning ?? 0.009,
+        pendiente: manual?.pendiente ?? 0,
+        // b/h always come from the drawn glyph — never the manual override — since these are
+        // exactly the values the canal tool "imports" into the table; a manual entry here would
+        // silently revert on the next render anyway (canalesLlAuto recomputes every time).
+        b: (glyph.base as number) || 0,
+        h: (glyph.altura as number) || 0,
+        fromCanal: true,
+      });
+    }
+
     for (const m of canalesLl) {
       const key = m.sector || m.id;
       if (usedManual.has(key)) continue;
@@ -152,7 +187,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
     }
 
     return out;
-  }, [drawingCanales, canalesLl, areaAcumMap]);
+  }, [drawingCanales, drawnCanalGlyphs, canalesLl, areaAcumMap]);
 
   const addBajanteLL = () =>
     setBajantesLl((p) => [
