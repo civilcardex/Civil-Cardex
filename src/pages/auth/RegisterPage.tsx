@@ -89,7 +89,10 @@ function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#0a0e14', color: '#e2e2e8' }}>
+    <div
+      className="landing-root min-h-screen flex flex-col"
+      style={{ background: '#0a0e14', color: '#e2e2e8' }}
+    >
       <script type="application/ld+json">{JSON.stringify(REGISTER_JSONLD)}</script>
       <Navbar />
 

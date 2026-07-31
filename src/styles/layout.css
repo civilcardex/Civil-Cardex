@@ -85,7 +85,7 @@
   cursor: pointer;
   border-bottom: 3px solid transparent;
   white-space: nowrap;
-  transition: all .15s;
+  transition: all 0.15s;
   font-family: var(--body);
 }
 
@@ -147,7 +147,12 @@
   font-family: var(--mono);
   color: var(--txt);
   outline: none;
-  transition: border .15s;
+  transition: border 0.15s;
+}
+
+.f input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--bg3) inset;
+  -webkit-text-fill-color: var(--txt);
 }
 
 .f input:focus,

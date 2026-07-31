@@ -59,7 +59,7 @@ export default function StickyCtaBanner({ heroId, ctaId }: StickyCtaBannerProps)
   const style: React.CSSProperties = {
     background: 'rgba(10, 14, 20, 0.85)',
     backdropFilter: 'blur(12px)',
-    borderTop: '1px solid rgba(0,220,229,0.2)',
+    borderTop: '1px solid rgba(245,214,104,0.2)',
     boxShadow: '0 -10px 30px rgba(0,0,0,0.5)',
     transform: isVisible ? 'translateY(0)' : 'translateY(100%)',
     transition: prefersReducedMotion ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -78,7 +78,7 @@ export default function StickyCtaBanner({ heroId, ctaId }: StickyCtaBannerProps)
         />
         <span
           className="text-sm font-bold uppercase"
-          style={{ color: '#e8f4fd', fontFamily: 'Hanken Grotesk, sans-serif' }}
+          style={{ color: '#f0f4f8', fontFamily: 'Hanken Grotesk, sans-serif' }}
         >
           Lleve sus diseños al siguiente nivel
         </span>
@@ -88,7 +88,7 @@ export default function StickyCtaBanner({ heroId, ctaId }: StickyCtaBannerProps)
         <Link
           to="/civilflowareatrabajo"
           className="bg-primary text-on-primary px-8 py-3 uppercase text-[11px] tracking-[0.1em] font-bold hover:bg-primary-container transition-all"
-          style={{ fontFamily: 'Geist, monospace', boxShadow: '0 0 15px rgba(0,245,255,0.2)' }}
+          style={{ fontFamily: 'Geist, monospace', boxShadow: '0 0 15px rgba(245,214,104,0.2)' }}
         >
           EMPEZAR AHORA
         </Link>

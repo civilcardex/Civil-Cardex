@@ -73,6 +73,13 @@
   }
 }
 
+.landing-root {
+  --acc: #e8c84a;
+  --acc2: #f5d668;
+  --acc3: #c8a84e;
+  --glow: rgba(245, 214, 104, 0.3);
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 8px;

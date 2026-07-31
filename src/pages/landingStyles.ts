@@ -1,4 +1,19 @@
 export const LANDING_STYLES = `
+        .landing-root {
+          --acc: #e8c84a;
+          --acc2: #f5d668;
+          --acc3: #c8a84e;
+          --glow: rgba(245,214,104,0.3);
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #dce3ea;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #f0f4f8;
+        }
+        ::-webkit-scrollbar-track {
+          background: #1a1c20;
+        }
         .hero-mod-card {
           transition: border-color 0.35s, box-shadow 0.35s;
           cursor: pointer;
@@ -66,12 +81,12 @@ export const LANDING_STYLES = `
           height: 200%;
           background-size: 60px 60px;
           background-image: 
-            linear-gradient(to right, rgba(0,220,229,0.03) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(0,220,229,0.03) 1px, transparent 1px);
+            linear-gradient(to right, rgba(245,214,104,0.03) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(245,214,104,0.03) 1px, transparent 1px);
           transform: perspective(1000px) rotateX(60deg) rotateZ(-45deg);
           transform-origin: center;
         }
-        .section-divider { background: linear-gradient(90deg, transparent, rgba(0,170,255,0.15), transparent); height: 1px; border: none; margin: 0; }
+        .section-divider { background: linear-gradient(90deg, transparent, rgba(245,214,104,0.15), transparent); height: 1px; border: none; margin: 0; }
 
         html {
           scroll-snap-type: y proximity;
@@ -89,7 +104,15 @@ export const LANDING_STYLES = `
           100% { background-position: 200% center; }
         }
         .core-shimmer {
-          background: linear-gradient(90deg, #00dce5 0%, #00aaff 25%, #00f5ff 50%, #00aaff 75%, #00dce5 100%);
+          background: linear-gradient(90deg, #c8a84e 0%, #f5d668 25%, #e8c84a 50%, #f5d668 75%, #c8a84e 100%);
+          background-size: 200% auto;
+          color: transparent;
+          -webkit-background-clip: text;
+          background-clip: text;
+          animation: shimmer 6s linear infinite;
+        }
+        .civsilver {
+          background: linear-gradient(90deg, #b0b8c1 0%, #dce3ea 30%, #f0f4f8 50%, #dce3ea 70%, #b0b8c1 100%);
           background-size: 200% auto;
           color: transparent;
           -webkit-background-clip: text;
@@ -162,8 +185,8 @@ export const LANDING_STYLES = `
         }
         .pilar-card:hover, .why-card:hover {
           transform: translateY(-4px);
-          border-color: rgba(0, 220, 229, 0.3) !important;
-          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 220, 229, 0.05);
+          border-color: rgba(245, 214, 104, 0.3) !important;
+          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(245, 214, 104, 0.05);
         }
         @media (prefers-reduced-motion: reduce) {
           html { scroll-snap-type: none !important; }
@@ -186,4 +209,4 @@ export const LANDING_STYLES = `
             transform: none !important;
           }
         }
-      `
+      `;

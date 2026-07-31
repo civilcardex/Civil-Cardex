@@ -27,7 +27,7 @@ export default function BlueprintParticles() {
     let particles: Particle[] = [];
     let mouseX = -1000;
     let mouseY = -1000;
-    
+
     // Check for reduced motion
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -78,7 +78,7 @@ export default function BlueprintParticles() {
           baseX: 0,
           baseY: 0,
           angle: Math.random() * Math.PI * 2,
-          speed: Math.random() * 0.01 + 0.005
+          speed: Math.random() * 0.01 + 0.005,
         });
         particles[i].baseX = particles[i].x;
         particles[i].baseY = particles[i].y;
@@ -87,13 +87,13 @@ export default function BlueprintParticles() {
 
     const drawParticles = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      particles.forEach(p => {
+      particles.forEach((p) => {
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.globalAlpha = p.alpha;
-        ctx.strokeStyle = '#00dce5'; // Cyan/blue tone
-        ctx.fillStyle = '#00dce5';
-        
+        ctx.strokeStyle = '#e8c84a';
+        ctx.fillStyle = '#e8c84a';
+
         if (p.type === 'cross') {
           ctx.beginPath();
           ctx.moveTo(-p.size, 0);
@@ -113,12 +113,12 @@ export default function BlueprintParticles() {
 
     const animate = () => {
       if (prefersReducedMotion) return; // Should not reach here if reduced, but safeguard
-      
-      particles.forEach(p => {
+
+      particles.forEach((p) => {
         // Linear drift
         p.baseX += p.vx;
         p.baseY += p.vy;
-        
+
         // Sine wave oscillation
         p.angle += p.speed;
         p.x = p.baseX + Math.sin(p.angle) * 20;
@@ -149,10 +149,10 @@ export default function BlueprintParticles() {
           const dx = particles[i].x - particles[j].x;
           const dy = particles[i].y - particles[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          
+
           if (dist < 150) {
             const alpha = (1 - dist / 150) * 0.15; // Max opacity 0.15
-            ctx.strokeStyle = `rgba(0, 220, 229, ${alpha})`;
+            ctx.strokeStyle = `rgba(232, 200, 74, ${alpha})`;
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
@@ -171,7 +171,7 @@ export default function BlueprintParticles() {
       parentNode.addEventListener('mouseleave', handleMouseLeave);
     }
     resize(); // Will call initParticles and draw once
-    
+
     if (!prefersReducedMotion) {
       animate();
     }

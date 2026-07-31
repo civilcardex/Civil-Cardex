@@ -131,7 +131,11 @@ function PricingPage() {
     <>
       <script type="application/ld+json">{JSON.stringify(FAQ_JSONLD)}</script>
       <script type="application/ld+json">{JSON.stringify(PRODUCT_JSONLD)}</script>
-      <div style={{ background: '#111317', color: '#e2e2e8', minHeight: '100vh' }}>
+      <style>{`::-webkit-scrollbar-thumb{background:#dce3ea}::-webkit-scrollbar-thumb:hover{background:#f0f4f8}::-webkit-scrollbar-track{background:#1a1c20}`}</style>
+      <div
+        className="landing-root"
+        style={{ background: '#111317', color: '#e2e2e8', minHeight: '100vh' }}
+      >
         <Navbar />
         <div className="container mx-auto px-6 lg:px-8 py-24 pt-28">
           <div className="text-center space-y-4 mb-20">

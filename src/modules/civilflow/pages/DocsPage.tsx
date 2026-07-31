@@ -43,7 +43,7 @@ function DocsPage() {
         });
 
   return (
-    <div className="min-h-screen bg-surface-bg flex flex-col">
+    <div className="landing-root min-h-screen bg-surface-bg flex flex-col">
       <script type="application/ld+json">
         {JSON.stringify({
           '@context': 'https://schema.org',
@@ -53,6 +53,7 @@ function DocsPage() {
           about: 'NTC 1500, RAS 2000, NSR-10, NFPA 13, ingeniería hidrosanitaria',
         })}
       </script>
+      <style>{`::-webkit-scrollbar-thumb{background:#dce3ea}::-webkit-scrollbar-thumb:hover{background:#f0f4f8}::-webkit-scrollbar-track{background:#1a1c20}`}</style>
       <Navbar />
       <div className="flex gap-4 h-[calc(100vh-64px)] pt-16">
         <style>{`

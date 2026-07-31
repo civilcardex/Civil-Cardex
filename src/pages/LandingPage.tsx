@@ -176,7 +176,7 @@ function LandingPage() {
   const handleClick = useCallback((path: string) => navigate(path), [navigate]);
 
   return (
-    <div className="min-h-screen" style={{ background: '#0a0e14', color: '#e2e2e8' }}>
+    <div className="landing-root min-h-screen" style={{ background: '#0a0e14', color: '#e2e2e8' }}>
       <style>{LANDING_STYLES}</style>
 
       <Navbar />
@@ -215,36 +215,42 @@ function LandingPage() {
           ) : (
             <div className="flex flex-col items-center text-center">
               <div
-                className="hero-enter-logo relative mb-4 md:mb-6 p-4 md:p-5 rounded-2xl"
+                className="hero-enter-logo relative mb-3 md:mb-4 p-4 md:p-5 rounded-2xl"
                 style={{
                   background:
-                    'radial-gradient(circle at center, rgba(0,170,255,0.08) 0%, transparent 70%)',
+                    'radial-gradient(circle at center, rgba(245,214,104,0.06) 0%, transparent 70%)',
                   backdropFilter: 'blur(4px)',
-                  border: '1px solid rgba(0,170,255,0.1)',
+                  border: '1px solid rgba(245,214,104,0.1)',
                 }}
               >
                 <img
                   src="/logos/civilCardexlogo.webp"
                   alt="CivilCardex"
-                  className="w-28 h-28 sm:w-36 sm:h-36 md:w-44 md:h-44 object-contain"
-                  style={{ filter: 'drop-shadow(0 0 80px rgba(0,170,255,0.5))' }}
-                  width={112}
-                  height={112}
+                  className="w-32 h-32 sm:w-40 sm:h-40 md:w-52 md:h-52 object-contain"
+                  style={{ filter: 'drop-shadow(0 0 80px rgba(245,214,104,0.3))' }}
+                  width={128}
+                  height={128}
                   fetchPriority="high"
                 />
               </div>
               <h1
-                className="hero-enter-title text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black tracking-tight uppercase mb-3 md:mb-4"
+                className="hero-enter-title text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-black tracking-tight uppercase mb-1 md:mb-2"
                 style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
               >
-                <span style={{ color: '#e8f4fd' }}>CIVIL</span>
+                <span className="civsilver">CIVIL</span>
                 <span className="core-shimmer">CARDEX</span>
               </h1>
               <TypewriterText
-                text="DISEÑA. ANALIZA. OPTIMIZA. CONSTRUYE."
-                delay={800}
+                text="PLATAFORMA DE INTELIGENCIA EN INGENIERÍA CIVIL"
+                delay={1800}
+                className="hero-enter-subtitle text-xs sm:text-sm md:text-base tracking-[0.3em] uppercase font-semibold mb-2"
+                style={{ color: '#c8a84e', fontFamily: 'Geist, monospace' }}
+              />
+              <TypewriterText
+                text="DISEÑA - ANALIZA - OPTIMIZA - CONSTRUYE"
+                delay={3000}
                 className="hero-enter-subtitle text-xs sm:text-sm md:text-base tracking-[0.35em] uppercase font-semibold"
-                style={{ color: '#8AB4D6', fontFamily: 'Geist, monospace' }}
+                style={{ color: '#dce3ea', fontFamily: 'Geist, monospace' }}
               />
             </div>
           )}
@@ -305,7 +311,7 @@ function LandingPage() {
                     className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 relative z-10 rounded-xl"
                     style={{
                       background:
-                        'radial-gradient(circle at center, rgba(0,170,255,0.04) 0%, transparent 70%)',
+                        'radial-gradient(circle at center, rgba(245,214,104,0.04) 0%, transparent 70%)',
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -321,13 +327,13 @@ function LandingPage() {
                   </div>
                   <span
                     className="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider relative z-10"
-                    style={{ color: m.color, fontFamily: 'Hanken Grotesk, sans-serif' }}
+                    style={{ color: '#e8c84a', fontFamily: 'Hanken Grotesk, sans-serif' }}
                   >
                     {m.name.replace('Civil', '')}
                   </span>
                   <span
                     className="text-[8px] sm:text-[9px] md:text-[10px] text-center mt-1 md:mt-1.5 relative z-10 uppercase tracking-wider leading-tight"
-                    style={{ color: '#8AB4D6', fontFamily: 'Geist, monospace', fontWeight: 600 }}
+                    style={{ color: '#dce3ea', fontFamily: 'Geist, monospace', fontWeight: 600 }}
                   >
                     {(MOD_SUB as Record<string, string>)[m.id]}
                   </span>
@@ -357,7 +363,7 @@ function LandingPage() {
               <div className="h-px bg-outline-variant flex-grow" />
               <h2
                 className="text-xl font-semibold uppercase tracking-widest px-4"
-                style={{ color: '#e8f4fd', fontFamily: 'Hanken Grotesk, sans-serif' }}
+                style={{ color: '#f0f4f8', fontFamily: 'Hanken Grotesk, sans-serif' }}
               >
                 Pilares
               </h2>
@@ -373,13 +379,13 @@ function LandingPage() {
                 >
                   <span
                     className="material-symbols-outlined text-2xl flex-shrink-0"
-                    style={{ color: '#00dce5', fontVariationSettings: "'FILL' 0" }}
+                    style={{ color: '#e8c84a', fontVariationSettings: "'FILL' 0" }}
                   >
                     {p.icon}
                   </span>
                   <span
                     className="text-[11px] font-bold uppercase tracking-widest leading-tight"
-                    style={{ color: '#e8f4fd', fontFamily: 'Geist, monospace' }}
+                    style={{ color: '#f0f4f8', fontFamily: 'Geist, monospace' }}
                   >
                     {p.title}
                   </span>
@@ -400,7 +406,7 @@ function LandingPage() {
               <div className="h-px bg-outline-variant flex-grow" />
               <h2
                 className="text-xl font-semibold uppercase tracking-widest px-4"
-                style={{ color: '#e8f4fd', fontFamily: 'Hanken Grotesk, sans-serif' }}
+                style={{ color: '#f0f4f8', fontFamily: 'Hanken Grotesk, sans-serif' }}
               >
                 ¿Por qué CivilCardex?
               </h2>
@@ -432,17 +438,17 @@ function LandingPage() {
                 >
                   <span
                     className="material-symbols-outlined text-3xl mb-4 block group-hover:text-primary transition-colors"
-                    style={{ color: '#00dce5' }}
+                    style={{ color: '#e8c84a' }}
                   >
                     {f.icon}
                   </span>
                   <h3
                     className="text-sm font-bold uppercase tracking-widest mb-3"
-                    style={{ color: '#e8f4fd', fontFamily: 'Hanken Grotesk, sans-serif' }}
+                    style={{ color: '#f0f4f8', fontFamily: 'Hanken Grotesk, sans-serif' }}
                   >
                     {f.title}
                   </h3>
-                  <p className="text-sm leading-relaxed" style={{ color: '#8AB4D6' }}>
+                  <p className="text-sm leading-relaxed" style={{ color: '#dce3ea' }}>
                     {f.desc}
                   </p>
                 </div>
@@ -459,13 +465,13 @@ function LandingPage() {
         <FadeIn className="max-w-4xl mx-auto text-center space-y-8">
           <h2
             className="text-3xl md:text-4xl font-bold uppercase"
-            style={{ color: '#e8f4fd', fontFamily: 'Hanken Grotesk, sans-serif' }}
+            style={{ color: '#f0f4f8', fontFamily: 'Hanken Grotesk, sans-serif' }}
           >
             ¿Listo para elaborar sus
             <br />
-            <span style={{ color: '#00dce5' }}>memorias de cálculo?</span>
+            <span style={{ color: '#e8c84a' }}>memorias de cálculo?</span>
           </h2>
-          <p className="text-sm max-w-xl mx-auto" style={{ color: '#8AB4D6' }}>
+          <p className="text-sm max-w-xl mx-auto" style={{ color: '#dce3ea' }}>
             CivilCardex — de los datos del proyecto a la memoria de cálculo exportable, con
             verificación normativa automática.
           </p>
@@ -473,7 +479,10 @@ function LandingPage() {
             <Link
               to="/civilflowareatrabajo"
               className="hidden md:inline-block bg-primary text-on-primary px-10 py-4 uppercase text-[11px] tracking-[0.1em] font-bold hover:bg-primary-container transition-all"
-              style={{ fontFamily: 'Geist, monospace', boxShadow: '0 0 20px rgba(0,245,255,0.3)' }}
+              style={{
+                fontFamily: 'Geist, monospace',
+                boxShadow: '0 0 20px rgba(245,214,104,0.3)',
+              }}
             >
               EMPEZAR AHORA
             </Link>
@@ -491,7 +500,7 @@ function LandingPage() {
             <Link
               to="/docs"
               className="border border-outline-variant px-10 py-4 uppercase text-[11px] tracking-[0.1em] font-bold hover:border-primary hover:text-primary transition-all"
-              style={{ fontFamily: 'Geist, monospace', color: '#8AB4D6' }}
+              style={{ fontFamily: 'Geist, monospace', color: '#dce3ea' }}
             >
               DOCUMENTACIÓN TÉCNICA
             </Link>
@@ -516,7 +525,7 @@ function LandingPage() {
                 className="text-2xl font-bold uppercase"
                 style={{ color: '#6a8e8e', fontFamily: 'Hanken Grotesk, sans-serif' }}
               >
-                CivilCardex
+                Civil Cardex
               </span>
             </Link>
             <nav className="flex gap-6">
