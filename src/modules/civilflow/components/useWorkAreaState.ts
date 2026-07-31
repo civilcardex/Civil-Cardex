@@ -109,6 +109,38 @@ export function useWorkAreaState() {
   const [nptPiso1, setNptPiso1, nptPiso1Ref] = useSyncedRef<string>('');
   const [conCubierta, setConCubierta, conCubiertaRef] = useSyncedRef<boolean>(false);
 
+  // Keep the generator inputs in sync with the piso list itself. The list is the source of
+  // truth once generated (and the part that survives reloads — localStorage now, cloud restore
+  // on a fresh browser), so the inputs must reflect it instead of staying at their initial
+  // empty values. Editing an input never changes `pisos`, so this only fires when the list
+  // actually changes (generate, manual add/remove, cloud restore) — never mid-typing.
+  useEffect(() => {
+    if (projectCtx.pisos.length === 0) return;
+    const niveles = projectCtx.pisos.filter((p) => p.tipo === 'piso');
+    const sotanos = projectCtx.pisos.filter((p) => p.tipo === 'sotano');
+    if (niveles.length > 0) {
+      setNPisos(String(niveles.length));
+      const h = niveles[0].h;
+      if (h) setAltPiso(String(h));
+      const p1 = niveles.find((p) => p.n === 1);
+      if (p1 && p1.npt !== '' && p1.npt != null) setNptPiso1(String(p1.npt));
+    }
+    if (sotanos.length > 0) {
+      setNSotanos(String(sotanos.length));
+      const h = sotanos[0].h;
+      if (h) setAltSotano(String(h));
+    }
+    setConCubierta(projectCtx.pisos.some((p) => p.tipo === 'cubierta'));
+  }, [
+    projectCtx.pisos,
+    setNPisos,
+    setNSotanos,
+    setAltPiso,
+    setAltSotano,
+    setNptPiso1,
+    setConCubierta,
+  ]);
+
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
 
   useEffect(() => {
