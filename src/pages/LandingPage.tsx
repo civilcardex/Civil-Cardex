@@ -224,7 +224,7 @@ function LandingPage() {
                 }}
               >
                 <img
-                  src="/logos/civilCardexlogo.webp"
+                  src="/logos/civilCardexlogo-v2.webp"
                   alt="CivilCardex"
                   className="w-32 h-32 sm:w-40 sm:h-40 md:w-52 md:h-52 object-contain"
                   style={{ filter: 'drop-shadow(0 0 80px rgba(245,214,104,0.3))' }}
@@ -514,7 +514,7 @@ function LandingPage() {
           <div className="flex flex-col md:flex-row items-center gap-8">
             <Link to="/" className="flex items-center gap-2">
               <img
-                src="/logos/civilCardexlogo.webp"
+                src="/logos/civilCardexlogo-v2.webp"
                 alt="CivilCardex"
                 className="h-11 w-11 object-contain"
                 width={44}

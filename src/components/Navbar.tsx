@@ -73,7 +73,7 @@ function Navbar() {
           </button>
           <Link to="/" className="flex items-center gap-2">
             <img
-              src="/logos/civilCardexlogo.webp"
+              src="/logos/civilCardexlogo-v2.webp"
               alt="CivilCardex"
               className="h-10 w-10 md:h-14 md:w-14 object-contain"
               width={40}

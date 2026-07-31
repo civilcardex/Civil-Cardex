@@ -105,7 +105,7 @@ const PRODUCT_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'Product',
   name: 'Civil Cardex Profesional',
-  image: 'https://civilcardex.app/logos/civilCardexlogo.webp',
+  image: 'https://civilcardex.app/logos/civilCardexlogo-v2.webp',
   description:
     'Plan Profesional para ingenieros civiles independientes y firmas pequeñas. Incluye 9 módulos completos, Red de Gas, Contra Incendio y exportación PDF.',
   brand: {

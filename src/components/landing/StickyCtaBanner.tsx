@@ -72,7 +72,7 @@ export default function StickyCtaBanner({ heroId, ctaId }: StickyCtaBannerProps)
     >
       <div className="flex items-center gap-4">
         <img
-          src="/logos/civilCardexlogo.webp"
+          src="/logos/civilCardexlogo-v2.webp"
           alt="CivilCardex"
           className="w-8 h-8 object-contain"
         />

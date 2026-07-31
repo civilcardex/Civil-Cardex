@@ -111,7 +111,7 @@ function RegisterPage() {
             <div className="px-8 pt-10 pb-6 text-center">
               <div className="flex justify-center mb-5">
                 <img
-                  src="/logos/civilCardexlogo.webp"
+                  src="/logos/civilCardexlogo-v2.webp"
                   alt="CivilCardex"
                   className="w-24 h-24 object-contain"
                   style={{ filter: 'drop-shadow(0 0 20px rgba(0,170,255,0.25))' }}
