@@ -44,7 +44,7 @@ function LoginPage() {
 
     try {
       await signIn(email, password);
-      navigate('/civilflowareatrabajo');
+      navigate('/perfil');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Error al iniciar sesión';
       setError(message);
