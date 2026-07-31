@@ -2967,7 +2967,7 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
 
 function DrawingElementContextMenuInner() {
   const ctx = useDrawingElementContextMenu();
-  const { contextMenuState } = ctx;
+  const { contextMenuState, setContextMenuState } = ctx;
   const menuRef = useRef<HTMLFormElement>(null);
   const [adjustedPos, setAdjustedPos] = useState({
     x: contextMenuState?.x || 0,
@@ -3007,15 +3007,15 @@ function DrawingElementContextMenuInner() {
     }
 
     setAdjustedPos({ x: newX, y: newY });
-  }, [contextMenuState?.x, contextMenuState?.y, contextMenuState?.visible]);
+  }, [contextMenuState]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') ctx.setContextMenuState(null);
+      if (e.key === 'Escape') setContextMenuState(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ctx.setContextMenuState]);
+  }, [setContextMenuState]);
 
   const element = contextMenuState.element as ProbedElement;
   const isBajanteTipo =

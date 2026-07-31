@@ -164,7 +164,9 @@ function PdfViewer_({
   const { mats } = useProject();
   const planosCtx = usePlans();
   const plansRef = useRef(planosCtx.plans);
-  plansRef.current = planosCtx.plans;
+  useEffect(() => {
+    plansRef.current = planosCtx.plans;
+  }, [planosCtx.plans]);
   const syncDrawings = useCallback(() => {
     try {
       writeSanDrawingSync(plansRef.current);
@@ -280,12 +282,20 @@ function PdfViewer_({
   const textInputRef = useRef<HTMLInputElement>(null);
 
   const activeNetRef = useRef(activeNet);
-  activeNetRef.current = activeNet;
+  useEffect(() => {
+    activeNetRef.current = activeNet;
+  }, [activeNet]);
+  const activeNetworksRef = useRef(activeNetworks);
+  useEffect(() => {
+    activeNetworksRef.current = activeNetworks;
+  }, [activeNetworks]);
 
   const currentFile = files[activeIndex]?.file;
   const currentId = files[activeIndex]?.id;
   const currentIdRef = useRef(currentId);
-  currentIdRef.current = currentId;
+  useEffect(() => {
+    currentIdRef.current = currentId;
+  }, [currentId]);
 
   const engineRef = useRef<PlanoEngine | null>(null);
   const loadingPlanRef = useRef(false);
@@ -412,7 +422,7 @@ function PdfViewer_({
     const isRiser = (b: PlanoBajante) =>
       b.tipo !== 'contador' && b.tipo !== 'calentador' && b.tipo !== 'red_publica';
 
-    let best: { plan: (typeof planosCtx.plans)[number]; npt: number } | null = null;
+    let best: { plan: PlanItem; npt: number } | null = null;
     for (const plan of planosCtx.plans) {
       const pF = pisos.find((p) => String(p.n) === String(plan.nivel));
       if (!pF) continue;
@@ -530,7 +540,7 @@ function PdfViewer_({
     if (pl && (pl.nivel ?? null) !== (selectedNivel ?? null)) {
       setSelectedNivel(pl.nivel ?? null);
     }
-  }, [currentId, planos]);
+  }, [currentId, planos, selectedNivel]);
 
   const loadTrazosForPlan = useCallback(
     async (eng: PlanoEngine, resolvedId: string | number): Promise<boolean> => {
@@ -582,34 +592,46 @@ function PdfViewer_({
 
   const markDirtyRef = useRef<() => void>(() => {});
 
-  const onDirtyHandler = useCallback((eng: PlanoEngine) => {
-    markDirtyRef.current();
-    setDrawnElements(eng.getElementsByNet(activeNetRef.current || 'af'));
-    if (eng.selId) {
-      const sel = eng.getSelected();
-      if (sel) {
-        const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = sel as unknown as Record<
-          string,
-          unknown
-        >;
-        setSelElement(rest as unknown as ProbedElement);
-      }
-    }
-    if (loadingPlanRef.current) return;
-    try {
-      const id = eng._loadedPlanId || currentIdRef.current || 'work';
-      if (id) {
-        const work = eng.saveWork();
-        work.ts = Date.now();
-        saveToStorage(TRAZOS_PREFIX + String(id), work);
-        if (id !== 'work') {
-          saveToStorage(LAST_TRAZOS_ID_KEY, id);
-          saveTrazosToDB(String(id), work);
+  const { saveStatus, doSave, autoSaveTimerRef, markDirty } = usePdfAutoSave(
+    engineRef,
+    currentIdRef,
+    planosCtx.plans,
+  );
+  useEffect(() => {
+    markDirtyRef.current = markDirty;
+  }, [markDirty]);
+
+  const onDirtyHandler = useCallback(
+    (eng: PlanoEngine) => {
+      markDirtyRef.current();
+      setDrawnElements(eng.getElementsByNet(activeNetRef.current || 'af'));
+      if (eng.selId) {
+        const sel = eng.getSelected();
+        if (sel) {
+          const { _circ, _ghost, _box, _polyBox, _labelBox, ...rest } = sel as unknown as Record<
+            string,
+            unknown
+          >;
+          setSelElement(rest as unknown as ProbedElement);
         }
       }
-    } catch {}
-    syncDrawings();
-  }, []);
+      if (loadingPlanRef.current) return;
+      try {
+        const id = eng._loadedPlanId || currentIdRef.current || 'work';
+        if (id) {
+          const work = eng.saveWork();
+          work.ts = Date.now();
+          saveToStorage(TRAZOS_PREFIX + String(id), work);
+          if (id !== 'work') {
+            saveToStorage(LAST_TRAZOS_ID_KEY, id);
+            saveTrazosToDB(String(id), work);
+          }
+        }
+      } catch {}
+      syncDrawings();
+    },
+    [syncDrawings],
+  );
 
   const onDeleteHandler = useCallback(
     (ids: string[]) => {
@@ -633,7 +655,7 @@ function PdfViewer_({
       window.dispatchEvent(new CustomEvent('aparatos-clear', { detail: { ids } }));
       syncDrawings();
     },
-    [plansRef, syncDrawings],
+    [syncDrawings],
   );
 
   const onRequestTextCb = useCallback((x: number, y: number, cb: (text: string) => void) => {
@@ -707,27 +729,28 @@ function PdfViewer_({
     },
     [],
   );
-  contextMenuCbRef.current = onContextMenuCb;
+  useEffect(() => {
+    contextMenuCbRef.current = onContextMenuCb;
+  }, [onContextMenuCb]);
 
   // ── Engine init ──
-  const { engineReady } = usePdfViewerEngine({
-    currentFile,
-    currentId,
-    currentIdRef,
-    activeNetRef,
-    cwRef,
-    drawCanvasRef,
-    pdfCanvasRef,
-    onStatus: () => {},
-    onDirty: onDirtyHandler,
-    onSelect: (el) => setSelElement(el as ProbedElement | null),
-    onDelete: onDeleteHandler,
-    onToolChange: setTool,
-    onRequestText: onRequestTextCb,
-    onAlert: (title: string, msg: string) => {
-      setAlertDialogState({ isOpen: true, title, message: msg });
-    },
-    onAccesorioModal: (data) => {
+  const noopStatus = useCallback(() => {}, []);
+  const onSelectHandler = useCallback((el: Record<string, unknown> | null) => {
+    setSelElement(el as ProbedElement | null);
+  }, []);
+  const onAlertHandler = useCallback((title: string, msg: string) => {
+    setAlertDialogState({ isOpen: true, title, message: msg });
+  }, []);
+  const onAccesorioModalHandler = useCallback(
+    (data: {
+      ramalId: string;
+      angleDeg: number;
+      junctionIndex: number;
+      point: number[];
+      net: string;
+      isTee?: boolean;
+      isBilateral?: boolean;
+    }) => {
       setAccesorioModal({
         isOpen: true,
         ramalId: data.ramalId,
@@ -739,6 +762,24 @@ function PdfViewer_({
         isBilateral: data.isBilateral,
       });
     },
+    [],
+  );
+  const { engineReady } = usePdfViewerEngine({
+    currentFile,
+    currentId,
+    currentIdRef,
+    activeNetRef,
+    cwRef,
+    drawCanvasRef,
+    pdfCanvasRef,
+    onStatus: noopStatus,
+    onDirty: onDirtyHandler,
+    onSelect: onSelectHandler,
+    onDelete: onDeleteHandler,
+    onToolChange: setTool,
+    onRequestText: onRequestTextCb,
+    onAlert: onAlertHandler,
+    onAccesorioModal: onAccesorioModalHandler,
     loadTrazosForPlan,
     setActiveNet,
     setScaleM,
@@ -846,7 +887,7 @@ function PdfViewer_({
         setSelElement({ ...r });
       }
     },
-    [engineRef, planosCtx.plans],
+    [],
   );
 
   useEffect(() => {
@@ -922,8 +963,10 @@ function PdfViewer_({
         }
         if (loaded) {
           const fallbackNet =
-            activeNetworks && activeNetworks.size > 0 && !activeNetworks.has('af')
-              ? Array.from(activeNetworks)[0]
+            activeNetworksRef.current &&
+            activeNetworksRef.current.size > 0 &&
+            !activeNetworksRef.current.has('af')
+              ? Array.from(activeNetworksRef.current)[0]
               : activeNetRef.current || 'af';
           const loadedNet = eng.activeNet || fallbackNet;
           const sm = eng.scaleM;
@@ -952,18 +995,21 @@ function PdfViewer_({
       }
     })();
     syncDrawings();
-  }, [currentId, engineReady, syncDrawings]);
+  }, [currentId, engineReady, loadTrazosForPlan, syncDrawings, autoSaveTimerRef]);
 
   const prevActiveNetForSel = useRef(activeNet);
-  if (activeNet !== prevActiveNetForSel.current) {
+  useEffect(() => {
+    if (activeNet === prevActiveNetForSel.current) return;
     prevActiveNetForSel.current = activeNet;
     if (engineRef.current && !loadingPlanRef.current) {
       const els = engineRef.current.getElementsByNet(activeNet);
-      if (els.length > 0 && selElement?.net !== activeNet)
-        setSelElement(els[els.length - 1] as unknown as ProbedElement);
-      else if (els.length === 0) setSelElement(null);
+      setSelElement((previous) => {
+        if (els.length > 0 && previous?.net !== activeNet)
+          return els[els.length - 1] as unknown as ProbedElement;
+        return els.length === 0 ? null : previous;
+      });
     }
-  }
+  }, [activeNet]);
 
   useEffect(() => {
     syncDrawings();
@@ -1022,12 +1068,6 @@ function PdfViewer_({
     return true;
   }, [activeNetworks, liveActiveNets]);
 
-  const { saveStatus, doSave, autoSaveTimerRef, markDirty } = usePdfAutoSave(
-    engineRef,
-    currentIdRef,
-    planosCtx.plans,
-  );
-  markDirtyRef.current = markDirty;
   // ── Inline actions ──
   const syncEngine = useCallback(() => {
     const eng = engineRef.current;
@@ -1175,11 +1215,12 @@ function PdfViewer_({
 
   const prevResetKey = useRef('');
   const resetKey = activeNet + '|' + tipoTramo;
-  if (resetKey !== prevResetKey.current) {
+  useEffect(() => {
+    if (resetKey === prevResetKey.current) return;
     prevResetKey.current = resetKey;
     setPadreTributarioId(null);
     if (engineRef.current) engineRef.current.setPadreTributario(null);
-  }
+  }, [resetKey]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1248,7 +1289,8 @@ function PdfViewer_({
 
   const prevSelId = useRef(selElement?.id);
   const prevActiveNetForDiam = useRef(activeNet);
-  if (selElement?.id !== prevSelId.current || activeNet !== prevActiveNetForDiam.current) {
+  useEffect(() => {
+    if (selElement?.id === prevSelId.current && activeNet === prevActiveNetForDiam.current) return;
     prevSelId.current = selElement?.id;
     prevActiveNetForDiam.current = activeNet;
     if (engineRef.current && selElement && selElement.net === activeNet) {
@@ -1268,19 +1310,21 @@ function PdfViewer_({
       const p = pendSel[activeNet] !== undefined ? pendSel[activeNet] : fallback;
       setPendInput(p !== undefined && p > 0 ? String(p) : '');
     }
-  }
+  }, [activeNet, pendSel, selElement]);
   const prevSelIdForRender = useRef(selElement?.id);
-  if (selElement?.id !== prevSelIdForRender.current) {
+  useEffect(() => {
+    if (selElement?.id === prevSelIdForRender.current) return;
     prevSelIdForRender.current = selElement?.id;
     engineRef.current?.render();
-  }
+  }, [selElement?.id]);
   const prevSelForDrawn = useRef(selElement);
   const prevActiveForDrawn = useRef(activeNet);
-  if (selElement !== prevSelForDrawn.current || activeNet !== prevActiveForDrawn.current) {
+  useEffect(() => {
+    if (selElement === prevSelForDrawn.current && activeNet === prevActiveForDrawn.current) return;
     prevSelForDrawn.current = selElement;
     prevActiveForDrawn.current = activeNet;
     if (engineRef.current) setDrawnElements(engineRef.current.getElementsByNet(activeNet));
-  }
+  }, [activeNet, selElement]);
   useEffect(() => {
     const c = drawCanvasRef.current;
     if (c) c.style.cursor = tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair';

@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/refs, react-hooks/set-state-in-effect */
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import type { ChangeEvent, FocusEvent } from 'react';
 import { useTramos } from '../context/TramosContext';
@@ -31,7 +31,9 @@ export interface Piso {
 function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject<T>] {
   const [val, _set] = useState<T>(initial);
   const ref = useRef(val);
-  ref.current = val;
+  useEffect(() => {
+    ref.current = val;
+  }, [val]);
   const set = useCallback((v: T) => {
     ref.current = v;
     _set(v);

@@ -32,7 +32,7 @@ export function usePdfAutoSave(
     if (!eng || !eng._dirty) return;
     const id = eng._loadedPlanId || currentIdRef.current || 'work';
     performSave(eng, id);
-  }, [performSave]);
+  }, [currentIdRef, engineRef, performSave]);
 
   const doSave = useCallback(() => {
     const eng = engineRef.current;
@@ -51,7 +51,7 @@ export function usePdfAutoSave(
       /* ignore */
     }
     setSaveStatus('saved');
-  }, [plans, performSave]);
+  }, [currentIdRef, engineRef, plans, performSave]);
 
   // Guardar de forma robusta al cerrar pestaña, ocultar ventana o recargar
   useEffect(() => {
@@ -74,7 +74,7 @@ export function usePdfAutoSave(
       window.removeEventListener('pagehide', handleUnload);
       window.removeEventListener('beforeunload', handleUnload);
     };
-  }, [doSave]);
+  }, [doSave, engineRef]);
 
   // Guardar al desmontar el hook (cambio de ruta, hot-reload, etc.)
   useEffect(() => {
@@ -103,7 +103,7 @@ export function usePdfAutoSave(
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
-  }, [saveStatus, doSave]);
+  }, [saveStatus, doSave, engineRef]);
 
   return { saveStatus, setSaveStatus, doSave, saveTrazosToStorage, autoSaveTimerRef, markDirty };
 }

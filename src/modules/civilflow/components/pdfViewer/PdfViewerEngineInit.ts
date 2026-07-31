@@ -77,6 +77,46 @@ export function usePdfViewerEngine({
   const pdfRenderedRef = useRef(false);
   const internalLoadingPlanRef = useRef(false);
   const loadingPlanRef = externalLoadingPlanRef ?? internalLoadingPlanRef;
+  const scaleRef = useRef(scale);
+  const callbacksRef = useRef({
+    onStatus,
+    onDirty,
+    onSelect,
+    onDelete,
+    onToolChange,
+    onRequestText,
+    onAlert,
+    onAccesorioModal,
+    setActiveNet,
+  });
+
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
+
+  useEffect(() => {
+    callbacksRef.current = {
+      onStatus,
+      onDirty,
+      onSelect,
+      onDelete,
+      onToolChange,
+      onRequestText,
+      onAlert,
+      onAccesorioModal,
+      setActiveNet,
+    };
+  }, [
+    onStatus,
+    onDirty,
+    onSelect,
+    onDelete,
+    onToolChange,
+    onRequestText,
+    onAlert,
+    onAccesorioModal,
+    setActiveNet,
+  ]);
 
   const renderPage = useCallback(
     async (pageNum: number, sc: number, mountCheck: number) => {
@@ -179,6 +219,7 @@ export function usePdfViewerEngine({
       setActiveNet,
       setScaleM,
       setError,
+      engineRef,
       pdfCanvasRef,
       drawCanvasRef,
     ],
@@ -188,33 +229,35 @@ export function usePdfViewerEngine({
     if (!cwRef.current || !drawCanvasRef.current) return;
     const cw = cwRef.current;
     const canv = drawCanvasRef.current;
+    const loadingAtInit = loadingPlanRef.current;
+    const currentIdAtInit = currentIdRef.current;
     if (engineRef.current) engineRef.current.destroy();
     const pdfWrap = pdfCanvasRef.current?.parentElement ?? undefined;
     const eng = new PlanoEngine(cw, pdfWrap!, canv);
     engineRef.current = eng;
-    const initialId = currentIdRef.current || currentId || '';
+    const initialId = currentIdRef.current || '';
     eng._loadedPlanId = initialId || null;
-    eng.onSelect((el) => onSelect(el));
-    eng.onStatus((msg) => onStatus(msg));
-    eng.onDelete((ids) => onDelete(ids));
-    eng.onActiveNetChange((net) => setActiveNet(net));
-    eng.onAlert((title, msg) => onAlert(title, msg));
-    eng.onAccesorioModal((data) => onAccesorioModal(data));
+    eng.onSelect((el) => callbacksRef.current.onSelect(el));
+    eng.onStatus((msg) => callbacksRef.current.onStatus(msg));
+    eng.onDelete((ids) => callbacksRef.current.onDelete(ids));
+    eng.onActiveNetChange((net) => callbacksRef.current.setActiveNet(net));
+    eng.onAlert((title, msg) => callbacksRef.current.onAlert(title, msg));
+    eng.onAccesorioModal((data) => callbacksRef.current.onAccesorioModal(data));
     eng.onDirty(() => {
       eng._dirty = true;
-      onDirty(eng);
+      callbacksRef.current.onDirty(eng);
     });
-    eng.onRequestText(onRequestText);
+    eng.onRequestText((x, y, cb) => callbacksRef.current.onRequestText(x, y, cb));
     const origSetTool = eng.setTool.bind(eng);
     eng.setTool = (t) => {
       origSetTool(t);
-      onToolChange(t);
+      callbacksRef.current.onToolChange(t);
     };
     setEngineReady(true);
     return () => {
       try {
-        if (!loadingPlanRef.current && eng._dirty) {
-          const id = eng._loadedPlanId || currentIdRef.current || 'work';
+        if (!loadingAtInit && eng._dirty) {
+          const id = eng._loadedPlanId || currentIdAtInit || 'work';
           const work = eng.saveWork();
           work.ts = Date.now();
           saveToStorage(TRAZOS_PREFIX + id, work);
@@ -231,7 +274,7 @@ export function usePdfViewerEngine({
       engineRef.current = null;
       setEngineReady(false);
     };
-  }, []);
+  }, [cwRef, currentIdRef, drawCanvasRef, engineRef, loadingPlanRef, pdfCanvasRef]);
 
   useEffect(() => {
     if (!currentFile) return;
@@ -250,7 +293,7 @@ export function usePdfViewerEngine({
         if (thisMount !== mountId.current) return;
         pdfDocRef.current = pdf;
         setLoading(false);
-        await renderPage(1, scale, thisMount);
+        await renderPage(1, scaleRef.current, thisMount);
       } catch (err) {
         if (thisMount === mountId.current) {
           devError('Error cargando PDF:', err);
@@ -267,13 +310,13 @@ export function usePdfViewerEngine({
 
     const pdfjsPromise = getPdfjs();
     reader.readAsArrayBuffer(currentFile);
-  }, [currentId]);
+  }, [currentFile, currentId, renderPage, setError, setLoading]);
 
   useEffect(() => {
     if (!pdfDocRef.current) return;
     mountId.current += 1;
     renderPage(1, scale, mountId.current);
-  }, [scale]);
+  }, [scale, renderPage]);
 
   return {
     engineRef,

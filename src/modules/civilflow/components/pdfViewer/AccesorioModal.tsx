@@ -80,10 +80,13 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [selectedAccId, setSelectedAccId] = useState<string | null>(null);
   const prevIsOpenRef = useRef(modalState.isOpen);
-  if (modalState.isOpen !== prevIsOpenRef.current) {
-    prevIsOpenRef.current = modalState.isOpen;
-    if (modalState.isOpen) setSelectedAccId(null);
-  }
+
+  useEffect(() => {
+    if (modalState.isOpen !== prevIsOpenRef.current) {
+      prevIsOpenRef.current = modalState.isOpen;
+      if (modalState.isOpen) setSelectedAccId(null);
+    }
+  }, [modalState.isOpen]);
 
   useEffect(() => {
     if (modalState.isOpen && dialogRef.current) {

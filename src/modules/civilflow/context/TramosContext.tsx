@@ -38,8 +38,9 @@ export function TramosProvider({ children }: { children?: ReactNode }) {
   const stateRef = useRef(state);
   // "useLatest" pattern: keep a ref mirroring the latest state for callbacks/effects that
   // need the current value without listing it as a dependency.
-  // eslint-disable-next-line react-hooks/refs
-  stateRef.current = state;
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   useEffect(() => {
     const load = () => {
@@ -85,11 +86,11 @@ export function TramosProvider({ children }: { children?: ReactNode }) {
     const handler = () => {
       timeoutId = setTimeout(load, 0);
     };
-    ['civilflow_san_sync_changed', 'storage'].forEach((e) => window.addEventListener(e, handler));
+    window.addEventListener('civilflow_san_sync_changed', handler);
+    window.addEventListener('storage', handler);
     return () => {
-      ['civilflow_san_sync_changed', 'storage'].forEach((e) =>
-        window.removeEventListener(e, handler),
-      );
+      window.removeEventListener('civilflow_san_sync_changed', handler);
+      window.removeEventListener('storage', handler);
       if (timeoutId !== null) clearTimeout(timeoutId);
     };
   }, []);
@@ -127,11 +128,11 @@ export function TramosProvider({ children }: { children?: ReactNode }) {
     const handler = () => {
       timeoutId = setTimeout(load, 0);
     };
-    ['civilflow_hidro_sync_changed', 'storage'].forEach((e) => window.addEventListener(e, handler));
+    window.addEventListener('civilflow_hidro_sync_changed', handler);
+    window.addEventListener('storage', handler);
     return () => {
-      ['civilflow_hidro_sync_changed', 'storage'].forEach((e) =>
-        window.removeEventListener(e, handler),
-      );
+      window.removeEventListener('civilflow_hidro_sync_changed', handler);
+      window.removeEventListener('storage', handler);
       if (timeoutId !== null) clearTimeout(timeoutId);
     };
   }, []);

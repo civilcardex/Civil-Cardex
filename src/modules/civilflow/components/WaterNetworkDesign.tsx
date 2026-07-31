@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTramos } from '../context/TramosContext';
 import type { Tramo } from '../context/tramosReducer';
 import { useProyecto } from '../context/ProyectoContext';
@@ -656,24 +656,19 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   );
 
   const [acoContIx, setAcoContIx] = useState(2);
-  const contIxRef = useRef('');
   const contIxDeps = networkType === 'af' ? String(plans?.length ?? 0) + '|' + networkType : '';
-  /* eslint-disable react-hooks/refs -- ref-as-memoization-guard: recompute only when
-     contIxDeps actually changes, without a full effect round-trip. */
-  if (contIxDeps !== contIxRef.current) {
-    contIxRef.current = contIxDeps;
-    /* eslint-enable react-hooks/refs */
-    if (networkType === 'af') {
-      const found = findContadorBajante(plans, networkType);
-      if (found && found.bajante.dNominal) {
-        let dNom = found.bajante.dNominal;
-        dNom = dNom.replace('½', '1/2').replace('¾', '3/4');
-        const idx = CONTADORES_CAT.findIndex((c) => `${c.dn}"` === dNom);
-        if (idx !== -1) {
-          setAcoContIx((prev) => (prev !== idx ? idx : prev));
-        }
-      }
-    }
+  const detectedContIx = useMemo(() => {
+    if (networkType !== 'af') return null;
+    const found = findContadorBajante(plans, networkType);
+    if (!found?.bajante.dNominal) return null;
+    const dNom = found.bajante.dNominal.replace('½', '1/2').replace('¾', '3/4');
+    const idx = CONTADORES_CAT.findIndex((c) => `${c.dn}"` === dNom);
+    return idx === -1 ? null : idx;
+  }, [plans, networkType]);
+  const [previousContIxDeps, setPreviousContIxDeps] = useState(contIxDeps);
+  if (contIxDeps !== previousContIxDeps) {
+    setPreviousContIxDeps(contIxDeps);
+    if (detectedContIx !== null) setAcoContIx(detectedContIx);
   }
   const [acoMonName, setAcoMonName] = useState('Mon');
   const acoContMonDiam = 1.25;
