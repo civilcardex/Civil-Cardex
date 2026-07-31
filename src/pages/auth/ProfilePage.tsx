@@ -164,10 +164,11 @@ function ProfilePage() {
       ignore = true;
     };
   }, [user]);
-  // Fetch-on-open from Supabase — same rationale as above.
+  // Fetch-on-mount from Supabase — loads as soon as the profile page opens, not when the
+  // "Proyectos" accordion is expanded, so the list is already there (no loading flash) by the
+  // time the user clicks to expand it.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
-    if (!proyectosOpen) return;
     let ignore = false;
     async function loadProyectos() {
       setProyLoading(true);
@@ -182,7 +183,7 @@ function ProfilePage() {
     return () => {
       ignore = true;
     };
-  }, [proyectosOpen]);
+  }, []);
 
   function handleEditStart(field: string) {
     setEditField(field);
