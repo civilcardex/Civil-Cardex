@@ -1,22 +1,12 @@
-import { TramosProvider } from '../modules/civilflow/context/TramosContext';
-import { ProjectProvider } from '../modules/civilflow/context/ProjectContext';
-import { ApparatusProvider } from '../modules/civilflow/context/ApparatusContext';
-import { PlansProvider } from '../modules/civilflow/context/PlansContext';
 import { AuthProvider } from './AuthContext';
 import { GlobalAlertDialogProvider } from '../modules/civilflow/components/GlobalAlertDialogProvider';
 
+// CivilFlow-specific state (Tramos/Project/Apparatus/Plans) moved to CivilFlowProviders,
+// scoped in App.tsx to only the routes that use the CAD engine — see CivilFlowProviders.tsx.
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <TramosProvider>
-        <ProjectProvider>
-          <ApparatusProvider>
-            <PlansProvider>
-              <GlobalAlertDialogProvider>{children}</GlobalAlertDialogProvider>
-            </PlansProvider>
-          </ApparatusProvider>
-        </ProjectProvider>
-      </TramosProvider>
+      <GlobalAlertDialogProvider>{children}</GlobalAlertDialogProvider>
     </AuthProvider>
   );
 }

@@ -4,6 +4,7 @@ import Layout from './layouts/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AppProviders } from './context/AppProviders';
+import { CivilFlowProviders } from './modules/civilflow/context/CivilFlowProviders';
 import PageTransition from './components/landing/PageTransition';
 
 const Fallback = () => (
@@ -98,9 +99,11 @@ function App() {
                 path="/visor"
                 element={
                   <ErrorBoundary>
-                    <Suspense fallback={<Fallback />}>
-                      <ViewerPage />
-                    </Suspense>
+                    <CivilFlowProviders>
+                      <Suspense fallback={<Fallback />}>
+                        <ViewerPage />
+                      </Suspense>
+                    </CivilFlowProviders>
                   </ErrorBoundary>
                 }
               />
@@ -198,9 +201,11 @@ function App() {
                     path="/civilflowareatrabajo"
                     element={
                       <ErrorBoundary>
-                        <Suspense fallback={<Fallback />}>
-                          <WorkAreaCivilFlowPage />
-                        </Suspense>
+                        <CivilFlowProviders>
+                          <Suspense fallback={<Fallback />}>
+                            <WorkAreaCivilFlowPage />
+                          </Suspense>
+                        </CivilFlowProviders>
                       </ErrorBoundary>
                     }
                   />
