@@ -874,7 +874,7 @@ function PlanoConfiguratorBase({
                     color: modoCalX ? '#4D8FF7' : 'var(--txt2)',
                   }}
                 >
-                  {modoCalX ? 'Cancel' : 'Trazar'}
+                  {modoCalX ? 'Cancelar' : 'Trazar'}
                 </button>
               </div>
               {factorX && (
@@ -933,7 +933,7 @@ function PlanoConfiguratorBase({
                     color: modoCalY ? '#0ECC7A' : 'var(--txt2)',
                   }}
                 >
-                  {modoCalY ? 'Cancel' : 'Trazar'}
+                  {modoCalY ? 'Cancelar' : 'Trazar'}
                 </button>
               </div>
               {factorY && (
