@@ -342,6 +342,16 @@ create table public.planos_bajantes (
   capacidad text,
   base numeric,
   altura numeric,
+  -- Only meaningful on a rainwater ('ll') bajante: client_id of the canal (tipo:'canal') it's
+  -- geometrically inside of. Not a FK (client_id, not the row id) — mirrors ramales.padre.
+  canal_id text,
+  -- Raw discharge-target reference, verbatim as the app writes it: either a same-plano
+  -- client_id, or the composite "${targetPlanId}|${targetBajanteId}" cross-floor format
+  -- (parseDescargaEnId). NOT normalized into bajante_conexiones — the cross-floor case can't
+  -- resolve against this plano's own client_id -> surrogate-id map (it points at a different
+  -- plano entirely), so it has to be stored as opaque text and read back verbatim, same as
+  -- ramales.padre already is.
+  descarga_en_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (plano_id, client_id)

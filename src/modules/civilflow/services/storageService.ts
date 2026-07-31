@@ -214,6 +214,8 @@ function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
     capacidad: b.capacidad ?? null,
     base: b.base ?? null,
     altura: b.altura ?? null,
+    canal_id: b.canalId ?? null,
+    descarga_en_id: b.descargaEnId ?? null,
   };
 }
 
@@ -234,7 +236,7 @@ function rowToBajante(row: any): PlanoBajante {
     dNominal: row.d_nominal,
     recibeDeIds: [],
     alimentaIds: [],
-    descargaEnId: null,
+    descargaEnId: row.descarga_en_id ?? null,
     ucAcum: row.uc_acum,
     ucExtra: row.uc_extra,
     area_m2: row.area_m2,
@@ -258,6 +260,7 @@ function rowToBajante(row: any): PlanoBajante {
     capacidad: row.capacidad ?? undefined,
     base: row.base ?? undefined,
     altura: row.altura ?? undefined,
+    canalId: row.canal_id ?? undefined,
   };
 }
 
@@ -456,9 +459,11 @@ async function syncBajantes(
 }
 
 /** Rebuilds bajante_conexiones from each bajante's recibeDeIds/alimentaIds/descargaEnId,
- * resolved against the client_id -> surrogate id map from syncBajantes. Cross-plano links
- * (descargaEnId pointing at a bajante on another floor) are skipped here — those are
- * handled by planos_cross_floor_ghosts instead. */
+ * resolved against the client_id -> surrogate id map from syncBajantes. descargaEnId is ALSO
+ * always written verbatim to planos_bajantes.descarga_en_id by bajanteToRow (see there) — that
+ * raw-text copy is what actually round-trips the cross-plano case (this table can't resolve a
+ * destino_client_id belonging to a different plano's idMap), this relational copy only ever
+ * captures the same-plano subset, as a bonus for anything that wants to query it directly. */
 async function syncBajanteConexiones(
   userId: string,
   bajantes: PlanoBajante[],
