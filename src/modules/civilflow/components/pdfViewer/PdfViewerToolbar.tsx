@@ -12,9 +12,16 @@ export interface ToolDef {
 // Bajante only makes sense on san/vent/ll (downpipes); montante only on gas/ac/af (risers) —
 // centralized here so the toolbar's two render paths (expanded/collapsed) and PlanoEngine.ts's
 // keyboard shortcuts all enforce the exact same rule instead of drifting apart.
-export function isToolDisabledForNet(toolId: string, net: string): boolean {
+export function isToolDisabledForNet(
+  toolId: string,
+  net: string,
+  recolectoraActive = true,
+): boolean {
   if (toolId === 'baj') return !['san', 'vent', 'll'].includes(net);
   if (toolId === 'mon') return !['gas', 'ac', 'af'].includes(net);
+  // Canal recolectora glyphs only make sense when that red is active for the project —
+  // otherwise the tool draws shapes for a network the project isn't designing.
+  if (toolId === 'canal') return !recolectoraActive;
   return false;
 }
 
@@ -110,6 +117,7 @@ export type PdfViewerToolbarProps = {
   currentFile: File | null;
   saveStatus: string;
   collapsed?: boolean;
+  recolectoraActive: boolean;
   onSelectTool: SelToolFn;
   onSnapToggle: NavFn;
   onFit: NavFn;
@@ -147,6 +155,7 @@ function PdfViewerToolbar_({
   currentFile,
   saveStatus,
   collapsed,
+  recolectoraActive,
   onSelectTool,
   onSnapToggle,
   onFit,
@@ -193,7 +202,7 @@ function PdfViewerToolbar_({
         <div style={{ padding: '4px 4px', borderBottom: '1px solid #3a494a' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {netTools.map((t) => {
-              const isToolDisabled = isToolDisabledForNet(t.id, activeNet);
+              const isToolDisabled = isToolDisabledForNet(t.id, activeNet, recolectoraActive);
               return (
                 <button
                   type="button"
@@ -328,7 +337,7 @@ function PdfViewerToolbar_({
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {netTools.map((t) => {
-            const isToolDisabled = isToolDisabledForNet(t.id, activeNet);
+            const isToolDisabled = isToolDisabledForNet(t.id, activeNet, recolectoraActive);
             return (
               <button
                 type="button"

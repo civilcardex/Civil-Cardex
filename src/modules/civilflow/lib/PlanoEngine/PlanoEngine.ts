@@ -1230,7 +1230,14 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.setTool('calent');
       e.preventDefault();
     } else if (k === 'n') {
-      if (this.activeNet === 'll') this.setTool('canal');
+      // Mirrors PdfViewerToolbar's isToolDisabledForNet('canal', ...) gating — the shortcut
+      // shouldn't bypass the same "canal recolectora must be active" rule the button enforces.
+      if (
+        this.activeNet === 'll' &&
+        (!this.activeNetworks || this.activeNetworks.has('recolectora'))
+      ) {
+        this.setTool('canal');
+      }
       e.preventDefault();
     } else if (k === 'd') {
       this.setTool('dim');

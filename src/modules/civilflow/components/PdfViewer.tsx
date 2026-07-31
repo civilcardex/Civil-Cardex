@@ -1013,6 +1013,15 @@ function PdfViewer_({
     return getNets();
   }, [activeNetworks, liveActiveNets]);
 
+  // Same precedence as finalVisibleNets above, but for 'recolectora' specifically — that net
+  // is excluded from the visible tab list (canal glyphs are drawn under the 'll' tab, not their
+  // own tab), so this can't be derived from finalVisibleNets and needs its own check.
+  const recolectoraActive = useMemo(() => {
+    if (activeNetworks && activeNetworks.size > 0) return activeNetworks.has('recolectora');
+    if (liveActiveNets) return liveActiveNets.has('recolectora');
+    return true;
+  }, [activeNetworks, liveActiveNets]);
+
   const { saveStatus, doSave, autoSaveTimerRef, markDirty } = usePdfAutoSave(
     engineRef,
     currentIdRef,
@@ -1369,6 +1378,7 @@ function PdfViewer_({
             currentFile={currentFile}
             saveStatus={saveStatus}
             collapsed={leftCollapsed}
+            recolectoraActive={recolectoraActive}
             onSelectTool={setTool}
             onSnapToggle={handleSnapToggle}
             onFit={handleFit}
