@@ -36,3 +36,6 @@ graphify-out/
 .agents/
 .claude/
 .vercel
+
+# SQL migrations (applied manually via Supabase SQL Editor)
+supabase/migrations/
