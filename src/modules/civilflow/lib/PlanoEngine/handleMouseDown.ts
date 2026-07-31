@@ -28,6 +28,7 @@ import {
 import { getSelected } from './PlanoEngineSelection';
 import { selectAt } from './PlanoEngineSelection';
 import { findCodoReventiladoLinks, recalcBilateralCrossings } from './PlanoEngineNetwork';
+import { bajanteHitDistance } from './canalAssociation';
 
 // True only when the bajante actually sits ON one of the ramal's endpoints — i.e. the connection
 // is rigid, not just the green dashed guide line drawn between two separate points. A bloqueado
@@ -511,7 +512,7 @@ function _tryMultiSelDrag(
     }
     const be = engine.bajantes.find((b) => b.id === id);
     if (!hit && be) {
-      if (be._circ) hit = Math.hypot(x - be._circ.x, y - be._circ.y) < be._circ.r;
+      hit = Number.isFinite(bajanteHitDistance(be, x, y));
       if (!hit && be._labelBox && pointInLabelBox(x, y, be._labelBox)) hit = true;
     }
     const te = engine.textAnnots.find((t) => t.id === id);
@@ -982,12 +983,9 @@ export function handleSelectDown(
     const pb = sel._polyBox;
     if (x >= pb.x && x <= pb.x + pb.w && y >= pb.y && y <= pb.y + pb.h) {
       for (const b of engine.bajantes) {
-        if (b._circ) {
-          const d = Math.hypot(x - b._circ.x, y - b._circ.y);
-          if (d < b._circ.r) {
-            selectAt(engine, x, y, isMultiSelectModifier);
-            return;
-          }
+        if (Number.isFinite(bajanteHitDistance(b, x, y))) {
+          selectAt(engine, x, y, isMultiSelectModifier);
+          return;
         }
       }
       const fg = engine.getBajantesFantasma();
@@ -1037,7 +1035,7 @@ export function handleSelectDown(
       if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
         let bajAtPos = false;
         for (const bb of engine.bajantes) {
-          if (bb._circ && Math.hypot(x - bb._circ.x, y - bb._circ.y) < bb._circ.r) {
+          if (Number.isFinite(bajanteHitDistance(bb, x, y))) {
             bajAtPos = true;
             break;
           }

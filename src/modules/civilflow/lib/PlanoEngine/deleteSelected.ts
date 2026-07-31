@@ -153,6 +153,13 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       const idxB = engine.bajantes.findIndex((b) => b.id === id);
       if (idxB >= 0) {
         const deleted: PlanoBajante = engine.bajantes[idxB];
+        // Deleting a canal must detach its associated bajantes — otherwise their canalId keeps
+        // pointing at a now-gone id (or worse, a future canal that happens to reuse it).
+        if (deleted.tipo === 'canal') {
+          for (const b of engine.bajantes) {
+            if (b.canalId === deleted.id) b.canalId = null;
+          }
+        }
         const lvl = engine.nivelActual?.label ?? '';
         // When isFantasma=true, treat as parent delete (clean ALL levels)
         if (!deleted.isFantasma && engine._isGhostSel && deleted.desplazamientos?.[lvl]) {

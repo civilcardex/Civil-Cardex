@@ -13,6 +13,7 @@ import { _midpoint } from './PlanoEngineDrawing';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import { pointInPoly, pointInLabelBox, distanceToRamal, findAccMedVertexHit } from './HitTester';
 import { updateCrossFloorGhostFieldBySource } from '../../utils/associateBajanteAcrossFloors';
+import { bajanteHitDistance } from './canalAssociation';
 
 export function selectAt(
   engine: IPlanoEngineCore,
@@ -71,9 +72,9 @@ export function selectAt(
         foundBajIsGhost = false;
       }
     }
-    if (b._circ) {
-      const d = Math.hypot(cx - b._circ.x, cy - b._circ.y);
-      if (d < b._circ.r && d < minBD) {
+    {
+      const d = bajanteHitDistance(b as PlanoBajante, cx, cy);
+      if (d < minBD) {
         minBD = d;
         foundBaj = b as PlanoBajante;
         foundBajIsGhost = false;

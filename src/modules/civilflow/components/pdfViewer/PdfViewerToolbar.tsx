@@ -190,9 +190,11 @@ function PdfViewerToolbar_({
       id: 'canal',
       label: 'Canal',
       ico: '▭',
-      key: 'N',
+      // 'C' is shared with Contador (af/gas) — mutually exclusive nets, see PlanoEngine.ts's
+      // 'c' key handler.
+      key: 'C',
       icoCol: '#8B5CF6',
-      shortcut: 'N',
+      shortcut: 'C',
     });
   }
 

@@ -6,6 +6,7 @@ import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 import { recalcBilateralCrossings } from './PlanoEngineNetwork';
 import { oppositeTextCorner, textLocalCorner, rotateLocalPoint } from './textAnnotationGeometry';
 import { isRamalBajanteConnectionAllowed } from '../../utils/flowDirection';
+import { resolveAndClampToCanal, clampToCanal } from './canalAssociation';
 
 export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): void {
   const sameNetGroup = (a: string, b: string) =>
@@ -306,6 +307,22 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         }
       }
 
+      // Once a rainwater bajante is inside a canal recolectora, it's frozen there entirely —
+      // not just kept from leaving, it can't be repositioned within the canal either. Only a
+      // bajante that ISN'T associated yet can still be dragged (and, on landing inside a
+      // canal's rect, gets associated and freezes from that point on).
+      if (b.net === 'll' && b.tipo === 'bajante') {
+        if (b.canalId) {
+          p.x = oldX;
+          p.y = oldY;
+        } else {
+          const resolved = resolveAndClampToCanal(engine, p.x, p.y, null);
+          p.x = resolved.x;
+          p.y = resolved.y;
+          b.canalId = resolved.canalId;
+        }
+      }
+
       const dx = p.x - oldX;
       const dy = p.y - oldY;
 
@@ -313,6 +330,18 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       b.y = p.y;
       b.labelX = (b.labelX || 0) + dx;
       b.labelY = (b.labelY || 0) + dy;
+
+      // Moving a canal's whole body must drag its associated bajantes along with it — they
+      // store absolute plane coordinates, not an offset relative to the canal, so without this
+      // they'd stay put and end up outside the canal's new position.
+      if (b.tipo === 'canal') {
+        for (const assoc of engine.bajantes) {
+          if (assoc.canalId !== b.id) continue;
+          const moved = clampToCanal(engine, b, assoc.x + dx, assoc.y + dy);
+          assoc.x = moved.x;
+          assoc.y = moved.y;
+        }
+      }
 
       if (b.recibeDeIds?.length) {
         b.recibeDeIds.forEach((rid) => {
@@ -451,6 +480,14 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       canal.y = Math.min(anchorY, p.y);
       canal.base = Math.max(1, +(engine.pxToM(Math.abs(p.x - anchorX)) * 100).toFixed(1));
       canal.altura = Math.max(1, +(engine.pxToM(Math.abs(p.y - anchorY)) * 100).toFixed(1));
+      // Shrinking the canal can leave an associated bajante outside its new rect — pull it
+      // back in, same rule as a bajante dragged toward the edge.
+      for (const assoc of engine.bajantes) {
+        if (assoc.canalId !== canal.id) continue;
+        const clamped = clampToCanal(engine, canal, assoc.x, assoc.y);
+        assoc.x = clamped.x;
+        assoc.y = clamped.y;
+      }
       engine.scheduleRender();
     }
     return;

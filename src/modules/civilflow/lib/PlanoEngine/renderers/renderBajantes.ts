@@ -8,6 +8,7 @@ import { parseDescargaEnId } from '../../../utils/parseDescargaEnId';
 import { pisoCortoLoose as getPisoCorto } from '../../../constants';
 import { MONTANTE_NETS } from '../drawingCreations';
 import { BORDE_LIBRE_CANAL_CM } from '../../../utils/calcRainwater';
+import { computeCanalFlowArrows } from '../canalAssociation';
 
 const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
 
@@ -273,24 +274,10 @@ function renderCanalGlyph(
   ctx.lineTo(tl.x + w, midY);
   ctx.stroke();
 
-  if (sel) {
-    const handleR = 4 * engine.zoom;
-    const corners = [
-      { x: tl.x, y: tl.y },
-      { x: tl.x + w, y: tl.y },
-      { x: tl.x, y: tl.y + h },
-      { x: tl.x + w, y: tl.y + h },
-    ];
-    ctx.fillStyle = '#ffffff';
-    ctx.strokeStyle = col;
-    ctx.lineWidth = 1.5 * engine.zoom;
-    for (const cnr of corners) {
-      ctx.beginPath();
-      ctx.rect(cnr.x - handleR, cnr.y - handleR, handleR * 2, handleR * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-  }
+  // Corner resize handles are intentionally not drawn — the grab hit-test in
+  // handleMouseDown.ts's _tryCanalResizeHit works purely off proximity to `_canalBox`'s
+  // corners (computed below regardless of what's rendered), so resizing still works without
+  // the visual squares.
 
   // Yellow selection arrow — same style/shape every other bajante-array glyph shows when
   // selected (renderBajantes' main loop below), pointing in from the right edge.
@@ -313,6 +300,40 @@ function renderCanalGlyph(
     ctx.stroke();
   }
   ctx.restore();
+
+  // Flow-direction arrows — one per associated bajante inside this canal (two if the bajante
+  // sits mid-body, both pointing INTO it; see canalAssociation.ts computeCanalFlowArrows). The
+  // canal itself is never split — this is purely a direction indicator drawn along its length.
+  // Same visual recipe as a ramal's own flow arrow (renderRamales.ts): thin round-capped shaft
+  // + a small filled triangle at the head, sized relative to the segment instead of the fixed
+  // "half the label width" a ramal uses (a canal has no equivalent label-derived reference).
+  for (const arrow of computeCanalFlowArrows(engine, b)) {
+    const p0 = engine.toCvs(arrow.x0, arrow.y0);
+    const p1 = engine.toCvs(arrow.x1, arrow.y1);
+    const dx = p1.x - p0.x;
+    const dy = p1.y - p0.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) continue;
+    const ux = dx / len;
+    const uy = dy / len;
+    ctx.save();
+    ctx.strokeStyle = col;
+    ctx.fillStyle = col;
+    ctx.lineWidth = 1 * engine.zoom;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.stroke();
+    const aSize = Math.min(6 * engine.zoom, len * 0.3);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p1.x - ux * aSize - uy * aSize * 0.4, p1.y - uy * aSize + ux * aSize * 0.4);
+    ctx.lineTo(p1.x - ux * aSize + uy * aSize * 0.4, p1.y - uy * aSize - ux * aSize * 0.4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
 
   b._canalBox = { x: tl.x, y: tl.y, w, h };
   // Centered on the rectangle (not the top-left corner) so the shared circular hit-test every
@@ -837,21 +858,22 @@ export function renderCrossFloorGhosts(
     const r = engine.realMmToCanvasPx(20) * 0.6;
     g._hitCircle = { x: c.x, y: c.y, r };
 
-    // Dashed line to target bajante on this floor
+    // Solid line to target bajante on this floor — was dashed at a different dash period than
+    // the ghost's own dashed circle below, so the two met at a visibly mismatched seam right
+    // where they're supposed to read as one continuous vertical connection. Solid + fuller
+    // opacity reads as joined regardless of where along the circle it terminates.
     if (g.targetBajanteId) {
       const targetB = engine.bajantes.find((b) => b.id === g.targetBajanteId);
       if (targetB) {
         const tc = engine.toCvs(targetB.x, targetB.y);
         ctx.save();
         ctx.strokeStyle = col;
-        ctx.globalAlpha = 0.3;
-        ctx.lineWidth = 1 * engine.zoom;
-        ctx.setLineDash([6 * engine.zoom, 4 * engine.zoom]);
+        ctx.globalAlpha = 0.7;
+        ctx.lineWidth = 1.5 * engine.zoom;
         ctx.beginPath();
         ctx.moveTo(c.x, c.y);
         ctx.lineTo(tc.x, tc.y);
         ctx.stroke();
-        ctx.setLineDash([]);
         ctx.globalAlpha = 1;
         ctx.restore();
       }

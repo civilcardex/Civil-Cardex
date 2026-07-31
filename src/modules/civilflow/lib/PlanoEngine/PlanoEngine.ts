@@ -1224,20 +1224,22 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.setTool('line');
       e.preventDefault();
     } else if (k === 'c') {
-      this.setTool('cont');
-      e.preventDefault();
-    } else if (k === 'h') {
-      this.setTool('calent');
-      e.preventDefault();
-    } else if (k === 'n') {
-      // Mirrors PdfViewerToolbar's isToolDisabledForNet('canal', ...) gating — the shortcut
-      // shouldn't bypass the same "canal recolectora must be active" rule the button enforces.
+      // 'C' does double duty: Contador on af/gas, Canal on ll — the two nets are mutually
+      // exclusive (only one is ever the active net), so there's no real collision.
+      // Mirrors PdfViewerToolbar's isToolDisabledForNet('canal', ...) gating for the canal
+      // case — the shortcut shouldn't bypass the same "canal recolectora must be active" rule
+      // the button enforces.
       if (
         this.activeNet === 'll' &&
         (!this.activeNetworks || this.activeNetworks.has('recolectora'))
       ) {
         this.setTool('canal');
+      } else {
+        this.setTool('cont');
       }
+      e.preventDefault();
+    } else if (k === 'h') {
+      this.setTool('calent');
       e.preventDefault();
     } else if (k === 'd') {
       this.setTool('dim');

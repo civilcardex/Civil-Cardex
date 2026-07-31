@@ -3,6 +3,7 @@ import type { IPlanoEngineCore, PlanoRamal } from './PlanoState';
 import { calculateRamalLength, _statusMsg } from './PlanoEngineDrawing';
 import { isRamalBajanteConnectionAllowed } from '../../utils/flowDirection';
 import { pisoCortoLoose } from '../../constants';
+import { resolveAndClampToCanal } from './canalAssociation';
 
 // Bajante only belongs on san/vent/ll, montante only on gas/ac/af — same rule enforced at the
 // toolbar (isToolDisabledForNet in PdfViewerToolbar.tsx) and the keyboard shortcuts (PlanoEngine.ts
@@ -46,6 +47,15 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
       assocRamales.push(r.id);
     }
   }
+  // Rainwater bajantes dropped inside a canal recolectora's rectangle must stay inside it —
+  // auto-associate and clamp onto the canal's own boundary if the click landed just outside.
+  let canalId: string | null = null;
+  if (engine.activeNet === 'll') {
+    const resolved = resolveAndClampToCanal(engine, px, py);
+    px = resolved.x;
+    py = resolved.y;
+    canalId = resolved.canalId;
+  }
   const net = NETS.find((n) => n.id === engine.activeNet);
   const netPfx = net ? net.bmPfx : 'BAJ';
   const cnt =
@@ -79,6 +89,7 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     labelX: px,
     labelY: py + 20,
     bajR: 7 / 24,
+    canalId,
   });
   // Auto-fill ini/fin on associated ramales
   const newBaj = engine.bajantes[engine.bajantes.length - 1];
