@@ -17,6 +17,7 @@ export interface ProyectoCoreData {
 
 export interface ProyectoDataRow extends Partial<ProyectoCoreData> {
   plans_meta?: PlanMeta[];
+  redesActivas?: string[];
 }
 
 // Row shapes returned by the get_proyecto_data(proyecto_id) RPC — single round-trip
@@ -47,6 +48,7 @@ interface ProyectoGeneralRow {
   area_verdes?: number;
   c_escorrentia?: number;
   pendiente_san?: number;
+  redes_activas?: string[] | null;
 }
 interface PisoRow {
   id: number;
@@ -291,6 +293,31 @@ export async function saveProyectoCoreData(
   }
 }
 
+/**
+ * Upserts just the `redes_activas` column of proyecto_general — partial upsert, doesn't touch
+ * nombre/dir/mats/etc (unlike saveProyectoCoreData, which owns the whole row). Used by
+ * useWorkAreaState.ts's "Redes activas"/"Equipos activos" toggle, which is independent of the
+ * ProjectContext core-data bundle.
+ */
+export async function saveRedesActivas(proyectoId: number, redes: string[]): Promise<void> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('proyecto_general')
+      .upsert(
+        { proyecto_id: proyectoId, user_id: user.id, redes_activas: redes },
+        { onConflict: 'proyecto_id' },
+      );
+    if (error) devError('proyectoDataService saveRedesActivas:', error.message);
+  } catch (e) {
+    devError('proyectoDataService saveRedesActivas exception:', e);
+  }
+}
+
 /** Replaces a project's `planos` rows (metadata only — PDF binaries go through pdfStorageService). */
 export async function saveProyectoPlansMeta(
   proyectoId: number,
@@ -390,6 +417,7 @@ export async function loadProyectoData(proyectoId: number): Promise<ProyectoData
         nota: r.nota ?? '',
       })),
       plans_meta: (result.planos_meta ?? []).map(planoMetaRowToPlanMeta),
+      redesActivas: result.proyecto_general?.redes_activas ?? undefined,
     };
   } catch (e) {
     devError('proyectoDataService load exception:', e);

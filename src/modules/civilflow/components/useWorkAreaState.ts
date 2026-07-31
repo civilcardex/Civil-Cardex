@@ -10,8 +10,10 @@ import { parseDecimalInput, parseIntInput } from '../utils/parseDecimal';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
 import { devError } from '../../../utils/devError';
 import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { loadProyectoData, saveRedesActivas } from '../services/proyectoDataService';
 import {
   ACTIVE_NETS_KEY,
+  ACTIVE_PROYECTO_ID_KEY,
   OPEN_TAB_KEY,
   NET_COLOR_PREFIX,
   NETS_CHANGED_EVENT,
@@ -30,10 +32,10 @@ function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject
   const [val, _set] = useState<T>(initial);
   const ref = useRef(val);
   ref.current = val;
-  const set = (v: T) => {
+  const set = useCallback((v: T) => {
     ref.current = v;
     _set(v);
-  };
+  }, []);
   return [val, set, ref];
 }
 
@@ -64,10 +66,48 @@ export function useWorkAreaState() {
     [redes],
   );
 
+  // Cloud sync for "Redes activas"/"Equipos activos" — was localStorage-only, so it never
+  // followed the project (reopening from Profile, a fresh browser, or another device always
+  // fell back to the hardcoded ['san','ll'] default). Mirrors ProjectContext's restoreDone
+  // pattern: redesRestoreDone starts true only when local data already exists for the active
+  // project (so a genuinely-cleared cache pulls from Supabase instead of the save effect
+  // immediately persisting the default over whatever was saved before).
+  const [redesRestoreDone, setRedesRestoreDone] = useState(() => {
+    const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    if (!proyectoId) return true;
+    return loadFromStorage(ACTIVE_NETS_KEY, null) != null;
+  });
+
+  useEffect(() => {
+    if (redesRestoreDone) return;
+    const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    if (!proyectoId) return;
+    let ignore = false;
+    (async () => {
+      const data = await loadProyectoData(Number(proyectoId));
+      if (!ignore && data?.redesActivas && data.redesActivas.length > 0) {
+        setRedes(new Set(data.redesActivas));
+      }
+      if (!ignore) setRedesRestoreDone(true);
+    })();
+    return () => {
+      ignore = true;
+    };
+    // Mount-once — redesRestoreDone already encodes the no-restore-needed case.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     saveToStorage(ACTIVE_NETS_KEY, [...redes]);
     window.dispatchEvent(new CustomEvent(NETS_CHANGED_EVENT, { detail: [...redes] }));
-  }, [redes]);
+    if (!redesRestoreDone) return;
+    const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    if (!proyectoId) return;
+    const timer = setTimeout(() => {
+      saveRedesActivas(Number(proyectoId), [...redes]);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [redes, redesRestoreDone]);
 
   const [redActiva, setRedActiva] = useState<string>('san');
   const [sanPage, setSanPage] = useState<number>(1);
