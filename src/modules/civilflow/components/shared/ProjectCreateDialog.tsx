@@ -5,6 +5,7 @@ import { ProjectContext } from '../../context/ProjectContext';
 import { createProyecto } from '../../services/proyectosService';
 import { clearAllPDFs } from '../../services/idbStorage';
 import { clearLocalWorkspace } from '../../services/workspaceReset';
+import { saveToStorage } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
 import { ACTIVE_PROYECTO_ID_KEY } from '../../constants/storage-keys';
 
@@ -45,12 +46,24 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
         setCreating(false);
         return;
       }
+      // Pause the debounced cloud-save effects across the reset below — same reasoning as
+      // ProfilePage.openProyecto (see ProjectContext.pauseCloudSync).
+      projectCtx?.pauseCloudSync();
+      plansCtx?.pauseCloudSync();
       // Local workspace always starts blank for a new project; Supabase data stays
       // isolated per proyecto_id, no need to delete anything server-side.
       clearLocalWorkspace();
       await clearAllPDFs();
       // Mark this project as the active one so trazos/plans/proyecto_data scope to it
       localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, String(proyecto.id));
+      // The context providers are not mounted on the profile route (CivilFlowProviders is
+      // scoped to the work area), so setP below is a no-op there. Persist the name directly
+      // instead — ProyectoProvider restores it from this key on mount, and the work area
+      // shows it in the "Identificación del proyecto" field immediately. Must go through
+      // saveToStorage (not a raw localStorage.setItem) — ProyectoContext's usePersistedState
+      // already passes the prefixed key 'civilflow_proy', and saveToStorage prefixes it AGAIN
+      // internally (civilflow_civilflow_proy), so that's the actual key it reads on mount.
+      saveToStorage('civilflow_proy', { nombre: trimmed });
       // Reset in-memory React state too — clearing localStorage alone doesn't touch
       // state already loaded into the context providers (they wrap the whole app and
       // don't remount on navigation).
@@ -58,9 +71,13 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
       projectCtx?.resetToDefaults();
       // Set project name so InfoTab shows it immediately
       projectCtx?.setP('nombre', trimmed);
+      projectCtx?.resumeCloudSync();
+      plansCtx?.resumeCloudSync();
       navigate('/civilflowareatrabajo');
     } catch (err) {
       devError('Error creando proyecto:', err);
+      projectCtx?.resumeCloudSync();
+      plansCtx?.resumeCloudSync();
     } finally {
       setCreating(false);
     }

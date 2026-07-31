@@ -56,6 +56,12 @@ interface PlansContextValue {
   confirmPlan: (id: number) => void;
   resetPlans: () => void;
   restorePlans: (items: PlanItem[]) => void;
+  /** Suspends the debounced cloud-save effect. See ProjectContext.pauseCloudSync — same
+   * reasoning applies here: callers that reset `plans` and then asynchronously restore it
+   * from Supabase must pause first or the reset's empty list gets saved (deleting every
+   * planos row) before the restore runs. */
+  pauseCloudSync: () => void;
+  resumeCloudSync: () => void;
 }
 
 export const PlansContext = createContext<PlansContextValue | null>(null);
@@ -81,6 +87,12 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const restoredRef = useRef(false);
   const [restoreDone, setRestoreDone] = useState(false);
+  // Distinct from restoreDone (which only means "local IndexedDB restore settled"): the
+  // debounced cloud-backup effect below must not fire until the cloud-restore effect has
+  // also settled, or an empty `plans` (still being restored from the cloud) races the
+  // 1200ms save timer and can overwrite real cloud data with an empty array before the
+  // restore finishes reading it — losing every plano on refresh/relogin/reopen.
+  const [cloudRestoreDone, setCloudRestoreDone] = useState(false);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(
@@ -177,43 +189,50 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
   // plan metadata and no IndexedDB PDFs, but Supabase holds both (planos table + plan_pdfs
   // bucket). Runs once after the local restore finishes, only when the local list is empty,
   // and re-caches everything locally so subsequent visits are offline-first again.
-  const cloudRestoredRef = useRef(false);
+  // No mount-once ref: in dev StrictMode mounts the effect twice, and a ref would let the
+  // first (aborted) run permanently block the second one. The ignore flag alone is enough
+  // — it only cancels the in-flight fetch on a real unmount.
   useEffect(() => {
-    if (cloudRestoredRef.current) return;
-    cloudRestoredRef.current = true;
     if (!restoreDone) return;
     const proyectoId = getActiveProyectoId();
-    if (!proyectoId) return;
-    if (plans.length > 0) return;
+    if (!proyectoId || plans.length > 0) {
+      // One-time mount guard for the async cloud restore below — not derivable from
+      // props/state available during render (plans.length settles async via IndexedDB).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCloudRestoreDone(true);
+      return;
+    }
     let ignore = false;
     (async () => {
       const data = await loadProyectoData(proyectoId);
       const meta = data?.plans_meta;
-      if (ignore || !meta || meta.length === 0) return;
-      const restored: PlanItem[] = [];
-      for (const m of meta) {
-        const file = await downloadPlanPDF(proyectoId, m.id, m.name);
-        if (file) {
-          const item: PlanItem = {
-            id: m.id,
-            file,
-            name: m.name,
-            nivel: m.nivel,
-            scale: m.scale,
-            status: m.status,
-            origen: m.origen,
-            factorX: m.factorX || null,
-            factorY: m.factorY || null,
-            calGlobal: m.calGlobal || null,
-            definedScale: m.definedScale || null,
-          };
-          restored.push(item);
-          storePDF(m.id, file).catch((e) => {
-            devError('storePDF error during cloud restore:', e);
-          });
+      if (!ignore && meta && meta.length > 0) {
+        const restored: PlanItem[] = [];
+        for (const m of meta) {
+          const file = await downloadPlanPDF(proyectoId, m.id, m.name);
+          if (file) {
+            const item: PlanItem = {
+              id: m.id,
+              file,
+              name: m.name,
+              nivel: m.nivel,
+              scale: m.scale,
+              status: m.status,
+              origen: m.origen,
+              factorX: m.factorX || null,
+              factorY: m.factorY || null,
+              calGlobal: m.calGlobal || null,
+              definedScale: m.definedScale || null,
+            };
+            restored.push(item);
+            storePDF(m.id, file).catch((e) => {
+              devError('storePDF error during cloud restore:', e);
+            });
+          }
         }
+        if (!ignore && restored.length > 0) setPlans(restored);
       }
-      if (!ignore && restored.length > 0) setPlans(restored);
+      if (!ignore) setCloudRestoreDone(true);
     })();
     return () => {
       ignore = true;
@@ -232,7 +251,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
   // gated on restoreDone so it never fires with a stale empty list before the
   // local IndexedDB restore above has had a chance to populate `plans`.
   useEffect(() => {
-    if (!restoreDone) return;
+    if (!cloudRestoreDone) return;
     const proyectoId = getActiveProyectoId();
     if (!proyectoId) return;
     const timer = setTimeout(() => {
@@ -240,7 +259,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       saveProyectoPlansMeta(proyectoId, meta);
     }, 1200);
     return () => clearTimeout(timer);
-  }, [plans, restoreDone]);
+  }, [plans, cloudRestoreDone]);
 
   const addPlans = useCallback((newFiles: FileList | File[]) => {
     const pdfs: PlanItem[] = [];
@@ -309,6 +328,9 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     setPlans(items);
   }, []);
 
+  const pauseCloudSync = useCallback(() => setCloudRestoreDone(false), []);
+  const resumeCloudSync = useCallback(() => setCloudRestoreDone(true), []);
+
   const value = useMemo(
     () => ({
       plans,
@@ -320,8 +342,21 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       confirmPlan,
       resetPlans,
       restorePlans,
+      pauseCloudSync,
+      resumeCloudSync,
     }),
-    [plans, error, addPlans, removePlan, updatePlan, confirmPlan, resetPlans, restorePlans],
+    [
+      plans,
+      error,
+      addPlans,
+      removePlan,
+      updatePlan,
+      confirmPlan,
+      resetPlans,
+      restorePlans,
+      pauseCloudSync,
+      resumeCloudSync,
+    ],
   );
 
   return <PlansContext.Provider value={value}>{children}</PlansContext.Provider>;

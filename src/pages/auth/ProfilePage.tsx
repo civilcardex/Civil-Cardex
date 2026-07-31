@@ -8,16 +8,9 @@ import {
   ProjectContext,
   PROY_DEFAULTS,
   type Proyecto,
-  type MaterialItem,
-  type ProfItem,
-  type CritItem,
 } from '../../modules/civilflow/context/ProjectContext';
 import type { Piso } from '../../modules/civilflow/components/useWorkAreaState';
-import {
-  PlansContext,
-  type PlanItem,
-  type PlanMeta,
-} from '../../modules/civilflow/context/PlansContext';
+import { PlansContext, type PlanMeta } from '../../modules/civilflow/context/PlansContext';
 import {
   fetchProyectos,
   deleteProyecto,
@@ -27,8 +20,13 @@ import { loadProyectoData } from '../../modules/civilflow/services/proyectoDataS
 import { downloadPlanPDF } from '../../modules/civilflow/services/pdfStorageService';
 import { storePDF, clearAllPDFs } from '../../modules/civilflow/services/idbStorage';
 import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReset';
+import { saveToStorage } from '../../modules/civilflow/services/storageService';
 import ProjectCreateDialog from '../../modules/civilflow/components/shared/ProjectCreateDialog';
-import { ACTIVE_PROYECTO_ID_KEY } from '../../modules/civilflow/constants/storage-keys';
+import {
+  ACTIVE_PROYECTO_ID_KEY,
+  ACTIVE_NETS_KEY,
+  PLANS_META_KEY,
+} from '../../modules/civilflow/constants/storage-keys';
 
 const campos = [
   { key: 'nombre', label: 'Nombre' },
@@ -70,6 +68,12 @@ function ProfilePage() {
       // Local workspace always starts blank before loading the selected project —
       // clearing localStorage alone doesn't touch state already sitting in the context
       // providers (they wrap the whole app and don't remount on navigation).
+      // Pause the debounced cloud-save effects before resetting — otherwise the reset's
+      // transient empty state gets written to Supabase (wiping the project) before the
+      // manual restore below has a chance to run, since it's separated from the reset by
+      // an await and therefore lands in its own render commit.
+      projectCtx?.pauseCloudSync();
+      plansCtx?.pauseCloudSync();
       clearLocalWorkspace();
       await clearAllPDFs();
       plansCtx?.resetPlans();
@@ -78,42 +82,50 @@ function ProfilePage() {
 
       const data = await loadProyectoData(proy.id);
 
+      // The context setters below (setPisos/setProyAll/setMats/.../restorePlans) are no-ops
+      // on this route — CivilFlowProviders only wraps /civilflowareatrabajo, so projectCtx and
+      // plansCtx are both null here. The real hand-off to the work area is via localStorage:
+      // ProyectoProvider/PisosProvider/etc each read their own key on mount via
+      // usePersistedState, which internally prefixes the key AGAIN (usePersistedState is
+      // already called with the prefixed 'civilflow_proy'/'civilflow_pisos'/etc), so the actual
+      // storage key is the DOUBLED civilflow_civilflow_proy — must go through saveToStorage
+      // (which applies that same second prefix), never a raw localStorage.setItem, or the
+      // write lands on a key nobody reads.
       if (data) {
-        if (data.pisos) projectCtx?.setPisos(data.pisos as Piso[]);
-        if (data.proy && Object.keys(data.proy).length) {
-          projectCtx?.setProyAll({ ...PROY_DEFAULTS, ...(data.proy as Partial<Proyecto>) });
-        } else {
-          projectCtx?.setP('nombre', proy.nombre);
-        }
-        if (data.mats && Object.keys(data.mats).length) {
-          projectCtx?.setMats((prev) => ({
-            ...prev,
-            ...(data.mats as Record<string, MaterialItem[]>),
-          }));
-        }
-        if (data.profs && data.profs.length) projectCtx?.setProfs(data.profs as ProfItem[]);
-        if (data.crits && data.crits.length) projectCtx?.setCrits(data.crits as CritItem[]);
+        if (data.pisos) saveToStorage('civilflow_pisos', data.pisos as Piso[]);
+        const proyToSave =
+          data.proy && Object.keys(data.proy).length
+            ? { ...PROY_DEFAULTS, ...(data.proy as Partial<Proyecto>) }
+            : { ...PROY_DEFAULTS, nombre: proy.nombre };
+        saveToStorage('civilflow_proy', proyToSave);
+        if (data.mats && Object.keys(data.mats).length) saveToStorage('civilflow_mats', data.mats);
+        if (data.profs && data.profs.length) saveToStorage('civilflow_profs', data.profs);
+        if (data.crits && data.crits.length) saveToStorage('civilflow_crits', data.crits);
+        if (data.redesActivas && data.redesActivas.length)
+          saveToStorage(ACTIVE_NETS_KEY, data.redesActivas);
       } else {
         // No saved data yet for this project (created before this feature, or never
         // touched) — at least show the right name instead of the reset default.
-        projectCtx?.setP('nombre', proy.nombre);
+        saveToStorage('civilflow_proy', { ...PROY_DEFAULTS, nombre: proy.nombre });
       }
 
       const plansMeta = (data?.plans_meta as PlanMeta[]) || [];
-      const restored: PlanItem[] = [];
+      const restoredMeta: PlanMeta[] = [];
       for (const m of plansMeta) {
         const file = await downloadPlanPDF(proy.id, m.id, m.name || `plano_${m.id}.pdf`);
         if (file) {
           await storePDF(m.id, file);
-          restored.push({ ...m, file });
+          restoredMeta.push(m);
         }
       }
-      plansCtx?.restorePlans(restored);
+      if (restoredMeta.length > 0) saveToStorage(PLANS_META_KEY, restoredMeta);
 
       navigate('/civilflowareatrabajo');
     } catch (err) {
       devError('Error abriendo proyecto:', err);
     } finally {
+      projectCtx?.resumeCloudSync();
+      plansCtx?.resumeCloudSync();
       setOpeningId(null);
     }
   }
