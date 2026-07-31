@@ -160,7 +160,7 @@ function App() {
                 }
               />
               <Route
-                path="/civilmanage"
+                path="/civilmanager"
                 element={
                   <ErrorBoundary>
                     <Suspense fallback={<Fallback />}>
@@ -210,7 +210,7 @@ function App() {
                     }
                   />
                   <Route
-                    path="/civilmanageareatrabajo"
+                    path="/civilmanagerareatrabajo"
                     element={
                       <ErrorBoundary>
                         <Suspense fallback={<Fallback />}>

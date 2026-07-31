@@ -89,8 +89,8 @@ function LoginPage() {
                 className="text-2xl font-black tracking-tight uppercase mb-1"
                 style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
               >
-                <span style={{ color: '#e8f4fd' }}>CIVIL</span>
-                <span style={{ color: '#00dce5' }}>CARDEX</span>
+                <span style={{ color: '#dce3ea' }}>CIVIL</span>
+                <span style={{ color: '#e8c84a' }}> CARDEX</span>
               </h1>
               <p
                 className="text-xs uppercase tracking-widest"

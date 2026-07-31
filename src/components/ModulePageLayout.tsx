@@ -1,13 +1,13 @@
 import { useRef, useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
 
 const MODULE_NAMES: Record<string, string> = {
-  civilflow: 'CivilFlow',
+  civilflow: 'Civil Flow',
   civilstructure: 'Estructuras',
   civilterrain: 'Terreno',
   civilbim: 'BIM',
-  civilmanage: 'Gestión',
+  civilmanager: 'Civil Manager',
   civilmep: 'MEP',
   civilroads: 'Vías',
 };
@@ -67,32 +67,18 @@ export default function ModulePageLayout({
       <footer className="border-t border-outline-variant" style={{ background: '#0c0e12' }}>
         <div className="flex flex-col md:flex-row justify-between items-center px-6 lg:px-8 py-8 w-full gap-4">
           <span
-            className="text-[11px] tracking-[0.08em] font-bold text-primary uppercase"
+            className="text-[11px] tracking-[0.08em] font-bold uppercase"
             style={{ fontFamily: 'Geist, monospace' }}
           >
-            CivilCardex
+            <span className="ccx-silver">Civil</span>
+            <span className="ccx-gold"> Cardex</span>
           </span>
-          <div className="flex flex-wrap items-center justify-center gap-6">
-            <Link
-              to="/docs"
-              className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant hover:text-primary uppercase transition-colors"
-              style={{ fontFamily: 'Geist, monospace' }}
-            >
-              API
-            </Link>
-            <Link
-              to="/docs"
-              className="text-[11px] tracking-[0.08em] font-bold text-on-surface-variant hover:text-primary uppercase transition-colors"
-              style={{ fontFamily: 'Geist, monospace' }}
-            >
-              SDK
-            </Link>
-          </div>
+          <div className="flex flex-wrap items-center justify-center gap-6"></div>
           <span
             className="text-[13px] text-on-surface-variant uppercase"
             style={{ fontFamily: 'Geist, monospace' }}
           >
-            © 2026 CivilCardex Engineering. Todos los derechos reservados.
+            © 2026 Civil Cardex. Todos los derechos reservados.
           </span>
         </div>
       </footer>

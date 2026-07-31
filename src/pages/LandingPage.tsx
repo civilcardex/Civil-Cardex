@@ -31,11 +31,16 @@ const MODULOS_HERO = [
   {
     id: 'manage',
     logo: '/logos/civilManagelogo.webp',
-    name: 'Manager',
+    name: 'Civil Manager',
     color: '#e67e22',
-    path: '/civilmanage',
-    desc: 'Gestión de proyectos, presupuestos, cronogramas y seguimiento de avance de obra.',
-    cats: ['Control de costos', 'Gestión de cronogramas', 'Avance de obra', 'Integración ERP'],
+    path: '/civilmanager',
+    desc: 'Presupuestos de obra civil, análisis de precios unitarios (APU) con mano de obra, insumos, equipo y transporte, catálogos integrados y configuración de perfil país y factor prestacional.',
+    cats: [
+      'Análisis de Precios Unitarios',
+      'Catálogos de obra',
+      'Configuración por país',
+      'Importación desde Excel',
+    ],
   },
   {
     id: 'structure',
@@ -89,16 +94,32 @@ const MOD_SUB = {
   structure: 'DISEÑO ESTRUCTURAL Y ANÁLISIS',
   terrain: 'TOPOGRAFÍA Y MOVIMIENTO DE TIERRAS',
   bim: 'INTEGRACIÓN BIM',
-  manage: 'PRESUPUESTOS Y GESTIÓN',
+  manage: 'PRESUPUESTOS Y APU',
   mep: 'INSTALACIONES MEP',
   roads: 'VÍAS Y URBANISMO',
 };
 
 const PILLARS = [
-  { icon: 'link', title: 'INTEGRACIÓN\nTOTAL' },
-  { icon: 'cloud_sync', title: 'FLUJO DE TRABAJO\nCONECTADO' },
-  { icon: 'schema', title: 'DATOS ÚNICOS\nINTELIGENTES' },
-  { icon: 'group_work', title: 'COLABORACIÓN\nEN TIEMPO REAL' },
+  {
+    icon: 'water_drop',
+    title: 'Redes',
+    sub: 'Agua fría · Agua caliente · Sanitaria · Aguas lluvias · Gas · Contra incendio',
+  },
+  {
+    icon: 'request_quote',
+    title: 'PRESUPUESTOS\nY APU',
+    sub: 'Mano de obra · Insumos · Equipo · Transporte',
+  },
+  {
+    icon: 'verified',
+    title: 'VERIFICACIÓN\nNORMATIVA',
+    sub: 'NTC 1500 · RAS 2000 · NTC 3728 · NFPA 13',
+  },
+  {
+    icon: 'description',
+    title: 'MEMORIAS DE\nCÁLCULO',
+    sub: 'Exportables con datos del proyecto y normas',
+  },
 ];
 
 function FadeIn({
@@ -329,7 +350,7 @@ function LandingPage() {
                     className="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider relative z-10"
                     style={{ color: '#e8c84a', fontFamily: 'Hanken Grotesk, sans-serif' }}
                   >
-                    {m.name.replace('Civil', '')}
+                    {m.name.replace(/^Civil\s?/, '')}
                   </span>
                   <span
                     className="text-[8px] sm:text-[9px] md:text-[10px] text-center mt-1 md:mt-1.5 relative z-10 uppercase tracking-wider leading-tight"
@@ -374,20 +395,28 @@ function LandingPage() {
             {PILLARS.map((p, index) => (
               <FadeIn key={p.icon} delay={index * 100} className="h-full">
                 <div
-                  className="pilar-card border border-outline-variant p-6 flex items-center gap-4 hover:border-primary/30 transition-all h-full"
+                  className="pilar-card border border-outline-variant p-6 flex flex-col gap-3 hover:border-primary/30 transition-all h-full"
                   style={{ background: '#111317' }}
                 >
+                  <div className="flex items-center gap-4">
+                    <span
+                      className="material-symbols-outlined text-2xl flex-shrink-0"
+                      style={{ color: '#e8c84a', fontVariationSettings: "'FILL' 0" }}
+                    >
+                      {p.icon}
+                    </span>
+                    <span
+                      className="text-[11px] font-bold uppercase tracking-widest leading-tight"
+                      style={{ color: '#f0f4f8', fontFamily: 'Geist, monospace' }}
+                    >
+                      {p.title}
+                    </span>
+                  </div>
                   <span
-                    className="material-symbols-outlined text-2xl flex-shrink-0"
-                    style={{ color: '#e8c84a', fontVariationSettings: "'FILL' 0" }}
+                    className="text-[10px] tracking-[0.08em] uppercase leading-relaxed"
+                    style={{ color: '#8a9bb0', fontFamily: 'Geist, monospace' }}
                   >
-                    {p.icon}
-                  </span>
-                  <span
-                    className="text-[11px] font-bold uppercase tracking-widest leading-tight"
-                    style={{ color: '#f0f4f8', fontFamily: 'Geist, monospace' }}
-                  >
-                    {p.title}
+                    {p.sub}
                   </span>
                 </div>
               </FadeIn>
@@ -408,27 +437,42 @@ function LandingPage() {
                 className="text-xl font-semibold uppercase tracking-widest px-4"
                 style={{ color: '#f0f4f8', fontFamily: 'Hanken Grotesk, sans-serif' }}
               >
-                ¿Por qué CivilCardex?
+                ¿Por qué Civil Cardex?
               </h2>
               <div className="h-px bg-outline-variant flex-grow" />
             </div>
           </FadeIn>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
               {
+                icon: 'design_services',
+                title: 'DISEÑO SOBRE PLANOS',
+                desc: 'Cargue planos en PDF o imagen y trace ramales, bajantes, áreas y anotaciones por nivel. Autosave y visualización isométrica mientras diseña.',
+              },
+              {
                 icon: 'speed',
-                title: 'VELOCIDAD',
-                desc: 'De los datos del proyecto a la memoria de cálculo en minutos, no en horas. Cálculos en tiempo real con retroalimentación instantánea.',
+                title: 'CÁLCULO EN TIEMPO REAL',
+                desc: 'Unidades de consumo y descarga, caudales, pérdidas de carga y verificación de ΔP de gas NTC 3728 con retroalimentación instantánea.',
+              },
+              {
+                icon: 'request_quote',
+                title: 'PRESUPUESTOS Y APU',
+                desc: 'Análisis de precios unitarios con mano de obra, insumos, equipo y transporte, catálogos integrados y perfil país configurado.',
               },
               {
                 icon: 'verified',
-                title: 'PRECISIÓN NORMATIVA',
-                desc: 'Verificación automática contra NTC, RAS, NFPA y normativas locales. Reducción de errores humanos al 0%.',
+                title: 'VERIFICACIÓN NORMATIVA',
+                desc: 'Cumplimiento automático contra las normas técnicas colombianas e internacionales vigentes para cada red y disciplina. Reducción de errores humanos al mínimo.',
+              },
+              {
+                icon: 'description',
+                title: 'MEMORIAS EXPORTABLES',
+                desc: 'Generación de la memoria de cálculo completa con datos del proyecto, materiales, aparatos, cubierta, gas y validación normativa en un clic.',
               },
               {
                 icon: 'hub',
-                title: 'INTEGRACIÓN TOTAL',
-                desc: 'Todos los módulos comparten un mismo modelo de datos. Cambios en topografía se reflejan en estructura, redes y presupuesto.',
+                title: 'COBERTURA INTEGRAL',
+                desc: 'Hidrosanitario, estructuras, terreno, BIM, MEP y vías bajo una misma plataforma, con datos compartidos entre módulos y disciplinas de la ingeniería civil.',
               },
             ].map((f, index) => (
               <FadeIn key={f.icon} delay={index * 100} className="h-full">
@@ -523,9 +567,10 @@ function LandingPage() {
               />
               <span
                 className="text-2xl font-bold uppercase"
-                style={{ color: '#6a8e8e', fontFamily: 'Hanken Grotesk, sans-serif' }}
+                style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
               >
-                Civil Cardex
+                <span className="ccx-silver">Civil</span>
+                <span className="ccx-gold"> Cardex</span>
               </span>
             </Link>
             <nav className="flex gap-6">

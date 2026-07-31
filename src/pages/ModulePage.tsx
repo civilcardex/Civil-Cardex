@@ -120,7 +120,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               className="text-xl font-semibold text-on-surface"
               style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
             >
-              {cfg.customLayout === 'mep' ? 'Capacidades del Módulo' : 'Capacidades del Sistema'}
+              {cfg.customLayout === 'mep' ? 'Capacidades del Módulo' : 'Capacidades del sistema'}
             </h2>
             <p
               className="text-[13px] text-outline uppercase"
@@ -128,7 +128,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
             >
               {cfg.customLayout === 'mep'
                 ? 'SYS.MEP.FEATURES // ANALYTICS'
-                : 'Módulos de Integración Activos'}
+                : 'Módulos de integración activos'}
             </p>
           </div>
         )}
@@ -140,7 +140,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               : cfg.customLayout === 'roads'
                 ? 'grid grid-cols-1 md:grid-cols-12 gap-3'
                 : cfg.customLayout === 'manage'
-                  ? 'grid grid-cols-1 md:grid-cols-3 gap-3 auto-rows-[250px]'
+                  ? 'grid grid-cols-1 sm:grid-cols-2 gap-5 auto-rows-[320px]'
                   : 'grid grid-cols-1 md:grid-cols-3 gap-3'
           }
         >
@@ -161,14 +161,24 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                 className={`border p-6 flex flex-col justify-between group transition-all relative overflow-hidden ${isSpan} ${f.highlight ? '' : ''}`}
                 style={{
                   background:
-                    cfg.customLayout === 'mep' ? (f.span ? '#1e2024' : '#1a1c20') : '#1a1c20',
+                    cfg.customLayout === 'manage'
+                      ? `linear-gradient(155deg, #1e2128 0%, #1a1c20 55%, ${cfg.accent}14 100%)`
+                      : cfg.customLayout === 'mep'
+                        ? f.span
+                          ? '#1e2024'
+                          : '#1a1c20'
+                        : '#1a1c20',
                   borderColor: f.highlight ? cfg.accent : '#3a494a',
                   boxShadow: f.highlight ? `0 0 15px -3px ${cfg.accent}` : 'none',
                 }}
               >
                 <div className="z-10 flex flex-col gap-4">
                   <div
-                    className="w-12 h-12 flex items-center justify-center border group-hover:border-primary transition-colors"
+                    className={
+                      cfg.customLayout === 'manage'
+                        ? 'w-16 h-16 flex items-center justify-center border group-hover:border-primary transition-colors'
+                        : 'w-12 h-12 flex items-center justify-center border group-hover:border-primary transition-colors'
+                    }
                     style={{
                       background: '#111317',
                       borderColor: '#3a494a',
@@ -176,26 +186,46 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                     }}
                   >
                     <span
-                      className="material-symbols-outlined"
+                      className={
+                        cfg.customLayout === 'manage'
+                          ? 'material-symbols-outlined text-3xl'
+                          : 'material-symbols-outlined'
+                      }
                       style={{ fontVariationSettings: "'FILL' 1" }}
                     >
                       {f.icon}
                     </span>
                   </div>
                   <h3
-                    className="text-lg font-semibold text-on-surface"
+                    className={
+                      cfg.customLayout === 'manage'
+                        ? 'text-xl font-semibold text-on-surface'
+                        : 'text-lg font-semibold text-on-surface'
+                    }
                     style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
                   >
                     {f.title}
                   </h3>
-                  <p className="text-sm text-on-surface-variant max-w-sm">{f.desc}</p>
+                  <p
+                    className={
+                      cfg.customLayout === 'manage'
+                        ? 'text-base text-on-surface-variant w-full'
+                        : 'text-sm text-on-surface-variant w-full'
+                    }
+                  >
+                    {f.desc}
+                  </p>
 
                   {f.tags && (
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex flex-wrap gap-2 mt-2">
                       {f.tags.map((t) => (
                         <span
                           key={t}
-                          className="text-[10px] px-2 py-1 border border-outline-variant text-on-surface-variant"
+                          className={
+                            cfg.customLayout === 'manage'
+                              ? 'text-[12px] px-3 py-1.5 border border-outline-variant text-on-surface-variant'
+                              : 'text-[10px] px-2 py-1 border border-outline-variant text-on-surface-variant'
+                          }
                           style={{ background: '#111317', fontFamily: 'Geist, monospace' }}
                         >
                           {t}
@@ -203,7 +233,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                       ))}
                     </div>
                   )}
-                  {f.highlight && (
+                  {f.highlight && cfg.customLayout !== 'manage' && (
                     <span
                       className="text-[10px] flex items-center gap-1 mt-1"
                       style={{ fontFamily: 'Geist, monospace', color: '#ffb4ab' }}
@@ -444,166 +474,79 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
           </div>
         )}
 
-        {/* Normas inside features container for Flow */}
-        {cfg.normas && (
-          <div className="mt-6 border-t border-outline-variant pt-6">
-            <h4
-              className="text-[11px] tracking-[0.08em] font-bold text-on-surface mb-3 uppercase"
-              style={{ fontFamily: 'Geist, monospace' }}
+        {/* Specifications table section (Only for Flow) */}
+        {cfg.specs && (
+          <section className="py-12 px-6 lg:px-8 max-w-6xl mx-auto">
+            <h2
+              className="text-xl font-semibold text-on-surface border-b border-outline-variant pb-4 mb-6"
+              style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
             >
-              Cumplimiento Normativo
-            </h4>
-            <ul className="flex flex-col gap-2">
-              {cfg.normas.map((n, i) => (
-                <li
-                  key={i}
-                  className="flex items-center gap-2 text-[13px] text-on-surface-variant"
-                  style={{ fontFamily: 'Geist, monospace' }}
+              ESPECIFICACIONES DEL MÓDULO
+            </h2>
+            <div
+              className="border border-outline-variant overflow-auto"
+              style={{ background: '#1e2024' }}
+            >
+              <table className="w-full text-left text-sm min-w-[600px]">
+                <caption style={ModulePage_S1}>Especificaciones del módulo</caption>
+                <thead
+                  className="border-b border-outline-variant"
+                  style={{ background: '#282a2e' }}
                 >
-                  <span
-                    className="material-symbols-outlined text-primary text-sm"
-                    style={{ color: cfg.accent }}
-                  >
-                    check_circle
-                  </span>{' '}
-                  {n}
-                </li>
-              ))}
-            </ul>
-          </div>
+                  <tr>
+                    <th
+                      scope="col"
+                      className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
+                      style={{ fontFamily: 'Geist, monospace' }}
+                    >
+                      Parámetro
+                    </th>
+                    <th
+                      scope="col"
+                      className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
+                      style={{ fontFamily: 'Geist, monospace' }}
+                    >
+                      Red Hidráulica
+                    </th>
+                    <th
+                      scope="col"
+                      className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
+                      style={{ fontFamily: 'Geist, monospace' }}
+                    >
+                      Saneamiento
+                    </th>
+                    <th
+                      scope="col"
+                      className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
+                      style={{ fontFamily: 'Geist, monospace' }}
+                    >
+                      Red de Gas
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="text-on-surface-variant">
+                  {cfg.specs.map((s, i) => (
+                    <tr
+                      key={i}
+                      className="border-b border-outline-variant/50 hover:bg-surface-container-highest transition-colors"
+                    >
+                      <td className="p-4 text-[13px]" style={{ fontFamily: 'Geist, monospace' }}>
+                        {s.param}
+                      </td>
+                      <td className="p-4">{s.hid}</td>
+                      <td className="p-4">{s.san}</td>
+                      <td className="p-4">{s.gas}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
         )}
       </section>
 
-      {/* Specifications table section (Only for Flow) */}
-      {cfg.specs && (
-        <section className="py-12 px-6 lg:px-8 max-w-6xl mx-auto">
-          <h2
-            className="text-xl font-semibold text-on-surface border-b border-outline-variant pb-4 mb-6"
-            style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
-          >
-            ESPECIFICACIONES DEL MÓDULO
-          </h2>
-          <div
-            className="border border-outline-variant overflow-auto"
-            style={{ background: '#1e2024' }}
-          >
-            <table className="w-full text-left text-sm min-w-[600px]">
-              <caption style={ModulePage_S1}>Especificaciones del módulo</caption>
-              <thead className="border-b border-outline-variant" style={{ background: '#282a2e' }}>
-                <tr>
-                  <th
-                    scope="col"
-                    className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
-                    style={{ fontFamily: 'Geist, monospace' }}
-                  >
-                    Parámetro
-                  </th>
-                  <th
-                    scope="col"
-                    className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
-                    style={{ fontFamily: 'Geist, monospace' }}
-                  >
-                    Red Hidráulica
-                  </th>
-                  <th
-                    scope="col"
-                    className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
-                    style={{ fontFamily: 'Geist, monospace' }}
-                  >
-                    Saneamiento
-                  </th>
-                  <th
-                    scope="col"
-                    className="p-4 w-1/4 text-[11px] tracking-[0.08em] font-bold text-on-surface uppercase"
-                    style={{ fontFamily: 'Geist, monospace' }}
-                  >
-                    Red de Gas
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="text-on-surface-variant">
-                {cfg.specs.map((s, i) => (
-                  <tr
-                    key={i}
-                    className="border-b border-outline-variant/50 hover:bg-surface-container-highest transition-colors"
-                  >
-                    <td className="p-4 text-[13px]" style={{ fontFamily: 'Geist, monospace' }}>
-                      {s.param}
-                    </td>
-                    <td className="p-4">{s.hid}</td>
-                    <td className="p-4">{s.san}</td>
-                    <td className="p-4">{s.gas}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      )}
-
       {/* Call To Action bottom block */}
-      {cfg.customLayout === 'flow' ? (
-        <section className="py-16 px-6 lg:px-8">
-          <div
-            className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 border border-outline-variant p-6 md:p-8"
-            style={{ background: '#282a2e' }}
-          >
-            <div className="flex flex-col gap-6">
-              <div className="flex items-center gap-2">
-                <div
-                  className="w-2 h-2 rounded-full animate-pulse"
-                  style={{ background: '#00f5ff' }}
-                />
-                <span
-                  className="text-[13px]"
-                  style={{ fontFamily: 'Geist, monospace', color: '#00f5ff' }}
-                >
-                  SISTEMA ONLINE
-                </span>
-              </div>
-              <h2
-                className="text-2xl font-bold text-on-surface"
-                style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
-              >
-                Validación de Datos en su Propio Terreno
-              </h2>
-              <p className="text-sm text-on-surface-variant">
-                Solicite acceso a nuestro entorno de pruebas sandbox. Suba un KML de muestra y
-                experimente el ruteo automático y cálculo de presiones en tiempo real.
-              </p>
-              <div className="flex gap-4 mt-2">
-                <input
-                  aria-label="Correo electrónico corporativo"
-                  className="px-4 py-3 flex-grow outline-none text-on-surface border-b border-outline-variant focus:border-primary transition-colors"
-                  style={{ fontFamily: 'Geist, monospace', fontSize: 13, background: '#0A0C0E' }}
-                  placeholder="INGRESAR_CORREO_CORPORATIVO"
-                  type="email"
-                />
-                <button
-                  type="button"
-                  className="px-6 py-3 uppercase text-[11px] tracking-[0.08em] font-bold text-on-primary flex items-center gap-2"
-                  style={{ fontFamily: 'Geist, monospace', background: '#00f5ff' }}
-                >
-                  Solicitar Demo{' '}
-                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                </button>
-              </div>
-            </div>
-            <div className="hidden md:flex justify-end opacity-50">
-              <div className="w-64 h-64 border border-outline-variant rounded-full flex items-center justify-center relative">
-                <div
-                  className="w-48 h-48 border border-primary/30 rounded-full animate-[spin_10s_linear_infinite]"
-                  style={{ borderColor: 'rgba(0,220,229,0.3)' }}
-                />
-                <div className="absolute w-32 h-32 border border-secondary/20 rounded-full" />
-                <span className="material-symbols-outlined text-4xl text-outline-variant absolute">
-                  hub
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : cfg.customLayout === 'structure' ? (
+      {cfg.customLayout === 'flow' ? null : cfg.customLayout === 'structure' ? (
         <section
           className="py-20 px-6 lg:px-8 relative overflow-hidden"
           style={{ background: '#0c0e12' }}

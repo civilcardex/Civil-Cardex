@@ -16,7 +16,7 @@
 }
 
 .fu {
-  animation: fu .2s ease forwards;
+  animation: fu 0.2s ease forwards;
 }
 
 .sp {
@@ -25,12 +25,72 @@
   border: 2px solid var(--line);
   border-top-color: var(--acc2);
   border-radius: 50%;
-  animation: rot .5s linear infinite;
+  animation: rot 0.5s linear infinite;
   display: inline-block;
 }
 
 .login-grid {
-  background-image: linear-gradient(rgba(0,170,255,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,170,255,0.03) 1px, transparent 1px);
+  background-image:
+    linear-gradient(rgba(0, 170, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 170, 255, 0.03) 1px, transparent 1px);
   background-size: 60px 60px;
+}
+
+/* Marca CivilCardex — gradientes oro/plata compartidos */
+@keyframes ccx-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+/* Hero de módulo — fondos dinámicos (reservado para uso futuro) */
+@keyframes heroBgDrift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate(40px, -20px) scale(1.1);
+    opacity: 1;
+  }
+}
+.ccx-gold {
+  background: linear-gradient(
+    90deg,
+    #c8a84e 0%,
+    #f5d668 25%,
+    #e8c84a 50%,
+    #f5d668 75%,
+    #c8a84e 100%
+  );
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: ccx-shimmer 6s linear infinite;
+}
+.ccx-silver {
+  background: linear-gradient(
+    90deg,
+    #b0b8c1 0%,
+    #dce3ea 30%,
+    #f0f4f8 50%,
+    #dce3ea 70%,
+    #b0b8c1 100%
+  );
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: ccx-shimmer 6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ccx-gold,
+  .ccx-silver {
+    animation: none !important;
+  }
 }
