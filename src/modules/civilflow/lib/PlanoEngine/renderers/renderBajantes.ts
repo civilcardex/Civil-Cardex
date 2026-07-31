@@ -262,7 +262,7 @@ function renderCanalGlyph(
   ctx.beginPath();
   ctx.rect(tl.x, tl.y, w, h);
   ctx.fill();
-  ctx.strokeStyle = sel ? '#FFEB3B' : col;
+  ctx.strokeStyle = col;
   ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom;
   ctx.beginPath();
   ctx.rect(tl.x, tl.y, w, h);
@@ -281,9 +281,9 @@ function renderCanalGlyph(
       { x: tl.x, y: tl.y + h },
       { x: tl.x + w, y: tl.y + h },
     ];
-    ctx.fillStyle = '#FFEB3B';
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1 * engine.zoom;
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 1.5 * engine.zoom;
     for (const cnr of corners) {
       ctx.beginPath();
       ctx.rect(cnr.x - handleR, cnr.y - handleR, handleR * 2, handleR * 2);
@@ -321,20 +321,31 @@ function renderCanalGlyph(
   b._circ = { x: tl.x + w / 2, y: tl.y + h / 2, r: Math.hypot(w, h) / 2 };
 
   if (b.code || b.code === '') {
-    const lx = b.labelX ?? b.x;
-    const ly = b.labelY ?? b.y + 20;
-    const offDx = (lx - b.x) * engine.zoom;
-    let offDy = (ly - b.y) * engine.zoom;
-    const minPerpPx = engine.mm2cvs(3);
-    if (Math.abs(offDy) < minPerpPx) {
-      offDy = offDy >= 0 ? minPerpPx : -minPerpPx;
-    }
+    // Always centered directly below the rectangle, outside it — not draggable (ignores any
+    // stored labelX/labelY/labelAngle) and no leader line, per explicit request.
+    const offDx = 0;
+    const offDy = h + engine.mm2cvs(3);
     // Floor suffix is already baked into b.code at creation (CALL{n}-P{piso}) — a canal lives
     // on a single floor, unlike bajante's dynamic per-render lvlSuffix.
     const line1 = b.code || '—';
     const dirText = `${b.base || 0} x ${(b.altura || 0) + BORDE_LIBRE_CANAL_CM}`;
-    const angle = ((b.labelAngle || 0) * Math.PI) / 180;
-    renderBajanteLabel(ctx, engine, b, tl, 0, angle, offDx, offDy, line1, dirText, '_labelBox', 1);
+    renderBajanteLabel(
+      ctx,
+      engine,
+      b,
+      { x: tl.x + w / 2, y: tl.y },
+      0,
+      0,
+      offDx,
+      offDy,
+      line1,
+      dirText,
+      '_labelBox',
+      1,
+      {
+        skipLeader: true,
+      },
+    );
   } else {
     b._labelBox = undefined;
   }

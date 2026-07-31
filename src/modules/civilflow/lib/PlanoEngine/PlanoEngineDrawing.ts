@@ -302,6 +302,13 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       const downstreamPts = [[ep[0], ep[1]], ...existing.pts.slice(segIdx + 1)];
       existing.pts = [...existing.pts.slice(0, segIdx + 1), [ep[0], ep[1]]];
       existing.totalL = calculateRamalLength(existing.pts, engine);
+      // Re-center existing's own label on its now-truncated body — it previously kept
+      // whatever labelX/labelY it had for the FULL pre-split ramal, which after the cut
+      // could land outside (or far from) the shorter upstream segment that's left.
+      const [existLabelX, existLabelY] = _midpoint(existing.pts);
+      existing.labelX = existLabelX;
+      existing.labelY = existLabelY;
+      existing.labelAngle = _firstSegmentAngle(existing.pts);
       // DO NOT set accesorioFin here — let detectAccesorioTrigger + the modal assign it.
       // Setting it prematurely makes the alreadyResolved sweep skip the modal entirely,
       // so the user never gets to pick the actual tee type (teeSube, teeBaja, yee, etc.).
