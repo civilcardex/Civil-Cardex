@@ -323,22 +323,21 @@ export function useIsometriaRender({
         const baseZ_pix = getZPix(baseZ, b.planNivel);
         const cimaZ_pix = getZPix(cimaZ, b.planNivel);
         const ownIso = getIsoCoords(b.x, b.y, b.planNivel);
-        const targetIsoAtOwnFloor =
-          hasBajanteTarget && targetPt ? getIsoCoords(targetPt[0], targetPt[1], b.planNivel) : null;
-        const targetIsoAtTargetFloor =
+        // getIsoCoords converts raw plan-pixel coordinates to real-world iso position using
+        // THAT FLOOR's OWN scale/origen calibration (each PDF plan is calibrated independently
+        // — see IsometriaTab.tsx's getIsoCoords). Re-interpreting the target's raw px under the
+        // SOURCE floor's calibration (as this used to do for whichever end sat at the source's
+        // own z) silently applied the wrong scale/origin to that end, bending an otherwise
+        // straight vertical run into a diagonal even when both bajantes sit at the exact same
+        // drawn position on their own respective floors. Both ends must resolve through the
+        // TARGET's own calibration — only Z (baseZ_pix/cimaZ_pix, computed per-floor separately
+        // above) is meant to differ between the two ends.
+        const targetIso =
           hasBajanteTarget && targetPt && targetPlanNivel !== null
             ? getIsoCoords(targetPt[0], targetPt[1], targetPlanNivel)
             : null;
-        const baseIso = !hasBajanteTarget
-          ? ownIso
-          : targetZ === lo
-            ? targetIsoAtTargetFloor!
-            : targetIsoAtOwnFloor!;
-        const cimaIso = !hasBajanteTarget
-          ? ownIso
-          : targetZ === hi
-            ? targetIsoAtTargetFloor!
-            : targetIsoAtOwnFloor!;
+        const baseIso = !hasBajanteTarget ? ownIso : targetIso!;
+        const cimaIso = !hasBajanteTarget ? ownIso : targetIso!;
         const pBase = project(
           baseIso.x,
           baseIso.y,

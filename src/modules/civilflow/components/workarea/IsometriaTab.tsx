@@ -5,7 +5,7 @@ import {
   ISO_COLLAPSED_KEY,
   ISO_ACTIVE_NETS_KEY,
 } from '../../constants/storage-keys';
-import { loadFromStorage } from '../../services/storageService';
+import { loadFromStorage, saveToStorage, loadTrazosFromDB } from '../../services/storageService';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 import {
   readDrawingAll,
@@ -105,8 +105,44 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
     return () => ro.disconnect();
   }, []);
 
+  // readDrawingAll only reads each floor's LOCAL cache (civilflow_trazos_<planId>) — that cache
+  // is only populated once a floor has actually been opened in the 2D viewer this session, or
+  // via associateBajanteAcrossFloors.ts writing directly to a target floor. A floor never opened
+  // this session (fresh browser, or the user jumped straight to Isometría) has no local cache at
+  // all, so its ramales/bajantes/crossFloorGhosts are silently missing here — that's why a
+  // cross-floor riser connection can appear broken/misaligned or not draw at all: one end's data
+  // (often the ghost or the real target bajante) simply isn't loaded yet. Prefetch from Supabase
+  // for any floor missing its local cache, then bump trazosPrefetchTick so the memo below re-runs.
+  const [trazosPrefetchTick, setTrazosPrefetchTick] = useState(0);
+  useEffect(() => {
+    if (!plans || plans.length === 0) return;
+    const missing = plans.filter((p) => loadFromStorage(TRAZOS_PREFIX + p.id, null) == null);
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      await Promise.all(
+        missing.map(async (p) => {
+          const data = await loadTrazosFromDB(String(p.id));
+          if (data) saveToStorage(TRAZOS_PREFIX + p.id, data);
+        }),
+      );
+      if (!cancelled) setTrazosPrefetchTick((t) => t + 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [plans]);
+
   const sortedNets = useMemo(() => [...activeNets].sort(), [activeNets]);
-  const result = useMemo(() => readDrawingAll(plans || [], sortedNets), [plans, sortedNets]);
+  const result = useMemo(
+    () => readDrawingAll(plans || [], sortedNets),
+    // trazosPrefetchTick isn't read inside the callback — it's a signal that the prefetch
+    // effect above just wrote fresh data into localStorage, which readDrawingAll reads
+    // synchronously; without it in the deps this memo would never re-run once the async
+    // fetch resolves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [plans, sortedNets, trazosPrefetchTick],
+  );
   const { dataByNet, scaleMap: readScaleMap, origenMap: readOrigenMap } = result;
 
   const nptMap = useMemo(() => {
@@ -172,6 +208,13 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
         nivelMap[niv].ramales.push(r);
       }
       for (const b of netData.bajantes) {
+        // Cross-floor ghosts are positional reference markers mirroring a SOURCE bajante from
+        // another floor, not a real element of this one — readDrawingAll merges them into the
+        // same bajantes array (see its comment), so without this they show up in the tree as a
+        // second, identically-coded entry under whatever floor they happen to land on (e.g. a
+        // real "BAN1" and its own incoming ghost, also carrying code "BAN1", both listed under
+        // the same piso).
+        if (b._isCrossFloorGhost) continue;
         const niv = b.planNivel;
         if (!nivelMap[niv]) nivelMap[niv] = { ramales: [], bajantes: [] };
         nivelMap[niv].bajantes.push(b);
@@ -202,7 +245,10 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
       if (nd && (nd.ramales.length > 0 || nd.bajantes.length > 0)) netsWithData.push(n.id);
     }
     return netsWithData;
-  }, [plans]);
+    // trazosPrefetchTick: same reasoning as the `result` memo above — forces a re-run once the
+    // prefetch effect has finished caching floors that had no local trazos data yet.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plans, trazosPrefetchTick]);
 
   const confirmedPlanos = useMemo(
     () => (plans || []).filter((p) => p.status === 'confirmed' && p.nivel != null),
