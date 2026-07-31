@@ -10,8 +10,8 @@ import {
 } from 'react';
 import { saveToStorage, loadFromStorage, removeFromStorage } from '../services/storageService';
 import { storePDF, loadPDF, deletePDF } from '../services/idbStorage';
-import { uploadPlanPDF, deletePlanPDF } from '../services/pdfStorageService';
-import { saveProyectoPlansMeta } from '../services/proyectoDataService';
+import { uploadPlanPDF, deletePlanPDF, downloadPlanPDF } from '../services/pdfStorageService';
+import { saveProyectoPlansMeta, loadProyectoData } from '../services/proyectoDataService';
 import { PLANS_META_KEY, ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
 import { devError } from '../../../utils/devError';
 
@@ -95,8 +95,8 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     restoredRef.current = true;
     // One-time mount guard for an async localStorage restore below — not derivable from
     // props/state available during render.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (plans.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRestoreDone(true);
       return;
     }
@@ -172,6 +172,55 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     // the guard's current value at that single execution, not meant to re-run on every change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Cloud restore: same reasoning as ProjectContext — a fresh browser has no localStorage
+  // plan metadata and no IndexedDB PDFs, but Supabase holds both (planos table + plan_pdfs
+  // bucket). Runs once after the local restore finishes, only when the local list is empty,
+  // and re-caches everything locally so subsequent visits are offline-first again.
+  const cloudRestoredRef = useRef(false);
+  useEffect(() => {
+    if (cloudRestoredRef.current) return;
+    cloudRestoredRef.current = true;
+    if (!restoreDone) return;
+    const proyectoId = getActiveProyectoId();
+    if (!proyectoId) return;
+    if (plans.length > 0) return;
+    let ignore = false;
+    (async () => {
+      const data = await loadProyectoData(proyectoId);
+      const meta = data?.plans_meta;
+      if (ignore || !meta || meta.length === 0) return;
+      const restored: PlanItem[] = [];
+      for (const m of meta) {
+        const file = await downloadPlanPDF(proyectoId, m.id, m.name);
+        if (file) {
+          const item: PlanItem = {
+            id: m.id,
+            file,
+            name: m.name,
+            nivel: m.nivel,
+            scale: m.scale,
+            status: m.status,
+            origen: m.origen,
+            factorX: m.factorX || null,
+            factorY: m.factorY || null,
+            calGlobal: m.calGlobal || null,
+            definedScale: m.definedScale || null,
+          };
+          restored.push(item);
+          storePDF(m.id, file).catch((e) => {
+            devError('storePDF error during cloud restore:', e);
+          });
+        }
+      }
+      if (!ignore && restored.length > 0) setPlans(restored);
+    })();
+    return () => {
+      ignore = true;
+    };
+    // Mount-once after local restore — plans.length is only read for the emptiness guard.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restoreDone]);
 
   useEffect(() => {
     if (!restoreDone) return;
