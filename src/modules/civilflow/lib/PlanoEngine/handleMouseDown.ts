@@ -301,26 +301,48 @@ function _tryBajanteHit(
         }
       }
     }
-    // Symbol hit (only if no label match found)
+    // Symbol hit (only if no label match found). A canal's click target (_circ) is sized to
+    // its rectangle's DIAGONAL, so it would swallow any click on a bajante that sits inside
+    // it — real glyphs must win first (closest circle wins), and the canal's body only grabs
+    // the click when no glyph sits on the point.
     if (!bestB) {
-      const circ = b._circ;
-      if (circ && Math.hypot(x - circ.x, y - circ.y) < circ.r) {
+      let symBest: { b: (typeof engine.bajantes)[0]; d: number } | null = null;
+      for (const b of engine.bajantes) {
+        if (b.tipo === 'canal') continue;
+        const circ = b._circ;
+        if (!circ) continue;
+        const d = Math.hypot(x - circ.x, y - circ.y);
+        if (d < circ.r && (!symBest || d < symBest.d)) symBest = { b, d };
+      }
+      if (symBest) {
+        const b = symBest.b;
         if (ensureActiveNet(engine, b.net)) return true;
         if (b.id !== sel?.id) {
           engine.selId = b.id;
           engine._emitSelect(b);
           engine.render();
         }
-        // handleDragMove's bajDrag assigns `b.x = toPlane(cursor - offX/Y).x` directly, so the
-        // offset must be measured from toCvs(b.x, b.y) — true by construction for every
-        // point-glyph tipo (their _circ IS centered there), but canal's _circ is deliberately
-        // centered on the rectangle's visual middle instead (for click-anywhere selection),
-        // which sits at (b.x + w/2, b.y + h/2) since b.x/y is the top-left corner. Using circ
-        // directly here would offset the drag by half the rectangle's size the instant it starts.
-        const dragAnchor = b.tipo === 'canal' ? engine.toCvs(b.x, b.y) : circ;
+        const dragAnchor = engine.toCvs(b.x, b.y);
         engine.bajDrag = { id: b.id, offX: x - dragAnchor.x, offY: y - dragAnchor.y };
         _captureBajDragBackup(engine, b);
         return true;
+      }
+      for (const b of engine.bajantes) {
+        if (b.tipo !== 'canal') continue;
+        const circ = b._circ;
+        if (!circ) continue;
+        if (Math.hypot(x - circ.x, y - circ.y) < circ.r) {
+          if (ensureActiveNet(engine, b.net)) return true;
+          if (b.id !== sel?.id) {
+            engine.selId = b.id;
+            engine._emitSelect(b);
+            engine.render();
+          }
+          const dragAnchor = engine.toCvs(b.x, b.y);
+          engine.bajDrag = { id: b.id, offX: x - dragAnchor.x, offY: y - dragAnchor.y };
+          _captureBajDragBackup(engine, b);
+          return true;
+        }
       }
     }
   }

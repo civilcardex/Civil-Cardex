@@ -307,14 +307,18 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         }
       }
 
-      // Once a rainwater bajante is inside a canal recolectora, it's frozen there entirely —
-      // not just kept from leaving, it can't be repositioned within the canal either. Only a
-      // bajante that ISN'T associated yet can still be dragged (and, on landing inside a
-      // canal's rect, gets associated and freezes from that point on).
+      // A rainwater bajante inside a canal recolectora can be freely repositioned WITHIN the
+      // canal's rect (clamped to its bounds), but can't be dragged out of it — it stays
+      // associated with that canal. A bajante that isn't associated yet can still be dragged
+      // freely and, on landing inside a canal's rect, gets associated from that point on.
       if (b.net === 'll' && b.tipo === 'bajante') {
         if (b.canalId) {
-          p.x = oldX;
-          p.y = oldY;
+          const canal = engine.bajantes.find((c) => c.id === b.canalId && c.tipo === 'canal');
+          if (canal) {
+            const clamped = clampToCanal(engine, canal, p.x, p.y);
+            p.x = clamped.x;
+            p.y = clamped.y;
+          }
         } else {
           const resolved = resolveAndClampToCanal(engine, p.x, p.y, null);
           p.x = resolved.x;
