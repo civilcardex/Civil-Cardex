@@ -264,7 +264,7 @@ function renderCanalGlyph(
   ctx.rect(tl.x, tl.y, w, h);
   ctx.fill();
   ctx.strokeStyle = col;
-  ctx.lineWidth = (sel ? 2.5 : 1.2) * engine.zoom;
+  ctx.lineWidth = (sel ? 1.6 : 0.8) * engine.zoom;
   ctx.beginPath();
   ctx.rect(tl.x, tl.y, w, h);
   ctx.stroke();
@@ -301,38 +301,64 @@ function renderCanalGlyph(
   }
   ctx.restore();
 
-  // Flow-direction arrows — one per associated bajante inside this canal (two if the bajante
-  // sits mid-body, both pointing INTO it; see canalAssociation.ts computeCanalFlowArrows). The
-  // canal itself is never split — this is purely a direction indicator drawn along its length.
-  // Same visual recipe as a ramal's own flow arrow (renderRamales.ts): thin round-capped shaft
-  // + a small filled triangle at the head, sized relative to the segment instead of the fixed
-  // "half the label width" a ramal uses (a canal has no equivalent label-derived reference).
-  for (const arrow of computeCanalFlowArrows(engine, b)) {
-    const p0 = engine.toCvs(arrow.x0, arrow.y0);
-    const p1 = engine.toCvs(arrow.x1, arrow.y1);
-    const dx = p1.x - p0.x;
-    const dy = p1.y - p0.y;
+  // Flow-direction arrows — black and short, same as a ramal's own flow arrow. With NO bajante
+  // inside, a single centered arrow points the way the canal was dragged when drawn
+  // (_canalFlowDir). With bajantes, that arrow is replaced by one short arrow per bajante side,
+  // each pointing INTO the bajante (two if it's mid-body; see canalAssociation.ts
+  // computeCanalFlowArrows), aligned with the bajante's circle center and stopping at its rim —
+  // the arrows stay outside the symbol. The canal itself is never split.
+  const drawFlowArrow = (tail: { x: number; y: number }, head: { x: number; y: number }) => {
+    const dx = head.x - tail.x;
+    const dy = head.y - tail.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) return;
+    const ux = dx / len;
+    const uy = dy / len;
+    ctx.save();
+    ctx.strokeStyle = '#000';
+    ctx.fillStyle = '#000';
+    ctx.lineWidth = 1 * engine.zoom;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(tail.x, tail.y);
+    ctx.lineTo(head.x, head.y);
+    ctx.stroke();
+    const aSize = Math.min(5 * engine.zoom, len * 0.55);
+    ctx.beginPath();
+    ctx.moveTo(head.x, head.y);
+    ctx.lineTo(head.x - ux * aSize - uy * aSize * 0.45, head.y - uy * aSize + ux * aSize * 0.45);
+    ctx.lineTo(head.x - ux * aSize + uy * aSize * 0.45, head.y - uy * aSize - ux * aSize * 0.45);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  };
+  const bajArrows = computeCanalFlowArrows(engine, b);
+  if (bajArrows.length === 0) {
+    const cx = tl.x + w / 2;
+    const cy = tl.y + h / 2;
+    const half = 7 * engine.zoom;
+    const dir = b._canalFlowDir ?? (w >= h ? 'derecha' : 'abajo');
+    if (dir === 'derecha') drawFlowArrow({ x: cx - half, y: cy }, { x: cx + half, y: cy });
+    else if (dir === 'izquierda') drawFlowArrow({ x: cx + half, y: cy }, { x: cx - half, y: cy });
+    else if (dir === 'abajo') drawFlowArrow({ x: cx, y: cy - half }, { x: cx, y: cy + half });
+    else drawFlowArrow({ x: cx, y: cy + half }, { x: cx, y: cy - half });
+  }
+  // Rounded to the same radius the bajante symbol renders at (renderBajantes' main loop), so the
+  // arrow head stops exactly at the rim of the bajante's circle instead of driving through it.
+  const bajR = engine.realMmToCanvasPx(20) * 0.6;
+  const shortLen = 14 * engine.zoom;
+  for (const arrow of bajArrows) {
+    const head = engine.toCvs(arrow.x1, arrow.y1);
+    const tail = engine.toCvs(arrow.x0, arrow.y0);
+    const dx = head.x - tail.x;
+    const dy = head.y - tail.y;
     const len = Math.hypot(dx, dy);
     if (len < 1) continue;
     const ux = dx / len;
     const uy = dy / len;
-    ctx.save();
-    ctx.strokeStyle = col;
-    ctx.fillStyle = col;
-    ctx.lineWidth = 1 * engine.zoom;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(p0.x, p0.y);
-    ctx.lineTo(p1.x, p1.y);
-    ctx.stroke();
-    const aSize = Math.min(6 * engine.zoom, len * 0.3);
-    ctx.beginPath();
-    ctx.moveTo(p1.x, p1.y);
-    ctx.lineTo(p1.x - ux * aSize - uy * aSize * 0.4, p1.y - uy * aSize + ux * aSize * 0.4);
-    ctx.lineTo(p1.x - ux * aSize + uy * aSize * 0.4, p1.y - uy * aSize - ux * aSize * 0.4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+    const rim = { x: head.x - ux * bajR, y: head.y - uy * bajR };
+    const cut = Math.min(shortLen, len - bajR);
+    drawFlowArrow({ x: rim.x - ux * cut, y: rim.y - uy * cut }, rim);
   }
 
   b._canalBox = { x: tl.x, y: tl.y, w, h };
@@ -858,22 +884,23 @@ export function renderCrossFloorGhosts(
     const r = engine.realMmToCanvasPx(20) * 0.6;
     g._hitCircle = { x: c.x, y: c.y, r };
 
-    // Solid line to target bajante on this floor — was dashed at a different dash period than
-    // the ghost's own dashed circle below, so the two met at a visibly mismatched seam right
-    // where they're supposed to read as one continuous vertical connection. Solid + fuller
-    // opacity reads as joined regardless of where along the circle it terminates.
+    // Dashed line to the target bajante on this floor — tenuer than the network color and
+    // dotted, so the cross-floor connector reads as a reference (not a real pipe) and stays
+    // visibly lighter than the ramales on this same floor.
     if (g.targetBajanteId) {
       const targetB = engine.bajantes.find((b) => b.id === g.targetBajanteId);
       if (targetB) {
         const tc = engine.toCvs(targetB.x, targetB.y);
         ctx.save();
         ctx.strokeStyle = col;
-        ctx.globalAlpha = 0.7;
+        ctx.globalAlpha = 0.5;
         ctx.lineWidth = 1.5 * engine.zoom;
+        ctx.setLineDash([4 * engine.zoom, 4 * engine.zoom]);
         ctx.beginPath();
         ctx.moveTo(c.x, c.y);
         ctx.lineTo(tc.x, tc.y);
         ctx.stroke();
+        ctx.setLineDash([]);
         ctx.globalAlpha = 1;
         ctx.restore();
       }

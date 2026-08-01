@@ -330,6 +330,10 @@ export interface PlanoBajante {
   /** Canvas-px bounding box (axis-aligned, no rotation) set at render time — used for the
    * corner resize-handle hit-test and the body-drag hit-test. */
   _canalBox?: { x: number; y: number; w: number; h: number };
+  /** Flow direction of a canal recolectora, matching the direction the user dragged it when
+   * drawing (corner 1 → corner 2), like a ramal's drawn direction. Set at creation in
+   * handleCanalDown; drives the canal's centered flow arrow. */
+  _canalFlowDir?: 'derecha' | 'izquierda' | 'abajo' | 'arriba';
   /** Only meaningful on a rainwater ("ll") bajante: id of the canal (tipo:'canal') whose
    * rectangle currently contains it. Set/cleared automatically by canalAssociation.ts as the
    * bajante is created or dragged — a bajante can only be inside a canal, never outside one it's

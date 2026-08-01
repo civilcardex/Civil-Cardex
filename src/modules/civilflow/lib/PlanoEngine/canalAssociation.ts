@@ -149,14 +149,28 @@ export function computeCanalFlowArrows(
   sorted.forEach((entry, i) => {
     const leftBoundary = i === 0 ? 0 : (sorted[i - 1].t + entry.t) / 2;
     const rightBoundary = i === sorted.length - 1 ? 1 : (entry.t + sorted[i + 1].t) / 2;
-    const head = toPlanePoint(entry.t);
+    // Head points at the bajante's actual position (its circle center), not the projected
+    // point on the axis — arrows always aim at the real circle so the renderer can trim
+    // them to the rim.
+    const head = { x: entry.b.x, y: entry.b.y };
     if (entry.t - leftBoundary > EPS) {
       const tail = toPlanePoint(leftBoundary);
-      arrows.push({ x0: tail.x, y0: tail.y, x1: head.x, y1: head.y });
+      // Align the tail's cross-axis coordinate with the head so the arrow is always
+      // straight along the canal axis — no diagonal lines regardless of where the
+      // bajante sits within the canal's width.
+      if (horizontal) {
+        arrows.push({ x0: tail.x, y0: head.y, x1: head.x, y1: head.y });
+      } else {
+        arrows.push({ x0: head.x, y0: tail.y, x1: head.x, y1: head.y });
+      }
     }
     if (rightBoundary - entry.t > EPS) {
       const tail = toPlanePoint(rightBoundary);
-      arrows.push({ x0: tail.x, y0: tail.y, x1: head.x, y1: head.y });
+      if (horizontal) {
+        arrows.push({ x0: tail.x, y0: head.y, x1: head.x, y1: head.y });
+      } else {
+        arrows.push({ x0: head.x, y0: tail.y, x1: head.x, y1: head.y });
+      }
     }
   });
   return arrows;

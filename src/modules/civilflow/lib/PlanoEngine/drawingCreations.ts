@@ -484,6 +484,16 @@ export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number
   }
   const x = Math.min(s.x, px);
   const y = Math.min(s.y, py);
+  // Flow points the way the user dragged the rectangle (corner 1 → corner 2), along the longer
+  // axis — same "drawn direction" convention as a ramal's flow arrow.
+  const horizontal = Math.abs(px - s.x) >= Math.abs(py - s.y);
+  const canalFlowDir: 'derecha' | 'izquierda' | 'abajo' | 'arriba' = horizontal
+    ? px >= s.x
+      ? 'derecha'
+      : 'izquierda'
+    : py >= s.y
+      ? 'abajo'
+      : 'arriba';
   const cnt = engine.bajantes.filter((b) => b.tipo === 'canal').length + 1;
   const code = `CALL${cnt}-${pisoCortoLoose(engine.nivelActual?.n ?? 0)}`;
   engine.bajantes.push({
@@ -514,6 +524,7 @@ export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number
     bajR: 7 / 24,
     base,
     altura,
+    _canalFlowDir: canalFlowDir,
   });
   engine.selId = code;
   engine._isGhostSel = false;
