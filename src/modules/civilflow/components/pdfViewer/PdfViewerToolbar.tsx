@@ -198,32 +198,27 @@ function PdfViewerToolbar_({
     });
   }
 
+  const visibleTools = netTools.filter(
+    (t) => !isToolDisabledForNet(t.id, activeNet, recolectoraActive),
+  );
+
   if (collapsed) {
     return (
       <>
         <div style={{ padding: '4px 4px', borderBottom: '1px solid #3a494a' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {netTools.map((t) => {
-              const isToolDisabled = isToolDisabledForNet(t.id, activeNet, recolectoraActive);
+            {visibleTools.map((t) => {
               return (
                 <button
                   type="button"
                   key={t.id}
-                  disabled={isToolDisabled}
                   onClick={() => onSelectTool(t.id)}
-                  title={
-                    isToolDisabled
-                      ? 'No disponible para esta red'
-                      : t.shortcut
-                        ? `${t.label} (${t.shortcut})`
-                        : t.label
-                  }
+                  title={t.shortcut ? `${t.label} (${t.shortcut})` : t.label}
                   style={{
                     ...compactBtn,
                     background: tool === t.id ? '#2563EB' : '#1e2024',
                     border: `1px solid ${tool === t.id ? '#2563EB' : '#3a494a'}`,
-                    cursor: isToolDisabled ? 'not-allowed' : 'pointer',
-                    opacity: isToolDisabled ? 0.3 : 1,
+                    cursor: 'pointer',
                   }}
                 >
                   <span style={{ fontSize: 14, color: tool === t.id ? '#fff' : t.icoCol }}>
@@ -338,29 +333,20 @@ function PdfViewerToolbar_({
           Herramientas
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {netTools.map((t) => {
-            const isToolDisabled = isToolDisabledForNet(t.id, activeNet, recolectoraActive);
+          {visibleTools.map((t) => {
             return (
               <button
                 type="button"
                 key={t.id}
-                disabled={isToolDisabled}
                 onClick={() => onSelectTool(t.id)}
-                title={
-                  isToolDisabled
-                    ? 'No disponible para esta red'
-                    : t.shortcut
-                      ? `${t.label} (${t.shortcut})`
-                      : t.label
-                }
+                title={t.shortcut ? `${t.label} (${t.shortcut})` : t.label}
                 style={{
                   ...PdfViewerToolbar_S2,
                   background: tool === t.id ? '#2563EB' : '#1e2024',
                   border: `1px solid ${tool === t.id ? '#2563EB' : '#3a494a'}`,
                   borderRadius: '3px',
                   color: '#b9caca',
-                  cursor: isToolDisabled ? 'not-allowed' : 'pointer',
-                  opacity: isToolDisabled ? 0.3 : 1,
+                  cursor: 'pointer',
                 }}
               >
                 <span
