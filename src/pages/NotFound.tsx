@@ -7,7 +7,7 @@ const NOTFOUND_JSONLD = {
   name: 'Página no encontrada — CivilCardex',
   description:
     'La página solicitada no existe. Verifique la URL o vuelva al inicio de CivilCardex.',
-  url: 'https://civilcardex.app/404',
+  url: 'https://civilcardex.com/404',
 };
 
 export default function NotFound() {

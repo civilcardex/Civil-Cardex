@@ -21,7 +21,7 @@ const REGISTER_JSONLD = {
   name: 'Registro — CivilCardex',
   description:
     'Cree su cuenta en CivilCardex para acceder a herramientas de diseño hidrosanitario, estructural y gestión de proyectos.',
-  url: 'https://civilcardex.app/register',
+  url: 'https://civilcardex.com/register',
 };
 
 function RegisterPage() {

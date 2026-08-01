@@ -21,7 +21,7 @@ const LOGIN_JSONLD = {
   name: 'Iniciar Sesión — CivilCardex',
   description:
     'Acceda a su cuenta de CivilCardex para gestionar proyectos de ingeniería civil, diseño hidrosanitario y memorias de cálculo.',
-  url: 'https://civilcardex.app/login',
+  url: 'https://civilcardex.com/login',
 };
 
 function LoginPage() {

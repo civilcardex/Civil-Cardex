@@ -89,7 +89,7 @@ const VIEWER_JSONLD = {
   name: 'Visor de planos — CivilCardex',
   description:
     'Visor de planos PDF con superposición de redes hidrosanitarias. Herramientas de dibujo, calibración y medición.',
-  url: 'https://civilcardex.app/visor',
+  url: 'https://civilcardex.com/visor',
   applicationCategory: 'ViewerApplication',
   operatingSystem: 'Web',
   browserRequirements: 'Requiere JavaScript y WebGL',

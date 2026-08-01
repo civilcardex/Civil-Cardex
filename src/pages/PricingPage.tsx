@@ -105,7 +105,7 @@ const PRODUCT_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'Product',
   name: 'Civil Cardex Profesional',
-  image: 'https://civilcardex.app/logos/civilCardexlogo-v2.webp',
+  image: 'https://civilcardex.com/logos/civilCardexlogo-v2.webp',
   description:
     'Plan Profesional para ingenieros civiles independientes y firmas pequeñas. Incluye 9 módulos completos, Red de Gas, Contra Incendio y exportación PDF.',
   brand: {
@@ -114,7 +114,7 @@ const PRODUCT_JSONLD = {
   },
   offers: {
     '@type': 'Offer',
-    url: 'https://civilcardex.app/pricing',
+    url: 'https://civilcardex.com/pricing',
     priceCurrency: 'USD',
     price: '19.00',
     priceValidUntil: '2027-12-31',

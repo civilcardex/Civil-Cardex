@@ -35,12 +35,12 @@ export default function ModulePageLayout({
       '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
       itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Inicio', item: 'https://civilcardex.app/' },
+        { '@type': 'ListItem', position: 1, name: 'Inicio', item: 'https://civilcardex.com/' },
         {
           '@type': 'ListItem',
           position: 2,
           name: moduleName,
-          item: `https://civilcardex.app/${path}`,
+          item: `https://civilcardex.com/${path}`,
         },
       ],
     });
