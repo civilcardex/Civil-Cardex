@@ -19,6 +19,10 @@ export type IsoBajante = PlanoBajante & {
   targetBajanteId?: string;
 };
 
+/** Iso units per world meter — the projection space is uniform at this scale (getIsoCoords and
+ *  getZPix both multiply meters by this), so a 1 m dimension spans ISO_SCALE iso units. */
+export const ISO_SCALE = 150;
+
 function project(
   x: number,
   y: number,

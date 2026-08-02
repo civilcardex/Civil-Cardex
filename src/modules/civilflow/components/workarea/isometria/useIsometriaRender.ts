@@ -2,9 +2,117 @@ import { useEffect, type RefObject } from 'react';
 import { NETS } from '../../../lib/PlanoEngine/PlanoState';
 import { loadPlanCrop } from '../../../utils/planCrop';
 import { parseDescargaEnId } from '../../../utils/parseDescargaEnId';
-import { project, type IsoRamal, type IsoBajante } from './geometry';
+import { project, ISO_SCALE, type IsoRamal, type IsoBajante } from './geometry';
 import type { IsoCanvas, IsoSegment } from './useIsometriaInteraction';
 import type { PlanItem } from '../../../context/PlansContext';
+
+interface IsoPt {
+  sx: number;
+  sy: number;
+}
+
+function shadeHex(col: string, f: number): string {
+  const n = parseInt(col.replace('#', ''), 16);
+  if (!Number.isFinite(n)) return col;
+  const r = Math.min(255, Math.round(((n >> 16) & 255) * f));
+  const g = Math.min(255, Math.round(((n >> 8) & 255) * f));
+  const b = Math.min(255, Math.round((n & 255) * f));
+  return `rgb(${r},${g},${b})`;
+}
+
+function hexA(col: string, a: number): string {
+  if (!/^#[0-9a-fA-F]{6}$/.test(col)) return col;
+  const n = parseInt(col.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+/** Orthographic screen-space unit vectors for the world axes at a given iso point — one step is
+ *  ONE WORLD METER (ISO_SCALE iso units), so callers can size things in meters directly. */
+function isoAxisVecs(
+  proj: (x: number, y: number, z: number) => IsoPt,
+  bx: number,
+  by: number,
+  z: number,
+): { vX: IsoPt; vY: IsoPt; vZ: IsoPt } {
+  const O = proj(bx, by, z);
+  const pX = proj(bx + ISO_SCALE, by, z);
+  const pY = proj(bx, by + ISO_SCALE, z);
+  const pZ = proj(bx, by, z + ISO_SCALE);
+  return {
+    vX: { sx: pX.sx - O.sx, sy: pX.sy - O.sy },
+    vY: { sx: pY.sx - O.sx, sy: pY.sy - O.sy },
+    vZ: { sx: pZ.sx - O.sx, sy: pZ.sy - O.sy },
+  };
+}
+
+/**
+ * Draws a SOLID isometric cuboid (all 6 faces, painter-sorted) with its base centered at
+ * (bx, by, z), footprint w x d and height h — dims in world meters. Used for
+ * calentador/contador fixtures so they read as closed 3D equipment.
+ */
+function drawIsoCuboid(
+  ctx: CanvasRenderingContext2D,
+  proj: (x: number, y: number, z: number) => IsoPt,
+  bx: number,
+  by: number,
+  z: number,
+  w: number,
+  d: number,
+  h: number,
+  fill: string,
+  stroke: string,
+  hl = false,
+): void {
+  const { vX, vY, vZ } = isoAxisVecs(proj, bx, by, z);
+  const O = proj(bx, by, z);
+  const P = (dx: number, dy: number, dz: number): IsoPt => ({
+    sx: O.sx + vX.sx * dx + vY.sx * dy + vZ.sx * dz,
+    sy: O.sy + vX.sy * dx + vY.sy * dy + vZ.sy * dz,
+  });
+  const o0 = P(0, 0, 0);
+  const px = P(w, 0, 0);
+  const py = P(0, d, 0);
+  const pxy = P(w, d, 0);
+  const t0 = P(0, 0, h);
+  const tx = P(w, 0, h);
+  const ty = P(0, d, h);
+  const txy = P(w, d, h);
+  // All 6 faces; painter-sorted by average screen y (in this ortho projection a lower-on-screen
+  // face is in front — see project(): larger sy = closer to the camera), so back faces are
+  // covered by front faces no matter the rotZ/rotX — the box always reads as closed/solid.
+  const faces: { pts: IsoPt[]; shade: number }[] = [
+    { pts: [o0, px, pxy, py], shade: 0.42 },
+    { pts: [t0, tx, txy, ty], shade: 1 },
+    { pts: [o0, px, tx, t0], shade: 0.8 },
+    { pts: [py, pxy, txy, ty], shade: 0.55 },
+    { pts: [o0, py, ty, t0], shade: 0.68 },
+    { pts: [px, pxy, txy, tx], shade: 0.88 },
+  ];
+  faces.sort(
+    (a, b) =>
+      a.pts.reduce((s, p) => s + p.sy, 0) / a.pts.length -
+      b.pts.reduce((s, p) => s + p.sy, 0) / b.pts.length,
+  );
+  const quad = (pts: IsoPt[]) => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].sx, pts[0].sy);
+    ctx.lineTo(pts[1].sx, pts[1].sy);
+    ctx.lineTo(pts[2].sx, pts[2].sy);
+    ctx.lineTo(pts[3].sx, pts[3].sy);
+    ctx.closePath();
+  };
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = hl ? 2.4 : 1.2;
+  for (const f of faces) {
+    ctx.fillStyle = shadeHex(fill, f.shade);
+    quad(f.pts);
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 
 interface UseIsometriaRenderParams {
   canvasRef: RefObject<HTMLCanvasElement | null>;
@@ -153,6 +261,95 @@ export function useIsometriaRender({
       ctx.lineWidth = 2;
       ctx.lineCap = 'round';
 
+      // Canals render FIRST as background troughs (open channel at floor level) so the ll
+      // ramales and any bajante inside them draw on top — mirroring the plano, where the canal
+      // rectangle is the backdrop and bajantes read as normal bajantes over it.
+      const projPt = (px: number, py: number, pz: number) =>
+        project(px, py, pz, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+      for (const b of netData.bajantes) {
+        if (b._isCrossFloorGhost || b.tipo !== 'canal') continue;
+        const baseM = (b.base || 0) / 100;
+        const altM = (b.altura || 0) / 100;
+        if (baseM <= 0.001 || altM <= 0.001) continue;
+        const selKey = `${netId}:${b.planId}:${b.id}`;
+        const isSel = selKey === selTramo;
+        const hl = isSel ? '#FFEB3B' : netColor;
+        const zC = (nptMap[b.planNivel] || 0) - prof * 1000;
+        const zPixC = getZPix(zC, b.planNivel);
+        const iso0 = getIsoCoords(b.x, b.y, b.planNivel);
+        const pA = projPt(iso0.x, iso0.y, zPixC);
+        const pB = projPt(iso0.x + baseM * ISO_SCALE, iso0.y, zPixC);
+        const pC = projPt(iso0.x + baseM * ISO_SCALE, iso0.y + altM * ISO_SCALE, zPixC);
+        const pD = projPt(iso0.x, iso0.y + altM * ISO_SCALE, zPixC);
+        const wall = Math.min(altM, 0.6);
+        const pAw = projPt(iso0.x, iso0.y, zPixC + wall * ISO_SCALE);
+        const pBw = projPt(iso0.x + baseM * ISO_SCALE, iso0.y, zPixC + wall * ISO_SCALE);
+        const pCw = projPt(
+          iso0.x + baseM * ISO_SCALE,
+          iso0.y + altM * ISO_SCALE,
+          zPixC + wall * ISO_SCALE,
+        );
+        const pDw = projPt(iso0.x, iso0.y + altM * ISO_SCALE, zPixC + wall * ISO_SCALE);
+        const quad = (a: IsoPt, b2: IsoPt, c2: IsoPt, d2: IsoPt) => {
+          ctx.beginPath();
+          ctx.moveTo(a.sx, a.sy);
+          ctx.lineTo(b2.sx, b2.sy);
+          ctx.lineTo(c2.sx, c2.sy);
+          ctx.lineTo(d2.sx, d2.sy);
+          ctx.closePath();
+        };
+        ctx.save();
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = hl;
+        ctx.lineWidth = 1.2;
+        // Opening face (plan symbol: white rectangle)
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        quad(pA, pB, pC, pD);
+        ctx.fill();
+        ctx.stroke();
+        // Inner 25% line, same position as the plano glyph
+        const m1 = projPt(iso0.x, iso0.y + altM * 0.25 * ISO_SCALE, zPixC);
+        const m2 = projPt(iso0.x + baseM * ISO_SCALE, iso0.y + altM * 0.25 * ISO_SCALE, zPixC);
+        ctx.beginPath();
+        ctx.moveTo(m1.sx, m1.sy);
+        ctx.lineTo(m2.sx, m2.sy);
+        ctx.stroke();
+        // Trough walls + bottom (translucent), giving the channel its depth
+        ctx.fillStyle = hexA(netColor, 0.18);
+        quad(pAw, pBw, pCw, pDw);
+        ctx.fill();
+        quad(pA, pB, pBw, pAw);
+        ctx.fill();
+        ctx.stroke();
+        quad(pB, pC, pCw, pBw);
+        ctx.fill();
+        ctx.stroke();
+        quad(pC, pD, pDw, pCw);
+        ctx.fill();
+        ctx.stroke();
+        quad(pD, pA, pAw, pDw);
+        ctx.fill();
+        ctx.stroke();
+        if (isSel) {
+          // Selected: thicker yellow outline on the opening face + code label above it
+          ctx.lineWidth = 2.5;
+          quad(pA, pB, pC, pD);
+          ctx.stroke();
+          const rectCenter = projPt(
+            iso0.x + (baseM * ISO_SCALE) / 2,
+            iso0.y + (altM * ISO_SCALE) / 2,
+            zPixC,
+          );
+          const topSy = Math.min(pA.sy, pB.sy, pC.sy, pD.sy);
+          ctx.fillStyle = '#FFEB3B';
+          ctx.font = 'bold 11px Geist,monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(b.code || b.id, rectCenter.sx, topSy - 6);
+        }
+        ctx.restore();
+      }
+
       for (const r of netData.ramales) {
         // `prof` (Parámetros de Diseño > Materiales por red > "Profundidad de instalación
         // respecto a NPT") is stored NEGATIVE for below-slab (e.g. sanitaria -0.70). In this
@@ -227,6 +424,42 @@ export function useIsometriaRender({
         // default single-floor stub here on top of that just left an orphaned extra riser segment
         // sitting at the ghost's (= the source's raw) coordinates, unconnected to anything.
         if (b._isCrossFloorGhost) continue;
+
+        // Calentador/contador render as 3D equipment boxes on the floor instead of a riser stub.
+        if (b.tipo === 'calentador' || b.tipo === 'contador') {
+          const selKey = `${netId}:${b.planId}:${b.id}`;
+          const isSel = selKey === selTramo;
+          const zB = (nptMap[b.planNivel] || 0) - prof * 1000;
+          const zPixB = getZPix(zB, b.planNivel);
+          const isoB = getIsoCoords(b.x, b.y, b.planNivel);
+          const dims =
+            b.tipo === 'calentador' ? { w: 0.5, d: 0.5, h: 0.5 } : { w: 0.25, d: 0.25, h: 0.25 };
+          drawIsoCuboid(
+            ctx,
+            projPt,
+            isoB.x,
+            isoB.y,
+            zPixB,
+            dims.w,
+            dims.d,
+            dims.h,
+            netColor,
+            isSel ? '#FFEB3B' : netColor,
+            isSel,
+          );
+          if (isSel) {
+            const topC = projPt(isoB.x, isoB.y, zPixB + dims.h * ISO_SCALE);
+            ctx.fillStyle = '#FFEB3B';
+            ctx.font = 'bold 11px Geist,monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(b.code || b.id, topC.sx, topC.sy - 6);
+          }
+          continue;
+        }
+
+        // Canals were already drawn in the background pass above.
+        if (b.tipo === 'canal') continue;
 
         const profB = profByNet[b.net] ?? 0;
         const currentZ = nptMap[b.planNivel] || 0;
