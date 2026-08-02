@@ -8,6 +8,22 @@ import type { IPlanoEngineCore, PlanoBajante } from './PlanoState';
  * target (up to ~40% bigger than the rectangle on a square canal, worse the more elongated it
  * is), reaching well past the rectangle's own edges. Every other type keeps the existing circle.
  */
+/** Canvas-space rect hit for a canal's click target — the rectangle itself (`_canalBox`), not the
+ *  diagonal circle other bajante types use. Returns 1 on hit, Infinity on miss; padPx extends the
+ *  rect outward for easier clicking. */
+export function canalRectHitDistance(b: PlanoBajante, x: number, y: number, padPx = 0): number {
+  const box = b._canalBox;
+  if (!box) return Infinity;
+  if (
+    x < box.x - padPx ||
+    x > box.x + box.w + padPx ||
+    y < box.y - padPx ||
+    y > box.y + box.h + padPx
+  )
+    return Infinity;
+  return 1;
+}
+
 export function bajanteHitDistance(b: PlanoBajante, x: number, y: number): number {
   if (b.tipo === 'canal') {
     const box = b._canalBox;

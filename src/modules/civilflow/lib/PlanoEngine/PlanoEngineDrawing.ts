@@ -2,6 +2,7 @@ import { NETS, netsSnapLinked } from './PlanoState';
 import type { PlanoRamal, PlanoBajante, PlanoArea } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
+import { canalRectHitDistance } from './canalAssociation';
 import {
   _firstSegmentAngle,
   checkRamalAngles,
@@ -836,8 +837,10 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       const onBajante = engine.bajantes.some((b) => {
         if (!netsSnapLinked(b.net, engine.activeNet) || engine._hiddenNets.has(b.net)) return false;
         if (
-          b._circ &&
-          Math.hypot(b._circ.x - rawC.x, b._circ.y - rawC.y) < b._circ.r + 6 * engine.zoom
+          b.tipo === 'canal'
+            ? canalRectHitDistance(b, rawC.x, rawC.y, 6 * engine.zoom) < Infinity
+            : b._circ &&
+              Math.hypot(b._circ.x - rawC.x, b._circ.y - rawC.y) < b._circ.r + 6 * engine.zoom
         )
           return true;
         return false;

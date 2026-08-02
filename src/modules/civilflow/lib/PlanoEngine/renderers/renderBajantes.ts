@@ -265,13 +265,16 @@ function renderCanalGlyph(
   ctx.fill();
   ctx.strokeStyle = col;
   ctx.lineWidth = (sel ? 1.6 : 0.8) * engine.zoom;
+  // Channel profile: only the top, inner (25%) and bottom horizontal lines — no vertical
+  // side segments, so the symbol reads as an open gutter cross-section.
   ctx.beginPath();
-  ctx.rect(tl.x, tl.y, w, h);
-  ctx.stroke();
+  ctx.moveTo(tl.x, tl.y);
+  ctx.lineTo(tl.x + w, tl.y);
   const midY = tl.y + h * 0.25;
-  ctx.beginPath();
   ctx.moveTo(tl.x, midY);
   ctx.lineTo(tl.x + w, midY);
+  ctx.moveTo(tl.x, tl.y + h);
+  ctx.lineTo(tl.x + w, tl.y + h);
   ctx.stroke();
 
   // Corner resize handles are intentionally not drawn — the grab hit-test in
@@ -362,10 +365,10 @@ function renderCanalGlyph(
   }
 
   b._canalBox = { x: tl.x, y: tl.y, w, h };
-  // Centered on the rectangle (not the top-left corner) so the shared circular hit-test every
-  // other bajante-array tipo already uses (selectAt, hitTestRightClick, _tryBajanteHit) covers
-  // the whole visible shape for click-anywhere selection.
-  b._circ = { x: tl.x + w / 2, y: tl.y + h / 2, r: Math.hypot(w, h) / 2 };
+  // _canalBox (the visible rectangle) is the canal's click target; _circ stays as a small
+  // fallback anchor (half the longer side, NOT the diagonal) for code that only reads
+  // a center/radius — click/right-click/ramal-start hit-tests all use canalRectHitDistance.
+  b._circ = { x: tl.x + w / 2, y: tl.y + h / 2, r: Math.max(w, h) / 2 };
 
   if (b.code || b.code === '') {
     // Always centered directly below the rectangle, outside it — not draggable (ignores any

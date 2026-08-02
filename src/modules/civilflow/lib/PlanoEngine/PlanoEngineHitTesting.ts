@@ -1,5 +1,6 @@
 import type { IPlanoEngineCore, PlanoElement } from './PlanoState';
 import { pointInLabelBox, pointInPoly } from './HitTester';
+import { canalRectHitDistance } from './canalAssociation';
 
 export interface ContextMenuHitResult {
   element: PlanoElement;
@@ -61,11 +62,14 @@ export function hitTestRightClick(
     }
   }
 
-  // Check real bajantes (circle or label) BEFORE ramales so bajante wins when overlapping
+  // Check real bajantes (circle or label) BEFORE ramales so bajante wins when overlapping.
+  // A canal's target is its visible rectangle (_canalBox), not the diagonal circle.
   for (const b of engine.bajantes) {
     const c = engine.toCvs(b.x, b.y);
-    const hitR = b._circ?.r || Math.max(8 * zoom, 10 * zoom);
-    const hitOnCircle = Math.hypot(x - c.x, y - c.y) <= hitR;
+    const hitOnCircle =
+      b.tipo === 'canal'
+        ? canalRectHitDistance(b, x, y, 4 * zoom) < Infinity
+        : Math.hypot(x - c.x, y - c.y) <= (b._circ?.r || Math.max(8 * zoom, 10 * zoom));
     const hitOnLabel = b._labelBox && pointInLabelBox(x, y, b._labelBox);
     if (hitOnCircle || hitOnLabel) {
       return { element: b, isGhostClick: false, clientX, clientY };

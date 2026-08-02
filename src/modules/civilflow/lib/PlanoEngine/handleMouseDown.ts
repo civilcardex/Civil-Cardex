@@ -28,7 +28,7 @@ import {
 import { getSelected } from './PlanoEngineSelection';
 import { selectAt } from './PlanoEngineSelection';
 import { findCodoReventiladoLinks, recalcBilateralCrossings } from './PlanoEngineNetwork';
-import { bajanteHitDistance } from './canalAssociation';
+import { bajanteHitDistance, canalRectHitDistance } from './canalAssociation';
 
 // True only when the bajante actually sits ON one of the ramal's endpoints — i.e. the connection
 // is rigid, not just the green dashed guide line drawn between two separate points. A bloqueado
@@ -301,9 +301,9 @@ function _tryBajanteHit(
         }
       }
     }
-    // Symbol hit (only if no label match found). A canal's click target (_circ) is sized to
-    // its rectangle's DIAGONAL, so it would swallow any click on a bajante that sits inside
-    // it — real glyphs must win first (closest circle wins), and the canal's body only grabs
+    // Symbol hit (only if no label match found). A canal's click target is its visible rectangle
+    // (_canalBox), not a circle, so it never swallows clicks on a bajante that sits inside
+    // it — real glyphs win first (closest circle wins), and the canal's body only grabs
     // the click when no glyph sits on the point.
     if (!bestB) {
       let symBest: { b: (typeof engine.bajantes)[0]; d: number } | null = null;
@@ -329,20 +329,17 @@ function _tryBajanteHit(
       }
       for (const b of engine.bajantes) {
         if (b.tipo !== 'canal') continue;
-        const circ = b._circ;
-        if (!circ) continue;
-        if (Math.hypot(x - circ.x, y - circ.y) < circ.r) {
-          if (ensureActiveNet(engine, b.net)) return true;
-          if (b.id !== sel?.id) {
-            engine.selId = b.id;
-            engine._emitSelect(b);
-            engine.render();
-          }
-          const dragAnchor = engine.toCvs(b.x, b.y);
-          engine.bajDrag = { id: b.id, offX: x - dragAnchor.x, offY: y - dragAnchor.y };
-          _captureBajDragBackup(engine, b);
-          return true;
+        if (canalRectHitDistance(b, x, y, 4 * engine.zoom) === Infinity) continue;
+        if (ensureActiveNet(engine, b.net)) return true;
+        if (b.id !== sel?.id) {
+          engine.selId = b.id;
+          engine._emitSelect(b);
+          engine.render();
         }
+        const dragAnchor = engine.toCvs(b.x, b.y);
+        engine.bajDrag = { id: b.id, offX: x - dragAnchor.x, offY: y - dragAnchor.y };
+        _captureBajDragBackup(engine, b);
+        return true;
       }
     }
   }
