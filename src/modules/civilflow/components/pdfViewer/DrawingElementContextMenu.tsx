@@ -2300,6 +2300,20 @@ function GuideLineMenu() {
           const cnt = ++eng._netCounts[guide.net].ramal;
           const ramId = `${pfx}${cnt}`;
           const [p0, p1] = guide.pts;
+          // Flow renders from pts[0] toward the last point (renderRamales.ts) — orient the new
+          // ramal so its flow always points at the ramal this guide was drawn across (the
+          // crossing IS the connection it creates), nearest guide end first.
+          const crossing = findGuideCrossing(eng, guide);
+          let pStart: [number, number] = [p0[0], p0[1]];
+          let pEnd: [number, number] = [p1[0], p1[1]];
+          if (crossing) {
+            const d0 = Math.hypot(crossing.point[0] - p0[0], crossing.point[1] - p0[1]);
+            const d1 = Math.hypot(crossing.point[0] - p1[0], crossing.point[1] - p1[1]);
+            if (d0 < d1) {
+              pStart = [p1[0], p1[1]];
+              pEnd = [p0[0], p0[1]];
+            }
+          }
           const dx = p1[0] - p0[0];
           const dy = p1[1] - p0[1];
           const distMm = Math.hypot(dx, dy);
@@ -2313,10 +2327,7 @@ function GuideLineMenu() {
             net: guide.net,
             tipo: 'ramal',
             padre: null,
-            pts: [
-              [p0[0], p0[1]],
-              [p1[0], p1[1]],
-            ],
+            pts: [pStart, pEnd],
             totalL: +eng.pxToM(distMm).toFixed(3),
             label: ramId,
             ini: '',
