@@ -259,7 +259,7 @@ function LandingPage() {
                 style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
               >
                 <span className="civsilver">CIVIL</span>
-                <span className="core-shimmer">CARDEX</span>
+                <span className="core-shimmer">&nbsp;CARDEX</span>
               </h1>
               <TypewriterText
                 text="PLATAFORMA DE INTELIGENCIA EN INGENIERÍA CIVIL"
@@ -285,93 +285,100 @@ function LandingPage() {
             className="max-w-7xl mx-auto flex flex-wrap justify-center gap-3 sm:gap-4 md:gap-5"
             style={{ listStyle: 'none', margin: '0 auto', padding: 0 }}
           >
-            {MODULOS_HERO.map((m, i) => (
-              <li
-                key={m.id}
-                className="relative w-[140px] sm:w-[150px] md:w-[160px]"
-                style={{ zIndex: hoveredIdx === i ? 30 : 1 }}
-              >
-                <Tilt3DCard
-                  className="hero-mod-card hero-card-entrance flex flex-col items-center justify-center text-center p-3 border rounded-lg h-full w-full relative"
-                  style={
-                    {
-                      '--mod-color': m.color,
-                      background: 'rgba(10,14,20,0.6)',
-                      backdropFilter: 'blur(8px)',
-                      borderColor: hoveredIdx === i ? m.color + '55' : 'transparent',
-                      boxShadow:
-                        hoveredIdx === i ? `0 0 20px ${m.color}22, 0 0 40px ${m.color}0a` : 'none',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      textAlign: 'center',
-                      animationDelay: `${450 + i * 80}ms`,
-                    } as React.CSSProperties & Record<'--mod-color', string>
-                  }
+            {MODULOS_HERO.map((m, i) => {
+              const nameRest = m.name.replace(/^Civil\s?/, '');
+              return (
+                <li
+                  key={m.id}
+                  className="relative w-[140px] sm:w-[150px] md:w-[160px]"
+                  style={{ zIndex: hoveredIdx === i ? 30 : 1 }}
                 >
-                  <div className="mod-tooltip">
-                    <p
-                      className="text-base font-bold mb-2"
-                      style={{ color: m.color, fontFamily: 'Hanken Grotesk, sans-serif' }}
-                    >
-                      {m.name}
-                    </p>
-                    <p className="text-xs leading-relaxed" style={{ color: '#8a9bb0' }}>
-                      {m.desc}
-                    </p>
-                  </div>
-
-                  <div
-                    className="mod-glow absolute inset-0 rounded-lg pointer-events-none"
-                    style={{
-                      background: `radial-gradient(circle at center, ${m.color}0c 0%, transparent 70%)`,
-                    }}
-                  />
-                  <div
-                    className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 relative z-10 rounded-xl"
-                    style={{
-                      background:
-                        'radial-gradient(circle at center, rgba(245,214,104,0.04) 0%, transparent 70%)',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginBottom: '12px',
-                    }}
+                  <Tilt3DCard
+                    className="hero-mod-card hero-card-entrance flex flex-col items-center justify-center text-center p-3 border rounded-lg h-full w-full relative"
+                    style={
+                      {
+                        '--mod-color': m.color,
+                        background: 'rgba(10,14,20,0.6)',
+                        backdropFilter: 'blur(8px)',
+                        borderColor: hoveredIdx === i ? m.color + '55' : 'transparent',
+                        boxShadow:
+                          hoveredIdx === i
+                            ? `0 0 20px ${m.color}22, 0 0 40px ${m.color}0a`
+                            : 'none',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        animationDelay: `${450 + i * 80}ms`,
+                      } as React.CSSProperties & Record<'--mod-color', string>
+                    }
                   >
-                    <img
-                      src={m.logo}
-                      alt={m.name}
-                      className="mod-logo"
-                      style={{ width: '80%', height: '80%', objectFit: 'contain' }}
+                    <div className="mod-tooltip">
+                      <p
+                        className="text-base font-bold mb-2"
+                        style={{ color: m.color, fontFamily: 'Hanken Grotesk, sans-serif' }}
+                      >
+                        <span style={{ color: '#c0c0c0' }}>Civil </span>
+                        {nameRest}
+                      </p>
+                      <p className="text-xs leading-relaxed" style={{ color: '#8a9bb0' }}>
+                        {m.desc}
+                      </p>
+                    </div>
+
+                    <div
+                      className="mod-glow absolute inset-0 rounded-lg pointer-events-none"
+                      style={{
+                        background: `radial-gradient(circle at center, ${m.color}0c 0%, transparent 70%)`,
+                      }}
                     />
-                  </div>
-                  <span
-                    className="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider relative z-10"
-                    style={{ color: '#e8c84a', fontFamily: 'Hanken Grotesk, sans-serif' }}
-                  >
-                    {m.name.replace(/^Civil\s?/, '')}
-                  </span>
-                  <span
-                    className="text-[8px] sm:text-[9px] md:text-[10px] text-center mt-1 md:mt-1.5 relative z-10 uppercase tracking-wider leading-tight"
-                    style={{ color: '#dce3ea', fontFamily: 'Geist, monospace', fontWeight: 600 }}
-                  >
-                    {(MOD_SUB as Record<string, string>)[m.id]}
-                  </span>
+                    <div
+                      className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 relative z-10 rounded-xl"
+                      style={{
+                        background:
+                          'radial-gradient(circle at center, rgba(245,214,104,0.04) 0%, transparent 70%)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: '12px',
+                      }}
+                    >
+                      <img
+                        src={m.logo}
+                        alt={m.name}
+                        className="mod-logo"
+                        style={{ width: '80%', height: '80%', objectFit: 'contain' }}
+                      />
+                    </div>
+                    <span
+                      className="text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider relative z-10"
+                      style={{ color: '#e8c84a', fontFamily: 'Hanken Grotesk, sans-serif' }}
+                    >
+                      <span style={{ color: '#c0c0c0' }}>Civil </span>
+                      {nameRest}
+                    </span>
+                    <span
+                      className="text-[8px] sm:text-[9px] md:text-[10px] text-center mt-1 md:mt-1.5 relative z-10 uppercase tracking-wider leading-tight"
+                      style={{ color: '#dce3ea', fontFamily: 'Geist, monospace', fontWeight: 600 }}
+                    >
+                      {(MOD_SUB as Record<string, string>)[m.id]}
+                    </span>
 
-                  <button
-                    type="button"
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
-                    aria-label={`${m.name}: ${m.desc}`}
-                    onClick={() => handleClick(m.path)}
-                    onFocus={() => handleEnter(i)}
-                    onBlur={handleLeave}
-                    onMouseEnter={() => handleEnter(i)}
-                    onMouseLeave={handleLeave}
-                  />
-                </Tilt3DCard>
-              </li>
-            ))}
+                    <button
+                      type="button"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                      aria-label={`${m.name}: ${m.desc}`}
+                      onClick={() => handleClick(m.path)}
+                      onFocus={() => handleEnter(i)}
+                      onBlur={handleLeave}
+                      onMouseEnter={() => handleEnter(i)}
+                      onMouseLeave={handleLeave}
+                    />
+                  </Tilt3DCard>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </section>
