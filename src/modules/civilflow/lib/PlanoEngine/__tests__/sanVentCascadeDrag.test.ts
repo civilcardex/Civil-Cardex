@@ -116,11 +116,16 @@ describe('san/vent whole-body drag cascade (end-to-end)', () => {
   });
 
   it('moving the SAN ramal by its ENDPOINT (first-click path) also drags the connected VENT ramal', () => {
-    const san = makeRamal('RS1', 'san', [
-      [0, 0],
-      [10, 0],
-      [50, 0],
-    ]);
+    const san = {
+      ...makeRamal('RS1', 'san', [
+        [0, 0],
+        [10, 0],
+        [50, 0],
+      ]),
+      // Same "directly-dragged ramal must be unlocked" rule — "Bloquear Movimiento" now gates
+      // the first-click endpoint path too.
+      bloqueado: false,
+    };
     const vent = makeRamal('REV1', 'vent', [
       [10, 0],
       [10, 10],

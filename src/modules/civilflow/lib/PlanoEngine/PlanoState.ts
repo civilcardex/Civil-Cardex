@@ -630,6 +630,7 @@ export interface IPlanoEngineCore {
   _renumberBajantes(netId: string): void;
   _renumberMontantes(): void;
   _renumberAreas(): void;
+  updateElementById(id: string, fields: Record<string, unknown>): void;
   selectAt(cx: number, cy: number): void;
   getSelected():
     | PlanoRamal

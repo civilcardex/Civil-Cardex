@@ -431,12 +431,12 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
   engine.multiSel = [];
   engine._emitSelect(bestRamal);
   // This is the first-click path for grabbing a ramal's endpoint (it runs before
-  // _trySelRamalDrag, which only handles a SECOND click on an already-selected ramal) — so this
-  // bloqueado check used to be the very first thing standing between "click a joint" and any
-  // drag ever starting. Since bloqueado defaults to true on every ramal and is never unset
-  // anywhere in the codebase, returning early here silently killed endpoint dragging for every
-  // ramal in the app, not just san/vent. An endpoint drag rigidly propagates (see the matching
-  // fix in _trySelRamalDrag below) rather than bending anything, so bloqueado shouldn't gate it.
+  // _trySelRamalDrag, which only handles a SECOND click on an already-selected ramal).
+  // "Bloquear Movimiento" must keep the ramal's geometry immutable — the checkbox in the
+  // context menu toggles bloqueado, so any drag that would write pts is gated on it, here
+  // included. Selection itself still works (the ramal stays selectable, just not draggable);
+  // cascade (being dragged because a connected ramal moved) stays allowed, and whole-ramal
+  // body drags are gated at _trySelRamalDrag below.
 
   let slideConstraint = undefined;
   {
@@ -469,6 +469,8 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
       if (slideConstraint) break;
     }
   }
+
+  if (bestRamal.bloqueado) return false;
 
   const codoLinks = findCodoReventiladoLinks(engine, bestRamal, bestPtIdx);
   if (codoLinks.length > 0) {
@@ -549,6 +551,9 @@ function _tryMultiSelDrag(
         for (const mid of engine.multiSel) {
           const mel = engine.ramales.find((r) => r.id === mid);
           if (mel) {
+            // "Bloquear Movimiento" ramales never move in a group drag — skip them entirely,
+            // so no code path (single drag, group drag, accessory slide) writes their pts.
+            if (mel.bloqueado) continue;
             origData[mid] = {
               type: 'ramal',
               origPts: mel.pts.map((p) => [...p]),
@@ -687,8 +692,9 @@ function _trySelRamalDrag(
   // Mid-ramal accessory icons are drawn offset from the pipe centerline (renderRamales.ts), so a
   // click on the visible icon can miss the tight per-vertex radius below. Check the icon's wider
   // footprint first so clicking the icon itself — not just the exact underlying vertex — starts
-  // the slide-along-body drag. This is allowed on bloqueado ramales because the slide never
-  // bends the ramal's actual path — only the accessory position changes.
+  // the slide-along-body drag. "Bloquear Movimiento" blocks this too: the user decided the
+  // lock must make the ramal's geometry fully immutable (length inalterable), so the accMed
+  // vertex must not move at all on a locked ramal.
   const accIdxRaw = findAccMedVertexHit(
     sel.pts,
     sel.accMed,
@@ -704,6 +710,7 @@ function _trySelRamalDrag(
   const accIdx =
     accIdxRaw !== null && sel.accMed?.[`accMed${accIdxRaw}`] === 'teeBilateral' ? null : accIdxRaw;
   if (accIdx !== null) {
+    if (sel.bloqueado) return false;
     const a = sel.pts[accIdx - 1],
       b = sel.pts[accIdx + 1];
     engine._dragBackupPts = structuredClone(sel.pts);

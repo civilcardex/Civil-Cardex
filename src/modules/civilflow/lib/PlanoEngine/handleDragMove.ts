@@ -102,16 +102,6 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       }
       r.totalL = calculateRamalLength(r.pts, engine);
       checkRamalAngles(r.pts, r.net, r.tipo);
-      if (engine.ramalDrag.connBaj) {
-        for (const cb of engine.ramalDrag.connBaj) {
-          const b = engine.bajantes.find((bb) => bb.id === cb.id);
-          if (!b) continue;
-          b.x = cb.origX + slideDx;
-          b.y = cb.origY + slideDy;
-          b.labelX = cb.origLblX + slideDx;
-          b.labelY = cb.origLblY + slideDy;
-        }
-      }
       if (engine.ramalDrag.connRamales) {
         for (const cr of engine.ramalDrag.connRamales) {
           const other = engine.ramales.find((rr) => rr.id === cr.id);
@@ -135,6 +125,16 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         for (const b of engine.bajantes) {
           const desp = b.desplazamientos?.[lvl];
           if (desp && desp.Ldesvio === r.id) {
+            // The Ldesvio connects both ends of a cross-floor association — dragging it as a
+            // whole body must carry BOTH along, not just update the far (target/ghost) offset
+            // and leave the near (source) bajante glyph behind, disconnected from pts[0].
+            const firstPt = r.pts[0];
+            const origBx = b.x,
+              origBy = b.y;
+            b.x = firstPt[0];
+            b.y = firstPt[1];
+            if (b.labelX !== undefined) b.labelX += b.x - origBx;
+            if (b.labelY !== undefined) b.labelY += b.y - origBy;
             const lastPt = r.pts[r.pts.length - 1];
             desp.dx = lastPt[0] - b.x;
             desp.dy = lastPt[1] - b.y;
@@ -285,9 +285,9 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         const dStart = Math.hypot(pStart[0] - p.x, pStart[1] - p.y);
         const dEnd = Math.hypot(pEnd[0] - p.x, pEnd[1] - p.y);
         // Flow-direction guard (centralized in flowDirection.ts): a 'baja' bajante must only
-        // RECEIVE flow — never START a ramal. The guard fires once for the offending endpoint
-        // and continues looking for the next ramal's FIN, so other valid associations in the
-        // same drag motion are not blocked.
+        // RECEIVE flow — never START a ramal; a 'sube' bajante must only EMIT flow — never END
+        // one. The guard fires once for the offending endpoint and continues looking for the
+        // next ramal, so other valid associations in the same drag motion are not blocked.
         if (dStart < autoThresh && dStart <= dEnd) {
           const allowed = isRamalBajanteConnectionAllowed(engine, r, 0, b);
           if (!allowed) continue;
@@ -298,6 +298,8 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           p.y = pStart[1];
           break;
         } else if (dEnd < autoThresh) {
+          const allowed = isRamalBajanteConnectionAllowed(engine, r, r.pts.length - 1, b);
+          if (!allowed) continue;
           if (!b.recibeDeIds) b.recibeDeIds = [];
           b.recibeDeIds.push(r.id);
           r.fin = b.code || b.id;
@@ -793,32 +795,9 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           }
         }
         recalcBilateralCrossings(engine);
-        // Move every bajante that discharges from any ramal swept up in the cascade above (not
-        // just the directly-dragged one), matched against the cascade's old positions.
-        for (const b of engine.bajantes) {
-          const feedsMoved = b.recibeDeIds?.some((rid) => movedRamalIds.has(rid));
-          const nearOld = allOldPositions.some((op) => Math.hypot(b.x - op[0], b.y - op[1]) < 0.5);
-          if (feedsMoved && nearOld) {
-            b.x += dPx;
-            b.y += dPy;
-            b.labelX = (b.labelX || 0) + dPx;
-            b.labelY = (b.labelY || 0) + dPy;
-            continue;
-          }
-          if (b.descargaEnId) {
-            const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
-            if (
-              String(parts[0]) === String(engine._loadedPlanId) &&
-              movedRamalIds.has(parts[1]) &&
-              nearOld
-            ) {
-              b.x += dPx;
-              b.y += dPy;
-              b.labelX = (b.labelX || 0) + dPx;
-              b.labelY = (b.labelY || 0) + dPy;
-            }
-          }
-        }
+        // Bajantes are the fixed anchors of the network — an endpoint drag must adapt the ramal
+        // to the bajante position, not displace the bajante to follow a drag. Only whole-body
+        // ramalDrag (below) may rigidly translate a connected bajante.
       }
 
       if (engine.nivelActual) {

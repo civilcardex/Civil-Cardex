@@ -6,6 +6,7 @@ import { autoSplitJunctionAndSumFlow } from './PlanoEngineDrawing';
 import {
   updateCrossFloorGhostPositionBySource,
   updateCrossFloorLdesvioFarEndpoint,
+  updateCrossFloorDesplazamientoBySource,
   buildLdesvioRamal,
   ldesvioIdFor,
 } from '../../utils/associateBajanteAcrossFloors';
@@ -53,6 +54,57 @@ function draggedOntoWrongPadre(engine: IPlanoEngineCore, ram: PlanoRamal): boole
     }
   }
   return false;
+}
+
+// Endpoint drags that snap ONTO a bajante (handleDragMove pins the point exactly to the bajante)
+// must survive the release check even when the final angle is off the network's grid — reverting
+// would undo the very connection the user just made. When possible, rotate the ramal around the
+// bajante (kept fixed) to the nearest valid step angle instead. Rotation is rigid (internal turns
+// and segment lengths preserved), so it can only fix absolute segment-step violations — and only
+// for straight 2-point runs: in a multi-point ramal every segment would shift by the same delta,
+// pushing the already-valid interior segments off-grid again. The opposite end must be free too —
+// a swing around the bajante would silently detach a junction or another bajante connection.
+function tryRotateToValidAngle(
+  engine: IPlanoEngineCore,
+  ram: PlanoRamal,
+  ptIdx: number,
+  linkedOk: boolean,
+): boolean {
+  if (!linkedOk) return false;
+  if (ram.net === 'san' || ram.net === 'll') return false;
+  const pts = ram.pts;
+  if (!pts || pts.length !== 2) return false;
+  const anchorIdx = ptIdx === 0 ? 0 : 1;
+  const [ax, ay] = pts[anchorIdx];
+  const baj = engine.bajantes.find(
+    (b) => b.net === ram.net && Math.hypot(b.x - ax, b.y - ay) < 1.5,
+  );
+  if (!baj) return false;
+  const opp = pts[1 - anchorIdx];
+  const TOL = 0.5;
+  for (const other of engine.ramales) {
+    if (other.id === ram.id) continue;
+    if (other.pts?.some(([x, y]) => Math.hypot(x - opp[0], y - opp[1]) < TOL)) return false;
+  }
+  if (
+    engine.bajantes.some((b) => b.id !== baj.id && Math.hypot(b.x - opp[0], b.y - opp[1]) < TOL)
+  ) {
+    return false;
+  }
+  const step =
+    ram.net === 'gas' || ((ram.net === 'af' || ram.net === 'ac') && ram.tipo === 'tributario')
+      ? 90
+      : 45;
+  const dx = opp[0] - ax,
+    dy = opp[1] - ay;
+  const len = Math.hypot(dx, dy);
+  if (len < 0.1) return false;
+  const curDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
+  const snappedDeg = Math.round(curDeg / step) * step;
+  if (Math.abs(snappedDeg - curDeg) < 1) return false;
+  const rad = (snappedDeg * Math.PI) / 180;
+  pts[1 - anchorIdx] = [ax + len * Math.cos(rad), ay + len * Math.sin(rad)];
+  return checkRamalAngles(pts, ram.net, ram.tipo);
 }
 
 export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false): void {
@@ -277,8 +329,19 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
             ld.diametro || '',
             Number(ld.piso) || 0,
             engine.scaleM || 0.5,
+            ld.bloqueado,
           );
           Object.assign(ld, updated);
+          // Re-anchor the displaced-circle marker to the (unchanged) far endpoint: the ring is
+          // drawn at b.x + dx, so keeping dx/dy constant would drag it along with the source
+          // instead of leaving it anchored at the target's projected position.
+          const lvl = engine.nivelActual?.label ?? '';
+          const desp = lvl ? b.desplazamientos?.[lvl] : undefined;
+          if (desp) {
+            desp.dx = far[0] - b.x;
+            desp.dy = far[1] - b.y;
+            engine._markDirty();
+          }
         }
         engine.render();
       }
@@ -290,6 +353,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       const [originPlanId, originBajanteId] = b.origenId.split('|');
       if (originPlanId && originBajanteId) {
         updateCrossFloorLdesvioFarEndpoint(originPlanId, originBajanteId, b.x, b.y);
+        updateCrossFloorDesplazamientoBySource(originPlanId, originBajanteId, b.x, b.y);
       }
     }
   }
@@ -304,6 +368,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
   if (engine.ptDrag) {
     const rId = engine.ptDrag.id;
     const linkedPts = engine.ptDrag.linkedPts;
+    const ptIdx = engine.ptDrag.ptIdx;
     engine.ptDrag = null;
     engine._markDirty();
     const ram = engine.ramales.find((r) => r.id === rId);
@@ -317,25 +382,38 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     const linkedOk = linkedRamales.every((r) => checkRamalAngles(r.pts, r.net, r.tipo));
 
     if (ram && (!primaryOk || !linkedOk)) {
-      engine.triggerAlert(
-        'Ángulo no recomendado',
-        ram.net === 'san' || ram.net === 'll'
-          ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
-          : 'Esta red debe diseñarse con ángulos de 45° o 90°.',
-      );
-      if (engine._dragBackupPts) {
-        ram.pts = engine._dragBackupPts;
+      // An endpoint drag that SNAPPED onto a bajante (handleDragMove pins the point exactly to
+      // the bajante) must not roll back — losing the connection the user just made is worse than
+      // losing the exact cursor spot. Rotate the ramal around the bajante (kept fixed) to the
+      // nearest valid step angle instead. Rotation is rigid, so only absolute segment-step
+      // violations are fixable this way; internal turn violations still roll back below.
+      const rotatedOk = tryRotateToValidAngle(engine, ram, ptIdx, linkedOk);
+      if (rotatedOk) {
         engine._dragBackupPts = null;
-      }
-      const linkedBackups = engine._dragLinkedBackupPts;
-      if (linkedBackups) {
-        for (const r of linkedRamales) {
-          if (linkedBackups[r.id]) r.pts = linkedBackups[r.id];
+        engine._dragLinkedBackupPts = null;
+        engine._markDirty();
+        engine.render();
+      } else {
+        engine.triggerAlert(
+          'Ángulo no recomendado',
+          ram.net === 'san' || ram.net === 'll'
+            ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
+            : 'Esta red debe diseñarse con ángulos de 45° o 90°.',
+        );
+        if (engine._dragBackupPts) {
+          ram.pts = engine._dragBackupPts;
+          engine._dragBackupPts = null;
         }
+        const linkedBackups = engine._dragLinkedBackupPts;
+        if (linkedBackups) {
+          for (const r of linkedRamales) {
+            if (linkedBackups[r.id]) r.pts = linkedBackups[r.id];
+          }
+        }
+        engine._dragLinkedBackupPts = null;
+        engine._markDirty();
+        engine.render();
       }
-      engine._dragLinkedBackupPts = null;
-      engine._markDirty();
-      engine.render();
     } else if (ram && ram.tipo === 'tributario' && draggedOntoWrongPadre(engine, ram)) {
       engine.triggerAlert(
         'Ramal padre incorrecto',
@@ -362,6 +440,13 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     engine.ramalDrag = null;
     engine._markDirty();
     const ram = engine.ramales.find((r) => r.id === rId);
+    // If this ramal is a Ldesvio, dragging it also carried its source bajante along (see
+    // handleDragMove.ts) — any rollback below must revert that too, and any successful drop must
+    // propagate the bajante's new position to the other floor's storage, same as a direct bajDrag
+    // already does.
+    const srcBajId = rId.startsWith('LD_') ? rId.slice(3) : null;
+    const srcBaj = srcBajId ? engine.bajantes.find((b) => b.id === srcBajId) : null;
+    const origSrcXY = srcBaj ? { x: srcBaj.x, y: srcBaj.y } : null;
     if (ram && !checkRamalAngles(ram.pts, ram.net, ram.tipo)) {
       engine.triggerAlert(
         'Ángulo no recomendado',
@@ -371,6 +456,10 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       );
       if (origPts) {
         ram.pts = origPts;
+        if (srcBaj && origSrcXY) {
+          srcBaj.x = origSrcXY.x;
+          srcBaj.y = origSrcXY.y;
+        }
         engine._markDirty();
         engine.render();
       }
@@ -385,8 +474,13 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         engine.render();
       }
     } else if (ram) {
-      autoSplitJunctionAndSumFlow(engine, ram);
-      checkAccesorioTrigger(engine, ram.id);
+      if (srcBaj) {
+        const sourcePlanId = String(engine._loadedPlanId ?? '');
+        updateCrossFloorGhostPositionBySource(sourcePlanId, srcBaj.id, srcBaj.x, srcBaj.y);
+      } else {
+        autoSplitJunctionAndSumFlow(engine, ram);
+        checkAccesorioTrigger(engine, ram.id);
+      }
     }
   }
 }

@@ -467,13 +467,17 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       const ep = r.pts[epIdx];
       const baj = engine.bajantes.find((b) => {
         if (b.net !== r.net || engine._hiddenNets.has(b.net)) return false;
+        // El extremo en snapMode puede aterrizar en el BORDE del círculo del bajante (proyección
+        // de ángulo válido), no en el centro — la tolerancia de asociación cubre el radio del
+        // símbolo para que el ramal quede igualmente conectado.
+        const rimTol = (b._circ?.r || 8 * engine.zoom) / (engine.zoom || 1) + TOLLERANCE;
         if (displacedFantasmaIds.has(b.id)) {
           const disp = b.desplazamientos?.[lvl];
           const bx = b.x + (disp?.dx || 0);
           const by = b.y + (disp?.dy || 0);
-          return Math.hypot(bx - ep[0], by - ep[1]) < TOLLERANCE;
+          return Math.hypot(bx - ep[0], by - ep[1]) < rimTol;
         }
-        return Math.hypot(b.x - ep[0], b.y - ep[1]) < TOLLERANCE;
+        return Math.hypot(b.x - ep[0], b.y - ep[1]) < rimTol;
       });
       if (baj && !baj.recibeDeIds.includes(r.id)) {
         // Centralized direction guard — a 'baja' bajante may only RECEIVE flow, so we never
@@ -1061,21 +1065,45 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       const disp = nearBaj.desplazamientos?.[lvlLabel] || {};
       const bx = nearBaj.x + (disp.dx || 0);
       const by = nearBaj.y + (disp.dy || 0);
-      if (engine.snapMode) {
-        const dx = pt.x - bx;
-        const dy = pt.y - by;
-        if (nearBaj.desplazamientos?.[lvlLabel]) {
-          nearBaj.desplazamientos[lvlLabel].dx = (nearBaj.desplazamientos[lvlLabel].dx || 0) + dx;
-          nearBaj.desplazamientos[lvlLabel].dy = (nearBaj.desplazamientos[lvlLabel].dy || 0) + dy;
-        } else {
-          nearBaj.x = pt.x;
-          nearBaj.y = pt.y;
-        }
-        if (nearBaj.labelX != null) nearBaj.labelX += dx;
-        if (nearBaj.labelY != null) nearBaj.labelY += dy;
-        engine._markDirty();
-      } else {
+      // Bajante es el ancla: el ramal se adapta a su posición, el bajante nunca se mueve.
+      if (!engine.snapMode) {
+        // Sin snap: conectar directo al centro del bajante.
         pt = { x: bx, y: by };
+      } else {
+        const snappedPt = engine.snapAngle(
+          last[0],
+          last[1],
+          bx,
+          by,
+          engine.activeRamal.net,
+          engine.activeRamal.tipo,
+        );
+        if (Math.hypot(snappedPt.x - bx, snappedPt.y - by) < 1) {
+          // El bajante está sobre un ángulo válido → snap exacto al centro (conectado).
+          pt = { x: bx, y: by };
+        } else {
+          // El bajante NO está sobre el snap grid: proyectar el extremo sobre un rayo FIJO desde
+          // `last` casi nunca pasa justo por el centro, dejando el ramal cerca pero sin conectar
+          // (el bug reportado). En vez de eso, el segmento entero se DESPLAZA en paralelo — se
+          // mueve tanto el vértice anterior (`last`) como el nuevo extremo por el mismo delta
+          // perpendicular — hasta quedar exactamente sobre el bajante. El ángulo/dirección del
+          // segmento se preserva intacto, solo cambia su posición.
+          const dx = snappedPt.x - last[0],
+            dy = snappedPt.y - last[1];
+          const dlen = Math.hypot(dx, dy) || 1;
+          const ux = dx / dlen,
+            uy = dy / dlen;
+          // Normal unitaria al rayo (perpendicular a la dirección válida).
+          const nx = -uy,
+            ny = ux;
+          const perp = (bx - last[0]) * nx + (by - last[1]) * ny;
+          const lastIdx = engine.activeRamal.pts.length - 1;
+          engine.activeRamal.pts[lastIdx] = [last[0] + perp * nx, last[1] + perp * ny];
+          pt = { x: bx, y: by };
+          // Si el desplazamiento resultante rompe el ángulo del segmento ANTERIOR (cuando ya
+          // había más de un punto), el chequeo de ángulos más abajo rechaza el trazo completo con
+          // la alerta habitual — no se corrompe silenciosamente un ramal de varios tramos.
+        }
       }
     }
     if (engine.activeRamal.pts.length >= 2) {

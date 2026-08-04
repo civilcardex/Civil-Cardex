@@ -99,6 +99,9 @@ describe('bilateral tee — first drag by endpoint/vertex (point 24)', () => {
     ]);
     const engine = makeEngine([a, b]);
     engine.selId = 'RAF1';
+    // "Bloquear Movimiento" gates ALL direct drags now (first-click endpoint path included) —
+    // the ramal being directly dragged must be unlocked for this test.
+    a.bloqueado = false;
 
     // Grab RAF1 by its right endpoint (20,10) — far from the crossing point (10,10) itself, so
     // there is no shared/coincident vertex between the two ramales at the dragged point.
@@ -129,6 +132,7 @@ describe('bilateral tee — first drag by endpoint/vertex (point 24)', () => {
     ]);
     const engine = makeEngine([a, b]);
     engine.selId = 'RAF1';
+    a.bloqueado = false;
 
     handleSelectDown(engine, 20, 10);
     expect(engine.ptDrag).not.toBeNull();
