@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import EditButton from './shared/EditButton';
 import { useTramos } from '../context/TramosContext';
 import type { Tramo } from '../context/tramosReducer';
 import { useProyecto } from '../context/ProyectoContext';
@@ -52,10 +53,12 @@ function LazyNumInput({
   val,
   onSave,
   label,
+  disabled = false,
 }: {
   val: number | string;
   onSave: (v: number | undefined) => void;
   label?: string;
+  disabled?: boolean;
 }) {
   const [str, setStr] = React.useState(val != null ? val.toString() : '');
   const [prevVal, setPrevVal] = React.useState(val);
@@ -75,6 +78,7 @@ function LazyNumInput({
       aria-label={label}
       step="any"
       className="ni"
+      disabled={disabled}
       style={{ width: 44, textAlign: 'center', padding: 0, fontSize: 9 }}
       value={str}
       onChange={(e) => setStr(e.target.value)}
@@ -121,6 +125,7 @@ const isAC2 = (t: Tramo) => {
 };
 
 function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDesignProps) {
+  const [edit, setEdit] = useState(false);
   const { tramosAf, tramosAc, updTramoAf, updTramoAc } = useTramos();
   const { proy } = useProyecto();
   const { plans } = usePlans();
@@ -1136,6 +1141,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
             Diseño de red {title}
           </h3>
           <span className="card-s">{tramosOrden.length} tramos</span>
+          <EditButton edit={edit} setEdit={setEdit} />
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div className="scroll-top" style={{ padding: '6px' }}>
@@ -1527,6 +1533,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
                           <select
                             aria-label="Diámetro diseño"
                             value={matchedOpt?.nominal || ''}
+                            disabled={!edit}
                             onChange={(e) => handleDiamChange(ownKey, e.target.value)}
                             style={WaterNetworkDesign_S2}
                           >
@@ -1566,6 +1573,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
                           <LazyNumInput
                             label="Presión inicial"
                             val={fmt(Pin, 2)}
+                            disabled={!edit}
                             onSave={(v) => setPresIni(ownKey, v)}
                           />
                         </td>
@@ -1573,6 +1581,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
                           <LazyNumInput
                             label="Presión final"
                             val={fmt(Pfin, 2)}
+                            disabled={!edit}
                             onSave={(v) => setPresFin(ownKey, v)}
                           />
                         </td>

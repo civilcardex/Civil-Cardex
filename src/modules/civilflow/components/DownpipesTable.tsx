@@ -1,4 +1,5 @@
-import { memo, useMemo, useCallback } from 'react';
+import { memo, useMemo, useCallback, useState } from 'react';
+import EditButton from './shared/EditButton';
 import { useTramos } from '../context/TramosContext';
 import type { Tramo } from '../context/tramosReducer';
 import { usePisos } from '../context/PisosContext';
@@ -172,6 +173,7 @@ const DownpipesTable_S1: React.CSSProperties = {
 };
 
 const BajantesTable = memo(function BajantesTable_() {
+  const [edit, setEdit] = useState(false);
   const { tramosSan } = useTramos();
   const { udBase } = useApparatus();
   const { pisos } = usePisos();
@@ -273,6 +275,7 @@ const BajantesTable = memo(function BajantesTable_() {
           />{' '}
           Bajantes de aguas negras y ventilación
         </h3>
+        <EditButton edit={edit} setEdit={setEdit} />
       </div>
       <div className="scroll-top" style={{ padding: '16px' }}>
         <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
@@ -864,6 +867,7 @@ const BajantesTable = memo(function BajantesTable_() {
                         <select
                           aria-label="Diámetro Bajante Propuesto"
                           value={resolvedSanDprop || ''}
+                          disabled={!edit}
                           onChange={(e) => {
                             const val = parseFloat(e.target.value) || 0;
                             const matched = DIAM_BAN.find((d) => d.pulg === val);
@@ -950,6 +954,7 @@ const BajantesTable = memo(function BajantesTable_() {
                           step="0.1"
                           aria-label="Longitud del bajante (m)"
                           style={DownpipesTable_S1}
+                          disabled={!edit}
                           value={t.bajLong ?? 5}
                           onChange={(e) => {
                             const val = parseFloat(e.target.value) || 5;
@@ -974,6 +979,7 @@ const BajantesTable = memo(function BajantesTable_() {
                         <select
                           aria-label="Diámetro Ventilación Propuesto"
                           value={resolvedVentDprop || ''}
+                          disabled={!edit}
                           onChange={(e) => {
                             const val = parseFloat(e.target.value) || 0;
                             const matched = DIAM_VENT.find((d) => d.pulg === val);

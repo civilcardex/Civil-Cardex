@@ -1,4 +1,5 @@
-import React, { useMemo, useCallback, useEffect } from 'react';
+import React, { useMemo, useCallback, useEffect, useState } from 'react';
+import EditButton from './shared/EditButton';
 import { useTramos } from '../context/TramosContext';
 import { usePlans } from '../context/PlansContext';
 import { renderStatus } from '../utils/componentHelpers';
@@ -27,6 +28,7 @@ const RainwaterDesign_S2: React.CSSProperties = {
 const TH_HDR = { fontSize: 9, textAlign: 'center', padding: '1px 2px' } as const;
 
 export default function DisenoLluvias() {
+  const [edit, setEdit] = useState(false);
   const { tramosLl, updTramoLL } = useTramos();
   const { plans } = usePlans();
   const { bajantesLl } = useRainwater();
@@ -114,6 +116,7 @@ export default function DisenoLluvias() {
             />{' '}
             Diseño de red aguas lluvias
           </h3>
+          <EditButton edit={edit} setEdit={setEdit} />
         </div>
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner">
@@ -388,6 +391,7 @@ export default function DisenoLluvias() {
                           <select
                             aria-label="Seleccionar diámetro"
                             value={DdisPulg || ''}
+                            disabled={!edit}
                             onChange={(e) =>
                               handleDiamChange(tKey, id, parseFloat(e.target.value) || 0)
                             }

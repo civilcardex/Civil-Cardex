@@ -1,4 +1,5 @@
-import { useMemo, useCallback, useEffect } from 'react';
+import { useMemo, useCallback, useEffect, useState } from 'react';
+import EditButton from './shared/EditButton';
 import { useTramos } from '../context/TramosContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { usePlans } from '../context/PlansContext';
@@ -41,6 +42,7 @@ const TH_HDR = { fontSize: 9, textAlign: 'center', padding: '1px 2px' } as const
 const TH_SUB = { fontSize: 9, textAlign: 'center', padding: '1px 2px' } as const;
 
 export default function DisenosSanitarios() {
+  const [edit, setEdit] = useState(false);
   const { tramosSan, updTramoSan } = useTramos();
   const { aps } = useApparatus();
   const { plans } = usePlans();
@@ -173,6 +175,7 @@ export default function DisenosSanitarios() {
           <span className="card-s">
             {displayTramos.length} tramos · {totalUD} UD totales
           </span>
+          <EditButton edit={edit} setEdit={setEdit} />
         </div>
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner">
@@ -476,6 +479,7 @@ export default function DisenosSanitarios() {
                             <select
                               aria-label="Diámetro diseño"
                               value={DdisPulg || ''}
+                              disabled={!edit}
                               onChange={(e) =>
                                 handleDiamChange(tKey, parseFloat(e.target.value) || 0)
                               }

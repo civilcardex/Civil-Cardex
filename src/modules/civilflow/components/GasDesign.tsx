@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import EditButton from './shared/EditButton';
 import { LE_K, pisoCorto, GAS_DN_LABELS } from '../constants';
 import { GAS, CAT_GAS } from '../constants/engineeringDataGas';
 import { normalizeDnLabel } from '../utils/formatUtils';
@@ -79,6 +80,7 @@ function lookupDn(mat: string, dn: string) {
 
 function GasDesign() {
   const [gp, setGp] = useState(1);
+  const [edit, setEdit] = useState(false);
   const datosGeneralesInit = loadFromStorage(GAS_DATOS_KEY, GAS_DATOS_DEFAULT);
   const [alt, setAlt] = useState(datosGeneralesInit.alt);
   const [patm, setPatm] = useState(datosGeneralesInit.patm);
@@ -324,6 +326,7 @@ function GasDesign() {
             />
             Datos generales
           </h3>
+          <EditButton edit={edit} setEdit={setEdit} />
         </div>
         <div
           style={{
@@ -375,6 +378,7 @@ function GasDesign() {
                         inputMode="decimal"
                         aria-label={lbl}
                         value={val}
+                        disabled={!edit}
                         onChange={(e) => setVal(e.target.value)}
                         style={{
                           ...SI,
@@ -425,6 +429,7 @@ function GasDesign() {
               Diseño de red de gas
             </h3>
             <span className="card-s">{gasTramos.length} tramos</span>
+            <EditButton edit={edit} setEdit={setEdit} />
           </div>
           <div style={{ padding: 6 }}>
             <table
@@ -487,6 +492,7 @@ function GasDesign() {
                         <select
                           aria-label="Diámetro diseño"
                           value={mat ? `${mat}|${dn}` : ''}
+                          disabled={!edit}
                           onChange={(e) => {
                             const val = e.target.value;
                             if (!val) {
@@ -553,6 +559,7 @@ function GasDesign() {
                 Contador / Calentador
               </h3>
               <span className="card-s">{gasContBajantes.length} equipos</span>
+              <EditButton edit={edit} setEdit={setEdit} />
             </div>
             <div style={{ padding: 6 }}>
               <table className="tbl" style={{ fontSize: 10 }}>
@@ -589,6 +596,7 @@ function GasDesign() {
                           <select
                             value={b.dNominal ? b.dNominal.replace(/"/g, '').trim() : ''}
                             aria-label="Diámetro"
+                            disabled={!edit}
                             onChange={(e) => {
                               const dNom = e.target.value ? `${e.target.value}"` : '';
                               writeContadorDiamToDrawing(dNom, plans, 'gas');
@@ -610,6 +618,7 @@ function GasDesign() {
                         <select
                           value={b.acoDiam || ''}
                           aria-label="Conexión"
+                          disabled={!edit}
                           onChange={(e) => {
                             const val = e.target.value;
                             const bajKey = `${b.id}-${b.planId}`;
@@ -630,6 +639,7 @@ function GasDesign() {
                           <select
                             value={b.capacidad || ''}
                             aria-label="Capacidad"
+                            disabled={!edit}
                             onChange={(e) => {
                               const val = e.target.value;
                               const bajKey = `${b.id}-${b.planId}`;
