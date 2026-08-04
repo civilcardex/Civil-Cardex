@@ -43,7 +43,14 @@ export const TOOLS: ToolDef[] = [
     shortcut: 'L',
   },
   { id: 'area', label: 'Área', ico: '\u2B21', key: 'A', icoCol: '#22D3EE', shortcut: 'A' },
-  { id: 'dim', label: 'Cota', ico: '\uD83D\uDCCF', key: 'D', icoCol: '#22D3EE', shortcut: 'D' },
+  {
+    id: 'dim',
+    label: 'Medir/Acotar',
+    ico: '\uD83D\uDCCF',
+    key: 'D',
+    icoCol: '#22D3EE',
+    shortcut: 'D',
+  },
   {
     id: 'guide',
     label: 'L\u00EDnea gu\u00EDa',

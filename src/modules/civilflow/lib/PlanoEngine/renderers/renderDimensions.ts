@@ -5,10 +5,12 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
     const c1 = engine.toCvs(d.x1, d.y1);
     const c2 = engine.toCvs(d.x2, d.y2);
     ctx.save();
-    // Solid black lines (no faded ghost): dimension lines must read at full opacity per
-    // explicit request — the previous 0.4 globalAlpha made them look like alignment guides.
+    // Dimension lines must NOT compete with real pipes/annotations: render at reduced
+    // opacity and a thinner stroke than regular network lines (1.5px → 1px). The text label
+    // stays full-black below so measurements remain readable; only the line/ticks fade.
+    ctx.globalAlpha = 0.55;
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1.5 * engine.zoom;
+    ctx.lineWidth = 1 * engine.zoom;
     ctx.beginPath();
     ctx.moveTo(c1.x, c1.y);
     ctx.lineTo(c2.x, c2.y);
@@ -31,7 +33,7 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
       sin45 = Math.SQRT1_2;
     const dxr = ux * cos45 - uy * sin45,
       dyr = ux * sin45 + uy * cos45;
-    const mk = 6 * engine.zoom;
+    const mk = 4 * engine.zoom;
     [c1, c2].forEach((pt) => {
       ctx.beginPath();
       ctx.moveTo(pt.x - nx * mk, pt.y - ny * mk);
@@ -46,7 +48,7 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
     const mx = (c1.x + c2.x) / 2,
       my = (c1.y + c2.y) / 2;
     const txt = `${d.L.toFixed(2)}m`;
-    ctx.font = `${engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 0.8)}px Geist, monospace`;
+    ctx.font = `${engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.5)}px Geist, monospace`;
     let lx: number, ly: number;
     if (d.lblX != null && d.lblY != null) {
       const pos = engine.toCvs(d.lblX, d.lblY);
@@ -65,7 +67,7 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
     }
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
-    ctx.lineWidth = 3 * engine.zoom;
+    ctx.lineWidth = 2.5 * engine.zoom;
     ctx.lineJoin = 'round';
     ctx.strokeStyle = '#ffffff';
     ctx.strokeText(txt, lx, ly);
@@ -83,8 +85,9 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
   const e = engine.toCvs(mp.x, mp.y);
 
   ctx.save();
+  ctx.globalAlpha = 0.55;
   ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 1.5 * engine.zoom;
+  ctx.lineWidth = 1 * engine.zoom;
   ctx.beginPath();
   ctx.moveTo(s.x, s.y);
   ctx.lineTo(e.x, e.y);
@@ -102,7 +105,7 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       sin45 = Math.SQRT1_2;
     const dxr = ux * cos45 - uy * sin45,
       dyr = ux * sin45 + uy * cos45;
-    const mk = 6 * engine.zoom;
+    const mk = 4 * engine.zoom;
     [s, e].forEach((pt) => {
       ctx.beginPath();
       ctx.moveTo(pt.x - nx * mk, pt.y - ny * mk);
@@ -118,7 +121,7 @@ export function renderDimGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       my = (s.y + e.y) / 2;
     const px = Math.hypot(mp.x - engine._dimStart.x, mp.y - engine._dimStart.y);
     const txt = `${engine.pxToM(px).toFixed(2)}m`;
-    ctx.font = `${engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 0.8)}px Geist, monospace`;
+    ctx.font = `${engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 1.5)}px Geist, monospace`;
     let onx = nx,
       ony = ny;
     if (ony > 0) {

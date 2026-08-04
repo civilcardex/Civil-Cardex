@@ -817,7 +817,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
 
     if (r.label || r.totalL || r.material || r.diametro || r.pendiente) {
       const lc = engine.toCvs(r.labelX, r.labelY);
-      const FLOW_NETS = ['san', 'll', 'af', 'ac'];
+      const FLOW_NETS = ['san', 'll', 'af', 'ac', 'gas'];
       const showFlow = FLOW_NETS.includes(r.net) && r.pts.length >= 2;
       let flowDx = 0,
         flowDy = 0,
@@ -828,6 +828,19 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         if (r.tipo === 'tributario' && r._tribReversed) {
           flowFromIdx = flowToIdx;
           flowToIdx = 0;
+        }
+        // Ldesvio (id `LD_<sourceBajanteId>`, pts[0] is always the source per
+        // associateBajanteAcrossFloors.ts) must point at whichever of the two linked bajantes is
+        // 'baja' — not always the same end, since the source itself can be either 'sube' or
+        // 'baja' depending on which floor the target is on. pts[0] already matches the target
+        // (the 'baja' one) whenever the source is 'sube', so only the source-is-'baja' case needs
+        // the default reversed.
+        if (r.id.startsWith('LD_')) {
+          const srcBaj = engine.bajantes.find((b) => b.id === r.id.slice(3));
+          if (srcBaj?.direccion === 'baja') {
+            flowFromIdx = r.pts.length - 1;
+            flowToIdx = 0;
+          }
         }
         const fc = engine.toCvs(r.pts[flowFromIdx][0], r.pts[flowFromIdx][1]);
         const lastc = engine.toCvs(r.pts[flowToIdx][0], r.pts[flowToIdx][1]);
@@ -1005,28 +1018,23 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       if (isDesvio && desvioBajante) {
         const baj: PlanoBajante = desvioBajante;
         const firstPt = r.pts[0];
-        const isSube = baj.direccion === 'sube';
 
         let startIdx = 0,
           nextIdx = 1;
 
         const firstIsParent = Math.hypot(firstPt[0] - baj.x, firstPt[1] - baj.y) < 0.5;
-        if (isSube) {
-          if (firstIsParent) {
-            startIdx = r.pts.length - 1;
-            nextIdx = r.pts.length - 2;
-          } else {
-            startIdx = 0;
-            nextIdx = 1;
-          }
+        // La punta de flecha va SIEMPRE sobre el extremo cuyo bajante tiene dirección 'baja' — no
+        // siempre el mismo lado, porque el bajante padre (source) puede ser 'sube' o 'baja' según
+        // en qué piso quede el otro extremo de la asociación (ver applyBajanteAssociation). Mismo
+        // criterio que el indicador de flujo permanente más arriba.
+        const parentIdx = firstIsParent ? 0 : r.pts.length - 1;
+        const otherIdx = firstIsParent ? r.pts.length - 1 : 0;
+        if (baj.direccion === 'baja') {
+          startIdx = parentIdx;
+          nextIdx = otherIdx;
         } else {
-          if (firstIsParent) {
-            startIdx = 0;
-            nextIdx = 1;
-          } else {
-            startIdx = r.pts.length - 1;
-            nextIdx = r.pts.length - 2;
-          }
+          startIdx = otherIdx;
+          nextIdx = parentIdx;
         }
 
         const firstC = engine.toCvs(r.pts[startIdx][0], r.pts[startIdx][1]);
