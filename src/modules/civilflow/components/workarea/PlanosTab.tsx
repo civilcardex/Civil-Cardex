@@ -292,6 +292,21 @@ function PlanosTab({ state }: PlanosTabProps) {
         cd.calGlobal === true && cd.origen && cd.scaleM && plans.some((p) => calData[p.id] === cd),
     ) || null;
 
+  const handleAsignarPiso = (planId: number, nivel: number) => {
+    // Con la calibración ya global (primera calibración confirmada con el modal), asignar piso
+    // reutiliza esa escala automáticamente: el plan queda calibrado y confirmado al instante.
+    if (globalCal) {
+      handleUsarCalibracionPrevia(planId, nivel);
+      return;
+    }
+    // Sin calibración global todavía, este plan será el primero en calibrarse: se asigna el piso
+    // y se abre el configurador (que confirma su primera calibración con el modal de aviso).
+    updatePlan(planId, { nivel });
+    setNivelPickerPlanId(null);
+    setSelectedPlanId(planId);
+    setCalibrating(true);
+  };
+
   const handleUsarCalibracionPrevia = (planId: number, nivel: number) => {
     if (!globalCal) return;
     handleSaveConfig({
@@ -327,7 +342,10 @@ function PlanosTab({ state }: PlanosTabProps) {
       origen: config.origen,
       factorX: config.factorX,
       factorY: config.factorY,
-      calGlobal: config.calGlobal,
+      // Alcance ya no se pregunta en PlanoConfigurator (step 5 eliminado) — toda calibración se
+      // guarda como "global" para que `globalCal` + "Usar calibración previa" (PlanosTab:289-298)
+      // sigan funcionando y la escala se propague a planes nuevos automáticamente.
+      calGlobal: true,
       definedScale: config.definedScale,
     });
 
@@ -445,6 +463,7 @@ function PlanosTab({ state }: PlanosTabProps) {
           plans={plans}
           planNivel={selectedPlan.nivel ?? null}
           onUpdateNivel={(pid, nivel) => updatePlan(pid, { nivel })}
+          esPrimeraCalibracion={!Object.values(calData).some((cd) => cd && cd.origen && cd.scaleM)}
         />
       </div>
     );
@@ -946,36 +965,17 @@ function PlanosTab({ state }: PlanosTabProps) {
 
                       <button
                         type="button"
-                        onClick={() => {
-                          setSelectedPlanId(p.id);
-                          setCalibrating(true);
-                        }}
+                        onClick={() => setNivelPickerPlanId(p.id)}
                         style={{
                           ...PlanosTab_verBtn,
-                          background:
-                            isSelected && calibrating ? 'rgba(245, 166, 35, 0.12)' : 'var(--bg3)',
-                          color: isSelected && calibrating ? '#F5A623' : 'var(--txt2)',
+                          background: 'rgba(14,204,122,0.1)',
+                          color: '#0ECC7A',
+                          borderColor: 'rgba(14,204,122,0.3)',
                         }}
-                        title="Calibrar plano"
+                        title="Asignar piso al plano"
                       >
-                        CALIBRAR
+                        ASIGNAR PISO
                       </button>
-
-                      {!calOk && globalCal && (
-                        <button
-                          type="button"
-                          onClick={() => setNivelPickerPlanId(p.id)}
-                          style={{
-                            ...PlanosTab_verBtn,
-                            background: 'rgba(14,204,122,0.1)',
-                            color: '#0ECC7A',
-                            borderColor: 'rgba(14,204,122,0.3)',
-                          }}
-                          title="Reusar la calibración ya aplicada a todos los pisos"
-                        >
-                          USAR CALIBRACIÓN PREVIA
-                        </button>
-                      )}
 
                       <button
                         type="button"
@@ -1159,7 +1159,7 @@ function PlanosTab({ state }: PlanosTabProps) {
                   <button
                     key={s.n}
                     type="button"
-                    onClick={() => handleUsarCalibracionPrevia(nivelPickerPlanId, s.n)}
+                    onClick={() => handleAsignarPiso(nivelPickerPlanId, s.n)}
                     style={{
                       padding: '6px 10px',
                       borderRadius: 'var(--r)',

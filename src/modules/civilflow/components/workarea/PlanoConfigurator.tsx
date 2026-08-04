@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { pisoLbl } from '../../constants';
 import ModalProtocolo from './ModalProtocolo';
+import ModalPrimeraCalibracion from './ModalPrimeraCalibracion';
 import type { Piso } from '../useWorkAreaState';
 import type { PlanItem } from '../../context/PlansContext';
 import { useCalibration, type ExistingCal } from './useCalibration';
@@ -22,8 +23,6 @@ import {
   PlanoConfigurator_stepHeader,
   PlanoConfigurator_origenBtn,
   PlanoConfigurator_trazarBtn,
-  PlanoConfigurator_S12,
-  PlanoConfigurator_S13,
 } from './PlanoConfigurator.styles';
 
 interface PlanoConfiguratorProps {
@@ -45,6 +44,9 @@ interface PlanoConfiguratorProps {
   plans: PlanItem[];
   planNivel: number | null;
   onUpdateNivel: (planId: number, nivel: number | null) => void;
+  /** True cuando NINGÚN plan del proyecto tiene origen + scaleM guardados — el modal de
+   *  calibración muestra entonces un aviso de "primera calibración del proyecto". */
+  esPrimeraCalibracion: boolean;
 }
 
 function PlanoConfiguratorBase({
@@ -57,11 +59,13 @@ function PlanoConfiguratorBase({
   plans,
   planNivel,
   onUpdateNivel,
+  esPrimeraCalibracion,
 }: PlanoConfiguratorProps) {
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
 
   const [showProtocolo, setShowProtocolo] = useState(false);
+  const [confirmFirstCal, setConfirmFirstCal] = useState(false);
   const [saved, setSaved] = useState(false);
   const [hasSaved, setHasSaved] = useState(!!existingCal);
   const [toast, setToast] = useState<{ msg: string; type: 'err' | 'ok' | 'warn' } | null>(null);
@@ -140,8 +144,6 @@ function PlanoConfiguratorBase({
     setScaleM,
     definedScale,
     setDefinedScale,
-    calGlobal,
-    setCalGlobal,
     preScaleM,
     setPreScaleM,
     canvasToPlane,
@@ -452,8 +454,6 @@ function PlanoConfiguratorBase({
 
   const tieneOrigen = origen !== null;
 
-  const escalaDisponible = scaleM !== null || preScaleM !== null;
-
   const guardarConfig = () => {
     if (planNivel === null || planNivel === undefined) {
       showToast('Asigne un nivel antes de guardar (Paso 1)', 'err');
@@ -467,10 +467,8 @@ function PlanoConfiguratorBase({
       showToast('Calibre al menos un eje antes de guardar', 'err');
       return;
     }
-    if (escalaDisponible && calGlobal === null) {
-      showToast('Seleccione si la calibración aplica a todos los planos o plano por plano', 'err');
-      return;
-    }
+    // El control de "Alcance" se eliminó del modal: toda calibración se guarda con
+    // calGlobal=true (ver comentario en handleSaveConfig de PlanosTab).
 
     // Bloquea guardar si la diferencia de calibración X/Y supera el 5%
     const diffPctVal =
@@ -483,15 +481,33 @@ function PlanoConfiguratorBase({
       return;
     }
 
+    // Aviso de primera calibración: si NINGÚN plan del proyecto tiene origen + scaleM guardados
+    // aún, esta será la calibración base del proyecto. El alcance ya no se pregunta, así que se
+    // muestra un modal de confirmación antes de guardar: el usuario acepta (y se guarda) o
+    // cancela (y no se guarda nada). El botón "Usar calibración previa" en PlanosTab propaga
+    // esta escala a planes nuevos automáticamente.
+    if (esPrimeraCalibracion) {
+      setConfirmFirstCal(true);
+      return;
+    }
+
+    ejecutarGuardado();
+  };
+
+  const ejecutarGuardado = () => {
     onSaveConfig({
       planId,
       origen,
       scaleM: scaleM || preScaleM,
       factorX,
       factorY,
-      calGlobal,
+      // Alcance ya no se pregunta al usuario: toda calibración aplica a todos los planos del
+      // proyecto. Mantener el campo calGlobal=true para no romper `globalCal` / `Usar calibración
+      // previa` en PlanosTab (PlanosTab.tsx:289-298), que filtra por calGlobal===true.
+      calGlobal: true,
       definedScale,
     });
+
     showToast('Configuración guardada', 'ok');
     setSaved(true);
     setHasSaved(true);
@@ -516,6 +532,15 @@ function PlanoConfiguratorBase({
       }}
     >
       {showProtocolo && <ModalProtocolo onClose={() => setShowProtocolo(false)} />}
+      {confirmFirstCal && (
+        <ModalPrimeraCalibracion
+          onConfirm={() => {
+            setConfirmFirstCal(false);
+            ejecutarGuardado();
+          }}
+          onCancel={() => setConfirmFirstCal(false)}
+        />
+      )}
       {toast && (
         <div
           role="alert"
@@ -648,7 +673,6 @@ function PlanoConfiguratorBase({
               planNivel !== null &&
               tieneOrigen &&
               (scaleM !== null || preScaleM !== null) &&
-              calGlobal !== null &&
               hasSaved;
             return (
               <div
@@ -960,67 +984,6 @@ function PlanoConfiguratorBase({
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Scope */}
-          <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
-            <div
-              style={{
-                ...PlanoConfigurator_stepHeader,
-                color: calGlobal !== null ? 'var(--ok)' : 'var(--txt3)',
-              }}
-            >
-              <span>5. Alcance</span>
-              {calGlobal !== null && <span style={{ color: 'var(--ok)' }}>✓</span>}
-            </div>
-            <div style={{ display: 'flex', gap: 4 }}>
-              <label style={PlanoConfigurator_S12}>
-                <input
-                  type="radio"
-                  name="calGlobal"
-                  checked={calGlobal === true}
-                  onChange={() => {
-                    setCalGlobal(true);
-                    setHasSaved(false);
-                  }}
-                />
-                Todos
-              </label>
-              <label style={PlanoConfigurator_S13}>
-                <input
-                  type="radio"
-                  name="calGlobal"
-                  checked={calGlobal === false}
-                  onChange={() => {
-                    setCalGlobal(false);
-                    setHasSaved(false);
-                    showToast(
-                      'Calibración por piso: cada plano puede quedar a una escala distinta y eso puede desalinear la isometría. Se recomienda "Todos".',
-                      'warn',
-                    );
-                  }}
-                />
-                Por piso
-              </label>
-            </div>
-            {calGlobal === false && (
-              <div
-                style={{
-                  marginTop: 6,
-                  padding: '6px 8px',
-                  borderLeft: '2px solid var(--warn, #F5A623)',
-                  background: 'rgba(245,166,35,0.08)',
-                  borderRadius: 'var(--r)',
-                  fontSize: 11,
-                  lineHeight: 1.4,
-                  color: 'var(--txt2)',
-                }}
-              >
-                Con calibración por piso, cada plano puede quedar a una escala distinta — eso puede
-                afectar la alineación de la isometría. Se recomienda usar{' '}
-                <strong style={{ color: 'var(--txt)' }}>Todos</strong>.
-              </div>
-            )}
           </div>
 
           {/* Actions */}
