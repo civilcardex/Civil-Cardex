@@ -178,6 +178,7 @@ export function buildLdesvioRamal(
   diametro: string,
   pisoNivel: number,
   scaleM: number,
+  bloqueado: boolean = true,
 ): LocalLdesvioRamal {
   const dx = x2 - x1;
   const dy = y2 - y1;
@@ -209,7 +210,7 @@ export function buildLdesvioRamal(
     material: '',
     diametro: diametro || '',
     pendiente: 2,
-    bloqueado: false,
+    bloqueado,
   };
 }
 
@@ -248,6 +249,7 @@ export function createCrossFloorLdesvioRamal(
     diametro,
     pisoNivel,
     data.scaleM || 0.5,
+    existing ? existing.bloqueado : true,
   );
   data.ramales = [...(data.ramales || []).filter((r) => r.id !== id), ramal];
   saveData(planId, data);
@@ -298,7 +300,52 @@ export function updateCrossFloorLdesvioFarEndpoint(
     r.diametro,
     Number(r.piso) || 0,
     data.scaleM || 0.5,
+    r.bloqueado,
   );
+  saveData(sourcePlanId, data);
+}
+
+interface StoredDesplazamientoBajante {
+  id: string;
+  x?: number;
+  y?: number;
+  desplazamientos?: Record<string, { dx: number; dy: number; Ldesvio?: string }>;
+}
+
+// Re-anchors the "displaced circle" marker (desplazamientos) on the SOURCE floor's bajante after
+// the TARGET bajante (on a different, possibly not-loaded floor) moves: the marker must sit at the
+// target's projected position, so dx/dy change by exactly the target's movement delta. Sweeps the
+// desplazamiento entry by its Ldesvio connector id (unique per source bajante), same key-lookup
+// strategy as removeBajanteDesplazamientoFromStorage — without this, the dashed ring on the source
+// floor stayed stuck at the position it had when the association was created and visually "lost"
+// the connection once the target was dragged elsewhere.
+export function updateCrossFloorDesplazamientoBySource(
+  sourcePlanId: string | number,
+  sourceBajanteId: string,
+  targetX: number,
+  targetY: number,
+): void {
+  const data = loadData(sourcePlanId) as LocalGhostDrawingData & {
+    bajantes?: StoredDesplazamientoBajante[];
+  };
+  if (!data.bajantes?.length) return;
+  const b = data.bajantes.find((x) => x.id === sourceBajanteId);
+  if (!b?.desplazamientos) return;
+  const ldId = ldesvioIdFor(sourceBajanteId);
+  let changed = false;
+  const desp = { ...b.desplazamientos };
+  for (const lvlKey of Object.keys(desp)) {
+    if (desp[lvlKey]?.Ldesvio === ldId) {
+      desp[lvlKey] = {
+        ...desp[lvlKey],
+        dx: targetX - (b.x ?? 0),
+        dy: targetY - (b.y ?? 0),
+      };
+      changed = true;
+    }
+  }
+  if (!changed) return;
+  b.desplazamientos = desp;
   saveData(sourcePlanId, data);
 }
 
@@ -401,6 +448,103 @@ export function updateCrossFloorGhostDiameterBySource(
   dNominal: string,
 ): void {
   updateCrossFloorGhostFieldBySource(sourcePlanId, sourceBajanteId, 'dNominal', dNominal);
+}
+
+// A bajante's id/code gets rewritten whenever _renumberBajantes runs (networkRenumber.ts) — e.g.
+// after ANY bajante on the same net/floor is deleted, closing the numbering gap. Every
+// cross-floor cross-reference is keyed off that id (the Ldesvio ramal's own id is `LD_<id>`, the
+// mirror ghost's `sourceBajanteId`/`targetBajanteId`, and the other side's `descargaEnId`/
+// `origenId` pointer, format `${planId}|${id}`) — none of that gets updated by the plain rename,
+// so a renumbered bajante that had an active cross-floor association silently orphans its own
+// Ldesvio/ghost forever: every later lookup (including disassociating) computes the key from the
+// bajante's CURRENT id and simply never finds the stale one anymore, so it's never cleaned up.
+// Called once per changed id, right after the rename, from _renumberBajantes.
+export function renameBajanteAcrossFloorReferences(
+  thisPlanId: string,
+  oldId: string,
+  newId: string,
+): void {
+  if (oldId === newId) return;
+  const oldLd = ldesvioIdFor(oldId);
+  const newLd = ldesvioIdFor(newId);
+  const oldPointer = `${thisPlanId}|${oldId}`;
+  const newPointer = `${thisPlanId}|${newId}`;
+
+  // This floor's own storage: the Ldesvio ramal (if this bajante is a cross-floor source), the
+  // matching desplazamientos self-reference, and any ramal endpoint (ini/fin) still holding the
+  // old code.
+  const own = loadData(thisPlanId) as LocalGhostDrawingData & {
+    ramales?: (LocalLdesvioRamal & { ini?: string; fin?: string })[];
+    bajantes?: StoredDesplazamientoBajante[];
+  };
+  let ownDirty = false;
+  for (const r of own.ramales || []) {
+    if (r.id === oldLd) {
+      r.id = newLd;
+      ownDirty = true;
+    }
+    if (r.ini === oldId) {
+      r.ini = newId;
+      ownDirty = true;
+    }
+    if (r.fin === oldId) {
+      r.fin = newId;
+      ownDirty = true;
+    }
+  }
+  for (const b of own.bajantes || []) {
+    if (!b.desplazamientos) continue;
+    for (const lvlKey of Object.keys(b.desplazamientos)) {
+      if (b.desplazamientos[lvlKey]?.Ldesvio === oldLd) {
+        b.desplazamientos[lvlKey] = { ...b.desplazamientos[lvlKey], Ldesvio: newLd };
+        ownDirty = true;
+      }
+    }
+  }
+  if (ownDirty) saveData(thisPlanId, own);
+
+  // Every other floor's storage: the mirror ghost this bajante wrote (as source) — id and
+  // sourceBajanteId — and any descargaEnId/origenId pointer aimed at `${thisPlanId}|${oldId}`
+  // (covers this bajante as either the discharge target of some other floor's source, or the
+  // origin another floor's target points back at).
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k || !k.startsWith(TRAZOS_PLAN_PREFIX)) continue;
+    const otherPlanId = k.slice(TRAZOS_PLAN_PREFIX.length);
+    if (otherPlanId === thisPlanId) continue;
+    try {
+      const raw = localStorage.getItem(k);
+      if (!raw) continue;
+      const data = JSON.parse(raw) as LocalGhostDrawingData & {
+        bajantes?: { descargaEnId?: string | null; origenId?: string | null }[];
+      };
+      let dirty = false;
+      for (const g of data.crossFloorGhosts || []) {
+        if (g.sourcePlanId === thisPlanId && g.sourceBajanteId === oldId) {
+          g.sourceBajanteId = newId;
+          g.id = `XFG_${newId}_${thisPlanId}`;
+          dirty = true;
+        }
+        if (g.targetBajanteId === oldId) {
+          g.targetBajanteId = newId;
+          dirty = true;
+        }
+      }
+      for (const b of data.bajantes || []) {
+        if (b.descargaEnId === oldPointer) {
+          b.descargaEnId = newPointer;
+          dirty = true;
+        }
+        if (b.origenId === oldPointer) {
+          b.origenId = newPointer;
+          dirty = true;
+        }
+      }
+      if (dirty) saveData(otherPlanId, data);
+    } catch {
+      continue;
+    }
+  }
 }
 
 // Fills in any missing parentDireccion/dNominal on the given ghosts by looking up the source

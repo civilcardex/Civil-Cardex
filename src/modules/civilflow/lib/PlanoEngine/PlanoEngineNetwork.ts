@@ -88,6 +88,18 @@ export function clearNet(engine: IPlanoEngineCore, netId: string): void {
   engine.ramales = engine.ramales.filter((r) => r.net !== netId);
   engine.bajantes = engine.bajantes.filter((b) => b.net !== netId);
   engine.areas = engine.areas.filter((a) => a.net !== netId);
+  // Cross-floor ghosts (and their Ldesvio connector ramales) belong to the SAME net as their
+  // source bajante — clearing that net leaves ghost dashlines pointing at bajantes that no
+  // longer exist. Drop them together so no stale ghost outlives its parent.
+  engine.crossFloorGhosts = engine.crossFloorGhosts.filter((g) => g.net !== netId);
+  if (engine.selectedGhostId) {
+    const stillExists = engine.crossFloorGhosts.find((g) => g.id === engine.selectedGhostId);
+    if (!stillExists) {
+      engine.selectedGhostId = null;
+      engine._isGhostSel = false;
+      engine._emitSelect(null);
+    }
+  }
   if (engine.textAnnots) engine.textAnnots.length = 0;
   if (engine.dims) engine.dims.length = 0;
   engine._netCounts[netId] = { ramal: 0, tributario: 0 };

@@ -216,6 +216,7 @@ function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
     altura: b.altura ?? null,
     canal_id: b.canalId ?? null,
     descarga_en_id: b.descargaEnId ?? null,
+    origen_id: b.origenId ?? null,
   };
 }
 
@@ -237,6 +238,7 @@ function rowToBajante(row: any): PlanoBajante {
     recibeDeIds: [],
     alimentaIds: [],
     descargaEnId: row.descarga_en_id ?? null,
+    origenId: row.origen_id ?? undefined,
     ucAcum: row.uc_acum,
     ucExtra: row.uc_extra,
     area_m2: row.area_m2,

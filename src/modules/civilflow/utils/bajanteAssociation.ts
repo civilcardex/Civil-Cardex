@@ -13,7 +13,7 @@ import {
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { pisoCorto, pisoLbl } from '../constants';
-import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
+import type { IPlanoEngineCore } from '../lib/PlanoEngine/PlanoState';
 
 interface StoredBajanteDesp {
   id: string;
@@ -96,7 +96,7 @@ export function areEndpointsAligned(a: AssocEndpoint, b: AssocEndpoint): boolean
 // its ghost (on the old target's floor), its Ldesvio (on the source's own floor), and the old
 // target's reverse origenId pointer. Called before applying a NEW link, or when clearing one.
 export function clearBajanteAssociation(
-  eng: PlanoEngine,
+  eng: IPlanoEngineCore,
   sourcePlanId: string,
   sourceBajanteId: string,
   sourceNet: string,
@@ -124,9 +124,13 @@ export function clearBajanteAssociation(
     const t = eng.bajantes.find((b) => b.id === targetBajanteId);
     if (t) eng.updateElementById(t.id, { origenId: null });
   }
+  // El Ldesvio (ramal autogenerado) se borra SIEMPRE del motor vivo, sin importar en qué piso se
+  // esté: al desasociar desde el piso del TARGET (flujo "Origen") el Ldesvio vive en el piso del
+  // source (otro plan, normalmente no cargado) y el filtro es un no-op seguro; si ambos pisos
+  // estuvieran cargados, evita que el ramal quede huérfano visualmente.
+  const ldId = ldesvioIdFor(sourceBajanteId);
+  eng.ramales = eng.ramales.filter((r) => r.id !== ldId);
   if (loadedPlanId === sourcePlanId) {
-    const ldId = ldesvioIdFor(sourceBajanteId);
-    eng.ramales = eng.ramales.filter((r) => r.id !== ldId);
     const srcBaj = eng.bajantes.find((b) => b.id === sourceBajanteId);
     const lvl = eng.nivelActual?.label ?? '';
     if (srcBaj?.desplazamientos?.[lvl]) {
@@ -148,7 +152,7 @@ export function clearBajanteAssociation(
 // confirmation the link exists, not just something that appears when misaligned), and creates the
 // Ldesvio detour ramal (on source's floor) only when the two aren't already aligned.
 export function applyBajanteAssociation(
-  eng: PlanoEngine,
+  eng: IPlanoEngineCore,
   source: AssocEndpoint,
   target: AssocEndpoint,
   plans: SyncPlanInput[],
@@ -213,6 +217,35 @@ export function applyBajanteAssociation(
     ];
   }
 
+  // The source bajante ALWAYS gets the same-floor "desplazamiento" marker on its OWN floor, at the
+  // TARGET's projected position — the same-floor counterpart of the ghost written above. It must
+  // exist even when the two endpoints are aligned (zero offset): without it, an aligned
+  // association leaves the source floor with no visible trace of the link while the target floor
+  // already shows the ghost, and the user switching to the source floor sees nothing.
+  if (loadedPlanId === source.planId) {
+    const lvl = eng.nivelActual?.label ?? '';
+    if (lvl) {
+      const srcBaj = eng.bajantes.find((b) => b.id === source.id);
+      if (srcBaj) {
+        const desp = { ...(srcBaj.desplazamientos || {}) };
+        desp[lvl] = {
+          dx: target.x - source.x,
+          dy: target.y - source.y,
+          Ldesvio: ldesvioIdFor(source.id),
+        };
+        eng.updateElementById(source.id, { desplazamientos: desp });
+      }
+    }
+  } else {
+    // Source's own floor isn't loaded (e.g. associating via "Origen" from below) — same
+    // bookkeeping, written straight to that floor's storage instead of the live engine.
+    setBajanteDesplazamientoInStorage(source.planId, source.id, pisoLbl(source.nivelN), {
+      dx: target.x - source.x,
+      dy: target.y - source.y,
+      Ldesvio: ldesvioIdFor(source.id),
+    });
+  }
+
   if (!aligned) {
     createCrossFloorLdesvioRamal(
       source.planId,
@@ -240,30 +273,9 @@ export function applyBajanteAssociation(
         source.dNominal || '',
         source.nivelN,
         eng.scaleM || 0.5,
+        existing ? existing.bloqueado : true,
       );
       eng.ramales = [...eng.ramales.filter((r) => r.id !== ldId), ramal as never];
-
-      // Also drive the OLDER same-floor "desplazamiento" ghost (getBajantesFantasma/renderGhosts)
-      // — a displaced circle of the source bajante ITSELF, at the target's projected position, on
-      // the source's own floor. Pre-existing feature the original Destino handler always drove
-      // alongside the cross-floor ghost; dropped by mistake in the association rewrite.
-      const lvl = eng.nivelActual?.label ?? '';
-      if (lvl) {
-        const srcBaj = eng.bajantes.find((b) => b.id === source.id);
-        if (srcBaj) {
-          const desp = { ...(srcBaj.desplazamientos || {}) };
-          desp[lvl] = { dx: target.x - source.x, dy: target.y - source.y, Ldesvio: ldId };
-          eng.updateElementById(source.id, { desplazamientos: desp });
-        }
-      }
-    } else {
-      // Source's own floor isn't loaded (e.g. associating via "Origen" from below) — same
-      // bookkeeping, written straight to that floor's storage instead of the live engine.
-      setBajanteDesplazamientoInStorage(source.planId, source.id, pisoLbl(source.nivelN), {
-        dx: target.x - source.x,
-        dy: target.y - source.y,
-        Ldesvio: ldesvioIdFor(source.id),
-      });
     }
   }
 

@@ -464,7 +464,7 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
         ramales++;
         len += r.totalL || 0;
       }
-      bajantes += nd.bajantes.length;
+      bajantes += nd.bajantes.filter((b) => !b._isCrossFloorGhost).length;
     }
     return { ramales, bajantes, len: len.toFixed(1) };
   }, [dataByNet]);
@@ -540,7 +540,7 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
 
   const hasAnyData = useMemo(() => {
     for (const nd of Object.values(dataByNet)) {
-      if (nd.ramales.length > 0 || nd.bajantes.length > 0) return true;
+      if (nd.ramales.length > 0 || nd.bajantes.some((b) => !b._isCrossFloorGhost)) return true;
     }
     return false;
   }, [dataByNet]);

@@ -27,20 +27,9 @@ export {
   DIAM_BY_MAT,
 } from './engineeringDataMaterials';
 
-export {
-  GAS,
-  CAT_GAS,
-  GAS_DN_LABELS,
-} from './engineeringDataGas';
+export { GAS, CAT_GAS, GAS_DN_LABELS } from './engineeringDataGas';
 
-export {
-  REDES,
-  NAV_TABS,
-  FILTROS_NORM,
-  REQ_ITEMS,
-  NORM_COL,
-  USOS,
-} from './uiConfig';
+export { REDES, NAV_TABS, FILTROS_NORM, REQ_ITEMS, NORM_COL, USOS } from './uiConfig';
 
 export {
   UD_BASE_INIT,
@@ -54,11 +43,13 @@ export {
   FUERZA_TRACTIVA_MIN,
 } from './defaults';
 
-export {
-  pisoLbl,
-  pisoCorto,
-  pisoCortoLoose,
-} from './helpers';
+export { pisoLbl, pisoCorto, pisoCortoLoose, buildBajanteVisualLabel } from './helpers';
 
-export const LE_K = { codos_90_std: 30, codos_90_rl: 20, te_linea: 20, te_ramal: 20, valvula_bola: 8 };
+export const LE_K = {
+  codos_90_std: 30,
+  codos_90_rl: 20,
+  te_linea: 20,
+  te_ramal: 20,
+  valvula_bola: 8,
+};
 export const DEFAULT_PENDIENTE_PCT = 2.0;

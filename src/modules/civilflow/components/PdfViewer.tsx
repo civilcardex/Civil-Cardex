@@ -1278,6 +1278,8 @@ function PdfViewer_({
           if (eng.multiSel && eng.multiSel.length > 0) {
             eng.deleteSelected(eng.multiSel);
             eng.multiSel = [];
+          } else if (eng.selectedGhostId) {
+            eng.deleteSelected([eng.selectedGhostId]);
           } else if (eng.selId) eng.deleteSelected();
           e.preventDefault();
         }

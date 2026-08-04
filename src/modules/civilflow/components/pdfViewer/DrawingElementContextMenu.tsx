@@ -1,7 +1,17 @@
 import { createContext, memo, useContext, useEffect, useRef, useState } from 'react';
 import { bajanteLabel, ramalLabel } from '../../utils/accessoryAbbreviations';
 import { normalizeDnLabel } from '../../utils/formatUtils';
-import { pisoLbl, DIAM_BAN, DIAM_VENT, DIAM_BY_MAT, GAS_DN_LABELS } from '../../constants';
+import {
+  pisoLbl,
+  pisoCorto,
+  buildBajanteVisualLabel,
+  DIAM_BAN,
+  DIAM_VENT,
+  DIAM_BY_MAT,
+  GAS_DN_LABELS,
+} from '../../constants';
+import { loadFromStorage } from '../../services/storageService';
+import { TRAZOS_PREFIX } from '../../constants/storage-keys';
 import {
   APARATOS_DEF,
   AF_UC_IDS,
@@ -308,6 +318,22 @@ function BajanteDirectionSelector({
                 let updates: Record<string, unknown> = {};
 
                 if (opt === 'Sube') {
+                  // Flow-direction guard, mirrored from the 'Baja' branch below: a 'sube'
+                  // bajante must only EMIT flow. If a ramal already arrives at this bajante
+                  // (connected by its FIN), marking it "sube" would make it receive flow it
+                  // should only emit — block the change instead of silently producing a
+                  // contradiction between the bajante's direction and its connections.
+                  const bajCode = element.code || element.id;
+                  const arrivingRamal = (element.recibeDeIds || [])
+                    .map((rid) => engineRef.current?.ramales.find((r) => r.id === rid))
+                    .find((ram) => ram && ram.fin === bajCode);
+                  if (arrivingRamal) {
+                    engineRef.current?.triggerAlert(
+                      'Dirección de flujo inconsistente',
+                      `El ramal ${arrivingRamal.label || arrivingRamal.id} llega a este bajante (está conectado por su extremo final). Un bajante con dirección "sube" solo puede entregar flujo — desconecta o invierte ese ramal antes de cambiar la dirección.`,
+                    );
+                    return;
+                  }
                   updates = {
                     direccion: 'sube',
                     nptBase: currentNpt,
@@ -511,6 +537,29 @@ function BajanteDiameterSelector({
 }) {
   const currentGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
 
+  // Realtime sync for the "Origen (piso superior)" dropdown: `upperFloorGroup` is PdfViewer state
+  // that only re-reads its target floor when the SELECTION changes — an association created or
+  // cleared here (or from the BajanteAsociacion panel, or from the other floor's "Destino" menu)
+  // never touches those deps, so the option list stays stale. Re-read the upper floor's storage
+  // whenever this menu's element or its cross-floor pointers change (writeBajantePropToDrawing
+  // persists to TRAZOS_PREFIX + planId, so the re-read sees the fresh data).
+  const [freshUpperBajantes, setFreshUpperBajantes] = useState<PlanoBajante[] | null>(null);
+  useEffect(() => {
+    if (!upperFloorGroup || upperFloorGroup.isCurrent) {
+      setFreshUpperBajantes(null);
+      return;
+    }
+    const isRiser = (b: PlanoBajante) =>
+      b.tipo !== 'contador' && b.tipo !== 'calentador' && b.tipo !== 'red_publica';
+    const data = loadFromStorage<{ bajantes?: PlanoBajante[] } | null>(
+      TRAZOS_PREFIX + upperFloorGroup.planId,
+      null,
+    );
+    setFreshUpperBajantes(
+      (data?.bajantes || []).filter((b) => b.net === (element.net || '') && isRiser(b)) || null,
+    );
+  }, [upperFloorGroup, element.id, element.origenId, element.descargaEnId, element.net]);
+
   const updateGhostField = (field: string, val: string) => {
     if (!engineRef.current) return;
     const gd2 = { ...(element.ghostData || {}) };
@@ -582,9 +631,13 @@ function BajanteDiameterSelector({
     const [originPlanId, originBajanteId] = v.split('|');
     const originBaj = upperFloorGroup?.bajantes.find((b) => b.id === originBajanteId);
     if (!originBaj || originBaj.x == null || originBaj.y == null) {
+      const originPlan = planosCtx.plans.find((pl) => String(pl.id) === originPlanId);
       eng.triggerAlert(
         'No se pudo asociar',
-        `No se encontró el bajante de origen (${originBajanteId}) en el piso superior. Intenta reabrir el panel o recargar el piso.`,
+        `No se encontró el bajante ${buildBajanteVisualLabel(
+          { code: originBajanteId },
+          originPlan?.nivel != null ? pisoCorto(originPlan.nivel) : undefined,
+        )} en el piso superior. Intenta reabrir el panel o recargar el piso.`,
       );
       return;
     }
@@ -623,9 +676,17 @@ function BajanteDiameterSelector({
       commit();
       return;
     }
+    const srcLabel = buildBajanteVisualLabel(
+      { code: source.code },
+      originPlan?.nivel != null ? pisoCorto(originPlan.nivel) : undefined,
+    );
+    const tgtLabel = buildBajanteVisualLabel(
+      { code: target.code },
+      selectedNivel !== null ? pisoCorto(selectedNivel) : undefined,
+    );
     triggerConfirm(
       'Crear fantasma de asociación',
-      `${source.code} y ${target.code} no están alineados. Se creará un bajante fantasma en este piso, en la posición de ${source.code}. ¿Continuar?`,
+      `${srcLabel} y ${tgtLabel} no están alineados. Se creará un bajante fantasma en este piso, en la posición de ${srcLabel}. ¿Continuar?`,
       commit,
       'Aceptar',
     );
@@ -754,9 +815,17 @@ function BajanteDiameterSelector({
                     commit();
                     return;
                   }
+                  const srcLabel = buildBajanteVisualLabel(
+                    { code: source.code },
+                    selectedNivel !== null ? pisoCorto(selectedNivel) : undefined,
+                  );
+                  const tgtLabel = buildBajanteVisualLabel(
+                    { code: target.code },
+                    targetPlan?.nivel != null ? pisoCorto(targetPlan.nivel) : undefined,
+                  );
                   triggerConfirm(
                     'Crear fantasma de asociación',
-                    `${source.code} y ${target.code} no están alineados. Se creará un bajante fantasma en el piso de ${target.code}, en la posición de ${source.code}. ¿Continuar?`,
+                    `${srcLabel} y ${tgtLabel} no están alineados. Se creará un bajante fantasma en el piso de origen, en la posición de ${srcLabel}. ¿Continuar?`,
                     commit,
                     'Aceptar',
                   );
@@ -778,7 +847,10 @@ function BajanteDiameterSelector({
                       {hasBajantes &&
                         bajantesToShow.map((b) => (
                           <option key={`${group.planId}|${b.id}`} value={`${group.planId}|${b.id}`}>
-                            {b.code || b.id}
+                            {buildBajanteVisualLabel(
+                              b,
+                              plano?.nivel != null ? pisoCorto(plano.nivel) : undefined,
+                            )}
                           </option>
                         ))}
                       {!hasBajantes && (
@@ -889,7 +961,7 @@ function BajanteDiameterSelector({
                   );
                   const pLabel =
                     plano?.nivel != null ? pisoLbl(plano.nivel) : upperFloorGroup.planName;
-                  const bajantesToShow = upperFloorGroup.bajantes || [];
+                  const bajantesToShow = freshUpperBajantes ?? (upperFloorGroup.bajantes || []);
                   const hasBajantes = bajantesToShow.length > 0;
                   return (
                     <optgroup label={pLabel}>
@@ -1280,7 +1352,11 @@ function BajanteConnectionPanel({
                             net: ramalEl.net,
                             tipo: bmLabel,
                             code: code,
-                            direccion: bmLabel === 'bajante' ? 'baja' : 'sube',
+                            // No default direction — an empty direction can't violate the flow
+                            // rule ('sube' emits only, 'baja' receives only). The direction is
+                            // assigned afterwards via the Sube/Baja options, which validate the
+                            // ramal connections before applying it.
+                            direccion: undefined,
                             x: ep.x,
                             y: ep.y,
                             pisoBase: nl?.label ?? '',
@@ -2122,9 +2198,9 @@ function intersectGuideWithSegment(
 function findGuideCrossing(
   eng: PlanoEngine,
   guide: PlanoGuideLine,
-): { point: [number, number]; angle: number } | null {
+): { point: [number, number]; angle: number; ramalId: string } | null {
   const [p0, p1] = guide.pts;
-  let best: { point: [number, number]; angle: number; dist: number } | null = null;
+  let best: { point: [number, number]; angle: number; dist: number; ramalId: string } | null = null;
   for (const r of eng.ramales) {
     if (!r.pts || r.pts.length < 2) continue;
     for (let i = 0; i < r.pts.length - 1; i++) {
@@ -2134,7 +2210,7 @@ function findGuideCrossing(
       if (!best || dist < best.dist) {
         const dx = r.pts[i + 1][0] - r.pts[i][0];
         const dy = r.pts[i + 1][1] - r.pts[i][1];
-        best = { point: [hit.x, hit.y], angle: Math.atan2(dy, dx), dist };
+        best = { point: [hit.x, hit.y], angle: Math.atan2(dy, dx), dist, ramalId: r.id };
       }
     }
   }
@@ -2155,13 +2231,12 @@ function pickSideAngle(rayAngle: number, side: 'sup' | 'inf'): number {
   return side === 'sup' ? upAngle : downAngle;
 }
 
-// san/ll pipe only turns in 45° fittings, gas only in 90° — matches the same per-net rule
-// `checkRamalAngles`/`drawingAngles.ts` uses elsewhere for real ramales, applied here as a UX
-// filter over which rotate buttons even get shown (see GuideLineMenu below).
+// San/ll/vent pipe only turns in 45° fittings; AF/AC and gas only in 90° — matches the same
+// per-net rule `checkRamalAngles`/`drawingAngles.ts` uses elsewhere for real ramales, applied
+// here as a UX filter over which rotate buttons even get shown (see GuideLineMenu below).
 function netAllowedSteps(net: string): (45 | 90)[] {
-  if (net === 'san' || net === 'll') return [45];
-  if (net === 'gas') return [90];
-  return [45, 90];
+  if (net === 'san' || net === 'll' || net === 'vent') return [45];
+  return [90];
 }
 
 function rotateGuideLine(
@@ -2215,6 +2290,15 @@ function rotateGuideLine(
   if (selElement?.id === guide.id) setSelElement({ ...guide });
   eng.render();
   eng._markDirty();
+}
+
+function guideAngleAlertMessage(net: string, tipo: string): string {
+  if (net === 'san' || net === 'll' || net === 'vent')
+    return 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.';
+  if (net === 'gas') return 'La red de gas solo permite ángulos de 90°.';
+  if ((net === 'af' || net === 'ac') && tipo === 'tributario')
+    return 'Los tributarios de AF/AC solo permiten ángulos de 90°.';
+  return 'Esta red debe diseñarse con ángulos de 45° o 90°.';
 }
 
 function GuideLineMenu() {
@@ -2314,6 +2398,13 @@ function GuideLineMenu() {
               pEnd = [p0[0], p0[1]];
             }
           }
+          // A guide is drawn freehand, so its angle is not guaranteed on the network's grid —
+          // creating the ramal anyway would silently produce an illegal pipe. Validate first
+          // (same rule as finishRamal); on failure keep the guide so the user can rotate it.
+          if (!checkRamalAngles([pStart, pEnd], guide.net, 'ramal')) {
+            eng.triggerAlert('Ángulo no permitido', guideAngleAlertMessage(guide.net, 'ramal'));
+            return;
+          }
           const dx = p1[0] - p0[0];
           const dy = p1[1] - p0[1];
           const distMm = Math.hypot(dx, dy);
@@ -2354,6 +2445,81 @@ function GuideLineMenu() {
         style={DrawingElementContextMenu_S13}
       >
         + Crear ramal a partir de línea guía
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          const eng = ctx.engineRef.current;
+          if (!eng) return;
+          const crossing = findGuideCrossing(eng, guide);
+          if (!crossing) {
+            eng.triggerAlert(
+              'Sin cruce con ramal',
+              'La línea guía no cruza ningún ramal. Dibújala sobre un ramal existente para crear un tributario que conecte a él.',
+            );
+            return;
+          }
+          const padre = eng.ramales.find((r) => r.id === crossing.ramalId);
+          if (!padre) return;
+          // Tributario flow renders from pts[0] toward the last point — orient it so the head
+          // points AT the crossing (the intersection with the padre ramal it feeds).
+          const [p0, p1] = guide.pts;
+          const d0 = Math.hypot(crossing.point[0] - p0[0], crossing.point[1] - p0[1]);
+          const d1 = Math.hypot(crossing.point[0] - p1[0], crossing.point[1] - p1[1]);
+          const pStart: [number, number] = d0 < d1 ? [p1[0], p1[1]] : [p0[0], p0[1]];
+          const pEnd: [number, number] = [crossing.point[0], crossing.point[1]];
+          if (!checkRamalAngles([pStart, pEnd], guide.net, 'tributario')) {
+            eng.triggerAlert(
+              'Ángulo no permitido',
+              guideAngleAlertMessage(guide.net, 'tributario'),
+            );
+            return;
+          }
+          if (!eng._netCounts[guide.net]) eng._netCounts[guide.net] = { ramal: 0, tributario: 0 };
+          const cnt = ++eng._netCounts[guide.net].tributario;
+          const tId = 'T' + Date.now();
+          const dx = p1[0] - p0[0];
+          const dy = p1[1] - p0[1];
+          const distMm = Math.hypot(dx, dy);
+          let lblAngle = (Math.atan2(dy, dx) * 180) / Math.PI;
+          if (lblAngle > 90) lblAngle -= 180;
+          if (lblAngle < -90) lblAngle += 180;
+          const perpX = -dy / (distMm || 1);
+          const perpY = dx / (distMm || 1);
+          const label = `T${cnt}${padre.label || padre.id || ''}`;
+          eng.ramales.push({
+            id: tId,
+            net: guide.net,
+            tipo: 'tributario',
+            padre: padre.id,
+            pts: [pStart, pEnd],
+            totalL: +eng.pxToM(distMm).toFixed(3),
+            label,
+            ini: '',
+            fin: '',
+            piso: String(eng.nivelActual?.n ?? ''),
+            dz: '',
+            uc: 0,
+            nSalidas: 1,
+            labelX: (p0[0] + p1[0]) / 2 + perpX * 25,
+            labelY: (p0[1] + p1[1]) / 2 + perpY * 25,
+            labelAngle: Math.round(lblAngle),
+            material: '',
+            diametro: '',
+            pendiente: 2,
+            bloqueado: true,
+          });
+          eng.guideLines = eng.guideLines.filter((g) => g.id !== guide.id);
+          eng.selId = tId;
+          if (ctx.selElement?.id === guide.id) ctx.setSelElement(null);
+          eng._emitSelect(eng.ramales[eng.ramales.length - 1]);
+          eng.render();
+          eng._markDirty();
+          ctx.setContextMenuState(null);
+        }}
+        style={DrawingElementContextMenu_S13}
+      >
+        + Crear tributario a partir de línea guía
       </button>
     </div>
   );
@@ -2701,7 +2867,7 @@ function RamalMenu() {
         }}
       >
         <span style={{ fontSize: 12, color: '#e2e2e8', fontFamily: "'Geist',monospace" }}>
-          Bloquear movimiento
+          Bloquear Movimiento-Longitud
         </span>
         <input
           type="checkbox"
@@ -2949,9 +3115,24 @@ interface DrawingElementContextMenuProps {
 
 export default memo(function DrawingElementContextMenu(props: DrawingElementContextMenuProps) {
   const state = props.contextMenuState;
+
+  // Cuando associate (BajanteAsociacion) o associateOrigin actualizan selElement, el menú
+  // contextual usa su propia copia del elemento (contextMenuState.element). Sincronizarla para
+  // que ambos dropdowns (Origen y Destino) reflejen siempre la asociación más reciente.
+  useEffect(() => {
+    const selId = (props.selElement as { id?: string } | null)?.id;
+    const ctxId = state?.element?.id;
+    if (selId && ctxId && selId === ctxId && props.selElement !== state?.element) {
+      props.setContextMenuState((prev) =>
+        prev ? { ...prev, element: props.selElement as never } : null,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.selElement?.id, state?.element?.id]);
+
   if (!state || !state.visible) return null;
 
-  const ctxValue: DrawingElementContextMenuContextValue = {
+  const ctxValue = {
     contextMenuState: state,
     setContextMenuState: props.setContextMenuState,
     element: state.element,

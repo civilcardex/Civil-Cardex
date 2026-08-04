@@ -3,16 +3,19 @@ import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from '../lib/PlanoEng
 const BLOCKED_MESSAGE =
   'El bajante con dirección "baja" solo puede recibir flujo. Conecta el ramal al extremo final (no al inicio).';
 
+const SUBE_BLOCKED_MESSAGE =
+  'El bajante con dirección "sube" solo puede entregar flujo. Conecta el ramal al extremo inicial (no al final).';
+
 /**
  * Centralized guard for "ramal endpoint ↔ bajante" flow direction. Returns true if the connection
- * is allowed, false if it would route the ramal's START (pts[0]) onto a bajante that only
- * receives flow (direccion === 'baja') — which is geometrically possible but semantically wrong:
- * a 'baja' bajante transports flow downward but never distributes it sideways at this floor.
+ * is allowed, false if it would route flow the wrong way across the bajante:
+ * - a ramal START (pts[0]) on a 'baja' bajante (would make a receive-only bajante emit), or
+ * - a ramal FIN (pts[last]) on a 'sube' bajante (would make an emit-only bajante receive).
  *
  * Centralizing here means every place that assigns r.ini = b.code or r.fin = b.code calls the
- * same rule — without this, the previous fix only guarded the auto-connect path during bajDrag
- * and silently let other paths create the same invalid association (a user dragging the ramal
- * near the bajante, or finishRamal matching by coincidence, etc.).
+ * same rule — without this, a fix that only guarded one path would silently let other paths
+ * create the same invalid association (a user dragging the ramal near the bajante, or
+ * finishRamal matching by coincidence, etc.).
  *
  * @param engine  Engine core instance.
  * @param r       Ramal whose endpoint is being connected.
@@ -29,6 +32,12 @@ export function isRamalBajanteConnectionAllowed(
   if (epIdx === 0 && b.direccion === 'baja') {
     if (engine.triggerAlert) {
       engine.triggerAlert('Dirección de flujo inconsistente', BLOCKED_MESSAGE);
+    }
+    return false;
+  }
+  if (b.direccion === 'sube' && epIdx !== 0) {
+    if (engine.triggerAlert) {
+      engine.triggerAlert('Dirección de flujo inconsistente', SUBE_BLOCKED_MESSAGE);
     }
     return false;
   }

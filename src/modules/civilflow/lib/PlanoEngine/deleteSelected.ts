@@ -6,6 +6,7 @@ import {
   removeCrossFloorLdesvioRamal,
   deleteBajanteFromStorage,
 } from '../../utils/associateBajanteAcrossFloors';
+import { clearBajanteAssociation } from '../../utils/bajanteAssociation';
 
 // A bajante/montante riser tied to another floor's via "Origen"/"Destino" is the same physical
 // pipe continuing there — deleting one side's symbol while the other stays behind (still pointing
@@ -207,6 +208,34 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
           if (engine._loadedPlanId != null)
             removeCrossFloorGhostsBySource(engine._loadedPlanId, deleted.id);
         }
+        continue;
+      }
+      const idxGhost = engine.crossFloorGhosts.findIndex((g) => g.id === id);
+      if (idxGhost >= 0) {
+        const g = engine.crossFloorGhosts[idxGhost];
+        // A ghost is the visual half of a cross-floor link — deleting it must tear the WHOLE
+        // link down: the reverse origenId pointer on the target floor, the source's own
+        // desplazamiento (with its Ldesvio ramal), and the ghost itself on storage. The target
+        // floor is the one currently loaded (ghosts only render there), so clearBajanteAssociation
+        // fixes the live engine state too. `plans` is not available at engine level: the target's
+        // origenId null lands in storage wholesale via the normal dirty→save flow, and the synced
+        // drawing cache rebuilds on the next syncDrawings pass.
+        clearBajanteAssociation(
+          engine,
+          g.sourcePlanId,
+          g.sourceBajanteId,
+          g.net,
+          `${String(engine._loadedPlanId ?? '')}|${g.targetBajanteId}`,
+          [],
+        );
+        engine.crossFloorGhosts = engine.crossFloorGhosts.filter((x) => x.id !== id);
+        engine.selectedGhostId = null;
+        engine._isGhostSel = false;
+        engine.selId = null;
+        engine._emitSelect(null);
+        engine._emitDelete([id]);
+        engine.render();
+        engine._markDirty();
         continue;
       }
       const idxT = engine.textAnnots.findIndex((t) => t.id === id);

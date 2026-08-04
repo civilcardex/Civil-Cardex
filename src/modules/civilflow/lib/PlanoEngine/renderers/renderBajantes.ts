@@ -734,8 +734,12 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     // same (x,y) as the parent, which already draws its own solid circle there — skip the extra
     // ring so it doesn't look like an oversized halo. A ghost created by dragging (dx/dy set)
     // is a different point in space even on the parent's own floor, so it must still be drawn.
+    // A cross-floor association marker (desplazamientos entry carrying an Ldesvio connector id)
+    // always draws its ring — including the perfectly-aligned case (dx/dy = 0) — because that
+    // ring is the source floor's only visible trace of the cross-floor link.
     const hasDisplacement = !!disp && (Math.abs(disp.dx) >= 1 || Math.abs(disp.dy) >= 1);
-    const isOwnFloorGhost = b.pisoBase === engine.nivelActual?.label && !hasDisplacement;
+    const isOwnFloorGhost =
+      b.pisoBase === engine.nivelActual?.label && !hasDisplacement && !disp?.Ldesvio;
     if (!isOwnFloorGhost) {
       ctx.save();
       ctx.fillStyle = '#ffffff';

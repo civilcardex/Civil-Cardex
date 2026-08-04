@@ -2,18 +2,22 @@ import { NETS } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
+import {
+  ldesvioIdFor,
+  renameBajanteAcrossFloorReferences,
+} from '../../utils/associateBajanteAcrossFloors';
 
 export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void {
-  const net = NETS.find(n => n.id === netId);
+  const net = NETS.find((n) => n.id === netId);
   if (!net) return;
   const pfx = net.lbl;
-  const ramalesNet = engine.ramales.filter(r => r.net === netId && r.tipo !== 'tributario');
+  const ramalesNet = engine.ramales.filter((r) => r.net === netId && r.tipo !== 'tributario');
   ramalesNet.sort((a, b) => {
     const na = parseInt((a.id || '').replace(pfx, ''), 10) || 0;
     const nb = parseInt((b.id || '').replace(pfx, ''), 10) || 0;
     return na - nb;
   });
-  const keepIds = new Set(ramalesNet.map(r => r.id));
+  const keepIds = new Set(ramalesNet.map((r) => r.id));
 
   const cleanOrphans = (storageKey: string) => {
     try {
@@ -27,7 +31,9 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
         }
       }
       if (changed) saveToStorage(storageKey, data);
-    } catch (e) { devError('PlanoEngine:', e); }
+    } catch (e) {
+      devError('PlanoEngine:', e);
+    }
   };
   cleanOrphans('aparatos_by_tramo_v2');
   cleanOrphans('tramo_hidro_data_v3');
@@ -52,41 +58,95 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
             }
           }
           if (changed) saveToStorage(storageKey, data);
-        } catch (e) { devError('PlanoEngine:', e); }
+        } catch (e) {
+          devError('PlanoEngine:', e);
+        }
       };
       migrateKeys('aparatos_by_tramo_v2');
       migrateKeys('tramo_hidro_data_v3');
     }
     r.id = newId;
     r.label = newId;
-    engine.ramales.filter(t => t.padre === oldId).forEach(t => { t.padre = newId; });
+    engine.ramales
+      .filter((t) => t.padre === oldId)
+      .forEach((t) => {
+        t.padre = newId;
+      });
   });
   engine._netCounts[netId].ramal = ramalesNet.length;
-  try { window.dispatchEvent(new Event('storage')); } catch { /* ignore */ }
+  try {
+    window.dispatchEvent(new Event('storage'));
+  } catch {
+    /* ignore */
+  }
 }
 
 export function _renumberBajantes(engine: IPlanoEngineCore, netId: string): void {
-  const net = NETS.find(n => n.id === netId);
+  const net = NETS.find((n) => n.id === netId);
   const pfx = net ? net.bmPfx : 'BAJ';
-  const bajantesNet = engine.bajantes.filter(b => b.tipo === 'bajante' && b.net === netId);
+  const bajantesNet = engine.bajantes.filter((b) => b.tipo === 'bajante' && b.net === netId);
   bajantesNet.sort((a, b) => {
     const na = parseInt((a.id || '').replace(pfx, ''), 10) || 0;
     const nb = parseInt((b.id || '').replace(pfx, ''), 10) || 0;
     return na - nb;
   });
+  const thisPlanId = String(engine._loadedPlanId ?? '');
   bajantesNet.forEach((b, i) => {
+    const oldId = b.id;
     const newId = pfx + (i + 1);
+    if (oldId === newId) return;
     b.id = newId;
     b.code = newId;
+
+    // Every cross-reference to the old id (Ldesvio ramal id, cross-floor ghost, the other side's
+    // descargaEnId/origenId pointer) is keyed off the id that's about to disappear — without this,
+    // a renumbered bajante that had an active cross-floor association orphans its own Ldesvio/ghost
+    // forever, since every later lookup computes the key from the CURRENT (already-renamed) id and
+    // never finds the stale one again.
+    const oldLd = ldesvioIdFor(oldId);
+    const newLd = ldesvioIdFor(newId);
+    const oldPointer = `${thisPlanId}|${oldId}`;
+    const newPointer = `${thisPlanId}|${newId}`;
+    for (const r of engine.ramales) {
+      if (r.net !== netId) continue;
+      if (r.id === oldLd) r.id = newLd;
+      if (r.ini === oldId) r.ini = newId;
+      if (r.fin === oldId) r.fin = newId;
+    }
+    for (const other of engine.bajantes) {
+      if (other.descargaEnId === oldPointer) other.descargaEnId = newPointer;
+      if (other.origenId === oldPointer) other.origenId = newPointer;
+    }
+    if (b.desplazamientos) {
+      for (const lvlKey of Object.keys(b.desplazamientos)) {
+        if (b.desplazamientos[lvlKey]?.Ldesvio === oldLd) {
+          b.desplazamientos[lvlKey] = { ...b.desplazamientos[lvlKey], Ldesvio: newLd };
+        }
+      }
+    }
+    for (const g of engine.crossFloorGhosts) {
+      if (g.sourcePlanId === thisPlanId && g.sourceBajanteId === oldId) {
+        g.sourceBajanteId = newId;
+        g.id = `XFG_${newId}_${thisPlanId}`;
+      }
+      if (g.targetBajanteId === oldId) g.targetBajanteId = newId;
+    }
+    // Other floors' storage (not live-loaded, so not covered by the in-memory patches above).
+    renameBajanteAcrossFloorReferences(thisPlanId, oldId, newId);
   });
 }
 
 export function _renumberMontantes(engine: IPlanoEngineCore): void {
-  const nets = Array.from(new Set(engine.bajantes.filter(b => b.tipo === 'montante').map(b => b.net || 'af')));
+  const nets = Array.from(
+    new Set(engine.bajantes.filter((b) => b.tipo === 'montante').map((b) => b.net || 'af')),
+  );
   for (const netId of nets) {
-    const netDef = NETS.find(n => n.id === netId);
-    const pfx = netDef?.bmType === 'montante' ? (netDef?.bmPfx || 'MON') : ('M' + (netDef?.lbl || 'MON'));
-    const montantes = engine.bajantes.filter(b => b.tipo === 'montante' && (b.net || 'af') === netId);
+    const netDef = NETS.find((n) => n.id === netId);
+    const pfx =
+      netDef?.bmType === 'montante' ? netDef?.bmPfx || 'MON' : 'M' + (netDef?.lbl || 'MON');
+    const montantes = engine.bajantes.filter(
+      (b) => b.tipo === 'montante' && (b.net || 'af') === netId,
+    );
     montantes.sort((a, b) => {
       const na = parseInt((a.code || a.id || '').replace(pfx, '').replace('MON', ''), 10) || 0;
       const nb = parseInt((b.code || b.id || '').replace(pfx, '').replace('MON', ''), 10) || 0;
@@ -102,8 +162,14 @@ export function _renumberMontantes(engine: IPlanoEngineCore): void {
 
 export function _renumberAreas(engine: IPlanoEngineCore): void {
   engine.areas.sort((a, b) => {
-    const na = parseInt((a.id || '').replace('AR', ''), 10) || parseInt((a.label || '').replace('AREA', ''), 10) || 0;
-    const nb = parseInt((b.id || '').replace('AR', ''), 10) || parseInt((b.label || '').replace('AREA', ''), 10) || 0;
+    const na =
+      parseInt((a.id || '').replace('AR', ''), 10) ||
+      parseInt((a.label || '').replace('AREA', ''), 10) ||
+      0;
+    const nb =
+      parseInt((b.id || '').replace('AR', ''), 10) ||
+      parseInt((b.label || '').replace('AREA', ''), 10) ||
+      0;
     return na - nb;
   });
   engine.areas.forEach((a, i) => {

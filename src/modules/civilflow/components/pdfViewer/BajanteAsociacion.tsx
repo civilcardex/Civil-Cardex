@@ -6,6 +6,7 @@ import {
   areEndpointsAligned,
   type AssocEndpoint,
 } from '../../utils/bajanteAssociation';
+import { pisoCorto, buildBajanteVisualLabel } from '../../constants';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoBajante, PlanoElement } from '../../lib/PlanoEngine/PlanoState';
 import type { PlanItem } from '../../context/PlansContext';
@@ -144,9 +145,17 @@ export default function BajanteAsociacion({
       commit();
       return;
     }
+    const srcLabel = buildBajanteVisualLabel(
+      { code: source.code },
+      selectedNivel !== null ? pisoCorto(selectedNivel) : undefined,
+    );
+    const tgtLabel = buildBajanteVisualLabel(
+      { code: target.code },
+      targetPlan?.nivel != null ? pisoCorto(targetPlan.nivel) : undefined,
+    );
     triggerConfirm(
       'Crear fantasma de asociación',
-      `${source.code} y ${target.code} no están alineados. Se creará un bajante fantasma en el piso de ${target.code}, en la posición de ${source.code}. ¿Continuar?`,
+      `${srcLabel} y ${tgtLabel} no están alineados. Se creará un bajante fantasma en el piso de origen, en la posición de ${srcLabel}. ¿Continuar?`,
       commit,
       'Aceptar',
     );
@@ -234,9 +243,17 @@ export default function BajanteAsociacion({
       commit();
       return;
     }
+    const srcLabel = buildBajanteVisualLabel(
+      { code: source.code },
+      originPlan?.nivel != null ? pisoCorto(originPlan.nivel) : undefined,
+    );
+    const tgtLabel = buildBajanteVisualLabel(
+      { code: target.code },
+      selectedNivel !== null ? pisoCorto(selectedNivel) : undefined,
+    );
     triggerConfirm(
       'Crear fantasma de asociación',
-      `${source.code} y ${target.code} no están alineados. Se creará un bajante fantasma en este piso, en la posición de ${source.code}. ¿Continuar?`,
+      `${srcLabel} y ${tgtLabel} no están alineados. Se creará un bajante fantasma en este piso, en la posición de ${srcLabel}. ¿Continuar?`,
       commit,
       'Aceptar',
     );
@@ -406,7 +423,7 @@ export default function BajanteAsociacion({
                             key={`${upperFloorGroup.planId}|${b.id}`}
                             value={`${upperFloorGroup.planId}|${b.id}`}
                           >
-                            Bajante: {b.code || b.id}
+                            {b.code || b.id}
                           </option>
                         ))}
                       {!hasBajantes && (
