@@ -331,6 +331,13 @@ export function handleCreateCalentadorMidBody(
     return;
   }
 
+  // Endpoint insertion (segmentIdx = first/last point): just anchor the heater at the existing
+  // endpoint — no split, no duplicated zero-length segment. Only true mid-body clicks split.
+  if (segmentIdx === 0 || segmentIdx === r.pts.length - 1) {
+    pushCalentadorBajante(engine, r.pts[segmentIdx][0], r.pts[segmentIdx][1]);
+    return;
+  }
+
   const newIdx = segmentIdx + 1;
   const newPts = r.pts.map((p) => [...p]);
   newPts.splice(newIdx, 0, [x, y]);
@@ -345,6 +352,10 @@ export function handleCreateCalentadorMidBody(
   r.accMed = shiftedAccMed;
   r.totalL = calculateRamalLength(newPts, engine);
 
+  pushCalentadorBajante(engine, x, y);
+}
+
+function pushCalentadorBajante(engine: IPlanoEngineCore, x: number, y: number): void {
   const calent = engine.bajantes.filter((b) => b.tipo === 'calentador').length + 1;
   const calentId = 'CALENT' + calent;
   engine.bajantes.push({

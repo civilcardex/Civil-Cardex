@@ -2838,26 +2838,23 @@ function RamalMenu() {
             </button>
           </div>
         )}
-      {contextMenuState.midRamalHit &&
-        !contextMenuState.ramalEndpoint &&
-        ramalEl.net === 'af' &&
-        !isOccupiedTee && (
-          <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
-            <button
-              type="button"
-              onClick={() => {
-                const eng = engineRef.current;
-                const hit = contextMenuState.midRamalHit;
-                if (!eng || !hit) return;
-                eng.createCalentadorMidBody(ramalEl.id, hit.x, hit.y, hit.segmentIdx);
-                ctx.setContextMenuState(null);
-              }}
-              style={DrawingElementContextMenu_S13}
-            >
-              + Agregar calentador
-            </button>
-          </div>
-        )}
+      {contextMenuState.ramalEndpoint && ramalEl.net === 'af' && !isOccupiedTee && (
+        <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
+          <button
+            type="button"
+            onClick={() => {
+              const eng = engineRef.current;
+              const ep = contextMenuState.ramalEndpoint;
+              if (!eng || !ep) return;
+              eng.createCalentadorMidBody(ramalEl.id, ep.x, ep.y, ep.idx);
+              ctx.setContextMenuState(null);
+            }}
+            style={DrawingElementContextMenu_S13}
+          >
+            + Agregar calentador
+          </button>
+        </div>
+      )}
       {contextMenuState.midRamalHit &&
         !contextMenuState.ramalEndpoint &&
         ['af', 'ac'].includes(ramalEl.net) &&

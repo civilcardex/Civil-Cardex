@@ -172,16 +172,6 @@ function PdfViewerToolbar_({
   onClear,
 }: PdfViewerToolbarProps) {
   const netTools = [...TOOLS];
-  if (activeNet === 'ac' || activeNet === 'gas') {
-    netTools.splice(7, 0, {
-      id: 'calent',
-      label: 'Calentador',
-      ico: '🔥',
-      key: 'H',
-      icoCol: '#ff7b00',
-      shortcut: 'H',
-    });
-  }
   if (activeNet === 'af' || activeNet === 'gas') {
     netTools.splice(7, 0, {
       id: 'cont',
