@@ -2,6 +2,7 @@ import type { PlanItem } from '../context/PlansContext';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
+import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { dropAllZeroColumns, type MemoriaTable } from './exportMemoriaFinal';
 
 const NET_LABELS: Record<string, string> = {
@@ -46,9 +47,16 @@ export function computeResumenTuberiasTable(net: string, plans: PlanItem[]): Mem
     }
     for (const r of (
       data as {
-        ramales?: Array<{ net?: string; diametro?: string; material?: string; totalL?: number }>;
+        ramales?: Array<{
+          id?: string;
+          net?: string;
+          diametro?: string;
+          material?: string;
+          totalL?: number;
+        }>;
       }
     ).ramales || []) {
+      if (isLdesvioRamalId(r.id)) continue;
       if (r.net !== net) continue;
       if (!r.totalL || r.totalL <= 0) continue;
       const diam = r.diametro || '';

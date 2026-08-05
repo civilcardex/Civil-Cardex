@@ -151,6 +151,14 @@ export function ldesvioIdFor(sourceBajanteId: string): string {
   return `LD_${sourceBajanteId}`;
 }
 
+// Shared predicate — an Ldesvio connector ramal is a drawing aid owned by its source bajante
+// (id `LD_<bajanteId>`), not a hydraulic pipe. Every table builder, connectivity scanner, and
+// renumber pass must exclude it, or it leaks into design tables as a bogus tramo (and the
+// renumber pass even renames it to a real-looking `RS\d+`).
+export function isLdesvioRamalId(id: string | null | undefined): boolean {
+  return !!id && id.startsWith('LD_');
+}
+
 // The Ldesvio's `id` is a stable, deterministic key (for lookup/cleanup) — its `label` (what's
 // actually printed on the drawing) must instead read like any other ramal's, e.g. "R12", or it
 // prints the raw internal id ("LD_BAN1...") on the plan. Mirrors the same scan `PlanoPersistence.ts`

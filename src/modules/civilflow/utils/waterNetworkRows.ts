@@ -10,6 +10,7 @@ import { loadFromStorage } from '../services/storageService';
 import type { DrawingData, RawElement } from './drawingSync';
 import { CONTADORES as CONTADORES_CAT } from '../pages/catalog/catalogData';
 import { findContadorBajante } from './writeDiameterToDrawing';
+import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 
 interface BajanteRaw extends RawElement {
   x?: number;
@@ -128,7 +129,9 @@ export function computeWaterNetworkRows(
       }
     }
 
-    const ramales = (data.ramales || []).filter((r) => r.net === networkType);
+    const ramales = (data.ramales || []).filter(
+      (r) => r.net === networkType && !isLdesvioRamalId(r.id),
+    );
     const bajantes = (data.bajantes || []).filter((b): b is BajanteRaw => b.net === networkType);
     for (const r of ramales) {
       if (!r.mergesFrom || !r.pts || r.pts.length === 0) continue;
@@ -822,7 +825,9 @@ export function computeAcometidaSummary(
         continue;
       }
     }
-    const ramales = (data.ramales || []).filter((r) => r.net === networkType);
+    const ramales = (data.ramales || []).filter(
+      (r) => r.net === networkType && !isLdesvioRamalId(r.id),
+    );
     const bajantes = (data.bajantes || []).filter((b): b is BajanteRaw => b.net === networkType);
     for (const b of bajantes) {
       if (b.x == null || b.y == null) continue;

@@ -4,6 +4,7 @@ import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import { devError } from '../../../../utils/devError';
 import {
   ldesvioIdFor,
+  isLdesvioRamalId,
   renameBajanteAcrossFloorReferences,
 } from '../../utils/associateBajanteAcrossFloors';
 
@@ -11,7 +12,9 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
   const net = NETS.find((n) => n.id === netId);
   if (!net) return;
   const pfx = net.lbl;
-  const ramalesNet = engine.ramales.filter((r) => r.net === netId && r.tipo !== 'tributario');
+  const ramalesNet = engine.ramales.filter(
+    (r) => r.net === netId && r.tipo !== 'tributario' && !isLdesvioRamalId(r.id),
+  );
   ramalesNet.sort((a, b) => {
     const na = parseInt((a.id || '').replace(pfx, ''), 10) || 0;
     const nb = parseInt((b.id || '').replace(pfx, ''), 10) || 0;

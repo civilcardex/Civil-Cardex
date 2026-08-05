@@ -4,6 +4,7 @@ import { SAN_ACCESORIOS, ACCESORIOS_HIDRO } from '../constants';
 import { HYDRO_DATA_STORAGE_KEY, TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
+import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { fmtPulg } from './formatUtils';
 import { distToSegment } from '../lib/shared/geometry';
 import { dropAllZeroColumns, type MemoriaTable } from './exportMemoriaFinal';
@@ -84,7 +85,7 @@ export function computeAccesoriosTable(
           }>;
         }
       ).ramales || []
-    ).filter((r) => r.net === net && r.tipo !== 'tributario');
+    ).filter((r) => r.net === net && r.tipo !== 'tributario' && !isLdesvioRamalId(r.id));
     for (const r of ramales) {
       if (r.pts && r.pts.length >= 2) {
         drawingRamales.push({

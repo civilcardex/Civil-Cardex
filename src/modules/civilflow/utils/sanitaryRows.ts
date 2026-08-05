@@ -9,6 +9,7 @@ import { DIAM_OPTIONS } from '../constants';
 import { computeComponentTotals, computeDirectedTotals } from '../lib/shared/connectionGraph';
 import { distToPolyline } from '../lib/shared/geometry';
 import { parseDescargaEnId } from './parseDescargaEnId';
+import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import type { DrawingData, RawElement } from './drawingSync';
@@ -72,6 +73,7 @@ export function buildSanConnectivity(
 
     for (const r of ramales) {
       if (!r.pts || r.pts.length < 2) continue;
+      if (isLdesvioRamalId(r.id)) continue;
       const pStart = r.pts[0];
       const pEnd = r.pts[r.pts.length - 1];
       const rKey = `${r.id}-${plan.id}`;

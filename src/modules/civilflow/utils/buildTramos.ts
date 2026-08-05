@@ -1,4 +1,5 @@
 import { readSanDrawingSync, readHydroDrawingSync } from './drawingSync';
+import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
 import { parseDescargaEnId } from './parseDescargaEnId';
 import { HYDRO_DATA_STORAGE_KEY } from '../constants/storage-keys';
@@ -116,6 +117,7 @@ export function buildTramos(
 
     for (const r of plane.ramales || []) {
       const rId = r.id;
+      if (isLdesvioRamalId(rId)) continue;
       let ini = String(r.ini || '');
       let fin = String(r.fin || '');
 
@@ -375,6 +377,7 @@ export function loadSanLlTramos() {
 
     for (const r of plane.ramales || []) {
       if (r._net === 'vent' || r.net === 'vent') continue;
+      if (isLdesvioRamalId(r.id)) continue;
       const apKey = r._aparatosKey || `${r._net || 'san'}_${r.id}_${planId}`;
       const hd = hidroData[apKey] || {};
       const tramo: Tramo = {
