@@ -223,6 +223,11 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
       // point, or its UC leaks into whichever branch it ties-break-connects to. So the real set of
       // "branches at this junction" is discovered by coordinate, not just read off mergesFrom.
       const mergeBranches: Record<string, string[]> = {};
+      // AF/AC convention: the merged (auto-created) ramal is always the GRAPH accumulator (safe
+      // for cycle-severing), but the ramal that should DISPLAY the total is whichever one's flow
+      // enters the junction — recorded here (mergedKey -> displayKey), applied as a pure relabel
+      // after totals are computed.
+      const entrantOverride: Record<string, string> = {};
       // Every ramal endpoint, tagged with its plan — used below to find PLAIN (non-mergesFrom)
       // junctions where 3+ ramales meet at one coordinate via ordinary endpoint-to-endpoint drawing
       // (a trunk splitting into branches). `checkEndpoint` below only links each endpoint to its
@@ -249,16 +254,27 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         const bajantes = (data.bajantes || []).filter(
           (b): b is BajanteRaw => b.net === networkType,
         );
+        const TOL_MERGE = 2.0;
+        const originOf = (ram: { pts: number[][]; _tribReversed?: boolean }) =>
+          ram._tribReversed ? ram.pts[ram.pts.length - 1] : ram.pts[0];
+        const entersAt = (ram: { pts: number[][]; _tribReversed?: boolean }, pt: number[]) => {
+          const o = originOf(ram);
+          return Math.hypot(o[0] - pt[0], o[1] - pt[1]) >= TOL_MERGE;
+        };
         for (const r of ramales) {
           if (!r.mergesFrom || !r.pts || r.pts.length === 0) continue;
           const mergedKeyFull = `${r.id}-${plan.id}`;
           // The auto-created ramal always starts exactly at the junction coordinate
           // (autoSplitJunctionAndSumFlow: downstreamPts = [[ep[0],ep[1]], ...]).
           const jc = r.pts[0];
-          // `r.mergesFrom` already records EXACTLY which two ramales created this junction —
-          // trust those two directly instead of re-deriving the full branch list purely from
-          // coordinate proximity, which could otherwise sweep in an unrelated extra ramal merely
-          // sitting near the same point and inflate the total. Mirrors waterNetworkRows.ts.
+          // `r` (the auto-created ramal) is always the GRAPH accumulator here — the adj
+          // cycle-severing below (and computeDirectedTotals' BFS) assumes that, since `r` keeps
+          // its own separate connection onward to the rest of the network. Making a DIFFERENT
+          // node (e.g. the upstream parent, which sits on the path back to the root) the
+          // accumulator would sever ITS connection to everything past this junction instead,
+          // disconnecting the rest of the network from the root in the BFS. Which ramal actually
+          // DISPLAYS the total (may not be `r`, per the AF/AC "whoever enters the junction"
+          // convention) is decided separately after totals are computed — see entrantOverride.
           const branchSet = new Set<string>(r.mergesFrom.map((id) => `${id}-${plan.id}`));
           for (const other of ramales) {
             if (other.id === r.id || !other.pts || other.pts.length < 2) continue;
@@ -267,19 +283,74 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
             const oStart = other.pts[0],
               oEnd = other.pts[other.pts.length - 1];
             const touchesJc =
-              Math.hypot(oStart[0] - jc[0], oStart[1] - jc[1]) < 2.0 ||
-              Math.hypot(oEnd[0] - jc[0], oEnd[1] - jc[1]) < 2.0;
+              Math.hypot(oStart[0] - jc[0], oStart[1] - jc[1]) < TOL_MERGE ||
+              Math.hypot(oEnd[0] - jc[0], oEnd[1] - jc[1]) < TOL_MERGE;
             if (!touchesJc) continue;
-            // Only count `other` as a feeder if its flow ARRIVES at jc — a ramal whose flow
-            // ORIGINATES there (a second downstream leg, or one the user flipped with the
-            // flow-direction toggle) flows OUT of the junction and must not be summed as if it
-            // fed into it. Reacts live to `_tribReversed`.
-            const originPt = other._tribReversed ? oEnd : oStart;
-            const originsAtJc = Math.hypot(originPt[0] - jc[0], originPt[1] - jc[1]) < 2.0;
-            if (originsAtJc) continue;
+            const otherEnters = entersAt(
+              { pts: other.pts, _tribReversed: Boolean(other._tribReversed) },
+              jc,
+            );
+            if (!otherEnters) continue;
             branchSet.add(otherKey);
           }
           mergeBranches[mergedKeyFull] = Array.from(branchSet);
+
+          // Determine which of {r, mergesFrom[0], mergesFrom[1]} actually ENTERS the junction —
+          // that one should DISPLAY the combined total. Recorded for a later relabel pass only.
+          // `r.mergesFrom` is always [existing.id, incoming.id] by construction
+          // (PlanoEngineDrawing.ts) — aRamal is the trunk that got split, bRamal is whatever
+          // triggered the split.
+          const [aId, bId] = r.mergesFrom;
+          const aRamal = ramales.find((x) => x.id === aId);
+          const bRamal = ramales.find((x) => x.id === bId);
+          // A tributario is, by definition, a branch draining AWAY from the trunk to a fixture —
+          // it never feeds the trunk, regardless of which end its own points happen to start from
+          // (users very commonly draw it FROM the fixture TOWARD the trunk, which makes its raw
+          // origin look like it "enters" the junction just as much as the real trunk does — the
+          // direction-only test below can't tell those two apart when both candidates' origins
+          // sit away from jc). When one side is a tributario, its non-tributario counterpart is
+          // always the entrant, full stop — no geometry ambiguity possible.
+          if (bRamal?.tipo === 'tributario' && aRamal?.tipo !== 'tributario') {
+            entrantOverride[mergedKeyFull] = `${aId}-${plan.id}`;
+          } else if (aRamal?.tipo === 'tributario' && bRamal?.tipo !== 'tributario') {
+            entrantOverride[mergedKeyFull] = `${bId}-${plan.id}`;
+          } else {
+            const candidates: {
+              key: string;
+              ram: { pts: number[][]; _tribReversed?: boolean };
+            }[] = [
+              { key: mergedKeyFull, ram: { pts: r.pts, _tribReversed: Boolean(r._tribReversed) } },
+            ];
+            if (aRamal?.pts?.length)
+              candidates.push({
+                key: `${aId}-${plan.id}`,
+                ram: { pts: aRamal.pts, _tribReversed: Boolean(aRamal._tribReversed) },
+              });
+            if (bRamal?.pts?.length)
+              candidates.push({
+                key: `${bId}-${plan.id}`,
+                ram: { pts: bRamal.pts, _tribReversed: Boolean(bRamal._tribReversed) },
+              });
+            const entrants = candidates.filter((c) => entersAt(c.ram, jc));
+            if (entrants.length > 0 && entrants[0].key !== mergedKeyFull) {
+              // The ramal whose flow arrow points INTO the junction must display the combined
+              // total. Multiple ramals can geometrically "enter" (a branch drawn FROM its fixture
+              // TOWARD the trunk also has its origin away from jc) — when that happens, the
+              // genuine upstream is the trunk that got split (mergesFrom[0], always drawn toward
+              // the junction it ends at), not the branch that merely triggers the split. Prefer
+              // it over a lone entrant, then over any other single entrant; r itself (starts at
+              // jc) can never be one.
+              const aKey = `${aId}-${plan.id}`;
+              const trunkEntrant = entrants.find(
+                (c) => c.key === aKey && aRamal?.tipo !== 'tributario',
+              );
+              if (trunkEntrant) {
+                entrantOverride[mergedKeyFull] = aKey;
+              } else if (entrants.length === 1) {
+                entrantOverride[mergedKeyFull] = entrants[0].key;
+              }
+            }
+          }
         }
         for (const b of bajantes) {
           if (b.x == null || b.y == null) continue;
@@ -528,6 +599,15 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
           if (displayMap[b]) displayMap[b] = [];
         }
       }
+      // Entrant relabel: the "Otros Ramales" association follows the same ramal the UC total got
+      // relabeled onto above — the entrant's row lists the auto-created ramal plus its co-source,
+      // and the auto-created ramal's own row goes back to empty (same rule as any other merge
+      // source: only the ramal actually showing the combined total gets an association).
+      for (const [mergedKey, entrantKey] of Object.entries(entrantOverride)) {
+        const branches = mergeBranches[mergedKey] || [];
+        displayMap[entrantKey] = [mergedKey, ...branches.filter((b) => b !== entrantKey)];
+        displayMap[mergedKey] = [];
+      }
 
       // Direct the same adjacency from the network's pressure source outward, so each tramo's
       // Pinicial can chain from its actual upstream tramo's Pfinal instead of the flat acometida
@@ -597,6 +677,15 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         if (mergeBranches[branchId]) continue;
         const t = tramos.find((x) => (x._key || x.id) === branchId);
         if (t) componentTotalMap[branchId] = calcUCparcial(t, AP, 'uc');
+      }
+      // Entrant relabel: move the combined total from the auto-created ramal onto whichever
+      // participant's flow actually enters the junction (entrantOverride, recorded above) — a
+      // pure relabel of the already-correct totals, not a change to how they were computed.
+      for (const [mergedKey, entrantKey] of Object.entries(entrantOverride)) {
+        if (componentTotalMap[mergedKey] === undefined) continue;
+        componentTotalMap[entrantKey] = componentTotalMap[mergedKey];
+        const ownT = tramos.find((x) => (x._key || x.id) === mergedKey);
+        componentTotalMap[mergedKey] = ownT ? calcUCparcial(ownT, AP, 'uc') : 0;
       }
 
       const nodeParentOf: Record<string, string> = {};
