@@ -28,3 +28,56 @@ export function buildBajanteVisualLabel(
   const id = (b?.id || '').replace(/#/g, '').toUpperCase();
   return `${id}${pisoCortoStr ? '-' + pisoCortoStr : ''}`;
 }
+
+// Short material label used ONLY on the canvas drawing labels (renderRamales/renderBajantes).
+// Tables, memorias and catalogs keep the full material name — this map is a pure rendering
+// abbreviation. Matching is case/accent-insensitive and also covers the short forms the app's
+// own catalogs store (e.g. "Acero HG", "PE al PE"), so project-specific long names and the
+// built-in short names both collapse to the same drawing label.
+const MAT_DRAWING_ABBREV: Array<[RegExp, string]> = [
+  [/acero\s*galvanizado/i, 'H.G.'],
+  [/acero\s*hg/i, 'H.G.'],
+  [/polietileno/i, 'PEAD'],
+  [/pe\s*al\s*pe/i, 'PEAD'],
+  [/^pead$/i, 'PEAD'],
+  [/acero\s*al\s*carbono/i, 'A.C.'],
+  [/^a\.c\.$/i, 'A.C.'],
+  [/cobre\s*flexible/i, 'CUFLEX'],
+  [/cobre\s*rigido|rígido/i, 'CURIG'],
+];
+
+export function matDrawingLabel(material?: string | null): string {
+  if (!material) return '';
+  const norm = material
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+  for (const [re, abbr] of MAT_DRAWING_ABBREV) {
+    if (re.test(norm)) return abbr;
+  }
+  return material;
+}
+
+// Full display name for the material dropdown in the ramal context menu — the stored values are
+// the short catalog forms ("Acero HG", "PE al PE", "A.C.", ...) but the user picks from the full
+// names ("Acero galvanizado", "Polietileno", "Acero al carbono", ...). The abbreviation mapping
+// (matDrawingLabel) is applied only to the canvas drawing label, never here.
+const MAT_FULLNAME: Array<[RegExp, string]> = [
+  [/acero\s*galvanizado|acero\s*hg/i, 'Acero galvanizado'],
+  [/polietileno|pe\s*al\s*pe|^pead$/i, 'Polietileno'],
+  [/acero\s*al\s*carbono|^a\.c\.$/i, 'Acero al carbono'],
+  [/cobre\s*flexible/i, 'Cobre flexible'],
+  [/cobre\s*rigido|rígido/i, 'Cobre rígido'],
+];
+
+export function matFullName(material?: string | null): string {
+  if (!material) return '';
+  const norm = material
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+  for (const [re, name] of MAT_FULLNAME) {
+    if (re.test(norm)) return name;
+  }
+  return material;
+}

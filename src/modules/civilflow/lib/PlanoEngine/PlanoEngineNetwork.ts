@@ -1,7 +1,7 @@
 import { NETS } from './PlanoState';
 import type { PlanoRamal, PlanoBajante } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
-import { segmentLooseIntersectionPoint, segmentStrictIntersectionPoint } from './drawingAngles';
+import { segmentLooseIntersectionPoint, segmentHybridIntersectionPoint } from './drawingAngles';
 
 export {
   _renumberRamales,
@@ -359,7 +359,12 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
         for (let j = 0; j < other.pts.length - 1; j++) {
           const oA = other.pts[j];
           const oB = other.pts[j + 1];
-          const crossPt = segmentStrictIntersectionPoint(segA, segB, oA, oB);
+          // LOOSE intersection keeps EVERY perpendicular contact in bilateralCrossings — including
+          // T formations where one ramal merely ends on the other (a tributario's endpoint on its
+          // padre), and junction points that are now three-way endpoint meets after a split. This
+          // is what the + marker is drawn from, and it must not vanish when _markDirty rebuilds
+          // the list (that was the "symbols disappear when selecting a tributario" bug).
+          const crossPt = segmentLooseIntersectionPoint(segA, segB, oA, oB);
           if (!crossPt) continue;
 
           // Check perpendicularity: dot product ≈ 0
@@ -377,6 +382,10 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
             );
             if (!exists) {
               crossings.push([crossPt[0], crossPt[1]]);
+              // Only a TRUE through-crossing (hybrid: at least one segment strictly interior)
+              // deserves the teeBilateral confirmation modal — a pure endpoint meet (e.g. two
+              // ramales joining at a 90° codo) still gets its + marker but must not pop it.
+              if (!segmentHybridIntersectionPoint(segA, segB, oA, oB)) continue;
               // Track by PAIR (sorted "idA|idB") rather than by position. Positions change when the
               // ramales move (the original crossing slides to a new spot), but the PAIR stays stable
               // so we don't re-fire the modal after every drag.
@@ -460,6 +469,8 @@ export function recalcBilateralCrossings(engine: IPlanoEngineCore): void {
         for (let j = 0; j < other.pts.length - 1; j++) {
           const oA = other.pts[j];
           const oB = other.pts[j + 1];
+          // Same LOOSE rule as autoDetectRamalConnections — keeps T formations and split-junction
+          // endpoint meets in the + marker list, so the symbols persist across recomputes.
           const crossPt = segmentLooseIntersectionPoint(segA, segB, oA, oB);
           if (!crossPt) continue;
           const dxA = segB[0] - segA[0];

@@ -255,19 +255,31 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
           // The auto-created ramal always starts exactly at the junction coordinate
           // (autoSplitJunctionAndSumFlow: downstreamPts = [[ep[0],ep[1]], ...]).
           const jc = r.pts[0];
-          const branchIds: string[] = [];
+          // `r.mergesFrom` already records EXACTLY which two ramales created this junction —
+          // trust those two directly instead of re-deriving the full branch list purely from
+          // coordinate proximity, which could otherwise sweep in an unrelated extra ramal merely
+          // sitting near the same point and inflate the total. Mirrors waterNetworkRows.ts.
+          const branchSet = new Set<string>(r.mergesFrom.map((id) => `${id}-${plan.id}`));
           for (const other of ramales) {
             if (other.id === r.id || !other.pts || other.pts.length < 2) continue;
+            const otherKey = `${other.id}-${plan.id}`;
+            if (branchSet.has(otherKey)) continue;
             const oStart = other.pts[0],
               oEnd = other.pts[other.pts.length - 1];
-            if (
+            const touchesJc =
               Math.hypot(oStart[0] - jc[0], oStart[1] - jc[1]) < 2.0 ||
-              Math.hypot(oEnd[0] - jc[0], oEnd[1] - jc[1]) < 2.0
-            ) {
-              branchIds.push(`${other.id}-${plan.id}`);
-            }
+              Math.hypot(oEnd[0] - jc[0], oEnd[1] - jc[1]) < 2.0;
+            if (!touchesJc) continue;
+            // Only count `other` as a feeder if its flow ARRIVES at jc — a ramal whose flow
+            // ORIGINATES there (a second downstream leg, or one the user flipped with the
+            // flow-direction toggle) flows OUT of the junction and must not be summed as if it
+            // fed into it. Reacts live to `_tribReversed`.
+            const originPt = other._tribReversed ? oEnd : oStart;
+            const originsAtJc = Math.hypot(originPt[0] - jc[0], originPt[1] - jc[1]) < 2.0;
+            if (originsAtJc) continue;
+            branchSet.add(otherKey);
           }
-          if (branchIds.length > 0) mergeBranches[mergedKeyFull] = branchIds;
+          mergeBranches[mergedKeyFull] = Array.from(branchSet);
         }
         for (const b of bajantes) {
           if (b.x == null || b.y == null) continue;

@@ -6,6 +6,9 @@ import { CAT_GAS } from '../constants/engineeringDataGas';
 import { fmt } from '../utils/formatUtils';
 import { usePlans } from '../context/PlansContext';
 import { writeBajantePropToDrawing } from '../utils/writeDiameterToDrawing';
+import { computeHeaterNetworkTotal } from '../utils/waterNetworkRows';
+import { TRAZOS_PREFIX } from '../constants/storage-keys';
+import { loadFromStorage } from '../services/storageService';
 const HeaterSelection_S1: React.CSSProperties = {
   width: '100%',
   minWidth: 150,
@@ -25,17 +28,40 @@ export default function HeaterSelection() {
     () => tramosAc.find((t) => t.calCapacidad !== undefined),
     [tramosAc],
   );
+
+  // Factor de simultaneidad persistido en el bajante CALENTn (storage + DB) — restaurar cuando
+  // el calentador cambia, no arrancar siempre en 50. Ajuste de estado durante el render (patrón
+  // documentado de React para sincronizar estado con un prop que cambia) — evita el setState
+  // síncrono dentro de un effect.
+  const [factorSim, setFactorSim] = useState(50);
+  const [factorSimLoadedKey, setFactorSimLoadedKey] = useState<string | null>(null);
+  const heaterKey = selectedHeaterTram
+    ? `${String(selectedHeaterTram.fin)}-${String(selectedHeaterTram.planId)}`
+    : null;
+  if (heaterKey && heaterKey !== factorSimLoadedKey) {
+    const raw = loadFromStorage<{
+      bajantes?: Array<{ id: string; net?: string; factorSim?: number }>;
+    } | null>(TRAZOS_PREFIX + selectedHeaterTram!.planId, null);
+    const baj = (raw?.bajantes || []).find(
+      (b) => b.id === selectedHeaterTram!.fin && b.net === 'ac',
+    );
+    setFactorSim(baj?.factorSim ?? 50);
+    setFactorSimLoadedKey(heaterKey);
+  }
   const selectedHeaterId = selectedHeaterTram ? selectedHeaterTram.calCapacidad : '';
   const selectedHeater = useMemo(
     () => CAT_GAS.find((g) => g.id === selectedHeaterId),
     [selectedHeaterId],
   );
 
-  // Agrupar aparatos y calcular UC totales
+  // Agrupar aparatos de TODA la red AC (el calentador alimenta cada ramal aguas abajo, no solo
+  // el ramal-stub AC-01-{calId}) y tomar el total UC real del nodo raíz tal como lo calcula la
+  // tabla de diseño — antes solo sumaba los aparatos asignados directamente al stub.
   const { summary, totalUC } = useMemo(() => {
     const counts: Record<string, { cant: number; uc: number }> = {};
-    if (selectedHeaterTram && selectedHeaterTram.fixtures) {
-      for (const [k, v] of Object.entries(selectedHeaterTram.fixtures)) {
+    for (const t of tramosAc) {
+      if (!t.fixtures) continue;
+      for (const [k, v] of Object.entries(t.fixtures)) {
         if (v && v > 0) {
           const apCat = CAT_APS.find((a) => a.id === k);
           if (!counts[k]) counts[k] = { cant: 0, uc: apCat ? apCat.ac : 0 };
@@ -56,10 +82,12 @@ export default function HeaterSelection() {
       })
       .filter((x) => x.cant > 0);
 
-    const totalUC = summary.reduce((sum, item) => sum + item.total, 0);
+    const sumRows = summary.reduce((sum, item) => sum + item.total, 0);
+    const { udTotal } = computeHeaterNetworkTotal(tramosAc, plans);
+    const totalUC = udTotal > 0 ? udTotal : sumRows;
 
     return { summary, totalUC };
-  }, [selectedHeaterTram]);
+  }, [tramosAc, plans]);
 
   // Caudal probable por Hunter
   const caudalProbableLps = totalUC > 0 ? 0.1163 * Math.pow(totalUC, 0.6875) : 0;
@@ -183,7 +211,16 @@ export default function HeaterSelection() {
                   style={{ width: 60, textAlign: 'center' }}
                   value={factorSim}
                   aria-label="Factor de simultaneidad (%)"
-                  onChange={(e) => setFactorSim(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value) || 0;
+                    setFactorSim(val);
+                    if (selectedHeaterTram) {
+                      const calId = selectedHeaterTram.fin;
+                      const planId = selectedHeaterTram.planId;
+                      const bajanteKey = `${calId}-${planId}`;
+                      writeBajantePropToDrawing(bajanteKey, 'ac', 'factorSim', val, plans);
+                    }
+                  }}
                   min="0"
                   max="100"
                 />

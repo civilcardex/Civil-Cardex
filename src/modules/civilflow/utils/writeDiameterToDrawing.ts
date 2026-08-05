@@ -3,6 +3,7 @@ import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/stor
 import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../constants/storage-keys';
 import type { SyncPlanInput, RawElement } from './drawingSync';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
+import { maxDiametroLabel } from '../lib/PlanoEngine/PlanoEngineDrawing';
 
 interface LocalDrawingData {
   ts?: number;
@@ -118,6 +119,27 @@ export function writeDiametroToDrawing(
         }
         r.diametro = newDiamLabel;
         changed = true;
+        // Propagate to any downstream ramal auto-created by a tee-split merge FROM this one —
+        // mirror of the canvas walk in DrawingElementContextMenu.tsx:1949-1969. The child's
+        // diametro is only computed at creation time, so editing a parent from a design-table
+        // page must re-resolve it or the merged ramal keeps its stale diameter in storage.
+        for (const child of data.ramales || []) {
+          if (!child.mergesFrom || !child.mergesFrom.includes(r.id)) continue;
+          const [pid1, pid2] = child.mergesFrom;
+          const d1 =
+            pid1 === r.id
+              ? newDiamLabel
+              : (data.ramales || []).find((p) => p.id === pid1)?.diametro || '';
+          const d2 =
+            pid2 === r.id
+              ? newDiamLabel
+              : (data.ramales || []).find((p) => p.id === pid2)?.diametro || '';
+          const newChildDiam = maxDiametroLabel(d1, d2);
+          if (newChildDiam && newChildDiam !== child.diametro) {
+            child.diametro = newChildDiam;
+            changed = true;
+          }
+        }
       }
     }
 

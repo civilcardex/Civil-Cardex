@@ -136,19 +136,34 @@ export function computeWaterNetworkRows(
       // The auto-created ramal always starts exactly at the junction coordinate
       // (autoSplitJunctionAndSumFlow: downstreamPts = [[ep[0],ep[1]], ...]).
       const jc = r.pts[0];
-      const branchIds: string[] = [];
+      // `r.mergesFrom` already records EXACTLY which two ramales created this junction — trust
+      // those two directly instead of re-deriving the full branch list purely from coordinate
+      // proximity, which could otherwise sweep in an unrelated extra ramal merely sitting near
+      // the same point and inflate the total. The proximity scan below only looks for a genuine
+      // 3rd+ joiner beyond the tracked pair.
+      const branchSet = new Set<string>(r.mergesFrom.map((id) => `${id}-${plan.id}`));
       for (const other of ramales) {
         if (other.id === r.id || !other.pts || other.pts.length < 2) continue;
+        const otherKey = `${other.id}-${plan.id}`;
+        if (branchSet.has(otherKey)) continue;
         const oStart = other.pts[0],
           oEnd = other.pts[other.pts.length - 1];
-        if (
+        const touchesJc =
           Math.hypot(oStart[0] - jc[0], oStart[1] - jc[1]) < 2.0 ||
-          Math.hypot(oEnd[0] - jc[0], oEnd[1] - jc[1]) < 2.0
-        ) {
-          branchIds.push(`${other.id}-${plan.id}`);
-        }
+          Math.hypot(oEnd[0] - jc[0], oEnd[1] - jc[1]) < 2.0;
+        if (!touchesJc) continue;
+        // A ramal touching the junction is only a FEEDER (should be summed into the merged
+        // ramal's total) if its own flow direction arrives AT jc — a ramal whose flow instead
+        // ORIGINATES at jc (a second downstream leg branching further from the same point, or a
+        // ramal the user flipped with the flow-direction toggle) flows OUT of the junction and
+        // must never be counted as if it fed into it. `_tribReversed` swaps which endpoint is the
+        // origin, so this reacts live to the user inverting a ramal's direction.
+        const originPt = other._tribReversed ? oEnd : oStart;
+        const originsAtJc = Math.hypot(originPt[0] - jc[0], originPt[1] - jc[1]) < 2.0;
+        if (originsAtJc) continue;
+        branchSet.add(otherKey);
       }
-      if (branchIds.length > 0) mergeBranches[mergedKeyFull] = branchIds;
+      mergeBranches[mergedKeyFull] = Array.from(branchSet);
     }
     for (const b of bajantes) {
       if (b.x == null || b.y == null) continue;
@@ -678,6 +693,33 @@ export function computeWaterNetworkRows(
       Pfin,
     };
   });
+}
+
+// Real UC demand of the AC network fed by a water heater, as the design table computes it —
+// the heater-selection screen previously summed only the fixtures of the synthetic AC-01-{calId}
+// stub ramal (the aparatos assigned directly to the heater), which missed every fixture on the
+// actual AC ramales downstream of it. Reuses computeWaterNetworkRows with the same root heuristic
+// (isAC2 first, then any tramo touching a CALENTn code) so the number matches the design table's
+// total at the heater node exactly. udTotal is 0 when no heater tramo exists yet.
+export function computeHeaterNetworkTotal(
+  tramosAc: Tramo[],
+  plans: PlanItem[],
+): { udTotal: number } {
+  const rows = computeWaterNetworkRows('ac', tramosAc, [], plans, '20', [], () => 0);
+  const root =
+    tramosAc.find(isAC2) ||
+    tramosAc.find(
+      (t) => String(t.ini || '').startsWith('CALENT') || String(t.fin || '').startsWith('CALENT'),
+    );
+  const row = root
+    ? rows.find(
+        (r) =>
+          r.id === root.id &&
+          String(r.ini) === String(root.ini ?? '') &&
+          String(r.fin) === String(root.fin ?? ''),
+      )
+    : null;
+  return { udTotal: row?.udTotal ?? 0 };
 }
 
 export interface AcometidaSummary {

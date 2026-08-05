@@ -187,6 +187,34 @@ export function segmentLooseIntersectionPoint(
   return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
 }
 
+/**
+ * TEE/crossing detection used by the AF/AC bilateral machinery: at least ONE segment must pass
+ * strictly through the intersection (t/u in (0.01,0.99)) — the other may merely touch it at an
+ * endpoint (a tributario ending on a ramal body). This keeps genuine T formations (where a strict
+ * check drops them and the tee symbol vanishes on the next recompute) while still excluding a
+ * plain perpendicular end-to-end codo, where BOTH segments only meet at their endpoints.
+ */
+export function segmentHybridIntersectionPoint(
+  a1: number[],
+  a2: number[],
+  b1: number[],
+  b2: number[],
+): number[] | null {
+  const [x1, y1] = a1,
+    [x2, y2] = a2,
+    [x3, y3] = b1,
+    [x4, y4] = b2;
+  const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+  if (Math.abs(d) < 1e-10) return null;
+  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
+  const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / d;
+  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+  const tInterior = t > 0.01 && t < 0.99;
+  const uInterior = u > 0.01 && u < 0.99;
+  if (!tInterior && !uInterior) return null;
+  return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
+}
+
 // Detects a codo formed where this ramal's endpoint meets ANOTHER ramal's endpoint at (roughly)
 // the same point — unlike an internal-vertex check (consecutive points of the SAME ramal), this
 // covers two separately-drawn ramales joining end-to-end, or a drag that newly aligns one

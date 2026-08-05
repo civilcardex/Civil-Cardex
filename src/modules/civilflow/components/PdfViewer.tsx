@@ -10,7 +10,7 @@ import { NETS } from '../lib/PlanoEngine/PlanoState';
 import type { PlanoElement, PlanoNet, PlanoBajante } from '../lib/PlanoEngine/PlanoState';
 import type { Piso } from './useWorkAreaState';
 import type { PlanItem } from '../context/PlansContext';
-import { matLongName, pisoLbl, GAS, DEFAULT_PENDIENTE_PCT } from '../constants';
+import { matLongName, pisoLbl, DEFAULT_PENDIENTE_PCT } from '../constants';
 import { useProject } from '../context/ProjectContext';
 import { usePlans } from '../context/PlansContext';
 import { writeSanDrawingSync, writeHydroDrawingSync } from '../utils/drawingSync';
@@ -1082,14 +1082,14 @@ function PdfViewer_({
       ? { ...floorObj, label: pisoLbl(floorObj.n), npt: Number(floorObj.npt) }
       : null;
     eng.nptLevels = pisos.map((p) => ({ label: pisoLbl(p.n), npt: Number(p.npt) }));
+    // Gas has several real material choices (per MATERIALES_POR_RED) — unlike single-material
+    // nets, it must NOT silently pre-fill a default; the user has to actively pick one, same as
+    // any other multi-material net would if it had more than one canonical option.
     const matName =
       activeNet === 'gas'
-        ? gasMatSel[activeNet] || GAS[0]?.mat || ''
+        ? gasMatSel[activeNet] || ''
         : (mats?.[activeNet] && mats[activeNet][0]?.val) || '';
-    const d =
-      activeNet === 'gas'
-        ? diamSel[activeNet] || GAS[0]?.rows[0]?.dn || ''
-        : diamSel[activeNet] || '';
+    const d = activeNet === 'gas' ? diamSel[activeNet] || '' : diamSel[activeNet] || '';
     const p =
       activeNet === 'san' || activeNet === 'll'
         ? pendSel[activeNet] !== undefined
@@ -1401,6 +1401,30 @@ function PdfViewer_({
         onToggleLocked={handleToggleLocked}
         scaleText={scaleText}
         onClose={() => {
+          const eng = engineRef.current;
+          if (eng) {
+            // Every pipe element must carry a diameter before the drawing can be closed — a
+            // ramal/tributario with an empty diametro (or a bajante/montante without dNominal)
+            // would produce a broken design table/memoria. Block the close and list the missing
+            // elements instead of silently saving an incomplete drawing.
+            const sinDiamRamales = eng.ramales
+              .filter((r) => !r.diametro)
+              .map((r) => r.label || r.id);
+            const sinDiamBajantes = eng.bajantes
+              .filter((b) => (b.tipo === 'bajante' || b.tipo === 'montante') && !b.dNominal)
+              .map((b) => b.code || b.id);
+            const total = sinDiamRamales.length + sinDiamBajantes.length;
+            if (total > 0) {
+              const lista = [...sinDiamRamales, ...sinDiamBajantes].slice(0, 8).join(', ');
+              const extra = total > 8 ? ` y ${total - 8} más` : '';
+              setAlertDialogState({
+                isOpen: true,
+                title: 'Diámetros pendientes',
+                message: `${total} elemento(s) sin diámetro asignado: ${lista}${extra}. Asigna los diámetros antes de cerrar el dibujo.`,
+              });
+              return;
+            }
+          }
           handleSave();
           navigate('/civilflowareatrabajo');
         }}

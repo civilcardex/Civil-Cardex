@@ -23,11 +23,12 @@ import { computeBombaTables, computeEpTables } from '../utils/equiposRows';
 import { computeGasRows } from '../utils/gasRows';
 import { computeUcTable } from '../utils/ucRows';
 import { computeBajanteVentTable } from '../utils/bajanteVentRows';
-import { computeSanAccesoriosTable } from '../utils/sanAccesoriosRows';
+import { computeAccesoriosTable } from '../utils/sanAccesoriosRows';
 import { computeAccesoriosPorRamalTable } from '../utils/accesoriosPorRamalRows';
 import { computeRainDownpipesTable } from '../utils/rainDownpipesRows';
 import { chequeoCanalLluvia } from '../utils/calcRainwater';
 import { computeHeaterSelectionTables } from '../utils/heaterSelectionRows';
+import { computeResumenTuberiasTable } from '../utils/resumenTuberiasRows';
 import { getPdfjs } from '../utils/lazyPdfjs';
 import { downloadPlanosPdf } from '../utils/exportPlanos';
 import InfoTab from './workarea/InfoTab';
@@ -599,8 +600,28 @@ function InfTab({ state }: { state: WorkAreaState }) {
 
   const sanAccTable = useMemo<MemoriaTable | null>(() => {
     if (!hasSan) return null;
-    return computeSanAccesoriosTable(tramosSan, plans);
+    return computeAccesoriosTable('san', tramosSan, plans);
   }, [hasSan, tramosSan, plans]);
+
+  const tuberiasSanTable = useMemo<MemoriaTable | null>(() => {
+    if (!hasSan) return null;
+    return computeResumenTuberiasTable('san', plans);
+  }, [hasSan, plans]);
+
+  const tuberiasLlTable = useMemo<MemoriaTable | null>(() => {
+    if (!hasLl) return null;
+    return computeResumenTuberiasTable('ll', plans);
+  }, [hasLl, plans]);
+
+  const tuberiasAfTable = useMemo<MemoriaTable | null>(() => {
+    if (!hasAf) return null;
+    return computeResumenTuberiasTable('af', plans);
+  }, [hasAf, plans]);
+
+  const tuberiasAcTable = useMemo<MemoriaTable | null>(() => {
+    if (!hasAc) return null;
+    return computeResumenTuberiasTable('ac', plans);
+  }, [hasAc, plans]);
 
   const sanTable = useMemo<MemoriaTable | null>(() => {
     if (!hasSan) return null;
@@ -838,6 +859,11 @@ function InfTab({ state }: { state: WorkAreaState }) {
     return computeAccesoriosPorRamalTable(tramosAf, 'Accesorios por ramal — agua fría');
   }, [hasAf, tramosAf]);
 
+  const accAfDiamTable = useMemo<MemoriaTable | null>(() => {
+    if (!hasAf) return null;
+    return computeAccesoriosTable('af', tramosAf, plans);
+  }, [hasAf, tramosAf, plans]);
+
   const afTable = useMemo<MemoriaTable | null>(() => {
     if (!hasAf) return null;
     const rows = computeWaterNetworkRows(
@@ -968,6 +994,7 @@ function InfTab({ state }: { state: WorkAreaState }) {
     };
     const parametrosTable: MemoriaTable = {
       title: 'Resumen de parámetros',
+      side: true,
       headers: ['Parámetro', 'AC-01', 'AC-02', 'Unidad'],
       rows: [
         ['Caudal (Q)', fmtAco(d.Qaco), fmtAco(d.Qaco), 'l/s'],
@@ -1011,13 +1038,18 @@ function InfTab({ state }: { state: WorkAreaState }) {
 
   const heaterTables = useMemo<MemoriaTable[]>(() => {
     if (!hasAc) return [];
-    return computeHeaterSelectionTables(tramosAc);
-  }, [hasAc, tramosAc]);
+    return computeHeaterSelectionTables(tramosAc, plans);
+  }, [hasAc, tramosAc, plans]);
 
   const accAcTable = useMemo<MemoriaTable | null>(() => {
     if (!hasAc) return null;
     return computeAccesoriosPorRamalTable(tramosAc, 'Accesorios por ramal — agua caliente');
   }, [hasAc, tramosAc]);
+
+  const accAcDiamTable = useMemo<MemoriaTable | null>(() => {
+    if (!hasAc) return null;
+    return computeAccesoriosTable('ac', tramosAc, plans);
+  }, [hasAc, tramosAc, plans]);
 
   const acTable = useMemo<MemoriaTable | null>(() => {
     if (!hasAc) return null;
@@ -1161,11 +1193,14 @@ function InfTab({ state }: { state: WorkAreaState }) {
       const tag = (arr: (MemoriaTable | null)[], red: string): MemoriaTable[] =>
         arr.filter((t): t is MemoriaTable => t !== null).map((t) => ({ ...t, red }));
       const tables = [
-        ...tag([ucSanTable, sanTable, bajVentSanTable, sanAccTable], 'san'),
-        ...tag([llTable, llBajTable, llCanalTable], 'll'),
-        ...tag([ucAfTable, afTable, accAfTable], 'af'),
+        ...tag([ucSanTable, sanTable, bajVentSanTable, sanAccTable, tuberiasSanTable], 'san'),
+        ...tag([llTable, llBajTable, llCanalTable, tuberiasLlTable], 'll'),
+        ...tag([ucAfTable, afTable, accAfTable, accAfDiamTable, tuberiasAfTable], 'af'),
         ...tag(buildAcometidaTables(), 'aco'),
-        ...tag([ucAcTable, acTable, ...heaterTables, accAcTable], 'ac'),
+        ...tag(
+          [ucAcTable, acTable, ...heaterTables, accAcTable, accAcDiamTable, tuberiasAcTable],
+          'ac',
+        ),
         ...tag([gasTable], 'gas'),
         ...tag(buildBombaTables(), 'bom'),
         ...tag(buildEpTables(), 'ep'),

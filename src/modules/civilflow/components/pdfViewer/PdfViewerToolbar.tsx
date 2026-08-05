@@ -172,7 +172,7 @@ function PdfViewerToolbar_({
   onClear,
 }: PdfViewerToolbarProps) {
   const netTools = [...TOOLS];
-  if (activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas') {
+  if (activeNet === 'ac' || activeNet === 'gas') {
     netTools.splice(7, 0, {
       id: 'calent',
       label: 'Calentador',

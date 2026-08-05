@@ -49,6 +49,7 @@ import {
   handleBajanteDown,
   handleMontanteDown,
   handleCreateMontanteMidBody,
+  handleCreateCalentadorMidBody,
   handleCreateTeeCapStub,
   handleRedPublicaDown,
   handleContadorDown,
@@ -826,6 +827,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   createMontanteMidBody(ramalId: string, x: number, y: number, segmentIdx: number): void {
     handleCreateMontanteMidBody(this, ramalId, x, y, segmentIdx);
   }
+  createCalentadorMidBody(ramalId: string, x: number, y: number, segmentIdx: number): void {
+    handleCreateCalentadorMidBody(this, ramalId, x, y, segmentIdx);
+  }
   createTeeCapStub(ramalId: string, accMedIdx: number, accId: 'tapon' | 'llaveTerminal'): void {
     handleCreateTeeCapStub(this, ramalId, accMedIdx, accId);
   }
@@ -1239,7 +1243,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
       }
       e.preventDefault();
     } else if (k === 'h') {
-      this.setTool('calent');
+      // Heater is ac/gas-only: the af toolbar button was removed, so the shortcut must
+      // not bypass the same gating.
+      if (['ac', 'gas'].includes(this.activeNet)) {
+        this.setTool('calent');
+      }
       e.preventDefault();
     } else if (k === 'd') {
       this.setTool('dim');

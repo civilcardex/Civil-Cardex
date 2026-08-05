@@ -46,7 +46,11 @@ export function removeFromStorage(key: string): void {
 }
 
 import { supabase } from '../../../lib/supabase';
-import { TRAZOS_PREFIX, ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
+import {
+  TRAZOS_PREFIX,
+  ACTIVE_PROYECTO_ID_KEY,
+  APARATOS_BY_TRAMO_KEY,
+} from '../constants/storage-keys';
 import type { PlanoWorkData } from '../lib/PlanoEngine/PlanoPersistence';
 import type {
   PlanoRamal,
@@ -130,6 +134,7 @@ function ramalToRow(planoId: number, userId: string, r: PlanoRamal) {
     merges_from: r.mergesFrom ?? null,
     sifon_label_ini: r.sifonLabelIni ?? null,
     sifon_label_fin: r.sifonLabelFin ?? null,
+    fixtures: r.fixtures ?? null,
   };
 }
 
@@ -172,6 +177,7 @@ function rowToRamal(row: any): PlanoRamal {
     mergesFrom: row.merges_from ?? undefined,
     sifonLabelIni: row.sifon_label_ini ?? undefined,
     sifonLabelFin: row.sifon_label_fin ?? undefined,
+    fixtures: row.fixtures ?? undefined,
   };
 }
 
@@ -212,6 +218,7 @@ function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
     diametro: b.diametro ?? null,
     aco_diam: b.acoDiam ?? null,
     capacidad: b.capacidad ?? null,
+    factor_sim: b.factorSim ?? null,
     base: b.base ?? null,
     altura: b.altura ?? null,
     canal_id: b.canalId ?? null,
@@ -260,6 +267,7 @@ function rowToBajante(row: any): PlanoBajante {
     diametro: row.diametro ?? undefined,
     acoDiam: row.aco_diam ?? undefined,
     capacidad: row.capacidad ?? undefined,
+    factorSim: row.factor_sim ?? undefined,
     base: row.base ?? undefined,
     altura: row.altura ?? undefined,
     canalId: row.canal_id ?? undefined,
@@ -569,7 +577,18 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
       return;
     }
 
-    const ramales = (d.ramales ?? []) as PlanoRamal[];
+    // Aparato/UD counts live only in localStorage (FixturesPanel.tsx, keyed
+    // `${net}_${ramalId}_${planId}`) — attach each ramal's own count map before syncing so it
+    // reaches the DB via planos_ramales.fixtures, instead of being lost outside this device.
+    const aparatosMap = loadFromStorage<Record<string, Record<string, number>>>(
+      APARATOS_BY_TRAMO_KEY,
+      {},
+    );
+    const ramales = ((d.ramales ?? []) as PlanoRamal[]).map((r) => {
+      const apKey = `${r.net}_${r.id}_${planoId}`;
+      const fixtures = aparatosMap[apKey];
+      return fixtures ? { ...r, fixtures } : r;
+    });
     const areas = (d.areas ?? []) as PlanoArea[];
     const dims = (d.dims ?? []) as PlanoDimension[];
     const textAnnots = (d.textAnnots ?? []) as PlanoTextAnnotation[];
@@ -681,6 +700,24 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
       nptLevels: [],
       nets: [],
     };
+    // Mirror each ramal's DB-carried fixtures back into the localStorage map FixturesPanel.tsx
+    // actually reads (APARATOS_BY_TRAMO_KEY) — otherwise a plano loaded fresh on another
+    // device/session would show an empty Aparatos panel despite the DB having the counts.
+    const existingAparatos = loadFromStorage<Record<string, Record<string, number>>>(
+      APARATOS_BY_TRAMO_KEY,
+      {},
+    );
+    let aparatosChanged = false;
+    const mergedAparatos = { ...existingAparatos };
+    for (const r of (work.ramales ?? []) as PlanoRamal[]) {
+      if (!r.fixtures || Object.keys(r.fixtures).length === 0) continue;
+      const apKey = `${r.net}_${r.id}_${planoId}`;
+      if (!mergedAparatos[apKey]) {
+        mergedAparatos[apKey] = r.fixtures;
+        aparatosChanged = true;
+      }
+    }
+    if (aparatosChanged) saveToStorage(APARATOS_BY_TRAMO_KEY, mergedAparatos);
     return work;
   } catch (e) {
     devError('storageService loadTrazosFromDB exception:', e);

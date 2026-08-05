@@ -5,6 +5,7 @@ import {
   pisoLbl,
   pisoCorto,
   buildBajanteVisualLabel,
+  matFullName,
   DIAM_BAN,
   DIAM_VENT,
   DIAM_BY_MAT,
@@ -22,6 +23,7 @@ import { getAccessoryOptions } from '../../utils/accessoryOptions';
 import { NETS, type PlanoBajante } from '../../lib/PlanoEngine/PlanoState';
 import { BAJANTE_NETS, MONTANTE_NETS } from '../../lib/PlanoEngine/drawingCreations';
 import { maxDiametroLabel } from '../../lib/PlanoEngine/PlanoEngineDrawing';
+import { junctionHasOutgoingFlow } from '../../utils/flowDirection';
 import { checkRamalAngles } from '../../lib/PlanoEngine/drawingAngles';
 import {
   writeBajantePropToDrawing,
@@ -39,7 +41,11 @@ import {
   bumpHidroAccesorio,
 } from '../../utils/syncExtremeAccessory';
 import { GAS, CAT_GAS } from '../../constants/engineeringDataGas';
-import { VENTILACION, CONTADORES as CONTADORES_CAT } from '../../pages/catalog/catalogData';
+import {
+  VENTILACION,
+  CONTADORES as CONTADORES_CAT,
+  NETS_WITH_MULTIPLE_MATERIALS,
+} from '../../pages/catalog/catalogData';
 import { DIAMETROS_AF } from '../../constants/hydraulicData';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
@@ -1814,6 +1820,71 @@ function BajanteCodeEditor({
 
     return (
       <>
+        {NETS_WITH_MULTIPLE_MATERIALS.has(ramalEl.net) && (
+          <>
+            <div
+              style={{
+                fontSize: 12,
+                color: '#849495',
+                padding: '4px 8px',
+                fontFamily: "'Geist',monospace",
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+              }}
+            >
+              Material de ramal
+            </div>
+            <div style={{ padding: '0 8px 8px' }}>
+              <select
+                value={ramalEl.material || ''}
+                aria-label="Material de ramal"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  const eng = engineRef.current;
+                  if (!eng) return;
+                  eng.updateElementById(ramalEl.id, { material: val });
+                  const fresh = eng.ramales.find((x) => x.id === ramalEl.id);
+                  if (fresh) {
+                    setContextMenuState((prev) =>
+                      prev ? { ...prev, element: { ...fresh } } : null,
+                    );
+                  }
+                  // The diameter list is material-dependent (DIAM_BY_MAT): if the current
+                  // diameter no longer exists for the new material, reset it (and the mirrored
+                  // accessory diameters) so the ramal never keeps a stale diametro.
+                  const updates: Record<string, string> = { material: val };
+                  if (!isVen && !isGas) {
+                    const nd = DIAM_BY_MAT[val] || [];
+                    const cur = ramalEl.diametro ? ramalEl.diametro.split(' — ')[0].trim() : '';
+                    if (cur && !nd.some((d) => d.n.split(' — ')[0].trim() === cur)) {
+                      updates.diametro = '';
+                      updates.diametroInicio = '';
+                      updates.diametroFin = '';
+                    }
+                  }
+                  if (Object.keys(updates).length > 1 || updates.material !== ramalEl.material) {
+                    eng.updateElementById(ramalEl.id, updates);
+                  }
+                  if (selElement?.id === ramalEl.id) {
+                    setSelElement({ ...selElement, ...updates });
+                  }
+                  if (activeNet === ramalEl.net) {
+                    setDiamSel((prev) => ({ ...prev, [activeNet]: '' }));
+                  }
+                  eng.render();
+                }}
+                style={DrawingElementContextMenu_S2}
+              >
+                <option value="">— Sin material —</option>
+                {matList.map((m) => (
+                  <option key={m.id} value={m.val}>
+                    {matFullName(m.val)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
         <div
           style={{
             fontSize: 12,
@@ -2681,6 +2752,36 @@ function MidRamalAccessorySelector({
   );
 }
 
+// A ramal that participates in any junction with other ramales must not have its flow direction
+// flipped: reversing pts would invalidate every shared endpoint, the tributario padre link, the
+// tee/yee accMed glyphs at the junction and the accesorioInicio/Fin assignments of the connected
+// ramales. "Interconexión" = shares an endpoint with another ramal, has tributarios attached, is
+// itself a tributario, or carries junction markers (accMed / bilateral crossings / pair ids).
+function ramalHasInterconnections(eng: PlanoEngine | null, ramal: PlanoRamal): boolean {
+  if (!eng) return false;
+  const TOL = 0.5;
+  const eps = [ramal.pts[0], ramal.pts[ramal.pts.length - 1]];
+  for (const other of eng.ramales) {
+    if (other.id === ramal.id) continue;
+    const sameGroup =
+      other.net === ramal.net ||
+      ((other.net === 'san' || other.net === 'vent') &&
+        (ramal.net === 'san' || ramal.net === 'vent'));
+    if (!sameGroup) continue;
+    if (other.padre === ramal.id) return true;
+    if (other.tipo === 'tributario' && ramal.tipo === 'tributario' && other.padre === ramal.padre)
+      continue;
+    for (const pt of other.pts) {
+      if (eps.some((e) => Math.hypot(e[0] - pt[0], e[1] - pt[1]) < TOL)) return true;
+    }
+  }
+  if (ramal.tipo === 'tributario') return true;
+  if (ramal.bilateralPairIds?.length) return true;
+  if (ramal.bilateralCrossings?.length) return true;
+  if (ramal.accMed && Object.keys(ramal.accMed).length > 0) return true;
+  return false;
+}
+
 function RamalMenu() {
   const ctx = useDrawingElementContextMenu();
   const { contextMenuState, element, engineRef, selElement, setSelElement } = ctx;
@@ -2734,6 +2835,26 @@ function RamalMenu() {
               style={DrawingElementContextMenu_S13}
             >
               + Crear montante (auto-tee)
+            </button>
+          </div>
+        )}
+      {contextMenuState.midRamalHit &&
+        !contextMenuState.ramalEndpoint &&
+        ramalEl.net === 'af' &&
+        !isOccupiedTee && (
+          <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
+            <button
+              type="button"
+              onClick={() => {
+                const eng = engineRef.current;
+                const hit = contextMenuState.midRamalHit;
+                if (!eng || !hit) return;
+                eng.createCalentadorMidBody(ramalEl.id, hit.x, hit.y, hit.segmentIdx);
+                ctx.setContextMenuState(null);
+              }}
+              style={DrawingElementContextMenu_S13}
+            >
+              + Agregar calentador
             </button>
           </div>
         )}
@@ -2810,51 +2931,93 @@ function RamalMenu() {
           marginTop: 4,
         }}
       >
-        <button
-          type="button"
-          onClick={() => {
-            const eng = engineRef.current;
-            if (!eng) return;
-            // Flip the ramal in place: reverses pts + swaps every endpoint-symmetric field.
-            // Flow-direction arrow (rendered live from pts[0] vs pts[last]) flips automatically.
-            const r = eng.ramales.find((x) => x.id === ramalEl.id);
-            if (!r) return;
-            const tmpPts = r.pts.map((p) => [...p]);
-            r.pts = tmpPts.reverse();
-            const tmpAcc = r.accesorioInicio;
-            r.accesorioInicio = r.accesorioFin;
-            r.accesorioFin = tmpAcc;
-            const tmpDiam = r.diametroInicio;
-            r.diametroInicio = r.diametroFin;
-            r.diametroFin = tmpDiam;
-            const tmpApp = r.aparatoInicio;
-            r.aparatoInicio = r.aparatoFin;
-            r.aparatoFin = tmpApp;
-            const tmpIniFin = r.ini;
-            r.ini = r.fin;
-            r.fin = tmpIniFin;
-            // accMed keys shift because interior vertices index in the new order.
-            if (r.accMed) {
-              const oldMed = r.accMed;
-              const len = r.pts.length;
-              const newMed: Record<string, string> = {};
-              for (const [k, v] of Object.entries(oldMed)) {
-                const m = k.match(/^accMed(\d+)$/);
-                if (!m) continue;
-                const oldIdx = parseInt(m[1], 10);
-                const newIdx = len - 1 - oldIdx;
-                newMed[`accMed${newIdx}`] = v;
+        {!ramalHasInterconnections(engineRef.current, ramalEl) && (
+          <button
+            type="button"
+            onClick={() => {
+              const eng = engineRef.current;
+              if (!eng) return;
+              // Flip the ramal in place: reverses pts + swaps every endpoint-symmetric field.
+              // Flow-direction arrow (rendered live from pts[0] vs pts[last]) flips automatically.
+              const r = eng.ramales.find((x) => x.id === ramalEl.id);
+              if (!r) return;
+              const tmpPts = r.pts.map((p) => [...p]);
+              r.pts = tmpPts.reverse();
+              const tmpAcc = r.accesorioInicio;
+              r.accesorioInicio = r.accesorioFin;
+              r.accesorioFin = tmpAcc;
+              const tmpDiam = r.diametroInicio;
+              r.diametroInicio = r.diametroFin;
+              r.diametroFin = tmpDiam;
+              const tmpApp = r.aparatoInicio;
+              r.aparatoInicio = r.aparatoFin;
+              r.aparatoFin = tmpApp;
+              const tmpIniFin = r.ini;
+              r.ini = r.fin;
+              r.fin = tmpIniFin;
+              // accMed keys shift because interior vertices index in the new order.
+              if (r.accMed) {
+                const oldMed = r.accMed;
+                const len = r.pts.length;
+                const newMed: Record<string, string> = {};
+                for (const [k, v] of Object.entries(oldMed)) {
+                  const m = k.match(/^accMed(\d+)$/);
+                  if (!m) continue;
+                  const oldIdx = parseInt(m[1], 10);
+                  const newIdx = len - 1 - oldIdx;
+                  newMed[`accMed${newIdx}`] = v;
+                }
+                r.accMed = newMed;
               }
-              r.accMed = newMed;
-            }
-            eng.render();
-            eng._markDirty();
-            ctx.setContextMenuState(null);
-          }}
-          style={DrawingElementContextMenu_S13}
-        >
-          ⇄ Invertir dirección del flujo
-        </button>
+              eng.render();
+              eng._markDirty();
+              ctx.setContextMenuState(null);
+            }}
+            style={DrawingElementContextMenu_S13}
+          >
+            ⇄ Invertir dirección del flujo
+          </button>
+        )}
+        {ramalHasInterconnections(engineRef.current, ramalEl) &&
+          ['af', 'ac', 'gas'].includes(ramalEl.net) && (
+            <button
+              type="button"
+              aria-pressed={!!ramalEl._tribReversed}
+              style={
+                ramalEl._tribReversed
+                  ? { ...DrawingElementContextMenu_S13, background: '#00dce5', color: '#1e2024' }
+                  : DrawingElementContextMenu_S13
+              }
+              onClick={() => {
+                const val = !ramalEl._tribReversed;
+                const eng = engineRef.current;
+                if (!eng) return;
+                eng.updateElementById(ramalEl.id, { _tribReversed: val });
+                const fresh = eng.ramales.find((x) => x.id === ramalEl.id);
+                const okAtBothEnds = fresh
+                  ? [fresh.pts[0], fresh.pts[fresh.pts.length - 1]].every((ep) =>
+                      junctionHasOutgoingFlow(eng.ramales, ramalEl.net, ep),
+                    )
+                  : true;
+                if (!okAtBothEnds) {
+                  eng.updateElementById(ramalEl.id, { _tribReversed: !val });
+                  eng.triggerAlert(
+                    'Conexión sin salida',
+                    'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
+                  );
+                  eng.render();
+                  return;
+                }
+                if (selElement?.id === ramalEl.id) {
+                  setSelElement({ ...selElement, _tribReversed: val });
+                }
+                eng.render();
+                eng._markDirty();
+              }}
+            >
+              ⇄ Invertir dirección de flujo
+            </button>
+          )}
       </div>
       <div
         style={{

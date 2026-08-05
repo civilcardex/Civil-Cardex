@@ -308,6 +308,79 @@ export function handleCreateMontanteMidBody(
   engine._markDirty();
 }
 
+// Calentador on the BODY of an af ramal (not an endpoint) — from the context menu, not the
+// toolbar tool. Same split-the-ramal-at-the-click-point pattern as handleCreateMontanteMidBody,
+// but no tee marker: the heater is an inline pass-through device, not a branch. The bajante
+// itself is created with net 'ac' — a heater always belongs to the hot-water network, even when
+// the user anchors it on a cold-water (af) ramal; only the insertion point differs from the
+// toolbar-created one (handleCalentadorDown). The af ramal keeps its net and continues through
+// the split vertex; the ac/af connection is implicit via the CALENTn id (same convention
+// buildTramos.ts uses to build the synthetic AC-01-{calId} ramal from any heater bajante).
+/** Creates a calentador on the body of an AF ramal (not an endpoint), splitting the ramal at the click point. The bajante is created with net 'ac'. @param engine Engine core instance. @param ramalId The ramal being split. @param x Plane X coordinate. @param y Plane Y coordinate. @param segmentIdx Index of the segment where the split occurs. */
+export function handleCreateCalentadorMidBody(
+  engine: IPlanoEngineCore,
+  ramalId: string,
+  x: number,
+  y: number,
+  segmentIdx: number,
+): void {
+  const r = engine.ramales.find((rr) => rr.id === ramalId);
+  if (!r || !r.pts) return;
+  if (r.net !== 'af') {
+    engine._emitStatus('El calentador solo puede insertarse en la red AF');
+    return;
+  }
+
+  const newIdx = segmentIdx + 1;
+  const newPts = r.pts.map((p) => [...p]);
+  newPts.splice(newIdx, 0, [x, y]);
+  const shiftedAccMed: Record<string, string> = {};
+  for (const [k, v] of Object.entries(r.accMed || {})) {
+    const m = k.match(/^accMed(\d+)$/);
+    if (!m) continue;
+    const idx = parseInt(m[1], 10);
+    shiftedAccMed[`accMed${idx >= newIdx ? idx + 1 : idx}`] = v as string;
+  }
+  r.pts = newPts;
+  r.accMed = shiftedAccMed;
+  r.totalL = calculateRamalLength(newPts, engine);
+
+  const calent = engine.bajantes.filter((b) => b.tipo === 'calentador').length + 1;
+  const calentId = 'CALENT' + calent;
+  engine.bajantes.push({
+    id: calentId,
+    net: 'ac',
+    tipo: 'calentador',
+    code: 'CALENT' + calent,
+    x,
+    y,
+    pisoBase: engine.nivelActual?.label ?? '',
+    pisoCima: engine.nivelActual?.label ?? '',
+    nptBase: engine.nivelActual?.npt ?? 0,
+    nptCima: engine.nivelActual?.npt ?? 0,
+    hVert: 0,
+    dNominal: '',
+    recibeDeIds: [],
+    alimentaIds: [],
+    descargaEnId: null,
+    ucAcum: 0,
+    ucExtra: 0,
+    area_m2: 0,
+    desplazamientos: {},
+    lblOffX: 0,
+    lblOffY: 0,
+    labelAngle: 0,
+    labelX: x - 25,
+    labelY: y,
+    bajR: 7 / 24,
+  });
+  engine.selId = calentId;
+  engine._emitSelect(engine.bajantes[engine.bajantes.length - 1]);
+  engine._isGhostSel = false;
+  engine.render();
+  engine._markDirty();
+}
+
 // Caps the "leftover" branch of an existing plain tee (teeDirecto/teeSube/teeBaja at an interior
 // accMed vertex) with a tapón or llave terminal — the third alternative alongside actually drawing
 // a new ramal from that point (already possible, snapToExisting matches any vertex generically)
@@ -401,6 +474,12 @@ export function handleCreateTeeCapStub(
 
 /** Creates a new calentador (water heater) symbol at the given coordinates. @param engine Engine core instance. @param px Plane X coordinate. @param py Plane Y coordinate. */
 export function handleCalentadorDown(engine: IPlanoEngineCore, px: number, py: number): void {
+  // Heater is ac/gas-only. Defensive guard: no other path (drag, script, stale UI) may
+  // create one on af now that the af toolbar button/shortcut are gone.
+  if (engine.activeNet === 'af') {
+    engine._emitStatus('El calentador no está disponible en la red AF');
+    return;
+  }
   if (engine.snapMode) {
     const sp = engine.snapToExisting(px, py);
     if (sp) {

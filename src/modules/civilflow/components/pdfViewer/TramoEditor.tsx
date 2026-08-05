@@ -1,6 +1,6 @@
 import React, { type RefObject, createContext } from 'react';
 import { DIAM_BY_MAT, DIAM_BAN, DIAM_VENT } from '../../constants';
-import { VENTILACION } from '../../pages/catalog/catalogData';
+import { VENTILACION, NETS_WITH_MULTIPLE_MATERIALS } from '../../pages/catalog/catalogData';
 import { DIAMETROS_AF } from '../../constants/hydraulicData';
 import { CAT_GAS, GAS_DN_LABELS, GAS } from '../../constants/engineeringDataGas';
 import { normalizeDnLabel } from '../../utils/formatUtils';
@@ -862,7 +862,11 @@ function RamalEditor({
 }) {
   const isGas = activeNet === 'gas';
   const isVen = activeNet === 'vent';
-  const matList = mats?.[activeNet] || [];
+  // The selected ramal can legitimately belong to a different net than the toolbar's currently
+  // active one (e.g. a ramal stays selected after the user switches net tabs) — its own material
+  // must always come from ITS net's catalog, not whichever net the toolbar happens to be showing.
+  const matNet = selElement?.net || activeNet;
+  const matList = mats?.[matNet] || [];
   const matShort = matList[0]?.val || '—';
   const matName = matLongName(matShort);
   let diamList: Array<{ n: string }> = [];
@@ -874,12 +878,13 @@ function RamalEditor({
   let currentDiam: string = '',
     currentMat: string = '';
   if (isGas) {
-    const selMat = (isSelActiveNet && selElement?.material) || gasMatSel[activeNet] || '';
-    currentMat = selMat || GAS[0]?.mat || '';
+    // Gas has several real material choices — must not silently default to GAS[0]; the user
+    // picks explicitly, same as any other multi-material net would.
+    currentMat = (isSelActiveNet && selElement?.material) || gasMatSel[activeNet] || '';
     currentDiam =
       isSelActiveNet && selElement?.diametro !== undefined && selElement?.diametro !== ''
         ? selElement!.diametro
-        : diamSel[activeNet] || GAS[0]?.rows[0]?.dn || '';
+        : diamSel[activeNet] || '';
   } else {
     currentDiam =
       isSelActiveNet && selElement?.diametro !== undefined && selElement?.diametro !== ''
@@ -935,9 +940,51 @@ function RamalEditor({
               }}
               style={TramoEditor_S13}
             >
+              <option value="">— Sin material —</option>
               {GAS.map((g) => (
                 <option key={g.mat} value={g.mat}>
                   {g.mat}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : NETS_WITH_MULTIPLE_MATERIALS.has(matNet) ? (
+          <div>
+            <div
+              style={{
+                fontSize: 12,
+                color: '#9BA8AA',
+                fontFamily: "'Geist',monospace",
+                marginBottom: 2,
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+              }}
+            >
+              Material
+            </div>
+            <select
+              value={(isSelActiveNet && selElement?.material) || matShort}
+              aria-label="Material"
+              onChange={(e) => {
+                const mat = e.target.value;
+                if (!engineRef.current || !selElement) return;
+                const updates: Record<string, unknown> = { material: mat };
+                const nd = DIAM_BY_MAT[mat] || [];
+                const curD = selElement.diametro ? selElement.diametro.split(' — ')[0].trim() : '';
+                if (curD && !nd.some((d) => d.n.split(' — ')[0].trim() === curD)) {
+                  updates.diametro = '';
+                  updates.diametroInicio = '';
+                  updates.diametroFin = '';
+                }
+                engineRef.current.updateSelected(updates);
+                setSelElement({ ...selElement, ...updates });
+                setDiamSel((prev) => ({ ...prev, [activeNet]: '' }));
+              }}
+              style={TramoEditor_S13}
+            >
+              {matList.map((m) => (
+                <option key={m.val} value={m.val}>
+                  {matLongName(m.val)}
                 </option>
               ))}
             </select>

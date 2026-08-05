@@ -15,6 +15,10 @@ export interface MemoriaTable {
   // Which network sheet this table belongs on in the Excel export (see REDES_ORDEN below) — set
   // by the caller when assembling the tables array, not by the individual compute*Table functions.
   red?: string;
+  // Renders this table side-by-side with the NEXT table in the array on the same row (used for
+  // the narrow acometida parámetros/verificación pair in the PDF and DOCX exports; the pair
+  // shares one page section in DOCX and one row in PDF). Ignored by the Excel export.
+  side?: boolean;
 }
 
 // Drops columns that are all-zero across every row — used for accessory-count tables where most
@@ -355,7 +359,7 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
   // Each table becomes its OWN section with a page sized to fit exactly that table's total width —
   // this is what keeps every table on a single sheet regardless of column count, instead of clipping
   // a wide table against a fixed letter page (the multi-page-per-table regression).
-  const tableSections = (data.tables || []).map((table) => {
+  const buildTableParts = (table: MemoriaTable) => {
     let columnWidths = computeColumnWidthsDxa(table.headers);
     const availableWidth = DOCX_PAGE_MAX_TWIP - DOCX_SIDE_MARGIN_TWIP * 2;
     const rawSum = columnWidths.reduce((a, b) => a + b, 0);
@@ -421,42 +425,103 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
           ),
         }),
     );
-    const pageWidth = Math.min(
-      DOCX_PAGE_MAX_TWIP,
-      Math.max(DOCX_MIN_PAGE_WIDTH_TWIP, tableWidth + DOCX_SIDE_MARGIN_TWIP * 2),
-    );
-    return {
-      properties: {
-        page: {
-          // docx's createPageSize SWAPS width/height when orientation is LANDSCAPE (it expects
-          // portrait-shaped input and rotates it) — so the final wide dimension must be passed as
-          // `height` here for it to land as `w:w` in the actual XML. Passing the already-wide
-          // pageWidth as `width` (as before) made the real rendered page only 8.5in wide, clipping
-          // every table wider than that regardless of how carefully columnWidths was computed.
-          size: {
-            width: DOCX_PAGE_HEIGHT_TWIP,
-            height: pageWidth,
-            orientation: PageOrientation.LANDSCAPE,
-          },
-          margin: {
-            top: 400,
-            right: DOCX_SIDE_MARGIN_TWIP,
-            bottom: 400,
-            left: DOCX_SIDE_MARGIN_TWIP,
-          },
+    return { columnWidths, tableWidth, headerRows, bodyRows };
+  };
+  const makeSection = (
+    tableWidth: number,
+    children: (InstanceType<typeof Paragraph> | InstanceType<typeof Table>)[],
+  ) => ({
+    properties: {
+      page: {
+        // docx's createPageSize SWAPS width/height when orientation is LANDSCAPE (it expects
+        // portrait-shaped input and rotates it) — so the final wide dimension must be passed as
+        // `height` here for it to land as `w:w` in the actual XML. Passing the already-wide
+        // pageWidth as `width` (as before) made the real rendered page only 8.5in wide, clipping
+        // every table wider than that regardless of how carefully columnWidths was computed.
+        size: {
+          width: DOCX_PAGE_HEIGHT_TWIP,
+          height: Math.min(
+            DOCX_PAGE_MAX_TWIP,
+            Math.max(DOCX_MIN_PAGE_WIDTH_TWIP, tableWidth + DOCX_SIDE_MARGIN_TWIP * 2),
+          ),
+          orientation: PageOrientation.LANDSCAPE,
+        },
+        margin: {
+          top: 400,
+          right: DOCX_SIDE_MARGIN_TWIP,
+          bottom: 400,
+          left: DOCX_SIDE_MARGIN_TWIP,
         },
       },
-      children: [
+    },
+    children,
+  });
+
+  const tableSections = [];
+  const allTables = data.tables || [];
+  for (let i = 0; i < allTables.length; i++) {
+    const table = allTables[i];
+    const nextTable = table.side ? allTables[i + 1] : undefined;
+    if (nextTable) {
+      // Side-by-side pair (acometida parámetros + verificación): one section, one 1×2 wrapper
+      // table whose cells each carry a nested table — both columns share the same page.
+      const left = buildTableParts(table);
+      const right = buildTableParts(nextTable);
+      const outerWidth = left.tableWidth + right.tableWidth;
+      const nestedTable = (parts: ReturnType<typeof buildTableParts>) =>
+        new Table({
+          width: { size: parts.tableWidth, type: WidthType.DXA },
+          columnWidths: parts.columnWidths,
+          layout: TableLayoutType.FIXED,
+          rows: [...parts.headerRows, ...parts.bodyRows],
+        });
+      tableSections.push(
+        makeSection(outerWidth, [
+          new Table({
+            width: { size: outerWidth, type: WidthType.DXA },
+            columnWidths: [left.tableWidth, right.tableWidth],
+            layout: TableLayoutType.FIXED,
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    margins: { top: 0, bottom: 0, left: 0, right: 20 },
+                    width: { size: left.tableWidth, type: WidthType.DXA },
+                    children: [
+                      new Paragraph({ text: table.title, heading: HeadingLevel.HEADING_2 }),
+                      nestedTable(left),
+                    ],
+                  }),
+                  new TableCell({
+                    margins: { top: 0, bottom: 0, left: 20, right: 0 },
+                    width: { size: right.tableWidth, type: WidthType.DXA },
+                    children: [
+                      new Paragraph({ text: nextTable.title, heading: HeadingLevel.HEADING_2 }),
+                      nestedTable(right),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ]),
+      );
+      i += 1;
+      continue;
+    }
+    const parts = buildTableParts(table);
+    tableSections.push(
+      makeSection(parts.tableWidth, [
         new Paragraph({ text: table.title, heading: HeadingLevel.HEADING_2 }),
         new Table({
-          width: { size: tableWidth, type: WidthType.DXA },
-          columnWidths,
+          width: { size: parts.tableWidth, type: WidthType.DXA },
+          columnWidths: parts.columnWidths,
           layout: TableLayoutType.FIXED,
-          rows: [...headerRows, ...bodyRows],
+          rows: [...parts.headerRows, ...parts.bodyRows],
         }),
-      ],
-    };
-  });
+      ]),
+    );
+  }
 
   const doc = new Document({
     sections: [
@@ -552,67 +617,127 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
     theme: 'grid',
   });
 
-  for (const { key, label } of REDES_ORDEN) {
-    const tables = (data.tables || []).filter((t) => t.red === key);
-    if (tables.length === 0) continue;
+  let prevKey: string | null = null;
+  let cursorY = 55;
+  for (let i = 0; i < (data.tables || []).length; i++) {
+    const table = (data.tables || [])[i];
+    const key = table.red || '';
+    if (key !== prevKey) {
+      // Every red starts on its own fresh page — the summary sheet stays alone on page 1.
+      doc.addPage('a4', 'landscape');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.setTextColor(PDF_NAVY[0], PDF_NAVY[1], PDF_NAVY[2]);
+      const redLabel = REDES_ORDEN.find((r) => r.key === key)?.label || key;
+      doc.text(redLabel, 30, 40);
+      cursorY = 55;
+      prevKey = key;
+    }
 
-    doc.addPage('a4', 'landscape');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(PDF_NAVY[0], PDF_NAVY[1], PDF_NAVY[2]);
-    doc.text(label, 30, 40);
-    let cursorY = 55;
-
-    for (const table of tables) {
+    const nextTable = table.side ? (data.tables || [])[i + 1] : undefined;
+    if (nextTable) {
+      // Side-by-side pair (acometida parámetros + verificación): both tables on the same row,
+      // each in its own half of the page.
       const pageH = doc.internal.pageSize.getHeight();
-      // Leave room for a title line + at least a header + one body row, otherwise start this
-      // table fresh on a new page instead of squeezing/orphaning it against the bottom edge.
       if (cursorY > pageH - 100) {
         doc.addPage('a4', 'landscape');
         cursorY = 40;
       }
+      const mid = pageW / 2;
+      const leftMargin = { left: 30, right: pageW - mid + 7.5 };
+      const rightMargin = { left: mid + 7.5, right: 30 };
+      const pairStyle = {
+        fontSize: 7.5,
+        cellPadding: 3,
+        overflow: 'linebreak' as const,
+        minCellWidth: 22,
+      };
+      const pairHeadStyle = {
+        fillColor: PDF_NAVY,
+        textColor: [255, 255, 255] as [number, number, number],
+        fontStyle: 'bold' as const,
+        halign: 'center' as const,
+        valign: 'middle' as const,
+        lineWidth: 0.1,
+      };
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
       doc.setTextColor(30, 30, 30);
       doc.text(table.title, 30, cursorY);
+      doc.text(nextTable.title, mid + 7.5, cursorY);
       cursorY += 8;
-
       autoTable(doc, {
         startY: cursorY,
-        margin: { left: 30, right: 30 },
+        margin: leftMargin,
         head: buildAutoTableHead(table),
         body: table.rows,
-        // minCellWidth guarantees every column (including narrow ones like "%"/"m" under a much
-        // longer spanning group header like "Pérdidas por fricción") has enough room for at least
-        // one full word per line — without it, autotable sizes columns purely off body-cell
-        // content, and squeezed the long group header into a couple of points, wrapping mid-word.
-        styles: { fontSize: 7.5, cellPadding: 3, overflow: 'linebreak', minCellWidth: 22 },
-        headStyles: {
-          fillColor: PDF_NAVY,
-          textColor: [255, 255, 255],
-          fontStyle: 'bold',
-          halign: 'center',
-          valign: 'middle',
-          lineWidth: 0.1,
-        },
-        bodyStyles: { valign: 'middle' },
+        styles: pairStyle,
+        headStyles: pairHeadStyle,
+        bodyStyles: { valign: 'middle', halign: 'center' },
         theme: 'grid',
-        // Dash cells ("—") mark a missing/not-applicable value — center just that cell,
-        // leave every other cell's alignment (left for text, right for numbers) untouched.
-        didParseCell: (data) => {
-          if (data.cell.raw === '—' || data.cell.raw === '-') data.cell.styles.halign = 'center';
-        },
-        didDrawPage: () => {
-          cursorY = 40;
-        },
       });
-
-      // autoTable advances doc.lastAutoTable internally; read the actual end position for the
-      // next table's start, falling back if a page break occurred mid-table (didDrawPage reset).
-      const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable
+      const leftFinalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable
         ?.finalY;
-      cursorY = (finalY ?? cursorY) + 22;
+      autoTable(doc, {
+        startY: cursorY,
+        margin: rightMargin,
+        head: buildAutoTableHead(nextTable),
+        body: nextTable.rows,
+        styles: pairStyle,
+        headStyles: pairHeadStyle,
+        bodyStyles: { valign: 'middle', halign: 'center' },
+        theme: 'grid',
+      });
+      const rightFinalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable
+        ?.finalY;
+      cursorY = Math.max(leftFinalY ?? cursorY, rightFinalY ?? cursorY) + 22;
+      i += 1;
+      continue;
     }
+
+    const pageH = doc.internal.pageSize.getHeight();
+    // Leave room for a title line + at least a header + one body row, otherwise start this
+    // table fresh on a new page instead of squeezing/orphaning it against the bottom edge.
+    if (cursorY > pageH - 100) {
+      doc.addPage('a4', 'landscape');
+      cursorY = 40;
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(30, 30, 30);
+    doc.text(table.title, 30, cursorY);
+    cursorY += 8;
+
+    autoTable(doc, {
+      startY: cursorY,
+      margin: { left: 30, right: 30 },
+      head: buildAutoTableHead(table),
+      body: table.rows,
+      // minCellWidth guarantees every column (including narrow ones like "%"/"m" under a much
+      // longer spanning group header like "Pérdidas por fricción") has enough room for at least
+      // one full word per line — without it, autotable sizes columns purely off body-cell
+      // content, and squeezed the long group header into a couple of points, wrapping mid-word.
+      styles: { fontSize: 7.5, cellPadding: 3, overflow: 'linebreak', minCellWidth: 22 },
+      headStyles: {
+        fillColor: PDF_NAVY,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle',
+        lineWidth: 0.1,
+      },
+      // All columns render centered (requested for the memorias PDF).
+      bodyStyles: { valign: 'middle', halign: 'center' },
+      theme: 'grid',
+      didDrawPage: () => {
+        cursorY = 40;
+      },
+    });
+
+    // autoTable advances doc.lastAutoTable internally; read the actual end position for the
+    // next table's start, falling back if a page break occurred mid-table (didDrawPage reset).
+    const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY;
+    cursorY = (finalY ?? cursorY) + 22;
   }
 
   const pageCount = (

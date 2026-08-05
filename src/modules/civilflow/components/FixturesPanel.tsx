@@ -1,5 +1,12 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, GAS_ACCESORIOS, AF_UC_IDS, AC_UC_IDS } from '../constants';
+import {
+  APARATOS_DEF,
+  UD_BASE_INIT,
+  ACCESORIOS_HIDRO,
+  GAS_ACCESORIOS,
+  AF_UC_IDS,
+  AC_UC_IDS,
+} from '../constants';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
 import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
@@ -13,11 +20,46 @@ import { devError } from '../../../utils/devError';
 const HIDROSAN_IDS = new Set(['af', 'ac', 'san']);
 const GAS_ID = 'gas';
 
-import { TRAZOS_PREFIX, GAS_ACC_KEY, APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY } from "../constants/storage-keys";
-const FixturesPanel_S1: React.CSSProperties = { width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px 8px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', overflow: 'hidden', };
-const FixturesPanel_S2: React.CSSProperties = { fontFamily: "'Geist',monospace", fontSize: 12, color: 'var(--txt3)', textTransform: 'uppercase', letterSpacing: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
-const FixturesPanel_S3: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--txt2)', fontFamily: "'Geist',monospace", textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, padding: '0 2px', };
-
+import {
+  TRAZOS_PREFIX,
+  GAS_ACC_KEY,
+  APARATOS_BY_TRAMO_KEY,
+  HYDRO_DATA_STORAGE_KEY,
+} from '../constants/storage-keys';
+const FixturesPanel_S1: React.CSSProperties = {
+  width: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: '10px 12px 8px',
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  textAlign: 'left',
+  overflow: 'hidden',
+};
+const FixturesPanel_S2: React.CSSProperties = {
+  fontFamily: "'Geist',monospace",
+  fontSize: 12,
+  color: 'var(--txt3)',
+  textTransform: 'uppercase',
+  letterSpacing: 1,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+};
+const FixturesPanel_S3: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  fontSize: 12,
+  color: 'var(--txt2)',
+  fontFamily: "'Geist',monospace",
+  textTransform: 'uppercase',
+  letterSpacing: 1,
+  marginBottom: 6,
+  padding: '0 2px',
+};
 
 const UNIDAD = {
   uc: 'UC',
@@ -25,10 +67,14 @@ const UNIDAD = {
   qgas: 'm³/h',
 };
 
-const SAN_UD_IDS = new Set(UD_BASE_INIT.map(d => d.id));
+const SAN_UD_IDS = new Set(UD_BASE_INIT.map((d) => d.id));
 
 type CountsMap = Record<string, Record<string, number>>;
-interface HidroDataEntry { accesorios: Record<string, number>; Lh: number; nSalidas: number }
+interface HidroDataEntry {
+  accesorios: Record<string, number>;
+  Lh: number;
+  nSalidas: number;
+}
 type HidroDataMap = Record<string, HidroDataEntry>;
 type GasAccMap = Record<string, Record<string, number>>;
 
@@ -53,8 +99,8 @@ function loadGasAcc(): GasAccMap {
   const next: GasAccMap = { ...raw };
   for (const [tramoId, map] of Object.entries(next)) {
     if (!map || typeof map !== 'object') continue;
-    const vals = Object.values(map).filter(v => typeof v === 'number');
-    if (vals.length === 0 || vals.every(v => v <= 0)) {
+    const vals = Object.values(map).filter((v) => typeof v === 'number');
+    if (vals.length === 0 || vals.every((v) => v <= 0)) {
       delete next[tramoId];
     }
   }
@@ -68,7 +114,7 @@ function saveGasAcc(map: GasAccMap) {
 type ApUnitKey = 'qgas' | 'uc_ac' | 'uc_af' | 'ud';
 
 function unitFor(netId: string): ApUnitKey | null {
-  const net = NETS.find(n => n.id === netId);
+  const net = NETS.find((n) => n.id === netId);
   if (!net) return null;
   if (netId === GAS_ID) return 'qgas';
   if (net.ucType === 'uc') return netId === 'ac' ? 'uc_ac' : 'uc_af';
@@ -89,14 +135,28 @@ interface SelectableTarget {
   tipo?: string;
   label?: string;
   code?: string;
+  mergesFrom?: [string, string];
 }
 
 function isCountableTarget(el: SelectableTarget | null): boolean {
   if (!el) return false;
-  return el.id?.startsWith('R') || el.id?.startsWith('B') || el.id?.startsWith('T') || el.tipo === 'calentador';
+  return (
+    el.id?.startsWith('R') ||
+    el.id?.startsWith('B') ||
+    el.id?.startsWith('T') ||
+    el.tipo === 'calentador'
+  );
 }
 
-const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, planId }: { activeNet: string; selElement: SelectableTarget | null; planId?: string | number }) {
+const AparatosPanel = memo(function AparatosPanel_({
+  activeNet,
+  selElement,
+  planId,
+}: {
+  activeNet: string;
+  selElement: SelectableTarget | null;
+  planId?: string | number;
+}) {
   const { plans } = usePlans();
   const { aps } = useApparatus();
   const [counts, setCounts] = useState<CountsMap>(loadAll);
@@ -106,7 +166,6 @@ const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, plan
   const [pulse, setPulse] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const lastTargetRef = useRef<string | null>(null);
-
 
   useEffect(() => {
     const existingIds = new Set<string>();
@@ -122,7 +181,7 @@ const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, plan
         // ignore
       }
     }
-    setGasAcc(prev => {
+    setGasAcc((prev) => {
       let changed = false;
       const next: GasAccMap = {};
       for (const id of existingIds) {
@@ -154,8 +213,16 @@ const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, plan
   }, [counts, hidroData, gasAcc]);
 
   useEffect(() => {
-    try { writeSanDrawingSync(plans); } catch (e) { devError('AparatosPanel:', e); }
-    try { writeHydroDrawingSync(plans); } catch (e) { devError('AparatosPanel:', e); }
+    try {
+      writeSanDrawingSync(plans);
+    } catch (e) {
+      devError('AparatosPanel:', e);
+    }
+    try {
+      writeHydroDrawingSync(plans);
+    } catch (e) {
+      devError('AparatosPanel:', e);
+    }
   }, [counts, hidroData, plans]);
 
   const netId = activeNet;
@@ -169,27 +236,43 @@ const AparatosPanel = memo(function AparatosPanel_({ activeNet, selElement, plan
 
   const items = useMemo(() => {
     if (!unitKey) return [];
-    const filtered = APARATOS_DEF.filter(ap => esAplicable(ap, netId, unitKey));
-    const APS_FIELD: Record<string, 'ud' | 'ucaf' | 'ucac'> = { ud: 'ud', uc_af: 'ucaf', uc_ac: 'ucac' };
+    const filtered = APARATOS_DEF.filter((ap) => esAplicable(ap, netId, unitKey));
+    const APS_FIELD: Record<string, 'ud' | 'ucaf' | 'ucac'> = {
+      ud: 'ud',
+      uc_af: 'ucaf',
+      uc_ac: 'ucac',
+    };
     const apsField = APS_FIELD[unitKey || ''] || null;
     let result = filtered;
     if (apsField && unitKey) {
-      result = filtered.map(ap => {
-        const fromAps = aps.find(p => p.id === ap.id);
+      result = filtered.map((ap) => {
+        const fromAps = aps.find((p) => p.id === ap.id);
         return fromAps ? { ...ap, [unitKey]: fromAps[apsField] || ap[unitKey] } : ap;
       });
     }
     if (unitKey === 'ud') {
-      const order = UD_BASE_INIT.map(d => d.id);
+      const order = UD_BASE_INIT.map((d) => d.id);
       return result.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
     }
     return result.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   }, [netId, unitKey, aps]);
 
-const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo === 'contador' ? { ...selElement, id: 'CNT1' } : null);
+  const target = useMemo(
+    () =>
+      isCountableTarget(selElement)
+        ? selElement
+        : selElement?.tipo === 'contador'
+          ? { ...selElement, id: 'CNT1' }
+          : null,
+    [selElement],
+  );
   const targetId = target?.id || null;
   const targetLbl = target?.label || target?.code || target?.id || '';
-  const storageKey = targetId ? (planId ? `${netId}_${targetId}_${planId}` : `${netId}_${targetId}`) : null;
+  const storageKey = targetId
+    ? planId
+      ? `${netId}_${targetId}_${planId}`
+      : `${netId}_${targetId}`
+    : null;
 
   useEffect(() => {
     if (targetId && targetId !== lastTargetRef.current) {
@@ -217,15 +300,42 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
     }
   }, [targetId]);
 
+  // Merge sources' keys — an auto-created ramal (from a mid-body junction split) starts with no
+  // aparatos of its own; its right sidebar must instead mirror the combined counts of the two
+  // ramales that merged into it (mergesFrom), read-only, so the user isn't left staring at zeros
+  // for a segment that visibly carries both branches' fixtures.
+  const mergeKeys = useMemo(() => {
+    if (!target?.mergesFrom || !netId) return null;
+    return target.mergesFrom.map((srcId) =>
+      planId ? `${netId}_${srcId}_${planId}` : `${netId}_${srcId}`,
+    );
+  }, [target, netId, planId]);
+
   const currentMap = useMemo(() => {
     if (!storageKey) return {};
-    return counts[storageKey] || {};
-  }, [counts, storageKey]);
+    const own = counts[storageKey] || {};
+    if (!mergeKeys) return own;
+    const merged: Record<string, number> = { ...own };
+    for (const k of mergeKeys) {
+      for (const [apId, v] of Object.entries(counts[k] || {})) {
+        merged[apId] = (merged[apId] || 0) + v;
+      }
+    }
+    return merged;
+  }, [counts, storageKey, mergeKeys]);
 
   const curHidro = useMemo(() => {
     if (!storageKey) return { accesorios: {}, Lh: 0, nSalidas: 0 };
-    return hidroData[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 };
-  }, [hidroData, storageKey]);
+    const own = hidroData[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 };
+    if (!mergeKeys) return own;
+    const acc: Record<string, number> = { ...(own.accesorios || {}) };
+    for (const k of mergeKeys) {
+      for (const [accId, v] of Object.entries(hidroData[k]?.accesorios || {})) {
+        acc[accId] = (acc[accId] || 0) + v;
+      }
+    }
+    return { ...own, accesorios: acc };
+  }, [hidroData, storageKey, mergeKeys]);
 
   const total = useMemo(() => {
     if (!storageKey) return 0;
@@ -244,7 +354,7 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
 
   const inc = (apId: string) => {
     if (!storageKey) return;
-    setCounts(prev => {
+    setCounts((prev) => {
       const cur = prev[storageKey] || {};
       return { ...prev, [storageKey]: { ...cur, [apId]: (cur[apId] || 0) + 1 } };
     });
@@ -252,10 +362,11 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
 
   const dec = (apId: string) => {
     if (!storageKey) return;
-    setCounts(prev => {
+    setCounts((prev) => {
       const cur = { ...(prev[storageKey] || {}) };
       const v = (cur[apId] || 0) - 1;
-      if (v <= 0) delete cur[apId]; else cur[apId] = v;
+      if (v <= 0) delete cur[apId];
+      else cur[apId] = v;
       const next = { ...prev, [storageKey]: cur };
       if (Object.keys(cur).length === 0) delete next[storageKey];
       return next;
@@ -264,7 +375,7 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
 
   const incAcc = (accId: string) => {
     if (!storageKey) return;
-    setHidroData(prev => {
+    setHidroData((prev) => {
       const cur = { ...(prev[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 }) };
       const acc = { ...(cur.accesorios || {}) };
       acc[accId] = (acc[accId] || 0) + 1;
@@ -275,15 +386,15 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
 
   const decAcc = (accId: string) => {
     if (!storageKey) return;
-    setHidroData(prev => {
+    setHidroData((prev) => {
       const cur = { ...(prev[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 }) };
       const acc = { ...(cur.accesorios || {}) };
       const v = (acc[accId] || 0) - 1;
-      if (v <= 0) delete acc[accId]; else acc[accId] = v;
+      if (v <= 0) delete acc[accId];
+      else acc[accId] = v;
       return { ...prev, [storageKey]: { ...cur, accesorios: acc } };
     });
   };
-
 
   const gasAccMap = useMemo(() => {
     if (!targetId) return {};
@@ -292,7 +403,7 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
 
   const incAccGas = (accId: string) => {
     if (!targetId) return;
-    setGasAcc(prev => {
+    setGasAcc((prev) => {
       const cur = { ...(prev[targetId] || {}) };
       cur[accId] = (cur[accId] || 0) + 1;
       return { ...prev, [targetId]: cur };
@@ -301,12 +412,14 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
 
   const decAccGas = (accId: string) => {
     if (!targetId) return;
-    setGasAcc(prev => {
+    setGasAcc((prev) => {
       const cur = { ...(prev[targetId] || {}) };
       const v = (cur[accId] || 0) - 1;
-      if (v <= 0) delete cur[accId]; else cur[accId] = v;
+      if (v <= 0) delete cur[accId];
+      else cur[accId] = v;
       const next = { ...prev };
-      if (Object.keys(cur).length === 0) delete next[targetId]; else next[targetId] = cur;
+      if (Object.keys(cur).length === 0) delete next[targetId];
+      else next[targetId] = cur;
       return next;
     });
   };
@@ -314,20 +427,37 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
   if (!visible) {
     return (
       <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-        <div style={{ fontFamily: "'Geist',monospace", fontSize: 12, color: 'var(--txt3)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 1 }}>
+        <div
+          style={{
+            fontFamily: "'Geist',monospace",
+            fontSize: 12,
+            color: 'var(--txt3)',
+            marginBottom: 6,
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+          }}
+        >
           Cuantificación de aparatos
         </div>
-        <div style={{ fontSize: 12, color: 'var(--txt2)', fontFamily: "'Geist',monospace", padding: '4px 0', lineHeight: 1.5 }}>
+        <div
+          style={{
+            fontSize: 12,
+            color: 'var(--txt2)',
+            fontFamily: "'Geist',monospace",
+            padding: '4px 0',
+            lineHeight: 1.5,
+          }}
+        >
           Esta red no cuantifica aparatos sanitarios.
         </div>
       </div>
     );
   }
 
-  const netObj = NETS.find(n => n.id === netId);
+  const netObj = NETS.find((n) => n.id === netId);
   const accent = netObj?.col || '#2563EB';
 
-  const headerLbl = isGas ? '⛽ Aparatos' : '🚿 Aparatos';
+  const headerLbl = isGas ? ' Aparatos' : ' Aparatos';
   const isActive = !!targetId;
   const containerStyle = {
     borderBottom: '1px solid #3a494a',
@@ -338,29 +468,53 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
 
   return (
     <div ref={containerRef} style={containerStyle}>
-      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} style={FixturesPanel_S1}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}>
-          <span style={{
-            display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-            background: isActive ? accent : 'transparent',
-            border: isActive ? 'none' : '1px solid #3a494a',
-            flexShrink: 0,
-            boxShadow: isActive ? `0 0 8px ${accent}` : 'none',
-          }} />
-          <span style={FixturesPanel_S2}>
-            {headerLbl}
-          </span>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        style={FixturesPanel_S1}
+      >
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, overflow: 'hidden' }}
+        >
+          <span
+            style={{
+              display: 'inline-block',
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: isActive ? accent : 'transparent',
+              border: isActive ? 'none' : '1px solid #3a494a',
+              flexShrink: 0,
+              boxShadow: isActive ? `0 0 8px ${accent}` : 'none',
+            }}
+          />
+          <span style={FixturesPanel_S2}>{headerLbl}</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 1, minWidth: 0 }}>
-          <span style={{
-            fontSize: 12, fontWeight: 700, color: accent,
-            fontFamily: "'Geist',monospace", background: 'rgba(37,99,235,.1)',
-            border: `1px solid ${accent}55`,
-            borderRadius: 3, padding: '1px 7px', whiteSpace: 'nowrap',
-          }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: accent,
+              fontFamily: "'Geist',monospace",
+              background: 'rgba(37,99,235,.1)',
+              border: `1px solid ${accent}55`,
+              borderRadius: 3,
+              padding: '1px 7px',
+              whiteSpace: 'nowrap',
+            }}
+          >
             {totalStr} {unidadLbl}
           </span>
-          <span style={{ fontSize: 12, color: 'var(--txt2)', fontFamily: "'Geist',monospace", flexShrink: 0 }}>
+          <span
+            style={{
+              fontSize: 12,
+              color: 'var(--txt2)',
+              fontFamily: "'Geist',monospace",
+              flexShrink: 0,
+            }}
+          >
             {open ? '▾' : '▸'}
           </span>
         </div>
@@ -370,25 +524,42 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
         <div style={{ padding: '0 10px 10px' }}>
           {targetId ? (
             <div style={FixturesPanel_S3}>
-              <span>Asignado a <span style={{ color: accent, fontWeight: 700 }}>{targetLbl}</span></span>
+              <span>
+                Asignado a <span style={{ color: accent, fontWeight: 700 }}>{targetLbl}</span>
+              </span>
             </div>
           ) : (
-            <div style={{
-              fontSize: 12, color: 'var(--txt2)', fontFamily: "'Geist',monospace",
-              textAlign: 'center', marginBottom: 6, padding: '2px 0',
-            }}>
+            <div
+              style={{
+                fontSize: 12,
+                color: 'var(--txt2)',
+                fontFamily: "'Geist',monospace",
+                textAlign: 'center',
+                marginBottom: 6,
+                padding: '2px 0',
+              }}
+            >
               {isGas ? 'Selecciona un tramo de gas' : 'Selecciona un ramal/bajante en el dibujo'}
             </div>
           )}
 
-          <div style={{
-            opacity: targetId ? 1 : 0.45,
-            pointerEvents: targetId ? 'auto' : 'none',
-            transition: 'opacity .25s',
-            filter: targetId ? 'none' : 'grayscale(.6)',
-          }}>
+          <div
+            style={{
+              opacity: targetId ? 1 : 0.45,
+              pointerEvents: targetId ? 'auto' : 'none',
+              transition: 'opacity .25s',
+              filter: targetId ? 'none' : 'grayscale(.6)',
+            }}
+          >
             {selElement?.tipo === 'contador' ? (
-              <div style={{ fontSize: 12, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: 'var(--txt3)',
+                  padding: '24px 0',
+                  textAlign: 'center',
+                }}
+              >
                 La sección de aparatos no aplica para el contador.
               </div>
             ) : (
@@ -404,7 +575,14 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
                   accent={accent}
                 />
                 {items.length === 0 && (
-                  <div style={{ fontSize: 12, color: 'var(--txt3)', padding: '24px 0', textAlign: 'center' }}>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: 'var(--txt3)',
+                      padding: '24px 0',
+                      textAlign: 'center',
+                    }}
+                  >
                     No hay aparatos en esta red. Dibuje ramales en el visor para agregarlos.
                   </div>
                 )}
@@ -421,7 +599,18 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
           incAcc={incAcc}
           decAcc={decAcc}
           accent={accent}
-          items={ACCESORIOS_HIDRO.filter(a => !['teeDirecto', 'teeSube', 'teeBaja', 'teeTapon', 'teeLlaveTerminal', 'tapon', 'llaveTerminal'].includes(a.id))}
+          items={ACCESORIOS_HIDRO.filter(
+            (a) =>
+              ![
+                'teeDirecto',
+                'teeSube',
+                'teeBaja',
+                'teeTapon',
+                'teeLlaveTerminal',
+                'tapon',
+                'llaveTerminal',
+              ].includes(a.id),
+          )}
         />
       )}
       {isGas && (
@@ -438,4 +627,3 @@ const target = isCountableTarget(selElement) ? selElement : (selElement?.tipo ==
   );
 });
 export default AparatosPanel;
-

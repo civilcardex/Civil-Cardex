@@ -56,12 +56,32 @@ export function buildSanConnectivity(
     const ramales = data.ramales || [];
     const bajantes = (data.bajantes || []) as BajanteRaw[];
 
+    // The two source ramales of a mid-body junction split (mergesFrom) both end up with an
+    // endpoint sitting at the exact same coordinate as the auto-created ramal's own start — so
+    // the proximity search below would ALSO link them directly to each other (a spurious edge),
+    // on top of each linking correctly to the auto-created ramal. That spurious edge lets one
+    // source's UD leak into the other's BFS subtree, and the mergeBranches correction further
+    // down then double-counts it when it force-sums the auto-created ramal's total from both
+    // sources. Two ramales that are the two feeders of the SAME merge must never link directly.
+    const mergeSiblingPairs = new Set<string>();
+    for (const rr of ramales) {
+      if (rr.mergesFrom) {
+        mergeSiblingPairs.add([...rr.mergesFrom].sort().join('|'));
+      }
+    }
+
     for (const r of ramales) {
       if (!r.pts || r.pts.length < 2) continue;
       const pStart = r.pts[0];
       const pEnd = r.pts[r.pts.length - 1];
       const rKey = `${r.id}-${plan.id}`;
 
+      // Returns ALL ramales touching pt (not just the nearest) — a junction where a tributario
+      // merges mid-body into an existing ramal leaves BOTH the truncated existing ramal's cut
+      // point AND the tributario's own endpoint sitting at the exact same coordinate as the
+      // auto-created downstream ramal's start. Picking only the closest (old behavior, ties
+      // broken by array order) silently dropped one of the two parents from the connectivity
+      // graph, undercounting the auto-created ramal's accumulated UD.
       const checkEndpoint = (pt: number[]) => {
         for (const b of bajantes) {
           const isDischargingIntoR =
@@ -79,33 +99,25 @@ export function buildSanConnectivity(
           if (isExplicit) {
             const otherPt = pt === pEnd ? pStart : pEnd;
             const otherDist = Math.hypot(otherPt[0] - b.x!, otherPt[1] - b.y!);
-            if (dist < otherDist) return { type: 'bajante' as const, id: b.id };
+            if (dist < otherDist) return [{ type: 'bajante' as const, id: b.id }];
             continue;
           }
           if (dist < 2.0) {
-            return { type: 'bajante' as const, id: b.id };
+            return [{ type: 'bajante' as const, id: b.id }];
           }
         }
-        let bestRx: RawElement | null = null;
-        let minDist = Infinity;
+        const matches: { type: 'ramal'; id: string }[] = [];
         for (const rx of ramales) {
           if (rx.id === r.id) continue;
           if (!rx.pts || rx.pts.length < 2) continue;
+          if (mergeSiblingPairs.has([r.id, rx.id].sort().join('|'))) continue;
           const dist = distToPolyline(pt, rx.pts);
-          if (dist < 2.0 && dist < minDist) {
-            minDist = dist;
-            bestRx = rx;
-          }
+          if (dist < 2.0) matches.push({ type: 'ramal' as const, id: rx.id });
         }
-        if (bestRx) {
-          return { type: 'ramal' as const, id: bestRx.id };
-        }
-        return null;
+        return matches;
       };
 
-      const connections = [checkEndpoint(pEnd), checkEndpoint(pStart)].filter(
-        (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null,
-      );
+      const connections = [...checkEndpoint(pEnd), ...checkEndpoint(pStart)];
 
       for (const connection of connections) {
         const targetKey = `${connection.id}-${plan.id}`;
@@ -332,19 +344,31 @@ export function buildSanConnectivity(
       const mergedKeyFull = `${r.id}-${plan.id}`;
       if (!componentTotalMap[mergedKeyFull] && componentTotalMap[mergedKeyFull] !== 0) continue;
       const jc = r.pts[0];
-      const branchIds: string[] = [];
+      // `r.mergesFrom` already records EXACTLY which two ramales created this junction
+      // (autoSplitJunctionAndSumFlow) — trust those two directly instead of re-deriving the full
+      // branch list from coordinate proximity alone, which previously could sweep in an unrelated
+      // extra ramal merely sitting near the same point (undercounting became OVERcounting: any
+      // stray nearby ramal added its UD on top of the two real feeders). The proximity scan below
+      // still runs, but only to catch a genuine 3rd+ joiner beyond the tracked pair, and only
+      // counts one whose own flow direction actually ARRIVES at jc (not one passing through/away
+      // from it) — mirrors the direction check already applied for AF/AC (waterNetworkRows.ts).
+      const branchSet = new Set<string>(r.mergesFrom.map((id) => `${id}-${plan.id}`));
       for (const other of data.ramales || []) {
         if (other.id === r.id || !other.pts || other.pts.length < 2) continue;
+        const otherKey = `${other.id}-${plan.id}`;
+        if (branchSet.has(otherKey)) continue;
         const oStart = other.pts[0],
           oEnd = other.pts[other.pts.length - 1];
-        if (
+        const touchesJc =
           Math.hypot(oStart[0] - jc[0], oStart[1] - jc[1]) < 2.0 ||
-          Math.hypot(oEnd[0] - jc[0], oEnd[1] - jc[1]) < 2.0
-        ) {
-          branchIds.push(`${other.id}-${plan.id}`);
-        }
+          Math.hypot(oEnd[0] - jc[0], oEnd[1] - jc[1]) < 2.0;
+        if (!touchesJc) continue;
+        const originPt = other._tribReversed ? oEnd : oStart;
+        const originsAtJc = Math.hypot(originPt[0] - jc[0], originPt[1] - jc[1]) < 2.0;
+        if (originsAtJc) continue;
+        branchSet.add(otherKey);
       }
-      if (branchIds.length > 0) mergeBranches[mergedKeyFull] = branchIds;
+      mergeBranches[mergedKeyFull] = Array.from(branchSet);
     }
   }
   // Fallback: detect merge points from connectivity graph (tramo appearing as target

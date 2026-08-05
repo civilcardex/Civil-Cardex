@@ -3,9 +3,93 @@ import { snapTributaryToPadre45Deg } from '../PlanoEngineDrawing';
 import { rotatedRectCorners, pointToSegmentDist } from '../HitTester';
 import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from '../PlanoState';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
-import { pisoCortoLoose as getPisoCorto } from '../../../constants';
+import { pisoCortoLoose as getPisoCorto, matDrawingLabel, APARATO_IMG } from '../../../constants';
 import { drawRamalPath } from './drawRamalPath';
 import { renderJunctions } from './renderJunctions';
+
+/**
+ * Picks the branch (perpendicular) side for a teeReduccion/teeLado glyph at a junction.
+ * `throughDx/throughDy` is the ramal's own direction at the point (for an endpoint: the adjacent
+ * segment heading; for a mid-body vertex: the bisector). The glyph's branch arm must point toward
+ * the ACTUAL crossing/branch ramal — not blindly toward screen-up.
+ * Strategy: find the same-net segment near `pt` that is MOST PERPENDICULAR to the through
+ * direction (minimal |dot|). A collinear segment (e.g. the split stub of this very junction, or
+ * the ramal's own other segments) touches the point too but yields |dot| ~ 1 and loses to the
+ * true perpendicular tributario (|dot| ~ 0). If none found (standalone accessory, no crossing),
+ * falls back to the classic "screen-up for horizontal, right for vertical" convention.
+ */
+export function pickTeeBranchDir(
+  engine: IPlanoEngineCore,
+  ownId: string,
+  net: string,
+  pt: number[],
+  throughDx: number,
+  throughDy: number,
+  fallbackPx: number,
+  fallbackPy: number,
+): { px: number; py: number } {
+  const px = fallbackPx;
+  const py = fallbackPy;
+  const pxAlt = -fallbackPx;
+  const pyAlt = -fallbackPy;
+  const CROSS_TOL = 0.5;
+  let crossDir: { x: number; y: number } | null = null;
+  let bestPerp = 2;
+  for (const cr of engine.ramales) {
+    if (cr.net !== net || cr.id === ownId) continue;
+    if (!cr.pts || cr.pts.length < 2) continue;
+    for (let ci = 0; ci < cr.pts.length - 1; ci++) {
+      if (
+        pointToSegmentDist(
+          pt[0],
+          pt[1],
+          cr.pts[ci][0],
+          cr.pts[ci][1],
+          cr.pts[ci + 1][0],
+          cr.pts[ci + 1][1],
+        ) < CROSS_TOL
+      ) {
+        // Must point FROM the junction TOWARD the branch ramal's actual body — the raw
+        // ci->ci+1 segment direction depends on that ramal's arbitrary point order (e.g. if `pt`
+        // is that segment's OWN endpoint, ci->ci+1 points forward past the endpoint into nothing,
+        // backwards from where the pipe material actually is), which was picking the wrong side
+        // below whenever the crossing ramal happened to be drawn "away-then-back". Anchoring on
+        // whichever of the two segment endpoints sits FARTHER from `pt` is order-independent.
+        const dToCi = Math.hypot(cr.pts[ci][0] - pt[0], cr.pts[ci][1] - pt[1]);
+        const dToCiNext = Math.hypot(cr.pts[ci + 1][0] - pt[0], cr.pts[ci + 1][1] - pt[1]);
+        const farPt = dToCi >= dToCiNext ? cr.pts[ci] : cr.pts[ci + 1];
+        const cdx = farPt[0] - pt[0];
+        const cdy = farPt[1] - pt[1];
+        const clen = Math.hypot(cdx, cdy);
+        if (clen <= 0.01) continue;
+        const ux = cdx / clen;
+        const uy = cdy / clen;
+        const d = Math.abs(ux * throughDx + uy * throughDy);
+        if (d < bestPerp) {
+          bestPerp = d;
+          crossDir = { x: ux, y: uy };
+        }
+      }
+    }
+  }
+  if (crossDir) {
+    const dotP = px * crossDir.x + py * crossDir.y;
+    const dotA = pxAlt * crossDir.x + pyAlt * crossDir.y;
+    if (dotA > dotP) {
+      return { px: pxAlt, py: pyAlt };
+    }
+    return { px, py };
+  }
+  // Fallback: normalize toward screen-up for horizontal-ish, right for vertical-ish
+  const PERP_EPS = 0.1;
+  if (py > PERP_EPS) {
+    return { px: -px, py: -py };
+  }
+  if (Math.abs(py) <= PERP_EPS && px < 0) {
+    return { px: -px, py: -py };
+  }
+  return { px, py };
+}
 
 // Shared by both extreme (accesorioInicio/Fin) and mid-ramal (accMed*) accessory rendering.
 // `outX,outY` is the "pointing away from the pipe" direction — for an extreme it's away from
@@ -297,6 +381,59 @@ function drawExtremeAccessorySymbol(
       ctx.closePath();
       ctx.fill();
     }
+  } else if (accType === 'teeReduccion' || accType === 'teeLado') {
+    // Real tee glyph (three arms + end ticks), same visual language as the geometric tee
+    // (renderJunctions.ts) and teeSube/teeBaja — NOT the 4-arm bilateral cross. The branch
+    // (px,py) ties in perpendicular to the through direction (dx,dy). teeReduccion draws the
+    // branch arm narrower (reduced diameter) with a short full-width collar at the junction;
+    // teeLado keeps the branch at full width.
+    const juncRad = engine.mm2cvs(2.0);
+    const tickLen = engine.mm2cvs(0.8);
+    const armW = 2 * engine.zoom;
+    const branchW = accType === 'teeReduccion' ? armW * 0.55 : armW;
+    ctx.strokeStyle = '#000000';
+    ctx.lineCap = 'round';
+    // Through arms (full width)
+    ctx.lineWidth = armW;
+    ctx.beginPath();
+    ctx.moveTo(c.x + dx * juncRad, c.y + dy * juncRad);
+    ctx.lineTo(c.x, c.y);
+    ctx.lineTo(c.x - dx * juncRad, c.y - dy * juncRad);
+    ctx.stroke();
+    if (accType === 'teeReduccion') {
+      // Reduction collar: full-width stub right at the junction, then the thin branch arm.
+      ctx.beginPath();
+      ctx.moveTo(c.x + px * juncRad * 0.35, c.y + py * juncRad * 0.35);
+      ctx.lineTo(c.x, c.y);
+      ctx.stroke();
+      ctx.lineWidth = branchW;
+      ctx.beginPath();
+      ctx.moveTo(c.x + px * juncRad * 0.35, c.y + py * juncRad * 0.35);
+      ctx.lineTo(c.x + px * juncRad, c.y + py * juncRad);
+      ctx.stroke();
+    } else {
+      ctx.lineWidth = branchW;
+      ctx.beginPath();
+      ctx.moveTo(c.x, c.y);
+      ctx.lineTo(c.x + px * juncRad, c.y + py * juncRad);
+      ctx.stroke();
+    }
+    // End ticks on all three arms
+    ctx.lineWidth = armW * 0.8;
+    ctx.beginPath();
+    for (const a of [
+      { x: dx, y: dy },
+      { x: -dx, y: -dy },
+      { x: px, y: py },
+    ]) {
+      const ex = c.x + a.x * juncRad,
+        ey = c.y + a.y * juncRad;
+      const perpX = -a.y,
+        perpY = a.x;
+      ctx.moveTo(ex - (perpX * tickLen) / 2, ey - (perpY * tickLen) / 2);
+      ctx.lineTo(ex + (perpX * tickLen) / 2, ey + (perpY * tickLen) / 2);
+    }
+    ctx.stroke();
   } else if (accType === 'teeTapon') {
     // Tall stem out from the branch point (outX,outY), capped with a perpendicular bar at the
     // top. The bar's two ends fold back DOWN toward the stem (a bracket "⊓", not open ticks
@@ -825,7 +962,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       if (showFlow) {
         let flowFromIdx = 0;
         let flowToIdx = r.pts.length - 1;
-        if (r.tipo === 'tributario' && r._tribReversed) {
+        if (r._tribReversed && (r.tipo === 'tributario' || ['af', 'ac', 'gas'].includes(r.net))) {
           flowFromIdx = flowToIdx;
           flowToIdx = 0;
         }
@@ -852,7 +989,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const pCorto = getPisoCorto(engine.nivelActual?.n);
       const lvlSuffix = pCorto ? `-${pCorto}` : '';
       const lbl = r.label ? `${r.label}${lvlSuffix}` : '';
-      const matPart = r.material || (r.net === 'vent' ? 'PVC-V' : '');
+      const matPart = matDrawingLabel(r.material) || (r.net === 'vent' ? 'PVC-V' : '');
       const dPart = r.diametro ? `D=${normalizeDnLabel(r.diametro.split(' — ')[0])}` : '';
       const pPart = r.pendiente ? `S=${r.pendiente}%` : '';
       const showPend = r.net === 'san' || r.net === 'll';
@@ -1074,7 +1211,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         let startIdx = 0;
         let nextIdx = 1;
 
-        if (r.tipo === 'tributario' && r._tribReversed) {
+        if (r._tribReversed && (r.tipo === 'tributario' || ['af', 'ac', 'gas'].includes(r.net))) {
           startIdx = r.pts.length - 1;
           nextIdx = r.pts.length - 2;
         }
@@ -1203,15 +1340,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       }
       let px = -dy,
         py = dx;
-      // Normalize perpendicular same convention as mid-body loop
-      const PERP_EPS = 0.1;
-      if (py > PERP_EPS) {
-        px = -px;
-        py = -py;
-      } else if (Math.abs(py) <= PERP_EPS && px < 0) {
-        px = -px;
-        py = -py;
-      }
+      const branchDir = pickTeeBranchDir(engine, r.id, r.net, pt, dx, dy, px, py);
+      px = branchDir.px;
+      py = branchDir.py;
       const outX = idx === 0 ? -dx : dx;
       const outY = idx === 0 ? -dy : dy;
 
@@ -1240,6 +1371,71 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         r,
         idx === 0 ? 'ini' : 'fin',
       );
+      ctx.restore();
+    });
+  });
+
+  // Draw aparato (fixture) symbols on ramal ends. aparatoInicio/aparatoFin hold a fixture id
+  // (APARATOS_DEF id like 'lvm'/'duc') assigned via the "Seleccionar Aparato" dropdown. Fixtures
+  // are webp images (APARATO_IMG), not vector paths like accessories, so they render via
+  // ctx.drawImage with an async-loading module-level cache — when an image finally loads, the
+  // engine re-renders so the symbol appears without any user interaction.
+  const aparatoImgCache = new Map<string, HTMLImageElement | null>();
+  const getAparatoImg = (src: string): HTMLImageElement | null => {
+    if (aparatoImgCache.has(src)) return aparatoImgCache.get(src) || null;
+    aparatoImgCache.set(src, null);
+    const img = new Image();
+    img.onload = () => {
+      aparatoImgCache.set(src, img);
+      engine.render();
+    };
+    img.onerror = () => {
+      aparatoImgCache.set(src, null);
+    };
+    img.src = src;
+    return null;
+  };
+  engine.ramales.forEach((r) => {
+    if (engine._hiddenNets.has(r.net)) return;
+    if (!((r.tipo === 'tributario' || r.tipo === 'ramal') && r.pts.length >= 2)) return;
+
+    [0, r.pts.length - 1].forEach((idx) => {
+      const appType = idx === 0 ? r.aparatoInicio : r.aparatoFin;
+      if (!appType) return;
+      const imgSrc = (APARATO_IMG as Record<string, string>)[appType];
+      if (!imgSrc) return;
+      const img = getAparatoImg(imgSrc);
+      if (!img) return; // still loading — onload re-renders this pass
+
+      const pt = r.pts[idx];
+      const c = engine.toCvs(pt[0], pt[1]);
+
+      let dx = 0,
+        dy = 0;
+      if (idx === 0) {
+        dx = r.pts[1][0] - r.pts[0][0];
+        dy = r.pts[1][1] - r.pts[0][1];
+      } else {
+        dx = r.pts[idx][0] - r.pts[idx - 1][0];
+        dy = r.pts[idx][1] - r.pts[idx - 1][1];
+      }
+      const len = Math.hypot(dx, dy);
+      if (len > 0.01) {
+        dx /= len;
+        dy /= len;
+      } else {
+        dx = 1;
+        dy = 0;
+      }
+      const outX = idx === 0 ? -dx : dx;
+      const outY = idx === 0 ? -dy : dy;
+
+      const rad = engine.realMmToCanvasPx(23) * 0.6;
+      const size = rad * 2;
+      ctx.save();
+      // Sit just off the pipe's outward side so the ramal line stays visible under the symbol.
+      ctx.translate(c.x + outX * rad * 0.3, c.y + outY * rad * 0.3);
+      ctx.drawImage(img, -size / 2, -size / 2, size, size);
       ctx.restore();
     });
   });
@@ -1293,20 +1489,15 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         dx = uxIn;
         dy = uyIn;
       }
+      // Compute two perpendicular directions from the bisector (through direction). For teeReduccion
+      // and teeLado at a bilateral crossing, the branch arm should point toward the ACTUAL crossing
+      // ramal's direction — not blindly toward screen-up. Falls back to "screen-up" convention when
+      // no crossing ramal is found (standalone accessory, not at a bilateral crossing).
       let px = -dy,
         py = dx;
-      // Normalize perpendicular so branch points consistent side regardless of ramal drawing
-      // direction: toward screen-up (negative Y) for horizontal-ish, right (positive X) for
-      // vertical-ish — matches the user's expected convention (branch goes UP from horizontal
-      // ramal).
-      const PERP_EPS = 0.1;
-      if (py > PERP_EPS) {
-        px = -px;
-        py = -py;
-      } else if (Math.abs(py) <= PERP_EPS && px < 0) {
-        px = -px;
-        py = -py;
-      }
+      const branchDir = pickTeeBranchDir(engine, r.id, r.net, pt, dx, dy, px, py);
+      px = branchDir.px;
+      py = branchDir.py;
 
       // realMmToCanvasPx floors at 1mm paper (see PlanoEngine.ts) — halving the mm argument
       // alone is invisible at common scales, since both land on that floor. Halve the px result.
@@ -1339,6 +1530,39 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         const key = `${cp[0].toFixed(2)},${cp[1].toFixed(2)}`;
         if (drawnCrossings.has(key)) continue;
         drawnCrossings.add(key);
+
+        // If the user already picked a real accessory at this junction (AccesorioModal), that
+        // glyph replaces the generic +. Only teeBilateral has no glyph of its own — its symbol
+        // IS this + — so every other accType (teeSube/teeBaja, teeReduccion, teeLado, tees with
+        // caps, codos, valves...) suppresses it to avoid drawing two symbols on the same point.
+        const ACC_TOL = 0.5;
+        const drawsOwnGlyph = (t?: string) => !!t && t !== 'teeBilateral';
+        let hasAccessoryHere = false;
+        for (const rm of engine.ramales) {
+          if (!rm.pts || rm.pts.length < 2) continue;
+          const atPt = (p: number[]) => Math.hypot(p[0] - cp[0], p[1] - cp[1]) < ACC_TOL;
+          if (drawsOwnGlyph(rm.accesorioInicio) && atPt(rm.pts[0])) {
+            hasAccessoryHere = true;
+            break;
+          }
+          if (drawsOwnGlyph(rm.accesorioFin) && atPt(rm.pts[rm.pts.length - 1])) {
+            hasAccessoryHere = true;
+            break;
+          }
+          if (rm.accMed) {
+            for (const [accKey, accVal] of Object.entries(rm.accMed)) {
+              const m = accKey.match(/^accMed(\d+)$/);
+              if (!m || !accVal) continue;
+              const p = rm.pts[parseInt(m[1], 10)];
+              if (p && drawsOwnGlyph(accVal) && atPt(p)) {
+                hasAccessoryHere = true;
+                break;
+              }
+            }
+            if (hasAccessoryHere) break;
+          }
+        }
+        if (hasAccessoryHere) continue;
 
         const c = engine.toCvs(cp[0], cp[1]);
 

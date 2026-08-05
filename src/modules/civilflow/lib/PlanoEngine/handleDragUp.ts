@@ -50,7 +50,17 @@ function draggedOntoWrongPadre(engine: IPlanoEngineCore, ram: PlanoRamal): boole
     for (const other of engine.ramales) {
       if (other.id === ram.id || other.net !== ram.net) continue;
       const touches = other.pts?.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL);
-      if (touches && other.id !== ram.padre) return true;
+      if (!touches || other.id === ram.padre) continue;
+      // AC/AF/gas tributario-to-tributario join is allowed when both tributarios share the same
+      // selected padre — same rule as autoSplitJunctionAndSumFlow (draw path).
+      if (
+        other.tipo === 'tributario' &&
+        (other.net === 'af' || other.net === 'ac' || other.net === 'gas') &&
+        other.padre === ram.padre
+      ) {
+        continue;
+      }
+      return true;
     }
   }
   return false;

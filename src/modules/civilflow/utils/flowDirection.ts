@@ -43,3 +43,58 @@ export function isRamalBajanteConnectionAllowed(
   }
   return true;
 }
+
+/**
+ * AF/AC/gas junction validation: unlike san/vent/ll (single trunk direction, enforced by a
+ * separate "must match main's direction" check elsewhere), an af/ac/gas supply main legitimately
+ * branches in several directions from one point — so there's no single direction to match.
+ * Instead every junction must have at least one ramal actually flowing OUT of it (a point where
+ * every touching ramal only flows IN is a dead end with no supply, invalid plumbing). Returns
+ * true if `pt` is not actually a junction (fewer than 2 ramales touch it) or has an outgoing ramal.
+ */
+export function junctionHasOutgoingFlow(
+  ramales: Pick<PlanoRamal, 'net' | 'pts' | '_tribReversed'>[],
+  net: string,
+  pt: number[],
+  tol = 0.5,
+): boolean {
+  let touching = 0;
+  let hasOutgoing = false;
+  for (const r of ramales) {
+    if (r.net !== net || !r.pts || r.pts.length < 2) continue;
+    const p0 = r.pts[0];
+    const p1 = r.pts[r.pts.length - 1];
+    const originPt = r._tribReversed ? p1 : p0;
+    const destPt = r._tribReversed ? p0 : p1;
+    const atOrigin = Math.hypot(originPt[0] - pt[0], originPt[1] - pt[1]) < tol;
+    const atDest = Math.hypot(destPt[0] - pt[0], destPt[1] - pt[1]) < tol;
+    let bodyTouch = false;
+    if (!atOrigin && !atDest) {
+      for (let i = 0; i < r.pts.length - 1; i++) {
+        const [ax, ay] = r.pts[i];
+        const [bx, by] = r.pts[i + 1];
+        const dx = bx - ax;
+        const dy = by - ay;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq < 0.0001) continue;
+        const t = ((pt[0] - ax) * dx + (pt[1] - ay) * dy) / lenSq;
+        if (t < 0 || t > 1) continue;
+        const px = ax + t * dx;
+        const py = ay + t * dy;
+        if (Math.hypot(pt[0] - px, pt[1] - py) < tol) {
+          bodyTouch = true;
+          break;
+        }
+      }
+    }
+    if (!atOrigin && !atDest && !bodyTouch) continue;
+    touching++;
+    // A ramal passing THROUGH pt mid-body (not ending there) continues past the junction in its
+    // own flow direction — that continuation is itself an outgoing leg, same as a ramal whose own
+    // origin sits exactly at pt. Only a ramal whose flow DESTINATION (and nothing past it) lands
+    // at pt contributes no outgoing leg here.
+    if (atOrigin || bodyTouch) hasOutgoing = true;
+  }
+  if (touching < 2) return true;
+  return hasOutgoing;
+}

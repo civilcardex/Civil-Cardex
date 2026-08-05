@@ -43,7 +43,14 @@ export {
   FUERZA_TRACTIVA_MIN,
 } from './defaults';
 
-export { pisoLbl, pisoCorto, pisoCortoLoose, buildBajanteVisualLabel } from './helpers';
+export {
+  pisoLbl,
+  pisoCorto,
+  pisoCortoLoose,
+  buildBajanteVisualLabel,
+  matDrawingLabel,
+  matFullName,
+} from './helpers';
 
 export const LE_K = {
   codos_90_std: 30,

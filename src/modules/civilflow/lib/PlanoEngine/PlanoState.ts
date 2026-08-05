@@ -260,6 +260,11 @@ export interface PlanoRamal {
   // point (that tree is oriented toward the real supply source for the WHOLE network, which for
   // an arbitrary local merge may run either direction relative to it).
   mergesFrom?: [string, string];
+  // DB round-trip only: aparato-id -> cantidad, mirrors what FixturesPanel.tsx keeps in
+  // APARATOS_BY_TRAMO_KEY (localStorage) for this ramal. Not read by the engine itself — attached
+  // here only so storageService.ts can carry it into/out of the `fixtures` DB column; the
+  // localStorage map stays the actual source of truth the UI reads/writes during a session.
+  fixtures?: Record<string, number>;
   // Absolute plane position of a sifón accessory's "S D=..." label, once the user has dragged it
   // away from its default computed position (renderRamales.ts). Undefined = use the default.
   sifonLabelIni?: [number, number];
@@ -322,6 +327,9 @@ export interface PlanoBajante {
   diametro?: string;
   acoDiam?: string;
   capacidad?: string;
+  /** Water-heater simultaneity factor (%), persisted from the heater-selection screen so the
+   * "caudal ajustado" survives reload and follows the user across devices. */
+  factorSim?: number;
   /** Canal recolectora (tipo:'canal', red 'll' only) cross-section, in cm — imported into the
    * "canal recolectora" hydraulic check table (RainChannelsCheck.tsx). x/y is the rectangle's
    * top-left plane corner (not centered, unlike every other bajante-array glyph). */
