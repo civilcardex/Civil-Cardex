@@ -7,6 +7,13 @@ import { pisoCortoLoose as getPisoCorto, matDrawingLabel, APARATO_IMG } from '..
 import { drawRamalPath } from './drawRamalPath';
 import { renderJunctions } from './renderJunctions';
 
+// Module-level image cache for aparato symbols (drawRamalPath + aparato pass below). MUST live
+// here, not inside renderRamales: a per-render cache is wiped on every engine.render(), so the
+// image re-starts loading each pass, never draws, and each onload fires yet another render
+// (infinite reload loop). With a module-level cache the first render kicks off the load, onload
+// stores the image and re-renders once, and the next pass draws it synchronously from the cache.
+const aparatoImgCache = new Map<string, HTMLImageElement | null>();
+
 /**
  * Picks the branch (perpendicular) side for a teeReduccion/teeLado glyph at a junction.
  * `throughDx/throughDy` is the ramal's own direction at the point (for an endpoint: the adjacent
@@ -1378,9 +1385,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   // Draw aparato (fixture) symbols on ramal ends. aparatoInicio/aparatoFin hold a fixture id
   // (APARATOS_DEF id like 'lvm'/'duc') assigned via the "Seleccionar Aparato" dropdown. Fixtures
   // are webp images (APARATO_IMG), not vector paths like accessories, so they render via
-  // ctx.drawImage with an async-loading module-level cache — when an image finally loads, the
-  // engine re-renders so the symbol appears without any user interaction.
-  const aparatoImgCache = new Map<string, HTMLImageElement | null>();
+  // ctx.drawImage with an async-loading module-level cache (see aparatoImgCache above) — when an
+  // image finally loads, the engine re-renders so the symbol appears without any user interaction.
   const getAparatoImg = (src: string): HTMLImageElement | null => {
     if (aparatoImgCache.has(src)) return aparatoImgCache.get(src) || null;
     aparatoImgCache.set(src, null);
@@ -1430,7 +1436,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const outX = idx === 0 ? -dx : dx;
       const outY = idx === 0 ? -dy : dy;
 
-      const rad = engine.realMmToCanvasPx(23) * 0.6;
+      const rad = engine.realMmToCanvasPx(23) * 0.9;
       const size = rad * 2;
       ctx.save();
       // Sit just off the pipe's outward side so the ramal line stays visible under the symbol.
