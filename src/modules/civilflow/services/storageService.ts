@@ -589,6 +589,42 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
       const fixtures = aparatosMap[apKey];
       return fixtures ? { ...r, fixtures } : r;
     });
+    // The heater's own fixtures (assigned straight to the CALENTn bajante, keyed
+    // `ac_<calId>_<planoId>` or `af_<calId>_<planoId>`) have no real ramal to ride on — the
+    // synthetic AC-01-{calId} stub only exists in buildTramos' memory. Persist it here so the
+    // counts survive a reload/another device; loadTrazosFromDB maps it back to the calentador key.
+    const ramalIds = new Set(ramales.map((r) => r.id));
+    for (const cal of (d.bajantes ?? []) as PlanoBajante[]) {
+      if (cal.tipo !== 'calentador') continue;
+      const calId = cal.code || cal.id;
+      const stubId = `AC-01-${calId}`;
+      if (ramalIds.has(stubId)) continue;
+      const fixtures =
+        aparatosMap[`ac_${calId}_${planoId}`] || aparatosMap[`af_${calId}_${planoId}`];
+      if (!fixtures || Object.keys(fixtures).length === 0) continue;
+      ramales.push({
+        id: stubId,
+        net: 'ac',
+        tipo: 'ramal',
+        padre: null,
+        pts: [],
+        totalL: 0,
+        label: stubId,
+        ini: 'AF',
+        fin: calId,
+        piso: String(cal.pisoBase ?? cal.piso ?? 0),
+        dz: '',
+        uc: 0,
+        labelX: 0,
+        labelY: 0,
+        labelAngle: 0,
+        material: '',
+        diametro: '',
+        pendiente: 0,
+        bloqueado: true,
+        fixtures,
+      } as unknown as PlanoRamal);
+    }
     const areas = (d.areas ?? []) as PlanoArea[];
     const dims = (d.dims ?? []) as PlanoDimension[];
     const textAnnots = (d.textAnnots ?? []) as PlanoTextAnnotation[];
@@ -711,7 +747,13 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
     const mergedAparatos = { ...existingAparatos };
     for (const r of (work.ramales ?? []) as PlanoRamal[]) {
       if (!r.fixtures || Object.keys(r.fixtures).length === 0) continue;
-      const apKey = `${r.net}_${r.id}_${planoId}`;
+      // Synthetic heater stubs (AC-01-{calId}, persisted by saveTrazosToDB so the CALENTn
+      // bajante's fixtures survive) must land back under the key the stub builder/FixturesPanel
+      // actually read: `ac_<calId>_<planoId>` — not `ac_AC-01-<calId>_<planoId>`.
+      const apKey =
+        r.id.startsWith('AC-01-') && r.net === 'ac'
+          ? `ac_${r.id.slice('AC-01-'.length)}_${planoId}`
+          : `${r.net}_${r.id}_${planoId}`;
       if (!mergedAparatos[apKey]) {
         mergedAparatos[apKey] = r.fixtures;
         aparatosChanged = true;

@@ -219,6 +219,18 @@ export function buildTramos(
       // isAC1 ramal's key to the contador's key here made it silently read whatever stray data
       // sat under `af_${cntId}_${planId}` instead of its own assigned fixtures (phantom UD).
       const apKey = r._aparatosKey || `${family}_${r.id}_${planId}`;
+      // A persisted heater stub (AC-01-{calId}, written by saveTrazosToDB so the CALENTn
+      // bajante's fixtures survive) reads its own key `ac_AC-01-<calId>_<planId>` from the sync,
+      // but FixturesPanel's mirror puts the counts under `ac_<calId>_<planId>` — merge both.
+      let fixturesMap = aparatos[apKey] || {};
+      if (family === 'ac' && r.id.startsWith('AC-01-')) {
+        const calId = r.id.slice('AC-01-'.length);
+        fixturesMap = {
+          ...(aparatos[`af_${calId}_${planId}`] || {}),
+          ...(aparatos[`ac_${calId}_${planId}`] || {}),
+          ...fixturesMap,
+        };
+      }
       const extra = hidroData[apKey] || {};
       let dznSalidas = r.nSalidas || 1;
       let dzLvert = Number(r.lvert ?? r.dz ?? 0);
@@ -239,7 +251,7 @@ export function buildTramos(
         _net: r._net || family,
         tipo: r.tipo || 'ramal',
         esBajante: false,
-        fixtures: aparatos[apKey] || {},
+        fixtures: fixturesMap,
         accesorios: extra.accesorios || {},
         Lh: extra.Lh || 0,
         Lv: family === 'ac' && (isAC1 || isAC2) ? 0 : dzLvert,
@@ -308,7 +320,11 @@ export function buildTramos(
         if (!hasAC1) {
           const rId = `AC-01-${calId}`;
           const apKey = `ac_${calId}_${planId}`;
-          const extra = hidroData[apKey] || {};
+          // The heater's fixtures may have been written under the AF key when the user assigned
+          // them while anchored on the AF network (see FixturesPanel's calentador netId rule) —
+          // merge both so nothing already saved is lost.
+          const calAfKey = `af_${calId}_${planId}`;
+          const extra = { ...(hidroData[calAfKey] || {}), ...(hidroData[apKey] || {}) };
           const pisoCal =
             typeof cal.piso === 'number' ? cal.piso : parseInt(String(cal.pisoBase || nivel));
           incoming.push({
@@ -319,7 +335,7 @@ export function buildTramos(
             _net: 'ac',
             tipo: 'ramal',
             esBajante: false,
-            fixtures: aparatos[apKey] || {},
+            fixtures: { ...(aparatos[calAfKey] || {}), ...(aparatos[apKey] || {}) },
             accesorios: extra.accesorios || {},
             Lh: extra.Lh || 0,
             Lv: 0,

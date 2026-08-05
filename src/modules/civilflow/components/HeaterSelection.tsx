@@ -22,7 +22,6 @@ const HeaterSelection_S1: React.CSSProperties = {
 export default function HeaterSelection() {
   const { tramosAc } = useTramos();
   const { plans } = usePlans();
-  const [factorSim, setFactorSim] = useState(50);
 
   const selectedHeaterTram = useMemo(
     () => tramosAc.find((t) => t.calCapacidad !== undefined),

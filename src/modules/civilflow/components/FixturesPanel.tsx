@@ -136,6 +136,7 @@ interface SelectableTarget {
   label?: string;
   code?: string;
   mergesFrom?: [string, string];
+  net?: string;
 }
 
 function isCountableTarget(el: SelectableTarget | null): boolean {
@@ -225,7 +226,11 @@ const AparatosPanel = memo(function AparatosPanel_({
     }
   }, [counts, hidroData, plans]);
 
-  const netId = activeNet;
+  // A heater bajante is always an AC element (net 'ac') even though the user anchors it while on
+  // the AF network — its fixtures must land on `ac_<id>_<planId>` so the synthetic AC-01-{id}
+  // ramal (buildTramos) picks them up on the heater-selection table. Using activeNet here would
+  // write them under `af_<id>_<planId>` and the heater table would read nothing.
+  const netId = selElement?.tipo === 'calentador' ? selElement.net || 'ac' : activeNet;
   const isGas = netId === GAS_ID;
   const isHidro = HIDROSAN_IDS.has(netId);
   const isAfAc = netId === 'af' || netId === 'ac';

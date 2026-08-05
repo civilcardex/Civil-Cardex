@@ -227,14 +227,30 @@ function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): S
         }
       }
       const planoKey = family + '_' + nivel;
-      if (ramales.length === 0) continue;
+      const bajantes = (data.bajantes || [])
+        .filter((b) => b.net === family)
+        .map((b) => ({
+          id: b.id,
+          code: b.code || b.id,
+          tipo: b.tipo,
+          net: b.net,
+          x: b.x,
+          y: b.y,
+          pisoBase: b.pisoBase,
+          pisoCima: b.pisoCima,
+        }));
+      // Keep the prefixed plane even with zero ramales when the floor hosts bajantes (e.g. a
+      // heater anchored on the AF drawing with no AC ramal drawn yet) — buildTramos generates
+      // the synthetic AC-01-{calId} stub per prefixed plane, and without it the heater's
+      // fixtures never reach the heater-selection tables.
+      if (ramales.length === 0 && bajantes.length === 0) continue;
       out.planes[planoKey] = {
         planoId: plan.id,
         planoName: plan.name || '',
         nivel,
         npt: plan.npt ?? parseInt(nivel),
         ramales,
-        bajantes: [],
+        bajantes,
       };
     }
   }
