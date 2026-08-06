@@ -68,15 +68,15 @@ import {
   selectAt as _selectAt,
   selectById as _selectById,
   getSelected as _getSelected,
-  deleteSelected as _deleteSelected,
   updateSelected as _updateSelected,
   updateElementById as _updateElementById,
   rotateLabelSnap as _rotateLabelSnap,
   resetLabel as _resetLabel,
-  handleSelectDown,
-  handleDragMove,
-  handleDragUp,
 } from './PlanoEngineSelection';
+import { deleteSelected as _deleteSelected } from './deleteSelected';
+import { handleSelectDown } from './handleMouseDown';
+import { handleDragMove } from './handleDragMove';
+import { handleDragUp } from './handleDragUp';
 import {
   getElementsByNet as _getElementsByNet,
   setNetHidden as _setNetHidden,
@@ -145,9 +145,10 @@ export interface ElementItem {
 }
 
 /**
- * Core CAD engine for civil engineering plan drafting.
- * Manages zoom/pan, tool state, element arrays (ramales, bajantes, areas, dims, text),
- * snap logic, network layering, undo/redo history, and canvas rendering pipeline.
+ * Motor CAD central para el dibujo de planos de ingeniería civil.
+ * Gestiona zoom/pan, el estado de la herramienta, los arrays de elementos (ramales, bajantes,
+ * áreas, cotas, textos), el snap, las capas por red, el historial de deshacer/rehacer y el
+ * pipeline de renderizado del canvas.
  */
 export default class PlanoEngine implements IPlanoEngineCore {
   cw: HTMLElement;
@@ -316,9 +317,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   private _rafId: number | null = null;
 
   /**
-   * @param cw - Container element (the viewport wrapper).
-   * @param pdfWrap - PDF canvas wrapper element (for PDF background).
-   * @param canv - Drawing canvas element.
+   * @param cw - Elemento contenedor (el wrapper del viewport).
+   * @param pdfWrap - Elemento wrapper del canvas de PDF (fondo PDF).
+   * @param canv - Elemento canvas de dibujo.
    */
   constructor(cw: HTMLElement, pdfWrap: HTMLElement | null, canv: HTMLCanvasElement) {
     this.cw = cw;
@@ -421,11 +422,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._loadedPlanId = null;
   }
 
-  /** Register callback for element selection changes. */
+  /** Registra el callback de cambios de selección de elemento. */
   onSelect(cb: SelectCallback): void {
     this._onSelectCb = cb;
   }
-  /** Register callback for status bar messages. */
+  /** Registra el callback de mensajes de la barra de estado. */
   onStatus(cb: StatusCallback): void {
     this._onStatusCb = cb;
   }
@@ -447,11 +448,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
   onUpdate(cb: UpdateCallback): void {
     this._onUpdateCb = cb;
   }
-  /** Register callback for dirty state (work modified). */
+  /** Registra el callback de estado sucio (trabajo modificado). */
   onDirty(cb: DirtyCallback): void {
     this._onDirtyCb = cb;
   }
-  /** Register callback for element deletion events. */
+  /** Registra el callback de eventos de borrado de elementos. */
   onDelete(cb: (ids: string[]) => void): void {
     this._onDeleteCb = cb;
   }
@@ -525,24 +526,26 @@ export default class PlanoEngine implements IPlanoEngineCore {
     return ((mm * 96) / 25.4) * this.zoom;
   }
 
-  // Inverse of pxToM: converts a REAL length in cm to plane-coordinate px (same space as
-  // ramal/bajante x/y — zoom/pan-independent), so a canal's drawn base/altura rectangle scales
-  // with the plan's real drawing scale the same way ramal totalL (via pxToM) already ties
-  // plane-coordinate distance to real-world length.
+  // Inversa de pxToM: convierte una longitud REAL en cm a px de coordenada de plano (el mismo
+  // espacio que las x/y de ramales/bajantes — independiente de zoom/pan), para que el
+  // rectángulo de base/altura dibujado de un canal escale con la escala real del plano igual
+  // que totalL de un ramal (vía pxToM) ya ata la distancia de coordenada de plano a la
+  // longitud real.
   cmToPlanePx(cm: number): number {
     return ((cm / 100) * 96) / (2.54 * (this.scaleM || 0.5));
   }
 
-  // cmToPlanePx then applied to the current canvas transform — for rendering only; never use
-  // this to store geometry (it changes with zoom).
+  // cmToPlanePx aplicado a la transformación actual del canvas — solo para renderizar; nunca
+  // usar esto para guardar geometría (cambia con el zoom).
   cmToCanvasPx(cm: number): number {
     return this.cmToPlanePx(cm) * this.zoom;
   }
 
   realMmToCanvasPx(realRadiusMm: number): number {
-    // Floor kept small on purpose: at common architectural scales (1:50 etc.) these symbols
-    // must fit inside a ~15cm wall, which is only ~3mm on paper at 1:50 — a generous floor here
-    // would make them scale-inaccurate (visibly larger than the wall they sit inside).
+    // El piso se deja pequeño a propósito: en escalas arquitectónicas comunes (1:50, etc.)
+    // estos símbolos deben caber dentro de una pared de ~15cm, que en papel a 1:50 son solo
+    // ~3mm — un piso generoso aquí los haría imprecisos de escala (visiblemente más grandes
+    // que la pared donde están).
     const MIN_PAPER_MM = 1;
     const defScale = this.definedScaleM || this.scaleM || 0.5;
     const paperMm = realRadiusMm / (100 * defScale);
@@ -579,7 +582,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (this._onDeleteCb) this._onDeleteCb(ids);
   }
 
-  /** Mark work as dirty: recalculate network connections, accessories, save history snapshot, fire onDirty callback. */
+  /** Marca el trabajo como sucio: recalcula conexiones de red y accesorios, guarda un snapshot
+   *  de historial y dispara el callback onDirty. */
   _markDirty(): void {
     this._dirty = true;
     autoDetectRamalConnections(this);
@@ -598,9 +602,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
     const dist = Math.hypot(dx, dy);
     if (dist < 0.001) return { x: x1, y: y1 };
     const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
-    // Some redes only permit certain headings (see checkRamalAngles): af/ac tributarios must
-    // land on a 90° grid, everything else (incl. san/ll, which has no fixed-heading rule of its
-    // own) uses the looser 45° grid — snapping to 45° there never produces an invalid angle.
+    // Algunas redes solo permiten ciertas orientaciones (ver checkRamalAngles): los tributarios
+    // de af/ac deben caer en una cuadrícula de 90°, todo lo demás (incl. san/ll, que no tiene
+    // regla propia de orientación fija) usa la cuadrícula más laxa de 45° — pegar a 45° ahí
+    // nunca produce un ángulo inválido.
     const isTributarioAcAf = (net === 'af' || net === 'ac') && tipo === 'tributario';
     const allowed = isTributarioAcAf ? [0, 90, 180, -90] : [0, 45, 90, 135, 180, -135, -90, -45];
     let best = 0,
@@ -620,9 +625,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
     let best: Point | null = null;
     let minD = 16 / this.zoom;
     this.ramales.forEach((r) => {
-      // Never snap across networks — elements from different redes must not connect just
-      // because they're visually close. Exception: ventilación is meant to land exactly on a
-      // sanitaria point (the existing reventilado marker relies on that), so allow that one pair.
+      // Nunca pegar entre redes — elementos de redes distintas no deben conectarse solo porque
+      // están visualmente cerca. Excepción: ventilación debe caer exactamente sobre un punto de
+      // sanitaria (el marcador de reventilado existente depende de eso), así que se permite ese
+      // único par.
       if (!netsSnapLinked(r.net, this.activeNet)) return;
       r.pts.forEach(([rx, ry], idx) => {
         let thresh = 16 / this.zoom;
@@ -743,11 +749,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
     return _calcPolyArea(this, pts);
   }
 
-  /** @param t - Tool to activate (sel, line, dim, text, baj, mon, pan, area, erase, etc). */
+  /** @param t - Herramienta a activar (sel, line, dim, text, baj, mon, pan, area, erase, etc). */
   setTool(t: ToolType): void {
     _setTool(this, t);
   }
-  /** @param id - Network ID to set as active (af, ac, san, vent, ll, gas). Fires active net change callback. */
+  /** @param id - Id de red a fijar como activa (af, ac, san, vent, ll, gas). Dispara el callback
+   *  de cambio de red activa. */
   setActiveNet(id: string): void {
     if (this.activeNet !== id) {
       this.activeNet = id;
@@ -759,7 +766,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   setTipoTramo(t: TramoType): void {
     this.tipoTramo = t;
   }
-  /** @param v - Enable/disable angle snapping. */
+  /** @param v - Activar/desactivar el snap de ángulos. */
   setSnap(v: boolean): void {
     this.snapMode = v;
   }
@@ -777,7 +784,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     _setRamalDefaults(this, d);
   }
 
-  /** @param v - Scale factor (e.g. 1 for 1:100, 0.5 for 1:50). Accepts string or number. */
+  /** @param v - Factor de escala (p.ej. 1 para 1:100, 0.5 para 1:50). Acepta string o número. */
   setScaleM(v: string | number): void {
     _setScaleM(this, v);
   }
@@ -792,7 +799,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
     _setNetLocked(this, netId, locked);
   }
 
-  /** @param netId - Network ID. Returns flattened element list (ramales, bajantes, areas) for that network. */
+  /** @param netId - Id de red. Devuelve la lista plana de elementos (ramales, bajantes, áreas)
+   *  de esa red. */
   getElementsByNet(netId: string): ElementItem[] {
     return _getElementsByNet(this, netId);
   }
@@ -839,18 +847,20 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   /**
-   * Erase / trim logic used by the borrador tool — exposed publicly so the keyboard handler
-   * can route Supr/Delete through the same "trim endpoint segment when there is one, otherwise
-   * delete the whole element" rule instead of always calling deleteSelected.
+   * Lógica de borrado/recorte usada por la herramienta borrador — expuesta públicamente para
+   * que el manejador de teclado pueda enrutar Supr/Delete por la misma regla "recortar el
+   * segmento de extremo si lo hay, si no borrar el elemento completo" en vez de siempre llamar
+   * a deleteSelected.
    */
   handleEraseDown(x: number, y: number): void {
     handleEraseDown(this, x, y);
   }
 
   /**
-   * Same trim-or-delete rule applied directly to a known-selected ramal — used by the keyboard
-   * handler, which already has `sel` and cannot run handleEraseDown (it would re-run selectAt
-   * against the cursor and lose the selection when the cursor had moved off the ramal).
+   * La misma regla de recortar-o-borrar aplicada directamente a un ramal ya seleccionado — la
+   * usa el manejador de teclado, que ya tiene `sel` y no puede ejecutar handleEraseDown (volvería
+   * a correr selectAt contra el cursor y perdería la selección cuando el cursor se hubiera
+   * alejado del ramal).
    */
   eraseRamalAt(r: unknown, x: number, y: number): void {
     eraseRamalAt(this, r as Parameters<typeof eraseRamalAt>[1], x, y);
@@ -868,11 +878,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
   finishArea(): void {
     _finishArea(this);
   }
-  /** Undo last history snapshot. */
+  /** Deshace el último snapshot de historial. */
   undoLast(): void {
     this._history.undoLast();
   }
-  /** Redo last undone snapshot. */
+  /** Rehace el último snapshot deshecho. */
   redoLast(): void {
     this._history.redoLast();
   }
@@ -907,12 +917,14 @@ export default class PlanoEngine implements IPlanoEngineCore {
     _doRenumberAreas(this);
   }
 
-  /** Serialize all work data (elements, state, levels) to a JSON-serializable object. */
+  /** Serializa todos los datos de trabajo (elementos, estado, niveles) a un objeto serializable
+   *  a JSON. */
   saveWork(): import('./PlanoPersistence').PlanoWorkData {
     return serializeWork(this);
   }
 
-  /** Deserialize and apply a previously saved work object. @param json - JSON string or parsed object. */
+  /** Deserializa y aplica un objeto de trabajo previamente guardado. @param json - String JSON o
+   *  objeto parseado. */
   loadWork(json: string | object): void {
     try {
       const d = (typeof json === 'string'
@@ -951,7 +963,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
     }
   }
 
-  /** @param delta - Zoom increment (positive = zoom in). @param cx - Center X in canvas coords (defaults to center). @param cy - Center Y. */
+  /** @param delta - Incremento de zoom (positivo = acercar). @param cx - Centro X en coords de
+   *  canvas (por defecto el centro). @param cy - Centro Y. */
   doZoom(delta: number, cx?: number, cy?: number): void {
     if (cx === undefined) {
       cx = this.cw.clientWidth / 2;
@@ -964,7 +977,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.render();
   }
 
-  /** Fit the PDF page within the viewport with padding. */
+  /** Ajusta la página PDF dentro del viewport con margen. */
   fitPage(): void {
     if (!this.pageW || !this.pageH) return;
     const s = Math.min(
@@ -977,7 +990,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.render();
   }
 
-  /** Full redraw: clear canvas, reposition PDF wrap, render all layers (grid, dims, texts, areas, ramales, crossings, bajantes, ghosts, active elements). */
+  /** Redibujo completo: limpia el canvas, reposiciona el wrapper del PDF y renderiza todas las
+   *  capas (cuadrícula, cotas, textos, áreas, ramales, cruces, bajantes, fantasmas, elementos
+   *  activos). */
   render(): void {
     const ctx = this.ctx;
     const w = this.canv.width,
@@ -1041,7 +1056,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     }
 
     if (e instanceof MouseEvent && e.button === 2) {
-      // Right-click during ramal drawing: finish ramal
+      // Clic derecho durante el dibujo de un ramal: terminar el ramal
       if (this.activeRamal && this.tool === 'line') {
         this.finishRamal();
         return;
@@ -1049,7 +1064,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       const hit = hitTestRightClick(this, x, y, e.clientX, e.clientY);
       if (hit) {
         const el = hit.element;
-        // Don't change selection on right-click — just show the context menu
+        // No cambiar la selección con el clic derecho — solo mostrar el menú contextual
         if (this._onContextMenuCb) {
           this._onContextMenuCb(
             el,
@@ -1065,7 +1080,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
       return;
     }
 
-    // Double-click during ramal drawing: finish ramal (only effective on left button)
+    // Doble clic durante el dibujo de un ramal: terminar el ramal (solo efectivo con botón
+    // izquierdo)
     if (e instanceof MouseEvent && e.detail >= 2 && this.activeRamal && this.tool === 'line') {
       this.finishRamal();
       return;
@@ -1088,14 +1104,15 @@ export default class PlanoEngine implements IPlanoEngineCore {
     if (this.tool === 'sel') {
       const lblDragResult = hitTestBajanteLabelForDrag(this, x, y);
       if (lblDragResult) {
-        // This hit-test only ever matches the bajante's own REAL label position (_labelBox /
-        // labelX,Y) — it never checks the ghost's displaced _ghostLabelBox — so it is always a
-        // parent-label drag. _lblDragIsParent must be set here explicitly: this path bypasses
-        // handleSelectDown entirely (early return), so without this it kept whatever stale value
-        // was left over from the PREVIOUS interaction. If that previous interaction had selected
-        // the same bajante's GHOST rendering (_lblDragIsParent left false), dragging what looked
-        // like the real label here silently wrote into ghostData instead — moving the ghost to
-        // the click position rather than the real label the user was actually dragging.
+        // Este hit-test solo coincide con la posición REAL de la etiqueta del bajante (_labelBox
+        // / labelX,Y) — nunca revisa el _ghostLabelBox desplazado del fantasma — así que siempre
+        // es un arrastre de etiqueta del padre. _lblDragIsParent debe fijarse aquí explícitamente:
+        // esta ruta se saltea handleSelectDown por completo (retorno temprano), así que sin esto
+        // conservaba cualquier valor viejo de la INTERACCIÓN ANTERIOR. Si esa interacción previa
+        // había seleccionado el renderizado FANTASMA del mismo bajante (_lblDragIsParent en
+        // false), arrastrar lo que parecía la etiqueta real aquí escribía en silencio en
+        // ghostData — moviendo el fantasma a la posición del clic en vez de la etiqueta real que
+        // el usuario arrastraba.
         this._lblDragIsParent = true;
         this.lblDrag = lblDragResult;
         return;
@@ -1223,11 +1240,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.setTool('line');
       e.preventDefault();
     } else if (k === 'c') {
-      // 'C' does double duty: Contador on af/gas, Canal on ll — the two nets are mutually
-      // exclusive (only one is ever the active net), so there's no real collision.
-      // Mirrors PdfViewerToolbar's isToolDisabledForNet('canal', ...) gating for the canal
-      // case — the shortcut shouldn't bypass the same "canal recolectora must be active" rule
-      // the button enforces.
+      // 'C' hace doble función: Contador en af/gas, Canal en ll — las dos redes son mutuamente
+      // excluyentes (solo una es la red activa a la vez), así que no hay colisión real.
+      // Espejo de la condición isToolDisabledForNet('canal', ...) de PdfViewerToolbar para el
+      // caso del canal — el atajo no debe saltarse la regla "canal recolectora debe estar
+      // activa" que el botón aplica.
       if (
         this.activeNet === 'll' &&
         (!this.activeNetworks || this.activeNetworks.has('recolectora'))
@@ -1238,8 +1255,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
       }
       e.preventDefault();
     } else if (k === 'h') {
-      // Heater is ac/gas-only: the af toolbar button was removed, so the shortcut must
-      // not bypass the same gating.
+      // El calentador es solo ac/gas: el botón de af se quitó de la barra, así que el atajo no
+      // debe saltarse la misma restricción.
       if (['ac', 'gas'].includes(this.activeNet)) {
         this.setTool('calent');
       }
@@ -1254,9 +1271,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.setTool('text');
       e.preventDefault();
     }
-    // Bajante only on san/vent/ll, montante only on gas/ac/af — same rule PdfViewerToolbar.tsx
-    // enforces on its buttons (isToolDisabledForNet); duplicated here as a plain check rather than
-    // imported, since lib/PlanoEngine must not depend on components/.
+    // Bajante solo en san/vent/ll, montante solo en gas/ac/af — misma regla que PdfViewerToolbar.tsx
+    // aplica en sus botones (isToolDisabledForNet); duplicada aquí como chequeo plano en vez de
+    // importada, porque lib/PlanoEngine no debe depender de components/.
     else if (k === 'b') {
       if (['san', 'vent', 'll'].includes(this.activeNet)) {
         this.setTool('baj');
@@ -1326,7 +1343,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
           this.multiSel = [];
         } else if (this.selId) {
           const sel = this.getSelected() as Record<string, unknown> | null;
-          // Single ramal with >2 pts: trim last segment (most intuitive keyboard undo)
+          // Ramal único con más de 2 puntos: recortar el último segmento (el deshacer de teclado
+          // más intuitivo)
           if (sel?.tipo === 'ramal' && Array.isArray(sel.pts) && sel.pts.length > 2) {
             const lastPx = (sel.pts[sel.pts.length - 1] as number[])[0];
             const lastPy = (sel.pts[sel.pts.length - 1] as number[])[1];

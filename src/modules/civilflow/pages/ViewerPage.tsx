@@ -116,7 +116,7 @@ export default function ViewerPage() {
       const saved = loadFromStorage<string[] | null>(ACTIVE_NETS_KEY, null);
       if (saved) return new Set(saved);
     } catch {
-      // ignore
+      // ignorar
     }
     return new Set();
   });
@@ -143,15 +143,15 @@ export default function ViewerPage() {
     'Visor de planos PDF con superposición de redes hidrosanitarias. Herramientas de dibujo, calibración y medición.',
   );
 
-  // Clamped activeIndex for safe rendering
+  // activeIndex recortado para un render seguro
   const activeIndex = plans.length > 0 ? Math.min(rawActiveIndex, plans.length - 1) : 0;
 
-  // Resolve saved plan ID once when plans become available, and check bounds
+  // Resuelve el plan guardado por ID una sola vez cuando los planos están disponibles, y verifica límites
   useEffect(() => {
     if (plans.length === 0) return;
     if (rawActiveIndex >= plans.length) {
-      // Render already uses the clamped `activeIndex` above — this only corrects the
-      // persisted rawActiveIndex so it doesn't keep re-deriving every render.
+      // El render ya usa el `activeIndex` recortado de arriba — aquí solo se corrige el
+      // rawActiveIndex persistido para que no siga re-derivándose en cada render.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveIndex(plans.length - 1);
     } else if (!planIdResolvedRef.current) {
@@ -165,7 +165,7 @@ export default function ViewerPage() {
           }
         }
       } catch {
-        // ignore
+        // ignorar
       }
     }
   }, [plans, rawActiveIndex]);
@@ -176,7 +176,7 @@ export default function ViewerPage() {
       const plan = plans[activeIndex];
       if (plan) localStorage.setItem(VISOR_ACTIVE_PLAN_ID_KEY, String(plan.id));
     } catch {
-      // ignore
+      // ignorar
     }
   }, [activeIndex, plans]);
 

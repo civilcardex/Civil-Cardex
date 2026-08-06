@@ -14,24 +14,14 @@ import { uploadPlanPDF, deletePlanPDF, downloadPlanPDF } from '../services/pdfSt
 import { saveProyectoPlansMeta, loadProyectoData } from '../services/proyectoDataService';
 import { PLANS_META_KEY, ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
 import { devError } from '../../../utils/devError';
+import type { PlanMeta } from '../lib/shared/projectTypes';
+export type { PlanMeta } from '../lib/shared/projectTypes';
 
 function getActiveProyectoId(): number | null {
   const raw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
   return raw ? Number(raw) : null;
 }
 
-export interface PlanMeta {
-  id: number;
-  name: string;
-  nivel: number | null;
-  scale: number;
-  status: string;
-  origen?: { x_px: number; y_px: number } | null;
-  factorX?: number | null;
-  factorY?: number | null;
-  calGlobal?: boolean | null;
-  definedScale?: number | null;
-}
 export interface PlanItem {
   id: number;
   file: File;
@@ -45,7 +35,7 @@ export interface PlanItem {
   calGlobal?: boolean | null;
   definedScale?: number | null;
 }
-/** Plan state management API — provides plan list, error state, and CRUD operations (add, remove, update, confirm, reset, restore). */
+/** API de gestión del estado de planos — lista de planos, estado de error y operaciones CRUD (add, remove, update, confirm, reset, restore). */
 interface PlansContextValue {
   plans: PlanItem[];
   error: string | null;
@@ -56,10 +46,10 @@ interface PlansContextValue {
   confirmPlan: (id: number) => void;
   resetPlans: () => void;
   restorePlans: (items: PlanItem[]) => void;
-  /** Suspends the debounced cloud-save effect. See ProjectContext.pauseCloudSync — same
-   * reasoning applies here: callers that reset `plans` and then asynchronously restore it
-   * from Supabase must pause first or the reset's empty list gets saved (deleting every
-   * planos row) before the restore runs. */
+  /** Suspende el efecto de guardado en la nube con debounce. Ver ProjectContext.pauseCloudSync
+   * — aplica el mismo razonamiento: quien resetea `plans` y luego lo restaura de forma
+   * asíncrona desde Supabase debe pausar primero o la lista vacía del reset se guarda
+   * (borrando cada fila de planos) antes de que corra la restauración. */
   pauseCloudSync: () => void;
   resumeCloudSync: () => void;
 }
@@ -81,17 +71,18 @@ function persistMeta(plans: (PlanItem | PlanMeta)[]) {
   }
 }
 
-/** Wraps children with plan state, restoring PDFs from IndexedDB on mount and persisting metadata to localStorage + cloud backup. Debounces cloud saves (1200ms) after restore is done. */
+/** Envuelve a los hijos con el estado de planos: restaura los PDFs desde IndexedDB al montar y persiste la metadata en localStorage + respaldo en la nube. Debouncea los guardados en la nube (1200ms) una vez terminada la restauración. */
 export function PlansProvider({ children }: { children?: ReactNode }) {
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const restoredRef = useRef(false);
   const [restoreDone, setRestoreDone] = useState(false);
-  // Distinct from restoreDone (which only means "local IndexedDB restore settled"): the
-  // debounced cloud-backup effect below must not fire until the cloud-restore effect has
-  // also settled, or an empty `plans` (still being restored from the cloud) races the
-  // 1200ms save timer and can overwrite real cloud data with an empty array before the
-  // restore finishes reading it — losing every plano on refresh/relogin/reopen.
+  // Distinto de restoreDone (que solo significa "la restauración local desde IndexedDB
+  // terminó"): el efecto de respaldo en la nube con debounce de abajo no debe dispararse
+  // hasta que el efecto de restauración desde la nube también haya terminado, o un `plans`
+  // vacío (aún restaurándose desde la nube) compite contra el timer de 1200ms y puede
+  // sobrescribir los datos reales con un array vacío antes de que la restauración termine
+  // de leerlos — perdiendo todos los planos en refresh/re-login/reapertura.
   const [cloudRestoreDone, setCloudRestoreDone] = useState(false);
   const errorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -105,8 +96,8 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
   useEffect(() => {
     if (restoredRef.current) return;
     restoredRef.current = true;
-    // One-time mount guard for an async localStorage restore below — not derivable from
-    // props/state available during render.
+    // Guarda de una sola ejecución para la restauración asíncrona desde localStorage de
+    // abajo — no se puede derivar de props/estado disponibles durante el render.
     if (plans.length > 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setRestoreDone(true);
@@ -129,11 +120,11 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
           const cleanId = Math.floor(m.id);
           const file = await loadPDF(m.id);
           if (file) {
-            // Save under clean integer ID in IndexedDB
+            // Guarda el PDF bajo el ID entero limpio en IndexedDB para que el resto del flujo lo encuentre con el ID ya saneado.
             await storePDF(cleanId, file);
             await deletePDF(m.id);
 
-            // Rename localStorage trazos key if present
+            // Renombra la clave de trazos en localStorage si existe, para que los trazos sigan al plan con el ID corregido y no queden huérfanos con el ID decimal.
             const oldTrazosKey = `trazos_${m.id}`;
             const newTrazosKey = `trazos_${cleanId}`;
             const oldTrazos = loadFromStorage(oldTrazosKey, null);
@@ -180,24 +171,26 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       if (restored.length > 0) setPlans(restored);
       setRestoreDone(true);
     })();
-    // Intentionally mount-once (guarded by restoredRef above) — plans.length is only read for
-    // the guard's current value at that single execution, not meant to re-run on every change.
+    // Montaje único a propósito (protegido por restoredRef arriba) — plans.length solo se lee
+    // para el valor actual de la guarda en esa única ejecución, no para re-correr en cada cambio.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cloud restore: same reasoning as ProjectContext — a fresh browser has no localStorage
-  // plan metadata and no IndexedDB PDFs, but Supabase holds both (planos table + plan_pdfs
-  // bucket). Runs once after the local restore finishes, only when the local list is empty,
-  // and re-caches everything locally so subsequent visits are offline-first again.
-  // No mount-once ref: in dev StrictMode mounts the effect twice, and a ref would let the
-  // first (aborted) run permanently block the second one. The ignore flag alone is enough
-  // — it only cancels the in-flight fetch on a real unmount.
+  // Restauración desde la nube: mismo razonamiento que ProjectContext — un navegador nuevo
+  // no tiene metadata de planos en localStorage ni PDFs en IndexedDB, pero Supabase guarda
+  // ambos (tabla planos + bucket plan_pdfs). Corre una sola vez después de que termina la
+  // restauración local, solo cuando la lista local está vacía, y vuelve a cachear todo
+  // localmente para que las visitas siguientes sean offline-first de nuevo.
+  // Sin ref de montaje único: en dev StrictMode monta el efecto dos veces y un ref dejaría
+  // que la primera corrida (abortada) bloquee para siempre a la segunda. El flag ignore
+  // alcanza — solo cancela el fetch en vuelo en un desmontaje real.
   useEffect(() => {
     if (!restoreDone) return;
     const proyectoId = getActiveProyectoId();
     if (!proyectoId || plans.length > 0) {
-      // One-time mount guard for the async cloud restore below — not derivable from
-      // props/state available during render (plans.length settles async via IndexedDB).
+      // Guarda de una sola ejecución para la restauración asíncrona desde la nube de abajo
+      // — no se puede derivar de props/estado disponibles durante el render (plans.length
+      // se asienta de forma asíncrona vía IndexedDB).
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setCloudRestoreDone(true);
       return;
@@ -237,7 +230,8 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     return () => {
       ignore = true;
     };
-    // Mount-once after local restore — plans.length is only read for the emptiness guard.
+    // Montaje único después de la restauración local — plans.length solo se lee para la
+    // guarda de lista vacía.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restoreDone]);
 
@@ -246,10 +240,10 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     persistMeta(plans);
   }, [plans, restoreDone]);
 
-  // Debounced cloud backup of the plans list (metadata only — PDF binaries upload
-  // separately as they're added). Same debounce spirit as usePersistedState, just
-  // gated on restoreDone so it never fires with a stale empty list before the
-  // local IndexedDB restore above has had a chance to populate `plans`.
+  // Respaldo en la nube con debounce de la lista de planos (solo metadata — los binarios PDF
+  // suben por separado conforme se agregan). Mismo espíritu de debounce que usePersistedState,
+  // pero condicionado a restoreDone para que jamás dispare con una lista vacía vieja antes de
+  // que la restauración local desde IndexedDB haya tenido oportunidad de poblar `plans`.
   useEffect(() => {
     if (!cloudRestoreDone) return;
     const proyectoId = getActiveProyectoId();
@@ -362,7 +356,7 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
   return <PlansContext.Provider value={value}>{children}</PlansContext.Provider>;
 }
 
-/** Consumer hook for PlansContext — returns {plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan, resetPlans, restorePlans}. Throws if used outside PlansProvider. */
+/** Hook consumidor de PlansContext — devuelve {plans, error, setError, addPlans, removePlan, updatePlan, confirmPlan, resetPlans, restorePlans}. Lanza error si se usa fuera de PlansProvider. */
 export function usePlans() {
   const ctx = useContext(PlansContext);
   if (!ctx) throw new Error('usePlans must be used within PlansProvider');

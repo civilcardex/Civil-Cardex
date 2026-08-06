@@ -1,7 +1,8 @@
-import type { CrossFloorGhost } from '../../utils/associateBajanteAcrossFloors';
+import type { LabelBoxCorners, CrossFloorGhost } from '../shared/crossFloorGhostTypes';
+export type { LabelBoxCorners, CrossFloorGhost } from '../shared/crossFloorGhostTypes';
 
-/** Drawing-engine network definitions (color, prefix, riser type, icon).
- *  For UI display labels/icons use uiConfig.REDES instead. */
+/** Definiciones de las redes que dibuja el motor (color, prefijo de etiqueta, tipo de bajante, icono).
+ *  Para los nombres/iconos que se muestran en la interfaz, usar uiConfig.REDES en su lugar. */
 export const NETS = [
   {
     id: 'af',
@@ -127,19 +128,6 @@ export interface PlanoNet {
   name: string;
 }
 
-export interface LabelBoxCorners {
-  cx: number;
-  cy: number;
-  w: number;
-  h: number;
-  angle: number;
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-  corners: { x: number; y: number }[];
-}
-
 export interface CanvasBox {
   x: number;
   y: number;
@@ -147,21 +135,22 @@ export interface CanvasBox {
   h: number;
 }
 
-/** Checks whether a network id is in the engine's active-network set.
- *  @param engine Engine instance
- *  @param netId Network id to check
- *  @returns true if the net is active (or no active-set exists) */
+/** ¿Está activa esta red? — Consulta el conjunto de redes activas del motor; si no hay conjunto
+ *  definido, todas las redes se consideran activas.
+ *  @param engine Instancia del motor
+ *  @param netId Id de la red a consultar
+ *  @returns true si la red está activa (o si no existe un conjunto de activas) */
 export function checkActiveNet(engine: IPlanoEngineCore, netId: string): boolean {
   const activeNets = engine.activeNetworks as Set<string> | undefined;
   return activeNets ? activeNets.has(netId) : true;
 }
 
 /**
- * Signals the caller to abort if `netId` is inactive (alerts user).
- * Auto-switches if the net is enabled but not currently active.
- * @param engine Engine instance
- * @param netId Target network id
- * @returns true if caller should abort; false if safe to proceed
+ * Avisa al caller que debe abortar si `netId` está inactiva (le muestra una alerta al usuario).
+ * Si la red está habilitada pero no es la activa, cambia automáticamente a ella.
+ * @param engine Instancia del motor
+ * @param netId Id de la red destino
+ * @returns true si el caller debe abortar; false si puede continuar con seguridad
  */
 export function ensureActiveNet(engine: IPlanoEngineCore, netId: string): boolean {
   if (netId === engine.activeNet) return false;
@@ -184,11 +173,12 @@ export function initNetCounts(target: { _netCounts: Record<string, PlanoNetCount
   });
 }
 
-/** Snaps vent to san (and vice versa) during drawing only — must NOT be used for
- *  auto-connect or move-together. Those stay strictly same-net.
- *  @param a First net id
- *  @param b Second net id
- *  @returns true if the two nets snap-link during cursor snapping */
+/** Ventilación y sanitaria se "enganchan" entre sí mientras se DIBUJA (el cursor se pega a la
+ *  otra red) — pero NO deben usarse para auto-conectar o mover juntas: eso queda estrictamente
+ *  dentro de la misma red.
+ *  @param a Id de la primera red
+ *  @param b Id de la segunda red
+ *  @returns true si las dos redes se enganchan durante el snap del cursor */
 export function netsSnapLinked(a: string, b: string): boolean {
   return a === b || (a === 'vent' && b === 'san') || (a === 'san' && b === 'vent');
 }
@@ -209,7 +199,7 @@ export function isArea(el: PlanoElement | null): el is PlanoArea {
   return el != null && '_polyBox' in el;
 }
 
-/** Pipeline/polyline segment (ramal) with nodes, labels, and hydraulic data. */
+/** Un tramo de tubería (ramal) dibujado en el plano, con sus puntos, etiquetas y datos hidráulicos. */
 export interface PlanoRamal {
   id: string;
   net: string;
@@ -244,27 +234,29 @@ export interface PlanoRamal {
   accMed?: Record<string, string>;
   caudal?: number;
   lvert?: string;
-  // Set only on a ramal auto-created by autoSplitJunctionAndSumFlow (PlanoEngineDrawing.ts) at a
-  // T/Y junction — the ids of the two ramales that merge into it. Read by waterNetworkRows.ts /
-  // WaterNetworkDesign.tsx to force THIS specific ramal's UC total to be the sum of those two,
-  // regardless of which way the general root-rooted directed tree happens to run through this
-  // point (that tree is oriented toward the real supply source for the WHOLE network, which for
-  // an arbitrary local merge may run either direction relative to it).
+  // Solo lo lleva un ramal CREADO AUTOMÁTICAMENTE al dividir una unión T/Y
+  // (autoSplitJunctionAndSumFlow en PlanoEngineDrawing.ts) — guarda los ids de los dos ramales
+  // que se juntan en él. Lo leen waterNetworkRows.ts / WaterNetworkDesign.tsx para forzar que el
+  // total de UC de ESTE ramal sea la suma de esos dos, sin importar hacia qué lado corra el árbol
+  // dirigido general por este punto (ese árbol se orienta hacia la fuente real de toda la red,
+  // y en una unión local arbitraria puede correr en cualquier dirección).
   mergesFrom?: [string, string];
-  // DB round-trip only: aparato-id -> cantidad, mirrors what FixturesPanel.tsx keeps in
-  // APARATOS_BY_TRAMO_KEY (localStorage) for this ramal. Not read by the engine itself — attached
-  // here only so storageService.ts can carry it into/out of the `fixtures` DB column; the
-  // localStorage map stays the actual source of truth the UI reads/writes during a session.
+  // Solo para el viaje de ida/vuelta a la base de datos: aparato-id -> cantidad, el mismo dato
+  // que FixturesPanel.tsx guarda en APARATOS_BY_TRAMO_KEY (localStorage) para este ramal. El
+  // motor NO lo lee — se adjunta aquí solo para que storageService.ts lo lleve hacia/desde la
+  // columna `fixtures` de la BD; el mapa de localStorage sigue siendo la fuente de verdad que la
+  // interfaz lee/escribe durante la sesión.
   fixtures?: Record<string, number>;
-  // Absolute plane position of a sifón accessory's "S D=..." label, once the user has dragged it
-  // away from its default computed position (renderRamales.ts). Undefined = use the default.
+  // Posición en el plano de la etiqueta "S D=..." de un sifón, una vez que el usuario la arrastró
+  // fuera de su posición calculada por defecto (renderRamales.ts). Indefinido = usar la posición
+  // por defecto.
   sifonLabelIni?: [number, number];
   sifonLabelFin?: [number, number];
   _sifonLabelBoxIni?: LabelBoxCorners;
   _sifonLabelBoxFin?: LabelBoxCorners;
 }
 
-/** Vertical riser/downpipe (bajante/montante) element connecting across building levels. */
+/** Bajante o montante (tubería vertical) que conecta los niveles del edificio. */
 export interface PlanoBajante {
   id: string;
   net: string;
@@ -281,9 +273,9 @@ export interface PlanoBajante {
   recibeDeIds: string[];
   alimentaIds: string[];
   descargaEnId: string | null;
-  /** Reverse pointer: `${originPlanId}|${originBajanteId}` of the upper-floor bajante that
-   * discharges INTO this one, set via the "Origen" selector. Purely a display/lookup aid — the
-   * actual link lives on the origin's own `descargaEnId` (written to its floor's storage). */
+  /** Puntero inverso: `${originPlanId}|${originBajanteId}` del bajante del piso superior que
+   * DESCARGA en este — lo fija el selector "Origen". Es solo una ayuda de visualización/búsqueda;
+   * el enlace real vive en el `descargaEnId` del origen (guardado en el storage de su piso). */
   origenId?: string | null;
   ucAcum: number;
   ucExtra: number;
@@ -318,29 +310,32 @@ export interface PlanoBajante {
   diametro?: string;
   acoDiam?: string;
   capacidad?: string;
-  /** Water-heater simultaneity factor (%), persisted from the heater-selection screen so the
-   * "caudal ajustado" survives reload and follows the user across devices. */
+  /** Factor de simultaneidad del calentador (%), guardado desde la pantalla de selección del
+   * calentador para que el "caudal ajustado" sobreviva al recargar y siga al usuario entre
+   * dispositivos. */
   factorSim?: number;
-  /** Canal recolectora (tipo:'canal', red 'll' only) cross-section, in cm — imported into the
-   * "canal recolectora" hydraulic check table (RainChannelsCheck.tsx). x/y is the rectangle's
-   * top-left plane corner (not centered, unlike every other bajante-array glyph). */
+  /** Sección transversal del canal recolectora (tipo:'canal', solo red 'll'), en cm — se importa a
+   * la tabla de chequeo hidráulico "canal recolectora" (RainChannelsCheck.tsx). x/y es la esquina
+   * superior-izquierda del rectángulo (no el centro, a diferencia de los demás glifos de bajante). */
   base?: number;
   altura?: number;
-  /** Canvas-px bounding box (axis-aligned, no rotation) set at render time — used for the
-   * corner resize-handle hit-test and the body-drag hit-test. */
+  /** Caja del canal en píxeles de canvas (alineada a los ejes, sin rotación), calculada al
+   * renderizar — se usa para detectar el clic en las manijas de redimensionado de las esquinas y
+   * para arrastrar el cuerpo. */
   _canalBox?: { x: number; y: number; w: number; h: number };
-  /** Flow direction of a canal recolectora, matching the direction the user dragged it when
-   * drawing (corner 1 → corner 2), like a ramal's drawn direction. Set at creation in
-   * handleCanalDown; drives the canal's centered flow arrow. */
+  /** Dirección del flujo del canal recolectora, igual a la dirección en que el usuario lo
+   * arrastró al dibujarlo (esquina 1 → esquina 2), como la dirección dibujada de un ramal. Se
+   * fija al crearlo en handleCanalDown; alimenta la flecha de flujo centrada del canal. */
   _canalFlowDir?: 'derecha' | 'izquierda' | 'abajo' | 'arriba';
-  /** Only meaningful on a rainwater ("ll") bajante: id of the canal (tipo:'canal') whose
-   * rectangle currently contains it. Set/cleared automatically by canalAssociation.ts as the
-   * bajante is created or dragged — a bajante can only be inside a canal, never outside one it's
-   * associated with (see resolveAndClampToCanal). Drives the canal's flow-direction arrows. */
+  /** Solo tiene sentido en un bajante de lluvia ("ll"): id del canal (tipo:'canal') cuyo
+   * rectángulo lo contiene actualmente. Lo fija/limpia canalAssociation.ts automáticamente al
+   * crear o arrastrar el bajante — un bajante solo puede estar DENTRO de un canal, nunca fuera de
+   * uno al que está asociado (ver resolveAndClampToCanal). Alimenta las flechas de flujo del
+   * canal. */
   canalId?: string | null;
 }
 
-/** Polygon area region drawn on the canvas (e.g. roofs, drainage zones). */
+/** Área poligonal dibujada en el plano (p.ej. techos, zonas de drenaje). */
 export interface PlanoArea {
   id: string;
   pts: number[][];
@@ -355,7 +350,7 @@ export interface PlanoArea {
   _polyBox?: CanvasBox;
 }
 
-/** Linear dimension measurement between two points on the canvas. */
+/** Cota lineal (medida) entre dos puntos del plano. */
 export interface PlanoDimension {
   id: string;
   x1: number;
@@ -363,14 +358,14 @@ export interface PlanoDimension {
   x2: number;
   y2: number;
   L: number;
-  // Absolute plane position of the label, once the user has dragged it away from the
-  // auto-computed midpoint+offset position. Undefined until first dragged.
+  // Posición en el plano de la etiqueta, una vez que el usuario la arrastró fuera de la posición
+  // automática (punto medio + desplazamiento). Indefinida hasta el primer arrastre.
   lblX?: number;
   lblY?: number;
   _labelPos?: { x: number; y: number };
 }
 
-/** Free-text annotation placed on the drawing canvas. */
+/** Texto libre colocado sobre el plano. */
 export interface PlanoTextAnnotation {
   id: string;
   x: number;
@@ -384,9 +379,10 @@ export interface PlanoTextAnnotation {
   _box?: CanvasBox;
 }
 
-/** Construction/reference line drawn freely over the plan — NOT a real ramal: excluded from every
- *  hydraulic/network calc, table, and export. Purely a scratch aid the user can rotate in 45°/90°
- *  steps and later convert into a real ramal on the net it was drawn for. */
+/** Línea de construcción/referencia dibujada libremente sobre el plano — NO es un ramal real:
+ *  queda excluida de todo cálculo hidráulico, tabla y exportación. Es solo una ayuda de trazo
+ *  que el usuario puede rotar en pasos de 45°/90° y convertir después en un ramal real de la red
+ *  para la que fue dibujada. */
 export interface PlanoGuideLine {
   id: string;
   net: string;
@@ -394,7 +390,7 @@ export interface PlanoGuideLine {
   _labelBox?: LabelBoxCorners;
 }
 
-/** Building level definition — label, NPT elevation, and ordinal index. */
+/** Nivel de un edificio — etiqueta, cota NPT e índice ordinal. */
 export interface PlanoLevel {
   label?: string;
   npt?: number;
@@ -406,7 +402,7 @@ export interface PlanoNetCounts {
   tributario: number;
 }
 
-/** Union of all drawable/selectable element types in the engine. */
+/** Todos los tipos de elemento que el motor puede dibujar y seleccionar. */
 export type PlanoElement =
   | PlanoRamal
   | PlanoBajante
@@ -448,8 +444,9 @@ export type MultiDragOrigData = Record<
   }
 >;
 
-/** Public API contract for the PlanoEngine drawing engine. Exposes state, coordinates transforms,
- *  snapping, rendering, selection/drag helpers, and transient drag/interaction slots. */
+/** Contrato público del motor de dibujo PlanoEngine. Expone el estado, las transformaciones de
+ *  coordenadas, el snapping, el renderizado, los helpers de selección/arrastre y los slots
+ *  transitorios de interacción. */
 export interface IPlanoEngineCore {
   dims: PlanoDimension[];
   textAnnots: PlanoTextAnnotation[];
@@ -494,17 +491,17 @@ export interface IPlanoEngineCore {
   offCtx: CanvasRenderingContext2D | null;
   padreTributario: string | null;
   nivelActual: PlanoLevel | null;
-  // Transient: set right after a new vent ramal's first point snaps onto a sanitaria vertex
-  // (a codo reventilado junction) — forces the FIRST segment's direction to match the sanitary
-  // ramal's own local heading there instead of the generic 45°-grid snap. Cleared once that first
-  // segment is placed.
+  // Transitorio: se fija justo después de que el primer punto de un ramal de ventilación nuevo se
+  // pega a un vértice de sanitaria (unión de codo reventilado) — fuerza la dirección del PRIMER
+  // segmento a coincidir con la dirección local del ramal sanitario en ese punto, en vez del snap
+  // genérico de 45°. Se limpia una vez colocado ese primer segmento.
   _ventFirstSegDir?: { x: number; y: number } | null;
   _dimStart: { x: number; y: number } | null;
-  // First-corner scratch state for the canal (roof channel) drag-rectangle tool — same
-  // click-then-move-then-click rubber-band pattern as _dimStart/_guideStart above.
+  // Estado de la primera esquina para la herramienta de arrastre de rectángulo del canal — mismo
+  // patrón de "clic-mueve-clic" (rubber-band) que _dimStart/_guideStart.
   _canalStart: { x: number; y: number } | null;
-  // Transient per-drag scratch state (set in handleMouseDown, consumed in
-  // handleDragUp/handleDragMove; always reset to null at drag end).
+  // Estado transitorio de cada arrastre (se fija en handleMouseDown, se consume en
+  // handleDragUp/handleDragMove; siempre vuelve a null al terminar el arrastre).
   _bajDragBackupXY?: { x: number; y: number; labelX?: number; labelY?: number } | null;
   _bajDragBackupPts?: Record<string, number[][]> | null;
   _lblDragIsParent?: boolean;
@@ -540,10 +537,10 @@ export interface IPlanoEngineCore {
     origBoxWpx: number;
   } | null;
   bajDrag: { id: string; offX: number; offY: number } | null;
-  // Corner-handle resize for a selected canal rectangle — anchorX/anchorY are the OPPOSITE
-  // corner's plane coordinates (not canvas px, unlike txtResize), captured at grab time and kept
-  // fixed for the whole gesture; base/altura and the dragged corner's x/y are recomputed live
-  // from the current cursor's plane position each move.
+  // Redimensionado del rectángulo de un canal por sus manijas de esquina — anchorX/anchorY son las
+  // coordenadas de la esquina OPUESTA en el plano (no en píxeles de canvas, a diferencia de
+  // txtResize), capturadas al agarrar y fijas durante todo el gesto; base/altura y la esquina
+  // arrastrada se recalculan en vivo desde la posición del cursor en cada movimiento.
   canalResizeDrag: {
     id: string;
     corner: 'tl' | 'tr' | 'bl' | 'br';

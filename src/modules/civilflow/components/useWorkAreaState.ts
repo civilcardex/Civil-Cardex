@@ -18,15 +18,8 @@ import {
   NET_COLOR_PREFIX,
   NETS_CHANGED_EVENT,
 } from '../constants/storage-keys';
-
-export interface Piso {
-  id: string | number;
-  n: number;
-  npt: number | string;
-  ok: boolean;
-  tipo: string;
-  h: string;
-}
+import type { Piso } from '../lib/shared/projectTypes';
+export type { Piso } from '../lib/shared/projectTypes';
 
 function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject<T>] {
   const [val, _set] = useState<T>(initial);
@@ -68,12 +61,12 @@ export function useWorkAreaState() {
     [redes],
   );
 
-  // Cloud sync for "Redes activas"/"Equipos activos" — was localStorage-only, so it never
-  // followed the project (reopening from Profile, a fresh browser, or another device always
-  // fell back to the hardcoded ['san','ll'] default). Mirrors ProjectContext's restoreDone
-  // pattern: redesRestoreDone starts true only when local data already exists for the active
-  // project (so a genuinely-cleared cache pulls from Supabase instead of the save effect
-  // immediately persisting the default over whatever was saved before).
+  // Sincronización en la nube de "Redes activas"/"Equipos activos" — antes solo vivía en
+  // localStorage, así que nunca seguía al proyecto (reabrir desde Profile, un navegador nuevo
+  // u otro dispositivo siempre recaía en el default hardcodeado ['san','ll']). Replica el
+  // patrón restoreDone de ProjectContext: redesRestoreDone arranca en true solo si ya existen
+  // datos locales del proyecto activo (para que una caché realmente limpiada cargue desde
+  // Supabase en vez de que el efecto de guardado persista el default sobre lo guardado antes).
   const [redesRestoreDone, setRedesRestoreDone] = useState(() => {
     const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
     if (!proyectoId) return true;
@@ -95,7 +88,7 @@ export function useWorkAreaState() {
     return () => {
       ignore = true;
     };
-    // Mount-once — redesRestoreDone already encodes the no-restore-needed case.
+    // Se ejecuta una sola vez — redesRestoreDone ya codifica el caso en que no hay nada que restaurar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -151,11 +144,12 @@ export function useWorkAreaState() {
   const [nptPiso1, setNptPiso1, nptPiso1Ref] = useSyncedRef<string>('');
   const [conCubierta, setConCubierta, conCubiertaRef] = useSyncedRef<boolean>(false);
 
-  // Keep the generator inputs in sync with the piso list itself. The list is the source of
-  // truth once generated (and the part that survives reloads — localStorage now, cloud restore
-  // on a fresh browser), so the inputs must reflect it instead of staying at their initial
-  // empty values. Editing an input never changes `pisos`, so this only fires when the list
-  // actually changes (generate, manual add/remove, cloud restore) — never mid-typing.
+  // Mantiene los inputs del generador sincronizados con la lista de pisos misma. Una vez
+  // generada, la lista es la fuente de verdad (y lo único que sobrevive recargas — localStorage
+  // ahora, restauración en la nube en un navegador nuevo), así que los inputs deben reflejarla
+  // en lugar de quedarse en sus valores iniciales vacíos. Editar un input nunca cambia `pisos`,
+  // por lo que este efecto solo se dispara cuando la lista realmente cambia (generar, agregar/
+  // quitar manual, restauración en la nube) — nunca mientras se escribe.
   useEffect(() => {
     if (projectCtx.pisos.length === 0) return;
     const niveles = projectCtx.pisos.filter((p) => p.tipo === 'piso');
@@ -202,7 +196,7 @@ export function useWorkAreaState() {
     }
     let nSotFinal = nSot;
     if (nSot > 0 && !altSotanoRef.current.trim()) {
-      nSotFinal = 0; // ignore basements if no height
+      nSotFinal = 0; // se ignoran los sótanos si no hay altura
       if (nPis === 0) {
         setAlertMsg('Ingrese la altura de sótano');
         return;
@@ -364,10 +358,11 @@ export function useWorkAreaState() {
         }
         restored[r.id] = saved;
       } else {
-        // No saved override — sync CSS var default into NETS[].col so the drawing engine
-        // (which reads exclusively from NETS[].col) uses the same color as the UI/color
-        // picker (which reads from CSS variables). Prevents lluvias defaulting to purple
-        // (#8B5CF6 hardcoded in PlanoState.ts) while CSS var says cyan (#22d3ee).
+        // Sin override guardado — sincroniza el default de la variable CSS hacia NETS[].col
+        // para que el motor de dibujo (que lee exclusivamente de NETS[].col) use el mismo color
+        // que la UI/selector de color (que lee de variables CSS). Evita que lluvias quede en
+        // morado (#8B5CF6 hardcodeado en PlanoState.ts) mientras la variable CSS dice cyan
+        // (#22d3ee).
         const cssVal = getComputedStyle(document.documentElement)
           .getPropertyValue('--' + r.id)
           .trim();
@@ -414,9 +409,10 @@ export function useWorkAreaState() {
       setSelectedPlanId(null);
     }
     prevPlansLenRef.current = len;
-    // Deliberately keyed off plans.length only (compared against the ref-tracked previous
-    // length) to detect "a plan was added" vs. other cases; selectedPlanId is also *set* here,
-    // so adding it as a dep would make this effect re-fire on its own writes.
+    // Deliberadamente depende solo de plans.length (comparado contra la longitud anterior
+    // rastreada por ref) para detectar "se agregó un plan" frente a otros casos; además
+    // selectedPlanId se *asigna* aquí, así que agregarlo como dependencia haría que este
+    // efecto se re-disparara por sus propias escrituras.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plansCtx.plans.length]);
 

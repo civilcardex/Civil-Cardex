@@ -3,10 +3,10 @@ import { devError } from '../../../utils/devError';
 const PREFIX = 'civilflow_';
 
 /**
- * Reads and parses a JSON value from localStorage.
- * @param key - Storage key (prefixed with `civilflow_`).
- * @param fallback - Default value returned when key is missing or parse fails.
- * @returns Parsed value of type T, or fallback on error.
+ * Lee y parsea un valor JSON desde localStorage.
+ * @param key - Clave de storage (con prefijo `civilflow_`).
+ * @param fallback - Valor por defecto cuando la clave no existe o el parseo falla.
+ * @returns Valor parseado de tipo T, o fallback ante error.
  */
 export function loadFromStorage<T>(key: string, fallback: T): T {
   const fullKey = PREFIX + key;
@@ -21,9 +21,9 @@ export function loadFromStorage<T>(key: string, fallback: T): T {
 }
 
 /**
- * Serializes a value to JSON and writes it to localStorage.
- * @param key - Storage key (prefixed with `civilflow_`).
- * @param data - Any JSON-serializable value.
+ * Serializa un valor a JSON y lo escribe en localStorage.
+ * @param key - Clave de storage (con prefijo `civilflow_`).
+ * @param data - Cualquier valor serializable a JSON.
  */
 export function saveToStorage(key: string, data: unknown): void {
   try {
@@ -34,8 +34,8 @@ export function saveToStorage(key: string, data: unknown): void {
 }
 
 /**
- * Removes a key from localStorage.
- * @param key - Storage key (prefixed with `civilflow_`).
+ * Elimina una clave de localStorage.
+ * @param key - Clave de storage (con prefijo `civilflow_`).
  */
 export function removeFromStorage(key: string): void {
   try {
@@ -60,7 +60,7 @@ import type {
   PlanoTextAnnotation,
   PlanoGuideLine,
 } from '../lib/PlanoEngine/PlanoState';
-import type { CrossFloorGhost } from '../utils/associateBajanteAcrossFloors';
+import type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes';
 
 function getActiveProyectoId(): number | null {
   const raw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
@@ -70,28 +70,28 @@ function getActiveProyectoId(): number | null {
 export type PlanTrazos = Partial<PlanoWorkData>;
 
 /**
- * Loads cached plan-trace data from localStorage for a given plan.
- * @param planId - Plan identifier (suffixed after the trazos prefix).
- * @returns Parsed PlanTrazos object or null if not found.
+ * Carga datos de trazado de plano cacheados en localStorage para un plano dado.
+ * @param planId - Identificador del plano (va después del prefijo de trazos).
+ * @returns Objeto PlanTrazos parseado, o null si no existe.
  */
 export function loadPlanTrazos(planId: string): PlanTrazos | null {
   return loadFromStorage<PlanTrazos | null>(TRAZOS_PREFIX + planId, null);
 }
 
 /**
- * Persists plan-trace data to localStorage cache.
- * @param planId - Plan identifier (suffixed after the trazos prefix).
- * @param data - Traces payload to cache.
+ * Persiste datos de trazado de plano en la caché de localStorage.
+ * @param planId - Identificador del plano (va después del prefijo de trazos).
+ * @param data - Payload de trazos a cachear.
  */
 export function savePlanTrazos(planId: string, data: unknown): void {
   saveToStorage(TRAZOS_PREFIX + planId, data);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Mapping between the in-memory engine shape (PlanoWorkData, camelCase,
-// app-local string ids) and the normalized Supabase tables (snake_case,
-// surrogate bigint PKs + `client_id` holding the original app-local id).
-// See supabase/migrations/20260730000001_civilflow_schema.sql.
+// Mapeo entre la forma en memoria del motor (PlanoWorkData, camelCase,
+// ids string locales de la app) y las tablas normalizadas de Supabase (snake_case,
+// PK bigint sustitutas + `client_id` que guarda el id local original de la app).
+// Ver supabase/migrations/20260730000001_civilflow_schema.sql.
 // ─────────────────────────────────────────────────────────────────────────
 
 function ramalToRow(planoId: number, userId: string, r: PlanoRamal) {
@@ -413,8 +413,8 @@ function rowToGhost(row: any): CrossFloorGhost {
   };
 }
 
-/** Replaces all rows of `table` for `planoId` with `rows` (delete-then-insert; cheap for
- * collections nothing else references by FK). No-op-safe when `rows` is empty. */
+/** Reemplaza todas las filas de `table` para `planoId` con `rows` (borra-e-inserta; barato para
+ * colecciones que nada más referencia por FK). Seguro como no-op cuando `rows` está vacío. */
 async function replaceCollection(table: string, planoId: number, rows: Record<string, unknown>[]) {
   const { error: delError } = await supabase.from(table).delete().eq('plano_id', planoId);
   if (delError) devError(`storageService replaceCollection(${table}) delete:`, delError.message);
@@ -424,9 +424,10 @@ async function replaceCollection(table: string, planoId: number, rows: Record<st
 }
 
 /**
- * Upserts the plano's `bajantes` (keyed by client_id, preserving surrogate ids across
- * saves so bajante_conexiones/cross_floor_ghosts links stay valid), prunes ones no
- * longer present, and returns the client_id -> surrogate id map for the ones now on file.
+ * Hace upsert de los `bajantes` del plano (clave por client_id, preservando los ids sustitutos
+ * entre guardados para que los enlaces de bajante_conexiones/cross_floor_ghosts sigan siendo
+ * válidos), poda los que ya no existen y devuelve el mapa client_id -> id sustituto de los
+ * que quedan en archivo.
  */
 async function syncBajantes(
   planoId: number,
@@ -464,12 +465,13 @@ async function syncBajantes(
   return map;
 }
 
-/** Rebuilds bajante_conexiones from each bajante's recibeDeIds/alimentaIds/descargaEnId,
- * resolved against the client_id -> surrogate id map from syncBajantes. descargaEnId is ALSO
- * always written verbatim to planos_bajantes.descarga_en_id by bajanteToRow (see there) — that
- * raw-text copy is what actually round-trips the cross-plano case (this table can't resolve a
- * destino_client_id belonging to a different plano's idMap), this relational copy only ever
- * captures the same-plano subset, as a bonus for anything that wants to query it directly. */
+/** Reconstruye bajante_conexiones a partir de recibeDeIds/alimentaIds/descargaEnId de cada
+ * bajante, resueltos contra el mapa client_id -> id sustituto que devuelve syncBajantes.
+ * descargaEnId además se escribe SIEMPRE tal cual en planos_bajantes.descarga_en_id por
+ * bajanteToRow (ver ahí) — esa copia en texto crudo es la que realmente sobrevive al viaje en
+ * el caso cross-plano (esta tabla no puede resolver un destino_client_id que pertenece al
+ * idMap de otro plano), esta copia relacional solo captura el subconjunto del mismo plano,
+ * como bonus para quien quiera consultarlo directamente. */
 async function syncBajanteConexiones(
   userId: string,
   bajantes: PlanoBajante[],
@@ -531,11 +533,12 @@ async function syncBajanteConexiones(
 }
 
 /**
- * Upserts a plano's full drawing state (header + all element collections) to Supabase.
- * Replaces the previous single `plano_trazos.data` jsonb blob with normalized tables —
- * see supabase/migrations/20260730000001_civilflow_schema.sql. External signature is
- * unchanged so every existing caller (PdfViewer, PlanosTab, associateBajanteAcrossFloors,
- * writeDiameterToDrawing, etc.) keeps working without modification.
+ * Hace upsert del estado completo de dibujo de un plano (cabecera + todas las colecciones de
+ * elementos) en Supabase. Reemplaza el antiguo blob jsonb único de `plano_trazos.data` por
+ * tablas normalizadas — ver supabase/migrations/20260730000001_civilflow_schema.sql. La firma
+ * externa no cambia, así todos los llamadores existentes (PdfViewer, PlanosTab,
+ * associateBajanteAcrossFloors, writeDiameterToDrawing, etc.) siguen funcionando sin
+ * modificaciones.
  */
 export async function saveTrazosToDB(planoId: string, data: unknown): Promise<void> {
   try {
@@ -573,9 +576,10 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
       return;
     }
 
-    // Aparato/UD counts live only in localStorage (FixturesPanel.tsx, keyed
-    // `${net}_${ramalId}_${planId}`) — attach each ramal's own count map before syncing so it
-    // reaches the DB via planos_ramales.fixtures, instead of being lost outside this device.
+    // Los conteos de Aparato/UD solo viven en localStorage (FixturesPanel.tsx, clave
+    // `${net}_${ramalId}_${planId}`) — adjuntamos el mapa de conteos propio de cada ramal
+    // antes de sincronizar para que llegue a la BD vía planos_ramales.fixtures, en vez de
+    // perderse fuera de este equipo.
     const aparatosMap = loadFromStorage<Record<string, Record<string, number>>>(
       APARATOS_BY_TRAMO_KEY,
       {},
@@ -585,10 +589,11 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
       const fixtures = aparatosMap[apKey];
       return fixtures ? { ...r, fixtures } : r;
     });
-    // The heater's own fixtures (assigned straight to the CALENTn bajante, keyed
-    // `ac_<calId>_<planoId>` or `af_<calId>_<planoId>`) have no real ramal to ride on — the
-    // synthetic AC-01-{calId} stub only exists in buildTramos' memory. Persist it here so the
-    // counts survive a reload/another device; loadTrazosFromDB maps it back to the calentador key.
+    // Los aparatos propios del calentador (asignados directo a la bajante CALENTn, clave
+    // `ac_<calId>_<planoId>` o `af_<calId>_<planoId>`) no tienen un ramal real donde viajar —
+    // el stub sintético AC-01-{calId} solo existe en la memoria de buildTramos. Se persiste aquí
+    // para que los conteos sobrevivan a recarga/otro dispositivo; loadTrazosFromDB lo mapea de
+    // vuelta a la clave del calentador.
     const ramalIds = new Set(ramales.map((r) => r.id));
     for (const cal of (d.bajantes ?? []) as PlanoBajante[]) {
       if (cal.tipo !== 'calentador') continue;
@@ -671,9 +676,9 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
 }
 
 /**
- * Loads a plano's full drawing state from Supabase in a single round trip via the
- * get_plano_data RPC (header + ramales + bajantes + connections + areas + dims +
- * annotations + guide lines + cross-floor ghosts), instead of 8 sequential selects.
+ * Carga el estado completo de dibujo de un plano desde Supabase en una sola ida y vuelta vía
+ * el RPC get_plano_data (cabecera + ramales + bajantes + conexiones + areas + dims +
+ * anotaciones + líneas guía + cross-floor ghosts), en lugar de 8 selects secuenciales.
  */
 export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | null> {
   try {
@@ -732,9 +737,10 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
       nptLevels: [],
       nets: [],
     };
-    // Mirror each ramal's DB-carried fixtures back into the localStorage map FixturesPanel.tsx
-    // actually reads (APARATOS_BY_TRAMO_KEY) — otherwise a plano loaded fresh on another
-    // device/session would show an empty Aparatos panel despite the DB having the counts.
+    // Devolvemos los fixtures que viajan en la BD por cada ramal al mapa de localStorage que
+    // FixturesPanel.tsx realmente lee (APARATOS_BY_TRAMO_KEY) — si no, un plano cargado fresco
+    // en otro dispositivo/sesión mostraría el panel Aparatos vacío pese a que la BD tiene los
+    // conteos.
     const existingAparatos = loadFromStorage<Record<string, Record<string, number>>>(
       APARATOS_BY_TRAMO_KEY,
       {},
@@ -743,9 +749,10 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
     const mergedAparatos = { ...existingAparatos };
     for (const r of (work.ramales ?? []) as PlanoRamal[]) {
       if (!r.fixtures || Object.keys(r.fixtures).length === 0) continue;
-      // Synthetic heater stubs (AC-01-{calId}, persisted by saveTrazosToDB so the CALENTn
-      // bajante's fixtures survive) must land back under the key the stub builder/FixturesPanel
-      // actually read: `ac_<calId>_<planoId>` — not `ac_AC-01-<calId>_<planoId>`.
+      // Los stubs sintéticos de calentador (AC-01-{calId}, persistidos por saveTrazosToDB
+      // para que los fixtures de la bajante CALENTn sobrevivan) deben volver bajo la clave que
+      // el builder de stubs/FixturesPanel realmente leen: `ac_<calId>_<planoId>` — no
+      // `ac_AC-01-<calId>_<planoId>`.
       const apKey =
         r.id.startsWith('AC-01-') && r.net === 'ac'
           ? `ac_${r.id.slice('AC-01-'.length)}_${planoId}`

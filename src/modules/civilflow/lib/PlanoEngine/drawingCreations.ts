@@ -1,18 +1,21 @@
 import { NETS } from './PlanoState';
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState';
-import { calculateRamalLength, _statusMsg } from './PlanoEngineDrawing';
+import { calculateRamalLength, _statusMsg } from './ramalMeasure';
 import { isRamalBajanteConnectionAllowed } from '../../utils/flowDirection';
 import { pisoCortoLoose } from '../../constants';
 import { resolveAndClampToCanal } from './canalAssociation';
 
-// Bajante only belongs on san/vent/ll, montante only on gas/ac/af — same rule enforced at the
-// toolbar (isToolDisabledForNet in PdfViewerToolbar.tsx) and the keyboard shortcuts (PlanoEngine.ts
-// _onKeyDownHandler); checked again here as defense-in-depth in case some other caller reaches
-// these functions without going through either of those gates.
+// El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
+// aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos
+// de teclado (PlanoEngine.ts _onKeyDownHandler); se re-chequea aquí como defensa en
+// profundidad por si algún otro caller llega a estas funciones sin pasar por ninguna de esas
+// compuertas.
 export const BAJANTE_NETS = ['san', 'vent', 'll'];
 export const MONTANTE_NETS = ['gas', 'ac', 'af'];
 
-/** Creates a new bajante at the given coordinates, auto-associating with nearby ramal endpoints and auto-filling their ini/fin fields. @param engine Engine core instance. @param px Plane X coordinate. @param py Plane Y coordinate. */
+/** Crea un bajante nuevo en las coordenadas dadas, auto-asociándolo con extremos de ramal
+ *  cercanos y auto-rellenando sus campos ini/fin. @param engine Instancia del motor.
+ *  @param px Coordenada X de plano. @param py Coordenada Y de plano. */
 export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (!BAJANTE_NETS.includes(engine.activeNet)) {
     engine._emitStatus('Bajante no disponible para esta red');
@@ -27,11 +30,11 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
   }
   const ASSOC_THRESH = 30 / engine.zoom;
   const assocRamales: string[] = [];
-  // A freshly-created bajante has NO direction yet (the user picks Sube/Baja/Continua
-  // afterward) — so there's nothing to guard against here at creation time. Just associate
-  // with whichever nearby ramal endpoint (start or end) is closest; the flow-direction guard
-  // (flowDirection.ts) re-validates properly once the user actually sets "Baja" on this
-  // bajante, against whatever ramales are connected by then.
+  // Un bajante recién creado NO tiene dirección todavía (el usuario elige Sube/Baja/Continua
+  // después) — así que no hay nada que proteger aquí al crearlo. Solo se asocia con el extremo
+  // de ramal cercano (inicio o fin) más próximo; la guardia de dirección de flujo
+  // (flowDirection.ts) re-valida correctamente una vez que el usuario fija "Baja" en este
+  // bajante, contra los ramales que estén conectados para entonces.
   for (const r of engine.ramales) {
     if (r.net !== engine.activeNet || !r.pts?.length) continue;
     const startDist = Math.hypot(px - r.pts[0][0], py - r.pts[0][1]);
@@ -47,8 +50,9 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
       assocRamales.push(r.id);
     }
   }
-  // Rainwater bajantes dropped inside a canal recolectora's rectangle must stay inside it —
-  // auto-associate and clamp onto the canal's own boundary if the click landed just outside.
+  // Los bajantes de lluvia soltados dentro del rectángulo de un canal recolectora deben
+  // quedarse dentro — se auto-asocian y se recortan al borde del canal si el clic cayó
+  // apenas afuera.
   let canalId: string | null = null;
   if (engine.activeNet === 'll') {
     const resolved = resolveAndClampToCanal(engine, px, py);
@@ -66,8 +70,8 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     net: engine.activeNet,
     tipo: 'bajante',
     code: bajId,
-    // No direccion by default — the user must explicitly pick Sube/Baja/Continua for this
-    // bajante; see the BajanteDirectionSelector buttons.
+    // Sin dirección por defecto — el usuario debe elegir Sube/Baja/Continua explícitamente
+    // para este bajante; ver los botones BajanteDirectionSelector.
     x: px,
     y: py,
     pisoBase: engine.nivelActual?.label ?? '',
@@ -91,7 +95,7 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     bajR: 7 / 24,
     canalId,
   });
-  // Auto-fill ini/fin on associated ramales
+  // Auto-rellenar ini/fin en los ramales asociados
   const newBaj = engine.bajantes[engine.bajantes.length - 1];
   for (const rid of assocRamales) {
     const r = engine.ramales.find((rr) => rr.id === rid);
@@ -100,10 +104,10 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     const lastIdx = r.pts.length - 1;
     const distEnd = Math.hypot(r.pts[lastIdx][0] - px, r.pts[lastIdx][1] - py);
     const epIdx: 0 | number = distStart <= distEnd ? 0 : lastIdx;
-    // Centralized direction guard — a no-op today since a freshly-created bajante has no
-    // direction yet, but kept as defense-in-depth in case that ever changes; if it ever does
-    // reject, also drop the association from `newBaj.recibeDeIds` (already pushed above as
-    // part of the initial bajante payload).
+    // Guardia centralizada de dirección — hoy es un no-op porque un bajante recién creado no
+    // tiene dirección todavía, pero se conserva como defensa en profundidad por si eso cambia
+    // algún día; si alguna vez rechaza, también se quita la asociación de `newBaj.recibeDeIds`
+    // (ya pusheada arriba como parte del payload inicial del bajante).
     if (!isRamalBajanteConnectionAllowed(engine, r, epIdx, newBaj)) {
       if (newBaj.recibeDeIds) newBaj.recibeDeIds = newBaj.recibeDeIds.filter((id) => id !== rid);
       continue;
@@ -113,7 +117,7 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     } else {
       r.fin = bajId;
     }
-    // Lock the ramal so this newly snapped bajante can't be dragged away independently
+    // Bloquear el ramal para que este bajante recién pegado no pueda arrastrarse por separado
     r.bloqueado = true;
   }
   engine.selId = bajId;
@@ -123,7 +127,10 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
   engine._markDirty();
 }
 
-/** Creates a new montante (riser) at the given coordinates, auto-associating with nearby ramal endpoints, placing codo accessories, and renumbering montantes. @param engine Engine core instance. @param px Plane X coordinate. @param py Plane Y coordinate. */
+/** Crea un montante (tubería vertical) nuevo en las coordenadas dadas, auto-asociándolo con
+ *  extremos de ramal cercanos, colocando accesorios de codo y renumerando montantes.
+ *  @param engine Instancia del motor. @param px Coordenada X de plano. @param py Coordenada Y de
+ *  plano. */
 export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (!MONTANTE_NETS.includes(engine.activeNet)) {
     engine._emitStatus('Montante no disponible para esta red');
@@ -164,7 +171,7 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     net: engine.activeNet,
     tipo: 'montante',
     code: code,
-    // No direccion by default — user must pick Sube/Baja/Continua
+    // Sin dirección por defecto — el usuario debe elegir Sube/Baja/Continua
     x: px,
     y: py,
     pisoBase: engine.nivelActual?.label ?? '',
@@ -187,9 +194,10 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     labelY: py + 20,
     bajR: 7 / 24,
   });
-  // Auto-fill ini/fin on associated ramales — and auto-count the elbow a montante at an endpoint
-  // always implies: codo sube/baja (matching the montante's own direction, always 'sube' fresh
-  // off creation above), diameter matched to the ramal it lands on.
+  // Auto-rellenar ini/fin en los ramales asociados — y auto-contar el codo que un montante en
+  // un extremo siempre implica: codo sube/baja (coincidiendo con la dirección propia del
+  // montante, siempre 'sube' recién salido de la creación de arriba), con diámetro igualado al
+  // ramal donde cae.
   const codoAccId = 'codo90rmSube';
   for (const rid of assocRamales) {
     const r = engine.ramales.find((rr) => rr.id === rid);
@@ -224,13 +232,16 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
   engine._markDirty();
 }
 
-// Montante on the BODY of an af/ac ramal (not an endpoint) — from the context menu, not the
-// toolbar tool. Splits the ramal at the clicked point (same vertex-insertion pattern the mid-body
-// accessory selector already uses) and always writes an accompanying tee accessory there — a
-// montante always implies a tee. The reverse must never happen: placing a tee manually
-// (see accessoryOptions.ts / MidRamalAccessorySelector) never creates a montante — kept as a
-// separate write path on purpose.
-/** Creates a montante on the body of an AF/AC ramal (not an endpoint), splitting the ramal at the click point and placing a tee accessory. @param engine Engine core instance. @param ramalId The ramal being split. @param x Plane X coordinate. @param y Plane Y coordinate. @param segmentIdx Index of the segment where the split occurs. */
+// Montante sobre el CUERPO de un ramal af/ac (no un extremo) — desde el menú contextual, no la
+// herramienta de la barra. Divide el ramal en el punto clicado (el mismo patrón de inserción de
+// vértice que ya usa el selector de accesorios a mitad de cuerpo) y siempre escribe un accesorio
+// de tee acompañante ahí — un montante siempre implica una tee. Lo inverso nunca debe pasar:
+// colocar una tee manualmente (ver accessoryOptions.ts / MidRamalAccessorySelector) jamás crea
+// un montante — se mantiene como camino de escritura separado a propósito.
+/** Crea un montante sobre el cuerpo de un ramal AF/AC (no un extremo), dividiendo el ramal en
+ *  el punto clicado y colocando un accesorio de tee. @param engine Instancia del motor.
+ *  @param ramalId El ramal que se divide. @param x Coordenada X de plano. @param y Coordenada Y
+ *  de plano. @param segmentIdx Índice del segmento donde ocurre la división. */
 export function handleCreateMontanteMidBody(
   engine: IPlanoEngineCore,
   ramalId: string,
@@ -255,10 +266,11 @@ export function handleCreateMontanteMidBody(
     const idx = parseInt(m[1], 10);
     shiftedAccMed[`accMed${idx >= newIdx ? idx + 1 : idx}`] = v as string;
   }
-  // 'teeSube' to match the montante's own default direccion ('sube', set below) — was hardcoded
-  // to 'teeDirecto', so the montante's tee glyph never actually showed the sube/baja circle+mark
-  // the direction is supposed to convey. Kept in sync with the montante's direction afterward by
-  // BajanteDirectionSelector (DrawingElementContextMenu.tsx).
+  // 'teeSube' para coincidir con la dirección por defecto propia del montante ('sube', fijada
+  // abajo) — antes estaba hardcodeado a 'teeDirecto', así que el glifo de tee del montante nunca
+  // mostraba de verdad el círculo+marca de sube/baja que la dirección debe transmitir. Se
+  // mantiene sincronizado con la dirección del montante después por BajanteDirectionSelector
+  // (DrawingElementContextMenu.tsx).
   shiftedAccMed[`accMed${newIdx}`] = 'teeSube';
   r.pts = newPts;
   r.accMed = shiftedAccMed;
@@ -273,8 +285,8 @@ export function handleCreateMontanteMidBody(
     id: monId,
     net: r.net,
     tipo: 'montante',
+    // Sin dirección por defecto — el usuario debe elegir Sube/Baja/Continua
     code,
-    // No direccion by default — user must pick Sube/Baja/Continua
     x,
     y,
     pisoBase: engine.nivelActual?.label ?? '',
@@ -308,15 +320,19 @@ export function handleCreateMontanteMidBody(
   engine._markDirty();
 }
 
-// Calentador on the BODY of an af ramal (not an endpoint) — from the context menu, not the
-// toolbar tool. Same split-the-ramal-at-the-click-point pattern as handleCreateMontanteMidBody,
-// but no tee marker: the heater is an inline pass-through device, not a branch. The bajante
-// itself is created with net 'ac' — a heater always belongs to the hot-water network, even when
-// the user anchors it on a cold-water (af) ramal; only the insertion point differs from the
-// toolbar-created one (handleCalentadorDown). The af ramal keeps its net and continues through
-// the split vertex; the ac/af connection is implicit via the CALENTn id (same convention
-// buildTramos.ts uses to build the synthetic AC-01-{calId} ramal from any heater bajante).
-/** Creates a calentador on the body of an AF ramal (not an endpoint), splitting the ramal at the click point. The bajante is created with net 'ac'. @param engine Engine core instance. @param ramalId The ramal being split. @param x Plane X coordinate. @param y Plane Y coordinate. @param segmentIdx Index of the segment where the split occurs. */
+// Calentador sobre el CUERPO de un ramal af (no un extremo) — desde el menú contextual, no la
+// herramienta de la barra. Mismo patrón de dividir-el-ramal-en-el-punto-clicado que
+// handleCreateMontanteMidBody, pero sin marcador de tee: el calentador es un dispositivo de paso
+// en línea, no una rama. El bajante se crea con red 'ac' — un calentador siempre pertenece a la
+// red de agua caliente, aunque el usuario lo ancle en un ramal de agua fría (af); solo el punto
+// de inserción difiere del creado por barra (handleCalentadorDown). El ramal af conserva su red
+// y continúa por el vértice de división; la conexión ac/af es implícita vía el id CALENTn (la
+// misma convención que buildTramos.ts usa para construir el ramal sintético AC-01-{calId} desde
+// cualquier bajante de calentador).
+/** Crea un calentador sobre el cuerpo de un ramal AF (no un extremo), dividiendo el ramal en el
+ *  punto clicado. El bajante se crea con red 'ac'. @param engine Instancia del motor.
+ *  @param ramalId El ramal que se divide. @param x Coordenada X de plano. @param y Coordenada Y
+ *  de plano. @param segmentIdx Índice del segmento donde ocurre la división. */
 export function handleCreateCalentadorMidBody(
   engine: IPlanoEngineCore,
   ramalId: string,
@@ -331,8 +347,9 @@ export function handleCreateCalentadorMidBody(
     return;
   }
 
-  // Endpoint insertion (segmentIdx = first/last point): just anchor the heater at the existing
-  // endpoint — no split, no duplicated zero-length segment. Only true mid-body clicks split.
+  // Inserción en extremo (segmentIdx = primer/último punto): solo anclar el calentador en el
+  // extremo existente — sin división, sin segmento duplicado de longitud cero. Solo los clics
+  // reales a mitad de cuerpo dividen.
   if (segmentIdx === 0 || segmentIdx === r.pts.length - 1) {
     pushCalentadorBajante(engine, r.pts[segmentIdx][0], r.pts[segmentIdx][1]);
     return;
@@ -392,13 +409,17 @@ function pushCalentadorBajante(engine: IPlanoEngineCore, x: number, y: number): 
   engine._markDirty();
 }
 
-// Caps the "leftover" branch of an existing plain tee (teeDirecto/teeSube/teeBaja at an interior
-// accMed vertex) with a tapón or llave terminal — the third alternative alongside actually drawing
-// a new ramal from that point (already possible, snapToExisting matches any vertex generically)
-// or leaving it as a bare montante riser. Creates a short stub ramal along the tee's own free
-// (perpendicular) direction, capped with the chosen accessory at its far end — the accessory glyph
-// needs a real ramal endpoint to render on, there being no such thing as "a cap with no pipe".
-/** Creates a short stub ramal capped with a tapón or llaveTerminal at a tee's free (perpendicular) branch direction. @param engine Engine core instance. @param ramalId The parent ramal containing the tee. @param accMedIdx Index of the accMed vertex. @param accId Accessory id: 'tapon' or 'llaveTerminal'. */
+// Tapa la rama "sobrante" de una tee simple existente (teeDirecto/teeSube/teeBaja en un vértice
+// accMed interior) con un tapón o llave terminal — la tercera alternativa junto con dibujar de
+// verdad un ramal nuevo desde ese punto (ya posible, snapToExisting coincide con cualquier
+// vértice genéricamente) o dejarlo como montante pelado. Crea un ramal corto a lo largo de la
+// dirección libre (perpendicular) propia de la tee, tapado con el accesorio elegido en su
+// extremo lejano — el glifo del accesorio necesita un extremo de ramal real donde renderizarse,
+// porque no existe tal cosa como "un tapón sin tubería".
+/** Crea un ramal corto tapado con un tapón o llaveTerminal en la dirección de rama libre
+ *  (perpendicular) de una tee. @param engine Instancia del motor. @param ramalId El ramal padre
+ *  que contiene la tee. @param accMedIdx Índice del vértice accMed. @param accId Id del
+ *  accesorio: 'tapon' o 'llaveTerminal'. */
 export function handleCreateTeeCapStub(
   engine: IPlanoEngineCore,
   ramalId: string,
@@ -430,8 +451,8 @@ export function handleCreateTeeCapStub(
     bx = uxIn;
     by = uyIn;
   }
-  // Same bisector the tee glyph itself is drawn along (renderRamales.ts's accMed pass) — the
-  // free branch runs perpendicular to it.
+  // La misma bisectriz por la que se dibuja el glifo de la tee (el pase accMed de
+  // renderRamales.ts) — la rama libre corre perpendicular a ella.
   const px_ = -by,
     py_ = bx;
 
@@ -483,10 +504,11 @@ export function handleCreateTeeCapStub(
   engine._markDirty();
 }
 
-/** Creates a new calentador (water heater) symbol at the given coordinates. @param engine Engine core instance. @param px Plane X coordinate. @param py Plane Y coordinate. */
+/** Crea un símbolo de calentador (agua caliente) nuevo en las coordenadas dadas. @param engine
+ *  Instancia del motor. @param px Coordenada X de plano. @param py Coordenada Y de plano. */
 export function handleCalentadorDown(engine: IPlanoEngineCore, px: number, py: number): void {
-  // Heater is ac/gas-only. Defensive guard: no other path (drag, script, stale UI) may
-  // create one on af now that the af toolbar button/shortcut are gone.
+  // El calentador es solo ac/gas. Guardia defensiva: ningún otro camino (arrastre, script, UI
+  // vieja) puede crear uno en af ahora que el botón/atajo de af de la barra ya no existen.
   if (engine.activeNet === 'af') {
     engine._emitStatus('El calentador no está disponible en la red AF');
     return;
@@ -532,18 +554,22 @@ export function handleCalentadorDown(engine: IPlanoEngineCore, px: number, py: n
   engine._markDirty();
 }
 
-// Canal recolectora (roof gutter/channel) — a standalone symbol, same array/no-ramal-association
-// pattern as contador/calentador, exclusive to the 'll' (aguas lluvias) net. Unlike every other
-// point-glyph tool, it's a drag-drawn RECTANGLE: first click sets corner 1 (_canalStart, same
-// click-then-move-then-click rubber-band pattern as _dimStart/_guideStart), a live preview
-// follows the cursor (renderCanalGhost), second click sets corner 2 and computes base/altura from
-// the real-world distance between the two corners (via pxToM, at the plan's drawing scale) — so
-// the rectangle is scaled to the plan from the moment it's drawn, not typed in afterward. Once
-// created it can still be resized from its corners (handleMouseDown.ts's _tryCanalResizeHit) or
-// edited precisely via the context menu (CanalMenu). Unlike bajante (which appends its floor
-// suffix only at render time, since a riser can span floors), the floor is baked into the
-// code/id here at creation — a canal lives on a single floor only.
-/** Handles a click while the canal tool is active: sets corner 1 on first click, creates the canal rectangle on second click. Exclusive to the aguas lluvias (ll) network. @param engine Engine core instance. @param px Plane X coordinate. @param py Plane Y coordinate. */
+// Canal recolectora (canalón de techo) — un símbolo independiente, mismo patrón de array/sin-
+// asociación-a-ramal que contador/calentador, exclusivo de la red 'll' (aguas lluvias). A
+// diferencia de toda otra herramienta de glifo puntual, es un RECTÁNGULO dibujado por arrastre:
+// el primer clic fija la esquina 1 (_canalStart, mismo patrón clic-mueve-clic de goma que
+// _dimStart/_guideStart), una vista previa en vivo sigue al cursor (renderCanalGhost), el
+// segundo clic fija la esquina 2 y calcula base/altura desde la distancia real entre las dos
+// esquinas (vía pxToM, a la escala de dibujo del plano) — así el rectángulo queda a escala del
+// plano desde el momento en que se dibuja, no tecleado después. Una vez creado, todavía puede
+// redimensionarse desde sus esquinas (_tryCanalResizeHit en handleMouseDown.ts) o editarse con
+// precisión por el menú contextual (CanalMenu). A diferencia del bajante (que agrega su sufijo
+// de piso solo al renderizar, porque un bajante puede abarcar pisos), el piso queda incrustado
+// en el code/id aquí al crearlo — un canal vive en un solo piso.
+/** Maneja un clic con la herramienta de canal activa: fija la esquina 1 en el primer clic y
+ *  crea el rectángulo del canal en el segundo. Exclusivo de la red de aguas lluvias (ll).
+ *  @param engine Instancia del motor. @param px Coordenada X de plano. @param py Coordenada Y
+ *  de plano. */
 export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (engine.activeNet !== 'll') {
     engine._emitStatus('Canal no disponible para esta red');
@@ -566,7 +592,8 @@ export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number
   engine._canalStart = null;
   const base = +(engine.pxToM(Math.abs(px - s.x)) * 100).toFixed(1);
   const altura = +(engine.pxToM(Math.abs(py - s.y)) * 100).toFixed(1);
-  // Guard against an accidental double-click-in-place producing a degenerate 0x0 rectangle.
+  // Guardia contra un doble-clic accidental en el mismo sitio que produzca un rectángulo
+  // degenerado de 0x0.
   if (base < 1 && altura < 1) {
     engine._emitStatus(_statusMsg(engine));
     engine.render();
@@ -574,8 +601,9 @@ export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number
   }
   const x = Math.min(s.x, px);
   const y = Math.min(s.y, py);
-  // Flow points the way the user dragged the rectangle (corner 1 → corner 2), along the longer
-  // axis — same "drawn direction" convention as a ramal's flow arrow.
+  // El flujo apunta hacia donde el usuario arrastró el rectángulo (esquina 1 → esquina 2), a lo
+  // largo del eje más largo — misma convención de "dirección dibujada" que la flecha de flujo de
+  // un ramal.
   const horizontal = Math.abs(px - s.x) >= Math.abs(py - s.y);
   const canalFlowDir: 'derecha' | 'izquierda' | 'abajo' | 'arriba' = horizontal
     ? px >= s.x
@@ -624,7 +652,8 @@ export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number
   engine._markDirty();
 }
 
-/** Creates a new red pública (public mains) symbol at the given coordinates. @param engine Engine core instance. @param px Plane X coordinate. @param py Plane Y coordinate. */
+/** Crea un símbolo de red pública (acometida) nuevo en las coordenadas dadas. @param engine
+ *  Instancia del motor. @param px Coordenada X de plano. @param py Coordenada Y de plano. */
 export function handleRedPublicaDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (engine.snapMode) {
     const sp = engine.snapToExisting(px, py);

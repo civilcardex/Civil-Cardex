@@ -56,41 +56,8 @@ function toolCursor(tool: string): string {
   return tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair';
 }
 
-export function _statusMsg(engine: IPlanoEngineCore): string {
-  const names: Record<string, string> = {
-    sel: 'Seleccionar elemento',
-    line: 'Ramal',
-    dim: 'Cota',
-    text: 'Texto',
-    baj: 'Bajante',
-    mon: 'Montante',
-    pan: 'Pan',
-    area: 'Área',
-    erase: 'Borrar',
-    delm: 'Eliminar elemento',
-    red_pub: 'Red Pública',
-    cont: 'Contador',
-    guide: 'Línea guía',
-    canal: 'Canal',
-  };
-  let m = names[engine.tool] || engine.tool;
-  if (engine.tool === 'line') {
-    const net = NETS.find((n) => n.id === engine.activeNet);
-    m += ` — ${net ? net.lbl : ''} [${engine.tipoTramo}]`;
-    if (engine.activeRamal)
-      m += ` (${engine.activeRamal.pts.length} pts, ${engine.activeRamal.totalL}m)`;
-  }
-  if (engine.tool === 'area' && engine.activeArea) {
-    m += ` (${engine.activeArea.pts.length} pts)`;
-  }
-  if (engine.tool === 'canal' && engine._canalStart) {
-    const mp = engine.toPlane(engine.mouseX, engine.mouseY);
-    const base = Math.round(engine.pxToM(Math.abs(mp.x - engine._canalStart.x)) * 100);
-    const altura = Math.round(engine.pxToM(Math.abs(mp.y - engine._canalStart.y)) * 100);
-    m += ` (${base} x ${altura} cm)`;
-  }
-  return m;
-}
+import { _statusMsg, calculateRamalLength } from './ramalMeasure';
+export { _statusMsg, calculateRamalLength } from './ramalMeasure';
 
 export function _nextLabel(engine: IPlanoEngineCore): string {
   const net = NETS.find((n) => n.id === engine.activeNet);
@@ -107,10 +74,11 @@ export function _nextLabel(engine: IPlanoEngineCore): string {
   return `${pfx}${cnt}`;
 }
 
-// Flips a ramal's direction in place: reverses its point order and swaps every endpoint-symmetric
-// field so each still refers to the correct physical end afterward. Flow-direction arrows
-// (renderRamales.ts, derived live from pts[0] vs pts[last]) flip automatically as a result — no
-// separate direction field to update.
+// Invierte la dirección de un ramal en el sitio: revierte el orden de sus puntos e intercambia
+// todo campo simétrico por extremo para que cada uno siga refiriéndose al extremo físico
+// correcto después. Las flechas de dirección de flujo (renderRamales.ts, derivadas en vivo de
+// pts[0] vs pts[último]) se voltean solas como resultado — no hace falta un campo de dirección
+// aparte.
 export function reverseRamalEndpoints(ramal: PlanoRamal): void {
   const tmpAcc = ramal.accesorioInicio;
   ramal.accesorioInicio = ramal.accesorioFin;
@@ -162,7 +130,8 @@ export function _calcPolyArea(engine: IPlanoEngineCore, pts: number[][]): number
   return +m2.toFixed(2);
 }
 
-/** Sets active drawing tool, finishing in-progress ramal/area first if switching away. @param engine Engine core instance. @param t Tool identifier. */
+/** Fija la herramienta de dibujo activa, terminando primero el ramal/área en curso si se cambia.
+ *  @param engine Instancia del motor. @param t Identificador de herramienta. */
 export function setTool(engine: IPlanoEngineCore, t: ToolType): void {
   if (engine.activeRamal && engine.activeRamal.pts.length >= 2 && t !== 'line') finishRamal(engine);
   else if (engine.activeRamal && t !== 'line') cancelRamal(engine);
@@ -175,38 +144,12 @@ export function setTool(engine: IPlanoEngineCore, t: ToolType): void {
   engine._emitStatus(_statusMsg(engine));
 }
 
-export function calculateRamalLength(pts: number[][], engine: IPlanoEngineCore): number {
-  let len = 0;
-  const segments: Array<[number, number, number, number]> = [];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const x1 = pts[i][0],
-      y1 = pts[i][1];
-    const x2 = pts[i + 1][0],
-      y2 = pts[i + 1][1];
-
-    let isBacktrack = false;
-    for (const [sx1, sy1, sx2, sy2] of segments) {
-      const distStart = Math.hypot(x1 - sx2, y1 - sy2);
-      const distEnd = Math.hypot(x2 - sx1, y2 - sy1);
-      if (distStart < 0.1 && distEnd < 0.1) {
-        isBacktrack = true;
-        break;
-      }
-    }
-    if (isBacktrack) continue;
-
-    segments.push([x1, y1, x2, y2]);
-    len += engine.pxToM(Math.hypot(x2 - x1, y2 - y1));
-  }
-  return +len.toFixed(3);
-}
-
-// diametro is stored as the full dropdown option value, e.g. `1-1/2" — 42.7 mm` (see the
-// "Diámetro de ramal" selector in DrawingElementContextMenu.tsx, which itself has to
-// `.split(' — ')[0]` before displaying it). Feeding that whole string to diamPulgFromLabel
-// triggers its own em-dash handling, which reads the *mm* figure after the dash as if it were
-// inches (42.7 instead of 1.5) — comparing two such inflated, essentially-random numbers made
-// the "larger parent diameter" pick look arbitrary/wrong at best.
+// El diámetro se guarda como el valor completo del dropdown, p.ej. `1-1/2" — 42.7 mm` (ver el
+// selector "Diámetro de ramal" en DrawingElementContextMenu.tsx, que a su vez tiene que
+// hacer `.split(' — ')[0]` antes de mostrarlo). Pasar esa cadena completa a diamPulgFromLabel
+// dispara su propio manejo de em-dash, que lee la cifra en *mm* después del guion como si
+// fueran pulgadas (42.7 en vez de 1.5) — comparar dos números así de inflados y esencialmente
+// aleatorios hacía que la elección del "diámetro padre mayor" se viera arbitraria/mal.
 export function inchPartOfDiametro(d: string): string {
   const q = d.indexOf('"');
   return q > 0 ? d.slice(0, q) : d;
@@ -220,18 +163,20 @@ export function maxDiametroLabel(a: string, b: string): string {
   return vb > va ? b : a;
 }
 
-// When a newly finished (or dragged) ramal's endpoint lands mid-body on an EXISTING ramal — a
-// true T/Y tee, not an end-to-end join — split that existing ramal at the junction into an
-// upstream portion (kept, unchanged) and a brand-new downstream ramal carrying the combined load:
-// diámetro = the larger of the two converging ramales, uc = their sum. Applies uniformly across
-// every net (san/ll accumulate UC, af/ac/gas accumulate their own load figure — all stored in the
-// same generic `uc` field), matching how a real hydraulic design increases pipe size/rating past
-// a confluence point rather than assuming the upstream run's own rating still applies beyond it.
-// Only the mid-body case is handled — an endpoint-to-endpoint join has no "rest of the path"
-// beyond the junction to split off, so there's nothing to auto-create there.
-// AC/AF/gas tributario-to-tributario join: allowed only when the target tributario shares the
-// SAME selected padre ramal (the one chosen in the sidebar). Used by every draw-time guard so a
-// same-padre join is never blocked, and a different-padre join always alerts.
+// Cuando el extremo de un ramal recién terminado (o arrastrado) cae a mitad del cuerpo de un
+// ramal EXISTENTE — una tee T/Y de verdad, no una unión extremo-con-extremo — se divide ese
+// ramal existente en la unión en una porción aguas arriba (conservada, sin cambios) y un ramal
+// nuevo aguas abajo que carga el caudal combinado: diámetro = el mayor de los dos ramales que
+// convergen, uc = su suma. Aplica uniformemente a todas las redes (san/ll acumulan UC, af/ac/gas
+// acumulan su propia cifra de carga — todas en el mismo campo genérico `uc`), igual que un
+// diseño hidráulico real aumenta el tamaño/calificación de la tubería después de un punto de
+// confluencia, en vez de asumir que la calificación del tramo aguas arriba sigue valiendo más
+// allá. Solo se maneja el caso de cuerpo medio — una unión extremo-con-extremo no tiene "resto
+// del recorrido" más allá de la unión que dividir, así que no hay nada que auto-crear ahí.
+// Unión tributario-a-tributario de AC/AF/gas: permitida solo cuando el tributario destino
+// comparte el MISMO ramal padre seleccionado (el elegido en la barra lateral). Lo usan todas las
+// guardias de dibujo para que una unión del mismo padre nunca se bloquee y una de padre
+// distinto siempre alerte.
 function canJoinTributario(engine: IPlanoEngineCore, target: PlanoRamal): boolean {
   if (engine.tipoTramo !== 'tributario') return false;
   if (target.tipo !== 'tributario') return false;
@@ -242,7 +187,8 @@ function canJoinTributario(engine: IPlanoEngineCore, target: PlanoRamal): boolea
 export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: PlanoRamal): void {
   if (!incoming.pts || incoming.pts.length < 2) return;
   const TOL = 0.5;
-  // San + vent share junctions as one subnet — allow cross-net endpoint detection here too.
+  // San + vent comparten uniones como una sola subred — permitir también la detección de
+  // extremos entre redes aquí.
   const sameNetGroup = (a: string, b: string) =>
     a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
   const endpoints = [incoming.pts[0], incoming.pts[incoming.pts.length - 1]];
@@ -251,17 +197,19 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       if (existing.id === incoming.id || !sameNetGroup(existing.net, incoming.net)) continue;
       if (!existing.pts || existing.pts.length < 2) continue;
       if (existing.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL)) {
-        // Endpoint-to-endpoint (or endpoint-onto-a-vertex) join — not a mid-body tee, so nothing
-        // to split, but a tributario landing here still must be its own padre and nowhere else.
-        // Without this, ARRIVING at a wrong ramal's vertex (as opposed to starting there, or
-        // hitting its body mid-run) went completely unchecked — draw-time snap validation only
-        // fires while a point is being freshly placed, and can miss this if angle-snap shifted the
-        // click slightly off the exact vertex before that check ran; this is the final say,
-        // checked directly against the finished ramal's actual endpoint position.
+        // Unión extremo-con-extremo (o extremo-sobre-vértice) — no es una tee de cuerpo medio,
+        // así que no hay nada que dividir, pero un tributario que aterriza aquí debe ser su propio
+        // padre y nada más. Sin esto, LLEGAR a un vértice del ramal equivocado (a diferencia de
+        // empezar ahí, o chocar contra su cuerpo a mitad de recorrido) quedaba sin verificar — la
+        // validación de snap al dibujar solo dispara mientras se coloca un punto fresco, y puede
+        // fallarla si el snap de ángulo movió el clic un poco fuera del vértice exacto antes de
+        // que corriera ese chequeo; esto es la última palabra, verificada directamente contra la
+        // posición real del extremo del ramal terminado.
         if (incoming.tipo === 'tributario') {
-          // AC/AF/gas exception (item 7): a tributario may join ANOTHER tributario's endpoint —
-          // but only when both share the same selected padre ramal. The junction symbol is then
-          // generated by the AccesorioModal flow (finishRamal → detectAccesorioTrigger).
+          // Excepción AC/AF/gas (ítem 7): un tributario puede unirse al extremo de OTRO
+          // tributario — pero solo cuando ambos comparten el mismo ramal padre seleccionado. El
+          // símbolo de la unión lo genera el flujo AccesorioModal (finishRamal →
+          // detectAccesorioTrigger).
           const tribToTribOk =
             existing.tipo === 'tributario' &&
             (existing.net === 'af' || existing.net === 'ac' || existing.net === 'gas') &&
@@ -293,10 +241,11 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         }
       }
       if (segIdx === -1) continue;
-      // Flow-direction validation for drag-created junctions (finishRamal validates draw-time
-      // creation; the ptDrag/ramalDrag path reaches this function directly). A ramal joining
-      // another mid-body must carry the main ramal's flow direction (dot > 0) — same rule as the
-      // finishRamal check. Wrong direction = no junction, alert.
+      // Validación de dirección de flujo para uniones creadas por arrastre (finishRamal valida
+      // la creación por dibujo; la ruta ptDrag/ramalDrag llega a esta función directo). Un ramal
+      // que se une a otro a mitad de cuerpo debe llevar la dirección de flujo del ramal
+      // principal (dot > 0) — misma regla que el chequeo de finishRamal. Dirección equivocada =
+      // sin unión, alerta.
       if (incoming.net === 'san' || incoming.net === 'll' || incoming.net === 'vent') {
         const if0 = incoming.pts[0];
         const if1 = incoming.pts[incoming.pts.length - 1];
@@ -306,8 +255,8 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
             : incoming.pts.length - 1;
         const adj = incoming.pts[jIdx === 0 ? 1 : incoming.pts.length - 2];
         const fEnd = jIdx === 0 ? if0 : if1;
-        // Flow travel direction at the junction: starts at the junction (departs toward adj) or
-        // ends there (arrives from adj), flipped when the ramal is _tribReversed.
+        // Dirección de viaje del flujo en la unión: empieza en la unión (sale hacia adj) o
+        // termina ahí (llega desde adj), invertida cuando el ramal está _tribReversed.
         const towardAdj = (jIdx === 0) !== !!incoming._tribReversed;
         const flowIn = towardAdj
           ? [adj[0] - fEnd[0], adj[1] - fEnd[1]]
@@ -334,16 +283,18 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         );
         continue;
       }
-      // A tributario reaching a T/Y junction mid-body on some ramal OTHER than its own selected
-      // padre is the exact same "wrong ramal" case handleLineDown already blocks with a modal when
-      // it happens at a vertex — this is the same violation landing on a ramal's BODY instead, and
-      // this function runs unconditionally for every net/tipo, so without this it silently split
-      // and merged flow into whatever ramal the tributario happened to touch, no alert at all.
+      // Un tributario que llega a una unión T/Y a mitad de cuerpo de un ramal distinto a su
+      // padre seleccionado es exactamente el mismo caso de "ramal equivocado" que handleLineDown
+      // ya bloquea con modal cuando ocurre en un vértice — esta es la misma violación cayendo
+      // sobre el CUERPO de un ramal, y esta función corre incondicionalmente para toda red/tipo,
+      // así que sin esto dividía y fusionaba el flujo en silencio con cualquier ramal que el
+      // tributario tocara, sin alerta alguna.
       if (incoming.tipo === 'tributario') {
-        // AC/AF/gas exception (item 7): a tributario landing mid-body on ANOTHER tributario that
-        // shares the same selected padre is allowed — without this, this check (which only knows
-        // how to compare against the real padre ramal's own id) fired before ever reaching the
-        // tributario-to-tributario handling below, blocking a perfectly valid same-padre join.
+        // Excepción AC/AF/gas (ítem 7): un tributario que aterriza a mitad de cuerpo sobre OTRO
+        // tributario que comparte el mismo padre seleccionado está permitido — sin esto, este
+        // chequeo (que solo sabe comparar contra el id del ramal padre real) disparaba antes de
+        // llegar al manejo tributario-a-tributario de abajo, bloqueando una unión del mismo
+        // padre perfectamente válida.
         const tribToTribOk =
           existing.tipo === 'tributario' &&
           (existing.net === 'af' || existing.net === 'ac' || existing.net === 'gas') &&
@@ -355,9 +306,10 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
           );
           continue;
         }
-        // AC/AF/gas (item 6): a tributario reaching its own padre mid-body SPLITS it — a physical
-        // tee: the padre's upstream segment stays, a new downstream ramal continues the run, and
-        // the tributario attaches at the junction. San/vent/ll keep the old attach-as-is behavior.
+        // AC/AF/gas (ítem 6): un tributario que llega a su propio padre a mitad de cuerpo lo
+        // DIVIDE — una tee física: el segmento aguas arriba del padre se queda, un ramal nuevo
+        // aguas abajo continúa el recorrido, y el tributario se une en el punto. San/vent/ll
+        // conservan el comportamiento viejo de unirse tal cual.
         if (
           !tribToTribOk &&
           existing.net !== 'af' &&
@@ -366,16 +318,17 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         )
           continue;
       }
-      // A tributario can never be a TRUNK either — a main ramal landing mid-body on a tributario
-      // must not split it. Without this, the split below produces a `downstream` ramal that
-      // spreads `...existing` (including `existing.tipo`) verbatim, so it silently inherits
-      // `tipo: 'tributario'` while carrying real merged UC/UD — that mistagged merge source then
-      // leaks past every tributario filter downstream (design tables, "Otros Ramales" column).
+      // Un tributario tampoco puede ser un TRONCO — un ramal principal que cae a mitad de cuerpo
+      // sobre un tributario no debe dividirlo. Sin esto, la división de abajo produce un ramal
+      // `downstream` que extiende `...existing` (incluido `existing.tipo`) tal cual, así que
+      // hereda en silencio `tipo: 'tributario'` cargando UC/UD reales fusionados — esa fuente de
+      // fusión mal etiquetada se filtra después por todos los filtros de tributario (tablas de
+      // diseño, columna "Otros Ramales").
       if (existing.tipo === 'tributario') {
-        // AC/AF/gas tributario-to-tributario (item 7): allowed only when both tributarios share
-        // the same selected padre ramal — the join point is then the shared junction with the
-        // padre, and the tee symbol is generated by the AccesorioModal flow afterwards. A
-        // tributario is never a trunk, so no split happens here either way.
+        // Tributario-a-tributario de AC/AF/gas (ítem 7): permitido solo cuando ambos tributarios
+        // comparten el mismo ramal padre seleccionado — el punto de unión es entonces la unión
+        // compartida con el padre, y el símbolo de tee lo genera el flujo AccesorioModal después.
+        // Un tributario nunca es un tronco, así que no hay división de todos modos.
         if (
           incoming.tipo === 'tributario' &&
           (existing.net === 'af' || existing.net === 'ac' || existing.net === 'gas')
@@ -390,42 +343,46 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         continue;
       }
 
-      // San↔vent cross-net mid-body junctions must NOT split the existing ramal.
-      // Both sub-nets share the same node group so connections look like same-net joins,
-      // but a san ramal landing mid-body on a vent ramal (or vice versa) is a normal
-      // crossing, not a flow confluence — renderNetCrossings.ts handles the visual cross.
+      // Las uniones entre redes san↔vent a mitad de cuerpo NO deben dividir el ramal existente.
+      // Ambas subredes comparten el mismo grupo de nodos, así que las conexiones parecen uniones
+      // de la misma red, pero un ramal san cayendo a mitad de cuerpo sobre uno de vent (o al
+      // revés) es un cruce normal, no una confluencia de flujo — renderNetCrossings.ts dibuja el
+      // cruce visual.
       if (existing.net !== incoming.net) continue;
 
       const downstreamPts = [[ep[0], ep[1]], ...existing.pts.slice(segIdx + 1)];
       existing.pts = [...existing.pts.slice(0, segIdx + 1), [ep[0], ep[1]]];
       existing.totalL = calculateRamalLength(existing.pts, engine);
-      // Re-center existing's own label on its now-truncated body — it previously kept
-      // whatever labelX/labelY it had for the FULL pre-split ramal, which after the cut
-      // could land outside (or far from) the shorter upstream segment that's left.
+      // Re-centrar la etiqueta de `existing` sobre su cuerpo ahora truncado — antes conservaba
+      // el labelX/labelY que tenía para el ramal COMPLETO pre-división, que tras el corte podía
+      // quedar fuera (o lejos) del segmento aguas arriba más corto que queda.
       const [existLabelX, existLabelY] = _midpoint(existing.pts);
       existing.labelX = existLabelX;
       existing.labelY = existLabelY;
       existing.labelAngle = _firstSegmentAngle(existing.pts);
-      // DO NOT set accesorioFin here — let detectAccesorioTrigger + the modal assign it.
-      // Setting it prematurely makes the alreadyResolved sweep skip the modal entirely,
-      // so the user never gets to pick the actual tee type (teeSube, teeBaja, yee, etc.).
+      // NO fijar accesorioFin aquí — dejar que detectAccesorioTrigger + el modal lo asignen.
+      // Fijarlo prematuramente hace que el barrido alreadyResolved se salte el modal por
+      // completo, así el usuario nunca puede elegir el tipo real de tee (teeSube, teeBaja, yee,
+      // etc.).
 
-      // UC accumulates on `downstream` (the auto-created continuation) here, unconditionally —
-      // NOT on whichever ramal "enters" the junction. `downstream` is what a LATER split further
-      // along the same line reads as its own `existing.uc` input (chained forward each time a new
-      // T gets drawn); zeroing it out for AF/AC would silently drop the whole upstream chain's
-      // accumulated total the next time the line splits again. Which ramal actually DISPLAYS the
-      // combined number (may differ from `downstream`, per the AF/AC "whoever enters the
-      // junction" convention) is a presentation-only concern handled in the design tables
-      // (waterNetworkRows.ts / WaterNetworkDesign.tsx), not here.
+      // El UC se acumula en `downstream` (la continuación auto-creada) aquí, incondicionalmente —
+      // NO en el ramal que "entra" a la unión. `downstream` es lo que una división POSTERIOR
+      // más adelante en la misma línea lee como su propio `existing.uc` de entrada (encadenado
+      // hacia adelante cada vez que se dibuja una T nueva); anularlo para AF/AC soltaría en
+      // silencio todo el total acumulado de la cadena aguas arriba la próxima vez que la línea
+      // se divida. Qué ramal DISPLAYA el número combinado (puede diferir de `downstream`, según
+      // la convención AF/AC de "quien entra a la unión") es una preocupación solo de
+      // presentación, manejada en las tablas de diseño (waterNetworkRows.ts /
+      // WaterNetworkDesign.tsx), no aquí.
       const preSplitExistingUc = existing.uc || 0;
       const preSplitIncomingUc = incoming.uc || 0;
 
-      // `existing`'s pre-split far-end accessory (if any) belonged to whichever point used to be
-      // its own last vertex — after truncation that point is no longer existing's endpoint, it's
-      // downstream's. Left in place, it kept rendering at existing's NEW (truncated) endpoint,
-      // i.e. right at the junction — visually "jumping" there even though nothing about the
-      // accessory itself changed. Move it to `downstream`, which now actually terminates there.
+      // El accesorio del extremo lejano de `existing` pre-división (si había uno) pertenecía al
+      // punto que solía ser su último vértice — tras el truncado ese punto ya no es el extremo
+      // de existing, es el de downstream. Dejado en su lugar, seguía renderizándose en el
+      // extremo NUEVO (truncado) de existing, o sea justo en la unión — "saltando" visualmente
+      // ahí aunque nada del accesorio hubiera cambiado. Se mueve a `downstream`, que ahora sí
+      // termina en ese punto.
       const farAccesorio = existing.accesorioFin;
       const farDiametro = existing.diametroFin;
       const farAparato = existing.aparatoFin;
@@ -441,9 +398,10 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         existing.tipo as keyof (typeof engine._netCounts)[string]
       ];
       const newId = existing.tipo === 'tributario' ? 'T' + Date.now() : pfx + cnt;
-      // Own label position/angle from the downstream segment's own midpoint — spreading
-      // `...existing` alone kept the label at the UPSTREAM portion's old position, landing right
-      // on top of `existing`'s own (unchanged) label since both objects then shared one spot.
+      // Posición/ángulo propios de la etiqueta desde el punto medio del segmento aguas abajo —
+      // extender `...existing` solo dejaba la etiqueta en la posición vieja de la porción aguas
+      // arriba, aterrizando justo encima de la etiqueta propia (sin cambios) de `existing`, ya
+      // que ambos objetos compartían entonces un solo punto.
       const [downLabelX, downLabelY] = _midpoint(downstreamPts);
       const downLabelAngle = _firstSegmentAngle(downstreamPts);
       const downstream: PlanoRamal = {
@@ -455,9 +413,9 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         labelX: downLabelX,
         labelY: downLabelY,
         labelAngle: downLabelAngle,
-        // AF/AC/gas: leave the auto-created ramal's diameter unset — the user picks it
-        // explicitly. San/vent/ll keep auto-picking the larger of the two ramales that formed
-        // the junction, unchanged.
+        // AF/AC/gas: dejar el diámetro del ramal auto-creado sin fijar — el usuario lo elige
+        // explícitamente. San/vent/ll siguen eligiendo automáticamente el mayor de los dos
+        // ramales que formaron la unión, sin cambios.
         diametro:
           existing.net === 'af' || existing.net === 'ac' || existing.net === 'gas'
             ? ''
@@ -482,7 +440,8 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
   }
 }
 
-/** Finishes the active ramal: validates angles, creates the PlanoRamal, auto-splits junctions, and associates with bajantes. @param engine Engine core instance. */
+/** Termina el ramal activo: valida ángulos, crea el PlanoRamal, auto-divide uniones y asocia
+ *  con bajantes. @param engine Instancia del motor. */
 export function finishRamal(engine: IPlanoEngineCore): void {
   engine._yeeFlashKey = null;
   if (!engine.activeRamal || engine.activeRamal.pts.length < 1) return;
@@ -554,11 +513,12 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     bloqueado: true,
   };
 
-  // Flow-direction validation (san/vent/ll): any ramal that connects to another ramal must carry
-  // the main ramal's flow direction — e.g. if the main ramal flows to the right, the connecting
-  // ramal must flow right too (dot(incomingFlow, mainFlow) > 0). If the user drew it against the
-  // main's direction, block the creation with an alert instead of silently creating a
-  // counter-flow junction. Only applies to same-net-group joins (san↔vent share the subnet).
+  // Validación de dirección de flujo (san/vent/ll): todo ramal que se conecta a otro debe llevar
+  // la dirección de flujo del ramal principal — p.ej. si el ramal principal fluye a la derecha,
+  // el ramal que se conecta también debe fluir a la derecha (dot(flujoEntrante, flujoPrincipal) >
+  // 0). Si el usuario lo dibujó contra la dirección del principal, se bloquea la creación con
+  // una alerta en vez de crear en silencio una unión contraflujo. Solo aplica a uniones del
+  // mismo grupo de red (san↔vent comparten la subred).
   const ramalFlowVec = (ram: { pts: number[][]; _tribReversed?: boolean }): [number, number] => {
     const p0 = ram.pts[0];
     const p1 = ram.pts[ram.pts.length - 1];
@@ -627,7 +587,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     }
   } else if (r.net === 'af' || r.net === 'ac' || r.net === 'gas') {
     const TOL = 0.5;
-    // r isn't pushed to engine.ramales yet, so include it explicitly alongside the live array.
+    // r todavía no está en engine.ramales, así que se incluye explícitamente junto al array vivo.
     const candidates = [r, ...engine.ramales];
     for (const ep of [r.pts[0], r.pts[r.pts.length - 1]]) {
       if (!junctionHasOutgoingFlow(candidates, r.net, ep, TOL)) {
@@ -643,18 +603,19 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     }
   }
 
-  // Pre-push validation (AF/AC/gas tributario): if any endpoint of the new tributario touches an
-  // existing same-net tributario with a DIFFERENT selected padre, block creation with an alert.
-  // Without this, the wrong-padre alert fires inside autoSplitJunctionAndSumFlow AFTER the push,
-  // so the ramal stays committed and the AccesorioModal still triggers — the trazo completes
-  // despite the violation. Checking BEFORE the push lets us abort cleanly.
+  // Validación pre-push (tributario de AF/AC/gas): si algún extremo del tributario nuevo toca un
+  // tributario existente de la misma red con un padre seleccionado DISTINTO, se bloquea la
+  // creación con una alerta. Sin esto, la alerta de padre equivocado dispara DENTRO de
+  // autoSplitJunctionAndSumFlow DESPUÉS del push, así que el ramal queda comprometido y el
+  // AccesorioModal igual se dispara — el trazo se completa pese a la violación. Verificar ANTES
+  // del push permite abortar limpio.
   if ((r.net === 'af' || r.net === 'ac' || r.net === 'gas') && r.tipo === 'tributario') {
     const WRONG_PADRE_TOL = 0.5;
     for (const ep of r.pts) {
       for (const ex of engine.ramales) {
         if (ex.net !== r.net || ex.id === r.id) continue;
         if (!ex.pts || ex.pts.length < 2) continue;
-        // Endpoint-to-endpoint contact with existing tributario
+        // Contacto extremo-con-extremo con un tributario existente
         if (
           ex.tipo === 'tributario' &&
           ex.padre !== r.padre &&
@@ -669,7 +630,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
           engine.render();
           return;
         }
-        // Endpoint-to-body contact with existing tributario
+        // Contacto extremo-con-cuerpo con un tributario existente
         if (ex.tipo === 'tributario' && ex.padre !== r.padre) {
           for (let i = 0; i < ex.pts.length - 1; i++) {
             const [ax, ay] = ex.pts[i];
@@ -715,12 +676,12 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     return;
   }
   autoSplitJunctionAndSumFlow(engine, r);
-  // Associate ramal with bajante if endpoint is at bajante center. A ramal may only ARRIVE at a
-  // bajante (real or fantasma) — never START there — per explicit request; handleLineDown already
-  // blocks the click itself from starting a fresh ramal there, this is the belt-and-suspenders
-  // match on the FINISHED ramal's endpoints (also covers drag-created connections). A displaced
-  // fantasma is matched against its own displaced position for the current floor; an undisplaced
-  // ghost or a real bajante both match at their plain (b.x,b.y).
+  // Asocia el ramal con un bajante si su extremo cae en el centro del bajante. Un ramal solo
+  // puede LLEGAR a un bajante (real o fantasma) — nunca EMPEZAR ahí — por pedido explícito;
+  // handleLineDown ya bloquea el clic mismo de empezar un ramal fresco ahí, esto es el cinturón
+  // y tirantes sobre los extremos del ramal TERMINADO (también cubre conexiones creadas por
+  // arrastre). Un fantasma desplazado se empareja contra su propia posición desplazada del piso
+  // actual; un fantasma sin desplazar o un bajante real emparejan en su (b.x, b.y) simple.
   if (r.pts.length >= 2) {
     const TOLLERANCE = 0.5;
     const lastIdx = r.pts.length - 1;
@@ -753,15 +714,15 @@ export function finishRamal(engine: IPlanoEngineCore): void {
         return Math.hypot(b.x - ep[0], b.y - ep[1]) < rimTol;
       });
       if (baj && !baj.recibeDeIds.includes(r.id)) {
-        // Centralized direction guard — a 'baja' bajante may only RECEIVE flow, so we never
-        // allow a ramal's START (pts[0]) to associate with one. Without this, a ramal whose
-        // user-drawn start happens to land on a 'baja' bajante would silently pick up that
-        // association, creating exactly the state shown in the issue report (RS5-P1 leaving
-        // BAN4-P1 with direction "Baja").
+        // Guardia centralizada de dirección — un bajante 'baja' solo puede RECIBIR flujo, así
+        // que nunca se permite que el INICIO de un ramal (pts[0]) se asocie con uno. Sin esto,
+        // un ramal cuyo inicio dibujado por el usuario cae sobre un bajante 'baja' tomaría esa
+        // asociación en silencio, creando exactamente el estado del reporte de bug (RS5-P1
+        // saliendo de BAN4-P1 con dirección "Baja").
         const epIdxTyped = epIdx === 0 ? 0 : r.pts.length - 1;
         if (!isRamalBajanteConnectionAllowed(engine, r, epIdxTyped, baj)) continue;
         baj.recibeDeIds.push(r.id);
-        // Auto-fill ramal's ini/fin
+        // Auto-rellenar ini/fin del ramal
         const bajCode = baj.code || baj.id;
         if (epIdx === 0) {
           r.ini = bajCode;
@@ -771,8 +732,9 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       }
     }
   }
-  // Run _markDirty BEFORE checking the modal so autoDetectRamalConnections has a chance to
-  // detect any new junction the user just created by finishing the ramal.
+  // Correr _markDirty ANTES de revisar el modal para que autoDetectRamalConnections tenga
+  // oportunidad de detectar cualquier unión nueva que el usuario acaba de crear al terminar
+  // el ramal.
   engine.activeRamal = null;
   engine.selId = r.id;
   engine._emitSelect(r);
@@ -780,17 +742,17 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   engine.render();
   engine._markDirty();
 
-  // AF/AC/gas: detect codos/tees at angle changes, perpendicular crossings, and junctions formed
-  // with another separately-drawn ramal — shared with handleDragUp so a drag can trigger the
-  // same modal when it newly creates one of these junctions. San/ll/vent junctions auto-create
-  // via calcSanitaryAccessories + renderJunctions — no modal needed.
+  // AF/AC/gas: detectar codos/tees en cambios de ángulo, cruces perpendiculares y uniones
+  // formadas con otro ramal dibujado por separado — compartido con handleDragUp para que un
+  // arrastre pueda disparar el mismo modal cuando crea una de estas uniones. Las uniones de
+  // san/ll/vent se auto-crean vía calcSanitaryAccessories + renderJunctions — sin modal.
   if ((r.net === 'af' || r.net === 'ac' || r.net === 'gas') && engine.triggerAccesorioModal) {
     const trigger = detectAccesorioTrigger(engine, r.id);
     if (trigger) engine.triggerAccesorioModal(trigger);
   }
 }
 
-/** Cancels the active ramal drawing without persisting. @param engine Engine core instance. */
+/** Cancela el dibujo del ramal activo sin persistir. @param engine Instancia del motor. */
 export function cancelRamal(engine: IPlanoEngineCore): void {
   engine._yeeFlashKey = null;
   engine.activeRamal = null;
@@ -799,14 +761,15 @@ export function cancelRamal(engine: IPlanoEngineCore): void {
   engine._markDirty();
 }
 
-/** Cancels the active area drawing without persisting. @param engine Engine core instance. */
+/** Cancela el dibujo del área activa sin persistir. @param engine Instancia del motor. */
 export function cancelArea(engine: IPlanoEngineCore): void {
   engine.activeArea = null;
   engine._emitStatus(_statusMsg(engine));
   engine.render();
 }
 
-/** Finishes the active area polygon, computing its area in m² and adding it to the plan. @param engine Engine core instance. */
+/** Termina el polígono del área activa, calculando su área en m² y agregándola al plano.
+ *  @param engine Instancia del motor. */
 export function finishArea(engine: IPlanoEngineCore): void {
   if (!engine.activeArea || engine.activeArea.pts.length < 3) {
     engine.activeArea = null;
@@ -903,7 +866,8 @@ export function deleteSegmentAt(engine: IPlanoEngineCore, cx: number, cy: number
   engine._markDirty();
 }
 
-/** Sets the drawing scale (meters per pixel) and recalculates all ramal lengths. @param engine Engine core instance. @param v Scale value as string or number. */
+/** Fija la escala de dibujo (metros por píxel) y recalcula las longitudes de todos los ramales.
+ *  @param engine Instancia del motor. @param v Valor de escala como string o número. */
 export function setScaleM(engine: IPlanoEngineCore, v: string | number): void {
   engine.scaleM = parseFloat(String(v)) || 0.5;
   engine.ramales.forEach((r) => {
@@ -918,7 +882,9 @@ export function setScaleM(engine: IPlanoEngineCore, v: string | number): void {
   engine.render();
 }
 
-/** Sets the user-defined reference scale (e.g. from a known PDF dimension) without recalculating lengths. @param engine Engine core instance. @param v Scale value as string or number. */
+/** Fija la escala de referencia definida por el usuario (p.ej. desde una dimensión conocida del
+ *  PDF) sin recalcular longitudes. @param engine Instancia del motor. @param v Valor de escala
+ *  como string o número. */
 export function setDefinedScaleM(engine: IPlanoEngineCore, v: string | number): void {
   engine.definedScaleM = parseFloat(String(v)) || 0;
   engine.render();
@@ -954,8 +920,9 @@ function checkCrossRamalAngle(
             isAllowed =
               diff <= 46 || diff >= 134 || Math.abs(diff - 45) <= 10 || Math.abs(diff - 135) <= 10;
           } else if (isAfAc) {
-            // AF/AC only forms a tee (90°) at a junction — no 45°-ish yee-style merge, per
-            // explicit request. Same tolerance renderJunctions.ts's isTee detection uses.
+            // AF/AC solo forma una tee (90°) en una unión — nada de fusiones estilo yee de 45°,
+            // por pedido explícito. Misma tolerancia que usa la detección isTee de
+            // renderJunctions.ts.
             isAllowed = Math.abs(internalAngle - 90) <= 15;
           } else {
             isAllowed = internalAngle >= 50;
@@ -978,7 +945,9 @@ function checkCrossRamalAngle(
   return true;
 }
 
-/** Handles a click while the line-tool is active: starts a new ramal, continues an existing one, or appends a segment with angle/intersection validation. @param engine Engine core instance. @param px Plane X coordinate. @param py Plane Y coordinate. */
+/** Maneja un clic con la herramienta de línea activa: empieza un ramal nuevo, continúa uno
+ *  existente o agrega un segmento con validación de ángulo/intersección. @param engine Instancia
+ *  del motor. @param px Coordenada X de plano. @param py Coordenada Y de plano. */
 export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number): void {
   let pt: { x: number; y: number } = { x: px, y: py };
   if (engine.tipoTramo === 'tributario' && !engine.padreTributario) {
@@ -986,16 +955,17 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     return;
   }
   if (!engine.activeRamal) {
-    // Look for an existing ramal to CONTINUE from before doing any generic snapping — this
-    // must win over snapToExisting picking a nearby-but-different target (e.g. a bajante
-    // displaced away from this same endpoint), otherwise clicking back onto an endpoint that
-    // carries an accessory silently starts an unrelated new ramal instead of continuing it.
+    // Buscar un ramal existente para CONTINUAR antes de hacer cualquier snap genérico — esto
+    // debe ganarle a snapToExisting eligiendo un objetivo cercano-pero-distinto (p.ej. un
+    // bajante desplazado lejos de este mismo extremo); si no, clicar de vuelta sobre un extremo
+    // que lleva un accesorio empieza en silencio un ramal nuevo no relacionado en vez de
+    // continuar el existente.
     let activeNetsRamales = engine.ramales.filter((rm) => rm.net === engine.activeNet);
     if (engine.tipoTramo === 'tributario') {
-      // Continuing an existing tributario (from its own endpoint) must stay possible, not just
-      // continuing the padre itself — restricting to only `id === padreTributario` meant clicking
-      // near an existing tributario's own endpoint fell through to "start a new ramal" instead of
-      // extending it.
+      // Continuar un tributario existente (desde su propio extremo) debe seguir siendo posible,
+      // no solo continuar el padre mismo — restringir solo a `id === padreTributario` hacía que
+      // clicar cerca del extremo de un tributario existente cayera en "empezar un ramal nuevo"
+      // en vez de extenderlo.
       activeNetsRamales = activeNetsRamales.filter(
         (rm) =>
           rm.id === engine.padreTributario ||
@@ -1005,23 +975,23 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     let continueRamal: PlanoRamal | null = null;
     let reversePoints = false;
     const CONTINUE_THRESH = 30 / engine.zoom;
-    // ini/fin are overloaded: autoDetectRamalConnections (PlanoEngineNetwork.ts) writes a
-    // bajante's code there when the endpoint discharges into one, but ALSO writes a neighboring
-    // ramal's label/id there when it just happens to touch another ramal (no bajante involved) —
-    // and that second case runs automatically on every _markDirty(), i.e. right after any ramal is
-    // finished. Only the bajante case should block continuation; a plain ramal-touching-ramal
-    // endpoint must still be continuable.
+    // ini/fin están sobrecargados: autoDetectRamalConnections (PlanoEngineNetwork.ts) escribe
+    // ahí el código de un bajante cuando el extremo descarga en uno, pero TAMBIÉN escribe el
+    // label/id de un ramal vecino cuando solo toca otro ramal (sin bajante) — y ese segundo caso
+    // corre automáticamente en cada _markDirty(), o sea justo después de terminar cualquier
+    // ramal. Solo el caso del bajante debe bloquear la continuación; un extremo que solo toca
+    // otro ramal debe seguir siendo continuable.
     const isBajanteCode = (v: string) => engine.bajantes.some((b) => (b.code || b.id) === v);
     for (const rm of activeNetsRamales) {
       const firstPt = rm.pts[0];
       const lastPt = rm.pts[rm.pts.length - 1];
       const dFirst = Math.hypot(px - firstPt[0], py - firstPt[1]);
       const dLast = Math.hypot(px - lastPt[0], py - lastPt[1]);
-      // An endpoint that already discharges into a bajante (rm.ini/fin holds the bajante's code)
-      // must NOT be treated as a "continue this ramal" target — that silently let a click there
-      // slide right past the bajante-start block below (continueRamal wins first), same as
-      // clicking the bajante's own circle would otherwise be blocked. Falls through instead, so
-      // the bajante check further down catches it and alerts.
+      // Un extremo que ya descarga en un bajante (rm.ini/fin tiene el código del bajante) NO
+      // debe tratarse como objetivo de "continuar este ramal" — eso dejaba pasar un clic ahí
+      // por el bloque de no-empezar-sobre-bajante de abajo (continueRamal gana primero), igual
+      // que clicar el círculo del propio bajante quedaría bloqueado. En su lugar cae al
+      // chequeo de bajante más abajo, que lo atrapa y alerta.
       if (dFirst < CONTINUE_THRESH && dFirst <= dLast) {
         if (rm.ini && isBajanteCode(rm.ini)) continue;
         continueRamal = rm;
@@ -1037,8 +1007,9 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     if (continueRamal) {
       if (reversePoints) {
         if (continueRamal.tipo === 'tributario') {
-          // Tributario: reverse only the pts order so the drawing tool extends from the clicked
-          // side. The _tribReversed flag lets the renderer correct the flow-direction arrow.
+          // Tributario: invertir solo el orden de pts para que la herramienta extienda desde el
+          // lado clicado. La bandera _tribReversed deja que el renderer corrija la flecha de
+          // dirección de flujo.
           continueRamal.pts = [...continueRamal.pts].reverse();
           continueRamal._tribReversed = !continueRamal._tribReversed;
         } else {
@@ -1063,8 +1034,8 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
         }
       }
 
-      // If the point we're continuing from carries an endpoint accessory, convert it
-      // to a fixed mid-ramal accessory (accMed) before it stops being the last point.
+      // Si el punto desde el que continuamos lleva un accesorio de extremo, convertirlo a un
+      // accesorio fijo de mitad de ramal (accMed) antes de que deje de ser el último punto.
       if (continueRamal.accesorioFin) {
         const oldLastIdx = continueRamal.pts.length - 1;
         continueRamal.accMed = {
@@ -1088,12 +1059,13 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       return;
     }
 
-    // A ramal may only ARRIVE at a bajante — real (own floor) or fantasma (ghost, any kind) —
-    // never START there. Checked against the raw click (before any snapping): merely dropping the
-    // snap-to-bajante below isn't enough, since the raw click point is already sitting right on
-    // top of the circle and would still start a ramal there, just unassociated. Block outright.
-    // Uses the same cached hit-circles (_circ for the real bajante, _ghost for any fantasma) the
-    // render pass already computes every frame, so this always matches exactly what's on screen.
+    // Un ramal solo puede LLEGAR a un bajante — real (de su piso) o fantasma (de cualquier
+    // tipo) — nunca EMPEZAR ahí. Se verifica contra el clic crudo (antes de cualquier snap):
+    // simplemente quitar el snap-a-bajante de abajo no basta, porque el punto crudo del clic ya
+    // está justo encima del círculo y aun así empezaría un ramal ahí, solo que sin asociar. Se
+    // bloquea de plano. Usa los mismos círculos de acierto cacheados (_circ para el bajante
+    // real, _ghost para cualquier fantasma) que el pase de render ya calcula cada frame, así
+    // que siempre coincide exactamente con lo que está en pantalla.
     {
       const rawC = engine.toCvs(pt.x, pt.y);
       const onBajante = engine.bajantes.some((b) => {
@@ -1127,9 +1099,9 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
 
     const sp = engine.snapToExisting(pt.x, pt.y);
     if (sp) {
-      // snapToExisting will happily snap onto ANY nearby ramal's vertex, regardless of which
-      // ramal was picked as the tributario's padre — so a click near a different ramal than the
-      // selected padre silently created the tributario against the wrong one. Block it instead.
+      // snapToExisting felizmente pega a CUALQUIER vértice de ramal cercano, sin importar qué
+      // ramal se eligió como padre del tributario — así un clic cerca de un ramal distinto al
+      // padre seleccionado creaba en silencio el tributario contra el equivocado. Bloquearlo.
       if (engine.tipoTramo === 'tributario') {
         const snappedRamal = engine.ramales.find(
           (r) =>
@@ -1148,10 +1120,11 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
           }
         }
       }
-      // A ventilación ramal starting exactly on a sanitaria point (a codo reventilado junction)
-      // must have its FIRST segment follow the sanitaria pipe's own local direction there — not
-      // an arbitrary 45°-grid angle. Find which san segment owns this vertex and remember its
-      // heading; consumed (and cleared) the moment the first segment is placed, below.
+      // Un ramal de ventilación que empieza exactamente sobre un punto de sanitaria (unión de
+      // codo reventilado) debe tener su PRIMER segmento siguiendo la dirección local de la
+      // tubería sanitaria ahí — no un ángulo arbitrario de la cuadrícula de 45°. Se busca qué
+      // segmento san es dueño de este vértice y se recuerda su orientación; se consume (y
+      // limpia) en cuanto se coloca el primer segmento, abajo.
       engine._ventFirstSegDir = null;
       if (engine.activeNet === 'vent') {
         for (const sr of engine.ramales) {
@@ -1189,10 +1162,11 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       }
 
       if (onSegmentRamal) {
-        // Same click that would trip the vertex-based padre guard above, just landing on the
-        // ramal's body instead of a vertex — must show the same modal, not the unrelated generic
-        // "can't start on a segment" status-bar text (which for a tributario is misleading: the
-        // real problem is which ramal it's on, not that it's on a segment at all).
+        // El mismo clic que dispararía la guardia de padre por vértice arriba, solo que cae
+        // sobre el CUERPO del ramal en vez de un vértice — debe mostrar el mismo modal, no el
+        // texto genérico no relacionado de "no puedes iniciar sobre un segmento" (que para un
+        // tributario confunde: el problema real es sobre QUÉ ramal cae, no que caiga sobre un
+        // segmento).
         if (engine.tipoTramo === 'tributario') {
           if (canJoinTributario(engine, onSegmentRamal)) {
             if (segSnapPt) pt = segSnapPt;
@@ -1237,14 +1211,16 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       return;
     }
 
-    // Save raw cursor position BEFORE snap for bajante proximity check
+    // Guardar la posición cruda del cursor ANTES del snap para el chequeo de proximidad al
+    // bajante
     const rawPt = { x: pt.x, y: pt.y };
 
     let snappedToSeg = false;
     if (engine._ventFirstSegDir && engine.activeRamal.pts.length === 1) {
-      // First segment of a ventilación ramal that started at a codo reventilado — lock it to the
-      // sanitary ramal's own heading there instead of the generic 45° grid. Only applies to this
-      // one segment; consumed immediately so later segments snap normally.
+      // Primer segmento de un ramal de ventilación que empezó en un codo reventilado — se
+      // bloquea a la orientación propia del ramal sanitario ahí, en vez de la cuadrícula
+      // genérica de 45°. Solo aplica a este segmento; se consume de inmediato para que los
+      // segmentos siguientes peguen normal.
       const dirv = engine._ventFirstSegDir;
       const relX = pt.x - last[0],
         relY = pt.y - last[1];
@@ -1258,9 +1234,10 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
             'El primer trazo de ventilación en un codo reventilado sigue la dirección del ramal sanitario — no puede cambiar de ángulo aquí.',
           );
         }
-        // Keep the actual cursor distance (relLen) as the segment length, only the direction gets
-        // locked to dirv — projecting to `proj` alone collapsed the segment near-to-zero whenever
-        // the cursor moved close to perpendicular to dirv, creating a degenerate zero-length point.
+        // Conservar la distancia real del cursor (relLen) como largo del segmento, solo la
+        // DIRECCIÓN se bloquea a dirv — proyectar solo a `proj` colapsaba el segmento a casi
+        // cero cuando el cursor se movía casi perpendicular a dirv, creando un punto
+        // degenerado de longitud cero.
         const sign = proj >= 0 ? 1 : -1;
         pt = { x: last[0] + dirv.x * relLen * sign, y: last[1] + dirv.y * relLen * sign };
       }
@@ -1302,11 +1279,12 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     if (!snappedToSeg) {
       const sp = engine.snapToExisting(pt.x, pt.y);
       if (sp) {
-        // Same guard as the "start a new tributario" branch above — snapToExisting is unrestricted
-        // and will happily snap onto ANY ramal's vertex, not just the selected padre. Without this,
-        // clicking near a different ramal while continuing an in-progress tributario silently
-        // latched onto the wrong ramal (or fell through to the angle check, which fired an
-        // unrelated "Ángulo no recomendado" alert instead of explaining the real problem).
+        // La misma guardia que la rama de "empezar un tributario nuevo" arriba —
+        // snapToExisting no tiene restricciones y felizmente pega a CUALQUIER vértice de ramal,
+        // no solo al padre seleccionado. Sin esto, clicar cerca de un ramal distinto mientras se
+        // continúa un tributario en curso se enganchaba en silencio al ramal equivocado (o caía
+        // al chequeo de ángulo, que disparaba una alerta "Ángulo no recomendado" no relacionada
+        // en vez de explicar el problema real).
         if (engine.tipoTramo === 'tributario') {
           const snappedRamal = engine.ramales.find(
             (r) =>
@@ -1397,7 +1375,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       }
     }
 
-    // Check segment intersection with existing ramales of the same network
+    // Chequear intersección de segmentos con ramales existentes de la misma red
     {
       const ppts = engine.activeRamal.pts;
       const lastIdx = ppts.length - 1;
@@ -1410,15 +1388,16 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
           if (!r.pts || r.pts.length < 2) continue;
           for (let si = 0; si < r.pts.length - 1; si++) {
             if (segmentsIntersect(segStart, segEnd, r.pts[si], r.pts[si + 1])) {
-              // A tributario crossing any ramal other than its own padre is the padre violation,
-              // not a generic crossing — this geometric check ran BEFORE the vertex-snap padre
-              // check above ever got a chance (that one only fires on an exact vertex match; a
-              // mere crossing through the wrong ramal's body doesn't end exactly on a vertex, so
-              // it landed here first with a message that didn't explain the real problem).
+              // Un tributario que cruza cualquier ramal distinto a su padre es la violación de
+              // padre, no un cruce genérico — este chequeo geométrico corrió ANTES de que el
+              // chequeo de padre por snap-de-vértice de arriba tuviera oportunidad (ese solo
+              // dispara con coincidencia exacta de vértice; un mero cruce a través del cuerpo del
+              // ramal equivocado no termina exactamente en un vértice, así que caía aquí primero
+              // con un mensaje que no explicaba el problema real).
               if (engine.tipoTramo === 'tributario' && r.id !== engine.padreTributario) {
                 if (canJoinTributario(engine, r)) {
-                  // Same-padre tributario-to-tributario contact — allowed (the join point gets
-                  // its accessory symbol via the AccesorioModal flow).
+                  // Contacto tributario-a-tributario del mismo padre — permitido (el punto de
+                  // unión recibe su símbolo de accesorio vía el flujo AccesorioModal).
                 } else {
                   engine.triggerAlert(
                     'Ramal padre incorrecto',
@@ -1441,7 +1420,8 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     engine.activeRamal.pts.push([pt.x, pt.y]);
     engine.activeRamal.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
 
-    // Cross-ramal tee check: validate angle between active ramal and any existing ramal
+    // Chequeo de tee entre ramales: validar el ángulo entre el ramal activo y cualquier ramal
+    // existente
     {
       const ppts = engine.activeRamal.pts;
       const lastIdx = ppts.length - 1;
@@ -1455,7 +1435,8 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
         engine.render();
         return;
       }
-      // First segment: connection point is pts[0], so pass pts[1] as pA, pts[0] as pB
+      // Primer segmento: el punto de conexión es pts[0], así que se pasa pts[1] como pA y pts[0]
+      // como pB
       if (
         lastIdx >= 2 &&
         !checkCrossRamalAngle(engine, ppts[1], ppts[0], engine.activeRamal.id || '')
@@ -1472,7 +1453,9 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
   engine.render();
 }
 
-/** Handles a click while the dimension tool is active: sets start point on first click, creates the dimension line on second click. @param engine Engine core instance. @param px Plane X coordinate. @param py Plane Y coordinate. */
+/** Maneja un clic con la herramienta de cota activa: fija el punto inicial en el primer clic y
+ *  crea la línea de cota en el segundo. @param engine Instancia del motor. @param px Coordenada
+ *  X de plano. @param py Coordenada Y de plano. */
 export function handleDimDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (!engine._dimStart) {
     engine._dimStart = { x: px, y: py };
@@ -1492,9 +1475,10 @@ export function handleDimDown(engine: IPlanoEngineCore, px: number, py: number):
   }
 }
 
-/** Handles a click while the guide-line tool is active: sets start point on first click, creates
- *  the guide line (freely, not snapped to any ramal) on second click, tagged with the currently
- *  active net so its later rotate/convert-to-ramal actions know which angle rules apply. */
+/** Maneja un clic con la herramienta de línea guía activa: fija el punto inicial en el primer
+ *  clic y crea la línea guía (libre, sin pegar a ningún ramal) en el segundo, etiquetada con la
+ *  red actualmente activa para que sus acciones posteriores de rotar/convertir-a-ramal sepan
+ *  qué reglas de ángulo aplican. */
 export function handleGuideDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (!engine._guideStart) {
     engine._guideStart = { x: px, y: py };
@@ -1514,7 +1498,9 @@ export function handleGuideDown(engine: IPlanoEngineCore, px: number, py: number
   }
 }
 
-/** Places a text annotation at the given plane coordinates, prompting the user for content. @param engine Engine core instance. @param px Plane X coordinate. @param py Plane Y coordinate. */
+/** Coloca una anotación de texto en las coordenadas de plano dadas, pidiendo el contenido al
+ *  usuario. @param engine Instancia del motor. @param px Coordenada X de plano. @param py
+ *  Coordenada Y de plano. */
 export function handleTextDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (engine._onRequestTextCb) {
     engine._onRequestTextCb(px, py, (t: string) => {
@@ -1559,7 +1545,9 @@ export function handleTextDown(engine: IPlanoEngineCore, px: number, py: number)
   engine._markDirty();
 }
 
-/** Handles a click while the erase tool is active: selects the element under the cursor and deletes it or trims a ramal endpoint segment. @param engine Engine core instance. @param cx Canvas X coordinate. @param cy Canvas Y coordinate. */
+/** Maneja un clic con la herramienta de borrar activa: selecciona el elemento bajo el cursor y
+ *  lo borra o recorta un segmento de extremo de ramal. @param engine Instancia del motor.
+ *  @param cx Coordenada X de canvas. @param cy Coordenada Y de canvas. */
 export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number): void {
   engine.selectAt(cx, cy);
   const selId = engine.selId;
@@ -1603,10 +1591,11 @@ export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number
 }
 
 /**
- * Apply the borrador's "trim-or-delete" rule to a ramal WITHOUT going through selectAt first
- * — needed by the keyboard handler, which already has `sel` (the user-selected ramal) and the
- * last cursor position, and would otherwise lose its selection by re-running selectAt against
- * an arbitrary canvas point. Same trim/delete logic as handleEraseDown's ramal branch.
+ * Aplica la regla de "recortar-o-borrar" del borrador a un ramal SIN pasar por selectAt primero
+ * — lo necesita el manejador de teclado, que ya tiene `sel` (el ramal seleccionado por el
+ * usuario) y la última posición del cursor, y perdería su selección al volver a ejecutar
+ * selectAt contra un punto arbitrario del canvas. Misma lógica de recorte/borrado que la rama de
+ * ramal de handleEraseDown.
  */
 export function eraseRamalAt(
   engine: IPlanoEngineCore,
@@ -1677,7 +1666,9 @@ export function eraseRamalAt(
   engine._markDirty();
 }
 
-/** Handles a click while the area-tool is active: starts a new polygon or appends a vertex; closes when near the start point. @param engine Engine core instance. @param px Plane X coordinate. @param py Plane Y coordinate. */
+/** Maneja un clic con la herramienta de área activa: empieza un polígono nuevo o agrega un
+ *  vértice; cierra cuando está cerca del punto inicial. @param engine Instancia del motor.
+ *  @param px Coordenada X de plano. @param py Coordenada Y de plano. */
 export function handleAreaDown(engine: IPlanoEngineCore, px: number, py: number): void {
   let pt: { x: number; y: number } = { x: px, y: py };
   if (!engine.activeArea) {
@@ -1703,7 +1694,9 @@ export function handleAreaDown(engine: IPlanoEngineCore, px: number, py: number)
   engine.render();
 }
 
-/** Requests a render on mouse move when an active draw (ramal, dim, or area) is in progress. @param engine Engine core instance. @param x Canvas X coordinate. @param y Canvas Y coordinate. */
+/** Pide un render al mover el mouse cuando hay un dibujo activo (ramal, cota o área) en curso.
+ *  @param engine Instancia del motor. @param x Coordenada X de canvas. @param y Coordenada Y de
+ *  canvas. */
 export function handleDrawingMouseMove(engine: IPlanoEngineCore, x: number, y: number): void {
   if (
     engine.activeRamal ||
@@ -1718,7 +1711,7 @@ export function handleDrawingMouseMove(engine: IPlanoEngineCore, x: number, y: n
   }
 }
 
-/** Finishes the active ramal or area on double-click. @param engine Engine core instance. */
+/** Termina el ramal o área activos al hacer doble clic. @param engine Instancia del motor. */
 export function handleDoubleClick(engine: IPlanoEngineCore): void {
   if (engine.tool === 'line' && engine.activeRamal && engine.activeRamal.pts.length >= 2) {
     finishRamal(engine);

@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
 import { saveProyectoCoreData, loadProyectoData } from '../services/proyectoDataService';
-import type { Piso } from '../components/useWorkAreaState';
+import type { Piso } from '../lib/shared/projectTypes';
 import { PisosProvider, usePisos } from './PisosContext';
 import { ProyectoProvider, useProyecto, type Proyecto, PROY_DEFAULTS } from './ProyectoContext';
 import {
@@ -29,7 +29,7 @@ import { CriteriosProvider, useCriterios, type CritItem, cloneCrits } from './Cr
 export type { Proyecto, MaterialItem, ProfItem, CritItem };
 export { PROY_DEFAULTS };
 
-/** Aggregated project-scoped state: pisos, proyecto, materiales, profundidades, criterios. */
+/** Estado agregado del proyecto: pisos, proyecto, materiales, profundidades y criterios reunidos en un solo valor de contexto para que el área de trabajo no dependa de cada sub-contexto por separado. */
 interface ProjectContextValue {
   pisos: Piso[];
   proy: Proyecto;
@@ -43,12 +43,12 @@ interface ProjectContextValue {
   setProfs: React.Dispatch<React.SetStateAction<ProfItem[]>>;
   setCrits: React.Dispatch<React.SetStateAction<CritItem[]>>;
   resetToDefaults: () => void;
-  /** Suspends the debounced cloud-save effect. Callers that reset state and then
-   * asynchronously repopulate it from Supabase (ProfilePage.openProyecto,
-   * ProjectCreateDialog) must call this BEFORE resetting and `resumeCloudSync` AFTER
-   * their own restore finishes — otherwise the reset's transient empty state gets
-   * written to the cloud by the debounce before the restore has a chance to run,
-   * wiping the project's real data. */
+  /** Suspende el guardado en la nube con debounce. Quienes resetean el estado y luego lo
+   * repueblan de forma asíncrona desde Supabase (ProfilePage.openProyecto,
+   * ProjectCreateDialog) deben llamar esto ANTES de resetear y `resumeCloudSync` DESPUÉS
+   * de que su propia restauración termine — si no, el estado vacío transitorio del reset
+   * queda escrito en la nube por el debounce antes de que la restauración pueda correr,
+   * borrando los datos reales del proyecto. */
   pauseCloudSync: () => void;
   resumeCloudSync: () => void;
 }
@@ -70,22 +70,23 @@ function ProjectContextBridge({ children }: { children?: ReactNode }) {
     setCrits(cloneCrits());
   }, [setPisos, setProy, setMats, setProfs, setCrits]);
 
-  // Debounced cloud backup of everything project-scoped besides trazos and plan PDFs
-  // (those save through their own dedicated paths). Mirrors usePersistedState's own
-  // localStorage debounce, just with a longer window since this hits the network.
-  // Gated on restoreDone so the mount-time empty state never wipes a project's cloud
-  // backup when the async restore below takes longer than the debounce window.
-  // restoreDone starts true when there is nothing to restore (no active project, or
-  // local data present) and flips to true only after the async cloud restore applies.
+  // Respaldo en la nube con debounce de todo lo que pertenece al proyecto, salvo trazos y
+  // PDFs de planos (esos se guardan por sus propios caminos dedicados). Mismo patrón de
+  // debounce que usePersistedState en localStorage, pero con ventana más larga porque aquí
+  // se golpea la red. Condicionado a restoreDone para que el estado vacío del montaje jamás
+  // borre el respaldo en la nube cuando la restauración asíncrona de abajo tarda más que la
+  // ventana del debounce. restoreDone nace en true cuando no hay nada que restaurar (sin
+  // proyecto activo o con datos locales presentes) y solo pasa a true cuando la restauración
+  // asíncrona de la nube aplica sus datos.
   const [restoreDone, setRestoreDone] = useState(() => {
     const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
     if (!proyectoId) return true;
-    // mats is deliberately excluded: MaterialesContext always falls back to a non-empty
-    // MATS_CLONED default (predefined per-network categories), so Object.keys(mats).length
-    // is > 0 even on a genuinely empty/just-cleared localStorage — including it here made
-    // hasLocalData true unconditionally, which permanently skipped the cloud-restore effect
-    // below for every project, on every mount (fresh browser, logout/login, reopen from
-    // Profile) — the project always just showed blank defaults instead of the real backup.
+    // mats se excluye a propósito: MaterialesContext siempre cae al default no vacío
+    // MATS_CLONED (categorías predefinidas por red), así que Object.keys(mats).length
+    // da > 0 incluso con localStorage vacío o acabado de limpiar — incluirlo aquí habría
+    // vuelto hasLocalData true incondicionalmente, saltándose el efecto de restauración
+    // de la nube de abajo en cada montaje (navegador nuevo, logout/login, reapertura desde
+    // Profile) y el proyecto siempre mostraría defaults en blanco en vez del respaldo real.
     const hasLocalData = pisos.length > 0 || proy.nombre.trim() !== '';
     return hasLocalData;
   });
@@ -106,14 +107,16 @@ function ProjectContextBridge({ children }: { children?: ReactNode }) {
     return () => clearTimeout(timer);
   }, [pisos, proy, mats, profs, crits, restoreDone]);
 
-  // Cloud restore on mount: the work area's source of truth is localStorage, which is
-  // empty on a fresh browser (re-login, another device, cleared storage). Supabase holds
-  // the backup — pull it once when local state is still blank so the project, floors,
-  // materials, depths and criteria come back instead of showing an empty work area.
-  // Local data wins when present (fresh edits must not be clobbered by an older backup).
-  // No mount-once ref: in dev StrictMode mounts the effect twice, and a ref would let the
-  // first (aborted) run permanently block the second one. The ignore flag alone is enough
-  // — it only cancels the in-flight fetch on a real unmount.
+  // Restauración de la nube al montar: la fuente de verdad del área de trabajo es
+  // localStorage, que llega vacío en un navegador nuevo (re-login, otro dispositivo,
+  // storage limpiado). Supabase guarda el respaldo — se trae una sola vez mientras el
+  // estado local sigue en blanco para que el proyecto, pisos, materiales, profundidades y
+  // criterios vuelvan en lugar de mostrar un área de trabajo vacía.
+  // Si hay datos locales, ganan ellos (una edición reciente no debe ser pisada por un
+  // respaldo más viejo).
+  // Sin ref de montaje único: en dev StrictMode monta el efecto dos veces y un ref dejaría
+  // que la primera corrida (abortada) bloquee para siempre a la segunda. El flag ignore
+  // alcanza — solo cancela el fetch en vuelo en un desmontaje real.
   useEffect(() => {
     if (restoreDone) return;
     const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
@@ -124,8 +127,9 @@ function ProjectContextBridge({ children }: { children?: ReactNode }) {
       if (ignore) return;
       if (data?.pisos && data.pisos.length > 0) setPisos(data.pisos);
       if (data?.proy) {
-        // The RPC row mapper returns Partial<Proyecto> with undefined fields for missing
-        // columns — strip them so defaults from PROY_DEFAULTS survive the merge.
+        // El mapper de filas del RPC devuelve Partial<Proyecto> con campos undefined para
+        // las columnas faltantes — se filtran para que los defaults de PROY_DEFAULTS
+        // sobrevivan al merge.
         const patch = Object.fromEntries(
           Object.entries(data.proy).filter(([, v]) => v != null),
         ) as Partial<Proyecto>;
@@ -139,8 +143,8 @@ function ProjectContextBridge({ children }: { children?: ReactNode }) {
     return () => {
       ignore = true;
     };
-    // Mount-once intent — restoreDone already encodes the no-restore cases, so nothing else
-    // needs re-running when state changes.
+    // Intención de montaje único — restoreDone ya codifica los casos sin restauración, así
+    // que nada más necesita re-ejecutarse cuando cambia el estado.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -185,7 +189,7 @@ function ProjectContextBridge({ children }: { children?: ReactNode }) {
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 }
 
-/** Root project provider composing Pisos, Proyecto, Materiales, Profundidades, Criterios sub-contexts. */
+/** Provider raíz que compone los sub-contextos Pisos, Proyecto, Materiales, Profundidades, Criterios. */
 export function ProjectProvider({ children }: { children?: ReactNode }) {
   return (
     <PisosProvider>
@@ -202,7 +206,7 @@ export function ProjectProvider({ children }: { children?: ReactNode }) {
   );
 }
 
-/** Hook to read/write aggregated project state. @returns {ProjectContextValue} */
+/** Hook para leer/escribir el estado agregado del proyecto. @returns {ProjectContextValue} */
 export function useProject() {
   const ctx = useContext(ProjectContext);
   if (!ctx) throw new Error('useProject must be used within ProjectProvider');

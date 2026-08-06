@@ -1,7 +1,9 @@
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import { TRAZOS_PREFIX, TRAZOS_PLAN_PREFIX } from '../constants/storage-keys';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
-import type { LabelBoxCorners } from '../lib/PlanoEngine/PlanoState';
+import type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes';
+export type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes';
+export { enrichCrossFloorGhosts } from './crossFloorGhosts';
 
 interface LocalLdesvioRamal {
   id: string;
@@ -25,36 +27,6 @@ interface LocalLdesvioRamal {
   bloqueado: boolean;
 }
 
-// A cross-floor ghost is a pure positional reference marker — it's NOT a real riser, carries no
-// recibeDeIds/alimentaIds, and lives in its own storage array (`crossFloorGhosts`), completely
-// separate from `bajantes`/`ramales`. This keeps it invisible to every existing hydraulic-calc,
-// design-table, and bajante-count code path (all of which only ever read `data.bajantes`), so it
-// can never contaminate a total or consume a BAN2/BAN3-style label slot by accident.
-export interface CrossFloorGhost {
-  id: string;
-  net: string;
-  code: string;
-  x: number;
-  y: number;
-  dNominal: string;
-  direccion: 'sube' | 'baja';
-  /**
-   * Direction of the SOURCE (upper-floor) parent bajante. The ghost itself points the OPPOSITE
-   * way (it's where the parent arrives from in this floor's diagram), but the label rendered on
-   * this ghost must read the parent's actual direction so users can see where flow is going on
-   * the floor above — not the ghost's synthetic counter-direction.
-   */
-  parentDireccion?: 'sube' | 'baja';
-  piso: string;
-  sourcePlanId: string;
-  sourceBajanteId: string;
-  targetBajanteId?: string;
-  // Runtime-only hit box, recomputed every render (same convention as PlanoBajante._circ/_ghost)
-  // — rides along in the serialized JSON like those do, harmless extra field.
-  _hitCircle?: { x: number; y: number; r: number };
-  _crossFloorLabelBox?: LabelBoxCorners;
-}
-
 interface LocalGhostDrawingData {
   ts?: number;
   crossFloorGhosts?: CrossFloorGhost[];
@@ -72,8 +44,8 @@ function saveData(planId: string | number, data: LocalGhostDrawingData): void {
   saveTrazosToDB(String(planId), data);
 }
 
-// Writes (or replaces, if one from the same source already exists) a cross-floor ghost into the
-// TARGET floor's own raw storage — the target floor doesn't need to be currently loaded/live.
+// Escribe (o reemplaza, si ya existe uno del mismo origen) un fantasma entre pisos en el
+// almacenamiento crudo del piso DESTINO — el piso destino no necesita estar cargado/activo.
 export function writeCrossFloorGhost(targetPlanId: string | number, ghost: CrossFloorGhost): void {
   const data = loadData(targetPlanId);
   const list = (data.crossFloorGhosts || []).filter(
@@ -84,9 +56,9 @@ export function writeCrossFloorGhost(targetPlanId: string | number, ghost: Cross
   saveData(targetPlanId, data);
 }
 
-// Removes any ghost this specific source bajante previously placed on `targetPlanId` — used when
-// re-associating to a different floor (or clearing the association) so a stale ghost doesn't stay
-// behind on the floor that's no longer the target.
+// Quita cualquier fantasma que este bajante origen específico haya puesto en `targetPlanId` — se
+// usa al re-asociar a otro piso (o limpiar la asociación) para que un fantasma viejo no se quede
+// en el piso que ya no es el destino.
 export function removeCrossFloorGhost(
   targetPlanId: string | number,
   sourcePlanId: string | number,
@@ -101,16 +73,18 @@ export function removeCrossFloorGhost(
   saveData(targetPlanId, data);
 }
 
-// Scans ALL floors' localStorage and removes any cross-floor ghost referencing the given source
-// bajante. Called when a bajante is deleted — stale ghosts on other floors must be cleaned up.
+// Recorre el localStorage de TODOS los pisos y quita cualquier fantasma entre pisos que
+// referencie al bajante origen dado. Se llama cuando se borra un bajante — los fantasmas viejos
+// en otros pisos deben limpiarse.
 export function removeCrossFloorGhostsBySource(
   sourcePlanId: string | number,
   sourceBajanteId: string,
 ): void {
   const sp = String(sourcePlanId);
-  // localStorage keys are prefixed with 'civilflow_' by saveToStorage, so the TRAZOS_PREFIX
-  // ('trazos_') becomes 'civilflow_trazos_' (== TRAZOS_PLAN_PREFIX) in actual storage. Iterate
-  // by full prefixed key to locate every floor's trace data and strip matching ghosts.
+  // saveToStorage prefija las claves de localStorage con 'civilflow_', así que TRAZOS_PREFIX
+  // ('trazos_') se vuelve 'civilflow_trazos_' (== TRAZOS_PLAN_PREFIX) en el almacenamiento real.
+  // Se itera por clave completa prefijada para ubicar los datos de trazado de cada piso y
+  // despojarlos de los fantasmas que coincidan.
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (!k || !k.startsWith(TRAZOS_PLAN_PREFIX)) continue;
@@ -131,8 +105,9 @@ export function removeCrossFloorGhostsBySource(
   }
 }
 
-// Removes a bajante/montante entirely from a (possibly not currently loaded) floor's own storage
-// — used to cascade-delete the OTHER end of a cross-floor association when one side is deleted.
+// Quita un bajante/montante por completo del almacenamiento propio de un piso (posiblemente no
+// cargado) — se usa para borrar en cascada el OTRO extremo de una asociación entre pisos cuando
+// se borra un lado.
 export function deleteBajanteFromStorage(planId: string | number, bajanteId: string): void {
   const data = loadData(planId) as LocalGhostDrawingData & { bajantes?: { id: string }[] };
   if (!data.bajantes?.length) return;
@@ -142,28 +117,30 @@ export function deleteBajanteFromStorage(planId: string | number, bajanteId: str
   saveData(planId, data);
 }
 
-// Deterministic id for a source bajante's Ldesvio connector — one per source, always overwritable
-// by re-running create with the same sourceBajanteId, and directly removable by id without having
-// to search/guess which sequential ramal number it got. Also deliberately NOT of the form
-// `${netPrefix}\d+` (see PlanoPersistence.ts's counting regex on load), so it never consumes a
-// real ramal number slot.
+// Id determinista para el conector Ldesvio de un bajante origen — uno por origen, siempre
+// sobrescribible al re-ejecutar create con el mismo sourceBajanteId, y removible directo por id
+// sin tener que buscar/adivinar qué número secuencial de ramal le tocó. Deliberadamente NO tiene
+// la forma `${netPrefix}\d+` (ver la regex de conteo de PlanoPersistence.ts al cargar), así
+// nunca consume un número de ramal real.
 export function ldesvioIdFor(sourceBajanteId: string): string {
   return `LD_${sourceBajanteId}`;
 }
 
-// Shared predicate — an Ldesvio connector ramal is a drawing aid owned by its source bajante
-// (id `LD_<bajanteId>`), not a hydraulic pipe. Every table builder, connectivity scanner, and
-// renumber pass must exclude it, or it leaks into design tables as a bogus tramo (and the
-// renumber pass even renames it to a real-looking `RS\d+`).
+// Predicado compartido — un ramal conector Ldesvio es una ayuda de dibujo propiedad de su
+// bajante origen (id `LD_<bajanteId>`), no una tubería hidráulica. Todo constructor de tablas,
+// escáner de conectividad y pase de renumeración debe excluirlo, o se filtra a las tablas de
+// diseño como un tramo falso (y el pase de renumeración incluso lo renombra a un `RS\d+` con
+// apariencia real).
 export function isLdesvioRamalId(id: string | null | undefined): boolean {
   return !!id && id.startsWith('LD_');
 }
 
-// The Ldesvio's `id` is a stable, deterministic key (for lookup/cleanup) — its `label` (what's
-// actually printed on the drawing) must instead read like any other ramal's, e.g. "R12", or it
-// prints the raw internal id ("LD_BAN1...") on the plan. Mirrors the same scan `PlanoPersistence.ts`
-// does on load: highest existing `${prefix}N` for this net, +1 — but only among REAL ramales (never
-// another Ldesvio, which never matches that pattern to begin with, so no special exclusion needed).
+// El `id` del Ldesvio es una clave estable y determinista (para buscar/limpiar) — su `label` (lo
+// que realmente se imprime en el dibujo) debe leerse como el de cualquier otro ramal, p. ej.
+// "R12", o imprime el id interno crudo ("LD_BAN1...") en el plano. Espeja el mismo escaneo que
+// hace `PlanoPersistence.ts` al cargar: máximo `${prefix}N` existente para esta red, +1 — pero
+// solo entre ramales REALES (nunca otro Ldesvio, que de entrada nunca coincide con ese patrón,
+// así que no hace falta exclusión especial).
 export function nextRamalLabel(net: string, existingRamales: { id?: string }[]): string {
   const netDef = NETS.find((n) => n.id === net);
   const prefix = netDef?.lbl || 'R';
@@ -222,12 +199,13 @@ export function buildLdesvioRamal(
   };
 }
 
-// Creates (or replaces, if one from the same source already exists) the "Ldesvio" connector ramal
-// on the SOURCE bajante's OWN floor — the visual counterpart to the ghost written on the target
-// floor: the ghost shows where the pipe arrives, this ramal shows the (possibly diagonal) offset it
-// travels before it does, on the floor the offset actually belongs to. Writes directly to that
-// floor's storage — appropriate when that floor is NOT the currently loaded one (the caller must
-// push to the live engine.ramales itself instead, when it is, so autosave doesn't clobber this).
+// Crea (o reemplaza, si ya existe uno del mismo origen) el ramal conector "Ldesvio" en el piso
+// PROPIO del bajante ORIGEN — la contraparte visual del fantasma escrito en el piso destino: el
+// fantasma muestra dónde llega la tubería, este ramal muestra el desvío (posiblemente diagonal)
+// que recorre antes de llegar, en el piso al que el desvío pertenece. Escribe directo al
+// almacenamiento de ese piso — apropiado cuando ese piso NO es el cargado actualmente (el caller
+// debe empujar al engine.ramales vivo en su lugar, cuando lo es, para que el autosave no pise
+// esto).
 export function createCrossFloorLdesvioRamal(
   planId: string | number,
   sourceBajanteId: string,
@@ -263,8 +241,9 @@ export function createCrossFloorLdesvioRamal(
   saveData(planId, data);
 }
 
-// Removes the deterministic Ldesvio connector for the given source bajante from `planId`'s own
-// storage — used when clearing/re-pointing an association so the old detour ramal doesn't linger.
+// Quita el conector Ldesvio determinista del bajante origen dado del almacenamiento propio de
+// `planId` — se usa al limpiar/re-apuntar una asociación para que el ramal de desvío viejo no
+// quede rondando.
 export function removeCrossFloorLdesvioRamal(
   planId: string | number,
   sourceBajanteId: string,
@@ -277,10 +256,10 @@ export function removeCrossFloorLdesvioRamal(
   saveData(planId, data);
 }
 
-// Updates the FAR endpoint (pts[1], the target's position) of a source bajante's Ldesvio connector,
-// wherever that connector's own floor is — called after the TARGET bajante (not the source) moves,
-// since the connector lives on the source's floor and can't be reached through the live engine when
-// that's a different, currently-unloaded plan.
+// Actualiza el punto final LEJANO (pts[1], la posición del destino) del conector Ldesvio de un
+// bajante origen, dondequiera que esté el piso propio del conector — se llama después de que se
+// mueve el bajante DESTINO (no el origen), porque el conector vive en el piso del origen y no se
+// puede alcanzar por el engine vivo cuando es un plano distinto y no cargado.
 export function updateCrossFloorLdesvioFarEndpoint(
   sourcePlanId: string | number,
   sourceBajanteId: string,
@@ -320,13 +299,14 @@ interface StoredDesplazamientoBajante {
   desplazamientos?: Record<string, { dx: number; dy: number; Ldesvio?: string }>;
 }
 
-// Re-anchors the "displaced circle" marker (desplazamientos) on the SOURCE floor's bajante after
-// the TARGET bajante (on a different, possibly not-loaded floor) moves: the marker must sit at the
-// target's projected position, so dx/dy change by exactly the target's movement delta. Sweeps the
-// desplazamiento entry by its Ldesvio connector id (unique per source bajante), same key-lookup
-// strategy as removeBajanteDesplazamientoFromStorage — without this, the dashed ring on the source
-// floor stayed stuck at the position it had when the association was created and visually "lost"
-// the connection once the target was dragged elsewhere.
+// Re-ancla el marcador de "círculo desplazado" (desplazamientos) en el bajante del piso ORIGEN
+// después de que se mueve el bajante DESTINO (en otro piso, posiblemente no cargado): el marcador
+// debe quedar en la posición proyectada del destino, así que dx/dy cambian exactamente en el
+// delta del movimiento del destino. Barre la entrada de desplazamiento por el id de su conector
+// Ldesvio (único por bajante origen), misma estrategia de búsqueda por clave que
+// removeBajanteDesplazamientoFromStorage — sin esto, el anillo punteado en el piso origen se
+// quedaba pegado en la posición que tenía al crear la asociación y visualmente "perdía" la
+// conexión una vez que se arrastraba el destino a otro lado.
 export function updateCrossFloorDesplazamientoBySource(
   sourcePlanId: string | number,
   sourceBajanteId: string,
@@ -357,7 +337,7 @@ export function updateCrossFloorDesplazamientoBySource(
   saveData(sourcePlanId, data);
 }
 
-// Updates just the diameter of an existing cross-floor ghost, wherever it currently lives.
+// Actualiza solo el diámetro de un fantasma entre pisos existente, dondequiera que viva.
 export function updateCrossFloorGhostDiameter(
   hostPlanId: string | number,
   ghostId: string,
@@ -372,10 +352,10 @@ export function updateCrossFloorGhostDiameter(
   saveData(hostPlanId, data);
 }
 
-// Sweeps ALL floors' localStorage for cross-floor ghosts whose `sourceBajanteId` matches the given
-// parent and updates a single field on each. Called when the parent bajante's diameter or
-// direction is changed — without this the mirror ghost on the target floor keeps reading the
-// stale value.
+// Barre el localStorage de TODOS los pisos por fantasmas entre pisos cuyo `sourceBajanteId`
+// coincida con el padre dado y actualiza un solo campo en cada uno. Se llama cuando cambia el
+// diámetro o la dirección del bajante padre — sin esto el fantasma espejo en el piso destino
+// sigue leyendo el valor viejo.
 export function updateCrossFloorGhostFieldBySource(
   sourcePlanId: string | number,
   sourceBajanteId: string,
@@ -387,7 +367,7 @@ export function updateCrossFloorGhostFieldBySource(
     const k = localStorage.key(i);
     if (!k || !k.startsWith(TRAZOS_PLAN_PREFIX)) continue;
     const targetPlanId = k.slice(TRAZOS_PLAN_PREFIX.length);
-    if (targetPlanId === sp) continue; // same floor, skip — parent bajante updated there directly
+    if (targetPlanId === sp) continue; // mismo piso, salta — el bajante padre se actualiza ahí directo
     try {
       const data: LocalGhostDrawingData = JSON.parse(localStorage.getItem(k) || '{}');
       if (!data.crossFloorGhosts?.length) continue;
@@ -409,11 +389,11 @@ export function updateCrossFloorGhostFieldBySource(
   }
 }
 
-// Sweeps ALL floors' localStorage for a cross-floor ghost whose `sourceBajanteId` matches the
-// given SOURCE bajante and updates its x/y — called after that bajante finishes being dragged on
-// its own floor, so a ghost mirroring it on another floor (created via either the "Destino" or
-// "Origen" selector — both ultimately key off descargaEnId/sourceBajanteId the same way) doesn't
-// stay stuck at its position from creation time.
+// Barre el localStorage de TODOS los pisos por un fantasma entre pisos cuyo `sourceBajanteId`
+// coincida con el bajante ORIGEN dado y actualiza su x/y — se llama después de que ese bajante
+// termina de arrastrarse en su propio piso, para que un fantasma que lo espeja en otro piso
+// (creado vía el selector "Destino" o "Origen" — ambos dependen de descargaEnId/sourceBajanteId
+// igual) no se quede pegado en su posición de creación.
 export function updateCrossFloorGhostPositionBySource(
   sourcePlanId: string | number,
   sourceBajanteId: string,
@@ -448,25 +428,16 @@ export function updateCrossFloorGhostPositionBySource(
   }
 }
 
-// Back-compat alias kept so any external call sites still resolve. New code should use
-// updateCrossFloorGhostFieldBySource directly with `field: 'dNominal'`.
-export function updateCrossFloorGhostDiameterBySource(
-  sourcePlanId: string | number,
-  sourceBajanteId: string,
-  dNominal: string,
-): void {
-  updateCrossFloorGhostFieldBySource(sourcePlanId, sourceBajanteId, 'dNominal', dNominal);
-}
-
-// A bajante's id/code gets rewritten whenever _renumberBajantes runs (networkRenumber.ts) — e.g.
-// after ANY bajante on the same net/floor is deleted, closing the numbering gap. Every
-// cross-floor cross-reference is keyed off that id (the Ldesvio ramal's own id is `LD_<id>`, the
-// mirror ghost's `sourceBajanteId`/`targetBajanteId`, and the other side's `descargaEnId`/
-// `origenId` pointer, format `${planId}|${id}`) — none of that gets updated by the plain rename,
-// so a renumbered bajante that had an active cross-floor association silently orphans its own
-// Ldesvio/ghost forever: every later lookup (including disassociating) computes the key from the
-// bajante's CURRENT id and simply never finds the stale one anymore, so it's never cleaned up.
-// Called once per changed id, right after the rename, from _renumberBajantes.
+// El id/código de un bajante se reescribe cuandoquiera que corre _renumberBajantes
+// (networkRenumber.ts) — p. ej. después de borrar CUALQUIER bajante de la misma red/piso, cerrando
+// el hueco de numeración. Toda referencia cruzada entre pisos se ancla en ese id (el id del ramal
+// Ldesvio es `LD_<id>`, el `sourceBajanteId`/`targetBajanteId` del fantasma espejo, y el puntero
+// `descargaEnId`/`origenId` del otro lado, formato `${planId}|${id}`) — nada de eso se actualiza
+// con el rename simple, así que un bajante renumerado que tenía una asociación entre pisos
+// activa deja huérfano su propio Ldesvio/fantasma para siempre: toda búsqueda posterior
+// (incluida la desasociación) calcula la clave con el id ACTUAL del bajante y simplemente nunca
+// encuentra el viejo, así que nunca se limpia.
+// Se llama una vez por id cambiado, justo después del rename, desde _renumberBajantes.
 export function renameBajanteAcrossFloorReferences(
   thisPlanId: string,
   oldId: string,
@@ -478,9 +449,9 @@ export function renameBajanteAcrossFloorReferences(
   const oldPointer = `${thisPlanId}|${oldId}`;
   const newPointer = `${thisPlanId}|${newId}`;
 
-  // This floor's own storage: the Ldesvio ramal (if this bajante is a cross-floor source), the
-  // matching desplazamientos self-reference, and any ramal endpoint (ini/fin) still holding the
-  // old code.
+  // Almacenamiento del piso propio: el ramal Ldesvio (si este bajante es origen entre pisos), la
+  // auto-referencia de desplazamientos que lo acompaña, y cualquier extremo de ramal (ini/fin)
+  // que todavía tenga el código viejo.
   const own = loadData(thisPlanId) as LocalGhostDrawingData & {
     ramales?: (LocalLdesvioRamal & { ini?: string; fin?: string })[];
     bajantes?: StoredDesplazamientoBajante[];
@@ -511,10 +482,10 @@ export function renameBajanteAcrossFloorReferences(
   }
   if (ownDirty) saveData(thisPlanId, own);
 
-  // Every other floor's storage: the mirror ghost this bajante wrote (as source) — id and
-  // sourceBajanteId — and any descargaEnId/origenId pointer aimed at `${thisPlanId}|${oldId}`
-  // (covers this bajante as either the discharge target of some other floor's source, or the
-  // origin another floor's target points back at).
+  // Almacenamiento de cualquier otro piso: el fantasma espejo que este bajante escribió (como
+  // origen) — id y sourceBajanteId — y cualquier puntero descargaEnId/origenId apuntando a
+  // `${thisPlanId}|${oldId}` (cubre a este bajante como destino de descarga del origen de otro
+  // piso, o como origen al que el destino de otro piso apunta de vuelta).
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (!k || !k.startsWith(TRAZOS_PLAN_PREFIX)) continue;
@@ -553,52 +524,4 @@ export function renameBajanteAcrossFloorReferences(
       continue;
     }
   }
-}
-
-// Fills in any missing parentDireccion/dNominal on the given ghosts by looking up the source
-// bajante's current values in its floor's localStorage. Legacy ghosts written before those
-// fields existed (and ghosts whose parent was edited on the source floor but the mirror never
-// re-loaded) need this back-fill so the target-floor label shows accurate, up-to-date values.
-export function enrichCrossFloorGhosts(ghosts: CrossFloorGhost[]): CrossFloorGhost[] {
-  if (!ghosts.length) return ghosts;
-  const cache: Record<string, LocalGhostDrawingData> = {};
-  const loadPlan = (planId: string): LocalGhostDrawingData => {
-    if (cache[planId]) return cache[planId];
-    try {
-      const raw = JSON.parse(localStorage.getItem('civilflow_' + 'trazos_' + planId) || '{}');
-      cache[planId] = raw;
-      return raw;
-    } catch {
-      cache[planId] = {};
-      return cache[planId];
-    }
-  };
-  let changed = false;
-  const out: CrossFloorGhost[] = [];
-  for (const g of ghosts) {
-    let next: CrossFloorGhost = g;
-    const needsDir = !g.parentDireccion && (g.sourcePlanId || '').length > 0;
-    const needsDiam = !g.dNominal && (g.sourcePlanId || '').length > 0;
-    if (needsDir || needsDiam) {
-      const data = loadPlan(g.sourcePlanId) as LocalGhostDrawingData & {
-        bajantes?: { id?: string; direccion?: string; dNominal?: string }[];
-      };
-      const b = (data.bajantes || []).find((bb) => bb.id === g.sourceBajanteId);
-      if (b) {
-        const patch: Partial<CrossFloorGhost> = {};
-        if (needsDir && (b.direccion === 'sube' || b.direccion === 'baja')) {
-          patch.parentDireccion = b.direccion;
-        }
-        if (needsDiam && typeof b.dNominal === 'string') {
-          patch.dNominal = b.dNominal;
-        }
-        if (Object.keys(patch).length) {
-          next = { ...g, ...patch };
-          changed = true;
-        }
-      }
-    }
-    out.push(next);
-  }
-  return changed ? out : ghosts;
 }

@@ -28,12 +28,6 @@ export const ISO_ACTIVE_NETS_KEY = 'civilflow_iso_activeNets';
 
 export const ACTIVE_PROYECTO_ID_KEY = 'civilflow_active_proyecto_id';
 
-export const PROJECT_PISOS_KEY = 'civilflow_pisos';
-export const PROJECT_PROY_KEY = 'civilflow_proy';
-export const PROJECT_MATS_KEY = 'civilflow_mats';
-export const PROJECT_PROFS_KEY = 'civilflow_profs';
-export const PROJECT_CRITS_KEY = 'civilflow_crits';
-
 export const OPEN_TAB_KEY = 'openTab';
 export const LAST_TRAZOS_ID_KEY = 'last_tracos_id';
 
