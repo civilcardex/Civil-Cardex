@@ -1,8 +1,6 @@
 import { NETS, initNetCounts } from './PlanoState';
-import {
-  enrichCrossFloorGhosts,
-  type CrossFloorGhost,
-} from '../../utils/associateBajanteAcrossFloors';
+import { enrichCrossFloorGhosts } from '../../utils/crossFloorGhosts';
+import type { CrossFloorGhost } from '../shared/crossFloorGhostTypes';
 
 export interface PlanoWorkData {
   v: number;
@@ -21,10 +19,10 @@ export interface PlanoWorkData {
   areas: unknown[];
   nptLevels: unknown[];
   guideLines?: unknown[];
-  // Cross-floor ghost markers (associateBajanteAcrossFloors.ts) can be written onto a floor other
-  // than the one currently loaded, by patching its raw storage directly. When THIS floor is later
-  // loaded normally, they must be read back in here — and included in serializeWork's own output —
-  // or the very next autosave (which overwrites the whole storage entry) would silently wipe them.
+  // Los "fantasmas" entre pisos (marcadores del bajante que viene del piso de arriba) pueden
+  // escribirse en un piso distinto al que está abierto. Si al cargar este piso no se vuelven a
+  // leer, el siguiente autoguardado (que sobreescribe TODO el storage del piso) los borraría sin
+  // querer — por eso se incluyen aquí, tanto al leer como al escribir.
   crossFloorGhosts?: unknown[];
 }
 

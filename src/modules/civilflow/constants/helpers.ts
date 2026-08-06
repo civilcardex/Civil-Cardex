@@ -16,9 +16,25 @@ export function pisoCortoLoose(v: unknown): string {
   return pisoCorto(n);
 }
 
-// The label a bajante actually renders with on the canvas (renderBajantes.ts) — code stripped of
-// '#' and uppercased, plus the short floor suffix ("BAN1-P1", "MAF1-S2", "BALL1-C"). Reused by
-// cross-floor association alerts so they quote the visual label, not the bare id/code.
+// Convierte el valor de piso de una tabla a su etiqueta corta ("P1", "S2", "C"): acepta un
+// número ("2"), el nombre completo ("Piso 2", "Sótano 2") o "Cubierta", y lo resuelve contra la
+// lista de pisos del proyecto para no inventar etiquetas de pisos inexistentes.
+export function fmtPiso(val: string, pisos: { n: number }[]): string {
+  if (!val) return '—';
+  const num = parseInt(val);
+  if (!isNaN(num) && pisos.some((p) => p.n === num)) return pisoCorto(num);
+  for (const p of pisos) {
+    const lbl = `Piso ${p.n}`;
+    if (val === lbl || val === `Sótano ${Math.abs(p.n)}` || (val === 'Cubierta' && p.n === 99))
+      return pisoCorto(p.n);
+  }
+  return val;
+}
+
+// La etiqueta con la que un bajante realmente se dibuja en el canvas (renderBajantes.ts) — código
+// sin '#' y en mayúsculas, más el sufijo corto de piso ("BAN1-P1", "MAF1-S2", "BALL1-C"). La
+// reutilizan las alertas de asociación entre pisos para citar la etiqueta visual, no el id/código
+// pelado.
 export function buildBajanteVisualLabel(
   b: { code?: string | null; id?: string | null } | null | undefined,
   pisoCortoStr?: string,
@@ -29,11 +45,12 @@ export function buildBajanteVisualLabel(
   return `${id}${pisoCortoStr ? '-' + pisoCortoStr : ''}`;
 }
 
-// Short material label used ONLY on the canvas drawing labels (renderRamales/renderBajantes).
-// Tables, memorias and catalogs keep the full material name — this map is a pure rendering
-// abbreviation. Matching is case/accent-insensitive and also covers the short forms the app's
-// own catalogs store (e.g. "Acero HG", "PE al PE"), so project-specific long names and the
-// built-in short names both collapse to the same drawing label.
+// Etiqueta corta de material usada SOLO en las etiquetas de dibujo del canvas
+// (renderRamales/renderBajantes). Tablas, memorias y catálogos conservan el nombre completo —
+// este mapa es una abreviación puramente de render. La comparación ignora mayúsculas/acentos y
+// también cubre las formas cortas que guardan los propios catálogos de la app (p. ej. "Acero HG",
+// "PE al PE"), de modo que nombres largos específicos del proyecto y los nombres cortos de fábrica
+// colapsan a la misma etiqueta de dibujo.
 const MAT_DRAWING_ABBREV: Array<[RegExp, string]> = [
   [/acero\s*galvanizado/i, 'H.G.'],
   [/acero\s*hg/i, 'H.G.'],
@@ -58,10 +75,11 @@ export function matDrawingLabel(material?: string | null): string {
   return material;
 }
 
-// Full display name for the material dropdown in the ramal context menu — the stored values are
-// the short catalog forms ("Acero HG", "PE al PE", "A.C.", ...) but the user picks from the full
-// names ("Acero galvanizado", "Polietileno", "Acero al carbono", ...). The abbreviation mapping
-// (matDrawingLabel) is applied only to the canvas drawing label, never here.
+// Nombre completo para el dropdown de material en el menú contextual del ramal — los valores
+// guardados son las formas cortas de catálogo ("Acero HG", "PE al PE", "A.C.", ...) pero el
+// usuario elige entre los nombres completos ("Acero galvanizado", "Polietileno", "Acero al
+// carbono", ...). El mapeo de abreviaturas (matDrawingLabel) se aplica solo a la etiqueta de
+// dibujo del canvas, nunca aquí.
 const MAT_FULLNAME: Array<[RegExp, string]> = [
   [/acero\s*galvanizado|acero\s*hg/i, 'Acero galvanizado'],
   [/polietileno|pe\s*al\s*pe|^pead$/i, 'Polietileno'],

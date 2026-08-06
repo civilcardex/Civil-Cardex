@@ -47,6 +47,7 @@ export {
   pisoLbl,
   pisoCorto,
   pisoCortoLoose,
+  fmtPiso,
   buildBajanteVisualLabel,
   matDrawingLabel,
   matFullName,

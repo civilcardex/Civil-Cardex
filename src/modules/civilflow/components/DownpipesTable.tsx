@@ -8,7 +8,7 @@ import { useApparatus } from '../context/ApparatusContext';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { renderStatus, calcUDparcial } from '../utils/componentHelpers';
-import { pisoCorto, DIAM_BAN, DIAM_VENT } from '../constants';
+import { fmtPiso, DIAM_BAN, DIAM_VENT } from '../constants';
 import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
 import { manning_SAN, caudalHunterLPS } from '../utils/calcSanitaryCore';
 import { parseDescargaEnId } from '../utils/parseDescargaEnId';
@@ -148,18 +148,6 @@ function calculateVentStack(params: BajanteVentilacionParams): BajanteVentilacio
   };
 }
 
-function fmtPiso(val: string, pisos: { n: number }[]): string {
-  if (!val) return '—';
-  const num = parseInt(val);
-  if (!isNaN(num) && pisos.some((p) => p.n === num)) return pisoCorto(num);
-  for (const p of pisos) {
-    const lbl = `Piso ${p.n}`;
-    if (val === lbl || val === `Sótano ${Math.abs(p.n)}` || (val === 'Cubierta' && p.n === 99))
-      return pisoCorto(p.n);
-  }
-  return val;
-}
-
 import { writeBajantePropToDrawing, writeDiametroToDrawing } from '../utils/writeDiameterToDrawing';
 const DownpipesTable_S1: React.CSSProperties = {
   width: 40,
@@ -237,7 +225,7 @@ const BajantesTable = memo(function BajantesTable_() {
 
       let sum = propiasUD + getDescendantsUD(bKey);
 
-      // Find other bajantes that discharge into this one
+      // Buscar otras bajantes que descargan en esta bajante
       for (const otherB of tramosSan) {
         if (!otherB.esBajante || otherB._key === bKey) continue;
 
@@ -246,7 +234,7 @@ const BajantesTable = memo(function BajantesTable_() {
           const oPlanId = oParts[0];
           const oTgtId = oParts[1];
 
-          // Match either by exact ID or by custom code/label
+          // Coincidir ya sea por ID exacto o por código/etiqueta personalizado
           const matches =
             String(oPlanId) === String(planId) &&
             (oTgtId === bId || (bObj && bObj.code && oTgtId === bObj.code));
@@ -619,7 +607,7 @@ const BajantesTable = memo(function BajantesTable_() {
 
                   const isVent = t.net === 'vent' || t._net === 'vent';
 
-                  // Find associated Ventilation Bajante keys (from vMap)
+                  // Buscar claves de Bajante de Ventilación asociadas (desde vMap)
                   const ventBajKeys: string[] = [];
                   for (const [vKey, sanKeys] of Object.entries(ventToSanMap || {})) {
                     if (sanKeys.some((sk) => tComp.includes(sk))) {
@@ -627,7 +615,7 @@ const BajantesTable = memo(function BajantesTable_() {
                     }
                   }
 
-                  // Find associated Sanitary Bajante keys
+                  // Buscar claves de Bajante Sanitario asociadas
                   const sanBajKeys: string[] = [];
                   if (isVent) {
                     const sanKeys = ventToSanMap[tKey] || [];
@@ -649,7 +637,7 @@ const BajantesTable = memo(function BajantesTable_() {
                     }
                   }
 
-                  // 1. Resolve Sanitary proposed diameter
+                  // 1. Resolver el diámetro propuesto sanitario
                   let resolvedSanDprop = 0;
                   let sanBajKey = '';
                   if (!isVent) {
@@ -666,7 +654,7 @@ const BajantesTable = memo(function BajantesTable_() {
                     }
                   }
 
-                  // 2. Resolve Ventilation proposed diameter
+                  // 2. Resolver el diámetro propuesto de ventilación
                   let resolvedVentDprop = 0;
                   let ventBajKey = '';
                   if (isVent) {
