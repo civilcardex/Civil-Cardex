@@ -27,6 +27,36 @@ const EPVerificationPage_selStyle: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 
+/** Calcula el diámetro y velocidad reales de un ramal dado un caudal y velocidad de diseño. */
+const ramalCol = (qLps: number, vDiseno: number) => {
+  const Qm3s = qLps / 1000;
+  const diamCalcM = Math.sqrt((4 * Qm3s) / (Math.PI * vDiseno));
+  const diamCalcMm = diamCalcM * 1000;
+  const entry = selectDN(qLps, vDiseno);
+  return { diamCalcMm, dn: entry.dn, vReal: entry.Vreal };
+};
+
+const fmtMm = (v: number) => (v > 0 ? v.toFixed(1) : '—');
+const fmtMs = (v: number) => (v > 0 ? v.toFixed(2) : '—');
+const fmtHp = (v: number) => (v > 0 ? v.toFixed(3) : '—');
+const fmtBar = (v: number) => (v !== 0 ? v.toFixed(2) : '—');
+const fmtLps = (v: number) => (v > 0 ? v.toFixed(3) : '—');
+const fmtM3h = (v: number) => (v > 0 ? v.toFixed(2) : '—');
+const fmtGpm = (v: number) => (v > 0 ? v.toFixed(1) : '—');
+const fmtMca = (v: number) => (v !== 0 ? v.toFixed(2) : '—');
+const fmtL = (v: number) => (v > 0 ? v.toFixed(1) : '—');
+const fmtW = (v: number) => (v > 0 ? v.toFixed(0) : '—');
+
+const M = { fontFamily: 'var(--mono)', fontWeight: 600, color: 'var(--txt)' } as const;
+const MB = { fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--txt)' } as const;
+const OK = { fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--ok)' };
+const ERR = { fontFamily: 'var(--mono)', fontWeight: 700, color: '#ef5350' };
+
+const TH_S = { fontSize: 10, padding: '2px 4px' };
+const TD_S = { fontSize: 10, padding: '2px 4px' };
+const TH_R = { fontSize: 11, padding: '2px 4px' };
+const TD_R = { fontSize: 11, padding: '3px 4px' };
+
 export default function EPVerificationPage({
   section = 'results',
   ep,
@@ -74,33 +104,11 @@ export default function EPVerificationPage({
   const Pins_hp = Pfreno_hp * fs;
   const Pins_kw = (Pfreno_hp * 745.7 * fs) / 1000;
 
-  const ramalCol = (qLps: number, vDiseno: number) => {
-    const Qm3s = qLps / 1000;
-    const diamCalcM = Math.sqrt((4 * Qm3s) / (Math.PI * vDiseno));
-    const diamCalcMm = diamCalcM * 1000;
-    const entry = selectDN(qLps, vDiseno);
-    return { diamCalcMm, dn: entry.dn, vReal: entry.Vreal };
-  };
   const rSucColector = ramalCol(Qd, vsuc);
   const rImpColector = ramalCol(Qd, vimp);
   const rSucBomba = ramalCol(Qb, vsuc);
   const rImpBomba = ramalCol(Qb, vimp);
 
-  const fmtMm = (v: number) => (v > 0 ? v.toFixed(1) : '—');
-  const fmtMs = (v: number) => (v > 0 ? v.toFixed(2) : '—');
-  const fmtHp = (v: number) => (v > 0 ? v.toFixed(3) : '—');
-  const fmtBar = (v: number) => (v !== 0 ? v.toFixed(2) : '—');
-  const fmtLps = (v: number) => (v > 0 ? v.toFixed(3) : '—');
-  const fmtM3h = (v: number) => (v > 0 ? v.toFixed(2) : '—');
-  const fmtGpm = (v: number) => (v > 0 ? v.toFixed(1) : '—');
-  const fmtMca = (v: number) => (v !== 0 ? v.toFixed(2) : '—');
-  const fmtL = (v: number) => (v > 0 ? v.toFixed(1) : '—');
-  const fmtW = (v: number) => (v > 0 ? v.toFixed(0) : '—');
-
-  const M = { fontFamily: 'var(--mono)', fontWeight: 600, color: 'var(--txt)' } as const;
-  const MB = { fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--txt)' } as const;
-  const OK = { fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--ok)' };
-  const ERR = { fontFamily: 'var(--mono)', fontWeight: 700, color: '#ef5350' };
   const autoNema = useMemo(() => {
     for (const h of NEMA_HP) {
       if (h >= Pins_hp) return h;
@@ -159,8 +167,6 @@ export default function EPVerificationPage({
   })();
 
   if (section === 'params') {
-    const TH_S = { fontSize: 10, padding: '2px 4px' };
-    const TD_S = { fontSize: 10, padding: '2px 4px' };
     return (
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minWidth: 0 }}>
@@ -471,9 +477,6 @@ export default function EPVerificationPage({
       </div>
     );
   }
-
-  const TH_R = { fontSize: 11, padding: '2px 4px' };
-  const TD_R = { fontSize: 11, padding: '3px 4px' };
 
   return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
