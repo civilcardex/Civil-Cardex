@@ -86,8 +86,8 @@ function CalculoUD() {
               (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
             const dist = Math.hypot(pt[0] - b.x!, pt[1] - b.y!);
             if (isExplicit) {
-              // Explicit link doesn't say which end — assign it to whichever endpoint is
-              // geometrically closer, so a bajante at each end each claims its own.
+              // El enlace explícito no indica qué extremo es — se asigna al extremo que quede
+              // geométricamente más cerca, para que cada bajante de cada extremo reclame el suyo.
               const otherPt = pt === pEnd ? pStart : pEnd;
               const otherDist = Math.hypot(otherPt[0] - b.x!, otherPt[1] - b.y!);
               if (dist < otherDist) return { type: 'bajante' as const, id: b.id };
@@ -114,9 +114,9 @@ function CalculoUD() {
           return null;
         };
 
-        // A ramal can have a bajante at EACH end — check both endpoints independently instead
-        // of short-circuiting on the first match, otherwise the second bajante is silently
-        // dropped and its discharge units never get counted.
+        // Un ramal puede tener un bajante en CADA extremo — se revisan ambos extremos de forma
+        // independiente en lugar de cortocircuitar con la primera coincidencia; si no, el segundo
+        // bajante se descarta en silencio y sus unidades de descarga nunca se contabilizan.
         const connections = [checkEndpoint(pEnd), checkEndpoint(pStart)].filter(
           (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null,
         );
@@ -131,7 +131,7 @@ function CalculoUD() {
       }
     }
 
-    // Add vertical connections for bajantes (from upper to lower sections)
+    // Conexiones verticales de los bajantes entre sus secciones de distintos pisos
     const bajantesGroups: Record<string, typeof tramosSan> = {};
     for (const t of tramosSan) {
       if (t.esBajante && t.id) {
@@ -154,7 +154,7 @@ function CalculoUD() {
       }
     }
 
-    // Add discharge connections (descargaEnId) of bajantes into lower ramales
+    // Conexiones de descarga (descargaEnId): los bajantes vierten en los ramales del piso inferior
     for (const t of tramosSan) {
       if (t.esBajante && t.descargaEnId && t._key) {
         const parts = parseDescargaEnId(t.descargaEnId, '');
@@ -173,7 +173,7 @@ function CalculoUD() {
       }
     }
 
-    // Build undirected adjacency list for all tramos
+    // Lista de adyacencia no dirigida de todos los tramos
     const adj: Record<string, string[]> = {};
     for (const t of tramosSan) {
       if (t._key) {
@@ -190,8 +190,8 @@ function CalculoUD() {
       }
     }
 
-    // Root = tramo discharging to a bajante (fin/ini starts with 'B').
-    // Directed: leaf branches keep only their own UDs.
+    // Raíz = tramo que descarga en un bajante (fin/ini empieza con 'B').
+    // Dirigido: las ramas hoja conservan solo sus propias UD.
     const keyOf = (t: Tramo) => t._key || t.id;
     const byKey = new Map(tramosSan.map((t) => [keyOf(t), t]));
     let rootKey: string | null = null;
@@ -207,7 +207,7 @@ function CalculoUD() {
       const bestT = byKey.get(rootKey);
       if ((t.piso || 0) >= (bestT?.piso || 0)) rootKey = k;
     }
-    // If no tramo discharges to a bajante, use most-connected tramo.
+    // Si ningún tramo descarga en un bajante, se usa el tramo con más conexiones.
     if (!rootKey) {
       let bestKey: string | null = null,
         bestDeg = -1;
@@ -236,7 +236,7 @@ function CalculoUD() {
           (t) => calcUDparcial(t, mergedBase),
         );
 
-    // Merge-branches correction: auto-created ramales accumulate feeder UDs
+    // Corrección de ramas fusionadas: los ramales auto-creados acumulan las UD que alimentan
     const mergeBranches: Record<string, string[]> = {};
     for (const plan of plans || []) {
       if (plan.nivel == null) continue;
@@ -265,7 +265,7 @@ function CalculoUD() {
         if (branchIds.length > 0) mergeBranches[mergedKeyFull] = branchIds;
       }
     }
-    // Fallback: detect merge points from connectivity graph
+    // Respaldo: detectar los puntos de fusión desde el grafo de conectividad
     if (Object.keys(mergeBranches).length === 0) {
       for (const [parentKey, children] of Object.entries(map)) {
         if (!byKey.has(parentKey)) continue;

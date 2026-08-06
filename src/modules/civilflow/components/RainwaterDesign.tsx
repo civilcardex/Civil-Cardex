@@ -70,8 +70,8 @@ export default function DisenoLluvias() {
     (t) => t._key != null && !t.esBajante && !tribIds.has(t._key) && !tribIds.has(t.id),
   );
 
-  // Persist the hydraulic checkpoint (velocity + fill ratio) onto each Tramo so InfTab's
-  // AGUAS LLUVIAS badge can read a real result instead of the permanently-undefined defaults.
+  // Persiste el punto de control hidráulico (velocidad + relación de llenado) en cada Tramo
+  // para que la insignia AGUAS LLUVIAS de InfTab lea un resultado real en vez de los valores por defecto siempre indefinidos.
   useEffect(() => {
     for (const t of displayTramos) {
       if (!t._key) continue;

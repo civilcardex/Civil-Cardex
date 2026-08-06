@@ -62,8 +62,8 @@ interface ProyectoContextValue {
 
 export const ProyectoContext = createContext<ProyectoContextValue | null>(null);
 
-// Projects saved before the ciudad/pais rename still have the old 'mun'/'dep' keys — map them
-// across once on load so existing projects don't appear to lose their city/country.
+// Proyectos guardados antes del renombre ciudad/pais aún tienen las claves viejas 'mun'/'dep' — se
+// mapean una sola vez al cargar para que los proyectos existentes no parezcan perder ciudad/país.
 function recoverProyecto(saved: unknown): Proyecto {
   const s = saved as Partial<Proyecto> & { mun?: string; dep?: string };
   return {
@@ -74,7 +74,7 @@ function recoverProyecto(saved: unknown): Proyecto {
   };
 }
 
-/** Provides proyecto master data (location, usage, materials, defaults) persisted to localStorage. */
+/** Provee los datos maestros del proyecto (ubicación, uso, materiales, defaults) persistidos en localStorage. */
 export function ProyectoProvider({ children }: { children?: ReactNode }) {
   const [proy, setProy] = usePersistedState<Proyecto>(
     'civilflow_proy',
@@ -96,7 +96,7 @@ export function ProyectoProvider({ children }: { children?: ReactNode }) {
   return <ProyectoContext.Provider value={value}>{children}</ProyectoContext.Provider>;
 }
 
-/** Hook to read/write proyecto data. @returns {ProyectoContextValue} */
+/** Hook para leer/escribir datos del proyecto. @returns {ProyectoContextValue} */
 export function useProyecto() {
   const ctx = useContext(ProyectoContext);
   if (!ctx) throw new Error('useProyecto must be used within ProyectoProvider');

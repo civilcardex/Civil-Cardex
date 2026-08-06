@@ -4,9 +4,9 @@ import { ProjectProvider } from './ProjectContext';
 import { ApparatusProvider } from './ApparatusContext';
 import { PlansProvider } from './PlansContext';
 
-// Scoped to the routes that actually use the CAD engine (/visor, /civilflowareatrabajo) instead of
-// mounting globally via AppProviders — every other route (marketing stubs, other modules) used to
-// pay for this state without ever reading it.
+// Limitado a las rutas que realmente usan el motor CAD (/visor, /civilflowareatrabajo) en lugar de
+// montarse globalmente vía AppProviders — antes, cualquier otra ruta (stubs de marketing, otros
+// módulos) pagaba por este estado sin llegar a leerlo nunca.
 export function CivilFlowProviders({ children }: { children: ReactNode }) {
   return (
     <TramosProvider>

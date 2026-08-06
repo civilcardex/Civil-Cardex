@@ -7,23 +7,26 @@ import { pisoCortoLoose as getPisoCorto, matDrawingLabel, APARATO_IMG } from '..
 import { drawRamalPath } from './drawRamalPath';
 import { renderJunctions } from './renderJunctions';
 
-// Module-level image cache for aparato symbols (drawRamalPath + aparato pass below). MUST live
-// here, not inside renderRamales: a per-render cache is wiped on every engine.render(), so the
-// image re-starts loading each pass, never draws, and each onload fires yet another render
-// (infinite reload loop). With a module-level cache the first render kicks off the load, onload
-// stores the image and re-renders once, and the next pass draws it synchronously from the cache.
+// Cache de nivel de módulo para los símbolos de aparato (drawRamalPath + pase de aparato
+// abajo). DEBE vivir aquí, no dentro de renderRamales: un cache por-render se borra en cada
+// engine.render(), así que la imagen reiniciaría su carga en cada pase, nunca se dibujaría, y
+// cada onload dispararía otro render (bucle infinito de recargas). Con un cache de nivel de
+// módulo el primer render arranca la carga, onload guarda la imagen y re-renderiza una vez, y
+// el siguiente pase la dibuja síncronamente desde el cache.
 const aparatoImgCache = new Map<string, HTMLImageElement | null>();
 
 /**
- * Picks the branch (perpendicular) side for a teeReduccion/teeLado glyph at a junction.
- * `throughDx/throughDy` is the ramal's own direction at the point (for an endpoint: the adjacent
- * segment heading; for a mid-body vertex: the bisector). The glyph's branch arm must point toward
- * the ACTUAL crossing/branch ramal — not blindly toward screen-up.
- * Strategy: find the same-net segment near `pt` that is MOST PERPENDICULAR to the through
- * direction (minimal |dot|). A collinear segment (e.g. the split stub of this very junction, or
- * the ramal's own other segments) touches the point too but yields |dot| ~ 1 and loses to the
- * true perpendicular tributario (|dot| ~ 0). If none found (standalone accessory, no crossing),
- * falls back to the classic "screen-up for horizontal, right for vertical" convention.
+ * Elige el lado de rama (perpendicular) para un glifo teeReduccion/teeLado en una unión.
+ * `throughDx/throughDy` es la dirección propia del ramal en el punto (para un extremo: el
+ * rumbo del segmento adyacente; para un vértice de medio cuerpo: la bisectriz). El brazo de
+ * rama del glifo debe apuntar hacia el ramal que realmente cruza/se ramifica — no ciegamente
+ * hacia arriba de pantalla.
+ * Estrategia: buscar el segmento de la misma red cerca de `pt` que sea MÁS PERPENDICULAR a la
+ * dirección de paso (|dot| mínimo). Un segmento colineal (p. ej. el tope dividido de esta
+ * misma unión, u otros segmentos del propio ramal) también toca el punto pero da |dot| ~ 1 y
+ * pierde ante el tributario realmente perpendicular (|dot| ~ 0). Si no se encuentra ninguno
+ * (accesorio aislado, sin cruce), cae a la convención clásica "arriba de pantalla para
+ * horizontal, derecha para vertical".
  */
 export function pickTeeBranchDir(
   engine: IPlanoEngineCore,
@@ -56,12 +59,13 @@ export function pickTeeBranchDir(
           cr.pts[ci + 1][1],
         ) < CROSS_TOL
       ) {
-        // Must point FROM the junction TOWARD the branch ramal's actual body — the raw
-        // ci->ci+1 segment direction depends on that ramal's arbitrary point order (e.g. if `pt`
-        // is that segment's OWN endpoint, ci->ci+1 points forward past the endpoint into nothing,
-        // backwards from where the pipe material actually is), which was picking the wrong side
-        // below whenever the crossing ramal happened to be drawn "away-then-back". Anchoring on
-        // whichever of the two segment endpoints sits FARTHER from `pt` is order-independent.
+        // Debe apuntar DESDE la unión HACIA el cuerpo real del ramal rama — la dirección cruda
+        // del segmento ci->ci+1 depende del orden arbitrario de puntos de ese ramal (p. ej. si
+        // `pt` es el propio punto final de ese segmento, ci->ci+1 apunta hacia adelante pasando
+        // el punto final hacia la nada, al revés de donde está el material real de la tubería),
+        // lo que elegía el lado equivocado abajo cuando el ramal cruzado quedaba dibujado
+        // "lejos-y-vuelta". Anclar en el que sea de los dos extremos del segmento que queda MÁS
+        // LEJOS de `pt` es independiente del orden.
         const dToCi = Math.hypot(cr.pts[ci][0] - pt[0], cr.pts[ci][1] - pt[1]);
         const dToCiNext = Math.hypot(cr.pts[ci + 1][0] - pt[0], cr.pts[ci + 1][1] - pt[1]);
         const farPt = dToCi >= dToCiNext ? cr.pts[ci] : cr.pts[ci + 1];
@@ -87,7 +91,8 @@ export function pickTeeBranchDir(
     }
     return { px, py };
   }
-  // Fallback: normalize toward screen-up for horizontal-ish, right for vertical-ish
+  // Respaldo: normalizar hacia arriba de pantalla si la perpendicular es casi horizontal, o
+  // hacia la derecha si es casi vertical (convención clásica de dibujo).
   const PERP_EPS = 0.1;
   if (py > PERP_EPS) {
     return { px: -px, py: -py };
@@ -98,10 +103,11 @@ export function pickTeeBranchDir(
   return { px, py };
 }
 
-// Shared by both extreme (accesorioInicio/Fin) and mid-ramal (accMed*) accessory rendering.
-// `outX,outY` is the "pointing away from the pipe" direction — for an extreme it's away from
-// the ramal's own body; for a mid-ramal vertex it's the perpendicular normal (px,py) since
-// there's no single "outward" side there. Caller is responsible for ctx.save()/restore().
+// Compartido por el renderizado de accesorios de extremo (accesorioInicio/Fin) y de mitad de
+// ramal (accMed*). `outX,outY` es la dirección "apuntando lejos de la tubería" — para un
+// extremo es alejándose del propio cuerpo del ramal; para un vértice de mitad de ramal es la
+// normal perpendicular (px,py) porque ahí no hay un solo lado "hacia afuera". El caller es
+// responsable de ctx.save()/restore().
 function drawExtremeAccessorySymbol(
   ctx: CanvasRenderingContext2D,
   engine: IPlanoEngineCore,
@@ -119,13 +125,14 @@ function drawExtremeAccessorySymbol(
   slot?: 'ini' | 'fin',
 ): void {
   if (accType === 'sifon') {
-    // This is a PLAN view (looking straight down) — the trap's 2D "dip" has no actual relation to
-    // real gravity (which is perpendicular to the page here, not drawn at all); it's a purely
-    // conventional glyph shape. The dip MUST stay perpendicular to the entry direction (snap) —
-    // a fixed screen-down dip degenerates into a straight line for a vertical ramal (dip parallel
-    // to entry) and skews into a parallelogram for a diagonal one. Of the two perpendicular
-    // choices, pick whichever leans more toward screen-down so a near-horizontal entry still
-    // reads as "dipping down" at a glance, without distorting the shape at any angle.
+    // Esto es una vista en PLANTA (mirando desde arriba) — la "caída" 2D de la trampa no tiene
+    // relación real con la gravedad (que aquí es perpendicular a la página, ni siquiera se
+    // dibuja); es una forma puramente convencional. La caída DEBE mantenerse perpendicular a la
+    // dirección de entrada (snap) — una caída fija hacia abajo de pantalla degenera en línea
+    // recta para un ramal vertical (caída paralela a la entrada) y se sesga en un paralelogramo
+    // para uno diagonal. De las dos opciones perpendiculares, se elige la que más se incline
+    // hacia abajo de pantalla para que una entrada casi horizontal igual se lea como "cayendo
+    // hacia abajo" de un vistazo, sin distorsionar la forma a ningún ángulo.
     const dirLen = Math.hypot(outX, outY) || 1;
     const snapX = outX / dirLen;
     const snapY = outY / dirLen;
@@ -146,7 +153,7 @@ function drawExtremeAccessorySymbol(
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // 1. Long segment: from c to pt_corner1
+    // 1. Segmento largo: de c a pt_corner1
     const pt_corner1X = c.x + snapX * L1;
     const pt_corner1Y = c.y + snapY * L1;
     ctx.beginPath();
@@ -154,7 +161,7 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(pt_corner1X, pt_corner1Y);
     ctx.stroke();
 
-    // 2. Tick line crossing the long segment
+    // 2. Línea de marca cruzando el segmento largo
     const pt_tickX = c.x + snapX * (rad * 0.9);
     const pt_tickY = c.y + snapY * (rad * 0.9);
     ctx.beginPath();
@@ -162,7 +169,7 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(pt_tickX - perX * tickL, pt_tickY - perY * tickL);
     ctx.stroke();
 
-    // 3. Turn down (always screen-down): from pt_corner1 to pt_corner2
+    // 3. Giro hacia abajo (siempre abajo de pantalla): de pt_corner1 a pt_corner2
     const pt_corner2X = pt_corner1X + dnX * H1;
     const pt_corner2Y = pt_corner1Y + dnY * H1;
     ctx.beginPath();
@@ -170,7 +177,7 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(pt_corner2X, pt_corner2Y);
     ctx.stroke();
 
-    // 4. Semi-circular U-bend centered at cArc, always dipping further screen-down
+    // 4. Giro semicircular en U centrado en cArc, siempre cayendo más abajo de pantalla
     const cArcX = pt_corner2X + snapX * R;
     const cArcY = pt_corner2Y + snapY * R;
     ctx.beginPath();
@@ -185,7 +192,7 @@ function drawExtremeAccessorySymbol(
     }
     ctx.stroke();
 
-    // 5. Riser going back up (always screen-up) from end of arc
+    // 5. Tubería subiendo de nuevo (siempre arriba de pantalla) desde el final del arco
     const pt_end_arcX = pt_corner2X + snapX * (2 * R);
     const pt_end_arcY = pt_corner2Y + snapY * (2 * R);
     const pt_riser_topX = pt_end_arcX - dnX * H2;
@@ -195,14 +202,15 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(pt_riser_topX, pt_riser_topY);
     ctx.stroke();
 
-    // 6. Cap line at the top of the riser
+    // 6. Línea de tapa en el tope de la tubería
     ctx.beginPath();
     ctx.moveTo(pt_riser_topX + snapX * capW, pt_riser_topY + snapY * capW);
     ctx.lineTo(pt_riser_topX - snapX * capW, pt_riser_topY - snapY * capW);
     ctx.stroke();
 
-    // 7. "S  D=<diametro>"" label next to the cap — draggable: uses the stored plane position
-    // once the user has moved it (sifonLabelIni/Fin), otherwise the default computed position.
+    // 7. Etiqueta "S  D=<diametro>" junto a la tapa — arrastrable: usa la posición de plano
+    // guardada una vez que el usuario la movió (sifonLabelIni/Fin), si no la posición calculada
+    // por defecto.
     if (diamLabel) {
       const fs = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM);
       ctx.font = `bold ${fs}px Geist, monospace`;
@@ -312,21 +320,23 @@ function drawExtremeAccessorySymbol(
     ctx.closePath();
     ctx.fill();
   } else if (accType === 'teeSube' || accType === 'teeBaja') {
-    // teeDirecto draws NOTHING here on purpose — a plain straight tee is always geometrically
-    // detectable (3 segments sharing this exact vertex), so renderJunctions.ts's purely-geometric
-    // pass already draws it, with no data dependency to go stale. Duplicating that here (as this
-    // branch used to, for all three tee types) drew a second symbol on top of it. teeSube/teeBaja
-    // stay here because they carry DIRECTION info (rise/fall) the geometric detector has no way to
-    // know — that needs a real data-backed glyph, not just topology.
-    // Same visual language as the geometrically auto-detected tee/yee glyph (renderJunctions.ts):
-    // three thin arms radiating from the point with a small perpendicular tick at each arm's end —
-    // no white disc/black ring backdrop (that's the OTHER accessory glyphs' style — codo etc — and
-    // was what made this look oversized/inconsistent). Two arms follow the ramal's own straight-
-    // through direction (dx,dy); the third (px,py) marks the branch tying in here. Same mm2cvs(2.0)
-    // / mm2cvs(0.8) constants renderJunctions.ts uses, so scale matches exactly.
+    // teeDirecto NO dibuja nada aquí a propósito — una tee recta simple siempre es detectable
+    // geométricamente (3 segmentos compartiendo este vértice exacto), así que el pase
+    // puramente geométrico de renderJunctions.ts ya la dibuja, sin dependencia de datos que
+    // pueda quedarse vieja. Duplicarla aquí (como esta rama solía hacer, para los tres tipos de
+    // tee) dibujaba un segundo símbolo encima. teeSube/teeBaja se quedan aquí porque cargan
+    // info de DIRECCIÓN (sube/baja) que el detector geométrico no tiene forma de saber — eso
+    // necesita un glifo respaldado por datos reales, no solo topología.
+    // Mismo lenguaje visual que el glifo tee/yee auto-detectado geométricamente
+    // (renderJunctions.ts): tres brazos finos irradiando del punto con una marca perpendicular
+    // pequeña al final de cada brazo — sin disco blanco/anillo negro de fondo (ese es el estilo
+    // de los OTROS glifos de accesorio — codo, etc — y era lo que hacía que esto se viera
+    // sobredimensionado/inconsistente). Dos brazos siguen la dirección recta propia del ramal
+    // (dx,dy); el tercero (px,py) marca la rama que se une aquí. Mismas constantes mm2cvs(2.0)
+    // / mm2cvs(0.8) que usa renderJunctions.ts, así que la escala coincide exactamente.
     const juncRad = engine.mm2cvs(2.0);
     const tickLen = engine.mm2cvs(0.8);
-    const armW = 2 * engine.zoom; // matches drawRamalPath's own (unselected) pipe line width
+    const armW = 2 * engine.zoom; // mismo ancho de trazo que la tubería propia (no seleccionada) de drawRamalPath, para que el glifo se funda con la línea del ramal
     const arms: { x: number; y: number }[] = [
       { x: dx, y: dy },
       { x: -dx, y: -dy },
@@ -354,8 +364,9 @@ function drawExtremeAccessorySymbol(
     }
     ctx.stroke();
 
-    // A circle at the junction — same codoSube/codoBaja convention (white disc, black ring) —
-    // with the direction mark INSIDE it (dot for sube, arrow for baja), per reference image.
+    // Un círculo en la unión — misma convención codoSube/codoBaja (disco blanco, anillo negro) —
+    // con la marca de dirección DENTRO (punto para sube, flecha para baja), según la imagen de
+    // referencia.
     const circR = juncRad * 0.45;
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
@@ -371,8 +382,9 @@ function drawExtremeAccessorySymbol(
       ctx.arc(c.x, c.y, circR * 0.35, 0, Math.PI * 2);
       ctx.fill();
     } else {
-      // Downward arrow (line + filled triangle) sized to fit inside the circle, matching a
-      // bajante/montante's own "baja" direction symbol rather than codoBaja's diagonal cross.
+      // Flecha hacia abajo (línea + triángulo relleno) dimensionada para caber dentro del
+      // círculo, coincidiendo con el símbolo "baja" propio de un bajante/montante en vez de la
+      // cruz diagonal de codoBaja.
       const aS = circR * 0.85;
       ctx.fillStyle = '#000000';
       ctx.lineWidth = circR * 0.22;
@@ -389,18 +401,18 @@ function drawExtremeAccessorySymbol(
       ctx.fill();
     }
   } else if (accType === 'teeReduccion' || accType === 'teeLado') {
-    // Real tee glyph (three arms + end ticks), same visual language as the geometric tee
-    // (renderJunctions.ts) and teeSube/teeBaja. The branch
-    // (px,py) ties in perpendicular to the through direction (dx,dy). teeReduccion draws the
-    // branch arm narrower (reduced diameter) with a short full-width collar at the junction;
-    // teeLado keeps the branch at full width.
+    // Glifo de tee real (tres brazos + marcas de extremo), mismo lenguaje visual que la tee
+    // geométrica (renderJunctions.ts) y teeSube/teeBaja. La rama
+    // (px,py) se une perpendicular a la dirección de paso (dx,dy). teeReduccion dibuja el
+    // brazo de la rama más angosto (diámetro reducido) con un collar corto de ancho completo en
+    // la unión; teeLado mantiene la rama a ancho completo.
     const juncRad = engine.mm2cvs(2.0);
     const tickLen = engine.mm2cvs(0.8);
     const armW = 2 * engine.zoom;
     const branchW = accType === 'teeReduccion' ? armW * 0.55 : armW;
     ctx.strokeStyle = '#000000';
     ctx.lineCap = 'round';
-    // Through arms (full width)
+    // Brazos de paso (ancho completo)
     ctx.lineWidth = armW;
     ctx.beginPath();
     ctx.moveTo(c.x + dx * juncRad, c.y + dy * juncRad);
@@ -408,7 +420,8 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(c.x - dx * juncRad, c.y - dy * juncRad);
     ctx.stroke();
     if (accType === 'teeReduccion') {
-      // Reduction collar: full-width stub right at the junction, then the thin branch arm.
+      // Collar de reducción: tope de ancho completo justo en la unión, después el brazo de la
+      // rama delgado.
       ctx.beginPath();
       ctx.moveTo(c.x + px * juncRad * 0.35, c.y + py * juncRad * 0.35);
       ctx.lineTo(c.x, c.y);
@@ -425,7 +438,7 @@ function drawExtremeAccessorySymbol(
       ctx.lineTo(c.x + px * juncRad, c.y + py * juncRad);
       ctx.stroke();
     }
-    // End ticks on all three arms
+    // Marcas de extremo en los tres brazos
     ctx.lineWidth = armW * 0.8;
     ctx.beginPath();
     for (const a of [
@@ -442,15 +455,15 @@ function drawExtremeAccessorySymbol(
     }
     ctx.stroke();
   } else if (accType === 'teeTapon') {
-    // Tall stem out from the branch point (outX,outY), capped with a perpendicular bar at the
-    // top. The bar's two ends fold back DOWN toward the stem (a bracket "⊓", not open ticks
-    // pointing further away) — plus a short mark right on the ramal itself at the junction
-    // point, along the ramal's own direction (dx,dy), distinguishing the tee point from the
-    // plain pipe on either side. The real ramal line already passes straight through this
-    // interior point (drawn by drawRamalPath); this only adds the branch, its cap, and the
-    // junction mark.
+    // Tallo alto saliendo del punto de rama (outX,outY), rematado con una barra perpendicular
+    // en el tope. Los dos extremos de la barra se doblan HACIA ABAJO hacia el tallo (un
+    // corchete "⊓", no marcas abiertas apuntando más lejos) — más una marca corta justo sobre
+    // el ramal mismo en el punto de unión, a lo largo de la dirección propia del ramal
+    // (dx,dy), distinguiendo el punto de tee de la tubería simple a ambos lados. La línea real
+    // del ramal ya pasa recta por este punto interior (dibujada por drawRamalPath); esto solo
+    // agrega la rama, su tapa y la marca de unión.
     const armW = 0.9 * engine.zoom;
-    const ramalW = 2 * engine.zoom; // matches drawRamalPath's own (unselected) pipe line width
+    const ramalW = 2 * engine.zoom; // mismo ancho de trazo que la tubería propia (no seleccionada) de drawRamalPath, para que el glifo se funda con la línea del ramal
     const stemLen = rad * 3.5;
     const capHalf = rad * 0.9;
     const capTick = rad * 1.1;
@@ -459,20 +472,20 @@ function drawExtremeAccessorySymbol(
       stemEndY = c.y + outY * stemLen;
     ctx.strokeStyle = '#000000';
     ctx.lineCap = 'round';
-    // Junction mark on the ramal itself — same thickness as the ramal pipe, not the (thinner)
-    // symbol lines above it.
+    // Marca de unión sobre el ramal mismo — mismo grosor que la tubería del ramal, no las líneas
+    // (más finas) del símbolo de arriba.
     ctx.lineWidth = ramalW;
     ctx.beginPath();
     ctx.moveTo(c.x + dx * jointHalf, c.y + dy * jointHalf);
     ctx.lineTo(c.x - dx * jointHalf, c.y - dy * jointHalf);
     ctx.stroke();
-    // Stem
+    // Tallo
     ctx.lineWidth = armW;
     ctx.beginPath();
     ctx.moveTo(c.x, c.y);
     ctx.lineTo(stemEndX, stemEndY);
     ctx.stroke();
-    // Cap bar
+    // Barra de tapa
     const capLX = stemEndX + dx * capHalf,
       capLY = stemEndY + dy * capHalf;
     const capRX = stemEndX - dx * capHalf,
@@ -481,7 +494,7 @@ function drawExtremeAccessorySymbol(
     ctx.moveTo(capLX, capLY);
     ctx.lineTo(capRX, capRY);
     ctx.stroke();
-    // Bracket feet — fold back toward the stem/ramal (-outX,-outY), not away from it
+    // Pies del corchete — se doblan hacia el tallo/ramal (-outX,-outY), no alejándose
     ctx.lineWidth = 0.6 * engine.zoom;
     ctx.beginPath();
     ctx.moveTo(capLX, capLY);
@@ -490,19 +503,19 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(capRX - outX * capTick, capRY - outY * capTick);
     ctx.stroke();
   } else if (accType === 'teeLlaveTerminal') {
-    // Silhouette traced directly off the reference drawing, expressed in a local frame so it
-    // rotates with the ramal: `a` runs along the ramal (dx,dy), `b` runs out along the branch
-    // (outX,outY). Origin is the junction point `c` on the ramal. All coordinates below are in
-    // units of H, measured off that reference:
+    // Silueta trazada directamente del dibujo de referencia, expresada en un marco local para
+    // que rote con el ramal: `a` corre a lo largo del ramal (dx,dy), `b` sale a lo largo de la
+    // rama (outX,outY). El origen es el punto de unión `c` sobre el ramal. Todas las
+    // coordenadas de abajo están en unidades de H, medidas de esa referencia:
     //
-    //   b=4.07  ·                    ╱  spout tip
-    //   b=3.06  ·  ⊢────elbow  ← handle bar + end tick, spout S-bends through here
-    //   b=2.00  ·      ──┼──         crossbar
-    //   b=0.00  ·  ├─────┴─────┤     tee bar on the ramal, ticks at both ends
+    //   b=4.07  ·                    ╱  punta del pitorro
+    //   b=3.06  ·  ⊢────codo  ← barra del mango + marca de extremo, el pitorro hace S por aquí
+    //   b=2.00  ·      ──┼──         barra transversal
+    //   b=0.00  ·  ├─────┴─────┤     barra tee sobre el ramal, marcas en ambos extremos
     //
-    // One uniform stroke weight throughout the whole symbol, round caps and joins — a clean
-    // vector/logo pass over the same silhouette, no thickness contrast between the ramal-bar
-    // and the rest, per the reference.
+    // Un solo grosor de trazo uniforme en todo el símbolo, tapas y uniones redondas — un pase
+    // vectorial/logo limpio sobre la misma silueta, sin contraste de grosor entre la barra del
+    // ramal y el resto, según la referencia.
     const H = rad;
     const P = (a: number, b: number) => ({
       x: c.x + dx * a * H + outX * b * H,
@@ -513,8 +526,9 @@ function drawExtremeAccessorySymbol(
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Tee bar sitting on the ramal — same thickness as the ramal pipe itself.
-    // (No end ticks — user requested they be removed for a cleaner teeLlaveTerminal look.)
+    // Barra tee sentada sobre el ramal — mismo grosor que la tubería del ramal misma.
+    // (Sin marcas de extremo — el usuario pidió quitarlas para un look de teeLlaveTerminal más
+    // limpio.)
     ctx.lineWidth = 2 * engine.zoom;
     const barL = P(-1, 0),
       barR = P(1, 0);
@@ -523,11 +537,12 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(barR.x, barR.y);
     ctx.stroke();
 
-    // Everything above the ramal — thinner than the ramal bar itself.
+    // Todo lo de arriba del ramal — más fino que la barra del ramal misma.
     ctx.lineWidth = 0.6 * engine.zoom;
 
-    // Stem rising from the ramal to a single crossbar partway up — longer stem than a plain tee
-    // arm so the llave body sits noticeably clear of the tee, still joined by this one line.
+    // Tallo subiendo del ramal a una sola barra transversal a media altura — tallo más largo
+    // que el brazo de una tee simple para que el cuerpo de la llave quede visiblemente
+    // despejado de la tee, unido todavía por esta única línea.
     const crossB = 3.0;
     const cross = P(0, crossB);
     const crossL = P(-0.3, crossB),
@@ -539,13 +554,13 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(crossR.x, crossR.y);
     ctx.stroke();
 
-    // Body + spout as ONE continuous curve, sampled as a polyline in the local (a,b) frame via
-    // P() so it's a true circular arc regardless of the ramal's own orientation (ctx.arc's angle
-    // parameter is absolute canvas space and doesn't rotate with dx,dy/outX,outY). Swept past a
-    // plain half-circle so the tail keeps curving naturally into the tip instead of kinking into
-    // a separate straight segment there.
+    // Cuerpo + pitorro como UNA curva continua, muestreada como polilínea en el marco local
+    // (a,b) vía P() para que sea un arco circular real sin importar la orientación propia del
+    // ramal (el parámetro de ángulo de ctx.arc es espacio absoluto de canvas y no rota con
+    // dx,dy/outX,outY). Se barre más allá de un simple semicírculo para que la cola siga
+    // curvándose naturalmente hacia la punta en vez de doblarse en un segmento recto separado.
     const domeR = 0.64;
-    const centerB = crossB + domeR; // arc starts exactly at `cross` — no gap between stem and curve
+    const centerB = crossB + domeR; // el arco arranca exactamente en `cross` — sin hueco entre tallo y curva, para que el perfil se lea como un solo trazo continuo
     const startT = -Math.PI / 2;
     const sweep = 1.2 * Math.PI;
     ctx.beginPath();
@@ -558,7 +573,8 @@ function drawExtremeAccessorySymbol(
     }
     ctx.stroke();
 
-    // Handle branching off the curve's leftmost point (t=-π), capped with its own end tick.
+    // Mango ramificándose del punto más a la izquierda de la curva (t=-π), rematado con su
+    // propia marca de extremo.
     const apex = P(-domeR, centerB);
     const handleEnd = P(-domeR * 1.9, centerB);
     const handleTickA = P(-domeR * 1.9, centerB - 0.32),
@@ -570,7 +586,7 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(handleTickB.x, handleTickB.y);
     ctx.stroke();
   } else if (accType === 'tapon') {
-    // Simple cap: a perpendicular bar closing off the pipe end.
+    // Tapa simple: una barra perpendicular cerrando el extremo de la tubería.
     const capW = rad * 0.7;
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = rad * 0.2;
@@ -580,8 +596,9 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(c.x - px * capW, c.y - py * capW);
     ctx.stroke();
   } else if (accType === 'codoReventilado') {
-    // Proportioned off `rad` (real-world accessory size) rather than a fixed paper-mm constant,
-    // so this scales down together with the wall-fitting fix like every other accessory symbol.
+    // Proporcionado a `rad` (tamaño real del accesorio) en vez de una constante fija de mm de
+    // papel, para que escale junto con el fix de ajuste a pared como todo otro símbolo de
+    // accesorio.
     const rf = rad / 1.6;
     const rRad = 1.2 * rf;
     const vLen = 1.6 * rf;
@@ -591,10 +608,11 @@ function drawExtremeAccessorySymbol(
     const cx2 = c.x + dx * offset,
       cy2 = c.y + dy * offset;
 
-    // Fill the disc BEFORE stroking anything on top — the ramal line underneath is drawn first
-    // (separate earlier pass) and without this backdrop it shows through the unfilled ring,
-    // looking like the pipe "enters" the symbol. Same radius as the ring stroke itself (no extra
-    // halo margin), so this masks the line without reintroducing the thick white border look.
+    // Rellenar el disco ANTES de trazar nada encima — la línea del ramal debajo se dibuja
+    // primero (pase separado anterior) y sin este fondo se transparenta por el anillo sin
+    // relleno, dando la impresión de que la tubería "entra" al símbolo. Mismo radio que el
+    // trazo del anillo mismo (sin margen de halo extra), así que enmascara la línea sin
+    // reintroducir el look de borde blanco grueso.
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(c.x, c.y, rRad, 0, Math.PI * 2);
@@ -631,7 +649,7 @@ function drawExtremeAccessorySymbol(
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Filled triangle pointing perpendicular to ramal (along px,py)
+    // Triángulo relleno apuntando perpendicular al ramal (a lo largo de px,py)
     ctx.beginPath();
     ctx.moveTo(c.x + px * triH, c.y + py * triH);
     ctx.lineTo(c.x + dx * triW, c.y + dy * triW);
@@ -640,7 +658,7 @@ function drawExtremeAccessorySymbol(
     ctx.fill();
     ctx.stroke();
 
-    // Stem from center perpendicular to ramal
+    // Tallo desde el centro, perpendicular al ramal
     const stemEndX = c.x + px * stem;
     const stemEndY = c.y + py * stem;
     ctx.beginPath();
@@ -648,7 +666,7 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(stemEndX, stemEndY);
     ctx.stroke();
 
-    // T-bar cap at end of stem
+    // Tapa en T al final del tallo
     ctx.beginPath();
     ctx.moveTo(stemEndX - dx * capW, stemEndY - dy * capW);
     ctx.lineTo(stemEndX + dx * capW, stemEndY + dy * capW);
@@ -664,12 +682,12 @@ function drawExtremeAccessorySymbol(
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Filled circle centered on endpoint
+    // Círculo relleno centrado en el punto final
     ctx.beginPath();
     ctx.arc(c.x, c.y, circR, 0, Math.PI * 2);
     ctx.fill();
 
-    // Stem from center perpendicular to ramal
+    // Tallo desde el centro, perpendicular al ramal
     const stemEndX = c.x + px * stem;
     const stemEndY = c.y + py * stem;
     ctx.beginPath();
@@ -677,7 +695,7 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(stemEndX, stemEndY);
     ctx.stroke();
 
-    // T-bar cap at end of stem
+    // Tapa en T al final del tallo
     ctx.beginPath();
     ctx.moveTo(stemEndX - dx * capW, stemEndY - dy * capW);
     ctx.lineTo(stemEndX + dx * capW, stemEndY + dy * capW);
@@ -721,13 +739,13 @@ function drawExtremeAccessorySymbol(
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // 1. T-bar cap at the connection point c
+    // 1. Tapa en T en el punto de conexión c
     ctx.beginPath();
     ctx.moveTo(c.x + perX * capW, c.y + perY * capW);
     ctx.lineTo(c.x - perX * capW, c.y - perY * capW);
     ctx.stroke();
 
-    // 2. Vertical line from c to junction P
+    // 2. Línea vertical de c a la unión P
     const pX = c.x + outX * L1;
     const pY = c.y + outY * L1;
     ctx.beginPath();
@@ -735,7 +753,7 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(pX, pY);
     ctx.stroke();
 
-    // 3. Vertical triangle (pointing down along out)
+    // 3. Triángulo vertical (apuntando abajo a lo largo de out)
     const v1X = pX + outX * triH + perX * triW;
     const v1Y = pY + outY * triH + perY * triW;
     const v2X = pX + outX * triH - perX * triW;
@@ -749,7 +767,7 @@ function drawExtremeAccessorySymbol(
     ctx.fill();
     ctx.stroke();
 
-    // 4. Line below the vertical triangle
+    // 4. Línea debajo del triángulo vertical
     const baseVertX = pX + outX * triH;
     const baseVertY = pY + outY * triH;
     ctx.beginPath();
@@ -757,7 +775,7 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(baseVertX + outX * L2, baseVertY + outY * L2);
     ctx.stroke();
 
-    // 5. Horizontal triangle (pointing right along per)
+    // 5. Triángulo horizontal (apuntando a la derecha a lo largo de per)
     const h1X = pX + perX * triH + outX * triW;
     const h1Y = pY + perY * triH + outY * triW;
     const h2X = pX + perX * triH - outX * triW;
@@ -771,7 +789,7 @@ function drawExtremeAccessorySymbol(
     ctx.fill();
     ctx.stroke();
 
-    // 6. Line extending from the horizontal triangle
+    // 6. Línea extendiéndose del triángulo horizontal
     const baseHorizX = pX + perX * triH;
     const baseHorizY = pY + perY * triH;
     ctx.beginPath();
@@ -779,11 +797,11 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(baseHorizX + perX * L3, baseHorizY + perY * L3);
     ctx.stroke();
   } else if (accType === 'llaveTerminal') {
-    // Reference: a wide, SYMMETRIC semicircular arch — both feet at the same baseline height —
-    // with a short T-capped stem rising from its apex. One foot is the connection point `c`
-    // itself (the real ramal line, drawn elsewhere, ends exactly there — that's the "longer
-    // segment" that must touch the ramal); the other foot is free, the arc just ends there with
-    // nothing beyond it.
+    // Referencia: un arco semicircular ANCHO y SIMÉTRICO — ambos pies al mismo alto de línea
+    // base — con un tallo corto rematado en T subiendo de su ápice. Un pie es el punto de
+    // conexión `c` mismo (la línea real del ramal, dibujada en otro lado, termina exactamente
+    // ahí — ese es el "segmento más largo" que debe tocar el ramal); el otro pie es libre, el
+    // arco solo termina ahí sin nada más allá.
     const domeR = rad * 0.9;
     const stemLen = rad * 0.5;
     const capHalf = rad * 0.5;
@@ -794,10 +812,11 @@ function drawExtremeAccessorySymbol(
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Long straight stub starting exactly where the ramal ends (c) and continuing forward, away
-    // from the ramal (`out`) — into empty space, never back over the ramal's own path. Drawn
-    // explicitly as part of the symbol (per the reference image) rather than assuming the
-    // underlying ramal polyline already reaches far enough to read as connected.
+    // Tope recto largo empezando exactamente donde termina el ramal (c) y continuando hacia
+    // adelante, alejándose del ramal (`out`) — hacia espacio vacío, nunca de vuelta sobre el
+    // propio trazo del ramal. Dibujado explícitamente como parte del símbolo (según la imagen
+    // de referencia) en vez de asumir que la polilínea del ramal subyacente ya alcanza lo
+    // suficiente para leerse como conectada.
     const stubLen = domeR * 1.6;
     const stubEndX = c.x + outX * stubLen;
     const stubEndY = c.y + outY * stubLen;
@@ -806,18 +825,19 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(stubEndX, stubEndY);
     ctx.stroke();
 
-    // Dome center sits one radius further out from the end of the stub, so its near foot lands
-    // exactly there, and the far foot (2*domeR further along `out`) floats free.
+    // El centro del domo queda un radio más afuera del final del tope, así su pie cercano
+    // aterriza exactamente ahí, y el pie lejano (2*domeR más adelante a lo largo de `out`)
+    // flota libre.
     const domeCX = stubEndX + outX * domeR;
     const domeCY = stubEndY + outY * domeR;
 
-    // Dome (semicircle) astride the ramal direction, bulging toward the stem
+    // Domo (semicírculo) a horcajadas sobre la dirección del ramal, abultando hacia el tallo
     const domeAngle = Math.atan2(py, px);
     ctx.beginPath();
     ctx.arc(domeCX, domeCY, domeR, domeAngle - Math.PI / 2, domeAngle + Math.PI / 2);
     ctx.stroke();
 
-    // Stem from the apex of the dome outward
+    // Tallo desde el ápice del domo hacia afuera
     const apexX = domeCX + px * domeR;
     const apexY = domeCY + py * domeR;
     const stemEndX = apexX + px * stemLen;
@@ -827,7 +847,7 @@ function drawExtremeAccessorySymbol(
     ctx.lineTo(stemEndX, stemEndY);
     ctx.stroke();
 
-    // T-bar cap, with a small tick at each end (handle marks).
+    // Tapa en T, con una marca pequeña en cada extremo (marcas de manija).
     const capLX = stemEndX - outX * capHalf,
       capLY = stemEndY - outY * capHalf;
     const capRX = stemEndX + outX * capHalf,
@@ -849,7 +869,7 @@ function drawExtremeAccessorySymbol(
     ) {
       return;
     }
-    // Fallback text symbol for any other accessory
+    // Símbolo de texto de respaldo para cualquier otro accesorio
     let label = accType.substring(0, 3).toUpperCase();
     if (accType.startsWith('codo90')) label = 'C90';
     else if (accType.startsWith('codo45')) label = 'C45';
@@ -868,8 +888,9 @@ function drawExtremeAccessorySymbol(
     ctx.stroke();
 
     ctx.fillStyle = '#000000';
-    // Sized off the circle's own radius (like every other accessory glyph) — a fixed zoom-based
-    // minimum here would overflow the circle once it shrinks to a real-world-accurate size.
+    // Dimensionado al radio propio del círculo (como todo otro glifo de accesorio) — un mínimo
+    // fijo basado en zoom aquí se desbordaría del círculo cuando este se encoge a un tamaño
+    // realista.
     ctx.font = `bold ${rad * 0.6}px 'Geist', monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -928,7 +949,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
             const vx = bx / lenB,
               vy = by / lenB;
             const cosAngle = ux * vx + uy * vy;
-            // Hide intermediate collinear selection dots (straight line)
+            // Ocultar puntos de selección intermedios colineales (tramo recto): si el ángulo es
+            // casi 180°, el vértice es decorativo y su punto estorba la lectura de la línea.
             if (cosAngle < -0.95) {
               return;
             }
@@ -972,12 +994,12 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           flowFromIdx = flowToIdx;
           flowToIdx = 0;
         }
-        // Ldesvio (id `LD_<sourceBajanteId>`, pts[0] is always the source per
-        // associateBajanteAcrossFloors.ts) must point at whichever of the two linked bajantes is
-        // 'baja' — not always the same end, since the source itself can be either 'sube' or
-        // 'baja' depending on which floor the target is on. pts[0] already matches the target
-        // (the 'baja' one) whenever the source is 'sube', so only the source-is-'baja' case needs
-        // the default reversed.
+        // Ldesvio (id `LD_<sourceBajanteId>`, pts[0] es siempre el origen según
+        // associateBajanteAcrossFloors.ts) debe apuntar al que sea 'baja' de los dos bajantes
+        // enlazados — no siempre el mismo extremo, porque el origen mismo puede ser 'sube' o
+        // 'baja' según el piso donde esté el destino. pts[0] ya coincide con el destino
+        // (el 'baja') siempre que el origen sea 'sube', así que solo el caso origen-'baja'
+        // necesita el default invertido.
         if (r.id.startsWith('LD_')) {
           const srcBaj = engine.bajantes.find((b) => b.id === r.id.slice(3));
           if (srcBaj?.direccion === 'baja') {
@@ -1078,8 +1100,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       ctx.translate(drawX, drawY);
       ctx.rotate(labelAngle);
       ctx.translate(0, labelGap);
-      // Deliberately no background fill anymore — labels used to sit on a near-opaque white
-      // plate; now they read directly over whatever's underneath, per explicit request.
+      // Deliberadamente ya no se pinta fondo — las etiquetas antes se apoyaban sobre una placa
+      // blanca casi opaca; ahora se leen directamente sobre lo que haya debajo, según petición
+      // explícita.
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       if (lbl) {
@@ -1313,9 +1336,10 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     }
   });
 
-  // Draw extreme accessories (accesorioInicio/Fin) in their own pass, after every ramal's path
-  // line has been stroked — otherwise a later-iterated ramal's line (e.g. a vent ramal sharing
-  // a san ramal's endpoint) paints over an earlier ramal's accessory symbol at that same point.
+  // Dibujar accesorios de extremo (accesorioInicio/Fin) en su propio pase, después de que el
+  // trazo del path de cada ramal ya se pintó — si no, la línea de un ramal iterado después
+  // (p. ej. un ramal vent que comparte el punto final de un ramal san) pinta encima del
+  // símbolo de accesorio de un ramal anterior en ese mismo punto.
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
     if (!((r.tipo === 'tributario' || r.tipo === 'ramal') && r.pts.length >= 2)) return;
@@ -1352,8 +1376,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const outX = idx === 0 ? -dx : dx;
       const outY = idx === 0 ? -dy : dy;
 
-      // realMmToCanvasPx floors at 1mm paper (see PlanoEngine.ts) — halving the mm argument
-      // alone is invisible at common scales, since both land on that floor. Halve the px result.
+      // realMmToCanvasPx piso en 1mm de papel (ver PlanoEngine.ts) — dividir a la mitad el
+      // argumento en mm solo es invisible a escalas comunes, ya que ambos caen en ese piso.
+      // Se divide el resultado en px.
       const rad = engine.realMmToCanvasPx(23) * 0.6;
 
       const diamLabel = idx === 0 ? r.diametroInicio : r.diametroFin;
@@ -1381,11 +1406,12 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     });
   });
 
-  // Draw aparato (fixture) symbols on ramal ends. aparatoInicio/aparatoFin hold a fixture id
-  // (APARATOS_DEF id like 'lvm'/'duc') assigned via the "Seleccionar Aparato" dropdown. Fixtures
-  // are webp images (APARATO_IMG), not vector paths like accessories, so they render via
-  // ctx.drawImage with an async-loading module-level cache (see aparatoImgCache above) — when an
-  // image finally loads, the engine re-renders so the symbol appears without any user interaction.
+  // Dibujar símbolos de aparato (fixture) en los extremos de ramal. aparatoInicio/aparatoFin
+  // guardan un id de fixture (id de APARATOS_DEF como 'lvm'/'duc') asignado vía el dropdown
+  // "Seleccionar Aparato". Los fixtures son imágenes webp (APARATO_IMG), no paths vectoriales
+  // como los accesorios, así que se renderizan con ctx.drawImage y un cache de nivel de módulo
+  // con carga asíncrona (ver aparatoImgCache arriba) — cuando una imagen por fin carga, el
+  // engine re-renderiza para que el símbolo aparezca sin interacción del usuario.
   const getAparatoImg = (src: string): HTMLImageElement | null => {
     if (aparatoImgCache.has(src)) return aparatoImgCache.get(src) || null;
     aparatoImgCache.set(src, null);
@@ -1410,7 +1436,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const imgSrc = (APARATO_IMG as Record<string, string>)[appType];
       if (!imgSrc) return;
       const img = getAparatoImg(imgSrc);
-      if (!img) return; // still loading — onload re-renders this pass
+      if (!img) return; // todavía cargando — onload re-renderiza este pase
 
       const pt = r.pts[idx];
       const c = engine.toCvs(pt[0], pt[1]);
@@ -1438,16 +1464,18 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const rad = engine.realMmToCanvasPx(23) * 0.9;
       const size = rad * 2;
       ctx.save();
-      // Sit just off the pipe's outward side so the ramal line stays visible under the symbol.
+      // Quedar apenas al lado exterior de la tubería para que la línea del ramal siga visible
+      // bajo el símbolo.
       ctx.translate(c.x + outX * rad * 0.3, c.y + outY * rad * 0.3);
       ctx.drawImage(img, -size / 2, -size / 2, size, size);
       ctx.restore();
     });
   });
 
-  // Draw mid-ramal accessories (accMed*) — accessories assigned to interior vertices via right-click
-  // on the body of a ramal, instead of an endpoint. Direction is the bisector of the two adjacent
-  // segments (an interior vertex has both an "in" and an "out" segment, unlike an endpoint).
+  // Dibujar accesorios de mitad de ramal (accMed*) — accesorios asignados a vértices interiores
+  // con clic derecho sobre el cuerpo de un ramal, en vez de un extremo. La dirección es la
+  // bisectriz de los dos segmentos adyacentes (un vértice interior tiene un segmento "entrante"
+  // y uno "saliente", a diferencia de un extremo).
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
     if (!r.accMed || !r.pts || r.pts.length < 3) return;
@@ -1462,10 +1490,11 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
 
       const pt = r.pts[idx];
 
-      // A montante created mid-body (createMontanteMidBody) auto-writes this exact accMed as its
-      // "implies a tee" bookkeeping, but the montante's own bajante circle+direction symbol
-      // already renders right on top of this same point — drawing the full tee glyph too just
-      // looked like a bold line stamped over the montante. Skip the glyph wherever a bajante sits.
+      // Un montante creado a mitad de cuerpo (createMontanteMidBody) auto-escribe este mismo
+      // accMed como su contabilidad "implica una tee", pero el círculo+símbolo de dirección del
+      // propio montante ya se renderiza justo encima de este mismo punto — dibujar el glifo de
+      // tee completo además solo se veía como una línea gruesa estampada sobre el montante. Se
+      // salta el glifo dondequiera que haya un bajante.
       const hasBajanteHere = engine.bajantes.some(
         (b) => Math.hypot(b.x - pt[0], b.y - pt[1]) < 0.5,
       );
@@ -1494,18 +1523,19 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         dx = uxIn;
         dy = uyIn;
       }
-      // Compute two perpendicular directions from the bisector (through direction). For teeReduccion
-      // and teeLado, the branch arm points toward the ACTUAL crossing
-      // ramal's direction — not blindly toward screen-up. Falls back to "screen-up" convention when
-      // no crossing ramal is found (standalone accessory).
+      // Calcular dos direcciones perpendiculares desde la bisectriz (dirección de paso). Para
+      // teeReduccion y teeLado, el brazo de la rama apunta hacia la dirección REAL del ramal
+      // que cruza — no ciegamente hacia arriba de pantalla. Cae a la convención "arriba de
+      // pantalla" cuando no se encuentra ningún ramal cruzando (accesorio aislado).
       let px = -dy,
         py = dx;
       const branchDir = pickTeeBranchDir(engine, r.id, r.net, pt, dx, dy, px, py);
       px = branchDir.px;
       py = branchDir.py;
 
-      // realMmToCanvasPx floors at 1mm paper (see PlanoEngine.ts) — halving the mm argument
-      // alone is invisible at common scales, since both land on that floor. Halve the px result.
+      // realMmToCanvasPx piso en 1mm de papel (ver PlanoEngine.ts) — dividir a la mitad el
+      // argumento en mm solo es invisible a escalas comunes, ya que ambos caen en ese piso.
+      // Se divide el resultado en px.
       const rad = engine.realMmToCanvasPx(23) * 0.6;
 
       ctx.save();
@@ -1516,9 +1546,10 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     }
   });
 
-  // Vent↔san junctions are now handled geometrically by renderJunctions (vent pooled into the
-  // sanitaria pass), producing the correct tee/yee glyph per geometry — no more forced codo
-  // reventilado on every vent-san contact, which is why the old renderVentCodos pass is gone.
+  // Las uniones vent↔san ahora se manejan geométricamente por renderJunctions (vent agrupado en
+  // el pase sanitaria), produciendo el glifo tee/yee correcto según la geometría — no más codo
+  // reventilado forzado en cada contacto vent-san, que es por lo que el pase viejo de
+  // renderVentCodos ya no existe.
   renderJunctions(ctx, engine);
 }
 

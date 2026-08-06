@@ -182,7 +182,7 @@ const AparatosPanel = memo(function AparatosPanel_({
           if (r.net === 'gas' && r.tipo !== 'tributario') existingIds.add(r.id);
         }
       } catch {
-        // ignore
+        // ignorar
       }
     }
     setGasAcc((prev) => {
@@ -229,10 +229,10 @@ const AparatosPanel = memo(function AparatosPanel_({
     }
   }, [counts, hidroData, plans]);
 
-  // A heater bajante is always an AC element (net 'ac') even though the user anchors it while on
-  // the AF network — its fixtures must land on `ac_<id>_<planId>` so the synthetic AC-01-{id}
-  // ramal (buildTramos) picks them up on the heater-selection table. Using activeNet here would
-  // write them under `af_<id>_<planId>` and the heater table would read nothing.
+  // Un bajante de calentador es siempre elemento AC (net 'ac') aunque el usuario lo ancle estando
+  // en la red AF — sus aparatos deben caer en `ac_<id>_<planId>` para que el ramal sintético
+  // AC-01-{id} (buildTramos) los tome en la tabla de selección de calentador. Usar activeNet aquí
+  // los escribiría bajo `af_<id>_<planId>` y la tabla del calentador no leería nada.
   const netId = selElement?.tipo === 'calentador' ? selElement.net || 'ac' : activeNet;
   const isGas = netId === GAS_ID;
   const isHidro = HIDROSAN_IDS.has(netId);
@@ -308,29 +308,31 @@ const AparatosPanel = memo(function AparatosPanel_({
     }
   }, [targetId]);
 
-  // All ramales for the current plan (raw storage, not the live engine) — needed to find, for
-  // AF/AC/gas, which ramal actually accumulates a junction's combined UC. That's no longer always
-  // the auto-created ramal (mergesFrom only ever lives on it) — it's whichever of the three
-  // participants' flow direction actually enters the junction (see waterNetworkRows.ts).
-  // Deliberately NOT memoized by planId alone — the drawing (a new split, a flipped direction)
-  // changes constantly while this panel stays open on the same plan, with no dedicated
-  // "geometry changed" event to invalidate a cache against. A plain localStorage read is cheap
-  // enough to redo on every render, so it re-reads fresh instead of going stale mid-session.
+  // Todos los ramales del plano actual (almacenamiento crudo, no el motor en vivo) — necesario
+  // para hallar, en AF/AC/gas, qué ramal acumula de verdad la UC combinada de un empalme. Ya no es
+  // siempre el ramal auto-creado (mergesFrom solo vive en él) — es aquel de los tres participantes
+  // cuya dirección de flujo entra de verdad al empalme (ver waterNetworkRows.ts).
+  // Deliberadamente NO memoizado solo por planId — el dibujo (un nuevo corte, una dirección
+  // invertida) cambia constantemente mientras este panel queda abierto sobre el mismo plano, y no
+  // hay evento dedicado de "geometría cambiada" contra el cual invalidar un caché. Una lectura
+  // simple de localStorage es barata de repetir en cada render, así que se re-lee fresco en vez de
+  // quedar obsoleto a mitad de sesión.
   const allRamalesForPlan = planId
     ? loadFromStorage<DrawingData | null>(TRAZOS_PREFIX + planId, null)?.ramales || []
     : [];
 
-  // Merge sources' keys — an auto-created ramal (from a mid-body junction split) starts with no
-  // aparatos of its own; the ramal that DISPLAYS the combined UC (which may be the auto-created
-  // one, or one of its two sources — whichever's flow enters the junction) must instead mirror
-  // the combined counts of the OTHER two participants, read-only, so the user isn't left staring
-  // at zeros/partials for a segment that visibly carries all of them. Recomputed plainly every
-  // render (not useMemo) since it depends on allRamalesForPlan, itself re-read fresh every render.
+  // Keys de las fuentes de fusión — un ramal auto-creado (por corte en medio de un empalme)
+  // arranca sin aparatos propios; el ramal que MUESTRA la UC combinada (que puede ser el
+  // auto-creado o una de sus dos fuentes — la que su flujo entre al empalme) debe en cambio
+  // reflejar los conteos combinados de los OTROS dos participantes, de solo lectura, para que el
+  // usuario no se quede mirando ceros/parciales en un tramo que visiblemente los lleva todos.
+  // Se recalcula plano en cada render (no useMemo) porque depende de allRamalesForPlan, que a su
+  // vez se re-lee fresco en cada render.
   const mergeKeys = (() => {
     if (!target?.id || !netId) return null;
     const keyFor = (id: string) => (planId ? `${netId}_${id}_${planId}` : `${netId}_${id}`);
-    // If target is the auto-created ramal, its own mergesFrom is the source pair; otherwise
-    // find the auto-created ramal that lists target as one of its two sources.
+    // Si target es el ramal auto-creado, su propio mergesFrom es el par de fuentes; si no,
+    // hallar el ramal auto-creado que lista a target como una de sus dos fuentes.
     const isAutoCreated = !!target.mergesFrom;
     const hostR = isAutoCreated
       ? target
@@ -338,14 +340,13 @@ const AparatosPanel = memo(function AparatosPanel_({
     if (!hostR?.mergesFrom) return null;
     const [aId, bId] = hostR.mergesFrom;
     if (!aId || !bId) return null;
-    // `hostR.mergesFrom` is always [existing.id, incoming.id] by construction
-    // (PlanoEngineDrawing.ts, autoSplitJunctionAndSumFlow). Which of the three ramales at this
-    // junction (existing, hostR=downstream, incoming) DISPLAYS the combined total is decided
-    // purely by current flow direction — not fixed to "existing" or "the auto-created one":
-    // junctionHasOutgoingFlow already guarantees at least one of the three flows OUT of the
-    // junction, so with three ramales the split is always 2-vs-1, and the lone dissenter (the one
-    // whose direction disagrees with the other two) is the entrant. Matches
-    // waterNetworkRows.ts / WaterNetworkDesign.tsx.
+    // `hostR.mergesFrom` es siempre [existing.id, incoming.id] por construcción
+    // (PlanoEngineDrawing.ts, autoSplitJunctionAndSumFlow). Cuál de los tres ramales de este
+    // empalme (existing, hostR=downstream, incoming) MUESTRA el total combinado se decide solo por
+    // la dirección actual del flujo — no está fijo a "existing" ni al "auto-creado":
+    // junctionHasOutgoingFlow ya garantiza al menos uno de los tres flujos FUERA del empalme, así
+    // que con tres ramales la división es siempre 2-vs-1, y el único disidente (el que discrepa de
+    // los otros dos) es el entrante. Coincide con waterNetworkRows.ts / WaterNetworkDesign.tsx.
     if (!hostR.id || !hostR.pts || hostR.pts.length === 0) return null;
     const jc = hostR.pts[0];
     const existingObj = allRamalesForPlan.find((r) => r.id === aId);

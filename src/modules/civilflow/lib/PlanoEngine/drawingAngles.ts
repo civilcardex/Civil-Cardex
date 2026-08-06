@@ -1,13 +1,15 @@
 import { pointToSegmentDist } from './HitTester';
 import type { IPlanoEngineCore } from './PlanoState';
 
-// San + vent share junctions as one subnet — the same accessor helper the cascade drag uses,
-// hoisted here so every detection path can check the resolved-accesorio sweep against both.
+// Sanitaria y ventilación comparten uniones como una sola subred — el mismo helper que usa el
+// arrastre en cascada, elevado aquí para que todo camino de detección pueda revisar contra
+// ambas al buscar si un accesorio ya quedó resuelto.
 function sameNetGroup(a: string, b: string): boolean {
   return a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
 }
 
-/** Validates that all segment angles and internal turn angles in a ramal's point list conform to network-specific constraints. @returns true if valid. */
+/** Valida que todos los ángulos de los segmentos y los giros internos de un ramal cumplan las
+ *  reglas de su red (45° o 90° según el caso). @returns true si es válido. */
 export function checkRamalAngles(pts: number[][], net: string, tipo?: string): boolean {
   if (pts.length < 2) return true;
   const isSanOrLl = net === 'san' || net === 'll';
@@ -66,7 +68,8 @@ export function checkRamalAngles(pts: number[][], net: string, tipo?: string): b
   return true;
 }
 
-/** Tests whether two line segments (a1-a2, b1-b2) intersect, excluding endpoint-touching. @returns true if they cross strictly in the interior. */
+/** ¿Se cruzan dos segmentos (a1-a2, b1-b2)? Excluye los casos donde solo se tocan por un
+ *  extremo. @returns true si se cruzan estrictamente por el interior. */
 export function segmentsIntersect(a1: number[], a2: number[], b1: number[], b2: number[]): boolean {
   const [x1, y1] = a1,
     [x2, y2] = a2,
@@ -87,7 +90,8 @@ export function segmentsIntersect(a1: number[], a2: number[], b1: number[], b2: 
   return true;
 }
 
-/** Returns the angle (in degrees, -90..90) of the first segment in a point list, for label orientation. */
+/** Devuelve el ángulo (en grados, -90..90) del primer segmento de una lista de puntos — sirve
+ *  para orientar la etiqueta del ramal. */
 export function _firstSegmentAngle(pts: number[][]): number {
   if (pts.length < 2) return 0;
   const dx = pts[1][0] - pts[0][0];
@@ -98,7 +102,8 @@ export function _firstSegmentAngle(pts: number[][]): number {
   return Math.round(angle);
 }
 
-/** Snaps a cursor to 45° projection points along another ramal's segments (for tributary-to-padre connections). @returns snapped point or null. */
+/** Pega el cursor a los puntos de proyección de 45° sobre los segmentos de otro ramal (para
+ *  conectar tributarios al padre). @returns el punto pegado o null. */
 export function snapTributaryToPadre45Deg(
   cursorX: number,
   cursorY: number,
@@ -149,77 +154,12 @@ export function snapTributaryToPadre45Deg(
   return best;
 }
 
-/** Computes the strict intersection point of two segments (excluding endpoints at t=0 or t=1). @returns [x, y] or null. */
-export function segmentStrictIntersectionPoint(
-  a1: number[],
-  a2: number[],
-  b1: number[],
-  b2: number[],
-): number[] | null {
-  const [x1, y1] = a1,
-    [x2, y2] = a2,
-    [x3, y3] = b1,
-    [x4, y4] = b2;
-  const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-  if (Math.abs(d) < 1e-10) return null;
-  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
-  const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / d;
-  if (t <= 0.01 || t >= 0.99 || u <= 0.01 || u >= 0.99) return null;
-  return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
-}
-
-/** Like segmentStrictIntersectionPoint but allows endpoint intersections (t/u in [0,1], not just (0.01,0.99)). Catches TEE formations where one ramal ends at the crossing point. */
-export function segmentLooseIntersectionPoint(
-  a1: number[],
-  a2: number[],
-  b1: number[],
-  b2: number[],
-): number[] | null {
-  const [x1, y1] = a1,
-    [x2, y2] = a2,
-    [x3, y3] = b1,
-    [x4, y4] = b2;
-  const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-  if (Math.abs(d) < 1e-10) return null;
-  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
-  const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / d;
-  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
-  return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
-}
-
-/**
- * TEE/crossing detection used by the AF/AC bilateral machinery: at least ONE segment must pass
- * strictly through the intersection (t/u in (0.01,0.99)) — the other may merely touch it at an
- * endpoint (a tributario ending on a ramal body). This keeps genuine T formations (where a strict
- * check drops them and the tee symbol vanishes on the next recompute) while still excluding a
- * plain perpendicular end-to-end codo, where BOTH segments only meet at their endpoints.
- */
-export function segmentHybridIntersectionPoint(
-  a1: number[],
-  a2: number[],
-  b1: number[],
-  b2: number[],
-): number[] | null {
-  const [x1, y1] = a1,
-    [x2, y2] = a2,
-    [x3, y3] = b1,
-    [x4, y4] = b2;
-  const d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-  if (Math.abs(d) < 1e-10) return null;
-  const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / d;
-  const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / d;
-  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
-  const tInterior = t > 0.01 && t < 0.99;
-  const uInterior = u > 0.01 && u < 0.99;
-  if (!tInterior && !uInterior) return null;
-  return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)];
-}
-
-// Detects a codo formed where this ramal's endpoint meets ANOTHER ramal's endpoint at (roughly)
-// the same point — unlike an internal-vertex check (consecutive points of the SAME ramal), this
-// covers two separately-drawn ramales joining end-to-end, or a drag that newly aligns one
-// ramal's endpoint with another's.
-/** Detects when a ramal's endpoint meets another separately-drawn ramal's endpoint, forming a codo (elbow) junction. @returns angle and other ramal id, or null. */
+// Detecta un codo formado donde el extremo de ESTE ramal se encuentra con el extremo de OTRO
+// ramal en (aproximadamente) el mismo punto — a diferencia del chequeo de vértice interno
+// (puntos consecutivos del MISMO ramal), esto cubre dos ramales dibujados por separado que se
+// unen extremo con extremo, o un arrastre que alinea el extremo de un ramal con el de otro.
+/** Detecta cuándo el extremo de un ramal se encuentra con el extremo de otro ramal dibujado por
+ *  separado, formando una unión de codo. @returns ángulo y id del otro ramal, o null. */
 export function detectJunctionAccesorio(
   engine: IPlanoEngineCore,
   ramalId: string,
@@ -267,12 +207,13 @@ export interface AccesorioTrigger {
   isTee: boolean;
 }
 
-// Single source of truth for "does this ramal need the accesorio-selection modal right now",
-// used both right after a ramal is drawn and after a drag ends — a junction can be created
-// either way (two separate ramales joined by drawing, or by dragging one into a new ramal).
-// Skips a junction that already has a resolved accesorio/aparato there, so it doesn't nag on
-// every subsequent drag once the user has answered it.
-/** Determines whether a ramal needs the accesorio-selection modal (tee/codo/yee) at any of its unresolved endpoints or interior vertices. @returns trigger info or null. */
+// Fuente única de verdad para "¿este ramal necesita el modal de selección de accesorio ahora
+// mismo?" — se usa tanto justo después de dibujar un ramal como al terminar un arrastre, porque
+// una unión puede crearse de cualquiera de las dos formas (dos ramales unidos al dibujar, o
+// arrastrando uno hasta otro). Se salta una unión que ya tiene accesorio/aparato resuelto para
+// no molestar en cada arrastre posterior una vez que el usuario ya respondió.
+/** Determina si un ramal necesita el modal de selección de accesorio (tee/codo/yee) en alguno de
+ *  sus extremos o vértices interiores sin resolver. @returns info del disparador o null. */
 export function detectAccesorioTrigger(
   engine: IPlanoEngineCore,
   ramalId: string,
@@ -289,8 +230,8 @@ export function detectAccesorioTrigger(
     const ep = r.pts[epIdx];
     const tee = isTeeAtEndpoint(ep, engine, r.id, r.net);
     if (tee.isTee && tee.throughRamalId) {
-      // Already-resolved tee: if ANY ramal at this junction point already has an accessory
-      // (placed by a previous modal selection), don't re-trigger the popup.
+      // Tee ya resuelta: si CUALQUIER ramal en esta unión ya tiene accesorio (colocado por una
+      // selección anterior del modal), no volver a disparar el popup.
       const TOL = 0.5;
       let alreadyResolved = false;
       for (const rr of engine.ramales) {
@@ -336,8 +277,8 @@ export function detectAccesorioTrigger(
   for (const epIdx of [0, lastIdx]) {
     if (endpointResolved(epIdx)) continue;
     const ep = r.pts[epIdx];
-    // If ANY other ramal at this endpoint already wears an accesorio, the junction is resolved —
-    // don't pop the modal again just because a codo angle happens to exist here too.
+    // Si algún OTRO ramal en este extremo ya lleva un accesorio, la unión está resuelta — no
+    // abrir el modal otra vez solo porque aquí también exista un ángulo de codo.
     let epAlreadyResolved = false;
     {
       const TOL = 0.5;
@@ -385,9 +326,9 @@ export function detectAccesorioTrigger(
 
   if (r.pts.length >= 3) {
     for (let i = 1; i < lastIdx; i++) {
-      // accMed is a nested map keyed by 'accMed<i>' on PlanoRamal (PlanoState.ts:245) — the
-      // previous flat r['accMed<i>'] read silently never matched, so vertices that already had
-      // an accessory could still re-trigger the junction/accesorio modal. Read the nested key.
+      // accMed es un mapa anidado con llaves 'accMed<i>' en PlanoRamal (PlanoState.ts:245) — la
+      // lectura plana anterior r['accMed<i>'] nunca coincidía en silencio, así que los vértices
+      // que ya tenían accesorio podían volver a disparar el modal. Leer la llave anidada.
       if (r.accMed?.[`accMed${i}`]) continue;
       const prev = r.pts[i - 1];
       const curr = r.pts[i];
@@ -419,13 +360,15 @@ export function detectAccesorioTrigger(
   return null;
 }
 
-// Returns which EXISTING ramal (not the one just drawn/dragged, `currentRamalId`) the tee should
-// be assigned to — the accessory always belongs to the ramal that was already there, never the
-// one that was just created. Prefers the ramal whose BODY (mid-segment, not one of its own
-// endpoints) the junction point lies on — that's unambiguously "the one being tee'd into" — and
-// falls back to any other ramal sharing the point when all three segments meet exactly endpoint
-// to endpoint (no single ramal's body is the "through" one in that case).
-/** Checks whether a point forms a tee junction: at least 3 segments from existing ramales meet here, and which ramal's body the junction lies on. @returns isTee flag and the through-ramal id. */
+// Devuelve a qué ramal EXISTENTE (no el recién dibujado/arrastrado, `currentRamalId`) debe
+// asignarse la tee — el accesorio siempre pertenece al ramal que ya estaba, nunca al que se
+// acaba de crear. Prefiere el ramal sobre cuyo CUERPO (mitad de segmento, no uno de sus propios
+// extremos) cae el punto de la unión — ese es sin ambigüedad "el ramal al que se le hace la
+// tee" — y si los tres segmentos se encuentran exactamente extremo con extremo (ningún cuerpo
+// es el "pasante"), cae a cualquier otro ramal que comparta el punto.
+/** ¿Este punto forma una unión tee? — al menos 3 segmentos de ramales existentes se encuentran
+ *  aquí, y sobre el cuerpo de cuál ramal cae la unión. @returns bandera isTee y el id del ramal
+ *  pasante. */
 export function isTeeAtEndpoint(
   ep: number[],
   engine: IPlanoEngineCore,
@@ -449,8 +392,9 @@ export function isTeeAtEndpoint(
         if (atP1 || atP2) {
           segmentCount++;
           if (r.id !== currentRamalId) {
-            // Prefer a ramal that was NOT auto-created by a split (no mergesFrom) over a
-            // downstream stub that was — the accesorio must go on the genuine existing ramal.
+            // Preferir un ramal que NO fue creado automáticamente por una división (sin
+            // mergesFrom) sobre el tramo posterior que sí lo fue — el accesorio debe ir en el
+            // ramal existente real.
             if (
               !anyOtherRamalId ||
               (!r.mergesFrom && engine.ramales.find((x) => x.id === anyOtherRamalId)?.mergesFrom)
@@ -461,9 +405,9 @@ export function isTeeAtEndpoint(
         } else {
           segmentCount += 2;
           if (r.id !== currentRamalId) {
-            // Same rule as anyOtherRamalId below: prefer a ramal that was NOT auto-created by a
-            // split (no mergesFrom) — the accesorio must land on the genuine already-existing
-            // ramal, not on the downstream stub the split just created.
+            // Misma regla que anyOtherRamalId: preferir un ramal que NO fue creado por una
+            // división (sin mergesFrom) — el accesorio debe aterrizar en el ramal existente
+            // real, no en el tramo posterior que creó la división.
             if (
               !throughRamalId ||
               (!r.mergesFrom && engine.ramales.find((x) => x.id === throughRamalId)?.mergesFrom)
@@ -476,99 +420,4 @@ export function isTeeAtEndpoint(
     }
   }
   return { isTee: segmentCount >= 3, throughRamalId: throughRamalId ?? anyOtherRamalId };
-}
-
-// When two yee (45°) branch points sit within 10mm on the same ramal, they form a "tee salida
-// bilateral" (double yee). Detects whether ramalId belongs to such a pair.
-export function detectDoubleYeeTrigger(
-  engine: IPlanoEngineCore,
-  ramalId: string,
-): AccesorioTrigger | null {
-  const r = engine.ramales.find((x) => x.id === ramalId);
-  if (!r || !r.pts || r.pts.length < 2) return null;
-  const DOUBLE_YEE_MM = 10;
-  const TOL = 0.5;
-
-  // Collect yee-eligible vertices: must be on san/ll/vent, non-endpoint, with a 45° internal angle
-  type YeeVertex = { ramalId: string; idx: number; point: number[] };
-  const yeeVertices: YeeVertex[] = [];
-  const nets = ['san', 'll', 'vent'];
-  if (!nets.includes(r.net)) return null;
-
-  for (const rr of engine.ramales) {
-    if (!nets.includes(rr.net) || !rr.pts || rr.pts.length < 3) continue;
-    for (let i = 1; i < rr.pts.length - 1; i++) {
-      const prev = rr.pts[i - 1],
-        curr = rr.pts[i],
-        next = rr.pts[i + 1];
-      const d1x = curr[0] - prev[0],
-        d1y = curr[1] - prev[1];
-      const d2x = next[0] - curr[0],
-        d2y = next[1] - curr[1];
-      const len1 = Math.hypot(d1x, d1y),
-        len2 = Math.hypot(d2x, d2y);
-      if (len1 < 0.001 || len2 < 0.001) continue;
-      const dot = (d1x * d2x + d1y * d2y) / (len1 * len2);
-      const cosVal = Math.max(-1, Math.min(1, dot));
-      const angleDeg = (Math.acos(cosVal) * 180) / Math.PI;
-      if (Math.abs(angleDeg - 45) < 5) {
-        yeeVertices.push({ ramalId: rr.id, idx: i, point: curr });
-      }
-    }
-  }
-
-  // Find pairs of same-ramal yee vertices within DOUBLE_YEE_MM
-  for (let i = 0; i < yeeVertices.length; i++) {
-    for (let j = i + 1; j < yeeVertices.length; j++) {
-      const a = yeeVertices[i],
-        b = yeeVertices[j];
-      if (a.ramalId !== b.ramalId) continue;
-      const dist = Math.hypot(b.point[0] - a.point[0], b.point[1] - a.point[1]);
-      if (dist > DOUBLE_YEE_MM) continue;
-      // This ramal has a double yee — check if ramalId is one of the two yee-forming ramales
-      // or the through-ramal of one of them
-      if (
-        a.ramalId === ramalId ||
-        b.ramalId === ramalId ||
-        engine.ramales.some(
-          (rx) =>
-            rx.id === ramalId &&
-            rx.pts.some(
-              (pt) =>
-                Math.hypot(pt[0] - a.point[0], pt[1] - a.point[1]) < TOL ||
-                Math.hypot(pt[0] - b.point[0], pt[1] - b.point[1]) < TOL,
-            ),
-        )
-      ) {
-        // Check not already resolved
-        const ep = a.point;
-        let alreadyResolved = false;
-        for (const rr of engine.ramales) {
-          if (!sameNetGroup(rr.net, r.net) || !rr.pts) continue;
-          if (rr.accesorioInicio && Math.hypot(rr.pts[0][0] - ep[0], rr.pts[0][1] - ep[1]) < TOL) {
-            alreadyResolved = true;
-            break;
-          }
-          if (
-            rr.accesorioFin &&
-            Math.hypot(rr.pts[rr.pts.length - 1][0] - ep[0], rr.pts[rr.pts.length - 1][1] - ep[1]) <
-              TOL
-          ) {
-            alreadyResolved = true;
-            break;
-          }
-        }
-        if (alreadyResolved) continue;
-        return {
-          ramalId: a.ramalId,
-          angleDeg: 45,
-          junctionIndex: -1,
-          point: a.point,
-          net: r.net,
-          isTee: true,
-        };
-      }
-    }
-  }
-  return null;
 }

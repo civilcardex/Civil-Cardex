@@ -1,12 +1,13 @@
 // ─── Chequeo bajante Aguas lluvias (UI inline formula) ───
 /**
- * Rainwater downspout hydraulic check using the rational method and Manning for vertical pipes.
- * @param params.areaAcumulada - Contributing area (m²).
- * @param params.intensidad - Rainfall intensity (mm/h).
- * @param params.coeficienteC - Runoff coefficient.
- * @param params.R - Slope ratio string ('1/4', '7/24', or empty).
- * @param params.diamPropuesto - Proposed internal diameter (mm).
- * @returns Object with design flow Q (L/s), calculated diameter dCalc (mm), and status chequeo.
+ * Chequeo hidráulico de bajante de aguas lluvias usando el método racional y Manning para
+ * tuberías verticales.
+ * @param params.areaAcumulada - Área aportante (m²).
+ * @param params.intensidad - Intensidad de lluvia (mm/h).
+ * @param params.coeficienteC - Coeficiente de escorrentía.
+ * @param params.R - String de razón de pendiente ('1/4', '7/24' o vacío).
+ * @param params.diamPropuesto - Diámetro interno propuesto (mm).
+ * @returns Objeto con caudal de diseño Q (L/s), diámetro calculado dCalc (mm) y estado chequeo.
  */
 export function chequeoBajanteLluvia({
   areaAcumulada = 0,
@@ -41,22 +42,24 @@ export function chequeoBajanteLluvia({
   return { Q, dCalc, chequeo };
 }
 
-// Borde libre (freeboard) added on top of the hydraulic depth for the built cross-section —
-// always fixed, not user-editable (canal recolectora requirement).
-/** Fixed freeboard added above hydraulic depth for built channel cross-section (cm). */
+// Borde libre (freeboard) sumado sobre el tirante hidráulico para la sección de canal construida —
+// siempre fijo, no editable por el usuario (requisito de canal recolectora).
+/** Borde libre fijo sumado sobre el tirante hidráulico para la sección de canal construida (cm). */
 export const BORDE_LIBRE_CANAL_CM = 10;
 
 // ─── Chequeo canal cubierta Aguas lluvias (UI inline formula) ───
 /**
- * Rainwater roof-channel hydraulic check using the rational method and Manning for open channels.
- * @param params.areaAcumulada - Contributing area (m²).
- * @param params.intensidad - Rainfall intensity (mm/h).
- * @param params.coeficienteC - Runoff coefficient.
- * @param params.manning - Manning roughness coefficient (defaults to 0.009).
- * @param params.pendiente - Channel slope (%).
- * @param params.b - Channel base width (cm).
- * @param params.h - Channel height (cm).
- * @returns Object with real flow Qreal (L/s), max capacity Qmax (L/s), chequeo status, and totalStr.
+ * Chequeo hidráulico de canal de cubierta de aguas lluvias usando el método racional y Manning
+ * para canales abiertos.
+ * @param params.areaAcumulada - Área aportante (m²).
+ * @param params.intensidad - Intensidad de lluvia (mm/h).
+ * @param params.coeficienteC - Coeficiente de escorrentía.
+ * @param params.manning - Coeficiente de rugosidad de Manning (default 0.009).
+ * @param params.pendiente - Pendiente del canal (%).
+ * @param params.b - Ancho de base del canal (cm).
+ * @param params.h - Alto del canal (cm).
+ * @returns Objeto con caudal real Qreal (L/s), capacidad máxima Qmax (L/s), estado chequeo y
+ * totalStr.
  */
 export function chequeoCanalLluvia({
   areaAcumulada = 0,

@@ -1,15 +1,15 @@
-/** Gravitational acceleration (m/s²). */
+/** Aceleración gravitacional (m/s²). */
 export const GRAVEDAD: number = 9.80665;
-/** Water density (kg/m³). */
+/** Densidad del agua (kg/m³). */
 export const AGUA_DENSIDAD: number = 1000;
-/** Manning roughness coefficient for sanitary PVC. */
+/** Coeficiente de rugosidad de Manning para PVC sanitario. */
 export const manning_SAN: number = 0.009;
 
 // ─── Factor de simultaneidad (Hunter modificado) ───
 /**
- * Modified Hunter simultaneity factor.
- * @param numSalidas - Number of fixture outlets.
- * @returns Factor in range (0, 1] using 1/√(n-1).
+ * Factor de simultaneidad de Hunter modificado.
+ * @param numSalidas - Número de salidas de aparatos.
+ * @returns Factor en rango (0, 1] usando 1/√(n-1).
  */
 export function factorSimultaneidad(numSalidas: number): number {
   if (numSalidas <= 1) return 1;
@@ -18,10 +18,10 @@ export function factorSimultaneidad(numSalidas: number): number {
 
 // ─── Caudal de Hunter (Rodriguez Diaz) ───
 /**
- * Hunter flow rate (Rodriguez Diaz method), in L/s.
- * @param UD - Total fixture units.
- * @param K - Simultaneity coefficient.
- * @returns Design flow in L/s.
+ * Caudal de Hunter (método Rodríguez Díaz), en L/s.
+ * @param UD - Unidades de descarga totales.
+ * @param K - Coeficiente de simultaneidad.
+ * @returns Caudal de diseño en L/s.
  */
 export function caudalHunterLPS(UD: number, K: number): number {
   let Q;
@@ -35,11 +35,11 @@ export function caudalHunterLPS(UD: number, K: number): number {
 
 // ─── Caudal a tubo lleno (Manning) ───
 /**
- * Full-pipe discharge via Manning equation.
- * @param D_m - Internal pipe diameter (m).
- * @param n - Manning roughness coefficient.
- * @param S - Pipe slope (m/m).
- * @returns Full-pipe flow rate (m³/s), or 0 if invalid inputs.
+ * Descarga a tubo lleno vía la ecuación de Manning.
+ * @param D_m - Diámetro interno de tubería (m).
+ * @param n - Coeficiente de rugosidad de Manning.
+ * @param S - Pendiente de tubería (m/m).
+ * @returns Caudal a tubo lleno (m³/s), o 0 si las entradas son inválidas.
  */
 export function caudalTuboLleno(D_m: number, n: number, S: number): number {
   if (D_m <= 0 || S <= 0) return 0;
@@ -50,11 +50,11 @@ export function caudalTuboLleno(D_m: number, n: number, S: number): number {
 
 // ─── Velocidad a tubo lleno ───
 /**
- * Full-pipe velocity via Manning equation.
- * @param D_m - Internal pipe diameter (m).
- * @param n - Manning roughness coefficient.
- * @param S - Pipe slope (m/m).
- * @returns Full-pipe velocity (m/s), or 0 if invalid inputs.
+ * Velocidad a tubo lleno vía la ecuación de Manning.
+ * @param D_m - Diámetro interno de tubería (m).
+ * @param n - Coeficiente de rugosidad de Manning.
+ * @param S - Pendiente de tubería (m/m).
+ * @returns Velocidad a tubo lleno (m/s), o 0 si las entradas son inválidas.
  */
 export function velocidadTuboLleno(D_m: number, n: number, S: number): number {
   if (D_m <= 0 || S <= 0) return 0;
@@ -64,9 +64,10 @@ export function velocidadTuboLleno(D_m: number, n: number, S: number): number {
 
 // ─── Relacion Q/Qo y V/Vo (tablas de Leon/Estopin) ───
 /**
- * Partial-flow hydraulic ratios (Leon/Estopin tables).
- * @param q_Qo - Ratio of actual to full-pipe discharge.
- * @returns Object with velocity ratio v_V0, depth ratio h_D, angle alpha, and hydraulic radius ratio Rh_D.
+ * Razones hidráulicas de flujo parcial (tablas de León/Estopiñán).
+ * @param q_Qo - Razón de descarga real a descarga a tubo lleno.
+ * @returns Objeto con razón de velocidad v_V0, razón de tirante h_D, ángulo alpha y razón de
+ * radio hidráulico Rh_D.
  */
 export function relacionesHidraulicas(q_Qo: number): {
   q_Qo: number;
@@ -104,10 +105,10 @@ export function relacionesHidraulicas(q_Qo: number): {
 
 // ─── Numero de Froude ───
 /**
- * Froude number for open-channel / partially-full pipe flow.
- * @param V - Flow velocity (m/s).
- * @param DH - Hydraulic depth (m).
- * @returns Dimensionless Froude number; Infinity if DH ≤ 0.
+ * Número de Froude para flujo en canal abierto / tubería parcialmente llena.
+ * @param V - Velocidad del flujo (m/s).
+ * @param DH - Tirante hidráulico (m).
+ * @returns Número de Froude adimensional; Infinity si DH ≤ 0.
  */
 export function numeroFroude(V: number, DH: number): number {
   if (DH <= 0) return Infinity;
@@ -116,10 +117,10 @@ export function numeroFroude(V: number, DH: number): number {
 
 // ─── Fuerza tractiva ───
 /**
- * Tractive force (shear stress) in kg/m².
- * @param Rh - Hydraulic radius (m).
- * @param S - Pipe slope (m/m).
- * @returns Tractive force in kg/m², or 0 if invalid inputs.
+ * Fuerza tractiva (esfuerzo cortante) en kg/m².
+ * @param Rh - Radio hidráulico (m).
+ * @param S - Pendiente de tubería (m/m).
+ * @returns Fuerza tractiva en kg/m², o 0 si las entradas son inválidas.
  */
 export function fuerzaTractiva(Rh: number, S: number): number {
   if (Rh <= 0 || S <= 0) return 0;
@@ -128,9 +129,9 @@ export function fuerzaTractiva(Rh: number, S: number): number {
 
 // ─── Tipo de regimen ───
 /**
- * Classifies flow regime based on Froude number.
- * @param Fr - Froude number.
- * @returns 'Subcrítico', 'Crítico', or 'Supercrítico'.
+ * Clasifica el régimen de flujo según el número de Froude.
+ * @param Fr - Número de Froude.
+ * @returns 'Subcrítico', 'Crítico' o 'Supercrítico'.
  */
 export function tipoRegimen(Fr: number): string {
   if (Fr < 0.9) return 'Subcrítico';
@@ -140,11 +141,11 @@ export function tipoRegimen(Fr: number): string {
 
 // ─── Diámetro calculado por Manning ───
 /**
- * Theoretical pipe diameter from Manning equation (full pipe, circular section).
- * @param Q_m3s - Design discharge (m³/s).
- * @param n - Manning roughness coefficient.
- * @param S - Pipe slope (m/m).
- * @returns Required diameter (m), or 0 if invalid inputs.
+ * Diámetro teórico de tubería a partir de la ecuación de Manning (tubo lleno, sección circular).
+ * @param Q_m3s - Caudal de diseño (m³/s).
+ * @param n - Coeficiente de rugosidad de Manning.
+ * @param S - Pendiente de tubería (m/m).
+ * @returns Diámetro requerido (m), o 0 si las entradas son inválidas.
  */
 export function diametroManning(Q_m3s: number, n: number, S: number): number {
   if (S <= 0 || Q_m3s <= 0 || n <= 0) return 0;

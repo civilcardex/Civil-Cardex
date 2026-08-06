@@ -23,7 +23,7 @@ const componentHelpers_S2: React.CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
-/** Base entry for Unidad de Descarga (UD) calculation: fixture id → unit value. */
+/** Entrada base para el cálculo de Unidad de Descarga (UD): id de aparato → valor unitario. */
 export interface UDBase {
   id: string;
   ud: number;
@@ -35,21 +35,23 @@ interface UCBase {
 }
 
 /**
- * Calculates a tramo's partial UD by summing (fixture count × unit value) across all UD base entries.
- * @param tramo - Tramo with fixtures map.
- * @param udB - Array of UD base definitions.
- * @returns Partial UD total.
+ * Calcula el UD parcial de un tramo sumando (conteo de aparato × valor unitario) sobre todas
+ * las entradas de base UD.
+ * @param tramo - Tramo con mapa de aparatos.
+ * @param udB - Array de definiciones de base UD.
+ * @returns Total de UD parcial.
  */
 export function calcUDparcial(tramo: Tramo, udB: UDBase[]): number {
   return udB.reduce((s, d) => s + (tramo.fixtures[d.id] || 0) * d.ud, 0);
 }
 
 /**
- * Calculates a tramo's partial UC value for a given field by summing (fixture count × field value) across base entries.
- * @param tramo - Tramo with fixtures map.
- * @param baseArr - Array of UC base definitions.
- * @param field - Field name on each base entry to multiply.
- * @returns Partial UC total.
+ * Calcula el valor UC parcial de un tramo para un campo dado sumando (conteo de aparato × valor
+ * del campo) sobre las entradas base.
+ * @param tramo - Tramo con mapa de aparatos.
+ * @param baseArr - Array de definiciones de base UC.
+ * @param field - Nombre de campo en cada entrada base a multiplicar.
+ * @returns Total de UC parcial.
  */
 export function calcUCparcial(tramo: Tramo, baseArr: UCBase[], field: string): number {
   return baseArr.reduce((s, d) => s + (tramo.fixtures[d.id] || 0) * (Number(d[field]) || 0), 0);
@@ -84,12 +86,12 @@ function calcAcumulado(tramos: Tramo[], calcParcial: (t: Tramo) => number): Reco
 }
 
 /**
- * Computes accumulated UC values across a dependency graph of tramos (recibeDe links).
- * Resolves in topological order; unresolvable tramos fall back to their partial value.
- * @param tramos - Array of tramos with recibeDe dependency lists.
- * @param baseArr - Array of UC base definitions.
- * @param field - Field name on each base entry to multiply.
- * @returns Map of tramo id → accumulated UC value.
+ * Computa valores UC acumulados a través de un grafo de dependencias de tramos (enlaces
+ * recibeDe). Resuelve en orden topológico; los tramos no resolubles caen a su valor parcial.
+ * @param tramos - Array de tramos con listas de dependencia recibeDe.
+ * @param baseArr - Array de definiciones de base UC.
+ * @param field - Nombre de campo en cada entrada base a multiplicar.
+ * @returns Mapa de id de tramo → valor UC acumulado.
  */
 export function calcUCacumulado(
   tramos: Tramo[],
@@ -100,9 +102,10 @@ export function calcUCacumulado(
 }
 
 /**
- * Renders a compliance status badge: green for "O.K.", red for "NO CUMPLE", neutral otherwise.
- * @param val - Status string to render.
- * @returns JSX span element with appropriate styling.
+ * Renderiza una insignia de estado de cumplimiento: verde para "O.K.", roja para "NO CUMPLE",
+ * neutra de lo contrario.
+ * @param val - String de estado a renderizar.
+ * @returns Elemento JSX span con el estilo apropiado.
  */
 export function renderStatus(val: string) {
   const ok = val === 'O.K.' || val === 'Ok' || val === 'OK';

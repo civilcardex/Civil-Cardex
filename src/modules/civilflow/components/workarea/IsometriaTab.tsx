@@ -44,9 +44,9 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
     const withData: string[] = [];
     for (const n of NETS) {
       for (const plan of plans) {
-        // Must go through the civilflow_-prefixed accessor everything writes with
-        // (storageService.ts) — a raw localStorage.getItem here was missing that prefix, always
-        // reading a key nothing writes to.
+        // Hay que pasar por el accessor con prefijo civilflow_ con el que todo escribe
+        // (storageService.ts) — un localStorage.getItem directo aquí no tenía ese prefijo y
+        // siempre leía una clave que nadie escribe.
         const data = loadFromStorage<{
           ramales?: { net: string }[];
           bajantes?: { net: string }[];
@@ -105,14 +105,15 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
     return () => ro.disconnect();
   }, []);
 
-  // readDrawingAll only reads each floor's LOCAL cache (civilflow_trazos_<planId>) — that cache
-  // is only populated once a floor has actually been opened in the 2D viewer this session, or
-  // via associateBajanteAcrossFloors.ts writing directly to a target floor. A floor never opened
-  // this session (fresh browser, or the user jumped straight to Isometría) has no local cache at
-  // all, so its ramales/bajantes/crossFloorGhosts are silently missing here — that's why a
-  // cross-floor riser connection can appear broken/misaligned or not draw at all: one end's data
-  // (often the ghost or the real target bajante) simply isn't loaded yet. Prefetch from Supabase
-  // for any floor missing its local cache, then bump trazosPrefetchTick so the memo below re-runs.
+  // readDrawingAll solo lee la caché LOCAL de cada piso (civilflow_trazos_<planId>) — esa caché
+  // solo se llena cuando el piso se abrió de verdad en el visor 2D durante esta sesión, o cuando
+  // associateBajanteAcrossFloors.ts escribe directamente sobre el piso destino. Un piso que no se
+  // abrió en esta sesión (navegador recién iniciado, o el usuario entró directo a Isometría) no
+  // tiene caché local alguna, así que sus ramales/bajantes/crossFloorGhosts faltan aquí en
+  // silencio — por eso una bajante que cruza pisos puede verse rota/desalineada o no dibujarse
+  // nada: los datos de uno de sus extremos (normalmente el ghost o la bajante destino real)
+  // aún no están cargados. Prefetch desde Supabase para todo piso sin caché local y luego
+  // subir trazosPrefetchTick para que el memo de abajo se re-ejecute.
   const [trazosPrefetchTick, setTrazosPrefetchTick] = useState(0);
   useEffect(() => {
     if (!plans || plans.length === 0) return;
@@ -136,10 +137,10 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
   const sortedNets = useMemo(() => [...activeNets].toSorted(), [activeNets]);
   const result = useMemo(
     () => readDrawingAll(plans || [], sortedNets),
-    // trazosPrefetchTick isn't read inside the callback — it's a signal that the prefetch
-    // effect above just wrote fresh data into localStorage, which readDrawingAll reads
-    // synchronously; without it in the deps this memo would never re-run once the async
-    // fetch resolves.
+    // trazosPrefetchTick no se lee dentro del callback — es solo una señal de que el efecto de
+    // prefetch de arriba acaba de escribir datos frescos en localStorage, que readDrawingAll lee
+    // de forma síncrona; sin él en las dependencias este memo nunca se re-ejecutaría al
+    // resolverse el fetch asíncrono.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [plans, sortedNets, trazosPrefetchTick],
   );
@@ -208,12 +209,12 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
         nivelMap[niv].ramales.push(r);
       }
       for (const b of netData.bajantes) {
-        // Cross-floor ghosts are positional reference markers mirroring a SOURCE bajante from
-        // another floor, not a real element of this one — readDrawingAll merges them into the
-        // same bajantes array (see its comment), so without this they show up in the tree as a
-        // second, identically-coded entry under whatever floor they happen to land on (e.g. a
-        // real "BAN1" and its own incoming ghost, also carrying code "BAN1", both listed under
-        // the same piso).
+        // Los cross-floor ghosts son marcadores posicionales que reflejan una bajante ORIGEN de
+        // otro piso, no un elemento real de este — readDrawingAll los mezcla en el mismo array de
+        // bajantes (ver su comentario), así que sin este filtro aparecerían en el árbol como una
+        // segunda entrada con el mismo código bajo el piso donde aterricen (p. ej. una bajante
+        // real "BAN1" y su ghost entrante, también con código "BAN1", ambos listados bajo
+        // el mismo piso).
         if (b._isCrossFloorGhost) continue;
         const niv = b.planNivel;
         if (!nivelMap[niv]) nivelMap[niv] = { ramales: [], bajantes: [] };
@@ -245,8 +246,8 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
       if (nd && (nd.ramales.length > 0 || nd.bajantes.length > 0)) netsWithData.push(n.id);
     }
     return netsWithData;
-    // trazosPrefetchTick: same reasoning as the `result` memo above — forces a re-run once the
-    // prefetch effect has finished caching floors that had no local trazos data yet.
+    // trazosPrefetchTick: misma lógica que el memo `result` de arriba — fuerza una re-ejecución
+    // cuando el efecto de prefetch termina de cachear pisos que aún no tenían datos de trazos.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plans, trazosPrefetchTick]);
 
@@ -336,10 +337,11 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
       const prof = profByNet[netId] ?? 0;
       for (const r of netData.ramales) {
         // `prof` (Parámetros de Diseño > Materiales por red > "Profundidad de instalación
-        // respecto a NPT") is stored NEGATIVE for below-slab (e.g. sanitaria -0.70). In this
-        // projection a MORE POSITIVE z renders LOWER on screen (see project() in geometry.ts:
-        // y2 grows with z at the default rotX=-45°), so a negative depth must be SUBTRACTED to
-        // push the trace down — adding it (the old behavior) pushed traces up instead.
+        // respecto a NPT") se guarda NEGATIVO bajo losa (p. ej. sanitaria -0.70). En esta
+        // proyección un z MÁS POSITIVO se renderiza MÁS ABAJO en pantalla (ver project() en
+        // geometry.ts: y2 crece con z en el rotX=-45° por defecto), así que la profundidad
+        // negativa debe RESTARSE para empujar el trazo hacia abajo — sumarla (comportamiento
+        // anterior) lo empujaba hacia arriba.
         const z = (nptMap[r.planNivel] || 0) - prof * 1000;
         const z_pix = getZPix(z, r.planNivel);
         for (const p of r.pts) {
@@ -363,7 +365,7 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
           if (targetRamal) {
             targetZ = nptMap[targetRamal.planNivel] || 0;
           } else {
-            // "Destino" can also be another bajante on a lower floor, not just a ramal.
+            // "Destino" también puede ser otra bajante en un piso inferior, no solo un ramal.
             const targetBajante = netData.bajantes.find(
               (bb) => bb.id === targetId && String(bb.planId) === String(targetPlanId),
             );
@@ -590,9 +592,9 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
         exportPng={handleExportPng}
       />
 
-      {/* Main area */}
+      {/* Área principal */}
       <div className="fu" style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        {/* Tramos sidebar — grouped by network then floor */}
+        {/* Sidebar de tramos — agrupados por red y luego por piso */}
         <IsometriaSidebar
           tramoTree={tramoTree}
           collapsedNets={collapsedNets}
@@ -602,7 +604,7 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
           totals={totals}
         />
 
-        {/* Canvas */}
+        {/* Lienzo */}
         <div
           ref={containerRef}
           style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}

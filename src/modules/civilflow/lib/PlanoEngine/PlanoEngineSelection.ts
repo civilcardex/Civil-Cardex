@@ -126,9 +126,10 @@ export function selectAt(
   let foundDim: PlanoDimension | null = null,
     minDimD = 20;
   for (const d of engine.dims) {
-    // A click ON the dimension's label must also select the dimension — otherwise the user can't
-    // pre-select a dim to drag its label (the only way _trySelDimDrag's label-radius starts to
-    // apply is if sel === the dim itself, which only happens after selectAt picks it).
+    // Un clic SOBRE la etiqueta de la cota también debe seleccionarla — si no, el usuario no
+    // podría preseleccionar una cota para arrastrar su etiqueta (la única forma de que
+    // _trySelDimDrag active su radio de etiqueta es si sel === la cota misma, lo que solo pasa
+    // cuando selectAt la elige).
     const distLine = distanceToRamal(
       cx,
       cy,
@@ -141,12 +142,13 @@ export function selectAt(
     );
     let hitD = distLine;
     if (d._labelPos) {
-      // d._labelPos is already in canvas coords (see renderDimensions.ts:59 where lx/ly were
-      // produced by toCvs). Calling toCvs a second time would double-transform. Use directly.
+      // d._labelPos ya está en coordenadas de canvas (ver renderDimensions.ts:59, donde lx/ly
+      // salieron de toCvs). Llamar a toCvs una segunda vez duplicaría la transformación — usar
+      // directamente.
       const labelDist = Math.hypot(cx - d._labelPos.x, cy - d._labelPos.y);
-      // Treat the label hit as a stronger preference than a near-line hit — clicking the small
-      // numeric bubble is intentional and the label takes up real screen space; the line is
-      // only 2px wide and rarely what the user meant.
+      // El acierto sobre la etiqueta pesa más que uno sobre la línea: clicar la burbuja numérica
+      // es intencional y la etiqueta ocupa espacio real en pantalla; la línea mide solo 2px y
+      // rara vez es lo que el usuario quiso.
       hitD = labelDist < 22 ? -1 : distLine;
     }
     if (hitD < minDimD) {
@@ -243,10 +245,6 @@ export function selectAt(
 
   applySelection(found ? found.id : null, found);
 }
-export { deleteSelected } from './deleteSelected';
-export { handleSelectDown } from './handleMouseDown';
-export { handleDragMove } from './handleDragMove';
-export { handleDragUp } from './handleDragUp';
 
 export function selectById(engine: IPlanoEngineCore, id: string): void {
   engine._isGhostSel = false;
@@ -275,9 +273,9 @@ export function getSelected(
   | PlanoGuideLine
   | null {
   if (!engine.selId) return null;
-  // Dimensions were missing here even though selectAt()/selectById() both select them fine —
-  // sel came back null on every click after the first, so _trySelDimDrag's isDimension(sel)
-  // check never passed and neither the line nor its label could ever be dragged.
+  // Las cotas faltaban aquí aunque selectAt()/selectById() las seleccionan bien — sel volvía
+  // null en cada clic después del primero, así que el chequeo isDimension(sel) de _trySelDimDrag
+  // nunca pasaba y ni la línea ni su etiqueta podían arrastrarse.
   return (engine.ramales.find((r) => r.id === engine.selId) ||
     engine.bajantes.find((b) => b.id === engine.selId) ||
     engine.textAnnots.find((t) => t.id === engine.selId) ||
@@ -445,9 +443,9 @@ export function updateElementById(
       (el as PlanoRamal).labelY = my;
     }
   }
-  // Mirror bajante property changes (dNominal, direction) to any cross-floor ghost that points at
-  // this bajante so the dashed-line label on the target floor stays in sync without a separate
-  // user action.
+  // Refleja los cambios de propiedad del bajante (dNominal, dirección) a todo fantasma entre
+  // pisos que apunte a este bajante, para que la etiqueta de línea punteada del piso destino se
+  // mantenga sincronizada sin requerir una acción separada del usuario.
   if (el && (el as PlanoBajante).tipo) {
     if (fields.dNominal !== undefined) {
       updateCrossFloorGhostFieldBySource(
@@ -507,8 +505,8 @@ export function resetLabel(engine: IPlanoEngineCore): void {
     elRamal.labelY = my;
     elRamal.labelAngle = 0;
   } else {
-    // Bajantes/areas carry their own labelX/Y; text annotations position via x/y
-    // instead — this cast reflects that genuinely mixed shape, not uncertainty.
+    // Los bajantes/áreas tienen su propio labelX/Y; los textos se posicionan con x/y — este cast
+    // refleja esa forma realmente mezclada, no incertidumbre de tipos.
     const elPositionable = el as {
       labelX?: number;
       labelY?: number;

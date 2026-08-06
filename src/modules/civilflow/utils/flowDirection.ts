@@ -7,21 +7,21 @@ const SUBE_BLOCKED_MESSAGE =
   'El bajante con dirección "sube" solo puede entregar flujo. Conecta el ramal al extremo inicial (no al final).';
 
 /**
- * Centralized guard for "ramal endpoint ↔ bajante" flow direction. Returns true if the connection
- * is allowed, false if it would route flow the wrong way across the bajante:
- * - a ramal START (pts[0]) on a 'baja' bajante (would make a receive-only bajante emit), or
- * - a ramal FIN (pts[last]) on a 'sube' bajante (would make an emit-only bajante receive).
+ * Guardia centralizado para "extremo de ramal ↔ bajante" de dirección de flujo. Devuelve true si
+ * la conexión está permitida, false si enrutaría el flujo al revés a través del bajante:
+ * - un INICIO de ramal (pts[0]) en un bajante 'baja' (haría emitir a un bajante de solo-recibir), o
+ * - un FIN de ramal (pts[last]) en un bajante 'sube' (haría recibir a un bajante de solo-emitir).
  *
- * Centralizing here means every place that assigns r.ini = b.code or r.fin = b.code calls the
- * same rule — without this, a fix that only guarded one path would silently let other paths
- * create the same invalid association (a user dragging the ramal near the bajante, or
- * finishRamal matching by coincidence, etc.).
+ * Centralizarlo aquí significa que todo lugar que asigna r.ini = b.code o r.fin = b.code llama la
+ * misma regla — sin esto, una corrección que solo guardara un camino dejaría que otros caminos
+ * crearan en silencio la misma asociación inválida (un usuario arrastrando el ramal cerca del
+ * bajante, o finishRamal coincidiendo por casualidad, etc.).
  *
- * @param engine  Engine core instance.
- * @param r       Ramal whose endpoint is being connected.
- * @param epIdx   Which endpoint: 0 for pts[0] (START — the origin side), lastIdx for pts[fin].
- * @param b       Bajante being connected to.
- * @returns true if the connection is fine; false if it should be blocked.
+ * @param engine  Instancia del núcleo del engine.
+ * @param r       Ramal cuyo extremo se está conectando.
+ * @param epIdx   Qué extremo: 0 para pts[0] (INICIO — el lado de origen), lastIdx para pts[fin].
+ * @param b       Bajante al que se está conectando.
+ * @returns true si la conexión está bien; false si debe bloquearse.
  */
 export function isRamalBajanteConnectionAllowed(
   engine: IPlanoEngineCore,
@@ -45,28 +45,21 @@ export function isRamalBajanteConnectionAllowed(
 }
 
 /**
- * AF/AC/gas junction validation: unlike san/vent/ll (single trunk direction, enforced by a
- * separate "must match main's direction" check elsewhere), an af/ac/gas supply main legitimately
- * branches in several directions from one point — so there's no single direction to match.
- * Instead every junction must have at least one ramal actually flowing OUT of it (a point where
- * every touching ramal only flows IN is a dead end with no supply, invalid plumbing). Returns
- * true if `pt` is not actually a junction (fewer than 2 ramales touch it) or has an outgoing ramal.
- */
-/**
- * At an AF/AC/gas mid-body split (existing/downstream/incoming meeting at `jc`), decides which of
- * the three ramales DISPLAYS the combined UC total: whichever one's flow direction (per its own
- * `_tribReversed`) DISAGREES with the other two — the junction always needs at least one ramal
- * flowing out of it (junctionHasOutgoingFlow), so with three ramales the split is always 2-vs-1;
- * the lone dissenter is the one that actually carries the combined demand onward (or receives it,
- * depending which way the other two agree), never fixed to "existing" or "the auto-created one".
- * Falls back to `existing.id` if `incoming` can't be resolved or all three agree (degenerate/no
- * minority), so callers still get a sane default instead of undefined behavior.
- * @param jc - Junction point coordinates.
- * @param existing - The pre-split ramal (upstream half after truncation).
- * @param downstream - The auto-created ramal continuing past `jc`.
- * @param incoming - The ramal whose endpoint landed on `existing`'s body, if resolvable.
- * @param tol - Distance tolerance for "this ramal's origin/dest sits at jc".
- * @returns The id of the ramal that should display the combined total.
+ * En una división de mitad de cuerpo AF/AC/gas (existing/downstream/incoming encontrándose en
+ * `jc`), decide cuál de los tres ramales MUESTRA el total UC combinado: aquel cuya dirección de
+ * flujo (según su propio `_tribReversed`) DISCREPA de los otros dos — la unión siempre necesita
+ * al menos un ramal fluyendo fuera de ella (junctionHasOutgoingFlow), así que con tres ramales la
+ * división es siempre 2-contra-1; el disidente solitario es el que realmente lleva la demanda
+ * combinada hacia adelante (o la recibe, según hacia dónde coincidan los otros dos), nunca fijo a
+ * "existing" o "el auto-creado". Cae a `existing.id` si `incoming` no puede resolverse o los tres
+ * coinciden (degenerado/sin minoría), para que los callers sigan teniendo un default sensato en
+ * vez de comportamiento indefinido.
+ * @param jc - Coordenadas del punto de unión.
+ * @param existing - El ramal pre-división (mitad aguas arriba tras la truncación).
+ * @param downstream - El ramal auto-creado que continúa más allá de `jc`.
+ * @param incoming - El ramal cuyo extremo aterrizó en el cuerpo de `existing`, si es resoluble.
+ * @param tol - Tolerancia de distancia para "el origen/destino de este ramal está en jc".
+ * @returns El id del ramal que debería mostrar el total combinado.
  */
 export function resolveJunctionEntrant(
   jc: number[],
@@ -131,10 +124,10 @@ export function junctionHasOutgoingFlow(
     }
     if (!atOrigin && !atDest && !bodyTouch) continue;
     touching++;
-    // A ramal passing THROUGH pt mid-body (not ending there) continues past the junction in its
-    // own flow direction — that continuation is itself an outgoing leg, same as a ramal whose own
-    // origin sits exactly at pt. Only a ramal whose flow DESTINATION (and nothing past it) lands
-    // at pt contributes no outgoing leg here.
+    // Un ramal que PASA POR pt a mitad de cuerpo (no termina ahí) continúa más allá de la unión
+    // en su propia dirección de flujo — esa continuación es en sí una pierna saliente, igual que
+    // un ramal cuyo origen propio queda exactamente en pt. Solo un ramal cuyo DESTINO de flujo
+    // (y nada más allá) cae en pt no aporta pierna saliente aquí.
     if (atOrigin || bodyTouch) hasOutgoing = true;
   }
   if (touching < 2) return true;

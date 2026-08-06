@@ -15,7 +15,8 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
     const boxW = tw + pad * 2;
     const boxH = fs + pad * 2;
 
-    // Yellow selection arrow (same style as ramales/bajantes)
+    // Flecha amarilla de selección (mismo estilo que ramales/bajantes, para mantener el
+    // lenguaje visual de selección consistente entre todos los tipos de elemento)
     if (sel) {
       const arrowR = 7 * engine.zoom;
       const ox = boxW + 16 * engine.zoom;
@@ -58,8 +59,9 @@ export function renderTexts(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
       h: aH,
     };
 
-    // Resize handles — small squares at each of the 4 corners, in the same axis-aligned space
-    // handleMouseDown.ts hit-tests against, so what's drawn is exactly what's grabbable.
+    // Manijas de redimensionado — cuadrados pequeños en cada una de las 4 esquinas, en el
+    // mismo espacio alineado a ejes contra el que hace hit-test handleMouseDown.ts, para que
+    // lo dibujado sea exactamente lo agarrable.
     if (sel) {
       const b = t._box;
       const hs = 4 * engine.zoom;

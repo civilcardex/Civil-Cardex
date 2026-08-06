@@ -22,7 +22,7 @@ interface MaterialesContextValue {
 
 export const MaterialesContext = createContext<MaterialesContextValue | null>(null);
 
-/** Provides pipe/fitting material catalog per network type, persisted to localStorage. */
+/** Provee el catálogo de materiales de tubería/accesorios por tipo de red, persistido en localStorage. */
 export function MaterialesProvider({ children }: { children?: ReactNode }) {
   const [mats, setMats] = usePersistedState<Record<string, MaterialItem[]>>(
     'civilflow_mats',
@@ -42,7 +42,7 @@ export function MaterialesProvider({ children }: { children?: ReactNode }) {
   return <MaterialesContext.Provider value={value}>{children}</MaterialesContext.Provider>;
 }
 
-/** Hook to access material catalog. @returns {MaterialesContextValue} */
+/** Hook para acceder al catálogo de materiales. @returns {MaterialesContextValue} */
 export function useMateriales() {
   const ctx = useContext(MaterialesContext);
   if (!ctx) throw new Error('useMateriales must be used within MaterialesProvider');

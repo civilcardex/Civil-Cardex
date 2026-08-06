@@ -300,11 +300,11 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
 
     if (r.tipo === 'tributario') {
       let countSifonTrib = 0;
-      // Reuse the geometric vent→san detection above (identical to the non-tributario branch
-      // below) instead of reading a stored accesorioInicio/Fin value — tributarios never had that
-      // field auto-written for this junction type, so relying on it left the count permanently at
-      // zero whenever the sanitary side of a codo reventilado was a tributario rather than a plain
-      // ramal.
+      // Reutiliza la detección geométrica vent→san de arriba (idéntica a la rama no-tributario
+      // de abajo) en lugar de leer un accesorioInicio/Fin almacenado — los tributarios nunca
+      // tuvieron ese campo autogenerado para este tipo de unión, así que confiar en él dejaba el
+      // contador permanentemente en cero cuando el lado sanitario de un codo reventilado era un
+      // tributario y no un ramal normal.
       const countVentTrib = countVent;
       let countSubeTrib = 0;
       let countBajaTrib = 0;
@@ -352,16 +352,16 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
         changed = true;
       }
     } else {
-      // Count siphons from extreme accessories on ramales
+      // Cuenta sifones desde los accesorios extremos del ramal
       let countSifonRamal = 0;
       if (r.accesorioInicio === 'sifon') countSifonRamal++;
       if (r.accesorioFin === 'sifon') countSifonRamal++;
 
-      // Count explicit mid-ramal accessories (accMed*, assigned via right-click on the ramal body).
-      // codoReventilado is deliberately excluded here — it's already counted above via the
-      // geometric vent→san detection (countVent), and mid-ramal accessories can no longer be
-      // manually assigned on san bodies, so any accMed codoReventilado is that same auto-detected
-      // junction; counting it again here would double it.
+      // Cuenta accesorios explícitos a mitad de ramal (accMed*, asignados con clic derecho sobre
+      // el cuerpo del ramal). codoReventilado se excluye deliberadamente — ya se contó arriba
+      // mediante la detección geométrica vent→san (countVent), y los accesorios a mitad de ramal
+      // ya no se pueden asignar manualmente en cuerpos san, así que cualquier codoReventilado en
+      // accMed es esa misma unión autodetectada; contarlo aquí de nuevo lo duplicaría.
       if (r.accMed) {
         for (const val of Object.values(r.accMed)) {
           if (val === 'sifon') countSifonRamal++;
@@ -427,24 +427,24 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
     try {
       window.dispatchEvent(new Event('storage'));
     } catch {
-      /* ignore */
+      /* ignorar */
     }
   }
 }
 
 /**
- * Counts mid-ramal (accMed*) and endpoint (accesorioInicio/Fin) accessories on
- * the water networks (AF, AC, LL) and writes them into tramo_hidro_data_v3 so the
- * "Accesorios por ramal" table populates correctly for those networks.
- * Mirrors the structure used by calcSanitaryAccessories but generalized so any
- * accMed value (e.g. codo90rmSube, valvCompuerta, llaveTerminal) is counted.
+ * Cuenta los accesorios a mitad de ramal (accMed*) y de extremo (accesorioInicio/Fin) en
+ * las redes de agua (AF, AC, LL) y los escribe en tramo_hidro_data_v3 para que la tabla
+ * "Accesorios por ramal" se complete correctamente en esas redes.
+ * Replica la estructura usada por calcSanitaryAccessories pero generalizada para que se
+ * cuente cualquier valor de accMed (p. ej. codo90rmSube, valvCompuerta, llaveTerminal).
  */
 export function calcHydroAccessories(engine: IPlanoEngineCore): void {
   const planId = engine._loadedPlanId;
   if (!planId) return;
 
-  // Generic accMed/endpoint accessory tally — applies to every net except 'san', which has its
-  // own angle-based junction detection in calcSanitaryAccessories above.
+  // Recuento genérico de accMed/accesorios de extremo — aplica a todas las redes menos 'san',
+  // que tiene su propia detección de uniones basada en ángulos en calcSanitaryAccessories (arriba).
   const HYDRO_NETS = ['af', 'ac', 'll', 'vent', 'gas', 'recolectora', 'rci', 'rec', 'bom'];
   const ramales = engine.ramales.filter((r) => HYDRO_NETS.includes(r.net));
   if (ramales.length === 0) return;
@@ -481,13 +481,14 @@ export function calcHydroAccessories(engine: IPlanoEngineCore): void {
       }
     }
 
-    // LL (aguas lluvias) bajantes work the same as SAN's — a codo90rmSube/Baja is implied by
-    // whichever direction the connected bajante is CURRENTLY set to, computed fresh every time
-    // (like calcSanitaryAccessories does for SAN) rather than a one-time write that goes stale if
-    // the direction changes later. AF/AC's montante equivalent instead re-syncs a written
-    // accesorioInicio/Fin value on direction change (DrawingElementContextMenu.tsx's
-    // BajanteDirectionSelector) since a montante's codo lives on a visual glyph field already —
-    // LL bajantes don't have that write at all, so nothing to sync; compute it here instead.
+    // Las bajantes de LL (aguas lluvias) funcionan igual que las de SAN — un codo90rmSube/Baja
+    // se infiere según la dirección a la que esté PUESTA actualmente la bajante conectada,
+    // recalculado de nuevo cada vez (como hace calcSanitaryAccessories con SAN) en lugar de un
+    // único escrito que queda obsoleto si la dirección cambia después. El equivalente de montante
+    // en AF/AC en cambio vuelve a sincronizar un valor escrito de accesorioInicio/Fin al cambiar
+    // la dirección (BajanteDirectionSelector de DrawingElementContextMenu.tsx), ya que el codo de
+    // un montante vive en un campo de glifo visual ya existente — las bajantes de LL no tienen ese
+    // escrito en absoluto, así que no hay nada que sincronizar; se calcula aquí en su lugar.
     if (r.net === 'll') {
       for (const baj of engine.bajantes) {
         if (baj.net !== 'll' || baj.tipo !== 'bajante') continue;
@@ -521,7 +522,7 @@ export function calcHydroAccessories(engine: IPlanoEngineCore): void {
     try {
       window.dispatchEvent(new Event('storage'));
     } catch {
-      /* ignore */
+      /* ignorar */
     }
   }
 }

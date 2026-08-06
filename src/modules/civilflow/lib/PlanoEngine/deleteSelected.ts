@@ -16,11 +16,11 @@ interface HidroDataEntry {
   nSalidas: number;
 }
 
-// The Aparatos sidebar (FixturesPanel.tsx/AccesoriosSection) keeps its own separate count of each
-// tee glyph as an "accesorio" assigned to the host ramal (HYDRO_DATA_STORAGE_KEY, keyed
-// `${net}_${ramalId}_${planId}`) — clearing the glyph field on the ramal object above doesn't
-// touch that count, so the sidebar kept showing it as still assigned after the tee visually
-// disappeared. Decrement it in lockstep.
+// La barra lateral de Aparatos (FixturesPanel.tsx/AccesoriosSection) lleva su propio conteo de
+// cada glifo de tee como "accesorio" asignado al ramal huésped (HYDRO_DATA_STORAGE_KEY, llave
+// `${net}_${ramalId}_${planId}`) — limpiar el campo del glifo en el objeto del ramal no toca ese
+// conteo, así que la barra seguía mostrando la tee como asignada después de que el símbolo
+// desapareciera visualmente. Se decrementa a la par.
 function decrementAccesorioCount(
   engine: IPlanoEngineCore,
   hostR: { id: string; net: string },
@@ -40,10 +40,10 @@ function decrementAccesorioCount(
   saveToStorage(HYDRO_DATA_STORAGE_KEY, map);
 }
 
-// A bajante/montante riser tied to another floor's via "Origen"/"Destino" is the same physical
-// pipe continuing there — deleting one side's symbol while the other stays behind (still pointing
-// at an id that no longer exists) makes no sense, so deleting either end cascades to remove the
-// other too, wherever its floor's data lives. Applies to both bajante and montante.
+// Un bajante/montante conectado a otro piso por "Origen"/"Destino" es el mismo tubo físico que
+// continúa allá — borrar el símbolo de un lado y dejar el otro (apuntando a un id que ya no
+// existe) no tiene sentido, así que borrar cualquiera de los dos extremos borra también el otro,
+// dondequiera que viva su piso. Aplica tanto a bajante como a montante.
 function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: PlanoBajante): void {
   if (deleted.tipo !== 'montante' && deleted.tipo !== 'bajante') return;
   const thisPlanId = String(engine._loadedPlanId ?? '');
@@ -95,18 +95,19 @@ const TEE_TYPES = [
   'teeLado',
 ];
 
-// A tee marker (accesorioInicio/Fin or accMed) at a junction point outlives the ramal that formed
-// that junction — deleting the OTHER branch of a T/Y left the remaining ramal's tee glyph/count
-// sitting there with nothing actually connected anymore. Clears it, but only when the point isn't
-// STILL a genuine tee junction. Counting just "any other ramal touches this point" was wrong on
-// both sides: a split trunk's own two halves (existing + the auto-created downstream,
-// mergesFrom-linked) always touch each other at the junction and would block the cleanup of a
-// tee whose branch was deleted, while a plain end-to-end continuation (or a corner formed by two
-// surviving ramals) would still count as "connected" and keep a tee glyph that no longer means
-// anything. So the decision is geometric: group the surviving ramals at the point by line
-// direction, and keep the tee only when a real branch relation still exists — a ramal that
-// continues the host's own line together with at least one ramal leaving at an angle, or a
-// non-collinear through-run pair (host as branch), or a bajante/montante at the point.
+// Un marcador de tee (accesorioInicio/Fin o accMed) en una unión sobrevive al ramal que formó
+// esa unión — borrar la OTRA rama de una T/Y dejaba el glifo/conteo de tee del ramal restante
+// colgado, sin nada conectado de verdad. Esto lo limpia, pero solo cuando el punto YA NO es una
+// unión tee genuina. Contar solo "otro ramal toca este punto" estaba mal en ambos sentidos: las
+// dos mitades de un tronco dividido (la existente + el tramo posterior creado automáticamente,
+// ligadas por mergesFrom) siempre se tocan en la unión y habrían bloqueado la limpieza de una
+// tee cuya rama se borró, mientras que una continuación simple extremo-con-extremo (o un codo
+// formado por dos ramales sobrevivientes) seguiría contando como "conectado" y conservaría un
+// glifo que ya no significa nada. Por eso la decisión es geométrica: se agrupan los ramales
+// sobrevivientes del punto por dirección de línea, y se conserva la tee solo cuando todavía
+// existe una relación de rama real — un ramal que continúa la línea del huésped junto con al
+// menos un ramal que sale en ángulo, o un par pasante no colineal (huésped como rama), o un
+// bajante/montante en el punto.
 function junctionArmsAt(
   engine: IPlanoEngineCore,
   hostR: { id: string; pts: number[][]; mergesFrom?: string[] },
@@ -154,7 +155,7 @@ function junctionArmsAt(
       }
     }
     if (found >= 0) {
-      // keep the first representative direction for the group
+      // ya hay un grupo con esa dirección — conservar la primera dirección representativa
     } else {
       groups.push(d);
     }
@@ -188,17 +189,18 @@ function cleanupTeeMarkersAt(engine: IPlanoEngineCore, pt: number[]): void {
   for (const hostR of engine.ramales) {
     if (!hostR.pts?.length) continue;
     const arms = junctionArmsAt(engine, hostR, pt);
-    // Endpoint marker (accesorioInicio/Fin): the host ends AT the point, so a tee requires a
-    // genuine through-run — the host's own line continued by a collinear survivor PLUS a ramal
-    // leaving at an angle, or a non-collinear pair of survivors (host itself is the branch), or
-    // a bajante/montante at the point. A lone corner (one survivor, angled) is NOT a tee.
+    // Marcador de EXTREMO (accesorioInicio/Fin): el huésped termina EN el punto, así que una tee
+    // exige un paso real — la línea del huésped continuada por un sobreviviente colineal MÁS un
+    // ramal que sale en ángulo, o un par de sobrevivientes no colineal (el huésped mismo es la
+    // rama), o un bajante/montante en el punto. Un codo suelto (un solo sobreviviente, en
+    // ángulo) NO es una tee.
     const keepEndpoint =
       arms.bajanteTouching ||
       (arms.hasCollinearWithHost && arms.hasNonCollinear) ||
       arms.hasNonCollinearPair;
-    // Interior marker (accMed): the host itself passes through the point, so ANY ramal leaving
-    // at an angle (or a bajante/montante) keeps it a tee; only a collinear continuation alone
-    // is a plain pass-through.
+    // Marcador INTERIOR (accMed): el huésped pasa POR el punto, así que cualquier ramal que sale
+    // en ángulo (o un bajante/montante) conserva la tee; solo una continuación colineal sola es
+    // un paso recto simple.
     const keepInterior = arms.bajanteTouching || arms.hasNonCollinear;
 
     if (
@@ -260,7 +262,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
           cleanupTeeMarkersAt(engine, deleted.pts[deleted.pts.length - 1]);
         }
         netsToRenumber.add(deleted.net);
-        // Clean up bajante references to deleted ramal
+        // Limpia las referencias al ramal borrado en los bajantes
         for (const b of engine.bajantes) {
           if (b.recibeDeIds) {
             b.recibeDeIds = b.recibeDeIds.filter((rid) => rid !== deleted.id);
@@ -269,8 +271,8 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
             const parts = parseDescargaEnId(b.descargaEnId, engine._loadedPlanId);
             if (parts[parts.length - 1] === deleted.id) b.descargaEnId = null;
           }
-          // If this ramal was the Ldesvio connector for a ghost displacement, the ghost
-          // has no parent-facing pipe left — remove the displacement (and its ghost) too.
+          // Si este ramal era el conector Ldesvio de un desplazamiento fantasma, al fantasma ya
+          // no le queda tubería hacia el padre — se quita el desplazamiento (y su fantasma).
           if (b.desplazamientos) {
             for (const lvlKey of Object.keys(b.desplazamientos)) {
               if (b.desplazamientos[lvlKey].Ldesvio === deleted.id) {
@@ -285,15 +287,15 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       const idxB = engine.bajantes.findIndex((b) => b.id === id);
       if (idxB >= 0) {
         const deleted: PlanoBajante = engine.bajantes[idxB];
-        // Deleting a canal must detach its associated bajantes — otherwise their canalId keeps
-        // pointing at a now-gone id (or worse, a future canal that happens to reuse it).
+        // Borrar un canal debe desasociar sus bajantes — si no, su canalId seguiría apuntando a
+        // un id que ya no existe (o peor, a un canal futuro que llegue a reutilizarlo).
         if (deleted.tipo === 'canal') {
           for (const b of engine.bajantes) {
             if (b.canalId === deleted.id) b.canalId = null;
           }
         }
         const lvl = engine.nivelActual?.label ?? '';
-        // When isFantasma=true, treat as parent delete (clean ALL levels)
+        // Si isFantasma=true, se trata como borrado del padre (limpia TODOS los niveles)
         if (!deleted.isFantasma && engine._isGhostSel && deleted.desplazamientos?.[lvl]) {
           const lDesvioId = deleted.desplazamientos[lvl].Ldesvio;
           if (lDesvioId) {
@@ -303,7 +305,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
           delete deleted.desplazamientos[lvl];
           if (deleted.ghostData) delete deleted.ghostData[lvl];
         } else {
-          // Clean up Ldesvio ramales and ghost displacements
+          // Limpia los ramales Ldesvio y los desplazamientos fantasma
           if (deleted.desplazamientos) {
             for (const lvlKey of Object.keys(deleted.desplazamientos)) {
               const d = deleted.desplazamientos[lvlKey];
@@ -313,7 +315,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
               }
             }
           }
-          // Clean up references in other bajantes
+          // Limpia las referencias en otros bajantes
           for (const other of engine.bajantes) {
             if (other.recibeDeIds) {
               other.recibeDeIds = other.recibeDeIds.filter((rid) => rid !== deleted.id);
@@ -327,15 +329,15 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
           }
           engine.bajantes.splice(idxB, 1);
           cascadeMontanteAssociation(engine, deleted);
-          // A mid-body montante always wrote a tee marker (accMed) on its host ramal at creation
-          // — deleting the montante without this left that tee glyph/count behind forever, since
-          // nothing else ever revisits accMed once it's written.
+          // Un montante a mitad de cuerpo siempre escribió un marcador de tee (accMed) en su
+          // ramal huésped al crearse — borrar el montante sin esto dejaba ese glifo/conteo para
+          // siempre, porque nada más vuelve a revisar accMed una vez escrito.
           if (deleted.tipo === 'montante') cleanupTeeMarkersAt(engine, [deleted.x, deleted.y]);
           if (deleted.tipo === 'bajante') bajNetsToRenumber.add(deleted.net);
           else if (deleted.tipo === 'montante') bajNetsToRenumber.add('montante');
           else if (deleted.tipo === 'red_publica') bajNetsToRenumber.add('red_publica');
           else if (deleted.tipo === 'contador') bajNetsToRenumber.add('contador');
-          // Clean up cross-floor ghosts on other floors referencing this bajante
+          // Limpia los fantasmas entre pisos de OTROS pisos que referencian este bajante
           if (engine._loadedPlanId != null)
             removeCrossFloorGhostsBySource(engine._loadedPlanId, deleted.id);
         }
@@ -344,13 +346,13 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       const idxGhost = engine.crossFloorGhosts.findIndex((g) => g.id === id);
       if (idxGhost >= 0) {
         const g = engine.crossFloorGhosts[idxGhost];
-        // A ghost is the visual half of a cross-floor link — deleting it must tear the WHOLE
-        // link down: the reverse origenId pointer on the target floor, the source's own
-        // desplazamiento (with its Ldesvio ramal), and the ghost itself on storage. The target
-        // floor is the one currently loaded (ghosts only render there), so clearBajanteAssociation
-        // fixes the live engine state too. `plans` is not available at engine level: the target's
-        // origenId null lands in storage wholesale via the normal dirty→save flow, and the synced
-        // drawing cache rebuilds on the next syncDrawings pass.
+        // Un fantasma es la mitad visual de un enlace entre pisos — borrarlo debe tumbar el
+        // enlace COMPLETO: el puntero inverso origenId del piso destino, el desplazamiento del
+        // origen (con su ramal Ldesvio) y el fantasma mismo en storage. El piso destino es el
+        // que está cargado (los fantasmas solo se dibujan ahí), así que clearBajanteAssociation
+        // también arregla el estado vivo del motor. `plans` no está disponible a nivel de motor:
+        // el origenId null del destino aterriza en storage por el flujo normal de guardado
+        // sucio, y la caché de dibujo sincronizada se reconstruye en el próximo syncDrawings.
         clearBajanteAssociation(
           engine,
           g.sourcePlanId,
@@ -428,7 +430,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       cleanupTeeMarkersAt(engine, deleted.pts[0]);
       cleanupTeeMarkersAt(engine, deleted.pts[deleted.pts.length - 1]);
     }
-    // Clean up bajante references to deleted ramal
+    // Limpia las referencias al ramal borrado en los bajantes
     for (const b of engine.bajantes) {
       if (b.recibeDeIds) {
         b.recibeDeIds = b.recibeDeIds.filter((r) => r !== deletedId);
@@ -459,7 +461,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
     const deleted: PlanoBajante = engine.bajantes[idxB];
     const deletedId = deleted.id;
     const lvl = engine.nivelActual?.label ?? '';
-    // When isFantasma=true, treat as parent delete (clean ALL levels)
+    // Si isFantasma=true, se trata como borrado del padre (limpia TODOS los niveles)
     if (!deleted.isFantasma && engine._isGhostSel && deleted.desplazamientos?.[lvl]) {
       const lDesvioId = deleted.desplazamientos[lvl].Ldesvio;
       if (lDesvioId) {
@@ -475,7 +477,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       engine._markDirty();
       return;
     }
-    // Delete parent bajante: also clean up any Ldesvio ramales and ghost displacements
+    // Borrado del bajante padre: también limpia sus ramales Ldesvio y desplazamientos fantasma
     if (deleted.desplazamientos) {
       for (const lvlKey of Object.keys(deleted.desplazamientos)) {
         const d = deleted.desplazamientos[lvlKey];
@@ -485,7 +487,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
         }
       }
     }
-    // Clean up references in other bajantes' recibeDeIds and descargaEnId
+    // Limpia las referencias en recibeDeIds y descargaEnId de otros bajantes
     for (const other of engine.bajantes) {
       if (other.recibeDeIds) {
         other.recibeDeIds = other.recibeDeIds.filter((rid) => rid !== deletedId);
@@ -502,8 +504,8 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
     if (deleted.tipo === 'bajante') {
       engine._renumberBajantes(deleted.net);
     } else if (deleted.tipo === 'montante') {
-      // A mid-body montante always wrote a tee marker (accMed) on its host ramal at creation —
-      // deleting the montante without this left that tee glyph/count behind forever.
+      // Un montante a mitad de cuerpo siempre escribió un marcador de tee (accMed) en su ramal
+      // huésped al crearse — borrarlo sin esto dejaba ese glifo/conteo para siempre.
       cleanupTeeMarkersAt(engine, [deleted.x, deleted.y]);
       engine._renumberMontantes();
     } else if (deleted.tipo === 'red_publica') {
@@ -520,7 +522,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
         b.code = pfx + (i + 1);
       });
     }
-    // Clean up cross-floor ghosts on other floors referencing this bajante
+    // Limpia los fantasmas entre pisos de OTROS pisos que referencian este bajante
     if (engine._loadedPlanId != null)
       removeCrossFloorGhostsBySource(engine._loadedPlanId, deleted.id);
     engine.selId = null;

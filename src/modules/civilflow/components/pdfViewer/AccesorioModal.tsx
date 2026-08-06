@@ -103,12 +103,12 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
   const isSanLlVent =
     modalState.net === 'san' || modalState.net === 'll' || modalState.net === 'vent';
 
-  // Gas has its own accessory catalog (GAS_ACCESORIOS) — different ids entirely from
-  // ACCESORIOS_HIDRO, so it needs its own choice list rather than sharing AF/AC's.
+  // El gas tiene su propio catálogo de accesorios (GAS_ACCESORIOS) — sus ids no coinciden
+  // con los de ACCESORIOS_HIDRO, por eso necesita su propia lista en vez de compartir la de AF/AC.
   const gasCodos = GAS_ACCESORIOS.filter((a) => a.cat === 'Codos');
   const gasTees = GAS_ACCESORIOS.filter((a) => a.cat === 'Tees');
 
-  // San/ll/vent use SAN_ACCESORIOS (coders, reventilado, sifón, yees)
+  // San/ll/vent usan SAN_ACCESORIOS (coders, reventilado, sifón, yees)
   const sanCodos = SAN_ACCESORIOS.filter((a) => a.cat === 'Codos');
   const sanTees = SAN_ACCESORIOS.filter((a) => a.cat === 'Tees');
 
@@ -118,19 +118,19 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
   const codos90 = isSanLlVent
     ? []
     : ACCESORIOS_HIDRO.filter((a) => a.cat === 'Codos' && a.id.startsWith('codo90'));
-  // teeDirecto/teeSube/teeBaja excluded — those only get created automatically (montante en
-  // cuerpo de ramal, o unión T/Y entre dos ramales), never chosen by hand here. teeTapon/
-  // teeLlaveTerminal are only offered from the mid-body accessory dropdown (sidebar/menú
-  // contextual), not from this junction-detection modal. Reducción/lado stay, those genuinely
-  // are a manual choice.
-  // For AF/AC: only teeReduccion and teeLado — teeDirecto/teeSube/teeBaja only get created
-  // automatically (montante en cuerpo de ramal, o unión T/Y entre dos ramales), never chosen
-  // by hand here.
+  // teeDirecto/teeSube/teeBaja excluidas — solo se crean automáticamente (montante en
+  // cuerpo de ramal, o unión T/Y entre dos ramales), nunca se eligen a mano aquí. teeTapon/
+  // teeLlaveTerminal solo se ofrecen desde el dropdown de accesorios de mitad de cuerpo (sidebar/menú
+  // contextual), no desde este modal de detección de unión. Reducción/lado se quedan, esas sí
+  // son una elección manual.
+  // Para AF/AC: solo teeReduccion y teeLado — teeDirecto/teeSube/teeBaja solo se crean
+  // automáticamente (montante en cuerpo de ramal, o unión T/Y entre dos ramales), nunca se
+  // eligen a mano aquí.
   const afAcTees = ACCESORIOS_HIDRO.filter(
     (a) => a.cat === 'Tees' && ['teeReduccion', 'teeLado'].includes(a.id),
   );
   const tees = isSanLlVent ? sanTees : afAcTees;
-  // Yee simple/doble are 45° tee variants — include them when a 45° tee is detected.
+  // Yee simple/doble son variantes de tee de 45° — incluirlas cuando se detecta una tee de 45°.
   const yees = isSanLlVent ? [] : is45 ? ACCESORIOS_YEE : [];
 
   const showCodos = modalState.isTee

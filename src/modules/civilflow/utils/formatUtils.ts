@@ -8,18 +8,19 @@ const FRAC: Record<number, string> = Object.fromEntries(
 );
 
 /**
- * Formats a value to a fixed number of decimal places, returning "—" for null/NaN.
- * @param v - Value to format.
- * @param d - Number of decimal places (default 2).
- * @returns Formatted string or "—".
+ * Formatea un valor a un número fijo de decimales, devolviendo "—" para null/NaN.
+ * @param v - Valor a formatear.
+ * @param d - Número de decimales (default 2).
+ * @returns String formateado o "—".
  */
 export const fmt = (v: unknown, d = 2) =>
   v == null || Number.isNaN(Number(v)) ? '—' : Number(v).toFixed(d);
 
 /**
- * Formats a decimal-inch value as a fractional-inch string (e.g. 1.5 → "1 ½"").
- * @param v - Decimal inches value.
- * @returns Fractional-inch string or "—" if ≤0.
+ * Formatea un valor en pulgadas decimales como string de pulgadas fraccionarias (p. ej.
+ * 1.5 → "1 ½"").
+ * @param v - Valor en pulgadas decimales.
+ * @returns String en pulgadas fraccionarias o "—" si ≤0.
  */
 export function fmtPulg(v: number): string {
   if (!v || v <= 0) return '—';
@@ -44,9 +45,10 @@ const FRAC_MAP: Record<string, string> = {
 };
 
 /**
- * Normalizes a diameter label by replacing Unicode fraction characters with ASCII equivalents (e.g. "1½" → "1-1/2").
- * @param dn - Raw diameter label string.
- * @returns Normalized label.
+ * Normaliza una etiqueta de diámetro reemplazando los caracteres Unicode de fracción por
+ * equivalentes ASCII (p. ej. "1½" → "1-1/2").
+ * @param dn - String de etiqueta de diámetro cruda.
+ * @returns Etiqueta normalizada.
  */
 export function normalizeDnLabel(dn: string): string {
   let out = dn;

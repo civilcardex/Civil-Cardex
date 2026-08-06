@@ -1,7 +1,8 @@
 /**
- * Parses a string into a float, accepting comma as decimal separator. Returns null on invalid input.
- * @param val - Input string, possibly with commas.
- * @returns Parsed number or null.
+ * Convierte un string a float aceptando coma como separador decimal. Devuelve null si la
+ * entrada es inválida.
+ * @param val - String de entrada, posiblemente con comas.
+ * @returns Número parseado o null.
  */
 export function parseDecimalInput(val: string): number | null {
   const raw = val.replace(/,/g, '.');
@@ -10,9 +11,10 @@ export function parseDecimalInput(val: string): number | null {
 }
 
 /**
- * Parses a string into an integer, accepting comma as decimal separator. Returns null if input is empty or not a near-integer.
- * @param val - Input string, possibly with commas.
- * @returns Parsed integer or null.
+ * Convierte un string a entero aceptando coma como separador decimal. Devuelve null si la
+ * entrada está vacía o no es un casi-entero.
+ * @param val - String de entrada, posiblemente con comas.
+ * @returns Entero parseado o null.
  */
 export function parseIntInput(val: string): number | null {
   const raw = val.replace(/,/g, '.').trim();
@@ -25,8 +27,8 @@ export function parseIntInput(val: string): number | null {
 }
 
 /**
- * Parses a string into a float, returning 0 on failure.
- * @param s - Input string.
- * @returns Parsed number or 0.
+ * Convierte un string a float devolviendo 0 ante fallo.
+ * @param s - String de entrada.
+ * @returns Número parseado o 0.
  */
 export const dec = (s: string) => parseDecimalInput(s) ?? 0;

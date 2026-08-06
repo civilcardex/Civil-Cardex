@@ -9,9 +9,9 @@ export interface ToolDef {
   shortcut: string;
 }
 
-// Bajante only makes sense on san/vent/ll (downpipes); montante only on gas/ac/af (risers) —
-// centralized here so the toolbar's two render paths (expanded/collapsed) and PlanoEngine.ts's
-// keyboard shortcuts all enforce the exact same rule instead of drifting apart.
+// Bajante solo tiene sentido en san/vent/ll (bajantes); montante solo en gas/ac/af (montantes) —
+// centralizado aquí para que las dos rutas de render de la barra (expandida/colapsada) y los
+// atajos de teclado de PlanoEngine.ts apliquen exactamente la misma regla sin divergir.
 export function isToolDisabledForNet(
   toolId: string,
   net: string,
@@ -19,8 +19,9 @@ export function isToolDisabledForNet(
 ): boolean {
   if (toolId === 'baj') return !['san', 'vent', 'll'].includes(net);
   if (toolId === 'mon') return !['gas', 'ac', 'af'].includes(net);
-  // Canal recolectora glyphs only make sense when that red is active for the project —
-  // otherwise the tool draws shapes for a network the project isn't designing.
+  // Los glifos de canal recolectora solo tienen sentido cuando esa red está activa para el
+  // proyecto — de lo contrario la herramienta dibujaría formas de una red que el proyecto
+  // no está diseñando.
   if (toolId === 'canal') return !recolectoraActive;
   return false;
 }
@@ -151,8 +152,8 @@ const compactBtn: React.CSSProperties = {
   transition: 'all .12s',
 };
 
-// "Espacio" doesn't fit under a 44px-wide icon column — abbreviate just for the collapsed strip;
-// the full word still shows in the title tooltip and in the expanded toolbar.
+// "Espacio" no cabe en una columna de iconos de 44px — se abrevia solo para la franja colapsada;
+// la palabra completa sigue viéndose en el tooltip del título y en la barra expandida.
 const compactShortcut = (s: string) => (s === 'Espacio' ? 'Esp' : s);
 
 function PdfViewerToolbar_({
@@ -210,6 +211,7 @@ function PdfViewerToolbar_({
                   type="button"
                   key={t.id}
                   onClick={() => onSelectTool(t.id)}
+                  aria-label={t.label}
                   title={t.shortcut ? `${t.label} (${t.shortcut})` : t.label}
                   style={{
                     ...compactBtn,
@@ -237,6 +239,7 @@ function PdfViewerToolbar_({
             <button
               type="button"
               onClick={onSnapToggle}
+              aria-label="Snap"
               title={`Snap (${'G'})`}
               style={{
                 ...compactBtn,
@@ -261,6 +264,7 @@ function PdfViewerToolbar_({
               type="button"
               onClick={onFit}
               disabled={!currentFile}
+              aria-label="Ajustar PDF al visor"
               style={{
                 ...compactBtn,
                 borderColor: '#10B98155',
@@ -275,6 +279,7 @@ function PdfViewerToolbar_({
             <button
               type="button"
               onClick={onSave}
+              aria-label="Guardar"
               style={compactBtn}
               title="Guarda los trazados y cambios realizados en el plano para la red activa"
             >
@@ -287,6 +292,7 @@ function PdfViewerToolbar_({
             <button
               type="button"
               onClick={onUndo}
+              aria-label="Deshacer"
               style={compactBtn}
               title="Deshace el último elemento dibujado: ramal, bajante, área, cota o texto. (Ctrl+Z)"
             >
@@ -295,6 +301,7 @@ function PdfViewerToolbar_({
             <button
               type="button"
               onClick={onRedo}
+              aria-label="Rehacer"
               style={compactBtn}
               title="Revierte el último cambio deshecho: restaura el ramal, bajante, área, cota o texto que se deshizo. (Ctrl+Y)"
             >
@@ -303,6 +310,7 @@ function PdfViewerToolbar_({
             <button
               type="button"
               onClick={onClear}
+              aria-label="Limpiar trazado de la red activa"
               style={{ ...compactBtn, borderColor: 'rgba(255,180,171,.3)', color: '#ffb4ab' }}
               title="Eliminar todo el trazado de la red activa"
             >

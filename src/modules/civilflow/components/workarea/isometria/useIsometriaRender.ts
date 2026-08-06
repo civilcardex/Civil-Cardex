@@ -26,8 +26,9 @@ function hexA(col: string, a: number): string {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-/** Orthographic screen-space unit vectors for the world axes at a given iso point — one step is
- *  ONE WORLD METER (ISO_SCALE iso units), so callers can size things in meters directly. */
+/** Vectores unitarios ortográficos en espacio de pantalla para los ejes del mundo en un punto iso
+ *  dado — cada paso equivale a UN METRO MUNDIAL (ISO_SCALE unidades iso), de modo que el código
+ *  que lo invoca puede dimensionar elementos directamente en metros. */
 function isoAxisVecs(
   proj: (x: number, y: number, z: number) => IsoPt,
   bx: number,
@@ -46,9 +47,9 @@ function isoAxisVecs(
 }
 
 /**
- * Draws a SOLID isometric cuboid (all 6 faces, painter-sorted) with its base centered at
- * (bx, by, z), footprint w x d and height h — dims in world meters. Used for
- * calentador/contador fixtures so they read as closed 3D equipment.
+ * Dibuja un cuboide isométrico SÓLIDO (las 6 caras, ordenadas por profundidad de pintado) con su
+ * base centrada en (bx, by, z), huella w x d y altura h — dimensiones en metros mundiales. Se usa
+ * para los equipos calentador/contador, para que se lean como equipos 3D cerrados.
  */
 function drawIsoCuboid(
   ctx: CanvasRenderingContext2D,
@@ -77,9 +78,10 @@ function drawIsoCuboid(
   const tx = P(w, 0, h);
   const ty = P(0, d, h);
   const txy = P(w, d, h);
-  // All 6 faces; painter-sorted by average screen y (in this ortho projection a lower-on-screen
-  // face is in front — see project(): larger sy = closer to the camera), so back faces are
-  // covered by front faces no matter the rotZ/rotX — the box always reads as closed/solid.
+  // Las 6 caras; ordenadas por pintado según el promedio de y en pantalla (en esta proyección
+  // ortográfica una cara más abajo en pantalla queda al frente — ver project(): sy mayor = más
+  // cerca de la cámara), de modo que las caras traseras quedan cubiertas por las delanteras sin
+  // importar rotZ/rotX — la caja siempre se lee como cerrada/sólida.
   const faces: { pts: IsoPt[]; shade: number }[] = [
     { pts: [o0, px, pxy, py], shade: 0.42 },
     { pts: [t0, tx, txy, ty], shade: 1 },
@@ -180,7 +182,7 @@ export function useIsometriaRender({
 
     const segments: IsoSegment[] = [];
 
-    // Draw planos as semi-transparent background sheets
+    // Dibuja los planos como láminas de fondo semitransparentes
     if (showPlanos && planImagesRef.current.size > 0) {
       for (const [planId, planData] of planImagesRef.current) {
         const plan = confirmedPlanos.find((p) => p.id === planId);
@@ -193,9 +195,9 @@ export function useIsometriaRender({
         const scale = 1.5;
         const pageW = imgW / scale;
         const pageH = imgH / scale;
-        // Crop is normalized (0-1) against the FULL page — only the visible sub-rect of the
-        // source image is drawn, warped to its correct real-world position within the same
-        // (uncropped) coordinate frame used by all network elements.
+        // El recorte (crop) está normalizado (0-1) respecto a la PÁGINA COMPLETA — solo se dibuja
+        // el sub-rectángulo visible de la imagen origen, deformado hacia su posición real correcta
+        // dentro del mismo marco de coordenadas (sin recortar) que usan todos los elementos de red.
         const crop = planCrop || { x: 0, y: 0, w: 1, h: 1 };
         const cx0 = crop.x * pageW,
           cy0 = crop.y * pageH;
@@ -251,7 +253,7 @@ export function useIsometriaRender({
       }
     }
 
-    // Draw each active network
+    // Dibuja cada red activa
     for (const [netId, netData] of Object.entries(dataByNet)) {
       if (!activeNets.has(netId)) continue;
       const netColor = NETS.find((n) => n.id === netId)?.col || '#888';
@@ -261,9 +263,10 @@ export function useIsometriaRender({
       ctx.lineWidth = 2;
       ctx.lineCap = 'round';
 
-      // Canals render FIRST as background troughs (open channel at floor level) so the ll
-      // ramales and any bajante inside them draw on top — mirroring the plano, where the canal
-      // rectangle is the backdrop and bajantes read as normal bajantes over it.
+      // Los canales se dibujan PRIMERO como canaletas de fondo (canal abierto a nivel de piso)
+      // para que los ramales y bajantes que caen dentro se dibujen encima — igual que en el plano,
+      // donde el rectángulo del canal es el fondo y las bajantes se leen como bajantes normales
+      // sobre él.
       const projPt = (px: number, py: number, pz: number) =>
         project(px, py, pz, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
       for (const b of netData.bajantes) {
@@ -302,19 +305,19 @@ export function useIsometriaRender({
         ctx.lineJoin = 'round';
         ctx.strokeStyle = hl;
         ctx.lineWidth = 1.2;
-        // Opening face (plan symbol: white rectangle)
+        // Cara de apertura (símbolo en plano: rectángulo blanco)
         ctx.fillStyle = 'rgba(255,255,255,0.92)';
         quad(pA, pB, pC, pD);
         ctx.fill();
         ctx.stroke();
-        // Inner 25% line, same position as the plano glyph
+        // Línea interior al 25%, en la misma posición que el glifo del plano
         const m1 = projPt(iso0.x, iso0.y + altM * 0.25 * ISO_SCALE, zPixC);
         const m2 = projPt(iso0.x + baseM * ISO_SCALE, iso0.y + altM * 0.25 * ISO_SCALE, zPixC);
         ctx.beginPath();
         ctx.moveTo(m1.sx, m1.sy);
         ctx.lineTo(m2.sx, m2.sy);
         ctx.stroke();
-        // Trough walls + bottom (translucent), giving the channel its depth
+        // Paredes y fondo de la canaleta (translúcidos), que dan profundidad al canal
         ctx.fillStyle = hexA(netColor, 0.18);
         quad(pAw, pBw, pCw, pDw);
         ctx.fill();
@@ -331,7 +334,8 @@ export function useIsometriaRender({
         ctx.fill();
         ctx.stroke();
         if (isSel) {
-          // Selected: thicker yellow outline on the opening face + code label above it
+          // Seleccionado: contorno amarillo más grueso en la cara de apertura + etiqueta de
+          // código encima
           ctx.lineWidth = 2.5;
           quad(pA, pB, pC, pD);
           ctx.stroke();
@@ -352,10 +356,11 @@ export function useIsometriaRender({
 
       for (const r of netData.ramales) {
         // `prof` (Parámetros de Diseño > Materiales por red > "Profundidad de instalación
-        // respecto a NPT") is stored NEGATIVE for below-slab (e.g. sanitaria -0.70). In this
-        // projection a MORE POSITIVE z renders LOWER on screen (see project() in geometry.ts:
-        // y2 grows with z at the default rotX=-45°), so a negative depth must be SUBTRACTED to
-        // push the trace down — adding it (the old behavior) pushed traces up instead.
+        // respecto a NPT") se guarda NEGATIVO para instalaciones bajo losa (p. ej. sanitaria
+        // -0.70). En esta proyección un z MÁS POSITIVO se renderiza MÁS ABAJO en pantalla (ver
+        // project() en geometry.ts: y2 crece con z en el rotX=-45° por defecto), por lo que una
+        // profundidad negativa debe RESTARSE para empujar el trazo hacia abajo — sumarla (el
+        // comportamiento anterior) empujaba los trazos hacia arriba.
         const z = (nptMap[r.planNivel] || 0) - prof * 1000;
         const z_pix = getZPix(z, r.planNivel);
         const pts = r.pts;
@@ -417,15 +422,16 @@ export function useIsometriaRender({
       }
 
       for (const b of netData.bajantes) {
-        // A CrossFloorGhost is only ever consulted as a lookup (which real target does this
-        // source connect to, on which floor) — see the `netData.bajantes.find` calls below. It no
-        // longer needs any visual representation of its own: the real source-to-target connector
-        // now anchors directly on the real target bajante's own position, so drawing the ghost's
-        // default single-floor stub here on top of that just left an orphaned extra riser segment
-        // sitting at the ghost's (= the source's raw) coordinates, unconnected to anything.
+        // Un CrossFloorGhost solo se consulta como referencia (a qué bajante real se conecta este
+        // origen y en qué piso) — ver las llamadas a `netData.bajantes.find` más abajo. Ya no
+        // necesita representación visual propia: el conector real origen→destino ahora se ancla
+        // directamente sobre la posición del bajante destino real, así que dibujar aquí el stub
+        // de un solo piso del ghost solo dejaba un segmento de bajante huérfano en las coordenadas
+        // del ghost (= las crudas del origen), sin conectar con nada.
         if (b._isCrossFloorGhost) continue;
 
-        // Calentador/contador render as 3D equipment boxes on the floor instead of a riser stub.
+        // Calentador/contador se renderizan como cajas de equipo 3D en el piso, en lugar de un
+        // stub de bajante.
         if (b.tipo === 'calentador' || b.tipo === 'contador') {
           const selKey = `${netId}:${b.planId}:${b.id}`;
           const isSel = selKey === selTramo;
@@ -458,23 +464,24 @@ export function useIsometriaRender({
           continue;
         }
 
-        // Canals were already drawn in the background pass above.
+        // Los canales ya se dibujaron en la pasada de fondo anterior.
         if (b.tipo === 'canal') continue;
 
         const profB = profByNet[b.net] ?? 0;
         const currentZ = nptMap[b.planNivel] || 0;
         let targetZ = currentZ;
 
-        // Resolve the REAL target bajante for a bajante-to-bajante association via its
-        // CrossFloorGhost (applyBajanteAssociation always writes one, on the target's own floor,
-        // recording ghost.targetBajanteId) — the ghost's OWN (x,y) mirrors the SOURCE's raw
-        // coordinates and is only useful here to find which floor/bajante it points at, never as
-        // the connector's own anchor: the two ends below are both forced onto the REAL target
-        // bajante's own (x,y), producing one straight vertical run (same x,y throughout, only z
-        // differs) that lands exactly on the target bajante's own drawn position, matching how a
-        // riser diagram is meant to read regardless of any incidental offset in the source's raw
-        // plan coordinates. `_isCrossFloorGhost` bajantes never resolve their own reverse-pointing
-        // descargaEnId here — that would draw this same connection a second time, from the other end.
+        // Resuelve el bajante destino REAL para una asociación bajante-a-bajante a través de su
+        // CrossFloorGhost (applyBajanteAssociation siempre crea uno, en el propio piso del
+        // destino, registrando ghost.targetBajanteId) — el (x,y) PROPIO del ghost refleja las
+        // coordenadas crudas del ORIGEN y aquí solo sirve para localizar a qué piso/bajante
+        // apunta, nunca como ancla del conector: los dos extremos de abajo se fuerzan sobre el
+        // (x,y) del bajante destino REAL, produciendo un recorrido vertical único y recto (mismo
+        // x,y en todo el tramo, solo cambia z) que cae exactamente sobre la posición dibujada del
+        // destino, como debe leerse un diagrama de bajante sin importar el desfase incidental en
+        // las coordenadas crudas del plano de origen. Los bajantes `_isCrossFloorGhost` nunca
+        // resuelven aquí su propio descargaEnId inverso — eso dibujaría esta misma conexión una
+        // segunda vez, desde el otro extremo.
         let targetRamal = null;
         let targetBajante = null;
         if (b.descargaEnId && !b._isCrossFloorGhost) {
@@ -494,7 +501,7 @@ export function useIsometriaRender({
           if (targetBajante) {
             targetZ = nptMap[targetBajante.planNivel] || 0;
           } else {
-            // Defensive fallback for stale/incomplete data missing its ghost.
+            // Respaldo defensivo para datos incompletos/desactualizados que no tienen ghost.
             const parts = parseDescargaEnId(b.descargaEnId, b.planId);
             const targetPlanId = parts[0];
             const targetId = parts[1];
@@ -521,15 +528,16 @@ export function useIsometriaRender({
         const lo = Math.min(currentZ, targetZ);
         const hi = Math.max(currentZ, targetZ);
         const isSube = b.direccion === 'sube' || b.tipo === 'montante';
-        // Same sign fix as the ramal z above: profB is negative-for-below, so subtract it.
+        // Misma corrección de signo que en el z del ramal anterior: profB es negativo para bajo
+        // losa, por lo que se resta.
         const baseZ = (lo === hi ? (isSube ? lo : lo - 1000) : lo) - profB * 1000;
         const cimaZ = (lo === hi ? (isSube ? hi + 1000 : hi) : hi) - profB * 1000;
 
         let targetPt: number[] | null = null;
         let targetPlanNivel: number | null = null;
         if (targetRamal && targetRamal.pts.length > 0) {
-          // Nearest endpoint of the target ramal to the bajante's own (x,y) — not always pts[0],
-          // which could be the far end of a long ramal and point the connector the wrong way.
+          // Extremo del ramal destino más cercano al (x,y) propio de la bajante — no siempre es
+          // pts[0], que podría ser el extremo lejano de un ramal largo y orientar mal el conector.
           const distToFirst = Math.hypot(targetRamal.pts[0][0] - b.x, targetRamal.pts[0][1] - b.y);
           const distToLast = Math.hypot(
             targetRamal.pts[targetRamal.pts.length - 1][0] - b.x,
@@ -544,27 +552,28 @@ export function useIsometriaRender({
           targetPt = [targetBajante.x, targetBajante.y];
           targetPlanNivel = targetBajante.planNivel;
         }
-        // When the target is a real bajante, the WHOLE segment — both ends, not just the one at
-        // the target's own floor — is projected using the target bajante's own (x,y). That makes
-        // the connector a single straight vertical run (one x,y throughout, only z differs),
-        // landing exactly on the target bajante's own drawn position regardless of any offset in
-        // the source's raw plan coordinates (a Ldesvio deviation, or simply two independently
-        // drawn floors) — the isometric riser is meant to show connectivity, not the source's
-        // real, incidental 2D routing detail.
+        // Cuando el destino es una bajante real, TODO el segmento — ambos extremos, no solo el
+        // del piso propio del destino — se proyecta con el (x,y) de la bajante destino. Eso hace
+        // del conector un único recorrido vertical recto (un solo x,y en todo el tramo, solo
+        // cambia z), que cae exactamente sobre la posición dibujada del destino sin importar el
+        // desfase en las coordenadas crudas del plano de origen (una desviación Ldesvio, o
+        // simplemente dos pisos dibujados por separado) — la bajante isométrica debe mostrar
+        // conectividad, no el detalle real e incidental del recorrido 2D del origen.
         const hasBajanteTarget = !!targetBajante && targetPt != null && targetPlanNivel !== null;
 
         const baseZ_pix = getZPix(baseZ, b.planNivel);
         const cimaZ_pix = getZPix(cimaZ, b.planNivel);
         const ownIso = getIsoCoords(b.x, b.y, b.planNivel);
-        // getIsoCoords converts raw plan-pixel coordinates to real-world iso position using
-        // THAT FLOOR's OWN scale/origen calibration (each PDF plan is calibrated independently
-        // — see IsometriaTab.tsx's getIsoCoords). Re-interpreting the target's raw px under the
-        // SOURCE floor's calibration (as this used to do for whichever end sat at the source's
-        // own z) silently applied the wrong scale/origin to that end, bending an otherwise
-        // straight vertical run into a diagonal even when both bajantes sit at the exact same
-        // drawn position on their own respective floors. Both ends must resolve through the
-        // TARGET's own calibration — only Z (baseZ_pix/cimaZ_pix, computed per-floor separately
-        // above) is meant to differ between the two ends.
+        // getIsoCoords convierte las coordenadas crudas en píxeles de plano a posición iso del
+        // mundo real usando la calibración de escala/origen PROPIA DE ESE PISO (cada PDF de plano
+        // se calibra de forma independiente — ver getIsoCoords en IsometriaTab.tsx). Reinterpretar
+        // los px crudos del destino bajo la calibración del piso del ORIGEN (como se hacía antes
+        // para el extremo que quedaba en el z propio del origen) aplicaba silenciosamente la
+        // escala/origen equivocada a ese extremo, torciendo un recorrido vertical recto en una
+        // diagonal aunque ambas bajantes estuvieran exactamente en la misma posición dibujada en
+        // sus respectivos pisos. Ambos extremos deben resolverse con la calibración del DESTINO —
+        // solo Z (baseZ_pix/cimaZ_pix, calculados por piso por separado arriba) debe diferir entre
+        // los dos extremos.
         const targetIso =
           hasBajanteTarget && targetPt && targetPlanNivel !== null
             ? getIsoCoords(targetPt[0], targetPt[1], targetPlanNivel)
@@ -607,7 +616,7 @@ export function useIsometriaRender({
         ctx.lineWidth = isSel ? 3.5 : 2;
         ctx.stroke();
 
-        // Circle + direction indicator at floor level (pBase for sube, pCima for baja)
+        // Círculo + indicador de dirección a nivel de piso (pBase para sube, pCima para baja)
         const isSubeDir = b.direccion === 'sube' || b.tipo === 'montante';
         const floorPt = isSubeDir ? pBase : pCima;
         const circR = 6 * zoom;
@@ -619,7 +628,7 @@ export function useIsometriaRender({
         ctx.arc(floorPt.sx, floorPt.sy, circR, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        // Direction triangle inside circle
+        // Triángulo de dirección dentro del círculo
         ctx.fillStyle = netColor;
         ctx.beginPath();
         const triS = circR * 0.5;
@@ -692,7 +701,7 @@ export function useIsometriaRender({
       }
     }
 
-    // Axis indicator (bottom-left)
+    // Indicador de ejes (esquina inferior izquierda)
     const axCx = 50,
       axCy = H - 50;
     const axLen = 25;
@@ -748,7 +757,7 @@ export function useIsometriaRender({
     ctx.textBaseline = 'top';
     ctx.fillText(`${rotX}°/${rotZ}° z${scaleZ.toFixed(1)}`, 6, 6);
 
-    // Store segments for hit testing
+    // Guarda los segmentos para la prueba de aciertos (hit testing)
     canvas.__isoSegments = segments;
     canvas.__isoCx = W / 2;
     canvas.__isoCy = H / 2;

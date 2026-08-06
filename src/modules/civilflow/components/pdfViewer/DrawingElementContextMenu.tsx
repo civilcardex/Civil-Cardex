@@ -59,9 +59,10 @@ import type { Piso } from '../useWorkAreaState';
 import type { PlanItem } from '../../context/PlansContext';
 import type { MaterialItem } from '../../context/ProjectContext';
 
-// Structural probe of a PlanoElement union: lets code sniff `tipo`/`pts` (present on some
-// element kinds, absent on others) the same way the engine's own runtime dispatch does,
-// without narrowing via the exported type guards at every access site.
+// Sonda estructural de la unión PlanoElement: permite al código inspeccionar `tipo`/`pts`
+// (presentes en algunos tipos de elemento y ausentes en otros) igual que hace el dispatch
+// en tiempo de ejecución del engine, sin tener que estrechar el tipo con los guards
+// exportados en cada punto de acceso.
 type ProbedElement = PlanoElement & { tipo?: string; pts?: number[][] };
 
 export interface ContextMenuState {
@@ -324,11 +325,11 @@ function BajanteDirectionSelector({
                 let updates: Record<string, unknown> = {};
 
                 if (opt === 'Sube') {
-                  // Flow-direction guard, mirrored from the 'Baja' branch below: a 'sube'
-                  // bajante must only EMIT flow. If a ramal already arrives at this bajante
-                  // (connected by its FIN), marking it "sube" would make it receive flow it
-                  // should only emit — block the change instead of silently producing a
-                  // contradiction between the bajante's direction and its connections.
+                  // Guarda de dirección de flujo, espejo de la rama 'Baja' de abajo: un bajante
+                  // "sube" solo debe ENTREGAR flujo. Si ya llega un ramal a este bajante
+                  // (conectado por su FIN), marcarlo "sube" haría que recibiera flujo que solo
+                  // debería emitir — se bloquea el cambio en lugar de producir en silencio una
+                  // contradicción entre la dirección del bajante y sus conexiones.
                   const bajCode = element.code || element.id;
                   const arrivingRamal = (element.recibeDeIds || [])
                     .map((rid) => engineRef.current?.ramales.find((r) => r.id === rid))
@@ -347,14 +348,14 @@ function BajanteDirectionSelector({
                     desplazamientos: { ...(element.desplazamientos || {}) },
                   };
                 } else if (opt === 'Baja') {
-                  // Flow-direction guard, second half: isRamalBajanteConnectionAllowed (in
-                  // flowDirection.ts) only fires when a ramal endpoint is FIRST connected to a
-                  // bajante. It never re-validates existing connections when the bajante's own
-                  // direction is changed afterward — which is the far more common order in
-                  // practice (draw the geometry, then set "Baja" here). Without this check, a
-                  // bajante that already receives a ramal at that ramal's START (i.e. the ramal
-                  // originates FROM the bajante, not into it) could silently be marked "baja"
-                  // even though it would then be emitting flow instead of only receiving it.
+                  // Guarda de dirección de flujo, segunda parte: isRamalBajanteConnectionAllowed
+                  // (en flowDirection.ts) solo se dispara cuando un extremo de ramal se conecta
+                  // POR PRIMERA VEZ a un bajante. Nunca revalida las conexiones existentes cuando
+                  // después se cambia la dirección del propio bajante — que es el orden mucho más
+                  // común en la práctica (dibujar la geometría y luego fijar "Baja" aquí). Sin
+                  // esta comprobación, un bajante que ya recibe un ramal por su INICIO (es decir,
+                  // el ramal nace DEL bajante, no entra a él) podría marcarse "baja" en silencio
+                  // aunque entonces estaría emitiendo flujo en lugar de solo recibirlo.
                   const bajCode = element.code || element.id;
                   const emittingRamal = (element.recibeDeIds || [])
                     .map((rid) => engineRef.current?.ramales.find((r) => r.id === rid))
@@ -380,12 +381,12 @@ function BajanteDirectionSelector({
                 }
                 if (Object.keys(updates).length > 0) {
                   engineRef.current?.updateElementById(element.id, updates);
-                  // A montante's accessory (codo90rmSube/Baja at a ramal endpoint, or teeSube/Baja
-                  // at a mid-body split) was written once at creation time and never re-synced when
-                  // the direction changed afterward — always stayed whatever it was first set to.
-                  // Re-derive it from the CURRENT direction here instead, locating the exact point
-                  // by position (endpoint → codo, interior vertex → tee) rather than assuming it's
-                  // always an endpoint.
+                  // El accesorio de un montante (codo90rmSube/Baja en extremo de ramal, o
+                  // teeSube/Baja en división a mitad de cuerpo) se escribió una sola vez al
+                  // crearse y nunca se resincronizó al cambiar la dirección después — siempre se
+                  // quedaba con el valor inicial. Aquí se recalcula a partir de la dirección
+                  // ACTUAL, localizando el punto exacto por posición (extremo → codo, vértice
+                  // interior → tee) en lugar de asumir que siempre es un extremo.
                   if (
                     element.tipo === 'montante' &&
                     (updates.direccion === 'sube' || updates.direccion === 'baja')
@@ -457,9 +458,9 @@ function BajanteDirectionSelector({
             if (!engineRef.current) return;
             const lvl = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
             const isFantasma = element.isFantasma;
-            // A bajante that already has a ramal/tributario connected to it can't become a
-            // fantasma — the desplazamiento would visually detach it from what it's really
-            // feeding, so block activation with an explicit warning instead.
+            // Un bajante que ya tiene un ramal/tributario conectado no puede convertirse en
+            // fantasma — el desplazamiento lo separaría visualmente de lo que realmente está
+            // alimentando, así que se bloquea la activación con una advertencia explícita.
             if (!isFantasma && (element.recibeDeIds?.length ?? 0) > 0) {
               engineRef.current.triggerAlert(
                 'No se puede activar fantasma',
@@ -543,12 +544,13 @@ function BajanteDiameterSelector({
 }) {
   const currentGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
 
-  // Realtime sync for the "Origen (piso superior)" dropdown: `upperFloorGroup` is PdfViewer state
-  // that only re-reads its target floor when the SELECTION changes — an association created or
-  // cleared here (or from the BajanteAsociacion panel, or from the other floor's "Destino" menu)
-  // never touches those deps, so the option list stays stale. Re-read the upper floor's storage
-  // whenever this menu's element or its cross-floor pointers change (writeBajantePropToDrawing
-  // persists to TRAZOS_PREFIX + planId, so the re-read sees the fresh data).
+  // Sincronización en tiempo real del desplegable "Origen (piso superior)": `upperFloorGroup`
+  // es estado de PdfViewer que solo vuelve a leer su piso objetivo cuando cambia la SELECCIÓN —
+  // una asociación creada o eliminada aquí (o desde el panel BajanteAsociacion, o desde el menú
+  // "Destino" del otro piso) nunca toca esas dependencias, así que la lista de opciones quedaría
+  // desactualizada. Se vuelve a leer el storage del piso superior cada vez que cambian el
+  // elemento de este menú o sus punteros entre pisos (writeBajantePropToDrawing persiste en
+  // TRAZOS_PREFIX + planId, por lo que la relectura ve los datos recién guardados).
   const [freshUpperBajantes, setFreshUpperBajantes] = useState<PlanoBajante[] | null>(null);
   useEffect(() => {
     if (!upperFloorGroup || upperFloorGroup.isCurrent) {
@@ -582,10 +584,11 @@ function BajanteDiameterSelector({
     }
   };
 
-  // Mirror of the "Destino" onChange below but for the immediate-upper-floor "Origen" selector —
-  // same logic as BajanteAsociacion.tsx's associateOrigin, duplicated here (not shared) because
-  // this one reads/writes `element` (whatever was right-clicked, not necessarily selElement) and
-  // syncs contextMenuState the same way the rest of this component's handlers do.
+  // Espejo del onChange de "Destino" (más abajo) pero para el selector "Origen" del piso
+  // inmediatamente superior — misma lógica que associateOrigin en BajanteAsociacion.tsx,
+  // duplicada aquí (no compartida) porque esta versión lee/escribe `element` (lo que se haya
+  // clicado con botón derecho, no necesariamente selElement) y sincroniza contextMenuState
+  // igual que el resto de handlers de este componente.
   const associateOrigin = (v: string | null) => {
     if (!engineRef.current) return;
     const eng = engineRef.current;
@@ -897,7 +900,8 @@ function BajanteDiameterSelector({
                   if (isGhostClick) {
                     updateGhostField('dNominal', val);
                   } else {
-                    // Validate: bajante diameter must not be smaller than connected ramales
+                    // Validación: el diámetro del bajante no puede ser menor que el de los
+                    // ramales conectados
                     if (val && element.recibeDeIds?.length && engineRef.current) {
                       const bajIn = diamPulgFromLabel(val.replace(/-/g, ' '));
                       if (bajIn > 0) {
@@ -1103,7 +1107,8 @@ function BajanteDiameterSelector({
                 if (isGhostClick) {
                   updateGhostField('dNominal', val);
                 } else {
-                  // Validate: bajante diameter must not be smaller than connected ramales
+                  // Validación: el diámetro del bajante no puede ser menor que el de los
+                  // ramales conectados
                   if (val && element.recibeDeIds?.length) {
                     const bajIn = diamPulgFromLabel(val.replace(/-/g, ' '));
                     if (bajIn > 0) {
@@ -1239,10 +1244,11 @@ function BajanteConnectionPanel({
                         checked={isAssociated}
                         onChange={(e) => {
                           const checked = e.target.checked;
-                          // Read the live recibeDeIds off the engine's own bajante object rather
-                          // than the closed-over `recibidos` snapshot — two checkboxes toggled
-                          // before React re-renders between them would otherwise each compute
-                          // newRecibe from the same stale array and clobber each other's change.
+                          // Se lee recibeDeIds en vivo del objeto bajante del engine en lugar
+                          // de la copia `recibidos` capturada en el closure — si se alternan dos
+                          // checkboxes antes de que React re-renderice entre ellos, cada uno
+                          // calcularía newRecibe desde el mismo array obsoleto y pisaría el
+                          // cambio del otro.
                           const liveBaj = engineRef.current?.bajantes.find(
                             (bb) => bb.id === bajEl.id,
                           );
@@ -1358,10 +1364,10 @@ function BajanteConnectionPanel({
                             net: ramalEl.net,
                             tipo: bmLabel,
                             code: code,
-                            // No default direction — an empty direction can't violate the flow
-                            // rule ('sube' emits only, 'baja' receives only). The direction is
-                            // assigned afterwards via the Sube/Baja options, which validate the
-                            // ramal connections before applying it.
+                            // Sin dirección por defecto — una dirección vacía no puede violar
+                            // la regla de flujo ('sube' solo emite, 'baja' solo recibe). La
+                            // dirección se asigna después mediante las opciones Sube/Baja, que
+                            // validan las conexiones del ramal antes de aplicarla.
                             direccion: undefined,
                             x: ep.x,
                             y: ep.y,
@@ -1385,13 +1391,14 @@ function BajanteConnectionPanel({
                             labelY: ep.y + 20,
                             bajR: 7 / 24,
                           });
-                          // Auto-fill ramal's ini/fin
+                          // Relleno automático del ini/fin del ramal
                           if (ep.idx === 0) {
                             eng.updateElementById(ramalEl.id, { ini: code });
                           } else {
                             eng.updateElementById(ramalEl.id, { fin: code });
                           }
-                          // Lock the ramal so the newly snapped bajante can't be dragged away independently
+                          // Se bloquea el ramal para que el bajante recién anclado no pueda
+                          // arrastrarse de forma independiente
                           eng.updateElementById(ramalEl.id, { bloqueado: true });
                           if (bmLabel === 'montante') {
                             eng._renumberMontantes();
@@ -1519,8 +1526,8 @@ function BajanteConnectionPanel({
                                 );
                                 return;
                               }
-                              // If this extreme already has a different accessory, just replace it
-                              // with the new selection instead of blocking with an alert.
+                              // Si este extremo ya tiene un accesorio distinto, se reemplaza
+                              // directamente por la nueva selección en lugar de bloquear con alerta.
                             }
                             if (engineRef.current) {
                               const accessoryVal = val as string;
@@ -1544,8 +1551,8 @@ function BajanteConnectionPanel({
                               }
                               const oldVal = ramalEl[fieldAcc] || '';
                               const updates: Record<string, unknown> = { [fieldAcc]: val };
-                              // Accessories no longer inherit the ramal's own diameter as a
-                              // default — every accessory starts with no diameter selected.
+                              // Los accesorios ya no heredan el diámetro del ramal como valor
+                              // por defecto — todo accesorio empieza sin diámetro seleccionado.
                               engineRef.current.updateElementById(ramalEl.id, updates);
                               setContextMenuState((prev) =>
                                 prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
@@ -1849,9 +1856,10 @@ function BajanteCodeEditor({
                       prev ? { ...prev, element: { ...fresh } } : null,
                     );
                   }
-                  // The diameter list is material-dependent (DIAM_BY_MAT): if the current
-                  // diameter no longer exists for the new material, reset it (and the mirrored
-                  // accessory diameters) so the ramal never keeps a stale diametro.
+                  // La lista de diámetros depende del material (DIAM_BY_MAT): si el diámetro
+                  // actual ya no existe para el material nuevo, se resetea (junto con los
+                  // diámetros de accesorio espejados) para que el ramal nunca conserve un
+                  // diametro obsoleto.
                   const updates: Record<string, string> = { material: val };
                   if (!isVen && !isGas) {
                     const nd = DIAM_BY_MAT[val] || [];
@@ -1904,10 +1912,10 @@ function BajanteCodeEditor({
             onChange={(e) => {
               const val = e.target.value;
               if (engineRef.current) {
-                // Single invariant: ramal.diam >= accesorio.diam, enforced here on the RAMAL
-                // side (not on the accessory selectors, which allow picking any accessory
-                // diameter freely) — a ramal can never be shrunk below whatever accessory
-                // diameter is already attached to it.
+                // Invariante única: ramal.diam >= accesorio.diam, impuesta aquí del lado del
+                // RAMAL (no en los selectores de accesorio, que dejan elegir cualquier
+                // diámetro libremente) — un ramal nunca puede reducirse por debajo del
+                // diámetro del accesorio que ya tiene conectado.
                 const inchFrom = (d: string) => {
                   const q = d.indexOf('"');
                   return q > 0 ? d.slice(0, q) : d;
@@ -1925,9 +1933,9 @@ function BajanteCodeEditor({
                   );
                   return;
                 }
-                // Accessory diameter (diametroInicio/Fin) no longer has its own picker — it always
-                // mirrors the ramal's own diameter, so it must be kept in sync here too, not just
-                // set once when the accessory is first created.
+                // El diámetro del accesorio (diametroInicio/Fin) ya no tiene selector propio —
+                // siempre refleja el diámetro del propio ramal, por lo que hay que mantenerlo
+                // sincronizado aquí también, no solo fijarlo una vez al crear el accesorio.
                 const updates = { diametro: val, diametroInicio: val, diametroFin: val };
                 engineRef.current.updateElementById(ramalEl.id, updates);
                 setContextMenuState((prev) =>
@@ -1939,14 +1947,15 @@ function BajanteCodeEditor({
                 if (activeNet === ramalEl.net) {
                   setDiamSel((prev) => ({ ...prev, [activeNet]: val }));
                 }
-                // Propagate to any downstream ramal auto-created by a tee-split merge FROM this
-                // one — mergesFrom stores the [upstream, incoming] parent ids at the moment of
-                // the split (PlanoEngineDrawing.ts), and that child's diametro was only ever
-                // computed once, at creation time. Without this, changing a parent's diameter
-                // afterward never reaches the already-created merged/auto-created ramal.
-                // AF/AC/gas are excluded: those nets no longer auto-assign a diameter to the
-                // merged ramal at all (it's left blank for the user to pick explicitly), so there
-                // is nothing to keep in sync here for them either.
+                // Propagar a cualquier ramal aguas abajo auto-creado por una fusión de división
+                // en tee DESDE este — mergesFrom guarda los ids de los padres [aguas arriba,
+                // entrante] en el momento de la división (PlanoEngineDrawing.ts), y el diametro
+                // de ese hijo solo se calculó una vez, al crearlo. Sin esto, cambiar el
+                // diámetro de un padre después nunca llega al ramal fusionado/auto-creado ya
+                // existente.
+                // AF/AC/gas quedan excluidos: esas redes ya no auto-asignan diámetro al ramal
+                // fusionado (queda en blanco para que el usuario lo elija explícitamente), así
+                // que tampoco hay nada que sincronizar aquí para ellas.
                 const eng = engineRef.current;
                 if (!['af', 'ac', 'gas'].includes(ramalEl.net)) {
                   for (const child of eng.ramales) {
@@ -2241,13 +2250,15 @@ function AreaMenu() {
   );
 }
 
-// Rotates pts[1] around pts[0] (the fixed pivot) by the given signed degree step, validating the
-// result against the same angle rules a real ramal on that net would have to obey — so a guide
-// line can never be rotated into an angle its later "Crear ramal" conversion wouldn't accept.
-// Standard infinite-line/bounded-segment intersection: the guide is treated as an infinite line
-// (it's a construction aid, often drawn short of the ramal it's meant to reference) while the
-// ramal segment stays bounded to its own actual extent (s must land within [0,1], with a small
-// tolerance for the ramal's own vertex sitting almost exactly on the guide's line).
+// Rota pts[1] alrededor de pts[0] (el pivote fijo) en el paso de grados con signo dado,
+// validando el resultado contra las mismas reglas de ángulo que debería obedecer un ramal
+// real de esa red — así una línea guía nunca puede quedar rotada a un ángulo que su
+// conversión posterior "Crear ramal" no aceptaría.
+// Intersección estándar línea infinita/segmento acotado: la guía se trata como línea
+// infinita (es una ayuda de construcción, a menudo dibujada corta del ramal al que debe
+// referenciar) mientras el segmento del ramal queda acotado a su extensión real (s debe
+// caer en [0,1], con una tolerancia pequeña para el vértice del propio ramal que yace casi
+// exactamente sobre la línea de la guía).
 function intersectGuideWithSegment(
   p0: number[],
   p1: number[],
@@ -2267,10 +2278,10 @@ function intersectGuideWithSegment(
   return { x: q0[0] + s * dx2, y: q0[1] + s * dy2 };
 }
 
-// Finds the nearest ramal the guide line's (infinite) line crosses, returning that crossing point
-// and the ramal segment's own direction — the rotate buttons form their angle relative to THIS,
-// not to the guide's own current orientation, per the whole point of drawing a guide across a
-// ramal in the first place.
+// Busca el ramal más cercano que cruce la línea (infinita) de la guía y devuelve ese punto de
+// cruce junto con la dirección del propio segmento del ramal — los botones de rotación forman
+// su ángulo respecto a ESTA, no a la orientación actual de la guía, que es precisamente el
+// sentido de dibujar una guía a través de un ramal.
 function findGuideCrossing(
   eng: PlanoEngine,
   guide: PlanoGuideLine,
@@ -2293,11 +2304,12 @@ function findGuideCrossing(
   return best;
 }
 
-// A crossed ramal segment gives TWO possible reference rays from the crossing point (its own
-// direction, and the reverse) — "Superior"/"Inferior" lets the user pick which one the angle is
-// measured from, since rotating 45° off one ray vs the other produces a mirrored result. Screen Y
-// grows downward, so "Superior" = whichever ray points up (negative Y); ties (a horizontal ramal)
-// fall back to whichever ray points left, an arbitrary but stable choice.
+// Un segmento de ramal cruzado da DOS rayos de referencia posibles desde el punto de cruce
+// (su propia dirección y la inversa) — "Superior"/"Inferior" permite al usuario elegir desde
+// cuál se mide el ángulo, ya que rotar 45° desde un rayo o desde el otro produce un resultado
+// espejado. La Y de pantalla crece hacia abajo, así que "Superior" = el rayo que apunta hacia
+// arriba (Y negativa); en empates (ramal horizontal) se cae al rayo que apunta a la izquierda,
+// una elección arbitraria pero estable.
 function pickSideAngle(rayAngle: number, side: 'sup' | 'inf'): number {
   const reverse = rayAngle + Math.PI;
   const raySinY = Math.sin(rayAngle);
@@ -2307,9 +2319,10 @@ function pickSideAngle(rayAngle: number, side: 'sup' | 'inf'): number {
   return side === 'sup' ? upAngle : downAngle;
 }
 
-// San/ll/vent pipe only turns in 45° fittings; AF/AC and gas only in 90° — matches the same
-// per-net rule `checkRamalAngles`/`drawingAngles.ts` uses elsewhere for real ramales, applied
-// here as a UX filter over which rotate buttons even get shown (see GuideLineMenu below).
+// La tubería san/ll/vent solo gira con codos de 45°; AF/AC y gas solo de 90° — coincide con la
+// misma regla por red que `checkRamalAngles`/`drawingAngles.ts` aplica en otros sitios para los
+// ramales reales, aplicada aquí como filtro de UX sobre qué botones de rotación se muestran
+// (ver GuideLineMenu más abajo).
 function netAllowedSteps(net: string): (45 | 90)[] {
   if (net === 'san' || net === 'll' || net === 'vent') return [45];
   return [90];
@@ -2346,9 +2359,9 @@ function rotateGuideLine(
     pivot[0] + dist * Math.cos(newAngle),
     pivot[1] + dist * Math.sin(newAngle),
   ];
-  // Pivot snaps exactly onto the crossing point (if one was found) — the guide should visibly
-  // touch the ramal precisely at the angle it now forms with it, not wherever it happened to be
-  // drawn originally.
+  // El pivote encaja exactamente en el punto de cruce (si se encontró uno) — la guía debe
+  // tocar visualmente el ramal precisamente en el ángulo que ahora forma con él, no donde
+  // se haya dibujado originalmente.
   const newPts: [number, number][] = [pivot, newFar];
 
   if (!crossing && !checkRamalAngles(newPts, guide.net)) {
@@ -2460,9 +2473,10 @@ function GuideLineMenu() {
           const cnt = ++eng._netCounts[guide.net].ramal;
           const ramId = `${pfx}${cnt}`;
           const [p0, p1] = guide.pts;
-          // Flow renders from pts[0] toward the last point (renderRamales.ts) — orient the new
-          // ramal so its flow always points at the ramal this guide was drawn across (the
-          // crossing IS the connection it creates), nearest guide end first.
+          // El flujo se dibuja desde pts[0] hacia el último punto (renderRamales.ts) — se
+          // orienta el nuevo ramal para que su flujo apunte siempre al ramal sobre el que se
+          // dibujó esta guía (el cruce ES la conexión que crea), desde el extremo de la guía
+          // más cercano primero.
           const crossing = findGuideCrossing(eng, guide);
           let pStart: [number, number] = [p0[0], p0[1]];
           let pEnd: [number, number] = [p1[0], p1[1]];
@@ -2474,9 +2488,10 @@ function GuideLineMenu() {
               pEnd = [p0[0], p0[1]];
             }
           }
-          // A guide is drawn freehand, so its angle is not guaranteed on the network's grid —
-          // creating the ramal anyway would silently produce an illegal pipe. Validate first
-          // (same rule as finishRamal); on failure keep the guide so the user can rotate it.
+          // Una guía se dibuja a mano alzada, así que su ángulo no está garantizado sobre la
+          // rejilla de la red — crear el ramal igualmente produciría en silencio una tubería
+          // ilegal. Se valida primero (misma regla que finishRamal); si falla, se conserva la
+          // guía para que el usuario pueda rotarla.
           if (!checkRamalAngles([pStart, pEnd], guide.net, 'ramal')) {
             eng.triggerAlert('Ángulo no permitido', guideAngleAlertMessage(guide.net, 'ramal'));
             return;
@@ -2537,8 +2552,9 @@ function GuideLineMenu() {
           }
           const padre = eng.ramales.find((r) => r.id === crossing.ramalId);
           if (!padre) return;
-          // Tributario flow renders from pts[0] toward the last point — orient it so the head
-          // points AT the crossing (the intersection with the padre ramal it feeds).
+          // El flujo del tributario se dibuja desde pts[0] hacia el último punto — se orienta
+          // para que la cabeza apunte AL cruce (la intersección con el ramal padre que
+          // alimenta).
           const [p0, p1] = guide.pts;
           const d0 = Math.hypot(crossing.point[0] - p0[0], crossing.point[1] - p0[1]);
           const d1 = Math.hypot(crossing.point[0] - p1[0], crossing.point[1] - p1[1]);
@@ -2616,15 +2632,15 @@ function MidRamalAccessorySelector({
   setSelElement: (el: PlanoElement | null) => void;
   setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
 }) {
-  // Plain 'llaveTerminal' only makes sense at a true ramal extreme (terminates the pipe there) —
-  // in the body it must go through 'teeLlaveTerminal' (a tee whose free leg is capped), so exclude
-  // the bare valve from this mid-body picker even though getAccessoryOptions includes it for the
-  // endpoint editor.
+  // La 'llaveTerminal' simple solo tiene sentido en un extremo real del ramal (termina la
+  // tubería allí) — en el cuerpo debe ir mediante 'teeLlaveTerminal' (un tee con la pierna
+  // libre tapada), por eso se excluye la válvula pelada de este selector de cuerpo aunque
+  // getAccessoryOptions la incluya para el editor de extremos.
   const options = getAccessoryOptions(element.net).filter((o) => o.value !== 'llaveTerminal');
   if (options.length === 0) return null;
 
-  // If an accMed vertex already sits (almost) exactly at the clicked point, edit that one
-  // instead of inserting a new vertex.
+  // Si ya existe un vértice accMed (casi) exactamente en el punto clicado, se edita ese
+  // en lugar de insertar un vértice nuevo.
   const accMed = element.accMed || {};
   let existingKey: string | null = null;
   for (const k of Object.keys(accMed)) {
@@ -2683,21 +2699,23 @@ function MidRamalAccessorySelector({
             }
             eng.updateElementById(element.id, { accMed: newAccMed });
             if (selElement?.id === element.id) setSelElement({ ...selElement, accMed: newAccMed });
-            // Without this, `element` (contextMenuState's frozen snapshot from when the menu
-            // opened) never reflects the write: the dropdown kept showing "Ninguno" after the
-            // FIRST pick, and every pick after that fell into the "insert new vertex" branch
-            // below instead of updating this one — leaving the old glyph on screen alongside
-            // the new one, and "Ninguno" unable to find anything to delete.
+            // Sin esto, `element` (la copia congelada de contextMenuState del momento en que se
+            // abrió el menú) nunca refleja la escritura: el desplegable seguía mostrando
+            // "Ninguno" tras la PRIMERA elección, y cada elección posterior caía en la rama de
+            // "insertar vértice nuevo" (más abajo) en vez de actualizar este — dejando el
+            // glifo antiguo en pantalla junto al nuevo, y "Ninguno" sin encontrar nada que
+            // eliminar.
             setContextMenuState((prev) =>
               prev ? { ...prev, element: { ...prev.element, accMed: newAccMed } } : null,
             );
           } else if (accId) {
-            // Insert a new vertex at the clicked point (splitting the segment, not the ramal)
-            // and attach the accessory there.
+            // Se inserta un vértice nuevo en el punto clicado (dividiendo el segmento, no el
+            // ramal) y se ancla allí el accesorio.
             const newIdx = midRamalHit.segmentIdx + 1;
             const newPts = fresh.pts.map((p: number[]) => [...p]);
             newPts.splice(newIdx, 0, [midRamalHit.x, midRamalHit.y]);
-            // Existing accMed keys at/after the insertion point shift up by one index.
+            // Las claves accMed existentes en/después del punto de inserción se desplazan un
+            // índice hacia arriba.
             const shiftedAccMed: Record<string, string> = {};
             for (const [k, v] of Object.entries(fresh.accMed || {})) {
               const m = k.match(/^accMed(\d+)$/);
@@ -2722,26 +2740,28 @@ function MidRamalAccessorySelector({
                 : null,
             );
           }
-          // teeTapon/teeLlaveTerminal aren't offered in the sidebar accessory counter anymore
-          // (they're pure body glyphs, chosen only from this dropdown) — but they still count as
-          // a through-tee for friction-loss purposes, same as a manually-tallied "Tee paso
-          // lado". Bump/unbump that tally automatically so switching away from one of these two
-          // doesn't leave an orphaned count behind.
+          // teeTapon/teeLlaveTerminal ya no se ofrecen en el contador de accesorios del panel
+          // lateral (son glifos puros de cuerpo, elegidos solo desde este desplegable) — pero
+          // siguen contando como tee de paso a efectos de pérdida de carga, igual que un "Tee
+          // paso lado" contabilizado manualmente. Se incrementa/decrementa ese conteo
+          // automáticamente para que cambiar de uno de estos dos no deje un conteo huérfano.
           const TEE_LADO_LINKED = new Set(['teeTapon', 'teeLlaveTerminal']);
           if (currentVal !== accId) {
-            // _loadedPlanId, NOT eng.planId — the latter is declared on the engine but never
-            // assigned, so it's always undefined; using it wrote the tally under key
-            // `${net}_${id}_` (empty planId) while the sidebar reads `${net}_${id}_${realPlanId}`,
-            // so the count landed in a key nothing ever displayed.
+            // _loadedPlanId, NO eng.planId — este último está declarado en el engine pero nunca
+            // se asigna, así que siempre es undefined; usarlo escribía el conteo bajo la clave
+            // `${net}_${id}_` (planId vacío) mientras el panel lateral lee
+            // `${net}_${id}_${realPlanId}`, con lo que el conteo caía en una clave que nada
+            // mostraba jamás.
             const planId = eng._loadedPlanId ?? '';
             if (TEE_LADO_LINKED.has(currentVal))
               bumpHidroAccesorio(element.net || 'af', 'teeLado', -1, element.id, planId);
             if (TEE_LADO_LINKED.has(accId))
               bumpHidroAccesorio(element.net || 'af', 'teeLado', 1, element.id, planId);
-            // bumpHidroAccesorio writes straight to localStorage — FixturesPanel's sidebar
-            // accessory counter only re-reads localStorage in response to this event (or its own
-            // inc/dec calls), so without dispatching it here the count updates on disk but the
-            // sidebar keeps showing the stale number until something else happens to trigger it.
+            // bumpHidroAccesorio escribe directo en localStorage — el contador de accesorios
+            // del panel lateral de FixturesPanel solo vuelve a leer localStorage en respuesta
+            // a este evento (o a sus propias llamadas inc/dec), así que sin despacharlo aquí
+            // el conteo se actualiza en disco pero el panel sigue mostrando el número
+            // obsoleto hasta que algo más lo dispare.
             if (typeof window !== 'undefined')
               window.dispatchEvent(new CustomEvent('aparatos-clear'));
           }
@@ -2761,11 +2781,12 @@ function MidRamalAccessorySelector({
   );
 }
 
-// A ramal that participates in any junction with other ramales must not have its flow direction
-// flipped: reversing pts would invalidate every shared endpoint, the tributario padre link, the
-// tee/yee accMed glyphs at the junction and the accesorioInicio/Fin assignments of the connected
-// ramales. "Interconexión" = shares an endpoint with another ramal, has tributarios attached, is
-// itself a tributario, or carries junction markers (accMed / bilateral crossings / pair ids).
+// Un ramal que participa en cualquier unión con otros ramales no debe ver invertido su sentido
+// de flujo: invertir pts invalidaría cada extremo compartido, el vínculo con el tributario
+// padre, los glifos tee/yee de accMed en la unión y las asignaciones accesorioInicio/Fin de
+// los ramales conectados. "Interconexión" = comparte extremo con otro ramal, tiene tributarios
+// colgados, es él mismo tributario, o lleva marcadores de unión (accMed / cruces bilaterales /
+// pares de ids).
 function ramalHasInterconnections(eng: PlanoEngine | null, ramal: PlanoRamal): boolean {
   if (!eng) return false;
   const TOL = 0.5;
@@ -2794,9 +2815,10 @@ function RamalMenu() {
   const { contextMenuState, element, engineRef, selElement, setSelElement } = ctx;
   const ramalEl = element as PlanoRamal;
 
-  // A midRamalHit landing exactly on an EXISTING accMed vertex (PlanoEngineHitTesting.ts checks
-  // these before segment-body hits) reports segmentIdx = accMedIdx - 1 — i.e. accMedIdx =
-  // segmentIdx + 1, same convention handleCreateMontanteMidBody/handleCreateTeeCapStub use.
+  // Un midRamalHit que cae exactamente sobre un vértice accMed EXISTENTE (PlanoEngineHitTesting.ts
+  // los comprueba antes que los impactos de cuerpo de segmento) reporta segmentIdx = accMedIdx - 1
+  // — es decir, accMedIdx = segmentIdx + 1, misma convención que usan
+  // handleCreateMontanteMidBody/handleCreateTeeCapStub.
   const hit = contextMenuState.midRamalHit;
   const existingTeeIdx = hit ? hit.segmentIdx + 1 : -1;
   const existingTeeType = hit ? ramalEl.accMed?.[`accMed${existingTeeIdx}`] : undefined;
@@ -2804,9 +2826,10 @@ function RamalMenu() {
     existingTeeType === 'teeDirecto' ||
     existingTeeType === 'teeSube' ||
     existingTeeType === 'teeBaja';
-  // teeTapon/teeLlaveTerminal are self-contained glyphs (the free leg is already capped in the
-  // marker itself, no real stub ramal) — they don't get the "+Tapón/+Llave" stub buttons below,
-  // but the point is still occupied, so "Crear montante" must stay hidden there too.
+  // teeTapon/teeLlaveTerminal son glifos autocontenidos (la pierna libre ya viene tapada en el
+  // propio marcador, sin ramal stub real) — no reciben los botones de stub "+Tapón/+Llave" de
+  // abajo, pero el punto sigue ocupado, así que "Crear montante" también debe permanecer oculto
+  // allí.
   const isOccupiedTee =
     isExistingTee || existingTeeType === 'teeTapon' || existingTeeType === 'teeLlaveTerminal';
 
@@ -2941,8 +2964,10 @@ function RamalMenu() {
             onClick={() => {
               const eng = engineRef.current;
               if (!eng) return;
-              // Flip the ramal in place: reverses pts + swaps every endpoint-symmetric field.
-              // Flow-direction arrow (rendered live from pts[0] vs pts[last]) flips automatically.
+              // Invierte el ramal en su sitio: revierte pts + intercambia todo campo simétrico
+              // respecto a los extremos.
+              // La flecha de dirección de flujo (dibujada en vivo desde pts[0] vs pts[last])
+              // se invierte automáticamente.
               const r = eng.ramales.find((x) => x.id === ramalEl.id);
               if (!r) return;
               const tmpPts = r.pts.map((p) => [...p]);
@@ -2959,7 +2984,8 @@ function RamalMenu() {
               const tmpIniFin = r.ini;
               r.ini = r.fin;
               r.fin = tmpIniFin;
-              // accMed keys shift because interior vertices index in the new order.
+              // Las claves accMed se desplazan porque los vértices interiores se reindexan
+              // con el nuevo orden.
               if (r.accMed) {
                 const oldMed = r.accMed;
                 const len = r.pts.length;
@@ -3176,9 +3202,9 @@ const CanalMenu_FIELD_LABELS: Record<'base' | 'altura', string> = {
   altura: 'Altura (cm)',
 };
 
-// Free-text commit pattern (local edit buffer, commit on blur) — same as CanalDimField in
-// RainChannelsCheck.tsx, since this file's other numeric fields are all <select> dropdowns and
-// base/altura need arbitrary decimal entry instead.
+// Patrón de commit con texto libre (buffer de edición local, commit al perder el foco) — igual
+// que CanalDimField en RainChannelsCheck.tsx, ya que los demás campos numéricos de este archivo
+// son todos desplegables <select> y base/altura necesitan entrada decimal arbitraria.
 function CanalDimInput({
   field,
   value,
@@ -3380,8 +3406,9 @@ function DrawingElementContextMenuInner() {
   const isBajanteTipo =
     element.tipo === 'bajante' || element.tipo === 'montante' || element.id?.startsWith('B');
   const isArea = element.id?.startsWith('AR');
-  // Guide lines also carry `pts` (reused for hit-testing) but must never fall into RamalMenu,
-  // which assumes every PlanoRamal-only field (net-specific accessories, diameter, etc.) exists.
+  // Las líneas guía también llevan `pts` (reutilizado para la detección de clics) pero nunca
+  // deben caer en RamalMenu, que asume que existe todo campo exclusivo de PlanoRamal
+  // (accesorios por red, diámetro, etc.).
   const isGuide = element.id?.startsWith('GL');
   const hasPts = !!element.pts && !isGuide;
   const tipo = element.tipo;
@@ -3401,6 +3428,7 @@ function DrawingElementContextMenuInner() {
         onClick={() => ctx.setContextMenuState(null)}
         onContextMenu={(e) => e.preventDefault()}
       />
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
       <form
         ref={menuRef}
         role="dialog"

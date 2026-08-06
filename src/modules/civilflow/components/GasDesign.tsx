@@ -114,12 +114,13 @@ function GasDesign() {
           if (r.net === 'gas' && r.tipo !== 'tributario') existingIds.add(r.id);
         }
       } catch {
-        // ignore
+        // se ignora: datos de trazado ausentes o corruptos; el recálculo sigue con lo demás.
       }
     }
-    // Pruning gasAcc against localStorage-derived plan data (an external source React can't
-    // observe reactively) — this is the legitimate "synchronize with an external system" use
-    // of an effect, not state derived from props/state already available during render.
+    // Depura gasAcc contra los datos de plano que vienen de localStorage (una fuente externa que
+    // React no puede observar de forma reactiva) — este es el uso legítimo de un efecto para
+    // "sincronizar con un sistema externo", no un estado derivado de props/state ya disponibles
+    // durante el renderizado.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setGasAcc((prev) => {
       let changed = false;
@@ -194,7 +195,7 @@ function GasDesign() {
         }
       }
     }
-    // Same external-sync rationale as gasAcc above.
+    // Misma lógica de sincronización externa que gasAcc arriba.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDiamMat((prev) => {
       let n = prev;
@@ -283,7 +284,7 @@ function GasDesign() {
     return result;
   }, [gasTramos, diamInt, gasAcc, pmin, temp, densRel, patm]);
 
-  // Persist complete row data for memoria final tables
+  // Persiste la fila completa de cada tramo para las tablas de la memoria final.
   useEffect(() => {
     const rows = gasTramos.map((t) => {
       const chk = checkRows.find((r) => r.id === t.id);

@@ -1,12 +1,12 @@
 /**
- * Sums each tramo's "partial" value across its connected component (via `adj`) and returns
- * a map from tramo key to that component-wide total. Used to show, per tramo, the accumulated
- * demand (UC/UD) of everything hydraulically connected to it.
- * @param tramos - Array of tramo objects.
- * @param getKey - Extracts a unique key string from a tramo.
- * @param adj - Undirected adjacency map (key → neighbor keys).
- * @param getPartial - Extracts the partial value from a tramo.
- * @returns Map of tramo key → component-wide total.
+ * Suma el valor "parcial" de cada tramo sobre su componente conexa (vía `adj`) y devuelve
+ * un mapa de clave de tramo a ese total de componente. Sirve para mostrar, por tramo, la
+ * demanda acumulada (UC/UD) de todo lo conectado hidráulicamente a él.
+ * @param tramos - Array de objetos tramo.
+ * @param getKey - Extrae una clave única de un tramo.
+ * @param adj - Mapa de adyacencia no dirigida (clave → claves vecinas).
+ * @param getPartial - Extrae el valor parcial de un tramo.
+ * @returns Mapa de clave de tramo → total de la componente.
  */
 export function computeComponentTotals<T>(
   tramos: T[],
@@ -53,22 +53,23 @@ export function computeComponentTotals<T>(
 }
 
 /**
- * Like computeComponentTotals, but DIRECTED: rooted at `rootKey` (the actual supply source —
- * contador/calentador), each node's total = its own partial + the total of everything BELOW it
- * in the tree (its children, i.e. further from the source). A node upstream of a junction only
- * ever contributes ITS OWN total up to whatever's above it — it never shows the combined total
- * itself; only the node the branches merge INTO does. computeComponentTotals instead summed the
- * whole undirected connected component and handed that SAME grand total to every member
- * regardless of position, which is wrong for anything but a single-node network: a small branch
- * feeding one fixture showed the entire building's demand, same as the main trunk near the source.
- * Falls back to computeComponentTotals when no root can be identified (network without a
- * detectable contador/calentador), so it still returns something sensible.
- * @param tramos - Array of tramo objects.
- * @param getKey - Extracts a unique key string from a tramo.
- * @param adj - Undirected adjacency map (key → neighbor keys).
- * @param getPartial - Extracts the partial value from a tramo.
- * @param rootKey - Key of the root node (contador/calentador); falls back to undirected totals if null/missing.
- * @returns Map of tramo key → directed accumulated total.
+ * Como computeComponentTotals, pero DIRIGIDO: enraizado en `rootKey` (la fuente real de
+ * suministro — contador/calentador), el total de cada nodo = su propio parcial + el total de
+ * todo lo que está DEBAJO de él en el árbol (sus hijos, es decir, más lejos de la fuente). Un
+ * nodo aguas arriba de una unión solo contribuye CON SU PROPIO total hacia lo que haya encima —
+ * nunca muestra el total combinado él mismo; solo lo hace el nodo en el que las ramas CONFLUYEN.
+ * computeComponentTotals en cambio sumaba toda la componente conexa no dirigida y entregaba ese
+ * MISMO total global a cada miembro sin importar su posición, lo cual está mal para cualquier
+ * red que no sea de un solo nodo: una rama pequeña que alimenta un aparato mostraba la demanda
+ * de todo el edificio, igual que el tronco principal cerca de la fuente.
+ * Recurre a computeComponentTotals cuando no se puede identificar ninguna raíz (red sin un
+ * contador/calentador detectable), para seguir devolviendo algo sensato.
+ * @param tramos - Array de objetos tramo.
+ * @param getKey - Extrae una clave única de un tramo.
+ * @param adj - Mapa de adyacencia no dirigida (clave → claves vecinas).
+ * @param getPartial - Extrae el valor parcial de un tramo.
+ * @param rootKey - Clave del nodo raíz (contador/calentador); recurre a totales no dirigidos si es null/inexistente.
+ * @returns Mapa de clave de tramo → total dirigido acumulado.
  */
 export function computeDirectedTotals<T>(
   tramos: T[],
@@ -92,11 +93,11 @@ export function computeDirectedTotals<T>(
     if (key) totals[key] = getPartial(t);
   }
 
-  // BFS that traverses through EVERY node (including bajante/junction nodes that have no
-  // tramo entry). Those non-tramo junction points previously blocked the walk entirely
-  // (the old guard `tramoById[nb]` filtered them out), so the BFS couldn't reach tramos
-  // beyond a junction — the root ended up alone and totals contained only its own partial,
-  // effectively the same stale value for every visible tramo.
+  // BFS que atraviesa TODOS los nodos (incluidos los de bajante/uniones que no tienen entrada
+  // de tramo). Esos puntos de unión sin tramo antes bloqueaban el recorrido entero (el antiguo
+  // guard `tramoById[nb]` los filtraba), así que el BFS no alcanzaba los tramos más allá de una
+  // unión — la raíz quedaba sola y los totales contenían solo su propio parcial, efectivamente
+  // el mismo valor obsoleto para cada tramo visible.
   const parentOf: Record<string, string> = {};
   const order: string[] = [];
   const visited = new Set<string>([rootKey]);
@@ -112,8 +113,8 @@ export function computeDirectedTotals<T>(
     }
   }
 
-  // Reverse BFS order — deepest first. Non-tramo junction nodes start at 0; their totals
-  // are accumulated from their children and then propagated upward to their own parent.
+  // Orden BFS inverso — primero los más profundos. Los nodos de unión sin tramo empiezan en 0;
+  // sus totales se acumulan desde sus hijos y luego se propagan hacia arriba a su propio padre.
   for (let i = order.length - 1; i >= 0; i--) {
     const node = order[i];
     if (totals[node] === undefined) totals[node] = 0;
@@ -124,7 +125,7 @@ export function computeDirectedTotals<T>(
     }
   }
 
-  // Return only tramo keys (exclude junction/non-tramo accumulator keys).
+  // Devuelve solo claves de tramo (excluye las claves acumuladoras de uniones/nodos sin tramo).
   const result: Record<string, number> = {};
   for (const key of Object.keys(totals)) {
     if (tramoById[key]) result[key] = totals[key];

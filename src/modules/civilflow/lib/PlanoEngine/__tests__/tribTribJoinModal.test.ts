@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { finishRamal } from '../PlanoEngineDrawing';
 import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoState';
 
-// Regression coverage for the trib-trib join flow (af/ac/gas):
-// - same-padre join: allowed, AccesorioModal must still fire (tee symbol selection)
-// - different-padre join: blocked BEFORE push, alert fires, NO modal, ramal not committed
+// Cobertura de regresión del flujo de unión trib-trib (af/ac/gas):
+// - unión con mismo padre: permitida, AccesorioModal debe seguir abriéndose (selección de símbolo de tee)
+// - unión con padre distinto: bloqueada ANTES del push, salta alerta, SIN modal, el ramal no se confirma
 
 function makeEngine(ramales: PlanoRamal[], bajantes: PlanoBajante[] = []): IPlanoEngineCore {
   const calls: string[] = [];
@@ -103,7 +103,7 @@ describe('trib-trib join (same padre) — modal must still fire', () => {
     const engine = makeEngine([padre, t1]);
     const calls = (engine as unknown as { calls: string[] }).calls;
 
-    // T2 starts at the shared junction (40,0) — right where T1 also starts on the padre end.
+    // T2 arranca en la unión compartida (40,0) — justo donde T1 también empieza en el extremo del padre.
     engine.activeRamal = {
       net: 'af',
       tipo: 'tributario',
@@ -116,11 +116,11 @@ describe('trib-trib join (same padre) — modal must still fire', () => {
 
     finishRamal(engine);
 
-    // T2 must be committed
+    // T2 debe quedar confirmado (committed)
     expect(engine.ramales.some((r) => r.padre === 'RAF_PADRE' && r.id !== 'T1')).toBe(true);
-    // No wrong-padre alert
+    // Sin alerta de padre equivocado
     expect(calls.some((c) => c.startsWith('alert'))).toBe(false);
-    // The accessory-selection modal must STILL fire so the user can pick the tee type
+    // El modal de selección de accesorio debe seguir abriéndose para que el usuario elija el tipo de tee
     expect(calls).toContain('modal');
   });
 });
@@ -128,7 +128,7 @@ describe('trib-trib join (same padre) — modal must still fire', () => {
 describe('trib-trib join (different padre) — blocked before push, no modal', () => {
   it('alerts, does NOT commit the ramal, and does NOT fire the modal', () => {
     const padre = makePadre();
-    // T1 belongs to a DIFFERENT padre ramal
+    // T1 pertenece a un ramal padre DIFERENTE
     const t1 = makeTributario('T1', 'RAF_OTHER');
     const engine = makeEngine([padre, t1]);
     const calls = (engine as unknown as { calls: string[] }).calls;
@@ -145,11 +145,11 @@ describe('trib-trib join (different padre) — blocked before push, no modal', (
 
     finishRamal(engine);
 
-    // The new tributario must NOT be committed
+    // El tributario nuevo NO debe quedar confirmado
     expect(engine.ramales.filter((r) => r.padre === 'RAF_PADRE')).toHaveLength(0);
-    // Wrong-padre alert fires
+    // Salta la alerta de padre equivocado
     expect(calls.some((c) => c.startsWith('alert:'))).toBe(true);
-    // NO modal
+    // SIN modal
     expect(calls).not.toContain('modal');
   });
 });

@@ -13,7 +13,7 @@ import { loadSanLlTramos, loadAfAcTramos } from '../utils/buildTramos';
 
 export type { Tramo, TramosState };
 
-/** Tramo state management API — provides tramo lists for each network (san, af, ac, ll) and per-network field updaters. */
+/** API de gestión del estado de tramos — provee listas de tramos por red (san, af, ac, ll) y actualizadores de campo por red. */
 interface TramosContextValue {
   tramosSan: Tramo[];
   tramosAf: Tramo[];
@@ -27,7 +27,7 @@ interface TramosContextValue {
 
 const TramosContext = createContext<TramosContextValue | null>(null);
 
-/** Wraps children with useReducer-based tramo state, loading san/ll and af/ac tramos from localStorage on mount. Reacts to `civilflow_*_sync_changed` and `storage` events to reload dirty data. */
+/** Envuelve a los hijos con estado de tramos basado en useReducer, cargando tramos san/ll y af/ac desde localStorage al montar. Reacciona a los eventos `civilflow_*_sync_changed` y `storage` para recargar datos sucios. */
 export function TramosProvider({ children }: { children?: ReactNode }) {
   const [state, dispatch] = useReducer(tramosReducer, {
     tramosSan: [],
@@ -36,8 +36,8 @@ export function TramosProvider({ children }: { children?: ReactNode }) {
     tramosLl: [],
   } as TramosState);
   const stateRef = useRef(state);
-  // "useLatest" pattern: keep a ref mirroring the latest state for callbacks/effects that
-  // need the current value without listing it as a dependency.
+  // Patrón "useLatest": mantener un ref que refleja el último estado para callbacks/efectos que
+  // necesitan el valor actual sin listarlo como dependencia.
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
@@ -177,7 +177,7 @@ export function TramosProvider({ children }: { children?: ReactNode }) {
   return <TramosContext.Provider value={value}>{children}</TramosContext.Provider>;
 }
 
-/** Consumer hook for TramosContext — returns {tramosSan, tramosAf, tramosAc, tramosLl, updTramoSan, updTramoAf, updTramoAc, updTramoLL}. Throws if used outside TramosProvider. */
+/** Hook consumidor de TramosContext — devuelve {tramosSan, tramosAf, tramosAc, tramosLl, updTramoSan, updTramoAf, updTramoAc, updTramoLL}. Lanza error si se usa fuera de TramosProvider. */
 export function useTramos() {
   const ctx = useContext(TramosContext);
   if (!ctx) throw new Error('useTramos must be used within TramosProvider');

@@ -86,8 +86,9 @@ export function copyDrawingFromPlan(
     }
     const pfx = net.lbl;
     const bmPfx = net.bmPfx;
-    // Montante prefix: for networks where bmType === 'montante', use net.bmPfx (MAF, MAC, etc.)
-    // For networks where bmType === 'bajante' (sanitary, ll), montantes get their own 'M'+lbl prefix
+    // Prefijo de montante: para redes donde bmType === 'montante', usar net.bmPfx (MAF, MAC, etc.)
+    // Para redes donde bmType === 'bajante' (saneamiento, ll), los montantes tienen su propio
+    // prefijo 'M'+lbl
     const monPfx = net.bmType === 'montante' ? net.bmPfx || 'MON' : 'M' + (net.lbl || 'MON');
     const tPfx = 'T'; // Tributario prefix
 
@@ -107,7 +108,7 @@ export function copyDrawingFromPlan(
 
     const srcAll = [...srcRamales, ...srcBajantes, ...srcGlobals];
 
-    /* ── CAPTURE source data from all 3 stores BEFORE any deletion ── */
+    /* ── CAPTURAR datos fuente de los 3 stores ANTES de cualquier borrado ── */
     const srcSnapshot: Record<string, { aparato?: unknown; hidro?: unknown; gasAcc?: unknown }> =
       {};
     for (const el of srcAll) {
@@ -124,7 +125,7 @@ export function copyDrawingFromPlan(
       if (gasAcc[el.id] !== undefined) srcSnapshot[el.id].gasAcc = structuredClone(gasAcc[el.id]);
     }
 
-    /* ── Remove existing matching elements from engine ── */
+    /* ── Eliminar elementos coincidentes existentes del engine ── */
     const existingToRemove: (PlanoRamal | PlanoBajante)[] = [];
     if (copyRamalTipos.size > 0) {
       existingToRemove.push(
@@ -155,21 +156,21 @@ export function copyDrawingFromPlan(
       if (b.descargaEnId && removeIds.has(b.descargaEnId)) b.descargaEnId = null;
     }
 
-    /* ── Clear selection if selected element was removed ── */
+    /* ── Limpiar selección si el elemento seleccionado fue eliminado ── */
     if (engine.selId && removeIds.has(engine.selId)) {
       engine.selId = null;
       engine._isGhostSel = false;
       engine._emitSelect(null);
     }
 
-    /* ── Clean target entries from all 3 stores ── */
+    /* ── Limpiar entradas target de los 3 stores ── */
     for (const id of removeIds) {
       deleteKeys(aparatos, (k: string) => k.endsWith(`_${id}_${tgtPid}`));
       deleteKeys(hidroData, (k: string) => k.endsWith(`_${id}_${tgtPid}`));
       deleteKeys(gasAcc, (k: string) => k === id);
     }
 
-    /* ── Generate new IDs ── */
+    /* ── Generar nuevos IDs ── */
     const maxForType = (arr: (PlanoRamal | PlanoBajante)[], regex: RegExp): number =>
       arr.reduce((m: number, e) => {
         const mr = e.id?.match(regex);
@@ -213,12 +214,12 @@ export function copyDrawingFromPlan(
     let calCounter = maxCal;
     let tributarioCounter = maxTrib;
 
-    // Build map: oldPadreId -> newLabel of padre in destination
+    // Construir mapa: oldPadreId -> newLabel del padre en destino
     const padreLabelMap: Record<string, string> = {};
-    // First process all 'ramal' entries to fill padreLabelMap
+    // Primero procesar todas las entradas 'ramal' para llenar padreLabelMap
     for (const r of srcRamales) {
       if (r.tipo === 'ramal' && r.padre) {
-        // Parent exists in source - map its label
+        // El padre existe en source - mapear su etiqueta
         const padreInSrc = srcRamales.find((x) => x.id === r.padre);
         if (padreInSrc) {
           padreLabelMap[r.padre] = padreInSrc.label || padreInSrc.id;
@@ -234,7 +235,8 @@ export function copyDrawingFromPlan(
         oldToNew[oldId] = newId;
         r.id = newId;
         r.label = newId;
-        // Update father map: future tributarios with this padre should reference new label
+        // Actualizar mapa del padre: los tributarios futuros con este padre deben referenciar la
+        // nueva etiqueta
         padreLabelMap[oldId] = newId;
       } else {
         const oldId = r.id;
@@ -243,7 +245,7 @@ export function copyDrawingFromPlan(
         const newId = tPfx + tributarioCounter;
         oldToNew[oldId] = newId;
         r.id = newId;
-        // Tributario label: T#<padreLabel> e.g., T1RS5
+        // Etiqueta de tributario: T#<padreLabel> p. ej. T1RS5
         const padreLabel = oldPadre ? padreLabelMap[oldPadre] || oldPadre : '';
         r.label = padreLabel ? `${newId}${padreLabel}` : newId;
       }
@@ -290,12 +292,13 @@ export function copyDrawingFromPlan(
       }
     }
 
-    /* ── Remap internal references ── */
-    // The referenced ramal/bajante may be one being copied in THIS SAME batch — it won't exist in
-    // engine.ramales/engine.bajantes yet (that push happens further down), so the existence check
-    // must also accept anything oldToNew is about to introduce. Without this, a bajante's own
-    // recibeDeIds pointing at a ramal copied alongside it always failed the live-array check and
-    // got silently stripped — the bajante symbol copied, but its hydraulic connection didn't.
+    /* ── Reasignar referencias internas ── */
+    // El ramal/bajante referenciado puede ser uno que se copia en ESTE MISMO lote — todavía no
+    // existirá en engine.ramales/engine.bajantes (ese push ocurre más abajo), así que el chequeo
+    // de existencia también debe aceptar todo lo que oldToNew está por introducir. Sin esto, los
+    // recibeDeIds de un bajante apuntando a un ramal copiado junto a él siempre fallaban el
+    // chequeo de array en vivo y se quitaban en silencio — el símbolo del bajante se copiaba, pero
+    // su conexión hidráulica no.
     const willExist = new Set(Object.values(oldToNew));
     for (const el of srcAll) {
       if (el.ini && oldToNew[el.ini]) el.ini = oldToNew[el.ini];
@@ -335,12 +338,12 @@ export function copyDrawingFromPlan(
       delete el.isFantasma;
       delete el.ghostData;
     }
-    // Cross-floor association pointers (descargaEnId/origenId) reference a specific bajante on a
-    // specific OTHER floor — copying the element to a new floor under a new id makes any such
-    // pointer stale (it either points nowhere, or worse, at some unrelated bajante that now
-    // happens to share the old id). Neither this tool nor its caller has any way to know what the
-    // copied element's association should be on the new floor, so drop it entirely rather than
-    // carry over a link that no longer means anything.
+    // Los punteros de asociación entre pisos (descargaEnId/origenId) referencian un bajante
+    // específico en OTRO piso específico — copiar el elemento a un piso nuevo bajo un id nuevo
+    // vuelve obsoleto cualquier puntero así (o apunta a la nada, o peor, a algún bajante no
+    // relacionado que ahora resulta compartir el id viejo). Ni esta herramienta ni su caller
+    // tienen forma de saber cuál debería ser la asociación del elemento copiado en el piso nuevo,
+    // así que se descarta por completo en vez de arrastrar un enlace que ya no significa nada.
     for (const b of [...srcBajantes, ...srcGlobals] as unknown as {
       descargaEnId?: string | null;
       origenId?: string | null;
@@ -350,13 +353,13 @@ export function copyDrawingFromPlan(
       b.descargaEnId = null;
       b.origenId = null;
       delete b.desplazamientos;
-      // pisoBase records the floor a bajante/montante/global "belongs to" — renderBajantes.ts
-      // never draws the element's own circle when it differs from the currently loaded floor's
-      // label (that mismatch is how a cross-floor ghost stays invisible except as a ghost marker).
-      // Left at the SOURCE floor's label, every copied element silently failed to render at all
-      // on the destination floor even though it existed in engine.bajantes. Must be stamped with
-      // the target floor's label, which is whatever floor is currently loaded (copy always runs
-      // into the open plan).
+      // pisoBase registra el piso al que "pertenece" un bajante/montante/global — renderBajantes.ts
+      // nunca dibuja el círculo propio del elemento cuando difiere de la etiqueta del piso
+      // cargado actualmente (esa discrepancia es cómo un fantasma entre pisos permanece invisible
+      // salvo como marcador de fantasma). Dejado en la etiqueta del piso FUENTE, cada elemento
+      // copiado fallaba en silencio al renderizarse por completo en el piso destino aunque existiera
+      // en engine.bajantes. Debe estamparse con la etiqueta del piso destino, que es cualquier piso
+      // cargado actualmente (el copy siempre corre hacia el plano abierto).
       b.pisoBase = engine.nivelActual?.label ?? '';
     }
 
@@ -371,7 +374,7 @@ export function copyDrawingFromPlan(
       engine._netCounts[netId].ramal = ramalCounter;
     }
 
-    /* ── Write captured source data to new IDs ── */
+    /* ── Escribir datos fuente capturados en los nuevos IDs ── */
     for (const [oldId, newId] of Object.entries(oldToNew)) {
       const snap = srcSnapshot[oldId];
       if (!snap) continue;
@@ -401,7 +404,7 @@ export function copyDrawingFromPlan(
       saveToStorage(`trazos_${targetPlanId}`, work);
     }
   } catch {
-    // Ignore save errors
+    // Ignorar errores de guardado
   }
 
   engine._dirty = true;
@@ -413,7 +416,7 @@ export function copyDrawingFromPlan(
     window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
     window.dispatchEvent(new CustomEvent('aparatos-clear'));
   } catch {
-    // Ignore event errors
+    // Ignorar errores de evento
   }
 
   return { copied: totalCopied, skippedNets };

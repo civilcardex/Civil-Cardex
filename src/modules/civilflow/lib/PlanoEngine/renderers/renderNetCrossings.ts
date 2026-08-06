@@ -11,8 +11,9 @@ interface Hit {
   y: number;
 }
 
-// True crossing only — excludes hits within EPS (fraction of segment length) of either
-// segment's endpoints, since those represent coincident vertices, not a real crossing.
+// Solo cruce real — excluye aciertos dentro de EPS (fracción de la longitud del segmento) de
+// los extremos de cualquiera de los segmentos, porque esos representan vértices coincidentes,
+// no un cruce verdadero.
 function segCrossing(
   ax: number,
   ay: number,
@@ -36,12 +37,12 @@ function segCrossing(
   return { x: ax + t * r1x, y: ay + t * r1y };
 }
 
-// Draws a small break-and-hop where two ramales from DIFFERENT networks cross without
-// connecting (different fluid systems never share a real junction). Runs as an additive
-// pass after renderRamales — it never touches the main polyline stroking logic, it only
-// erases a short capsule of the "jumping" net's own line and re-draws it as a tiny arc,
-// re-stroking the other (straight-through) net's line across that same span so it stays
-// fully intact regardless of crossing angle.
+// Dibuja un pequeño corte-y-salto donde dos ramales de redes DISTINTAS se cruzan sin
+// conectarse (los sistemas de fluidos diferentes nunca comparten una unión real). Corre como
+// pase aditivo después de renderRamales — nunca toca la lógica principal de trazo de
+// polilíneas, solo borra una cápsula corta de la línea de la red que "salta" y la redibuja
+// como un arco diminuto, re-trazando la línea de la otra red (que pasa recta) por ese mismo
+// tramo para que quede completamente intacta sin importar el ángulo del cruce.
 export function renderNetCrossings(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const ramales = engine.ramales.filter(
     (r) =>
@@ -55,7 +56,7 @@ export function renderNetCrossings(ctx: CanvasRenderingContext2D, engine: IPlano
   const gapR = engine.realMmToCanvasPx(7);
   const seen = new Set<string>();
 
-  // Skip hop rendering near bajante positions (real + cross-floor ghosts)
+  // Saltar el render de saltos cerca de posiciones de bajante (reales + fantasmas entre pisos)
   const bajantePts: [number, number][] = [];
   for (const b of engine.bajantes) {
     if (engine._hiddenNets.has(b.net)) continue;
@@ -97,7 +98,7 @@ export function renderNetCrossings(ctx: CanvasRenderingContext2D, engine: IPlano
           if (nearBajante(hit.x, hit.y)) continue;
           seen.add(key);
 
-          // Deterministic: whichever net sits later in NETS hops over the earlier one.
+          // Determinista: la red que aparece más tarde en NETS salta sobre la anterior.
           const raIsJumper = (NET_ORDER[ra.net] ?? 99) > (NET_ORDER[rb.net] ?? 99);
           const jumper = raIsJumper ? ra : rb;
           const other = raIsJumper ? rb : ra;
@@ -146,8 +147,8 @@ export function renderNetCrossings(ctx: CanvasRenderingContext2D, engine: IPlano
           ctx.stroke();
           ctx.restore();
 
-          // Re-stroke the straight-through net across the same span so the erase above
-          // never leaves a visible nick in it, whatever angle the two lines cross at.
+          // Re-trazar la red que pasa recta por el mismo tramo para que el borrado de arriba nunca
+          // deje una muesca visible, sea cual sea el ángulo en que se cruzan las dos líneas.
           ctx.save();
           ctx.strokeStyle = oCol;
           ctx.lineWidth = 2 * engine.zoom;
@@ -158,7 +159,7 @@ export function renderNetCrossings(ctx: CanvasRenderingContext2D, engine: IPlano
           ctx.stroke();
           ctx.restore();
 
-          // The jumping net's little hop over the crossing.
+          // El pequeño salto de la red que salta sobre el cruce.
           ctx.save();
           ctx.strokeStyle = jCol;
           ctx.lineWidth = 2 * engine.zoom;

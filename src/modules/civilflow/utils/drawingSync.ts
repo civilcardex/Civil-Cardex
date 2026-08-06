@@ -13,7 +13,7 @@ import {
 } from '../constants/storage-keys';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
 
-/** Raw drawing element loaded from localStorage trazo data. */
+/** Elemento de dibujo crudo cargado de los datos de trazo en localStorage. */
 export interface RawElement {
   id: string;
   net: string;
@@ -60,7 +60,7 @@ export interface RawElement {
   [key: string]: unknown;
 }
 
-/** Synchronized drawing data structure stored in localStorage sync keys. */
+/** Estructura de datos de dibujo sincronizado guardada en las claves sync de localStorage. */
 export interface DrawingData {
   planes?: Record<string, unknown>;
   aparatosByTramo?: Record<string, unknown>;
@@ -75,7 +75,7 @@ export interface DrawingData {
   [key: string]: unknown;
 }
 
-/** Input plan descriptor for sync operations. */
+/** Descriptor de plano de entrada para operaciones de sync. */
 export interface SyncPlanInput {
   id: string | number;
   name?: string;
@@ -214,10 +214,10 @@ function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): S
           pisoBase: b.pisoBase,
           pisoCima: b.pisoCima,
         }));
-      // Keep the prefixed plane even with zero ramales when the floor hosts bajantes (e.g. a
-      // heater anchored on the AF drawing with no AC ramal drawn yet) — buildTramos generates
-      // the synthetic AC-01-{calId} stub per prefixed plane, and without it the heater's
-      // fixtures never reach the heater-selection tables.
+      // Mantener el plano prefijado incluso con cero ramales cuando el piso aloja bajantes (p.
+      // ej. un calentador anclado en el dibujo AF sin ramal AC dibujado aún) — buildTramos
+      // genera el stub sintético AC-01-{calId} por plano prefijado, y sin él los fixtures del
+      // calentador nunca llegan a las tablas de selección de calentador.
       if (ramales.length === 0 && bajantes.length === 0) continue;
       out.planes[planoKey] = {
         planoId: plan.id,
@@ -433,10 +433,11 @@ function buildSyncData(
 }
 
 /**
- * Builds and persists hydro (af/ac) drawing sync data from plan trace data.
- * Runs garbage collection on orphaned aparato/hydro/gas keys before sync.
- * @param plans - Array of plan descriptors.
- * @returns The built SyncDataResult or null on error.
+ * Construye y persiste los datos de sync de dibujo hidráulico (af/ac) a partir de los datos de
+ * trazo del plano. Corre la recolección de basura de claves aparato/hydro/gas huérfanas antes
+ * de sincronizar.
+ * @param plans - Array de descriptores de plano.
+ * @returns El SyncDataResult construido o null ante error.
  */
 export function writeHydroDrawingSync(plans: SyncPlanInput[]) {
   try {
@@ -451,8 +452,8 @@ export function writeHydroDrawingSync(plans: SyncPlanInput[]) {
 }
 
 /**
- * Reads persisted hydro (af/ac) drawing sync data from localStorage.
- * @returns Sync data with planes, aparatosByTramo, hidroData, updatedAt.
+ * Lee los datos de sync de dibujo hidráulico (af/ac) persistidos de localStorage.
+ * @returns Datos de sync con planes, aparatosByTramo, hidroData, updatedAt.
  */
 export function readHydroDrawingSync() {
   return loadFromStorage(HYDRO_SYNC_KEY, {
@@ -469,10 +470,11 @@ export function readHydroDrawingSync() {
 }
 
 /**
- * Builds and persists sanitary (san/ll/vent) drawing sync data from plan trace data.
- * Runs garbage collection on orphaned aparato/hydro/gas keys before sync.
- * @param plans - Array of plan descriptors.
- * @returns The built SyncDataResult or null on error.
+ * Construye y persiste los datos de sync de dibujo sanitario (san/ll/vent) a partir de los datos
+ * de trazo del plano. Corre la recolección de basura de claves aparato/hydro/gas huérfanas antes
+ * de sincronizar.
+ * @param plans - Array de descriptores de plano.
+ * @returns El SyncDataResult construido o null ante error.
  */
 export function writeSanDrawingSync(plans: SyncPlanInput[]) {
   try {
@@ -487,8 +489,8 @@ export function writeSanDrawingSync(plans: SyncPlanInput[]) {
 }
 
 /**
- * Reads persisted sanitary (san/ll/vent) drawing sync data from localStorage.
- * @returns Sync data with planes, aparatosByTramo, updatedAt.
+ * Lee los datos de sync de dibujo sanitario (san/ll/vent) persistidos de localStorage.
+ * @returns Datos de sync con planes, aparatosByTramo, updatedAt.
  */
 export function readSanDrawingSync() {
   return loadFromStorage(SAN_SYNC_KEY, { planes: {}, aparatosByTramo: {}, updatedAt: 0 }) as {

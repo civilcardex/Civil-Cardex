@@ -83,7 +83,6 @@ const LevelsCard = React.memo(function LevelsCard({
         {pisos.length > 0 && (
           <>
             <ul
-              role="list"
               style={{
                 flex: 1,
                 overflowY: 'auto',
@@ -149,11 +148,11 @@ const LevelsCard = React.memo(function LevelsCard({
                       onBlur={(e) => {
                         const v = parseFloat(e.target.value);
                         if (!isNaN(v)) {
-                          // Store as a real number, not the string toFixed(2) returns — anything
-                          // that compares npt across floors (e.g. the cross-floor "Destino"
-                          // dropdown) does a numeric `<=`, which silently becomes lexicographic
-                          // string comparison the moment npt is a string, breaking floor ordering
-                          // at any digit-count boundary (e.g. "9.00" > "30.00" as strings).
+                          // Se guarda como número real, no como el string que devuelve toFixed(2):
+                          // cualquier comparación de npt entre pisos (p. ej. el desplegable
+                          // "Destino" entre pisos) usa un `<=` numérico que, en cuanto npt es un
+                          // string, se vuelve comparación lexicográfica y rompe el orden de pisos
+                          // al cambiar la cantidad de dígitos (p. ej. "9.00" > "30.00").
                           setPisos((prev) =>
                             prev.map((x) =>
                               x.id === p.id ? { ...x, npt: Number(v.toFixed(2)) } : x,

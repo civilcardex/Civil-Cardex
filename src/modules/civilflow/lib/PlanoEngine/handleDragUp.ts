@@ -11,8 +11,8 @@ import {
   ldesvioIdFor,
 } from '../../utils/associateBajanteAcrossFloors';
 
-// San/ll/vent junctions (tee/codo/yee) auto-create via calcSanitaryAccessories + renderJunctions
-// — only AF/AC/gas need user selection for tee tipo.
+// Las uniones de san/ll/vent (tee/codo/yee) se crean solas vía calcSanitaryAccessories +
+// renderJunctions — solo AF/AC/gas necesitan que el usuario elija el tipo de tee.
 function checkAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string): void {
   if (!engine.triggerAccesorioModal) return;
   const r = engine.ramales.find((x) => x.id === ramalId);
@@ -22,11 +22,11 @@ function checkAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string): void 
   if (trigger) engine.triggerAccesorioModal(trigger);
 }
 
-// Draw-time (handleLineDown) already blocks connecting a tributario to any ramal other than its
-// selected padre, but that only guards fresh drawing — dragging an EXISTING tributario's endpoint
-// (or its whole body) onto a different ramal had no equivalent check at all, silently letting a
-// drag re-anchor it to the wrong ramal. Fires only when an endpoint now sits on another ramal's
-// own vertex (a real reconnection), not just anywhere near it.
+// Al DIBUJAR (handleLineDown) ya se bloquea conectar un tributario a cualquier ramal que no sea
+// su padre seleccionado, pero eso solo protege el trazo nuevo — arrastrar el extremo de un
+// tributario EXISTENTE (o todo su cuerpo) sobre otro ramal no tenía ningún chequeo equivalente, y
+// un arrastre podía re-anclarlo en silencio al ramal equivocado. Solo dispara cuando un extremo
+// queda sobre el vértice propio de otro ramal (una reconexión real), no solo cerca.
 function draggedOntoWrongPadre(engine: IPlanoEngineCore, ram: PlanoRamal): boolean {
   if (!ram.pts || ram.pts.length < 2) return false;
   const TOL = 0.5;
@@ -35,8 +35,8 @@ function draggedOntoWrongPadre(engine: IPlanoEngineCore, ram: PlanoRamal): boole
       if (other.id === ram.id || other.net !== ram.net) continue;
       const touches = other.pts?.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL);
       if (!touches || other.id === ram.padre) continue;
-      // AC/AF/gas tributario-to-tributario join is allowed when both tributarios share the same
-      // selected padre — same rule as autoSplitJunctionAndSumFlow (draw path).
+      // La unión tributario-a-tributario de AC/AF/gas está permitida cuando ambos comparten el
+      // mismo padre seleccionado — misma regla que autoSplitJunctionAndSumFlow (ruta de dibujo).
       if (
         other.tipo === 'tributario' &&
         (other.net === 'af' || other.net === 'ac' || other.net === 'gas') &&
@@ -50,14 +50,16 @@ function draggedOntoWrongPadre(engine: IPlanoEngineCore, ram: PlanoRamal): boole
   return false;
 }
 
-// Endpoint drags that snap ONTO a bajante (handleDragMove pins the point exactly to the bajante)
-// must survive the release check even when the final angle is off the network's grid — reverting
-// would undo the very connection the user just made. When possible, rotate the ramal around the
-// bajante (kept fixed) to the nearest valid step angle instead. Rotation is rigid (internal turns
-// and segment lengths preserved), so it can only fix absolute segment-step violations — and only
-// for straight 2-point runs: in a multi-point ramal every segment would shift by the same delta,
-// pushing the already-valid interior segments off-grid again. The opposite end must be free too —
-// a swing around the bajante would silently detach a junction or another bajante connection.
+// Los arrastres de extremo que se pegan SOBRE un bajante (handleDragMove fija el punto
+// exactamente sobre el bajante) deben sobrevivir al chequeo de liberación aunque el ángulo final
+// quede fuera de la cuadrícula de la red — revertir desharía justo la conexión que el usuario
+// acaba de hacer. Cuando es posible, se rota el ramal alrededor del bajante (que queda fijo)
+// hasta el ángulo válido más cercano. La rotación es rígida (conserva giros internos y largos de
+// segmento), así que solo puede arreglar violaciones absolutas de paso de segmento — y solo en
+// tramos rectos de 2 puntos: en un ramal multipunto todos los segmentos se desplazarían con el
+// mismo delta, sacando de cuadrícula los segmentos interiores ya válidos. El extremo opuesto
+// también debe estar libre — un giro alrededor del bajante despegaría en silencio una unión u
+// otra conexión de bajante.
 function tryRotateToValidAngle(
   engine: IPlanoEngineCore,
   ram: PlanoRamal,
@@ -193,8 +195,8 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       if (Math.abs(d.dx) < 1 && Math.abs(d.dy) < 1) {
         delete b.desplazamientos[engine.nivelActual.label ?? ''];
       } else {
-        // Create the "Ldesvio" ramal between parent (b.x, b.y) and ghost (b.x + d.dx, b.y + d.dy)
-        // if it doesn't exist yet — this is the visual connector between the parent and the ghost.
+        // Crear el ramal "Ldesvio" entre el padre (b.x, b.y) y el fantasma (b.x + d.dx, b.y + d.dy)
+        // si todavía no existe — es el conector visual entre el padre y el fantasma.
         const oldLdesvio = d.Ldesvio;
         if (!oldLdesvio) {
           const net = NETS.find((n) => n.id === b.net);
@@ -292,10 +294,10 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         engine.render();
       }
     }
-    // Whatever the final x/y ended up being (post-rollback included), push it to any cross-floor
-    // ghost this bajante is the source of, so the mirror on the other floor stays aligned — and
-    // to its own Ldesvio connector's near end, which lives on this SAME floor (live array) since
-    // the connector always belongs to the source's own floor.
+    // Sea cual sea la posición final x/y (incluida la posterior al rollback), propagarla a todo
+    // fantasma entre pisos del que este bajante sea origen — así el espejo del otro piso se
+    // mantiene alineado — y al extremo cercano de su propio conector Ldesvio, que vive en ESTE
+    // mismo piso (array en vivo), porque el conector siempre pertenece al piso del origen.
     if (b && b.descargaEnId) {
       const [targetPlanId] = b.descargaEnId.split('|');
       const sourcePlanId = String(engine._loadedPlanId ?? '');
@@ -326,9 +328,9 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
             ld.bloqueado,
           );
           Object.assign(ld, updated);
-          // Re-anchor the displaced-circle marker to the (unchanged) far endpoint: the ring is
-          // drawn at b.x + dx, so keeping dx/dy constant would drag it along with the source
-          // instead of leaving it anchored at the target's projected position.
+          // Re-anclar el marcador de círculo desplazado al extremo lejano (que no cambió): el
+          // anillo se dibuja en b.x + dx, así que mantener dx/dy constante lo arrastraría junto
+          // con el origen en vez de dejarlo anclado en la posición proyectada del destino.
           const lvl = engine.nivelActual?.label ?? '';
           const desp = lvl ? b.desplazamientos?.[lvl] : undefined;
           if (desp) {
@@ -340,9 +342,9 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         engine.render();
       }
     }
-    // This bajante is the TARGET side of some other (possibly remote-floor) bajante's link — its
-    // Ldesvio's far endpoint lives over there, unreachable through the live engine, so it's synced
-    // via a direct storage write instead.
+    // Este bajante es el lado DESTINO del enlace de algún otro bajante (posiblemente de otro
+    // piso) — el extremo lejano de su Ldesvio vive allá, inalcanzable desde el motor en vivo, así
+    // que se sincroniza con una escritura directa a storage.
     if (b && b.origenId) {
       const [originPlanId, originBajanteId] = b.origenId.split('|');
       if (originPlanId && originBajanteId) {
@@ -370,17 +372,18 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       .map((l) => engine.ramales.find((r) => r.id === l.id))
       .filter((r): r is PlanoRamal => !!r);
 
-    // A codo reventilado's san/vent pair must be rolled back together — if only one side
-    // reverted, the drag would leave the junction split apart instead of just undone.
+    // El par san/vent de un codo reventilado debe revertirse junto — si solo se revierte un lado,
+    // el arrastre dejaría la unión partida en vez de simplemente deshecha.
     const primaryOk = ram ? checkRamalAngles(ram.pts, ram.net, ram.tipo) : true;
     const linkedOk = linkedRamales.every((r) => checkRamalAngles(r.pts, r.net, r.tipo));
 
     if (ram && (!primaryOk || !linkedOk)) {
-      // An endpoint drag that SNAPPED onto a bajante (handleDragMove pins the point exactly to
-      // the bajante) must not roll back — losing the connection the user just made is worse than
-      // losing the exact cursor spot. Rotate the ramal around the bajante (kept fixed) to the
-      // nearest valid step angle instead. Rotation is rigid, so only absolute segment-step
-      // violations are fixable this way; internal turn violations still roll back below.
+      // Un arrastre de extremo que se PEGÓ sobre un bajante (handleDragMove fija el punto
+      // exactamente sobre el bajante) no debe revertirse — perder la conexión que el usuario
+      // acaba de hacer es peor que perder el punto exacto del cursor. Se rota el ramal alrededor
+      // del bajante (que queda fijo) hasta el ángulo válido más cercano. La rotación es rígida,
+      // así que solo arregla violaciones absolutas de paso de segmento; las violaciones de giro
+      // interno siguen revirtiéndose abajo.
       const rotatedOk = tryRotateToValidAngle(engine, ram, ptIdx, linkedOk);
       if (rotatedOk) {
         engine._dragBackupPts = null;
@@ -434,10 +437,10 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     engine.ramalDrag = null;
     engine._markDirty();
     const ram = engine.ramales.find((r) => r.id === rId);
-    // If this ramal is a Ldesvio, dragging it also carried its source bajante along (see
-    // handleDragMove.ts) — any rollback below must revert that too, and any successful drop must
-    // propagate the bajante's new position to the other floor's storage, same as a direct bajDrag
-    // already does.
+    // Si este ramal es un Ldesvio, al arrastrarlo también se arrastró su bajante origen (ver
+    // handleDragMove.ts) — cualquier rollback de abajo debe revertir eso también, y cualquier
+    // soltado exitoso debe propagar la nueva posición del bajante al storage del otro piso, igual
+    // que ya lo hace un bajDrag directo.
     const srcBajId = rId.startsWith('LD_') ? rId.slice(3) : null;
     const srcBaj = srcBajId ? engine.bajantes.find((b) => b.id === srcBajId) : null;
     const origSrcXY = srcBaj ? { x: srcBaj.x, y: srcBaj.y } : null;

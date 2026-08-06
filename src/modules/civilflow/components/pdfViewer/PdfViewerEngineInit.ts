@@ -64,8 +64,8 @@ export function usePdfViewerEngine({
   engineRef: externalEngineRef,
   loadingPlanRef: externalLoadingPlanRef,
 }: UsePdfViewerEngineParams) {
-  // useRef is called unconditionally every render (rules-of-hooks) — the ?? merge picks which
-  // ref object to use, it never decides whether the hook itself runs.
+  // useRef se llama incondicionalmente en cada render (rules-of-hooks) — la fusión con ?? elige
+  // cuál objeto ref usar, nunca decide si el hook mismo se ejecuta.
   const internalEngineRef = useRef<PlanoEngine | null>(null);
   const engineRef = externalEngineRef ?? internalEngineRef;
   const pdfDocRef = useRef<PDFDocumentProxy | null>(null);
@@ -128,12 +128,12 @@ export function usePdfViewerEngine({
         try {
           renderTaskRef.current.cancel();
         } catch {
-          /* ignore */
+          /* ignorar */
         }
         try {
           await renderTaskRef.current.promise;
         } catch {
-          /* ignore */
+          /* ignorar */
         }
         renderTaskRef.current = null;
       }

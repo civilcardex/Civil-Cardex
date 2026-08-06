@@ -6,26 +6,28 @@ export interface MemoriaHeaderGroup {
 export interface MemoriaTable {
   title: string;
   headers: string[];
-  // Optional top header row grouping several leaf `headers` under a shared label (e.g.
-  // "Pérdidas por fricción" spanning the "%" and "m" sub-columns). Plain strings in this array
-  // stand for an ungrouped leaf column (rendered as a single cell spanning both header rows);
-  // object entries span `span` consecutive leaf columns. Spans must sum to headers.length.
+  // Fila de cabecera superior opcional que agrupa varios `headers` hoja bajo una etiqueta
+  // compartida (p. ej. "Pérdidas por fricción" abarcando las sub-columnas "%" y "m"). Los
+  // strings planos de este array representan una columna hoja sin agrupar (renderizada como una
+  // celda sola que cruza ambas filas de cabecera); las entradas objeto abarcan `span` columnas
+  // hoja consecutivas. Los spans deben sumar headers.length.
   headerGroups?: (string | MemoriaHeaderGroup)[];
   rows: (string | number)[][];
-  // Which network sheet this table belongs on in the Excel export (see REDES_ORDEN below) — set
-  // by the caller when assembling the tables array, not by the individual compute*Table functions.
+  // En qué hoja de red va esta tabla en la exportación Excel (ver REDES_ORDEN abajo) — lo fija
+  // el caller al armar el array de tablas, no las funciones compute*Table individuales.
   red?: string;
-  // Renders this table side-by-side with the NEXT table in the array on the same row (used for
-  // the narrow acometida parámetros/verificación pair in the PDF and DOCX exports; the pair
-  // shares one page section in DOCX and one row in PDF). Ignored by the Excel export.
+  // Renderiza esta tabla lado a lado con la SIGUIENTE del array en la misma fila (usado para el
+  // par angosto acometida parámetros/verificación en las exportaciones PDF y DOCX; el par
+  // comparte una sección de página en DOCX y una fila en PDF). Ignorado por la exportación Excel.
   side?: boolean;
 }
 
-// Drops columns that are all-zero across every row — used for accessory-count tables where most
-// accessory types don't apply to a given project and printing an all-zero column is just noise.
-// `labelCols`/`trailingCols` protect leading label columns and trailing computed-total columns
-// from being dropped even if they happen to be all zero. Skips tables with headerGroups (span
-// math would need adjusting too, and none of today's accessory tables use them).
+// Quita columnas que son todo-cero en todas las filas — usado para tablas de conteo de
+// accesorios donde la mayoría de tipos de accesorio no aplican a un proyecto dado e imprimir
+// una columna toda-cero es solo ruido. `labelCols`/`trailingCols` protegen las columnas de
+// etiqueta iniciales y las columnas de totales calculados finales de quitarse aunque sean todo
+// cero. Salta tablas con headerGroups (la matemática de spans habría que ajustarla también, y
+// ninguna tabla de accesorios actual las usa).
 export function dropAllZeroColumns(
   table: MemoriaTable,
   labelCols = 1,
@@ -85,10 +87,11 @@ const xlsxHeaderStyle = (): XlsxCellStyle => ({
   alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
   border: XLSX_CELL_BORDER,
 });
-// wrapText:true is what keeps long body text (comments, spec sentences) inside its own cell —
-// without it, Excel doesn't truncate, it lets the text visually overflow into whatever neighboring
-// cells happen to be empty (common when several differently-shaped tables share one sheet's
-// columns), which reads as columns being misaligned/missing even though the underlying data is fine.
+// wrapText:true es lo que mantiene el texto largo del cuerpo (comentarios, frases de
+// especificación) dentro de su propia celda — sin él, Excel no trunca, deja que el texto se
+// desborde visualmente a las celdas vecinas que estén vacías (común cuando varias tablas de
+// formas distintas comparten las columnas de una hoja), lo que se lee como columnas
+// desalineadas/faltantes aunque los datos subyacentes estén bien.
 const xlsxBodyStyle = (): XlsxCellStyle => ({
   font: { sz: 10 },
   alignment: { vertical: 'center', wrapText: true },
@@ -106,10 +109,11 @@ const REDES_ORDEN: { key: string; label: string }[] = [
   { key: 'ep', label: 'Equipo presión' },
 ];
 
-// Stacks every table for one red top-to-bottom on a single sheet: a merged title row, then its
-// header row(s) (respecting headerGroups the same way the DOCX/PDF renderers do — a spanning
-// group label merged across its leaf columns, a plain header vertically merged across both header
-// rows), then its body rows, then a blank spacer row before the next table.
+// Apila todas las tablas de una red de arriba a abajo en una sola hoja: una fila de título
+// combinada, luego su(s) fila(s) de cabecera (respetando headerGroups igual que los renderers
+// DOCX/PDF — una etiqueta de grupo que abarca combinada sobre sus columnas hoja, una cabecera
+// plana combinada verticalmente sobre ambas filas de cabecera), luego sus filas de cuerpo, y
+// después una fila separadora en blanco antes de la siguiente tabla.
 function buildRedSheet(
   tables: MemoriaTable[],
   encodeCell: (c: { r: number; c: number }) => string,
@@ -176,8 +180,9 @@ function buildRedSheet(
   return { aoa, merges, styleCells, maxCols };
 }
 
-// Cap raised from 22 to 34 — with wrapText now on, this is how much a column grows before long
-// content starts wrapping into extra lines instead of stretching the sheet arbitrarily wide.
+// Tope subido de 22 a 34 — con wrapText ahora activo, esto es cuánto crece una columna antes de
+// que el contenido largo empiece a envolverse en líneas extra en vez de estirar la hoja
+// arbitrariamente ancha.
 const XLSX_COL_MAX_WIDTH = 34;
 
 function computeXlsxColWidths(tables: MemoriaTable[], maxCols: number): number[] {
@@ -247,14 +252,16 @@ export async function generateMemoriaExcel(data: MemoriaData): Promise<void> {
   XLSX.writeFile(wb, `${fileBase(data.proyNombre)}.xlsx`);
 }
 
-// Word divides a table's declared width evenly-ish across its columns unless told otherwise — with
-// 20+ columns crammed into one landscape page, that forces column widths well below what a header
-// like "Otros Ramales" needs, so Word wraps it letter-by-letter to fit. Giving each column an
-// explicit width (estimated from its header text) plus a fixed table layout — AND matching w:tcW on
-// every cell — makes Word respect those widths instead of squeezing them.
-// Headers now force one word per line (see headerCell below), so the column only needs to fit
-// the LONGEST WORD, not the whole header string — this keeps columns compact and readable
-// instead of sized for a string that no longer renders on a single line anyway.
+// Word divide el ancho declarado de una tabla más o menos parejo entre sus columnas salvo que se
+// le diga otra cosa — con 20+ columnas apretadas en una página apaisada, eso fuerza anchos de
+// columna muy por debajo de lo que una cabecera como "Otros Ramales" necesita, así que Word la
+// envuelve letra por letra para que quepa. Dar a cada columna un ancho explícito (estimado de su
+// texto de cabecera) más un layout de tabla fijo — Y hacer coincidir w:tcW en cada celda — hace
+// que Word respete esos anchos en vez de apretarlos.
+// Las cabeceras ahora fuerzan una palabra por línea (ver headerCell abajo), así que la columna
+// solo necesita caber la PALABRA MÁS LARGA, no el string de cabecera completo — esto mantiene
+// las columnas compactas y legibles en vez de dimensionadas para un string que de todos modos ya
+// no se renderiza en una sola línea.
 function computeColumnWidthsDxa(headers: string[]): number[] {
   const twipsPerChar = 105;
   const minWidth = 650;
@@ -268,17 +275,19 @@ function computeColumnWidthsDxa(headers: string[]): number[] {
   });
 }
 
-// Word's hard cap on page dimensions is 22in (31680 twip). Beyond that it silently clamps, which
-// would clip the widest tables — but at the moderate column widths above even the ~26-column SAN
-// table sums to well under this, so one table = one custom-width page holds.
+// El tope duro de Word para dimensiones de página es 22in (31680 twip). Más allá lo recorta en
+// silencio, lo que cortaría las tablas más anchas — pero con los anchos de columna moderados de
+// arriba incluso la tabla SAN de ~26 columnas suma muy por debajo de esto, así que una tabla =
+// una página de ancho personalizado se sostiene.
 const DOCX_PAGE_MAX_TWIP = 31680;
-const DOCX_PAGE_HEIGHT_TWIP = 12240; // 8.5in — the short side, landscape-style
+const DOCX_PAGE_HEIGHT_TWIP = 12240; // 8.5in — el lado corto, estilo apaisado
 const DOCX_SIDE_MARGIN_TWIP = 360;
-// A narrow table (2-4 columns, e.g. the heater-selection tables) would otherwise get a page
-// custom-sized down to its own tiny width — Word's multi-page browsing view then packs that tiny
-// page side-by-side with the full-width pages around it, reading as a jumbled mess. Flooring every
-// table page at standard US Letter landscape width keeps all table pages a uniform, normal size;
-// only genuinely wide tables grow past it.
+// Una tabla angosta (2-4 columnas, p. ej. las tablas de selección de calentador) de otro modo
+// tendría una página personalizada reducida a su propio ancho diminuto — la vista de navegación
+// multi-página de Word entonces acomoda esa página chiquita lado a lado con las páginas de ancho
+// completo que la rodean, leyéndose como un revoltijo. Piso de cada página de tabla en el ancho
+// estándar de US Letter apaisado mantiene todas las páginas de tabla de un tamaño uniforme y
+// normal; solo las tablas genuinamente anchas crecen más allá.
 const DOCX_MIN_PAGE_WIDTH_TWIP = 15840; // 11in
 
 export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
@@ -315,18 +324,19 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
   );
 
   const cellMargins = { top: 40, bottom: 40, left: 60, right: 60 };
-  // `columnWidths` on the Table only fills in `w:tblGrid` (a hint) — Word only actually honors it
-  // when every cell also carries its own matching `w:tcW`. Without that, Word falls back to
-  // autofit-by-content despite `layout: FIXED`, which is what was still squeezing/wrapping headers.
-  // Explicit font + a smaller size than the body text: Word's default table-style font (whatever
-  // it resolves to without this) measured wider per character than the column-width estimate
-  // assumed, so headers kept wrapping even at generous widths. Arial's metrics are well-known and
-  // narrow enough, and dropping to 6pt gives real headroom on top of that instead of estimating
-  // even more aggressively again.
+  // `columnWidths` en la Table solo llena `w:tblGrid` (una pista) — Word solo lo honra de verdad
+  // cuando cada celda también lleva su propio `w:tcW` coincidente. Sin eso, Word cae a
+  // autofit-por-contenido a pesar de `layout: FIXED`, que era lo que seguía apretando/envolviendo
+  // cabeceras.
+  // Fuente explícita + tamaño menor que el texto del cuerpo: la fuente de estilo de tabla default
+  // de Word (la que sea que resuelva sin esto) medía más ancha por carácter de lo que asumía la
+  // estimación de ancho de columna, así que las cabeceras seguían envolviéndose aun a anchos
+  // generosos. Las métricas de Arial son conocidas y lo bastante angostas, y bajar a 6pt da
+  // espacio real encima de eso en vez de volver a estimar aún más agresivamente.
   const HEADER_FONT_SIZE = 12;
-  // One word per line instead of letting Word wrap wherever it fits (which breaks mid-word on
-  // narrow columns) — an explicit line break before every word but the first guarantees each
-  // line holds a whole word.
+  // Una palabra por línea en vez de dejar que Word envuelva donde le quede (que rompe a mitad de
+  // palabra en columnas angostas) — un salto de línea explícito antes de cada palabra salvo la
+  // primera garantiza que cada línea contenga una palabra completa.
   const headerWordRuns = (text: string) => {
     const words = text.split(' ').filter(Boolean);
     if (words.length === 0)
@@ -356,17 +366,19 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
       ...extra,
     });
 
-  // Each table becomes its OWN section with a page sized to fit exactly that table's total width —
-  // this is what keeps every table on a single sheet regardless of column count, instead of clipping
-  // a wide table against a fixed letter page (the multi-page-per-table regression).
+  // Cada tabla se vuelve su PROPIA sección con una página dimensionada para caber exactamente el
+  // ancho total de esa tabla — esto es lo que mantiene cada tabla en una sola hoja sin importar
+  // el conteo de columnas, en vez de recortar una tabla ancha contra una página carta fija (la
+  // regresión de múltiples páginas por tabla).
   const buildTableParts = (table: MemoriaTable) => {
     let columnWidths = computeColumnWidthsDxa(table.headers);
     const availableWidth = DOCX_PAGE_MAX_TWIP - DOCX_SIDE_MARGIN_TWIP * 2;
     const rawSum = columnWidths.reduce((a, b) => a + b, 0);
-    // Never let a table's declared width exceed what actually fits on its own page — otherwise
-    // Word clips whatever hangs past the page edge and the table reads as missing columns. Scale
-    // every column down proportionally (relative widths — and therefore readability priority
-    // between short/long headers — are preserved) so the whole table always lands on one sheet.
+    // Nunca dejar que el ancho declarado de una tabla exceda lo que realmente cabe en su propia
+    // página — si no, Word recorta lo que cuelga pasando el borde de página y la tabla se lee con
+    // columnas faltantes. Escalar cada columna proporcionalmente (los anchos relativos — y por
+    // tanto la prioridad de legibilidad entre cabeceras cortas/largas — se conservan) para que la
+    // tabla completa siempre caiga en una sola hoja.
     if (rawSum > availableWidth) {
       const scale = availableWidth / rawSum;
       columnWidths = columnWidths.map((w) => Math.max(400, Math.round(w * scale)));
@@ -433,11 +445,12 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
   ) => ({
     properties: {
       page: {
-        // docx's createPageSize SWAPS width/height when orientation is LANDSCAPE (it expects
-        // portrait-shaped input and rotates it) — so the final wide dimension must be passed as
-        // `height` here for it to land as `w:w` in the actual XML. Passing the already-wide
-        // pageWidth as `width` (as before) made the real rendered page only 8.5in wide, clipping
-        // every table wider than that regardless of how carefully columnWidths was computed.
+        // createPageSize de docx INTERCAMBIA ancho/alto cuando la orientación es LANDSCAPE
+        // (espera entrada en forma de retrato y la rota) — así que la dimensión ancha final debe
+        // pasarse como `height` aquí para que caiga como `w:w` en el XML real. Pasar el pageWidth
+        // ya-ancho como `width` (como antes) hacía que la página renderizada real tuviera solo
+        // 8.5in de ancho, recortando cada tabla más ancha que eso sin importar cuán
+        // cuidadosamente se calcularan los columnWidths.
         size: {
           width: DOCX_PAGE_HEIGHT_TWIP,
           height: Math.min(
@@ -463,8 +476,9 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
     const table = allTables[i];
     const nextTable = table.side ? allTables[i + 1] : undefined;
     if (nextTable) {
-      // Side-by-side pair (acometida parámetros + verificación): one section, one 1×2 wrapper
-      // table whose cells each carry a nested table — both columns share the same page.
+      // Par lado a lado (acometida parámetros + verificación): una sección, una tabla
+      // contenedora 1×2 cuyas celdas llevan cada una una tabla anidada — ambas columnas
+      // comparten la misma página.
       const left = buildTableParts(table);
       const right = buildTableParts(nextTable);
       const outerWidth = left.tableWidth + right.tableWidth;
@@ -564,10 +578,11 @@ export async function generateMemoriaDocx(data: MemoriaData): Promise<void> {
   URL.revokeObjectURL(link.href);
 }
 
-// Turns a table's headerGroups (the same grouped-column model the Excel/Word exports share) into
-// jspdf-autotable's two-header-row format: a spanning group cell uses colSpan across its leaf
-// columns; a plain (ungrouped) header uses rowSpan to cover both header rows — and, per
-// autotable's own convention for rowSpan, must NOT get a second cell in the row it spans into.
+// Convierte los headerGroups de una tabla (el mismo modelo de columnas agrupadas que comparten
+// las exportaciones Excel/Word) al formato de dos filas de cabecera de jspdf-autotable: una
+// celda de grupo abarcada usa colSpan sobre sus columnas hoja; una cabecera plana (sin agrupar)
+// usa rowSpan para cubrir ambas filas de cabecera — y, según la convención propia de autotable
+// para rowSpan, NO debe llevar una segunda celda en la fila hacia la que abarca.
 function buildAutoTableHead(table: MemoriaTable): Record<string, unknown>[][] {
   if (!table.headerGroups) return [table.headers.map((h) => ({ content: h }))];
   const row1: Record<string, unknown>[] = [];
@@ -623,7 +638,7 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
     const table = (data.tables || [])[i];
     const key = table.red || '';
     if (key !== prevKey) {
-      // Every red starts on its own fresh page — the summary sheet stays alone on page 1.
+      // Cada red empieza en su propia página nueva — la hoja de resumen queda sola en la página 1.
       doc.addPage('a4', 'landscape');
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(16);
@@ -636,8 +651,8 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
 
     const nextTable = table.side ? (data.tables || [])[i + 1] : undefined;
     if (nextTable) {
-      // Side-by-side pair (acometida parámetros + verificación): both tables on the same row,
-      // each in its own half of the page.
+      // Par lado a lado (acometida parámetros + verificación): ambas tablas en la misma fila,
+      // cada una en su propia mitad de la página.
       const pageH = doc.internal.pageSize.getHeight();
       if (cursorY > pageH - 100) {
         doc.addPage('a4', 'landscape');
@@ -696,8 +711,9 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
     }
 
     const pageH = doc.internal.pageSize.getHeight();
-    // Leave room for a title line + at least a header + one body row, otherwise start this
-    // table fresh on a new page instead of squeezing/orphaning it against the bottom edge.
+    // Dejar espacio para una línea de título + al menos una cabecera + una fila de cuerpo, si no
+    // empezar esta tabla fresca en una página nueva en vez de apretarla/huerfanizarla contra el
+    // borde inferior.
     if (cursorY > pageH - 100) {
       doc.addPage('a4', 'landscape');
       cursorY = 40;
@@ -713,10 +729,11 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
       margin: { left: 30, right: 30 },
       head: buildAutoTableHead(table),
       body: table.rows,
-      // minCellWidth guarantees every column (including narrow ones like "%"/"m" under a much
-      // longer spanning group header like "Pérdidas por fricción") has enough room for at least
-      // one full word per line — without it, autotable sizes columns purely off body-cell
-      // content, and squeezed the long group header into a couple of points, wrapping mid-word.
+      // minCellWidth garantiza que cada columna (incluidas las angostas como "%"/"m" bajo un
+      // encabezado de grupo abarcado mucho más largo como "Pérdidas por fricción") tenga espacio
+      // suficiente para al menos una palabra completa por línea — sin él, autotable dimensiona
+      // las columnas puramente según el contenido de las celdas del cuerpo, y apretaba el
+      // encabezado de grupo largo a un par de puntos, envolviéndolo a mitad de palabra.
       styles: { fontSize: 7.5, cellPadding: 3, overflow: 'linebreak', minCellWidth: 22 },
       headStyles: {
         fillColor: PDF_NAVY,
@@ -726,7 +743,7 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
         valign: 'middle',
         lineWidth: 0.1,
       },
-      // All columns render centered (requested for the memorias PDF).
+      // Todas las columnas se renderizan centradas (solicitado para el PDF de memorias).
       bodyStyles: { valign: 'middle', halign: 'center' },
       theme: 'grid',
       didDrawPage: () => {
@@ -734,8 +751,9 @@ export async function generateMemoriaPdf(data: MemoriaData): Promise<void> {
       },
     });
 
-    // autoTable advances doc.lastAutoTable internally; read the actual end position for the
-    // next table's start, falling back if a page break occurred mid-table (didDrawPage reset).
+    // autoTable avanza doc.lastAutoTable internamente; leer la posición final real para el
+    // inicio de la siguiente tabla, con respaldo si ocurrió un salto de página a mitad de tabla
+    // (didDrawPage reinició).
     const finalY = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY;
     cursorY = (finalY ?? cursorY) + 22;
   }

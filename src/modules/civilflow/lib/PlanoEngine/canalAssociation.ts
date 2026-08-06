@@ -1,16 +1,17 @@
 import type { IPlanoEngineCore, PlanoBajante } from './PlanoState';
 
 /**
- * Selection hit-test distance for a bajante-array element at canvas point (x, y) — Infinity if
- * the point misses it. Canal uses its own rectangle (inflated 110%, `_canalBox` is canvas-space,
- * set by renderCanalGlyph) instead of the shared `_circ` — the circle every other bajante-array
- * type uses is sized to the rectangle's DIAGONAL, so for a canal it was a wildly oversized click
- * target (up to ~40% bigger than the rectangle on a square canal, worse the more elongated it
- * is), reaching well past the rectangle's own edges. Every other type keeps the existing circle.
+ * ¿Se puede hacer clic en este bajante? — Calcula qué tan lejos está el punto (x, y) del símbolo.
+ * Devuelve Infinity si el clic no tocó nada, o 1 si acertó.
+ *
+ * El canal de lluvias se comporta distinto a los demás bajantes: su zona de clic es su propio
+ * rectángulo (el que se ve en pantalla), no el círculo que usan los otros tipos. El círculo se
+ * dimensiona con la DIAGONAL del rectángulo, así que para un canal alargado quedaba enorme
+ * (hasta ~40% más grande que el dibujo) y se podía "clicar" el canal desde muy lejos de sus
+ * bordes. Por eso el canal usa su rectángulo, y los demás tipos conservan su círculo.
  */
-/** Canvas-space rect hit for a canal's click target — the rectangle itself (`_canalBox`), not the
- *  diagonal circle other bajante types use. Returns 1 on hit, Infinity on miss; padPx extends the
- *  rect outward for easier clicking. */
+/** ¿El clic cayó dentro del rectángulo del canal? Devuelve 1 si sí, Infinity si no; padPx
+ *  agranda el rectángulo unos píxeles para que sea más fácil de acertar. */
 export function canalRectHitDistance(b: PlanoBajante, x: number, y: number, padPx = 0): number {
   const box = b._canalBox;
   if (!box) return Infinity;
@@ -34,10 +35,11 @@ export function bajanteHitDistance(b: PlanoBajante, x: number, y: number): numbe
     const hw = (box.w * scale) / 2;
     const hh = (box.h * scale) / 2;
     if (x < cx - hw || x > cx + hw || y < cy - hh || y > cy + hh) return Infinity;
-    // A canal can be much larger than the ~50px cap callers use for "closest point symbol"
-    // comparisons (distance-to-center would exceed that on a long canal even dead center-click
-    // near an end) — containment alone already picks it out, so report a small constant instead
-    // of the true center distance.
+    // Ojo con el tamaño: un canal puede ser mucho más largo que los ~50px que los callers usan
+    // como "distancia máxima para elegir el símbolo más cercano". Si devolviéramos la distancia
+    // real al centro, un canal largo quedaría "lejísimos" aunque el clic esté justo encima. Como
+    // ya sabemos que el clic está DENTRO del canal, devolvemos 1 (un número chico fijo) — eso
+    // basta para que gane la comparación de cercanía.
     return 1;
   }
   if (!b._circ) return Infinity;
@@ -45,8 +47,9 @@ export function bajanteHitDistance(b: PlanoBajante, x: number, y: number): numbe
   return d < b._circ.r ? d : Infinity;
 }
 
-/** Plane-space rect for a canal (b.x/b.y is the top-left corner; base/altura are cm, converted
- * to plane px the same way _tryCanalResizeHit in handleMouseDown.ts already does). */
+/** Devuelve la esquina superior-izquierda y la inferior-derecha del canal en coordenadas de
+ *  plano. El canal se dibuja desde su esquina (b.x, b.y) y crece hacia abajo-derecha según su
+ *  base y altura (dadas en cm y convertidas a píxeles de plano aquí mismo). */
 function canalRect(engine: IPlanoEngineCore, canal: PlanoBajante) {
   const w = engine.cmToPlanePx(canal.base || 0);
   const h = engine.cmToPlanePx(canal.altura || 0);
@@ -64,10 +67,12 @@ function pointInCanal(
 }
 
 /**
- * Resolves which canal (if any) a rainwater ("ll") bajante at (x, y) belongs to — preferring
- * its already-associated canal (`preferId`) so a drag stays anchored to the same canal even if
- * it happens to overlap another one, and only falling back to "whichever ll canal contains this
- * point" when there's no existing association or that canal no longer contains the point.
+ * ¿A qué canal pertenece este bajante de lluvia? — Busca el canal que contiene el punto (x, y).
+ *
+ * Si el bajante ya estaba asociado a un canal (`preferId`), se prefiere ESE canal aunque se
+ * solape con otro: así, al arrastrar el bajante no "salta" de canal solo porque pasa por encima
+ * de un vecino. Solo cuando no hay asociación previa (o el canal asociado ya no lo contiene) se
+ * busca cualquier canal de lluvia que contenga el punto.
  */
 export function resolveCanalForPoint(
   engine: IPlanoEngineCore,
@@ -86,7 +91,8 @@ export function resolveCanalForPoint(
   );
 }
 
-/** Clamps (x, y) to stay within the given canal's rectangle. */
+/** Mueve el punto (x, y) hacia adentro del canal si quedó fuera de él — sirve para que el
+ *  bajante nunca quede "colgado" medio por fuera del canal al arrastrarlo. */
 export function clampToCanal(
   engine: IPlanoEngineCore,
   canal: PlanoBajante,
@@ -101,9 +107,12 @@ export function clampToCanal(
 }
 
 /**
- * Resolves + clamps a rainwater bajante's candidate position in one call, and returns the
- * canal id it should now be associated with (or null if it landed outside every canal, in
- * which case it detaches). Used at bajante creation and during drag.
+ * Posiciona un bajante de lluvia DENTRO del canal y responde a qué canal quedó asociado.
+ *
+ * Hace dos cosas en una sola llamada: encuentra el canal del punto (ver resolveCanalForPoint),
+ * y recorta la posición del bajante para que quede dentro (ver clampToCanal). Devuelve además el
+ * id del canal asociado — o null si el punto quedó fuera de todo canal, caso en el que el
+ * bajante se desasocia. Se usa al crear un bajante nuevo y durante su arrastre.
  */
 export function resolveAndClampToCanal(
   engine: IPlanoEngineCore,
@@ -117,19 +126,25 @@ export function resolveAndClampToCanal(
   return { ...clamped, canalId: canal.id };
 }
 
-/** Canal flow-arrow zones: one per associated bajante, split at the midpoints between
- * consecutive bajantes along the canal's longer axis. Each zone contributes one arrow per
- * boundary that isn't already the bajante's own position — 1 arrow if the bajante sits at the
- * canal's own end, 2 if it's mid-body (matches: "si un bajante se hace en medio del cuerpo,
- * se deben hacer dos flechas, siempre entrando al bajante, sin dividir el canal"). */
+/** Una flecha de flujo dibujada sobre el canal, en coordenadas de plano: va desde la cola (x0,y0)
+ *  hasta la cabeza (x1,y1), que siempre apunta al bajante. */
 export interface CanalFlowArrow {
-  /** Plane-space start point of the arrow (tail). */
+  /** Punto de inicio de la flecha (cola — queda lejos del bajante). */
   x0: number;
   y0: number;
-  /** Plane-space end point of the arrow (head — always at the bajante). */
+  /** Punto final de la flecha (cabeza — siempre termina en el bajante). */
   x1: number;
   y1: number;
 }
+
+/**
+ * Calcula las flechas de flujo de un canal de lluvias.
+ *
+ * Regla de negocio: cada bajante asociado al canal recibe flechas que apuntan HACIA él desde
+ * ambos lados — si el bajante está en un extremo del canal, una sola flecha; si está en medio,
+ * dos (una por cada lado). Cada flecha nace en el punto medio entre bajantes vecinos (o en el
+ * borde del canal para los extremos), de modo que las flechas no se pisan entre sí.
+ */
 
 export function computeCanalFlowArrows(
   engine: IPlanoEngineCore,
@@ -137,8 +152,8 @@ export function computeCanalFlowArrows(
 ): CanalFlowArrow[] {
   const w = engine.cmToPlanePx(canal.base || 0);
   const h = engine.cmToPlanePx(canal.altura || 0);
-  // Flow runs along whichever dimension is longer — a drainage channel is drawn elongated;
-  // the shorter dimension is its cross-section width, not a flow direction.
+  // El flujo corre por el lado LARGO del canal: un canal de drenaje se dibuja alargado, y el lado
+  // corto es solo el ancho de la sección — no tiene sentido dibujar flechas en esa dirección.
   const horizontal = w >= h;
   const axisLen = horizontal ? w : h;
   if (axisLen <= 0) return [];
@@ -165,15 +180,15 @@ export function computeCanalFlowArrows(
   sorted.forEach((entry, i) => {
     const leftBoundary = i === 0 ? 0 : (sorted[i - 1].t + entry.t) / 2;
     const rightBoundary = i === sorted.length - 1 ? 1 : (entry.t + sorted[i + 1].t) / 2;
-    // Head points at the bajante's actual position (its circle center), not the projected
-    // point on the axis — arrows always aim at the real circle so the renderer can trim
-    // them to the rim.
+    // La cabeza de la flecha apunta al CENTRO del círculo del bajante (su posición real), no al
+    // punto proyectado sobre el eje del canal — así el renderer puede recortar la flecha hasta el
+    // borde del círculo y siempre se ve bien alineada.
     const head = { x: entry.b.x, y: entry.b.y };
     if (entry.t - leftBoundary > EPS) {
       const tail = toPlanePoint(leftBoundary);
-      // Align the tail's cross-axis coordinate with the head so the arrow is always
-      // straight along the canal axis — no diagonal lines regardless of where the
-      // bajante sits within the canal's width.
+      // La cola se alinea en la misma línea que la cabeza (misma coordenada transversal) para que
+      // la flecha quede siempre recta a lo largo del canal — nada de diagonales raras sin importar
+      // dónde quede el bajante dentro del ancho.
       if (horizontal) {
         arrows.push({ x0: tail.x, y0: head.y, x1: head.x, y1: head.y });
       } else {

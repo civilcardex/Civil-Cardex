@@ -35,13 +35,14 @@ import InfoTab from './workarea/InfoTab';
 import type { useWorkAreaState } from './useWorkAreaState';
 
 const ANEXO_PDF_URL = '/docs/detalle-instalacion-aparatos-hsg.pdf';
-// Height, in PDF points (page-space, independent of render scale), of the bottom title-block
-// stamp (PROYECTO/CONTIENE/OBSERVACIONES/FECHA/PLANO No) on the source sheet. Measured directly
-// against that fixed asset: the stamp cluster spans from ~174pt above the bottom edge to the
-// bottom edge on a 1701×2551pt page, with a large empty margin above it — safe to crop as a
-// constant rather than hunting for it via text search (this PDF's embedded font has a broken
-// glyph map, so extracted text like "PROYECTO" comes back garbled as "PRO<ECTO" and can't be
-// matched reliably; text also re-uses words like "ESCALA" elsewhere in the drawing itself).
+// Altura, en puntos PDF (espacio de página, independiente de la escala de renderizado), del
+// rótulo inferior (PROYECTO/CONTIENE/OBSERVACIONES/FECHA/PLANO No) de la hoja de origen. Medida
+// directamente sobre ese activo fijo: el bloque del rótulo va de ~174pt sobre el borde inferior
+// hasta el borde inferior en una página de 1701×2551pt, con un margen vacío grande encima —
+// seguro recortar con una constante en vez de buscarlo por texto (la fuente embebida de este PDF
+// tiene el mapa de glifos roto, así que el texto extraído como "PROYECTO" sale corrupto como
+// "PRO<ECTO" y no se puede buscar de forma fiable; además, palabras como "ESCALA" se reutilizan
+// en otras partes del dibujo).
 const ANEXO_ROTULO_HEIGHT_PT = 185;
 
 async function downloadAnexoPdf(): Promise<void> {
@@ -848,7 +849,7 @@ function InfTab({ state }: { state: WorkAreaState }) {
     return { title: 'Chequeo capacidad canal recolectora cubierta aguas lluvias', headers, rows };
   }, [hasLl, conRecolectora, canalesLl]);
 
-  // ── AF (computed fresh — no dependency on having visited that screen) ──
+  // ── AF (calculado en fresco — sin depender de haber visitado esa pantalla) ──
   const ucAfTable = useMemo<MemoriaTable | null>(() => {
     if (!hasAf) return null;
     return computeUcTable('af', tramosAf, aps);
@@ -948,13 +949,13 @@ function InfTab({ state }: { state: WorkAreaState }) {
     };
   }, [hasAf, tramosAf, plans, proy.p_red]);
 
-  // ── Acometida (AF only) — computeAcometidaSummary recomputes everything from tramosAf + plans,
-  // the same "computed fresh" pattern as afTable/ucAfTable above, so (unlike an earlier version of
-  // this that read a value WaterNetworkDesign.tsx persisted only once it was opened) the export
-  // never depends on the user having visited that specific screen first.
-  // Acometida rows use their own formatter (not the shared f2) because f2 treats 0 as "no data"
-  // and prints '—' — but 0 is a legitimate computed value here (e.g. Qaco with no fixtures yet),
-  // and should read as 0, not as missing.
+  // ── Acometida (solo AF) — computeAcometidaSummary recalcula todo desde tramosAf + plans, con el
+  // mismo patrón de "cálculo en fresco" que afTable/ucAfTable de arriba, así (a diferencia de una
+  // versión anterior que leía un valor que WaterNetworkDesign.tsx solo persistía al abrirlo) la
+  // exportación nunca depende de que el usuario haya visitado antes esa pantalla específica.
+  // Las filas de Acometida usan su propio formateador (no el f2 compartido) porque f2 trata el 0
+  // como "sin datos" e imprime '—' — pero aquí el 0 es un valor calculado legítimo (p. ej. Qaco
+  // sin aparatos todavía) y debe leerse como 0, no como dato faltante.
   function buildAcometidaTables(): MemoriaTable[] {
     if (!hasAf) return [];
     const d = computeAcometidaSummary(tramosAf, plans, DIAMETROS_AF);
@@ -1030,7 +1031,7 @@ function InfTab({ state }: { state: WorkAreaState }) {
     return [tramosTable, parametrosTable, verificacionTable];
   }
 
-  // ── AC (computed fresh; also feeds from AF's own persisted pFin at the calentador node) ──
+  // ── AC (calculado en fresco; además se alimenta del pFin propio persistido por AF en el nodo calentador) ──
   const ucAcTable = useMemo<MemoriaTable | null>(() => {
     if (!hasAc) return null;
     return computeUcTable('ac', tramosAc, aps);
@@ -1135,7 +1136,7 @@ function InfTab({ state }: { state: WorkAreaState }) {
     };
   }, [hasAc, tramosAc, tramosAf, plans, proy.p_red]);
 
-  // ── GAS (computed fresh from persisted drawing/accessory data — no dependency on having visited that screen) ──
+  // ── GAS (calculado en fresco desde los datos de dibujo/accesorios persistidos — sin depender de haber visitado esa pantalla) ──
   const gasTable = useMemo<MemoriaTable | null>(() => {
     if (!hasGas) return null;
     const rows = computeGasRows(plans);
@@ -1179,11 +1180,11 @@ function InfTab({ state }: { state: WorkAreaState }) {
     };
   }, [hasGas, plans]);
 
-  // ── BOMBA / EP ── computeBombaTables/computeEpTables (equiposRows.ts) rebuild every table from
-  // every screen page fresh at download time — same "no screen-visit dependency, no stale useMemo"
-  // pattern as buildAcometidaTables above, and one table per card instead of a single flattened
-  // summary (matches what the live BombaARDesign/EPInputPage/EPVerificationPage screens actually
-  // show across their pages).
+  // ── BOMBA / EP ── computeBombaTables/computeEpTables (equiposRows.ts) reconstruyen cada tabla
+  // desde todas las páginas de la pantalla en fresco al momento de descargar — mismo patrón de
+  // "sin dependencia de visitar pantallas, sin useMemo obsoleto" que buildAcometidaTables de
+  // arriba, y una tabla por tarjeta en vez de un resumen único aplanado (coincide con lo que las
+  // pantallas reales BombaARDesign/EPInputPage/EPVerificationPage muestran en sus páginas).
   const buildBombaTables = (): MemoriaTable[] => (hasBom ? computeBombaTables() : []);
   const buildEpTables = (): MemoriaTable[] => (hasEp ? computeEpTables() : []);
 

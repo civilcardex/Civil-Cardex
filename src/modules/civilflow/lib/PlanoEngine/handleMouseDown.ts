@@ -30,21 +30,23 @@ import { selectAt } from './PlanoEngineSelection';
 import { findCodoReventiladoLinks } from './PlanoEngineNetwork';
 import { bajanteHitDistance, canalRectHitDistance } from './canalAssociation';
 
-// True only when the bajante actually sits ON one of the ramal's endpoints — i.e. the connection
-// is rigid, not just the green dashed guide line drawn between two separate points. A bloqueado
-// ramal should only block the bajante's own move when the two are already touching; while a
-// dashed line is still showing (not yet snapped) the designer needs to freely slide the bajante
-// over to connect it, lock or no lock.
-// Ventilación is a subnet of sanitaria — san and vent ramales can connect at shared bajantes and
-// move as a single connected network, so the cascade treats them as one net group everywhere.
+// Solo es true cuando el bajante está REALMENTE sobre uno de los extremos del ramal — o sea la
+// conexión es rígida, no solo la línea guía punteada verde dibujada entre dos puntos separados.
+// Un ramal bloqueado solo debe impedir el movimiento del bajante cuando ya se están tocando;
+// mientras la línea punteada siga visible (aún sin pegar) el diseñador necesita poder deslizar
+// libremente el bajante para conectarlo, con candado o sin él.
+// Ventilación es una subred de sanitaria — los ramales san y vent pueden conectarse en bajantes
+// compartidos y moverse como una sola red conectada, así que la cascada los trata como un solo
+// grupo de red en todos lados.
 function sameNetGroup(a: string, b: string): boolean {
   return a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
 }
 
-// BFS over shared endpoints, transitively — starting from a ramal being dragged, finds every
-// ramal reachable by a chain of touching endpoints (or tributario-of-a-reachable-ramal), plus
-// every bajante that discharges from any ramal in that reachable set. Used so dragging one ramal
-// carries its whole connected network with it instead of only its direct (1-hop) neighbors.
+// BFS sobre extremos compartidos, transitivo — partiendo del ramal que se arrastra, encuentra
+// todo ramal alcanzable por una cadena de extremos que se tocan (o tributario-de-un-ramal-
+// alcanzable), más todo bajante que descarga desde cualquier ramal de ese conjunto alcanzable.
+// Sirve para que arrastrar un ramal cargue toda su red conectada, no solo sus vecinos directos
+// (de 1 salto).
 export function collectConnectedGraph(
   engine: IPlanoEngineCore,
   startRamal: PlanoRamal,
@@ -62,9 +64,10 @@ export function collectConnectedGraph(
   const TOL = 0.5;
   const visitedRamales = new Set<string>([startRamal.id]);
   type FrontierPt = { pt: number[]; fromId: string };
-  // Seeded with EVERY point of the dragged ramal, not just its two endpoints — a vent ramal
-  // almost always taps into a san ramal's INTERIOR vertex (a codo/tee), not its polyline ends, so
-  // endpoint-only seeding silently missed the most common san↔vent connection shape.
+  // Sembrado con TODOS los puntos del ramal arrastrado, no solo sus dos extremos — un ramal de
+  // vent casi siempre se conecta a un vértice INTERIOR de un ramal san (un codo/tee), no a los
+  // extremos de su polilínea, así que sembrar solo extremos se perdía en silencio la forma de
+  // conexión san↔vent más común.
   let frontier: FrontierPt[] = startRamal.pts.map((pt) => ({ pt, fromId: startRamal.id }));
   const resultRamales: {
     id: string;
@@ -75,18 +78,20 @@ export function collectConnectedGraph(
 
   const startNet = startRamal.net;
 
-  // A ramal "touches" the cascade frontier if ANY of its points (not just endpoints) is on top
-  // of a frontier point. Critical for the san↔vent case: a vent ramal that passes THROUGH a
-  // san ramal's junction (interior vertex, not endpoint) would be missed by endpoint-only checks.
+  // Un ramal "toca" el frente de la cascada si CUALQUIERA de sus puntos (no solo los extremos)
+  // está encima de un punto del frente. Crítico para el caso san↔vent: un ramal de vent que PASA
+  // POR una unión de un ramal san (vértice interior, no extremo) se perdería con chequeos solo
+  // de extremos.
   const touchesAt = (other: PlanoRamal, pt: number[]) =>
     other.pts.some((p) => Math.hypot(p[0] - pt[0], p[1] - pt[1]) < TOL);
 
-  // A vent tap can also land on the plain BODY of a straight two-point san run that has no bend
-  // at the tap location at all — the connection is only ever "point near line", never an actual
-  // shared vertex. touchesAt (point-vs-point) can never catch this no matter how many vertices are
-  // seeded into the frontier, since the trunk simply has no vertex there to match against. Check
-  // point-vs-SEGMENT distance too: does `pt` (an endpoint of `other`) sit on top of any segment of
-  // an already-visited same-net-group ramal, not just on one of its stored points.
+  // Un toque de vent también puede caer sobre el CUERPO simple de una línea san recta de dos
+  // puntos que no tiene ningún doblez en el lugar del toque — la conexión solo es "punto cerca
+  // de línea", nunca un vértice compartido real. touchesAt (punto contra punto) nunca puede
+  // atraparlo sin importar cuántos vértices se siembren en el frente, porque el tronco
+  // simplemente no tiene vértice ahí con qué coincidir. Se chequea también la distancia
+  // punto-contra-SEGMENTO: ¿`pt` (un extremo de `other`) cae sobre algún segmento de un ramal ya
+  // visitado del mismo grupo de red, no solo sobre uno de sus puntos guardados?
   const touchesSegmentOfVisited = (pt: number[]): boolean => {
     for (const vid of visitedRamales) {
       const v = engine.ramales.find((rr) => rr.id === vid);
@@ -116,9 +121,10 @@ export function collectConnectedGraph(
       const tapsIntoVisitedBody =
         touchesSegmentOfVisited(other.pts[0]) ||
         touchesSegmentOfVisited(other.pts[other.pts.length - 1]);
-      // Reverse direction: a frontier point (e.g. vent endpoint on san body segment) that
-      // has no vertex on the candidate — only touchesSegmentOfVisited is ever checked, but
-      // that's candidate-endpoint-on-VISITED-body, not frontier-point-on-CANDIDATE-body.
+      // Dirección inversa: un punto del frente (p.ej. extremo de vent sobre segmento de cuerpo
+      // de san) que no tiene vértice en el candidato — solo se chequea touchesSegmentOfVisited,
+      // pero eso es extremo-del-candidato-sobre-cuerpo-VISITADO, no punto-del-frente-sobre-
+      // cuerpo-del-CANDIDATO.
       const frontierOnOtherBody = frontier.some((fp) => {
         if (!other.pts || other.pts.length < 2) return false;
         for (let si = 0; si < other.pts.length - 1; si++) {
@@ -144,13 +150,15 @@ export function collectConnectedGraph(
           origLabelX: other.labelX,
           origLabelY: other.labelY,
         });
-        // Every point of `other` re-enters the frontier (not just its endpoints) so a further
-        // ramal tapping into ITS interior — another san↔vent codo, one hop deeper — is found too.
+        // Todos los puntos de `other` re-entran al frente (no solo sus extremos) para que un
+        // ramal más lejano que se conecte a SU interior — otro codo san↔vent, un salto más
+        // profundo — también se encuentre.
         for (const pt of other.pts) nextFrontier.push({ pt, fromId: other.id });
       }
     }
-    // Also walk THROUGH bajantes: a ramal connected to a bajante at the frontier position joins
-    // the cascade too. This is the san→bajante→vent hop that direct endpoint sharing misses.
+    // También caminar A TRAVÉS de bajantes: un ramal conectado a un bajante en la posición del
+    // frente se une a la cascada también. Este es el salto san→bajante→vent que el compartir
+    // extremos directo no ve.
     for (const b of engine.bajantes) {
       if (!sameNetGroup(b.net, startNet)) continue;
       const touchesFrontier = frontier.some(
@@ -198,7 +206,8 @@ export function collectConnectedGraph(
   for (const b of engine.bajantes) {
     if (!sameNetGroup(b.net, startNet)) continue;
     if (!b.recibeDeIds?.some((rid) => visitedRamales.has(rid))) continue;
-    // atIdx is legacy/unused downstream — kept only to satisfy the existing ramalDrag.connBaj shape.
+    // atIdx es legacy/sin uso aguas abajo — se conserva solo para satisfacer la forma existente
+    // de ramalDrag.connBaj.
     resultBajantes.push({
       id: b.id,
       origX: b.x,
@@ -212,9 +221,10 @@ export function collectConnectedGraph(
   return { ramales: resultRamales, bajantes: resultBajantes };
 }
 
-// Snapshot the bajante's position and every ramal it touches (recibeDeIds, descargaEnId, and
-// its own Ldesvio ghost-connector) before a bajDrag starts, so handleDragUp can validate the
-// resulting angles the same way ptDrag/ramalDrag already do — and revert + alert if invalid.
+// Toma una foto de la posición del bajante y de todo ramal que toca (recibeDeIds, descargaEnId
+// y su propio conector fantasma Ldesvio) antes de que empiece un bajDrag, para que handleDragUp
+// pueda validar los ángulos resultantes igual que ptDrag/ramalDrag ya hacen — y revertir +
+// alertar si son inválidos.
 function _captureBajDragBackup(engine: IPlanoEngineCore, b: PlanoBajante): void {
   engine._bajDragBackupXY = { x: b.x, y: b.y, labelX: b.labelX, labelY: b.labelY };
   const assocIds = [...(b.recibeDeIds || [])];
@@ -236,7 +246,8 @@ function _tryBajanteHit(
   y: number,
   sel: PlanoElement | null,
 ): boolean {
-  // Scan all bajantes, pick best label match (parent preferred over ghost, closer preferred)
+  // Escanear todos los bajantes, elegir el mejor acierto de etiqueta (padre preferido sobre
+  // fantasma, más cercano preferido)
   let bestB: (typeof engine.bajantes)[0] | null = null;
   let bestDist = Infinity;
   let bestIsGhost = false;
@@ -254,7 +265,7 @@ function _tryBajanteHit(
         bestIsGhost = isGhost;
       }
     }
-    // Contador/calentador label at offset position
+    // Etiqueta de contador/calentador en posición desplazada
     if (b.tipo === 'contador' || b.tipo === 'calentador') {
       const clx = b.labelX ?? b.x - 25;
       const cly = b.labelY ?? b.y;
@@ -269,10 +280,10 @@ function _tryBajanteHit(
         }
       }
     }
-    // Symbol hit (only if no label match found). A canal's click target is its visible rectangle
-    // (_canalBox), not a circle, so it never swallows clicks on a bajante that sits inside
-    // it — real glyphs win first (closest circle wins), and the canal's body only grabs
-    // the click when no glyph sits on the point.
+    // Acierto de SÍMBOLO (solo si no hubo acierto de etiqueta). El objetivo de clic de un canal
+    // es su rectángulo visible (_canalBox), no un círculo, así que nunca se traga clics de un
+    // bajante que quede dentro de él — los glifos reales ganan primero (gana el círculo más
+    // cercano), y el cuerpo del canal solo agarra el clic cuando ningún glifo está en el punto.
     if (!bestB) {
       let symBest: { b: (typeof engine.bajantes)[0]; d: number } | null = null;
       for (const b of engine.bajantes) {
@@ -325,10 +336,11 @@ function _tryBajanteHit(
   return false;
 }
 
-// Corner-handle resize for a selected canal rectangle. Must run BEFORE _tryBajanteHit's generic
-// symbol-circle check (which would otherwise treat any click inside the bounding circle —
-// including one right on a corner — as a whole-body move via bajDrag) so grabbing a corner
-// resizes instead of moving the whole rectangle.
+// Redimensionado por manija de esquina del rectángulo de un canal seleccionado. Debe correr
+// ANTES del chequeo genérico de círculo-de-símbolo de _tryBajanteHit (que de otro modo trataría
+// cualquier clic dentro del círculo delimitador — incluido uno justo en una esquina — como un
+// movimiento de cuerpo completo vía bajDrag), para que agarrar una esquina redimensione en vez
+// de mover todo el rectángulo.
 function _tryCanalResizeHit(
   engine: IPlanoEngineCore,
   x: number,
@@ -350,8 +362,8 @@ function _tryCanalResizeHit(
   if (!grabbed) return false;
   const wPlane = engine.cmToPlanePx(canal.base || 0);
   const hPlane = engine.cmToPlanePx(canal.altura || 0);
-  // Opposite corner, in PLANE coordinates (canal.x/y is always the top-left corner) — stays
-  // fixed for the whole gesture regardless of which corner was grabbed.
+  // Esquina opuesta, en coordenadas de PLANO (canal.x/y siempre es la esquina superior-
+  // izquierda) — queda fija durante todo el gesto sin importar qué esquina se agarró.
   const anchorX = grabbed.corner === 'tl' || grabbed.corner === 'bl' ? canal.x + wPlane : canal.x;
   const anchorY = grabbed.corner === 'tl' || grabbed.corner === 'tr' ? canal.y + hPlane : canal.y;
   engine.canalResizeDrag = { id: canal.id, corner: grabbed.corner, anchorX, anchorY };
@@ -362,9 +374,10 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
   let bestRamal = null;
   let bestPtIdx = -1;
   let minPtDist = 15;
-  // A ghost bajante's desvío ramal has an endpoint sitting exactly at the ghost's displaced
-  // position, so a click on the ghost symbol also falls within this endpoint's tolerance —
-  // without this, the endpoint hit below wins first and steals the click from the ghost.
+  // El ramal de desvío de un bajante fantasma tiene un extremo sentado exactamente en la
+  // posición desplazada del fantasma, así que un clic sobre el símbolo del fantasma también cae
+  // dentro de la tolerancia de ese extremo — sin esto, el acierto de extremo de abajo gana
+  // primero y roba el clic al fantasma.
   const lvl = engine.nivelActual?.label ?? '';
   const ghostPts = engine.getBajantesFantasma().map((b) => {
     const disp = b.desplazamientos?.[lvl];
@@ -398,18 +411,19 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
   engine.selId = bestRamal.id;
   engine.multiSel = [];
   engine._emitSelect(bestRamal);
-  // This is the first-click path for grabbing a ramal's endpoint (it runs before
-  // _trySelRamalDrag, which only handles a SECOND click on an already-selected ramal).
-  // "Bloquear Movimiento" must keep the ramal's geometry immutable — the checkbox in the
-  // context menu toggles bloqueado, so any drag that would write pts is gated on it, here
-  // included. Selection itself still works (the ramal stays selectable, just not draggable);
-  // cascade (being dragged because a connected ramal moved) stays allowed, and whole-ramal
-  // body drags are gated at _trySelRamalDrag below.
+  // Este es el camino de primer clic para agarrar el extremo de un ramal (corre antes de
+  // _trySelRamalDrag, que solo maneja un SEGUNDO clic sobre un ramal ya seleccionado).
+  // "Bloquear Movimiento" debe mantener inmutable la geometría del ramal — el checkbox del
+  // menú contextual conmuta bloqueado, así que todo arrastre que escribiría pts está
+  // condicionado a ello, incluido este. La selección misma sigue funcionando (el ramal queda
+  // seleccionable, solo no arrastrable); la cascada (ser arrastrado porque un ramal conectado
+  // se movió) sigue permitida, y los arrastres de cuerpo completo se condicionan en
+  // _trySelRamalDrag abajo.
 
   let slideConstraint = undefined;
   {
-    // Strictly same-net only — an endpoint must never slide-constrain against a segment from a
-    // different red just because it happens to be visually close.
+    // Estrictamente solo misma red — un extremo nunca debe restringirse al deslizamiento
+    // contra un segmento de una red distinta solo porque esté visualmente cerca.
     const pt = bestRamal.pts[bestPtIdx];
     for (const other of engine.ramales) {
       if (other.id === bestRamal.id || other.net !== bestRamal.net) continue;
@@ -422,10 +436,10 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
         if (sLen < 0.001) continue;
         const cross = Math.abs(sDx * (ay - pt[1]) - sDy * (ax - pt[0])) / sLen;
         if (cross < 0.05) {
-          // Only a genuine T-junction (pt sitting on the INTERIOR of the other segment)
-          // should slide-constrain. Two ramales that merely converge at a shared bajante
-          // corner also pass the cross check here since they touch at that segment's own
-          // endpoint — excluding the outer margin tells those two cases apart.
+          // Solo una unión T genuina (pt en el INTERIOR del otro segmento) debe restringir el
+          // deslizamiento. Dos ramales que solo convergen en una esquina de bajante compartido
+          // también pasan el chequeo cruzado aquí, porque se tocan en el extremo propio de ese
+          // segmento — excluir el margen exterior distingue esos dos casos.
           const t = ((pt[0] - ax) * sDx + (pt[1] - ay) * sDy) / (sLen * sLen);
           const marginT = Math.min(0.45, 2 / sLen);
           if (t > marginT && t < 1 - marginT) {
@@ -518,8 +532,9 @@ function _tryMultiSelDrag(
         for (const mid of engine.multiSel) {
           const mel = engine.ramales.find((r) => r.id === mid);
           if (mel) {
-            // "Bloquear Movimiento" ramales never move in a group drag — skip them entirely,
-            // so no code path (single drag, group drag, accessory slide) writes their pts.
+            // Los ramales "Bloquear Movimiento" nunca se mueven en un arrastre de grupo — se
+            // saltan por completo, para que ningún camino de código (arrastre simple, de grupo,
+            // deslizamiento de accesorio) escriba sus pts.
             if (mel.bloqueado) continue;
             origData[mid] = {
               type: 'ramal',
@@ -612,10 +627,10 @@ function _trySelDimDrag(
 ): boolean {
   if (!isDimension(sel)) return false;
   if (sel._labelPos) {
-    // 22px tolerance (was 14) — the dim label is short text ("3.50m") but the readable hit
-    // area for a click target is the surrounding bbox, not just the glyph extent; 14 was too
-    // tight to land on the small numeric label, especially when the dim is perpendicular to
-    // the user's viewing angle and the rendered text reads small.
+    // Tolerancia de 22px (antes 14) — la etiqueta de cota es texto corto ("3.50m") pero el área
+    // legible de un objetivo de clic es la bbox circundante, no solo el alcance del glifo; 14 era
+    // muy justo para darle a la etiqueta numérica pequeña, sobre todo cuando la cota es
+    // perpendicular al ángulo de visión del usuario y el texto renderizado se lee pequeño.
     const lx = sel._labelPos.x;
     const ly = sel._labelPos.y;
     if (Math.hypot(x - lx, y - ly) < 22) {
@@ -647,21 +662,22 @@ function _trySelRamalDrag(
   y: number,
   sel: PlanoElement | null,
 ): boolean {
-  // isRamal() (structural: 'pts' in el) already tells a ramal-like element apart from every other
-  // selectable type, so the id-prefix check only ever needs to exclude non-ramal shapes — it must
-  // NOT also exclude tributarios (id prefix 'T'). A tributario is exactly how this app models a
-  // branch tapping into a parent ramal's interior vertex — e.g. the common vent-into-san
-  // connection — so rejecting 'T'-prefixed ids here silently made whole-body dragging a no-op
-  // for every tributario in the app, which in turn meant its parent ramal never saw it as
-  // something to cascade either way.
+  // isRamal() (estructural: 'pts' en el) ya distingue un elemento tipo ramal de todo otro tipo
+  // seleccionable, así que el chequeo de prefijo de id solo necesita excluir formas no-ramal —
+  // NO debe excluir también tributarios (prefijo de id 'T'). Un tributario es exactamente cómo
+  // esta app modela una rama que se conecta a un vértice interior de un ramal padre — p.ej. la
+  // conexión común vent-en-san — así que rechazar ids con prefijo 'T' aquí dejaba el arrastre de
+  // cuerpo completo inoperante para todo tributario de la app, lo que a su vez significaba que
+  // su ramal padre nunca lo veía como algo a cascadear de todos modos.
   if (!isRamal(sel) || (sel.tipo !== 'ramal' && sel.tipo !== 'tributario')) return false;
 
-  // Mid-ramal accessory icons are drawn offset from the pipe centerline (renderRamales.ts), so a
-  // click on the visible icon can miss the tight per-vertex radius below. Check the icon's wider
-  // footprint first so clicking the icon itself — not just the exact underlying vertex — starts
-  // the slide-along-body drag. "Bloquear Movimiento" blocks this too: the user decided the
-  // lock must make the ramal's geometry fully immutable (length inalterable), so the accMed
-  // vertex must not move at all on a locked ramal.
+  // Los íconos de accesorio a mitad de ramal se dibujan desplazados de la línea central
+  // (renderRamales.ts), así que un clic sobre el ícono visible puede errar el radio ajustado
+  // por vértice de abajo. Se chequea primero la huella más ancha del ícono para que clicar el
+  // ícono mismo — no solo el vértice subyacente exacto — inicie el arrastre de deslizamiento
+  // por el cuerpo. "Bloquear Movimiento" también lo bloquea: el usuario decidió que el candado
+  // debe hacer la geometría del ramal totalmente inmutable (largo inalterable), así que el
+  // vértice accMed no debe moverse en absoluto en un ramal bloqueado.
   const accIdxRaw = findAccMedVertexHit(
     sel.pts,
     sel.accMed,
@@ -688,12 +704,13 @@ function _trySelRamalDrag(
     const pc = engine.toCvs(sel.pts[i][0], sel.pts[i][1]);
     if (Math.hypot(x - pc.x, y - pc.y) < 15) {
       const isEndpoint = i === 0 || i === sel.pts.length - 1;
-      // bloquear movimiento checked → block all direct drag (vertex, endpoint, body).
-      // Cascade (dragged by connected ramal) is NOT blocked — see collectConnectedGraph.
+      // bloqueado marcado → bloquear todo arrastre directo (vértice, extremo, cuerpo).
+      // La cascada (ser arrastrado por un ramal conectado) NO se bloquea — ver
+      // collectConnectedGraph.
       if (sel.bloqueado) return false;
       let slideConstraint = undefined;
-      // An accessory drawn mid-body (accMed) can be moved, but only sliding along the straight
-      // line to its neighbors — it must not bend the ramal's actual path.
+      // Un accesorio dibujado a mitad de cuerpo (accMed) puede moverse, pero solo deslizándose
+      // por la línea recta hacia sus vecinos — no debe doblar el recorrido real del ramal.
       if (!isEndpoint && sel.accMed && sel.accMed[`accMed${i}`]) {
         const a = sel.pts[i - 1],
           b = sel.pts[i + 1];
@@ -706,10 +723,10 @@ function _trySelRamalDrag(
         return true;
       }
       if (isEndpoint) {
-        // A connected endpoint (bajante or accessory) is NOT blocked from dragging — it goes
-        // through the exact same snap-angle-constrained ptDrag path as a free endpoint (below),
-        // which already propagates the move rigidly to any attached bajante/ramal. Blocking it
-        // outright just pushed users onto the unconstrained body-drag path instead.
+        // Un extremo conectado (a bajante o accesorio) NO se bloquea de arrastrar — pasa por el
+        // mismo camino ptDrag restringido por ángulo-de-snap que un extremo libre (abajo), que
+        // ya propaga el movimiento rígidamente a todo bajante/ramal conectado. Bloquearlo de
+        // plano solo empujaba a los usuarios al camino sin restricciones de arrastre de cuerpo.
         const pt = sel.pts[i];
         for (const other of engine.ramales) {
           if (other.id === sel.id || !sameNetGroup(other.net, sel.net)) continue;
@@ -722,9 +739,9 @@ function _trySelRamalDrag(
             if (sLen < 0.001) continue;
             const cross = Math.abs(sDx * (ay - pt[1]) - sDy * (ax - pt[0])) / sLen;
             if (cross < 0.05) {
-              // Same T-junction-only rule as the other slideConstraint computation above —
-              // exclude the case where pt just touches the OTHER segment's own endpoint
-              // (e.g. two ramales converging at the same bajante).
+              // Misma regla de solo-unión-T que el otro cálculo de slideConstraint de arriba —
+              // excluir el caso donde pt solo toca el extremo propio del OTRO segmento (p.ej.
+              // dos ramales convergiendo en el mismo bajante).
               const t = ((pt[0] - ax) * sDx + (pt[1] - ay) * sDy) / (sLen * sLen);
               const marginT = Math.min(0.45, 2 / sLen);
               if (t > marginT && t < 1 - marginT) {
@@ -765,9 +782,10 @@ function _trySelRamalDrag(
       if (sel.bloqueado) return false;
       const tp = engine.toPlane(x, y);
       const origPts = sel.pts.map((pt: number[]) => [...pt] as [number, number]);
-      // Ramales/tributarios connected transitively (through a chain of shared endpoints, or as a
-      // tributario of anything in that chain) move together as a rigid body, so the connection
-      // doesn't tear apart when dragging an unlocked ramal — not just its direct (1-hop) neighbors.
+      // Los ramales/tributarios conectados transitivamente (por una cadena de extremos
+      // compartidos, o como tributario de algo en esa cadena) se mueven juntos como cuerpo
+      // rígido, para que la conexión no se despegue al arrastrar un ramal sin bloquear — no solo
+      // sus vecinos directos (de 1 salto).
       const { ramales: connRamales, bajantes: connBaj } = collectConnectedGraph(engine, sel);
       engine.ramalDrag = {
         id: sel.id,
@@ -794,14 +812,14 @@ export function handleSelectDown(
   const wasGhostSel = engine._isGhostSel;
   engine._isGhostSel = false;
   engine._lblDragIsParent = false;
-  // A cross-floor association ghost's selection (selectedGhostId) must never survive past this
-  // click — cleared unconditionally up front so ANY other hit below (a real bajante's label, a
-  // ramal, etc.) starts from a clean slate. Re-set below only if THIS click actually lands on a
-  // ghost's own circle.
+  // La selección de un fantasma de asociación entre pisos (selectedGhostId) nunca debe
+  // sobrevivir a este clic — se limpia incondicionalmente al inicio para que CUALQUIER otro
+  // acierto de abajo (la etiqueta de un bajante real, un ramal, etc.) parta de pizarra limpia.
+  // Se re-fija abajo solo si ESTE clic realmente cae sobre el círculo propio de un fantasma.
   if (engine.tool === 'sel' && !isMultiSelectModifier && engine.selectedGhostId) {
     engine.selectedGhostId = null;
   }
-  // FIRST: check all bajante labels — simple, no prioritisation games
+  // PRIMERO: revisar todas las etiquetas de bajante — simple, sin juegos de prioridad
   let labelBest: { id: string; x: number; y: number; isParent: boolean } | null = null;
   let labelBestDist = Infinity;
   for (const b of engine.bajantes) {
@@ -837,18 +855,19 @@ export function handleSelectDown(
     if (_tryCanalResizeHit(engine, x, y, sel)) return;
   }
 
-  // Cross-floor association ghost (associateBajanteAcrossFloors.ts) — pure reference marker, its
-  // own selection state (selectedGhostId), never drives ramal/bajante selection or dragging.
-  // selectedGhostId was already cleared unconditionally above; only re-set it if THIS click
-  // actually lands on a ghost's own circle.
+  // Fantasma de asociación entre pisos (associateBajanteAcrossFloors.ts) — marcador de
+  // referencia puro, con su propio estado de selección (selectedGhostId), nunca dirige la
+  // selección ni el arrastre de ramales/bajantes. selectedGhostId ya se limpió
+  // incondicionalmente arriba; solo se re-fija si ESTE clic realmente cae sobre el círculo
+  // propio de un fantasma.
   if (engine.tool === 'sel' && !isMultiSelectModifier) {
     for (const g of engine.crossFloorGhosts) {
       if (!g._hitCircle) continue;
       const gDist = Math.hypot(x - g._hitCircle.x, y - g._hitCircle.y);
       if (gDist >= g._hitCircle.r) continue;
-      // A real bajante sitting right next to this reference marker must always win if it's
-      // genuinely closer to the click — the ghost is secondary, never allowed to eclipse a real,
-      // editable element.
+      // Un bajante real justo al lado de este marcador de referencia debe ganar siempre si está
+      // genuinamente más cerca del clic — el fantasma es secundario, nunca se le permite
+      // eclipsar un elemento real y editable.
       let realIsCloser = false;
       for (const b of engine.bajantes) {
         const c = engine.toCvs(b.x, b.y);
@@ -917,10 +936,11 @@ export function handleSelectDown(
 
   if (isTextAnnotation(sel) && sel._box && sel.id?.startsWith('T')) {
     const b = sel._box;
-    // Any of the 4 corners can be dragged to resize. The anchor is the OPPOSITE corner in the
-    // box's own local (unrotated) frame — computed with the same formulas renderTextAnnotations.ts
-    // uses to draw it — so that corner's canvas position stays exactly fixed while resizing,
-    // regardless of which corner was grabbed or whether the text is rotated.
+    // Cualquiera de las 4 esquinas se puede arrastrar para redimensionar. El ancla es la esquina
+    // OPUESTA en el marco local (sin rotar) de la caja — calculada con las mismas fórmulas que
+    // renderTextAnnotations.ts usa para dibujarla — para que la posición de canvas de esa
+    // esquina quede exactamente fija mientras se redimensiona, sin importar qué esquina se agarró
+    // ni si el texto está rotado.
     const corners: { x: number; y: number; corner: TextCorner }[] = [
       { x: b.x, y: b.y, corner: 'tl' },
       { x: b.x + b.w, y: b.y, corner: 'tr' },
@@ -1053,8 +1073,9 @@ export function handleSelectDown(
     }
   }
 
-  // Sifón accessory label ("S D=...") — its own draggable box, separate from the ramal's main
-  // label, one per end since a ramal can carry a sifón at both extremes.
+  // Etiqueta de accesorio de sifón ("S D=...") — su propia caja arrastrable, separada de la
+  // etiqueta principal del ramal, una por extremo porque un ramal puede llevar un sifón en
+  // ambas puntas.
   for (const r of engine.ramales) {
     const slots: Array<{ slot: 'ini' | 'fin'; box: typeof r._sifonLabelBoxIni }> = [
       { slot: 'ini', box: r._sifonLabelBoxIni },
@@ -1071,7 +1092,8 @@ export function handleSelectDown(
     }
   }
 
-  // Direct label hit test using only labelX/labelY — bypasses potential _labelBox issues.
+  // Acierto directo de etiqueta usando solo labelX/labelY — se salta posibles problemas de
+  // _labelBox.
   let bestB: (typeof engine.bajantes)[0] | null = null;
   let bestDist = Infinity;
   let bestIsGhost = false;
@@ -1083,7 +1105,7 @@ export function handleSelectDown(
     if (d < 40) {
       if (ensureActiveNet(engine, b.net)) return;
       const isGhost = b.pisoBase !== engine.nivelActual?.label;
-      // Prefer non-ghost (parent) over ghost, and closer over farther
+      // Preferir no-fantasma (padre) sobre fantasma, y más cercano sobre más lejano
       if (!bestB || (!isGhost && bestIsGhost) || (isGhost === bestIsGhost && d < bestDist)) {
         bestB = b;
         bestDist = d;
@@ -1110,8 +1132,8 @@ export function handleSelectDown(
       if (ensureActiveNet(engine, b.net)) return;
       engine.selId = b.id;
       engine._isGhostSel = true;
-      // The ghost always gets its own independent label position (ghostData per level) — it
-      // must never be redirected to drag the parent's label instead.
+      // El fantasma siempre tiene su propia posición de etiqueta independiente (ghostData por
+      // nivel) — nunca debe redirigirse a arrastrar la etiqueta del padre en su lugar.
       const gd = b.ghostData?.[engine.nivelActual?.label ?? ''] || {};
       let lx: number, ly: number;
       if (gd.labelX != null && gd.labelY != null) {
@@ -1146,7 +1168,8 @@ export function handleSelectDown(
       }
       const lPos = engine.toCvs(lx, ly);
       const dGhost = Math.hypot(x - lPos.x, y - lPos.y);
-      // Before committing to ghost: check if any non-ghost parent label is closer
+      // Antes de comprometerse con el fantasma: revisar si alguna etiqueta de padre no-fantasma
+      // está más cerca
       let bestParent: typeof b | null = null,
         bestPDist = Infinity;
       for (const pb of engine.bajantes) {

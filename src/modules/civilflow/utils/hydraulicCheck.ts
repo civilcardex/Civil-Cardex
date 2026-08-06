@@ -8,7 +8,7 @@ import {
 } from './calcSanitaryCore';
 import { V_MIN, V_MAX, Y_D_MAX, FUERZA_TRACTIVA_MIN } from '../constants';
 
-const YC_FACTOR = 0.296938082; // Derived from Manning n=0.009 for PVC
+const YC_FACTOR = 0.296938082; // Derivado de Manning n=0.009 para PVC
 
 interface HydraulicResult {
   Qo: number;
@@ -34,18 +34,18 @@ interface HydraulicParams {
 }
 
 /**
- * Runs a full sanitary hydraulic check on a pipe segment.
+ * Corre un chequeo hidráulico sanitario completo sobre un tramo de tubería.
  *
- * Calculates full-pipe flow (Qo) and velocity (Vo), partial-flow ratios,
- * critical depth (Yc), normal depth (Yn), Froude number, tractive force,
- * and returns pass/fail flags against design constraints (V_MIN, V_MAX,
- * Y_D_MAX, FUERZA_TRACTIVA_MIN).
+ * Calcula el flujo a tubo lleno (Qo) y velocidad (Vo), las razones de flujo parcial, el tirante
+ * crítico (Yc), el tirante normal (Yn), el número de Froude, la fuerza tractiva, y devuelve
+ * banderas de pasa/falla contra las restricciones de diseño (V_MIN, V_MAX, Y_D_MAX,
+ * FUERZA_TRACTIVA_MIN).
  *
- * @param params.Q - Design discharge (L/s).
- * @param params.S - Pipe slope (m/m).
- * @param params.n - Manning roughness coefficient.
- * @param params.DintMm - Internal pipe diameter (mm).
- * @returns HydraulicResult with all computed values and pass/fail checks.
+ * @param params.Q - Caudal de diseño (L/s).
+ * @param params.S - Pendiente de tubería (m/m).
+ * @param params.n - Coeficiente de rugosidad de Manning.
+ * @param params.DintMm - Diámetro interno de tubería (mm).
+ * @returns HydraulicResult con todos los valores calculados y chequeos pasa/falla.
  */
 export function calcHydraulicCheck({ Q, S, n, DintMm }: HydraulicParams): HydraulicResult {
   const Qo = Math.round(caudalTuboLleno(DintMm / 1000, n, S) * 1000 * 100) / 100;

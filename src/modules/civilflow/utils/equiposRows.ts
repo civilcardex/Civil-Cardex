@@ -5,7 +5,7 @@ import type { EPData } from '../components/ep/EPShared';
 import { PVC_SCH40, NEMA_HP, selectDN } from '../components/ep/calculations';
 import { AGUA_DENSIDAD, GRAVEDAD } from './calcSanitaryCore';
 
-// Mirrors the object BombaARDesign.tsx persists via saveToStorage('civilflow_memoria_bomba_data').
+// Espeja el objeto que BombaARDesign.tsx persiste vía saveToStorage('civilflow_memoria_bomba_data').
 interface BombaMemoriaData {
   inputs: {
     salSim: string;
@@ -51,9 +51,9 @@ const or = (v: string | number | undefined | null): string =>
   v === '' || v == null ? '—' : String(v);
 const f2 = (n: number): string => (Number.isFinite(n) ? n.toFixed(2) : '—');
 
-// Bomba AR (BombaARDesign.tsx) has 4 screen pages, each with its own table(s) — replicated 1:1
-// here from the inputs/outputs it already persists, rather than a single flattened summary, so the
-// memoria carries the same detail the live screens show.
+// Bomba AR (BombaARDesign.tsx) tiene 4 páginas de pantalla, cada una con su(s) tabla(s) —
+// replicadas 1:1 aquí desde las entradas/salidas que ya persiste, en vez de un resumen único
+// aplanado, para que la memoria lleve el mismo detalle que muestran las pantallas en vivo.
 export function computeBombaTables(): MemoriaTable[] {
   const data = loadFromStorage<BombaMemoriaData | null>('civilflow_memoria_bomba_data', null);
   if (!data) return [];
@@ -344,8 +344,9 @@ export function computeBombaTables(): MemoriaTable[] {
 }
 
 // Equipo de presión (PressureEquipmentDesign.tsx → EPInputPage.tsx + EPVerificationPage.tsx, 3
-// screen pages) — same idea as Bomba AR above: every card/table on every page, replicated from the
-// same raw `ep` fields and formulas the live screens compute, instead of one flattened summary.
+// páginas de pantalla) — misma idea que Bomba AR arriba: cada card/tabla de cada página,
+// replicada desde los mismos campos `ep` crudos y las mismas fórmulas que calculan las pantallas
+// en vivo, en vez de un resumen aplanado.
 export function computeEpTables(): MemoriaTable[] {
   const ep = loadFromStorage<EPData | null>('ep', null);
   if (!ep) return [];

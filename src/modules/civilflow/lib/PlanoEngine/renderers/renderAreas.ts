@@ -8,7 +8,10 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
     if (a.pts.length < 3) return;
     const sel = a.id === engine.selId;
     const pts = a.pts.map((p: number[]) => engine.toCvs(p[0], p[1]));
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      minY = Infinity,
+      maxX = -Infinity,
+      maxY = -Infinity;
 
     ctx.save();
     ctx.beginPath();
@@ -20,7 +23,9 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
 
     ctx.fillStyle = a.color || 'rgba(0,220,229,0.12)';
     ctx.fill();
-    ctx.strokeStyle = sel ? '#00dce5' : (a.color || 'rgba(0,220,229,0.5)').replace('0.2', '0.7').replace('33', 'aa');
+    ctx.strokeStyle = sel
+      ? '#00dce5'
+      : (a.color || 'rgba(0,220,229,0.5)').replace('0.2', '0.7').replace('33', 'aa');
     ctx.lineWidth = (sel ? 2.5 : 1.5) * engine.zoom;
     ctx.setLineDash(sel ? [] : []);
     ctx.stroke();
@@ -39,7 +44,7 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
     if (a.label || a.areaM2) {
       ctx.save();
       ctx.translate(lx.x, lx.y);
-      const aAngle = (a.labelAngle || 0) * Math.PI / 180;
+      const aAngle = ((a.labelAngle || 0) * Math.PI) / 180;
       ctx.rotate(aAngle);
       const displayLabel = a.label || '';
       const areaLabel = a.areaM2 ? `${a.areaM2} m²` : '';
@@ -47,11 +52,29 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
       const aFsSub = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM);
       ctx.font = `bold ${aFs}px Geist, monospace`;
       const tw = Math.max(ctx.measureText(displayLabel).width, ctx.measureText(areaLabel).width);
-      const aBoxW = tw + 10, aBoxH = areaLabel ? aFs + aFsSub + 10 : aFs + 8;
-      const { corners: aCorners, minX, minY, maxX, maxY } = rotatedRectCorners(lx.x, lx.y - 16 + aBoxH / 2, aBoxW, aBoxH, aAngle, 2);
-      a._labelBox = { cx: lx.x, cy: lx.y - 16 + aBoxH / 2, w: aBoxW, h: aBoxH, angle: aAngle, minX, minY, maxX, maxY, corners: aCorners };
-      // Deliberately no background fill anymore — labels used to sit on a solid white plate; now
-      // they read directly over whatever's underneath, per explicit request.
+      const aBoxW = tw + 10,
+        aBoxH = areaLabel ? aFs + aFsSub + 10 : aFs + 8;
+      const {
+        corners: aCorners,
+        minX,
+        minY,
+        maxX,
+        maxY,
+      } = rotatedRectCorners(lx.x, lx.y - 16 + aBoxH / 2, aBoxW, aBoxH, aAngle, 2);
+      a._labelBox = {
+        cx: lx.x,
+        cy: lx.y - 16 + aBoxH / 2,
+        w: aBoxW,
+        h: aBoxH,
+        angle: aAngle,
+        minX,
+        minY,
+        maxX,
+        maxY,
+        corners: aCorners,
+      };
+      // Deliberadamente ya no se pinta fondo — las etiquetas antes se apoyaban sobre una placa
+      // blanca sólida; ahora se leen directamente sobre lo que haya debajo, según petición explícita.
       ctx.fillStyle = '#000';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -69,10 +92,12 @@ export function renderAreas(ctx: CanvasRenderingContext2D, engine: IPlanoEngineC
     if (sel && pts.length >= 2) {
       const firstC = pts[0];
       const secondC = pts[1];
-      const adx = secondC.x - firstC.x, ady = secondC.y - firstC.y;
+      const adx = secondC.x - firstC.x,
+        ady = secondC.y - firstC.y;
       const alen = Math.hypot(adx, ady);
       if (alen > 2) {
-        const unx = adx / alen, uny = ady / alen;
+        const unx = adx / alen,
+          uny = ady / alen;
         const arrowR = 10 * engine.zoom;
         const cx = firstC.x - unx * arrowR * 0.3;
         const cy = firstC.y - uny * arrowR * 0.3;

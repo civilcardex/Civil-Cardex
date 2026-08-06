@@ -80,13 +80,14 @@ interface HidroEntry {
 }
 
 /**
- * Builds tramo objects for a given family (af/ac) from drawing planes, hydro data, and fixture counts.
- * Auto-detects contador/calentador connections at ramal endpoints and generates AC-01 filler ramales.
- * @param family - Network family: 'af' or 'ac'.
- * @param planes - Drawing planes keyed by `family_level`.
- * @param hidroData - Hydro accessory data keyed by `family_elementId_planId`.
- * @param aparatos - Fixture counts keyed by aparatos key.
- * @returns Array of Tramo objects for the family.
+ * Construye objetos de tramo para una familia dada (af/ac) a partir de los planos de dibujo,
+ * los datos hidro y los conteos de aparatos. Auto-detecta conexiones de contador/calentador en
+ * los extremos de ramal y genera ramales de relleno AC-01.
+ * @param family - Familia de red: 'af' o 'ac'.
+ * @param planes - Planos de dibujo claveados por `family_level`.
+ * @param hidroData - Datos de accesorios hidro claveados por `family_elementId_planId`.
+ * @param aparatos - Conteos de aparatos claveados por clave de aparatos.
+ * @returns Array de objetos Tramo para la familia.
  */
 export function buildTramos(
   family: string,
@@ -214,14 +215,16 @@ export function buildTramos(
         return false;
       })();
 
-      // Always read this ramal's OWN key — FixturesPanel writes fixtures/hidroData keyed by the
-      // selected element's own id (storageKey = `${net}_${targetId}_${planId}`). Remapping an
-      // isAC1 ramal's key to the contador's key here made it silently read whatever stray data
-      // sat under `af_${cntId}_${planId}` instead of its own assigned fixtures (phantom UD).
+      // Leer SIEMPRE la clave propia de este ramal — FixturesPanel escribe fixtures/hidroData
+      // anclados a la clave del elemento seleccionado (storageKey = `${net}_${targetId}_${planId}`).
+      // Re-mapear la clave de un ramal isAC1 a la del contador aquí hacía leer silenciosamente
+      // cualquier dato perdido bajo `af_${cntId}_${planId}` en vez de sus fixtures asignados
+      // (UD fantasma).
       const apKey = r._aparatosKey || `${family}_${r.id}_${planId}`;
-      // A persisted heater stub (AC-01-{calId}, written by saveTrazosToDB so the CALENTn
-      // bajante's fixtures survive) reads its own key `ac_AC-01-<calId>_<planId>` from the sync,
-      // but FixturesPanel's mirror puts the counts under `ac_<calId>_<planId>` — merge both.
+      // Un stub de calentador persistido (AC-01-{calId}, escrito por saveTrazosToDB para que los
+      // fixtures del bajante CALENTn sobrevivan) lee su propia clave `ac_AC-01-<calId>_<planId>`
+      // del sync, pero el espejo de FixturesPanel pone los conteos bajo `ac_<calId>_<planId>` —
+      // fusionar ambos.
       let fixturesMap = aparatos[apKey] || {};
       if (family === 'ac' && r.id.startsWith('AC-01-')) {
         const calId = r.id.slice('AC-01-'.length);
@@ -320,9 +323,9 @@ export function buildTramos(
         if (!hasAC1) {
           const rId = `AC-01-${calId}`;
           const apKey = `ac_${calId}_${planId}`;
-          // The heater's fixtures may have been written under the AF key when the user assigned
-          // them while anchored on the AF network (see FixturesPanel's calentador netId rule) —
-          // merge both so nothing already saved is lost.
+          // Los fixtures del calentador pueden haberse escrito bajo la clave AF cuando el usuario
+          // los asignó anclado a la red AF (ver la regla netId del calentador en FixturesPanel) —
+          // fusionar ambos para que nada ya guardado se pierda.
           const calAfKey = `af_${calId}_${planId}`;
           const extra = { ...(hidroData[calAfKey] || {}), ...(hidroData[apKey] || {}) };
           const pisoCal =
@@ -359,9 +362,9 @@ export function buildTramos(
 }
 
 /**
- * Loads sanitary and rainwater (san/ll) tramos from drawing sync data.
- * Separates into sanIncoming (sanitary) and llIncoming (rainwater) arrays.
- * @returns Object with `sanIncoming` and `llIncoming` arrays of Tramo objects.
+ * Carga los tramos sanitarios y de aguas lluvias (san/ll) desde los datos de sync de dibujo.
+ * Separa en arrays sanIncoming (saneamiento) y llIncoming (aguas lluvias).
+ * @returns Objeto con arrays `sanIncoming` y `llIncoming` de objetos Tramo.
  */
 export function loadSanLlTramos() {
   const sync = readSanDrawingSync();
@@ -499,9 +502,9 @@ export function loadSanLlTramos() {
 }
 
 /**
- * Loads cold water (af) and hot water (ac) tramos from hydro drawing sync data.
- * Delegates to {@link buildTramos} for each family.
- * @returns Object with `afIncoming` and `acIncoming` arrays of Tramo objects.
+ * Carga los tramos de agua fría (af) y agua caliente (ac) desde los datos de sync de dibujo
+ * hidro. Delega en {@link buildTramos} para cada familia.
+ * @returns Objeto con arrays `afIncoming` y `acIncoming` de objetos Tramo.
  */
 export function loadAfAcTramos() {
   const sync = readHydroDrawingSync();

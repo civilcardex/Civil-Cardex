@@ -32,11 +32,11 @@ function makeEngine(ramales: PlanoRamal[]): IPlanoEngineCore {
 
 describe('vent tapping onto a straight (no-bend) san run — real production data', () => {
   it("RS2 (a plain 2-point san run) pulls in REV2, whose endpoint sits on RS2's body but not on either of its stored vertices", () => {
-    // Exact coordinates pulled from the user's real localStorage data (civilflow_trazos_...).
-    // RS2 is a dead-straight horizontal run with NO vertex anywhere near REV2's tap point — the
-    // tap is ~0.18 units off the line perpendicular-wise, but ~44-66 units from RS2's nearest
-    // actual stored point. touchesAt (point-vs-point) can never match this; only point-vs-segment
-    // does.
+    // Coordenadas exactas extraídas del localStorage real del usuario (civilflow_trazos_...).
+    // RS2 es un tramo horizontal perfectamente recto SIN ningún vértice cerca del punto de tope de
+    // REV2 — el tope queda a ~0.18 unidades de la línea en perpendicular, pero a ~44-66 unidades
+    // del punto almacenado real más cercano de RS2. touchesAt (punto contra punto) jamás puede
+    // coincidir aquí; solo punto contra segmento lo logra.
     const rs2 = makeRamal('RS2', 'san', [
       [749.2612743545122, 850.3992421667824],
       [858.9923864194926, 850.3992421667824],

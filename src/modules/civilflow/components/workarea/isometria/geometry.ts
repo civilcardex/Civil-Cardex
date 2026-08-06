@@ -19,8 +19,9 @@ export type IsoBajante = PlanoBajante & {
   targetBajanteId?: string;
 };
 
-/** Iso units per world meter — the projection space is uniform at this scale (getIsoCoords and
- *  getZPix both multiply meters by this), so a 1 m dimension spans ISO_SCALE iso units. */
+/** Unidades iso por metro mundial — el espacio de proyección es uniforme a esta escala
+ *  (getIsoCoords y getZPix multiplican los metros por este valor), de modo que una dimensión de
+ *  1 m abarca ISO_SCALE unidades iso. */
 export const ISO_SCALE = 150;
 
 function project(
@@ -57,13 +58,14 @@ function readDrawingAll(plans: PlanItem[], netIds: string[]) {
   for (const nid of netIds) dataByNet[nid] = { ramales: [], bajantes: [] };
   const scaleMap: Record<number, number> = {};
   const origenMap: Record<number, { x_px: number; y_px: number }> = {};
-  // Ghosts are collected separately and turned into drawable (but connector-line-suppressed —
-  // see the `_isCrossFloorGhost` flag and useIsometriaRender.ts) synthetic bajante entries below.
-  // The ghost's position is the actual intended visual anchor for the cross-floor connection —
-  // possibly deliberately offset from the real target via a Ldesvio deviation — so the real
-  // source bajante's connector must reach exactly THIS point, not some other bajante/ramal found
-  // by independently resolving descargaEnId. The ghost itself never draws its own copy of that
-  // same line (that would be the same connection rendered twice, once from each end).
+  // Los ghosts se recogen por separado y se convierten en entradas sintéticas de bajante
+  // dibujables (pero con la línea de conector suprimida — ver el flag `_isCrossFloorGhost` y
+  // useIsometriaRender.ts) más abajo. La posición del ghost es el ancla visual realmente buscada
+  // para la conexión entre pisos — posiblemente desfasada a propósito del destino real mediante
+  // una desviación Ldesvio — por lo que el conector de la bajante origen real debe llegar
+  // exactamente a ESTE punto, no a otra bajante/ramal encontrado resolviendo descargaEnId por su
+  // cuenta. El ghost nunca dibuja su propia copia de esa misma línea (sería la misma conexión
+  // renderizada dos veces, una desde cada extremo).
   const ghostsByNet: Record<
     string,
     Array<CrossFloorGhost & { planNivel: number; planId: string }>
@@ -95,7 +97,8 @@ function readDrawingAll(plans: PlanItem[], netIds: string[]) {
         if (b.net === netId)
           dataByNet[netId].bajantes.push({ ...b, planNivel: plan.nivel, planId: String(plan.id) });
       }
-      // Cross-floor ghosts: held back until the second pass below (see ghostsByNet comment).
+      // Ghosts entre pisos: se reservan hasta la segunda pasada de más abajo (ver comentario de
+      // ghostsByNet).
       for (const g of data.crossFloorGhosts || []) {
         if (g.net !== netId) continue;
         ghostsByNet[netId].push({ ...g, planNivel: plan.nivel, planId: String(plan.id) });

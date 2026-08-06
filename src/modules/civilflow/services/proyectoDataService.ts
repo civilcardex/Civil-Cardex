@@ -1,11 +1,11 @@
 import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError';
-import type { Piso } from '../components/useWorkAreaState';
+import type { Piso } from '../lib/shared/projectTypes';
 import type { Proyecto } from '../context/ProyectoContext';
 import type { MaterialItem } from '../context/MaterialesContext';
 import type { ProfItem } from '../context/ProfundidadesContext';
 import type { CritItem } from '../context/CriteriosContext';
-import type { PlanMeta } from '../context/PlansContext';
+import type { PlanMeta } from '../lib/shared/projectTypes';
 
 export interface ProyectoCoreData {
   pisos: Piso[];
@@ -20,9 +20,9 @@ export interface ProyectoDataRow extends Partial<ProyectoCoreData> {
   redesActivas?: string[];
 }
 
-// Row shapes returned by the get_proyecto_data(proyecto_id) RPC — single round-trip
-// read of proyecto_general + pisos + materiales + profundidades + criterios + planos
-// meta, instead of 6 separate sequential queries. See
+// Formas de fila devueltas por el RPC get_proyecto_data(proyecto_id) — lee en una sola
+// ida y vuelta proyecto_general + pisos + materiales + profundidades + criterios + planos
+// meta, en lugar de 6 consultas secuenciales separadas. Ver
 // supabase/migrations/20260730000001_civilflow_schema.sql.
 interface ProyectoGeneralRow {
   nombre?: string;
@@ -174,9 +174,9 @@ function planoMetaRowToPlanMeta(row: PlanoMetaRow): PlanMeta {
 }
 
 /**
- * Replaces a project's pisos/proyecto_general/materiales/profundidades/criterios rows
- * with the given snapshot (delete-then-insert per table, matching the previous
- * "overwrite the whole jsonb blob" semantics now that each is a normalized table).
+ * Reemplaza las filas de pisos/proyecto_general/materiales/profundidades/criterios de un
+ * proyecto con el snapshot dado (borra-e-inserta por tabla, replicando la semántica previa
+ * de "sobrescribir todo el blob jsonb" ahora que cada colección es una tabla normalizada).
  */
 export async function saveProyectoCoreData(
   proyectoId: number,
@@ -294,10 +294,10 @@ export async function saveProyectoCoreData(
 }
 
 /**
- * Upserts just the `redes_activas` column of proyecto_general — partial upsert, doesn't touch
- * nombre/dir/mats/etc (unlike saveProyectoCoreData, which owns the whole row). Used by
- * useWorkAreaState.ts's "Redes activas"/"Equipos activos" toggle, which is independent of the
- * ProjectContext core-data bundle.
+ * Hace upsert solo de la columna `redes_activas` de proyecto_general — upsert parcial, no toca
+ * nombre/dir/mats/etc (a diferencia de saveProyectoCoreData, que es dueña de toda la fila). Lo usa
+ * el toggle "Redes activas"/"Equipos activos" de useWorkAreaState.ts, independiente del
+ * bundle de datos core de ProjectContext.
  */
 export async function saveRedesActivas(proyectoId: number, redes: string[]): Promise<void> {
   try {
@@ -318,7 +318,7 @@ export async function saveRedesActivas(proyectoId: number, redes: string[]): Pro
   }
 }
 
-/** Replaces a project's `planos` rows (metadata only — PDF binaries go through pdfStorageService). */
+/** Reemplaza las filas `planos` de un proyecto (solo metadatos — los binarios PDF van por pdfStorageService). */
 export async function saveProyectoPlansMeta(
   proyectoId: number,
   plansMeta: PlanMeta[],
@@ -364,9 +364,9 @@ export async function saveProyectoPlansMeta(
 }
 
 /**
- * Loads a project's full core dataset in a single round trip via the
- * get_proyecto_data RPC (proyecto_general + pisos + materiales + profundidades +
- * criterios + planos metadata), instead of 6 sequential table selects.
+ * Carga el dataset core completo de un proyecto en una sola ida y vuelta vía el
+ * RPC get_proyecto_data (proyecto_general + pisos + materiales + profundidades +
+ * criterios + metadatos de planos), en lugar de 6 selects secuenciales a tablas.
  */
 export async function loadProyectoData(proyectoId: number): Promise<ProyectoDataRow | null> {
   try {

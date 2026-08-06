@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { getBajantesFantasma } from '../PlanoEngineNetwork';
 import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState';
 
-// Characterization coverage for cross-floor "fantasma" (ghost) bajantes — a bajante drawn on one
-// floor that spans multiple levels (nptBase..nptCima) must show up as a ghost on every floor it
-// crosses (except its own pisoBase, where it renders as the real bajante) and on the floor just
-// above its top, so the user can see where it terminates. This is the mechanism behind
+// Cobertura de caracterización de bajantes "fantasma" entre pisos — un bajante dibujado en un piso
+// que atraviesa varios niveles (nptBase..nptCima) debe aparecer como fantasma en cada piso que
+// cruza (salvo su propio pisoBase, donde se dibuja como bajante real) y en el piso inmediatamente
+// superior a su cima, para que el usuario vea dónde termina. Es el mecanismo detrás de
 // "asociar bajante entre pisos".
 
 function makeBajante(over: Partial<PlanoBajante>): PlanoBajante {

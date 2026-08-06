@@ -49,11 +49,11 @@ interface AlertState {
 const CLOSED: AlertState = { isOpen: false, title: '', message: '' };
 
 /**
- * Mounts a single in-app AlertDialog at the app root and listens for the
- * `civilflow_diametro_validation` (and any other custom-validation) window events. Without this
- * provider at the root, design-table pages dispatching such an event when the PDF viewer is
- * NOT mounted (the two live at different routes, /civilflowareatrabajo vs /civilflowvisor)
- * silently lose the alert — users would never see the rejection.
+ * Monta un único AlertDialog de la app en la raíz y escucha los eventos de ventana
+ * `civilflow_diametro_validation` (y cualquier otra validación personalizada). Sin este provider
+ * en la raíz, las páginas de tabla de diseño que disparan ese evento cuando el visor PDF NO está
+ * montado (ambos viven en rutas distintas, /civilflowareatrabajo vs /civilflowvisor) perderían
+ * la alerta en silencio — el usuario jamás vería el rechazo.
  */
 export function GlobalAlertDialogProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AlertState>(CLOSED);
@@ -113,7 +113,7 @@ export function GlobalAlertDialogProvider({ children }: { children: React.ReactN
             {state.message}
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="button" autoFocus onClick={handleClose} style={GAlertDialog_S3}>
+            <button type="button" onClick={handleClose} style={GAlertDialog_S3}>
               Aceptar
             </button>
           </div>

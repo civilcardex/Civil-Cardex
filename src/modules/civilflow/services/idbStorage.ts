@@ -36,9 +36,9 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 /**
- * Stores a PDF file in IndexedDB keyed by numeric id.
- * @param id - Numeric plan identifier.
- * @param file - PDF File object to persist.
+ * Guarda un archivo PDF en IndexedDB con clave numérica por id.
+ * @param id - Identificador numérico del plano.
+ * @param file - Objeto File PDF a persistir.
  */
 export async function storePDF(id: number, file: File): Promise<void> {
   try {
@@ -57,9 +57,10 @@ export async function storePDF(id: number, file: File): Promise<void> {
 }
 
 /**
- * Loads a PDF file from IndexedDB by id. Returns a File object with original name and MIME type.
- * @param id - Numeric plan identifier.
- * @returns File object or null if not found.
+ * Carga un archivo PDF de IndexedDB por id. Devuelve un objeto File con el nombre original
+ * y el MIME type.
+ * @param id - Identificador numérico del plano.
+ * @returns Objeto File o null si no existe.
  */
 export async function loadPDF(id: number): Promise<File | null> {
   try {
@@ -84,7 +85,7 @@ export async function loadPDF(id: number): Promise<File | null> {
 }
 
 /**
- * Deletes all PDF records from the IndexedDB store.
+ * Elimina todos los registros PDF del store de IndexedDB.
  */
 export async function clearAllPDFs(): Promise<void> {
   try {
@@ -102,8 +103,8 @@ export async function clearAllPDFs(): Promise<void> {
 }
 
 /**
- * Deletes a single PDF record from IndexedDB by id.
- * @param id - Numeric plan identifier.
+ * Elimina un registro PDF individual de IndexedDB por id.
+ * @param id - Identificador numérico del plano.
  */
 export async function deletePDF(id: number): Promise<void> {
   try {

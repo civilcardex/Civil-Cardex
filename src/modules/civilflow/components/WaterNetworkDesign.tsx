@@ -99,9 +99,9 @@ const isAf = (t: string) => t === 'af';
 
 const isContador = (s: string) => s.startsWith('CNT') || s.startsWith('cntAF');
 
-// Same sigla → code transform the drawing engine already applies when it writes a fixture's
-// abbreviation into a ramal's ini/fin (PlanoEngineNetwork.ts): "Duc:" -> "DUC". Reusing it here
-// means a tramo's ini/fin matches directly, no separate lookup table to keep in sync.
+// Misma transformación sigla → código que ya aplica el motor de dibujo al escribir la abreviatura
+// de un aparato en el ini/fin del ramal (PlanoEngineNetwork.ts): "Duc:" -> "DUC". Reutilizarla aquí
+// hace que el ini/fin del tramo coincida directo, sin tabla de búsqueda aparte que mantener sincronizada.
 const APARATO_PMAX_BY_CODE: Record<string, number> = Object.fromEntries(
   APARATOS_DEF.map((a) => [a.sigla.replace(':', '').trim().toUpperCase(), a.pmax]),
 );
@@ -157,10 +157,10 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     const pulg = opt.pulg;
     const res = writeDiametroToDrawing(tramoId, networkType, opt.label, plans);
     if (!res.ok && res.reason === 'accessory-larger') {
-      // Show the same in-app AlertDialog as the engine path (mirrors
-      // ExtremeAccessoryEditor.tsx:110-117 which validates the inverse direction). Without this
-      // the design-table write would silently succeed and a wider accessory would later end up
-      // drawn around a thinner pipe — physically nonsensical.
+      // Mostrar el mismo AlertDialog de la app que el flujo del motor (espejo de
+      // ExtremeAccessoryEditor.tsx:110-117, que valida la dirección inversa). Sin esto la escritura
+      // de la tabla de diseño tendría éxito en silencio y un accesorio más ancho terminaría dibujado
+      // alrededor de un tubo más delgado — físicamente absurdo.
       window.dispatchEvent(
         new CustomEvent('civilflow_diametro_validation', {
           detail: {
@@ -211,26 +211,26 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   const [conexionesDisplay, componentTotalMap, tramoParentOf, pressureRootKey, qpropMap] =
     useMemo(() => {
       const calculoMap: Record<string, string[]> = {};
-      // A montante/bajante has no identity preserved across floors — copying a trazo between plans
-      // assigns it a brand new id/code (see copyDrawingFromPlan.ts). The only reliable signal that
-      // two per-floor elements are the same physical riser is sitting at (roughly) the same x/y on
-      // different floors — collected here, linked once every plan has been scanned.
+      // Un montante/bajante no conserva identidad entre pisos — copiar un trazo entre planos le
+      // asigna un id/código nuevo (ver copyDrawingFromPlan.ts). La única señal confiable de que dos
+      // elementos por piso son el mismo tubo ascendente físico es estar (aproximadamente) en el
+      // mismo x/y en pisos distintos — se recolectan aquí y se enlazan una vez escaneados todos los planos.
       const bajanteNodes: Array<{ key: string; x: number; y: number; nivel: number }> = [];
-      // A ramal auto-created at a T/Y junction (autoSplitJunctionAndSumFlow, PlanoEngineDrawing.ts)
-      // carries mergesFrom = [idA, idB] — but that only records the ONE pair that triggered the
-      // mid-body split. A third (or fourth) ramal terminating at the exact same coordinate attaches
-      // via a plain endpoint-to-endpoint join and never gets into mergesFrom at all — yet its
-      // proximity-based adjacency edge still needs severing from the OTHER branches at that same
-      // point, or its UC leaks into whichever branch it ties-break-connects to. So the real set of
-      // "branches at this junction" is discovered by coordinate, not just read off mergesFrom.
+      // Un ramal auto-creado en empalme T/Y (autoSplitJunctionAndSumFlow, PlanoEngineDrawing.ts)
+      // lleva mergesFrom = [idA, idB] — pero eso solo registra el PAR que disparó el corte en medio
+      // del cuerpo. Un tercer (o cuarto) ramal que termina en la misma coordenada se conecta por
+      // empalme extremo-a-extremo simple y nunca entra a mergesFrom — y aun así su arista de
+      // adyacencia por proximidad debe cortarse de las OTRAS ramas en ese mismo punto, o su UC se
+      // filtra a la rama con la que empate por desempate. Por eso el conjunto real de "ramas en
+      // este empalme" se descubre por coordenada, no solo leyendo mergesFrom.
       const mergeBranches: Record<string, string[]> = {};
-      // Every ramal endpoint, tagged with its plan — used below to find PLAIN (non-mergesFrom)
-      // junctions where 3+ ramales meet at one coordinate via ordinary endpoint-to-endpoint drawing
-      // (a trunk splitting into branches). `checkEndpoint` below only links each endpoint to its
-      // single nearest neighbor, independently per ramal — at a 3-way point that can produce a
-      // triangle/cycle of edges (A-B from A's own search, B-C from B's, C-A from C's), and a cycle
-      // breaks the single-parent BFS tree computeDirectedTotals relies on, corrupting totals for
-      // everyone in the cycle. Pruned back to a cycle-free tree further below.
+      // Cada extremo de ramal, etiquetado con su plano — se usa abajo para hallar empalmes PLANOS
+      // (sin mergesFrom) donde 3+ ramales coinciden en una coordenada por dibujo extremo-a-extremo
+      // común (un tronco que se divide en ramas). `checkEndpoint` abajo solo enlaza cada extremo a
+      // su vecino más cercano, independiente por ramal — en un punto de 3 vías eso puede producir
+      // un triángulo/ciclo de aristas (A-B por la búsqueda de A, B-C por la de B, C-A por la de C),
+      // y un ciclo rompe el árbol BFS de padre único del que depende computeDirectedTotals,
+      // corrompiendo los totales de todos los del ciclo. Se poda a un árbol sin ciclos más abajo.
       const ramalEndpoints: Array<{ key: string; x: number; y: number; planId: string }> = [];
 
       for (const plan of plans || []) {
@@ -259,18 +259,17 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         };
         for (const r of ramales) {
           if (!r.mergesFrom || !r.pts || r.pts.length === 0) continue;
-          // The auto-created ramal always starts exactly at the junction coordinate
+          // El ramal auto-creado siempre arranca exactamente en la coordenada del empalme
           // (autoSplitJunctionAndSumFlow: downstreamPts = [[ep[0],ep[1]], ...]).
           const jc = r.pts[0];
-          // `r.mergesFrom` is always [existing.id, incoming.id] by construction. Which of the three
-          // ramales at this junction (existing, downstream=r, incoming) DISPLAYS the combined total
-          // is decided purely by current flow direction — not fixed to "existing" or "the
-          // auto-created one": junctionHasOutgoingFlow already guarantees at least one of the three
-          // flows OUT of jc, so with three ramales the split is always 2-vs-1, and the lone
-          // dissenter (the one whose direction disagrees with the other two) is the entrant.
-          // Recomputed fresh from current `_tribReversed` every render, so an "Invertir dirección de
-          // flujo" on any of the three immediately changes which one accumulates. Mirrors
-          // waterNetworkRows.ts.
+          // `r.mergesFrom` es siempre [existing.id, incoming.id] por construcción. Cuál de los tres
+          // ramales de este empalme (existing, downstream=r, incoming) MUESTRA el total combinado se
+          // decide solo por la dirección actual del flujo — no está fijo a "existing" ni al
+          // "auto-creado": junctionHasOutgoingFlow ya garantiza que al menos uno de los tres flujos
+          // SALE de jc, así que con tres ramales la división es siempre 2-vs-1, y el único disidente
+          // (el que discrepa de los otros dos) es el entrante. Se recalcula fresco desde el
+          // `_tribReversed` actual en cada render, para que un "Invertir dirección de flujo" en
+          // cualquiera de los tres cambie de inmediato cuál acumula. Espejo de waterNetworkRows.ts.
           const [aId, bId] = r.mergesFrom;
           const existingObj = ramales.find((x) => x.id === aId);
           const incomingObj = ramales.find((x) => x.id === bId);
@@ -334,8 +333,8 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
                 (b.recibeDeIds.includes(r.id) || (r.label && b.recibeDeIds.includes(r.label)));
               const dist = Math.hypot(pt[0] - b.x!, pt[1] - b.y!);
               if (isExplicit) {
-                // Explicit link doesn't say which end — assign it to whichever endpoint is
-                // geometrically closer, so a bajante at each end each claims its own.
+                // El enlace explícito no dice en qué extremo — se asigna al extremo que quede
+                // geométricamente más cerca, para que un bajante en cada extremo reclame el suyo.
                 const otherPt = pt === pEnd ? pStart : pEnd;
                 const otherDist = Math.hypot(otherPt[0] - b.x!, otherPt[1] - b.y!);
                 if (dist < otherDist) return { type: 'bajante' as const, id: b.id };
@@ -362,9 +361,9 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
             return null;
           };
 
-          // A ramal can have a bajante at EACH end — check both endpoints independently instead
-          // of short-circuiting on the first match, otherwise the second bajante is silently
-          // dropped from calculoMap.
+          // Un ramal puede tener un bajante en CADA extremo — revisar ambos extremos de forma
+          // independiente en lugar de cortar en la primera coincidencia, o el segundo bajante se
+          // pierde en silencio de calculoMap.
           const connections = [checkEndpoint(pEnd), checkEndpoint(pStart)].filter(
             (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null,
           );
@@ -377,8 +376,9 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         }
       }
 
-      // Bridge same-position montante/bajante nodes across consecutive floors (see comment above)
-      // so a ramal ending at one floor's riser connects through to the next floor's.
+      // Puentear nodos montante/bajante en la misma posición entre pisos consecutivos (ver
+      // comentario anterior) para que un ramal que termina en el sube-baja de un piso conecte
+      // hasta el del piso siguiente.
       const usedNode = new Set<number>();
       for (let i = 0; i < bajanteNodes.length; i++) {
         if (usedNode.has(i)) continue;
@@ -406,7 +406,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         }
       }
 
-      // Build undirected adjacency list for all tramos
+      // Construir lista de adyacencia no dirigida de todos los tramos
       const adj: Record<string, string[]> = {};
       for (const t of tramos) {
         const key = t._key || t.id;
@@ -421,16 +421,17 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
           if (!adj[childKey].includes(parentKey)) adj[childKey].push(parentKey);
         }
       }
-      // Sever the edges a mergeOverride will handle explicitly — otherwise the general BFS tree
-      // below would ALSO make whichever of the two merging ramales sits closer to root fold the
-      // other one (and the merged ramal itself) into IT, on top of the override forcing the merged
-      // ramal's total to their sum: the same demand would get counted twice.
-      // Also sever any DIRECT k1<->k2 edge: at a 3-way merge point all three ramales' endpoints sit
-      // at the exact same coordinate, so the proximity match above (checkEndpoint / distToPolyline)
-      // can resolve a source ramal's nearest-neighbor to the OTHER source instead of to the merged
-      // ramal (a distance tie broken by array order). Left alone, that stray edge lets one source's
-      // total leak into the other's — e.g. RAF1 picking up RAF2's total — even though the merged
-      // ramal's own total is already correctly forced to their sum right below.
+      // Cortar las aristas que un mergeOverride manejará explícitamente — si no, el árbol BFS
+      // general de abajo haría ADEMÁS que el más cercano a la raíz de los dos ramales que se
+      // fusionan absorba al otro (y al propio ramal fusionado) en sí, encima del override que ya
+      // fuerza el total del ramal fusionado a su suma: la misma demanda se contaría dos veces.
+      // Cortar también cualquier arista DIRECTA k1<->k2: en un punto de fusión de 3 vías los tres
+      // extremos de los ramales están en la misma coordenada exacta, así que la coincidencia por
+      // proximidad de arriba (checkEndpoint / distToPolyline) puede resolver el vecino más cercano
+      // de un ramal fuente hacia la OTRA fuente en lugar del ramal fusionado (empate de distancia
+      // roto por el orden del arreglo). Sin cortarla, esa arista suelta deja que el total de una
+      // fuente se filtre en la otra — p. ej. RAF1 tomando el total de RAF2 — aunque el total del
+      // propio ramal fusionado ya está correctamente forzado a su suma justo abajo.
       for (const [mergedKey, branches] of Object.entries(mergeBranches)) {
         adj[mergedKey] = (adj[mergedKey] || []).filter((k) => !branches.includes(k));
         for (const b of branches) {
@@ -438,15 +439,15 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         }
       }
 
-      // Plain (non-mergesFrom) junctions: group every ramal endpoint by coordinate (same-plan only)
-      // to find every point where 3+ ramales meet via ordinary drawing (a trunk splitting into
-      // branches, or several branches arriving at one spot) — `checkEndpoint` above links each
-      // endpoint independently to its own single nearest neighbor, which at a 3+-way point can
-      // produce a triangle/cycle of edges. A cycle breaks the single-parent-per-node assumption
-      // computeDirectedTotals' BFS relies on, corrupting totals for every member of the cycle (not
-      // just merge sources — this covers the general case). Prune down to a cycle-free tree per
-      // cluster via union-find, without ever disconnecting anyone (only removes an edge that would
-      // close a cycle within the same cluster).
+      // Empalmes PLANOS (sin mergesFrom): agrupar cada extremo de ramal por coordenada (solo del
+      // mismo plano) para hallar todo punto donde 3+ ramales coinciden por dibujo común (un tronco
+      // que se divide en ramas, o varias ramas que llegan a un mismo sitio) — `checkEndpoint` de
+      // arriba enlaza cada extremo de forma independiente a su único vecino más cercano, lo que en
+      // un punto de 3+ vías puede producir un triángulo/ciclo de aristas. Un ciclo rompe la premisa
+      // de padre único por nodo del BFS de computeDirectedTotals, corrompiendo los totales de todos
+      // los miembros del ciclo (no solo fuentes de fusión — esto cubre el caso general). Podar a un
+      // árbol sin ciclos por clúster vía union-find, sin desconectar a nadie (solo elimina una
+      // arista que cerraría un ciclo dentro del mismo clúster).
       const usedEp = new Set<number>();
       for (let i = 0; i < ramalEndpoints.length; i++) {
         if (usedEp.has(i)) continue;
@@ -488,7 +489,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         }
       }
 
-      // Helper to run BFS to get direct neighbors (excluding startKey, stopping traversal at any main ramal node)
+      // Helper: BFS para obtener vecinos directos (excluye startKey y se detiene en cualquier ramal principal)
       const getConnectedNeighbors = (startKey: string): string[] => {
         const results = new Set<string>();
         const visited = new Set<string>();
@@ -502,7 +503,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
             const isMainRamal = tr && tr.tipo !== 'tributario' && !tr.esBajante;
             if (isMainRamal) {
               results.add(node);
-              continue; // Stop traversal at this main ramal
+              continue; // Detener recorrido en este ramal principal
             }
           }
           for (const neighbor of adj[node] || []) {
@@ -523,13 +524,14 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
           displayMap[key] = getConnectedNeighbors(key);
         }
       }
-      // The merge-branch edges got severed from `adj` above so the directed-tree BFS wouldn't
-      // double-count the merged ramal's UC through the general path — but that also hid the source
-      // ramales from "Otros Ramales" here, since this reads the same severed `adj`. Add them back
-      // explicitly: the merged ramal must display the ramales it was created from. Same tributario/
-      // bajante exclusion as every other path into displayMap (getConnectedNeighbors' isMainRamal
-      // check) — a merge source that got mistagged tributario (see the existing.tipo guard in
-      // autoSplitJunctionAndSumFlow) must not leak into this column either.
+      // Las aristas de las ramas fusionadas se cortaron de `adj` arriba para que el BFS de árbol
+      // dirigido no contara dos veces la UC del ramal fusionado por la vía general — pero eso
+      // también ocultó los ramales fuente de "Otros Ramales" aquí, ya que esto lee ese mismo `adj`
+      // cortado. Reagregarlos explícitamente: el ramal fusionado debe mostrar los ramales de los
+      // que fue creado. Misma exclusión tributario/bajante que toda otra vía hacia displayMap
+      // (chequeo isMainRamal de getConnectedNeighbors) — una fuente de fusión mal etiquetada como
+      // tributario (ver el guard de existing.tipo en autoSplitJunctionAndSumFlow) tampoco debe
+      // colarse en esta columna.
       for (const [mergedKey, branches] of Object.entries(mergeBranches)) {
         if (!displayMap[mergedKey]) continue;
         for (const k of branches) {
@@ -538,19 +540,20 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
           if (!displayMap[mergedKey].includes(k)) displayMap[mergedKey].push(k);
         }
       }
-      // A merge source's own "Otros Ramales" row must show NOTHING — not its co-source, and not
-      // even the auto-created ramal it feeds (that association is already visible from the OTHER
-      // direction: the auto-created ramal's own row lists both sources, via the loop above). Only
-      // the auto-created ramal's row should ever show an association for this merge.
+      // La fila "Otros Ramales" de una fuente de fusión debe mostrar NADA — ni su co-fuente, ni
+      // siquiera el ramal auto-creado al que alimenta (esa asociación ya se ve desde la OTRA
+      // dirección: la fila del propio ramal auto-creado lista ambas fuentes, vía el ciclo de
+      // arriba). Solo la fila del ramal auto-creado debe mostrar asociación para esta fusión.
       for (const branches of Object.values(mergeBranches)) {
         for (const b of branches) {
           if (displayMap[b]) displayMap[b] = [];
         }
       }
-      // Direct the same adjacency from the network's pressure source outward, so each tramo's
-      // Pinicial can chain from its actual upstream tramo's Pfinal instead of the flat acometida
-      // pressure. AF's source is the trunk tramo (Contador→Mon, isAC2); AC has no acometida of its
-      // own — its source is the tramo reaching the calentador, fed from AF (see pressure section).
+      // Dirigir la misma adyacencia desde la fuente de presión de la red hacia afuera, para que el
+      // Pinicial de cada tramo pueda encadenarse desde el Pfinal de su tramo aguas arriba real en
+      // lugar de la presión plana de acometida. La fuente de AF es el tramo troncal (Contador→Mon,
+      // isAC2); AC no tiene acometida propia — su fuente es el tramo que llega al calentador,
+      // alimentado desde AF (ver sección de presión).
       const rootT =
         tramos.find(isAC2) ||
         tramos.find(
@@ -558,9 +561,9 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
             String(t.ini || '').startsWith('CALENT') || String(t.fin || '').startsWith('CALENT'),
         );
       let rootKey = rootT ? rootT._key || rootT.id : null;
-      // Neither heuristic found a root — falls all the way back to computeComponentTotals's
-      // undirected whole-component sum otherwise (every tramo showing the identical grand total).
-      // Approximate the trunk with the most-connected tramo instead of giving up on direction.
+      // Ninguna heurística encontró raíz — de otro modo cae hasta la suma no dirigida del
+      // componente completo de computeComponentTotals (todo tramo mostrando el mismo gran total).
+      // Aproximar el troncal con el tramo más conectado en lugar de rendirse con la dirección.
       if (!rootKey) {
         let bestKey: string | null = null,
           bestDeg = -1;
@@ -575,9 +578,9 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         if (bestDeg > 0) rootKey = bestKey;
       }
 
-      // Rooted at the actual supply source, not the whole undirected connected component — a branch
-      // feeding one fixture must only show its OWN accumulated total, not the entire building's
-      // demand just because it's hydraulically part of the same network (see connectionGraph.ts).
+      // Enraizado en la fuente real de suministro, no en todo el componente conectado no dirigido
+      // — una rama que alimenta un aparato solo debe mostrar SU total acumulado, no la demanda de
+      // todo el edificio solo por ser hidráulicamente parte de la misma red (ver connectionGraph.ts).
       const componentTotalMap = computeDirectedTotals(
         tramos,
         (t) => t._key || t.id,
@@ -585,20 +588,21 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         (t) => calcUCparcial(t, AP, 'uc'),
         rootKey,
       );
-      // The entrant can now be the auto-created ramal itself (when its own flow direction was
-      // reversed relative to `existing`) — and that ramal can carry its OWN fixtures directly, not
-      // just the merged branches' totals. Snapshot each target's pre-override (own, tree-based)
-      // total BEFORE the loop below overwrites it, so the override can ADD the branches to it
-      // instead of replacing it — otherwise a fixture assigned directly to the entrant ramal
-      // silently vanished from its own displayed total.
+      // El entrante ahora puede ser el propio ramal auto-creado (cuando su dirección de flujo quedó
+      // invertida respecto a `existing`) — y ese ramal puede llevar SUS propios aparatos directos,
+      // no solo los totales de las ramas fusionadas. Guardar el total pre-override (propio, basado
+      // en árbol) de cada objetivo ANTES de que el ciclo de abajo lo sobreescriba, para que el
+      // override pueda SUMAR las ramas en vez de reemplazarlo — si no, un aparato asignado
+      // directamente al ramal entrante desaparecía en silencio de su propio total mostrado.
       const ownTotalMap: Record<string, number> = {};
       for (const [key] of Object.entries(mergeBranches)) {
         if (componentTotalMap[key] !== undefined) ownTotalMap[key] = componentTotalMap[key];
       }
-      // A chain of merges (R1+R2→R5, then R5+R3→R6) needs R5's own override resolved before R6
-      // reads it as a source — Object.entries() has no guarantee of processing sources before their
-      // consumers, so a single pass could read a not-yet-overridden (still tree-based, wrong) value
-      // for a source that is itself a merge. Iterate to a fixed point instead of a single pass.
+      // Una cadena de fusiones (R1+R2→R5, luego R5+R3→R6) necesita que el override propio de R5 se
+      // resuelva antes de que R6 lo lea como fuente — Object.entries() no garantiza procesar las
+      // fuentes antes que sus consumidores, así que una sola pasada podría leer un valor aún sin
+      // override (sigue basado en árbol, incorrecto) para una fuente que a su vez es una fusión.
+      // Iterar hasta un punto fijo en lugar de una sola pasada.
       const mergeEntries = Object.entries(mergeBranches);
       for (let pass = 0; pass <= mergeEntries.length; pass++) {
         let changedAny = false;
@@ -614,11 +618,11 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         }
         if (!changedAny) break;
       }
-      // A ramal that FEEDS a merge (a branch in mergeBranches) must never show a different total
-      // just because it happens to be a merge source — its own displayed total stays exactly its
-      // own UC/UD, regardless of anything the directed-tree fold picked up for it through some
-      // other, non-severed path. Skip branches that are themselves a merge target (nested chains)
-      // — those legitimately keep the summed value from the loop above, not their raw own value.
+      // Un ramal que ALIMENTA una fusión (una rama en mergeBranches) nunca debe mostrar un total
+      // distinto solo por ser fuente de fusión — su total mostrado queda exactamente en su propia
+      // UC/UD, sin importar lo que el plegado de árbol dirigido haya tomado para él por alguna otra
+      // vía no cortada. Omitir ramas que a su vez son objetivo de fusión (cadenas anidadas) — esas
+      // sí conservan legítimamente el valor sumado del ciclo de arriba, no su valor propio crudo.
       const allBranchIds = new Set<string>();
       for (const branches of Object.values(mergeBranches)) {
         for (const b of branches) allBranchIds.add(b);
@@ -644,9 +648,9 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         }
       }
 
-      // The BFS above walks through bajante/contador/montante junction points too (they're nodes
-      // in `adj` but not Tramo objects) — collapse those into the nearest real upstream tramo so
-      // callers can go straight from a tramo's key to its governing tramo's key.
+      // El BFS de arriba también recorre puntos de unión bajante/contador/montante (son nodos en
+      // `adj` pero no objetos Tramo) — colapsarlos al tramo real aguas arriba más cercano para que
+      // los llamadores vayan directo de la key de un tramo a la key del tramo que lo gobierna.
       const tramoKeySet = new Set(tramos.map((t) => t._key || t.id));
       const tramoParentOf: Record<string, string> = {};
       for (const t of tramos) {
@@ -656,10 +660,10 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         if (cur) tramoParentOf[key] = cur;
       }
 
-      // Probable-flow (Hunter curve, K·f(UC)) per tramo — for an auto-created ramal at a T/Y
-      // junction, `total` already reads componentTotalMap[key], which was overridden above (line
-      // 353-356) to the sum of the two merging branches' UC. So the formula here runs on the
-      // correctly combined UC total for every tramo, merged or not — no separate override needed.
+      // Flujo probable (curva de Hunter, K·f(UC)) por tramo — para un ramal auto-creado en empalme
+      // T/Y, `total` ya lee componentTotalMap[key], sobreescrito arriba (línea 353-356) con la suma
+      // de la UC de las dos ramas fusionadas. Así la fórmula aquí corre sobre el total UC combinado
+      // correcto para todo tramo, fusionado o no — no se necesita override aparte.
       const qpropMap: Record<string, number> = {};
       for (const t of tramos) {
         const key = t._key || t.id;
@@ -689,10 +693,10 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
       ] as const;
     }, [plans, tramos, networkType, AP]);
 
-  // mergeBranches is now keyed directly by the ramal that should DISPLAY the combined total
-  // (existing, the structural trunk) rather than by the auto-created ramal — so
-  // componentTotalMap already has the right value on the right key with no separate relabel
-  // step. Kept as a named alias since call sites below already read `displayTotalMap`.
+  // mergeBranches ahora se indexa directamente por el ramal que debe MOSTRAR el total combinado
+  // (existing, el tronco estructural) en lugar del ramal auto-creado — así componentTotalMap ya
+  // tiene el valor correcto en la key correcta sin paso de reetiquetado aparte. Se mantiene como
+  // alias nombrado porque los puntos de llamada de abajo ya leen `displayTotalMap`.
   const displayTotalMap = componentTotalMap;
 
   const propiaMap = useMemo(() => {
@@ -891,9 +895,9 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
   const pResidual = +(f1.Pfin - f2.Pfin).toFixed(2);
   const okPresion = f1.Pfin > f2.Pfin;
 
-  // AC has no acometida of its own — it's fed from the water heater, which is itself fed from
-  // AF. Read AF's own resolved pressure at that shared calentador node (persisted below) so
-  // AC's root tramo can seed from it instead of the flat pRed fallback.
+  // AC no tiene acometida propia — se alimenta del calentador de agua, que a su vez se alimenta
+  // de AF. Leer la presión resuelta de AF en ese nodo calentador compartido (persistida abajo)
+  // para que el tramo raíz de AC arranque desde ella en lugar del pRed plano de respaldo.
   const afHeaterPfin = useMemo(() => {
     if (isAf(networkType)) return null;
     const heaterTramo = tramosAf.find(
@@ -902,22 +906,22 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     return heaterTramo?.pFin ?? null;
   }, [networkType, tramosAf]);
 
-  // Real tree-based pressure propagation, resolved once per render (recursively, memoized as it
-  // goes) instead of every tramo flatly reading the acometida pressure:
-  //   1. The network's root (tr2 for AF, the calentador tramo for AC) seeds from its own source.
-  //   2. A tramo that begins at a fixture (t.ini matches an aparato sigla) seeds from that
-  //      fixture's Pmax — same rule the reference calculation sheet uses.
-  //   3. Anything else inherits Pinicial from its actual upstream tramo's Pfinal (tramoParentOf,
-  //      the directed version of the same connectivity graph used for UD totals).
-  //   4. Orphan/disconnected tramos fall back to pRed, same as today.
+  // Propagación de presión real basada en árbol, resuelta una vez por render (recursiva, memoizada
+  // sobre la marcha) en lugar de que cada tramo lea planamente la presión de acometida:
+  //   1. La raíz de la red (tr2 para AF, el tramo del calentador para AC) arranca de su propia fuente.
+  //   2. Un tramo que comienza en un aparato (t.ini coincide con una sigla de aparato) arranca del
+  //      Pmax de ese aparato — misma regla que usa la hoja de cálculo de referencia.
+  //   3. Todo lo demás hereda Pinicial del Pfinal de su tramo aguas arriba real (tramoParentOf,
+  //      la versión dirigida del mismo grafo de conectividad usado para totales UD).
+  //   4. Los tramos huérfanos/desconectados caen a pRed, igual que hoy.
   const pressureByKey = useMemo(() => {
     const keyOf = (t: Tramo) => t._key || t.id;
     const byKey = new Map(tramosOrden.map((t) => [keyOf(t), t]));
 
-    // Friction loss / elevation drop for a tramo — same formulas as the table's own
-    // Vertical/Pérdidas columns. Needed here (ahead of the row loop) because a child's
-    // Pinicial depends on its parent's Pfinal, and tramosOrden is sorted by piso for display,
-    // not in tree order.
+    // Pérdida por fricción / desnivel de elevación de un tramo — mismas fórmulas que las columnas
+    // Vertical/Pérdidas de la propia tabla. Se necesita aquí (antes del ciclo de filas) porque el
+    // Pinicial de un hijo depende del Pfinal de su padre, y tramosOrden está ordenado por piso para
+    // mostrar, no en orden de árbol.
     const pipeLoss = (t: Tramo) => {
       const ownKey = keyOf(t);
       const isTr2Row = t === tr2;
@@ -969,7 +973,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
 
     const resolve = (key: string): { Pin: number; Pfin: number } => {
       if (result[key]) return result[key];
-      if (resolving.has(key)) return { Pin: pRed, Pfin: pRed }; // cycle guard, shouldn't trigger
+      if (resolving.has(key)) return { Pin: pRed, Pfin: pRed }; // guarda de ciclo, no debería dispararse
       resolving.add(key);
 
       const t = byKey.get(key);
@@ -1026,8 +1030,8 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     presFinEdit,
   ]);
 
-  // Persist each tramo's resolved Pfinal so the AC instance of this same component can read
-  // AF's pressure at the shared calentador node (see afHeaterPfin above).
+  // Persistir el Pfinal resuelto de cada tramo para que la instancia AC de este mismo componente
+  // pueda leer la presión de AF en el nodo calentador compartido (ver afHeaterPfin arriba).
   useEffect(() => {
     for (const t of tramosOrden) {
       const ownKey = t._key || t.id;
@@ -1036,7 +1040,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     }
   }, [tramosOrden, pressureByKey, updTramo]);
 
-  // Persist complete row data for memoria final tables
+  // Persistir los datos completos de fila para las tablas de memoria final
   useEffect(() => {
     const rows = tramosOrden.map((t) => {
       const ownKey = t._key || t.id;
@@ -1126,8 +1130,8 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     tr2,
   ]);
 
-  // Persist the velocity checkpoint (and, for AF, the acometida pressure checkpoint) onto
-  // each Tramo so InfTab can show a real OK/Revisar badge instead of nothing at all.
+  // Persistir el checkpoint de velocidad (y, para AF, el de presión de acometida) en cada Tramo
+  // para que InfTab muestre una insignia real OK/Revisar en lugar de nada.
   useEffect(() => {
     for (const t of tramosOrden) {
       const ownKey = t._key || t.id;

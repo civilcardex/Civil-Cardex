@@ -1,9 +1,10 @@
 import type { IPlanoEngineCore } from '../PlanoState';
 import { rotatedRectCorners } from '../HitTester';
 
-// Guide lines are a pure drafting aid — dashed, thin, muted gray — so they never get mistaken for
-// a real ramal at a glance, whether selected or not (selection just switches to a slightly bolder
-// dash, not a solid line, to keep that distinction visible even while editing).
+// Las líneas guía son una ayuda de dibujo pura — punteadas, finas, gris apagado — para que
+// nunca se confundan de un vistazo con un ramal real, estén o no seleccionadas (la selección
+// solo cambia a un guion un poco más grueso, no a línea sólida, para conservar la distinción
+// visible incluso al editar).
 export function renderGuideLines(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.guideLines.forEach((g) => {
     const [p1, p2] = g.pts;
@@ -22,8 +23,9 @@ export function renderGuideLines(ctx: CanvasRenderingContext2D, engine: IPlanoEn
     ctx.setLineDash([]);
     ctx.restore();
 
-    // Hit-test box for right-click/selection: a thin rect around the segment, generous enough
-    // for an easy click without needing pixel-perfect precision on the dashed line itself.
+    // Caja de hit-test para clic derecho/selección: un rectángulo fino alrededor del segmento,
+    // generoso para que el clic sea fácil sin exigir precisión de píxel perfecto sobre la línea
+    // punteada misma.
     const cx = (c1.x + c2.x) / 2;
     const cy = (c1.y + c2.y) / 2;
     const w = Math.hypot(c2.x - c1.x, c2.y - c1.y);

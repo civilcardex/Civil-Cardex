@@ -5,9 +5,10 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
     const c1 = engine.toCvs(d.x1, d.y1);
     const c2 = engine.toCvs(d.x2, d.y2);
     ctx.save();
-    // Dimension lines must NOT compete with real pipes/annotations: render at reduced
-    // opacity and a thinner stroke than regular network lines (1.5px → 1px). The text label
-    // stays full-black below so measurements remain readable; only the line/ticks fade.
+    // Las líneas de cota NO deben competir con tuberías/anotaciones reales: se dibujan con
+    // opacidad reducida y trazo más fino que las líneas de red normales (1.5px → 1px). La
+    // etiqueta de texto queda en negro pleno debajo para que la medida siga siendo legible;
+    // solo se atenúan la línea y las marcas.
     ctx.globalAlpha = 0.55;
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 1 * engine.zoom;
@@ -27,8 +28,8 @@ export function renderDims(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCo
       uy = dy / len;
     const nx = -uy,
       ny = ux;
-    // 45°-rotated tick, crossed with the perpendicular one — the classic architectural
-    // dimension-line terminator (a "+" made of a witness-line tick and a diagonal slash).
+    // Marca a 45°, cruzada con la perpendicular — el remate arquitectónico clásico de línea
+    // de cota (una "+" formada por la marca de la línea de referencia y un trazo diagonal).
     const cos45 = Math.SQRT1_2,
       sin45 = Math.SQRT1_2;
     const dxr = ux * cos45 - uy * sin45,

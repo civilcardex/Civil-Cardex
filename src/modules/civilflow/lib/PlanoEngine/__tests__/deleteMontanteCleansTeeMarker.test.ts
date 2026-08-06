@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { deleteSelected } from '../deleteSelected';
 import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoState';
 
-// A mid-body montante writes a tee marker (accMed) on its host ramal at creation time. Deleting
-// the montante without also clearing that marker left the tee glyph/count behind forever, since
-// nothing else ever revisits accMed once written — see cleanupTeeMarkersAt in deleteSelected.ts.
+// Un montante a mitad de cuerpo escribe un marcador de tee (accMed) en su ramal anfitrión al crearse.
+// Borrar el montante sin limpiar también ese marcador dejaba el glifo/contador de tee para siempre,
+// porque nada más vuelve a revisar accMed una vez escrito — ver cleanupTeeMarkersAt en deleteSelected.ts.
 
 function makeRamal(id: string, pts: number[][], accMed: Record<string, string>): PlanoRamal {
   return {
@@ -64,9 +64,9 @@ function makeEngine(ramales: PlanoRamal[], bajantes: PlanoBajante[]): IPlanoEngi
     selId: null,
     _isGhostSel: false,
     _yeeFlashKey: null,
-    // Left undefined on purpose: skips the cross-floor-ghost storage sweep in deleteSelected,
-    // which touches localStorage — not relevant to this test and not available in the node
-    // vitest environment.
+    // Dejado en undefined a propósito: omite el barrido de almacenamiento de ghosts entre pisos en
+    // deleteSelected, que toca localStorage — irrelevante para este test y no disponible en el entorno
+    // vitest de node.
     _loadedPlanId: undefined,
     nivelActual: { label: 'P1', n: 1, npt: 0 } as unknown as IPlanoEngineCore['nivelActual'],
     _renumberRamales: () => {},
@@ -112,7 +112,7 @@ describe('deleteSelected — montante deletion cleans up its host ramal tee mark
       { accMed1: 'teeSube' },
     );
     const montante = makeMontante('M1', 10, 0);
-    const stillThere = makeMontante('M2', 10, 0); // same point, survives the delete
+    const stillThere = makeMontante('M2', 10, 0); // mismo punto, sobrevive al borrado
     const engine = makeEngine([host], [montante, stillThere]);
 
     deleteSelected(engine, ['M1']);

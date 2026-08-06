@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { finishRamal } from '../PlanoEngineDrawing';
 import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoState';
 
-// Characterization coverage for the two most common ramal-creation paths that had zero test
-// coverage: a plain simple ramal (no junction), and a ramal whose endpoint lands mid-body on an
-// existing ramal — the auto-split/merge path (autoSplitJunctionAndSumFlow) that caused the UD/UC
-// bug investigated earlier this session. Both go through finishRamal, the real entry point used
-// by handleMouseDown/handleDragUp when the user finishes drawing.
+// Cobertura de caracterización para las dos rutas de creación de ramal más comunes que tenían
+// cero cobertura: un ramal simple (sin empalme) y un ramal cuyo extremo cae a mitad del cuerpo de
+// un ramal existente — la ruta de auto-split/merge (autoSplitJunctionAndSumFlow) que causó el bug
+// UD/UC investigado antes en esta sesión. Ambas pasan por finishRamal, el punto de entrada real
+// que usa handleMouseDown/handleDragUp cuando el usuario termina de dibujar.
 
 function makeEngine(ramales: PlanoRamal[], bajantes: PlanoBajante[] = []): IPlanoEngineCore {
   const engine: Partial<IPlanoEngineCore> = {
@@ -95,7 +95,7 @@ describe('finishRamal — mid-body junction triggers autoSplitJunctionAndSumFlow
       bloqueado: true,
     } as PlanoRamal;
     const engine = makeEngine([existing]);
-    // Incoming ramal ends exactly mid-body on `existing` at (20,0) — a true T junction.
+    // El ramal entrante termina justo a mitad del cuerpo de `existing` en (20,0) — una T verdadera.
     engine.activeRamal = {
       net: 'af',
       tipo: 'ramal',
@@ -109,15 +109,15 @@ describe('finishRamal — mid-body junction triggers autoSplitJunctionAndSumFlow
 
     finishRamal(engine);
 
-    // existing (upstream portion) shrinks to [0,0]-[20,0]
+    // existing (tramo aguas arriba) se encoge a [0,0]-[20,0]
     const upstream = engine.ramales.find((r) => r.id === 'RAF_EXIST')!;
     expect(upstream.pts).toEqual([
       [0, 0],
       [20, 0],
     ]);
 
-    // a new downstream ramal was created carrying the rest of the original run
-    expect(engine.ramales).toHaveLength(3); // upstream + incoming + downstream
+    // se crea un ramal aguas abajo que hereda el resto del recorrido original
+    expect(engine.ramales).toHaveLength(3); // aguas arriba + entrante + aguas abajo
     const created = engine.ramales.filter((r) => r.mergesFrom);
     expect(created).toHaveLength(1);
     const merged = created[0];
@@ -125,10 +125,10 @@ describe('finishRamal — mid-body junction triggers autoSplitJunctionAndSumFlow
     expect(merged.mergesFrom).toEqual(['RAF_EXIST', incoming.id]);
     expect(merged.pts[0]).toEqual([20, 0]);
     expect(merged.pts[merged.pts.length - 1]).toEqual([40, 0]);
-    // uc summed from both converging ramales (upstream's original uc=5 + incoming's uc=0)
+    // uc sumado de ambos ramales convergentes (uc original de aguas arriba=5 + uc del entrante=0)
     expect(merged.uc).toBe(5 + (incoming.uc || 0));
-    // AF/AC/gas: diametro is left blank for the user to pick explicitly, not auto-assigned to
-    // the larger of the two converging ramales.
+    // AF/AC/gas: el diámetro se deja en blanco para que el usuario lo elija explícitamente, no se auto-asigna
+    // al mayor de los dos ramales convergentes.
     expect(merged.diametro).toBe('');
   });
 });

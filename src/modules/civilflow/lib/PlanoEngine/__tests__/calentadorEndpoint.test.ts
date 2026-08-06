@@ -4,9 +4,9 @@ import { buildTramos } from '../../../utils/buildTramos';
 import { TRAZOS_PREFIX } from '../../../constants/storage-keys';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
 
-// Heater insertion: only on AF ramals, endpoint clicks must NOT split the ramal (no duplicated
-// zero-length segment), and the synthetic AC-01-{calId} ramal must pick up fixtures saved under
-// either the ac_ or the af_ storage key (the heater is anchored on the AF network).
+// Inserción de calentador: solo en ramales AF, los clics en extremos NO deben partir el ramal (sin
+// segmento duplicado de longitud cero), y el ramal sintético AC-01-{calId} debe recoger los
+// aparatos guardados bajo la clave ac_ o la af_ (el calentador queda anclado a la red AF).
 
 const calentadorBajanteFixture = {
   id: 'CALENT1',

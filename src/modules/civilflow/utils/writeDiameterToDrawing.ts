@@ -12,22 +12,24 @@ interface LocalDrawingData {
   [key: string]: unknown;
 }
 
-// diametroInicio/diametroFin are stored as the FULL option value from the diameter dropdown,
-// e.g. `1-1/2" — 42.7 mm` — everywhere else that reads them (ExtremeAccessoryEditor.tsx,
-// DrawingElementContextMenu.tsx) strips down to the inch part before the `"` first. Without
-// that, diamPulgFromLabel's own em-dash handling kicks in and reads the *mm* figure after the
-// dash as if it were inches (42.7 instead of 1.5) — a wildly inflated number that made every
-// real check against it either impossibly strict or a false negative depending on which side
-// of the comparison it landed on. This was why the validation never visibly fired: `newIn` (a
-// real inch value) was being compared against `accMax` computed from millimeters.
+// diametroInicio/diametroFin se guardan como el VALOR COMPLETO de la opción del dropdown de
+// diámetro, p. ej. `1-1/2" — 42.7 mm` — todo lo demás que los lee (ExtremeAccessoryEditor.tsx,
+// DrawingElementContextMenu.tsx) recorta primero hasta la parte en pulgadas antes del `"`. Sin
+// eso, el manejo propio de guion-em de diamPulgFromLabel entra en acción y lee la cifra en *mm*
+// después del guion como si fueran pulgadas (42.7 en vez de 1.5) — un número salvajemente
+// inflado que hacía que cada chequeo real contra él fuera o imposiblemente estricto o un falso
+// negativo dependiendo del lado de la comparación donde cayera. Esto era por qué la validación
+// nunca se disparaba visiblemente: `newIn` (un valor real en pulgadas) se comparaba contra
+// `accMax` calculado de milímetros.
 const inchPartOf = (d: string): string => {
   const q = d.indexOf('"');
   return q > 0 ? d.slice(0, q) : d;
 };
 
-// Largest inch-equivalent diameter of any extreme accessory on this ramal (accesorioInicio /
-// accesorioFin). Mid-ramal accMed* markers don't carry their own diameter so they can't
-// constrain the ramal. Returns 0 if no accessory with a diameter is attached.
+// Mayor diámetro equivalente en pulgadas de cualquier accesorio extremo en este ramal
+// (accesorioInicio / accesorioFin). Los marcadores accMed* de mitad de ramal no llevan su propio
+// diámetro, así que no pueden restringir el ramal. Devuelve 0 si no hay accesorio con diámetro
+// adjunto.
 function maxAccessoryDiam(ramal: {
   accesorioInicio?: string;
   accesorioFin?: string;
@@ -60,8 +62,9 @@ export function findContadorBajante(
   return null;
 }
 
-// Result type so the design-table caller (GasDesign, WaterNetworkDesign, etc.) can show the
-// in-app AlertDialog instead of a silent rejection when the change violates a constraint.
+// Tipo de resultado para que el caller de la tabla de diseño (GasDesign, WaterNetworkDesign,
+// etc.) pueda mostrar el AlertDialog de la app en vez de un rechazo silencioso cuando el cambio
+// viola una restricción.
 export interface WriteDiametroResult {
   ok: boolean;
   reason?: 'accessory-larger';
@@ -83,10 +86,11 @@ export function writeDiametroToDrawing(
   const ramalId = parts[0];
   const planId = parts[1];
 
-  // Validation: a ramal's diameter cannot drop below the largest diameter of any accessory
-  // attached to it. Mirror of the inverse check in ExtremeAccessoryEditor.tsx:110-117 — without
-  // this, design-table pages can shrink a pipe under a wider accessory without anyone noticing
-  // until render-time oddness (the wider-fitting accessory ends up drawn around a thinner pipe).
+  // Validación: el diámetro de un ramal no puede bajar del diámetro mayor de cualquier accesorio
+  // adjunto a él. Espejo del chequeo inverso en ExtremeAccessoryEditor.tsx:110-117 — sin esto,
+  // las páginas de tabla de diseño pueden encoger una tubería bajo un accesorio más ancho sin
+  // que nadie lo note hasta la rareza en tiempo de render (el accesorio de ajuste más ancho
+  // termina dibujado alrededor de una tubería más delgada).
   let blockedReason: WriteDiametroResult | null = null;
 
   for (const plan of plans) {
@@ -119,10 +123,11 @@ export function writeDiametroToDrawing(
         }
         r.diametro = newDiamLabel;
         changed = true;
-        // Propagate to any downstream ramal auto-created by a tee-split merge FROM this one —
-        // mirror of the canvas walk in DrawingElementContextMenu.tsx:1949-1969. The child's
-        // diametro is only computed at creation time, so editing a parent from a design-table
-        // page must re-resolve it or the merged ramal keeps its stale diameter in storage.
+        // Propagar a cualquier ramal aguas abajo auto-creado por un merge de tee-split DESDE este —
+        // espejo del paseo en canvas de DrawingElementContextMenu.tsx:1949-1969. El diametro del
+        // hijo solo se calcula en tiempo de creación, así que editar un padre desde una página de
+        // tabla de diseño debe re-resolverlo o el ramal fusionado conserva su diámetro obsoleto
+        // en storage.
         for (const child of data.ramales || []) {
           if (!child.mergesFrom || !child.mergesFrom.includes(r.id)) continue;
           const [pid1, pid2] = child.mergesFrom;

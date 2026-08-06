@@ -87,9 +87,9 @@ export function clearNet(engine: IPlanoEngineCore, netId: string): void {
   engine.ramales = engine.ramales.filter((r) => r.net !== netId);
   engine.bajantes = engine.bajantes.filter((b) => b.net !== netId);
   engine.areas = engine.areas.filter((a) => a.net !== netId);
-  // Cross-floor ghosts (and their Ldesvio connector ramales) belong to the SAME net as their
-  // source bajante — clearing that net leaves ghost dashlines pointing at bajantes that no
-  // longer exist. Drop them together so no stale ghost outlives its parent.
+  // Los fantasmas entre pisos (y sus ramales conector Ldesvio) pertenecen a la MISMA red que su
+  // bajante origen — limpiar esa red deja líneas punteadas apuntando a bajantes que ya no
+  // existen. Se eliminan juntos para que ningún fantasma obsoleto sobreviva a su padre.
   engine.crossFloorGhosts = engine.crossFloorGhosts.filter((g) => g.net !== netId);
   if (engine.selectedGhostId) {
     const stillExists = engine.crossFloorGhosts.find((g) => g.id === engine.selectedGhostId);
@@ -162,7 +162,7 @@ export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
     const cima = Math.max(b.nptBase || 0, b.nptCima || 0);
     const npt = engine.nivelActual!.npt || 0;
     if (npt >= base && npt <= cima) {
-      // Don't show direction ghost on the parent's own level
+      // No mostrar el fantasma de dirección en el nivel del propio padre
       if (b.pisoBase === engine.nivelActual!.label) return false;
       return true;
     }
@@ -176,10 +176,11 @@ export function getBajantesFantasma(engine: IPlanoEngineCore): PlanoBajante[] {
 import { ACC_ABBR } from '../../utils/accessoryAbbreviations';
 import { APARATOS_DEF } from '../../constants/engineeringDataFixtures';
 
-// A codo reventilado junction is a 'vent' ramal endpoint coincident with a 'san' ramal point
-// (see renderVentCodos.ts, which uses the same 0.5-unit threshold to draw the symbol there).
-// Every other coincident-point drag sync in this engine (handleDragMove.ts) is same-net only,
-// so dragging either side of this specific cross-net junction would otherwise tear it apart.
+// Una unión de codo reventilado es el extremo de un ramal 'vent' coincidiendo con un punto de
+// un ramal 'san' (ver el umbral de 0.5 unidades que también usa el renderizador para dibujar el
+// símbolo). Toda otra sincronización de puntos coincidentes de este motor (handleDragMove.ts) es
+// solo dentro de la misma red — sin esto, arrastrar cualquiera de los dos lados de esta unión
+// entre redes la despegaría.
 export function findCodoReventiladoLinks(
   engine: IPlanoEngineCore,
   ramal: PlanoRamal,
@@ -284,9 +285,10 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
       tStart = { code: name.toUpperCase(), isAcc: true, ref: null };
     } else {
       tStart = findEndpointTarget(r, pStart);
-      // Flow-direction guard: a 'baja' bajante at pts[0] would create the exact invalid state
-      // shown in the issue report (RS5-P1 with arrow leaving a BAN4-P1 "Baja"). Drop tStart if
-      // the auto-detected target is a 'baja' bajante — same rule the active-create path uses.
+      // Guardia de dirección de flujo: un bajante 'baja' en pts[0] crearía exactamente el estado
+      // inválido del reporte de bug (RS5-P1 con flecha saliendo de un BAN4-P1 "Baja"). Se descarta
+      // tStart si el objetivo auto-detectado es un bajante 'baja' — misma regla que usa la ruta de
+      // creación activa.
       if (tStart && tStart.ref && (tStart.ref as PlanoBajante).direccion === 'baja') {
         tStart = null;
       }

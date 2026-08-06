@@ -4,10 +4,10 @@ import type { IPlanoEngineCore } from '../PlanoState';
 function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const DOUBLE_YEE_THRESHOLD_MM = 10;
 
-  // Ventilación is a subnet of sanitaria — a vent ramal tying into a san run must produce the
-  // same geometric tee/yee glyph a san-san junction would, not a forced codo reventilado. Pool
-  // both into a single detection pass so their shared vertices are seen together; every other net
-  // stays on its own.
+  // Ventilación es parte de la red sanitaria: un tubo de ventilación que se conecta a una línea
+  // san debe dibujar el mismo símbolo de tee/yee que cualquier unión san-san, no un codo
+  // especial. Para lograrlo, se procesan juntas (comparten vértices) y cada otra red se procesa
+  // por separado.
   const processed = new Set<string>();
   NETS.forEach((net) => {
     if (processed.has(net.id)) return;
@@ -21,10 +21,9 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
     const getPointKey = (x: number, y: number) => `${x.toFixed(3)}_${y.toFixed(3)}`;
     const vertexMap = new Map<string, number[]>();
 
-    // A bajante (real, on its own floor) or fantasma (ghost, at its displaced position) sitting
-    // where 2+ ramales converge is a bajante convergence, not a ramal-to-ramal tee/yee — without
-    // this exclusion, e.g. two branches feeding the same bajante fantasma got mistaken for a
-    // geometric junction and drew a nonsensical tee/yee glyph on top of the bajante's own symbol.
+    // Cuando 2+ ramales se juntan ENCIMA de un bajante, es el bajante el que recoge todo — no es
+    // una unión entre tubos y no debe dibujarse ningún símbolo de tee/yee ahí (saldría encima del
+    // círculo del bajante, confundiendo la lectura del plano).
     const lvl = engine.nivelActual?.label ?? '';
     const fantasmaIds = new Set(engine.getBajantesFantasma().map((b) => b.id));
     const bajantePts: number[][] = [];
@@ -143,16 +142,15 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
 
           const cosVal = branches[0].x * uB.x + branches[0].y * uB.y;
           const isTee = Math.abs(cosVal) < 0.15;
-          // AF/AC never form a yee (45°-ish branch) glyph — only a 90° tee. A 45° branch there
-          // is disallowed at the angle-check level too (checkRamalAngles/checkCrossRamalAngle in
-          // drawingAngles.ts), so this is belt-and-suspenders: even if one somehow exists (e.g.
-          // pre-existing data from before that restriction), it renders as nothing rather than a
-          // yee that shouldn't be possible on this net.
+          // En agua fría y caliente no existen las "yees" (uniones en Y a 45°) — solo tees de 90°.
+          // Un ángulo de 45° ni siquiera debería poder dibujarse (lo bloquean los chequeos de
+          // ángulo), pero por si acaso queda algún dato viejo de antes de esa restricción, se
+          // prefiere no dibujar nada a dibujar una Y que no corresponde a esta red.
           const isAfAc = group.includes('af') || group.includes('ac');
           const isYee = !isAfAc && Math.abs(cosVal) >= 0.4 && Math.abs(cosVal) <= 0.85;
 
-          // For AF/AC, perpendicular (tee) junctions are drawn by the bilateral-crossing
-          // renderer in renderRamales.ts — skip them here to avoid double symbols.
+          // Las uniones perpendiculares (tee) de AF/AC se dibujaban con el renderer de cruce
+          // bilateral en renderRamales.ts — se saltaban aquí para evitar símbolos duplicados.
           if ((isTee && !isAfAc) || isYee) {
             junctions.push({ P, uA, uB, branches, isTee, isYee });
           }

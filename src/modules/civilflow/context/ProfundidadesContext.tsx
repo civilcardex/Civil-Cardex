@@ -24,7 +24,7 @@ interface ProfundidadesContextValue {
 
 export const ProfundidadesContext = createContext<ProfundidadesContextValue | null>(null);
 
-/** Provides burial depth specifications per network/column with localStorage persistence. */
+/** Provee especificaciones de profundidad de enterrado por red/columna con persistencia en localStorage. */
 export function ProfundidadesProvider({ children }: { children?: ReactNode }) {
   const [profs, setProfs] = usePersistedState<ProfItem[]>('civilflow_profs', PROFS_CLONED);
 
@@ -33,7 +33,7 @@ export function ProfundidadesProvider({ children }: { children?: ReactNode }) {
   return <ProfundidadesContext.Provider value={value}>{children}</ProfundidadesContext.Provider>;
 }
 
-/** Hook to access depth specifications. @returns {ProfundidadesContextValue} */
+/** Hook para acceder a las especificaciones de profundidad. @returns {ProfundidadesContextValue} */
 export function useProfundidades() {
   const ctx = useContext(ProfundidadesContext);
   if (!ctx) throw new Error('useProfundidades must be used within ProfundidadesProvider');

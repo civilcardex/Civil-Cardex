@@ -9,8 +9,9 @@ import { computeHeaterNetworkTotal } from './waterNetworkRows';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 
-// Persisted simultaneity factor: the one saved on the CALENTn bajante (storage + DB) when the
-// user edits it on the heater-selection screen. Null when no heater tramo / saved value exists.
+// Factor de simultaneidad persistido: el guardado en el bajante CALENTn (storage + DB) cuando
+// el usuario lo edita en la pantalla de selección de calentador. Null cuando no existe tramo de
+// calentador / valor guardado.
 function loadPersistedFactorSim(tramosAc: Tramo[]): number | null {
   const selectedHeaterTram = tramosAc.find((t) => t.calCapacidad !== undefined);
   if (!selectedHeaterTram) return null;

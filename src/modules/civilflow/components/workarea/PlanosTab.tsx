@@ -283,9 +283,9 @@ function PlanosTab({ state }: PlanosTabProps) {
     [calData],
   );
 
-  // A plan calibrated with "Alcance: Todos" is meant to apply to every floor going forward — but
-  // until now nothing actually offered it to a newly-uploaded plan; each one still had to be
-  // calibrated by hand. Surface it as a one-click alternative to CALIBRAR.
+  // Un plan calibrado con "Alcance: Todos" debería aplicar a todo piso futuro — pero hasta ahora
+  // nada se lo ofrecía a un plan recién subido; cada uno debía calibrarse a mano. Se expone
+  // como alternativa de un clic a CALIBRAR.
   const globalCal =
     Object.values(calData).find(
       (cd) =>
@@ -376,13 +376,13 @@ function PlanosTab({ state }: PlanosTabProps) {
         localStorage.setItem(VISOR_ACTIVE_INDEX_KEY, String(idx));
         localStorage.setItem(VISOR_ACTIVE_PLAN_ID_KEY, String(selectedPlan.id));
       } catch {
-        // ignore
+        // ignorar
       }
     }
     navigate('/visor');
   };
 
-  // Calibration mode: full-width PlanoConfigurator with back button
+  // Modo calibración: PlanoConfigurator a ancho completo con botón volver
   if (calibrating && selectedPlan) {
     const cal = calData[selectedPlan.id];
     const calDone = cal && cal.origen && cal.scaleM;
@@ -654,7 +654,7 @@ function PlanosTab({ state }: PlanosTabProps) {
                         localStorage.setItem(VISOR_ACTIVE_INDEX_KEY, String(idx));
                         localStorage.setItem(VISOR_ACTIVE_PLAN_ID_KEY, String(selectedPlanId));
                       } catch {
-                        // ignore
+                        // ignorar
                       }
                     }
                     navigate('/visor');
@@ -835,7 +835,7 @@ function PlanosTab({ state }: PlanosTabProps) {
               )}
             </div>
           ) : (
-            <ul role="list" style={PlanosTab_S10}>
+            <ul style={PlanosTab_S10}>
               {pendingPlanos.map((p) => {
                 const calOk = isCalibrated(p.id);
                 const isSelected = selectedPlanId === p.id;
@@ -1035,10 +1035,7 @@ function PlanosTab({ state }: PlanosTabProps) {
               </div>
             </div>
           ) : (
-            <ul
-              role="list"
-              style={{ flex: 1, overflowY: 'auto', listStyle: 'none', margin: 0, padding: 0 }}
-            >
+            <ul style={{ flex: 1, overflowY: 'auto', listStyle: 'none', margin: 0, padding: 0 }}>
               {confirmedPlanos.map((p) => (
                 <li
                   key={p.id}
@@ -1119,6 +1116,8 @@ function PlanosTab({ state }: PlanosTabProps) {
       </div>
 
       {nivelPickerPlanId !== null && (
+        // Backdrop con cierre por click-fuera: patrón estándar de modal.
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
         <div
           style={{
             position: 'fixed',
@@ -1131,6 +1130,7 @@ function PlanosTab({ state }: PlanosTabProps) {
           }}
           onClick={() => setNivelPickerPlanId(null)}
         >
+          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
           <div
             style={{
               background: 'var(--bg2)',

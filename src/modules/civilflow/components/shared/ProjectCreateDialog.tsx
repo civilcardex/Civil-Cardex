@@ -46,30 +46,30 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
         setCreating(false);
         return;
       }
-      // Pause the debounced cloud-save effects across the reset below — same reasoning as
-      // ProfilePage.openProyecto (see ProjectContext.pauseCloudSync).
+      // Pausa los efectos de guardado en la nube (debounced) durante el reset de abajo — misma lógica que
+      // ProfilePage.openProyecto (ver ProjectContext.pauseCloudSync).
       projectCtx?.pauseCloudSync();
       plansCtx?.pauseCloudSync();
-      // Local workspace always starts blank for a new project; Supabase data stays
-      // isolated per proyecto_id, no need to delete anything server-side.
+      // El workspace local siempre empieza en blanco para un proyecto nuevo; los datos de Supabase
+      // quedan aislados por proyecto_id, no hace falta borrar nada del lado del servidor.
       clearLocalWorkspace();
       await clearAllPDFs();
-      // Mark this project as the active one so trazos/plans/proyecto_data scope to it
+      // Marca este proyecto como activo para que trazos/plans/proyecto_data queden acotados a él
       localStorage.setItem(ACTIVE_PROYECTO_ID_KEY, String(proyecto.id));
-      // The context providers are not mounted on the profile route (CivilFlowProviders is
-      // scoped to the work area), so setP below is a no-op there. Persist the name directly
-      // instead — ProyectoProvider restores it from this key on mount, and the work area
-      // shows it in the "Identificación del proyecto" field immediately. Must go through
-      // saveToStorage (not a raw localStorage.setItem) — ProyectoContext's usePersistedState
-      // already passes the prefixed key 'civilflow_proy', and saveToStorage prefixes it AGAIN
-      // internally (civilflow_civilflow_proy), so that's the actual key it reads on mount.
+      // Los providers de contexto no están montados en la ruta de perfil (CivilFlowProviders está
+      // acotado al área de trabajo), así que setP de abajo no hace nada ahí. Persiste el nombre
+      // directamente — ProyectoProvider lo restaura desde esta clave al montarse, y el área de
+      // trabajo lo muestra en el campo "Identificación del proyecto" de inmediato. Debe pasar por
+      // saveToStorage (no por un localStorage.setItem crudo) — usePersistedState de ProyectoContext
+      // ya pasa la clave prefijada 'civilflow_proy', y saveToStorage la prefija OTRA VEZ
+      // internamente (civilflow_civilflow_proy), así que esa es la clave real que lee al montarse.
       saveToStorage('civilflow_proy', { nombre: trimmed });
-      // Reset in-memory React state too — clearing localStorage alone doesn't touch
-      // state already loaded into the context providers (they wrap the whole app and
-      // don't remount on navigation).
+      // Resetea también el estado React en memoria — limpiar solo localStorage no toca
+      // el estado ya cargado en los providers de contexto (envuelven toda la app y
+      // no se remontan al navegar).
       plansCtx?.resetPlans();
       projectCtx?.resetToDefaults();
-      // Set project name so InfoTab shows it immediately
+      // Asigna el nombre del proyecto para que InfoTab lo muestre de inmediato
       projectCtx?.setP('nombre', trimmed);
       projectCtx?.resumeCloudSync();
       plansCtx?.resumeCloudSync();

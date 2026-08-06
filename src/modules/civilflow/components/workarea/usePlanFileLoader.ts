@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, type RefObject } from "react";
-import { getPdfjs } from "../../utils/lazyPdfjs";
-import { devError } from "../../../../utils/devError";
+import { useState, useRef, useEffect, type RefObject } from 'react';
+import { getPdfjs } from '../../utils/lazyPdfjs';
+import { devError } from '../../../../utils/devError';
 
 interface UsePlanFileLoaderParams {
   planFile: File;
@@ -9,7 +9,12 @@ interface UsePlanFileLoaderParams {
   onLoaded: () => void;
 }
 
-export function usePlanFileLoader({ planFile, pageWRef, pageHRef, onLoaded }: UsePlanFileLoaderParams) {
+export function usePlanFileLoader({
+  planFile,
+  pageWRef,
+  pageHRef,
+  onLoaded,
+}: UsePlanFileLoaderParams) {
   const isPdf = planFile.type === 'application/pdf' || planFile.name.toLowerCase().endsWith('.pdf');
   const isImage = /\.(png|jpe?g|webp|bmp|gif)$/i.test(planFile.name);
 
@@ -45,7 +50,10 @@ export function usePlanFileLoader({ planFile, pageWRef, pageHRef, onLoaded }: Us
         URL.revokeObjectURL(url);
         requestAnimationFrame(() => onLoaded());
       };
-      img.onerror = () => { setLoading(false); URL.revokeObjectURL(url); };
+      img.onerror = () => {
+        setLoading(false);
+        URL.revokeObjectURL(url);
+      };
       img.src = url;
       return;
     }
@@ -77,16 +85,21 @@ export function usePlanFileLoader({ planFile, pageWRef, pageHRef, onLoaded }: Us
           setLoading(false);
           requestAnimationFrame(() => onLoaded());
         } catch (e) {
-          if (!cancelled) { devError('Error loading PDF:', e); setLoading(false); }
+          if (!cancelled) {
+            devError('Error loading PDF:', e);
+            setLoading(false);
+          }
         }
       })();
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+      };
     }
     // Non-PDF fallback path of an async file-loading effect.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(false);
-    // Deliberately keyed off planFile only — isPdf/isImage are derived from it, and
-    // onLoaded/pageWRef/pageHRef are stable refs/callbacks, not reactive triggers.
+    // Deliberadamente depende solo de planFile — isPdf/isImage se derivan de él, y
+    // onLoaded/pageWRef/pageHRef son refs/callbacks estables, no disparadores reactivos.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [planFile]);
 

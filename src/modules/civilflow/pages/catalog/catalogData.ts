@@ -162,11 +162,11 @@ export const MATERIALES_POR_RED = [
   { red: 'Contra incendio', mats: ['Acero galvanizado', 'PVC C900', 'Acero al carbono'] },
 ];
 
-// Net-id-keyed derivation of MATERIALES_POR_RED — the canonical reference table of how many
-// materials each net actually has. Used to decide whether a ramal's material field shows a
-// picker or static text: only a net whose canonical catalog lists more than one material should
-// ever offer a choice, regardless of how many entries the separate `mats`/MaterialesContext
-// catalog (engineeringDataMaterials.ts, a broader editable list used for diameter lookups) has.
+// Derivación de MATERIALES_POR_RED por id de red — tabla canónica de cuántos materiales
+// tiene realmente cada red. Decide si el campo material de un ramal muestra un selector
+// o texto estático: solo una red cuyo catálogo canónico liste más de un material debe
+// ofrecer elección, sin importar cuántas entradas tenga el catálogo separado
+// `mats`/MaterialesContext (engineeringDataMaterials.ts, lista editable más amplia usada en búsquedas de diámetro).
 const RED_LABEL_TO_NET: Record<string, string> = {
   Sanitaria: 'san',
   'Aguas lluvias': 'll',

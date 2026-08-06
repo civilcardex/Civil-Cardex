@@ -27,9 +27,9 @@ function makeRamal(id: string, net: string, pts: number[][]): PlanoRamal {
   } as PlanoRamal;
 }
 
-// A full-ish fake engine: identity coordinate mapping (canvas px === plane units) so click
-// points can be reasoned about directly, everything else empty/no-op so only the real drag
-// machinery under test can block the cascade.
+// Motor falso casi completo: mapeo de coordenadas identidad (px de canvas === unidades de plano) para
+// poder razonar los puntos de clic directamente; todo lo demás vacío/no-op para que solo la maquinaria
+// real de drag bajo prueba pueda bloquear la cascada.
 function makeEngine(ramales: PlanoRamal[], bajantes: PlanoBajante[] = []): IPlanoEngineCore {
   const engine: Partial<IPlanoEngineCore> = {
     ramales,
@@ -84,10 +84,10 @@ function makeEngine(ramales: PlanoRamal[], bajantes: PlanoBajante[] = []): IPlan
 
 describe('san/vent whole-body drag cascade (end-to-end)', () => {
   it('moving the SAN ramal body drags the connected VENT ramal (tapped at an interior vertex) along with it', () => {
-    // San ramal: a long horizontal run with an interior tap point at (10,0), far (>15px) from
-    // either polyline endpoint so the click below is unambiguously a BODY click.
-    // bloqueado:false on the ramal being DIRECTLY dragged — "Bloquear movimiento" now genuinely
-    // blocks direct drag of the ramal it's checked on (cascade-follow is unaffected either way).
+    // Ramal san: recorrido horizontal largo con un punto de derivación interior en (10,0), lejos (>15px)
+    // de ambos extremos de la polilínea para que el clic de abajo sea inequívocamente un clic de CUERPO.
+    // bloqueado:false en el ramal arrastrado DIRECTAMENTE — "Bloquear movimiento" ahora sí bloquea el
+    // arrastre directo del ramal donde está marcado (el seguimiento en cascada no se ve afectado).
     const san = {
       ...makeRamal('RS1', 'san', [
         [0, 0],
@@ -101,18 +101,18 @@ describe('san/vent whole-body drag cascade (end-to-end)', () => {
       [10, 10],
     ]);
     const engine = makeEngine([san, vent]);
-    engine.selId = 'RS1'; // simulates the ramal already being selected from a prior click
+    engine.selId = 'RS1'; // simula que el ramal ya estaba seleccionado por un clic previo
 
-    // mousedown on the san ramal's body, well clear of any endpoint
+    // mousedown sobre el cuerpo del ramal san, bien lejos de cualquier extremo
     handleSelectDown(engine, 30, 0);
     expect(engine.ramalDrag).not.toBeNull();
     expect(engine.ramalDrag?.connRamales?.some((r) => r.id === 'REV1')).toBe(true);
 
-    // drag it sideways
+    // arrastrarlo hacia un lado
     handleDragMove(engine, 30, 20);
 
-    expect(vent.pts[0][1]).toBeCloseTo(20, 5); // vent's tapped endpoint followed san upward
-    expect(vent.pts[1][1]).toBeCloseTo(30, 5); // and the rest of vent moved rigidly with it
+    expect(vent.pts[0][1]).toBeCloseTo(20, 5); // el extremo derivado de vent siguió a san hacia arriba
+    expect(vent.pts[1][1]).toBeCloseTo(30, 5); // y el resto de vent se movió rígidamente con él
   });
 
   it('moving the SAN ramal by its ENDPOINT (first-click path) also drags the connected VENT ramal', () => {
@@ -122,8 +122,8 @@ describe('san/vent whole-body drag cascade (end-to-end)', () => {
         [10, 0],
         [50, 0],
       ]),
-      // Same "directly-dragged ramal must be unlocked" rule — "Bloquear Movimiento" now gates
-      // the first-click endpoint path too.
+      // Misma regla "el ramal arrastrado directamente debe estar desbloqueado" — "Bloquear Movimiento"
+      // ahora también cubre la ruta de extremo del primer clic.
       bloqueado: false,
     };
     const vent = makeRamal('REV1', 'vent', [
@@ -131,17 +131,18 @@ describe('san/vent whole-body drag cascade (end-to-end)', () => {
       [10, 10],
     ]);
     const engine = makeEngine([san, vent]);
-    // Nothing pre-selected — this exercises _tryRamalEndpointHit, the one-click select+drag path.
+    // Nada preseleccionado — esto ejercita _tryRamalEndpointHit, la ruta de seleccionar+arrastrar
+    // de un solo clic.
 
-    handleSelectDown(engine, 50, 0); // click right on san's far endpoint
+    handleSelectDown(engine, 50, 0); // clic justo en el extremo lejano de san
     expect(engine.ptDrag).not.toBeNull();
     expect(engine.ptDrag?.id).toBe('RS1');
 
     handleDragMove(engine, 50, 30);
 
-    // Endpoint drag bends only that one vertex of san — it must NOT drag the whole vent ramal
-    // (that's the whole-body case above); this just confirms the endpoint path actually starts
-    // a real drag at all instead of silently no-op'ing (the _tryRamalEndpointHit bug).
+    // El arrastre de extremo solo dobla ese vértice de san — NO debe arrastrar todo el ramal vent
+    // (ese es el caso de cuerpo completo de arriba); esto solo confirma que la ruta de extremo inicia
+    // un arrastre real en lugar de un no-op silencioso (el bug de _tryRamalEndpointHit).
     expect(san.pts[2]).toEqual([50, 30]);
   });
 });
@@ -153,9 +154,9 @@ describe('dragging a TRIBUTARIO (T-prefixed) ramal by its body', () => {
       [10, 0],
       [50, 0],
     ]);
-    // vent tap modeled as a tributario of san — this is the standard way this app represents a
-    // branch off a parent ramal (see copyDrawingFromPlan.ts's tPfx='T' / PlanoRamal.padre).
-    // bloqueado:false since this tributario is the one being DIRECTLY dragged.
+    // derivación vent modelada como tributario de san — forma estándar de representar una
+    // rama sobre un ramal padre (ver tPfx='T' en copyDrawingFromPlan.ts / PlanoRamal.padre).
+    // bloqueado:false porque este tributario es el que se arrastra DIRECTAMENTE.
     const vent = {
       ...makeRamal('T1', 'vent', [
         [10, 0],
@@ -167,7 +168,7 @@ describe('dragging a TRIBUTARIO (T-prefixed) ramal by its body', () => {
     const engine = makeEngine([san, vent]);
     engine.selId = 'T1';
 
-    // click on the tributario's own body, far from its endpoints
+    // clic sobre el cuerpo del tributario, lejos de sus extremos
     handleSelectDown(engine, 10, 15);
 
     expect(engine.ramalDrag).not.toBeNull();

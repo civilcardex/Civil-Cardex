@@ -18,9 +18,9 @@ import type {
 import type { Piso } from '../useWorkAreaState';
 import type { PlanItem } from '../../context/PlansContext';
 
-// Structural probe of a PlanoElement union: lets code sniff `tipo`/`pts` (present on some
-// element kinds, absent on others) without narrowing via the exported type guards at every
-// access site.
+// Sonda estructural de la unión PlanoElement: permite inspeccionar `tipo`/`pts` (presentes en
+// algunos tipos de elemento, ausentes en otros) sin estrechar el tipo con los type guards exportados
+// en cada punto de acceso.
 type ProbedElement = PlanoElement & {
   tipo?: string;
   pts?: number[][];
@@ -53,8 +53,8 @@ interface TramoEditorContextValue {
 
 const TramoEditorCtx = createContext<TramoEditorContextValue | null>(null);
 
-// A sanitary main only needs the 3" minimum when it actually carries a codo reventilado
-// connection (endpoint or mid-body) — not every main-line ramal in the network.
+// Una tubería principal sanitaria solo necesita el mínimo de 3" cuando realmente lleva un codo
+// reventilado (en un extremo o en medio) — no cualquier ramal de la red principal.
 function ramalHasCodoReventilado(r: PlanoRamal | null): boolean {
   if (!r) return false;
   if (r.accesorioInicio === 'codoReventilado' || r.accesorioFin === 'codoReventilado') return true;
@@ -204,7 +204,7 @@ const TramoEditor_S31: React.CSSProperties = {
 };
 
 /* ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
- *  Legacy sub-editor components (shared by variants, still prop-driven)
+ *  Sub-editores legacy (compartidos por las variantes, siguen guiados por props)
  * ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― */
 
 function ContadorEditor({
@@ -862,9 +862,9 @@ function RamalEditor({
 }) {
   const isGas = activeNet === 'gas';
   const isVen = activeNet === 'vent';
-  // The selected ramal can legitimately belong to a different net than the toolbar's currently
-  // active one (e.g. a ramal stays selected after the user switches net tabs) — its own material
-  // must always come from ITS net's catalog, not whichever net the toolbar happens to be showing.
+  // El ramal seleccionado puede pertenecer legítimamente a una red distinta de la activa en la barra
+  // (p. ej. sigue seleccionado tras cambiar de pestaña de red) — su material debe tomarse siempre
+  // del catálogo de SU propia red, no de la red que la barra esté mostrando en ese momento.
   const matNet = selElement?.net || activeNet;
   const matList = mats?.[matNet] || [];
   const matShort = matList[0]?.val || '—';
@@ -878,8 +878,8 @@ function RamalEditor({
   let currentDiam: string = '',
     currentMat: string = '';
   if (isGas) {
-    // Gas has several real material choices — must not silently default to GAS[0]; the user
-    // picks explicitly, same as any other multi-material net would.
+    // Gas tiene varias opciones reales de material — no debe asumir silenciosamente GAS[0]; el usuario
+    // elige explícitamente, igual que en cualquier otra red con varios materiales.
     currentMat = (isSelActiveNet && selElement?.material) || gasMatSel[activeNet] || '';
     currentDiam =
       isSelActiveNet && selElement?.diametro !== undefined && selElement?.diametro !== ''
@@ -1029,8 +1029,8 @@ function RamalEditor({
                 onChange={(e) => {
                   const dn = e.target.value;
                   setDiamSel((prev) => ({ ...prev, [activeNet]: dn }));
-                  // Accessory diameter (diametroInicio/Fin) has no picker of its own anymore — it always
-                  // mirrors the ramal's own diameter, so it must be kept in sync on every change here too.
+                  // El diámetro de accesorios (diametroInicio/Fin) ya no tiene selector propio — siempre
+                  // refleja el diámetro del ramal, así que debe mantenerse sincronizado en cada cambio.
                   if (engineRef.current && selElement) {
                     engineRef.current.updateSelected({
                       diametro: dn,
@@ -1092,8 +1092,8 @@ function RamalEditor({
                     return;
                   }
                   setDiamSel((prev) => ({ ...prev, [activeNet]: v }));
-                  // Accessory diameter (diametroInicio/Fin) has no picker of its own anymore — it always
-                  // mirrors the ramal's own diameter, so it must be kept in sync on every change here too.
+                  // El diámetro de accesorios (diametroInicio/Fin) ya no tiene selector propio — siempre
+                  // refleja el diámetro del ramal, así que debe mantenerse sincronizado en cada cambio.
                   if (engineRef.current && selElement) {
                     engineRef.current.updateSelected({
                       diametro: v,
@@ -1283,7 +1283,7 @@ function RamalEditor({
 }
 
 /* ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
- *  Variant components — explicit, composed, no boolean props
+ *  Componentes variante — composición explícita, sin props booleanas
  * ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― */
 
 function ContadorTramoEditor() {
@@ -1304,9 +1304,9 @@ function CalentadorTramoEditor() {
   );
 }
 
-// Free-text commit pattern (local edit buffer, commit on blur) — same as CanalDimField in
-// RainChannelsCheck.tsx and CanalDimInput in DrawingElementContextMenu.tsx, since a plain
-// per-keystroke controlled input fights decimal typing (trailing '.', partial numbers).
+// Patrón de texto libre con commit al perder el foco (buffer local de edición) — igual que CanalDimField
+// en RainChannelsCheck.tsx y CanalDimInput en DrawingElementContextMenu.tsx, porque un input
+// controlado por tecla pelea contra el tipeo decimal ('.' final, números parciales).
 function CanalNumField({
   label,
   value,
@@ -1708,7 +1708,7 @@ function RamalHeaderFields() {
   );
 }
 
-/* ---------- Editor section variants ---------- */
+/* ---------- Variantes de sección de editor ---------- */
 
 function BajanteEditorSection() {
   const ctx = React.useContext(TramoEditorCtx)!;
@@ -1853,7 +1853,7 @@ function RamalEditorSection() {
 }
 
 /* ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
- *  Main component — provider wrapper + dispatch
+ *  Componente principal — provee el contexto y despacha cambios
  * ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― */
 
 interface TramoEditorProps {
@@ -1923,10 +1923,10 @@ function TramoEditorInner() {
   const isBajMont = selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante');
   const isArea = selElement && selElement.id?.startsWith('AR');
   const isText = selElement && selElement.id?.startsWith('T');
-  // Guide lines carry a `pts` polyline too (reused for hit-testing like a ramal) but have no
-  // `tipo` and aren't in engine.ramales — without this exclusion, selecting one fell through to
-  // the `selElement.pts` fallback below and rendered the full ramal editor (material/diámetro/
-  // pendiente) plus the Aparatos panel (PdfViewer.tsx), none of which apply to a guide line.
+  // Las guías también llevan una polilínea `pts` (reutilizada para la detección de clics, como un ramal)
+  // pero no tienen `tipo` ni están en engine.ramales — sin esta exclusión, al seleccionar una guía
+  // caía en el fallback de `selElement.pts` de abajo y renderizaba el editor completo de ramal
+  // (material/diámetro/pendiente) más el panel Aparatos (PdfViewer.tsx), nada de lo cual aplica a una guía.
   const isGuide = !!selElement?.id?.startsWith('GL');
   const isRamal =
     selElement &&

@@ -7,6 +7,20 @@ import { oppositeTextCorner, textLocalCorner, rotateLocalPoint } from './textAnn
 import { isRamalBajanteConnectionAllowed } from '../../utils/flowDirection';
 import { resolveAndClampToCanal, clampToCanal } from './canalAssociation';
 
+/**
+ * Construye un índice por id de los ramales del motor. Los handlers de arrastre corren por frame
+ * (cada movimiento de mouse) y hacían lookups O(n) repetidos por frame; con el índice los
+ * lookups pasan a O(1) sin cambiar la semántica (mismo match por id, undefined si no existe).
+ */
+function indexRamales(engine: IPlanoEngineCore): Map<string, PlanoRamal> {
+  return new Map(engine.ramales.map((r) => [r.id, r]));
+}
+
+/** Índice por id de los bajantes del motor — mismo propósito que indexRamales. */
+function indexBajantes(engine: IPlanoEngineCore): Map<string, PlanoBajante> {
+  return new Map(engine.bajantes.map((b) => [b.id, b]));
+}
+
 export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): void {
   const sameNetGroup = (a: string, b: string) =>
     a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
@@ -14,11 +28,14 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     const tp = engine.toPlane(x, y);
     const dx = tp.x - engine.multiDrag.startX;
     const dy = tp.y - engine.multiDrag.startY;
+    const ramalesById = indexRamales(engine);
+    const bajantesById = indexBajantes(engine);
+    const textAnnotsById = new Map(engine.textAnnots.map((tt) => [tt.id, tt]));
     for (const id of Object.keys(engine.multiDrag.origData)) {
       const orig = engine.multiDrag.origData[id];
       if (!orig) continue;
       if (orig.type === 'ramal') {
-        const r = engine.ramales.find((rr) => rr.id === id);
+        const r = ramalesById.get(id);
         if (r) {
           r.pts = (orig.origPts || []).map((p) => [p[0] + dx, p[1] + dy]);
           r.labelX = (orig.origLabelX || 0) + dx;
@@ -27,7 +44,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           r.totalL = calculateRamalLength(r.pts, engine);
         }
       } else if (orig.type === 'bajante') {
-        const b = engine.bajantes.find((bb) => bb.id === id);
+        const b = bajantesById.get(id);
         if (b) {
           b.x = (orig.origX || 0) + dx;
           b.y = (orig.origY || 0) + dy;
@@ -35,7 +52,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           b.labelY = (orig.origLabelY || 0) + dy;
         }
       } else if (orig.type === 'text') {
-        const t = engine.textAnnots.find((tt) => tt.id === id);
+        const t = textAnnotsById.get(id);
         if (t) {
           t.x = (orig.origX || 0) + dx;
           t.y = (orig.origY || 0) + dy;
@@ -46,13 +63,15 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     return;
   }
   if (engine.ramalDrag) {
-    const r = engine.ramales.find((rr) => rr.id === engine.ramalDrag!.id);
-    // bloqueado is set to true on every ramal at creation and never unset anywhere in the
-    // codebase, so gating this whole-body drag on `!r.bloqueado` silently made body-drag a
-    // no-op for every ramal — including the connRamales/connBaj cascade a few lines down that's
-    // the actual mechanism for moving a connected san/vent network together. A rigid whole-body
-    // translation never bends the ramal's shape, so bloqueado (meant to block bending) shouldn't
-    // gate it at all — matches the same fix already applied to the vertex/endpoint drag path.
+    const ramalesById = indexRamales(engine);
+    const r = ramalesById.get(engine.ramalDrag!.id);
+    // bloqueado se pone en true a todo ramal al crearlo y nunca se quita en ninguna parte del
+    // código, así que condicionar este arrastre de cuerpo completo a `!r.bloqueado` dejaba el
+    // arrastre de cuerpo inoperante para TODOS los ramales — incluida la cascada connRamales/connBaj
+    // unas líneas abajo, que es el mecanismo real para mover junto una red san/vent conectada. Una
+    // traslación rígida del cuerpo completo nunca dobla la forma del ramal, así que bloqueado (que
+    // existe para impedir doblado) no debería condicionarlo en absoluto — coincide con el mismo fix
+    // ya aplicado a la ruta de arrastre de vértice/extremo.
     if (r) {
       const tp = engine.toPlane(x, y);
       const dx = tp.x - engine.ramalDrag.startX;
@@ -72,9 +91,9 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           const origFirst = engine.ramalDrag.origPts[0];
           const cross = Math.abs(sDx * (ay - origFirst[1]) - sDy * (ax - origFirst[0])) / sLen;
           if (cross < 0.05) {
-            // Only slide-constrain against a genuine T-junction (origFirst on the interior of
-            // the other segment) — not against a shared bajante corner where two ramales just
-            // happen to touch at that segment's own endpoint.
+            // Restringir el deslizamiento solo contra una unión T genuina (origFirst en el
+            // interior del otro segmento) — no contra una esquina compartida de bajante donde
+            // dos ramales solo se tocan en el extremo de ese segmento.
             const tCheck = ((origFirst[0] - ax) * sDx + (origFirst[1] - ay) * sDy) / (sLen * sLen);
             const marginT = Math.min(0.45, 2 / sLen);
             if (tCheck <= marginT || tCheck >= 1 - marginT) continue;
@@ -103,7 +122,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       checkRamalAngles(r.pts, r.net, r.tipo);
       if (engine.ramalDrag.connRamales) {
         for (const cr of engine.ramalDrag.connRamales) {
-          const other = engine.ramales.find((rr) => rr.id === cr.id);
+          const other = ramalesById.get(cr.id);
           if (!other) continue;
           for (let i = 0; i < other.pts.length && i < cr.origPts.length; i++) {
             other.pts[i][0] = cr.origPts[i][0] + slideDx;
@@ -123,9 +142,10 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         for (const b of engine.bajantes) {
           const desp = b.desplazamientos?.[lvl];
           if (desp && desp.Ldesvio === r.id) {
-            // The Ldesvio connects both ends of a cross-floor association — dragging it as a
-            // whole body must carry BOTH along, not just update the far (target/ghost) offset
-            // and leave the near (source) bajante glyph behind, disconnected from pts[0].
+            // El Ldesvio conecta los dos extremos de una asociación entre pisos — arrastrarlo
+            // como cuerpo completo debe llevar AMBOS a la vez, no solo actualizar el desplazamiento
+            // lejano (destino/fantasma) y dejar atrás el glifo del bajante cercano (origen),
+            // desconectado de pts[0].
             const firstPt = r.pts[0];
             const origBx = b.x,
               origBy = b.y;
@@ -145,7 +165,9 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     return;
   }
   if (engine.ghostDrag) {
-    const b = engine.bajantes.find((bb) => bb.id === engine.ghostDrag!.id);
+    const bajantesById = indexBajantes(engine);
+    const ramalesById = indexRamales(engine);
+    const b = bajantesById.get(engine.ghostDrag!.id);
     if (b && engine.nivelActual) {
       let dx = (x - engine.ghostDrag.startX) / engine.zoom + engine.ghostDrag.baseDx;
       let dy = (y - engine.ghostDrag.startY) / engine.zoom + engine.ghostDrag.baseDy;
@@ -162,15 +184,15 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const oldD = b.desplazamientos[engine.nivelActual.label ?? ''];
 
       const lDesvio = oldD ? oldD.Ldesvio : null;
-      // ONLY update the displacement — do NOT touch existing ramales.
-      // The parent stays connected to its original ramal; only the ghost moves.
+      // SOLO actualizar el desplazamiento — NO tocar ramales existentes.
+      // El padre sigue conectado a su ramal original; solo se mueve el fantasma.
       b.desplazamientos[engine.nivelActual.label ?? ''] = { dx, dy, Ldesvio: lDesvio };
 
-      // Update only the Ldesvio ramal if it exists (the explicit displacement ramal)
+      // Actualizar solo el ramal Ldesvio si existe (el ramal explícito de desplazamiento)
       const newGx = b.x + dx;
       const newGy = b.y + dy;
       if (lDesvio) {
-        const r = engine.ramales.find((rr) => rr.id === lDesvio);
+        const r = ramalesById.get(lDesvio);
         if (r) {
           r.pts[0] = [b.x, b.y];
           r.pts[r.pts.length - 1] = [newGx, newGy];
@@ -187,32 +209,35 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     return;
   }
   if (engine.bajDrag) {
-    const b = engine.bajantes.find((bb) => bb.id === engine.bajDrag!.id);
+    const bajantesById = indexBajantes(engine);
+    const ramalesById = indexRamales(engine);
+    const b = bajantesById.get(engine.bajDrag!.id);
     if (b) {
       let p = engine.toPlane(x - engine.bajDrag.offX, y - engine.bajDrag.offY);
       const oldX = b.x;
       const oldY = b.y;
 
-      // Snap mode: constrain the new bajante position to a 45°-multiple angle measured from
-      // the FIXED vertex adjacent to the endpoint touching this bajante — for a bent ramal
-      // (3+ points) that's the neighboring bend point, NOT the polyline's opposite terminus.
-      // Anchoring on the far terminus of a multi-segment ramal measures the angle across every
-      // intermediate bend, producing an arbitrary-looking angle on the segment that actually
-      // moves. Picking whichever candidate anchor landed closer to the raw cursor (an even
-      // older approach) almost always chose the near/self anchor instead — on a slow continuous
-      // drag each frame's delta is tiny, so snapping "from itself" barely constrains anything
-      // and the ramal effectively drifted freely.
-      // Deliberately NOT passing the "incoming" segment to snapEndpointAngle here: filtering to
-      // only turn-angle-valid candidates during the drag makes invalid angles unreachable, which
-      // silently swallows the "Ángulo no recomendado" alert (checkRamalAngles on mouseup, below
-      // in handleDragUp, never sees an invalid state to catch). Grid-only snapping during the
-      // drag + validate-and-revert-with-alert on release matches how ptDrag/ramalDrag/drawing
-      // already surface this warning.
+      // Modo snap: se restringe la nueva posición del bajante a un ángulo múltiplo de 45° medido
+      // desde el VÉRTICE FIJO adyacente al extremo que toca este bajante — para un ramal doblado
+      // (3+ puntos) ese es el punto de doblez vecino, NO el extremo opuesto de la polilínea.
+      // Anclar en el extremo lejano de un ramal multisegmento mide el ángulo a través de todos
+      // los dobleces intermedios, produciendo un ángulo arbitrario sobre el segmento que de
+      // verdad se mueve. Elegir el ancla candidata más cercana al cursor crudo (enfoque aún más
+      // viejo) casi siempre elegía el ancla cercana/la propia — en un arrastre continuo lento el
+      // delta de cada frame es diminuto, así que pegar "desde sí mismo" apenas restringe nada y
+      // el ramal de hecho derivaba libre.
+      // Deliberadamente NO se pasa el segmento "entrante" a snapEndpointAngle: filtrar solo
+      // candidatos con giro válido durante el arrastre hace inalcanzables los ángulos inválidos,
+      // lo que se traga en silencio la alerta "Ángulo no recomendado" (checkRamalAngles al
+      // soltar, abajo en handleDragUp, nunca ve un estado inválido que atrapar). Snap solo de
+      // cuadrícula durante el arrastre + validar-y-revertir-con-alerta al soltar coincide con
+      // cómo ptDrag/ramalDrag/dibujo ya presentan este aviso.
       if (engine.snapMode) {
         const assocIds = [...(b.recibeDeIds || [])];
         if (b.descargaEnId) assocIds.push(b.descargaEnId);
+        const assocSet = new Set(assocIds);
         const assocRamales = (engine.ramales || []).filter(
-          (r) => assocIds.includes(r.id) && r.pts && r.pts.length >= 2,
+          (r) => assocSet.has(r.id) && r.pts && r.pts.length >= 2,
         );
         if (assocRamales.length > 0) {
           const r = assocRamales[0];
@@ -249,7 +274,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         }
       }
 
-      // Snap to the RAMAL ENDPOINT — always active
+      // Snap al EXTREMO del ramal — siempre activo
       {
         const snapThresh = 20 / engine.zoom;
         for (const r of associatedRamales) {
@@ -270,22 +295,25 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         }
       }
 
-      // Auto-connect: detect nearby ramal endpoints and auto-associate during drag — canal is a
-      // standalone symbol (same as contador/calentador/red_publica) and never associates with a
-      // ramal, so it must never fall into this bajante-only auto-connect behavior.
+      // Auto-conexión: detectar extremos de ramal cercanos y auto-asociar durante el arrastre —
+      // el canal es un símbolo independiente (igual que contador/calentador/red_publica) y nunca
+      // se asocia con un ramal, así que nunca debe caer en este comportamiento de auto-conexión
+      // exclusivo de bajantes.
       const autoThresh = 20 / engine.zoom;
+      const recibeDeSet = new Set(b.recibeDeIds || []);
       for (const r of b.tipo === 'canal' ? [] : engine.ramales || []) {
         if (!r.pts || r.pts.length === 0) continue;
         if (r.net !== b.net) continue;
-        if ((b.recibeDeIds || []).includes(r.id)) continue;
+        if (recibeDeSet.has(r.id)) continue;
         const pStart = r.pts[0];
         const pEnd = r.pts[r.pts.length - 1];
         const dStart = Math.hypot(pStart[0] - p.x, pStart[1] - p.y);
         const dEnd = Math.hypot(pEnd[0] - p.x, pEnd[1] - p.y);
-        // Flow-direction guard (centralized in flowDirection.ts): a 'baja' bajante must only
-        // RECEIVE flow — never START a ramal; a 'sube' bajante must only EMIT flow — never END
-        // one. The guard fires once for the offending endpoint and continues looking for the
-        // next ramal, so other valid associations in the same drag motion are not blocked.
+        // Guardia de dirección de flujo (centralizada en flowDirection.ts): un bajante 'baja'
+        // solo debe RECIBIR flujo — nunca INICIAR un ramal; un 'sube' solo debe EMITIR — nunca
+        // TERMINAR uno. La guardia dispara una vez por el extremo infractor y sigue buscando el
+        // siguiente ramal, así otras asociaciones válidas del mismo movimiento no quedan
+        // bloqueadas.
         if (dStart < autoThresh && dStart <= dEnd) {
           const allowed = isRamalBajanteConnectionAllowed(engine, r, 0, b);
           if (!allowed) continue;
@@ -307,10 +335,10 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         }
       }
 
-      // A rainwater bajante inside a canal recolectora can be freely repositioned WITHIN the
-      // canal's rect (clamped to its bounds), but can't be dragged out of it — it stays
-      // associated with that canal. A bajante that isn't associated yet can still be dragged
-      // freely and, on landing inside a canal's rect, gets associated from that point on.
+      // Un bajante de lluvia dentro de un canal recolectora puede reposicionarse libremente
+      // DENTRO del rectángulo del canal (recortado a sus límites), pero no puede salirse de él —
+      // se mantiene asociado a ese canal. Un bajante aún no asociado se puede arrastrar libre y,
+      // al caer dentro de un rectángulo de canal, queda asociado desde ese momento.
       if (b.net === 'll' && b.tipo === 'bajante') {
         if (b.canalId) {
           const canal = engine.bajantes.find((c) => c.id === b.canalId && c.tipo === 'canal');
@@ -335,9 +363,9 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       b.labelX = (b.labelX || 0) + dx;
       b.labelY = (b.labelY || 0) + dy;
 
-      // Moving a canal's whole body must drag its associated bajantes along with it — they
-      // store absolute plane coordinates, not an offset relative to the canal, so without this
-      // they'd stay put and end up outside the canal's new position.
+      // Mover el cuerpo completo de un canal debe arrastrar a sus bajantes asociados con él —
+      // guardan coordenadas absolutas de plano, no un desplazamiento relativo al canal, así que
+      // sin esto se quedarían quietos y terminarían fuera de la nueva posición del canal.
       if (b.tipo === 'canal') {
         for (const assoc of engine.bajantes) {
           if (assoc.canalId !== b.id) continue;
@@ -374,15 +402,15 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         });
       }
 
-      // Keep the ghost-connector ramal (Ldesvio) attached: first endpoint follows
-      // the parent, second endpoint stays at fixed absolute position (ghost doesn't
-      // drift with the parent — offset is compensated by the movement delta).
+      // Mantener pegado el ramal conector del fantasma (Ldesvio): el primer extremo sigue al
+      // padre, el segundo se queda en su posición absoluta fija (el fantasma no deriva con el
+      // padre — el desplazamiento se compensa con el delta del movimiento).
       if (b.desplazamientos) {
         const dxMove = p.x - oldX;
         const dyMove = p.y - oldY;
         for (const d of Object.values(b.desplazamientos)) {
           if (!d.Ldesvio) continue;
-          const r = engine.ramales.find((rr) => rr.id === d.Ldesvio);
+          const r = ramalesById.get(d.Ldesvio);
           if (!r) continue;
           r.pts[0] = [b.x, b.y];
           d.dx -= dxMove;
@@ -407,13 +435,14 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       engine.areas.find((a) => a.id === engine.lblDrag!.id);
     if (el) {
       const p = engine.toPlane(x - engine.lblDrag.offX, y - engine.lblDrag.offY);
-      // Only a bajante has cross-floor "ghost" label positions (ghostData, keyed per floor) —
-      // ramales/areas never do. Use _lblDragIsParent flag: if the drag started on the parent
-      // label, update labelX/labelY; otherwise (ghost label), update ghostData. Gate on
-      // isBajante(el) too, so a ramal/area label drag always writes labelX/labelY directly —
-      // without it, every ramal/area label drag fell into the ghost branch (isParentDrag is
-      // never set true for them) and wrote to a bogus ghostData property instead, so the label
-      // never actually moved.
+      // Solo un bajante tiene posiciones de etiqueta "fantasma" entre pisos (ghostData, una por
+      // piso) — los ramales/áreas nunca. Se usa la bandera _lblDragIsParent: si el arrastre
+      // empezó en la etiqueta del padre se actualiza labelX/labelY; si no (etiqueta fantasma),
+      // se actualiza ghostData. Además se condiciona con isBajante(el), para que un arrastre de
+      // etiqueta de ramal/área siempre escriba labelX/labelY directo — sin eso, cada arrastre de
+      // etiqueta de ramal/área caía en la rama fantasma (isParentDrag nunca se fija true para
+      // ellos) y escribía en una propiedad ghostData inexistente, así que la etiqueta nunca se
+      // movía de verdad.
       const isParentDrag = !!engine._lblDragIsParent;
       if (engine.lblDrag.slot && !isBajante(el)) {
         const ramal = el as PlanoRamal;
@@ -456,9 +485,10 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       t.fontMm = newFontMm;
       t.boxW = (newBoxWFull - pad * 2) / engine.zoom;
 
-      // Keep the anchor corner (opposite of the one being dragged) pinned at its original
-      // canvas position — recompute where the box's translate origin (t.x/t.y) must land so
-      // the anchor corner of the NEW (resized) box still lands exactly there.
+      // Mantener la esquina ancla (la opuesta a la que se arrastra) clavada en su posición
+      // original de canvas — recalcular dónde debe quedar el origen de traslación de la caja
+      // (t.x/t.y) para que la esquina ancla de la caja NUEVA (redimensionada) caiga exactamente
+      // ahí.
       const fs2 = engine.mm2cvs(newFontMm);
       const boxHFull2 = fs2 + pad * 2;
       const angle = ((t.textAngle || 0) * Math.PI) / 180;
@@ -473,9 +503,10 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     return;
   }
   if (engine.canalResizeDrag) {
-    // Generic in every direction: the dragged corner always becomes whichever plane point is
-    // NOT the fixed anchor, so no per-corner branching is needed here — grabbing any of the 4
-    // corners resolves to the same min/abs math against that corner's own fixed opposite.
+    // Genérico en todas las direcciones: la esquina arrastrada siempre termina siendo el punto
+    // de plano que NO es el ancla fija, así que no hace falta ramificar por esquina — agarrar
+    // cualquiera de las 4 esquinas resuelve a la misma matemática de min/abs contra su propia
+    // opuesta fija.
     const { id, anchorX, anchorY } = engine.canalResizeDrag;
     const canal = engine.bajantes.find((b) => b.id === id);
     if (canal) {
@@ -484,8 +515,8 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       canal.y = Math.min(anchorY, p.y);
       canal.base = Math.max(1, +(engine.pxToM(Math.abs(p.x - anchorX)) * 100).toFixed(1));
       canal.altura = Math.max(1, +(engine.pxToM(Math.abs(p.y - anchorY)) * 100).toFixed(1));
-      // Shrinking the canal can leave an associated bajante outside its new rect — pull it
-      // back in, same rule as a bajante dragged toward the edge.
+      // Encoger el canal puede dejar un bajante asociado fuera de su rectángulo nuevo — se
+      // regresa, con la misma regla que un bajante arrastrado hacia el borde.
       for (const assoc of engine.bajantes) {
         if (assoc.canalId !== canal.id) continue;
         const clamped = clampToCanal(engine, canal, assoc.x, assoc.y);
@@ -553,8 +584,9 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const idx = engine.ptDrag.ptIdx;
       const isEndpoint = idx === 0 || idx === r.pts.length - 1;
 
-      // Mid-ramal accessory: slide along the straight line to its neighbors only, clamped
-      // between them, so the ramal's actual path never bends because of this drag.
+      // Accesorio a mitad de ramal: deslizarse solo por la línea recta entre sus vecinos,
+      // recortado entre ellos, para que el recorrido real del ramal nunca se doble por este
+      // arrastre.
       const accSlide = engine.ptDrag.accMedSlide;
       if (accSlide) {
         const sDx = accSlide.bx - accSlide.ax,
@@ -593,9 +625,10 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           }
         }
 
-        // Grid-only snapping (no turn-angle filtering) so an invalid turn can still form here —
-        // see the matching comment on the bajDrag branch above for why: it needs to be reachable
-        // so checkRamalAngles-on-release can catch it and show "Ángulo no recomendado".
+        // Snap solo de cuadrícula (sin filtrar por giro válido) para que un giro inválido pueda
+        // formarse aquí — ver el comentario equivalente en la rama bajDrag de arriba para el
+        // porqué: debe ser alcanzable para que checkRamalAngles al soltar lo atrape y muestre
+        // "Ángulo no recomendado".
         if (!snappedToConstraint) {
           if (idx === 0 && r.pts.length > 1) {
             p = engine.snapAngle(r.pts[1][0], r.pts[1][1], p.x, p.y, r.net, r.tipo);
@@ -635,10 +668,11 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           }
         }
 
-        // Also snap to other bajantes/points in the canvas (snapToExisting), excluding own ones
+        // También pegar a otros bajantes/puntos del canvas (snapToExisting), excluyendo los
+        // propios
         if (!snapped) {
           const snapThresh2 = 16 / engine.zoom;
-          // Snap to other bajantes
+          // Pegar a otros bajantes
           for (const b of engine.bajantes) {
             if (b.id === r.id) continue;
             if (b.net !== r.net) continue;
@@ -655,7 +689,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
               break;
             }
           }
-          // Snap to other ramales' endpoints
+          // Pegar a los extremos de otros ramales
           if (!snapped) {
             for (const other of engine.ramales) {
               if (other.id === r.id) continue;
@@ -691,7 +725,8 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             if (other.id === r.id || !sameNetGroup(other.net, r.net) || movedRamalIds.has(other.id))
               continue;
             let changed = false;
-            // Point-vs-point: does a moved frontier point match a vertex of `other`?
+            // Punto contra punto: ¿un punto del frente de avance coincide con un vértice de
+            // `other`?
             for (let i = 0; i < other.pts.length; i++) {
               const matches = frontier.some(
                 (fp) => Math.hypot(other.pts[i][0] - fp[0], other.pts[i][1] - fp[1]) < 0.5,
@@ -705,8 +740,9 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
                 allOldPositions.push(before);
               }
             }
-            // Point-vs-body: does a frontier point land on `other`'s body segment (vent endpoint
-            // on san body)? Mirrors frontierOnOtherBody in collectConnectedGraph.
+            // Punto contra cuerpo: ¿un punto del frente aterriza sobre el segmento del cuerpo de
+            // `other` (extremo de vent sobre cuerpo de san)? Espejo de frontierOnOtherBody en
+            // collectConnectedGraph.
             if (!changed) {
               frontier.some((fp) => {
                 if (!other.pts || other.pts.length < 2) return false;
@@ -721,7 +757,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
                   if (cross >= 0.5) continue;
                   const t = ((fp[0] - ax) * sDx + (fp[1] - ay) * sDy) / (sLen * sLen);
                   if (t >= -0.02 && t <= 1.02) {
-                    // Shift every point of `other` rigidly
+                    // Desplazar rígidamente todos los puntos de `other`
                     for (let pi = 0; pi < other.pts.length; pi++) {
                       const origPt: [number, number] = [other.pts[pi][0], other.pts[pi][1]];
                       other.pts[pi][0] += dPx;
@@ -748,12 +784,14 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           frontier = nextFrontier;
         }
 
-        // Codo reventilado: the vent ramal's endpoint and the san ramal's coincident point
-        // must stay exactly together, so move the linked point to the same absolute position
-        // rather than by delta (avoids drift if they weren't pixel-perfect coincident already).
+        // Codo reventilado: el extremo del ramal de vent y el punto coincidente del ramal de san
+        // deben quedar exactamente juntos, así que se mueve el punto enlazado a la misma
+        // posición absoluta en vez de por delta (evita la deriva si no estaban pixel-perfect
+        // coincidentes).
         if (engine.ptDrag.linkedPts) {
+          const ramalesById = indexRamales(engine);
           for (const link of engine.ptDrag.linkedPts) {
-            const other = engine.ramales.find((o) => o.id === link.id);
+            const other = ramalesById.get(link.id);
             if (!other || !other.pts[link.ptIdx]) continue;
             other.pts[link.ptIdx] = [p.x, p.y];
             other.totalL = calculateRamalLength(other.pts, engine);
@@ -763,9 +801,10 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             other.labelY = my;
           }
         }
-        // Bajantes are the fixed anchors of the network — an endpoint drag must adapt the ramal
-        // to the bajante position, not displace the bajante to follow a drag. Only whole-body
-        // ramalDrag (below) may rigidly translate a connected bajante.
+        // Los bajantes son los anclajes fijos de la red — un arrastre de extremo debe adaptar el
+        // ramal a la posición del bajante, no desplazar el bajante para seguir el arrastre. Solo
+        // el ramalDrag de cuerpo completo (abajo) puede trasladar rígidamente un bajante
+        // conectado.
       }
 
       if (engine.nivelActual) {

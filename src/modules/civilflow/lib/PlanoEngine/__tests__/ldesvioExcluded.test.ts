@@ -5,9 +5,9 @@ import { _renumberRamales } from '../networkRenumber';
 import { loadSanLlTramos } from '../../../utils/buildTramos';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
 
-// Ldesvio connector ramales (id `LD_<bajanteId>`) are drawing aids, not hydraulic pipes. They
-// must never leak into design tables (bogus empty tramos like "RS1") nor get renamed by the
-// renumber pass (which would turn `LD_BAN2` into a real-looking `RS1` with no data).
+// Los ramales conectores de ldesvío (id `LD_<bajanteId>`) son ayudas de dibujo, no tuberías
+// hidráulicas. No deben filtrarse a las tablas de diseño (tramos vacíos falsos tipo "RS1") ni ser
+// renombrados por el renumber (que convertiría `LD_BAN2` en un `RS1` aparentemente real sin datos).
 
 const sanSyncFixture = {
   planes: {

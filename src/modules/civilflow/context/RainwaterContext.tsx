@@ -30,9 +30,9 @@ interface CanalLL {
   pendiente: number;
   b: number;
   h: number;
-  /** True when b/h come from a drawn canal glyph (tipo:'canal' on the 'll' net) — the table
-   * should show those two fields read-only in that case, since the drawing is the source of
-   * truth for them (see canalesLlAuto below). */
+  /** Es true cuando b/h provienen de un glifo de canal dibujado (tipo:'canal' en la red 'll') — en
+   * ese caso la tabla debe mostrar esos dos campos como solo lectura, porque el dibujo es la
+   * fuente de verdad de ambos (ver canalesLlAuto abajo). */
   fromCanal?: boolean;
 }
 interface RainwaterContextValue {
@@ -50,7 +50,7 @@ interface RainwaterContextValue {
 
 const RainwaterContext = createContext<RainwaterContextValue | null>(null);
 
-/** Provides rainwater drainage calculations: bajantes LL, canales LL, recolectora toggle. Auto-populates from drawing data. */
+/** Provee los cálculos de drenaje pluvial: bajantes LL, canales LL, toggle de recolectora. Se auto-puebla desde los datos del dibujo. */
 export function RainwaterProvider({ children }: { children?: ReactNode }) {
   const { tramosLl } = useTramos();
   const { plans } = usePlans();
@@ -64,7 +64,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       const saved = loadFromStorage<string[]>(ACTIVE_NETS_KEY, [] as unknown as string[]);
       if (saved && Array.isArray(saved)) return saved.includes('recolectora');
     } catch {
-      /* ignore */
+      /* ignorar */
     }
     return false;
   });
@@ -97,12 +97,14 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
   const updCanalLL = (id: string, field: string, val: string | number) =>
     setCanalesLl((p) => p.map((t) => (t.id === id ? { ...t, [field]: val } : t)));
 
-  // Auto-populate canal rows from drawn 'll' ramales (net==='ll', non-bajante), using the
-  // same floor-area lookup pattern as ChequeoBajantesLluvias, instead of starting from zeros.
-  // Also collects drawn canal glyphs (tipo:'canal', PlanoEngine's handleCanalDown) per floor in
-  // the same pass, since both need the same raw per-plan storage read — canal glyphs don't go
-  // through TramosContext/buildTramos.ts (that pipeline only models ramales/bajantes with
-  // sanitary/riser semantics), so they're read directly here instead, same as `areas` above.
+  // Auto-puebla las filas de canal desde los ramales 'll' dibujados (net==='ll', no bajante),
+  // con el mismo patrón de búsqueda de área por piso que ChequeoBajantesLluvias, en lugar de
+  // partir de ceros.
+  // En la misma pasada también recolecta los glifos de canal dibujados (tipo:'canal', el
+  // handleCanalDown de PlanoEngine) por piso, porque ambos necesitan la misma lectura cruda
+  // de storage por plano — los glifos de canal no pasan por TramosContext/buildTramos.ts (esa
+  // tubería solo modela ramales/bajantes con semántica sanitaria/bajante), así que se leen
+  // directo aquí, igual que `areas` arriba.
   const { areaAcumMap, drawnCanalGlyphs } = useMemo(() => {
     const map: Record<string, number> = {};
     const glyphs: (RawElement & { piso: string })[] = [];
@@ -171,9 +173,10 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
         coeficienteC: manual?.coeficienteC ?? 0.0278,
         manning: manual?.manning ?? 0.009,
         pendiente: manual?.pendiente ?? 0,
-        // b/h always come from the drawn glyph — never the manual override — since these are
-        // exactly the values the canal tool "imports" into the table; a manual entry here would
-        // silently revert on the next render anyway (canalesLlAuto recomputes every time).
+        // b/h siempre vienen del glifo dibujado, nunca del override manual — porque son
+        // exactamente los valores que la herramienta de canal "importa" a la tabla; una
+        // entrada manual aquí igual se revertiría en silencio en el próximo render
+        // (canalesLlAuto se recalcula en cada pasada).
         b: (glyph.base as number) || 0,
         h: (glyph.altura as number) || 0,
         fromCanal: true,
@@ -248,7 +251,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
   return <RainwaterContext.Provider value={value}>{children}</RainwaterContext.Provider>;
 }
 
-/** Hook to access rainwater calculation data. @returns {RainwaterContextValue} */
+/** Hook para acceder a los datos de cálculo de agua pluvial. @returns {RainwaterContextValue} */
 export function useRainwater() {
   const ctx = useContext(RainwaterContext);
   if (!ctx) throw new Error('useRainwater must be used within RainwaterProvider');

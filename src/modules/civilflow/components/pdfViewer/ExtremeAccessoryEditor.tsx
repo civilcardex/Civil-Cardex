@@ -78,8 +78,9 @@ export default function ExtremeAccessoryEditor({
         if (val && selElement[fieldApp]) {
           updates[fieldApp] = null;
         }
-        // Accessories no longer inherit the ramal's own diameter as a default — every accessory
-        // (sifón included) starts with no diameter selected until the user explicitly picks one.
+        // Los accesorios ya no heredan el diámetro propio del ramal como predeterminado — todo
+        // accesorio (sifón incluido) empieza sin diámetro elegido hasta que el usuario lo elige
+        // explícitamente.
         engineRef.current.updateSelected(updates);
         setSelElement({ ...selElement, ...updates });
         engineRef.current.render();

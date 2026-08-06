@@ -84,9 +84,9 @@ export function drawRamalPath(
             const disp = b.desplazamientos?.[lvl];
             const bx = b.x + (disp?.dx || 0);
             const by = b.y + (disp?.dy || 0);
-            // Check proximity to the vertex itself
+            // Verifica la proximidad al propio vértice
             if (Math.hypot(bx - pt[0], by - pt[1]) < 10) return true;
-            // Also check if the bajante is near the adjacent segments
+            // También comprueba si la bajante está cerca de los segmentos adyacentes
             const prev = pts[i - 1];
             const next = pts[i + 1];
             if (prev) {
@@ -167,9 +167,9 @@ export function drawRamalPath(
             ctx.lineWidth = 2 * engine.zoom;
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
-            // Must reset dash explicitly — ctx.save() preserves whatever dash the caller set for
-            // the body (e.g. a tributario's dashed line), so without this the elbow symbol itself
-            // inherits it and renders dashed too.
+            // Hay que reiniciar el dash explícitamente — ctx.save() conserva el dash que el
+            // llamador fijó para el cuerpo (p. ej. la línea discontinua de un tributario), así
+            // que sin esto el propio símbolo de codo lo hereda y se dibuja también discontinuo.
             ctx.setLineDash([]);
             ctx.beginPath();
             ctx.moveTo(T_A.x, T_A.y);
@@ -208,7 +208,7 @@ export function drawRamalPath(
             ctx.save();
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 2 * engine.zoom;
-            // Same dash-inheritance issue as the 45° bevel case above — reset explicitly.
+            // Mismo problema de herencia de dash que el inglete de 45° de arriba — se reinicia explícitamente.
             ctx.setLineDash([]);
             ctx.beginPath();
             ctx.arc(ccx, ccy, actualRad, angle_TA, angle_TC, counterclockwise);

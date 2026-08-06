@@ -161,10 +161,11 @@ export default function BajanteAsociacion({
     );
   };
 
-  // Mirror of associate() above but for the immediate-upper-floor "Origen" selector — from the
-  // shared association model's point of view this is the exact same operation with source/target
-  // swapped: the ORIGIN bajante (upper floor) becomes the source (its descargaEnId gets set), and
-  // the currently selected bajante becomes the target (gets the reverse origenId pointer).
+  // Espejo de associate() de arriba, pero para el selector "Origen" del piso inmediato superior:
+  // desde el punto de vista del modelo compartido de asociación es la misma operación con
+  // source/target intercambiados: el bajante ORIGEN (piso superior) pasa a ser la fuente (se le
+  // asigna su descargaEnId) y el bajante seleccionado pasa a ser el destino (recibe el puntero
+  // inverso origenId).
   const associateOrigin = (v: string | null) => {
     if (!engineRef.current) return;
     const eng = engineRef.current;
@@ -200,9 +201,9 @@ export default function BajanteAsociacion({
     const [originPlanId, originBajanteId] = v.split('|');
     const originBaj = upperFloorGroup?.bajantes.find((b) => b.id === originBajanteId);
     if (!originBaj || originBaj.x == null || originBaj.y == null) {
-      // Was silently returning here — the dropdown looked like it accepted the selection
-      // (origenId gets written above regardless) but no ghost/Ldesvio ever followed, with no
-      // indication anything went wrong. Surface it instead of failing invisibly.
+      // Antes se retornaba en silencio: el desplegable parecía aceptar la selección (origenId se
+      // escribía igualmente arriba) pero nunca aparecía el fantasma/Ldesvio, sin ningún indicio
+      // de que algo fallara. Ahora se muestra el error en lugar de fallar de forma invisible.
       engineRef.current.triggerAlert(
         'No se pudo asociar',
         `No se encontró el bajante de origen (${originBajanteId}) en el piso superior. Intenta reabrir el panel o recargar el piso.`,
@@ -361,6 +362,7 @@ export default function BajanteAsociacion({
             {selElement.descargaEnId && (
               <button
                 type="button"
+                aria-label="Quitar asociación"
                 onClick={() => associate(null)}
                 style={{
                   position: 'absolute',
@@ -438,6 +440,7 @@ export default function BajanteAsociacion({
               {selElement.origenId && (
                 <button
                   type="button"
+                  aria-label="Quitar origen"
                   onClick={() => associateOrigin(null)}
                   style={{
                     position: 'absolute',

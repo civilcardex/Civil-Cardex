@@ -1,11 +1,12 @@
 import type { PlanoBajante } from './PlanoState';
 
-// First step of the strangler-fig migration of PlanoEngine's flat state arrays into an owned
-// model: bajantes only, as the pilot — the smallest array, and the one behind this session's
-// label-drag and tee-marker-cleanup bugs. PlanoEngine exposes `bajantes` as a get/set accessor
-// backed by this class (see PlanoEngine.ts), so none of the ~50 existing call sites that read or
-// mutate `engine.bajantes` need to change. Future data-shape work (real association objects
-// instead of loose recibeDeIds/alimentaIds string arrays) lands here, one array at a time.
+// Primer paso de la migración "strangler-fig" de los arrays de estado plano de PlanoEngine hacia
+// un modelo propio: solo bajantes, como piloto — el array más pequeño y el que está detrás de los
+// bugs de esta sesión (label-drag y limpieza de marcadores de tee). PlanoEngine expone `bajantes`
+// como accessor get/set respaldado por esta clase (ver PlanoEngine.ts), así que ninguno de los
+// ~50 call sites existentes que leen o mutan `engine.bajantes` necesita cambiar. El trabajo
+// futuro de forma de datos (objetos de asociación reales en vez de los arrays sueltos de
+// recibeDeIds/alimentaIds) aterriza aquí, un array a la vez.
 export class PlanoNetworkModel {
   bajantes: PlanoBajante[] = [];
 }

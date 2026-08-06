@@ -10,20 +10,24 @@ function fileBase(name: string): string {
   return name.replace(/[^a-zA-Z0-9 _-]/g, '').trim();
 }
 
-// Supersampling factor for the export raster. The PDF page itself stays sized at pdfjs scale-1
-// (see w/h below — persisted element coordinates are anchored to that, always the scale active
-// the first time a plan's drawing loads in a fresh session), but rendering the actual pixels at
-// 3x and embedding that into the same-size page box gives the PDF viewer/printer real detail to
-// zoom into instead of visibly blurring past 100%. (Bumped from 2x — still visibly soft at normal
-// PDF-viewer zoom levels like 150-200%.)
+// Factor de sobremuestreo para el raster de exportación. La página PDF en sí se mantiene
+// dimensionada a escala-1 de pdfjs (ver w/h abajo — las coordenadas de elementos persistidas
+// están ancladas a eso, siempre la escala activa la primera vez que el dibujo de un plano carga
+// en una sesión fresca), pero renderizar los píxeles reales a 3x e incrustar eso en el mismo
+// cuadro de página de igual tamaño le da al visor/impresor de PDF detalle real para acercar en
+// vez de verse borroso visiblemente pasado el 100%. (Subido de 2x — seguía visiblemente suave a
+// niveles normales de zoom del visor PDF como 150-200%.)
 const RENDER_SCALE = 3;
 
-// Headless render of one plan: rasterize its base PDF page (pdfjs) plus every element drawn on
-// it (PlanoEngine, fed with the same persisted trazos JSON the on-screen editor loads), composited
-// into a single flat canvas. Runs a detached PlanoEngine instance (never mounted/visible) — it's
-// the same class the interactive visor uses, just pointed at an offscreen canvas so this works
-// without the visor being open.
-async function renderPlanoComposite(plan: PlanItem, pisos: Piso[]): Promise<{ dataUrl: string; w: number; h: number } | null> {
+// Render headless de un plano: rasterizar su página PDF base (pdfjs) más cada elemento dibujado
+// sobre ella (PlanoEngine, alimentado con el mismo JSON de trazos persistido que carga el editor
+// en pantalla), compuesto en un solo canvas plano. Corre una instancia de PlanoEngine
+// desacoplada (nunca montada/visible) — es la misma clase que usa el visor interactivo, solo
+// apuntada a un canvas fuera de pantalla para que esto funcione sin que el visor esté abierto.
+async function renderPlanoComposite(
+  plan: PlanItem,
+  pisos: Piso[],
+): Promise<{ dataUrl: string; w: number; h: number } | null> {
   const pdfjsLib = await getPdfjs();
   const buf = await plan.file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
@@ -47,21 +51,24 @@ async function renderPlanoComposite(plan: PlanItem, pisos: Piso[]): Promise<{ da
   const detachedCw = document.createElement('div');
   const eng = new PlanoEngine(detachedCw, null, drawCanvas);
   try {
-    // Drive PlanoEngine's own supersampling via dpr (matches sw/sh exactly, not just RENDER_SCALE,
-    // so the drawn-overlay canvas lines up pixel-for-pixel with the pdfjs raster above even after
-    // both got independently floored) — everything else keeps drawing in logical w/h coordinates.
+    // Conducir el propio sobremuestreo de PlanoEngine vía dpr (coincide sw/sh exactamente, no
+    // solo RENDER_SCALE, así que el canvas de overlay dibujado queda alineado píxel a píxel con
+    // el raster de pdfjs de arriba aun después de que ambos fueran redondeados hacia abajo
+    // independientemente) — todo lo demás sigue dibujando en coordenadas lógicas w/h.
     eng.dpr = sw / w;
     eng.setPageSize(w, h);
     eng.resizeCanvas(w, h);
 
-    // nivelActual defaults to null on a fresh engine — renderBajantes.ts (bajantes, montantes,
-    // contadores, calentadores) compares every element's own floor against it to decide whether
-    // it's a "ghost" from another floor, so leaving it unset made every single one of those
-    // elements render as a ghost/ghost-adjacent placeholder instead of its real symbol. Set it the
-    // same way PdfViewer.tsx's syncEngine does for the live visor.
-    const floorObj = pisos.find(p => String(p.n) === String(plan.nivel));
-    eng.nivelActual = floorObj ? { ...floorObj, label: pisoLbl(floorObj.n), npt: Number(floorObj.npt) } : null;
-    eng.nptLevels = pisos.map(p => ({ label: pisoLbl(p.n), npt: Number(p.npt) }));
+    // nivelActual default a null en un engine fresco — renderBajantes.ts (bajantes, montantes,
+    // contadores, calentadores) compara el piso propio de cada elemento contra él para decidir si
+    // es un "fantasma" de otro piso, así que dejarlo sin fijar hacía que cada uno de esos
+    // elementos se renderizara como un fantasma/placeholder adyacente a fantasma en vez de su
+    // símbolo real. Fijarlo igual que syncEngine de PdfViewer.tsx hace para el visor en vivo.
+    const floorObj = pisos.find((p) => String(p.n) === String(plan.nivel));
+    eng.nivelActual = floorObj
+      ? { ...floorObj, label: pisoLbl(floorObj.n), npt: Number(floorObj.npt) }
+      : null;
+    eng.nptLevels = pisos.map((p) => ({ label: pisoLbl(p.n), npt: Number(p.npt) }));
 
     const raw = loadFromStorage<unknown>(TRAZOS_PREFIX + plan.id, null);
     if (raw) eng.loadWork(typeof raw === 'string' ? raw : JSON.stringify(raw));
@@ -79,8 +86,9 @@ async function renderPlanoComposite(plan: PlanItem, pisos: Piso[]): Promise<{ da
     ctx.fillRect(0, 0, sw, sh);
     ctx.drawImage(pdfCanvas, 0, 0);
     ctx.drawImage(drawCanvas, 0, 0);
-    // Placed into the PDF at the LOGICAL w/h (same physical page size as before) — only the pixel
-    // data backing that box got denser, which is what actually sharpens it.
+    // Colocado en el PDF en el w/h LÓGICO (mismo tamaño de página física que antes) — solo los
+    // píxeles que respaldan ese cuadro se volvieron más densos, que es lo que realmente lo
+    // nitidez.
     return { dataUrl: out.toDataURL('image/png'), w, h };
   } finally {
     eng.destroy();
@@ -89,7 +97,7 @@ async function renderPlanoComposite(plan: PlanItem, pisos: Piso[]): Promise<{ da
 
 export async function downloadPlanosPdf(plans: PlanItem[], pisos: Piso[]): Promise<void> {
   const confirmed = plans
-    .filter(p => p.status === 'confirmed')
+    .filter((p) => p.status === 'confirmed')
     .toSorted((a, b) => (b.nivel ?? 0) - (a.nivel ?? 0));
   if (confirmed.length === 0) throw new Error('No hay planos confirmados para descargar.');
 

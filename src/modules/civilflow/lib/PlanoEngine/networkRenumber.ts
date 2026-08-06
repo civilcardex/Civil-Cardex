@@ -101,11 +101,10 @@ export function _renumberBajantes(engine: IPlanoEngineCore, netId: string): void
     b.id = newId;
     b.code = newId;
 
-    // Every cross-reference to the old id (Ldesvio ramal id, cross-floor ghost, the other side's
-    // descargaEnId/origenId pointer) is keyed off the id that's about to disappear — without this,
-    // a renumbered bajante that had an active cross-floor association orphans its own Ldesvio/ghost
-    // forever, since every later lookup computes the key from the CURRENT (already-renamed) id and
-    // never finds the stale one again.
+    // Al renumerar un bajante cambia su id, y TODAS las referencias a ese id (el ramal Ldesvio,
+    // el fantasma del otro piso, los punteros descargaEnId/origenId) se buscan por el id viejo.
+    // Si no se actualizan todas juntas, la asociación entre pisos queda huérfana para siempre:
+    // cada búsqueda posterior usa el id NUEVO y nunca encuentra las referencias viejas.
     const oldLd = ldesvioIdFor(oldId);
     const newLd = ldesvioIdFor(newId);
     const oldPointer = `${thisPlanId}|${oldId}`;
@@ -134,7 +133,9 @@ export function _renumberBajantes(engine: IPlanoEngineCore, netId: string): void
       }
       if (g.targetBajanteId === oldId) g.targetBajanteId = newId;
     }
-    // Other floors' storage (not live-loaded, so not covered by the in-memory patches above).
+    // También hay que actualizar el storage de los OTROS pisos (no están cargados en memoria,
+    // así que los parches de arriba no los alcanzan) — se hace piso por piso leyendo y
+    // reescribiendo sus datos guardados.
     renameBajanteAcrossFloorReferences(thisPlanId, oldId, newId);
   });
 }

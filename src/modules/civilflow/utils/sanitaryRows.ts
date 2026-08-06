@@ -31,9 +31,9 @@ export interface SanConnectivity {
   componentTotalMap: Record<string, number>;
 }
 
-// Single source of truth for the sanitary network's connectivity graph (which tramo discharges
-// into which, used to accumulate UD totals) — shared between the on-screen DisenosSanitarios
-// table and the Memorias Finales export, so both always show the same numbers.
+// Fuente única de verdad del grafo de conectividad de la red sanitaria (qué tramo descarga en
+// cuál, usado para acumular totales UD) — compartida entre la tabla DisenosSanitarios en
+// pantalla y la exportación de Memorias Finales, así ambas siempre muestran los mismos números.
 export function buildSanConnectivity(
   tramosSan: Tramo[],
   plans: PlanItem[],
@@ -57,13 +57,14 @@ export function buildSanConnectivity(
     const ramales = data.ramales || [];
     const bajantes = (data.bajantes || []) as BajanteRaw[];
 
-    // The two source ramales of a mid-body junction split (mergesFrom) both end up with an
-    // endpoint sitting at the exact same coordinate as the auto-created ramal's own start — so
-    // the proximity search below would ALSO link them directly to each other (a spurious edge),
-    // on top of each linking correctly to the auto-created ramal. That spurious edge lets one
-    // source's UD leak into the other's BFS subtree, and the mergeBranches correction further
-    // down then double-counts it when it force-sums the auto-created ramal's total from both
-    // sources. Two ramales that are the two feeders of the SAME merge must never link directly.
+    // Los dos ramales origen de una división de unión a mitad de cuerpo (mergesFrom) terminan
+    // ambos con un extremo en la coordenada exacta del inicio del ramal auto-creado — así que la
+    // búsqueda por proximidad de abajo también los enlazaría directo entre sí (una arista
+    // espuria), además de enlazar cada uno correctamente al ramal auto-creado. Esa arista espuria
+    // deja que el UD de un origen se filtre al subárbol BFS del otro, y la corrección
+    // mergeBranches más abajo lo cuenta doble cuando fuerza la suma del total del ramal
+    // auto-creado desde ambos orígenes. Dos ramales que son los dos alimentadores del MISMO merge
+    // nunca deben enlazarse directo.
     const mergeSiblingPairs = new Set<string>();
     for (const rr of ramales) {
       if (rr.mergesFrom) {
@@ -78,12 +79,13 @@ export function buildSanConnectivity(
       const pEnd = r.pts[r.pts.length - 1];
       const rKey = `${r.id}-${plan.id}`;
 
-      // Returns ALL ramales touching pt (not just the nearest) — a junction where a tributario
-      // merges mid-body into an existing ramal leaves BOTH the truncated existing ramal's cut
-      // point AND the tributario's own endpoint sitting at the exact same coordinate as the
-      // auto-created downstream ramal's start. Picking only the closest (old behavior, ties
-      // broken by array order) silently dropped one of the two parents from the connectivity
-      // graph, undercounting the auto-created ramal's accumulated UD.
+      // Devuelve TODOS los ramales que tocan pt (no solo el más cercano) — una unión donde un
+      // tributario se une a mitad de cuerpo de un ramal existente deja TANTO el punto de corte
+      // del ramal existente truncado COMO el extremo propio del tributario en la coordenada
+      // exacta del inicio del ramal auto-creado aguas abajo. Elegir solo el más cercano
+      // (comportamiento viejo, empates resueltos por orden de array) soltaba silenciosamente uno
+      // de los dos padres del grafo de conectividad, subestimando el UD acumulado del ramal
+      // auto-creado.
       const checkEndpoint = (pt: number[]) => {
         for (const b of bajantes) {
           const isDischargingIntoR =
@@ -282,9 +284,9 @@ export function buildSanConnectivity(
     }
   }
 
-  // Root = tramo discharging to a bajante (fin/ini code starts with 'B').
-  // Directed: that root aggregates everything feeding into it, so upstream
-  // leaf branches keep only their own UDs and don't show each other's totals.
+  // Raíz = tramo que descarga a un bajante (código fin/ini empieza con 'B').
+  // Dirigido: esa raíz agrega todo lo que la alimenta, así las ramas hoja aguas arriba
+  // conservan solo sus propios UD y no muestran los totales de las demás.
   const keyOf = (t: Tramo) => t._key || t.id;
   const byKey = new Map(tramosSan.map((t) => [keyOf(t), t]));
   let rootKey: string | null = null;
@@ -300,7 +302,8 @@ export function buildSanConnectivity(
     const bestT = byKey.get(rootKey);
     if ((t.piso || 0) >= (bestT?.piso || 0)) rootKey = k;
   }
-  // If no tramo discharges to a bajante, use most-connected tramo (only tramo keys) as root.
+  // Si ningún tramo descarga a un bajante, usar el tramo más conectado (solo claves de tramo)
+  // como raíz.
   if (!rootKey) {
     let bestKey: string | null = null,
       bestDeg = -1;
@@ -330,8 +333,9 @@ export function buildSanConnectivity(
         (t) => calcUDparcial(t, mergedBase),
       );
 
-  // Merge-branches correction (same as AF/AC): merge points accumulate feeder UDs.
-  // Prefer mergesFrom from raw data; fall back to connectivity graph detection.
+  // Corrección de ramas de merge (igual que AF/AC): los puntos de merge acumulan los UD de los
+  // alimentadores.
+  // Preferir mergesFrom de los datos crudos; caer a la detección por grafo de conectividad.
   const mergeBranches: Record<string, string[]> = {};
   for (const plan of plans || []) {
     if (plan.nivel == null) continue;
@@ -346,14 +350,15 @@ export function buildSanConnectivity(
       const mergedKeyFull = `${r.id}-${plan.id}`;
       if (!componentTotalMap[mergedKeyFull] && componentTotalMap[mergedKeyFull] !== 0) continue;
       const jc = r.pts[0];
-      // `r.mergesFrom` already records EXACTLY which two ramales created this junction
-      // (autoSplitJunctionAndSumFlow) — trust those two directly instead of re-deriving the full
-      // branch list from coordinate proximity alone, which previously could sweep in an unrelated
-      // extra ramal merely sitting near the same point (undercounting became OVERcounting: any
-      // stray nearby ramal added its UD on top of the two real feeders). The proximity scan below
-      // still runs, but only to catch a genuine 3rd+ joiner beyond the tracked pair, and only
-      // counts one whose own flow direction actually ARRIVES at jc (not one passing through/away
-      // from it) — mirrors the direction check already applied for AF/AC (waterNetworkRows.ts).
+      // `r.mergesFrom` ya registra EXACTAMENTE qué dos ramales crearon esta unión
+      // (autoSplitJunctionAndSumFlow) — confiar en esos dos directo en vez de re-derivar la lista
+      // completa de ramas solo por proximidad de coordenadas, que antes podía barrer un ramal
+      // extra no relacionado meramente sentado cerca del mismo punto (el subconteo se volvió
+      // SOBREconteo: cualquier ramal perdido cerca sumaba su UD encima de los dos alimentadores
+      // reales). El escaneo por proximidad de abajo igual corre, pero solo para atrapar un
+      // 3er+ unidor genuino más allá del par rastreado, y solo cuenta uno cuya dirección de flujo
+      // propia realmente LLEGA a jc (no uno que pasa por ahí o se aleja) — espeja el chequeo de
+      // dirección ya aplicado para AF/AC (waterNetworkRows.ts).
       const branchSet = new Set<string>(r.mergesFrom.map((id) => `${id}-${plan.id}`));
       for (const other of data.ramales || []) {
         if (other.id === r.id || !other.pts || other.pts.length < 2) continue;
@@ -373,8 +378,8 @@ export function buildSanConnectivity(
       mergeBranches[mergedKeyFull] = Array.from(branchSet);
     }
   }
-  // Fallback: detect merge points from connectivity graph (tramo appearing as target
-  // in calculoMap with >1 feeder).
+  // Respaldo: detectar puntos de merge desde el grafo de conectividad (tramo que aparece como
+  // destino en calculoMap con >1 alimentador).
   if (Object.keys(mergeBranches).length === 0) {
     for (const [parentKey, children] of Object.entries(calculoMap)) {
       const parentTramo = byKey.get(parentKey);
@@ -408,8 +413,8 @@ export function buildSanConnectivity(
     if (t) componentTotalMap[branchId] = calcUDparcial(t, mergedBase);
   }
 
-  // Clear "Otros Ramales" for merge sources — they keep only their own UDs
-  // and show nothing in the connections column (same as AF/AC behavior).
+  // Limpiar "Otros Ramales" para los orígenes de merge — conservan solo sus propios UD
+  // y no muestran nada en la columna de conexiones (igual que el comportamiento AF/AC).
   for (const branchId of allBranchIds) {
     if (mergeBranches[branchId]) continue;
     if (displayMap[branchId]) displayMap[branchId] = [];
@@ -447,8 +452,9 @@ export interface SanRow {
   chequeoFT: string;
 }
 
-// Per-tramo hydraulic design row — same formulas as the DisenosSanitarios table (Manning
-// diameter estimate + calcHydraulicCheck for the full checkpoint), shared with the memoria export.
+// Fila de diseño hidráulico por-tramo — mismas fórmulas que la tabla DisenosSanitarios
+// (estimación de diámetro de Manning + calcHydraulicCheck para el checkpoint completo),
+// compartida con la exportación de memorias.
 export function computeSanRows(
   displayTramos: Tramo[],
   componentTotalMap: Record<string, number>,
@@ -538,8 +544,8 @@ export function computeSanRows(
     });
 }
 
-// Cálculo de unidades de descarga — same connectivity graph as computeSanRows, different columns
-// (aparato counts per tramo instead of the hydraulic design check).
+// Cálculo de unidades de descarga — mismo grafo de conectividad que computeSanRows, columnas
+// distintas (conteos de aparato por tramo en vez del chequeo de diseño hidráulico).
 export function computeUdTable(
   tramosSan: Tramo[],
   plans: PlanItem[],
@@ -591,8 +597,8 @@ export function computeUdTable(
     ];
   });
 
-  // Sumatoria row — matches the on-screen table's tfoot: per-aparato "cant × UD" subtotal, plus
-  // the grand total UD for the whole network.
+  // Fila de sumatoria — coincide con el tfoot de la tabla en pantalla: subtotal por-aparato
+  // "cant × UD", más el total general de UD de toda la red.
   const totales = mergedBase.map((d) => {
     const cant = tramosSan.reduce((s, t) => s + (t.fixtures[d.id] || 0), 0);
     return { cant, ud: d.ud, subtotal: cant * d.ud };

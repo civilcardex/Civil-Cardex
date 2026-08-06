@@ -96,8 +96,8 @@ export function computeUcTable(
     return row;
   });
 
-  // Sumatoria row — matches the on-screen table's tfoot: per-aparato "cant × UC" subtotal, plus
-  // the grand total UC for the whole network.
+  // Fila de sumatoria — coincide con el tfoot de la tabla en pantalla: subtotal por aparato
+  // "cant × UC", más el total general de UC para toda la red.
   const totales = AP.map((d) => {
     const cant = tramos.reduce((s, t) => s + (t.fixtures?.[d.id] || 0), 0);
     const uc = d[field] as number;

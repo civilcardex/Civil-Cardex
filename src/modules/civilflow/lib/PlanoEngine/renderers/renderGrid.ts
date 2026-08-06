@@ -1,35 +1,40 @@
 import type { IPlanoEngineCore } from '../PlanoState';
 
-// Real-world spacing between grid lines — 0.5m, small enough to actually be useful as a drawing
-// aid at typical architectural scales (1:50, 1:75, 1:100...). Was 1000 (1m), squares too big.
+// Separación real entre líneas de rejilla — 0.5 m, lo bastante fina para servir de verdad
+// como ayuda de dibujo a escalas arquitectónicas típicas (1:50, 1:75, 1:100...). Antes era
+// 1000 (1 m): cuadros demasiado grandes.
 const GRID_SPACING_MM = 500;
 
 export function renderGrid(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
-  // mm2cvs() expects PAPER mm, not real-world mm — realMmToCanvasPx() does the real→paper
-  // conversion first (dividing by the drawing scale) before calling it, same as every other
-  // real-world-sized symbol in the engine (accessory glyphs, bajante radii, etc). Calling
-  // mm2cvs(1000) directly here treated 1000 as paper mm — a full paper-space METER — spacing grid
-  // lines roughly 50x too far apart at common scales, so in practice none ever fell on-screen.
+  // mm2cvs() espera mm de PAPEL, no mm del mundo real — realMmToCanvasPx() hace la conversión
+  // real→papel (dividiendo por la escala de dibujo) antes de llamarla, igual que todo otro
+  // símbolo de tamaño real del motor (glifos de accesorio, radios de bajante, etc). Llamar
+  // mm2cvs(1000) directo aquí trataba 1000 como mm de papel — un METRO en espacio de papel —
+  // separando las líneas de rejilla ~50x demasiado a escalas comunes, así que en la práctica
+  // ninguna caía en pantalla.
   const stepPx = engine.realMmToCanvasPx(GRID_SPACING_MM);
-  if (!Number.isFinite(stepPx) || stepPx < 4) return; // too zoomed out — lines would just be noise
+  if (!Number.isFinite(stepPx) || stepPx < 4) return; // demasiado alejado — las líneas serían solo ruido visual
 
-  // engine.cw.clientWidth/clientHeight (live DOM layout) instead of canv.width/dpr — the canvas
-  // attribute dimensions can lag a beat behind the actual viewport right after a PDF underlay
-  // loads/resizes the drawing area, which silently starved the grid's loop bounds to near-zero
-  // while every other renderer (offX/zoom-based, no dependency on canv.width) kept working fine.
+  // engine.cw.clientWidth/clientHeight (layout DOM en vivo) en vez de canv.width/dpr — las
+  // dimensiones del atributo del canvas pueden quedarse un paso atrás del viewport real justo
+  // después de que un PDF de fondo carga/redimensiona el área de dibujo, lo que reducía en
+  // silencio los límites del loop de la rejilla a casi cero mientras todo otro renderer
+  // (basado en offX/zoom, sin dependencia de canv.width) seguía funcionando bien.
   const dpr = engine.dpr || 1;
   const wCss = engine.cw?.clientWidth || engine.canv.width / dpr;
   const hCss = engine.cw?.clientHeight || engine.canv.height / dpr;
 
-  // Snap the first line to a grid-aligned canvas position so the grid stays anchored to the plane
-  // origin (doesn't "swim" while panning) instead of always starting at the viewport edge.
+  // Anclar la primera línea a una posición de canvas alineada con la rejilla para que esta se
+  // mantenga fija al origen del plano (no "nada" al hacer pan) en vez de empezar siempre en el
+  // borde del viewport.
   const startX = engine.offX % stepPx;
   const startY = engine.offY % stepPx;
 
   ctx.save();
-  // Was 0.14 — too faint to register against the PDF underlay/busy drawing, easy to miss
-  // entirely at normal working opacity. Bumped up so the grid is actually usable as a drawing
-  // aid, plus a bolder line every 5th step (5m) as a coarse reference.
+  // Antes 0.14 — demasiado tenue para distinguirse contra el PDF de fondo/dibujo cargado,
+  // fácil de perder por completo a la opacidad normal de trabajo. Subida para que la rejilla
+  // sirva de verdad como ayuda de dibujo, más una línea más gruesa cada 5 pasos (5 m) como
+  // referencia gruesa.
   ctx.lineWidth = 1;
   ctx.strokeStyle = 'rgba(120,150,165,0.35)';
   ctx.beginPath();

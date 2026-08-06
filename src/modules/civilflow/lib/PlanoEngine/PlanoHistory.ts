@@ -1,6 +1,12 @@
 import { initNetCounts } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
-import type { PlanoRamal, PlanoBajante, PlanoArea, PlanoDimension, PlanoTextAnnotation } from './PlanoState';
+import type {
+  PlanoRamal,
+  PlanoBajante,
+  PlanoArea,
+  PlanoDimension,
+  PlanoTextAnnotation,
+} from './PlanoState';
 import { cancelRamal, cancelArea } from './PlanoEngineDrawing';
 
 const MAX_UNDO_STACK = 50;
@@ -67,28 +73,34 @@ export class PlanoHistory {
       e.render();
       return;
     }
-    
-    if (e.activeRamal) { cancelRamal(e); return; }
-    if (e.activeArea) { cancelArea(e); return; }
+
+    if (e.activeRamal) {
+      cancelRamal(e);
+      return;
+    }
+    if (e.activeArea) {
+      cancelArea(e);
+      return;
+    }
 
     if (this._undoStack.length < 2) return;
 
     this._isRestoring = true;
 
-    // Push current (top) state to redo stack before discarding it
+    // Empuja el estado actual (tope) al stack de redo antes de descartarlo
     const currentSnap = this._undoStack.pop()!;
     this._redoStack.push(currentSnap);
 
-    // Restore previous state (now at top)
+    // Restaura el estado previo (ahora en el tope)
     const snap = this._undoStack[this._undoStack.length - 1];
     restoreSnapshot(e, snap);
 
     e.selId = null;
     e._emitSelect(null);
     e.render();
-    
+
     this._isRestoring = false;
-    
+
     if (e._onDirtyCb) e._onDirtyCb();
   }
 
@@ -98,11 +110,11 @@ export class PlanoHistory {
 
     this._isRestoring = true;
 
-    // Push current state to undo stack
+    // Empuja el estado actual al stack de undo
     const currentSnap = captureSnapshot(e);
     this._undoStack.push(currentSnap);
 
-    // Restore redo state
+    // Restaura el estado de redo
     const snap = this._redoStack.pop()!;
     restoreSnapshot(e, snap);
 

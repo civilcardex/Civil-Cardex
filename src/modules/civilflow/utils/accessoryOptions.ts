@@ -19,13 +19,14 @@ export function getAccessoryOptions(netId: string) {
   if (['af', 'ac', 'rci', 'rec'].includes(netId)) {
     // AF/AC: válvulas (incluida llave terminal — válida como accesorio de extremo, ver
     // ExtremeAccessoryEditor.tsx), válvulas de pie, reducciones, ampliaciones, otros, codos de
-    // subida/bajada, y tee sube/baja/con tapón/con llave terminal (pure glyph markers — no
-    // separate ramal needed, unlike montante's auto-tee). Plain teeDirecto
-    // stays excluded: a plain tee is always geometrically auto-detected (renderJunctions.ts).
-    // Plain 'tapon' stays excluded: capping a tee's free leg
-    // goes through 'teeTapon' now, not a bare cap with no tee mark. teeReduccion/teeLado stay
-    // excluded from THIS dropdown specifically — still available from the sidebar accessory
-    // counter and the junction-detection modal, just not as a body-glyph choice here.
+    // subida/bajada, y tee sube/baja/con tapón/con llave terminal (marcadores de glifo puros — no
+    // necesitan ramal aparte, a diferencia del auto-tee del montante). La teeDirecto simple
+    // sigue excluida: una tee plana siempre se auto-detecta geométricamente (renderJunctions.ts).
+    // El 'tapon' simple sigue excluido: tapar la pierna libre de una tee
+    // pasa por 'teeTapon' ahora, no por una tapa pelada sin marca de tee. teeReduccion/teeLado
+    // quedan excluidas de ESTE dropdown específicamente — siguen disponibles desde el contador
+    // de accesorios del sidebar y el modal de detección de uniones, solo que no como elección de
+    // glifo de cuerpo aquí.
     return ACCESORIOS_HIDRO.filter(
       (a) =>
         (a.cat !== 'Codos' && a.cat !== 'Tees' && a.id !== 'tapon') ||

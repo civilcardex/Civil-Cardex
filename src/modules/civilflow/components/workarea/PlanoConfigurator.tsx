@@ -154,7 +154,7 @@ function PlanoConfiguratorBase({
     getCursorPos,
   } = useCalibration({ zoom, offset, overlayContRef, isPdf, existingCal, showToast });
 
-  // Overlay render
+  // Render del overlay
   React.useEffect(() => {
     const canv = canvRef.current;
     if (!canv || !imgLoaded || !pageWRef.current || !pageHRef.current) return;
@@ -170,7 +170,7 @@ function PlanoConfiguratorBase({
     if (origen) {
       const { x_px, y_px } = origen;
       ctx.save();
-      // Dotted axes (gray, across entire canvas in plane coords)
+      // Ejes punteados (gris, sobre todo el lienzo en coordenadas de plano)
       ctx.strokeStyle = 'rgba(170,175,185,0.4)';
       ctx.lineWidth = 0.7;
       ctx.setLineDash([6, 10]);
@@ -183,7 +183,7 @@ function PlanoConfiguratorBase({
       ctx.lineTo(x_px, pageHRef.current);
       ctx.stroke();
       ctx.setLineDash([]);
-      // Solid cross marker (orange, zoom-aware size)
+      // Marcador de cruz sólido (naranja, tamaño en coordenadas de plano, escala con el zoom)
       const sz = 14;
       ctx.strokeStyle = '#F5A623';
       ctx.lineWidth = 2;
@@ -198,7 +198,7 @@ function PlanoConfiguratorBase({
       ctx.lineTo(x_px, y_px + sz);
       ctx.stroke();
       ctx.shadowBlur = 0;
-      // (0,0) label with background
+      // Etiqueta (0,0) con fondo
       ctx.font = '700 11px monospace';
       const labelW = ctx.measureText('(0,0)').width + 10;
       const labelH = 18;
@@ -345,9 +345,10 @@ function PlanoConfiguratorBase({
         ctx.fillText(txt, 22, 30);
       }
     }
-    // Overlay repaint deliberately keys off the drawn values only (not factorX/factorY/lenX/
-    // lenY/isPdf/preScaleM, which feed the label text computed inline above) — pre-existing
-    // behavior carried over unchanged from before this effect was split out of the component.
+    // El repintado del overlay depende deliberadamente solo de los valores dibujados (no de
+    // factorX/factorY/lenX/lenY/isPdf/preScaleM, que alimentan el texto de la etiqueta
+    // calculado inline arriba) — comportamiento preexistente conservado tal cual desde antes
+    // de que este efecto se extrajera del componente.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [origen, calStart, calPreview, modoOrigen, modoCalX, modoCalY, scaleM, imgLoaded, cursorPos]);
 
@@ -550,7 +551,7 @@ function PlanoConfiguratorBase({
         </div>
       )}
 
-      {/* Status bar */}
+      {/* Barra de estado */}
       <div style={PlanoConfigurator_S2}>
         <span
           style={{
@@ -604,9 +605,12 @@ function PlanoConfiguratorBase({
         </button>
       </div>
 
-      {/* Main area: viewer + config panel */}
+      {/* Área principal: visor + panel de configuración */}
       <div style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}>
-        {/* Left: Interactive viewer */}
+        {/* Izquierda: visor interactivo */}
+        {/* Superficie de dibujo CAD: interacciones de pointer (drag/pan) inherentes al lienzo; la
+            alternativa de teclado es el modelo de interacción completo del editor, fuera de alcance. */}
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions */}
         <div
           ref={overlayContRef}
           style={{
@@ -655,7 +659,7 @@ function PlanoConfiguratorBase({
           </div>
         </div>
 
-        {/* Right: Configuration panel - compact */}
+        {/* Derecha: panel de configuración - compacto */}
         <div
           style={{
             width: 230,
@@ -667,7 +671,7 @@ function PlanoConfiguratorBase({
             overflowY: 'auto',
           }}
         >
-          {/* Header Banner - changes color when floor calibration is complete */}
+          {/* Banner de cabecera - cambia de color cuando la calibración del piso está completa */}
           {(() => {
             const pisoCompletado =
               planNivel !== null &&
@@ -688,7 +692,7 @@ function PlanoConfiguratorBase({
             );
           })()}
 
-          {/* Step 1: Level */}
+          {/* Paso 1: Nivel */}
           <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
             <div
               style={{
@@ -724,7 +728,7 @@ function PlanoConfiguratorBase({
                 })}
             </select>
 
-            {/* Escala - definida y calibrada side-by-side */}
+            {/* Escala - definida y calibrada lado a lado */}
             <div style={{ marginTop: 8, display: 'flex', gap: 10 }}>
               <div style={{ flex: 1 }}>
                 <div
@@ -816,7 +820,7 @@ function PlanoConfiguratorBase({
             </div>
           </div>
 
-          {/* Step 2: Origin */}
+          {/* Paso 2: Origen */}
           <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line)' }}>
             <div
               style={{
@@ -846,6 +850,7 @@ function PlanoConfiguratorBase({
                 </span>
                 <button
                   type="button"
+                  aria-label="Quitar origen"
                   onClick={() => {
                     setOrigen(null);
                     setHasSaved(false);
@@ -858,7 +863,7 @@ function PlanoConfiguratorBase({
             )}
           </div>
 
-          {/* Step 3 & 4: Calibrate X and Y */}
+          {/* Pasos 3 y 4: Calibrar X e Y */}
           <div
             style={{
               padding: '8px 10px',
@@ -906,6 +911,7 @@ function PlanoConfiguratorBase({
                   ✓ {factorX.toFixed(4)}
                   <button
                     type="button"
+                    aria-label="Quitar factor X"
                     onClick={() => {
                       setFactorX(null);
                       setLenX('');
@@ -965,6 +971,7 @@ function PlanoConfiguratorBase({
                   ✓ {factorY.toFixed(4)}
                   <button
                     type="button"
+                    aria-label="Quitar factor Y"
                     onClick={() => {
                       setFactorY(null);
                       setLenY('');
@@ -986,7 +993,7 @@ function PlanoConfiguratorBase({
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Acciones */}
           <div
             style={{
               padding: '8px 10px',

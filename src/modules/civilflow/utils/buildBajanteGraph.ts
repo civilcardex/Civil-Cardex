@@ -21,14 +21,15 @@ interface BajanteRaw extends RawElement {
 }
 
 /**
- * Builds an oriented adjacency graph and vent connection map from drawing plans and sanitary tramos.
- * Detects ramal-to-bajante and ramal-to-ramal connections via endpoint proximity (2px threshold),
- * adds vertical bajante section links, and resolves descargaEnId discharge targets.
- * Orients each connected component by lowest (piso, bajante-first) root score.
- * @param plans - Plan entries with id and nivel.
- * @param tramosSan - Sanitary tramo objects.
- * @param udBase - UD base definitions for per-element UD calculation.
- * @returns Tuple of [orientedConexiones, vMap, ventRamalDiamMap, components].
+ * Construye un grafo de adyacencia orientado y un mapa de conexiones de ventilación a partir de
+ * los planos de dibujo y los tramos sanitarios. Detecta conexiones ramal-a-bajante y
+ * ramal-a-ramal vía proximidad de extremos (umbral 2px), añade enlaces de sección vertical de
+ * bajante y resuelve los destinos de descarga descargaEnId. Orienta cada componente conexo por
+ * el menor puntaje de raíz (piso, bajante-primero).
+ * @param plans - Entradas de plano con id y nivel.
+ * @param tramosSan - Objetos de tramo sanitario.
+ * @param udBase - Definiciones de base UD para el cálculo de UD por elemento.
+ * @returns Tupla de [orientedConexiones, vMap, ventRamalDiamMap, components].
  */
 export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase: UDBase[]) {
   const map: Record<string, string[]> = {};
@@ -82,8 +83,8 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
           const bPos = getBajantePos(b);
           const dist = Math.hypot(pt[0] - bPos.x, pt[1] - bPos.y);
           if (isExplicit) {
-            // Explicit link doesn't say which end — assign it to whichever endpoint is
-            // geometrically closer, so a bajante at each end each claims its own.
+            // El enlace explícito no dice en qué extremo — asignarlo al extremo que esté
+            // geométricamente más cerca, para que un bajante en cada extremo reclame el suyo.
             const otherPt = pt === pEnd ? pStart : pEnd;
             const otherDist = Math.hypot(otherPt[0] - bPos.x, otherPt[1] - bPos.y);
             if (dist < otherDist) return { type: 'bajante' as const, id: b.id };
@@ -110,9 +111,9 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
         return null;
       };
 
-      // A ramal can have a bajante at EACH end — check both endpoints independently instead
-      // of short-circuiting on the first match, otherwise the second bajante is silently
-      // dropped and its discharge units never get counted.
+      // Un ramal puede tener un bajante en CADA extremo — chequear ambos extremos
+      // independientemente en vez de cortocircuitar en la primera coincidencia, si no el segundo
+      // bajante se descarta en silencio y sus unidades de descarga nunca se cuentan.
       const connections = [checkEndpoint(pEnd), checkEndpoint(pStart)].filter(
         (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null,
       );
@@ -198,7 +199,7 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
       }
     }
 
-    // Build vent ramal diameter map from drawing data
+    // Construir mapa de diámetros de ramales de ventilación desde los datos de dibujo
     for (const vr of ventRamales) {
       const diam =
         vr.diamPulg || (vr.diametro ? parseFloat(String(vr.diametro).replace(/[^0-9.]/g, '')) : 0);
@@ -208,7 +209,7 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
     }
   }
 
-  // Add vertical connections for bajantes (from upper to lower sections)
+  // Añadir conexiones verticales para bajantes (de secciones superiores a inferiores)
   const bajantesGroups: Record<string, typeof tramosSan> = {};
   for (const t of tramosSan) {
     if (t.esBajante && t.id) {
@@ -231,7 +232,7 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
     }
   }
 
-  // Add discharge connections (descargaEnId) of bajantes into lower ramales
+  // Añadir conexiones de descarga (descargaEnId) de bajantes hacia ramales inferiores
   for (const t of tramosSan) {
     if (t.esBajante && t.descargaEnId && t._key) {
       const parts = parseDescargaEnId(t.descargaEnId, '');
@@ -250,7 +251,7 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
     }
   }
 
-  // Build undirected adjacency list for all tramos
+  // Construir lista de adyacencia no dirigida para todos los tramos
   const adj: Record<string, string[]> = {};
   for (const t of tramosSan) {
     if (t._key) {
@@ -267,7 +268,7 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
     }
   }
 
-  // Find connected components in the full graph `adj`
+  // Encontrar componentes conexas en el grafo completo `adj`
   const compVisited = new Set<string>();
   const components: string[][] = [];
 
@@ -330,7 +331,7 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
     }
   }
 
-  // Compute connected-component totals
+  // Calcular totales de componentes conexas
   const tramoById: Record<string, Tramo> = {};
   for (const t of tramosSan) {
     const key = t._key || t.id;

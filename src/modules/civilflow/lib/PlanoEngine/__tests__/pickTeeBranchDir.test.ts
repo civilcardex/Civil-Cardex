@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { pickTeeBranchDir } from '../renderers/renderRamales';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
 
-// pickTeeBranchDir must choose the branch side toward the ACTUAL perpendicular crossing ramal,
-// and must NOT be fooled by collinear segments (split stubs) that also touch the junction.
+// pickTeeBranchDir debe elegir el lado de la rama hacia el ramal que cruza PERPENDICULARMENTE
+// real, y NO debe dejarse engañar por segmentos colineales (stubs de división) que también tocan
+// la unión.
 
 function makeEngine(ramales: PlanoRamal[]): IPlanoEngineCore {
   const engine: Partial<IPlanoEngineCore> = {
@@ -65,7 +66,7 @@ function makeRamal(id: string, pts: number[][], opts: Partial<PlanoRamal> = {}):
 
 describe('pickTeeBranchDir — horizontal through ramal, vertical tributario', () => {
   it('points the branch DOWN when the tributario goes down (y+)', () => {
-    // Through ramal: horizontal [0,0]->[20,0] (ownId). Tributario passes the junction going DOWN.
+    // Ramal de paso: horizontal [0,0]->[20,0] (ownId). El tributario cruza la unión yendo hacia ABAJO.
     const engine = makeEngine([
       makeRamal('THROUGH', [
         [0, 0],
@@ -77,7 +78,7 @@ describe('pickTeeBranchDir — horizontal through ramal, vertical tributario', (
       ]),
     ]);
     const { px, py } = pickTeeBranchDir(engine, 'THROUGH', 'af', [20, 0], 1, 0, 0, 1);
-    // Branch must align with the tributario: (0,1) = DOWN
+    // La rama debe alinearse con el tributario: (0,1) = ABAJO
     expect(Math.abs(px)).toBeLessThan(0.01);
     expect(py).toBeGreaterThan(0.99);
   });
@@ -99,8 +100,8 @@ describe('pickTeeBranchDir — horizontal through ramal, vertical tributario', (
   });
 
   it('ignores a COLLINEAR split stub and still picks the tributario side', () => {
-    // The split stub continues the horizontal line from the junction — it touches the point but
-    // is collinear with the through direction, so it must NOT win over the perpendicular trib.
+    // El stub de división continúa la línea horizontal desde la unión — toca el punto pero es
+    // colineal con la dirección de paso, así que NO debe ganarle al tributario perpendicular.
     const engine = makeEngine([
       makeRamal('THROUGH', [
         [0, 0],
@@ -128,7 +129,7 @@ describe('pickTeeBranchDir — horizontal through ramal, vertical tributario', (
       ]),
     ]);
     const { px, py } = pickTeeBranchDir(engine, 'THROUGH', 'af', [10, 0], 1, 0, 0, 1);
-    // Fallback: screen-up = (0,-1)
+    // Respaldo: arriba en pantalla = (0,-1)
     expect(Math.abs(px)).toBeLessThan(0.01);
     expect(py).toBeLessThan(-0.99);
   });

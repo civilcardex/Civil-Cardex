@@ -116,7 +116,6 @@ export default function ConfirmDialog({ confirmState, setConfirmState }: Confirm
         </button>
         <button
           type="button"
-          autoFocus
           onClick={() => {
             confirmState.onConfirm();
             handleClose();

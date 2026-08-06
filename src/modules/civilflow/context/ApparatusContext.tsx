@@ -36,7 +36,7 @@ function loadAps() {
   return APS_DEFAULT.map((a) => ({ ...a }));
 }
 
-/** Provides sanitary apparatus catalog (UD base + custom items) with localStorage persistence. */
+/** Provee el catálogo de aparatos sanitarios (base UD + ítems personalizados) con persistencia en localStorage. */
 export function ApparatusProvider({ children }: { children?: ReactNode }) {
   const [udBase] = useState([...UD_BASE_INIT]);
 
@@ -58,7 +58,7 @@ export function ApparatusProvider({ children }: { children?: ReactNode }) {
   return <ApparatusContext.Provider value={value}>{children}</ApparatusContext.Provider>;
 }
 
-/** Hook to access apparatus catalog. @returns {ApparatusContextValue} */
+/** Hook para acceder al catálogo de aparatos. @returns {ApparatusContextValue} */
 export function useApparatus() {
   const ctx = useContext(ApparatusContext);
   if (!ctx) throw new Error('useApparatus must be used within ApparatusProvider');

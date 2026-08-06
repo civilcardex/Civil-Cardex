@@ -96,13 +96,14 @@ const PdfViewer_S5: React.CSSProperties = {
   fontSize: 12,
 } as const;
 const PdfViewer_EMPTY_PISOS: Piso[] = [];
-// Collapsed left sidebar keeps a narrow icon strip (tools + snap + actions) instead of vanishing
-// to 0 — matches the toolbar's own collapsed rendering in PdfViewerToolbar.tsx.
+// Barra izquierda colapsada conserva una franja estrecha de iconos (herramientas + snap +
+// acciones) en vez de desaparecer a 0 — coherente con el render colapsado de la propia
+// toolbar en PdfViewerToolbar.tsx.
 const LEFT_COLLAPSED_WIDTH = 44;
 
-// Structural probe of a PlanoElement union: lets code sniff `tipo`/`net`/`diametro`/`pendiente`
-// (present on some element kinds, absent on others) without narrowing via the exported type
-// guards at every access site.
+// Sonda estructural de la unión PlanoElement: permite leer `tipo`/`net`/`diametro`/`pendiente`
+// (presentes en unos tipos de elemento, ausentes en otros) sin repetir narrowing con los
+// type guards exportados en cada punto de acceso.
 type ProbedElement = PlanoElement & {
   tipo?: string;
   net?: string;
@@ -311,33 +312,35 @@ function PdfViewer_({
       setLowerFloorsRamales([]);
       return;
     }
-    // Coerce to String, same as the plan-matching lookup below — selectedNivel and piso.n don't
-    // always agree on number-vs-string, and a strict === miss here silently made currentFloor
-    // undefined, falling back to Infinity: harmless on its own, but inconsistent with whichever
-    // OTHER lookup in this function DOES resolve correctly, making the dropdown's floor list
-    // flip between right and empty depending on which comparison happened to line up that time.
+    // Forzar a String, igual que la búsqueda de coincidencia con planos más abajo — selectedNivel
+    // y piso.n no siempre coinciden en número-vs-string, y un === estricto fallido aquí dejaba
+    // currentFloor en undefined (cayendo a Infinity): inofensivo por sí solo, pero inconsistente
+    // con la OTRA búsqueda de esta función que sí resuelve, haciendo que la lista de pisos del
+    // dropdown alternara entre correcta y vacía según qué comparación acertara esa vez.
     const currentFloor = pisos.find((p) => String(p.n) === String(selectedNivel));
-    // Number() coercion — npt is typed number|string (LevelsCard stores a string mid-edit) and an
-    // older saved project can still have a stringified npt on disk; a bare `<=` on two strings is
-    // lexicographic ("9.00" > "30.00"), silently dropping genuinely-lower floors from the list.
+    // Coerción con Number() — npt está tipado number|string (LevelsCard guarda un string a
+    // mitad de edición) y un proyecto antiguo puede tener npt serializado como string; un <=
+    // entre dos strings es lexicográfico ("9.00" > "30.00") y descartaba silenciosamente de la
+    // lista pisos realmente más bajos.
     const currentNpt = currentFloor ? Number(currentFloor.npt) : Infinity;
     const relevantPlans = planosCtx.plans.filter((plan) => {
       const pF = pisos.find((p) => String(p.n) === String(plan.nivel));
       return pF && Number(pF.npt) <= currentNpt;
     });
-    // Only real floor-spanning risers (bajante/montante) belong in the "Destino" dropdown —
-    // contador/calentador/red_publica are point fixtures, not trunk lines a pipe cascades
-    // down into. Ramales aren't offered either: the association models a riser continuing
-    // down into the NEXT riser below, cascading floor by floor.
+    // Solo bajantes/montantes reales que atraviesan pisos entran en el dropdown "Destino" —
+    // contador/calentador/red_publica son aparatos puntuales, no líneas troncales en las que una
+    // tubería descargue. Los ramales tampoco se ofrecen: la asociación modela una bajante que
+    // continúa hacia la SIGUIENTE bajante inferior, en cascada piso por piso.
     const isRiser = (b: PlanoBajante) =>
       b.tipo !== 'contador' && b.tipo !== 'calentador' && b.tipo !== 'red_publica';
 
-    // Resolve every plan SYNCHRONOUSLY first (live engine for the current floor, localStorage for
-    // the rest) and show that immediately — the dropdown must never sit empty just because one
-    // slow DB fetch hasn't resolved yet. Only plans with genuinely nothing cached locally get an
-    // async DB fallback, merged in as each one individually resolves (not awaited as a single
-    // Promise.all) so a later effect re-run (selecting a different element) only cancels its OWN
-    // still-pending fetches instead of discarding every plan's already-correct sync result.
+    // Resolver cada plan SINCRÓNICAMENTE primero (motor vivo para el piso actual, localStorage
+    // para el resto) y mostrarlo de inmediato — el dropdown nunca debe quedarse vacío solo porque
+    // una consulta lenta a la BD aún no resolvió. Solo los planes sin nada cacheado en local
+    // reciben fallback asíncrono a BD, fusionado conforme cada uno resuelve individualmente (sin
+    // esperar un solo Promise.all) para que una re-ejecución posterior del efecto (al seleccionar
+    // otro elemento) solo cancele SUS propias peticiones pendientes y no descarte el resultado
+    // síncrono ya correcto de cada plan.
     const syncResults = relevantPlans.map((plan) => {
       const pF = pisos.find((p) => String(p.n) === String(plan.nivel))!;
       let bajantes: PlanoBajante[] = [];
@@ -348,10 +351,10 @@ function PdfViewer_({
             (b) => b.net === (selElement.net || activeNet) && isRiser(b),
           ) || [];
       } else {
-        // Must go through the same civilflow_-prefixed accessor everything else uses
-        // (storageService.ts's saveToStorage/loadFromStorage) — a raw localStorage.getItem here
-        // was missing that prefix entirely, so it always read a key nothing ever wrote to and
-        // silently fell through to the DB fetch below on every single call.
+        // Debe pasar por el mismo accessor con prefijo civilflow_ que usa todo lo demás
+        // (saveToStorage/loadFromStorage de storageService.ts) — un localStorage.getItem crudo
+        // aquí perdía ese prefijo por completo, leía siempre una clave que nadie escribía y caía
+        // silenciosamente a la consulta de BD de abajo en cada llamada.
         const data = loadFromStorage<{ bajantes?: PlanoBajante[] } | null>(
           TRAZOS_PREFIX + plan.id,
           null,
@@ -373,11 +376,11 @@ function PdfViewer_({
     syncResults.sort((a, b) => Number(b.npt) - Number(a.npt));
     setLowerFloorsRamales(syncResults.map(({ needsDbFallback: _n, ...rest }) => rest));
 
-    // Local storage only has whatever this browser actually loaded/saved this floor as — a floor
-    // last edited on another device, or before a local cache clear, has nothing here yet even
-    // though its bajantes genuinely exist in the cloud. Fall back to the DB the same way
-    // loadTrazosForPlan already does for the currently loaded plan, per plan that needs it,
-    // merging each result in as it resolves instead of blocking the whole list on the slowest one.
+    // El almacenamiento local solo tiene lo que este navegador cargó/guardó de este piso — un
+    // piso editado en otro dispositivo, o antes de limpiar la caché local, aún no tiene nada
+    // aquí aunque sus bajantes sí existan en la nube. Recurrir a la BD igual que loadTrazosForPlan
+    // hace con el plan cargado, por cada plan que lo necesite, fusionando cada resultado conforme
+    // resuelve en vez de bloquear toda la lista por el más lento.
     for (const plan of relevantPlans) {
       const sync = syncResults.find((r) => r.planId === plan.id);
       if (!sync?.needsDbFallback) continue;
@@ -407,9 +410,9 @@ function PdfViewer_({
     };
   }, [selElement, selectedNivel, pisos, planosCtx.plans, activeNet]);
 
-  // Mirror of the lowerFloorsRamales effect above, but for the "Origen" selector — only the
-  // SINGLE floor immediately above (smallest npt strictly greater than the current one), not
-  // every floor above. A bajante only ever receives from the riser directly overhead.
+  // Espejo del efecto lowerFloorsRamales de arriba, pero para el selector "Origen" — solo el
+  // ÚNICO piso inmediatamente superior (menor npt estrictamente mayor al actual), no todos los
+  // pisos de arriba. Una bajante solo recibe del montante que está directamente encima.
   const [upperFloorGroup, setUpperFloorGroup] = useState<LowerFloorRamales | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -521,9 +524,9 @@ function PdfViewer_({
   useEffect(() => {
     if (selElement?.net) setActiveNet(selElement.net);
     if (selElement?.id) {
-      // Selecting the guide line itself (for its rotate/crear-ramal context menu) must not kick
-      // the user out of guide mode — otherwise the locked sidebar reappears the instant they
-      // interact with anything while the tool is active.
+      // Seleccionar la propia línea guía (para su menú contextual de rotar/crear-ramal) no debe
+      // sacar al usuario del modo guía — de lo contrario la barra lateral bloqueada reaparece en
+      // cuanto interactúa con algo mientras la herramienta está activa.
       if (
         engineRef.current &&
         engineRef.current.tool !== 'sel' &&
@@ -664,7 +667,7 @@ function PdfViewer_({
     return () => clearTimeout(t);
   }, []);
 
-  // ── Dialog state ──
+  // ── Estado de diálogos ──
   const [contextMenuState, setContextMenuState] = useState<ContextMenuState | null>(null);
   const [confirmState, setConfirmState] = useState<{
     isOpen: boolean;
@@ -734,7 +737,7 @@ function PdfViewer_({
     contextMenuCbRef.current = onContextMenuCb;
   }, [onContextMenuCb]);
 
-  // ── Engine init ──
+  // ── Inicialización del motor ──
   const noopStatus = useCallback(() => {}, []);
   const onSelectHandler = useCallback((el: Record<string, unknown> | null) => {
     setSelElement(el as ProbedElement | null);
@@ -751,9 +754,9 @@ function PdfViewer_({
       net: string;
       isTee?: boolean;
     }) => {
-      // `ramalId` is the raw internal id (e.g. a tributario's `T${Date.now()}`) — never meant for
-      // display. The modal must show the ramal's actual label (RAF1, T3, ...), same as everywhere
-      // else in the UI.
+      // `ramalId` es el id interno crudo (p. ej. el `T${Date.now()}` de un tributario) — nunca
+      // pensado para mostrarse. El modal debe mostrar la etiqueta real del ramal (RAF1, T3, ...),
+      // igual que en el resto de la UI.
       const target = engineRef.current?.ramales.find((r) => r.id === data.ramalId);
       setAccesorioModal({
         isOpen: true,
@@ -794,24 +797,25 @@ function PdfViewer_({
     loadingPlanRef,
   });
 
-  // Handler for accesorio modal selection - updates the ramal accesory in engine + hidroData
+  // Handler de la selección en el modal de accesorios — actualiza el accesorio del ramal en el
+  // motor + hidroData
   const onAccesorioSelected = useCallback(
     (ramalId: string, point: number[], _net: string, accId: string) => {
       const eng = engineRef.current;
       if (!eng) return;
       const r = eng.ramales.find((r) => r.id === ramalId);
       if (!r || !r.pts?.length) return;
-      // Locate the junction by POSITION on the target ramal (ramalId is now always the ramal that
-      // was already there before the connecting one was drawn — its own pts array may have no
-      // relation whatsoever to whatever index the triggering ramal's endpoint had).
+      // Localizar la unión por POSICIÓN en el ramal objetivo (ramalId ahora siempre es el ramal
+      // que ya existía antes de dibujar el conector — su arreglo pts puede no tener relación
+      // alguna con el índice que tuviera el extremo del ramal que disparó la acción).
       const TOL = 0.5;
       let junctionIndex = r.pts.findIndex(
         ([px, py]) => Math.hypot(px - point[0], py - point[1]) < TOL,
       );
       if (junctionIndex === -1) {
-        // A true tee onto a straight run has no vertex at the junction at all (the connecting
-        // ramal's endpoint touches the middle of a segment) — insert one, splitting that segment,
-        // same as the existing mid-body accessory/montante insertion pattern elsewhere.
+        // Una tee real sobre un tramo recto no tiene vértice en la unión (el extremo del ramal
+        // conector toca el medio de un segmento) — insertar uno, partiendo ese segmento, igual
+        // que el patrón existente de inserción de accesorio/montante en medio del cuerpo.
         let segIdx = -1;
         for (let i = 0; i < r.pts.length - 1; i++) {
           const [ax, ay] = r.pts[i],
@@ -851,12 +855,12 @@ function PdfViewer_({
       }
       const isIni = junctionIndex === 0;
       const isFin = junctionIndex === r.pts.length - 1;
-      // San flow direction alert: in a san ramal, flow goes FROM the open end (the aparato) TOWARD
-      // the bajante end. So:
-      //   - sifón (backflow prevention) MUST sit at the ENTRANCE end — opposite the bajante.
-      //   - llave terminal (line termination) MUST sit at the EXIT end — at the bajante.
-      // If the user drops them at the wrong end, block the placement with an alert.
-      // sifón: san only, must go at ENTRADA (inicio). llaveTerminal: any net, must go at SALIDA (fin).
+      // Alerta de dirección de flujo san: en un ramal san el flujo va DESDE el extremo abierto
+      // (el aparato) HACIA el extremo de la bajante. Por eso:
+      //   - el sifón (anti-retorno) DEBE ir en el extremo de ENTRADA — opuesto a la bajante.
+      //   - la llave terminal (fin de línea) DEBE ir en el extremo de SALIDA — junto a la bajante.
+      // Si el usuario los coloca en el extremo equivocado, bloquear la colocación con una alerta.
+      // sifón: solo san, debe ir en ENTRADA (inicio). llaveTerminal: cualquier red, en SALIDA (fin).
       if (accId === 'sifon' && r.net === 'san' && !isIni) {
         setAlertDialogState({
           isOpen: true,
@@ -885,7 +889,7 @@ function PdfViewer_({
       }
       eng._markDirty();
       eng.render();
-      // Trigger sidebar refresh
+      // Refrescar la barra lateral
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('aparatos-clear'));
         setSelElement({ ...r });
@@ -903,7 +907,7 @@ function PdfViewer_({
     if (engineRef.current) engineRef.current.activeNetworks = activeNetworks;
   }, [activeNetworks, engineReady]);
 
-  // Restore saved network colors into NETS[] and CSS vars on mount
+  // Restaurar colores de redes guardados en NETS[] y variables CSS al montar
   useEffect(() => {
     for (const net of NETS) {
       try {
@@ -921,8 +925,9 @@ function PdfViewer_({
             net.col = c;
           }
         } else {
-          // No saved override — sync CSS var default into NETS[].col so lluvias (default
-          // #22d3ee cyan in CSS) doesn't render as hardcoded #8B5CF6 purple in PlanoState.ts.
+          // Sin override guardado — sincronizar el default de la variable CSS a NETS[].col para
+          // que lluvias (cyan #22d3ee por defecto en CSS) no se dibuje con el morado #8B5CF6 fijo
+          // en PlanoState.ts.
           const cssVal = getComputedStyle(document.documentElement)
             .getPropertyValue('--' + net.id)
             .trim();
@@ -1022,9 +1027,9 @@ function PdfViewer_({
     window.addEventListener('storage', syncDrawings);
     return () => window.removeEventListener('storage', syncDrawings);
   }, [syncDrawings]);
-  // Note: the `civilflow_diametro_validation` listener lives in GlobalAlertDialogProvider at
-  // the app root — it stays mounted across route changes so design-table edits always surface
-  // their alert, not only when the PDF viewer happens to be on screen.
+  // Nota: el listener `civilflow_diametro_validation` vive en GlobalAlertDialogProvider en la
+  // raíz de la app — permanece montado entre cambios de ruta para que las ediciones de la tabla
+  // de diseño siempre muestren su alerta, no solo cuando el visor de PDF está en pantalla.
 
   const [liveActiveNets, setLiveActiveNets] = useState<Set<string> | null>(() => {
     try {
@@ -1063,16 +1068,17 @@ function PdfViewer_({
     return getNets();
   }, [activeNetworks, liveActiveNets]);
 
-  // Same precedence as finalVisibleNets above, but for 'recolectora' specifically — that net
-  // is excluded from the visible tab list (canal glyphs are drawn under the 'll' tab, not their
-  // own tab), so this can't be derived from finalVisibleNets and needs its own check.
+  // Misma precedencia que finalVisibleNets arriba, pero para 'recolectora' específicamente — esa
+  // red está excluida de la lista de pestañas visibles (los glifos de canal se dibujan bajo la
+  // pestaña 'll', no en su propia pestaña), así que no se puede derivar de finalVisibleNets y
+  // necesita su propia verificación.
   const recolectoraActive = useMemo(() => {
     if (activeNetworks && activeNetworks.size > 0) return activeNetworks.has('recolectora');
     if (liveActiveNets) return liveActiveNets.has('recolectora');
     return true;
   }, [activeNetworks, liveActiveNets]);
 
-  // ── Inline actions ──
+  // ── Acciones en línea ──
   const syncEngine = useCallback(() => {
     const eng = engineRef.current;
     if (!eng) return;
@@ -1086,9 +1092,10 @@ function PdfViewer_({
       ? { ...floorObj, label: pisoLbl(floorObj.n), npt: Number(floorObj.npt) }
       : null;
     eng.nptLevels = pisos.map((p) => ({ label: pisoLbl(p.n), npt: Number(p.npt) }));
-    // Gas has several real material choices (per MATERIALES_POR_RED) — unlike single-material
-    // nets, it must NOT silently pre-fill a default; the user has to actively pick one, same as
-    // any other multi-material net would if it had more than one canonical option.
+    // Gas tiene varias opciones reales de material (según MATERIALES_POR_RED) — a diferencia de
+    // las redes de un solo material, NO debe pre-rellenar un default silenciosamente; el usuario
+    // tiene que elegir uno activamente, igual que haría cualquier otra red multimaterial si
+    // tuviera más de una opción canónica.
     const matName =
       activeNet === 'gas'
         ? gasMatSel[activeNet] || ''
@@ -1250,24 +1257,26 @@ function PdfViewer_({
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (engineRef.current) {
           const eng = engineRef.current;
-          // Supr on a selected ramal: mirror the borrador's behavior exactly (eraseRamalAt in
-          // PlanoEngineDrawing.ts) — trim the endpoint segment closest to the last cursor
-          // position instead of always deleting the whole ramal. eraseRamalAt already falls
-          // back to a full delete on its own when there's nothing left to trim (a straight
-          // 2-point ramal) — the same as handleEraseDown (the actual borrador tool) does, which
-          // calls it unconditionally with no point-count pre-check. Gating on pts.length>2 here
-          // too was redundant AND meant every 2-point ramal (the most common case — a straight
-          // run with no bends) skipped eraseRamalAt entirely, straight to a full delete, even
-          // when the click was nowhere near either endpoint.
+          // Supr en un ramal seleccionado: replicar exactamente el comportamiento del borrador
+          // (eraseRamalAt en PlanoEngineDrawing.ts) — recortar el segmento del extremo más
+          // cercano a la última posición del cursor en lugar de borrar siempre el ramal completo.
+          // eraseRamalAt ya cae a un borrado total por sí solo cuando no queda nada que recortar
+          // (un ramal recto de 2 puntos) — igual que handleEraseDown (la herramienta borrador
+          // real), que lo llama incondicionalmente sin pre-chequear la cantidad de puntos. Poner
+          // también aquí la condición pts.length>2 era redundante Y hacía que todo ramal de 2
+          // puntos (el caso más común — un tramo recto sin dobleces) se saltara eraseRamalAt por
+          // completo y fuera directo a borrado total, incluso cuando el clic no estaba cerca de
+          // ningún extremo.
           const sel = eng.getSelected();
-          // Only ramal/tributario objects carry a `pts` polyline at all (bajantes, montantes,
-          // contadores, etc. are point elements with x/y, never pts) — checking for `pts`
-          // directly is equivalent to the tipo check but also covers any legacy ramal saved
-          // before the `tipo` field existed (tipo undefined), which the exact-match tipo check
-          // silently excluded, always falling through to a full delete for those.
-          // Guide lines also carry a `pts` polyline (reused for the same distanceToRamal-based
-          // hit-testing as a real ramal) but aren't in engine.ramales at all — eraseRamalAt would
-          // find nothing to trim/delete. Excluded by id prefix (guide lines are always "GL...").
+          // Solo los objetos ramal/tributario llevan polilínea pts (bajantes, montantes,
+          // contadores, etc. son elementos puntuales con x/y, nunca pts) — verificar pts
+          // directamente equivale a la comprobación de tipo pero además cubre cualquier ramal
+          // legado guardado antes de que existiera el campo tipo (tipo undefined), que la
+          // comprobación exacta de tipo excluía silenciosamente, cayendo siempre a borrado total.
+          // Las líneas guía también llevan polilínea pts (reutilizada para el mismo hit-testing
+          // distanceToRamal que un ramal real) pero no están en engine.ramales — eraseRamalAt no
+          // encontraría nada que recortar/borrar. Excluidas por prefijo de id (las líneas guía
+          // siempre son "GL...").
           const isRamal =
             sel &&
             'pts' in sel &&
@@ -1309,8 +1318,8 @@ function PdfViewer_({
       }
     } else if (!selElement) {
       setDiamSel((prev) => (prev[activeNet] ? { ...prev, [activeNet]: '' } : prev));
-      // Mirror the actual default used at ramal-creation time (setRamalDefaults / syncEngine)
-      // so the field doesn't show blank while a new san/ll ramal would in fact be drawn at 2%.
+      // Espejo del default real usado al crear el ramal (setRamalDefaults / syncEngine) para que
+      // el campo no aparezca vacío cuando un ramal san/ll nuevo se dibujaría de hecho al 2%.
       const fallback =
         activeNet === 'san' || activeNet === 'll' ? DEFAULT_PENDIENTE_PCT : undefined;
       const p = pendSel[activeNet] !== undefined ? pendSel[activeNet] : fallback;
@@ -1407,10 +1416,10 @@ function PdfViewer_({
         onClose={() => {
           const eng = engineRef.current;
           if (eng) {
-            // Every pipe element must carry a diameter before the drawing can be closed — a
-            // ramal/tributario with an empty diametro (or a bajante/montante without dNominal)
-            // would produce a broken design table/memoria. Block the close and list the missing
-            // elements instead of silently saving an incomplete drawing.
+            // Todo elemento de tubería debe llevar diámetro antes de poder cerrar el dibujo — un
+            // ramal/tributario con diametro vacío (o una bajante/montante sin dNominal)
+            // produciría una tabla de diseño/memoria rota. Bloquear el cierre y listar los
+            // elementos faltantes en lugar de guardar silenciosamente un dibujo incompleto.
             const sinDiamRamales = eng.ramales
               .filter((r) => !r.diametro)
               .map((r) => r.label || r.id);
@@ -1481,7 +1490,7 @@ function PdfViewer_({
           />
         </div>
 
-        {/* Dialogs */}
+        {/* Diálogos */}
         <TextInputOverlay
           textOverlay={textOverlay}
           setTextOverlay={setTextOverlay}
@@ -1525,7 +1534,7 @@ function PdfViewer_({
           onSelect={onAccesorioSelected}
         />
 
-        {/* Sidebar Right */}
+        {/* Barra lateral derecha */}
         <div className="visor-sidebar-right" style={dynamicRightStyle}>
           <h2 style={PdfViewer_SR_ONLY}>Panel de edición</h2>
           <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>

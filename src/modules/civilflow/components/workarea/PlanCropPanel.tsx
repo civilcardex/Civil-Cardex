@@ -44,11 +44,11 @@ const quitarBtnStyle: React.CSSProperties = {
   fontWeight: 700,
 };
 
-// Full-screen crop editor — opened from the small panel so there's room to drag a precise
-// rectangle. Only affects the isometría; the main preview and the drawing visor are untouched.
-// Renders the plan onto a canvas (via pdf.js) instead of an <embed> so the view can be panned
-// and zoomed — an <embed> only ever shows the first fit-to-container view of the page, which
-// left the crop rectangle stuck to that one region.
+// Editor de recorte a pantalla completa — se abre desde el panel pequeño para que haya espacio
+// para arrastrar un rectángulo preciso. Solo afecta a la isometría; la vista previa principal y
+// el visor de dibujo quedan intactos. Se renderiza el plano sobre un canvas (vía pdf.js) en vez
+// de un <embed> para poder desplazarlo y hacer zoom — un <embed> solo muestra la primera vista
+// ajustada al contenedor de la página, lo que dejaba el rectángulo de recorte pegado a esa zona.
 function PlanCropModal({
   planFile,
   initialCrop,
@@ -85,7 +85,7 @@ function PlanCropModal({
   const [, setTick] = useState(0);
   const rerender = () => setTick((n) => n + 1);
 
-  // Load the PDF's first page into an offscreen canvas once.
+  // Carga una sola vez la primera página del PDF en un canvas fuera de pantalla.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -110,7 +110,7 @@ function PlanCropModal({
     };
   }, [planFile]);
 
-  // Fit the view once the page and container are both ready.
+  // Ajusta la vista cuando la página y el contenedor ya están listos.
   useEffect(() => {
     if (!pageCanvas || !containerRef.current) return;
     const cw = containerRef.current.clientWidth || 1;
@@ -133,7 +133,7 @@ function PlanCropModal({
       }
     : null;
 
-  // Draw the page + crop overlay on every relevant change.
+  // Redibuja la página y el recorte superpuesto ante cualquier cambio relevante.
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -165,8 +165,8 @@ function PlanCropModal({
         ctx.setLineDash([6, 4]);
         ctx.strokeRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
         ctx.setLineDash([]);
-        // Corner handles at a fixed screen size (not scaled by zoom) so they stay visible and
-        // graspable even when zoomed way out and the rectangle itself is tiny on screen.
+        // Tiradores de esquina con tamaño fijo de pantalla (no escalados con el zoom) para que
+        // sigan visibles y agarrables aunque el zoom esté muy alejado y el rectángulo sea diminuto.
         ctx.fillStyle = '#F5A623';
         ctx.strokeStyle = '#141416';
         ctx.lineWidth = 1;
@@ -184,8 +184,9 @@ function PlanCropModal({
         }
         ctx.restore();
       }
-      // Full-canvas crosshair through the cursor — a fixed OS cursor icon is easy to lose track
-      // of once zoomed way out over a busy plan, so draw high-contrast guide lines instead.
+      // Retícula a todo el lienzo que sigue al cursor: el icono fijo de cursor del sistema se
+      // pierde de vista al alejar el zoom sobre un plano cargado, así que se dibujan líneas guía
+      // de alto contraste en su lugar.
       if (hoverRef.current && !isPanning) {
         const { x: hx, y: hy } = hoverRef.current;
         ctx.save();
@@ -219,7 +220,8 @@ function PlanCropModal({
     [pageCanvas],
   );
 
-  // Page-fraction → screen px, using the page's real pixel size (mirrors the draw effect).
+  // De fracción de página a píxeles de pantalla, con el tamaño real del píxel de la página
+  // (mismo criterio que el efecto de dibujo).
   const toScreenPage = useCallback(
     (fx: number, fy: number) => {
       const { zoom, offX, offY } = viewRef.current;
@@ -270,9 +272,10 @@ function PlanCropModal({
   const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!pageCanvas) return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    // Middle mouse button (the scroll wheel click) always pans, no matter what — that's the
-    // whole point: pan without ever letting go of the crop rectangle you're mid-drawing.
-    // preventDefault stops the browser's native middle-click autoscroll icon from taking over.
+    // El botón central del ratón (clic de la rueda) siempre desplaza, pase lo que pase — ese es
+    // el objetivo: poder desplazarse sin soltar el rectángulo de recorte que se está dibujando.
+    // preventDefault evita que el autoscroll nativo del navegador (icono del clic central) tome
+    // el control.
     if (e.button === 1) {
       e.preventDefault();
       setIsPanning(true);
@@ -284,8 +287,8 @@ function PlanCropModal({
       dragRef.current = { kind: 'pan', lastX: e.clientX, lastY: e.clientY };
       return;
     }
-    // Grabbing a corner of an existing rectangle resizes it (opposite corner stays put)
-    // instead of starting a brand new one.
+    // Agarrar una esquina de un rectángulo existente lo redimensiona (la esquina opuesta queda
+    // fija) en lugar de empezar uno nuevo.
     if (rectNorm) {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -566,9 +569,9 @@ function PlanCropModal({
   );
 }
 
-// Self-contained crop tool, docked at the bottom-left of "Carga de planos". This only affects
-// how the plano renders in the isometría — the main preview here and the drawing visor always
-// show the plan complete, uncropped.
+// Herramienta de recorte autocontenida, anclada abajo a la izquierda de "Carga de planos". Solo
+// afecta a cómo se renderiza el plano en la isometría — la vista previa principal de aquí y el
+// visor de dibujo siempre muestran el plano completo, sin recortar.
 export function PlanCropPanel({
   selectedPlanUrl,
   planFile,

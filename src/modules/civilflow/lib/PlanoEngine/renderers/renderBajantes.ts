@@ -32,8 +32,9 @@ function renderBajanteLabel(
 
   const bTipo2 = 'tipo' in b ? b.tipo : undefined;
   const labelSizeMul = bTipo2 === 'contador' || bTipo2 === 'calentador' ? 0.75 : 1;
-  // Bajante/montante code label uses the exact same size formula as a ramal's own name label
-  // (renderRamales.ts fsName/fsInfo) so the two read as objectively equal in size.
+  // La etiqueta de código del bajante/montante usa exactamente la misma fórmula de tamaño que
+  // la etiqueta de nombre de un ramal (fsName/fsInfo en renderRamales.ts) para que las dos se
+  // lean objetivamente iguales en tamaño.
   const fsCode = engine.mm2cvs(engine.MM.lblName * engine.labelScaleM * labelSizeMul);
   const fsDir = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * labelSizeMul);
   const lineH = fsCode + 2;
@@ -96,8 +97,9 @@ function renderBajanteLabel(
     corners: corners2,
   };
 
-  // Deliberately no fill here anymore — labels used to sit on a solid white plate; now they read
-  // directly over whatever's underneath (transparent background), per explicit request.
+  // Deliberadamente sin relleno aquí — antes las etiquetas quedaban sobre una placa blanca
+  // sólida; ahora se leen directamente sobre lo que haya debajo (fondo transparente), por
+  // pedido explícito.
   ctx.beginPath();
   ctx.roundRect(-boxW / 2, -10, boxW, boxH, 0);
 
@@ -167,12 +169,12 @@ function getLabelIntersection(
   return { x: intersectDx, y: intersectDy };
 }
 
-// Shared by the parent bajante's own circle AND its ghost — draws the interior direction glyph
-// (arrow up/down, dot, or "continua" arrow) the exact same vector-drawn way in both places.
-// Previously the ghost used unicode text glyphs (⬇/•/➜) filled with the net color instead of
-// this vector shape in arrowCol (red for bajante, blue for montante), so it never actually looked
-// like its parent despite the size/opacity already matching. Caller must already have translated
-// ctx to the symbol's local origin (0,0) and rotated as needed.
+// Compartido por el círculo propio del bajante padre Y su fantasma — dibuja el glifo interior
+// de dirección (flecha arriba/abajo, punto o flecha "continua") exactamente igual en ambos
+// lugares. Antes el fantasma usaba glifos de texto unicode (⬇/•/➜) rellenos con el color de la
+// red en vez de esta forma vectorial en arrowCol (rojo para bajante, azul para montante), así
+// que nunca se veía de verdad como su padre pese a que tamaño/opacidad ya coincidían. El caller
+// ya debe haber traducido ctx al origen local del símbolo (0,0) y rotado como se necesite.
 function drawDireccionSymbol(
   ctx: CanvasRenderingContext2D,
   tipo: string,
@@ -208,7 +210,8 @@ function drawDireccionSymbol(
     ctx.textBaseline = 'middle';
     ctx.fillText('➜', 0, 0);
   } else {
-    // No direction resolved: default fallback arrow, down for bajante / up for montante.
+    // Sin dirección resuelta: flecha de respaldo por defecto, hacia abajo para bajante / hacia
+    // arriba para montante.
     const aS = r * 0.7;
     ctx.strokeStyle = arrowCol;
     ctx.lineWidth = r * 0.15;
@@ -240,12 +243,14 @@ function drawDireccionSymbol(
   }
 }
 
-// Canal is a corner+size rectangle (b.x/b.y = top-left plane corner, b.base/b.altura = real cm
-// size) rather than a point+radius symbol — drawn in absolute canvas space, never rotated (unlike
-// every other bajante-array glyph, whose shape rotates with labelAngle), since a non-square
-// rectangle rotating with the label would visually contradict its own resize handles, which are
-// always axis-aligned. Selected corners get a small square handle (grabbed by
-// handleMouseDown.ts's _tryCanalResizeHit) to resize independently of the label rotation.
+// El canal es un rectángulo de esquina+tamaño (b.x/b.y = esquina superior-izquierda del plano,
+// b.base/b.altura = tamaño real en cm) en vez de un símbolo de punto+radio — se dibuja en
+// espacio absoluto de canvas, nunca rotado (a diferencia de todo otro glifo del array de
+// bajantes, cuya forma rota con labelAngle), porque un rectángulo no cuadrado rotando con la
+// etiqueta contradeciría visualmente sus propias manijas de redimensionado, que siempre están
+// alineadas a los ejes. Las esquinas seleccionadas reciben una manija cuadrada pequeña
+// (agarrada por _tryCanalResizeHit en handleMouseDown.ts) para redimensionar independientemente
+// de la rotación de la etiqueta.
 function renderCanalGlyph(
   ctx: CanvasRenderingContext2D,
   engine: IPlanoEngineCore,
@@ -265,8 +270,9 @@ function renderCanalGlyph(
   ctx.fill();
   ctx.strokeStyle = col;
   ctx.lineWidth = (sel ? 1.6 : 0.8) * engine.zoom;
-  // Channel profile: only the top, inner (25%) and bottom horizontal lines — no vertical
-  // side segments, so the symbol reads as an open gutter cross-section.
+  // Perfil de canal: solo las líneas horizontales superior, interior (25%) e inferior — sin
+  // segmentos laterales verticales, para que el símbolo se lea como una sección transversal de
+  // canalón abierto.
   ctx.beginPath();
   ctx.moveTo(tl.x, tl.y);
   ctx.lineTo(tl.x + w, tl.y);
@@ -277,13 +283,14 @@ function renderCanalGlyph(
   ctx.lineTo(tl.x + w, tl.y + h);
   ctx.stroke();
 
-  // Corner resize handles are intentionally not drawn — the grab hit-test in
-  // handleMouseDown.ts's _tryCanalResizeHit works purely off proximity to `_canalBox`'s
-  // corners (computed below regardless of what's rendered), so resizing still works without
-  // the visual squares.
+  // Las manijas de redimensionado de esquina deliberadamente no se dibujan — el hit-test de
+  // agarre en _tryCanalResizeHit de handleMouseDown.ts funciona puramente por proximidad a las
+  // esquinas de `_canalBox` (calculadas abajo sin importar lo renderizado), así que el
+  // redimensionado funciona igual sin los cuadrados visuales.
 
-  // Yellow selection arrow — same style/shape every other bajante-array glyph shows when
-  // selected (renderBajantes' main loop below), pointing in from the right edge.
+  // Flecha amarilla de selección — mismo estilo/forma que todo otro glifo del array de bajantes
+  // muestra al seleccionarse (el loop principal de renderBajantes abajo), apuntando desde el
+  // borde derecho.
   const inMultiSel = (engine.multiSel || []).includes(b.id);
   if ((sel || inMultiSel) && !engine._isGhostSel) {
     const arrowR = 8 * engine.zoom;
@@ -304,12 +311,13 @@ function renderCanalGlyph(
   }
   ctx.restore();
 
-  // Flow-direction arrows — black and short, same as a ramal's own flow arrow. With NO bajante
-  // inside, a single centered arrow points the way the canal was dragged when drawn
-  // (_canalFlowDir). With bajantes, that arrow is replaced by one short arrow per bajante side,
-  // each pointing INTO the bajante (two if it's mid-body; see canalAssociation.ts
-  // computeCanalFlowArrows), aligned with the bajante's circle center and stopping at its rim —
-  // the arrows stay outside the symbol. The canal itself is never split.
+  // Flechas de dirección de flujo — negras y cortas, igual que la flecha de flujo propia de un
+  // ramal. Sin bajante DENTRO, una sola flecha centrada apunta hacia donde el canal se arrastró
+  // al dibujarse (_canalFlowDir). Con bajantes, esa flecha se reemplaza por una flecha corta por
+  // lado de bajante, cada una apuntando HACIA el bajante (dos si está a mitad de cuerpo; ver
+  // computeCanalFlowArrows en canalAssociation.ts), alineada con el centro del círculo del
+  // bajante y deteniéndose en su borde — las flechas quedan fuera del símbolo. El canal mismo
+  // nunca se divide.
   const drawFlowArrow = (tail: { x: number; y: number }, head: { x: number; y: number }) => {
     const dx = head.x - tail.x;
     const dy = head.y - tail.y;
@@ -346,8 +354,9 @@ function renderCanalGlyph(
     else if (dir === 'abajo') drawFlowArrow({ x: cx, y: cy - half }, { x: cx, y: cy + half });
     else drawFlowArrow({ x: cx, y: cy + half }, { x: cx, y: cy - half });
   }
-  // Rounded to the same radius the bajante symbol renders at (renderBajantes' main loop), so the
-  // arrow head stops exactly at the rim of the bajante's circle instead of driving through it.
+  // Redondeado al mismo radio con que se renderiza el símbolo del bajante (el loop principal de
+  // renderBajantes), para que la cabeza de la flecha se detenga exactamente en el borde del
+  // círculo del bajante en vez de atravesarlo.
   const bajR = engine.realMmToCanvasPx(20) * 0.6;
   const shortLen = 14 * engine.zoom;
   for (const arrow of bajArrows) {
@@ -365,18 +374,20 @@ function renderCanalGlyph(
   }
 
   b._canalBox = { x: tl.x, y: tl.y, w, h };
-  // _canalBox (the visible rectangle) is the canal's click target; _circ stays as a small
-  // fallback anchor (half the longer side, NOT the diagonal) for code that only reads
-  // a center/radius — click/right-click/ramal-start hit-tests all use canalRectHitDistance.
+  // _canalBox (el rectángulo visible) es el objetivo de clic del canal; _circ queda como ancla
+  // de respaldo pequeña (mitad del lado más largo, NO la diagonal) para código que solo lee un
+  // centro/radio — los hit-tests de clic/clic-derecho/inicio-de-ramal usan todos
+  // canalRectHitDistance.
   b._circ = { x: tl.x + w / 2, y: tl.y + h / 2, r: Math.max(w, h) / 2 };
 
   if (b.code || b.code === '') {
-    // Always centered directly below the rectangle, outside it — not draggable (ignores any
-    // stored labelX/labelY/labelAngle) and no leader line, per explicit request.
+    // Siempre centrada directamente debajo del rectángulo, fuera de él — no arrastrable
+    // (ignora cualquier labelX/labelY/labelAngle guardado) y sin línea de guía, por pedido
+    // explícito.
     const offDx = 0;
     const offDy = h + engine.mm2cvs(3);
-    // Floor suffix is already baked into b.code at creation (CALL{n}-P{piso}) — a canal lives
-    // on a single floor, unlike bajante's dynamic per-render lvlSuffix.
+    // El sufijo de piso ya viene incrustado en b.code al crearlo (CALL{n}-P{piso}) — un canal
+    // vive en un solo piso, a diferencia del lvlSuffix dinámico por render del bajante.
     const line1 = b.code || '—';
     const dirText = `${b.base || 0} x ${(b.altura || 0) + BORDE_LIBRE_CANAL_CM}`;
     renderBajanteLabel(
@@ -401,10 +412,11 @@ function renderCanalGlyph(
   }
 }
 
-// Live rubber-band preview while the canal tool is mid-drag (_canalStart set, first corner
-// placed, second click not yet made) — same dashed-preview pattern as renderGuideGhost/
-// renderDimGhost, plus a live cm dimension readout (also shown in the status bar via
-// _statusMsg) so the user can see the exact size before committing the second click.
+// Vista previa de goma en vivo mientras la herramienta de canal está a mitad de arrastre
+// (_canalStart fijado, primera esquina colocada, segundo clic aún no hecho) — mismo patrón de
+// vista previa punteada que renderGuideGhost/renderDimGhost, más una lectura de dimensiones en
+// cm en vivo (también mostrada en la barra de estado vía _statusMsg) para que el usuario vea el
+// tamaño exacto antes de comprometer el segundo clic.
 export function renderCanalGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   if (!engine._canalStart || engine.tool !== 'canal') return;
   const mp = engine.toPlane(engine.mouseX, engine.mouseY);
@@ -439,41 +451,46 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
   engine.bajantes.forEach((b) => {
     if (engine._hiddenNets.has(b.net)) return;
 
-    // Canal is a corner+size rectangle, not a point+radius symbol like every other tipo in this
-    // array — it never rotates (labelAngle only affects its label position, not the shape) and
-    // has its own hit-test box (_canalBox) instead of the generic ctx.rotate glyph pipeline
-    // below, so it's handled entirely separately.
+    // El canal es un rectángulo de esquina+tamaño, no un símbolo de punto+radio como todo otro
+    // tipo de este array — nunca rota (labelAngle solo afecta la posición de su etiqueta, no la
+    // forma) y tiene su propia caja de hit-test (_canalBox) en vez del pipeline genérico de
+    // glifo con ctx.rotate de abajo, así que se maneja completamente aparte.
     if (b.tipo === 'canal') {
       renderCanalGlyph(ctx, engine, b);
       return;
     }
 
-    // A bajante only gets its solid circle on ITS OWN floor (pisoBase). A displacement entry
-    // for the current level doesn't mean anything about which floor it belongs to — it's also
-    // how ghosts get positioned on remote floors — so it must never suppress the ghost check.
+    // Un bajante solo recibe su círculo sólido en SU PROPIO piso (pisoBase). Una entrada de
+    // desplazamiento para el nivel actual no dice nada sobre a qué piso pertenece — además es
+    // así como se posicionan los fantasmas en pisos remotos — así que nunca debe suprimir el
+    // chequeo de fantasma.
     const isDirectionGhost = b.pisoBase !== engine.nivelActual?.label;
 
     const c = engine.toCvs(b.x, b.y);
-    // When this bajante is a remote-floor ghost, never draw the thick yellow selection border.
+    // Cuando este bajante es un fantasma de piso remoto, nunca dibujar el borde amarillo grueso
+    // de selección.
     const sel = b.id === engine.selId && !engine._isGhostSel && !isDirectionGhost;
-    // realMmToCanvasPx floors at 1mm paper (see PlanoEngine.ts) — at common architectural
-    // scales a 20mm or 10mm real radius both land on that floor and render identically, so
-    // halving the mm argument alone is invisible. Halve the resulting px value instead.
+    // realMmToCanvasPx tiene un piso de 1mm de papel (ver PlanoEngine.ts) — en escalas
+    // arquitectónicas comunes un radio real de 20mm o 10mm caen en ese piso y renderizan
+    // idéntico, así que dividir a la mitad el argumento en mm solo es invisible. Se divide el
+    // valor px resultante en su lugar.
     const r = engine.realMmToCanvasPx(20) * 0.6;
 
-    // Item 2: Label angle + snap constraint (Auto-rotation removed as requested)
+    // Item 2: Ángulo de etiqueta + restricción de snap (auto-rotación removida por pedido)
     const angle = ((b.labelAngle || 0) * Math.PI) / 180;
 
     b._circ = { x: c.x, y: c.y, r };
     if (isDirectionGhost) return;
 
-    // Draw green dashed lines from ramales that feed this bajante (recibeDeIds) — this is a
-    // guide for when the bajante sits AWAY from the ramal (e.g. an offset/ghost position), so
-    // skip it whenever the bajante/montante's own point already coincides with ANY point of the
-    // ramal (not just its two endpoints): a montante created mid-body (createMontanteMidBody)
-    // sits on an INTERIOR vertex, not an endpoint, so comparing only against the closest endpoint
-    // never matched and always drew a pointless line back from wherever that endpoint was; same
-    // fix also covers a ramal arriving at this bajante's ghost/displaced position on this floor.
+    // Dibujar líneas verdes punteadas desde los ramales que alimentan este bajante
+    // (recibeDeIds) — es una guía para cuando el bajante queda LEJOS del ramal (p.ej. una
+    // posición desplazada/fantasma), así que se salta siempre que el punto propio del
+    // bajante/montante ya coincida con CUALQUIER punto del ramal (no solo sus dos extremos):
+    // un montante creado a mitad de cuerpo (createMontanteMidBody) queda en un vértice
+    // INTERIOR, no un extremo, así que comparar solo contra el extremo más cercano nunca
+    // coincidía y siempre dibujaba una línea sin sentido desde dondequiera que estuviera ese
+    // extremo; el mismo fix también cubre un ramal llegando a la posición fantasma/desplazada
+    // de este bajante en este piso.
     if (b.recibeDeIds?.length) {
       const ghostDisp = b.desplazamientos?.[engine.nivelActual?.label ?? ''];
       const bPos = ghostDisp
@@ -510,9 +527,9 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       const targetPlanId = parts[0];
       const targetId = parts[1];
 
-      // Only draw line if the target is on the CURRENT floor
+      // Solo dibujar la línea si el destino está en el piso ACTUAL
       if (String(targetPlanId) === String(engine._loadedPlanId)) {
-        // Draw line to target RAMAL
+        // Dibujar línea al RAMAL destino
         const ram = engine.ramales.find((rr) => rr.id === targetId);
         if (ram && ram.pts.length) {
           const pStart = ram.pts[0];
@@ -531,7 +548,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
           ctx.stroke();
           ctx.restore();
         }
-        // Draw line to target BAJANTE on same floor
+        // Dibujar línea al BAJANTE destino del mismo piso
         const targetBaj = engine.bajantes.find((bb) => bb.id === targetId);
         if (targetBaj) {
           const tc = engine.toCvs(targetBaj.x, targetBaj.y);
@@ -624,7 +641,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       ctx.textBaseline = 'middle';
       ctx.fillText('RP', 0, 0);
     } else if (b.tipo === 'contador' && b.net === 'gas') {
-      // Gas meter: no letter, no pipe segments
+      // Medidor de gas: sin letra, sin segmentos de tubería
     } else if (b.tipo === 'contador') {
       ctx.fillStyle = '#ffffff';
       ctx.font = `bold ${r * 0.9}px sans-serif`;
@@ -641,7 +658,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       drawDireccionSymbol(ctx, b.tipo, r, b.direccion);
     }
 
-    // Yellow selection arrow (same style as ramales)
+    // Flecha amarilla de selección (mismo estilo que los ramales)
     const inMultiSel = (engine.multiSel || []).includes(b.id);
     if ((sel || inMultiSel) && !engine._isGhostSel) {
       const arrowR = 8 * engine.zoom;
@@ -663,16 +680,18 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
     }
     ctx.restore();
 
-    // The parent label is drawn EXCEPT when this is a direction-based ghost on a remote floor
-    // (pisoBase !== current nivel means the bajante belongs to another floor) — isDirectionGhost
-    // computed above; this whole block is unreachable for that case anyway (early return above).
+    // La etiqueta del padre se dibuja EXCEPTO cuando esto es un fantasma direccional en un piso
+    // remoto (pisoBase !== nivel actual significa que el bajante pertenece a otro piso) —
+    // isDirectionGhost calculado arriba; todo este bloque es inalcanzable para ese caso de todos
+    // modos (retorno temprano arriba).
     if (!isDirectionGhost && (b.code || b.code === '')) {
       const lx = b.labelX ?? b.x;
       const ly = b.labelY ?? b.y + 20;
       const offDx = (lx - b.x) * engine.zoom;
       let offDy = (ly - b.y) * engine.zoom;
 
-      // Item 2: Enforce minimum perpendicular offset so label doesn't sit on the ramal
+      // Item 2: Aplicar desplazamiento perpendicular mínimo para que la etiqueta no quede sobre
+      // el ramal
       const minPerpPx = engine.mm2cvs(3);
       if (Math.abs(offDy) < minPerpPx) {
         offDy = offDy >= 0 ? minPerpPx : -minPerpPx;
@@ -698,8 +717,9 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       } else if (b.diametro) {
         diamStr = normalizeDnLabel(b.diametro.split(' — ')[0]);
       }
-      // Bold big line is just the code — mirrors a ramal's own label, which keeps its bold
-      // name line to the short code alone and pushes diametro into the smaller info line below.
+      // La línea grande en negrita es solo el código — espeja la etiqueta propia de un ramal,
+      // que mantiene su línea de nombre en negrita con el código corto solo y empuja el
+      // diámetro a la línea de info más pequeña debajo.
       const line1 = codeStr || '—';
       const dirWord = DIR_MAP[b.direccion ?? ''] || '';
       const dirText = diamStr ? `D=${diamStr}${dirWord ? '  ' + dirWord : ''}` : dirWord;
@@ -719,24 +739,26 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     const gx = b.x + (disp ? disp.dx : 0);
     const gy = b.y + (disp ? disp.dy : 0);
     const c = engine.toCvs(gx, gy);
-    // realMmToCanvasPx floors at 1mm paper (see PlanoEngine.ts) — at common architectural
-    // scales a 20mm or 10mm real radius both land on that floor and render identically, so
-    // halving the mm argument alone is invisible. Halve the resulting px value instead.
+    // realMmToCanvasPx tiene un piso de 1mm de papel (ver PlanoEngine.ts) — en escalas
+    // arquitectónicas comunes un radio real de 20mm o 10mm caen en ese piso y renderizan
+    // idéntico, así que dividir a la mitad el argumento en mm solo es invisible. Se divide el
+    // valor px resultante en su lugar.
     const r = engine.realMmToCanvasPx(20) * 0.6;
     b._ghost = { x: c.x, y: c.y, r };
 
-    // Ghost label always horizontal
+    // La etiqueta del fantasma siempre horizontal
     const ghostAngle = 0;
 
-    // Ghost circle: same size, color and full opacity as the parent's own circle (per explicit
-    // request — the ghost should look exactly like its parent, size and intensity alike).
-    // Exception: a ghost with no real displacement on the parent's OWN floor sits at the exact
-    // same (x,y) as the parent, which already draws its own solid circle there — skip the extra
-    // ring so it doesn't look like an oversized halo. A ghost created by dragging (dx/dy set)
-    // is a different point in space even on the parent's own floor, so it must still be drawn.
-    // A cross-floor association marker (desplazamientos entry carrying an Ldesvio connector id)
-    // always draws its ring — including the perfectly-aligned case (dx/dy = 0) — because that
-    // ring is the source floor's only visible trace of the cross-floor link.
+    // Círculo del fantasma: mismo tamaño, color y opacidad completa que el círculo propio del
+    // padre (por pedido explícito — el fantasma debe verse exactamente como su padre, tamaño e
+    // intensidad por igual). Excepción: un fantasma sin desplazamiento real en el piso PROPIO
+    // del padre queda en exactamente el mismo (x,y) que el padre, que ya dibuja ahí su propio
+    // círculo sólido — se salta el anillo extra para que no parezca un halo sobredimensionado.
+    // Un fantasma creado por arrastre (dx/dy fijados) es un punto distinto en el espacio incluso
+    // en el piso propio del padre, así que igual debe dibujarse. Un marcador de asociación
+    // entre pisos (entrada de desplazamientos que lleva un id de conector Ldesvio) siempre
+    // dibuja su anillo — incluido el caso perfectamente alineado (dx/dy = 0) — porque ese
+    // anillo es la única traza visible del enlace entre pisos en el piso origen.
     const hasDisplacement = !!disp && (Math.abs(disp.dx) >= 1 || Math.abs(disp.dy) >= 1);
     const isOwnFloorGhost =
       b.pisoBase === engine.nivelActual?.label && !hasDisplacement && !disp?.Ldesvio;
@@ -748,9 +770,10 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       ctx.fill();
       ctx.globalAlpha = 1;
       ctx.strokeStyle = col;
-      // Must match the parent's own non-selected circle stroke exactly (0.6*zoom, set in the
-      // default bajante/montante branch above) — this was 1.5, 2.5x thicker than the parent,
-      // which is exactly the "ghost looks thicker" complaint.
+      // Debe coincidir exactamente con el trazo del círculo no-seleccionado propio del padre
+      // (0.6*zoom, fijado en la rama bajante/montante por defecto de arriba) — esto era 1.5,
+      // 2.5x más grueso que el padre, que es exactamente la queja de "el fantasma se ve más
+      // grueso".
       ctx.lineWidth = 0.6 * engine.zoom;
       ctx.beginPath();
       ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
@@ -766,8 +789,8 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
     } else if (b.direccion === 'baja') {
       ghostDir = 'sube';
     }
-    // Same vector-drawn symbol as the parent's own circle (drawDireccionSymbol), not the old
-    // unicode-glyph rendering — that was the actual visual mismatch with the parent.
+    // Mismo símbolo vectorial que el círculo propio del padre (drawDireccionSymbol), no el
+    // renderizado viejo de glifos unicode — ese era el desajuste visual real con el padre.
     const skipSymbol = !ghostDir && !!b.desplazamientos?.[engine.nivelActual?.label ?? ''];
     if (!skipSymbol) {
       ctx.save();
@@ -777,7 +800,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       ctx.restore();
     }
 
-    // Item 4: Yellow selection arrow for ghost bajante selection
+    // Item 4: Flecha amarilla de selección para selección de bajante fantasma
     const inMultiSel = (engine.multiSel || []).includes(b.id);
     const ghostSel = engine.selId === b.id && engine._isGhostSel;
     if (ghostSel || inMultiSel) {
@@ -801,7 +824,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       ctx.restore();
     }
 
-    // Item 6: Ghost label — render for all ghosts
+    // Item 6: Etiqueta del fantasma — renderizar para todos los fantasmas
     if (b.code || b.code === '') {
       const gd = b.ghostData?.[engine.nivelActual?.label ?? ''];
       let ghostOffX = 0;
@@ -867,9 +890,10 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
   });
 }
 
-// Cross-floor association ghosts (associateBajanteAcrossFloors.ts) — pure positional reference
-// markers written directly into this floor's own `crossFloorGhosts` array. Dashed circle + full
-// bajante label above (code-Piso, D=, dir) in network color, matching source bajante format.
+// Fantasmas de asociación entre pisos (associateBajanteAcrossFloors.ts) — marcadores de
+// referencia posicionales puros escritos directamente en el array `crossFloorGhosts` propio de
+// este piso. Círculo punteado + etiqueta completa de bajante arriba (code-Piso, D=, dir) en
+// color de red, coincidiendo con el formato del bajante fuente.
 function toShortPiso(label: string): string {
   if (!label) return '';
   if (label.includes('Cubierta')) return 'C';
@@ -891,9 +915,9 @@ export function renderCrossFloorGhosts(
     const r = engine.realMmToCanvasPx(20) * 0.6;
     g._hitCircle = { x: c.x, y: c.y, r };
 
-    // Dashed line to the target bajante on this floor — tenuer than the network color and
-    // dotted, so the cross-floor connector reads as a reference (not a real pipe) and stays
-    // visibly lighter than the ramales on this same floor.
+    // Línea punteada hacia el bajante destino en este piso — más tenue que el color de la red y
+    // punteada, para que el conector entre pisos se lea como referencia (no como tubería real)
+    // y quede visiblemente más claro que los ramales de este mismo piso.
     if (g.targetBajanteId) {
       const targetB = engine.bajantes.find((b) => b.id === g.targetBajanteId);
       if (targetB) {
@@ -913,7 +937,7 @@ export function renderCrossFloorGhosts(
       }
     }
 
-    // Dashed circle
+    // Círculo punteado
     ctx.save();
     ctx.strokeStyle = col;
     ctx.lineWidth = 1 * engine.zoom;
@@ -924,15 +948,16 @@ export function renderCrossFloorGhosts(
     ctx.setLineDash([]);
     ctx.restore();
 
-    // Direction glyph inside the circle — same vector shape as the real bajante's, reading the
-    // SOURCE (parent) direction so the arrow matches the text label above.
+    // Glifo de dirección dentro del círculo — misma forma vectorial que el bajante real,
+    // leyendo la dirección del ORIGEN (padre) para que la flecha coincida con la etiqueta de
+    // texto de arriba.
     const ghostTipo = MONTANTE_NETS.includes(g.net) ? 'montante' : 'bajante';
     ctx.save();
     ctx.translate(c.x, c.y);
     drawDireccionSymbol(ctx, ghostTipo, r, g.parentDireccion ?? g.direccion);
     ctx.restore();
 
-    // Label: BAN2-P2 / D=4" Baja (short piso, diameter shown)
+    // Etiqueta: BAN2-P2 / D=4" Baja (piso corto, diámetro mostrado)
     const shortPiso = toShortPiso(g.piso || '');
     const codeStr = (g.code || '').replace(/#/g, '').toUpperCase();
     const line1 = codeStr ? `${codeStr}${shortPiso ? '-' + shortPiso : ''}` : shortPiso || '—';
@@ -946,14 +971,16 @@ export function renderCrossFloorGhosts(
         diamStr = !isNaN(numV) ? (numV < 20 ? `${numV}"` : `${numV}mm`) : normalizeDnLabel(v);
       }
     }
-    // Show the SOURCE (upper-floor) parent's direction in the label, not the ghost's own counter-
-    // direction. Falls back to ghost.direccion for legacy ghosts written before this field existed.
+    // Mostrar en la etiqueta la dirección del ORIGEN (padre del piso superior), no la
+    // contra-dirección propia del fantasma. Cae a ghost.direccion para fantasmas legacy escritos
+    // antes de que existiera este campo.
     const dirWord = DIR_MAP[g.parentDireccion ?? g.direccion ?? ''] || '';
     const dirText = diamStr ? `D=${diamStr}${dirWord ? '  ' + dirWord : ''}` : dirWord;
 
-    // Label above the circle, centered, no leader line, network color. Tighter offset than a
-    // regular bajante label — the ghost sits alongside its dashed line and the source's parent
-    // symbol, so an extra 8 mm of breathing room just pushes it onto adjacent annotations.
+    // Etiqueta sobre el círculo, centrada, sin línea de guía, color de red. Desplazamiento más
+    // ajustado que la etiqueta regular de un bajante — el fantasma queda junto a su línea
+    // punteada y al símbolo del padre origen, así que 8 mm extra de aire solo lo empujarían
+    // sobre anotaciones adyacentes.
     const offDy = -(r + engine.mm2cvs(3));
     renderBajanteLabel(
       ctx,

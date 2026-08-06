@@ -1,4 +1,14 @@
-export const FRAC_CHAR_TO_DEC: Record<string, number> = { '½': 0.5, '⅓': 1 / 3, '⅔': 2 / 3, '¼': 0.25, '¾': 0.75, '⅛': 0.125, '⅜': 0.375, '⅝': 0.625, '⅞': 0.875 };
+export const FRAC_CHAR_TO_DEC: Record<string, number> = {
+  '½': 0.5,
+  '⅓': 1 / 3,
+  '⅔': 2 / 3,
+  '¼': 0.25,
+  '¾': 0.75,
+  '⅛': 0.125,
+  '⅜': 0.375,
+  '⅝': 0.625,
+  '⅞': 0.875,
+};
 
 export function diamPulgFromLabel(d: unknown): number {
   if (!d) return 0;
@@ -7,7 +17,7 @@ export function diamPulgFromLabel(d: unknown): number {
     s = s.split('—').pop()!.trim();
   }
 
-  // First, see if it has a unicode fraction anywhere in the trimmed string
+  // Primero, ver si tiene una fracción Unicode en cualquier parte del string recortado
   for (const [ch, val] of Object.entries(FRAC_CHAR_TO_DEC)) {
     const idx = s.indexOf(ch);
     if (idx !== -1) {

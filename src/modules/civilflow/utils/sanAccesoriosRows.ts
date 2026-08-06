@@ -13,9 +13,10 @@ interface HidroEntry {
   accesorios?: Record<string, number>;
 }
 
-// Tee markers written on a ramal's body vertices (accMed) — every one has a catalog entry in
-// ACCESORIOS_HIDRO; the montante auto-tee and the mid-body accessory selector persist tees ONLY
-// here (never in hidroData), so the summary must count them from the drawing, not from tramos.
+// Marcadores de tee escritos en los vértices del cuerpo de un ramal (accMed) — cada uno tiene
+// entrada de catálogo en ACCESORIOS_HIDRO; el auto-tee del montante y el selector de accesorios
+// de mitad de cuerpo persisten tees SOLO aquí (nunca en hidroData), así que el resumen debe
+// contarlas del dibujo, no de los tramos.
 const TEES_ACC_MED = new Set([
   'teeDirecto',
   'teeReduccion',
@@ -107,8 +108,9 @@ export function computeAccesoriosTable(
     if (!labelToKey.has(lbl)) labelToKey.set(lbl, key);
   }
 
-  // San/vent tees are derived from the connection graph (a child ramal joining a parent implies
-  // a yee of the child's diameter) — hydro tees are drawn explicitly as accMed markers instead.
+  // Las tees san/vent se derivan del grafo de conexiones (un ramal hijo uniéndose a un padre
+  // implica una yee del diámetro del hijo) — las tees hidro se dibujan explícitamente como
+  // marcadores accMed en su lugar.
   const allConnections: { parentKey: string; diamStr: string }[] = [];
   if (net === 'san') {
     for (const child of tramos) {
@@ -225,7 +227,8 @@ export function computeAccesoriosTable(
     }
   });
 
-  // Tees drawn mid-body (accMed markers) — per ramal diameter, one per marker.
+  // Tees dibujadas a mitad de cuerpo (marcadores accMed) — por diámetro de ramal, una por
+  // marcador.
   if (net !== 'san') {
     for (const r of drawingRamales) {
       if (!r.accMed) continue;

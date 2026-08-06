@@ -3,13 +3,13 @@ import { handleDragMove } from '../handleDragMove';
 import { hitTestBajanteLabelForDrag } from '../PlanoEngineHitTesting';
 import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState';
 
-// Regression coverage for the "ghost label moves instead of selecting the parent" bug: clicking
-// the PARENT bajante's label while a same-floor GHOST-displaced bajante was previously selected
-// used to drag the ghost's displaced label to wherever the parent's label was clicked. Root cause
-// was twofold: (1) hitTestBajanteLabelForDrag always won for the currently-selected bajante's own
-// label even when a neighboring bajante's label was genuinely closer to the click, and (2)
-// handleDragMove's target (real labelX/Y vs. ghostData[floor].labelX/Y) was driven by a
-// `_lblDragIsParent` flag that a bypass path left stale from the PREVIOUS interaction.
+// Cobertura de regresión para el bug "la etiqueta del ghost se mueve en vez de seleccionar al padre":
+// hacer clic en la etiqueta del bajante PADRE mientras estaba seleccionado un bajante GHOST desplazado
+// en el mismo piso arrastraba la etiqueta desplazada del ghost hasta donde se hizo clic en la del padre.
+// Causa raíz doble: (1) hitTestBajanteLabelForDrag siempre ganaba para la etiqueta del bajante
+// actualmente seleccionado aunque la de un bajante vecino estuviera genuinamente más cerca del clic, y
+// (2) el objetivo de handleDragMove (labelX/Y real vs. ghostData[piso].labelX/Y) lo decidía un flag
+// `_lblDragIsParent` que una ruta de bypass dejaba obsoleto de la INTERACCIÓN ANTERIOR.
 
 function makeBajante(
   id: string,
@@ -85,12 +85,12 @@ describe('hitTestBajanteLabelForDrag — only wins when genuinely closest', () =
   });
 
   it('bails out (returns null) when a neighboring bajante label is genuinely closer to the click', () => {
-    const parent = makeBajante('BAN1', 0, 0, 0, 20); // selected bajante's own label at (0,20)
-    const neighbor = makeBajante('BAN2', 5, 0, 5, 21); // neighbor's label sits almost on top of the click
+    const parent = makeBajante('BAN1', 0, 0, 0, 20); // etiqueta del bajante seleccionado en (0,20)
+    const neighbor = makeBajante('BAN2', 5, 0, 5, 21); // la etiqueta del vecino queda casi encima del clic
     const engine = makeEngine([parent, neighbor]);
     engine.selId = 'BAN1';
 
-    // Click much closer to BAN2's label (5,21) than to BAN1's own label (0,20).
+    // Clic mucho más cerca de la etiqueta de BAN2 (5,21) que de la propia de BAN1 (0,20).
     const hit = hitTestBajanteLabelForDrag(engine, 5, 21);
 
     expect(hit).toBeNull();
@@ -121,8 +121,8 @@ describe('handleDragMove label target — _lblDragIsParent selects real vs. ghos
 
     expect(baj.ghostData?.P1?.labelX).toBeCloseTo(50, 5);
     expect(baj.ghostData?.P1?.labelY).toBeCloseTo(50, 5);
-    // The real (parent) label position must stay untouched — this is exactly the bug: a stale
-    // `_lblDragIsParent` used to make this branch write into the wrong target's fields.
+    // La posición de la etiqueta real (padre) debe quedar intacta — este es exactamente el bug:
+    // un `_lblDragIsParent` obsoleto hacía que esta rama escribiera en los campos del objetivo equivocado.
     expect(baj.labelX).toBe(0);
     expect(baj.labelY).toBe(0);
   });

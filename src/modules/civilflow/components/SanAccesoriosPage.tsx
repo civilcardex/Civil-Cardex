@@ -36,7 +36,7 @@ export default function SanAccesoriosPage() {
   const yeeDiams = useMemo(() => {
     const result: Record<string, { simple: string[]; doble: string[] }> = {};
 
-    // Load full drawing data with pts from localStorage
+    // Carga los datos completos del dibujo, con pts, desde localStorage
     const drawingRamales: Array<{
       id: string;
       label: string;
@@ -98,10 +98,10 @@ export default function SanAccesoriosPage() {
       }
     }
 
-    // Find all connections: tributarios (via padreTributarioLabel/padre) AND ramales (via geometric proximity)
+    // Encuentra todas las conexiones: tributarios (vía padreTributarioLabel/padre) y ramales (vía proximidad geométrica)
     const allConnections: { parentKey: string; parentLabel: string; diamStr: string }[] = [];
 
-    // Helper to compute parentKey from label/parent
+    // Función auxiliar para calcular parentKey a partir de label/padre
     const labelToKey = new Map<string, string>();
     for (const t of tramosSan) {
       if (t.esBajante) continue;
@@ -110,7 +110,7 @@ export default function SanAccesoriosPage() {
       if (!labelToKey.has(lbl)) labelToKey.set(lbl, key);
     }
 
-    // Case 1: tributarios from tramosSan
+    // Caso 1: tributarios provenientes de tramosSan
     for (const child of tramosSan) {
       if (child.esBajante) continue;
       const childDiam = child.diametro || '';
@@ -124,7 +124,7 @@ export default function SanAccesoriosPage() {
       }
     }
 
-    // Case 2: ramal-to-ramal geometric connections from drawing data
+    // Caso 2: conexiones geométricas ramal-a-ramal desde los datos del dibujo
     for (const child of drawingRamales) {
       const childDiamStr = fmtPulg(diamPulgFromLabel(child.diametro));
       if (!childDiamStr || childDiamStr === '—') continue;
@@ -153,14 +153,14 @@ export default function SanAccesoriosPage() {
       }
     }
 
-    // Group connections by parent (use parentKey for uniqueness)
+    // Agrupa conexiones por padre (usa parentKey para unicidad)
     const byParent: Record<string, { diamStr: string }[]> = {};
     for (const conn of allConnections) {
       if (!byParent[conn.parentKey]) byParent[conn.parentKey] = [];
       byParent[conn.parentKey].push({ diamStr: conn.diamStr });
     }
 
-    // Build result
+    // Construye el resultado
     for (const t of tramosSan) {
       if (t.esBajante || t.tipo === 'tributario') continue;
       const tKey = String(t._key || `${t.id}-${t.planId}`);
@@ -170,7 +170,7 @@ export default function SanAccesoriosPage() {
       const myConnections = byParent[tKey] || [];
       if (myConnections.length === 0) continue;
 
-      // Group by diameter
+      // Agrupa por diámetro
       const byDiam: Record<string, number> = {};
       myConnections.forEach((c) => {
         byDiam[c.diamStr] = (byDiam[c.diamStr] || 0) + 1;
@@ -178,7 +178,7 @@ export default function SanAccesoriosPage() {
 
       if (!result[tKey]) result[tKey] = { simple: [], doble: [] };
 
-      // Pairs form dobles, remainder forms simples
+      // Los pares forman dobles; el resto forma simples
       for (const [diamStr, count] of Object.entries(byDiam)) {
         const dobleCount = Math.floor(count / 2);
         const simpleCount = count % 2;
@@ -191,8 +191,8 @@ export default function SanAccesoriosPage() {
       }
     }
     return result;
-    // tick is an intentional cache-busting signal (storage/custom-event/3s poll above) for
-    // localStorage-derived data React can't observe reactively — not read in the body itself.
+    // tick es una señal intencional para invalidar caché (storage/evento personalizado/poll de 3s de arriba), para
+    // datos derivados de localStorage que React no puede observar reactivamente — no se lee en el cuerpo.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick, tramosSan, plans]);
 
@@ -292,7 +292,7 @@ export default function SanAccesoriosPage() {
         paddingBottom: '24px',
       }}
     >
-      {/* Card: Resumen de accesorios por diámetro */}
+      {/* Tarjeta: Resumen de accesorios por diámetro */}
       <section
         className="card"
         style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'visible' }}

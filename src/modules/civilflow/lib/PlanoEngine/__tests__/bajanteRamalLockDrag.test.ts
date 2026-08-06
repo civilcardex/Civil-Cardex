@@ -41,9 +41,9 @@ function makeBajante(
     code: id,
     x,
     y,
-    // Kept far from (x,y) so a click on the circle in the test below can't also match the
-    // label-proximity check in _tryBajanteHit (which runs first and would otherwise steal the
-    // click into a label-drag instead of the symbol/circle drag this test targets).
+    // Mantenido lejos de (x,y) para que un clic sobre el círculo del test de abajo no coincida también
+    // con la comprobación de proximidad de etiqueta en _tryBajanteHit (que corre primero y robaría el
+    // clic hacia un arrastre de etiqueta en vez del arrastre de símbolo/círculo que busca este test).
     labelX: x + 500,
     labelY: y + 500,
     labelAngle: 0,
@@ -56,9 +56,9 @@ function makeBajante(
   } as unknown as PlanoBajante;
 }
 
-// Reproduces the exact real-world topology reported: a 'vent' ramal (REV1) whose endpoint sits
-// on a 'san' bajante (BAN1), not on another ramal — the san/vent connection is via a bajante,
-// not a shared ramal point, which none of the earlier ramal-to-ramal tests covered.
+// Reproduce la topología real exacta reportada: un ramal 'vent' (REV1) cuyo extremo queda sobre
+// un bajante 'san' (BAN1), no sobre otro ramal — la conexión san/vent es vía bajante, no un punto
+// compartido entre ramales, caso que ninguno de los tests ramal-a-ramal anteriores cubría.
 function makeEngine(ramales: PlanoRamal[], bajantes: PlanoBajante[]): IPlanoEngineCore {
   const engine: Partial<IPlanoEngineCore> = {
     ramales,
@@ -121,7 +121,7 @@ describe('bajante <-> ramal lock (san bajante with a vent ramal touching its end
     const baj = makeBajante('BAN1', 'san', 10, 0, ['REV1']);
     const engine = makeEngine([vent], [baj]);
 
-    // click directly on the bajante's symbol
+    // clic directo sobre el símbolo del bajante
     handleSelectDown(engine, 10, 0);
     expect(engine.bajDrag).not.toBeNull();
 
@@ -129,7 +129,7 @@ describe('bajante <-> ramal lock (san bajante with a vent ramal touching its end
 
     expect(baj.x).toBeCloseTo(30, 5);
     expect(baj.y).toBeCloseTo(15, 5);
-    // the vent ramal's touching endpoint must have followed rigidly
+    // el extremo tocante del ramal vent debe haber seguido rígidamente
     expect(vent.pts[0][0]).toBeCloseTo(30, 5);
     expect(vent.pts[0][1]).toBeCloseTo(15, 5);
   });

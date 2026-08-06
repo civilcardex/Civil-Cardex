@@ -91,8 +91,9 @@ export default function DisenosSanitarios() {
     [plans, tramosSan, mergedBase],
   );
 
-  // Persist the hydraulic checkpoint (velocity + fill ratio) onto each Tramo so InfTab's
-  // SANITARIA badge can read a real result instead of the permanently-undefined defaults.
+  // Persiste el punto de chequeo hidráulico (velocidad + relación de llenado) en cada Tramo
+  // para que la insignia SANITARIA de InfTab lea un resultado real en lugar de los valores
+  // por defecto permanentemente indefinidos.
   useEffect(() => {
     for (const t of displayTramos) {
       const tKey = t._key || `${t.id}-${t.piso}`;

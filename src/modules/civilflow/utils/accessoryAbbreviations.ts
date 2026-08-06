@@ -1,6 +1,6 @@
 /**
- * Abbreviations for sanitary and hydraulic accessories.
- * Used in ramal ini/fin fields for compact display.
+ * Abreviaturas para accesorios sanitarios e hidráulicos.
+ * Usadas en los campos ini/fin de ramal para mostrar de forma compacta.
  */
 export const ACC_ABBR: Record<string, string> = {
   sifon: 'SIF',
@@ -35,10 +35,10 @@ export const ACC_ABBR: Record<string, string> = {
 };
 
 /**
- * Get bajante display label with piso suffix (e.g. "BAN2-P1").
- * @param b - Bajante-like object with optional code, id, pisoBase.
- * @param nivelLabel - Fallback level label if pisoBase is absent.
- * @returns Formatted label like "BAN2-P1" or bare code.
+ * Etiqueta de visualización de bajante con sufijo de piso (p. ej. "BAN2-P1").
+ * @param b - Objeto tipo bajante con code, id, pisoBase opcionales.
+ * @param nivelLabel - Etiqueta de nivel de respaldo si pisoBase está ausente.
+ * @returns Etiqueta formateada como "BAN2-P1" o code pelado.
  */
 export function bajanteLabel(
   b: { code?: string; id?: string; pisoBase?: string } | null | undefined,
@@ -51,12 +51,12 @@ export function bajanteLabel(
 }
 
 /**
- * Get ramal display label with the current-floor suffix (e.g. "RS1-P1") — matches the label
- * drawn on canvas by renderRamales, which always suffixes with the CURRENT floor (a ramal has
- * no pisoBase of its own, unlike a bajante).
- * @param r - Ramal-like object with optional label, id.
- * @param nivelLabel - Current floor label for suffix.
- * @returns Formatted label like "RS1-P1" or bare id.
+ * Etiqueta de visualización de ramal con el sufijo del piso actual (p. ej. "RS1-P1") — coincide
+ * con la etiqueta dibujada en canvas por renderRamales, que siempre añade el sufijo del PISO
+ * ACTUAL (un ramal no tiene pisoBase propio, a diferencia de un bajante).
+ * @param r - Objeto tipo ramal con label, id opcionales.
+ * @param nivelLabel - Etiqueta del piso actual para el sufijo.
+ * @returns Etiqueta formateada como "RS1-P1" o id pelado.
  */
 export function ramalLabel(
   r: { label?: string; id?: string } | null | undefined,

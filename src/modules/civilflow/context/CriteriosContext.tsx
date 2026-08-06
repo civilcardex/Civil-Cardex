@@ -27,7 +27,7 @@ interface CriteriosContextValue {
 
 export const CriteriosContext = createContext<CriteriosContextValue | null>(null);
 
-/** Provides design criteria checklist (norm compliance) with localStorage persistence. */
+/** Provee la lista de verificación de criterios de diseño (cumplimiento de norma) con persistencia en localStorage. */
 export function CriteriosProvider({ children }: { children?: ReactNode }) {
   const [crits, setCrits] = usePersistedState<CritItem[]>('civilflow_crits', CRITS_CLONED);
 
@@ -36,7 +36,7 @@ export function CriteriosProvider({ children }: { children?: ReactNode }) {
   return <CriteriosContext.Provider value={value}>{children}</CriteriosContext.Provider>;
 }
 
-/** Hook to access design criteria. @returns {CriteriosContextValue} */
+/** Hook para acceder a los criterios de diseño. @returns {CriteriosContextValue} */
 export function useCriterios() {
   const ctx = useContext(CriteriosContext);
   if (!ctx) throw new Error('useCriterios must be used within CriteriosProvider');

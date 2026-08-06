@@ -20,13 +20,15 @@ interface StoredBajanteDesp {
   desplazamientos?: Record<string, { dx: number; dy: number; Ldesvio?: string }>;
 }
 
-// Same "displaced ghost of itself" bookkeeping applyBajanteAssociation/clearBajanteAssociation do
-// on the LIVE engine when the source's own floor happens to be loaded — mirrored here for when it
-// ISN'T (the "Origen" flow always associates from a floor other than the one the origin bajante
-// actually lives on), by patching that floor's storage directly.
-// Removes whichever desplazamientos level-key this bajante's Ldesvio connector was tagged into —
-// keyed by the Ldesvio id (unique per source) rather than a level label, since the label can't
-// always be reconstructed from the caller's own (possibly different) currently-loaded floor.
+// Mismo bookkeeping de "fantasma desplazado de sí mismo" que applyBajanteAssociation/
+// clearBajanteAssociation hacen en el engine EN VIVO cuando el piso propio del source resulta
+// estar cargado — espejado aquí para cuando NO lo está (el flujo "Origen" siempre asocia desde un
+// piso distinto a aquel donde el bajante origen realmente vive), parcheando el storage de ese
+// piso directamente.
+// Elimina cualquier clave-de-nivel de desplazamientos en la que se etiquetara el conector Ldesvio
+// de este bajante — claveada por el id de Ldesvio (único por source) en vez de por una etiqueta
+// de nivel, porque la etiqueta no siempre puede reconstruirse del piso (posiblemente distinto)
+// cargado actualmente del caller.
 function removeBajanteDesplazamientoFromStorage(planId: string, bajanteId: string): void {
   const key = TRAZOS_PREFIX + planId;
   const raw = loadFromStorage<{ bajantes?: StoredBajanteDesp[] } | null>(key, null);
@@ -67,9 +69,9 @@ function setBajanteDesplazamientoInStorage(
   saveTrazosToDB(planId, raw);
 }
 
-// One bajante/montante endpoint of a cross-floor association — enough to write both directions'
-// pointers, the ghost, and (when misaligned) the Ldesvio detour ramal, regardless of which of the
-// two floors happens to be the one currently loaded live.
+// Un extremo bajante/montante de una asociación entre pisos — suficiente para escribir los
+// punteros de ambas direcciones, el fantasma, y (cuando está desalineado) el ramal de desvío
+// Ldesvio, sin importar cuál de los dos pisos resulte ser el cargado en vivo actualmente.
 export interface AssocEndpoint {
   planId: string;
   id: string;
@@ -78,7 +80,7 @@ export interface AssocEndpoint {
   net: string;
   dNominal: string;
   code: string;
-  /** plan.nivel — the floor's ordinal index, used for piso labels and elevation comparison. */
+  /** plan.nivel — el índice ordinal del piso, usado para etiquetas de piso y comparación de elevación. */
   nivelN: number;
   npt: number;
 }
@@ -91,10 +93,10 @@ export function areEndpointsAligned(a: AssocEndpoint, b: AssocEndpoint): boolean
   return isAligned(a, b);
 }
 
-// Removes everything belonging to a previously-established link where `sourcePlanId`/
-// `sourceBajanteId` was the descargaEnId-holding side of `oldLinkValue` ("targetPlanId|targetId"):
-// its ghost (on the old target's floor), its Ldesvio (on the source's own floor), and the old
-// target's reverse origenId pointer. Called before applying a NEW link, or when clearing one.
+// Elimina todo lo perteneciente a un enlace previamente establecido donde `sourcePlanId`/
+// `sourceBajanteId` era el lado que sostenía descargaEnId de `oldLinkValue` ("targetPlanId|targetId"):
+// su fantasma (en el piso del viejo target), su Ldesvio (en el propio piso del source), y el puntero
+// inverso origenId del viejo target. Llamado antes de aplicar un NUEVO enlace, o al limpiar uno.
 export function clearBajanteAssociation(
   eng: IPlanoEngineCore,
   sourcePlanId: string,
@@ -139,18 +141,20 @@ export function clearBajanteAssociation(
       eng.updateElementById(sourceBajanteId, { desplazamientos: desp });
     }
   } else {
-    // Mirrors the storage-only write path in applyBajanteAssociation's `else` branch — the
-    // source's own floor may not be loaded here either (clearing an "Origen" link from below).
-    // The level label can't be reconstructed from `eng.nivelActual` (that's the CURRENT floor,
-    // not the source's), so this sweeps every level key by parsed piso number instead.
+    // Espeja la ruta de escritura solo-en-storage del branch `else` de applyBajanteAssociation —
+    // el piso propio del source puede no estar cargado aquí tampoco (limpiar un enlace "Origen"
+    // desde abajo). La etiqueta de nivel no puede reconstruirse desde `eng.nivelActual` (ese es
+    // el piso ACTUAL, no el del source), así que esto barre cada clave de nivel por número de
+    // piso parseado en su lugar.
     removeBajanteDesplazamientoFromStorage(sourcePlanId, sourceBajanteId);
   }
 }
 
-// Establishes source -> target: writes BOTH pointers (source.descargaEnId, target.origenId),
-// always creates the ghost (on target's floor, at source's position — a permanent visual
-// confirmation the link exists, not just something that appears when misaligned), and creates the
-// Ldesvio detour ramal (on source's floor) only when the two aren't already aligned.
+// Establece source -> target: escribe AMBOS punteros (source.descargaEnId, target.origenId),
+// siempre crea el fantasma (en el piso del target, en la posición del source — una confirmación
+// visual permanente de que el enlace existe, no solo algo que aparece cuando está desalineado), y
+// crea el ramal de desvío Ldesvio (en el piso del source) solo cuando los dos no están ya
+// alineados.
 export function applyBajanteAssociation(
   eng: IPlanoEngineCore,
   source: AssocEndpoint,
@@ -217,11 +221,12 @@ export function applyBajanteAssociation(
     ];
   }
 
-  // The source bajante ALWAYS gets the same-floor "desplazamiento" marker on its OWN floor, at the
-  // TARGET's projected position — the same-floor counterpart of the ghost written above. It must
-  // exist even when the two endpoints are aligned (zero offset): without it, an aligned
-  // association leaves the source floor with no visible trace of the link while the target floor
-  // already shows the ghost, and the user switching to the source floor sees nothing.
+  // El bajante source SIEMPRE recibe el marcador "desplazamiento" del mismo piso en SU PROPIO
+  // piso, en la posición PROYECTADA del target — la contraparte del mismo piso del fantasma
+  // escrito arriba. Debe existir incluso cuando los dos extremos están alineados (offset cero):
+  // sin él, una asociación alineada deja el piso del source sin rastro visible del enlace mientras
+  // el piso del target ya muestra el fantasma, y el usuario cambiando al piso del source no ve
+  // nada.
   if (loadedPlanId === source.planId) {
     const lvl = eng.nivelActual?.label ?? '';
     if (lvl) {
@@ -237,8 +242,8 @@ export function applyBajanteAssociation(
       }
     }
   } else {
-    // Source's own floor isn't loaded (e.g. associating via "Origen" from below) — same
-    // bookkeeping, written straight to that floor's storage instead of the live engine.
+    // El piso propio del source no está cargado (p. ej. asociar vía "Origen" desde abajo) —
+    // mismo bookkeeping, escrito directo al storage de ese piso en vez del engine en vivo.
     setBajanteDesplazamientoInStorage(source.planId, source.id, pisoLbl(source.nivelN), {
       dx: target.x - source.x,
       dy: target.y - source.y,

@@ -10,8 +10,8 @@ export interface ProyectoRow {
 }
 
 /**
- * Fetches all projects for the authenticated user, ordered by most recent.
- * @returns Array of ProyectoRow objects; empty array on error or unauthenticated.
+ * Trae todos los proyectos del usuario autenticado, ordenados por más reciente.
+ * @returns Arreglo de objetos ProyectoRow; arreglo vacío ante error o usuario no autenticado.
  */
 export async function fetchProyectos(): Promise<ProyectoRow[]> {
   try {
@@ -46,10 +46,10 @@ export async function fetchProyectos(): Promise<ProyectoRow[]> {
 }
 
 /**
- * Creates a new project and returns the inserted row.
- * @param codigo - Short project code.
- * @param nombre - Human-readable project name.
- * @returns Inserted ProyectoRow or null on failure.
+ * Crea un proyecto nuevo y devuelve la fila insertada.
+ * @param codigo - Código corto del proyecto.
+ * @param nombre - Nombre legible del proyecto.
+ * @returns ProyectoRow insertado o null ante fallo.
  */
 export async function createProyecto(codigo: string, nombre: string): Promise<ProyectoRow | null> {
   try {
@@ -77,10 +77,10 @@ export async function createProyecto(codigo: string, nombre: string): Promise<Pr
 }
 
 /**
- * Updates the display name of an existing project (owner-scoped).
- * @param id - Project primary key.
- * @param nombre - New display name.
- * @returns True if update succeeded, false otherwise.
+ * Actualiza el nombre mostrado de un proyecto existente (acotado al dueño).
+ * @param id - Clave primaria del proyecto.
+ * @param nombre - Nuevo nombre mostrado.
+ * @returns True si la actualización funcionó, false si no.
  */
 export async function updateProyectoNombre(id: number, nombre: string): Promise<boolean> {
   try {
@@ -108,9 +108,9 @@ export async function updateProyectoNombre(id: number, nombre: string): Promise<
 }
 
 /**
- * Deletes a project by id (owner-scoped). RLS policies enforce ownership.
- * @param id - Project primary key.
- * @returns True if deletion succeeded, false otherwise.
+ * Elimina un proyecto por id (acotado al dueño). Las políticas RLS hacen cumplir la propiedad.
+ * @param id - Clave primaria del proyecto.
+ * @returns True si la eliminación funcionó, false si no.
  */
 export async function deleteProyecto(id: number): Promise<boolean> {
   try {
