@@ -460,7 +460,17 @@ export function isTeeAtEndpoint(
           }
         } else {
           segmentCount += 2;
-          if (r.id !== currentRamalId) throughRamalId = r.id;
+          if (r.id !== currentRamalId) {
+            // Same rule as anyOtherRamalId below: prefer a ramal that was NOT auto-created by a
+            // split (no mergesFrom) — the accesorio must land on the genuine already-existing
+            // ramal, not on the downstream stub the split just created.
+            if (
+              !throughRamalId ||
+              (!r.mergesFrom && engine.ramales.find((x) => x.id === throughRamalId)?.mergesFrom)
+            ) {
+              throughRamalId = r.id;
+            }
+          }
         }
       }
     }

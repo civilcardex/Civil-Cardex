@@ -7,6 +7,38 @@ import {
   deleteBajanteFromStorage,
 } from '../../utils/associateBajanteAcrossFloors';
 import { clearBajanteAssociation } from '../../utils/bajanteAssociation';
+import { loadFromStorage, saveToStorage } from '../../services/storageService';
+import { HYDRO_DATA_STORAGE_KEY } from '../../constants/storage-keys';
+
+interface HidroDataEntry {
+  accesorios: Record<string, number>;
+  Lh: number;
+  nSalidas: number;
+}
+
+// The Aparatos sidebar (FixturesPanel.tsx/AccesoriosSection) keeps its own separate count of each
+// tee glyph as an "accesorio" assigned to the host ramal (HYDRO_DATA_STORAGE_KEY, keyed
+// `${net}_${ramalId}_${planId}`) — clearing the glyph field on the ramal object above doesn't
+// touch that count, so the sidebar kept showing it as still assigned after the tee visually
+// disappeared. Decrement it in lockstep.
+function decrementAccesorioCount(
+  engine: IPlanoEngineCore,
+  hostR: { id: string; net: string },
+  accType: string,
+): void {
+  const planId = engine._loadedPlanId;
+  if (planId == null) return;
+  const storageKey = `${hostR.net}_${hostR.id}_${planId}`;
+  const map = loadFromStorage<Record<string, HidroDataEntry>>(HYDRO_DATA_STORAGE_KEY, {});
+  const entry = map[storageKey];
+  if (!entry?.accesorios?.[accType]) return;
+  const next = entry.accesorios[accType] - 1;
+  const nextAcc = { ...entry.accesorios };
+  if (next <= 0) delete nextAcc[accType];
+  else nextAcc[accType] = next;
+  map[storageKey] = { ...entry, accesorios: nextAcc };
+  saveToStorage(HYDRO_DATA_STORAGE_KEY, map);
+}
 
 // A bajante/montante riser tied to another floor's via "Origen"/"Destino" is the same physical
 // pipe continuing there — deleting one side's symbol while the other stays behind (still pointing
@@ -53,38 +85,139 @@ function cascadeMontanteAssociation(engine: IPlanoEngineCore, deleted: PlanoBaja
   }
 }
 
-const TEE_TYPES = ['teeDirecto', 'teeSube', 'teeBaja', 'te_linea', 'te_ramal'];
+const TEE_TYPES = [
+  'teeDirecto',
+  'teeSube',
+  'teeBaja',
+  'te_linea',
+  'te_ramal',
+  'teeReduccion',
+  'teeLado',
+];
 
 // A tee marker (accesorioInicio/Fin or accMed) at a junction point outlives the ramal that formed
 // that junction — deleting the OTHER branch of a T/Y left the remaining ramal's tee glyph/count
-// sitting there with nothing actually connected anymore. Clears it, but only when NOTHING else
-// (another ramal's endpoint, or a montante bajante — mid-body montante creation writes this same
-// marker) still touches that exact point, so a legitimately-still-junctioned tee is untouched.
+// sitting there with nothing actually connected anymore. Clears it, but only when the point isn't
+// STILL a genuine tee junction. Counting just "any other ramal touches this point" was wrong on
+// both sides: a split trunk's own two halves (existing + the auto-created downstream,
+// mergesFrom-linked) always touch each other at the junction and would block the cleanup of a
+// tee whose branch was deleted, while a plain end-to-end continuation (or a corner formed by two
+// surviving ramals) would still count as "connected" and keep a tee glyph that no longer means
+// anything. So the decision is geometric: group the surviving ramals at the point by line
+// direction, and keep the tee only when a real branch relation still exists — a ramal that
+// continues the host's own line together with at least one ramal leaving at an angle, or a
+// non-collinear through-run pair (host as branch), or a bajante/montante at the point.
+function junctionArmsAt(
+  engine: IPlanoEngineCore,
+  hostR: { id: string; pts: number[][]; mergesFrom?: string[] },
+  pt: number[],
+): {
+  bajanteTouching: boolean;
+  hasCollinearWithHost: boolean;
+  hasNonCollinear: boolean;
+  hasNonCollinearPair: boolean;
+} {
+  const TOL = 0.5;
+  const DOT_TOL = 0.9;
+  const norm = (v: number[]) => {
+    const l = Math.hypot(v[0], v[1]);
+    return l < 1e-6 ? null : ([v[0] / l, v[1] / l] as number[]);
+  };
+  const dirAt = (pts: number[][], p: number[]): number[] | null => {
+    if (!pts || pts.length < 2) return null;
+    const li = pts.length - 1;
+    if (Math.hypot(pts[0][0] - p[0], pts[0][1] - p[1]) < TOL)
+      return norm([pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]]);
+    if (Math.hypot(pts[li][0] - p[0], pts[li][1] - p[1]) < TOL)
+      return norm([pts[li - 1][0] - pts[li][0], pts[li - 1][1] - pts[li][1]]);
+    return null;
+  };
+  const hostLine = dirAt(hostR.pts, pt);
+  const groups: number[][] = [];
+  const sameLine = (a: number[], b: number[]) => Math.abs(a[0] * b[0] + a[1] * b[1]) >= DOT_TOL;
+  let bajanteTouching = false;
+  for (const b of engine.bajantes) {
+    if (Math.hypot(b.x - pt[0], b.y - pt[1]) < TOL) {
+      bajanteTouching = true;
+      break;
+    }
+  }
+  for (const other of engine.ramales) {
+    if (other.id === hostR.id) continue;
+    const d = dirAt(other.pts, pt);
+    if (!d) continue;
+    let found = -1;
+    for (let i = 0; i < groups.length; i++) {
+      if (sameLine(groups[i], d)) {
+        found = i;
+        break;
+      }
+    }
+    if (found >= 0) {
+      // keep the first representative direction for the group
+    } else {
+      groups.push(d);
+    }
+  }
+  let hasCollinearWithHost = false;
+  let hasNonCollinear = false;
+  let hasNonCollinearPair = false;
+  const dirAtMemberCount = (dir: number[]) => {
+    let n = 0;
+    for (const other of engine.ramales) {
+      if (other.id === hostR.id) continue;
+      const d = dirAt(other.pts, pt);
+      if (d && sameLine(dir, d)) n++;
+    }
+    return n;
+  };
+  for (const g of groups) {
+    const members = dirAtMemberCount(g);
+    const coll = hostLine ? sameLine(g, hostLine) : false;
+    if (coll) hasCollinearWithHost = true;
+    else {
+      hasNonCollinear = true;
+      if (members >= 2) hasNonCollinearPair = true;
+    }
+  }
+  return { bajanteTouching, hasCollinearWithHost, hasNonCollinear, hasNonCollinearPair };
+}
+
 function cleanupTeeMarkersAt(engine: IPlanoEngineCore, pt: number[]): void {
   const TOL = 0.5;
   for (const hostR of engine.ramales) {
     if (!hostR.pts?.length) continue;
-    const stillConnected =
-      engine.ramales.some(
-        (other) =>
-          other.id !== hostR.id &&
-          other.pts?.some(([x, y]) => Math.hypot(x - pt[0], y - pt[1]) < TOL),
-      ) || engine.bajantes.some((b) => Math.hypot(b.x - pt[0], b.y - pt[1]) < TOL);
-    if (stillConnected) continue;
+    const arms = junctionArmsAt(engine, hostR, pt);
+    // Endpoint marker (accesorioInicio/Fin): the host ends AT the point, so a tee requires a
+    // genuine through-run — the host's own line continued by a collinear survivor PLUS a ramal
+    // leaving at an angle, or a non-collinear pair of survivors (host itself is the branch), or
+    // a bajante/montante at the point. A lone corner (one survivor, angled) is NOT a tee.
+    const keepEndpoint =
+      arms.bajanteTouching ||
+      (arms.hasCollinearWithHost && arms.hasNonCollinear) ||
+      arms.hasNonCollinearPair;
+    // Interior marker (accMed): the host itself passes through the point, so ANY ramal leaving
+    // at an angle (or a bajante/montante) keeps it a tee; only a collinear continuation alone
+    // is a plain pass-through.
+    const keepInterior = arms.bajanteTouching || arms.hasNonCollinear;
 
     if (
       hostR.accesorioInicio &&
       TEE_TYPES.includes(hostR.accesorioInicio) &&
-      Math.hypot(hostR.pts[0][0] - pt[0], hostR.pts[0][1] - pt[1]) < TOL
+      Math.hypot(hostR.pts[0][0] - pt[0], hostR.pts[0][1] - pt[1]) < TOL &&
+      !keepEndpoint
     ) {
+      decrementAccesorioCount(engine, hostR, hostR.accesorioInicio);
       hostR.accesorioInicio = '';
     }
     const li = hostR.pts.length - 1;
     if (
       hostR.accesorioFin &&
       TEE_TYPES.includes(hostR.accesorioFin) &&
-      Math.hypot(hostR.pts[li][0] - pt[0], hostR.pts[li][1] - pt[1]) < TOL
+      Math.hypot(hostR.pts[li][0] - pt[0], hostR.pts[li][1] - pt[1]) < TOL &&
+      !keepEndpoint
     ) {
+      decrementAccesorioCount(engine, hostR, hostR.accesorioFin);
       hostR.accesorioFin = '';
     }
     if (hostR.accMed) {
@@ -96,8 +229,10 @@ function cleanupTeeMarkersAt(engine: IPlanoEngineCore, pt: number[]): void {
         if (
           p &&
           TEE_TYPES.includes(hostR.accMed[key]) &&
-          Math.hypot(p[0] - pt[0], p[1] - pt[1]) < TOL
+          Math.hypot(p[0] - pt[0], p[1] - pt[1]) < TOL &&
+          !keepInterior
         ) {
+          decrementAccesorioCount(engine, hostR, hostR.accMed[key]);
           delete hostR.accMed[key];
         }
       }
@@ -116,10 +251,6 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       const idxR = engine.ramales.findIndex((r) => r.id === id);
       if (idxR >= 0) {
         const deleted = engine.ramales[idxR];
-        // Deleting a ramal in a bilateral tee only removes that one ramal — its bilateral
-        // partner is a separate physical pipe and must stay, so only the selected ids get
-        // removed. bilateralPairIds references to it on OTHER ramales still need pruning below
-        // so nothing keeps pointing at a now-deleted id.
         deletedRamalIds.add(deleted.id);
         engine.ramales = engine.ramales.filter(
           (r) => r.id !== deleted.id && r.padre !== deleted.id,
@@ -260,14 +391,6 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
         continue;
       }
     }
-    // Prune bilateralPairIds references to whatever just got deleted — no cascade, just cleanup.
-    if (deletedRamalIds.size > 0) {
-      for (const r of engine.ramales) {
-        if (r.bilateralPairIds) {
-          r.bilateralPairIds = r.bilateralPairIds.filter((pid) => !deletedRamalIds.has(pid));
-        }
-      }
-    }
     for (const net of netsToRenumber) engine._renumberRamales(net);
     for (const net of bajNetsToRenumber) {
       if (net === 'montante') engine._renumberMontantes();
@@ -300,14 +423,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
   if (idxR >= 0) {
     const deleted = engine.ramales[idxR];
     const deletedId = deleted.id;
-    // No bilateral-partner cascade — only the selected ramal is removed, even at a bilateral
-    // tee crossing (the partner is a separate physical pipe).
     engine.ramales = engine.ramales.filter((r) => r.id !== deletedId && r.padre !== deleted.id);
-    for (const r of engine.ramales) {
-      if (r.bilateralPairIds) {
-        r.bilateralPairIds = r.bilateralPairIds.filter((pid) => pid !== deletedId);
-      }
-    }
     if (deleted.pts?.length) {
       cleanupTeeMarkersAt(engine, deleted.pts[0]);
       cleanupTeeMarkersAt(engine, deleted.pts[deleted.pts.length - 1]);

@@ -396,6 +396,31 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       // Setting it prematurely makes the alreadyResolved sweep skip the modal entirely,
       // so the user never gets to pick the actual tee type (teeSube, teeBaja, yee, etc.).
 
+      // UC accumulates on `downstream` (the auto-created continuation) here, unconditionally —
+      // NOT on whichever ramal "enters" the junction. `downstream` is what a LATER split further
+      // along the same line reads as its own `existing.uc` input (chained forward each time a new
+      // T gets drawn); zeroing it out for AF/AC would silently drop the whole upstream chain's
+      // accumulated total the next time the line splits again. Which ramal actually DISPLAYS the
+      // combined number (may differ from `downstream`, per the AF/AC "whoever enters the
+      // junction" convention) is a presentation-only concern handled in the design tables
+      // (waterNetworkRows.ts / WaterNetworkDesign.tsx), not here.
+      const preSplitExistingUc = existing.uc || 0;
+      const preSplitIncomingUc = incoming.uc || 0;
+
+      // `existing`'s pre-split far-end accessory (if any) belonged to whichever point used to be
+      // its own last vertex — after truncation that point is no longer existing's endpoint, it's
+      // downstream's. Left in place, it kept rendering at existing's NEW (truncated) endpoint,
+      // i.e. right at the junction — visually "jumping" there even though nothing about the
+      // accessory itself changed. Move it to `downstream`, which now actually terminates there.
+      const farAccesorio = existing.accesorioFin;
+      const farDiametro = existing.diametroFin;
+      const farAparato = existing.aparatoFin;
+      const farSifonLabel = existing.sifonLabelFin;
+      existing.accesorioFin = '';
+      existing.diametroFin = '';
+      existing.aparatoFin = '';
+      existing.sifonLabelFin = undefined;
+
       const netDef = NETS.find((n) => n.id === existing.net);
       const pfx = netDef ? netDef.lbl : 'R';
       const cnt = ++engine._netCounts[existing.net][
@@ -417,16 +442,17 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         labelY: downLabelY,
         labelAngle: downLabelAngle,
         diametro: maxDiametroLabel(existing.diametro, incoming.diametro),
-        uc: (existing.uc || 0) + (incoming.uc || 0),
+        uc: preSplitExistingUc + preSplitIncomingUc,
         ini: '',
         fin: '',
         accesorioInicio: '',
-        accesorioFin: '',
+        accesorioFin: farAccesorio || '',
         accMed: {},
         diametroInicio: '',
-        diametroFin: '',
+        diametroFin: farDiametro || '',
         aparatoInicio: '',
-        aparatoFin: '',
+        aparatoFin: farAparato || '',
+        sifonLabelFin: farSifonLabel,
         bloqueado: true,
         mergesFrom: [existing.id, incoming.id],
       };
