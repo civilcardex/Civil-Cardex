@@ -16,6 +16,7 @@ import { loadFromStorage, saveToStorage } from '../services/storageService';
 import FixtureGrid from './fixtures/FixtureGrid';
 import AccesoriosSection from './fixtures/AccessoriesSection';
 import { devError } from '../../../utils/devError';
+import { resolveJunctionEntrant } from '../utils/flowDirection';
 
 const HIDROSAN_IDS = new Set(['af', 'ac', 'san']);
 const GAS_ID = 'gas';
@@ -328,47 +329,37 @@ const AparatosPanel = memo(function AparatosPanel_({
   const mergeKeys = (() => {
     if (!target?.id || !netId) return null;
     const keyFor = (id: string) => (planId ? `${netId}_${id}_${planId}` : `${netId}_${id}`);
-    // If target is the auto-created ramal, use its own mergesFrom as the source pair
-    // and determine whether IT enters the junction (just like the other two sources).
+    // If target is the auto-created ramal, its own mergesFrom is the source pair; otherwise
+    // find the auto-created ramal that lists target as one of its two sources.
     const isAutoCreated = !!target.mergesFrom;
-
-    const originOf = (r: { pts?: number[][]; _tribReversed?: boolean }) => {
-      if (!r.pts || r.pts.length < 2) return null;
-      return r._tribReversed ? r.pts[r.pts.length - 1] : r.pts[0];
-    };
-    const entersAt = (r: { pts?: number[][]; _tribReversed?: boolean }, pt: number[]) => {
-      const o = originOf(r);
-      return o ? Math.hypot(o[0] - pt[0], o[1] - pt[1]) >= 2.0 : false;
-    };
     const hostR = isAutoCreated
       ? target
       : allRamalesForPlan.find((r) => r.net === netId && r.mergesFrom?.includes(target.id!));
-    if (!hostR?.mergesFrom || !hostR.pts?.length) return null;
-    const jc = hostR.pts[0];
+    if (!hostR?.mergesFrom) return null;
     const [aId, bId] = hostR.mergesFrom;
     if (!aId || !bId) return null;
-    const aRamal = allRamalesForPlan.find((x) => x.id === aId);
-    const bRamal = allRamalesForPlan.find((x) => x.id === bId);
-    let entrantId: string | null = null;
-    if (bRamal?.tipo === 'tributario' && aRamal?.tipo !== 'tributario') entrantId = aId;
-    else if (aRamal?.tipo === 'tributario' && bRamal?.tipo !== 'tributario') entrantId = bId;
-    else {
-      const candidates: { id: string; ram: { pts?: number[][]; _tribReversed?: boolean } }[] = [
-        { id: aId, ram: aRamal ?? { pts: [] } },
-        { id: bId, ram: bRamal ?? { pts: [] } },
-      ];
-      if (!isAutoCreated)
-        candidates.push({
-          id: hostR.id!,
-          ram: hostR as { pts?: number[][]; _tribReversed?: boolean },
-        });
-      const entrants = candidates.filter((c) => entersAt(c.ram, jc));
-      const trunkEntrant = entrants.find((c) => c.id === aId && aRamal?.tipo !== 'tributario');
-      if (trunkEntrant) entrantId = aId;
-      else entrantId = entrants[0].id;
-    }
+    // `hostR.mergesFrom` is always [existing.id, incoming.id] by construction
+    // (PlanoEngineDrawing.ts, autoSplitJunctionAndSumFlow). Which of the three ramales at this
+    // junction (existing, hostR=downstream, incoming) DISPLAYS the combined total is decided
+    // purely by current flow direction — not fixed to "existing" or "the auto-created one":
+    // junctionHasOutgoingFlow already guarantees at least one of the three flows OUT of the
+    // junction, so with three ramales the split is always 2-vs-1, and the lone dissenter (the one
+    // whose direction disagrees with the other two) is the entrant. Matches
+    // waterNetworkRows.ts / WaterNetworkDesign.tsx.
+    if (!hostR.id || !hostR.pts || hostR.pts.length === 0) return null;
+    const jc = hostR.pts[0];
+    const existingObj = allRamalesForPlan.find((r) => r.id === aId);
+    const incomingObj = allRamalesForPlan.find((r) => r.id === bId);
+    const entrantId = existingObj
+      ? resolveJunctionEntrant(
+          jc,
+          existingObj,
+          { id: hostR.id, pts: hostR.pts, _tribReversed: Boolean(hostR._tribReversed) },
+          incomingObj,
+        )
+      : aId;
     if (entrantId !== target.id) return null;
-    return [hostR.id!, aId, bId].filter((id) => id !== target.id).map(keyFor);
+    return [aId, hostR.id!, bId].filter((id) => id !== target.id).map(keyFor);
   })();
 
   const currentMap = useMemo(() => {

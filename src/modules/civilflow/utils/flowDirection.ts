@@ -52,6 +52,48 @@ export function isRamalBajanteConnectionAllowed(
  * every touching ramal only flows IN is a dead end with no supply, invalid plumbing). Returns
  * true if `pt` is not actually a junction (fewer than 2 ramales touch it) or has an outgoing ramal.
  */
+/**
+ * At an AF/AC/gas mid-body split (existing/downstream/incoming meeting at `jc`), decides which of
+ * the three ramales DISPLAYS the combined UC total: whichever one's flow direction (per its own
+ * `_tribReversed`) DISAGREES with the other two — the junction always needs at least one ramal
+ * flowing out of it (junctionHasOutgoingFlow), so with three ramales the split is always 2-vs-1;
+ * the lone dissenter is the one that actually carries the combined demand onward (or receives it,
+ * depending which way the other two agree), never fixed to "existing" or "the auto-created one".
+ * Falls back to `existing.id` if `incoming` can't be resolved or all three agree (degenerate/no
+ * minority), so callers still get a sane default instead of undefined behavior.
+ * @param jc - Junction point coordinates.
+ * @param existing - The pre-split ramal (upstream half after truncation).
+ * @param downstream - The auto-created ramal continuing past `jc`.
+ * @param incoming - The ramal whose endpoint landed on `existing`'s body, if resolvable.
+ * @param tol - Distance tolerance for "this ramal's origin/dest sits at jc".
+ * @returns The id of the ramal that should display the combined total.
+ */
+export function resolveJunctionEntrant(
+  jc: number[],
+  existing: { id: string; pts?: number[][]; _tribReversed?: boolean },
+  downstream: { id: string; pts?: number[][]; _tribReversed?: boolean },
+  incoming: { id: string; pts?: number[][]; _tribReversed?: boolean } | undefined,
+  tol = 2.0,
+): string {
+  if (!existing.pts || existing.pts.length < 2) return existing.id;
+  if (!downstream.pts || downstream.pts.length < 2) return existing.id;
+  if (!incoming || !incoming.pts || incoming.pts.length < 2) return existing.id;
+  const flowsOutOfJc = (ram: { pts: number[][]; _tribReversed?: boolean }) => {
+    const origin = ram._tribReversed ? ram.pts[ram.pts.length - 1] : ram.pts[0];
+    return Math.hypot(origin[0] - jc[0], origin[1] - jc[1]) < tol;
+  };
+  const candidates = [
+    { id: existing.id, pts: existing.pts, _tribReversed: existing._tribReversed },
+    { id: downstream.id, pts: downstream.pts, _tribReversed: downstream._tribReversed },
+    { id: incoming.id, pts: incoming.pts, _tribReversed: incoming._tribReversed },
+  ];
+  const flags = candidates.map(flowsOutOfJc);
+  const outCount = flags.filter(Boolean).length;
+  if (outCount === 1) return candidates[flags.indexOf(true)].id;
+  if (outCount === 2) return candidates[flags.indexOf(false)].id;
+  return existing.id;
+}
+
 export function junctionHasOutgoingFlow(
   ramales: Pick<PlanoRamal, 'net' | 'pts' | '_tribReversed'>[],
   net: string,
