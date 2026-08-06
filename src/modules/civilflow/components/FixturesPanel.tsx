@@ -328,7 +328,9 @@ const AparatosPanel = memo(function AparatosPanel_({
   const mergeKeys = (() => {
     if (!target?.id || !netId) return null;
     const keyFor = (id: string) => (planId ? `${netId}_${id}_${planId}` : `${netId}_${id}`);
-    if (target.mergesFrom) return target.mergesFrom.map(keyFor);
+    // If target is the auto-created ramal, use its own mergesFrom as the source pair
+    // and determine whether IT enters the junction (just like the other two sources).
+    const isAutoCreated = !!target.mergesFrom;
 
     const originOf = (r: { pts?: number[][]; _tribReversed?: boolean }) => {
       if (!r.pts || r.pts.length < 2) return null;
@@ -338,43 +340,35 @@ const AparatosPanel = memo(function AparatosPanel_({
       const o = originOf(r);
       return o ? Math.hypot(o[0] - pt[0], o[1] - pt[1]) >= 2.0 : false;
     };
-    const hostR = allRamalesForPlan.find(
-      (r) => r.net === netId && r.mergesFrom?.includes(target.id!),
-    );
+    const hostR = isAutoCreated
+      ? target
+      : allRamalesForPlan.find((r) => r.net === netId && r.mergesFrom?.includes(target.id!));
     if (!hostR?.mergesFrom || !hostR.pts?.length) return null;
     const jc = hostR.pts[0];
-    // `hostR.mergesFrom` is always [existing.id, incoming.id] by construction
-    // (PlanoEngineDrawing.ts) — aRamal is the trunk that got split, bRamal is whatever triggered
-    // the split.
     const [aId, bId] = hostR.mergesFrom;
+    if (!aId || !bId) return null;
     const aRamal = allRamalesForPlan.find((x) => x.id === aId);
     const bRamal = allRamalesForPlan.find((x) => x.id === bId);
-    // A tributario never feeds the trunk — when one side is a tributario, its non-tributario
-    // counterpart is always the entrant, regardless of which way its own points happen to run
-    // (mirrors waterNetworkRows.ts / WaterNetworkDesign.tsx).
     let entrantId: string | null = null;
     if (bRamal?.tipo === 'tributario' && aRamal?.tipo !== 'tributario') entrantId = aId;
     else if (aRamal?.tipo === 'tributario' && bRamal?.tipo !== 'tributario') entrantId = bId;
     else {
       const candidates: { id: string; ram: { pts?: number[][]; _tribReversed?: boolean } }[] = [
-        { id: hostR.id, ram: hostR },
+        { id: aId, ram: aRamal ?? { pts: [] } },
+        { id: bId, ram: bRamal ?? { pts: [] } },
       ];
-      if (aRamal) candidates.push({ id: aId, ram: aRamal });
-      if (bRamal) candidates.push({ id: bId, ram: bRamal });
+      if (!isAutoCreated)
+        candidates.push({
+          id: hostR.id!,
+          ram: hostR as { pts?: number[][]; _tribReversed?: boolean },
+        });
       const entrants = candidates.filter((c) => entersAt(c.ram, jc));
-      if (entrants.length > 0 && entrants[0].id !== hostR.id) {
-        // The ramal whose flow arrow points INTO the junction must display the combined counts.
-        // Multiple ramals can geometrically "enter" (a branch drawn FROM its fixture TOWARD the
-        // trunk also has its origin away from jc) — when that happens, the genuine upstream is
-        // the trunk that got split (mergesFrom[0], always drawn toward the junction it ends at),
-        // not the branch that merely triggers the split (mirrors waterNetworkRows.ts).
-        const trunkEntrant = entrants.find((c) => c.id === aId && aRamal?.tipo !== 'tributario');
-        if (trunkEntrant) entrantId = aId;
-        else if (entrants.length === 1) entrantId = entrants[0].id;
-      }
+      const trunkEntrant = entrants.find((c) => c.id === aId && aRamal?.tipo !== 'tributario');
+      if (trunkEntrant) entrantId = aId;
+      else entrantId = entrants[0].id;
     }
     if (entrantId !== target.id) return null;
-    return [hostR.id, aId, bId].filter((id) => id !== target.id).map(keyFor);
+    return [hostR.id!, aId, bId].filter((id) => id !== target.id).map(keyFor);
   })();
 
   const currentMap = useMemo(() => {

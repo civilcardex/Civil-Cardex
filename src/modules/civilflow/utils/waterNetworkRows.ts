@@ -232,7 +232,7 @@ export function computeWaterNetworkRows(
           );
           if (trunkEntrant) {
             entrantOverride[mergedKeyFull] = aKey;
-          } else if (entrants.length === 1) {
+          } else {
             entrantOverride[mergedKeyFull] = entrants[0].key;
           }
         }
