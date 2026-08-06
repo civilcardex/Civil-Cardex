@@ -62,6 +62,7 @@ const AccesorioModal_S5: React.CSSProperties = {
 interface AccesorioModalState {
   isOpen: boolean;
   ramalId: string;
+  ramalLabel?: string;
   angleDeg: number;
   junctionIndex: number;
   point: number[];
@@ -205,8 +206,8 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
         )}
         <div style={{ marginTop: 8, fontSize: 12, color: '#8AB4D6' }}>
           Este accesorio se agregará al ramal{' '}
-          <strong style={{ color: '#fff' }}>{modalState.ramalId}</strong> (el ramal existente que
-          recibe la conexión), no al ramal que estás dibujando.
+          <strong style={{ color: '#fff' }}>{modalState.ramalLabel || modalState.ramalId}</strong>{' '}
+          (el ramal existente que recibe la conexión), no al ramal que estás dibujando.
         </div>
       </div>
 

@@ -681,6 +681,7 @@ function PdfViewer_({
   const [accesorioModal, setAccesorioModal] = useState<{
     isOpen: boolean;
     ramalId: string;
+    ramalLabel: string;
     angleDeg: number;
     junctionIndex: number;
     point: number[];
@@ -689,6 +690,7 @@ function PdfViewer_({
   }>({
     isOpen: false,
     ramalId: '',
+    ramalLabel: '',
     angleDeg: 0,
     junctionIndex: 0,
     point: [],
@@ -749,9 +751,14 @@ function PdfViewer_({
       net: string;
       isTee?: boolean;
     }) => {
+      // `ramalId` is the raw internal id (e.g. a tributario's `T${Date.now()}`) — never meant for
+      // display. The modal must show the ramal's actual label (RAF1, T3, ...), same as everywhere
+      // else in the UI.
+      const target = engineRef.current?.ramales.find((r) => r.id === data.ramalId);
       setAccesorioModal({
         isOpen: true,
         ramalId: data.ramalId,
+        ramalLabel: target?.label || data.ramalId,
         angleDeg: data.angleDeg,
         junctionIndex: data.junctionIndex,
         point: data.point,
