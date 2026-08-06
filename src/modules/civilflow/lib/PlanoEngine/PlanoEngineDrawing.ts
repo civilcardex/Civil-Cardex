@@ -340,7 +340,15 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       // this function runs unconditionally for every net/tipo, so without this it silently split
       // and merged flow into whatever ramal the tributario happened to touch, no alert at all.
       if (incoming.tipo === 'tributario') {
-        if (existing.id !== incoming.padre) {
+        // AC/AF/gas exception (item 7): a tributario landing mid-body on ANOTHER tributario that
+        // shares the same selected padre is allowed — without this, this check (which only knows
+        // how to compare against the real padre ramal's own id) fired before ever reaching the
+        // tributario-to-tributario handling below, blocking a perfectly valid same-padre join.
+        const tribToTribOk =
+          existing.tipo === 'tributario' &&
+          (existing.net === 'af' || existing.net === 'ac' || existing.net === 'gas') &&
+          existing.padre === incoming.padre;
+        if (existing.id !== incoming.padre && !tribToTribOk) {
           engine.triggerAlert(
             'Ramal padre incorrecto',
             'Solo puedes conectar el tributario al ramal padre seleccionado.',
@@ -350,7 +358,13 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         // AC/AF/gas (item 6): a tributario reaching its own padre mid-body SPLITS it — a physical
         // tee: the padre's upstream segment stays, a new downstream ramal continues the run, and
         // the tributario attaches at the junction. San/vent/ll keep the old attach-as-is behavior.
-        if (existing.net !== 'af' && existing.net !== 'ac' && existing.net !== 'gas') continue;
+        if (
+          !tribToTribOk &&
+          existing.net !== 'af' &&
+          existing.net !== 'ac' &&
+          existing.net !== 'gas'
+        )
+          continue;
       }
       // A tributario can never be a TRUNK either — a main ramal landing mid-body on a tributario
       // must not split it. Without this, the split below produces a `downstream` ramal that
@@ -441,7 +455,13 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         labelX: downLabelX,
         labelY: downLabelY,
         labelAngle: downLabelAngle,
-        diametro: maxDiametroLabel(existing.diametro, incoming.diametro),
+        // AF/AC/gas: leave the auto-created ramal's diameter unset — the user picks it
+        // explicitly. San/vent/ll keep auto-picking the larger of the two ramales that formed
+        // the junction, unchanged.
+        diametro:
+          existing.net === 'af' || existing.net === 'ac' || existing.net === 'gas'
+            ? ''
+            : maxDiametroLabel(existing.diametro, incoming.diametro),
         uc: preSplitExistingUc + preSplitIncomingUc,
         ini: '',
         fin: '',

@@ -1944,25 +1944,30 @@ function BajanteCodeEditor({
                 // the split (PlanoEngineDrawing.ts), and that child's diametro was only ever
                 // computed once, at creation time. Without this, changing a parent's diameter
                 // afterward never reaches the already-created merged/auto-created ramal.
+                // AF/AC/gas are excluded: those nets no longer auto-assign a diameter to the
+                // merged ramal at all (it's left blank for the user to pick explicitly), so there
+                // is nothing to keep in sync here for them either.
                 const eng = engineRef.current;
-                for (const child of eng.ramales) {
-                  if (!child.mergesFrom || !child.mergesFrom.includes(ramalEl.id)) continue;
-                  const [pid1, pid2] = child.mergesFrom;
-                  const d1 =
-                    pid1 === ramalEl.id
-                      ? val
-                      : eng.ramales.find((r) => r.id === pid1)?.diametro || '';
-                  const d2 =
-                    pid2 === ramalEl.id
-                      ? val
-                      : eng.ramales.find((r) => r.id === pid2)?.diametro || '';
-                  const newChildDiam = maxDiametroLabel(d1, d2);
-                  if (newChildDiam && newChildDiam !== child.diametro) {
-                    eng.updateElementById(child.id, {
-                      diametro: newChildDiam,
-                      diametroInicio: newChildDiam,
-                      diametroFin: newChildDiam,
-                    });
+                if (!['af', 'ac', 'gas'].includes(ramalEl.net)) {
+                  for (const child of eng.ramales) {
+                    if (!child.mergesFrom || !child.mergesFrom.includes(ramalEl.id)) continue;
+                    const [pid1, pid2] = child.mergesFrom;
+                    const d1 =
+                      pid1 === ramalEl.id
+                        ? val
+                        : eng.ramales.find((r) => r.id === pid1)?.diametro || '';
+                    const d2 =
+                      pid2 === ramalEl.id
+                        ? val
+                        : eng.ramales.find((r) => r.id === pid2)?.diametro || '';
+                    const newChildDiam = maxDiametroLabel(d1, d2);
+                    if (newChildDiam && newChildDiam !== child.diametro) {
+                      eng.updateElementById(child.id, {
+                        diametro: newChildDiam,
+                        diametroInicio: newChildDiam,
+                        diametroFin: newChildDiam,
+                      });
+                    }
                   }
                 }
                 eng.render();

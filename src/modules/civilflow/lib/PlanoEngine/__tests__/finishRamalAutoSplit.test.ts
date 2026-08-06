@@ -69,7 +69,7 @@ describe('finishRamal — simple ramal, no junction', () => {
 });
 
 describe('finishRamal — mid-body junction triggers autoSplitJunctionAndSumFlow', () => {
-  it('splits the existing ramal at the junction and creates a downstream ramal with combined uc and larger diametro', () => {
+  it('splits the existing ramal at the junction and creates a downstream ramal with combined uc and no auto-assigned diametro', () => {
     const existing: PlanoRamal = {
       id: 'RAF_EXIST',
       net: 'af',
@@ -127,7 +127,8 @@ describe('finishRamal — mid-body junction triggers autoSplitJunctionAndSumFlow
     expect(merged.pts[merged.pts.length - 1]).toEqual([40, 0]);
     // uc summed from both converging ramales (upstream's original uc=5 + incoming's uc=0)
     expect(merged.uc).toBe(5 + (incoming.uc || 0));
-    // diametro picks the larger of the two converging ramales
-    expect(merged.diametro).toBe('3/4" — 19.1 mm');
+    // AF/AC/gas: diametro is left blank for the user to pick explicitly, not auto-assigned to
+    // the larger of the two converging ramales.
+    expect(merged.diametro).toBe('');
   });
 });
