@@ -1352,8 +1352,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     }
 
     // Check segment intersection with existing ramales of the same network
-    // AF/AC: allow crossings (will auto-detect teeBilateral)
-    if (engine.activeNet !== 'af' && engine.activeNet !== 'ac') {
+    {
       const ppts = engine.activeRamal.pts;
       const lastIdx = ppts.length - 1;
       if (lastIdx >= 0) {
