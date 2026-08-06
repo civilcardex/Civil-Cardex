@@ -2611,7 +2611,11 @@ function MidRamalAccessorySelector({
   setSelElement: (el: PlanoElement | null) => void;
   setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
 }) {
-  const options = getAccessoryOptions(element.net);
+  // Plain 'llaveTerminal' only makes sense at a true ramal extreme (terminates the pipe there) —
+  // in the body it must go through 'teeLlaveTerminal' (a tee whose free leg is capped), so exclude
+  // the bare valve from this mid-body picker even though getAccessoryOptions includes it for the
+  // endpoint editor.
+  const options = getAccessoryOptions(element.net).filter((o) => o.value !== 'llaveTerminal');
   if (options.length === 0) return null;
 
   // If an accMed vertex already sits (almost) exactly at the clicked point, edit that one
@@ -2776,8 +2780,6 @@ function ramalHasInterconnections(eng: PlanoEngine | null, ramal: PlanoRamal): b
     }
   }
   if (ramal.tipo === 'tributario') return true;
-  if (ramal.bilateralPairIds?.length) return true;
-  if (ramal.bilateralCrossings?.length) return true;
   if (ramal.accMed && Object.keys(ramal.accMed).length > 0) return true;
   return false;
 }

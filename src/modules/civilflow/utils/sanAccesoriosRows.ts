@@ -20,7 +20,6 @@ const TEES_ACC_MED = new Set([
   'teeDirecto',
   'teeReduccion',
   'teeLado',
-  'teeBilateral',
   'teeSube',
   'teeBaja',
   'teeTapon',

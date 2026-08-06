@@ -297,7 +297,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
         point: number[];
         net: string;
         isTee?: boolean;
-        isBilateral?: boolean;
       }) => void)
     | null;
   _dirty: boolean;
@@ -310,7 +309,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _isGhostSel!: boolean;
   _lblDragIsParent?: boolean;
   _yeeFlashKey!: string | null;
-  _pendingBilateral!: { ramalId: string; point: number[] } | null;
   multiSel!: string[];
   multiDrag!: { startX: number; startY: number; origData: MultiDragOrigData } | null;
   marqueeRect!: { x1: number; y1: number; x2: number; y2: number } | null;
@@ -356,7 +354,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.selectedGhostId = null;
     this._isGhostSel = false;
     this._yeeFlashKey = null;
-    this._pendingBilateral = null;
     this.areaDrag = null;
     this.dimDrag = null;
     this.panning = false;
@@ -472,7 +469,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
       point: number[];
       net: string;
       isTee?: boolean;
-      isBilateral?: boolean;
     }) => void,
   ): void {
     this._onAccesorioModalCb = cb;
@@ -489,7 +485,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
     point: number[];
     net: string;
     isTee?: boolean;
-    isBilateral?: boolean;
   }): void {
     if (this._onAccesorioModalCb) this._onAccesorioModalCb(data);
   }

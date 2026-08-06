@@ -57,7 +57,6 @@ export interface RawElement {
   diametroFin?: string;
   accMed?: Record<string, string>;
   caudal?: number;
-  bilateralCrossings?: number[][];
   [key: string]: unknown;
 }
 
@@ -151,7 +150,6 @@ function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): S
 
   const rawHidro =
     loadFromStorage<Record<string, HidroDataEntry>>(HYDRO_DATA_STORAGE_KEY, {}) || {};
-  let rawHidroChanged = false;
 
   for (const plan of plans) {
     if (!plan || plan.id === undefined) continue;
@@ -172,29 +170,6 @@ function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): S
       for (const r of data.ramales || []) {
         if (r.net === family) {
           const rKey = family + '_' + r.id + '_' + plan.id;
-
-          // Auto-sync teeBilateral count to rawHidro
-          const numBilateral = (r.bilateralCrossings || []).length;
-          const entry = rawHidro[rKey] || { accesorios: {}, Lh: 0, nSalidas: 0 };
-          const accs = { ...(entry.accesorios || {}) };
-
-          if (numBilateral > 0) {
-            if (accs.teeBilateral !== numBilateral) {
-              accs.teeBilateral = numBilateral;
-              rawHidro[rKey] = { ...entry, accesorios: accs };
-              rawHidroChanged = true;
-            }
-          } else {
-            if (accs.teeBilateral !== undefined) {
-              delete accs.teeBilateral;
-              if (Object.keys(accs).length === 0) {
-                delete rawHidro[rKey];
-              } else {
-                rawHidro[rKey] = { ...entry, accesorios: accs };
-              }
-              rawHidroChanged = true;
-            }
-          }
 
           ramales.push({
             id: r.id,
@@ -256,10 +231,6 @@ function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): S
   }
 
   collectAparatos(out);
-
-  if (rawHidroChanged) {
-    saveToStorage(HYDRO_DATA_STORAGE_KEY, rawHidro);
-  }
 
   out.hidroData = {};
   for (const [key, val] of Object.entries(rawHidro)) {

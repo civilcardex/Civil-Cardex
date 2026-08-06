@@ -28,7 +28,6 @@ interface UsePdfViewerEngineParams {
     point: number[];
     net: string;
     isTee?: boolean;
-    isBilateral?: boolean;
   }) => void;
   loadTrazosForPlan: (eng: PlanoEngine, id: string | number) => Promise<boolean>;
   setActiveNet: (net: string) => void;

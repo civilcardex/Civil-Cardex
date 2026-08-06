@@ -19,7 +19,6 @@ export const ACC_ABBR: Record<string, string> = {
   teeDirecto: 'TDIR',
   teeReduccion: 'TRED',
   teeLado: 'TLAD',
-  teeBilateral: 'TBIL',
   valvPie: 'VPIE',
   reduccion: 'RED',
   ampliacion: 'AMP',

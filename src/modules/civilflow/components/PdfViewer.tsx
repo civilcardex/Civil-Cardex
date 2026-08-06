@@ -686,7 +686,6 @@ function PdfViewer_({
     point: number[];
     net: string;
     isTee?: boolean;
-    isBilateral?: boolean;
   }>({
     isOpen: false,
     ramalId: '',
@@ -749,7 +748,6 @@ function PdfViewer_({
       point: number[];
       net: string;
       isTee?: boolean;
-      isBilateral?: boolean;
     }) => {
       setAccesorioModal({
         isOpen: true,
@@ -759,7 +757,6 @@ function PdfViewer_({
         point: data.point,
         net: data.net,
         isTee: data.isTee,
-        isBilateral: data.isBilateral,
       });
     },
     [],
@@ -1517,53 +1514,7 @@ function PdfViewer_({
         />
         <AccesorioModal
           modalState={accesorioModal}
-          onClose={() => {
-            // Bilateral cancellation: drop the pending crossing from the existing ramal so the
-            // symbol doesn't draw and the count doesn't increment. Also mark BOTH ramales of the
-            // pair as "rejected" (by PAIR key, not position) so the same perpendicular ramales
-            // don't re-trigger the modal when the user drags later and the position shifts.
-            if (accesorioModal.isBilateral && engineRef.current) {
-              const eng = engineRef.current;
-              const p = accesorioModal.point;
-              // Find the other ramal of the crossing (perpendicular to accesorioModal.ramalId at p).
-              const A = eng.ramales.find((x) => x.id === accesorioModal.ramalId);
-              let pairKey: string | null = null;
-              if (A) {
-                const other = eng.ramales.find(
-                  (x) =>
-                    x.id !== A.id &&
-                    x.net === A.net &&
-                    (x.bilateralCrossings || []).some(
-                      (c) => Math.hypot(c[0] - p[0], c[1] - p[1]) < 0.01,
-                    ),
-                );
-                if (other) {
-                  const [idA, idB] = [A.id, other.id].sort();
-                  pairKey = `${idA}|${idB}`;
-                }
-                // Drop the crossing point from the existing ramal.
-                A.bilateralCrossings = (A.bilateralCrossings || []).filter(
-                  (c) => Math.hypot(c[0] - p[0], c[1] - p[1]) > 0.01,
-                );
-                if (other) {
-                  other.bilateralCrossings = (other.bilateralCrossings || []).filter(
-                    (c) => Math.hypot(c[0] - p[0], c[1] - p[1]) > 0.01,
-                  );
-                }
-              }
-              if (pairKey) {
-                for (const r of eng.ramales) {
-                  const rejected =
-                    (r as unknown as { _rejectedBilateral?: string[] })._rejectedBilateral || [];
-                  if (!rejected.includes(pairKey)) rejected.push(pairKey);
-                  (r as unknown as { _rejectedBilateral?: string[] })._rejectedBilateral = rejected;
-                }
-              }
-              eng.render();
-              eng._markDirty();
-            }
-            setAccesorioModal((prev) => ({ ...prev, isOpen: false }));
-          }}
+          onClose={() => setAccesorioModal((prev) => ({ ...prev, isOpen: false }))}
           onSelect={onAccesorioSelected}
         />
 

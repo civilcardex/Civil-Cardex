@@ -240,15 +240,6 @@ export interface PlanoRamal {
   _labelBox?: LabelBoxCorners;
   _net?: string;
   diamPulg?: number;
-  bilateralCrossings?: number[][];
-  // Sticky, append-only membership of a bilateral-tee group — unlike bilateralCrossings (which
-  // recalcBilateralCrossings recomputes from scratch every drag using a strict perpendicular-
-  // intersection test), this never gets cleared just because a move nudged the geometry past that
-  // strict test. Without it, the FIRST drag correctly limits its cascade to the tee's own ramales,
-  // but by the time it ends the strict re-test can already fail — leaving the group with an empty
-  // bilateralCrossings, so the very NEXT drag reads hasBilateral=false and cascades unbounded
-  // through the whole network.
-  bilateralPairIds?: string[];
   _tribReversed?: boolean;
   accMed?: Record<string, string>;
   caudal?: number;
@@ -474,9 +465,6 @@ export interface IPlanoEngineCore {
   selectedGhostId: string | null;
   _isGhostSel: boolean;
   _yeeFlashKey: string | null;
-  // A bilateral crossing (tee salida bilateral) the engine just detected and wants the user to
-  // confirm via the accesorio modal — stores the existing ramal's id and the crossing point.
-  _pendingBilateral: { ramalId: string; point: number[] } | null;
   _hiddenNets: Set<string>;
   _lockedNets: Set<string>;
   activeNetworks: Set<string> | undefined;
@@ -568,10 +556,6 @@ export interface IPlanoEngineCore {
     slideConstraint?: { otherId: string; segmentIdx: number };
     accMedSlide?: { ax: number; ay: number; bx: number; by: number };
     linkedPts?: { id: string; ptIdx: number }[];
-    /** Captured at drag-start — keeps BFS limited to 1 hop throughout the gesture even
-     *  after recalcBilateralCrossings (which runs every frame and clears the crossings
-     *  once geometry shifts) loses the perpendicular-intersection condition. */
-    _bilateralDrag?: boolean;
   } | null;
   areaDrag: { id: string; startX: number; startY: number } | null;
   dimDrag: { id: string; startX: number; startY: number } | null;
@@ -658,6 +642,5 @@ export interface IPlanoEngineCore {
     point: number[];
     net: string;
     isTee?: boolean;
-    isBilateral?: boolean;
   }): void;
 }

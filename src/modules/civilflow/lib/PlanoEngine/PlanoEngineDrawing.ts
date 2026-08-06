@@ -726,7 +726,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     }
   }
   // Run _markDirty BEFORE checking the modal so autoDetectRamalConnections has a chance to
-  // detect any new bilateral crossing the user just created by finishing the ramal.
+  // detect any new junction the user just created by finishing the ramal.
   engine.activeRamal = null;
   engine.selId = r.id;
   engine._emitSelect(r);
@@ -739,23 +739,8 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   // same modal when it newly creates one of these junctions. San/ll/vent junctions auto-create
   // via calcSanitaryAccessories + renderJunctions — no modal needed.
   if ((r.net === 'af' || r.net === 'ac' || r.net === 'gas') && engine.triggerAccesorioModal) {
-    // Tee salida bilateral: fire if a NEW perpendicular crossing was just detected on this ramal.
-    const bilateral = engine._pendingBilateral;
-    if (bilateral) {
-      engine._pendingBilateral = null;
-      engine.triggerAccesorioModal({
-        ramalId: bilateral.ramalId,
-        angleDeg: 90,
-        junctionIndex: -1,
-        point: bilateral.point,
-        net: r.net,
-        isTee: true,
-        isBilateral: true,
-      });
-    } else {
-      const trigger = detectAccesorioTrigger(engine, r.id);
-      if (trigger) engine.triggerAccesorioModal(trigger);
-    }
+    const trigger = detectAccesorioTrigger(engine, r.id);
+    if (trigger) engine.triggerAccesorioModal(trigger);
   }
 }
 
@@ -1616,9 +1601,8 @@ export function eraseRamalAt(
   }
 
   // Si tiene más de 2 puntos y se hizo clic en un segmento extremo, recorta el extremo
-  // BUT: bilateral tee ramales must be deleted whole (with their partner), never trimmed.
   const isEndpoint = bestIdx === 0 || bestIdx === r.pts.length - 1;
-  const canTrim = r.pts.length > 2 && !(r.bilateralPairIds && r.bilateralPairIds.length > 0);
+  const canTrim = r.pts.length > 2;
   if (!isEndpoint && canTrim) {
     const d0 = Math.hypot(plane.x - r.pts[0][0], plane.y - r.pts[0][1]);
     const dLast = Math.hypot(

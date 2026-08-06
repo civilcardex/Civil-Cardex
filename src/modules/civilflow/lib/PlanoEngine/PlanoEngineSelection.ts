@@ -181,13 +181,6 @@ export function selectAt(
         found = r as PlanoRamal;
       }
     }
-    // The generous accessory-icon radius below is meant for a REAL accessory glyph that sticks
-    // out visibly from the pipe and needs an easy-to-hit target. 'teeBilateral' is just a tiny
-    // black '+' drawn exactly ON the crossing point (renderRamales.ts) — giving it the same big
-    // radius made whichever of the two crossing ramales happened to carry that accMed entry win
-    // essentially every click anywhere near the crossing, even ones clearly closer to the OTHER
-    // (perpendicular) ramal's own line. Skip it here so the normal per-ramal line-distance
-    // competition below decides fairly between the two.
     const accMedHitIdx = findAccMedVertexHit(
       r.pts,
       r.accMed,
@@ -196,7 +189,7 @@ export function selectAt(
       cy,
       engine.realMmToCanvasPx(23) * 0.6 + 8,
     );
-    if (accMedHitIdx !== null && r.accMed?.[`accMed${accMedHitIdx}`] !== 'teeBilateral') {
+    if (accMedHitIdx !== null) {
       if (0.01 < minD) {
         minD = 0.01;
         found = r as PlanoRamal;

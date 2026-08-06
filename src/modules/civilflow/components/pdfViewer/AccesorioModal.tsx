@@ -67,7 +67,6 @@ interface AccesorioModalState {
   point: number[];
   net: string;
   isTee?: boolean;
-  isBilateral?: boolean;
 }
 
 interface AccesorioModalProps {
@@ -123,14 +122,12 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
   // teeLlaveTerminal are only offered from the mid-body accessory dropdown (sidebar/menú
   // contextual), not from this junction-detection modal. Reducción/lado stay, those genuinely
   // are a manual choice.
-  // For AF/AC: only teeReduccion and teeLado — teeBilateral has its own detection flow.
+  // For AF/AC: only teeReduccion and teeLado — teeDirecto/teeSube/teeBaja only get created
+  // automatically (montante en cuerpo de ramal, o unión T/Y entre dos ramales), never chosen
+  // by hand here.
   const afAcTees = ACCESORIOS_HIDRO.filter(
     (a) => a.cat === 'Tees' && ['teeReduccion', 'teeLado'].includes(a.id),
   );
-  // Tee bilateral trigger: only the teeBilateral option (user confirms the crossing)
-  const bilateralTees = modalState.isBilateral
-    ? ACCESORIOS_HIDRO.filter((a) => a.cat === 'Tees' && a.id === 'teeBilateral')
-    : [];
   const tees = isSanLlVent ? sanTees : afAcTees;
   // Yee simple/doble are 45° tee variants — include them when a 45° tee is detected.
   const yees = isSanLlVent ? [] : is45 ? ACCESORIOS_YEE : [];
@@ -146,15 +143,13 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
           : is90
             ? codos90
             : [];
-  const showTees = modalState.isBilateral
-    ? bilateralTees
-    : modalState.isTee
-      ? isGas
-        ? gasTees
-        : isSanLlVent
-          ? sanTees
-          : [...tees, ...yees]
-      : [];
+  const showTees = modalState.isTee
+    ? isGas
+      ? gasTees
+      : isSanLlVent
+        ? sanTees
+        : [...tees, ...yees]
+    : [];
   const showAll = [...showCodos, ...showTees];
 
   const handleConfirm = () => {
@@ -168,11 +163,9 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
     <dialog
       ref={dialogRef}
       aria-label={
-        modalState.isBilateral
-          ? 'Tee salida bilateral detectada'
-          : modalState.isTee
-            ? 'Conexión tipo Tee detectada'
-            : `Cambio de dirección detectado (${modalState.angleDeg}°)`
+        modalState.isTee
+          ? 'Conexión tipo Tee detectada'
+          : `Cambio de dirección detectado (${modalState.angleDeg}°)`
       }
       onCancel={(e) => {
         e.preventDefault();
@@ -188,14 +181,10 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
         }
       `}</style>
       <div style={AccesorioModal_S2}>
-        <span style={{ fontSize: 22 }}>
-          {modalState.isBilateral ? '⊕' : modalState.isTee ? '🔧' : '📐'}
-        </span>{' '}
-        {modalState.isBilateral
-          ? 'Tee salida bilateral detectada'
-          : modalState.isTee
-            ? 'Conexión tipo Tee detectada'
-            : `Cambio de dirección detectado (${modalState.angleDeg}°)`}
+        <span style={{ fontSize: 22 }}>{modalState.isTee ? '🔧' : '📐'}</span>{' '}
+        {modalState.isTee
+          ? 'Conexión tipo Tee detectada'
+          : `Cambio de dirección detectado (${modalState.angleDeg}°)`}
       </div>
       <div
         style={{
@@ -205,13 +194,7 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
           fontFamily: "'Geist', sans-serif",
         }}
       >
-        {modalState.isBilateral ? (
-          <>
-            Se detectó un cruce perpendicular. Se sumará{' '}
-            <strong style={{ color: '#fff' }}>+1</strong> Tee salida bilateral al ramal{' '}
-            <strong style={{ color: '#fff' }}>{modalState.ramalId}</strong> (el existente).
-          </>
-        ) : modalState.isTee ? (
+        {modalState.isTee ? (
           <>Se detectó una conexión con otro ramal. Selecciona el tipo de Tee a colocar:</>
         ) : (
           <>

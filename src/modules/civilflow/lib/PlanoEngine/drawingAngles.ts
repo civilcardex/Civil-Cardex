@@ -265,7 +265,6 @@ export interface AccesorioTrigger {
   point: number[];
   net: string;
   isTee: boolean;
-  isBilateral?: boolean;
 }
 
 // Single source of truth for "does this ramal need the accesorio-selection modal right now",

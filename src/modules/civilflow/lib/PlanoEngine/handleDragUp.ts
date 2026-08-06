@@ -18,22 +18,6 @@ function checkAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string): void 
   const r = engine.ramales.find((x) => x.id === ramalId);
   if (!r) return;
   if (r.net !== 'af' && r.net !== 'ac' && r.net !== 'gas') return;
-  // Tee salida bilateral: a perpendicular crossing newly detected on this ramal — surface a
-  // dedicated confirmation prompt that explains the count will go to the existing ramal.
-  const bilateral = engine._pendingBilateral;
-  if (bilateral) {
-    engine._pendingBilateral = null;
-    engine.triggerAccesorioModal({
-      ramalId: bilateral.ramalId,
-      angleDeg: 90,
-      junctionIndex: -1,
-      point: bilateral.point,
-      net: r.net,
-      isTee: true,
-      isBilateral: true,
-    });
-    return;
-  }
   const trigger = detectAccesorioTrigger(engine, ramalId);
   if (trigger) engine.triggerAccesorioModal(trigger);
 }

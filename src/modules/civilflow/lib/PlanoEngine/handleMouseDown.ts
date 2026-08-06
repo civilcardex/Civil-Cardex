@@ -27,7 +27,7 @@ import {
 } from './HitTester';
 import { getSelected } from './PlanoEngineSelection';
 import { selectAt } from './PlanoEngineSelection';
-import { findCodoReventiladoLinks, recalcBilateralCrossings } from './PlanoEngineNetwork';
+import { findCodoReventiladoLinks } from './PlanoEngineNetwork';
 import { bajanteHitDistance, canalRectHitDistance } from './canalAssociation';
 
 // True only when the bajante actually sits ON one of the ramal's endpoints — i.e. the connection
@@ -61,9 +61,6 @@ export function collectConnectedGraph(
 } {
   const TOL = 0.5;
   const visitedRamales = new Set<string>([startRamal.id]);
-  // Frontier tracks each frontier point alongside the ramal id it came from — required so we
-  // can check the ramal's bilateralCrossings (cross-perpendicular tee salida bilateral links)
-  // when deciding which neighbour to pull into the cascade next.
   type FrontierPt = { pt: number[]; fromId: string };
   // Seeded with EVERY point of the dragged ramal, not just its two endpoints — a vent ramal
   // almost always taps into a san ramal's INTERIOR vertex (a codo/tee), not its polyline ends, so
@@ -109,35 +106,6 @@ export function collectConnectedGraph(
     }
     return false;
   };
-
-  // ── Pre-pass: bilateral crossing links ──
-  // Capture ramales in the startRamal's sticky bilateralPairIds group BEFORE the BFS runs — a
-  // durable membership list (see PlanoState.ts), not the live-recomputed bilateralCrossings
-  // coordinates, so the group survives even if a previous move nudged the geometry just past the
-  // strict perpendicular re-test in recalcBilateralCrossings.
-  for (const otherId of startRamal.bilateralPairIds || []) {
-    const other = engine.ramales.find((rr) => rr.id === otherId);
-    if (!other || !sameNetGroup(other.net, startNet) || !other.pts?.length) continue;
-    if (!visitedRamales.has(other.id)) {
-      visitedRamales.add(other.id);
-      resultRamales.push({
-        id: other.id,
-        origPts: other.pts.map((pt) => [...pt] as [number, number]),
-        origLabelX: other.labelX,
-        origLabelY: other.labelY,
-      });
-    }
-  }
-
-  const hasBilateral = (startRamal.bilateralPairIds || []).length > 0;
-
-  // Tee salida bilateral: drag only the two bilateral ramales. The whole rest of the network
-  // must stay rigid — users explicitly do NOT want endpoints that just happen to share a vertex
-  // with the dragged ramal to be carried along, which is what the full BFS would otherwise pull
-  // in (the shared-vertex neighbours, their bajante-relatives, etc.).
-  if (hasBilateral) {
-    return { ramales: resultRamales, bajantes: [] };
-  }
 
   while (frontier.length > 0) {
     const nextFrontier: FrontierPt[] = [];
@@ -490,7 +458,6 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
     ptIdx: bestPtIdx,
     slideConstraint,
     linkedPts: codoLinks.length > 0 ? codoLinks : undefined,
-    _bilateralDrag: (bestRamal.bilateralPairIds || []).length > 0,
   };
   engine.render();
   return true;
@@ -703,12 +670,7 @@ function _trySelRamalDrag(
     y,
     engine.realMmToCanvasPx(23) * 0.6 + 8,
   );
-  // 'teeBilateral' is a tiny glyph drawn exactly at a perpendicular crossing (renderRamales.ts),
-  // not a real accessory icon — giving it this same wide slide-drag radius meant grabbing
-  // anywhere near the crossing to move the whole ramal instead slid just that marker point,
-  // same oversized-hitbox effect fixed in selectAt (PlanoEngineSelection.ts).
-  const accIdx =
-    accIdxRaw !== null && sel.accMed?.[`accMed${accIdxRaw}`] === 'teeBilateral' ? null : accIdxRaw;
+  const accIdx = accIdxRaw;
   if (accIdx !== null) {
     if (sel.bloqueado) return false;
     const a = sel.pts[accIdx - 1],
@@ -718,7 +680,6 @@ function _trySelRamalDrag(
       id: sel.id,
       ptIdx: accIdx,
       accMedSlide: { ax: a[0], ay: a[1], bx: b[0], by: b[1] },
-      _bilateralDrag: (sel.bilateralPairIds || []).length > 0,
     };
     return true;
   }
@@ -741,7 +702,6 @@ function _trySelRamalDrag(
           id: sel.id,
           ptIdx: i,
           accMedSlide: { ax: a[0], ay: a[1], bx: b[0], by: b[1] },
-          _bilateralDrag: (sel.bilateralPairIds || []).length > 0,
         };
         return true;
       }
@@ -794,7 +754,6 @@ function _trySelRamalDrag(
         ptIdx: i,
         slideConstraint,
         linkedPts: codoLinks.length > 0 ? codoLinks : undefined,
-        _bilateralDrag: (sel.bilateralPairIds || []).length > 0,
       };
       return true;
     }
@@ -832,12 +791,6 @@ export function handleSelectDown(
   y: number,
   isMultiSelectModifier: boolean = false,
 ): void {
-  // Bilateral-tee membership (bilateralPairIds) only gets (re)computed as a side effect of a
-  // drag finishing — so a tee that was just created/loaded and never dragged yet still has it
-  // empty. Refreshing it here, before any drag-starting sub-handler below reads it, means the
-  // very FIRST drag on a fresh tee already sees the correct group instead of only catching up
-  // after that first (uncascaded) gesture completes.
-  recalcBilateralCrossings(engine);
   const wasGhostSel = engine._isGhostSel;
   engine._isGhostSel = false;
   engine._lblDragIsParent = false;

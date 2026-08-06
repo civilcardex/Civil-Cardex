@@ -3,7 +3,6 @@ import { isBajante } from './PlanoState';
 import { calculateRamalLength, _midpoint, _firstSegmentAngle } from './PlanoEngineDrawing';
 import { checkRamalAngles } from './drawingAngles';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
-import { recalcBilateralCrossings } from './PlanoEngineNetwork';
 import { oppositeTextCorner, textLocalCorner, rotateLocalPoint } from './textAnnotationGeometry';
 import { isRamalBajanteConnectionAllowed } from '../../utils/flowDirection';
 import { resolveAndClampToCanal, clampToCanal } from './canalAssociation';
@@ -119,7 +118,6 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           }
         }
       }
-      recalcBilateralCrossings(engine);
       if (engine.nivelActual) {
         const lvl = engine.nivelActual.label ?? '';
         for (const b of engine.bajantes) {
@@ -686,36 +684,8 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         const movedRamalIds = new Set<string>([r.id]);
         const allOldPositions: number[][] = [oldP];
         let frontier: number[][] = [oldP];
-        const hasBilateral = engine.ptDrag?._bilateralDrag ?? false;
 
-        // A bilateral-tee partner crosses r at a perpendicular INTERSECTION point, which is a
-        // computed geometric crossing, not necessarily an actual vertex stored in either ramal's
-        // pts — so the generic "does some point of the other ramal sit exactly on the moved
-        // point" cascade below can never find it, no matter how many hops it's allowed. Move
-        // every ramal in r's sticky bilateralPairIds rigidly by the same delta up front, keyed
-        // purely on that membership list (same source of truth collectConnectedGraph's own
-        // bilateral branch uses for the whole-body drag), instead of depending on coincidence.
-        if (hasBilateral) {
-          for (const partnerId of r.bilateralPairIds || []) {
-            if (movedRamalIds.has(partnerId)) continue;
-            const partner = engine.ramales.find((rr) => rr.id === partnerId);
-            if (!partner) continue;
-            for (const pt of partner.pts) {
-              pt[0] += dPx;
-              pt[1] += dPy;
-            }
-            partner.totalL = calculateRamalLength(partner.pts, engine);
-            partner.labelAngle = _firstSegmentAngle(partner.pts);
-            const [mx, my] = _midpoint(partner.pts);
-            partner.labelX = mx;
-            partner.labelY = my;
-            movedRamalIds.add(partnerId);
-          }
-        }
-
-        let bfsIter = 0;
         while (frontier.length > 0) {
-          bfsIter++;
           const nextFrontier: number[][] = [];
           for (const other of engine.ramales) {
             if (other.id === r.id || !sameNetGroup(other.net, r.net) || movedRamalIds.has(other.id))
@@ -775,7 +745,6 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
               other.labelY = my;
             }
           }
-          if (hasBilateral && bfsIter >= 1) break;
           frontier = nextFrontier;
         }
 
@@ -794,7 +763,6 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             other.labelY = my;
           }
         }
-        recalcBilateralCrossings(engine);
         // Bajantes are the fixed anchors of the network — an endpoint drag must adapt the ramal
         // to the bajante position, not displace the bajante to follow a drag. Only whole-body
         // ramalDrag (below) may rigidly translate a connected bajante.

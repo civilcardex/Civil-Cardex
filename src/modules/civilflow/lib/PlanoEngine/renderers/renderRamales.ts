@@ -390,7 +390,7 @@ function drawExtremeAccessorySymbol(
     }
   } else if (accType === 'teeReduccion' || accType === 'teeLado') {
     // Real tee glyph (three arms + end ticks), same visual language as the geometric tee
-    // (renderJunctions.ts) and teeSube/teeBaja — NOT the 4-arm bilateral cross. The branch
+    // (renderJunctions.ts) and teeSube/teeBaja. The branch
     // (px,py) ties in perpendicular to the through direction (dx,dy). teeReduccion draws the
     // branch arm narrower (reduced diameter) with a short full-width collar at the junction;
     // teeLado keeps the branch at full width.
@@ -880,7 +880,6 @@ function drawExtremeAccessorySymbol(
 export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   const isTributarioMode = engine.tipoTramo === 'tributario' && engine.tool === 'line';
   const padreId = engine.padreTributario;
-  const drawnCrossings = new Set<string>();
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
     const net = NETS.find((n) => n.id === r.net);
@@ -1496,9 +1495,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         dy = uyIn;
       }
       // Compute two perpendicular directions from the bisector (through direction). For teeReduccion
-      // and teeLado at a bilateral crossing, the branch arm should point toward the ACTUAL crossing
+      // and teeLado, the branch arm points toward the ACTUAL crossing
       // ramal's direction — not blindly toward screen-up. Falls back to "screen-up" convention when
-      // no crossing ramal is found (standalone accessory, not at a bilateral crossing).
+      // no crossing ramal is found (standalone accessory).
       let px = -dy,
         py = dx;
       const branchDir = pickTeeBranchDir(engine, r.id, r.net, pt, dx, dy, px, py);
@@ -1513,126 +1512,6 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       drawExtremeAccessorySymbol(ctx, engine, accType, c, dx, dy, px, py, px, py, rad);
-      ctx.restore();
-    }
-  });
-
-  // Draw all bilateral crossings (teeBilateral) - black '+' at perpendicular crossings,
-  // no white mask/halo around it. Just the black glyph over the ramales.
-  engine.ramales.forEach((r) => {
-    if (engine._hiddenNets.has(r.net)) return;
-    if (
-      (r.net === 'af' || r.net === 'ac') &&
-      r.bilateralCrossings &&
-      r.bilateralCrossings.length > 0
-    ) {
-      const rad = engine.realMmToCanvasPx(23);
-      ctx.save();
-      ctx.strokeStyle = '#000000';
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.lineWidth = 1.5 * engine.zoom;
-      for (const cp of r.bilateralCrossings) {
-        const key = `${cp[0].toFixed(2)},${cp[1].toFixed(2)}`;
-        if (drawnCrossings.has(key)) continue;
-        drawnCrossings.add(key);
-
-        // If the user already picked a real accessory at this junction (AccesorioModal), that
-        // glyph replaces the generic +. Only teeBilateral has no glyph of its own — its symbol
-        // IS this + — so every other accType (teeSube/teeBaja, teeReduccion, teeLado, tees with
-        // caps, codos, valves...) suppresses it to avoid drawing two symbols on the same point.
-        const ACC_TOL = 0.5;
-        const drawsOwnGlyph = (t?: string) => !!t && t !== 'teeBilateral';
-        let hasAccessoryHere = false;
-        for (const rm of engine.ramales) {
-          if (!rm.pts || rm.pts.length < 2) continue;
-          const atPt = (p: number[]) => Math.hypot(p[0] - cp[0], p[1] - cp[1]) < ACC_TOL;
-          if (drawsOwnGlyph(rm.accesorioInicio) && atPt(rm.pts[0])) {
-            hasAccessoryHere = true;
-            break;
-          }
-          if (drawsOwnGlyph(rm.accesorioFin) && atPt(rm.pts[rm.pts.length - 1])) {
-            hasAccessoryHere = true;
-            break;
-          }
-          if (rm.accMed) {
-            for (const [accKey, accVal] of Object.entries(rm.accMed)) {
-              const m = accKey.match(/^accMed(\d+)$/);
-              if (!m || !accVal) continue;
-              const p = rm.pts[parseInt(m[1], 10)];
-              if (p && drawsOwnGlyph(accVal) && atPt(p)) {
-                hasAccessoryHere = true;
-                break;
-              }
-            }
-            if (hasAccessoryHere) break;
-          }
-        }
-        if (hasAccessoryHere) continue;
-
-        const c = engine.toCvs(cp[0], cp[1]);
-
-        // Find direction vectors of the crossing
-        let dir1 = { x: 1, y: 0 };
-        let dir2 = { x: 0, y: 1 };
-        let foundCount = 0;
-        const TOL = 0.5;
-
-        for (const rm of engine.ramales) {
-          if (rm.net !== r.net) continue;
-          if (!rm.pts || rm.pts.length < 2) continue;
-          for (let i = 0; i < rm.pts.length - 1; i++) {
-            const p1 = rm.pts[i];
-            const p2 = rm.pts[i + 1];
-            const dist = pointToSegmentDist(cp[0], cp[1], p1[0], p1[1], p2[0], p2[1]);
-            if (dist < TOL) {
-              const dx = p2[0] - p1[0];
-              const dy = p2[1] - p1[1];
-              const len = Math.hypot(dx, dy);
-              if (len > 0.001) {
-                if (foundCount === 0) {
-                  dir1 = { x: dx / len, y: dy / len };
-                  foundCount++;
-                } else {
-                  dir2 = { x: dx / len, y: dy / len };
-                  foundCount++;
-                  break;
-                }
-              }
-            }
-          }
-          if (foundCount >= 2) break;
-        }
-
-        if (foundCount < 2) {
-          dir2 = { x: -dir1.y, y: dir1.x };
-        }
-
-        const armLen = rad * 1.5;
-        const capW = rad * 0.45;
-
-        const dirs = [dir1, { x: -dir1.x, y: -dir1.y }, dir2, { x: -dir2.x, y: -dir2.y }];
-
-        // Black arms
-        ctx.beginPath();
-        for (const d of dirs) {
-          ctx.moveTo(c.x, c.y);
-          ctx.lineTo(c.x + d.x * armLen, c.y + d.y * armLen);
-        }
-        ctx.stroke();
-
-        // Black T-bar caps on ALL 4 arms
-        ctx.beginPath();
-        for (const d of dirs) {
-          const endX = c.x + d.x * armLen;
-          const endY = c.y + d.y * armLen;
-          const perpX = -d.y;
-          const perpY = d.x;
-          ctx.moveTo(endX - perpX * capW, endY - perpY * capW);
-          ctx.lineTo(endX + perpX * capW, endY + perpY * capW);
-        }
-        ctx.stroke();
-      }
       ctx.restore();
     }
   });
