@@ -133,7 +133,7 @@ function IsometriaTabBase({ state }: IsometriaTabProps) {
     };
   }, [plans]);
 
-  const sortedNets = useMemo(() => [...activeNets].sort(), [activeNets]);
+  const sortedNets = useMemo(() => [...activeNets].toSorted(), [activeNets]);
   const result = useMemo(
     () => readDrawingAll(plans || [], sortedNets),
     // trazosPrefetchTick isn't read inside the callback — it's a signal that the prefetch

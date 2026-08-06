@@ -67,7 +67,7 @@ export function buildSanConnectivity(
     const mergeSiblingPairs = new Set<string>();
     for (const rr of ramales) {
       if (rr.mergesFrom) {
-        mergeSiblingPairs.add([...rr.mergesFrom].sort().join('|'));
+        mergeSiblingPairs.add(rr.mergesFrom.toSorted().join('|'));
       }
     }
 
