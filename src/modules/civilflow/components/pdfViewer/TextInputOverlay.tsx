@@ -73,6 +73,9 @@ export default function TextInputOverlay({
   if (!textOverlay) return null;
 
   return (
+    // Backdrop con cierre por click-fuera: el input interior ya maneja Escape/Enter y el
+    // diálogo tiene focus trap por Tab; el backdrop no debe ser focuseable.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
     <div
       style={TextInputOverlay_S1}
       onClick={() => {
@@ -80,6 +83,7 @@ export default function TextInputOverlay({
         setTextOverlay(null);
       }}
     >
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
       <div
         role="dialog"
         aria-modal="true"

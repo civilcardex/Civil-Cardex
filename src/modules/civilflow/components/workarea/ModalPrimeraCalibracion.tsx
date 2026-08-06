@@ -87,6 +87,10 @@ export default function ModalPrimeraCalibracion({
   }, [onCancel]);
 
   const modalContent = (
+    // Backdrop con cierre por click-fuera: patrón estándar de modal (cierre por Escape ya
+    // cubierto por el listener de teclado de este componente; el backdrop no debe ser focuseable
+    // porque robaría el Tab del contenido del modal).
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
     <div
       ref={modalRef}
       role="alertdialog"
@@ -103,6 +107,8 @@ export default function ModalPrimeraCalibracion({
       }}
       onClick={onCancel}
     >
+      {/* Caja del modal: el stopPropagation evita que el click interior cierre el diálogo. */}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
       <div style={ModalPrimeraCalibracion_S1} onClick={(e) => e.stopPropagation()}>
         <div style={ModalPrimeraCalibracion_S2}>
           <span style={{ fontSize: 18 }}>📐</span>

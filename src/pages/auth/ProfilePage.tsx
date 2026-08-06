@@ -10,7 +10,8 @@ import {
   type Proyecto,
 } from '../../modules/civilflow/context/ProjectContext';
 import type { Piso } from '../../modules/civilflow/components/useWorkAreaState';
-import { PlansContext, type PlanMeta } from '../../modules/civilflow/context/PlansContext';
+import { PlansContext } from '../../modules/civilflow/context/PlansContext';
+import type { PlanMeta } from '../../modules/civilflow/lib/shared/projectTypes';
 import {
   fetchProyectos,
   deleteProyecto,
@@ -378,11 +379,7 @@ function ProfilePage() {
         >
           Información Personal
         </h2>
-        <ul
-          role="list"
-          className="grid grid-cols-2 gap-4"
-          style={{ listStyle: 'none', margin: 0, padding: 0 }}
-        >
+        <ul className="grid grid-cols-2 gap-4" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           <li className="border-l-2 border-primary pl-3 py-2">
             <span className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant block mb-1">
               Correo Electrónico
@@ -402,12 +399,16 @@ function ProfilePage() {
                     aria-label={label}
                     onChange={(e) => setEditValue(e.target.value)}
                     onKeyDown={(e) => handleEditKeyDown(e, key)}
+                    // autoFocus intencional: al entrar en modo edición inline el foco debe caer en
+                    // el input editado, no quedarse en el botón que lo abrió.
+                    // eslint-disable-next-line jsx-a11y/no-autofocus
                     autoFocus
                     className="flex-1 h-8 px-2 border text-sm bg-surface-container-low text-on-surface focus:outline-none"
                     style={{ borderColor: 'var(--primary)', fontFamily: 'var(--mono)' }}
                   />
                   <button
                     type="button"
+                    aria-label="Guardar"
                     onClick={() => handleEditSave(key)}
                     disabled={saving === key}
                     className="h-8 w-8 flex items-center justify-center bg-primary text-on-primary text-sm"
@@ -416,6 +417,7 @@ function ProfilePage() {
                   </button>
                   <button
                     type="button"
+                    aria-label="Cancelar edición"
                     onClick={handleEditCancel}
                     className="h-8 w-8 flex items-center justify-center border border-outline-variant text-on-surface-variant text-sm hover:text-error"
                   >

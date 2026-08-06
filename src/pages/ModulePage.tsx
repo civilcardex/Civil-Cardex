@@ -633,6 +633,9 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
+                // autoFocus intencional: alerta es overlay custom sin gestión de foco propia — sin
+                // autoFocus el foco no entraría al diálogo. Migrar a <dialog> nativo en un pase futuro.
+                // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus
                 onClick={() => setShowLoginAlert(false)}
                 style={{

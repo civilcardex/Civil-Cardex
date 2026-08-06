@@ -137,8 +137,8 @@ function PricingPage() {
         style={{ background: '#111317', color: '#e2e2e8', minHeight: '100vh' }}
       >
         <Navbar />
-        <div className="container mx-auto px-6 lg:px-8 py-24 pt-28">
-          <div className="text-center space-y-4 mb-20">
+        <main className="container mx-auto px-6 lg:px-8 py-24 pt-28">
+          <section className="text-center space-y-4 mb-20">
             <h1
               className="text-primary uppercase"
               style={{ fontSize: 40, fontWeight: 700, fontFamily: 'Hanken Grotesk, sans-serif' }}
@@ -203,9 +203,9 @@ function PricingPage() {
                 NSR-10
               </span>
             </div>
-          </div>
+          </section>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <section className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {plans.map((plan) => (
               <div
                 key={plan.id}
@@ -303,9 +303,9 @@ function PricingPage() {
                 </Link>
               </div>
             ))}
-          </div>
+          </section>
 
-          <div
+          <section
             className="text-center mt-20 space-y-2"
             style={{ borderTop: '1px solid #3a494a', paddingTop: 40 }}
           >
@@ -319,8 +319,8 @@ function PricingPage() {
             <p className="text-[12px] text-outline">
               Precios en USD. Facturación mensual. Cancele cuando quiera.
             </p>
-          </div>
-        </div>
+          </section>
+        </main>
       </div>
     </>
   );
