@@ -184,6 +184,42 @@ function canJoinTributario(engine: IPlanoEngineCore, target: PlanoRamal): boolea
   return target.padre === engine.padreTributario;
 }
 
+/** Invierte la dirección de flujo de un ramal existente IN PLACE — misma operación que el botón
+ *  "Invertir dirección de flujo" del menú contextual (pts.reverse + swap de los datos por
+ *  extremo), reutilizada para auto-orientar uniones san/ll/vent contraflujo. No toca
+ *  `_tribReversed` (los ramales de estas redes no lo usan para render; invertir pts ES el flip
+ *  visible). */
+function flipRamalFlow(ram: PlanoRamal): void {
+  ram.pts = [...ram.pts].reverse();
+  const tmpAcc = ram.accesorioInicio;
+  ram.accesorioInicio = ram.accesorioFin;
+  ram.accesorioFin = tmpAcc;
+  const tmpDiam = ram.diametroInicio;
+  ram.diametroInicio = ram.diametroFin;
+  ram.diametroFin = tmpDiam;
+  const tmpApp = ram.aparatoInicio;
+  ram.aparatoInicio = ram.aparatoFin;
+  ram.aparatoFin = tmpApp;
+  const tmpIniFin = ram.ini;
+  ram.ini = ram.fin;
+  ram.fin = tmpIniFin;
+  // Las claves accMed se desplazan porque los vértices interiores se reindexan con el nuevo
+  // orden.
+  if (ram.accMed) {
+    const oldMed = ram.accMed;
+    const len = ram.pts.length;
+    const newMed: Record<string, string> = {};
+    for (const [k, v] of Object.entries(oldMed)) {
+      const m = k.match(/^accMed(\d+)$/);
+      if (!m) continue;
+      const oldIdx = parseInt(m[1], 10);
+      const newIdx = len - 1 - oldIdx;
+      newMed[`accMed${newIdx}`] = v;
+    }
+    ram.accMed = newMed;
+  }
+}
+
 export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: PlanoRamal): void {
   if (!incoming.pts || incoming.pts.length < 2) return;
   const TOL = 0.5;
@@ -192,6 +228,9 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
   const sameNetGroup = (a: string, b: string) =>
     a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
   const endpoints = [incoming.pts[0], incoming.pts[incoming.pts.length - 1]];
+  // Auto-orientación de flujo san/ll/vent: se permite invertir el flujo del ramal entrante UNA
+  // sola vez por llamada (ver el bloque de validación de dirección más abajo).
+  let flipped = false;
   for (const ep of endpoints) {
     for (const existing of engine.ramales) {
       if (existing.id === incoming.id || !sameNetGroup(existing.net, incoming.net)) continue;
@@ -247,31 +286,50 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       // principal (dot > 0) — misma regla que el chequeo de finishRamal. Dirección equivocada =
       // sin unión, alerta.
       if (incoming.net === 'san' || incoming.net === 'll' || incoming.net === 'vent') {
-        const if0 = incoming.pts[0];
-        const if1 = incoming.pts[incoming.pts.length - 1];
-        const jIdx =
-          Math.hypot(if0[0] - ep[0], if0[1] - ep[1]) < Math.hypot(if1[0] - ep[0], if1[1] - ep[1])
-            ? 0
-            : incoming.pts.length - 1;
-        const adj = incoming.pts[jIdx === 0 ? 1 : incoming.pts.length - 2];
-        const fEnd = jIdx === 0 ? if0 : if1;
-        // Dirección de viaje del flujo en la unión: empieza en la unión (sale hacia adj) o
-        // termina ahí (llega desde adj), invertida cuando el ramal está _tribReversed.
-        const towardAdj = (jIdx === 0) !== !!incoming._tribReversed;
-        const flowIn = towardAdj
-          ? [adj[0] - fEnd[0], adj[1] - fEnd[1]]
-          : [fEnd[0] - adj[0], fEnd[1] - adj[1]];
-        const e0 = existing.pts[0];
-        const e1 = existing.pts[existing.pts.length - 1];
-        const flowEx = existing._tribReversed
-          ? [e0[0] - e1[0], e0[1] - e1[1]]
-          : [e1[0] - e0[0], e1[1] - e0[1]];
-        if (flowIn[0] * flowEx[0] + flowIn[1] * flowEx[1] <= 0) {
-          engine.triggerAlert(
-            'Dirección de flujo incorrecta',
-            'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.',
-          );
-          continue;
+        const directionOk = (): boolean => {
+          const if0 = incoming.pts[0];
+          const if1 = incoming.pts[incoming.pts.length - 1];
+          const jIdx =
+            Math.hypot(if0[0] - ep[0], if0[1] - ep[1]) < Math.hypot(if1[0] - ep[0], if1[1] - ep[1])
+              ? 0
+              : incoming.pts.length - 1;
+          const adj = incoming.pts[jIdx === 0 ? 1 : incoming.pts.length - 2];
+          const fEnd = jIdx === 0 ? if0 : if1;
+          // Dirección de viaje del flujo en la unión: empieza en la unión (sale hacia adj) o
+          // termina ahí (llega desde adj), invertida cuando el ramal está _tribReversed.
+          const towardAdj = (jIdx === 0) !== !!incoming._tribReversed;
+          const flowIn = towardAdj
+            ? [adj[0] - fEnd[0], adj[1] - fEnd[1]]
+            : [fEnd[0] - adj[0], fEnd[1] - adj[1]];
+          const e0 = existing.pts[0];
+          const e1 = existing.pts[existing.pts.length - 1];
+          const flowEx = existing._tribReversed
+            ? [e0[0] - e1[0], e0[1] - e1[1]]
+            : [e1[0] - e0[0], e1[1] - e0[1]];
+          return flowIn[0] * flowEx[0] + flowIn[1] * flowEx[1] > 0;
+        };
+        if (!directionOk()) {
+          // Auto-orientación (bug 1d): el tributario san/ll/vent que aterriza contra el flujo del
+          // ramal principal se invierte UNA vez por llamada en vez de bloquear la unión — la
+          // paleta de flujo del lado del tributario vale más que la alerta. Solo si ninguna de
+          // las dos orientaciones alinea el flujo con el principal se alerta.
+          if (!flipped) {
+            flipRamalFlow(incoming);
+            flipped = true;
+            if (!directionOk()) {
+              engine.triggerAlert(
+                'Dirección de flujo incorrecta',
+                'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.',
+              );
+              continue;
+            }
+          } else {
+            engine.triggerAlert(
+              'Dirección de flujo incorrecta',
+              'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.',
+            );
+            continue;
+          }
         }
       } else if (
         (incoming.net === 'af' || incoming.net === 'ac' || incoming.net === 'gas') &&
@@ -349,6 +407,21 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       // revés) es un cruce normal, no una confluencia de flujo — renderNetCrossings.ts dibuja el
       // cruce visual.
       if (existing.net !== incoming.net) continue;
+
+      // AC/AF/gas: la cola de la flecha del tributario siempre apunta hacia la unión que se
+      // acaba de crear (fluye DESDE la T hacia el aparato) — convención fija, nunca editable por
+      // el usuario después (ver el gating del botón "Invertir dirección de flujo" en
+      // DrawingElementContextMenu.tsx). Al llegar aquí, `incoming.tipo === 'tributario'`
+      // garantiza que esto es la división real tributario-contra-su-padre en af/ac/gas (los
+      // demás casos de tributario ya hicieron `continue` más arriba). `existing`/`downstream`
+      // (la misma línea partida en dos) siempre se reparten exactamente 1 entrada + 1 salida
+      // entre ellos mientras no se toquen sus flags por separado, así que fijar la salida del
+      // tributario aquí basta para garantizar la unión de "2 salidas + 1 entrada" sin validación
+      // adicional en el momento de crearla.
+      if (incoming.tipo === 'tributario') {
+        const epIsStart = Math.hypot(incoming.pts[0][0] - ep[0], incoming.pts[0][1] - ep[1]) < TOL;
+        incoming._tribReversed = !epIsStart;
+      }
 
       const downstreamPts = [[ep[0], ep[1]], ...existing.pts.slice(segIdx + 1)];
       existing.pts = [...existing.pts.slice(0, segIdx + 1), [ep[0], ep[1]]];
@@ -539,51 +612,70 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   };
   if (r.net === 'san' || r.net === 'll' || r.net === 'vent') {
     const TOL = 0.5;
-    const ep0 = r.pts[0];
-    const ep1 = r.pts[r.pts.length - 1];
-    const [fdx, fdy] = ramalFlowVec(r);
-    let badDir = false;
-    for (const other of engine.ramales) {
-      if (other.id === r.id) continue;
-      if (!other.pts || other.pts.length < 2) continue;
-      const sameGroup =
-        other.net === r.net ||
-        ((other.net === 'san' || other.net === 'vent') && (r.net === 'san' || r.net === 'vent'));
-      if (!sameGroup) continue;
-      const oEps = [other.pts[0], other.pts[other.pts.length - 1]];
-      const epTouch = oEps.some(
-        (p) =>
-          Math.hypot(p[0] - ep0[0], p[1] - ep0[1]) < TOL ||
-          Math.hypot(p[0] - ep1[0], p[1] - ep1[1]) < TOL,
-      );
-      let bodyTouch = false;
-      if (!epTouch) {
-        for (let i = 0; i < other.pts.length - 1; i++) {
-          if (
-            pointOnSegment(ep0, other.pts[i], other.pts[i + 1], TOL) ||
-            pointOnSegment(ep1, other.pts[i], other.pts[i + 1], TOL)
-          ) {
-            bodyTouch = true;
-            break;
+    // Auto-orientación (bug 1d): si el ramal terminado quedó contra el flujo del ramal al que se
+    // une, se invierte UNA vez (mismo flip que el botón "Invertir dirección" del menú
+    // contextual) en vez de bloquear la creación — la paleta de flujo del lado del tributario
+    // vale más que la alerta. La alerta solo queda cuando ninguna orientación alinea el flujo.
+    let flippedR = false;
+    const touchingFlowOk = (): boolean => {
+      const ep0 = r.pts[0];
+      const ep1 = r.pts[r.pts.length - 1];
+      const [fdx, fdy] = ramalFlowVec(r);
+      for (const other of engine.ramales) {
+        if (other.id === r.id) continue;
+        if (!other.pts || other.pts.length < 2) continue;
+        const sameGroup =
+          other.net === r.net ||
+          ((other.net === 'san' || other.net === 'vent') && (r.net === 'san' || r.net === 'vent'));
+        if (!sameGroup) continue;
+        const oEps = [other.pts[0], other.pts[other.pts.length - 1]];
+        const epTouch = oEps.some(
+          (p) =>
+            Math.hypot(p[0] - ep0[0], p[1] - ep0[1]) < TOL ||
+            Math.hypot(p[0] - ep1[0], p[1] - ep1[1]) < TOL,
+        );
+        let bodyTouch = false;
+        if (!epTouch) {
+          for (let i = 0; i < other.pts.length - 1; i++) {
+            if (
+              pointOnSegment(ep0, other.pts[i], other.pts[i + 1], TOL) ||
+              pointOnSegment(ep1, other.pts[i], other.pts[i + 1], TOL)
+            ) {
+              bodyTouch = true;
+              break;
+            }
           }
         }
+        if (!epTouch && !bodyTouch) continue;
+        const [odx, ody] = ramalFlowVec(other);
+        if (fdx * odx + fdy * ody <= 0) return false;
       }
-      if (!epTouch && !bodyTouch) continue;
-      const [odx, ody] = ramalFlowVec(other);
-      if (fdx * odx + fdy * ody <= 0) {
-        badDir = true;
-        break;
+      return true;
+    };
+    if (!touchingFlowOk()) {
+      if (!flippedR) {
+        flipRamalFlow(r);
+        flippedR = true;
+        if (!touchingFlowOk()) {
+          engine.triggerAlert(
+            'Dirección de flujo incorrecta',
+            'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.',
+          );
+          engine.activeRamal = null;
+          engine._markDirty();
+          engine.render();
+          return;
+        }
+      } else {
+        engine.triggerAlert(
+          'Dirección de flujo incorrecta',
+          'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.',
+        );
+        engine.activeRamal = null;
+        engine._markDirty();
+        engine.render();
+        return;
       }
-    }
-    if (badDir) {
-      engine.triggerAlert(
-        'Dirección de flujo incorrecta',
-        'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.',
-      );
-      engine.activeRamal = null;
-      engine._markDirty();
-      engine.render();
-      return;
     }
   } else if (r.net === 'af' || r.net === 'ac' || r.net === 'gas') {
     const TOL = 0.5;

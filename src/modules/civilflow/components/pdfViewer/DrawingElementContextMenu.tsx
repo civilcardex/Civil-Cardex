@@ -22,9 +22,12 @@ import {
 import { getAccessoryOptions } from '../../utils/accessoryOptions';
 import { NETS, type PlanoBajante } from '../../lib/PlanoEngine/PlanoState';
 import { BAJANTE_NETS, MONTANTE_NETS } from '../../lib/PlanoEngine/drawingCreations';
-import { maxDiametroLabel } from '../../lib/PlanoEngine/PlanoEngineDrawing';
-import { junctionHasOutgoingFlow } from '../../utils/flowDirection';
-import { checkRamalAngles } from '../../lib/PlanoEngine/drawingAngles';
+import {
+  maxDiametroLabel,
+  autoSplitJunctionAndSumFlow,
+} from '../../lib/PlanoEngine/PlanoEngineDrawing';
+import { junctionRespectsTributarioDirection } from '../../utils/flowDirection';
+import { checkRamalAngles, detectAccesorioTrigger } from '../../lib/PlanoEngine/drawingAngles';
 import {
   writeBajantePropToDrawing,
   writeAcoDiamToDrawing,
@@ -2328,6 +2331,21 @@ function netAllowedSteps(net: string): (45 | 90)[] {
   return [90];
 }
 
+// Una guía se dibuja con `net: activeNet` fijado en el momento de dibujarla — si el usuario
+// cambia de red activa después (o la dibujó con la red "equivocada" activa por descuido), ese
+// campo queda desalineado con lo que la guía realmente está cruzando en el plano. Los botones de
+// ángulo, la validación y el ramal/tributario que finalmente se crea deben reflejar SIEMPRE la
+// red del ramal real que la guía toca, no el valor congelado al dibujarla — así el menú "detecta
+// automáticamente" la red correcta en vez de exigir que el usuario la haya elegido bien de
+// antemano. Si la guía no cruza ningún ramal (línea guía libre), no hay nada que detectar y se
+// conserva `guide.net` como mejor valor disponible.
+function resolveGuideNet(eng: PlanoEngine, guide: PlanoGuideLine): string {
+  const crossing = findGuideCrossing(eng, guide);
+  if (!crossing) return guide.net;
+  const ramal = eng.ramales.find((r) => r.id === crossing.ramalId);
+  return ramal?.net || guide.net;
+}
+
 function rotateGuideLine(
   eng: PlanoEngine,
   guide: PlanoGuideLine,
@@ -2336,8 +2354,12 @@ function rotateGuideLine(
   setSelElement: (el: PlanoElement | null) => void,
   selElement: PlanoElement | null,
 ): void {
-  const [p0, p1] = guide.pts;
-  const crossing = findGuideCrossing(eng, guide);
+  // Resolver siempre el objeto VIVO de eng.guideLines por id, nunca confiar en la referencia
+  // `guide` recibida — el menú contextual puede guardar una copia desconectada.
+  const liveGuide = eng.guideLines.find((g) => g.id === guide.id) || guide;
+  const [p0, p1] = liveGuide.pts;
+  const crossing = findGuideCrossing(eng, liveGuide);
+  const effectiveNet = resolveGuideNet(eng, liveGuide);
 
   let pivot: [number, number];
   let farPt: number[];
@@ -2359,24 +2381,21 @@ function rotateGuideLine(
     pivot[0] + dist * Math.cos(newAngle),
     pivot[1] + dist * Math.sin(newAngle),
   ];
-  // El pivote encaja exactamente en el punto de cruce (si se encontró uno) — la guía debe
-  // tocar visualmente el ramal precisamente en el ángulo que ahora forma con él, no donde
-  // se haya dibujado originalmente.
   const newPts: [number, number][] = [pivot, newFar];
 
-  if (!crossing && !checkRamalAngles(newPts, guide.net)) {
+  if (!crossing && !checkRamalAngles(newPts, effectiveNet)) {
     eng.triggerAlert(
       'Ángulo no permitido',
-      guide.net === 'san' || guide.net === 'll'
+      effectiveNet === 'san' || effectiveNet === 'll'
         ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
-        : guide.net === 'gas'
+        : effectiveNet === 'gas'
           ? 'La red de gas solo permite ángulos de 90°.'
           : 'Esta red debe diseñarse con ángulos de 45° o 90°.',
     );
     return;
   }
-  guide.pts = newPts;
-  if (selElement?.id === guide.id) setSelElement({ ...guide });
+  liveGuide.pts = newPts;
+  if (selElement?.id === liveGuide.id) setSelElement({ ...liveGuide });
   eng.render();
   eng._markDirty();
 }
@@ -2394,7 +2413,12 @@ function GuideLineMenu() {
   const ctx = useDrawingElementContextMenu();
   const guide = ctx.element as PlanoGuideLine;
   const [side, setSide] = useState<'sup' | 'inf'>('sup');
-  const allowedSteps = netAllowedSteps(guide.net);
+  const eng = ctx.engineRef.current;
+  // Detecta la red real desde el ramal que la guía está cruzando en este momento — no la red que
+  // estaba activa cuando se dibujó la guía — así los botones de ángulo mostrados siempre
+  // coinciden con la red que efectivamente se va a crear/rotar.
+  const effectiveNet = eng ? resolveGuideNet(eng, guide) : guide.net;
+  const allowedSteps = netAllowedSteps(effectiveNet);
 
   return (
     <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -2467,17 +2491,19 @@ function GuideLineMenu() {
         onClick={() => {
           const eng = ctx.engineRef.current;
           if (!eng) return;
-          const netDef = NETS.find((n) => n.id === guide.net);
+          const liveGuide = eng.guideLines.find((g) => g.id === guide.id) || guide;
+          const netDef = NETS.find((n) => n.id === effectiveNet);
           const pfx = netDef?.lbl || 'R';
-          if (!eng._netCounts[guide.net]) eng._netCounts[guide.net] = { ramal: 0, tributario: 0 };
-          const cnt = ++eng._netCounts[guide.net].ramal;
+          if (!eng._netCounts[effectiveNet])
+            eng._netCounts[effectiveNet] = { ramal: 0, tributario: 0 };
+          const cnt = ++eng._netCounts[effectiveNet].ramal;
           const ramId = `${pfx}${cnt}`;
-          const [p0, p1] = guide.pts;
+          const [p0, p1] = liveGuide.pts;
           // El flujo se dibuja desde pts[0] hacia el último punto (renderRamales.ts) — se
           // orienta el nuevo ramal para que su flujo apunte siempre al ramal sobre el que se
           // dibujó esta guía (el cruce ES la conexión que crea), desde el extremo de la guía
           // más cercano primero.
-          const crossing = findGuideCrossing(eng, guide);
+          const crossing = findGuideCrossing(eng, liveGuide);
           let pStart: [number, number] = [p0[0], p0[1]];
           let pEnd: [number, number] = [p1[0], p1[1]];
           if (crossing) {
@@ -2492,9 +2518,35 @@ function GuideLineMenu() {
           // rejilla de la red — crear el ramal igualmente produciría en silencio una tubería
           // ilegal. Se valida primero (misma regla que finishRamal); si falla, se conserva la
           // guía para que el usuario pueda rotarla.
-          if (!checkRamalAngles([pStart, pEnd], guide.net, 'ramal')) {
-            eng.triggerAlert('Ángulo no permitido', guideAngleAlertMessage(guide.net, 'ramal'));
+          if (!checkRamalAngles([pStart, pEnd], effectiveNet, 'ramal')) {
+            eng.triggerAlert('Ángulo no permitido', guideAngleAlertMessage(effectiveNet, 'ramal'));
             return;
+          }
+          // San/ll/vent: el ramal que se conecta debe llevar la MISMA dirección de flujo del
+          // ramal existente (autoSplitJunctionAndSumFlow lo exige con un dot-product > 0, y si
+          // falla aborta la división en silencio — el ramal queda "suelto", sin símbolo de tee/
+          // yee, y siempre salta la alerta "Dirección de flujo incorrecta"). Antes esta rama
+          // nunca fijaba `_tribReversed`, así que el sentido salía puramente del orden pStart→
+          // pEnd elegido arriba (arbitrario) — ahora se calcula el vector de flujo propio contra
+          // el del ramal cruzado y se invierte de una vez si no coinciden, para que la validación
+          // de autoSplitJunctionAndSumFlow SIEMPRE pase en vez de dejarlo al azar.
+          let tribReversedForFlow: boolean | undefined;
+          if (
+            (effectiveNet === 'san' || effectiveNet === 'll' || effectiveNet === 'vent') &&
+            crossing
+          ) {
+            const existingRamal = eng.ramales.find((r) => r.id === crossing.ramalId);
+            if (existingRamal && existingRamal.pts && existingRamal.pts.length >= 2) {
+              const e0 = existingRamal.pts[0];
+              const e1 = existingRamal.pts[existingRamal.pts.length - 1];
+              const flowEx = existingRamal._tribReversed
+                ? [e0[0] - e1[0], e0[1] - e1[1]]
+                : [e1[0] - e0[0], e1[1] - e0[1]];
+              const flowNew = [pEnd[0] - pStart[0], pEnd[1] - pStart[1]];
+              if (flowNew[0] * flowEx[0] + flowNew[1] * flowEx[1] <= 0) {
+                tribReversedForFlow = true;
+              }
+            }
           }
           const dx = p1[0] - p0[0];
           const dy = p1[1] - p0[1];
@@ -2504,9 +2556,9 @@ function GuideLineMenu() {
           if (lblAngle < -90) lblAngle += 180;
           const perpX = -dy / (distMm || 1);
           const perpY = dx / (distMm || 1);
-          eng.ramales.push({
+          const newRamal: PlanoRamal = {
             id: ramId,
-            net: guide.net,
+            net: effectiveNet,
             tipo: 'ramal',
             padre: null,
             pts: [pStart, pEnd],
@@ -2524,13 +2576,31 @@ function GuideLineMenu() {
             diametro: '',
             pendiente: 2,
             bloqueado: false,
-          });
+            _tribReversed: tribReversedForFlow,
+          };
+          eng.ramales.push(newRamal);
+          // Igual que un ramal terminado a mano (finishRamal): si el extremo cae a mitad del
+          // cuerpo de otro ramal, ese ramal se parte en existing+downstream y el nuevo se suma
+          // como incoming — antes esto solo empujaba el ramal suelto, sin dividir nada, así que
+          // una guía dibujada sobre el cuerpo de un ramal existente dejaba un cruce en T sin
+          // partir de verdad (sin mergesFrom, sin acumulación de UC/UD).
+          autoSplitJunctionAndSumFlow(eng, newRamal);
           eng.guideLines = eng.guideLines.filter((g) => g.id !== guide.id);
           eng.selId = ramId;
           if (ctx.selElement?.id === guide.id) ctx.setSelElement(null);
-          eng._emitSelect(eng.ramales[eng.ramales.length - 1]);
+          eng._emitSelect(newRamal);
           eng.render();
           eng._markDirty();
+          // Mismo disparador que finishRamal (PlanoEngineDrawing.ts) para AF/AC/gas — sin esto,
+          // un ramal creado desde línea guía nunca ofrecía elegir el tipo de tee/codo en la
+          // unión que se acaba de formar, a diferencia de uno dibujado a mano.
+          if (
+            (newRamal.net === 'af' || newRamal.net === 'ac' || newRamal.net === 'gas') &&
+            eng.triggerAccesorioModal
+          ) {
+            const trigger = detectAccesorioTrigger(eng, newRamal.id);
+            if (trigger) eng.triggerAccesorioModal(trigger);
+          }
           ctx.setContextMenuState(null);
         }}
         style={DrawingElementContextMenu_S13}
@@ -2542,7 +2612,8 @@ function GuideLineMenu() {
         onClick={() => {
           const eng = ctx.engineRef.current;
           if (!eng) return;
-          const crossing = findGuideCrossing(eng, guide);
+          const liveGuide = eng.guideLines.find((g) => g.id === guide.id) || guide;
+          const crossing = findGuideCrossing(eng, liveGuide);
           if (!crossing) {
             eng.triggerAlert(
               'Sin cruce con ramal',
@@ -2555,20 +2626,43 @@ function GuideLineMenu() {
           // El flujo del tributario se dibuja desde pts[0] hacia el último punto — se orienta
           // para que la cabeza apunte AL cruce (la intersección con el ramal padre que
           // alimenta).
-          const [p0, p1] = guide.pts;
+          const [p0, p1] = liveGuide.pts;
           const d0 = Math.hypot(crossing.point[0] - p0[0], crossing.point[1] - p0[1]);
           const d1 = Math.hypot(crossing.point[0] - p1[0], crossing.point[1] - p1[1]);
           const pStart: [number, number] = d0 < d1 ? [p1[0], p1[1]] : [p0[0], p0[1]];
           const pEnd: [number, number] = [crossing.point[0], crossing.point[1]];
-          if (!checkRamalAngles([pStart, pEnd], guide.net, 'tributario')) {
+          // La red del tributario es SIEMPRE la del padre real que la guía está cruzando (no la
+          // red que estaba activa cuando se dibujó la guía) — el padre ya se resolvió arriba, así
+          // que `padre.net` es la fuente de verdad, no `guide.net`.
+          if (!checkRamalAngles([pStart, pEnd], padre.net, 'tributario')) {
             eng.triggerAlert(
               'Ángulo no permitido',
-              guideAngleAlertMessage(guide.net, 'tributario'),
+              guideAngleAlertMessage(padre.net, 'tributario'),
             );
             return;
           }
-          if (!eng._netCounts[guide.net]) eng._netCounts[guide.net] = { ramal: 0, tributario: 0 };
-          const cnt = ++eng._netCounts[guide.net].tributario;
+          // San/ll/vent: mismo pre-alineamiento que el botón "Crear ramal" — sin esto,
+          // autoSplitJunctionAndSumFlow aborta en silencio la división cuando el sentido no
+          // coincide con el del padre (tributario queda suelto, sin símbolo, con la alerta
+          // "Dirección de flujo incorrecta"). En af/ac/gas esto se sobrescribe de todos modos más
+          // abajo (autoSplitJunctionAndSumFlow fuerza la cola del tributario hacia la unión sin
+          // importar lo que se ponga aquí), así que fijarlo igual no interfiere.
+          let tribReversedForFlow: boolean | undefined;
+          if (padre.net === 'san' || padre.net === 'll' || padre.net === 'vent') {
+            if (padre.pts && padre.pts.length >= 2) {
+              const e0 = padre.pts[0];
+              const e1 = padre.pts[padre.pts.length - 1];
+              const flowEx = padre._tribReversed
+                ? [e0[0] - e1[0], e0[1] - e1[1]]
+                : [e1[0] - e0[0], e1[1] - e0[1]];
+              const flowNew = [pEnd[0] - pStart[0], pEnd[1] - pStart[1]];
+              if (flowNew[0] * flowEx[0] + flowNew[1] * flowEx[1] <= 0) {
+                tribReversedForFlow = true;
+              }
+            }
+          }
+          if (!eng._netCounts[padre.net]) eng._netCounts[padre.net] = { ramal: 0, tributario: 0 };
+          const cnt = ++eng._netCounts[padre.net].tributario;
           const tId = 'T' + Date.now();
           const dx = p1[0] - p0[0];
           const dy = p1[1] - p0[1];
@@ -2579,9 +2673,9 @@ function GuideLineMenu() {
           const perpX = -dy / (distMm || 1);
           const perpY = dx / (distMm || 1);
           const label = `T${cnt}${padre.label || padre.id || ''}`;
-          eng.ramales.push({
+          const newTrib: PlanoRamal = {
             id: tId,
-            net: guide.net,
+            net: padre.net,
             tipo: 'tributario',
             padre: padre.id,
             pts: [pStart, pEnd],
@@ -2600,13 +2694,31 @@ function GuideLineMenu() {
             diametro: '',
             pendiente: 2,
             bloqueado: true,
-          });
+            _tribReversed: tribReversedForFlow,
+          };
+          eng.ramales.push(newTrib);
+          // Igual que un tributario terminado a mano sobre su padre: parte al padre en
+          // existing+downstream en el punto de cruce y fija la dirección del tributario (cola
+          // hacia la unión) — antes esto solo empujaba el tributario suelto sin partir el padre,
+          // dejando una T sin dividir de verdad (sin mergesFrom, sin acumulación de UC) y con la
+          // dirección de flujo por defecto (equivocada) del tributario.
+          autoSplitJunctionAndSumFlow(eng, newTrib);
           eng.guideLines = eng.guideLines.filter((g) => g.id !== guide.id);
           eng.selId = tId;
           if (ctx.selElement?.id === guide.id) ctx.setSelElement(null);
-          eng._emitSelect(eng.ramales[eng.ramales.length - 1]);
+          eng._emitSelect(newTrib);
           eng.render();
           eng._markDirty();
+          // Mismo disparador que finishRamal (PlanoEngineDrawing.ts) para AF/AC/gas — sin esto,
+          // un tributario creado desde línea guía nunca ofrecía elegir el tipo de tee/codo en la
+          // unión con su padre, a diferencia de uno dibujado a mano.
+          if (
+            (newTrib.net === 'af' || newTrib.net === 'ac' || newTrib.net === 'gas') &&
+            eng.triggerAccesorioModal
+          ) {
+            const trigger = detectAccesorioTrigger(eng, newTrib.id);
+            if (trigger) eng.triggerAccesorioModal(trigger);
+          }
           ctx.setContextMenuState(null);
         }}
         style={DrawingElementContextMenu_S13}
@@ -3008,8 +3120,12 @@ function RamalMenu() {
             ⇄ Invertir dirección del flujo
           </button>
         )}
+        {/* Los tributarios de AF/AC/gas nunca muestran este botón — su dirección de flujo es fija
+            (cola siempre hacia la unión, ver autoSplitJunctionAndSumFlow) y no se puede cambiar,
+            así que la unión que crean queda siempre garantizada como 2 salidas + 1 entrada. */}
         {ramalHasInterconnections(engineRef.current, ramalEl) &&
-          ['af', 'ac', 'gas'].includes(ramalEl.net) && (
+          ['af', 'ac', 'gas'].includes(ramalEl.net) &&
+          ramalEl.tipo !== 'tributario' && (
             <button
               type="button"
               aria-pressed={!!ramalEl._tribReversed}
@@ -3024,9 +3140,15 @@ function RamalMenu() {
                 if (!eng) return;
                 eng.updateElementById(ramalEl.id, { _tribReversed: val });
                 const fresh = eng.ramales.find((x) => x.id === ramalEl.id);
+                // Cuando un tributario participa en la unión de cualquiera de los dos extremos,
+                // la regla se endurece a "exactamente 1 entrada" (ver
+                // junctionRespectsTributarioDirection) — "al menos 1 salida" no basta ahí, porque
+                // el tributario ya aporta su propia salida fija sin importar qué pase con el
+                // resto del grupo (existing/downstream podrían quedar los dos como salida o los
+                // dos como entrada, y "al menos 1 salida" no lo detectaría).
                 const okAtBothEnds = fresh
                   ? [fresh.pts[0], fresh.pts[fresh.pts.length - 1]].every((ep) =>
-                      junctionHasOutgoingFlow(eng.ramales, ramalEl.net, ep),
+                      junctionRespectsTributarioDirection(eng.ramales, ramalEl.net, ep),
                     )
                   : true;
                 if (!okAtBothEnds) {
@@ -3309,19 +3431,51 @@ interface DrawingElementContextMenuProps {
 export default memo(function DrawingElementContextMenu(props: DrawingElementContextMenuProps) {
   const state = props.contextMenuState;
 
-  // Cuando associate (BajanteAsociacion) o associateOrigin actualizan selElement, el menú
+  // Guard anti-pisado (bug 1a): cuando el menú se abre con clic derecho, `state.element` es el
+  // hit fresco del motor y `selElement` puede ser una selección VIEJA del clic izquierdo con el
+  // mismo id — sincronizar ahí pisaría el hit con datos anteriores. Se recuerda qué elemento
+  // abrió el menú (openHitRef, por identidad de id) y qué selElement existía en ese momento
+  // (selAtOpenRef): el sync solo procede si selElement CAMBIÓ después de abrir el menú (mutación
+  // del propio menú o nueva selección del mismo elemento), nunca con la selección previa.
+  const openHitRef = useRef<{ element: PlanoElement | null; sel: PlanoElement | null } | null>(
+    null,
+  );
+
+  // Cuando cambia el id del elemento del menú (nuevo clic derecho), se re-ancla el hit y la
+  // selección vigente en ese instante.
+  useEffect(() => {
+    if (openHitRef.current?.element?.id !== state?.element?.id) {
+      openHitRef.current = { element: state?.element ?? null, sel: props.selElement };
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.element]);
+
+  // Cuando associate (BajanteAsociacion), associateOrigin, o cualquier toggle in-place del menú
+  // (bloquear movimiento, invertir dirección de flujo, etc.) actualizan selElement, el menú
   // contextual usa su propia copia del elemento (contextMenuState.element). Sincronizarla para
-  // que ambos dropdowns (Origen y Destino) reflejen siempre la asociación más reciente.
+  // que checkboxes/botones reflejen siempre el valor más reciente. Antes el arreglo de
+  // dependencias solo miraba el `id` de cada lado — un toggle que cambia un campo (ej.
+  // `bloqueado`) sin cambiar el id nunca volvía a disparar este efecto, así que
+  // contextMenuState.element se quedaba con el valor viejo y el checkbox no se actualizaba en
+  // vivo aunque el motor y `selElement` sí lo hicieran. Ahora se compara la referencia completa
+  // de `selElement`, no solo su id — y se exige que `selElement` sea posterior a la apertura
+  // del menú (ver openHitRef arriba).
   useEffect(() => {
     const selId = (props.selElement as { id?: string } | null)?.id;
     const ctxId = state?.element?.id;
-    if (selId && ctxId && selId === ctxId && props.selElement !== state?.element) {
+    if (
+      selId &&
+      ctxId &&
+      selId === ctxId &&
+      props.selElement !== state?.element &&
+      props.selElement !== openHitRef.current?.sel
+    ) {
       props.setContextMenuState((prev) =>
         prev ? { ...prev, element: props.selElement as never } : null,
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.selElement?.id, state?.element?.id]);
+  }, [props.selElement, state?.element]);
 
   if (!state || !state.visible) return null;
 

@@ -133,3 +133,47 @@ export function junctionHasOutgoingFlow(
   if (touching < 2) return true;
   return hasOutgoing;
 }
+
+/**
+ * Regla de unión AF/AC/gas cuando un TRIBUTARIO participa: en general basta con "al menos una
+ * salida" (`junctionHasOutgoingFlow`). Pero la dirección de un tributario es fija (ver
+ * `autoSplitJunctionAndSumFlow`: siempre fluye DESDE la unión hacia el aparato) — así que
+ * `existing` y `downstream`, al ser la misma línea partida en dos, siempre se reparten
+ * exactamente 1 entrada + 1 salida entre ellos MIENTRAS compartan `_tribReversed`. Si el usuario
+ * invierte SOLO uno de los dos después de creada la unión, ese reparto se rompe (0 o 2 entradas
+ * entre ambos) — algo que "al menos una salida" nunca detecta, porque el tributario ya aporta su
+ * propia salida fija sin importar qué pase con el resto. Aquí se exige exactamente 1 entrada
+ * total en el grupo cuando hay un tributario tocando el punto; sin tributario, se delega en la
+ * regla general (sin cambios para uniones ramal-ramal-ramal).
+ * @param ramales - Ramales a considerar (mismo net que `net`).
+ * @param net - Red a validar ('af' | 'ac' | 'gas').
+ * @param pt - Punto de la unión.
+ * @param tol - Tolerancia de distancia para "este extremo cae en pt".
+ * @returns true si la unión respeta la regla (o no aplica).
+ */
+export function junctionRespectsTributarioDirection(
+  ramales: Pick<PlanoRamal, 'net' | 'pts' | '_tribReversed' | 'tipo'>[],
+  net: string,
+  pt: number[],
+  tol = 0.5,
+): boolean {
+  let touching = 0;
+  let hasTributario = false;
+  let entradas = 0;
+  for (const r of ramales) {
+    if (r.net !== net || !r.pts || r.pts.length < 2) continue;
+    const p0 = r.pts[0];
+    const p1 = r.pts[r.pts.length - 1];
+    const originPt = r._tribReversed ? p1 : p0;
+    const destPt = r._tribReversed ? p0 : p1;
+    const atOrigin = Math.hypot(originPt[0] - pt[0], originPt[1] - pt[1]) < tol;
+    const atDest = Math.hypot(destPt[0] - pt[0], destPt[1] - pt[1]) < tol;
+    if (!atOrigin && !atDest) continue;
+    touching++;
+    if (r.tipo === 'tributario') hasTributario = true;
+    if (atDest && !atOrigin) entradas++;
+  }
+  if (touching < 2) return true;
+  if (!hasTributario) return junctionHasOutgoingFlow(ramales, net, pt, tol);
+  return entradas === 1;
+}
