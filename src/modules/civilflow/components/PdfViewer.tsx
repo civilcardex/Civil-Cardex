@@ -36,6 +36,7 @@ import {
   PDF_HIDDEN_NETS_KEY,
   PDF_LOCKED_NETS_KEY,
 } from '../constants/storage-keys';
+import { loadNetColors, applyNetColors } from '../services/netColorsService';
 import { devError } from '../../../utils/devError';
 import PdfViewerToolbar, { STATUS } from './pdfViewer/PdfViewerToolbar';
 import PdfCanvas from './pdfViewer/PdfCanvas';
@@ -579,6 +580,12 @@ function PdfViewer_({
             const sm = eng.scaleM;
             setActiveNet(loadedNet);
             if (sm != null) setScaleM(String(sm));
+            // La caché de trazos recién sobreescrita (saveToStorage no dispara eventos) puede
+            // traer ramales nuevos creados en otro dispositivo — sin notificar, los tramos/UC ya
+            // montados se quedan sin ellos hasta una edición manual o recarga completa.
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
+            window.dispatchEvent(new CustomEvent('civilflow_hidro_sync_changed'));
           } else if (localTs > dbTs && localData) {
             saveTrazosToDB(String(resolvedId), localData);
           }
@@ -937,6 +944,18 @@ function PdfViewer_({
         /* ignore */
       }
     }
+  }, []);
+
+  // Colores desde la fuente de verdad (perfiles.net_colors) — la BD gana sobre el restore de
+  // localStorage de arriba (puede resolver después del mount). loadNetColors refresca el caché.
+  useEffect(() => {
+    let cancelled = false;
+    void loadNetColors().then((colors) => {
+      if (!cancelled) applyNetColors(colors);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

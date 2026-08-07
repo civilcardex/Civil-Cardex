@@ -11,6 +11,7 @@ import { NETS } from '../lib/PlanoEngine/PlanoState';
 import { devError } from '../../../utils/devError';
 import { loadFromStorage, saveToStorage } from '../services/storageService';
 import { loadProyectoData, saveRedesActivas } from '../services/proyectoDataService';
+import { loadNetColors, applyNetColors } from '../services/netColorsService';
 import {
   ACTIVE_NETS_KEY,
   ACTIVE_PROYECTO_ID_KEY,
@@ -379,6 +380,20 @@ export function useWorkAreaState() {
     if (Object.keys(restored).length > 0) {
       setNetColors((prev) => ({ ...prev, ...restored }));
     }
+  }, []);
+
+  // Colores de redes desde la fuente de verdad (perfiles.net_colors), aplicados después del
+  // restore local para que la BD gane. loadNetColors además refresca el caché de localStorage.
+  useEffect(() => {
+    let cancelled = false;
+    void loadNetColors().then((colors) => {
+      if (cancelled) return;
+      applyNetColors(colors);
+      setNetColors((prev) => ({ ...prev, ...colors }));
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
