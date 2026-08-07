@@ -56,9 +56,10 @@ export const TOOLS: ToolDef[] = [
     id: 'guide',
     label: 'L\u00EDnea gu\u00EDa',
     ico: '\u2504',
-    key: 'G',
+    // 'G' colisionaba con el atajo mostrado para Snap \u2014 U (de "gU\u00EDa") queda libre.
+    key: 'U',
     icoCol: '#888888',
-    shortcut: 'G',
+    shortcut: 'U',
   },
   { id: 'text', label: 'Texto', ico: 'T', key: 'T', icoCol: '#A855F7', shortcut: 'T' },
   { id: 'baj', label: 'Bajante', ico: '\u2193', key: 'B', icoCol: '#F04545', shortcut: 'B' },

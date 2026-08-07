@@ -1264,7 +1264,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
     } else if (k === 'd') {
       this.setTool('dim');
       e.preventDefault();
-    } else if (k === 'g') {
+    } else if (k === 'u') {
+      // 'G' colisionaba con el atajo mostrado para Snap — U (de "gUía") queda libre.
       this.setTool('guide');
       e.preventDefault();
     } else if (k === 't') {
