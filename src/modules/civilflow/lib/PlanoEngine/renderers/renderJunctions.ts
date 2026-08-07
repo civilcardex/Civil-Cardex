@@ -21,6 +21,51 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
     const getPointKey = (x: number, y: number) => `${x.toFixed(3)}_${y.toFixed(3)}`;
     const vertexMap = new Map<string, number[]>();
 
+    // AF/AC: un vértice con un tipo de tee específico ya asignado (teeReduccion/teeLado/teeSube/
+    // teeBaja/teeTapon/teeLlaveTerminal, elegido a mano o auto-asignado) dibuja SU PROPIO glifo en
+    // renderRamales.ts — dibujar aquí también el tick geométrico genérico de tee lo duplicaría
+    // encima. Solo se salta el genérico cuando el punto YA tiene uno de esos tipos asignado; una
+    // tee plana sin accesorio (teeDirecto, el caso común) no tiene ningún otro renderer que la
+    // dibuje, así que sí debe pasar por aquí — antes se excluía TODO af/ac sin distinguir, dejando
+    // la tee plana sin ningún símbolo.
+    const TEE_MARKER_IDS = new Set([
+      'teeReduccion',
+      'teeLado',
+      'teeSube',
+      'teeBaja',
+      'teeTapon',
+      'teeLlaveTerminal',
+    ]);
+    const hasTeeMarkerAt = (P: number[]): boolean => {
+      const TOL = 0.5;
+      for (const r of netRamales) {
+        if (!r.pts || r.pts.length < 2) continue;
+        if (
+          r.accesorioInicio &&
+          TEE_MARKER_IDS.has(r.accesorioInicio) &&
+          Math.hypot(r.pts[0][0] - P[0], r.pts[0][1] - P[1]) < TOL
+        )
+          return true;
+        const last = r.pts[r.pts.length - 1];
+        if (
+          r.accesorioFin &&
+          TEE_MARKER_IDS.has(r.accesorioFin) &&
+          Math.hypot(last[0] - P[0], last[1] - P[1]) < TOL
+        )
+          return true;
+        if (r.accMed) {
+          for (const [key, val] of Object.entries(r.accMed)) {
+            if (!val || !TEE_MARKER_IDS.has(val)) continue;
+            const m = key.match(/^accMed(\d+)$/);
+            if (!m) continue;
+            const p = r.pts[parseInt(m[1], 10)];
+            if (p && Math.hypot(p[0] - P[0], p[1] - P[1]) < TOL) return true;
+          }
+        }
+      }
+      return false;
+    };
+
     // Cuando 2+ ramales se juntan ENCIMA de un bajante, es el bajante el que recoge todo — no es
     // una unión entre tubos y no debe dibujarse ningún símbolo de tee/yee ahí (saldría encima del
     // círculo del bajante, confundiendo la lectura del plano).
@@ -149,9 +194,11 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           const isAfAc = group.includes('af') || group.includes('ac');
           const isYee = !isAfAc && Math.abs(cosVal) >= 0.4 && Math.abs(cosVal) <= 0.85;
 
-          // Las uniones perpendiculares (tee) de AF/AC se dibujaban con el renderer de cruce
-          // bilateral en renderRamales.ts — se saltaban aquí para evitar símbolos duplicados.
-          if ((isTee && !isAfAc) || isYee) {
+          // AF/AC con un tipo de tee específico ya asignado en este punto (teeReduccion/teeLado/
+          // teeSube/teeBaja/etc.) se salta el tick genérico — ese caso ya tiene su propio glifo
+          // en renderRamales.ts. Una tee af/ac SIN accesorio asignado (teeDirecto, el caso común
+          // al conectar dos ramales) sí pasa, para no quedarse sin ningún símbolo.
+          if ((isTee && (!isAfAc || !hasTeeMarkerAt(P))) || isYee) {
             junctions.push({ P, uA, uB, branches, isTee, isYee });
           }
         }
