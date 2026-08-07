@@ -1,8 +1,20 @@
-import { useState, useMemo, useEffect, createContext, useContext, type ReactNode } from 'react';
+import {
+  useState,
+  useMemo,
+  useEffect,
+  useRef,
+  createContext,
+  useContext,
+  type ReactNode,
+} from 'react';
 import { useTramos } from './TramosContext';
 import { usePlans } from './PlansContext';
-import { TRAZOS_PREFIX, ACTIVE_NETS_KEY } from '../constants/storage-keys';
+import { TRAZOS_PREFIX, ACTIVE_NETS_KEY, ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
+import {
+  loadRainwaterOverrides,
+  saveRainwaterOverrides,
+} from '../services/rainwaterOverridesService';
 import type { DrawingData, RawElement } from '../utils/drawingSync';
 
 interface AreaRaw {
@@ -19,7 +31,7 @@ export interface BajanteLL {
   manning: number;
   diamPropuesto: number;
 }
-interface CanalLL {
+export interface CanalLL {
   id: string;
   sector: string;
   areaParcial: number;
@@ -58,6 +70,44 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
   const [bajantesLl, setBajantesLl] = useState<BajanteLL[]>([]);
 
   const [canalesLl, setCanalesLl] = useState<CanalLL[]>([]);
+
+  // Persistencia de overrides manuales (gap 5): se restauran desde la BD al montar y se
+  // sincronizan debounced (600 ms). Lo autocalculado sigue derivándose del dibujo; estas
+  // tablas solo guardan lo que el usuario editó a mano.
+  const saveTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    if (!proyectoIdRaw) return;
+    const proyectoId = Number(proyectoIdRaw);
+    if (!Number.isFinite(proyectoId)) return;
+    let cancelled = false;
+    void loadRainwaterOverrides(proyectoId).then((overrides) => {
+      if (cancelled) return;
+      if (overrides.bajantes.length > 0) setBajantesLl(overrides.bajantes);
+      if (overrides.canales.length > 0) setCanalesLl(overrides.canales);
+    });
+    return () => {
+      cancelled = true;
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    if (!proyectoIdRaw) return;
+    const proyectoId = Number(proyectoIdRaw);
+    if (!Number.isFinite(proyectoId)) return;
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      saveTimerRef.current = null;
+      void saveRainwaterOverrides(proyectoId, bajantesLl, canalesLl);
+    }, 600);
+    return () => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    };
+  }, [bajantesLl, canalesLl]);
 
   const [conRecolectora, setConRecolectora] = useState<boolean>(() => {
     try {
