@@ -6,6 +6,9 @@ import type { MaterialItem } from '../context/MaterialesContext';
 import type { ProfItem } from '../context/ProfundidadesContext';
 import type { CritItem } from '../context/CriteriosContext';
 import type { PlanMeta } from '../lib/shared/projectTypes';
+import type { GasDatosGenerales } from '../utils/gasRows';
+
+export type { GasDatosGenerales } from '../utils/gasRows';
 
 export interface ProyectoCoreData {
   pisos: Piso[];
@@ -315,6 +318,64 @@ export async function saveRedesActivas(proyectoId: number, redes: string[]): Pro
     if (error) devError('proyectoDataService saveRedesActivas:', error.message);
   } catch (e) {
     devError('proyectoDataService saveRedesActivas exception:', e);
+  }
+}
+
+/**
+ * Carga los datos generales de diseño de gas (gas_datos_proyecto, 1:1 con el proyecto).
+ * Devuelve null cuando la fila no existe aún — el llamador decide si usar defaults.
+ */
+export async function loadGasDatos(proyectoId: number): Promise<GasDatosGenerales | null> {
+  try {
+    const { data, error } = await supabase
+      .from('gas_datos_proyecto')
+      .select('altitud, presion_atm, temperatura, presion_min, densidad_relativa')
+      .eq('proyecto_id', proyectoId)
+      .maybeSingle();
+    if (error) {
+      devError('proyectoDataService loadGasDatos:', error.message);
+      return null;
+    }
+    if (!data) return null;
+    return {
+      alt: data.altitud,
+      patm: data.presion_atm,
+      temp: data.temperatura,
+      pmin: data.presion_min,
+      densRel: data.densidad_relativa,
+    };
+  } catch (e) {
+    devError('proyectoDataService loadGasDatos exception:', e);
+    return null;
+  }
+}
+
+/**
+ * Upsert parcial de gas_datos_proyecto — igual que saveRedesActivas, no toca otras tablas.
+ * Lo usa GasDesign (debounced) como fuente de verdad; localStorage queda como caché en vivo.
+ */
+export async function saveGasDatos(proyectoId: number, datos: GasDatosGenerales): Promise<void> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase.from('gas_datos_proyecto').upsert(
+      {
+        proyecto_id: proyectoId,
+        user_id: user.id,
+        altitud: datos.alt,
+        presion_atm: datos.patm,
+        temperatura: datos.temp,
+        presion_min: datos.pmin,
+        densidad_relativa: datos.densRel,
+      },
+      { onConflict: 'proyecto_id' },
+    );
+    if (error) devError('proyectoDataService saveGasDatos:', error.message);
+  } catch (e) {
+    devError('proyectoDataService saveGasDatos exception:', e);
   }
 }
 

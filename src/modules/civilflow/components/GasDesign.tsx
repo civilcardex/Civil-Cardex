@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import EditButton from './shared/EditButton';
 import { LE_K, pisoCorto, GAS_DN_LABELS } from '../constants';
 import { GAS, CAT_GAS } from '../constants/engineeringDataGas';
@@ -11,6 +11,7 @@ import {
   writeBajantePropToDrawing,
 } from '../utils/writeDiameterToDrawing';
 import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { loadGasDatos, saveGasDatos } from '../services/proyectoDataService';
 import GasCalcUC from './GasCalcUC';
 import PageNav from './PageNav';
 import type { DrawingData, RawElement } from '../utils/drawingSync';
@@ -20,6 +21,7 @@ import {
   GAS_ACC_KEY,
   APARATOS_BY_TRAMO_KEY,
   GAS_DATOS_KEY,
+  ACTIVE_PROYECTO_ID_KEY,
 } from '../constants/storage-keys';
 import { renouardByType } from '../utils/gasUtils';
 import { GAS_DATOS_DEFAULT } from '../utils/gasRows';
@@ -91,6 +93,46 @@ function GasDesign() {
 
   useEffect(() => {
     saveToStorage(GAS_DATOS_KEY, { alt, patm, temp, pmin, densRel });
+  }, [alt, patm, temp, pmin, densRel]);
+
+  // Hidratar desde la fuente de verdad (gas_datos_proyecto, 1:1 con el proyecto) al montar —
+  // gana sobre el caché de localStorage; si no hay fila, se usan los defaults de la caché.
+  useEffect(() => {
+    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    if (!proyectoIdRaw) return;
+    const proyectoId = Number(proyectoIdRaw);
+    if (!Number.isFinite(proyectoId)) return;
+    let cancelled = false;
+    void loadGasDatos(proyectoId).then((d) => {
+      if (cancelled || !d) return;
+      setAlt(d.alt);
+      setPatm(d.patm);
+      setTemp(d.temp);
+      setPmin(d.pmin);
+      setDensRel(d.densRel);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Persistir a la BD debounced (600 ms) — localStorage sigue siendo la caché en vivo que
+  // leen los cálculos (gasRows.ts) durante la sesión.
+  const gasSaveTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    if (!proyectoIdRaw) return;
+    const proyectoId = Number(proyectoIdRaw);
+    if (!Number.isFinite(proyectoId)) return;
+    if (gasSaveTimerRef.current) window.clearTimeout(gasSaveTimerRef.current);
+    gasSaveTimerRef.current = window.setTimeout(() => {
+      gasSaveTimerRef.current = null;
+      void saveGasDatos(proyectoId, { alt, patm, temp, pmin, densRel });
+    }, 600);
+    return () => {
+      if (gasSaveTimerRef.current) window.clearTimeout(gasSaveTimerRef.current);
+      gasSaveTimerRef.current = null;
+    };
   }, [alt, patm, temp, pmin, densRel]);
 
   const [gasRefreshKey] = useState(0);
