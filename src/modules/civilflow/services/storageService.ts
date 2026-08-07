@@ -50,6 +50,8 @@ import {
   TRAZOS_PREFIX,
   ACTIVE_PROYECTO_ID_KEY,
   APARATOS_BY_TRAMO_KEY,
+  HYDRO_DATA_STORAGE_KEY,
+  GAS_ACC_KEY,
 } from '../constants/storage-keys';
 import type { PlanoWorkData } from '../lib/PlanoEngine/PlanoPersistence';
 import type {
@@ -133,6 +135,8 @@ function ramalToRow(planoId: number, userId: string, r: PlanoRamal) {
     sifon_label_ini: r.sifonLabelIni ?? null,
     sifon_label_fin: r.sifonLabelFin ?? null,
     fixtures: r.fixtures ?? null,
+    hydro_accesorios: r.hydroAcc ?? null,
+    gas_accesorios: r.gasAcc ?? null,
   };
 }
 
@@ -174,6 +178,8 @@ function rowToRamal(row: any): PlanoRamal {
     sifonLabelIni: row.sifon_label_ini ?? undefined,
     sifonLabelFin: row.sifon_label_fin ?? undefined,
     fixtures: row.fixtures ?? undefined,
+    hydroAcc: row.hydro_accesorios ?? undefined,
+    gasAcc: row.gas_accesorios ?? undefined,
   };
 }
 
@@ -576,18 +582,33 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
       return;
     }
 
-    // Los conteos de Aparato/UD solo viven en localStorage (FixturesPanel.tsx, clave
-    // `${net}_${ramalId}_${planId}`) — adjuntamos el mapa de conteos propio de cada ramal
-    // antes de sincronizar para que llegue a la BD vía planos_ramales.fixtures, en vez de
-    // perderse fuera de este equipo.
+    // Los conteos de Aparato/UD y los accesorios hidro/gas solo viven en localStorage
+    // (FixturesPanel.tsx / GasDesign.tsx, clave compuesta `${net}_${ramalId}_${planId}`) —
+    // adjuntamos el mapa propio de cada ramal antes de sincronizar para que llegue a la BD
+    // vía planos_ramales.fixtures / hydro_accesorios / gas_accesorios, en vez de perderse
+    // fuera de este equipo.
     const aparatosMap = loadFromStorage<Record<string, Record<string, number>>>(
       APARATOS_BY_TRAMO_KEY,
       {},
     );
+    const hidroMap = loadFromStorage<
+      Record<string, { accesorios: Record<string, number>; Lh: number; nSalidas: number }>
+    >(HYDRO_DATA_STORAGE_KEY, {});
+    const gasMap = loadFromStorage<Record<string, Record<string, number>>>(GAS_ACC_KEY, {});
     const ramales = ((d.ramales ?? []) as PlanoRamal[]).map((r) => {
       const apKey = `${r.net}_${r.id}_${planoId}`;
       const fixtures = aparatosMap[apKey];
-      return fixtures ? { ...r, fixtures } : r;
+      const hydroEntry = hidroMap[apKey];
+      const hydroAcc =
+        hydroEntry &&
+        (Object.keys(hydroEntry.accesorios ?? {}).length > 0 ||
+          (hydroEntry.Lh ?? 0) > 0 ||
+          (hydroEntry.nSalidas ?? 0) > 0)
+          ? hydroEntry
+          : undefined;
+      const gasEntry = gasMap[apKey];
+      const gasAcc = gasEntry && Object.keys(gasEntry).length > 0 ? gasEntry : undefined;
+      return fixtures || hydroAcc || gasAcc ? { ...r, fixtures, hydroAcc, gasAcc } : r;
     });
     // Los aparatos propios del calentador (asignados directo a la bajante CALENTn, clave
     // `ac_<calId>_<planoId>` o `af_<calId>_<planoId>`) no tienen un ramal real donde viajar —
@@ -603,6 +624,14 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
       const fixtures =
         aparatosMap[`ac_${calId}_${planoId}`] || aparatosMap[`af_${calId}_${planoId}`];
       if (!fixtures || Object.keys(fixtures).length === 0) continue;
+      const hydroEntry = hidroMap[`ac_${calId}_${planoId}`] || hidroMap[`af_${calId}_${planoId}`];
+      const hydroAcc =
+        hydroEntry &&
+        (Object.keys(hydroEntry.accesorios ?? {}).length > 0 ||
+          (hydroEntry.Lh ?? 0) > 0 ||
+          (hydroEntry.nSalidas ?? 0) > 0)
+          ? hydroEntry
+          : undefined;
       ramales.push({
         id: stubId,
         net: 'ac',
@@ -624,6 +653,7 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
         pendiente: 0,
         bloqueado: true,
         fixtures,
+        hydroAcc,
       } as unknown as PlanoRamal);
     }
     const areas = (d.areas ?? []) as PlanoArea[];
@@ -737,18 +767,26 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
       nptLevels: [],
       nets: [],
     };
-    // Devolvemos los fixtures que viajan en la BD por cada ramal al mapa de localStorage que
-    // FixturesPanel.tsx realmente lee (APARATOS_BY_TRAMO_KEY) — si no, un plano cargado fresco
-    // en otro dispositivo/sesión mostraría el panel Aparatos vacío pese a que la BD tiene los
-    // conteos.
+    // Devolvemos los fixtures y accesorios hidro/gas que viajan en la BD por cada ramal a los
+    // mapas de localStorage que FixturesPanel.tsx / GasDesign.tsx realmente leen
+    // (APARATOS_BY_TRAMO_KEY / HYDRO_DATA_STORAGE_KEY / GAS_ACC_KEY) — si no, un plano cargado
+    // fresco en otro dispositivo/sesión mostraría el panel Aparatos vacío pese a que la BD
+    // tiene los datos.
     const existingAparatos = loadFromStorage<Record<string, Record<string, number>>>(
       APARATOS_BY_TRAMO_KEY,
       {},
     );
     let aparatosChanged = false;
     const mergedAparatos = { ...existingAparatos };
+    const existingHidro = loadFromStorage<
+      Record<string, { accesorios: Record<string, number>; Lh: number; nSalidas: number }>
+    >(HYDRO_DATA_STORAGE_KEY, {});
+    let hidroChanged = false;
+    const mergedHidro = { ...existingHidro };
+    const existingGas = loadFromStorage<Record<string, Record<string, number>>>(GAS_ACC_KEY, {});
+    let gasChanged = false;
+    const mergedGas = { ...existingGas };
     for (const r of (work.ramales ?? []) as PlanoRamal[]) {
-      if (!r.fixtures || Object.keys(r.fixtures).length === 0) continue;
       // Los stubs sintéticos de calentador (AC-01-{calId}, persistidos por saveTrazosToDB
       // para que los fixtures de la bajante CALENTn sobrevivan) deben volver bajo la clave que
       // el builder de stubs/FixturesPanel realmente leen: `ac_<calId>_<planoId>` — no
@@ -757,12 +795,38 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
         r.id.startsWith('AC-01-') && r.net === 'ac'
           ? `ac_${r.id.slice('AC-01-'.length)}_${planoId}`
           : `${r.net}_${r.id}_${planoId}`;
-      if (!mergedAparatos[apKey]) {
+      if (r.fixtures && Object.keys(r.fixtures).length > 0 && !mergedAparatos[apKey]) {
         mergedAparatos[apKey] = r.fixtures;
         aparatosChanged = true;
       }
+      if (
+        r.hydroAcc &&
+        (Object.keys(r.hydroAcc.accesorios ?? {}).length > 0 ||
+          (r.hydroAcc.Lh ?? 0) > 0 ||
+          (r.hydroAcc.nSalidas ?? 0) > 0) &&
+        !mergedHidro[apKey]
+      ) {
+        mergedHidro[apKey] = r.hydroAcc;
+        hidroChanged = true;
+      }
+      if (r.gasAcc && Object.keys(r.gasAcc).length > 0 && !mergedGas[apKey]) {
+        mergedGas[apKey] = r.gasAcc;
+        gasChanged = true;
+      }
     }
     if (aparatosChanged) saveToStorage(APARATOS_BY_TRAMO_KEY, mergedAparatos);
+    if (hidroChanged) saveToStorage(HYDRO_DATA_STORAGE_KEY, mergedHidro);
+    if (gasChanged) saveToStorage(GAS_ACC_KEY, mergedGas);
+    // Los mapas recién fusionados se escriben con saveToStorage (que no dispara eventos) — si la
+    // app ya montó sus tramos/UC leyendo un mapa vacío o viejo (dispositivo con caché limpia o
+    // desactualizada), las tablas de diseño quedan con los conteos en cero hasta que algo vuelva
+    // a disparar 'storage'/sync. Se notifica aquí mismo para reconstruirlos con los datos de la
+    // BD sin esperar a una edición manual. Mismo patrón de eventos que networkSanitary.ts.
+    if (aparatosChanged || hidroChanged || gasChanged) {
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
+      window.dispatchEvent(new CustomEvent('civilflow_hidro_sync_changed'));
+    }
     return work;
   } catch (e) {
     devError('storageService loadTrazosFromDB exception:', e);
