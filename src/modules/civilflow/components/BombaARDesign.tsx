@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { dec } from '../utils/parseDecimal';
-import { saveToStorage } from '../services/storageService';
+import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
+import { loadBombaDatos, saveBombaDatos } from '../services/bombaService';
 import PageNav from './PageNav';
 import { SI, TH, TD } from '../styles/sharedTableStyles';
 import EditButton from './shared/EditButton';
@@ -100,21 +102,27 @@ const BombaARDesign_COLS2 = [
 
 function BombaARDesign() {
   const [bp, setBp] = useState(1);
-  const [salSim, setSalSim] = useState('');
-  const [udTot, setUdTot] = useState('');
-  const [hz, setHz] = useState('');
-  const [lImp, setLImp] = useState('');
-  const [dImp, setDImp] = useState('');
-  const [cHW, setCHW] = useState('');
-  const [pDesc, setPDesc] = useState('');
-  const [etaB, setEtaB] = useState('');
-  const [fSrv, setFSrv] = useState('');
-  const [tCic, setTCic] = useState('');
-  const [hMin, setHMin] = useState('');
-  const [hMax, setHMax] = useState('');
-  const [bCam, setBCam] = useState('');
-  const [lCam, setLCam] = useState('');
-  const [npsh, setNpsh] = useState('');
+  // Estado inicial desde el snapshot de memoria (caché en vivo) — la BD hidrata encima.
+  const memoriaInit = loadFromStorage<{ inputs?: Partial<Record<string, string>> } | null>(
+    'civilflow_memoria_bomba_data',
+    null,
+  );
+  const m0 = memoriaInit?.inputs ?? {};
+  const [salSim, setSalSim] = useState(m0.salSim ?? '');
+  const [udTot, setUdTot] = useState(m0.udTot ?? '');
+  const [hz, setHz] = useState(m0.hz ?? '');
+  const [lImp, setLImp] = useState(m0.lImp ?? '');
+  const [dImp, setDImp] = useState(m0.dImp ?? '');
+  const [cHW, setCHW] = useState(m0.cHW ?? '');
+  const [pDesc, setPDesc] = useState(m0.pDesc ?? '');
+  const [etaB, setEtaB] = useState(m0.etaB ?? '');
+  const [fSrv, setFSrv] = useState(m0.fSrv ?? '');
+  const [tCic, setTCic] = useState(m0.tCic ?? '');
+  const [hMin, setHMin] = useState(m0.hMin ?? '');
+  const [hMax, setHMax] = useState(m0.hMax ?? '');
+  const [bCam, setBCam] = useState(m0.bCam ?? '');
+  const [lCam, setLCam] = useState(m0.lCam ?? '');
+  const [npsh, setNpsh] = useState(m0.npsh ?? '');
 
   const [editP1, setEditP1] = useState(false);
   const [editP3, setEditP3] = useState(false);
@@ -240,6 +248,78 @@ function BombaARDesign() {
     Vcam,
     Vchk,
   ]);
+
+  // Hidratar desde la fuente de verdad (bomba_datos_proyecto, 1:1 con el proyecto) al
+  // montar — gana sobre el snapshot de memoria local; si no hay fila, se mantienen los
+  // valores del caché.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    if (!proyectoIdRaw) return;
+    const proyectoId = Number(proyectoIdRaw);
+    if (!Number.isFinite(proyectoId)) return;
+    let cancelled = false;
+    void loadBombaDatos(proyectoId).then((d) => {
+      if (cancelled) return;
+      if (d) {
+        setSalSim(d.salSim);
+        setUdTot(d.udTot);
+        setHz(d.hz);
+        setLImp(d.lImp);
+        setDImp(d.dImp);
+        setCHW(d.cHW);
+        setPDesc(d.pDesc);
+        setEtaB(d.etaB);
+        setFSrv(d.fSrv);
+        setTCic(d.tCic);
+        setHMin(d.hMin);
+        setHMax(d.hMax);
+        setBCam(d.bCam);
+        setLCam(d.lCam);
+        setNpsh(d.npsh);
+      }
+      hydratedRef.current = true;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Persistir a la BD debounced (1200 ms). No se guarda hasta que la hidratación terminó,
+  // para no pisar la fila existente con los defaults del caché.
+  const bombaSaveTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    if (!proyectoIdRaw) return;
+    const proyectoId = Number(proyectoIdRaw);
+    if (!Number.isFinite(proyectoId)) return;
+    if (bombaSaveTimerRef.current) window.clearTimeout(bombaSaveTimerRef.current);
+    bombaSaveTimerRef.current = window.setTimeout(() => {
+      bombaSaveTimerRef.current = null;
+      void saveBombaDatos(proyectoId, {
+        salSim,
+        udTot,
+        hz,
+        lImp,
+        dImp,
+        cHW,
+        pDesc,
+        etaB,
+        fSrv,
+        tCic,
+        hMin,
+        hMax,
+        bCam,
+        lCam,
+        npsh,
+      });
+    }, 1200);
+    return () => {
+      if (bombaSaveTimerRef.current) window.clearTimeout(bombaSaveTimerRef.current);
+      bombaSaveTimerRef.current = null;
+    };
+  }, [salSim, udTot, hz, lImp, dImp, cHW, pDesc, etaB, fSrv, tCic, hMin, hMax, bCam, lCam, npsh]);
 
   const Nota = (
     <div

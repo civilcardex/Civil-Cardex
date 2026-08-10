@@ -1,7 +1,9 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { usePersistedState } from '../../../hooks/usePersistedState';
 import type { EPData } from './ep/EPShared';
 import { EP_DEFAULTS } from './ep/EPShared';
+import { ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
+import { loadEpDatos, saveEpDatos } from '../services/epService';
 import PageNav from './PageNav';
 import EPInputPage from './ep/EPInputPage';
 import EPVerificationPage from './ep/EPVerificationPage';
@@ -13,6 +15,46 @@ export default function PressureEquipmentDesign() {
     ...EP_DEFAULTS,
     ...(saved as Partial<EPData>),
   }));
+
+  // Hidratar desde la fuente de verdad (ep_datos_proyecto, 1:1 con el proyecto) al
+  // montar — gana sobre el caché de localStorage ('ep', global); si no hay fila, se
+  // mantienen los defaults/caché de la sesión.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    if (!proyectoIdRaw) return;
+    const proyectoId = Number(proyectoIdRaw);
+    if (!Number.isFinite(proyectoId)) return;
+    let cancelled = false;
+    void loadEpDatos(proyectoId).then((d) => {
+      if (cancelled) return;
+      if (d) setEP({ ...EP_DEFAULTS, ...d });
+      hydratedRef.current = true;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [setEP]);
+
+  // Persistir a la BD debounced (1200 ms). No se guarda hasta que la hidratación
+  // terminó, para no pisar la fila existente con defaults.
+  const saveTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    if (!proyectoIdRaw) return;
+    const proyectoId = Number(proyectoIdRaw);
+    if (!Number.isFinite(proyectoId)) return;
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      saveTimerRef.current = null;
+      void saveEpDatos(proyectoId, ep);
+    }, 1200);
+    return () => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    };
+  }, [ep]);
 
   const updEP = useCallback(
     (field: keyof EPData, val: EPData[keyof EPData]) => {
