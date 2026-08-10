@@ -13,8 +13,16 @@ export const FRAC_CHAR_TO_DEC: Record<string, number> = {
 export function diamPulgFromLabel(d: unknown): number {
   if (!d) return 0;
   let s = String(d).trim();
+  // Un diámetro puede venir con especificación extra (p. ej. `1-1/2" RDE 21` o `1/2" — 42.7 mm`).
+  // Cuando hay separador '—', elegir el segmento que realmente describe pulgadas (contiene '"' o
+  // una fracción); el otro segmento es el equivalente métrico/especificación y NO debe usarse.
   if (s.includes('—')) {
-    s = s.split('—').pop()!.trim();
+    const parts = s.split('—').map((x) => x.trim());
+    const inchLike = parts.find(
+      (x) => x.includes('"') || /[½⅓⅔¼¾⅛⅜⅝⅞]/.test(x) || /(\d+\s*-\s*)?\d+\s*\/\s*\d+/.test(x),
+    );
+    if (inchLike) s = inchLike;
+    else s = parts[0];
   }
 
   // Primero, ver si tiene una fracción Unicode en cualquier parte del string recortado
@@ -27,37 +35,22 @@ export function diamPulgFromLabel(d: unknown): number {
     }
   }
 
+  // Números mixtos ASCII: "1 1/2" o "1-1/2" (p. ej. `1-1/2" RDE 21`).
+  const mixed =
+    s.match(/(\d+)\s*[\u2013\u2014-]\s*(\d+)\s*\/\s*(\d+)/) ||
+    s.match(/(\d+)\s+(\d+)\s*\/\s*(\d+)/);
+  if (mixed) {
+    return parseFloat(mixed[1]) + parseFloat(mixed[2]) / parseFloat(mixed[3]);
+  }
+
   const inchPart = s.split('"')[0].trim();
   if (inchPart && inchPart !== s) {
-    const spaceFrac = inchPart.match(/^(\d+)\s+([1-9]\d*)\s*\/\s*([1-9]\d*)$/);
-    if (spaceFrac) {
-      const whole = parseFloat(spaceFrac[1]);
-      const num = parseFloat(spaceFrac[2]);
-      const den = parseFloat(spaceFrac[3]);
-      return whole + num / den;
-    }
     const simpleFrac = inchPart.match(/^([1-9]\d*)\s*\/\s*([1-9]\d*)$/);
     if (simpleFrac) {
       return parseFloat(simpleFrac[1]) / parseFloat(simpleFrac[2]);
     }
     const n = parseFloat(inchPart);
     if (!isNaN(n)) return n;
-  }
-
-  const spaceFrac = s.match(/^(\d+)\s+([1-9]\d*)\s*\/\s*([1-9]\d*)/);
-  if (spaceFrac) {
-    const whole = parseFloat(spaceFrac[1]);
-    const num = parseFloat(spaceFrac[2]);
-    const den = parseFloat(spaceFrac[3]);
-    return whole + num / den;
-  }
-
-  const dashFrac = s.match(/^(\d+)\s*[\u2013\u2014-]\s*(\d+)\s*\/\s*(\d+)$/);
-  if (dashFrac) {
-    const whole = parseFloat(dashFrac[1]);
-    const num = parseFloat(dashFrac[2]);
-    const den = parseFloat(dashFrac[3]);
-    return whole + num / den;
   }
 
   const fracMatch = s.match(/(\d+)\s*\/\s*(\d+)/);

@@ -12,6 +12,7 @@ export const ACC_ABBR: Record<string, string> = {
   valvCheque: 'VCHE',
   valvAngulo: 'VANG',
   llaveTerminal: 'LLT',
+  teeLlaveTerminal: 'TLLTERM',
   codo90rc: 'C90C',
   codo45rc: 'C45C',
   codo90rm: 'C90M',

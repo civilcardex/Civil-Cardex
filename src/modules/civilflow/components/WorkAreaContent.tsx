@@ -151,7 +151,7 @@ const HeaterSelection = lazy(() => import('./HeaterSelection'));
 const CalculoUD = lazy(() => import('./FixtureUnitCalc'));
 const DisenosSanitarios = lazy(() => import('./SanitaryDesign'));
 const BajantesTable = lazy(() => import('./DownpipesTable'));
-const SanAccesoriosPage = lazy(() => import('./SanAccesoriosPage'));
+const AccesoriosDiamPage = lazy(() => import('./AccesoriosDiamPage'));
 const DisenoLluvias = lazy(() => import('./RainwaterDesign'));
 const ChequeoBajantesLluvias = lazy(() => import('./RainDownpipesCheck'));
 const ChequeoCanalesLluvias = lazy(() => import('./RainChannelsCheck'));
@@ -178,17 +178,19 @@ const prefetchSan = (p: number) => {
   if (p === 1) import('./FixtureUnitCalc');
   else if (p === 2) import('./SanitaryDesign');
   else if (p === 3) import('./DownpipesTable');
-  else if (p === 4) import('./SanAccesoriosPage');
+  else if (p === 4) import('./AccesoriosDiamPage');
 };
 const prefetchLl = (p: number) => {
   if (p === 1) import('./RainwaterDesign');
   else if (p === 2) import('./RainDownpipesCheck');
   else if (p === 3) import('./RainChannelsCheck');
+  else if (p === 4) import('./AccesoriosDiamPage');
 };
 const prefetchAfAc = (p: number) => {
   if (p === 1) import('./CalculoUC');
   else if (p === 2) import('./WaterNetworkDesign');
   else if (p === 3) import('./AccessoriesTable');
+  else if (p === 4) import('./AccesoriosDiamPage');
 };
 const prefetchHeavy = () => {
   import('./BombaARDesign');
@@ -212,6 +214,8 @@ function RedesTab({ state }: { state: WorkAreaState }) {
     setAfPage,
     acPage,
     setAcPage,
+    gasPage,
+    setGasPage,
     tramosAf,
     tramosAc,
   } = state;
@@ -280,7 +284,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
               'Cálculo de unidades de descarga',
               'Diseño sanitario',
               'Bajantes y ventilación',
-              'Accesorios',
+              'Resumen accesorios por diámetro',
             ]}
             onPageHover={prefetchSan}
           />
@@ -301,7 +305,7 @@ function RedesTab({ state }: { state: WorkAreaState }) {
           )}
           {sanPage === 4 && (
             <Suspense fallback={FALLBACK}>
-              <SanAccesoriosPage />
+              <AccesoriosDiamPage net="san" />
             </Suspense>
           )}
         </div>
@@ -321,9 +325,14 @@ function RedesTab({ state }: { state: WorkAreaState }) {
           <PageNav
             page={llPage}
             setPage={setLlPage}
-            total={3}
+            total={4}
             color="var(--ll)"
-            labels={['Diseño lluvias', 'Chequeo bajantes', 'Chequeo canales']}
+            labels={[
+              'Diseño lluvias',
+              'Chequeo bajantes',
+              'Chequeo canales',
+              'Resumen accesorios por diámetro',
+            ]}
             onPageHover={prefetchLl}
           />
           {llPage === 1 && (
@@ -339,6 +348,11 @@ function RedesTab({ state }: { state: WorkAreaState }) {
           {llPage === 3 && (
             <Suspense fallback={FALLBACK}>
               <ChequeoCanalesLluvias />
+            </Suspense>
+          )}
+          {llPage === 4 && (
+            <Suspense fallback={FALLBACK}>
+              <AccesoriosDiamPage net="ll" />
             </Suspense>
           )}
         </div>
@@ -358,9 +372,14 @@ function RedesTab({ state }: { state: WorkAreaState }) {
           <PageNav
             page={afPage}
             setPage={setAfPage}
-            total={3}
+            total={4}
             color="var(--af)"
-            labels={['Cálculo de unidades de consumo', 'Diseño de red agua fría', 'Accesorios']}
+            labels={[
+              'Cálculo de unidades de consumo',
+              'Diseño de red agua fría',
+              'Accesorios',
+              'Resumen accesorios por diámetro',
+            ]}
             onPageHover={prefetchAfAc}
           />
           {afPage === 1 && (
@@ -382,6 +401,11 @@ function RedesTab({ state }: { state: WorkAreaState }) {
               <AccesoriosTable tramos={tramosAf} />
             </Suspense>
           )}
+          {afPage === 4 && (
+            <Suspense fallback={FALLBACK}>
+              <AccesoriosDiamPage net="af" />
+            </Suspense>
+          )}
         </div>
       )}
       {redActiva === 'ac' && redes.has('ac') && (
@@ -399,13 +423,14 @@ function RedesTab({ state }: { state: WorkAreaState }) {
           <PageNav
             page={acPage}
             setPage={setAcPage}
-            total={4}
+            total={5}
             color="var(--ac)"
             labels={[
               'Cálculo de unidades de consumo',
               'Diseño de red agua caliente',
               'Selección calentador',
               'Accesorios',
+              'Resumen accesorios por diámetro',
             ]}
             onPageHover={prefetchAfAc}
           />
@@ -433,6 +458,11 @@ function RedesTab({ state }: { state: WorkAreaState }) {
               <AccesoriosTable tramos={tramosAc} />
             </Suspense>
           )}
+          {acPage === 5 && (
+            <Suspense fallback={FALLBACK}>
+              <AccesoriosDiamPage net="ac" />
+            </Suspense>
+          )}
         </div>
       )}
       {redActiva === 'bom' && redes.has('bom') && (
@@ -446,9 +476,36 @@ function RedesTab({ state }: { state: WorkAreaState }) {
         </Suspense>
       )}
       {redActiva === 'gas' && redes.has('gas') && (
-        <Suspense fallback={FALLBACK}>
-          <GasDesign />
-        </Suspense>
+        <div
+          className="fu"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+          }}
+        >
+          <PageNav
+            page={gasPage}
+            setPage={setGasPage}
+            total={2}
+            color="var(--gas)"
+            labels={['Diseño de gas', 'Resumen accesorios por diámetro']}
+            onPageHover={prefetchHeavy}
+          />
+          {gasPage === 1 && (
+            <Suspense fallback={FALLBACK}>
+              <GasDesign />
+            </Suspense>
+          )}
+          {gasPage === 2 && (
+            <Suspense fallback={FALLBACK}>
+              <AccesoriosDiamPage net="gas" />
+            </Suspense>
+          )}
+        </div>
       )}
       {redesActivas
         .filter(
