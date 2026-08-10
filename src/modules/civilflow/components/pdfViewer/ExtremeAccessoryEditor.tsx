@@ -1,4 +1,7 @@
-import { syncExtremeAccessoryToHidroData } from '../../utils/syncExtremeAccessory';
+import {
+  syncExtremeAccessoryToHidroData,
+  syncExtremeAparatoToCounts,
+} from '../../utils/syncExtremeAccessory';
 import { getAccessoryOptions } from '../../utils/accessoryOptions';
 import { DIAM_BY_MAT } from '../../constants';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
@@ -75,7 +78,8 @@ export default function ExtremeAccessoryEditor({
         const updates: Record<string, unknown> = { [field]: val };
         const fieldApp: 'aparatoInicio' | 'aparatoFin' =
           field === 'accesorioInicio' ? 'aparatoInicio' : 'aparatoFin';
-        if (val && selElement[fieldApp]) {
+        const removedApp = val && selElement[fieldApp] ? selElement[fieldApp] : '';
+        if (removedApp) {
           updates[fieldApp] = null;
         }
         // Los accesorios ya no heredan el diámetro propio del ramal como predeterminado — todo
@@ -84,9 +88,16 @@ export default function ExtremeAccessoryEditor({
         engineRef.current.updateSelected(updates);
         setSelElement({ ...selElement, ...updates });
         engineRef.current.render();
-        engineRef.current._markDirty();
+        // El sync de conteos debe correr ANTES del reconcile (_markDirty → calcHydroAccessories
+        // / calcSanitaryAccessories), que reconstruye hidroData/aparatos desde los campos del
+        // ramal: si corre después, el bump +1 se suma sobre el valor ya reconciliado y el
+        // accesorio queda duplicado (p. ej. una reducción contada dos veces en el resumen).
         if (val !== oldVal && plans) {
           syncExtremeAccessoryToHidroData(selElement.id, field, oldVal, val, plans);
+        }
+        engineRef.current._markDirty();
+        if (removedApp && plans) {
+          syncExtremeAparatoToCounts(selElement.id, removedApp, '', plans);
         }
       }
     };

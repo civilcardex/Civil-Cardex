@@ -378,16 +378,8 @@ const AparatosPanel = memo(function AparatosPanel_({
 
   const curHidro = useMemo(() => {
     if (!storageKey) return { accesorios: {}, Lh: 0, nSalidas: 0 };
-    const own = hidroData[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 };
-    if (!mergeKeys) return own;
-    const acc: Record<string, number> = { ...(own.accesorios || {}) };
-    for (const k of mergeKeys) {
-      for (const [accId, v] of Object.entries(hidroData[k]?.accesorios || {})) {
-        acc[accId] = (acc[accId] || 0) + v;
-      }
-    }
-    return { ...own, accesorios: acc };
-  }, [hidroData, storageKey, mergeKeys]);
+    return hidroData[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 };
+  }, [hidroData, storageKey]);
 
   const total = useMemo(() => {
     if (!storageKey) return 0;

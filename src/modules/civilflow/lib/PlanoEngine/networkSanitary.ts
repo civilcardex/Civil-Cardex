@@ -241,12 +241,19 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
       }
     }
 
+    // Item 7: una unión vent↔san se clasifica por el ángulo de aproximación — en Y (≈45°) es una
+    // yee con los diámetros de ambos ramales; perpendicular (≈90°) es un codo reventilado. Sin
+    // esta distinción, toda conexión vent↔san contaba como codo reventilado, incluso cuando era
+    // una Y.
+    let countVentY = 0;
     if (r.pts && r.pts.length >= 2) {
       for (const v of ventRamales) {
         if (!v.pts || v.pts.length < 2) continue;
         const end1 = v.pts[0];
         const end2 = v.pts[v.pts.length - 1];
         let connected = false;
+        let junctionSegDx = 0,
+          junctionSegDy = 0;
 
         for (let i = 0; i < r.pts.length - 1; i++) {
           const [ax, ay] = r.pts[i];
@@ -263,6 +270,8 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
               projY = ay + t * sDy;
             if (Math.hypot(end[0] - projX, end[1] - projY) < 0.5) {
               connected = true;
+              junctionSegDx = sDx;
+              junctionSegDy = sDy;
               break;
             }
           }
@@ -270,24 +279,45 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
         }
 
         if (connected) {
-          countVent++;
+          // Dirección de aproximación del vent hacia la unión (desde el extremo lejano hacia el
+          // extremo que toca al san).
+          const vLen = Math.hypot(end2[0] - end1[0], end2[1] - end1[1]);
+          const segLen = Math.hypot(junctionSegDx, junctionSegDy);
+          if (vLen > 0.1 && segLen > 0.1) {
+            const dot = Math.abs(
+              (junctionSegDx / segLen) * ((end2[0] - end1[0]) / vLen) +
+                (junctionSegDy / segLen) * ((end2[1] - end1[1]) / vLen),
+            );
+            // |cos| ≈ √2/2 → 45° (Y); |cos| ≈ 0 → 90° (codo reventilado).
+            if (Math.abs(dot - Math.cos(Math.PI / 4)) < 0.15) {
+              countVentY++;
+            } else {
+              countVent++;
+            }
+          } else {
+            countVent++;
+          }
         }
       }
     }
 
     let countSube = 0;
     let countBaja = 0;
+    let hasBajanteSube = false;
+    let hasBajanteBaja = false;
     for (const baj of engine.bajantes || []) {
       if (baj.net !== 'san') continue;
       if (baj.recibeDeIds?.includes(r.id)) {
         if (baj.direccion === 'sube') {
           countSube++;
+          hasBajanteSube = true;
         } else if (
           baj.direccion === 'baja' ||
           baj.direccion === undefined ||
           baj.direccion === 'continua'
         ) {
           countBaja++;
+          hasBajanteBaja = true;
         }
       }
     }
@@ -370,6 +400,25 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
         }
       }
 
+      // Cuenta accesorios de extremo colocados directamente (clic derecho) — codo 90° sube/baja y
+      // codo reventilado — solo cuando no hay una bajante del mismo sentido que ya aportó ese
+      // codo: la unión a bajante se cuenta en el loop de arriba y su campo de extremo suele
+      // rellenarse solo como glifo visual (drawingCreations), así que contarlo aquí lo duplicaría.
+      // El codo reventilado de extremo solo se cuenta si no hay unión vent↔san detectada
+      // geométricamente (countVent), que es la misma unión que ese campo representa.
+      if (!hasBajanteSube) {
+        if (r.accesorioInicio === 'codo90rmSube' || r.accesorioInicio === 'codoSube') countSube++;
+        if (r.accesorioFin === 'codo90rmSube' || r.accesorioFin === 'codoSube') countSube++;
+      }
+      if (!hasBajanteBaja) {
+        if (r.accesorioInicio === 'codo90rmBaja' || r.accesorioInicio === 'codoBaja') countBaja++;
+        if (r.accesorioFin === 'codo90rmBaja' || r.accesorioFin === 'codoBaja') countBaja++;
+      }
+      if (countVent === 0) {
+        if (r.accesorioInicio === 'codoReventilado') countVent++;
+        if (r.accesorioFin === 'codoReventilado') countVent++;
+      }
+
       if (acc['sifon'] !== (countSifonRamal || undefined)) {
         if (countSifonRamal > 0) acc['sifon'] = countSifonRamal;
         else delete acc['sifon'];
@@ -393,13 +442,17 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
       }
 
       const yee = yeeCounts[String(r.id)];
-      if (yee) {
-        if (acc['yeeSimple'] !== yee.simple) {
-          acc['yeeSimple'] = yee.simple;
+      const yeeSimpleTotal = (yee ? yee.simple : 0) + countVentY;
+      if (yee || countVentY > 0) {
+        if (acc['yeeSimple'] !== yeeSimpleTotal) {
+          acc['yeeSimple'] = yeeSimpleTotal;
           changed = true;
         }
-        if (acc['yeeDoble'] !== yee.doble) {
+        if (yee && acc['yeeDoble'] !== yee.doble) {
           acc['yeeDoble'] = yee.doble;
+          changed = true;
+        } else if (!yee && 'yeeDoble' in acc) {
+          delete acc['yeeDoble'];
           changed = true;
         }
       } else {
@@ -500,6 +553,17 @@ export function calcHydroAccessories(engine: IPlanoEngineCore): void {
               ? 'codo90rmBaja'
               : null;
         if (codoId) counts[codoId] = (counts[codoId] || 0) + 1;
+      }
+    }
+
+    // Item 8: en AF/AC, un aparato (distinto de nevera) en un extremo implica un codo 90° sube
+    // implícito — se dibuja junto al aparato y se cuenta como accesorio. La nevera queda
+    // excluida porque su acometida no sube.
+    if (r.net === 'af' || r.net === 'ac') {
+      for (const app of [r.aparatoInicio, r.aparatoFin]) {
+        if (app && app !== 'nev') {
+          counts['codo90rmSube'] = (counts['codo90rmSube'] || 0) + 1;
+        }
       }
     }
 

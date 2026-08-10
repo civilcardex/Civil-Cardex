@@ -128,6 +128,47 @@ function bumpAparatoCount(
   saveToStorage(APARATOS_BY_TRAMO_KEY, all);
 }
 
+export function syncExtremeAparatoToCounts(
+  ramalId: string,
+  oldApp: string,
+  newApp: string,
+  plans: SyncPlanInput[],
+): void {
+  if ((oldApp || '') === (newApp || '')) return;
+  let touched = false;
+  for (const plan of plans) {
+    if (!plan || plan.status !== 'confirmed') continue;
+    const found = findRamalInPlan(plan, ramalId);
+    if (!found) continue;
+    if (oldApp) bumpAparatoCount(found.net, ramalId, found.planId, oldApp, -1);
+    if (newApp) bumpAparatoCount(found.net, ramalId, found.planId, newApp, +1);
+    touched = true;
+  }
+  if (touched) {
+    try {
+      window.dispatchEvent(new CustomEvent('aparatos-clear'));
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+export function moveAparatoCount(
+  netId: string,
+  fromId: string,
+  toId: string,
+  planId: string | number,
+  appId: string,
+): void {
+  bumpAparatoCount(netId, fromId, planId, appId, -1);
+  bumpAparatoCount(netId, toId, planId, appId, +1);
+  try {
+    window.dispatchEvent(new CustomEvent('aparatos-clear'));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function syncExtremeAccessoryToHidroData(
   ramalId: string,
   _field: 'accesorioInicio' | 'accesorioFin',

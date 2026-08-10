@@ -345,6 +345,16 @@ export function detectAccesorioTrigger(
       const angleDeg = (Math.acos(cosVal) * 180) / Math.PI;
       if (Math.abs(angleDeg - 45) < 5 || Math.abs(angleDeg - 90) < 5) {
         const snapped = Math.abs(angleDeg - 45) < Math.abs(angleDeg - 90) ? 45 : 90;
+        if (snapped === 45) {
+          // En AF/AC/gas un quiebre interior de 45° solo admite el codo de 45° — no hay nada que
+          // elegir, así que se aplica solo (marcador accMed → símbolo en el quiebre + conteo en
+          // el resumen) sin abrir el modal de selección. El gas no tiene codo de 45° en su
+          // catálogo: se registra su codo estándar para que el conteo y el símbolo existan.
+          if (!r.accMed) r.accMed = {};
+          r.accMed[`accMed${i}`] = r.net === 'gas' ? 'codos_90_std' : 'codo45rc';
+          engine._markDirty();
+          return null;
+        }
         return {
           ramalId: r.id,
           angleDeg: snapped,

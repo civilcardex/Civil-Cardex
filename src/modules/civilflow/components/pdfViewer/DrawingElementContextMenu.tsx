@@ -20,7 +20,7 @@ import {
   SAN_UC_IDS,
 } from '../../constants/engineeringDataFixtures';
 import { getAccessoryOptions } from '../../utils/accessoryOptions';
-import { NETS, type PlanoBajante } from '../../lib/PlanoEngine/PlanoState';
+import { NETS, allocNetNumber, type PlanoBajante } from '../../lib/PlanoEngine/PlanoState';
 import { BAJANTE_NETS, MONTANTE_NETS } from '../../lib/PlanoEngine/drawingCreations';
 import {
   maxDiametroLabel,
@@ -41,6 +41,7 @@ import {
 } from '../../utils/bajanteAssociation';
 import {
   syncExtremeAccessoryToHidroData,
+  syncExtremeAparatoToCounts,
   bumpHidroAccesorio,
 } from '../../utils/syncExtremeAccessory';
 import { GAS, CAT_GAS } from '../../constants/engineeringDataGas';
@@ -1564,7 +1565,9 @@ function BajanteConnectionPanel({
                                 setSelElement({ ...selElement, ...updates });
                               }
                               engineRef.current.render();
-                              engineRef.current._markDirty();
+                              // Mismo orden que ExtremeAccessoryEditor: el sync de conteos debe
+                              // correr ANTES del reconcile de _markDirty, o el bump +1 duplica el
+                              // accesorio en hidroData (reducción contada dos veces en el resumen).
                               if (val !== oldVal && planosCtx?.plans) {
                                 syncExtremeAccessoryToHidroData(
                                   ramalEl.id,
@@ -1574,6 +1577,7 @@ function BajanteConnectionPanel({
                                   planosCtx.plans,
                                 );
                               }
+                              engineRef.current._markDirty();
                             }
                           }}
                           style={DrawingElementContextMenu_S2}
@@ -1699,6 +1703,7 @@ function BajanteConnectionPanel({
                                 }
                               }
                               if (engineRef.current) {
+                                const oldApp = ramalEl[fieldApp] || '';
                                 const updates: Record<string, unknown> = {
                                   [fieldApp]: val || null,
                                 };
@@ -1713,6 +1718,14 @@ function BajanteConnectionPanel({
                                 }
                                 engineRef.current.render();
                                 engineRef.current._markDirty();
+                                if (planosCtx?.plans) {
+                                  syncExtremeAparatoToCounts(
+                                    ramalEl.id,
+                                    oldApp,
+                                    val || '',
+                                    planosCtx.plans,
+                                  );
+                                }
                               }
                             }}
                             style={DrawingElementContextMenu_S2}
@@ -2494,9 +2507,9 @@ function GuideLineMenu() {
           const liveGuide = eng.guideLines.find((g) => g.id === guide.id) || guide;
           const netDef = NETS.find((n) => n.id === effectiveNet);
           const pfx = netDef?.lbl || 'R';
-          if (!eng._netCounts[effectiveNet])
-            eng._netCounts[effectiveNet] = { ramal: 0, tributario: 0 };
-          const cnt = ++eng._netCounts[effectiveNet].ramal;
+          const cnt = allocNetNumber(eng, effectiveNet, 'ramal', (n) =>
+            eng.ramales.some((r) => r.id === `${pfx}${n}` || r.label === `${pfx}${n}`),
+          );
           const ramId = `${pfx}${cnt}`;
           const [p0, p1] = liveGuide.pts;
           // El flujo se dibuja desde pts[0] hacia el último punto (renderRamales.ts) — se
@@ -2522,32 +2535,9 @@ function GuideLineMenu() {
             eng.triggerAlert('Ángulo no permitido', guideAngleAlertMessage(effectiveNet, 'ramal'));
             return;
           }
-          // San/ll/vent: el ramal que se conecta debe llevar la MISMA dirección de flujo del
-          // ramal existente (autoSplitJunctionAndSumFlow lo exige con un dot-product > 0, y si
-          // falla aborta la división en silencio — el ramal queda "suelto", sin símbolo de tee/
-          // yee, y siempre salta la alerta "Dirección de flujo incorrecta"). Antes esta rama
-          // nunca fijaba `_tribReversed`, así que el sentido salía puramente del orden pStart→
-          // pEnd elegido arriba (arbitrario) — ahora se calcula el vector de flujo propio contra
-          // el del ramal cruzado y se invierte de una vez si no coinciden, para que la validación
-          // de autoSplitJunctionAndSumFlow SIEMPRE pase en vez de dejarlo al azar.
-          let tribReversedForFlow: boolean | undefined;
-          if (
-            (effectiveNet === 'san' || effectiveNet === 'll' || effectiveNet === 'vent') &&
-            crossing
-          ) {
-            const existingRamal = eng.ramales.find((r) => r.id === crossing.ramalId);
-            if (existingRamal && existingRamal.pts && existingRamal.pts.length >= 2) {
-              const e0 = existingRamal.pts[0];
-              const e1 = existingRamal.pts[existingRamal.pts.length - 1];
-              const flowEx = existingRamal._tribReversed
-                ? [e0[0] - e1[0], e0[1] - e1[1]]
-                : [e1[0] - e0[0], e1[1] - e0[1]];
-              const flowNew = [pEnd[0] - pStart[0], pEnd[1] - pStart[1]];
-              if (flowNew[0] * flowEx[0] + flowNew[1] * flowEx[1] <= 0) {
-                tribReversedForFlow = true;
-              }
-            }
-          }
+          // Sin auto-orientación aquí: si la dirección de flujo del ramal creado no coincide con
+          // la del ramal cruzado, autoSplitJunctionAndSumFlow muestra la alerta y bloquea la
+          // unión (item 1). La auto-orientación al crear queda solo para tributarios (item 10).
           const dx = p1[0] - p0[0];
           const dy = p1[1] - p0[1];
           const distMm = Math.hypot(dx, dy);
@@ -2576,7 +2566,6 @@ function GuideLineMenu() {
             diametro: '',
             pendiente: 2,
             bloqueado: false,
-            _tribReversed: tribReversedForFlow,
           };
           eng.ramales.push(newRamal);
           // Igual que un ramal terminado a mano (finishRamal): si el extremo cae a mitad del
@@ -2661,8 +2650,10 @@ function GuideLineMenu() {
               }
             }
           }
-          if (!eng._netCounts[padre.net]) eng._netCounts[padre.net] = { ramal: 0, tributario: 0 };
-          const cnt = ++eng._netCounts[padre.net].tributario;
+          const padreLabel = padre.label || padre.id || '';
+          const cnt = allocNetNumber(eng, padre.net, 'tributario', (n) =>
+            eng.ramales.some((r) => r.label === `T${n}${padreLabel}`),
+          );
           const tId = 'T' + Date.now();
           const dx = p1[0] - p0[0];
           const dy = p1[1] - p0[1];

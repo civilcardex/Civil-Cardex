@@ -1345,7 +1345,13 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     if (!((r.tipo === 'tributario' || r.tipo === 'ramal') && r.pts.length >= 2)) return;
 
     [0, r.pts.length - 1].forEach((idx) => {
-      const accType = idx === 0 ? r.accesorioInicio : r.accesorioFin;
+      let accType = idx === 0 ? r.accesorioInicio : r.accesorioFin;
+      // Item 8: un aparato (distinto de nevera) en un extremo AF/AC implica un codo 90° sube —
+      // se dibuja el glifo junto al aparato aunque el campo de accesorio esté libre.
+      if (!accType && (r.net === 'af' || r.net === 'ac')) {
+        const app = idx === 0 ? r.aparatoInicio : r.aparatoFin;
+        if (app && app !== 'nev') accType = 'codo90rmSube';
+      }
       if (!accType) return;
 
       const pt = r.pts[idx];
@@ -1391,8 +1397,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         engine,
         accType,
         c,
-        dx,
-        dy,
+        accType === 'teeTapon' || accType === 'teeLlaveTerminal' ? px : dx,
+        accType === 'teeTapon' || accType === 'teeLlaveTerminal' ? py : dy,
         px,
         py,
         outX,
@@ -1429,6 +1435,10 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
     if (!((r.tipo === 'tributario' || r.tipo === 'ramal') && r.pts.length >= 2)) return;
+    // En AF/AC el símbolo del aparato no se dibuja: el glifo de accesorio implícito (codo 90°
+    // sube junto al aparato, arriba) ya marca el extremo y la imagen del fixture solo ensucia
+    // el plano. En san se mantiene.
+    if (r.net === 'af' || r.net === 'ac') return;
 
     [0, r.pts.length - 1].forEach((idx) => {
       const appType = idx === 0 ? r.aparatoInicio : r.aparatoFin;
@@ -1487,6 +1497,17 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       if (idx <= 0 || idx >= r.pts.length - 1) continue;
       const accType = r.accMed[key];
       if (!accType) continue;
+      // En AF/AC/gas los glifos de codo ya no se dibujan (codo90rc/rm/rl, sube/baja, codo45rc,
+      // codos_90_std): el arco que dibuja drawRamalPath en cada quiebre ES el codo — el círculo
+      // "C90"/"C45" al lado solo reduce.
+      if (
+        (accType.startsWith('codo90') ||
+          accType.startsWith('codo45') ||
+          accType.startsWith('codos_90')) &&
+        (r.net === 'af' || r.net === 'ac' || r.net === 'gas')
+      ) {
+        continue;
+      }
 
       const pt = r.pts[idx];
 
