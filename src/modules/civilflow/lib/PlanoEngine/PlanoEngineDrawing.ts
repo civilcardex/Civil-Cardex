@@ -1,4 +1,5 @@
-import { NETS, netsSnapLinked } from './PlanoState';
+import { NETS, netsSnapLinked, allocNetNumber } from './PlanoState';
+import { moveAparatoCount } from '../../utils/syncExtremeAccessory';
 import type { PlanoRamal, PlanoBajante, PlanoArea } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
@@ -228,9 +229,6 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
   const sameNetGroup = (a: string, b: string) =>
     a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
   const endpoints = [incoming.pts[0], incoming.pts[incoming.pts.length - 1]];
-  // Auto-orientación de flujo san/ll/vent: se permite invertir el flujo del ramal entrante UNA
-  // sola vez por llamada (ver el bloque de validación de dirección más abajo).
-  let flipped = false;
   for (const ep of endpoints) {
     for (const existing of engine.ramales) {
       if (existing.id === incoming.id || !sameNetGroup(existing.net, incoming.net)) continue;
@@ -309,27 +307,14 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
           return flowIn[0] * flowEx[0] + flowIn[1] * flowEx[1] > 0;
         };
         if (!directionOk()) {
-          // Auto-orientación (bug 1d): el tributario san/ll/vent que aterriza contra el flujo del
-          // ramal principal se invierte UNA vez por llamada en vez de bloquear la unión — la
-          // paleta de flujo del lado del tributario vale más que la alerta. Solo si ninguna de
-          // las dos orientaciones alinea el flujo con el principal se alerta.
-          if (!flipped) {
-            flipRamalFlow(incoming);
-            flipped = true;
-            if (!directionOk()) {
-              engine.triggerAlert(
-                'Dirección de flujo incorrecta',
-                'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.',
-              );
-              continue;
-            }
-          } else {
-            engine.triggerAlert(
-              'Dirección de flujo incorrecta',
-              'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.',
-            );
-            continue;
-          }
+          // Sin auto-orientación: una conexión san/ll/vent con dirección de flujo distinta a la
+          // del ramal principal se bloquea con alerta. La única auto-orientación permitida ocurre
+          // al CREAR tributarios (apuntan a la unión) — nunca al conectar un ramal ya dibujado.
+          engine.triggerAlert(
+            'Dirección de flujo incorrecta',
+            'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.',
+          );
+          continue;
         }
       } else if (
         (incoming.net === 'af' || incoming.net === 'ac' || incoming.net === 'gas') &&
@@ -467,10 +452,13 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
 
       const netDef = NETS.find((n) => n.id === existing.net);
       const pfx = netDef ? netDef.lbl : 'R';
-      const cnt = ++engine._netCounts[existing.net][
-        existing.tipo as keyof (typeof engine._netCounts)[string]
-      ];
-      const newId = existing.tipo === 'tributario' ? 'T' + Date.now() : pfx + cnt;
+      const isTrib = existing.tipo === 'tributario';
+      const cnt = allocNetNumber(engine, existing.net, isTrib ? 'tributario' : 'ramal', (n) =>
+        isTrib
+          ? engine.ramales.some((r) => r.label === `T${n}${existing.label || ''}`)
+          : engine.ramales.some((r) => r.id === `${pfx}${n}` || r.label === `${pfx}${n}`),
+      );
+      const newId = isTrib ? 'T' + Date.now() : pfx + cnt;
       // Posición/ángulo propios de la etiqueta desde el punto medio del segmento aguas abajo —
       // extender `...existing` solo dejaba la etiqueta en la posición vieja de la porción aguas
       // arriba, aterrizando justo encima de la etiqueta propia (sin cambios) de `existing`, ya
@@ -508,6 +496,9 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         mergesFrom: [existing.id, incoming.id],
       };
       engine.ramales.push(downstream);
+      if (farAparato && engine._loadedPlanId != null) {
+        moveAparatoCount(existing.net, existing.id, newId, engine._loadedPlanId, farAparato);
+      }
       break;
     }
   }
@@ -543,10 +534,23 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   const def = engine._ramalDefaults || { material: '', diametro: '', pendiente: 0 };
   const net = NETS.find((n) => n.id === engine.activeRamal!.net);
   const netPfx = net ? net.lbl : 'R';
-  const cnt = ++engine._netCounts[engine.activeRamal!.net][
-    engine.tipoTramo as keyof (typeof engine._netCounts)[string]
-  ];
-  const id = engine.tipoTramo === 'tributario' ? 'T' + Date.now() : netPfx + cnt;
+  const isTrib = engine.tipoTramo === 'tributario';
+  const padreLbl = isTrib
+    ? (() => {
+        const p = engine.ramales.find((r) => r.id === engine.padreTributario);
+        return p ? p.label || p.id : '';
+      })()
+    : '';
+  const cnt = allocNetNumber(
+    engine,
+    engine.activeRamal!.net,
+    isTrib ? 'tributario' : 'ramal',
+    (n) =>
+      isTrib
+        ? engine.ramales.some((r) => r.label === `T${n}${padreLbl}`)
+        : engine.ramales.some((r) => r.id === `${netPfx}${n}` || r.label === `${netPfx}${n}`),
+  );
+  const id = isTrib ? 'T' + Date.now() : netPfx + cnt;
   const firstAngle = _firstSegmentAngle(engine.activeRamal.pts);
 
   const pts = engine.activeRamal.pts;
@@ -612,11 +616,30 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   };
   if (r.net === 'san' || r.net === 'll' || r.net === 'vent') {
     const TOL = 0.5;
-    // Auto-orientación (bug 1d): si el ramal terminado quedó contra el flujo del ramal al que se
-    // une, se invierte UNA vez (mismo flip que el botón "Invertir dirección" del menú
-    // contextual) en vez de bloquear la creación — la paleta de flujo del lado del tributario
-    // vale más que la alerta. La alerta solo queda cuando ninguna orientación alinea el flujo.
-    let flippedR = false;
+    // Item 10: un tributario san/ll/vent se crea apuntando hacia la unión — si el extremo que
+    // toca otro ramal quedó en pts[0], se voltea para que la flecha quede mirando a la unión.
+    const touchesRamal = (ep: number[]): boolean => {
+      for (const other of engine.ramales) {
+        if (other.id === r.id || !other.pts || other.pts.length < 2) continue;
+        const sameGroup =
+          other.net === r.net ||
+          ((other.net === 'san' || other.net === 'vent') && (r.net === 'san' || r.net === 'vent'));
+        if (!sameGroup) continue;
+        const oEps = [other.pts[0], other.pts[other.pts.length - 1]];
+        if (oEps.some((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1]) < TOL)) return true;
+        for (let i = 0; i < other.pts.length - 1; i++) {
+          if (pointOnSegment(ep, other.pts[i], other.pts[i + 1], TOL)) return true;
+        }
+      }
+      return false;
+    };
+    if (r.tipo === 'tributario') {
+      const t0 = touchesRamal(r.pts[0]);
+      const t1 = touchesRamal(r.pts[r.pts.length - 1]);
+      if (t0 && !t1) {
+        flipRamalFlow(r);
+      }
+    }
     const touchingFlowOk = (): boolean => {
       const ep0 = r.pts[0];
       const ep1 = r.pts[r.pts.length - 1];
@@ -653,29 +676,14 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       return true;
     };
     if (!touchingFlowOk()) {
-      if (!flippedR) {
-        flipRamalFlow(r);
-        flippedR = true;
-        if (!touchingFlowOk()) {
-          engine.triggerAlert(
-            'Dirección de flujo incorrecta',
-            'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.',
-          );
-          engine.activeRamal = null;
-          engine._markDirty();
-          engine.render();
-          return;
-        }
-      } else {
-        engine.triggerAlert(
-          'Dirección de flujo incorrecta',
-          'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.',
-        );
-        engine.activeRamal = null;
-        engine._markDirty();
-        engine.render();
-        return;
-      }
+      engine.triggerAlert(
+        'Dirección de flujo incorrecta',
+        'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.',
+      );
+      engine.activeRamal = null;
+      engine._markDirty();
+      engine.render();
+      return;
     }
   } else if (r.net === 'af' || r.net === 'ac' || r.net === 'gas') {
     const TOL = 0.5;
