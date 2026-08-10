@@ -105,10 +105,18 @@ export function applyWorkData(
   engine.activeRamal = null;
   engine.activeArea = null;
   initNetCounts(engine);
-  for (const r of engine.ramales as Array<{ net?: string; tipo?: string; id?: string }>) {
+  for (const r of engine.ramales as Array<{
+    net?: string;
+    tipo?: string;
+    id?: string;
+    label?: string;
+  }>) {
     const net = NETS.find((n) => n.id === r.net);
     if (net && r.tipo !== 'tributario') {
-      const m = r.id?.match(new RegExp('^' + net.lbl + '(\\d+)$'));
+      const re = new RegExp('^' + net.lbl + '(\\d+)$');
+      // Un Ldesvio tiene id `LD_...` pero label de ramal real (p. ej. "RS2") — el consecutivo
+      // debe seguir contándolo, o un ramal manual nuevo chocaría con su label.
+      const m = r.id?.match(re) || r.label?.match(re);
       if (m) {
         const n = parseInt(m[1], 10);
         const counts = engine._netCounts[r.net!] as unknown as Record<string, number> | undefined;
@@ -116,6 +124,13 @@ export function applyWorkData(
           if (!engine._netCounts[r.net!]) engine._netCounts[r.net!] = { ramal: 0, tributario: 0 };
           (engine._netCounts[r.net!] as unknown as Record<string, number>)[r.tipo!] = n;
         }
+      }
+    }
+    if (net && r.tipo === 'tributario') {
+      const m = (r.label || r.id || '').match(/^T(\d+)/);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (n > engine._netCounts[net.id].tributario) engine._netCounts[net.id].tributario = n;
       }
     }
   }

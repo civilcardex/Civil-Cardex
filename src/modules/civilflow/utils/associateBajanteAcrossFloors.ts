@@ -141,12 +141,16 @@ export function isLdesvioRamalId(id: string | null | undefined): boolean {
 // hace `PlanoPersistence.ts` al cargar: máximo `${prefix}N` existente para esta red, +1 — pero
 // solo entre ramales REALES (nunca otro Ldesvio, que de entrada nunca coincide con ese patrón,
 // así que no hace falta exclusión especial).
-export function nextRamalLabel(net: string, existingRamales: { id?: string }[]): string {
+export function nextRamalLabel(
+  net: string,
+  existingRamales: Array<{ id?: string; label?: string }>,
+): string {
   const netDef = NETS.find((n) => n.id === net);
   const prefix = netDef?.lbl || 'R';
+  const re = new RegExp('^' + prefix + '(\\d+)$');
   let maxN = 0;
   for (const r of existingRamales) {
-    const m = r.id?.match(new RegExp('^' + prefix + '(\\d+)$'));
+    const m = (r.id || r.label)?.match(re);
     if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
   }
   return `${prefix}${maxN + 1}`;

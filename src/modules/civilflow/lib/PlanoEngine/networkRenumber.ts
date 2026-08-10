@@ -20,6 +20,17 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
     const nb = parseInt((b.id || '').replace(pfx, ''), 10) || 0;
     return na - nb;
   });
+  // Los Ldesvio conservan su label como un ramal manual más: sus números quedan ocupados y la
+  // renumeración de los ramales reales salta esos huecos (nunca se les roba el número).
+  const ldesvioTaken = new Set<number>();
+  for (const r of engine.ramales) {
+    if (r.net !== netId || r.tipo === 'tributario') continue;
+    if (!isLdesvioRamalId(r.id)) continue;
+    const m = (r.label || r.id)?.match(new RegExp('^' + pfx + '(\\d+)$'));
+    if (!m) continue;
+    ldesvioTaken.add(parseInt(m[1], 10));
+  }
+  const used = new Set<number>(ldesvioTaken);
   const keepIds = new Set(ramalesNet.map((r) => r.id));
 
   const cleanOrphans = (storageKey: string) => {
@@ -41,9 +52,12 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
   cleanOrphans('aparatos_by_tramo_v2');
   cleanOrphans('tramo_hidro_data_v3');
 
-  ramalesNet.forEach((r, i) => {
+  ramalesNet.forEach((r) => {
+    let n = 1;
+    while (used.has(n)) n++;
+    used.add(n);
     const oldId = r.id;
-    const newId = pfx + (i + 1);
+    const newId = pfx + n;
     if (oldId !== newId) {
       const migrateKeys = (storageKey: string) => {
         try {
@@ -76,7 +90,9 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
         t.padre = newId;
       });
   });
-  engine._netCounts[netId].ramal = ramalesNet.length;
+  let maxN = 0;
+  for (const n of used) if (n > maxN) maxN = n;
+  engine._netCounts[netId].ramal = maxN;
   try {
     window.dispatchEvent(new Event('storage'));
   } catch {

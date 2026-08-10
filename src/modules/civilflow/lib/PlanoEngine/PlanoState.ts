@@ -173,6 +173,18 @@ export function initNetCounts(target: { _netCounts: Record<string, PlanoNetCount
   });
 }
 
+export function allocNetNumber(
+  target: { _netCounts: Record<string, PlanoNetCounts> },
+  netId: string,
+  tipo: 'ramal' | 'tributario',
+  isTaken: (n: number) => boolean,
+): number {
+  if (!target._netCounts[netId]) target._netCounts[netId] = { ramal: 0, tributario: 0 };
+  let n = ++target._netCounts[netId][tipo];
+  while (isTaken(n)) n = ++target._netCounts[netId][tipo];
+  return n;
+}
+
 /** Ventilación y sanitaria se "enganchan" entre sí mientras se DIBUJA (el cursor se pega a la
  *  otra red) — pero NO deben usarse para auto-conectar o mover juntas: eso queda estrictamente
  *  dentro de la misma red.
@@ -523,6 +535,10 @@ export interface IPlanoEngineCore {
   planId?: string | number;
   _onDirtyCb: (() => void) | null;
   _lastMouseCvs: { x: number; y: number };
+  // Punto (en coords de canvas) donde el usuario hizo clic para seleccionar el ramal actual —
+  // usado por el atajo Suprimir para recortar el extremo CERCA DEL CLIC DE SELECCIÓN, no el que
+  // queda cerca del cursor al momento de pulsar la tecla (que puede estar en otro lado del plano).
+  _selPointCvs?: { x: number; y: number };
   _snapToSegment(
     x: number,
     y: number,
