@@ -249,6 +249,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   planId?: string | number;
   _onDirtyCb!: DirtyCallback | null;
   _lastMouseCvs!: Point;
+  _selPointCvs?: Point;
 
   _netCounts!: Record<string, PlanoNetCounts>;
 
@@ -668,6 +669,18 @@ export default class PlanoEngine implements IPlanoEngineCore {
       if (d < bajThresh && (!best || d < minD)) {
         minD = d;
         best = { x: bx, y: by };
+      }
+    });
+    // Snap al CUERPO de ramales de redes enlazadas (vent↔san) — el cursor del trazo activo se
+    // acerca visualmente al ramal aunque no esté sobre un vértice, señalando la conexión antes de
+    // finalizar el trazo.
+    this.ramales.forEach((r) => {
+      if (!netsSnapLinked(r.net, this.activeNet)) return;
+      const segThresh = 12 / this.zoom;
+      const p = snapToSegment(x, y, r.pts, segThresh);
+      if (p && (!best || Math.hypot(p.x - x, p.y - y) < minD)) {
+        minD = Math.hypot(p.x - x, p.y - y);
+        best = p;
       }
     });
     return best;
@@ -1344,12 +1357,24 @@ export default class PlanoEngine implements IPlanoEngineCore {
           this.multiSel = [];
         } else if (this.selId) {
           const sel = this.getSelected() as Record<string, unknown> | null;
-          // Ramal único con más de 2 puntos: recortar el último segmento (el deshacer de teclado
-          // más intuitivo)
-          if (sel?.tipo === 'ramal' && Array.isArray(sel.pts) && sel.pts.length > 2) {
-            const lastPx = (sel.pts[sel.pts.length - 1] as number[])[0];
-            const lastPy = (sel.pts[sel.pts.length - 1] as number[])[1];
-            const cv = this.toCvs(lastPx, lastPy);
+          // Ramal (o tributario) con más de 2 puntos: recortar el segmento del extremo donde el
+          // usuario hizo clic para seleccionar (guardado en _selPointCvs al seleccionar), no el
+          // último punto del trazo: el usuario selecciona el segmento inicial y Suprimir le
+          // borraba el final cuando el cursor ya no está sobre el segmento elegido. El chequeo
+          // por pts (no por tipo === 'ramal') cubre también tributarios y ramales legados sin
+          // campo tipo; las guías (GL) se excluyen porque no viven en engine.ramales.
+          const ptsArr = ((sel as { pts?: unknown } | null)?.pts ?? []) as number[][];
+          const hasPolyline =
+            ptsArr.length > 2 && !String((sel as { id?: unknown }).id ?? '').startsWith('GL');
+          if (hasPolyline) {
+            const sp = this._selPointCvs;
+            const cv =
+              sp && sp.x > 0
+                ? { x: sp.x, y: sp.y }
+                : (() => {
+                    const last = ptsArr[ptsArr.length - 1];
+                    return this.toCvs(last[0], last[1]);
+                  })();
             eraseRamalAt(this, sel as never, cv.x, cv.y);
           } else {
             this.deleteSelected();

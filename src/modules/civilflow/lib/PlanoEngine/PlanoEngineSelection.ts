@@ -241,6 +241,9 @@ export function selectAt(
 
   if (found) {
     if (!checkAndSwitchNet(found)) return;
+    // Recordar DÓNDE se hizo clic sobre el ramal: Suprimir recorta el extremo cercano a este
+    // punto (no al cursor al momento de pulsar la tecla, que suele haber quedado en otro lado).
+    engine._selPointCvs = { x: cx, y: cy };
   }
 
   applySelection(found ? found.id : null, found);

@@ -1276,44 +1276,14 @@ function PdfViewer_({
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (engineRef.current) {
           const eng = engineRef.current;
-          // Supr en un ramal seleccionado: replicar exactamente el comportamiento del borrador
-          // (eraseRamalAt en PlanoEngineDrawing.ts) — recortar el segmento del extremo más
-          // cercano a la última posición del cursor en lugar de borrar siempre el ramal completo.
-          // eraseRamalAt ya cae a un borrado total por sí solo cuando no queda nada que recortar
-          // (un ramal recto de 2 puntos) — igual que handleEraseDown (la herramienta borrador
-          // real), que lo llama incondicionalmente sin pre-chequear la cantidad de puntos. Poner
-          // también aquí la condición pts.length>2 era redundante Y hacía que todo ramal de 2
-          // puntos (el caso más común — un tramo recto sin dobleces) se saltara eraseRamalAt por
-          // completo y fuera directo a borrado total, incluso cuando el clic no estaba cerca de
-          // ningún extremo.
-          const sel = eng.getSelected();
-          // Solo los objetos ramal/tributario llevan polilínea pts (bajantes, montantes,
-          // contadores, etc. son elementos puntuales con x/y, nunca pts) — verificar pts
-          // directamente equivale a la comprobación de tipo pero además cubre cualquier ramal
-          // legado guardado antes de que existiera el campo tipo (tipo undefined), que la
-          // comprobación exacta de tipo excluía silenciosamente, cayendo siempre a borrado total.
-          // Las líneas guía también llevan polilínea pts (reutilizada para el mismo hit-testing
-          // distanceToRamal que un ramal real) pero no están en engine.ramales — eraseRamalAt no
-          // encontraría nada que recortar/borrar. Excluidas por prefijo de id (las líneas guía
-          // siempre son "GL...").
-          const isRamal =
-            sel &&
-            'pts' in sel &&
-            Array.isArray((sel as { pts?: unknown }).pts) &&
-            (sel as { pts: unknown[] }).pts.length > 0 &&
-            !String((sel as { id?: unknown }).id ?? '').startsWith('GL');
-          if (isRamal && eng._lastMouseCvs) {
-            eng.eraseRamalAt(sel as never, eng._lastMouseCvs.x, eng._lastMouseCvs.y);
-            e.preventDefault();
-            return;
-          }
-          if (eng.multiSel && eng.multiSel.length > 0) {
-            eng.deleteSelected(eng.multiSel);
-            eng.multiSel = [];
-          } else if (eng.selectedGhostId) {
+          // El engine ya maneja Suprimir por completo (PlanoEngine._onKeyDownHandler):
+          // multiSel, ramal único (recorte del segmento del clic de selección vía
+          // _selPointCvs) y deleteSelected — este listener solo cubre el borrado de la
+          // selección fantasma, que el engine no toca.
+          if (eng.selectedGhostId) {
             eng.deleteSelected([eng.selectedGhostId]);
-          } else if (eng.selId) eng.deleteSelected();
-          e.preventDefault();
+            e.preventDefault();
+          }
         }
       }
     };
