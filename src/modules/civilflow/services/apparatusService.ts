@@ -151,7 +151,9 @@ export async function saveAparatosUsuario(aps: ApsItem[]): Promise<void> {
           pmax: a.pmax,
           qg: a.qg,
           ctrl: a.ctrl,
-          blk_ud: a._blkUd,
+          // Coerción defensiva: blk_ud es NOT NULL — un campo faltante (ítem creado por
+          // setApsVal sin _blkUd) tumbaría el INSERT completo del snapshot y vaciaría la BD.
+          blk_ud: !!a._blkUd,
         })),
       );
       if (insError) throw insError;

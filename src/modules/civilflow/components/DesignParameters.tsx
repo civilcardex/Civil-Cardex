@@ -108,12 +108,14 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
     const isAcc = ACC_IDS.has(c.id);
     return {
       ...c,
-      ucaf: isAcc ? 0 : cur?.ucaf || c.af,
-      ucac: isAcc ? 0 : cur?.ucac || c.ac,
-      ud: cur?.ud ?? 0,
+      // cur existe → su valor real (aunque sea 0); si no, el base. `||` aquí escondería un
+      // 0 editado y mostraría el valor de catálogo, pareciendo que "no se guardó".
+      ucaf: isAcc ? 0 : cur ? cur.ucaf : c.af,
+      ucac: isAcc ? 0 : cur ? cur.ucac : c.ac,
+      ud: cur ? cur.ud : 0,
       _blkAf: isAcc || (c.af || 0) === 0,
       _blkAc: isAcc || (c.ac || 0) === 0,
-      _blkUd: false,
+      _blkUd: cur ? cur._blkUd : false,
     };
   });
 
@@ -135,6 +137,10 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
             pmin: 0,
             pmax: 0,
             qg: 0,
+            ctrl: def.ctrl,
+            // _blkUd es obligatorio para el insert (blk_ud NOT NULL en aparatos_usuario):
+            // sin él, saveAparatosUsuario falla con constraint violation y la BD queda vacía.
+            _blkUd: (def.af || 0) === 0 && (def.ac || 0) === 0,
             [key]: v,
           } as unknown as ApsItem,
         ];
@@ -402,7 +408,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
             </h3>
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span className="card-s" style={{ fontSize: 12 }}>
-                NTC 1500 · UC editables
+                Unidades de consumo/Unidades de descarga editables
               </span>
               <EditButton edit={isEditingAparatos} setEdit={setIsEditingAparatos} />
             </div>

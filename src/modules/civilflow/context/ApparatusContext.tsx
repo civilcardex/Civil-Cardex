@@ -69,6 +69,9 @@ export function ApparatusProvider({ children }: { children?: ReactNode }) {
     let cancelled = false;
     void loadAparatosUsuario().then((data) => {
       if (cancelled || !data) return;
+      // Si el usuario ya editó antes de que responda la red, no pisar su edición en curso
+      // (el debounce de guardado ya persiste el snapshot actualizado).
+      if (dirtyRef.current) return;
       setUdBase(data.udBase.length > 0 ? data.udBase : [...UD_BASE_INIT]);
       setApsState(data.aps);
       saveToStorage(APS_STORAGE_KEY, data.aps);
