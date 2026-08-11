@@ -116,7 +116,10 @@ export default function DisenoLluvias() {
             />{' '}
             Diseño de red aguas lluvias
           </h3>
-          <EditButton edit={edit} setEdit={setEdit} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+            <span className="card-s">{displayTramos.length} tramos</span>
+            <EditButton edit={edit} setEdit={setEdit} />
+          </div>
         </div>
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner">

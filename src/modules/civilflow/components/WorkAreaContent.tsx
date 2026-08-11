@@ -160,6 +160,7 @@ const WaterNetworkDesign = lazy(() => import('./WaterNetworkDesign'));
 const BombaARDesign = lazy(() => import('./BombaARDesign'));
 const GasDesign = lazy(() => import('./GasDesign'));
 const PressureEquipmentDesign = lazy(() => import('./PressureEquipmentDesign'));
+const AcometidaPage = lazy(() => import('../pages/AcometidaPage'));
 const BaseDatos = lazy(() => import('./DesignParameters'));
 const Normativa = lazy(() => import('./Regulations/Regulations'));
 const IsometriaTab = lazy(() =>
@@ -189,8 +190,9 @@ const prefetchLl = (p: number) => {
 const prefetchAfAc = (p: number) => {
   if (p === 1) import('./CalculoUC');
   else if (p === 2) import('./WaterNetworkDesign');
-  else if (p === 3) import('./AccessoriesTable');
-  else if (p === 4) import('./AccesoriosDiamPage');
+  else if (p === 3) import('../pages/AcometidaPage');
+  else if (p === 4) import('./AccessoriesTable');
+  else if (p === 5) import('./AccesoriosDiamPage');
 };
 const prefetchHeavy = () => {
   import('./BombaARDesign');
@@ -372,11 +374,12 @@ function RedesTab({ state }: { state: WorkAreaState }) {
           <PageNav
             page={afPage}
             setPage={setAfPage}
-            total={4}
+            total={5}
             color="var(--af)"
             labels={[
               'Cálculo de unidades de consumo',
               'Diseño de red agua fría',
+              'Acometida',
               'Accesorios',
               'Resumen accesorios por diámetro',
             ]}
@@ -393,15 +396,21 @@ function RedesTab({ state }: { state: WorkAreaState }) {
                 networkType="af"
                 diamTable={DIAMETROS_AF}
                 lookupFn={lookupInterno as (pulg: number) => number}
+                hideAcometida
               />
             </Suspense>
           )}
           {afPage === 3 && (
             <Suspense fallback={FALLBACK}>
-              <AccesoriosTable tramos={tramosAf} />
+              <AcometidaPage />
             </Suspense>
           )}
           {afPage === 4 && (
+            <Suspense fallback={FALLBACK}>
+              <AccesoriosTable tramos={tramosAf} />
+            </Suspense>
+          )}
+          {afPage === 5 && (
             <Suspense fallback={FALLBACK}>
               <AccesoriosDiamPage net="af" />
             </Suspense>

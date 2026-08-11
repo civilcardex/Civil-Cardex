@@ -93,6 +93,8 @@ interface WaterNetworkDesignProps {
   networkType: 'af' | 'ac';
   diamTable: Array<{ pulg: number; nominal: string; label?: string; dInt: number }>;
   lookupFn: (pulg: number) => number;
+  showOnlyAcometida?: boolean;
+  hideAcometida?: boolean;
 }
 
 const isAf = (t: string) => t === 'af';
@@ -125,7 +127,13 @@ const isAC2 = (t: Tramo) => {
   return false;
 };
 
-function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDesignProps) {
+function WaterNetworkDesign({
+  networkType,
+  diamTable,
+  lookupFn,
+  showOnlyAcometida,
+  hideAcometida,
+}: WaterNetworkDesignProps) {
   const [edit, setEdit] = useState(false);
   const { tramosAf, tramosAc, updTramoAf, updTramoAc } = useTramos();
   const { proy } = useProyecto();
@@ -1180,6 +1188,44 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
     updTramo,
   ]);
 
+  const acometidaEl = isAf(networkType) && !hideAcometida && (
+    <Acometida
+      Qaco={Qaco}
+      contadorSel={contadorSel}
+      acoContIx={acoContIx}
+      setAcoContIx={setAcoContIx}
+      acoMonName={resolvedMonName}
+      setAcoMonName={setAcoMonName}
+      acoRedContDiam={resolvedRedContDiam || ''}
+      acoContMonDiam={resolvedContMonDiam || ''}
+      acoL1={resolvedL1}
+      setAcoL1={setAcoL1}
+      acoL2={resolvedL2}
+      setAcoL2={setAcoL2}
+      acoPini={acoPini}
+      setAcoPini={setAcoPini}
+      acoLeMed={acoLeMed}
+      setAcoLeMed={setAcoLeMed}
+      acoHfMax={acoHfMax}
+      setAcoHfMax={setAcoHfMax}
+      f1={f1}
+      f2={f2}
+      hfContador={hfContador}
+      pResidual={pResidual}
+      okPresion={okPresion}
+      cHW1={cHW1}
+      cHW2={cHW2}
+      AF_DIAM_OPTS={DIAM_OPTS}
+      isTr1Drawn={isTr1Drawn}
+      isTr2Drawn={isTr2Drawn}
+      onContDiamChange={handleContDiamChange}
+    />
+  );
+
+  if (showOnlyAcometida) {
+    return <>{acometidaEl}</>;
+  }
+
   return (
     <>
       <section
@@ -1198,8 +1244,10 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
             />{' '}
             Diseño de red {title}
           </h3>
-          <span className="card-s">{tramosOrden.length} tramos</span>
-          <EditButton edit={edit} setEdit={setEdit} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+            <span className="card-s">{tramosOrden.length} tramos</span>
+            <EditButton edit={edit} setEdit={setEdit} />
+          </div>
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div className="scroll-top" style={{ padding: '6px' }}>
@@ -1653,39 +1701,7 @@ function WaterNetworkDesign({ networkType, diamTable, lookupFn }: WaterNetworkDe
         </div>
       </section>
 
-      {isAf(networkType) && (
-        <Acometida
-          Qaco={Qaco}
-          contadorSel={contadorSel}
-          acoContIx={acoContIx}
-          setAcoContIx={setAcoContIx}
-          acoMonName={resolvedMonName}
-          setAcoMonName={setAcoMonName}
-          acoRedContDiam={resolvedRedContDiam || ''}
-          acoContMonDiam={resolvedContMonDiam || ''}
-          acoL1={resolvedL1}
-          setAcoL1={setAcoL1}
-          acoL2={resolvedL2}
-          setAcoL2={setAcoL2}
-          acoPini={acoPini}
-          setAcoPini={setAcoPini}
-          acoLeMed={acoLeMed}
-          setAcoLeMed={setAcoLeMed}
-          acoHfMax={acoHfMax}
-          setAcoHfMax={setAcoHfMax}
-          f1={f1}
-          f2={f2}
-          hfContador={hfContador}
-          pResidual={pResidual}
-          okPresion={okPresion}
-          cHW1={cHW1}
-          cHW2={cHW2}
-          AF_DIAM_OPTS={DIAM_OPTS}
-          isTr1Drawn={isTr1Drawn}
-          isTr2Drawn={isTr2Drawn}
-          onContDiamChange={handleContDiamChange}
-        />
-      )}
+      {acometidaEl}
     </>
   );
 }

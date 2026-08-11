@@ -471,8 +471,10 @@ function GasDesign() {
               />
               Diseño de red de gas
             </h3>
-            <span className="card-s">{gasTramos.length} tramos</span>
-            <EditButton edit={edit} setEdit={setEdit} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+              <span className="card-s">{gasTramos.length} tramos</span>
+              <EditButton edit={edit} setEdit={setEdit} />
+            </div>
           </div>
           <div style={{ padding: 6 }}>
             <table

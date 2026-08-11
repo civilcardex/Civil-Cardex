@@ -263,7 +263,10 @@ const BajantesTable = memo(function BajantesTable_() {
           />{' '}
           Bajantes de aguas negras y ventilación
         </h3>
-        <EditButton edit={edit} setEdit={setEdit} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+          <span className="card-s">{tramosSan.filter((t) => t.esBajante).length} bajantes</span>
+          <EditButton edit={edit} setEdit={setEdit} />
+        </div>
       </div>
       <div className="scroll-top" style={{ padding: '16px' }}>
         <div className="scroll-inner" style={{ minWidth: 'max-content' }}>

@@ -173,10 +173,12 @@ export default function DisenosSanitarios() {
             />{' '}
             Diseño de red sanitaria
           </h3>
-          <span className="card-s">
-            {displayTramos.length} tramos · {totalUD} UD totales
-          </span>
-          <EditButton edit={edit} setEdit={setEdit} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+            <span className="card-s">
+              {displayTramos.length} tramos · {totalUD} UD totales
+            </span>
+            <EditButton edit={edit} setEdit={setEdit} />
+          </div>
         </div>
         <div className="scroll-top" style={{ padding: '16px' }}>
           <div className="scroll-inner">
