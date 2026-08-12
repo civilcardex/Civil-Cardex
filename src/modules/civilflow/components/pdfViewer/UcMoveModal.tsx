@@ -131,11 +131,13 @@ export default function UcMoveModal({ state, onConfirm, onCancel }: UcMoveModalP
           fontFamily: "'Geist', sans-serif",
         }}
       >
-        Invertir la dirección de flujo del ramal{' '}
-        <strong style={{ color: '#fff' }}>{state.sourceLabel}</strong> implica cambios en las
-        unidades de consumo.
+        Invertir la dirección de flujo implica un cambio doble: se invierten{' '}
+        <strong style={{ color: '#fff' }}>ambos ramales</strong> —{' '}
+        <strong style={{ color: '#fff' }}>{state.sourceLabel}</strong> y el ramal seleccionado —
+        quedando uno como entrada y el otro como salida en la conexión.
         <div style={{ marginTop: 8 }}>
-          Selecciona a cuál ramal de la conexión se le cargan las unidades de consumo:
+          Selecciona el ramal de la conexión que recibirá las unidades de consumo de{' '}
+          <strong style={{ color: '#fff' }}>{state.sourceLabel}</strong>:
         </div>
       </div>
 

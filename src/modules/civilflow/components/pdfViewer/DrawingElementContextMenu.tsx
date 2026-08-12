@@ -20,7 +20,12 @@ import {
   SAN_UC_IDS,
 } from '../../constants/engineeringDataFixtures';
 import { getAccessoryOptions } from '../../utils/accessoryOptions';
-import { NETS, allocNetNumber, type PlanoBajante } from '../../lib/PlanoEngine/PlanoState';
+import {
+  NETS,
+  allocNetNumber,
+  allocTributaryNumber,
+  type PlanoBajante,
+} from '../../lib/PlanoEngine/PlanoState';
 import { BAJANTE_NETS, MONTANTE_NETS } from '../../lib/PlanoEngine/drawingCreations';
 import {
   maxDiametroLabel,
@@ -2053,15 +2058,6 @@ function BajanteCodeEditor({
                   const accFNum = liveAccDiamF ? diamPulgFromLabel(inchFrom(liveAccDiamF)) : 0;
                   const blockEnd = accINum >= accFNum ? 'INICIO' : 'FIN';
                   const blockDiam = accINum >= accFNum ? liveAccDiamI : liveAccDiamF;
-                  // eslint-disable-next-line no-console
-                  console.warn('[ContextMenu-ramal] alerta diametro', {
-                    id: ramalEl.id,
-                    val,
-                    liveAccDiamI,
-                    liveAccDiamF,
-                    accDiamNum,
-                    parsedNew: diamPulgFromLabel(inchFrom(val)),
-                  });
                   engineRef.current.triggerAlert(
                     'Diámetro no permitido',
                     `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${blockEnd} (${blockDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
@@ -2777,9 +2773,7 @@ function GuideLineMenu() {
             }
           }
           const padreLabel = padre.label || padre.id || '';
-          const cnt = allocNetNumber(eng, padre.net, 'tributario', (n) =>
-            eng.ramales.some((r) => r.label === `T${n}${padreLabel}`),
-          );
+          const cnt = allocTributaryNumber(eng, padreLabel);
           const tId = 'T' + Date.now();
           const distMm = Math.hypot(pEnd[0] - pStart[0], pEnd[1] - pStart[1]);
           const label = `T${cnt}${padre.label || padre.id || ''}`;
@@ -3158,24 +3152,75 @@ function RamalMenu() {
   };
 
   const doInvert = (targetId: string | null) => {
-    const val = !ramalEl._tribReversed;
     const eng = engineRef.current;
     if (!eng) return;
-    eng.updateElementById(ramalEl.id, { _tribReversed: val });
-    const fresh = eng.ramales.find((x) => x.id === ramalEl.id);
-    // Cuando un tributario participa en la unión de cualquiera de los dos extremos,
-    // la regla se endurece a "exactamente 1 entrada" (ver
-    // junctionRespectsTributarioDirection) — "al menos 1 salida" no basta ahí, porque
-    // el tributario ya aporta su propia salida fija sin importar qué pase con el
-    // resto del grupo (existing/downstream podrían quedar los dos como salida o los
-    // dos como entrada, y "al menos 1 salida" no lo detectaría).
-    const okAtBothEnds = fresh
-      ? [fresh.pts[0], fresh.pts[fresh.pts.length - 1]].every((ep) =>
-          junctionRespectsTributarioDirection(eng.ramales, ramalEl.net, ep),
-        )
-      : true;
+    // Sin objetivo (toggle directo sin modal): se mantiene el toggle de _tribReversed sobre el
+    // ramal del menú con validación de unión, como antes.
+    if (!targetId) {
+      const val = !ramalEl._tribReversed;
+      eng.updateElementById(ramalEl.id, { _tribReversed: val });
+      const fresh = eng.ramales.find((x) => x.id === ramalEl.id);
+      // Cuando un tributario participa en la unión de cualquiera de los dos extremos,
+      // la regla se endurece a "exactamente 1 entrada" (ver
+      // junctionRespectsTributarioDirection) — "al menos 1 salida" no basta ahí, porque
+      // el tributario ya aporta su propia salida fija sin importar qué pase con el
+      // resto del grupo (existing/downstream podrían quedar los dos como salida o los
+      // dos como entrada, y "al menos 1 salida" no lo detectaría).
+      const okAtBothEnds = fresh
+        ? [fresh.pts[0], fresh.pts[fresh.pts.length - 1]].every((ep) =>
+            junctionRespectsTributarioDirection(eng.ramales, ramalEl.net, ep),
+          )
+        : true;
+      if (!okAtBothEnds) {
+        eng.updateElementById(ramalEl.id, { _tribReversed: !val });
+        eng.triggerAlert(
+          'Conexión sin salida',
+          'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
+        );
+        eng.render();
+        return;
+      }
+      if (selElement?.id === ramalEl.id) {
+        setSelElement({ ...selElement, _tribReversed: val });
+      }
+      eng.render();
+      eng._markDirty();
+      ctx.setContextMenuState(null);
+      return;
+    }
+    // Con objetivo (confirmado en el modal "Cambio de dirección de flujo"): DOBLE cambio de
+    // dirección — se invierten el ramal del menú (A) Y el ramal elegido en el modal (B). Es el
+    // pivote de la conexión: en la unión compartida uno queda como entrada y el otro como
+    // salida (1-entrada/1-salida), y las UC de A se cargan a B.
+    const aFresh = eng.ramales.find((x) => x.id === ramalEl.id) || ramalEl;
+    const target = eng.ramales.find((x) => x.id === targetId);
+    if (!target) return;
+    if (target.tipo === 'tributario' || aFresh.tipo === 'tributario') {
+      eng.triggerAlert(
+        'Dirección de flujo inconsistente',
+        'Un ramal tributario tiene dirección de flujo fija (cola siempre hacia la unión) y no se puede invertir. Elige otro ramal de la conexión.',
+      );
+      return;
+    }
+    // Para af/ac/gas la dirección EFECTIVA (flecha renderRamales.ts:993/1243 Y validaciones
+    // junctionHasOutgoingFlow/junctionRespectsTributarioDirection) es
+    // `_tribReversed ? pts[last] : pts[0]` — un XOR. Combinar flipRamalFlow (pts.reverse) con
+    // toggle del flag se CANCELA: flecha y validación no cambian. La inversión real de estas
+    // redes es SOLO el toggle del flag.
+    aFresh._tribReversed = !aFresh._tribReversed;
+    target._tribReversed = !target._tribReversed;
+    // Validar el estado REAL tras el doble cambio, en los extremos de AMBOS ramales — si solo
+    // se volteara B, la unión compartida quedaría con dos entradas (A entraba + B ahora entra)
+    // y 0 salidas y la alerta saldría siempre; con el pivote ambas quedan 1-entrada/1-salida.
+    const okAtBothEnds = [
+      aFresh.pts[0],
+      aFresh.pts[aFresh.pts.length - 1],
+      target.pts[0],
+      target.pts[target.pts.length - 1],
+    ].every((ep) => junctionRespectsTributarioDirection(eng.ramales, target.net, ep));
     if (!okAtBothEnds) {
-      eng.updateElementById(ramalEl.id, { _tribReversed: !val });
+      aFresh._tribReversed = !aFresh._tribReversed;
+      target._tribReversed = !target._tribReversed;
       eng.triggerAlert(
         'Conexión sin salida',
         'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
@@ -3183,15 +3228,16 @@ function RamalMenu() {
       eng.render();
       return;
     }
-    if (targetId) {
-      const ucInfo = readUcInfo();
-      if (ucInfo.planId != null) {
-        moveAllAparatoCounts(ramalEl.net, ramalEl.id, targetId, ucInfo.planId);
-        writeHydroDrawingSync(ctx.planosCtx?.plans || []);
-      }
+    if (selElement?.id === aFresh.id) {
+      setSelElement({ ...selElement, _tribReversed: aFresh._tribReversed });
     }
-    if (selElement?.id === ramalEl.id) {
-      setSelElement({ ...selElement, _tribReversed: val });
+    const ucInfo = readUcInfo();
+    if (ucInfo.planId != null) {
+      moveAllAparatoCounts(ramalEl.net, ramalEl.id, targetId, ucInfo.planId);
+      writeHydroDrawingSync(ctx.planosCtx?.plans || []);
+    }
+    if (selElement?.id === target.id) {
+      setSelElement({ ...selElement, ...target });
     }
     eng.render();
     eng._markDirty();
