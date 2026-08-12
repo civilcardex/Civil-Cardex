@@ -1,0 +1,185 @@
+import { useEffect, useRef, useState } from 'react';
+const UcMoveModal_S1: React.CSSProperties = {
+  background: 'linear-gradient(135deg, #1e222b 0%, #15181f 100%)',
+  padding: '24px',
+  borderRadius: '12px',
+  minWidth: 420,
+  maxWidth: 540,
+  border: '1px solid rgba(245, 166, 35, 0.3)',
+  boxShadow: '0 20px 40px rgba(0,0,0,0.6), 0 0 15px rgba(245, 166, 35, 0.1)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+  color: '#e2e2e8',
+  margin: 'auto',
+};
+const UcMoveModal_S2: React.CSSProperties = {
+  fontSize: 16,
+  fontWeight: 700,
+  color: '#F5A623',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  borderBottom: '1px solid rgba(255,255,255,0.06)',
+  paddingBottom: 10,
+};
+const UcMoveModal_S3: React.CSSProperties = {
+  padding: '8px 18px',
+  background: 'transparent',
+  border: '1px solid #3a494a',
+  borderRadius: 6,
+  color: '#a9b8bd',
+  cursor: 'pointer',
+  fontWeight: 600,
+  fontSize: 12,
+  fontFamily: "'Geist', monospace",
+  textTransform: 'uppercase',
+};
+const UcMoveModal_S4: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  padding: '10px 12px',
+  borderRadius: 4,
+  cursor: 'pointer',
+  fontFamily: "'Geist', monospace",
+  fontSize: 12,
+  textAlign: 'left',
+  transition: 'all 0.15s ease',
+};
+const UcMoveModal_S5: React.CSSProperties = {
+  padding: '8px 18px',
+  border: 'none',
+  borderRadius: 6,
+  fontWeight: 700,
+  fontSize: 12,
+  fontFamily: "'Geist', monospace",
+  textTransform: 'uppercase',
+  transition: 'all 0.15s ease',
+};
+
+export interface UcMoveOption {
+  id: string;
+  label: string;
+}
+
+export interface UcMoveModalState {
+  isOpen: boolean;
+  sourceLabel: string;
+  options: UcMoveOption[];
+}
+
+interface UcMoveModalProps {
+  state: UcMoveModalState;
+  onConfirm: (targetId: string) => void;
+  onCancel: () => void;
+}
+
+export default function UcMoveModal({ state, onConfirm, onCancel }: UcMoveModalProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [prevOpen, setPrevOpen] = useState(state.isOpen);
+
+  // Reiniciar la selección al REABRIR el modal: ajuste de estado durante el render (patrón
+  // oficial de React para sincronizar estado con un prop que cambia), sin effect — evita el
+  // render en cascada que lint rechaza (react-hooks/set-state-in-effect).
+  if (prevOpen !== state.isOpen) {
+    setPrevOpen(state.isOpen);
+    if (state.isOpen) setSelectedId(null);
+  }
+
+  useEffect(() => {
+    if (state.isOpen && dialogRef.current) {
+      if (!dialogRef.current.open) dialogRef.current.showModal();
+    }
+  }, [state.isOpen]);
+
+  if (!state.isOpen) return null;
+
+  const handleConfirm = () => {
+    if (selectedId) {
+      onConfirm(selectedId);
+      onCancel();
+    }
+  };
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-label="Reasignar unidades de consumo"
+      onCancel={(e) => {
+        e.preventDefault();
+        onCancel();
+      }}
+      onClose={onCancel}
+      style={UcMoveModal_S1}
+    >
+      <style>{`
+        dialog::backdrop {
+          background: rgba(10, 11, 14, 0.75);
+          backdrop-filter: blur(8px);
+        }
+      `}</style>
+      <div style={UcMoveModal_S2}>
+        <span style={{ fontSize: 22 }}>⚠️</span> Cambio de dirección de flujo
+      </div>
+      <div
+        style={{
+          fontSize: 13,
+          color: '#a9b8bd',
+          lineHeight: 1.5,
+          fontFamily: "'Geist', sans-serif",
+        }}
+      >
+        Invertir la dirección de flujo del ramal{' '}
+        <strong style={{ color: '#fff' }}>{state.sourceLabel}</strong> implica cambios en las
+        unidades de consumo.
+        <div style={{ marginTop: 8 }}>
+          Selecciona a cuál ramal de la conexión se le cargan las unidades de consumo:
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {state.options.map((o) => {
+          const isSelected = selectedId === o.id;
+          return (
+            <button
+              type="button"
+              key={o.id}
+              onClick={() => setSelectedId(o.id)}
+              style={{
+                ...UcMoveModal_S4,
+                background: isSelected ? 'rgba(245, 166, 35, 0.12)' : '#1e2024',
+                border: isSelected ? '1px solid #F5A623' : '1px solid #3a494a',
+                color: isSelected ? '#F5A623' : '#e2e2e8',
+                boxShadow: isSelected ? '0 0 8px rgba(245, 166, 35, 0.2)' : 'none',
+              }}
+            >
+              <span style={{ fontSize: 14 }}>{isSelected ? '◉' : '○'}</span>
+              <span>{o.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
+        <button type="button" onClick={onCancel} style={UcMoveModal_S3}>
+          Cancelar
+        </button>
+        <button
+          type="button"
+          disabled={!selectedId}
+          onClick={handleConfirm}
+          style={{
+            ...UcMoveModal_S5,
+            background: selectedId ? '#F5A623' : 'rgba(245, 166, 35, 0.15)',
+            color: selectedId ? '#0f1115' : '#a9b8bd66',
+            cursor: selectedId ? 'pointer' : 'not-allowed',
+          }}
+        >
+          Confirmar
+        </button>
+      </div>
+    </dialog>
+  );
+}

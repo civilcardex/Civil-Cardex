@@ -151,6 +151,27 @@ export function junctionHasOutgoingFlow(
  * @param tol - Tolerancia de distancia para "este extremo cae en pt".
  * @returns true si la unión respeta la regla (o no aplica).
  */
+export function directNeighborRamales(
+  ramales: Pick<PlanoRamal, 'id' | 'net' | 'pts'>[],
+  ramal: Pick<PlanoRamal, 'id' | 'net' | 'pts'>,
+  tol = 0.5,
+): Pick<PlanoRamal, 'id' | 'net' | 'pts'>[] {
+  if (!ramal.pts || ramal.pts.length < 2) return [];
+  const a0 = ramal.pts[0];
+  const a1 = ramal.pts[ramal.pts.length - 1];
+  const touch = (ep: number[]) =>
+    Math.hypot(a0[0] - ep[0], a0[1] - ep[1]) < tol ||
+    Math.hypot(a1[0] - ep[0], a1[1] - ep[1]) < tol;
+  return ramales.filter(
+    (r) =>
+      r.id !== ramal.id &&
+      r.net === ramal.net &&
+      r.pts &&
+      r.pts.length >= 2 &&
+      (touch(r.pts[0]) || touch(r.pts[r.pts.length - 1])),
+  );
+}
+
 export function junctionRespectsTributarioDirection(
   ramales: Pick<PlanoRamal, 'net' | 'pts' | '_tribReversed' | 'tipo'>[],
   net: string,

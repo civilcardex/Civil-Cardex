@@ -169,6 +169,37 @@ export function moveAparatoCount(
   }
 }
 
+/** Mueve el registro COMPLETO de aparatos (todas las UC) de un ramal a otro en un solo
+ *  load/save, sumando sobre lo que el destino ya tuviera. Usado al invertir la dirección de
+ *  flujo de un ramal conectado: el usuario elige a qué ramal de la conexión se le cargan las
+ *  unidades de consumo del ramal invertido. */
+export function moveAllAparatoCounts(
+  netId: string,
+  fromId: string,
+  toId: string,
+  planId: string | number,
+): void {
+  const fromKey = `${netId}_${fromId}_${planId}`;
+  const toKey = `${netId}_${toId}_${planId}`;
+  const all =
+    loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {}) || {};
+  const src = all[fromKey];
+  if (!src || Object.keys(src).length === 0) return;
+  const dst = { ...(all[toKey] || {}) };
+  for (const [appId, n] of Object.entries(src)) {
+    dst[appId] = (dst[appId] || 0) + n;
+  }
+  const copy = { ...all };
+  delete copy[fromKey];
+  copy[toKey] = dst;
+  saveToStorage(APARATOS_BY_TRAMO_KEY, copy);
+  try {
+    window.dispatchEvent(new CustomEvent('aparatos-clear'));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function syncExtremeAccessoryToHidroData(
   ramalId: string,
   _field: 'accesorioInicio' | 'accesorioFin',
