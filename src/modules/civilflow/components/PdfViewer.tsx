@@ -8,6 +8,7 @@ import PlanoEngine, {
 } from '../lib/PlanoEngine/PlanoEngine';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
 import type { PlanoElement, PlanoNet, PlanoBajante } from '../lib/PlanoEngine/PlanoState';
+import { codoPolarityOk, flowEndsAt } from '../lib/PlanoEngine/PlanoEngineDrawing';
 import type { Piso } from './useWorkAreaState';
 import type { PlanItem } from '../context/PlansContext';
 import { matLongName, pisoLbl, DEFAULT_PENDIENTE_PCT } from '../constants';
@@ -876,6 +877,41 @@ function PdfViewer_({
         });
         return;
       }
+      // Ítems 4/5 (codo 90° sube/baja): el codo sube solo puede ENTREGAR flujo (la cola de la
+      // flecha apunta al extremo P — el flujo SALE de P hacia el codo); el codo baja solo puede
+      // RECIBIR flujo (la cabeza de la flecha apunta al extremo P — el flujo LLEGA a P desde el
+      // codo). En el cuerpo (flujo que pasa de largo) ninguno es válido. Ítem 2 (reventilado):
+      // el codo reventilado NO puede recibir flujo — si el flujo del ramal sanitario termina en
+      // el punto (lo recibe), bloquear.
+      const accPt = r.pts[junctionIndex];
+      if (
+        accPt &&
+        (accId === 'codoSube' ||
+          accId === 'codoBaja' ||
+          accId === 'codo90rmSube' ||
+          accId === 'codo90rmBaja')
+      ) {
+        if (!codoPolarityOk(r, accPt, accId, TOL)) {
+          const isSube = accId === 'codoSube' || accId === 'codo90rmSube';
+          setAlertDialogState({
+            isOpen: true,
+            title: 'Dirección de codo incorrecta',
+            message: isSube
+              ? 'El codo 90° sube solo puede entregar flujo: la cola de la flecha debe apuntar al extremo (el flujo sale de ahí hacia el codo), no en el cuerpo.'
+              : 'El codo 90° baja solo puede recibir flujo: la cabeza de la flecha debe apuntar al extremo (el flujo llega ahí desde el codo), no en el cuerpo.',
+          });
+          return;
+        }
+      }
+      if (accId === 'codoReventilado' && r.net === 'san' && accPt && flowEndsAt(r, accPt, TOL)) {
+        setAlertDialogState({
+          isOpen: true,
+          title: 'Codo reventilado no puede recibir flujo',
+          message:
+            'El codo reventilado debe colocarse en el extremo desde donde fluye el ramal sanitario. Invierte la dirección del ramal.',
+        });
+        return;
+      }
       if (accId === 'llaveTerminal' || accId === 'teeLlaveTerminal') {
         if (isIni) {
           setAlertDialogState({
@@ -1030,12 +1066,17 @@ function PdfViewer_({
     if (activeNet === prevActiveNetForSel.current) return;
     prevActiveNetForSel.current = activeNet;
     if (engineRef.current && !loadingPlanRef.current) {
-      const els = engineRef.current.getElementsByNet(activeNet);
-      setSelElement((previous) => {
-        if (els.length > 0 && previous?.net !== activeNet)
-          return els[els.length - 1] as unknown as ProbedElement;
-        return els.length === 0 ? null : previous;
-      });
+      // Al cambiar de red, una selección de OTRA red se limpia — nunca se auto-selecciona un
+      // elemento de la red nueva (antes se precargaba el ÚLTIMO ramal de la red, que en AF era
+      // el tramo auto-creado por el split de la tee: el sidebar mostraba ese ramal "seleccionado"
+      // sin que el usuario tocara nada, y volvía a aparecer tras deseleccionar).
+      const eng = engineRef.current;
+      const sel = eng.getSelected() as { net?: string } | null;
+      if (sel && sel.net !== activeNet) {
+        eng.selId = null;
+        eng._emitSelect(null);
+        eng.render();
+      }
     }
   }, [activeNet]);
 
@@ -1266,7 +1307,15 @@ function PdfViewer_({
         e.preventDefault();
       }
       if (e.key.toLowerCase() === 'c') {
-        setTool('cont');
+        // Espejo del manejador 'c' del engine: contador en af/gas, canal en el resto (si canal
+        // recolectora está activa).
+        if (activeNet === 'af' || activeNet === 'gas') {
+          setTool('cont');
+        } else if (recolectoraActive) {
+          setTool('canal');
+        } else {
+          setTool('cont');
+        }
         e.preventDefault();
       }
       if (e.key.toLowerCase() === 'h') {
@@ -1405,6 +1454,132 @@ function PdfViewer_({
         onClose={() => {
           const eng = engineRef.current;
           if (eng) {
+            // Ítem 10: antes de validar diámetros, todo ramal/tributario debe tener UC/UD o un
+            // aparato/accesorio en sus extremos — un ramal sin carga aguas abajo produce una fila
+            // vacía en las tablas de diseño. El UC/UD real se asigna en las tablas de diseño vía
+            // los conteos de aparatos (fixtures en APARATOS_BY_TRAMO_KEY, clave
+            // `${net}_${id}_${planId}`), no en el campo `uc` del motor (que nace en 0) — se lee
+            // ese mapa para no marcar ramales que ya tienen UC asignado. Exclusiones confirmadas:
+            // red vent (no lleva UC), los Ldesvio de bajante (auto LD_*) y los stubs automáticos
+            // de tapón. Los tramos auto-creados por splits (mergesFrom) SÍ se validan: son la
+            // continuación aguas abajo que acumula el UC de la cadena.
+            const planId = eng._loadedPlanId;
+            const aparatosMap = loadFromStorage<Record<string, Record<string, number>>>(
+              APARATOS_BY_TRAMO_KEY,
+              {},
+            );
+            // Ítem 10: las exclusiones confirmadas son vent, Ldesvio automáticos (LD_*) y stubs de
+            // tapón — más las uniones tee en extremos (la tee conecta ramas que cargan su propio
+            // UC/UD). Los tramos auto-creados por splits (mergesFrom) NO se excluyen: acumulan el
+            // UC de la cadena y deben aparecer si nadie les asignó aparatos. Lo demás — un extremo
+            // con codo, un tributario sin derivación visible, etc. — SÍ se lista si no tiene UC/UD.
+            const TEE_END_IDS = new Set([
+              'teeDirecto',
+              'teeReduccion',
+              'teeLado',
+              'teeSube',
+              'teeBaja',
+              'teeTapon',
+              'teeLlaveTerminal',
+              'te_linea',
+              'te_ramal',
+            ]);
+            const sinUcRamales: string[] = [];
+            const revisados = new Set<string>();
+            const revisarRamal = (
+              r: {
+                net?: string;
+                id?: string;
+                label?: string;
+                tipo?: string;
+                uc?: number;
+                aparatoInicio?: string;
+                aparatoFin?: string;
+                accesorioInicio?: string;
+                accesorioFin?: string;
+                mergesFrom?: unknown;
+              },
+              planFor: number | string | null,
+            ) => {
+              if (!r.net || !r.id) return;
+              // Los tramos auto-creados por suma de flujo (mergesFrom, continuación de una
+              // bifurcación) ya llevan las UC/UD acumuladas según la dirección de flujo — no
+              // deben disparar la alerta de pendientes.
+              if (r.mergesFrom) return;
+              // La clave de dedupe INCLUYE el plan: el mismo id de ramal puede existir en
+              // varios planos confirmados (pisos replicados), y uno con fixtures en un plano no
+              // exime al mismo id en otro — sin el plan, el primer barrido marcaba "revisado" al
+              // resto y la lista de UC/UD pendientes quedaba incompleta.
+              const clave = `${r.net}_${r.id}_${planFor ?? 'engine'}`;
+              if (revisados.has(clave)) return;
+              revisados.add(clave);
+              if (r.net === 'vent') return;
+              if (r.id.startsWith('LD_')) return;
+              if (r.accesorioFin === 'tapon' || r.accesorioInicio === 'tapon') return;
+              const tipo = r.tipo || 'ramal';
+              if (tipo !== 'ramal' && tipo !== 'tributario') return;
+              if ((r.uc || 0) > 0) return;
+              if (r.aparatoInicio || r.aparatoFin) return;
+              if (TEE_END_IDS.has(r.accesorioInicio || '') || TEE_END_IDS.has(r.accesorioFin || ''))
+                return;
+              {
+                const prefix = `${r.net}_${r.id}`;
+                const hasFixtures = Object.keys(aparatosMap).some(
+                  (k) =>
+                    (k === prefix || k.startsWith(prefix + '_')) &&
+                    Object.keys(aparatosMap[k]).length > 0,
+                );
+                if (hasFixtures) return;
+              }
+              sinUcRamales.push(r.label || r.id);
+            };
+            for (const r of eng.ramales) revisarRamal(r, planId);
+            // El engine solo ve el NIVEL cargado — un nivel sin los planos confirmados restantes
+            // dejaba la lista incompleta (ramales de otros planos sin UC/UD no salían). Se barren
+            // los trazos guardados de cada plano confirmado con el mismo criterio, deduplicando
+            // por red+id (el plano actual ya quedó cubierto por el engine).
+            for (const plan of (planos || []).filter((p) => p.status === 'confirmed')) {
+              const raw = loadFromStorage<PlanTrazos | string | null>(
+                TRAZOS_PREFIX + String(plan.id),
+                null,
+              );
+              if (!raw) continue;
+              let data: PlanTrazos | null = null;
+              if (typeof raw === 'string') {
+                try {
+                  data = JSON.parse(raw) as PlanTrazos;
+                } catch {
+                  continue;
+                }
+              } else {
+                data = raw;
+              }
+              if (!data) continue;
+              for (const r of (data.ramales || []) as Array<{
+                net?: string;
+                id?: string;
+                label?: string;
+                tipo?: string;
+                uc?: number;
+                aparatoInicio?: string;
+                aparatoFin?: string;
+                accesorioInicio?: string;
+                accesorioFin?: string;
+                mergesFrom?: unknown;
+              }>)
+                revisarRamal(r, plan.id);
+            }
+            if (sinUcRamales.length > 0) {
+              // Lista COMPLETA — recortarla a 8 ocultaba elementos pendientes (reporte: "la
+              // alerta no muestra todos los elementos con UC/UD pendientes").
+              const lista = sinUcRamales.join(', ');
+              setAlertDialogState({
+                isOpen: true,
+                title: 'UC/UD pendientes',
+                message: `${sinUcRamales.length} ramal(es) sin UC/UD asignado: ${lista}. Asigna unidades de descarga o aparatos antes de cerrar el dibujo.`,
+              });
+              return;
+            }
             // Todo elemento de tubería debe llevar diámetro antes de poder cerrar el dibujo — un
             // ramal/tributario con diametro vacío (o una bajante/montante sin dNominal)
             // produciría una tabla de diseño/memoria rota. Bloquear el cierre y listar los
