@@ -360,7 +360,23 @@ const AparatosPanel = memo(function AparatosPanel_({
         )
       : aId;
     if (entrantId !== target.id) return null;
-    return [aId, hostR.id!, bId].filter((id) => id !== target.id).map(keyFor);
+    // TRANSITIVIDAD: un ramal auto-creado puede ser a su vez fuente de un empalme aguas arriba
+    // (cadena RS1+T1RS1→RS2, RS2+T2RS2→RS3). Las fuentes directas de RS3 incluyen a RS2, que
+    // es también un merge point sin aparatos propios — sus conteos viven en RS1/T1RS1. Sumar
+    // solo un nivel dejaba el panel de RS3 con los aparatos del tributario directo pero sin la
+    // cadena acumulada (la tabla de diseño sí muestra el total transitivo). Recolectar todo el
+    // subárbol aguas arriba (cada ramal aparece una sola vez).
+    const seen = new Set<string>();
+    const allKeys: string[] = [];
+    const collect = (id: string) => {
+      if (seen.has(id)) return;
+      seen.add(id);
+      if (id !== target.id) allKeys.push(keyFor(id));
+      const r = allRamalesForPlan.find((x) => x.id === id);
+      if (r?.mergesFrom) for (const src of r.mergesFrom) collect(src);
+    };
+    collect(hostR.id);
+    return allKeys;
   })();
 
   const currentMap = useMemo(() => {

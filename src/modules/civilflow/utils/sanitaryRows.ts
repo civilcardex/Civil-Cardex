@@ -121,7 +121,8 @@ export function buildSanConnectivity(
         return matches;
       };
 
-      const connections = [...checkEndpoint(pEnd), ...checkEndpoint(pStart)];
+      const downstreamPt = r._tribReversed ? pStart : pEnd;
+      const connections = checkEndpoint(downstreamPt);
 
       for (const connection of connections) {
         const targetKey = `${connection.id}-${plan.id}`;
@@ -284,11 +285,70 @@ export function buildSanConnectivity(
     }
   }
 
+  // Corrección de ramas de merge (igual que AF/AC): los puntos de merge acumulan los UD de los
+  // alimentadores.
+  // Preferir mergesFrom de los datos crudos; caer a la detección por grafo de conectividad.
+  const keyOf = (t: Tramo) => t._key || t.id;
+  const byKey = new Map(tramosSan.map((t) => [keyOf(t), t]));
+  const mergeBranches: Record<string, string[]> = {};
+  for (const plan of plans || []) {
+    if (plan.nivel == null) continue;
+    const raw = loadFromStorage<{ ramales?: RawElement[] } | string | null>(
+      TRAZOS_PREFIX + plan.id,
+      null,
+    );
+    if (!raw) continue;
+    const data: { ramales?: RawElement[] } = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    for (const r of data.ramales || []) {
+      if (!r.mergesFrom || !r.pts || r.pts.length === 0) continue;
+      const mergedKeyFull = `${r.id}-${plan.id}`;
+      const jc = r.pts[0];
+      // `r.mergesFrom` ya registra EXACTAMENTE qué dos ramales crearon esta unión
+      // (autoSplitJunctionAndSumFlow) — confiar en esos dos directo en vez de re-derivar la lista
+      // completa de ramas solo por proximidad de coordenadas.
+      const branchSet = new Set<string>(r.mergesFrom.map((id) => `${id}-${plan.id}`));
+      for (const other of data.ramales || []) {
+        if (other.id === r.id || !other.pts || other.pts.length < 2) continue;
+        const otherKey = `${other.id}-${plan.id}`;
+        if (branchSet.has(otherKey)) continue;
+        const oStart = other.pts[0],
+          oEnd = other.pts[other.pts.length - 1];
+        const touchesJc =
+          Math.hypot(oStart[0] - jc[0], oStart[1] - jc[1]) < 2.0 ||
+          Math.hypot(oEnd[0] - jc[0], oEnd[1] - jc[1]) < 2.0;
+        if (!touchesJc) continue;
+        const originPt = other._tribReversed ? oEnd : oStart;
+        const originsAtJc = Math.hypot(originPt[0] - jc[0], originPt[1] - jc[1]) < 2.0;
+        if (originsAtJc) continue;
+        branchSet.add(otherKey);
+      }
+      mergeBranches[mergedKeyFull] = Array.from(branchSet);
+    }
+  }
+
+  // Respaldo: detectar puntos de merge desde el grafo de conectividad (tramo que aparece como
+  // destino en calculoMap con >1 alimentador).
+  if (Object.keys(mergeBranches).length === 0) {
+    for (const [parentKey, children] of Object.entries(calculoMap)) {
+      const parentTramo = byKey.get(parentKey);
+      if (!parentTramo) continue;
+      const tramoChildren = children.filter((c) => byKey.has(c));
+      if (tramoChildren.length > 1) {
+        mergeBranches[parentKey] = tramoChildren;
+      }
+    }
+  }
+
+  // NO podar aristas de adj para redes sanitarias — a diferencia de AF/AC, la raíz sanitaria
+  // es el DRENAJE (aguas abajo), y el BFS recorre aguas ARRIBA. Podar las aristas entre un
+  // ramal mergeado y sus alimentadores desconecta todo el subárbol aguas arriba del BFS y
+  // deja los nodos con solo su propio UD parcial, rompiendo la acumulación encadenada.
+  // El BFS dirigido desde el drenaje ya construye el árbol correcto gracias a que
+  // mergeSiblingPairs (arriba) evita aristas espurias entre hermanos de un mismo merge.
+
   // Raíz = tramo que descarga a un bajante (código fin/ini empieza con 'B').
   // Dirigido: esa raíz agrega todo lo que la alimenta, así las ramas hoja aguas arriba
   // conservan solo sus propios UD y no muestran los totales de las demás.
-  const keyOf = (t: Tramo) => t._key || t.id;
-  const byKey = new Map(tramosSan.map((t) => [keyOf(t), t]));
   let rootKey: string | null = null;
   for (const t of tramosSan) {
     const fin = String(t.fin || '');
@@ -300,7 +360,7 @@ export function buildSanConnectivity(
       continue;
     }
     const bestT = byKey.get(rootKey);
-    if ((t.piso || 0) >= (bestT?.piso || 0)) rootKey = k;
+    if ((t.piso || 0) <= (bestT?.piso || 0)) rootKey = k;
   }
   // Si ningún tramo descarga a un bajante, usar el tramo más conectado (solo claves de tramo)
   // como raíz.
@@ -333,69 +393,23 @@ export function buildSanConnectivity(
         (t) => calcUDparcial(t, mergedBase),
       );
 
-  // Corrección de ramas de merge (igual que AF/AC): los puntos de merge acumulan los UD de los
-  // alimentadores.
-  // Preferir mergesFrom de los datos crudos; caer a la detección por grafo de conectividad.
-  const mergeBranches: Record<string, string[]> = {};
-  for (const plan of plans || []) {
-    if (plan.nivel == null) continue;
-    const raw = loadFromStorage<{ ramales?: RawElement[] } | string | null>(
-      TRAZOS_PREFIX + plan.id,
-      null,
-    );
-    if (!raw) continue;
-    const data: { ramales?: RawElement[] } = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    for (const r of data.ramales || []) {
-      if (!r.mergesFrom || !r.pts || r.pts.length === 0) continue;
-      const mergedKeyFull = `${r.id}-${plan.id}`;
-      if (!componentTotalMap[mergedKeyFull] && componentTotalMap[mergedKeyFull] !== 0) continue;
-      const jc = r.pts[0];
-      // `r.mergesFrom` ya registra EXACTAMENTE qué dos ramales crearon esta unión
-      // (autoSplitJunctionAndSumFlow) — confiar en esos dos directo en vez de re-derivar la lista
-      // completa de ramas solo por proximidad de coordenadas, que antes podía barrer un ramal
-      // extra no relacionado meramente sentado cerca del mismo punto (el subconteo se volvió
-      // SOBREconteo: cualquier ramal perdido cerca sumaba su UD encima de los dos alimentadores
-      // reales). El escaneo por proximidad de abajo igual corre, pero solo para atrapar un
-      // 3er+ unidor genuino más allá del par rastreado, y solo cuenta uno cuya dirección de flujo
-      // propia realmente LLEGA a jc (no uno que pasa por ahí o se aleja) — espeja el chequeo de
-      // dirección ya aplicado para AF/AC (waterNetworkRows.ts).
-      const branchSet = new Set<string>(r.mergesFrom.map((id) => `${id}-${plan.id}`));
-      for (const other of data.ramales || []) {
-        if (other.id === r.id || !other.pts || other.pts.length < 2) continue;
-        const otherKey = `${other.id}-${plan.id}`;
-        if (branchSet.has(otherKey)) continue;
-        const oStart = other.pts[0],
-          oEnd = other.pts[other.pts.length - 1];
-        const touchesJc =
-          Math.hypot(oStart[0] - jc[0], oStart[1] - jc[1]) < 2.0 ||
-          Math.hypot(oEnd[0] - jc[0], oEnd[1] - jc[1]) < 2.0;
-        if (!touchesJc) continue;
-        const originPt = other._tribReversed ? oEnd : oStart;
-        const originsAtJc = Math.hypot(originPt[0] - jc[0], originPt[1] - jc[1]) < 2.0;
-        if (originsAtJc) continue;
-        branchSet.add(otherKey);
-      }
-      mergeBranches[mergedKeyFull] = Array.from(branchSet);
-    }
+  // ownTotalMap usa el UD PARCIAL propio del ramal (no el total acumulado por BFS) para que
+  // el override de merge sume parcial_propio + total_de_cada_alimentador sin contar doble —
+  // el BFS ya acumula correctamente cuando el grafo no está podado, así que este override
+  // actúa como red de seguridad y es un no-op en el caso normal.
+  const ownTotalMap: Record<string, number> = {};
+  for (const [key] of Object.entries(mergeBranches)) {
+    const t = byKey.get(key);
+    if (t) ownTotalMap[key] = calcUDparcial(t, mergedBase);
   }
-  // Respaldo: detectar puntos de merge desde el grafo de conectividad (tramo que aparece como
-  // destino en calculoMap con >1 alimentador).
-  if (Object.keys(mergeBranches).length === 0) {
-    for (const [parentKey, children] of Object.entries(calculoMap)) {
-      const parentTramo = byKey.get(parentKey);
-      if (!parentTramo) continue;
-      const tramoChildren = children.filter((c) => byKey.has(c));
-      if (tramoChildren.length > 1) {
-        mergeBranches[parentKey] = tramoChildren;
-      }
-    }
-  }
+
   const mergeEntries = Object.entries(mergeBranches);
   for (let pass = 0; pass <= mergeEntries.length; pass++) {
     let changedAny = false;
     for (const [key, branches] of mergeEntries) {
       if (componentTotalMap[key] === undefined) continue;
-      const next = branches.reduce((sum, b) => sum + (componentTotalMap[b] || 0), 0);
+      const next =
+        (ownTotalMap[key] || 0) + branches.reduce((sum, b) => sum + (componentTotalMap[b] || 0), 0);
       if (next !== componentTotalMap[key]) {
         componentTotalMap[key] = next;
         changedAny = true;
