@@ -5,6 +5,8 @@ import {
 import { getAccessoryOptions } from '../../utils/accessoryOptions';
 import { DIAM_BY_MAT } from '../../constants';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
+import { matchDiamOption } from '../../utils/diamOptionMatch';
+import { codoPolarityOk } from '../../lib/PlanoEngine/PlanoEngineDrawing';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoRamal } from '../../lib/PlanoEngine/PlanoState';
 import type { PlanItem } from '../../context/PlansContext';
@@ -74,17 +76,44 @@ export default function ExtremeAccessoryEditor({
           );
           return;
         }
+        // Ítems 12/13: la polaridad del codo de montante (sube/baja) debe ser coherente con la
+        // dirección de flujo del ramal en el extremo — sube solo ENTREGA (cola de la flecha al
+        // extremo: el flujo SALE de P hacia el codo), baja solo RECIBE (cabeza de la flecha al
+        // extremo: el flujo LLEGA a P desde el codo).
+        if (
+          val === 'codoSube' ||
+          val === 'codoBaja' ||
+          val === 'codo90rmSube' ||
+          val === 'codo90rmBaja'
+        ) {
+          const idx = field === 'accesorioInicio' ? 0 : selElement.pts.length - 1;
+          const pt = selElement.pts[idx];
+          if (pt && !codoPolarityOk(selElement, pt, val, 0.5)) {
+            const isSube = val === 'codoSube' || val === 'codo90rmSube';
+            eng.triggerAlert(
+              'Polaridad de codo incorrecta',
+              isSube
+                ? 'El codo 90° sube exige que la cola de la flecha apunte a este extremo (el flujo debe salir de aquí hacia el codo). Invierte la dirección del ramal o usa "baja".'
+                : 'El codo 90° baja exige que la cabeza de la flecha apunte a este extremo (el flujo debe llegar aquí desde el codo). Invierte la dirección del ramal o usa "sube".',
+            );
+            return;
+          }
+        }
         const oldVal = selElement[field] || '';
         const updates: Record<string, unknown> = { [field]: val };
+        // El accesorio hereda el diámetro del ramal como valor por defecto: si el ramal ya
+        // tiene diámetro asignado, el accesorio nuevo nace con ese mismo diámetro (resuelto al
+        // valor canónico de las opciones del selector); si no, queda "Ninguno". (Cambiar el
+        // tipo de accesorio de uno existente respeta el diámetro que el usuario ya eligió.)
+        const fieldDiam: 'diametroInicio' | 'diametroFin' =
+          field === 'accesorioInicio' ? 'diametroInicio' : 'diametroFin';
+        if (val && !oldVal) updates[fieldDiam] = matchDiamOption(diamList, selElement.diametro);
         const fieldApp: 'aparatoInicio' | 'aparatoFin' =
           field === 'accesorioInicio' ? 'aparatoInicio' : 'aparatoFin';
         const removedApp = val && selElement[fieldApp] ? selElement[fieldApp] : '';
         if (removedApp) {
           updates[fieldApp] = null;
         }
-        // Los accesorios ya no heredan el diámetro propio del ramal como predeterminado — todo
-        // accesorio (sifón incluido) empieza sin diámetro elegido hasta que el usuario lo elige
-        // explícitamente.
         engineRef.current.updateSelected(updates);
         setSelElement({ ...selElement, ...updates });
         engineRef.current.render();
@@ -106,12 +135,16 @@ export default function ExtremeAccessoryEditor({
     (fieldDiam: 'diametroInicio' | 'diametroFin') => (e: React.ChangeEvent<HTMLSelectElement>) => {
       const val = e.target.value;
       if (!engineRef.current) return;
-      if (val && selElement.diametro) {
+      // Leer el diámetro del ramal fresco del engine — el snapshot selElement puede estar
+      // stale si el cambio vino de otro componente (TramoEditor vs menú contextual).
+      const fresh = engineRef.current.ramales.find((x) => x.id === selElement.id);
+      const ramalDiam = fresh?.diametro || selElement.diametro || '';
+      if (val && ramalDiam) {
         const inchFrom = (d: string) => {
           const q = d.indexOf('"');
           return q > 0 ? d.slice(0, q) : d;
         };
-        if (diamPulgFromLabel(inchFrom(val)) > diamPulgFromLabel(inchFrom(selElement.diametro))) {
+        if (diamPulgFromLabel(inchFrom(val)) > diamPulgFromLabel(inchFrom(ramalDiam))) {
           engineRef.current.triggerAlert(
             'Diámetro no permitido',
             'El diámetro del accesorio no puede ser mayor al diámetro del ramal.',
@@ -130,6 +163,7 @@ export default function ExtremeAccessoryEditor({
     return idx > 0 ? dn.slice(0, idx) : dn;
   };
   const diamOptions = diamList.map((d) => ({ n: d.n, label: diamLabel(d.n) }));
+  const diamValue = (raw: string | undefined) => matchDiamOption(diamList, raw);
 
   return (
     <div
@@ -191,11 +225,12 @@ export default function ExtremeAccessoryEditor({
               Diámetro del accesorio
             </div>
             <select
-              value={selElement.diametroInicio || selElement.diametro || ''}
+              value={diamValue(selElement.diametroInicio) || diamValue(selElement.diametro) || ''}
               aria-label="Diámetro inicio"
               onChange={onDiamChange('diametroInicio')}
               style={ExtremeAccessoryEditor_S1}
             >
+              <option value="">Ninguno</option>
               {diamOptions.map((o) => (
                 <option key={o.n} value={o.n}>
                   {o.label}
@@ -243,11 +278,12 @@ export default function ExtremeAccessoryEditor({
               Diámetro del accesorio
             </div>
             <select
-              value={selElement.diametroFin || selElement.diametro || ''}
+              value={diamValue(selElement.diametroFin) || diamValue(selElement.diametro) || ''}
               aria-label="Diámetro fin"
               onChange={onDiamChange('diametroFin')}
               style={ExtremeAccessoryEditor_S4}
             >
+              <option value="">Ninguno</option>
               {diamOptions.map((o) => (
                 <option key={o.n} value={o.n}>
                   {o.label}

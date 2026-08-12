@@ -1028,29 +1028,65 @@ function RamalEditor({
                 aria-label="Diámetro"
                 onChange={(e) => {
                   const dn = e.target.value;
+                  // Invariante: ramal.diam >= accesorio.diam, igual que en el menú contextual.
+                  const inchFrom = (d: string) => {
+                    const q = d.indexOf('"');
+                    return q > 0 ? d.slice(0, q) : d;
+                  };
+                  // Leer datos frescos del engine — el snapshot selElement puede estar stale
+                  // si el usuario cambió el diámetro desde otro componente.
+                  const fresh = engineRef.current
+                    ? selElement
+                      ? engineRef.current.ramales.find((r) => r.id === selElement.id)
+                      : [...engineRef.current.ramales]
+                          .reverse()
+                          .find((r) => r.net === activeNet && !r.mergesFrom)
+                    : null;
+                  const aI = (fresh?.diametroInicio as string) || '';
+                  const aF = (fresh?.diametroFin as string) || '';
+                  const aNum = Math.max(
+                    aI ? diamPulgFromLabel(inchFrom(aI)) : 0,
+                    aF ? diamPulgFromLabel(inchFrom(aF)) : 0,
+                  );
+                  if (dn && aNum > 0 && diamPulgFromLabel(inchFrom(dn)) < aNum) {
+                    const aINum = aI ? diamPulgFromLabel(inchFrom(aI)) : 0;
+                    const aFNum = aF ? diamPulgFromLabel(inchFrom(aF)) : 0;
+                    const blockEnd = aINum >= aFNum ? 'INICIO' : 'FIN';
+                    const blockDiam = aINum >= aFNum ? aI : aF;
+                    // eslint-disable-next-line no-console
+                    console.warn('[TramoEditor-GAS] alerta diametro', {
+                      id: selElement?.id,
+                      dn,
+                      aI,
+                      aF,
+                      aNum,
+                      parsedNew: diamPulgFromLabel(inchFrom(dn)),
+                    });
+                    engineRef.current?.triggerAlert(
+                      'Diámetro no permitido',
+                      `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${blockEnd} (${blockDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
+                    );
+                    return;
+                  }
                   setDiamSel((prev) => ({ ...prev, [activeNet]: dn }));
-                  // El diámetro de accesorios (diametroInicio/Fin) ya no tiene selector propio — siempre
-                  // refleja el diámetro del ramal, así que debe mantenerse sincronizado en cada cambio.
+                  // NO sobrescribir diametroInicio/Fin: el accesorio tiene su propio selector de
+                  // diámetro (ExtremeAccessoryEditor) y la invariante ramal >= accesorio permite
+                  // accesorios más angostos que el ramal. Forzarlos al diámetro del ramal hacía
+                  // que el segundo cambio de diámetro alertara siempre: el accesorio quedaba con
+                  // el valor anterior del ramal y bloqueaba cualquier reducción posterior.
                   if (engineRef.current && selElement) {
-                    engineRef.current.updateSelected({
-                      diametro: dn,
-                      diametroInicio: dn,
-                      diametroFin: dn,
-                    });
-                    setSelElement({
-                      ...selElement,
-                      diametro: dn,
-                      diametroInicio: dn,
-                      diametroFin: dn,
-                    });
+                    engineRef.current.updateSelected({ diametro: dn });
+                    setSelElement({ ...selElement, diametro: dn });
                   } else if (engineRef.current && !selElement) {
                     const eng = engineRef.current;
-                    const lastRamal = [...eng.ramales].reverse().find((r) => r.net === activeNet);
+                    const lastRamal = [...eng.ramales]
+                      .reverse()
+                      .find((r) => r.net === activeNet && !r.mergesFrom);
                     if (lastRamal) {
                       eng.selId = lastRamal.id;
-                      eng.updateSelected({ diametro: dn, diametroInicio: dn, diametroFin: dn });
+                      eng.updateSelected({ diametro: dn });
                       const { _labelBox, ...rest } = lastRamal;
-                      setSelElement({ ...rest, diametro: dn, diametroInicio: dn, diametroFin: dn });
+                      setSelElement({ ...rest, diametro: dn });
                     }
                   }
                 }}
@@ -1078,7 +1114,9 @@ function RamalEditor({
                   const targetRamal =
                     selElement ||
                     (engineRef.current &&
-                      [...engineRef.current.ramales].reverse().find((r) => r.net === activeNet));
+                      [...engineRef.current.ramales]
+                        .reverse()
+                        .find((r) => r.net === activeNet && !r.mergesFrom));
                   if (
                     activeNet === 'san' &&
                     (diamPulgFromLabel(v) < 3 || diamPulgFromLabel(v) > 4) &&
@@ -1091,29 +1129,62 @@ function RamalEditor({
                     );
                     return;
                   }
+                  // Invariante: ramal.diam >= accesorio.diam, igual que en el menú contextual.
+                  {
+                    const inchFrom = (d: string) => {
+                      const q = d.indexOf('"');
+                      return q > 0 ? d.slice(0, q) : d;
+                    };
+                    // Leer datos frescos del engine — el snapshot selElement puede estar stale.
+                    const fresh = engineRef.current
+                      ? selElement
+                        ? engineRef.current.ramales.find((r) => r.id === selElement.id)
+                        : [...engineRef.current.ramales]
+                            .reverse()
+                            .find((r) => r.net === activeNet && !r.mergesFrom)
+                      : null;
+                    const aI = (fresh?.diametroInicio as string) || '';
+                    const aF = (fresh?.diametroFin as string) || '';
+                    const aNum = Math.max(
+                      aI ? diamPulgFromLabel(inchFrom(aI)) : 0,
+                      aF ? diamPulgFromLabel(inchFrom(aF)) : 0,
+                    );
+                    if (v && aNum > 0 && diamPulgFromLabel(inchFrom(v)) < aNum) {
+                      const aINum = aI ? diamPulgFromLabel(inchFrom(aI)) : 0;
+                      const aFNum = aF ? diamPulgFromLabel(inchFrom(aF)) : 0;
+                      const blockEnd = aINum >= aFNum ? 'INICIO' : 'FIN';
+                      const blockDiam = aINum >= aFNum ? aI : aF;
+                      // eslint-disable-next-line no-console
+                      console.warn('[TramoEditor-PVC] alerta diametro', {
+                        id: selElement?.id,
+                        v,
+                        aI,
+                        aF,
+                        aNum,
+                        parsedNew: diamPulgFromLabel(inchFrom(v)),
+                      });
+                      engineRef.current?.triggerAlert(
+                        'Diámetro no permitido',
+                        `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${blockEnd} (${blockDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
+                      );
+                      return;
+                    }
+                  }
                   setDiamSel((prev) => ({ ...prev, [activeNet]: v }));
-                  // El diámetro de accesorios (diametroInicio/Fin) ya no tiene selector propio — siempre
-                  // refleja el diámetro del ramal, así que debe mantenerse sincronizado en cada cambio.
+                  // NO sobrescribir diametroInicio/Fin — ver comentario en la rama GAS.
                   if (engineRef.current && selElement) {
-                    engineRef.current.updateSelected({
-                      diametro: v,
-                      diametroInicio: v,
-                      diametroFin: v,
-                    });
-                    setSelElement({
-                      ...selElement,
-                      diametro: v,
-                      diametroInicio: v,
-                      diametroFin: v,
-                    });
+                    engineRef.current.updateSelected({ diametro: v });
+                    setSelElement({ ...selElement, diametro: v });
                   } else if (engineRef.current && !selElement) {
                     const eng = engineRef.current;
-                    const lastRamal = [...eng.ramales].reverse().find((r) => r.net === activeNet);
+                    const lastRamal = [...eng.ramales]
+                      .reverse()
+                      .find((r) => r.net === activeNet && !r.mergesFrom);
                     if (lastRamal) {
                       eng.selId = lastRamal.id;
-                      eng.updateSelected({ diametro: v, diametroInicio: v, diametroFin: v });
+                      eng.updateSelected({ diametro: v });
                       const { _labelBox, ...rest } = lastRamal;
-                      setSelElement({ ...rest, diametro: v, diametroInicio: v, diametroFin: v });
+                      setSelElement({ ...rest, diametro: v });
                     }
                   }
                 }}
@@ -1178,7 +1249,9 @@ function RamalEditor({
                     setSelElement({ ...selElement, pendiente: v });
                   } else if (engineRef.current && !selElement) {
                     const eng = engineRef.current;
-                    const lastRamal = [...eng.ramales].reverse().find((r) => r.net === activeNet);
+                    const lastRamal = [...eng.ramales]
+                      .reverse()
+                      .find((r) => r.net === activeNet && !r.mergesFrom);
                     if (lastRamal) {
                       eng.selId = lastRamal.id;
                       eng.updateSelected({ pendiente: v });
@@ -1334,6 +1407,10 @@ function CanalNumField({
         const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
         setText(raw);
       }}
+      onKeyDown={(e) => {
+        // Enter commitea el cambio (mismo comportamiento que el resto de campos numéricos)
+        if (e.key === 'Enter') e.currentTarget.blur();
+      }}
       onBlur={() => {
         setEditing(false);
         const v = parseFloat(text) || 0;
@@ -1413,6 +1490,26 @@ function CanalTramoEditor() {
           label="Altura (cm)"
           value={selElement.altura || 0}
           onCommit={(v) => handleUpdateSel('altura', v)}
+        />
+      </div>
+
+      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
+        <div
+          style={{
+            fontFamily: "'Geist',monospace",
+            fontSize: 12,
+            color: '#9BA8AA',
+            marginBottom: 6,
+            textTransform: 'uppercase',
+            letterSpacing: 1,
+          }}
+        >
+          Longitud (cm)
+        </div>
+        <CanalNumField
+          label="Longitud (cm)"
+          value={selElement.longitud || 0}
+          onCommit={(v) => handleUpdateSel('longitud', v)}
         />
       </div>
     </>
@@ -1538,7 +1635,7 @@ function AreaHeaderFields() {
         >
           <option value="">— Sin bajante —</option>
           {(engineRef.current?.bajantes || [])
-            .filter((b) => b.net === selElement.net)
+            .filter((b) => b.net === selElement.net && b.tipo !== 'canal')
             .map((b) => (
               <option key={b.id} value={b.id}>
                 {bajanteLabel(b, engineRef.current?.nivelActual?.label)}

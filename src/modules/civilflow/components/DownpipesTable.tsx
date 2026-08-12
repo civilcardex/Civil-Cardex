@@ -995,7 +995,7 @@ const BajantesTable = memo(function BajantesTable_() {
                                   new CustomEvent('civilflow_diametro_validation', {
                                     detail: {
                                       title: 'Diámetro no permitido',
-                                      message: `El diámetro del ramal no puede ser menor al del accesorio conectado (${res.accessoryDiam}).`,
+                                      message: `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${res.accessoryEnd} (${res.accessoryDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
                                     },
                                   }),
                                 );

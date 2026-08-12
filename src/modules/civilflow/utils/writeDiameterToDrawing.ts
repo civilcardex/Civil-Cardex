@@ -69,6 +69,7 @@ export interface WriteDiametroResult {
   ok: boolean;
   reason?: 'accessory-larger';
   accessoryDiam?: string;
+  accessoryEnd?: 'INICIO' | 'FIN';
   attemptedDiam?: string;
 }
 
@@ -108,16 +109,24 @@ export function writeDiametroToDrawing(
           const newIn = diamPulgFromLabel(newDiamLabel.replace(/-/g, ' '));
           const accMax = maxAccessoryDiam(r as unknown as Parameters<typeof maxAccessoryDiam>[0]);
           if (newIn > 0 && accMax > 0 && newIn < accMax) {
-            const accDiam =
-              (r as unknown as { diametroInicio?: string; diametroFin?: string }).diametroInicio ||
-              (r as unknown as { diametroInicio?: string; diametroFin?: string }).diametroFin ||
-              '';
+            // Informar CUÁL extremo bloquea: el accesorio máximo puede ser el de FIN aunque el
+            // de INICIO sea menor, y mostrarlo era el origen de las alertas "imposibles" — el
+            // usuario veía el diámetro del extremo equivocado en el mensaje.
+            const dI = (r as unknown as { diametroInicio?: string }).diametroInicio || '';
+            const dF = (r as unknown as { diametroFin?: string }).diametroFin || '';
+            const inpI = dI ? diamPulgFromLabel(inchPartOf(dI)) : 0;
+            const inpF = dF ? diamPulgFromLabel(inchPartOf(dF)) : 0;
+            const extremo = inpI >= inpF ? 'INICIO' : 'FIN';
+            const accDiam = inpI >= inpF ? dI : dF;
             blockedReason = {
               ok: false,
               reason: 'accessory-larger',
               accessoryDiam: accDiam,
+              accessoryEnd: extremo,
               attemptedDiam: newDiamLabel,
             };
+            // eslint-disable-next-line no-console
+            console.warn('[writeDiametroToDrawing] bloqueo', { extremo, accDiam });
             continue;
           }
         }

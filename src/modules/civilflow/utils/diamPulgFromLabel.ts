@@ -13,6 +13,9 @@ export const FRAC_CHAR_TO_DEC: Record<string, number> = {
 export function diamPulgFromLabel(d: unknown): number {
   if (!d) return 0;
   let s = String(d).trim();
+  // Comillas tipográficas de pulgada (U+2033 doble prima, U+201D comillas tipográficas) a la
+  // comilla ASCII — los valores pegados/legados pueden usar cualquiera de las tres.
+  s = s.replace(/[″”]/g, '"');
   // Un diámetro puede venir con especificación extra (p. ej. `1-1/2" RDE 21` o `1/2" — 42.7 mm`).
   // Cuando hay separador '—', elegir el segmento que realmente describe pulgadas (contiene '"' o
   // una fracción); el otro segmento es el equivalente métrico/especificación y NO debe usarse.
@@ -56,6 +59,25 @@ export function diamPulgFromLabel(d: unknown): number {
   const fracMatch = s.match(/(\d+)\s*\/\s*(\d+)/);
   if (fracMatch) return parseFloat(fracMatch[1]) / parseFloat(fracMatch[2]);
 
-  const simple = s.match(/(\d+(?:\.\d+)?)/);
-  return simple ? parseFloat(simple[1]) : 0;
+  // Sin comilla de pulgada llegado aquí. El diámetro puede venir con letras (RDE, mm, CPVC…) o
+  // guardarse crudo (p. ej. `54.5 mm`, `107.7`, `42.68`). Solo se acepta un número en posición
+  // INICIAL: una especificación desnuda como `RDE 21` o `SCH 80` tiene número pero NO es un
+  // diámetro — leer "21" como pulgadas bloqueaba todo cambio de diámetro del ramal. Y un valor
+  // métrico crudo leído como pulgadas (54.5 > cualquier opción real) disparaba alertas falsas.
+  // Reglas:
+  //  - si la etiqueta declara "mm", o es un número desnudo sin letras y mayor a 12" (el máximo
+  //    real del catálogo es Concreto 12" / Novatec 315 mm) → es métrico → convertir (÷25.4);
+  //  - el equivalente métrico de un diámetro nominal (54.5 mm ≈ 2") cae ~5% ARRIBA del nominal;
+  //    redondear hacia abajo al 1/2" más cercano lo iguala con el valor en pulgadas del mismo
+  //    elemento para que la comparación ramal >= accesorio no los vea distintos.
+  const numMatch = s.match(/^(\d+(?:\.\d+)?)/);
+  if (numMatch) {
+    let inches = parseFloat(numMatch[1]);
+    const isMetric = /mm/i.test(s) || (!/[a-z]/i.test(s) && inches > 12);
+    if (isMetric) {
+      inches = Math.floor((inches / 25.4) * 2) / 2;
+    }
+    return inches;
+  }
+  return 0;
 }
