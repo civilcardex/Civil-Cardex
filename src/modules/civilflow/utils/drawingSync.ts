@@ -334,15 +334,37 @@ function buildNonPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>)
   return out;
 }
 
+export const hasNumericPlanSuffix = (key: string): boolean => {
+  const lastUnderscore = key.lastIndexOf('_');
+  return lastUnderscore > 0 && /^\d+$/.test(key.slice(lastUnderscore + 1));
+};
+
+// Una clave aparato/hidro es huérfana solo si el ramal/bajante NO existe en NINGÚN plano
+// legible: se conserva si algún key válido coincide exactamente (clave `net_id_planId` con su
+// plan) o comparte el prefijo del elemento (`net_id`, o el mismo `net_id` en otro plan — un
+// plan puede tener trazos locales desactualizados y re-sincronizarse después desde la BD).
+export const isOrphanKey = (key: string, validKeys: Set<string>): boolean => {
+  const base = hasNumericPlanSuffix(key) ? key.slice(0, key.lastIndexOf('_')) : key;
+  for (const vk of validKeys) {
+    if (vk === key || vk.startsWith(base + '_')) return false;
+  }
+  return true;
+};
+
 function performGarbageCollection(plans: SyncPlanInput[]) {
-  if (!Array.isArray(plans)) return;
+  if (!Array.isArray(plans) || plans.length === 0) return;
   const validKeys = new Set<string>();
   const validGasRamales = new Set<string>();
 
   for (const plan of plans) {
     if (!plan || plan.id === undefined) continue;
     const raw = loadFromStorage<TraceData | null>(TRAZOS_PREFIX + plan.id, null);
-    if (!raw) continue;
+    if (!raw) {
+      // Un plano sin trazos locales aún puede tener datos pendientes en la BD (recarga con
+      // carga asíncrona, sesión sin guardar). Sin todos los planos legibles no se puede probar
+      // que una clave sea huérfana; borrar aquí borra las UC/UD asignadas al recargar la página.
+      return;
+    }
 
     let data = raw;
     if (typeof data === 'string') {
@@ -379,7 +401,7 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
   const rawAparatos = loadFromStorage<Record<string, unknown>>(APARATOS_BY_TRAMO_KEY, {});
   let aparatosChanged = false;
   for (const key of Object.keys(rawAparatos)) {
-    if (!validKeys.has(key)) {
+    if (isOrphanKey(key, validKeys)) {
       delete rawAparatos[key];
       aparatosChanged = true;
     }
@@ -392,7 +414,7 @@ function performGarbageCollection(plans: SyncPlanInput[]) {
   const rawHidro = loadFromStorage<Record<string, unknown>>(HYDRO_DATA_STORAGE_KEY, {});
   let hidroChanged = false;
   for (const key of Object.keys(rawHidro)) {
-    if (!validKeys.has(key)) {
+    if (isOrphanKey(key, validKeys)) {
       delete rawHidro[key];
       hidroChanged = true;
     }
