@@ -1132,12 +1132,6 @@ export default class PlanoEngine implements IPlanoEngineCore {
         return;
       }
       handleSelectDown(this, x, y, e instanceof MouseEvent && (e.ctrlKey || false));
-      // Diagnóstico DEV del flujo de selección (bug RAF3 fantasma): cada clic en tool 'sel'
-      // deja una traza de qué ganó en cada etapa. Producción no lo imprime.
-      if (import.meta.env?.DEV && this._debugSel) {
-        // eslint-disable-next-line no-console
-        console.info('[SEL-DEBUG]', JSON.stringify(this._debugSel));
-      }
     } else if (this.tool === 'line') {
       handleLineDown(this, p.x, p.y);
     } else if (this.tool === 'dim') {

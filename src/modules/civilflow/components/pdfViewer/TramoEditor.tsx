@@ -1053,15 +1053,6 @@ function RamalEditor({
                     const aFNum = aF ? diamPulgFromLabel(inchFrom(aF)) : 0;
                     const blockEnd = aINum >= aFNum ? 'INICIO' : 'FIN';
                     const blockDiam = aINum >= aFNum ? aI : aF;
-                    // eslint-disable-next-line no-console
-                    console.warn('[TramoEditor-GAS] alerta diametro', {
-                      id: selElement?.id,
-                      dn,
-                      aI,
-                      aF,
-                      aNum,
-                      parsedNew: diamPulgFromLabel(inchFrom(dn)),
-                    });
                     engineRef.current?.triggerAlert(
                       'Diámetro no permitido',
                       `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${blockEnd} (${blockDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
@@ -1154,15 +1145,6 @@ function RamalEditor({
                       const aFNum = aF ? diamPulgFromLabel(inchFrom(aF)) : 0;
                       const blockEnd = aINum >= aFNum ? 'INICIO' : 'FIN';
                       const blockDiam = aINum >= aFNum ? aI : aF;
-                      // eslint-disable-next-line no-console
-                      console.warn('[TramoEditor-PVC] alerta diametro', {
-                        id: selElement?.id,
-                        v,
-                        aI,
-                        aF,
-                        aNum,
-                        parsedNew: diamPulgFromLabel(inchFrom(v)),
-                      });
                       engineRef.current?.triggerAlert(
                         'Diámetro no permitido',
                         `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${blockEnd} (${blockDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,

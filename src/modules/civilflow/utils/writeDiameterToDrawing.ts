@@ -125,8 +125,6 @@ export function writeDiametroToDrawing(
               accessoryEnd: extremo,
               attemptedDiam: newDiamLabel,
             };
-            // eslint-disable-next-line no-console
-            console.warn('[writeDiametroToDrawing] bloqueo', { extremo, accDiam });
             continue;
           }
         }
