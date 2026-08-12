@@ -2,6 +2,8 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import { useTramos } from '../context/TramosContext';
 import { usePlans } from '../context/PlansContext';
 import { computeAccesoriosTable } from '../utils/sanAccesoriosRows';
+import { fmtPulg } from '../utils/formatUtils';
+import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
 import { SAN_ACCESORIOS, ACCESORIOS_HIDRO, GAS_ACCESORIOS } from '../constants';
 
 const TH: React.CSSProperties = {
@@ -86,8 +88,37 @@ const AccesoriosDiamPage = memo(function AccesoriosDiamPage({
         if (acc) out.push({ diam, acc, count: v });
       }
     }
+    // Bug 2: filas pseudo de bushing — UNA fila por par de diámetros que tenga conexiones reales
+    // en el dibujo, con la CANTIDAD de bushings contada (no 1 fijo por par). El nombre del
+    // accesorio es solo "Bushing" (sin diámetros) y los diámetros van en la columna "Diámetro"
+    // como `mayor" × menor"`. Solo en la tabla resumen de la UI (af/ac/gas); no viven ni en los
+    // catálogos ni en el storage ni en el dibujo.
+    if ((net === 'af' || net === 'ac' || net === 'gas') && table.bushingCounts) {
+      const entries = Object.entries(table.bushingCounts)
+        .map(([k, count]) => {
+          const [mayor, menor] = k.split('_').map(Number);
+          return { mayor, menor, count };
+        })
+        .sort((a, b) => b.mayor - a.mayor || b.menor - a.menor);
+      for (const { mayor, menor, count } of entries) {
+        out.push({
+          diam: `${fmtPulg(mayor)} × ${fmtPulg(menor)}`,
+          acc: {
+            id: `bushing-${mayor}-${menor}`,
+            nombre: 'Bushing',
+            icono: '',
+            cat: 'Bushings',
+            emoji: '🔩',
+          },
+          count,
+        });
+      }
+    }
+    // Reordenar por diámetro desc (estable) para que las filas bushing queden dentro del grupo
+    // de su diámetro mayor.
+    out.sort((a, b) => (diamPulgFromLabel(b.diam) || 0) - (diamPulgFromLabel(a.diam) || 0));
     return out;
-  }, [table, catalog]);
+  }, [table, catalog, net]);
 
   return (
     <div
@@ -154,24 +185,7 @@ const AccesoriosDiamPage = memo(function AccesoriosDiamPage({
                       {r.diam}
                     </td>
                     <td className="c" style={TD}>
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <img
-                          src={r.acc.icono}
-                          alt={r.acc.nombre}
-                          width={18}
-                          height={18}
-                          style={{ width: 18, height: 18, objectFit: 'contain' }}
-                          loading="lazy"
-                        />
-                        {r.acc.nombre}
-                      </span>
+                      {r.acc.nombre}
                     </td>
                     <td className="c" style={{ ...TD, fontWeight: 700 }}>
                       {r.count}

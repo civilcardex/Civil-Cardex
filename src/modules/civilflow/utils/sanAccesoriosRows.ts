@@ -66,6 +66,62 @@ const CODO_MEDIO_90 = {
   cat: 'Codos',
 };
 
+/**
+ * Bug 2: conteo REAL de bushings — cada conexión de un ramal MENOR (más chico) contra un elemento
+ * MAYOR (ramal de mayor diámetro o bajante/montante con más diámetro) es UNA reducción-bushing.
+ * Puro: solo geometría + diámetros, testable sin fixtures. Clave `${mayor}_${menor}` (pulgadas).
+ * Un extremo del menor debe caer sobre el cuerpo/vértice del mayor (tol 0.5, misma que usa el
+ * resto de la detección de uniones del módulo). Bajantes se chequean primero: la conexión ramal→
+ * montante es el caso de bushing más común y evita doble conteo cuando un ramal mayor y un
+ * bajante comparten el punto.
+ */
+const BUSHING_TOL = 0.5;
+
+export function computeBushingCounts(
+  minors: Array<{ id: string; diametro: string; pts: number[][] }>,
+  majors: Array<{ id: string; diametro: string; pts: number[][] }>,
+  bajantes: Array<{ id: string; diametro: string; x: number; y: number }>,
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  const pulg = (d: string): number => diamPulgFromLabel(d);
+  const add = (mayor: number, menor: number) => {
+    const k = `${mayor}_${menor}`;
+    counts[k] = (counts[k] || 0) + 1;
+  };
+  for (const m of minors) {
+    const dm = pulg(m.diametro);
+    if (dm <= 0 || !m.pts || m.pts.length < 2) continue;
+    for (const ep of [m.pts[0], m.pts[m.pts.length - 1]]) {
+      let matchedBajante = false;
+      for (const b of bajantes) {
+        const db = pulg(b.diametro);
+        if (db <= dm) continue;
+        if (Math.hypot(ep[0] - b.x, ep[1] - b.y) <= BUSHING_TOL) {
+          add(db, dm);
+          matchedBajante = true;
+          break;
+        }
+      }
+      if (matchedBajante) continue;
+      // Un extremo en la UNIÓN de dos ramales mayores (tee 6"-6" donde descarga el de 4") es
+      // una reducción contra CADA mayor que toca el punto — sin break al primero, o la unión
+      // RAC1+RAC3 del caso real contaría 1 bushing en vez de 2.
+      for (const M of majors) {
+        if (M.id === m.id) continue;
+        const dM = pulg(M.diametro);
+        if (dM <= dm) continue;
+        for (let i = 0; i < M.pts.length - 1; i++) {
+          if (distToSegment(ep, M.pts[i], M.pts[i + 1]) <= BUSHING_TOL) {
+            add(dM, dm);
+            break;
+          }
+        }
+      }
+    }
+  }
+  return counts;
+}
+
 export function computeAccesoriosTable(
   net: 'san' | 'll' | 'af' | 'ac' | 'gas',
   tramos: Tramo[],
@@ -118,6 +174,9 @@ export function computeAccesoriosTable(
     accMed?: Record<string, string>;
     planId: string;
   }> = [];
+  // Bajantes/montantes del dibujo (para conteo de bushing: un ramal menor que conecta a un
+  // bajante de mayor diámetro necesita reducción).
+  const bajanteDrawing: Array<{ id: string; diametro: string; x: number; y: number }> = [];
   for (const plan of plans || []) {
     if (plan.status !== 'confirmed') continue;
     const raw = loadFromStorage<unknown>(TRAZOS_PREFIX + plan.id, null);
@@ -135,6 +194,13 @@ export function computeAccesoriosTable(
             accesorioInicio?: string;
             accesorioFin?: string;
           }>;
+          bajantes?: Array<{
+            id?: string;
+            x?: number;
+            y?: number;
+            dNominal?: string;
+            diametro?: string;
+          }>;
         }
       | string;
     if (typeof data === 'string') {
@@ -143,6 +209,27 @@ export function computeAccesoriosTable(
       } catch {
         continue;
       }
+    }
+    const bajantes =
+      (
+        data as {
+          bajantes?: Array<{
+            id?: string;
+            x?: number;
+            y?: number;
+            dNominal?: string;
+            diametro?: string;
+          }>;
+        }
+      ).bajantes || [];
+    for (const b of bajantes) {
+      if (b.x == null || b.y == null) continue;
+      bajanteDrawing.push({
+        id: String(b.id || ''),
+        diametro: b.dNominal || b.diametro || '',
+        x: b.x,
+        y: b.y,
+      });
     }
     const ramales = (
       (
@@ -721,11 +808,43 @@ export function computeAccesoriosTable(
 
   if (totalsByDiameter.length === 0) return null;
 
+  // F2 + Bug 2: diámetros presentes y conteo REAL de bushings (af/ac/gas) — cada conexión de un
+  // ramal menor contra un elemento mayor (ramal o bajante) es una reducción. Los menores
+  // incluyen tributarios (el brazo de una tee casi siempre lo es); los mayores son los ramales
+  // y bajantes del dibujo.
+  let diamsPresent: string[] | undefined;
+  let bushingCounts: Record<string, number> | undefined;
+  if (net === 'af' || net === 'ac' || net === 'gas') {
+    const seen = new Set<number>();
+    for (const r of drawingRamales) {
+      const p = diamPulgFromLabel(r.diametro) || pulgById[r.id] || 0;
+      if (p > 0) seen.add(p);
+    }
+    if (seen.size >= 2) diamsPresent = [...seen].sort((a, b) => b - a).map(String);
+    const minors = [
+      ...drawingRamales.map((r) => ({ id: r.id, diametro: r.diametro, pts: r.pts })),
+      ...tribDrawing.map((r) => ({ id: r.id, diametro: r.diametro, pts: r.pts })),
+    ];
+    const majors = drawingRamales.map((r) => ({ id: r.id, diametro: r.diametro, pts: r.pts }));
+    const counts = computeBushingCounts(minors, majors, bajanteDrawing);
+    if (Object.keys(counts).length > 0) bushingCounts = counts;
+  }
+
   const headers = ['Diámetro', ...summaryCatalog.map((a) => a.nombre), 'Total'];
   const rows = totalsByDiameter.map((row) => {
     const total = Object.values(row.accesorios).reduce((s, n) => s + n, 0);
     return [row.diametro, ...summaryCatalog.map((a) => row.accesorios[a.id] || 0), total];
   });
 
-  return dropAllZeroColumns({ title, headers, rows }, 1, 1);
+  return dropAllZeroColumns(
+    {
+      title,
+      headers,
+      rows,
+      ...(diamsPresent ? { diamsPresent } : {}),
+      ...(bushingCounts ? { bushingCounts } : {}),
+    },
+    1,
+    1,
+  );
 }

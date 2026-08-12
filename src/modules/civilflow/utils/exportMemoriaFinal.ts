@@ -20,6 +20,13 @@ export interface MemoriaTable {
   // par angosto acometida parámetros/verificación en las exportaciones PDF y DOCX; el par
   // comparte una sección de página en DOCX y una fila en PDF). Ignorado por la exportación Excel.
   side?: boolean;
+  // Diámetros (en pulgadas, como string) presentes en el dibujo para la red de esta tabla —
+  // usado por la UI para derivar filas pseudo de bushing (un par mayor→menor por combinación de
+  // diámetros). Solo lo llenan las redes de presión (af/ac/gas).
+  diamsPresent?: string[];
+  // Conteo REAL de bushing por par de diámetros (clave `${mayor}_${menor}`, pulgadas) — cuántas
+  // conexiones menor→mayor hay de verdad en el dibujo (Bug 2). Solo af/ac/gas.
+  bushingCounts?: Record<string, number>;
 }
 
 // Quita columnas que son todo-cero en todas las filas — usado para tablas de conteo de
