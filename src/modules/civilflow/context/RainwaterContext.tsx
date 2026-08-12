@@ -42,6 +42,8 @@ export interface CanalLL {
   pendiente: number;
   b: number;
   h: number;
+  /** Largo horizontal del canal (cm), solo para glifos dibujados (fromCanal). */
+  longitud?: number;
   /** Es true cuando b/h provienen de un glifo de canal dibujado (tipo:'canal' en la red 'll') — en
    * ese caso la tabla debe mostrar esos dos campos como solo lectura, porque el dibujo es la
    * fuente de verdad de ambos (ver canalesLlAuto abajo). */
@@ -222,13 +224,14 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
         intensidad: manual?.intensidad ?? 100,
         coeficienteC: manual?.coeficienteC ?? 0.0278,
         manning: manual?.manning ?? 0.009,
-        pendiente: manual?.pendiente ?? 0,
+        pendiente: 2,
         // b/h siempre vienen del glifo dibujado, nunca del override manual — porque son
         // exactamente los valores que la herramienta de canal "importa" a la tabla; una
         // entrada manual aquí igual se revertiría en silencio en el próximo render
         // (canalesLlAuto se recalcula en cada pasada).
         b: (glyph.base as number) || 0,
         h: (glyph.altura as number) || 0,
+        longitud: (glyph.longitud as number) || 0,
         fromCanal: true,
       });
     }
@@ -238,6 +241,9 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       if (usedManual.has(key)) continue;
       out.push(m);
     }
+
+    // La pendiente del canal es siempre 2% (S=2%) — fija por diseño, no editable en la tabla.
+    for (const c of out) c.pendiente = 2;
 
     return out;
   }, [drawingCanales, drawnCanalGlyphs, canalesLl, areaAcumMap]);

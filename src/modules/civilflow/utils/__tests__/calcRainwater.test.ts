@@ -150,7 +150,7 @@ describe('chequeoCanalLluvia', () => {
       b: 30,
       h: 20,
     });
-    expect(totalStr).toBe(`30 x ${20 + BORDE_LIBRE_CANAL_CM}`);
+    expect(totalStr).toBe(`30x${20 + BORDE_LIBRE_CANAL_CM}`);
   });
 
   it('totalStr "—" sin dimensiones', () => {

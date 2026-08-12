@@ -49,10 +49,11 @@ export function bajanteHitDistance(b: PlanoBajante, x: number, y: number): numbe
 
 /** Devuelve la esquina superior-izquierda y la inferior-derecha del canal en coordenadas de
  *  plano. El canal se dibuja desde su esquina (b.x, b.y) y crece hacia abajo-derecha según su
- *  base y altura (dadas en cm y convertidas a píxeles de plano aquí mismo). */
+ *  longitud (horizontal) y base (vertical), dadas en cm y convertidas a píxeles de plano aquí
+ *  mismo. */
 function canalRect(engine: IPlanoEngineCore, canal: PlanoBajante) {
-  const w = engine.cmToPlanePx(canal.base || 0);
-  const h = engine.cmToPlanePx(canal.altura || 0);
+  const w = engine.cmToPlanePx(canal.longitud || 0);
+  const h = engine.cmToPlanePx(canal.base || 0);
   return { x0: canal.x, y0: canal.y, x1: canal.x + w, y1: canal.y + h };
 }
 
@@ -146,18 +147,31 @@ export interface CanalFlowArrow {
  * borde del canal para los extremos), de modo que las flechas no se pisan entre sí.
  */
 
-export function computeCanalFlowArrows(
+/** Un tramo de canal servido por un bajante: el intervalo [tLeft, tRight] sobre el eje largo
+ *  (0..1) que ese bajante recoge. Un bajante en el INTERIOR del canal produce DOS tramos (uno
+ *  por cada lado de la división), cada uno con su propia etiqueta — un bajante en un extremo
+ *  produce uno solo. Los límites caen en el punto medio entre bajantes vecinos (o en el borde
+ *  del canal para los extremos). */
+export interface CanalSegment {
+  bajante: PlanoBajante;
+  tLeft: number;
+  tRight: number;
+}
+
+/** Calcula los tramos por bajante del canal (ver CanalSegment) — comparte la misma matemática
+ *  de ejes/límites que computeCanalFlowArrows, así el renderer de etiquetas y las flechas nunca
+ *  divergen. */
+export function computeCanalSegments(
   engine: IPlanoEngineCore,
   canal: PlanoBajante,
-): CanalFlowArrow[] {
-  const w = engine.cmToPlanePx(canal.base || 0);
-  const h = engine.cmToPlanePx(canal.altura || 0);
+): CanalSegment[] {
+  const w = engine.cmToPlanePx(canal.longitud || 0);
+  const h = engine.cmToPlanePx(canal.base || 0);
   // El flujo corre por el lado LARGO del canal: un canal de drenaje se dibuja alargado, y el lado
   // corto es solo el ancho de la sección — no tiene sentido dibujar flechas en esa dirección.
   const horizontal = w >= h;
   const axisLen = horizontal ? w : h;
   if (axisLen <= 0) return [];
-  const midCross = horizontal ? canal.y + h / 2 : canal.x + w / 2;
 
   const assoc = engine.bajantes.filter(
     (b) => b.tipo !== 'canal' && b.net === 'll' && b.canalId === canal.id,
@@ -166,26 +180,60 @@ export function computeCanalFlowArrows(
 
   const toAxisPos = (b: PlanoBajante) =>
     horizontal ? (b.x - canal.x) / axisLen : (b.y - canal.y) / axisLen;
-  const toPlanePoint = (t: number): { x: number; y: number } =>
-    horizontal
-      ? { x: canal.x + t * axisLen, y: midCross }
-      : { x: midCross, y: canal.y + t * axisLen };
 
   const sorted = assoc
     .map((b) => ({ b, t: Math.min(1, Math.max(0, toAxisPos(b))) }))
     .sort((a, c) => a.t - c.t);
 
+  const results: CanalSegment[] = [];
+  const EPS = 0.02;
+  for (let i = 0; i < sorted.length; i++) {
+    const entry = sorted[i];
+    const tLeft = i === 0 ? 0 : (sorted[i - 1].t + entry.t) / 2;
+    const tRight = i === sorted.length - 1 ? 1 : (entry.t + sorted[i + 1].t) / 2;
+    // Tramo hacia el lado izquierdo/inicio de la división: [tLeft, entry.t]
+    if (entry.t - tLeft > EPS) {
+      results.push({ bajante: entry.b, tLeft, tRight: entry.t });
+    }
+    // Tramo hacia el lado derecho/fin de la división: [entry.t, tRight]
+    if (tRight - entry.t > EPS) {
+      results.push({ bajante: entry.b, tLeft: entry.t, tRight });
+    }
+  }
+  return results;
+}
+
+export function computeCanalFlowArrows(
+  engine: IPlanoEngineCore,
+  canal: PlanoBajante,
+): CanalFlowArrow[] {
+  const w = engine.cmToPlanePx(canal.longitud || 0);
+  const h = engine.cmToPlanePx(canal.base || 0);
+  const horizontal = w >= h;
+  const axisLen = horizontal ? w : h;
+  if (axisLen <= 0) return [];
+  const midCross = horizontal ? canal.y + h / 2 : canal.x + w / 2;
+
+  const segments = computeCanalSegments(engine, canal);
+  if (segments.length === 0) return [];
+
+  const toPlanePoint = (t: number): { x: number; y: number } =>
+    horizontal
+      ? { x: canal.x + t * axisLen, y: midCross }
+      : { x: midCross, y: canal.y + t * axisLen };
+
   const arrows: CanalFlowArrow[] = [];
   const EPS = 0.02;
-  sorted.forEach((entry, i) => {
-    const leftBoundary = i === 0 ? 0 : (sorted[i - 1].t + entry.t) / 2;
-    const rightBoundary = i === sorted.length - 1 ? 1 : (entry.t + sorted[i + 1].t) / 2;
+  for (const seg of segments) {
+    const entryT = horizontal
+      ? (seg.bajante.x - canal.x) / axisLen
+      : (seg.bajante.y - canal.y) / axisLen;
     // La cabeza de la flecha apunta al CENTRO del círculo del bajante (su posición real), no al
     // punto proyectado sobre el eje del canal — así el renderer puede recortar la flecha hasta el
     // borde del círculo y siempre se ve bien alineada.
-    const head = { x: entry.b.x, y: entry.b.y };
-    if (entry.t - leftBoundary > EPS) {
-      const tail = toPlanePoint(leftBoundary);
+    const head = { x: seg.bajante.x, y: seg.bajante.y };
+    if (entryT - seg.tLeft > EPS) {
+      const tail = toPlanePoint(seg.tLeft);
       // La cola se alinea en la misma línea que la cabeza (misma coordenada transversal) para que
       // la flecha quede siempre recta a lo largo del canal — nada de diagonales raras sin importar
       // dónde quede el bajante dentro del ancho.
@@ -195,14 +243,14 @@ export function computeCanalFlowArrows(
         arrows.push({ x0: head.x, y0: tail.y, x1: head.x, y1: head.y });
       }
     }
-    if (rightBoundary - entry.t > EPS) {
-      const tail = toPlanePoint(rightBoundary);
+    if (seg.tRight - entryT > EPS) {
+      const tail = toPlanePoint(seg.tRight);
       if (horizontal) {
         arrows.push({ x0: tail.x, y0: head.y, x1: head.x, y1: head.y });
       } else {
         arrows.push({ x0: head.x, y0: tail.y, x1: head.x, y1: head.y });
       }
     }
-  });
+  }
   return arrows;
 }

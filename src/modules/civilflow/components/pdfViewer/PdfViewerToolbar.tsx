@@ -19,10 +19,10 @@ export function isToolDisabledForNet(
 ): boolean {
   if (toolId === 'baj') return !['san', 'vent', 'll'].includes(net);
   if (toolId === 'mon') return !['gas', 'ac', 'af'].includes(net);
-  // Los glifos de canal recolectora solo tienen sentido cuando esa red está activa para el
-  // proyecto — de lo contrario la herramienta dibujaría formas de una red que el proyecto
-  // no está diseñando.
-  if (toolId === 'canal') return !recolectoraActive;
+  // Los glifos de canal recolectora solo tienen sentido con la red de agua lluvias ('ll')
+  // ACTIVA en esa sesión — de lo contrario la herramienta dibujaría formas de una red que el
+  // proyecto no está diseñando (ni el piso la está viendo).
+  if (toolId === 'canal') return net !== 'll' || !recolectoraActive;
   return false;
 }
 
@@ -184,18 +184,18 @@ function PdfViewerToolbar_({
       shortcut: 'C',
     });
   }
-  if (activeNet === 'll') {
-    netTools.splice(7, 0, {
-      id: 'canal',
-      label: 'Canal',
-      ico: '▭',
-      // 'C' is shared with Contador (af/gas) — mutually exclusive nets, see PlanoEngine.ts's
-      // 'c' key handler.
-      key: 'C',
-      icoCol: '#8B5CF6',
-      shortcut: 'C',
-    });
-  }
+  // El canal está disponible en cualquier piso/red activa mientras canal recolectora esté
+  // activa — la visibilidad la controla isToolDisabledForNet(..., recolectoraActive) abajo.
+  netTools.splice(7, 0, {
+    id: 'canal',
+    label: 'Canal',
+    ico: '▭',
+    // 'C' es compartido con Contador (af/gas) — redes mutuamente excluyentes, ver
+    // PlanoEngine.ts's 'c' key handler.
+    key: 'C',
+    icoCol: '#8B5CF6',
+    shortcut: 'C',
+  });
 
   const visibleTools = netTools.filter(
     (t) => !isToolDisabledForNet(t.id, activeNet, recolectoraActive),

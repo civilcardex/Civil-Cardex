@@ -36,9 +36,9 @@ export function _statusMsg(engine: IPlanoEngineCore): string {
   }
   if (engine.tool === 'canal' && engine._canalStart) {
     const mp = engine.toPlane(engine.mouseX, engine.mouseY);
-    const base = Math.round(engine.pxToM(Math.abs(mp.x - engine._canalStart.x)) * 100);
-    const altura = Math.round(engine.pxToM(Math.abs(mp.y - engine._canalStart.y)) * 100);
-    m += ` (${base} x ${altura} cm)`;
+    const base = Math.round(engine.pxToM(Math.abs(mp.y - engine._canalStart.y)) * 100);
+    const longitud = Math.round(engine.pxToM(Math.abs(mp.x - engine._canalStart.x)) * 100);
+    m += ` (${base} x ${longitud} cm)`;
   }
   return m;
 }

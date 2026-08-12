@@ -8,7 +8,7 @@ import { parseDescargaEnId } from '../../../utils/parseDescargaEnId';
 import { pisoCortoLoose as getPisoCorto } from '../../../constants';
 import { MONTANTE_NETS } from '../drawingCreations';
 import { BORDE_LIBRE_CANAL_CM } from '../../../utils/calcRainwater';
-import { computeCanalFlowArrows } from '../canalAssociation';
+import { computeCanalFlowArrows, computeCanalSegments } from '../canalAssociation';
 
 const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
 
@@ -116,7 +116,9 @@ function renderBajanteLabel(
   ctx.fillText(line1, 0, -10 + engine.mm2cvs(0.5));
 
   if (dirText) {
-    ctx.font = `${fsDir}px Geist, monospace`;
+    // Misma fuente/peso que la línea de información de un ramal (600, ver renderRamales.ts)
+    // para que las etiquetas del canal se lean idénticas a las de los ramales.
+    ctx.font = `600 ${fsDir}px Geist, monospace`;
     ctx.fillStyle = textColor;
     ctx.fillText(dirText, 0, -10 + lineH + engine.mm2cvs(1));
   }
@@ -258,10 +260,30 @@ function renderCanalGlyph(
 ): void {
   if (engine._hiddenNets.has(b.net)) return;
   const tl = engine.toCvs(b.x, b.y);
-  const w = Math.max(engine.cmToCanvasPx(b.base || 0), 20);
-  const h = Math.max(engine.cmToCanvasPx(b.altura || 0), 14);
+  const w = Math.max(engine.cmToCanvasPx(b.longitud || 0), 20);
+  const h = Math.max(engine.cmToCanvasPx(b.base || 0), 14);
   const sel = b.id === engine.selId && !engine._isGhostSel;
   const col = NETS.find((n) => n.id === 'll')?.col || '#8B5CF6';
+
+  // Línea de conexión con un bajante de lluvia asociado POR FUERA del canal (bajanteExternoId):
+  // una tubería simple de la red ll — ni ramal ni tributario, sin flecha ni semántica de flujo.
+  // Se dibuja antes del relleno blanco para que el rectángulo del canal quede encima.
+  if (b.bajanteExternoId) {
+    const ext = engine.bajantes.find((x) => x.id === b.bajanteExternoId && x.tipo !== 'canal');
+    if (ext) {
+      const ec = engine.toCvs(ext.x, ext.y);
+      const nearX = Math.min(Math.max(ec.x, tl.x), tl.x + w);
+      const nearY = Math.min(Math.max(ec.y, tl.y), tl.y + h);
+      ctx.save();
+      ctx.strokeStyle = col;
+      ctx.lineWidth = (sel ? 1.6 : 0.8) * engine.zoom;
+      ctx.beginPath();
+      ctx.moveTo(nearX, nearY);
+      ctx.lineTo(ec.x, ec.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
 
   ctx.save();
   ctx.fillStyle = '#ffffff';
@@ -270,9 +292,8 @@ function renderCanalGlyph(
   ctx.fill();
   ctx.strokeStyle = col;
   ctx.lineWidth = (sel ? 1.6 : 0.8) * engine.zoom;
-  // Perfil de canal: solo las líneas horizontales superior, interior (25%) e inferior — sin
-  // segmentos laterales verticales, para que el símbolo se lea como una sección transversal de
-  // canalón abierto.
+  // Perfil de canal: las líneas horizontales superior, interior (25%) e inferior, más los dos
+  // segmentos verticales laterales que cierran el contorno del canalón.
   ctx.beginPath();
   ctx.moveTo(tl.x, tl.y);
   ctx.lineTo(tl.x + w, tl.y);
@@ -280,6 +301,10 @@ function renderCanalGlyph(
   ctx.moveTo(tl.x, midY);
   ctx.lineTo(tl.x + w, midY);
   ctx.moveTo(tl.x, tl.y + h);
+  ctx.lineTo(tl.x + w, tl.y + h);
+  ctx.moveTo(tl.x, tl.y);
+  ctx.lineTo(tl.x, tl.y + h);
+  ctx.moveTo(tl.x + w, tl.y);
   ctx.lineTo(tl.x + w, tl.y + h);
   ctx.stroke();
 
@@ -373,6 +398,39 @@ function renderCanalGlyph(
     drawFlowArrow({ x: rim.x - ux * cut, y: rim.y - uy * cut }, rim);
   }
 
+  // Etiquetas por tramo junto a las flechas: una por cada lado de la división del bajante —
+  // longitud proporcional del tramo, pendiente fija S=2% y el MISMO nombre del canal — misma
+  // matemática de límites que las flechas (computeCanalSegments) para que nunca diverjan.
+  const canalHorizontal = w >= h;
+  const fsSeg = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM * 0.9);
+  const canalName = b.code || '—';
+  for (const seg of computeCanalSegments(engine, b)) {
+    const midT = (seg.tLeft + seg.tRight) / 2;
+    const axisPlaneLen = (canalHorizontal ? w : h) / engine.zoom;
+    const lengthM = engine.pxToM((seg.tRight - seg.tLeft) * axisPlaneLen);
+    const segLabel = `L=${lengthM.toFixed(2)}m S=2% ${canalName}`;
+    // La etiqueta se alinea con la coordenada TRANSVERSAL del centro del bajante de su tramo
+    // (la misma línea sobre la que corre la flecha de ese tramo — computeCanalFlowArrows), no
+    // con el eje medio del canal: así queda siempre al MISMO nivel (mismo Y en canal horizontal,
+    // mismo X en vertical) que la flecha y que el bajante.
+    const bajCvs = engine.toCvs(seg.bajante.x, seg.bajante.y);
+    ctx.save();
+    ctx.font = `600 ${fsSeg}px Geist, monospace`;
+    ctx.fillStyle = '#000';
+    if (canalHorizontal) {
+      // Centrada sobre la línea de la flecha del tramo, al mismo nivel del bajante
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(segLabel, tl.x + midT * w, bajCvs.y);
+    } else {
+      // A la derecha de la línea de la flecha (eje del bajante), al mismo nivel vertical
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(segLabel, bajCvs.x + 5 * engine.zoom, tl.y + midT * h);
+    }
+    ctx.restore();
+  }
+
   b._canalBox = { x: tl.x, y: tl.y, w, h };
   // _canalBox (el rectángulo visible) es el objetivo de clic del canal; _circ queda como ancla
   // de respaldo pequeña (mitad del lado más largo, NO la diagonal) para código que solo lee un
@@ -389,7 +447,7 @@ function renderCanalGlyph(
     // El sufijo de piso ya viene incrustado en b.code al crearlo (CALL{n}-P{piso}) — un canal
     // vive en un solo piso, a diferencia del lvlSuffix dinámico por render del bajante.
     const line1 = b.code || '—';
-    const dirText = `${b.base || 0} x ${(b.altura || 0) + BORDE_LIBRE_CANAL_CM}`;
+    const dirText = `${b.base || 0}x${(b.altura || 0) + BORDE_LIBRE_CANAL_CM} S=2% L=${((b.longitud || 0) / 100).toFixed(2)}m`;
     renderBajanteLabel(
       ctx,
       engine,
@@ -437,13 +495,13 @@ export function renderCanalGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEn
   ctx.stroke();
   ctx.setLineDash([]);
 
-  const baseCm = Math.round(engine.pxToM(w) * 100);
-  const alturaCm = Math.round(engine.pxToM(h) * 100);
+  const baseCm = Math.round(engine.pxToM(h) * 100);
+  const longCm = Math.round(engine.pxToM(w) * 100);
   ctx.font = `${11 * engine.zoom}px Geist, monospace`;
   ctx.fillStyle = '#8B5CF6';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
-  ctx.fillText(`${baseCm} x ${alturaCm} cm`, tl.x, tl.y - 4 * engine.zoom);
+  ctx.fillText(`${baseCm} x ${longCm} cm`, tl.x, tl.y - 4 * engine.zoom);
   ctx.restore();
 }
 

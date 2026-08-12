@@ -445,6 +445,10 @@ export function loadSanLlTramos() {
       }
     }
     for (const b of plane.bajantes || []) {
+      // Los glifos de canal (tipo:'canal') viven en su propia tabla (canalesLlAuto lee
+      // drawnCanalGlyphs directo de storage) — excluirlos aquí evita que aparezcan como
+      // bajantes en la tabla de chequeo de bajantes de aguas lluvias.
+      if (b.tipo === 'canal') continue;
       const apKey = b._aparatosKey || `${b._net || 'san'}_${b.id}_${planId}`;
       const hd = hidroData[apKey] || {};
 

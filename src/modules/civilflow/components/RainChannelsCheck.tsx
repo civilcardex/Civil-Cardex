@@ -3,10 +3,11 @@ import { renderStatus } from '../utils/componentHelpers';
 import { useRainwater } from '../context/RainwaterContext';
 import { chequeoCanalLluvia, BORDE_LIBRE_CANAL_CM } from '../utils/calcRainwater';
 
-const CANAL_FIELD_LABELS: Record<'b' | 'h' | 'pendiente', string> = {
+const CANAL_FIELD_LABELS: Record<'b' | 'h' | 'pendiente' | 'longitud', string> = {
   b: 'Base (cm)',
   h: 'Altura (cm)',
   pendiente: 'Pendiente (%)',
+  longitud: 'Longitud (cm)',
 };
 
 const CanalDimField = React.memo(function CanalDimField({
@@ -16,7 +17,7 @@ const CanalDimField = React.memo(function CanalDimField({
   onChange,
 }: {
   id: string;
-  field: 'b' | 'h' | 'pendiente';
+  field: 'b' | 'h' | 'pendiente' | 'longitud';
   value: number;
   onChange: (id: string, field: string, val: number) => void;
 }) {
@@ -37,6 +38,10 @@ const CanalDimField = React.memo(function CanalDimField({
       onChange={(e) => {
         const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
         setText(raw);
+      }}
+      onKeyDown={(e) => {
+        // Enter commitea el cambio (mismo comportamiento que el resto de campos numéricos)
+        if (e.key === 'Enter') e.currentTarget.blur();
       }}
       onBlur={() => {
         setEditing(false);
@@ -161,7 +166,7 @@ export default function ChequeoCanalesLluvias() {
                   <th
                     scope="col"
                     className="col-h ok"
-                    colSpan={4}
+                    colSpan={5}
                     style={{ textAlign: 'center', fontSize: 9, padding: '1px 1px' }}
                   >
                     Sección propuesta (cm)
@@ -221,6 +226,13 @@ export default function ChequeoCanalesLluvias() {
                     className="col-h ok"
                     style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
                   >
+                    Longitud
+                  </th>
+                  <th
+                    scope="col"
+                    className="col-h ok"
+                    style={{ fontSize: 9, textAlign: 'center', padding: '1px 1px' }}
+                  >
                     Borde libre
                   </th>
                   <th
@@ -236,7 +248,7 @@ export default function ChequeoCanalesLluvias() {
                 {canalesLl.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={14}
+                      colSpan={15}
                       style={{
                         padding: '24px 0',
                         textAlign: 'center',
@@ -289,12 +301,8 @@ export default function ChequeoCanalesLluvias() {
                           </span>
                         </td>
                         <td className="c">
-                          <CanalDimField
-                            id={c.id}
-                            field="pendiente"
-                            value={c.pendiente}
-                            onChange={updCanalLL}
-                          />
+                          {/* Pendiente del canal fija en 2% (S=2%) — por diseño, no editable. */}
+                          <span style={{ fontFamily: 'var(--mono)', fontSize: 9 }}>2</span>
                         </td>
                         <td className="c">
                           {c.fromCanal ? (
@@ -318,6 +326,23 @@ export default function ChequeoCanalesLluvias() {
                             </span>
                           ) : (
                             <CanalDimField id={c.id} field="h" value={c.h} onChange={updCanalLL} />
+                          )}
+                        </td>
+                        <td className="c">
+                          {c.fromCanal ? (
+                            <span
+                              style={{ fontFamily: 'var(--mono)', fontSize: 9 }}
+                              title="Configurado desde el canal dibujado en el plano"
+                            >
+                              {c.longitud || '—'}
+                            </span>
+                          ) : (
+                            <CanalDimField
+                              id={c.id}
+                              field="longitud"
+                              value={c.longitud ?? 0}
+                              onChange={updCanalLL}
+                            />
                           )}
                         </td>
                         <td className="c">

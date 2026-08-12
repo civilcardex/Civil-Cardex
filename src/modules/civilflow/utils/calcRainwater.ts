@@ -97,6 +97,6 @@ export function chequeoCanalLluvia({
       : 0;
   const chequeo =
     Qmax > 0 && Qreal > 0 ? (Qmax > Qreal ? 'Ok' : 'No cumple') : Qreal > 0 ? 'Sin sección' : '—';
-  const totalStr = b > 0 || h > 0 ? `${b} x ${h + BORDE_LIBRE_CANAL_CM}` : '—';
+  const totalStr = b > 0 || h > 0 ? `${b}x${h + BORDE_LIBRE_CANAL_CM}` : '—';
   return { Qreal, Qmax, chequeo, totalStr };
 }

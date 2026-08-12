@@ -335,9 +335,13 @@ export interface PlanoBajante {
   factorSim?: number;
   /** Sección transversal del canal recolectora (tipo:'canal', solo red 'll'), en cm — se importa a
    * la tabla de chequeo hidráulico "canal recolectora" (RainChannelsCheck.tsx). x/y es la esquina
-   * superior-izquierda del rectángulo (no el centro, a diferencia de los demás glifos de bajante). */
+   * superior-izquierda del rectángulo (no el centro, a diferencia de los demás glifos de bajante).
+   * En planta el rectángulo dibujado es base (tamaño vertical) × longitud (tamaño horizontal);
+   * altura es la profundidad en el eje Z, solo visible en isometría. */
   base?: number;
   altura?: number;
+  /** Tamaño horizontal del canal en planta (cm) — el largo que recorre el canal en el dibujo. */
+  longitud?: number;
   /** Caja del canal en píxeles de canvas (alineada a los ejes, sin rotación), calculada al
    * renderizar — se usa para detectar el clic en las manijas de redimensionado de las esquinas y
    * para arrastrar el cuerpo. */
@@ -352,6 +356,10 @@ export interface PlanoBajante {
    * uno al que está asociado (ver resolveAndClampToCanal). Alimenta las flechas de flujo del
    * canal. */
   canalId?: string | null;
+  /** Asociación manual de un canal (tipo:'canal') con un bajante de lluvia que está FUERA de su
+   *  rectángulo — se elige desde el menú contextual del canal y se dibuja una línea de conexión
+   *  simple (tubería) entre ambos. Un bajante DENTRO del canal no usa esto: entra por canalId. */
+  bajanteExternoId?: string | null;
 }
 
 /** Área poligonal dibujada en el plano (p.ej. techos, zonas de drenaje). */
@@ -480,6 +488,8 @@ export interface IPlanoEngineCore {
   selId: string | null;
   selectedGhostId: string | null;
   _isGhostSel: boolean;
+  // Traza DEV del flujo de selección (handleSelectDown/selectAt) — imprime _onDownHandler.
+  _debugSel?: { x: number; y: number; notes: string[]; final: string | null } | null;
   _yeeFlashKey: string | null;
   _hiddenNets: Set<string>;
   _lockedNets: Set<string>;

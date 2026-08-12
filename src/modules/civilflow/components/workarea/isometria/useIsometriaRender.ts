@@ -253,46 +253,44 @@ export function useIsometriaRender({
       }
     }
 
-    // Dibuja cada red activa
+    // Los canales se dibujan PRIMERO, en un pase propio ANTES de todas las redes: la cara blanca
+    // opaca de la canaleta taparía cualquier bajante dibujado después del pase de su red
+    // (ac/af/gas van antes que ll en el orden alfabético de redes, y un bajante de esas redes
+    // puede quedar dentro del canal). Así, cualquier bajante/ramal que caiga dentro del canal se
+    // dibuja encima — igual que en el plano, donde el rectángulo del canal es el fondo.
+    const projPtCanal = (px: number, py: number, pz: number) =>
+      project(px, py, pz, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
     for (const [netId, netData] of Object.entries(dataByNet)) {
       if (!activeNets.has(netId)) continue;
-      const netColor = NETS.find((n) => n.id === netId)?.col || '#888';
-      const prof = profByNet[netId] ?? 0;
-
-      ctx.strokeStyle = netColor;
-      ctx.lineWidth = 2;
-      ctx.lineCap = 'round';
-
-      // Los canales se dibujan PRIMERO como canaletas de fondo (canal abierto a nivel de piso)
-      // para que los ramales y bajantes que caen dentro se dibujen encima — igual que en el plano,
-      // donde el rectángulo del canal es el fondo y las bajantes se leen como bajantes normales
-      // sobre él.
-      const projPt = (px: number, py: number, pz: number) =>
-        project(px, py, pz, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
+      const netColorCanal = NETS.find((n) => n.id === netId)?.col || '#888';
+      const profCanal = profByNet[netId] ?? 0;
       for (const b of netData.bajantes) {
         if (b._isCrossFloorGhost || b.tipo !== 'canal') continue;
         const baseM = (b.base || 0) / 100;
         const altM = (b.altura || 0) / 100;
-        if (baseM <= 0.001 || altM <= 0.001) continue;
+        const longM = (b.longitud || 0) / 100;
+        if (longM <= 0.001 || baseM <= 0.001 || altM <= 0.001) continue;
         const selKey = `${netId}:${b.planId}:${b.id}`;
         const isSel = selKey === selTramo;
-        const hl = isSel ? '#FFEB3B' : netColor;
-        const zC = (nptMap[b.planNivel] || 0) - prof * 1000;
+        const hl = isSel ? '#FFEB3B' : netColorCanal;
+        const zC = (nptMap[b.planNivel] || 0) - profCanal * 1000;
         const zPixC = getZPix(zC, b.planNivel);
         const iso0 = getIsoCoords(b.x, b.y, b.planNivel);
-        const pA = projPt(iso0.x, iso0.y, zPixC);
-        const pB = projPt(iso0.x + baseM * ISO_SCALE, iso0.y, zPixC);
-        const pC = projPt(iso0.x + baseM * ISO_SCALE, iso0.y + altM * ISO_SCALE, zPixC);
-        const pD = projPt(iso0.x, iso0.y + altM * ISO_SCALE, zPixC);
-        const wall = Math.min(altM, 0.6);
-        const pAw = projPt(iso0.x, iso0.y, zPixC + wall * ISO_SCALE);
-        const pBw = projPt(iso0.x + baseM * ISO_SCALE, iso0.y, zPixC + wall * ISO_SCALE);
-        const pCw = projPt(
-          iso0.x + baseM * ISO_SCALE,
-          iso0.y + altM * ISO_SCALE,
+        const pA = projPtCanal(iso0.x, iso0.y, zPixC);
+        const pB = projPtCanal(iso0.x + longM * ISO_SCALE, iso0.y, zPixC);
+        const pC = projPtCanal(iso0.x + longM * ISO_SCALE, iso0.y + baseM * ISO_SCALE, zPixC);
+        const pD = projPtCanal(iso0.x, iso0.y + baseM * ISO_SCALE, zPixC);
+        // Paredes de la canaleta a la altura REAL del canal (sin tope) — la altura es editable
+        // desde el editor y debe verse reflejada en la isometría.
+        const wall = altM;
+        const pAw = projPtCanal(iso0.x, iso0.y, zPixC + wall * ISO_SCALE);
+        const pBw = projPtCanal(iso0.x + longM * ISO_SCALE, iso0.y, zPixC + wall * ISO_SCALE);
+        const pCw = projPtCanal(
+          iso0.x + longM * ISO_SCALE,
+          iso0.y + baseM * ISO_SCALE,
           zPixC + wall * ISO_SCALE,
         );
-        const pDw = projPt(iso0.x, iso0.y + altM * ISO_SCALE, zPixC + wall * ISO_SCALE);
+        const pDw = projPtCanal(iso0.x, iso0.y + baseM * ISO_SCALE, zPixC + wall * ISO_SCALE);
         const quad = (a: IsoPt, b2: IsoPt, c2: IsoPt, d2: IsoPt) => {
           ctx.beginPath();
           ctx.moveTo(a.sx, a.sy);
@@ -311,14 +309,18 @@ export function useIsometriaRender({
         ctx.fill();
         ctx.stroke();
         // Línea interior al 25%, en la misma posición que el glifo del plano
-        const m1 = projPt(iso0.x, iso0.y + altM * 0.25 * ISO_SCALE, zPixC);
-        const m2 = projPt(iso0.x + baseM * ISO_SCALE, iso0.y + altM * 0.25 * ISO_SCALE, zPixC);
+        const m1 = projPtCanal(iso0.x, iso0.y + baseM * 0.25 * ISO_SCALE, zPixC);
+        const m2 = projPtCanal(
+          iso0.x + longM * ISO_SCALE,
+          iso0.y + baseM * 0.25 * ISO_SCALE,
+          zPixC,
+        );
         ctx.beginPath();
         ctx.moveTo(m1.sx, m1.sy);
         ctx.lineTo(m2.sx, m2.sy);
         ctx.stroke();
         // Paredes y fondo de la canaleta (translúcidos), que dan profundidad al canal
-        ctx.fillStyle = hexA(netColor, 0.18);
+        ctx.fillStyle = hexA(netColorCanal, 0.18);
         quad(pAw, pBw, pCw, pDw);
         ctx.fill();
         quad(pA, pB, pBw, pAw);
@@ -339,9 +341,9 @@ export function useIsometriaRender({
           ctx.lineWidth = 2.5;
           quad(pA, pB, pC, pD);
           ctx.stroke();
-          const rectCenter = projPt(
-            iso0.x + (baseM * ISO_SCALE) / 2,
-            iso0.y + (altM * ISO_SCALE) / 2,
+          const rectCenter = projPtCanal(
+            iso0.x + (longM * ISO_SCALE) / 2,
+            iso0.y + (baseM * ISO_SCALE) / 2,
             zPixC,
           );
           const topSy = Math.min(pA.sy, pB.sy, pC.sy, pD.sy);
@@ -353,7 +355,20 @@ export function useIsometriaRender({
         }
         ctx.restore();
       }
+    }
 
+    // Dibuja cada red activa
+    for (const [netId, netData] of Object.entries(dataByNet)) {
+      if (!activeNets.has(netId)) continue;
+      const netColor = NETS.find((n) => n.id === netId)?.col || '#888';
+      const prof = profByNet[netId] ?? 0;
+
+      ctx.strokeStyle = netColor;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+
+      const projPt = (px: number, py: number, pz: number) =>
+        project(px, py, pz, rotZ, rotX, scaleZ, zoom, offX, offY, cx, cy);
       for (const r of netData.ramales) {
         // `prof` (Parámetros de Diseño > Materiales por red > "Profundidad de instalación
         // respecto a NPT") se guarda NEGATIVO para instalaciones bajo losa (p. ej. sanitaria
@@ -528,10 +543,14 @@ export function useIsometriaRender({
         const lo = Math.min(currentZ, targetZ);
         const hi = Math.max(currentZ, targetZ);
         const isSube = b.direccion === 'sube' || b.tipo === 'montante';
-        // Misma corrección de signo que en el z del ramal anterior: profB es negativo para bajo
-        // losa, por lo que se resta.
-        const baseZ = (lo === hi ? (isSube ? lo : lo - 1000) : lo) - profB * 1000;
-        const cimaZ = (lo === hi ? (isSube ? hi + 1000 : hi) : hi) - profB * 1000;
+        // nptMap usa z NEGATIVO para los pisos (P1=-2700, P2=-5400...) y la proyección renderiza
+        // un z más negativo MÁS ARRIBA en pantalla. Por eso el stub de una bajante sin destino
+        // debe extenderse hacia el z MÁS NEGATIVO (SUBE = hacia arriba) y hacia el menos negativo
+        // (BAJA = hacia abajo). El signo anterior estaba invertido: dibujaba la bajante sube
+        // colgando hacia abajo y la baja hacia arriba. Misma corrección de signo que en el z del
+        // ramal: profB es negativo para bajo losa, por lo que se resta.
+        const baseZ = (lo === hi ? (isSube ? lo : lo + 1000) : lo) - profB * 1000;
+        const cimaZ = (lo === hi ? (isSube ? lo - 1000 : lo) : hi) - profB * 1000;
 
         let targetPt: number[] | null = null;
         let targetPlanNivel: number | null = null;
@@ -616,9 +635,26 @@ export function useIsometriaRender({
         ctx.lineWidth = isSel ? 3.5 : 2;
         ctx.stroke();
 
-        // Círculo + indicador de dirección a nivel de piso (pBase para sube, pCima para baja)
-        const isSubeDir = b.direccion === 'sube' || b.tipo === 'montante';
-        const floorPt = isSubeDir ? pBase : pCima;
+        // Círculo + indicador de dirección en el PISO PROPIO de la bajante (currentZ), no en el
+        // extremo del destino ni en el del stub: para una bajante SUBE es el extremo inferior del
+        // recorrido y para una BAJA el superior, y con ghost/destino en otro piso el símbolo
+        // sigue presidiendo su propio piso (el círculo se desliza por la línea del conector hasta
+        // la altura de currentZ).
+        const floorZ_pix = getZPix(currentZ - profB * 1000, b.planNivel);
+        const floorIso = targetIso ?? ownIso;
+        const floorPt = project(
+          floorIso.x,
+          floorIso.y,
+          floorZ_pix,
+          rotZ,
+          rotX,
+          scaleZ,
+          zoom,
+          offX,
+          offY,
+          cx,
+          cy,
+        );
         const circR = 6 * zoom;
         ctx.save();
         ctx.strokeStyle = netColor;
@@ -632,6 +668,7 @@ export function useIsometriaRender({
         ctx.fillStyle = netColor;
         ctx.beginPath();
         const triS = circR * 0.5;
+        const isSubeDir = b.direccion === 'sube' || b.tipo === 'montante';
         const dirY = isSubeDir ? -1 : 1;
         ctx.moveTo(floorPt.sx, floorPt.sy + dirY * triS);
         ctx.lineTo(floorPt.sx - triS, floorPt.sy - dirY * triS * 0.3);

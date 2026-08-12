@@ -4,6 +4,7 @@ import { calculateRamalLength, _statusMsg } from './ramalMeasure';
 import { isRamalBajanteConnectionAllowed } from '../../utils/flowDirection';
 import { pisoCortoLoose } from '../../constants';
 import { resolveAndClampToCanal } from './canalAssociation';
+import { codoPolarityOk } from './PlanoEngineDrawing';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
 // aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos
@@ -48,6 +49,21 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
       px = r.pts[0][0];
       py = r.pts[0][1];
       assocRamales.push(r.id);
+    }
+  }
+  // Regla de negocio: dentro de un canal recolectora solo caben bajantes de aguas lluvias (ll).
+  // Si se intenta crear un bajante de otra red dentro de un canal, se aborta la creación con
+  // una alerta modal — el canal es una canaleta de aguas lluvias y las otras redes no se pueden
+  // hacer pasar por dentro. Se revisa DESPUÉS de la asociación con ramales porque ella puede
+  // desplazar el punto final del bajante hacia el extremo de un ramal.
+  if (engine.activeNet !== 'll') {
+    const inside = resolveAndClampToCanal(engine, px, py);
+    if (inside.canalId) {
+      engine.triggerAlert(
+        'Bajante dentro de canal',
+        `Los bajantes dentro de un canal recolectora deben ser de aguas lluvias (ll). El bajante de la red ${engine.activeNet.toUpperCase()} no se puede crear dentro del canal.`,
+      );
+      return;
     }
   }
   // Los bajantes de lluvia soltados dentro del rectángulo de un canal recolectora deben
@@ -166,6 +182,25 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     engine.bajantes.filter((b) => b.tipo === 'montante' && b.net === engine.activeNet).length + 1;
   const monId = `${pfx}${cnt}_${engine.activeNet}`;
   const code = `${pfx}${cnt}`;
+  // Ítems 12/13: el montante escribe codo90rmSube en el extremo del ramal asociado — ese codo
+  // ENTREGA flujo (la cola de la flecha apunta al extremo: el flujo SALE de P hacia el montante).
+  // Si el punto cae en el FINAL del flujo (el montante recibiría del ramal), la polaridad es
+  // contradictoria: se rechaza la creación con alerta en vez de escribir un codo incoherente
+  // con la flecha.
+  if (assocRamales.length > 0) {
+    const TOL = 0.5;
+    for (const rid of assocRamales) {
+      const r = engine.ramales.find((rr) => rr.id === rid);
+      if (!r || !r.pts || r.pts.length < 2) continue;
+      if (!codoPolarityOk(r, [px, py], 'codo90rmSube', TOL)) {
+        engine.triggerAlert(
+          'Polaridad de codo incorrecta',
+          'El codo 90° sube del montante exige que la cola de la flecha apunte al extremo (el flujo debe salir de ahí hacia el montante). Coloca el montante en el extremo inicial del ramal, o invierte la dirección del ramal.',
+        );
+        return;
+      }
+    }
+  }
   engine.bajantes.push({
     id: monId,
     net: engine.activeNet,
@@ -571,8 +606,8 @@ export function handleCalentadorDown(engine: IPlanoEngineCore, px: number, py: n
  *  @param engine Instancia del motor. @param px Coordenada X de plano. @param py Coordenada Y
  *  de plano. */
 export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number): void {
-  if (engine.activeNet !== 'll') {
-    engine._emitStatus('Canal no disponible para esta red');
+  if (!engine.activeNetworks || !engine.activeNetworks.has('recolectora')) {
+    engine._emitStatus('Canal no disponible — activa la red canal recolectora');
     return;
   }
   if (engine.snapMode) {
@@ -590,11 +625,15 @@ export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number
   }
   const s = engine._canalStart;
   engine._canalStart = null;
-  const base = +(engine.pxToM(Math.abs(px - s.x)) * 100).toFixed(1);
-  const altura = +(engine.pxToM(Math.abs(py - s.y)) * 100).toFixed(1);
+  // En planta el rectángulo dibujado es base (tamaño vertical) × longitud (tamaño horizontal);
+  // altura es la profundidad del canal en el eje Z, solo visible en isometría — se fija con un
+  // valor por defecto aquí y se edita desde el menú contextual (CanalMenu).
+  const base = +(engine.pxToM(Math.abs(py - s.y)) * 100).toFixed(1);
+  const longitud = +(engine.pxToM(Math.abs(px - s.x)) * 100).toFixed(1);
+  const altura = 20;
   // Guardia contra un doble-clic accidental en el mismo sitio que produzca un rectángulo
   // degenerado de 0x0.
-  if (base < 1 && altura < 1) {
+  if (base < 1 && longitud < 1) {
     engine._emitStatus(_statusMsg(engine));
     engine.render();
     return;
@@ -642,6 +681,7 @@ export function handleCanalDown(engine: IPlanoEngineCore, px: number, py: number
     bajR: 7 / 24,
     base,
     altura,
+    longitud,
     _canalFlowDir: canalFlowDir,
   });
   engine.selId = code;
