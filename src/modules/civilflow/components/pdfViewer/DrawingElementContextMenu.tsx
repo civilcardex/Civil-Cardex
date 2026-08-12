@@ -12,7 +12,7 @@ import {
   GAS_DN_LABELS,
 } from '../../constants';
 import { loadFromStorage } from '../../services/storageService';
-import { TRAZOS_PREFIX } from '../../constants/storage-keys';
+import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from '../../constants/storage-keys';
 import {
   APARATOS_DEF,
   AF_UC_IDS,
@@ -25,9 +25,20 @@ import { BAJANTE_NETS, MONTANTE_NETS } from '../../lib/PlanoEngine/drawingCreati
 import {
   maxDiametroLabel,
   autoSplitJunctionAndSumFlow,
+  codoPolarityOk,
+  flipRamalFlow,
+  flowEndsAt,
+  ramalFlowDirectionCheck,
 } from '../../lib/PlanoEngine/PlanoEngineDrawing';
-import { junctionRespectsTributarioDirection } from '../../utils/flowDirection';
-import { checkRamalAngles, detectAccesorioTrigger } from '../../lib/PlanoEngine/drawingAngles';
+import {
+  junctionRespectsTributarioDirection,
+  directNeighborRamales,
+} from '../../utils/flowDirection';
+import {
+  checkRamalAngles,
+  detectAccesorioTrigger,
+  _firstSegmentAngle,
+} from '../../lib/PlanoEngine/drawingAngles';
 import {
   writeBajantePropToDrawing,
   writeAcoDiamToDrawing,
@@ -43,7 +54,10 @@ import {
   syncExtremeAccessoryToHidroData,
   syncExtremeAparatoToCounts,
   bumpHidroAccesorio,
+  moveAllAparatoCounts,
 } from '../../utils/syncExtremeAccessory';
+import { writeHydroDrawingSync } from '../../utils/drawingSync';
+import UcMoveModal, { type UcMoveModalState } from './UcMoveModal';
 import { GAS, CAT_GAS } from '../../constants/engineeringDataGas';
 import {
   VENTILACION,
@@ -52,6 +66,7 @@ import {
 } from '../../pages/catalog/catalogData';
 import { DIAMETROS_AF } from '../../constants/hydraulicData';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
+import { matchDiamOption } from '../../utils/diamOptionMatch';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type {
   PlanoElement,
@@ -399,6 +414,30 @@ function BajanteDirectionSelector({
                     const codoId = isSube ? 'codo90rmSube' : 'codo90rmBaja';
                     const teeId = isSube ? 'teeSube' : 'teeBaja';
                     const TOL = 0.5;
+                    // Ítems 12/13: validar la polaridad del codo contra el flujo del ramal ANTES
+                    // de escribir — codoSube exige que el flujo LLEGUE al punto, codoBaja que
+                    // SALGA. Sin esto, cambiar la dirección del montante podía escribir un codo
+                    // contradictorio con la flecha del ramal.
+                    for (const rid of element.recibeDeIds || []) {
+                      const ram = engineRef.current?.ramales.find((r) => r.id === rid);
+                      if (!ram || !ram.pts?.length) continue;
+                      const idx = ram.pts.findIndex(
+                        ([px, py]) => Math.hypot(px - element.x, py - element.y) < TOL,
+                      );
+                      if (idx === -1) continue;
+                      const pt = ram.pts[idx];
+                      if (idx === 0 || idx === ram.pts.length - 1) {
+                        if (!codoPolarityOk(ram, pt, codoId, TOL)) {
+                          engineRef.current?.triggerAlert(
+                            'Polaridad de codo incorrecta',
+                            isSube
+                              ? 'El codo 90° sube exige que la cola de la flecha apunte a este punto (el flujo debe salir de aquí hacia el codo). Invierte la dirección del ramal o usa "baja".'
+                              : 'El codo 90° baja exige que la cabeza de la flecha apunte a este punto (el flujo debe llegar aquí desde el codo). Invierte la dirección del ramal o usa "sube".',
+                          );
+                          return;
+                        }
+                      }
+                    }
                     for (const rid of element.recibeDeIds || []) {
                       const ram = engineRef.current?.ramales.find((r) => r.id === rid);
                       if (!ram || !ram.pts?.length) continue;
@@ -1430,7 +1469,7 @@ function BajanteConnectionPanel({
               </div>
 
               {(ramalEl.tipo === 'tributario' || ramalEl.tipo === 'ramal') &&
-                ['san', 'af', 'ac', 'gas'].includes(ramalEl.net) &&
+                ['san', 'af', 'ac', 'gas', 'vent'].includes(ramalEl.net) &&
                 (() => {
                   const isStart = ep.idx === 0;
                   const fieldAcc: 'accesorioInicio' | 'accesorioFin' = isStart
@@ -1530,6 +1569,47 @@ function BajanteConnectionPanel({
                                 );
                                 return;
                               }
+                              // Ítem 2 (reventilado): el codo reventilado NO puede recibir
+                              // flujo — si el flujo del ramal sanitario termina en el extremo
+                              // (lo recibe), bloquear. Solo es válido en el extremo DESDE donde
+                              // fluye el ramal (junto al sifón del aparato).
+                              if (val === 'codoReventilado' && ramalEl.net === 'san') {
+                                const epPt: number[] = [ep.x, ep.y];
+                                if (flowEndsAt(ramalEl, epPt, 0.5)) {
+                                  engineRef.current?.triggerAlert(
+                                    'Codo reventilado no puede recibir flujo',
+                                    'El codo reventilado debe colocarse en el extremo DESDE donde fluye el ramal sanitario. Invierte la dirección del ramal.',
+                                  );
+                                  return;
+                                }
+                              }
+                              // Ítems 4/5 (polaridad sube/baja) en extremo: sube solo ENTREGA
+                              // (cola de la flecha al extremo — flujo SALE de ahí); baja solo
+                              // RECIBE (cabeza de la flecha al extremo — flujo LLEGA ahí). Se
+                              // valida contra el ramal VIVO del engine (el snapshot `ramalEl`
+                              // puede estar stale si el flujo cambió tras abrir el menú).
+                              if (
+                                (val === 'codoSube' ||
+                                  val === 'codoBaja' ||
+                                  val === 'codo90rmSube' ||
+                                  val === 'codo90rmBaja') &&
+                                engineRef.current
+                              ) {
+                                const live = engineRef.current.ramales.find(
+                                  (r) => r.id === ramalEl.id,
+                                );
+                                const target = live || ramalEl;
+                                if (!codoPolarityOk(target, [ep.x, ep.y], val, 0.5)) {
+                                  const isSube = val === 'codoSube' || val === 'codo90rmSube';
+                                  engineRef.current.triggerAlert(
+                                    'Polaridad de codo incorrecta',
+                                    isSube
+                                      ? 'El codo 90° sube solo puede entregar flujo: la cola de la flecha debe apuntar al extremo (el flujo sale de ahí hacia el codo).'
+                                      : 'El codo 90° baja solo puede recibir flujo: la cabeza de la flecha debe apuntar al extremo (el flujo llega ahí desde el codo).',
+                                  );
+                                  return;
+                                }
+                              }
                               // Si este extremo ya tiene un accesorio distinto, se reemplaza
                               // directamente por la nueva selección en lugar de bloquear con alerta.
                             }
@@ -1555,8 +1635,19 @@ function BajanteConnectionPanel({
                               }
                               const oldVal = ramalEl[fieldAcc] || '';
                               const updates: Record<string, unknown> = { [fieldAcc]: val };
-                              // Los accesorios ya no heredan el diámetro del ramal como valor
-                              // por defecto — todo accesorio empieza sin diámetro seleccionado.
+                              // El accesorio hereda el diámetro del ramal como valor por defecto:
+                              // si el ramal ya tiene diámetro asignado, el accesorio nuevo nace
+                              // con ese mismo diámetro (resuelto al valor canónico del selector);
+                              // si no, queda "Ninguno".
+                              if (val && !oldVal) {
+                                const aMatShort =
+                                  ramalEl.material || (ramalEl.net === 'san' ? 'PVC' : '');
+                                const aDiamList =
+                                  (ramalEl.net === 'san' && DIAM_BY_MAT['PVC']) ||
+                                  DIAM_BY_MAT[aMatShort] ||
+                                  [];
+                                updates[fieldDiam] = matchDiamOption(aDiamList, ramalEl.diametro);
+                              }
                               engineRef.current.updateElementById(ramalEl.id, updates);
                               setContextMenuState((prev) =>
                                 prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
@@ -1601,7 +1692,10 @@ function BajanteConnectionPanel({
                             DIAM_BY_MAT[matShort] ||
                             [];
                           if (diamList.length === 0) return null;
-                          const currentDiam = ramalEl[fieldDiam] || '';
+                          const currentDiam =
+                            matchDiamOption(diamList, ramalEl[fieldDiam]) ||
+                            matchDiamOption(diamList, ramalEl.diametro) ||
+                            '';
                           return (
                             <div style={{ marginTop: 6 }}>
                               <div
@@ -1625,9 +1719,17 @@ function BajanteConnectionPanel({
                                       const q = d.indexOf('"');
                                       return q > 0 ? d.slice(0, q) : d;
                                     };
+                                    // Leer el diámetro del ramal fresco del engine — el snapshot
+                                    // ramalEl puede estar stale si el ramal se editó desde
+                                    // TramoEditor mientras el menú estaba abierto.
+                                    const fresh = engineRef.current?.ramales.find(
+                                      (x) => x.id === ramalEl.id,
+                                    );
+                                    const ramalDiam = fresh?.diametro || ramalEl.diametro;
                                     if (
+                                      ramalDiam &&
                                       diamPulgFromLabel(inchFrom(v)) >
-                                      diamPulgFromLabel(inchFrom(ramalEl.diametro))
+                                        diamPulgFromLabel(inchFrom(ramalDiam))
                                     ) {
                                       engineRef.current?.triggerAlert(
                                         'Diámetro no permitido',
@@ -1662,7 +1764,7 @@ function BajanteConnectionPanel({
                           );
                         })()}
 
-                      {ramalEl.net !== 'san' && (
+                      {ramalEl.net !== 'san' && ramalEl.net !== 'vent' && (
                         <div>
                           <div
                             style={{
@@ -1814,7 +1916,7 @@ function BajanteCodeEditor({
           >
             <option value="">— Sin bajante —</option>
             {(engineRef.current?.bajantes || [])
-              .filter((b) => b.net === areaEl.net)
+              .filter((b) => b.net === areaEl.net && b.tipo !== 'canal')
               .map((b) => (
                 <option key={b.id} value={b.id}>
                   {b.code || b.id}
@@ -1936,23 +2038,42 @@ function BajanteCodeEditor({
                   const q = d.indexOf('"');
                   return q > 0 ? d.slice(0, q) : d;
                 };
-                const accDiamI = ramalEl.diametroInicio || '';
-                const accDiamF = ramalEl.diametroFin || '';
+                // Leer datos frescos del engine — el snapshot ramalEl puede estar stale
+                // si el usuario cambió el diámetro desde TramoEditor mientras el menú estaba abierto.
+                const fresh = engineRef.current?.ramales.find((x) => x.id === ramalEl.id);
+                const liveAccDiamI =
+                  (fresh?.diametroInicio as string) || ramalEl.diametroInicio || '';
+                const liveAccDiamF = (fresh?.diametroFin as string) || ramalEl.diametroFin || '';
                 const accDiamNum = Math.max(
-                  accDiamI ? diamPulgFromLabel(inchFrom(accDiamI)) : 0,
-                  accDiamF ? diamPulgFromLabel(inchFrom(accDiamF)) : 0,
+                  liveAccDiamI ? diamPulgFromLabel(inchFrom(liveAccDiamI)) : 0,
+                  liveAccDiamF ? diamPulgFromLabel(inchFrom(liveAccDiamF)) : 0,
                 );
                 if (val && accDiamNum > 0 && diamPulgFromLabel(inchFrom(val)) < accDiamNum) {
+                  const accINum = liveAccDiamI ? diamPulgFromLabel(inchFrom(liveAccDiamI)) : 0;
+                  const accFNum = liveAccDiamF ? diamPulgFromLabel(inchFrom(liveAccDiamF)) : 0;
+                  const blockEnd = accINum >= accFNum ? 'INICIO' : 'FIN';
+                  const blockDiam = accINum >= accFNum ? liveAccDiamI : liveAccDiamF;
+                  // eslint-disable-next-line no-console
+                  console.warn('[ContextMenu-ramal] alerta diametro', {
+                    id: ramalEl.id,
+                    val,
+                    liveAccDiamI,
+                    liveAccDiamF,
+                    accDiamNum,
+                    parsedNew: diamPulgFromLabel(inchFrom(val)),
+                  });
                   engineRef.current.triggerAlert(
                     'Diámetro no permitido',
-                    'El diámetro del ramal no puede ser menor al diámetro del accesorio conectado.',
+                    `El diámetro del ramal no puede ser menor al del accesorio conectado en el extremo ${blockEnd} (${blockDiam}). Reduce el diámetro del accesorio o selecciona un ramal mayor.`,
                   );
                   return;
                 }
-                // El diámetro del accesorio (diametroInicio/Fin) ya no tiene selector propio —
-                // siempre refleja el diámetro del propio ramal, por lo que hay que mantenerlo
-                // sincronizado aquí también, no solo fijarlo una vez al crear el accesorio.
-                const updates = { diametro: val, diametroInicio: val, diametroFin: val };
+                // NO sobrescribir diametroInicio/Fin: el accesorio conserva su propio diámetro
+                // (la invariante permite accesorios más angostos que el ramal). Forzarlos al
+                // diámetro del ramal hacía que el siguiente cambio de diámetro alertara siempre:
+                // el accesorio quedaba con el valor anterior del ramal y bloqueaba cualquier
+                // reducción posterior, aunque el accesorio real fuera menor.
+                const updates = { diametro: val };
                 engineRef.current.updateElementById(ramalEl.id, updates);
                 setContextMenuState((prev) =>
                   prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
@@ -1968,31 +2089,26 @@ function BajanteCodeEditor({
                 // entrante] en el momento de la división (PlanoEngineDrawing.ts), y el diametro
                 // de ese hijo solo se calculó una vez, al crearlo. Sin esto, cambiar el
                 // diámetro de un padre después nunca llega al ramal fusionado/auto-creado ya
-                // existente.
-                // AF/AC/gas quedan excluidos: esas redes ya no auto-asignan diámetro al ramal
-                // fusionado (queda en blanco para que el usuario lo elija explícitamente), así
-                // que tampoco hay nada que sincronizar aquí para ellas.
+                // existente. Aplica a todas las redes: el hijo siempre sigue al mayor (max).
                 const eng = engineRef.current;
-                if (!['af', 'ac', 'gas'].includes(ramalEl.net)) {
-                  for (const child of eng.ramales) {
-                    if (!child.mergesFrom || !child.mergesFrom.includes(ramalEl.id)) continue;
-                    const [pid1, pid2] = child.mergesFrom;
-                    const d1 =
-                      pid1 === ramalEl.id
-                        ? val
-                        : eng.ramales.find((r) => r.id === pid1)?.diametro || '';
-                    const d2 =
-                      pid2 === ramalEl.id
-                        ? val
-                        : eng.ramales.find((r) => r.id === pid2)?.diametro || '';
-                    const newChildDiam = maxDiametroLabel(d1, d2);
-                    if (newChildDiam && newChildDiam !== child.diametro) {
-                      eng.updateElementById(child.id, {
-                        diametro: newChildDiam,
-                        diametroInicio: newChildDiam,
-                        diametroFin: newChildDiam,
-                      });
-                    }
+                for (const child of eng.ramales) {
+                  if (!child.mergesFrom || !child.mergesFrom.includes(ramalEl.id)) continue;
+                  const [pid1, pid2] = child.mergesFrom;
+                  const d1 =
+                    pid1 === ramalEl.id
+                      ? val
+                      : eng.ramales.find((r) => r.id === pid1)?.diametro || '';
+                  const d2 =
+                    pid2 === ramalEl.id
+                      ? val
+                      : eng.ramales.find((r) => r.id === pid2)?.diametro || '';
+                  const newChildDiam = maxDiametroLabel(d1, d2);
+                  if (newChildDiam && newChildDiam !== child.diametro) {
+                    eng.updateElementById(child.id, {
+                      diametro: newChildDiam,
+                      diametroInicio: newChildDiam,
+                      diametroFin: newChildDiam,
+                    });
                   }
                 }
                 eng.render();
@@ -2400,10 +2516,10 @@ function rotateGuideLine(
     eng.triggerAlert(
       'Ángulo no permitido',
       effectiveNet === 'san' || effectiveNet === 'll'
-        ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
+        ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°. Usar línea guía para ajustar ángulo.'
         : effectiveNet === 'gas'
-          ? 'La red de gas solo permite ángulos de 90°.'
-          : 'Esta red debe diseñarse con ángulos de 45° o 90°.',
+          ? 'La red de gas solo permite ángulos de 90°. Usar línea guía para ajustar ángulo.'
+          : 'Esta red debe diseñarse con ángulos de 45° o 90°. Usar línea guía para ajustar ángulo.',
     );
     return;
   }
@@ -2415,11 +2531,12 @@ function rotateGuideLine(
 
 function guideAngleAlertMessage(net: string, tipo: string): string {
   if (net === 'san' || net === 'll' || net === 'vent')
-    return 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.';
-  if (net === 'gas') return 'La red de gas solo permite ángulos de 90°.';
+    return 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°. Usar línea guía para ajustar ángulo.';
+  if (net === 'gas')
+    return 'La red de gas solo permite ángulos de 90°. Usar línea guía para ajustar ángulo.';
   if ((net === 'af' || net === 'ac') && tipo === 'tributario')
-    return 'Los tributarios de AF/AC solo permiten ángulos de 90°.';
-  return 'Esta red debe diseñarse con ángulos de 45° o 90°.';
+    return 'Los tributarios de AF/AC solo permiten ángulos de 90°. Usar línea guía para ajustar ángulo.';
+  return 'Esta red debe diseñarse con ángulos de 45° o 90°. Usar línea guía para ajustar ángulo.';
 }
 
 function GuideLineMenu() {
@@ -2538,14 +2655,7 @@ function GuideLineMenu() {
           // Sin auto-orientación aquí: si la dirección de flujo del ramal creado no coincide con
           // la del ramal cruzado, autoSplitJunctionAndSumFlow muestra la alerta y bloquea la
           // unión (item 1). La auto-orientación al crear queda solo para tributarios (item 10).
-          const dx = p1[0] - p0[0];
-          const dy = p1[1] - p0[1];
-          const distMm = Math.hypot(dx, dy);
-          let lblAngle = (Math.atan2(dy, dx) * 180) / Math.PI;
-          if (lblAngle > 90) lblAngle -= 180;
-          if (lblAngle < -90) lblAngle += 180;
-          const perpX = -dy / (distMm || 1);
-          const perpY = dx / (distMm || 1);
+          const distMm = Math.hypot(pEnd[0] - pStart[0], pEnd[1] - pStart[1]);
           const newRamal: PlanoRamal = {
             id: ramId,
             net: effectiveNet,
@@ -2559,14 +2669,30 @@ function GuideLineMenu() {
             piso: String(eng.nivelActual?.n ?? ''),
             dz: '',
             uc: 0,
-            labelX: (p0[0] + p1[0]) / 2 + perpX * 25,
-            labelY: (p0[1] + p1[1]) / 2 + perpY * 25,
-            labelAngle: Math.round(lblAngle),
+            // Ítem 1: etiqueta en el punto medio del trazo REAL [pStart,pEnd] con el ángulo de
+            // su primer segmento (igual que los ramales manuales: labelOffset 0 + _firstSegmentAngle)
+            // — el gap perpendicular del render queda justo arriba del trazo. Antes usaba el
+            // ángulo de la guía original sin reordenar, que quedaba 180° fuera cuando el cruce
+            // invertía pStart/pEnd, tirando la etiqueta al lado opuesto del trazo.
+            labelX: (pStart[0] + pEnd[0]) / 2,
+            labelY: (pStart[1] + pEnd[1]) / 2,
+            labelAngle: _firstSegmentAngle([pStart, pEnd]),
             material: '',
             diametro: '',
             pendiente: 2,
             bloqueado: false,
           };
+          // Ítem 5: un vent creado desde guía que termina fluyendo HACIA una unión san (codo
+          // reventilado) se bloquea aquí — autoSplitJunctionAndSumFlow solo valida uniones a
+          // mitad de cuerpo, no extremo-con-extremo, así que sin este chequeo el vent se creaba
+          // recibiendo flujo en el extremo de un ramal sanitario.
+          if (effectiveNet === 'vent') {
+            const flowErr = ramalFlowDirectionCheck(eng, newRamal, [newRamal], 0.5);
+            if (flowErr) {
+              eng.triggerAlert('Dirección de flujo incorrecta', flowErr);
+              return;
+            }
+          }
           eng.ramales.push(newRamal);
           // Igual que un ramal terminado a mano (finishRamal): si el extremo cae a mitad del
           // cuerpo de otro ramal, ese ramal se parte en existing+downstream y el nuevo se suma
@@ -2655,14 +2781,7 @@ function GuideLineMenu() {
             eng.ramales.some((r) => r.label === `T${n}${padreLabel}`),
           );
           const tId = 'T' + Date.now();
-          const dx = p1[0] - p0[0];
-          const dy = p1[1] - p0[1];
-          const distMm = Math.hypot(dx, dy);
-          let lblAngle = (Math.atan2(dy, dx) * 180) / Math.PI;
-          if (lblAngle > 90) lblAngle -= 180;
-          if (lblAngle < -90) lblAngle += 180;
-          const perpX = -dy / (distMm || 1);
-          const perpY = dx / (distMm || 1);
+          const distMm = Math.hypot(pEnd[0] - pStart[0], pEnd[1] - pStart[1]);
           const label = `T${cnt}${padre.label || padre.id || ''}`;
           const newTrib: PlanoRamal = {
             id: tId,
@@ -2678,15 +2797,27 @@ function GuideLineMenu() {
             dz: '',
             uc: 0,
             nSalidas: 1,
-            labelX: (p0[0] + p1[0]) / 2 + perpX * 25,
-            labelY: (p0[1] + p1[1]) / 2 + perpY * 25,
-            labelAngle: Math.round(lblAngle),
+            // Ítem 1: etiqueta en el punto medio del trazo real [pStart,pEnd] con el ángulo de
+            // su primer segmento (igual que los ramales manuales).
+            labelX: (pStart[0] + pEnd[0]) / 2,
+            labelY: (pStart[1] + pEnd[1]) / 2,
+            labelAngle: _firstSegmentAngle([pStart, pEnd]),
             material: '',
             diametro: '',
             pendiente: 2,
             bloqueado: true,
             _tribReversed: tribReversedForFlow,
           };
+          // Ítem 5: un tributario vent creado desde guía que termina fluyendo HACIA la unión san
+          // (recibiendo flujo en el codo reventilado) se bloquea aquí — autoSplit no valida
+          // uniones extremo-con-extremo.
+          if (padre.net === 'vent') {
+            const flowErr = ramalFlowDirectionCheck(eng, newTrib, [newTrib], 0.5);
+            if (flowErr) {
+              eng.triggerAlert('Dirección de flujo incorrecta', flowErr);
+              return;
+            }
+          }
           eng.ramales.push(newTrib);
           // Igual que un tributario terminado a mano sobre su padre: parte al padre en
           // existing+downstream en el punto de cruce y fija la dirección del tributario (cola
@@ -2793,6 +2924,26 @@ function MidRamalAccessorySelector({
             return;
           }
 
+          // Ítems 12/13: polaridad del codo de 90° sube/baja en el CUERPO — en el cuerpo el
+          // flujo pasa de largo (ni llega ni sale), así que ni sube ni baja son válidos ahí.
+          if (
+            accId === 'codoSube' ||
+            accId === 'codoBaja' ||
+            accId === 'codo90rmSube' ||
+            accId === 'codo90rmBaja'
+          ) {
+            if (!codoPolarityOk(fresh, [midRamalHit.x, midRamalHit.y], accId, 0.5)) {
+              const isSube = accId === 'codoSube' || accId === 'codo90rmSube';
+              eng.triggerAlert(
+                'Polaridad de codo incorrecta',
+                isSube
+                  ? 'El codo 90° sube solo puede entregar flujo: colócalo en un extremo hacia donde fluye el ramal, no en el cuerpo.'
+                  : 'El codo 90° baja solo puede recibir flujo: colócalo en un extremo desde donde fluye el ramal, no en el cuerpo.',
+              );
+              return;
+            }
+          }
+
           if (existingKey) {
             const newAccMed = { ...(fresh.accMed || {}) };
             if (accId) {
@@ -2884,6 +3035,28 @@ function MidRamalAccessorySelector({
   );
 }
 
+// ¿El punto p cae sobre el CUERPO (mitad de segmento) de pts? Excluye extremos (t<0.02/0.98),
+// que se validan por coincidencia de vértice aparte.
+function pointOnRamalBody(pts: number[][], p: number[], tol: number): boolean {
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i];
+    const b = pts[i + 1];
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 0.0001) {
+      if (Math.hypot(p[0] - a[0], p[1] - a[1]) < tol) return true;
+      continue;
+    }
+    const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq;
+    if (t < 0.02 || t > 0.98) continue;
+    const px = a[0] + t * dx;
+    const py = a[1] + t * dy;
+    if (Math.hypot(p[0] - px, p[1] - py) < tol) return true;
+  }
+  return false;
+}
+
 // Un ramal que participa en cualquier unión con otros ramales no debe ver invertido su sentido
 // de flujo: invertir pts invalidaría cada extremo compartido, el vínculo con el tributario
 // padre, los glifos tee/yee de accMed en la unión y las asignaciones accesorioInicio/Fin de
@@ -2894,6 +3067,9 @@ function ramalHasInterconnections(eng: PlanoEngine | null, ramal: PlanoRamal): b
   if (!eng) return false;
   const TOL = 0.5;
   const eps = [ramal.pts[0], ramal.pts[ramal.pts.length - 1]];
+  // Ítem 11: este ramal es la mitad (aguas arriba o abajo) de una división auto-split — su
+  // dirección no se puede invertir sin romper la cadena mergesFrom.
+  if (ramal.mergesFrom) return true;
   for (const other of eng.ramales) {
     if (other.id === ramal.id) continue;
     const sameGroup =
@@ -2904,9 +3080,32 @@ function ramalHasInterconnections(eng: PlanoEngine | null, ramal: PlanoRamal): b
     if (other.padre === ramal.id) return true;
     if (other.tipo === 'tributario' && ramal.tipo === 'tributario' && other.padre === ramal.padre)
       continue;
+    // otro ramal fue partido por este (o referencia este en una cadena de splits)
+    if (other.mergesFrom && other.mergesFrom.includes(ramal.id)) return true;
+    // extremo-contra-extremo (comportamiento viejo)
     for (const pt of other.pts) {
       if (eps.some((e) => Math.hypot(e[0] - pt[0], e[1] - pt[1]) < TOL)) return true;
     }
+    // Ítem 11: extremo del OTRO sentado sobre el CUERPO de este ramal (p. ej. un vent sobre el
+    // cuerpo de un san — la unión reventilado no divide, así que antes no se detectaba) y
+    // extremo de ESTE sentado sobre el cuerpo del otro.
+    for (const pt of other.pts) {
+      if (pointOnRamalBody(ramal.pts, pt, TOL)) return true;
+    }
+    for (const myEp of eps) {
+      if (pointOnRamalBody(other.pts, myEp, TOL)) return true;
+    }
+  }
+  // Ítem 11: bajante/montante tocando los extremos — vía recibeDeIds o por posición (con el
+  // desplazamiento del piso actual). Invertir el ramal voltearía ini/fin que referencian el
+  // código del bajante.
+  const lvl = eng.nivelActual?.label ?? '';
+  for (const b of eng.bajantes) {
+    if (b.recibeDeIds?.includes(ramal.id)) return true;
+    const disp = b.desplazamientos?.[lvl] || {};
+    const bx = b.x + (disp.dx || 0);
+    const by = b.y + (disp.dy || 0);
+    if (eps.some((e) => Math.hypot(e[0] - bx, e[1] - by) < TOL)) return true;
   }
   if (ramal.tipo === 'tributario') return true;
   if (ramal.accMed && Object.keys(ramal.accMed).length > 0) return true;
@@ -2917,6 +3116,11 @@ function RamalMenu() {
   const ctx = useDrawingElementContextMenu();
   const { contextMenuState, element, engineRef, selElement, setSelElement } = ctx;
   const ramalEl = element as PlanoRamal;
+  const [ucMoveState, setUcMoveState] = useState<UcMoveModalState>({
+    isOpen: false,
+    sourceLabel: '',
+    options: [],
+  });
 
   // Un midRamalHit que cae exactamente sobre un vértice accMed EXISTENTE (PlanoEngineHitTesting.ts
   // los comprueba antes que los impactos de cuerpo de segmento) reporta segmentIdx = accMedIdx - 1
@@ -2935,6 +3139,64 @@ function RamalMenu() {
   // allí.
   const isOccupiedTee =
     isExistingTee || existingTeeType === 'teeTapon' || existingTeeType === 'teeLlaveTerminal';
+
+  // F1: al invertir la dirección de un ramal interconectado (af/ac/gas, no tributario) con UC
+  // asignadas y al menos un vecino directo, el usuario elige a qué ramal de la conexión se
+  // mueven las unidades de consumo. Sin UC o sin vecinos → toggle directo sin modal.
+  const readUcInfo = (): { planId: string | number | null; total: number } => {
+    const all =
+      loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {}) || {};
+    for (const p of ctx.planosCtx?.plans || []) {
+      if (p.status !== 'confirmed') continue;
+      const rec = all[`${ramalEl.net}_${ramalEl.id}_${p.id}`];
+      if (rec && Object.keys(rec).length > 0) {
+        const total = Object.values(rec).reduce((s, n) => s + (n || 0), 0);
+        if (total > 0) return { planId: p.id, total };
+      }
+    }
+    return { planId: null, total: 0 };
+  };
+
+  const doInvert = (targetId: string | null) => {
+    const val = !ramalEl._tribReversed;
+    const eng = engineRef.current;
+    if (!eng) return;
+    eng.updateElementById(ramalEl.id, { _tribReversed: val });
+    const fresh = eng.ramales.find((x) => x.id === ramalEl.id);
+    // Cuando un tributario participa en la unión de cualquiera de los dos extremos,
+    // la regla se endurece a "exactamente 1 entrada" (ver
+    // junctionRespectsTributarioDirection) — "al menos 1 salida" no basta ahí, porque
+    // el tributario ya aporta su propia salida fija sin importar qué pase con el
+    // resto del grupo (existing/downstream podrían quedar los dos como salida o los
+    // dos como entrada, y "al menos 1 salida" no lo detectaría).
+    const okAtBothEnds = fresh
+      ? [fresh.pts[0], fresh.pts[fresh.pts.length - 1]].every((ep) =>
+          junctionRespectsTributarioDirection(eng.ramales, ramalEl.net, ep),
+        )
+      : true;
+    if (!okAtBothEnds) {
+      eng.updateElementById(ramalEl.id, { _tribReversed: !val });
+      eng.triggerAlert(
+        'Conexión sin salida',
+        'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
+      );
+      eng.render();
+      return;
+    }
+    if (targetId) {
+      const ucInfo = readUcInfo();
+      if (ucInfo.planId != null) {
+        moveAllAparatoCounts(ramalEl.net, ramalEl.id, targetId, ucInfo.planId);
+        writeHydroDrawingSync(ctx.planosCtx?.plans || []);
+      }
+    }
+    if (selElement?.id === ramalEl.id) {
+      setSelElement({ ...selElement, _tribReversed: val });
+    }
+    eng.render();
+    eng._markDirty();
+    ctx.setContextMenuState(null);
+  };
 
   return (
     <>
@@ -3073,34 +3335,20 @@ function RamalMenu() {
               // se invierte automáticamente.
               const r = eng.ramales.find((x) => x.id === ramalEl.id);
               if (!r) return;
-              const tmpPts = r.pts.map((p) => [...p]);
-              r.pts = tmpPts.reverse();
-              const tmpAcc = r.accesorioInicio;
-              r.accesorioInicio = r.accesorioFin;
-              r.accesorioFin = tmpAcc;
-              const tmpDiam = r.diametroInicio;
-              r.diametroInicio = r.diametroFin;
-              r.diametroFin = tmpDiam;
-              const tmpApp = r.aparatoInicio;
-              r.aparatoInicio = r.aparatoFin;
-              r.aparatoFin = tmpApp;
-              const tmpIniFin = r.ini;
-              r.ini = r.fin;
-              r.fin = tmpIniFin;
-              // Las claves accMed se desplazan porque los vértices interiores se reindexan
-              // con el nuevo orden.
-              if (r.accMed) {
-                const oldMed = r.accMed;
-                const len = r.pts.length;
-                const newMed: Record<string, string> = {};
-                for (const [k, v] of Object.entries(oldMed)) {
-                  const m = k.match(/^accMed(\d+)$/);
-                  if (!m) continue;
-                  const oldIdx = parseInt(m[1], 10);
-                  const newIdx = len - 1 - oldIdx;
-                  newMed[`accMed${newIdx}`] = v;
-                }
-                r.accMed = newMed;
+              // Un solo flip (involución) reemplazó el código inline de pts.reverse + swaps de
+              // extremos + reindex de accMed.
+              flipRamalFlow(r);
+              // Ítems 2/5/11: tras invertir, el ramal puede quedar fluyendo contra la dirección
+              // del ramal en el otro extremo (o un vent puede quedar llegando a una unión
+              // reventilado). Se valida y, si viola, se deshace (un segundo flip restaura).
+              const flowErr = ['san', 'll', 'vent'].includes(r.net)
+                ? ramalFlowDirectionCheck(eng, r, [], 0.5)
+                : null;
+              if (flowErr) {
+                flipRamalFlow(r);
+                eng.triggerAlert('Dirección de flujo incorrecta', flowErr);
+                eng.render();
+                return;
               }
               eng.render();
               eng._markDirty();
@@ -3126,36 +3374,24 @@ function RamalMenu() {
                   : DrawingElementContextMenu_S13
               }
               onClick={() => {
-                const val = !ramalEl._tribReversed;
                 const eng = engineRef.current;
                 if (!eng) return;
-                eng.updateElementById(ramalEl.id, { _tribReversed: val });
-                const fresh = eng.ramales.find((x) => x.id === ramalEl.id);
-                // Cuando un tributario participa en la unión de cualquiera de los dos extremos,
-                // la regla se endurece a "exactamente 1 entrada" (ver
-                // junctionRespectsTributarioDirection) — "al menos 1 salida" no basta ahí, porque
-                // el tributario ya aporta su propia salida fija sin importar qué pase con el
-                // resto del grupo (existing/downstream podrían quedar los dos como salida o los
-                // dos como entrada, y "al menos 1 salida" no lo detectaría).
-                const okAtBothEnds = fresh
-                  ? [fresh.pts[0], fresh.pts[fresh.pts.length - 1]].every((ep) =>
-                      junctionRespectsTributarioDirection(eng.ramales, ramalEl.net, ep),
-                    )
-                  : true;
-                if (!okAtBothEnds) {
-                  eng.updateElementById(ramalEl.id, { _tribReversed: !val });
-                  eng.triggerAlert(
-                    'Conexión sin salida',
-                    'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
-                  );
-                  eng.render();
-                  return;
+                // F1: con UC asignadas y vecinos directos en la conexión, el usuario elige a
+                // qué ramal se mueven las unidades de consumo antes de invertir. Sin UC o sin
+                // vecinos → toggle directo, sin modal.
+                const ucInfo = readUcInfo();
+                if (ucInfo.total > 0) {
+                  const neighbors = directNeighborRamales(eng.ramales, ramalEl);
+                  if (neighbors.length > 0) {
+                    setUcMoveState({
+                      isOpen: true,
+                      sourceLabel: ramalLabel(ramalEl),
+                      options: neighbors.map((n) => ({ id: n.id, label: ramalLabel(n) })),
+                    });
+                    return;
+                  }
                 }
-                if (selElement?.id === ramalEl.id) {
-                  setSelElement({ ...selElement, _tribReversed: val });
-                }
-                eng.render();
-                eng._markDirty();
+                doInvert(null);
               }}
             >
               ⇄ Invertir dirección de flujo
@@ -3272,6 +3508,17 @@ function RamalMenu() {
           </div>
         </div>
       )}
+      <UcMoveModal
+        state={ucMoveState}
+        onConfirm={(targetId) => {
+          doInvert(targetId);
+          setUcMoveState({ isOpen: false, sourceLabel: '', options: [] });
+        }}
+        onCancel={() => {
+          setUcMoveState({ isOpen: false, sourceLabel: '', options: [] });
+          ctx.setContextMenuState(null);
+        }}
+      />
     </>
   );
 }
@@ -3310,9 +3557,10 @@ function CalentadorMenu() {
   );
 }
 
-const CanalMenu_FIELD_LABELS: Record<'base' | 'altura', string> = {
+const CanalMenu_FIELD_LABELS: Record<'base' | 'altura' | 'longitud', string> = {
   base: 'Base (cm)',
   altura: 'Altura (cm)',
+  longitud: 'Longitud (cm)',
 };
 
 // Patrón de commit con texto libre (buffer de edición local, commit al perder el foco) — igual
@@ -3323,7 +3571,7 @@ function CanalDimInput({
   value,
   onCommit,
 }: {
-  field: 'base' | 'altura';
+  field: 'base' | 'altura' | 'longitud';
   value: number;
   onCommit: (v: number) => void;
 }) {
@@ -3345,6 +3593,10 @@ function CanalDimInput({
         const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
         setText(raw);
       }}
+      onKeyDown={(e) => {
+        // Enter commitea el cambio (mismo comportamiento que el resto de campos numéricos)
+        if (e.key === 'Enter') e.currentTarget.blur();
+      }}
       onBlur={() => {
         setEditing(false);
         const v = parseFloat(text) || 0;
@@ -3360,7 +3612,7 @@ function CanalMenu() {
     useDrawingElementContextMenu();
   const canal = element as PlanoBajante;
 
-  const commit = (field: 'base' | 'altura', v: number) => {
+  const commit = (field: 'base' | 'altura' | 'longitud', v: number) => {
     engineRef.current?.updateElementById(canal.id, { [field]: v });
     setContextMenuState((prev) =>
       prev ? { ...prev, element: { ...prev.element, [field]: v } } : null,
@@ -3372,7 +3624,7 @@ function CanalMenu() {
 
   return (
     <>
-      {(['base', 'altura'] as const).map((field) => (
+      {(['base', 'longitud', 'altura'] as const).map((field) => (
         <div key={field} style={{ padding: '0 8px 8px' }}>
           <div
             style={{
@@ -3393,6 +3645,45 @@ function CanalMenu() {
           />
         </div>
       ))}
+      <div style={{ padding: '0 8px 8px' }}>
+        <div
+          style={{
+            fontSize: 12,
+            color: '#849495',
+            fontFamily: "'Geist',monospace",
+            marginBottom: 4,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+          }}
+        >
+          Asociar bajante externo
+        </div>
+        <select
+          value={canal.bajanteExternoId || ''}
+          aria-label="Asociar bajante externo"
+          onChange={(e) => {
+            const v = e.target.value || null;
+            engineRef.current?.updateElementById(canal.id, { bajanteExternoId: v });
+            setContextMenuState((prev) =>
+              prev ? { ...prev, element: { ...prev.element, bajanteExternoId: v } } : null,
+            );
+            if (selElement?.id === canal.id) {
+              setSelElement({ ...selElement, bajanteExternoId: v });
+            }
+            engineRef.current?.render();
+          }}
+          style={DrawingElementContextMenu_S2}
+        >
+          <option value="">— Sin bajante —</option>
+          {(engineRef.current?.bajantes || [])
+            .filter((b) => b.net === 'll' && b.tipo !== 'canal')
+            .map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.code || b.id}
+              </option>
+            ))}
+        </select>
+      </div>
     </>
   );
 }

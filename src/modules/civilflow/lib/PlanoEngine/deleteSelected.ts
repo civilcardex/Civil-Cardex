@@ -9,6 +9,9 @@ import {
 import { clearBajanteAssociation } from '../../utils/bajanteAssociation';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import { HYDRO_DATA_STORAGE_KEY } from '../../constants/storage-keys';
+import { calculateRamalLength } from './ramalMeasure';
+import { _midpoint } from './PlanoEngineDrawing';
+import { _firstSegmentAngle } from './drawingAngles';
 
 interface HidroDataEntry {
   accesorios: Record<string, number>;
@@ -242,6 +245,78 @@ function cleanupTeeMarkersAt(engine: IPlanoEngineCore, pt: number[]): void {
   }
 }
 
+// Ítem 9: al borrar un ramal que PARTIÓ a otro (el `incoming` de una división mergesFrom =
+// [existing.id, incoming.id]), se re-une la línea: el tramo aguas arriba (A = mergesFrom[0]) y
+// el tramo aguas abajo (D = mergesFrom[1]) que quedaron separados vuelven a ser UN ramal, con
+// los datos de extremo lejano de D movidos a A, el UC revertido (D.uc − uc del borrado) y la
+// etiqueta recalculada. Si en cambio se borra una de las dos mitades (A o D), solo se limpia la
+// referencia mergesFrom muerta de la sobreviviente. Las cadenas (D dividido de nuevo después)
+// se reescriben para apuntar de D.id → A.id.
+function remergeSplitRamales(engine: IPlanoEngineCore, deletedId: string, deletedUc: number): void {
+  if (!engine.ramales.some((r) => r.mergesFrom)) return;
+  const TOL = 0.5;
+  for (const d of engine.ramales) {
+    if (!d.mergesFrom) continue;
+    if (d.mergesFrom[0] === deletedId) {
+      // Se borró la mitad aguas arriba — la referencia de la sobreviviente queda muerta.
+      d.mergesFrom = undefined;
+      continue;
+    }
+    if (d.mergesFrom[1] !== deletedId) continue;
+    const a = engine.ramales.find((r) => r.id === d.mergesFrom![0]);
+    if (!a || !a.pts || a.pts.length < 2 || !d.pts || d.pts.length < 2) {
+      d.mergesFrom = undefined;
+      continue;
+    }
+    const aLast = a.pts[a.pts.length - 1];
+    const dFirst = d.pts[0];
+    if (Math.hypot(aLast[0] - dFirst[0], aLast[1] - dFirst[1]) > TOL) {
+      // Los extremos ya no coinciden (A o D fueron remodelados tras el split) — fusionar
+      // geometría incoherente no tiene sentido; se limpia la referencia.
+      d.mergesFrom = undefined;
+      continue;
+    }
+    // Re-unir: A continúa con el cuerpo de D (salvo el punto compartido).
+    a.pts = [...a.pts, ...d.pts.slice(1)];
+    a.totalL = calculateRamalLength(a.pts, engine);
+    // El UC del downstream acreditaba existing.uc + incoming.uc — al borrar el incoming se
+    // revierte a la suma que ya traía la mitad aguas arriba.
+    a.uc = (d.uc || 0) - deletedUc;
+    // Mover los datos de extremo lejano de D a A (se ponían en D al dividir).
+    if (d.accesorioFin) a.accesorioFin = d.accesorioFin;
+    if (d.diametroFin) a.diametroFin = d.diametroFin;
+    if (d.aparatoFin) a.aparatoFin = d.aparatoFin;
+    if (d.sifonLabelFin) a.sifonLabelFin = d.sifonLabelFin;
+    // accMed interiores de D (p. ej. un tee de montante a mitad de cuerpo) se reindexan al
+    // nuevo orden de A (el punto compartido queda en el índice base).
+    if (d.accMed) {
+      if (!a.accMed) a.accMed = {};
+      const base = a.pts.length - 1;
+      for (const [k, v] of Object.entries(d.accMed)) {
+        const m = k.match(/^accMed(\d+)$/);
+        if (!m) continue;
+        a.accMed[`accMed${base + parseInt(m[1], 10)}`] = v;
+      }
+    }
+    // Etiqueta recalculada sobre el cuerpo re-unido.
+    const [mx, my] = _midpoint(a.pts);
+    a.labelX = mx;
+    a.labelY = my;
+    a.labelAngle = _firstSegmentAngle(a.pts);
+    // Reescritura de cadenas: cualquier ramal que referencie D.id pasa a apuntar a A.id.
+    const dId = d.id;
+    engine.ramales = engine.ramales.filter((r) => r.id !== dId);
+    for (const m of engine.ramales) {
+      if (m.mergesFrom) {
+        m.mergesFrom = [
+          m.mergesFrom[0] === dId ? a.id : m.mergesFrom[0],
+          m.mergesFrom[1] === dId ? a.id : m.mergesFrom[1],
+        ];
+      }
+    }
+  }
+}
+
 export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
   if (ids && ids.length > 0) {
     engine._yeeFlashKey = null;
@@ -257,6 +332,9 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
         engine.ramales = engine.ramales.filter(
           (r) => r.id !== deleted.id && r.padre !== deleted.id,
         );
+        // Ítem 9: si este ramal había partido a otro (incoming de una división mergesFrom), se
+        // re-une la línea que quedó en dos mitades.
+        remergeSplitRamales(engine, deleted.id, deleted.uc || 0);
         if (deleted.pts?.length) {
           cleanupTeeMarkersAt(engine, deleted.pts[0]);
           cleanupTeeMarkersAt(engine, deleted.pts[deleted.pts.length - 1]);
@@ -292,6 +370,11 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
         if (deleted.tipo === 'canal') {
           for (const b of engine.bajantes) {
             if (b.canalId === deleted.id) b.canalId = null;
+          }
+        } else {
+          // Borrar un bajante debe quitar la asociación externa que cualquier canal tenga sobre él.
+          for (const c of engine.bajantes) {
+            if (c.tipo === 'canal' && c.bajanteExternoId === deleted.id) c.bajanteExternoId = null;
           }
         }
         const lvl = engine.nivelActual?.label ?? '';
@@ -426,6 +509,8 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
     const deleted = engine.ramales[idxR];
     const deletedId = deleted.id;
     engine.ramales = engine.ramales.filter((r) => r.id !== deletedId && r.padre !== deleted.id);
+    // Ítem 9: si este ramal había partido a otro, se re-une la línea en dos mitades.
+    remergeSplitRamales(engine, deletedId, deleted.uc || 0);
     if (deleted.pts?.length) {
       cleanupTeeMarkersAt(engine, deleted.pts[0]);
       cleanupTeeMarkersAt(engine, deleted.pts[deleted.pts.length - 1]);

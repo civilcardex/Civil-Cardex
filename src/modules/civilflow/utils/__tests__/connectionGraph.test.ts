@@ -116,4 +116,36 @@ describe('computeDirectedTotals', () => {
     );
     expect(result['leaf']).toBe(15);
   });
+
+  it('2+ tributarios al mismo ramal: el total aguas abajo suma TODOS respetando el árbol de flujo', () => {
+    // Árbol: cont → tronco → (trib1, trib2 en la misma unión) → ramal final
+    const tramos = mkTramos([
+      ['cont', 0],
+      ['tronco', 0],
+      ['trib1', 10],
+      ['trib2', 20],
+      ['final', 0],
+    ]);
+    const adj: Record<string, string[]> = {
+      cont: ['tronco'],
+      tronco: ['cont', 'union'],
+      union: ['tronco', 'trib1', 'trib2', 'final'],
+      trib1: ['union'],
+      trib2: ['union'],
+      final: ['union'],
+    };
+    const result = computeDirectedTotals(
+      tramos,
+      (t) => t._key,
+      adj,
+      (t) => t.partial,
+      'cont',
+    );
+    // tronco acumula todo lo que cuelga aguas abajo (trib1 + trib2 + final)
+    expect(result['tronco']).toBe(30);
+    // cada tributario solo aporta su propio parcial
+    expect(result['trib1']).toBe(10);
+    expect(result['trib2']).toBe(20);
+    expect(result['final']).toBe(0);
+  });
 });

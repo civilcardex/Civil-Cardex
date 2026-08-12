@@ -127,8 +127,8 @@ describe('finishRamal — mid-body junction triggers autoSplitJunctionAndSumFlow
     expect(merged.pts[merged.pts.length - 1]).toEqual([40, 0]);
     // uc sumado de ambos ramales convergentes (uc original de aguas arriba=5 + uc del entrante=0)
     expect(merged.uc).toBe(5 + (incoming.uc || 0));
-    // AF/AC/gas: el diámetro se deja en blanco para que el usuario lo elija explícitamente, no se auto-asigna
-    // al mayor de los dos ramales convergentes.
-    expect(merged.diametro).toBe('');
+    // El ramal aguas abajo hereda el mayor de los dos diámetros convergentes (max) en todas las
+    // redes: aguas arriba 1/2" vs entrante 3/4" → 3/4".
+    expect(merged.diametro).toBe(incoming.diametro || '3/4" — 19.1 mm');
   });
 });

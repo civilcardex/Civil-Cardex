@@ -2,7 +2,7 @@ import type { IPlanoEngineCore } from './PlanoState';
 import type { PlanoRamal } from './PlanoState';
 import { NETS } from './PlanoState';
 import { checkRamalAngles, _firstSegmentAngle, detectAccesorioTrigger } from './drawingAngles';
-import { autoSplitJunctionAndSumFlow } from './PlanoEngineDrawing';
+import { autoSplitJunctionAndSumFlow, ramalFlowDirectionCheck } from './PlanoEngineDrawing';
 import {
   updateCrossFloorGhostPositionBySource,
   updateCrossFloorLdesvioFarEndpoint,
@@ -20,6 +20,24 @@ function checkAccesorioTrigger(engine: IPlanoEngineCore, ramalId: string): void 
   if (r.net !== 'af' && r.net !== 'ac' && r.net !== 'gas') return;
   const trigger = detectAccesorioTrigger(engine, ramalId);
   if (trigger) engine.triggerAccesorioModal(trigger);
+}
+
+// Ítems 2/5: un arrastre que re-ancla un ramal san/ll/vent puede crear una unión contraflujo
+// (o un vent puede quedar fluyendo hacia una unión reventilado). Se valida ANTES de autoSplit
+// y, si viola, el drag se revierte como un chequeo de ángulo fallido. Incluye el par
+// san/vent arrastrado junto (linkedPts) para que una unión reventilado se revierta completa.
+function dragFlowCheck(
+  engine: IPlanoEngineCore,
+  ram: PlanoRamal,
+  linkedRamales: PlanoRamal[],
+): string | null {
+  for (const r of [ram, ...linkedRamales]) {
+    if (!r || !r.pts || r.pts.length < 2) continue;
+    if (r.net !== 'san' && r.net !== 'll' && r.net !== 'vent') continue;
+    const err = ramalFlowDirectionCheck(engine, r, [], 0.5);
+    if (err) return err;
+  }
+  return null;
 }
 
 // Al DIBUJAR (handleLineDown) ya se bloquea conectar un tributario a cualquier ramal que no sea
@@ -100,7 +118,7 @@ function tryRotateToValidAngle(
   if (Math.abs(snappedDeg - curDeg) < 1) return false;
   const rad = (snappedDeg * Math.PI) / 180;
   pts[1 - anchorIdx] = [ax + len * Math.cos(rad), ay + len * Math.sin(rad)];
-  return checkRamalAngles(pts, ram.net, ram.tipo);
+  return checkRamalAngles(pts, ram.net, ram.tipo, engine.snapMode);
 }
 
 export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false): void {
@@ -272,14 +290,18 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       const assocRamales = assocIds
         .map((rid) => engine.ramales.find((r) => r.id === rid))
         .filter((r): r is PlanoRamal => !!r);
-      const allOk = assocRamales.every((r) => checkRamalAngles(r.pts, r.net, r.tipo));
+      const allOk = assocRamales.every((r) =>
+        checkRamalAngles(r.pts, r.net, r.tipo, engine.snapMode),
+      );
       if (!allOk) {
-        const bad = assocRamales.find((r) => !checkRamalAngles(r.pts, r.net, r.tipo))!;
+        const bad = assocRamales.find(
+          (r) => !checkRamalAngles(r.pts, r.net, r.tipo, engine.snapMode),
+        )!;
         engine.triggerAlert(
           'Ángulo no recomendado',
           bad.net === 'san' || bad.net === 'll'
-            ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
-            : 'Esta red debe diseñarse con ángulos de 45° o 90°.',
+            ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°. Usar línea guía para ajustar ángulo.'
+            : 'Esta red debe diseñarse con ángulos de 45° o 90°. Usar línea guía para ajustar ángulo.',
         );
         if (backupXY) {
           b.x = backupXY.x;
@@ -374,8 +396,10 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
 
     // El par san/vent de un codo reventilado debe revertirse junto — si solo se revierte un lado,
     // el arrastre dejaría la unión partida en vez de simplemente deshecha.
-    const primaryOk = ram ? checkRamalAngles(ram.pts, ram.net, ram.tipo) : true;
-    const linkedOk = linkedRamales.every((r) => checkRamalAngles(r.pts, r.net, r.tipo));
+    const primaryOk = ram ? checkRamalAngles(ram.pts, ram.net, ram.tipo, engine.snapMode) : true;
+    const linkedOk = linkedRamales.every((r) =>
+      checkRamalAngles(r.pts, r.net, r.tipo, engine.snapMode),
+    );
 
     if (ram && (!primaryOk || !linkedOk)) {
       // Un arrastre de extremo que se PEGÓ sobre un bajante (handleDragMove fija el punto
@@ -394,8 +418,8 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         engine.triggerAlert(
           'Ángulo no recomendado',
           ram.net === 'san' || ram.net === 'll'
-            ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
-            : 'Esta red debe diseñarse con ángulos de 45° o 90°.',
+            ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°. Usar línea guía para ajustar ángulo.'
+            : 'Esta red debe diseñarse con ángulos de 45° o 90°. Usar línea guía para ajustar ángulo.',
         );
         if (engine._dragBackupPts) {
           ram.pts = engine._dragBackupPts;
@@ -424,10 +448,28 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       engine._markDirty();
       engine.render();
     } else {
-      engine._dragLinkedBackupPts = null;
-      if (ram) {
-        autoSplitJunctionAndSumFlow(engine, ram);
-        checkAccesorioTrigger(engine, ram.id);
+      const flowErr = ram ? dragFlowCheck(engine, ram, linkedRamales) : null;
+      if (ram && flowErr) {
+        engine.triggerAlert('Dirección de flujo incorrecta', flowErr);
+        if (engine._dragBackupPts) {
+          ram.pts = engine._dragBackupPts;
+          engine._dragBackupPts = null;
+        }
+        const linkedBackups = engine._dragLinkedBackupPts;
+        if (linkedBackups) {
+          for (const r of linkedRamales) {
+            if (linkedBackups[r.id]) r.pts = linkedBackups[r.id];
+          }
+        }
+        engine._dragLinkedBackupPts = null;
+        engine._markDirty();
+        engine.render();
+      } else {
+        engine._dragLinkedBackupPts = null;
+        if (ram) {
+          autoSplitJunctionAndSumFlow(engine, ram);
+          checkAccesorioTrigger(engine, ram.id);
+        }
       }
     }
   }
@@ -444,12 +486,12 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     const srcBajId = rId.startsWith('LD_') ? rId.slice(3) : null;
     const srcBaj = srcBajId ? engine.bajantes.find((b) => b.id === srcBajId) : null;
     const origSrcXY = srcBaj ? { x: srcBaj.x, y: srcBaj.y } : null;
-    if (ram && !checkRamalAngles(ram.pts, ram.net, ram.tipo)) {
+    if (ram && !checkRamalAngles(ram.pts, ram.net, ram.tipo, engine.snapMode)) {
       engine.triggerAlert(
         'Ángulo no recomendado',
         ram.net === 'san' || ram.net === 'll'
-          ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
-          : 'Esta red debe diseñarse con ángulos de 45° o 90°.',
+          ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°. Usar línea guía para ajustar ángulo.'
+          : 'Esta red debe diseñarse con ángulos de 45° o 90°. Usar línea guía para ajustar ángulo.',
       );
       if (origPts) {
         ram.pts = origPts;
@@ -471,7 +513,19 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         engine.render();
       }
     } else if (ram) {
-      if (srcBaj) {
+      const flowErr = dragFlowCheck(engine, ram, []);
+      if (flowErr) {
+        engine.triggerAlert('Dirección de flujo incorrecta', flowErr);
+        if (origPts) {
+          ram.pts = origPts;
+          if (srcBaj && origSrcXY) {
+            srcBaj.x = origSrcXY.x;
+            srcBaj.y = origSrcXY.y;
+          }
+          engine._markDirty();
+          engine.render();
+        }
+      } else if (srcBaj) {
         const sourcePlanId = String(engine._loadedPlanId ?? '');
         updateCrossFloorGhostPositionBySource(sourcePlanId, srcBaj.id, srcBaj.x, srcBaj.y);
       } else {

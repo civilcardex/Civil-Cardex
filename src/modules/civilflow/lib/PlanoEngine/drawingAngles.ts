@@ -8,10 +8,42 @@ function sameNetGroup(a: string, b: string): boolean {
   return a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
 }
 
+// Tolerancia única para validación angular: el snap (PlanoEngine.ts) ya produce ángulos de
+// 45°/90° exactos con snapMode activo, así que los cheques estrictos solo necesitan absorber
+// error de punto flotante, no tolerar dibujo libre. ±0.5°.
+export const ANGLE_EPS = 0.5;
+
+// ¿El giro interno (180 - turnAngle) es uno de los valores permitidos para la red?
+function internalAngleOk(internalAngle: number, net: string): boolean {
+  if (net === 'san' || net === 'll') {
+    // Solo recto (180°) o giro de 45° (135°) — los giros de 90° y cualquier ángulo
+    // intermedio quedan fuera.
+    return Math.abs(internalAngle - 180) <= ANGLE_EPS || Math.abs(internalAngle - 135) <= ANGLE_EPS;
+  }
+  if (net === 'gas') {
+    return Math.abs(internalAngle - 90) <= ANGLE_EPS || Math.abs(internalAngle - 180) <= ANGLE_EPS;
+  }
+  // af/ac: el giro interno debe ser múltiplo de 45° y ≥ 90° (recto 180°, giro 45° → 135°,
+  // giro 90° → 90°) — exacto, sin tolerancias laxas.
+  return (
+    Math.abs(internalAngle - 180) <= ANGLE_EPS ||
+    Math.abs(internalAngle - 135) <= ANGLE_EPS ||
+    Math.abs(internalAngle - 90) <= ANGLE_EPS
+  );
+}
+
 /** Valida que todos los ángulos de los segmentos y los giros internos de un ramal cumplan las
- *  reglas de su red (45° o 90° según el caso). @returns true si es válido. */
-export function checkRamalAngles(pts: number[][], net: string, tipo?: string): boolean {
+ *  reglas de su red (45° o 90° según el caso). @returns true si es válido.
+ *  @param snapOn si el snap de ángulo está activo; con snap apagado, las redes de presión
+ *  (ac/af/gas) no se validan (el modal de ángulo solo aplica al dibujar con snap). */
+export function checkRamalAngles(
+  pts: number[][],
+  net: string,
+  tipo?: string,
+  snapOn: boolean = true,
+): boolean {
   if (pts.length < 2) return true;
+  if (!snapOn && (net === 'ac' || net === 'af' || net === 'gas')) return true;
   const isSanOrLl = net === 'san' || net === 'll';
   const isGas = net === 'gas';
   const isTributarioAcAf = (net === 'af' || net === 'ac') && tipo === 'tributario';
@@ -26,7 +58,7 @@ export function checkRamalAngles(pts: number[][], net: string, tipo?: string): b
       if (Math.hypot(dx, dy) < 0.1) continue;
       const deg = Math.round(((((Math.atan2(dy, dx) * 180) / Math.PI) % 360) + 360) % 360);
       const rem = deg % requiredStep;
-      if (rem > 1 && rem < requiredStep - 1) {
+      if (rem > ANGLE_EPS && rem < requiredStep - ANGLE_EPS) {
         return false;
       }
     }
@@ -50,18 +82,8 @@ export function checkRamalAngles(pts: number[][], net: string, tipo?: string): b
     const turnAngle = (Math.acos(Math.max(-1, Math.min(1, cosVal))) * 180) / Math.PI;
     const internalAngle = 180 - turnAngle;
 
-    if (isSanOrLl) {
-      if (internalAngle < 134) {
-        return false;
-      }
-    } else if (isGas) {
-      if (Math.abs(internalAngle - 90) > 10 && Math.abs(internalAngle - 180) > 1) {
-        return false;
-      }
-    } else {
-      if (internalAngle < 50) {
-        return false;
-      }
+    if (!internalAngleOk(internalAngle, isGas ? 'gas' : net)) {
+      return false;
     }
   }
 
@@ -189,7 +211,7 @@ export function detectJunctionAccesorio(
       const dot = (awayRx * awayR2x + awayRy * awayR2y) / (lenR * lenR2);
       const rawAngle = (Math.acos(Math.max(-1, Math.min(1, dot))) * 180) / Math.PI;
       const turnAngle = 180 - rawAngle;
-      if (Math.abs(turnAngle - 45) < 5 || Math.abs(turnAngle - 90) < 5) {
+      if (Math.abs(turnAngle - 45) <= ANGLE_EPS || Math.abs(turnAngle - 90) <= ANGLE_EPS) {
         const snapped = Math.abs(turnAngle - 45) < Math.abs(turnAngle - 90) ? 45 : 90;
         return { angleDeg: snapped, otherRamalId: r2.id };
       }
@@ -343,7 +365,7 @@ export function detectAccesorioTrigger(
       const dot = (d1x * d2x + d1y * d2y) / (len1 * len2);
       const cosVal = Math.max(-1, Math.min(1, dot));
       const angleDeg = (Math.acos(cosVal) * 180) / Math.PI;
-      if (Math.abs(angleDeg - 45) < 5 || Math.abs(angleDeg - 90) < 5) {
+      if (Math.abs(angleDeg - 45) <= ANGLE_EPS || Math.abs(angleDeg - 90) <= ANGLE_EPS) {
         const snapped = Math.abs(angleDeg - 45) < Math.abs(angleDeg - 90) ? 45 : 90;
         if (snapped === 45) {
           // En AF/AC/gas un quiebre interior de 45° solo admite el codo de 45° — no hay nada que

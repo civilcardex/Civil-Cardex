@@ -119,7 +119,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         r.labelY = engine.ramalDrag.origLabelY + slideDy;
       }
       r.totalL = calculateRamalLength(r.pts, engine);
-      checkRamalAngles(r.pts, r.net, r.tipo);
+      checkRamalAngles(r.pts, r.net, r.tipo, engine.snapMode);
       if (engine.ramalDrag.connRamales) {
         for (const cr of engine.ramalDrag.connRamales) {
           const other = ramalesById.get(cr.id);
@@ -397,7 +397,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             const [mx, my] = _midpoint(r.pts);
             r.labelX = mx;
             r.labelY = my;
-            checkRamalAngles(r.pts, r.net, r.tipo);
+            checkRamalAngles(r.pts, r.net, r.tipo, engine.snapMode);
           }
         });
       }
@@ -513,8 +513,8 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const p = engine.toPlane(x, y);
       canal.x = Math.min(anchorX, p.x);
       canal.y = Math.min(anchorY, p.y);
-      canal.base = Math.max(1, +(engine.pxToM(Math.abs(p.x - anchorX)) * 100).toFixed(1));
-      canal.altura = Math.max(1, +(engine.pxToM(Math.abs(p.y - anchorY)) * 100).toFixed(1));
+      canal.longitud = Math.max(1, +(engine.pxToM(Math.abs(p.x - anchorX)) * 100).toFixed(1));
+      canal.base = Math.max(1, +(engine.pxToM(Math.abs(p.y - anchorY)) * 100).toFixed(1));
       // Encoger el canal puede dejar un bajante asociado fuera de su rectángulo nuevo — se
       // regresa, con la misma regla que un bajante arrastrado hacia el borde.
       for (const assoc of engine.bajantes) {
@@ -824,7 +824,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const [mx, my] = _midpoint(r.pts);
       r.labelX = mx;
       r.labelY = my;
-      checkRamalAngles(r.pts, r.net, r.tipo);
+      checkRamalAngles(r.pts, r.net, r.tipo, engine.snapMode);
       engine.scheduleRender();
     }
     return;

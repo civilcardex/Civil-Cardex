@@ -189,8 +189,8 @@ function canJoinTributario(engine: IPlanoEngineCore, target: PlanoRamal): boolea
  *  "Invertir dirección de flujo" del menú contextual (pts.reverse + swap de los datos por
  *  extremo), reutilizada para auto-orientar uniones san/ll/vent contraflujo. No toca
  *  `_tribReversed` (los ramales de estas redes no lo usan para render; invertir pts ES el flip
- *  visible). */
-function flipRamalFlow(ram: PlanoRamal): void {
+ *  visible). Es una involución: aplicarla dos veces restaura el estado original. */
+export function flipRamalFlow(ram: PlanoRamal): void {
   ram.pts = [...ram.pts].reverse();
   const tmpAcc = ram.accesorioInicio;
   ram.accesorioInicio = ram.accesorioFin;
@@ -219,6 +219,179 @@ function flipRamalFlow(ram: PlanoRamal): void {
     }
     ram.accMed = newMed;
   }
+}
+
+// ————— Helpers compartidos de dirección de flujo (ítems 2, 5, 12, 13) —————
+
+/** Vector de flujo (px, sin normalizar) del ramal en el punto dado — dirección del segmento
+ *  más cercano al punto, con la convención de renderRamales.ts (fluye de pts[0] hacia el último
+ *  punto, invertido si _tribReversed). @returns null si el punto cae fuera del ramal por más de
+ *  tol. */
+export function flowVecAt(
+  ram: { pts: number[][]; _tribReversed?: boolean },
+  pt: number[],
+  tol = 1,
+): [number, number] | null {
+  if (!ram.pts || ram.pts.length < 2) return null;
+  let best: [number, number] | null = null;
+  let bestD = Infinity;
+  for (let i = 0; i < ram.pts.length - 1; i++) {
+    const [ax, ay] = ram.pts[i];
+    const [bx, by] = ram.pts[i + 1];
+    const dx = bx - ax;
+    const dy = by - ay;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 1e-9) continue;
+    const t = ((pt[0] - ax) * dx + (pt[1] - ay) * dy) / lenSq;
+    const tc = Math.max(0, Math.min(1, t));
+    const px = ax + tc * dx;
+    const py = ay + tc * dy;
+    const d = Math.hypot(pt[0] - px, pt[1] - py);
+    if (d < bestD) {
+      bestD = d;
+      best = [dx, dy];
+    }
+  }
+  if (!best || bestD > tol) return null;
+  return ram._tribReversed ? [-best[0], -best[1]] : best;
+}
+
+/** ¿El flujo del ramal TERMINA en el punto P (P es el extremo aguas abajo de la dirección de
+ *  flujo)? */
+export function flowEndsAt(
+  ram: { pts: number[][]; _tribReversed?: boolean },
+  pt: number[],
+  tol: number,
+): boolean {
+  if (!ram.pts || ram.pts.length < 2) return false;
+  const head = ram.pts[ram.pts.length - 1];
+  const tail = ram.pts[0];
+  const atHead = Math.hypot(head[0] - pt[0], head[1] - pt[1]) < tol;
+  const atTail = Math.hypot(tail[0] - pt[0], tail[1] - pt[1]) < tol;
+  if (!atTail && !atHead) return false;
+  const atLogicalHead = ram._tribReversed ? atTail : atHead;
+  return atLogicalHead;
+}
+
+/** ¿El flujo del ramal COMIENZA en el punto P (P es el extremo aguas arriba)? */
+function flowStartsAt(
+  ram: { pts: number[][]; _tribReversed?: boolean },
+  pt: number[],
+  tol: number,
+): boolean {
+  if (!ram.pts || ram.pts.length < 2) return false;
+  const head = ram.pts[ram.pts.length - 1];
+  const tail = ram.pts[0];
+  const atHead = Math.hypot(head[0] - pt[0], head[1] - pt[1]) < tol;
+  const atTail = Math.hypot(tail[0] - pt[0], tail[1] - pt[1]) < tol;
+  if (!atTail && !atHead) return false;
+  const atLogicalTail = ram._tribReversed ? atHead : atTail;
+  return atLogicalTail;
+}
+
+/** ¿La polaridad del codo de montante (codo90rmSube/codo90rmBaja, codoSube/codoBaja) es
+ *  coherente con la dirección de flujo del ramal en P? El codo sube solo puede ENTREGAR flujo
+ *  (la cola de la flecha de flujo apunta al extremo P: el flujo SALE de P hacia el codo);
+ *  el codo baja solo puede RECIBIR flujo (la cabeza de la flecha apunta al extremo P: el flujo
+ *  LLEGA a P desde el codo). En el cuerpo (flujo que pasa de largo, ni llega ni sale) ninguno de
+ *  los dos es válido. */
+export function codoPolarityOk(
+  ramal: { pts: number[][]; _tribReversed?: boolean },
+  pt: number[],
+  accId: string,
+  tol: number,
+): boolean {
+  const isSube = accId === 'codo90rmSube' || accId === 'codoSube';
+  const isBaja = accId === 'codo90rmBaja' || accId === 'codoBaja';
+  if (!isSube && !isBaja) return true;
+  if (isSube) return flowStartsAt(ramal, pt, tol);
+  return flowEndsAt(ramal, pt, tol);
+}
+
+/** ¿El flujo del ramal de ventilación LLEGA a una unión con sanitaria (codo reventilado)? En
+ *  la unión reventilado el flujo del vent debe ALEJARSE de la unión (san→vent); que llegue a
+ *  ella es una violación. */
+export function ventFlowsIntoJunction(
+  vent: { net?: string; pts: number[][]; _tribReversed?: boolean },
+  pt: number[],
+  tol: number,
+): boolean {
+  if (vent.net !== 'vent' || !vent.pts || vent.pts.length < 2) return false;
+  return flowEndsAt(vent, pt, tol);
+}
+
+/** ¿El flujo del candidato en `ep` coincide con el del ramal que toca (dot > 0)? Regla
+ *  san/ll/vent: el ramal que se conecta fluye en el mismo sentido que el ramal principal. */
+export function flowDirectionOkAt(
+  incoming: { pts: number[][]; _tribReversed?: boolean },
+  other: { pts: number[][]; _tribReversed?: boolean },
+  ep: number[],
+  tol: number,
+): boolean {
+  const fin = flowVecAt(incoming, ep, tol);
+  const fex = flowVecAt(other, ep, tol);
+  if (!fin || !fex) return false;
+  return fin[0] * fex[0] + fin[1] * fex[1] > 0;
+}
+
+function pointOnRamalSegment(p: number[], a: number[], b: number[], tol: number): boolean {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq < 0.0001) return Math.hypot(p[0] - a[0], p[1] - a[1]) < tol;
+  const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq;
+  if (t < 0.02 || t > 0.98) return false;
+  const px = a[0] + t * dx;
+  const py = a[1] + t * dy;
+  return Math.hypot(p[0] - px, p[1] - py) < tol;
+}
+
+function sameNetGroupNet(a: string, b: string): boolean {
+  return a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
+}
+
+/** Chequeo de dirección de flujo para san/ll/vent: cada extremo del ramal que toca otro ramal
+ *  del mismo grupo (extremo o cuerpo) debe fluir en el mismo sentido que ese ramal; y un ramal
+ *  vent que toca san (codo reventilado) debe alejarse de la unión. `extra` cubre el candidato
+ *  cuando aún no está en engine.ramales (finishRamal pre-push). @returns mensaje de violación
+ *  o null si todo cumple. */
+export function ramalFlowDirectionCheck(
+  engine: IPlanoEngineCore,
+  ram: PlanoRamal,
+  extra: PlanoRamal[],
+  tol: number,
+): string | null {
+  if (!ram.pts || ram.pts.length < 2) return null;
+  const candidates = [...engine.ramales, ...extra];
+  const eps = [ram.pts[0], ram.pts[ram.pts.length - 1]];
+  for (const ep of eps) {
+    for (const other of candidates) {
+      if (other.id === ram.id || !sameNetGroupNet(other.net, ram.net)) continue;
+      if (!other.pts || other.pts.length < 2) continue;
+      const oEps = [other.pts[0], other.pts[other.pts.length - 1]];
+      let touches = oEps.some((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1]) < tol);
+      if (!touches) {
+        for (let i = 0; i < other.pts.length - 1; i++) {
+          if (pointOnRamalSegment(ep, other.pts[i], other.pts[i + 1], tol)) {
+            touches = true;
+            break;
+          }
+        }
+      }
+      if (!touches) continue;
+      // Ítem 5: unión vent↔san (codo reventilado) — el flujo del vent debe ALEJARSE de la unión.
+      if (other.net === 'san' && ventFlowsIntoJunction(ram, ep, tol)) {
+        return 'El ramal de ventilación debe fluir alejándose de la unión reventilado (san → vent). Dibújalo saliendo desde el punto sanitario.';
+      }
+      if (ram.net === 'san' && ventFlowsIntoJunction(other, ep, tol)) {
+        return 'El ramal de ventilación debe fluir alejándose de la unión reventilado (san → vent). Dibújalo saliendo desde el punto sanitario.';
+      }
+      if (!flowDirectionOkAt(ram, other, ep, tol)) {
+        return 'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.';
+      }
+    }
+  }
+  return null;
 }
 
 export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: PlanoRamal): void {
@@ -281,39 +454,16 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       // Validación de dirección de flujo para uniones creadas por arrastre (finishRamal valida
       // la creación por dibujo; la ruta ptDrag/ramalDrag llega a esta función directo). Un ramal
       // que se une a otro a mitad de cuerpo debe llevar la dirección de flujo del ramal
-      // principal (dot > 0) — misma regla que el chequeo de finishRamal. Dirección equivocada =
-      // sin unión, alerta.
+      // principal (dot > 0) — misma regla que el chequeo de finishRamal, ahora con el helper
+      // compartido que usa vectores LOCALES por extremo/ramal tocado (ítem 2) e incluye la regla
+      // del codo reventilado vent↔san (ítem 5). Dirección equivocada = sin unión, alerta.
       if (incoming.net === 'san' || incoming.net === 'll' || incoming.net === 'vent') {
-        const directionOk = (): boolean => {
-          const if0 = incoming.pts[0];
-          const if1 = incoming.pts[incoming.pts.length - 1];
-          const jIdx =
-            Math.hypot(if0[0] - ep[0], if0[1] - ep[1]) < Math.hypot(if1[0] - ep[0], if1[1] - ep[1])
-              ? 0
-              : incoming.pts.length - 1;
-          const adj = incoming.pts[jIdx === 0 ? 1 : incoming.pts.length - 2];
-          const fEnd = jIdx === 0 ? if0 : if1;
-          // Dirección de viaje del flujo en la unión: empieza en la unión (sale hacia adj) o
-          // termina ahí (llega desde adj), invertida cuando el ramal está _tribReversed.
-          const towardAdj = (jIdx === 0) !== !!incoming._tribReversed;
-          const flowIn = towardAdj
-            ? [adj[0] - fEnd[0], adj[1] - fEnd[1]]
-            : [fEnd[0] - adj[0], fEnd[1] - adj[1]];
-          const e0 = existing.pts[0];
-          const e1 = existing.pts[existing.pts.length - 1];
-          const flowEx = existing._tribReversed
-            ? [e0[0] - e1[0], e0[1] - e1[1]]
-            : [e1[0] - e0[0], e1[1] - e0[1]];
-          return flowIn[0] * flowEx[0] + flowIn[1] * flowEx[1] > 0;
-        };
-        if (!directionOk()) {
+        const flowErr = ramalFlowDirectionCheck(engine, incoming, [], TOL);
+        if (flowErr) {
           // Sin auto-orientación: una conexión san/ll/vent con dirección de flujo distinta a la
           // del ramal principal se bloquea con alerta. La única auto-orientación permitida ocurre
           // al CREAR tributarios (apuntan a la unión) — nunca al conectar un ramal ya dibujado.
-          engine.triggerAlert(
-            'Dirección de flujo incorrecta',
-            'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.',
-          );
+          engine.triggerAlert('Dirección de flujo incorrecta', flowErr);
           continue;
         }
       } else if (
@@ -349,17 +499,17 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
           );
           continue;
         }
-        // AC/AF/gas (ítem 6): un tributario que llega a su propio padre a mitad de cuerpo lo
-        // DIVIDE — una tee física: el segmento aguas arriba del padre se queda, un ramal nuevo
-        // aguas abajo continúa el recorrido, y el tributario se une en el punto. San/vent/ll
-        // conservan el comportamiento viejo de unirse tal cual.
-        if (
-          !tribToTribOk &&
-          existing.net !== 'af' &&
-          existing.net !== 'ac' &&
-          existing.net !== 'gas'
-        )
-          continue;
+        // Ítem 4: los tributarios san/ll se unen al camino af/ac/gas — llegan a su propio padre a
+        // mitad de cuerpo y lo DIVIDEN: una tee física (el segmento aguas arriba del padre se
+        // queda, un ramal nuevo aguas abajo continúa el recorrido, y el tributario se une en el
+        // punto, acumulando su UC/UD en el downstream). Antes san/vent/ll se unían tal cual (sin
+        // mergesFrom, sin acumular UC/UD). Vent conserva ese comportamiento viejo: un tributario
+        // de ventilación no acumula UC aguas abajo (el cómputo de accesorios san ya detecta las
+        // uniones reventilado geométricamente). La excepción tribToTribOk (tributario-a-tributario
+        // del mismo padre) sigue siendo solo af/ac/gas; en san/ll una unión tributario→tributario
+        // se queda como unión simple (el bloque `existing.tipo === 'tributario'` de abajo hace
+        // continue).
+        if (existing.net === 'vent') continue;
       }
       // Un tributario tampoco puede ser un TRONCO — un ramal principal que cae a mitad de cuerpo
       // sobre un tributario no debe dividirlo. Sin esto, la división de abajo produce un ramal
@@ -405,7 +555,12 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       // adicional en el momento de crearla.
       if (incoming.tipo === 'tributario') {
         const epIsStart = Math.hypot(incoming.pts[0][0] - ep[0], incoming.pts[0][1] - ep[1]) < TOL;
-        incoming._tribReversed = !epIsStart;
+        // La convención de la punta de flecha difiere según la red: af/ac/gas fluyen DESDE la
+        // unión hacia el aparato (flecha en el extremo libre); san/ll drenan HACIA la unión
+        // (flecha apuntando a la unión, igual que en finishRamal y en la creación desde línea
+        // guía). Vent sigue el patrón af/ac/gas (se aleja de la unión).
+        incoming._tribReversed =
+          incoming.net === 'san' || incoming.net === 'll' ? epIsStart : !epIsStart;
       }
 
       const downstreamPts = [[ep[0], ep[1]], ...existing.pts.slice(segIdx + 1)];
@@ -474,13 +629,9 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         labelX: downLabelX,
         labelY: downLabelY,
         labelAngle: downLabelAngle,
-        // AF/AC/gas: dejar el diámetro del ramal auto-creado sin fijar — el usuario lo elige
-        // explícitamente. San/vent/ll siguen eligiendo automáticamente el mayor de los dos
-        // ramales que formaron la unión, sin cambios.
-        diametro:
-          existing.net === 'af' || existing.net === 'ac' || existing.net === 'gas'
-            ? ''
-            : maxDiametroLabel(existing.diametro, incoming.diametro),
+        // El ramal auto-creado toma el mayor de los dos diámetros que formaron la unión, en
+        // todas las redes (incluidas AF/AC/gas) — el tee aguas abajo sigue al ramal más ancho.
+        diametro: maxDiametroLabel(existing.diametro, incoming.diametro),
         uc: preSplitExistingUc + preSplitIncomingUc,
         ini: '',
         fin: '',
@@ -518,8 +669,25 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   if (engine.activeRamal.id) {
     const existing = engine.ramales.find((r) => r.id === engine.activeRamal!.id);
     if (existing) {
+      const origPts = existing.pts;
       existing.pts = engine.activeRamal.pts;
       existing.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
+      // Ítem 2/5: la edición de un ramal existente también puede crear (o romper) uniones — se
+      // valida la dirección de flujo ANTES de autoSplit; si la nueva geometría conecta contra la
+      // dirección del ramal principal (o un vent llega a una unión reventilado), se restaura la
+      // geometría anterior y se aborta, en vez de dejar el ramal editado con una unión inválida.
+      if (existing.net === 'san' || existing.net === 'll' || existing.net === 'vent') {
+        const flowErr = ramalFlowDirectionCheck(engine, existing, [], 0.5);
+        if (flowErr) {
+          engine.triggerAlert('Dirección de flujo incorrecta', flowErr);
+          existing.pts = origPts;
+          existing.totalL = calculateRamalLength(origPts, engine);
+          engine.activeRamal = null;
+          engine._markDirty();
+          engine.render();
+          return;
+        }
+      }
       autoSplitJunctionAndSumFlow(engine, existing);
       engine.activeRamal = null;
       engine.selId = existing.id;
@@ -595,14 +763,10 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   // el ramal que se conecta también debe fluir a la derecha (dot(flujoEntrante, flujoPrincipal) >
   // 0). Si el usuario lo dibujó contra la dirección del principal, se bloquea la creación con
   // una alerta en vez de crear en silencio una unión contraflujo. Solo aplica a uniones del
-  // mismo grupo de red (san↔vent comparten la subred).
-  const ramalFlowVec = (ram: { pts: number[][]; _tribReversed?: boolean }): [number, number] => {
-    const p0 = ram.pts[0];
-    const p1 = ram.pts[ram.pts.length - 1];
-    const dx = p1[0] - p0[0];
-    const dy = p1[1] - p0[1];
-    return ram._tribReversed ? [-dx, -dy] : [dx, dy];
-  };
+  // mismo grupo de red (san↔vent comparten la subred). El chequeo usa el helper compartido con
+  // vectores LOCALES por extremo/ramal tocado (ítem 2, antes usaba el vector global del ramal,
+  // que se equivocaba en ramales doblados) e incluye la regla del codo reventilado vent↔san
+  // (ítem 5: el vent debe fluir alejándose de la unión).
   const pointOnSegment = (p: number[], a: number[], b: number[], tol: number): boolean => {
     const dx = b[0] - a[0];
     const dy = b[1] - a[1];
@@ -640,46 +804,11 @@ export function finishRamal(engine: IPlanoEngineCore): void {
         flipRamalFlow(r);
       }
     }
-    const touchingFlowOk = (): boolean => {
-      const ep0 = r.pts[0];
-      const ep1 = r.pts[r.pts.length - 1];
-      const [fdx, fdy] = ramalFlowVec(r);
-      for (const other of engine.ramales) {
-        if (other.id === r.id) continue;
-        if (!other.pts || other.pts.length < 2) continue;
-        const sameGroup =
-          other.net === r.net ||
-          ((other.net === 'san' || other.net === 'vent') && (r.net === 'san' || r.net === 'vent'));
-        if (!sameGroup) continue;
-        const oEps = [other.pts[0], other.pts[other.pts.length - 1]];
-        const epTouch = oEps.some(
-          (p) =>
-            Math.hypot(p[0] - ep0[0], p[1] - ep0[1]) < TOL ||
-            Math.hypot(p[0] - ep1[0], p[1] - ep1[1]) < TOL,
-        );
-        let bodyTouch = false;
-        if (!epTouch) {
-          for (let i = 0; i < other.pts.length - 1; i++) {
-            if (
-              pointOnSegment(ep0, other.pts[i], other.pts[i + 1], TOL) ||
-              pointOnSegment(ep1, other.pts[i], other.pts[i + 1], TOL)
-            ) {
-              bodyTouch = true;
-              break;
-            }
-          }
-        }
-        if (!epTouch && !bodyTouch) continue;
-        const [odx, ody] = ramalFlowVec(other);
-        if (fdx * odx + fdy * ody <= 0) return false;
-      }
-      return true;
-    };
-    if (!touchingFlowOk()) {
-      engine.triggerAlert(
-        'Dirección de flujo incorrecta',
-        'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.',
-      );
+    // Ítem 2/5: chequeo pre-push con el helper compartido (r aún no está en engine.ramales, se
+    // pasa como extra). Aborto limpio: sin push, activeRamal = null + alerta.
+    const flowErr = ramalFlowDirectionCheck(engine, r, [r], TOL);
+    if (flowErr) {
+      engine.triggerAlert('Dirección de flujo incorrecta', flowErr);
       engine.activeRamal = null;
       engine._markDirty();
       engine.render();
@@ -760,14 +889,14 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   }
 
   engine.ramales.push(r);
-  if (!checkRamalAngles(r.pts, r.net, r.tipo)) {
+  if (!checkRamalAngles(r.pts, r.net, r.tipo, engine.snapMode)) {
     engine.triggerAlert(
       'Ángulo no recomendado',
       r.net === 'san' || r.net === 'll'
-        ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 0° y 45°.'
+        ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 0° y 45°. Usar línea guía para ajustar ángulo.'
         : (r.net === 'af' || r.net === 'ac') && r.tipo === 'tributario'
-          ? 'Los tributarios de AF/AC solo permiten ángulos de 90°.'
-          : 'Esta red debe diseñarse con ángulos de 45° o 90°.',
+          ? 'Los tributarios de AF/AC solo permiten ángulos de 90°. Usar línea guía para ajustar ángulo.'
+          : 'Esta red debe diseñarse con ángulos de 45° o 90°. Usar línea guía para ajustar ángulo.',
     );
     engine.ramales.pop();
     engine.activeRamal = null;
@@ -1031,10 +1160,10 @@ function checkCrossRamalAngle(
             engine.triggerAlert(
               'Ángulo no recomendado',
               isSanOrLl
-                ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
+                ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°. Usar línea guía para ajustar ángulo.'
                 : isAfAc
-                  ? 'Las redes de agua caliente o agua fria no permiten uniones de 45° entre trazos'
-                  : 'Esta red debe diseñarse con ángulos de 45° o 90°.',
+                  ? 'Las redes de agua caliente o agua fria no permiten uniones de 45° entre trazos. Usar línea guía para ajustar ángulo.'
+                  : 'Esta red debe diseñarse con ángulos de 45° o 90°. Usar línea guía para ajustar ángulo.',
             );
             return false;
           }
@@ -1461,15 +1590,15 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     }
     if (engine.activeRamal.pts.length >= 2) {
       const testPts = [...engine.activeRamal.pts, [pt.x, pt.y]];
-      if (!checkRamalAngles(testPts, engine.activeNet, engine.activeRamal.tipo)) {
+      if (!checkRamalAngles(testPts, engine.activeNet, engine.activeRamal.tipo, engine.snapMode)) {
         engine.triggerAlert(
           'Ángulo no recomendado',
           engine.activeNet === 'san' || engine.activeNet === 'll'
-            ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°.'
+            ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°. Usar línea guía para ajustar ángulo.'
             : (engine.activeNet === 'af' || engine.activeNet === 'ac') &&
                 engine.activeRamal.tipo === 'tributario'
-              ? 'Los tributarios de AF/AC solo permiten ángulos de 90°.'
-              : 'Esta red debe diseñarse con ángulos de 45° o 90°.',
+              ? 'Los tributarios de AF/AC solo permiten ángulos de 90°. Usar línea guía para ajustar ángulo.'
+              : 'Esta red debe diseñarse con ángulos de 45° o 90°. Usar línea guía para ajustar ángulo.',
         );
         return;
       }
