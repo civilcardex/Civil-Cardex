@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { saveTrazosToDB, loadFromStorage, saveToStorage } from '../../services/storageService';
 import {
@@ -274,6 +274,30 @@ function PlanosTab({ state }: PlanosTabProps) {
     }
     return initial;
   });
+
+  // 1a: la calibración se deriva de los planes vivos. Al borrar planos se purga el calData
+  // huérfano (y la caché global en window._planosConfig cuando no queda ningún plano) para
+  // que el modal de primera calibración reaparezca si se borran todos los planos.
+  useEffect(() => {
+    const liveIds = new Set(plans.map((p) => p.id));
+    setCalData((prev) => {
+      const next: Record<number, CalibrationData> = {};
+      let changed = false;
+      for (const [idStr, cd] of Object.entries(prev)) {
+        const id = Number(idStr);
+        if (liveIds.has(id)) {
+          next[id] = cd;
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    if (plans.length === 0) {
+      const win = window as unknown as { _planosConfig?: Record<string, unknown> };
+      win._planosConfig = {};
+    }
+  }, [plans]);
 
   const isCalibrated = useCallback(
     (planId: number) => {
@@ -963,19 +987,40 @@ function PlanosTab({ state }: PlanosTabProps) {
                         VER
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => setNivelPickerPlanId(p.id)}
-                        style={{
-                          ...PlanosTab_verBtn,
-                          background: 'rgba(14,204,122,0.1)',
-                          color: '#0ECC7A',
-                          borderColor: 'rgba(14,204,122,0.3)',
-                        }}
-                        title="Asignar piso al plano"
-                      >
-                        ASIGNAR PISO
-                      </button>
+                      {globalCal ? (
+                        <button
+                          type="button"
+                          onClick={() => setNivelPickerPlanId(p.id)}
+                          style={{
+                            ...PlanosTab_verBtn,
+                            background: 'rgba(14,204,122,0.1)',
+                            color: '#0ECC7A',
+                            borderColor: 'rgba(14,204,122,0.3)',
+                          }}
+                          title="Asignar piso al plano"
+                        >
+                          ASIGNAR PISO
+                        </button>
+                      ) : (
+                        // 1b: sin calibración global todavía, el primer plano debe calibrarse
+                        // antes que nada: se ofrece CALIBRAR directo en la fila.
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedPlanId(p.id);
+                            setCalibrating(true);
+                          }}
+                          style={{
+                            ...PlanosTab_verBtn,
+                            background: 'rgba(0,220,229,0.08)',
+                            color: '#00dce5',
+                            borderColor: 'rgba(0,220,229,0.3)',
+                          }}
+                          title="Calibrar el plano (primera calibración del proyecto)"
+                        >
+                          CALIBRAR
+                        </button>
+                      )}
 
                       <button
                         type="button"
