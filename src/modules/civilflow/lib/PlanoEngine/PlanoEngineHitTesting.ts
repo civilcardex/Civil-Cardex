@@ -1,5 +1,5 @@
 import type { IPlanoEngineCore, PlanoElement } from './PlanoState';
-import { pointInLabelBox, pointInPoly } from './HitTester';
+import { pointInLabelBox, pointInPoly, pointOnAnyBodySegment } from './HitTester';
 import { canalRectHitDistance } from './canalAssociation';
 
 export interface ContextMenuHitResult {
@@ -65,20 +65,30 @@ export function hitTestRightClick(
   }
 
   // Revisar bajantes reales (círculo o etiqueta) ANTES que ramales para que el bajante gane
-  // cuando se solapan. El objetivo de clic de un canal es su rectángulo visible (_canalBox), no
-  // el círculo diagonal.
+  // cuando se solapan. Los canales se revisan EN SEGUNDO lugar: un bajante (de cualquier red)
+  // dentro del rectángulo de un canal debe ganarle al canal, que es una canaleta de fondo — así
+  // el clic derecho sobre el bajante abre el menú del bajante, no el del canal.
   for (const b of engine.bajantes) {
+    if (b.tipo === 'canal') continue;
     const c = engine.toCvs(b.x, b.y);
     const hitOnCircle =
-      b.tipo === 'canal'
-        ? canalRectHitDistance(b, x, y, 4 * zoom) < Infinity
-        : Math.hypot(x - c.x, y - c.y) <= (b._circ?.r || Math.max(8 * zoom, 10 * zoom));
+      Math.hypot(x - c.x, y - c.y) <= (b._circ?.r || Math.max(8 * zoom, 10 * zoom));
     const hitOnLabel = b._labelBox && pointInLabelBox(x, y, b._labelBox);
     if (hitOnCircle || hitOnLabel) {
       return { element: b, isGhostClick: false, clientX, clientY };
     }
   }
 
+  // Clic sobre el CUERPO de un ramal: ese ramal es el target del menú, aunque el extremo de
+  // otro ramal (host, ll que cruza la unión) quede a <12px del clic — el menú no debe abrirse
+  // para el ramal equivocado.
+  const bodyOwnerId = pointOnAnyBodySegment(
+    engine.ramales.filter((r) => !engine._hiddenNets.has(r.net)),
+    x,
+    y,
+    (px, py) => engine.toCvs(px, py),
+    engine.mm2cvs(3),
+  );
   // Revisar ramales
   for (const r of engine.ramales) {
     let hitOnRamal = false;
@@ -146,7 +156,17 @@ export function hitTestRightClick(
 
     const hitOnLabel = r._labelBox && pointInLabelBox(x, y, r._labelBox);
     if (hitOnRamal || hitOnLabel) {
+      if (bodyOwnerId && r.id !== bodyOwnerId) continue;
       return { element: r, isGhostClick: false, ramalEndpoint, midRamalHit, clientX, clientY };
+    }
+  }
+
+  // Canales (aguas lluvias) después de los ramales: un canal es una canaleta de fondo — un clic
+  // sobre un ramal que cruza su rectángulo debe abrir el menú del RAMAL, no el del canal.
+  for (const b of engine.bajantes) {
+    if (b.tipo !== 'canal') continue;
+    if (canalRectHitDistance(b, x, y, 4 * zoom) < Infinity) {
+      return { element: b, isGhostClick: false, clientX, clientY };
     }
   }
 

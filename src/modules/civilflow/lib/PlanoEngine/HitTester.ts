@@ -77,6 +77,52 @@ export function findAccMedVertexHit(
   return null;
 }
 
+// ¿Está el clic sobre el CUERPO (interior del trazo, no los extremos) de algún ramal? Devuelve
+// el id del ramal cuyo cuerpo se acertó (o null). Sirve para que un clic sobre una rama de tee
+// no lo robe el extremo cercano de OTRO ramal (p.ej. un host o un ramal ll que cruzó por
+// casualidad): si el clic cae en el interior del trazo de la rama, la selección/arrastre de
+// extremos ajenos debe ceder. t ∈ (0.05, 0.95) excluye los extremos — ahí el clic es arrastre de
+// vértice/unión, no cuerpo.
+export function pointOnAnyBodySegment(
+  ramales: { id?: string; pts?: number[][] }[],
+  cx: number,
+  cy: number,
+  toCvs: (px: number, py: number) => { x: number; y: number },
+  tol: number,
+  excludeId?: string,
+): string | null {
+  let bestId: string | null = null;
+  let bestDist = Infinity;
+  let bestLen = Infinity;
+  for (const r of ramales) {
+    if (excludeId !== undefined && r.id === excludeId) continue;
+    if (!r.pts || r.pts.length < 2) continue;
+    const cvs = r.pts.map((p) => toCvs(p[0], p[1]));
+    let len = 0;
+    for (let i = 0; i < cvs.length - 1; i++)
+      len += Math.hypot(cvs[i + 1].x - cvs[i].x, cvs[i + 1].y - cvs[i].y);
+    for (let i = 0; i < cvs.length - 1; i++) {
+      const a = cvs[i];
+      const b = cvs[i + 1];
+      const dx = b.x - a.x,
+        dy = b.y - a.y;
+      const lenSq = dx * dx + dy * dy;
+      if (lenSq < 0.01) continue;
+      const t = ((cx - a.x) * dx + (cy - a.y) * dy) / lenSq;
+      if (t <= 0.05 || t >= 0.95) continue;
+      const px = a.x + t * dx,
+        py = a.y + t * dy;
+      const dist = Math.hypot(cx - px, cy - py);
+      if (dist <= tol && (dist < bestDist || (dist === bestDist && len < bestLen))) {
+        bestDist = dist;
+        bestLen = len;
+        bestId = r.id ?? null;
+      }
+    }
+  }
+  return bestId;
+}
+
 export function snapToSegment(x: number, y: number, pts: number[][], threshold: number = Infinity) {
   let best: { x: number; y: number } | null = null;
   let minD = Infinity;

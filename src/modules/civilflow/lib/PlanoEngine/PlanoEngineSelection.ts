@@ -11,7 +11,13 @@ import type { IPlanoEngineCore } from './PlanoState';
 import { NETS, checkActiveNet } from './PlanoState';
 import { _midpoint } from './PlanoEngineDrawing';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
-import { pointInPoly, pointInLabelBox, distanceToRamal, findAccMedVertexHit } from './HitTester';
+import {
+  pointInPoly,
+  pointInLabelBox,
+  distanceToRamal,
+  findAccMedVertexHit,
+  pointOnAnyBodySegment,
+} from './HitTester';
 import { updateCrossFloorGhostFieldBySource } from '../../utils/associateBajanteAcrossFloors';
 import { bajanteHitDistance } from './canalAssociation';
 
@@ -72,7 +78,12 @@ export function selectAt(
         foundBajIsGhost = false;
       }
     }
-    {
+    // El RECTÁNGULO del canal no se chequea aquí: un canal es una canaleta de fondo y su zona de
+    // clic (rectángulo ×1.1, bajanteHitDistance devuelve 1 dentro de él) cubre el área donde
+    // pueden pasar ramales de otras redes — si el canal ganara aquí, un clic sobre un ramal
+    // dentro de la zona del canal siempre seleccionaba el canal y cambiaba la red activa a
+    // aguas lluvias. Los canales se revisan DESPUÉS de los ramales (paso propio más abajo).
+    if (b.tipo !== 'canal') {
       const d = bajanteHitDistance(b as PlanoBajante, cx, cy);
       if (d < minBD) {
         minBD = d;
@@ -175,14 +186,40 @@ export function selectAt(
 
   let found: PlanoRamal | null = null,
     minD = 20;
+  // Dueño del cuerpo bajo el clic: si el clic está sobre el CUERPO (interior del trazo) de un
+  // ramal, solo ese ramal puede recibir el bonus de extremo (-5) — un clic sobre la rama de una
+  // tee debe seleccionar la RAMA, no el ramal cuyo extremo quedó a <15px por casualidad (que
+  // además le cambiaría la red activa al usuario).
+  const bodyOwnerId = pointOnAnyBodySegment(
+    engine.ramales.filter((r) => !engine._hiddenNets.has(r.net)),
+    cx,
+    cy,
+    (px, py) => engine.toCvs(px, py),
+    engine.mm2cvs(3),
+  );
+  const cvsLen = (r: PlanoRamal): number => {
+    let s = 0;
+    for (let i = 0; i < r.pts.length - 1; i++) {
+      const a = engine.toCvs(r.pts[i][0], r.pts[i][1]);
+      const b = engine.toCvs(r.pts[i + 1][0], r.pts[i + 1][1]);
+      s += Math.hypot(b.x - a.x, b.y - a.y);
+    }
+    return s;
+  };
+  // Un clic sobre una ETIQUETA es la intención más explícita de seleccionar ESE ramal — pesa
+  // más que cualquier ramal que cruce por debajo o que un extremo ajeno cercano
+  // (bug: clicar la etiqueta de una rama tee AF cerca de la unión seleccionaba el ll que
+  // cruzaba la unión y cambiaba la red activa a aguas lluvias).
   for (const r of engine.ramales) {
     if (r._labelBox && pointInLabelBox(cx, cy, r._labelBox)) {
-      const d = Math.hypot(cx - r._labelBox.cx, cy - r._labelBox.cy);
-      if (d < minD) {
-        minD = d;
+      if (-50 < minD) {
+        minD = -50;
         found = r as PlanoRamal;
+        break;
       }
     }
+  }
+  for (const r of engine.ramales) {
     const accMedHitIdx = findAccMedVertexHit(
       r.pts,
       r.accMed,
@@ -197,17 +234,40 @@ export function selectAt(
         found = r as PlanoRamal;
       }
     }
+    // Clic sobre el CUERPO (interior del trazo) de un ramal: el dueño del cuerpo debe ganar
+    // sobre ramales que cruzan el mismo punto o extremos ajenos cercanos — si el empate se
+    // resolviera por orden de array, un ll que cruza la unión ganaría y cambiaría la red activa.
     let d = distanceToRamal(cx, cy, r.pts, (x, y) => engine.toCvs(x, y), engine.mm2cvs(3));
-    if (r.pts && r.pts.length > 0) {
-      const pc1 = engine.toCvs(r.pts[0][0], r.pts[0][1]);
-      const pc2 = engine.toCvs(r.pts[r.pts.length - 1][0], r.pts[r.pts.length - 1][1]);
-      if (Math.hypot(cx - pc1.x, cy - pc1.y) < 15 || Math.hypot(cx - pc2.x, cy - pc2.y) < 15) {
-        d -= 5;
-      }
+    if (r.pts && r.pts.length > 0 && r.id === bodyOwnerId) {
+      d -= 6;
     }
-    if (d < minD) {
+    // Desempate determinista a distancia exactamente igual (p.ej. dos cuerpos cruzando el mismo
+    // punto): gana el ramal MÁS CORTO — una rama de tee insertada sobre un ramal largo es el
+    // target típico del clic y no debe depender del orden del array.
+    const shorterWins = d === minD && found !== null && cvsLen(r) < cvsLen(found);
+    if (d < minD || shorterWins) {
       minD = d;
       found = r as PlanoRamal;
+    }
+  }
+
+  // Canales (aguas lluvias): se revisan DESPUÉS de los ramales y solo si no ganó ningún otro
+  // elemento — su zona de clic es el propio rectángulo del canal (una canaleta, fondo del
+  // dibujo) y un clic sobre un ramal que cruza esa zona debe seleccionar el RAMAL, no el canal
+  // (que además cambiaría la red activa a ll).
+  if (!foundBaj && !found) {
+    let foundCanal: PlanoBajante | null = null;
+    for (const b of engine.bajantes) {
+      if (b.tipo !== 'canal') continue;
+      const d = bajanteHitDistance(b as PlanoBajante, cx, cy);
+      if (d < minBD) {
+        minBD = d;
+        foundCanal = b as PlanoBajante;
+      }
+    }
+    if (foundCanal) {
+      if (!checkAndSwitchNet(foundCanal)) return;
+      return applySelection(foundCanal.id, foundCanal);
     }
   }
 
@@ -247,6 +307,12 @@ export function selectAt(
   }
 
   applySelection(found ? found.id : null, found);
+  if (engine._debugSel) {
+    engine._debugSel.notes.push(
+      `selectAt found=${found ? found.id : 'null'} minD=${minD.toFixed(1)} bodyOwner=${bodyOwnerId ? bodyOwnerId : 'null'}`,
+    );
+    engine._debugSel.final = found ? found.id : 'null';
+  }
 }
 
 export function selectById(engine: IPlanoEngineCore, id: string): void {

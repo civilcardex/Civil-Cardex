@@ -310,6 +310,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
 
   _isGhostSel!: boolean;
   _lblDragIsParent?: boolean;
+  _debugSel?: { x: number; y: number; notes: string[]; final: string | null } | null;
   _yeeFlashKey!: string | null;
   multiSel!: string[];
   multiDrag!: { startX: number; startY: number; origData: MultiDragOrigData } | null;
@@ -1131,6 +1132,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
         return;
       }
       handleSelectDown(this, x, y, e instanceof MouseEvent && (e.ctrlKey || false));
+      // Diagnóstico DEV del flujo de selección (bug RAF3 fantasma): cada clic en tool 'sel'
+      // deja una traza de qué ganó en cada etapa. Producción no lo imprime.
+      if (import.meta.env?.DEV && this._debugSel) {
+        // eslint-disable-next-line no-console
+        console.info('[SEL-DEBUG]', JSON.stringify(this._debugSel));
+      }
     } else if (this.tool === 'line') {
       handleLineDown(this, p.x, p.y);
     } else if (this.tool === 'dim') {
@@ -1253,11 +1260,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.setTool('line');
       e.preventDefault();
     } else if (k === 'c') {
-      // 'C' hace doble función: Contador en af/gas, Canal en ll — las dos redes son mutuamente
-      // excluyentes (solo una es la red activa a la vez), así que no hay colisión real.
-      // Espejo de la condición isToolDisabledForNet('canal', ...) de PdfViewerToolbar para el
-      // caso del canal — el atajo no debe saltarse la regla "canal recolectora debe estar
-      // activa" que el botón aplica.
+      // 'C' hace doble función: Contador en af/gas, Canal en el resto — el canal requiere la
+      // red de agua lluvias ('ll') ACTIVA en la sesión (espejo de isToolDisabledForNet('canal',
+      // ...) de PdfViewerToolbar): el atajo no debe saltarse la regla que el botón aplica.
       if (
         this.activeNet === 'll' &&
         (!this.activeNetworks || this.activeNetworks.has('recolectora'))

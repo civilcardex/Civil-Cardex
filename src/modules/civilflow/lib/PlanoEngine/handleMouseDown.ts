@@ -24,6 +24,7 @@ import {
   pointToSegmentDist,
   distanceToRamal,
   findAccMedVertexHit,
+  pointOnAnyBodySegment,
 } from './HitTester';
 import { getSelected } from './PlanoEngineSelection';
 import { selectAt } from './PlanoEngineSelection';
@@ -360,8 +361,8 @@ function _tryCanalResizeHit(
   ];
   const grabbed = corners.find((c) => Math.hypot(x - c.x, y - c.y) < 10);
   if (!grabbed) return false;
-  const wPlane = engine.cmToPlanePx(canal.base || 0);
-  const hPlane = engine.cmToPlanePx(canal.altura || 0);
+  const wPlane = engine.cmToPlanePx(canal.longitud || 0);
+  const hPlane = engine.cmToPlanePx(canal.base || 0);
   // Esquina opuesta, en coordenadas de PLANO (canal.x/y siempre es la esquina superior-
   // izquierda) — queda fija durante todo el gesto sin importar qué esquina se agarró.
   const anchorX = grabbed.corner === 'tl' || grabbed.corner === 'bl' ? canal.x + wPlane : canal.x;
@@ -371,6 +372,14 @@ function _tryCanalResizeHit(
 }
 
 function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): boolean {
+  // Un clic sobre la ETIQUETA de un ramal es su target explícito — nunca debe robarlo el
+  // extremo cercano de otro ramal (bug: la etiqueta de una rama tee AF cerca de la unión
+  // agarraba el extremo de un ll que terminaba ahí y cambiaba la red activa a aguas lluvias).
+  // Se devuelve false para que el flujo de etiquetas de handleSelectDown decida con el
+  // ensureActiveNet del dueño.
+  for (const r of engine.ramales) {
+    if (r._labelBox && pointInLabelBox(x, y, r._labelBox)) return false;
+  }
   let bestRamal = null;
   let bestPtIdx = -1;
   let minPtDist = 15;
@@ -387,9 +396,38 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
     if (engine._hiddenNets.has(r.net)) continue;
     if (r.pts && r.pts.length >= 2) {
       for (const i of [0, r.pts.length - 1]) {
+        // Un ramal auto-creado por una tee (mergesFrom) empieza EXACTAMENTE en el punto de la
+        // unión — su vértice de arranque coincide con el extremo del ramal real que el usuario
+        // dibujó (y con el cuerpo de la rama de la tee). Si su arranque participara en el acierto
+        // de extremo, un clic sobre la rama/etiqueta del ramal real cerca de la unión lo
+        // seleccionaba a él (el "fantasma RAF3") y cambiaba la red activa a la del tramo
+        // auto-creado. Su extremo LIBRE (pts[último]) sigue agarrándose normal.
+        if (r.mergesFrom && i === 0) continue;
         const pc = engine.toCvs(r.pts[i][0], r.pts[i][1]);
         const d = Math.hypot(x - pc.x, y - pc.y);
         if (d < minPtDist) {
+          // Ramas CORTAS (o extremos pegados al propio cuerpo): el radio fijo de extremo
+          // convertía TODO el cuerpo cercano al extremo en "extremo" — un clic sobre el cuerpo de
+          // una rama tee corta agarraba su extremo de la unión y arrancaba un arrastre (o
+          // seleccionaba el ramal pero moviendo la unión), en vez de seleccionar limpio
+          // ("no me deja seleccionar RAF2 por el cuerpo ni por la etiqueta — la hitbox es enorme").
+          // Regla: clic SOBRE el propio cuerpo (≤3px de su línea) y a >4px del extremo → NO agarrar
+          // el extremo; selección limpia vía selectAt. El agarrar extremo queda para clics sobre el
+          // punto mismo (≤4px) o fuera del trazo del ramal (buscar extremo cercano sigue igual).
+          const ownBodyDist = distanceToRamal(
+            x,
+            y,
+            r.pts,
+            (px, py) => engine.toCvs(px, py),
+            engine.mm2cvs(3),
+          );
+          if (ownBodyDist < engine.mm2cvs(3) && d > 4) {
+            if (engine._debugSel)
+              engine._debugSel.notes.push(
+                `endpoint-skip ${r.id} i=${i} d=${d.toFixed(1)} onSelfBody`,
+              );
+            continue;
+          }
           const epP = r.pts[i];
           const bajAtEp = engine.bajantes.find(
             (b) => Math.abs(b.x - epP[0]) < 0.1 && Math.abs(b.y - epP[1]) < 0.1,
@@ -406,6 +444,34 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
     }
   }
   if (!bestRamal) return false;
+
+  if (engine._debugSel) {
+    engine._debugSel.notes.push(
+      `_tryRamalEndpointHit win: ${bestRamal.id} i=${bestPtIdx} d=${minPtDist.toFixed(1)}`,
+    );
+  }
+
+  // Una rama de tee insertada sobre el cuerpo de otra línea: su extremo cae dentro del trazo del
+  // host (o un ramal ll pasó cerca por casualidad). Un clic así es un clic SOBRE EL CUERPO de ese
+  // otro ramal — debe seleccionarlo (selectAt decide), NUNCA agarrar el extremo cercano, y mucho
+  // menos cambiar la red activa a la red del ramal cuyo extremo quedó dentro del radio (af → ll,
+  // que era el bug reportado: clic sobre rama AF que quedaba seleccionando/haciendo drag en ll).
+  if (
+    pointOnAnyBodySegment(
+      engine.ramales.filter((r) => r.id !== bestRamal.id && !engine._hiddenNets.has(r.net)),
+      x,
+      y,
+      (px, py) => engine.toCvs(px, py),
+      engine.mm2cvs(3),
+    )
+  ) {
+    // El clic pertenece al cuerpo de OTRO ramal — seleccionarlo (selectAt resuelve por
+    // distancia con bonus del dueño del cuerpo) en vez de agarrar el extremo cercano. Devolver
+    // false dejaba el clic a su suerte sobre el orden del array y podía seleccionar un ll que
+    // cruzaba la unión (cambio de red accidental).
+    selectAt(engine, x, y);
+    return true;
+  }
 
   if (ensureActiveNet(engine, bestRamal.net)) return true;
   engine.selId = bestRamal.id;
@@ -477,6 +543,22 @@ function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: number): b
   return true;
 }
 
+// Ítem 7: ¿el clic cae sobre un EXTREMO (pts[0]/pts[último]) de un ramal multi-seleccionado?
+// En ese caso el arrastre de grupo NO debe robar el clic — el extremo sigue remodelando ese
+// ramal individualmente (mismo criterio que _tryRamalEndpointHit: 15px).
+function _tryMultiSelEndpointHit(engine: IPlanoEngineCore, x: number, y: number): boolean {
+  if (engine.multiSel.length === 0) return false;
+  for (const id of engine.multiSel) {
+    const re = engine.ramales.find((r) => r.id === id);
+    if (!re || !re.pts || re.pts.length < 2) continue;
+    for (const i of [0, re.pts.length - 1]) {
+      const c = engine.toCvs(re.pts[i][0], re.pts[i][1]);
+      if (Math.hypot(x - c.x, y - c.y) < 15) return true;
+    }
+  }
+  return false;
+}
+
 function _tryMultiSelDrag(
   engine: IPlanoEngineCore,
   x: number,
@@ -532,10 +614,9 @@ function _tryMultiSelDrag(
         for (const mid of engine.multiSel) {
           const mel = engine.ramales.find((r) => r.id === mid);
           if (mel) {
-            // Los ramales "Bloquear Movimiento" nunca se mueven en un arrastre de grupo — se
-            // saltan por completo, para que ningún camino de código (arrastre simple, de grupo,
-            // deslizamiento de accesorio) escriba sus pts.
-            if (mel.bloqueado) continue;
+            // Ítem 7: una traslación rígida del conjunto nunca dobla la forma del ramal, así que
+            // `bloqueado` (que existe para impedir el doblado) no excluye a nadie del arrastre de
+            // grupo — mismo razonamiento ya aplicado al arrastre de cuerpo en handleDragMove.ts.
             origData[mid] = {
               type: 'ramal',
               origPts: mel.pts.map((p) => [...p]),
@@ -704,6 +785,13 @@ function _trySelRamalDrag(
     const pc = engine.toCvs(sel.pts[i][0], sel.pts[i][1]);
     if (Math.hypot(x - pc.x, y - pc.y) < 15) {
       const isEndpoint = i === 0 || i === sel.pts.length - 1;
+      // El vértice de ARRANQUE de un ramal auto-creado por una tee (mergesFrom) comparte punto
+      // con el extremo del ramal real que el usuario dibujó y con el cuerpo de la rama — un
+      // clic ahí (rama, etiqueta o cuerpo del ramal real cerca de la unión) no debe agarrarse
+      // como arrastre de ESTE vértice, o el "fantasma" del tramo auto-creado quedaba
+      // seleccionado siempre (pesa 15px sobre toda la zona de la unión). Se cede a selectAt,
+      // que resuelve por etiqueta/cuerpo; el extremo libre sigue arrastrándose normal.
+      if (sel.mergesFrom && i === 0) return false;
       // bloqueado marcado → bloquear todo arrastre directo (vértice, extremo, cuerpo).
       // La cascada (ser arrastrado por un ramal conectado) NO se bloquea — ver
       // collectConnectedGraph.
@@ -812,6 +900,11 @@ export function handleSelectDown(
   const wasGhostSel = engine._isGhostSel;
   engine._isGhostSel = false;
   engine._lblDragIsParent = false;
+  // Traza de diagnóstico del flujo de selección para DEV — documenta qué ramal/bajante ganó en
+  // cada etapa y por qué. Se imprime desde _onDownHandler (PlanoEngine.ts) solo en dev.
+  if (import.meta.env?.DEV) {
+    engine._debugSel = { x, y, notes: [] as string[], final: null as string | null };
+  }
   // La selección de un fantasma de asociación entre pisos (selectedGhostId) nunca debe
   // sobrevivir a este clic — se limpia incondicionalmente al inicio para que CUALQUIER otro
   // acierto de abajo (la etiqueta de un bajante real, un ramal, etc.) parta de pizarra limpia.
@@ -889,6 +982,19 @@ export function handleSelectDown(
       engine.render();
       return;
     }
+  }
+
+  // Ítem 7: el arrastre de conjunto multi-seleccionado nunca funcionaba en la práctica — el clic
+  // sobre un bajante (_tryBajanteHit) o un extremo de ramal (_tryRamalEndpointHit) capturaba
+  // primero y nunca llegaba a _tryMultiSelDrag. Si el elemento bajo el cursor pertenece a la
+  // multi-selección (y no es un extremo, que sigue remodelando su ramal individual), el arrastre
+  // de grupo gana.
+  if (engine.tool === 'sel' && !isMultiSelectModifier && engine.multiSel.length > 0) {
+    if (
+      !_tryMultiSelEndpointHit(engine, x, y) &&
+      _tryMultiSelDrag(engine, x, y, isMultiSelectModifier)
+    )
+      return;
   }
 
   if (engine.tool === 'sel' && !isMultiSelectModifier) {
@@ -1059,7 +1165,17 @@ export function handleSelectDown(
     }
   }
 
+  // Clic sobre el CUERPO (interior del trazo) de un ramal: ese dueño es el target real — el
+  // arrastre de etiqueta de OTRO ramal cuya caja quedó encima por casualidad debe ceder.
+  const lblBodyOwner = pointOnAnyBodySegment(
+    engine.ramales,
+    x,
+    y,
+    (px, py) => engine.toCvs(px, py),
+    engine.mm2cvs(3),
+  );
   for (const r of engine.ramales) {
+    if (lblBodyOwner && r.id !== lblBodyOwner) continue;
     const lPos = engine.toCvs(r.labelX, r.labelY);
     const inBox = r._labelBox && pointInLabelBox(x, y, r._labelBox);
     const nearPoint = Math.hypot(x - lPos.x, y - lPos.y) < 12;
@@ -1077,6 +1193,7 @@ export function handleSelectDown(
   // etiqueta principal del ramal, una por extremo porque un ramal puede llevar un sifón en
   // ambas puntas.
   for (const r of engine.ramales) {
+    if (lblBodyOwner && r.id !== lblBodyOwner) continue;
     const slots: Array<{ slot: 'ini' | 'fin'; box: typeof r._sifonLabelBoxIni }> = [
       { slot: 'ini', box: r._sifonLabelBoxIni },
       { slot: 'fin', box: r._sifonLabelBoxFin },
