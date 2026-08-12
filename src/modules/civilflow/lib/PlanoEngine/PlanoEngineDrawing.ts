@@ -1,4 +1,4 @@
-import { NETS, netsSnapLinked, allocNetNumber } from './PlanoState';
+import { NETS, netsSnapLinked, allocNetNumber, allocTributaryNumber } from './PlanoState';
 import { moveAparatoCount } from '../../utils/syncExtremeAccessory';
 import type { PlanoRamal, PlanoBajante, PlanoArea } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
@@ -63,15 +63,15 @@ export { _statusMsg, calculateRamalLength } from './ramalMeasure';
 export function _nextLabel(engine: IPlanoEngineCore): string {
   const net = NETS.find((n) => n.id === engine.activeNet);
   const pfx = net ? net.lbl : 'R';
+  if (engine.tipoTramo === 'tributario') {
+    const padre = engine.ramales.find((r) => r.id === engine.padreTributario);
+    const padreLabel = padre ? padre.label || padre.id : '';
+    return `T${allocTributaryNumber(engine, padreLabel)}${padreLabel}`;
+  }
   const cnt =
     engine._netCounts[engine.activeNet]?.[
       engine.tipoTramo as keyof (typeof engine._netCounts)[string]
     ] || 0;
-  if (engine.tipoTramo === 'tributario') {
-    const padre = engine.ramales.find((r) => r.id === engine.padreTributario);
-    const padreLabel = padre ? padre.label || padre.id : '';
-    return `T${cnt}${padreLabel}`;
-  }
   return `${pfx}${cnt}`;
 }
 
@@ -186,10 +186,13 @@ function canJoinTributario(engine: IPlanoEngineCore, target: PlanoRamal): boolea
 }
 
 /** Invierte la dirección de flujo de un ramal existente IN PLACE — misma operación que el botón
- *  "Invertir dirección de flujo" del menú contextual (pts.reverse + swap de los datos por
- *  extremo), reutilizada para auto-orientar uniones san/ll/vent contraflujo. No toca
- *  `_tribReversed` (los ramales de estas redes no lo usan para render; invertir pts ES el flip
- *  visible). Es una involución: aplicarla dos veces restaura el estado original. */
+ *  "Invertir dirección de flujo" del menú contextual PARA REDES pts-DRIVEN
+ *  (san/ll/vent: la flecha se deriva de pts[0] vs pts[last]) — pts.reverse + swap de los datos
+ *  por extremo, reutilizada para auto-orientar uniones san/ll/vent contraflujo. NO sirve para
+ *  af/ac/gas: ahí la dirección efectiva (flecha renderRamales.ts:993/1243 y validaciones
+ *  flowDirection.ts) es `_tribReversed ? pts[last] : pts[0]`, un XOR — invertir pts y flag a la
+ *  vez se cancela; la inversión real de esas redes es SOLO el toggle de `_tribReversed`.
+ *  Es una involución: aplicarla dos veces restaura el estado original. */
 export function flipRamalFlow(ram: PlanoRamal): void {
   ram.pts = [...ram.pts].reverse();
   const tmpAcc = ram.accesorioInicio;
@@ -608,11 +611,11 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       const netDef = NETS.find((n) => n.id === existing.net);
       const pfx = netDef ? netDef.lbl : 'R';
       const isTrib = existing.tipo === 'tributario';
-      const cnt = allocNetNumber(engine, existing.net, isTrib ? 'tributario' : 'ramal', (n) =>
-        isTrib
-          ? engine.ramales.some((r) => r.label === `T${n}${existing.label || ''}`)
-          : engine.ramales.some((r) => r.id === `${pfx}${n}` || r.label === `${pfx}${n}`),
-      );
+      const cnt = isTrib
+        ? allocTributaryNumber(engine, existing.label || '')
+        : allocNetNumber(engine, existing.net, 'ramal', (n) =>
+            engine.ramales.some((r) => r.id === `${pfx}${n}` || r.label === `${pfx}${n}`),
+          );
       const newId = isTrib ? 'T' + Date.now() : pfx + cnt;
       // Posición/ángulo propios de la etiqueta desde el punto medio del segmento aguas abajo —
       // extender `...existing` solo dejaba la etiqueta en la posición vieja de la porción aguas
@@ -709,15 +712,11 @@ export function finishRamal(engine: IPlanoEngineCore): void {
         return p ? p.label || p.id : '';
       })()
     : '';
-  const cnt = allocNetNumber(
-    engine,
-    engine.activeRamal!.net,
-    isTrib ? 'tributario' : 'ramal',
-    (n) =>
-      isTrib
-        ? engine.ramales.some((r) => r.label === `T${n}${padreLbl}`)
-        : engine.ramales.some((r) => r.id === `${netPfx}${n}` || r.label === `${netPfx}${n}`),
-  );
+  const cnt = isTrib
+    ? allocTributaryNumber(engine, padreLbl)
+    : allocNetNumber(engine, engine.activeRamal!.net, 'ramal', (n) =>
+        engine.ramales.some((r) => r.id === `${netPfx}${n}` || r.label === `${netPfx}${n}`),
+      );
   const id = isTrib ? 'T' + Date.now() : netPfx + cnt;
   const firstAngle = _firstSegmentAngle(engine.activeRamal.pts);
 

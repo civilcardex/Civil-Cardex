@@ -185,6 +185,22 @@ export function allocNetNumber(
   return n;
 }
 
+/** Número del siguiente tributario para un sufijo de label dado (`T{n}{sufijo}`): el PRIMER
+ *  número libre desde 1. La numeración de tributarios es POR PADRE, no global — cada ramal
+ *  padre empieza sus propios tributarios en T1 (T1RS1, T1RS2, ...). El contador global
+ *  `_netCounts[net].tributario` (que allocNetNumber usa) avanzaba sin distinguir sufijo, así
+ *  que el primer tributario de RS2 salía como T2RS2 si la red ya tenía T1RS1. El contador
+ *  global queda solo como máximo histórico (persistencia), ya no se consulta para asignar. */
+export function allocTributaryNumber(
+  target: { ramales: Array<{ label?: string }> },
+  suffix: string,
+): number {
+  const used = new Set(target.ramales.map((r) => r.label));
+  let n = 1;
+  while (used.has(`T${n}${suffix}`)) n++;
+  return n;
+}
+
 /** Ventilación y sanitaria se "enganchan" entre sí mientras se DIBUJA (el cursor se pega a la
  *  otra red) — pero NO deben usarse para auto-conectar o mover juntas: eso queda estrictamente
  *  dentro de la misma red.
