@@ -8,6 +8,7 @@ import { usePageMeta } from '../../../hooks/usePageMeta';
 import { loadFromStorage } from '../services/storageService';
 import {
   ACTIVE_NETS_KEY,
+  NETS_CHANGED_EVENT,
   VISOR_ACTIVE_PLAN_ID_KEY,
   VISOR_ACTIVE_INDEX_KEY,
 } from '../constants/storage-keys';
@@ -111,15 +112,39 @@ export default function ViewerPage() {
       return 0;
     }
   });
-  const [activeNetworks] = useState<Set<string>>(() => {
+  const [activeNetworks, setActiveNetworks] = useState<Set<string>>(() => {
     try {
       const saved = loadFromStorage<string[] | null>(ACTIVE_NETS_KEY, null);
-      if (saved) return new Set(saved);
+      if (saved && saved.length > 0) return new Set(saved);
     } catch {
       // ignorar
     }
-    return new Set();
+    // Mismo default que useWorkAreaState — sin esto, una caché limpia dejaba el visor sin
+    // redes activas (el Set vacío no disparaba el cambio de red en PdfViewer) y el AC asignado
+    // en la información general no persistía al abrir el visor.
+    return new Set(['san', 'vent', 'll']);
   });
+
+  // Las redes activas se asignan en el área de trabajo (InfoTab) y se persisten en
+  // localStorage + Supabase; el visor debe re-leerlas cuando cambian, no quedarse con el
+  // snapshot del mount — si el usuario activa AC justo antes de entrar al visor (o desde otra
+  // pestaña) el visor ya no la pierde.
+  useEffect(() => {
+    const resync = () => {
+      try {
+        const saved = loadFromStorage<string[] | null>(ACTIVE_NETS_KEY, null);
+        if (saved && saved.length > 0) setActiveNetworks(new Set(saved));
+      } catch {
+        // ignorar
+      }
+    };
+    window.addEventListener('storage', resync);
+    window.addEventListener(NETS_CHANGED_EVENT, resync);
+    return () => {
+      window.removeEventListener('storage', resync);
+      window.removeEventListener(NETS_CHANGED_EVENT, resync);
+    };
+  }, []);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const dropdownNavRef = useRef<HTMLElement>(null);

@@ -54,7 +54,7 @@ export function useWorkAreaState() {
   const [redes, setRedes] = useState<Set<string>>(() => {
     const saved = loadFromStorage(ACTIVE_NETS_KEY, null);
     if (saved && Array.isArray(saved)) return new Set(saved);
-    return new Set(['san', 'll']);
+    return new Set(['san', 'vent', 'll']);
   });
 
   const redesActivas = useMemo(
@@ -103,7 +103,30 @@ export function useWorkAreaState() {
       saveRedesActivas(Number(proyectoId), [...redes]);
     }, 1200);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [redes, redesRestoreDone]);
+
+  // El guardado con debounce de 1200ms se cancelaba al desmontar (navegar al visor/lógica antes
+  // de que corriera) — el AC asignado "no persistía" si el usuario salía del área de trabajo
+  // rápido: localStorage sí lo tenía, pero la nube (otro navegador/dispositivo) nunca lo veía.
+  // Aquí se vacía el estado final al desmontar, sin tocar ninguna red pendiente que un cambio
+  // posterior del efecto de arriba siga debounceando.
+  const redesSaveRef = useRef(redes);
+  useEffect(() => {
+    redesSaveRef.current = redes;
+  }, [redes]);
+  const redesRestoreDoneSaveRef = useRef(redesRestoreDone);
+  useEffect(() => {
+    redesRestoreDoneSaveRef.current = redesRestoreDone;
+  }, [redesRestoreDone]);
+  useEffect(() => {
+    return () => {
+      const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+      if (!proyectoId || !redesRestoreDoneSaveRef.current) return;
+      void saveRedesActivas(Number(proyectoId), [...redesSaveRef.current]);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [redActiva, setRedActiva] = useState<string>('san');
   const [sanPage, setSanPage] = useState<number>(1);

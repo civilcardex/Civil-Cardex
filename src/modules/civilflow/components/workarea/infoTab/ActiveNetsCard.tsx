@@ -115,6 +115,12 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
                     } else {
                       if (on) n.delete(r.id);
                       else n.add(r.id);
+                      // La ventilación siempre acompaña a la sanitaria: activar san activa
+                      // vent, desactivar san la apaga también.
+                      if (r.id === 'san') {
+                        if (on) n.delete('vent');
+                        else n.add('vent');
+                      }
                     }
                     setRedes(n);
                   }}

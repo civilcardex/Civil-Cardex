@@ -10,7 +10,13 @@ export function getAccessoryOptions(netId: string) {
         a.id === 'sifon',
     ).map((a) => ({ value: a.id, label: a.nombre }));
   }
-  if (['ll', 'vent'].includes(netId)) {
+  if (netId === 'vent') {
+    // La ventilación no admite sifón ni codo reventilado (ambos son de la rama sanitaria).
+    return SAN_ACCESORIOS.filter((a) => a.id !== 'sifon' && a.id !== 'codoReventilado').map(
+      (a) => ({ value: a.id, label: a.nombre }),
+    );
+  }
+  if (netId === 'll') {
     return SAN_ACCESORIOS.map((a) => ({ value: a.id, label: a.nombre }));
   }
   if (netId === 'gas') {
