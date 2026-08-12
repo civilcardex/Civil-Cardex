@@ -134,9 +134,12 @@ function ramalToRow(planoId: number, userId: string, r: PlanoRamal) {
     merges_from: r.mergesFrom ?? null,
     sifon_label_ini: r.sifonLabelIni ?? null,
     sifon_label_fin: r.sifonLabelFin ?? null,
-    fixtures: r.fixtures ?? null,
-    hydro_accesorios: r.hydroAcc ?? null,
-    gas_accesorios: r.gasAcc ?? null,
+    fixtures: r.fixtures ?? {},
+    // NOT NULL en planos_ramales (JSONB) — un ramal nuevo sin accesorios asignados tendría
+    // `undefined`/null y tumbaría el INSERT completo de replaceCollection con 400
+    // ("null value in column ... violates not-null constraint"). `{}` es el valor vacío válido.
+    hydro_accesorios: r.hydroAcc ?? {},
+    gas_accesorios: r.gasAcc ?? {},
   };
 }
 

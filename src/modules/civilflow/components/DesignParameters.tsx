@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProject } from '../context/ProjectContext';
 import { useApparatus, type ApsItem } from '../context/ApparatusContext';
-import { NORM_COL, REDES_MAT, CAT_APS, CAT_GAS } from '../constants';
+import { NORM_COL, REDES_MAT, CAT_APS, CAT_GAS, APARATOS_DEF } from '../constants';
 import { NumericInput } from './NumericInput';
 import EditButton from './shared/EditButton';
 const DesignParameters_S1: React.CSSProperties = {
@@ -102,20 +102,25 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
   };
 
   const apsMap = Object.fromEntries(CAT_APS.map((a) => [a.id, a]));
+  const udDefMap = new Map(APARATOS_DEF.map((d) => [d.id, d.ud]));
   const ACC_IDS = new Set(['codo90rm', 'yeeSimple', 'yeeDoble']);
   const apsMerged = CAT_APS.map((c) => {
     const cur = aps.find((a) => a.id === c.id);
     const isAcc = ACC_IDS.has(c.id);
+    const defUd = udDefMap.get(c.id) ?? 0;
     return {
       ...c,
       // cur existe → su valor real (aunque sea 0); si no, el base. `||` aquí escondería un
       // 0 editado y mostraría el valor de catálogo, pareciendo que "no se guardó".
       ucaf: isAcc ? 0 : cur ? cur.ucaf : c.af,
       ucac: isAcc ? 0 : cur ? cur.ucac : c.ac,
-      ud: cur ? cur.ud : 0,
+      // Sin cur, mostrar el UD del catálogo base (def.ud) — el cálculo usa ese valor, así que
+      // el display debe coincidir; mostrar 0 aquí decía "el inodoro no tiene UD" cuando el
+      // cálculo sí las contaba.
+      ud: cur ? cur.ud : defUd,
       _blkAf: isAcc || (c.af || 0) === 0,
       _blkAc: isAcc || (c.ac || 0) === 0,
-      _blkUd: cur ? cur._blkUd : false,
+      _blkUd: cur ? cur._blkUd : defUd === 0,
     };
   });
 
@@ -124,6 +129,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
       const ix = prev.findIndex((a) => a.id === id);
       if (ix < 0) {
         const def = apsMap[id];
+        const defUd = udDefMap.get(id) ?? 0;
         return [
           ...prev,
           {
@@ -133,14 +139,17 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
             g: 'h',
             ucaf: def.af,
             ucac: def.ac,
-            ud: 0,
+            // El item nuevo hereda el UD del catálogo base — antes se creaba con ud:0 y el
+            // snapshot (borra-e-inserta) persistía el catálogo entero con UDs borradas (bug
+            // "RS3 no propaga UCs": inodoro valía 0). El valor editado de `key` aplica después.
+            ud: defUd,
             pmin: 0,
             pmax: 0,
             qg: 0,
             ctrl: def.ctrl,
             // _blkUd es obligatorio para el insert (blk_ud NOT NULL en aparatos_usuario):
             // sin él, saveAparatosUsuario falla con constraint violation y la BD queda vacía.
-            _blkUd: (def.af || 0) === 0 && (def.ac || 0) === 0,
+            _blkUd: defUd === 0,
             [key]: v,
           } as unknown as ApsItem,
         ];

@@ -88,6 +88,37 @@ export async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null>
           blk_ud: r.blk_ud,
         }));
       }
+    } else {
+      // Snapshot parcial: el snapshot por-usuario es COMPLETO por diseño (saveAparatosUsuario
+      // borra-e-inserta todo el catálogo). Si la BD tiene menos filas que el catálogo global,
+      // es un snapshot corrupto de una versión vieja (bug en setApsVal creaba items con ud:0 y
+      // el guardado borraba el resto). Rellenar los faltantes con el catálogo global para no
+      // perder aparatos cuyo valor el usuario nunca tocó — el siguiente guardado del usuario
+      // persiste el snapshot completo y la BD queda sana.
+      const { data: base, error: baseError } = await supabase
+        .from('aparatos_catalogo_global')
+        .select('id, s, n, g, ucaf, ucac, ud, pmin, pmax, qg, ctrl, blk_ud');
+      if (baseError) throw baseError;
+      if (base && base.length > 0) {
+        const ownIds = new Set(rows.map((r) => r.client_id));
+        for (const r of base as CatalogoGlobalRow[]) {
+          if (ownIds.has(r.id)) continue;
+          rows.push({
+            client_id: r.id,
+            s: r.s,
+            n: r.n,
+            g: r.g,
+            ucaf: r.ucaf,
+            ucac: r.ucac,
+            ud: r.ud,
+            pmin: r.pmin,
+            pmax: r.pmax,
+            qg: r.qg,
+            ctrl: r.ctrl,
+            blk_ud: r.blk_ud,
+          });
+        }
+      }
     }
 
     const aps: ApsItem[] = rows.map((r) => ({
