@@ -292,14 +292,11 @@ function renderCanalGlyph(
   ctx.fill();
   ctx.strokeStyle = col;
   ctx.lineWidth = (sel ? 1.6 : 0.8) * engine.zoom;
-  // Perfil de canal: las líneas horizontales superior, interior (25%) e inferior, más los dos
-  // segmentos verticales laterales que cierran el contorno del canalón.
+  // Perfil de canal: las líneas horizontales superior e inferior, más los dos segmentos
+  // verticales laterales que cierran el contorno del canalón.
   ctx.beginPath();
   ctx.moveTo(tl.x, tl.y);
   ctx.lineTo(tl.x + w, tl.y);
-  const midY = tl.y + h * 0.25;
-  ctx.moveTo(tl.x, midY);
-  ctx.lineTo(tl.x + w, midY);
   ctx.moveTo(tl.x, tl.y + h);
   ctx.lineTo(tl.x + w, tl.y + h);
   ctx.moveTo(tl.x, tl.y);

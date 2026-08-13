@@ -276,21 +276,24 @@ export function useIsometriaRender({
         const zC = (nptMap[b.planNivel] || 0) - profCanal * 1000;
         const zPixC = getZPix(zC, b.planNivel);
         const iso0 = getIsoCoords(b.x, b.y, b.planNivel);
+        // Esquinas superiores del rectángulo de abertura (símbolo en planta)
         const pA = projPtCanal(iso0.x, iso0.y, zPixC);
         const pB = projPtCanal(iso0.x + longM * ISO_SCALE, iso0.y, zPixC);
         const pC = projPtCanal(iso0.x + longM * ISO_SCALE, iso0.y + baseM * ISO_SCALE, zPixC);
         const pD = projPtCanal(iso0.x, iso0.y + baseM * ISO_SCALE, zPixC);
-        // Paredes de la canaleta a la altura REAL del canal (sin tope) — la altura es editable
-        // desde el editor y debe verse reflejada en la isometría.
+        // Altura de pared (editable)
         const wall = altM;
-        const pAw = projPtCanal(iso0.x, iso0.y, zPixC + wall * ISO_SCALE);
-        const pBw = projPtCanal(iso0.x + longM * ISO_SCALE, iso0.y, zPixC + wall * ISO_SCALE);
-        const pCw = projPtCanal(
-          iso0.x + longM * ISO_SCALE,
-          iso0.y + baseM * ISO_SCALE,
-          zPixC + wall * ISO_SCALE,
-        );
-        const pDw = projPtCanal(iso0.x, iso0.y + baseM * ISO_SCALE, zPixC + wall * ISO_SCALE);
+        const bottomZ = zPixC + wall * ISO_SCALE;
+        // Vértices del corte escalonado (muesca en el extremo izquierdo, sobre la pared trasera)
+        // La muesca rebaja el borde superior de la pared trasera (lateral del canal) en el
+        // extremo izquierdo: ocupa el 30% del ancho de la base y baja al 50% de la altura de
+        // pared. Crea una cara escalonada vertical en ángulo recto visible desde el lateral.
+        const notchH = wall * 0.25 * ISO_SCALE; // profundidad de la muesca EXTERIOR (somera, 25%)
+        const notchZ = zPixC + notchH; // nivel del escalón
+        ctx.save();
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = hl;
+        ctx.lineWidth = 1.2;
         const quad = (a: IsoPt, b2: IsoPt, c2: IsoPt, d2: IsoPt) => {
           ctx.beginPath();
           ctx.moveTo(a.sx, a.sy);
@@ -299,41 +302,120 @@ export function useIsometriaRender({
           ctx.lineTo(d2.sx, d2.sy);
           ctx.closePath();
         };
-        ctx.save();
-        ctx.lineJoin = 'round';
-        ctx.strokeStyle = hl;
-        ctx.lineWidth = 1.2;
-        // Cara de apertura (símbolo en plano: rectángulo blanco)
-        ctx.fillStyle = 'rgba(255,255,255,0.92)';
-        quad(pA, pB, pC, pD);
-        ctx.fill();
-        ctx.stroke();
-        // Línea interior al 25%, en la misma posición que el glifo del plano
-        const m1 = projPtCanal(iso0.x, iso0.y + baseM * 0.25 * ISO_SCALE, zPixC);
-        const m2 = projPtCanal(
-          iso0.x + longM * ISO_SCALE,
-          iso0.y + baseM * 0.25 * ISO_SCALE,
-          zPixC,
-        );
-        ctx.beginPath();
-        ctx.moveTo(m1.sx, m1.sy);
-        ctx.lineTo(m2.sx, m2.sy);
-        ctx.stroke();
-        // Paredes y fondo de la canaleta (translúcidos), que dan profundidad al canal
+        // Perfil hueco rectangular SIN TAPA con muesca escalonada en ángulo recto por ABAJO:
+        //   - Pared trasera: flotante — la muesca le quita el tramo inferior (zB..zM) a lo largo
+        //     de TODO el canal, dejando solo la mitad superior (zM..zT)
+        //   - Cara del escalón: vertical en ángulo recto que sube desde el piso hasta la base de
+        //     la pared trasera flotante, a todo lo largo (el corte visible desde los laterales)
+        //   - Pared delantera y piso completos
         ctx.fillStyle = hexA(netColorCanal, 0.18);
-        quad(pAw, pBw, pCw, pDw);
-        ctx.fill();
-        quad(pA, pB, pBw, pAw);
+        const pN = (px: number, py: number, pz: number) => projPtCanal(px, py, pz);
+        const xL = iso0.x;
+        const xR = iso0.x + longM * ISO_SCALE;
+        const yB = iso0.y;
+        const yF = iso0.y + baseM * ISO_SCALE;
+        const zT = zPixC;
+        const zM = notchZ; // nivel del escalón
+        const zB = bottomZ;
+        // Región de las muescas: corren a TODO lo largo del canal (en X). Las muescas se ven como
+        // ESCALONES que BAJAN hacia el centro del canal: la muesca exterior (junto a cada pared,
+        // 15% del ancho) es somera — se quita POR ABAJO el 25% de la altura (zB..zM) y la pared
+        // flota desde ahí; la muesca interior escalonada (10% del ancho, arranca donde termina la
+        // exterior) es más profunda — se quita hasta el 75% de la altura (zB..zM2). El piso
+        // (nivel zB) queda solo en la franja central.
+        const nY = baseM * 0.15 * ISO_SCALE; // ancho de la muesca exterior (somera)
+        const nY2 = baseM * 0.1 * ISO_SCALE; // ancho de la muesca interior (profunda)
+        const zM2 = zPixC + wall * 0.75 * ISO_SCALE; // nivel del escalón interior (profundo, 75%)
+        const yB2 = yB + nY; // extremo interior de la muesca trasera exterior
+        const yB3 = yB + nY + nY2; // extremo interior de la muesca trasera interior
+        const yF2 = yF - nY; // extremo interior de la muesca delantera exterior
+        const yF3 = yF - nY - nY2; // extremo interior de la muesca delantera interior
+
+        // Piso (base inferior) — solo la franja central fuera de las muescas
+        quad(pN(xL, yB3, zB), pN(xR, yB3, zB), pN(xR, yF3, zB), pN(xL, yF3, zB));
         ctx.fill();
         ctx.stroke();
-        quad(pB, pC, pCw, pBw);
+
+        // Pared trasera — flotante: solo la mitad superior (zM..zT), a todo lo largo del canal
+        quad(pN(xL, yB, zM), pN(xR, yB, zM), pN(xR, yB, zT), pN(xL, yB, zT));
         ctx.fill();
         ctx.stroke();
-        quad(pC, pD, pDw, pCw);
+        // Superficie del escalón trasero exterior (horizontal, techo de la muesca, zM)
+        quad(pN(xL, yB, zM), pN(xR, yB, zM), pN(xR, yB2, zM), pN(xL, yB2, zM));
         ctx.fill();
         ctx.stroke();
-        quad(pD, pA, pAw, pDw);
+        // Pared vertical del escalón trasero (entre el nivel zM y el nivel zM2, en yB2)
+        quad(pN(xL, yB2, zM2), pN(xR, yB2, zM2), pN(xR, yB2, zM), pN(xL, yB2, zM));
         ctx.fill();
+        ctx.stroke();
+        // Superficie del escalón trasero interior (horizontal, techo de la muesca interior, zM2)
+        quad(pN(xL, yB2, zM2), pN(xR, yB2, zM2), pN(xR, yB3, zM2), pN(xL, yB3, zM2));
+        ctx.fill();
+        ctx.stroke();
+        // Cara del escalón trasero interior (del piso zB al nivel zM2, en yB3)
+        quad(pN(xL, yB3, zB), pN(xR, yB3, zB), pN(xR, yB3, zM2), pN(xL, yB3, zM2));
+        ctx.fill();
+        ctx.stroke();
+
+        // Pared delantera — flotante (espejo de la trasera): solo la mitad superior (zM..zT)
+        quad(pN(xL, yF, zM), pN(xR, yF, zM), pN(xR, yF, zT), pN(xL, yF, zT));
+        ctx.fill();
+        ctx.stroke();
+        // Superficie del escalón delantero exterior (zM)
+        quad(pN(xL, yF2, zM), pN(xR, yF2, zM), pN(xR, yF, zM), pN(xL, yF, zM));
+        ctx.fill();
+        ctx.stroke();
+        // Pared vertical del escalón delantero (entre zM y zM2, en yF2)
+        quad(pN(xL, yF2, zM2), pN(xR, yF2, zM2), pN(xR, yF2, zM), pN(xL, yF2, zM));
+        ctx.fill();
+        ctx.stroke();
+        // Superficie del escalón delantero interior (zM2)
+        quad(pN(xL, yF3, zM2), pN(xR, yF3, zM2), pN(xR, yF2, zM2), pN(xL, yF2, zM2));
+        ctx.fill();
+        ctx.stroke();
+        // Cara del escalón delantero interior (del piso zB al nivel zM2, en yF3)
+        quad(pN(xL, yF3, zB), pN(xR, yF3, zB), pN(xR, yF3, zM2), pN(xL, yF3, zM2));
+        ctx.fill();
+        ctx.stroke();
+
+        // Cara del extremo izquierdo (perfil escalonado con las muescas por abajo) — wireframe
+        ctx.beginPath();
+        ctx.moveTo(pN(xL, yB, zM).sx, pN(xL, yB, zM).sy);
+        ctx.lineTo(pN(xL, yB, zT).sx, pN(xL, yB, zT).sy);
+        ctx.lineTo(pN(xL, yF, zT).sx, pN(xL, yF, zT).sy);
+        ctx.lineTo(pN(xL, yF, zM).sx, pN(xL, yF, zM).sy);
+        ctx.lineTo(pN(xL, yF2, zM).sx, pN(xL, yF2, zM).sy);
+        ctx.lineTo(pN(xL, yF2, zM2).sx, pN(xL, yF2, zM2).sy);
+        ctx.lineTo(pN(xL, yF3, zM2).sx, pN(xL, yF3, zM2).sy);
+        ctx.lineTo(pN(xL, yF3, zB).sx, pN(xL, yF3, zB).sy);
+        ctx.lineTo(pN(xL, yB3, zB).sx, pN(xL, yB3, zB).sy);
+        ctx.lineTo(pN(xL, yB3, zM2).sx, pN(xL, yB3, zM2).sy);
+        ctx.lineTo(pN(xL, yB2, zM2).sx, pN(xL, yB2, zM2).sy);
+        ctx.lineTo(pN(xL, yB2, zM).sx, pN(xL, yB2, zM).sy);
+        ctx.closePath();
+        ctx.stroke();
+
+        // Cara del extremo derecho (perfil escalonado, espejo) — wireframe
+        ctx.beginPath();
+        ctx.moveTo(pN(xR, yB, zM).sx, pN(xR, yB, zM).sy);
+        ctx.lineTo(pN(xR, yB, zT).sx, pN(xR, yB, zT).sy);
+        ctx.lineTo(pN(xR, yF, zT).sx, pN(xR, yF, zT).sy);
+        ctx.lineTo(pN(xR, yF, zM).sx, pN(xR, yF, zM).sy);
+        ctx.lineTo(pN(xR, yF2, zM).sx, pN(xR, yF2, zM).sy);
+        ctx.lineTo(pN(xR, yF2, zM2).sx, pN(xR, yF2, zM2).sy);
+        ctx.lineTo(pN(xR, yF3, zM2).sx, pN(xR, yF3, zM2).sy);
+        ctx.lineTo(pN(xR, yF3, zB).sx, pN(xR, yF3, zB).sy);
+        ctx.lineTo(pN(xR, yB3, zB).sx, pN(xR, yB3, zB).sy);
+        ctx.lineTo(pN(xR, yB3, zM2).sx, pN(xR, yB3, zM2).sy);
+        ctx.lineTo(pN(xR, yB2, zM2).sx, pN(xR, yB2, zM2).sy);
+        ctx.lineTo(pN(xR, yB2, zM).sx, pN(xR, yB2, zM).sy);
+        ctx.closePath();
+        ctx.stroke();
+
+        // Abertura superior (borde del perfil hueco, sin relleno) — contorno fino
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = hexA(netColorCanal, 0.9);
+        quad(pA, pB, pC, pD);
         ctx.stroke();
         if (isSel) {
           // Seleccionado: contorno amarillo más grueso en la cara de apertura + etiqueta de
