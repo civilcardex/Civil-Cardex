@@ -9,7 +9,7 @@ import {
   PROY_DEFAULTS,
   type Proyecto,
 } from '../../modules/civilflow/context/ProjectContext';
-import type { Piso } from '../../modules/civilflow/components/useWorkAreaState';
+import type { Piso } from '../../modules/civilflow/lib/shared/projectTypes';
 import { PlansContext } from '../../modules/civilflow/context/PlansContext';
 import type { PlanMeta } from '../../modules/civilflow/lib/shared/projectTypes';
 import {

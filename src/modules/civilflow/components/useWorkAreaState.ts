@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import type { ChangeEvent, FocusEvent } from 'react';
+import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect';
 import { useTramos } from '../context/TramosContext';
 import { useProject } from '../context/ProjectContext';
 import { useApparatus } from '../context/ApparatusContext';
@@ -9,18 +10,16 @@ import { REDES } from '../constants';
 import { parseDecimalInput, parseIntInput } from '../utils/parseDecimal';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
 import { devError } from '../../../utils/devError';
-import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
 import { loadProyectoData, saveRedesActivas } from '../services/proyectoDataService';
 import { loadNetColors, applyNetColors } from '../services/netColorsService';
 import {
   ACTIVE_NETS_KEY,
-  ACTIVE_PROYECTO_ID_KEY,
   OPEN_TAB_KEY,
   NET_COLOR_PREFIX,
   NETS_CHANGED_EVENT,
 } from '../constants/storage-keys';
 import type { Piso } from '../lib/shared/projectTypes';
-export type { Piso } from '../lib/shared/projectTypes';
 
 function useSyncedRef<T>(initial: T): [T, (v: T) => void, React.MutableRefObject<T>] {
   const [val, _set] = useState<T>(initial);
@@ -69,18 +68,18 @@ export function useWorkAreaState() {
   // datos locales del proyecto activo (para que una caché realmente limpiada cargue desde
   // Supabase en vez de que el efecto de guardado persista el default sobre lo guardado antes).
   const [redesRestoreDone, setRedesRestoreDone] = useState(() => {
-    const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    const proyectoId = getActiveProyectoId();
     if (!proyectoId) return true;
     return loadFromStorage(ACTIVE_NETS_KEY, null) != null;
   });
 
   useEffect(() => {
     if (redesRestoreDone) return;
-    const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    const proyectoId = getActiveProyectoId();
     if (!proyectoId) return;
     let ignore = false;
     (async () => {
-      const data = await loadProyectoData(Number(proyectoId));
+      const data = await loadProyectoData(proyectoId);
       if (!ignore && data?.redesActivas && data.redesActivas.length > 0) {
         setRedes(new Set(data.redesActivas));
       }
@@ -93,18 +92,18 @@ export function useWorkAreaState() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    saveToStorage(ACTIVE_NETS_KEY, [...redes]);
-    window.dispatchEvent(new CustomEvent(NETS_CHANGED_EVENT, { detail: [...redes] }));
-    if (!redesRestoreDone) return;
-    const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-    if (!proyectoId) return;
-    const timer = setTimeout(() => {
-      saveRedesActivas(Number(proyectoId), [...redes]);
-    }, 1200);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [redes, redesRestoreDone]);
+  useDebouncedEffect(
+    () => {
+      saveToStorage(ACTIVE_NETS_KEY, [...redes]);
+      window.dispatchEvent(new CustomEvent(NETS_CHANGED_EVENT, { detail: [...redes] }));
+      if (!redesRestoreDone) return;
+      const proyectoId = getActiveProyectoId();
+      if (!proyectoId) return;
+      saveRedesActivas(proyectoId, [...redes]);
+    },
+    1200,
+    [redes, redesRestoreDone],
+  );
 
   // El guardado con debounce de 1200ms se cancelaba al desmontar (navegar al visor/lógica antes
   // de que corriera) — el AC asignado "no persistía" si el usuario salía del área de trabajo
@@ -121,9 +120,9 @@ export function useWorkAreaState() {
   }, [redesRestoreDone]);
   useEffect(() => {
     return () => {
-      const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+      const proyectoId = getActiveProyectoId();
       if (!proyectoId || !redesRestoreDoneSaveRef.current) return;
-      void saveRedesActivas(Number(proyectoId), [...redesSaveRef.current]);
+      void saveRedesActivas(proyectoId, [...redesSaveRef.current]);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

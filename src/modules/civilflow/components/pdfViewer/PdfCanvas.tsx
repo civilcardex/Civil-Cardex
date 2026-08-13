@@ -1,7 +1,7 @@
 import { memo, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { pisoLbl } from '../../constants';
-import type { Piso } from '../useWorkAreaState';
+import type { Piso } from '../../lib/shared/projectTypes';
 import type { PlanItem } from '../../context/PlansContext';
 const PdfCanvas_S1: React.CSSProperties = {
   position: 'absolute',

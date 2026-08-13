@@ -2,7 +2,7 @@ import React from 'react';
 import { USOS } from '../../../constants';
 import EditButton from '../../shared/EditButton';
 import { devError } from '../../../../../utils/devError';
-import { ACTIVE_PROYECTO_ID_KEY } from '../../../constants/storage-keys';
+import { getActiveProyectoId } from '../../../services/storageService';
 import { updateProyectoNombre } from '../../../services/proyectosService';
 
 interface ProjectIdInfo {
@@ -25,10 +25,10 @@ const ProjectIdCard = React.memo(function ProjectIdCard({
 
   React.useEffect(() => {
     if (wasEditingRef.current && !isEditing) {
-      const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+      const proyectoId = getActiveProyectoId();
       const trimmed = proy.nombre?.trim();
       if (proyectoId && trimmed) {
-        updateProyectoNombre(Number(proyectoId), trimmed).catch(devError);
+        updateProyectoNombre(proyectoId, trimmed).catch(devError);
       }
     }
     wasEditingRef.current = isEditing;

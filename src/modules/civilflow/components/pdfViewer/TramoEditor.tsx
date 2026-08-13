@@ -15,7 +15,7 @@ import type {
   PlanoArea,
   PlanoTextAnnotation,
 } from '../../lib/PlanoEngine/PlanoState';
-import type { Piso } from '../useWorkAreaState';
+import type { Piso } from '../../lib/shared/projectTypes';
 import type { PlanItem } from '../../context/PlansContext';
 
 // Sonda estructural de la unión PlanoElement: permite inspeccionar `tipo`/`pts` (presentes en

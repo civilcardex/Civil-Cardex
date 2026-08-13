@@ -9,8 +9,8 @@ import {
 } from 'react';
 import { useTramos } from './TramosContext';
 import { usePlans } from './PlansContext';
-import { TRAZOS_PREFIX, ACTIVE_NETS_KEY, ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
-import { loadFromStorage } from '../services/storageService';
+import { TRAZOS_PREFIX, ACTIVE_NETS_KEY } from '../constants/storage-keys';
+import { loadFromStorage, getActiveProyectoId } from '../services/storageService';
 import {
   loadRainwaterOverrides,
   saveRainwaterOverrides,
@@ -78,10 +78,8 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
   // tablas solo guardan lo que el usuario editó a mano.
   const saveTimerRef = useRef<number | null>(null);
   useEffect(() => {
-    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-    if (!proyectoIdRaw) return;
-    const proyectoId = Number(proyectoIdRaw);
-    if (!Number.isFinite(proyectoId)) return;
+    const proyectoId = getActiveProyectoId();
+    if (!proyectoId) return;
     let cancelled = false;
     void loadRainwaterOverrides(proyectoId).then((overrides) => {
       if (cancelled) return;
@@ -96,10 +94,8 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-    if (!proyectoIdRaw) return;
-    const proyectoId = Number(proyectoIdRaw);
-    if (!Number.isFinite(proyectoId)) return;
+    const proyectoId = getActiveProyectoId();
+    if (!proyectoId) return;
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     saveTimerRef.current = window.setTimeout(() => {
       saveTimerRef.current = null;

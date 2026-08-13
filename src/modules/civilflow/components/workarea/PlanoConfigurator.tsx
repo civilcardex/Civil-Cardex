@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { pisoLbl } from '../../constants';
 import ModalProtocolo from './ModalProtocolo';
 import ModalPrimeraCalibracion from './ModalPrimeraCalibracion';
-import type { Piso } from '../useWorkAreaState';
+import type { Piso } from '../../lib/shared/projectTypes';
 import type { PlanItem } from '../../context/PlansContext';
 import { useCalibration, type ExistingCal } from './useCalibration';
 import { usePlanFileLoader } from './usePlanFileLoader';

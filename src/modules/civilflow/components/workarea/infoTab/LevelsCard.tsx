@@ -1,7 +1,7 @@
 import React from 'react';
 import { pisoLbl } from '../../../constants';
 import EditButton from '../../shared/EditButton';
-import type { Piso } from '../../useWorkAreaState';
+import type { Piso } from '../../../lib/shared/projectTypes';
 
 const LevelsCard_S1: React.CSSProperties = {
   padding: '3px 6px',

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { dec } from '../utils/parseDecimal';
-import { loadFromStorage, saveToStorage } from '../services/storageService';
-import { ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
+import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
 import { loadBombaDatos, saveBombaDatos } from '../services/bombaService';
 import PageNav from './PageNav';
 import { SI, TH, TD } from '../styles/sharedTableStyles';
@@ -254,10 +253,8 @@ function BombaARDesign() {
   // valores del caché.
   const hydratedRef = useRef(false);
   useEffect(() => {
-    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-    if (!proyectoIdRaw) return;
-    const proyectoId = Number(proyectoIdRaw);
-    if (!Number.isFinite(proyectoId)) return;
+    const proyectoId = getActiveProyectoId();
+    if (!proyectoId) return;
     let cancelled = false;
     void loadBombaDatos(proyectoId).then((d) => {
       if (cancelled) return;
@@ -290,10 +287,8 @@ function BombaARDesign() {
   const bombaSaveTimerRef = useRef<number | null>(null);
   useEffect(() => {
     if (!hydratedRef.current) return;
-    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-    if (!proyectoIdRaw) return;
-    const proyectoId = Number(proyectoIdRaw);
-    if (!Number.isFinite(proyectoId)) return;
+    const proyectoId = getActiveProyectoId();
+    if (!proyectoId) return;
     if (bombaSaveTimerRef.current) window.clearTimeout(bombaSaveTimerRef.current);
     bombaSaveTimerRef.current = window.setTimeout(() => {
       bombaSaveTimerRef.current = null;

@@ -8,19 +8,20 @@ import {
   useContext,
   type ReactNode,
 } from 'react';
-import { saveToStorage, loadFromStorage, removeFromStorage } from '../services/storageService';
+import {
+  saveToStorage,
+  loadFromStorage,
+  removeFromStorage,
+  getActiveProyectoId,
+} from '../services/storageService';
 import { storePDF, loadPDF, deletePDF } from '../services/idbStorage';
 import { uploadPlanPDF, deletePlanPDF, downloadPlanPDF } from '../services/pdfStorageService';
 import { saveProyectoPlansMeta, loadProyectoData } from '../services/proyectoDataService';
-import { PLANS_META_KEY, ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
+import { PLANS_META_KEY } from '../constants/storage-keys';
+import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect';
 import { devError } from '../../../utils/devError';
 import type { PlanMeta } from '../lib/shared/projectTypes';
 export type { PlanMeta } from '../lib/shared/projectTypes';
-
-function getActiveProyectoId(): number | null {
-  const raw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-  return raw ? Number(raw) : null;
-}
 
 export interface PlanItem {
   id: number;
@@ -244,16 +245,17 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
   // suben por separado conforme se agregan). Mismo espíritu de debounce que usePersistedState,
   // pero condicionado a restoreDone para que jamás dispare con una lista vacía vieja antes de
   // que la restauración local desde IndexedDB haya tenido oportunidad de poblar `plans`.
-  useEffect(() => {
-    if (!cloudRestoreDone) return;
-    const proyectoId = getActiveProyectoId();
-    if (!proyectoId) return;
-    const timer = setTimeout(() => {
+  useDebouncedEffect(
+    () => {
+      if (!cloudRestoreDone) return;
+      const proyectoId = getActiveProyectoId();
+      if (!proyectoId) return;
       const meta = plans.map(({ file: _file, ...m }) => m);
       saveProyectoPlansMeta(proyectoId, meta);
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [plans, cloudRestoreDone]);
+    },
+    1200,
+    [plans, cloudRestoreDone],
+  );
 
   const addPlans = useCallback((newFiles: FileList | File[]) => {
     const pdfs: PlanItem[] = [];

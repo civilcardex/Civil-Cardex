@@ -26,7 +26,7 @@ export function isToolDisabledForNet(
   return false;
 }
 
-export const TOOLS: ToolDef[] = [
+const TOOLS: ToolDef[] = [
   {
     id: 'sel',
     label: 'Seleccionar',

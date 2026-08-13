@@ -79,7 +79,7 @@ import type {
   PlanoArea,
   PlanoGuideLine,
 } from '../../lib/PlanoEngine/PlanoState';
-import type { Piso } from '../useWorkAreaState';
+import type { Piso } from '../../lib/shared/projectTypes';
 import type { PlanItem } from '../../context/PlansContext';
 import type { MaterialItem } from '../../context/ProjectContext';
 

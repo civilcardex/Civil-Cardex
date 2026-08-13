@@ -1,10 +1,7 @@
 import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError';
 import type { Piso } from '../lib/shared/projectTypes';
-import type { Proyecto } from '../context/ProyectoContext';
-import type { MaterialItem } from '../context/MaterialesContext';
-import type { ProfItem } from '../context/ProfundidadesContext';
-import type { CritItem } from '../context/CriteriosContext';
+import type { Proyecto, MaterialItem, ProfItem, CritItem } from '../context/ProjectContext';
 import type { PlanMeta } from '../lib/shared/projectTypes';
 import type { GasDatosGenerales } from '../utils/gasRows';
 

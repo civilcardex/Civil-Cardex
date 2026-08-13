@@ -64,7 +64,7 @@ import type {
 } from '../lib/PlanoEngine/PlanoState';
 import type { CrossFloorGhost } from '../lib/shared/crossFloorGhostTypes';
 
-function getActiveProyectoId(): number | null {
+export function getActiveProyectoId(): number | null {
   const raw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
   return raw ? Number(raw) : null;
 }

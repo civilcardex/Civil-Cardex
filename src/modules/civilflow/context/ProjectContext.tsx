@@ -7,27 +7,122 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
+import { usePersistedState } from '../../../hooks/usePersistedState';
+import { MATS_DEFAULT, CRIT0, PROFS_DEFAULT } from '../constants';
+import { getActiveProyectoId } from '../services/storageService';
 import { saveProyectoCoreData, loadProyectoData } from '../services/proyectoDataService';
+import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect';
 import type { Piso } from '../lib/shared/projectTypes';
-import { PisosProvider, usePisos } from './PisosContext';
-import { ProyectoProvider, useProyecto, type Proyecto, PROY_DEFAULTS } from './ProyectoContext';
-import {
-  MaterialesProvider,
-  useMateriales,
-  type MaterialItem,
-  cloneMats,
-} from './MaterialesContext';
-import {
-  ProfundidadesProvider,
-  useProfundidades,
-  type ProfItem,
-  cloneProfs,
-} from './ProfundidadesContext';
-import { CriteriosProvider, useCriterios, type CritItem, cloneCrits } from './CriteriosContext';
 
-export type { Proyecto, MaterialItem, ProfItem, CritItem };
-export { PROY_DEFAULTS };
+export interface Proyecto {
+  nombre: string;
+  dir: string;
+  ciudad: string;
+  pais: string;
+  uso: string;
+  empresa: string;
+  p_red: string;
+  dot: string;
+  mat_af: string;
+  mat_ac: string;
+  mat_rci: string;
+  mat_san: string;
+  mat_ll: string;
+  mat_ven: string;
+  mat_gas: string;
+  altitud: string;
+  p_atm: string;
+  poblFija: number;
+  poblFlot: number;
+  areaPiscina: number;
+  areaVerdes: number;
+  C_escorrentia: number;
+  pendienteSan: number;
+}
+
+export interface MaterialItem {
+  id: string;
+  val: string;
+}
+
+export interface ProfItem {
+  id: string;
+  red: string;
+  col: string;
+  prof: number;
+  norma: string;
+  nota: string;
+}
+
+export interface CritItem {
+  id: string;
+  red: string;
+  param: string;
+  val: string;
+  uni: string;
+  norma: string;
+  art: string;
+  cumple: string;
+  nota: string;
+}
+
+export const PROY_DEFAULTS: Proyecto = {
+  nombre: '',
+  dir: '',
+  ciudad: '',
+  pais: '',
+  uso: '',
+  empresa: '',
+  p_red: '',
+  dot: '',
+  mat_af: 'PVC-PR',
+  mat_ac: 'PVC-PR',
+  mat_rci: 'Acero SCH 40',
+  mat_san: 'PVC sanitario',
+  mat_ll: 'PVC sanitario',
+  mat_ven: 'PVC sanitario',
+  mat_gas: 'PE al PE',
+  altitud: '959',
+  p_atm: '90.32',
+  poblFija: 6,
+  poblFlot: 10,
+  areaPiscina: 40.12,
+  areaVerdes: 50,
+  C_escorrentia: 0.95,
+  pendienteSan: 0.02,
+};
+
+function cloneMats(): Record<string, MaterialItem[]> {
+  return Object.fromEntries(
+    Object.entries(MATS_DEFAULT).map(([k, v]) => [k, v.map((item) => ({ ...item }))]),
+  );
+}
+
+function cloneProfs(): ProfItem[] {
+  return PROFS_DEFAULT.map((p) => ({ ...p }));
+}
+
+function cloneCrits(): CritItem[] {
+  return CRIT0.map((c) => ({ ...c }));
+}
+
+const MATS_CLONED = cloneMats();
+const PROFS_CLONED = cloneProfs();
+const CRITS_CLONED = cloneCrits();
+
+// Proyectos guardados antes del renombre ciudad/pais aún tienen las claves viejas 'mun'/'dep' — se
+// mapean una sola vez al cargar para que los proyectos existentes no parezcan perder ciudad/país.
+function recoverProyecto(saved: unknown): Proyecto {
+  const s = saved as Partial<Proyecto> & { mun?: string; dep?: string };
+  return {
+    ...PROY_DEFAULTS,
+    ...s,
+    ciudad: s.ciudad ?? s.mun ?? PROY_DEFAULTS.ciudad,
+    pais: s.pais ?? s.dep ?? PROY_DEFAULTS.pais,
+  };
+}
+
+export { cloneMats, cloneProfs, cloneCrits };
 
 /** Estado agregado del proyecto: pisos, proyecto, materiales, profundidades y criterios reunidos en un solo valor de contexto para que el área de trabajo no dependa de cada sub-contexto por separado. */
 interface ProjectContextValue {
@@ -39,6 +134,7 @@ interface ProjectContextValue {
   setPisos: React.Dispatch<React.SetStateAction<Piso[]>>;
   setP: (k: string, v: string | number) => void;
   setProyAll: (p: Proyecto) => void;
+  setProy: React.Dispatch<React.SetStateAction<Proyecto>>;
   setMats: React.Dispatch<React.SetStateAction<Record<string, MaterialItem[]>>>;
   setProfs: React.Dispatch<React.SetStateAction<ProfItem[]>>;
   setCrits: React.Dispatch<React.SetStateAction<CritItem[]>>;
@@ -55,12 +151,34 @@ interface ProjectContextValue {
 
 export const ProjectContext = createContext<ProjectContextValue | null>(null);
 
-function ProjectContextBridge({ children }: { children?: ReactNode }) {
-  const { pisos, setPisos } = usePisos();
-  const { proy, setP, setProyAll, setProy } = useProyecto();
-  const { mats, setMats } = useMateriales();
-  const { profs, setProfs } = useProfundidades();
-  const { crits, setCrits } = useCriterios();
+/** Provider raíz del estado de proyecto (pisos, proyecto, materiales, profundidades, criterios). */
+export function ProjectProvider({ children }: { children?: ReactNode }) {
+  const [pisos, setPisos] = usePersistedState<Piso[]>('civilflow_pisos', []);
+  const [proy, setProy] = usePersistedState<Proyecto>(
+    'civilflow_proy',
+    PROY_DEFAULTS,
+    recoverProyecto,
+  );
+  const [mats, setMats] = usePersistedState<Record<string, MaterialItem[]>>(
+    'civilflow_mats',
+    MATS_CLONED,
+    (saved) => {
+      const savedMats = saved as Record<string, MaterialItem[]>;
+      const merged = { ...MATS_CLONED };
+      for (const k of Object.keys(savedMats)) {
+        merged[k] = savedMats[k];
+      }
+      return merged;
+    },
+  );
+  const [profs, setProfs] = usePersistedState<ProfItem[]>('civilflow_profs', PROFS_CLONED);
+  const [crits, setCrits] = usePersistedState<CritItem[]>('civilflow_crits', CRITS_CLONED);
+
+  const setP = useCallback(
+    (k: string, v: string | number) => setProy((p) => ({ ...p, [k]: v })),
+    [setProy],
+  );
+  const setProyAll = useCallback((p: Proyecto) => setProy(p), [setProy]);
 
   const resetToDefaults = useCallback(() => {
     setPisos([]);
@@ -79,33 +197,34 @@ function ProjectContextBridge({ children }: { children?: ReactNode }) {
   // proyecto activo o con datos locales presentes) y solo pasa a true cuando la restauración
   // asíncrona de la nube aplica sus datos.
   const [restoreDone, setRestoreDone] = useState(() => {
-    const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    const proyectoId = getActiveProyectoId();
     if (!proyectoId) return true;
-    // mats se excluye a propósito: MaterialesContext siempre cae al default no vacío
-    // MATS_CLONED (categorías predefinidas por red), así que Object.keys(mats).length
-    // da > 0 incluso con localStorage vacío o acabado de limpiar — incluirlo aquí habría
-    // vuelto hasLocalData true incondicionalmente, saltándose el efecto de restauración
-    // de la nube de abajo en cada montaje (navegador nuevo, logout/login, reapertura desde
-    // Profile) y el proyecto siempre mostraría defaults en blanco en vez del respaldo real.
+    // mats se excluye a propósito: siempre cae al default no vacío MATS_CLONED (categorías
+    // predefinidas por red), así que Object.keys(mats).length da > 0 incluso con localStorage
+    // vacío o acabado de limpiar — incluirlo aquí habría vuelto hasLocalData
+    // incondicionalmente, saltándose el efecto de restauración de la nube de abajo en cada
+    // montaje (navegador nuevo, logout/login, reapertura desde Profile) y el proyecto siempre
+    // mostraría defaults en blanco en vez del respaldo real.
     const hasLocalData = pisos.length > 0 || proy.nombre.trim() !== '';
     return hasLocalData;
   });
-  useEffect(() => {
-    if (!restoreDone) return;
-    const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-    if (!proyectoId) return;
-    const isEmptyCore =
-      pisos.length === 0 &&
-      profs.length === 0 &&
-      crits.length === 0 &&
-      Object.keys(mats).length === 0 &&
-      proy.nombre.trim() === '';
-    if (isEmptyCore) return;
-    const timer = setTimeout(() => {
-      saveProyectoCoreData(Number(proyectoId), { pisos, proy, mats, profs, crits });
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [pisos, proy, mats, profs, crits, restoreDone]);
+  useDebouncedEffect(
+    () => {
+      if (!restoreDone) return;
+      const proyectoId = getActiveProyectoId();
+      if (!proyectoId) return;
+      const isEmptyCore =
+        pisos.length === 0 &&
+        profs.length === 0 &&
+        crits.length === 0 &&
+        Object.keys(mats).length === 0 &&
+        proy.nombre.trim() === '';
+      if (isEmptyCore) return;
+      saveProyectoCoreData(proyectoId, { pisos, proy, mats, profs, crits });
+    },
+    1200,
+    [pisos, proy, mats, profs, crits, restoreDone],
+  );
 
   // Restauración de la nube al montar: la fuente de verdad del área de trabajo es
   // localStorage, que llega vacío en un navegador nuevo (re-login, otro dispositivo,
@@ -119,11 +238,11 @@ function ProjectContextBridge({ children }: { children?: ReactNode }) {
   // alcanza — solo cancela el fetch en vuelo en un desmontaje real.
   useEffect(() => {
     if (restoreDone) return;
-    const proyectoId = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
+    const proyectoId = getActiveProyectoId();
     if (!proyectoId) return;
     let ignore = false;
     (async () => {
-      const data = await loadProyectoData(Number(proyectoId));
+      const data = await loadProyectoData(proyectoId);
       if (ignore) return;
       if (data?.pisos && data.pisos.length > 0) setPisos(data.pisos);
       if (data?.proy) {
@@ -161,6 +280,7 @@ function ProjectContextBridge({ children }: { children?: ReactNode }) {
       setPisos,
       setP,
       setProyAll,
+      setProy,
       setMats,
       setProfs,
       setCrits,
@@ -177,6 +297,7 @@ function ProjectContextBridge({ children }: { children?: ReactNode }) {
       setPisos,
       setP,
       setProyAll,
+      setProy,
       setMats,
       setProfs,
       setCrits,
@@ -189,26 +310,35 @@ function ProjectContextBridge({ children }: { children?: ReactNode }) {
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
 }
 
-/** Provider raíz que compone los sub-contextos Pisos, Proyecto, Materiales, Profundidades, Criterios. */
-export function ProjectProvider({ children }: { children?: ReactNode }) {
-  return (
-    <PisosProvider>
-      <ProyectoProvider>
-        <MaterialesProvider>
-          <ProfundidadesProvider>
-            <CriteriosProvider>
-              <ProjectContextBridge>{children}</ProjectContextBridge>
-            </CriteriosProvider>
-          </ProfundidadesProvider>
-        </MaterialesProvider>
-      </ProyectoProvider>
-    </PisosProvider>
-  );
-}
-
 /** Hook para leer/escribir el estado agregado del proyecto. @returns {ProjectContextValue} */
 export function useProject() {
   const ctx = useContext(ProjectContext);
   if (!ctx) throw new Error('useProject must be used within ProjectProvider');
   return ctx;
 }
+
+/** Compat: sub-selectores del estado agregado (reemplazan los contextos individuales). */
+export const usePisos = () => {
+  const { pisos, setPisos } = useProject();
+  return { pisos, setPisos };
+};
+
+export const useProyecto = () => {
+  const { proy, setP, setProyAll, setProy } = useProject();
+  return { proy, setP, setProyAll, setProy };
+};
+
+export const useMateriales = () => {
+  const { mats, setMats } = useProject();
+  return { mats, setMats };
+};
+
+export const useProfundidades = () => {
+  const { profs, setProfs } = useProject();
+  return { profs, setProfs };
+};
+
+export const useCriterios = () => {
+  const { crits, setCrits } = useProject();
+  return { crits, setCrits };
+};

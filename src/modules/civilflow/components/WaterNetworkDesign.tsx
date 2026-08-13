@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import EditButton from './shared/EditButton';
 import { useTramos } from '../context/TramosContext';
 import type { Tramo } from '../context/tramosReducer';
-import { useProyecto } from '../context/ProyectoContext';
+import { useProyecto } from '../context/ProjectContext';
 import { usePlans } from '../context/PlansContext';
 import { AF_UC_IDS, AC_UC_IDS, APARATOS_DEF, pisoCorto, matHazenC } from '../constants';
 import { calcUCparcial } from '../utils/componentHelpers';

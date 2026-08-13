@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { usePersistedState } from '../../../hooks/usePersistedState';
 import type { EPData } from './ep/EPShared';
 import { EP_DEFAULTS } from './ep/EPShared';
-import { ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys';
+import { getActiveProyectoId } from '../services/storageService';
 import { loadEpDatos, saveEpDatos } from '../services/epService';
 import PageNav from './PageNav';
 import EPInputPage from './ep/EPInputPage';
@@ -21,10 +21,8 @@ export default function PressureEquipmentDesign() {
   // mantienen los defaults/caché de la sesión.
   const hydratedRef = useRef(false);
   useEffect(() => {
-    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-    if (!proyectoIdRaw) return;
-    const proyectoId = Number(proyectoIdRaw);
-    if (!Number.isFinite(proyectoId)) return;
+    const proyectoId = getActiveProyectoId();
+    if (!proyectoId) return;
     let cancelled = false;
     void loadEpDatos(proyectoId).then((d) => {
       if (cancelled) return;
@@ -41,10 +39,8 @@ export default function PressureEquipmentDesign() {
   const saveTimerRef = useRef<number | null>(null);
   useEffect(() => {
     if (!hydratedRef.current) return;
-    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-    if (!proyectoIdRaw) return;
-    const proyectoId = Number(proyectoIdRaw);
-    if (!Number.isFinite(proyectoId)) return;
+    const proyectoId = getActiveProyectoId();
+    if (!proyectoId) return;
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     saveTimerRef.current = window.setTimeout(() => {
       saveTimerRef.current = null;

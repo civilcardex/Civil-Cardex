@@ -2,7 +2,7 @@ import { memo, useMemo, useCallback, useState } from 'react';
 import EditButton from './shared/EditButton';
 import { useTramos } from '../context/TramosContext';
 import type { Tramo } from '../context/tramosReducer';
-import { usePisos } from '../context/PisosContext';
+import { usePisos } from '../context/ProjectContext';
 import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';

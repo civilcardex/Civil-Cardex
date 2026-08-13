@@ -10,7 +10,7 @@ import {
   writeContadorDiamToDrawing,
   writeBajantePropToDrawing,
 } from '../utils/writeDiameterToDrawing';
-import { loadFromStorage, saveToStorage } from '../services/storageService';
+import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService';
 import { loadGasDatos, saveGasDatos } from '../services/proyectoDataService';
 import GasCalcUC from './GasCalcUC';
 import PageNav from './PageNav';
@@ -21,7 +21,6 @@ import {
   GAS_ACC_KEY,
   APARATOS_BY_TRAMO_KEY,
   GAS_DATOS_KEY,
-  ACTIVE_PROYECTO_ID_KEY,
 } from '../constants/storage-keys';
 import { renouardByType } from '../utils/gasUtils';
 import { GAS_DATOS_DEFAULT } from '../utils/gasRows';
@@ -98,10 +97,8 @@ function GasDesign() {
   // Hidratar desde la fuente de verdad (gas_datos_proyecto, 1:1 con el proyecto) al montar —
   // gana sobre el caché de localStorage; si no hay fila, se usan los defaults de la caché.
   useEffect(() => {
-    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-    if (!proyectoIdRaw) return;
-    const proyectoId = Number(proyectoIdRaw);
-    if (!Number.isFinite(proyectoId)) return;
+    const proyectoId = getActiveProyectoId();
+    if (!proyectoId) return;
     let cancelled = false;
     void loadGasDatos(proyectoId).then((d) => {
       if (cancelled || !d) return;
@@ -120,10 +117,8 @@ function GasDesign() {
   // leen los cálculos (gasRows.ts) durante la sesión.
   const gasSaveTimerRef = useRef<number | null>(null);
   useEffect(() => {
-    const proyectoIdRaw = localStorage.getItem(ACTIVE_PROYECTO_ID_KEY);
-    if (!proyectoIdRaw) return;
-    const proyectoId = Number(proyectoIdRaw);
-    if (!Number.isFinite(proyectoId)) return;
+    const proyectoId = getActiveProyectoId();
+    if (!proyectoId) return;
     if (gasSaveTimerRef.current) window.clearTimeout(gasSaveTimerRef.current);
     gasSaveTimerRef.current = window.setTimeout(() => {
       gasSaveTimerRef.current = null;
