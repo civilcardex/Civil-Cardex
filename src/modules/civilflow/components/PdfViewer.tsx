@@ -9,7 +9,7 @@ import PlanoEngine, {
 import { NETS } from '../lib/PlanoEngine/PlanoState';
 import type { PlanoElement, PlanoNet, PlanoBajante } from '../lib/PlanoEngine/PlanoState';
 import { codoPolarityOk, flowEndsAt } from '../lib/PlanoEngine/PlanoEngineDrawing';
-import type { Piso } from './useWorkAreaState';
+import type { Piso } from '../lib/shared/projectTypes';
 import type { PlanItem } from '../context/PlansContext';
 import { matLongName, pisoLbl, DEFAULT_PENDIENTE_PCT } from '../constants';
 import { useProject } from '../context/ProjectContext';
@@ -50,7 +50,6 @@ import DrawingElementContextMenu, {
   type LowerFloorRamales,
 } from './pdfViewer/DrawingElementContextMenu';
 import ConfirmDialog from './pdfViewer/ConfirmDialog';
-import AlertDialog from './pdfViewer/AlertDialog';
 import AccesorioModal from './pdfViewer/AccesorioModal';
 import TipoTramoSelector from './pdfViewer/TipoTramoSelector';
 import TramoEditor from './pdfViewer/TramoEditor';
@@ -251,6 +250,7 @@ function PdfViewer_({
   });
   const [scaleM, setScaleM] = useState('0.5');
   const [selectedNivel, setSelectedNivel] = useState<number | null>(null);
+  const syncedNivelForIdRef = useRef<string | number | null>(null);
   const [hiddenNets, setHiddenNets] = useState<Set<string>>(() => {
     try {
       const saved = loadFromStorage<string[] | null>(PDF_HIDDEN_NETS_KEY, null);
@@ -541,11 +541,13 @@ function PdfViewer_({
 
   useEffect(() => {
     if (currentId == null) return;
+    if (syncedNivelForIdRef.current === currentId) return;
+    syncedNivelForIdRef.current = currentId;
     const pl = planos.find((p) => p.id === currentId);
     if (pl && (pl.nivel ?? null) !== (selectedNivel ?? null)) {
       setSelectedNivel(pl.nivel ?? null);
     }
-  }, [currentId, planos, selectedNivel]);
+  }, [currentId, planos]);
 
   const loadTrazosForPlan = useCallback(
     async (eng: PlanoEngine, resolvedId: string | number): Promise<boolean> => {
@@ -684,11 +686,6 @@ function PdfViewer_({
     onConfirm: () => void;
     confirmLabel?: string;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
-  const [alertDialogState, setAlertDialogState] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-  }>({ isOpen: false, title: '', message: '' });
   const [accesorioModal, setAccesorioModal] = useState<{
     isOpen: boolean;
     ramalId: string;
@@ -751,7 +748,9 @@ function PdfViewer_({
     setSelElement(el as ProbedElement | null);
   }, []);
   const onAlertHandler = useCallback((title: string, msg: string) => {
-    setAlertDialogState({ isOpen: true, title, message: msg });
+    window.dispatchEvent(
+      new CustomEvent('civilflow_diametro_validation', { detail: { title, message: msg } }),
+    );
   }, []);
   const onAccesorioModalHandler = useCallback(
     (data: {
@@ -870,11 +869,7 @@ function PdfViewer_({
       // Si el usuario los coloca en el extremo equivocado, bloquear la colocación con una alerta.
       // sifón: solo san, debe ir en ENTRADA (inicio). llaveTerminal: cualquier red, en SALIDA (fin).
       if (accId === 'sifon' && r.net === 'san' && !isIni) {
-        setAlertDialogState({
-          isOpen: true,
-          title: 'Revisar ubicación del sifón',
-          message: 'El sifón no puede recibir flujo.',
-        });
+        onAlertHandler('Revisar ubicación del sifón', 'El sifón no puede recibir flujo.');
         return;
       }
       // Ítems 4/5 (codo 90° sube/baja): el codo sube solo puede ENTREGAR flujo (la cola de la
@@ -893,32 +888,28 @@ function PdfViewer_({
       ) {
         if (!codoPolarityOk(r, accPt, accId, TOL)) {
           const isSube = accId === 'codoSube' || accId === 'codo90rmSube';
-          setAlertDialogState({
-            isOpen: true,
-            title: 'Dirección de codo incorrecta',
-            message: isSube
+          onAlertHandler(
+            'Dirección de codo incorrecta',
+            isSube
               ? 'El codo 90° sube solo puede entregar flujo: la cola de la flecha debe apuntar al extremo (el flujo sale de ahí hacia el codo), no en el cuerpo.'
               : 'El codo 90° baja solo puede recibir flujo: la cabeza de la flecha debe apuntar al extremo (el flujo llega ahí desde el codo), no en el cuerpo.',
-          });
+          );
           return;
         }
       }
       if (accId === 'codoReventilado' && r.net === 'san' && accPt && flowEndsAt(r, accPt, TOL)) {
-        setAlertDialogState({
-          isOpen: true,
-          title: 'Codo reventilado no puede recibir flujo',
-          message:
-            'El codo reventilado debe colocarse en el extremo desde donde fluye el ramal sanitario. Invierte la dirección del ramal.',
-        });
+        onAlertHandler(
+          'Codo reventilado no puede recibir flujo',
+          'El codo reventilado debe colocarse en el extremo desde donde fluye el ramal sanitario. Invierte la dirección del ramal.',
+        );
         return;
       }
       if (accId === 'llaveTerminal' || accId === 'teeLlaveTerminal') {
         if (isIni) {
-          setAlertDialogState({
-            isOpen: true,
-            title: 'Revisar ubicación llave terminal',
-            message: 'La llave terminal debe recibir el flujo.',
-          });
+          onAlertHandler(
+            'Revisar ubicación llave terminal',
+            'La llave terminal debe recibir el flujo.',
+          );
           return;
         }
       }
@@ -1573,11 +1564,10 @@ function PdfViewer_({
               // Lista COMPLETA — recortarla a 8 ocultaba elementos pendientes (reporte: "la
               // alerta no muestra todos los elementos con UC/UD pendientes").
               const lista = sinUcRamales.join(', ');
-              setAlertDialogState({
-                isOpen: true,
-                title: 'UC/UD pendientes',
-                message: `${sinUcRamales.length} ramal(es) sin UC/UD asignado: ${lista}. Asigna unidades de descarga o aparatos antes de cerrar el dibujo.`,
-              });
+              onAlertHandler(
+                'UC/UD pendientes',
+                `${sinUcRamales.length} ramal(es) sin UC/UD asignado: ${lista}. Asigna unidades de descarga o aparatos antes de cerrar el dibujo.`,
+              );
               return;
             }
             // Todo elemento de tubería debe llevar diámetro antes de poder cerrar el dibujo — un
@@ -1594,11 +1584,10 @@ function PdfViewer_({
             if (total > 0) {
               const lista = [...sinDiamRamales, ...sinDiamBajantes].slice(0, 8).join(', ');
               const extra = total > 8 ? ` y ${total - 8} más` : '';
-              setAlertDialogState({
-                isOpen: true,
-                title: 'Diámetros pendientes',
-                message: `${total} elemento(s) sin diámetro asignado: ${lista}${extra}. Asigna los diámetros antes de cerrar el dibujo.`,
-              });
+              onAlertHandler(
+                'Diámetros pendientes',
+                `${total} elemento(s) sin diámetro asignado: ${lista}${extra}. Asigna los diámetros antes de cerrar el dibujo.`,
+              );
               return;
             }
           }
@@ -1688,10 +1677,6 @@ function PdfViewer_({
           }}
         />
         <ConfirmDialog confirmState={confirmState} setConfirmState={setConfirmState} />
-        <AlertDialog
-          alertDialogState={alertDialogState}
-          setAlertDialogState={setAlertDialogState}
-        />
         <AccesorioModal
           modalState={accesorioModal}
           onClose={() => setAccesorioModal((prev) => ({ ...prev, isOpen: false }))}
