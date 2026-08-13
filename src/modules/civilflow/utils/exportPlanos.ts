@@ -3,11 +3,12 @@ import { getPdfjs } from './lazyPdfjs';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import type { PlanItem } from '../context/PlansContext';
-import type { Piso } from '../components/useWorkAreaState';
+import type { Piso } from '../lib/shared/projectTypes';
 import { pisoLbl } from '../constants';
+import { sanitizeFileName } from './formatUtils';
 
 function fileBase(name: string): string {
-  return name.replace(/[^a-zA-Z0-9 _-]/g, '').trim();
+  return sanitizeFileName(name);
 }
 
 // Factor de sobremuestreo para el raster de exportación. La página PDF en sí se mantiene

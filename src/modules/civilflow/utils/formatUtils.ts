@@ -17,6 +17,14 @@ export const fmt = (v: unknown, d = 2) =>
   v == null || Number.isNaN(Number(v)) ? '—' : Number(v).toFixed(d);
 
 /**
+ * Sanitiza un nombre para usarlo como nombre de archivo: solo letras, dígitos,
+ * espacios, guiones y guiones bajos.
+ */
+export function sanitizeFileName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9 _-]/g, '').trim();
+}
+
+/**
  * Formatea un valor en pulgadas decimales como string de pulgadas fraccionarias (p. ej.
  * 1.5 → "1 ½"").
  * @param v - Valor en pulgadas decimales.

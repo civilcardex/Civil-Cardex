@@ -341,21 +341,6 @@ export function updateCrossFloorDesplazamientoBySource(
   saveData(sourcePlanId, data);
 }
 
-// Actualiza solo el diámetro de un fantasma entre pisos existente, dondequiera que viva.
-export function updateCrossFloorGhostDiameter(
-  hostPlanId: string | number,
-  ghostId: string,
-  dNominal: string,
-): void {
-  const data = loadData(hostPlanId);
-  const list = data.crossFloorGhosts || [];
-  const idx = list.findIndex((g) => g.id === ghostId);
-  if (idx === -1) return;
-  list[idx] = { ...list[idx], dNominal };
-  data.crossFloorGhosts = list;
-  saveData(hostPlanId, data);
-}
-
 // Barre el localStorage de TODOS los pisos por fantasmas entre pisos cuyo `sourceBajanteId`
 // coincida con el padre dado y actualiza un solo campo en cada uno. Se llama cuando cambia el
 // diámetro o la dirección del bajante padre — sin esto el fantasma espejo en el piso destino

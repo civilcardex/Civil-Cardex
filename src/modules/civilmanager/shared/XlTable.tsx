@@ -9,10 +9,6 @@ export function XlScroll({ children }: { children: ReactNode }) {
   return <div className="cm-xl-scroll">{children}</div>;
 }
 
-export function XlFoot({ children }: { children: ReactNode }) {
-  return <div className="cm-xl-foot">{children}</div>;
-}
-
 export const XlRowNum = memo(function XlRowNum({ n }: { n: number }) {
   return <td className="cm-col-rn">{n}</td>;
 });

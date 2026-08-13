@@ -1,3 +1,5 @@
+import { sanitizeFileName } from './formatUtils';
+
 export interface MemoriaHeaderGroup {
   label: string;
   span: number;
@@ -63,7 +65,7 @@ export interface MemoriaData {
 }
 
 function fileBase(proyNombre: string): string {
-  return `Memorias Finales ${proyNombre || 'Proyecto'}`.replace(/[^a-zA-Z0-9 _-]/g, '').trim();
+  return sanitizeFileName(`Memorias Finales ${proyNombre || 'Proyecto'}`);
 }
 
 interface XlsxCellStyle {
