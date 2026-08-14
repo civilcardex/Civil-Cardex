@@ -46,7 +46,9 @@ export async function fetchProyectos(): Promise<ProyectoRow[]> {
 }
 
 /**
- * Crea un proyecto nuevo y devuelve la fila insertada.
+ * Crea un proyecto nuevo vía RPC SECURITY DEFINER y devuelve la fila insertada (el RPC
+ * devuelve el row como jsonb; la validación de propiedad/texto la hace el servidor). Ver
+ * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  * @param codigo - Código corto del proyecto.
  * @param nombre - Nombre legible del proyecto.
  * @returns ProyectoRow insertado o null ante fallo.
@@ -58,18 +60,17 @@ export async function createProyecto(codigo: string, nombre: string): Promise<Pr
     } = await supabase.auth.getUser();
     if (!user) return null;
 
-    const { data, error } = await supabase
-      .from('proyectos')
-      .insert({ codigo, nombre, user_id: user.id })
-      .select()
-      .single();
+    const { data, error } = await supabase.rpc('save_proyecto', {
+      p_codigo: codigo,
+      p_nombre: nombre,
+    });
 
     if (error) {
-      devError('proyectosService create:', error.message);
+      devError('proyectosService create rpc:', error.message);
       return null;
     }
 
-    return data as ProyectoRow;
+    return data as unknown as ProyectoRow;
   } catch (e) {
     devError('proyectosService create exception:', e);
     return null;
@@ -77,7 +78,8 @@ export async function createProyecto(codigo: string, nombre: string): Promise<Pr
 }
 
 /**
- * Actualiza el nombre mostrado de un proyecto existente (acotado al dueño).
+ * Actualiza el nombre mostrado de un proyecto existente vía RPC (validación y propiedad
+ * server-side).
  * @param id - Clave primaria del proyecto.
  * @param nombre - Nuevo nombre mostrado.
  * @returns True si la actualización funcionó, false si no.
@@ -89,14 +91,13 @@ export async function updateProyectoNombre(id: number, nombre: string): Promise<
     } = await supabase.auth.getUser();
     if (!user) return false;
 
-    const { error } = await supabase
-      .from('proyectos')
-      .update({ nombre })
-      .eq('id', id)
-      .eq('user_id', user.id);
+    const { error } = await supabase.rpc('update_proyecto_nombre', {
+      p_id: id,
+      p_nombre: nombre,
+    });
 
     if (error) {
-      devError('proyectosService updateNombre:', error.message);
+      devError('proyectosService updateNombre rpc:', error.message);
       return false;
     }
 
@@ -108,7 +109,8 @@ export async function updateProyectoNombre(id: number, nombre: string): Promise<
 }
 
 /**
- * Elimina un proyecto por id (acotado al dueño). Las políticas RLS hacen cumplir la propiedad.
+ * Elimina un proyecto por id vía RPC (validación de propiedad server-side; el RPC borra
+ * también sus dependencias en cascada, definidas en el esquema).
  * @param id - Clave primaria del proyecto.
  * @returns True si la eliminación funcionó, false si no.
  */
@@ -119,10 +121,10 @@ export async function deleteProyecto(id: number): Promise<boolean> {
     } = await supabase.auth.getUser();
     if (!user) return false;
 
-    const { error } = await supabase.from('proyectos').delete().eq('id', id).eq('user_id', user.id);
+    const { error } = await supabase.rpc('delete_proyecto', { p_id: id });
 
     if (error) {
-      devError('proyectosService delete:', error.message);
+      devError('proyectosService delete rpc:', error.message);
       return false;
     }
 

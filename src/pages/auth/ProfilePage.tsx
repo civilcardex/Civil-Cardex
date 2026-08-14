@@ -215,10 +215,15 @@ function ProfilePage() {
     }
     setSaving(field);
     try {
-      const { error } = await supabase
-        .from('perfiles')
-        .update({ [field]: editValue })
-        .eq('id', userIdRef.current);
+      // save_perfil (RPC SECURITY DEFINER) hace upsert del CONJUNTO editable completo —
+      // hay que mandar el perfil entero o los campos omitidos se rescriben a NULL.
+      const { error } = await supabase.rpc('save_perfil', {
+        p_perfil: {
+          ...perfil,
+          email: user?.email,
+          [field]: editValue,
+        },
+      });
       if (error) {
         devError('Error guardando:', error.message);
         return;

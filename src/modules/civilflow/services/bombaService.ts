@@ -81,9 +81,10 @@ export async function loadBombaDatos(proyectoId: number): Promise<BombaData | nu
 }
 
 /**
- * Upsert parcial de bomba_datos_proyecto — 1:1 con el proyecto, no toca otras tablas.
- * Lo usa BombaARDesign (debounced) como fuente de verdad; el snapshot de
- * 'civilflow_memoria_bomba_data' queda como caché en vivo para la memoria final.
+ * Upsert parcial de bomba_datos_proyecto vía RPC SECURITY DEFINER (1:1 con el proyecto, no
+ * toca otras tablas). Lo usa BombaARDesign (debounced) como fuente de verdad; el snapshot de
+ * 'civilflow_memoria_bomba_data' queda como caché en vivo para la memoria final. Ver
+ * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
 export async function saveBombaDatos(proyectoId: number, b: BombaData): Promise<void> {
   try {
@@ -92,10 +93,9 @@ export async function saveBombaDatos(proyectoId: number, b: BombaData): Promise<
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase.from('bomba_datos_proyecto').upsert(
-      {
-        proyecto_id: proyectoId,
-        user_id: user.id,
+    const { error } = await supabase.rpc('save_bomba_datos', {
+      p_proyecto_id: proyectoId,
+      p_datos: {
         sal_sim: b.salSim,
         ud_tot: b.udTot,
         hz: b.hz,
@@ -112,9 +112,8 @@ export async function saveBombaDatos(proyectoId: number, b: BombaData): Promise<
         l_cam: b.lCam,
         npsh: b.npsh,
       },
-      { onConflict: 'proyecto_id' },
-    );
-    if (error) devError('bombaService save:', error.message);
+    });
+    if (error) devError('bombaService save rpc:', error.message);
   } catch (e) {
     devError('bombaService save exception:', e);
   }

@@ -389,163 +389,45 @@ function ghostToRow(planoId: number, userId: string, g: CrossFloorGhost) {
   return {
     plano_id: planoId,
     user_id: userId,
-    client_id: g.id,
-    net: g.net,
-    code: g.code,
+    id_cliente: g.id,
+    red: g.net,
+    codigo: g.code,
     x: g.x,
     y: g.y,
     d_nominal: g.dNominal,
     direccion: g.direccion,
-    parent_direccion: g.parentDireccion ?? null,
+    direccion_padre: g.parentDireccion ?? null,
     piso: g.piso,
-    source_plano_id: g.sourcePlanId ? Number(g.sourcePlanId) : null,
-    source_bajante_id: g.sourceBajanteId,
-    target_bajante_id: g.targetBajanteId ?? null,
+    plano_origen_id: g.sourcePlanId ? Number(g.sourcePlanId) : null,
+    bajante_origen_id: g.sourceBajanteId,
+    bajante_destino_id: g.targetBajanteId ?? null,
   };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function rowToGhost(row: any): CrossFloorGhost {
   return {
-    id: row.client_id,
-    net: row.net,
-    code: row.code,
+    id: row.id_cliente,
+    net: row.red,
+    code: row.codigo,
     x: row.x,
     y: row.y,
     dNominal: row.d_nominal,
     direccion: row.direccion,
-    parentDireccion: row.parent_direccion ?? undefined,
+    parentDireccion: row.direccion_padre ?? undefined,
     piso: row.piso,
-    sourcePlanId: row.source_plano_id != null ? String(row.source_plano_id) : '',
-    sourceBajanteId: row.source_bajante_id,
-    targetBajanteId: row.target_bajante_id ?? undefined,
+    sourcePlanId: row.plano_origen_id != null ? String(row.plano_origen_id) : '',
+    sourceBajanteId: row.bajante_origen_id,
+    targetBajanteId: row.bajante_destino_id ?? undefined,
   };
-}
-
-/** Reemplaza todas las filas de `table` para `planoId` con `rows` (borra-e-inserta; barato para
- * colecciones que nada más referencia por FK). Seguro como no-op cuando `rows` está vacío. */
-async function replaceCollection(table: string, planoId: number, rows: Record<string, unknown>[]) {
-  const { error: delError } = await supabase.from(table).delete().eq('plano_id', planoId);
-  if (delError) devError(`storageService replaceCollection(${table}) delete:`, delError.message);
-  if (rows.length === 0) return;
-  const { error: insError } = await supabase.from(table).insert(rows);
-  if (insError) devError(`storageService replaceCollection(${table}) insert:`, insError.message);
-}
-
-/**
- * Hace upsert de los `bajantes` del plano (clave por client_id, preservando los ids sustitutos
- * entre guardados para que los enlaces de bajante_conexiones/cross_floor_ghosts sigan siendo
- * válidos), poda los que ya no existen y devuelve el mapa client_id -> id sustituto de los
- * que quedan en archivo.
- */
-async function syncBajantes(
-  planoId: number,
-  userId: string,
-  bajantes: PlanoBajante[],
-): Promise<Map<string, number>> {
-  const clientIds = bajantes.map((b) => b.id);
-  if (clientIds.length === 0) {
-    await supabase.from('planos_bajantes').delete().eq('plano_id', planoId);
-    return new Map();
-  }
-
-  const { data: upserted, error: upsertError } = await supabase
-    .from('planos_bajantes')
-    .upsert(
-      bajantes.map((b) => bajanteToRow(planoId, userId, b)),
-      { onConflict: 'plano_id,client_id' },
-    )
-    .select('id, client_id');
-  if (upsertError) {
-    devError('storageService syncBajantes upsert:', upsertError.message);
-    return new Map();
-  }
-
-  const { error: pruneError } = await supabase
-    .from('planos_bajantes')
-    .delete()
-    .eq('plano_id', planoId)
-    .not('client_id', 'in', `(${clientIds.map((id) => `"${id}"`).join(',')})`);
-  if (pruneError) devError('storageService syncBajantes prune:', pruneError.message);
-
-  const map = new Map<string, number>();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const row of (upserted ?? []) as any[]) map.set(row.client_id, row.id);
-  return map;
-}
-
-/** Reconstruye bajante_conexiones a partir de recibeDeIds/alimentaIds/descargaEnId de cada
- * bajante, resueltos contra el mapa client_id -> id sustituto que devuelve syncBajantes.
- * descargaEnId además se escribe SIEMPRE tal cual en planos_bajantes.descarga_en_id por
- * bajanteToRow (ver ahí) — esa copia en texto crudo es la que realmente sobrevive al viaje en
- * el caso cross-plano (esta tabla no puede resolver un destino_client_id que pertenece al
- * idMap de otro plano), esta copia relacional solo captura el subconjunto del mismo plano,
- * como bonus para quien quiera consultarlo directamente. */
-async function syncBajanteConexiones(
-  userId: string,
-  bajantes: PlanoBajante[],
-  idMap: Map<string, number>,
-) {
-  const ids = Array.from(idMap.values());
-  if (ids.length > 0) {
-    const { error: delError } = await supabase
-      .from('bajante_conexiones')
-      .delete()
-      .or(`bajante_origen_id.in.(${ids.join(',')}),bajante_destino_id.in.(${ids.join(',')})`);
-    if (delError) devError('storageService syncBajanteConexiones delete:', delError.message);
-  }
-
-  const rows: {
-    user_id: string;
-    bajante_origen_id: number;
-    bajante_destino_id: number;
-    tipo: string;
-  }[] = [];
-  for (const b of bajantes) {
-    const origenId = idMap.get(b.id);
-    if (!origenId) continue;
-    for (const recibeDe of b.recibeDeIds ?? []) {
-      const destinoId = idMap.get(recibeDe);
-      if (destinoId)
-        rows.push({
-          user_id: userId,
-          bajante_origen_id: origenId,
-          bajante_destino_id: destinoId,
-          tipo: 'recibe',
-        });
-    }
-    for (const alimenta of b.alimentaIds ?? []) {
-      const destinoId = idMap.get(alimenta);
-      if (destinoId)
-        rows.push({
-          user_id: userId,
-          bajante_origen_id: origenId,
-          bajante_destino_id: destinoId,
-          tipo: 'alimenta',
-        });
-    }
-    if (b.descargaEnId) {
-      const destinoId = idMap.get(b.descargaEnId);
-      if (destinoId)
-        rows.push({
-          user_id: userId,
-          bajante_origen_id: origenId,
-          bajante_destino_id: destinoId,
-          tipo: 'descarga',
-        });
-    }
-  }
-  if (rows.length > 0) {
-    const { error: insError } = await supabase.from('bajante_conexiones').insert(rows);
-    if (insError) devError('storageService syncBajanteConexiones insert:', insError.message);
-  }
 }
 
 /**
  * Hace upsert del estado completo de dibujo de un plano (cabecera + todas las colecciones de
- * elementos) en Supabase. Reemplaza el antiguo blob jsonb único de `plano_trazos.data` por
- * tablas normalizadas — ver supabase/migrations/20260730000001_civilflow_schema.sql. La firma
- * externa no cambia, así todos los llamadores existentes (PdfViewer, PlanosTab,
+ * elementos) vía el RPC SECURITY DEFINER `save_plano_data` — una sola transacción validada
+ * server-side (propiedad, estructura, caps) que reemplaza las ~12 llamadas directas a tablas
+ * que había antes. Ver supabase/migrations/20260813000002_rls_security_definer_writes.sql.
+ * La firma externa no cambia, así todos los llamadores existentes (PdfViewer, PlanosTab,
  * associateBajanteAcrossFloors, writeDiameterToDrawing, etc.) siguen funcionando sin
  * modificaciones.
  */
@@ -563,27 +445,6 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
     if (!Number.isFinite(id)) return;
 
     const d = (data ?? {}) as Partial<PlanoWorkData>;
-
-    const { error: headerError } = await supabase.from('planos').upsert(
-      {
-        id,
-        proyecto_id: proyectoId,
-        user_id: user.id,
-        version: d.v ?? 6,
-        scale_m: d.scaleM ?? 0.5,
-        defined_scale_m: d.definedScaleM ?? 0,
-        active_net: d.activeNet ?? 'af',
-        zoom: d.zoom ?? 1,
-        off_x: d.offX ?? 0,
-        off_y: d.offY ?? 0,
-        ts: d.ts ? new Date(d.ts).toISOString() : new Date().toISOString(),
-      },
-      { onConflict: 'id' },
-    );
-    if (headerError) {
-      devError('storageService saveTrazosToDB header:', headerError.message);
-      return;
-    }
 
     // Los conteos de Aparato/UD y los accesorios hidro/gas solo viven en localStorage
     // (FixturesPanel.tsx / GasDesign.tsx, clave compuesta `${net}_${ramalId}_${planId}`) —
@@ -666,43 +527,41 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
     const crossFloorGhosts = (d.crossFloorGhosts ?? []) as CrossFloorGhost[];
     const bajantes = (d.bajantes ?? []) as PlanoBajante[];
 
-    const [, , , , , bajanteIdMap] = await Promise.all([
-      replaceCollection(
-        'planos_ramales',
-        id,
-        ramales.map((r) => ramalToRow(id, user.id, r)),
-      ),
-      replaceCollection(
-        'planos_areas',
-        id,
-        areas.map((a) => areaToRow(id, user.id, a)),
-      ),
-      replaceCollection(
-        'planos_dimensiones',
-        id,
-        dims.map((x) => dimToRow(id, user.id, x)),
-      ),
-      replaceCollection(
-        'planos_anotaciones_texto',
-        id,
-        textAnnots.map((t) => textAnnotToRow(id, user.id, t)),
-      ),
-      replaceCollection(
-        'planos_lineas_guia',
-        id,
-        guideLines.map((g) => guideLineToRow(id, user.id, g)),
-      ),
-      syncBajantes(id, user.id, bajantes),
-    ]);
+    // Un solo payload jsonb → el RPC SECURITY DEFINER valida propiedad/estructura/caps y hace
+    // upsert de cabecera + reemplazo de colecciones + rebuild de bajante_conexiones en una
+    // transacción atómica (antes eran ~12 llamadas directas: fallos parciales dejaban estados
+    // corruptos). recibe_de_ids/alimenta_ids viajan como arrays por bajante (el server los
+    // resuelve contra los ids sustitutos; descarga_en_id ya va en el row de la bajante).
+    const payload = {
+      header: {
+        proyecto_id: proyectoId,
+        v: d.v ?? 6,
+        scaleM: d.scaleM ?? 0.5,
+        definedScaleM: d.definedScaleM ?? 0,
+        activeNet: d.activeNet ?? 'af',
+        zoom: d.zoom ?? 1,
+        offX: d.offX ?? 0,
+        offY: d.offY ?? 0,
+        ts: d.ts ? new Date(d.ts).toISOString() : new Date().toISOString(),
+      },
+      ramales: ramales.map((r) => ramalToRow(id, user.id, r)),
+      bajantes: bajantes.map((b) => ({
+        ...bajanteToRow(id, user.id, b),
+        recibe_de_ids: b.recibeDeIds ?? [],
+        alimenta_ids: b.alimentaIds ?? [],
+      })),
+      areas: areas.map((a) => areaToRow(id, user.id, a)),
+      dimensiones: dims.map((x) => dimToRow(id, user.id, x)),
+      anotaciones_texto: textAnnots.map((t) => textAnnotToRow(id, user.id, t)),
+      lineas_guia: guideLines.map((g) => guideLineToRow(id, user.id, g)),
+      fantasmas_entrepisos: crossFloorGhosts.map((g) => ghostToRow(id, user.id, g)),
+    };
 
-    await Promise.all([
-      syncBajanteConexiones(user.id, bajantes, bajanteIdMap),
-      replaceCollection(
-        'planos_cross_floor_ghosts',
-        id,
-        crossFloorGhosts.map((g) => ghostToRow(id, user.id, g)),
-      ),
-    ]);
+    const { error } = await supabase.rpc('save_plano_data', {
+      p_plano_id: id,
+      p_data: payload,
+    });
+    if (error) devError('storageService saveTrazosToDB rpc:', error.message);
   } catch (e) {
     devError('storageService saveTrazosToDB exception:', e);
   }
@@ -766,7 +625,7 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
       dims: (result.dimensiones ?? []).map(rowToDim),
       textAnnots: (result.anotaciones_texto ?? []).map(rowToTextAnnot),
       guideLines: (result.lineas_guia ?? []).map(rowToGuideLine),
-      crossFloorGhosts: (result.cross_floor_ghosts ?? []).map(rowToGhost),
+      crossFloorGhosts: (result.fantasmas_entrepisos ?? []).map(rowToGhost),
       nptLevels: [],
       nets: [],
     };

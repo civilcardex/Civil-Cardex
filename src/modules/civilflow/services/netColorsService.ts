@@ -69,7 +69,8 @@ export function applyNetColors(colors: Record<string, string>): void {
 
 /**
  * Persiste un color de red: actualiza la caché en vivo (localStorage) y hace upsert
- * del mapa completo en perfiles.net_colors. Fire-and-forget desde la UI.
+ * del mapa completo en perfiles.net_colors vía RPC SECURITY DEFINER. Fire-and-forget
+ * desde la UI. Ver supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
 export async function saveNetColor(netId: string, color: string): Promise<void> {
   loaded = null;
@@ -93,9 +94,7 @@ export async function saveNetColor(netId: string, color: string): Promise<void> 
       ...((existing?.net_colors ?? {}) as Record<string, string>),
       [netId]: color,
     };
-    const { error } = await supabase
-      .from('perfiles')
-      .upsert({ id: user.id, net_colors: merged }, { onConflict: 'id' });
+    const { error } = await supabase.rpc('save_net_colors', { p_colors: merged });
     if (error) throw error;
   } catch (e) {
     devError('netColorsService save:', e);

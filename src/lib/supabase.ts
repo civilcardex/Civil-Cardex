@@ -7,8 +7,8 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY en .env');
 }
 
-// RLS requirement: Ensure Supabase table `plano_trazos` has RLS enabled with policy:
-// CREATE POLICY "Users can only access their own plano_trazos"
-//   ON plano_trazos FOR ALL
-//   USING (auth.uid() = user_id);
+// RLS: el esquema normalizado (supabase/migrations/20260730000001_civilflow_schema.sql + parches)
+// habilita RLS y crea policies CRUD owner por auth.uid() en TODAS las tablas, más revoke de
+// grants a anon. 20260813000001_rls_project_ownership.sql además verifica la propiedad del
+// proyecto/plano referenciado en los INSERT/UPDATE de las tablas hijas.
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey);

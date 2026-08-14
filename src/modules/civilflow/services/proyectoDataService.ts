@@ -175,8 +175,10 @@ function planoMetaRowToPlanMeta(row: PlanoMetaRow): PlanMeta {
 
 /**
  * Reemplaza las filas de pisos/proyecto_general/materiales/profundidades/criterios de un
- * proyecto con el snapshot dado (borra-e-inserta por tabla, replicando la semántica previa
- * de "sobrescribir todo el blob jsonb" ahora que cada colección es una tabla normalizada).
+ * proyecto con el snapshot dado, vía RPC SECURITY DEFINER (borra-e-inserta por tabla en una
+ * transacción atómica, replicando la semántica previa de "sobrescribir todo el blob jsonb"
+ * ahora que cada colección es una tabla normalizada). Ver
+ * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
 export async function saveProyectoCoreData(
   proyectoId: number,
@@ -188,67 +190,24 @@ export async function saveProyectoCoreData(
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error: pgError } = await supabase
-      .from('proyecto_general')
-      .upsert(
-        { proyecto_id: proyectoId, user_id: user.id, ...proyToProyectoGeneralRow(core.proy) },
-        { onConflict: 'proyecto_id' },
-      );
-    if (pgError) devError('proyectoDataService saveCore proyecto_general:', pgError.message);
-
-    const { error: pisosDelError } = await supabase
-      .from('pisos')
-      .delete()
-      .eq('proyecto_id', proyectoId);
-    if (pisosDelError)
-      devError('proyectoDataService saveCore pisos delete:', pisosDelError.message);
-    if (core.pisos.length > 0) {
-      const { error: pisosInsError } = await supabase.from('pisos').insert(
-        core.pisos.map((p) => ({
-          proyecto_id: proyectoId,
-          user_id: user.id,
+    const { error } = await supabase.rpc('save_proyecto_core', {
+      p_proyecto_id: proyectoId,
+      p_data: {
+        proyecto_general: proyToProyectoGeneralRow(core.proy),
+        pisos: core.pisos.map((p) => ({
           n: p.n,
           npt: typeof p.npt === 'number' ? p.npt : Number(p.npt) || null,
           ok: p.ok,
           tipo: p.tipo,
           h: p.h ? Number(p.h) : null,
         })),
-      );
-      if (pisosInsError)
-        devError('proyectoDataService saveCore pisos insert:', pisosInsError.message);
-    }
-
-    const { error: matsDelError } = await supabase
-      .from('materiales_proyecto')
-      .delete()
-      .eq('proyecto_id', proyectoId);
-    if (matsDelError) devError('proyectoDataService saveCore mats delete:', matsDelError.message);
-    const matsRows = Object.entries(core.mats).flatMap(([categoria, items]) =>
-      items.map((item, i) => ({
-        proyecto_id: proyectoId,
-        user_id: user.id,
-        categoria,
-        client_id: item.id,
-        val: item.val,
-        orden: i,
-      })),
-    );
-    if (matsRows.length > 0) {
-      const { error: matsInsError } = await supabase.from('materiales_proyecto').insert(matsRows);
-      if (matsInsError) devError('proyectoDataService saveCore mats insert:', matsInsError.message);
-    }
-
-    const { error: profsDelError } = await supabase
-      .from('profundidades_proyecto')
-      .delete()
-      .eq('proyecto_id', proyectoId);
-    if (profsDelError)
-      devError('proyectoDataService saveCore profs delete:', profsDelError.message);
-    if (core.profs.length > 0) {
-      const { error: profsInsError } = await supabase.from('profundidades_proyecto').insert(
-        core.profs.map((p, i) => ({
-          proyecto_id: proyectoId,
-          user_id: user.id,
+        mats: Object.fromEntries(
+          Object.entries(core.mats).map(([categoria, items]) => [
+            categoria,
+            items.map((item) => ({ id: item.id, val: item.val })),
+          ]),
+        ),
+        profs: core.profs.map((p, i) => ({
           client_id: p.id,
           red: p.red,
           col: p.col,
@@ -257,22 +216,7 @@ export async function saveProyectoCoreData(
           nota: p.nota,
           orden: i,
         })),
-      );
-      if (profsInsError)
-        devError('proyectoDataService saveCore profs insert:', profsInsError.message);
-    }
-
-    const { error: critsDelError } = await supabase
-      .from('criterios_proyecto')
-      .delete()
-      .eq('proyecto_id', proyectoId);
-    if (critsDelError)
-      devError('proyectoDataService saveCore crits delete:', critsDelError.message);
-    if (core.crits.length > 0) {
-      const { error: critsInsError } = await supabase.from('criterios_proyecto').insert(
-        core.crits.map((c, i) => ({
-          proyecto_id: proyectoId,
-          user_id: user.id,
+        crits: core.crits.map((c, i) => ({
           client_id: c.id,
           red: c.red,
           param: c.param,
@@ -284,20 +228,20 @@ export async function saveProyectoCoreData(
           nota: c.nota,
           orden: i,
         })),
-      );
-      if (critsInsError)
-        devError('proyectoDataService saveCore crits insert:', critsInsError.message);
-    }
+      },
+    });
+    if (error) devError('proyectoDataService saveCore rpc:', error.message);
   } catch (e) {
     devError('proyectoDataService saveCore exception:', e);
   }
 }
 
 /**
- * Hace upsert solo de la columna `redes_activas` de proyecto_general — upsert parcial, no toca
- * nombre/dir/mats/etc (a diferencia de saveProyectoCoreData, que es dueña de toda la fila). Lo usa
- * el toggle "Redes activas"/"Equipos activos" de useWorkAreaState.ts, independiente del
- * bundle de datos core de ProjectContext.
+ * Hace upsert solo de la columna `redes_activas` de proyecto_general vía RPC SECURITY
+ * DEFINER — upsert parcial, no toca nombre/dir/mats/etc (a diferencia de
+ * saveProyectoCoreData, que es dueña de toda la fila). Lo usa el toggle "Redes activas"/
+ * "Equipos activos" de useWorkAreaState.ts, independiente del bundle de datos core de
+ * ProjectContext.
  */
 export async function saveRedesActivas(proyectoId: number, redes: string[]): Promise<void> {
   try {
@@ -306,13 +250,11 @@ export async function saveRedesActivas(proyectoId: number, redes: string[]): Pro
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase
-      .from('proyecto_general')
-      .upsert(
-        { proyecto_id: proyectoId, user_id: user.id, redes_activas: redes },
-        { onConflict: 'proyecto_id' },
-      );
-    if (error) devError('proyectoDataService saveRedesActivas:', error.message);
+    const { error } = await supabase.rpc('save_redes_activas', {
+      p_proyecto_id: proyectoId,
+      p_redes: redes,
+    });
+    if (error) devError('proyectoDataService saveRedesActivas rpc:', error.message);
   } catch (e) {
     devError('proyectoDataService saveRedesActivas exception:', e);
   }
@@ -348,8 +290,9 @@ export async function loadGasDatos(proyectoId: number): Promise<GasDatosGenerale
 }
 
 /**
- * Upsert parcial de gas_datos_proyecto — igual que saveRedesActivas, no toca otras tablas.
- * Lo usa GasDesign (debounced) como fuente de verdad; localStorage queda como caché en vivo.
+ * Upsert parcial de gas_datos_proyecto vía RPC SECURITY DEFINER — igual que
+ * saveRedesActivas, no toca otras tablas. Lo usa GasDesign (debounced) como fuente de
+ * verdad; localStorage queda como caché en vivo.
  */
 export async function saveGasDatos(proyectoId: number, datos: GasDatosGenerales): Promise<void> {
   try {
@@ -358,25 +301,26 @@ export async function saveGasDatos(proyectoId: number, datos: GasDatosGenerales)
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase.from('gas_datos_proyecto').upsert(
-      {
-        proyecto_id: proyectoId,
-        user_id: user.id,
+    const { error } = await supabase.rpc('save_gas_datos', {
+      p_proyecto_id: proyectoId,
+      p_datos: {
         altitud: datos.alt,
         presion_atm: datos.patm,
         temperatura: datos.temp,
         presion_min: datos.pmin,
         densidad_relativa: datos.densRel,
       },
-      { onConflict: 'proyecto_id' },
-    );
-    if (error) devError('proyectoDataService saveGasDatos:', error.message);
+    });
+    if (error) devError('proyectoDataService saveGasDatos rpc:', error.message);
   } catch (e) {
     devError('proyectoDataService saveGasDatos exception:', e);
   }
 }
 
-/** Reemplaza las filas `planos` de un proyecto (solo metadatos — los binarios PDF van por pdfStorageService). */
+/**
+ * Reemplaza las filas `planos` de un proyecto (solo metadatos — los binarios PDF van por
+ * pdfStorageService) vía RPC SECURITY DEFINER.
+ */
 export async function saveProyectoPlansMeta(
   proyectoId: number,
   plansMeta: PlanMeta[],
@@ -387,35 +331,23 @@ export async function saveProyectoPlansMeta(
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const keepIds = plansMeta.map((p) => p.id);
-    const delQuery = supabase.from('planos').delete().eq('proyecto_id', proyectoId);
-    const { error: delError } =
-      keepIds.length > 0
-        ? await delQuery.not('id', 'in', `(${keepIds.join(',')})`)
-        : await delQuery;
-    if (delError) devError('proyectoDataService savePlansMeta delete:', delError.message);
-
-    if (plansMeta.length > 0) {
-      const { error: upsertError } = await supabase.from('planos').upsert(
-        plansMeta.map((p) => ({
-          id: p.id,
-          proyecto_id: proyectoId,
-          user_id: user.id,
-          name: p.name,
-          nivel: p.nivel,
-          scale: p.scale,
-          status: p.status,
-          origen_x_px: p.origen?.x_px ?? null,
-          origen_y_px: p.origen?.y_px ?? null,
-          factor_x: p.factorX ?? null,
-          factor_y: p.factorY ?? null,
-          cal_global: p.calGlobal ?? null,
-          defined_scale: p.definedScale ?? null,
-        })),
-        { onConflict: 'id' },
-      );
-      if (upsertError) devError('proyectoDataService savePlansMeta upsert:', upsertError.message);
-    }
+    const { error } = await supabase.rpc('save_planos_meta', {
+      p_proyecto_id: proyectoId,
+      p_planos: plansMeta.map((p) => ({
+        id: p.id,
+        name: p.name,
+        nivel: p.nivel,
+        scale: p.scale,
+        status: p.status,
+        origen_x_px: p.origen?.x_px ?? null,
+        origen_y_px: p.origen?.y_px ?? null,
+        factor_x: p.factorX ?? null,
+        factor_y: p.factorY ?? null,
+        cal_global: p.calGlobal ?? null,
+        defined_scale: p.definedScale ?? null,
+      })),
+    });
+    if (error) devError('proyectoDataService savePlansMeta rpc:', error.message);
   } catch (e) {
     devError('proyectoDataService savePlansMeta exception:', e);
   }

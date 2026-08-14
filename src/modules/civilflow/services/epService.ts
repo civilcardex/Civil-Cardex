@@ -110,9 +110,10 @@ export async function loadEpDatos(proyectoId: number): Promise<EPData | null> {
 }
 
 /**
- * Upsert parcial de ep_datos_proyecto — 1:1 con el proyecto, no toca otras tablas.
- * Lo usa PressureEquipmentDesign (debounced) como fuente de verdad; localStorage
- * ('ep') queda como caché en vivo.
+ * Upsert parcial de ep_datos_proyecto vía RPC SECURITY DEFINER (1:1 con el proyecto, no toca
+ * otras tablas). Lo usa PressureEquipmentDesign (debounced) como fuente de verdad; localStorage
+ * ('ep') queda como caché en vivo. Ver
+ * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
 export async function saveEpDatos(proyectoId: number, ep: EPData): Promise<void> {
   try {
@@ -121,17 +122,13 @@ export async function saveEpDatos(proyectoId: number, ep: EPData): Promise<void>
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error } = await supabase.from('ep_datos_proyecto').upsert(
-      {
-        proyecto_id: proyectoId,
-        user_id: user.id,
-        ...Object.fromEntries(
-          Object.entries(FIELD_MAP).map(([k, col]) => [col, ep[k as keyof EPData]]),
-        ),
-      },
-      { onConflict: 'proyecto_id' },
-    );
-    if (error) devError('epService save:', error.message);
+    const { error } = await supabase.rpc('save_ep_datos', {
+      p_proyecto_id: proyectoId,
+      p_datos: Object.fromEntries(
+        Object.entries(FIELD_MAP).map(([k, col]) => [col, ep[k as keyof EPData]]),
+      ),
+    });
+    if (error) devError('epService save rpc:', error.message);
   } catch (e) {
     devError('epService save exception:', e);
   }

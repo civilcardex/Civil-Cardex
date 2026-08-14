@@ -8,7 +8,7 @@ export interface RainwaterOverrides {
 }
 
 interface BajanteOverrideRow {
-  client_id: string;
+  id_cliente: string;
   bajante: string;
   area_parcial: number | null;
   area_acumulada: number | null;
@@ -19,7 +19,7 @@ interface BajanteOverrideRow {
   diam_propuesto: number | null;
 }
 interface CanalOverrideRow {
-  client_id: string;
+  id_cliente: string;
   sector: string;
   area_parcial: number | null;
   area_acumulada: number | null;
@@ -40,16 +40,16 @@ export async function loadRainwaterOverrides(proyectoId: number): Promise<Rainwa
   try {
     const [bajantesRes, canalesRes] = await Promise.all([
       supabase
-        .from('rainwater_bajantes_overrides')
+        .from('anulaciones_bajantes_pluviales')
         .select(
-          'client_id, bajante, area_parcial, area_acumulada, intensidad, coeficiente_c, R, manning, diam_propuesto',
+          'id_cliente, bajante, area_parcial, area_acumulada, intensidad, coeficiente_c, R, manning, diam_propuesto',
         )
         .eq('proyecto_id', proyectoId)
         .order('id'),
       supabase
-        .from('rainwater_canales_overrides')
+        .from('anulaciones_canales_pluviales')
         .select(
-          'client_id, sector, area_parcial, area_acumulada, intensidad, coeficiente_c, manning, pendiente, b, h',
+          'id_cliente, sector, area_parcial, area_acumulada, intensidad, coeficiente_c, manning, pendiente, b, h',
         )
         .eq('proyecto_id', proyectoId)
         .order('id'),
@@ -90,10 +90,11 @@ export async function loadRainwaterOverrides(proyectoId: number): Promise<Rainwa
 }
 
 /**
- * Persiste el snapshot de overrides manuales (borra-e-inserta por tabla, misma semántica
- * "sobrescribir todo" que saveProyectoCoreData). Solo se guardan filas con clave estable:
- * bajantes con `bajante` definido y canales con `sector` definido — las filas en blanco
- * recién creadas son efímeras y no sobreviven a la recarga.
+ * Persiste el snapshot de overrides manuales vía RPC SECURITY DEFINER (borra-e-inserta por
+ * tabla, misma semántica "sobrescribir todo" que saveProyectoCoreData). Solo se guardan filas
+ * con clave estable: bajantes con `bajante` definido y canales con `sector` definido — las
+ * filas en blanco recién creadas son efímeras y no sobreviven a la recarga. Ver
+ * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
 export async function saveRainwaterOverrides(
   proyectoId: number,
@@ -109,9 +110,7 @@ export async function saveRainwaterOverrides(
     const bajanteRows = bajantes
       .filter((b) => b.bajante.trim().length > 0)
       .map((b) => ({
-        proyecto_id: proyectoId,
-        user_id: user.id,
-        client_id: b.bajante.trim(),
+        id_cliente: b.bajante.trim(),
         bajante: b.bajante.trim(),
         area_parcial: b.areaParcial,
         area_acumulada: b.areaAcumulada,
@@ -124,9 +123,7 @@ export async function saveRainwaterOverrides(
     const canalRows = canales
       .filter((c) => c.sector.trim().length > 0)
       .map((c) => ({
-        proyecto_id: proyectoId,
-        user_id: user.id,
-        client_id: c.sector.trim(),
+        id_cliente: c.sector.trim(),
         sector: c.sector.trim(),
         area_parcial: c.areaParcial,
         area_acumulada: c.areaAcumulada,
@@ -138,22 +135,13 @@ export async function saveRainwaterOverrides(
         h: c.h,
       }));
 
-    const [delBajError, delCanalError] = await Promise.all([
-      supabase.from('rainwater_bajantes_overrides').delete().eq('proyecto_id', proyectoId),
-      supabase.from('rainwater_canales_overrides').delete().eq('proyecto_id', proyectoId),
-    ]);
-    if (delBajError.error) throw delBajError.error;
-    if (delCanalError.error) throw delCanalError.error;
-
-    if (bajanteRows.length > 0) {
-      const { error } = await supabase.from('rainwater_bajantes_overrides').insert(bajanteRows);
-      if (error) throw error;
-    }
-    if (canalRows.length > 0) {
-      const { error } = await supabase.from('rainwater_canales_overrides').insert(canalRows);
-      if (error) throw error;
-    }
+    const { error } = await supabase.rpc('save_rainwater_overrides', {
+      p_proyecto_id: proyectoId,
+      p_bajantes: bajanteRows,
+      p_canales: canalRows,
+    });
+    if (error) devError('rainwaterOverridesService save rpc:', error.message);
   } catch (e) {
-    devError('rainwaterOverridesService save:', e);
+    devError('rainwaterOverridesService save exception:', e);
   }
 }

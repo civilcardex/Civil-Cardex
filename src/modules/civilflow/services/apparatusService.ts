@@ -150,9 +150,10 @@ export async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null>
 }
 
 /**
- * Persiste el snapshot completo del catálogo del usuario (borra-e-inserta por usuario, misma
- * semántica de snapshot que saveProyectoCoreData). Fire-and-forget desde la UI; el catálogo
- * base se copia a filas propias en cuanto el usuario lo modifica.
+ * Persiste el snapshot completo del catálogo del usuario (borra-e-inserta por usuario vía RPC
+ * SECURITY DEFINER, misma semántica de snapshot que saveProyectoCoreData). Fire-and-forget
+ * desde la UI; el catálogo base se copia a filas propias en cuanto el usuario lo modifica. Ver
+ * supabase/migrations/20260813000002_rls_security_definer_writes.sql.
  */
 export async function saveAparatosUsuario(aps: ApsItem[]): Promise<void> {
   try {
@@ -161,35 +162,26 @@ export async function saveAparatosUsuario(aps: ApsItem[]): Promise<void> {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { error: delError } = await supabase
-      .from('aparatos_usuario')
-      .delete()
-      .eq('user_id', user.id);
-    if (delError) throw delError;
-
-    if (aps.length > 0) {
-      const { error: insError } = await supabase.from('aparatos_usuario').insert(
-        aps.map((a) => ({
-          user_id: user.id,
-          client_id: a.id,
-          s: a.s,
-          n: a.n,
-          g: a.g,
-          ucaf: a.ucaf,
-          ucac: a.ucac,
-          ud: a.ud,
-          pmin: a.pmin,
-          pmax: a.pmax,
-          qg: a.qg,
-          ctrl: a.ctrl,
-          // Coerción defensiva: blk_ud es NOT NULL — un campo faltante (ítem creado por
-          // setApsVal sin _blkUd) tumbaría el INSERT completo del snapshot y vaciaría la BD.
-          blk_ud: !!a._blkUd,
-        })),
-      );
-      if (insError) throw insError;
-    }
+    const { error } = await supabase.rpc('save_aparatos_usuario', {
+      p_aps: aps.map((a) => ({
+        client_id: a.id,
+        s: a.s,
+        n: a.n,
+        g: a.g,
+        ucaf: a.ucaf,
+        ucac: a.ucac,
+        ud: a.ud,
+        pmin: a.pmin,
+        pmax: a.pmax,
+        qg: a.qg,
+        ctrl: a.ctrl,
+        // Coerción defensiva: blk_ud es NOT NULL — un campo faltante (ítem creado por
+        // setApsVal sin _blkUd) tumbaría el INSERT completo del snapshot y vaciaría la BD.
+        blk_ud: !!a._blkUd,
+      })),
+    });
+    if (error) devError('apparatusService save rpc:', error.message);
   } catch (e) {
-    devError('apparatusService save:', e);
+    devError('apparatusService save exception:', e);
   }
 }
