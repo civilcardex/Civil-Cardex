@@ -1344,6 +1344,27 @@ export function handleSelectDown(
     };
     return;
   }
+  // Línea guía: clic sobre su caja de hit-test (el rectángulo fino que pinta
+  // renderGuideLines) → selección + arrastre de cuerpo completo. Va DESPUÉS de todos los
+  // aciertos de ramal/bajante (una guía cruzando un ramal no debe robarle el clic) y antes del
+  // selectAt genérico.
+  if (engine.tool === 'sel' && !isMultiSelectModifier) {
+    for (const g of engine.guideLines) {
+      if (!g._labelBox || !pointInLabelBox(x, y, g._labelBox)) continue;
+      engine.selId = g.id;
+      engine._emitSelect(g);
+      const tp = engine.toPlane(x, y);
+      engine.guideDrag = {
+        id: g.id,
+        startX: tp.x,
+        startY: tp.y,
+        origPts: g.pts.map((pt) => [...pt] as [number, number]),
+      };
+      engine.render();
+      return;
+    }
+  }
+
   selectAt(engine, x, y, isMultiSelectModifier);
   if (
     engine.tool === 'sel' &&
@@ -1351,6 +1372,7 @@ export function handleSelectDown(
     !engine.ramalDrag &&
     !engine.bajDrag &&
     !engine.ghostDrag &&
+    !engine.guideDrag &&
     !engine.lblDrag &&
     !engine.txtDrag &&
     !engine.areaDrag &&

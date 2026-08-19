@@ -196,6 +196,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   mouseX!: number;
   mouseY!: number;
   ghostDrag!: { id: string; startX: number; startY: number; baseDx: number; baseDy: number } | null;
+  guideDrag!: { id: string; startX: number; startY: number; origPts: [number, number][] } | null;
   lblDrag!: { id: string; offX: number; offY: number; slot?: 'ini' | 'fin' } | null;
   txtDrag!: { id: string; startX: number; startY: number; origX: number; origY: number } | null;
   dimLblDrag!: { id: string; offX: number; offY: number } | null;
@@ -365,6 +366,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.mouseX = 0;
     this.mouseY = 0;
     this.ghostDrag = null;
+    this.guideDrag = null;
     this.lblDrag = null;
     this.txtDrag = null;
     this.txtResize = null;
@@ -623,7 +625,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
     return { x: x0 + dist * Math.cos(sr), y: y0 + dist * Math.sin(sr) };
   }
 
-  snapToExisting(x: number, y: number): Point | null {
+  snapToExisting(x: number, y: number, net?: string, tipo?: string): Point | null {
+    const netRef = net ?? this.activeNet;
     let best: Point | null = null;
     let minD = 16 / this.zoom;
     this.ramales.forEach((r) => {
@@ -631,7 +634,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
       // están visualmente cerca. Excepción: ventilación debe caer exactamente sobre un punto de
       // sanitaria (el marcador de reventilado existente depende de eso), así que se permite ese
       // único par.
-      if (!netsSnapLinked(r.net, this.activeNet)) return;
+      if (!netsSnapLinked(r.net, netRef)) return;
+      // Los ramales no se conectan a tributarios — un trazo de tipo ramal solo pega a ramales.
+      if (tipo === 'ramal' && r.tipo === 'tributario') return;
       r.pts.forEach(([rx, ry], idx) => {
         let thresh = 16 / this.zoom;
         if (idx > 0 && idx < r.pts.length - 1) {
@@ -662,7 +667,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     const lvlLabel = this.nivelActual?.label ?? '';
     this.bajantes.forEach((b) => {
       if (this._hiddenNets.has(b.net)) return;
-      if (!netsSnapLinked(b.net, this.activeNet)) return;
+      if (!netsSnapLinked(b.net, netRef)) return;
       const disp = b.desplazamientos?.[lvlLabel] || {};
       const bx = b.x + (disp.dx || 0);
       const by = b.y + (disp.dy || 0);
@@ -676,7 +681,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
     // acerca visualmente al ramal aunque no esté sobre un vértice, señalando la conexión antes de
     // finalizar el trazo.
     this.ramales.forEach((r) => {
-      if (!netsSnapLinked(r.net, this.activeNet)) return;
+      if (!netsSnapLinked(r.net, netRef)) return;
+      if (tipo === 'ramal' && r.tipo === 'tributario') return;
       const segThresh = 12 / this.zoom;
       const p = snapToSegment(x, y, r.pts, segThresh);
       if (p && (!best || Math.hypot(p.x - x, p.y - y) < minD)) {
@@ -780,8 +786,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
   setTipoTramo(t: TramoType): void {
     this.tipoTramo = t;
   }
-  /** @param v - Activar/desactivar el snap de ángulos. */
+  /** @param v - Activar/desactivar el snap de ángulos. Si hay un trazo en curso, se cancela:
+   *  los segmentos dibujados a mano alzada con snap OFF no cumplen la cuadrícula de ángulos, así
+   *  que reactivar el snap a mitad de trazo dejaría el trazo bloqueado por la validación de
+   *  ángulos. */
   setSnap(v: boolean): void {
+    if (this.snapMode !== v && this.activeRamal) this.cancelRamal();
     this.snapMode = v;
   }
 
@@ -1170,6 +1180,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     }
     const hasDrag =
       this.ghostDrag ||
+      this.guideDrag ||
       this.bajDrag ||
       this.canalResizeDrag ||
       this.lblDrag ||

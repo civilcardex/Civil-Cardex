@@ -1,5 +1,6 @@
 import type { IPlanoEngineCore } from '../PlanoState';
 import { rotatedRectCorners } from '../HitTester';
+import { snapGuidePoint, snapGuideLineToRamal, guideRamalJunctions } from '../PlanoEngineDrawing';
 
 // Las líneas guía son una ayuda de dibujo pura — punteadas, finas, gris apagado — para que
 // nunca se confundan de un vistazo con un ramal real, estén o no seleccionadas (la selección
@@ -36,11 +37,38 @@ export function renderGuideLines(ctx: CanvasRenderingContext2D, engine: IPlanoEn
   });
 }
 
+// Ítem 3 (guías): el círculo cyan de conexión es SOLO del trazo en curso (ghost) — una guía ya
+// trazada no lleva ningún indicador (los símbolos reales de codo/tee los dibujan los ramales al
+// convertir). Mismo estilo que el círculo de conexión de los ramales (connCircle).
+function guideConnCircle(
+  ctx: CanvasRenderingContext2D,
+  engine: IPlanoEngineCore,
+  cx: number,
+  cy: number,
+  r: number,
+): void {
+  ctx.strokeStyle = '#22D3EE';
+  ctx.lineWidth = 2 * engine.zoom;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(34,211,238,0.15)';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
 export function renderGuideGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   if (!engine._guideStart || engine.tool !== 'guide') return;
-  const s = engine.toCvs(engine._guideStart.x, engine._guideStart.y);
   const mp = engine.toPlane(engine.mouseX, engine.mouseY);
-  const e = engine.toCvs(mp.x, mp.y);
+  const snapped = snapGuidePoint(engine, engine._guideStart, mp.x, mp.y);
+  // Mismo snap de conexión que el clic final: el ghost ya muestra la guía trasladada/rotada
+  // sobre el extremo del ramal cuando pasa cerca con ángulo fuera de snap.
+  const line = snapGuideLineToRamal(engine, engine._guideStart, snapped);
+  const s = engine.toCvs(line.s.x, line.s.y);
+  const e = engine.toCvs(line.p.x, line.p.y);
 
   ctx.save();
   ctx.strokeStyle = '#888888';
@@ -52,4 +80,26 @@ export function renderGuideGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEn
   ctx.stroke();
   ctx.setLineDash([]);
   ctx.restore();
+
+  // Ítem 3 (guías): conexión de cruce guía-ramal — círculo cyan SOLO mientras se dibuja la
+  // guía (antes de finalizarla como trazo), en cada punto donde el ghost cruza o toca un ramal.
+  // Mismo estilo que el círculo de conexión de los ramales (connCircle).
+  const ghostGuide = {
+    pts: [
+      [line.s.x, line.s.y],
+      [line.p.x, line.p.y],
+    ] as [number, number][],
+  };
+  for (const j of guideRamalJunctions(engine.ramales, ghostGuide)) {
+    const jc = engine.toCvs(j.point[0], j.point[1]);
+    guideConnCircle(ctx, engine, jc.x, jc.y, 4 * engine.zoom);
+  }
+
+  // Indicador de conexión (ítem 16): cuando el snap pegó el extremo de la guía a un elemento
+  // existente (o el snap de conexión trasladó/rotó la línea sobre un extremo de ramal), el
+  // ghost se dibuja en el punto snapped — el círculo cyan marca que el segundo clic conectará
+  // ahí.
+  if (engine.snapMode && (Math.abs(line.p.x - mp.x) > 1e-9 || Math.abs(line.p.y - mp.y) > 1e-9)) {
+    guideConnCircle(ctx, engine, e.x, e.y, 4 * engine.zoom);
+  }
 }

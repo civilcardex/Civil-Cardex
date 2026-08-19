@@ -62,6 +62,18 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     engine.scheduleRender();
     return;
   }
+  if (engine.guideDrag) {
+    const g = engine.guideLines.find((gg) => gg.id === engine.guideDrag!.id);
+    if (g) {
+      const tp = engine.toPlane(x, y);
+      const dx = tp.x - engine.guideDrag.startX;
+      const dy = tp.y - engine.guideDrag.startY;
+      g.pts = engine.guideDrag.origPts.map((pt) => [pt[0] + dx, pt[1] + dy] as [number, number]);
+      engine.render();
+    }
+    return;
+  }
+
   if (engine.ramalDrag) {
     const ramalesById = indexRamales(engine);
     const r = ramalesById.get(engine.ramalDrag!.id);

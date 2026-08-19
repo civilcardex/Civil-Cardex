@@ -134,6 +134,7 @@ export type PdfViewerToolbarProps = {
   onUndo: NavFn;
   onRedo: NavFn;
   onClear: NavFn;
+  onClearGuides: NavFn;
 };
 
 const compactBtn: React.CSSProperties = {
@@ -172,6 +173,7 @@ function PdfViewerToolbar_({
   onUndo,
   onRedo,
   onClear,
+  onClearGuides,
 }: PdfViewerToolbarProps) {
   const netTools = [...TOOLS];
   if (activeNet === 'af' || activeNet === 'gas') {
@@ -316,6 +318,15 @@ function PdfViewerToolbar_({
               title="Eliminar todo el trazado de la red activa"
             >
               <span style={{ fontSize: 14 }}>{'🗑'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClearGuides}
+              aria-label="Borrar todas las líneas guía"
+              style={{ ...compactBtn, borderColor: 'rgba(190,255,190,.3)', color: '#befeb' }}
+              title="Borrar todas las líneas guía de todos los pisos"
+            >
+              <span style={{ fontSize: 14 }}>{'≋'}</span>
             </button>
           </div>
         </div>
@@ -563,6 +574,36 @@ function PdfViewerToolbar_({
               <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>Limpiar</span>
               <span style={{ fontSize: 12, opacity: 0.7, fontWeight: 400, textAlign: 'left' }}>
                 Borrar trazado de red activa
+              </span>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={onClearGuides}
+            style={{
+              ...accBtn,
+              width: '100%',
+              borderColor: 'rgba(190,255,190,.3)',
+              color: '#befeb',
+            }}
+            title="Borrar todas las líneas guía de todos los pisos"
+          >
+            <span style={{ fontSize: 14 }}>{'\u224B'}</span>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: 0,
+                lineHeight: 1.1,
+                flex: 1,
+              }}
+            >
+              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
+                Borrar líneas guía
+              </span>
+              <span style={{ fontSize: 12, opacity: 0.7, fontWeight: 400, textAlign: 'left' }}>
+                Quitar todas las guías dibujadas
               </span>
             </div>
           </button>

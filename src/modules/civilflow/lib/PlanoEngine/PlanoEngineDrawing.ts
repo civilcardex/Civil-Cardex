@@ -1,4 +1,10 @@
-import { NETS, netsSnapLinked, allocNetNumber, allocTributaryNumber } from './PlanoState';
+import {
+  NETS,
+  netsSnapLinked,
+  allocNetNumber,
+  allocTributaryNumber,
+  rootTributarioLabel,
+} from './PlanoState';
 import { moveAparatoCount } from '../../utils/syncExtremeAccessory';
 import type { PlanoRamal, PlanoBajante, PlanoArea } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
@@ -64,8 +70,7 @@ export function _nextLabel(engine: IPlanoEngineCore): string {
   const net = NETS.find((n) => n.id === engine.activeNet);
   const pfx = net ? net.lbl : 'R';
   if (engine.tipoTramo === 'tributario') {
-    const padre = engine.ramales.find((r) => r.id === engine.padreTributario);
-    const padreLabel = padre ? padre.label || padre.id : '';
+    const padreLabel = rootTributarioLabel(engine.ramales, engine.padreTributario);
     return `T${allocTributaryNumber(engine, padreLabel)}${padreLabel}`;
   }
   const cnt =
@@ -292,6 +297,91 @@ function flowStartsAt(
   return atLogicalTail;
 }
 
+/** ¿El extremo `epPt` del ramal está ocupado por OTRO ramal de la misma red?
+ *  ("Ocupado" en el sentido del ítem 13/5: el ramal se creó para conectar otro ramal.)
+ *  Detecta tanto extremo-a-extremo como empalme sobre el CUERPO del otro ramal (un tributario
+ *  nace sobre el cuerpo del padre con snap 45°, y un yee/empalme une el extremo al cuerpo de
+ *  otro ramal sin dividirlo — el check de solo extremos los dejaba pasar como "libres"). */
+export function ramalExtremoOcupado(
+  ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
+  ramal: { id: string; net?: string },
+  epPt: number[],
+): boolean {
+  const TOL = 0.5;
+  for (const other of ramales) {
+    if (other.id === ramal.id || other.net !== ramal.net) continue;
+    const pts = other.pts;
+    if (!pts || pts.length < 2) continue;
+    if (Math.hypot(pts[0][0] - epPt[0], pts[0][1] - epPt[1]) < TOL) return true;
+    if (Math.hypot(pts[pts.length - 1][0] - epPt[0], pts[pts.length - 1][1] - epPt[1]) < TOL)
+      return true;
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (
+        pointToSegmentDist(epPt[0], epPt[1], pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]) <
+        TOL
+      )
+        return true;
+    }
+  }
+  return false;
+}
+
+/** ¿El extremo `epPt` del ramal está ENTRELAZADO con la red? — extremo/cuerpo de OTRO ramal del
+ *  mismo net, o una bajante/montante del mismo net montada en ese punto (incluyendo la
+ *  posición DESPLAZADA del bajante: el extremo del ramal se ancla donde el bajante se DIBUJA). */
+export function extremoEntrelazado(
+  ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
+  bajantes: Array<{
+    net?: string;
+    x: number;
+    y: number;
+    desplazamientos?: Record<string, { dx?: number; dy?: number }>;
+  }>,
+  ramal: { id: string; net?: string },
+  epPt: number[],
+): boolean {
+  const TOL = 0.5;
+  if (ramalExtremoOcupado(ramales, ramal, epPt)) return true;
+  for (const b of bajantes) {
+    if (b.net !== ramal.net) continue;
+    if (Math.hypot(b.x - epPt[0], b.y - epPt[1]) < TOL) return true;
+    for (const d of Object.values(b.desplazamientos || {})) {
+      if (Math.hypot(b.x + (d.dx || 0) - epPt[0], b.y + (d.dy || 0) - epPt[1]) < TOL) return true;
+    }
+  }
+  return false;
+}
+
+/** ¿El ramal (af/ac/gas) tiene un aparato en un extremo INVÁLIDO? — extremo conectado a la red
+ *  (T/Y/bajante) o flujo en contra del extremo aparatado. Reutilizado por el bloqueo al
+ *  asignar, el bloqueo al invertir dirección y el barrido de estados persistidos. */
+export function aparatoEnExtremoInvalido(
+  ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
+  bajantes: Array<{
+    net?: string;
+    x: number;
+    y: number;
+    desplazamientos?: Record<string, { dx?: number; dy?: number }>;
+  }>,
+  r: {
+    id: string;
+    net?: string;
+    pts?: number[][];
+    _tribReversed?: boolean;
+    aparatoInicio?: string;
+    aparatoFin?: string;
+  },
+): boolean {
+  if (r.net !== 'af' && r.net !== 'ac' && r.net !== 'gas') return false;
+  const pts = r.pts;
+  if (!pts || pts.length < 2) return false;
+  const bad = (pt: number[], app: string | undefined) =>
+    Boolean(app) &&
+    (extremoEntrelazado(ramales, bajantes, r, pt) ||
+      !flowEndsAt({ pts, _tribReversed: r._tribReversed }, pt, 0.5));
+  return bad(pts[0], r.aparatoInicio) || bad(pts[pts.length - 1], r.aparatoFin);
+}
+
 /** ¿La polaridad del codo de montante (codo90rmSube/codo90rmBaja, codoSube/codoBaja) es
  *  coherente con la dirección de flujo del ramal en P? El codo sube solo puede ENTREGAR flujo
  *  (la cola de la flecha de flujo apunta al extremo P: el flujo SALE de P hacia el codo);
@@ -433,6 +523,10 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
               'Solo puedes conectar el tributario al ramal padre seleccionado.',
             );
           }
+        } else if (existing.tipo === 'tributario') {
+          // Los ramales no se conectan a tributarios — el extremo de un ramal no puede unirse
+          // al vértice de un tributario.
+          engine.triggerAlert('Conexión no permitida', 'Los ramales no se conectan a tributarios.');
         }
         continue;
       }
@@ -521,6 +615,13 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       // fusión mal etiquetada se filtra después por todos los filtros de tributario (tablas de
       // diseño, columna "Otros Ramales").
       if (existing.tipo === 'tributario') {
+        // Los ramales no se conectan a tributarios: un ramal principal que cae a mitad de
+        // cuerpo sobre un tributario debe bloquearse con alerta (antes continuaba en silencio,
+        // y la división heredaba `tipo: 'tributario'` cargando UC/UD fusionados mal etiquetados).
+        if (incoming.tipo === 'ramal') {
+          engine.triggerAlert('Conexión no permitida', 'Los ramales no se conectan a tributarios.');
+          continue;
+        }
         // Tributario-a-tributario de AC/AF/gas (ítem 7): permitido solo cuando ambos tributarios
         // comparten el mismo ramal padre seleccionado — el punto de unión es entonces la unión
         // compartida con el padre, y el símbolo de tee lo genera el flujo AccesorioModal después.
@@ -706,12 +807,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   const net = NETS.find((n) => n.id === engine.activeRamal!.net);
   const netPfx = net ? net.lbl : 'R';
   const isTrib = engine.tipoTramo === 'tributario';
-  const padreLbl = isTrib
-    ? (() => {
-        const p = engine.ramales.find((r) => r.id === engine.padreTributario);
-        return p ? p.label || p.id : '';
-      })()
-    : '';
+  const padreLbl = isTrib ? rootTributarioLabel(engine.ramales, engine.padreTributario) : '';
   const cnt = isTrib
     ? allocTributaryNumber(engine, padreLbl)
     : allocNetNumber(engine, engine.activeRamal!.net, 'ramal', (n) =>
@@ -1188,7 +1284,10 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     // bajante desplazado lejos de este mismo extremo); si no, clicar de vuelta sobre un extremo
     // que lleva un accesorio empieza en silencio un ramal nuevo no relacionado en vez de
     // continuar el existente.
-    let activeNetsRamales = engine.ramales.filter((rm) => rm.net === engine.activeNet);
+    let activeNetsRamales = engine.ramales.filter(
+      (rm) =>
+        rm.net === engine.activeNet && !(engine.tipoTramo === 'ramal' && rm.tipo === 'tributario'),
+    );
     if (engine.tipoTramo === 'tributario') {
       // Continuar un tributario existente (desde su propio extremo) debe seguir siendo posible,
       // no solo continuar el padre mismo — restringir solo a `id === padreTributario` hacía que
@@ -1325,7 +1424,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       }
     }
 
-    const sp = engine.snapToExisting(pt.x, pt.y);
+    const sp = engine.snapToExisting(pt.x, pt.y, engine.activeNet, engine.tipoTramo);
     if (sp) {
       // snapToExisting felizmente pega a CUALQUIER vértice de ramal cercano, sin importar qué
       // ramal se eligió como padre del tributario — así un clic cerca de un ramal distinto al
@@ -1481,16 +1580,16 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       );
     }
 
+    const ar = engine.activeRamal;
     const activeRamales =
-      engine.tipoTramo === 'tributario'
+      ar!.tipo === 'tributario'
         ? engine.ramales.filter(
             (r) =>
-              r.id === engine.padreTributario ||
-              (r.tipo === 'tributario' && r.net === engine.activeNet),
+              r.id === engine.padreTributario || (r.tipo === 'tributario' && r.net === ar!.net),
           )
-        : engine.ramales.filter((r) => r.net === engine.activeNet);
+        : engine.ramales.filter((r) => r.net === ar!.net);
     for (const r of activeRamales) {
-      if (r.id === engine.activeRamal.id) continue;
+      if (r.id === ar!.id) continue;
       let sp = null;
       if (engine.snapMode && r.id === engine.padreTributario) {
         sp = snapTributaryToPadre45Deg(pt.x, pt.y, last[0], last[1], r.pts, 20 / engine.zoom);
@@ -1505,7 +1604,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     }
 
     if (!snappedToSeg) {
-      const sp = engine.snapToExisting(pt.x, pt.y);
+      const sp = engine.snapToExisting(pt.x, pt.y, ar!.net, ar!.tipo);
       if (sp) {
         // La misma guardia que la rama de "empezar un tributario nuevo" arriba —
         // snapToExisting no tiene restricciones y felizmente pega a CUALQUIER vértice de ramal,
@@ -1516,8 +1615,8 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
         if (engine.tipoTramo === 'tributario') {
           const snappedRamal = engine.ramales.find(
             (r) =>
-              r.net === engine.activeNet &&
-              r.id !== engine.activeRamal!.id &&
+              r.net === ar!.net &&
+              r.id !== ar!.id &&
               r.pts.some(([rx, ry]) => Math.hypot(rx - sp.x, ry - sp.y) < 0.5),
           );
           if (snappedRamal && snappedRamal.id !== engine.padreTributario) {
@@ -1536,7 +1635,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     const lvlLabel = engine.nivelActual?.label ?? '';
     const bajThresh = 20 / engine.zoom;
     const nearBaj = engine.bajantes.find((b) => {
-      if (engine._hiddenNets.has(b.net) || b.net !== engine.activeNet) return false;
+      if (engine._hiddenNets.has(b.net) || b.net !== ar!.net) return false;
       const disp = b.desplazamientos?.[lvlLabel] || {};
       const bx = b.x + (disp.dx || 0);
       const by = b.y + (disp.dy || 0);
@@ -1589,13 +1688,13 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     }
     if (engine.activeRamal.pts.length >= 2) {
       const testPts = [...engine.activeRamal.pts, [pt.x, pt.y]];
-      if (!checkRamalAngles(testPts, engine.activeNet, engine.activeRamal.tipo, engine.snapMode)) {
+      const trazoNet = engine.activeRamal.net;
+      if (!checkRamalAngles(testPts, trazoNet, engine.activeRamal.tipo, engine.snapMode)) {
         engine.triggerAlert(
           'Ángulo no recomendado',
-          engine.activeNet === 'san' || engine.activeNet === 'll'
+          trazoNet === 'san' || trazoNet === 'll'
             ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 45°. Usar línea guía para ajustar ángulo.'
-            : (engine.activeNet === 'af' || engine.activeNet === 'ac') &&
-                engine.activeRamal.tipo === 'tributario'
+            : (trazoNet === 'af' || trazoNet === 'ac') && engine.activeRamal.tipo === 'tributario'
               ? 'Los tributarios de AF/AC solo permiten ángulos de 90°. Usar línea guía para ajustar ángulo.'
               : 'Esta red debe diseñarse con ángulos de 45° o 90°. Usar línea guía para ajustar ángulo.',
         );
@@ -1611,7 +1710,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
         const segStart = ppts[lastIdx];
         const segEnd = [pt.x, pt.y] as number[];
         for (const r of engine.ramales) {
-          if (r.net !== engine.activeNet) continue;
+          if (r.net !== engine.activeRamal.net) continue;
           if (r.id === engine.activeRamal.id) continue;
           if (!r.pts || r.pts.length < 2) continue;
           for (let si = 0; si < r.pts.length - 1; si++) {
@@ -1703,27 +1802,233 @@ export function handleDimDown(engine: IPlanoEngineCore, px: number, py: number):
   }
 }
 
+/** Aplica el snap a un punto de la línea guía (click o preview): ángulo sobre la cuadrícula de
+ *  la red activa (desde el punto anterior de la guía) + pegada a elementos existentes. Sin snap
+ *  (snapMode off) devuelve el punto crudo. */
+export function snapGuidePoint(
+  engine: IPlanoEngineCore,
+  fromPt: { x: number; y: number } | null,
+  px: number,
+  py: number,
+): { x: number; y: number } {
+  let p: { x: number; y: number } = { x: px, y: py };
+  if (!engine.snapMode) return p;
+  if (fromPt) p = engine.snapAngle(fromPt.x, fromPt.y, px, py, engine.activeNet, 'ramal');
+  const sp = engine.snapToExisting(p.x, p.y, engine.activeNet, 'ramal');
+  if (sp) return sp;
+  return p;
+}
+
+/** Snap de conexión de la línea guía con el EXTREMO de un ramal: si el trazo pasa cerca de un
+ *  extremo pero con un ángulo distinto al de snap de la red del ramal (90° af/ac/gas, 45°
+ *  san/ll/vent), la guía se TRASLADA para pasar exactamente por el extremo y se ROTA al
+ *  múltiplo permitido más cercano — mismo principio que el pegado de ramales contra bajantes.
+ *  Devuelve los extremos ajustados (o los originales si no hay conexión cercana). */
+export function snapGuideLineToRamal(
+  engine: IPlanoEngineCore,
+  s: { x: number; y: number },
+  p: { x: number; y: number },
+): { s: { x: number; y: number }; p: { x: number; y: number } } {
+  if (!engine.snapMode) return { s, p };
+  const gx = p.x - s.x;
+  const gy = p.y - s.y;
+  const L = Math.hypot(gx, gy);
+  if (L < 1e-6) return { s, p };
+  const gux = gx / L;
+  const guy = gy / L;
+  const thresh = 16 / engine.zoom;
+  for (const r of engine.ramales) {
+    if (engine._hiddenNets.has(r.net) || !r.pts || r.pts.length < 2) continue;
+    for (const e of [r.pts[0], r.pts[r.pts.length - 1]]) {
+      const t = ((e[0] - s.x) * gux + (e[1] - s.y) * guy) / L;
+      if (t < 0.02 || t > 0.98) continue;
+      const projX = s.x + gux * L * t;
+      const projY = s.y + guy * L * t;
+      if (Math.hypot(e[0] - projX, e[1] - projY) >= thresh) continue;
+      const adj = e === r.pts[0] ? r.pts[1] : r.pts[r.pts.length - 2];
+      const rdx = adj[0] - e[0];
+      const rdy = adj[1] - e[1];
+      const rlen = Math.hypot(rdx, rdy);
+      if (rlen < 0.001) continue;
+      const dux = rdx / rlen;
+      const duy = rdy / rlen;
+      const cosA = Math.max(-1, Math.min(1, dux * gux + duy * guy));
+      const theta = (Math.acos(cosA) * 180) / Math.PI;
+      const step = r.net === 'san' || r.net === 'll' || r.net === 'vent' ? 45 : 90;
+      const candidates = step === 45 ? [45, 90, 135] : [90];
+      let target = candidates[0];
+      let bestDiff = Infinity;
+      for (const c of candidates) {
+        const diff = Math.abs(theta - c);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          target = c;
+        }
+      }
+      // Rota la dirección de la guía al ángulo permitido conservando el lado (signo del
+      // producto cruz) y el largo, y la traslada para que pase exactamente por el extremo —
+      // el extremo queda en el mismo parámetro t que tenía sobre el trazo original.
+      const cross = dux * guy - duy * gux;
+      const side = cross >= 0 ? 1 : -1;
+      const baseAng = Math.atan2(duy, dux);
+      const newAng = baseAng + (side * (target * Math.PI)) / 180;
+      const ngx = Math.cos(newAng);
+      const ngy = Math.sin(newAng);
+      return {
+        s: { x: e[0] - ngx * L * t, y: e[1] - ngy * L * t },
+        p: { x: e[0] + ngx * L * (1 - t), y: e[1] + ngy * L * (1 - t) },
+      };
+    }
+  }
+  return { s, p };
+}
+
 /** Maneja un clic con la herramienta de línea guía activa: fija el punto inicial en el primer
  *  clic y crea la línea guía (libre, sin pegar a ningún ramal) en el segundo, etiquetada con la
  *  red actualmente activa para que sus acciones posteriores de rotar/convertir-a-ramal sepan
- *  qué reglas de ángulo aplican. */
+ *  qué reglas de ángulo aplican. Ambos puntos pasan por el snap (cuadrícula + elementos)
+ *  cuando snapMode está activo. */
 export function handleGuideDown(engine: IPlanoEngineCore, px: number, py: number): void {
   if (!engine._guideStart) {
-    engine._guideStart = { x: px, y: py };
+    engine._guideStart = snapGuidePoint(engine, null, px, py);
   } else {
     const s = engine._guideStart;
+    const p = snapGuidePoint(engine, s, px, py);
+    // Ítem 3 (guías): si el trazo pasa cerca del extremo de un ramal con un ángulo fuera de
+    // snap, se traslada/rota para conectarlo cumpliendo el ángulo (como ramales con bajantes).
+    const line = snapGuideLineToRamal(engine, s, p);
     engine.guideLines.push({
       id: 'GL' + Date.now(),
       net: engine.activeNet,
       pts: [
-        [s.x, s.y],
-        [px, py],
+        [line.s.x, line.s.y],
+        [line.p.x, line.p.y],
       ],
     });
     engine._guideStart = null;
     engine.render();
     engine._markDirty();
   }
+}
+
+/** Puntos de conexión entre una línea guía y los EXTREMOS de los ramales: contacto directo (el
+ *  extremo de la guía coincide con el extremo de un ramal) o cruce (la guía ATRAVIESA el extremo
+ *  del ramal — proyección estrictamente interior al segmento de la guía, mismo rango 0.02–0.98
+ *  de autoSplitJunctionAndSumFlow). Un punto solo aparece una vez (dedupe por proximidad TOL).
+ *  Usado por el renderer (resalte de conexión, ítem 1.1) y por el menú contextual de la guía
+ *  (habilitar "Crear tributarios", ítem 1.2). */
+/** Snap del cruce guía-ramal al EXTREMO del ramal: si el cruce cae cerca de un extremo (dentro
+ *  del radio de snap de conexión), se ajusta al extremo exacto — un tributario creado desde una
+ *  guía que "cruza el extremo" conecta EN el extremo (codo 90°) en vez de dividir el ramal a
+ *  1-2px de él (lo que creaba un stub invisible y un símbolo de tee en vez del codo). */
+export function snapGuideCrossingToEndpoint(
+  engine: IPlanoEngineCore,
+  ramalId: string,
+  pt: [number, number],
+): [number, number] {
+  const r = engine.ramales.find((x) => x.id === ramalId);
+  if (!r || !r.pts || r.pts.length < 2) return pt;
+  const thresh = Math.max(2, 16 / engine.zoom);
+  let bestPt: [number, number] | null = null;
+  let bestD = thresh;
+  for (const e of [r.pts[0], r.pts[r.pts.length - 1]]) {
+    const d = Math.hypot(e[0] - pt[0], e[1] - pt[1]);
+    if (d < bestD) {
+      bestD = d;
+      bestPt = [e[0], e[1]];
+    }
+  }
+  return bestPt ?? pt;
+}
+
+export function guideRamalJunctions(
+  ramales: Array<{ id: string; pts?: number[][] }>,
+  guide: { pts: [number, number][] },
+): Array<{ point: [number, number]; ramalId: string; passThrough: boolean }> {
+  const TOL = 0.5;
+  const [p0, p1] = guide.pts;
+  const out: Array<{ point: [number, number]; ramalId: string; passThrough: boolean }> = [];
+  const gx = p1[0] - p0[0];
+  const gy = p1[1] - p0[1];
+  const glen = Math.hypot(gx, gy);
+  if (glen < 1e-6) return out;
+  const ux = gx / glen;
+  const uy = gy / glen;
+  const add = (pt: [number, number], ramalId: string, passThrough: boolean) => {
+    if (out.some((j) => Math.hypot(j.point[0] - pt[0], j.point[1] - pt[1]) < TOL)) return;
+    out.push({ point: pt, ramalId, passThrough });
+  };
+  for (const r of ramales) {
+    if (!r.pts || r.pts.length < 2) continue;
+    for (const e of [r.pts[0], r.pts[r.pts.length - 1]]) {
+      // Contacto: extremo de la guía sobre el extremo del ramal.
+      if (
+        Math.hypot(e[0] - p0[0], e[1] - p0[1]) < TOL ||
+        Math.hypot(e[0] - p1[0], e[1] - p1[1]) < TOL
+      ) {
+        add([e[0], e[1]], r.id, false);
+        continue;
+      }
+      // Cruce: extremo del ramal sobre la línea infinita de la guía, proyección interior.
+      // El parámetro t se normaliza por la longitud de la guía — sin el divisor, una guía
+      // larga proyectaba t = distancia absoluta (p. ej. 10 en una guía de 20px) y el rango
+      // 0.02–0.98 jamás se cumplía, por lo que un cruce perpendicular sobre un extremo
+      // nunca se detectaba (el botón "Crear tributarios" no aparecía).
+      const dx = e[0] - p0[0];
+      const dy = e[1] - p0[1];
+      const t = (dx * ux + dy * uy) / glen;
+      if (t < 0.02 || t > 0.98) continue;
+      if (Math.abs(dx * uy - dy * ux) <= TOL) add([e[0], e[1]], r.id, true);
+    }
+    // Cruce con el CUERPO del ramal (a mitad de segmento): la conexión visual (círculo cyan)
+    // también marca dónde la guía atraviesa el trazo de un ramal, no solo sus extremos — es el
+    // mismo punto que usa el botón "Crear tributario" (findGuideCrossing).
+    for (let i = 0; i < r.pts.length - 1; i++) {
+      const hit = segSegIntersection(p0, p1, r.pts[i], r.pts[i + 1]);
+      if (hit) add(hit, r.id, false);
+    }
+  }
+  return out;
+}
+
+/** Intersección estricta (interior en ambos, margen 0.02–0.98) de dos segmentos. */
+function segSegIntersection(
+  a: [number, number],
+  b: [number, number],
+  c: number[],
+  d: number[],
+): [number, number] | null {
+  const r1x = b[0] - a[0];
+  const r1y = b[1] - a[1];
+  const r2x = d[0] - c[0];
+  const r2y = d[1] - c[1];
+  const den = r1x * r2y - r1y * r2x;
+  if (Math.abs(den) < 1e-9) return null;
+  const t = ((c[0] - a[0]) * r2y - (c[1] - a[1]) * r2x) / den;
+  const u = ((c[0] - a[0]) * r1y - (c[1] - a[1]) * r1x) / den;
+  if (t < 0.02 || t > 0.98 || u < 0.02 || u > 0.98) return null;
+  return [a[0] + t * r1x, a[1] + t * r1y];
+}
+
+/** ¿La guía ATRAVIESA el extremo de un ramal (cruce en T)? Habilita "Crear tributarios a partir
+ *  de línea guía". Devuelve el cruce más cercano al primer extremo de la guía, o null. */
+export function findGuideTCrossing(
+  ramales: Array<{ id: string; pts?: number[][] }>,
+  guide: { pts: [number, number][] },
+): { point: [number, number]; ramalId: string } | null {
+  const hits = guideRamalJunctions(ramales, guide).filter((j) => j.passThrough);
+  if (!hits.length) return null;
+  const [p0] = guide.pts;
+  let best = hits[0];
+  let bestD = Infinity;
+  for (const h of hits) {
+    const d = Math.hypot(h.point[0] - p0[0], h.point[1] - p0[1]);
+    if (d < bestD) {
+      bestD = d;
+      best = h;
+    }
+  }
+  return { point: best.point, ramalId: best.ramalId };
 }
 
 /** Coloca una anotación de texto en las coordenadas de plano dadas, pidiendo el contenido al

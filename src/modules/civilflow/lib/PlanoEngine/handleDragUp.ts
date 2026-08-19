@@ -201,6 +201,12 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
     engine.render();
     return;
   }
+  if (engine.guideDrag) {
+    engine.guideDrag = null;
+    engine._markDirty();
+    engine.render();
+    return;
+  }
   if (engine.multiDrag) {
     engine.multiDrag = null;
     engine._markDirty();

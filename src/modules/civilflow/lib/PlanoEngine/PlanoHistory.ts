@@ -6,6 +6,7 @@ import type {
   PlanoArea,
   PlanoDimension,
   PlanoTextAnnotation,
+  PlanoGuideLine,
 } from './PlanoState';
 import { cancelRamal, cancelArea } from './PlanoEngineDrawing';
 
@@ -17,6 +18,7 @@ interface HistorySnapshot {
   areas: PlanoArea[];
   dims: PlanoDimension[];
   textAnnots: PlanoTextAnnotation[];
+  guideLines: PlanoGuideLine[];
   _netCounts: Record<string, { ramal: number; tributario: number }>;
 }
 
@@ -27,6 +29,7 @@ function captureSnapshot(e: IPlanoEngineCore): HistorySnapshot {
     areas: structuredClone(e.areas),
     dims: structuredClone(e.dims),
     textAnnots: structuredClone(e.textAnnots),
+    guideLines: structuredClone(e.guideLines),
     _netCounts: structuredClone(e._netCounts),
   };
 }
@@ -37,6 +40,7 @@ function restoreSnapshot(e: IPlanoEngineCore, snap: HistorySnapshot): void {
   e.areas = structuredClone(snap.areas);
   e.dims = structuredClone(snap.dims);
   e.textAnnots = structuredClone(snap.textAnnots);
+  e.guideLines = structuredClone(snap.guideLines);
   e._netCounts = structuredClone(snap._netCounts);
 }
 
@@ -134,6 +138,7 @@ export class PlanoHistory {
     e.textAnnots = [];
     e.bajantes = [];
     e.areas = [];
+    e.guideLines = [];
     e.activeRamal = null;
     e.activeArea = null;
     e.selId = null;

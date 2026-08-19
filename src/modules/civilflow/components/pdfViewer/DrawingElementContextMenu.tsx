@@ -13,17 +13,13 @@ import {
 } from '../../constants';
 import { loadFromStorage } from '../../services/storageService';
 import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from '../../constants/storage-keys';
-import {
-  APARATOS_DEF,
-  AF_UC_IDS,
-  AC_UC_IDS,
-  SAN_UC_IDS,
-} from '../../constants/engineeringDataFixtures';
+import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS } from '../../constants/engineeringDataFixtures';
 import { getAccessoryOptions } from '../../utils/accessoryOptions';
 import {
   NETS,
   allocNetNumber,
   allocTributaryNumber,
+  rootTributarioLabel,
   type PlanoBajante,
 } from '../../lib/PlanoEngine/PlanoState';
 import { BAJANTE_NETS, MONTANTE_NETS } from '../../lib/PlanoEngine/drawingCreations';
@@ -33,7 +29,12 @@ import {
   codoPolarityOk,
   flipRamalFlow,
   flowEndsAt,
+  flowVecAt,
   ramalFlowDirectionCheck,
+  extremoEntrelazado,
+  aparatoEnExtremoInvalido,
+  findGuideTCrossing,
+  snapGuideCrossingToEndpoint,
 } from '../../lib/PlanoEngine/PlanoEngineDrawing';
 import {
   junctionRespectsTributarioDirection,
@@ -120,6 +121,14 @@ interface DrawingElementContextMenuContextValue {
     onConfirm: () => void,
     confirmLabel?: string,
   ) => void;
+  /** Abre el modal "Cambio de dirección de flujo" y CIERRA el menú contextual (el modal vive
+   *  portaleado a body, fuera del menú — el plano queda visible y el modal movible). */
+  openUcMove: (state: UcMoveModalState) => void;
+  /** Doble inversión de dirección con posible traslado de UC — vive en el raíz porque el modal
+   *  puede confirmarse con el menú ya cerrado. */
+  doInvert: (ramal: PlanoRamal, targetId: string | null) => void;
+  /** Lee las UC asignadas de un ramal (para decidir si el modal de reasignación es necesario). */
+  readUcInfo: (ramal: PlanoRamal) => { planId: string | number | null; total: number };
 }
 
 const DrawingElementContextMenuCtx = createContext<DrawingElementContextMenuContextValue | null>(
@@ -1488,20 +1497,8 @@ function BajanteConnectionPanel({
                     : 'aparatoFin';
 
                   const currentAcc = ramalEl[fieldAcc] || '';
-                  const currentApp = ramalEl[fieldApp] || '';
 
                   const accOptions = getAccessoryOptions(ramalEl.net);
-                  const aparatoIds =
-                    ramalEl.net === 'af'
-                      ? AF_UC_IDS
-                      : ramalEl.net === 'ac'
-                        ? AC_UC_IDS
-                        : ramalEl.net === 'san'
-                          ? SAN_UC_IDS
-                          : APARATOS_DEF.filter((a) => a.grupo === 'g').map((a) => a.id);
-                  const aparatoOptions = aparatoIds
-                    .map((id) => APARATOS_DEF.find((a) => a.id === id))
-                    .filter((a): a is (typeof APARATOS_DEF)[number] => !!a);
 
                   return (
                     <div
@@ -1768,84 +1765,6 @@ function BajanteConnectionPanel({
                             </div>
                           );
                         })()}
-
-                      {ramalEl.net !== 'san' && ramalEl.net !== 'vent' && (
-                        <div>
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: '#849495',
-                              marginBottom: 2,
-                              textTransform: 'uppercase',
-                              letterSpacing: 0.5,
-                            }}
-                          >
-                            Seleccionar Aparato
-                          </div>
-                          <select
-                            value={currentApp}
-                            aria-label="Seleccionar Aparato"
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (val) {
-                                if (ramalEl[fieldAcc]) {
-                                  engineRef.current?.triggerAlert(
-                                    'Accesorio existente',
-                                    'Este extremo ya tiene un accesorio. Elimínalo antes de asignar un aparato.',
-                                  );
-                                  return;
-                                }
-                                const existingBm = (engineRef.current?.bajantes || []).find(
-                                  (b) =>
-                                    Math.abs(b.x - ep.x) < 0.5 &&
-                                    Math.abs(b.y - ep.y) < 0.5 &&
-                                    b.net === ramalEl.net,
-                                );
-                                if (existingBm) {
-                                  engineRef.current?.triggerAlert(
-                                    'Elemento existente',
-                                    `Ya existe un ${existingBm.tipo} (${existingBm.code || existingBm.id}) en este extremo. Elimínalo antes de asignar un aparato.`,
-                                  );
-                                  return;
-                                }
-                              }
-                              if (engineRef.current) {
-                                const oldApp = ramalEl[fieldApp] || '';
-                                const updates: Record<string, unknown> = {
-                                  [fieldApp]: val || null,
-                                };
-                                engineRef.current.updateElementById(ramalEl.id, updates);
-                                setContextMenuState((prev) =>
-                                  prev
-                                    ? { ...prev, element: { ...prev.element, ...updates } }
-                                    : null,
-                                );
-                                if (selElement?.id === ramalEl.id) {
-                                  setSelElement({ ...selElement, ...updates });
-                                }
-                                engineRef.current.render();
-                                engineRef.current._markDirty();
-                                if (planosCtx?.plans) {
-                                  syncExtremeAparatoToCounts(
-                                    ramalEl.id,
-                                    oldApp,
-                                    val || '',
-                                    planosCtx.plans,
-                                  );
-                                }
-                              }
-                            }}
-                            style={DrawingElementContextMenu_S2}
-                          >
-                            <option value="">Ninguno</option>
-                            {aparatoOptions.map((a) => (
-                              <option key={a.id} value={a.id}>
-                                {a.nombre}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
                     </div>
                   );
                 })()}
@@ -2535,6 +2454,136 @@ function guideAngleAlertMessage(net: string, tipo: string): string {
   return 'Esta red debe diseñarse con ángulos de 45° o 90°. Usar línea guía para ajustar ángulo.';
 }
 
+// Núcleo compartido de creación de un tributario desde línea guía (botón singular y el plural
+// del ítem 1.3): construye el tributario [freeEnd → cruce], valida ángulo/flujo, lo empuja y lo
+// parte si cae a mitad de cuerpo de su padre (autoSplitJunctionAndSumFlow). Devuelve el
+// tributario o null si algo bloqueó la creación (la alerta ya se disparó).
+function buildTribFromGuide(
+  eng: PlanoEngine,
+  padre: PlanoRamal,
+  crossPt: [number, number],
+  freeEnd: [number, number],
+  id: string,
+): PlanoRamal | null {
+  const pStart: [number, number] = [freeEnd[0], freeEnd[1]];
+  const pEnd: [number, number] = [crossPt[0], crossPt[1]];
+  // El flujo del tributario se dibuja desde pts[0] hacia el último punto — se orienta para que
+  // la cabeza apunte AL cruce (la intersección con el ramal padre que alimenta).
+  if (!checkRamalAngles([pStart, pEnd], padre.net, 'tributario')) {
+    eng.triggerAlert('Ángulo no permitido', guideAngleAlertMessage(padre.net, 'tributario'));
+    return null;
+  }
+  // San/ll/vent: mismo pre-alineamiento que el botón "Crear ramal" — sin esto,
+  // autoSplitJunctionAndSumFlow aborta en silencio la división cuando el sentido no coincide con
+  // el del padre (tributario queda suelto, sin símbolo, con la alerta "Dirección de flujo
+  // incorrecta"). En af/ac/gas esto se sobrescribe de todos modos (autoSplit fuerza la cola del
+  // tributario hacia la unión). Se usa el vector LOCAL del padre en el punto de cruce
+  // (flowVecAt), no el global pts[0]→pts[last].
+  let tribReversedForFlow: boolean | undefined;
+  if (padre.net === 'san' || padre.net === 'll' || padre.net === 'vent') {
+    const flowEx = flowVecAt(padre, crossPt, 1);
+    if (flowEx) {
+      const flowNew = [pEnd[0] - pStart[0], pEnd[1] - pStart[1]];
+      if (flowNew[0] * flowEx[0] + flowNew[1] * flowEx[1] <= 0) {
+        tribReversedForFlow = true;
+      }
+    }
+  }
+  // Ítem 10: la numeración va contra el RAÍZ de la cadena de padres — si el cruce cae sobre un
+  // tributario, el consecutivo es el global de su ramal raíz (T5RS1), no T1T1RS1.
+  const padreLabel = rootTributarioLabel(eng.ramales, padre.id);
+  const cnt = allocTributaryNumber(eng, padreLabel);
+  const distMm = Math.hypot(pEnd[0] - pStart[0], pEnd[1] - pStart[1]);
+  const label = `T${cnt}${padreLabel}`;
+  const newTrib: PlanoRamal = {
+    id,
+    net: padre.net,
+    tipo: 'tributario',
+    padre: padre.id,
+    pts: [pStart, pEnd],
+    totalL: +eng.pxToM(distMm).toFixed(3),
+    label,
+    ini: '',
+    fin: '',
+    piso: String(eng.nivelActual?.n ?? ''),
+    dz: '',
+    uc: 0,
+    nSalidas: 1,
+    // Ítem 1: etiqueta en el punto medio del trazo real [pStart,pEnd] con el ángulo de su
+    // primer segmento (igual que los ramales manuales).
+    labelX: (pStart[0] + pEnd[0]) / 2,
+    labelY: (pStart[1] + pEnd[1]) / 2,
+    labelAngle: _firstSegmentAngle([pStart, pEnd]),
+    material: '',
+    diametro: '',
+    pendiente: 2,
+    bloqueado: true,
+    _tribReversed: tribReversedForFlow,
+  };
+  // Ítem 5: un tributario vent creado desde guía que termina fluyendo HACIA la unión san (codo
+  // reventilado) se bloquea aquí — autoSplit no valida uniones extremo-con-extremo. Misma
+  // validación pre-push para san/ll: los tributarios creados desde línea guía deben cumplir la
+  // dirección de flujo de la red.
+  if (padre.net === 'vent' || padre.net === 'san' || padre.net === 'll') {
+    const flowErr = ramalFlowDirectionCheck(eng, newTrib, [newTrib], 0.5);
+    if (flowErr) {
+      eng.triggerAlert('Dirección de flujo incorrecta', flowErr);
+      return null;
+    }
+  }
+  eng.ramales.push(newTrib);
+  // Igual que un tributario terminado a mano sobre su padre: parte al padre en existing+
+  // downstream en el punto de cruce y fija la dirección del tributario (cola hacia la unión).
+  autoSplitJunctionAndSumFlow(eng, newTrib);
+  // El usuario pide que una conversión de línea guía a tributario NO dibuje NINGÚN símbolo de
+  // accesorio (codo/tee) en la unión — ni siquiera uno que viniera persistido de una conversión
+  // anterior con código viejo. En el punto de cruce se anula todo accesorio de extremo que otro
+  // ramal (padre, downstream o el propio tributario) tuviera anclado.
+  scrubGuideJunctionAccessories(eng, crossPt);
+  return newTrib;
+}
+
+// Ítem usuario (guías): elimina cualquier accesorioInicio/Fin anclado en los ramales cuyo
+// extremo coincide con el punto de la unión de conversión, para que no quede el glifo "C90"/tee
+// persistido por código viejo. El codo de SEGMENTOS (arco) que sí se quiere se asigna DESPUÉS,
+// por resolveGuideJunctionAccessory, en el handler del botón.
+function scrubGuideJunctionAccessories(eng: PlanoEngine, pt: [number, number]): void {
+  const TOL = 0.5;
+  for (const r of eng.ramales) {
+    if (!r.pts || r.pts.length < 2) continue;
+    if (Math.hypot(r.pts[0][0] - pt[0], r.pts[0][1] - pt[1]) < TOL) r.accesorioInicio = '';
+    if (Math.hypot(r.pts[r.pts.length - 1][0] - pt[0], r.pts[r.pts.length - 1][1] - pt[1]) < TOL)
+      r.accesorioFin = '';
+  }
+}
+
+// El usuario pidió "eliminar cualquier símbolo de accesorio" — pero matizó: el disco "C90" no,
+// el símbolo de SEGMENTOS (arco 90°) sí. En la conversión de guía a tributario/ramal con esquina
+// en L, la unión se resuelve sin modal: se escribe el codo de plano (codo90rm/codos_90_std /
+// codo45/codos_45) en el extremo del ramal que forma la esquina, y el render dibuja el arco.
+// Una tee geométrica (3 brazos, p. ej. el botón plural) no recibe codo — se queda con su tick.
+function resolveGuideJunctionAccessory(eng: PlanoEngine, ramalId: string): void {
+  const r = eng.ramales.find((x) => x.id === ramalId);
+  if (!r || !r.pts || r.pts.length < 2) return;
+  if (r.net !== 'af' && r.net !== 'ac' && r.net !== 'gas') return;
+  const trigger = detectAccesorioTrigger(eng, ramalId);
+  if (!trigger || trigger.isTee) return;
+  const accId =
+    trigger.angleDeg === 45
+      ? r.net === 'gas'
+        ? 'codos_45'
+        : 'codo45'
+      : r.net === 'gas'
+        ? 'codos_90_std'
+        : 'codo90rm';
+  const TOL = 0.5;
+  if (Math.hypot(r.pts[0][0] - trigger.point[0], r.pts[0][1] - trigger.point[1]) < TOL) {
+    r.accesorioInicio = accId;
+  } else {
+    r.accesorioFin = accId;
+  }
+}
+
 function GuideLineMenu() {
   const ctx = useDrawingElementContextMenu();
   const guide = ctx.element as PlanoGuideLine;
@@ -2545,6 +2594,20 @@ function GuideLineMenu() {
   // coinciden con la red que efectivamente se va a crear/rotar.
   const effectiveNet = eng ? resolveGuideNet(eng, guide) : guide.net;
   const allowedSteps = netAllowedSteps(effectiveNet);
+  // Ítem 1.2: la opción "Crear tributarios" (dividir la guía en dos) solo existe cuando la guía
+  // ATRAVIESA el extremo de un ramal — un simple contacto no la habilita. Y solo en af/ac/gas:
+  // en san/ll/vent el chequeo de dirección de flujo (el tributario fluye HACIA la unión)
+  // rechaza siempre uno de los dos lados del cruce (la unión quedaría en punto muerto), así que
+  // el botón plural se oculta y queda el singular.
+  const tCrossRaw = eng ? findGuideTCrossing(eng.ramales, guide) : null;
+  const tCross =
+    tCrossRaw &&
+    (() => {
+      const crossed = eng?.ramales.find((r) => r.id === tCrossRaw.ramalId);
+      return !!crossed && (crossed.net === 'af' || crossed.net === 'ac' || crossed.net === 'gas');
+    })()
+      ? tCrossRaw
+      : null;
 
   return (
     <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -2681,8 +2744,10 @@ function GuideLineMenu() {
           // Ítem 5: un vent creado desde guía que termina fluyendo HACIA una unión san (codo
           // reventilado) se bloquea aquí — autoSplitJunctionAndSumFlow solo valida uniones a
           // mitad de cuerpo, no extremo-con-extremo, así que sin este chequeo el vent se creaba
-          // recibiendo flujo en el extremo de un ramal sanitario.
-          if (effectiveNet === 'vent') {
+          // recibiendo flujo en el extremo de un ramal sanitario. Misma validación pre-push para
+          // san/ll: los ramales creados desde línea guía deben cumplir la dirección de flujo de
+          // la red igual que los dibujados a mano (finishRamal).
+          if (effectiveNet === 'vent' || effectiveNet === 'san' || effectiveNet === 'll') {
             const flowErr = ramalFlowDirectionCheck(eng, newRamal, [newRamal], 0.5);
             if (flowErr) {
               eng.triggerAlert('Dirección de flujo incorrecta', flowErr);
@@ -2701,146 +2766,106 @@ function GuideLineMenu() {
           if (ctx.selElement?.id === guide.id) ctx.setSelElement(null);
           eng._emitSelect(newRamal);
           eng.render();
+          // Codo de segmentos (arco) en la esquina L del ramal creado desde guía — antes del
+          // _markDirty para que el snapshot del historial lo incluya (redo lo restaura).
+          resolveGuideJunctionAccessory(eng, newRamal.id);
           eng._markDirty();
-          // Mismo disparador que finishRamal (PlanoEngineDrawing.ts) para AF/AC/gas — sin esto,
-          // un ramal creado desde línea guía nunca ofrecía elegir el tipo de tee/codo en la
-          // unión que se acaba de formar, a diferencia de uno dibujado a mano.
-          if (
-            (newRamal.net === 'af' || newRamal.net === 'ac' || newRamal.net === 'gas') &&
-            eng.triggerAccesorioModal
-          ) {
-            const trigger = detectAccesorioTrigger(eng, newRamal.id);
-            if (trigger) eng.triggerAccesorioModal(trigger);
-          }
           ctx.setContextMenuState(null);
         }}
         style={DrawingElementContextMenu_S13}
       >
         + Crear ramal a partir de línea guía
       </button>
-      <button
-        type="button"
-        onClick={() => {
-          const eng = ctx.engineRef.current;
-          if (!eng) return;
-          const liveGuide = eng.guideLines.find((g) => g.id === guide.id) || guide;
-          const crossing = findGuideCrossing(eng, liveGuide);
-          if (!crossing) {
-            eng.triggerAlert(
-              'Sin cruce con ramal',
-              'La línea guía no cruza ningún ramal. Dibújala sobre un ramal existente para crear un tributario que conecte a él.',
-            );
-            return;
-          }
-          const padre = eng.ramales.find((r) => r.id === crossing.ramalId);
-          if (!padre) return;
-          // El flujo del tributario se dibuja desde pts[0] hacia el último punto — se orienta
-          // para que la cabeza apunte AL cruce (la intersección con el ramal padre que
-          // alimenta).
-          const [p0, p1] = liveGuide.pts;
-          const d0 = Math.hypot(crossing.point[0] - p0[0], crossing.point[1] - p0[1]);
-          const d1 = Math.hypot(crossing.point[0] - p1[0], crossing.point[1] - p1[1]);
-          const pStart: [number, number] = d0 < d1 ? [p1[0], p1[1]] : [p0[0], p0[1]];
-          const pEnd: [number, number] = [crossing.point[0], crossing.point[1]];
-          // La red del tributario es SIEMPRE la del padre real que la guía está cruzando (no la
-          // red que estaba activa cuando se dibujó la guía) — el padre ya se resolvió arriba, así
-          // que `padre.net` es la fuente de verdad, no `guide.net`.
-          if (!checkRamalAngles([pStart, pEnd], padre.net, 'tributario')) {
-            eng.triggerAlert(
-              'Ángulo no permitido',
-              guideAngleAlertMessage(padre.net, 'tributario'),
-            );
-            return;
-          }
-          // San/ll/vent: mismo pre-alineamiento que el botón "Crear ramal" — sin esto,
-          // autoSplitJunctionAndSumFlow aborta en silencio la división cuando el sentido no
-          // coincide con el del padre (tributario queda suelto, sin símbolo, con la alerta
-          // "Dirección de flujo incorrecta"). En af/ac/gas esto se sobrescribe de todos modos más
-          // abajo (autoSplitJunctionAndSumFlow fuerza la cola del tributario hacia la unión sin
-          // importar lo que se ponga aquí), así que fijarlo igual no interfiere.
-          let tribReversedForFlow: boolean | undefined;
-          if (padre.net === 'san' || padre.net === 'll' || padre.net === 'vent') {
-            if (padre.pts && padre.pts.length >= 2) {
-              const e0 = padre.pts[0];
-              const e1 = padre.pts[padre.pts.length - 1];
-              const flowEx = padre._tribReversed
-                ? [e0[0] - e1[0], e0[1] - e1[1]]
-                : [e1[0] - e0[0], e1[1] - e0[1]];
-              const flowNew = [pEnd[0] - pStart[0], pEnd[1] - pStart[1]];
-              if (flowNew[0] * flowEx[0] + flowNew[1] * flowEx[1] <= 0) {
-                tribReversedForFlow = true;
-              }
-            }
-          }
-          const padreLabel = padre.label || padre.id || '';
-          const cnt = allocTributaryNumber(eng, padreLabel);
-          const tId = 'T' + Date.now();
-          const distMm = Math.hypot(pEnd[0] - pStart[0], pEnd[1] - pStart[1]);
-          const label = `T${cnt}${padre.label || padre.id || ''}`;
-          const newTrib: PlanoRamal = {
-            id: tId,
-            net: padre.net,
-            tipo: 'tributario',
-            padre: padre.id,
-            pts: [pStart, pEnd],
-            totalL: +eng.pxToM(distMm).toFixed(3),
-            label,
-            ini: '',
-            fin: '',
-            piso: String(eng.nivelActual?.n ?? ''),
-            dz: '',
-            uc: 0,
-            nSalidas: 1,
-            // Ítem 1: etiqueta en el punto medio del trazo real [pStart,pEnd] con el ángulo de
-            // su primer segmento (igual que los ramales manuales).
-            labelX: (pStart[0] + pEnd[0]) / 2,
-            labelY: (pStart[1] + pEnd[1]) / 2,
-            labelAngle: _firstSegmentAngle([pStart, pEnd]),
-            material: '',
-            diametro: '',
-            pendiente: 2,
-            bloqueado: true,
-            _tribReversed: tribReversedForFlow,
-          };
-          // Ítem 5: un tributario vent creado desde guía que termina fluyendo HACIA la unión san
-          // (recibiendo flujo en el codo reventilado) se bloquea aquí — autoSplit no valida
-          // uniones extremo-con-extremo.
-          if (padre.net === 'vent') {
-            const flowErr = ramalFlowDirectionCheck(eng, newTrib, [newTrib], 0.5);
-            if (flowErr) {
-              eng.triggerAlert('Dirección de flujo incorrecta', flowErr);
+      {tCross ? (
+        // Ítem 1.3: la guía atraviesa el extremo de un ramal → se divide en DOS tributarios
+        // (uno por cada lado del cruce), heredando la nomenclatura del ramal padre. La guía
+        // original se elimina al final.
+        <button
+          type="button"
+          onClick={() => {
+            const eng = ctx.engineRef.current;
+            if (!eng) return;
+            const liveGuide = eng.guideLines.find((g) => g.id === guide.id) || guide;
+            const crossing = findGuideTCrossing(eng.ramales, liveGuide);
+            if (!crossing) return;
+            const padre = eng.ramales.find((r) => r.id === crossing.ramalId);
+            // Misma red restringida que la visibilidad del botón (ver tCross arriba)
+            if (!padre || (padre.net !== 'af' && padre.net !== 'ac' && padre.net !== 'gas')) return;
+            const [p0, p1] = liveGuide.pts;
+            const base = 'T' + Date.now();
+            const t1 = buildTribFromGuide(eng, padre, crossing.point, [p0[0], p0[1]], base + '_a');
+            if (!t1) return;
+            const t2 = buildTribFromGuide(eng, padre, crossing.point, [p1[0], p1[1]], base + '_b');
+            if (!t2) {
+              // El cruce es extremo-con-extremo, así que autoSplit no partió al padre — basta
+              // con quitar el primero para no dejar el estado a medias.
+              eng.ramales = eng.ramales.filter((r) => r.id !== t1.id);
               return;
             }
-          }
-          eng.ramales.push(newTrib);
-          // Igual que un tributario terminado a mano sobre su padre: parte al padre en
-          // existing+downstream en el punto de cruce y fija la dirección del tributario (cola
-          // hacia la unión) — antes esto solo empujaba el tributario suelto sin partir el padre,
-          // dejando una T sin dividir de verdad (sin mergesFrom, sin acumulación de UC) y con la
-          // dirección de flujo por defecto (equivocada) del tributario.
-          autoSplitJunctionAndSumFlow(eng, newTrib);
-          eng.guideLines = eng.guideLines.filter((g) => g.id !== guide.id);
-          eng.selId = tId;
-          if (ctx.selElement?.id === guide.id) ctx.setSelElement(null);
-          eng._emitSelect(newTrib);
-          eng.render();
-          eng._markDirty();
-          // Mismo disparador que finishRamal (PlanoEngineDrawing.ts) para AF/AC/gas — sin esto,
-          // un tributario creado desde línea guía nunca ofrecía elegir el tipo de tee/codo en la
-          // unión con su padre, a diferencia de uno dibujado a mano.
-          if (
-            (newTrib.net === 'af' || newTrib.net === 'ac' || newTrib.net === 'gas') &&
-            eng.triggerAccesorioModal
-          ) {
-            const trigger = detectAccesorioTrigger(eng, newTrib.id);
-            if (trigger) eng.triggerAccesorioModal(trigger);
-          }
-          ctx.setContextMenuState(null);
-        }}
-        style={DrawingElementContextMenu_S13}
-      >
-        + Crear tributario a partir de línea guía
-      </button>
+            eng.guideLines = eng.guideLines.filter((g) => g.id !== guide.id);
+            eng.selId = t2.id;
+            if (ctx.selElement?.id === guide.id) ctx.setSelElement(null);
+            eng._emitSelect(t2);
+            eng.render();
+            eng._markDirty();
+            ctx.setContextMenuState(null);
+          }}
+          style={DrawingElementContextMenu_S13}
+        >
+          + Crear tributarios a partir de línea guía
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            const eng = ctx.engineRef.current;
+            if (!eng) return;
+            const liveGuide = eng.guideLines.find((g) => g.id === guide.id) || guide;
+            const crossing = findGuideCrossing(eng, liveGuide);
+            if (!crossing) {
+              eng.triggerAlert(
+                'Sin cruce con ramal',
+                'La línea guía no cruza ningún ramal. Dibújala sobre un ramal existente para crear un tributario que conecte a él.',
+              );
+              return;
+            }
+            // Ítem 3 (guías): cruce que cae CERCA del extremo del ramal se ajusta al extremo
+            // exacto — sin esto, un cruce a 1-2px del extremo divide el ramal creando un stub
+            // invisible y un símbolo de tee en vez del codo 90° esperado.
+            crossing.point = snapGuideCrossingToEndpoint(eng, crossing.ramalId, crossing.point);
+            const padre = eng.ramales.find((r) => r.id === crossing.ramalId);
+            if (!padre) return;
+            // El flujo del tributario se dibuja desde pts[0] hacia el último punto — se orienta
+            // para que la cabeza apunte AL cruce (la intersección con el ramal padre que
+            // alimenta).
+            const [p0, p1] = liveGuide.pts;
+            const d0 = Math.hypot(crossing.point[0] - p0[0], crossing.point[1] - p0[1]);
+            const d1 = Math.hypot(crossing.point[0] - p1[0], crossing.point[1] - p1[1]);
+            const freeEnd: [number, number] = d0 < d1 ? [p1[0], p1[1]] : [p0[0], p0[1]];
+            const trib = buildTribFromGuide(
+              eng,
+              padre,
+              [crossing.point[0], crossing.point[1]],
+              freeEnd,
+              'T' + Date.now(),
+            );
+            if (!trib) return;
+            eng.guideLines = eng.guideLines.filter((g) => g.id !== guide.id);
+            eng.selId = trib.id;
+            if (ctx.selElement?.id === guide.id) ctx.setSelElement(null);
+            eng._emitSelect(trib);
+            eng.render();
+            // Codo de segmentos (arco 90°) en la esquina L del tributario creado desde guía —
+            // antes del _markDirty para que el snapshot del historial lo incluya (redo lo restaura).
+            resolveGuideJunctionAccessory(eng, trib.id);
+            eng._markDirty();
+            ctx.setContextMenuState(null);
+          }}
+          style={DrawingElementContextMenu_S13}
+        >
+          + Crear tributario a partir de línea guía
+        </button>
+      )}
     </div>
   );
 }
@@ -2852,6 +2877,7 @@ function MidRamalAccessorySelector({
   selElement,
   setSelElement,
   setContextMenuState,
+  planosCtx,
 }: {
   element: PlanoRamal;
   midRamalHit: { segmentIdx: number; x: number; y: number };
@@ -2859,6 +2885,7 @@ function MidRamalAccessorySelector({
   selElement: PlanoElement | null;
   setSelElement: (el: PlanoElement | null) => void;
   setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
+  planosCtx?: { plans: PlanItem[] };
 }) {
   // La 'llaveTerminal' simple solo tiene sentido en un extremo real del ramal (termina la
   // tubería allí) — en el cuerpo debe ir mediante 'teeLlaveTerminal' (un tee con la pierna
@@ -3025,6 +3052,181 @@ function MidRamalAccessorySelector({
           </option>
         ))}
       </select>
+
+      {['af', 'ac', 'gas'].includes(element.net) &&
+        (() => {
+          const aparatoIds =
+            element.net === 'af'
+              ? AF_UC_IDS
+              : element.net === 'ac'
+                ? AC_UC_IDS
+                : APARATOS_DEF.filter((a) => a.grupo === 'g').map((a) => a.id);
+          const aparatoOptions = aparatoIds
+            .map((id) => APARATOS_DEF.find((a) => a.id === id))
+            .filter((a): a is (typeof APARATOS_DEF)[number] => !!a);
+          const pts = element.pts || [];
+          const dStart =
+            pts.length > 0
+              ? Math.hypot(pts[0][0] - midRamalHit.x, pts[0][1] - midRamalHit.y)
+              : Infinity;
+          const dEnd =
+            pts.length > 1
+              ? Math.hypot(
+                  pts[pts.length - 1][0] - midRamalHit.x,
+                  pts[pts.length - 1][1] - midRamalHit.y,
+                )
+              : Infinity;
+          const isStart = dStart <= dEnd;
+          const fieldApp: 'aparatoInicio' | 'aparatoFin' = isStart ? 'aparatoInicio' : 'aparatoFin';
+          const currentApp = element[fieldApp] || '';
+          const currentAppDef = APARATOS_DEF.find((a) => a.id === currentApp);
+          const applyAparato = (val: string) => {
+            const eng = engineRef.current;
+            if (!eng) return;
+            const fresh = eng.ramales.find((r) => r.id === element.id);
+            if (!fresh || !fresh.pts || fresh.pts.length < 2) return;
+            const fStart = Math.hypot(
+              fresh.pts[0][0] - midRamalHit.x,
+              fresh.pts[0][1] - midRamalHit.y,
+            );
+            const fEnd = Math.hypot(
+              fresh.pts[fresh.pts.length - 1][0] - midRamalHit.x,
+              fresh.pts[fresh.pts.length - 1][1] - midRamalHit.y,
+            );
+            const nearStart = fStart <= fEnd;
+            const field: 'aparatoInicio' | 'aparatoFin' = nearStart
+              ? 'aparatoInicio'
+              : 'aparatoFin';
+            const fieldAcc: 'accesorioInicio' | 'accesorioFin' = nearStart
+              ? 'accesorioInicio'
+              : 'accesorioFin';
+            const targetPt: number[] = nearStart ? fresh.pts[0] : fresh.pts[fresh.pts.length - 1];
+            if (val) {
+              if (fresh[fieldAcc]) {
+                eng.triggerAlert(
+                  'Accesorio existente',
+                  'Este extremo ya tiene un accesorio. Elimínalo antes de asignar un aparato.',
+                );
+                return;
+              }
+              const existingBm = (eng.bajantes || []).find(
+                (b) =>
+                  Math.abs(b.x - targetPt[0]) < 0.5 &&
+                  Math.abs(b.y - targetPt[1]) < 0.5 &&
+                  b.net === element.net,
+              );
+              if (existingBm) {
+                eng.triggerAlert(
+                  'Elemento existente',
+                  `Ya existe un ${existingBm.tipo} (${existingBm.code || existingBm.id}) en este extremo. Elimínalo antes de asignar un aparato.`,
+                );
+                return;
+              }
+              // Ítem 2 (rev 4): el aparato solo puede dibujarse en el extremo LIBRE hacia el que apunta
+              // el flujo del ramal (el aparato RECIBE). Dos condiciones, cualquiera falla =
+              // bloqueado: (a) el extremo está conectado a la red (T/Y/bajante), o (b) el flujo
+              // va en contra del extremo libre (apunta a la conexión).
+              if (extremumOccupied(eng, fresh, targetPt) || !flowEndsAt(fresh, targetPt, 0.5)) {
+                setContextMenuState((prev) => (prev ? { ...prev, visible: false } : prev));
+                eng.triggerAlert(
+                  'Aparato no permitido',
+                  'El aparato solo se dibuja en el extremo libre hacia el que apunta el flujo del ramal. Este extremo está conectado a la red (T/Y/bajante) o el flujo va en su contra (apunta a la conexión). Invierte la dirección del ramal o asigna el aparato en el extremo correcto.',
+                );
+                return;
+              }
+            }
+            const oldApp = fresh[field] || '';
+            const updates: Record<string, unknown> = { [field]: val || null };
+            eng.updateElementById(element.id, updates);
+            setContextMenuState((prev) =>
+              prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
+            );
+            if (selElement?.id === element.id) {
+              setSelElement({ ...selElement, ...updates });
+            }
+            eng.render();
+            eng._markDirty();
+            if (planosCtx?.plans) {
+              syncExtremeAparatoToCounts(element.id, oldApp, val || '', planosCtx.plans);
+            }
+          };
+          return (
+            <div style={{ marginTop: 6 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: '#849495',
+                  marginBottom: 2,
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                }}
+              >
+                Seleccionar Aparato
+              </div>
+              <select
+                value={currentApp}
+                aria-label="Seleccionar Aparato"
+                onChange={(e) => applyAparato(e.target.value)}
+                style={DrawingElementContextMenu_S2}
+              >
+                <option value="">Ninguno</option>
+                {aparatoOptions.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.nombre}
+                  </option>
+                ))}
+              </select>
+              {/* Ítem 7: aparato asignado visible con cantidad = 1 (la misma de la sidebar
+                  derecha) y remoción bidireccional — Quitar limpia el campo del ramal, la
+                  sidebar decrementa el conteo y el glifo de codo implícito desaparece (ambos
+                  se derivan de aparatoInicio/Fin). */}
+              {currentApp && (
+                <div
+                  style={{
+                    marginTop: 4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 6,
+                    background: 'rgba(0,220,229,0.06)',
+                    border: '1px solid rgba(0,220,229,0.25)',
+                    borderRadius: 3,
+                    padding: '4px 6px',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: '#e2e2e8',
+                      fontFamily: "'Geist',monospace",
+                      whiteSpace: 'normal',
+                    }}
+                  >
+                    ✓ {currentAppDef?.nombre || currentApp} × 1
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => applyAparato('')}
+                    aria-label="Quitar aparato"
+                    style={{
+                      flexShrink: 0,
+                      padding: '2px 8px',
+                      background: 'transparent',
+                      border: '1px solid #3a494a',
+                      borderRadius: 3,
+                      color: '#ffb4ab',
+                      fontSize: 10,
+                      fontFamily: "'Geist',monospace",
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Quitar
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
     </div>
   );
 }
@@ -3106,15 +3308,21 @@ function ramalHasInterconnections(eng: PlanoEngine | null, ramal: PlanoRamal): b
   return false;
 }
 
+// ¿El extremo `epPt` del ramal está ENTRELAZADO con la red (otro ramal del mismo net o una
+// bajante/montante del mismo net en ese punto)? Cubre la unión en T por montante.
+function extremumOccupied(eng: PlanoEngine | null, ramal: PlanoRamal, epPt: number[]): boolean {
+  if (!eng) return false;
+  return extremoEntrelazado(eng.ramales, eng.bajantes || [], ramal, epPt);
+}
+
 function RamalMenu() {
   const ctx = useDrawingElementContextMenu();
   const { contextMenuState, element, engineRef, selElement, setSelElement } = ctx;
   const ramalEl = element as PlanoRamal;
-  const [ucMoveState, setUcMoveState] = useState<UcMoveModalState>({
-    isOpen: false,
-    sourceLabel: '',
-    options: [],
-  });
+  const [tribConvOpen, setTribConvOpen] = useState(false);
+  useEffect(() => {
+    setTribConvOpen(false);
+  }, [contextMenuState]);
 
   // Un midRamalHit que cae exactamente sobre un vértice accMed EXISTENTE (PlanoEngineHitTesting.ts
   // los comprueba antes que los impactos de cuerpo de segmento) reporta segmentIdx = accMedIdx - 1
@@ -3134,110 +3342,69 @@ function RamalMenu() {
   const isOccupiedTee =
     isExistingTee || existingTeeType === 'teeTapon' || existingTeeType === 'teeLlaveTerminal';
 
-  // F1: al invertir la dirección de un ramal interconectado (af/ac/gas, no tributario) con UC
-  // asignadas y al menos un vecino directo, el usuario elige a qué ramal de la conexión se
-  // mueven las unidades de consumo. Sin UC o sin vecinos → toggle directo sin modal.
-  const readUcInfo = (): { planId: string | number | null; total: number } => {
-    const all =
-      loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {}) || {};
-    for (const p of ctx.planosCtx?.plans || []) {
-      if (p.status !== 'confirmed') continue;
-      const rec = all[`${ramalEl.net}_${ramalEl.id}_${p.id}`];
-      if (rec && Object.keys(rec).length > 0) {
-        const total = Object.values(rec).reduce((s, n) => s + (n || 0), 0);
-        if (total > 0) return { planId: p.id, total };
-      }
+  // Ítem 8: candidatos a padre para "Convertir en tributario" — ramales de la misma red (o
+  // grupo san/vent) que ESTE ramal toca (extremo sobre vértice o sobre cuerpo). Los
+  // tributarios no son candidatos: un tributario nunca es un tronco.
+  const tribCandidates = (() => {
+    const eng = ctx.engineRef.current;
+    if (!eng || ramalEl.tipo === 'tributario' || !ramalEl.pts || ramalEl.pts.length < 2) {
+      return [];
     }
-    return { planId: null, total: 0 };
-  };
+    const TOL = 0.5;
+    const eps = [ramalEl.pts[0], ramalEl.pts[ramalEl.pts.length - 1]];
+    const out: PlanoRamal[] = [];
+    for (const o of eng.ramales) {
+      if (o.id === ramalEl.id || o.tipo === 'tributario') continue;
+      const sameGroup =
+        o.net === ramalEl.net ||
+        ((o.net === 'san' || o.net === 'vent') &&
+          (ramalEl.net === 'san' || ramalEl.net === 'vent'));
+      if (!sameGroup) continue;
+      const touch = eps.some(
+        (e) =>
+          (o.pts || []).some((p) => Math.hypot(p[0] - e[0], p[1] - e[1]) < TOL) ||
+          pointOnRamalBody(o.pts || [], e, TOL),
+      );
+      if (touch) out.push(o);
+    }
+    return out;
+  })();
 
-  const doInvert = (targetId: string | null) => {
-    const eng = engineRef.current;
+  const convertToTributario = (padreId: string) => {
+    const eng = ctx.engineRef.current;
     if (!eng) return;
-    // Sin objetivo (toggle directo sin modal): se mantiene el toggle de _tribReversed sobre el
-    // ramal del menú con validación de unión, como antes.
-    if (!targetId) {
-      const val = !ramalEl._tribReversed;
-      eng.updateElementById(ramalEl.id, { _tribReversed: val });
-      const fresh = eng.ramales.find((x) => x.id === ramalEl.id);
-      // Cuando un tributario participa en la unión de cualquiera de los dos extremos,
-      // la regla se endurece a "exactamente 1 entrada" (ver
-      // junctionRespectsTributarioDirection) — "al menos 1 salida" no basta ahí, porque
-      // el tributario ya aporta su propia salida fija sin importar qué pase con el
-      // resto del grupo (existing/downstream podrían quedar los dos como salida o los
-      // dos como entrada, y "al menos 1 salida" no lo detectaría).
-      const okAtBothEnds = fresh
-        ? [fresh.pts[0], fresh.pts[fresh.pts.length - 1]].every((ep) =>
-            junctionRespectsTributarioDirection(eng.ramales, ramalEl.net, ep),
-          )
-        : true;
-      if (!okAtBothEnds) {
-        eng.updateElementById(ramalEl.id, { _tribReversed: !val });
-        eng.triggerAlert(
-          'Conexión sin salida',
-          'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
-        );
-        eng.render();
-        return;
-      }
-      if (selElement?.id === ramalEl.id) {
-        setSelElement({ ...selElement, _tribReversed: val });
-      }
-      eng.render();
-      eng._markDirty();
-      ctx.setContextMenuState(null);
-      return;
+    const fresh = eng.ramales.find((r) => r.id === ramalEl.id);
+    if (!fresh || !fresh.pts || fresh.pts.length < 2) return;
+    const TOL = 0.5;
+    const p0 = fresh.pts[0];
+    const p1 = fresh.pts[fresh.pts.length - 1];
+    const padre = eng.ramales.find((r) => r.id === padreId);
+    const touchOnPadre = (e: number[]) =>
+      (padre?.pts || []).some((p) => Math.hypot(p[0] - e[0], p[1] - e[1]) < TOL) ||
+      pointOnRamalBody(padre?.pts || [], e, TOL);
+    const t0 = touchOnPadre(p0);
+    const t1 = touchOnPadre(p1);
+    const epIsStart = t0 && !t1;
+    // Renumeración: el tributario hereda el label consecutivo del grupo del padre
+    // (T{n}{labelRaíz}) — igual que autoSplitJunctionAndSumFlow al crear un tributario por
+    // guía, y con la misma cadena de raíz global (rootTributarioLabel). Sin esto el ramal
+    // conservaba su label de ramal normal (RS1, AS1...) y no se distinguía de los troncos.
+    const rootLbl = rootTributarioLabel(eng.ramales, padreId);
+    const updates: Record<string, unknown> = {
+      tipo: 'tributario',
+      padre: padreId,
+      // Convención de punta de flecha igual que autoSplitJunctionAndSumFlow (PlanoEngineDrawing.ts
+      // 576-583): san/ll drenan HACIA la unión; af/ac/gas/vent fluyen DESDE la unión hacia el
+      // aparato. La geometría ya está conectada (el ramal tocó y dividió a su padre al
+      // dibujarse) — esto solo cambia la semántica.
+      _tribReversed: fresh.net === 'san' || fresh.net === 'll' ? epIsStart : !epIsStart,
+    };
+    if (rootLbl) {
+      updates.label = `T${allocTributaryNumber(eng, rootLbl)}${rootLbl}`;
     }
-    // Con objetivo (confirmado en el modal "Cambio de dirección de flujo"): DOBLE cambio de
-    // dirección — se invierten el ramal del menú (A) Y el ramal elegido en el modal (B). Es el
-    // pivote de la conexión: en la unión compartida uno queda como entrada y el otro como
-    // salida (1-entrada/1-salida), y las UC de A se cargan a B.
-    const aFresh = eng.ramales.find((x) => x.id === ramalEl.id) || ramalEl;
-    const target = eng.ramales.find((x) => x.id === targetId);
-    if (!target) return;
-    if (target.tipo === 'tributario' || aFresh.tipo === 'tributario') {
-      eng.triggerAlert(
-        'Dirección de flujo inconsistente',
-        'Un ramal tributario tiene dirección de flujo fija (cola siempre hacia la unión) y no se puede invertir. Elige otro ramal de la conexión.',
-      );
-      return;
-    }
-    // Para af/ac/gas la dirección EFECTIVA (flecha renderRamales.ts:993/1243 Y validaciones
-    // junctionHasOutgoingFlow/junctionRespectsTributarioDirection) es
-    // `_tribReversed ? pts[last] : pts[0]` — un XOR. Combinar flipRamalFlow (pts.reverse) con
-    // toggle del flag se CANCELA: flecha y validación no cambian. La inversión real de estas
-    // redes es SOLO el toggle del flag.
-    aFresh._tribReversed = !aFresh._tribReversed;
-    target._tribReversed = !target._tribReversed;
-    // Validar el estado REAL tras el doble cambio, en los extremos de AMBOS ramales — si solo
-    // se volteara B, la unión compartida quedaría con dos entradas (A entraba + B ahora entra)
-    // y 0 salidas y la alerta saldría siempre; con el pivote ambas quedan 1-entrada/1-salida.
-    const okAtBothEnds = [
-      aFresh.pts[0],
-      aFresh.pts[aFresh.pts.length - 1],
-      target.pts[0],
-      target.pts[target.pts.length - 1],
-    ].every((ep) => junctionRespectsTributarioDirection(eng.ramales, target.net, ep));
-    if (!okAtBothEnds) {
-      aFresh._tribReversed = !aFresh._tribReversed;
-      target._tribReversed = !target._tribReversed;
-      eng.triggerAlert(
-        'Conexión sin salida',
-        'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
-      );
-      eng.render();
-      return;
-    }
-    if (selElement?.id === aFresh.id) {
-      setSelElement({ ...selElement, _tribReversed: aFresh._tribReversed });
-    }
-    const ucInfo = readUcInfo();
-    if (ucInfo.planId != null) {
-      moveAllAparatoCounts(ramalEl.net, ramalEl.id, targetId, ucInfo.planId);
-      writeHydroDrawingSync(ctx.planosCtx?.plans || []);
-    }
-    if (selElement?.id === target.id) {
-      setSelElement({ ...selElement, ...target });
+    eng.updateElementById(fresh.id, updates);
+    if (ctx.selElement?.id === fresh.id) {
+      ctx.setSelElement({ ...ctx.selElement, ...updates });
     }
     eng.render();
     eng._markDirty();
@@ -3246,6 +3413,56 @@ function RamalMenu() {
 
   return (
     <>
+      {ramalEl.tipo !== 'tributario' && tribCandidates.length > 0 && (
+        <div
+          style={{
+            padding: '4px 8px',
+            borderTop: '1px solid #3a494a',
+            marginTop: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setTribConvOpen((o) => !o)}
+            aria-expanded={tribConvOpen}
+            style={{
+              ...DrawingElementContextMenu_S13,
+              textAlign: 'left',
+              whiteSpace: 'normal',
+              lineHeight: 1.3,
+            }}
+          >
+            {tribConvOpen ? '▾' : '▸'} Convertir en tributario de...
+          </button>
+          {tribConvOpen && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: '#849495',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                }}
+              >
+                Elegir ramal padre (tocado por este ramal):
+              </div>
+              {tribCandidates.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => convertToTributario(c.id)}
+                  style={{ ...DrawingElementContextMenu_S13, textAlign: 'left' }}
+                >
+                  {ramalLabel(c, ctx.engineRef.current?.nivelActual?.label)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {contextMenuState.midRamalHit &&
         !contextMenuState.ramalEndpoint &&
         !['san', 'll'].includes(ramalEl.net) &&
@@ -3257,6 +3474,7 @@ function RamalMenu() {
             selElement={ctx.selElement}
             setSelElement={ctx.setSelElement}
             setContextMenuState={ctx.setContextMenuState}
+            planosCtx={ctx.planosCtx}
           />
         )}
       {contextMenuState.midRamalHit &&
@@ -3390,8 +3608,23 @@ function RamalMenu() {
               const flowErr = ['san', 'll', 'vent'].includes(r.net)
                 ? ramalFlowDirectionCheck(eng, r, [], 0.5)
                 : null;
+              // Ítem 2 (rev 5): con aparato asignado, el flip puede dejarlo en un extremo
+              // conectado a la red o en contra del flujo — se deshace (involución) y alerta.
+              // Se evalúa PRIMERO que la validación de dirección de flujo.
+              if (aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], r)) {
+                flipRamalFlow(r);
+                ctx.setContextMenuState(null);
+                eng.triggerAlert(
+                  'Aparato en extremo inválido',
+                  'Al invertir la dirección del flujo, el aparato asignado queda en un extremo conectado a la red o en contra del flujo. Quita o reasigna el aparato antes de invertir la dirección.',
+                );
+                eng.render();
+                return;
+              }
               if (flowErr) {
                 flipRamalFlow(r);
+                // El menú se cierra antes de la alerta para que el plano quede a la vista.
+                ctx.setContextMenuState(null);
                 eng.triggerAlert('Dirección de flujo incorrecta', flowErr);
                 eng.render();
                 return;
@@ -3422,22 +3655,36 @@ function RamalMenu() {
               onClick={() => {
                 const eng = engineRef.current;
                 if (!eng) return;
+                // Ítem 2 (rev 5): si el ramal ya tiene aparato asignado y el toggle lo dejaría
+                // en un extremo inválido (conectado a la red o en contra del flujo), se alerta
+                // ANTES de abrir el modal de cambio de dirección de flujo.
+                const sim = { ...ramalEl, _tribReversed: !ramalEl._tribReversed };
+                if (aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], sim)) {
+                  ctx.setContextMenuState(null);
+                  eng.triggerAlert(
+                    'Aparato en extremo inválido',
+                    'Al invertir la dirección del flujo, el aparato asignado queda en contra del flujo o en un extremo conectado a la red. Quita o reasigna el aparato antes de invertir la dirección.',
+                  );
+                  return;
+                }
                 // F1: con UC asignadas y vecinos directos en la conexión, el usuario elige a
                 // qué ramal se mueven las unidades de consumo antes de invertir. Sin UC o sin
-                // vecinos → toggle directo, sin modal.
-                const ucInfo = readUcInfo();
+                // vecinos → toggle directo, sin modal. El modal vive en el raíz (openUcMove)
+                // y cierra el menú contextual — el plano queda visible y el modal movible.
+                const ucInfo = ctx.readUcInfo(ramalEl);
                 if (ucInfo.total > 0) {
                   const neighbors = directNeighborRamales(eng.ramales, ramalEl);
                   if (neighbors.length > 0) {
-                    setUcMoveState({
+                    ctx.openUcMove({
                       isOpen: true,
                       sourceLabel: ramalLabel(ramalEl),
+                      ramalId: ramalEl.id,
                       options: neighbors.map((n) => ({ id: n.id, label: ramalLabel(n) })),
                     });
                     return;
                   }
                 }
-                doInvert(null);
+                ctx.doInvert(ramalEl, null);
               }}
             >
               ⇄ Invertir dirección de flujo
@@ -3554,17 +3801,6 @@ function RamalMenu() {
           </div>
         </div>
       )}
-      <UcMoveModal
-        state={ucMoveState}
-        onConfirm={(targetId) => {
-          doInvert(targetId);
-          setUcMoveState({ isOpen: false, sourceLabel: '', options: [] });
-        }}
-        onCancel={() => {
-          setUcMoveState({ isOpen: false, sourceLabel: '', options: [] });
-          ctx.setContextMenuState(null);
-        }}
-      />
     </>
   );
 }
@@ -3759,6 +3995,165 @@ interface DrawingElementContextMenuProps {
 export default memo(function DrawingElementContextMenu(props: DrawingElementContextMenuProps) {
   const state = props.contextMenuState;
 
+  // El modal "Cambio de dirección de flujo" vive en el raíz (NO dentro del menú): al abrirlo se
+  // cierra el menú contextual y el modal queda portaleado a body — el plano se ve completo, el
+  // modal queda centrado y movible (ver UcMoveModal.tsx). Como el raíz puede volver a renderizar
+  // con el menú cerrado, el estado y la lógica de confirmación se mantienen aquí, no en RamalMenu.
+  const [ucMoveState, setUcMoveState] = useState<UcMoveModalState>({
+    isOpen: false,
+    sourceLabel: '',
+    options: [],
+  });
+  const closeUcMove = () => setUcMoveState({ isOpen: false, sourceLabel: '', options: [] });
+
+  const openUcMove = (s: UcMoveModalState) => {
+    setUcMoveState(s);
+    props.setContextMenuState(null);
+  };
+
+  // F1: al invertir la dirección de un ramal interconectado (af/ac/gas, no tributario) con UC
+  // asignadas y al menos un vecino directo, el usuario elige a qué ramal de la conexión se
+  // mueven las unidades de consumo. Sin UC o sin vecinos → toggle directo sin modal.
+  const readUcInfo = (ramal: PlanoRamal): { planId: string | number | null; total: number } => {
+    const all =
+      loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {}) || {};
+    for (const p of props.planosCtx?.plans || []) {
+      if (p.status !== 'confirmed') continue;
+      const rec = all[`${ramal.net}_${ramal.id}_${p.id}`];
+      if (rec && Object.keys(rec).length > 0) {
+        const total = Object.values(rec).reduce((s, n) => s + (n || 0), 0);
+        if (total > 0) return { planId: p.id, total };
+      }
+    }
+    return { planId: null, total: 0 };
+  };
+
+  const doInvert = (ramal: PlanoRamal, targetId: string | null) => {
+    const eng = props.engineRef.current;
+    if (!eng) return;
+    // Sin objetivo (toggle directo sin modal): se mantiene el toggle de _tribReversed sobre el
+    // ramal del menú con validación de unión, como antes.
+    if (!targetId) {
+      const val = !ramal._tribReversed;
+      eng.updateElementById(ramal.id, { _tribReversed: val });
+      const fresh = eng.ramales.find((x) => x.id === ramal.id);
+      // Cuando un tributario participa en la unión de cualquiera de los dos extremos,
+      // la regla se endurece a "exactamente 1 entrada" (ver
+      // junctionRespectsTributarioDirection) — "al menos 1 salida" no basta ahí, porque
+      // el tributario ya aporta su propia salida fija sin importar qué pase con el
+      // resto del grupo (existing/downstream podrían quedar los dos como salida o los
+      // dos como entrada, y "al menos 1 salida" no lo detectaría).
+      const okAtBothEnds = fresh
+        ? [fresh.pts[0], fresh.pts[fresh.pts.length - 1]].every((ep) =>
+            junctionRespectsTributarioDirection(eng.ramales, ramal.net, ep),
+          )
+        : true;
+      // Ítem 2 (rev 5): con aparato asignado, el toggle deja el aparato en contra del flujo o
+      // en un extremo conectado — se deshace y alerta. Se evalúa PRIMERO que la validación de
+      // conexión sin salida.
+      if (fresh && aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], fresh)) {
+        eng.updateElementById(ramal.id, { _tribReversed: !val });
+        props.setContextMenuState(null);
+        eng.triggerAlert(
+          'Aparato en extremo inválido',
+          'Al invertir la dirección del flujo, el aparato asignado queda en contra del flujo o en un extremo conectado a la red. Quita o reasigna el aparato antes de invertir la dirección.',
+        );
+        eng.render();
+        return;
+      }
+      if (!okAtBothEnds) {
+        eng.updateElementById(ramal.id, { _tribReversed: !val });
+        props.setContextMenuState(null);
+        eng.triggerAlert(
+          'Conexión sin salida',
+          'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
+        );
+        eng.render();
+        return;
+      }
+      if (props.selElement?.id === ramal.id) {
+        props.setSelElement({ ...props.selElement, _tribReversed: val });
+      }
+      eng.render();
+      eng._markDirty();
+      props.setContextMenuState(null);
+      return;
+    }
+    // Con objetivo (confirmado en el modal "Cambio de dirección de flujo"): DOBLE cambio de
+    // dirección — se invierten el ramal del menú (A) Y el ramal elegido en el modal (B). Es el
+    // pivote de la conexión: en la unión compartida uno queda como entrada y el otro como
+    // salida (1-entrada/1-salida), y las UC de A se cargan a B.
+    const aFresh = eng.ramales.find((x) => x.id === ramal.id) || ramal;
+    const target = eng.ramales.find((x) => x.id === targetId);
+    if (!target) return;
+    if (target.tipo === 'tributario' || aFresh.tipo === 'tributario') {
+      props.setContextMenuState(null);
+      eng.triggerAlert(
+        'Dirección de flujo inconsistente',
+        'Un ramal tributario tiene dirección de flujo fija (cola siempre hacia la unión) y no se puede invertir. Elige otro ramal de la conexión.',
+      );
+      return;
+    }
+    // Para af/ac/gas la dirección EFECTIVA (flecha renderRamales.ts:993/1243 Y validaciones
+    // junctionHasOutgoingFlow/junctionRespectsTributarioDirection) es
+    // `_tribReversed ? pts[last] : pts[0]` — un XOR. Combinar flipRamalFlow (pts.reverse) con
+    // toggle del flag se CANCELA: flecha y validación no cambian. La inversión real de estas
+    // redes es SOLO el toggle del flag.
+    aFresh._tribReversed = !aFresh._tribReversed;
+    target._tribReversed = !target._tribReversed;
+    // Validar el estado REAL tras el doble cambio, en los extremos de AMBOS ramales — si solo
+    // se volteara B, la unión compartida quedaría con dos entradas (A entraba + B ahora entra)
+    // y 0 salidas y la alerta saldría siempre; con el pivote ambas quedan 1-entrada/1-salida.
+    const okAtBothEnds = [
+      aFresh.pts[0],
+      aFresh.pts[aFresh.pts.length - 1],
+      target.pts[0],
+      target.pts[target.pts.length - 1],
+    ].every((ep) => junctionRespectsTributarioDirection(eng.ramales, target.net, ep));
+    // Ítem 2 (rev 5): si tras el doble cambio alguno de los dos ramales queda con su aparato
+    // en contra del flujo o en un extremo conectado, se deshacen AMBOS toggles y alerta.
+    // Se evalúa PRIMERO que la validación de conexión sin salida.
+    if (
+      aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], aFresh) ||
+      aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], target)
+    ) {
+      aFresh._tribReversed = !aFresh._tribReversed;
+      target._tribReversed = !target._tribReversed;
+      props.setContextMenuState(null);
+      eng.triggerAlert(
+        'Aparato en extremo inválido',
+        'Al invertir la dirección de flujo, uno de los ramales quedaría con su aparato en contra del flujo o en un extremo conectado a la red. Quita o reasigna el aparato antes de invertir.',
+      );
+      eng.render();
+      return;
+    }
+    if (!okAtBothEnds) {
+      aFresh._tribReversed = !aFresh._tribReversed;
+      target._tribReversed = !target._tribReversed;
+      props.setContextMenuState(null);
+      eng.triggerAlert(
+        'Conexión sin salida',
+        'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
+      );
+      eng.render();
+      return;
+    }
+    if (props.selElement?.id === aFresh.id) {
+      props.setSelElement({ ...props.selElement, _tribReversed: aFresh._tribReversed });
+    }
+    const ucInfo = readUcInfo(ramal);
+    if (ucInfo.planId != null) {
+      moveAllAparatoCounts(ramal.net, ramal.id, targetId, ucInfo.planId);
+      writeHydroDrawingSync(props.planosCtx?.plans || []);
+    }
+    if (props.selElement?.id === target.id) {
+      props.setSelElement({ ...props.selElement, ...target });
+    }
+    eng.render();
+    eng._markDirty();
+    props.setContextMenuState(null);
+  };
+
   // Guard anti-pisado (bug 1a): cuando el menú se abre con clic derecho, `state.element` es el
   // hit fresco del motor y `selElement` puede ser una selección VIEJA del clic izquierdo con el
   // mismo id — sincronizar ahí pisaría el hit con datos anteriores. Se recuerda qué elemento
@@ -3805,7 +4200,22 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.selElement, state?.element]);
 
-  if (!state || !state.visible) return null;
+  const ucMoveModal = (
+    <UcMoveModal
+      state={ucMoveState}
+      onConfirm={(targetId) => {
+        const eng = props.engineRef.current;
+        const ramal = eng?.ramales.find((r) => r.id === ucMoveState.ramalId);
+        if (ramal) doInvert(ramal, targetId);
+        closeUcMove();
+      }}
+      onCancel={closeUcMove}
+    />
+  );
+
+  // El modal se renderiza TAMBIÉN con el menú cerrado — es el caso normal cuando el usuario lo
+  // abrió (openUcMove cierra el menú inmediatamente).
+  if (!state || !state.visible) return ucMoveModal;
 
   const ctxValue = {
     contextMenuState: state,
@@ -3823,12 +4233,18 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
     activeNet: props.activeNet,
     setDiamSel: props.setDiamSel,
     triggerConfirm: props.triggerConfirm,
+    openUcMove,
+    doInvert,
+    readUcInfo,
   };
 
   return (
-    <DrawingElementContextMenuCtx.Provider value={ctxValue}>
-      <DrawingElementContextMenuInner />
-    </DrawingElementContextMenuCtx.Provider>
+    <>
+      <DrawingElementContextMenuCtx.Provider value={ctxValue}>
+        <DrawingElementContextMenuInner />
+      </DrawingElementContextMenuCtx.Provider>
+      {ucMoveModal}
+    </>
   );
 });
 
