@@ -12,20 +12,20 @@ import { ProveedoresTab } from './catalogos/ProveedoresTab';
 import { ConfigTab } from './config/ConfigTab';
 import { ApuCatalog } from './apu/ApuCatalog';
 import { PresupuestosTab } from './presupuestos/PresupuestosTab';
-import { ProgramacionStub } from './stubs/ProgramacionStub';
-import { ControlCostosStub } from './stubs/ControlCostosStub';
-import { ReportesStub } from './stubs/ReportesStub';
 
-type MainSection = 'catalogos' | 'apus' | 'presupuestos' | 'programacion' | 'control_costos' | 'reportes';
-type CatalogoTab = 'configuracion' | 'colaboradores' | 'cuadrillas' | 'equipos' | 'insumos' | 'proveedores';
+type MainSection = 'catalogos' | 'apus' | 'presupuestos';
+type CatalogoTab =
+  | 'configuracion'
+  | 'colaboradores'
+  | 'cuadrillas'
+  | 'equipos'
+  | 'insumos'
+  | 'proveedores';
 
 const MAIN_SECTIONS: { id: MainSection; label: string; icon: NavIconName; active: boolean }[] = [
   { id: 'catalogos', label: 'Catálogos', icon: 'catalogos', active: true },
   { id: 'apus', label: 'APUs', icon: 'apus', active: true },
   { id: 'presupuestos', label: 'Presupuestos', icon: 'proyectos', active: true },
-  { id: 'programacion', label: 'Programación', icon: 'programacion', active: false },
-  { id: 'control_costos', label: 'Control de Costos', icon: 'control_costes', active: false },
-  { id: 'reportes', label: 'Reportes', icon: 'reportes', active: false },
 ];
 
 const CATALOGO_TABS: { id: CatalogoTab; label: string; icon: NavIconName }[] = [
@@ -45,7 +45,9 @@ function CivilManagerShell() {
   if (!loaded) {
     return (
       <div className="cm-shell">
-        <div className="cm-stub" role="status" aria-live="polite">Cargando CivilManager…</div>
+        <div className="cm-stub" role="status" aria-live="polite">
+          Cargando CivilManager…
+        </div>
       </div>
     );
   }
@@ -53,7 +55,7 @@ function CivilManagerShell() {
   return (
     <div className="cm-shell">
       <nav className="cm-nav" aria-label="Secciones de CivilManager">
-        {MAIN_SECTIONS.map(s => (
+        {MAIN_SECTIONS.map((s) => (
           <button
             key={s.id}
             type="button"
@@ -70,7 +72,7 @@ function CivilManagerShell() {
 
       {mainSection === 'catalogos' && (
         <nav className="cm-nav" aria-label="Catálogos">
-          {CATALOGO_TABS.map(t => (
+          {CATALOGO_TABS.map((t) => (
             <button
               key={t.id}
               type="button"
@@ -94,9 +96,6 @@ function CivilManagerShell() {
         {mainSection === 'catalogos' && catalogoTab === 'proveedores' && <ProveedoresTab />}
         {mainSection === 'apus' && <ApuCatalog />}
         {mainSection === 'presupuestos' && <PresupuestosTab />}
-        {mainSection === 'programacion' && <ProgramacionStub />}
-        {mainSection === 'control_costos' && <ControlCostosStub />}
-        {mainSection === 'reportes' && <ReportesStub />}
       </div>
     </div>
   );
