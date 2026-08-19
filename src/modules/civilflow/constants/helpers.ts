@@ -1,3 +1,5 @@
+import { sanitizeMojibake } from '../utils/formatUtils';
+
 export function pisoLbl(n: number) {
   if (n < 0) return `Sótano ${Math.abs(n)}`;
   if (n === 99) return `Cubierta`;
@@ -72,7 +74,7 @@ export function matDrawingLabel(material?: string | null): string {
   for (const [re, abbr] of MAT_DRAWING_ABBREV) {
     if (re.test(norm)) return abbr;
   }
-  return material;
+  return sanitizeMojibake(material);
 }
 
 // Nombre completo para el dropdown de material en el menú contextual del ramal — los valores
@@ -97,5 +99,5 @@ export function matFullName(material?: string | null): string {
   for (const [re, name] of MAT_FULLNAME) {
     if (re.test(norm)) return name;
   }
-  return material;
+  return sanitizeMojibake(material);
 }

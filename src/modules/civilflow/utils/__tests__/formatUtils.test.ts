@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fmt, normalizeDnLabel, fmtPulg } from '../formatUtils';
+import { fmt, normalizeDnLabel, fmtPulg, sanitizeMojibake } from '../formatUtils';
 
 describe('fmtPulg', () => {
   it('retorna "—" para valor 0', () => {
@@ -98,5 +98,52 @@ describe('normalizeDnLabel', () => {
   it('convierte "4 1/2" a "4-1/2"', () => {
     const r = normalizeDnLabel('4 1/2');
     expect(r).toContain('4-1/2');
+  });
+});
+
+describe('sanitizeMojibake', () => {
+  it('repara em-dash mojibake sabor CP1252 (\\u00E2\\u20AC\\u201D → —)', () => {
+    expect(sanitizeMojibake('1/2" \u00E2\u20AC\u201D 12.7 mm')).toBe('1/2" — 12.7 mm');
+  });
+
+  it('repara em-dash mojibake sabor Latin-1 (\\u00E2\\u20AC\\u0094 → —)', () => {
+    expect(sanitizeMojibake('1/2" \u00E2\u20AC\u0094 12.7 mm')).toBe('1/2" — 12.7 mm');
+  });
+
+  it('repara simbolo mojibake (\\u00E2\\u2021\\u201E → ⇄)', () => {
+    expect(sanitizeMojibake('\u00E2\u2021\u201E Invertir dirección de flujo')).toBe(
+      '⇄ Invertir dirección de flujo',
+    );
+  });
+
+  it('repara fraccion mojibake (\\u00C2\\u00BD → ½)', () => {
+    expect(sanitizeMojibake('1Â½"')).toBe('1½"');
+  });
+
+  it('repara punto medio mojibake (\\u00C2\\u00B7 → ·)', () => {
+    expect(sanitizeMojibake('PVC Â· 12')).toBe('PVC · 12');
+  });
+
+  it('repara acentos mojibake (\\u00C3\\u00A1 → á, \\u00C3\\u00B1 → ñ)', () => {
+    expect(sanitizeMojibake('CÃ¡mara NÃºmero Ã±')).toBe('Cámara Número ñ');
+  });
+
+  it('repara mojibake mezclado con texto limpio', () => {
+    expect(sanitizeMojibake('Diámetro \u00E2\u20AC\u201D 12.7 \u00E2\u2021\u201E')).toBe(
+      'Diámetro — 12.7 ⇄',
+    );
+  });
+
+  it('elimina Â huerfano', () => {
+    expect(sanitizeMojibake('Â10')).toBe('10');
+  });
+
+  it('deja intacto texto limpio', () => {
+    expect(sanitizeMojibake('PVC — 1/2" · 12.7 mm ⇄ á é ñ')).toBe('PVC — 1/2" · 12.7 mm ⇄ á é ñ');
+  });
+
+  it('normalizeDnLabel repara diametro mojibake con em-dash', () => {
+    const r = normalizeDnLabel('1/2" \u00E2\u20AC\u201D 12.7 mm'.split(' \u00E2\u20AC\u201D ')[0]);
+    expect(r).toBe('1/2"');
   });
 });
