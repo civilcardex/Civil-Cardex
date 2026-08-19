@@ -30,7 +30,8 @@ graphify-out/
 *.sln
 *.sw?
 
-.opencode/plugins/graphify.js
+.opencode/
+skills-lock.json
 
 # Agent skill files
 .agents/
