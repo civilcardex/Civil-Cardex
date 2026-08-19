@@ -1,5 +1,49 @@
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
 
+const PLAN_CODO_TYPES = ['codo90rm', 'codos_90_std', 'codo45', 'codos_45'];
+
+// Esquina en L con codo de plano anclado en un EXTREMO compartido: devuelve las dos direcciones
+// de salida (hacia el cuerpo de cada tubería) si exactamente dos ramales terminan ahí en ángulo
+// y alguno lleva un codo de plano en ese extremo. Se usa para recortar los cuerpos de tubería
+// hasta los puntos de tangencia del arco: la esquina viva de la unión no se dibuja (el arco la
+// sustituye, igual que en los quiebres interiores).
+export function planCodoCornerAt(
+  engine: IPlanoEngineCore,
+  pt: number[],
+): [{ x: number; y: number }, { x: number; y: number }] | null {
+  const TOL = 0.5;
+  const arms: { x: number; y: number }[] = [];
+  let hasPlanCodo = false;
+  for (const o of engine.ramales) {
+    if (engine._hiddenNets.has(o.net)) continue;
+    if (!o.pts || o.pts.length < 2) continue;
+    const li = o.pts.length - 1;
+    let d: { x: number; y: number } | null = null;
+    if (Math.hypot(o.pts[0][0] - pt[0], o.pts[0][1] - pt[1]) < TOL) {
+      const dx = o.pts[1][0] - o.pts[0][0],
+        dy = o.pts[1][1] - o.pts[0][1];
+      const l = Math.hypot(dx, dy);
+      if (l > 0.1) d = { x: dx / l, y: dy / l };
+      if (o.accesorioInicio && PLAN_CODO_TYPES.includes(o.accesorioInicio)) hasPlanCodo = true;
+    } else if (Math.hypot(o.pts[li][0] - pt[0], o.pts[li][1] - pt[1]) < TOL) {
+      const dx = o.pts[li - 1][0] - o.pts[li][0],
+        dy = o.pts[li - 1][1] - o.pts[li][1];
+      const l = Math.hypot(dx, dy);
+      if (l > 0.1) d = { x: dx / l, y: dy / l };
+      if (o.accesorioFin && PLAN_CODO_TYPES.includes(o.accesorioFin)) hasPlanCodo = true;
+    }
+    if (!d) continue;
+    if (!arms.some((a) => Math.abs(a.x * d!.x + a.y * d!.y) >= 0.98)) arms.push(d);
+  }
+  if (
+    !hasPlanCodo ||
+    arms.length !== 2 ||
+    Math.abs(arms[0].x * arms[1].x + arms[0].y * arms[1].y) >= 0.98
+  )
+    return null;
+  return [arms[0], arms[1]];
+}
+
 export interface ElbowInfo {
   T_A: { x: number; y: number };
   T_C: { x: number; y: number };
@@ -7,13 +51,23 @@ export interface ElbowInfo {
   perp_v: { x: number; y: number };
 }
 
+export interface DrawRamalPathOpts {
+  // Solo redibuja las marcas de codo de los quiebres interiores (arco/inglete + marcas T_A/T_C),
+  // sin trazar el cuerpo de la tubería. Se usa para restaurar el símbolo de un quiebre que el
+  // glifo blanco de un accesorio de extremo (p. ej. codo90rmSube/Baja, un disco relleno) tapa
+  // cuando extremo y quiebre quedan cerca — el glifo va en un pase posterior al path.
+  marksOnly?: boolean;
+}
+
 export function drawRamalPath(
   ctx: CanvasRenderingContext2D,
   pts: number[][],
   engine: IPlanoEngineCore,
   _col: string,
+  opts?: DrawRamalPathOpts,
 ): ElbowInfo[] {
   if (pts.length < 2) return [];
+  const marksOnly = opts?.marksOnly ?? false;
 
   const cvsPts = pts.map((pt) => engine.toCvs(pt[0], pt[1]));
   const elbows: ElbowInfo[] = [];
@@ -21,6 +75,23 @@ export function drawRamalPath(
   const activeRamal = engine.activeRamal;
   const r =
     engine.ramales.find((rm) => rm.pts === pts) || (activeRamal?.pts === pts ? activeRamal : null);
+
+  // Codo de plano en un extremo compartido: recortar el cuerpo hasta el punto de tangencia del
+  // arco (mismo rad que drawCornerCodoArc) para que la esquina viva de la unión no se dibuje.
+  if (r && pts.length >= 2) {
+    const rad = engine.mm2cvs(1.5);
+    const trim = (i: number, j: number) => {
+      if (!planCodoCornerAt(engine, pts[i])) return;
+      const a = cvsPts[i],
+        b = cvsPts[j];
+      const l = Math.hypot(b.x - a.x, b.y - a.y);
+      if (l <= rad) return;
+      a.x += ((b.x - a.x) / l) * rad;
+      a.y += ((b.y - a.y) / l) * rad;
+    };
+    trim(0, 1);
+    trim(pts.length - 1, pts.length - 2);
+  }
   const netId = r ? r.net : engine.activeNet;
   const netRamales = engine.ramales.filter((rm) => rm.net === netId);
   if (
@@ -159,8 +230,10 @@ export function drawRamalPath(
             const T_A = { x: cvsB.x + actualRad * ux, y: cvsB.y + actualRad * uy };
             const T_C = { x: cvsB.x + actualRad * vx, y: cvsB.y + actualRad * vy };
 
-            ctx.lineTo(T_A.x, T_A.y);
-            ctx.stroke();
+            if (!marksOnly) {
+              ctx.lineTo(T_A.x, T_A.y);
+              ctx.stroke();
+            }
 
             ctx.save();
             ctx.strokeStyle = '#000000';
@@ -178,8 +251,10 @@ export function drawRamalPath(
             ctx.stroke();
             ctx.restore();
 
-            ctx.beginPath();
-            ctx.moveTo(T_C.x, T_C.y);
+            if (!marksOnly) {
+              ctx.beginPath();
+              ctx.moveTo(T_C.x, T_C.y);
+            }
 
             const perp_u = { x: -uy, y: ux };
             const perp_v = { x: -vy, y: vx };
@@ -202,8 +277,10 @@ export function drawRamalPath(
             const perp_u = { x: -uy, y: ux };
             const perp_v = { x: -vy, y: vx };
 
-            ctx.lineTo(T_A.x, T_A.y);
-            ctx.stroke();
+            if (!marksOnly) {
+              ctx.lineTo(T_A.x, T_A.y);
+              ctx.stroke();
+            }
 
             ctx.save();
             ctx.strokeStyle = '#000000';
@@ -215,8 +292,10 @@ export function drawRamalPath(
             ctx.stroke();
             ctx.restore();
 
-            ctx.beginPath();
-            ctx.moveTo(T_C.x, T_C.y);
+            if (!marksOnly) {
+              ctx.beginPath();
+              ctx.moveTo(T_C.x, T_C.y);
+            }
 
             elbows.push({ T_A, T_C, perp_u, perp_v });
             drewArc = true;
@@ -225,12 +304,14 @@ export function drawRamalPath(
       }
     }
 
-    if (!drewArc) {
+    if (!drewArc && !marksOnly) {
       ctx.lineTo(cvsPts[i].x, cvsPts[i].y);
     }
   }
 
-  ctx.stroke();
+  if (!marksOnly) {
+    ctx.stroke();
+  }
 
   if (elbows.length > 0) {
     ctx.save();
@@ -264,5 +345,5 @@ export function drawRamalPath(
     ctx.restore();
   }
 
-  return elbows;
+  return marksOnly ? [] : elbows;
 }

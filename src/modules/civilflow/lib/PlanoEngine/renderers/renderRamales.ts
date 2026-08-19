@@ -1,5 +1,5 @@
 import { NETS } from '../PlanoState';
-import { snapTributaryToPadre45Deg } from '../PlanoEngineDrawing';
+import { snapTributaryToPadre45Deg, _midpoint } from '../PlanoEngineDrawing';
 import { rotatedRectCorners, pointToSegmentDist } from '../HitTester';
 import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from '../PlanoState';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
@@ -873,7 +873,7 @@ function drawExtremeAccessorySymbol(
     let label = accType.substring(0, 3).toUpperCase();
     if (accType.startsWith('codo90')) label = 'C90';
     else if (accType.startsWith('codo45')) label = 'C45';
-    else if (accType === 'codos_90_std' || accType === 'codos_90_rl') label = 'C90';
+    else if (accType.startsWith('codos_90')) label = 'C90';
     else if (accType === 'valvula_bola') label = 'VB';
     else if (accType === 'valvPie') label = 'VP';
     else if (accType === 'reduccion') label = 'RED';
@@ -896,6 +896,91 @@ function drawExtremeAccessorySymbol(
     ctx.textBaseline = 'middle';
     ctx.fillText(label, c.x, c.y);
   }
+}
+
+// Ítem 6: el codo de PLANO (codo90rm/codos_90_std/codo45/codos_45) en una esquina L — dos
+// tuberías que comparten un extremo con direcciones distintas — se dibuja con el mismo símbolo
+// de segmentos que los quiebres interiores de drawRamalPath: arco de 90° (o inglete a 45°) +
+// marcas perpendiculares en los extremos. Antes caía en el disco de respaldo con el texto
+// "C90". Devuelve false si no hay esquina (extremo muerto), para que el llamador use el glifo
+// de respaldo.
+function drawCornerCodoArc(
+  ctx: CanvasRenderingContext2D,
+  engine: IPlanoEngineCore,
+  pt: number[],
+  u: { x: number; y: number },
+): boolean {
+  const TOL = 0.5;
+  const dirs: { x: number; y: number }[] = [];
+  for (const other of engine.ramales) {
+    if (engine._hiddenNets.has(other.net)) continue;
+    if (!other.pts || other.pts.length < 2) continue;
+    for (let i = 0; i < other.pts.length; i++) {
+      if (Math.hypot(other.pts[i][0] - pt[0], other.pts[i][1] - pt[1]) > TOL) continue;
+      if (i > 0) {
+        // Dirección de SALIDA del extremo (hacia el cuerpo del ramal): con la de llegada el
+        // arco salía al lado contrario de la esquina ("codo al revés").
+        const ddx = other.pts[i - 1][0] - other.pts[i][0];
+        const ddy = other.pts[i - 1][1] - other.pts[i][1];
+        const l = Math.hypot(ddx, ddy);
+        if (l > 0.1) dirs.push({ x: ddx / l, y: ddy / l });
+      }
+      if (i < other.pts.length - 1) {
+        const ddx = other.pts[i + 1][0] - other.pts[i][0];
+        const ddy = other.pts[i + 1][1] - other.pts[i][1];
+        const l = Math.hypot(ddx, ddy);
+        if (l > 0.1) dirs.push({ x: ddx / l, y: ddy / l });
+      }
+    }
+  }
+  const unique: { x: number; y: number }[] = [];
+  for (const d of dirs) {
+    if (!unique.some((x) => x.x * d.x + x.y * d.y > 0.99)) unique.push(d);
+  }
+  // El otro brazo de la esquina: una dirección distinta y no colineal con la propia del host.
+  // Si hay más de una (una T real), no es un codo — el llamador usa el glifo de respaldo.
+  const arms = unique.filter((d) => Math.abs(d.x * u.x + d.y * u.y) < 0.98);
+  if (arms.length !== 1) return false;
+  const v = arms[0];
+  const c = engine.toCvs(pt[0], pt[1]);
+  const rad = engine.mm2cvs(1.5);
+  const cosA = u.x * v.x + u.y * v.y;
+  const is45 = Math.abs(cosA + Math.cos(Math.PI / 4)) < 0.05;
+  const T_A = { x: c.x + rad * u.x, y: c.y + rad * u.y };
+  const T_C = { x: c.x + rad * v.x, y: c.y + rad * v.y };
+  ctx.save();
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 2 * engine.zoom;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  // Hay que reiniciar el dash explícitamente — el cuerpo del ramal puede estar discontinuo
+  // (tributario) y el símbolo no debe heredar el dash.
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  if (is45) {
+    ctx.moveTo(T_A.x, T_A.y);
+    ctx.lineTo(c.x, c.y);
+    ctx.lineTo(T_C.x, T_C.y);
+  } else {
+    const ccx = c.x + (u.x + v.x) * rad;
+    const ccy = c.y + (u.y + v.y) * rad;
+    const angle_TA = Math.atan2(-v.y, -v.x);
+    const angle_TC = Math.atan2(-u.y, -u.x);
+    const cross = u.x * v.y - u.y * v.x;
+    ctx.arc(ccx, ccy, rad, angle_TA, angle_TC, cross > 0);
+  }
+  ctx.stroke();
+  const tickLen = engine.mm2cvs(1.0);
+  const perp_u = { x: -u.y, y: u.x };
+  const perp_v = { x: -v.y, y: v.x };
+  ctx.beginPath();
+  ctx.moveTo(T_A.x - (perp_u.x * tickLen) / 2, T_A.y - (perp_u.y * tickLen) / 2);
+  ctx.lineTo(T_A.x + (perp_u.x * tickLen) / 2, T_A.y + (perp_u.y * tickLen) / 2);
+  ctx.moveTo(T_C.x - (perp_v.x * tickLen) / 2, T_C.y - (perp_v.y * tickLen) / 2);
+  ctx.lineTo(T_C.x + (perp_v.x * tickLen) / 2, T_C.y + (perp_v.y * tickLen) / 2);
+  ctx.stroke();
+  ctx.restore();
+  return true;
 }
 
 export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
@@ -1095,6 +1180,64 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         maxY,
         corners,
       };
+
+      // Línea guía (leader): une la MITAD DEL LADO más cercano de la caja con el punto medio del
+      // ramal, para amarrar visualmente la etiqueta flotante a su tubería (pedido explícito:
+      // salir del lado, no de la esquina). Se recalcula en cada render, así que sigue
+      // automáticamente a la etiqueta cuando se arrastra y al ramal cuando se mueve/estira/
+      // encoge. Se salta cuando el punto medio cae DENTRO de la caja (etiqueta encima del ramal).
+      if (r.pts.length >= 2) {
+        const [mx, my] = _midpoint(r.pts);
+        const mc = engine.toCvs(mx, my);
+        const relX = mc.x - adjCx;
+        const relY = mc.y - adjCy;
+        const localX = relX * cosA + relY * sinA;
+        const localY = -relX * sinA + relY * cosA;
+        const midInside = Math.abs(localX) <= boxW / 2 && Math.abs(localY) <= boxH / 2;
+        if (!midInside) {
+          // Puntos medios de los 4 lados de la caja rotada (coordenadas canvas).
+          const hw = boxW / 2;
+          const hh = boxH / 2;
+          const sideMids = [
+            { x: adjCx + hw * cosA, y: adjCy + hw * sinA }, // derecho (local +w/2, 0)
+            { x: adjCx - hw * cosA, y: adjCy - hw * sinA }, // izquierdo (local -w/2, 0)
+            { x: adjCx + hh * sinA, y: adjCy - hh * cosA }, // inferior (local 0, +h/2)
+            { x: adjCx - hh * sinA, y: adjCy + hh * cosA }, // superior (local 0, -h/2)
+          ];
+          let best = sideMids[0];
+          let bestD = Infinity;
+          for (const s of sideMids) {
+            const d = Math.hypot(s.x - mc.x, s.y - mc.y);
+            if (d < bestD) {
+              bestD = d;
+              best = s;
+            }
+          }
+          // Ítem 1 (rev 4): la flecha de flujo del label vive en el lado INFERIOR de la caja (local
+          // +h/2, trazo a +2·zoom del borde). Si el lado más cercano es ese inferior, la línea
+          // guía se ancla a la MITAD del lado pero DETENIÉNDOSE antes de la flecha: centrada en
+          // el eje de la flecha y separada de su trazo por un pequeño hueco — ni la cruza ni la
+          // toca.
+          if (showFlow && flowLen > 12 * engine.zoom) {
+            const bdx = best.x - adjCx;
+            const bdy = best.y - adjCy;
+            const bLocalY = -bdx * sinA + bdy * cosA;
+            if (Math.abs(bLocalY - hh) < 0.01) {
+              const ay = hh + 5 * engine.zoom;
+              best = { x: adjCx - ay * sinA, y: adjCy + ay * cosA };
+            }
+          }
+          ctx.save();
+          ctx.strokeStyle = '#000000';
+          ctx.lineWidth = 0.8 * engine.zoom;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(mc.x, mc.y);
+          ctx.lineTo(best.x, best.y);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
 
       ctx.save();
       ctx.translate(drawX, drawY);
@@ -1389,6 +1532,27 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
 
       const diamLabel = idx === 0 ? r.diametroInicio : r.diametroFin;
 
+      // Ítem 6: el codo de plano en una esquina L (dos tuberías compartiendo el extremo) usa el
+      // símbolo de codo de segmentos — arco + marcas, igual que un quiebre interior — en vez del
+      // disco de respaldo con el texto "C90". Los codos de montante (codo90rmSube/Baja,
+      // codoSube/Baja) conservan su disco (verticales, sin esquina en planta).
+      const isPlanCodo =
+        accType === 'codo90rm' ||
+        accType === 'codos_90_std' ||
+        accType === 'codo45' ||
+        accType === 'codos_45';
+      if (isPlanCodo) {
+        // El arco necesita la dirección de la tubería SALIENDO del extremo (away): en el último
+        // vértice dx/dy es la dirección de LLEGADA y con ella el arco salía al lado contrario de
+        // la esquina ("codo al revés").
+        const awayX = idx === 0 ? dx : -dx;
+        const awayY = idx === 0 ? dy : -dy;
+        // ponytail: un codo de plano sin esquina real (extremo muerto tras borrar el tributario
+        // de una unión de guía) no dibuja nada — ni arco ni el disco de respaldo "C90".
+        drawCornerCodoArc(ctx, engine, pt, { x: awayX, y: awayY });
+        return;
+      }
+
       ctx.save();
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
@@ -1409,6 +1573,19 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         idx === 0 ? 'ini' : 'fin',
       );
       ctx.restore();
+      // Los glifos de codo (codoSube/codoBaja/codo90rmSube/codo90rmBaja) son discos blancos
+      // rellenos dibujados en este pase, DESPUÉS del path del ramal — si el extremo queda cerca
+      // del quiebre interior (ramal corto de 2 segmentos), el disco tapa el arco del codo del
+      // quiebre. Redibujar solo las marcas de codo (arco/inglete + marcas T_A/T_C, sin el cuerpo
+      // de la tubería) para que el símbolo del quiebre interior siga visible.
+      if (
+        accType === 'codoSube' ||
+        accType === 'codoBaja' ||
+        accType === 'codo90rmSube' ||
+        accType === 'codo90rmBaja'
+      ) {
+        drawRamalPath(ctx, r.pts, engine, '', { marksOnly: true });
+      }
     });
   });
 
@@ -1613,7 +1790,25 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
     mp = engine.snapAngle(last[0], last[1], mp.x, mp.y, ar.net, ar.tipo);
   }
 
-  const activeRamales = engine.ramales.filter((r) => r.net === engine.activeNet);
+  // Indicador de conexión (ítem 16): círculo cyan punteado cuando el cursor está lo bastante
+  // cerca de un elemento existente para conectarse — ramales/tributarios (vértice o cuerpo,
+  // vía snapToExisting o el snap 45° al padre) o bajantes. Mismo estilo que el indicador que
+  // ya existía para bajantes, ahora unificado para toda conexión posible.
+  const connCircle = (cx: number, cy: number, r: number) => {
+    ctx.strokeStyle = '#22D3EE';
+    ctx.lineWidth = 2 * engine.zoom;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(34,211,238,0.15)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+  };
+
+  const activeRamales = engine.ramales.filter((r) => r.net === ar.net);
   for (const r of activeRamales) {
     if (r.id === ar.id) continue;
     let segSp = null;
@@ -1625,36 +1820,37 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
     if (segSp) {
       mp = segSp;
       snapped = true;
+      const sc = engine.toCvs(mp.x, mp.y);
+      connCircle(sc.x, sc.y, 4 * engine.zoom);
       break;
     }
   }
 
   if (!snapped) {
-    const sp = engine.snapToExisting(mp.x, mp.y);
-    if (sp) mp = sp;
+    const sp = engine.snapToExisting(mp.x, mp.y, ar.net, ar.tipo);
+    if (sp) {
+      mp = sp;
+      const sc = engine.toCvs(mp.x, mp.y);
+      connCircle(sc.x, sc.y, 4 * engine.zoom);
+    }
   }
 
   const bajThresh = 20 / engine.zoom;
   const nearBaj = engine.bajantes.find((b) => {
     if (engine._hiddenNets.has(b.net) || b.net !== ar.net) return false;
-    return Math.hypot(origMp.x - b.x, origMp.y - b.y) < bajThresh;
+    const disp = b.desplazamientos?.[engine.nivelActual?.label ?? ''] || {};
+    return (
+      Math.hypot(origMp.x - (b.x + (disp.dx || 0)), origMp.y - (b.y + (disp.dy || 0))) < bajThresh
+    );
   });
   if (nearBaj) {
-    mp = { x: nearBaj.x, y: nearBaj.y };
+    const disp = nearBaj.desplazamientos?.[engine.nivelActual?.label ?? ''] || {};
+    const bx = nearBaj.x + (disp.dx || 0);
+    const by = nearBaj.y + (disp.dy || 0);
+    mp = { x: bx, y: by };
     snapped = true;
-    const bc = engine.toCvs(nearBaj.x, nearBaj.y);
-    ctx.save();
-    ctx.strokeStyle = '#22D3EE';
-    ctx.lineWidth = 2 * engine.zoom;
-    ctx.setLineDash([4, 3]);
-    ctx.beginPath();
-    ctx.arc(bc.x, bc.y, 12 * engine.zoom, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(34,211,238,0.15)';
-    ctx.beginPath();
-    ctx.arc(bc.x, bc.y, 12 * engine.zoom, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    const bc = engine.toCvs(bx, by);
+    connCircle(bc.x, bc.y, 5 * engine.zoom);
   }
 
   const distFirst = Math.hypot(mp.x - first[0], mp.y - first[1]);
@@ -1664,11 +1860,11 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
     ctx.strokeStyle = '#22D3EE';
     ctx.lineWidth = 2 * engine.zoom;
     ctx.beginPath();
-    ctx.arc(fc.x, fc.y, 10 * engine.zoom, 0, Math.PI * 2);
+    ctx.arc(fc.x, fc.y, 4 * engine.zoom, 0, Math.PI * 2);
     ctx.stroke();
     ctx.fillStyle = 'rgba(34,211,238,0.25)';
     ctx.beginPath();
-    ctx.arc(fc.x, fc.y, 10 * engine.zoom, 0, Math.PI * 2);
+    ctx.arc(fc.x, fc.y, 4 * engine.zoom, 0, Math.PI * 2);
     ctx.fill();
     mp = { x: first[0], y: first[1] };
   }

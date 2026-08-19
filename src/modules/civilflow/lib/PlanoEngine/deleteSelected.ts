@@ -1,4 +1,4 @@
-import type { IPlanoEngineCore, PlanoBajante } from './PlanoState';
+import type { IPlanoEngineCore, PlanoBajante, PlanoRamal } from './PlanoState';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 import {
   removeCrossFloorGhostsBySource,
@@ -245,6 +245,149 @@ function cleanupTeeMarkersAt(engine: IPlanoEngineCore, pt: number[]): void {
   }
 }
 
+// Ítem 6 (spec): al borrar un ramal, si en el punto quedan EXACTAMENTE dos ramales
+// sobrevivientes en ángulo (esquina en L), se escribe el codo horizontal en el extremo de uno de
+// ellos — antes la esquina quedaba sin símbolo ni conteo (renderJunctions ignora puntos de 2
+// brazos). Aplica igual a tees manuales desarmadas (downgrade tee→codo) y a uniones de línea
+// guía que nunca tuvieron tee (el usuario quiere el arco de segmentos al quedar un solo
+// tributario). Solo af/ac/gas (accesorios por campo); san/ll/vent son geométricas. El reconteo
+// del codo es gratis: _markDirty → calcHydroAccessories lee los campos.
+
+// Brazos de extremo en un punto: ramales af/ac/gas que TERMINAN en pt con su dirección de
+// salida (hacia el cuerpo del ramal), agrupados por línea (colineales = mismo brazo).
+const sameLineDir = (a: number[], b: number[]) => Math.abs(a[0] * b[0] + a[1] * b[1]) >= 0.9;
+
+function endpointArmsAt(engine: IPlanoEngineCore, pt: number[]): { d: number[]; r: PlanoRamal }[] {
+  const TOL = 0.5;
+  const norm = (v: number[]) => {
+    const l = Math.hypot(v[0], v[1]);
+    return l < 1e-6 ? null : ([v[0] / l, v[1] / l] as number[]);
+  };
+  const arms: { d: number[]; r: PlanoRamal }[] = [];
+  for (const r of engine.ramales) {
+    if (r.net !== 'af' && r.net !== 'ac' && r.net !== 'gas') continue;
+    if (!r.pts || r.pts.length < 2) continue;
+    const li = r.pts.length - 1;
+    let d: number[] | null = null;
+    if (Math.hypot(r.pts[0][0] - pt[0], r.pts[0][1] - pt[1]) < TOL)
+      d = norm([r.pts[1][0] - r.pts[0][0], r.pts[1][1] - r.pts[0][1]]);
+    else if (Math.hypot(r.pts[li][0] - pt[0], r.pts[li][1] - pt[1]) < TOL)
+      d = norm([r.pts[li - 1][0] - r.pts[li][0], r.pts[li - 1][1] - r.pts[li][1]]);
+    if (!d) continue;
+    if (!arms.some((a) => sameLineDir(a.d, d))) arms.push({ d, r });
+  }
+  return arms;
+}
+
+function assignCodoAfterBranchDelete(engine: IPlanoEngineCore, pt: number[]): void {
+  const TOL = 0.5;
+  if (engine.bajantes.some((b) => Math.hypot(b.x - pt[0], b.y - pt[1]) < TOL)) return;
+  const arms = endpointArmsAt(engine, pt);
+  // 2 grupos de dirección distintos y NO colineales entre sí = esquina en L. Un solo grupo es
+  // paso recto (o remerge ya unió el tronco) y ≥3 es unión múltiple — ni uno ni otro es codo.
+  if (arms.length !== 2 || sameLineDir(arms[0].d, arms[1].d)) return;
+  // Escribir el codo en UN solo sobreviviente (evitar doble conteo en calcHydroAccessories):
+  // preferir el ramal normal sobre un tributario; sin tocar un campo ya ocupado.
+  const host = (arms.find((a) => a.r.tipo !== 'tributario') || arms[0]).r;
+  // Ángulo entre los brazos de salida ≈45° → codo 45; si no, 90.
+  const is45 = arms[0].d[0] * arms[1].d[0] + arms[0].d[1] * arms[1].d[1] > 0.5;
+  const accId = is45
+    ? host.net === 'gas'
+      ? 'codos_45'
+      : 'codo45'
+    : host.net === 'gas'
+      ? 'codos_90_std'
+      : 'codo90rm';
+  if (host.pts && Math.hypot(host.pts[0][0] - pt[0], host.pts[0][1] - pt[1]) < TOL) {
+    if (!host.accesorioInicio) host.accesorioInicio = accId;
+  } else if (!host.accesorioFin) {
+    host.accesorioFin = accId;
+  }
+}
+
+// Codos de PLANO (esquina en L dibujada en planta). Un marcador de estos en un punto que deja
+// de ser esquina (muere el tributario de una unión de línea guía) no significa nada y se limpia.
+const PLAN_CODO_TYPES = ['codo90rm', 'codos_90_std', 'codo45', 'codos_45'];
+
+// ¿La unión tenía un marcador de tee ANTES del borrado? El downgrade tee→codo
+// (assignCodoAfterBranchDelete) solo aplica al flujo manual donde el usuario resolvió la unión
+// con una tee vía modal — las uniones creadas desde línea guía nunca tuvieron tee y al
+// desarmarlas no debe aparecer ningún símbolo de accesorio.
+function junctionHadTeeMarker(engine: IPlanoEngineCore, pt: number[]): boolean {
+  const TOL = 0.5;
+  for (const r of engine.ramales) {
+    if (!r.pts || r.pts.length < 2) continue;
+    if (
+      r.accesorioInicio &&
+      TEE_TYPES.includes(r.accesorioInicio) &&
+      Math.hypot(r.pts[0][0] - pt[0], r.pts[0][1] - pt[1]) < TOL
+    )
+      return true;
+    const li = r.pts.length - 1;
+    if (
+      r.accesorioFin &&
+      TEE_TYPES.includes(r.accesorioFin) &&
+      Math.hypot(r.pts[li][0] - pt[0], r.pts[li][1] - pt[1]) < TOL
+    )
+      return true;
+    if (r.accMed) {
+      for (const [k, v] of Object.entries(r.accMed)) {
+        const m = k.match(/^accMed(\d+)$/);
+        if (!m || !v || !TEE_TYPES.includes(v)) continue;
+        const p = r.pts[parseInt(m[1], 10)];
+        if (p && Math.hypot(p[0] - pt[0], p[1] - pt[1]) < TOL) return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Legado de uniones de línea guía (código viejo persistió codo90rm en el ramal): al borrar el
+// tributario que formaba la esquina, se anula el codo de plano anclado en el punto para que no
+// quede ni el arco ni el disco "C90" de respaldo.
+function scrubPlanCodoAt(engine: IPlanoEngineCore, pt: number[]): void {
+  const TOL = 0.5;
+  for (const r of engine.ramales) {
+    if (!r.pts || r.pts.length < 2) continue;
+    if (
+      r.accesorioInicio &&
+      PLAN_CODO_TYPES.includes(r.accesorioInicio) &&
+      Math.hypot(r.pts[0][0] - pt[0], r.pts[0][1] - pt[1]) < TOL
+    ) {
+      decrementAccesorioCount(engine, r, r.accesorioInicio);
+      r.accesorioInicio = '';
+    }
+    const li = r.pts.length - 1;
+    if (
+      r.accesorioFin &&
+      PLAN_CODO_TYPES.includes(r.accesorioFin) &&
+      Math.hypot(r.pts[li][0] - pt[0], r.pts[li][1] - pt[1]) < TOL
+    ) {
+      decrementAccesorioCount(engine, r, r.accesorioFin);
+      r.accesorioFin = '';
+    }
+  }
+}
+
+// Limpieza de uniones tras borrar un ramal, compartida por las dos rutas de deleteSelected:
+// limpia tees muertas y reevalúa la geometría del punto. Si queda una esquina en L (dos brazos
+// en ángulo) se escribe el codo de plano — aplica a tees manuales desarmadas Y a uniones de
+// línea guía que nunca tuvieron tee (el usuario quiere el arco al quedar un solo tributario).
+// Si ya no queda esquina (extremo muerto tras borrar el último tributario) se barre cualquier
+// codo de plano del punto para que no quede ni arco ni conteo.
+function cleanupJunctionsAfterRamalDelete(engine: IPlanoEngineCore, deleted: PlanoRamal): void {
+  const ep0 = deleted.pts![0];
+  const ep1 = deleted.pts![deleted.pts!.length - 1];
+  for (const ep of [ep0, ep1]) {
+    const hadTee = junctionHadTeeMarker(engine, ep);
+    cleanupTeeMarkersAt(engine, ep);
+    const arms = endpointArmsAt(engine, ep);
+    const isL = arms.length === 2 && !sameLineDir(arms[0].d, arms[1].d);
+    if (hadTee || isL) assignCodoAfterBranchDelete(engine, ep);
+    else scrubPlanCodoAt(engine, ep);
+  }
+}
+
 // Ítem 9: al borrar un ramal que PARTIÓ a otro (el `incoming` de una división mergesFrom =
 // [existing.id, incoming.id]), se re-une la línea: el tramo aguas arriba (A = mergesFrom[0]) y
 // el tramo aguas abajo (D = mergesFrom[1]) que quedaron separados vuelven a ser UN ramal, con
@@ -335,10 +478,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
         // Ítem 9: si este ramal había partido a otro (incoming de una división mergesFrom), se
         // re-une la línea que quedó en dos mitades.
         remergeSplitRamales(engine, deleted.id, deleted.uc || 0);
-        if (deleted.pts?.length) {
-          cleanupTeeMarkersAt(engine, deleted.pts[0]);
-          cleanupTeeMarkersAt(engine, deleted.pts[deleted.pts.length - 1]);
-        }
+        if (deleted.pts?.length) cleanupJunctionsAfterRamalDelete(engine, deleted);
         netsToRenumber.add(deleted.net);
         // Limpia las referencias al ramal borrado en los bajantes
         for (const b of engine.bajantes) {
@@ -511,10 +651,7 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
     engine.ramales = engine.ramales.filter((r) => r.id !== deletedId && r.padre !== deleted.id);
     // Ítem 9: si este ramal había partido a otro, se re-une la línea en dos mitades.
     remergeSplitRamales(engine, deletedId, deleted.uc || 0);
-    if (deleted.pts?.length) {
-      cleanupTeeMarkersAt(engine, deleted.pts[0]);
-      cleanupTeeMarkersAt(engine, deleted.pts[deleted.pts.length - 1]);
-    }
+    if (deleted.pts?.length) cleanupJunctionsAfterRamalDelete(engine, deleted);
     // Limpia las referencias al ramal borrado en los bajantes
     for (const b of engine.bajantes) {
       if (b.recibeDeIds) {
