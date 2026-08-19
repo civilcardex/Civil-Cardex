@@ -305,3 +305,33 @@ No se pudo hacer una pasada de regresión manual completa en navegador sobre el 
 
 ### Relevant Files
 - `src/modules/civilflow/components/PdfViewer.tsx` — Color restore effect; removed bumpHidroAccesorio call + import
+
+## Session Summary — 2026-08-19 (Guías: codo de segmentos en singular + undo/redo)
+
+### Done
+- **Codo de segmentos (arco 90°) restaurado en conversión de guía singular**: el usuario pidió el símbolo de SEGMENTOS (arco + ticks) en un solo tributario — lo que NO quería era el disco "C90" de respaldo. Restaurado `resolveGuideJunctionAccessory` en `DrawingElementContextMenu.tsx` (import `detectAccesorioTrigger` re-agregado), llamada en "Crear ramal" y "Crear tributario" (singular) DESPUÉS de `buildTribFromGuide` (el scrub corre primero, la asignación después) y ANTES de `_markDirty()` para que el snapshot del historial incluya el codo. Plural no recibe codo (guard `trigger.isTee`). Asigna `codo90rm`/`codos_90_std`/`codo45`/`codos_45` según net/ángulo.
+- **Undo/redo ahora cubre líneas guía**: `PlanoHistory.ts` — `guideLines: PlanoGuideLine[]` agregado a `HistorySnapshot`, capturado en `captureSnapshot` (structuredClone), restaurado en `restoreSnapshot`, limpiado en `clearAll`. Crear/mover/rotar/convertir una guía ya entra al historial (todas esas rutas llaman `_markDirty`).
+- **Tests**: `planoHistoryGuideLines.test.ts` (nuevo, 4 tests) — undo/redo restaura guía creada, posición tras drag, guía borrada al convertir (restaura guía + quita ramal), clearAll limpia guideLines.
+- Verificación: tsc ✓, vitest PlanoEngine 128 ✓ (124 + 4 nuevos), lint 0 errores, build ✓, graphify update ✓.
+
+### Ronda anterior (misma sesión, previa)
+- Codo "al revés": `renderRamales.ts` — `drawCornerCodoArc` recibe dirección de SALIDA (`awayX/awayY = idx===0 ? dx : -dx`) en el último vértice; `isPlanCodo` dibuja arco o nada y `return` (sin disco "C90" de respaldo).
+- C90 residual al borrar tributario: `deleteSelected.ts` — `PLAN_CODO_TYPES`, `junctionHadTeeMarker`, `scrubPlanCodoAt`, `cleanupJunctionsAfterRamalDelete`; ambas rutas de borrado (~381, ~555) lo usan. `assignCodoAfterBranchDelete` gated por `junctionHadTeeMarker`. Tributario sin tee → scrub limpia codos de plano legados en el punto.
+- `scrubGuideJunctionAccessories` en `buildTribFromGuide` limpia accesorios persistidos de código viejo en el cruce (el codo fresco lo asigna resolveGuideJunctionAccessory después).
+
+### Ronda 3 (misma sesión — codo al revés REAL + codo tras borrar 1 de 2 tributarios)
+- **Causa raíz del "codo al revés"**: `drawCornerCodoArc` (renderRamales.ts:907) coleccionaba direcciones de LLEGADA (`pts[i]-pts[i-1]` para `i>0`) — el brazo del padre apuntaba HACIA la unión (este) en vez de hacia su cuerpo (oeste), y `v` salía espejado. Fix: colecciona direcciones de SALIDA (`pts[i-1]-pts[i]`) + guard de T (`arms.length !== 1 → return false`).
+- **Codo tras borrar 1 de 2 tributarios**: `cleanupJunctionsAfterRamalDelete` (deleteSelected.ts) ya NO gatea por `junctionHadTeeMarker` para asignar: tras el borrado, si la unión queda en L geométrica (2 brazos de extremo no colineales, af/ac/gas, sin bajante) → `assignCodoAfterBranchDelete`; si queda extremo muerto/paso recto → `scrubPlanCodoAt`. `assignCodoAfterBranchDelete` refactorizado sobre `endpointArmsAt` + detección de 45° (`codo45`/`codos_45`).
+- **Esquina viva recortada**: `drawRamalPath.ts` — nuevo `planCodoCornerAt` (2 brazos de extremo en ángulo + codo de plano anclado en el extremo) y trim de ambos cuerpos de tubería hasta `mm2cvs(1.5)` (mismo rad que `drawCornerCodoArc`): el arco sustituye la esquina de la unión, igual que los codos interiores. Aplica al host Y al ramal pareja (detecta el accesorio del vecino).
+- Tests: `teeToCodoOnRamalDelete.test.ts` +1 test (borrar 1 de 2 → `codo90rm` en tronco; borrar el otro → limpio). 129 tests ✓.
+
+### Known Issues / Próxima verificación
+- Verificación manual en navegador pendiente: trazar guía → crear tributario singular (arco 90° en unión, sin disco C90), plural (sin codo), borrar tributario (sin símbolo residual), undo/redo de guía (crear/mover/convertir).
+
+### Relevant Files
+- `src/modules/civilflow/components/pdfViewer/DrawingElementContextMenu.tsx` — `resolveGuideJunctionAccessory` restaurado (import `detectAccesorioTrigger`), call sites en "Crear ramal" y singular; `scrubGuideJunctionAccessories` con comentario matizado.
+- `src/modules/civilflow/lib/PlanoEngine/PlanoHistory.ts` — guideLines en snapshot (capture/restore/clearAll).
+- `src/modules/civilflow/lib/PlanoEngine/renderers/renderRamales.ts` — away direction en `drawCornerCodoArc`, sin fallback C90.
+- `src/modules/civilflow/lib/PlanoEngine/deleteSelected.ts` — `cleanupJunctionsAfterRamalDelete` + helpers.
+- `src/modules/civilflow/lib/PlanoEngine/__tests__/planoHistoryGuideLines.test.ts` — nuevo, 4 tests de historial con guías.
+- `src/modules/civilflow/lib/PlanoEngine/__tests__/guideTCrossing.test.ts` / `teeToCodoOnRamalDelete.test.ts` — suites previas de la sesión.
