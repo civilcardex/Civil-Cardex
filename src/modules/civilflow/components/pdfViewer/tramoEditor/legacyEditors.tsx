@@ -1,213 +1,24 @@
-import React, { type RefObject, createContext } from 'react';
-import { DIAM_BY_MAT, DIAM_BAN, DIAM_VENT } from '../../constants';
-import { VENTILACION, NETS_WITH_MULTIPLE_MATERIALS } from '../../pages/catalog/catalogData';
-import { DIAMETROS_AF } from '../../constants/hydraulicData';
-import { CAT_GAS, GAS_DN_LABELS, GAS } from '../../constants/engineeringDataGas';
-import { normalizeDnLabel } from '../../utils/formatUtils';
-import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
-import ExtremeAccessoryEditor from './ExtremeAccessoryEditor';
-import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
-import { bajanteLabel } from '../../utils/accessoryAbbreviations';
-import type {
-  PlanoElement,
-  PlanoRamal,
-  PlanoBajante,
-  PlanoArea,
-  PlanoTextAnnotation,
-} from '../../lib/PlanoEngine/PlanoState';
-import type { Piso } from '../../lib/shared/projectTypes';
-import type { PlanItem } from '../../context/PlansContext';
+import { DIAM_BY_MAT, DIAM_BAN, DIAM_VENT } from '../../../constants';
+import { VENTILACION, NETS_WITH_MULTIPLE_MATERIALS } from '../../../pages/catalog/catalogData';
+import { DIAMETROS_AF } from '../../../constants/hydraulicData';
+import { CAT_GAS, GAS_DN_LABELS, GAS } from '../../../constants/engineeringDataGas';
+import { normalizeDnLabel } from '../../../utils/formatUtils';
+import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
+import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
+import type { PlanoElement, PlanoRamal, PlanoBajante } from '../../../lib/PlanoEngine/PlanoState';
+import {
+  SELECT_STYLE,
+  INPUT_CENTER_STYLE,
+  CHECK_GRID_STYLE,
+  CHECK_ROW_STYLE,
+  READONLY_CENTER_STYLE,
+  SELECT_CENTER_STYLE,
+  MAT_ROW_STYLE,
+  MAT_NAME_STYLE,
+  ramalHasCodoReventilado,
+} from './context';
 
-// Sonda estructural de la unión PlanoElement: permite inspeccionar `tipo`/`pts` (presentes en
-// algunos tipos de elemento, ausentes en otros) sin estrechar el tipo con los type guards exportados
-// en cada punto de acceso.
-type ProbedElement = PlanoElement & {
-  tipo?: string;
-  pts?: number[][];
-  labelAngle?: number;
-  textAngle?: number;
-  totalL?: number;
-  net?: string;
-};
-
-interface TramoEditorContextValue {
-  engineRef: React.MutableRefObject<PlanoEngine | null>;
-  selElement: PlanoElement | null;
-  setSelElement: React.Dispatch<React.SetStateAction<PlanoElement | null>>;
-  activeNet: string;
-  handleUpdateSel: (field: string, value: unknown) => void;
-  handleRotateLabel: () => void;
-  diamSel: Record<string, string>;
-  setDiamSel: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  gasMatSel: Record<string, string>;
-  setGasMatSel: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  pendSel: Record<string, number>;
-  setPendSel: React.Dispatch<React.SetStateAction<Record<string, number>>>;
-  pendInput: string;
-  setPendInput: React.Dispatch<React.SetStateAction<string>>;
-  mats: Record<string, Array<{ val: string }>> | null;
-  matLongName: (short: string) => string;
-  plans?: PlanItem[];
-  pisos?: Piso[];
-}
-
-const TramoEditorCtx = createContext<TramoEditorContextValue | null>(null);
-
-// Una tubería principal sanitaria solo necesita el mínimo de 3" cuando realmente lleva un codo
-// reventilado (en un extremo o en medio) — no cualquier ramal de la red principal.
-function ramalHasCodoReventilado(r: PlanoRamal | null): boolean {
-  if (!r) return false;
-  if (r.accesorioInicio === 'codoReventilado' || r.accesorioFin === 'codoReventilado') return true;
-  return Object.values(r.accMed || {}).includes('codoReventilado');
-}
-const TramoEditor_S1: React.CSSProperties = {
-  width: '100%',
-  padding: '4px 6px',
-  background: '#1e2024',
-  border: '1px solid #3a494a',
-  borderRadius: 3,
-  color: '#e2e2e8',
-  fontSize: 12,
-  fontFamily: "'Geist',monospace",
-  cursor: 'pointer',
-};
-const TramoEditor_S4: React.CSSProperties = {
-  width: '100%',
-  padding: '4px 6px',
-  background: '#1e2024',
-  border: '1px solid #3a494a',
-  borderRadius: 3,
-  color: '#e2e2e8',
-  fontSize: 12,
-  fontFamily: "'Geist',monospace",
-  textAlign: 'center',
-};
-const TramoEditor_S8: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(2, 1fr)',
-  gap: '4px 8px',
-  maxHeight: 120,
-  overflowY: 'auto',
-  padding: '4px',
-  background: '#1a1c20',
-  border: '1px solid #3a494a',
-  borderRadius: 3,
-};
-const TramoEditor_S9: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 4,
-  cursor: 'pointer',
-  fontSize: 12,
-  color: '#b9caca',
-  fontFamily: "'Geist',monospace",
-  minWidth: 0,
-};
-const TramoEditor_S12: React.CSSProperties = {
-  width: '100%',
-  padding: '3px 5px',
-  background: '#1e2024',
-  border: '1px solid #3a494a',
-  borderRadius: 3,
-  color: '#e2e2e8',
-  fontSize: 12,
-  fontFamily: "'Geist',monospace",
-  textAlign: 'center',
-};
-const TramoEditor_S13: React.CSSProperties = {
-  width: '100%',
-  padding: '4px 6px',
-  background: '#1e2024',
-  border: '1px solid #3a494a',
-  borderRadius: 3,
-  color: '#e2e2e8',
-  fontSize: 12,
-  fontFamily: "'Geist',monospace",
-  cursor: 'pointer',
-  textAlign: 'center',
-};
-const TramoEditor_S14: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 6,
-  padding: '3px 8px',
-  background: '#1a1c20',
-  border: '1px solid #282a2e',
-  borderRadius: 3,
-};
-const TramoEditor_S15: React.CSSProperties = {
-  fontSize: 12,
-  color: '#b9caca',
-  fontFamily: "'Geist',monospace",
-  fontWeight: 600,
-  textAlign: 'right',
-  minWidth: 0,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-};
-const TramoEditor_S21: React.CSSProperties = {
-  width: '50%',
-  padding: '3px 5px',
-  background: '#1e2024',
-  border: '1px solid #3a494a',
-  borderRadius: 3,
-  color: '#e2e2e8',
-  fontSize: 12,
-  fontFamily: "'Geist',monospace",
-};
-const TramoEditor_S22: React.CSSProperties = {
-  width: '100%',
-  padding: '3px 5px',
-  background: '#1e2024',
-  border: '1px solid #3a494a',
-  borderRadius: 3,
-  color: '#e2e2e8',
-  fontSize: 12,
-  fontFamily: "'Geist',monospace",
-  minWidth: 0,
-};
-const TramoEditor_S23: React.CSSProperties = {
-  width: '100%',
-  padding: '3px 5px',
-  background: '#1a1c1f',
-  border: '1px solid #2a3435',
-  borderRadius: 3,
-  color: '#b9caca',
-  fontSize: 12,
-  fontFamily: "'Geist',monospace",
-};
-const TramoEditor_S24: React.CSSProperties = {
-  width: '100%',
-  padding: '3px 5px',
-  background: '#1e2024',
-  border: '1px solid #3a494a',
-  borderRadius: 3,
-  color: '#e2e2e8',
-  fontSize: 12,
-  fontFamily: "'Geist',monospace",
-};
-const TramoEditor_S31: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 4,
-  padding: '2px 6px',
-  background: 'rgba(168,85,247,.1)',
-  border: '1px solid rgba(168,85,247,.35)',
-  borderRadius: 3,
-  color: '#C084FC',
-  cursor: 'pointer',
-  fontFamily: "'Geist',monospace",
-  fontSize: 12,
-  fontWeight: 700,
-};
-
-/* ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
- *  Sub-editores legacy (compartidos por las variantes, siguen guiados por props)
- * ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― */
-
-function ContadorEditor({
+export function ContadorEditor({
   selElement,
   activeNet,
   handleUpdateSel,
@@ -273,7 +84,7 @@ function ContadorEditor({
           onChange={(e) => {
             handleUpdateSel('diametro', e.target.value);
           }}
-          style={TramoEditor_S1}
+          style={SELECT_STYLE}
         >
           <option value="">— Seleccionar —</option>
           {activeNet === 'gas'
@@ -293,7 +104,7 @@ function ContadorEditor({
   );
 }
 
-function CalentadorEditor({
+export function CalentadorEditor({
   selElement,
   handleUpdateSel,
 }: {
@@ -357,7 +168,7 @@ function CalentadorEditor({
           onChange={(e) => {
             handleUpdateSel('capacidad', e.target.value);
           }}
-          style={TramoEditor_S1}
+          style={SELECT_STYLE}
         >
           <option value="">— Seleccionar —</option>
           {CAT_GAS.filter((g) => g.id.startsWith('cal')).map((g) => (
@@ -371,7 +182,7 @@ function CalentadorEditor({
   );
 }
 
-function BajanteEditor({
+export function BajanteEditor({
   selElement,
   activeNet,
   engineRef,
@@ -444,7 +255,7 @@ function BajanteEditor({
                   cd.dNominal = val;
                 });
               }}
-              style={TramoEditor_S1}
+              style={SELECT_STYLE}
             >
               <option value="">—</option>
               {(selElement.net === 'vent' ? DIAM_VENT : DIAM_BAN).map((d) => (
@@ -553,7 +364,7 @@ function BajanteEditor({
                 const v = e.target.value;
                 handleUpdateSel('hVert', v ? parseFloat(v) : 0);
               }}
-              style={TramoEditor_S4}
+              style={INPUT_CENTER_STYLE}
             />
           </div>
           <div style={{ flex: 1 }}>
@@ -592,7 +403,7 @@ function BajanteEditor({
                 }
                 handleUpdateSel('dNominal', val);
               }}
-              style={TramoEditor_S1}
+              style={SELECT_STYLE}
             >
               <option value="">—</option>
               {(selElement.net === 'vent' ? DIAM_VENT : DIAM_BAN).map((d) => (
@@ -630,7 +441,7 @@ function BajanteEditor({
                 const val = e.target.value;
                 handleUpdateSel('bajR', val === '7/24' ? 7 / 24 : 0.25);
               }}
-              style={TramoEditor_S1}
+              style={SELECT_STYLE}
             >
               <option value="7/24">7/24</option>
               <option value="1/4">1/4</option>
@@ -655,7 +466,7 @@ function BajanteEditor({
               onChange={(e) => {
                 handleUpdateSel('area_m2', parseFloat(e.target.value) || 0);
               }}
-              style={TramoEditor_S1}
+              style={SELECT_STYLE}
             >
               <option value="">— Sin área —</option>
               {(engineRef.current?.areas || [])
@@ -739,7 +550,7 @@ function BajanteEditor({
             >
               Ramales asociados
             </div>
-            <div style={TramoEditor_S8}>
+            <div style={CHECK_GRID_STYLE}>
               {(() => {
                 const bajRamales = (engineRef.current?.ramales || []).filter(
                   (r) => r.net === 'san' && r.tipo !== 'tributario',
@@ -760,7 +571,7 @@ function BajanteEditor({
                   );
                 const recibidos = selElement.recibeDeIds || [];
                 return bajRamales.map((r) => (
-                  <label key={r.id} style={TramoEditor_S9}>
+                  <label key={r.id} style={CHECK_ROW_STYLE}>
                     <input
                       type="checkbox"
                       checked={recibidos.includes(r.id)}
@@ -822,12 +633,14 @@ function CaudalField({ selElement }: { selElement: PlanoRamal | null }) {
       >
         Caudal (LPS)
       </div>
-      <div style={{ ...TramoEditor_S12, display: 'flex', alignItems: 'center' }}>{display}</div>
+      <div style={{ ...READONLY_CENTER_STYLE, display: 'flex', alignItems: 'center' }}>
+        {display}
+      </div>
     </div>
   );
 }
 
-function RamalEditor({
+export function RamalEditor({
   selElement,
   activeNet,
   engineRef,
@@ -938,7 +751,7 @@ function RamalEditor({
                   setSelElement({ ...selElement, material: mat, diametro: dn });
                 }
               }}
-              style={TramoEditor_S13}
+              style={SELECT_CENTER_STYLE}
             >
               <option value="">— Sin material —</option>
               {GAS.map((g) => (
@@ -980,7 +793,7 @@ function RamalEditor({
                 setSelElement({ ...selElement, ...updates });
                 setDiamSel((prev) => ({ ...prev, [activeNet]: '' }));
               }}
-              style={TramoEditor_S13}
+              style={SELECT_CENTER_STYLE}
             >
               {matList.map((m) => (
                 <option key={m.val} value={m.val}>
@@ -990,7 +803,7 @@ function RamalEditor({
             </select>
           </div>
         ) : (
-          <div style={TramoEditor_S14}>
+          <div style={MAT_ROW_STYLE}>
             <span
               style={{
                 fontSize: 12,
@@ -1003,7 +816,7 @@ function RamalEditor({
             >
               Material
             </span>
-            <span style={TramoEditor_S15} title={matName}>
+            <span style={MAT_NAME_STYLE} title={matName}>
               {matName}
             </span>
           </div>
@@ -1081,7 +894,7 @@ function RamalEditor({
                     }
                   }
                 }}
-                style={TramoEditor_S13}
+                style={SELECT_CENTER_STYLE}
               >
                 {(() => {
                   const gasMat = GAS.find((g) => g.mat === currentMat);
@@ -1170,7 +983,7 @@ function RamalEditor({
                     }
                   }
                 }}
-                style={TramoEditor_S13}
+                style={SELECT_CENTER_STYLE}
               >
                 <option value="">Sin diámetro</option>
                 {diamList.map((d) => {
@@ -1251,7 +1064,7 @@ function RamalEditor({
                         : 2.0;
                   setPendInput(current > 0 ? String(current) : '');
                 }}
-                style={TramoEditor_S4}
+                style={INPUT_CENTER_STYLE}
               />
             </div>
           ) : null}
@@ -1293,7 +1106,7 @@ function RamalEditor({
                       setSelElement({ ...selElement, dz: v, lvert: v } as PlanoRamal);
                     }
                   }}
-                  style={TramoEditor_S12}
+                  style={READONLY_CENTER_STYLE}
                 />
               </div>
             )}
@@ -1326,7 +1139,7 @@ function RamalEditor({
                       setSelElement({ ...selElement, nSalidas: v } as PlanoRamal);
                     }
                   }}
-                  style={TramoEditor_S12}
+                  style={READONLY_CENTER_STYLE}
                 />
               </div>
             )}
@@ -1334,720 +1147,5 @@ function RamalEditor({
         )}
       </div>
     </div>
-  );
-}
-
-/* ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
- *  Componentes variante — composición explícita, sin props booleanas
- * ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― */
-
-function ContadorTramoEditor() {
-  const { selElement, activeNet, handleUpdateSel } = React.useContext(TramoEditorCtx)!;
-  return (
-    <ContadorEditor
-      selElement={selElement as PlanoBajante}
-      activeNet={activeNet}
-      handleUpdateSel={handleUpdateSel}
-    />
-  );
-}
-
-function CalentadorTramoEditor() {
-  const { selElement, handleUpdateSel } = React.useContext(TramoEditorCtx)!;
-  return (
-    <CalentadorEditor selElement={selElement as PlanoBajante} handleUpdateSel={handleUpdateSel} />
-  );
-}
-
-// Patrón de texto libre con commit al perder el foco (buffer local de edición) — igual que CanalDimField
-// en RainChannelsCheck.tsx y CanalDimInput en DrawingElementContextMenu.tsx, porque un input
-// controlado por tecla pelea contra el tipeo decimal ('.' final, números parciales).
-function CanalNumField({
-  label,
-  value,
-  onCommit,
-}: {
-  label: string;
-  value: number;
-  onCommit: (v: number) => void;
-}) {
-  const [text, setText] = React.useState('');
-  const [editing, setEditing] = React.useState(false);
-  const display = editing ? text : value > 0 ? String(value) : '';
-  return (
-    <input
-      type="text"
-      inputMode="decimal"
-      value={display}
-      placeholder="0"
-      aria-label={label}
-      onFocus={() => {
-        setEditing(true);
-        setText(display);
-      }}
-      onChange={(e) => {
-        const raw = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
-        setText(raw);
-      }}
-      onKeyDown={(e) => {
-        // Enter commitea el cambio (mismo comportamiento que el resto de campos numéricos)
-        if (e.key === 'Enter') e.currentTarget.blur();
-      }}
-      onBlur={() => {
-        setEditing(false);
-        const v = parseFloat(text) || 0;
-        onCommit(text === '' ? 0 : v);
-      }}
-      style={TramoEditor_S4}
-    />
-  );
-}
-
-function CanalTramoEditor() {
-  const { selElement: rawSelElement, handleUpdateSel } = React.useContext(TramoEditorCtx)!;
-  if (!rawSelElement) return null;
-  const selElement = rawSelElement as PlanoBajante;
-  // Ítem 3.2: los tres campos del canal viven en una sola fila para no inflar el panel.
-  const fieldLabel: React.CSSProperties = {
-    fontFamily: "'Geist',monospace",
-    fontSize: 12,
-    color: '#9BA8AA',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  };
-  return (
-    <>
-      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-        <div style={fieldLabel}>Datos del canal</div>
-        <div
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: '#b9caca',
-            fontFamily: "'Geist',monospace",
-            padding: '2px 0',
-          }}
-        >
-          {selElement.code || selElement.id}
-        </div>
-      </div>
-
-      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-          <div>
-            <div style={fieldLabel}>Base (cm)</div>
-            <CanalNumField
-              label="Base (cm)"
-              value={selElement.base || 0}
-              onCommit={(v) => handleUpdateSel('base', v)}
-            />
-          </div>
-          <div>
-            <div style={fieldLabel}>Altura (cm)</div>
-            <CanalNumField
-              label="Altura (cm)"
-              value={selElement.altura || 0}
-              onCommit={(v) => handleUpdateSel('altura', v)}
-            />
-          </div>
-          <div>
-            <div style={fieldLabel}>Longitud (cm)</div>
-            <CanalNumField
-              label="Longitud (cm)"
-              value={selElement.longitud || 0}
-              onCommit={(v) => handleUpdateSel('longitud', v)}
-            />
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-function BajanteHeaderFields() {
-  const { selElement: rawSelElement, engineRef, setSelElement } = React.useContext(TramoEditorCtx)!;
-  if (!rawSelElement) return null;
-  const selElement = rawSelElement as PlanoBajante;
-  return (
-    <div>
-      <div
-        style={{
-          fontSize: 12,
-          color: '#8AB4D6',
-          fontFamily: "'Geist',monospace",
-          marginBottom: 2,
-          textTransform: 'uppercase',
-          letterSpacing: 0.3,
-        }}
-      >
-        Código
-      </div>
-      <input
-        value={selElement.code || ''}
-        placeholder="Código bajante"
-        aria-label="Código"
-        onChange={(e) => {
-          if (engineRef.current) {
-            const v = e.target.value;
-            engineRef.current.updateSelected({ code: v });
-            setSelElement({ ...selElement, code: v });
-          }
-        }}
-        style={TramoEditor_S21}
-      />
-    </div>
-  );
-}
-
-function AreaHeaderFields() {
-  const { selElement: rawSelElement, engineRef, setSelElement } = React.useContext(TramoEditorCtx)!;
-  if (!rawSelElement) return null;
-  const selElement = rawSelElement as PlanoArea;
-  return (
-    <>
-      <div>
-        <div
-          style={{
-            fontSize: 12,
-            color: '#8AB4D6',
-            fontFamily: "'Geist',monospace",
-            marginBottom: 2,
-            textTransform: 'uppercase',
-            letterSpacing: 0.3,
-          }}
-        >
-          Etiqueta
-        </div>
-        <input
-          value={selElement.label || ''}
-          placeholder="Etiqueta área"
-          aria-label="Etiqueta"
-          onChange={(e) => {
-            if (engineRef.current) {
-              const v = e.target.value;
-              engineRef.current.updateSelected({ label: v });
-              setSelElement({ ...selElement, label: v });
-            }
-          }}
-          style={TramoEditor_S22}
-        />
-      </div>
-      <div>
-        <div
-          style={{
-            fontSize: 12,
-            color: '#8AB4D6',
-            fontFamily: "'Geist',monospace",
-            marginBottom: 2,
-            textTransform: 'uppercase',
-            letterSpacing: 0.3,
-          }}
-        >
-          Área calculada
-        </div>
-        <div style={TramoEditor_S23}>{selElement.areaM2 ? `${selElement.areaM2} m²` : '—'}</div>
-      </div>
-      <div>
-        <div
-          style={{
-            fontSize: 12,
-            color: '#8AB4D6',
-            fontFamily: "'Geist',monospace",
-            marginBottom: 2,
-            textTransform: 'uppercase',
-            letterSpacing: 0.3,
-          }}
-        >
-          Asociar Bajante
-        </div>
-        <select
-          aria-label="Asociar bajante"
-          value={
-            (engineRef.current?.bajantes || []).find((b) => b.area_m2 === selElement.areaM2)?.id ||
-            ''
-          }
-          onChange={(e) => {
-            const bajanteId = e.target.value;
-            (engineRef.current?.bajantes || []).forEach((b) => {
-              if (b.area_m2 === selElement.areaM2) {
-                engineRef.current?.updateElementById(b.id, { area_m2: 0 });
-              }
-            });
-            if (bajanteId) {
-              engineRef.current?.updateElementById(bajanteId, { area_m2: selElement.areaM2 });
-            }
-            if (engineRef.current) engineRef.current._markDirty();
-            setSelElement({ ...selElement });
-          }}
-          style={TramoEditor_S24}
-        >
-          <option value="">— Sin bajante —</option>
-          {(engineRef.current?.bajantes || [])
-            .filter((b) => b.net === selElement.net && b.tipo !== 'canal')
-            .map((b) => (
-              <option key={b.id} value={b.id}>
-                {bajanteLabel(b, engineRef.current?.nivelActual?.label)}
-              </option>
-            ))}
-        </select>
-      </div>
-    </>
-  );
-}
-
-function TextHeaderFields() {
-  const { selElement: rawSelElement, engineRef, setSelElement } = React.useContext(TramoEditorCtx)!;
-  if (!rawSelElement) return null;
-  const selElement = rawSelElement as PlanoTextAnnotation;
-  return (
-    <div>
-      <div
-        style={{
-          fontSize: 12,
-          color: '#8AB4D6',
-          fontFamily: "'Geist',monospace",
-          marginBottom: 2,
-          textTransform: 'uppercase',
-          letterSpacing: 0.3,
-        }}
-      >
-        Texto
-      </div>
-      <input
-        value={selElement.text || ''}
-        placeholder="Texto"
-        aria-label="Texto adicional"
-        onChange={(e) => {
-          if (engineRef.current) {
-            const v = e.target.value;
-            engineRef.current.updateSelected({ text: v });
-            setSelElement({ ...selElement, text: v });
-          }
-        }}
-        style={TramoEditor_S24}
-      />
-    </div>
-  );
-}
-
-function RamalHeaderFields() {
-  const { selElement: rawSelElement, engineRef, setSelElement } = React.useContext(TramoEditorCtx)!;
-  if (!rawSelElement) return null;
-  const selElement = rawSelElement as PlanoRamal;
-
-  const displayLabelWithPiso = (label: string | null | undefined, pisoLabel: string) => {
-    if (!label) return '';
-    if (label.includes('-')) return label;
-    if (!pisoLabel) return label;
-    const n = engineRef.current?.nivelActual?.n;
-    let corto: string | null = null;
-    if (typeof n === 'number') {
-      if (n < 0) corto = `S${Math.abs(n)}`;
-      else if (n === 99) corto = 'C';
-      else corto = `P${n}`;
-    }
-    if (!corto) {
-      const match = /(\d+)$/.exec(pisoLabel);
-      if (match) {
-        const num = parseInt(match[1], 10);
-        const prefixMatch = /^(\D+)/.exec(pisoLabel);
-        const prefix = prefixMatch ? prefixMatch[1].trim().toLowerCase() : '';
-        if (prefix.startsWith('s') || prefix.startsWith('só') || prefix.includes('sot'))
-          corto = `S${num}`;
-        else if (prefix.startsWith('c')) corto = 'C';
-        else corto = `P${num}`;
-      }
-    }
-    return corto ? `${label}-${corto}` : `${label}-${pisoLabel}`;
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: 3 }}>
-        <div>
-          <div
-            style={{
-              fontSize: 12,
-              color: '#8AB4D6',
-              fontFamily: "'Geist',monospace",
-              marginBottom: 2,
-              textTransform: 'uppercase',
-              letterSpacing: 0.3,
-            }}
-          >
-            Nombre
-          </div>
-          <input
-            value={displayLabelWithPiso(
-              selElement.label,
-              engineRef.current?.nivelActual?.label ?? '',
-            )}
-            placeholder="Tramo"
-            aria-label="Nombre del tramo"
-            onChange={(e) => {
-              if (engineRef.current) {
-                const v = e.target.value;
-                engineRef.current.updateSelected({ label: v });
-                setSelElement({ ...selElement, label: v });
-              }
-            }}
-            style={TramoEditor_S22}
-          />
-        </div>
-        <div>
-          <div
-            style={{
-              fontSize: 12,
-              color: '#8AB4D6',
-              fontFamily: "'Geist',monospace",
-              marginBottom: 2,
-              textTransform: 'uppercase',
-              letterSpacing: 0.3,
-            }}
-          >
-            Inicio
-          </div>
-          <input
-            value={selElement.ini || ''}
-            placeholder="— inicial —"
-            aria-label="Conexión de inicio"
-            onChange={(e) => {
-              if (engineRef.current) {
-                const v = e.target.value;
-                engineRef.current.updateSelected({ ini: v });
-                setSelElement({ ...selElement, ini: v });
-              }
-            }}
-            style={TramoEditor_S22}
-          />
-        </div>
-        <div>
-          <div
-            style={{
-              fontSize: 12,
-              color: '#8AB4D6',
-              fontFamily: "'Geist',monospace",
-              marginBottom: 2,
-              textTransform: 'uppercase',
-              letterSpacing: 0.3,
-            }}
-          >
-            Final
-          </div>
-          <input
-            value={selElement.fin || ''}
-            placeholder="— final —"
-            aria-label="Conexión de fin"
-            onChange={(e) => {
-              if (engineRef.current) {
-                const v = e.target.value;
-                engineRef.current.updateSelected({ fin: v });
-                setSelElement({ ...selElement, fin: v });
-              }
-            }}
-            style={TramoEditor_S22}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Variantes de sección de editor ---------- */
-
-function BajanteEditorSection() {
-  const ctx = React.useContext(TramoEditorCtx)!;
-  const { engineRef, activeNet } = ctx;
-  const selElement = ctx.selElement as ProbedElement | null;
-  const lvl = engineRef.current?.nivelActual?.label ?? '';
-
-  const isGhostSel =
-    (selElement &&
-      (selElement.tipo === 'bajante' || selElement.tipo === 'montante') &&
-      engineRef.current?._isGhostSel) ||
-    false;
-
-  return (
-    <BajanteEditor
-      selElement={selElement as PlanoBajante}
-      activeNet={activeNet}
-      engineRef={engineRef}
-      setSelElement={ctx.setSelElement}
-      handleUpdateSel={ctx.handleUpdateSel}
-      isGhostSel={isGhostSel}
-      lvl={lvl}
-    />
-  );
-}
-
-function RamalEditorSection() {
-  const ctx = React.useContext(TramoEditorCtx)!;
-  const {
-    engineRef,
-    setSelElement,
-    activeNet,
-    plans,
-    diamSel,
-    gasMatSel,
-    pendSel,
-    pendInput,
-    mats,
-    matLongName,
-    setDiamSel,
-    setGasMatSel,
-    setPendSel,
-    setPendInput,
-  } = ctx;
-  const selElement = ctx.selElement as ProbedElement | null;
-  const isSelActiveNet = selElement && selElement.net === activeNet;
-
-  return (
-    <>
-      <RamalEditor
-        selElement={selElement as PlanoRamal | null}
-        activeNet={activeNet}
-        engineRef={engineRef}
-        setSelElement={setSelElement}
-        isSelActiveNet={isSelActiveNet}
-        diamSel={diamSel}
-        gasMatSel={gasMatSel}
-        pendSel={pendSel}
-        pendInput={pendInput}
-        mats={mats}
-        matLongName={matLongName}
-        setDiamSel={setDiamSel}
-        setGasMatSel={setGasMatSel}
-        setPendSel={setPendSel}
-        setPendInput={setPendInput}
-      />
-      {selElement && ['tributario', 'ramal'].includes(selElement.tipo ?? '') && (
-        <ExtremeAccessoryEditor
-          selElement={selElement as PlanoRamal}
-          engineRef={engineRef}
-          setSelElement={(el) => setSelElement(el)}
-          activeNet={activeNet}
-          plans={plans}
-        />
-      )}
-      {selElement?.pts &&
-        (engineRef.current?.bajantes?.length ?? 0) > 0 &&
-        ['san', 'll'].includes(activeNet) && (
-          <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-            <div
-              style={{
-                fontSize: 12,
-                color: '#9BA8AA',
-                fontFamily: "'Geist',monospace",
-                marginBottom: 4,
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-              }}
-            >
-              Bajantes asociados
-            </div>
-            <div style={TramoEditor_S8}>
-              {(() => {
-                const netBajs = (engineRef.current?.bajantes || []).filter(
-                  (b) => b.net === activeNet && b.tipo !== 'tributario',
-                );
-                if (netBajs.length === 0)
-                  return (
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: '#8AB4D6',
-                        fontFamily: "'Geist',monospace",
-                        padding: '4px',
-                        gridColumn: 'span 2',
-                      }}
-                    >
-                      Sin bajantes en esta red
-                    </div>
-                  );
-                return netBajs.map((b) => {
-                  const isAssoc = (b.recibeDeIds || []).includes(selElement.id);
-                  return (
-                    <label key={b.id} style={TramoEditor_S9}>
-                      <input
-                        type="checkbox"
-                        checked={isAssoc}
-                        onChange={(e) => {
-                          const newRecibe = e.target.checked
-                            ? b.recibeDeIds.includes(selElement.id)
-                              ? b.recibeDeIds
-                              : [...b.recibeDeIds, selElement.id]
-                            : b.recibeDeIds.filter((id: string) => id !== selElement.id);
-                          engineRef.current?.updateElementById(b.id, { recibeDeIds: newRecibe });
-                          engineRef.current?.render();
-                          engineRef.current?._markDirty();
-                        }}
-                        style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
-                      />
-                      <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                        {bajanteLabel(b, engineRef.current?.nivelActual?.label)}
-                      </span>
-                    </label>
-                  );
-                });
-              })()}
-            </div>
-          </div>
-        )}
-    </>
-  );
-}
-
-/* ――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――
- *  Componente principal — provee el contexto y despacha cambios
- * ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― */
-
-interface TramoEditorProps {
-  selElement: PlanoElement | null;
-  activeNet: string;
-  engineRef: RefObject<PlanoEngine | null>;
-  diamSel: Record<string, string>;
-  gasMatSel: Record<string, string>;
-  pendSel: Record<string, number>;
-  pendInput: string;
-  mats: Record<string, Array<{ val: string }>> | null;
-  matLongName: (short: string) => string;
-  setDiamSel: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  setGasMatSel: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  setPendSel: React.Dispatch<React.SetStateAction<Record<string, number>>>;
-  setPendInput: React.Dispatch<React.SetStateAction<string>>;
-  setSelElement: React.Dispatch<React.SetStateAction<PlanoElement | null>>;
-  handleUpdateSel: (field: string, value: unknown) => void;
-  handleRotateLabel: () => void;
-  plans?: PlanItem[];
-  pisos?: Piso[];
-}
-
-export default function TramoEditor(props: TramoEditorProps) {
-  const ctxValue: TramoEditorContextValue = {
-    engineRef: props.engineRef as React.MutableRefObject<PlanoEngine | null>,
-    selElement: props.selElement,
-    setSelElement: props.setSelElement,
-    activeNet: props.activeNet,
-    handleUpdateSel: props.handleUpdateSel,
-    handleRotateLabel: props.handleRotateLabel,
-    diamSel: props.diamSel,
-    setDiamSel: props.setDiamSel,
-    gasMatSel: props.gasMatSel,
-    setGasMatSel: props.setGasMatSel,
-    pendSel: props.pendSel,
-    setPendSel: props.setPendSel,
-    pendInput: props.pendInput,
-    setPendInput: props.setPendInput,
-    mats: props.mats,
-    matLongName: props.matLongName,
-    plans: props.plans,
-    pisos: props.pisos,
-  };
-
-  return (
-    <TramoEditorCtx.Provider value={ctxValue}>
-      <TramoEditorInner />
-    </TramoEditorCtx.Provider>
-  );
-}
-
-function TramoEditorInner() {
-  const ctx = React.useContext(TramoEditorCtx)!;
-  const { engineRef, handleRotateLabel } = ctx;
-  const selElement = ctx.selElement as ProbedElement | null;
-
-  if (selElement && selElement.tipo === 'contador') return <ContadorTramoEditor />;
-  if (selElement && selElement.tipo === 'calentador') return <CalentadorTramoEditor />;
-  if (selElement && selElement.tipo === 'canal') return <CanalTramoEditor />;
-
-  const isGhostSel =
-    (selElement &&
-      (selElement.tipo === 'bajante' || selElement.tipo === 'montante') &&
-      engineRef.current?._isGhostSel) ||
-    false;
-  const isBajMont = selElement && (selElement.tipo === 'bajante' || selElement.tipo === 'montante');
-  const isArea = selElement && selElement.id?.startsWith('AR');
-  const isText = selElement && selElement.id?.startsWith('T');
-  // Las guías también llevan una polilínea `pts` (reutilizada para la detección de clics, como un ramal)
-  // pero no tienen `tipo` ni están en engine.ramales — sin esta exclusión, al seleccionar una guía
-  // caía en el fallback de `selElement.pts` de abajo y renderizaba el editor completo de ramal
-  // (material/diámetro/pendiente) más el panel Aparatos (PdfViewer.tsx), nada de lo cual aplica a una guía.
-  const isGuide = !!selElement?.id?.startsWith('GL');
-  const isRamal =
-    selElement &&
-    !isGuide &&
-    (selElement.tipo === 'ramal' || selElement.tipo === 'tributario' || selElement.pts);
-
-  return (
-    <form onSubmit={(e) => e.preventDefault()}>
-      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 6,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "'Geist',monospace",
-              fontSize: 12,
-              color: '#9BA8AA',
-              textTransform: 'uppercase',
-              letterSpacing: 1,
-            }}
-          >
-            {isGhostSel
-              ? 'Datos del bajante fantasma'
-              : isArea
-                ? 'Datos del área'
-                : isGuide
-                  ? 'Línea guía'
-                  : 'Datos del tramo'}
-          </div>
-          {selElement && (selElement.pts || selElement.id?.startsWith('T')) && (
-            <button
-              type="button"
-              onClick={handleRotateLabel}
-              title="Rotar etiqueta (0°/45°/90°/-90°/-45°)"
-              style={TramoEditor_S31}
-            >
-              <span style={{ fontSize: 12, lineHeight: 1 }}>↻</span>
-              <span>{selElement.labelAngle || selElement.textAngle || 0}°</span>
-            </button>
-          )}
-        </div>
-        {selElement ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {isRamal && <RamalHeaderFields />}
-            {isBajMont && <BajanteHeaderFields />}
-            {isText && <TextHeaderFields />}
-            {isArea && <AreaHeaderFields />}
-            {selElement.pts && (
-              <div style={{ fontSize: 12, color: '#8AB4D6', fontFamily: "'Geist',monospace" }}>
-                L={selElement.totalL}m · {selElement.pts.length} pts
-                {selElement.tipo ? ` · ${selElement.tipo}` : ''}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div
-            style={{
-              fontSize: 12,
-              color: '#8AB4D6',
-              fontFamily: "'Geist',monospace",
-              padding: '4px 0',
-            }}
-          >
-            Selecciona un elemento en el plano
-          </div>
-        )}
-      </div>
-
-      {selElement && !isArea && isBajMont && <BajanteEditorSection />}
-      {selElement && !isArea && !isBajMont && !isGuide && <RamalEditorSection />}
-    </form>
   );
 }

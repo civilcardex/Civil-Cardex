@@ -30,6 +30,8 @@ module.exports = {
         'src/modules/civilflow/components/pdfViewer/TramoEditor.tsx',
         'src/modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts',
         'src/modules/civilflow/components/pdfViewer/DrawingElementContextMenu.tsx',
+        'src/modules/civilflow/components/pdfViewer/drawingElementContextMenu/**/*.{ts,tsx}',
+        'src/modules/civilflow/components/pdfViewer/tramoEditor/**/*.{ts,tsx}',
         'src/modules/civilflow/components/pdfViewer/CopyFromPlanPanel.tsx',
         'src/modules/civilflow/components/pdfViewer/AccesorioModal.tsx',
         'src/modules/civilflow/components/pdfViewer/BajanteAsociacion.tsx',

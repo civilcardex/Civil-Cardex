@@ -10,7 +10,7 @@ import { pisoCorto, buildBajanteVisualLabel } from '../../constants';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoBajante, PlanoElement } from '../../lib/PlanoEngine/PlanoState';
 import type { PlanItem } from '../../context/PlansContext';
-import type { LowerFloorRamales } from './DrawingElementContextMenu';
+import type { LowerFloorRamales } from './drawingElementContextMenu/context';
 const BajanteAsociacion_S1: React.CSSProperties = {
   width: '100%',
   padding: '4px 6px',

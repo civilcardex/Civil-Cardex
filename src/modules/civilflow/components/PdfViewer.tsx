@@ -49,14 +49,15 @@ import PdfViewerNetworkBar from './pdfViewer/PdfViewerNetworkBar';
 import { usePdfAutoSave } from './pdfViewer/usePdfAutoSave';
 import { usePdfViewerEngine } from './pdfViewer/PdfViewerEngineInit';
 import TextInputOverlay from './pdfViewer/TextInputOverlay';
-import DrawingElementContextMenu, {
-  type ContextMenuState,
-  type LowerFloorRamales,
-} from './pdfViewer/DrawingElementContextMenu';
+import DrawingElementContextMenu from './pdfViewer/drawingElementContextMenu';
+import type {
+  ContextMenuState,
+  LowerFloorRamales,
+} from './pdfViewer/drawingElementContextMenu/context';
 import ConfirmDialog from './pdfViewer/ConfirmDialog';
 import AccesorioModal from './pdfViewer/AccesorioModal';
 import TipoTramoSelector from './pdfViewer/TipoTramoSelector';
-import TramoEditor from './pdfViewer/TramoEditor';
+import TramoEditor from './pdfViewer/tramoEditor';
 import BajanteAsociacion from './pdfViewer/BajanteAsociacion';
 import PdfViewerDrawnElements from './pdfViewer/PdfViewerDrawnElements';
 import { CopyFromPlanPanel } from './pdfViewer/CopyFromPlanPanel';
