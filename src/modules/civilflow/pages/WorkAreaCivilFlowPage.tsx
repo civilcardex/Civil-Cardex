@@ -18,10 +18,10 @@ function WorkAreaCivilFlowPage() {
     'Área de trabajo de CivilCardex. Diseño de redes hidráulicas, sanitarias, gas, aguas lluvias y equipos a presión.',
   );
   return (
-    <div className="h-full">
+    <main className="h-full">
       <h1 style={WorkAreaCivilFlowPage_S1}>Área de trabajo</h1>
       <WorkArea />
-    </div>
+    </main>
   );
 }
 

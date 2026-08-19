@@ -67,20 +67,27 @@ export default function PdfViewerDrawnElements({
                 gap: 4,
               }}
             >
-              <div
-                role="button"
-                tabIndex={0}
+              <button
+                type="button"
                 aria-label={`Seleccionar elemento ${el.id}`}
                 aria-current={el.id === selElement?.id ? 'true' : undefined}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    engineRef.current?.selectById(el.id);
-                  }
-                }}
-                style={{ display: 'flex', alignItems: 'center', gap: 4 }}
                 onClick={() => {
                   if (engineRef.current) engineRef.current.selectById(el.id);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  flex: 1,
+                  minWidth: 0,
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  fontFamily: 'inherit',
+                  fontSize: 'inherit',
+                  color: 'inherit',
+                  textAlign: 'left',
+                  cursor: 'pointer',
                 }}
               >
                 <span
@@ -137,6 +144,8 @@ export default function PdfViewerDrawnElements({
                           ? 'mon'
                           : el.tipo) || ''}
                 </span>
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
                 <button
                   type="button"
                   aria-label="Eliminar elemento"
