@@ -6,7 +6,6 @@ import type { MemoriaTable, MemoriaHeaderGroup } from './exportMemoriaFinal';
 import { diametroManning, caudalHunterLPS, factorSimultaneidad } from './calcSanitaryCore';
 import { calcHydraulicCheck } from './hydraulicCheck';
 import { DIAM_OPTIONS } from '../constants';
-import { computeComponentTotals, computeDirectedTotals } from '../lib/shared/connectionGraph';
 import { distToPolyline } from '../lib/shared/geometry';
 import { parseDescargaEnId } from './parseDescargaEnId';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
@@ -106,6 +105,10 @@ export function buildSanConnectivity(
             if (dist < otherDist) return [{ type: 'bajante' as const, id: b.id }];
             continue;
           }
+          // Un bajante de SUBIDA no es un drenaje geométrico — el agua sube por él, no
+          // descarga ahí. Solo los bajantes 'baja' (o sin dirección definida) cuentan como
+          // drenaje para la propagación de UD.
+          if (b.direccion === 'sube') continue;
           if (dist < 2.0) {
             return [{ type: 'bajante' as const, id: b.id }];
           }
@@ -339,59 +342,41 @@ export function buildSanConnectivity(
     }
   }
 
-  // NO podar aristas de adj para redes sanitarias — a diferencia de AF/AC, la raíz sanitaria
-  // es el DRENAJE (aguas abajo), y el BFS recorre aguas ARRIBA. Podar las aristas entre un
-  // ramal mergeado y sus alimentadores desconecta todo el subárbol aguas arriba del BFS y
-  // deja los nodos con solo su propio UD parcial, rompiendo la acumulación encadenada.
-  // El BFS dirigido desde el drenaje ya construye el árbol correcto gracias a que
-  // mergeSiblingPairs (arriba) evita aristas espurias entre hermanos de un mismo merge.
-
-  // Raíz = tramo que descarga a un bajante (código fin/ini empieza con 'B').
-  // Dirigido: esa raíz agrega todo lo que la alimenta, así las ramas hoja aguas arriba
-  // conservan solo sus propios UD y no muestran los totales de las demás.
-  let rootKey: string | null = null;
+  // Propagación de UD DIRIGIDA por dirección de flujo: cada tramo acumula su UD parcial + el
+  // total de todos los tramos que le ENTREGAN (aguas arriba). El extremo aguas abajo de cada
+  // ramal ya se resolvió por dirección de flujo (`_tribReversed` XOR orden de pts) en
+  // checkEndpoint, así que `calculoMap` es un grafo DIRIGIDO (hijo → padre, padre = aguas
+  // abajo). No se elige una raíz única: cada ramal drena hacia SU bajante, y una red con varios
+  // bajantes (típico en sanitaria — uno por grupo de aparatos) no debe enrutar todas sus ramas
+  // hacia una sola raíz. El modelo anterior de BFS desde una raíz única inflaba las ramas
+  // alejadas con el UD de toda la red cuando el código del bajante no aparecía en ini/fin, o
+  // enrutaba ramas de un segundo bajante hacia el bajante equivocado.
+  const directedTotals: Record<string, number> = {};
   for (const t of tramosSan) {
-    const fin = String(t.fin || '');
-    const ini = String(t.ini || '');
-    if (!fin.startsWith('B') && !ini.startsWith('B')) continue;
     const k = keyOf(t);
-    if (!rootKey) {
-      rootKey = k;
-      continue;
-    }
-    const bestT = byKey.get(rootKey);
-    if ((t.piso || 0) <= (bestT?.piso || 0)) rootKey = k;
+    if (k) directedTotals[k] = calcUDparcial(t, mergedBase);
   }
-  // Si ningún tramo descarga a un bajante, usar el tramo más conectado (solo claves de tramo)
-  // como raíz.
-  if (!rootKey) {
-    let bestKey: string | null = null,
-      bestDeg = -1;
-    for (const k of Object.keys(adj)) {
-      const t = byKey.get(k);
-      if (!t) continue;
-      const deg = adj[k]?.length || 0;
-      if (deg > bestDeg) {
-        bestDeg = deg;
-        bestKey = k;
+  // Nodos de unión sin fila propia (bajantes inter-piso, nodos de cruce) también acumulan, para
+  // propagar el total de una rama completa al tramo aguas abajo que la recibe.
+  const childrenMap: Record<string, string[]> = {};
+  for (const [parentKey, children] of Object.entries(calculoMap)) {
+    childrenMap[parentKey] = children.filter((c, i) => children.indexOf(c) === i);
+  }
+  // Punto fijo: el grafo dirigido es un DAG (el agua fluye hacia el drenaje, sin ciclos), así
+  // que converge en pocas pasadas; el lazo solo itera mientras algún total cambie.
+  let fixedPointChanged = true;
+  while (fixedPointChanged) {
+    fixedPointChanged = false;
+    for (const parentKey of Object.keys(childrenMap)) {
+      const base = directedTotals[parentKey] ?? 0;
+      const sum = childrenMap[parentKey].reduce((s, c) => s + (directedTotals[c] ?? 0), base);
+      if (directedTotals[parentKey] !== sum) {
+        directedTotals[parentKey] = sum;
+        fixedPointChanged = true;
       }
     }
-    if (bestDeg > 0) rootKey = bestKey;
   }
-  const componentTotalMap = rootKey
-    ? computeDirectedTotals(
-        tramosSan,
-        (t) => keyOf(t),
-        adj,
-        (t) => calcUDparcial(t, mergedBase),
-        rootKey,
-      )
-    : computeComponentTotals(
-        tramosSan,
-        (t) => keyOf(t),
-        adj,
-        (t) => calcUDparcial(t, mergedBase),
-      );
+  const componentTotalMap = directedTotals;
 
   // ownTotalMap usa el UD PARCIAL propio del ramal (no el total acumulado por BFS) para que
   // el override de merge sume parcial_propio + total_de_cada_alimentador sin contar doble —
