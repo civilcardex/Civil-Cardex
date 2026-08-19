@@ -40,6 +40,15 @@ export function buildSanConnectivity(
 ): SanConnectivity {
   const calculoMap: Record<string, string[]> = {};
 
+  // fin (código del elemento aguas abajo) vive en tramosSan; el trazo crudo de localStorage puede
+  // no tenerlo persistido (el test lo define solo en el tramo). Se resuelve con el tramo por
+  // `${id}-${planId}` para el desempate de co-sumideros de abajo.
+  const tramoFinByKey = new Map<string, string>();
+  for (const t of tramosSan) {
+    const k = t._key || `${t.id}-${t.piso}`;
+    if (typeof t.fin === 'string' && t.fin) tramoFinByKey.set(k, t.fin);
+  }
+
   for (const plan of plans || []) {
     if (plan.nivel == null) continue;
     const raw = loadFromStorage<DrawingData | string | null>(TRAZOS_PREFIX + plan.id, null);
@@ -119,7 +128,20 @@ export function buildSanConnectivity(
           if (!rx.pts || rx.pts.length < 2) continue;
           if (mergeSiblingPairs.has([r.id, rx.id].sort().join('|'))) continue;
           const dist = distToPolyline(pt, rx.pts);
-          if (dist < 2.0) matches.push({ type: 'ramal' as const, id: rx.id });
+          if (dist < 2.0) {
+            // Desempate de co-sumideros: si el punto de descarga de `r` coincide con el extremo
+            // de DESCARGA de rx (el propio rx también descarga en la misma coordenada, p. ej. un
+            // ramal invertido y otro normal encontrándose en un punto), enlazarlos en ambas
+            // direcciones formaría un ciclo que diverge el punto fijo (y sobrecuenta el UD). El
+            // ramal con `fin` (continúa a otro elemento, p. ej. un bajante) es la continuación y
+            // sí recibe; un co-sumidero sin `fin` es un extremo muerto — no puede recibir.
+            const rxDownstreamPt = rx._tribReversed ? rx.pts[0] : rx.pts[rx.pts.length - 1];
+            const touchesRxDischarge =
+              Math.hypot(pt[0] - rxDownstreamPt[0], pt[1] - rxDownstreamPt[1]) < 2.0;
+            const rxFin = rx.fin || tramoFinByKey.get(`${rx.id}-${plan.id}`) || '';
+            if (touchesRxDischarge && !rxFin) continue;
+            matches.push({ type: 'ramal' as const, id: rx.id });
+          }
         }
         return matches;
       };
@@ -362,13 +384,21 @@ export function buildSanConnectivity(
   for (const [parentKey, children] of Object.entries(calculoMap)) {
     childrenMap[parentKey] = children.filter((c, i) => children.indexOf(c) === i);
   }
-  // Punto fijo: el grafo dirigido es un DAG (el agua fluye hacia el drenaje, sin ciclos), así
-  // que converge en pocas pasadas; el lazo solo itera mientras algún total cambie.
+  // Punto fijo: cada tramo acumula SU UD parcial + el total de los tramos que le entregan.
+  // La base es el UD PROPIO (fijo, calcUDparcial), NO el total en evolución del tramo — usar el
+  // total en evolución re-agrega a los hijos en cada pasada (padre = own + hijo, pasada 2 =
+  // padre + own + hijo de nuevo) e infla cualquier unión simple tributario→tronco. Con base
+  // propia el DAG converge exacto en ≤ profundidad pasadas; un ciclo (dos ramales descargando
+  // en el mismo punto) se propaga una vez por pasada y termina acotado por `mergePassCap` en
+  // vez de divergir infinito (el desempate de co-sumideros en checkEndpoint evita que ese ciclo
+  // se forme).
+  const ownTotals: Record<string, number> = { ...directedTotals };
+  const mergePassCap = Object.keys(childrenMap).length;
   let fixedPointChanged = true;
-  while (fixedPointChanged) {
+  for (let pass = 0; pass <= mergePassCap && fixedPointChanged; pass++) {
     fixedPointChanged = false;
     for (const parentKey of Object.keys(childrenMap)) {
-      const base = directedTotals[parentKey] ?? 0;
+      const base = ownTotals[parentKey] ?? 0;
       const sum = childrenMap[parentKey].reduce((s, c) => s + (directedTotals[c] ?? 0), base);
       if (directedTotals[parentKey] !== sum) {
         directedTotals[parentKey] = sum;
