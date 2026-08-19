@@ -131,7 +131,11 @@ export function computeAccesoriosTable(
     net === 'san' || net === 'll'
       ? SAN_ACCESORIOS
       : net === 'gas'
-        ? GAS_ACCESORIOS
+        ? // En gas las seis variantes de codo 90° (estándar/radio largo × horizontal/sube/baja)
+          // se fusionan por TIPO: la orientación no cambia la pieza, y la tabla queda con una
+          // sola fila por codo ("Codo 90° estándar horizontal" y "Codo 90° radio largo
+          // horizontal") que suma todas las orientaciones (ver codoTarget abajo).
+          GAS_ACCESORIOS.filter((a) => !a.id.endsWith('_sube') && !a.id.endsWith('_baja'))
         : ACCESORIOS_HIDRO;
   const title =
     net === 'san'
@@ -509,7 +513,12 @@ export function computeAccesoriosTable(
   // san se generaliza a "Codo 90°".
   const codoTarget = (id: string): string => {
     if (net !== 'san' && CODO_90_IDS.has(id)) return 'codoMedio90';
-    return id === 'codo90rmSube' || id === 'codo90rmBaja' ? 'codo90rm' : id;
+    if (id === 'codo90rmSube' || id === 'codo90rmBaja') return 'codo90rm';
+    // Gas: sube/baja suman en su tipo base (estándar o radio largo) — misma pieza, otra
+    // orientación de instalación.
+    if (id === 'codos_90_std_sube' || id === 'codos_90_std_baja') return 'codos_90_std';
+    if (id === 'codos_90_rl_sube' || id === 'codos_90_rl_baja') return 'codos_90_rl';
+    return id;
   };
   const addAcc = (diam: string, accId: string, count: number) => {
     if (!totals[diam]) {

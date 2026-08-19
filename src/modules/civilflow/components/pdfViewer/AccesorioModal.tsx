@@ -115,21 +115,27 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
   const codos45 = isSanLlVent
     ? sanCodos
     : ACCESORIOS_HIDRO.filter((a) => a.cat === 'Codos' && a.id === 'codo45rc');
-  // AF/AC (90° detectado): sin las variantes sube/baja — esas son exclusivas de sanitaria
-  // (donde "sube"/"baja" describe hacia qué piso continúa la tubería); en redes de presión el
-  // codo de 90° no tiene esa distinción, un solo codo cubre ambos sentidos. El "Codo 90°" plano
-  // (codo90rm) se renombra a "Codo medio 90°" SOLO en esta lista — no se muta el objeto
-  // compartido de ACCESORIOS_HIDRO porque SAN_ACCESORIOS reutiliza esa misma referencia y debe
-  // seguir mostrando "Codo 90°" sin cambios.
+  // AF/AC (90° detectado): las TRES orientaciones del codo medio 90° (horizontal, sube, baja)
+  // son opciones válidas — una tubería de presión puede doblar hacia arriba o hacia abajo y el
+  // usuario debe poder pedir el codo correcto. El "Codo 90°" plano (codo90rm) se renombra a
+  // "Codo 90° horizontal" SOLO en esta lista — no se muta el objeto compartido de
+  // ACCESORIOS_HIDRO porque SAN_ACCESORIOS reutiliza esa misma referencia y debe seguir
+  // mostrando "Codo 90°" sin cambios.
   const codos90 = isSanLlVent
     ? []
     : ACCESORIOS_HIDRO.filter(
         (a) =>
           a.cat === 'Codos' &&
-          a.id.startsWith('codo90') &&
-          a.id !== 'codo90rmSube' &&
-          a.id !== 'codo90rmBaja',
-      ).map((a) => (a.id === 'codo90rm' ? { ...a, nombre: 'Codo medio 90°' } : a));
+          (a.id === 'codo90rm' || a.id === 'codo90rmSube' || a.id === 'codo90rmBaja'),
+      ).map((a) => ({
+        ...a,
+        nombre:
+          a.id === 'codo90rm'
+            ? 'Codo 90° horizontal'
+            : a.id === 'codo90rmSube'
+              ? 'Codo 90° sube'
+              : 'Codo 90° baja',
+      }));
   // teeDirecto/teeSube/teeBaja excluidas — solo se crean automáticamente (montante en
   // cuerpo de ramal, o unión T/Y entre dos ramales), nunca se eligen a mano aquí. teeTapon/
   // teeLlaveTerminal solo se ofrecen desde el dropdown de accesorios de mitad de cuerpo (sidebar/menú

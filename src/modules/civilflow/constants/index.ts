@@ -55,7 +55,11 @@ export {
 
 export const LE_K = {
   codos_90_std: 30,
+  codos_90_std_sube: 30,
+  codos_90_std_baja: 30,
   codos_90_rl: 20,
+  codos_90_rl_sube: 20,
+  codos_90_rl_baja: 20,
   te_linea: 20,
   te_ramal: 20,
   valvula_bola: 8,

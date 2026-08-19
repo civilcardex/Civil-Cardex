@@ -60,7 +60,17 @@ GAS.forEach((g) => {
     ALL_DN.push({ mat: g.mat, K: g.K, dn: r.dn, d: r.d });
   });
 });
-const ACC_KEYS = ['codos_90_std', 'codos_90_rl', 'te_linea', 'te_ramal', 'valvula_bola'];
+const ACC_KEYS = [
+  'codos_90_std',
+  'codos_90_std_sube',
+  'codos_90_std_baja',
+  'codos_90_rl',
+  'codos_90_rl_sube',
+  'codos_90_rl_baja',
+  'te_linea',
+  'te_ramal',
+  'valvula_bola',
+];
 const GasDesign_COLS = [
   'Tramo',
   'Nivel',
