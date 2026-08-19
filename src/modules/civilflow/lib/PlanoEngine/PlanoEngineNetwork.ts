@@ -118,9 +118,9 @@ export function clearNet(engine: IPlanoEngineCore, netId: string): void {
 
 export function setPadreTributario(engine: IPlanoEngineCore, ramalId: string | null): void {
   if (engine.tipoTramo !== 'tributario') return;
-  const padre = engine.ramales.find(
-    (r) => r.id === ramalId && r.net === engine.activeNet && r.tipo === 'ramal',
-  );
+  // Ítem 10: el padre puede ser un ramal principal o un tributario existente (tributario
+  // anidado) — cualquier ramal de la red activa.
+  const padre = engine.ramales.find((r) => r.id === ramalId && r.net === engine.activeNet);
   engine.padreTributario = padre ? padre.id : null;
   engine.render();
 }
@@ -131,9 +131,9 @@ export function getPadreTributario(engine: IPlanoEngineCore): PlanoRamal | null 
 }
 
 export function getRamalesPadre(engine: IPlanoEngineCore): PlanoRamal[] {
-  return engine.ramales.filter(
-    (r) => r.net === engine.activeNet && r.tipo === 'ramal',
-  ) as unknown as PlanoRamal[];
+  // Ítem 10: candidatos a padre = TODOS los ramales de la red activa (principales y
+  // tributarios), para permitir tributarios anidados.
+  return engine.ramales.filter((r) => r.net === engine.activeNet) as unknown as PlanoRamal[];
 }
 
 export function setRamalDefaults(
@@ -249,6 +249,9 @@ export function autoDetectRamalConnections(engine: IPlanoEngineCore): void {
     for (const rr of engine.ramales) {
       if (rr === r) continue;
       if (rr.net !== r.net) continue;
+      // Los ramales no se conectan a tributarios — un ramal no debe registrar un tributario
+      // como su conexión de extremo (ni el tributario al ramal, salvo que ese sea su padre).
+      if (r.tipo === 'ramal' && rr.tipo === 'tributario') continue;
       if (!rr.pts || rr.pts.length < 1) continue;
       for (const pt2 of rr.pts) {
         const d = ptDist({ x: pt2[0], y: pt2[1] });

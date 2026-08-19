@@ -201,6 +201,28 @@ export function allocTributaryNumber(
   return n;
 }
 
+/** Etiqueta del ramal RAÍZ de una cadena de tributarios (el primer no-tributario subiendo por
+ *  la cadena de `padre`). Ítem 10: un tributario cuyo padre es OTRO tributario (p. ej. T1RS1)
+ *  se numera contra el raíz (RS1) con consecutivo GLOBAL de ese raíz — sale T5RS1, no
+ *  T1T1RS1 — y la numeración compite con la de los tributarios directos del raíz (allocTributary
+ *  Number ya salta labels existentes, así que el consecutivo nunca colisiona). */
+export function rootTributarioLabel(
+  ramales: Array<{ id: string; label?: string; tipo?: string; padre: string | null }>,
+  ramalId: string | null | undefined,
+): string {
+  if (!ramalId) return '';
+  let cur = ramales.find((r) => r.id === ramalId);
+  const seen = new Set<string>();
+  while (cur && cur.tipo === 'tributario' && cur.padre && !seen.has(cur.id)) {
+    seen.add(cur.id);
+    cur = ramales.find((r) => r.id === cur!.padre);
+  }
+  // Cadena corrupta (ciclo, p. ej. padre apuntando a sí mismo): devolver vacío y dejar que
+  // el llamador caiga a su fallback en vez de reportar un nodo intermedio como raíz.
+  if (cur && cur.tipo === 'tributario' && cur.padre && seen.has(cur.id)) return '';
+  return cur ? cur.label || cur.id || '' : '';
+}
+
 /** Ventilación y sanitaria se "enganchan" entre sí mientras se DIBUJA (el cursor se pega a la
  *  otra red) — pero NO deben usarse para auto-conectar o mover juntas: eso queda estrictamente
  *  dentro de la misma red.
@@ -629,6 +651,7 @@ export interface IPlanoEngineCore {
   } | null;
   multiSel: string[];
   multiDrag: { startX: number; startY: number; origData: MultiDragOrigData } | null;
+  guideDrag: { id: string; startX: number; startY: number; origPts: [number, number][] } | null;
   marqueeRect: { x1: number; y1: number; x2: number; y2: number } | null;
   MM: {
     lblName: number;
@@ -654,7 +677,12 @@ export interface IPlanoEngineCore {
     net?: string,
     tipo?: string,
   ): { x: number; y: number };
-  snapToExisting(x: number, y: number): { x: number; y: number } | null;
+  snapToExisting(
+    x: number,
+    y: number,
+    net?: string,
+    tipo?: string,
+  ): { x: number; y: number } | null;
   snapPreviewToPadre(x: number, y: number): { x: number; y: number } | null;
   getBajantesFantasma(): PlanoBajante[];
   render(): void;

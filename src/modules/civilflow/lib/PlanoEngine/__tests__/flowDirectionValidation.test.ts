@@ -1,8 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { finishRamal } from '../PlanoEngineDrawing';
 import { codoPolarityOk } from '../PlanoEngineDrawing';
+import { ramalExtremoOcupado, extremoEntrelazado } from '../PlanoEngineDrawing';
+import { aparatoEnExtremoInvalido } from '../PlanoEngineDrawing';
 import { checkRamalAngles } from '../drawingAngles';
+import { rootTributarioLabel, allocTributaryNumber } from '../PlanoState';
 import type { IPlanoEngineCore, PlanoRamal, PlanoBajante } from '../PlanoState';
+import { setPadreTributario, getRamalesPadre } from '../PlanoEngineNetwork';
+import { GAS_ACCESORIOS } from '../../../constants/engineeringDataAccessories';
+import { LE_K } from '../../../constants/index';
+import { ACC_ABBR } from '../../../utils/accessoryAbbreviations';
 
 // Ítems 2, 5, 12, 13: validaciones de dirección de flujo. El bloqueo se verifica por ABAJO:
 // finishRamal no debe pushear el ramal violador y debe disparar triggerAlert.
@@ -281,5 +288,262 @@ describe('ítem 6 — tolerancias de ángulo exactas (ANGLE_EPS ±0.5°)', () =>
         'gas',
       ),
     ).toBe(false);
+  });
+});
+
+describe('ítem 10 — tributario anidado: consecutivo contra el ramal RAÍZ', () => {
+  const ramales: PlanoRamal[] = [
+    mkRamal('RS1', 'san', [
+      [0, 0],
+      [40, 0],
+    ]),
+    mkRamal(
+      'T1RS1',
+      'san',
+      [
+        [10, 0],
+        [10, -10],
+      ],
+      0,
+      'tributario',
+      'RS1',
+    ),
+    mkRamal(
+      'T2RS1',
+      'san',
+      [
+        [10, -10],
+        [10, -20],
+      ],
+      0,
+      'tributario',
+      'T1RS1',
+    ),
+  ];
+
+  it('rootTributarioLabel resuelve la cadena completa hasta el primer no-tributario', () => {
+    expect(rootTributarioLabel(ramales, 'T2RS1')).toBe('RS1');
+    expect(rootTributarioLabel(ramales, 'T1RS1')).toBe('RS1');
+    expect(rootTributarioLabel(ramales, 'RS1')).toBe('RS1');
+    expect(rootTributarioLabel(ramales, null)).toBe('');
+  });
+
+  it('el siguiente tributario de un anidado compite con el consecutivo GLOBAL del raíz (T3RS1, no T1T1RS1)', () => {
+    // labels usados: RS1, T1RS1, T2RS1 → el primer libre con sufijo RS1 es T3
+    expect(allocTributaryNumber({ ramales }, 'RS1')).toBe(3);
+  });
+
+  it('una cadena con ciclo (padre que apunta a sí mismo) no cuelga y cae al fallback vacío', () => {
+    const cyclic = [...ramales];
+    (cyclic[2] as PlanoRamal).padre = cyclic[2].id;
+    expect(rootTributarioLabel(cyclic, 'T2RS1')).toBe('');
+  });
+
+  it('setPadreTributario acepta un tributario como padre y getRamalesPadre lo lista', () => {
+    const { engine } = makeEngine(ramales, [], 'san');
+    engine.tipoTramo = 'tributario';
+    setPadreTributario(engine, 'T1RS1');
+    expect(engine.padreTributario).toBe('T1RS1');
+    const candidatos = getRamalesPadre(engine).map((r) => r.id);
+    expect(candidatos).toContain('RS1');
+    expect(candidatos).toContain('T1RS1');
+    // null limpia la selección
+    setPadreTributario(engine, null);
+    expect(engine.padreTributario).toBeNull();
+  });
+
+  it('setPadreTributario ignora ramales de OTRA red activa', () => {
+    const mixed = [
+      ...ramales,
+      mkRamal('RG1', 'gas', [
+        [0, 0],
+        [10, 0],
+      ]),
+    ];
+    const { engine } = makeEngine(mixed, [], 'san');
+    engine.tipoTramo = 'tributario';
+    setPadreTributario(engine, 'RG1');
+    expect(engine.padreTributario).toBeNull();
+  });
+});
+
+describe('ítem 7 — variantes de codo gas (estándar/radio largo × horizontal/sube/baja)', () => {
+  const CODO_IDS = [
+    'codos_90_std',
+    'codos_90_std_sube',
+    'codos_90_std_baja',
+    'codos_90_rl',
+    'codos_90_rl_sube',
+    'codos_90_rl_baja',
+  ];
+
+  it('GAS_ACCESORIOS define las 6 variantes; los ids originales quedan como HORIZONTAL (retrocompatibilidad)', () => {
+    const ids = GAS_ACCESORIOS.map((a) => a.id);
+    for (const id of CODO_IDS) expect(ids).toContain(id);
+    const std = GAS_ACCESORIOS.find((a) => a.id === 'codos_90_std');
+    expect(std?.nombre || '').toMatch(/estándar/i);
+    expect(std?.nombre || '').toMatch(/horizontal/i);
+    const rl = GAS_ACCESORIOS.find((a) => a.id === 'codos_90_rl');
+    expect(rl?.nombre || '').toMatch(/radio largo/i);
+    expect(rl?.nombre || '').toMatch(/horizontal/i);
+  });
+
+  it('LE_K tiene longitud equivalente para las 6 (std=30, rl=20)', () => {
+    const le = LE_K as Record<string, number>;
+    for (const id of CODO_IDS) expect(typeof le[id]).toBe('number');
+    expect(le.codos_90_std_sube).toBe(30);
+    expect(le.codos_90_rl_baja).toBe(20);
+  });
+
+  it('ACC_ABBR tiene abreviatura para cada variante', () => {
+    for (const id of CODO_IDS) expect(ACC_ABBR[id]).toBeTruthy();
+    expect(ACC_ABBR.codos_90_std_sube).toBe('C90S_SUB');
+    expect(ACC_ABBR.codos_90_rl_baja).toBe('C90L_BAJ');
+  });
+});
+
+describe('ítem — aparato solo en extremo libre: detección de conexión', () => {
+  const lib = (pts: number[][]) => ({ id: 'RAF1', net: 'af', pts });
+
+  it('detecta extremo-a-extremo con otro ramal del mismo net', () => {
+    const a = lib([
+      [0, 0],
+      [2, 0],
+    ]);
+    const b = {
+      id: 'RAF2',
+      net: 'af',
+      pts: [
+        [2, 0],
+        [4, 0],
+      ],
+    };
+    expect(ramalExtremoOcupado([a, b], a, [2, 0])).toBe(true);
+  });
+
+  it('detecta empalme sobre el CUERPO de otro ramal (tributario sobre el padre)', () => {
+    const padre = lib([
+      [0, 0],
+      [6, 0],
+    ]);
+    const tri = {
+      id: 'T1RAF1',
+      net: 'af',
+      pts: [
+        [3, 0],
+        [3, -2],
+      ],
+    };
+    expect(ramalExtremoOcupado([padre, tri], tri, [3, 0])).toBe(true);
+  });
+
+  it('detecta vértice INTERMEDIO de otro ramal (ramal que pasa por el punto)', () => {
+    const pasa = {
+      id: 'RAF3',
+      net: 'af',
+      pts: [
+        [0, 0],
+        [3, 0],
+        [6, 0],
+      ],
+    };
+    const a = lib([
+      [3, 0],
+      [3, -2],
+    ]);
+    expect(ramalExtremoOcupado([pasa, a], a, [3, 0])).toBe(true);
+  });
+
+  it('no detecta ramales paralelos sin contacto real (más allá de la tolerancia 0.5)', () => {
+    const a = lib([
+      [0, 0],
+      [6, 0],
+    ]);
+    const b = {
+      id: 'RAF4',
+      net: 'af',
+      pts: [
+        [0, 0.6],
+        [6, 0.6],
+      ],
+    };
+    expect(ramalExtremoOcupado([a, b], a, [6, 0])).toBe(false);
+  });
+
+  it('ignora ramales de otro net en el mismo punto', () => {
+    const a = lib([
+      [0, 0],
+      [2, 0],
+    ]);
+    const b = {
+      id: 'RS1',
+      net: 'san',
+      pts: [
+        [2, 0],
+        [4, 0],
+      ],
+    };
+    expect(ramalExtremoOcupado([a, b], a, [2, 0])).toBe(false);
+  });
+
+  it('detecta bajante con desplazamiento (posición dibujada)', () => {
+    const a = lib([
+      [0, 0],
+      [2, 0],
+    ]);
+    const bj = { id: 'B1', net: 'af', x: 2, y: 0, desplazamientos: { d: { dx: 0.25, dy: 0 } } };
+    expect(extremoEntrelazado([a], [bj], a, [2.25, 0])).toBe(true);
+  });
+
+  it('aparatoEnExtremoInvalido: aparato en extremo libre con flujo entrante = válido', () => {
+    const a = {
+      id: 'RAF1',
+      net: 'af',
+      pts: [
+        [0, 0],
+        [2, 0],
+      ],
+      aparatoFin: 'lv',
+    };
+    expect(aparatoEnExtremoInvalido([a], [], a)).toBe(false);
+  });
+
+  it('aparatoEnExtremoInvalido: aparato en extremo conectado a otra red = inválido', () => {
+    const a = {
+      id: 'RAF1',
+      net: 'af',
+      pts: [
+        [0, 0],
+        [2, 0],
+      ],
+      aparatoInicio: 'lv',
+    };
+    const b = {
+      id: 'RAF2',
+      net: 'af',
+      pts: [
+        [0, 0],
+        [0, -1],
+      ],
+    };
+    expect(aparatoEnExtremoInvalido([a, b], [], a)).toBe(true);
+  });
+
+  it('aparatoEnExtremoInvalido: flujo en contra del extremo aparatado (invertido) = inválido', () => {
+    const a = {
+      id: 'RAF1',
+      net: 'af',
+      pts: [
+        [0, 0],
+        [2, 0],
+      ],
+      _tribReversed: true,
+      aparatoInicio: 'lv',
+    };
+    // _tribReversed: el flujo termina en pts[0]; el aparato en pts[0] recibe → válido.
+    expect(aparatoEnExtremoInvalido([a], [], a)).toBe(false);
+    const b = { ...a, aparatoInicio: undefined, aparatoFin: 'lv' };
+    // aparato en pts[last] con flujo terminando en pts[0] → en contra → inválido.
+    expect(aparatoEnExtremoInvalido([b], [], b)).toBe(true);
   });
 });
