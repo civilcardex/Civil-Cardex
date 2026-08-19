@@ -8,7 +8,11 @@ import PlanoEngine, {
 } from '../lib/PlanoEngine/PlanoEngine';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
 import type { PlanoElement, PlanoNet, PlanoBajante } from '../lib/PlanoEngine/PlanoState';
-import { codoPolarityOk, flowEndsAt } from '../lib/PlanoEngine/PlanoEngineDrawing';
+import {
+  codoPolarityOk,
+  flowEndsAt,
+  aparatoEnExtremoInvalido,
+} from '../lib/PlanoEngine/PlanoEngineDrawing';
 import type { Piso } from '../lib/shared/projectTypes';
 import type { PlanItem } from '../context/PlansContext';
 import { matLongName, pisoLbl, DEFAULT_PENDIENTE_PCT } from '../constants';
@@ -605,6 +609,10 @@ function PdfViewer_({
 
   const markDirtyRef = useRef<() => void>(() => {});
 
+  // Ítem 2 (rev 2): dedupe de la alerta de estado inviable — el ramal se alerta UNA vez por
+  // sesión mientras siga inválido (se rehabilita al corregirse).
+  const aparatoFlowAlertedRef = useRef<Set<string>>(new Set());
+
   const { saveStatus, doSave, autoSaveTimerRef, markDirty } = usePdfAutoSave(
     engineRef,
     currentIdRef,
@@ -629,6 +637,25 @@ function PdfViewer_({
         }
       }
       if (loadingPlanRef.current) return;
+      // Ítem 2 (rev 5): un aparato es inviable si su extremo está conectado a la red (T/Y/bajante)
+      // o si el flujo va en contra de ese extremo (apunta a la conexión, no al extremo libre).
+      // Llega por datos persistidos o por empalmes posteriores al asignar. Se alerta una vez
+      // por ramal; al corregirse el estado, el ramal se rehabilita.
+      for (const r of eng.ramales) {
+        if (aparatoEnExtremoInvalido(eng.ramales, eng.bajantes || [], r)) {
+          if (!aparatoFlowAlertedRef.current.has(r.id)) {
+            aparatoFlowAlertedRef.current.add(r.id);
+            // eslint-disable-next-line no-console
+            console.warn('[aparato-flow] inválido canal', r.id, r.label, r.net);
+            eng.triggerAlert(
+              'Aparato no permitido',
+              `El ramal ${r.label || r.id} tiene un aparato en un extremo inválido: está conectado a la red (T/Y/bajante) o el flujo va en su contra. El aparato solo va en el extremo libre hacia el que apunta el flujo. Quita el aparato, invierte la dirección del ramal o muévelo al extremo correcto.`,
+            );
+          }
+        } else {
+          aparatoFlowAlertedRef.current.delete(r.id);
+        }
+      }
       try {
         const id = eng._loadedPlanId || currentIdRef.current || 'work';
         if (id) {
@@ -1212,6 +1239,27 @@ function PdfViewer_({
     });
   }, [engineRef, activeNet, setSelElement]);
 
+  const handleClearGuides = useCallback(() => {
+    if (!engineRef.current) return;
+    setConfirmState({
+      isOpen: true,
+      title: 'Borrar líneas guía',
+      message:
+        '¿Deseas eliminar todas las líneas guía de todos los pisos? Esta acción no se puede deshacer.',
+      onConfirm: () => {
+        const eng = engineRef.current;
+        if (eng) {
+          eng.guideLines = [];
+          eng.selId = null;
+          eng.render();
+          eng._markDirty();
+        }
+        setSelElement(null);
+        setConfirmState((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
+  }, [engineRef, setSelElement]);
+
   const handleSave = useCallback(() => {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     doSave();
@@ -1622,6 +1670,7 @@ function PdfViewer_({
             onUndo={handleUndo}
             onRedo={handleRedo}
             onClear={handleClear}
+            onClearGuides={handleClearGuides}
           />
         </div>
 
@@ -1802,7 +1851,12 @@ function PdfViewer_({
                   selElement.id?.startsWith('AR') ||
                   selElement.id?.startsWith('GL'))
               ) && (
-                <AparatosPanel activeNet={activeNet} selElement={selElement} planId={currentId} />
+                <AparatosPanel
+                  activeNet={activeNet}
+                  selElement={selElement}
+                  planId={currentId}
+                  engineRef={engineRef}
+                />
               )}
 
               <PdfViewerDrawnElements

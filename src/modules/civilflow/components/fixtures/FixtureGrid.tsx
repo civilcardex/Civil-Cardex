@@ -64,6 +64,7 @@ interface FixtureGridProps {
   dec: (apId: string) => void;
   targetId: string | null;
   accent: string;
+  disabled?: boolean;
 }
 
 export default function FixtureGrid({
@@ -75,7 +76,9 @@ export default function FixtureGrid({
   dec,
   targetId,
   accent,
+  disabled = false,
 }: FixtureGridProps) {
+  const gridDisabled = disabled || !targetId;
   return (
     <div
       style={{
@@ -98,13 +101,14 @@ export default function FixtureGrid({
               ...FixtureGrid_S2,
               background: active ? 'rgba(37,99,235,.12)' : 'var(--bg2)',
               border: `1px solid ${active ? accent : 'var(--line)'}`,
+              opacity: disabled ? 0.5 : 1,
             }}
           >
             <button
               type="button"
               onClick={() => targetId && inc(ap.id)}
-              disabled={!targetId}
-              style={{ ...FixtureGrid_S3, cursor: targetId ? 'pointer' : 'default' }}
+              disabled={gridDisabled}
+              style={{ ...FixtureGrid_S3, cursor: gridDisabled ? 'default' : 'pointer' }}
             >
               <span style={{ fontSize: 17, lineHeight: 1 }}>
                 {(APARATO_IMG as Record<string, string>)[ap.id] ? (
@@ -150,11 +154,11 @@ export default function FixtureGrid({
                   e.stopPropagation();
                   if (targetId) dec(ap.id);
                 }}
-                disabled={!targetId || c === 0}
+                disabled={gridDisabled || c === 0}
                 style={{
                   ...FixtureGrid_S4,
-                  color: c === 0 || !targetId ? 'var(--line)' : '#ffb4ab',
-                  cursor: c === 0 || !targetId ? 'not-allowed' : 'pointer',
+                  color: c === 0 || gridDisabled ? 'var(--line)' : '#ffb4ab',
+                  cursor: c === 0 || gridDisabled ? 'not-allowed' : 'pointer',
                   borderRight: `1px solid ${active ? accent + '55' : 'var(--bg4)'}`,
                 }}
               >
@@ -175,11 +179,11 @@ export default function FixtureGrid({
                   e.stopPropagation();
                   if (targetId) inc(ap.id);
                 }}
-                disabled={!targetId}
+                disabled={gridDisabled}
                 style={{
                   ...FixtureGrid_S4,
-                  color: !targetId ? 'var(--line)' : accent,
-                  cursor: !targetId ? 'not-allowed' : 'pointer',
+                  color: gridDisabled ? 'var(--line)' : accent,
+                  cursor: gridDisabled ? 'not-allowed' : 'pointer',
                   borderLeft: `1px solid ${active ? accent + '55' : 'var(--bg4)'}`,
                 }}
               >

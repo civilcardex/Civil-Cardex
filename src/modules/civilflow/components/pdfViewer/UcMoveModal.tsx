@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 const UcMoveModal_S1: React.CSSProperties = {
   background: 'linear-gradient(135deg, #1e222b 0%, #15181f 100%)',
   padding: '24px',
@@ -11,6 +12,14 @@ const UcMoveModal_S1: React.CSSProperties = {
   flexDirection: 'column',
   gap: 16,
   color: '#e2e2e8',
+  // Portaleado a body + fixed con inset 0 y margin auto: centrado en el viewport SIEMPRE,
+  // sin depender del ancestro (antes vivía dentro del div fijo del menú contextual y el
+  // dialog no-modal quedaba pegado arriba del contenedor — "mitad cortada" e inmovible).
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
   margin: 'auto',
 };
 const UcMoveModal_S2: React.CSSProperties = {
@@ -67,6 +76,9 @@ export interface UcMoveModalState {
   isOpen: boolean;
   sourceLabel: string;
   options: UcMoveOption[];
+  /** Id del ramal cuya dirección se va a invertir — lo usa el raíz del menú contextual para
+   *  ejecutar el doble cambio aunque el menú ya se haya cerrado (el modal vive fuera de él). */
+  ramalId?: string;
 }
 
 interface UcMoveModalProps {
@@ -79,6 +91,8 @@ export default function UcMoveModal({ state, onConfirm, onCancel }: UcMoveModalP
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [prevOpen, setPrevOpen] = useState(state.isOpen);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ dx: number; dy: number } | null>(null);
 
   // Reiniciar la selección al REABRIR el modal: ajuste de estado durante el render (patrón
   // oficial de React para sincronizar estado con un prop que cambia), sin effect — evita el
@@ -90,7 +104,10 @@ export default function UcMoveModal({ state, onConfirm, onCancel }: UcMoveModalP
 
   useEffect(() => {
     if (state.isOpen && dialogRef.current) {
-      if (!dialogRef.current.open) dialogRef.current.showModal();
+      // show() en vez de showModal(): el modal NO bloquea el plano ni lo difumina — el usuario
+      // necesita ver y poder interactuar con el dibujo para elegir bien la red que recibe las
+      // UCs. Sin showModal no hay ::backdrop (ni dim ni blur).
+      if (!dialogRef.current.open) dialogRef.current.show();
     }
   }, [state.isOpen]);
 
@@ -103,7 +120,39 @@ export default function UcMoveModal({ state, onConfirm, onCancel }: UcMoveModalP
     }
   };
 
-  return (
+  // Arrastre del modal por su cabecera — listeners en window para no perder el drag si el
+  // puntero sale rápido del elemento.
+  const onHeaderPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const dlg = dialogRef.current;
+    if (!dlg) return;
+    const rect = dlg.getBoundingClientRect();
+    dragRef.current = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
+    const capture = (ev: PointerEvent) => {
+      if (!dragRef.current) return;
+      setPos({ x: ev.clientX - dragRef.current.dx, y: ev.clientY - dragRef.current.dy });
+    };
+    const release = () => {
+      dragRef.current = null;
+      window.removeEventListener('pointermove', capture);
+      window.removeEventListener('pointerup', release);
+    };
+    window.addEventListener('pointermove', capture);
+    window.addEventListener('pointerup', release);
+  };
+
+  const dlgStyle: React.CSSProperties = pos
+    ? {
+        ...UcMoveModal_S1,
+        position: 'fixed',
+        left: pos.x,
+        top: pos.y,
+        right: 'auto',
+        bottom: 'auto',
+        margin: 0,
+      }
+    : UcMoveModal_S1;
+
+  return createPortal(
     <dialog
       ref={dialogRef}
       aria-label="Reasignar unidades de consumo"
@@ -112,15 +161,12 @@ export default function UcMoveModal({ state, onConfirm, onCancel }: UcMoveModalP
         onCancel();
       }}
       onClose={onCancel}
-      style={UcMoveModal_S1}
+      style={dlgStyle}
     >
-      <style>{`
-        dialog::backdrop {
-          background: rgba(10, 11, 14, 0.75);
-          backdrop-filter: blur(8px);
-        }
-      `}</style>
-      <div style={UcMoveModal_S2}>
+      <div
+        style={{ ...UcMoveModal_S2, cursor: 'grab', userSelect: 'none' }}
+        onPointerDown={onHeaderPointerDown}
+      >
         <span style={{ fontSize: 22 }}>⚠️</span> Cambio de dirección de flujo
       </div>
       <div
@@ -182,6 +228,7 @@ export default function UcMoveModal({ state, onConfirm, onCancel }: UcMoveModalP
           Confirmar
         </button>
       </div>
-    </dialog>
+    </dialog>,
+    document.body,
   );
 }

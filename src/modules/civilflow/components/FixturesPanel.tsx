@@ -17,6 +17,8 @@ import FixtureGrid from './fixtures/FixtureGrid';
 import AccesoriosSection from './fixtures/AccessoriesSection';
 import { devError } from '../../../utils/devError';
 import { resolveJunctionEntrant } from '../utils/flowDirection';
+import { extremoEntrelazado, flowEndsAt } from '../lib/PlanoEngine/PlanoEngineDrawing';
+import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
 
 const HIDROSAN_IDS = new Set(['af', 'ac', 'san']);
 const GAS_ID = 'gas';
@@ -156,10 +158,12 @@ const AparatosPanel = memo(function AparatosPanel_({
   activeNet,
   selElement,
   planId,
+  engineRef,
 }: {
   activeNet: string;
   selElement: SelectableTarget | null;
   planId?: string | number;
+  engineRef: React.MutableRefObject<PlanoEngine | null>;
 }) {
   const { plans } = usePlans();
   const { aps } = useApparatus();
@@ -407,6 +411,13 @@ const AparatosPanel = memo(function AparatosPanel_({
     return s;
   }, [items, currentMap, unitKey, storageKey]);
 
+  // Total de unidades MANUALES propias de este tramo (sin sumas combinadas de fuentes) — el
+  // cap del ítem 6 (máximo 1 aparato) aplica solo sobre lo que el usuario asigna aquí.
+  const ownTotal = useMemo(() => {
+    if (!storageKey) return 0;
+    return Object.values(counts[storageKey] || {}).reduce((s, v) => s + v, 0);
+  }, [counts, storageKey]);
+
   const totalStr = useMemo(() => {
     if (Number.isInteger(total)) return String(total);
     return total.toFixed(2);
@@ -414,6 +425,72 @@ const AparatosPanel = memo(function AparatosPanel_({
 
   const inc = (apId: string) => {
     if (!storageKey) return;
+    // Punto de suma combinada (ramal que MUESTRA el total de sus fuentes de empalme): la
+    // grilla queda en solo-lectura — el usuario nunca edita aquí, edita en las fuentes.
+    if (mergeKeys) return;
+    // Ítem 6: máximo UN aparato por ramal (manual). Los ramales que reciben sumas de otros
+    // tramos sí pueden mostrar más, pero eso llega solo por suma — nunca por conteo manual.
+    if (ownTotal >= 1) {
+      engineRef.current?.triggerAlert(
+        'Máximo 1 aparato por ramal',
+        'Un ramal admite máximo un aparato asignado manualmente. Si necesitas más unidades, crea otro ramal (o tributario) desde el cuerpo de este.',
+      );
+      return;
+    }
+    // Ítem 2/3 (rev 4): el aparato SOLO va en el extremo LIBRE hacia el que apunta el flujo del
+    // ramal — el glifo del codo (af/ac) y el símbolo del aparato se derivan de
+    // aparatoInicio/Fin, y no deben aparecer en conexiones de T/Y. Si el extremo de entrega
+    // está ocupado o el flujo va en contra del libre, bloqueado con alerta. Solo la primera
+    // unidad escribe el campo; si ya hay un aparato (del menú contextual), solo suma el conteo.
+    const eng = engineRef.current;
+    const live = eng?.ramales.find((r) => r.id === targetId);
+    const firstUnit = !(counts[storageKey] || {})[apId];
+    if (
+      eng &&
+      live &&
+      live.pts &&
+      live.pts.length >= 2 &&
+      (live.net === 'af' || live.net === 'ac' || live.net === 'gas')
+    ) {
+      const head = live.pts[live.pts.length - 1];
+      const tail = live.pts[0];
+      const headOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, head);
+      const tailOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, tail);
+      const headOk = !headOcc && flowEndsAt(live, head, 0.5);
+      const tailOk = !tailOcc && flowEndsAt(live, tail, 0.5);
+      if (headOcc && tailOcc) {
+        eng.triggerAlert(
+          'Aparato no permitido',
+          'El ramal está conectado por ambos extremos (ramal de paso): el aparato solo puede ir en un extremo libre. Crea un ramal nuevo desde el cuerpo de este para el aparato.',
+        );
+        return;
+      }
+      if (!headOk && !tailOk) {
+        eng.triggerAlert(
+          'Aparato no permitido',
+          'El flujo del ramal apunta a la conexión (va en contra del extremo libre): el aparato solo se dibuja en el extremo libre hacia el que apunta el flujo. Invierte la dirección del ramal antes de asignar el aparato.',
+        );
+        return;
+      }
+      const endPt = headOk ? head : tail;
+      const field: 'aparatoInicio' | 'aparatoFin' = endPt === head ? 'aparatoFin' : 'aparatoInicio';
+      const accField = field === 'aparatoInicio' ? 'accesorioInicio' : 'accesorioFin';
+      const hasBajante = (eng.bajantes || []).some(
+        (b) =>
+          Math.abs(b.x - endPt[0]) < 0.5 && Math.abs(b.y - endPt[1]) < 0.5 && b.net === live.net,
+      );
+      if (live[accField] || hasBajante) {
+        eng.triggerAlert(
+          'Extremo ocupado',
+          'El extremo libre del ramal ya tiene accesorio o bajante. Elimínalo antes de asignar el aparato desde la sidebar.',
+        );
+        return;
+      }
+      if (firstUnit && !live.aparatoInicio && !live.aparatoFin) {
+        eng.updateElementById(live.id, { [field]: apId });
+        eng.render();
+      }
+    }
     setCounts((prev) => {
       const cur = prev[storageKey] || {};
       return { ...prev, [storageKey]: { ...cur, [apId]: (cur[apId] || 0) + 1 } };
@@ -422,6 +499,24 @@ const AparatosPanel = memo(function AparatosPanel_({
 
   const dec = (apId: string) => {
     if (!storageKey) return;
+    const curBefore = { ...(counts[storageKey] || {}) };
+    const vBefore = (curBefore[apId] || 0) - 1;
+    if (vBefore <= 0 && targetId) {
+      // Ítem 11: el último contador de este aparato se eliminó — si el ramal VIVO del motor lo
+      // tiene asignado como aparatoInicio/Fin, limpiarlo para que el glifo desaparezca del
+      // canvas (el contador del panel es la fuente de verdad; el campo del ramal solo lo
+      // refleja mientras haya unidades asignadas).
+      const eng = engineRef.current;
+      const live = eng?.ramales.find((r) => r.id === targetId);
+      if (eng && live && (live.aparatoInicio === apId || live.aparatoFin === apId)) {
+        const updates: Record<string, unknown> = {};
+        if (live.aparatoInicio === apId) updates.aparatoInicio = null;
+        if (live.aparatoFin === apId) updates.aparatoFin = null;
+        eng.updateElementById(targetId, updates);
+        eng.render();
+        eng._markDirty();
+      }
+    }
     setCounts((prev) => {
       const cur = { ...(prev[storageKey] || {}) };
       const v = (cur[apId] || 0) - 1;
@@ -482,6 +577,56 @@ const AparatosPanel = memo(function AparatosPanel_({
       else next[targetId] = cur;
       return next;
     });
+  };
+
+  // Ítem: las orientaciones del codo 90° medio se fusionan en UNA sola fila de la sidebar —
+  // el contador suma horizontal + sube + baja, independiente de la orientación pedida. La fila
+  // única se llama igual que el id base; +/− escriben sobre ids REALES vivos (para AF/AC un
+  // codo manual en 'codo90rm' sería borrado por calcHydroAccessories al re-sincronizar desde
+  // los campos del ramal, así que el + escribe 'codo90rmSube'; el − quita de la orientación
+  // que tenga unidades primero).
+  const AFAC_CODO_MERGE: Record<string, string[]> = {
+    codo90rm: ['codo90rm', 'codo90rmSube', 'codo90rmBaja'],
+  };
+  const GAS_CODO_MERGE: Record<string, string[]> = {
+    codos_90_std: ['codos_90_std', 'codos_90_std_sube', 'codos_90_std_baja'],
+    codos_90_rl: ['codos_90_rl', 'codos_90_rl_sube', 'codos_90_rl_baja'],
+  };
+
+  const afAcAccItems = useMemo(
+    () =>
+      ACCESORIOS_HIDRO.filter(
+        (a) =>
+          ![
+            'teeDirecto',
+            'teeSube',
+            'teeBaja',
+            'teeTapon',
+            'teeLlaveTerminal',
+            'tapon',
+            'llaveTerminal',
+          ].includes(a.id) &&
+          a.id !== 'codo90rmSube' &&
+          a.id !== 'codo90rmBaja',
+      ).map((a) => (a.id === 'codo90rm' ? { ...a, nombre: 'Codo 90° horizontal' } : a)),
+    [],
+  );
+  const gasAccItems = useMemo(
+    () => GAS_ACCESORIOS.filter((a) => !a.id.endsWith('_sube') && !a.id.endsWith('_baja')),
+    [],
+  );
+
+  const accCodoInc = (accId: string) => incAcc(accId === 'codo90rm' ? 'codo90rmSube' : accId);
+  const accCodoDec = (accId: string) => {
+    if (accId !== 'codo90rm') return decAcc(accId);
+    const acc = curHidro.accesorios || {};
+    const target = ['codo90rmSube', 'codo90rmBaja', 'codo90rm'].find((k) => (acc[k] || 0) > 0);
+    if (target) decAcc(target);
+  };
+  const gasCodoDec = (accId: string) => {
+    const acc = gasAccMap;
+    const target = [accId, `${accId}_sube`, `${accId}_baja`].find((k) => (acc[k] || 0) > 0);
+    if (target) decAccGas(target);
   };
 
   if (!visible) {
@@ -633,6 +778,7 @@ const AparatosPanel = memo(function AparatosPanel_({
                   dec={dec}
                   targetId={targetId}
                   accent={accent}
+                  disabled={!!mergeKeys}
                 />
                 {items.length === 0 && (
                   <div
@@ -656,21 +802,11 @@ const AparatosPanel = memo(function AparatosPanel_({
         <AccesoriosSection
           targetId={targetId}
           curHidro={curHidro}
-          incAcc={incAcc}
-          decAcc={decAcc}
+          incAcc={accCodoInc}
+          decAcc={accCodoDec}
           accent={accent}
-          items={ACCESORIOS_HIDRO.filter(
-            (a) =>
-              ![
-                'teeDirecto',
-                'teeSube',
-                'teeBaja',
-                'teeTapon',
-                'teeLlaveTerminal',
-                'tapon',
-                'llaveTerminal',
-              ].includes(a.id),
-          )}
+          items={afAcAccItems}
+          merge={AFAC_CODO_MERGE}
         />
       )}
       {isGas && (
@@ -678,9 +814,10 @@ const AparatosPanel = memo(function AparatosPanel_({
           targetId={targetId}
           curHidro={{ accesorios: gasAccMap }}
           incAcc={incAccGas}
-          decAcc={decAccGas}
+          decAcc={gasCodoDec}
           accent={accent}
-          items={GAS_ACCESORIOS}
+          items={gasAccItems}
+          merge={GAS_CODO_MERGE}
         />
       )}
     </div>
