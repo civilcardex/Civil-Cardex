@@ -9,211 +9,29 @@ import {
 import { REQ_ITEMS, pisoLbl } from '../../constants';
 
 import { PlanoConfigurator } from './PlanoConfigurator';
+import {
+  PlanosTab_S1,
+  PlanosTab_S2,
+  PlanosTab_S3,
+  PlanosTab_S4,
+  PlanosTab_S5,
+  PlanosTab_S6,
+  PlanosTab_S7,
+  PlanosTab_S8,
+  PlanosTab_S9,
+  PlanosTab_S10,
+  PlanosTab_S11,
+  PlanosTab_S12,
+  PlanosTab_S13,
+  PlanosTab_S14,
+  PlanosTab_reqBtnBase,
+  PlanosTab_pendingLi,
+  PlanosTab_verBtn,
+} from './PlanosTab.styles';
 import type { useWorkAreaState } from '../useWorkAreaState';
 import ModalProtocolo from './ModalProtocolo';
 import { PlanCropPanel } from './PlanCropPanel';
 import { devError } from '../../../../utils/devError';
-const PlanosTab_S1: React.CSSProperties = {
-  padding: '4px 12px',
-  background: 'var(--bg3)',
-  border: '1px solid var(--line)',
-  borderRadius: 'var(--r)',
-  color: 'var(--txt2)',
-  cursor: 'pointer',
-  fontSize: 12,
-  fontWeight: 700,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 4,
-};
-const PlanosTab_S2: React.CSSProperties = {
-  padding: '4px 14px',
-  background: 'rgba(14,204,122,0.12)',
-  border: '1.5px solid rgba(14,204,122,0.3)',
-  borderRadius: 'var(--r)',
-  color: '#0ECC7A',
-  cursor: 'pointer',
-  fontSize: 12,
-  fontWeight: 700,
-  whiteSpace: 'nowrap',
-};
-const PlanosTab_S3: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '6px 12px',
-  borderBottom: '1px solid var(--line)',
-  flexShrink: 0,
-  background: 'var(--bg)',
-  minHeight: 36,
-};
-const PlanosTab_S4: React.CSSProperties = {
-  padding: '3px 10px',
-  background: 'rgba(0,220,229,0.08)',
-  border: '1px solid rgba(0,220,229,0.3)',
-  borderRadius: 'var(--r)',
-  color: '#00dce5',
-  fontWeight: 600,
-  fontSize: 12,
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-};
-const PlanosTab_S5: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  zIndex: 10,
-  background: 'rgba(0,220,229,.12)',
-  border: '3px dashed rgba(0,220,229,.5)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  pointerEvents: 'none',
-};
-const PlanosTab_S6: React.CSSProperties = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 12,
-  background: 'var(--bg)',
-  cursor: 'pointer',
-  position: 'relative',
-};
-const PlanosTab_S7: React.CSSProperties = {
-  width: '100%',
-  padding: '10px',
-  background: 'rgba(0,220,229,0.06)',
-  border: '1.5px dashed rgba(0,220,229,0.3)',
-  borderRadius: 'var(--r)',
-  color: '#00dce5',
-  fontWeight: 600,
-  fontSize: 12,
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 5,
-  transition: 'all .15s',
-};
-const PlanosTab_S8: React.CSSProperties = {
-  padding: '7px 10px',
-  fontSize: 12,
-  fontWeight: 700,
-  color: 'var(--txt3)',
-  borderBottom: '1px solid var(--line)',
-  flexShrink: 0,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 5,
-  textTransform: 'uppercase',
-  letterSpacing: 0.5,
-};
-const PlanosTab_S9: React.CSSProperties = {
-  flex: 1,
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: 20,
-  gap: 8,
-  cursor: 'pointer',
-  fontSize: 12,
-  color: 'var(--txt4)',
-  textAlign: 'center',
-  lineHeight: 1.6,
-};
-const PlanosTab_S10: React.CSSProperties = {
-  flex: 1,
-  overflowY: 'auto',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-  padding: '8px 10px',
-  listStyle: 'none',
-  margin: 0,
-};
-const PlanosTab_S11: React.CSSProperties = {
-  padding: '1px 6px',
-  background: 'rgba(14,204,122,0.12)',
-  border: '1px solid rgba(14,204,122,0.3)',
-  borderRadius: 'var(--r)',
-  color: '#0ECC7A',
-  cursor: 'pointer',
-  fontSize: 12,
-  fontWeight: 700,
-  transition: 'all 0.15s ease',
-  whiteSpace: 'nowrap',
-};
-const PlanosTab_S12: React.CSSProperties = {
-  padding: '3px 6px',
-  fontSize: 12,
-  fontWeight: 600,
-  borderRadius: 'var(--r)',
-  border: '1px solid var(--line)',
-  background: 'var(--bg3)',
-  color: '#ef5350',
-  cursor: 'pointer',
-  transition: 'all 0.15s ease',
-  whiteSpace: 'nowrap',
-};
-const PlanosTab_S13: React.CSSProperties = {
-  padding: '7px 10px',
-  fontSize: 12,
-  fontWeight: 700,
-  color: 'var(--txt3)',
-  borderBottom: '1px solid var(--line)',
-  flexShrink: 0,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 5,
-  textTransform: 'uppercase',
-  letterSpacing: 0.5,
-};
-const PlanosTab_S14: React.CSSProperties = {
-  padding: '3px 6px',
-  fontSize: 12,
-  fontWeight: 600,
-  borderRadius: 'var(--r)',
-  border: '1px solid var(--line)',
-  background: 'var(--bg3)',
-  color: '#ef5350',
-  cursor: 'pointer',
-  flexShrink: 0,
-  transition: 'all 0.15s ease',
-  whiteSpace: 'nowrap',
-};
-const PlanosTab_reqBtnBase: React.CSSProperties = {
-  width: '100%',
-  padding: '6px 8px',
-  borderRadius: 'var(--r)',
-  cursor: 'pointer',
-  fontSize: 12,
-  transition: 'all .2s ease',
-  marginBottom: 4,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 4,
-};
-const PlanosTab_pendingLi: React.CSSProperties = {
-  padding: '10px',
-  borderRadius: 'var(--r)',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-  transition: 'all 0.15s ease',
-};
-const PlanosTab_verBtn: React.CSSProperties = {
-  padding: '3px 6px',
-  fontSize: 12,
-  fontWeight: 600,
-  borderRadius: 'var(--r)',
-  border: '1px solid var(--line)',
-  cursor: 'pointer',
-  transition: 'all 0.15s ease',
-  whiteSpace: 'nowrap',
-};
 
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 
@@ -713,18 +531,11 @@ function PlanosTab({ state }: PlanosTabProps) {
             />
           </div>
         ) : (
-          <div
+          <button
+            type="button"
             style={PlanosTab_S6}
-            role="button"
-            tabIndex={0}
             aria-label="Seleccionar archivo de plano"
             onClick={() => fileRef.current?.click()}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                e.currentTarget.click();
-              }
-            }}
           >
             {planDrag ? (
               <div
@@ -761,7 +572,7 @@ function PlanosTab({ state }: PlanosTabProps) {
                 </div>
               </>
             )}
-          </div>
+          </button>
         )}
       </div>
 
@@ -834,18 +645,11 @@ function PlanosTab({ state }: PlanosTabProps) {
             Pendientes {pendingPlanos.length > 0 && `(${pendingPlanos.length})`}
           </div>
           {pendingPlanos.length === 0 ? (
-            <div
+            <button
+              type="button"
               style={PlanosTab_S9}
-              role="button"
-              tabIndex={0}
               aria-label="Subir planos"
               onClick={() => fileRef.current?.click()}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  e.currentTarget.click();
-                }
-              }}
             >
               {planDrag ? (
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#00dce5' }}>
@@ -857,7 +661,7 @@ function PlanosTab({ state }: PlanosTabProps) {
                   <span>Arrastra PDFs aquí o haz clic para subir varios planos</span>
                 </>
               )}
-            </div>
+            </button>
           ) : (
             <ul style={PlanosTab_S10}>
               {pendingPlanos.map((p) => {

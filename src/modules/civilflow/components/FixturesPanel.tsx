@@ -1,21 +1,30 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  APARATOS_DEF,
-  UD_BASE_INIT,
-  ACCESORIOS_HIDRO,
-  GAS_ACCESORIOS,
-  AF_UC_IDS,
-  AC_UC_IDS,
-} from '../constants';
+import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, GAS_ACCESORIOS } from '../constants';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
 import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { writeSanDrawingSync, writeHydroDrawingSync } from '../utils/drawingSync';
 import type { DrawingData } from '../utils/drawingSync';
-import { loadFromStorage, saveToStorage } from '../services/storageService';
 import FixtureGrid from './fixtures/FixtureGrid';
 import AccesoriosSection from './fixtures/AccessoriesSection';
 import { devError } from '../../../utils/devError';
+import { loadFromStorage } from '../services/storageService';
+import {
+  UNIDAD,
+  loadAll,
+  saveAll,
+  loadHidroData,
+  saveHidroData,
+  loadGasAcc,
+  saveGasAcc,
+  unitFor,
+  esAplicable,
+  isCountableTarget,
+  type CountsMap,
+  type HidroDataMap,
+  type GasAccMap,
+  type SelectableTarget,
+} from './fixturesStorage';
 import { resolveJunctionEntrant } from '../utils/flowDirection';
 import { extremoEntrelazado, flowEndsAt } from '../lib/PlanoEngine/PlanoEngineDrawing';
 import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
@@ -23,12 +32,7 @@ import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
 const HIDROSAN_IDS = new Set(['af', 'ac', 'san']);
 const GAS_ID = 'gas';
 
-import {
-  TRAZOS_PREFIX,
-  GAS_ACC_KEY,
-  APARATOS_BY_TRAMO_KEY,
-  HYDRO_DATA_STORAGE_KEY,
-} from '../constants/storage-keys';
+import { TRAZOS_PREFIX } from '../constants/storage-keys';
 const FixturesPanel_S1: React.CSSProperties = {
   width: '100%',
   display: 'flex',
@@ -63,96 +67,6 @@ const FixturesPanel_S3: React.CSSProperties = {
   marginBottom: 6,
   padding: '0 2px',
 };
-
-const UNIDAD = {
-  uc: 'UC',
-  ud: 'UD',
-  qgas: 'm³/h',
-};
-
-const SAN_UD_IDS = new Set(UD_BASE_INIT.map((d) => d.id));
-
-type CountsMap = Record<string, Record<string, number>>;
-interface HidroDataEntry {
-  accesorios: Record<string, number>;
-  Lh: number;
-  nSalidas: number;
-}
-type HidroDataMap = Record<string, HidroDataEntry>;
-type GasAccMap = Record<string, Record<string, number>>;
-
-function loadAll(): CountsMap {
-  return loadFromStorage(APARATOS_BY_TRAMO_KEY, {}) as CountsMap;
-}
-
-function saveAll(map: CountsMap) {
-  saveToStorage(APARATOS_BY_TRAMO_KEY, map);
-}
-
-function loadHidroData(): HidroDataMap {
-  return loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
-}
-
-function saveHidroData(map: HidroDataMap) {
-  saveToStorage(HYDRO_DATA_STORAGE_KEY, map);
-}
-
-function loadGasAcc(): GasAccMap {
-  const raw = loadFromStorage<GasAccMap>(GAS_ACC_KEY, {});
-  const next: GasAccMap = { ...raw };
-  for (const [tramoId, map] of Object.entries(next)) {
-    if (!map || typeof map !== 'object') continue;
-    const vals = Object.values(map).filter((v) => typeof v === 'number');
-    if (vals.length === 0 || vals.every((v) => v <= 0)) {
-      delete next[tramoId];
-    }
-  }
-  return next;
-}
-
-function saveGasAcc(map: GasAccMap) {
-  saveToStorage(GAS_ACC_KEY, map);
-}
-
-type ApUnitKey = 'qgas' | 'uc_ac' | 'uc_af' | 'ud';
-
-function unitFor(netId: string): ApUnitKey | null {
-  const net = NETS.find((n) => n.id === netId);
-  if (!net) return null;
-  if (netId === GAS_ID) return 'qgas';
-  if (net.ucType === 'uc') return netId === 'ac' ? 'uc_ac' : 'uc_af';
-  if (net.ucType === 'ud') return 'ud';
-  return null;
-}
-
-function esAplicable(ap: (typeof APARATOS_DEF)[number], netId: string, unitKey: ApUnitKey | null) {
-  if (netId === GAS_ID) return ap.grupo === 'g' && (ap.qgas || 0) > 0;
-  if (unitKey === 'ud') return SAN_UD_IDS.has(ap.id);
-  if (unitKey === 'uc_af') return AF_UC_IDS.includes(ap.id);
-  if (unitKey === 'uc_ac') return AC_UC_IDS.includes(ap.id);
-  return false;
-}
-
-interface SelectableTarget {
-  id?: string;
-  tipo?: string;
-  label?: string;
-  code?: string;
-  mergesFrom?: [string, string];
-  net?: string;
-  pts?: number[][];
-  _tribReversed?: boolean;
-}
-
-function isCountableTarget(el: SelectableTarget | null): boolean {
-  if (!el) return false;
-  return (
-    el.id?.startsWith('R') ||
-    el.id?.startsWith('B') ||
-    el.id?.startsWith('T') ||
-    el.tipo === 'calentador'
-  );
-}
 
 const AparatosPanel = memo(function AparatosPanel_({
   activeNet,
