@@ -1407,21 +1407,19 @@ function CanalTramoEditor() {
   const { selElement: rawSelElement, handleUpdateSel } = React.useContext(TramoEditorCtx)!;
   if (!rawSelElement) return null;
   const selElement = rawSelElement as PlanoBajante;
+  // Ítem 3.2: los tres campos del canal viven en una sola fila para no inflar el panel.
+  const fieldLabel: React.CSSProperties = {
+    fontFamily: "'Geist',monospace",
+    fontSize: 12,
+    color: '#9BA8AA',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  };
   return (
     <>
       <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-        <div
-          style={{
-            fontFamily: "'Geist',monospace",
-            fontSize: 12,
-            color: '#9BA8AA',
-            marginBottom: 6,
-            textTransform: 'uppercase',
-            letterSpacing: 1,
-          }}
-        >
-          Datos del canal
-        </div>
+        <div style={fieldLabel}>Datos del canal</div>
         <div
           style={{
             fontSize: 13,
@@ -1436,63 +1434,32 @@ function CanalTramoEditor() {
       </div>
 
       <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-        <div
-          style={{
-            fontFamily: "'Geist',monospace",
-            fontSize: 12,
-            color: '#9BA8AA',
-            marginBottom: 6,
-            textTransform: 'uppercase',
-            letterSpacing: 1,
-          }}
-        >
-          Base (cm)
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          <div>
+            <div style={fieldLabel}>Base (cm)</div>
+            <CanalNumField
+              label="Base (cm)"
+              value={selElement.base || 0}
+              onCommit={(v) => handleUpdateSel('base', v)}
+            />
+          </div>
+          <div>
+            <div style={fieldLabel}>Altura (cm)</div>
+            <CanalNumField
+              label="Altura (cm)"
+              value={selElement.altura || 0}
+              onCommit={(v) => handleUpdateSel('altura', v)}
+            />
+          </div>
+          <div>
+            <div style={fieldLabel}>Longitud (cm)</div>
+            <CanalNumField
+              label="Longitud (cm)"
+              value={selElement.longitud || 0}
+              onCommit={(v) => handleUpdateSel('longitud', v)}
+            />
+          </div>
         </div>
-        <CanalNumField
-          label="Base (cm)"
-          value={selElement.base || 0}
-          onCommit={(v) => handleUpdateSel('base', v)}
-        />
-      </div>
-
-      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-        <div
-          style={{
-            fontFamily: "'Geist',monospace",
-            fontSize: 12,
-            color: '#9BA8AA',
-            marginBottom: 6,
-            textTransform: 'uppercase',
-            letterSpacing: 1,
-          }}
-        >
-          Altura (cm)
-        </div>
-        <CanalNumField
-          label="Altura (cm)"
-          value={selElement.altura || 0}
-          onCommit={(v) => handleUpdateSel('altura', v)}
-        />
-      </div>
-
-      <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
-        <div
-          style={{
-            fontFamily: "'Geist',monospace",
-            fontSize: 12,
-            color: '#9BA8AA',
-            marginBottom: 6,
-            textTransform: 'uppercase',
-            letterSpacing: 1,
-          }}
-        >
-          Longitud (cm)
-        </div>
-        <CanalNumField
-          label="Longitud (cm)"
-          value={selElement.longitud || 0}
-          onCommit={(v) => handleUpdateSel('longitud', v)}
-        />
       </div>
     </>
   );
