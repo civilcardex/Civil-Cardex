@@ -35,3 +35,21 @@
   left: 16px;
   top: 16px;
 }
+
+.page-fade {
+  animation: pageFade 0.25s ease;
+  min-height: 100vh;
+}
+@keyframes pageFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-fade {
+    animation: none;
+  }
+}
