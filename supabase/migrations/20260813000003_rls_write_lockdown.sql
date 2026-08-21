@@ -1,7 +1,7 @@
 -- =========================================================================
 -- CivilFlow — lockdown de escrituras (defensa en profundidad)
 --
--- ⚠️ CORRER SOLO DESPUÉS de desplegar el código con las RPC de
+--  CORRER SOLO DESPUÉS de desplegar el código con las RPC de
 --    20260813000002_rls_security_definer_writes.sql. Si este archivo corre
 --    antes que el código nuevo, la app guarda directo a tablas y FALLA en
 --    silencio (solo se registra en consola) — pérdida silenciosa de datos.
