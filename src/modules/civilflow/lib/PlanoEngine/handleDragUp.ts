@@ -47,6 +47,7 @@ function dragFlowCheck(
 // queda sobre el vértice propio de otro ramal (una reconexión real), no solo cerca.
 function draggedOntoWrongPadre(engine: IPlanoEngineCore, ram: PlanoRamal): boolean {
   if (!ram.pts || ram.pts.length < 2) return false;
+  if (!ram.padre) return false;
   const TOL = 0.5;
   for (const ep of [ram.pts[0], ram.pts[ram.pts.length - 1]]) {
     for (const other of engine.ramales) {

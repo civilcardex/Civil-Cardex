@@ -243,7 +243,7 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
             existing.tipo === 'tributario' &&
             (existing.net === 'af' || existing.net === 'ac' || existing.net === 'gas') &&
             existing.padre === incoming.padre;
-          if (existing.id !== incoming.padre && !tribToTribOk) {
+          if (incoming.padre && existing.id !== incoming.padre && !tribToTribOk) {
             engine.triggerAlert(
               'Ramal padre incorrecto',
               'Solo puedes conectar el tributario al ramal padre seleccionado.',
@@ -315,7 +315,7 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
           existing.tipo === 'tributario' &&
           (existing.net === 'af' || existing.net === 'ac' || existing.net === 'gas') &&
           existing.padre === incoming.padre;
-        if (existing.id !== incoming.padre && !tribToTribOk) {
+        if (incoming.padre && existing.id !== incoming.padre && !tribToTribOk) {
           engine.triggerAlert(
             'Ramal padre incorrecto',
             'Solo puedes conectar el tributario al ramal padre seleccionado.',

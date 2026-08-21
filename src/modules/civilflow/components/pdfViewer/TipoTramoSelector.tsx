@@ -138,7 +138,18 @@ export default function TipoTramoSelector({
               <button
                 type="button"
                 key={f.id}
-                onClick={() => setPadreFilter(f.id)}
+                onClick={() => {
+                  setPadreFilter(f.id);
+                  if (padreTributarioId) {
+                    const stillValid = drawnElements.some(
+                      (el) => el.id === padreTributarioId && el.tipo === f.id,
+                    );
+                    if (!stillValid) {
+                      setPadreTributarioId(null);
+                      if (engineRef.current) engineRef.current.setPadreTributario(null);
+                    }
+                  }
+                }}
                 aria-pressed={padreFilter === f.id}
                 style={{
                   flex: 1,
@@ -173,15 +184,10 @@ export default function TipoTramoSelector({
             {/* Ítem 10: candidatos = TODOS los ramales de la red (principales y tributarios),
                 para permitir tributarios anidados. */}
             {(() => {
-              // Filtrado por clase elegida; el padre YA asignado se ancla al tope aunque no
-              // coincida con el filtro activo (si no, el select perdería su valor visible).
               const filtered = drawnElements.filter(
                 (el) => el.type === 'ramal' && el.tipo === padreFilter,
               );
-              const ids = new Set(filtered.map((f) => f.id));
-              const pinned = drawnElements.find((el) => el.id === padreTributarioId);
-              const list = pinned && !ids.has(pinned.id) ? [pinned, ...filtered] : filtered;
-              return list.map((el) => (
+              return filtered.map((el) => (
                 <option key={el.id} value={el.id}>
                   {el.label}
                   {el.totalL
