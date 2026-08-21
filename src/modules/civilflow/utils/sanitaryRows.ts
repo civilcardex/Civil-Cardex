@@ -135,17 +135,39 @@ export function buildSanConnectivity(
             // direcciones formaría un ciclo que diverge el punto fijo (y sobrecuenta el UD). El
             // ramal con `fin` (continúa a otro elemento, p. ej. un bajante) es la continuación y
             // sí recibe; un co-sumidero sin `fin` es un extremo muerto — no puede recibir.
+            // El orden de dibujo (la flecha) es la fuente de verdad del flujo; `_tribReversed`
+            // solo lo invierte cuando el motor lo fijó explícitamente. Una heurística de
+            // "bajante más cercano" volteaba ramales bien dibujados y rompía el enlace
+            // aguas abajo (RS5→RS3 perdía las UDs de RS5).
             const rxDownstreamPt = rx._tribReversed ? rx.pts[0] : rx.pts[rx.pts.length - 1];
             const touchesRxDischarge =
               Math.hypot(pt[0] - rxDownstreamPt[0], pt[1] - rxDownstreamPt[1]) < 2.0;
             const rxFin = rx.fin || tramoFinByKey.get(`${rx.id}-${plan.id}`) || '';
-            if (touchesRxDischarge && !rxFin) continue;
+            if (touchesRxDischarge) {
+              // Co-sumideros: un ramal que TAMBIÉN descarga en este punto solo puede recibir si
+              // su `fin` continúa a un elemento FUERA del punto (p. ej. un bajante). Si no tiene
+              // `fin` es un extremo muerto, y si su `fin` referencia a OTRO ramal que toca este
+              // mismo punto (conexión tipeada por el usuario) es igual un sumidero aquí — dejarlo
+              // recibir formaría un ciclo (RS1↔RS4) que infla o rompe la propagación.
+              const finIsRamalAtPt =
+                !!rxFin &&
+                ramales.some(
+                  (o) =>
+                    (o.id === rxFin || (o.label && o.label === rxFin)) &&
+                    o.pts &&
+                    o.pts.length >= 2 &&
+                    distToPolyline(pt, o.pts) < 2.0,
+                );
+              if (!rxFin || finIsRamalAtPt) continue;
+            }
             matches.push({ type: 'ramal' as const, id: rx.id });
           }
         }
         return matches;
       };
 
+      // El orden de dibujo (la flecha) es la fuente de verdad del flujo; `_tribReversed` solo lo
+      // invierte cuando el motor lo fijó explícitamente.
       const downstreamPt = r._tribReversed ? pStart : pEnd;
       const connections = checkEndpoint(downstreamPt);
 
@@ -352,15 +374,17 @@ export function buildSanConnectivity(
   }
 
   // Respaldo: detectar puntos de merge desde el grafo de conectividad (tramo que aparece como
-  // destino en calculoMap con >1 alimentador).
-  if (Object.keys(mergeBranches).length === 0) {
-    for (const [parentKey, children] of Object.entries(calculoMap)) {
-      const parentTramo = byKey.get(parentKey);
-      if (!parentTramo) continue;
-      const tramoChildren = children.filter((c) => byKey.has(c));
-      if (tramoChildren.length > 1) {
-        mergeBranches[parentKey] = tramoChildren;
-      }
+  // destino en calculoMap con >1 alimentador). Debe correr SIEMPRE para merges de extremo
+  // (RS5→RS3 en imagen) donde el motor NO crea mergesFrom (solo cuerpo-medio lo crea); antes
+  // solo corría si cero merges existían, entonces RS3 sin mergesFrom quedaba sin entrada y
+  // dependía 100% de la geometría dirigida — si esa fallaba por 2px, RS3 perdía RS5.
+  for (const [parentKey, children] of Object.entries(calculoMap)) {
+    if (mergeBranches[parentKey]) continue;
+    const parentTramo = byKey.get(parentKey);
+    if (!parentTramo) continue;
+    const tramoChildren = children.filter((c) => byKey.has(c));
+    if (tramoChildren.length > 1) {
+      mergeBranches[parentKey] = tramoChildren;
     }
   }
 
@@ -392,54 +416,98 @@ export function buildSanConnectivity(
   // en el mismo punto) se propaga una vez por pasada y termina acotado por `mergePassCap` en
   // vez de divergir infinito (el desempate de co-sumideros en checkEndpoint evita que ese ciclo
   // se forme).
+  // Cálculo de totales sin doble conteo: cada UD propia se cuenta una sola vez aunque el
+  // grafo tenga diamante (RS1→RS5 y RS1→RS3 directo, o RS1→RS5→RS3 + RS1→RS3). Antes
+  // `own + Σ child_total` duplicaba RS1 (una vez vía RS5 y otra directa). Ahora cada total
+  // es `propia + Σ propias de descendientes únicos (transitivo, dedup por visited)`.
   const ownTotals: Record<string, number> = { ...directedTotals };
-  const mergePassCap = Object.keys(childrenMap).length;
-  let fixedPointChanged = true;
-  for (let pass = 0; pass <= mergePassCap && fixedPointChanged; pass++) {
-    fixedPointChanged = false;
-    for (const parentKey of Object.keys(childrenMap)) {
-      const base = ownTotals[parentKey] ?? 0;
-      const sum = childrenMap[parentKey].reduce((s, c) => s + (directedTotals[c] ?? 0), base);
-      if (directedTotals[parentKey] !== sum) {
-        directedTotals[parentKey] = sum;
-        fixedPointChanged = true;
+  // Grafo completo para totales: unión de hijos geométricos + ramas de merge (mergesFrom)
+  const fullChildrenMap: Record<string, string[]> = {};
+  for (const k of new Set([...Object.keys(childrenMap), ...Object.keys(mergeBranches)])) {
+    const s = new Set<string>([...(childrenMap[k] || []), ...(mergeBranches[k] || [])]);
+    fullChildrenMap[k] = Array.from(s);
+  }
+  const componentTotalMap: Record<string, number> = {};
+  // Para cada nodo, BFS/DFS sobre fullChildrenMap con visited para no duplicar hojas compartidas
+  const allKeysForTotals = new Set<string>([
+    ...Object.keys(ownTotals),
+    ...Object.keys(fullChildrenMap),
+  ]);
+  for (const k of allKeysForTotals) {
+    if (ownTotals[k] === undefined && !fullChildrenMap[k]) continue;
+    // visited arranca con la raíz: un ciclo que vuelva a k no debe volver a contar su propia UD.
+    const visited = new Set<string>([k]);
+    const stack = [...(fullChildrenMap[k] || [])];
+    let sum = ownTotals[k] ?? 0;
+    while (stack.length > 0) {
+      const cur = stack.pop()!;
+      if (visited.has(cur)) continue;
+      visited.add(cur);
+      sum += ownTotals[cur] ?? 0;
+      for (const child of fullChildrenMap[cur] || []) {
+        if (!visited.has(child)) stack.push(child);
       }
     }
+    componentTotalMap[k] = sum;
   }
-  const componentTotalMap = directedTotals;
-
-  // ownTotalMap usa el UD PARCIAL propio del ramal (no el total acumulado por BFS) para que
-  // el override de merge sume parcial_propio + total_de_cada_alimentador sin contar doble —
-  // el BFS ya acumula correctamente cuando el grafo no está podado, así que este override
-  // actúa como red de seguridad y es un no-op en el caso normal.
-  const ownTotalMap: Record<string, number> = {};
-  for (const [key] of Object.entries(mergeBranches)) {
-    const t = byKey.get(key);
-    if (t) ownTotalMap[key] = calcUDparcial(t, mergedBase);
-  }
-
-  const mergeEntries = Object.entries(mergeBranches);
-  for (let pass = 0; pass <= mergeEntries.length; pass++) {
-    let changedAny = false;
-    for (const [key, branches] of mergeEntries) {
-      if (componentTotalMap[key] === undefined) continue;
-      const next =
-        (ownTotalMap[key] || 0) + branches.reduce((sum, b) => sum + (componentTotalMap[b] || 0), 0);
-      if (next !== componentTotalMap[key]) {
-        componentTotalMap[key] = next;
-        changedAny = true;
-      }
-    }
-    if (!changedAny) break;
+  // Asegurar que todo nodo con propia tenga entrada (hojas sin hijos)
+  for (const [k, v] of Object.entries(ownTotals)) {
+    if (componentTotalMap[k] === undefined) componentTotalMap[k] = v;
   }
   const allBranchIds = new Set<string>();
   for (const branches of Object.values(mergeBranches)) {
     for (const b of branches) allBranchIds.add(b);
   }
+  // Un ramal que ALIMENTA un merge (una rama en mergeBranches) nunca debe mostrar un total
+  // inflado por el doblez del árbol hacia él — pero TAMPOCO debe perder su autosuma legítima:
+  // si la rama recibe UDs de sus propios alimentadores (RS6 = RS1+TIRS1, ramal manual sin
+  // mergesFrom), su total acumulado debe conservarse completo para propagarse aguas abajo.
+  // Solo se resetean las ramas HOJA (sin alimentadores propios): su total mostrado es
+  // exactamente su UD propio, sin importar lo que el árbol dirigido haya recogido para ellas.
   for (const branchId of allBranchIds) {
     if (mergeBranches[branchId]) continue;
+    if ((childrenMap[branchId] || []).length > 0) continue;
     const t = tramosSan.find((x) => (x._key || x.id) === branchId);
     if (t) componentTotalMap[branchId] = calcUDparcial(t, mergedBase);
+  }
+
+  // OTROS debe mostrar SOLO ramales inmediatamente conectados (hijos directos), no toda la
+  // componente transitiva. Antes usaba BFS sobre adj y mostraba RS1 RS3 RS4 RS5 juntos aunque
+  // RS3 no descarga directo en ese tramo. Sobrescribe displayMap con hijos inmediatos.
+  // Un hijo ya contenido transitivamente en OTRO hijo del mismo padre es redundante para la
+  // columna OTROS: su UD ya se cuenta vía ese otro hijo (p. ej. RS1 alimenta a RS5, y una
+  // arista espuria RS1→RS3 por proximidad haría que RS3 listara RS1 además de RS5). Mostrarlo
+  // duplica el ramal en la columna y confunde el total (el usuario exige: RS3 OTROS = RS5 RS2).
+  const isDescendantOf = (node: string, ancestor: string): boolean => {
+    const stack = [...(fullChildrenMap[ancestor] || [])];
+    const seen = new Set<string>();
+    while (stack.length > 0) {
+      const cur = stack.pop()!;
+      if (cur === node) return true;
+      if (seen.has(cur)) continue;
+      seen.add(cur);
+      for (const child of fullChildrenMap[cur] || []) {
+        if (!seen.has(child)) stack.push(child);
+      }
+    }
+    return false;
+  };
+  for (const t of tramosSan) {
+    if (t._key && t.tipo === 'ramal' && !t.esBajante) {
+      const immediate = new Set<string>([
+        ...(childrenMap[t._key] || []),
+        ...(mergeBranches[t._key] || []),
+      ]);
+      const filtered = Array.from(immediate).filter((k) => {
+        const tr = byKey.get(k);
+        if (!tr || tr.tipo !== 'ramal' || tr.esBajante) return false;
+        for (const other of immediate) {
+          if (other !== k && isDescendantOf(k, other)) return false;
+        }
+        return true;
+      });
+      displayMap[t._key] = filtered;
+    }
   }
 
   // Limpiar "Otros Ramales" para los orígenes de merge — conservan solo sus propios UD

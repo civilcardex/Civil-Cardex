@@ -281,3 +281,173 @@ describe('buildSanConnectivity — propagación de UCs en múltiples merges enca
     expect(componentTotalMap[`R2-${planId}`]).toBe(6);
   });
 });
+
+describe('buildSanConnectivity � rama de merge autosumada SIN mergesFrom (ramal manual)', () => {
+  const mockLocalStorage: Record<string, string> = {};
+  beforeEach(() => {
+    globalThis.localStorage = {
+      getItem: (key: string) => mockLocalStorage[key] || null,
+      setItem: (key: string, value: string) => {
+        mockLocalStorage[key] = value;
+      },
+      removeItem: (key: string) => {
+        delete mockLocalStorage[key];
+      },
+      clear: () => {
+        for (const k in mockLocalStorage) delete mockLocalStorage[k];
+      },
+      length: 0,
+      key: () => null,
+    } as unknown as Storage;
+  });
+  afterEach(() => {
+    delete (globalThis as unknown as { localStorage?: unknown }).localStorage;
+  });
+
+  it('RS6 (manual, sin mergesFrom) conserva su autosuma de RS1+TIRS1 al ser rama del merge de RS3', () => {
+    const planId = '1';
+    const plans: PlanItem[] = [
+      {
+        id: 1,
+        file: new File([], 'piso1.pdf'),
+        name: 'Piso 1',
+        nivel: 1,
+        scale: 100,
+        status: 'confirmed',
+      },
+    ];
+    const rawTrazos = {
+      ramales: [
+        {
+          id: 'RS1',
+          pts: [
+            [0, 0],
+            [10, 0],
+          ],
+        },
+        {
+          id: 'TIRS1',
+          pts: [
+            [5, 10],
+            [10, 0],
+          ],
+        },
+        // RS6 manual (NO auto-creado): sin mergesFrom
+        {
+          id: 'RS6',
+          pts: [
+            [10, 0],
+            [20, 0],
+          ],
+        },
+        {
+          id: 'RS2',
+          pts: [
+            [20, -10],
+            [20, 0],
+          ],
+        },
+        // RS3 auto-creado por divisi�n (merge de RS6 + RS2)
+        {
+          id: 'RS3',
+          pts: [
+            [20, 0],
+            [40, 0],
+          ],
+          mergesFrom: ['RS6', 'RS2'],
+        },
+      ],
+      bajantes: [],
+    };
+    localStorage.setItem('civilflow_' + TRAZOS_PREFIX + planId, JSON.stringify(rawTrazos));
+    const mergedBase: MergedApBase[] = [{ id: 'lav', nombre: 'Lav', ud: 1 }];
+    const tramosSan: Tramo[] = [
+      {
+        _key: `RS1-1`,
+        id: 'RS1',
+        tipo: 'ramal',
+        piso: 1,
+        planId: '1',
+        esBajante: false,
+        fixtures: { lav: 2 },
+        recibeDe: [],
+        descripcion: '',
+        ini: '',
+        fin: '',
+        diamDisPulg: 2,
+        nSalidas: 1,
+        totalL: 10,
+      },
+      {
+        _key: `TIRS1-1`,
+        id: 'TIRS1',
+        tipo: 'ramal',
+        piso: 1,
+        planId: '1',
+        esBajante: false,
+        fixtures: { lav: 1 },
+        recibeDe: [],
+        descripcion: '',
+        ini: '',
+        fin: '',
+        diamDisPulg: 2,
+        nSalidas: 1,
+        totalL: 10,
+      },
+      {
+        _key: `RS6-1`,
+        id: 'RS6',
+        tipo: 'ramal',
+        piso: 1,
+        planId: '1',
+        esBajante: false,
+        fixtures: { lav: 1 },
+        recibeDe: [],
+        descripcion: '',
+        ini: '',
+        fin: '',
+        diamDisPulg: 2,
+        nSalidas: 1,
+        totalL: 10,
+      },
+      {
+        _key: `RS2-1`,
+        id: 'RS2',
+        tipo: 'ramal',
+        piso: 1,
+        planId: '1',
+        esBajante: false,
+        fixtures: { lav: 1 },
+        recibeDe: [],
+        descripcion: '',
+        ini: '',
+        fin: '',
+        diamDisPulg: 2,
+        nSalidas: 1,
+        totalL: 10,
+      },
+      {
+        _key: `RS3-1`,
+        id: 'RS3',
+        tipo: 'ramal',
+        piso: 1,
+        planId: '1',
+        esBajante: false,
+        fixtures: { lav: 1 },
+        recibeDe: [],
+        descripcion: '',
+        ini: '',
+        fin: '',
+        diamDisPulg: 2,
+        nSalidas: 1,
+        totalL: 10,
+      },
+    ];
+    const { componentTotalMap } = buildSanConnectivity(tramosSan, plans, mergedBase);
+    console.log('totals manual branch', componentTotalMap);
+    // RS6 debe conservar TODA su autosuma: RS1(2)+TIRS1(1)+propia(1)=4
+    expect(componentTotalMap['RS6-1']).toBe(4);
+    // RS3 = RS6(4)+RS2(1)+propia(1)=6
+    expect(componentTotalMap['RS3-1']).toBe(6);
+  });
+});

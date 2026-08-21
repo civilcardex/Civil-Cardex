@@ -3,7 +3,7 @@ import EditButton from './shared/EditButton';
 import { useTramos } from '../context/TramosContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { usePlans } from '../context/PlansContext';
-import { calcUDparcial, renderStatus } from '../utils/componentHelpers';
+import { renderStatus } from '../utils/componentHelpers';
 import { pisoCorto, DIAM_OPTIONS, SAN_UC_IDS, APARATOS_DEF } from '../constants';
 import { caudalHunterLPS, factorSimultaneidad } from '../utils/calcSanitaryCore';
 import { writeDiametroToDrawing } from '../utils/writeDiameterToDrawing';
@@ -82,11 +82,7 @@ export default function DisenosSanitarios() {
     return tramosSan.filter((t) => t.tipo === 'ramal' && !t.esBajante);
   }, [tramosSan]);
 
-  const {
-    orientedConexiones: conexiones,
-    displayMap: conexionesDisplay,
-    componentTotalMap,
-  } = useMemo(
+  const { displayMap: conexionesDisplay, componentTotalMap } = useMemo(
     () => buildSanConnectivity(tramosSan, plans, mergedBase),
     [plans, tramosSan, mergedBase],
   );
@@ -122,20 +118,6 @@ export default function DisenosSanitarios() {
       if (t.qQ0 !== qQ0) updTramoSan(idKey, 'qQ0', qQ0);
     }
   }, [displayTramos, componentTotalMap, updTramoSan]);
-
-  function getDescendantsUD(tKey: string, visited = new Set<string>()): number {
-    if (visited.has(tKey)) return 0;
-    visited.add(tKey);
-    const children = conexiones[tKey] || [];
-    let sum = 0;
-    for (const childKey of children) {
-      const childTramo = tramosSan.find((x) => x._key === childKey);
-      if (childTramo) {
-        sum += calcUDparcial(childTramo, mergedBase) + getDescendantsUD(childKey, visited);
-      }
-    }
-    return sum;
-  }
 
   const totales = useMemo(
     () =>
@@ -397,11 +379,7 @@ export default function DisenosSanitarios() {
                                 {connectedKeys.map((childKey) => {
                                   const parts = childKey.split('-');
                                   const rId = parts[0];
-                                  const childTramo = tramosSan.find((tr) => tr._key === childKey);
-                                  const childOwnUd = childTramo
-                                    ? calcUDparcial(childTramo, mergedBase)
-                                    : 0;
-                                  const childTotalUd = childOwnUd + getDescendantsUD(childKey);
+                                  const childTotalUd = componentTotalMap[childKey] ?? 0;
                                   return (
                                     <span
                                       key={childKey}
