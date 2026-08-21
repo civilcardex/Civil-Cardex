@@ -1,7 +1,11 @@
 ﻿import { useState, useEffect } from 'react';
 import { bajanteLabel, ramalLabel } from '../../../utils/accessoryAbbreviations';
 import { APARATOS_DEF, AF_UC_IDS, AC_UC_IDS } from '../../../constants/engineeringDataFixtures';
+import { UD_BASE_INIT } from '../../../constants';
 import { getAccessoryOptions } from '../../../utils/accessoryOptions';
+import { esAplicable, loadAll, saveAll } from '../../fixturesStorage';
+import { DIAM_BY_MAT } from '../../../constants';
+import { matchDiamOption } from '../../../utils/diamOptionMatch';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoElement, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
 import {
@@ -72,145 +76,160 @@ function MidRamalAccessorySelector({
 
   return (
     <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Accesorio en cuerpo del ramal</div>
-      <select
-        value={currentVal}
-        aria-label="Accesorio en cuerpo del ramal"
-        onChange={(e) => {
-          const accId = e.target.value;
-          const eng = engineRef.current;
-          if (!eng) return;
-          const fresh = eng.ramales.find((r) => r.id === element.id);
-          if (!fresh) return;
+      {element.net !== 'san' && (
+        <>
+          <div style={MENU_SECTION_LABEL_ROW_STYLE}>Accesorio en cuerpo del ramal</div>
+          <select
+            value={currentVal}
+            aria-label="Accesorio en cuerpo del ramal"
+            onChange={(e) => {
+              const accId = e.target.value;
+              const eng = engineRef.current;
+              if (!eng) return;
+              const fresh = eng.ramales.find((r) => r.id === element.id);
+              if (!fresh) return;
 
-          if (
-            accId === 'codoReventilado' &&
-            (diamPulgFromLabel(fresh.diametro || '') < 3 ||
-              diamPulgFromLabel(fresh.diametro || '') > 4)
-          ) {
-            eng.triggerAlert(
-              'Diámetro no permitido',
-              'La tubería principal sanitaria con codo reventilado solo admite diámetro de 3" o 4".',
-            );
-            return;
-          }
+              if (
+                accId === 'codoReventilado' &&
+                (diamPulgFromLabel(fresh.diametro || '') < 3 ||
+                  diamPulgFromLabel(fresh.diametro || '') > 4)
+              ) {
+                eng.triggerAlert(
+                  'Diámetro no permitido',
+                  'La tubería principal sanitaria con codo reventilado solo admite diámetro de 3" o 4".',
+                );
+                return;
+              }
 
-          // Ítems 12/13: polaridad del codo de 90° sube/baja en el CUERPO — en el cuerpo el
-          // flujo pasa de largo (ni llega ni sale), así que ni sube ni baja son válidos ahí.
-          if (
-            accId === 'codoSube' ||
-            accId === 'codoBaja' ||
-            accId === 'codo90rmSube' ||
-            accId === 'codo90rmBaja'
-          ) {
-            if (!codoPolarityOk(fresh, [midRamalHit.x, midRamalHit.y], accId, 0.5)) {
-              const isSube = accId === 'codoSube' || accId === 'codo90rmSube';
-              eng.triggerAlert(
-                'Polaridad de codo incorrecta',
-                isSube
-                  ? 'El codo 90° sube solo puede entregar flujo: colócalo en un extremo hacia donde fluye el ramal, no en el cuerpo.'
-                  : 'El codo 90° baja solo puede recibir flujo: colócalo en un extremo desde donde fluye el ramal, no en el cuerpo.',
-              );
-              return;
-            }
-          }
+              // Ítems 12/13: polaridad del codo de 90° sube/baja en el CUERPO — en el cuerpo el
+              // flujo pasa de largo (ni llega ni sale), así que ni sube ni baja son válidos ahí.
+              if (
+                accId === 'codoSube' ||
+                accId === 'codoBaja' ||
+                accId === 'codo90rmSube' ||
+                accId === 'codo90rmBaja'
+              ) {
+                if (!codoPolarityOk(fresh, [midRamalHit.x, midRamalHit.y], accId, 0.5)) {
+                  const isSube = accId === 'codoSube' || accId === 'codo90rmSube';
+                  eng.triggerAlert(
+                    'Polaridad de codo incorrecta',
+                    isSube
+                      ? 'El codo 90° sube solo puede entregar flujo: colócalo en un extremo hacia donde fluye el ramal, no en el cuerpo.'
+                      : 'El codo 90° baja solo puede recibir flujo: colócalo en un extremo desde donde fluye el ramal, no en el cuerpo.',
+                  );
+                  return;
+                }
+              }
 
-          if (existingKey) {
-            const newAccMed = { ...(fresh.accMed || {}) };
-            if (accId) {
-              newAccMed[existingKey] = accId;
-            } else {
-              delete newAccMed[existingKey];
-            }
-            eng.updateElementById(element.id, { accMed: newAccMed });
-            if (selElement?.id === element.id) setSelElement({ ...selElement, accMed: newAccMed });
-            // Sin esto, `element` (la copia congelada de contextMenuState del momento en que se
-            // abrió el menú) nunca refleja la escritura: el desplegable seguía mostrando
-            // "Ninguno" tras la PRIMERA elección, y cada elección posterior caía en la rama de
-            // "insertar vértice nuevo" (más abajo) en vez de actualizar este — dejando el
-            // glifo antiguo en pantalla junto al nuevo, y "Ninguno" sin encontrar nada que
-            // eliminar.
-            setContextMenuState((prev) =>
-              prev ? { ...prev, element: { ...prev.element, accMed: newAccMed } } : null,
-            );
-          } else if (accId) {
-            // Se inserta un vértice nuevo en el punto clicado (dividiendo el segmento, no el
-            // ramal) y se ancla allí el accesorio.
-            const newIdx = midRamalHit.segmentIdx + 1;
-            const newPts = fresh.pts.map((p: number[]) => [...p]);
-            newPts.splice(newIdx, 0, [midRamalHit.x, midRamalHit.y]);
-            // Las claves accMed existentes en/después del punto de inserción se desplazan un
-            // índice hacia arriba.
-            const shiftedAccMed: Record<string, string> = {};
-            for (const [k, v] of Object.entries(fresh.accMed || {})) {
-              const m = k.match(/^accMed(\d+)$/);
-              if (!m) continue;
-              const idx = parseInt(m[1], 10);
-              shiftedAccMed[`accMed${idx >= newIdx ? idx + 1 : idx}`] = v as string;
-            }
-            shiftedAccMed[`accMed${newIdx}`] = accId;
-            eng.updateElementById(element.id, { pts: newPts, accMed: shiftedAccMed });
-            if (selElement?.id === element.id)
-              setSelElement({ ...(selElement as PlanoRamal), pts: newPts, accMed: shiftedAccMed });
-            setContextMenuState((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    element: {
-                      ...(prev.element as PlanoRamal),
-                      pts: newPts,
-                      accMed: shiftedAccMed,
-                    },
-                  }
-                : null,
-            );
-          }
-          // teeTapon/teeLlaveTerminal ya no se ofrecen en el contador de accesorios del panel
-          // lateral (son glifos puros de cuerpo, elegidos solo desde este desplegable) — pero
-          // siguen contando como tee de paso a efectos de pérdida de carga, igual que un "Tee
-          // paso lado" contabilizado manualmente. Se incrementa/decrementa ese conteo
-          // automáticamente para que cambiar de uno de estos dos no deje un conteo huérfano.
-          const TEE_LADO_LINKED = new Set(['teeTapon', 'teeLlaveTerminal']);
-          if (currentVal !== accId) {
-            // _loadedPlanId, NO eng.planId — este último está declarado en el engine pero nunca
-            // se asigna, así que siempre es undefined; usarlo escribía el conteo bajo la clave
-            // `${net}_${id}_` (planId vacío) mientras el panel lateral lee
-            // `${net}_${id}_${realPlanId}`, con lo que el conteo caía en una clave que nada
-            // mostraba jamás.
-            const planId = eng._loadedPlanId ?? '';
-            if (TEE_LADO_LINKED.has(currentVal))
-              bumpHidroAccesorio(element.net || 'af', 'teeLado', -1, element.id, planId);
-            if (TEE_LADO_LINKED.has(accId))
-              bumpHidroAccesorio(element.net || 'af', 'teeLado', 1, element.id, planId);
-            // bumpHidroAccesorio escribe directo en localStorage — el contador de accesorios
-            // del panel lateral de FixturesPanel solo vuelve a leer localStorage en respuesta
-            // a este evento (o a sus propias llamadas inc/dec), así que sin despacharlo aquí
-            // el conteo se actualiza en disco pero el panel sigue mostrando el número
-            // obsoleto hasta que algo más lo dispare.
-            if (typeof window !== 'undefined')
-              window.dispatchEvent(new CustomEvent('aparatos-clear'));
-          }
-          eng.render();
-          eng._markDirty();
-        }}
-        style={MENU_SELECT_STYLE}
-      >
-        <option value="">Ninguno</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+              if (existingKey) {
+                const newAccMed = { ...(fresh.accMed || {}) };
+                if (accId) {
+                  newAccMed[existingKey] = accId;
+                } else {
+                  delete newAccMed[existingKey];
+                }
+                eng.updateElementById(element.id, { accMed: newAccMed });
+                if (selElement?.id === element.id)
+                  setSelElement({ ...selElement, accMed: newAccMed });
+                // Sin esto, `element` (la copia congelada de contextMenuState del momento en que se
+                // abrió el menú) nunca refleja la escritura: el desplegable seguía mostrando
+                // "Ninguno" tras la PRIMERA elección, y cada elección posterior caía en la rama de
+                // "insertar vértice nuevo" (más abajo) en vez de actualizar este — dejando el
+                // glifo antiguo en pantalla junto al nuevo, y "Ninguno" sin encontrar nada que
+                // eliminar.
+                setContextMenuState((prev) =>
+                  prev ? { ...prev, element: { ...prev.element, accMed: newAccMed } } : null,
+                );
+              } else if (accId) {
+                // Se inserta un vértice nuevo en el punto clicado (dividiendo el segmento, no el
+                // ramal) y se ancla allí el accesorio.
+                const newIdx = midRamalHit.segmentIdx + 1;
+                const newPts = fresh.pts.map((p: number[]) => [...p]);
+                newPts.splice(newIdx, 0, [midRamalHit.x, midRamalHit.y]);
+                // Las claves accMed existentes en/después del punto de inserción se desplazan un
+                // índice hacia arriba.
+                const shiftedAccMed: Record<string, string> = {};
+                for (const [k, v] of Object.entries(fresh.accMed || {})) {
+                  const m = k.match(/^accMed(\d+)$/);
+                  if (!m) continue;
+                  const idx = parseInt(m[1], 10);
+                  shiftedAccMed[`accMed${idx >= newIdx ? idx + 1 : idx}`] = v as string;
+                }
+                shiftedAccMed[`accMed${newIdx}`] = accId;
+                eng.updateElementById(element.id, { pts: newPts, accMed: shiftedAccMed });
+                if (selElement?.id === element.id)
+                  setSelElement({
+                    ...(selElement as PlanoRamal),
+                    pts: newPts,
+                    accMed: shiftedAccMed,
+                  });
+                setContextMenuState((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        element: {
+                          ...(prev.element as PlanoRamal),
+                          pts: newPts,
+                          accMed: shiftedAccMed,
+                        },
+                      }
+                    : null,
+                );
+              }
+              // teeTapon/teeLlaveTerminal ya no se ofrecen en el contador de accesorios del panel
+              // lateral (son glifos puros de cuerpo, elegidos solo desde este desplegable) — pero
+              // siguen contando como tee de paso a efectos de pérdida de carga, igual que un "Tee
+              // paso lado" contabilizado manualmente. Se incrementa/decrementa ese conteo
+              // automáticamente para que cambiar de uno de estos dos no deje un conteo huérfano.
+              const TEE_LADO_LINKED = new Set(['teeTapon', 'teeLlaveTerminal']);
+              if (currentVal !== accId) {
+                // _loadedPlanId, NO eng.planId — este último está declarado en el engine pero nunca
+                // se asigna, así que siempre es undefined; usarlo escribía el conteo bajo la clave
+                // `${net}_${id}_` (planId vacío) mientras el panel lateral lee
+                // `${net}_${id}_${realPlanId}`, con lo que el conteo caía en una clave que nada
+                // mostraba jamás.
+                const planId = eng._loadedPlanId ?? '';
+                if (TEE_LADO_LINKED.has(currentVal))
+                  bumpHidroAccesorio(element.net || 'af', 'teeLado', -1, element.id, planId);
+                if (TEE_LADO_LINKED.has(accId))
+                  bumpHidroAccesorio(element.net || 'af', 'teeLado', 1, element.id, planId);
+                // bumpHidroAccesorio escribe directo en localStorage — el contador de accesorios
+                // del panel lateral de FixturesPanel solo vuelve a leer localStorage en respuesta
+                // a este evento (o a sus propias llamadas inc/dec), así que sin despacharlo aquí
+                // el conteo se actualiza en disco pero el panel sigue mostrando el número
+                // obsoleto hasta que algo más lo dispare.
+                if (typeof window !== 'undefined')
+                  window.dispatchEvent(new CustomEvent('aparatos-clear'));
+              }
+              eng.render();
+              eng._markDirty();
+            }}
+            style={MENU_SELECT_STYLE}
+          >
+            <option value="">Ninguno</option>
+            {options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
 
-      {['af', 'ac', 'gas'].includes(element.net) &&
+      {['af', 'ac', 'gas', 'san'].includes(element.net) &&
         (() => {
-          const aparatoIds =
-            element.net === 'af'
-              ? AF_UC_IDS
-              : element.net === 'ac'
-                ? AC_UC_IDS
-                : APARATOS_DEF.filter((a) => a.grupo === 'g').map((a) => a.id);
+          const aparatoIds = (() => {
+            if (element.net === 'af') return AF_UC_IDS;
+            if (element.net === 'ac') return AC_UC_IDS;
+            if (element.net === 'san') {
+              const filtered = APARATOS_DEF.filter((ap) => esAplicable(ap, 'san', 'ud'));
+              const order = UD_BASE_INIT.map((d) => d.id);
+              return filtered
+                .sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id))
+                .map((a) => a.id);
+            }
+            return APARATOS_DEF.filter((a) => a.grupo === 'g').map((a) => a.id);
+          })();
           const aparatoOptions = aparatoIds
             .map((id) => APARATOS_DEF.find((a) => a.id === id))
             .filter((a): a is (typeof APARATOS_DEF)[number] => !!a);
@@ -228,13 +247,114 @@ function MidRamalAccessorySelector({
               : Infinity;
           const isStart = dStart <= dEnd;
           const fieldApp: 'aparatoInicio' | 'aparatoFin' = isStart ? 'aparatoInicio' : 'aparatoFin';
-          const currentApp = element[fieldApp] || '';
+          let currentApp = element[fieldApp] || '';
+          if (element.net === 'san' || element.net === 'll') {
+            // Para sanitaria/lluvias el aparato del cuerpo se guarda en el conteo de fixtures (sidebar),
+            // no en aparatoInicio/Fin; mostrar el que tenga conteo >0 para este ramal.
+            try {
+              const planIdForCur =
+                (engineRef.current as unknown as { _loadedPlanId?: string })?._loadedPlanId ?? '';
+              const keyCur = `san_${element.id}_${planIdForCur || ''}`;
+              const countsCur = loadAll();
+              const curMap = countsCur[keyCur] || {};
+              const found = Object.keys(curMap).find((k) => (curMap[k] || 0) > 0);
+              if (found) currentApp = found;
+            } catch (_e) {
+              void _e;
+            }
+          }
           const currentAppDef = APARATOS_DEF.find((a) => a.id === currentApp);
           const applyAparato = (val: string) => {
             const eng = engineRef.current;
             if (!eng) return;
             const fresh = eng.ramales.find((r) => r.id === element.id);
             if (!fresh || !fresh.pts || fresh.pts.length < 2) return;
+            if (fresh.net === 'san' || fresh.net === 'll') {
+              const fStart = Math.hypot(
+                fresh.pts[0][0] - midRamalHit.x,
+                fresh.pts[0][1] - midRamalHit.y,
+              );
+              const fEnd = Math.hypot(
+                fresh.pts[fresh.pts.length - 1][0] - midRamalHit.x,
+                fresh.pts[fresh.pts.length - 1][1] - midRamalHit.y,
+              );
+              const nearStart = fStart <= fEnd;
+              const fieldAcc: 'accesorioInicio' | 'accesorioFin' = nearStart
+                ? 'accesorioInicio'
+                : 'accesorioFin';
+              if (val) {
+                if (fresh[fieldAcc]) {
+                  eng.triggerAlert(
+                    'Accesorio existente',
+                    'Este extremo ya tiene un accesorio. Elimínalo antes de asignar un aparato.',
+                  );
+                  return;
+                }
+                const updates: Record<string, unknown> = { [fieldAcc]: 'codo90rmSube' };
+                const diamListSan = DIAM_BY_MAT['PVC'] || [];
+                const diamVal = fresh.diametro ? matchDiamOption(diamListSan, fresh.diametro) : '';
+                if (diamVal)
+                  (updates as Record<string, unknown>)[
+                    nearStart ? 'diametroInicio' : 'diametroFin'
+                  ] = diamVal;
+                eng.updateElementById(element.id, updates);
+                if (selElement?.id === element.id)
+                  setSelElement({ ...selElement, ...updates } as PlanoRamal);
+                setContextMenuState((prev) =>
+                  prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
+                );
+                eng.render();
+                eng._markDirty();
+                if (planosCtx?.plans) {
+                  const planId = eng._loadedPlanId ?? '';
+                  const counts2 = loadAll();
+                  const key2 = `san_${element.id}_${planId || ''}`;
+                  const cur2 = counts2[key2] || {};
+                  cur2[val] = (cur2[val] || 0) + 1;
+                  counts2[key2] = cur2;
+                  saveAll(counts2);
+                  bumpHidroAccesorio('san', 'codo90rmSube', 1, element.id, planId);
+                  if (typeof window !== 'undefined')
+                    window.dispatchEvent(new CustomEvent('aparatos-clear'));
+                }
+                return;
+              } else {
+                const wasCodo = fresh[fieldAcc] === 'codo90rmSube';
+                if (!wasCodo) return;
+                const updates: Record<string, unknown> = { [fieldAcc]: '' };
+                (updates as Record<string, unknown>)[nearStart ? 'diametroInicio' : 'diametroFin'] =
+                  '';
+                eng.updateElementById(element.id, updates);
+                if (selElement?.id === element.id)
+                  setSelElement({ ...selElement, ...updates } as PlanoRamal);
+                setContextMenuState((prev) =>
+                  prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
+                );
+                eng.render();
+                eng._markDirty();
+                const planId = eng._loadedPlanId ?? '';
+                bumpHidroAccesorio('san', 'codo90rmSube', -1, element.id, planId);
+                if (typeof window !== 'undefined')
+                  window.dispatchEvent(new CustomEvent('aparatos-clear'));
+                if (planosCtx?.plans) {
+                  const counts3 = loadAll();
+                  const key3 = `san_${element.id}_${planId || ''}`;
+                  const cur3 = counts3[key3] || {};
+                  const apToDec = Object.keys(cur3).find((k) => (cur3[k] || 0) > 0);
+                  if (apToDec) {
+                    const v = (cur3[apToDec] || 0) - 1;
+                    if (v <= 0) delete cur3[apToDec];
+                    else cur3[apToDec] = v;
+                    if (Object.keys(cur3).length === 0) delete counts3[key3];
+                    else counts3[key3] = cur3;
+                    saveAll(counts3);
+                    if (typeof window !== 'undefined')
+                      window.dispatchEvent(new CustomEvent('aparatos-clear'));
+                  }
+                }
+                return;
+              }
+            }
             const fStart = Math.hypot(
               fresh.pts[0][0] - midRamalHit.x,
               fresh.pts[0][1] - midRamalHit.y,
@@ -272,10 +392,6 @@ function MidRamalAccessorySelector({
                 );
                 return;
               }
-              // Ítem 2 (rev 4): el aparato solo puede dibujarse en el extremo LIBRE hacia el que apunta
-              // el flujo del ramal (el aparato RECIBE). Dos condiciones, cualquiera falla =
-              // bloqueado: (a) el extremo está conectado a la red (T/Y/bajante), o (b) el flujo
-              // va en contra del extremo libre (apunta a la conexión).
               if (extremumOccupied(eng, fresh, targetPt) || !flowEndsAt(fresh, targetPt, 0.5)) {
                 setContextMenuState((prev) => (prev ? { ...prev, visible: false } : prev));
                 eng.triggerAlert(
@@ -610,6 +726,17 @@ export function RamalMenu() {
             planosCtx={ctx.planosCtx}
           />
         )}
+      {contextMenuState.midRamalHit && !contextMenuState.ramalEndpoint && ramalEl.net === 'san' && (
+        <MidRamalAccessorySelector
+          element={ramalEl}
+          midRamalHit={contextMenuState.midRamalHit}
+          engineRef={ctx.engineRef}
+          selElement={ctx.selElement}
+          setSelElement={ctx.setSelElement}
+          setContextMenuState={ctx.setContextMenuState}
+          planosCtx={ctx.planosCtx}
+        />
+      )}
       {contextMenuState.midRamalHit &&
         !contextMenuState.ramalEndpoint &&
         ['af', 'ac'].includes(ramalEl.net) &&

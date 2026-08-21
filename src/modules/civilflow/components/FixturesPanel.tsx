@@ -1,6 +1,14 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
-import { APARATOS_DEF, UD_BASE_INIT, ACCESORIOS_HIDRO, GAS_ACCESORIOS } from '../constants';
+import {
+  APARATOS_DEF,
+  UD_BASE_INIT,
+  ACCESORIOS_HIDRO,
+  GAS_ACCESORIOS,
+  DIAM_BY_MAT,
+} from '../constants';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
+import { matchDiamOption } from '../utils/diamOptionMatch';
+import { bumpHidroAccesorio } from '../utils/syncExtremeAccessory';
 import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { writeSanDrawingSync, writeHydroDrawingSync } from '../utils/drawingSync';
@@ -27,6 +35,7 @@ import {
 } from './fixturesStorage';
 import { resolveJunctionEntrant } from '../utils/flowDirection';
 import { extremoEntrelazado, flowEndsAt } from '../lib/PlanoEngine/PlanoEngineDrawing';
+import { distToPolyline } from '../lib/shared/geometry';
 import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
 
 const HIDROSAN_IDS = new Set(['af', 'ac', 'san']);
@@ -235,9 +244,18 @@ const AparatosPanel = memo(function AparatosPanel_({
   // hay evento dedicado de "geometría cambiada" contra el cual invalidar un caché. Una lectura
   // simple de localStorage es barata de repetir en cada render, así que se re-lee fresco en vez de
   // quedar obsoleto a mitad de sesión.
-  const allRamalesForPlan = planId
-    ? loadFromStorage<DrawingData | null>(TRAZOS_PREFIX + planId, null)?.ramales || []
-    : [];
+  const allRamalesForPlan = (() => {
+    const fromStorage = planId
+      ? loadFromStorage<DrawingData | null>(TRAZOS_PREFIX + planId, null)?.ramales || []
+      : [];
+    if (fromStorage.length > 0) return fromStorage;
+    // Fallback al motor vivo (planId puede ser string vs number, o storage aún no volcado)
+    return (engineRef.current?.ramales || []).filter((r) => {
+      // Filtrar por planId si existe; si no, tomar todos de la red activa
+      const pid = (r as unknown as { planId?: string | number }).planId;
+      return planId == null || pid == null || String(pid) === String(planId);
+    }) as unknown as typeof fromStorage;
+  })();
 
   // Keys de las fuentes de fusión — un ramal auto-creado (por corte en medio de un empalme)
   // arranca sin aparatos propios; el ramal que MUESTRA la UC combinada (que puede ser el
@@ -249,13 +267,61 @@ const AparatosPanel = memo(function AparatosPanel_({
   const mergeKeys = (() => {
     if (!target?.id || !netId) return null;
     const keyFor = (id: string) => (planId ? `${netId}_${id}_${planId}` : `${netId}_${id}`);
+    // Unir AMBAS fuentes de verdad de flujo: mergesFrom (auto-split) + geometría
+    // (extremo-a-extremo). RS3 suele ser extremo-a-extremo (sin mergesFrom) pero RS5 es
+    // auto-split (con mergesFrom); el subárbol completo de RS3 debe incluir ambos.
+    // Antes solo se usaba mergesFrom y RS3 dibujado a mano quedaba en 0 ("muestra de menos").
+    const mergeSiblingPairs = new Set<string>();
+    for (const r of allRamalesForPlan) {
+      if (r.mergesFrom) mergeSiblingPairs.add(r.mergesFrom.toSorted().join('|'));
+    }
+    const geomKeysForSan = (): string[] => {
+      if (netId !== 'san' || !target?.id) return [];
+      const visited = new Set<string>([target.id]);
+      const keys: string[] = [];
+      const collect = (id: string) => {
+        const t = allRamalesForPlan.find((r) => r.id === id);
+        if (!t || !t.pts || t.pts.length < 2) return;
+        const tDownstream = t._tribReversed ? t.pts[0] : t.pts[t.pts.length - 1];
+        for (const f of allRamalesForPlan) {
+          if (f.id === id || f.net !== netId || visited.has(f.id)) continue;
+          if (!f.pts || f.pts.length < 2) continue;
+          if (f.tipo === 'bajante' || f.tipo === 'montante') continue;
+          if (mergeSiblingPairs.has([f.id, t.id].sort().join('|'))) continue;
+          const fEnd = f._tribReversed ? f.pts[0] : f.pts[f.pts.length - 1];
+          if (distToPolyline(fEnd, t.pts) >= 2.0) continue;
+          const touchesTDownstream =
+            Math.hypot(fEnd[0] - tDownstream[0], fEnd[1] - tDownstream[1]) < 2.0;
+          if (touchesTDownstream) {
+            const tFin = (t as unknown as { fin?: string }).fin || '';
+            if (!tFin) continue;
+            const finIsRamalAtPt = allRamalesForPlan.some(
+              (o) =>
+                (o.id === tFin || (o as unknown as { label?: string }).label === tFin) &&
+                o.pts &&
+                o.pts.length >= 2 &&
+                distToPolyline(fEnd, o.pts) < 2.0,
+            );
+            if (finIsRamalAtPt) continue;
+          }
+          visited.add(f.id);
+          keys.push(keyFor(f.id));
+          collect(f.id);
+        }
+      };
+      collect(target.id);
+      return keys;
+    };
     // Si target es el ramal auto-creado, su propio mergesFrom es el par de fuentes; si no,
     // hallar el ramal auto-creado que lista a target como una de sus dos fuentes.
     const isAutoCreated = !!target.mergesFrom;
     const hostR = isAutoCreated
       ? target
       : allRamalesForPlan.find((r) => r.net === netId && r.mergesFrom?.includes(target.id!));
-    if (!hostR?.mergesFrom) return null;
+    if (!hostR?.mergesFrom) {
+      const g = geomKeysForSan();
+      return g.length > 0 ? g : null;
+    }
     const [aId, bId] = hostR.mergesFrom;
     if (!aId || !bId) return null;
     // `hostR.mergesFrom` es siempre [existing.id, incoming.id] por construcción
@@ -266,6 +332,12 @@ const AparatosPanel = memo(function AparatosPanel_({
     // que con tres ramales la división es siempre 2-vs-1, y el único disidente (el que discrepa de
     // los otros dos) es el entrante. Coincide con waterNetworkRows.ts / WaterNetworkDesign.tsx.
     if (!hostR.id || !hostR.pts || hostR.pts.length === 0) return null;
+    // Para la sidebar de aparatos mostrar el combinado en CUALQUIERA de los participantes
+    // (auto o fuente), no solo en el entrante — el usuario espera ver en RS3 (auto) el total
+    // RS5+RS2 (+ RS1,RS4 transitivos), igual que la tabla TOTAL. Antes solo el entrante
+    // (tributario) veía el combinado y RS3 quedaba en 0 ("muestra de menos").
+    const targetIsInMerge = hostR.mergesFrom.includes(target.id!);
+    if (!targetIsInMerge && hostR.id !== target.id) return null;
     const jc = hostR.pts[0];
     const existingObj = allRamalesForPlan.find((r) => r.id === aId);
     const incomingObj = allRamalesForPlan.find((r) => r.id === bId);
@@ -277,7 +349,7 @@ const AparatosPanel = memo(function AparatosPanel_({
           incomingObj,
         )
       : aId;
-    if (entrantId !== target.id) return null;
+    if (hostR.id !== target.id && entrantId !== target.id) return null;
     // TRANSITIVIDAD: un ramal auto-creado puede ser a su vez fuente de un empalme aguas arriba
     // (cadena RS1+T1RS1→RS2, RS2+T2RS2→RS3). Las fuentes directas de RS3 incluyen a RS2, que
     // es también un merge point sin aparatos propios — sus conteos viven en RS1/T1RS1. Sumar
@@ -294,7 +366,10 @@ const AparatosPanel = memo(function AparatosPanel_({
       if (r?.mergesFrom) for (const src of r.mergesFrom) collect(src);
     };
     collect(hostR.id);
-    return allKeys;
+    // Unión con geom para robustez (cubre extremo-a-extremo donde mergesFrom no registra un
+    // alimentador pero geométricamente sí existe).
+    const geomExtra = geomKeysForSan().filter((k) => !allKeys.includes(k));
+    return geomExtra.length > 0 ? [...allKeys, ...geomExtra] : allKeys;
   })();
 
   const currentMap = useMemo(() => {
@@ -342,9 +417,8 @@ const AparatosPanel = memo(function AparatosPanel_({
     // Punto de suma combinada (ramal que MUESTRA el total de sus fuentes de empalme): la
     // grilla queda en solo-lectura — el usuario nunca edita aquí, edita en las fuentes.
     if (mergeKeys) return;
-    // Ítem 6: máximo UN aparato por ramal (manual). Los ramales que reciben sumas de otros
-    // tramos sí pueden mostrar más, pero eso llega solo por suma — nunca por conteo manual.
-    if (ownTotal >= 1) {
+    // Ítem 6: máximo UN aparato por ramal (manual) — no aplica en sanitaria ni lluvias.
+    if (ownTotal >= 1 && netId !== 'san' && netId !== 'll') {
       engineRef.current?.triggerAlert(
         'Máximo 1 aparato por ramal',
         'Un ramal admite máximo un aparato asignado manualmente. Si necesitas más unidades, crea otro ramal (o tributario) desde el cuerpo de este.',
@@ -405,6 +479,31 @@ const AparatosPanel = memo(function AparatosPanel_({
         eng.render();
       }
     }
+    if (eng && live && live.net === 'san' && firstUnit) {
+      const head = live.pts[live.pts.length - 1];
+      const tail = live.pts[0];
+      const headOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, head);
+      const tailOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, tail);
+      let targetField: 'accesorioInicio' | 'accesorioFin' | null = null;
+      let targetDiamField: 'diametroInicio' | 'diametroFin' | null = null;
+      if (!headOcc && !live.accesorioFin) {
+        targetField = 'accesorioFin';
+        targetDiamField = 'diametroFin';
+      } else if (!tailOcc && !live.accesorioInicio) {
+        targetField = 'accesorioInicio';
+        targetDiamField = 'diametroInicio';
+      }
+      if (targetField && targetDiamField) {
+        const updates: Record<string, unknown> = { [targetField]: 'codo90rmSube' };
+        const diamListSan = DIAM_BY_MAT['PVC'] || [];
+        const diamVal = live.diametro ? matchDiamOption(diamListSan, live.diametro) : '';
+        if (diamVal) (updates as Record<string, unknown>)[targetDiamField] = diamVal;
+        eng.updateElementById(live.id, updates);
+        eng.render();
+        const planId = eng._loadedPlanId ?? '';
+        bumpHidroAccesorio('san', 'codo90rmSube', 1, live.id, planId);
+      }
+    }
     setCounts((prev) => {
       const cur = prev[storageKey] || {};
       return { ...prev, [storageKey]: { ...cur, [apId]: (cur[apId] || 0) + 1 } };
@@ -416,19 +515,43 @@ const AparatosPanel = memo(function AparatosPanel_({
     const curBefore = { ...(counts[storageKey] || {}) };
     const vBefore = (curBefore[apId] || 0) - 1;
     if (vBefore <= 0 && targetId) {
-      // Ítem 11: el último contador de este aparato se eliminó — si el ramal VIVO del motor lo
-      // tiene asignado como aparatoInicio/Fin, limpiarlo para que el glifo desaparezca del
-      // canvas (el contador del panel es la fuente de verdad; el campo del ramal solo lo
-      // refleja mientras haya unidades asignadas).
       const eng = engineRef.current;
       const live = eng?.ramales.find((r) => r.id === targetId);
-      if (eng && live && (live.aparatoInicio === apId || live.aparatoFin === apId)) {
-        const updates: Record<string, unknown> = {};
-        if (live.aparatoInicio === apId) updates.aparatoInicio = null;
-        if (live.aparatoFin === apId) updates.aparatoFin = null;
-        eng.updateElementById(targetId, updates);
-        eng.render();
-        eng._markDirty();
+      if (eng && live) {
+        if (live.aparatoInicio === apId || live.aparatoFin === apId) {
+          const updates: Record<string, unknown> = {};
+          if (live.aparatoInicio === apId) updates.aparatoInicio = null;
+          if (live.aparatoFin === apId) updates.aparatoFin = null;
+          eng.updateElementById(targetId, updates);
+          eng.render();
+          eng._markDirty();
+        }
+        // Sanitaria: al quitar el último aparato, también quitar el codo 90° sube del extremo libre
+        if (live.net === 'san') {
+          const totalAfter = Object.entries(counts[storageKey] || {}).reduce(
+            (s, [k, v]) => s + (k === apId ? Math.max(0, v - 1) : v),
+            0,
+          );
+          if (totalAfter === 0) {
+            const hasCodoInicio = live.accesorioInicio === 'codo90rmSube';
+            const hasCodoFin = live.accesorioFin === 'codo90rmSube';
+            if (hasCodoInicio || hasCodoFin) {
+              const updates: Record<string, unknown> = {};
+              if (hasCodoInicio) {
+                updates.accesorioInicio = '';
+                updates.diametroInicio = '';
+              }
+              if (hasCodoFin) {
+                updates.accesorioFin = '';
+                updates.diametroFin = '';
+              }
+              eng.updateElementById(targetId, updates);
+              eng.render();
+              const planId = eng._loadedPlanId ?? '';
+              bumpHidroAccesorio('san', 'codo90rmSube', -1, targetId, planId);
+            }
+          }
+        }
       }
     }
     setCounts((prev) => {
