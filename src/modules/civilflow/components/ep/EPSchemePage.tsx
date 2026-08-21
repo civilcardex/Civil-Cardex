@@ -216,49 +216,52 @@ export default function EPSchemePage({ ep, updEP }: Props) {
   const meshesRef = useRef<THREE.Mesh[]>([]);
   const matsOrig = useRef<Map<string, THREE.Material>>(new Map());
   const viewFnRef = useRef<(v: string) => void>(() => {});
+  const selectedIdRef = useRef<string | null>(null);
 
   const hasCistern = ep.modo === 'cisterna';
   const nt = Math.max(1, dec(ep.nt) || 1);
   const nr = Math.max(0, dec(ep.nr) || 0);
   const ntot = Math.min(4, Math.max(2, nt + nr));
 
-  const selectComp = useCallback(
-    (id: string) => {
-      const meshes = meshesRef.current;
-      const map = matsOrig.current;
-      // restore
-      if (selectedId) {
-        meshes
-          .filter((m) => (m.userData as { compId?: string }).compId === selectedId)
-          .forEach((m) => {
-            const orig = map.get(m.uuid);
-            if (orig) (m as THREE.Mesh).material = orig;
-          });
-      }
-      if (selectedId === id) {
-        setSelectedId(null);
-        return;
-      }
-      setSelectedId(id);
-      // Verde de alto contraste: el amarillo anterior se confundía con los materiales ámbar
-      // (válvulas), por lo que V.succión 1/2/3 "no se veían" resaltadas.
-      const hl = new THREE.MeshStandardMaterial({
-        color: 0x22c55e,
-        emissive: 0x16a34a,
-        emissiveIntensity: 0.6,
-        roughness: 0.3,
-        metalness: 0.5,
-      });
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
+
+  const selectComp = useCallback((id: string) => {
+    const meshes = meshesRef.current;
+    const map = matsOrig.current;
+    const cur = selectedIdRef.current;
+    // restore
+    if (cur) {
       meshes
-        .filter((m) => (m.userData as { compId?: string }).compId === id)
+        .filter((m) => (m.userData as { compId?: string }).compId === cur)
         .forEach((m) => {
-          if (!map.has(m.uuid))
-            map.set(m.uuid, (m.material as THREE.Material).clone() as THREE.Material);
-          (m as THREE.Mesh).material = hl;
+          const orig = map.get(m.uuid);
+          if (orig) (m as THREE.Mesh).material = orig;
         });
-    },
-    [selectedId],
-  );
+    }
+    if (cur === id) {
+      setSelectedId(null);
+      return;
+    }
+    setSelectedId(id);
+    // Verde de alto contraste: el amarillo anterior se confundía con los materiales ámbar
+    // (válvulas), por lo que V.succión 1/2/3 "no se veían" resaltadas.
+    const hl = new THREE.MeshStandardMaterial({
+      color: 0x22c55e,
+      emissive: 0x16a34a,
+      emissiveIntensity: 0.6,
+      roughness: 0.3,
+      metalness: 0.5,
+    });
+    meshes
+      .filter((m) => (m.userData as { compId?: string }).compId === id)
+      .forEach((m) => {
+        if (!map.has(m.uuid))
+          map.set(m.uuid, (m.material as THREE.Material).clone() as THREE.Material);
+        (m as THREE.Mesh).material = hl;
+      });
+  }, []);
 
   // build scene
   useEffect(() => {
@@ -493,25 +496,31 @@ export default function EPSchemePage({ ep, updEP }: Props) {
       cyl(0.07, 0.07, 0.12, 12, M.manif, -3.9, 0.5, 0, 0, 0, Math.PI / 2, 'acometida');
     }
 
-    // Válvula corte entrada
+    // Válvula corte entrada — conectada sin gaps
     box(0.18, 0.14, 0.14, M.valve, -1.7, 0.5, 0, 'vg_ent');
     cyl(0.05, 0.05, 0.22, 10, M.pipeS, -1.7, 0.5, 0, 0, 0, Math.PI / 2, 'vg_ent');
     cyl(0.04, 0.04, 0.18, 8, M.valve, -1.7, 0.64, 0, 0, 0, 0, 'vg_ent');
+    pipe(-1.9, 0.5, 0, -1.7, 0.5, 0, pR, M.pipeS, 'vg_ent');
+    pipe(-1.62, 0.5, 0, -1.7, 0.5, 0, pR, M.pipeS, 'vg_ent');
 
-    // Filtro
+    // Filtro — conectado
     cyl(0.09, 0.09, 0.22, 10, M.filter, -1.35, 0.5, 0, 0, 0, Math.PI / 2, 'filtro');
     cyl(0.06, 0.04, 0.18, 8, M.filter, -1.35, 0.38, 0.05, 0.5, 0, 0, 'filtro');
+    pipe(-1.62, 0.5, 0, -1.35, 0.5, 0, pR, M.pipeS, 'filtro');
+    pipe(-1.35, 0.5, 0, -1.05, 0.5, 0, pR, M.pipeS, 'filtro');
 
-    // Presostato succión
+    // Presostato succión — conectado
     cyl(0.06, 0.06, 0.08, 10, M.sensor, -1.05, 0.5, 0, 0, 0, Math.PI / 2, 'presost_s');
     cyl(0.04, 0.04, 0.14, 8, M.sensor, -1.05, 0.62, 0.0, 0, 0, 0, 'presost_s');
     sphere(0.07, 8, M.sensor, -1.05, 0.72, 0, 'presost_s');
+    pipe(-1.05, 0.5, 0, -0.72, 0.5, 0, pR, M.pipeS, 'presost_s');
 
-    // Manifold succión
+    // Manifold succión — continuo
     cyl(0.1, 0.1, 1.9, 12, M.manif, -0.72, 0.5, 0, 0, 0, Math.PI / 2, 'manif_s');
-    sphere(0.1, 10, M.manif, -1.62, 0.5, 0, 'manif_s');
-    sphere(0.1, 10, M.manif, 0.18, 0.5, 0, 'manif_s');
-    pipe(-1.05, 0.5, 0, -0.72, 0.5, 0, pR, M.pipeS, 'manif_s');
+    sphere(0.1, 10, M.manif, -1.67, 0.5, 0, 'manif_s');
+    sphere(0.1, 10, M.manif, 0.23, 0.5, 0, 'manif_s');
+    elbow(-1.62, 0.5, 0, 0.04, M.pipeS, 'manif_s');
+    elbow(0.18, 0.5, 0, 0.04, M.pipeS, 'manif_s');
 
     // BOMBAS
     bombPos.forEach((bx, i) => {
@@ -538,17 +547,47 @@ export default function EPSchemePage({ ep, updEP }: Props) {
       pipe(bx, 1.1, 0, 0, 1.1, 0, pRi, M.manifI, 'manif_i');
     });
 
+    // soportes de tubería
+    [-0.72, 0].forEach((x) => {
+      cyl(
+        0.025,
+        0.025,
+        0.5,
+        8,
+        new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6, metalness: 0.4 }),
+        x,
+        0.25,
+        0,
+        0,
+        0,
+        0,
+        x === -0.72 ? 'manif_s' : 'manif_i',
+      );
+      box(
+        0.12,
+        0.02,
+        0.12,
+        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
+        x,
+        0.02,
+        0,
+        x === -0.72 ? 'manif_s' : 'manif_i',
+      );
+    });
+
     const mLen = numBombs === 2 ? 1.5 : 2.1;
     cyl(0.09, 0.09, mLen, 12, M.manifI, 0, 1.1, 0, 0, 0, Math.PI / 2, 'manif_i');
     sphere(0.09, 10, M.manifI, -mLen / 2, 1.1, 0, 'manif_i');
     sphere(0.09, 10, M.manifI, mLen / 2, 1.1, 0, 'manif_i');
 
-    // PSV
+    // PSV — con codo visible a manifold
+    elbow(0, 1.1, 0, pRi * 0.9, M.manifI, 'psv');
     pipe(0, 1.1, 0, 0, 1.5, 0, pRi * 0.8, M.pipeI, 'psv');
     box(0.12, 0.14, 0.12, M.psv, 0, 1.6, 0, 'psv');
     cyl(0.04, 0.04, 0.18, 8, M.psv, 0, 1.72, 0, 0, 0, 0, 'psv');
 
-    // manometro
+    // manometro — con codo
+    elbow(0.5, 1.1, 0, 0.04, M.manifI, 'manometro');
     pipe(0.5, 1.1, 0, 0.5, 1.4, 0, 0.025, M.pipeI, 'manometro');
     sphere(0.07, 10, M.gauge, 0.5, 1.46, 0, 'manometro');
     cyl(0.06, 0.06, 0.04, 10, M.gauge, 0.5, 1.46, 0, 0, 0, 0, 'manometro');
@@ -569,11 +608,38 @@ export default function EPSchemePage({ ep, updEP }: Props) {
     box(0.12, 0.1, 0.1, M.sensor, 0.9, 1.44, 0, 'presost_r');
     cyl(0.04, 0.04, 0.1, 8, M.sensor, 0.9, 1.54, 0, 0, 0, 0, 'presost_r');
 
-    // valvula salida a red
-    pipe(mLen / 2, 1.1, 0, mLen / 2 + 0.3, 1.1, 0, pRi, M.pipeI, 'vg_red');
+    // valvula salida a red — sin huecos, con bridas
+    pipe(mLen / 2, 1.1, 0, mLen / 2 + 0.37, 1.1, 0, pRi, M.pipeI, 'vg_red');
+    cyl(0.05, 0.05, 0.02, 12, M.valve, mLen / 2 + 0.37, 1.1, 0, 0, 0, Math.PI / 2, 'vg_red');
     box(0.14, 0.13, 0.13, M.valve, mLen / 2 + 0.44, 1.1, 0, 'vg_red');
     cyl(0.04, 0.04, 0.18, 8, M.valve, mLen / 2 + 0.44, 1.23, 0, 0, 0, 0, 'vg_red');
-    pipe(mLen / 2 + 0.58, 1.1, 0, 3.6, 1.1, 0, pRi, M.pipeI, 'vg_sal');
+    cyl(0.05, 0.05, 0.02, 12, M.valve, mLen / 2 + 0.51, 1.1, 0, 0, 0, Math.PI / 2, 'vg_red');
+    pipe(mLen / 2 + 0.51, 1.1, 0, 3.6, 1.1, 0, pRi, M.pipeI, 'vg_sal');
+    // soporte bajo válvula
+    cyl(
+      0.02,
+      0.02,
+      0.45,
+      8,
+      new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6, metalness: 0.4 }),
+      mLen / 2 + 0.44,
+      0.88,
+      0,
+      0,
+      0,
+      0,
+      'vg_red',
+    );
+    box(
+      0.1,
+      0.02,
+      0.1,
+      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
+      mLen / 2 + 0.44,
+      0.66,
+      0,
+      'vg_red',
+    );
     cyl(0.08, 0.08, 1.0, 10, M.manifI, 3.6, 0.85, 0, 0, 0, 0, 'vg_sal');
     sphere(0.08, 10, M.manifI, 3.6, 1.35, 0, 'vg_sal');
     sphere(0.08, 10, M.manifI, 3.6, 0.35, 0, 'vg_sal');
@@ -581,9 +647,49 @@ export default function EPSchemePage({ ep, updEP }: Props) {
       pipe(3.6, 0.9 - dz * 0.22, 0, 3.9, 0.9 - dz * 0.22, 0, 0.025, M.pipeI, 'vg_sal');
       box(0.08, 0.07, 0.07, M.valve, 3.96, 0.9 - dz * 0.22, 0, 'vg_sal');
     });
-    // tablero
+    // tablero — montado en pared con canalización conectada (antes flotaba)
+    // pared de soporte
+    box(
+      1.05,
+      1.55,
+      0.08,
+      new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9 }),
+      0,
+      2.0,
+      0.34,
+      'tablero',
+    );
+    // gabinete principal
     box(0.8, 1.2, 0.25, M.board, 0, 2.0, 0.5, 'tablero');
-    box(0.72, 1.1, 0.05, M.boardF, 0, 2.0, 0.62, 'tablero');
+    // marco metálico
+    box(
+      0.82,
+      1.22,
+      0.02,
+      new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.3, metalness: 0.6 }),
+      0,
+      2.0,
+      0.64,
+      'tablero',
+    );
+    box(0.72, 1.1, 0.05, M.boardF, 0, 2.0, 0.65, 'tablero');
+    // display LCD
+    box(
+      0.5,
+      0.22,
+      0.01,
+      new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        roughness: 0.2,
+        metalness: 0.1,
+        emissive: 0x1e3a5f,
+        emissiveIntensity: 0.2,
+      }),
+      0,
+      2.25,
+      0.66,
+      'tablero',
+    );
     [-0.2, 0, 0.2].forEach((dx, i) => {
       const colors = [0x22c55e, 0xf59e0b, 0xef4444];
       const mat2 = new THREE.MeshStandardMaterial({
@@ -591,18 +697,109 @@ export default function EPSchemePage({ ep, updEP }: Props) {
         emissive: colors[i],
         emissiveIntensity: 0.4,
       });
-      cyl(0.03, 0.03, 0.01, 8, mat2, dx, 2.2, 0.65, 0, 0, 0, 'tablero');
+      cyl(0.03, 0.03, 0.01, 8, mat2, dx, 2.05, 0.66, 0, 0, 0, 'tablero');
     });
+    // botonera
+    [-0.15, 0, 0.15].forEach((dx) => {
+      cyl(
+        0.025,
+        0.025,
+        0.02,
+        8,
+        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.7 }),
+        dx,
+        1.85,
+        0.66,
+        0,
+        0,
+        0,
+        'tablero',
+      );
+    });
+    // manija
     box(
-      0.08,
+      0.04,
+      0.35,
+      0.04,
+      new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.2, metalness: 0.8 }),
+      0.35,
+      2.0,
+      0.66,
+      'tablero',
+    );
+    // canalización conectada — vertical del tablero + horizontal en z + bandeja en x a bombas
+    box(
       0.06,
-      0.8,
-      new THREE.MeshStandardMaterial({ color: 0x334155 }),
+      0.62,
+      0.06,
+      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
       0,
-      0.8,
+      1.11,
       0.5,
       'tablero',
     );
+    elbow(
+      0,
+      0.8,
+      0.5,
+      0.04,
+      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+      'tablero',
+    );
+    // tramo en Z del tablero a la línea de bombas
+    box(
+      0.04,
+      0.04,
+      0.52,
+      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+      0,
+      0.8,
+      0.25,
+      'tablero',
+    );
+    elbow(
+      0,
+      0.8,
+      0,
+      0.04,
+      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+      'tablero',
+    );
+    // bandeja horizontal en X sobre bombas (conectada)
+    const ductLen = Math.max(1.8, ntot * 0.9);
+    box(
+      ductLen,
+      0.06,
+      0.08,
+      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5, metalness: 0.4 }),
+      0,
+      0.8,
+      0,
+      'tablero',
+    );
+    bombPos.forEach((bx) => {
+      box(
+        0.02,
+        0.12,
+        0.02,
+        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
+        bx,
+        0.74,
+        0,
+        'tablero',
+      );
+      // bajada corta a cada bomba
+      box(
+        0.02,
+        0.18,
+        0.02,
+        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+        bx,
+        0.68,
+        0,
+        'tablero',
+      );
+    });
 
     // orbit manual
     const spherical = { theta: Math.PI / 4, phi: Math.PI / 3.5, r: 12 };
@@ -697,6 +894,18 @@ export default function EPSchemePage({ ep, updEP }: Props) {
       const hits = raycaster.intersectObjects(allMeshes);
       if (hits.length && (hits[0].object.userData as { compId?: string }).compId) {
         selectComp((hits[0].object.userData as { compId: string }).compId);
+      } else if (selectedIdRef.current) {
+        // click en vacío deselecciona — antes solo se podía desde el panel
+        const meshes = meshesRef.current;
+        const map = matsOrig.current;
+        const cur = selectedIdRef.current;
+        meshes
+          .filter((m) => (m.userData as { compId?: string }).compId === cur)
+          .forEach((m) => {
+            const orig = map.get(m.uuid);
+            if (orig) (m as THREE.Mesh).material = orig;
+          });
+        setSelectedId(null);
       }
     };
     const onHover = (e: MouseEvent) => {
