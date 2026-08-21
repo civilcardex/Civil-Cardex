@@ -1,5 +1,6 @@
 import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError';
+import { CF_TABLES } from '../constants/tableNames';
 
 export interface ProyectoRow {
   id: number;
@@ -21,7 +22,7 @@ export async function fetchProyectos(): Promise<ProyectoRow[]> {
     if (!user) return [];
 
     const { data, error } = await supabase
-      .from('proyectos')
+      .from(CF_TABLES.proyectos)
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });

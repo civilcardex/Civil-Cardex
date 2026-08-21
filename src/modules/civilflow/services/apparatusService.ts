@@ -1,6 +1,7 @@
 import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError';
 import type { ApsItem, UdBaseItem } from '../context/ApparatusContext';
+import { CF_TABLES } from '../constants/tableNames';
 
 export interface AparatosUsuarioData {
   udBase: UdBaseItem[];
@@ -57,11 +58,11 @@ export async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null>
 
     const [userRes, udBaseRes] = await Promise.all([
       supabase
-        .from('aparatos_usuario')
+        .from(CF_TABLES.aparatosUsuario)
         .select('client_id, s, n, g, ucaf, ucac, ud, pmin, pmax, qg, ctrl, blk_ud')
         .eq('user_id', user.id)
         .order('id'),
-      supabase.from('aparatos_ud_base_global').select('id, nombre, ud'),
+      supabase.from(CF_TABLES.aparatosUdBase).select('id, nombre, ud'),
     ]);
     if (userRes.error) throw userRes.error;
     if (udBaseRes.error) throw udBaseRes.error;
@@ -69,7 +70,7 @@ export async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null>
     let rows: AparatoUsuarioRow[] = (userRes.data ?? []) as AparatoUsuarioRow[];
     if (rows.length === 0) {
       const { data: base, error: baseError } = await supabase
-        .from('aparatos_catalogo_global')
+        .from(CF_TABLES.aparatosCatalogo)
         .select('id, s, n, g, ucaf, ucac, ud, pmin, pmax, qg, ctrl, blk_ud');
       if (baseError) throw baseError;
       if (base && base.length > 0) {
@@ -96,7 +97,7 @@ export async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null>
       // perder aparatos cuyo valor el usuario nunca tocó — el siguiente guardado del usuario
       // persiste el snapshot completo y la BD queda sana.
       const { data: base, error: baseError } = await supabase
-        .from('aparatos_catalogo_global')
+        .from(CF_TABLES.aparatosCatalogo)
         .select('id, s, n, g, ucaf, ucac, ud, pmin, pmax, qg, ctrl, blk_ud');
       if (baseError) throw baseError;
       if (base && base.length > 0) {

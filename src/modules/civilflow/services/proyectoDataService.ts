@@ -1,5 +1,6 @@
 import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError';
+import { CF_TABLES } from '../constants/tableNames';
 import type { Piso } from '../lib/shared/projectTypes';
 import type { Proyecto, MaterialItem, ProfItem, CritItem } from '../context/ProjectContext';
 import type { PlanMeta } from '../lib/shared/projectTypes';
@@ -267,7 +268,7 @@ export async function saveRedesActivas(proyectoId: number, redes: string[]): Pro
 export async function loadGasDatos(proyectoId: number): Promise<GasDatosGenerales | null> {
   try {
     const { data, error } = await supabase
-      .from('gas_datos_proyecto')
+      .from(CF_TABLES.gasDatos)
       .select('altitud, presion_atm, temperatura, presion_min, densidad_relativa')
       .eq('proyecto_id', proyectoId)
       .maybeSingle();

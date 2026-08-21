@@ -2,6 +2,7 @@ import { devError } from '../../../utils/devError';
 import { supabase } from '../../../lib/supabase';
 import { NET_COLOR_PREFIX } from '../constants/storage-keys';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
+import { CF_TABLES } from '../constants/tableNames';
 
 /**
  * Caché de la promesa de colores cargados (DB + localStorage) — evita un fetch repetido
@@ -33,7 +34,10 @@ export function loadNetColors(): Promise<Record<string, string>> {
         if (c) local[net.id] = c;
       }
       try {
-        const { data, error } = await supabase.from('perfiles').select('net_colors').maybeSingle();
+        const { data, error } = await supabase
+          .from(CF_TABLES.perfiles)
+          .select('net_colors')
+          .maybeSingle();
         if (error) throw error;
         const dbColors = (data?.net_colors ?? {}) as Record<string, string>;
         const merged = { ...local, ...dbColors };
@@ -85,7 +89,7 @@ export async function saveNetColor(netId: string, color: string): Promise<void> 
     } = await supabase.auth.getUser();
     if (!user) return;
     const { data: existing, error: selError } = await supabase
-      .from('perfiles')
+      .from(CF_TABLES.perfiles)
       .select('net_colors')
       .eq('id', user.id)
       .maybeSingle();

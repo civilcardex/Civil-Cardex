@@ -1,5 +1,6 @@
 import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError';
+import { CF_TABLES } from '../constants/tableNames';
 import type { BajanteLL, CanalLL } from '../context/RainwaterContext';
 
 export interface RainwaterOverrides {
@@ -40,14 +41,14 @@ export async function loadRainwaterOverrides(proyectoId: number): Promise<Rainwa
   try {
     const [bajantesRes, canalesRes] = await Promise.all([
       supabase
-        .from('anulaciones_bajantes_pluviales')
+        .from(CF_TABLES.anulacionesBajantes)
         .select(
           'id_cliente, bajante, area_parcial, area_acumulada, intensidad, coeficiente_c, R, manning, diam_propuesto',
         )
         .eq('proyecto_id', proyectoId)
         .order('id'),
       supabase
-        .from('anulaciones_canales_pluviales')
+        .from(CF_TABLES.anulacionesCanales)
         .select(
           'id_cliente, sector, area_parcial, area_acumulada, intensidad, coeficiente_c, manning, pendiente, b, h',
         )

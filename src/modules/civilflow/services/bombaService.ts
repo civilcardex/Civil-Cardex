@@ -1,5 +1,6 @@
 import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError';
+import { CF_TABLES } from '../constants/tableNames';
 
 export interface BombaData {
   salSim: string;
@@ -44,7 +45,7 @@ interface BombaDatosRow {
 export async function loadBombaDatos(proyectoId: number): Promise<BombaData | null> {
   try {
     const { data, error } = await supabase
-      .from('bomba_datos_proyecto')
+      .from(CF_TABLES.bombaDatos)
       .select(
         'sal_sim, ud_tot, hz, l_imp, d_imp, c_hw, p_desc, eta_b, f_srv, t_cic, h_min, h_max, b_cam, l_cam, npsh',
       )

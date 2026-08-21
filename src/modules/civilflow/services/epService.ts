@@ -1,5 +1,6 @@
 import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError';
+import { CF_TABLES } from '../constants/tableNames';
 import type { EPData } from '../components/ep/EPShared';
 
 interface EpDatosRow {
@@ -65,7 +66,7 @@ const FIELD_MAP: Record<keyof EPData, keyof EpDatosRow> = {
 export async function loadEpDatos(proyectoId: number): Promise<EPData | null> {
   try {
     const { data, error } = await supabase
-      .from('ep_datos_proyecto')
+      .from(CF_TABLES.epDatos)
       .select(Object.values(FIELD_MAP).join(', '))
       .eq('proyecto_id', proyectoId)
       .maybeSingle();
