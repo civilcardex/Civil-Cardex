@@ -38,7 +38,7 @@ const FUNCTIONALITIES = [
   },
 ];
 
-export default function ManageHero({ cfg }: Props) {
+export default function ManageHero({ cfg, onCtaClick }: Props) {
   const accent = cfg.accent;
 
   return (
@@ -150,18 +150,36 @@ export default function ManageHero({ cfg }: Props) {
           className="mh-card flex flex-col sm:flex-row gap-4 mt-10"
           style={{ animationDelay: `${FUNCTIONALITIES.length * 140}ms` }}
         >
-          <Link
-            to="/civilmanagerareatrabajo"
-            className="inline-flex px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2 transition-all hover:-translate-y-0.5"
-            style={{
-              fontFamily: 'Geist, monospace',
-              background: accent,
-              color: '#111317',
-              boxShadow: `0 0 22px ${accent}55`,
-            }}
-          >
-            <span className="material-symbols-outlined">rocket_launch</span> {cfg.ctaText}
-          </Link>
+          {onCtaClick ? (
+            <button
+              type="button"
+              onClick={onCtaClick}
+              className="inline-flex px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2 transition-all hover:-translate-y-0.5"
+              style={{
+                fontFamily: 'Geist, monospace',
+                background: accent,
+                color: '#111317',
+                boxShadow: `0 0 22px ${accent}55`,
+                cursor: 'pointer',
+                border: 'none',
+              }}
+            >
+              <span className="material-symbols-outlined">rocket_launch</span> {cfg.ctaText}
+            </button>
+          ) : (
+            <Link
+              to="/civilmanagerareatrabajo"
+              className="inline-flex px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2 transition-all hover:-translate-y-0.5"
+              style={{
+                fontFamily: 'Geist, monospace',
+                background: accent,
+                color: '#111317',
+                boxShadow: `0 0 22px ${accent}55`,
+              }}
+            >
+              <span className="material-symbols-outlined">rocket_launch</span> {cfg.ctaText}
+            </Link>
+          )}
           <Link
             to="/docs"
             className="inline-flex items-center gap-2 border border-outline-variant text-on-surface px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold hover:border-primary hover:-translate-y-0.5 transition-all"

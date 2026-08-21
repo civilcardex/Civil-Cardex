@@ -33,7 +33,7 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
     try {
       const now = new Date();
       const codigo =
-        'PR-' +
+        'CF-' +
         now.getFullYear() +
         String(now.getMonth() + 1).padStart(2, '0') +
         String(now.getDate()).padStart(2, '0') +

@@ -4,6 +4,7 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { MODULES_DATA } from './moduleData';
 import { HERO_BY_LAYOUT } from '../components/modulePage/heroByLayout';
 import ProjectCreateDialog from '../modules/civilflow/components/shared/ProjectCreateDialog';
+import ProjectCreateDialogCM from '../modules/civilmanager/components/shared/ProjectCreateDialogCM';
 import { useAuth } from '../context/AuthContext';
 const ModulePage_S1: React.CSSProperties = {
   position: 'absolute',
@@ -25,6 +26,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
   const cfg = MODULES_DATA[moduleId];
   const { user } = useAuth();
   const [showCreate, setShowCreate] = useState(false);
+  const [showCreateCM, setShowCreateCM] = useState(false);
   const [showLoginAlert, setShowLoginAlert] = useState(false);
   usePageMeta(cfg?.metaTitle ?? '', cfg?.metaDesc ?? '');
   const softwareAppJsonLd = {
@@ -69,7 +71,15 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                 }
                 setShowCreate(true);
               }
-            : undefined
+            : moduleId === 'manage'
+              ? () => {
+                  if (!user) {
+                    setShowLoginAlert(true);
+                    return;
+                  }
+                  setShowCreateCM(true);
+                }
+              : undefined
         }
       />
 
@@ -578,6 +588,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
         </section>
       ) : null}
       <ProjectCreateDialog open={showCreate} onClose={() => setShowCreate(false)} />
+      <ProjectCreateDialogCM open={showCreateCM} onClose={() => setShowCreateCM(false)} />
       {showLoginAlert && (
         <div
           style={{

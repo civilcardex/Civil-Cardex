@@ -17,12 +17,18 @@ import {
   deleteProyecto,
   type ProyectoRow,
 } from '../../modules/civilflow/services/proyectosService';
+import {
+  fetchCmProyectos,
+  deleteCmProyecto,
+  type CmProyectoRow,
+} from '../../modules/civilmanager/services/cmProyectosService';
 import { loadProyectoData } from '../../modules/civilflow/services/proyectoDataService';
 import { downloadPlanPDF } from '../../modules/civilflow/services/pdfStorageService';
 import { storePDF, clearAllPDFs } from '../../modules/civilflow/services/idbStorage';
 import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReset';
 import { saveToStorage } from '../../modules/civilflow/services/storageService';
 import ProjectCreateDialog from '../../modules/civilflow/components/shared/ProjectCreateDialog';
+import { CF_TABLES } from '../../modules/civilflow/constants/tableNames';
 import {
   ACTIVE_PROYECTO_ID_KEY,
   ACTIVE_NETS_KEY,
@@ -52,10 +58,14 @@ function ProfilePage() {
   const [editValue, setEditValue] = useState('');
   const [proyectosOpen, setProyectosOpen] = useState(false);
   const [proyectos, setProyectos] = useState<ProyectoRow[]>([]);
+  const [cmProyectos, setCmProyectos] = useState<CmProyectoRow[]>([]);
+  const [filtroModulo, setFiltroModulo] = useState<'todos' | 'cf' | 'cm'>('todos');
   const [proyLoading, setProyLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [cmDeleteConfirm, setCmDeleteConfirm] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<number | null>(null);
+  const [cmOpeningId, setCmOpeningId] = useState<string | null>(null);
   const userIdRef = useRef<string | null>(null);
 
   const navigate = useNavigate();
@@ -148,7 +158,7 @@ function ProfilePage() {
       try {
         userIdRef.current = user.id;
         const { data, error } = await supabase
-          .from('perfiles')
+          .from(CF_TABLES.perfiles)
           .select('*')
           .eq('id', user.id)
           .single();
@@ -179,15 +189,18 @@ function ProfilePage() {
   }, [user]);
   // Fetch-on-mount from Supabase — loads as soon as the profile page opens, not when the
   // "Proyectos" accordion is expanded, so the list is already there (no loading flash) by the
-  // time the user clicks to expand it.
+  // time the user clicks to expand it. Ahora trae CF + CM en paralelo.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     let ignore = false;
     async function loadProyectos() {
       setProyLoading(true);
       try {
-        const data = await fetchProyectos();
-        if (!ignore) setProyectos(data);
+        const [cf, cm] = await Promise.all([fetchProyectos(), fetchCmProyectos()]);
+        if (!ignore) {
+          setProyectos(cf);
+          setCmProyectos(cm);
+        }
       } finally {
         if (!ignore) setProyLoading(false);
       }
@@ -251,6 +264,28 @@ function ProfilePage() {
       devError('Error eliminando proyecto');
     }
     setDeleteConfirm(null);
+  }
+
+  async function handleDeleteCmProyecto(id: string) {
+    const ok = await deleteCmProyecto(id);
+    if (ok) {
+      setCmProyectos((prev) => prev.filter((p) => p.id !== id));
+    } else {
+      devError('Error eliminando proyecto CM');
+    }
+    setCmDeleteConfirm(null);
+  }
+
+  async function openCmProyecto(proy: CmProyectoRow) {
+    if (cmOpeningId != null) return;
+    setCmOpeningId(proy.id);
+    try {
+      localStorage.setItem('cm_proyecto_activo_id', proy.id);
+      localStorage.setItem('cm_proyecto_activo_nombre', proy.nombre);
+      navigate('/civilmanagerareatrabajo');
+    } finally {
+      setCmOpeningId(null);
+    }
   }
 
   const nombreCompleto = [perfil.nombre, perfil.apellido].filter(Boolean).join(' ');
@@ -339,6 +374,86 @@ function ProfilePage() {
               <button
                 type="button"
                 onClick={() => handleDeleteProject(deleteConfirm)}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: 'var(--error, #ff4444)',
+                  border: 'none',
+                  borderRadius: 4,
+                  color: '#fff',
+                  cursor: 'pointer',
+                }}
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {cmDeleteConfirm != null && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(0,0,0,0.6)',
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--surface-container, #1e1e24)',
+              border: '1px solid var(--outline-variant, #3a3a44)',
+              borderRadius: 8,
+              padding: 24,
+              minWidth: 360,
+              maxWidth: 420,
+              boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
+            }}
+          >
+            <h3
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: 'var(--on-surface, #e2e2e8)',
+                margin: '0 0 4px',
+              }}
+            >
+              Eliminar Proyecto CM
+            </h3>
+            <p
+              style={{
+                fontSize: 12,
+                color: 'var(--on-surface-variant, #9ba8aa)',
+                margin: '0 0 16px',
+              }}
+            >
+              ¿Estás seguro de eliminar este proyecto de Civil Manager? Esta acción no se puede
+              deshacer.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setCmDeleteConfirm(null)}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  background: 'transparent',
+                  border: '1px solid var(--outline-variant, #3a3a44)',
+                  borderRadius: 4,
+                  color: 'var(--on-surface, #e2e2e8)',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteCmProyecto(cmDeleteConfirm)}
                 style={{
                   padding: '6px 14px',
                   fontSize: 12,
@@ -472,7 +587,7 @@ function ProfilePage() {
                 Proyectos
               </h2>
               <span className="text-[13px] text-on-surface font-medium">
-                {proyectos.length} proyectos
+                {proyectos.length + cmProyectos.length} proyectos
               </span>
             </div>
           </div>
@@ -500,73 +615,181 @@ function ProfilePage() {
               <div className="px-6 py-8 text-center text-on-surface-variant text-sm">
                 Cargando proyectos...
               </div>
-            ) : proyectos.length === 0 ? (
+            ) : proyectos.length + cmProyectos.length === 0 ? (
               <div className="px-6 py-8 text-center text-on-surface-variant text-sm">
                 Aún no hay proyectos. Crea uno desde "Nuevo proyecto".
               </div>
             ) : (
-              <ul
-                className="divide-y divide-outline-variant"
-                style={{ listStyle: 'none', margin: 0, padding: 0 }}
-              >
-                {proyectos.map((proy) => (
-                  <li
-                    key={proy.id}
-                    className="px-6 py-3 flex items-center gap-4 hover:bg-surface-container-low transition-colors"
-                  >
-                    <div
-                      className="flex-1 min-w-0 cursor-pointer"
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Abrir proyecto ${proy.nombre}`}
-                      onClick={() => openProyecto(proy)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          openProyecto(proy);
-                        }
-                      }}
-                      style={{ opacity: openingId != null && openingId !== proy.id ? 0.5 : 1 }}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[13px] font-bold font-mono text-on-surface">
-                          {proy.codigo}
-                        </span>
-                      </div>
-                      <p className="text-[12px] text-on-surface-variant truncate">
-                        {openingId === proy.id ? 'Abriendo proyecto...' : proy.nombre}
-                      </p>
-                    </div>
+              <>
+                <div className="px-6 py-2 flex gap-2 border-b border-outline-variant bg-surface-container-low">
+                  {(['todos', 'cf', 'cm'] as const).map((mod) => (
                     <button
+                      key={mod}
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteConfirm(proy.id);
-                      }}
-                      aria-label="Eliminar proyecto"
-                      disabled={openingId != null}
+                      onClick={() => setFiltroModulo(mod)}
                       style={{
-                        background: 'none',
-                        border: '1px solid var(--outline-variant, #3a3a44)',
-                        borderRadius: 4,
-                        padding: '4px 8px',
-                        cursor: openingId != null ? 'default' : 'pointer',
-                        color: 'var(--text-error, #ff4444)',
+                        padding: '4px 10px',
                         fontSize: 11,
+                        fontWeight: 600,
+                        borderRadius: 4,
+                        border: '1px solid var(--outline-variant, #3a3a44)',
+                        background:
+                          filtroModulo === mod ? 'var(--primary, #4D8FF7)' : 'transparent',
+                        color:
+                          filtroModulo === mod
+                            ? 'var(--on-primary, #fff)'
+                            : 'var(--on-surface-variant, #9ba8aa)',
+                        cursor: 'pointer',
                       }}
                     >
-                      Eliminar
+                      {mod === 'todos' ? 'Todos' : mod === 'cf' ? 'CivilFlow' : 'Civil Manager'}
                     </button>
-                    <span
-                      className="material-symbols-outlined text-on-surface-variant text-lg cursor-pointer"
-                      aria-hidden="true"
-                      onClick={() => openProyecto(proy)}
-                    >
-                      arrow_forward
-                    </span>
-                  </li>
-                ))}
-              </ul>
+                  ))}
+                </div>
+                <ul
+                  className="divide-y divide-outline-variant"
+                  style={{ listStyle: 'none', margin: 0, padding: 0 }}
+                >
+                  {(filtroModulo === 'todos' || filtroModulo === 'cf') &&
+                    proyectos.map((proy) => (
+                      <li
+                        key={`cf-${proy.id}`}
+                        className="px-6 py-3 flex items-center gap-4 hover:bg-surface-container-low transition-colors"
+                      >
+                        <span
+                          className="text-[10px] font-bold px-1.5 py-0.5 border"
+                          style={{
+                            borderColor: 'var(--primary)',
+                            color: 'var(--primary)',
+                            fontFamily: 'Geist, monospace',
+                          }}
+                        >
+                          CF
+                        </span>
+                        <div
+                          className="flex-1 min-w-0 cursor-pointer"
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Abrir proyecto ${proy.nombre}`}
+                          onClick={() => openProyecto(proy)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              openProyecto(proy);
+                            }
+                          }}
+                          style={{ opacity: openingId != null && openingId !== proy.id ? 0.5 : 1 }}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[13px] font-bold font-mono text-on-surface">
+                              {proy.codigo}
+                            </span>
+                          </div>
+                          <p className="text-[12px] text-on-surface-variant truncate">
+                            {openingId === proy.id ? 'Abriendo proyecto...' : proy.nombre}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm(proy.id);
+                          }}
+                          aria-label="Eliminar proyecto"
+                          disabled={openingId != null}
+                          style={{
+                            background: 'none',
+                            border: '1px solid var(--outline-variant, #3a3a44)',
+                            borderRadius: 4,
+                            padding: '4px 8px',
+                            cursor: openingId != null ? 'default' : 'pointer',
+                            color: 'var(--text-error, #ff4444)',
+                            fontSize: 11,
+                          }}
+                        >
+                          Eliminar
+                        </button>
+                        <span
+                          className="material-symbols-outlined text-on-surface-variant text-lg cursor-pointer"
+                          aria-hidden="true"
+                          onClick={() => openProyecto(proy)}
+                        >
+                          arrow_forward
+                        </span>
+                      </li>
+                    ))}
+                  {(filtroModulo === 'todos' || filtroModulo === 'cm') &&
+                    cmProyectos.map((proy) => (
+                      <li
+                        key={`cm-${proy.id}`}
+                        className="px-6 py-3 flex items-center gap-4 hover:bg-surface-container-low transition-colors"
+                      >
+                        <span
+                          className="text-[10px] font-bold px-1.5 py-0.5 border"
+                          style={{
+                            borderColor: '#cca043',
+                            color: '#cca043',
+                            fontFamily: 'Geist, monospace',
+                          }}
+                        >
+                          CM
+                        </span>
+                        <div
+                          className="flex-1 min-w-0 cursor-pointer"
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Abrir proyecto ${proy.nombre}`}
+                          onClick={() => openCmProyecto(proy)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              openCmProyecto(proy);
+                            }
+                          }}
+                          style={{
+                            opacity: cmOpeningId != null && cmOpeningId !== proy.id ? 0.5 : 1,
+                          }}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[13px] font-bold font-mono text-on-surface">
+                              {proy.codigo}
+                            </span>
+                          </div>
+                          <p className="text-[12px] text-on-surface-variant truncate">
+                            {cmOpeningId === proy.id ? 'Abriendo proyecto...' : proy.nombre}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCmDeleteConfirm(proy.id);
+                          }}
+                          aria-label="Eliminar proyecto"
+                          disabled={cmOpeningId != null}
+                          style={{
+                            background: 'none',
+                            border: '1px solid var(--outline-variant, #3a3a44)',
+                            borderRadius: 4,
+                            padding: '4px 8px',
+                            cursor: cmOpeningId != null ? 'default' : 'pointer',
+                            color: 'var(--text-error, #ff4444)',
+                            fontSize: 11,
+                          }}
+                        >
+                          Eliminar
+                        </button>
+                        <span
+                          className="material-symbols-outlined text-on-surface-variant text-lg cursor-pointer"
+                          aria-hidden="true"
+                          onClick={() => openCmProyecto(proy)}
+                        >
+                          arrow_forward
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              </>
             )}
           </div>
         )}
