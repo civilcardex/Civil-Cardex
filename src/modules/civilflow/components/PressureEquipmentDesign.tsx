@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, Suspense, lazy } from 'react';
 import { usePersistedState } from '../../../hooks/usePersistedState';
 import type { EPData } from './ep/EPShared';
 import { EP_DEFAULTS } from './ep/EPShared';
@@ -7,6 +7,8 @@ import { loadEpDatos, saveEpDatos } from '../services/epService';
 import PageNav from './PageNav';
 import EPInputPage from './ep/EPInputPage';
 import EPVerificationPage from './ep/EPVerificationPage';
+
+const EPSchemePage = lazy(() => import('./ep/EPSchemePage'));
 
 export default function PressureEquipmentDesign() {
   const [page, setPage] = useState(1);
@@ -76,6 +78,29 @@ export default function PressureEquipmentDesign() {
         icon: '/iconos_civilflow/diseno_redes/general/datos_de_entrada.webp',
         c: <EPVerificationPage section="results" ep={ep} updEP={updEP} />,
       },
+      {
+        t: 'Esquema',
+        icon: '/iconos_civilflow/diseno_redes/general/datos_de_entrada.webp',
+        c: (
+          <Suspense
+            fallback={
+              <div
+                style={{
+                  minHeight: 380,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--txt3)',
+                }}
+              >
+                Cargando esquema 3D…
+              </div>
+            }
+          >
+            <EPSchemePage ep={ep} updEP={updEP} />
+          </Suspense>
+        ),
+      },
     ],
     [ep, updEP],
   );
@@ -88,9 +113,14 @@ export default function PressureEquipmentDesign() {
       <PageNav
         page={page}
         setPage={setPage}
-        total={3}
+        total={4}
         color="var(--ep)"
-        labels={['Datos de entrada', 'Cálculo hidráulico y potencia', 'Diámetros y especificación']}
+        labels={[
+          'Datos de entrada',
+          'Cálculo hidráulico y potencia',
+          'Diámetros y especificación',
+          'Esquema',
+        ]}
       />
       <div style={{ flex: 1, padding: 6, overflow: 'auto' }}>{pages[page - 1].c}</div>
     </div>
