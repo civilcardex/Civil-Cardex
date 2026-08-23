@@ -396,3 +396,8 @@ No se pudo hacer una pasada de regresiÃ³n manual completa en navegador sobre e
 - Saneo masivo de fuentes reaplicado con el mismo algoritmo (12 archivos; los strings ejecutables del menú contextual quedaron con —/⇄/á reales).
 - Tests: formatUtils.test.ts con inputs mojibake en escapes \u (sin ambigüedad de comillas) — 33 tests.
 - Gates: tsc ✓ · lint 0 errores · vitest 304/304 ✓ · build ✓. Scan final: sin mojibake en fuentes (solo inputs intencionales del test).
+### Ronda 5 — Ponytail + limpieza tests (2026-08-21)
+- Ponytail verificado: Fase 0 cortes intactos (worker ?url, NumericInput inline, stubs fuera), 13 fuentes saneadas mojibake. Shrink restante 180L marginal (WaterNetworkDesign/PdfViewer sin seams) diferido por riesgo.
+- Tests: borrados reproImage.test.ts (347L/3) + reproCarrier.test.ts (765L/8) — 1112L, casos puntuales ya cubiertos por sanitaryConnectivity + sanVentCascade. Suite 33 files 305 passed.
+- Gates: tsc 0, lint 0 err (5 warn), build ✓, vitest 305 passed, graphify update ✓.
+
