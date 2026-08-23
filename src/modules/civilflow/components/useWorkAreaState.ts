@@ -134,6 +134,7 @@ export function useWorkAreaState() {
   const [acPage, setAcPage] = useState<number>(1);
   const [bomPage, setBomPage] = useState<number>(1);
   const [gasPage, setGasPage] = useState<number>(1);
+  const [rciPage, setRciPage] = useState<number>(1);
 
   const [netColors, setNetColors] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
@@ -480,6 +481,8 @@ export function useWorkAreaState() {
     setBomPage,
     gasPage,
     setGasPage,
+    rciPage,
+    setRciPage,
     netColors,
     setNetColors,
     planDrag,

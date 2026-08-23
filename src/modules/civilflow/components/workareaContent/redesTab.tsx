@@ -19,6 +19,7 @@ const BombaARDesign = lazy(() => import('../BombaARDesign'));
 const GasDesign = lazy(() => import('../GasDesign'));
 const PressureEquipmentDesign = lazy(() => import('../PressureEquipmentDesign'));
 const AcometidaPage = lazy(() => import('../../pages/AcometidaPage'));
+const RciCuartoBombasViewer = lazy(() => import('../RciCuartoBombasViewer'));
 
 const FALLBACK = <div style={{ minHeight: 400 }} />;
 
@@ -93,6 +94,8 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
     setAcPage,
     gasPage,
     setGasPage,
+    rciPage,
+    setRciPage,
     tramosAf,
     tramosAc,
   } = state;
@@ -391,6 +394,32 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
           )}
         </div>
       )}
+      {redActiva === 'rci' && redes.has('rci') && (
+        <div
+          className="fu"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            flex: 1,
+            minHeight: 0,
+            overflowY: 'auto',
+          }}
+        >
+          <PageNav
+            page={rciPage}
+            setPage={setRciPage}
+            total={1}
+            color="var(--rci)"
+            labels={['Cuarto de bombas']}
+          />
+          {rciPage === 1 && (
+            <Suspense fallback={FALLBACK}>
+              <RciCuartoBombasViewer />
+            </Suspense>
+          )}
+        </div>
+      )}
       {redesActivas
         .filter(
           (r) =>
@@ -400,7 +429,8 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
             r.id !== 'ac' &&
             r.id !== 'bom' &&
             r.id !== 'ep' &&
-            r.id !== 'gas',
+            r.id !== 'gas' &&
+            r.id !== 'rci',
         )
         .map(
           (r) =>
