@@ -49,6 +49,15 @@ function deleteKeys(store: Record<string, unknown>, pred: (k: string) => boolean
   }
 }
 
+/**
+ * Copia elementos filtrados por red/tipo de un plano origen a uno destino, renumerando ids.
+ * Filtra redes ocultas y tipos no seleccionados; preserva asociaciones y recalcula totales.
+ * @param engine - Motor destino (se usa para renumerar y persistir).
+ * @param targetPlanId - Id del plano destino.
+ * @param sourcePlanId - Id del plano origen.
+ * @param selections - Redes y tipos a copiar.
+ * @returns Conteo copiado y redes omitidas.
+ */
 export function copyDrawingFromPlan(
   engine: ExtendedEngine,
   targetPlanId: string,

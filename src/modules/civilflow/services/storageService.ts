@@ -96,11 +96,13 @@ export function savePlanTrazos(planId: string, data: unknown): void {
 // Ver supabase/migrations/20260730000001_civilflow_schema.sql.
 // ─────────────────────────────────────────────────────────────────────────
 
+// ponytail: header shared — 3 fields repeated in 7 mappers
+function baseRow(planoId: number, userId: string, clientId: string) {
+  return { plano_id: planoId, user_id: userId, client_id: clientId };
+}
 function ramalToRow(planoId: number, userId: string, r: PlanoRamal) {
   return {
-    plano_id: planoId,
-    user_id: userId,
-    client_id: r.id,
+    ...baseRow(planoId, userId, r.id),
     net: r.net,
     tipo: r.tipo,
     padre: r.padre,
@@ -188,9 +190,7 @@ function rowToRamal(row: any): PlanoRamal {
 
 function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
   return {
-    plano_id: planoId,
-    user_id: userId,
-    client_id: b.id,
+    ...baseRow(planoId, userId, b.id),
     net: b.net,
     tipo: b.tipo,
     code: b.code,
@@ -281,9 +281,7 @@ function rowToBajante(row: any): PlanoBajante {
 
 function areaToRow(planoId: number, userId: string, a: PlanoArea) {
   return {
-    plano_id: planoId,
-    user_id: userId,
-    client_id: a.id,
+    ...baseRow(planoId, userId, a.id),
     pts: a.pts ?? [],
     color: a.color,
     label: a.label,
@@ -312,9 +310,7 @@ function rowToArea(row: any): PlanoArea {
 
 function dimToRow(planoId: number, userId: string, d: PlanoDimension) {
   return {
-    plano_id: planoId,
-    user_id: userId,
-    client_id: d.id,
+    ...baseRow(planoId, userId, d.id),
     x1: d.x1,
     y1: d.y1,
     x2: d.x2,
@@ -341,9 +337,7 @@ function rowToDim(row: any): PlanoDimension {
 
 function textAnnotToRow(planoId: number, userId: string, t: PlanoTextAnnotation) {
   return {
-    plano_id: planoId,
-    user_id: userId,
-    client_id: t.id,
+    ...baseRow(planoId, userId, t.id),
     x: t.x,
     y: t.y,
     text: t.text,
@@ -372,9 +366,7 @@ function rowToTextAnnot(row: any): PlanoTextAnnotation {
 
 function guideLineToRow(planoId: number, userId: string, g: PlanoGuideLine) {
   return {
-    plano_id: planoId,
-    user_id: userId,
-    client_id: g.id,
+    ...baseRow(planoId, userId, g.id),
     net: g.net,
     pts: g.pts ?? [],
   };

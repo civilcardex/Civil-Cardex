@@ -13,6 +13,11 @@ import { calculateRamalLength } from './ramalMeasure';
 import { _midpoint } from './PlanoEngineDrawing';
 import { _firstSegmentAngle } from './drawingAngles';
 
+/**
+ * Borrado con cascada: elimina selección, limpia ghosts/Ldesvíos entre pisos,
+ * recalcula longitudes y renumera. Usado por `PlanoEngine.deleteSelected()`.
+ */
+
 interface HidroDataEntry {
   accesorios: Record<string, number>;
   Lh: number;

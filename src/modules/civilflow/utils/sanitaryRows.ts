@@ -30,9 +30,14 @@ export interface SanConnectivity {
   componentTotalMap: Record<string, number>;
 }
 
-// Fuente única de verdad del grafo de conectividad de la red sanitaria (qué tramo descarga en
-// cuál, usado para acumular totales UD) — compartida entre la tabla DisenosSanitarios en
-// pantalla y la exportación de Memorias Finales, así ambas siempre muestran los mismos números.
+/**
+ * Construye el grafo de conectividad sanitaria (qué tramo descarga en cuál) para acumular totales UD.
+ * Fuente única usada por tabla en pantalla y exportación de memorias — garantiza mismos números.
+ * @param tramosSan - Tramos de red sanitaria ya mapeados.
+ * @param plans - Planos confirmados con `nivel` para leer trazos crudos.
+ * @param mergedBase - Bases de aparatos para resolver desempates de co-sumideros.
+ * @returns Mapas orientados, de display y totales por componente.
+ */
 export function buildSanConnectivity(
   tramosSan: Tramo[],
   plans: PlanItem[],

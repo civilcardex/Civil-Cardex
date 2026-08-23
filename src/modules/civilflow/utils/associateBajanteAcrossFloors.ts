@@ -1,3 +1,8 @@
+/**
+ * Gestión de bajantes/montantes entre pisos (ghosts, Ldesvíos, asociaciones cross-floor).
+ * Cada bajante físico es un tubo continuo; en cada plano vive un ghost que referencia
+ * origen↔destino y un ramal Ldesvío para el desplazamiento en planta.
+ */
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import { TRAZOS_PREFIX, TRAZOS_PLAN_PREFIX } from '../constants/storage-keys';
 import { NETS } from '../lib/PlanoEngine/PlanoState';

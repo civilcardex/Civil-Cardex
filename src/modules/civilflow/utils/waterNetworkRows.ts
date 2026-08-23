@@ -21,6 +21,11 @@ interface BajanteRaw extends RawElement {
 const isAf = (t: string) => t === 'af';
 const isContador = (s: string) => s.startsWith('CNT') || s.startsWith('cntAF');
 
+/**
+ * Clasifica si un tramo es AC tipo 1 (ramal que alimenta contador o viene de RP).
+ * @param t - Tramo con `ini`/`fin` (códigos de origen/destino).
+ * @returns true si es AC1.
+ */
 const isAC1 = (t: Tramo) => {
   const ini = String(t.ini || '');
   const fin = String(t.fin || '');
@@ -30,6 +35,12 @@ const isAC1 = (t: Tramo) => {
   return false;
 };
 
+/**
+ * Clasifica si un tramo es AC tipo 2 (ramal que sale de contador o descarga en montante/bajante).
+ * Complemento de `isAC1` para separar redes AC en tablas.
+ * @param t - Tramo con `ini`/`fin`.
+ * @returns true si es AC2.
+ */
 const isAC2 = (t: Tramo) => {
   const ini = String(t.ini || '');
   const fin = String(t.fin || '');

@@ -21,6 +21,14 @@ import {
 import { updateCrossFloorGhostFieldBySource } from '../../utils/associateBajanteAcrossFloors';
 import { bajanteHitDistance } from './canalAssociation';
 
+/**
+ * Resuelve selección por punto (canvas coords). Prioridad: anotaciones texto > etiqueta bajante >
+ * cuerpo ramal > bajante > canal (detrás de ramales) > área. Actualiza `selId`/`multiSel` y emite evento.
+ * @param engine - Núcleo del motor con colecciones y estado de selección.
+ * @param cx - X en canvas.
+ * @param cy - Y en canvas.
+ * @param isMultiSelectModifier - Si true, alterna en `multiSel` en vez de reemplazar.
+ */
 export function selectAt(
   engine: IPlanoEngineCore,
   cx: number,

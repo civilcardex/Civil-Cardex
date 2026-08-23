@@ -51,9 +51,11 @@ const or = (v: string | number | undefined | null): string =>
   v === '' || v == null ? '—' : String(v);
 const f2 = (n: number): string => (Number.isFinite(n) ? n.toFixed(2) : '—');
 
-// Bomba AR (BombaARDesign.tsx) tiene 4 páginas de pantalla, cada una con su(s) tabla(s) —
-// replicadas 1:1 aquí desde las entradas/salidas que ya persiste, en vez de un resumen único
-// aplanado, para que la memoria lleve el mismo detalle que muestran las pantallas en vivo.
+/**
+ * Genera tablas de memoria para Bomba AR. Replica 1:1 las 4 páginas de BombaARDesign
+ * desde `civilflow_memoria_bomba_data` para que la exportación tenga mismo detalle que la pantalla.
+ * @returns Tablas de memoria o vacío si no hay datos.
+ */
 export function computeBombaTables(): MemoriaTable[] {
   const data = loadFromStorage<BombaMemoriaData | null>('civilflow_memoria_bomba_data', null);
   if (!data) return [];

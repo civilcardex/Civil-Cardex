@@ -590,6 +590,12 @@ export function renderCanalGhost(ctx: CanvasRenderingContext2D, engine: IPlanoEn
   ctx.restore();
 }
 
+/**
+ * Render principal de bajantes/montantes/contadores/calentadores/canales.
+ * Dibuja símbolo, etiqueta con leader y hitbox; filtra por red oculta y estado ghost.
+ * @param ctx - Contexto 2D del canvas.
+ * @param engine - Motor con colecciones y escalas.
+ */
 export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
   engine.bajantes.forEach((b) => {
     if (engine._hiddenNets.has(b.net)) return;
