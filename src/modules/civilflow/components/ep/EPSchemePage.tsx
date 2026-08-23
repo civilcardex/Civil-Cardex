@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import * as THREE from 'three';
+import type * as THREE from 'three';
 import type { EPData } from './EPShared';
 import { dec } from '../../utils/parseDecimal';
 
@@ -222,12 +222,16 @@ export default function EPSchemePage({ ep, updEP }: Props) {
   const nt = Math.max(1, dec(ep.nt) || 1);
   const nr = Math.max(0, dec(ep.nr) || 0);
   const ntot = Math.min(4, Math.max(2, nt + nr));
+  const threeRef = useRef<typeof THREE | null>(null);
+  const [threeReady, setThreeReady] = useState(false);
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
 
   const selectComp = useCallback((id: string) => {
+    const THREE = threeRef.current;
+    if (!THREE) return;
     const meshes = meshesRef.current;
     const map = matsOrig.current;
     const cur = selectedIdRef.current;
@@ -263,707 +267,731 @@ export default function EPSchemePage({ ep, updEP }: Props) {
       });
   }, []);
 
-  // build scene
+  // build scene — lazy load three so it's not in initial bundle (ponytail: native when needed)
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const wrap = wrapRef.current;
-    if (!canvas || !wrap) return;
+    let cancelled = false;
+    let cleanup: (() => void) | undefined;
+    (async () => {
+      const THREE = await import('three');
+      if (cancelled) return;
+      threeRef.current = THREE;
+      setThreeReady(true);
+      const canvas = canvasRef.current;
+      const wrap = wrapRef.current;
+      if (!canvas || !wrap) return;
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    // r128 used outputEncoding, newer uses outputColorSpace
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
-    renderer.setClearColor(0xffffff);
-    rendererRef.current = renderer;
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      // r128 used outputEncoding, newer uses outputColorSpace
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.1;
+      renderer.setClearColor(0xffffff);
+      rendererRef.current = renderer;
 
-    const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0xffffff, 0.012);
-    scene.background = new THREE.Color(0xffffff);
-    sceneRef.current = scene;
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0xffffff, 0.012);
+      scene.background = new THREE.Color(0xffffff);
+      sceneRef.current = scene;
 
-    const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 200);
-    camera.position.set(6, 5, 9);
-    camera.lookAt(0, 1, 0);
-    cameraRef.current = camera;
+      const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 200);
+      camera.position.set(6, 5, 9);
+      camera.lookAt(0, 1, 0);
+      cameraRef.current = camera;
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.85);
-    scene.add(ambient);
-    const dirMain = new THREE.DirectionalLight(0xffffff, 0.9);
-    dirMain.position.set(8, 12, 8);
-    dirMain.castShadow = true;
-    dirMain.shadow.mapSize.set(2048, 2048);
-    dirMain.shadow.camera.near = 0.5;
-    dirMain.shadow.camera.far = 60;
-    (dirMain.shadow.camera as THREE.OrthographicCamera).left = -10;
-    (dirMain.shadow.camera as THREE.OrthographicCamera).right = 10;
-    (dirMain.shadow.camera as THREE.OrthographicCamera).top = 10;
-    (dirMain.shadow.camera as THREE.OrthographicCamera).bottom = -10;
-    scene.add(dirMain);
-    const dirFill = new THREE.DirectionalLight(0xffffff, 0.45);
-    dirFill.position.set(-6, 4, -6);
-    scene.add(dirFill);
-    const dirBack = new THREE.DirectionalLight(0xffffff, 0.25);
-    dirBack.position.set(0, -4, -8);
-    scene.add(dirBack);
+      const ambient = new THREE.AmbientLight(0xffffff, 0.85);
+      scene.add(ambient);
+      const dirMain = new THREE.DirectionalLight(0xffffff, 0.9);
+      dirMain.position.set(8, 12, 8);
+      dirMain.castShadow = true;
+      dirMain.shadow.mapSize.set(2048, 2048);
+      dirMain.shadow.camera.near = 0.5;
+      dirMain.shadow.camera.far = 60;
+      (dirMain.shadow.camera as THREE.OrthographicCamera).left = -10;
+      (dirMain.shadow.camera as THREE.OrthographicCamera).right = 10;
+      (dirMain.shadow.camera as THREE.OrthographicCamera).top = 10;
+      (dirMain.shadow.camera as THREE.OrthographicCamera).bottom = -10;
+      scene.add(dirMain);
+      const dirFill = new THREE.DirectionalLight(0xffffff, 0.45);
+      dirFill.position.set(-6, 4, -6);
+      scene.add(dirFill);
+      const dirBack = new THREE.DirectionalLight(0xffffff, 0.25);
+      dirBack.position.set(0, -4, -8);
+      scene.add(dirBack);
 
-    const gridHelper = new THREE.GridHelper(20, 40, 0xcbd5e1, 0xe2e8f0);
-    (gridHelper.position as THREE.Vector3).y = -0.01;
-    scene.add(gridHelper);
-    const floorGeo = new THREE.PlaneGeometry(20, 20);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 1 });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    scene.add(floor);
+      const gridHelper = new THREE.GridHelper(20, 40, 0xcbd5e1, 0xe2e8f0);
+      (gridHelper.position as THREE.Vector3).y = -0.01;
+      scene.add(gridHelper);
+      const floorGeo = new THREE.PlaneGeometry(20, 20);
+      const floorMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 1 });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.receiveShadow = true;
+      scene.add(floor);
 
-    const group = new THREE.Group();
-    scene.add(group);
-    groupRef.current = group;
+      const group = new THREE.Group();
+      scene.add(group);
+      groupRef.current = group;
 
-    const M: Record<string, THREE.MeshStandardMaterial> = {
-      pipeS: new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.3, metalness: 0.7 }),
-      pipeI: new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.3, metalness: 0.7 }),
-      pump: new THREE.MeshStandardMaterial({ color: 0x7c3aed, roughness: 0.25, metalness: 0.8 }),
-      pumpH: new THREE.MeshStandardMaterial({
-        color: 0xa78bfa,
-        roughness: 0.2,
-        metalness: 0.9,
-        emissive: 0x4c1d95,
-        emissiveIntensity: 0.3,
-      }),
-      tank: new THREE.MeshStandardMaterial({ color: 0x0891b2, roughness: 0.3, metalness: 0.6 }),
-      valve: new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4, metalness: 0.5 }),
-      check: new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.35, metalness: 0.6 }),
-      board: new THREE.MeshStandardMaterial({ color: 0x374151, roughness: 0.6, metalness: 0.3 }),
-      boardF: new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.7, metalness: 0.2 }),
-      manif: new THREE.MeshStandardMaterial({ color: 0x1e40af, roughness: 0.25, metalness: 0.85 }),
-      manifI: new THREE.MeshStandardMaterial({ color: 0xc2410c, roughness: 0.25, metalness: 0.85 }),
-      filter: new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.4, metalness: 0.5 }),
-      sensor: new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3, metalness: 0.6 }),
-      gauge: new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.2, metalness: 0.7 }),
-      cistern: new THREE.MeshStandardMaterial({ color: 0x164e63, roughness: 0.5, metalness: 0.3 }),
-      psv: new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3, metalness: 0.6 }),
-    };
+      const M: Record<string, THREE.MeshStandardMaterial> = {
+        pipeS: new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.3, metalness: 0.7 }),
+        pipeI: new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.3, metalness: 0.7 }),
+        pump: new THREE.MeshStandardMaterial({ color: 0x7c3aed, roughness: 0.25, metalness: 0.8 }),
+        pumpH: new THREE.MeshStandardMaterial({
+          color: 0xa78bfa,
+          roughness: 0.2,
+          metalness: 0.9,
+          emissive: 0x4c1d95,
+          emissiveIntensity: 0.3,
+        }),
+        tank: new THREE.MeshStandardMaterial({ color: 0x0891b2, roughness: 0.3, metalness: 0.6 }),
+        valve: new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4, metalness: 0.5 }),
+        check: new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.35, metalness: 0.6 }),
+        board: new THREE.MeshStandardMaterial({ color: 0x374151, roughness: 0.6, metalness: 0.3 }),
+        boardF: new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.7, metalness: 0.2 }),
+        manif: new THREE.MeshStandardMaterial({
+          color: 0x1e40af,
+          roughness: 0.25,
+          metalness: 0.85,
+        }),
+        manifI: new THREE.MeshStandardMaterial({
+          color: 0xc2410c,
+          roughness: 0.25,
+          metalness: 0.85,
+        }),
+        filter: new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.4, metalness: 0.5 }),
+        sensor: new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3, metalness: 0.6 }),
+        gauge: new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.2, metalness: 0.7 }),
+        cistern: new THREE.MeshStandardMaterial({
+          color: 0x164e63,
+          roughness: 0.5,
+          metalness: 0.3,
+        }),
+        psv: new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3, metalness: 0.6 }),
+      };
 
-    const allMeshes: THREE.Mesh[] = [];
-    meshesRef.current = allMeshes;
-    matsOrig.current.clear();
+      const allMeshes: THREE.Mesh[] = [];
+      meshesRef.current = allMeshes;
+      matsOrig.current.clear();
 
-    // helpers
-    const box = (
-      w: number,
-      h: number,
-      d: number,
-      mat: THREE.Material,
-      cx: number,
-      cy: number,
-      cz: number,
-      compId?: string,
-    ) => {
-      const g = new THREE.BoxGeometry(w, h, d);
-      const m = new THREE.Mesh(g, mat);
-      m.position.set(cx, cy, cz);
-      m.castShadow = true;
-      m.receiveShadow = true;
-      if (compId) (m.userData as { compId?: string }).compId = compId;
-      group.add(m);
-      allMeshes.push(m as unknown as THREE.Mesh);
-      return m;
-    };
-    const cyl = (
-      rt: number,
-      rb: number,
-      h: number,
-      seg: number,
-      mat: THREE.Material,
-      cx: number,
-      cy: number,
-      cz: number,
-      rx?: number,
-      ry?: number,
-      rz?: number,
-      compId?: string,
-    ) => {
-      const g = new THREE.CylinderGeometry(rt, rb, h, seg);
-      const m = new THREE.Mesh(g, mat);
-      m.position.set(cx, cy, cz);
-      if (rx !== undefined || ry !== undefined || rz !== undefined)
-        m.rotation.set(rx ?? 0, ry ?? 0, rz ?? 0);
-      m.castShadow = true;
-      m.receiveShadow = true;
-      if (compId) (m.userData as { compId?: string }).compId = compId;
-      group.add(m);
-      allMeshes.push(m as unknown as THREE.Mesh);
-      return m;
-    };
-    const sphere = (
-      r: number,
-      seg: number,
-      mat: THREE.Material,
-      cx: number,
-      cy: number,
-      cz: number,
-      compId?: string,
-    ) => {
-      const g = new THREE.SphereGeometry(r, seg, seg);
-      const m = new THREE.Mesh(g, mat);
-      m.position.set(cx, cy, cz);
-      m.castShadow = true;
-      if (compId) (m.userData as { compId?: string }).compId = compId;
-      group.add(m);
-      allMeshes.push(m as unknown as THREE.Mesh);
-      return m;
-    };
-    const pipe = (
-      x1: number,
-      y1: number,
-      z1: number,
-      x2: number,
-      y2: number,
-      z2: number,
-      r: number,
-      mat: THREE.Material,
-      compId?: string,
-    ) => {
-      const dir = new THREE.Vector3(x2 - x1, y2 - y1, z2 - z1);
-      const len = dir.length();
-      if (len < 0.001) return;
-      const g = new THREE.CylinderGeometry(r, r, len, 12);
-      const m = new THREE.Mesh(g, mat);
-      const mid = new THREE.Vector3((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2);
-      m.position.copy(mid);
-      m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
-      m.castShadow = true;
-      if (compId) (m.userData as { compId?: string }).compId = compId;
-      group.add(m);
-      allMeshes.push(m as unknown as THREE.Mesh);
-      return m;
-    };
-    const elbow = (
-      cx: number,
-      cy: number,
-      cz: number,
-      r: number,
-      mat: THREE.Material,
-      compId?: string,
-    ) => {
-      const g = new THREE.SphereGeometry(r * 1.4, 10, 10);
-      const m = new THREE.Mesh(g, mat);
-      m.position.set(cx, cy, cz);
-      if (compId) (m.userData as { compId?: string }).compId = compId;
-      group.add(m);
-      allMeshes.push(m as unknown as THREE.Mesh);
-      return m;
-    };
+      // helpers
+      const box = (
+        w: number,
+        h: number,
+        d: number,
+        mat: THREE.Material,
+        cx: number,
+        cy: number,
+        cz: number,
+        compId?: string,
+      ) => {
+        const g = new THREE.BoxGeometry(w, h, d);
+        const m = new THREE.Mesh(g, mat);
+        m.position.set(cx, cy, cz);
+        m.castShadow = true;
+        m.receiveShadow = true;
+        if (compId) (m.userData as { compId?: string }).compId = compId;
+        group.add(m);
+        allMeshes.push(m as unknown as THREE.Mesh);
+        return m;
+      };
+      const cyl = (
+        rt: number,
+        rb: number,
+        h: number,
+        seg: number,
+        mat: THREE.Material,
+        cx: number,
+        cy: number,
+        cz: number,
+        rx?: number,
+        ry?: number,
+        rz?: number,
+        compId?: string,
+      ) => {
+        const g = new THREE.CylinderGeometry(rt, rb, h, seg);
+        const m = new THREE.Mesh(g, mat);
+        m.position.set(cx, cy, cz);
+        if (rx !== undefined || ry !== undefined || rz !== undefined)
+          m.rotation.set(rx ?? 0, ry ?? 0, rz ?? 0);
+        m.castShadow = true;
+        m.receiveShadow = true;
+        if (compId) (m.userData as { compId?: string }).compId = compId;
+        group.add(m);
+        allMeshes.push(m as unknown as THREE.Mesh);
+        return m;
+      };
+      const sphere = (
+        r: number,
+        seg: number,
+        mat: THREE.Material,
+        cx: number,
+        cy: number,
+        cz: number,
+        compId?: string,
+      ) => {
+        const g = new THREE.SphereGeometry(r, seg, seg);
+        const m = new THREE.Mesh(g, mat);
+        m.position.set(cx, cy, cz);
+        m.castShadow = true;
+        if (compId) (m.userData as { compId?: string }).compId = compId;
+        group.add(m);
+        allMeshes.push(m as unknown as THREE.Mesh);
+        return m;
+      };
+      const pipe = (
+        x1: number,
+        y1: number,
+        z1: number,
+        x2: number,
+        y2: number,
+        z2: number,
+        r: number,
+        mat: THREE.Material,
+        compId?: string,
+      ) => {
+        const dir = new THREE.Vector3(x2 - x1, y2 - y1, z2 - z1);
+        const len = dir.length();
+        if (len < 0.001) return;
+        const g = new THREE.CylinderGeometry(r, r, len, 12);
+        const m = new THREE.Mesh(g, mat);
+        const mid = new THREE.Vector3((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2);
+        m.position.copy(mid);
+        m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+        m.castShadow = true;
+        if (compId) (m.userData as { compId?: string }).compId = compId;
+        group.add(m);
+        allMeshes.push(m as unknown as THREE.Mesh);
+        return m;
+      };
+      const elbow = (
+        cx: number,
+        cy: number,
+        cz: number,
+        r: number,
+        mat: THREE.Material,
+        compId?: string,
+      ) => {
+        const g = new THREE.SphereGeometry(r * 1.4, 10, 10);
+        const m = new THREE.Mesh(g, mat);
+        m.position.set(cx, cy, cz);
+        if (compId) (m.userData as { compId?: string }).compId = compId;
+        group.add(m);
+        allMeshes.push(m as unknown as THREE.Mesh);
+        return m;
+      };
 
-    // derived nt/nr
-    const numBombs = ntot;
-    const bombPos = (() => {
-      if (numBombs === 2) return [-0.6, 0.6];
-      if (numBombs === 3) return [-0.9, 0, 0.9];
-      if (numBombs === 4) return [-1.35, -0.45, 0.45, 1.35];
-      return Array.from({ length: numBombs }, (_, i) => -0.9 + (i * 1.8) / (numBombs - 1));
-    })();
-    const bombIds = Array.from({ length: numBombs }, (_, i) => `b${i + 1}`);
-    const vgSIds = Array.from({ length: numBombs }, (_, i) => `vg_s${i + 1}`);
-    const vrdIds = Array.from({ length: numBombs }, (_, i) => `vrd${i + 1}`);
+      // derived nt/nr
+      const numBombs = ntot;
+      const bombPos = (() => {
+        if (numBombs === 2) return [-0.6, 0.6];
+        if (numBombs === 3) return [-0.9, 0, 0.9];
+        if (numBombs === 4) return [-1.35, -0.45, 0.45, 1.35];
+        return Array.from({ length: numBombs }, (_, i) => -0.9 + (i * 1.8) / (numBombs - 1));
+      })();
+      const bombIds = Array.from({ length: numBombs }, (_, i) => `b${i + 1}`);
+      const vgSIds = Array.from({ length: numBombs }, (_, i) => `vg_s${i + 1}`);
+      const vrdIds = Array.from({ length: numBombs }, (_, i) => `vrd${i + 1}`);
 
-    const pR = 0.04;
-    const pRi = 0.032;
+      const pR = 0.04;
+      const pRi = 0.032;
 
-    // CISTERNA or ACOMETIDA
-    if (hasCistern) {
-      box(2.0, 1.6, 1.4, M.cistern, -4.0, 0.8, 0, 'cisterna');
-      box(
-        0.8,
-        0.15,
-        0.02,
-        new THREE.MeshStandardMaterial({ color: 0x164e63 }),
-        -4.0,
-        1.5,
-        0.71,
-        'cisterna',
-      );
-      pipe(-3.0, 0.5, 0, -1.9, 0.5, 0, pR, M.pipeS, 'acometida');
-      // suction from cisterna to manifold
-      pipe(-3.0, 0.5, 0, -0.72, 0.5, 0, pR, M.pipeS, 'manif_s');
-    } else {
-      pipe(-4.0, 0.5, 0, -1.9, 0.5, 0, pR, M.pipeS, 'acometida');
-      cyl(0.07, 0.07, 0.12, 12, M.manif, -3.9, 0.5, 0, 0, 0, Math.PI / 2, 'acometida');
-    }
+      // CISTERNA or ACOMETIDA
+      if (hasCistern) {
+        box(2.0, 1.6, 1.4, M.cistern, -4.0, 0.8, 0, 'cisterna');
+        box(
+          0.8,
+          0.15,
+          0.02,
+          new THREE.MeshStandardMaterial({ color: 0x164e63 }),
+          -4.0,
+          1.5,
+          0.71,
+          'cisterna',
+        );
+        pipe(-3.0, 0.5, 0, -1.9, 0.5, 0, pR, M.pipeS, 'acometida');
+        // suction from cisterna to manifold
+        pipe(-3.0, 0.5, 0, -0.72, 0.5, 0, pR, M.pipeS, 'manif_s');
+      } else {
+        pipe(-4.0, 0.5, 0, -1.9, 0.5, 0, pR, M.pipeS, 'acometida');
+        cyl(0.07, 0.07, 0.12, 12, M.manif, -3.9, 0.5, 0, 0, 0, Math.PI / 2, 'acometida');
+      }
 
-    // Válvula corte entrada — conectada sin gaps
-    box(0.18, 0.14, 0.14, M.valve, -1.7, 0.5, 0, 'vg_ent');
-    cyl(0.05, 0.05, 0.22, 10, M.pipeS, -1.7, 0.5, 0, 0, 0, Math.PI / 2, 'vg_ent');
-    cyl(0.04, 0.04, 0.18, 8, M.valve, -1.7, 0.64, 0, 0, 0, 0, 'vg_ent');
-    pipe(-1.9, 0.5, 0, -1.7, 0.5, 0, pR, M.pipeS, 'vg_ent');
-    pipe(-1.62, 0.5, 0, -1.7, 0.5, 0, pR, M.pipeS, 'vg_ent');
+      // Válvula corte entrada — conectada sin gaps
+      box(0.18, 0.14, 0.14, M.valve, -1.7, 0.5, 0, 'vg_ent');
+      cyl(0.05, 0.05, 0.22, 10, M.pipeS, -1.7, 0.5, 0, 0, 0, Math.PI / 2, 'vg_ent');
+      cyl(0.04, 0.04, 0.18, 8, M.valve, -1.7, 0.64, 0, 0, 0, 0, 'vg_ent');
+      pipe(-1.9, 0.5, 0, -1.7, 0.5, 0, pR, M.pipeS, 'vg_ent');
+      pipe(-1.62, 0.5, 0, -1.7, 0.5, 0, pR, M.pipeS, 'vg_ent');
 
-    // Filtro — conectado
-    cyl(0.09, 0.09, 0.22, 10, M.filter, -1.35, 0.5, 0, 0, 0, Math.PI / 2, 'filtro');
-    cyl(0.06, 0.04, 0.18, 8, M.filter, -1.35, 0.38, 0.05, 0.5, 0, 0, 'filtro');
-    pipe(-1.62, 0.5, 0, -1.35, 0.5, 0, pR, M.pipeS, 'filtro');
-    pipe(-1.35, 0.5, 0, -1.05, 0.5, 0, pR, M.pipeS, 'filtro');
+      // Filtro — conectado
+      cyl(0.09, 0.09, 0.22, 10, M.filter, -1.35, 0.5, 0, 0, 0, Math.PI / 2, 'filtro');
+      cyl(0.06, 0.04, 0.18, 8, M.filter, -1.35, 0.38, 0.05, 0.5, 0, 0, 'filtro');
+      pipe(-1.62, 0.5, 0, -1.35, 0.5, 0, pR, M.pipeS, 'filtro');
+      pipe(-1.35, 0.5, 0, -1.05, 0.5, 0, pR, M.pipeS, 'filtro');
 
-    // Presostato succión — conectado
-    cyl(0.06, 0.06, 0.08, 10, M.sensor, -1.05, 0.5, 0, 0, 0, Math.PI / 2, 'presost_s');
-    cyl(0.04, 0.04, 0.14, 8, M.sensor, -1.05, 0.62, 0.0, 0, 0, 0, 'presost_s');
-    sphere(0.07, 8, M.sensor, -1.05, 0.72, 0, 'presost_s');
-    pipe(-1.05, 0.5, 0, -0.72, 0.5, 0, pR, M.pipeS, 'presost_s');
+      // Presostato succión — conectado
+      cyl(0.06, 0.06, 0.08, 10, M.sensor, -1.05, 0.5, 0, 0, 0, Math.PI / 2, 'presost_s');
+      cyl(0.04, 0.04, 0.14, 8, M.sensor, -1.05, 0.62, 0.0, 0, 0, 0, 'presost_s');
+      sphere(0.07, 8, M.sensor, -1.05, 0.72, 0, 'presost_s');
+      pipe(-1.05, 0.5, 0, -0.72, 0.5, 0, pR, M.pipeS, 'presost_s');
 
-    // Manifold succión — continuo
-    cyl(0.1, 0.1, 1.9, 12, M.manif, -0.72, 0.5, 0, 0, 0, Math.PI / 2, 'manif_s');
-    sphere(0.1, 10, M.manif, -1.67, 0.5, 0, 'manif_s');
-    sphere(0.1, 10, M.manif, 0.23, 0.5, 0, 'manif_s');
-    elbow(-1.62, 0.5, 0, 0.04, M.pipeS, 'manif_s');
-    elbow(0.18, 0.5, 0, 0.04, M.pipeS, 'manif_s');
+      // Manifold succión — continuo
+      cyl(0.1, 0.1, 1.9, 12, M.manif, -0.72, 0.5, 0, 0, 0, Math.PI / 2, 'manif_s');
+      sphere(0.1, 10, M.manif, -1.67, 0.5, 0, 'manif_s');
+      sphere(0.1, 10, M.manif, 0.23, 0.5, 0, 'manif_s');
+      elbow(-1.62, 0.5, 0, 0.04, M.pipeS, 'manif_s');
+      elbow(0.18, 0.5, 0, 0.04, M.pipeS, 'manif_s');
 
-    // BOMBAS
-    bombPos.forEach((bx, i) => {
-      const isReserve = i >= nt;
-      const bMat = isReserve ? M.pump : M.pumpH;
-      // succión down — la caja de válvula protruye en +z para que el raycast no pegue en el
-      // motor de la bomba (antes quedaba oculta detrás del cilindro del motor y al hacer clic
-      // se seleccionaba la bomba en vez de la válvula).
-      pipe(bx, 0.5, 0, bx, 0.36, 0, pR, M.pipeS, vgSIds[i]);
-      box(0.15, 0.13, 0.18, M.valve, bx, 0.3, 0.08, vgSIds[i]);
-      pipe(bx, 0.24, 0, bx, 0.18, 0, pR, M.pipeS, bombIds[i]);
-      // pump
-      cyl(0.22, 0.22, 0.28, 16, bMat, bx, 0.14, 0, 0, 0, 0, bombIds[i]);
-      cyl(0.14, 0.1, 0.12, 12, M.pump, bx, 0.01, 0, 0, 0, 0, bombIds[i]);
-      box(0.32, 0.06, 0.28, M.pump, bx, -0.01, 0, bombIds[i]);
-      cyl(0.14, 0.14, 0.38, 16, bMat, bx, 0.36, 0, 0, 0, 0, bombIds[i]);
-      cyl(0.06, 0.06, 0.1, 10, M.pump, bx, 0.56, 0, 0, 0, 0, bombIds[i]);
-      cyl(0.15, 0.15, 0.04, 16, M.pump, bx, 0.56, 0, 0, 0, 0, bombIds[i]);
-      pipe(bx, 0.27, 0, bx, 0.5, 0, pRi, M.pipeI, vrdIds[i]);
-      cyl(0.08, 0.08, 0.12, 10, M.check, bx, 0.54, 0, 0, 0, 0, vrdIds[i]);
-      sphere(0.08, 8, M.check, bx, 0.6, 0, vrdIds[i]);
-      pipe(bx, 0.66, 0, bx, 1.1, 0, pRi, M.pipeI, vrdIds[i]);
-      elbow(bx, 1.1, 0, pRi, M.manifI, vrdIds[i]);
-      pipe(bx, 1.1, 0, 0, 1.1, 0, pRi, M.manifI, 'manif_i');
-    });
+      // BOMBAS
+      bombPos.forEach((bx, i) => {
+        const isReserve = i >= nt;
+        const bMat = isReserve ? M.pump : M.pumpH;
+        // succión down — la caja de válvula protruye en +z para que el raycast no pegue en el
+        // motor de la bomba (antes quedaba oculta detrás del cilindro del motor y al hacer clic
+        // se seleccionaba la bomba en vez de la válvula).
+        pipe(bx, 0.5, 0, bx, 0.36, 0, pR, M.pipeS, vgSIds[i]);
+        box(0.15, 0.13, 0.18, M.valve, bx, 0.3, 0.08, vgSIds[i]);
+        pipe(bx, 0.24, 0, bx, 0.18, 0, pR, M.pipeS, bombIds[i]);
+        // pump
+        cyl(0.22, 0.22, 0.28, 16, bMat, bx, 0.14, 0, 0, 0, 0, bombIds[i]);
+        cyl(0.14, 0.1, 0.12, 12, M.pump, bx, 0.01, 0, 0, 0, 0, bombIds[i]);
+        box(0.32, 0.06, 0.28, M.pump, bx, -0.01, 0, bombIds[i]);
+        cyl(0.14, 0.14, 0.38, 16, bMat, bx, 0.36, 0, 0, 0, 0, bombIds[i]);
+        cyl(0.06, 0.06, 0.1, 10, M.pump, bx, 0.56, 0, 0, 0, 0, bombIds[i]);
+        cyl(0.15, 0.15, 0.04, 16, M.pump, bx, 0.56, 0, 0, 0, 0, bombIds[i]);
+        pipe(bx, 0.27, 0, bx, 0.5, 0, pRi, M.pipeI, vrdIds[i]);
+        cyl(0.08, 0.08, 0.12, 10, M.check, bx, 0.54, 0, 0, 0, 0, vrdIds[i]);
+        sphere(0.08, 8, M.check, bx, 0.6, 0, vrdIds[i]);
+        pipe(bx, 0.66, 0, bx, 1.1, 0, pRi, M.pipeI, vrdIds[i]);
+        elbow(bx, 1.1, 0, pRi, M.manifI, vrdIds[i]);
+        pipe(bx, 1.1, 0, 0, 1.1, 0, pRi, M.manifI, 'manif_i');
+      });
 
-    // soportes de tubería
-    [-0.72, 0].forEach((x) => {
+      // soportes de tubería
+      [-0.72, 0].forEach((x) => {
+        cyl(
+          0.025,
+          0.025,
+          0.5,
+          8,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6, metalness: 0.4 }),
+          x,
+          0.25,
+          0,
+          0,
+          0,
+          0,
+          x === -0.72 ? 'manif_s' : 'manif_i',
+        );
+        box(
+          0.12,
+          0.02,
+          0.12,
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
+          x,
+          0.02,
+          0,
+          x === -0.72 ? 'manif_s' : 'manif_i',
+        );
+      });
+
+      const mLen = numBombs === 2 ? 1.5 : 2.1;
+      cyl(0.09, 0.09, mLen, 12, M.manifI, 0, 1.1, 0, 0, 0, Math.PI / 2, 'manif_i');
+      sphere(0.09, 10, M.manifI, -mLen / 2, 1.1, 0, 'manif_i');
+      sphere(0.09, 10, M.manifI, mLen / 2, 1.1, 0, 'manif_i');
+
+      // PSV — con codo visible a manifold
+      elbow(0, 1.1, 0, pRi * 0.9, M.manifI, 'psv');
+      pipe(0, 1.1, 0, 0, 1.5, 0, pRi * 0.8, M.pipeI, 'psv');
+      box(0.12, 0.14, 0.12, M.psv, 0, 1.6, 0, 'psv');
+      cyl(0.04, 0.04, 0.18, 8, M.psv, 0, 1.72, 0, 0, 0, 0, 'psv');
+
+      // manometro — con codo
+      elbow(0.5, 1.1, 0, 0.04, M.manifI, 'manometro');
+      pipe(0.5, 1.1, 0, 0.5, 1.4, 0, 0.025, M.pipeI, 'manometro');
+      sphere(0.07, 10, M.gauge, 0.5, 1.46, 0, 'manometro');
+      cyl(0.06, 0.06, 0.04, 10, M.gauge, 0.5, 1.46, 0, 0, 0, 0, 'manometro');
+
+      // tanque
+      sphere(0.48, 20, M.tank, 2.4, 0.88, 0, 'tank');
+      [-0.25, 0.25].forEach((dz) => {
+        cyl(0.03, 0.03, 0.5, 8, M.valve, 2.4, 0.3, dz, 0.3, 0, 0, 'tank');
+      });
+      pipe(1.8, 1.1, 0, 2.1, 1.1, 0, pRi, M.pipeI, 'tank');
+      pipe(2.1, 1.1, 0, 2.1, 0.88, 0, pRi, M.pipeI, 'tank');
+      pipe(2.1, 0.88, 0, 2.22, 0.88, 0, pRi, M.pipeI, 'tank');
+      cyl(0.025, 0.025, 0.12, 8, M.gauge, 2.4, 1.4, 0, 0, 0, 0, 'tank');
+      sphere(0.04, 8, M.gauge, 2.4, 1.47, 0, 'tank');
+
+      // presostato control
+      pipe(0.9, 1.1, 0, 0.9, 1.38, 0, 0.025, M.pipeI, 'presost_r');
+      box(0.12, 0.1, 0.1, M.sensor, 0.9, 1.44, 0, 'presost_r');
+      cyl(0.04, 0.04, 0.1, 8, M.sensor, 0.9, 1.54, 0, 0, 0, 0, 'presost_r');
+
+      // valvula salida a red — sin huecos, con bridas
+      pipe(mLen / 2, 1.1, 0, mLen / 2 + 0.37, 1.1, 0, pRi, M.pipeI, 'vg_red');
+      cyl(0.05, 0.05, 0.02, 12, M.valve, mLen / 2 + 0.37, 1.1, 0, 0, 0, Math.PI / 2, 'vg_red');
+      box(0.14, 0.13, 0.13, M.valve, mLen / 2 + 0.44, 1.1, 0, 'vg_red');
+      cyl(0.04, 0.04, 0.18, 8, M.valve, mLen / 2 + 0.44, 1.23, 0, 0, 0, 0, 'vg_red');
+      cyl(0.05, 0.05, 0.02, 12, M.valve, mLen / 2 + 0.51, 1.1, 0, 0, 0, Math.PI / 2, 'vg_red');
+      pipe(mLen / 2 + 0.51, 1.1, 0, 3.6, 1.1, 0, pRi, M.pipeI, 'vg_sal');
+      // soporte bajo válvula
       cyl(
-        0.025,
-        0.025,
-        0.5,
+        0.02,
+        0.02,
+        0.45,
         8,
         new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6, metalness: 0.4 }),
-        x,
-        0.25,
+        mLen / 2 + 0.44,
+        0.88,
         0,
         0,
         0,
         0,
-        x === -0.72 ? 'manif_s' : 'manif_i',
+        'vg_red',
       );
       box(
-        0.12,
+        0.1,
         0.02,
-        0.12,
+        0.1,
         new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
-        x,
-        0.02,
-        0,
-        x === -0.72 ? 'manif_s' : 'manif_i',
-      );
-    });
-
-    const mLen = numBombs === 2 ? 1.5 : 2.1;
-    cyl(0.09, 0.09, mLen, 12, M.manifI, 0, 1.1, 0, 0, 0, Math.PI / 2, 'manif_i');
-    sphere(0.09, 10, M.manifI, -mLen / 2, 1.1, 0, 'manif_i');
-    sphere(0.09, 10, M.manifI, mLen / 2, 1.1, 0, 'manif_i');
-
-    // PSV — con codo visible a manifold
-    elbow(0, 1.1, 0, pRi * 0.9, M.manifI, 'psv');
-    pipe(0, 1.1, 0, 0, 1.5, 0, pRi * 0.8, M.pipeI, 'psv');
-    box(0.12, 0.14, 0.12, M.psv, 0, 1.6, 0, 'psv');
-    cyl(0.04, 0.04, 0.18, 8, M.psv, 0, 1.72, 0, 0, 0, 0, 'psv');
-
-    // manometro — con codo
-    elbow(0.5, 1.1, 0, 0.04, M.manifI, 'manometro');
-    pipe(0.5, 1.1, 0, 0.5, 1.4, 0, 0.025, M.pipeI, 'manometro');
-    sphere(0.07, 10, M.gauge, 0.5, 1.46, 0, 'manometro');
-    cyl(0.06, 0.06, 0.04, 10, M.gauge, 0.5, 1.46, 0, 0, 0, 0, 'manometro');
-
-    // tanque
-    sphere(0.48, 20, M.tank, 2.4, 0.88, 0, 'tank');
-    [-0.25, 0.25].forEach((dz) => {
-      cyl(0.03, 0.03, 0.5, 8, M.valve, 2.4, 0.3, dz, 0.3, 0, 0, 'tank');
-    });
-    pipe(1.8, 1.1, 0, 2.1, 1.1, 0, pRi, M.pipeI, 'tank');
-    pipe(2.1, 1.1, 0, 2.1, 0.88, 0, pRi, M.pipeI, 'tank');
-    pipe(2.1, 0.88, 0, 2.22, 0.88, 0, pRi, M.pipeI, 'tank');
-    cyl(0.025, 0.025, 0.12, 8, M.gauge, 2.4, 1.4, 0, 0, 0, 0, 'tank');
-    sphere(0.04, 8, M.gauge, 2.4, 1.47, 0, 'tank');
-
-    // presostato control
-    pipe(0.9, 1.1, 0, 0.9, 1.38, 0, 0.025, M.pipeI, 'presost_r');
-    box(0.12, 0.1, 0.1, M.sensor, 0.9, 1.44, 0, 'presost_r');
-    cyl(0.04, 0.04, 0.1, 8, M.sensor, 0.9, 1.54, 0, 0, 0, 0, 'presost_r');
-
-    // valvula salida a red — sin huecos, con bridas
-    pipe(mLen / 2, 1.1, 0, mLen / 2 + 0.37, 1.1, 0, pRi, M.pipeI, 'vg_red');
-    cyl(0.05, 0.05, 0.02, 12, M.valve, mLen / 2 + 0.37, 1.1, 0, 0, 0, Math.PI / 2, 'vg_red');
-    box(0.14, 0.13, 0.13, M.valve, mLen / 2 + 0.44, 1.1, 0, 'vg_red');
-    cyl(0.04, 0.04, 0.18, 8, M.valve, mLen / 2 + 0.44, 1.23, 0, 0, 0, 0, 'vg_red');
-    cyl(0.05, 0.05, 0.02, 12, M.valve, mLen / 2 + 0.51, 1.1, 0, 0, 0, Math.PI / 2, 'vg_red');
-    pipe(mLen / 2 + 0.51, 1.1, 0, 3.6, 1.1, 0, pRi, M.pipeI, 'vg_sal');
-    // soporte bajo válvula
-    cyl(
-      0.02,
-      0.02,
-      0.45,
-      8,
-      new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6, metalness: 0.4 }),
-      mLen / 2 + 0.44,
-      0.88,
-      0,
-      0,
-      0,
-      0,
-      'vg_red',
-    );
-    box(
-      0.1,
-      0.02,
-      0.1,
-      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
-      mLen / 2 + 0.44,
-      0.66,
-      0,
-      'vg_red',
-    );
-    cyl(0.08, 0.08, 1.0, 10, M.manifI, 3.6, 0.85, 0, 0, 0, 0, 'vg_sal');
-    sphere(0.08, 10, M.manifI, 3.6, 1.35, 0, 'vg_sal');
-    sphere(0.08, 10, M.manifI, 3.6, 0.35, 0, 'vg_sal');
-    [-0.2, 0, 0.2].forEach((dz) => {
-      pipe(3.6, 0.9 - dz * 0.22, 0, 3.9, 0.9 - dz * 0.22, 0, 0.025, M.pipeI, 'vg_sal');
-      box(0.08, 0.07, 0.07, M.valve, 3.96, 0.9 - dz * 0.22, 0, 'vg_sal');
-    });
-    // tablero — montado en pared con canalización conectada (antes flotaba)
-    // pared de soporte
-    box(
-      1.05,
-      1.55,
-      0.08,
-      new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9 }),
-      0,
-      2.0,
-      0.34,
-      'tablero',
-    );
-    // gabinete principal
-    box(0.8, 1.2, 0.25, M.board, 0, 2.0, 0.5, 'tablero');
-    // marco metálico
-    box(
-      0.82,
-      1.22,
-      0.02,
-      new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.3, metalness: 0.6 }),
-      0,
-      2.0,
-      0.64,
-      'tablero',
-    );
-    box(0.72, 1.1, 0.05, M.boardF, 0, 2.0, 0.65, 'tablero');
-    // display LCD
-    box(
-      0.5,
-      0.22,
-      0.01,
-      new THREE.MeshStandardMaterial({
-        color: 0x0f172a,
-        roughness: 0.2,
-        metalness: 0.1,
-        emissive: 0x1e3a5f,
-        emissiveIntensity: 0.2,
-      }),
-      0,
-      2.25,
-      0.66,
-      'tablero',
-    );
-    [-0.2, 0, 0.2].forEach((dx, i) => {
-      const colors = [0x22c55e, 0xf59e0b, 0xef4444];
-      const mat2 = new THREE.MeshStandardMaterial({
-        color: colors[i],
-        emissive: colors[i],
-        emissiveIntensity: 0.4,
-      });
-      cyl(0.03, 0.03, 0.01, 8, mat2, dx, 2.05, 0.66, 0, 0, 0, 'tablero');
-    });
-    // botonera
-    [-0.15, 0, 0.15].forEach((dx) => {
-      cyl(
-        0.025,
-        0.025,
-        0.02,
-        8,
-        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.7 }),
-        dx,
-        1.85,
+        mLen / 2 + 0.44,
         0.66,
         0,
-        0,
-        0,
-        'tablero',
+        'vg_red',
       );
-    });
-    // manija
-    box(
-      0.04,
-      0.35,
-      0.04,
-      new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.2, metalness: 0.8 }),
-      0.35,
-      2.0,
-      0.66,
-      'tablero',
-    );
-    // canalización conectada — vertical del tablero + horizontal en z + bandeja en x a bombas
-    box(
-      0.06,
-      0.62,
-      0.06,
-      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-      0,
-      1.11,
-      0.5,
-      'tablero',
-    );
-    elbow(
-      0,
-      0.8,
-      0.5,
-      0.04,
-      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-      'tablero',
-    );
-    // tramo en Z del tablero a la línea de bombas
-    box(
-      0.04,
-      0.04,
-      0.52,
-      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-      0,
-      0.8,
-      0.25,
-      'tablero',
-    );
-    elbow(
-      0,
-      0.8,
-      0,
-      0.04,
-      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-      'tablero',
-    );
-    // bandeja horizontal en X sobre bombas (conectada)
-    const ductLen = Math.max(1.8, ntot * 0.9);
-    box(
-      ductLen,
-      0.06,
-      0.08,
-      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5, metalness: 0.4 }),
-      0,
-      0.8,
-      0,
-      'tablero',
-    );
-    bombPos.forEach((bx) => {
-      box(
-        0.02,
-        0.12,
-        0.02,
-        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
-        bx,
-        0.74,
-        0,
-        'tablero',
-      );
-      // bajada corta a cada bomba
-      box(
-        0.02,
-        0.18,
-        0.02,
-        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-        bx,
-        0.68,
-        0,
-        'tablero',
-      );
-    });
-
-    // orbit manual
-    const spherical = { theta: Math.PI / 4, phi: Math.PI / 3.5, r: 12 };
-    const target = new THREE.Vector3(0, 0.8, 0);
-    const updateCamera = () => {
-      camera.position.x =
-        target.x + spherical.r * Math.sin(spherical.phi) * Math.sin(spherical.theta);
-      camera.position.y = target.y + spherical.r * Math.cos(spherical.phi);
-      camera.position.z =
-        target.z + spherical.r * Math.sin(spherical.phi) * Math.cos(spherical.theta);
-      camera.lookAt(target);
-    };
-    updateCamera();
-    // expose view switcher
-    viewFnRef.current = (v: string) => {
-      const targets: Record<string, typeof spherical> = {
-        iso: { theta: Math.PI / 4, phi: Math.PI / 3.8, r: 12 },
-        front: { theta: 0, phi: Math.PI / 2.01, r: 11 },
-        side: { theta: Math.PI / 2, phi: Math.PI / 2.01, r: 11 },
-        top: { theta: Math.PI / 4, phi: 0.1, r: 13 },
-        back: { theta: Math.PI, phi: Math.PI / 2.01, r: 11 },
-      };
-      const end = targets[v] ?? targets.iso;
-      const start = { ...spherical };
-      let step = 0;
-      const steps = 30;
-      const dur = 600;
-      const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
-      const iv = setInterval(() => {
-        step++;
-        const t = ease(step / steps);
-        spherical.theta = start.theta + (end.theta - start.theta) * t;
-        spherical.phi = start.phi + (end.phi - start.phi) * t;
-        spherical.r = start.r + (end.r - start.r) * t;
-        updateCamera();
-        if (step >= steps) clearInterval(iv);
-      }, dur / steps);
-    };
-
-    let isDown = false;
-    let prevX = 0,
-      prevY = 0;
-    const onPointerDown = (e: PointerEvent) => {
-      isDown = true;
-      prevX = e.clientX;
-      prevY = e.clientY;
-      canvas.setPointerCapture(e.pointerId);
-    };
-    const onPointerUp = (e: PointerEvent) => {
-      isDown = false;
-      canvas.releasePointerCapture(e.pointerId);
-    };
-    const onPointerMove = (e: PointerEvent) => {
-      if (!isDown) {
-        // hover label handled separately
-        return;
-      }
-      const dx = (e.clientX - prevX) * 0.005;
-      const dy = (e.clientY - prevY) * 0.005;
-      spherical.theta -= dx;
-      spherical.phi = Math.max(0.1, Math.min(Math.PI / 2.05, spherical.phi + dy));
-      prevX = e.clientX;
-      prevY = e.clientY;
-      updateCamera();
-    };
-    const onWheel = (e: WheelEvent) => {
-      spherical.r = Math.max(2, Math.min(22, spherical.r + e.deltaY * 0.01));
-      updateCamera();
-      e.preventDefault();
-    };
-    canvas.addEventListener('pointerdown', onPointerDown);
-    canvas.addEventListener('pointerup', onPointerUp);
-    canvas.addEventListener('pointermove', onPointerMove);
-    canvas.addEventListener('wheel', onWheel, { passive: false });
-
-    // raycaster for click/hover
-    const raycaster = new THREE.Raycaster();
-    const mouse = new THREE.Vector2();
-    const labelEl = document.getElementById('ep-label3d');
-    let downPos = { x: 0, y: 0 };
-    const onMouseDownPos = (e: MouseEvent) => {
-      downPos = { x: e.clientX, y: e.clientY };
-    };
-    const onMouseUpPick = (e: MouseEvent) => {
-      const dx = Math.abs(e.clientX - downPos.x),
-        dy = Math.abs(e.clientY - downPos.y);
-      if (dx > 5 || dy > 5) return;
-      const rect = canvas.getBoundingClientRect();
-      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(mouse, camera);
-      const hits = raycaster.intersectObjects(allMeshes);
-      if (hits.length && (hits[0].object.userData as { compId?: string }).compId) {
-        selectComp((hits[0].object.userData as { compId: string }).compId);
-      } else if (selectedIdRef.current) {
-        // click en vacío deselecciona — antes solo se podía desde el panel
-        const meshes = meshesRef.current;
-        const map = matsOrig.current;
-        const cur = selectedIdRef.current;
-        meshes
-          .filter((m) => (m.userData as { compId?: string }).compId === cur)
-          .forEach((m) => {
-            const orig = map.get(m.uuid);
-            if (orig) (m as THREE.Mesh).material = orig;
-          });
-        setSelectedId(null);
-      }
-    };
-    const onHover = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(mouse, camera);
-      const hits = raycaster.intersectObjects(allMeshes);
-      if (labelEl) {
-        if (hits.length && (hits[0].object.userData as { compId?: string }).compId) {
-          const comp = COMPS.find(
-            (c) => c.id === (hits[0].object.userData as { compId: string }).compId,
-          );
-          if (comp) {
-            labelEl.style.display = 'block';
-            labelEl.style.left = e.clientX - rect.left + 14 + 'px';
-            labelEl.style.top = e.clientY - rect.top - 10 + 'px';
-            labelEl.textContent = comp.name;
-          }
-        } else labelEl.style.display = 'none';
-      }
-    };
-    canvas.addEventListener('mousedown', onMouseDownPos);
-    canvas.addEventListener('mouseup', onMouseUpPick);
-    canvas.addEventListener('mousemove', onHover);
-
-    const onResize = () => {
-      const W = wrap.clientWidth,
-        H = wrap.clientHeight;
-      renderer.setSize(W, H, false);
-      camera.aspect = W / H;
-      camera.updateProjectionMatrix();
-    };
-    window.addEventListener('resize', onResize);
-    onResize();
-
-    let raf = 0;
-    const animate = () => {
-      raf = requestAnimationFrame(animate);
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', onResize);
-      canvas.removeEventListener('pointerdown', onPointerDown);
-      canvas.removeEventListener('pointerup', onPointerUp);
-      canvas.removeEventListener('pointermove', onPointerMove);
-      canvas.removeEventListener('wheel', onWheel);
-      canvas.removeEventListener('mousedown', onMouseDownPos);
-      canvas.removeEventListener('mouseup', onMouseUpPick);
-      canvas.removeEventListener('mousemove', onHover);
-      renderer.dispose();
-      allMeshes.forEach((m) => {
-        (m.geometry as THREE.BufferGeometry).dispose();
+      cyl(0.08, 0.08, 1.0, 10, M.manifI, 3.6, 0.85, 0, 0, 0, 0, 'vg_sal');
+      sphere(0.08, 10, M.manifI, 3.6, 1.35, 0, 'vg_sal');
+      sphere(0.08, 10, M.manifI, 3.6, 0.35, 0, 'vg_sal');
+      [-0.2, 0, 0.2].forEach((dz) => {
+        pipe(3.6, 0.9 - dz * 0.22, 0, 3.9, 0.9 - dz * 0.22, 0, 0.025, M.pipeI, 'vg_sal');
+        box(0.08, 0.07, 0.07, M.valve, 3.96, 0.9 - dz * 0.22, 0, 'vg_sal');
       });
-      scene.clear();
+      // tablero — montado en pared con canalización conectada (antes flotaba)
+      // pared de soporte
+      box(
+        1.05,
+        1.55,
+        0.08,
+        new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9 }),
+        0,
+        2.0,
+        0.34,
+        'tablero',
+      );
+      // gabinete principal
+      box(0.8, 1.2, 0.25, M.board, 0, 2.0, 0.5, 'tablero');
+      // marco metálico
+      box(
+        0.82,
+        1.22,
+        0.02,
+        new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.3, metalness: 0.6 }),
+        0,
+        2.0,
+        0.64,
+        'tablero',
+      );
+      box(0.72, 1.1, 0.05, M.boardF, 0, 2.0, 0.65, 'tablero');
+      // display LCD
+      box(
+        0.5,
+        0.22,
+        0.01,
+        new THREE.MeshStandardMaterial({
+          color: 0x0f172a,
+          roughness: 0.2,
+          metalness: 0.1,
+          emissive: 0x1e3a5f,
+          emissiveIntensity: 0.2,
+        }),
+        0,
+        2.25,
+        0.66,
+        'tablero',
+      );
+      [-0.2, 0, 0.2].forEach((dx, i) => {
+        const colors = [0x22c55e, 0xf59e0b, 0xef4444];
+        const mat2 = new THREE.MeshStandardMaterial({
+          color: colors[i],
+          emissive: colors[i],
+          emissiveIntensity: 0.4,
+        });
+        cyl(0.03, 0.03, 0.01, 8, mat2, dx, 2.05, 0.66, 0, 0, 0, 'tablero');
+      });
+      // botonera
+      [-0.15, 0, 0.15].forEach((dx) => {
+        cyl(
+          0.025,
+          0.025,
+          0.02,
+          8,
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.7 }),
+          dx,
+          1.85,
+          0.66,
+          0,
+          0,
+          0,
+          'tablero',
+        );
+      });
+      // manija
+      box(
+        0.04,
+        0.35,
+        0.04,
+        new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.2, metalness: 0.8 }),
+        0.35,
+        2.0,
+        0.66,
+        'tablero',
+      );
+      // canalización conectada — vertical del tablero + horizontal en z + bandeja en x a bombas
+      box(
+        0.06,
+        0.62,
+        0.06,
+        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+        0,
+        1.11,
+        0.5,
+        'tablero',
+      );
+      elbow(
+        0,
+        0.8,
+        0.5,
+        0.04,
+        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+        'tablero',
+      );
+      // tramo en Z del tablero a la línea de bombas
+      box(
+        0.04,
+        0.04,
+        0.52,
+        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+        0,
+        0.8,
+        0.25,
+        'tablero',
+      );
+      elbow(
+        0,
+        0.8,
+        0,
+        0.04,
+        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+        'tablero',
+      );
+      // bandeja horizontal en X sobre bombas (conectada)
+      const ductLen = Math.max(1.8, ntot * 0.9);
+      box(
+        ductLen,
+        0.06,
+        0.08,
+        new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5, metalness: 0.4 }),
+        0,
+        0.8,
+        0,
+        'tablero',
+      );
+      bombPos.forEach((bx) => {
+        box(
+          0.02,
+          0.12,
+          0.02,
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
+          bx,
+          0.74,
+          0,
+          'tablero',
+        );
+        // bajada corta a cada bomba
+        box(
+          0.02,
+          0.18,
+          0.02,
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+          bx,
+          0.68,
+          0,
+          'tablero',
+        );
+      });
+
+      // orbit manual
+      const spherical = { theta: Math.PI / 4, phi: Math.PI / 3.5, r: 12 };
+      const target = new THREE.Vector3(0, 0.8, 0);
+      const updateCamera = () => {
+        camera.position.x =
+          target.x + spherical.r * Math.sin(spherical.phi) * Math.sin(spherical.theta);
+        camera.position.y = target.y + spherical.r * Math.cos(spherical.phi);
+        camera.position.z =
+          target.z + spherical.r * Math.sin(spherical.phi) * Math.cos(spherical.theta);
+        camera.lookAt(target);
+      };
+      updateCamera();
+      // expose view switcher
+      viewFnRef.current = (v: string) => {
+        const targets: Record<string, typeof spherical> = {
+          iso: { theta: Math.PI / 4, phi: Math.PI / 3.8, r: 12 },
+          front: { theta: 0, phi: Math.PI / 2.01, r: 11 },
+          side: { theta: Math.PI / 2, phi: Math.PI / 2.01, r: 11 },
+          top: { theta: Math.PI / 4, phi: 0.1, r: 13 },
+          back: { theta: Math.PI, phi: Math.PI / 2.01, r: 11 },
+        };
+        const end = targets[v] ?? targets.iso;
+        const start = { ...spherical };
+        let step = 0;
+        const steps = 30;
+        const dur = 600;
+        const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+        const iv = setInterval(() => {
+          step++;
+          const t = ease(step / steps);
+          spherical.theta = start.theta + (end.theta - start.theta) * t;
+          spherical.phi = start.phi + (end.phi - start.phi) * t;
+          spherical.r = start.r + (end.r - start.r) * t;
+          updateCamera();
+          if (step >= steps) clearInterval(iv);
+        }, dur / steps);
+      };
+
+      let isDown = false;
+      let prevX = 0,
+        prevY = 0;
+      const onPointerDown = (e: PointerEvent) => {
+        isDown = true;
+        prevX = e.clientX;
+        prevY = e.clientY;
+        canvas.setPointerCapture(e.pointerId);
+      };
+      const onPointerUp = (e: PointerEvent) => {
+        isDown = false;
+        canvas.releasePointerCapture(e.pointerId);
+      };
+      const onPointerMove = (e: PointerEvent) => {
+        if (!isDown) {
+          // hover label handled separately
+          return;
+        }
+        const dx = (e.clientX - prevX) * 0.005;
+        const dy = (e.clientY - prevY) * 0.005;
+        spherical.theta -= dx;
+        spherical.phi = Math.max(0.1, Math.min(Math.PI / 2.05, spherical.phi + dy));
+        prevX = e.clientX;
+        prevY = e.clientY;
+        updateCamera();
+      };
+      const onWheel = (e: WheelEvent) => {
+        spherical.r = Math.max(2, Math.min(22, spherical.r + e.deltaY * 0.01));
+        updateCamera();
+        e.preventDefault();
+      };
+      canvas.addEventListener('pointerdown', onPointerDown);
+      canvas.addEventListener('pointerup', onPointerUp);
+      canvas.addEventListener('pointermove', onPointerMove);
+      canvas.addEventListener('wheel', onWheel, { passive: false });
+
+      // raycaster for click/hover
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+      const labelEl = document.getElementById('ep-label3d');
+      let downPos = { x: 0, y: 0 };
+      const onMouseDownPos = (e: MouseEvent) => {
+        downPos = { x: e.clientX, y: e.clientY };
+      };
+      const onMouseUpPick = (e: MouseEvent) => {
+        const dx = Math.abs(e.clientX - downPos.x),
+          dy = Math.abs(e.clientY - downPos.y);
+        if (dx > 5 || dy > 5) return;
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const hits = raycaster.intersectObjects(allMeshes);
+        if (hits.length && (hits[0].object.userData as { compId?: string }).compId) {
+          selectComp((hits[0].object.userData as { compId: string }).compId);
+        } else if (selectedIdRef.current) {
+          // click en vacío deselecciona — antes solo se podía desde el panel
+          const meshes = meshesRef.current;
+          const map = matsOrig.current;
+          const cur = selectedIdRef.current;
+          meshes
+            .filter((m) => (m.userData as { compId?: string }).compId === cur)
+            .forEach((m) => {
+              const orig = map.get(m.uuid);
+              if (orig) (m as THREE.Mesh).material = orig;
+            });
+          setSelectedId(null);
+        }
+      };
+      const onHover = (e: MouseEvent) => {
+        const rect = canvas.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(mouse, camera);
+        const hits = raycaster.intersectObjects(allMeshes);
+        if (labelEl) {
+          if (hits.length && (hits[0].object.userData as { compId?: string }).compId) {
+            const comp = COMPS.find(
+              (c) => c.id === (hits[0].object.userData as { compId: string }).compId,
+            );
+            if (comp) {
+              labelEl.style.display = 'block';
+              labelEl.style.left = e.clientX - rect.left + 14 + 'px';
+              labelEl.style.top = e.clientY - rect.top - 10 + 'px';
+              labelEl.textContent = comp.name;
+            }
+          } else labelEl.style.display = 'none';
+        }
+      };
+      canvas.addEventListener('mousedown', onMouseDownPos);
+      canvas.addEventListener('mouseup', onMouseUpPick);
+      canvas.addEventListener('mousemove', onHover);
+
+      const onResize = () => {
+        const W = wrap.clientWidth,
+          H = wrap.clientHeight;
+        renderer.setSize(W, H, false);
+        camera.aspect = W / H;
+        camera.updateProjectionMatrix();
+      };
+      window.addEventListener('resize', onResize);
+      onResize();
+
+      let raf = 0;
+      const animate = () => {
+        raf = requestAnimationFrame(animate);
+        renderer.render(scene, camera);
+      };
+      animate();
+
+      cleanup = () => {
+        cancelAnimationFrame(raf);
+        window.removeEventListener('resize', onResize);
+        canvas.removeEventListener('pointerdown', onPointerDown);
+        canvas.removeEventListener('pointerup', onPointerUp);
+        canvas.removeEventListener('pointermove', onPointerMove);
+        canvas.removeEventListener('wheel', onWheel);
+        canvas.removeEventListener('mousedown', onMouseDownPos);
+        canvas.removeEventListener('mouseup', onMouseUpPick);
+        canvas.removeEventListener('mousemove', onHover);
+        renderer.dispose();
+        allMeshes.forEach((m) => {
+          (m.geometry as THREE.BufferGeometry).dispose();
+        });
+        scene.clear();
+      };
+    })();
+    return () => {
+      cancelled = true;
+      if (cleanup) cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasCistern, ntot, nt]);
@@ -1217,7 +1245,26 @@ export default function EPSchemePage({ ep, updEP }: Props) {
             minHeight: 0,
           }}
         >
-          <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />
+          {!threeReady && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#ffffff',
+                fontSize: 11,
+                color: '#6b7280',
+              }}
+            >
+              Cargando 3D…
+            </div>
+          )}
+          <canvas
+            ref={canvasRef}
+            style={{ display: 'block', width: '100%', height: '100%', opacity: threeReady ? 1 : 0 }}
+          />
           <div
             id="ep-label3d"
             style={{
