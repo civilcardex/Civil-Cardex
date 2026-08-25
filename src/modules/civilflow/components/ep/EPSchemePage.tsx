@@ -545,30 +545,524 @@ export default function EPSchemePage({ ep, updEP }: Props) {
       elbow(-1.62, 0.5, 0, 0.04, M.pipeS, 'manif_s');
       elbow(0.18, 0.5, 0, 0.04, M.pipeS, 'manif_s');
 
-      // BOMBAS
+      // ── FOTORREALISTA 3× ── fotos isométricas de referencia: CISTERNA (gris agua azul) y RED con tanque hidroneumático azul + SCADA
+      const isCisterna3 = hasCistern && numBombs === 3;
+      const isRed3 = !hasCistern && numBombs === 3;
+      const isFoto3 = isCisterna3 || isRed3;
+      if (isCisterna3) {
+        // cisterna hormigón con agua — solo cisterna
+        box(
+          2.0,
+          1.25,
+          1.45,
+          new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.85, metalness: 0.05 }),
+          -5.0,
+          0.625,
+          0,
+          'cisterna',
+        );
+        box(
+          1.62,
+          0.06,
+          1.02,
+          new THREE.MeshStandardMaterial({
+            color: 0x38bdf8,
+            roughness: 0.15,
+            metalness: 0.2,
+            transparent: true,
+            opacity: 0.85,
+          }),
+          -5.0,
+          0.95,
+          0,
+          'cisterna',
+        );
+        cyl(
+          0.11,
+          0.11,
+          0.04,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.6 }),
+          -4.05,
+          0.55,
+          0,
+          0,
+          0,
+          Math.PI / 2,
+          'acometida',
+        );
+      }
+      if (isFoto3) {
+        // acometida — diferente origen: cisterna (-4.05) vs red (-4.6)
+        if (isCisterna3)
+          pipe(
+            -4.05,
+            0.55,
+            0,
+            -2.85,
+            0.55,
+            0,
+            0.07,
+            new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
+            'acometida',
+          );
+        else
+          pipe(
+            -4.6,
+            0.55,
+            0,
+            -2.85,
+            0.55,
+            0,
+            0.07,
+            new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
+            'acometida',
+          );
+        cyl(
+          0.09,
+          0.09,
+          0.02,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+          -2.85,
+          0.55,
+          0,
+          0,
+          0,
+          Math.PI / 2,
+          'vg_ent',
+        );
+        box(
+          0.18,
+          0.14,
+          0.14,
+          new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.35, metalness: 0.65 }),
+          -2.72,
+          0.55,
+          0,
+          'vg_ent',
+        );
+        cyl(
+          0.04,
+          0.04,
+          0.14,
+          8,
+          new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.4, metalness: 0.3 }),
+          -2.72,
+          0.67,
+          0,
+          0,
+          0,
+          0,
+          'vg_ent',
+        );
+        cyl(
+          0.08,
+          0.08,
+          0.015,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3, metalness: 0.4 }),
+          -2.72,
+          0.74,
+          0,
+          0,
+          0,
+          0,
+          'vg_ent',
+        );
+        pipe(
+          -2.64,
+          0.55,
+          0,
+          -2.35,
+          0.55,
+          0,
+          0.07,
+          new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
+          'manif_s',
+        );
+        cyl(
+          0.13,
+          0.13,
+          3.6,
+          24,
+          new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.22, metalness: 0.78 }),
+          -0.55,
+          0.55,
+          0,
+          0,
+          0,
+          Math.PI / 2,
+          'manif_s',
+        );
+        [-2.35, -1.55, -0.65, 0.25, 1.15].forEach((x) =>
+          cyl(
+            0.15,
+            0.15,
+            0.02,
+            16,
+            new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.35, metalness: 0.65 }),
+            x,
+            0.55,
+            0,
+            0,
+            0,
+            Math.PI / 2,
+            'manif_s',
+          ),
+        );
+        pipe(
+          -1.65,
+          0.55,
+          0,
+          -1.65,
+          0.68,
+          0,
+          0.018,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.5 }),
+          'manif_s',
+        );
+        sphere(
+          0.09,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.15, metalness: 0.1 }),
+          -1.65,
+          0.77,
+          0,
+          'manif_s',
+        );
+        cyl(
+          0.09,
+          0.09,
+          0.015,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.2, metalness: 0.5 }),
+          -1.65,
+          0.77,
+          0.01,
+          0,
+          0,
+          0,
+          'manif_s',
+        );
+        cyl(
+          0.13,
+          0.13,
+          0.24,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.35, metalness: 0.4 }),
+          -1.0,
+          0.67,
+          0,
+          0,
+          0,
+          0,
+          'filtro',
+        );
+        cyl(
+          0.14,
+          0.14,
+          0.06,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5, metalness: 0.3 }),
+          -1.0,
+          0.82,
+          0,
+          0,
+          0,
+          0,
+          'filtro',
+        );
+        pipe(
+          -1.0,
+          0.55,
+          0,
+          -1.0,
+          0.55,
+          0,
+          0.07,
+          new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
+          'filtro',
+        );
+        box(
+          0.16,
+          0.18,
+          0.12,
+          new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.4, metalness: 0.2 }),
+          -0.35,
+          0.82,
+          0,
+          'presost_s',
+        );
+        box(
+          0.1,
+          0.06,
+          0.02,
+          new THREE.MeshStandardMaterial({ color: 0x1e40af, roughness: 0.3 }),
+          -0.35,
+          0.88,
+          0.07,
+          'presost_s',
+        );
+        cyl(
+          0.02,
+          0.02,
+          0.08,
+          8,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.5 }),
+          -0.35,
+          0.68,
+          0,
+          0,
+          0,
+          0,
+          'presost_s',
+        );
+        box(
+          3.2,
+          0.1,
+          1.15,
+          new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.85, metalness: 0.05 }),
+          -0.05,
+          0.05,
+          0,
+          'manif_i',
+        );
+      }
       bombPos.forEach((bx, i) => {
         const isReserve = i >= nt;
         const bMat = isReserve ? M.pump : M.pumpH;
-        // succión down — la caja de válvula protruye en +z para que el raycast no pegue en el
-        // motor de la bomba (antes quedaba oculta detrás del cilindro del motor y al hacer clic
-        // se seleccionaba la bomba en vez de la válvula).
-        pipe(bx, 0.5, 0, bx, 0.36, 0, pR, M.pipeS, vgSIds[i]);
-        box(0.15, 0.13, 0.18, M.valve, bx, 0.3, 0.08, vgSIds[i]);
-        pipe(bx, 0.24, 0, bx, 0.18, 0, pR, M.pipeS, bombIds[i]);
-        // pump
-        cyl(0.22, 0.22, 0.28, 16, bMat, bx, 0.14, 0, 0, 0, 0, bombIds[i]);
-        cyl(0.14, 0.1, 0.12, 12, M.pump, bx, 0.01, 0, 0, 0, 0, bombIds[i]);
-        box(0.32, 0.06, 0.28, M.pump, bx, -0.01, 0, bombIds[i]);
-        cyl(0.14, 0.14, 0.38, 16, bMat, bx, 0.36, 0, 0, 0, 0, bombIds[i]);
-        cyl(0.06, 0.06, 0.1, 10, M.pump, bx, 0.56, 0, 0, 0, 0, bombIds[i]);
-        cyl(0.15, 0.15, 0.04, 16, M.pump, bx, 0.56, 0, 0, 0, 0, bombIds[i]);
-        pipe(bx, 0.27, 0, bx, 0.5, 0, pRi, M.pipeI, vrdIds[i]);
-        cyl(0.08, 0.08, 0.12, 10, M.check, bx, 0.54, 0, 0, 0, 0, vrdIds[i]);
-        sphere(0.08, 8, M.check, bx, 0.6, 0, vrdIds[i]);
-        pipe(bx, 0.66, 0, bx, 1.1, 0, pRi, M.pipeI, vrdIds[i]);
-        elbow(bx, 1.1, 0, pRi, M.manifI, vrdIds[i]);
-        pipe(bx, 1.1, 0, 0, 1.1, 0, pRi, M.manifI, 'manif_i');
+        if (isFoto3) {
+          // bajante succión con válvula latón volante rojo — igual para cisterna y red
+          pipe(
+            bx,
+            0.55,
+            0,
+            bx,
+            0.32,
+            0,
+            0.05,
+            new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
+            vgSIds[i],
+          );
+          box(
+            0.14,
+            0.12,
+            0.14,
+            new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.35, metalness: 0.65 }),
+            bx,
+            0.26,
+            0,
+            vgSIds[i],
+          );
+          cyl(
+            0.035,
+            0.035,
+            0.1,
+            8,
+            new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.4 }),
+            bx,
+            0.36,
+            0,
+            0,
+            0,
+            0,
+            vgSIds[i],
+          );
+          cyl(
+            0.065,
+            0.065,
+            0.012,
+            16,
+            new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3, metalness: 0.4 }),
+            bx,
+            0.41,
+            0,
+            0,
+            0,
+            0,
+            vgSIds[i],
+          );
+          // bomba vertical inline fotorealista — altura idéntica a foto (0.95m total)
+          cyl(
+            0.16,
+            0.16,
+            0.45,
+            22,
+            new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.16, metalness: 0.84 }),
+            bx,
+            0.25,
+            0,
+            0,
+            0,
+            0,
+            bombIds[i],
+          ); // cuerpo inox pulido alto
+          cyl(
+            0.17,
+            0.17,
+            0.015,
+            16,
+            new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.3, metalness: 0.7 }),
+            bx,
+            0.48,
+            0,
+            0,
+            0,
+            0,
+            bombIds[i],
+          ); // brida
+          cyl(
+            0.19,
+            0.21,
+            0.44,
+            22,
+            new THREE.MeshStandardMaterial({ color: 0x090e1a, roughness: 0.42, metalness: 0.18 }),
+            bx,
+            0.71,
+            0,
+            0,
+            0,
+            0,
+            bombIds[i],
+          ); // motor negro alto con aletas
+          for (let k = 0; k < 6; k++)
+            cyl(
+              0.215,
+              0.215,
+              0.015,
+              16,
+              new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.55 }),
+              bx,
+              0.55 + k * 0.055,
+              0,
+              0,
+              0,
+              0,
+              bombIds[i],
+            );
+          cyl(
+            0.1,
+            0.1,
+            0.06,
+            16,
+            new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.5, metalness: 0.2 }),
+            bx,
+            0.95,
+            0,
+            0,
+            0,
+            0,
+            bombIds[i],
+          ); // tapa cúpula
+          box(
+            0.18,
+            0.02,
+            0.18,
+            new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.6 }),
+            bx,
+            0.1,
+            0,
+            bombIds[i],
+          ); // base negra
+          // descarga corta al colector inferior
+          pipe(
+            bx,
+            0.1,
+            0,
+            bx,
+            0.08,
+            0,
+            0.045,
+            new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
+            vrdIds[i],
+          );
+        } else {
+          pipe(bx, 0.5, 0, bx, 0.36, 0, pR, M.pipeS, vgSIds[i]);
+          box(0.15, 0.13, 0.18, M.valve, bx, 0.3, 0.08, vgSIds[i]);
+          pipe(bx, 0.24, 0, bx, 0.18, 0, pR, M.pipeS, bombIds[i]);
+          cyl(0.22, 0.22, 0.28, 16, bMat, bx, 0.14, 0, 0, 0, 0, bombIds[i]);
+          cyl(0.14, 0.1, 0.12, 12, M.pump, bx, 0.01, 0, 0, 0, 0, bombIds[i]);
+          box(0.32, 0.06, 0.28, M.pump, bx, -0.01, 0, bombIds[i]);
+          cyl(0.14, 0.14, 0.38, 16, bMat, bx, 0.36, 0, 0, 0, 0, bombIds[i]);
+          cyl(0.06, 0.06, 0.1, 10, M.pump, bx, 0.56, 0, 0, 0, 0, bombIds[i]);
+          cyl(0.15, 0.15, 0.04, 16, M.pump, bx, 0.56, 0, 0, 0, 0, bombIds[i]);
+          pipe(bx, 0.27, 0, bx, 0.5, 0, pRi, M.pipeI, vrdIds[i]);
+          cyl(0.08, 0.08, 0.12, 10, M.check, bx, 0.54, 0, 0, 0, 0, vrdIds[i]);
+          sphere(0.08, 8, M.check, bx, 0.6, 0, vrdIds[i]);
+          pipe(bx, 0.66, 0, bx, 1.1, 0, pRi, M.pipeI, vrdIds[i]);
+          elbow(bx, 1.1, 0, pRi, M.manifI, vrdIds[i]);
+          pipe(bx, 1.1, 0, 0, 1.1, 0, pRi, M.manifI, 'manif_i');
+        }
       });
+      if (isFoto3) {
+        // colector inferior latón + checks + codo, montante derecho plateado — igual para cisterna y red
+        pipe(
+          -0.9,
+          0.08,
+          0,
+          0.9,
+          0.08,
+          0,
+          0.045,
+          new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
+          'manif_i',
+        );
+        bombPos.forEach((bx, i) => {
+          cyl(
+            0.06,
+            0.06,
+            0.14,
+            12,
+            new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.35, metalness: 0.65 }),
+            bx + 0.18,
+            0.08,
+            0,
+            0,
+            0,
+            Math.PI / 2,
+            vrdIds[i],
+          );
+          sphere(
+            0.045,
+            10,
+            new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.3, metalness: 0.6 }),
+            bx + 0.18,
+            0.08,
+            0,
+            vrdIds[i],
+          );
+        });
+        box(
+          0.14,
+          0.09,
+          0.12,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.6 }),
+          -1.22,
+          0.08,
+          0,
+          'vrd1',
+        );
+        pipe(
+          0.9,
+          0.08,
+          0,
+          0.9,
+          1.12,
+          0,
+          0.06,
+          new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
+          'manif_i',
+        );
+        elbow(
+          0.9,
+          1.12,
+          0,
+          0.06,
+          new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.22, metalness: 0.78 }),
+          'manif_i',
+        );
+      }
 
       // soportes de tubería
       [-0.72, 0].forEach((x) => {
@@ -599,230 +1093,1010 @@ export default function EPSchemePage({ ep, updEP }: Props) {
       });
 
       const mLen = numBombs === 2 ? 1.5 : 2.1;
-      cyl(0.09, 0.09, mLen, 12, M.manifI, 0, 1.1, 0, 0, 0, Math.PI / 2, 'manif_i');
-      sphere(0.09, 10, M.manifI, -mLen / 2, 1.1, 0, 'manif_i');
-      sphere(0.09, 10, M.manifI, mLen / 2, 1.1, 0, 'manif_i');
-
-      // PSV — con codo visible a manifold
-      elbow(0, 1.1, 0, pRi * 0.9, M.manifI, 'psv');
-      pipe(0, 1.1, 0, 0, 1.5, 0, pRi * 0.8, M.pipeI, 'psv');
-      box(0.12, 0.14, 0.12, M.psv, 0, 1.6, 0, 'psv');
-      cyl(0.04, 0.04, 0.18, 8, M.psv, 0, 1.72, 0, 0, 0, 0, 'psv');
-
-      // manometro — con codo
-      elbow(0.5, 1.1, 0, 0.04, M.manifI, 'manometro');
-      pipe(0.5, 1.1, 0, 0.5, 1.4, 0, 0.025, M.pipeI, 'manometro');
-      sphere(0.07, 10, M.gauge, 0.5, 1.46, 0, 'manometro');
-      cyl(0.06, 0.06, 0.04, 10, M.gauge, 0.5, 1.46, 0, 0, 0, 0, 'manometro');
-
-      // tanque
-      sphere(0.48, 20, M.tank, 2.4, 0.88, 0, 'tank');
-      [-0.25, 0.25].forEach((dz) => {
-        cyl(0.03, 0.03, 0.5, 8, M.valve, 2.4, 0.3, dz, 0.3, 0, 0, 'tank');
-      });
-      pipe(1.8, 1.1, 0, 2.1, 1.1, 0, pRi, M.pipeI, 'tank');
-      pipe(2.1, 1.1, 0, 2.1, 0.88, 0, pRi, M.pipeI, 'tank');
-      pipe(2.1, 0.88, 0, 2.22, 0.88, 0, pRi, M.pipeI, 'tank');
-      cyl(0.025, 0.025, 0.12, 8, M.gauge, 2.4, 1.4, 0, 0, 0, 0, 'tank');
-      sphere(0.04, 8, M.gauge, 2.4, 1.47, 0, 'tank');
-
-      // presostato control
-      pipe(0.9, 1.1, 0, 0.9, 1.38, 0, 0.025, M.pipeI, 'presost_r');
-      box(0.12, 0.1, 0.1, M.sensor, 0.9, 1.44, 0, 'presost_r');
-      cyl(0.04, 0.04, 0.1, 8, M.sensor, 0.9, 1.54, 0, 0, 0, 0, 'presost_r');
-
-      // valvula salida a red — sin huecos, con bridas
-      pipe(mLen / 2, 1.1, 0, mLen / 2 + 0.37, 1.1, 0, pRi, M.pipeI, 'vg_red');
-      cyl(0.05, 0.05, 0.02, 12, M.valve, mLen / 2 + 0.37, 1.1, 0, 0, 0, Math.PI / 2, 'vg_red');
-      box(0.14, 0.13, 0.13, M.valve, mLen / 2 + 0.44, 1.1, 0, 'vg_red');
-      cyl(0.04, 0.04, 0.18, 8, M.valve, mLen / 2 + 0.44, 1.23, 0, 0, 0, 0, 'vg_red');
-      cyl(0.05, 0.05, 0.02, 12, M.valve, mLen / 2 + 0.51, 1.1, 0, 0, 0, Math.PI / 2, 'vg_red');
-      pipe(mLen / 2 + 0.51, 1.1, 0, 3.6, 1.1, 0, pRi, M.pipeI, 'vg_sal');
-      // soporte bajo válvula
-      cyl(
-        0.02,
-        0.02,
-        0.45,
-        8,
-        new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6, metalness: 0.4 }),
-        mLen / 2 + 0.44,
-        0.88,
-        0,
-        0,
-        0,
-        0,
-        'vg_red',
-      );
-      box(
-        0.1,
-        0.02,
-        0.1,
-        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
-        mLen / 2 + 0.44,
-        0.66,
-        0,
-        'vg_red',
-      );
-      cyl(0.08, 0.08, 1.0, 10, M.manifI, 3.6, 0.85, 0, 0, 0, 0, 'vg_sal');
-      sphere(0.08, 10, M.manifI, 3.6, 1.35, 0, 'vg_sal');
-      sphere(0.08, 10, M.manifI, 3.6, 0.35, 0, 'vg_sal');
-      [-0.2, 0, 0.2].forEach((dz) => {
-        pipe(3.6, 0.9 - dz * 0.22, 0, 3.9, 0.9 - dz * 0.22, 0, 0.025, M.pipeI, 'vg_sal');
-        box(0.08, 0.07, 0.07, M.valve, 3.96, 0.9 - dz * 0.22, 0, 'vg_sal');
-      });
-      // tablero — montado en pared con canalización conectada (antes flotaba)
-      // pared de soporte
-      box(
-        1.05,
-        1.55,
-        0.08,
-        new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9 }),
-        0,
-        2.0,
-        0.34,
-        'tablero',
-      );
-      // gabinete principal
-      box(0.8, 1.2, 0.25, M.board, 0, 2.0, 0.5, 'tablero');
-      // marco metálico
-      box(
-        0.82,
-        1.22,
-        0.02,
-        new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.3, metalness: 0.6 }),
-        0,
-        2.0,
-        0.64,
-        'tablero',
-      );
-      box(0.72, 1.1, 0.05, M.boardF, 0, 2.0, 0.65, 'tablero');
-      // display LCD
-      box(
-        0.5,
-        0.22,
-        0.01,
-        new THREE.MeshStandardMaterial({
-          color: 0x0f172a,
-          roughness: 0.2,
-          metalness: 0.1,
-          emissive: 0x1e3a5f,
-          emissiveIntensity: 0.2,
-        }),
-        0,
-        2.25,
-        0.66,
-        'tablero',
-      );
-      [-0.2, 0, 0.2].forEach((dx, i) => {
-        const colors = [0x22c55e, 0xf59e0b, 0xef4444];
-        const mat2 = new THREE.MeshStandardMaterial({
-          color: colors[i],
-          emissive: colors[i],
-          emissiveIntensity: 0.4,
-        });
-        cyl(0.03, 0.03, 0.01, 8, mat2, dx, 2.05, 0.66, 0, 0, 0, 'tablero');
-      });
-      // botonera
-      [-0.15, 0, 0.15].forEach((dx) => {
+      if (isFoto3) {
+        // colector impulsión superior a la derecha como en ambas fotos (de 0.85 a 3.05, Ø 0.13 plateado pulido)
+        const mLenR = 2.2;
+        const mxR = 1.95;
+        cyl(
+          0.13,
+          0.13,
+          mLenR,
+          24,
+          new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.18, metalness: 0.82 }),
+          mxR,
+          1.12,
+          0,
+          0,
+          0,
+          Math.PI / 2,
+          'manif_i',
+        );
+        sphere(
+          0.13,
+          12,
+          new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.18, metalness: 0.82 }),
+          mxR - mLenR / 2,
+          1.12,
+          0,
+          'manif_i',
+        );
+        sphere(
+          0.13,
+          12,
+          new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.18, metalness: 0.82 }),
+          mxR + mLenR / 2,
+          1.12,
+          0,
+          'manif_i',
+        );
+        cyl(
+          0.15,
+          0.15,
+          0.02,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.35, metalness: 0.65 }),
+          mxR - mLenR / 2,
+          1.12,
+          0,
+          0,
+          0,
+          Math.PI / 2,
+          'manif_i',
+        );
+        cyl(
+          0.15,
+          0.15,
+          0.02,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.35, metalness: 0.65 }),
+          mxR + mLenR / 2,
+          1.12,
+          0,
+          0,
+          0,
+          Math.PI / 2,
+          'manif_i',
+        );
         cyl(
           0.025,
           0.025,
-          0.02,
+          1.04,
           8,
-          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.7 }),
-          dx,
-          1.85,
-          0.66,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6, metalness: 0.4 }),
+          2.95,
+          0.58,
           0,
           0,
           0,
-          'tablero',
+          0,
+          'manif_i',
         );
-      });
-      // manija
-      box(
-        0.04,
-        0.35,
-        0.04,
-        new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.2, metalness: 0.8 }),
-        0.35,
-        2.0,
-        0.66,
-        'tablero',
-      );
-      // canalización conectada — vertical del tablero + horizontal en z + bandeja en x a bombas
-      box(
-        0.06,
-        0.62,
-        0.06,
-        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-        0,
-        1.11,
-        0.5,
-        'tablero',
-      );
-      elbow(
-        0,
-        0.8,
-        0.5,
-        0.04,
-        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-        'tablero',
-      );
-      // tramo en Z del tablero a la línea de bombas
-      box(
-        0.04,
-        0.04,
-        0.52,
-        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-        0,
-        0.8,
-        0.25,
-        'tablero',
-      );
-      elbow(
-        0,
-        0.8,
-        0,
-        0.04,
-        new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-        'tablero',
-      );
-      // bandeja horizontal en X sobre bombas (conectada)
-      const ductLen = Math.max(1.8, ntot * 0.9);
-      box(
-        ductLen,
-        0.06,
-        0.08,
-        new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5, metalness: 0.4 }),
-        0,
-        0.8,
-        0,
-        'tablero',
-      );
-      bombPos.forEach((bx) => {
         box(
-          0.02,
           0.12,
           0.02,
+          0.12,
           new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
-          bx,
-          0.74,
+          2.95,
+          0.06,
           0,
-          'tablero',
+          'manif_i',
         );
-        // bajada corta a cada bomba
+      } else {
+        cyl(0.09, 0.09, mLen, 12, M.manifI, 0, 1.1, 0, 0, 0, Math.PI / 2, 'manif_i');
+        sphere(0.09, 10, M.manifI, -mLen / 2, 1.1, 0, 'manif_i');
+        sphere(0.09, 10, M.manifI, mLen / 2, 1.1, 0, 'manif_i');
+        // PSV — con codo visible a manifold (solo genérico)
+        elbow(0, 1.1, 0, pRi * 0.9, M.manifI, 'psv');
+        pipe(0, 1.1, 0, 0, 1.5, 0, pRi * 0.8, M.pipeI, 'psv');
+        box(0.12, 0.14, 0.12, M.psv, 0, 1.6, 0, 'psv');
+        cyl(0.04, 0.04, 0.18, 8, M.psv, 0, 1.72, 0, 0, 0, 0, 'psv');
+      }
+
+      // manómetros — fotorealista: dos en cisterna 3 (succión y impulsión), uno genérico en otros
+      if (isCisterna3) {
+        // succión
+        elbow(-1.65, 0.55, 0, 0.03, M.manif, 'manif_s');
+        pipe(
+          -1.65,
+          0.55,
+          0,
+          -1.65,
+          0.72,
+          0,
+          0.018,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.5 }),
+          'manif_s',
+        );
+        sphere(
+          0.09,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.12, metalness: 0.1 }),
+          -1.65,
+          0.82,
+          0,
+          'manif_s',
+        );
+        cyl(
+          0.085,
+          0.085,
+          0.012,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.2 }),
+          -1.65,
+          0.82,
+          0.04,
+          0,
+          0,
+          0,
+          'manif_s',
+        );
+        // impulsión (sobre colector derecho)
+        elbow(
+          1.85,
+          1.12,
+          0,
+          0.04,
+          new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.18, metalness: 0.82 }),
+          'manometro',
+        );
+        pipe(
+          1.85,
+          1.12,
+          0,
+          1.85,
+          1.32,
+          0,
+          0.018,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.5 }),
+          'manometro',
+        );
+        sphere(
+          0.1,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.12, metalness: 0.1 }),
+          1.85,
+          1.42,
+          0,
+          'manometro',
+        );
+        cyl(
+          0.095,
+          0.095,
+          0.014,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.2 }),
+          1.85,
+          1.42,
+          0.04,
+          0,
+          0,
+          0,
+          'manometro',
+        );
+      } else {
+        elbow(0.5, 1.1, 0, 0.04, M.manifI, 'manometro');
+        pipe(0.5, 1.1, 0, 0.5, 1.4, 0, 0.025, M.pipeI, 'manometro');
+        sphere(0.07, 10, M.gauge, 0.5, 1.46, 0, 'manometro');
+        cyl(0.06, 0.06, 0.04, 10, M.gauge, 0.5, 1.46, 0, 0, 0, 0, 'manometro');
+      }
+      if (isRed3) {
+        // tanque hidroneumático azul — TAMAÑO REAL como foto (ocupando 1.4× altura bomba, Ø 0.90, sobre base hormigón)
+        const tankX = 0.82;
+        const tankZ = 0.38;
+        const tR = 0.46;
+        const tH = 1.05;
+        const tY0 = 0.18;
+        // base hormigón ancha como en foto
         box(
+          0.78,
+          0.08,
+          0.78,
+          new THREE.MeshStandardMaterial({ color: 0xa1a1aa, roughness: 0.82, metalness: 0.04 }),
+          tankX,
+          0.05,
+          tankZ,
+          'tank',
+        );
+        // cuerpo principal azul cobalto brillante
+        cyl(
+          tR,
+          tR,
+          tH,
+          32,
+          new THREE.MeshStandardMaterial({
+            color: 0x1e3a8a,
+            roughness: 0.18,
+            metalness: 0.62,
+            envMapIntensity: 1.0,
+          }),
+          tankX,
+          tY0 + tH / 2,
+          tankZ,
+          0,
+          0,
+          0,
+          'tank',
+        );
+        // casquetes hemisféricos superior/inferior
+        sphere(
+          tR,
+          24,
+          new THREE.MeshStandardMaterial({ color: 0x172554, roughness: 0.22, metalness: 0.6 }),
+          tankX,
+          tY0,
+          tankZ,
+          'tank',
+        );
+        sphere(
+          tR,
+          24,
+          new THREE.MeshStandardMaterial({ color: 0x1e40af, roughness: 0.18, metalness: 0.62 }),
+          tankX,
+          tY0 + tH,
+          tankZ,
+          'tank',
+        );
+        // franja central brillante y aros de refuerzo (3)
+        cyl(
+          tR + 0.008,
+          tR + 0.008,
+          tH * 0.92,
+          24,
+          new THREE.MeshStandardMaterial({
+            color: 0x3b82f6,
+            roughness: 0.15,
+            metalness: 0.75,
+            transparent: true,
+            opacity: 0.12,
+          }),
+          tankX,
+          tY0 + tH / 2,
+          tankZ,
+          0,
+          0,
+          0,
+          'tank',
+        );
+        cyl(
+          tR + 0.018,
+          tR + 0.018,
+          0.03,
+          24,
+          new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.2, metalness: 0.7 }),
+          tankX,
+          tY0 + 0.22,
+          tankZ,
+          0,
+          0,
+          0,
+          'tank',
+        );
+        cyl(
+          tR + 0.018,
+          tR + 0.018,
+          0.03,
+          24,
+          new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.2, metalness: 0.7 }),
+          tankX,
+          tY0 + tH - 0.22,
+          tankZ,
+          0,
+          0,
+          0,
+          'tank',
+        );
+        cyl(
+          tR + 0.018,
+          tR + 0.018,
           0.02,
+          24,
+          new THREE.MeshStandardMaterial({ color: 0x172554, roughness: 0.25, metalness: 0.65 }),
+          tankX,
+          tY0 + tH / 2,
+          tankZ,
+          0,
+          0,
+          0,
+          'tank',
+        );
+        // placa de características
+        box(
+          0.14,
           0.18,
+          0.01,
+          new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.3, metalness: 0.4 }),
+          tankX,
+          0.65,
+          tankZ + tR + 0.01,
+          'tank',
+        );
+        // válvula de aislamiento en base (latón grande con volante rojo 3× más grande)
+        box(
+          0.18,
+          0.11,
+          0.14,
+          new THREE.MeshStandardMaterial({ color: 0xa16207, roughness: 0.28, metalness: 0.72 }),
+          tankX,
+          0.14,
+          tankZ,
+          'tank',
+        );
+        cyl(
+          0.038,
+          0.038,
+          0.14,
+          12,
+          new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.35, metalness: 0.45 }),
+          tankX,
+          0.26,
+          tankZ,
+          0,
+          0,
+          0,
+          'tank',
+        );
+        cyl(
+          0.075,
+          0.075,
+          0.018,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.25, metalness: 0.5 }),
+          tankX,
+          0.33,
+          tankZ,
+          0,
+          0,
+          0,
+          'tank',
+        );
+        // tubería tanque → colector inferior (plateada gruesa)
+        pipe(
+          tankX,
+          0.14,
+          tankZ,
+          tankX,
+          0.08,
+          0,
+          0.055,
+          new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.18, metalness: 0.82 }),
+          'tank',
+        );
+        pipe(
+          tankX,
+          0.08,
+          0,
+          0.45,
+          0.08,
+          0,
+          0.055,
+          new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.18, metalness: 0.82 }),
+          'tank',
+        );
+        // manómetro lateral grande sobre el tanque (como en foto, a media altura)
+        pipe(
+          tankX + tR - 0.015,
+          0.68,
+          tankZ,
+          tankX + tR + 0.1,
+          0.68,
+          tankZ,
+          0.018,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.35, metalness: 0.55 }),
+          'tank',
+        );
+        sphere(
+          0.095,
+          18,
+          new THREE.MeshStandardMaterial({ color: 0xfdfcfb, roughness: 0.08, metalness: 0.05 }),
+          tankX + tR + 0.1,
+          0.68,
+          tankZ,
+          'tank',
+        );
+        cyl(
+          0.095,
+          0.095,
+          0.015,
+          18,
+          new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.2, metalness: 0.3 }),
+          tankX + tR + 0.1,
+          0.68,
+          tankZ + 0.05,
+          0,
+          0,
+          0,
+          'tank',
+        );
+        // aguja manómetro
+        cyl(
+          0.008,
+          0.008,
+          0.07,
+          8,
+          new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3 }),
+          tankX + tR + 0.1,
+          0.68,
+          tankZ + 0.08,
+          Math.PI / 4,
+          0,
+          0,
+          'tank',
+        );
+        // transductor 4-20mA sobre colector impulsión (caja gris con cable azul a SCADA)
+        box(
+          0.12,
+          0.16,
+          0.1,
+          new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.32, metalness: 0.22 }),
+          0.15,
+          1.34,
+          0,
+          'manometro',
+        );
+        cyl(
+          0.024,
+          0.024,
+          0.1,
+          10,
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.5 }),
+          0.15,
+          1.2,
+          0,
+          0,
+          0,
+          0,
+          'manometro',
+        );
+        cyl(
+          0.016,
+          0.016,
+          0.07,
+          8,
+          new THREE.MeshStandardMaterial({ color: 0x0ea5e9, roughness: 0.25, metalness: 0.65 }),
+          0.15,
+          1.44,
+          0.04,
+          0,
+          0,
+          0,
+          'manometro',
+        );
+      } else if (!isFoto3) {
+        sphere(0.48, 20, M.tank, 2.4, 0.88, 0, 'tank');
+        [-0.25, 0.25].forEach((dz) => {
+          cyl(0.03, 0.03, 0.5, 8, M.valve, 2.4, 0.3, dz, 0.3, 0, 0, 'tank');
+        });
+        pipe(1.8, 1.1, 0, 2.1, 1.1, 0, pRi, M.pipeI, 'tank');
+        pipe(2.1, 1.1, 0, 2.1, 0.88, 0, pRi, M.pipeI, 'tank');
+        pipe(2.1, 0.88, 0, 2.22, 0.88, 0, pRi, M.pipeI, 'tank');
+        cyl(0.025, 0.025, 0.12, 8, M.gauge, 2.4, 1.4, 0, 0, 0, 0, 'tank');
+        sphere(0.04, 8, M.gauge, 2.4, 1.47, 0, 'tank');
+      }
+
+      // presostato control — en foto está sobre el colector de succión, no sobre el de impulsión
+      if (isCisterna3) {
+        // ya creado arriba como 'presost_s' sobre colector succión; presost_r en este caso es el mismo, no duplicar
+      } else {
+        pipe(0.9, 1.1, 0, 0.9, 1.38, 0, 0.025, M.pipeI, 'presost_r');
+        box(0.12, 0.1, 0.1, M.sensor, 0.9, 1.44, 0, 'presost_r');
+        cyl(0.04, 0.04, 0.1, 8, M.sensor, 0.9, 1.54, 0, 0, 0, 0, 'presost_r');
+      }
+
+      // válvula salida a red — fotorealista a la derecha para cisterna 3
+      if (isCisterna3) {
+        pipe(
+          3.05,
+          1.12,
+          0,
+          4.2,
+          1.12,
+          0,
+          0.07,
+          new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
+          'vg_sal',
+        );
+        cyl(
+          0.09,
+          0.09,
           0.02,
+          16,
           new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-          bx,
+          3.05,
+          1.12,
+          0,
+          0,
+          0,
+          Math.PI / 2,
+          'vg_red',
+        );
+        box(
+          0.18,
+          0.14,
+          0.14,
+          new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.35, metalness: 0.65 }),
+          3.12,
+          1.12,
+          0,
+          'vg_red',
+        );
+        cyl(
+          0.04,
+          0.04,
+          0.14,
+          8,
+          new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.4 }),
+          3.12,
+          1.24,
+          0,
+          0,
+          0,
+          0,
+          'vg_red',
+        );
+        cyl(
+          0.08,
+          0.08,
+          0.015,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3, metalness: 0.4 }),
+          3.12,
+          1.31,
+          0,
+          0,
+          0,
+          0,
+          'vg_red',
+        );
+        cyl(
+          0.09,
+          0.09,
+          0.02,
+          16,
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+          3.19,
+          1.12,
+          0,
+          0,
+          0,
+          Math.PI / 2,
+          'vg_red',
+        );
+        // soporte bajo válvula
+        cyl(
+          0.022,
+          0.022,
+          0.45,
+          8,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6, metalness: 0.4 }),
+          3.12,
+          0.9,
+          0,
+          0,
+          0,
+          0,
+          'vg_red',
+        );
+        box(
+          0.11,
+          0.02,
+          0.11,
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
+          3.12,
           0.68,
           0,
+          'vg_red',
+        );
+      } else {
+        pipe(mLen / 2, 1.1, 0, mLen / 2 + 0.37, 1.1, 0, pRi, M.pipeI, 'vg_red');
+        cyl(0.05, 0.05, 0.02, 12, M.valve, mLen / 2 + 0.37, 1.1, 0, 0, 0, Math.PI / 2, 'vg_red');
+        box(0.14, 0.13, 0.13, M.valve, mLen / 2 + 0.44, 1.1, 0, 'vg_red');
+        cyl(0.04, 0.04, 0.18, 8, M.valve, mLen / 2 + 0.44, 1.23, 0, 0, 0, 0, 'vg_red');
+        cyl(0.05, 0.05, 0.02, 12, M.valve, mLen / 2 + 0.51, 1.1, 0, 0, 0, Math.PI / 2, 'vg_red');
+        pipe(mLen / 2 + 0.51, 1.1, 0, 3.6, 1.1, 0, pRi, M.pipeI, 'vg_sal');
+        // soporte bajo válvula genérico
+        cyl(
+          0.02,
+          0.02,
+          0.45,
+          8,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6, metalness: 0.4 }),
+          mLen / 2 + 0.44,
+          0.88,
+          0,
+          0,
+          0,
+          0,
+          'vg_red',
+        );
+        box(
+          0.1,
+          0.02,
+          0.1,
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
+          mLen / 2 + 0.44,
+          0.66,
+          0,
+          'vg_red',
+        );
+      }
+      if (!isCisterna3) {
+        cyl(0.08, 0.08, 1.0, 10, M.manifI, 3.6, 0.85, 0, 0, 0, 0, 'vg_sal');
+        sphere(0.08, 10, M.manifI, 3.6, 1.35, 0, 'vg_sal');
+        sphere(0.08, 10, M.manifI, 3.6, 0.35, 0, 'vg_sal');
+        [-0.2, 0, 0.2].forEach((dz) => {
+          pipe(3.6, 0.9 - dz * 0.22, 0, 3.9, 0.9 - dz * 0.22, 0, 0.025, M.pipeI, 'vg_sal');
+          box(0.08, 0.07, 0.07, M.valve, 3.96, 0.9 - dz * 0.22, 0, 'vg_sal');
+        });
+      }
+      // tablero — fotorealista: SCADA/HMI a la derecha para RED 3, genérico centrado para otros, oculto para CISTERNA 3
+      if (isRed3) {
+        // gabinete SCADA/HMI vertical gris claro a la derecha, como en foto
+        box(
+          0.62,
+          0.95,
+          0.38,
+          new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.35, metalness: 0.15 }),
+          2.78,
+          0.78,
+          0.42,
           'tablero',
         );
-      });
+        box(
+          0.6,
+          0.93,
+          0.02,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.3, metalness: 0.5 }),
+          2.78,
+          0.78,
+          0.61,
+          'tablero',
+        );
+        // HMI pantalla
+        box(
+          0.42,
+          0.28,
+          0.015,
+          new THREE.MeshStandardMaterial({
+            color: 0x0f172a,
+            roughness: 0.2,
+            metalness: 0.1,
+            emissive: 0x1e3a5f,
+            emissiveIntensity: 0.25,
+          }),
+          2.78,
+          0.95,
+          0.62,
+          'tablero',
+        );
+        box(
+          0.38,
+          0.24,
+          0.005,
+          new THREE.MeshStandardMaterial({
+            color: 0x38bdf8,
+            roughness: 0.2,
+            metalness: 0.2,
+            emissive: 0x0ea5e9,
+            emissiveIntensity: 0.15,
+          }),
+          2.78,
+          0.95,
+          0.63,
+          'tablero',
+        );
+        // botonera 3 bombas + falla/alarma
+        [-0.18, -0.06, 0.06].forEach((dx, i) => {
+          const col = i < 2 ? 0x22c55e : 0xf59e0b;
+          cyl(
+            0.025,
+            0.025,
+            0.015,
+            12,
+            new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.5 }),
+            2.78 + dx,
+            0.72,
+            0.62,
+            0,
+            0,
+            0,
+            'tablero',
+          );
+        });
+        cyl(
+          0.028,
+          0.028,
+          0.015,
+          12,
+          new THREE.MeshStandardMaterial({
+            color: 0xef4444,
+            emissive: 0xef4444,
+            emissiveIntensity: 0.6,
+          }),
+          2.78 + 0.18,
+          0.72,
+          0.62,
+          0,
+          0,
+          0,
+          'tablero',
+        );
+        cyl(
+          0.022,
+          0.022,
+          0.015,
+          12,
+          new THREE.MeshStandardMaterial({
+            color: 0xf59e0b,
+            emissive: 0xf59e0b,
+            emissiveIntensity: 0.5,
+          }),
+          2.78 + 0.18,
+          0.62,
+          0.62,
+          0,
+          0,
+          0,
+          'tablero',
+        );
+        // selector MAN-0-AUT y paro emergencia
+        cyl(
+          0.035,
+          0.035,
+          0.02,
+          12,
+          new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.5, metalness: 0.3 }),
+          2.78 - 0.12,
+          0.55,
+          0.62,
+          0,
+          0,
+          0,
+          'tablero',
+        );
+        cyl(
+          0.045,
+          0.045,
+          0.025,
+          12,
+          new THREE.MeshStandardMaterial({
+            color: 0xdc2626,
+            roughness: 0.3,
+            metalness: 0.4,
+            emissive: 0x991b1b,
+            emissiveIntensity: 0.3,
+          }),
+          2.78 + 0.14,
+          0.52,
+          0.62,
+          0,
+          0,
+          0,
+          'tablero',
+        );
+        // zócalo
+        box(
+          0.64,
+          0.04,
+          0.4,
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.6, metalness: 0.3 }),
+          2.78,
+          0.3,
+          0.42,
+          'tablero',
+        );
+      } else if (!isFoto3) {
+        // pared de soporte
+        box(
+          1.05,
+          1.55,
+          0.08,
+          new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9 }),
+          0,
+          2.0,
+          0.34,
+          'tablero',
+        );
+        box(0.8, 1.2, 0.25, M.board, 0, 2.0, 0.5, 'tablero');
+        box(
+          0.82,
+          1.22,
+          0.02,
+          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.3, metalness: 0.6 }),
+          0,
+          2.0,
+          0.64,
+          'tablero',
+        );
+        box(0.72, 1.1, 0.05, M.boardF, 0, 2.0, 0.65, 'tablero');
+        box(
+          0.5,
+          0.22,
+          0.01,
+          new THREE.MeshStandardMaterial({
+            color: 0x0f172a,
+            roughness: 0.2,
+            metalness: 0.1,
+            emissive: 0x1e3a5f,
+            emissiveIntensity: 0.2,
+          }),
+          0,
+          2.25,
+          0.66,
+          'tablero',
+        );
+        [-0.2, 0, 0.2].forEach((dx, i) => {
+          const colors = [0x22c55e, 0xf59e0b, 0xef4444];
+          const mat2 = new THREE.MeshStandardMaterial({
+            color: colors[i],
+            emissive: colors[i],
+            emissiveIntensity: 0.4,
+          });
+          cyl(0.03, 0.03, 0.01, 8, mat2, dx, 2.05, 0.66, 0, 0, 0, 'tablero');
+        });
+        [-0.15, 0, 0.15].forEach((dx) => {
+          cyl(
+            0.025,
+            0.025,
+            0.02,
+            8,
+            new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.7 }),
+            dx,
+            1.85,
+            0.66,
+            0,
+            0,
+            0,
+            'tablero',
+          );
+        });
+        box(
+          0.04,
+          0.35,
+          0.04,
+          new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.2, metalness: 0.8 }),
+          0.35,
+          2.0,
+          0.66,
+          'tablero',
+        );
+        box(
+          0.06,
+          0.62,
+          0.06,
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+          0,
+          1.11,
+          0.5,
+          'tablero',
+        );
+        elbow(
+          0,
+          0.8,
+          0.5,
+          0.04,
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+          'tablero',
+        );
+        box(
+          0.04,
+          0.04,
+          0.52,
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+          0,
+          0.8,
+          0.25,
+          'tablero',
+        );
+        elbow(
+          0,
+          0.8,
+          0,
+          0.04,
+          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+          'tablero',
+        );
+        const ductLen = Math.max(1.8, ntot * 0.9);
+        box(
+          ductLen,
+          0.06,
+          0.08,
+          new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5, metalness: 0.4 }),
+          0,
+          0.8,
+          0,
+          'tablero',
+        );
+        bombPos.forEach((bx) => {
+          box(
+            0.02,
+            0.12,
+            0.02,
+            new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
+            bx,
+            0.74,
+            0,
+            'tablero',
+          );
+          box(
+            0.02,
+            0.18,
+            0.02,
+            new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
+            bx,
+            0.68,
+            0,
+            'tablero',
+          );
+        });
+      }
+
+      // --- badges numerados 3D (para ambos casos de referencia 3×) ---
+      const badgeWrap = document.getElementById('ep-badges') as HTMLDivElement | null;
+      const badgeById = new Map<string, HTMLButtonElement>();
+      const badgeData: Array<{ id: string; num: number; pos: THREE.Vector3 }> = [];
+      if (isFoto3 && badgeWrap) {
+        badgeWrap.innerHTML = '';
+        const addBadge = (id: string, pos: THREE.Vector3) => {
+          const comp = COMPS.find((c) => c.id === id);
+          if (!comp) return;
+          badgeData.push({ id, num: comp.num, pos: pos.clone() });
+        };
+        if (isCisterna3) addBadge('cisterna', new THREE.Vector3(-4, 1.75, 0));
+        addBadge('acometida', new THREE.Vector3(-2.6, 0.75, 0));
+        addBadge('vg_ent', new THREE.Vector3(-1.7, 0.85, 0));
+        addBadge('manif_s', new THREE.Vector3(-0.9, 0.85, 0));
+        addBadge('filtro', new THREE.Vector3(-1.35, 0.85, 0));
+        addBadge('presost_s', new THREE.Vector3(-1.05, 0.95, 0));
+        addBadge('manif_i', new THREE.Vector3(1.95, 1.45, 0));
+        if (!isFoto3 || !isRed3) addBadge('psv', new THREE.Vector3(0, 1.75, 0));
+        addBadge('manometro', new THREE.Vector3(isFoto3 ? 1.85 : 0.5, 1.6, 0));
+        if (isRed3) {
+          addBadge('tank', new THREE.Vector3(0.85, 1.15, 0.35));
+          addBadge('tablero', new THREE.Vector3(2.78, 1.25, 0.42));
+        } else if (!isFoto3) {
+          addBadge('tank', new THREE.Vector3(2.4, 1.55, 0));
+          addBadge('tablero', new THREE.Vector3(0, 2.35, 0.65));
+        }
+        addBadge('presost_r', new THREE.Vector3(0.9, 1.55, 0));
+        addBadge('vg_red', new THREE.Vector3(isFoto3 ? 3.12 : 1.2, 1.35, 0));
+        addBadge('vg_sal', new THREE.Vector3(isFoto3 ? 4.1 : 3.6, 1.25, 0));
+        bombPos.forEach((bx, i) => {
+          addBadge(`vg_s${i + 1}`, new THREE.Vector3(bx, 0.45, 0.18));
+          addBadge(`b${i + 1}`, new THREE.Vector3(bx, 0.95, 0));
+          addBadge(`vrd${i + 1}`, new THREE.Vector3(bx + 0.18, 0.22, 0));
+        });
+        badgeData.forEach(({ id, num }) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.textContent = String(num);
+          btn.dataset.compId = id;
+          btn.style.cssText =
+            'position:absolute;left:0;top:0;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:#0f1117;border:1px solid #2a3348;color:#94a3b8;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;transition:all 120ms;';
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectComp(id);
+          });
+          badgeWrap.appendChild(btn);
+          badgeById.set(id, btn);
+        });
+        const syncBadges = () => {
+          const cur = selectedIdRef.current;
+          badgeById.forEach((btn, id) => {
+            const on = cur === id;
+            btn.style.background = on ? '#22c55e' : '#0f1117';
+            btn.style.color = on ? '#fff' : '#94a3b8';
+            btn.style.borderColor = on ? '#22c55e' : '#2a3348';
+            btn.style.boxShadow = on
+              ? '0 0 0 3px rgba(34,197,94,.25), 0 2px 6px rgba(0,0,0,.35)'
+              : 'none';
+            btn.style.transform = on
+              ? 'translate(-50%,-50%) scale(1.15)'
+              : 'translate(-50%,-50%) scale(1)';
+          });
+        };
+        // suscripción simple: el selectComp ya cambia selectedIdRef, sincronizamos en cada frame
+        (badgeWrap as unknown as { _syncBadges?: () => void })._syncBadges = syncBadges;
+      }
 
       // orbit manual
       const spherical = { theta: Math.PI / 4, phi: Math.PI / 3.5, r: 12 };
@@ -969,6 +2243,29 @@ export default function EPSchemePage({ ep, updEP }: Props) {
       const animate = () => {
         raf = requestAnimationFrame(animate);
         renderer.render(scene, camera);
+        // badges 3D → 2D para casos fotorealistas 3× (cisterna y red)
+        if (isFoto3) {
+          const bw = document.getElementById('ep-badges') as HTMLDivElement | null;
+          const sync = (bw as unknown as { _syncBadges?: () => void })?._syncBadges;
+          if (sync) sync();
+          if (bw && badgeData.length) {
+            const rect = wrap.getBoundingClientRect();
+            const tmp = new THREE.Vector3();
+            badgeData.forEach(({ id, pos }) => {
+              const btn = badgeById.get(id);
+              if (!btn) return;
+              tmp.copy(pos).project(camera);
+              const visible = tmp.z < 1 && tmp.z > -1;
+              if (!visible) {
+                btn.style.display = 'none';
+                return;
+              }
+              btn.style.display = 'flex';
+              btn.style.left = `${(tmp.x * 0.5 + 0.5) * rect.width}px`;
+              btn.style.top = `${(-tmp.y * 0.5 + 0.5) * rect.height}px`;
+            });
+          }
+        }
       };
       animate();
 
@@ -982,6 +2279,8 @@ export default function EPSchemePage({ ep, updEP }: Props) {
         canvas.removeEventListener('mousedown', onMouseDownPos);
         canvas.removeEventListener('mouseup', onMouseUpPick);
         canvas.removeEventListener('mousemove', onHover);
+        const bw2 = document.getElementById('ep-badges');
+        if (bw2) bw2.innerHTML = '';
         renderer.dispose();
         allMeshes.forEach((m) => {
           (m.geometry as THREE.BufferGeometry).dispose();
@@ -1264,6 +2563,10 @@ export default function EPSchemePage({ ep, updEP }: Props) {
           <canvas
             ref={canvasRef}
             style={{ display: 'block', width: '100%', height: '100%', opacity: threeReady ? 1 : 0 }}
+          />
+          <div
+            id="ep-badges"
+            style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}
           />
           <div
             id="ep-label3d"
