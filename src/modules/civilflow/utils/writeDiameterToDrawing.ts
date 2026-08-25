@@ -67,10 +67,11 @@ export function findContadorBajante(
 // viola una restricción.
 export interface WriteDiametroResult {
   ok: boolean;
-  reason?: 'accessory-larger';
+  reason?: 'accessory-larger' | 'parent-smaller' | 'child-larger';
   accessoryDiam?: string;
   accessoryEnd?: 'INICIO' | 'FIN';
   attemptedDiam?: string;
+  parentDiam?: string;
 }
 
 export function writeDiametroToDrawing(
@@ -126,6 +127,174 @@ export function writeDiametroToDrawing(
               attemptedDiam: newDiamLabel,
             };
             continue;
+          }
+          // Validación diámetro de salida ≤ entrada (ítem 10): solo redes de presión af/ac/gas.
+          // Los extremos de entrada/salida se resuelven según la DIRECCIÓN REAL DEL FLUJO del
+          // ramal (_tribReversed): la entrada llega al ORIGEN de flujo y las salidas salen del
+          // DESTINO. Con varias salidas simultáneas, cada una se valida de forma independiente
+          // contra la misma entrada (se toma la más restrictiva).
+          const myPts = (r as unknown as { pts?: number[][] }).pts;
+          if (
+            newIn > 0 &&
+            (net === 'af' || net === 'ac' || net === 'gas') &&
+            myPts &&
+            myPts.length >= 2
+          ) {
+            const iAmRev = (r as unknown as { _tribReversed?: boolean })._tribReversed;
+            const myOrigin = iAmRev ? myPts[myPts.length - 1] : myPts[0];
+            const myDest = iAmRev ? myPts[0] : myPts[myPts.length - 1];
+            const TOL = 2.0;
+            const touchesPt = (oPts: number[][], pt: number[]): 'endpoint' | 'body' | null => {
+              const p0 = oPts[0];
+              const p1 = oPts[oPts.length - 1];
+              if (Math.hypot(p0[0] - pt[0], p0[1] - pt[1]) < TOL) return 'endpoint';
+              if (Math.hypot(p1[0] - pt[0], p1[1] - pt[1]) < TOL) return 'endpoint';
+              for (let si = 0; si < oPts.length - 1; si++) {
+                const ax = oPts[si][0],
+                  ay = oPts[si][1],
+                  bx = oPts[si + 1][0],
+                  by = oPts[si + 1][1];
+                const dx = bx - ax,
+                  dy = by - ay,
+                  len2 = dx * dx + dy * dy;
+                if (len2 < 1e-9) continue;
+                const t = ((pt[0] - ax) * dx + (pt[1] - ay) * dy) / len2;
+                if (t <= 0 || t >= 1) continue;
+                const px = ax + t * dx,
+                  py = ay + t * dy;
+                if (Math.hypot(pt[0] - px, pt[1] - py) < TOL) return 'body';
+              }
+              return null;
+            };
+            // ENTRADA: el tramo aguas arriba cuyo destino de flujo cae en MI origen
+            let maxParentIn = 0;
+            let maxParentLabel = '';
+            // SALIDAS: cada tramo aguas abajo cuyo origen cae en MI destino — se revisan TODOS
+            let maxChildOut = 0;
+            let maxChildLabel = '';
+            for (const other of data.ramales || []) {
+              if ((other as unknown as { id: string }).id === (r as unknown as { id: string }).id)
+                continue;
+              if ((other as unknown as { net: string }).net !== net) continue;
+              const oPts = (other as unknown as { pts?: number[][] }).pts;
+              if (!oPts || oPts.length < 2) continue;
+              const oRev =
+                (other as unknown as { _tribReversed?: boolean })._tribReversed ||
+                (other as unknown as { trib_reversed?: boolean }).trib_reversed;
+              const oOrigin = oRev ? oPts[oPts.length - 1] : oPts[0];
+              const oDest = oRev ? oPts[0] : oPts[oPts.length - 1];
+              const feedsMe =
+                touchesPt(oPts, myOrigin) !== null &&
+                Math.hypot(oDest[0] - myOrigin[0], oDest[1] - myOrigin[1]) < TOL;
+              const bodyFeedsMe = touchesPt(oPts, myOrigin) === 'body';
+              const iFeedIt = Math.hypot(oOrigin[0] - myDest[0], oOrigin[1] - myDest[1]) < TOL;
+              const oDiamLabel = (other as unknown as { diametro?: string }).diametro || '';
+              const oIn = oDiamLabel ? diamPulgFromLabel(inchPartOf(oDiamLabel)) : 0;
+              if ((feedsMe || bodyFeedsMe) && oIn > maxParentIn) {
+                maxParentIn = oIn;
+                maxParentLabel = oDiamLabel;
+              }
+              // Salida: origen del hijo cae en mi destino o sobre mi cuerpo (T)
+              let childOnMyBody = false;
+              if (!iFeedIt) {
+                for (let si = 0; si < myPts.length - 1; si++) {
+                  const ax = myPts[si][0],
+                    ay = myPts[si][1],
+                    bx = myPts[si + 1][0],
+                    by = myPts[si + 1][1];
+                  const dx = bx - ax,
+                    dy = by - ay,
+                    len2 = dx * dx + dy * dy;
+                  if (len2 < 1e-9) continue;
+                  const t = ((oOrigin[0] - ax) * dx + (oOrigin[1] - ay) * dy) / len2;
+                  if (t <= 0 || t >= 1) continue;
+                  const px = ax + t * dx,
+                    py = ay + t * dy;
+                  if (Math.hypot(oOrigin[0] - px, oOrigin[1] - py) < TOL) {
+                    childOnMyBody = true;
+                    break;
+                  }
+                }
+              }
+              if ((iFeedIt || childOnMyBody) && oIn > maxChildOut) {
+                maxChildOut = oIn;
+                maxChildLabel = oDiamLabel;
+              }
+            }
+            // Fallback sin dirección de flujo (por si _tribReversed no está seteado o la geometría es ambigua):
+            // cualquier ramal que toque mi origen/destino cuenta, para no dejar escapar la validación.
+            if (maxParentIn === 0) {
+              for (const other of data.ramales || []) {
+                if ((other as unknown as { id: string }).id === (r as unknown as { id: string }).id)
+                  continue;
+                if ((other as unknown as { net: string }).net !== net) continue;
+                const oPts = (other as unknown as { pts?: number[][] }).pts;
+                if (!oPts || oPts.length < 2) continue;
+                if (touchesPt(oPts, myOrigin) === null) continue;
+                const oDiamLabel = (other as unknown as { diametro?: string }).diametro || '';
+                const oIn = oDiamLabel ? diamPulgFromLabel(inchPartOf(oDiamLabel)) : 0;
+                if (oIn > maxParentIn) {
+                  maxParentIn = oIn;
+                  maxParentLabel = oDiamLabel;
+                }
+              }
+            }
+            if (maxChildOut === 0) {
+              for (const other of data.ramales || []) {
+                if ((other as unknown as { id: string }).id === (r as unknown as { id: string }).id)
+                  continue;
+                if ((other as unknown as { net: string }).net !== net) continue;
+                const oPts = (other as unknown as { pts?: number[][] }).pts;
+                if (!oPts || oPts.length < 2) continue;
+                const oOrigin = (oPts as number[][])[0];
+                let touches = Math.hypot(oOrigin[0] - myDest[0], oOrigin[1] - myDest[1]) < TOL;
+                if (!touches) {
+                  for (let si = 0; si < myPts.length - 1; si++) {
+                    const ax = myPts[si][0],
+                      ay = myPts[si][1],
+                      bx = myPts[si + 1][0],
+                      by = myPts[si + 1][1];
+                    const dx = bx - ax,
+                      dy = by - ay,
+                      len2 = dx * dx + dy * dy;
+                    if (len2 < 1e-9) continue;
+                    const t = ((oOrigin[0] - ax) * dx + (oOrigin[1] - ay) * dy) / len2;
+                    if (t <= 0 || t >= 1) continue;
+                    const px = ax + t * dx,
+                      py = ay + t * dy;
+                    if (Math.hypot(oOrigin[0] - px, oOrigin[1] - py) < TOL) {
+                      touches = true;
+                      break;
+                    }
+                  }
+                }
+                if (!touches) continue;
+                const oDiamLabel = (other as unknown as { diametro?: string }).diametro || '';
+                const oIn = oDiamLabel ? diamPulgFromLabel(inchPartOf(oDiamLabel)) : 0;
+                if (oIn > maxChildOut) {
+                  maxChildOut = oIn;
+                  maxChildLabel = oDiamLabel;
+                }
+              }
+            }
+            if (maxParentIn > 0 && newIn > maxParentIn) {
+              blockedReason = {
+                ok: false,
+                reason: 'parent-smaller',
+                parentDiam: maxParentLabel,
+                attemptedDiam: newDiamLabel,
+              };
+              continue;
+            }
+            if (maxChildOut > 0 && newIn < maxChildOut) {
+              blockedReason = {
+                ok: false,
+                reason: 'child-larger',
+                parentDiam: maxChildLabel,
+                attemptedDiam: newDiamLabel,
+              };
+              continue;
+            }
           }
         }
         r.diametro = newDiamLabel;

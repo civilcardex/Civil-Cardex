@@ -10,6 +10,7 @@ import type {
 import type { IPlanoEngineCore } from './PlanoState';
 import { NETS, checkActiveNet } from './PlanoState';
 import { _midpoint } from './PlanoEngineDrawing';
+import { diametroCambioPermitido } from './drawingFlow';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import {
   pointInPoly,
@@ -78,6 +79,8 @@ export function selectAt(
     minBD = 50;
   let foundBajIsGhost = false;
   for (const b of engine.bajantes) {
+    // Ítem 3: bajante asociado a un canal — nunca seleccionable por sí mismo; el clic cae al
+    // canal (paso propio más abajo).
     if (b._labelBox && pointInLabelBox(cx, cy, b._labelBox)) {
       const d = Math.hypot(cx - b._labelBox.cx, cy - b._labelBox.cy);
       if (d < minBD) {
@@ -488,6 +491,10 @@ export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, 
   const el = getSelected(engine);
   if (el) {
     checkVentDiameterLimits(engine, el, fields);
+    if (!guardDiametroNodo(engine, el, fields)) {
+      engine.render();
+      return;
+    }
     Object.assign(el, fields);
     if ((el as PlanoRamal).pts && el.id?.startsWith('R') && fields.pts) {
       const [mx, my] = _midpoint((el as PlanoRamal).pts);
@@ -499,6 +506,25 @@ export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, 
   }
   engine.render();
   engine._markDirty();
+}
+
+// Validación de diámetros en nodos de presión (salida ≤ entrada) a nivel motor: intercepta
+// CUALQUIER escritura de `diametro` sobre un ramal af/ac/gas (menú contextual, TramoEditor,
+// editores) y bloquea con alerta la configuración inválida — sin reasignación automática.
+function guardDiametroNodo(
+  engine: IPlanoEngineCore,
+  el: { pts?: number[][]; net?: string; id?: string },
+  fields: Record<string, unknown>,
+): boolean {
+  if (fields.diametro === undefined) return true;
+  const ram = el as PlanoRamal;
+  if (!ram.pts || (ram.net !== 'af' && ram.net !== 'ac' && ram.net !== 'gas')) return true;
+  const res = diametroCambioPermitido(engine.ramales, ram.id, String(fields.diametro ?? ''));
+  if (!res.ok) {
+    engine.triggerAlert('Diámetro no permitido', res.msg || '');
+    return false;
+  }
+  return true;
 }
 
 export function updateElementById(
@@ -513,6 +539,10 @@ export function updateElementById(
     engine.areas.find((a) => a.id === id);
   if (el) {
     checkVentDiameterLimits(engine, el, fields);
+    if (!guardDiametroNodo(engine, el, fields)) {
+      engine.render();
+      return;
+    }
     Object.assign(el, fields);
     if ((el as PlanoRamal).pts && el.id?.startsWith('R') && fields.pts) {
       const [mx, my] = _midpoint((el as PlanoRamal).pts);

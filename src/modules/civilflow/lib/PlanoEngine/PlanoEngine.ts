@@ -164,6 +164,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   activeNet!: string;
   tipoTramo!: TramoType;
   snapMode!: boolean;
+  gridMode!: boolean;
   scaleM!: number;
   definedScaleM!: number;
   pageW!: number;
@@ -338,6 +339,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.activeNet = 'af';
     this.tipoTramo = 'ramal';
     this.snapMode = true;
+    this.gridMode = true;
     this.scaleM = 0.5;
     this.definedScaleM = 0;
     this.pageW = 0;
@@ -795,6 +797,11 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.snapMode = v;
   }
 
+  setGridMode(v: boolean): void {
+    this.gridMode = v;
+    this.render();
+  }
+
   setPadreTributario(ramalId: string | null): void {
     _setPadreTributario(this, ramalId);
   }
@@ -1029,7 +1036,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
       this.pdfWrap.style.willChange = 'transform';
     }
 
-    renderGrid(ctx, this);
+    if (this.gridMode) renderGrid(ctx, this);
     renderGuideLines(ctx, this);
     renderDims(ctx, this);
     renderTexts(ctx, this);
@@ -1141,7 +1148,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
         this.lblDrag = lblDragResult;
         return;
       }
-      handleSelectDown(this, x, y, e instanceof MouseEvent && (e.ctrlKey || false));
+      handleSelectDown(
+        this,
+        x,
+        y,
+        e instanceof MouseEvent && (e.ctrlKey || false),
+        e instanceof MouseEvent && e.shiftKey,
+      );
     } else if (this.tool === 'line') {
       handleLineDown(this, p.x, p.y);
     } else if (this.tool === 'dim') {

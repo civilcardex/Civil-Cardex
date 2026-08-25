@@ -1,6 +1,6 @@
 import type { IPlanoEngineCore, PlanoElement } from './PlanoState';
-import { pointInLabelBox, pointInPoly, pointOnAnyBodySegment } from './HitTester';
 import { canalRectHitDistance } from './canalAssociation';
+import { pointInLabelBox, pointInPoly, pointOnAnyBodySegment } from './HitTester';
 
 export interface ContextMenuHitResult {
   element: PlanoElement;
@@ -170,10 +170,25 @@ export function hitTestRightClick(
     }
   }
 
-  // Revisar líneas guía
+  // Revisar líneas guía (cuerpo + etiqueta) — el cuerpo permite abrir el menú
+  // haciendo clic derecho directamente sobre la guía sin selección previa (ítem 1).
   for (const g of engine.guideLines) {
     if (g._labelBox && pointInLabelBox(x, y, g._labelBox)) {
       return { element: g, isGhostClick: false, clientX, clientY };
+    }
+    if (g.pts && g.pts.length >= 2) {
+      for (let i = 0; i < g.pts.length - 1; i++) {
+        const p1 = engine.toCvs(g.pts[i][0], g.pts[i][1]);
+        const p2 = engine.toCvs(g.pts[i + 1][0], g.pts[i + 1][1]);
+        const l2 = (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y);
+        let t = l2 === 0 ? 0 : ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / l2;
+        t = Math.max(0, Math.min(1, t));
+        const projX = p1.x + t * (p2.x - p1.x);
+        const projY = p1.y + t * (p2.y - p1.y);
+        if (Math.hypot(x - projX, y - projY) <= 12) {
+          return { element: g, isGhostClick: false, clientX, clientY };
+        }
+      }
     }
   }
 

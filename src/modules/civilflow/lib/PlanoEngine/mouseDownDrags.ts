@@ -284,6 +284,7 @@ export function _trySelRamalDrag(
   x: number,
   y: number,
   sel: PlanoElement | null,
+  isShift: boolean = false,
 ): boolean {
   // isRamal() (estructural: 'pts' en el) ya distingue un elemento tipo ramal de todo otro tipo
   // seleccionable, así que el chequeo de prefijo de id solo necesita excluir formas no-ramal —
@@ -412,6 +413,19 @@ export function _trySelRamalDrag(
       if (sel.bloqueado) return false;
       const tp = engine.toPlane(x, y);
       const origPts = sel.pts.map((pt: number[]) => [...pt] as [number, number]);
+      if (isShift) {
+        // Ítem 12: Shift+arrastrar mueve solo ese segmento (no el grupo conectado)
+        engine.ramalDrag = {
+          id: sel.id,
+          startX: tp.x,
+          startY: tp.y,
+          origPts,
+          origLabelX: sel.labelX,
+          origLabelY: sel.labelY,
+          segIdx: i,
+        };
+        return true;
+      }
       // Los ramales/tributarios conectados transitivamente (por una cadena de extremos
       // compartidos, o como tributario de algo en esa cadena) se mueven juntos como cuerpo
       // rígido, para que la conexión no se despegue al arrastrar un ramal sin bloquear — no solo

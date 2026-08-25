@@ -10,6 +10,7 @@ import { NETS } from '../lib/PlanoEngine/PlanoState';
 import type { PlanoElement, PlanoNet, PlanoBajante } from '../lib/PlanoEngine/PlanoState';
 import {
   codoPolarityOk,
+  codoNivelPermitidoEn,
   flowEndsAt,
   aparatoEnExtremoInvalido,
 } from '../lib/PlanoEngine/PlanoEngineDrawing';
@@ -34,6 +35,7 @@ import {
   VISOR_TOOL_KEY,
   VISOR_TIPO_TRAMO_KEY,
   VISOR_SNAP_ON_KEY,
+  VISOR_GRID_ON_KEY,
   NETS_CHANGED_EVENT,
   TRAZOS_PREFIX,
   LAST_TRAZOS_ID_KEY,
@@ -248,6 +250,14 @@ function PdfViewer_({
   const [snapOn, setSnapOn] = useState(() => {
     try {
       const v = sessionStorage.getItem(VISOR_SNAP_ON_KEY);
+      return v !== null ? v === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+  const [gridOn, setGridOn] = useState(() => {
+    try {
+      const v = sessionStorage.getItem(VISOR_GRID_ON_KEY);
       return v !== null ? v === 'true' : true;
     } catch {
       return true;
@@ -512,6 +522,11 @@ function PdfViewer_({
       sessionStorage.setItem(VISOR_SNAP_ON_KEY, String(snapOn));
     } catch {}
   }, [snapOn]);
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(VISOR_GRID_ON_KEY, String(gridOn));
+    } catch {}
+  }, [gridOn]);
 
   useEffect(() => {
     if (selectedNivel !== null) {
@@ -914,6 +929,15 @@ function PdfViewer_({
           accId === 'codo90rmSube' ||
           accId === 'codo90rmBaja')
       ) {
+        // Ítem 5: los codos de nivel (sube/baja) solo aplican entre cuerpo y extremo — nunca en
+        // una intersección entre ramales (tee de 3+ brazos).
+        if (!codoNivelPermitidoEn(eng, r.id, accPt)) {
+          onAlertHandler(
+            'Codo de nivel no permitido aquí',
+            'Los codos sube/baja solo pueden ubicarse entre el cuerpo del ramal y sus extremos, no en intersecciones entre ramales.',
+          );
+          return;
+        }
         if (!codoPolarityOk(r, accPt, accId, TOL)) {
           const isSube = accId === 'codoSube' || accId === 'codo90rmSube';
           onAlertHandler(
@@ -1165,6 +1189,11 @@ function PdfViewer_({
     eng.setActiveNet(activeNet);
     eng.setTipoTramo(tipoTramo as TramoType);
     eng.setSnap(snapOn);
+    if ((eng as unknown as { setGridMode?: (v: boolean) => void }).setGridMode) {
+      (eng as unknown as { setGridMode: (v: boolean) => void }).setGridMode(gridOn);
+    } else {
+      (eng as unknown as { gridMode: boolean }).gridMode = gridOn;
+    }
     eng.setScaleM(scaleM);
     const floorObj = pisos.find((p) => p.n === selectedNivel);
     eng.nivelActual = floorObj
@@ -1192,6 +1221,7 @@ function PdfViewer_({
     activeNet,
     tipoTramo,
     snapOn,
+    gridOn,
     scaleM,
     mats,
     diamSel,
@@ -1266,6 +1296,7 @@ function PdfViewer_({
     doSave();
   }, [autoSaveTimerRef, doSave]);
   const handleSnapToggle = useCallback(() => setSnapOn((prev) => !prev), [setSnapOn]);
+  const handleGridToggle = useCallback(() => setGridOn((prev) => !prev), [setGridOn]);
   const handleRotateLabel = useCallback(() => {
     if (engineRef.current) engineRef.current.rotateLabelSnap();
   }, [engineRef]);
@@ -1659,6 +1690,7 @@ function PdfViewer_({
           <PdfViewerToolbar
             tool={tool}
             snapOn={snapOn}
+            gridOn={gridOn}
             activeNet={activeNet}
             currentFile={currentFile}
             saveStatus={saveStatus}
@@ -1666,6 +1698,7 @@ function PdfViewer_({
             recolectoraActive={recolectoraActive}
             onSelectTool={setTool}
             onSnapToggle={handleSnapToggle}
+            onGridToggle={handleGridToggle}
             onFit={handleFit}
             onSave={handleSave}
             onUndo={handleUndo}

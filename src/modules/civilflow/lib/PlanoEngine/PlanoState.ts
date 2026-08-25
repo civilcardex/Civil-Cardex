@@ -539,6 +539,7 @@ export interface IPlanoEngineCore {
   offX: number;
   offY: number;
   snapMode: boolean;
+  gridMode: boolean;
   tool: string;
   tipoTramo: string;
   scaleM: number;
@@ -648,6 +649,7 @@ export interface IPlanoEngineCore {
       origLabelX?: number;
       origLabelY?: number;
     }[];
+    segIdx?: number;
   } | null;
   multiSel: string[];
   multiDrag: { startX: number; startY: number; origData: MultiDragOrigData } | null;

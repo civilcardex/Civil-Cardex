@@ -6,7 +6,7 @@ import { getAccessoryOptions } from '../../utils/accessoryOptions';
 import { DIAM_BY_MAT } from '../../constants';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import { matchDiamOption } from '../../utils/diamOptionMatch';
-import { codoPolarityOk } from '../../lib/PlanoEngine/PlanoEngineDrawing';
+import { codoPolarityOk, codoNivelPermitidoEn } from '../../lib/PlanoEngine/PlanoEngineDrawing';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoRamal } from '../../lib/PlanoEngine/PlanoState';
 import type { PlanItem } from '../../context/PlansContext';
@@ -88,6 +88,14 @@ export default function ExtremeAccessoryEditor({
         ) {
           const idx = field === 'accesorioInicio' ? 0 : selElement.pts.length - 1;
           const pt = selElement.pts[idx];
+          // Ítem 5: codos de nivel prohibidos en intersecciones entre ramales (tee)
+          if (pt && eng && !codoNivelPermitidoEn(eng, selElement.id, pt)) {
+            eng.triggerAlert(
+              'Codo de nivel no permitido aquí',
+              'Los codos sube/baja solo pueden ubicarse entre el cuerpo del ramal y sus extremos, no en intersecciones entre ramales.',
+            );
+            return;
+          }
           if (pt && !codoPolarityOk(selElement, pt, val, 0.5)) {
             const isSube = val === 'codoSube' || val === 'codo90rmSube';
             eng.triggerAlert(

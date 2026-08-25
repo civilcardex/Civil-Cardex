@@ -5,7 +5,7 @@ import { checkRamalAngles } from './drawingAngles';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 import { oppositeTextCorner, textLocalCorner, rotateLocalPoint } from './textAnnotationGeometry';
 import { isRamalBajanteConnectionAllowed } from '../../utils/flowDirection';
-import { resolveAndClampToCanal, clampToCanal } from './canalAssociation';
+import { resolveAndClampToCanal, clampToCanal, pointInCanal } from './canalAssociation';
 
 /**
  * Construye un índice por id de los ramales del motor. Los handlers de arrastre corren por frame
@@ -77,6 +77,31 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
   if (engine.ramalDrag) {
     const ramalesById = indexRamales(engine);
     const r = ramalesById.get(engine.ramalDrag!.id);
+    if (r && engine.ramalDrag.segIdx !== undefined) {
+      const tp = engine.toPlane(x, y);
+      let dx = tp.x - engine.ramalDrag.startX;
+      let dy = tp.y - engine.ramalDrag.startY;
+      // Con snap activo el desplazamiento del segmento es estrictamente ortogonal: solo el eje
+      // dominante del gesto se conserva, el otro se anula (sin diagonales ni movimiento libre).
+      if (engine.snapMode) {
+        if (Math.abs(dx) >= Math.abs(dy)) dy = 0;
+        else dx = 0;
+      }
+      const si = engine.ramalDrag.segIdx;
+      if (si >= 0 && si + 1 < r.pts.length) {
+        r.pts[si][0] = engine.ramalDrag.origPts[si][0] + dx;
+        r.pts[si][1] = engine.ramalDrag.origPts[si][1] + dy;
+        r.pts[si + 1][0] = engine.ramalDrag.origPts[si + 1][0] + dx;
+        r.pts[si + 1][1] = engine.ramalDrag.origPts[si + 1][1] + dy;
+      }
+      r.totalL = calculateRamalLength(r.pts, engine);
+      const [mx, my] = _midpoint(r.pts);
+      r.labelX = mx;
+      r.labelY = my;
+      if (r.labelAngle == null) r.labelAngle = _firstSegmentAngle(r.pts);
+      engine.scheduleRender();
+      return;
+    }
     // bloqueado se pone en true a todo ramal al crearlo y nunca se quita en ninguna parte del
     // código, así que condicionar este arrastre de cuerpo completo a `!r.bloqueado` dejaba el
     // arrastre de cuerpo inoperante para TODOS los ramales — incluida la cascada connRamales/connBaj
@@ -209,7 +234,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           r.pts[0] = [b.x, b.y];
           r.pts[r.pts.length - 1] = [newGx, newGy];
           r.totalL = calculateRamalLength(r.pts, engine);
-          r.labelAngle = _firstSegmentAngle(r.pts);
+          if (r.labelAngle == null) r.labelAngle = _firstSegmentAngle(r.pts);
           const [mx, my] = _midpoint(r.pts);
           r.labelX = mx;
           r.labelY = my;
@@ -347,17 +372,22 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         }
       }
 
-      // Un bajante de lluvia dentro de un canal recolectora puede reposicionarse libremente
-      // DENTRO del rectángulo del canal (recortado a sus límites), pero no puede salirse de él —
-      // se mantiene asociado a ese canal. Un bajante aún no asociado se puede arrastrar libre y,
-      // al caer dentro de un rectángulo de canal, queda asociado desde ese momento.
+      // Un bajante de lluvia asociado a un canal puede moverse libremente: dentro del
+      // rectángulo sigue asociado sin línea externa; fuera queda asociado pero el canal le
+      // dibuja la tubería de conexión (bajanteExternoId). Un bajante aún no asociado se asocia
+      // al caer dentro de un canal.
       if (b.net === 'll' && b.tipo === 'bajante') {
         if (b.canalId) {
           const canal = engine.bajantes.find((c) => c.id === b.canalId && c.tipo === 'canal');
           if (canal) {
-            const clamped = clampToCanal(engine, canal, p.x, p.y);
-            p.x = clamped.x;
-            p.y = clamped.y;
+            if (pointInCanal(engine, canal, p.x, p.y)) {
+              if (
+                (canal as unknown as { bajanteExternoId?: string | null }).bajanteExternoId === b.id
+              )
+                (canal as unknown as { bajanteExternoId?: string | null }).bajanteExternoId = null;
+            } else {
+              (canal as unknown as { bajanteExternoId?: string | null }).bajanteExternoId = b.id;
+            }
           }
         } else {
           const resolved = resolveAndClampToCanal(engine, p.x, p.y, null);
@@ -405,7 +435,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           }
           if (changed) {
             r.totalL = calculateRamalLength(r.pts, engine);
-            r.labelAngle = _firstSegmentAngle(r.pts);
+            if (r.labelAngle == null) r.labelAngle = _firstSegmentAngle(r.pts);
             const [mx, my] = _midpoint(r.pts);
             r.labelX = mx;
             r.labelY = my;
@@ -429,7 +459,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           d.dy -= dyMove;
           r.pts[r.pts.length - 1] = [b.x + d.dx, b.y + d.dy];
           r.totalL = calculateRamalLength(r.pts, engine);
-          r.labelAngle = _firstSegmentAngle(r.pts);
+          if (r.labelAngle == null) r.labelAngle = _firstSegmentAngle(r.pts);
           const [mx, my] = _midpoint(r.pts);
           r.labelX = mx;
           r.labelY = my;
@@ -787,7 +817,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             if (changed) {
               movedRamalIds.add(other.id);
               other.totalL = calculateRamalLength(other.pts, engine);
-              other.labelAngle = _firstSegmentAngle(other.pts);
+              if (other.labelAngle == null) other.labelAngle = _firstSegmentAngle(other.pts);
               const [mx, my] = _midpoint(other.pts);
               other.labelX = mx;
               other.labelY = my;
@@ -807,7 +837,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             if (!other || !other.pts[link.ptIdx]) continue;
             other.pts[link.ptIdx] = [p.x, p.y];
             other.totalL = calculateRamalLength(other.pts, engine);
-            other.labelAngle = _firstSegmentAngle(other.pts);
+            if (other.labelAngle == null) other.labelAngle = _firstSegmentAngle(other.pts);
             const [mx, my] = _midpoint(other.pts);
             other.labelX = mx;
             other.labelY = my;
@@ -831,7 +861,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           }
         }
       }
-      r.labelAngle = _firstSegmentAngle(r.pts);
+      if (r.labelAngle == null) r.labelAngle = _firstSegmentAngle(r.pts);
       r.totalL = calculateRamalLength(r.pts, engine);
       const [mx, my] = _midpoint(r.pts);
       r.labelX = mx;

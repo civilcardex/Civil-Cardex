@@ -65,14 +65,6 @@ const TOOLS: ToolDef[] = [
   { id: 'baj', label: 'Bajante', ico: '\u2193', key: 'B', icoCol: '#F04545', shortcut: 'B' },
   { id: 'mon', label: 'Montante', ico: '\u2191', key: 'M', icoCol: '#3B82F6', shortcut: 'M' },
   { id: 'erase', label: 'Borrador', ico: '🧽', key: 'E', icoCol: '#ffb4ab', shortcut: 'E' },
-  {
-    id: 'pan',
-    label: 'Mover',
-    ico: '\u270B',
-    key: 'Espacio',
-    icoCol: '#10B981',
-    shortcut: 'Espacio',
-  },
 ];
 
 const PdfViewerToolbar_S2: React.CSSProperties = {
@@ -122,6 +114,7 @@ type SelToolFn = (toolId: string) => void;
 export type PdfViewerToolbarProps = {
   tool: string;
   snapOn: boolean;
+  gridOn: boolean;
   activeNet: string;
   currentFile: File | null;
   saveStatus: string;
@@ -129,6 +122,7 @@ export type PdfViewerToolbarProps = {
   recolectoraActive: boolean;
   onSelectTool: SelToolFn;
   onSnapToggle: NavFn;
+  onGridToggle: NavFn;
   onFit: NavFn;
   onSave: NavFn;
   onUndo: NavFn;
@@ -154,13 +148,14 @@ const compactBtn: React.CSSProperties = {
   transition: 'all .12s',
 };
 
-// "Espacio" no cabe en una columna de iconos de 44px — se abrevia solo para la franja colapsada;
-// la palabra completa sigue viéndose en el tooltip del título y en la barra expandida.
+// "Espacio" ya no aparece en la barra (herramienta Mover eliminada) — el helper queda por si
+// algún shortcut vuelve a necesitar abreviarse en la franja colapsada.
 const compactShortcut = (s: string) => (s === 'Espacio' ? 'Esp' : s);
 
 function PdfViewerToolbar_({
   tool,
   snapOn,
+  gridOn,
   activeNet,
   currentFile,
   saveStatus,
@@ -168,6 +163,7 @@ function PdfViewerToolbar_({
   recolectoraActive,
   onSelectTool,
   onSnapToggle,
+  onGridToggle,
   onFit,
   onSave,
   onUndo,
@@ -238,7 +234,7 @@ function PdfViewerToolbar_({
               );
             })}
           </div>
-          <div style={{ marginTop: 2 }}>
+          <div style={{ marginTop: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
             <button
               type="button"
               onClick={onSnapToggle}
@@ -256,6 +252,25 @@ function PdfViewerToolbar_({
               </span>
               <span style={{ fontSize: 9, color: snapOn ? 'rgba(255,255,255,.6)' : '#8AB4D6' }}>
                 G
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={onGridToggle}
+              aria-label="Grilla"
+              title="Mostrar/ocultar grilla"
+              style={{
+                ...compactBtn,
+                background: gridOn ? '#10B98122' : '#1e2024',
+                border: `1px solid ${gridOn ? '#10B981' : '#3a494a'}`,
+                color: gridOn ? '#10B981' : '#9BA8AA',
+              }}
+            >
+              <span style={{ fontSize: 14, color: gridOn ? '#10B981' : '#8AB4D6' }}>
+                {gridOn ? '▦' : '▢'}
+              </span>
+              <span style={{ fontSize: 9, color: gridOn ? 'rgba(255,255,255,.6)' : '#8AB4D6' }}>
+                #
               </span>
             </button>
           </div>
@@ -391,7 +406,7 @@ function PdfViewerToolbar_({
             );
           })}
         </div>
-        <div style={{ marginTop: 4 }}>
+        <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
           <button
             type="button"
             onClick={onSnapToggle}
@@ -423,6 +438,40 @@ function PdfViewerToolbar_({
               }}
             >
               G
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={onGridToggle}
+            aria-label="Mostrar/ocultar grilla"
+            style={{
+              ...PdfViewerToolbar_S3,
+              background: gridOn ? '#10B98122' : '#1e2024',
+              border: `1px solid ${gridOn ? '#10B981' : '#3a494a'}`,
+              borderRadius: '3px',
+              color: gridOn ? '#10B981' : '#9BA8AA',
+              cursor: 'pointer',
+            }}
+          >
+            <span
+              style={{
+                fontSize: 14,
+                width: 18,
+                textAlign: 'center',
+                color: gridOn ? '#10B981' : '#8AB4D6',
+              }}
+            >
+              {gridOn ? '▦' : '▢'}
+            </span>
+            <span style={{ flex: 1 }}>Grilla</span>
+            <span
+              style={{
+                fontSize: 12,
+                color: gridOn ? 'rgba(255,255,255,.6)' : '#8AB4D6',
+                fontFamily: "'Geist',monospace",
+              }}
+            >
+              #
             </span>
           </button>
         </div>

@@ -194,30 +194,58 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         flowDy = 0,
         flowLen = 0;
       if (showFlow) {
-        let flowFromIdx = 0;
-        let flowToIdx = r.pts.length - 1;
-        if (r._tribReversed && (r.tipo === 'tributario' || ['af', 'ac', 'gas'].includes(r.net))) {
-          flowFromIdx = flowToIdx;
-          flowToIdx = 0;
-        }
-        // Ldesvio (id `LD_<sourceBajanteId>`, pts[0] es siempre el origen según
-        // associateBajanteAcrossFloors.ts) debe apuntar al que sea 'baja' de los dos bajantes
-        // enlazados — no siempre el mismo extremo, porque el origen mismo puede ser 'sube' o
-        // 'baja' según el piso donde esté el destino. pts[0] ya coincide con el destino
-        // (el 'baja') siempre que el origen sea 'sube', así que solo el caso origen-'baja'
-        // necesita el default invertido.
+        // La dirección del flujo se define por el PRIMER segmento creado (pts[0]→pts[1]) — no
+        // por el vector extremo-a-extremo, que en ramales multipunto cambia de orientación
+        // visual al rotar/editar segmentos posteriores. Al ser un vector geométrico del propio
+        // trazo, rota rígidamente con él y nunca se reinvierte por cambios de orientación.
+        // Solo _tribReversed (decisión explícita del usuario) lo invierte. El caso especial
+        // LD_ (conector entre bajantes) se mantiene: apunta al bajante 'baja'.
         if (r.id.startsWith('LD_')) {
           const srcBaj = engine.bajantes.find((b) => b.id === r.id.slice(3));
+          let flowFromIdx = 0;
+          let flowToIdx = r.pts.length - 1;
           if (srcBaj?.direccion === 'baja') {
             flowFromIdx = r.pts.length - 1;
             flowToIdx = 0;
           }
+          const fc = engine.toCvs(r.pts[flowFromIdx][0], r.pts[flowFromIdx][1]);
+          const lastc = engine.toCvs(r.pts[flowToIdx][0], r.pts[flowToIdx][1]);
+          flowDx = lastc.x - fc.x;
+          flowDy = lastc.y - fc.y;
+          flowLen = Math.hypot(flowDx, flowDy);
+        } else {
+          // Dirección = segmento más cercano a la etiqueta (continuidad del primer segmento).
+          // El flujo global parte del primer segmento, pero la flecha local debe seguir la
+          // continuidad del trazo en la posición de la etiqueta — segmento horizontal → flecha
+          // horizontal, vertical → vertical. Rota rígidamente porque el vector proviene de la
+          // geometría actual de pts, no de un ángulo absoluto; solo _tribReversed lo invierte.
+          const lx = r.labelX ?? 0;
+          const ly = r.labelY ?? 0;
+          let bestIdx = 0;
+          let bestD = Infinity;
+          for (let i = 0; i < r.pts.length - 1; i++) {
+            const p1 = r.pts[i];
+            const p2 = r.pts[i + 1];
+            const mx = (p1[0] + p2[0]) / 2;
+            const my = (p1[1] + p2[1]) / 2;
+            const d = Math.hypot(lx - mx, ly - my);
+            if (d < bestD) {
+              bestD = d;
+              bestIdx = i;
+            }
+          }
+          // Fallback: si la etiqueta está muy lejos (arrastrada), usa primer segmento
+          if (bestD > 2000) bestIdx = 0;
+          const a = engine.toCvs(r.pts[bestIdx][0], r.pts[bestIdx][1]);
+          const b = engine.toCvs(r.pts[bestIdx + 1][0], r.pts[bestIdx + 1][1]);
+          const flip =
+            r._tribReversed && (r.tipo === 'tributario' || ['af', 'ac', 'gas'].includes(r.net))
+              ? -1
+              : 1;
+          flowDx = (b.x - a.x) * flip;
+          flowDy = (b.y - a.y) * flip;
+          flowLen = Math.hypot(flowDx, flowDy);
         }
-        const fc = engine.toCvs(r.pts[flowFromIdx][0], r.pts[flowFromIdx][1]);
-        const lastc = engine.toCvs(r.pts[flowToIdx][0], r.pts[flowToIdx][1]);
-        flowDx = lastc.x - fc.x;
-        flowDy = lastc.y - fc.y;
-        flowLen = Math.hypot(flowDx, flowDy);
       }
 
       const pCorto = getPisoCorto(engine.nivelActual?.n);
@@ -266,7 +294,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const drawX = lc.x;
       const drawY = lc.y;
       let labelAngleDeg = r.labelAngle != null ? r.labelAngle : 0;
-      if ((r.labelAngle == null || r.labelAngle === 0) && r.pts && r.pts.length >= 2) {
+      if (r.labelAngle == null && r.pts && r.pts.length >= 2) {
         const dx = r.pts[1][0] - r.pts[0][0];
         const dy = r.pts[1][1] - r.pts[0][1];
         if (Math.abs(dy) > Math.abs(dx)) {
@@ -400,22 +428,34 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         const arrowY = boxH / 2 + 2 * engine.zoom;
         ctx.save();
         ctx.translate(0, arrowY);
+        // Ítem 11a: la flecha debe apuntar según el flujo real, no según el labelAngle.
+        // Dentro del contexto rotado del label, el vector de flujo en coordenadas locales es
+        // (dot, perp); se dibuja la flecha a lo largo de ese vector, no horizontal.
         const dot = flowDx * cosA + flowDy * sinA;
-        const dir = dot >= 0 ? 1 : -1;
+        const perp = -flowDx * sinA + flowDy * cosA;
+        const len = Math.hypot(dot, perp) || 1;
+        const ux = dot / len;
+        const uy = perp / len;
         const halfSize = nameW ? nameW / 2 : 12 * engine.zoom;
         ctx.strokeStyle = col;
         ctx.lineWidth = 1 * engine.zoom;
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(-halfSize * dir, 0);
-        ctx.lineTo(halfSize * dir, 0);
+        ctx.moveTo(-halfSize * ux, -halfSize * uy);
+        ctx.lineTo(halfSize * ux, halfSize * uy);
         ctx.stroke();
         const aSize = Math.min(6 * engine.zoom, halfSize * 0.6);
         ctx.fillStyle = col;
         ctx.beginPath();
-        ctx.moveTo(halfSize * dir, 0);
-        ctx.lineTo(halfSize * dir - dir * aSize, -aSize * 0.4);
-        ctx.lineTo(halfSize * dir - dir * aSize, aSize * 0.4);
+        const tipX = halfSize * ux;
+        const tipY = halfSize * uy;
+        const baseX = tipX - ux * aSize;
+        const baseY = tipY - uy * aSize;
+        const perpX = -uy;
+        const perpY = ux;
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(baseX + perpX * aSize * 0.4, baseY + perpY * aSize * 0.4);
+        ctx.lineTo(baseX - perpX * aSize * 0.4, baseY - perpY * aSize * 0.4);
         ctx.closePath();
         ctx.fill();
         ctx.restore();

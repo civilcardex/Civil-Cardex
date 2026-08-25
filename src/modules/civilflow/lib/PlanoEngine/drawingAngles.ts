@@ -367,29 +367,42 @@ export function detectAccesorioTrigger(
       const angleDeg = (Math.acos(cosVal) * 180) / Math.PI;
       if (Math.abs(angleDeg - 45) <= ANGLE_EPS || Math.abs(angleDeg - 90) <= ANGLE_EPS) {
         const snapped = Math.abs(angleDeg - 45) < Math.abs(angleDeg - 90) ? 45 : 90;
-        if (snapped === 45) {
-          // En AF/AC/gas un quiebre interior de 45° solo admite el codo de 45° — no hay nada que
-          // elegir, así que se aplica solo (marcador accMed → símbolo en el quiebre + conteo en
-          // el resumen) sin abrir el modal de selección. El gas no tiene codo de 45° en su
-          // catálogo: se registra su codo estándar para que el conteo y el símbolo existan.
-          if (!r.accMed) r.accMed = {};
-          r.accMed[`accMed${i}`] = r.net === 'gas' ? 'codos_90_std' : 'codo45rc';
-          engine._markDirty();
-          return null;
-        }
-        return {
-          ramalId: r.id,
-          angleDeg: snapped,
-          junctionIndex: i,
-          point: curr,
-          net: r.net,
-          isTee: isGas ? true : false,
-        };
+        // Tanto el quiebre de 45° como el de 90° en VÉRTICE INTERIOR se resuelven solos, sin
+        // modal: no hay nada que elegir (el codo horizontal es la única opción válida para un
+        // cambio de dirección dentro del cuerpo — las variantes sube/baja solo aplican entre
+        // cuerpo y extremo). Antes el 90° devolvía un trigger y el modal reaparecía en CADA
+        // arrastre posterior del ramal multipunto, porque nada persistía la decisión.
+        if (!r.accMed) r.accMed = {};
+        r.accMed[`accMed${i}`] =
+          r.net === 'gas'
+            ? 'codos_90_std'
+            : snapped === 45
+              ? 'codo45rc'
+              : r.net === 'san' || r.net === 'll' || r.net === 'vent'
+                ? 'codo90rc'
+                : 'codo90rm';
+        engine._markDirty();
+        return null;
       }
     }
   }
 
   return null;
+}
+
+// Los codos de cambio de nivel (sube/baja) solo existen entre el CUERPO de un ramal y sus
+// EXTREMOS — nunca en intersecciones entre ramales (tees): ahí la unión se resuelve con sus
+// propios accesorios (tee/yee) y un codo de nivel no tiene sentido físico. Este guard centraliza
+// esa regla para todos los caminos que asignan codoSube/codoBaja/codo90rmSube/codo90rmBaja.
+export function codoNivelPermitidoEn(
+  engine: IPlanoEngineCore,
+  ramalId: string,
+  point: number[],
+): boolean {
+  const r = engine.ramales.find((x) => x.id === ramalId);
+  if (!r || !r.net) return true;
+  const tee = isTeeAtEndpoint(point, engine, ramalId, r.net);
+  return !tee.isTee;
 }
 
 // Devuelve a qué ramal EXISTENTE (no el recién dibujado/arrastrado, `currentRamalId`) debe

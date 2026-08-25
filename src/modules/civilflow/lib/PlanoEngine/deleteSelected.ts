@@ -375,11 +375,9 @@ function scrubPlanCodoAt(engine: IPlanoEngineCore, pt: number[]): void {
 }
 
 // Limpieza de uniones tras borrar un ramal, compartida por las dos rutas de deleteSelected:
-// limpia tees muertas y reevalúa la geometría del punto. Si queda una esquina en L (dos brazos
-// en ángulo) se escribe el codo de plano — aplica a tees manuales desarmadas Y a uniones de
-// línea guía que nunca tuvieron tee (el usuario quiere el arco al quedar un solo tributario).
-// Si ya no queda esquina (extremo muerto tras borrar el último tributario) se barre cualquier
-// codo de plano del punto para que no quede ni arco ni conteo.
+// - Si había tee (3 brazos) → el accesorio se elimina por completo (ítem 8: no desplazar a la L restante).
+// - Si no había tee y queda esquina en L (dos brazos en ángulo) → se escribe codo de plano.
+// - Si ya no queda esquina → se barre cualquier codo de plano del punto.
 function cleanupJunctionsAfterRamalDelete(engine: IPlanoEngineCore, deleted: PlanoRamal): void {
   const ep0 = deleted.pts![0];
   const ep1 = deleted.pts![deleted.pts!.length - 1];
@@ -388,8 +386,52 @@ function cleanupJunctionsAfterRamalDelete(engine: IPlanoEngineCore, deleted: Pla
     cleanupTeeMarkersAt(engine, ep);
     const arms = endpointArmsAt(engine, ep);
     const isL = arms.length === 2 && !sameLineDir(arms[0].d, arms[1].d);
-    if (hadTee || isL) assignCodoAfterBranchDelete(engine, ep);
-    else scrubPlanCodoAt(engine, ep);
+    if (hadTee) {
+      // Ítem 8: borrar una pata de una conexión de tres elimina el accesorio, no lo desplaza.
+      // Forzar borrado de tees remanentes aunque geométricamente aún sea L (cleanupTeeMarkersAt los habría conservado).
+      const TOL_TEE = 0.5;
+      for (const r of engine.ramales) {
+        if (!r.pts || r.pts.length < 2) continue;
+        if (
+          r.accesorioInicio &&
+          TEE_TYPES.includes(r.accesorioInicio) &&
+          Math.hypot(r.pts[0][0] - ep[0], r.pts[0][1] - ep[1]) < TOL_TEE
+        ) {
+          decrementAccesorioCount(engine, r, r.accesorioInicio);
+          r.accesorioInicio = '';
+        }
+        const li = r.pts.length - 1;
+        if (
+          r.accesorioFin &&
+          TEE_TYPES.includes(r.accesorioFin) &&
+          Math.hypot(r.pts[li][0] - ep[0], r.pts[li][1] - ep[1]) < TOL_TEE
+        ) {
+          decrementAccesorioCount(engine, r, r.accesorioFin);
+          r.accesorioFin = '';
+        }
+        if (r.accMed) {
+          for (const k of Object.keys(r.accMed)) {
+            const m = k.match(/^accMed(\d+)$/);
+            if (!m) continue;
+            const idx = parseInt(m[1], 10);
+            const p = r.pts[idx];
+            if (
+              p &&
+              TEE_TYPES.includes(r.accMed[k]) &&
+              Math.hypot(p[0] - ep[0], p[1] - ep[1]) < TOL_TEE
+            ) {
+              decrementAccesorioCount(engine, r, r.accMed[k]);
+              delete r.accMed[k];
+            }
+          }
+        }
+      }
+      scrubPlanCodoAt(engine, ep);
+    } else if (isL) {
+      assignCodoAfterBranchDelete(engine, ep);
+    } else {
+      scrubPlanCodoAt(engine, ep);
+    }
   }
 }
 
@@ -401,9 +443,8 @@ function cleanupJunctionsAfterRamalDelete(engine: IPlanoEngineCore, deleted: Pla
 // referencia mergesFrom muerta de la sobreviviente. Las cadenas (D dividido de nuevo después)
 // se reescriben para apuntar de D.id → A.id.
 function remergeSplitRamales(engine: IPlanoEngineCore, deletedId: string, deletedUc: number): void {
-  if (!engine.ramales.some((r) => r.mergesFrom)) return;
   const TOL = 0.5;
-  for (const d of engine.ramales) {
+  for (const d of [...engine.ramales]) {
     if (!d.mergesFrom) continue;
     if (d.mergesFrom[0] === deletedId) {
       // Se borró la mitad aguas arriba — la referencia de la sobreviviente queda muerta.
@@ -418,11 +459,15 @@ function remergeSplitRamales(engine: IPlanoEngineCore, deletedId: string, delete
     }
     const aLast = a.pts[a.pts.length - 1];
     const dFirst = d.pts[0];
-    if (Math.hypot(aLast[0] - dFirst[0], aLast[1] - dFirst[1]) > TOL) {
-      // Los extremos ya no coinciden (A o D fueron remodelados tras el split) — fusionar
-      // geometría incoherente no tiene sentido; se limpia la referencia.
+    const gap = Math.hypot(aLast[0] - dFirst[0], aLast[1] - dFirst[1]);
+    if (gap > 5) {
+      // Gap grande — movimiento intencional, no fusionar.
       d.mergesFrom = undefined;
       continue;
+    }
+    if (gap > TOL) {
+      // Pequeño drift (snap/precisión) — cerrar gap visualmente antes de fusionar.
+      d.pts[0] = [aLast[0], aLast[1]];
     }
     // Re-unir: A continúa con el cuerpo de D (salvo el punto compartido).
     a.pts = [...a.pts, ...d.pts.slice(1)];
@@ -450,7 +495,7 @@ function remergeSplitRamales(engine: IPlanoEngineCore, deletedId: string, delete
     const [mx, my] = _midpoint(a.pts);
     a.labelX = mx;
     a.labelY = my;
-    a.labelAngle = _firstSegmentAngle(a.pts);
+    if (a.labelAngle == null) a.labelAngle = _firstSegmentAngle(a.pts);
     // Reescritura de cadenas: cualquier ramal que referencie D.id pasa a apuntar a A.id.
     const dId = d.id;
     engine.ramales = engine.ramales.filter((r) => r.id !== dId);
@@ -725,6 +770,12 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
         const parts = other.descargaEnId.split('|');
         if (parts[1] === deletedId) other.descargaEnId = null;
       }
+    }
+    // Ítem 4: asociación explícita bajante↔canal por ID — al borrar el bajante se limpia la
+    // referencia del canal (bajanteExternoId). Los ramales que atraviesan o ingresan al cuerpo
+    // del canal NO se tocan: la asociación es por referencia, no por geometría.
+    for (const c of engine.bajantes) {
+      if (c.tipo === 'canal' && c.bajanteExternoId === deletedId) c.bajanteExternoId = null;
     }
     engine.bajantes.splice(idxB, 1);
     cascadeMontanteAssociation(engine, deleted);

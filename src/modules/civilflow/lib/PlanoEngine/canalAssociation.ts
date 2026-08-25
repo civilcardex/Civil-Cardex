@@ -37,7 +37,7 @@ export function bajanteHitDistance(b: PlanoBajante, x: number, y: number): numbe
     if (x < cx - hw || x > cx + hw || y < cy - hh || y > cy + hh) return Infinity;
     // Ojo con el tamaño: un canal puede ser mucho más largo que los ~50px que los callers usan
     // como "distancia máxima para elegir el símbolo más cercano". Si devolviéramos la distancia
-    // real al centro, un canal largo quedaría "lejísimos" aunque el clic esté justo encima. Como
+    // real al centro, un canal largo quedaría "lejísimo" aunque el clic esté encima. Como
     // ya sabemos que el clic está DENTRO del canal, devolvemos 1 (un número chico fijo) — eso
     // basta para que gane la comparación de cercanía.
     return 1;
@@ -45,6 +45,14 @@ export function bajanteHitDistance(b: PlanoBajante, x: number, y: number): numbe
   if (!b._circ) return Infinity;
   const d = Math.hypot(x - b._circ.x, y - b._circ.y);
   return d < b._circ.r ? d : Infinity;
+}
+
+// Asociación explícita bajante→canal por ID (b.canalId), NO por posición geométrica. Un bajante
+// asociado es parte de la geometría del canal: no se selecciona ni arrastra por sí mismo — todo
+// clic sobre él (cuerpo, etiqueta o fantasma) se redirige al canal, que al moverse lo lleva con
+// sus asociados. Incluye fantasmas entre pisos: los clones heredan canalId del padre.
+export function bajanteAsociadoACanal(b: { tipo?: string; canalId?: string | null }): boolean {
+  return b.tipo === 'bajante' && !!b.canalId;
 }
 
 /** Devuelve la esquina superior-izquierda y la inferior-derecha del canal en coordenadas de
@@ -57,7 +65,7 @@ function canalRect(engine: IPlanoEngineCore, canal: PlanoBajante) {
   return { x0: canal.x, y0: canal.y, x1: canal.x + w, y1: canal.y + h };
 }
 
-function pointInCanal(
+export function pointInCanal(
   engine: IPlanoEngineCore,
   canal: PlanoBajante,
   x: number,
@@ -174,7 +182,12 @@ export function computeCanalSegments(
   if (axisLen <= 0) return [];
 
   const assoc = engine.bajantes.filter(
-    (b) => b.tipo !== 'canal' && b.net === 'll' && b.canalId === canal.id,
+    (b) =>
+      b.tipo !== 'canal' &&
+      b.net === 'll' &&
+      b.canalId === canal.id &&
+      pointInCanal(engine, canal, b.x, b.y) &&
+      (canal as unknown as { bajanteExternoId?: string | null }).bajanteExternoId !== b.id,
   );
   if (assoc.length === 0) return [];
 

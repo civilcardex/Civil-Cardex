@@ -20,6 +20,7 @@ import {
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import {
   isRamalBajanteConnectionAllowed,
+  junctionHasIncomingFlow,
   junctionHasOutgoingFlow,
 } from '../../utils/flowDirection';
 
@@ -28,6 +29,7 @@ export {
   _firstSegmentAngle,
   segmentsIntersect,
   snapTributaryToPadre45Deg,
+  codoNivelPermitidoEn,
 } from './drawingAngles';
 
 export {
@@ -298,6 +300,15 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
           'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
         );
         continue;
+      } else if (
+        (incoming.net === 'af' || incoming.net === 'ac' || incoming.net === 'gas') &&
+        !junctionHasIncomingFlow(engine.ramales, incoming.net, ep, TOL)
+      ) {
+        engine.triggerAlert(
+          'Conexión sin entrada',
+          'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo entrando a ella.',
+        );
+        continue;
       }
       // Un tributario que llega a una unión T/Y a mitad de cuerpo de un ramal distinto a su
       // padre seleccionado es exactamente el mismo caso de "ramal equivocado" que handleLineDown
@@ -402,7 +413,7 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       const [existLabelX, existLabelY] = _midpoint(existing.pts);
       existing.labelX = existLabelX;
       existing.labelY = existLabelY;
-      existing.labelAngle = _firstSegmentAngle(existing.pts);
+      if (existing.labelAngle == null) existing.labelAngle = _firstSegmentAngle(existing.pts);
       // NO fijar accesorioFin aquí — dejar que detectAccesorioTrigger + el modal lo asignen.
       // Fijarlo prematuramente hace que el barrido alreadyResolved se salte el modal por
       // completo, así el usuario nunca puede elegir el tipo real de tee (teeSube, teeBaja, yee,
@@ -644,6 +655,18 @@ export function finishRamal(engine: IPlanoEngineCore): void {
         engine.triggerAlert(
           'Conexión sin salida',
           'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
+        );
+        engine.activeRamal = null;
+        engine._markDirty();
+        engine.render();
+        return;
+      }
+    }
+    for (const ep of [r.pts[0], r.pts[r.pts.length - 1]]) {
+      if (!junctionHasIncomingFlow(candidates, r.net, ep, TOL)) {
+        engine.triggerAlert(
+          'Conexión sin entrada',
+          'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo entrando a ella.',
         );
         engine.activeRamal = null;
         engine._markDirty();
@@ -900,7 +923,7 @@ export function deleteSegmentAt(engine: IPlanoEngineCore, cx: number, cy: number
     engine._emitSelect(null);
   } else {
     r.pts.splice(bestIdx, 1);
-    r.labelAngle = _firstSegmentAngle(r.pts);
+    if (r.labelAngle == null) r.labelAngle = _firstSegmentAngle(r.pts);
     r.totalL = 0;
     for (let i = 0; i < r.pts.length - 1; i++) {
       r.totalL += engine.pxToM(
@@ -1907,7 +1930,7 @@ export function eraseRamalAt(
   if (canTrim && (bestIdx === 0 || bestIdx === r.pts.length - 1)) {
     r.pts.splice(bestIdx, 1);
     r.totalL = calculateRamalLength(r.pts, engine);
-    r.labelAngle = _firstSegmentAngle(r.pts);
+    if (r.labelAngle == null) r.labelAngle = _firstSegmentAngle(r.pts);
     const [mx, my] = _midpoint(r.pts);
     r.labelX = mx;
     r.labelY = my;

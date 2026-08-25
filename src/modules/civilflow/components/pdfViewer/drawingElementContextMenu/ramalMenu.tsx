@@ -888,12 +888,8 @@ export function RamalMenu() {
             ⇄ Invertir dirección del flujo
           </button>
         )}
-        {/* Los tributarios de AF/AC/gas nunca muestran este botón — su dirección de flujo es fija
-            (cola siempre hacia la unión, ver autoSplitJunctionAndSumFlow) y no se puede cambiar,
-            así que la unión que crean queda siempre garantizada como 2 salidas + 1 entrada. */}
         {ramalHasInterconnections(engineRef.current, ramalEl) &&
-          ['af', 'ac', 'gas'].includes(ramalEl.net) &&
-          ramalEl.tipo !== 'tributario' && (
+          ['af', 'ac', 'gas'].includes(ramalEl.net) && (
             <button
               type="button"
               aria-pressed={!!ramalEl._tribReversed}

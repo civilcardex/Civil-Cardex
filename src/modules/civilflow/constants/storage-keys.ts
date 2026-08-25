@@ -22,6 +22,7 @@ export const VISOR_ACTIVE_INDEX_KEY = 'civilflow_visor_activeIndex';
 export const VISOR_TOOL_KEY = 'civilflow_visor_tool';
 export const VISOR_TIPO_TRAMO_KEY = 'civilflow_visor_tipoTramo';
 export const VISOR_SNAP_ON_KEY = 'civilflow_visor_snapOn';
+export const VISOR_GRID_ON_KEY = 'civilflow_visor_gridOn';
 
 export const ISO_COLLAPSED_KEY = 'civilflow_iso_collapsed';
 export const ISO_ACTIVE_NETS_KEY = 'civilflow_iso_activeNets';

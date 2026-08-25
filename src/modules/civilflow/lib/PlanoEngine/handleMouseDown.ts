@@ -6,9 +6,9 @@ import {
   textLocalCorner,
   rotateLocalPoint,
 } from './textAnnotationGeometry';
+import { bajanteHitDistance, bajanteAsociadoACanal } from './canalAssociation';
 import { pointInLabelBox, pointOnAnyBodySegment } from './HitTester';
 import { getSelected, selectAt } from './PlanoEngineSelection';
-import { bajanteHitDistance } from './canalAssociation';
 import {
   _tryCanalResizeHit,
   _tryBajanteHit,
@@ -25,6 +25,7 @@ export function handleSelectDown(
   x: number,
   y: number,
   isMultiSelectModifier: boolean = false,
+  isAltModifier: boolean = false,
 ): void {
   const wasGhostSel = engine._isGhostSel;
   engine._isGhostSel = false;
@@ -45,6 +46,7 @@ export function handleSelectDown(
   let labelBest: { id: string; x: number; y: number; isParent: boolean } | null = null;
   let labelBestDist = Infinity;
   for (const b of engine.bajantes) {
+    if (engine.nivelActual && b.pisoBase !== engine.nivelActual.label) continue;
     const lx = b.labelX ?? b.x;
     const ly = b.labelY ?? b.y + 20;
     const lPos = engine.toCvs(lx, ly);
@@ -142,7 +144,7 @@ export function handleSelectDown(
 
   if (_trySelBajanteDrag(engine, x, y, sel, wasGhostSel)) return;
   if (_trySelDimDrag(engine, x, y, sel)) return;
-  if (_trySelRamalDrag(engine, x, y, sel)) return;
+  if (_trySelRamalDrag(engine, x, y, sel, isAltModifier)) return;
 
   if (sel && 'labelX' in sel && !sel.id?.startsWith('T')) {
     if (sel._labelBox && pointInLabelBox(x, y, sel._labelBox)) {
@@ -344,6 +346,7 @@ export function handleSelectDown(
   let bestDist = Infinity;
   let bestIsGhost = false;
   for (const b of engine.bajantes) {
+    if (engine.nivelActual && b.pisoBase !== engine.nivelActual.label) continue;
     const lx = b.labelX ?? b.x;
     const ly = b.labelY ?? b.y + 20;
     const lPos = engine.toCvs(lx, ly);
@@ -419,6 +422,8 @@ export function handleSelectDown(
       let bestParent: typeof b | null = null,
         bestPDist = Infinity;
       for (const pb of engine.bajantes) {
+        if (bajanteAsociadoACanal(b) && bajanteAsociadoACanal(pb) && b.canalId === pb.canalId)
+          continue;
         if (pb.pisoBase !== engine.nivelActual?.label) continue;
         const plx = pb.labelX ?? pb.x;
         const ply = pb.labelY ?? pb.y + 20;

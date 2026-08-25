@@ -19,6 +19,7 @@ import { BAJANTE_NETS, MONTANTE_NETS } from '../../../lib/PlanoEngine/drawingCre
 import {
   maxDiametroLabel,
   codoPolarityOk,
+  codoNivelPermitidoEn,
   flowEndsAt,
 } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
 import {
@@ -228,6 +229,17 @@ export function BajanteDirectionSelector({
                       if (idx === -1) continue;
                       const pt = ram.pts[idx];
                       if (idx === 0 || idx === ram.pts.length - 1) {
+                        // Ítem 5: codos de nivel prohibidos en intersecciones entre ramales (tee)
+                        if (
+                          engineRef.current &&
+                          !codoNivelPermitidoEn(engineRef.current, ram.id, pt)
+                        ) {
+                          engineRef.current?.triggerAlert(
+                            'Codo de nivel no permitido aquí',
+                            'Los codos sube/baja solo pueden ubicarse entre el cuerpo del ramal y sus extremos, no en intersecciones entre ramales.',
+                          );
+                          return;
+                        }
                         if (!codoPolarityOk(ram, pt, codoId, TOL)) {
                           engineRef.current?.triggerAlert(
                             'Polaridad de codo incorrecta',
@@ -1126,16 +1138,15 @@ export function BajanteConnectionPanel({
                           const id = isMon ? pfx + cnt + '_' + ramalEl.net : pfx + cnt;
                           const code = isMon ? pfx + cnt : id;
                           const nl = eng.nivelActual;
+                          // Ítem 3: dirección automática según flujo del ramal en el extremo
+                          const flowToEp = flowEndsAt(ramalEl, [ep.x, ep.y], 0.5);
+                          const autoDir = (flowToEp ? 'baja' : 'sube') as 'baja' | 'sube';
                           eng.bajantes.push({
                             id,
                             net: ramalEl.net,
                             tipo: bmLabel,
                             code: code,
-                            // Sin dirección por defecto — una dirección vacía no puede violar
-                            // la regla de flujo ('sube' solo emite, 'baja' solo recibe). La
-                            // dirección se asigna después mediante las opciones Sube/Baja, que
-                            // validan las conexiones del ramal antes de aplicarla.
-                            direccion: undefined,
+                            direccion: autoDir,
                             x: ep.x,
                             y: ep.y,
                             pisoBase: nl?.label ?? '',

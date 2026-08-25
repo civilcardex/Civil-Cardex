@@ -1,7 +1,10 @@
 ﻿import { memo, useEffect, useRef, useState } from 'react';
 import { loadFromStorage } from '../../../services/storageService';
 import { APARATOS_BY_TRAMO_KEY } from '../../../constants/storage-keys';
-import { junctionRespectsTributarioDirection } from '../../../utils/flowDirection';
+import {
+  junctionHasIncomingFlow,
+  junctionRespectsTributarioDirection,
+} from '../../../utils/flowDirection';
 import { aparatoEnExtremoInvalido } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
 import { moveAllAparatoCounts } from '../../../utils/syncExtremeAccessory';
 import { writeHydroDrawingSync } from '../../../utils/drawingSync';
@@ -125,6 +128,21 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
         eng.render();
         return;
       }
+      const okIncoming = fresh
+        ? [fresh.pts[0], fresh.pts[fresh.pts.length - 1]].every((ep) =>
+            junctionHasIncomingFlow(eng.ramales, ramal.net, ep),
+          )
+        : true;
+      if (!okIncoming && ['af', 'ac', 'gas'].includes(ramal.net)) {
+        eng.updateElementById(ramal.id, { _tribReversed: !val });
+        props.setContextMenuState(null);
+        eng.triggerAlert(
+          'Conexión sin entrada',
+          'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo entrando a ella.',
+        );
+        eng.render();
+        return;
+      }
       if (props.selElement?.id === ramal.id) {
         props.setSelElement({ ...props.selElement, _tribReversed: val });
       }
@@ -140,7 +158,9 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
     const aFresh = eng.ramales.find((x) => x.id === ramal.id) || ramal;
     const target = eng.ramales.find((x) => x.id === targetId);
     if (!target) return;
-    if (target.tipo === 'tributario' || aFresh.tipo === 'tributario') {
+    const isTributaryBlocked = (r: PlanoRamal) =>
+      r.tipo === 'tributario' && !['af', 'ac', 'gas'].includes(r.net);
+    if (isTributaryBlocked(target) || isTributaryBlocked(aFresh)) {
       props.setContextMenuState(null);
       eng.triggerAlert(
         'Dirección de flujo inconsistente',
@@ -188,6 +208,23 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
       eng.triggerAlert(
         'Conexión sin salida',
         'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo saliendo de ella.',
+      );
+      eng.render();
+      return;
+    }
+    const okIncomingBoth = [
+      aFresh.pts[0],
+      aFresh.pts[aFresh.pts.length - 1],
+      target.pts[0],
+      target.pts[target.pts.length - 1],
+    ].every((ep) => junctionHasIncomingFlow(eng.ramales, target.net, ep));
+    if (!okIncomingBoth && ['af', 'ac', 'gas'].includes(target.net)) {
+      aFresh._tribReversed = !aFresh._tribReversed;
+      target._tribReversed = !target._tribReversed;
+      props.setContextMenuState(null);
+      eng.triggerAlert(
+        'Conexión sin entrada',
+        'Toda conexión en esta red debe tener al menos un ramal con dirección de flujo entrando a ella.',
       );
       eng.render();
       return;

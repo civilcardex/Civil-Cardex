@@ -390,10 +390,10 @@ function renderCanalGlyph(
   }
 
   ctx.save();
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.rect(tl.x, tl.y, w, h);
-  ctx.fill();
+  // Ítem 5: canal visualmente TRANSPARENTE — sin relleno y con líneas al ~45% de opacidad para
+  // que ramales/bajantes dentro o atravesándolo sean legibles. Solo visual: el hit-test sigue
+  // usando _canalBox/_circ (matemática pura), así que selección/asociación no cambian.
+  ctx.globalAlpha = 0.9;
   ctx.strokeStyle = col;
   ctx.lineWidth = (sel ? 1.6 : 0.8) * engine.zoom;
   // Perfil de canal: las líneas horizontales superior e inferior, más los dos segmentos
@@ -417,6 +417,8 @@ function renderCanalGlyph(
     ctx.lineTo(tl.x + w, tl.y + fy);
   }
   ctx.stroke();
+  // La flecha amarilla de selección vuelve a opacidad completa
+  ctx.globalAlpha = 1;
 
   // Las manijas de redimensionado de esquina deliberadamente no se dibujan — el hit-test de
   // agarre en _tryCanalResizeHit de handleMouseDown.ts funciona puramente por proximidad a las
@@ -454,6 +456,9 @@ function renderCanalGlyph(
   // bajante y deteniéndose en su borde — las flechas quedan fuera del símbolo. El canal mismo
   // nunca se divide.
   const bajArrows = computeCanalFlowArrows(engine, b);
+  // Flechas y etiquetas internas del canal también semitransparentes (ítem 5)
+  ctx.save();
+  ctx.globalAlpha = 0.9;
   if (bajArrows.length === 0) {
     const cx = tl.x + w / 2;
     const cy = tl.y + h / 2;
@@ -515,6 +520,7 @@ function renderCanalGlyph(
     }
     ctx.restore();
   }
+  ctx.restore();
 
   b._canalBox = { x: tl.x, y: tl.y, w, h };
   // _canalBox (el rectángulo visible) es el objetivo de clic del canal; _circ queda como ancla

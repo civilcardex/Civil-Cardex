@@ -1,6 +1,7 @@
 ﻿import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoRamal, PlanoGuideLine, PlanoElement } from '../../../lib/PlanoEngine/PlanoState';
 import {
+  ANGLE_EPS,
   checkRamalAngles,
   detectAccesorioTrigger,
   _firstSegmentAngle,
@@ -90,6 +91,63 @@ export function netAllowedSteps(net: string): (45 | 90)[] {
   return [90];
 }
 
+// ¿El ángulo RELATIVO entre la guía y el ramal que cruza es válido? Cuando la guía
+// conecta a un ramal existente, la validación debe ser relativa (perpendicularidad)
+// y no absoluta contra la grilla — p. ej. ramal a 30° + guía a 120° (90° relativa)
+// es válida aunque 120° absoluto falle el %90. Guías libres se validan absoluto.
+// snapOn=false en af/ac/gas desactiva la validación (igual que checkRamalAngles).
+export function isGuideRelativeAngleValid(
+  pStart: [number, number],
+  pEnd: [number, number],
+  hostAngleRad: number,
+  net: string,
+  tipo: string | undefined,
+  snapOn: boolean,
+): boolean {
+  if (!snapOn && (net === 'ac' || net === 'af' || net === 'gas')) return true;
+  const dx = pEnd[0] - pStart[0];
+  const dy = pEnd[1] - pStart[1];
+  if (Math.hypot(dx, dy) < 0.1) return true;
+  const guideDeg = ((Math.atan2(dy, dx) * 180) / Math.PI) % 360;
+  const hostDeg = ((hostAngleRad * 180) / Math.PI) % 360;
+  const diffDeg = (((guideDeg - hostDeg) % 360) + 360) % 360;
+  const diffMod180 = diffDeg % 180;
+  // Paralelo (0° o 180°) nunca es tributario válido
+  if (diffMod180 <= ANGLE_EPS || diffMod180 >= 180 - ANGLE_EPS) return false;
+  const isTributarioAcAf = (net === 'af' || net === 'ac') && tipo === 'tributario';
+  const isGas = net === 'gas';
+  if (isTributarioAcAf || isGas) {
+    // Solo 90° relativa
+    return Math.abs(diffMod180 - 90) <= ANGLE_EPS;
+  }
+  // san/ll/vent y ramales af/ac no-tributarios: múltiplos de 45° (45/90/135)
+  const rem = diffMod180 % 45;
+  return rem <= ANGLE_EPS || rem >= 45 - ANGLE_EPS;
+}
+
+function getPadreHostAngle(padre: PlanoRamal, crossPt: [number, number]): number | null {
+  if (!padre.pts || padre.pts.length < 2) return null;
+  const TOL = 0.6;
+  for (let i = 0; i < padre.pts.length - 1; i++) {
+    const a = padre.pts[i];
+    const b = padre.pts[i + 1];
+    const d = Math.hypot(crossPt[0] - a[0], crossPt[1] - a[1]);
+    const d2 = Math.hypot(crossPt[0] - b[0], crossPt[1] - b[1]);
+    // punto sobre segmento (incluye tolerancia de 2% del largo) — mismo criterio que intersectGuideWithSegment
+    const vx = b[0] - a[0];
+    const vy = b[1] - a[1];
+    const len2 = vx * vx + vy * vy;
+    if (len2 < 1e-9) continue;
+    const t = ((crossPt[0] - a[0]) * vx + (crossPt[1] - a[1]) * vy) / len2;
+    if (t < -0.02 || t > 1.02) {
+      // también probar cercanía al extremo (snapGuideCrossingToEndpoint puede haber movido el punto exactamente al extremo)
+      if (d > TOL && d2 > TOL) continue;
+    }
+    return Math.atan2(vy, vx);
+  }
+  return null;
+}
+
 // Una guía se dibuja con `net: activeNet` fijado en el momento de dibujarla — si el usuario
 // cambia de red activa después (o la dibujó con la red "equivocada" activa por descuido), ese
 // campo queda desalineado con lo que la guía realmente está cruzando en el plano. Los botones de
@@ -142,7 +200,15 @@ export function rotateGuideLine(
   ];
   const newPts: [number, number][] = [pivot, newFar];
 
-  if (!crossing && !checkRamalAngles(newPts, effectiveNet)) {
+  if (
+    !crossing &&
+    !checkRamalAngles(
+      newPts,
+      effectiveNet,
+      undefined,
+      (eng as unknown as { snapMode?: boolean }).snapMode ?? true,
+    )
+  ) {
     eng.triggerAlert(
       'Ángulo no permitido',
       effectiveNet === 'san' || effectiveNet === 'll'
@@ -182,9 +248,16 @@ export function buildTribFromGuide(
 ): PlanoRamal | null {
   const pStart: [number, number] = [freeEnd[0], freeEnd[1]];
   const pEnd: [number, number] = [crossPt[0], crossPt[1]];
-  // El flujo del tributario se dibuja desde pts[0] hacia el último punto — se orienta para que
-  // la cabeza apunte AL cruce (la intersección con el ramal padre que alimenta).
-  if (!checkRamalAngles([pStart, pEnd], padre.net, 'tributario')) {
+  // Validación relativa al ramal padre cuando la guía lo cruza (ítems 4/5):
+  // con host a 30° y guía a 120° la relativa es 90° válida aunque la absoluta falle.
+  // Guías libres no tienen host → validación absoluta clásica.
+  const hostAng = getPadreHostAngle(padre, crossPt);
+  const snapOn = (eng as unknown as { snapMode?: boolean }).snapMode ?? true;
+  const angleOk =
+    hostAng !== null
+      ? isGuideRelativeAngleValid(pStart, pEnd, hostAng, padre.net, 'tributario', snapOn)
+      : checkRamalAngles([pStart, pEnd], padre.net, 'tributario', snapOn);
+  if (!angleOk) {
     eng.triggerAlert('Ángulo no permitido', guideAngleAlertMessage(padre.net, 'tributario'));
     return null;
   }

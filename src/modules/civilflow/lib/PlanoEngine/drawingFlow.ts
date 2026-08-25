@@ -1,6 +1,93 @@
 import type { PlanoRamal } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
+import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
+
+// Validación de diámetros en nodos de redes de presión (salida ≤ entrada), sobre el estado VIVO
+// del motor. Corre en updateElementById para que CUALQUIER camino que escriba `diametro`
+// (menú contextual del canvas, editores, etc.) quede validado — no solo las tablas de diseño.
+// La entrada llega al ORIGEN de flujo del ramal y las salidas salen de su DESTINO (con
+// _tribReversed); cada salida se revisa de forma independiente contra la entrada más restrictiva.
+export function diametroCambioPermitido(
+  ramales: Array<{
+    id: string;
+    net?: string;
+    pts?: number[][];
+    _tribReversed?: boolean;
+    diametro?: string;
+  }>,
+  ramalId: string,
+  newLabel: string,
+): { ok: boolean; msg?: string } {
+  const r = ramales.find((x) => x.id === ramalId);
+  if (!r || !r.pts || r.pts.length < 2) return { ok: true };
+  const newIn = newLabel ? diamPulgFromLabel(newLabel) : 0;
+  if (newIn <= 0) return { ok: true };
+  const TOL = 2.0;
+  const myOrigin = r._tribReversed ? r.pts[r.pts.length - 1] : r.pts[0];
+  const myDest = r._tribReversed ? r.pts[0] : r.pts[r.pts.length - 1];
+  const touches = (pts: number[][], pt: number[]): 'endpoint' | 'body' | null => {
+    const p0 = pts[0];
+    const p1 = pts[pts.length - 1];
+    if (Math.hypot(p0[0] - pt[0], p0[1] - pt[1]) < TOL) return 'endpoint';
+    if (Math.hypot(p1[0] - pt[0], p1[1] - pt[1]) < TOL) return 'endpoint';
+    for (let i = 0; i < pts.length - 1; i++) {
+      const ax = pts[i][0],
+        ay = pts[i][1],
+        bx = pts[i + 1][0],
+        by = pts[i + 1][1];
+      const dx = bx - ax,
+        dy = by - ay,
+        len2 = dx * dx + dy * dy;
+      if (len2 < 1e-9) continue;
+      const t = ((pt[0] - ax) * dx + (pt[1] - ay) * dy) / len2;
+      if (t <= 0 || t >= 1) continue;
+      if (Math.hypot(pt[0] - (ax + t * dx), pt[1] - (ay + t * dy)) < TOL) return 'body';
+    }
+    return null;
+  };
+  let maxParent = 0;
+  let parentLbl = '';
+  let maxChild = 0;
+  let childLbl = '';
+  for (const o of ramales) {
+    if (o.id === ramalId || o.net !== r.net || !o.pts || o.pts.length < 2) continue;
+    const oRev = !!o._tribReversed;
+    const oOrigin = oRev ? o.pts[o.pts.length - 1] : o.pts[0];
+    const oDest = oRev ? o.pts[0] : o.pts[o.pts.length - 1];
+    const oIn = o.diametro ? diamPulgFromLabel(o.diametro) : 0;
+    if (oIn <= 0) continue;
+    // Entrada: el destino de flujo del otro cae en mi origen (o su cuerpo pasa por mi origen)
+    const feedsMe =
+      Math.hypot(oDest[0] - myOrigin[0], oDest[1] - myOrigin[1]) < TOL ||
+      touches(o.pts, myOrigin) === 'body';
+    // Salida: el origen de flujo del otro cae en mi destino o sobre mi cuerpo (unión T)
+    const iFeedIt =
+      Math.hypot(oOrigin[0] - myDest[0], oOrigin[1] - myDest[1]) < TOL ||
+      touches(r.pts, oOrigin) === 'body';
+    if (feedsMe && oIn > maxParent) {
+      maxParent = oIn;
+      parentLbl = o.diametro || '';
+    }
+    if (iFeedIt && oIn > maxChild) {
+      maxChild = oIn;
+      childLbl = o.diametro || '';
+    }
+  }
+  if (maxParent > 0 && newIn > maxParent) {
+    return {
+      ok: false,
+      msg: `El diámetro de salida no puede ser mayor que el de entrada (${parentLbl}). Selecciona un diámetro menor o igual al del tramo aguas arriba.`,
+    };
+  }
+  if (maxChild > 0 && newIn < maxChild) {
+    return {
+      ok: false,
+      msg: `El diámetro de entrada no puede ser menor que el de salida (${childLbl}) ya asignado aguas abajo. Selecciona un diámetro mayor o reduce primero la salida.`,
+    };
+  }
+  return { ok: true };
+}
 
 export function flipRamalFlow(ram: PlanoRamal): void {
   ram.pts = [...ram.pts].reverse();

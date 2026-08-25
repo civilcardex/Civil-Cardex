@@ -420,8 +420,8 @@ const AparatosPanel = memo(function AparatosPanel_({
     // Ítem 6: máximo UN aparato por ramal (manual) — no aplica en sanitaria ni lluvias.
     if (ownTotal >= 1 && netId !== 'san' && netId !== 'll') {
       engineRef.current?.triggerAlert(
-        'Máximo 1 aparato por ramal',
-        'Un ramal admite máximo un aparato asignado manualmente. Si necesitas más unidades, crea otro ramal (o tributario) desde el cuerpo de este.',
+        'Máximo 1 aparato por ramal-tributario',
+        'Un ramal/tributario admite máximo un aparato asignado manualmente. Si necesitas más unidades, crea otro ramal o tributario desde el cuerpo de este.',
       );
       return;
     }

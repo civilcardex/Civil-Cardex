@@ -281,6 +281,28 @@ function GasDesign() {
         );
         return;
       }
+      if (!res.ok && (res as unknown as { reason?: string }).reason === 'parent-smaller') {
+        window.dispatchEvent(
+          new CustomEvent('civilflow_diametro_validation', {
+            detail: {
+              title: 'Diámetro no permitido',
+              message: `El diámetro de salida no puede ser mayor que el de entrada (${(res as unknown as { parentDiam?: string }).parentDiam}). Selecciona un diámetro menor o igual al del tramo aguas arriba.`,
+            },
+          }),
+        );
+        return;
+      }
+      if (!res.ok && (res as unknown as { reason?: string }).reason === 'child-larger') {
+        window.dispatchEvent(
+          new CustomEvent('civilflow_diametro_validation', {
+            detail: {
+              title: 'Diámetro no permitido',
+              message: `El diámetro de entrada no puede ser menor que el de salida (${(res as unknown as { parentDiam?: string }).parentDiam}) ya asignado aguas abajo. Selecciona un diámetro mayor o reduce primero la salida.`,
+            },
+          }),
+        );
+        return;
+      }
     }
     setDiamMat((prev) => ({ ...prev, [tramoId]: mat }));
     setDiamDn((prev) => ({ ...prev, [tramoId]: dn }));

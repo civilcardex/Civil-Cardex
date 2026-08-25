@@ -7,8 +7,8 @@ import {
   pointOnAnyBodySegment,
 } from './HitTester';
 import { selectAt } from './PlanoEngineSelection';
-import { findCodoReventiladoLinks } from './PlanoEngineNetwork';
 import { bajanteHitDistance, canalRectHitDistance } from './canalAssociation';
+import { findCodoReventiladoLinks } from './PlanoEngineNetwork';
 
 // Toma una foto de la posición del bajante y de todo ramal que toca (recibeDeIds, descargaEnId
 // y su propio conector fantasma Ldesvio) antes de que empiece un bajDrag, para que handleDragUp
@@ -41,6 +41,7 @@ export function _tryBajanteHit(
   let bestDist = Infinity;
   let bestIsGhost = false;
   for (const b of engine.bajantes) {
+    if (engine.nivelActual && b.pisoBase !== engine.nivelActual.label) continue;
     const lx = b.labelX ?? b.x;
     const ly = b.labelY ?? b.y + 20;
     const lPos = engine.toCvs(lx, ly);
@@ -77,6 +78,7 @@ export function _tryBajanteHit(
       let symBest: { b: (typeof engine.bajantes)[0]; d: number } | null = null;
       for (const b of engine.bajantes) {
         if (b.tipo === 'canal') continue;
+        if (engine.nivelActual && b.pisoBase !== engine.nivelActual.label) continue;
         const circ = b._circ;
         if (!circ) continue;
         const d = Math.hypot(x - circ.x, y - circ.y);
@@ -93,6 +95,48 @@ export function _tryBajanteHit(
         const dragAnchor = engine.toCvs(b.x, b.y);
         engine.bajDrag = { id: b.id, offX: x - dragAnchor.x, offY: y - dragAnchor.y };
         _captureBajDragBackup(engine, b);
+        return true;
+      }
+      // Fantasma (proyección entre pisos) visible en ESTE piso dentro de un canal: debe poder
+      // agarrarse/arrastrarse independientemente del canal — el canal no lo secuestra. Corre
+      // ANTES del fallback del rectángulo del canal: sin esto, un clic sobre un fantasma que cae
+      // dentro de un canal seleccionaba/movía siempre el canal (cuyo bajDrag arrastra al padre).
+      const fg = engine.getBajantesFantasma();
+      let gHit: PlanoBajante | null = null;
+      for (const g of fg) {
+        if (!g._ghost) continue;
+        if (Math.hypot(x - g._ghost.x, y - g._ghost.y) < g._ghost.r) {
+          gHit = g;
+          break;
+        }
+      }
+      if (!gHit) {
+        for (const g of fg) {
+          if (g._ghostLabelBox && pointInLabelBox(x, y, g._ghostLabelBox)) {
+            gHit = g;
+            break;
+          }
+        }
+      }
+      if (gHit) {
+        if (ensureActiveNet(engine, gHit.net)) return true;
+        engine.selId = gHit.id;
+        engine._isGhostSel = true;
+        engine._emitSelect(gHit);
+        engine.render();
+        if (gHit._ghostLabelBox && pointInLabelBox(x, y, gHit._ghostLabelBox)) {
+          const c = gHit._ghostLabelBox;
+          engine._lblDragIsParent = false;
+          engine.lblDrag = { id: gHit.id, offX: x - c.cx, offY: y - c.cy };
+        } else {
+          engine.ghostDrag = {
+            id: gHit.id,
+            startX: x,
+            startY: y,
+            baseDx: gHit.desplazamientos?.[engine.nivelActual?.label ?? '']?.dx || 0,
+            baseDy: gHit.desplazamientos?.[engine.nivelActual?.label ?? '']?.dy || 0,
+          };
+        }
         return true;
       }
       for (const b of engine.bajantes) {

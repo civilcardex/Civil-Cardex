@@ -21,6 +21,7 @@ import {
   guideAngleAlertMessage,
   buildTribFromGuide,
   resolveGuideJunctionAccessory,
+  isGuideRelativeAngleValid,
 } from './guideOps';
 
 export function GuideLineMenu() {
@@ -131,11 +132,14 @@ export function GuideLineMenu() {
               pEnd = [p0[0], p0[1]];
             }
           }
-          // Una guía se dibuja a mano alzada, así que su ángulo no está garantizado sobre la
-          // rejilla de la red — crear el ramal igualmente produciría en silencio una tubería
-          // ilegal. Se valida primero (misma regla que finishRamal); si falla, se conserva la
-          // guía para que el usuario pueda rotarla.
-          if (!checkRamalAngles([pStart, pEnd], effectiveNet, 'ramal')) {
+          // Validación relativa si la guía cruza un ramal (ítem 4): host a 30° + guía a 120° es 90° relativa válida.
+          const snapOn = (eng as unknown as { snapMode?: boolean }).snapMode ?? true;
+          const hostAng = crossing ? crossing.angle : null;
+          const ramalAngleOk =
+            hostAng !== null
+              ? isGuideRelativeAngleValid(pStart, pEnd, hostAng, effectiveNet, 'ramal', snapOn)
+              : checkRamalAngles([pStart, pEnd], effectiveNet, 'ramal', snapOn);
+          if (!ramalAngleOk) {
             eng.triggerAlert('Ángulo no permitido', guideAngleAlertMessage(effectiveNet, 'ramal'));
             return;
           }
