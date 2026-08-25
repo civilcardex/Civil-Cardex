@@ -5,6 +5,10 @@ import { NETS } from '../../../lib/PlanoEngine/PlanoState';
 import EditButton from '../../shared/EditButton';
 import { devError } from '../../../../../utils/devError';
 import { saveNetColor } from '../../../services/netColorsService';
+import { loadFromStorage, saveToStorage } from '../../../services/storageService';
+
+const AF_ALIMENTACION_KEY = 'civilflow_af_alimentacion';
+type AfAlim = 'ep' | 'tanque' | 'red';
 
 const ActiveNetsCard_netBtn: React.CSSProperties = {
   display: 'flex',
@@ -34,6 +38,20 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
   setNetColors: Dispatch<SetStateAction<Record<string, string>>>;
 }) {
   const [isEditing, setIsEditing] = React.useState(false);
+  const [afAlim, setAfAlim] = React.useState<AfAlim>(() => {
+    const v = loadFromStorage<AfAlim | null>(AF_ALIMENTACION_KEY, null);
+    return v === 'tanque' || v === 'red' ? v : 'ep';
+  });
+  const afOn = redes.has('af');
+  const afAlimEff: AfAlim = afOn && afAlim === 'ep' && !redes.has('ep') ? 'red' : afAlim;
+  const setAfAlimAndSync = (v: AfAlim) => {
+    setAfAlim(v);
+    saveToStorage(AF_ALIMENTACION_KEY, v);
+    const n = new Set(redes);
+    if (v === 'ep') n.add('ep');
+    else n.delete('ep');
+    setRedes(n);
+  };
   return (
     <section className="card" style={{ flex: '0 1 auto', minWidth: 190 }}>
       <div className="card-h" style={{ padding: '4px 8px' }}>
@@ -100,105 +118,175 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
               const currentColor =
                 r.id === 'recolectora' ? netColors['ll'] || '#8B5CF6' : netColors[r.id] || '#666';
               return (
-                <button
-                  type="button"
-                  key={r.id}
-                  disabled={!isEditing || (isSub && !parentOn)}
-                  onClick={() => {
-                    if (isSub && !parentOn) return;
-                    const n = new Set(redes);
-                    if (isRecolectora && !llOn && !on) {
-                      n.add('ll');
-                      n.add(r.id);
-                    } else if (isVent && !sanOn && !on) {
-                      n.add(r.id);
-                    } else {
-                      if (on) n.delete(r.id);
-                      else n.add(r.id);
-                      // La ventilación siempre acompaña a la sanitaria: activar san activa
-                      // vent, desactivar san la apaga también.
-                      if (r.id === 'san') {
-                        if (on) n.delete('vent');
-                        else n.add('vent');
+                <div key={r.id} style={{ display: 'contents' }}>
+                  <button
+                    type="button"
+                    key={r.id}
+                    disabled={!isEditing || (isSub && !parentOn)}
+                    onClick={() => {
+                      if (isSub && !parentOn) return;
+                      const n = new Set(redes);
+                      if (isRecolectora && !llOn && !on) {
+                        n.add('ll');
+                        n.add(r.id);
+                      } else if (isVent && !sanOn && !on) {
+                        n.add(r.id);
+                      } else {
+                        if (on) n.delete(r.id);
+                        else n.add(r.id);
+                        // La ventilación siempre acompaña a la sanitaria: activar san activa
+                        // vent, desactivar san la apaga también.
+                        if (r.id === 'san') {
+                          if (on) n.delete('vent');
+                          else n.add('vent');
+                        }
                       }
-                    }
-                    setRedes(n);
-                  }}
-                  style={{
-                    ...ActiveNetsCard_netBtn,
-                    padding: isSub ? '2px 5px 2px 12px' : '3px 5px',
-                    marginLeft: isSub ? 10 : 0,
-                    cursor: isEditing && (!isSub || parentOn) ? 'pointer' : 'default',
-                    width: isSub ? 'calc(100% - 10px)' : '100%',
-                    opacity: isEditing && (!isSub || parentOn) ? 1 : 0.5,
-                  }}
-                >
-                  {r.icoImg ? (
-                    <img
-                      src={r.icoImg}
-                      alt=""
-                      width={22}
-                      height={22}
-                      style={{ width: 22, height: 22, verticalAlign: 'middle' }}
-                      loading="lazy"
-                    />
-                  ) : (
-                    <span style={{ fontSize: 13 }}>{r.ico}</span>
-                  )}
-                  <span
+                      setRedes(n);
+                    }}
                     style={{
-                      fontWeight: 600,
-                      fontSize: 12,
-                      color: on ? currentColor : 'var(--txt2)',
-                      whiteSpace: 'nowrap',
-                      flex: 1,
+                      ...ActiveNetsCard_netBtn,
+                      padding: isSub ? '2px 5px 2px 12px' : '3px 5px',
+                      marginLeft: isSub ? 10 : 0,
+                      cursor: isEditing && (!isSub || parentOn) ? 'pointer' : 'default',
+                      width: isSub ? 'calc(100% - 10px)' : '100%',
+                      opacity: isEditing && (!isSub || parentOn) ? 1 : 0.5,
                     }}
                   >
-                    {r.lbl}
-                  </span>
-                  {!isRecolectora && (
-                    <input
-                      type="color"
-                      value={currentColor}
-                      disabled={!isEditing || (isSub && !parentOn)}
-                      aria-label="Color de red"
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => {
-                        const c = e.target.value;
-                        setNetColors((prev) => ({ ...prev, [r.id]: c }));
-                        document.documentElement.style.setProperty(cssVar, c);
-                        try {
-                          const net = NETS.find((n) => n.id === r.id);
-                          if (net) net.col = c;
-                        } catch (e) {
-                          devError(e);
-                        }
-                        void saveNetColor(r.id, c);
-                      }}
+                    {r.icoImg ? (
+                      <img
+                        src={r.icoImg}
+                        alt=""
+                        width={22}
+                        height={22}
+                        style={{ width: 22, height: 22, verticalAlign: 'middle' }}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span style={{ fontSize: 13 }}>{r.ico}</span>
+                    )}
+                    <span
                       style={{
-                        width: 14,
-                        height: 14,
-                        border: 'none',
-                        padding: 0,
-                        cursor: isEditing && (!isSub || parentOn) ? 'pointer' : 'default',
-                        background: 'none',
+                        fontWeight: 600,
+                        fontSize: 12,
+                        color: on ? currentColor : 'var(--txt2)',
+                        whiteSpace: 'nowrap',
+                        flex: 1,
+                      }}
+                    >
+                      {r.lbl}
+                    </span>
+                    {!isRecolectora && (
+                      <input
+                        type="color"
+                        value={currentColor}
+                        disabled={!isEditing || (isSub && !parentOn)}
+                        aria-label="Color de red"
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          const c = e.target.value;
+                          setNetColors((prev) => ({ ...prev, [r.id]: c }));
+                          document.documentElement.style.setProperty(cssVar, c);
+                          try {
+                            const net = NETS.find((n) => n.id === r.id);
+                            if (net) net.col = c;
+                          } catch (e) {
+                            devError(e);
+                          }
+                          void saveNetColor(r.id, c);
+                        }}
+                        style={{
+                          width: 14,
+                          height: 14,
+                          border: 'none',
+                          padding: 0,
+                          cursor: isEditing && (!isSub || parentOn) ? 'pointer' : 'default',
+                          background: 'none',
+                          flexShrink: 0,
+                          opacity: isEditing && (!isSub || parentOn) ? 1 : 0.5,
+                        }}
+                      />
+                    )}
+                    <div
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
                         flexShrink: 0,
-                        opacity: isEditing && (!isSub || parentOn) ? 1 : 0.5,
+                        background: on ? currentColor : 'transparent',
+                        border: '1.5px solid ' + (on ? currentColor : 'var(--txt3)'),
                       }}
                     />
+                    <span className="visually-hidden">{on ? 'Activa' : 'Inactiva'}</span>
+                  </button>
+                  {r.id === 'af' && afOn && (
+                    <div
+                      style={{
+                        marginLeft: 10,
+                        marginTop: 2,
+                        paddingLeft: 8,
+                        borderLeft: '2px solid var(--line)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2,
+                      }}
+                    >
+                      <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt2)' }}>
+                        ¿Cómo se alimenta la red?
+                      </span>
+                      {(
+                        [
+                          { id: 'ep' as const, lbl: 'Equipo de presión' },
+                          { id: 'tanque' as const, lbl: 'Tanque alto' },
+                          { id: 'red' as const, lbl: 'Red' },
+                        ] as const
+                      ).map((o) => {
+                        const oOn = afAlimEff === o.id;
+                        return (
+                          <button
+                            type="button"
+                            key={o.id}
+                            role="radio"
+                            aria-checked={oOn}
+                            disabled={!isEditing}
+                            onClick={() => isEditing && setAfAlimAndSync(o.id)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              padding: '3px 6px',
+                              background: 'var(--bg3)',
+                              border: `1px solid ${oOn ? 'var(--acc)' : 'var(--line)'}`,
+                              borderRadius: 'var(--r)',
+                              width: '100%',
+                              font: 'inherit',
+                              color: 'inherit',
+                              textAlign: 'left',
+                              cursor: isEditing ? 'pointer' : 'default',
+                              opacity: isEditing ? 1 : 0.75,
+                            }}
+                          >
+                            <span
+                              style={{ fontSize: 12, flex: 1, color: oOn ? '#fff' : 'var(--txt2)' }}
+                            >
+                              {o.lbl}
+                            </span>
+                            <span
+                              aria-hidden="true"
+                              style={{
+                                width: 10,
+                                height: 10,
+                                borderRadius: '50%',
+                                flexShrink: 0,
+                                background: oOn ? 'var(--acc)' : 'transparent',
+                                border: `1.5px solid ${oOn ? 'var(--acc)' : 'var(--txt3)'}`,
+                              }}
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
-                  <div
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      flexShrink: 0,
-                      background: on ? currentColor : 'transparent',
-                      border: '1.5px solid ' + (on ? currentColor : 'var(--txt3)'),
-                    }}
-                  />
-                  <span className="visually-hidden">{on ? 'Activa' : 'Inactiva'}</span>
-                </button>
+                </div>
               );
             });
           })()}

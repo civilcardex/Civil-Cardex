@@ -20,6 +20,7 @@ const GasDesign = lazy(() => import('../GasDesign'));
 const PressureEquipmentDesign = lazy(() => import('../PressureEquipmentDesign'));
 const AcometidaPage = lazy(() => import('../../pages/AcometidaPage'));
 const RciCuartoBombasViewer = lazy(() => import('../RciCuartoBombasViewer'));
+const RciCuartoBombasReferencia = lazy(() => import('../RciCuartoBombasReferencia'));
 
 const FALLBACK = <div style={{ minHeight: 400 }} />;
 
@@ -409,13 +410,18 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
           <PageNav
             page={rciPage}
             setPage={setRciPage}
-            total={1}
+            total={2}
             color="var(--rci)"
-            labels={['Cuarto de bombas']}
+            labels={['Cuarto de bombas', 'Cuarto de bombas opcional']}
           />
           {rciPage === 1 && (
             <Suspense fallback={FALLBACK}>
               <RciCuartoBombasViewer />
+            </Suspense>
+          )}
+          {rciPage === 2 && (
+            <Suspense fallback={FALLBACK}>
+              <RciCuartoBombasReferencia />
             </Suspense>
           )}
         </div>
