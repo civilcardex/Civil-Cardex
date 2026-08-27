@@ -249,16 +249,38 @@ export function selectAt(
     // sobre ramales que cruzan el mismo punto o extremos ajenos cercanos — si el empate se
     // resolviera por orden de array, un ll que cruza la unión ganaría y cambiaría la red activa.
     let d = distanceToRamal(cx, cy, r.pts, (x, y) => engine.toCvs(x, y), engine.mm2cvs(3));
-    if (r.pts && r.pts.length > 0 && r.id === bodyOwnerId) {
+    const isBodyOwner = r.pts && r.pts.length > 0 && r.id === bodyOwnerId;
+    if (isBodyOwner) {
       d -= 6;
     }
-    // Desempate determinista a distancia exactamente igual (p.ej. dos cuerpos cruzando el mismo
-    // punto): gana el ramal MÁS CORTO — una rama de tee insertada sobre un ramal largo es el
-    // target típico del clic y no debe depender del orden del array.
-    const shorterWins = d === minD && found !== null && cvsLen(r) < cvsLen(found);
-    if (d < minD || shorterWins) {
+    // Distancia del clic a la etiqueta del ramal — desempate final cuando dos ramales colineales
+    // solapados dan la MISMA distancia de cuerpo (p.ej. el tramo resultante de un split y el
+    // ramal que lo partió quedan colineales): el que tenga su etiqueta más cerca del clic gana,
+    // permitiendo seleccionar/mover la etiqueta del tramo que se quiere.
+    const labelDist = (rr: PlanoRamal): number => {
+      if (rr.labelX == null || rr.labelY == null || !rr.pts || rr.pts.length === 0) return Infinity;
+      return Math.hypot(cx - (rr.labelX as number), cy - (rr.labelY as number));
+    };
+    // Desempate: 1) el dueño del cuerpo bajo el clic SIEMPRE gana (aunque otro ramal colineal
+    // contiguo dé la misma distancia — p.ej. las dos mitades de un ramal dividido en el punto
+    // compartido); 2) a igualdad sin dueño, gana el ramal MÁS CORTO (rama de tee sobre ramal
+    // largo es el target típico); 3) si ambos son dueños o ambos no, gana el de etiqueta más
+    // cercana.
+    if (d < minD) {
       minD = d;
       found = r as PlanoRamal;
+    } else if (d === minD && found) {
+      const fIsOwner = found.id === bodyOwnerId;
+      if (isBodyOwner && !fIsOwner) {
+        found = r as PlanoRamal;
+      } else if (isBodyOwner === fIsOwner) {
+        const lenCmp = cvsLen(r) - cvsLen(found);
+        if (Math.abs(lenCmp) > 1e-6) {
+          if (lenCmp < 0) found = r as PlanoRamal;
+        } else if (labelDist(r) < labelDist(found)) {
+          found = r as PlanoRamal;
+        }
+      }
     }
   }
 

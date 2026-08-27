@@ -347,6 +347,46 @@ function junctionHadTeeMarker(engine: IPlanoEngineCore, pt: number[]): boolean {
   return false;
 }
 
+// Elimina TODO marcador de tee (accesorioInicio/Fin + accMed) en un punto dado, y decrementa su
+// conteo. Usado cuando un punto deja de ser una unión de tee (al borrar un brazo o al fusionar
+// dos mitades colineales de un split).
+function scrubAccMedTeeAt(engine: IPlanoEngineCore, pt: number[]): void {
+  const TOL = 0.5;
+  for (const r of engine.ramales) {
+    if (!r.pts || r.pts.length < 2) continue;
+    if (
+      r.accesorioInicio &&
+      TEE_TYPES.includes(r.accesorioInicio) &&
+      Math.hypot(r.pts[0][0] - pt[0], r.pts[0][1] - pt[1]) < TOL
+    ) {
+      decrementAccesorioCount(engine, r, r.accesorioInicio);
+      r.accesorioInicio = '';
+    }
+    const li = r.pts.length - 1;
+    if (
+      r.accesorioFin &&
+      TEE_TYPES.includes(r.accesorioFin) &&
+      Math.hypot(r.pts[li][0] - pt[0], r.pts[li][1] - pt[1]) < TOL
+    ) {
+      decrementAccesorioCount(engine, r, r.accesorioFin);
+      r.accesorioFin = '';
+    }
+    if (r.accMed) {
+      for (const k of Object.keys(r.accMed)) {
+        const m = k.match(/^accMed(\d+)$/);
+        if (!m) continue;
+        const v = r.accMed[k];
+        if (!TEE_TYPES.includes(v)) continue;
+        const p = r.pts[parseInt(m[1], 10)];
+        if (p && Math.hypot(p[0] - pt[0], p[1] - pt[1]) < TOL) {
+          decrementAccesorioCount(engine, r, v);
+          delete r.accMed[k];
+        }
+      }
+    }
+  }
+}
+
 // Legado de uniones de línea guía (código viejo persistió codo90rm en el ramal): al borrar el
 // tributario que formaba la esquina, se anula el codo de plano anclado en el punto para que no
 // quede ni el arco ni el disco "C90" de respaldo.
@@ -378,54 +418,45 @@ function scrubPlanCodoAt(engine: IPlanoEngineCore, pt: number[]): void {
 // - Si había tee (3 brazos) → el accesorio se elimina por completo (ítem 8: no desplazar a la L restante).
 // - Si no había tee y queda esquina en L (dos brazos en ángulo) → se escribe codo de plano.
 // - Si ya no queda esquina → se barre cualquier codo de plano del punto.
+// ¿El ramal BORRADO llevaba un marcador de tee en el extremo `pt`? Tras quitar el ramal del
+// array su marcador ya no es visible para junctionHadTeeMarker, así que hay que mirarlo antes:
+// si el brazo que se borraba era parte de una tee, el punto debe quedar LIMPIO (sin codo nuevo).
+function deletedRamalHadTeeAt(deleted: PlanoRamal, pt: number[]): boolean {
+  const TOL = 0.5;
+  if (!deleted.pts || deleted.pts.length < 2) return false;
+  const near = (v: string | undefined, p: number[]) =>
+    !!v && TEE_TYPES.includes(v) && Math.hypot(p[0] - pt[0], p[1] - pt[1]) < TOL;
+  if (near(deleted.accesorioInicio, deleted.pts[0])) return true;
+  if (near(deleted.accesorioFin, deleted.pts[deleted.pts.length - 1])) return true;
+  if (deleted.accMed) {
+    for (const [k, v] of Object.entries(deleted.accMed)) {
+      const m = k.match(/^accMed(\d+)$/);
+      const idx = m ? parseInt(m[1], 10) : -1;
+      if (
+        idx >= 0 &&
+        TEE_TYPES.includes(v) &&
+        deleted.pts[idx] &&
+        Math.hypot(deleted.pts[idx][0] - pt[0], deleted.pts[idx][1] - pt[1]) < TOL
+      )
+        return true;
+    }
+  }
+  return false;
+}
+
 function cleanupJunctionsAfterRamalDelete(engine: IPlanoEngineCore, deleted: PlanoRamal): void {
   const ep0 = deleted.pts![0];
   const ep1 = deleted.pts![deleted.pts!.length - 1];
   for (const ep of [ep0, ep1]) {
-    const hadTee = junctionHadTeeMarker(engine, ep);
+    const hadTee = junctionHadTeeMarker(engine, ep) || deletedRamalHadTeeAt(deleted, ep);
     cleanupTeeMarkersAt(engine, ep);
     const arms = endpointArmsAt(engine, ep);
     const isL = arms.length === 2 && !sameLineDir(arms[0].d, arms[1].d);
+    // Ítem 1/8: borrar un brazo de una tee elimina el símbolo (ya no hay 3 brazos en el punto).
+    // Si HABÍA tee (bien en los sobrevivientes o en el propio ramal borrado), el punto queda
+    // limpio: NO se asigna un codo que "se desplaza al extremo" del sobreviviente.
+    scrubAccMedTeeAt(engine, ep);
     if (hadTee) {
-      // Ítem 8: borrar una pata de una conexión de tres elimina el accesorio, no lo desplaza.
-      // Forzar borrado de tees remanentes aunque geométricamente aún sea L (cleanupTeeMarkersAt los habría conservado).
-      const TOL_TEE = 0.5;
-      for (const r of engine.ramales) {
-        if (!r.pts || r.pts.length < 2) continue;
-        if (
-          r.accesorioInicio &&
-          TEE_TYPES.includes(r.accesorioInicio) &&
-          Math.hypot(r.pts[0][0] - ep[0], r.pts[0][1] - ep[1]) < TOL_TEE
-        ) {
-          decrementAccesorioCount(engine, r, r.accesorioInicio);
-          r.accesorioInicio = '';
-        }
-        const li = r.pts.length - 1;
-        if (
-          r.accesorioFin &&
-          TEE_TYPES.includes(r.accesorioFin) &&
-          Math.hypot(r.pts[li][0] - ep[0], r.pts[li][1] - ep[1]) < TOL_TEE
-        ) {
-          decrementAccesorioCount(engine, r, r.accesorioFin);
-          r.accesorioFin = '';
-        }
-        if (r.accMed) {
-          for (const k of Object.keys(r.accMed)) {
-            const m = k.match(/^accMed(\d+)$/);
-            if (!m) continue;
-            const idx = parseInt(m[1], 10);
-            const p = r.pts[idx];
-            if (
-              p &&
-              TEE_TYPES.includes(r.accMed[k]) &&
-              Math.hypot(p[0] - ep[0], p[1] - ep[1]) < TOL_TEE
-            ) {
-              decrementAccesorioCount(engine, r, r.accMed[k]);
-              delete r.accMed[k];
-            }
-          }
-        }
-      }
       scrubPlanCodoAt(engine, ep);
     } else if (isL) {
       assignCodoAfterBranchDelete(engine, ep);
@@ -469,6 +500,11 @@ function remergeSplitRamales(engine: IPlanoEngineCore, deletedId: string, delete
       // Pequeño drift (snap/precisión) — cerrar gap visualmente antes de fusionar.
       d.pts[0] = [aLast[0], aLast[1]];
     }
+    // Ítem 1: el punto compartido (aLast) es la unión donde se borró el brazo. Tras fusionar ya
+    // no es una tee ni una esquina — se elimina cualquier marcador tee/codo ahí para que no se
+    // quede el símbolo ni se reubique al extremo del ramal re-unido.
+    scrubAccMedTeeAt(engine, aLast);
+    scrubPlanCodoAt(engine, aLast);
     // Re-unir: A continúa con el cuerpo de D (salvo el punto compartido).
     a.pts = [...a.pts, ...d.pts.slice(1)];
     a.totalL = calculateRamalLength(a.pts, engine);
@@ -508,6 +544,156 @@ function remergeSplitRamales(engine: IPlanoEngineCore, deletedId: string, delete
       }
     }
   }
+  // Fallback (Ítem 9/v2): cuando se borra una de las MITADES de un ramal partido (no la rama
+  // que causó el split), la otra mitad + un ramal colineal adyacente pueden quedar como dos
+  // trazos. Si dos ramales comparten extremo, continúan en la misma línea (colineales) y en ese
+  // punto NO se ramifican (grado 2), se funden en uno solo — un trazo continuo, un solo borrado.
+  mergeCollinearPairs(engine);
+}
+
+// Funde ramales colineales que se tocan extremo-a-extremo sin ramificación en el punto.
+function mergeCollinearPairs(engine: IPlanoEngineCore): void {
+  const TOL = 0.5;
+  let merged = true;
+  while (merged) {
+    merged = false;
+    const ramales = [...engine.ramales];
+    for (let i = 0; i < ramales.length; i++) {
+      const A = ramales[i];
+      if (!A?.pts || A.pts.length < 2) continue;
+      for (let j = i + 1; j < ramales.length; j++) {
+        const B = ramales[j];
+        if (!B?.pts || B.pts.length < 2 || B.net !== A.net) continue;
+        if (B.id === A.id) continue;
+        // ¿Comparten un extremo?
+        const a0 = A.pts[0];
+        const a1 = A.pts[A.pts.length - 1];
+        const b0 = B.pts[0];
+        const b1 = B.pts[B.pts.length - 1];
+        // encuentra la pareja de extremos que coinciden y en qué orden fusionar
+        let shared = -1; // 0: A.end-B.start, 1: A.end-B.end, 2: A.start-B.end, 3: A.start-B.start
+        if (Math.hypot(a1[0] - b0[0], a1[1] - b0[1]) < TOL) shared = 0;
+        else if (Math.hypot(a1[0] - b1[0], a1[1] - b1[1]) < TOL) shared = 1;
+        else if (Math.hypot(a0[0] - b1[0], a0[1] - b1[1]) < TOL) shared = 2;
+        else if (Math.hypot(a0[0] - b0[0], a0[1] - b0[1]) < TOL) shared = 3;
+        if (shared < 0) continue;
+        const sharedPt = shared === 0 || shared === 2 ? a1 : a0;
+        // ¿Grado 2? (en el punto tocan exactamente A y B, no otros ramales ni bajantes)
+        let touching = 2;
+        for (const r of engine.ramales) {
+          if (r.id === A.id || r.id === B.id) continue;
+          if (!r.pts || r.pts.length < 2) continue;
+          const hit =
+            Math.hypot(r.pts[0][0] - sharedPt[0], r.pts[0][1] - sharedPt[1]) < TOL ||
+            Math.hypot(
+              r.pts[r.pts.length - 1][0] - sharedPt[0],
+              r.pts[r.pts.length - 1][1] - sharedPt[1],
+            ) < TOL;
+          if (hit) {
+            touching++;
+            break;
+          }
+        }
+        for (const baj of engine.bajantes) {
+          if (Math.hypot(baj.x - sharedPt[0], baj.y - sharedPt[1]) < TOL) {
+            touching++;
+            break;
+          }
+        }
+        if (touching !== 2) continue;
+        // Al fusionarse ya no hay unión en ese punto — limpiar cualquier marcador de tee residual.
+        scrubAccMedTeeAt(engine, sharedPt);
+        scrubPlanCodoAt(engine, sharedPt);
+        // ¿Colineales (siguen rectos por el punto)?
+        const dA = A.pts.length >= 2 ? dirAt(A, sharedPt) : null;
+        const dB = B.pts.length >= 2 ? dirAt(B, sharedPt) : null;
+        if (!dA || !dB) continue;
+        const dot = dA[0] * dB[0] + dA[1] * dB[1];
+        // Han de continuar en línea recta a través del punto: direcciones OPUESTAS (dot ≈ -1).
+        // Un plegado (ambos hacia el mismo lado, dot ≈ +1) no es un trazo continuo.
+        // Tolerancia 0.9 (≈25°) — los dos tramos de un split rara vez quedan PERFECTAMENTE
+        // colineales (el divisor cae con pequeño desvío), y con 0.98 estricto no se fusionaban.
+        if (dot > -0.9) continue;
+        // Fusionar A+B en un solo ramal
+        let primary = A,
+          secondary = B;
+        let mergedPts: number[][];
+        if (shared === 0 || shared === 1) {
+          mergedPts = [...A.pts, ...(shared === 0 ? B.pts.slice(1) : B.pts.slice(1).reverse())];
+        } else {
+          // compartimos por el inicio de A → A va después de B
+          mergedPts = [...B.pts, ...(shared === 3 ? A.pts.slice(1) : A.pts.slice(1).reverse())];
+          primary = B;
+          secondary = A;
+        }
+        primary.pts = mergedPts;
+        primary.totalL = calculateRamalLength(primary.pts, engine);
+        if (secondary.accesorioFin) primary.accesorioFin = secondary.accesorioFin;
+        if (secondary.diametroFin) primary.diametroFin = secondary.diametroFin;
+        if (secondary.aparatoFin) primary.aparatoFin = secondary.aparatoFin;
+        if (secondary.sifonLabelFin) primary.sifonLabelFin = secondary.sifonLabelFin;
+        const [mx, my] = _midpoint(primary.pts);
+        primary.labelX = mx;
+        primary.labelY = my;
+        if (primary.labelAngle == null) primary.labelAngle = _firstSegmentAngle(primary.pts);
+        const secondaryId = secondary.id;
+        engine.ramales = engine.ramales.filter((r) => r.id !== secondaryId);
+        for (const m of engine.ramales) {
+          if (m.mergesFrom) {
+            m.mergesFrom = [
+              m.mergesFrom[0] === secondaryId ? primary.id : m.mergesFrom[0],
+              m.mergesFrom[1] === secondaryId ? primary.id : m.mergesFrom[1],
+            ];
+          }
+        }
+        merged = true;
+        break;
+      }
+      if (merged) break;
+    }
+  }
+  // Limpiar referencias mergesFrom que apunten a ramales borrados/inexistentes
+  for (const m of engine.ramales) {
+    if (!m.mergesFrom) continue;
+    const [p0, p1] = m.mergesFrom;
+    if (!engine.ramales.some((r) => r.id === p0) || !engine.ramales.some((r) => r.id === p1)) {
+      m.mergesFrom = undefined;
+    }
+  }
+}
+
+// Dirección (normalizada) hacia el interior desde el extremo compartido sharedPt.
+function dirAt(r: { pts: number[][] }, sharedPt: number[]): [number, number] | null {
+  const len = r.pts.length;
+  let other: number[];
+  if (Math.hypot(r.pts[0][0] - sharedPt[0], r.pts[0][1] - sharedPt[1]) < 0.5) other = r.pts[1];
+  else other = r.pts[len - 2];
+  let dx = other[0] - sharedPt[0];
+  let dy = other[1] - sharedPt[1];
+  const d = Math.hypot(dx, dy);
+  if (d < 1e-6) return null;
+  dx /= d;
+  dy /= d;
+  return [dx, dy];
+}
+
+// Ítem 9/v2: borrar una MITAD de un ramal dividido (no la rama entrante) debe borrar TODA la
+// división — las dos mitades colineales + la rama que la partió. Si solo se borra una mitad,
+// quedan restos de la línea dividida y el usuario tiene que borrar dos veces. La rama entrante
+// (mergesFrom[1]) NO se expande: borrarla re-une las mitades (comportamiento actual).
+function splitMembersFor(engine: IPlanoEngineCore, ramalId: string): string[] {
+  const d = engine.ramales.find((r) => r.id === ramalId);
+  if (!d) return [];
+  if (d.mergesFrom) {
+    // d es una mitad aguas abajo → borrar su pareja upstream + la rama entrante
+    return [d.mergesFrom[0], d.mergesFrom[1]].filter((x) => x && x !== ramalId);
+  }
+  const pair = engine.ramales.find((r) => r.mergesFrom && r.mergesFrom[0] === ramalId);
+  if (pair && pair.mergesFrom) {
+    // ramalId es la mitad aguas arriba → borrar la pareja downstream + la rama entrante
+    return [pair.id, pair.mergesFrom[1]].filter((x) => x && x !== ramalId);
+  }
+  return [];
 }
 
 export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
@@ -516,8 +702,12 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
     const netsToRenumber = new Set<string>();
     const bajNetsToRenumber = new Set<string>();
     let renumberAreas = false;
+    const toDelete = new Set<string>(ids);
+    for (const id of [...ids]) {
+      for (const extra of splitMembersFor(engine, id)) toDelete.add(extra);
+    }
     const deletedRamalIds = new Set<string>();
-    for (const id of ids) {
+    for (const id of toDelete) {
       const idxR = engine.ramales.findIndex((r) => r.id === id);
       if (idxR >= 0) {
         const deleted = engine.ramales[idxR];
@@ -698,6 +888,15 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
   if (idxR >= 0) {
     const deleted = engine.ramales[idxR];
     const deletedId = deleted.id;
+    // Ítem 9/v2: borrar una mitad de división borra toda la división (misma expansión que el
+    // path de ids). Se delega en deleteSelected con el set expandido para un solo camino.
+    const members = splitMembersFor(engine, deletedId);
+    if (members.length > 0) {
+      const expanded = [deletedId, ...members];
+      engine.selId = null;
+      deleteSelected(engine, expanded);
+      return;
+    }
     engine.ramales = engine.ramales.filter((r) => r.id !== deletedId && r.padre !== deleted.id);
     // Ítem 9: si este ramal había partido a otro, se re-une la línea en dos mitades.
     remergeSplitRamales(engine, deletedId, deleted.uc || 0);

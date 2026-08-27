@@ -305,6 +305,34 @@ export function _tryRamalEndpointHit(engine: IPlanoEngineCore, x: number, y: num
     return true;
   }
 
+  // Unión convergente: si OTRO ramal del mismo net tiene un extremo en el MISMO punto que el
+  // extremo capturado (p.ej. el tramo resultante de un split y el ramal que lo partió), no
+  // robar el clic a favor del primero del array — dejar que selectAt decida (con su desempate
+  // por cuerpo/etiqueta) para poder seleccionar el tramo que se quiere. Bug 2.
+  {
+    const pt = bestRamal.pts[bestPtIdx];
+    const TOL_JOIN = 0.6;
+    let othersAtPt = 0;
+    for (const r of engine.ramales) {
+      if (r.id === bestRamal.id || !r.pts || r.pts.length < 2) continue;
+      if (r.net !== bestRamal.net) continue;
+      if (
+        Math.hypot(r.pts[0][0] - pt[0], r.pts[0][1] - pt[1]) < TOL_JOIN ||
+        Math.hypot(r.pts[r.pts.length - 1][0] - pt[0], r.pts[r.pts.length - 1][1] - pt[1]) <
+          TOL_JOIN
+      ) {
+        othersAtPt++;
+      }
+    }
+    if (othersAtPt > 0) {
+      // El clic está cerca del punto de unión convergente — el usuario puede querer agarrar el
+      // extremo del tramo concreto (para estirarlo) o seleccionar el otro. selectAt + el
+      // arrastre de vértice posterior lo resuelven con el desempate justo.
+      selectAt(engine, x, y);
+      return true;
+    }
+  }
+
   if (ensureActiveNet(engine, bestRamal.net)) return true;
   engine.selId = bestRamal.id;
   engine.multiSel = [];

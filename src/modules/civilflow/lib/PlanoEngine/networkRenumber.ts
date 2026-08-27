@@ -89,6 +89,20 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
       .forEach((t) => {
         t.padre = newId;
       });
+    // Ítem 9/bug 1: un ramal renombrado puede ser parte de una DIVISIÓN (mergesFrom) — el
+    // downstream de un split guarda [idUpstream, idDivisor]. Si se renombra cualquiera de ellos
+    // sin migrar la referencia, el remerge posterior al borrar el divisor no encuentra el par
+    // y el trazo queda partido en dos objetos (el bug reportado: "se borra solo uno de los
+    // segmentos"). Se migran los mergesFrom de TODOS los ramales que apunten al id viejo.
+    if (oldId !== newId) {
+      for (const m of engine.ramales) {
+        if (!m.mergesFrom) continue;
+        m.mergesFrom = [
+          m.mergesFrom[0] === oldId ? newId : m.mergesFrom[0],
+          m.mergesFrom[1] === oldId ? newId : m.mergesFrom[1],
+        ];
+      }
+    }
   });
   let maxN = 0;
   for (const n of used) if (n > maxN) maxN = n;

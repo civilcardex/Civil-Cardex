@@ -5,6 +5,7 @@ import {
   pointToSegmentDist,
   distanceToRamal,
   findAccMedVertexHit,
+  pointOnAnyBodySegment,
 } from './HitTester';
 import { findCodoReventiladoLinks } from './PlanoEngineNetwork';
 import { _captureBajDragBackup } from './mouseDownHits';
@@ -294,6 +295,44 @@ export function _trySelRamalDrag(
   // cuerpo completo inoperante para todo tributario de la app, lo que a su vez significaba que
   // su ramal padre nunca lo veía como algo a cascadear de todos modos.
   if (!isRamal(sel) || (sel.tipo !== 'ramal' && sel.tipo !== 'tributario')) return false;
+
+  // Ítem usuario (bug 2): el clic sobre el CUERPO de OTRO ramal colineal (p.ej. el tramo
+  // auto-creado por un split, que comparte línea con el ramal que lo partió y con el que quedó
+  // seleccionado tras finishRamal) debe seleccionar ESE otro ramal, no arrastrar el ya
+  // seleccionado. Solo cede si el otro es MÁS CORTO que el seleccionado (el tramo nuevo del
+  // split nace más corto que el splitter) — si el seleccionado es la rama corta de una tee y
+  // bajo el clic pasa el host largo, el drag del sel sigue intacto.
+  const selCvsLen = (() => {
+    let l = 0;
+    if (sel.pts) {
+      for (let i = 0; i < sel.pts.length - 1; i++) {
+        const a = engine.toCvs(sel.pts[i][0], sel.pts[i][1]);
+        const b = engine.toCvs(sel.pts[i + 1][0], sel.pts[i + 1][1]);
+        l += Math.hypot(b.x - a.x, b.y - a.y);
+      }
+    }
+    return l;
+  })();
+  const otherOwner = pointOnAnyBodySegment(
+    engine.ramales,
+    x,
+    y,
+    (px, py) => engine.toCvs(px, py),
+    engine.mm2cvs(3),
+    sel.id,
+  );
+  if (otherOwner) {
+    const other = engine.ramales.find((r) => r.id === otherOwner);
+    if (other?.pts) {
+      let ol = 0;
+      for (let i = 0; i < other.pts.length - 1; i++) {
+        const a = engine.toCvs(other.pts[i][0], other.pts[i][1]);
+        const b = engine.toCvs(other.pts[i + 1][0], other.pts[i + 1][1]);
+        ol += Math.hypot(b.x - a.x, b.y - a.y);
+      }
+      if (ol < selCvsLen) return false;
+    }
+  }
 
   // Los íconos de accesorio a mitad de ramal se dibujan desplazados de la línea central
   // (renderRamales.ts), así que un clic sobre el ícono visible puede errar el radio ajustado
