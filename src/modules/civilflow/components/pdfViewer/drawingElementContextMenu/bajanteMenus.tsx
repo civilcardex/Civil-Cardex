@@ -7,6 +7,7 @@ import {
   buildBajanteVisualLabel,
   matFullName,
   DIAM_BAN,
+  DIAM_BAN_SAN,
   DIAM_VENT,
   DIAM_BY_MAT,
   GAS_DN_LABELS,
@@ -770,7 +771,12 @@ export function BajanteDiameterSelector({
                 style={MENU_SELECT_STYLE}
               >
                 <option value="">—</option>
-                {(element.net === 'vent' ? DIAM_VENT : DIAM_BAN).map((d) => (
+                {(element.net === 'vent'
+                  ? DIAM_VENT
+                  : element.net === 'san'
+                    ? DIAM_BAN_SAN
+                    : DIAM_BAN
+                ).map((d) => (
                   <option key={d.pulg} value={d.nom}>
                     {normalizeDnLabel(d.nom)}
                   </option>
@@ -934,7 +940,12 @@ export function BajanteDiameterSelector({
             style={MENU_SELECT_STYLE}
           >
             <option value="">—</option>
-            {(element.net === 'vent' ? DIAM_VENT : DIAM_BAN).map((d) => (
+            {(element.net === 'vent'
+              ? DIAM_VENT
+              : element.net === 'san'
+                ? DIAM_BAN_SAN
+                : DIAM_BAN
+            ).map((d) => (
               <option key={d.pulg} value={d.nom}>
                 {normalizeDnLabel(d.nom)}
               </option>
@@ -1338,17 +1349,30 @@ export function BajanteConnectionPanel({
                             }
                             if (engineRef.current) {
                               const accessoryVal = val as string;
+                              // Sifón redirect: si el usuario lo pone en el extremo que RECIBE
+                              // flujo (!isStart), redirigir automáticamente al extremo libre.
+                              let useFieldAcc = fieldAcc;
+                              let useFieldDiam = fieldDiam;
+                              let useIsStart = isStart;
                               if (accessoryVal === 'sifon' && ramalEl.net === 'san' && !isStart) {
-                                engineRef.current.triggerAlert(
-                                  'Revisar ubicación del sifón',
-                                  'El sifón no puede recibir flujo.',
-                                );
-                                return;
+                                const otherAcc = ramalEl['accesorioInicio'] || '';
+                                const otherApp = ramalEl['aparatoInicio'] || '';
+                                if (!otherAcc && !otherApp) {
+                                  useFieldAcc = 'accesorioInicio';
+                                  useFieldDiam = 'diametroInicio';
+                                  useIsStart = true;
+                                } else {
+                                  engineRef.current.triggerAlert(
+                                    'Revisar ubicación del sifón',
+                                    'El sifón no puede recibir flujo y el extremo opuesto ya está ocupado.',
+                                  );
+                                  return;
+                                }
                               }
                               if (
                                 (accessoryVal === 'llaveTerminal' ||
                                   accessoryVal === 'teeLlaveTerminal') &&
-                                isStart
+                                useIsStart
                               ) {
                                 engineRef.current.triggerAlert(
                                   'Revisar ubicación llave terminal',
@@ -1356,8 +1380,8 @@ export function BajanteConnectionPanel({
                                 );
                                 return;
                               }
-                              const oldVal = ramalEl[fieldAcc] || '';
-                              const updates: Record<string, unknown> = { [fieldAcc]: val };
+                              const oldVal = ramalEl[useFieldAcc] || '';
+                              const updates: Record<string, unknown> = { [useFieldAcc]: val };
                               // El accesorio hereda el diámetro del ramal como valor por defecto:
                               // si el ramal ya tiene diámetro asignado, el accesorio nuevo nace
                               // con ese mismo diámetro (resuelto al valor canónico del selector);
@@ -1369,7 +1393,10 @@ export function BajanteConnectionPanel({
                                   (ramalEl.net === 'san' && DIAM_BY_MAT['PVC']) ||
                                   DIAM_BY_MAT[aMatShort] ||
                                   [];
-                                updates[fieldDiam] = matchDiamOption(aDiamList, ramalEl.diametro);
+                                updates[useFieldDiam] = matchDiamOption(
+                                  aDiamList,
+                                  ramalEl.diametro,
+                                );
                               }
                               engineRef.current.updateElementById(ramalEl.id, updates);
                               setContextMenuState((prev) =>
@@ -1385,7 +1412,7 @@ export function BajanteConnectionPanel({
                               if (val !== oldVal && planosCtx?.plans) {
                                 syncExtremeAccessoryToHidroData(
                                   ramalEl.id,
-                                  fieldAcc,
+                                  useFieldAcc,
                                   oldVal,
                                   val,
                                   planosCtx.plans,
@@ -1474,11 +1501,9 @@ export function BajanteConnectionPanel({
                               >
                                 <option value="">— Sin diámetro —</option>
                                 {diamList.map((d) => {
-                                  const idx = d.n.indexOf(' — ');
-                                  const lbl = idx > 0 ? d.n.slice(0, idx) : d.n;
                                   return (
                                     <option key={d.n} value={d.n}>
-                                      {lbl}
+                                      {normalizeDnLabel(d.n)}
                                     </option>
                                   );
                                 })}
@@ -1604,8 +1629,8 @@ export function BajanteCodeEditor({
                   const updates: Record<string, string> = { material: val };
                   if (!isVen && !isGas) {
                     const nd = DIAM_BY_MAT[val] || [];
-                    const cur = ramalEl.diametro ? ramalEl.diametro.split(' — ')[0].trim() : '';
-                    if (cur && !nd.some((d) => d.n.split(' — ')[0].trim() === cur)) {
+                    const cur = ramalEl.diametro || '';
+                    if (cur && !nd.some((d) => d.n === cur)) {
                       updates.diametro = '';
                       updates.diametroInicio = '';
                       updates.diametroFin = '';
@@ -1637,7 +1662,7 @@ export function BajanteCodeEditor({
         <div style={MENU_SECTION_LABEL_STYLE}>Diámetro de ramal</div>
         <div style={{ padding: '0 8px 8px' }}>
           <select
-            value={ramalEl.diametro ? ramalEl.diametro.split(' — ')[0].trim() : ''}
+            value={ramalEl.diametro || ''}
             aria-label="Diámetro de ramal"
             onChange={(e) => {
               const val = e.target.value;
@@ -1721,10 +1746,9 @@ export function BajanteCodeEditor({
           >
             <option value="">— Sin diámetro —</option>
             {diamList.map((d) => {
-              const valClean = d.n.split(' — ')[0].trim();
               return (
-                <option key={d.n} value={valClean}>
-                  {normalizeDnLabel(valClean)}
+                <option key={d.n} value={d.n}>
+                  {normalizeDnLabel(d.n)}
                 </option>
               );
             })}

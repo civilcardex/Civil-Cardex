@@ -5,6 +5,7 @@ import { checkRamalAngles, _firstSegmentAngle } from '../../../lib/PlanoEngine/d
 import {
   autoSplitJunctionAndSumFlow,
   ramalFlowDirectionCheck,
+  flipRamalFlow,
   findGuideTCrossing,
   snapGuideCrossingToEndpoint,
 } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
@@ -147,6 +148,7 @@ export function GuideLineMenu() {
           // la del ramal cruzado, autoSplitJunctionAndSumFlow muestra la alerta y bloquea la
           // unión (item 1). La auto-orientación al crear queda solo para tributarios (item 10).
           const distMm = Math.hypot(pEnd[0] - pStart[0], pEnd[1] - pStart[1]);
+          void (crossing as { ramalId?: string } | undefined);
           const newRamal: PlanoRamal = {
             id: ramId,
             net: effectiveNet,
@@ -184,8 +186,15 @@ export function GuideLineMenu() {
           // recibiendo flujo en el extremo de un ramal sanitario. Misma validación pre-push para
           // san/ll: los ramales creados desde línea guía deben cumplir la dirección de flujo de
           // la red igual que los dibujados a mano (finishRamal).
+          // Para san/ll/vent, el ramal desde guía que CRUZA otro ramal se auto-orienta hacia la
+          // unión (el flujo fluye desde el extremo libre hacia el cruce) — orig. #5. Solo si tras
+          // la auto-orientación sigue en conflicto se bloquea.
           if (effectiveNet === 'vent' || effectiveNet === 'san' || effectiveNet === 'll') {
-            const flowErr = ramalFlowDirectionCheck(eng, newRamal, [newRamal], 0.5);
+            let flowErr = ramalFlowDirectionCheck(eng, newRamal, [newRamal], 0.5);
+            if (flowErr && (effectiveNet === 'san' || effectiveNet === 'll')) {
+              flipRamalFlow(newRamal);
+              flowErr = ramalFlowDirectionCheck(eng, newRamal, [newRamal], 0.5);
+            }
             if (flowErr) {
               eng.triggerAlert('Dirección de flujo incorrecta', flowErr);
               return;

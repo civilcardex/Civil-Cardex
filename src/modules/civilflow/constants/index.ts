@@ -23,6 +23,7 @@ export {
   matHazenC,
   DIAM_OPTIONS,
   DIAM_BAN,
+  DIAM_BAN_SAN,
   DIAM_VENT,
   DIAM_BY_MAT,
 } from './engineeringDataMaterials';

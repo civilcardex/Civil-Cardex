@@ -37,6 +37,8 @@ import { resolveJunctionEntrant } from '../utils/flowDirection';
 import { extremoEntrelazado, flowEndsAt } from '../lib/PlanoEngine/PlanoEngineDrawing';
 import { distToPolyline } from '../lib/shared/geometry';
 import type PlanoEngine from '../lib/PlanoEngine/PlanoEngine';
+import { useTramos } from '../context/TramosContext';
+import { buildSanConnectivity } from '../utils/sanitaryRows';
 
 const HIDROSAN_IDS = new Set(['af', 'ac', 'san']);
 const GAS_ID = 'gas';
@@ -89,6 +91,7 @@ const AparatosPanel = memo(function AparatosPanel_({
   engineRef: React.MutableRefObject<PlanoEngine | null>;
 }) {
   const { plans } = usePlans();
+  const { tramosSan } = useTramos();
   const { aps } = useApparatus();
   const [counts, setCounts] = useState<CountsMap>(loadAll);
   const [hidroData, setHidroData] = useState<HidroDataMap>(loadHidroData);
@@ -192,6 +195,16 @@ const AparatosPanel = memo(function AparatosPanel_({
     return result.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   }, [netId, unitKey, aps]);
 
+  const isBajanteSan = selElement?.tipo === 'bajante' && (netId === 'san' || netId === 'll');
+  const sanConnectivity = useMemo(() => {
+    if (!isBajanteSan) return null;
+    return buildSanConnectivity(
+      tramosSan,
+      plans,
+      items as unknown as import('../utils/sanitaryRows').MergedApBase[],
+    );
+  }, [isBajanteSan, tramosSan, plans, items]);
+
   const target = useMemo(
     () =>
       isCountableTarget(selElement)
@@ -288,8 +301,37 @@ const AparatosPanel = memo(function AparatosPanel_({
           if (!f.pts || f.pts.length < 2) continue;
           if (f.tipo === 'bajante' || f.tipo === 'montante') continue;
           if (mergeSiblingPairs.has([f.id, t.id].sort().join('|'))) continue;
+          // Dos ramales que desembocan en el mismo bajante no se consideran que drenan entre sí
+          const fFinCheck = (f as unknown as { fin?: string }).fin || '';
+          const tFinCheck = (t as unknown as { fin?: string }).fin || '';
+          if (tFinCheck && fFinCheck && tFinCheck === fFinCheck) {
+            const isBajanteFin = (fid: string) => {
+              if (
+                /^B[A-Z]+/.test(fid) ||
+                fid.startsWith('BAN') ||
+                fid.startsWith('BALL') ||
+                fid.startsWith('BREV')
+              )
+                return true;
+              // fallback: buscar en bajantes reales
+              if (engineRef.current?.bajantes?.some((b) => b.code === fid || b.id === fid))
+                return true;
+              return false;
+            };
+            if (isBajanteFin(tFinCheck)) continue;
+          }
           const fEnd = f._tribReversed ? f.pts[0] : f.pts[f.pts.length - 1];
           if (distToPolyline(fEnd, t.pts) >= 2.0) continue;
+          // Si ambos terminan en el mismo bajante geométricamente, no agregar
+          if (engineRef.current?.bajantes) {
+            const bajAtTDown = engineRef.current.bajantes.find(
+              (b) => Math.hypot(b.x - tDownstream[0], b.y - tDownstream[1]) < 2.0,
+            );
+            const bajAtFEnd = engineRef.current.bajantes.find(
+              (b) => Math.hypot(b.x - fEnd[0], b.y - fEnd[1]) < 2.0,
+            );
+            if (bajAtTDown && bajAtFEnd && bajAtTDown.id === bajAtFEnd.id) continue;
+          }
           const touchesTDownstream =
             Math.hypot(fEnd[0] - tDownstream[0], fEnd[1] - tDownstream[1]) < 2.0;
           if (touchesTDownstream) {
@@ -374,6 +416,60 @@ const AparatosPanel = memo(function AparatosPanel_({
 
   const currentMap = useMemo(() => {
     if (!storageKey) return {};
+    // Bajante san/ll: agregar aparatos de todos los ramales/tribs que drenan en él (fullChildrenMap transitivo)
+    if (isBajanteSan && sanConnectivity) {
+      const bajanteTramo = tramosSan.find((t) => t.id === target?.id && t.esBajante);
+      const tKey = bajanteTramo?._key || `${target?.id}-${String(planId ?? '')}`;
+      const visited = new Set<string>([tKey]);
+      const stack = [...(sanConnectivity.fullChildrenMap[tKey] || [])];
+      const descendants: string[] = [];
+      while (stack.length > 0) {
+        const cur = stack.pop()!;
+        if (visited.has(cur)) continue;
+        visited.add(cur);
+        descendants.push(cur);
+        for (const child of sanConnectivity.fullChildrenMap[cur] || [])
+          if (!visited.has(child)) stack.push(child);
+      }
+      const aggregated: Record<string, number> = { ...(counts[storageKey] || {}) };
+      for (const ck of descendants) {
+        const ct = tramosSan.find((x) => x._key === ck);
+        if (!ct || ct.esBajante) continue;
+        if (ct.tipo !== 'ramal' && ct.tipo !== 'tributario') continue;
+        const storageKeyForDesc = `${netId}_${ct.id}_${String(planId ?? ct.planId ?? '')}`;
+        const descCounts = counts[storageKeyForDesc] || {};
+        for (const [apId, v] of Object.entries(descCounts)) {
+          aggregated[apId] = (aggregated[apId] || 0) + (v as number);
+        }
+        // Fallback: si no hay counts por storageKey, usar fixtures directos del tramo (por si tramosSan ya trae fixtures)
+        if (Object.keys(descCounts).length === 0 && ct.fixtures) {
+          for (const [apId, v] of Object.entries(ct.fixtures)) {
+            aggregated[apId] = (aggregated[apId] || 0) + (v as number);
+          }
+        }
+      }
+      // Si no hay descendientes vía sanConnectivity (tramosSan vacío), fallback a recibeDeIds explícitos
+      if (descendants.length === 0 && engineRef.current?.bajantes) {
+        const baj = engineRef.current.bajantes.find((b) => b.id === target?.id);
+        const rIds = baj?.recibeDeIds || [];
+        for (const rid of rIds) {
+          const storageKeyForR = `${netId}_${rid}_${String(planId ?? '')}`;
+          const descCounts = counts[storageKeyForR] || {};
+          for (const [apId, v] of Object.entries(descCounts))
+            aggregated[apId] = (aggregated[apId] || 0) + (v as number);
+          // incluir tributarios de ese ramal
+          for (const trib of engineRef.current?.ramales || []) {
+            if (trib.tipo === 'tributario' && trib.padre === rid) {
+              const storageKeyForTrib = `${netId}_${trib.id}_${String(planId ?? '')}`;
+              const tribCounts = counts[storageKeyForTrib] || {};
+              for (const [apId, v] of Object.entries(tribCounts))
+                aggregated[apId] = (aggregated[apId] || 0) + (v as number);
+            }
+          }
+        }
+      }
+      return aggregated;
+    }
     const own = counts[storageKey] || {};
     if (!mergeKeys) return own;
     const merged: Record<string, number> = { ...own };
@@ -383,7 +479,17 @@ const AparatosPanel = memo(function AparatosPanel_({
       }
     }
     return merged;
-  }, [counts, storageKey, mergeKeys]);
+  }, [
+    counts,
+    storageKey,
+    mergeKeys,
+    isBajanteSan,
+    sanConnectivity,
+    tramosSan,
+    planId,
+    target,
+    netId,
+  ]);
 
   const curHidro = useMemo(() => {
     if (!storageKey) return { accesorios: {}, Lh: 0, nSalidas: 0 };
@@ -414,11 +520,11 @@ const AparatosPanel = memo(function AparatosPanel_({
 
   const inc = (apId: string) => {
     if (!storageKey) return;
-    // Punto de suma combinada (ramal que MUESTRA el total de sus fuentes de empalme): la
-    // grilla queda en solo-lectura — el usuario nunca edita aquí, edita en las fuentes.
-    if (mergeKeys) return;
-    // Ítem 6: máximo UN aparato por ramal (manual) — no aplica en sanitaria ni lluvias.
-    if (ownTotal >= 1 && netId !== 'san' && netId !== 'll') {
+    if (target?.tipo === 'bajante') return; // bajante panel es solo lectura
+    const effectiveMergeKeys = isBajanteSan ? null : mergeKeys;
+    if (effectiveMergeKeys) return;
+    // Ítem 6: máximo UN aparato por ramal (manual)
+    if (ownTotal >= 1 && netId !== 'll') {
       engineRef.current?.triggerAlert(
         'Máximo 1 aparato por ramal-tributario',
         'Un ramal/tributario admite máximo un aparato asignado manualmente. Si necesitas más unidades, crea otro ramal o tributario desde el cuerpo de este.',
@@ -494,14 +600,19 @@ const AparatosPanel = memo(function AparatosPanel_({
         targetDiamField = 'diametroInicio';
       }
       if (targetField && targetDiamField) {
-        const updates: Record<string, unknown> = { [targetField]: 'codo90rmSube' };
+        // Sifón (aparato 'sif') dibuja el glifo de sifón (accesorio 'sifon'), no el codo 90°.
+        // El conteo de accesorios sigue sumando un codo 90° por sifón (requisito orig. #3).
+        const isSif = apId === 'sif';
+        const accType = isSif ? 'sifon' : 'codo90rmSube';
+        const updates: Record<string, unknown> = { [targetField]: accType };
         const diamListSan = DIAM_BY_MAT['PVC'] || [];
         const diamVal = live.diametro ? matchDiamOption(diamListSan, live.diametro) : '';
         if (diamVal) (updates as Record<string, unknown>)[targetDiamField] = diamVal;
         eng.updateElementById(live.id, updates);
         eng.render();
         const planId = eng._loadedPlanId ?? '';
-        bumpHidroAccesorio('san', 'codo90rmSube', 1, live.id, planId);
+        if (isSif) bumpHidroAccesorio('san', 'codo90rmSube', 1, live.id, planId);
+        else bumpHidroAccesorio('san', 'codo90rmSube', 1, live.id, planId);
       }
     }
     setCounts((prev) => {
@@ -512,6 +623,7 @@ const AparatosPanel = memo(function AparatosPanel_({
 
   const dec = (apId: string) => {
     if (!storageKey) return;
+    if (target?.tipo === 'bajante') return; // solo lectura
     const curBefore = { ...(counts[storageKey] || {}) };
     const vBefore = (curBefore[apId] || 0) - 1;
     if (vBefore <= 0 && targetId) {
@@ -526,29 +638,35 @@ const AparatosPanel = memo(function AparatosPanel_({
           eng.render();
           eng._markDirty();
         }
-        // Sanitaria: al quitar el último aparato, también quitar el codo 90° sube del extremo libre
+        // Sanitaria: al quitar el último aparato, también quitar el accesorio del extremo libre
+        // (codo 90° sube o sifón) — orig. usuario #5: quitar el sifón desde el panel debe quitar
+        // su símbolo en el dibujo.
         if (live.net === 'san') {
           const totalAfter = Object.entries(counts[storageKey] || {}).reduce(
             (s, [k, v]) => s + (k === apId ? Math.max(0, v - 1) : v),
             0,
           );
           if (totalAfter === 0) {
-            const hasCodoInicio = live.accesorioInicio === 'codo90rmSube';
-            const hasCodoFin = live.accesorioFin === 'codo90rmSube';
-            if (hasCodoInicio || hasCodoFin) {
+            const accIni = live.accesorioInicio;
+            const accFin = live.accesorioFin;
+            const hasAccIni = accIni === 'codo90rmSube' || accIni === 'sifon';
+            const hasAccFin = accFin === 'codo90rmSube' || accFin === 'sifon';
+            if (hasAccIni || hasAccFin) {
               const updates: Record<string, unknown> = {};
-              if (hasCodoInicio) {
+              if (hasAccIni) {
                 updates.accesorioInicio = '';
                 updates.diametroInicio = '';
               }
-              if (hasCodoFin) {
+              if (hasAccFin) {
                 updates.accesorioFin = '';
                 updates.diametroFin = '';
               }
               eng.updateElementById(targetId, updates);
               eng.render();
               const planId = eng._loadedPlanId ?? '';
-              bumpHidroAccesorio('san', 'codo90rmSube', -1, targetId, planId);
+              if (hasAccIni || hasAccFin) {
+                bumpHidroAccesorio('san', 'codo90rmSube', -1, targetId, planId);
+              }
             }
           }
         }
@@ -815,7 +933,7 @@ const AparatosPanel = memo(function AparatosPanel_({
                   dec={dec}
                   targetId={targetId}
                   accent={accent}
-                  disabled={!!mergeKeys}
+                  disabled={isBajanteSan ? true : !!mergeKeys}
                 />
                 {items.length === 0 && (
                   <div

@@ -6,7 +6,7 @@ import { usePlans } from '../context/PlansContext';
 import { renderStatus } from '../utils/componentHelpers';
 import { pisoCorto, DIAM_OPTIONS, SAN_UC_IDS, APARATOS_DEF } from '../constants';
 import { caudalHunterLPS, factorSimultaneidad } from '../utils/calcSanitaryCore';
-import { writeDiametroToDrawing } from '../utils/writeDiameterToDrawing';
+import { writeDiametroToDrawing, writePendienteToDrawing } from '../utils/writeDiameterToDrawing';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck';
 import { buildSanConnectivity, computeSanRows } from '../utils/sanitaryRows';
 
@@ -444,11 +444,36 @@ export default function DisenosSanitarios() {
                           >
                             {n > 0 ? n.toFixed(3) : '—'}
                           </td>
-                          <td
-                            className="c"
-                            style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
-                          >
-                            {sVal > 0 ? sVal : '—'}
+                          <td className="c" style={{ padding: '1px 2px' }}>
+                            {edit ? (
+                              <input
+                                type="text"
+                                inputMode="decimal"
+                                value={sVal > 0 ? String(sVal) : ''}
+                                placeholder="—"
+                                onChange={(e) => {
+                                  const raw = e.target.value
+                                    .replace(/,/g, '.')
+                                    .replace(/[^0-9.]/g, '');
+                                  const v = parseFloat(raw) || 0;
+                                  writePendienteToDrawing(tKey, 'san', v, plans);
+                                }}
+                                onBlur={(e) => {
+                                  const v = parseFloat(e.target.value.replace(/,/g, '.')) || 0;
+                                  writePendienteToDrawing(tKey, 'san', v, plans);
+                                }}
+                                style={{
+                                  width: 50,
+                                  fontSize: 9,
+                                  textAlign: 'center',
+                                  padding: '1px 2px',
+                                }}
+                              />
+                            ) : sVal > 0 ? (
+                              sVal
+                            ) : (
+                              '—'
+                            )}
                           </td>
                           <td
                             className="c"

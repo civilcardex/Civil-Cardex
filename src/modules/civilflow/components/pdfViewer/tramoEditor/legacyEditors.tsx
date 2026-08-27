@@ -1,4 +1,4 @@
-import { DIAM_BY_MAT, DIAM_BAN, DIAM_VENT } from '../../../constants';
+import { DIAM_BY_MAT, DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT } from '../../../constants';
 import { VENTILACION, NETS_WITH_MULTIPLE_MATERIALS } from '../../../pages/catalog/catalogData';
 import { DIAMETROS_AF } from '../../../constants/hydraulicData';
 import { CAT_GAS, GAS_DN_LABELS, GAS } from '../../../constants/engineeringDataGas';
@@ -186,7 +186,6 @@ export function CalentadorEditor({
 
 export function BajanteEditor({
   selElement,
-  activeNet,
   engineRef,
   setSelElement,
   handleUpdateSel,
@@ -260,7 +259,12 @@ export function BajanteEditor({
               style={SELECT_STYLE}
             >
               <option value="">—</option>
-              {(selElement.net === 'vent' ? DIAM_VENT : DIAM_BAN).map((d) => (
+              {(selElement.net === 'vent'
+                ? DIAM_VENT
+                : selElement.net === 'san'
+                  ? DIAM_BAN_SAN
+                  : DIAM_BAN
+              ).map((d) => (
                 <option key={d.pulg} value={d.nom}>
                   {normalizeDnLabel(d.nom)}
                 </option>
@@ -408,7 +412,12 @@ export function BajanteEditor({
               style={SELECT_STYLE}
             >
               <option value="">—</option>
-              {(selElement.net === 'vent' ? DIAM_VENT : DIAM_BAN).map((d) => (
+              {(selElement.net === 'vent'
+                ? DIAM_VENT
+                : selElement.net === 'san'
+                  ? DIAM_BAN_SAN
+                  : DIAM_BAN
+              ).map((d) => (
                 <option key={d.pulg} value={d.nom}>
                   {normalizeDnLabel(d.nom)}
                 </option>
@@ -538,7 +547,7 @@ export function BajanteEditor({
             })}
           </div>
         </div>
-        {activeNet === 'san' && (
+        {selElement.net === 'san' && (
           <div style={{ width: '100%' }}>
             <div
               style={{
@@ -605,6 +614,37 @@ export function BajanteEditor({
                     </span>
                   </label>
                 ));
+              })()}
+            </div>
+          </div>
+        )}
+        {selElement.net === 'san' && (
+          <div style={{ width: '100%' }}>
+            <div
+              style={{
+                fontSize: 12,
+                color: '#9BA8AA',
+                fontFamily: "'Geist',monospace",
+                marginBottom: 2,
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+              }}
+            >
+              Aparatos (ramales conectados)
+            </div>
+            <div style={{ fontSize: 12, color: '#8AB4D6', fontFamily: "'Geist',monospace" }}>
+              {(() => {
+                const eng = engineRef.current;
+                if (!eng) return '—';
+                const rIds: string[] = selElement.recibeDeIds || [];
+                const parts: string[] = [];
+                for (const rid of rIds) {
+                  const rr = eng.ramales.find((x) => x.id === rid);
+                  if (!rr) continue;
+                  const aps = [rr.aparatoInicio, rr.aparatoFin].filter(Boolean) as string[];
+                  parts.push(aps.length ? `${rr.label}: ${aps.join(', ')}` : `${rr.label}: —`);
+                }
+                return parts.length ? parts.join(' · ') : 'Sin aparatos';
               })()}
             </div>
           </div>
@@ -703,9 +743,7 @@ export function RamalEditor({
     // red (diamSel) — asignar el diámetro a un ramal hacía que el SIGUIENTE ramal sin
     // diámetro que se seleccionaba apareciera con el mismo valor (default de la red).
     currentDiam =
-      isSelActiveNet && selElement
-        ? (selElement.diametro || '').split(' — ')[0].trim()
-        : diamSel[activeNet] || '';
+      isSelActiveNet && selElement ? selElement.diametro || '' : diamSel[activeNet] || '';
   }
   const showPend = activeNet === 'san' || activeNet === 'll';
   const showDeltaZ = activeNet === 'af' || activeNet === 'ac' || activeNet === 'gas';
@@ -835,8 +873,8 @@ export function RamalEditor({
                 if (!engineRef.current || !selElement) return;
                 const updates: Record<string, unknown> = { material: mat };
                 const nd = DIAM_BY_MAT[mat] || [];
-                const curD = selElement.diametro ? selElement.diametro.split(' — ')[0].trim() : '';
-                if (curD && !nd.some((d) => d.n.split(' — ')[0].trim() === curD)) {
+                const curD = selElement.diametro || '';
+                if (curD && !nd.some((d) => d.n === curD)) {
                   updates.diametro = '';
                   updates.diametroInicio = '';
                   updates.diametroFin = '';
@@ -1043,10 +1081,9 @@ export function RamalEditor({
               >
                 <option value="">Sin diámetro</option>
                 {diamList.map((d) => {
-                  const valClean = d.n.split(' — ')[0].trim();
                   return (
-                    <option key={d.n} value={valClean}>
-                      {normalizeDnLabel(valClean)}
+                    <option key={d.n} value={d.n}>
+                      {normalizeDnLabel(d.n)}
                     </option>
                   );
                 })}

@@ -246,7 +246,6 @@ function PdfViewer_({
       return 'ramal';
     }
   });
-  const [padreTributarioId, setPadreTributarioId] = useState<string | null>(null);
   const [snapOn, setSnapOn] = useState(() => {
     try {
       const v = sessionStorage.getItem(VISOR_SNAP_ON_KEY);
@@ -694,9 +693,21 @@ function PdfViewer_({
       const cleanStore = (key: string) => {
         const store = loadFromStorage(key, {}) as Record<string, unknown>;
         let changed = false;
+        // Ids actuales tras el borrado+renumerado (el nuevo RS1 ya existe en engine)
+        const currentIds = new Set([
+          ...(engineRef.current?.ramales.map((r) => r.id) ?? []),
+          ...(engineRef.current?.bajantes.map((b) => b.id) ?? []),
+          ...(engineRef.current?.ramales.map((r) => r.label) ?? []),
+        ]);
         for (const k of Object.keys(store)) {
+          const segs = k.split('_');
+          const idInKey = segs[1] ?? '';
           for (const id of ids) {
-            if (k.includes(id)) {
+            const isExact = idInKey === id;
+            const isTributaryOfDeleted = idInKey.startsWith('T') && idInKey.endsWith(id);
+            if ((isExact || isTributaryOfDeleted) && !currentIds.has(idInKey)) {
+              // No borrar si el nuevo ramal renumerado ocupa ese mismo id (ej. RS2→RS1)
+              // currentIds contiene el nuevo RS1, así que no se borra
               delete store[k];
               changed = true;
               break;
@@ -1360,7 +1371,6 @@ function PdfViewer_({
   useEffect(() => {
     if (resetKey === prevResetKey.current) return;
     prevResetKey.current = resetKey;
-    setPadreTributarioId(null);
     if (engineRef.current) engineRef.current.setPadreTributario(null);
   }, [resetKey]);
 
@@ -1823,14 +1833,7 @@ function PdfViewer_({
             visibleNets={finalVisibleNets}
           />
 
-          <TipoTramoSelector
-            tipoTramo={tipoTramo}
-            setTipoTramo={setTipoTramo}
-            padreTributarioId={padreTributarioId}
-            setPadreTributarioId={setPadreTributarioId}
-            drawnElements={drawnElements}
-            engineRef={engineRef}
-          />
+          <TipoTramoSelector tipoTramo={tipoTramo} setTipoTramo={setTipoTramo} />
 
           {tool !== 'guide' && (
             <div style={rightSidebarOpacity}>
@@ -1879,8 +1882,7 @@ function PdfViewer_({
 
               {!(
                 selElement &&
-                (selElement.tipo === 'bajante' ||
-                  selElement.tipo === 'montante' ||
+                (selElement.tipo === 'montante' ||
                   selElement.tipo === 'area' ||
                   selElement.id?.startsWith('AR') ||
                   selElement.id?.startsWith('GL'))

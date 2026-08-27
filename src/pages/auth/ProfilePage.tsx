@@ -121,17 +121,24 @@ function ProfilePage() {
       }
 
       const plansMeta = (data?.plans_meta as PlanMeta[]) || [];
-      const restoredMeta: PlanMeta[] = [];
-      for (const m of plansMeta) {
-        const file = await downloadPlanPDF(proy.id, m.id, m.name || `plano_${m.id}.pdf`);
-        if (file) {
-          await storePDF(m.id, file);
-          restoredMeta.push(m);
-        }
-      }
-      if (restoredMeta.length > 0) saveToStorage(PLANS_META_KEY, restoredMeta);
+      // Carga silenciosa (orig. usuario): guardar la metadata de planos INMEDIATAMENTE y navegar
+      // sin esperar los PDFs — cada PDF se descarga EN PARALELO en background y se cachea en
+      // IndexedDB. Al montar, PlansContext lee la metadata de localStorage y carga los PDFs
+      // faltantes lazy por piso.
+      if (plansMeta.length > 0) saveToStorage(PLANS_META_KEY, plansMeta);
 
       navigate('/civilflowareatrabajo');
+
+      void (async () => {
+        const resolved = await Promise.all(
+          plansMeta.map(async (m) => {
+            const file = await downloadPlanPDF(proy.id, m.id, m.name || `plano_${m.id}.pdf`);
+            if (file) await storePDF(m.id, file);
+            return m;
+          }),
+        );
+        if (resolved.length > 0) saveToStorage(PLANS_META_KEY, resolved);
+      })();
     } catch (err) {
       devError('Error abriendo proyecto:', err);
     } finally {

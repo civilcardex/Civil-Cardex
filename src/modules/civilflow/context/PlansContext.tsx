@@ -139,12 +139,13 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
             metaChanged = true;
           }
         } else {
-          const file = await loadPDF(m.id);
           sanitizedMeta.push(m);
-          files.push(file);
+          files.push(null);
         }
       }
-
+      // Carga silenciosa (perf): los PDFs se cargan desde IndexedDB EN PARALELO (no secuencial)
+      // y en background — el visor abre con la metadata de todos los planos al instante y cada
+      // PDF se resuelve conforme llega, sin bloquear el montaje (carga lazy por piso).
       if (metaChanged) {
         persistMeta(sanitizedMeta.map(({ id, ...r }) => ({ id, ...r })));
       }
@@ -171,6 +172,52 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       }
       if (restored.length > 0) setPlans(restored);
       setRestoreDone(true);
+      // PDFs restantes en background (paralelo): poblar `plans` conforme se resuelven.
+      void (async () => {
+        const missing: { id: number | string; m: PlanMeta }[] = [];
+        for (let i = 0; i < sanitizedMeta.length; i++) {
+          if (!files[i]) missing.push({ id: sanitizedMeta[i].id, m: sanitizedMeta[i] });
+        }
+        let pending = missing;
+        // Reintento periódico: los PDFs pueden estar descargándose en background desde el perfil
+        // (carga silenciosa) cuando este contexto monta — si no están aún en IndexedDB, se
+        // reintenta hasta que todos se resuelvan o expire un límite, y cada lote nuevo se
+        // publica en `plans` conforme llega.
+        const MAX_ATTEMPTS = 40; // ~20s a 500ms
+        for (let attempt = 0; attempt < MAX_ATTEMPTS && pending.length > 0; attempt++) {
+          const resolved = await Promise.all(pending.map((x) => loadPDF(Number(x.id))));
+          const late = resolved
+            .map((file, i) => ({ file, m: pending[i].m }))
+            .filter((x): x is { file: File; m: PlanMeta } => !!x.file);
+          if (late.length > 0) {
+            setPlans((prev) => {
+              const next = [...prev];
+              for (const { file, m } of late) {
+                if (next.some((p) => p.id === m.id)) continue;
+                next.push({
+                  id: m.id,
+                  file,
+                  name: file.name,
+                  nivel: m.nivel,
+                  scale: m.scale,
+                  status: m.status,
+                  origen: m.origen,
+                  factorX: m.factorX || null,
+                  factorY: m.factorY || null,
+                  calGlobal: m.calGlobal || null,
+                  definedScale: m.definedScale || null,
+                });
+              }
+              return next;
+            });
+            const lateIds = new Set(late.map((x) => String(x.m.id)));
+            pending = pending.filter((x) => !lateIds.has(String(x.id)));
+          }
+          if (pending.length > 0 && attempt < MAX_ATTEMPTS - 1) {
+            await new Promise((r) => setTimeout(r, 500));
+          }
+        }
+      })();
     })();
     // Montaje único a propósito (protegido por restoredRef arriba) — plans.length solo se lee
     // para el valor actual de la guarda en esa única ejecución, no para re-correr en cada cambio.
@@ -201,29 +248,33 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
       const data = await loadProyectoData(proyectoId);
       const meta = data?.plans_meta;
       if (!ignore && meta && meta.length > 0) {
+        // Carga silenciosa: descargar PDFs de la nube EN PARALELO (no secuencial) — cada uno
+        // se cachea en IndexedDB y los planos se publican a medida que llegan.
         const restored: PlanItem[] = [];
-        for (const m of meta) {
-          const file = await downloadPlanPDF(proyectoId, m.id, m.name);
-          if (file) {
-            const item: PlanItem = {
-              id: m.id,
-              file,
-              name: m.name,
-              nivel: m.nivel,
-              scale: m.scale,
-              status: m.status,
-              origen: m.origen,
-              factorX: m.factorX || null,
-              factorY: m.factorY || null,
-              calGlobal: m.calGlobal || null,
-              definedScale: m.definedScale || null,
-            };
-            restored.push(item);
-            storePDF(m.id, file).catch((e) => {
-              devError('storePDF error during cloud restore:', e);
-            });
-          }
-        }
+        const makeItem = (m: (typeof meta)[number], file: File): PlanItem => ({
+          id: m.id,
+          file,
+          name: m.name,
+          nivel: m.nivel,
+          scale: m.scale,
+          status: m.status,
+          origen: m.origen,
+          factorX: m.factorX || null,
+          factorY: m.factorY || null,
+          calGlobal: m.calGlobal || null,
+          definedScale: m.definedScale || null,
+        });
+        const resolved = await Promise.all(
+          meta.map(async (m) => {
+            const file = await downloadPlanPDF(proyectoId, m.id, m.name);
+            if (file)
+              storePDF(m.id, file).catch((e) => {
+                devError('storePDF error during cloud restore:', e);
+              });
+            return file ? makeItem(m, file) : null;
+          }),
+        );
+        for (const item of resolved) if (item) restored.push(item);
         if (!ignore && restored.length > 0) setPlans(restored);
       }
       if (!ignore) setCloudRestoreDone(true);

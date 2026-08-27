@@ -166,11 +166,7 @@ export default function ExtremeAccessoryEditor({
       engineRef.current._markDirty();
     };
 
-  const diamLabel = (dn: string) => {
-    const idx = dn.indexOf(' — ');
-    return idx > 0 ? dn.slice(0, idx) : dn;
-  };
-  const diamOptions = diamList.map((d) => ({ n: d.n, label: diamLabel(d.n) }));
+  const diamOptions = diamList.map((d) => ({ n: d.n, label: d.n }));
   const diamValue = (raw: string | undefined) => matchDiamOption(diamList, raw);
 
   return (

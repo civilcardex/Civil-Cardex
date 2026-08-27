@@ -290,7 +290,10 @@ function MidRamalAccessorySelector({
                   );
                   return;
                 }
-                const updates: Record<string, unknown> = { [fieldAcc]: 'codo90rmSube' };
+                // Sifón (aparato 'sif') dibuja el glifo sifón, no codo 90°; conteo sigue sumando codo90.
+                const isSif = val === 'sif';
+                const accType = isSif ? 'sifon' : 'codo90rmSube';
+                const updates: Record<string, unknown> = { [fieldAcc]: accType };
                 const diamListSan = DIAM_BY_MAT['PVC'] || [];
                 const diamVal = fresh.diametro ? matchDiamOption(diamListSan, fresh.diametro) : '';
                 if (diamVal)
@@ -667,8 +670,75 @@ export function RamalMenu() {
     ctx.setContextMenuState(null);
   };
 
+  const convertToRamal = () => {
+    const eng = ctx.engineRef.current;
+    if (!eng) return;
+    const fresh = eng.ramales.find((r) => r.id === ramalEl.id);
+    if (!fresh) return;
+    // El flip de la flecha del renderer depende de `tipo`: san/ll/vent solo aplican
+    // _tribReversed a TRIBUTARIOS; al pasar a ramal el flip vuelve a 1 y la flecha se
+    // invertiría si el tributario traía _tribReversed. Revertir pts + limpiar el flag
+    // deja la flecha apuntando igual que antes de la conversión.
+    const net = fresh.net;
+    if ((net === 'san' || net === 'll' || net === 'vent') && fresh._tribReversed) {
+      fresh.pts = [...fresh.pts].reverse();
+      fresh._tribReversed = undefined;
+    }
+    const pfx = (eng as unknown as { _netCounts?: Record<string, { ramal: number }> })
+      ? net === 'san'
+        ? 'RS'
+        : net === 'll'
+          ? 'RALL'
+          : net === 'af'
+            ? 'RAF'
+            : net === 'ac'
+              ? 'RAC'
+              : 'R'
+      : 'R';
+    // fallback label via allocNetNumber-like: find next free
+    const existingLabels = new Set(eng.ramales.map((r) => r.label));
+    let n = 1;
+    while (existingLabels.has(`${pfx}${n}`)) n++;
+    const updates: Record<string, unknown> = {
+      tipo: 'ramal',
+      padre: null,
+      label: `${pfx}${n}`,
+      pts: fresh.pts,
+      _tribReversed: fresh._tribReversed,
+    };
+    eng.updateElementById(fresh.id, updates);
+    if (ctx.selElement?.id === fresh.id) ctx.setSelElement({ ...ctx.selElement, ...updates });
+    eng.render();
+    eng._markDirty();
+    ctx.setContextMenuState(null);
+  };
   return (
     <>
+      {ramalEl.tipo === 'tributario' && (
+        <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
+          <button
+            type="button"
+            onClick={convertToRamal}
+            style={{ ...MENU_ACTION_BTN_STYLE, textAlign: 'left' }}
+          >
+            Convertir tributario en ramal
+          </button>
+        </div>
+      )}
+      <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
+        <button
+          type="button"
+          onClick={() => {
+            const eng = ctx.engineRef.current;
+            if (!eng) return;
+            eng.deleteSelected([ramalEl.id], { noMerge: true });
+            ctx.setContextMenuState(null);
+          }}
+          style={{ ...MENU_ACTION_BTN_STYLE, color: '#ffb4ab' }}
+        >
+          Borrar trazo
+        </button>
+      </div>
       {ramalEl.tipo !== 'tributario' && tribCandidates.length > 0 && (
         <div
           style={{

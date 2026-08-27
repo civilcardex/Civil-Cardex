@@ -8,7 +8,7 @@ import { useApparatus } from '../context/ApparatusContext';
 import { TRAZOS_PREFIX } from '../constants/storage-keys';
 import { loadFromStorage } from '../services/storageService';
 import { renderStatus, calcUDparcial } from '../utils/componentHelpers';
-import { fmtPiso, DIAM_BAN, DIAM_VENT } from '../constants';
+import { fmtPiso, DIAM_BAN, DIAM_BAN_SAN, DIAM_VENT } from '../constants';
 import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
 import { manning_SAN, caudalHunterLPS } from '../utils/calcSanitaryCore';
 import { parseDescargaEnId } from '../utils/parseDescargaEnId';
@@ -886,7 +886,7 @@ const BajantesTable = memo(function BajantesTable_() {
                           }}
                         >
                           <option value="">—</option>
-                          {DIAM_BAN.map((d) => (
+                          {DIAM_BAN_SAN.map((d) => (
                             <option key={d.pulg} value={d.pulg}>
                               {d.nom}
                             </option>

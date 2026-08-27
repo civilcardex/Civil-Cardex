@@ -3,7 +3,6 @@ import { useTramos } from '../context/TramosContext';
 import { useApparatus } from '../context/ApparatusContext';
 import { usePlans } from '../context/PlansContext';
 import { APARATOS_DEF, SAN_UC_IDS, pisoCorto } from '../constants';
-import { calcUDparcial } from '../utils/componentHelpers';
 import { buildSanConnectivity } from '../utils/sanitaryRows';
 const FixtureUnitCalc_S1: React.CSSProperties = {
   position: 'absolute',
@@ -35,14 +34,20 @@ function CalculoUD() {
     });
   }, [aps]);
 
-  const { componentTotalMap } = useMemo(() => {
+  const { componentTotalMap, fullChildrenMap } = useMemo(() => {
     return buildSanConnectivity(tramosSan, plans, mergedBase);
   }, [plans, tramosSan, mergedBase]);
 
+  // Orig. #12: la tabla incluye ramales y bajantes — primero los ramales del piso, después los
+  // bajantes del piso.
   const displayTramos = useMemo(() => {
     return tramosSan
-      .filter((t) => t.tipo === 'ramal' && !t.esBajante)
-      .sort((a, b) => (a.piso || 0) - (b.piso || 0));
+      .filter((t) => (t.tipo === 'ramal' && !t.esBajante) || t.esBajante)
+      .sort((a, b) => {
+        if ((a.piso || 0) !== (b.piso || 0)) return (a.piso || 0) - (b.piso || 0);
+        if (a.esBajante !== b.esBajante) return a.esBajante ? 1 : -1;
+        return 0;
+      });
   }, [tramosSan]);
 
   const totales = useMemo(() => {
@@ -85,9 +90,9 @@ function CalculoUD() {
                     scope="col"
                     className="col-h"
                     rowSpan={2}
-                    style={{ minWidth: 70, textAlign: 'center' }}
+                    style={{ minWidth: 90, textAlign: 'center' }}
                   >
-                    Tramo
+                    Ramal/Bajante
                   </th>
                   <th
                     scope="col"
@@ -121,16 +126,13 @@ function CalculoUD() {
                   >
                     Aparatos
                   </th>
-                  <th scope="col" className="col-h ok" colSpan={2} style={{ textAlign: 'center' }}>
-                    Unidades de descarga
-                  </th>
                   <th
                     scope="col"
-                    className="col-h"
+                    className="col-h ok"
                     rowSpan={2}
-                    style={{ minWidth: 52, textAlign: 'center', display: 'none' }}
+                    style={{ minWidth: 90, textAlign: 'center' }}
                   >
-                    Bajante
+                    Unidades de descarga totales
                   </th>
                 </tr>
                 <tr>
@@ -145,19 +147,13 @@ function CalculoUD() {
                       <span style={{ fontSize: 12, fontWeight: 400 }}>{d.ud} UD</span>
                     </th>
                   ))}
-                  <th scope="col" className="col-h ok" style={{ textAlign: 'center' }}>
-                    Parcial
-                  </th>
-                  <th scope="col" className="col-h ok" style={{ textAlign: 'center' }}>
-                    Total
-                  </th>
                 </tr>
               </thead>
               <tbody>
                 {displayTramos.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={4 + mergedBase.length + 2}
+                      colSpan={4 + mergedBase.length + 1}
                       style={{
                         padding: '24px 0',
                         textAlign: 'center',
@@ -171,8 +167,31 @@ function CalculoUD() {
                 ) : (
                   displayTramos.map((t) => {
                     const tKey = t._key || `${t.id}-${t.piso}`;
-                    const parcial = calcUDparcial(t, mergedBase);
                     const acum = componentTotalMap[tKey] || 0;
+                    // Desglose de aparatos: incluye tributarios y ramales que llegan vía fullChildrenMap transitivo
+                    const getAllDescendants = (start: string): string[] => {
+                      const visited = new Set<string>([start]);
+                      const stack = [...(fullChildrenMap[start] || [])];
+                      const out: string[] = [];
+                      while (stack.length > 0) {
+                        const cur = stack.pop()!;
+                        if (visited.has(cur)) continue;
+                        visited.add(cur);
+                        out.push(cur);
+                        for (const child of fullChildrenMap[cur] || [])
+                          if (!visited.has(child)) stack.push(child);
+                      }
+                      return out;
+                    };
+                    const descendantKeys = getAllDescendants(tKey);
+                    const extraFixtures: Record<string, number> = { ...t.fixtures };
+                    for (const ck of descendantKeys) {
+                      const ct = tramosSan.find((x) => (x._key || `${x.id}-${x.piso}`) === ck);
+                      if (!ct || ct.esBajante) continue;
+                      if (ct.tipo !== 'ramal' && ct.tipo !== 'tributario') continue;
+                      for (const d of mergedBase)
+                        extraFixtures[d.id] = (extraFixtures[d.id] || 0) + (ct.fixtures[d.id] || 0);
+                    }
                     return (
                       <tr key={tKey}>
                         <td className="c">
@@ -218,21 +237,10 @@ function CalculoUD() {
                                 color: d._disabled ? 'var(--txt3)' : 'var(--txt)',
                               }}
                             >
-                              {t.fixtures[d.id] ?? 0}
+                              {extraFixtures[d.id] ?? 0}
                             </span>
                           </td>
                         ))}
-                        <td
-                          className="c"
-                          style={{
-                            fontFamily: 'var(--mono)',
-                            fontWeight: 700,
-                            color: 'var(--txt)',
-                            fontSize: 13,
-                          }}
-                        >
-                          {parcial}
-                        </td>
                         <td
                           className="c"
                           style={{
@@ -244,7 +252,6 @@ function CalculoUD() {
                         >
                           {acum}
                         </td>
-                        <td style={{ display: 'none' }}></td>
                       </tr>
                     );
                   })
@@ -296,7 +303,6 @@ function CalculoUD() {
                       </td>
                     );
                   })}
-                  <td style={{ borderTop: '2px solid var(--line)' }}></td>
                   <td
                     className="c"
                     style={{
@@ -310,7 +316,6 @@ function CalculoUD() {
                   >
                     {totalUD} UD
                   </td>
-                  <td style={{ borderTop: '2px solid var(--line)', display: 'none' }}></td>
                 </tr>
               </tfoot>
             </table>

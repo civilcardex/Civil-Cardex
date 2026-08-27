@@ -325,7 +325,11 @@ export function buildTribFromGuide(
   eng.ramales.push(newTrib);
   // Igual que un tributario terminado a mano sobre su padre: parte al padre en existing+
   // downstream en el punto de cruce y fija la dirección del tributario (cola hacia la unión).
+  // Flag transitorio: el padre de un tributario de guía es el ramal cruzado (explícito) — no
+  // debe validarse contra la selección manual de padre en la barra (orig. #5).
+  (eng as unknown as { _guideTributary?: boolean })._guideTributary = true;
   autoSplitJunctionAndSumFlow(eng, newTrib);
+  (eng as unknown as { _guideTributary?: boolean })._guideTributary = false;
   // El usuario pide que una conversión de línea guía a tributario NO dibuje NINGÚN símbolo de
   // accesorio (codo/tee) en la unión — ni siquiera uno que viniera persistido de una conversión
   // anterior con código viejo. En el punto de cruce se anula todo accesorio de extremo que otro
