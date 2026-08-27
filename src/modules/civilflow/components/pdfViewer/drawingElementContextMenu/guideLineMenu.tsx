@@ -1,6 +1,6 @@
 ﻿import { useState } from 'react';
 import type { PlanoGuideLine, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
-import { NETS, allocNetNumber } from '../../../lib/PlanoEngine/PlanoState';
+import { NETS, allocNetNumber, uniqRamalId } from '../../../lib/PlanoEngine/PlanoState';
 import { checkRamalAngles, _firstSegmentAngle } from '../../../lib/PlanoEngine/drawingAngles';
 import {
   autoSplitJunctionAndSumFlow,
@@ -229,7 +229,7 @@ export function GuideLineMenu() {
             // Misma red restringida que la visibilidad del botón (ver tCross arriba)
             if (!padre || (padre.net !== 'af' && padre.net !== 'ac' && padre.net !== 'gas')) return;
             const [p0, p1] = liveGuide.pts;
-            const base = 'T' + Date.now();
+            const base = uniqRamalId();
             const t1 = buildTribFromGuide(eng, padre, crossing.point, [p0[0], p0[1]], base + '_a');
             if (!t1) return;
             const t2 = buildTribFromGuide(eng, padre, crossing.point, [p1[0], p1[1]], base + '_b');
@@ -284,7 +284,7 @@ export function GuideLineMenu() {
               padre,
               [crossing.point[0], crossing.point[1]],
               freeEnd,
-              'T' + Date.now(),
+              uniqRamalId(),
             );
             if (!trib) return;
             eng.guideLines = eng.guideLines.filter((g) => g.id !== guide.id);

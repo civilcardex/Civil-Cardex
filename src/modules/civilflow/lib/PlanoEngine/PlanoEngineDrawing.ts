@@ -4,6 +4,7 @@ import {
   allocNetNumber,
   allocTributaryNumber,
   rootTributarioLabel,
+  uniqRamalId,
 } from './PlanoState';
 import { moveAparatoCount } from '../../utils/syncExtremeAccessory';
 import type { PlanoRamal, PlanoBajante, PlanoArea } from './PlanoState';
@@ -202,8 +203,7 @@ export function maxDiametroLabel(a: string, b: string): string {
 function canJoinTributario(engine: IPlanoEngineCore, target: PlanoRamal): boolean {
   if (engine.tipoTramo !== 'tributario') return false;
   if (target.tipo !== 'tributario') return false;
-  if (target.net !== 'af' && target.net !== 'ac' && target.net !== 'gas') return false;
-  return target.padre === engine.padreTributario;
+  return true;
 }
 
 /** Invierte la dirección de flujo de un ramal existente IN PLACE — misma operación que el botón
@@ -237,14 +237,10 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         // que corriera ese chequeo; esto es la última palabra, verificada directamente contra la
         // posición real del extremo del ramal terminado.
         if (incoming.tipo === 'tributario') {
-          // Excepción AC/AF/gas (ítem 7): un tributario puede unirse al extremo de OTRO
-          // tributario — pero solo cuando ambos comparten el mismo ramal padre seleccionado. El
-          // símbolo de la unión lo genera el flujo AccesorioModal (finishRamal →
-          // detectAccesorioTrigger).
-          const tribToTribOk =
-            existing.tipo === 'tributario' &&
-            (existing.net === 'af' || existing.net === 'ac' || existing.net === 'gas') &&
-            existing.padre === incoming.padre;
+          // Ítem 7/2/3: un tributario puede unirse al extremo de OTRO tributario en cualquier
+          // red (no solo af/ac/gas), sin exigir el mismo ramal padre — para dibujar un tributario
+          // conectado a otro tributario. El símbolo de la unión lo genera el flujo AccesorioModal.
+          const tribToTribOk = existing.tipo === 'tributario';
           if (incoming.padre && existing.id !== incoming.padre && !tribToTribOk) {
             engine.triggerAlert(
               'Ramal padre incorrecto',
@@ -283,7 +279,16 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       // compartido que usa vectores LOCALES por extremo/ramal tocado (ítem 2) e incluye la regla
       // del codo reventilado vent↔san (ítem 5). Dirección equivocada = sin unión, alerta.
       if (incoming.net === 'san' || incoming.net === 'll' || incoming.net === 'vent') {
-        const flowErr = ramalFlowDirectionCheck(engine, incoming, [], TOL);
+        // Cuando el incoming aterriza a mitad de cuerpo de `existing` (segIdx >= 0), es un SPLIT
+        // de unión: la dirección del incoming se auto-orienta en el split de abajo (misma
+        // convención que af/ac/gas) y el ramal se parte en dos — el check de flujo san no
+        // aplica aquí. Sin esto, dibujar un ramal/tributario sobre el cuerpo de otro en san se
+        // bloqueaba con "Dirección de flujo incorrecta" y el split nunca ocurría (bug: no se
+        // partían). Lo mismo para trib-trib (id. comentario previo).
+        const isSplitBody = segIdx >= 0;
+        const isTribTrib = existing.tipo === 'tributario' && incoming.tipo === 'tributario';
+        const flowErr =
+          isSplitBody || isTribTrib ? null : ramalFlowDirectionCheck(engine, incoming, [], TOL);
         if (flowErr) {
           // Sin auto-orientación: una conexión san/ll/vent con dirección de flujo distinta a la
           // del ramal principal se bloquea con alerta. La única auto-orientación permitida ocurre
@@ -322,10 +327,7 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         // chequeo (que solo sabe comparar contra el id del ramal padre real) disparaba antes de
         // llegar al manejo tributario-a-tributario de abajo, bloqueando una unión del mismo
         // padre perfectamente válida.
-        const tribToTribOk =
-          existing.tipo === 'tributario' &&
-          (existing.net === 'af' || existing.net === 'ac' || existing.net === 'gas') &&
-          existing.padre === incoming.padre;
+        const tribToTribOk = existing.tipo === 'tributario';
         if (incoming.padre && existing.id !== incoming.padre && !tribToTribOk) {
           engine.triggerAlert(
             'Ramal padre incorrecto',
@@ -359,22 +361,10 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
           engine.triggerAlert('Conexión no permitida', 'Los ramales no se conectan a tributarios.');
           continue;
         }
-        // Tributario-a-tributario de AC/AF/gas (ítem 7): permitido solo cuando ambos tributarios
-        // comparten el mismo ramal padre seleccionado — el punto de unión es entonces la unión
-        // compartida con el padre, y el símbolo de tee lo genera el flujo AccesorioModal después.
-        // Un tributario nunca es un tronco, así que no hay división de todos modos.
-        if (
-          incoming.tipo === 'tributario' &&
-          (existing.net === 'af' || existing.net === 'ac' || existing.net === 'gas')
-        ) {
-          if (existing.padre === incoming.padre) continue;
-          engine.triggerAlert(
-            'Ramal padre incorrecto',
-            'Los tributarios deben conectarse al mismo ramal padre seleccionado.',
-          );
-          continue;
-        }
-        continue;
+        // Tributario-a-tributario (ítem 7/2/3): permitido en cualquier red y sin exigir el mismo
+        // ramal padre. Un tributario SÍ puede partir (splitear) a otro tributario: el tramo que
+        // cae a mitad de cuerpo del tributario existente lo divide igual que un ramal, creando
+        // el `downstream` correspondiente. No cortamos aquí — dejamos fluir al split de abajo.
       }
 
       // Las uniones entre redes san↔vent a mitad de cuerpo NO deben dividir el ramal existente.
@@ -449,12 +439,17 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       const netDef = NETS.find((n) => n.id === existing.net);
       const pfx = netDef ? netDef.lbl : 'R';
       const isTrib = existing.tipo === 'tributario';
+      // Numeración CONTRA LA RAÍZ (ítem 10/2): un tributario cuyo padre es otro tributario se
+      // numera contra el ramal raíz con consecutivo global — T5RS1, nunca T1T1RS1. `allocTributaryNumber`
+      // ya salta labels existentes, así que el consecutivo no colisiona con los tributarios
+      // directos del raíz.
+      const rootLabel = isTrib ? rootTributarioLabel(engine.ramales, existing.id) : '';
       const cnt = isTrib
-        ? allocTributaryNumber(engine, existing.label || '')
+        ? allocTributaryNumber(engine, rootLabel)
         : allocNetNumber(engine, existing.net, 'ramal', (n) =>
             engine.ramales.some((r) => r.id === `${pfx}${n}` || r.label === `${pfx}${n}`),
           );
-      const newId = isTrib ? 'T' + Date.now() : pfx + cnt;
+      const newId = isTrib ? uniqRamalId() : pfx + cnt;
       // Posición/ángulo propios de la etiqueta desde el punto medio del segmento aguas abajo —
       // extender `...existing` solo dejaba la etiqueta en la posición vieja de la porción aguas
       // arriba, aterrizando justo encima de la etiqueta propia (sin cambios) de `existing`, ya
@@ -466,7 +461,7 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         id: newId,
         pts: downstreamPts,
         totalL: calculateRamalLength(downstreamPts, engine),
-        label: existing.tipo === 'tributario' ? `T${cnt}${existing.label || ''}` : `${pfx}${cnt}`,
+        label: isTrib ? `T${cnt}${rootLabel}` : `${pfx}${cnt}`,
         labelX: downLabelX,
         labelY: downLabelY,
         labelAngle: downLabelAngle,
@@ -484,7 +479,10 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         aparatoInicio: '',
         aparatoFin: farAparato || '',
         sifonLabelFin: farSifonLabel,
-        bloqueado: true,
+        // El tramo resultante de un split debe ser EDITABLE (mover, etiqueta, etc.) — si hereda
+        // `bloqueado:true` (caso tributario, que se crea bloqueado), el usuario no puede mover su
+        // etiqueta ni arrastrarlo, solo seleccionarlo. Ítem usuario.
+        bloqueado: isTrib ? false : true,
         mergesFrom: [existing.id, incoming.id],
       };
       engine.ramales.push(downstream);
@@ -550,7 +548,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     : allocNetNumber(engine, engine.activeRamal!.net, 'ramal', (n) =>
         engine.ramales.some((r) => r.id === `${netPfx}${n}` || r.label === `${netPfx}${n}`),
       );
-  const id = isTrib ? 'T' + Date.now() : netPfx + cnt;
+  const id = isTrib ? uniqRamalId() : netPfx + cnt;
   const firstAngle = _firstSegmentAngle(engine.activeRamal.pts);
 
   const pts = engine.activeRamal.pts;
@@ -629,16 +627,52 @@ export function finishRamal(engine: IPlanoEngineCore): void {
       }
       return false;
     };
-    if (r.tipo === 'tributario') {
+    // ¿El punto cae sobre el CUERPO (interior de un segmento, no extremo) de otro ramal?
+    const onBody = (p: number[]): boolean => {
+      for (const other of engine.ramales) {
+        if (!other.pts || other.pts.length < 2 || other.id === r.id) continue;
+        if (other.net !== r.net) continue;
+        for (let i = 0; i < other.pts.length - 1; i++) {
+          const [ax, ay] = other.pts[i];
+          const [bx, by] = other.pts[i + 1];
+          const dx = bx - ax,
+            dy = by - ay;
+          const lenSq = dx * dx + dy * dy;
+          if (lenSq < 0.0001) continue;
+          const t = ((p[0] - ax) * dx + (p[1] - ay) * dy) / lenSq;
+          if (t < 0.03 || t > 0.97) continue;
+          const px = ax + t * dx,
+            py = ay + t * dy;
+          if (Math.hypot(p[0] - px, p[1] - py) < 0.6) return true;
+        }
+      }
+      return false;
+    };
+    if (r.tipo === 'tributario' || r.pts.length >= 2) {
       const t0 = touchesRamal(r.pts[0]);
       const t1 = touchesRamal(r.pts[r.pts.length - 1]);
-      if (t0 && !t1) {
+      // Un ramal/tributario que ATERRIZA en el CUERPO de otro ramal (split por cuerpo) debe
+      // fluir DESDE la unión hacia fuera — se invierte si el flujo apuntaría hacia el toque.
+      // Sin esto, en san/ll/vent el check de flujo disparaba "Dirección de flujo incorrecta"
+      // y el split nunca ocurría.
+      if (t1 && !t0 && onBody(r.pts[r.pts.length - 1])) {
+        flipRamalFlow(r);
+      }
+      // Tributario: además de lo anterior, si empieza tocando un ramal y termina libre, fluye
+      // desde la unión (comportamiento original).
+      if (r.tipo === 'tributario' && t0 && !t1) {
         flipRamalFlow(r);
       }
     }
     // Ítem 2/5: chequeo pre-push con el helper compartido (r aún no está en engine.ramales, se
     // pasa como extra). Aborto limpio: sin push, activeRamal = null + alerta.
-    const flowErr = ramalFlowDirectionCheck(engine, r, [r], TOL);
+    // Un ramal que ATERRIZA en el cuerpo de otro (split por cuerpo) se auto-orienta en
+    // autoSplitJunctionAndSumFlow — el check de flujo san/ll/vent no aplica ahí (el dot contra
+    // un segmento perpendicular es ~0 y dispararía una falsa "Dirección incorrecta").
+    const landsOnBody =
+      (r.pts.length >= 2 && onBody(r.pts[r.pts.length - 1])) ||
+      (r.pts.length >= 2 && onBody(r.pts[0]));
+    const flowErr = landsOnBody ? null : ramalFlowDirectionCheck(engine, r, [r], TOL);
     if (flowErr) {
       engine.triggerAlert('Dirección de flujo incorrecta', flowErr);
       engine.activeRamal = null;
@@ -672,62 +706,6 @@ export function finishRamal(engine: IPlanoEngineCore): void {
         engine._markDirty();
         engine.render();
         return;
-      }
-    }
-  }
-
-  // Validación pre-push (tributario de AF/AC/gas): si algún extremo del tributario nuevo toca un
-  // tributario existente de la misma red con un padre seleccionado DISTINTO, se bloquea la
-  // creación con una alerta. Sin esto, la alerta de padre equivocado dispara DENTRO de
-  // autoSplitJunctionAndSumFlow DESPUÉS del push, así que el ramal queda comprometido y el
-  // AccesorioModal igual se dispara — el trazo se completa pese a la violación. Verificar ANTES
-  // del push permite abortar limpio.
-  if ((r.net === 'af' || r.net === 'ac' || r.net === 'gas') && r.tipo === 'tributario') {
-    const WRONG_PADRE_TOL = 0.5;
-    for (const ep of r.pts) {
-      for (const ex of engine.ramales) {
-        if (ex.net !== r.net || ex.id === r.id) continue;
-        if (!ex.pts || ex.pts.length < 2) continue;
-        // Contacto extremo-con-extremo con un tributario existente
-        if (
-          ex.tipo === 'tributario' &&
-          ex.padre !== r.padre &&
-          ex.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < WRONG_PADRE_TOL)
-        ) {
-          engine.triggerAlert(
-            'Ramal padre incorrecto',
-            'Los tributarios deben conectarse al mismo ramal padre seleccionado.',
-          );
-          engine.activeRamal = null;
-          engine._markDirty();
-          engine.render();
-          return;
-        }
-        // Contacto extremo-con-cuerpo con un tributario existente
-        if (ex.tipo === 'tributario' && ex.padre !== r.padre) {
-          for (let i = 0; i < ex.pts.length - 1; i++) {
-            const [ax, ay] = ex.pts[i];
-            const [bx, by] = ex.pts[i + 1];
-            const sdx = bx - ax;
-            const sdy = by - ay;
-            const lenSq = sdx * sdx + sdy * sdy;
-            if (lenSq < 0.0001) continue;
-            const t = ((ep[0] - ax) * sdx + (ep[1] - ay) * sdy) / lenSq;
-            if (t < 0.02 || t > 0.98) continue;
-            const projX = ax + t * sdx;
-            const projY = ay + t * sdy;
-            if (Math.hypot(ep[0] - projX, ep[1] - projY) < WRONG_PADRE_TOL) {
-              engine.triggerAlert(
-                'Ramal padre incorrecto',
-                'Los tributarios deben conectarse al mismo ramal padre seleccionado.',
-              );
-              engine.activeRamal = null;
-              engine._markDirty();
-              engine.render();
-              return;
-            }
-          }
-        }
       }
     }
   }
@@ -1916,9 +1894,18 @@ export function eraseRamalAt(
     }
   }
 
-  // Si tiene más de 2 puntos y se hizo clic en un segmento extremo, recorta el extremo
+  // Si tiene más de 2 puntos y se hizo clic en un segmento extremo, recorta el extremo. UN
+  // RAMAL MIEMBRO DE UNA DIVISIÓN (mergesFrom propio, pareja upstream de otra división, o la
+  // RAMA ENTRANTE que la causó) NO se recorta: borrar un miembro debe borrar la división
+  // completa (deleteSelected expande splitMembersFor) o re-unir las mitades (rama entrante) —
+  // recortar un punto solo quita "un segmento a la vez" y el usuario tiene que borrar 2 veces.
+  const isSplitMember =
+    !!r.mergesFrom ||
+    engine.ramales.some(
+      (m) => m.mergesFrom && (m.mergesFrom[0] === r.id || m.mergesFrom[1] === r.id),
+    );
   const isEndpoint = bestIdx === 0 || bestIdx === r.pts.length - 1;
-  const canTrim = r.pts.length > 2;
+  const canTrim = r.pts.length > 2 && !isSplitMember;
   if (!isEndpoint && canTrim) {
     const d0 = Math.hypot(plane.x - r.pts[0][0], plane.y - r.pts[0][1]);
     const dLast = Math.hypot(

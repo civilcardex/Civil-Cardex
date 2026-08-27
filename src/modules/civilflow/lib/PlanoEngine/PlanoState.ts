@@ -185,6 +185,15 @@ export function allocNetNumber(
   return n;
 }
 
+/** ID único de ramal/tributario. `Date.now()` solo colisionaba cuando se creaban DOS objetos
+ *  en el mismo milisegundo (p. ej. el splitter y su downstream al dividir un tramo): ambos
+ *  quedaban con el MISMO id, y entonces borrar/seleccionar por id afectaba a los dos
+ *  (el "trazado partido en dos objetos" que el usuario veía en el visor). Sufijo aleatorio
+ *  garantiza unicidad aunque se creen en el mismo tick. */
+export function uniqRamalId(): string {
+  return 'T' + Date.now() + Math.random().toString(36).slice(2, 7);
+}
+
 /** Número del siguiente tributario para un sufijo de label dado (`T{n}{sufijo}`): el PRIMER
  *  número libre desde 1. La numeración de tributarios es POR PADRE, no global — cada ramal
  *  padre empieza sus propios tributarios en T1 (T1RS1, T1RS2, ...). El contador global
