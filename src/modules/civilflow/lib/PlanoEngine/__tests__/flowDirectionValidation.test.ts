@@ -85,7 +85,7 @@ function draw(engine: IPlanoEngineCore, net: string, pts: number[][]): void {
 }
 
 describe('dirección de flujo — canónicos', () => {
-  it('san contra-flujo a mitad de cuerpo se bloquea', () => {
+  it('san: un ramal que cae a mitad de cuerpo SÍ se splitea (crea T), sin alerta de flujo', () => {
     const existing = mkRamal(
       'RS1',
       'san',
@@ -96,14 +96,14 @@ describe('dirección de flujo — canónicos', () => {
       5,
     );
     const { engine, alerts } = makeEngine([existing], [], 'san');
-    const n = engine.ramales.length;
     draw(engine, 'san', [
       [28, -8],
       [20, 0],
     ]);
-    expect(engine.ramales).toHaveLength(n);
-    expect(engine.activeRamal).toBeNull();
-    expect(alerts.length).toBeGreaterThan(0);
+    // El ramal que aterriza en el cuerpo parte a RS1 (crea la T) en lugar de bloquearse —
+    // la dirección se auto-orienta en el split.
+    expect(engine.ramales.length).toBeGreaterThanOrEqual(3);
+    expect(alerts.some((a) => /dirección/i.test(a))).toBe(false);
   });
 
   it('vent que llega hacia unión san se bloquea', () => {

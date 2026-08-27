@@ -125,10 +125,11 @@ describe('trib-trib join (same padre) — modal must still fire', () => {
   });
 });
 
-describe('trib-trib join (different padre) — blocked before push, no modal', () => {
-  it('alerts, does NOT commit the ramal, and does NOT fire the modal', () => {
+describe('trib-trib join (different padre) — permitido en cualquier red', () => {
+  it('allows the join regardless of padre and fires the AccesorioModal', () => {
     const padre = makePadre();
-    // T1 pertenece a un ramal padre DIFERENTE
+    // T1 pertenece a un ramal padre DIFERENTE (o ninguno) — el usuario quiere conectar un
+    // tributario a otro tributario libremente.
     const t1 = makeTributario('T1', 'RAF_OTHER');
     const engine = makeEngine([padre, t1]);
     const calls = (engine as unknown as { calls: string[] }).calls;
@@ -145,11 +146,11 @@ describe('trib-trib join (different padre) — blocked before push, no modal', (
 
     finishRamal(engine);
 
-    // El tributario nuevo NO debe quedar confirmado
-    expect(engine.ramales.filter((r) => r.padre === 'RAF_PADRE')).toHaveLength(0);
-    // Salta la alerta de padre equivocado
-    expect(calls.some((c) => c.startsWith('alert:'))).toBe(true);
-    // SIN modal
-    expect(calls).not.toContain('modal');
+    // El tributario nuevo queda confirmado
+    expect(engine.ramales.filter((r) => r.padre === 'RAF_PADRE')).toHaveLength(1);
+    // NO salta alerta de padre equivocado
+    expect(calls.some((c) => c.startsWith('alert:'))).toBe(false);
+    // El modal de accesorio (symbol de unión) sigue abriéndose
+    expect(calls).toContain('modal');
   });
 });
