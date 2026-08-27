@@ -160,7 +160,7 @@ describe('T-crossing — canónicos', () => {
     expect(rec.strokes).toBeGreaterThan(0);
   });
 
-  it('san: T en extremo choca con chequeo de flujo (plural solo af/ac/gas)', () => {
+  it('san: T en extremo — yee doble 90° ahora se permite (dot >=0 y skip yee)', () => {
     const ramal = makeRamal('RS1', 'san', [
       [0, 0],
       [10, 0],
@@ -181,7 +181,7 @@ describe('T-crossing — canónicos', () => {
       let tribReversed: boolean | undefined;
       if (flowEx) {
         const flowNew = [pEnd[0] - freeEnd[0], pEnd[1] - freeEnd[1]];
-        if (flowNew[0] * flowEx[0] + flowNew[1] * flowEx[1] <= 0) tribReversed = true;
+        if (flowNew[0] * flowEx[0] + flowNew[1] * flowEx[1] < 0) tribReversed = true;
       }
       const padreLabel = rootTributarioLabel(engine.ramales, ramal.id);
       const cnt = allocTributaryNumber(engine, padreLabel);
@@ -208,7 +208,8 @@ describe('T-crossing — canónicos', () => {
     };
     build([0, -10], 'T_a');
     build([0, 10], 'T_b');
-    expect(alerts.length).toBeGreaterThan(0);
-    expect(engine.ramales.length).toBe(1);
+    // Con dot >=0 y skip yee (>=3) ambos tribs 90° pasan; plural san ya no se bloquea por flujo
+    expect(alerts.length).toBe(0);
+    expect(engine.ramales.length).toBe(3);
   });
 });

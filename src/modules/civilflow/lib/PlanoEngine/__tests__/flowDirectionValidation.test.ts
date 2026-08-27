@@ -96,14 +96,34 @@ describe('dirección de flujo — canónicos', () => {
       5,
     );
     const { engine, alerts } = makeEngine([existing], [], 'san');
+    // Rama que llega con flujo a favor del tronco (vector 8,8 dot 1,0 >0) — debe partir sin alerta.
+    draw(engine, 'san', [
+      [12, -8],
+      [20, 0],
+    ]);
+    // El ramal que aterriza en el cuerpo parte a RS1 (crea la T) en lugar de bloquearse —
+    // la dirección se auto-orienta en el split para tributarios; para ramales a favor no hay bloqueo.
+    expect(engine.ramales.length).toBeGreaterThanOrEqual(3);
+    expect(alerts.some((a) => /dirección/i.test(a))).toBe(false);
+  });
+
+  it('san: ramal contra flujo en T se bloquea', () => {
+    const existing = mkRamal(
+      'RS1',
+      'san',
+      [
+        [0, 0],
+        [40, 0],
+      ],
+      5,
+    );
+    const { engine, alerts } = makeEngine([existing], [], 'san');
     draw(engine, 'san', [
       [28, -8],
       [20, 0],
     ]);
-    // El ramal que aterriza en el cuerpo parte a RS1 (crea la T) en lugar de bloquearse —
-    // la dirección se auto-orienta en el split.
-    expect(engine.ramales.length).toBeGreaterThanOrEqual(3);
-    expect(alerts.some((a) => /dirección/i.test(a))).toBe(false);
+    expect(alerts.some((a) => /dirección/i.test(a))).toBe(true);
+    expect(engine.ramales.length).toBe(1);
   });
 
   it('vent que llega hacia unión san se bloquea', () => {
