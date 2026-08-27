@@ -194,9 +194,17 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
       }
       usedInDouble.add(i);
       usedInDouble.add(j);
-      const id = junctionRamalIds[i];
-      if (!yeeCounts[id]) yeeCounts[id] = { simple: 0, doble: 0 };
-      yeeCounts[id].doble += 1;
+      const id1 = junctionRamalIds[i];
+      const id2 = junctionRamalIds[j];
+      if (id1 === id2) {
+        if (!yeeCounts[id1]) yeeCounts[id1] = { simple: 0, doble: 0 };
+        yeeCounts[id1].doble += 1;
+      } else {
+        if (!yeeCounts[id1]) yeeCounts[id1] = { simple: 0, doble: 0 };
+        if (!yeeCounts[id2]) yeeCounts[id2] = { simple: 0, doble: 0 };
+        yeeCounts[id1].doble += 1;
+        yeeCounts[id2].doble += 1;
+      }
     }
   }
 
@@ -448,22 +456,21 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
           acc['yeeSimple'] = yeeSimpleTotal;
           changed = true;
         }
-        if (yee && acc['yeeDoble'] !== yee.doble) {
+        if (yee && yee.doble > 0 && acc['yeeDoble'] !== yee.doble) {
           acc['yeeDoble'] = yee.doble;
           changed = true;
+        } else if (yee && yee.doble === 0 && 'yeeDoble' in acc) {
+          // Mantener yeeDoble si ya existía (usuario pide dejar el símbolo al borrar un lado del brazo principal)
+          // No borrar automáticamente; solo se borra cuando el ramal es eliminado (cleanOrphans)
         } else if (!yee && 'yeeDoble' in acc) {
-          delete acc['yeeDoble'];
-          changed = true;
+          // Mantener yeeDoble aunque ya no haya yee simple (doble que queda con un solo brazo)
         }
       } else {
         if ('yeeSimple' in acc) {
           delete acc['yeeSimple'];
           changed = true;
         }
-        if ('yeeDoble' in acc) {
-          delete acc['yeeDoble'];
-          changed = true;
-        }
+        // yeeDoble se conserva aunque no haya yeeSimple (persistencia pedida por usuario)
       }
 
       const tee = teeCounts[String(r.id)] || 0;

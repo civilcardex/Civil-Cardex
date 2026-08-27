@@ -242,10 +242,8 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
           // conectado a otro tributario. El símbolo de la unión lo genera el flujo AccesorioModal.
           const tribToTribOk = existing.tipo === 'tributario';
           if (incoming.padre && existing.id !== incoming.padre && !tribToTribOk) {
-            engine.triggerAlert(
-              'Ramal padre incorrecto',
-              'Solo puedes conectar el tributario al ramal padre seleccionado.',
-            );
+            // Advertencia "Ramal padre incorrecto" inhabilitada (orig. usuario) — el padre se
+            // autodetecta; la conexión no se bloquea.
           }
         } else if (existing.tipo === 'tributario') {
           // Los ramales no se conectan a tributarios — el extremo de un ramal no puede unirse
@@ -287,8 +285,9 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         // partían). Lo mismo para trib-trib (id. comentario previo).
         const isSplitBody = segIdx >= 0;
         const isTribTrib = existing.tipo === 'tributario' && incoming.tipo === 'tributario';
-        const flowErr =
-          isSplitBody || isTribTrib ? null : ramalFlowDirectionCheck(engine, incoming, [], TOL);
+        // Solo tributarios se auto-orientan al aterrizar en cuerpo — ramales deben validar flujo
+        const skipSplitFlow = (isSplitBody && incoming.tipo === 'tributario') || isTribTrib;
+        const flowErr = skipSplitFlow ? null : ramalFlowDirectionCheck(engine, incoming, [], TOL);
         if (flowErr) {
           // Sin auto-orientación: una conexión san/ll/vent con dirección de flujo distinta a la
           // del ramal principal se bloquea con alerta. La única auto-orientación permitida ocurre
@@ -328,11 +327,16 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
         // llegar al manejo tributario-a-tributario de abajo, bloqueando una unión del mismo
         // padre perfectamente válida.
         const tribToTribOk = existing.tipo === 'tributario';
-        if (incoming.padre && existing.id !== incoming.padre && !tribToTribOk) {
-          engine.triggerAlert(
-            'Ramal padre incorrecto',
-            'Solo puedes conectar el tributario al ramal padre seleccionado.',
-          );
+        // Un tributario creado desde LÍNEA GUÍA ya lleva su padre fijado al ramal que cruza
+        // (buildTribFromGuide) — no debe bloquearse por tocar otro ramal en el mismo punto
+        // (orig. #5). Solo el dibujo manual con padre seleccionado en la barra valida contra él.
+        if (
+          incoming.padre &&
+          existing.id !== incoming.padre &&
+          !tribToTribOk &&
+          !(engine as unknown as { _guideTributary?: boolean })._guideTributary
+        ) {
+          // Advertencia "Ramal padre incorrecto" inhabilitada — la conexión sigue sin bloquearse.
           continue;
         }
         // Ítem 4: los tributarios san/ll se unen al camino af/ac/gas — llegan a su propio padre a
@@ -494,6 +498,174 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
   }
 }
 
+/** 3.3/6: detecta una yee SIMPLE (3 vectores en un vértice, sin pareja dentro del umbral doble)
+ *  cerca de (px,py) dentro de `tol`, y devuelve su centro + dirección del tronco (el par de
+ *  vectores casi opuestos). Se usa para desplazar un trazo nuevo en paralelo y formar una yee
+ *  doble simétrica. */
+export function detectYeeSimpleNear(
+  engine: IPlanoEngineCore,
+  px: number,
+  py: number,
+  tol: number,
+): { x: number; y: number; trunk: { x: number; y: number } } | null {
+  const ramales = engine.ramales.filter((r) => r.net === engine.activeNet);
+  if (ramales.length < 2) return null;
+  const mp = new Map<string, number[]>();
+  for (const r of ramales)
+    for (const p of r.pts || []) mp.set(`${p[0].toFixed(3)}_${p[1].toFixed(3)}`, p);
+  let best: { x: number; y: number; trunk: { x: number; y: number } } | null = null;
+  let bestD = Infinity;
+  for (const P of mp.values()) {
+    const d = Math.hypot(P[0] - px, P[1] - py);
+    if (d > tol) continue;
+    const vecs: { x: number; y: number }[] = [];
+    for (const rr of ramales) {
+      if (!rr.pts) continue;
+      for (let i = 0; i < rr.pts.length; i++)
+        if (Math.hypot(rr.pts[i][0] - P[0], rr.pts[i][1] - P[1]) < 0.5) {
+          if (i > 0) {
+            const dx = rr.pts[i - 1][0] - P[0],
+              dy = rr.pts[i - 1][1] - P[1];
+            const l = Math.hypot(dx, dy);
+            if (l > 0.1) vecs.push({ x: dx / l, y: dy / l });
+          }
+          if (i < rr.pts.length - 1) {
+            const dx = rr.pts[i + 1][0] - P[0],
+              dy = rr.pts[i + 1][1] - P[1];
+            const l = Math.hypot(dx, dy);
+            if (l > 0.1) vecs.push({ x: dx / l, y: dy / l });
+          }
+        }
+    }
+    const uniq: typeof vecs = [];
+    for (const v of vecs) if (!uniq.some((u) => u.x * v.x + u.y * v.y > 0.99)) uniq.push(v);
+    if (uniq.length < 3 || uniq.length > 4) continue;
+    // Par casi opuesto = tronco
+    let bestPair = { i: -1, j: -1, dot: 1 };
+    for (let i = 0; i < uniq.length; i++)
+      for (let j = i + 1; j < uniq.length; j++) {
+        const dd = uniq[i].x * uniq[j].x + uniq[i].y * uniq[j].y;
+        if (dd < bestPair.dot) bestPair = { i, j, dot: dd };
+      }
+    if (bestPair.dot >= -0.9) continue;
+    const branches = uniq.filter((_, k) => k !== bestPair.i && k !== bestPair.j);
+    if (branches.length === 0) continue;
+    const cosVal = branches[0].x * uniq[bestPair.j].x + branches[0].y * uniq[bestPair.j].y;
+    const isYee = Math.abs(cosVal) >= 0.4 && Math.abs(cosVal) <= 0.85;
+    if (!isYee) continue;
+    // ¿Ya es doble (otra unión a ≤10mm alineada)? Si sí, no empujar más.
+    let isDouble = false;
+    for (const rr of ramales) {
+      if (!rr.pts) continue;
+      for (const q of rr.pts) {
+        if (q === P) continue;
+        const dq = Math.hypot(q[0] - P[0], q[1] - P[1]);
+        if (dq > 0 && dq <= 10 && mp.has(`${q[0].toFixed(3)}_${q[1].toFixed(3)}`)) {
+          isDouble = true;
+          break;
+        }
+      }
+      if (isDouble) break;
+    }
+    if (isDouble) continue;
+    if (d < bestD) {
+      bestD = d;
+      best = { x: P[0], y: P[1], trunk: uniq[bestPair.i] };
+    }
+  }
+  return best;
+}
+
+/** Autodetección de padre para un tributario dibujado sin haber seleccionado padre en la barra
+ *  (orig. #5 — feature grande): busca el ramal existente del mismo grupo cuyo cuerpo o extremo
+ *  toca el trazo. Devuelve el id del padre, o null. */
+export function detectTributaryPadre(
+  engine: IPlanoEngineCore,
+  pts: number[][],
+  net: string,
+): string | null {
+  if (!pts || pts.length < 2) return null;
+  const TOL = 0.5;
+  const pointOnSeg = (p: number[], a: number[], b: number[]) => {
+    const dx = b[0] - a[0],
+      dy = b[1] - a[1];
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 0.0001) return Math.hypot(p[0] - a[0], p[1] - a[1]) < TOL;
+    const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq;
+    if (t < 0.02 || t > 0.98) return false;
+    const px = a[0] + t * dx,
+      py = a[1] + t * dy;
+    return Math.hypot(p[0] - px, p[1] - py) < TOL;
+  };
+  const sameGroup = (o: string) =>
+    o === net || ((o === 'san' || o === 'vent') && (net === 'san' || net === 'vent'));
+  const tribEps = [pts[0], pts[pts.length - 1]];
+  for (const other of engine.ramales) {
+    if (!sameGroup(other.net) || !other.pts || other.pts.length < 2) continue;
+    const oEps = [other.pts[0], other.pts[other.pts.length - 1]];
+    const touches =
+      tribEps.some((p) => oEps.some((e) => Math.hypot(p[0] - e[0], p[1] - e[1]) < TOL)) ||
+      tribEps.some((p) =>
+        other.pts!.some(
+          (_, i) => i < other.pts!.length - 1 && pointOnSeg(p, other.pts![i], other.pts![i + 1]),
+        ),
+      );
+    if (touches) return other.id;
+  }
+  return null;
+}
+
+/** Bug #7: valida los ángulos de un ramal EXCLUYENDO los segmentos de conexión — un extremo que
+ *  pega a otro ramal existente (o a un bajante) tiene el ángulo dictado por la geometría del
+ *  ramal existente, no por la cuadrícula de 45°/90°. Devuelve true si los segmentos libres son
+ *  válidos. Usado por finishRamal y handleDragUp. */
+export function checkRamalAnglesExcludingConnections(
+  engine: IPlanoEngineCore,
+  r: PlanoRamal,
+): boolean {
+  if (!r.pts || r.pts.length < 2) return true;
+  const TOL = 0.5;
+  const pointOnSeg = (p: number[], a: number[], b: number[]) => {
+    const dx = b[0] - a[0],
+      dy = b[1] - a[1];
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 0.0001) return Math.hypot(p[0] - a[0], p[1] - a[1]) < TOL;
+    const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq;
+    if (t < 0.02 || t > 0.98) return false;
+    const px = a[0] + t * dx,
+      py = a[1] + t * dy;
+    return Math.hypot(p[0] - px, p[1] - py) < TOL;
+  };
+  const touchesAny = (ep: number[]): boolean => {
+    for (const o of engine.ramales) {
+      if (o.id === r.id || !o.pts || o.pts.length < 2) continue;
+      const sameGroup =
+        o.net === r.net ||
+        ((o.net === 'san' || o.net === 'vent') && (r.net === 'san' || r.net === 'vent'));
+      if (!sameGroup) continue;
+      if (
+        o.pts.some((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1]) < TOL) ||
+        o.pts.some((_, i) => i < o.pts!.length - 1 && pointOnSeg(ep, o.pts![i], o.pts![i + 1]))
+      )
+        return true;
+    }
+    for (const b of engine.bajantes) {
+      if (b.net !== r.net) continue;
+      if (Math.hypot(b.x - ep[0], b.y - ep[1]) < 8 / (engine.zoom || 1)) return true;
+    }
+    return false;
+  };
+  const lastIdx = r.pts.length - 1;
+  const startConnects = r.pts.length >= 2 && touchesAny(r.pts[0]);
+  const endConnects = r.pts.length >= 2 && touchesAny(r.pts[lastIdx]);
+  let ptsToCheck: number[][] = r.pts;
+  if (startConnects && endConnects) ptsToCheck = r.pts.slice(1, lastIdx);
+  else if (endConnects) ptsToCheck = r.pts.slice(0, lastIdx);
+  else if (startConnects) ptsToCheck = r.pts.slice(1);
+  if (ptsToCheck.length < 2) return true;
+  return checkRamalAngles(ptsToCheck, r.net, r.tipo, engine.snapMode);
+}
+
 /** Termina el ramal activo: valida ángulos, crea el PlanoRamal, auto-divide uniones y asocia
  *  con bajantes. @param engine Instancia del motor. */
 export function finishRamal(engine: IPlanoEngineCore): void {
@@ -542,7 +714,15 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   const net = NETS.find((n) => n.id === engine.activeRamal!.net);
   const netPfx = net ? net.lbl : 'R';
   const isTrib = engine.tipoTramo === 'tributario';
-  const padreLbl = isTrib ? rootTributarioLabel(engine.ramales, engine.padreTributario) : '';
+  // Autodetección de padre: si se dibuja un tributario sin haber elegido padre en la barra
+  // (feature orig. #5), detectarlo del ramal que el trazo toca. Si se detecta, se usa para la
+  // numeración de la etiqueta y como padre del objeto.
+  const autoPadre =
+    isTrib && !engine.padreTributario
+      ? detectTributaryPadre(engine, engine.activeRamal!.pts, engine.activeRamal!.net)
+      : null;
+  const padreId = isTrib ? engine.padreTributario || autoPadre : null;
+  const padreLbl = padreId ? rootTributarioLabel(engine.ramales, padreId) : '';
   const cnt = isTrib
     ? allocTributaryNumber(engine, padreLbl)
     : allocNetNumber(engine, engine.activeRamal!.net, 'ramal', (n) =>
@@ -569,10 +749,12 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     id,
     net: engine.activeRamal!.net,
     tipo: engine.activeRamal!.tipo,
-    padre: engine.activeRamal!.padre || null,
+    padre: padreId,
     pts: engine.activeRamal!.pts,
     totalL: calculateRamalLength(engine.activeRamal!.pts, engine),
-    label: _nextLabel(engine),
+    // Feature #5: si el padre se autodetectó (no estaba en engine.padreTributario), usar la
+    // numeración contra ese padre; si no, el label normal de tributario.
+    label: isTrib && padreId && !engine.padreTributario ? `T${cnt}${padreLbl}` : _nextLabel(engine),
     ini: '',
     fin: '',
     piso: String(engine.nivelActual?.n ?? ''),
@@ -651,11 +833,14 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     if (r.tipo === 'tributario' || r.pts.length >= 2) {
       const t0 = touchesRamal(r.pts[0]);
       const t1 = touchesRamal(r.pts[r.pts.length - 1]);
-      // Un ramal/tributario que ATERRIZA en el CUERPO de otro ramal (split por cuerpo) debe
-      // fluir DESDE la unión hacia fuera — se invierte si el flujo apuntaría hacia el toque.
-      // Sin esto, en san/ll/vent el check de flujo disparaba "Dirección de flujo incorrecta"
-      // y el split nunca ocurría.
-      if (t1 && !t0 && onBody(r.pts[r.pts.length - 1])) {
+      // Un ramal/tributario que ATERRIZA en el CUERPO de otro ramal (split por cuerpo):
+      // san/ll/vent debe fluir HACIA la unión (free→body), af/ac/gas DESDE la unión.
+      // Para san, si el inicio toca cuerpo y el fin es libre, invertir para que fluya hacia el cuerpo.
+      if (r.net === 'san' || r.net === 'll' || r.net === 'vent') {
+        if (t0 && !t1 && onBody(r.pts[0])) {
+          flipRamalFlow(r);
+        }
+      } else if (t1 && !t0 && onBody(r.pts[r.pts.length - 1])) {
         flipRamalFlow(r);
       }
       // Tributario: además de lo anterior, si empieza tocando un ramal y termina libre, fluye
@@ -666,13 +851,12 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     }
     // Ítem 2/5: chequeo pre-push con el helper compartido (r aún no está en engine.ramales, se
     // pasa como extra). Aborto limpio: sin push, activeRamal = null + alerta.
-    // Un ramal que ATERRIZA en el cuerpo de otro (split por cuerpo) se auto-orienta en
-    // autoSplitJunctionAndSumFlow — el check de flujo san/ll/vent no aplica ahí (el dot contra
-    // un segmento perpendicular es ~0 y dispararía una falsa "Dirección incorrecta").
+    // Solo tributarios se auto-orientan al aterrizar en cuerpo — ramales deben validar flujo
     const landsOnBody =
       (r.pts.length >= 2 && onBody(r.pts[r.pts.length - 1])) ||
       (r.pts.length >= 2 && onBody(r.pts[0]));
-    const flowErr = landsOnBody ? null : ramalFlowDirectionCheck(engine, r, [r], TOL);
+    const skipFlowForBody = landsOnBody && r.tipo === 'tributario';
+    const flowErr = skipFlowForBody ? null : ramalFlowDirectionCheck(engine, r, [r], TOL);
     if (flowErr) {
       engine.triggerAlert('Dirección de flujo incorrecta', flowErr);
       engine.activeRamal = null;
@@ -711,7 +895,10 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   }
 
   engine.ramales.push(r);
-  if (!checkRamalAngles(r.pts, r.net, r.tipo, engine.snapMode)) {
+  // Bug #7: el segmento de CONEXIÓN (extremo que pega a otro ramal existente o a un bajante)
+  // tiene el ángulo dictado por la geometría del ramal existente, no por la cuadrícula — no se
+  // valida. Validar solo los segmentos libres (los que no tocan nada).
+  if (!checkRamalAnglesExcludingConnections(engine, r)) {
     engine.triggerAlert(
       'Ángulo no recomendado',
       r.net === 'san' || r.net === 'll'
@@ -765,6 +952,14 @@ export function finishRamal(engine: IPlanoEngineCore): void {
         return Math.hypot(b.x - ep[0], b.y - ep[1]) < rimTol;
       });
       if (baj && !baj.recibeDeIds.includes(r.id)) {
+        // Límite: hasta 2 ramales por bajante (orig. #14)
+        if (baj.recibeDeIds.length >= 2) {
+          engine.triggerAlert(
+            'Bajante completo',
+            'Este bajante ya tiene 2 ramales conectados (máximo permitido).',
+          );
+          continue;
+        }
         // Guardia centralizada de dirección — un bajante 'baja' solo puede RECIBIR flujo, así
         // que nunca se permite que el INICIO de un ramal (pts[0]) se asocie con uno. Sin esto,
         // un ramal cuyo inicio dibujado por el usuario cae sobre un bajante 'baja' tomaría esa
@@ -1001,11 +1196,9 @@ function checkCrossRamalAngle(
  *  del motor. @param px Coordenada X de plano. @param py Coordenada Y de plano. */
 export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number): void {
   let pt: { x: number; y: number } = { x: px, y: py };
-  if (engine.tipoTramo === 'tributario' && !engine.padreTributario) {
-    engine._emitStatus('Selecciona primero un ramal PADRE en el panel derecho');
-    return;
-  }
   if (!engine.activeRamal) {
+    // Feature orig. #5: el padre de un tributario se autodetecta al conectar el trazo — ya no
+    // se exige seleccionar padre manualmente.
     // Buscar un ramal existente para CONTINUAR antes de hacer cualquier snap genérico — esto
     // debe ganarle a snapToExisting eligiendo un objetivo cercano-pero-distinto (p.ej. un
     // bajante desplazado lejos de este mismo extremo); si no, clicar de vuelta sobre un extremo
@@ -1029,6 +1222,9 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     let continueRamal: PlanoRamal | null = null;
     let reversePoints = false;
     const CONTINUE_THRESH = 30 / engine.zoom;
+    // Fallback para prolongación san: si no se encontró candidato con filtro padre,
+    // buscar cualquier tributario del mismo net (permite extender desde extremo libre
+    // aunque el padre no esté seleccionado exactamente).
     // ini/fin están sobrecargados: autoDetectRamalConnections (PlanoEngineNetwork.ts) escribe
     // ahí el código de un bajante cuando el extremo descarga en uno, pero TAMBIÉN escribe el
     // label/id de un ramal vecino cuando solo toca otro ramal (sin bajante) — y ese segundo caso
@@ -1055,6 +1251,25 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
         if (rm.fin && isBajanteCode(rm.fin)) continue;
         continueRamal = rm;
         break;
+      }
+    }
+    if (!continueRamal && engine.tipoTramo === 'tributario') {
+      for (const rm of engine.ramales) {
+        if (rm.net !== engine.activeNet || rm.tipo !== 'tributario') continue;
+        const firstPt = rm.pts[0];
+        const lastPt = rm.pts[rm.pts.length - 1];
+        const dFirst = Math.hypot(px - firstPt[0], py - firstPt[1]);
+        const dLast = Math.hypot(px - lastPt[0], py - lastPt[1]);
+        if (dFirst < CONTINUE_THRESH && dFirst <= dLast) {
+          if (rm.ini && isBajanteCode(rm.ini)) continue;
+          continueRamal = rm;
+          reversePoints = true;
+          break;
+        } else if (dLast < CONTINUE_THRESH) {
+          if (rm.fin && isBajanteCode(rm.fin)) continue;
+          continueRamal = rm;
+          break;
+        }
       }
     }
 
@@ -1162,17 +1377,17 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
             r.net === engine.activeNet &&
             r.pts.some(([rx, ry]) => Math.hypot(rx - sp.x, ry - sp.y) < 0.5),
         );
-        if (snappedRamal && snappedRamal.id !== engine.padreTributario) {
-          if (canJoinTributario(engine, snappedRamal)) {
-            pt = sp;
-          } else {
-            engine.triggerAlert(
-              'Ramal padre incorrecto',
-              'Solo puedes conectar el tributario al ramal padre seleccionado.',
-            );
-            return;
-          }
+        // Feature orig. #5: sin padre seleccionado, el snap a cualquier ramal es válido (el
+        // padre se autodetecta). Con padre explícito, solo se permite ese padre (o trib-trib).
+        if (
+          snappedRamal &&
+          engine.padreTributario &&
+          snappedRamal.id !== engine.padreTributario &&
+          !canJoinTributario(engine, snappedRamal)
+        ) {
+          // Advertencia "Ramal padre incorrecto" inhabilitada — snap permitido.
         }
+        pt = sp;
       }
       // Un ramal de ventilación que empieza exactamente sobre un punto de sanitaria (unión de
       // codo reventilado) debe tener su PRIMER segmento siguiendo la dirección local de la
@@ -1225,11 +1440,8 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
           if (canJoinTributario(engine, onSegmentRamal)) {
             if (segSnapPt) pt = segSnapPt;
           } else {
-            engine.triggerAlert(
-              'Ramal padre incorrecto',
-              'Solo puedes conectar el tributario al ramal padre seleccionado.',
-            );
-            return;
+            // Advertencia "Ramal padre incorrecto" inhabilitada — conexión sobre cuerpo permitida.
+            if (segSnapPt) pt = segSnapPt;
           }
         } else {
           engine._emitStatus(
@@ -1312,13 +1524,17 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       ar!.tipo === 'tributario'
         ? engine.ramales.filter(
             (r) =>
-              r.id === engine.padreTributario || (r.tipo === 'tributario' && r.net === ar!.net),
+              (r.net === ar!.net && !engine.padreTributario) ||
+              r.id === engine.padreTributario ||
+              (r.tipo === 'tributario' && r.net === ar!.net),
           )
         : engine.ramales.filter((r) => r.net === ar!.net);
     for (const r of activeRamales) {
       if (r.id === ar!.id) continue;
       let sp = null;
-      if (engine.snapMode && r.id === engine.padreTributario) {
+      // Snap 45° al padre (o, sin padre explícito, a cualquier ramal del grupo para la
+      // autodetección de padre).
+      if (engine.snapMode && (r.id === engine.padreTributario || !engine.padreTributario)) {
         sp = snapTributaryToPadre45Deg(pt.x, pt.y, last[0], last[1], r.pts, 20 / engine.zoom);
       } else {
         sp = engine._snapToSegment(pt.x, pt.y, r.pts, 20 / engine.zoom);
@@ -1346,14 +1562,15 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
               r.id !== ar!.id &&
               r.pts.some(([rx, ry]) => Math.hypot(rx - sp.x, ry - sp.y) < 0.5),
           );
-          if (snappedRamal && snappedRamal.id !== engine.padreTributario) {
-            if (!canJoinTributario(engine, snappedRamal)) {
-              engine.triggerAlert(
-                'Ramal padre incorrecto',
-                'Solo puedes conectar el tributario al ramal padre seleccionado.',
-              );
-              return;
-            }
+          // Feature orig. #5: sin padre explícito, snap a cualquier ramal es válido.
+          // Advertencia "Ramal padre incorrecto" inhabilitada — snap permitido.
+          if (
+            snappedRamal &&
+            engine.padreTributario &&
+            snappedRamal.id !== engine.padreTributario &&
+            !canJoinTributario(engine, snappedRamal)
+          ) {
+            // no-op: la advertencia está inhabilitada.
           }
         }
         pt = sp;
@@ -1414,7 +1631,37 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       }
     }
     if (engine.activeRamal.pts.length >= 2) {
-      const testPts = [...engine.activeRamal.pts, [pt.x, pt.y]];
+      // 3.3 Snap paralelo yee simple→doble (orig. #6): al TERMINAR el trazo (este es el punto
+      // final, no el inicial), si cae cerca de una yee simple existente, desplazarlo A LO LARGO
+      // del tronco hasta 10mm del punto de la yee (manteniendo la distancia perpendicular del
+      // brazo) — así la segunda yee queda alineada con la primera sobre el tronco, simétrica.
+      if (engine.activeNet === 'san' || engine.activeNet === 'vent') {
+        const yeeTol = 20 / (engine.zoom || 1);
+        const yeeSimple = detectYeeSimpleNear(engine, pt.x, pt.y, yeeTol);
+        if (yeeSimple) {
+          const trunk = yeeSimple.trunk;
+          const relX = pt.x - yeeSimple.x;
+          const relY = pt.y - yeeSimple.y;
+          const perpX = -trunk.y;
+          const perpY = trunk.x;
+          const perp = relX * perpX + relY * perpY;
+          // Distancia a lo largo del tronco: 10mm del centro de la yee (en la dirección que el
+          // cursor ya venía), manteniendo la perpendicular (posición del brazo).
+          const alongSign = relX * trunk.x + relY * trunk.y >= 0 ? 1 : -1;
+          const targetAlong = alongSign * 10;
+          pt = {
+            x: yeeSimple.x + trunk.x * targetAlong + perpX * perp,
+            y: yeeSimple.y + trunk.y * targetAlong + perpY * perp,
+          };
+        }
+      }
+      // Un segmento de CONEXIÓN (el extremo pega a un ramal existente o bajante) no se valida
+      // contra la cuadrícula: su ángulo está dictado por la geometría del ramal existente, no
+      // por un giro libre. Validar solo los giros ya dibujados del ramal en curso.
+      const connectedToExisting = snappedToSeg || !!nearBaj;
+      const testPts = connectedToExisting
+        ? [...engine.activeRamal.pts]
+        : [...engine.activeRamal.pts, [pt.x, pt.y]];
       const trazoNet = engine.activeRamal.net;
       if (!checkRamalAngles(testPts, trazoNet, engine.activeRamal.tipo, engine.snapMode)) {
         engine.triggerAlert(
@@ -1448,16 +1695,16 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
               // dispara con coincidencia exacta de vértice; un mero cruce a través del cuerpo del
               // ramal equivocado no termina exactamente en un vértice, así que caía aquí primero
               // con un mensaje que no explicaba el problema real).
-              if (engine.tipoTramo === 'tributario' && r.id !== engine.padreTributario) {
-                if (canJoinTributario(engine, r)) {
-                  // Contacto tributario-a-tributario del mismo padre — permitido (el punto de
-                  // unión recibe su símbolo de accesorio vía el flujo AccesorioModal).
-                } else {
-                  engine.triggerAlert(
-                    'Ramal padre incorrecto',
-                    'Solo puedes conectar el tributario al ramal padre seleccionado.',
-                  );
-                  return;
+              if (engine.tipoTramo === 'tributario') {
+                // Feature orig. #5: sin padre seleccionado, un tributario puede cruzar
+                // cualquier ramal (ese será su padre autodetectado). Con padre explícito,
+                // solo se permite el propio padre (o trib-trib del mismo padre).
+                if (
+                  engine.padreTributario &&
+                  r.id !== engine.padreTributario &&
+                  !canJoinTributario(engine, r)
+                ) {
+                  // Advertencia "Ramal padre incorrecto" inhabilitada — cruce de tributario permitido.
                 }
               } else {
                 engine.triggerAlert(

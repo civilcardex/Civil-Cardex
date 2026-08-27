@@ -216,19 +216,40 @@ export function allocTributaryNumber(
  *  T1T1RS1 — y la numeración compite con la de los tributarios directos del raíz (allocTributary
  *  Number ya salta labels existentes, así que el consecutivo nunca colisiona). */
 export function rootTributarioLabel(
-  ramales: Array<{ id: string; label?: string; tipo?: string; padre: string | null }>,
+  ramales: Array<{
+    id: string;
+    label?: string;
+    tipo?: string;
+    padre: string | null;
+    mergesFrom?: [string, string];
+  }>,
   ramalId: string | null | undefined,
 ): string {
   if (!ramalId) return '';
-  let cur = ramales.find((r) => r.id === ramalId);
+  let cur = ramales.find((r) => r.id === ramalId) as
+    | {
+        id: string;
+        label?: string;
+        tipo?: string;
+        padre: string | null;
+        mergesFrom?: [string, string];
+      }
+    | undefined;
   const seen = new Set<string>();
-  while (cur && cur.tipo === 'tributario' && cur.padre && !seen.has(cur.id)) {
+  while (cur && !seen.has(cur.id)) {
     seen.add(cur.id);
-    cur = ramales.find((r) => r.id === cur!.padre);
+    // Si es tributario, seguir por padre; si es ramal partido, seguir por mergesFrom[0] (upstream)
+    if (cur.tipo === 'tributario' && cur.padre) {
+      cur = ramales.find((r) => r.id === cur!.padre) as typeof cur;
+    } else if ((cur as { mergesFrom?: [string, string] }).mergesFrom) {
+      const upstream = (cur as { mergesFrom: [string, string] }).mergesFrom[0];
+      cur = ramales.find((r) => r.id === upstream) as typeof cur;
+    } else {
+      break;
+    }
   }
-  // Cadena corrupta (ciclo, p. ej. padre apuntando a sí mismo): devolver vacío y dejar que
-  // el llamador caiga a su fallback en vez de reportar un nodo intermedio como raíz.
-  if (cur && cur.tipo === 'tributario' && cur.padre && seen.has(cur.id)) return '';
+  // Cadena corrupta (ciclo): devolver vacío
+  if (cur && seen.has(cur.id) && cur.tipo === 'tributario') return '';
   return cur ? cur.label || cur.id || '' : '';
 }
 
@@ -717,7 +738,7 @@ export interface IPlanoEngineCore {
     | PlanoDimension
     | PlanoGuideLine
     | null;
-  deleteSelected(ids?: string[]): void;
+  deleteSelected(ids?: string[], opts?: { noMerge?: boolean }): void;
   setActiveNet(id: string): void;
   triggerAlert(title: string, msg: string): void;
   triggerAccesorioModal(data: {

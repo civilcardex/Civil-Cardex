@@ -516,6 +516,20 @@ function remergeSplitRamales(engine: IPlanoEngineCore, deletedId: string, delete
     if (d.diametroFin) a.diametroFin = d.diametroFin;
     if (d.aparatoFin) a.aparatoFin = d.aparatoFin;
     if (d.sifonLabelFin) a.sifonLabelFin = d.sifonLabelFin;
+    // Los aparatos/fixtures del downstream fusionado se suman a A — sin esto, al borrar el
+    // divisor de una T/Y los aparatos del tramo aguas abajo se perdían (orig. #8: "al renumerar
+    // se resetea los aparatos"). Se suman cantidad por cantidad, no se sobreescriben.
+    if (d.fixtures) {
+      const merged = { ...(a.fixtures || {}) };
+      for (const [k, v] of Object.entries(d.fixtures)) merged[k] = (merged[k] || 0) + (v || 0);
+      a.fixtures = merged;
+    }
+    if (d.hydroAcc) a.hydroAcc = d.hydroAcc;
+    if (d.gasAcc) {
+      const merged = { ...(a.gasAcc || {}) };
+      for (const [k, v] of Object.entries(d.gasAcc)) merged[k] = (merged[k] || 0) + (v || 0);
+      a.gasAcc = merged;
+    }
     // accMed interiores de D (p. ej. un tee de montante a mitad de cuerpo) se reindexan al
     // nuevo orden de A (el punto compartido queda en el índice base).
     if (d.accMed) {
@@ -632,6 +646,20 @@ function mergeCollinearPairs(engine: IPlanoEngineCore): void {
         if (secondary.diametroFin) primary.diametroFin = secondary.diametroFin;
         if (secondary.aparatoFin) primary.aparatoFin = secondary.aparatoFin;
         if (secondary.sifonLabelFin) primary.sifonLabelFin = secondary.sifonLabelFin;
+        // Fusionar aparatos/fixtures del ramal fusionado (orig. #8) — igual que remergeSplitRamales.
+        if (secondary.fixtures) {
+          const merged = { ...(primary.fixtures || {}) };
+          for (const [k, v] of Object.entries(secondary.fixtures))
+            merged[k] = (merged[k] || 0) + (v || 0);
+          primary.fixtures = merged;
+        }
+        if (secondary.hydroAcc) primary.hydroAcc = secondary.hydroAcc;
+        if (secondary.gasAcc) {
+          const merged = { ...(primary.gasAcc || {}) };
+          for (const [k, v] of Object.entries(secondary.gasAcc))
+            merged[k] = (merged[k] || 0) + (v || 0);
+          primary.gasAcc = merged;
+        }
         const [mx, my] = _midpoint(primary.pts);
         primary.labelX = mx;
         primary.labelY = my;
@@ -696,15 +724,72 @@ function splitMembersFor(engine: IPlanoEngineCore, ramalId: string): string[] {
   return [];
 }
 
-export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
+// Orig. usuario #2: al borrar un trazo, sus tributarios se REASIGNAN al ramal del otro lado de
+// la unión si existe (p. ej. el otro brazo de una yee doble, o la continuación del paso), en vez
+// de borrarse junto con él. El ramal hermano comparte un punto de unión con `deleted` (mismo net,
+// no tributario) y sigue existiendo tras el borrado.
+// Yee doble: los dos brazos están a ~10 unidades a lo largo del tronco, no comparten vértice
+// exacto — se busca primero coincidencia exacta (0.5) y en segunda pasada hasta 20px.
+function reassignTributariosToHermano(
+  engine: IPlanoEngineCore,
+  deleted: PlanoRamal,
+  toDelete?: Set<string>,
+): void {
+  if (!deleted.pts?.length) return;
+  const TOL = 0.5;
+  const LARGE = 20;
+  const isCandidate = (o: PlanoRamal) =>
+    o.id !== deleted.id &&
+    o.net === deleted.net &&
+    o.tipo !== 'tributario' &&
+    !toDelete?.has(o.id) &&
+    !!o.pts?.length;
+  const deletedEps = [deleted.pts[0], deleted.pts[deleted.pts.length - 1]];
+  const findByTol = (tol: number): PlanoRamal | undefined => {
+    let best: PlanoRamal | undefined;
+    let bestD = Infinity;
+    for (const o of engine.ramales) {
+      if (!isCandidate(o)) continue;
+      const oEps = [o.pts[0], o.pts[o.pts.length - 1]];
+      for (const de of deletedEps) {
+        for (const oe of oEps) {
+          const d = Math.hypot(de[0] - oe[0], de[1] - oe[1]);
+          if (d < tol && d < bestD) {
+            bestD = d;
+            best = o;
+          }
+        }
+      }
+    }
+    return best;
+  };
+  const hermano = findByTol(TOL) ?? findByTol(LARGE);
+  if (!hermano) return;
+  for (const t of engine.ramales) {
+    if (t.tipo === 'tributario' && t.padre === deleted.id) {
+      t.padre = hermano.id;
+    }
+  }
+}
+
+export function deleteSelected(
+  engine: IPlanoEngineCore,
+  ids?: string[],
+  opts?: { noMerge?: boolean },
+): void {
   if (ids && ids.length > 0) {
     engine._yeeFlashKey = null;
     const netsToRenumber = new Set<string>();
     const bajNetsToRenumber = new Set<string>();
     let renumberAreas = false;
     const toDelete = new Set<string>(ids);
-    for (const id of [...ids]) {
-      for (const extra of splitMembersFor(engine, id)) toDelete.add(extra);
+    // "Borrar trazo" (opts.noMerge) borra SOLO el ramal indicado: no expande mitades de
+    // split ni re-úne el tronco — necesario para el borrado parcial de una yee doble
+    // (orig. #2), donde borrar un brazo lateral no debe colapsar la yee completa.
+    if (!opts?.noMerge) {
+      for (const id of [...ids]) {
+        for (const extra of splitMembersFor(engine, id)) toDelete.add(extra);
+      }
     }
     const deletedRamalIds = new Set<string>();
     for (const id of toDelete) {
@@ -712,12 +797,17 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       if (idxR >= 0) {
         const deleted = engine.ramales[idxR];
         deletedRamalIds.add(deleted.id);
+        // Orig. usuario #2: reasignar tributarios al ramal del otro lado de la unión si existe.
+        reassignTributariosToHermano(engine, deleted, toDelete);
         engine.ramales = engine.ramales.filter(
           (r) => r.id !== deleted.id && r.padre !== deleted.id,
         );
         // Ítem 9: si este ramal había partido a otro (incoming de una división mergesFrom), se
-        // re-une la línea que quedó en dos mitades.
-        remergeSplitRamales(engine, deleted.id, deleted.uc || 0);
+        // re-une la línea que quedó en dos mitades. Para "Borrar trazo" (noMerge) se salta:
+        // el tronco de la yee doble debe quedar intacto (solo se borra el brazo lateral).
+        if (!opts?.noMerge) {
+          remergeSplitRamales(engine, deleted.id, deleted.uc || 0);
+        }
         if (deleted.pts?.length) cleanupJunctionsAfterRamalDelete(engine, deleted);
         netsToRenumber.add(deleted.net);
         // Limpia las referencias al ramal borrado en los bajantes
@@ -897,6 +987,8 @@ export function deleteSelected(engine: IPlanoEngineCore, ids?: string[]): void {
       deleteSelected(engine, expanded);
       return;
     }
+    // Orig. usuario #2: reasignar tributarios al ramal del otro lado de la unión si existe.
+    reassignTributariosToHermano(engine, deleted);
     engine.ramales = engine.ramales.filter((r) => r.id !== deletedId && r.padre !== deleted.id);
     // Ítem 9: si este ramal había partido a otro, se re-une la línea en dos mitades.
     remergeSplitRamales(engine, deletedId, deleted.uc || 0);

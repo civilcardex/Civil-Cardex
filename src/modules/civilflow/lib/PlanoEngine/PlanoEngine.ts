@@ -873,8 +873,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
   resetLabel(): void {
     _resetLabel(this);
   }
-  deleteSelected(ids?: string[]): void {
-    _deleteSelected(this, ids);
+  deleteSelected(ids?: string[], opts?: { noMerge?: boolean }): void {
+    _deleteSelected(this, ids, opts);
   }
 
   /**

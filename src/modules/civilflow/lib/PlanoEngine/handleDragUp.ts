@@ -2,7 +2,11 @@ import type { IPlanoEngineCore } from './PlanoState';
 import type { PlanoRamal } from './PlanoState';
 import { NETS } from './PlanoState';
 import { checkRamalAngles, _firstSegmentAngle, detectAccesorioTrigger } from './drawingAngles';
-import { autoSplitJunctionAndSumFlow, ramalFlowDirectionCheck } from './PlanoEngineDrawing';
+import {
+  autoSplitJunctionAndSumFlow,
+  ramalFlowDirectionCheck,
+  checkRamalAnglesExcludingConnections,
+} from './PlanoEngineDrawing';
 import {
   updateCrossFloorGhostPositionBySource,
   updateCrossFloorLdesvioFarEndpoint,
@@ -297,13 +301,9 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
       const assocRamales = assocIds
         .map((rid) => engine.ramales.find((r) => r.id === rid))
         .filter((r): r is PlanoRamal => !!r);
-      const allOk = assocRamales.every((r) =>
-        checkRamalAngles(r.pts, r.net, r.tipo, engine.snapMode),
-      );
+      const allOk = assocRamales.every((r) => checkRamalAnglesExcludingConnections(engine, r));
       if (!allOk) {
-        const bad = assocRamales.find(
-          (r) => !checkRamalAngles(r.pts, r.net, r.tipo, engine.snapMode),
-        )!;
+        const bad = assocRamales.find((r) => !checkRamalAnglesExcludingConnections(engine, r))!;
         engine.triggerAlert(
           'Ángulo no recomendado',
           bad.net === 'san' || bad.net === 'll'
@@ -403,10 +403,10 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
 
     // El par san/vent de un codo reventilado debe revertirse junto — si solo se revierte un lado,
     // el arrastre dejaría la unión partida en vez de simplemente deshecha.
-    const primaryOk = ram ? checkRamalAngles(ram.pts, ram.net, ram.tipo, engine.snapMode) : true;
-    const linkedOk = linkedRamales.every((r) =>
-      checkRamalAngles(r.pts, r.net, r.tipo, engine.snapMode),
-    );
+    // Bug #7: excluir segmentos de conexión (extremo que toca otro ramal/bajante) — su ángulo
+    // lo dicta la geometría existente, no la cuadrícula.
+    const primaryOk = ram ? checkRamalAnglesExcludingConnections(engine, ram) : true;
+    const linkedOk = linkedRamales.every((r) => checkRamalAnglesExcludingConnections(engine, r));
 
     if (ram && (!primaryOk || !linkedOk)) {
       // Un arrastre de extremo que se PEGÓ sobre un bajante (handleDragMove fija el punto
@@ -443,14 +443,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         engine.render();
       }
     } else if (ram && ram.tipo === 'tributario' && draggedOntoWrongPadre(engine, ram)) {
-      engine.triggerAlert(
-        'Ramal padre incorrecto',
-        'Solo puedes conectar el tributario al ramal padre seleccionado.',
-      );
-      if (engine._dragBackupPts) {
-        ram.pts = engine._dragBackupPts;
-        engine._dragBackupPts = null;
-      }
+      // Advertencia "Ramal padre incorrecto" inhabilitada — se permite el movimiento.
       engine._dragLinkedBackupPts = null;
       engine._markDirty();
       engine.render();
@@ -510,15 +503,9 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
         engine.render();
       }
     } else if (ram && ram.tipo === 'tributario' && draggedOntoWrongPadre(engine, ram)) {
-      engine.triggerAlert(
-        'Ramal padre incorrecto',
-        'Solo puedes conectar el tributario al ramal padre seleccionado.',
-      );
-      if (origPts) {
-        ram.pts = origPts;
-        engine._markDirty();
-        engine.render();
-      }
+      // Advertencia "Ramal padre incorrecto" inhabilitada — se permite el movimiento.
+      engine._markDirty();
+      engine.render();
     } else if (ram) {
       const flowErr = dragFlowCheck(engine, ram, []);
       if (flowErr) {

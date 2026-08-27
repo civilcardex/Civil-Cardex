@@ -304,8 +304,9 @@ export function ventFlowsIntoJunction(
   return flowEndsAt(vent, pt, tol);
 }
 
-/** ¿El flujo del candidato en `ep` coincide con el del ramal que toca (dot > 0)? Regla
- *  san/ll/vent: el ramal que se conecta fluye en el mismo sentido que el ramal principal. */
+/** ¿El flujo del candidato en `ep` coincide con el del ramal que toca (dot >= 0)? Regla
+ *  san/ll/vent: el ramal que se conecta fluye en el mismo sentido que el ramal principal.
+ *  Perpendicular (T 90°) se permite (dot 0); solo contraflujo (dot <0) se bloquea. */
 export function flowDirectionOkAt(
   incoming: { pts: number[][]; _tribReversed?: boolean },
   other: { pts: number[][]; _tribReversed?: boolean },
@@ -315,7 +316,7 @@ export function flowDirectionOkAt(
   const fin = flowVecAt(incoming, ep, tol);
   const fex = flowVecAt(other, ep, tol);
   if (!fin || !fex) return false;
-  return fin[0] * fex[0] + fin[1] * fex[1] > 0;
+  return fin[0] * fex[0] + fin[1] * fex[1] >= 0;
 }
 
 function pointOnRamalSegment(p: number[], a: number[], b: number[], tol: number): boolean {
@@ -349,6 +350,36 @@ export function ramalFlowDirectionCheck(
   const candidates = [...engine.ramales, ...extra];
   const eps = [ram.pts[0], ram.pts[ram.pts.length - 1]];
   for (const ep of eps) {
+    // Dos ramales que drenan al MISMO bajante no forman una unión ramal-ramal: cada uno
+    // conecta al bajante por separado (hasta 2 permitidos, orig. #14). Si el extremo está
+    // montado sobre un bajante del mismo net, no validar la dirección contra otros ramales
+    // en ese punto — sus vectores (desde lados opuestos hacia el bajante) son opuestos y
+    // dispararían una falsa advertencia de dirección de flujo.
+    const epAtBajante = (engine.bajantes || []).some(
+      (b) => b.net === ram.net && Math.hypot(b.x - ep[0], b.y - ep[1]) < tol,
+    );
+    if (epAtBajante) continue;
+    // Un brazo lateral TRIBUTARIO en una unión de 3+ ramales (yee/tee, p. ej. el brazo de una yee
+    // doble) define su dirección por topología, no por dot product entre vectores — un brazo en 45°
+    // puede tener dot ≤0 contra el tronco. Saltar la validación de dirección ahí SOLO para
+    // tributarios; un ramal normal (tipo 'ramal') en san/ll SIEMPRE debe validarse contra el flujo
+    // del ramal al que se conecta (no puede ir en contra).
+    if (ram.tipo === 'tributario') {
+      let junctionCount = 0;
+      for (const c of candidates) {
+        if (!c.pts || c.pts.length < 2) continue;
+        const cEps = [c.pts[0], c.pts[c.pts.length - 1]];
+        if (
+          cEps.some((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1]) < tol) ||
+          c.pts.some(
+            (_, i) =>
+              i < c.pts!.length - 1 && pointOnRamalSegment(ep, c.pts![i], c.pts![i + 1], tol),
+          )
+        )
+          junctionCount++;
+      }
+      if (junctionCount >= 3) continue;
+    }
     for (const other of candidates) {
       if (other.id === ram.id || !sameNetGroupNet(other.net, ram.net)) continue;
       if (!other.pts || other.pts.length < 2) continue;

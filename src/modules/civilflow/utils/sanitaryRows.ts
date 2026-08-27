@@ -28,6 +28,7 @@ export interface SanConnectivity {
   orientedConexiones: Record<string, string[]>;
   displayMap: Record<string, string[]>;
   componentTotalMap: Record<string, number>;
+  fullChildrenMap: Record<string, string[]>;
 }
 
 /**
@@ -498,21 +499,23 @@ export function buildSanConnectivity(
     return false;
   };
   for (const t of tramosSan) {
-    if (t._key && t.tipo === 'ramal' && !t.esBajante) {
-      const immediate = new Set<string>([
-        ...(childrenMap[t._key] || []),
-        ...(mergeBranches[t._key] || []),
-      ]);
-      const filtered = Array.from(immediate).filter((k) => {
-        const tr = byKey.get(k);
-        if (!tr || tr.tipo !== 'ramal' || tr.esBajante) return false;
-        for (const other of immediate) {
-          if (other !== k && isDescendantOf(k, other)) return false;
-        }
-        return true;
-      });
-      displayMap[t._key] = filtered;
-    }
+    if (!t._key) continue;
+    const isHost = t.esBajante || t.tipo === 'ramal' || t.tipo === 'tributario';
+    if (!isHost) continue;
+    const immediate = new Set<string>([
+      ...(childrenMap[t._key] || []),
+      ...(mergeBranches[t._key] || []),
+    ]);
+    const filtered = Array.from(immediate).filter((k) => {
+      const tr = byKey.get(k);
+      if (!tr || tr.esBajante) return false;
+      if (tr.tipo !== 'ramal' && tr.tipo !== 'tributario') return false;
+      for (const other of immediate) {
+        if (other !== k && isDescendantOf(k, other)) return false;
+      }
+      return true;
+    });
+    displayMap[t._key] = filtered;
   }
 
   // Limpiar "Otros Ramales" para los orígenes de merge — conservan solo sus propios UD
@@ -522,7 +525,7 @@ export function buildSanConnectivity(
     if (displayMap[branchId]) displayMap[branchId] = [];
   }
 
-  return { orientedConexiones, displayMap, componentTotalMap };
+  return { orientedConexiones, displayMap, componentTotalMap, fullChildrenMap };
 }
 
 export interface SanRow {
@@ -653,33 +656,44 @@ export function computeUdTable(
   plans: PlanItem[],
   mergedBase: MergedApBase[],
 ): MemoriaTable | null {
-  const displayTramos = tramosSan
+  const ramales = tramosSan
     .filter((t) => t.tipo === 'ramal' && !t.esBajante)
     .toSorted((a, b) => (a.piso || 0) - (b.piso || 0));
+  const bajantes = tramosSan
+    .filter((t) => t.esBajante)
+    .toSorted((a, b) => (a.piso || 0) - (b.piso || 0));
+  const displayTramos = [...ramales, ...bajantes].toSorted((a, b) => {
+    if ((a.piso || 0) !== (b.piso || 0)) return (a.piso || 0) - (b.piso || 0);
+    if (a.esBajante !== b.esBajante) return a.esBajante ? 1 : -1;
+    return 0;
+  });
   if (displayTramos.length === 0) return null;
-  const { componentTotalMap } = buildSanConnectivity(tramosSan, plans, mergedBase);
+  const {
+    componentTotalMap,
+    displayMap: _displayMap,
+    fullChildrenMap,
+  } = buildSanConnectivity(tramosSan, plans, mergedBase);
 
   const headers = [
-    'Tramo',
+    'Ramal/Bajante',
     'Nivel',
     'Inicio',
     'Fin',
     ...mergedBase.map((d) => `${d.nombre} (${d.ud} UD)`),
-    'Parcial',
-    'Total',
+    'Unidades de descarga totales',
   ];
   const headerGroups: (string | MemoriaHeaderGroup)[] = [
-    'Tramo',
+    'Ramal/Bajante',
     'Nivel',
     'Inicio',
     'Fin',
     { label: 'Aparatos', span: mergedBase.length },
-    { label: 'Unidades de descarga', span: 2 },
+    'Unidades de descarga totales',
   ];
   const rows = displayTramos.map((t) => {
     const tKey = t._key || `${t.id}-${t.piso}`;
-    const parcial = calcUDparcial(t, mergedBase);
     const acum = componentTotalMap[tKey] || 0;
+    // Para bajante, acum ya incluye tributarios vía displayMap; no duplicar ramal
     const ini =
       t.ini && typeof t.ini === 'object'
         ? `${(t.ini as { x: number; y: number }).x},${(t.ini as { x: number; y: number }).y}`
@@ -688,15 +702,34 @@ export function computeUdTable(
       t.fin && typeof t.fin === 'object'
         ? `${(t.fin as { x: number; y: number }).x},${(t.fin as { x: number; y: number }).y}`
         : t.fin || '—';
-    return [
-      t.id,
-      pisoCorto(t.piso),
-      ini,
-      fin,
-      ...mergedBase.map((d) => t.fixtures[d.id] ?? 0),
-      parcial,
-      acum,
-    ];
+    // Desglose incluye tributarios y ramales que llegan vía fullChildrenMap (transitivo)
+    // — para ramal y bajante, suma aparatos de todos los descendientes (tributarios + ramales)
+    const getAllDescendants = (start: string): string[] => {
+      const visited = new Set<string>([start]);
+      const stack = [...(fullChildrenMap[start] || [])];
+      const out: string[] = [];
+      while (stack.length > 0) {
+        const cur = stack.pop()!;
+        if (visited.has(cur)) continue;
+        visited.add(cur);
+        out.push(cur);
+        for (const child of fullChildrenMap[cur] || []) if (!visited.has(child)) stack.push(child);
+      }
+      return out;
+    };
+    const descendantKeys = getAllDescendants(tKey);
+    // Filtrar a tramos con aparatos (ramal/tributario) para desglose
+    const extraFixtures: Record<string, number> = { ...t.fixtures };
+    for (const ck of descendantKeys) {
+      const ct = tramosSan.find((x) => (x._key || `${x.id}-${x.piso}`) === ck);
+      if (!ct || ct.esBajante) continue;
+      if (ct.tipo !== 'ramal' && ct.tipo !== 'tributario') continue;
+      for (const d of mergedBase)
+        extraFixtures[d.id] = (extraFixtures[d.id] || 0) + (ct.fixtures[d.id] || 0);
+    }
+    // Para bajante: extraFixtures ya incluye ramales/tribs descendientes; para ramal también
+    const fixtureVals = mergedBase.map((d) => extraFixtures[d.id] ?? 0);
+    return [t.id, pisoCorto(t.piso), ini, fin, ...fixtureVals, acum];
   });
 
   // Fila de sumatoria — coincide con el tfoot de la tabla en pantalla: subtotal por-aparato
@@ -706,7 +739,7 @@ export function computeUdTable(
     return { cant, ud: d.ud, subtotal: cant * d.ud };
   });
   const totalUD = totales.reduce((s, d) => s + d.subtotal, 0);
-  rows.push(['Total', '', '', '', ...totales.map((d) => `${d.cant} × ${d.ud} UD`), '', totalUD]);
+  rows.push(['Total', '', '', '', ...totales.map((d) => `${d.cant} × ${d.ud} UD`), totalUD]);
 
   return { title: 'Cálculo de unidades de descarga', headerGroups, headers, rows };
 }

@@ -352,6 +352,13 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
         // siguiente ramal, así otras asociaciones válidas del mismo movimiento no quedan
         // bloqueadas.
         if (dStart < autoThresh && dStart <= dEnd) {
+          if ((b.recibeDeIds?.length ?? 0) >= 2) {
+            engine.triggerAlert(
+              'Bajante completo',
+              'Este bajante ya tiene 2 ramales conectados (máximo permitido).',
+            );
+            continue;
+          }
           const allowed = isRamalBajanteConnectionAllowed(engine, r, 0, b);
           if (!allowed) continue;
           if (!b.recibeDeIds) b.recibeDeIds = [];
@@ -361,6 +368,13 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           p.y = pStart[1];
           break;
         } else if (dEnd < autoThresh) {
+          if ((b.recibeDeIds?.length ?? 0) >= 2) {
+            engine.triggerAlert(
+              'Bajante completo',
+              'Este bajante ya tiene 2 ramales conectados (máximo permitido).',
+            );
+            continue;
+          }
           const allowed = isRamalBajanteConnectionAllowed(engine, r, r.pts.length - 1, b);
           if (!allowed) continue;
           if (!b.recibeDeIds) b.recibeDeIds = [];

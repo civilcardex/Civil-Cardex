@@ -39,7 +39,14 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
       let changed = false;
       for (const k of Object.keys(data)) {
         const segs = k.split('_');
-        if (segs.length >= 2 && segs[0] === netId && !keepIds.has(segs[1])) {
+        // Solo limpiar huérfanos de ramales de esta red (prefijo pfx, ej. RS, RALL).
+        // No borrar tributarios (T...), Ldesvio (LD_...), ni bajantes (BAN...), que tienen otro prefijo.
+        if (
+          segs.length >= 2 &&
+          segs[0] === netId &&
+          segs[1].startsWith(pfx) &&
+          !keepIds.has(segs[1])
+        ) {
           delete data[k];
           changed = true;
         }
@@ -65,11 +72,73 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
           let changed = false;
           for (const k of Object.keys(data)) {
             const segs = k.split('_');
+            let newK: string | null = null;
+            let isTributarySuffix = false;
             const idx = segs.indexOf(oldId);
             if (idx >= 0) {
               segs[idx] = newId;
-              const newK = segs.join('_');
-              if (!data[newK]) data[newK] = data[k];
+              newK = segs.join('_');
+            } else if (segs.length >= 2 && segs[1].startsWith('T') && segs[1].endsWith(oldId)) {
+              // Tributario: T{n}{oldId} -> T{n}{newId}
+              const m = segs[1].match(/^T(\d+)(.+)$/);
+              if (m && m[2] === oldId) {
+                segs[1] = `T${m[1]}${newId}`;
+                newK = segs.join('_');
+                isTributarySuffix = true;
+              }
+            }
+            if (newK) {
+              // Si la clave destino ya existe (colisión), FUSIONAR sumando conteos
+              if (
+                data[newK] &&
+                data[k] &&
+                typeof data[newK] === 'object' &&
+                typeof data[k] === 'object'
+              ) {
+                const target = data[newK] as Record<string, unknown>;
+                const source = data[k] as Record<string, unknown>;
+                const merged: Record<string, unknown> = { ...target };
+                for (const [sk, sv] of Object.entries(source)) {
+                  if (
+                    sk === 'accesorios' &&
+                    typeof sv === 'object' &&
+                    sv !== null &&
+                    typeof merged[sk] === 'object' &&
+                    merged[sk] !== null
+                  ) {
+                    const accTarget = merged[sk] as Record<string, number>;
+                    const accSource = sv as Record<string, number>;
+                    const accMerged: Record<string, number> = { ...accTarget };
+                    for (const [ak, av] of Object.entries(accSource))
+                      accMerged[ak] = (accMerged[ak] || 0) + ((av as number) || 0);
+                    merged[sk] = accMerged;
+                  } else if (typeof sv === 'number' && typeof merged[sk] === 'number') {
+                    merged[sk] = (merged[sk] as number) + (sv as number);
+                  } else if (merged[sk] === undefined) {
+                    merged[sk] = sv;
+                  } else if (
+                    typeof sv === 'object' &&
+                    sv !== null &&
+                    typeof merged[sk] === 'object' &&
+                    merged[sk] !== null
+                  ) {
+                    merged[sk] = { ...(merged[sk] as object), ...(sv as object) };
+                  } else {
+                    if (typeof sv === 'number' && typeof merged[sk] === 'number')
+                      merged[sk] = (merged[sk] as number) + (sv as number);
+                    else merged[sk] = sv;
+                  }
+                }
+                data[newK] = merged;
+              } else if (!data[newK]) {
+                data[newK] = data[k];
+              } else if (isTributarySuffix) {
+                // Colisión de tributario: fusionar como arriba (ya manejado), si no hay colisión ya se copió
+                // Si existe colisión y no es objeto (raro), sumar si son números
+                if (typeof data[newK] === 'number' && typeof data[k] === 'number') {
+                  (data[newK] as number) = (data[newK] as number) + (data[k] as number);
+                }
+              }
               delete data[k];
               changed = true;
             }
@@ -81,13 +150,40 @@ export function _renumberRamales(engine: IPlanoEngineCore, netId: string): void 
       };
       migrateKeys('aparatos_by_tramo_v2');
       migrateKeys('tramo_hidro_data_v3');
+      // También migrar GAS y otros hidro que usan id directo
+      migrateKeys('gas_accesorios');
     }
     r.id = newId;
     r.label = newId;
+    // Actualizar padre y label de tributarios que apuntaban al viejo id
     engine.ramales
       .filter((t) => t.padre === oldId)
       .forEach((t) => {
         t.padre = newId;
+        // Label T{n}{oldId} -> T{n}{newId}
+        const m = t.label.match(/^T(\d+)(.+)$/);
+        if (m && m[2] === oldId) {
+          t.label = `T${m[1]}${newId}`;
+        } else if (t.label.endsWith(oldId)) {
+          t.label = t.label.slice(0, -oldId.length) + newId;
+        }
+      });
+    // Tributarios cuyo label es T{n}{oldId} aunque su padre ya no sea oldId (por split), también deben renombrarse
+    engine.ramales
+      .filter((t) => t.tipo === 'tributario' && t.label.endsWith(oldId) && t.padre !== newId)
+      .forEach((t) => {
+        const m = t.label.match(/^T(\d+)(.+)$/);
+        if (m && m[2] === oldId) {
+          // Solo si el sufijo es exactamente oldId y el prefijo es T{n}
+          // Verificar que el ramal padre actual tenga como raíz el oldId (vía rootTributarioLabel)
+          // Para no renombrar tributarios de otros troncos que casualmente terminan igual
+          const curPadreLabel = t.padre
+            ? engine.ramales.find((rr) => rr.id === t.padre)?.label || ''
+            : '';
+          if (curPadreLabel === oldId || curPadreLabel.endsWith(oldId)) {
+            t.label = `T${m[1]}${newId}`;
+          }
+        }
       });
     // Ítem 9/bug 1: un ramal renombrado puede ser parte de una DIVISIÓN (mergesFrom) — el
     // downstream de un split guarda [idUpstream, idDivisor]. Si se renombra cualquiera de ellos

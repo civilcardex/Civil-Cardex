@@ -124,7 +124,7 @@ export function drawExtremeAccessorySymbol(
       const labelCvs = storedPlane
         ? engine.toCvs(storedPlane[0], storedPlane[1])
         : { x: defaultLabelX, y: defaultLabelY };
-      const text = `S  D=${normalizeDnLabel(diamLabel.split(' — ')[0])}"`;
+      const text = `S  D=${normalizeDnLabel(diamLabel)}"`;
       ctx.fillText(text, labelCvs.x, labelCvs.y);
 
       if (ramal && slot) {

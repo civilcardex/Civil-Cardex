@@ -214,30 +214,11 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           flowDy = lastc.y - fc.y;
           flowLen = Math.hypot(flowDx, flowDy);
         } else {
-          // Dirección = segmento más cercano a la etiqueta (continuidad del primer segmento).
-          // El flujo global parte del primer segmento, pero la flecha local debe seguir la
-          // continuidad del trazo en la posición de la etiqueta — segmento horizontal → flecha
-          // horizontal, vertical → vertical. Rota rígidamente porque el vector proviene de la
-          // geometría actual de pts, no de un ángulo absoluto; solo _tribReversed lo invierte.
-          const lx = r.labelX ?? 0;
-          const ly = r.labelY ?? 0;
-          let bestIdx = 0;
-          let bestD = Infinity;
-          for (let i = 0; i < r.pts.length - 1; i++) {
-            const p1 = r.pts[i];
-            const p2 = r.pts[i + 1];
-            const mx = (p1[0] + p2[0]) / 2;
-            const my = (p1[1] + p2[1]) / 2;
-            const d = Math.hypot(lx - mx, ly - my);
-            if (d < bestD) {
-              bestD = d;
-              bestIdx = i;
-            }
-          }
-          // Fallback: si la etiqueta está muy lejos (arrastrada), usa primer segmento
-          if (bestD > 2000) bestIdx = 0;
-          const a = engine.toCvs(r.pts[bestIdx][0], r.pts[bestIdx][1]);
-          const b = engine.toCvs(r.pts[bestIdx + 1][0], r.pts[bestIdx + 1][1]);
+          // Dirección de flujo previamente definida: primer segmento (pts[0]→pts[1]),
+          // solo _tribReversed la invierte. No depende de la posición de la etiqueta
+          // ni del segmento más cercano — evita diagonal al girar etiqueta rápido.
+          const a = engine.toCvs(r.pts[0][0], r.pts[0][1]);
+          const b = engine.toCvs(r.pts[1][0], r.pts[1][1]);
           const flip =
             r._tribReversed && (r.tipo === 'tributario' || ['af', 'ac', 'gas'].includes(r.net))
               ? -1
@@ -252,7 +233,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const lvlSuffix = pCorto ? `-${pCorto}` : '';
       const lbl = r.label ? `${r.label}${lvlSuffix}` : '';
       const matPart = matDrawingLabel(r.material) || (r.net === 'vent' ? 'PVC-V' : '');
-      const dPart = r.diametro ? `D=${normalizeDnLabel(r.diametro).split(' — ')[0]}` : '';
+      const dPart = r.diametro ? `D=${normalizeDnLabel(r.diametro)}` : '';
       const pPart = r.pendiente ? `S=${r.pendiente}%` : '';
       const showPend = r.net === 'san' || r.net === 'll';
       const pendPart = showPend && pPart ? pPart : '';
@@ -656,6 +637,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         const app = idx === 0 ? r.aparatoInicio : r.aparatoFin;
         if (app && app !== 'nev') accType = 'codo90rmSube';
       }
+      // El codo/sifón solo se dibuja por el accesorio PERSISTIDO (accesorioInicio/Fin) o por un
+      // aparato AF/AC implícito — nunca auto-generado por la presencia de un bajante en el otro
+      // extremo (orig. usuario #4: crear un bajante no debe crear un codo 90° sube).
       if (!accType) return;
 
       const pt = r.pts[idx];

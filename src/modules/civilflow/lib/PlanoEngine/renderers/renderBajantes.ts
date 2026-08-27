@@ -870,7 +870,7 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
           }
         }
       } else if (b.diametro) {
-        diamStr = normalizeDnLabel(b.diametro.split(' — ')[0]);
+        diamStr = normalizeDnLabel(b.diametro);
       }
       // La línea grande en negrita es solo el código — espeja la etiqueta propia de un ramal,
       // que mantiene su línea de nombre en negrita con el código corto solo y empuja el
@@ -1010,7 +1010,7 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
       const ghostDNom = gd?.dNominal || b.dNominal;
       let diamStr = '';
       if (b.diametro) {
-        diamStr = normalizeDnLabel(b.diametro.split(' — ')[0]);
+        diamStr = normalizeDnLabel(b.diametro);
       } else if (ghostDNom && ghostDNom !== '0') {
         const v = String(ghostDNom).trim();
         if (v.includes('"') || v.includes('mm')) {
