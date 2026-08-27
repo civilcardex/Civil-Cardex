@@ -5,10 +5,19 @@ import { NETS } from '../../../lib/PlanoEngine/PlanoState';
 import EditButton from '../../shared/EditButton';
 import { devError } from '../../../../../utils/devError';
 import { saveNetColor } from '../../../services/netColorsService';
-import { loadFromStorage, saveToStorage } from '../../../services/storageService';
+import {
+  loadFromStorage,
+  saveToStorage,
+  getActiveProyectoId,
+} from '../../../services/storageService';
 
 const AF_ALIMENTACION_KEY = 'civilflow_af_alimentacion';
 type AfAlim = 'ep' | 'tanque' | 'red';
+const AF_ALIM_ICONS: Record<AfAlim, string> = {
+  ep: '/iconos_civilflow/diseno_redes/equipos/red_equipo_presion.webp',
+  tanque: '/tanque_alto_de_alimentacion.webp',
+  red: '/red_de_agua_directa.webp',
+};
 
 const ActiveNetsCard_netBtn: React.CSSProperties = {
   display: 'flex',
@@ -42,11 +51,37 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
     const v = loadFromStorage<AfAlim | null>(AF_ALIMENTACION_KEY, null);
     return v === 'tanque' || v === 'red' ? v : 'ep';
   });
+  const [tanqueNpt, setTanqueNpt] = React.useState<string>(() => {
+    const v = loadFromStorage<string | null>('civilflow_tanque_npt', null);
+    return v ?? '';
+  });
+  React.useEffect(() => {
+    const pid = getActiveProyectoId();
+    if (!pid) return;
+    void (async () => {
+      const { loadAfAlimentacion, loadTanqueNpt } =
+        await import('../../../services/proyectoDataService');
+      const [afDb, nptDb] = await Promise.all([loadAfAlimentacion(pid), loadTanqueNpt(pid)]);
+      if (afDb && (afDb === 'ep' || afDb === 'tanque' || afDb === 'red')) {
+        setAfAlim(afDb as AfAlim);
+        saveToStorage(AF_ALIMENTACION_KEY, afDb);
+      }
+      if (nptDb != null) {
+        setTanqueNpt(nptDb);
+        saveToStorage('civilflow_tanque_npt', nptDb);
+      }
+    })();
+  }, []);
   const afOn = redes.has('af');
   const afAlimEff: AfAlim = afOn && afAlim === 'ep' && !redes.has('ep') ? 'red' : afAlim;
   const setAfAlimAndSync = (v: AfAlim) => {
     setAfAlim(v);
     saveToStorage(AF_ALIMENTACION_KEY, v);
+    const pid = getActiveProyectoId();
+    if (pid)
+      void import('../../../services/proyectoDataService').then(
+        ({ saveAfAlimentacion }) => void saveAfAlimentacion(pid, v),
+      );
     const n = new Set(redes);
     if (v === 'ep') n.add('ep');
     else n.delete('ep');
@@ -114,6 +149,7 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
               const sanOn = redes.has('san');
               const llOn = redes.has('ll');
               const parentOn = isVent ? sanOn : isRecolectora ? llOn : true;
+              if (isSub && !parentOn) return null;
               const cssVar = `--${r.id === 'recolectora' ? 'll' : r.id}`;
               const currentColor =
                 r.id === 'recolectora' ? netColors['ll'] || '#8B5CF6' : netColors[r.id] || '#666';
@@ -242,46 +278,114 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
                       ).map((o) => {
                         const oOn = afAlimEff === o.id;
                         return (
-                          <button
-                            type="button"
-                            key={o.id}
-                            role="radio"
-                            aria-checked={oOn}
-                            disabled={!isEditing}
-                            onClick={() => isEditing && setAfAlimAndSync(o.id)}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              padding: '3px 6px',
-                              background: 'var(--bg3)',
-                              border: `1px solid ${oOn ? 'var(--acc)' : 'var(--line)'}`,
-                              borderRadius: 'var(--r)',
-                              width: '100%',
-                              font: 'inherit',
-                              color: 'inherit',
-                              textAlign: 'left',
-                              cursor: isEditing ? 'pointer' : 'default',
-                              opacity: isEditing ? 1 : 0.75,
-                            }}
-                          >
-                            <span
-                              style={{ fontSize: 12, flex: 1, color: oOn ? '#fff' : 'var(--txt2)' }}
-                            >
-                              {o.lbl}
-                            </span>
-                            <span
-                              aria-hidden="true"
+                          <React.Fragment key={o.id}>
+                            <button
+                              type="button"
+                              role="radio"
+                              aria-checked={oOn}
+                              disabled={!isEditing}
+                              onClick={() => isEditing && setAfAlimAndSync(o.id)}
                               style={{
-                                width: 10,
-                                height: 10,
-                                borderRadius: '50%',
-                                flexShrink: 0,
-                                background: oOn ? 'var(--acc)' : 'transparent',
-                                border: `1.5px solid ${oOn ? 'var(--acc)' : 'var(--txt3)'}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '3px 6px',
+                                background: 'var(--bg3)',
+                                border: `1px solid ${oOn ? 'var(--acc)' : 'var(--line)'}`,
+                                borderRadius: 'var(--r)',
+                                width: '100%',
+                                font: 'inherit',
+                                color: 'inherit',
+                                textAlign: 'left',
+                                cursor: isEditing ? 'pointer' : 'default',
+                                opacity: isEditing ? 1 : 0.75,
                               }}
-                            />
-                          </button>
+                            >
+                              <img
+                                src={AF_ALIM_ICONS[o.id]}
+                                alt=""
+                                width={18}
+                                height={18}
+                                style={{
+                                  width: 18,
+                                  height: 18,
+                                  objectFit: 'contain',
+                                  flexShrink: 0,
+                                }}
+                                loading="lazy"
+                              />
+                              <span
+                                style={{
+                                  fontSize: 12,
+                                  flex: 1,
+                                  color: oOn ? '#fff' : 'var(--txt2)',
+                                }}
+                              >
+                                {o.lbl}
+                              </span>
+                              <span
+                                aria-hidden="true"
+                                style={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: '50%',
+                                  flexShrink: 0,
+                                  background: oOn ? 'var(--acc)' : 'transparent',
+                                  border: `1.5px solid ${oOn ? 'var(--acc)' : 'var(--txt3)'}`,
+                                }}
+                              />
+                            </button>
+                            {o.id === 'tanque' && oOn && (
+                              <div
+                                style={{
+                                  marginTop: 2,
+                                  marginLeft: 22,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 4,
+                                  paddingLeft: 8,
+                                  borderLeft: '2px solid var(--line)',
+                                }}
+                              >
+                                <label
+                                  htmlFor="tanque-npt-input"
+                                  style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt2)' }}
+                                >
+                                  NPT salida tanque (m)
+                                </label>
+                                <input
+                                  id="tanque-npt-input"
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={tanqueNpt}
+                                  disabled={!isEditing}
+                                  onChange={(e) => {
+                                    const v = e.target.value.replace(',', '.');
+                                    setTanqueNpt(v);
+                                    saveToStorage('civilflow_tanque_npt', v);
+                                  }}
+                                  onBlur={async (e: React.FocusEvent<HTMLInputElement>) => {
+                                    const v = e.currentTarget.value;
+                                    const pid = getActiveProyectoId();
+                                    if (pid) {
+                                      const { saveTanqueNpt } =
+                                        await import('../../../services/proyectoDataService');
+                                      void saveTanqueNpt(pid, v);
+                                    }
+                                  }}
+                                  placeholder="0.00"
+                                  style={{
+                                    padding: '4px 6px',
+                                    borderRadius: 'var(--r)',
+                                    border: '1px solid var(--line)',
+                                    background: 'var(--bg)',
+                                    fontSize: 12,
+                                    opacity: isEditing ? 1 : 0.7,
+                                  }}
+                                />
+                              </div>
+                            )}
+                          </React.Fragment>
                         );
                       })}
                     </div>

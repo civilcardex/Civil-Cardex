@@ -122,7 +122,9 @@ export default function PressureEquipmentDesign() {
           'Esquema',
         ]}
       />
-      <div style={{ flex: 1, padding: 6, overflow: 'auto' }}>{pages[page - 1].c}</div>
+      <div style={{ flex: 1, padding: 6, overflow: 'hidden', display: 'flex' }}>
+        {pages[page - 1].c}
+      </div>
     </div>
   );
 }

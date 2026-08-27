@@ -50,6 +50,8 @@ interface ProyectoGeneralRow {
   c_escorrentia?: number;
   pendiente_san?: number;
   redes_activas?: string[] | null;
+  af_alimentacion?: string | null;
+  tanque_npt?: string | null;
 }
 interface PisoRow {
   id: number;
@@ -412,6 +414,78 @@ export async function loadProyectoData(proyectoId: number): Promise<ProyectoData
     };
   } catch (e) {
     devError('proyectoDataService load exception:', e);
+    return null;
+  }
+}
+
+export async function saveAfAlimentacion(proyectoId: number, value: string): Promise<void> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase
+      .from(CF_TABLES.proyectoGeneral)
+      .upsert(
+        { proyecto_id: proyectoId, user_id: user.id, af_alimentacion: value },
+        { onConflict: 'proyecto_id' },
+      );
+    if (error) devError('saveAfAlimentacion:', error.message);
+  } catch (e) {
+    devError('saveAfAlimentacion exception:', e);
+  }
+}
+
+export async function saveTanqueNpt(proyectoId: number, value: string): Promise<void> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase
+      .from(CF_TABLES.proyectoGeneral)
+      .upsert(
+        { proyecto_id: proyectoId, user_id: user.id, tanque_npt: value },
+        { onConflict: 'proyecto_id' },
+      );
+    if (error) devError('saveTanqueNpt:', error.message);
+  } catch (e) {
+    devError('saveTanqueNpt exception:', e);
+  }
+}
+
+export async function loadAfAlimentacion(proyectoId: number): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from(CF_TABLES.proyectoGeneral)
+      .select('af_alimentacion')
+      .eq('proyecto_id', proyectoId)
+      .maybeSingle();
+    if (error) {
+      devError('loadAfAlimentacion:', error.message);
+      return null;
+    }
+    return (data as { af_alimentacion?: string | null })?.af_alimentacion ?? null;
+  } catch (e) {
+    devError('loadAfAlimentacion exception:', e);
+    return null;
+  }
+}
+
+export async function loadTanqueNpt(proyectoId: number): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from(CF_TABLES.proyectoGeneral)
+      .select('tanque_npt')
+      .eq('proyecto_id', proyectoId)
+      .maybeSingle();
+    if (error) {
+      devError('loadTanqueNpt:', error.message);
+      return null;
+    }
+    return (data as { tanque_npt?: string | null })?.tanque_npt ?? null;
+  } catch (e) {
+    devError('loadTanqueNpt exception:', e);
     return null;
   }
 }

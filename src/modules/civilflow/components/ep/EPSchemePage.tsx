@@ -1,444 +1,185 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type * as THREE from 'three';
 import type { EPData } from './EPShared';
 import { dec } from '../../utils/parseDecimal';
-
-// ponytail: minimum that works — single canvas + sidebar ported from Civilflow_EPC_3D / Modulo, driven by EPData (modo + nt/nr)
-
-const COMPS: Array<{
-  id: string;
-  num: number;
-  name: string;
-  sub: string;
-  norm: string;
-  desc: string;
-}> = [
-  {
-    id: 'acometida',
-    num: 1,
-    name: 'Acometida de entrada',
-    sub: 'Red pública · cisterna',
-    norm: 'NTC 1500 §3',
-    desc: 'Tubería de alimentación desde la red pública o cisterna hacia el manifold de succión del EPC. DN según caudal de diseño.',
-  },
-  {
-    id: 'vg_ent',
-    num: 2,
-    name: 'Válvula de corte entrada',
-    sub: 'Compuerta · mariposa',
-    norm: 'NTC 1500',
-    desc: 'Permite aislar el equipo de la red de suministro para mantenimiento.',
-  },
-  {
-    id: 'filtro',
-    num: 3,
-    name: 'Filtro en Y',
-    sub: 'Malla acero inox.',
-    norm: 'NTC 1500',
-    desc: 'Filtro tipo Y con malla de acero inoxidable para proteger los impulsores.',
-  },
-  {
-    id: 'presost_s',
-    num: 4,
-    name: 'Presostato de succión',
-    sub: 'Control presión mín.',
-    norm: 'NFPA 20 §4',
-    desc: 'Sensor de presión en línea de succión. Detiene bombas si la presión cae por debajo del mínimo (anti-cavitación).',
-  },
-  {
-    id: 'manif_s',
-    num: 5,
-    name: 'Manifold de succión',
-    sub: 'Colector Ø mayor',
-    norm: 'RAS 2000 Tít.B',
-    desc: 'Colector de diámetro mayor que las tuberías individuales, garantiza distribución uniforme a cada bomba. Acero SCH-40.',
-  },
-  {
-    id: 'vg_s1',
-    num: 6,
-    name: 'Válvula succión Bomba 1',
-    sub: 'Compuerta · mariposa',
-    norm: 'NTC 1500',
-    desc: 'Válvula de aislamiento en succión de la Bomba 1.',
-  },
-  {
-    id: 'vg_s2',
-    num: 7,
-    name: 'Válvula succión Bomba 2',
-    sub: 'Compuerta · mariposa',
-    norm: 'NTC 1500',
-    desc: 'Válvula de aislamiento en succión de la Bomba 2.',
-  },
-  {
-    id: 'vg_s3',
-    num: 8,
-    name: 'Válvula succión Bomba 3 (R)',
-    sub: 'Compuerta · mariposa',
-    norm: 'NTC 1500',
-    desc: 'Válvula de aislamiento en succión de la Bomba 3 (reserva).',
-  },
-  {
-    id: 'b1',
-    num: 9,
-    name: 'Bomba 1 — Trabajo',
-    sub: 'Centrífuga multietapa',
-    norm: 'NSR-10 H',
-    desc: 'Bomba centrífuga multietapa. Opera en modo trabajo principal.',
-  },
-  {
-    id: 'b2',
-    num: 10,
-    name: 'Bomba 2 — Trabajo',
-    sub: 'Centrífuga multietapa',
-    norm: 'NSR-10 H',
-    desc: 'Bomba de trabajo secundaria. Opera en paralelo con Bomba 1.',
-  },
-  {
-    id: 'b3',
-    num: 11,
-    name: 'Bomba 3 — Reserva',
-    sub: 'Arranque automático',
-    norm: 'NSR-10 H',
-    desc: 'Bomba de reserva (stand-by). Arranca si falla una de trabajo o cae la presión.',
-  },
-  {
-    id: 'vrd1',
-    num: 12,
-    name: 'Válvula retención Bomba 1',
-    sub: 'Check swing · axial',
-    norm: 'NTC 1500',
-    desc: 'Válvula check en impulsión de cada bomba. Impide flujo inverso.',
-  },
-  {
-    id: 'vrd2',
-    num: 13,
-    name: 'Válvula retención Bomba 2',
-    sub: 'Check swing · axial',
-    norm: 'NTC 1500',
-    desc: 'Válvula check en impulsión de la Bomba 2.',
-  },
-  {
-    id: 'vrd3',
-    num: 14,
-    name: 'Válvula retención Bomba 3',
-    sub: 'Check swing · axial',
-    norm: 'NTC 1500',
-    desc: 'Válvula check en impulsión de la Bomba 3.',
-  },
-  {
-    id: 'manif_i',
-    num: 15,
-    name: 'Manifold de impulsión',
-    sub: 'Colector Ø mayor',
-    norm: 'RAS 2000 Tít.B',
-    desc: 'Colector donde convergen las líneas de las bombas antes de la red o el tanque hidroneumático.',
-  },
-  {
-    id: 'psv',
-    num: 16,
-    name: 'Válvula alivio PSV',
-    sub: 'Presión máx. de diseño',
-    norm: 'ASME §VIII',
-    desc: 'Válvula de alivio calibrada a Pmáx + 10%. Protege tuberías y equipos.',
-  },
-  {
-    id: 'manometro',
-    num: 17,
-    name: 'Manómetro / transductor',
-    sub: '4–20 mA o Bourdon',
-    norm: 'ISA 5.1',
-    desc: 'Medición de presión en manifold de impulsión. Bourdon o transductor 4-20 mA.',
-  },
-  {
-    id: 'tank',
-    num: 18,
-    name: 'Tanque hidroneumático',
-    sub: 'Recipiente a vejiga',
-    norm: 'ASME §VIII',
-    desc: 'Recipiente con vejiga aire-agua. Mantiene presión entre ciclos, reduce arranques.',
-  },
-  {
-    id: 'presost_r',
-    num: 19,
-    name: 'Presostato de control',
-    sub: 'P_on · P_off',
-    norm: 'NSR-10 H',
-    desc: 'Controla arranque (P_on) y parada (P_off) según presión en manifold de impulsión.',
-  },
-  {
-    id: 'vg_red',
-    num: 20,
-    name: 'Válvula salida a red',
-    sub: 'Compuerta · mariposa',
-    norm: 'NTC 1500',
-    desc: 'Válvula principal de salida hacia la red hidrosanitaria del edificio.',
-  },
-  {
-    id: 'tablero',
-    num: 21,
-    name: 'Tablero de control',
-    sub: 'PLC · relés + VFD',
-    norm: 'NEC · RETIE',
-    desc: 'Tablero con arrancadores, protecciones, selector manual/automático y VFD.',
-  },
-  {
-    id: 'cisterna',
-    num: 22,
-    name: 'Cisterna · tanque succión',
-    sub: 'Dotación + reserva incendio',
-    norm: 'RAS 2000 Tít.B',
-    desc: 'Tanque de succión. Volumen según dotación + reserva.',
-  },
-  {
-    id: 'vg_sal',
-    num: 23,
-    name: 'Válvula salida a pisos',
-    sub: 'Manifold distribución',
-    norm: 'NTC 1500',
-    desc: 'Válvulas de distribución hacia columnas o zonas de presión.',
-  },
-];
 
 interface Props {
   ep: EPData;
   updEP?: (field: keyof EPData, val: EPData[keyof EPData]) => void;
 }
 
+const LEGEND: Array<{ num: number; name: string; desc: string }> = [
+  {
+    num: 1,
+    name: 'Colador de succión',
+    desc: 'Rejilla en la cisterna que impide el paso de sólidos a la succión.',
+  },
+  {
+    num: 2,
+    name: 'Válvulas de aislamiento',
+    desc: 'Permiten aislar cada bomba y la salida para mantenimiento.',
+  },
+  {
+    num: 3,
+    name: 'Bombas de impulsión',
+    desc: 'Bombas centrífugas verticales multietapa (trabajo + reserva).',
+  },
+  {
+    num: 4,
+    name: 'Válvulas de retención',
+    desc: 'Impiden el flujo inverso en la impulsión de cada bomba.',
+  },
+  { num: 5, name: 'Manómetro', desc: 'Medición de presión en el manifold de impulsión.' },
+  { num: 6, name: 'Transmisor de presión', desc: 'Señal 4-20 mA al PLC para control de presión.' },
+  { num: 7, name: 'PLC', desc: 'Controlador lógico programable: automatización y protecciones.' },
+  {
+    num: 8,
+    name: 'Tanque hidroneumático',
+    desc: 'Mantiene presión entre ciclos y reduce arranques.',
+  },
+];
+
 export default function EPSchemePage({ ep, updEP }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState('iso');
-  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const groupRef = useRef<THREE.Group | null>(null);
-  const meshesRef = useRef<THREE.Mesh[]>([]);
-  const matsOrig = useRef<Map<string, THREE.Material>>(new Map());
-  const viewFnRef = useRef<(v: string) => void>(() => {});
-  const selectedIdRef = useRef<string | null>(null);
+  const badgeWrapRef = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLDivElement>(null);
+  const [selected, setSelected] = useState<number | null>(null);
+  const selectedRef = useRef<number | null>(null);
 
-  const hasCistern = ep.modo === 'cisterna';
   const nt = Math.max(1, dec(ep.nt) || 1);
   const nr = Math.max(0, dec(ep.nr) || 0);
   const ntot = Math.min(4, Math.max(2, nt + nr));
-  const threeRef = useRef<typeof THREE | null>(null);
-  const [threeReady, setThreeReady] = useState(false);
+  const numPumps = ntot; // 3 => 2T+1R, 4 => 3T+1R
 
   useEffect(() => {
-    selectedIdRef.current = selectedId;
-  }, [selectedId]);
+    selectedRef.current = selected;
+  }, [selected]);
 
-  const selectComp = useCallback((id: string) => {
-    const THREE = threeRef.current;
-    if (!THREE) return;
-    const meshes = meshesRef.current;
-    const map = matsOrig.current;
-    const cur = selectedIdRef.current;
-    // restore
-    if (cur) {
-      meshes
-        .filter((m) => (m.userData as { compId?: string }).compId === cur)
-        .forEach((m) => {
-          const orig = map.get(m.uuid);
-          if (orig) (m as THREE.Mesh).material = orig;
-        });
-    }
-    if (cur === id) {
-      setSelectedId(null);
-      return;
-    }
-    setSelectedId(id);
-    // Verde de alto contraste: el amarillo anterior se confundía con los materiales ámbar
-    // (válvulas), por lo que V.succión 1/2/3 "no se veían" resaltadas.
-    const hl = new THREE.MeshStandardMaterial({
-      color: 0x22c55e,
-      emissive: 0x16a34a,
-      emissiveIntensity: 0.6,
-      roughness: 0.3,
-      metalness: 0.5,
-    });
-    meshes
-      .filter((m) => (m.userData as { compId?: string }).compId === id)
-      .forEach((m) => {
-        if (!map.has(m.uuid))
-          map.set(m.uuid, (m.material as THREE.Material).clone() as THREE.Material);
-        (m as THREE.Mesh).material = hl;
-      });
-  }, []);
-
-  // build scene — lazy load three so it's not in initial bundle (ponytail: native when needed)
   useEffect(() => {
     let cancelled = false;
     let cleanup: (() => void) | undefined;
     (async () => {
       const THREE = await import('three');
       if (cancelled) return;
-      threeRef.current = THREE;
-      setThreeReady(true);
       const canvas = canvasRef.current;
       const wrap = wrapRef.current;
       if (!canvas || !wrap) return;
 
-      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      // r128 used outputEncoding, newer uses outputColorSpace
       renderer.outputColorSpace = THREE.SRGBColorSpace;
-      renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.1;
-      renderer.setClearColor(0xffffff);
-      rendererRef.current = renderer;
+      renderer.setClearColor(0xf1f1f4);
 
       const scene = new THREE.Scene();
-      scene.fog = new THREE.FogExp2(0xffffff, 0.012);
-      scene.background = new THREE.Color(0xffffff);
-      sceneRef.current = scene;
+      const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
 
-      const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 200);
-      camera.position.set(6, 5, 9);
-      camera.lookAt(0, 1, 0);
-      cameraRef.current = camera;
+      // lights
+      scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+      const hemi = new THREE.HemisphereLight(0xffffff, 0xbfc4cc, 0.5);
+      scene.add(hemi);
+      const dir = new THREE.DirectionalLight(0xffffff, 1.0);
+      dir.position.set(6, 10, 8);
+      dir.castShadow = true;
+      dir.shadow.mapSize.set(2048, 2048);
+      dir.shadow.camera.left = -10;
+      dir.shadow.camera.right = 10;
+      dir.shadow.camera.top = 10;
+      dir.shadow.camera.bottom = -6;
+      scene.add(dir);
 
-      const ambient = new THREE.AmbientLight(0xffffff, 0.85);
-      scene.add(ambient);
-      const dirMain = new THREE.DirectionalLight(0xffffff, 0.9);
-      dirMain.position.set(8, 12, 8);
-      dirMain.castShadow = true;
-      dirMain.shadow.mapSize.set(2048, 2048);
-      dirMain.shadow.camera.near = 0.5;
-      dirMain.shadow.camera.far = 60;
-      (dirMain.shadow.camera as THREE.OrthographicCamera).left = -10;
-      (dirMain.shadow.camera as THREE.OrthographicCamera).right = 10;
-      (dirMain.shadow.camera as THREE.OrthographicCamera).top = 10;
-      (dirMain.shadow.camera as THREE.OrthographicCamera).bottom = -10;
-      scene.add(dirMain);
-      const dirFill = new THREE.DirectionalLight(0xffffff, 0.45);
-      dirFill.position.set(-6, 4, -6);
-      scene.add(dirFill);
-      const dirBack = new THREE.DirectionalLight(0xffffff, 0.25);
-      dirBack.position.set(0, -4, -8);
-      scene.add(dirBack);
+      // ground (soft shadow catcher)
+      const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(60, 40),
+        new THREE.ShadowMaterial({ opacity: 0.12 }),
+      );
+      ground.rotation.x = -Math.PI / 2;
+      ground.position.y = -0.02;
+      ground.receiveShadow = true;
+      scene.add(ground);
 
-      const gridHelper = new THREE.GridHelper(20, 40, 0xcbd5e1, 0xe2e8f0);
-      (gridHelper.position as THREE.Vector3).y = -0.01;
-      scene.add(gridHelper);
-      const floorGeo = new THREE.PlaneGeometry(20, 20);
-      const floorMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 1 });
-      const floor = new THREE.Mesh(floorGeo, floorMat);
-      floor.rotation.x = -Math.PI / 2;
-      floor.receiveShadow = true;
-      scene.add(floor);
+      // ---- materials ----
+      const M = {
+        steel: new THREE.MeshStandardMaterial({ color: 0xc9cdd1, metalness: 0.9, roughness: 0.28 }),
+        steelDark: new THREE.MeshStandardMaterial({
+          color: 0x8f959b,
+          metalness: 0.85,
+          roughness: 0.4,
+        }),
+        blue: new THREE.MeshStandardMaterial({ color: 0x1668b0, metalness: 0.35, roughness: 0.4 }),
+        blueDark: new THREE.MeshStandardMaterial({
+          color: 0x0e4f8c,
+          metalness: 0.4,
+          roughness: 0.45,
+        }),
+        water: new THREE.MeshStandardMaterial({
+          color: 0x1e7fc0,
+          metalness: 0.1,
+          roughness: 0.15,
+          transparent: true,
+          opacity: 0.9,
+        }),
+        gray: new THREE.MeshStandardMaterial({ color: 0xb9bdc2, metalness: 0.3, roughness: 0.55 }),
+        grayDark: new THREE.MeshStandardMaterial({
+          color: 0x6f747a,
+          metalness: 0.4,
+          roughness: 0.5,
+        }),
+        red: new THREE.MeshStandardMaterial({ color: 0xd22, metalness: 0.3, roughness: 0.4 }),
+        beacon: new THREE.MeshStandardMaterial({
+          color: 0xf33,
+          emissive: 0xd00,
+          emissiveIntensity: 0.8,
+          roughness: 0.3,
+        }),
+        white: new THREE.MeshStandardMaterial({ color: 0xf5f6f7, roughness: 0.4 }),
+        concrete: new THREE.MeshStandardMaterial({
+          color: 0xa8a8a4,
+          metalness: 0.02,
+          roughness: 0.95,
+        }),
+        wall: new THREE.MeshStandardMaterial({ color: 0xe9e9e6, metalness: 0.02, roughness: 0.9 }),
+        glass: new THREE.MeshStandardMaterial({
+          color: 0xdfe8ee,
+          metalness: 0.1,
+          roughness: 0.12,
+          emissive: 0x9fb4c0,
+          emissiveIntensity: 0.25,
+        }),
+        green: new THREE.MeshStandardMaterial({ color: 0x1a9a4a, roughness: 0.4 }),
+        orange: new THREE.MeshStandardMaterial({ color: 0xd07020, roughness: 0.4 }),
+        yellow: new THREE.MeshStandardMaterial({ color: 0xd0a020, roughness: 0.4 }),
+        black: new THREE.MeshStandardMaterial({ color: 0x222, roughness: 0.5 }),
+      };
 
       const group = new THREE.Group();
       scene.add(group);
-      groupRef.current = group;
-
-      const M: Record<string, THREE.MeshStandardMaterial> = {
-        pipeS: new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.3, metalness: 0.7 }),
-        pipeI: new THREE.MeshStandardMaterial({ color: 0xea580c, roughness: 0.3, metalness: 0.7 }),
-        pump: new THREE.MeshStandardMaterial({ color: 0x7c3aed, roughness: 0.25, metalness: 0.8 }),
-        pumpH: new THREE.MeshStandardMaterial({
-          color: 0xa78bfa,
-          roughness: 0.2,
-          metalness: 0.9,
-          emissive: 0x4c1d95,
-          emissiveIntensity: 0.3,
-        }),
-        tank: new THREE.MeshStandardMaterial({ color: 0x0891b2, roughness: 0.3, metalness: 0.6 }),
-        valve: new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4, metalness: 0.5 }),
-        check: new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.35, metalness: 0.6 }),
-        board: new THREE.MeshStandardMaterial({ color: 0x374151, roughness: 0.6, metalness: 0.3 }),
-        boardF: new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.7, metalness: 0.2 }),
-        manif: new THREE.MeshStandardMaterial({
-          color: 0x1e40af,
-          roughness: 0.25,
-          metalness: 0.85,
-        }),
-        manifI: new THREE.MeshStandardMaterial({
-          color: 0xc2410c,
-          roughness: 0.25,
-          metalness: 0.85,
-        }),
-        filter: new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.4, metalness: 0.5 }),
-        sensor: new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3, metalness: 0.6 }),
-        gauge: new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.2, metalness: 0.7 }),
-        cistern: new THREE.MeshStandardMaterial({
-          color: 0x164e63,
-          roughness: 0.5,
-          metalness: 0.3,
-        }),
-        psv: new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3, metalness: 0.6 }),
-      };
-
-      const allMeshes: THREE.Mesh[] = [];
-      meshesRef.current = allMeshes;
-      matsOrig.current.clear();
-
-      // helpers
-      const box = (
-        w: number,
-        h: number,
-        d: number,
+      const meshes: THREE.Mesh[] = [];
+      const add = (
+        geo: THREE.BufferGeometry,
         mat: THREE.Material,
-        cx: number,
-        cy: number,
-        cz: number,
-        compId?: string,
+        x: number,
+        y: number,
+        z: number,
+        comp: number,
+        rx = 0,
+        ry = 0,
+        rz = 0,
       ) => {
-        const g = new THREE.BoxGeometry(w, h, d);
-        const m = new THREE.Mesh(g, mat);
-        m.position.set(cx, cy, cz);
+        const cm = mat.clone() as THREE.MeshStandardMaterial;
+        const m = new THREE.Mesh(geo, cm);
+        m.position.set(x, y, z);
+        m.rotation.set(rx, ry, rz);
         m.castShadow = true;
         m.receiveShadow = true;
-        if (compId) (m.userData as { compId?: string }).compId = compId;
+        const ud = m.userData as { comp?: number; em0?: number; ei0?: number };
+        ud.comp = comp;
+        ud.em0 = cm.emissive.getHex();
+        ud.ei0 = cm.emissiveIntensity;
         group.add(m);
-        allMeshes.push(m as unknown as THREE.Mesh);
-        return m;
-      };
-      const cyl = (
-        rt: number,
-        rb: number,
-        h: number,
-        seg: number,
-        mat: THREE.Material,
-        cx: number,
-        cy: number,
-        cz: number,
-        rx?: number,
-        ry?: number,
-        rz?: number,
-        compId?: string,
-      ) => {
-        const g = new THREE.CylinderGeometry(rt, rb, h, seg);
-        const m = new THREE.Mesh(g, mat);
-        m.position.set(cx, cy, cz);
-        if (rx !== undefined || ry !== undefined || rz !== undefined)
-          m.rotation.set(rx ?? 0, ry ?? 0, rz ?? 0);
-        m.castShadow = true;
-        m.receiveShadow = true;
-        if (compId) (m.userData as { compId?: string }).compId = compId;
-        group.add(m);
-        allMeshes.push(m as unknown as THREE.Mesh);
-        return m;
-      };
-      const sphere = (
-        r: number,
-        seg: number,
-        mat: THREE.Material,
-        cx: number,
-        cy: number,
-        cz: number,
-        compId?: string,
-      ) => {
-        const g = new THREE.SphereGeometry(r, seg, seg);
-        const m = new THREE.Mesh(g, mat);
-        m.position.set(cx, cy, cz);
-        m.castShadow = true;
-        if (compId) (m.userData as { compId?: string }).compId = compId;
-        group.add(m);
-        allMeshes.push(m as unknown as THREE.Mesh);
+        meshes.push(m);
         return m;
       };
       const pipe = (
@@ -449,1658 +190,403 @@ export default function EPSchemePage({ ep, updEP }: Props) {
         y2: number,
         z2: number,
         r: number,
-        mat: THREE.Material,
-        compId?: string,
+        comp: number,
+        mat = M.steel,
       ) => {
-        const dir = new THREE.Vector3(x2 - x1, y2 - y1, z2 - z1);
-        const len = dir.length();
+        const d = new THREE.Vector3(x2 - x1, y2 - y1, z2 - z1);
+        const len = d.length();
         if (len < 0.001) return;
-        const g = new THREE.CylinderGeometry(r, r, len, 12);
-        const m = new THREE.Mesh(g, mat);
-        const mid = new THREE.Vector3((x1 + x2) / 2, (y1 + y2) / 2, (z1 + z2) / 2);
-        m.position.copy(mid);
-        m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
-        m.castShadow = true;
-        if (compId) (m.userData as { compId?: string }).compId = compId;
-        group.add(m);
-        allMeshes.push(m as unknown as THREE.Mesh);
+        const m = add(
+          new THREE.CylinderGeometry(r, r, len, 20),
+          mat,
+          (x1 + x2) / 2,
+          (y1 + y2) / 2,
+          (z1 + z2) / 2,
+          comp,
+        );
+        m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.clone().normalize());
         return m;
       };
-      const elbow = (
-        cx: number,
-        cy: number,
-        cz: number,
-        r: number,
-        mat: THREE.Material,
-        compId?: string,
+      // Codo de 90° real: arco de toro tangente a dos tramos perpendiculares (d1,d2 = direcciones
+      // unitarias de los tubos que salen de la esquina). Mucho más limpio que una esfera.
+      const norm = (a: number) => ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+      const bend = (
+        x: number,
+        y: number,
+        z: number,
+        d1x: number,
+        d1y: number,
+        d2x: number,
+        d2y: number,
+        bendR: number,
+        tubeR: number,
+        comp: number,
+        mat = M.steel,
       ) => {
-        const g = new THREE.SphereGeometry(r * 1.4, 10, 10);
-        const m = new THREE.Mesh(g, mat);
-        m.position.set(cx, cy, cz);
-        if (compId) (m.userData as { compId?: string }).compId = compId;
-        group.add(m);
-        allMeshes.push(m as unknown as THREE.Mesh);
+        const cx = x + d1x * bendR + d2x * bendR;
+        const cy = y + d1y * bendR + d2y * bendR;
+        const a0 = Math.atan2(-d2y, -d2x);
+        const a1 = Math.atan2(-d1y, -d1x);
+        const rot = Math.abs(norm(a1 - (a0 + Math.PI / 2))) < 1e-4 ? a0 : a1;
+        const m = add(
+          new THREE.TorusGeometry(bendR, tubeR, 14, 32, Math.PI / 2),
+          mat,
+          cx,
+          cy,
+          z,
+          comp,
+        );
+        m.rotation.z = rot;
+        // Collares (bridas) en los extremos del codo para que se lea como accesorio codo 90
+        const collarR = tubeR * 1.6;
+        const cLen = tubeR * 1.6;
+        // extremo 1: tangente en d1
+        cyl(
+          collarR,
+          collarR,
+          cLen,
+          M.steelDark,
+          x + d1x * bendR + d1x * 0,
+          y + d1y * bendR,
+          z,
+          comp,
+          0,
+          0,
+          Math.atan2(d1y, d1x) + Math.PI / 2,
+        );
+        // extremo 2: tangente en d2
+        cyl(
+          collarR,
+          collarR,
+          cLen,
+          M.steelDark,
+          x + d2x * bendR,
+          y + d2y * bendR,
+          z,
+          comp,
+          0,
+          0,
+          Math.atan2(d2y, d2x) + Math.PI / 2,
+        );
         return m;
       };
+      // Unión de tee LISA: sin collar/manguito oscuro alrededor del manifold (el usuario pidió
+      // quitar esa figura). El ramal vertical ya perfora/intersecta el manifold — queda como una
+      // T limpia. Se conserva la función por los call sites (acepta los mismos args, no dibuja).
+      const tee = (..._a: unknown[]) => {};
+      const cyl = (
+        rt: number,
+        rb: number,
+        h: number,
+        mat: THREE.Material,
+        x: number,
+        y: number,
+        z: number,
+        comp: number,
+        rx = 0,
+        ry = 0,
+        rz = 0,
+      ) => add(new THREE.CylinderGeometry(rt, rb, h, 24), mat, x, y, z, comp, rx, ry, rz);
+      const box = (
+        w: number,
+        h: number,
+        d: number,
+        mat: THREE.Material,
+        x: number,
+        y: number,
+        z: number,
+        comp: number,
+        rx = 0,
+        ry = 0,
+        rz = 0,
+      ) => add(new THREE.BoxGeometry(w, h, d), mat, x, y, z, comp, rx, ry, rz);
 
-      // derived nt/nr
-      const numBombs = ntot;
-      const bombPos = (() => {
-        if (numBombs === 2) return [-0.6, 0.6];
-        if (numBombs === 3) return [-0.9, 0, 0.9];
-        if (numBombs === 4) return [-1.35, -0.45, 0.45, 1.35];
-        return Array.from({ length: numBombs }, (_, i) => -0.9 + (i * 1.8) / (numBombs - 1));
-      })();
-      const bombIds = Array.from({ length: numBombs }, (_, i) => `b${i + 1}`);
-      const vgSIds = Array.from({ length: numBombs }, (_, i) => `vg_s${i + 1}`);
-      const vrdIds = Array.from({ length: numBombs }, (_, i) => `vrd${i + 1}`);
+      const R_PIPE = 0.07;
+      const R_MAN = 0.09;
 
-      const pR = 0.04;
-      const pRi = 0.032;
+      // column x positions
+      const spacing = 1.2;
+      const start = -((numPumps - 1) * spacing) / 2;
+      const cols = Array.from({ length: numPumps }, (_, i) => start + i * spacing);
+      const colL = cols[0];
+      const colR = cols[numPumps - 1];
 
-      // CISTERNA or ACOMETIDA
-      if (hasCistern) {
-        box(2.0, 1.6, 1.4, M.cistern, -4.0, 0.8, 0, 'cisterna');
-        box(
-          0.8,
-          0.15,
-          0.02,
-          new THREE.MeshStandardMaterial({ color: 0x164e63 }),
-          -4.0,
-          1.5,
-          0.71,
-          'cisterna',
-        );
-        pipe(-3.0, 0.5, 0, -1.9, 0.5, 0, pR, M.pipeS, 'acometida');
-        // suction from cisterna to manifold
-        pipe(-3.0, 0.5, 0, -0.72, 0.5, 0, pR, M.pipeS, 'manif_s');
-      } else {
-        pipe(-4.0, 0.5, 0, -1.9, 0.5, 0, pR, M.pipeS, 'acometida');
-        cyl(0.07, 0.07, 0.12, 12, M.manif, -3.9, 0.5, 0, 0, 0, Math.PI / 2, 'acometida');
-      }
+      // heights
+      const Y_SUC = 1.7; // suction manifold
+      const Y_VLOW = 2.05; // isolation valve below pump
+      const Y_PUMP = 2.75; // pump center
+      const Y_VHIGH = 3.6; // isolation valve above pump
+      const Y_CHECK = 4.15; // check valve
+      const Y_DIS = 4.8; // discharge manifold
 
-      // Válvula corte entrada — conectada sin gaps
-      box(0.18, 0.14, 0.14, M.valve, -1.7, 0.5, 0, 'vg_ent');
-      cyl(0.05, 0.05, 0.22, 10, M.pipeS, -1.7, 0.5, 0, 0, 0, Math.PI / 2, 'vg_ent');
-      cyl(0.04, 0.04, 0.18, 8, M.valve, -1.7, 0.64, 0, 0, 0, 0, 'vg_ent');
-      pipe(-1.9, 0.5, 0, -1.7, 0.5, 0, pR, M.pipeS, 'vg_ent');
-      pipe(-1.62, 0.5, 0, -1.7, 0.5, 0, pR, M.pipeS, 'vg_ent');
+      // ---- cistern (badge 1) ----
+      const CX = colL - 3.1;
+      const cistR = 1.15;
+      const cistH = 1.5;
+      // outer wall (open top): use cylinder with no top cap
+      const wall = new THREE.Mesh(
+        new THREE.CylinderGeometry(cistR, cistR, cistH, 40, 1, true),
+        M.steel.clone(),
+      );
+      (wall.material as THREE.MeshStandardMaterial).side = THREE.DoubleSide;
+      wall.position.set(CX, cistH / 2, 0);
+      wall.castShadow = true;
+      (wall.userData as { comp?: number }).comp = 1;
+      group.add(wall);
+      meshes.push(wall);
+      // bottom
+      cyl(cistR, cistR, 0.06, M.steel, CX, 0.03, 0, 1);
+      // rim
+      add(new THREE.TorusGeometry(cistR, 0.05, 12, 40), M.steel, CX, cistH, 0, 1, Math.PI / 2);
+      // water
+      cyl(cistR - 0.06, cistR - 0.06, 0.85, M.water, CX, 0.5, 0, 1);
+      // level lines (max/min) as thin white rings on front
+      add(
+        new THREE.TorusGeometry(cistR + 0.005, 0.012, 8, 48),
+        M.white,
+        CX,
+        1.05,
+        0,
+        1,
+        Math.PI / 2,
+      );
+      add(
+        new THREE.TorusGeometry(cistR + 0.005, 0.012, 8, 48),
+        M.white,
+        CX,
+        0.45,
+        0,
+        1,
+        Math.PI / 2,
+      );
+      // inlet pipe from left into wall + float (no pertenece al colador)
+      pipe(CX - 2.4, 1.2, 0, CX - cistR + 0.05, 1.2, 0, R_PIPE, 0);
+      // float rod
+      cyl(0.015, 0.015, 0.5, M.steelDark, CX - cistR + 0.25, 0.95, 0, 1);
+      cyl(0.06, 0.06, 0.08, M.gray, CX - cistR + 0.25, 0.75, 0, 1);
+      // outlet bottom-right -> right -> codo 90 -> up -> codo 90 -> manifold de succión
+      bend(colL - 0.6, 0.25, 0, -1, 0, 0, 1, 0.3, R_PIPE * 1.2, 0);
+      pipe(CX + cistR - 0.1, 0.25, 0, colL - 0.9, 0.25, 0, R_PIPE, 0);
+      // El tubo vertical sube hasta el extremo del codo superior (Y_SUC - bendR).
+      pipe(colL - 0.6, 0.55, 0, colL - 0.6, Y_SUC - 0.3, 0, R_PIPE, 0);
+      // Codo 90° en la parte SUPERIOR: el tubo sube y gira hacia el manifold de succión (hasta
+      // ahora era una esquina con tee; el usuario pidió que se lea como codo 90°).
+      bend(colL - 0.6, Y_SUC, 0, 0, -1, 1, 0, 0.3, R_PIPE, 0);
 
-      // Filtro — conectado
-      cyl(0.09, 0.09, 0.22, 10, M.filter, -1.35, 0.5, 0, 0, 0, Math.PI / 2, 'filtro');
-      cyl(0.06, 0.04, 0.18, 8, M.filter, -1.35, 0.38, 0.05, 0.5, 0, 0, 'filtro');
-      pipe(-1.62, 0.5, 0, -1.35, 0.5, 0, pR, M.pipeS, 'filtro');
-      pipe(-1.35, 0.5, 0, -1.05, 0.5, 0, pR, M.pipeS, 'filtro');
+      // ---- suction manifold ----
+      pipe(colL - 0.6 + 0.3, Y_SUC, 0, colR + 0.5, Y_SUC, 0, R_MAN, 0);
+      // tapón (tapon) al final del manifold de succión, no una bola
+      cyl(
+        R_MAN * 1.25,
+        R_MAN * 1.25,
+        0.08,
+        M.steelDark,
+        colR + 0.52,
+        Y_SUC,
+        0,
+        0,
+        0,
+        0,
+        Math.PI / 2,
+      );
+      cyl(R_MAN * 0.8, R_MAN * 0.8, 0.06, M.steelDark, colR + 0.58, Y_SUC, 0, 0, 0, 0, Math.PI / 2);
 
-      // Presostato succión — conectado
-      cyl(0.06, 0.06, 0.08, 10, M.sensor, -1.05, 0.5, 0, 0, 0, Math.PI / 2, 'presost_s');
-      cyl(0.04, 0.04, 0.14, 8, M.sensor, -1.05, 0.62, 0.0, 0, 0, 0, 'presost_s');
-      sphere(0.07, 8, M.sensor, -1.05, 0.72, 0, 'presost_s');
-      pipe(-1.05, 0.5, 0, -0.72, 0.5, 0, pR, M.pipeS, 'presost_s');
-
-      // Manifold succión — continuo
-      cyl(0.1, 0.1, 1.9, 12, M.manif, -0.72, 0.5, 0, 0, 0, Math.PI / 2, 'manif_s');
-      sphere(0.1, 10, M.manif, -1.67, 0.5, 0, 'manif_s');
-      sphere(0.1, 10, M.manif, 0.23, 0.5, 0, 'manif_s');
-      elbow(-1.62, 0.5, 0, 0.04, M.pipeS, 'manif_s');
-      elbow(0.18, 0.5, 0, 0.04, M.pipeS, 'manif_s');
-
-      // ── FOTORREALISTA 3× ── fotos isométricas de referencia: CISTERNA (gris agua azul) y RED con tanque hidroneumático azul + SCADA
-      const isCisterna3 = hasCistern && numBombs === 3;
-      const isRed3 = !hasCistern && numBombs === 3;
-      const isFoto3 = isCisterna3 || isRed3;
-      if (isCisterna3) {
-        // cisterna hormigón con agua — solo cisterna
-        box(
-          2.0,
-          1.25,
-          1.45,
-          new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.85, metalness: 0.05 }),
-          -5.0,
-          0.625,
-          0,
-          'cisterna',
-        );
-        box(
-          1.62,
-          0.06,
-          1.02,
-          new THREE.MeshStandardMaterial({
-            color: 0x38bdf8,
-            roughness: 0.15,
-            metalness: 0.2,
-            transparent: true,
-            opacity: 0.85,
-          }),
-          -5.0,
-          0.95,
-          0,
-          'cisterna',
-        );
-        cyl(
-          0.11,
-          0.11,
-          0.04,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.6 }),
-          -4.05,
-          0.55,
-          0,
-          0,
-          0,
-          Math.PI / 2,
-          'acometida',
-        );
-      }
-      if (isFoto3) {
-        // acometida — diferente origen: cisterna (-4.05) vs red (-4.6)
-        if (isCisterna3)
-          pipe(
-            -4.05,
-            0.55,
-            0,
-            -2.85,
-            0.55,
-            0,
-            0.07,
-            new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
-            'acometida',
-          );
-        else
-          pipe(
-            -4.6,
-            0.55,
-            0,
-            -2.85,
-            0.55,
-            0,
-            0.07,
-            new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
-            'acometida',
-          );
-        cyl(
-          0.09,
-          0.09,
-          0.02,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-          -2.85,
-          0.55,
-          0,
-          0,
-          0,
-          Math.PI / 2,
-          'vg_ent',
-        );
-        box(
-          0.18,
-          0.14,
-          0.14,
-          new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.35, metalness: 0.65 }),
-          -2.72,
-          0.55,
-          0,
-          'vg_ent',
-        );
-        cyl(
-          0.04,
-          0.04,
-          0.14,
-          8,
-          new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.4, metalness: 0.3 }),
-          -2.72,
-          0.67,
-          0,
-          0,
-          0,
-          0,
-          'vg_ent',
-        );
-        cyl(
-          0.08,
-          0.08,
-          0.015,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3, metalness: 0.4 }),
-          -2.72,
-          0.74,
-          0,
-          0,
-          0,
-          0,
-          'vg_ent',
-        );
-        pipe(
-          -2.64,
-          0.55,
-          0,
-          -2.35,
-          0.55,
-          0,
-          0.07,
-          new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
-          'manif_s',
-        );
-        cyl(
-          0.13,
-          0.13,
-          3.6,
-          24,
-          new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.22, metalness: 0.78 }),
-          -0.55,
-          0.55,
-          0,
-          0,
-          0,
-          Math.PI / 2,
-          'manif_s',
-        );
-        [-2.35, -1.55, -0.65, 0.25, 1.15].forEach((x) =>
-          cyl(
-            0.15,
-            0.15,
-            0.02,
-            16,
-            new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.35, metalness: 0.65 }),
-            x,
-            0.55,
-            0,
-            0,
-            0,
-            Math.PI / 2,
-            'manif_s',
-          ),
-        );
-        pipe(
-          -1.65,
-          0.55,
-          0,
-          -1.65,
-          0.68,
-          0,
-          0.018,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.5 }),
-          'manif_s',
-        );
-        sphere(
-          0.09,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.15, metalness: 0.1 }),
-          -1.65,
-          0.77,
-          0,
-          'manif_s',
-        );
-        cyl(
-          0.09,
-          0.09,
-          0.015,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.2, metalness: 0.5 }),
-          -1.65,
-          0.77,
-          0.01,
-          0,
-          0,
-          0,
-          'manif_s',
-        );
-        cyl(
-          0.13,
-          0.13,
-          0.24,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.35, metalness: 0.4 }),
-          -1.0,
-          0.67,
-          0,
-          0,
-          0,
-          0,
-          'filtro',
-        );
-        cyl(
-          0.14,
-          0.14,
-          0.06,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5, metalness: 0.3 }),
-          -1.0,
-          0.82,
-          0,
-          0,
-          0,
-          0,
-          'filtro',
-        );
-        pipe(
-          -1.0,
-          0.55,
-          0,
-          -1.0,
-          0.55,
-          0,
-          0.07,
-          new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
-          'filtro',
-        );
-        box(
-          0.16,
-          0.18,
-          0.12,
-          new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.4, metalness: 0.2 }),
-          -0.35,
-          0.82,
-          0,
-          'presost_s',
-        );
-        box(
-          0.1,
-          0.06,
-          0.02,
-          new THREE.MeshStandardMaterial({ color: 0x1e40af, roughness: 0.3 }),
-          -0.35,
-          0.88,
-          0.07,
-          'presost_s',
-        );
-        cyl(
-          0.02,
-          0.02,
-          0.08,
-          8,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.5 }),
-          -0.35,
-          0.68,
-          0,
-          0,
-          0,
-          0,
-          'presost_s',
-        );
-        box(
-          3.2,
-          0.1,
-          1.15,
-          new THREE.MeshStandardMaterial({ color: 0x9ca3af, roughness: 0.85, metalness: 0.05 }),
-          -0.05,
-          0.05,
-          0,
-          'manif_i',
-        );
-      }
-      bombPos.forEach((bx, i) => {
-        const isReserve = i >= nt;
-        const bMat = isReserve ? M.pump : M.pumpH;
-        if (isFoto3) {
-          // bajante succión con válvula latón volante rojo — igual para cisterna y red
-          pipe(
-            bx,
-            0.55,
-            0,
-            bx,
-            0.32,
-            0,
-            0.05,
-            new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
-            vgSIds[i],
-          );
+      // ---- pump columns ----
+      cols.forEach((x) => {
+        // tee on suction manifold (limpio, sin bola)
+        tee(x, Y_SUC, 0, R_MAN * 1.25, 0.18, 0);
+        pipe(x, Y_SUC, 0, x, Y_VLOW, 0, R_PIPE, 2);
+        // isolation valve below (blue handle)
+        cyl(0.09, 0.09, 0.16, M.steelDark, x, Y_VLOW, 0, 2);
+        cyl(0.03, 0.03, 0.12, M.steelDark, x + 0.1, Y_VLOW, 0, 2, 0, 0, Math.PI / 2);
+        cyl(0.07, 0.07, 0.03, M.blue, x + 0.17, Y_VLOW, 0, 2, 0, 0, Math.PI / 2);
+        pipe(x, Y_VLOW + 0.08, 0, x, Y_PUMP - 0.35, 0, R_PIPE, 3);
+        // pump: flange + casing + motor + fins + cap
+        cyl(0.2, 0.22, 0.06, M.blue, x, Y_PUMP - 0.32, 0, 3);
+        cyl(0.16, 0.16, 0.3, M.blue, x, Y_PUMP - 0.12, 0, 3);
+        cyl(0.17, 0.17, 0.42, M.blueDark, x, Y_PUMP + 0.22, 0, 3);
+        for (let k = 0; k < 6; k++) {
+          const a = (k / 6) * Math.PI * 2;
           box(
-            0.14,
-            0.12,
-            0.14,
-            new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.35, metalness: 0.65 }),
-            bx,
-            0.26,
-            0,
-            vgSIds[i],
-          );
-          cyl(
-            0.035,
-            0.035,
-            0.1,
-            8,
-            new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.4 }),
-            bx,
+            0.02,
             0.36,
-            0,
-            0,
-            0,
-            0,
-            vgSIds[i],
-          );
-          cyl(
-            0.065,
-            0.065,
-            0.012,
-            16,
-            new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3, metalness: 0.4 }),
-            bx,
-            0.41,
-            0,
-            0,
-            0,
-            0,
-            vgSIds[i],
-          );
-          // bomba vertical inline fotorealista — altura idéntica a foto (0.95m total)
-          cyl(
-            0.16,
-            0.16,
-            0.45,
-            22,
-            new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.16, metalness: 0.84 }),
-            bx,
-            0.25,
-            0,
-            0,
-            0,
-            0,
-            bombIds[i],
-          ); // cuerpo inox pulido alto
-          cyl(
-            0.17,
-            0.17,
-            0.015,
-            16,
-            new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.3, metalness: 0.7 }),
-            bx,
-            0.48,
-            0,
-            0,
-            0,
-            0,
-            bombIds[i],
-          ); // brida
-          cyl(
-            0.19,
-            0.21,
-            0.44,
-            22,
-            new THREE.MeshStandardMaterial({ color: 0x090e1a, roughness: 0.42, metalness: 0.18 }),
-            bx,
-            0.71,
-            0,
-            0,
-            0,
-            0,
-            bombIds[i],
-          ); // motor negro alto con aletas
-          for (let k = 0; k < 6; k++)
-            cyl(
-              0.215,
-              0.215,
-              0.015,
-              16,
-              new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.55 }),
-              bx,
-              0.55 + k * 0.055,
-              0,
-              0,
-              0,
-              0,
-              bombIds[i],
-            );
-          cyl(
-            0.1,
-            0.1,
-            0.06,
-            16,
-            new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.5, metalness: 0.2 }),
-            bx,
-            0.95,
-            0,
-            0,
-            0,
-            0,
-            bombIds[i],
-          ); // tapa cúpula
-          box(
-            0.18,
             0.02,
-            0.18,
-            new THREE.MeshStandardMaterial({ color: 0x020617, roughness: 0.6 }),
-            bx,
-            0.1,
-            0,
-            bombIds[i],
-          ); // base negra
-          // descarga corta al colector inferior
-          pipe(
-            bx,
-            0.1,
-            0,
-            bx,
-            0.08,
-            0,
-            0.045,
-            new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
-            vrdIds[i],
+            M.blueDark,
+            x + Math.cos(a) * 0.17,
+            Y_PUMP + 0.22,
+            Math.sin(a) * 0.17,
+            3,
           );
-        } else {
-          pipe(bx, 0.5, 0, bx, 0.36, 0, pR, M.pipeS, vgSIds[i]);
-          box(0.15, 0.13, 0.18, M.valve, bx, 0.3, 0.08, vgSIds[i]);
-          pipe(bx, 0.24, 0, bx, 0.18, 0, pR, M.pipeS, bombIds[i]);
-          cyl(0.22, 0.22, 0.28, 16, bMat, bx, 0.14, 0, 0, 0, 0, bombIds[i]);
-          cyl(0.14, 0.1, 0.12, 12, M.pump, bx, 0.01, 0, 0, 0, 0, bombIds[i]);
-          box(0.32, 0.06, 0.28, M.pump, bx, -0.01, 0, bombIds[i]);
-          cyl(0.14, 0.14, 0.38, 16, bMat, bx, 0.36, 0, 0, 0, 0, bombIds[i]);
-          cyl(0.06, 0.06, 0.1, 10, M.pump, bx, 0.56, 0, 0, 0, 0, bombIds[i]);
-          cyl(0.15, 0.15, 0.04, 16, M.pump, bx, 0.56, 0, 0, 0, 0, bombIds[i]);
-          pipe(bx, 0.27, 0, bx, 0.5, 0, pRi, M.pipeI, vrdIds[i]);
-          cyl(0.08, 0.08, 0.12, 10, M.check, bx, 0.54, 0, 0, 0, 0, vrdIds[i]);
-          sphere(0.08, 8, M.check, bx, 0.6, 0, vrdIds[i]);
-          pipe(bx, 0.66, 0, bx, 1.1, 0, pRi, M.pipeI, vrdIds[i]);
-          elbow(bx, 1.1, 0, pRi, M.manifI, vrdIds[i]);
-          pipe(bx, 1.1, 0, 0, 1.1, 0, pRi, M.manifI, 'manif_i');
         }
-      });
-      if (isFoto3) {
-        // colector inferior latón + checks + codo, montante derecho plateado — igual para cisterna y red
-        pipe(
-          -0.9,
-          0.08,
-          0,
-          0.9,
-          0.08,
-          0,
-          0.045,
-          new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
-          'manif_i',
-        );
-        bombPos.forEach((bx, i) => {
-          cyl(
-            0.06,
-            0.06,
-            0.14,
-            12,
-            new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.35, metalness: 0.65 }),
-            bx + 0.18,
-            0.08,
-            0,
-            0,
-            0,
-            Math.PI / 2,
-            vrdIds[i],
-          );
-          sphere(
-            0.045,
-            10,
-            new THREE.MeshStandardMaterial({ color: 0x92400e, roughness: 0.3, metalness: 0.6 }),
-            bx + 0.18,
-            0.08,
-            0,
-            vrdIds[i],
-          );
-        });
-        box(
-          0.14,
-          0.09,
-          0.12,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.6 }),
-          -1.22,
-          0.08,
-          0,
-          'vrd1',
-        );
-        pipe(
-          0.9,
-          0.08,
-          0,
-          0.9,
-          1.12,
-          0,
-          0.06,
-          new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
-          'manif_i',
-        );
-        elbow(
-          0.9,
-          1.12,
-          0,
-          0.06,
-          new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.22, metalness: 0.78 }),
-          'manif_i',
-        );
-      }
-
-      // soportes de tubería
-      [-0.72, 0].forEach((x) => {
-        cyl(
-          0.025,
-          0.025,
-          0.5,
-          8,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6, metalness: 0.4 }),
-          x,
-          0.25,
-          0,
-          0,
-          0,
-          0,
-          x === -0.72 ? 'manif_s' : 'manif_i',
-        );
-        box(
-          0.12,
-          0.02,
-          0.12,
-          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
-          x,
-          0.02,
-          0,
-          x === -0.72 ? 'manif_s' : 'manif_i',
-        );
+        cyl(0.1, 0.1, 0.06, M.blueDark, x, Y_PUMP + 0.46, 0, 3);
+        // junction box
+        box(0.12, 0.12, 0.1, M.blue, x + 0.18, Y_PUMP + 0.25, 0, 3);
+        pipe(x, Y_PUMP + 0.5, 0, x, Y_VHIGH, 0, R_PIPE, 2);
+        // isolation valve above
+        cyl(0.09, 0.09, 0.16, M.steelDark, x, Y_VHIGH, 0, 2);
+        cyl(0.03, 0.03, 0.12, M.steelDark, x + 0.1, Y_VHIGH, 0, 2, 0, 0, Math.PI / 2);
+        cyl(0.07, 0.07, 0.03, M.blue, x + 0.17, Y_VHIGH, 0, 2, 0, 0, Math.PI / 2);
+        pipe(x, Y_VHIGH + 0.08, 0, x, Y_CHECK - 0.1, 0, R_PIPE, 0);
+        // check valve body with X (solo la válvula, no las tuberías)
+        cyl(0.1, 0.1, 0.2, M.steelDark, x, Y_CHECK, 0, 4);
+        box(0.16, 0.03, 0.03, M.steelDark, x, Y_CHECK, 0.09, 4, 0, 0, Math.PI / 4);
+        box(0.16, 0.03, 0.03, M.steelDark, x, Y_CHECK, 0.09, 4, 0, 0, -Math.PI / 4);
+        pipe(x, Y_CHECK + 0.1, 0, x, Y_DIS, 0, R_PIPE, 0);
+        tee(x, Y_DIS, 0, R_MAN * 1.25, 0.18, 0);
       });
 
-      const mLen = numBombs === 2 ? 1.5 : 2.1;
-      if (isFoto3) {
-        // colector impulsión superior a la derecha como en ambas fotos (de 0.85 a 3.05, Ø 0.13 plateado pulido)
-        const mLenR = 2.2;
-        const mxR = 1.95;
-        cyl(
-          0.13,
-          0.13,
-          mLenR,
-          24,
-          new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.18, metalness: 0.82 }),
-          mxR,
-          1.12,
-          0,
-          0,
-          0,
-          Math.PI / 2,
-          'manif_i',
-        );
-        sphere(
-          0.13,
-          12,
-          new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.18, metalness: 0.82 }),
-          mxR - mLenR / 2,
-          1.12,
-          0,
-          'manif_i',
-        );
-        sphere(
-          0.13,
-          12,
-          new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.18, metalness: 0.82 }),
-          mxR + mLenR / 2,
-          1.12,
-          0,
-          'manif_i',
-        );
-        cyl(
-          0.15,
-          0.15,
-          0.02,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.35, metalness: 0.65 }),
-          mxR - mLenR / 2,
-          1.12,
-          0,
-          0,
-          0,
-          Math.PI / 2,
-          'manif_i',
-        );
-        cyl(
-          0.15,
-          0.15,
-          0.02,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.35, metalness: 0.65 }),
-          mxR + mLenR / 2,
-          1.12,
-          0,
-          0,
-          0,
-          Math.PI / 2,
-          'manif_i',
-        );
-        cyl(
-          0.025,
-          0.025,
-          1.04,
-          8,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6, metalness: 0.4 }),
-          2.95,
-          0.58,
-          0,
-          0,
-          0,
-          0,
-          'manif_i',
-        );
-        box(
-          0.12,
-          0.02,
-          0.12,
-          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
-          2.95,
-          0.06,
-          0,
-          'manif_i',
-        );
-      } else {
-        cyl(0.09, 0.09, mLen, 12, M.manifI, 0, 1.1, 0, 0, 0, Math.PI / 2, 'manif_i');
-        sphere(0.09, 10, M.manifI, -mLen / 2, 1.1, 0, 'manif_i');
-        sphere(0.09, 10, M.manifI, mLen / 2, 1.1, 0, 'manif_i');
-        // PSV — con codo visible a manifold (solo genérico)
-        elbow(0, 1.1, 0, pRi * 0.9, M.manifI, 'psv');
-        pipe(0, 1.1, 0, 0, 1.5, 0, pRi * 0.8, M.pipeI, 'psv');
-        box(0.12, 0.14, 0.12, M.psv, 0, 1.6, 0, 'psv');
-        cyl(0.04, 0.04, 0.18, 8, M.psv, 0, 1.72, 0, 0, 0, 0, 'psv');
-      }
+      // ---- discharge manifold ----
+      pipe(colL - 0.6, Y_DIS, 0, colR + 1.5, Y_DIS, 0, R_MAN, 0);
+      // outlet gate valve (solo la válvula, comp 2) + arrow
+      const OX = colR + 1.2;
+      cyl(0.1, 0.1, 0.18, M.steelDark, OX, Y_DIS, 0, 2);
+      cyl(0.03, 0.03, 0.2, M.steelDark, OX, Y_DIS + 0.16, 0, 2);
+      add(
+        new THREE.TorusGeometry(0.11, 0.025, 10, 24),
+        M.blue,
+        OX,
+        Y_DIS + 0.28,
+        0,
+        2,
+        Math.PI / 2,
+      );
+      // arrow out
+      const arrow = add(
+        new THREE.ConeGeometry(0.09, 0.3, 16),
+        M.blueDark,
+        colR + 1.75,
+        Y_DIS,
+        0,
+        0,
+        0,
+        0,
+        -Math.PI / 2,
+      );
+      arrow.rotation.set(0, 0, -Math.PI / 2);
 
-      // manómetros — fotorealista: dos en cisterna 3 (succión y impulsión), uno genérico en otros
-      if (isCisterna3) {
-        // succión
-        elbow(-1.65, 0.55, 0, 0.03, M.manif, 'manif_s');
-        pipe(
-          -1.65,
-          0.55,
-          0,
-          -1.65,
-          0.72,
-          0,
-          0.018,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.5 }),
-          'manif_s',
-        );
-        sphere(
-          0.09,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.12, metalness: 0.1 }),
-          -1.65,
-          0.82,
-          0,
-          'manif_s',
-        );
-        cyl(
-          0.085,
-          0.085,
-          0.012,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.2 }),
-          -1.65,
-          0.82,
-          0.04,
-          0,
-          0,
-          0,
-          'manif_s',
-        );
-        // impulsión (sobre colector derecho)
-        elbow(
-          1.85,
-          1.12,
-          0,
-          0.04,
-          new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.18, metalness: 0.82 }),
-          'manometro',
-        );
-        pipe(
-          1.85,
-          1.12,
-          0,
-          1.85,
-          1.32,
-          0,
-          0.018,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.4, metalness: 0.5 }),
-          'manometro',
-        );
-        sphere(
-          0.1,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.12, metalness: 0.1 }),
-          1.85,
-          1.42,
-          0,
-          'manometro',
-        );
-        cyl(
-          0.095,
-          0.095,
-          0.014,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.2 }),
-          1.85,
-          1.42,
-          0.04,
-          0,
-          0,
-          0,
-          'manometro',
-        );
-      } else {
-        elbow(0.5, 1.1, 0, 0.04, M.manifI, 'manometro');
-        pipe(0.5, 1.1, 0, 0.5, 1.4, 0, 0.025, M.pipeI, 'manometro');
-        sphere(0.07, 10, M.gauge, 0.5, 1.46, 0, 'manometro');
-        cyl(0.06, 0.06, 0.04, 10, M.gauge, 0.5, 1.46, 0, 0, 0, 0, 'manometro');
-      }
-      if (isRed3) {
-        // tanque hidroneumático azul — TAMAÑO REAL como foto (ocupando 1.4× altura bomba, Ø 0.90, sobre base hormigón)
-        const tankX = 0.82;
-        const tankZ = 0.38;
-        const tR = 0.46;
-        const tH = 1.05;
-        const tY0 = 0.18;
-        // base hormigón ancha como en foto
-        box(
-          0.78,
-          0.08,
-          0.78,
-          new THREE.MeshStandardMaterial({ color: 0xa1a1aa, roughness: 0.82, metalness: 0.04 }),
-          tankX,
-          0.05,
-          tankZ,
-          'tank',
-        );
-        // cuerpo principal azul cobalto brillante
-        cyl(
-          tR,
-          tR,
-          tH,
-          32,
-          new THREE.MeshStandardMaterial({
-            color: 0x1e3a8a,
-            roughness: 0.18,
-            metalness: 0.62,
-            envMapIntensity: 1.0,
-          }),
-          tankX,
-          tY0 + tH / 2,
-          tankZ,
-          0,
-          0,
-          0,
-          'tank',
-        );
-        // casquetes hemisféricos superior/inferior
-        sphere(
-          tR,
-          24,
-          new THREE.MeshStandardMaterial({ color: 0x172554, roughness: 0.22, metalness: 0.6 }),
-          tankX,
-          tY0,
-          tankZ,
-          'tank',
-        );
-        sphere(
-          tR,
-          24,
-          new THREE.MeshStandardMaterial({ color: 0x1e40af, roughness: 0.18, metalness: 0.62 }),
-          tankX,
-          tY0 + tH,
-          tankZ,
-          'tank',
-        );
-        // franja central brillante y aros de refuerzo (3)
-        cyl(
-          tR + 0.008,
-          tR + 0.008,
-          tH * 0.92,
-          24,
-          new THREE.MeshStandardMaterial({
-            color: 0x3b82f6,
-            roughness: 0.15,
-            metalness: 0.75,
-            transparent: true,
-            opacity: 0.12,
-          }),
-          tankX,
-          tY0 + tH / 2,
-          tankZ,
-          0,
-          0,
-          0,
-          'tank',
-        );
-        cyl(
-          tR + 0.018,
-          tR + 0.018,
-          0.03,
-          24,
-          new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.2, metalness: 0.7 }),
-          tankX,
-          tY0 + 0.22,
-          tankZ,
-          0,
-          0,
-          0,
-          'tank',
-        );
-        cyl(
-          tR + 0.018,
-          tR + 0.018,
-          0.03,
-          24,
-          new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.2, metalness: 0.7 }),
-          tankX,
-          tY0 + tH - 0.22,
-          tankZ,
-          0,
-          0,
-          0,
-          'tank',
-        );
-        cyl(
-          tR + 0.018,
-          tR + 0.018,
-          0.02,
-          24,
-          new THREE.MeshStandardMaterial({ color: 0x172554, roughness: 0.25, metalness: 0.65 }),
-          tankX,
-          tY0 + tH / 2,
-          tankZ,
-          0,
-          0,
-          0,
-          'tank',
-        );
-        // placa de características
-        box(
-          0.14,
-          0.18,
-          0.01,
-          new THREE.MeshStandardMaterial({ color: 0xe5e7eb, roughness: 0.3, metalness: 0.4 }),
-          tankX,
-          0.65,
-          tankZ + tR + 0.01,
-          'tank',
-        );
-        // válvula de aislamiento en base (latón grande con volante rojo 3× más grande)
-        box(
-          0.18,
-          0.11,
-          0.14,
-          new THREE.MeshStandardMaterial({ color: 0xa16207, roughness: 0.28, metalness: 0.72 }),
-          tankX,
-          0.14,
-          tankZ,
-          'tank',
-        );
-        cyl(
-          0.038,
-          0.038,
-          0.14,
-          12,
-          new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.35, metalness: 0.45 }),
-          tankX,
-          0.26,
-          tankZ,
-          0,
-          0,
-          0,
-          'tank',
-        );
-        cyl(
-          0.075,
-          0.075,
-          0.018,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.25, metalness: 0.5 }),
-          tankX,
-          0.33,
-          tankZ,
-          0,
-          0,
-          0,
-          'tank',
-        );
-        // tubería tanque → colector inferior (plateada gruesa)
-        pipe(
-          tankX,
-          0.14,
-          tankZ,
-          tankX,
-          0.08,
-          0,
-          0.055,
-          new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.18, metalness: 0.82 }),
-          'tank',
-        );
-        pipe(
-          tankX,
-          0.08,
-          0,
-          0.45,
-          0.08,
-          0,
-          0.055,
-          new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.18, metalness: 0.82 }),
-          'tank',
-        );
-        // manómetro lateral grande sobre el tanque (como en foto, a media altura)
-        pipe(
-          tankX + tR - 0.015,
-          0.68,
-          tankZ,
-          tankX + tR + 0.1,
-          0.68,
-          tankZ,
-          0.018,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.35, metalness: 0.55 }),
-          'tank',
-        );
-        sphere(
-          0.095,
-          18,
-          new THREE.MeshStandardMaterial({ color: 0xfdfcfb, roughness: 0.08, metalness: 0.05 }),
-          tankX + tR + 0.1,
-          0.68,
-          tankZ,
-          'tank',
-        );
-        cyl(
-          0.095,
-          0.095,
-          0.015,
-          18,
-          new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.2, metalness: 0.3 }),
-          tankX + tR + 0.1,
-          0.68,
-          tankZ + 0.05,
-          0,
-          0,
-          0,
-          'tank',
-        );
-        // aguja manómetro
-        cyl(
-          0.008,
-          0.008,
-          0.07,
-          8,
-          new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3 }),
-          tankX + tR + 0.1,
-          0.68,
-          tankZ + 0.08,
-          Math.PI / 4,
-          0,
-          0,
-          'tank',
-        );
-        // transductor 4-20mA sobre colector impulsión (caja gris con cable azul a SCADA)
-        box(
-          0.12,
-          0.16,
-          0.1,
-          new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.32, metalness: 0.22 }),
-          0.15,
-          1.34,
-          0,
-          'manometro',
-        );
-        cyl(
-          0.024,
-          0.024,
-          0.1,
-          10,
-          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.5 }),
-          0.15,
-          1.2,
-          0,
-          0,
-          0,
-          0,
-          'manometro',
-        );
-        cyl(
-          0.016,
-          0.016,
-          0.07,
-          8,
-          new THREE.MeshStandardMaterial({ color: 0x0ea5e9, roughness: 0.25, metalness: 0.65 }),
-          0.15,
-          1.44,
-          0.04,
-          0,
-          0,
-          0,
-          'manometro',
-        );
-      } else if (!isFoto3) {
-        sphere(0.48, 20, M.tank, 2.4, 0.88, 0, 'tank');
-        [-0.25, 0.25].forEach((dz) => {
-          cyl(0.03, 0.03, 0.5, 8, M.valve, 2.4, 0.3, dz, 0.3, 0, 0, 'tank');
-        });
-        pipe(1.8, 1.1, 0, 2.1, 1.1, 0, pRi, M.pipeI, 'tank');
-        pipe(2.1, 1.1, 0, 2.1, 0.88, 0, pRi, M.pipeI, 'tank');
-        pipe(2.1, 0.88, 0, 2.22, 0.88, 0, pRi, M.pipeI, 'tank');
-        cyl(0.025, 0.025, 0.12, 8, M.gauge, 2.4, 1.4, 0, 0, 0, 0, 'tank');
-        sphere(0.04, 8, M.gauge, 2.4, 1.47, 0, 'tank');
-      }
+      // ---- manometer (5) on center col ----
+      const gx = cols[Math.floor((numPumps - 1) / 2)];
+      pipe(gx, Y_DIS, 0, gx, Y_DIS + 0.35, 0, 0.03, 5);
+      cyl(0.14, 0.14, 0.05, M.white, gx, Y_DIS + 0.5, 0, 5, Math.PI / 2);
+      add(new THREE.TorusGeometry(0.14, 0.02, 10, 32), M.steelDark, gx, Y_DIS + 0.5, 0.02, 5);
+      box(0.02, 0.1, 0.01, M.red, gx, Y_DIS + 0.53, 0.03, 5, 0, 0, 0.6);
 
-      // presostato control — en foto está sobre el colector de succión, no sobre el de impulsión
-      if (isCisterna3) {
-        // ya creado arriba como 'presost_s' sobre colector succión; presost_r en este caso es el mismo, no duplicar
-      } else {
-        pipe(0.9, 1.1, 0, 0.9, 1.38, 0, 0.025, M.pipeI, 'presost_r');
-        box(0.12, 0.1, 0.1, M.sensor, 0.9, 1.44, 0, 'presost_r');
-        cyl(0.04, 0.04, 0.1, 8, M.sensor, 0.9, 1.54, 0, 0, 0, 0, 'presost_r');
-      }
+      // ---- pressure transmitter (6) on right col (Rosemount-style) ----
+      const tx = colR;
+      pipe(tx, Y_DIS, 0, tx, Y_DIS + 0.3, 0, 0.03, 6);
+      // hex valve manifold
+      add(new THREE.CylinderGeometry(0.07, 0.07, 0.09, 6), M.steelDark, tx, Y_DIS + 0.34, 0, 6);
+      // body
+      cyl(0.08, 0.09, 0.22, M.blue, tx, Y_DIS + 0.5, 0, 6);
+      // round head facing camera
+      cyl(0.12, 0.12, 0.12, M.blue, tx, Y_DIS + 0.68, 0.05, 6, Math.PI / 2);
+      // glass display window + rim
+      cyl(0.09, 0.09, 0.02, M.glass, tx, Y_DIS + 0.68, 0.12, 6, Math.PI / 2);
+      add(new THREE.TorusGeometry(0.1, 0.016, 10, 32), M.steelDark, tx, Y_DIS + 0.68, 0.12, 6);
+      // conduit glands
+      cyl(0.03, 0.03, 0.09, M.steelDark, tx - 0.13, Y_DIS + 0.62, 0, 6, 0, 0, Math.PI / 2);
+      cyl(0.03, 0.03, 0.09, M.steelDark, tx + 0.13, Y_DIS + 0.62, 0, 6, 0, 0, Math.PI / 2);
 
-      // válvula salida a red — fotorealista a la derecha para cisterna 3
-      if (isCisterna3) {
-        pipe(
-          3.05,
-          1.12,
-          0,
-          4.2,
-          1.12,
-          0,
-          0.07,
-          new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.75 }),
-          'vg_sal',
-        );
-        cyl(
-          0.09,
-          0.09,
-          0.02,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-          3.05,
-          1.12,
-          0,
-          0,
-          0,
-          Math.PI / 2,
-          'vg_red',
-        );
-        box(
-          0.18,
-          0.14,
-          0.14,
-          new THREE.MeshStandardMaterial({ color: 0xb45309, roughness: 0.35, metalness: 0.65 }),
-          3.12,
-          1.12,
-          0,
-          'vg_red',
-        );
-        cyl(
-          0.04,
-          0.04,
-          0.14,
-          8,
-          new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.4 }),
-          3.12,
-          1.24,
-          0,
-          0,
-          0,
-          0,
-          'vg_red',
-        );
-        cyl(
-          0.08,
-          0.08,
-          0.015,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.3, metalness: 0.4 }),
-          3.12,
-          1.31,
-          0,
-          0,
-          0,
-          0,
-          'vg_red',
-        );
-        cyl(
-          0.09,
-          0.09,
-          0.02,
-          16,
-          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-          3.19,
-          1.12,
-          0,
-          0,
-          0,
-          Math.PI / 2,
-          'vg_red',
-        );
-        // soporte bajo válvula
-        cyl(
-          0.022,
-          0.022,
-          0.45,
-          8,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6, metalness: 0.4 }),
-          3.12,
-          0.9,
-          0,
-          0,
-          0,
-          0,
-          'vg_red',
-        );
-        box(
-          0.11,
-          0.02,
-          0.11,
-          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
-          3.12,
-          0.68,
-          0,
-          'vg_red',
-        );
-      } else {
-        pipe(mLen / 2, 1.1, 0, mLen / 2 + 0.37, 1.1, 0, pRi, M.pipeI, 'vg_red');
-        cyl(0.05, 0.05, 0.02, 12, M.valve, mLen / 2 + 0.37, 1.1, 0, 0, 0, Math.PI / 2, 'vg_red');
-        box(0.14, 0.13, 0.13, M.valve, mLen / 2 + 0.44, 1.1, 0, 'vg_red');
-        cyl(0.04, 0.04, 0.18, 8, M.valve, mLen / 2 + 0.44, 1.23, 0, 0, 0, 0, 'vg_red');
-        cyl(0.05, 0.05, 0.02, 12, M.valve, mLen / 2 + 0.51, 1.1, 0, 0, 0, Math.PI / 2, 'vg_red');
-        pipe(mLen / 2 + 0.51, 1.1, 0, 3.6, 1.1, 0, pRi, M.pipeI, 'vg_sal');
-        // soporte bajo válvula genérico
-        cyl(
-          0.02,
-          0.02,
-          0.45,
-          8,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6, metalness: 0.4 }),
-          mLen / 2 + 0.44,
-          0.88,
-          0,
-          0,
-          0,
-          0,
-          'vg_red',
-        );
-        box(
-          0.1,
-          0.02,
-          0.1,
-          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
-          mLen / 2 + 0.44,
-          0.66,
-          0,
-          'vg_red',
-        );
+      // ---- tanque hidroneumático (8) top-left, CONEXIÓN RECTA sin codo ----
+      const TX = colL - 1.6;
+      // El tanque baja un poco (antes Y_DIS+0.6) para que el tubo de salida quede alineado con
+      // el manifold de descarga (Y_DIS) — conexión DIRECTA horizontal, sin codo 90°.
+      const TY = Y_DIS + 0.2;
+      cyl(0.45, 0.45, 1.0, M.blue, TX, TY, 0, 8);
+      add(new THREE.SphereGeometry(0.45, 24, 16), M.blue, TX, TY + 0.5, 0, 8);
+      add(new THREE.SphereGeometry(0.45, 24, 16), M.blue, TX, TY - 0.5, 0, 8);
+      // legs
+      for (let k = 0; k < 3; k++) {
+        const a = (k / 3) * Math.PI * 2;
+        cyl(0.04, 0.05, 0.5, M.blue, TX + Math.cos(a) * 0.32, TY - 0.75, Math.sin(a) * 0.32, 8);
       }
-      if (!isCisterna3) {
-        cyl(0.08, 0.08, 1.0, 10, M.manifI, 3.6, 0.85, 0, 0, 0, 0, 'vg_sal');
-        sphere(0.08, 10, M.manifI, 3.6, 1.35, 0, 'vg_sal');
-        sphere(0.08, 10, M.manifI, 3.6, 0.35, 0, 'vg_sal');
-        [-0.2, 0, 0.2].forEach((dz) => {
-          pipe(3.6, 0.9 - dz * 0.22, 0, 3.9, 0.9 - dz * 0.22, 0, 0.025, M.pipeI, 'vg_sal');
-          box(0.08, 0.07, 0.07, M.valve, 3.96, 0.9 - dz * 0.22, 0, 'vg_sal');
-        });
-      }
-      // tablero — fotorealista: SCADA/HMI a la derecha para RED 3, genérico centrado para otros, oculto para CISTERNA 3
-      if (isRed3) {
-        // gabinete SCADA/HMI vertical gris claro a la derecha, como en foto
-        box(
-          0.62,
-          0.95,
-          0.38,
-          new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.35, metalness: 0.15 }),
-          2.78,
-          0.78,
-          0.42,
-          'tablero',
-        );
-        box(
-          0.6,
-          0.93,
-          0.02,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.3, metalness: 0.5 }),
-          2.78,
-          0.78,
-          0.61,
-          'tablero',
-        );
-        // HMI pantalla
-        box(
-          0.42,
-          0.28,
-          0.015,
-          new THREE.MeshStandardMaterial({
-            color: 0x0f172a,
-            roughness: 0.2,
-            metalness: 0.1,
-            emissive: 0x1e3a5f,
-            emissiveIntensity: 0.25,
-          }),
-          2.78,
-          0.95,
-          0.62,
-          'tablero',
-        );
-        box(
-          0.38,
-          0.24,
-          0.005,
-          new THREE.MeshStandardMaterial({
-            color: 0x38bdf8,
-            roughness: 0.2,
-            metalness: 0.2,
-            emissive: 0x0ea5e9,
-            emissiveIntensity: 0.15,
-          }),
-          2.78,
-          0.95,
-          0.63,
-          'tablero',
-        );
-        // botonera 3 bombas + falla/alarma
-        [-0.18, -0.06, 0.06].forEach((dx, i) => {
-          const col = i < 2 ? 0x22c55e : 0xf59e0b;
-          cyl(
-            0.025,
-            0.025,
-            0.015,
-            12,
-            new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 0.5 }),
-            2.78 + dx,
-            0.72,
-            0.62,
-            0,
-            0,
-            0,
-            'tablero',
-          );
-        });
-        cyl(
-          0.028,
-          0.028,
-          0.015,
-          12,
-          new THREE.MeshStandardMaterial({
-            color: 0xef4444,
-            emissive: 0xef4444,
-            emissiveIntensity: 0.6,
-          }),
-          2.78 + 0.18,
-          0.72,
-          0.62,
-          0,
-          0,
-          0,
-          'tablero',
-        );
-        cyl(
-          0.022,
-          0.022,
-          0.015,
-          12,
-          new THREE.MeshStandardMaterial({
-            color: 0xf59e0b,
-            emissive: 0xf59e0b,
-            emissiveIntensity: 0.5,
-          }),
-          2.78 + 0.18,
-          0.62,
-          0.62,
-          0,
-          0,
-          0,
-          'tablero',
-        );
-        // selector MAN-0-AUT y paro emergencia
-        cyl(
-          0.035,
-          0.035,
-          0.02,
-          12,
-          new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.5, metalness: 0.3 }),
-          2.78 - 0.12,
-          0.55,
-          0.62,
-          0,
-          0,
-          0,
-          'tablero',
-        );
-        cyl(
-          0.045,
-          0.045,
-          0.025,
-          12,
-          new THREE.MeshStandardMaterial({
-            color: 0xdc2626,
-            roughness: 0.3,
-            metalness: 0.4,
-            emissive: 0x991b1b,
-            emissiveIntensity: 0.3,
-          }),
-          2.78 + 0.14,
-          0.52,
-          0.62,
-          0,
-          0,
-          0,
-          'tablero',
-        );
-        // zócalo
-        box(
-          0.64,
-          0.04,
-          0.4,
-          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.6, metalness: 0.3 }),
-          2.78,
-          0.3,
-          0.42,
-          'tablero',
-        );
-      } else if (!isFoto3) {
-        // pared de soporte
-        box(
-          1.05,
-          1.55,
-          0.08,
-          new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9 }),
-          0,
-          2.0,
-          0.34,
-          'tablero',
-        );
-        box(0.8, 1.2, 0.25, M.board, 0, 2.0, 0.5, 'tablero');
-        box(
-          0.82,
-          1.22,
-          0.02,
-          new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.3, metalness: 0.6 }),
-          0,
-          2.0,
-          0.64,
-          'tablero',
-        );
-        box(0.72, 1.1, 0.05, M.boardF, 0, 2.0, 0.65, 'tablero');
-        box(
-          0.5,
-          0.22,
-          0.01,
-          new THREE.MeshStandardMaterial({
-            color: 0x0f172a,
-            roughness: 0.2,
-            metalness: 0.1,
-            emissive: 0x1e3a5f,
-            emissiveIntensity: 0.2,
-          }),
-          0,
-          2.25,
-          0.66,
-          'tablero',
-        );
-        [-0.2, 0, 0.2].forEach((dx, i) => {
-          const colors = [0x22c55e, 0xf59e0b, 0xef4444];
-          const mat2 = new THREE.MeshStandardMaterial({
-            color: colors[i],
-            emissive: colors[i],
-            emissiveIntensity: 0.4,
-          });
-          cyl(0.03, 0.03, 0.01, 8, mat2, dx, 2.05, 0.66, 0, 0, 0, 'tablero');
-        });
-        [-0.15, 0, 0.15].forEach((dx) => {
-          cyl(
-            0.025,
-            0.025,
-            0.02,
-            8,
-            new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.7 }),
-            dx,
-            1.85,
-            0.66,
-            0,
-            0,
-            0,
-            'tablero',
-          );
-        });
-        box(
-          0.04,
-          0.35,
-          0.04,
-          new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.2, metalness: 0.8 }),
-          0.35,
-          2.0,
-          0.66,
-          'tablero',
-        );
-        box(
-          0.06,
-          0.62,
-          0.06,
-          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-          0,
-          1.11,
-          0.5,
-          'tablero',
-        );
-        elbow(
-          0,
-          0.8,
-          0.5,
-          0.04,
-          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-          'tablero',
-        );
-        box(
-          0.04,
-          0.04,
-          0.52,
-          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-          0,
-          0.8,
-          0.25,
-          'tablero',
-        );
-        elbow(
-          0,
-          0.8,
-          0,
-          0.04,
-          new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-          'tablero',
-        );
-        const ductLen = Math.max(1.8, ntot * 0.9);
-        box(
-          ductLen,
-          0.06,
-          0.08,
-          new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5, metalness: 0.4 }),
-          0,
-          0.8,
-          0,
-          'tablero',
-        );
-        bombPos.forEach((bx) => {
-          box(
-            0.02,
-            0.12,
-            0.02,
-            new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5, metalness: 0.5 }),
-            bx,
-            0.74,
-            0,
-            'tablero',
-          );
-          box(
-            0.02,
-            0.18,
-            0.02,
-            new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.4, metalness: 0.6 }),
-            bx,
-            0.68,
-            0,
-            'tablero',
-          );
-        });
-      }
+      // concrete base under legs (pad + footing)
+      box(1.5, 0.16, 1.5, M.concrete, TX, TY - 1.06, 0, 8);
+      box(1.7, 0.1, 1.7, M.concrete, TX, TY - 1.19, 0, 8);
+      // conexión: tubo RECTO horizontal del tanque al manifold de descarga (sin codo, sin bajada).
+      // El tanque se bajó (TY = Y_DIS + 0.2) para que su salida (TY-0.2) quede EXACTAMENTE a la
+      // altura del manifold (Y_DIS) → un único tubo horizontal recto, sin codo ni bajada.
+      // R_MAN = mismo grosor que el manifold. Empieza DENTRO del cuerpo del tanque (TX+0.42 < radio
+      // 0.45) para que no quede la costilla/imperfección en el empalme con la carcasa.
+      pipe(TX + 0.42, Y_DIS, 0, colL - 0.6, Y_DIS, 0, R_MAN, 8);
+      tee(colL - 0.6, Y_DIS, 0, R_MAN * 1.25, 0.18, 0);
 
-      // --- badges numerados 3D (para ambos casos de referencia 3×) ---
-      const badgeWrap = document.getElementById('ep-badges') as HTMLDivElement | null;
-      const badgeById = new Map<string, HTMLButtonElement>();
-      const badgeData: Array<{ id: string; num: number; pos: THREE.Vector3 }> = [];
-      if (isFoto3 && badgeWrap) {
+      // ---- PLC (7) right side with wall behind (separado del tubo de salida) ----
+      const PX = colR + 3.8;
+      const PY = Y_DIS - 0.4;
+      // wall behind cabinet
+      box(2.4, 2.9, 0.1, M.wall, PX, PY + 0.2, -0.32, 7);
+      box(1.0, 1.3, 0.3, M.gray, PX, PY, 0, 7);
+      box(0.9, 1.2, 0.04, M.gray, PX, PY, 0.17, 7);
+      // hinges
+      box(0.05, 0.12, 0.06, M.steelDark, PX - 0.48, PY + 0.4, 0.17, 7);
+      box(0.05, 0.12, 0.06, M.steelDark, PX - 0.48, PY - 0.4, 0.17, 7);
+      // buttons grid
+      const btnCols = [M.green, M.green, M.orange, M.yellow, M.red, M.red, M.red, M.yellow];
+      btnCols.forEach((bm, i) => {
+        const r = Math.floor(i / 4);
+        const c = i % 4;
+        cyl(0.05, 0.05, 0.04, bm, PX - 0.28 + c * 0.19, PY + 0.32 - r * 0.22, 0.2, 7, Math.PI / 2);
+      });
+      // rotary + beacon
+      cyl(0.06, 0.06, 0.05, M.black, PX - 0.28, PY - 0.35, 0.2, 7, Math.PI / 2);
+      cyl(0.05, 0.05, 0.12, M.red, PX + 0.3, PY + 0.75, 0, 7);
+      add(new THREE.SphereGeometry(0.07, 16, 12), M.beacon, PX + 0.3, PY + 0.85, 0, 7);
+
+      // ---- badges ----
+      // Badge 2 solo en la válvula de aislamiento más a la derecha (tras la bomba, Y_VHIGH)
+      // y en la válvula inferior derecha (Y_VLOW).
+      const badgeData: Array<{ num: number; pos: THREE.Vector3 }> = [
+        { num: 1, pos: new THREE.Vector3(CX + cistR * 0.6, 0.5, 0.4) },
+        { num: 2, pos: new THREE.Vector3(colR + 0.4, Y_VHIGH, 0) },
+        { num: 2, pos: new THREE.Vector3(colR + 0.4, Y_VLOW, 0) },
+        { num: 3, pos: new THREE.Vector3(colR + 0.45, Y_PUMP + 0.2, 0) },
+        { num: 4, pos: new THREE.Vector3(colR + 0.4, Y_CHECK, 0) },
+        { num: 5, pos: new THREE.Vector3(gx + 0.35, Y_DIS + 0.5, 0) },
+        { num: 6, pos: new THREE.Vector3(tx + 0.35, Y_DIS + 0.6, 0) },
+        { num: 7, pos: new THREE.Vector3(PX + 0.42, PY + 0.5, 0) },
+        { num: 8, pos: new THREE.Vector3(TX + 0.6, TY - 0.4, 0) },
+      ];
+      const badgeWrap = badgeWrapRef.current;
+      const badgeEls: Array<{ num: number; pos: THREE.Vector3; btn: HTMLButtonElement }> = [];
+      if (badgeWrap) {
         badgeWrap.innerHTML = '';
-        const addBadge = (id: string, pos: THREE.Vector3) => {
-          const comp = COMPS.find((c) => c.id === id);
-          if (!comp) return;
-          badgeData.push({ id, num: comp.num, pos: pos.clone() });
-        };
-        if (isCisterna3) addBadge('cisterna', new THREE.Vector3(-4, 1.75, 0));
-        addBadge('acometida', new THREE.Vector3(-2.6, 0.75, 0));
-        addBadge('vg_ent', new THREE.Vector3(-1.7, 0.85, 0));
-        addBadge('manif_s', new THREE.Vector3(-0.9, 0.85, 0));
-        addBadge('filtro', new THREE.Vector3(-1.35, 0.85, 0));
-        addBadge('presost_s', new THREE.Vector3(-1.05, 0.95, 0));
-        addBadge('manif_i', new THREE.Vector3(1.95, 1.45, 0));
-        if (!isFoto3 || !isRed3) addBadge('psv', new THREE.Vector3(0, 1.75, 0));
-        addBadge('manometro', new THREE.Vector3(isFoto3 ? 1.85 : 0.5, 1.6, 0));
-        if (isRed3) {
-          addBadge('tank', new THREE.Vector3(0.85, 1.15, 0.35));
-          addBadge('tablero', new THREE.Vector3(2.78, 1.25, 0.42));
-        } else if (!isFoto3) {
-          addBadge('tank', new THREE.Vector3(2.4, 1.55, 0));
-          addBadge('tablero', new THREE.Vector3(0, 2.35, 0.65));
-        }
-        addBadge('presost_r', new THREE.Vector3(0.9, 1.55, 0));
-        addBadge('vg_red', new THREE.Vector3(isFoto3 ? 3.12 : 1.2, 1.35, 0));
-        addBadge('vg_sal', new THREE.Vector3(isFoto3 ? 4.1 : 3.6, 1.25, 0));
-        bombPos.forEach((bx, i) => {
-          addBadge(`vg_s${i + 1}`, new THREE.Vector3(bx, 0.45, 0.18));
-          addBadge(`b${i + 1}`, new THREE.Vector3(bx, 0.95, 0));
-          addBadge(`vrd${i + 1}`, new THREE.Vector3(bx + 0.18, 0.22, 0));
-        });
-        badgeData.forEach(({ id, num }) => {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.textContent = String(num);
-          btn.dataset.compId = id;
-          btn.style.cssText =
-            'position:absolute;left:0;top:0;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:#0f1117;border:1px solid #2a3348;color:#94a3b8;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;transition:all 120ms;';
-          btn.addEventListener('click', (e) => {
+        badgeData.forEach(({ num, pos }) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = String(num);
+          b.style.cssText =
+            'position:absolute;left:0;top:0;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;background:#fff;border:1.5px solid #d33;color:#d33;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;transition:all 120ms;';
+          b.addEventListener('click', (e) => {
             e.stopPropagation();
-            selectComp(id);
+            setSelected((s) => (s === num ? null : num));
           });
-          badgeWrap.appendChild(btn);
-          badgeById.set(id, btn);
+          badgeWrap.appendChild(b);
+          badgeEls.push({ num, pos, btn: b });
         });
-        const syncBadges = () => {
-          const cur = selectedIdRef.current;
-          badgeById.forEach((btn, id) => {
-            const on = cur === id;
-            btn.style.background = on ? '#22c55e' : '#0f1117';
-            btn.style.color = on ? '#fff' : '#94a3b8';
-            btn.style.borderColor = on ? '#22c55e' : '#2a3348';
-            btn.style.boxShadow = on
-              ? '0 0 0 3px rgba(34,197,94,.25), 0 2px 6px rgba(0,0,0,.35)'
-              : 'none';
-            btn.style.transform = on
-              ? 'translate(-50%,-50%) scale(1.15)'
-              : 'translate(-50%,-50%) scale(1)';
-          });
-        };
-        // suscripción simple: el selectComp ya cambia selectedIdRef, sincronizamos en cada frame
-        (badgeWrap as unknown as { _syncBadges?: () => void })._syncBadges = syncBadges;
       }
 
-      // orbit manual
-      const spherical = { theta: Math.PI / 4, phi: Math.PI / 3.5, r: 12 };
-      const target = new THREE.Vector3(0, 0.8, 0);
+      // highlight
+      const applyHighlight = () => {
+        const sel = selectedRef.current;
+        meshes.forEach((m) => {
+          const mm = m.material as THREE.MeshStandardMaterial;
+          const ud = m.userData as { comp?: number; em0?: number; ei0?: number };
+          const on = sel != null && ud.comp === sel;
+          mm.emissive.setHex(on ? 0x1a9a4a : (ud.em0 ?? 0));
+          mm.emissiveIntensity = on ? 0.5 : (ud.ei0 ?? 0);
+        });
+        badgeEls.forEach(({ num, btn }) => {
+          const on = sel === num;
+          btn.style.background = on ? '#1a9a4a' : '#fff';
+          btn.style.color = on ? '#fff' : '#d33';
+          btn.style.borderColor = on ? '#1a9a4a' : '#d33';
+        });
+      };
+
+      // orbit
+      const spherical = { theta: 0.12, phi: Math.PI / 2.15, r: 13.5 };
+      const target = new THREE.Vector3(-0.3, 2.6, 0);
       const updateCamera = () => {
         camera.position.x =
           target.x + spherical.r * Math.sin(spherical.phi) * Math.sin(spherical.theta);
@@ -2110,124 +596,59 @@ export default function EPSchemePage({ ep, updEP }: Props) {
         camera.lookAt(target);
       };
       updateCamera();
-      // expose view switcher
-      viewFnRef.current = (v: string) => {
-        const targets: Record<string, typeof spherical> = {
-          iso: { theta: Math.PI / 4, phi: Math.PI / 3.8, r: 12 },
-          front: { theta: 0, phi: Math.PI / 2.01, r: 11 },
-          side: { theta: Math.PI / 2, phi: Math.PI / 2.01, r: 11 },
-          top: { theta: Math.PI / 4, phi: 0.1, r: 13 },
-          back: { theta: Math.PI, phi: Math.PI / 2.01, r: 11 },
-        };
-        const end = targets[v] ?? targets.iso;
-        const start = { ...spherical };
-        let step = 0;
-        const steps = 30;
-        const dur = 600;
-        const ease = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
-        const iv = setInterval(() => {
-          step++;
-          const t = ease(step / steps);
-          spherical.theta = start.theta + (end.theta - start.theta) * t;
-          spherical.phi = start.phi + (end.phi - start.phi) * t;
-          spherical.r = start.r + (end.r - start.r) * t;
-          updateCamera();
-          if (step >= steps) clearInterval(iv);
-        }, dur / steps);
-      };
 
       let isDown = false;
-      let prevX = 0,
-        prevY = 0;
-      const onPointerDown = (e: PointerEvent) => {
+      let panMode = false;
+      let px = 0,
+        py = 0;
+      const onDown = (e: PointerEvent) => {
         isDown = true;
-        prevX = e.clientX;
-        prevY = e.clientY;
+        // Ítem usuario: la RUEDA (botón medio) PANEA (mueve el esquema), el click izquierdo
+        // (principal) ROTA. El pan mueve el `target` de la cámara; la rotación sigue igual.
+        panMode = e.button === 1;
+        px = e.clientX;
+        py = e.clientY;
+        if (e.button === 1) e.preventDefault();
         canvas.setPointerCapture(e.pointerId);
       };
-      const onPointerUp = (e: PointerEvent) => {
+      const onUp = (e: PointerEvent) => {
         isDown = false;
         canvas.releasePointerCapture(e.pointerId);
       };
-      const onPointerMove = (e: PointerEvent) => {
-        if (!isDown) {
-          // hover label handled separately
-          return;
+      const onMove = (e: PointerEvent) => {
+        if (!isDown) return;
+        const dx = e.clientX - px;
+        const dy = e.clientY - py;
+        if (panMode) {
+          // Pan en el plano de la cámara: right (horizontal mundo) y screenUp (vertical).
+          const sinT = Math.sin(spherical.theta),
+            cosT = Math.cos(spherical.theta);
+          const sinP = Math.sin(spherical.phi),
+            cosP = Math.cos(spherical.phi);
+          const s = spherical.r * 0.0012;
+          // right normalizado en mundo: (cosT, 0, -sinT); screenUp: (-sinT*cosP, sinP, -cosT*cosP)
+          target.x += -dx * s * cosT + dy * s * (-sinT * cosP);
+          target.y += dy * s * sinP;
+          target.z += -dx * s * -sinT + dy * s * (-cosT * cosP);
+        } else {
+          spherical.theta -= dx * 0.005;
+          spherical.phi = Math.max(0.2, Math.min(Math.PI / 2.02, spherical.phi + dy * 0.005));
         }
-        const dx = (e.clientX - prevX) * 0.005;
-        const dy = (e.clientY - prevY) * 0.005;
-        spherical.theta -= dx;
-        spherical.phi = Math.max(0.1, Math.min(Math.PI / 2.05, spherical.phi + dy));
-        prevX = e.clientX;
-        prevY = e.clientY;
+        px = e.clientX;
+        py = e.clientY;
         updateCamera();
       };
       const onWheel = (e: WheelEvent) => {
-        spherical.r = Math.max(2, Math.min(22, spherical.r + e.deltaY * 0.01));
+        spherical.r = Math.max(4, Math.min(24, spherical.r + e.deltaY * 0.01));
         updateCamera();
         e.preventDefault();
       };
-      canvas.addEventListener('pointerdown', onPointerDown);
-      canvas.addEventListener('pointerup', onPointerUp);
-      canvas.addEventListener('pointermove', onPointerMove);
+      canvas.addEventListener('pointerdown', onDown);
+      canvas.addEventListener('pointerup', onUp);
+      canvas.addEventListener('pointermove', onMove);
       canvas.addEventListener('wheel', onWheel, { passive: false });
-
-      // raycaster for click/hover
-      const raycaster = new THREE.Raycaster();
-      const mouse = new THREE.Vector2();
-      const labelEl = document.getElementById('ep-label3d');
-      let downPos = { x: 0, y: 0 };
-      const onMouseDownPos = (e: MouseEvent) => {
-        downPos = { x: e.clientX, y: e.clientY };
-      };
-      const onMouseUpPick = (e: MouseEvent) => {
-        const dx = Math.abs(e.clientX - downPos.x),
-          dy = Math.abs(e.clientY - downPos.y);
-        if (dx > 5 || dy > 5) return;
-        const rect = canvas.getBoundingClientRect();
-        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
-        const hits = raycaster.intersectObjects(allMeshes);
-        if (hits.length && (hits[0].object.userData as { compId?: string }).compId) {
-          selectComp((hits[0].object.userData as { compId: string }).compId);
-        } else if (selectedIdRef.current) {
-          // click en vacío deselecciona — antes solo se podía desde el panel
-          const meshes = meshesRef.current;
-          const map = matsOrig.current;
-          const cur = selectedIdRef.current;
-          meshes
-            .filter((m) => (m.userData as { compId?: string }).compId === cur)
-            .forEach((m) => {
-              const orig = map.get(m.uuid);
-              if (orig) (m as THREE.Mesh).material = orig;
-            });
-          setSelectedId(null);
-        }
-      };
-      const onHover = (e: MouseEvent) => {
-        const rect = canvas.getBoundingClientRect();
-        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-        raycaster.setFromCamera(mouse, camera);
-        const hits = raycaster.intersectObjects(allMeshes);
-        if (labelEl) {
-          if (hits.length && (hits[0].object.userData as { compId?: string }).compId) {
-            const comp = COMPS.find(
-              (c) => c.id === (hits[0].object.userData as { compId: string }).compId,
-            );
-            if (comp) {
-              labelEl.style.display = 'block';
-              labelEl.style.left = e.clientX - rect.left + 14 + 'px';
-              labelEl.style.top = e.clientY - rect.top - 10 + 'px';
-              labelEl.textContent = comp.name;
-            }
-          } else labelEl.style.display = 'none';
-        }
-      };
-      canvas.addEventListener('mousedown', onMouseDownPos);
-      canvas.addEventListener('mouseup', onMouseUpPick);
-      canvas.addEventListener('mousemove', onHover);
+      // Sin esto, el botón medio activa el auto-scroll del navegador y roba el pan.
+      canvas.addEventListener('auxclick', (e) => e.preventDefault());
 
       const onResize = () => {
         const W = wrap.clientWidth,
@@ -2240,51 +661,35 @@ export default function EPSchemePage({ ep, updEP }: Props) {
       onResize();
 
       let raf = 0;
+      const tmp = new THREE.Vector3();
       const animate = () => {
         raf = requestAnimationFrame(animate);
+        applyHighlight();
         renderer.render(scene, camera);
-        // badges 3D → 2D para casos fotorealistas 3× (cisterna y red)
-        if (isFoto3) {
-          const bw = document.getElementById('ep-badges') as HTMLDivElement | null;
-          const sync = (bw as unknown as { _syncBadges?: () => void })?._syncBadges;
-          if (sync) sync();
-          if (bw && badgeData.length) {
-            const rect = wrap.getBoundingClientRect();
-            const tmp = new THREE.Vector3();
-            badgeData.forEach(({ id, pos }) => {
-              const btn = badgeById.get(id);
-              if (!btn) return;
-              tmp.copy(pos).project(camera);
-              const visible = tmp.z < 1 && tmp.z > -1;
-              if (!visible) {
-                btn.style.display = 'none';
-                return;
-              }
-              btn.style.display = 'flex';
-              btn.style.left = `${(tmp.x * 0.5 + 0.5) * rect.width}px`;
-              btn.style.top = `${(-tmp.y * 0.5 + 0.5) * rect.height}px`;
-            });
+        const rect = wrap.getBoundingClientRect();
+        badgeEls.forEach(({ pos, btn }) => {
+          tmp.copy(pos).project(camera);
+          if (tmp.z < -1 || tmp.z > 1) {
+            btn.style.display = 'none';
+            return;
           }
-        }
+          btn.style.display = 'flex';
+          btn.style.left = `${(tmp.x * 0.5 + 0.5) * rect.width}px`;
+          btn.style.top = `${(-tmp.y * 0.5 + 0.5) * rect.height}px`;
+        });
       };
       animate();
 
       cleanup = () => {
         cancelAnimationFrame(raf);
         window.removeEventListener('resize', onResize);
-        canvas.removeEventListener('pointerdown', onPointerDown);
-        canvas.removeEventListener('pointerup', onPointerUp);
-        canvas.removeEventListener('pointermove', onPointerMove);
+        canvas.removeEventListener('pointerdown', onDown);
+        canvas.removeEventListener('pointerup', onUp);
+        canvas.removeEventListener('pointermove', onMove);
         canvas.removeEventListener('wheel', onWheel);
-        canvas.removeEventListener('mousedown', onMouseDownPos);
-        canvas.removeEventListener('mouseup', onMouseUpPick);
-        canvas.removeEventListener('mousemove', onHover);
-        const bw2 = document.getElementById('ep-badges');
-        if (bw2) bw2.innerHTML = '';
+        if (badgeWrap) badgeWrap.innerHTML = '';
         renderer.dispose();
-        allMeshes.forEach((m) => {
-          (m.geometry as THREE.BufferGeometry).dispose();
-        });
+        meshes.forEach((m) => (m.geometry as THREE.BufferGeometry).dispose());
         scene.clear();
       };
     })();
@@ -2293,49 +698,28 @@ export default function EPSchemePage({ ep, updEP }: Props) {
       if (cleanup) cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasCistern, ntot, nt]);
+  }, [numPumps]);
 
-  // filtered comps for sidebar
-  const showIds = new Set<string>([
-    'acometida',
-    'vg_ent',
-    'filtro',
-    'presost_s',
-    'manif_s',
-    ...Array.from({ length: ntot }, (_, i) => `vg_s${i + 1}`),
-    ...Array.from({ length: ntot }, (_, i) => `b${i + 1}`),
-    ...Array.from({ length: ntot }, (_, i) => `vrd${i + 1}`),
-    'manif_i',
-    'psv',
-    'manometro',
-    'tank',
-    'presost_r',
-    'vg_red',
-    'tablero',
-    ...(hasCistern ? ['cisterna'] : []),
-    'vg_sal',
-  ]);
-  const visible = COMPS.filter((c) => showIds.has(c.id));
-  const selected = COMPS.find((c) => c.id === selectedId) ?? null;
-
-  const cfgLabel = hasCistern ? `Cisterna · ${nt}T+${nr}R` : `${nt}T+${nr}R · Succión directa`;
+  const selInfo = LEGEND.find((l) => l.num === selected) ?? null;
+  const title =
+    numPumps === 4
+      ? 'Sistema de presurización desde cisterna — 4 bombas (3 trabajo + 1 reserva)'
+      : 'Sistema de presurización desde cisterna — 3 bombas (2 trabajo + 1 reserva)';
 
   return (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 0,
         flex: 1,
+        height: '100%',
         minHeight: 0,
-        maxHeight: '100%',
         background: 'var(--bg)',
         borderRadius: 'var(--r)',
         overflow: 'hidden',
         border: '1px solid var(--line)',
       }}
     >
-      {/* header — compacto */}
       <div
         style={{
           display: 'flex',
@@ -2347,21 +731,6 @@ export default function EPSchemePage({ ep, updEP }: Props) {
           flexShrink: 0,
         }}
       >
-        <span style={{ fontWeight: 800, fontSize: 11, color: 'var(--acc)' }}>CIVILFLOW</span>
-        <span style={{ fontSize: 10, color: 'var(--txt3)' }}>· Esquema 3D EPC</span>
-        <span
-          style={{
-            marginLeft: 8,
-            fontSize: 9,
-            fontWeight: 600,
-            background: 'var(--acc)',
-            color: '#fff',
-            padding: '1px 6px',
-            borderRadius: 10,
-          }}
-        >
-          {cfgLabel}
-        </span>
         <div style={{ flex: 1 }} />
         {updEP && (
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -2406,276 +775,258 @@ export default function EPSchemePage({ ep, updEP }: Props) {
             </button>
           </div>
         )}
-      </div>
-
-      <div style={{ display: 'flex', flex: 1, minHeight: 520, maxHeight: 620, overflow: 'hidden' }}>
-        {/* sidebar — grilla 2-col; nombres completos en una línea, sin subtítulo, sin scroll */}
-        <div
+        <button
+          type="button"
+          onClick={() => {
+            const file = numPumps === 4 ? 'EP_3T1R.webp' : 'EP_2T1R.webp';
+            const a = document.createElement('a');
+            a.href = `/${file}`;
+            a.download = file;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }}
           style={{
-            width: 420,
-            background: '#161b27',
-            borderRight: '1px solid #2a3348',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
+            fontSize: 10,
+            fontWeight: 700,
+            padding: '3px 10px',
+            borderRadius: 6,
+            cursor: 'pointer',
+            background: 'var(--acc)',
+            color: '#fff',
+            border: 'none',
             flexShrink: 0,
-            alignSelf: 'stretch',
           }}
         >
-          <div
-            style={{
-              padding: '6px 10px',
-              fontSize: 9,
-              fontWeight: 600,
-              color: '#475569',
-              letterSpacing: '.08em',
-              textTransform: 'uppercase',
-              borderBottom: '1px solid #2a3348',
-              flexShrink: 0,
-            }}
-          >
-            Componentes del sistema
-          </div>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 5,
-              padding: 6,
-              overflow: 'hidden',
-              alignContent: 'start',
-              flex: 1,
-              minHeight: 0,
-            }}
-          >
-            {visible.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => selectComp(c.id)}
-                title={`${c.name} — ${c.desc}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '4px 6px',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  background: selectedId === c.id ? 'rgba(59,130,246,.18)' : '#1e2535',
-                  border: `1px solid ${selectedId === c.id ? '#3b82f6' : '#2a3348'}`,
-                  borderRadius: 6,
-                  color: '#e2e8f0',
-                }}
-              >
-                <span
-                  style={{
-                    minWidth: 20,
-                    height: 20,
-                    borderRadius: '50%',
-                    background: selectedId === c.id ? '#3b82f6' : '#0f1117',
-                    border: '1px solid #2a3348',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: selectedId === c.id ? '#fff' : '#94a3b8',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontFamily: 'monospace',
-                    flexShrink: 0,
-                  }}
-                >
-                  {c.num}
-                </span>
-                <span style={{ flex: 1, minWidth: 0, lineHeight: 1.2 }}>
-                  <div
-                    style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0', lineHeight: 1.25 }}
-                  >
-                    {c.name}
-                  </div>
-                </span>
-              </button>
-            ))}
-          </div>
-          <div
-            style={{
-              borderTop: '1px solid #2a3348',
-              padding: '6px 10px',
-              background: '#1e2535',
-              flexShrink: 0,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: '#60a5fa',
-                marginBottom: 2,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {selected ? selected.name : '—'}
-            </div>
-            <div
-              style={{
-                fontSize: 10,
-                color: '#94a3b8',
-                lineHeight: 1.35,
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-              }}
-            >
-              {selected ? selected.desc : 'Selecciona un componente para ver su descripción.'}
-            </div>
-          </div>
-        </div>
+          Descargar esquema 2D
+        </button>
+      </div>
 
-        {/* canvas — fondo blanco, todo el dibujo visible sin scroll, sin estirar (contain) */}
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
         <div
           ref={wrapRef}
           style={{
             flex: 1,
             position: 'relative',
             overflow: 'hidden',
-            background: '#ffffff',
+            background: '#f1f1f4',
             minHeight: 0,
           }}
         >
-          {!threeReady && (
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: '#ffffff',
-                fontSize: 11,
-                color: '#6b7280',
-              }}
-            >
-              Cargando 3D…
-            </div>
-          )}
-          <canvas
-            ref={canvasRef}
-            style={{ display: 'block', width: '100%', height: '100%', opacity: threeReady ? 1 : 0 }}
-          />
-          <div
-            id="ep-badges"
-            style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}
-          />
-          <div
-            id="ep-label3d"
-            style={{
-              position: 'absolute',
-              pointerEvents: 'none',
-              display: 'none',
-              background: 'rgba(255,255,255,.95)',
-              border: '1px solid #3b82f6',
-              color: '#1e40af',
-              fontSize: 10,
-              fontWeight: 600,
-              padding: '4px 10px',
-              borderRadius: 5,
-              whiteSpace: 'nowrap',
-              fontFamily: 'monospace',
-              boxShadow: '0 2px 8px rgba(0,0,0,.08)',
-            }}
-          />
-          <div
-            style={{ position: 'absolute', bottom: 58, left: 10, fontSize: 9, color: '#94a3b8' }}
-          >
-            Clic en componente → info · Arrastrar → girar · Scroll → zoom
-          </div>
           <div
             style={{
               position: 'absolute',
               top: 8,
-              right: 8,
-              background: 'rgba(255,255,255,.92)',
-              border: '1px solid #e5e7eb',
-              borderRadius: 8,
-              padding: '8px 10px',
-              backdropFilter: 'blur(8px)',
-              boxShadow: '0 2px 8px rgba(0,0,0,.06)',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: 13,
+              fontWeight: 800,
+              color: '#12306b',
+              textAlign: 'center',
+              pointerEvents: 'none',
+              whiteSpace: 'nowrap',
             }}
           >
-            <div
-              style={{
-                fontSize: 8,
-                fontWeight: 600,
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '.08em',
-                marginBottom: 6,
-              }}
-            >
-              Convención
+            {title}
+          </div>
+          <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />
+          <div
+            ref={badgeWrapRef}
+            style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden' }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              top: 34,
+              left: 10,
+              width: 230,
+              background: 'rgba(255,255,255,.97)',
+              border: '1px solid #d0d4da',
+              borderRadius: 8,
+              padding: '8px 10px',
+              fontSize: 10,
+              color: '#334',
+              pointerEvents: 'none',
+              boxShadow: '0 1px 6px rgba(0,0,0,.06)',
+            }}
+          >
+            <div style={{ fontWeight: 800, color: '#12306b', marginBottom: 5 }}>
+              Notas de construcción
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-              <span style={{ width: 22, height: 3, background: '#3b82f6', borderRadius: 2 }} />
-              <span style={{ fontSize: 9, color: '#475569' }}>Succión · AC</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {[
+                'La tapa de la cisterna debe ir al mismo nivel de las tuberías.',
+                'Válvula de compuerta en la succión de cada bomba para mantenimiento sin vaciar la cisterna.',
+                'El colador de succión debe quedar sumergido por debajo del nivel mínimo.',
+                'Prever soportes y anclajes para manifolds, bombas y tanque hidroneumático.',
+                'Dejar espacio frontal de acceso para bombas, PLC y drenajes.',
+              ].map((n, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 7 }}>
+                  <span
+                    style={{
+                      width: 7,
+                      height: 7,
+                      minWidth: 7,
+                      borderRadius: '50%',
+                      background: '#333',
+                      marginTop: 4,
+                    }}
+                  />
+                  <span>{n}</span>
+                </div>
+              ))}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-              <span style={{ width: 22, height: 3, background: '#f97316', borderRadius: 2 }} />
-              <span style={{ fontSize: 9, color: '#475569' }}>Impulsión · ACS</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-              <span style={{ width: 14, height: 8, background: '#8b5cf6', borderRadius: 2 }} />
-              <span style={{ fontSize: 9, color: '#475569' }}>Bombeo</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 14, height: 8, background: '#06b6d4', borderRadius: 2 }} />
-              <span style={{ fontSize: 9, color: '#475569' }}>Tanque</span>
-            </div>
+          </div>
+          <div
+            ref={labelRef}
+            style={{
+              position: 'absolute',
+              bottom: 10,
+              left: 10,
+              maxWidth: 320,
+              background: 'rgba(255,255,255,.95)',
+              border: '1px solid #d0d4da',
+              borderRadius: 8,
+              padding: '8px 10px',
+              fontSize: 11,
+              color: '#223',
+              pointerEvents: 'none',
+            }}
+          >
+            {selInfo ? (
+              <>
+                <div style={{ fontWeight: 800, color: '#12306b', marginBottom: 2 }}>
+                  {selInfo.num}. {selInfo.name}
+                </div>
+                <div>{selInfo.desc}</div>
+              </>
+            ) : (
+              <span style={{ color: '#667' }}>
+                Arrastrar → girar · Scroll → zoom · Clic en número → info
+              </span>
+            )}
           </div>
           <div
             style={{
               position: 'absolute',
-              bottom: 10,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              background: '#ffffff',
-              border: '1px solid #e5e7eb',
-              borderRadius: 10,
-              display: 'flex',
-              gap: 2,
-              padding: 4,
-              boxShadow: '0 2px 8px rgba(0,0,0,.08)',
+              bottom: 12,
+              right: 12,
+              fontSize: 10,
+              color: '#8a8f98',
+              textAlign: 'right',
+              pointerEvents: 'none',
+              fontStyle: 'italic',
             }}
           >
-            {(['iso', 'front', 'side', 'top'] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => {
-                  setActiveView(v);
-                  viewFnRef.current(v);
-                }}
-                style={{
-                  fontSize: 10,
-                  fontWeight: 600,
-                  padding: '4px 10px',
-                  borderRadius: 7,
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: activeView === v ? '#3b82f6' : 'transparent',
-                  color: activeView === v ? '#fff' : '#6b7280',
-                }}
-              >
-                {v === 'iso'
-                  ? 'Isométrico'
-                  : v === 'front'
-                    ? 'Frontal'
-                    : v === 'side'
-                      ? 'Lateral'
-                      : 'Planta'}
-              </button>
+            Esquema general básico mínimo
+          </div>
+        </div>
+
+        {/* right info panels */}
+        <div
+          style={{
+            width: 300,
+            background: '#f7f8fa',
+            borderLeft: '1px solid #e2e5ea',
+            padding: 12,
+            overflow: 'hidden',
+            flexShrink: 0,
+            fontSize: 11,
+            color: '#223',
+          }}
+        >
+          <div
+            style={{
+              border: '1px solid #d8dce2',
+              borderRadius: 8,
+              padding: 10,
+              marginBottom: 10,
+              background: '#fff',
+            }}
+          >
+            <div
+              style={{ fontWeight: 800, color: '#12306b', textAlign: 'center', marginBottom: 8 }}
+            >
+              CONTROL Y AUTOMATIZACIÓN
+            </div>
+            <div style={{ fontWeight: 700, color: '#12306b', marginBottom: 4 }}>
+              CONTROLADOR LÓGICO PROGRAMABLE (PLC)
+            </div>
+            <div style={{ fontWeight: 700, color: '#12306b', marginTop: 6 }}>ALIMENTACIÓN</div>
+            <div>+ 24 VDC</div>
+            <div>+ 0 VDC</div>
+            <div style={{ fontWeight: 700, color: '#12306b', marginTop: 6 }}>
+              ENTRADAS DIGITALES
+            </div>
+            <div>ED1 · Nivel máximo (LSH)</div>
+            <div>ED2 · Nivel mínimo (LSL)</div>
+            <div>ED3 · Paro de emergencia</div>
+            <div style={{ fontWeight: 700, color: '#12306b', marginTop: 6 }}>ENTRADA ANALÓGICA</div>
+            <div>AI-01 · Transmisor de presión 4-20 mA</div>
+            <div style={{ fontWeight: 700, color: '#12306b', marginTop: 6 }}>SALIDAS DIGITALES</div>
+            {Array.from({ length: numPumps }, (_, i) => (
+              <div key={i}>
+                DO{i + 1} · Contactor B{i + 1} (Bomba {i + 1}
+                {i === numPumps - 1 ? ' Reserva' : ''})
+              </div>
             ))}
+            <div>DO{numPumps + 1} · Marcha / Falla</div>
+            <div>DO{numPumps + 2} · Alarma (visual / sonoro)</div>
+          </div>
+
+          <div
+            style={{
+              border: '1px solid #d8dce2',
+              borderRadius: 8,
+              padding: 10,
+              background: '#fff',
+            }}
+          >
+            <div
+              style={{ fontWeight: 800, color: '#12306b', textAlign: 'center', marginBottom: 8 }}
+            >
+              LEYENDA DE COMPONENTES
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+              {LEGEND.map((l) => (
+                <button
+                  key={l.num}
+                  type="button"
+                  onClick={() => setSelected((s) => (s === l.num ? null : l.num))}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: selected === l.num ? '#e8f5ee' : 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 10,
+                    color: '#223',
+                    textAlign: 'left',
+                    padding: 2,
+                  }}
+                >
+                  <span
+                    style={{
+                      minWidth: 16,
+                      height: 16,
+                      borderRadius: '50%',
+                      border: '1.5px solid #d33',
+                      color: '#d33',
+                      fontWeight: 800,
+                      fontSize: 9,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {l.num}
+                  </span>
+                  {l.name}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
