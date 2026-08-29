@@ -14,6 +14,7 @@ import {
   flowEndsAt,
   aparatoEnExtremoInvalido,
 } from '../lib/PlanoEngine/PlanoEngineDrawing';
+import { hasTeeAtPoint } from '../lib/PlanoEngine/ventCodoTeeFix';
 import type { Piso } from '../lib/shared/projectTypes';
 import type { PlanItem } from '../context/PlansContext';
 import { matLongName, pisoLbl, DEFAULT_PENDIENTE_PCT } from '../constants';
@@ -649,6 +650,13 @@ function PdfViewer_({
             unknown
           >;
           setSelElement(rest as unknown as ProbedElement);
+          // ponytail: single source of truth — sync diamSel immediately so panel & menu dropdowns reflect new diametro without reselection
+          const d = (rest as unknown as { diametro?: string }).diametro;
+          if (d)
+            setDiamSel((prev) => ({
+              ...prev,
+              [(eng.activeNet || activeNetRef.current || 'af') as string]: d,
+            }));
         }
       }
       if (loadingPlanRef.current) return;
@@ -733,6 +741,35 @@ function PdfViewer_({
 
   // ── Estado de diálogos ──
   const [contextMenuState, setContextMenuState] = useState<ContextMenuState | null>(null);
+  // ponytail: keep context menu snapshot in sync with engine source of truth for diametro/material etc.
+  useEffect(() => {
+    if (!contextMenuState?.visible || !contextMenuState.element) return;
+    const eng = engineRef.current;
+    if (!eng) return;
+    const eid = (contextMenuState.element as { id?: string }).id;
+    if (!eid) return;
+    const fresh =
+      eng.ramales.find((r) => r.id === eid) ||
+      eng.bajantes.find((b) => b.id === eid) ||
+      eng.textAnnots.find((t) => t.id === eid) ||
+      eng.areas.find((a) => a.id === eid) ||
+      eng.guideLines.find((g) => g.id === eid);
+    if (!fresh) return;
+    const snap = contextMenuState.element as unknown as Record<string, unknown>;
+    const live = fresh as unknown as Record<string, unknown>;
+    if (
+      snap.diametro !== live.diametro ||
+      snap.material !== live.material ||
+      snap.accesorioInicio !== live.accesorioInicio ||
+      snap.accesorioFin !== live.accesorioFin ||
+      snap.aparatoInicio !== live.aparatoInicio ||
+      snap.aparatoFin !== live.aparatoFin
+    ) {
+      setContextMenuState((prev) =>
+        prev ? { ...prev, element: { ...fresh } as unknown as typeof prev.element } : null,
+      );
+    }
+  }, [selElement, contextMenuState?.visible]);
   const [confirmState, setConfirmState] = useState<{
     isOpen: boolean;
     title: string;
@@ -940,16 +977,17 @@ function PdfViewer_({
           accId === 'codo90rmSube' ||
           accId === 'codo90rmBaja')
       ) {
+        const isVentTeeModal = r.net === 'vent' && hasTeeAtPoint(eng, accPt, r.net);
         // Ítem 5: los codos de nivel (sube/baja) solo aplican entre cuerpo y extremo — nunca en
         // una intersección entre ramales (tee de 3+ brazos).
-        if (!codoNivelPermitidoEn(eng, r.id, accPt)) {
+        if (!isVentTeeModal && !codoNivelPermitidoEn(eng, r.id, accPt)) {
           onAlertHandler(
             'Codo de nivel no permitido aquí',
             'Los codos sube/baja solo pueden ubicarse entre el cuerpo del ramal y sus extremos, no en intersecciones entre ramales.',
           );
           return;
         }
-        if (!codoPolarityOk(r, accPt, accId, TOL)) {
+        if (!isVentTeeModal && !codoPolarityOk(r, accPt, accId, TOL)) {
           const isSube = accId === 'codoSube' || accId === 'codo90rmSube';
           onAlertHandler(
             'Dirección de codo incorrecta',
@@ -1220,12 +1258,7 @@ function PdfViewer_({
         ? gasMatSel[activeNet] || ''
         : (mats?.[activeNet] && mats[activeNet][0]?.val) || '';
     const d = activeNet === 'gas' ? diamSel[activeNet] || '' : diamSel[activeNet] || '';
-    const p =
-      activeNet === 'san' || activeNet === 'll'
-        ? pendSel[activeNet] !== undefined
-          ? pendSel[activeNet]
-          : DEFAULT_PENDIENTE_PCT
-        : 0;
+    const p = activeNet === 'san' || activeNet === 'll' ? DEFAULT_PENDIENTE_PCT : 0;
     eng.setRamalDefaults({ material: matName, diametro: d, pendiente: p });
   }, [
     tool,
@@ -1236,7 +1269,6 @@ function PdfViewer_({
     scaleM,
     mats,
     diamSel,
-    pendSel,
     selectedNivel,
     pisos,
     gasMatSel,
@@ -1432,7 +1464,11 @@ function PdfViewer_({
       if (diametro) setDiamSel((prev) => ({ ...prev, [activeNet]: diametro }));
       const pendiente = selElement.pendiente;
       if (pendiente !== undefined) {
-        setPendSel((prev) => ({ ...prev, [activeNet]: pendiente }));
+        // Ítem 4 (fix): solo reflejar la pendiente del ramal seleccionado en el INPUT de
+        // display — NO la copiamos a pendSel, porque pendSel es el default que DEFAULT_PENDIENTE_PCT
+        // (2%) quiere para ramales nuevos, y llevarla aquí hacía que un ramal viejo con 3%
+        // contaminara el default de los siguientes. El default de creación es siempre 2% salvo
+        // que el usuario escriba otra en el input.
         setPendInput(pendiente > 0 ? String(pendiente) : '');
       }
     } else if (!selElement) {
@@ -1890,6 +1926,7 @@ function PdfViewer_({
                 <AparatosPanel
                   activeNet={activeNet}
                   selElement={selElement}
+                  setSelElement={setSelElement}
                   planId={currentId}
                   engineRef={engineRef}
                 />

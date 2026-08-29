@@ -8,6 +8,8 @@ import {
 } from '../constants';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
 import { matchDiamOption } from '../utils/diamOptionMatch';
+import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
+import { sanDiamAllowedForApparatus } from '../utils/sanitaryDiamCompat';
 import { bumpHidroAccesorio } from '../utils/syncExtremeAccessory';
 import { usePlans } from '../context/PlansContext';
 import { useApparatus } from '../context/ApparatusContext';
@@ -79,14 +81,18 @@ const FixturesPanel_S3: React.CSSProperties = {
   padding: '0 2px',
 };
 
+import type { ProbedElement } from './pdfViewer/tramoEditor/context';
+
 const AparatosPanel = memo(function AparatosPanel_({
   activeNet,
   selElement,
+  setSelElement,
   planId,
   engineRef,
 }: {
   activeNet: string;
   selElement: SelectableTarget | null;
+  setSelElement?: React.Dispatch<React.SetStateAction<ProbedElement | null>>;
   planId?: string | number;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
 }) {
@@ -586,6 +592,36 @@ const AparatosPanel = memo(function AparatosPanel_({
       }
     }
     if (eng && live && live.net === 'san' && firstUnit) {
+      // Ítem 6/7/8: regla central (inodoro → 4" mínimo; otros → relleno 2" si vacío)
+      const isInodoro = apId === 'san';
+      const targetDiamForAcc = isInodoro ? '4"' : '2"';
+      const curDiamPulg = live.diametro ? diamPulgFromLabel(live.diametro) : 0;
+      // Detect previous aparato for switch diam perception
+      let prevAparatoFix: string | null = null;
+      try {
+        const prevCountsFix = loadAll();
+        const prevMapFix = prevCountsFix[storageKey] || {};
+        const foundFix = Object.keys(prevMapFix).find(
+          (k) => k !== apId && (prevMapFix[k] || 0) > 0,
+        );
+        if (foundFix) prevAparatoFix = foundFix;
+      } catch (_e) {
+        void _e;
+      }
+      const needsDiam =
+        (isInodoro && (curDiamPulg < 4 || !sanDiamAllowedForApparatus(curDiamPulg, apId))) ||
+        (!isInodoro && (!live.diametro || prevAparatoFix === 'san'));
+      if (needsDiam) {
+        eng.updateElementById(live.id, { diametro: targetDiamForAcc });
+        // Actualizar live para que el siguiente matchDiamOption use el nuevo
+        (live as unknown as { diametro: string }).diametro = targetDiamForAcc;
+        // Sincronizar el snapshot de React para que el dropdown del panel derecho refleje el cambio.
+        if (selElement?.id === live.id)
+          setSelElement?.({
+            ...selElement,
+            diametro: targetDiamForAcc,
+          } as unknown as ProbedElement);
+      }
       const head = live.pts[live.pts.length - 1];
       const tail = live.pts[0];
       const headOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, head);
@@ -605,8 +641,14 @@ const AparatosPanel = memo(function AparatosPanel_({
         const isSif = apId === 'sif';
         const accType = isSif ? 'sifon' : 'codo90rmSube';
         const updates: Record<string, unknown> = { [targetField]: accType };
-        const diamListSan = DIAM_BY_MAT['PVC'] || [];
-        const diamVal = live.diametro ? matchDiamOption(diamListSan, live.diametro) : '';
+        const diamListSan = DIAM_BY_MAT['PVC-S'] || [];
+        // Para inodoro usar 4", para otros 2" como default del accesorio
+        const diamValRaw = isInodoro
+          ? '4"'
+          : live.diametro
+            ? matchDiamOption(diamListSan, live.diametro)
+            : '2"';
+        const diamVal = matchDiamOption(diamListSan, diamValRaw);
         if (diamVal) (updates as Record<string, unknown>)[targetDiamField] = diamVal;
         eng.updateElementById(live.id, updates);
         eng.render();

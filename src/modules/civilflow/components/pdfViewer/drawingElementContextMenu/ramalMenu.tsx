@@ -6,6 +6,7 @@ import { getAccessoryOptions } from '../../../utils/accessoryOptions';
 import { esAplicable, loadAll, saveAll } from '../../fixturesStorage';
 import { DIAM_BY_MAT } from '../../../constants';
 import { matchDiamOption } from '../../../utils/diamOptionMatch';
+import { sanDiamAllowedForApparatus } from '../../../utils/sanitaryDiamCompat';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoElement, PlanoRamal } from '../../../lib/PlanoEngine/PlanoState';
 import {
@@ -16,6 +17,7 @@ import {
   extremoEntrelazado,
   aparatoEnExtremoInvalido,
 } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
+import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventCodoTeeFix';
 import { directNeighborRamales } from '../../../utils/flowDirection';
 import { allocTributaryNumber, rootTributarioLabel } from '../../../lib/PlanoEngine/PlanoState';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
@@ -103,13 +105,20 @@ function MidRamalAccessorySelector({
 
               // Ítems 12/13: polaridad del codo de 90° sube/baja en el CUERPO — en el cuerpo el
               // flujo pasa de largo (ni llega ni sale), así que ni sube ni baja son válidos ahí.
+              // ponytail: vent T — skip polarity when point already forms T
               if (
                 accId === 'codoSube' ||
                 accId === 'codoBaja' ||
                 accId === 'codo90rmSube' ||
                 accId === 'codo90rmBaja'
               ) {
-                if (!codoPolarityOk(fresh, [midRamalHit.x, midRamalHit.y], accId, 0.5)) {
+                const isVentTee =
+                  fresh.net === 'vent' &&
+                  hasTeeAtPoint(eng, [midRamalHit.x, midRamalHit.y], fresh.net);
+                if (
+                  !isVentTee &&
+                  !codoPolarityOk(fresh, [midRamalHit.x, midRamalHit.y], accId, 0.5)
+                ) {
                   const isSube = accId === 'codoSube' || accId === 'codo90rmSube';
                   eng.triggerAlert(
                     'Polaridad de codo incorrecta',
@@ -278,24 +287,98 @@ function MidRamalAccessorySelector({
                 fresh.pts[fresh.pts.length - 1][0] - midRamalHit.x,
                 fresh.pts[fresh.pts.length - 1][1] - midRamalHit.y,
               );
-              const nearStart = fStart <= fEnd;
+              // ponytail: fixture goes to the FREE end (flow ends there, not occupied by bajante/union).
+              // nearStart (click proximity) put it at the wrong end when a bajante is at the other side.
+              const p0 = fresh.pts[0];
+              const p1 = fresh.pts[fresh.pts.length - 1];
+              const occ0 = extremumOccupied(eng, fresh, p0);
+              const occ1 = extremumOccupied(eng, fresh, p1);
+              let nearStart: boolean;
+              if (occ0 !== occ1) {
+                nearStart = occ1;
+              } else if (occ0 && occ1) {
+                nearStart = false;
+              } else {
+                const end0 = flowEndsAt(fresh, p0, 0.5);
+                const end1 = flowEndsAt(fresh, p1, 0.5);
+                nearStart = end0 && !end1 ? true : end1 && !end0 ? false : fStart <= fEnd;
+              }
               const fieldAcc: 'accesorioInicio' | 'accesorioFin' = nearStart
                 ? 'accesorioInicio'
                 : 'accesorioFin';
               if (val) {
-                if (fresh[fieldAcc]) {
+                const isSifNew = val === 'sif';
+                const accTypeNew = isSifNew ? 'sifon' : 'codo90rmSube';
+                // ponytail: switching aparato replaces the existing codo/sifon — no false alert.
+                // Only warn if the end has a DIFFERENT accessory type (not the aparato codo/sifon).
+                if (
+                  fresh[fieldAcc] &&
+                  fresh[fieldAcc] !== accTypeNew &&
+                  fresh[fieldAcc] !== 'codo90rmSube' &&
+                  fresh[fieldAcc] !== 'codo90rmBaja' &&
+                  fresh[fieldAcc] !== 'sifon'
+                ) {
                   eng.triggerAlert(
                     'Accesorio existente',
-                    'Este extremo ya tiene un accesorio. Elimínalo antes de asignar un aparato.',
+                    'Este extremo ya tiene un accesorio. Elimínalo antes de asignar un aparto.',
                   );
                   return;
+                }
+                // Ítem 6/7/8: regla central (inodoro → 4" mínimo; otros → relleno 2" si vacío) + switch
+                const isInodoro = val === 'san';
+                // Detect previous aparato for this ramal to handle switch quantity & diam
+                const planIdForSwitch = eng._loadedPlanId ?? '';
+                const switchKey = `san_${element.id}_${planIdForSwitch || ''}`;
+                let prevAparato: string | null = null;
+                try {
+                  const prevCounts = loadAll();
+                  const prevMap = prevCounts[switchKey] || {};
+                  const foundPrev = Object.keys(prevMap).find(
+                    (k) => (prevMap[k] || 0) > 0 && k !== val,
+                  );
+                  if (foundPrev) prevAparato = foundPrev;
+                } catch (_e) {
+                  void _e;
+                }
+                if (isInodoro) {
+                  // ponytail: inodoro must be >=4" even when ramal has NO diameter (0 returns "allowed")
+                  const curDiamPulg = fresh.diametro ? diamPulgFromLabel(fresh.diametro) : 0;
+                  if (curDiamPulg < 4 || !sanDiamAllowedForApparatus(curDiamPulg, 'san')) {
+                    eng.updateElementById(element.id, { diametro: '4"' });
+                    (fresh as unknown as { diametro: string }).diametro = '4"';
+                    if (selElement?.id === element.id)
+                      setSelElement({ ...selElement, diametro: '4"' } as PlanoRamal);
+                    setContextMenuState((prev) =>
+                      prev ? { ...prev, element: { ...prev.element, diametro: '4"' } } : null,
+                    );
+                  }
+                } else {
+                  // Otros aparatos: si venimos de inodoro (prev 4") o sin diam, ajustar a 2"
+                  const shouldSet2 = !fresh.diametro || prevAparato === 'san';
+                  if (shouldSet2) {
+                    eng.updateElementById(element.id, { diametro: '2"' });
+                    (fresh as unknown as { diametro: string }).diametro = '2"';
+                    if (selElement?.id === element.id)
+                      setSelElement({ ...selElement, diametro: '2"' } as PlanoRamal);
+                    setContextMenuState((prev) =>
+                      prev ? { ...prev, element: { ...prev.element, diametro: '2"' } } : null,
+                    );
+                  }
                 }
                 // Sifón (aparato 'sif') dibuja el glifo sifón, no codo 90°; conteo sigue sumando codo90.
                 const isSif = val === 'sif';
                 const accType = isSif ? 'sifon' : 'codo90rmSube';
                 const updates: Record<string, unknown> = { [fieldAcc]: accType };
-                const diamListSan = DIAM_BY_MAT['PVC'] || [];
-                const diamVal = fresh.diametro ? matchDiamOption(diamListSan, fresh.diametro) : '';
+                const diamListSan = DIAM_BY_MAT['PVC-S'] || [];
+                // ponytail: sifón always needs a diameter for its label — default to ramal's or 2"
+                const diamValRaw = isInodoro
+                  ? '4"'
+                  : isSif
+                    ? fresh.diametro || '2"'
+                    : fresh.diametro
+                      ? matchDiamOption(diamListSan, fresh.diametro)
+                      : '2"';
+                const diamVal = matchDiamOption(diamListSan, diamValRaw);
                 if (diamVal)
                   (updates as Record<string, unknown>)[
                     nearStart ? 'diametroInicio' : 'diametroFin'
@@ -313,20 +396,47 @@ function MidRamalAccessorySelector({
                   const counts2 = loadAll();
                   const key2 = `san_${element.id}_${planId || ''}`;
                   const cur2 = counts2[key2] || {};
-                  cur2[val] = (cur2[val] || 0) + 1;
-                  counts2[key2] = cur2;
+                  // ponytail: switch debe reemplazar, no sumar — solo 1 aparato por ramal
+                  const hadPrev = Object.keys(cur2).find((k) => k !== val && (cur2[k] || 0) > 0);
+                  if (hadPrev) {
+                    delete cur2[hadPrev];
+                    // diam ya ajustado arriba, no bump accesorio si ya existía
+                  }
+                  cur2[val] = 1;
+                  // limpiar ceros
+                  for (const k of Object.keys(cur2)) if (!cur2[k]) delete cur2[k];
+                  if (Object.keys(cur2).length === 0) delete counts2[key2];
+                  else counts2[key2] = cur2;
                   saveAll(counts2);
-                  bumpHidroAccesorio('san', 'codo90rmSube', 1, element.id, planId);
+                  // bump solo si accesorio no existía antes (evita doble conteo al cambiar de aparato con mismo codo)
+                  const hadAccBefore = !!fresh[fieldAcc];
+                  if (!hadAccBefore)
+                    bumpHidroAccesorio('san', 'codo90rmSube', 1, element.id, planId);
+                  else if (hadPrev && hadPrev !== val) {
+                    // switching aparato con mismo accesorio: no bump, pero ensure counts correcto
+                  }
                   if (typeof window !== 'undefined')
                     window.dispatchEvent(new CustomEvent('aparatos-clear'));
                 }
                 return;
               } else {
-                const wasCodo = fresh[fieldAcc] === 'codo90rmSube';
-                if (!wasCodo) return;
-                const updates: Record<string, unknown> = { [fieldAcc]: '' };
-                (updates as Record<string, unknown>)[nearStart ? 'diametroInicio' : 'diametroFin'] =
-                  '';
+                // Find actual field that has codo/sifon — not just nearStart (mid click may be far from free end)
+                let targetField: 'accesorioInicio' | 'accesorioFin' | null = null;
+                let targetDiamField: 'diametroInicio' | 'diametroFin' | null = null;
+                if (fresh.accesorioInicio === 'codo90rmSube' || fresh.accesorioInicio === 'sifon') {
+                  targetField = 'accesorioInicio';
+                  targetDiamField = 'diametroInicio';
+                } else if (
+                  fresh.accesorioFin === 'codo90rmSube' ||
+                  fresh.accesorioFin === 'sifon'
+                ) {
+                  targetField = 'accesorioFin';
+                  targetDiamField = 'diametroFin';
+                } else {
+                  return;
+                }
+                const updates: Record<string, unknown> = { [targetField]: '' };
+                if (targetDiamField) (updates as Record<string, unknown>)[targetDiamField] = '';
                 eng.updateElementById(element.id, updates);
                 if (selElement?.id === element.id)
                   setSelElement({ ...selElement, ...updates } as PlanoRamal);
@@ -404,6 +514,27 @@ function MidRamalAccessorySelector({
                 return;
               }
             }
+            if (!val) {
+              let actualField: 'aparatoInicio' | 'aparatoFin' | null = null;
+              if (fresh.aparatoInicio) actualField = 'aparatoInicio';
+              else if (fresh.aparatoFin) actualField = 'aparatoFin';
+              else return;
+              const actualOldApp = (fresh as unknown as Record<string, unknown>)[actualField] || '';
+              const actualUpdates: Record<string, unknown> = { [actualField]: null };
+              eng.updateElementById(element.id, actualUpdates);
+              setContextMenuState((prev) =>
+                prev ? { ...prev, element: { ...prev.element, ...actualUpdates } } : null,
+              );
+              if (selElement?.id === element.id) {
+                setSelElement({ ...selElement, ...actualUpdates } as PlanoRamal);
+              }
+              eng.render();
+              eng._markDirty();
+              if (planosCtx?.plans) {
+                syncExtremeAparatoToCounts(element.id, actualOldApp, '', planosCtx.plans);
+              }
+              return;
+            }
             const oldApp = fresh[field] || '';
             const updates: Record<string, unknown> = { [field]: val || null };
             eng.updateElementById(element.id, updates);
@@ -411,7 +542,7 @@ function MidRamalAccessorySelector({
               prev ? { ...prev, element: { ...prev.element, ...updates } } : null,
             );
             if (selElement?.id === element.id) {
-              setSelElement({ ...selElement, ...updates });
+              setSelElement({ ...selElement, ...updates } as PlanoRamal);
             }
             eng.render();
             eng._markDirty();
@@ -1036,6 +1167,34 @@ export function RamalMenu() {
           }}
           style={{ accentColor: '#F5A623', cursor: 'pointer', margin: 0 }}
         />
+      </div>
+      <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
+        <div style={MENU_SECTION_LABEL_ROW_STYLE}>Etiqueta</div>
+        {[
+          { key: 'showLength' as const, label: 'Longitud', checked: ramalEl.showLength !== false },
+          { key: 'showName' as const, label: 'Nombre', checked: ramalEl.showName !== false },
+          { key: 'showGuide' as const, label: 'Guía', checked: ramalEl.showGuide !== false },
+        ].map(({ key, label, checked }) => (
+          <label key={key} style={MENU_CHECK_ROW_STYLE}>
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={(e) => {
+                const val = e.target.checked;
+                if (engineRef.current) {
+                  engineRef.current.updateElementById(ramalEl.id, { [key]: val });
+                  if (selElement?.id === ramalEl.id) {
+                    setSelElement({ ...selElement, [key]: val } as unknown as PlanoRamal);
+                  }
+                  engineRef.current.render();
+                  engineRef.current._markDirty();
+                }
+              }}
+              style={{ accentColor: '#F5A623', margin: 0, flexShrink: 0 }}
+            />
+            <span style={{ flex: 1, whiteSpace: 'normal', wordBreak: 'break-word' }}>{label}</span>
+          </label>
+        ))}
       </div>
       {['san', 'll'].includes(ctx.activeNet) && (
         <div

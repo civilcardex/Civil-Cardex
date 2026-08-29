@@ -7,6 +7,11 @@ import { renderStatus } from '../utils/componentHelpers';
 import { pisoCorto, DIAM_OPTIONS, SAN_UC_IDS, APARATOS_DEF } from '../constants';
 import { caudalHunterLPS, factorSimultaneidad } from '../utils/calcSanitaryCore';
 import { writeDiametroToDrawing, writePendienteToDrawing } from '../utils/writeDiameterToDrawing';
+import {
+  INODORO_APP_ID,
+  sanDiamAllowedForApparatus,
+  SAN_INODORO_MIN_MSG,
+} from '../utils/sanitaryDiamCompat';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck';
 import { buildSanConnectivity, computeSanRows } from '../utils/sanitaryRows';
 
@@ -51,6 +56,30 @@ export default function DisenosSanitarios() {
     (tramoId: string, newPulg: number) => {
       const opt = DIAM_OPTIONS.find((o) => o.pulg === newPulg);
       if (opt) {
+        // Ítem 6/7/8: regla central (inodoro → 4" mínimo). Bloqueo directo en UI sin esperar al write.
+        if (newPulg > 0 && !sanDiamAllowedForApparatus(newPulg, INODORO_APP_ID)) {
+          const ramalId = tramoId.split('-')[0];
+          const planId = tramoId.split('-')[1] || '';
+          const key = `san_${ramalId}_${planId}`;
+          try {
+            const counts = JSON.parse(
+              localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '{}',
+            );
+            if ((counts[key]?.['san'] || 0) > 0) {
+              window.dispatchEvent(
+                new CustomEvent('civilflow_diametro_validation', {
+                  detail: {
+                    title: 'Diámetro no permitido',
+                    message: SAN_INODORO_MIN_MSG,
+                  },
+                }),
+              );
+              return;
+            }
+          } catch (_e) {
+            void _e;
+          }
+        }
         const res = writeDiametroToDrawing(tramoId, 'san', opt.label, plans);
         if (!res.ok && res.reason === 'accessory-larger') {
           window.dispatchEvent(
@@ -86,6 +115,16 @@ export default function DisenosSanitarios() {
     () => buildSanConnectivity(tramosSan, plans, mergedBase),
     [plans, tramosSan, mergedBase],
   );
+
+  // ponytail: readable label (RS1, T1RS1...) for "Otros" badges — not raw tributario ids (T1780...)
+  const keyToLabel = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of tramosSan) {
+      const k = t._key || `${t.id}-${t.piso}`;
+      m.set(k, t.label || t.id);
+    }
+    return m;
+  }, [tramosSan]);
 
   // Persiste el punto de chequeo hidráulico (velocidad + relación de llenado) en cada Tramo
   // para que la insignia SANITARIA de InfTab lea un resultado real en lugar de los valores
@@ -205,7 +244,7 @@ export default function DisenosSanitarios() {
                   <th
                     scope="col"
                     className="col-h ok"
-                    colSpan={3}
+                    colSpan={4}
                     style={{ textAlign: 'center', fontSize: 9, padding: '1px 2px' }}
                   >
                     Diámetro
@@ -288,6 +327,9 @@ export default function DisenosSanitarios() {
                     Interior
                     <br />
                     <small>(mm)</small>
+                  </th>
+                  <th scope="col" className="col-h ok" style={TH_SUB}>
+                    Chequeo
                   </th>
                   <th scope="col" className="col-h ven" style={TH_SUB}>
                     Real
@@ -377,8 +419,7 @@ export default function DisenosSanitarios() {
                                 }}
                               >
                                 {connectedKeys.map((childKey) => {
-                                  const parts = childKey.split('-');
-                                  const rId = parts[0];
+                                  const rId = keyToLabel.get(childKey) || childKey.split('-')[0];
                                   const childTotalUd = componentTotalMap[childKey] ?? 0;
                                   return (
                                     <span
@@ -463,10 +504,9 @@ export default function DisenosSanitarios() {
                                   writePendienteToDrawing(tKey, 'san', v, plans);
                                 }}
                                 style={{
+                                  ...SanitaryDesign_S1,
                                   width: 50,
-                                  fontSize: 9,
                                   textAlign: 'center',
-                                  padding: '1px 2px',
                                 }}
                               />
                             ) : sVal > 0 ? (
@@ -479,7 +519,7 @@ export default function DisenosSanitarios() {
                             className="c"
                             style={{ fontFamily: 'var(--mono)', fontSize: 9, padding: '1px 2px' }}
                           >
-                            {DcalcPulg > 0 ? DcalcPulg.toFixed(2) + '"' : '—'}
+                            {DcalcPulg > 0 ? DcalcPulg.toFixed(2) + '"' : '--'}
                           </td>
                           <td className="c" style={{ padding: '1px 2px' }}>
                             <select
@@ -500,73 +540,80 @@ export default function DisenosSanitarios() {
                             </select>
                           </td>
                           <td className="c" style={{ padding: '1px 2px' }}>
-                            {DintMm > 0 ? DintMm : '—'}
-                          </td>
-                          <td
-                            className="c"
-                            style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
-                          >
-                            {Qo > 0 ? Qo.toFixed(2) : '—'}
-                          </td>
-                          <td
-                            className="c"
-                            style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
-                          >
-                            {Vo > 0 ? Vo.toFixed(2) : '—'}
-                          </td>
-                          <td
-                            className="c"
-                            style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
-                          >
-                            {qqo > 0 ? qqo.toFixed(2) : '—'}
-                          </td>
-                          <td
-                            className="c"
-                            style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
-                          >
-                            {Vreal > 0 ? Vreal.toFixed(2) : '—'}
+                            {DdisPulg > 0 && DintMm > 0 ? DintMm : '--'}
                           </td>
                           <td className="c" style={{ padding: '1px 2px' }}>
-                            {renderStatus(chequeoV)}
+                            {DdisPulg > 0
+                              ? DcalcPulg > 0
+                                ? renderStatus(DcalcPulg <= DdisPulg ? 'Ok' : 'No cumple')
+                                : renderStatus('No cumple')
+                              : renderStatus('No cumple')}
                           </td>
                           <td
                             className="c"
                             style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
                           >
-                            {Yc > 0 ? Yc.toFixed(2) : '—'}
+                            {DdisPulg > 0 && Qo > 0 ? Qo.toFixed(2) : '--'}
                           </td>
                           <td
                             className="c"
                             style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
                           >
-                            {Yn > 0 ? Yn.toFixed(2) : '—'}
+                            {DdisPulg > 0 && Vo > 0 ? Vo.toFixed(2) : '--'}
                           </td>
                           <td
                             className="c"
                             style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
                           >
-                            {Froude > 0 ? Froude.toFixed(2) : '—'}
+                            {DdisPulg > 0 && qqo > 0 ? qqo.toFixed(2) : '--'}
+                          </td>
+                          <td
+                            className="c"
+                            style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
+                          >
+                            {DdisPulg > 0 && Vreal > 0 ? Vreal.toFixed(2) : '--'}
+                          </td>
+                          <td className="c" style={{ padding: '1px 2px' }}>
+                            {DdisPulg > 0 ? renderStatus(chequeoV) : 'No cumple'}
+                          </td>
+                          <td
+                            className="c"
+                            style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
+                          >
+                            {DdisPulg > 0 && Yc > 0 ? Yc.toFixed(2) : '--'}
+                          </td>
+                          <td
+                            className="c"
+                            style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
+                          >
+                            {DdisPulg > 0 && Yn > 0 ? Yn.toFixed(2) : '--'}
+                          </td>
+                          <td
+                            className="c"
+                            style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
+                          >
+                            {DdisPulg > 0 && Froude > 0 ? Froude.toFixed(2) : '--'}
                           </td>
                           <td className="c" style={{ fontSize: 9, padding: '1px 2px' }}>
-                            {tipoFlujo}
+                            {DdisPulg > 0 ? tipoFlujo : '--'}
                           </td>
                           <td
                             className="c"
                             style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
                           >
-                            {Ymax > 0 ? Ymax.toFixed(2) : '—'}
+                            {DdisPulg > 0 && Ymax > 0 ? Ymax.toFixed(2) : '--'}
                           </td>
                           <td className="c" style={{ padding: '1px 2px' }}>
-                            {renderStatus(chequeoYn)}
+                            {DdisPulg > 0 ? renderStatus(chequeoYn) : 'No cumple'}
                           </td>
                           <td
                             className="c"
                             style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}
                           >
-                            {fuerzaTractiva > 0 ? fuerzaTractiva.toFixed(2) : '—'}
+                            {DdisPulg > 0 && fuerzaTractiva > 0 ? fuerzaTractiva.toFixed(2) : '--'}
                           </td>
                           <td className="c" style={{ padding: '1px 2px' }}>
-                            {renderStatus(chequeoFT)}
+                            {DdisPulg > 0 ? renderStatus(chequeoFT) : 'No cumple'}
                           </td>
                         </tr>
                       );

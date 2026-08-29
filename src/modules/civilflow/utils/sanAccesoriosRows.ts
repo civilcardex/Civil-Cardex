@@ -129,7 +129,9 @@ export function computeAccesoriosTable(
 ): MemoriaTable | null {
   const catalog =
     net === 'san' || net === 'll'
-      ? SAN_ACCESORIOS
+      ? // ponytail: sifón es un APARATO (fixture), no un accesorio de tubería — no va en el
+        // resumen de accesorios. El codo 90° implícito del sifón SÍ se cuenta (engine side).
+        SAN_ACCESORIOS.filter((a) => a.id !== 'sifon')
       : net === 'gas'
         ? // En gas las seis variantes de codo 90° (estándar/radio largo × horizontal/sube/baja)
           // se fusionan por TIPO: la orientación no cambia la pieza, y la tabla queda con una
@@ -180,7 +182,14 @@ export function computeAccesoriosTable(
   }> = [];
   // Bajantes/montantes del dibujo (para conteo de bushing: un ramal menor que conecta a un
   // bajante de mayor diámetro necesita reducción).
-  const bajanteDrawing: Array<{ id: string; diametro: string; x: number; y: number }> = [];
+  const bajanteDrawing: Array<{
+    id: string;
+    diametro: string;
+    x: number;
+    y: number;
+    net?: string;
+    recibeDeIds?: string[];
+  }> = [];
   for (const plan of plans || []) {
     if (plan.status !== 'confirmed') continue;
     const raw = loadFromStorage<unknown>(TRAZOS_PREFIX + plan.id, null);
@@ -223,6 +232,8 @@ export function computeAccesoriosTable(
             y?: number;
             dNominal?: string;
             diametro?: string;
+            net?: string;
+            recibeDeIds?: string[];
           }>;
         }
       ).bajantes || [];
@@ -233,6 +244,9 @@ export function computeAccesoriosTable(
         diametro: b.dNominal || b.diametro || '',
         x: b.x,
         y: b.y,
+        net: b.net || net,
+        recibeDeIds: b.recibeDeIds || [],
+        planId: String(plan.id),
       });
     }
     const ramales = (
@@ -504,8 +518,33 @@ export function computeAccesoriosTable(
   // Catálogo visible de la tabla: en AF/AC/LL se agrega "Codo medio 90°" — columna propia de los
   // codons puestos a mitad de ramal (ver ACC_MED_CODOS). No entra al catálogo real para no
   // aparecer en dropdowns de selección ni en otras tablas.
-  const summaryCatalog =
-    net === 'af' || net === 'ac' || net === 'll' ? [...catalog, CODO_MEDIO_90] : catalog;
+  let summaryCatalog =
+    net === 'af' || net === 'ac' || net === 'll' ? [...catalog, CODO_MEDIO_90] : [...catalog];
+  // 14. Ensure bajante codo45/Y appear for any net that has bajante connections
+  const hasBajanteConn = bajanteDrawing.some(
+    (b) => (b.net || net) === net && b.recibeDeIds && b.recibeDeIds.length > 0,
+  );
+  if (hasBajanteConn) {
+    const needCodo45 = net === 'gas' ? 'codos_45' : 'codo45rc';
+    if (!summaryCatalog.some((a) => a.id === needCodo45)) {
+      const src = [...SAN_ACCESORIOS, ...ACCESORIOS_HIDRO, ...GAS_ACCESORIOS].find(
+        (a) => a.id === needCodo45,
+      ) || { id: needCodo45, nombre: 'Codo 45°', icono: '', cat: 'Codos', emoji: '🔩' };
+      summaryCatalog = [...summaryCatalog, src as (typeof summaryCatalog)[number]];
+    }
+    for (const yId of ['yeeSimple', 'yeeDoble']) {
+      if (!summaryCatalog.some((a) => a.id === yId)) {
+        const src = SAN_ACCESORIOS.find((a) => a.id === yId) || {
+          id: yId,
+          nombre: yId === 'yeeSimple' ? 'Y simple' : 'Y doble',
+          icono: '',
+          cat: 'Tees',
+          emoji: '🔧',
+        };
+        summaryCatalog = [...summaryCatalog, src as (typeof summaryCatalog)[number]];
+      }
+    }
+  }
   const totals: Record<string, Record<string, number>> = {};
   // El codo sube/baja es el MISMO codo 90° — la distinción solo dice cómo se instala (apunta
   // hacia arriba o hacia abajo), no cambia la pieza. En AF/AC/LL todo codo de 90° (rc/rm/rl y
@@ -521,11 +560,14 @@ export function computeAccesoriosTable(
     return id;
   };
   const addAcc = (diam: string, accId: string, count: number) => {
+    const targetId = codoTarget(accId);
+    // ponytail: skip ids not in the summary catalog (e.g. sifón) — avoid NaN on undefined column
+    if (!summaryCatalog.some((a) => a.id === targetId)) return;
     if (!totals[diam]) {
       totals[diam] = {};
       for (const a of summaryCatalog) totals[diam][a.id] = 0;
     }
-    totals[diam][codoTarget(accId)] += count;
+    totals[diam][targetId] += count;
   };
 
   // Codons de mitad de ramal (accMed) por tramo — se cuentan desde los marcadores del dibujo en
@@ -576,7 +618,7 @@ export function computeAccesoriosTable(
         );
         const accId =
           accIni === 'codoSube' ? 'codo90rmSube' : accIni === 'codoBaja' ? 'codo90rmBaja' : accIni;
-        addAcc(dStr, accId, 1);
+        if (accId !== 'sifon') addAcc(dStr, accId, 1);
       }
       const accFin = t.accesorioFin;
       if (accFin) {
@@ -585,7 +627,8 @@ export function computeAccesoriosTable(
         );
         const accId =
           accFin === 'codoSube' ? 'codo90rmSube' : accFin === 'codoBaja' ? 'codo90rmBaja' : accFin;
-        addAcc(dStr, accId, 1);
+        // ponytail: sifón no entra al resumen de accesorios (es un aparato)
+        if (accId !== 'sifon') addAcc(dStr, accId, 1);
       }
       // Accesorios implícitos que ya cuenta hidroData para el tributario — codo 90° sube junto a
       // un aparato en AF/AC, codo de bajante en LL, accMed, codoReventilado san autodetectado —
@@ -621,8 +664,21 @@ export function computeAccesoriosTable(
       const ventC = ventCodoCombos[tKey] || [];
       const codoMed = accMedCodoCounts[tKey] || {};
       const codo45Med = accMed45Counts[tKey] || {};
+      // ponytail: direct accesorioInicio/Fin fallback — sifón/codos count even if hidroData is stale
+      const directCount: Record<string, number> = {};
+      const directAccId = (acc: string) =>
+        acc === 'codoSube' ? 'codo90rmSube' : acc === 'codoBaja' ? 'codo90rmBaja' : acc;
+      for (const acc of [t.accesorioInicio, t.accesorioFin]) {
+        if (!acc) continue;
+        const id = directAccId(acc);
+        directCount[id] = (directCount[id] || 0) + 1;
+      }
       for (const a of catalog) {
-        const v = Math.max(0, (srcAcc[a.id] || 0) - (codoMed[a.id] || 0) - (codo45Med[a.id] || 0));
+        const fromSrc = Math.max(
+          0,
+          (srcAcc[a.id] || 0) - (codoMed[a.id] || 0) - (codo45Med[a.id] || 0),
+        );
+        const v = Math.max(fromSrc, directCount[a.id] || 0);
         if (a.id === 'yeeSimple') {
           // Nomenclatura Yee Simple: se muestra el diámetro de CADA brazo de la Y —
           // Principal×Principal×Reducción (o Principal×Principal×Principal si la derivación
@@ -648,6 +704,96 @@ export function computeAccesoriosTable(
       }
     }
   });
+
+  // 14. Bajante — ramal accessories (any net, not only sanitary)
+  // ponytail: simple (codo45 + Y simple) / double (2×codo45 + Y doble) + bushing per spec
+  const bajanteBushing: Record<string, number> = {};
+  for (const b of bajanteDrawing as Array<{
+    id: string;
+    diametro: string;
+    net?: string;
+    recibeDeIds?: string[];
+    planId?: string;
+  }>) {
+    const bNet = b.net || net;
+    if (bNet !== net) continue;
+    const ids = b.recibeDeIds;
+    if (!ids || ids.length === 0 || ids.length > 2) continue;
+    const bDiamStr = fmtPulg(diamPulgFromLabel(b.diametro));
+    if (!bDiamStr || bDiamStr === '—') continue;
+    const bPulg = diamPulgFromLabel(b.diametro);
+    // Collect ramal diams for this bajante (same plan)
+    const ramalInfos: Array<{ id: string; diamStr: string; pulg: number }> = [];
+    let missing = false;
+    for (const rid of ids) {
+      // Find ramal in drawingRamales/tribDrawing/ventRamales for same plan
+      const allForPlan = [...drawingRamales, ...tribDrawing, ...ventRamales].filter(
+        (r) => r.planId === b.planId,
+      );
+      const found = allForPlan.find((r) => r.id === rid);
+      if (!found) {
+        // Fallback: try pulgById for diam
+        const p = pulgById[rid] || pulgById[`${rid}-${b.planId}`] || 0;
+        if (p > 0) {
+          ramalInfos.push({ id: rid, diamStr: fmtPulg(p), pulg: p });
+        } else {
+          missing = true;
+          break;
+        }
+      } else {
+        const p = diamPulgFromLabel(found.diametro) || pulgById[found.id] || 0;
+        if (p <= 0) {
+          missing = true;
+          break;
+        }
+        ramalInfos.push({ id: rid, diamStr: fmtPulg(p), pulg: p });
+      }
+    }
+    if (missing || ramalInfos.length !== ids.length) continue;
+    const codo45Id = bNet === 'gas' ? 'codos_45' : 'codo45rc';
+    const ySimpleId = 'yeeSimple';
+    const yDobleId = 'yeeDoble';
+    if (ramalInfos.length === 1) {
+      const r = ramalInfos[0];
+      const diamCombo = `${r.diamStr} × ${bDiamStr}`;
+      addAcc(diamCombo, codo45Id, 1);
+      addAcc(diamCombo, ySimpleId, 1);
+      if (r.pulg !== bPulg) {
+        const max = Math.max(r.pulg, bPulg);
+        const min = Math.min(r.pulg, bPulg);
+        const bk = `${max}_${min}`;
+        bajanteBushing[bk] = (bajanteBushing[bk] || 0) + 1;
+      }
+    } else if (ramalInfos.length === 2) {
+      const r1 = ramalInfos[0];
+      const r2 = ramalInfos[1];
+      // Validate lateral equality
+      if (Math.abs(r1.pulg - r2.pulg) > 0.01) {
+        // lateral diam mismatch — skip Y double per spec (not allowed)
+        // Still count codos but not Y
+        const diam1 = `${r1.diamStr} × ${bDiamStr}`;
+        const diam2 = `${r2.diamStr} × ${bDiamStr}`;
+        addAcc(diam1, codo45Id, 1);
+        addAcc(diam2, codo45Id, 1);
+        // No Y double, no bushing? Could still have bushing per ramal? Spec says for double, bushing only if main vs lateral differ, not per ramal
+        continue;
+      }
+      const lateralStr = r1.diamStr; // same as r2
+      const lateralPulg = r1.pulg;
+      const diam1 = `${r1.diamStr} × ${bDiamStr}`;
+      const diam2 = `${r2.diamStr} × ${bDiamStr}`;
+      addAcc(diam1, codo45Id, 1);
+      addAcc(diam2, codo45Id, 1);
+      const yDobleDiam = `${lateralStr} × ${lateralStr} × ${bDiamStr}`;
+      addAcc(yDobleDiam, yDobleId, 1);
+      if (Math.abs(lateralPulg - bPulg) > 0.01) {
+        const max = Math.max(lateralPulg, bPulg);
+        const min = Math.min(lateralPulg, bPulg);
+        const bk = `${max}_${min}`;
+        bajanteBushing[bk] = (bajanteBushing[bk] || 0) + 1;
+      }
+    }
+  }
 
   // Gas (y cualquier red sin `tramos`): los accesorios de extremo/inicio se leen directo del
   // dibujo (hidroData key `${net}_${id}_${planId}`, que calcHydroAccessories escribe).
@@ -835,8 +981,41 @@ export function computeAccesoriosTable(
       ...tribDrawing.map((r) => ({ id: r.id, diametro: r.diametro, pts: r.pts })),
     ];
     const majors = drawingRamales.map((r) => ({ id: r.id, diametro: r.diametro, pts: r.pts }));
-    const counts = computeBushingCounts(minors, majors, bajanteDrawing);
+    // 14.3: exclude bajante with 1-2 ramales (handled via bajanteBushing) from generic bushing to avoid double count
+    const filteredBajantes = bajanteDrawing.filter((b) => {
+      const bNet = b.net || net;
+      if (bNet !== net) return true;
+      const c = b.recibeDeIds?.length || 0;
+      return c === 0 || c > 2;
+    });
+    const counts = computeBushingCounts(minors, majors, filteredBajantes);
     if (Object.keys(counts).length > 0) bushingCounts = counts;
+  }
+  // Merge bajante bushing (any net) — spec 14.3, reuse bushing pseudo
+  if (Object.keys(bajanteBushing).length > 0) {
+    if (!bushingCounts) bushingCounts = {};
+    for (const [k, v] of Object.entries(bajanteBushing)) {
+      bushingCounts[k] = (bushingCounts[k] || 0) + v;
+    }
+    // Ensure diamsPresent includes bajante diams for any net
+    const seenBaj = new Set<number>();
+    for (const b of bajanteDrawing as Array<{ diametro: string; net?: string }>) {
+      if ((b.net || net) !== net) continue;
+      const p = diamPulgFromLabel(b.diametro);
+      if (p > 0) seenBaj.add(p);
+    }
+    for (const r of [...drawingRamales, ...tribDrawing] as Array<{ diametro: string }>) {
+      const p = diamPulgFromLabel(r.diametro);
+      if (p > 0) seenBaj.add(p);
+    }
+    if (seenBaj.size >= 2) {
+      const sorted = [...seenBaj].sort((a, b) => b - a).map(String);
+      if (!diamsPresent) diamsPresent = sorted;
+      else {
+        const merged = new Set([...diamsPresent.map(Number), ...sorted.map(Number)]);
+        diamsPresent = [...merged].sort((a, b) => b - a).map(String);
+      }
+    }
   }
 
   const headers = ['Diámetro', ...summaryCatalog.map((a) => a.nombre), 'Total'];

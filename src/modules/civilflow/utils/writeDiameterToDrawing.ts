@@ -1,8 +1,14 @@
 import { writeHydroDrawingSync, writeSanDrawingSync } from './drawingSync';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
-import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../constants/storage-keys';
+import {
+  TRAZOS_PREFIX,
+  HYDRO_FAMILIES,
+  SAN_FAMILIES,
+  APARATOS_BY_TRAMO_KEY,
+} from '../constants/storage-keys';
 import type { SyncPlanInput, RawElement } from './drawingSync';
 import { diamPulgFromLabel } from './diamPulgFromLabel';
+import { INODORO_APP_ID, sanDiamAllowedForApparatus } from './sanitaryDiamCompat';
 import { maxDiametroLabel } from '../lib/PlanoEngine/PlanoEngineDrawing';
 
 interface LocalDrawingData {
@@ -108,6 +114,25 @@ export function writeDiametroToDrawing(
       if (r.id === ramalId && r.net === net) {
         if (newDiamLabel) {
           const newIn = diamPulgFromLabel(newDiamLabel.replace(/-/g, ' '));
+          // Ítem 6/7/8: regla central (inodoro → 4" mínimo)
+          if (net === 'san' && newIn > 0 && !sanDiamAllowedForApparatus(newIn, INODORO_APP_ID)) {
+            const apKeySan = `${net}_${r.id}_${plan.id}`;
+            const aparatosSan = loadFromStorage<Record<string, Record<string, number>>>(
+              APARATOS_BY_TRAMO_KEY,
+              {},
+            );
+            const countsSan = aparatosSan[apKeySan] || {};
+            if ((countsSan['san'] || 0) > 0) {
+              blockedReason = {
+                ok: false,
+                reason: 'accessory-larger',
+                accessoryDiam: '4" — 100 mm',
+                accessoryEnd: 'INICIO',
+                attemptedDiam: newDiamLabel,
+              };
+              continue;
+            }
+          }
           const accMax = maxAccessoryDiam(r as unknown as Parameters<typeof maxAccessoryDiam>[0]);
           if (newIn > 0 && accMax > 0 && newIn < accMax) {
             // Informar CUÁL extremo bloquea: el accesorio máximo puede ser el de FIN aunque el

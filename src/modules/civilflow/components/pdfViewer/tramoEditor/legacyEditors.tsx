@@ -4,6 +4,11 @@ import { DIAMETROS_AF } from '../../../constants/hydraulicData';
 import { CAT_GAS, GAS_DN_LABELS, GAS } from '../../../constants/engineeringDataGas';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
+import {
+  INODORO_APP_ID,
+  sanDiamLabelAllowedForApparatus,
+  SAN_INODORO_MIN_MSG,
+} from '../../../utils/sanitaryDiamCompat';
 import { maxDiametroLabel } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
 import { distToPolyline } from '../../../lib/shared/geometry';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
@@ -587,6 +592,23 @@ export function BajanteEditor({
                       type="checkbox"
                       checked={recibidos.includes(r.id)}
                       onChange={(e) => {
+                        if (e.target.checked && recibidos.length === 1) {
+                          const existing = (engineRef.current?.ramales || []).find(
+                            (x) => x.id === recibidos[0],
+                          ) as unknown as { diametro?: string } | undefined;
+                          if (existing && existing.diametro && r.diametro) {
+                            const p1 = diamPulgFromLabel(existing.diametro);
+                            const p2 = diamPulgFromLabel(r.diametro);
+                            if (p1 > 0 && p2 > 0 && Math.abs(p1 - p2) > 0.01) {
+                              engineRef.current?.triggerAlert(
+                                'Diámetros no compatibles',
+                                'Los dos ramales que llegan a un mismo bajante (Y doble) deben tener el mismo diámetro en sus brazos laterales.',
+                              );
+                              e.preventDefault();
+                              return;
+                            }
+                          }
+                        }
                         const newRecibe = e.target.checked
                           ? [...recibidos, r.id]
                           : recibidos.filter((id: string) => id !== r.id);
@@ -1013,6 +1035,35 @@ export function RamalEditor({
                       [...engineRef.current.ramales]
                         .reverse()
                         .find((r) => r.net === activeNet && !r.mergesFrom));
+                  // Ítem 6/7/8: regla central (inodoro → 4" mínimo)
+                  if (
+                    activeNet === 'san' &&
+                    diamPulgFromLabel(v) > 0 &&
+                    !sanDiamLabelAllowedForApparatus(v, INODORO_APP_ID)
+                  ) {
+                    const checkId =
+                      targetRamal?.id || (selElement as unknown as { id?: string })?.id;
+                    if (checkId) {
+                      const planId =
+                        (engineRef.current as unknown as { _loadedPlanId?: string })
+                          ?._loadedPlanId ?? '';
+                      const key = `san_${checkId}_${planId || ''}`;
+                      try {
+                        const counts = JSON.parse(
+                          localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '{}',
+                        );
+                        if ((counts[key]?.['san'] || 0) > 0) {
+                          engineRef.current?.triggerAlert(
+                            'Diámetro no permitido',
+                            SAN_INODORO_MIN_MSG,
+                          );
+                          return;
+                        }
+                      } catch (_e) {
+                        void _e;
+                      }
+                    }
+                  }
                   if (
                     activeNet === 'san' &&
                     (diamPulgFromLabel(v) < 3 || diamPulgFromLabel(v) > 4) &&

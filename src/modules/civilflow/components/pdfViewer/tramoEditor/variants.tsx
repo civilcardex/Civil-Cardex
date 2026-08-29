@@ -17,6 +17,7 @@ import {
   READONLY_STYLE,
   type ProbedElement,
 } from './context';
+import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
 import { ContadorEditor, CalentadorEditor, BajanteEditor, RamalEditor } from './legacyEditors';
 
 export function ContadorTramoEditor() {
@@ -549,6 +550,24 @@ export function RamalEditorSection() {
                         type="checkbox"
                         checked={isAssoc}
                         onChange={(e) => {
+                          if (e.target.checked && !isAssoc && b.recibeDeIds.length === 1) {
+                            const existing = (engineRef.current?.ramales || []).find(
+                              (x) => x.id === b.recibeDeIds[0],
+                            ) as unknown as { diametro?: string } | undefined;
+                            const cur = selElement as unknown as { diametro?: string };
+                            if (existing && existing.diametro && cur.diametro) {
+                              const p1 = diamPulgFromLabel(existing.diametro);
+                              const p2 = diamPulgFromLabel(cur.diametro);
+                              if (p1 > 0 && p2 > 0 && Math.abs(p1 - p2) > 0.01) {
+                                engineRef.current?.triggerAlert(
+                                  'Diámetros no compatibles',
+                                  'Los dos ramales que llegan a un mismo bajante (Y doble) deben tener el mismo diámetro en sus brazos laterales.',
+                                );
+                                e.preventDefault();
+                                return;
+                              }
+                            }
+                          }
                           const newRecibe = e.target.checked
                             ? b.recibeDeIds.includes(selElement.id)
                               ? b.recibeDeIds

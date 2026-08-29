@@ -293,7 +293,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 <th
                   scope="col"
                   className="col-h ven"
-                  colSpan={6}
+                  colSpan={7}
                   style={{ textAlign: 'center', padding: '1px 2px', fontSize: 9 }}
                 >
                   TUBERÍA DE VENTILACIÓN
@@ -451,7 +451,7 @@ const BajantesTable = memo(function BajantesTable_() {
                 <th
                   scope="col"
                   className="col-h ven"
-                  colSpan={2}
+                  colSpan={3}
                   style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
                 >
                   Diámetro Ventilación
@@ -525,6 +525,13 @@ const BajantesTable = memo(function BajantesTable_() {
                   Propuesto
                   <br />
                   <small>(″)</small>
+                </th>
+                <th
+                  scope="col"
+                  className="col-h ven"
+                  style={{ textAlign: 'center', padding: '1px 1px', fontSize: 9 }}
+                >
+                  Chequeo
                 </th>
               </tr>
             </thead>
@@ -940,23 +947,61 @@ const BajantesTable = memo(function BajantesTable_() {
                       </td>
                       <td className="c" style={{ padding: '1px 1px' }}>
                         <input
-                          type="number"
-                          min="0"
-                          step="0.1"
+                          type="text"
+                          inputMode="decimal"
                           aria-label="Longitud del bajante (m)"
                           style={DownpipesTable_S1}
                           disabled={!edit}
-                          value={t.bajLong ?? 5}
+                          value={t.bajLong != null ? String(t.bajLong) : ''}
+                          placeholder="—"
                           onChange={(e) => {
-                            const val = parseFloat(e.target.value) || 5;
+                            const raw = e.target.value.replace(/,/g, '.');
+                            // Permitir vacío y solo números + punto
+                            if (raw === '') {
+                              const tKey = t._key || `${t.id}-${t.piso}`;
+                              writeBajantePropToDrawing(
+                                tKey,
+                                t._net || t.net || 'san',
+                                'bajLong',
+                                '',
+                                plans,
+                              );
+                              return;
+                            }
+                            if (!/^[0-9]*\.?[0-9]*$/.test(raw)) return;
                             const tKey = t._key || `${t.id}-${t.piso}`;
+                            // Guardar como string para permitir "5." intermedio, convertir a número en blur
                             writeBajantePropToDrawing(
                               tKey,
                               t._net || t.net || 'san',
                               'bajLong',
-                              val,
+                              raw,
                               plans,
                             );
+                          }}
+                          onBlur={(e) => {
+                            const raw = e.target.value.replace(/,/g, '.').trim();
+                            const tKey = t._key || `${t.id}-${t.piso}`;
+                            if (raw === '') {
+                              writeBajantePropToDrawing(
+                                tKey,
+                                t._net || t.net || 'san',
+                                'bajLong',
+                                '',
+                                plans,
+                              );
+                              return;
+                            }
+                            const val = parseFloat(raw);
+                            if (!isNaN(val)) {
+                              writeBajantePropToDrawing(
+                                tKey,
+                                t._net || t.net || 'san',
+                                'bajLong',
+                                val,
+                                plans,
+                              );
+                            }
                           }}
                         />
                       </td>
@@ -964,7 +1009,11 @@ const BajantesTable = memo(function BajantesTable_() {
                         className="c"
                         style={{ fontFamily: 'var(--mono)', fontSize: 9, padding: '1px 1px' }}
                       >
-                        {DventCalcPulg > 0 ? DventCalcPulg.toFixed(2) + '"' : '—'}
+                        {DventPropPulg > 0
+                          ? DventCalcPulg > 0
+                            ? DventCalcPulg.toFixed(2) + '"'
+                            : '--'
+                          : '--'}
                       </td>
                       <td className="c" style={{ padding: '1px 1px' }}>
                         <select
@@ -1050,6 +1099,21 @@ const BajantesTable = memo(function BajantesTable_() {
                             {ventRamalDiamPulg}&quot;)
                           </div>
                         )}
+                      </td>
+                      <td
+                        className="c"
+                        style={{
+                          padding: '1px 1px',
+                          whiteSpace: 'normal',
+                          wordBreak: 'break-word',
+                          minWidth: 60,
+                        }}
+                      >
+                        {DventPropPulg > 0
+                          ? DventCalcPulg > 0
+                            ? renderStatus(DventCalcPulg <= DventPropPulg ? 'Ok' : 'No cumple')
+                            : renderStatus('No cumple')
+                          : renderStatus('No cumple')}
                       </td>
                     </tr>
                   );

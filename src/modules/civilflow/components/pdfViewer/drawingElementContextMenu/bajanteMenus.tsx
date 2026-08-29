@@ -23,6 +23,7 @@ import {
   codoNivelPermitidoEn,
   flowEndsAt,
 } from '../../../lib/PlanoEngine/PlanoEngineDrawing';
+import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventCodoTeeFix';
 import {
   writeBajantePropToDrawing,
   writeAcoDiamToDrawing,
@@ -44,6 +45,11 @@ import {
 import { DIAMETROS_AF } from '../../../constants/hydraulicData';
 import { diamPulgFromLabel } from '../../../utils/diamPulgFromLabel';
 import { matchDiamOption } from '../../../utils/diamOptionMatch';
+import {
+  INODORO_APP_ID,
+  sanDiamLabelAllowedForApparatus,
+  SAN_INODORO_MIN_MSG,
+} from '../../../utils/sanitaryDiamCompat';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoElement, PlanoRamal, PlanoArea } from '../../../lib/PlanoEngine/PlanoState';
 import type { Piso } from '../../../lib/shared/projectTypes';
@@ -231,7 +237,10 @@ export function BajanteDirectionSelector({
                       const pt = ram.pts[idx];
                       if (idx === 0 || idx === ram.pts.length - 1) {
                         // Ítem 5: codos de nivel prohibidos en intersecciones entre ramales (tee)
+                        const isVentTeeBaj =
+                          ram.net === 'vent' && hasTeeAtPoint(engineRef.current!, pt, ram.net);
                         if (
+                          !isVentTeeBaj &&
                           engineRef.current &&
                           !codoNivelPermitidoEn(engineRef.current, ram.id, pt)
                         ) {
@@ -241,7 +250,7 @@ export function BajanteDirectionSelector({
                           );
                           return;
                         }
-                        if (!codoPolarityOk(ram, pt, codoId, TOL)) {
+                        if (!isVentTeeBaj && !codoPolarityOk(ram, pt, codoId, TOL)) {
                           engineRef.current?.triggerAlert(
                             'Polaridad de codo incorrecta',
                             isSube
@@ -1043,6 +1052,23 @@ export function BajanteConnectionPanel({
                             (bb) => bb.id === bajEl.id,
                           );
                           const liveRecibe: string[] = liveBaj?.recibeDeIds || recibidos;
+                          if (checked && liveRecibe.length === 1) {
+                            const existing = engineRef.current?.ramales.find(
+                              (x) => x.id === liveRecibe[0],
+                            );
+                            if (existing && existing.diametro && r.diametro) {
+                              const p1 = diamPulgFromLabel(existing.diametro);
+                              const p2 = diamPulgFromLabel(r.diametro);
+                              if (p1 > 0 && p2 > 0 && Math.abs(p1 - p2) > 0.01) {
+                                engineRef.current?.triggerAlert(
+                                  'Diámetros no compatibles',
+                                  'Los dos ramales que llegan a un mismo bajante (Y doble) deben tener el mismo diámetro en sus brazos laterales.',
+                                );
+                                e.preventDefault();
+                                return;
+                              }
+                            }
+                          }
                           const newRecibe = checked
                             ? [...liveRecibe, r.id]
                             : liveRecibe.filter((id: string) => id !== r.id);
@@ -1333,7 +1359,13 @@ export function BajanteConnectionPanel({
                                   (r) => r.id === ramalEl.id,
                                 );
                                 const target = live || ramalEl;
-                                if (!codoPolarityOk(target, [ep.x, ep.y], val, 0.5)) {
+                                const isVentTee2 =
+                                  target.net === 'vent' &&
+                                  hasTeeAtPoint(engineRef.current, [ep.x, ep.y], target.net);
+                                if (
+                                  !isVentTee2 &&
+                                  !codoPolarityOk(target, [ep.x, ep.y], val, 0.5)
+                                ) {
                                   const isSube = val === 'codoSube' || val === 'codo90rmSube';
                                   engineRef.current.triggerAlert(
                                     'Polaridad de codo incorrecta',
@@ -1388,9 +1420,9 @@ export function BajanteConnectionPanel({
                               // si no, queda "Ninguno".
                               if (val && !oldVal) {
                                 const aMatShort =
-                                  ramalEl.material || (ramalEl.net === 'san' ? 'PVC' : '');
+                                  ramalEl.material || (ramalEl.net === 'san' ? 'PVC-S' : '');
                                 const aDiamList =
-                                  (ramalEl.net === 'san' && DIAM_BY_MAT['PVC']) ||
+                                  (ramalEl.net === 'san' && DIAM_BY_MAT['PVC-S']) ||
                                   DIAM_BY_MAT[aMatShort] ||
                                   [];
                                 updates[useFieldDiam] = matchDiamOption(
@@ -1436,9 +1468,10 @@ export function BajanteConnectionPanel({
                           the chosen value is not smaller than the ramal's. */}
                       {ramalEl[fieldAcc] &&
                         (() => {
-                          const matShort = ramalEl.material || (ramalEl.net === 'san' ? 'PVC' : '');
+                          const matShort =
+                            ramalEl.material || (ramalEl.net === 'san' ? 'PVC-S' : '');
                           const diamList =
-                            (ramalEl.net === 'san' && DIAM_BY_MAT['PVC']) ||
+                            (ramalEl.net === 'san' && DIAM_BY_MAT['PVC-S']) ||
                             DIAM_BY_MAT[matShort] ||
                             [];
                           if (diamList.length === 0) return null;
@@ -1662,11 +1695,38 @@ export function BajanteCodeEditor({
         <div style={MENU_SECTION_LABEL_STYLE}>Diámetro de ramal</div>
         <div style={{ padding: '0 8px 8px' }}>
           <select
-            value={ramalEl.diametro || ''}
+            value={
+              engineRef.current?.ramales.find((r) => r.id === ramalEl.id)?.diametro ??
+              ramalEl.diametro ??
+              ''
+            }
             aria-label="Diámetro de ramal"
             onChange={(e) => {
               const val = e.target.value;
               if (engineRef.current) {
+                // Ítem 7/8: regla central inodoro → 4" mínimo, misma que TramoEditor (única fuente)
+                if (
+                  ramalEl.net === 'san' &&
+                  val &&
+                  !sanDiamLabelAllowedForApparatus(val, INODORO_APP_ID)
+                ) {
+                  const checkId = ramalEl.id;
+                  const planId =
+                    (engineRef.current as unknown as { _loadedPlanId?: string })?._loadedPlanId ??
+                    '';
+                  const key = `san_${checkId}_${planId || ''}`;
+                  try {
+                    const counts = JSON.parse(
+                      localStorage.getItem('civilflow_aparatos_by_tramo_v2') || '{}',
+                    );
+                    if ((counts[key]?.['san'] || 0) > 0) {
+                      engineRef.current.triggerAlert('Diámetro no permitido', SAN_INODORO_MIN_MSG);
+                      return;
+                    }
+                  } catch (_e) {
+                    void _e;
+                  }
+                }
                 // Invariante única: ramal.diam >= accesorio.diam, impuesta aquí del lado del
                 // RAMAL (no en los selectores de accesorio, que dejan elegir cualquier
                 // diámetro libremente) — un ramal nunca puede reducirse por debajo del

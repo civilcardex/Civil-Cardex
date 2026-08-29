@@ -17,6 +17,7 @@ export {
 export {
   MATS_DEFAULT,
   matLongName,
+  matShortKey,
   MAT_MANNING,
   matManning,
   MAT_HAZEN_C,

@@ -4,9 +4,11 @@ import {
 } from '../../utils/syncExtremeAccessory';
 import { getAccessoryOptions } from '../../utils/accessoryOptions';
 import { DIAM_BY_MAT } from '../../constants';
+import { matShortKey } from '../../constants';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import { matchDiamOption } from '../../utils/diamOptionMatch';
 import { codoPolarityOk, codoNivelPermitidoEn } from '../../lib/PlanoEngine/PlanoEngineDrawing';
+import { hasTeeAtPoint } from '../../lib/PlanoEngine/ventCodoTeeFix';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine';
 import type { PlanoRamal } from '../../lib/PlanoEngine/PlanoState';
 import type { PlanItem } from '../../context/PlansContext';
@@ -52,8 +54,9 @@ export default function ExtremeAccessoryEditor({
     ...o,
     label: o.label.toUpperCase(),
   }));
-  const matShort = selElement.material || (selElement.net === 'san' ? 'PVC' : '');
-  const diamList = (selElement.net === 'san' && DIAM_BY_MAT['PVC']) || DIAM_BY_MAT[matShort] || [];
+  const matShort = matShortKey(selElement.material || '');
+  const diamList =
+    (selElement.net === 'san' && DIAM_BY_MAT['PVC-S']) || DIAM_BY_MAT[matShort] || [];
 
   const onAccChange =
     (field: 'accesorioInicio' | 'accesorioFin') => (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -96,7 +99,10 @@ export default function ExtremeAccessoryEditor({
             );
             return;
           }
-          if (pt && !codoPolarityOk(selElement, pt, val, 0.5)) {
+          // ponytail: vent codo that became T has no flow polarity — skip
+          if (pt && selElement.net === 'vent' && hasTeeAtPoint(eng, pt, selElement.net)) {
+            // skip polarity check for vent T
+          } else if (pt && !codoPolarityOk(selElement, pt, val, 0.5)) {
             const isSube = val === 'codoSube' || val === 'codo90rmSube';
             eng.triggerAlert(
               'Polaridad de codo incorrecta',
@@ -109,13 +115,19 @@ export default function ExtremeAccessoryEditor({
         }
         const oldVal = selElement[field] || '';
         const updates: Record<string, unknown> = { [field]: val };
-        // El accesorio hereda el diámetro del ramal como valor por defecto: si el ramal ya
-        // tiene diámetro asignado, el accesorio nuevo nace con ese mismo diámetro (resuelto al
-        // valor canónico de las opciones del selector); si no, queda "Ninguno". (Cambiar el
-        // tipo de accesorio de uno existente respeta el diámetro que el usuario ya eligió.)
         const fieldDiam: 'diametroInicio' | 'diametroFin' =
           field === 'accesorioInicio' ? 'diametroInicio' : 'diametroFin';
-        if (val && !oldVal) updates[fieldDiam] = matchDiamOption(diamList, selElement.diametro);
+        // Al asignar accesorio: si el ramal ya tiene diámetro, el accesorio lo hereda;
+        // si no, el accesorio recibe un default de2" (igual que ramalMenu).
+        if (val && !oldVal) {
+          const resolvedFromRamal = matchDiamOption(diamList, selElement.diametro);
+          updates[fieldDiam] = resolvedFromRamal || '2" — 50 mm';
+        }
+        // Ítem 3: propagar el diámetro del accesorio al ramal si este estaba vacío.
+        if (val && !selElement.diametro) {
+          const accDiam = updates[fieldDiam] as string | undefined;
+          if (accDiam) updates.diametro = accDiam;
+        }
         const fieldApp: 'aparatoInicio' | 'aparatoFin' =
           field === 'accesorioInicio' ? 'aparatoInicio' : 'aparatoFin';
         const removedApp = val && selElement[fieldApp] ? selElement[fieldApp] : '';

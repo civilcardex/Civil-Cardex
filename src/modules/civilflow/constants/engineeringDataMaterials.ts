@@ -43,6 +43,15 @@ export function matLongName(short: string) {
   return (MAT_LONGFORM as Record<string, string>)[short] || short;
 }
 
+/** Reverse lookup: "PVC Sanitario" → "PVC-S". Si no encuentra, devuelve el input tal cual. */
+const MAT_SHORT_REVERSE: Record<string, string> = Object.fromEntries(
+  Object.entries(MAT_LONGFORM).map(([k, v]) => [v, k]),
+);
+export function matShortKey(longName: string): string {
+  if (!longName) return '';
+  return MAT_SHORT_REVERSE[longName] || longName;
+}
+
 export const MAT_MANNING = {
   'PVC-S': 0.009,
   'PVC-V': 0.009,
