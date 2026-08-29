@@ -68,6 +68,67 @@ describe('finishRamal — simple ramal, no junction', () => {
   });
 });
 
+describe('finishRamal — default pendiente san (ítem 4)', () => {
+  it('un ramal sanitario nuevo sin pendiente definida nace con 2%', () => {
+    const engine = makeEngine([]);
+    engine._ramalDefaults = null;
+    engine.activeNet = 'san';
+    engine.activeRamal = {
+      net: 'san',
+      tipo: 'ramal',
+      padre: null,
+      pts: [
+        [0, 0],
+        [40, 0],
+      ],
+    } as never;
+
+    finishRamal(engine);
+
+    const r = engine.ramales[0];
+    expect(r.net).toBe('san');
+    expect(r.pendiente).toBe(2);
+  });
+
+  it('un ramal sanitario con pendiente explícita conserva ese valor', () => {
+    const engine = makeEngine([]);
+    engine._ramalDefaults = { material: '', diametro: '', pendiente: 3 };
+    engine.activeNet = 'san';
+    engine.activeRamal = {
+      net: 'san',
+      tipo: 'ramal',
+      padre: null,
+      pts: [
+        [0, 0],
+        [40, 0],
+      ],
+    } as never;
+
+    finishRamal(engine);
+
+    expect(engine.ramales[0].pendiente).toBe(3);
+  });
+
+  it('un ramal af nuevo no hereda el default sanitario', () => {
+    const engine = makeEngine([]);
+    engine._ramalDefaults = null;
+    engine.activeNet = 'af';
+    engine.activeRamal = {
+      net: 'af',
+      tipo: 'ramal',
+      padre: null,
+      pts: [
+        [0, 0],
+        [40, 0],
+      ],
+    } as never;
+
+    finishRamal(engine);
+
+    expect(engine.ramales[0].pendiente).toBe(0);
+  });
+});
+
 describe('finishRamal — mid-body junction triggers autoSplitJunctionAndSumFlow', () => {
   it('splits the existing ramal at the junction and creates a downstream ramal with combined uc and no auto-assigned diametro', () => {
     const existing: PlanoRamal = {

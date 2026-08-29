@@ -146,6 +146,50 @@ describe('dirección de flujo — canónicos', () => {
     expect(alerts.some((a) => /reventilado/i.test(a))).toBe(true);
   });
 
+  it('vent multi-segmento saliendo en Y (45°) de san NO dispara dirección de flujo', () => {
+    const existing = mkRamal(
+      'RS1',
+      'san',
+      [
+        [0, 0],
+        [40, 0],
+      ],
+      5,
+    );
+    const { engine, alerts } = makeEngine([existing], [], 'vent');
+    const n = engine.ramales.length;
+    // Primer trazo sale de san en 45° (Y válida), luego un segundo segmento dobla.
+    draw(engine, 'vent', [
+      [20, 0],
+      [27.071, -7.071],
+      [34.142, -7.071],
+    ]);
+    expect(engine.ramales).toHaveLength(n + 1);
+    expect(alerts.some((a) => /dirección|reventilado/i.test(a))).toBe(false);
+  });
+
+  it('vent multi-segmento saliendo perpendicular (codo reventilado) de san NO dispara dirección de flujo', () => {
+    const existing = mkRamal(
+      'RS1',
+      'san',
+      [
+        [0, 0],
+        [40, 0],
+      ],
+      5,
+    );
+    const { engine, alerts } = makeEngine([existing], [], 'vent');
+    const n = engine.ramales.length;
+    // Primer trazo sale perpendicular (90°) del san — codo reventilado válido.
+    draw(engine, 'vent', [
+      [20, 0],
+      [20, -10],
+      [30, -10],
+    ]);
+    expect(engine.ramales).toHaveLength(n + 1);
+    expect(alerts.some((a) => /dirección|reventilado/i.test(a))).toBe(false);
+  });
+
   it('codoSube válido en cola del flujo e inválido en cabeza', () => {
     const ramal = mkRamal('R', 'af', [
       [0, 0],
