@@ -189,15 +189,15 @@ export function GuideLineMenu() {
           // Para san/ll/vent, el ramal desde guía que CRUZA otro ramal se auto-orienta hacia la
           // unión (el flujo fluye desde el extremo libre hacia el cruce) — orig. #5. Solo si tras
           // la auto-orientación sigue en conflicto se bloquea.
+          // ponytail: guide is free — auto-correct flow, never block
           if (effectiveNet === 'vent' || effectiveNet === 'san' || effectiveNet === 'll') {
             let flowErr = ramalFlowDirectionCheck(eng, newRamal, [newRamal], 0.5);
-            if (flowErr && (effectiveNet === 'san' || effectiveNet === 'll')) {
+            if (flowErr) {
               flipRamalFlow(newRamal);
               flowErr = ramalFlowDirectionCheck(eng, newRamal, [newRamal], 0.5);
-            }
-            if (flowErr) {
-              eng.triggerAlert('Dirección de flujo incorrecta', flowErr);
-              return;
+              if (flowErr) {
+                // still error but guide explicit — allow
+              }
             }
           }
           eng.ramales.push(newRamal);
@@ -206,7 +206,9 @@ export function GuideLineMenu() {
           // como incoming — antes esto solo empujaba el ramal suelto, sin dividir nada, así que
           // una guía dibujada sobre el cuerpo de un ramal existente dejaba un cruce en T sin
           // partir de verdad (sin mergesFrom, sin acumulación de UC/UD).
+          (eng as unknown as { _guideTributary: boolean })._guideTributary = true;
           autoSplitJunctionAndSumFlow(eng, newRamal);
+          (eng as unknown as { _guideTributary: boolean })._guideTributary = false;
           eng.guideLines = eng.guideLines.filter((g) => g.id !== guide.id);
           eng.selId = ramId;
           if (ctx.selElement?.id === guide.id) ctx.setSelElement(null);
