@@ -136,6 +136,9 @@ function ramalToRow(planoId: number, userId: string, r: PlanoRamal) {
     merges_from: r.mergesFrom ?? null,
     sifon_label_ini: r.sifonLabelIni ?? null,
     sifon_label_fin: r.sifonLabelFin ?? null,
+    show_length: r.showLength ?? true,
+    show_name: r.showName ?? true,
+    show_guide: r.showGuide ?? true,
     fixtures: r.fixtures ?? {},
     // NOT NULL en planos_ramales (JSONB) — un ramal nuevo sin accesorios asignados tendría
     // `undefined`/null y tumbaría el INSERT completo de replaceCollection con 400
@@ -182,6 +185,9 @@ function rowToRamal(row: any): PlanoRamal {
     mergesFrom: row.merges_from ?? undefined,
     sifonLabelIni: row.sifon_label_ini ?? undefined,
     sifonLabelFin: row.sifon_label_fin ?? undefined,
+    showLength: row.show_length ?? true,
+    showName: row.show_name ?? true,
+    showGuide: row.show_guide ?? true,
     fixtures: row.fixtures ?? undefined,
     hydroAcc: row.hydro_accesorios ?? undefined,
     gasAcc: row.gas_accesorios ?? undefined,
@@ -427,9 +433,7 @@ function rowToGhost(row: any): CrossFloorGhost {
  */
 export async function saveTrazosToDB(planoId: string, data: unknown): Promise<void> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await cachedSupabaseUser();
     if (!user) return;
 
     const proyectoId = getActiveProyectoId();
@@ -566,11 +570,18 @@ export async function saveTrazosToDB(planoId: string, data: unknown): Promise<vo
  * el RPC get_plano_data (cabecera + ramales + bajantes + conexiones + areas + dims +
  * anotaciones + líneas guía + cross-floor ghosts), en lugar de 8 selects secuenciales.
  */
+// ponytail: cache Supabase user to avoid a network auth.getUser() round-trip on every plan load
+let _cachedUserPromise: Promise<{ id: string } | null> | null = null;
+function cachedSupabaseUser(): Promise<{ id: string } | null> {
+  if (!_cachedUserPromise) {
+    _cachedUserPromise = supabase.auth.getUser().then(({ data: { user } }) => user || null);
+  }
+  return _cachedUserPromise;
+}
+
 export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | null> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await cachedSupabaseUser();
     if (!user) return null;
 
     const id = Number(planoId);

@@ -1,6 +1,11 @@
 import type { IPlanoEngineCore, PlanoRamal, PlanoBajante, PlanoArea } from './PlanoState';
 import { isBajante } from './PlanoState';
-import { calculateRamalLength, _midpoint, _firstSegmentAngle } from './PlanoEngineDrawing';
+import {
+  calculateRamalLength,
+  _midpoint,
+  _firstSegmentAngle,
+  snapGuidePoint,
+} from './PlanoEngineDrawing';
 import { checkRamalAngles } from './drawingAngles';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 import { oppositeTextCorner, textLocalCorner, rotateLocalPoint } from './textAnnotationGeometry';
@@ -66,9 +71,24 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
     const g = engine.guideLines.find((gg) => gg.id === engine.guideDrag!.id);
     if (g) {
       const tp = engine.toPlane(x, y);
-      const dx = tp.x - engine.guideDrag.startX;
-      const dy = tp.y - engine.guideDrag.startY;
-      g.pts = engine.guideDrag.origPts.map((pt) => [pt[0] + dx, pt[1] + dy] as [number, number]);
+      if (engine.guideDrag.endIdx !== undefined && g.pts.length >= 2) {
+        // ponytail: estirar/encoger desde el extremo tomado — solo se mueve ESE extremo,
+        // con el mismo snap que el dibujo de guías (ángulo + pegado a elementos).
+        const idx = engine.guideDrag.endIdx;
+        const other = engine.guideDrag.origPts[1 - idx];
+        let px = tp.x;
+        let py = tp.y;
+        if (engine.snapMode) {
+          const snapped = snapGuidePoint(engine, { x: other[0], y: other[1] }, px, py);
+          px = snapped.x;
+          py = snapped.y;
+        }
+        g.pts[idx] = [px, py];
+      } else {
+        const dx = tp.x - engine.guideDrag.startX;
+        const dy = tp.y - engine.guideDrag.startY;
+        g.pts = engine.guideDrag.origPts.map((pt) => [pt[0] + dx, pt[1] + dy] as [number, number]);
+      }
       engine.render();
     }
     return;

@@ -9,7 +9,7 @@ import type {
 } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { NETS, checkActiveNet } from './PlanoState';
-import { _midpoint } from './PlanoEngineDrawing';
+import { _midpoint, maxDiametroLabel } from './PlanoEngineDrawing';
 import { diametroCambioPermitido } from './drawingFlow';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
 import {
@@ -523,6 +523,10 @@ export function updateSelected(engine: IPlanoEngineCore, fields: Record<string, 
       (el as PlanoRamal).labelX = mx;
       (el as PlanoRamal).labelY = my;
     }
+    // Ítem 6/8: propagar el elemento mutado al snapshot de selección del panel derecho/ menú
+    // contextual (única fuente de verdad). _emitSelect ya emite una copia superficial, así que
+    // React recibe una referencia nueva y re-renderiza sin que el usuario deba re-seleccionar.
+    engine._emitSelect(el);
   } else {
     return;
   }
@@ -571,6 +575,29 @@ export function updateElementById(
       (el as PlanoRamal).labelX = mx;
       (el as PlanoRamal).labelY = my;
     }
+    // ponytail: propagate diameter change to downstream auto-split ramals (mergesFrom chains).
+    // Covers BOTH manual dropdown AND aparato assignment — aparato write goes through updateElementById.
+    if (fields.diametro !== undefined && (el as PlanoRamal).pts) {
+      const newD = String(fields.diametro ?? '');
+      const visited = new Set<string>([id]);
+      const stack = [id];
+      while (stack.length > 0) {
+        const cur = stack.pop()!;
+        for (const child of engine.ramales) {
+          if (!child.mergesFrom || !child.mergesFrom.includes(cur)) continue;
+          if (visited.has(child.id)) continue;
+          visited.add(child.id);
+          const [p0, p1] = child.mergesFrom;
+          const d0 = p0 === cur ? newD : engine.ramales.find((r) => r.id === p0)?.diametro || '';
+          const d1 = p1 === cur ? newD : engine.ramales.find((r) => r.id === p1)?.diametro || '';
+          const maxD = maxDiametroLabel(d0, d1);
+          if (maxD && maxD !== child.diametro) {
+            child.diametro = maxD;
+          }
+          stack.push(child.id);
+        }
+      }
+    }
   }
   // Refleja los cambios de propiedad del bajante (dNominal, dirección) a todo fantasma entre
   // pisos que apunte a este bajante, para que la etiqueta de línea punteada del piso destino se
@@ -596,6 +623,9 @@ export function updateElementById(
       }
     }
   }
+  // Ítem 6/8: propagar el elemento mutado al snapshot de selección (panel derecho / menú
+  // contextual) — única fuente de verdad, sin requerir re-selección.
+  if (el) engine._emitSelect(el);
   engine.render();
   engine._markDirty();
 }

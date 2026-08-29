@@ -275,6 +275,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           }
         }
 
+        // White halo: masks the pipe under the junction so the black symbol reads clean.
         ctx.lineWidth = 3 * engine.zoom;
         ctx.strokeStyle = '#ffffff';
         ctx.stroke();
@@ -282,19 +283,10 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         ctx.strokeStyle = '#000000';
         ctx.stroke();
 
-        const yeeKey = `${a.P[0].toFixed(3)}_${a.P[1].toFixed(3)}_${b.P[0].toFixed(3)}_${b.P[1].toFixed(3)}`;
-        const isFlash = engine._yeeFlashKey !== yeeKey;
-        if (isFlash) {
-          engine._yeeFlashKey = yeeKey;
-          ctx.beginPath();
-          ctx.arc((cvsA.x + cvsB.x) / 2, (cvsA.y + cvsB.y) / 2, engine.mm2cvs(1.2), 0, Math.PI * 2);
-          ctx.strokeStyle = '#00FFFF';
-          ctx.lineWidth = 1.5 * engine.zoom;
-          ctx.stroke();
-        }
-
-        ctx.lineWidth = 2 * engine.zoom;
-        ctx.strokeStyle = '#000000';
+        // cyan flash removed per user request (was the "fondo raro")
+        const tickW = 1.2 * engine.zoom;
+        ctx.lineCap = 'butt';
+        ctx.lineWidth = tickW;
         ctx.beginPath();
         vectorsA.forEach((u) => {
           const T_pt = { x: cvsA.x + rad * u.x, y: cvsA.y + rad * u.y };
@@ -325,7 +317,6 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       ctx.lineJoin = 'round';
       ctx.setLineDash([]);
       const rad = engine.mm2cvs(2.0);
-      const tickLen = engine.mm2cvs(0.8);
       const cvsP = engine.toCvs(j.P[0], j.P[1]);
 
       const vectors = [j.uA, j.uB, ...j.branches];
@@ -338,23 +329,166 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         }
       }
 
+      // White halo: masks the pipe under the junction so the black symbol reads clean.
       ctx.lineWidth = 3 * engine.zoom;
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
-
       ctx.lineWidth = 2 * engine.zoom;
       ctx.strokeStyle = '#000000';
       ctx.stroke();
 
+      // Ticks más finos y cortos — a ancho de tubería con cap redondo se ven como bultos
+      // (imágenes REV). Medio ancho de trazo, sin cap redondo.
+      const tickW = 1.2 * engine.zoom;
+      const tickL = engine.mm2cvs(0.8);
+      ctx.lineCap = 'butt';
+      ctx.lineWidth = tickW;
       ctx.beginPath();
       vectors.forEach((u) => {
         const T_pt = { x: cvsP.x + rad * u.x, y: cvsP.y + rad * u.y };
         const perp = { x: -u.y, y: u.x };
-        ctx.moveTo(T_pt.x - (perp.x * tickLen) / 2, T_pt.y - (perp.y * tickLen) / 2);
-        ctx.lineTo(T_pt.x + (perp.x * tickLen) / 2, T_pt.y + (perp.y * tickLen) / 2);
+        ctx.moveTo(T_pt.x - (perp.x * tickL) / 2, T_pt.y - (perp.y * tickL) / 2);
+        ctx.lineTo(T_pt.x + (perp.x * tickL) / 2, T_pt.y + (perp.y * tickL) / 2);
       });
       ctx.stroke();
 
+      ctx.restore();
+    }
+
+    // Ítem 2: yee doble PERSISTIDA (yeeDobleAt). La detección geométrica de arriba dibuja el par
+    // solo cuando AMBAS uniones tienen 3+ vectores (tronco + brazo lateral en cada vértice). Al
+    // borrar uno de los brazos laterales, un vértice baja a 2 vectores (solo el tronco pasante) y
+    // deja de ser "junction", por lo que el par no se forma y el símbolo desaparecía. Con la
+    // identidad persistida en el ramal, se dibuja el glifo igual: los dos puntos del par + ticks
+    // por brazo, mientras el tronco siga pasando por ambos.
+    const drawnPairs = new Set<string>();
+    for (let i = 0; i < junctions.length; i++) {
+      if (!usedInDouble.has(i)) continue;
+      for (let j = i + 1; j < junctions.length; j++) {
+        if (!usedInDouble.has(j)) continue;
+        const d = Math.hypot(
+          junctions[i].P[0] - junctions[j].P[0],
+          junctions[i].P[1] - junctions[j].P[1],
+        );
+        if (d <= DOUBLE_YEE_THRESHOLD_MM) {
+          const [a, b] = [junctions[i].P, junctions[j].P];
+          drawnPairs.add(
+            `${a[0].toFixed(2)}_${a[1].toFixed(2)}_${b[0].toFixed(2)}_${b[1].toFixed(2)}`,
+          );
+          drawnPairs.add(
+            `${b[0].toFixed(2)}_${b[1].toFixed(2)}_${a[0].toFixed(2)}_${a[1].toFixed(2)}`,
+          );
+        }
+      }
+    }
+    const vecsAt = (P: number[]): { x: number; y: number }[] => {
+      const out: { x: number; y: number }[] = [];
+      for (const r of netRamales) {
+        if (!r.pts || r.pts.length < 2) continue;
+        let isVertex = false;
+        for (let i = 0; i < r.pts.length; i++) {
+          if (Math.hypot(r.pts[i][0] - P[0], r.pts[i][1] - P[1]) < 0.5) {
+            isVertex = true;
+            if (i > 0) {
+              const px = r.pts[i - 1][0] - P[0],
+                py = r.pts[i - 1][1] - P[1];
+              const l = Math.hypot(px, py);
+              if (l > 0.1) out.push({ x: px / l, y: py / l });
+            }
+            if (i < r.pts.length - 1) {
+              const nx = r.pts[i + 1][0] - P[0],
+                ny = r.pts[i + 1][1] - P[1];
+              const l = Math.hypot(nx, ny);
+              if (l > 0.1) out.push({ x: nx / l, y: ny / l });
+            }
+          }
+        }
+        if (!isVertex) {
+          for (let i = 0; i < r.pts.length - 1; i++) {
+            const A = r.pts[i],
+              B = r.pts[i + 1];
+            const dx = B[0] - A[0],
+              dy = B[1] - A[1];
+            const lenSq = dx * dx + dy * dy;
+            if (lenSq > 0.001) {
+              let t = ((P[0] - A[0]) * dx + (P[1] - A[1]) * dy) / lenSq;
+              t = Math.max(0, Math.min(1, t));
+              const projX = A[0] + t * dx,
+                projY = A[1] + t * dy;
+              const dist = Math.hypot(P[0] - projX, P[1] - projY);
+              const lenA = Math.hypot(A[0] - P[0], A[1] - P[1]);
+              const lenB = Math.hypot(B[0] - P[0], B[1] - P[1]);
+              if (dist < 0.5 && lenA > 0.5 && lenB > 0.5) {
+                out.push({ x: (A[0] - P[0]) / lenA, y: (A[1] - P[1]) / lenA });
+                out.push({ x: (B[0] - P[0]) / lenB, y: (B[1] - P[1]) / lenB });
+              }
+            }
+          }
+        }
+      }
+      const uniq: { x: number; y: number }[] = [];
+      for (const v of out) {
+        if (!uniq.some((u) => u.x * v.x + u.y * v.y > 0.99)) uniq.push(v);
+      }
+      return uniq;
+    };
+    const rad = engine.mm2cvs(2.0);
+    const tickLen = engine.mm2cvs(0.8);
+    for (const r of netRamales) {
+      if (!r.yeeDobleAt || r.yeeDobleAt.length !== 2) continue;
+      const [A, B] = r.yeeDobleAt;
+      const key = `${A[0].toFixed(2)}_${A[1].toFixed(2)}_${B[0].toFixed(2)}_${B[1].toFixed(2)}`;
+      if (drawnPairs.has(key)) continue;
+      const vA = vecsAt(A);
+      const vB = vecsAt(B);
+      // El tronco debe seguir pasando por ambos puntos (2 vectores opuestos en cada vértice).
+      if (vA.length < 2 || vB.length < 2) continue;
+      const cvsA = engine.toCvs(A[0], A[1]);
+      const cvsB = engine.toCvs(B[0], B[1]);
+      ctx.save();
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2 * engine.zoom;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(cvsA.x + rad * vA[0].x, cvsA.y + rad * vA[0].y);
+      for (let k = 1; k < vA.length; k++) {
+        ctx.lineTo(cvsA.x, cvsA.y);
+        ctx.lineTo(cvsA.x + rad * vA[k].x, cvsA.y + rad * vA[k].y);
+      }
+      ctx.lineTo(cvsA.x, cvsA.y);
+      ctx.lineTo(cvsB.x, cvsB.y);
+      if (vB.length > 0) {
+        ctx.lineTo(cvsB.x + rad * vB[0].x, cvsB.y + rad * vB[0].y);
+        for (let k = 1; k < vB.length; k++) {
+          ctx.lineTo(cvsB.x, cvsB.y);
+          ctx.lineTo(cvsB.x + rad * vB[k].x, cvsB.y + rad * vB[k].y);
+        }
+      }
+      // White halo: masks the pipe under the junction so the black symbol reads clean.
+      ctx.lineWidth = 3 * engine.zoom;
+      ctx.strokeStyle = '#ffffff';
+      ctx.stroke();
+      ctx.lineWidth = 2 * engine.zoom;
+      ctx.strokeStyle = '#000000';
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.lineWidth = 1.2 * engine.zoom;
+      ctx.beginPath();
+      for (const [P, vArr] of [
+        [A, vA],
+        [B, vB],
+      ] as const) {
+        const cP = engine.toCvs(P[0], P[1]);
+        vArr.forEach((u) => {
+          const T_pt = { x: cP.x + rad * u.x, y: cP.y + rad * u.y };
+          const perp = { x: -u.y, y: u.x };
+          ctx.moveTo(T_pt.x - (perp.x * tickLen) / 2, T_pt.y - (perp.y * tickLen) / 2);
+          ctx.lineTo(T_pt.x + (perp.x * tickLen) / 2, T_pt.y + (perp.y * tickLen) / 2);
+        });
+      }
+      ctx.stroke();
       ctx.restore();
     }
   });

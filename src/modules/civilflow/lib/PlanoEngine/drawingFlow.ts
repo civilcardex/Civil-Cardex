@@ -348,7 +348,38 @@ export function ramalFlowDirectionCheck(
 ): string | null {
   if (!ram.pts || ram.pts.length < 2) return null;
   const candidates = [...engine.ramales, ...extra];
-  const eps = [ram.pts[0], ram.pts[ram.pts.length - 1]];
+  // Ítem 5: vent multi-segmento solo valida 1º trazo (conectado a san), resto ruteo libre
+  let eps: number[][] = [ram.pts[0], ram.pts[ram.pts.length - 1]];
+  if (ram.net === 'vent' && ram.pts.length > 2) {
+    const isFirstNearSan = candidates.some(
+      (c) =>
+        c.net === 'san' &&
+        c.pts &&
+        (c.pts.some((p) => Math.hypot(p[0] - eps[0][0], p[1] - eps[0][1]) < tol) ||
+          c.pts.some(
+            (_, i) =>
+              i < c.pts!.length - 1 &&
+              Math.hypot(eps[0][0] - c.pts![i][0], eps[0][1] - c.pts![i][1]) < tol,
+          )),
+    );
+    const isLastNearSan = candidates.some(
+      (c) =>
+        c.net === 'san' &&
+        c.pts &&
+        (c.pts.some((p) => Math.hypot(p[0] - eps[1][0], p[1] - eps[1][1]) < tol) ||
+          c.pts.some(
+            (_, i) =>
+              i < c.pts!.length - 1 &&
+              Math.hypot(eps[1][0] - c.pts![i][0], eps[1][1] - c.pts![i][1]) < tol,
+          )),
+    );
+    if (isFirstNearSan && !isLastNearSan) eps = [eps[0]];
+    else if (!isFirstNearSan && isLastNearSan) eps = [eps[1]];
+    else if (isFirstNearSan && isLastNearSan)
+      eps = [eps[0]]; // ambos cerca, solo uno
+    else eps = []; // ninguno cerca de san, no validar
+    if (eps.length === 0) return null;
+  }
   for (const ep of eps) {
     // Dos ramales que drenan al MISMO bajante no forman una unión ramal-ramal: cada uno
     // conecta al bajante por separado (hasta 2 permitidos, orig. #14). Si el extremo está
@@ -382,6 +413,8 @@ export function ramalFlowDirectionCheck(
     }
     for (const other of candidates) {
       if (other.id === ram.id || !sameNetGroupNet(other.net, ram.net)) continue;
+      // ponytail: vent-vent no flow check per spec (only vent-san revent)
+      if (ram.net === 'vent' && other.net === 'vent') continue;
       if (!other.pts || other.pts.length < 2) continue;
       const oEps = [other.pts[0], other.pts[other.pts.length - 1]];
       let touches = oEps.some((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1]) < tol);
@@ -401,7 +434,14 @@ export function ramalFlowDirectionCheck(
       if (ram.net === 'san' && ventFlowsIntoJunction(other, ep, tol)) {
         return 'El ramal de ventilación debe fluir alejándose de la unión reventilado (san → vent). Dibújalo saliendo desde el punto sanitario.';
       }
-      if (!flowDirectionOkAt(ram, other, ep, tol)) {
+      // La semántica vent↔san (codo reventilado / Y) ya se validó arriba: el vent debe fluir
+      // ALEJÁNDOSE de la unión. El chequeo genérico de "mismo sentido" (dot >= 0) no aplica a
+      // ese par: un vent conectado a san sale a 45°/90° contra el flujo sanitario (Y / codo
+      // reventilado), así que su dot contra el san es negativo y lo señalaba como falsa
+      // violación de dirección aunque estuviera dibujado correctamente (Ítem 5 del .md).
+      const crossVentSan =
+        (ram.net === 'vent' && other.net === 'san') || (ram.net === 'san' && other.net === 'vent');
+      if (!crossVentSan && !flowDirectionOkAt(ram, other, ep, tol)) {
         return 'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.';
       }
     }

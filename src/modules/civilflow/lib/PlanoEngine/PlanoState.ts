@@ -341,6 +341,16 @@ export interface PlanoRamal {
   sifonLabelFin?: [number, number];
   _sifonLabelBoxIni?: LabelBoxCorners;
   _sifonLabelBoxFin?: LabelBoxCorners;
+  // Etiqueta: controles de visibilidad (ítem 1)
+  showLength?: boolean;
+  showName?: boolean;
+  showGuide?: boolean;
+  // Identidad de una yee doble (ítem 2): posiciones de los dos vértices que forman el par
+  // (`[[x1,y1],[x2,y2]]`). Se registra al DETECTAR la yee doble en networkSanitary.ts y se
+  // persiste vía el sync, de modo que el símbolo sobrevive al borrado de uno de los brazos
+  // laterales — el renderer lo dibuja mientras la identidad exista, aunque un lado quede sin
+  // trazo conectado. Se limpia solo cuando se elimina el tronco o el accesorio.
+  yeeDobleAt?: number[][];
 }
 
 /** Bajante o montante (tubería vertical) que conecta los niveles del edificio. */
@@ -683,7 +693,14 @@ export interface IPlanoEngineCore {
   } | null;
   multiSel: string[];
   multiDrag: { startX: number; startY: number; origData: MultiDragOrigData } | null;
-  guideDrag: { id: string; startX: number; startY: number; origPts: [number, number][] } | null;
+  guideDrag: {
+    id: string;
+    startX: number;
+    startY: number;
+    origPts: [number, number][];
+    // ponytail: índice del extremo tomado (0|1) → estirar/encoger; undefined → arrastre de cuerpo
+    endIdx?: 0 | 1;
+  } | null;
   marqueeRect: { x1: number; y1: number; x2: number; y2: number } | null;
   MM: {
     lblName: number;

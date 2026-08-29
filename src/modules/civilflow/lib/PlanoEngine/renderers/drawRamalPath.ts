@@ -319,6 +319,9 @@ export function drawRamalPath(
     ctx.lineWidth = 2 * engine.zoom;
     ctx.setLineDash([]);
     const tickLen = engine.mm2cvs(1.0);
+    // Ticks más finos (no con cap redondo a ancho de tubería → bulto)
+    ctx.lineCap = 'butt';
+    ctx.lineWidth = 1.2 * engine.zoom;
     elbows.forEach((elb) => {
       ctx.beginPath();
       ctx.moveTo(

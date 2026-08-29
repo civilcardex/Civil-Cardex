@@ -19,6 +19,7 @@ import {
   detectAccesorioTrigger,
 } from './drawingAngles';
 import { diamPulgFromLabel } from '../../utils/diamPulgFromLabel';
+import { DEFAULT_PENDIENTE_PCT } from '../../constants';
 import {
   isRamalBajanteConnectionAllowed,
   junctionHasIncomingFlow,
@@ -766,8 +767,21 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     labelAngle: firstAngle,
     material: def.material || '',
     diametro: def.diametro || '',
-    pendiente: typeof def.pendiente === 'number' ? def.pendiente : 0,
+    // Ítem 4: los ramales sanitarios nuevos nacen con pendiente por defecto 2% cuando no se
+    // eligió explícitamente otra. El default del selector para san ya trae DEFAULT_PENDIENTE_PCT
+    // desde PdfViewer; este fallback cubre el caso de _ramalDefaults ausente o pendiente sin
+    // valor (0/null). Otras redes conservan su default.
+    pendiente:
+      engine.activeRamal!.net === 'san' &&
+      (typeof def.pendiente !== 'number' || def.pendiente === 0)
+        ? DEFAULT_PENDIENTE_PCT
+        : typeof def.pendiente === 'number'
+          ? def.pendiente
+          : 0,
     bloqueado: true,
+    showLength: true,
+    showName: true,
+    showGuide: true,
   };
 
   // Validación de dirección de flujo (san/vent/ll): todo ramal que se conecta a otro debe llevar
@@ -959,6 +973,21 @@ export function finishRamal(engine: IPlanoEngineCore): void {
             'Este bajante ya tiene 2 ramales conectados (máximo permitido).',
           );
           continue;
+        }
+        // 14.2 Y doble: laterales must be same diam
+        if (baj.recibeDeIds.length === 1) {
+          const existing = engine.ramales.find((x) => x.id === baj.recibeDeIds[0]);
+          if (existing && existing.diametro && r.diametro) {
+            const p1 = diamPulgFromLabel(existing.diametro);
+            const p2 = diamPulgFromLabel(r.diametro);
+            if (p1 > 0 && p2 > 0 && Math.abs(p1 - p2) > 0.01) {
+              engine.triggerAlert(
+                'Diámetros no compatibles',
+                'Los dos ramales que llegan a un mismo bajante (Y doble) deben tener el mismo diámetro en sus brazos laterales.',
+              );
+              continue;
+            }
+          }
         }
         // Guardia centralizada de dirección — un bajante 'baja' solo puede RECIBIR flujo, así
         // que nunca se permite que el INICIO de un ramal (pts[0]) se asocie con uno. Sin esto,
@@ -1758,17 +1787,28 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
  *  crea la línea de cota en el segundo. @param engine Instancia del motor. @param px Coordenada
  *  X de plano. @param py Coordenada Y de plano. */
 export function handleDimDown(engine: IPlanoEngineCore, px: number, py: number): void {
+  let pt: { x: number; y: number } = { x: px, y: py };
+  if (engine.snapMode) {
+    const sp = engine.snapToExisting(pt.x, pt.y);
+    if (sp) pt = sp;
+  }
   if (!engine._dimStart) {
-    engine._dimStart = { x: px, y: py };
+    engine._dimStart = { x: pt.x, y: pt.y };
   } else {
     const s = engine._dimStart;
-    const len = Math.hypot(px - s.x, py - s.y);
+    let endPt: { x: number; y: number } = { x: pt.x, y: pt.y };
+    if (engine.snapMode) {
+      endPt = engine.snapAngle(s.x, s.y, pt.x, pt.y);
+      const sp2 = engine.snapToExisting(endPt.x, endPt.y);
+      if (sp2) endPt = sp2;
+    }
+    const len = Math.hypot(endPt.x - s.x, endPt.y - s.y);
     engine.dims.push({
       id: 'D' + Date.now(),
       x1: s.x,
       y1: s.y,
-      x2: px,
-      y2: py,
+      x2: endPt.x,
+      y2: endPt.y,
       L: engine.pxToM(len),
     });
     engine._dimStart = null;
@@ -2151,8 +2191,24 @@ export function eraseRamalAt(
     engine.ramales.some(
       (m) => m.mergesFrom && (m.mergesFrom[0] === r.id || m.mergesFrom[1] === r.id),
     );
+  // ponytail: straight polyline (all points collinear) should delete whole, not trim one side — division point is not a real bend
+  const isStraight = (() => {
+    if (r.pts.length <= 2) return true;
+    const baseDx = r.pts[1][0] - r.pts[0][0];
+    const baseDy = r.pts[1][1] - r.pts[0][1];
+    const baseLen = Math.hypot(baseDx, baseDy);
+    if (baseLen < 1e-6) return false;
+    for (let i = 2; i < r.pts.length; i++) {
+      const dx = r.pts[i][0] - r.pts[i - 1][0];
+      const dy = r.pts[i][1] - r.pts[i - 1][1];
+      const cross = baseDx * dy - baseDy * dx;
+      const dot = baseDx * dx + baseDy * dy;
+      if (Math.abs(cross) > 1e-6 || dot < 0) return false;
+    }
+    return true;
+  })();
   const isEndpoint = bestIdx === 0 || bestIdx === r.pts.length - 1;
-  const canTrim = r.pts.length > 2 && !isSplitMember;
+  const canTrim = r.pts.length > 2 && !isSplitMember && !isStraight;
   if (!isEndpoint && canTrim) {
     const d0 = Math.hypot(plane.x - r.pts[0][0], plane.y - r.pts[0][1]);
     const dLast = Math.hypot(

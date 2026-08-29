@@ -196,6 +196,18 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
       usedInDouble.add(j);
       const id1 = junctionRamalIds[i];
       const id2 = junctionRamalIds[j];
+      // Ítem 2: registrar la identidad de la yee doble (par de vértices) en los ramales que la
+      // forman, para que el símbolo sobreviva al borrado de un brazo lateral. Se escribe en el
+      // ramal vivo del engine (o en ambos si son ramales distintos); calcHydroAccessories lo
+      // lleva después al sync persistido.
+      const pairPts = [
+        [junctionPositions[i].x, junctionPositions[i].y],
+        [junctionPositions[j].x, junctionPositions[j].y],
+      ];
+      for (const rid of [id1, id2]) {
+        const host = engine.ramales.find((rr) => rr.id === rid);
+        if (host) host.yeeDobleAt = pairPts;
+      }
       if (id1 === id2) {
         if (!yeeCounts[id1]) yeeCounts[id1] = { simple: 0, doble: 0 };
         yeeCounts[id1].doble += 1;
@@ -311,24 +323,8 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
 
     let countSube = 0;
     let countBaja = 0;
-    let hasBajanteSube = false;
-    let hasBajanteBaja = false;
-    for (const baj of engine.bajantes || []) {
-      if (baj.net !== 'san') continue;
-      if (baj.recibeDeIds?.includes(r.id)) {
-        if (baj.direccion === 'sube') {
-          countSube++;
-          hasBajanteSube = true;
-        } else if (
-          baj.direccion === 'baja' ||
-          baj.direccion === undefined ||
-          baj.direccion === 'continua'
-        ) {
-          countBaja++;
-          hasBajanteBaja = true;
-        }
-      }
-    }
+    // ponytail: bajante connection does NOT auto-create a codo (render never draws it, orig #4).
+    // Only persisted accesorio (aparato/montante) counts — removes the "extra codo 90".
 
     const rKey = `san_${r.id}_${planId}`;
     if (!hidroData[rKey]) hidroData[rKey] = { accesorios: {}, Lh: 0, nSalidas: 0 };
@@ -349,12 +345,14 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
 
       const processAcc = (accType: string | undefined) => {
         if (accType === 'sifon') countSifonTrib++;
-        else if (accType === 'codoSube') countSubeTrib++;
-        else if (accType === 'codoBaja') countBajaTrib++;
+        else if (accType === 'codoSube' || accType === 'codo90rmSube') countSubeTrib++;
+        else if (accType === 'codoBaja' || accType === 'codo90rmBaja') countBajaTrib++;
       };
 
       processAcc(r.accesorioInicio);
       processAcc(r.accesorioFin);
+      // ponytail: cada sifón implica un codo 90° sube (mismo conteo que FixturesPanel bump).
+      countSubeTrib += countSifonTrib;
 
       if (
         acc['sifon'] !== countSifonTrib ||
@@ -394,7 +392,6 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
       let countSifonRamal = 0;
       if (r.accesorioInicio === 'sifon') countSifonRamal++;
       if (r.accesorioFin === 'sifon') countSifonRamal++;
-
       // Cuenta accesorios explícitos a mitad de ramal (accMed*, asignados con clic derecho sobre
       // el cuerpo del ramal). codoReventilado se excluye deliberadamente — ya se contó arriba
       // mediante la detección geométrica vent→san (countVent), y los accesorios a mitad de ramal
@@ -409,19 +406,14 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
       }
 
       // Cuenta accesorios de extremo colocados directamente (clic derecho) — codo 90° sube/baja y
-      // codo reventilado — solo cuando no hay una bajante del mismo sentido que ya aportó ese
-      // codo: la unión a bajante se cuenta en el loop de arriba y su campo de extremo suele
-      // rellenarse solo como glifo visual (drawingCreations), así que contarlo aquí lo duplicaría.
-      // El codo reventilado de extremo solo se cuenta si no hay unión vent↔san detectada
-      // geométricamente (countVent), que es la misma unión que ese campo representa.
-      if (!hasBajanteSube) {
-        if (r.accesorioInicio === 'codo90rmSube' || r.accesorioInicio === 'codoSube') countSube++;
-        if (r.accesorioFin === 'codo90rmSube' || r.accesorioFin === 'codoSube') countSube++;
-      }
-      if (!hasBajanteBaja) {
-        if (r.accesorioInicio === 'codo90rmBaja' || r.accesorioInicio === 'codoBaja') countBaja++;
-        if (r.accesorioFin === 'codo90rmBaja' || r.accesorioFin === 'codoBaja') countBaja++;
-      }
+      // codo reventilado. Sin gating por bajante: el bajante no auto-crea codo, así que todo codo
+      // persistido (aparato o montante) se cuenta una sola vez.
+      if (r.accesorioInicio === 'codo90rmSube' || r.accesorioInicio === 'codoSube') countSube++;
+      if (r.accesorioFin === 'codo90rmSube' || r.accesorioFin === 'codoSube') countSube++;
+      if (r.accesorioInicio === 'codo90rmBaja' || r.accesorioInicio === 'codoBaja') countBaja++;
+      if (r.accesorioFin === 'codo90rmBaja' || r.accesorioFin === 'codoBaja') countBaja++;
+      // ponytail: cada sifón implica un codo 90° sube (mismo conteo que FixturesPanel bump).
+      countSube += countSifonRamal;
       if (countVent === 0) {
         if (r.accesorioInicio === 'codoReventilado') countVent++;
         if (r.accesorioFin === 'codoReventilado') countVent++;

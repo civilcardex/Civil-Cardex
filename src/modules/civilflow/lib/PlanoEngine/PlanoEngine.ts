@@ -96,6 +96,7 @@ import {
   autoDetectRamalConnections,
   ensureRpCntRamal,
 } from './PlanoEngineNetwork';
+import { fixVentCodoToTee } from './ventCodoTeeFix';
 import { PlanoHistory } from './PlanoHistory';
 import { PlanoNetworkModel } from './PlanoNetworkModel';
 import { hitTestRightClick, hitTestBajanteLabelForDrag } from './PlanoEngineHitTesting';
@@ -197,7 +198,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
   mouseX!: number;
   mouseY!: number;
   ghostDrag!: { id: string; startX: number; startY: number; baseDx: number; baseDy: number } | null;
-  guideDrag!: { id: string; startX: number; startY: number; origPts: [number, number][] } | null;
+  guideDrag!: {
+    id: string;
+    startX: number;
+    startY: number;
+    origPts: [number, number][];
+    endIdx?: 0 | 1;
+  } | null;
   lblDrag!: { id: string; offX: number; offY: number; slot?: 'ini' | 'fin' } | null;
   txtDrag!: { id: string; startX: number; startY: number; origX: number; origY: number } | null;
   dimLblDrag!: { id: string; offX: number; offY: number } | null;
@@ -594,6 +601,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._dirty = true;
     autoDetectRamalConnections(this);
     ensureRpCntRamal(this);
+    // ponytail: vent codo 90° that now forms T must become T, before counting
+    try {
+      fixVentCodoToTee(this);
+    } catch (_e) {
+      void _e;
+    }
     calcSanitaryAccessories(this);
     calcHydroAccessories(this);
     if (this._history) {
@@ -1387,8 +1400,25 @@ export default class PlanoEngine implements IPlanoEngineCore {
           // por pts (no por tipo === 'ramal') cubre también tributarios y ramales legados sin
           // campo tipo; las guías (GL) se excluyen porque no viven en engine.ramales.
           const ptsArr = ((sel as { pts?: unknown } | null)?.pts ?? []) as number[][];
+          const isStraight = (() => {
+            if (ptsArr.length <= 2) return true;
+            const bdx = (ptsArr[1] as number[])[0] - (ptsArr[0] as number[])[0];
+            const bdy = (ptsArr[1] as number[])[1] - (ptsArr[0] as number[])[1];
+            const bl = Math.hypot(bdx, bdy);
+            if (bl < 1e-6) return false;
+            for (let i = 2; i < ptsArr.length; i++) {
+              const dx = (ptsArr[i] as number[])[0] - (ptsArr[i - 1] as number[])[0];
+              const dy = (ptsArr[i] as number[])[1] - (ptsArr[i - 1] as number[])[1];
+              const cr = bdx * dy - bdy * dx;
+              const dt = bdx * dx + bdy * dy;
+              if (Math.abs(cr) > 1e-6 || dt < 0) return false;
+            }
+            return true;
+          })();
           const hasPolyline =
-            ptsArr.length > 2 && !String((sel as { id?: unknown }).id ?? '').startsWith('GL');
+            ptsArr.length > 2 &&
+            !isStraight &&
+            !String((sel as { id?: unknown }).id ?? '').startsWith('GL');
           if (hasPolyline) {
             const sp = this._selPointCvs;
             const cv =

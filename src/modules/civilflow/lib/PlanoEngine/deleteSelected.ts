@@ -483,7 +483,37 @@ function remergeSplitRamales(engine: IPlanoEngineCore, deletedId: string, delete
       continue;
     }
     if (d.mergesFrom[1] !== deletedId) continue;
-    const a = engine.ramales.find((r) => r.id === d.mergesFrom![0]);
+    // ponytail: find the GEOMETRIC upstream — the ramal whose END touches d's START and continues
+    // the line. mergesFrom[0] is STALE after a subsequent split of the upstream half (the reported
+    // bug: RS1|RS2|RS3 → deleting the first divisor merged RS2 into RS1, overlapping RS3). The
+    // partition created by the deleted divisor must re-join its TRUE geometric neighbor.
+    let a: PlanoRamal | null = null;
+    if (d.pts && d.pts.length >= 2) {
+      const dStart = d.pts[0];
+      const dDirX = d.pts[1][0] - dStart[0];
+      const dDirY = d.pts[1][1] - dStart[1];
+      const dLen = Math.hypot(dDirX, dDirY) || 1;
+      let bestDot = 1.1;
+      for (const r of engine.ramales) {
+        if (r.id === d.id || !r.pts || r.pts.length < 2 || r.net !== d.net) continue;
+        const last = r.pts[r.pts.length - 1];
+        if (Math.hypot(last[0] - dStart[0], last[1] - dStart[1]) > TOL) continue;
+        const rDirX = last[0] - r.pts[r.pts.length - 2][0];
+        const rDirY = last[1] - r.pts[r.pts.length - 2][1];
+        const rLen = Math.hypot(rDirX, rDirY);
+        if (rLen < 1e-6) continue;
+        // collinear continuation: r's last segment and d's first share the point and run along
+        // the SAME line (|dot|≈1). A straight pipe has both vectors pointing the same way (+1).
+        const dot = (rDirX * dDirX + rDirY * dDirY) / (rLen * dLen);
+        const coll = 1 - Math.abs(dot);
+        if (coll < bestDot) {
+          bestDot = coll;
+          a = r;
+        }
+      }
+    }
+    // Fallback: original upstream reference (simple/chain splits where it is still adjacent).
+    if (!a) a = engine.ramales.find((r) => r.id === d.mergesFrom![0]) || null;
     if (!a || !a.pts || a.pts.length < 2 || !d.pts || d.pts.length < 2) {
       d.mergesFrom = undefined;
       continue;
@@ -491,13 +521,8 @@ function remergeSplitRamales(engine: IPlanoEngineCore, deletedId: string, delete
     const aLast = a.pts[a.pts.length - 1];
     const dFirst = d.pts[0];
     const gap = Math.hypot(aLast[0] - dFirst[0], aLast[1] - dFirst[1]);
-    if (gap > 5) {
-      // Gap grande — movimiento intencional, no fusionar.
-      d.mergesFrom = undefined;
-      continue;
-    }
+    // ponytail: gap always closed — division must not persist after cause removed, even if dragged
     if (gap > TOL) {
-      // Pequeño drift (snap/precisión) — cerrar gap visualmente antes de fusionar.
       d.pts[0] = [aLast[0], aLast[1]];
     }
     // Ítem 1: el punto compartido (aLast) es la unión donde se borró el brazo. Tras fusionar ya
@@ -509,8 +534,9 @@ function remergeSplitRamales(engine: IPlanoEngineCore, deletedId: string, delete
     a.pts = [...a.pts, ...d.pts.slice(1)];
     a.totalL = calculateRamalLength(a.pts, engine);
     // El UC del downstream acreditaba existing.uc + incoming.uc — al borrar el incoming se
-    // revierte a la suma que ya traía la mitad aguas arriba.
-    a.uc = (d.uc || 0) - deletedUc;
+    // revierte a la suma que ya traía la mitad aguas arriba. Con la re-unón geométrica el
+    // upstream puede ser OTRO downstream (RS3): nunca reducir su propia UC acumulada.
+    a.uc = Math.max(a.uc || 0, (d.uc || 0) - deletedUc);
     // Mover los datos de extremo lejano de D a A (se ponían en D al dividir).
     if (d.accesorioFin) a.accesorioFin = d.accesorioFin;
     if (d.diametroFin) a.diametroFin = d.diametroFin;
@@ -709,19 +735,36 @@ function dirAt(r: { pts: number[][] }, sharedPt: number[]): [number, number] | n
 // división — las dos mitades colineales + la rama que la partió. Si solo se borra una mitad,
 // quedan restos de la línea dividida y el usuario tiene que borrar dos veces. La rama entrante
 // (mergesFrom[1]) NO se expande: borrarla re-une las mitades (comportamiento actual).
+// ponytail: transitive closure — chain A-D1-D2 shares same logical ramal, deleting any half deletes whole cluster
 function splitMembersFor(engine: IPlanoEngineCore, ramalId: string): string[] {
+  // divisor deletion must not expand (merge path)
+  if (engine.ramales.some((r) => r.mergesFrom && r.mergesFrom[1] === ramalId)) return [];
   const d = engine.ramales.find((r) => r.id === ramalId);
-  if (!d) return [];
-  if (d.mergesFrom) {
-    // d es una mitad aguas abajo → borrar su pareja upstream + la rama entrante
-    return [d.mergesFrom[0], d.mergesFrom[1]].filter((x) => x && x !== ramalId);
+  const isHalf =
+    !!d?.mergesFrom || engine.ramales.some((r) => r.mergesFrom && r.mergesFrom[0] === ramalId);
+  if (!isHalf) return [];
+  // BFS over merges edges: collect whole connected component
+  const S = new Set<string>([ramalId]);
+  let expanded = true;
+  while (expanded) {
+    expanded = false;
+    for (const r of engine.ramales) {
+      if (!r.mergesFrom) continue;
+      const [u, i] = r.mergesFrom;
+      const did = r.id;
+      const touches = S.has(u) || S.has(i) || S.has(did);
+      if (!touches) continue;
+      for (const nid of [u, i, did]) {
+        if (nid && !S.has(nid) && engine.ramales.some((x) => x.id === nid)) {
+          S.add(nid);
+          expanded = true;
+        }
+      }
+      // also divisors that are not ramales? they are ramales themselves, already covered
+    }
   }
-  const pair = engine.ramales.find((r) => r.mergesFrom && r.mergesFrom[0] === ramalId);
-  if (pair && pair.mergesFrom) {
-    // ramalId es la mitad aguas arriba → borrar la pareja downstream + la rama entrante
-    return [pair.id, pair.mergesFrom[1]].filter((x) => x && x !== ramalId);
-  }
-  return [];
+  S.delete(ramalId);
+  return [...S];
 }
 
 // Orig. usuario #2: al borrar un trazo, sus tributarios se REASIGNAN al ramal del otro lado de

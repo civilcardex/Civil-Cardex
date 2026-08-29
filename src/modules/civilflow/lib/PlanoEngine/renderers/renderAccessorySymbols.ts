@@ -124,7 +124,7 @@ export function drawExtremeAccessorySymbol(
       const labelCvs = storedPlane
         ? engine.toCvs(storedPlane[0], storedPlane[1])
         : { x: defaultLabelX, y: defaultLabelY };
-      const text = `S  D=${normalizeDnLabel(diamLabel)}"`;
+      const text = `S  D=${normalizeDnLabel(String(diamLabel).replace(/["″”]+$/, ''))}"`;
       ctx.fillText(text, labelCvs.x, labelCvs.y);
 
       if (ramal && slot) {
@@ -855,6 +855,8 @@ export function drawCornerCodoArc(
   // Hay que reiniciar el dash explícitamente — el cuerpo del ramal puede estar discontinuo
   // (tributario) y el símbolo no debe heredar el dash.
   ctx.setLineDash([]);
+  // ponytail: masquer la tubería que cruza la esquina — sobre el tubo negro (REV) el arco negro
+  // se perdía y solo quedaban los ticks (mancha). El halo blanco hace leer el arco limpio.
   ctx.beginPath();
   if (is45) {
     ctx.moveTo(T_A.x, T_A.y);
@@ -868,10 +870,26 @@ export function drawCornerCodoArc(
     const cross = u.x * v.y - u.y * v.x;
     ctx.arc(ccx, ccy, rad, angle_TA, angle_TC, cross > 0);
   }
+  ctx.lineWidth = 3.2 * engine.zoom;
+  ctx.strokeStyle = '#ffffff';
+  ctx.stroke();
+  ctx.lineWidth = 2 * engine.zoom;
+  ctx.strokeStyle = '#000000';
   ctx.stroke();
   const tickLen = engine.mm2cvs(1.0);
   const perp_u = { x: -u.y, y: u.x };
   const perp_v = { x: -v.y, y: v.x };
+  // White halo around ticks too (clean read over black vent pipe)
+  ctx.lineWidth = 3.2 * engine.zoom;
+  ctx.strokeStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(T_A.x - (perp_u.x * tickLen) / 2, T_A.y - (perp_u.y * tickLen) / 2);
+  ctx.lineTo(T_A.x + (perp_u.x * tickLen) / 2, T_A.y + (perp_u.y * tickLen) / 2);
+  ctx.moveTo(T_C.x - (perp_v.x * tickLen) / 2, T_C.y - (perp_v.y * tickLen) / 2);
+  ctx.lineTo(T_C.x + (perp_v.x * tickLen) / 2, T_C.y + (perp_v.y * tickLen) / 2);
+  ctx.stroke();
+  ctx.lineWidth = 2 * engine.zoom;
+  ctx.strokeStyle = '#000000';
   ctx.beginPath();
   ctx.moveTo(T_A.x - (perp_u.x * tickLen) / 2, T_A.y - (perp_u.y * tickLen) / 2);
   ctx.lineTo(T_A.x + (perp_u.x * tickLen) / 2, T_A.y + (perp_u.y * tickLen) / 2);

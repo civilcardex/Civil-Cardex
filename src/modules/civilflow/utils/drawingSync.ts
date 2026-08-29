@@ -118,6 +118,7 @@ interface RamalSyncObj {
   aparatoFin: string;
   caudal?: number;
   accMed?: Record<string, string>;
+  yeeDobleAt?: number[][];
 }
 
 interface SyncDataResult {
@@ -198,6 +199,7 @@ function buildPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>): S
             diametroFin: r.diametroFin || '',
             aparatoInicio: r.aparatoInicio || '',
             aparatoFin: r.aparatoFin || '',
+            yeeDobleAt: (r as { yeeDobleAt?: number[][] }).yeeDobleAt,
           });
         }
       }
@@ -286,6 +288,8 @@ function buildNonPrefixedSyncData(plans: SyncPlanInput[], families: Set<string>)
         };
         if (r.caudal !== undefined) ramalObj.caudal = r.caudal;
         if (r.accMed) ramalObj.accMed = r.accMed;
+        const yeeRaw = (r as { yeeDobleAt?: number[][] }).yeeDobleAt;
+        if (yeeRaw) ramalObj.yeeDobleAt = yeeRaw;
         ramales.push(ramalObj);
       }
     }

@@ -488,11 +488,22 @@ export function handleSelectDown(
       engine.selId = g.id;
       engine._emitSelect(g);
       const tp = engine.toPlane(x, y);
+      // ponytail: si el clic cae sobre un EXTREMO de la guía → arrastre de extremo (estirar/encoger)
+      const END_TOL = 12;
+      let endIdx: 0 | 1 | undefined;
+      if (g.pts.length >= 2) {
+        const c0 = engine.toCvs(g.pts[0][0], g.pts[0][1]);
+        const c1 = engine.toCvs(g.pts[1][0], g.pts[1][1]);
+        const d0 = Math.hypot(x - c0.x, y - c0.y);
+        const d1 = Math.hypot(x - c1.x, y - c1.y);
+        if (d0 <= END_TOL || d1 <= END_TOL) endIdx = d0 <= d1 ? 0 : 1;
+      }
       engine.guideDrag = {
         id: g.id,
         startX: tp.x,
         startY: tp.y,
         origPts: g.pts.map((pt) => [...pt] as [number, number]),
+        endIdx,
       };
       engine.render();
       return;

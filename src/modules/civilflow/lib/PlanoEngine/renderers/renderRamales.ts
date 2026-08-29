@@ -231,13 +231,93 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
 
       const pCorto = getPisoCorto(engine.nivelActual?.n);
       const lvlSuffix = pCorto ? `-${pCorto}` : '';
-      const lbl = r.label ? `${r.label}${lvlSuffix}` : '';
-      const matPart = matDrawingLabel(r.material) || (r.net === 'vent' ? 'PVC-V' : '');
-      const dPart = r.diametro ? `D=${normalizeDnLabel(r.diametro)}` : '';
-      const pPart = r.pendiente ? `S=${r.pendiente}%` : '';
+      const showName = r.showName !== false;
+      const showLength = r.showLength !== false;
+      const showGuide = r.showGuide !== false;
+      const lbl = showName && r.label ? `${r.label}${lvlSuffix}` : '';
+      // Ítem 1: formatos por red. Para san/ll/ac/af/gas se produce un único string compacto;
+      // vent y el resto mantienen el esquema de segmentos genérico de abajo.
+      const inchPartOf = (d: string): string => {
+        const q = d.indexOf('"');
+        return q > 0 ? d.slice(0, q + 1) : d;
+      };
+      const rdePartOf = (d: string): string => {
+        const q = d.indexOf('"');
+        return q >= 0 && q + 1 < d.length ? d.slice(q + 1).trim() : '';
+      };
+      const diamPulg = (d?: string): string => {
+        if (!d) return '';
+        const norm = normalizeDnLabel(d)
+          .replace(/\s*—.*$/, '')
+          .trim();
+        return inchPartOf(norm);
+      };
+      let infoStr: string | null = null;
+      let matPart = '';
+      if (r.net === 'san') {
+        // Ítem 1: formato san S<diam>" P<pend,1>% <long,2>m con espacios
+        const diamPart = diamPulg(r.diametro);
+        const pendVal = r.pendiente != null ? Number(r.pendiente).toFixed(1) : '';
+        const longPartSan = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
+        const segs = [
+          `${diamPart ? `S${diamPart}` : 'S'}`,
+          pendVal ? `P${pendVal}%` : 'P%',
+          longPartSan,
+        ];
+        infoStr = segs.filter(Boolean).join(' ') || null;
+        if (infoStr === 'S P% m' || infoStr === 'S') infoStr = null;
+      } else if (r.net === 'll') {
+        // Ítem 1.1: ALL [diam]" P [pend,1]%
+        const diamPart = diamPulg(r.diametro);
+        const pendVal = r.pendiente != null ? Number(r.pendiente).toFixed(1) : '';
+        const longPart = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
+        const segs = [
+          `ALL${diamPart ? ` ${diamPart}` : ''}`,
+          pendVal ? `P ${pendVal}%` : '',
+          longPart,
+        ];
+        infoStr = segs.filter(Boolean).join(' ') || null;
+      } else if (r.net === 'ac') {
+        // Ítem 1.2: CPVC [diam]" [RDE/SCH]
+        const norm = r.diametro
+          ? normalizeDnLabel(r.diametro)
+              .replace(/\s*—.*$/, '')
+              .trim()
+          : '';
+        const diamPart = inchPartOf(norm);
+        const rde = rdePartOf(norm);
+        const longPart = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
+        const segs = [`CPVC${diamPart ? ` ${diamPart}` : ''}`, rde, longPart];
+        infoStr = segs.filter(Boolean).join(' ') || null;
+      } else if (r.net === 'af') {
+        // Ítem 1.3: PVC [diam]" [RDE]
+        const norm = r.diametro
+          ? normalizeDnLabel(r.diametro)
+              .replace(/\s*—.*$/, '')
+              .trim()
+          : '';
+        const diamPart = inchPartOf(norm);
+        const rde = rdePartOf(norm);
+        const longPart = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
+        const segs = [`PVC${diamPart ? ` ${diamPart}` : ''}`, rde, longPart];
+        infoStr = segs.filter(Boolean).join(' ') || null;
+      } else if (r.net === 'gas') {
+        // Ítem 1.4: [material] [diam]"
+        const diamPart = diamPulg(r.diametro);
+        const mat = matDrawingLabel(r.material);
+        const longPart = showLength && r.totalL ? `${r.totalL.toFixed(2)}m` : '';
+        const segs = [mat ? `${mat}${diamPart ? ` ${diamPart}` : ''}` : diamPart, longPart];
+        infoStr = segs.filter(Boolean).join(' ') || null;
+      }
+      const matPartFallback = matDrawingLabel(r.material) || (r.net === 'vent' ? 'PVC-V' : '');
+      matPart = infoStr ? '' : r.net === 'san' ? '' : matPartFallback;
+      const dPart =
+        !infoStr && r.net !== 'san' && r.diametro ? `D=${normalizeDnLabel(r.diametro)}` : '';
+      const pPart = !infoStr && r.net !== 'san' && r.pendiente ? `S=${r.pendiente}%` : '';
       const showPend = r.net === 'san' || r.net === 'll';
-      const pendPart = showPend && pPart ? pPart : '';
-      const lblPart = r.totalL ? `L=${r.totalL.toFixed(2)}m` : '';
+      const pendPart = !infoStr && r.net !== 'san' && showPend && pPart ? pPart : '';
+      const lblPart =
+        !infoStr && r.net !== 'san' && showLength && r.totalL ? `L=${r.totalL.toFixed(2)}m` : '';
 
       const fsName = engine.mm2cvs(engine.MM.lblName * engine.labelScaleM);
       const fsInfo = engine.mm2cvs(engine.MM.lblInfo * engine.labelScaleM);
@@ -246,13 +326,15 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const boxPadX = engine.mm2cvs(1.0);
       const boxPadY = engine.mm2cvs(0.6);
 
-      const infoSegs: Array<{ text: string; bold: boolean; w: number } | null> = [
-        matPart ? { text: matPart, bold: false, w: 0 } : null,
-        dPart ? { text: dPart, bold: true, w: 0 } : null,
-        pendPart ? { text: pendPart, bold: false, w: 0 } : null,
-        lblPart ? { text: lblPart, bold: false, w: 0 } : null,
-      ].filter(Boolean) as Array<{ text: string; bold: boolean; w: number }>;
-      const segSep = ' · ';
+      const infoSegs: Array<{ text: string; bold: boolean; w: number } | null> = infoStr
+        ? [{ text: infoStr, bold: false, w: 0 }]
+        : ([
+            matPart ? { text: matPart, bold: false, w: 0 } : null,
+            dPart ? { text: dPart, bold: true, w: 0 } : null,
+            pendPart ? { text: pendPart, bold: false, w: 0 } : null,
+            lblPart ? { text: lblPart, bold: false, w: 0 } : null,
+          ].filter(Boolean) as Array<{ text: string; bold: boolean; w: number }>);
+      const segSep = infoStr ? '' : ' · ';
       let sepW = 0;
       ctx.font = `600 ${fsInfo}px Geist, monospace`;
       if (infoSegs.length > 1) sepW = ctx.measureText(segSep).width;
@@ -316,7 +398,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       // salir del lado, no de la esquina). Se recalcula en cada render, así que sigue
       // automáticamente a la etiqueta cuando se arrastra y al ramal cuando se mueve/estira/
       // encoge. Se salta cuando el punto medio cae DENTRO de la caja (etiqueta encima del ramal).
-      if (r.pts.length >= 2) {
+      // Ítem 1: showGuide controla visibilidad de la guía.
+      if (showGuide !== false && r.pts.length >= 2) {
         const [mx, my] = _midpoint(r.pts);
         const mc = engine.toCvs(mx, my);
         const relX = mc.x - adjCx;
@@ -796,9 +879,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const rad = engine.realMmToCanvasPx(23) * 0.9;
       const size = rad * 2;
       ctx.save();
-      // Quedar apenas al lado exterior de la tubería para que la línea del ramal siga visible
-      // bajo el símbolo.
-      ctx.translate(c.x + outX * rad * 0.3, c.y + outY * rad * 0.3);
+      // Ponytail: keep the codo90rmSube disk visible at the pipe end — push the fixture image
+      // outward so it does not cover the codo symbol (bajante at one end, aparato at the other).
+      ctx.translate(c.x + outX * rad * 1.4, c.y + outY * rad * 1.4);
       ctx.drawImage(img, -size / 2, -size / 2, size, size);
       ctx.restore();
     });
@@ -819,14 +902,14 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       if (idx <= 0 || idx >= r.pts.length - 1) continue;
       const accType = r.accMed[key];
       if (!accType) continue;
-      // En AF/AC/gas los glifos de codo ya no se dibujan (codo90rc/rm/rl, sube/baja, codo45rc,
-      // codos_90_std): el arco que dibuja drawRamalPath en cada quiebre ES el codo — el círculo
-      // "C90"/"C45" al lado solo reduce.
+      // En AF/AC/gas/vent los glifos de codo ya no se dibujan (codo90rc/rm/rl, sube/baja,
+      // codo45rc, codos_90_std): el arco que dibuja drawRamalPath en cada quiebre ES el codo — el
+      // círculo "C90"/"C45" al lado solo reduce (REV se dibujaba mal: arco + disco encima = mancha).
       if (
         (accType.startsWith('codo90') ||
           accType.startsWith('codo45') ||
           accType.startsWith('codos_90')) &&
-        (r.net === 'af' || r.net === 'ac' || r.net === 'gas')
+        (r.net === 'af' || r.net === 'ac' || r.net === 'gas' || r.net === 'vent')
       ) {
         continue;
       }

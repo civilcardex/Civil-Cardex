@@ -44,6 +44,20 @@ export function checkRamalAngles(
 ): boolean {
   if (pts.length < 2) return true;
   if (!snapOn && (net === 'ac' || net === 'af' || net === 'gas')) return true;
+  // Ítem 5: vent primer segmento sigue san, resto ruteo libre
+  if (net === 'vent' && pts.length > 2) {
+    // Solo validar primer segmento (45°) y no los siguientes
+    const [x1, y1] = pts[0];
+    const [x2, y2] = pts[1];
+    const dx = x2 - x1,
+      dy = y2 - y1;
+    if (Math.hypot(dx, dy) >= 0.1) {
+      const deg = Math.round(((((Math.atan2(dy, dx) * 180) / Math.PI) % 360) + 360) % 360);
+      const rem = deg % 45;
+      if (rem > ANGLE_EPS && rem < 45 - ANGLE_EPS) return false;
+    }
+    return true;
+  }
   const isSanOrLl = net === 'san' || net === 'll';
   const isGas = net === 'gas';
   const isTributarioAcAf = (net === 'af' || net === 'ac') && tipo === 'tributario';
