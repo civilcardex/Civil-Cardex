@@ -489,3 +489,39 @@ export async function loadTanqueNpt(proyectoId: number): Promise<string | null> 
     return null;
   }
 }
+
+export async function savePresionGarantizada(proyectoId: number, value: string): Promise<void> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase
+      .from(CF_TABLES.proyectoGeneral)
+      .upsert(
+        { proyecto_id: proyectoId, user_id: user.id, presion_garantizada: value },
+        { onConflict: 'proyecto_id' },
+      );
+    if (error) devError('savePresionGarantizada:', error.message);
+  } catch (e) {
+    devError('savePresionGarantizada exception:', e);
+  }
+}
+
+export async function loadPresionGarantizada(proyectoId: number): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from(CF_TABLES.proyectoGeneral)
+      .select('presion_garantizada')
+      .eq('proyecto_id', proyectoId)
+      .maybeSingle();
+    if (error) {
+      devError('loadPresionGarantizada:', error.message);
+      return null;
+    }
+    return (data as { presion_garantizada?: string | null })?.presion_garantizada ?? null;
+  } catch (e) {
+    devError('loadPresionGarantizada exception:', e);
+    return null;
+  }
+}

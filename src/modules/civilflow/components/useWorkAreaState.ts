@@ -436,23 +436,23 @@ export function useWorkAreaState() {
     }
   }, [selectedPlan]);
 
-  const prevPlansLenRef = useRef(0);
+  // Ítem 9/10: al crecer `plans` por la precarga silenciosa en paralelo (ProfilePage/PlansContext
+  // publican PDFs conforme llegan), NO re-seleccionar el último plan — eso descartaba el plano que
+  // el usuario acababa de abrir y forzaba una reinicialización del visor. Solo se auto-selecciona
+  // cuando la selección actual no existe (o nunca hubo): en ese caso se toma el primero disponible.
+  // Un plan agregado manualmente (addPlans) no cambia la selección a menos que no haya ninguna.
   useEffect(() => {
     const len = plansCtx.plans.length;
-    if (len > 0 && len > prevPlansLenRef.current) {
-      setSelectedPlanId(plansCtx.plans[len - 1].id);
-    } else if (len > 0 && !plansCtx.plans.some((p) => p.id === selectedPlanId)) {
-      setSelectedPlanId(plansCtx.plans[0].id);
-    } else if (len === 0) {
+    if (len === 0) {
       setSelectedPlanId(null);
+    } else if (!plansCtx.plans.some((p) => p.id === selectedPlanId)) {
+      setSelectedPlanId(plansCtx.plans[0].id);
     }
-    prevPlansLenRef.current = len;
-    // Deliberadamente depende solo de plans.length (comparado contra la longitud anterior
-    // rastreada por ref) para detectar "se agregó un plan" frente a otros casos; además
-    // selectedPlanId se *asigna* aquí, así que agregarlo como dependencia haría que este
-    // efecto se re-disparara por sus propias escrituras.
+    // Deliberadamente depende de plans.length y selectedPlanId: cuando la precarga agrega planes,
+    // length cambia pero selectedPlanId ya apunta a uno válido → no se toca. Solo se re-sincroniza
+    // si la selección quedó inválida.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plansCtx.plans.length]);
+  }, [plansCtx.plans.length, selectedPlanId]);
 
   const fileRef = useRef<HTMLInputElement>(null);
 

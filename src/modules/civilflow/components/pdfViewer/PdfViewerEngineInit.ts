@@ -253,6 +253,30 @@ export function usePdfViewerEngine({
       callbacksRef.current.onToolChange(t);
     };
     setEngineReady(true);
+    // ponytail: load trazados (draw elements) immediately from local cache, INDEPENDENT of PDF render.
+    // Previously elements only appeared after renderPage finished the heavy pdfjs render (line ~185),
+    // so entering the drawing was slow. Local cache is synchronous — draw overlays show fast.
+    {
+      const eng2 = engineRef.current;
+      if (eng2) {
+        const initId = currentIdRef.current || eng2._loadedPlanId || '';
+        if (initId) {
+          const mk = `trazos_${initId}`;
+          const saved = (() => {
+            try {
+              const raw = localStorage.getItem('civilflow_' + mk);
+              return raw ? (JSON.parse(raw) as unknown) : null;
+            } catch {
+              return null;
+            }
+          })();
+          if (saved) {
+            eng2.loadWork(typeof saved === 'string' ? saved : (saved as object));
+            eng2.render();
+          }
+        }
+      }
+    }
     return () => {
       try {
         if (!loadingAtInit && eng._dirty) {

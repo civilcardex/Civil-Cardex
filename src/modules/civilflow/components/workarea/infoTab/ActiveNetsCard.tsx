@@ -55,13 +55,21 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
     const v = loadFromStorage<string | null>('civilflow_tanque_npt', null);
     return v ?? '';
   });
+  const [presionGarantizada, setPresionGarantizada] = React.useState<string>(() => {
+    const v = loadFromStorage<string | null>('civilflow_presion_garantizada', null);
+    return v ?? '';
+  });
   React.useEffect(() => {
     const pid = getActiveProyectoId();
     if (!pid) return;
     void (async () => {
-      const { loadAfAlimentacion, loadTanqueNpt } =
+      const { loadAfAlimentacion, loadTanqueNpt, loadPresionGarantizada } =
         await import('../../../services/proyectoDataService');
-      const [afDb, nptDb] = await Promise.all([loadAfAlimentacion(pid), loadTanqueNpt(pid)]);
+      const [afDb, nptDb, presDb] = await Promise.all([
+        loadAfAlimentacion(pid),
+        loadTanqueNpt(pid),
+        loadPresionGarantizada(pid),
+      ]);
       if (afDb && (afDb === 'ep' || afDb === 'tanque' || afDb === 'red')) {
         setAfAlim(afDb as AfAlim);
         saveToStorage(AF_ALIMENTACION_KEY, afDb);
@@ -69,6 +77,10 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
       if (nptDb != null) {
         setTanqueNpt(nptDb);
         saveToStorage('civilflow_tanque_npt', nptDb);
+      }
+      if (presDb != null) {
+        setPresionGarantizada(presDb);
+        saveToStorage('civilflow_presion_garantizada', presDb);
       }
     })();
   }, []);
@@ -371,6 +383,56 @@ const ActiveNetsCard = React.memo(function ActiveNetsCard({
                                       const { saveTanqueNpt } =
                                         await import('../../../services/proyectoDataService');
                                       void saveTanqueNpt(pid, v);
+                                    }
+                                  }}
+                                  placeholder="0.00"
+                                  style={{
+                                    padding: '4px 6px',
+                                    borderRadius: 'var(--r)',
+                                    border: '1px solid var(--line)',
+                                    background: 'var(--bg)',
+                                    fontSize: 12,
+                                    opacity: isEditing ? 1 : 0.7,
+                                  }}
+                                />
+                              </div>
+                            )}
+                            {o.id === 'red' && oOn && (
+                              <div
+                                style={{
+                                  marginTop: 2,
+                                  marginLeft: 22,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 4,
+                                  paddingLeft: 8,
+                                  borderLeft: '2px solid var(--line)',
+                                }}
+                              >
+                                <label
+                                  htmlFor="presion-garantizada-input"
+                                  style={{ fontSize: 11, fontWeight: 600, color: 'var(--txt2)' }}
+                                >
+                                  Presión garantizada del operador (PSI)
+                                </label>
+                                <input
+                                  id="presion-garantizada-input"
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={presionGarantizada}
+                                  disabled={!isEditing}
+                                  onChange={(e) => {
+                                    const v = e.target.value.replace(',', '.');
+                                    setPresionGarantizada(v);
+                                    saveToStorage('civilflow_presion_garantizada', v);
+                                  }}
+                                  onBlur={async (e: React.FocusEvent<HTMLInputElement>) => {
+                                    const v = e.currentTarget.value;
+                                    const pid = getActiveProyectoId();
+                                    if (pid) {
+                                      const { savePresionGarantizada } =
+                                        await import('../../../services/proyectoDataService');
+                                      void savePresionGarantizada(pid, v);
                                     }
                                   }}
                                   placeholder="0.00"

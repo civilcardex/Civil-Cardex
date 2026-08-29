@@ -829,6 +829,23 @@ export default function EPSchemePage({ ep, updEP }: Props) {
           >
             {title}
           </div>
+          <div
+            style={{
+              position: 'absolute',
+              top: 26,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: 10,
+              fontWeight: 700,
+              color: '#12306b',
+              fontStyle: 'italic',
+              textAlign: 'center',
+              pointerEvents: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Esquema básico de referencia (mínimo sugerido) — la aplicación depende de cada proyecto
+          </div>
           <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />
           <div
             ref={badgeWrapRef}
@@ -855,7 +872,6 @@ export default function EPSchemePage({ ep, updEP }: Props) {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {[
-                'La tapa de la cisterna debe ir al mismo nivel de las tuberías.',
                 'Válvula de compuerta en la succión de cada bomba para mantenimiento sin vaciar la cisterna.',
                 'El colador de succión debe quedar sumergido por debajo del nivel mínimo.',
                 'Prever soportes y anclajes para manifolds, bombas y tanque hidroneumático.',
@@ -906,22 +922,7 @@ export default function EPSchemePage({ ep, updEP }: Props) {
               </span>
             )}
           </div>
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 12,
-              right: 12,
-              fontSize: 10,
-              color: '#8a8f98',
-              textAlign: 'right',
-              pointerEvents: 'none',
-              fontStyle: 'italic',
-            }}
-          >
-            Esquema general básico mínimo
-          </div>
         </div>
-
         {/* right info panels */}
         <div
           style={{
@@ -972,6 +973,19 @@ export default function EPSchemePage({ ep, updEP }: Props) {
             ))}
             <div>DO{numPumps + 1} · Marcha / Falla</div>
             <div>DO{numPumps + 2} · Alarma (visual / sonoro)</div>
+            <div
+              style={{
+                marginTop: 8,
+                fontSize: 10,
+                color: '#667',
+                fontStyle: 'italic',
+                borderTop: '1px solid #e2e5ea',
+                paddingTop: 6,
+              }}
+            >
+              Nota: Esta sección es una referencia básica y sencilla; su aplicación final depende de
+              cada proyecto.
+            </div>
           </div>
 
           <div
