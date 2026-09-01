@@ -102,8 +102,11 @@ describe('Resumen accesorios sanitarios — sifones y codo 90', () => {
     // No debe existir columna Sifón
     const sifonIdx = table!.headers.indexOf('Sifón');
     expect(sifonIdx).toBe(-1);
-    // codo 90 sube → codoTarget 'codo90rm' — debe contarse
-    const codo90Idx = table!.headers.indexOf('Codo 90°');
+    // codo 90 sube → codoTarget 'codo90rm' — debe contarse (ahora "Codo medio 90°")
+    const codo90Idx =
+      table!.headers.indexOf('Codo medio 90°') !== -1
+        ? table!.headers.indexOf('Codo medio 90°')
+        : table!.headers.indexOf('Codo 90°');
     expect(codo90Idx).toBeGreaterThan(0);
     const codoTotal = table!.rows.reduce((s, r) => s + Number(r[codo90Idx] || 0), 0);
     expect(codoTotal).toBeGreaterThanOrEqual(1);
