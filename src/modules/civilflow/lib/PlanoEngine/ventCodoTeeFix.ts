@@ -44,9 +44,10 @@ export function hasTeeAtPoint(engine: IPlanoEngineCore, pt: number[], net: strin
 }
 
 export function fixVentCodoToTee(engine: IPlanoEngineCore): void {
-  // Vent: any codo at a point that is now a T (3+ vectors) must become T / disappear — no codo remains
-  const ventRamales = engine.ramales.filter((r) => r.net === 'vent');
-  for (const r of ventRamales) {
+  // Cualquier red: un codo (Q90) en un punto que ahora es T (3+ vectores) debe desaparecer — solo queda T.
+  // Para vent/san es geométrico (renderJunctions dibuja T); para AF/AC/Gas limpia el Q90 para que el modal de T pueda abrirse (N6).
+  const allRamales = engine.ramales;
+  for (const r of allRamales) {
     if (!r.pts) continue;
     // interior accMed codos — delete, let renderJunctions draw geometric T
     if (r.accMed) {

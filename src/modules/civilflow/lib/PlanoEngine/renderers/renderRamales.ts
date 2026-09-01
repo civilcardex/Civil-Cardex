@@ -765,9 +765,13 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       // disco de respaldo con el texto "C90". Los codos de montante (codo90rmSube/Baja,
       // codoSube/Baja) conservan su disco (verticales, sin esquina en planta).
       const isPlanCodo =
+        accType === 'codo90rc' ||
         accType === 'codo90rm' ||
+        accType === 'codo90rl' ||
         accType === 'codos_90_std' ||
+        accType === 'codos_90_rl' ||
         accType === 'codo45' ||
+        accType === 'codo45rc' ||
         accType === 'codos_45';
       if (isPlanCodo) {
         // El arco necesita la dirección de la tubería SALIENDO del extremo (away): en el último

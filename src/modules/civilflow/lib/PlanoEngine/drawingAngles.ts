@@ -266,18 +266,56 @@ export function detectAccesorioTrigger(
     const ep = r.pts[epIdx];
     const tee = isTeeAtEndpoint(ep, engine, r.id, r.net);
     if (tee.isTee && tee.throughRamalId) {
-      // Tee ya resuelta: si CUALQUIER ramal en esta unión ya tiene accesorio (colocado por una
-      // selección anterior del modal), no volver a disparar el popup.
       const TOL = 0.5;
+      // N6: si el punto ya tiene un codo (Q90) y ahora se forma una T (3 brazos), eliminar
+      // ÚNICAMENTE el codo para dejar paso a la T — no bloquear el modal de T.
+      // Se detecta por id que contiene 'codo' (cubre todos los codos de cualquier red).
+      for (const rr of engine.ramales) {
+        if (!sameNetGroup(rr.net, r.net) || !rr.pts) continue;
+        const isCodo = (v: string | undefined) => !!v && v.toLowerCase().includes('codo');
+        if (
+          rr.accesorioInicio &&
+          isCodo(rr.accesorioInicio) &&
+          Math.hypot(rr.pts[0][0] - ep[0], rr.pts[0][1] - ep[1]) < TOL
+        ) {
+          rr.accesorioInicio = '';
+        }
+        const li = rr.pts.length - 1;
+        if (
+          rr.accesorioFin &&
+          isCodo(rr.accesorioFin) &&
+          Math.hypot(rr.pts[li][0] - ep[0], rr.pts[li][1] - ep[1]) < TOL
+        ) {
+          rr.accesorioFin = '';
+        }
+        if (rr.accMed) {
+          for (const k of Object.keys(rr.accMed)) {
+            const m = k.match(/^accMed(\d+)$/);
+            if (!m) continue;
+            const v = rr.accMed[k];
+            if (!v || !isCodo(v)) continue;
+            const p = rr.pts[parseInt(m[1], 10)];
+            if (p && Math.hypot(p[0] - ep[0], p[1] - ep[1]) < TOL) delete rr.accMed[k];
+          }
+        }
+      }
+      // Tee ya resuelta: si CUALQUIER ramal en esta unión ya tiene accesorio TEE (no codo) colocado,
+      // no volver a disparar el popup. Los codos ya fueron limpiados arriba, así que no bloquean.
       let alreadyResolved = false;
       for (const rr of engine.ramales) {
         if (!sameNetGroup(rr.net, r.net) || !rr.pts || rr.id === r.id) continue;
-        if (rr.accesorioInicio && Math.hypot(rr.pts[0][0] - ep[0], rr.pts[0][1] - ep[1]) < TOL) {
+        const isCodo = (v: string) => v.toLowerCase().includes('codo');
+        if (
+          rr.accesorioInicio &&
+          !isCodo(rr.accesorioInicio) &&
+          Math.hypot(rr.pts[0][0] - ep[0], rr.pts[0][1] - ep[1]) < TOL
+        ) {
           alreadyResolved = true;
           break;
         }
         if (
           rr.accesorioFin &&
+          !isCodo(rr.accesorioFin) &&
           Math.hypot(rr.pts[rr.pts.length - 1][0] - ep[0], rr.pts[rr.pts.length - 1][1] - ep[1]) <
             TOL
         ) {
@@ -287,7 +325,7 @@ export function detectAccesorioTrigger(
         if (rr.accMed) {
           for (const [k, v] of Object.entries(rr.accMed)) {
             const m = k.match(/^accMed(\d+)$/);
-            if (!m || !v) continue;
+            if (!m || !v || isCodo(v)) continue;
             const p = rr.pts[parseInt(m[1], 10)];
             if (p && Math.hypot(p[0] - ep[0], p[1] - ep[1]) < TOL) {
               alreadyResolved = true;
@@ -381,11 +419,18 @@ export function detectAccesorioTrigger(
       const angleDeg = (Math.acos(cosVal) * 180) / Math.PI;
       if (Math.abs(angleDeg - 45) <= ANGLE_EPS || Math.abs(angleDeg - 90) <= ANGLE_EPS) {
         const snapped = Math.abs(angleDeg - 45) < Math.abs(angleDeg - 90) ? 45 : 90;
-        // Tanto el quiebre de 45° como el de 90° en VÉRTICE INTERIOR se resuelven solos, sin
-        // modal: no hay nada que elegir (el codo horizontal es la única opción válida para un
-        // cambio de dirección dentro del cuerpo — las variantes sube/baja solo aplican entre
-        // cuerpo y extremo). Antes el 90° devolvía un trigger y el modal reaparecía en CADA
-        // arrastre posterior del ramal multipunto, porque nada persistía la decisión.
+        // 45° interior se resuelve solo (única opción). Para 90° en AC/AF/gas, mostrar modal
+        // con las 3 variantes por radio (corto/medio/largo) en lugar de auto-asignar "medio".
+        if (snapped === 90 && (r.net === 'ac' || r.net === 'af' || r.net === 'gas')) {
+          return {
+            ramalId: r.id,
+            angleDeg: 90,
+            junctionIndex: i,
+            point: curr,
+            net: r.net,
+            isTee: false,
+          };
+        }
         if (!r.accMed) r.accMed = {};
         r.accMed[`accMed${i}`] =
           r.net === 'gas'

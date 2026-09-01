@@ -1,6 +1,7 @@
 import { rotatedRectCorners } from '../HitTester';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
+import { planCodoCornerAt } from './drawRamalPath';
 
 // Compartido por el renderizado de accesorios de extremo (accesorioInicio/Fin) y de mitad de
 // ramal (accMed*). `outX,outY` es la dirección "apuntando lejos de la tubería" — para un
@@ -234,7 +235,7 @@ export function drawExtremeAccessorySymbol(
     // (dx,dy); el tercero (px,py) marca la rama que se une aquí. Mismas constantes mm2cvs(2.0)
     // / mm2cvs(0.8) que usa renderJunctions.ts, así que la escala coincide exactamente.
     const juncRad = engine.mm2cvs(2.0);
-    const tickLen = engine.mm2cvs(0.8);
+    const tickLen = engine.mm2cvs(1.0);
     const armW = 2 * engine.zoom; // mismo ancho de trazo que la tubería propia (no seleccionada) de drawRamalPath, para que el glifo se funda con la línea del ramal
     const arms: { x: number; y: number }[] = [
       { x: dx, y: dy },
@@ -251,7 +252,9 @@ export function drawExtremeAccessorySymbol(
     }
     ctx.stroke();
 
-    ctx.lineWidth = armW;
+    // N5: trazos transversales ligeramente más gruesos, extremos cuadrados, llegan a extremos
+    ctx.lineWidth = 1.8 * engine.zoom;
+    ctx.lineCap = 'square';
     ctx.beginPath();
     for (const a of arms) {
       const ex = c.x + a.x * juncRad,
@@ -306,7 +309,7 @@ export function drawExtremeAccessorySymbol(
     // brazo de la rama más angosto (diámetro reducido) con un collar corto de ancho completo en
     // la unión; teeLado mantiene la rama a ancho completo.
     const juncRad = engine.mm2cvs(2.0);
-    const tickLen = engine.mm2cvs(0.8);
+    const tickLen = engine.mm2cvs(1.0);
     const armW = 2 * engine.zoom;
     const branchW = accType === 'teeReduccion' ? armW * 0.55 : armW;
     ctx.strokeStyle = '#000000';
@@ -337,8 +340,9 @@ export function drawExtremeAccessorySymbol(
       ctx.lineTo(c.x + px * juncRad, c.y + py * juncRad);
       ctx.stroke();
     }
-    // Marcas de extremo en los tres brazos
-    ctx.lineWidth = armW * 0.8;
+    // N5: marcas de extremo ligeramente más gruesas, extremos cuadrados, llegan a extremos
+    ctx.lineWidth = 1.8 * engine.zoom;
+    ctx.lineCap = 'square';
     ctx.beginPath();
     for (const a of [
       { x: dx, y: dy },
@@ -809,40 +813,17 @@ export function drawCornerCodoArc(
   pt: number[],
   u: { x: number; y: number },
 ): boolean {
-  const TOL = 0.5;
-  const dirs: { x: number; y: number }[] = [];
-  for (const other of engine.ramales) {
-    if (engine._hiddenNets.has(other.net)) continue;
-    if (!other.pts || other.pts.length < 2) continue;
-    for (let i = 0; i < other.pts.length; i++) {
-      if (Math.hypot(other.pts[i][0] - pt[0], other.pts[i][1] - pt[1]) > TOL) continue;
-      if (i > 0) {
-        // Dirección de SALIDA del extremo (hacia el cuerpo del ramal): con la de llegada el
-        // arco salía al lado contrario de la esquina ("codo al revés").
-        const ddx = other.pts[i - 1][0] - other.pts[i][0];
-        const ddy = other.pts[i - 1][1] - other.pts[i][1];
-        const l = Math.hypot(ddx, ddy);
-        if (l > 0.1) dirs.push({ x: ddx / l, y: ddy / l });
-      }
-      if (i < other.pts.length - 1) {
-        const ddx = other.pts[i + 1][0] - other.pts[i][0];
-        const ddy = other.pts[i + 1][1] - other.pts[i][1];
-        const l = Math.hypot(ddx, ddy);
-        if (l > 0.1) dirs.push({ x: ddx / l, y: ddy / l });
-      }
-    }
-  }
-  const unique: { x: number; y: number }[] = [];
-  for (const d of dirs) {
-    if (!unique.some((x) => x.x * d.x + x.y * d.y > 0.99)) unique.push(d);
-  }
-  // El otro brazo de la esquina: una dirección distinta y no colineal con la propia del host.
-  // Si hay más de una (una T real), no es un codo — el llamador usa el glifo de respaldo.
-  const arms = unique.filter((d) => Math.abs(d.x * u.x + d.y * u.y) < 0.98);
-  if (arms.length !== 1) return false;
-  const v = arms[0];
+  // Usar planCodoCornerAt para consistencia total con el trim de drawRamalPath (mismo actualRad y arms)
+  const corner = planCodoCornerAt(engine, pt);
+  if (!corner) return false;
+  const [a0, a1] = corner.arms;
+  // Determinar cuál de los dos arms es u (el del ramal con el codo) y cuál es el otro
+  const isU_A0 = Math.abs(a0.x * u.x + a0.y * u.y) > 0.98;
+  const v = isU_A0 ? a1 : a0;
+  // Verificar que u sea realmente uno de los arms y que el otro no sea colineal (ya garantizado por planCodoCornerAt)
+  if (Math.abs(v.x * u.x + v.y * u.y) >= 0.98) return false;
   const c = engine.toCvs(pt[0], pt[1]);
-  const rad = engine.mm2cvs(1.5);
+  const rad = corner.actualRad;
   const cosA = u.x * v.x + u.y * v.y;
   const is45 = Math.abs(cosA + Math.cos(Math.PI / 4)) < 0.05;
   const T_A = { x: c.x + rad * u.x, y: c.y + rad * u.y };
@@ -870,25 +851,16 @@ export function drawCornerCodoArc(
     const cross = u.x * v.y - u.y * v.x;
     ctx.arc(ccx, ccy, rad, angle_TA, angle_TC, cross > 0);
   }
-  ctx.lineWidth = 3.2 * engine.zoom;
-  ctx.strokeStyle = '#ffffff';
-  ctx.stroke();
   ctx.lineWidth = 2 * engine.zoom;
   ctx.strokeStyle = '#000000';
   ctx.stroke();
-  const tickLen = engine.mm2cvs(1.0);
+  // ponytail: ticks transversales en los extremos del arco — idéntico al quiebre
+  // interior de drawRamalPath (2 segmentos del mismo ramal). Sin halo blanco.
+  const tickLen = engine.mm2cvs(1.2);
   const perp_u = { x: -u.y, y: u.x };
   const perp_v = { x: -v.y, y: v.x };
-  // White halo around ticks too (clean read over black vent pipe)
-  ctx.lineWidth = 3.2 * engine.zoom;
-  ctx.strokeStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.moveTo(T_A.x - (perp_u.x * tickLen) / 2, T_A.y - (perp_u.y * tickLen) / 2);
-  ctx.lineTo(T_A.x + (perp_u.x * tickLen) / 2, T_A.y + (perp_u.y * tickLen) / 2);
-  ctx.moveTo(T_C.x - (perp_v.x * tickLen) / 2, T_C.y - (perp_v.y * tickLen) / 2);
-  ctx.lineTo(T_C.x + (perp_v.x * tickLen) / 2, T_C.y + (perp_v.y * tickLen) / 2);
-  ctx.stroke();
-  ctx.lineWidth = 2 * engine.zoom;
+  ctx.lineCap = 'square';
+  ctx.lineWidth = 1.8 * engine.zoom;
   ctx.strokeStyle = '#000000';
   ctx.beginPath();
   ctx.moveTo(T_A.x - (perp_u.x * tickLen) / 2, T_A.y - (perp_u.y * tickLen) / 2);

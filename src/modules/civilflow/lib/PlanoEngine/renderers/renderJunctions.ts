@@ -230,7 +230,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         const cvsA = engine.toCvs(a.P[0], a.P[1]);
         const cvsB = engine.toCvs(b.P[0], b.P[1]);
         const rad = engine.mm2cvs(2.0);
-        const tickLen = engine.mm2cvs(0.8);
+        const tickLen = engine.mm2cvs(1.0);
 
         ctx.save();
         ctx.strokeStyle = '#000000';
@@ -283,9 +283,9 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         ctx.strokeStyle = '#000000';
         ctx.stroke();
 
-        // cyan flash removed per user request (was the "fondo raro")
-        const tickW = 1.2 * engine.zoom;
-        ctx.lineCap = 'butt';
+        // N5: trazos transversales ligeramente más gruesos, extremos cuadrados (butt→square), llegan a extremos
+        const tickW = 1.8 * engine.zoom;
+        ctx.lineCap = 'square';
         ctx.lineWidth = tickW;
         ctx.beginPath();
         vectorsA.forEach((u) => {
@@ -337,11 +337,10 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       ctx.strokeStyle = '#000000';
       ctx.stroke();
 
-      // Ticks más finos y cortos — a ancho de tubería con cap redondo se ven como bultos
-      // (imágenes REV). Medio ancho de trazo, sin cap redondo.
-      const tickW = 1.2 * engine.zoom;
-      const tickL = engine.mm2cvs(0.8);
-      ctx.lineCap = 'butt';
+      // N5: trazos transversales más gruesos, extremo cuadrado, llegan a extremos
+      const tickW = 1.8 * engine.zoom;
+      const tickL = engine.mm2cvs(1.0);
+      ctx.lineCap = 'square';
       ctx.lineWidth = tickW;
       ctx.beginPath();
       vectors.forEach((u) => {
@@ -433,7 +432,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       return uniq;
     };
     const rad = engine.mm2cvs(2.0);
-    const tickLen = engine.mm2cvs(0.8);
+    const tickLen = engine.mm2cvs(1.0);
     for (const r of netRamales) {
       if (!r.yeeDobleAt || r.yeeDobleAt.length !== 2) continue;
       const [A, B] = r.yeeDobleAt;
@@ -473,8 +472,8 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       ctx.lineWidth = 2 * engine.zoom;
       ctx.strokeStyle = '#000000';
       ctx.stroke();
-      ctx.lineCap = 'butt';
-      ctx.lineWidth = 1.2 * engine.zoom;
+      ctx.lineCap = 'square';
+      ctx.lineWidth = 1.8 * engine.zoom;
       ctx.beginPath();
       for (const [P, vArr] of [
         [A, vA],

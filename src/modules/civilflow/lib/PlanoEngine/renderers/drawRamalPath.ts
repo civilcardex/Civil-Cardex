@@ -1,6 +1,15 @@
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState';
 
-const PLAN_CODO_TYPES = ['codo90rm', 'codos_90_std', 'codo45', 'codos_45'];
+const PLAN_CODO_TYPES = [
+  'codo90rc',
+  'codo90rm',
+  'codo90rl',
+  'codos_90_std',
+  'codos_90_rl',
+  'codo45',
+  'codo45rc',
+  'codos_45',
+];
 
 // Esquina en L con codo de plano anclado en un EXTREMO compartido: devuelve las dos direcciones
 // de salida (hacia el cuerpo de cada tubería) si exactamente dos ramales terminan ahí en ángulo
@@ -10,30 +19,46 @@ const PLAN_CODO_TYPES = ['codo90rm', 'codos_90_std', 'codo45', 'codos_45'];
 export function planCodoCornerAt(
   engine: IPlanoEngineCore,
   pt: number[],
-): [{ x: number; y: number }, { x: number; y: number }] | null {
+): { arms: [{ x: number; y: number }, { x: number; y: number }]; actualRad: number } | null {
   const TOL = 0.5;
   const arms: { x: number; y: number }[] = [];
   let hasPlanCodo = false;
+  // Recolectar longitudes en cvs para actualRad
+  const baseRad = engine.mm2cvs(1.5);
+  let minLen = Infinity;
   for (const o of engine.ramales) {
     if (engine._hiddenNets.has(o.net)) continue;
     if (!o.pts || o.pts.length < 2) continue;
     const li = o.pts.length - 1;
     let d: { x: number; y: number } | null = null;
+    let cvsLen = Infinity;
     if (Math.hypot(o.pts[0][0] - pt[0], o.pts[0][1] - pt[1]) < TOL) {
       const dx = o.pts[1][0] - o.pts[0][0],
         dy = o.pts[1][1] - o.pts[0][1];
       const l = Math.hypot(dx, dy);
       if (l > 0.1) d = { x: dx / l, y: dy / l };
       if (o.accesorioInicio && PLAN_CODO_TYPES.includes(o.accesorioInicio)) hasPlanCodo = true;
+      const cvs0 = engine.toCvs(pt[0], pt[1]);
+      const cvs1 = engine.toCvs(o.pts[1][0], o.pts[1][1]);
+      cvsLen = Math.hypot(cvs1.x - cvs0.x, cvs1.y - cvs0.y);
     } else if (Math.hypot(o.pts[li][0] - pt[0], o.pts[li][1] - pt[1]) < TOL) {
       const dx = o.pts[li - 1][0] - o.pts[li][0],
         dy = o.pts[li - 1][1] - o.pts[li][1];
       const l = Math.hypot(dx, dy);
       if (l > 0.1) d = { x: dx / l, y: dy / l };
       if (o.accesorioFin && PLAN_CODO_TYPES.includes(o.accesorioFin)) hasPlanCodo = true;
+      const cvs0 = engine.toCvs(pt[0], pt[1]);
+      const cvs1 = engine.toCvs(o.pts[li - 1][0], o.pts[li - 1][1]);
+      cvsLen = Math.hypot(cvs1.x - cvs0.x, cvs1.y - cvs0.y);
     }
     if (!d) continue;
-    if (!arms.some((a) => Math.abs(a.x * d!.x + a.y * d!.y) >= 0.98)) arms.push(d);
+    if (!arms.some((a) => Math.abs(a.x * d!.x + a.y * d!.y) >= 0.98)) {
+      arms.push(d);
+      minLen = Math.min(minLen, cvsLen);
+    } else {
+      // Misma dirección ya existente, actualizar minLen con la más corta
+      minLen = Math.min(minLen, cvsLen);
+    }
   }
   if (
     !hasPlanCodo ||
@@ -41,7 +66,10 @@ export function planCodoCornerAt(
     Math.abs(arms[0].x * arms[1].x + arms[0].y * arms[1].y) >= 0.98
   )
     return null;
-  return [arms[0], arms[1]];
+  let actualRad = baseRad;
+  if (minLen !== Infinity) actualRad = Math.min(actualRad, minLen * 0.8);
+  if (actualRad < 0.1) actualRad = baseRad;
+  return { arms: [arms[0], arms[1]], actualRad };
 }
 
 export interface ElbowInfo {
@@ -77,17 +105,18 @@ export function drawRamalPath(
     engine.ramales.find((rm) => rm.pts === pts) || (activeRamal?.pts === pts ? activeRamal : null);
 
   // Codo de plano en un extremo compartido: recortar el cuerpo hasta el punto de tangencia del
-  // arco (mismo rad que drawCornerCodoArc) para que la esquina viva de la unión no se dibuje.
+  // arco (mismo actualRad que drawCornerCodoArc).
   if (r && pts.length >= 2) {
-    const rad = engine.mm2cvs(1.5);
     const trim = (i: number, j: number) => {
-      if (!planCodoCornerAt(engine, pts[i])) return;
+      const corner = planCodoCornerAt(engine, pts[i]);
+      if (!corner) return;
+      const actualRad = corner.actualRad;
       const a = cvsPts[i],
         b = cvsPts[j];
       const l = Math.hypot(b.x - a.x, b.y - a.y);
-      if (l <= rad) return;
-      a.x += ((b.x - a.x) / l) * rad;
-      a.y += ((b.y - a.y) / l) * rad;
+      if (l <= actualRad) return;
+      a.x += ((b.x - a.x) / l) * actualRad;
+      a.y += ((b.y - a.y) / l) * actualRad;
     };
     trim(0, 1);
     trim(pts.length - 1, pts.length - 2);
@@ -147,6 +176,40 @@ export function drawRamalPath(
             );
             if (hasTrib) isJunc = true;
           }
+        }
+        // N2: codo en quiebre interior no debe dibujarse si hay otro ramal (misma red) tocando ese vértice (tee)
+        if (!isJunc) {
+          const hasOtherRamalAtPoint = engine.ramales.some((other) => {
+            if (other.pts === pts) return false;
+            // vent/san comparten red para tee
+            const sameGroup =
+              other.net === netId ||
+              ((other.net === 'san' || other.net === 'vent') &&
+                (netId === 'san' || netId === 'vent'));
+            if (!sameGroup) return false;
+            for (const op of other.pts) {
+              if (Math.hypot(op[0] - pt[0], op[1] - pt[1]) < 0.5) return true;
+            }
+            for (let s = 0; s < other.pts.length - 1; s++) {
+              const [ax, ay] = other.pts[s];
+              const [bx, by] = other.pts[s + 1];
+              const dx = bx - ax,
+                dy = by - ay,
+                lenSq = dx * dx + dy * dy;
+              if (lenSq < 0.001) continue;
+              let t = ((pt[0] - ax) * dx + (pt[1] - ay) * dy) / lenSq;
+              t = Math.max(0, Math.min(1, t));
+              const px = ax + t * dx,
+                py = ay + t * dy;
+              if (Math.hypot(pt[0] - px, pt[1] - py) < 0.5) {
+                const lenA = Math.hypot(ax - pt[0], ay - pt[1]),
+                  lenB = Math.hypot(bx - pt[0], by - pt[1]);
+                if (lenA > 0.5 && lenB > 0.5) return true;
+              }
+            }
+            return false;
+          });
+          if (hasOtherRamalAtPoint) isJunc = true;
         }
         if (!isJunc) {
           isJunc = engine.bajantes.some((b) => {
@@ -318,10 +381,10 @@ export function drawRamalPath(
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 2 * engine.zoom;
     ctx.setLineDash([]);
-    const tickLen = engine.mm2cvs(1.0);
-    // Ticks más finos (no con cap redondo a ancho de tubería → bulto)
-    ctx.lineCap = 'butt';
-    ctx.lineWidth = 1.2 * engine.zoom;
+    const tickLen = engine.mm2cvs(1.2);
+    // N5: trazos transversales más gruesos, extremo cuadrado, llegan a extremos
+    ctx.lineCap = 'square';
+    ctx.lineWidth = 1.8 * engine.zoom;
     elbows.forEach((elb) => {
       ctx.beginPath();
       ctx.moveTo(

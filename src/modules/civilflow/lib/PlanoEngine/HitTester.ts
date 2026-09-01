@@ -145,6 +145,25 @@ export function snapToSegment(x: number, y: number, pts: number[][], threshold: 
   return best;
 }
 
+export function closestSegmentIndex(
+  pts: number[][],
+  x: number,
+  y: number,
+): { idx: number; dist: number } | null {
+  if (!pts || pts.length < 2) return null;
+  let bestIdx = -1;
+  let bestD = Infinity;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const d = pointToSegmentDist(x, y, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]);
+    if (d < bestD) {
+      bestD = d;
+      bestIdx = i;
+    }
+  }
+  if (bestIdx < 0) return null;
+  return { idx: bestIdx, dist: bestD };
+}
+
 export function rotatedRectCorners(
   cx: number,
   cy: number,

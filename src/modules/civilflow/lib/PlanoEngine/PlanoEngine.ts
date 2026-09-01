@@ -1389,44 +1389,21 @@ export default class PlanoEngine implements IPlanoEngineCore {
     } else if (k === 'delete' || k === 'backspace') {
       if (!this.activeRamal && !this.activeArea) {
         if (this.multiSel && this.multiSel.length > 0) {
-          this.deleteSelected(this.multiSel);
+          this.deleteSelected(this.multiSel, { noMerge: true });
           this.multiSel = [];
         } else if (this.selId) {
           const sel = this.getSelected() as Record<string, unknown> | null;
-          // Ramal (o tributario) con más de 2 puntos: recortar el segmento del extremo donde el
-          // usuario hizo clic para seleccionar (guardado en _selPointCvs al seleccionar), no el
-          // último punto del trazo: el usuario selecciona el segmento inicial y Suprimir le
-          // borraba el final cuando el cursor ya no está sobre el segmento elegido. El chequeo
-          // por pts (no por tipo === 'ramal') cubre también tributarios y ramales legados sin
-          // campo tipo; las guías (GL) se excluyen porque no viven en engine.ramales.
           const ptsArr = ((sel as { pts?: unknown } | null)?.pts ?? []) as number[][];
-          const isStraight = (() => {
-            if (ptsArr.length <= 2) return true;
-            const bdx = (ptsArr[1] as number[])[0] - (ptsArr[0] as number[])[0];
-            const bdy = (ptsArr[1] as number[])[1] - (ptsArr[0] as number[])[1];
-            const bl = Math.hypot(bdx, bdy);
-            if (bl < 1e-6) return false;
-            for (let i = 2; i < ptsArr.length; i++) {
-              const dx = (ptsArr[i] as number[])[0] - (ptsArr[i - 1] as number[])[0];
-              const dy = (ptsArr[i] as number[])[1] - (ptsArr[i - 1] as number[])[1];
-              const cr = bdx * dy - bdy * dx;
-              const dt = bdx * dx + bdy * dy;
-              if (Math.abs(cr) > 1e-6 || dt < 0) return false;
-            }
-            return true;
-          })();
-          const hasPolyline =
-            ptsArr.length > 2 &&
-            !isStraight &&
-            !String((sel as { id?: unknown }).id ?? '').startsWith('GL');
-          if (hasPolyline) {
+          const isRamalLike =
+            ptsArr.length >= 2 && !String((sel as { id?: unknown }).id ?? '').startsWith('GL');
+          if (isRamalLike) {
             const sp = this._selPointCvs;
             const cv =
-              sp && sp.x > 0
+              sp && (sp.x !== 0 || sp.y !== 0)
                 ? { x: sp.x, y: sp.y }
                 : (() => {
-                    const last = ptsArr[ptsArr.length - 1];
-                    return this.toCvs(last[0], last[1]);
+                    const mid = ptsArr[0];
+                    return this.toCvs(mid[0], mid[1]);
                   })();
             eraseRamalAt(this, sel as never, cv.x, cv.y);
           } else {

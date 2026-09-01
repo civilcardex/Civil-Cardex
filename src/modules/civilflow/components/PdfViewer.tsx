@@ -1014,6 +1014,66 @@ function PdfViewer_({
           return;
         }
       }
+      // N9: evitar duplicados — eliminar cualquier accesorio conflictivo existente en el mismo punto antes de crear el nuevo (T+Q90, etc.)
+      // Se limpia tanto codos como tees en ese punto para que solo quede el seleccionado.
+      {
+        const TOL2 = 0.5;
+        const isCodoId = (v: string) => v.toLowerCase().includes('codo');
+        for (const other of eng.ramales) {
+          if (!other.pts) continue;
+          // endpoint inicio
+          if (
+            other.accesorioInicio &&
+            Math.hypot(other.pts[0][0] - accPt[0], other.pts[0][1] - accPt[1]) < TOL2
+          ) {
+            const isExistingCodo = isCodoId(other.accesorioInicio);
+            const isNewCodo = isCodoId(accId);
+            // conflicto: existente es codo y nuevo es tee, o viceversa, o ambos codos/ambos tees en mismo punto (duplicado)
+            if (
+              (isExistingCodo && !isNewCodo) ||
+              (!isExistingCodo && isNewCodo) ||
+              other.id !== r.id ||
+              junctionIndex !== 0
+            ) {
+              if (other.id === r.id && junctionIndex === 0) continue; // el que vamos a sobreescribir
+              other.accesorioInicio = '';
+            }
+          }
+          const li = other.pts.length - 1;
+          if (
+            other.accesorioFin &&
+            Math.hypot(other.pts[li][0] - accPt[0], other.pts[li][1] - accPt[1]) < TOL2
+          ) {
+            const isExistingCodo = isCodoId(other.accesorioFin);
+            const isNewCodo = isCodoId(accId);
+            if (
+              (isExistingCodo && !isNewCodo) ||
+              (!isExistingCodo && isNewCodo) ||
+              other.id !== r.id ||
+              junctionIndex !== li
+            ) {
+              if (other.id === r.id && junctionIndex === li) continue;
+              other.accesorioFin = '';
+            }
+          }
+          if (other.accMed) {
+            for (const k of Object.keys(other.accMed)) {
+              const m = k.match(/^accMed(\d+)$/);
+              if (!m) continue;
+              const p = other.pts[parseInt(m[1], 10)];
+              if (!p || Math.hypot(p[0] - accPt[0], p[1] - accPt[1]) >= TOL2) continue;
+              const isExistingCodo = isCodoId(other.accMed[k]);
+              const isNewCodo = isCodoId(accId);
+              const isSelf = other.id === r.id && parseInt(m[1], 10) === junctionIndex;
+              if (isSelf) continue;
+              // always remove conflicting accMed at the same point (duplicate dedup)
+              void isExistingCodo;
+              void isNewCodo;
+              delete other.accMed[k];
+            }
+          }
+        }
+      }
       if (isIni) {
         r.accesorioInicio = accId;
       } else if (isFin) {
