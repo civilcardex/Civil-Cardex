@@ -49,7 +49,7 @@ interface AccessoriesSectionProps {
   accent: string;
   items: AccessoryDef[];
   /** ids de fila que fusionan varios ids REALES en un solo contador (p. ej. las tres
-   *  orientaciones del codo 90°: horizontal + sube + baja suman en una sola fila). */
+   *  orientaciones del codo 90° medio: codo90rm + sube + baja suman en una sola fila). */
   merge?: Record<string, string[]>;
 }
 

@@ -16,7 +16,7 @@ export const ACCESORIOS_HIDRO = [
   {
     id: 'codo90rm',
     emoji: '🔩',
-    nombre: 'Codo 90°',
+    nombre: 'Codo medio 90°',
     icono: '/iconos_civilflow/accesorios/codo90rm.webp',
     cat: 'Codos',
   },

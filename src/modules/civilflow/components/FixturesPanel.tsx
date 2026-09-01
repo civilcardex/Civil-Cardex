@@ -777,7 +777,7 @@ const AparatosPanel = memo(function AparatosPanel_({
   };
 
   // Ítem: las orientaciones del codo 90° medio se fusionan en UNA sola fila de la sidebar —
-  // el contador suma horizontal + sube + baja, independiente de la orientación pedida. La fila
+  // el contador suma medio + sube + baja, independiente de la orientación pedida. La fila
   // única se llama igual que el id base; +/− escriben sobre ids REALES vivos (para AF/AC un
   // codo manual en 'codo90rm' sería borrado por calcHydroAccessories al re-sincronizar desde
   // los campos del ramal, así que el + escribe 'codo90rmSube'; el − quita de la orientación
@@ -805,7 +805,7 @@ const AparatosPanel = memo(function AparatosPanel_({
           ].includes(a.id) &&
           a.id !== 'codo90rmSube' &&
           a.id !== 'codo90rmBaja',
-      ).map((a) => (a.id === 'codo90rm' ? { ...a, nombre: 'Codo 90° horizontal' } : a)),
+      ).map((a) => (a.id === 'codo90rm' ? { ...a, nombre: 'Codo medio 90°' } : a)),
     [],
   );
   const gasAccItems = useMemo(
