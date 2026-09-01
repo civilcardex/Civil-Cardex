@@ -189,6 +189,7 @@ export function computeAccesoriosTable(
     y: number;
     net?: string;
     recibeDeIds?: string[];
+    planId?: string;
   }> = [];
   for (const plan of plans || []) {
     if (plan.status !== 'confirmed') continue;

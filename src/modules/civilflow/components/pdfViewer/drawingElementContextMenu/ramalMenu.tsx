@@ -519,7 +519,9 @@ function MidRamalAccessorySelector({
               if (fresh.aparatoInicio) actualField = 'aparatoInicio';
               else if (fresh.aparatoFin) actualField = 'aparatoFin';
               else return;
-              const actualOldApp = (fresh as unknown as Record<string, unknown>)[actualField] || '';
+              const actualOldApp = String(
+                (fresh as unknown as Record<string, unknown>)[actualField] || '',
+              );
               const actualUpdates: Record<string, unknown> = { [actualField]: null };
               eng.updateElementById(element.id, actualUpdates);
               setContextMenuState((prev) =>

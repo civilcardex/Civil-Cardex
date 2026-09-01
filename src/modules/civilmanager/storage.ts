@@ -162,7 +162,7 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
     await upsert('cm_proveedores', state.proveedores);
     await upsert(
       'cm_cuadrillas',
-      state.cuadrillas.map(({ integrantes, ...q }) => q),
+      state.cuadrillas.map(({ integrantes: _integrantes, ...q }) => q),
     );
     const allIntegrantes = state.cuadrillas.flatMap((q) =>
       q.integrantes.map((it) => ({
