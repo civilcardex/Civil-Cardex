@@ -38,7 +38,7 @@ function makeEngine(ramales: PlanoRamal[]): {
   deleteCalls: string[];
 } {
   const deleteCalls: string[] = [];
-  const engine = {
+  const engine: Partial<IPlanoEngineCore> = {
     ramales,
     bajantes: [],
     dims: [],
@@ -49,13 +49,28 @@ function makeEngine(ramales: PlanoRamal[]): {
     selId: null,
     _hiddenNets: new Set(),
     activeNet: 'san',
-    zoom: 1,
+    tipoTramo: 'ramal',
+    padreTributario: null,
+    tool: 'line',
+    activeRamal: null,
+    _ramalDefaults: { material: '', diametro: '', pendiente: 0 },
+    _netCounts: {
+      san: { ramal: 0, tributario: 0 },
+      vent: { ramal: 0, tributario: 0 },
+    },
+    nivelActual: { label: 'P1', n: 1, npt: 0 } as unknown as IPlanoEngineCore['nivelActual'],
+    pxToM: (px: number) => px,
     toPlane: (x: number, y: number) => ({ x, y }),
+    zoom: 1,
     render: () => {},
     _emitSelect: () => {},
     _emitStatus: () => {},
     _markDirty: () => {},
     _renumberRamales: () => {},
+    _renumberMontantes: () => {},
+    _renumberBajantes: () => {},
+    _renumberAreas: () => {},
+    _emitDelete: () => {},
     deleteSelected: () => {
       const id = engine.selId as string | null;
       deleteCalls.push(String(id));
