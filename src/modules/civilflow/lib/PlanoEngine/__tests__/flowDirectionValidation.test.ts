@@ -126,7 +126,7 @@ describe('dirección de flujo — canónicos', () => {
     expect(engine.ramales.length).toBe(1);
   });
 
-  it('vent que llega hacia unión san se bloquea', () => {
+  it('vent que llega al CUERPO de san NO dispara alerta de reventilado (Item 4)', () => {
     const existing = mkRamal(
       'RS1',
       'san',
@@ -142,8 +142,75 @@ describe('dirección de flujo — canónicos', () => {
       [20, 40],
       [20, 0],
     ]);
+    // Item 4: vent conectado al CUERPO (no extremo) del san es conexión válida —
+    // no debe aparecer la alerta de dirección de flujo, y el ramal se crea.
+    expect(engine.ramales).toHaveLength(n + 1);
+    expect(alerts.some((a) => /reventilado/i.test(a))).toBe(false);
+  });
+
+  it('vent que llega al EXTREMO de san contra flujo se bloquea (Item 4)', () => {
+    const existing = mkRamal(
+      'RS1',
+      'san',
+      [
+        [0, 0],
+        [40, 0],
+      ],
+      5,
+    );
+    const { engine, alerts } = makeEngine([existing], [], 'vent');
+    const n = engine.ramales.length;
+    // Vent llega al EXTREMO [0,0] del san fluyendo hacia la unión (contra flujo).
+    draw(engine, 'vent', [
+      [0, 40],
+      [0, 0],
+    ]);
     expect(engine.ramales).toHaveLength(n);
     expect(alerts.some((a) => /reventilado/i.test(a))).toBe(true);
+  });
+
+  it('vent arrancando del EXTREMO de san en línea recta NO dispara alerta de ángulo', () => {
+    const existing = mkRamal(
+      'RS1',
+      'san',
+      [
+        [0, 0],
+        [40, 0],
+      ],
+      5,
+    );
+    const { engine, alerts } = makeEngine([existing], [], 'vent');
+    const n = engine.ramales.length;
+    // El vent continúa la línea del san (ángulo entre líneas 0°) — en el EXTREMO
+    // no se valida ángulo: es una conexión válida.
+    draw(engine, 'vent', [
+      [0, 0],
+      [-20, 0],
+    ]);
+    expect(engine.ramales).toHaveLength(n + 1);
+    expect(alerts.some((a) => /ángulo|reventilado|dirección/i.test(a))).toBe(false);
+  });
+
+  it('vent en Y a 45° sobre el cuerpo de san (135° entre vectores de flujo) se permite', () => {
+    const existing = mkRamal(
+      'RS1',
+      'san',
+      [
+        [0, 0],
+        [40, 0],
+      ],
+      5,
+    );
+    const { engine, alerts } = makeEngine([existing], [], 'vent');
+    const n = engine.ramales.length;
+    // Vent nace del cuerpo en 135° respecto del flujo del san — ángulo de LÍNEA
+    // = 45° (|cos| pliega) → Y válida.
+    draw(engine, 'vent', [
+      [20, 0],
+      [5.858, 14.142],
+    ]);
+    expect(engine.ramales).toHaveLength(n + 1);
+    expect(alerts.some((a) => /ángulo|reventilado|dirección/i.test(a))).toBe(false);
   });
 
   it('vent multi-segmento saliendo en Y (45°) de san NO dispara dirección de flujo', () => {

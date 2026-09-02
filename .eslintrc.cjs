@@ -44,6 +44,11 @@ module.exports = {
         'react-hooks/set-state-in-effect': 'off',
       },
     },
+    {
+      // Debug console logs are intentional in regression tests for the CAD engine.
+      files: ['src/**/__tests__/**'],
+      rules: { 'no-console': 'off' },
+    },
   ],
   ignorePatterns: ['dist', 'node_modules', '*.config.*'],
 };
