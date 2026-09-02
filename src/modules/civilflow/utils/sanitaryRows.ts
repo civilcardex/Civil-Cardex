@@ -506,11 +506,14 @@ export function buildSanConnectivity(
       ...(childrenMap[t._key] || []),
       ...(mergeBranches[t._key] || []),
     ]);
-    const filtered = Array.from(immediate).filter((k) => {
+    // Columna de conexiones: SOLO ramales entre sí — los tributarios asociados no se listan
+    // (su UD ya se acumula aguas arriba vía componentTotalMap/fullChildrenMap).
+    const ramalKids = Array.from(immediate).filter((k) => {
       const tr = byKey.get(k);
-      if (!tr || tr.esBajante) return false;
-      if (tr.tipo !== 'ramal' && tr.tipo !== 'tributario') return false;
-      for (const other of immediate) {
+      return !!tr && !tr.esBajante && tr.tipo === 'ramal';
+    });
+    const filtered = ramalKids.filter((k) => {
+      for (const other of ramalKids) {
         if (other !== k && isDescendantOf(k, other)) return false;
       }
       return true;

@@ -712,14 +712,32 @@ export function computeAccesoriosTable(
   for (const b of bajanteDrawing as Array<{
     id: string;
     diametro: string;
+    x?: number;
+    y?: number;
     net?: string;
     recibeDeIds?: string[];
     planId?: string;
   }>) {
     const bNet = b.net || net;
     if (bNet !== net) continue;
-    const ids = b.recibeDeIds;
-    if (!ids || ids.length === 0 || ids.length > 2) continue;
+    // Ítem: además de recibeDeIds (que puede estar incompleto — solo el primer ramal conectado),
+    // detectar los ramales conectados GEOMÉTRICAMENTE (un extremo coincide con el bajante). Así
+    // una conexión doble de 2 ramales físicos se cuenta como doble (Y doble + 2 codos 45°) aunque
+    // recibeDeIds solo registre uno.
+    const geomIds: string[] = [];
+    if (b.x != null && b.y != null) {
+      const allForPlan = [...drawingRamales, ...tribDrawing, ...ventRamales].filter(
+        (r) => r.planId === b.planId,
+      );
+      for (const r of allForPlan) {
+        if (!r.pts || r.pts.length < 2) continue;
+        const eps = [r.pts[0], r.pts[r.pts.length - 1]];
+        if (eps.some((p) => Math.hypot(p[0] - b.x!, p[1] - b.y!) < 0.5)) geomIds.push(r.id);
+      }
+    }
+    const merged = new Set<string>([...(b.recibeDeIds || []), ...geomIds]);
+    const ids = [...merged];
+    if (ids.length === 0 || ids.length > 2) continue;
     const bDiamStr = fmtPulg(diamPulgFromLabel(b.diametro));
     if (!bDiamStr || bDiamStr === '—') continue;
     const bPulg = diamPulgFromLabel(b.diametro);

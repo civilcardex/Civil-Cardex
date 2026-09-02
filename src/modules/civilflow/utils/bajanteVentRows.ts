@@ -266,15 +266,19 @@ export function computeBajanteVentTable(
     if (isVent) {
       resolvedVentDprop = t.bajDprop || 0;
     } else {
-      let foundVentVt = null;
+      // Item 2: el diámetro propuesto de ventilación es el MAYOR de todos los
+      // bajantes de ventilación conectados al mismo bajante sanitario (no el
+      // primero). Si todos los vent bajantes conectados se sincronizan al mismo
+      // diámetro (ver PlanoEngineSelection), esto recoge ese valor único.
+      let maxVentPulg = 0;
       for (const vk of ventBajKeys) {
         const vt = tramosSan.find((x) => x._key === vk);
         if (vt) {
-          foundVentVt = vt;
-          break;
+          const vPulg = vt.bajDprop || 0;
+          if (vPulg > maxVentPulg) maxVentPulg = vPulg;
         }
       }
-      resolvedVentDprop = foundVentVt ? foundVentVt.bajDprop || 0 : t.ventDprop || 0;
+      resolvedVentDprop = maxVentPulg > 0 ? maxVentPulg : t.ventDprop || 0;
     }
 
     const res = calculateVentStack({

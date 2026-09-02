@@ -96,6 +96,12 @@ export function savePlanTrazos(planId: string, data: unknown): void {
 // Ver supabase/migrations/20260730000001_civilflow_schema.sql.
 // ─────────────────────────────────────────────────────────────────────────
 
+// ponytail: filas de Supabase sin tipo generado — un acceso tipado genérico evita el `any` y
+// el `as unknown as` en los 8 mappers rowToX de abajo. `g(row, 'col', fb)` devuelve el valor
+// con el tipo de `fb` (o `fb` si la columna es null/undefined).
+type SupabaseRow = Record<string, unknown>;
+const g = <T>(row: SupabaseRow, key: string, fb: T): T => (row[key] as T) ?? fb;
+
 // ponytail: header shared — 3 fields repeated in 7 mappers
 function baseRow(planoId: number, userId: string, clientId: string) {
   return { plano_id: planoId, user_id: userId, client_id: clientId };
@@ -148,49 +154,48 @@ function ramalToRow(planoId: number, userId: string, r: PlanoRamal) {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToRamal(row: any): PlanoRamal {
+function rowToRamal(row: SupabaseRow): PlanoRamal {
   return {
-    id: row.client_id,
-    net: row.net,
-    tipo: row.tipo,
-    padre: row.padre,
-    pts: row.pts ?? [],
-    totalL: row.total_l,
-    label: row.label,
-    ini: row.ini,
-    fin: row.fin,
-    piso: row.piso,
-    dz: row.dz,
-    uc: row.uc,
-    labelX: row.label_x,
-    labelY: row.label_y,
-    labelAngle: row.label_angle,
-    material: row.material,
-    diametro: row.diametro,
-    pendiente: row.pendiente,
-    bloqueado: row.bloqueado,
-    accesorioInicio: row.accesorio_inicio ?? undefined,
-    accesorioFin: row.accesorio_fin ?? undefined,
-    diametroInicio: row.diametro_inicio ?? undefined,
-    diametroFin: row.diametro_fin ?? undefined,
-    aparatoInicio: row.aparato_inicio ?? undefined,
-    aparatoFin: row.aparato_fin ?? undefined,
-    nSalidas: row.n_salidas ?? undefined,
-    diamPulg: row.diam_pulg ?? undefined,
-    _tribReversed: row.trib_reversed ?? undefined,
-    accMed: row.acc_med ?? undefined,
-    caudal: row.caudal ?? undefined,
-    lvert: row.lvert ?? undefined,
-    mergesFrom: row.merges_from ?? undefined,
-    sifonLabelIni: row.sifon_label_ini ?? undefined,
-    sifonLabelFin: row.sifon_label_fin ?? undefined,
-    showLength: row.show_length ?? true,
-    showName: row.show_name ?? true,
-    showGuide: row.show_guide ?? true,
-    fixtures: row.fixtures ?? undefined,
-    hydroAcc: row.hydro_accesorios ?? undefined,
-    gasAcc: row.gas_accesorios ?? undefined,
+    id: g(row, 'client_id', ''),
+    net: g(row, 'net', ''),
+    tipo: g(row, 'tipo', ''),
+    padre: g(row, 'padre', ''),
+    pts: g(row, 'pts', []),
+    totalL: g(row, 'total_l', 0),
+    label: g(row, 'label', ''),
+    ini: g(row, 'ini', ''),
+    fin: g(row, 'fin', ''),
+    piso: g(row, 'piso', ''),
+    dz: g(row, 'dz', ''),
+    uc: g(row, 'uc', 0),
+    labelX: g(row, 'label_x', 0),
+    labelY: g(row, 'label_y', 0),
+    labelAngle: g(row, 'label_angle', 0),
+    material: g(row, 'material', ''),
+    diametro: g(row, 'diametro', ''),
+    pendiente: g(row, 'pendiente', 0),
+    bloqueado: g<boolean | undefined>(row, 'bloqueado', undefined),
+    accesorioInicio: g(row, 'accesorio_inicio', undefined),
+    accesorioFin: g(row, 'accesorio_fin', undefined),
+    diametroInicio: g(row, 'diametro_inicio', undefined),
+    diametroFin: g(row, 'diametro_fin', undefined),
+    aparatoInicio: g(row, 'aparato_inicio', undefined),
+    aparatoFin: g(row, 'aparato_fin', undefined),
+    nSalidas: g(row, 'n_salidas', undefined),
+    diamPulg: g(row, 'diam_pulg', undefined),
+    _tribReversed: g(row, 'trib_reversed', undefined),
+    accMed: g(row, 'acc_med', undefined),
+    caudal: g(row, 'caudal', undefined),
+    lvert: g(row, 'lvert', undefined),
+    mergesFrom: g(row, 'merges_from', undefined),
+    sifonLabelIni: g(row, 'sifon_label_ini', undefined),
+    sifonLabelFin: g(row, 'sifon_label_fin', undefined),
+    showLength: g(row, 'show_length', true),
+    showName: g(row, 'show_name', true),
+    showGuide: g(row, 'show_guide', true),
+    fixtures: g(row, 'fixtures', undefined),
+    hydroAcc: g(row, 'hydro_accesorios', undefined),
+    gasAcc: g(row, 'gas_accesorios', undefined),
   };
 }
 
@@ -239,51 +244,50 @@ function bajanteToRow(planoId: number, userId: string, b: PlanoBajante) {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToBajante(row: any): PlanoBajante {
+function rowToBajante(row: SupabaseRow): PlanoBajante {
   return {
-    id: row.client_id,
-    net: row.net,
-    tipo: row.tipo,
-    code: row.code,
-    x: row.x,
-    y: row.y,
-    pisoBase: row.piso_base,
-    pisoCima: row.piso_cima,
-    nptBase: row.npt_base,
-    nptCima: row.npt_cima,
-    hVert: row.h_vert,
-    dNominal: row.d_nominal,
+    id: g(row, 'client_id', ''),
+    net: g(row, 'net', ''),
+    tipo: g(row, 'tipo', ''),
+    code: g(row, 'code', ''),
+    x: g(row, 'x', 0),
+    y: g(row, 'y', 0),
+    pisoBase: g(row, 'piso_base', ''),
+    pisoCima: g(row, 'piso_cima', ''),
+    nptBase: g(row, 'npt_base', 0),
+    nptCima: g(row, 'npt_cima', 0),
+    hVert: g(row, 'h_vert', 0),
+    dNominal: g(row, 'd_nominal', ''),
     recibeDeIds: [],
     alimentaIds: [],
-    descargaEnId: row.descarga_en_id ?? null,
-    origenId: row.origen_id ?? undefined,
-    ucAcum: row.uc_acum,
-    ucExtra: row.uc_extra,
-    area_m2: row.area_m2,
-    desplazamientos: row.desplazamientos ?? {},
-    lblOffX: row.lbl_off_x,
-    lblOffY: row.lbl_off_y,
-    labelAngle: row.label_angle,
-    labelX: row.label_x,
-    labelY: row.label_y,
-    direccion: row.direccion ?? undefined,
-    aparato: row.aparato ?? undefined,
-    totalL: row.total_l ?? undefined,
-    pendiente: row.pendiente ?? undefined,
-    piso: row.piso ?? undefined,
-    bajR: row.baj_r ?? undefined,
-    ghostData: row.ghost_data ?? undefined,
-    isFantasma: row.is_fantasma ?? undefined,
-    diamPulg: row.diam_pulg ?? undefined,
-    diametro: row.diametro ?? undefined,
-    acoDiam: row.aco_diam ?? undefined,
-    capacidad: row.capacidad ?? undefined,
-    factorSim: row.factor_sim ?? undefined,
-    base: row.base ?? undefined,
-    altura: row.altura ?? undefined,
-    longitud: row.longitud ?? undefined,
-    canalId: row.canal_id ?? undefined,
+    descargaEnId: g(row, 'descarga_en_id', null),
+    origenId: g(row, 'origen_id', undefined),
+    ucAcum: g(row, 'uc_acum', 0),
+    ucExtra: g(row, 'uc_extra', 0),
+    area_m2: g(row, 'area_m2', 0),
+    desplazamientos: g(row, 'desplazamientos', {}),
+    lblOffX: g(row, 'lbl_off_x', 0),
+    lblOffY: g(row, 'lbl_off_y', 0),
+    labelAngle: g(row, 'label_angle', 0),
+    labelX: g(row, 'label_x', 0),
+    labelY: g(row, 'label_y', 0),
+    direccion: g(row, 'direccion', undefined),
+    aparato: g(row, 'aparato', undefined),
+    totalL: g(row, 'total_l', undefined),
+    pendiente: g(row, 'pendiente', undefined),
+    piso: g(row, 'piso', undefined),
+    bajR: g(row, 'baj_r', undefined),
+    ghostData: g(row, 'ghost_data', undefined),
+    isFantasma: g(row, 'is_fantasma', undefined),
+    diamPulg: g(row, 'diam_pulg', undefined),
+    diametro: g(row, 'diametro', undefined),
+    acoDiam: g(row, 'aco_diam', undefined),
+    capacidad: g(row, 'capacidad', undefined),
+    factorSim: g(row, 'factor_sim', undefined),
+    base: g(row, 'base', undefined),
+    altura: g(row, 'altura', undefined),
+    longitud: g(row, 'longitud', undefined),
+    canalId: g(row, 'canal_id', undefined),
   };
 }
 
@@ -301,18 +305,17 @@ function areaToRow(planoId: number, userId: string, a: PlanoArea) {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToArea(row: any): PlanoArea {
+function rowToArea(row: SupabaseRow): PlanoArea {
   return {
-    id: row.client_id,
-    pts: row.pts ?? [],
-    color: row.color,
-    label: row.label,
-    labelX: row.label_x,
-    labelY: row.label_y,
-    labelAngle: row.label_angle,
-    areaM2: row.area_m2,
-    net: row.net ?? undefined,
+    id: g(row, 'client_id', ''),
+    pts: g(row, 'pts', []),
+    color: g(row, 'color', ''),
+    label: g(row, 'label', ''),
+    labelX: g(row, 'label_x', 0),
+    labelY: g(row, 'label_y', 0),
+    labelAngle: g(row, 'label_angle', 0),
+    areaM2: g(row, 'area_m2', 0),
+    net: g(row, 'net', undefined),
   };
 }
 
@@ -329,17 +332,16 @@ function dimToRow(planoId: number, userId: string, d: PlanoDimension) {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToDim(row: any): PlanoDimension {
+function rowToDim(row: SupabaseRow): PlanoDimension {
   return {
-    id: row.client_id,
-    x1: row.x1,
-    y1: row.y1,
-    x2: row.x2,
-    y2: row.y2,
-    L: row.l,
-    lblX: row.lbl_x ?? undefined,
-    lblY: row.lbl_y ?? undefined,
+    id: g(row, 'client_id', ''),
+    x1: g(row, 'x1', 0),
+    y1: g(row, 'y1', 0),
+    x2: g(row, 'x2', 0),
+    y2: g(row, 'y2', 0),
+    L: g(row, 'l', 0),
+    lblX: g(row, 'lbl_x', undefined),
+    lblY: g(row, 'lbl_y', undefined),
   };
 }
 
@@ -357,18 +359,17 @@ function textAnnotToRow(planoId: number, userId: string, t: PlanoTextAnnotation)
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToTextAnnot(row: any): PlanoTextAnnotation {
+function rowToTextAnnot(row: SupabaseRow): PlanoTextAnnotation {
   return {
-    id: row.client_id,
-    x: row.x,
-    y: row.y,
-    text: row.text,
-    fontMm: row.font_mm,
-    boxW: row.box_w,
-    lblOffX: row.lbl_off_x,
-    lblOffY: row.lbl_off_y,
-    textAngle: row.text_angle,
+    id: g(row, 'client_id', ''),
+    x: g(row, 'x', 0),
+    y: g(row, 'y', 0),
+    text: g(row, 'text', ''),
+    fontMm: g(row, 'font_mm', 0),
+    boxW: g(row, 'box_w', 0),
+    lblOffX: g(row, 'lbl_off_x', 0),
+    lblOffY: g(row, 'lbl_off_y', 0),
+    textAngle: g(row, 'text_angle', 0),
   };
 }
 
@@ -380,9 +381,12 @@ function guideLineToRow(planoId: number, userId: string, g: PlanoGuideLine) {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToGuideLine(row: any): PlanoGuideLine {
-  return { id: row.client_id, net: row.net, pts: row.pts ?? [] };
+function rowToGuideLine(row: SupabaseRow): PlanoGuideLine {
+  return {
+    id: g(row, 'client_id', ''),
+    net: g(row, 'net', ''),
+    pts: g(row, 'pts', [] as unknown as [number, number][]),
+  };
 }
 
 function ghostToRow(planoId: number, userId: string, g: CrossFloorGhost) {
@@ -404,21 +408,21 @@ function ghostToRow(planoId: number, userId: string, g: CrossFloorGhost) {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToGhost(row: any): CrossFloorGhost {
+function rowToGhost(row: SupabaseRow): CrossFloorGhost {
   return {
-    id: row.id_cliente,
-    net: row.red,
-    code: row.codigo,
-    x: row.x,
-    y: row.y,
-    dNominal: row.d_nominal,
-    direccion: row.direccion,
-    parentDireccion: row.direccion_padre ?? undefined,
-    piso: row.piso,
-    sourcePlanId: row.plano_origen_id != null ? String(row.plano_origen_id) : '',
-    sourceBajanteId: row.bajante_origen_id,
-    targetBajanteId: row.bajante_destino_id ?? undefined,
+    id: g(row, 'id_cliente', ''),
+    net: g(row, 'red', ''),
+    code: g(row, 'codigo', ''),
+    x: g(row, 'x', 0),
+    y: g(row, 'y', 0),
+    dNominal: g(row, 'd_nominal', ''),
+    direccion: g<'sube' | 'baja'>(row, 'direccion', 'baja'),
+    parentDireccion: g<'sube' | 'baja' | undefined>(row, 'direccion_padre', undefined),
+    piso: g(row, 'piso', ''),
+    sourcePlanId:
+      g(row, 'plano_origen_id', '') != null ? String(g(row, 'plano_origen_id', '')) : '',
+    sourceBajanteId: g(row, 'bajante_origen_id', ''),
+    targetBajanteId: g(row, 'bajante_destino_id', undefined),
   };
 }
 
@@ -594,9 +598,31 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
     }
     if (!data || !data.plano) return null;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = data as any;
-    const plano = result.plano;
+    const result = data as {
+      plano?: {
+        version?: number;
+        ts?: string;
+        scale_m?: number;
+        defined_scale_m?: number;
+        active_net?: string;
+        zoom?: number;
+        off_x?: number;
+        off_y?: number;
+      };
+      bajantes?: SupabaseRow[];
+      ramales?: SupabaseRow[];
+      bajante_conexiones?: {
+        origen_client_id: string;
+        destino_client_id: string;
+        tipo: 'recibe' | 'alimenta' | 'descarga';
+      }[];
+      areas?: SupabaseRow[];
+      dimensiones?: SupabaseRow[];
+      anotaciones_texto?: SupabaseRow[];
+      lineas_guia?: SupabaseRow[];
+      fantasmas_entrepisos?: SupabaseRow[];
+    };
+    const plano = result.plano || {};
 
     const bajantes = (result.bajantes ?? []).map(rowToBajante);
     const conexiones = (result.bajante_conexiones ?? []) as {

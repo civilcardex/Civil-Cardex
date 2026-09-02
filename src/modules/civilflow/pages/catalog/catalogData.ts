@@ -15,7 +15,7 @@ export const VENTILACION = [
   {
     mat: 'PVC-V',
     rows: [
-      { dn: '1 ½"', d: 45.22 },
+      // 1 ½" retirado por pedido del usuario — la red de ventilación arranca en 2".
       { dn: '2"', d: 56.76 },
       { dn: '3"', d: 79.0 },
       { dn: '4"', d: 110.08 },
