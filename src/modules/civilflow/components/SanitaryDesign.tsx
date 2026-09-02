@@ -48,6 +48,7 @@ const TH_SUB = { fontSize: 9, textAlign: 'center', padding: '1px 2px' } as const
 
 export default function DisenosSanitarios() {
   const [edit, setEdit] = useState(false);
+  const [editingPend, setEditingPend] = useState<Record<string, string>>({});
   const { tramosSan, updTramoSan } = useTramos();
   const { aps } = useApparatus();
   const { plans } = usePlans();
@@ -490,18 +491,41 @@ export default function DisenosSanitarios() {
                               <input
                                 type="text"
                                 inputMode="decimal"
-                                value={sVal > 0 ? String(sVal) : ''}
+                                value={
+                                  editingPend[tKey] !== undefined
+                                    ? editingPend[tKey]
+                                    : sVal > 0
+                                      ? String(sVal)
+                                      : ''
+                                }
                                 placeholder="—"
+                                onFocus={() => {
+                                  if (editingPend[tKey] === undefined && sVal > 0) {
+                                    setEditingPend((prev) => ({ ...prev, [tKey]: String(sVal) }));
+                                  }
+                                }}
                                 onChange={(e) => {
                                   const raw = e.target.value
                                     .replace(/,/g, '.')
-                                    .replace(/[^0-9.]/g, '');
-                                  const v = parseFloat(raw) || 0;
-                                  writePendienteToDrawing(tKey, 'san', v, plans);
+                                    .replace(/[^0-9.]/g, '')
+                                    .replace(/(\..*)\./g, '$1');
+                                  setEditingPend((prev) => ({ ...prev, [tKey]: raw }));
                                 }}
                                 onBlur={(e) => {
-                                  const v = parseFloat(e.target.value.replace(/,/g, '.')) || 0;
+                                  const raw =
+                                    editingPend[tKey] !== undefined
+                                      ? editingPend[tKey]
+                                      : e.target.value;
+                                  const v = parseFloat(String(raw).replace(/,/g, '.')) || 0;
+                                  setEditingPend((prev) => {
+                                    const n = { ...prev };
+                                    delete n[tKey];
+                                    return n;
+                                  });
                                   writePendienteToDrawing(tKey, 'san', v, plans);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
                                 }}
                                 style={{
                                   ...SanitaryDesign_S1,

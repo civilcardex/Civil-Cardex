@@ -21,6 +21,7 @@ import { matLongName, pisoLbl, DEFAULT_PENDIENTE_PCT } from '../constants';
 import { useProject } from '../context/ProjectContext';
 import { usePlans } from '../context/PlansContext';
 import { writeSanDrawingSync, writeHydroDrawingSync } from '../utils/drawingSync';
+import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
 import {
   loadFromStorage,
   saveToStorage,
@@ -1773,6 +1774,37 @@ function PdfViewer_({
               onAlertHandler(
                 'Diámetros pendientes',
                 `${total} elemento(s) sin diámetro asignado: ${lista}${extra}. Asigna los diámetros antes de cerrar el dibujo.`,
+              );
+              return;
+            }
+            // Ítem: el diámetro de un bajante/montante no puede ser inferior al del ramal al que
+            // está conectado — validarlo también al cerrar el dibujo (no solo en edición) para que
+            // no se pueda cerrar con una inconsistencia de diámetros.
+            const sinDiamInferior: string[] = [];
+            for (const b of eng.bajantes) {
+              if (b.tipo !== 'bajante' && b.tipo !== 'montante') continue;
+              if (!b.dNominal) continue;
+              const bIn = diamPulgFromLabel(String(b.dNominal).replace(/-/g, ' '));
+              if (bIn <= 0) continue;
+              for (const rid of b.recibeDeIds || []) {
+                const ram = eng.ramales.find((r) => r.id === rid);
+                if (!ram || !ram.diametro) continue;
+                const ramIn = diamPulgFromLabel(String(ram.diametro).replace(/-/g, ' '));
+                if (ramIn > 0 && ramIn > bIn) {
+                  sinDiamInferior.push(
+                    `${b.code || b.id} (${ram.label || ram.id} ${ram.diametro})`,
+                  );
+                  break;
+                }
+              }
+            }
+            if (sinDiamInferior.length > 0) {
+              const lista = sinDiamInferior.slice(0, 8).join(', ');
+              const extra =
+                sinDiamInferior.length > 8 ? ` y ${sinDiamInferior.length - 8} más` : '';
+              onAlertHandler(
+                'Diámetro no permitido',
+                `Bajante(s)/montante(s) con diámetro inferior al del ramal conectado: ${lista}${extra}. Ajusta los diámetros antes de cerrar el dibujo.`,
               );
               return;
             }

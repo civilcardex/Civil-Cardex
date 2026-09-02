@@ -663,28 +663,25 @@ const BajantesTable = memo(function BajantesTable_() {
                       }
                     }
                   }
-
-                  // 2. Resolver el diámetro propuesto de ventilación
+                  // 2. Resolver el diámetro propuesto de ventilación — el MAYOR de
+                  // todos los bajantes de ventilación conectados al mismo bajante
+                  // sanitario (Item 2: todos deben tener el mismo diámetro).
                   let resolvedVentDprop = 0;
                   let ventBajKey = '';
                   if (isVent) {
                     resolvedVentDprop = t.bajDprop || 0;
                     ventBajKey = tKey;
                   } else {
-                    let foundVentVt = null;
+                    let maxVPulg = 0;
                     for (const vk of ventBajKeys) {
                       const vt = tramosSan.find((x) => x._key === vk);
                       if (vt) {
-                        foundVentVt = vt;
-                        ventBajKey = vk;
-                        break;
+                        if (!ventBajKey) ventBajKey = vk;
+                        const vPulg = vt.bajDprop || 0;
+                        if (vPulg > maxVPulg) maxVPulg = vPulg;
                       }
                     }
-                    if (foundVentVt) {
-                      resolvedVentDprop = foundVentVt.bajDprop || 0;
-                    } else {
-                      resolvedVentDprop = t.ventDprop || 0;
-                    }
+                    resolvedVentDprop = maxVPulg > 0 ? maxVPulg : t.ventDprop || 0;
                   }
 
                   const ventRamalDiamPulg = (() => {
@@ -1031,7 +1028,12 @@ const BajantesTable = memo(function BajantesTable_() {
                               nom = '';
                             }
                             if (ventBajKey) {
-                              writeBajantePropToDrawing(ventBajKey, 'vent', 'dNominal', nom, plans);
+                              // Item 1: cambiar el "D vent propuesto" debe actualizar
+                              // TODOS los bajantes de ventilación conectados al mismo
+                              // bajante sanitario (no solo uno).
+                              for (const vk of ventBajKeys.length ? ventBajKeys : [ventBajKey]) {
+                                writeBajantePropToDrawing(vk, 'vent', 'dNominal', nom, plans);
+                              }
                             } else if (t.ventRamalKey) {
                               const res = writeDiametroToDrawing(
                                 t.ventRamalKey,

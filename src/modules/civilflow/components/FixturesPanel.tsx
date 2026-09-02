@@ -554,15 +554,14 @@ const AparatosPanel = memo(function AparatosPanel_({
     ) {
       const head = live.pts[live.pts.length - 1];
       const tail = live.pts[0];
+      // Item 1 (regla global): ocupado = entrelazado con la red. Los glifos de
+      // codo/sifón no cuentan (el aparato los reemplaza). Ambos ocupados → sin
+      // símbolo y sin alerta.
       const headOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, head);
       const tailOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, tail);
       const headOk = !headOcc && flowEndsAt(live, head, 0.5);
       const tailOk = !tailOcc && flowEndsAt(live, tail, 0.5);
       if (headOcc && tailOcc) {
-        eng.triggerAlert(
-          'Aparato no permitido',
-          'El ramal está conectado por ambos extremos (ramal de paso): el aparato solo puede ir en un extremo libre. Crea un ramal nuevo desde el cuerpo de este para el aparato.',
-        );
         return;
       }
       if (!headOk && !tailOk) {
@@ -626,6 +625,8 @@ const AparatosPanel = memo(function AparatosPanel_({
       const tail = live.pts[0];
       const headOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, head);
       const tailOcc = extremoEntrelazado(eng.ramales, eng.bajantes || [], live, tail);
+      // Item 1 (regla global): ambos extremos ocupados → no crear símbolo, sin
+      // alerta. La selección de targetField abajo ya cubre accesorios y conexiones.
       let targetField: 'accesorioInicio' | 'accesorioFin' | null = null;
       let targetDiamField: 'diametroInicio' | 'diametroFin' | null = null;
       if (!headOcc && !live.accesorioFin) {

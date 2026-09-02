@@ -1026,7 +1026,12 @@ export function BajanteConnectionPanel({
                   );
                 const recibidos = bajEl.recibeDeIds || [];
                 return bajRamales.map((r) => {
-                  const isAssociated = recibidos.includes(r.id);
+                  // Ítem: marcar como asociado TODO ramal cuyo extremo coincide con el bajante
+                  // (además de los de recibeDeIds), para que aparezcan checkeados todos los
+                  // conectados aunque recibeDeIds esté incompleto o stale.
+                  const touchesBaj =
+                    !!r.pts && r.pts.some((p) => Math.hypot(p[0] - bajEl.x, p[1] - bajEl.y) < 0.5);
+                  const isAssociated = recibidos.includes(r.id) || touchesBaj;
                   const rStart = r.pts?.[0];
                   const rEnd = r.pts?.[r.pts.length - 1];
                   const distStart = rStart
@@ -1191,7 +1196,7 @@ export function BajanteConnectionPanel({
                             nptBase: nl?.npt ?? 0,
                             nptCima: nl?.npt ?? 0,
                             hVert: 0,
-                            dNominal: '0',
+                            dNominal: ramalEl.diametro || '',
                             recibeDeIds: [ramalEl.id],
                             alimentaIds: [],
                             descargaEnId: null,

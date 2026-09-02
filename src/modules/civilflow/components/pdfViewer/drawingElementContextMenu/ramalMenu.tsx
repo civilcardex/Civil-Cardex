@@ -278,6 +278,19 @@ function MidRamalAccessorySelector({
             if (!eng) return;
             const fresh = eng.ramales.find((r) => r.id === element.id);
             if (!fresh || !fresh.pts || fresh.pts.length < 2) return;
+            // Item 1 (regla global): un extremo está OCUPADO si está entrelazado con
+            // la red (otro ramal/bajante/tee). Los glifos de codo/sifón NO cuentan como
+            // ocupación — el aparato los reemplaza (su propio glifo es un codo). Si
+            // AMBOS extremos están ocupados: no crear símbolo, no modificar existentes,
+            // SIN alerta. Aplica a todas las redes.
+            const blocked0 = val ? extremumOccupied(eng, fresh, fresh.pts[0]) : false;
+            const blocked1 = val
+              ? extremumOccupied(eng, fresh, fresh.pts[fresh.pts.length - 1])
+              : false;
+            if (val && blocked0 && blocked1) {
+              setContextMenuState((prev) => (prev ? { ...prev, visible: false } : prev));
+              return;
+            }
             if (fresh.net === 'san' || fresh.net === 'll') {
               const fStart = Math.hypot(
                 fresh.pts[0][0] - midRamalHit.x,
@@ -291,13 +304,11 @@ function MidRamalAccessorySelector({
               // nearStart (click proximity) put it at the wrong end when a bajante is at the other side.
               const p0 = fresh.pts[0];
               const p1 = fresh.pts[fresh.pts.length - 1];
-              const occ0 = extremumOccupied(eng, fresh, p0);
-              const occ1 = extremumOccupied(eng, fresh, p1);
+              const occ0 = blocked0;
+              const occ1 = blocked1;
               let nearStart: boolean;
               if (occ0 !== occ1) {
                 nearStart = occ1;
-              } else if (occ0 && occ1) {
-                nearStart = false;
               } else {
                 const end0 = flowEndsAt(fresh, p0, 0.5);
                 const end1 = flowEndsAt(fresh, p1, 0.5);
@@ -307,20 +318,14 @@ function MidRamalAccessorySelector({
                 ? 'accesorioInicio'
                 : 'accesorioFin';
               if (val) {
-                const isSifNew = val === 'sif';
-                const accTypeNew = isSifNew ? 'sifon' : 'codo90rmSube';
-                // ponytail: switching aparato replaces the existing codo/sifon — no false alert.
-                // Only warn if the end has a DIFFERENT accessory type (not the aparato codo/sifon).
-                if (
-                  fresh[fieldAcc] &&
-                  fresh[fieldAcc] !== accTypeNew &&
-                  fresh[fieldAcc] !== 'codo90rmSube' &&
-                  fresh[fieldAcc] !== 'codo90rmBaja' &&
-                  fresh[fieldAcc] !== 'sifon'
-                ) {
+                // Un glifo de codo/sifón en el extremo NO bloquea al aparato — el aparato
+                // lo reemplaza (su propio glifo es un codo 90°/sifón). Solo una conexión
+                // real (tee/yee) bloquea la asignación en ese extremo.
+                const accHere = fresh[fieldAcc] || '';
+                if (accHere.startsWith('tee') || accHere.startsWith('yee')) {
                   eng.triggerAlert(
                     'Accesorio existente',
-                    'Este extremo ya tiene un accesorio. Elimínalo antes de asignar un aparto.',
+                    'Este extremo ya tiene un accesorio. Elimínalo antes de asignar un aparato.',
                   );
                   return;
                 }
@@ -476,7 +481,10 @@ function MidRamalAccessorySelector({
               fresh.pts[fresh.pts.length - 1][0] - midRamalHit.x,
               fresh.pts[fresh.pts.length - 1][1] - midRamalHit.y,
             );
-            const nearStart = fStart <= fEnd;
+            // Item 6/2: con un extremo ocupado y otro libre, usar SIEMPRE el libre
+            // (la proximidad del clic no debe mandar el aparato a un extremo con
+            // accesorio/conexión); si ambos libres, decidir por proximidad.
+            const nearStart = blocked0 !== blocked1 ? !blocked0 : fStart <= fEnd;
             const field: 'aparatoInicio' | 'aparatoFin' = nearStart
               ? 'aparatoInicio'
               : 'aparatoFin';
