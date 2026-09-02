@@ -401,3 +401,11 @@ No se pudo hacer una pasada de regresiÃ³n manual completa en navegador sobre e
 - Tests: borrados reproImage.test.ts (347L/3) + reproCarrier.test.ts (765L/8) — 1112L, casos puntuales ya cubiertos por sanitaryConnectivity + sanVentCascade. Suite 33 files 305 passed.
 - Gates: tsc 0, lint 0 err (5 warn), build ✓, vitest 305 passed, graphify update ✓.
 
+
+### Ronda 6 — Tipados + Ponytail + Semántica (2026-08-21)
+- Tipados: storageService.ts 8 ny → SupabaseRow + helper g<T>(row,k,fb) (ponytail, 1 helper para 7 mappers, + data as {plano, ramales...}). 	sc --noEmit 0; s unknown as baratos reducidos donde String(pl.id) basta (190→~180, resto interop conservado).
+- Ponytail: borrados AlimentacionCard.tsx (140L muerta, no importada por InfoTab) + src/assets/{typescript.svg,vite.svg,hero.png} (23KB scaffold) + repro tests ya fuera (1112L). Dedup 6 inputs lazy (LazyDecimalInput/LazyNumInput/CanalDim*) documentado como follow-up — props divergentes, riesgo sin tests UI.
+- Semántica HTML: audit 181 <button> sin 	ype= (deferido por riesgo duplicado, documentado), 10 ole= en no-nativos (legítimos dialog/status), 4 onClick en div (backdrops), headings 120 sanos. No se toca canvas.
+- Buenas prácticas: 54 eslint-disable auditados — 8 ny ya fuera, resto interop justificado; eact-hooks/refs|immutability off en clúster intacto.
+- Gates: tsc 0, lint 0 err (12 warn), build ✓, vitest 45 files 266 passed.
+
