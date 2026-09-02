@@ -300,7 +300,7 @@ export function drawRamalPath(
 
             ctx.save();
             ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 2 * engine.zoom;
+            ctx.lineWidth = 1.2 * engine.zoom;
             ctx.lineJoin = 'round';
             ctx.lineCap = 'round';
             // Hay que reiniciar el dash explícitamente — ctx.save() conserva el dash que el
@@ -347,7 +347,7 @@ export function drawRamalPath(
 
             ctx.save();
             ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 2 * engine.zoom;
+            ctx.lineWidth = 1.2 * engine.zoom;
             // Mismo problema de herencia de dash que el inglete de 45° de arriba — se reinicia explícitamente.
             ctx.setLineDash([]);
             ctx.beginPath();
@@ -379,12 +379,12 @@ export function drawRamalPath(
   if (elbows.length > 0) {
     ctx.save();
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2 * engine.zoom;
+    ctx.lineWidth = 1.2 * engine.zoom;
     ctx.setLineDash([]);
     const tickLen = engine.mm2cvs(1.2);
     // N5: trazos transversales más gruesos, extremo cuadrado, llegan a extremos
     ctx.lineCap = 'square';
-    ctx.lineWidth = 1.8 * engine.zoom;
+    ctx.lineWidth = 1 * engine.zoom;
     elbows.forEach((elb) => {
       ctx.beginPath();
       ctx.moveTo(

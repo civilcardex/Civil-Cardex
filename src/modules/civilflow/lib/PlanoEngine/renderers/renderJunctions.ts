@@ -234,7 +234,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
 
         ctx.save();
         ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 2 * engine.zoom;
+        ctx.lineWidth = 1.2 * engine.zoom;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.setLineDash([]);
@@ -276,15 +276,15 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         }
 
         // White halo: masks the pipe under the junction so the black symbol reads clean.
-        ctx.lineWidth = 3 * engine.zoom;
+        ctx.lineWidth = 1.8 * engine.zoom;
         ctx.strokeStyle = '#ffffff';
         ctx.stroke();
-        ctx.lineWidth = 2 * engine.zoom;
+        ctx.lineWidth = 1.2 * engine.zoom;
         ctx.strokeStyle = '#000000';
         ctx.stroke();
 
         // N5: trazos transversales ligeramente más gruesos, extremos cuadrados (butt→square), llegan a extremos
-        const tickW = 1.8 * engine.zoom;
+        const tickW = 1 * engine.zoom;
         ctx.lineCap = 'square';
         ctx.lineWidth = tickW;
         ctx.beginPath();
@@ -312,7 +312,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
 
       ctx.save();
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2 * engine.zoom;
+      ctx.lineWidth = 1.2 * engine.zoom;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.setLineDash([]);
@@ -330,15 +330,15 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       }
 
       // White halo: masks the pipe under the junction so the black symbol reads clean.
-      ctx.lineWidth = 3 * engine.zoom;
+      ctx.lineWidth = 1.8 * engine.zoom;
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
-      ctx.lineWidth = 2 * engine.zoom;
+      ctx.lineWidth = 1.2 * engine.zoom;
       ctx.strokeStyle = '#000000';
       ctx.stroke();
 
       // N5: trazos transversales más gruesos, extremo cuadrado, llegan a extremos
-      const tickW = 1.8 * engine.zoom;
+      const tickW = 1 * engine.zoom;
       const tickL = engine.mm2cvs(1.0);
       ctx.lineCap = 'square';
       ctx.lineWidth = tickW;
@@ -438,15 +438,27 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
       const [A, B] = r.yeeDobleAt;
       const key = `${A[0].toFixed(2)}_${A[1].toFixed(2)}_${B[0].toFixed(2)}_${B[1].toFixed(2)}`;
       if (drawnPairs.has(key)) continue;
-      const vA = vecsAt(A);
-      const vB = vecsAt(B);
-      // El tronco debe seguir pasando por ambos puntos (2 vectores opuestos en cada vértice).
-      if (vA.length < 2 || vB.length < 2) continue;
+      let vA = vecsAt(A);
+      let vB = vecsAt(B);
+      // Persistencia pedida: el símbolo debe mantenerse aunque un ramal del brazo principal
+      // se borre. Si el tronco ya no pasa por el punto, vA/vB puede quedar con 1 solo vector
+      // (la rama lateral) o vacío. Se sintetiza la dirección del tronco a partir del par
+      // A<->B y se asegura que esté presente para que el glifo siga dibujándose.
+      const trunkAx = B[0] - A[0];
+      const trunkAy = B[1] - A[1];
+      const trunkLen = Math.hypot(trunkAx, trunkAy) || 1;
+      const trunkDirA = { x: trunkAx / trunkLen, y: trunkAy / trunkLen };
+      const trunkDirB = { x: -trunkAx / trunkLen, y: -trunkAy / trunkLen };
+      const hasTrunkA = vA.some((u) => Math.abs(u.x * trunkDirA.x + u.y * trunkDirA.y) > 0.85);
+      const hasTrunkB = vB.some((u) => Math.abs(u.x * trunkDirB.x + u.y * trunkDirB.y) > 0.85);
+      if (!hasTrunkA) vA = [...vA, trunkDirA];
+      if (!hasTrunkB) vB = [...vB, trunkDirB];
+      if (vA.length === 0 || vB.length === 0) continue;
       const cvsA = engine.toCvs(A[0], A[1]);
       const cvsB = engine.toCvs(B[0], B[1]);
       ctx.save();
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2 * engine.zoom;
+      ctx.lineWidth = 1.2 * engine.zoom;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.setLineDash([]);
@@ -466,14 +478,14 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
         }
       }
       // White halo: masks the pipe under the junction so the black symbol reads clean.
-      ctx.lineWidth = 3 * engine.zoom;
+      ctx.lineWidth = 1.8 * engine.zoom;
       ctx.strokeStyle = '#ffffff';
       ctx.stroke();
-      ctx.lineWidth = 2 * engine.zoom;
+      ctx.lineWidth = 1.2 * engine.zoom;
       ctx.strokeStyle = '#000000';
       ctx.stroke();
       ctx.lineCap = 'square';
-      ctx.lineWidth = 1.8 * engine.zoom;
+      ctx.lineWidth = 1 * engine.zoom;
       ctx.beginPath();
       for (const [P, vArr] of [
         [A, vA],

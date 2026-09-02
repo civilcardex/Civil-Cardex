@@ -12,6 +12,22 @@ import { computeCanalFlowArrows, computeCanalSegments } from '../canalAssociatio
 
 const DIR_MAP: Record<string, string> = { sube: 'Sube', baja: 'Baja', continua: 'Continua' };
 
+// Una reventilación (bajante de la red vent) se identifica como "REV[N] [diámetro]" en la línea
+// grande y SOLO la dirección (Sube/Baja/Continua) en la línea pequeña de abajo — sin la palabra
+// "REVENTILACIÓN" por pedido explícito. El consecutivo N se toma del número del código/id de la
+// reventilación (BREV{n}), que _renumberBajantes ya asigna de forma independiente por red y
+// renumera sin huecos ni duplicados al crear/borrar.
+function ventLabelLines(
+  codeStr: string,
+  diamStr: string,
+  dirWord: string,
+): { line1: string; dirText: string } {
+  const m = codeStr.match(/(\d+)/);
+  const n = m ? m[1] : '';
+  const line1 = n ? `REV${n}${diamStr ? ' ' + diamStr : ''}` : diamStr ? `REV${diamStr}` : 'REV';
+  return { line1, dirText: dirWord };
+}
+
 function renderBajanteLabel(
   ctx: CanvasRenderingContext2D,
   engine: IPlanoEngineCore,
@@ -875,9 +891,16 @@ export function renderBajantes(ctx: CanvasRenderingContext2D, engine: IPlanoEngi
       // La línea grande en negrita es solo el código — espeja la etiqueta propia de un ramal,
       // que mantiene su línea de nombre en negrita con el código corto solo y empuja el
       // diámetro a la línea de info más pequeña debajo.
-      const line1 = codeStr || '—';
+      let line1 = codeStr || '—';
       const dirWord = DIR_MAP[b.direccion ?? ''] || '';
-      const dirText = diamStr ? `D=${diamStr}${dirWord ? '  ' + dirWord : ''}` : dirWord;
+      let dirText = diamStr ? `D=${diamStr}${dirWord ? '  ' + dirWord : ''}` : dirWord;
+      if (b.net === 'vent') {
+        // Las reventilaciones se identifican como REV[N] [diámetro] + dirección, en vez del
+        // código BREV{n}-Piso con D= de los bajantes de aguas negras.
+        const v = ventLabelLines(line1, diamStr, dirWord);
+        line1 = v.line1;
+        dirText = v.dirText;
+      }
       renderBajanteLabel(ctx, engine, b, c, r, angle, offDx, offDy, line1, dirText, '_labelBox', 1);
     } else {
       b._labelBox = undefined;
@@ -1024,9 +1047,14 @@ export function renderGhosts(ctx: CanvasRenderingContext2D, engine: IPlanoEngine
           }
         }
       }
-      const line1 = codeStr || '—';
+      let line1 = codeStr || '—';
       const dirWord = DIR_MAP[ghostDir ?? ''] || '';
-      const dirText = diamStr ? `D=${diamStr}${dirWord ? '  ' + dirWord : ''}` : dirWord;
+      let dirText = diamStr ? `D=${diamStr}${dirWord ? '  ' + dirWord : ''}` : dirWord;
+      if (b.net === 'vent') {
+        const v = ventLabelLines(line1, diamStr, dirWord);
+        line1 = v.line1;
+        dirText = v.dirText;
+      }
       renderBajanteLabel(
         ctx,
         engine,
@@ -1115,7 +1143,7 @@ export function renderCrossFloorGhosts(
     // Etiqueta: BAN2-P2 / D=4" Baja (piso corto, diámetro mostrado)
     const shortPiso = toShortPiso(g.piso || '');
     const codeStr = (g.code || '').replace(/#/g, '').toUpperCase();
-    const line1 = codeStr ? `${codeStr}${shortPiso ? '-' + shortPiso : ''}` : shortPiso || '—';
+    let line1 = codeStr ? `${codeStr}${shortPiso ? '-' + shortPiso : ''}` : shortPiso || '—';
     let diamStr = '';
     if (g.dNominal && g.dNominal !== '0') {
       const v = String(g.dNominal).trim();
@@ -1130,7 +1158,12 @@ export function renderCrossFloorGhosts(
     // contra-dirección propia del fantasma. Cae a ghost.direccion para fantasmas legacy escritos
     // antes de que existiera este campo.
     const dirWord = DIR_MAP[g.parentDireccion ?? g.direccion ?? ''] || '';
-    const dirText = diamStr ? `D=${diamStr}${dirWord ? '  ' + dirWord : ''}` : dirWord;
+    let dirText = diamStr ? `D=${diamStr}${dirWord ? '  ' + dirWord : ''}` : dirWord;
+    if (g.net === 'vent') {
+      const v = ventLabelLines(line1, diamStr, dirWord);
+      line1 = v.line1;
+      dirText = v.dirText;
+    }
 
     // Etiqueta sobre el círculo, centrada, sin línea de guía, color de red. Desplazamiento más
     // ajustado que la etiqueta regular de un bajante — el fantasma queda junto a su línea

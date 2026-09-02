@@ -49,7 +49,7 @@ export function drawExtremeAccessorySymbol(
     const capW = rad * 0.35;
 
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.6 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -158,7 +158,7 @@ export function drawExtremeAccessorySymbol(
   } else if (accType === 'codoSube') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.6 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom;
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
     ctx.fill();
@@ -171,7 +171,7 @@ export function drawExtremeAccessorySymbol(
   } else if (accType === 'codoBaja') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.6 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom;
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
     ctx.fill();
@@ -187,7 +187,7 @@ export function drawExtremeAccessorySymbol(
   } else if (accType === 'codo90rmSube') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.6 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom;
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
     ctx.fill();
@@ -199,7 +199,7 @@ export function drawExtremeAccessorySymbol(
   } else if (accType === 'codo90rmBaja') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.6 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom;
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad, 0, Math.PI * 2);
     ctx.fill();
@@ -236,7 +236,7 @@ export function drawExtremeAccessorySymbol(
     // / mm2cvs(0.8) que usa renderJunctions.ts, así que la escala coincide exactamente.
     const juncRad = engine.mm2cvs(2.0);
     const tickLen = engine.mm2cvs(1.0);
-    const armW = 2 * engine.zoom; // mismo ancho de trazo que la tubería propia (no seleccionada) de drawRamalPath, para que el glifo se funda con la línea del ramal
+    const armW = 1.2 * engine.zoom; // mismo ancho de trazo que la tubería propia (no seleccionada) de drawRamalPath, para que el glifo se funda con la línea del ramal
     const arms: { x: number; y: number }[] = [
       { x: dx, y: dy },
       { x: -dx, y: -dy },
@@ -253,7 +253,7 @@ export function drawExtremeAccessorySymbol(
     ctx.stroke();
 
     // N5: trazos transversales ligeramente más gruesos, extremos cuadrados, llegan a extremos
-    ctx.lineWidth = 1.8 * engine.zoom;
+    ctx.lineWidth = 1 * engine.zoom;
     ctx.lineCap = 'square';
     ctx.beginPath();
     for (const a of arms) {
@@ -272,7 +272,7 @@ export function drawExtremeAccessorySymbol(
     const circR = juncRad * 0.45;
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.6 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom;
     ctx.beginPath();
     ctx.arc(c.x, c.y, circR, 0, Math.PI * 2);
     ctx.fill();
@@ -310,7 +310,7 @@ export function drawExtremeAccessorySymbol(
     // la unión; teeLado mantiene la rama a ancho completo.
     const juncRad = engine.mm2cvs(2.0);
     const tickLen = engine.mm2cvs(1.0);
-    const armW = 2 * engine.zoom;
+    const armW = 1.2 * engine.zoom;
     const branchW = accType === 'teeReduccion' ? armW * 0.55 : armW;
     ctx.strokeStyle = '#000000';
     ctx.lineCap = 'round';
@@ -341,7 +341,7 @@ export function drawExtremeAccessorySymbol(
       ctx.stroke();
     }
     // N5: marcas de extremo ligeramente más gruesas, extremos cuadrados, llegan a extremos
-    ctx.lineWidth = 1.8 * engine.zoom;
+    ctx.lineWidth = 1 * engine.zoom;
     ctx.lineCap = 'square';
     ctx.beginPath();
     for (const a of [
@@ -398,7 +398,7 @@ export function drawExtremeAccessorySymbol(
     ctx.lineTo(capRX, capRY);
     ctx.stroke();
     // Pies del corchete — se doblan hacia el tallo/ramal (-outX,-outY), no alejándose
-    ctx.lineWidth = 0.6 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom;
     ctx.beginPath();
     ctx.moveTo(capLX, capLY);
     ctx.lineTo(capLX - outX * capTick, capLY - outY * capTick);
@@ -441,7 +441,7 @@ export function drawExtremeAccessorySymbol(
     ctx.stroke();
 
     // Todo lo de arriba del ramal — más fino que la barra del ramal misma.
-    ctx.lineWidth = 0.6 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom;
 
     // Tallo subiendo del ramal a una sola barra transversal a media altura — tallo más largo
     // que el brazo de una tee simple para que el cuerpo de la llave quede visiblemente
@@ -522,7 +522,7 @@ export function drawExtremeAccessorySymbol(
     ctx.fill();
 
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.6 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom;
     ctx.beginPath();
     ctx.moveTo(cx1 - px * vLen, cy1 - py * vLen);
     ctx.lineTo(cx1 + px * vLen, cy1 + py * vLen);
@@ -548,7 +548,7 @@ export function drawExtremeAccessorySymbol(
 
     ctx.fillStyle = '#000000';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.6 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -581,7 +581,7 @@ export function drawExtremeAccessorySymbol(
 
     ctx.fillStyle = '#000000';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.6 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -606,7 +606,7 @@ export function drawExtremeAccessorySymbol(
   } else if (accType === 'valvCheque') {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.6 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom;
     ctx.beginPath();
     ctx.arc(c.x, c.y, rad * 0.9, 0, Math.PI * 2);
     ctx.fill();
@@ -638,7 +638,7 @@ export function drawExtremeAccessorySymbol(
 
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.6 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -711,7 +711,7 @@ export function drawExtremeAccessorySymbol(
     const capTick = rad * 0.12;
 
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 0.6 * engine.zoom;
+    ctx.lineWidth = 0.35 * engine.zoom;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
@@ -830,7 +830,7 @@ export function drawCornerCodoArc(
   const T_C = { x: c.x + rad * v.x, y: c.y + rad * v.y };
   ctx.save();
   ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 2 * engine.zoom;
+  ctx.lineWidth = 1.2 * engine.zoom;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   // Hay que reiniciar el dash explícitamente — el cuerpo del ramal puede estar discontinuo
@@ -851,7 +851,7 @@ export function drawCornerCodoArc(
     const cross = u.x * v.y - u.y * v.x;
     ctx.arc(ccx, ccy, rad, angle_TA, angle_TC, cross > 0);
   }
-  ctx.lineWidth = 2 * engine.zoom;
+  ctx.lineWidth = 1.2 * engine.zoom;
   ctx.strokeStyle = '#000000';
   ctx.stroke();
   // ponytail: ticks transversales en los extremos del arco — idéntico al quiebre
@@ -860,7 +860,7 @@ export function drawCornerCodoArc(
   const perp_u = { x: -u.y, y: u.x };
   const perp_v = { x: -v.y, y: v.x };
   ctx.lineCap = 'square';
-  ctx.lineWidth = 1.8 * engine.zoom;
+  ctx.lineWidth = 1 * engine.zoom;
   ctx.strokeStyle = '#000000';
   ctx.beginPath();
   ctx.moveTo(T_A.x - (perp_u.x * tickLen) / 2, T_A.y - (perp_u.y * tickLen) / 2);

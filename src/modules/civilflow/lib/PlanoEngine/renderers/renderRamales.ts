@@ -1,6 +1,7 @@
 ﻿import { NETS } from '../PlanoState';
 import { snapTributaryToPadre45Deg, _midpoint } from '../PlanoEngineDrawing';
 import { rotatedRectCorners, pointToSegmentDist } from '../HitTester';
+import { angleAtHalfLength, segmentAtPosition } from '../drawingAngles';
 import type { IPlanoEngineCore, PlanoBajante } from '../PlanoState';
 import { normalizeDnLabel } from '../../../utils/formatUtils';
 import { pisoCortoLoose as getPisoCorto, matDrawingLabel, APARATO_IMG } from '../../../constants';
@@ -214,11 +215,13 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
           flowDy = lastc.y - fc.y;
           flowLen = Math.hypot(flowDx, flowDy);
         } else {
-          // Dirección de flujo previamente definida: primer segmento (pts[0]→pts[1]),
-          // solo _tribReversed la invierte. No depende de la posición de la etiqueta
-          // ni del segmento más cercano — evita diagonal al girar etiqueta rápido.
-          const a = engine.toCvs(r.pts[0][0], r.pts[0][1]);
-          const b = engine.toCvs(r.pts[1][0], r.pts[1][1]);
+          // Dirección de flujo según el SEGMENTO donde está la etiqueta (mitad de longitud
+          // por defecto), manteniendo el SENTIDO del flujo global (no se invierte por
+          // inclinación). Solo _tribReversed invierte el sentido.
+          const seg = segmentAtPosition(r.pts, r.labelX, r.labelY);
+          const useIdx = seg ? seg.idx : 0;
+          const a = engine.toCvs(r.pts[useIdx][0], r.pts[useIdx][1]);
+          const b = engine.toCvs(r.pts[useIdx + 1][0], r.pts[useIdx + 1][1]);
           const flip =
             r._tribReversed && (r.tipo === 'tributario' || ['af', 'ac', 'gas'].includes(r.net))
               ? -1
@@ -356,14 +359,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       const boxH = (lbl ? lineHName : 0) + (infoSegs.length > 0 ? lineHInfo : 0) + boxPadY * 2;
       const drawX = lc.x;
       const drawY = lc.y;
-      let labelAngleDeg = r.labelAngle != null ? r.labelAngle : 0;
-      if (r.labelAngle == null && r.pts && r.pts.length >= 2) {
-        const dx = r.pts[1][0] - r.pts[0][0];
-        const dy = r.pts[1][1] - r.pts[0][1];
-        if (Math.abs(dy) > Math.abs(dx)) {
-          labelAngleDeg = 90;
-        }
-      }
+      const labelAngleDeg = r.labelAngle != null ? r.labelAngle : angleAtHalfLength(r.pts || []);
       const labelAngle = (labelAngleDeg * Math.PI) / 180;
       const cosA = Math.cos(labelAngle),
         sinA = Math.sin(labelAngle);
@@ -1041,8 +1037,16 @@ export function renderActiveRamal(ctx: CanvasRenderingContext2D, engine: IPlanoE
   };
 
   const activeRamales = engine.ramales.filter((r) => r.net === ar.net);
-  for (const r of activeRamales) {
+  // Item 5: preview igual que el trazo real — el vent pega en 45°/90° a ramales san.
+  const snapCandidates =
+    ar.net === 'vent'
+      ? [...activeRamales, ...engine.ramales.filter((r) => r.net === 'san')]
+      : activeRamales;
+  for (const r of snapCandidates) {
     if (r.id === ar.id) continue;
+    // Igual que el trazo real: un ramal no pega a tributarios (evita el círculo
+    // cyan de conexión sobre un tributario que luego finishRamal rechaza).
+    if (ar.tipo === 'ramal' && r.tipo === 'tributario') continue;
     let segSp = null;
     if (engine.snapMode) {
       segSp = snapTributaryToPadre45Deg(mp.x, mp.y, last[0], last[1], r.pts, 20 / engine.zoom);
