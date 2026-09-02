@@ -335,6 +335,33 @@ function sameNetGroupNet(a: string, b: string): boolean {
   return a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
 }
 
+// Item 5: valida que el ángulo de conexión entre un ramal de ventilación y un
+// ramal sanitario sea exactamente 45° (Y) o 90° (codo reventilado), dentro de
+// ANGLE_EPS (0.5°). Antes, la conexión se permitía a 44°/46° porque solo se
+// validaban los segmentos propios de cada ramal, no el ángulo ENTRE ellos.
+// @returns true si el ángulo es 45° o 90° (±0.5°), false si no.
+function ventSanAngleOk(
+  vent: { pts: number[][]; _tribReversed?: boolean },
+  san: { pts: number[][]; _tribReversed?: boolean },
+  pt: number[],
+  tol: number,
+): boolean {
+  const vVec = flowVecAt(vent, pt, tol);
+  if (!vVec) return true; // no se puede medir — no bloquear
+  const sVec = flowVecAt(san, pt, tol);
+  if (!sVec) return true;
+  const vLen = Math.hypot(vVec[0], vVec[1]);
+  const sLen = Math.hypot(sVec[0], sVec[1]);
+  if (vLen < 1e-9 || sLen < 1e-9) return true;
+  const cosAngle = (vVec[0] * sVec[0] + vVec[1] * sVec[1]) / (vLen * sLen);
+  // Ángulo de LÍNEA (0–90°): |cos| pliega 135°→45° — una Y a 45° dibujada "hacia
+  // atrás" respecto del flujo del san es igualmente válida.
+  const clamped = Math.min(1, Math.abs(cosAngle));
+  const angleDeg = (Math.acos(clamped) * 180) / Math.PI;
+  // 45° (Y) o 90° (codo reventilado) — estricto, sin tolerancia arbitraria.
+  return Math.abs(angleDeg - 45) <= 0.5 || Math.abs(angleDeg - 90) <= 0.5;
+}
+
 /** Chequeo de dirección de flujo para san/ll/vent: cada extremo del ramal que toca otro ramal
  *  del mismo grupo (extremo o cuerpo) debe fluir en el mismo sentido que ese ramal; y un ramal
  *  vent que toca san (codo reventilado) debe alejarse de la unión. `extra` cubre el candidato
@@ -417,16 +444,38 @@ export function ramalFlowDirectionCheck(
       if (ram.net === 'vent' && other.net === 'vent') continue;
       if (!other.pts || other.pts.length < 2) continue;
       const oEps = [other.pts[0], other.pts[other.pts.length - 1]];
-      let touches = oEps.some((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1]) < tol);
-      if (!touches) {
+      const touchesEndpoint = oEps.some((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1]) < tol);
+      // Item 4: la alerta de dirección de flujo vent↔san (codo reventilado) solo
+      // aplica cuando el vent se conecta a un EXTREMO del ramal sanitario. Si se
+      // conecta al CUERPO (punto intermedio) del san, la conexión es válida y no
+      // debe mostrar la alerta de flujo — el vent nace del cuerpo del san
+      // (Y/codo sobre el cuerpo), no de su extremo.
+      const crossVentSan =
+        (ram.net === 'vent' && other.net === 'san') || (ram.net === 'san' && other.net === 'vent');
+      // Item 5: el ángulo de conexión vent↔san debe ser 45° (Y) o 90° (codo
+      // reventilado) estricto (±0.5°) SOLO cuando el vent nace del CUERPO del
+      // san. En el EXTREMO no se valida ángulo: arrancar el trazo de ventilación
+      // desde el extremo de un ramal sanitario es válido a cualquier ángulo
+      // (el vent continúa la línea). 44°/46° y equivalentes se rechazan en cuerpo.
+      if (crossVentSan && !touchesEndpoint) {
+        if (!ventSanAngleOk(ram, other, ep, tol)) {
+          return 'El ángulo de conexión entre ventilación y sanitaria debe ser 45° o 90°. Ajusta el ángulo con línea guía.';
+        }
+        // Conexión al cuerpo del san → no validar dirección de flujo (item 4).
+        continue;
+      }
+      // Para uniones no-vent↔san, también aceptar contacto por cuerpo (T/Y sobre
+      // el cuerpo del otro ramal).
+      let touchesBody = false;
+      if (!touchesEndpoint) {
         for (let i = 0; i < other.pts.length - 1; i++) {
           if (pointOnRamalSegment(ep, other.pts[i], other.pts[i + 1], tol)) {
-            touches = true;
+            touchesBody = true;
             break;
           }
         }
       }
-      if (!touches) continue;
+      if (!touchesEndpoint && !touchesBody) continue;
       // Ítem 5: unión vent↔san (codo reventilado) — el flujo del vent debe ALEJARSE de la unión.
       if (other.net === 'san' && ventFlowsIntoJunction(ram, ep, tol)) {
         return 'El ramal de ventilación debe fluir alejándose de la unión reventilado (san → vent). Dibújalo saliendo desde el punto sanitario.';
@@ -439,8 +488,6 @@ export function ramalFlowDirectionCheck(
       // ese par: un vent conectado a san sale a 45°/90° contra el flujo sanitario (Y / codo
       // reventilado), así que su dot contra el san es negativo y lo señalaba como falsa
       // violación de dirección aunque estuviera dibujado correctamente (Ítem 5 del .md).
-      const crossVentSan =
-        (ram.net === 'vent' && other.net === 'san') || (ram.net === 'san' && other.net === 'vent');
       if (!crossVentSan && !flowDirectionOkAt(ram, other, ep, tol)) {
         return 'El ramal que se conecta debe llevar la dirección de flujo del ramal principal. Dibújalo en el mismo sentido.';
       }

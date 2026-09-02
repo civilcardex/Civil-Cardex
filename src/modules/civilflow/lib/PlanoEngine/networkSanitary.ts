@@ -1,5 +1,6 @@
 import type { IPlanoEngineCore } from './PlanoState';
 import { loadFromStorage, saveToStorage } from '../../services/storageService';
+import { ANGLE_EPS } from './drawingAngles';
 
 interface HidroTramoEntry {
   accesorios: Record<string, number>;
@@ -169,6 +170,77 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
 
   const yeeCounts: Record<string, { simple: number; doble: number }> = {};
   const usedInDouble = new Set<number>();
+  // Para validar doble yee se necesita la dirección del tronco de cada unión, igual que en
+  // renderJunctions.ts (trunk vectors). Se recalcula aquí para no depender del vector posición
+  // radial que era incorrecto.
+  const junctionTrunks: { x: number; y: number }[] = [];
+  // Recalcular trunk dirs a partir de los vectores únicos ya detectados arriba es costoso;
+  // se aproxima usando la geometría de junctionPositions vs ramales: se busca el par colineal
+  // más opuesto entre los vectores únicos de cada P (misma lógica que arriba) y se guarda uA.
+  // Para simplificar, se deriva del mapa de vectores únicos recalculando por P.
+  const trunkDirForPos = (P: { x: number; y: number }): { x: number; y: number } | null => {
+    const vecs: { x: number; y: number }[] = [];
+    sanRamales.forEach((rr) => {
+      if (!rr.pts) return;
+      let isV = false;
+      for (let k = 0; k < rr.pts.length; k++) {
+        if (Math.hypot(rr.pts[k][0] - P.x, rr.pts[k][1] - P.y) < 0.5) {
+          isV = true;
+          if (k > 0) {
+            const dx = rr.pts[k - 1][0] - P.x;
+            const dy = rr.pts[k - 1][1] - P.y;
+            const l = Math.hypot(dx, dy);
+            if (l > 0.1) vecs.push({ x: dx / l, y: dy / l });
+          }
+          if (k < rr.pts.length - 1) {
+            const dx = rr.pts[k + 1][0] - P.x;
+            const dy = rr.pts[k + 1][1] - P.y;
+            const l = Math.hypot(dx, dy);
+            if (l > 0.1) vecs.push({ x: dx / l, y: dy / l });
+          }
+        }
+      }
+      if (!isV) {
+        for (let k = 0; k < rr.pts.length - 1; k++) {
+          const A = rr.pts[k];
+          const B = rr.pts[k + 1];
+          const ddx = B[0] - A[0];
+          const ddy = B[1] - A[1];
+          const lenSq = ddx * ddx + ddy * ddy;
+          if (lenSq > 0.001) {
+            let t = ((P.x - A[0]) * ddx + (P.y - A[1]) * ddy) / lenSq;
+            t = Math.max(0, Math.min(1, t));
+            const projX = A[0] + t * ddx;
+            const projY = A[1] + t * ddy;
+            const dist = Math.hypot(P.x - projX, P.y - projY);
+            const lenA = Math.hypot(A[0] - P.x, A[1] - P.y);
+            const lenB = Math.hypot(B[0] - P.x, B[1] - P.y);
+            if (dist < 0.5 && lenA > 0.5 && lenB > 0.5) {
+              vecs.push({ x: (A[0] - P.x) / lenA, y: (A[1] - P.y) / lenA });
+              vecs.push({ x: (B[0] - P.x) / lenB, y: (B[1] - P.y) / lenB });
+            }
+          }
+        }
+      }
+    });
+    const uniq: typeof vecs = [];
+    vecs.forEach((v) => {
+      if (!uniq.some((u) => u.x * v.x + u.y * v.y > 0.99)) uniq.push(v);
+    });
+    if (uniq.length < 3) return null;
+    let best = { i: -1, j: -1, dot: 1 };
+    for (let a = 0; a < uniq.length; a++)
+      for (let b = a + 1; b < uniq.length; b++) {
+        const d = uniq[a].x * uniq[b].x + uniq[a].y * uniq[b].y;
+        if (d < best.dot) best = { i: a, j: b, dot: d };
+      }
+    if (best.dot >= -0.9) return null;
+    return uniq[best.i];
+  };
+  for (let idx = 0; idx < junctionPositions.length; idx++) {
+    const tr = trunkDirForPos(junctionPositions[idx]);
+    junctionTrunks.push(tr || { x: 0, y: 0 });
+  }
 
   for (let i = 0; i < junctionPositions.length; i++) {
     for (let j = i + 1; j < junctionPositions.length; j++) {
@@ -178,20 +250,13 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
         junctionPositions[j].y - junctionPositions[i].y,
       );
       if (dist > DOUBLE_YEE_MM) continue;
-      const dx = junctionPositions[j].x - junctionPositions[i].x;
-      const dy = junctionPositions[j].y - junctionPositions[i].y;
-      const len = Math.hypot(dx, dy);
-      if (len > 0.1) {
-        const sepDot = Math.abs(
-          (dx / len) *
-            (junctionPositions[i].x /
-              Math.hypot(junctionPositions[i].x, junctionPositions[i].y || 1)) +
-            (dy / len) *
-              (junctionPositions[i].y /
-                Math.hypot(junctionPositions[i].x, junctionPositions[i].y || 1)),
-        );
-        if (sepDot < 0.85) continue;
-      }
+      // Doble yee válida solo si los troncos de ambas Y están alineados (misma línea)
+      const tA = junctionTrunks[i];
+      const tB = junctionTrunks[j];
+      if (!tA || !tB) continue;
+      const dotTrunk = tA.x * tB.x + tA.y * tB.y;
+      const aligned = Math.abs(Math.abs(dotTrunk) - 1) < 0.15;
+      if (!aligned) continue;
       usedInDouble.add(i);
       usedInDouble.add(j);
       const id1 = junctionRamalIds[i];
@@ -254,7 +319,13 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
           const vx = bx / lenB,
             vy = by / lenB;
           const cosAngle = ux * vx + uy * vy;
-          if (Math.abs(cosAngle + Math.cos(Math.PI / 4)) < 0.05) {
+          // Item 5: 45° estricto. Tolerancia = ANGLE_EPS (0.5°) en espacio de coseno
+          // (~0.006) — absorbe solo error de punto flotante, no dibujo libre. Antes
+          // usaba 0.05 (~2.9°) que permitía 44°/46°; ahora solo admite 45° ± 0.5°.
+          if (
+            Math.abs(cosAngle + Math.cos(Math.PI / 4)) <
+            1 - Math.cos(Math.PI / 4 + (ANGLE_EPS * Math.PI) / 180)
+          ) {
             count45++;
           }
         }
@@ -309,7 +380,11 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
                 (junctionSegDy / segLen) * ((end2[1] - end1[1]) / vLen),
             );
             // |cos| ≈ √2/2 → 45° (Y); |cos| ≈ 0 → 90° (codo reventilado).
-            if (Math.abs(dot - Math.cos(Math.PI / 4)) < 0.15) {
+            // Item 5: 45° estricto — tolerancia ANGLE_EPS (0.5°) en espacio de coseno.
+            // Antes usaba 0.15 (~8.6°) que permitía 44°/46°; ahora solo admite 45° ± 0.5°.
+            const cos45 = Math.cos(Math.PI / 4);
+            const tol45 = Math.cos(((45 - ANGLE_EPS) * Math.PI) / 180) - cos45;
+            if (Math.abs(dot - cos45) < tol45) {
               countVentY++;
             } else {
               countVent++;

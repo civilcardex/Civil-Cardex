@@ -11,8 +11,10 @@ import type { PlanoRamal, PlanoBajante, PlanoArea } from './PlanoState';
 import type { IPlanoEngineCore } from './PlanoState';
 import { pointToSegmentDist } from './HitTester';
 import { canalRectHitDistance } from './canalAssociation';
+import { devError } from '../../../../utils/devError';
 import {
   _firstSegmentAngle,
+  angleAtHalfLength,
   checkRamalAngles,
   segmentsIntersect,
   snapTributaryToPadre45Deg,
@@ -225,6 +227,18 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
     a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
   const endpoints = [incoming.pts[0], incoming.pts[incoming.pts.length - 1]];
   for (const ep of endpoints) {
+    // ¿El punto coincide TAMBIÉN con el vértice de un ramal normal? Entonces la
+    // conexión real es ramal-a-ramal; un tributario que comparte ese vértice (p.ej.
+    // porque aterrizó ahí antes) no debe disparar "Los ramales no se conectan a
+    // tributarios" al extender el ramal desde ese extremo.
+    const alsoNormalRamalHere = engine.ramales.some(
+      (ex) =>
+        ex.id !== incoming.id &&
+        sameNetGroup(ex.net, incoming.net) &&
+        ex.tipo !== 'tributario' &&
+        !!ex.pts &&
+        ex.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL),
+    );
     for (const existing of engine.ramales) {
       if (existing.id === incoming.id || !sameNetGroup(existing.net, incoming.net)) continue;
       if (!existing.pts || existing.pts.length < 2) continue;
@@ -247,9 +261,16 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
             // autodetecta; la conexión no se bloquea.
           }
         } else if (existing.tipo === 'tributario') {
-          // Los ramales no se conectan a tributarios — el extremo de un ramal no puede unirse
-          // al vértice de un tributario.
-          engine.triggerAlert('Conexión no permitida', 'Los ramales no se conectan a tributarios.');
+          // Los ramales no se conectan a tributarios — el extremo de un ramal no puede
+          // unirse al vértice de UN tributario, salvo que el punto sea también vértice
+          // de un ramal normal (la conexión real es ramal-a-ramal — ver
+          // alsoNormalRamalHere).
+          if (!alsoNormalRamalHere) {
+            engine.triggerAlert(
+              'Conexión no permitida',
+              'Los ramales no se conectan a tributarios.',
+            );
+          }
         }
         continue;
       }
@@ -408,7 +429,7 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       const [existLabelX, existLabelY] = _midpoint(existing.pts);
       existing.labelX = existLabelX;
       existing.labelY = existLabelY;
-      if (existing.labelAngle == null) existing.labelAngle = _firstSegmentAngle(existing.pts);
+      if (existing.labelAngle == null) existing.labelAngle = angleAtHalfLength(existing.pts);
       // NO fijar accesorioFin aquí — dejar que detectAccesorioTrigger + el modal lo asignen.
       // Fijarlo prematuramente hace que el barrido alreadyResolved se salte el modal por
       // completo, así el usuario nunca puede elegir el tipo real de tee (teeSube, teeBaja, yee,
@@ -460,7 +481,7 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       // arriba, aterrizando justo encima de la etiqueta propia (sin cambios) de `existing`, ya
       // que ambos objetos compartían entonces un solo punto.
       const [downLabelX, downLabelY] = _midpoint(downstreamPts);
-      const downLabelAngle = _firstSegmentAngle(downstreamPts);
+      const downLabelAngle = angleAtHalfLength(downstreamPts);
       const downstream: PlanoRamal = {
         ...existing,
         id: newId,
@@ -499,10 +520,9 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
   }
 }
 
-/** 3.3/6: detecta una yee SIMPLE (3 vectores en un vértice, sin pareja dentro del umbral doble)
- *  cerca de (px,py) dentro de `tol`, y devuelve su centro + dirección del tronco (el par de
- *  vectores casi opuestos). Se usa para desplazar un trazo nuevo en paralelo y formar una yee
- *  doble simétrica. */
+/** 3.3/6: detecta una yee SIMPLE cerca de (px,py). Auto-snap deshabilitado por UX
+ *  (usuario usa línea guía para yee doble); se mantiene exportada por si se reactiva. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function detectYeeSimpleNear(
   engine: IPlanoEngineCore,
   px: number,
@@ -587,33 +607,46 @@ export function detectTributaryPadre(
 ): string | null {
   if (!pts || pts.length < 2) return null;
   const TOL = 0.5;
-  const pointOnSeg = (p: number[], a: number[], b: number[]) => {
+  // Distancia de un punto `p` al segmento [a,b] (para elegir el ramal al que el tributario se
+  // conecta MÁS directamente, en vez de devolver el primer ramal del array que lo toque — el bug
+  // reportado: todo tributario caía en el primer ramal de la red).
+  const segDist = (p: number[], a: number[], b: number[]) => {
     const dx = b[0] - a[0],
       dy = b[1] - a[1];
     const lenSq = dx * dx + dy * dy;
-    if (lenSq < 0.0001) return Math.hypot(p[0] - a[0], p[1] - a[1]) < TOL;
-    const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq;
-    if (t < 0.02 || t > 0.98) return false;
-    const px = a[0] + t * dx,
-      py = a[1] + t * dy;
-    return Math.hypot(p[0] - px, p[1] - py) < TOL;
+    if (lenSq < 1e-9) return Math.hypot(p[0] - a[0], p[1] - a[1]);
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / lenSq));
+    return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
   };
   const sameGroup = (o: string) =>
     o === net || ((o === 'san' || o === 'vent') && (net === 'san' || net === 'vent'));
   const tribEps = [pts[0], pts[pts.length - 1]];
+  let best: { id: string; d: number } | null = null;
   for (const other of engine.ramales) {
     if (!sameGroup(other.net) || !other.pts || other.pts.length < 2) continue;
-    const oEps = [other.pts[0], other.pts[other.pts.length - 1]];
-    const touches =
-      tribEps.some((p) => oEps.some((e) => Math.hypot(p[0] - e[0], p[1] - e[1]) < TOL)) ||
-      tribEps.some((p) =>
-        other.pts!.some(
-          (_, i) => i < other.pts!.length - 1 && pointOnSeg(p, other.pts![i], other.pts![i + 1]),
-        ),
-      );
-    if (touches) return other.id;
+    // Distancia mínima desde cualquier extremo del tributario a este ramal (cuerpo o extremo).
+    let d = Infinity;
+    for (const p of tribEps) {
+      for (let i = 0; i < other.pts.length - 1; i++) {
+        d = Math.min(d, segDist(p, other.pts[i], other.pts[i + 1]));
+      }
+      d = Math.min(d, segDist(p, other.pts[0], other.pts[0]));
+      d = Math.min(d, segDist(p, other.pts[other.pts.length - 1], other.pts[other.pts.length - 1]));
+    }
+    // Debe tocar realmente (extremo o cuerpo) dentro de TOL para ser padre candidato.
+    if (d > TOL) continue;
+    // Preferir el más cercano; en empate, el que no es tributario (ramal principal).
+    if (!best) {
+      best = { id: other.id, d };
+    } else if (d < best.d) {
+      best = { id: other.id, d };
+    } else if (d === best.d && other.tipo !== 'tributario') {
+      // Empate: preferir un ramal principal (no tributario) como padre.
+      const cur = engine.ramales.find((rr) => rr.id === best!.id);
+      if (cur?.tipo === 'tributario') best = { id: other.id, d };
+    }
   }
-  return null;
+  return best ? best.id : null;
 }
 
 /** Bug #7: valida los ángulos de un ramal EXCLUYENDO los segmentos de conexión — un extremo que
@@ -711,6 +744,211 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     }
   }
 
+  // Continuación por LLEGADA a extremo: si un ramal nuevo aterriza exactamente en el
+  // extremo de otro ramal existente (misma red), extender ese ramal existente en vez de
+  // crear uno nuevo separado. Esto hace que el quiebre quede como vértice interior del
+  // mismo pts[] y el símbolo de codo 45/90 se dibuje automático (drawRamalPath).
+  // try/catch: si el merge lanza por cualquier razón, se cae a la creación normal del ramal.
+  try {
+    const incomingPts = engine.activeRamal!.pts;
+    if (incomingPts.length >= 2 && !engine.activeRamal!.id) {
+      const TOL = 0.5;
+      const isBajanteCode = (v: string) => engine.bajantes.some((b) => (b.code || b.id) === v);
+      // Un punto que coincide con la posición de un bajante NO es una continuación entre ramales:
+      // dos ramales que terminan en el mismo bajante son laterales separados (Y doble), no un
+      // ramal extendido. Si el extremo coincidente cae sobre un bajante, se omite el merge.
+      const onBajantePos = (p: number[]) =>
+        engine.bajantes.some((b) => Math.hypot(b.x - p[0], b.y - p[1]) < TOL);
+      const nStart = incomingPts[0];
+      const nEnd = incomingPts[incomingPts.length - 1];
+      if (onBajantePos(nStart) || onBajantePos(nEnd)) {
+        // no mergear — dejar crear el ramal separado que conecta al bajante
+      } else {
+        let target: PlanoRamal | null = null;
+        let mode: 'nStart-eStart' | 'nStart-eEnd' | 'nEnd-eStart' | 'nEnd-eEnd' | null = null;
+        // ¿El extremo `ep` de `ex` está LIBRE (no toca otro ramal)? Para tributarios solo se
+        // mergea la extensión por la PUNTA LIBRE; si el punto coincide con el padre (la tee),
+        // es un segundo tributario llegando al tronco → no mergear (formaría unión T).
+        const isFreeTip = (ex: PlanoRamal, ep: number[]): boolean => {
+          for (const o of engine.ramales) {
+            if (o.id === ex.id || !o.pts || o.pts.length < 2) continue;
+            const linked =
+              o.net === ex.net ||
+              ((o.net === 'san' || o.net === 'vent') && (ex.net === 'san' || ex.net === 'vent'));
+            if (!linked) continue;
+            if (o.pts.some((p) => Math.hypot(p[0] - ep[0], p[1] - ep[1]) < TOL)) return false;
+            for (let i = 0; i < o.pts.length - 1; i++) {
+              const [ax, ay] = o.pts[i];
+              const [bx, by] = o.pts[i + 1];
+              const dx = bx - ax,
+                dy = by - ay;
+              const lenSq = dx * dx + dy * dy;
+              if (lenSq < 0.0001) continue;
+              const t = ((ep[0] - ax) * dx + (ep[1] - ay) * dy) / lenSq;
+              if (t < 0.02 || t > 0.98) continue;
+              if (Math.hypot(ep[0] - (ax + t * dx), ep[1] - (ay + t * dy)) < TOL) return false;
+            }
+          }
+          return true;
+        };
+        for (const ex of engine.ramales) {
+          if (ex.net !== engine.activeRamal!.net) continue;
+          if (!ex.pts || ex.pts.length < 2) continue;
+          // Ramales y tributarios se extienden por llegada a extremo (mismo tipo). La
+          // extensión de un tributario mergea en el mismo (la punta libre se vuelve
+          // vértice interior → el codo 45°/90° se dibuja solo); si el punto es la tee
+          // con el padre, NO se mergea (sería un segundo tributario uniéndose al tronco).
+          if (ex.tipo !== engine.activeRamal!.tipo) continue;
+          const eStart = ex.pts[0];
+          const eEnd = ex.pts[ex.pts.length - 1];
+          const trib = ex.tipo === 'tributario';
+          const ok = (exEp: number[], exRef: string | null | undefined) =>
+            !(exRef && isBajanteCode(exRef)) && !(trib && !isFreeTip(ex, exEp));
+          if (
+            Math.hypot(nStart[0] - eStart[0], nStart[1] - eStart[1]) < TOL &&
+            ok(eStart, ex.ini)
+          ) {
+            target = ex;
+            mode = 'nStart-eStart';
+            break;
+          }
+          if (Math.hypot(nStart[0] - eEnd[0], nStart[1] - eEnd[1]) < TOL && ok(eEnd, ex.fin)) {
+            target = ex;
+            mode = 'nStart-eEnd';
+            break;
+          }
+          if (Math.hypot(nEnd[0] - eStart[0], nEnd[1] - eStart[1]) < TOL && ok(eStart, ex.ini)) {
+            target = ex;
+            mode = 'nEnd-eStart';
+            break;
+          }
+          if (Math.hypot(nEnd[0] - eEnd[0], nEnd[1] - eEnd[1]) < TOL && ok(eEnd, ex.fin)) {
+            target = ex;
+            mode = 'nEnd-eEnd';
+            break;
+          }
+        }
+        if (target && mode) {
+          // Snapshot del estado original de target para revertir TODO si el ángulo no valida
+          const snap = {
+            pts: target.pts,
+            totalL: target.totalL,
+            accMed: target.accMed,
+            accesorioInicio: target.accesorioInicio,
+            accesorioFin: target.accesorioFin,
+            diametroInicio: target.diametroInicio,
+            diametroFin: target.diametroFin,
+            labelX: target.labelX,
+            labelY: target.labelY,
+            labelAngle: target.labelAngle,
+          };
+          // Modos "mismo-extremo" (nStart-eStart, nEnd-eEnd): ambos extremos del trazo
+          // nuevo y del target coinciden en la unión (ambas colas o ambas cabezas). Para
+          // que el flujo CONTINÚE el del target (no se voltee), se revierte el TRAZO
+          // NUEVO (incoming), no el target — el target preserva pts/flujo/accesorios/
+          // _tribReversed intactos. El modo efectivo pasa al "extremo opuesto".
+          let effInc = incomingPts;
+          let effMode: 'nStart-eEnd' | 'nEnd-eStart' = mode as 'nStart-eEnd' | 'nEnd-eStart';
+          if (mode === 'nStart-eStart') {
+            effInc = [...incomingPts].reverse();
+            effMode = 'nEnd-eStart';
+          } else if (mode === 'nEnd-eEnd') {
+            effInc = [...incomingPts].reverse();
+            effMode = 'nStart-eEnd';
+          }
+          let mergedPts: number[][] | null = null;
+          if (effMode === 'nStart-eEnd') mergedPts = [...target.pts, ...effInc.slice(1)];
+          else if (effMode === 'nEnd-eStart') mergedPts = [...effInc.slice(0, -1), ...target.pts];
+          // Nota: el caso nStart-e* ya debería haber sido capturado como "continuar" en
+          // handleLineDown al empezar, pero se deja como fallback por si llega aquí.
+          if (mergedPts && mergedPts.length >= 2) {
+            // mover accesorio del extremo de target que se vuelve interior a accMed
+            const junctionIdx =
+              effMode === 'nStart-eEnd' ? target.pts.length - 1 : effInc.length - 1;
+            // Si el extremo de target que se interioriza tenía accesorio, pasarlo a accMed
+            const accToMove =
+              effMode === 'nStart-eEnd' ? target.accesorioFin : target.accesorioInicio;
+            const diamToMove =
+              effMode === 'nStart-eEnd' ? target.diametroFin : target.diametroInicio;
+            // Guardar accMed original antes de modificar
+            const origAccMed = { ...(target.accMed || {}) };
+            let newAccMed: Record<string, string> = { ...origAccMed };
+            if (accToMove) {
+              // para nStart-eEnd el junction está al final de target (no requiere shift)
+              // para nEnd-eStart el junction está al inicio de la porción target desplazada
+              if (effMode === 'nStart-eEnd') {
+                newAccMed[`accMed${junctionIdx}`] = accToMove;
+                target.accesorioFin = '';
+                target.diametroFin = '';
+              } else {
+                // nEnd-eStart: se añadirá después del shift en junctionIdx
+                target.accesorioInicio = '';
+                target.diametroInicio = '';
+              }
+              void diamToMove;
+            }
+            // Reindexar accMed cuando el merge antepone puntos (nEnd-eStart)
+            if (effMode === 'nEnd-eStart') {
+              const shift = effInc.length - 1;
+              const shifted: Record<string, string> = {};
+              for (const [k, v] of Object.entries(origAccMed)) {
+                const m = k.match(/^accMed(\d+)$/);
+                if (!m) {
+                  shifted[k] = v;
+                  continue;
+                }
+                const idx = parseInt(m[1], 10);
+                shifted[`accMed${idx + shift}`] = v;
+              }
+              newAccMed = shifted;
+              if (accToMove) newAccMed[`accMed${junctionIdx}`] = accToMove;
+            }
+            target.accMed = newAccMed;
+            // Validar ángulos del trazado resultante (excluyendo conexiones)
+            target.pts = mergedPts;
+            target.totalL = calculateRamalLength(mergedPts, engine);
+            const [labX, labY] = _midpoint(mergedPts);
+            target.labelX = labX;
+            target.labelY = labY;
+            if (target.labelAngle == null) target.labelAngle = angleAtHalfLength(mergedPts);
+            if (!checkRamalAnglesExcludingConnections(engine, target)) {
+              // revertir TODO el estado de target
+              target.pts = snap.pts;
+              target.totalL = snap.totalL;
+              target.accMed = snap.accMed;
+              target.accesorioInicio = snap.accesorioInicio;
+              target.accesorioFin = snap.accesorioFin;
+              target.diametroInicio = snap.diametroInicio;
+              target.diametroFin = snap.diametroFin;
+              target.labelX = snap.labelX;
+              target.labelY = snap.labelY;
+              target.labelAngle = snap.labelAngle;
+              engine.triggerAlert(
+                'Ángulo no recomendado',
+                target.net === 'san' || target.net === 'll'
+                  ? 'Las redes sanitarias y de lluvias solo permiten ángulos de 0° y 45°. Usar línea guía para ajustar ángulo.'
+                  : 'Esta red debe diseñarse con ángulos de 45° o 90°. Usar línea guía para ajustar ángulo.',
+              );
+              // no mergear, seguir con creación normal (caerá al flujo normal abajo)
+            } else {
+              engine.activeRamal = null;
+              engine.selId = target.id;
+              engine._emitSelect(target);
+              engine._emitStatus(_statusMsg(engine));
+              engine.render();
+              engine._markDirty();
+              return;
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    devError('finishRamal merge-extremo:', e);
+    // merge falló — continuar con la creación normal del ramal abajo
+  }
+  if (!engine.activeRamal) return;
+
   const def = engine._ramalDefaults || { material: '', diametro: '', pendiente: 0 };
   const net = NETS.find((n) => n.id === engine.activeRamal!.net);
   const netPfx = net ? net.lbl : 'R';
@@ -730,21 +968,11 @@ export function finishRamal(engine: IPlanoEngineCore): void {
         engine.ramales.some((r) => r.id === `${netPfx}${n}` || r.label === `${netPfx}${n}`),
       );
   const id = isTrib ? uniqRamalId() : netPfx + cnt;
-  const firstAngle = _firstSegmentAngle(engine.activeRamal.pts);
+  const firstAngle = angleAtHalfLength(engine.activeRamal.pts);
 
-  const pts = engine.activeRamal.pts;
-  const x1 = pts[0][0],
-    y1 = pts[0][1],
-    x2 = pts[1][0],
-    y2 = pts[1][1];
-  const midX = (x1 + x2) / 2,
-    midY = (y1 + y2) / 2;
-  const rad = (firstAngle * Math.PI) / 180;
-  const upX = Math.sin(rad);
-  const upY = -Math.cos(rad);
-  const labelOffset = 0;
-  const labelX = midX + upX * labelOffset;
-  const labelY = midY + upY * labelOffset;
+  const [midX, midY] = _midpoint(engine.activeRamal.pts);
+  const labelX = midX;
+  const labelY = midY;
 
   const r: PlanoRamal = {
     id,
@@ -766,7 +994,10 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     labelY: labelY,
     labelAngle: firstAngle,
     material: def.material || '',
-    diametro: def.diametro || '',
+    // Item 3: todo ramal de ventilación nuevo nace con diámetro 2" por defecto
+    // (no solo visual del desplegable — el valor almacenado). Si _ramalDefaults
+    // trae un diámetro, se respeta; el 2" es el fallback cuando no hay default.
+    diametro: engine.activeRamal!.net === 'vent' && !def.diametro ? '2"' : def.diametro || '',
     // Ítem 4: los ramales sanitarios nuevos nacen con pendiente por defecto 2% cuando no se
     // eligió explícitamente otra. El default del selector para san ya trae DEFAULT_PENDIENTE_PCT
     // desde PdfViewer; este fallback cubre el caso de _ramalDefaults ausente o pendiente sin
@@ -996,7 +1227,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
         // saliendo de BAN4-P1 con dirección "Baja").
         const epIdxTyped = epIdx === 0 ? 0 : r.pts.length - 1;
         if (!isRamalBajanteConnectionAllowed(engine, r, epIdxTyped, baj)) continue;
-        baj.recibeDeIds.push(r.id);
+        if (!baj.recibeDeIds.includes(r.id)) baj.recibeDeIds.push(r.id);
         // Auto-rellenar ini/fin del ramal
         const bajCode = baj.code || baj.id;
         if (epIdx === 0) {
@@ -1125,7 +1356,7 @@ export function deleteSegmentAt(engine: IPlanoEngineCore, cx: number, cy: number
     engine._emitSelect(null);
   } else {
     r.pts.splice(bestIdx, 1);
-    if (r.labelAngle == null) r.labelAngle = _firstSegmentAngle(r.pts);
+    if (r.labelAngle == null) r.labelAngle = angleAtHalfLength(r.pts);
     r.totalL = 0;
     for (let i = 0; i < r.pts.length - 1; i++) {
       r.totalL += engine.pxToM(
@@ -1271,7 +1502,13 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       // por el bloque de no-empezar-sobre-bajante de abajo (continueRamal gana primero), igual
       // que clicar el círculo del propio bajante quedaría bloqueado. En su lugar cae al
       // chequeo de bajante más abajo, que lo atrapa y alerta.
-      if (dFirst < CONTINUE_THRESH && dFirst <= dLast) {
+      // Para san/ll/vent ramales principales (pts-driven, donde _tribReversed NO compensa
+      // el flip del renderer), NO se continúa desde el INICIO (dFirst) vía reversión — eso
+      // voltearía la dirección de flujo. Se deja caer al bloque de merge de finishRamal que
+      // preserva el target revirtiendo el trazo nuevo. Para af/ac/gas/trib sí se permite
+      // (ahí _tribReversed compensa la reversión).
+      const isPtsDrivenMain = rm.tipo !== 'tributario' && ['san', 'll', 'vent'].includes(rm.net);
+      if (dFirst < CONTINUE_THRESH && dFirst <= dLast && !isPtsDrivenMain) {
         if (rm.ini && isBajanteCode(rm.ini)) continue;
         continueRamal = rm;
         reversePoints = true;
@@ -1558,8 +1795,21 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
               (r.tipo === 'tributario' && r.net === ar!.net),
           )
         : engine.ramales.filter((r) => r.net === ar!.net);
-    for (const r of activeRamales) {
+    // Item 5: el trazo de ventilación pega en 45°/90° a los ramales sanitarios
+    // (unión Y / codo reventilado) — mismos candidatos del snap 45° del
+    // tributario. Sin esto, la conexión vent↔san aterrizaba en cualquier ángulo
+    // (44°/46°) vía la proyección perpendicular de snapToExisting.
+    const snapCandidates =
+      ar!.net === 'vent'
+        ? [...activeRamales, ...engine.ramales.filter((r) => r.net === 'san')]
+        : activeRamales;
+    for (const r of snapCandidates) {
       if (r.id === ar!.id) continue;
+      // Un trazo tipo RAMAL no pega a tributarios (misma regla que snapToExisting)
+      // — si no, el punto aterrizaba sobre el vértice/cuerpo del tributario y
+      // finishRamal rechazaba la unión con "Conexión no permitida" al extender
+      // un ramal cuyo extremo queda cerca de un tributario.
+      if (ar!.tipo === 'ramal' && r.tipo === 'tributario') continue;
       let sp = null;
       // Snap 45° al padre (o, sin padre explícito, a cualquier ramal del grupo para la
       // autodetección de padre).
@@ -1660,30 +1910,6 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       }
     }
     if (engine.activeRamal.pts.length >= 2) {
-      // 3.3 Snap paralelo yee simple→doble (orig. #6): al TERMINAR el trazo (este es el punto
-      // final, no el inicial), si cae cerca de una yee simple existente, desplazarlo A LO LARGO
-      // del tronco hasta 10mm del punto de la yee (manteniendo la distancia perpendicular del
-      // brazo) — así la segunda yee queda alineada con la primera sobre el tronco, simétrica.
-      if (engine.activeNet === 'san' || engine.activeNet === 'vent') {
-        const yeeTol = 20 / (engine.zoom || 1);
-        const yeeSimple = detectYeeSimpleNear(engine, pt.x, pt.y, yeeTol);
-        if (yeeSimple) {
-          const trunk = yeeSimple.trunk;
-          const relX = pt.x - yeeSimple.x;
-          const relY = pt.y - yeeSimple.y;
-          const perpX = -trunk.y;
-          const perpY = trunk.x;
-          const perp = relX * perpX + relY * perpY;
-          // Distancia a lo largo del tronco: 10mm del centro de la yee (en la dirección que el
-          // cursor ya venía), manteniendo la perpendicular (posición del brazo).
-          const alongSign = relX * trunk.x + relY * trunk.y >= 0 ? 1 : -1;
-          const targetAlong = alongSign * 10;
-          pt = {
-            x: yeeSimple.x + trunk.x * targetAlong + perpX * perp,
-            y: yeeSimple.y + trunk.y * targetAlong + perpY * perp,
-          };
-        }
-      }
       // Un segmento de CONEXIÓN (el extremo pega a un ramal existente o bajante) no se valida
       // contra la cuadrícula: su ángulo está dictado por la geometría del ramal existente, no
       // por un giro libre. Validar solo los giros ya dibujados del ramal en curso.
@@ -2144,6 +2370,80 @@ export function handleEraseDown(engine: IPlanoEngineCore, cx: number, cy: number
  * selectAt contra un punto arbitrario del canvas. Misma lógica de recorte/borrado que la rama de
  * ramal de handleEraseDown.
  */
+/** Parte un ramal en dos en el segmento intermedio `segIdx` (entre pts[segIdx] y
+ *  pts[segIdx+1]), usado por el borrador: el segmento clickeado queda eliminado y
+ *  cada mitad conserva su propia parte. `r` se trunca a pts[0..segIdx]; se crea un
+ *  ramal `downstream` nuevo con pts[segIdx+1..último]. Los accesorioFin/accMed del
+ *  punto de corte se reubican como extremo del tramo correspondiente. */
+function splitRamalAtSegment(engine: IPlanoEngineCore, r: PlanoRamal, segIdx: number): void {
+  const downstreamPts = r.pts.slice(segIdx + 1);
+  if (downstreamPts.length < 2) return;
+  const upPts = r.pts.slice(0, segIdx + 1);
+  // Accesorio que estaba en el punto de corte (pts[segIdx]) pasa a ser el extremo final de la
+  // mitad superior.
+  const accAtCut =
+    r.accMed?.[`accMed${segIdx}`] || (segIdx === r.pts.length - 1 ? r.accesorioFin : '');
+  // Redistribuir accMed: los índices <= segIdx quedan en la mitad superior; los > segIdx van a
+  // la mitad inferior desplazados.
+  const upAccMed: Record<string, string> = {};
+  const downAccMed: Record<string, string> = {};
+  for (const [k, v] of Object.entries(r.accMed || {})) {
+    const m = k.match(/^accMed(\d+)$/);
+    if (!m) continue;
+    const idx = parseInt(m[1], 10);
+    if (idx < segIdx) upAccMed[`accMed${idx}`] = v;
+    else if (idx > segIdx + 1) downAccMed[`accMed${idx - (segIdx + 1)}`] = v;
+  }
+  const upLast = upPts.length - 1;
+  if (accAtCut) upAccMed[`accMed${upLast}`] = accAtCut;
+  // El accesorioInicio del downstream (antiguo accMed en pts[segIdx+1], si existía).
+  const downStartAcc = r.accMed?.[`accMed${segIdx + 1}`] || '';
+
+  const netDef = NETS.find((n) => n.id === r.net);
+  const pfx = netDef ? netDef.lbl : 'R';
+  const isTrib = r.tipo === 'tributario';
+  const rootLabel = isTrib ? rootTributarioLabel(engine.ramales, r.id) : '';
+  const cnt = isTrib
+    ? allocTributaryNumber(engine, rootLabel)
+    : allocNetNumber(engine, r.net, 'ramal', (n) =>
+        engine.ramales.some((x) => x.id === `${pfx}${n}` || x.label === `${pfx}${n}`),
+      );
+  const newId = isTrib ? uniqRamalId() : pfx + cnt;
+  const [downLabelX, downLabelY] = _midpoint(downstreamPts);
+  const downLabelAngle = angleAtHalfLength(downstreamPts);
+  const downstream: PlanoRamal = {
+    ...r,
+    id: newId,
+    pts: downstreamPts,
+    totalL: calculateRamalLength(downstreamPts, engine),
+    label: isTrib ? `T${cnt}${rootLabel}` : `${pfx}${cnt}`,
+    labelX: downLabelX,
+    labelY: downLabelY,
+    labelAngle: downLabelAngle,
+    accMed: downAccMed,
+    accesorioInicio: downStartAcc || '',
+    diametroInicio: '',
+    mergesFrom: undefined,
+  };
+
+  // Truncar la mitad superior.
+  const upLen = calculateRamalLength(upPts, engine);
+  r.pts = upPts;
+  r.totalL = upLen;
+  r.accMed = upAccMed;
+  if (accAtCut) {
+    r.accesorioFin = accAtCut;
+    delete r.accMed[`accMed${upLast}`];
+  } else {
+    r.accesorioFin = '';
+  }
+  r.labelX = _midpoint(upPts)[0];
+  r.labelY = _midpoint(upPts)[1];
+  if (r.labelAngle == null) r.labelAngle = angleAtHalfLength(upPts);
+
+  engine.ramales.push(downstream);
+}
+
 export function eraseRamalAt(
   engine: IPlanoEngineCore,
   r: PlanoRamal,
@@ -2154,12 +2454,14 @@ export function eraseRamalAt(
   const HIT_DIST = 10 / engine.zoom;
 
   let bestIdx = -1,
+    bestSegIdx = -1,
     bestD = Infinity;
   for (let i = 0; i < r.pts.length; i++) {
     const d = Math.hypot(plane.x - r.pts[i][0], plane.y - r.pts[i][1]);
     if (d < bestD) {
       bestD = d;
       bestIdx = i;
+      bestSegIdx = -1;
     }
   }
   if (bestD > HIT_DIST) {
@@ -2174,6 +2476,7 @@ export function eraseRamalAt(
       );
       if (d < bestD) {
         bestD = d;
+        bestSegIdx = i;
         const dA = Math.hypot(plane.x - r.pts[i][0], plane.y - r.pts[i][1]);
         const dB = Math.hypot(plane.x - r.pts[i + 1][0], plane.y - r.pts[i + 1][1]);
         bestIdx = dA <= dB ? i : i + 1;
@@ -2209,30 +2512,41 @@ export function eraseRamalAt(
   })();
   const isEndpoint = bestIdx === 0 || bestIdx === r.pts.length - 1;
   const canTrim = r.pts.length > 2 && !isSplitMember && !isStraight;
-  if (!isEndpoint && canTrim) {
-    const d0 = Math.hypot(plane.x - r.pts[0][0], plane.y - r.pts[0][1]);
-    const dLast = Math.hypot(
-      plane.x - r.pts[r.pts.length - 1][0],
-      plane.y - r.pts[r.pts.length - 1][1],
-    );
-    bestIdx = d0 <= dLast ? 0 : r.pts.length - 1;
-  }
-  if (canTrim && (bestIdx === 0 || bestIdx === r.pts.length - 1)) {
-    r.pts.splice(bestIdx, 1);
-    r.totalL = calculateRamalLength(r.pts, engine);
-    if (r.labelAngle == null) r.labelAngle = _firstSegmentAngle(r.pts);
-    const [mx, my] = _midpoint(r.pts);
-    r.labelX = mx;
-    r.labelY = my;
+  // Segmento intermedio clickeado: partir el ramal en dos en ese segmento
+  // (cada mitad conserva su parte; el segmento clickeado queda eliminado).
+  const isMidSegmentClick =
+    bestSegIdx > 0 && bestSegIdx < r.pts.length - 2 && r.pts.length >= 4 && !isSplitMember;
+  if (isMidSegmentClick) {
+    splitRamalAtSegment(engine, r, bestSegIdx);
     engine._emitSelect(null);
     engine.selId = null;
-    engine._emitStatus('Segmento extremo recortado');
+    engine._emitStatus('Segmento eliminado — ramal dividido');
   } else {
-    // Si es un segmento intermedio o el ramal solo tiene 1 segmento (2 puntos), borra completo
-    engine.deleteSelected();
-    engine._emitSelect(null);
-    engine.selId = null;
-    engine._emitStatus('Ramal eliminado');
+    if (!isEndpoint && canTrim) {
+      const d0 = Math.hypot(plane.x - r.pts[0][0], plane.y - r.pts[0][1]);
+      const dLast = Math.hypot(
+        plane.x - r.pts[r.pts.length - 1][0],
+        plane.y - r.pts[r.pts.length - 1][1],
+      );
+      bestIdx = d0 <= dLast ? 0 : r.pts.length - 1;
+    }
+    if (canTrim && (bestIdx === 0 || bestIdx === r.pts.length - 1)) {
+      r.pts.splice(bestIdx, 1);
+      r.totalL = calculateRamalLength(r.pts, engine);
+      if (r.labelAngle == null) r.labelAngle = angleAtHalfLength(r.pts);
+      const [mx, my] = _midpoint(r.pts);
+      r.labelX = mx;
+      r.labelY = my;
+      engine._emitSelect(null);
+      engine.selId = null;
+      engine._emitStatus('Segmento extremo recortado');
+    } else {
+      // Si es el único segmento (2 puntos) o miembro de división, borra completo
+      engine.deleteSelected();
+      engine._emitSelect(null);
+      engine.selId = null;
+      engine._emitStatus('Ramal eliminado');
+    }
   }
   engine.render();
   engine._markDirty();

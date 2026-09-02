@@ -138,6 +138,76 @@ export function _firstSegmentAngle(pts: number[][]): number {
   return Math.round(angle);
 }
 
+export function angleAtHalfLength(pts: number[][]): number {
+  if (pts.length < 2) return 0;
+  let total = 0;
+  const lens: number[] = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const l = Math.hypot(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
+    lens.push(l);
+    total += l;
+  }
+  const half = total / 2;
+  let acc = 0;
+  for (let i = 0; i < lens.length; i++) {
+    if (acc + lens[i] >= half) {
+      const dx = pts[i + 1][0] - pts[i][0];
+      const dy = pts[i + 1][1] - pts[i][1];
+      let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+      if (angle > 90) angle -= 180;
+      if (angle < -90) angle += 180;
+      return Math.round(angle);
+    }
+    acc += lens[i];
+  }
+  return _firstSegmentAngle(pts);
+}
+
+function segmentIndexAtPosition(pts: number[][], x: number, y: number): number {
+  if (pts.length < 2) return 0;
+  let bestIdx = 0;
+  let bestD = Infinity;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [ax, ay] = pts[i];
+    const [bx, by] = pts[i + 1];
+    const dx = bx - ax;
+    const dy = by - ay;
+    const lenSq = dx * dx + dy * dy;
+    if (lenSq < 1e-9) continue;
+    let t = ((x - ax) * dx + (y - ay) * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+    const px = ax + t * dx;
+    const py = ay + t * dy;
+    const d = Math.hypot(x - px, y - py);
+    if (d < bestD) {
+      bestD = d;
+      bestIdx = i;
+    }
+  }
+  return bestIdx;
+}
+
+export function angleAtPosition(pts: number[][], x: number, y: number): number {
+  if (pts.length < 2) return 0;
+  const idx = segmentIndexAtPosition(pts, x, y);
+  const dx = pts[idx + 1][0] - pts[idx][0];
+  const dy = pts[idx + 1][1] - pts[idx][1];
+  let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  if (angle > 90) angle -= 180;
+  if (angle < -90) angle += 180;
+  return Math.round(angle);
+}
+
+export function segmentAtPosition(
+  pts: number[][],
+  x: number,
+  y: number,
+): { idx: number; dx: number; dy: number } | null {
+  if (pts.length < 2) return null;
+  const idx = segmentIndexAtPosition(pts, x, y);
+  return { idx, dx: pts[idx + 1][0] - pts[idx][0], dy: pts[idx + 1][1] - pts[idx][1] };
+}
+
 /** Pega el cursor a los puntos de proyección de 45° sobre los segmentos de otro ramal (para
  *  conectar tributarios al padre). @returns el punto pegado o null. */
 export function snapTributaryToPadre45Deg(

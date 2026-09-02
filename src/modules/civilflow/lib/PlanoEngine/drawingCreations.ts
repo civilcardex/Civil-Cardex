@@ -4,7 +4,7 @@ import { calculateRamalLength, _statusMsg } from './ramalMeasure';
 import { isRamalBajanteConnectionAllowed } from '../../utils/flowDirection';
 import { pisoCortoLoose } from '../../constants';
 import { resolveAndClampToCanal } from './canalAssociation';
-import { codoPolarityOk } from './PlanoEngineDrawing';
+import { codoPolarityOk, maxDiametroLabel } from './PlanoEngineDrawing';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af — misma regla que
 // aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos
@@ -81,6 +81,15 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
   const cnt =
     engine.bajantes.filter((b) => b.tipo === 'bajante' && b.net === engine.activeNet).length + 1;
   const bajId = netPfx + cnt;
+  // Ítem: el bajante toma por defecto el diámetro del ramal conectado (el mayor de los
+  // asociados) y no puede bajarse de ahí — ver la validación en bajanteMenus.tsx.
+  let defDNominal = '';
+  for (const rid of assocRamales) {
+    const r = engine.ramales.find((rr) => rr.id === rid);
+    if (r && r.diametro) defDNominal = maxDiametroLabel(defDNominal, r.diametro);
+  }
+  // Item 3: bajante de ventilación nuevo → 2" por defecto si no hay ramal que lo defina.
+  if (engine.activeNet === 'vent' && !defDNominal) defDNominal = '2"';
   engine.bajantes.push({
     id: bajId,
     net: engine.activeNet,
@@ -95,7 +104,7 @@ export function handleBajanteDown(engine: IPlanoEngineCore, px: number, py: numb
     nptBase: engine.nivelActual?.npt ?? 0,
     nptCima: engine.nivelActual?.npt ?? 0,
     hVert: 0,
-    dNominal: '',
+    dNominal: defDNominal,
     recibeDeIds: assocRamales,
     alimentaIds: [],
     descargaEnId: null,
@@ -201,6 +210,13 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
       }
     }
   }
+  let defDNominal = '';
+  for (const rid of assocRamales) {
+    const r = engine.ramales.find((rr) => rr.id === rid);
+    if (r && r.diametro) defDNominal = maxDiametroLabel(defDNominal, r.diametro);
+  }
+  // Item 3: montante de ventilación nuevo → 2" por defecto si no hay ramal que lo defina.
+  if (engine.activeNet === 'vent' && !defDNominal) defDNominal = '2"';
   engine.bajantes.push({
     id: monId,
     net: engine.activeNet,
@@ -214,7 +230,7 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     nptBase: engine.nivelActual?.npt ?? 0,
     nptCima: engine.nivelActual?.npt ?? 0,
     hVert: 0,
-    dNominal: '',
+    dNominal: defDNominal,
     recibeDeIds: assocRamales,
     alimentaIds: [],
     descargaEnId: null,
@@ -329,7 +345,7 @@ export function handleCreateMontanteMidBody(
     nptBase: engine.nivelActual?.npt ?? 0,
     nptCima: engine.nivelActual?.npt ?? 0,
     hVert: 0,
-    dNominal: '',
+    dNominal: r.diametro || '',
     recibeDeIds: [r.id],
     alimentaIds: [],
     descargaEnId: null,

@@ -1,7 +1,12 @@
 import type { IPlanoEngineCore } from './PlanoState';
 import type { PlanoRamal } from './PlanoState';
 import { NETS } from './PlanoState';
-import { checkRamalAngles, _firstSegmentAngle, detectAccesorioTrigger } from './drawingAngles';
+import {
+  checkRamalAngles,
+  _firstSegmentAngle,
+  angleAtHalfLength,
+  detectAccesorioTrigger,
+} from './drawingAngles';
 import {
   autoSplitJunctionAndSumFlow,
   ramalFlowDirectionCheck,
@@ -251,7 +256,7 @@ export function handleDragUp(engine: IPlanoEngineCore, isCtrl: boolean = false):
             uc: 0,
             labelX: (b.x + b.x + d.dx) / 2,
             labelY: (b.y + b.y + d.dy) / 2,
-            labelAngle: _firstSegmentAngle(ldesvioPts),
+            labelAngle: angleAtHalfLength(ldesvioPts),
             material: '',
             diametro: '',
             pendiente: 2,

@@ -11,7 +11,7 @@ import { loadFromStorage, saveToStorage } from '../../services/storageService';
 import { HYDRO_DATA_STORAGE_KEY } from '../../constants/storage-keys';
 import { calculateRamalLength } from './ramalMeasure';
 import { _midpoint } from './PlanoEngineDrawing';
-import { _firstSegmentAngle } from './drawingAngles';
+import { _firstSegmentAngle, angleAtHalfLength } from './drawingAngles';
 
 /**
  * Borrado con cascada: elimina selección, limpia ghosts/Ldesvíos entre pisos,
@@ -571,7 +571,7 @@ function remergeSplitRamales(engine: IPlanoEngineCore, deletedId: string, delete
     const [mx, my] = _midpoint(a.pts);
     a.labelX = mx;
     a.labelY = my;
-    if (a.labelAngle == null) a.labelAngle = _firstSegmentAngle(a.pts);
+    if (a.labelAngle == null) a.labelAngle = angleAtHalfLength(a.pts);
     // Reescritura de cadenas: cualquier ramal que referencie D.id pasa a apuntar a A.id.
     const dId = d.id;
     engine.ramales = engine.ramales.filter((r) => r.id !== dId);
@@ -689,7 +689,7 @@ function mergeCollinearPairs(engine: IPlanoEngineCore): void {
         const [mx, my] = _midpoint(primary.pts);
         primary.labelX = mx;
         primary.labelY = my;
-        if (primary.labelAngle == null) primary.labelAngle = _firstSegmentAngle(primary.pts);
+        if (primary.labelAngle == null) primary.labelAngle = angleAtHalfLength(primary.pts);
         const secondaryId = secondary.id;
         engine.ramales = engine.ramales.filter((r) => r.id !== secondaryId);
         for (const m of engine.ramales) {
@@ -735,8 +735,11 @@ function dirAt(r: { pts: number[][] }, sharedPt: number[]): [number, number] | n
 // división — las dos mitades colineales + la rama que la partió. Si solo se borra una mitad,
 // quedan restos de la línea dividida y el usuario tiene que borrar dos veces. La rama entrante
 // (mergesFrom[1]) NO se expande: borrarla re-une las mitades (comportamiento actual).
+// Excepción yee doble: los ramales del brazo principal de una yee doble se borran individualmente
+// (el símbolo persiste), no como cluster — ver isYeeDobleInvolved.
 // ponytail: transitive closure — chain A-D1-D2 shares same logical ramal, deleting any half deletes whole cluster
 function splitMembersFor(engine: IPlanoEngineCore, ramalId: string): string[] {
+  if (isYeeDobleInvolved(engine, ramalId)) return [];
   // divisor deletion must not expand (merge path)
   if (engine.ramales.some((r) => r.mergesFrom && r.mergesFrom[1] === ramalId)) return [];
   const d = engine.ramales.find((r) => r.id === ramalId);
@@ -765,6 +768,120 @@ function splitMembersFor(engine: IPlanoEngineCore, ramalId: string): string[] {
   }
   S.delete(ramalId);
   return [...S];
+}
+
+// Yee doble: eximir del borrado en bloque — los ramales del brazo principal de una yee doble
+// deben poder borrarse individualmente (el símbolo persiste), no como cluster colineal.
+function isYeeDobleInvolved(engine: IPlanoEngineCore, ramalId: string): boolean {
+  const r = engine.ramales.find((x) => x.id === ramalId);
+  if (!r) return false;
+  if (r.yeeDobleAt && r.yeeDobleAt.length === 2) return true;
+  const pts = r.pts || [];
+  if (pts.length < 2) return false;
+  for (const other of engine.ramales) {
+    if (!other.yeeDobleAt || other.yeeDobleAt.length !== 2) continue;
+    for (const yp of other.yeeDobleAt) {
+      for (const rp of pts) {
+        if (Math.hypot(yp[0] - rp[0], yp[1] - rp[1]) < 20) return true;
+      }
+      for (let i = 0; i < pts.length - 1; i++) {
+        const A = pts[i];
+        const B = pts[i + 1];
+        const dx = B[0] - A[0];
+        const dy = B[1] - A[1];
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq < 1e-6) continue;
+        const t = ((yp[0] - A[0]) * dx + (yp[1] - A[1]) * dy) / lenSq;
+        const ct = Math.max(0, Math.min(1, t));
+        const px = A[0] + ct * dx;
+        const py = A[1] + ct * dy;
+        if (Math.hypot(yp[0] - px, yp[1] - py) < 0.5) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function preserveYeeDobleAt(engine: IPlanoEngineCore, deleted: PlanoRamal): void {
+  if (!deleted.yeeDobleAt || deleted.yeeDobleAt.length !== 2) return;
+  const survivors = engine.ramales.filter((x) => x.net === 'san' && x.pts && x.pts.length >= 2);
+  if (survivors.length === 0) return;
+  let best: PlanoRamal | null = null;
+  let bestD = Infinity;
+  for (const yp of deleted.yeeDobleAt) {
+    for (const cand of survivors) {
+      let minD = Infinity;
+      for (const p of cand.pts) {
+        const d = Math.hypot(p[0] - yp[0], p[1] - yp[1]);
+        if (d < minD) minD = d;
+      }
+      // también distancia a segmento para troncos que pasan por el punto sin vértice exacto
+      for (let i = 0; i < cand.pts.length - 1; i++) {
+        const A = cand.pts[i];
+        const B = cand.pts[i + 1];
+        const dx = B[0] - A[0];
+        const dy = B[1] - A[1];
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq < 1e-6) continue;
+        const t = ((yp[0] - A[0]) * dx + (yp[1] - A[1]) * dy) / lenSq;
+        const ct = Math.max(0, Math.min(1, t));
+        const px = A[0] + ct * dx;
+        const py = A[1] + ct * dy;
+        const d = Math.hypot(yp[0] - px, yp[1] - py);
+        if (d < minD) minD = d;
+      }
+      if (minD < bestD && minD < 20) {
+        bestD = minD;
+        best = cand;
+      }
+    }
+  }
+  if (best && !best.yeeDobleAt) {
+    best.yeeDobleAt = deleted.yeeDobleAt;
+    const planId = engine._loadedPlanId;
+    if (planId != null) {
+      try {
+        const map = loadFromStorage<Record<string, HidroDataEntry>>(HYDRO_DATA_STORAGE_KEY, {});
+        const kDel = `san_${deleted.id}_${planId}`;
+        const kBest = `san_${best.id}_${planId}`;
+        const delEntry = map[kDel];
+        const yeeVal = delEntry?.accesorios?.['yeeDoble'] ?? 1;
+        if (!map[kBest]) map[kBest] = { accesorios: {}, Lh: 0, nSalidas: 0 };
+        if (!map[kBest].accesorios) map[kBest].accesorios = {};
+        map[kBest].accesorios['yeeDoble'] = yeeVal;
+        saveToStorage(HYDRO_DATA_STORAGE_KEY, map);
+      } catch {
+        /* ignorar */
+      }
+    }
+  }
+}
+
+function isDeletedYeeDoblePart(engine: IPlanoEngineCore, deleted: PlanoRamal): boolean {
+  if (deleted.yeeDobleAt && deleted.yeeDobleAt.length === 2) return true;
+  const pts = deleted.pts || [];
+  for (const other of engine.ramales) {
+    if (!other.yeeDobleAt || other.yeeDobleAt.length !== 2) continue;
+    for (const yp of other.yeeDobleAt) {
+      for (const rp of pts) {
+        if (Math.hypot(yp[0] - rp[0], yp[1] - rp[1]) < 20) return true;
+      }
+      for (let i = 0; i < pts.length - 1; i++) {
+        const A = pts[i];
+        const B = pts[i + 1];
+        const dx = B[0] - A[0];
+        const dy = B[1] - A[1];
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq < 1e-6) continue;
+        const t = ((yp[0] - A[0]) * dx + (yp[1] - A[1]) * dy) / lenSq;
+        const ct = Math.max(0, Math.min(1, t));
+        const px = A[0] + ct * dx;
+        const py = A[1] + ct * dy;
+        if (Math.hypot(yp[0] - px, yp[1] - py) < 0.5) return true;
+      }
+    }
+  }
+  return false;
 }
 
 // Orig. usuario #2: al borrar un trazo, sus tributarios se REASIGNAN al ramal del otro lado de
@@ -840,15 +957,21 @@ export function deleteSelected(
       if (idxR >= 0) {
         const deleted = engine.ramales[idxR];
         deletedRamalIds.add(deleted.id);
+        const wasYeeDoblePart = isDeletedYeeDoblePart(engine, deleted);
+        const isDivisor = engine.ramales.some(
+          (r) => r.mergesFrom && r.mergesFrom[1] === deleted.id,
+        );
         // Orig. usuario #2: reasignar tributarios al ramal del otro lado de la unión si existe.
         reassignTributariosToHermano(engine, deleted, toDelete);
         engine.ramales = engine.ramales.filter(
           (r) => r.id !== deleted.id && r.padre !== deleted.id,
         );
+        preserveYeeDobleAt(engine, deleted);
         // Ítem 9: si este ramal había partido a otro (incoming de una división mergesFrom), se
         // re-une la línea que quedó en dos mitades. Para "Borrar trazo" (noMerge) se salta:
         // el tronco de la yee doble debe quedar intacto (solo se borra el brazo lateral).
-        if (!opts?.noMerge) {
+        // Yee doble: el brazo principal se borra individualmente (sin re-unir); el lateral sí re-une.
+        if (!opts?.noMerge && !(wasYeeDoblePart && !isDivisor)) {
           remergeSplitRamales(engine, deleted.id, deleted.uc || 0);
         }
         if (deleted.pts?.length) cleanupJunctionsAfterRamalDelete(engine, deleted);
@@ -1030,11 +1153,17 @@ export function deleteSelected(
       deleteSelected(engine, expanded);
       return;
     }
+    const wasYeeDoblePartSel = isDeletedYeeDoblePart(engine, deleted);
+    const isDivisorSel = engine.ramales.some((r) => r.mergesFrom && r.mergesFrom[1] === deletedId);
     // Orig. usuario #2: reasignar tributarios al ramal del otro lado de la unión si existe.
     reassignTributariosToHermano(engine, deleted);
     engine.ramales = engine.ramales.filter((r) => r.id !== deletedId && r.padre !== deleted.id);
+    preserveYeeDobleAt(engine, deleted);
     // Ítem 9: si este ramal había partido a otro, se re-une la línea en dos mitades.
-    remergeSplitRamales(engine, deletedId, deleted.uc || 0);
+    // Yee doble: el brazo principal se borra individualmente (sin re-unir); el lateral sí re-une.
+    if (!(wasYeeDoblePartSel && !isDivisorSel)) {
+      remergeSplitRamales(engine, deletedId, deleted.uc || 0);
+    }
     if (deleted.pts?.length) cleanupJunctionsAfterRamalDelete(engine, deleted);
     // Limpia las referencias al ramal borrado en los bajantes
     for (const b of engine.bajantes) {

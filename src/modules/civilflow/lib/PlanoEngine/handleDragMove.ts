@@ -6,7 +6,7 @@ import {
   _firstSegmentAngle,
   snapGuidePoint,
 } from './PlanoEngineDrawing';
-import { checkRamalAngles } from './drawingAngles';
+import { checkRamalAngles, angleAtPosition, angleAtHalfLength } from './drawingAngles';
 import { parseDescargaEnId } from '../../utils/parseDescargaEnId';
 import { oppositeTextCorner, textLocalCorner, rotateLocalPoint } from './textAnnotationGeometry';
 import { isRamalBajanteConnectionAllowed } from '../../utils/flowDirection';
@@ -118,7 +118,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       const [mx, my] = _midpoint(r.pts);
       r.labelX = mx;
       r.labelY = my;
-      if (r.labelAngle == null) r.labelAngle = _firstSegmentAngle(r.pts);
+      if (r.labelAngle == null) r.labelAngle = angleAtHalfLength(r.pts);
       engine.scheduleRender();
       return;
     }
@@ -254,7 +254,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           r.pts[0] = [b.x, b.y];
           r.pts[r.pts.length - 1] = [newGx, newGy];
           r.totalL = calculateRamalLength(r.pts, engine);
-          if (r.labelAngle == null) r.labelAngle = _firstSegmentAngle(r.pts);
+          if (r.labelAngle == null) r.labelAngle = angleAtHalfLength(r.pts);
           const [mx, my] = _midpoint(r.pts);
           r.labelX = mx;
           r.labelY = my;
@@ -382,7 +382,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           const allowed = isRamalBajanteConnectionAllowed(engine, r, 0, b);
           if (!allowed) continue;
           if (!b.recibeDeIds) b.recibeDeIds = [];
-          b.recibeDeIds.push(r.id);
+          if (!b.recibeDeIds.includes(r.id)) b.recibeDeIds.push(r.id);
           r.ini = b.code || b.id;
           p.x = pStart[0];
           p.y = pStart[1];
@@ -398,7 +398,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           const allowed = isRamalBajanteConnectionAllowed(engine, r, r.pts.length - 1, b);
           if (!allowed) continue;
           if (!b.recibeDeIds) b.recibeDeIds = [];
-          b.recibeDeIds.push(r.id);
+          if (!b.recibeDeIds.includes(r.id)) b.recibeDeIds.push(r.id);
           r.fin = b.code || b.id;
           p.x = pEnd[0];
           p.y = pEnd[1];
@@ -469,7 +469,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           }
           if (changed) {
             r.totalL = calculateRamalLength(r.pts, engine);
-            if (r.labelAngle == null) r.labelAngle = _firstSegmentAngle(r.pts);
+            if (r.labelAngle == null) r.labelAngle = angleAtHalfLength(r.pts);
             const [mx, my] = _midpoint(r.pts);
             r.labelX = mx;
             r.labelY = my;
@@ -493,7 +493,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           d.dy -= dyMove;
           r.pts[r.pts.length - 1] = [b.x + d.dx, b.y + d.dy];
           r.totalL = calculateRamalLength(r.pts, engine);
-          if (r.labelAngle == null) r.labelAngle = _firstSegmentAngle(r.pts);
+          if (r.labelAngle == null) r.labelAngle = angleAtHalfLength(r.pts);
           const [mx, my] = _midpoint(r.pts);
           r.labelX = mx;
           r.labelY = my;
@@ -534,6 +534,14 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
       } else {
         (el as PlanoRamal | PlanoBajante | PlanoArea).labelX = p.x;
         (el as PlanoRamal | PlanoBajante | PlanoArea).labelY = p.y;
+        // Etiqueta de ramal: actualizar también su ángulo para que la flecha siga
+        // el segmento donde cae la etiqueta, manteniendo el mismo sentido
+        if ('pts' in el && Array.isArray((el as PlanoRamal).pts)) {
+          const ramal = el as PlanoRamal;
+          if (ramal.pts && ramal.pts.length >= 2) {
+            ramal.labelAngle = angleAtPosition(ramal.pts, p.x, p.y);
+          }
+        }
       }
       engine.scheduleRender();
     }
@@ -851,7 +859,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             if (changed) {
               movedRamalIds.add(other.id);
               other.totalL = calculateRamalLength(other.pts, engine);
-              if (other.labelAngle == null) other.labelAngle = _firstSegmentAngle(other.pts);
+              if (other.labelAngle == null) other.labelAngle = angleAtHalfLength(other.pts);
               const [mx, my] = _midpoint(other.pts);
               other.labelX = mx;
               other.labelY = my;
@@ -871,7 +879,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
             if (!other || !other.pts[link.ptIdx]) continue;
             other.pts[link.ptIdx] = [p.x, p.y];
             other.totalL = calculateRamalLength(other.pts, engine);
-            if (other.labelAngle == null) other.labelAngle = _firstSegmentAngle(other.pts);
+            if (other.labelAngle == null) other.labelAngle = angleAtHalfLength(other.pts);
             const [mx, my] = _midpoint(other.pts);
             other.labelX = mx;
             other.labelY = my;
@@ -895,7 +903,7 @@ export function handleDragMove(engine: IPlanoEngineCore, x: number, y: number): 
           }
         }
       }
-      if (r.labelAngle == null) r.labelAngle = _firstSegmentAngle(r.pts);
+      if (r.labelAngle == null) r.labelAngle = angleAtHalfLength(r.pts);
       r.totalL = calculateRamalLength(r.pts, engine);
       const [mx, my] = _midpoint(r.pts);
       r.labelX = mx;

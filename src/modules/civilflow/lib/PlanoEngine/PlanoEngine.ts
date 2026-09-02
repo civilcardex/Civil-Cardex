@@ -599,18 +599,41 @@ export default class PlanoEngine implements IPlanoEngineCore {
    *  de historial y dispara el callback onDirty. */
   _markDirty(): void {
     this._dirty = true;
-    autoDetectRamalConnections(this);
-    ensureRpCntRamal(this);
-    // ponytail: vent codo 90° that now forms T must become T, before counting
+    // ponytail: los cálculos de red/contadores NO deben romper el guardado. El callback
+    // _onDirtyCb (PdfViewer) es quien hace saveWork()+saveTrazosToDB(); si un cálculo lanza
+    // antes, el guardado se perdía en silencio. Se aísla cada paso y siempre se notifica dirty.
     try {
+      autoDetectRamalConnections(this);
+    } catch (e) {
+      devError('PlanoEngine _markDirty autoDetect:', e);
+    }
+    try {
+      ensureRpCntRamal(this);
+    } catch (e) {
+      devError('PlanoEngine _markDirty ensureRpCnt:', e);
+    }
+    try {
+      // ponytail: vent codo 90° that now forms T must become T, before counting
       fixVentCodoToTee(this);
     } catch (_e) {
       void _e;
     }
-    calcSanitaryAccessories(this);
-    calcHydroAccessories(this);
-    if (this._history) {
-      this._history.saveSnapshot();
+    try {
+      calcSanitaryAccessories(this);
+    } catch (e) {
+      devError('PlanoEngine _markDirty calcSanitary:', e);
+    }
+    try {
+      calcHydroAccessories(this);
+    } catch (e) {
+      devError('PlanoEngine _markDirty calcHydro:', e);
+    }
+    try {
+      if (this._history) {
+        this._history.saveSnapshot();
+      }
+    } catch (e) {
+      devError('PlanoEngine _markDirty history:', e);
     }
     if (this._onDirtyCb) this._onDirtyCb();
   }
