@@ -515,6 +515,49 @@ export function autoSplitJunctionAndSumFlow(engine: IPlanoEngineCore, incoming: 
       if (farAparato && engine._loadedPlanId != null) {
         moveAparatoCount(existing.net, existing.id, newId, engine._loadedPlanId, farAparato);
       }
+      // SPLIT + BAJANTE: asocia automáticamente al nuevo ramal aguas abajo para que no aparezca verde
+      // y quede checkeado en ambas secciones (ramal: bajantes asociados / bajante: ramales asociados)
+      // Se basa en topología: si el bajante estaba en existing o está geométricamente sobre el tramo aguas abajo
+      const TOL_B = 2.0;
+      const distToSeg = (pts: number[][], bx: number, by: number): number => {
+        let min = Infinity;
+        for (let i = 0; i < pts.length - 1; i++) {
+          const A = pts[i],
+            B = pts[i + 1];
+          const dx = B[0] - A[0],
+            dy = B[1] - A[1];
+          const len2 = dx * dx + dy * dy;
+          if (len2 < 1e-9) {
+            min = Math.min(min, Math.hypot(bx - A[0], by - A[1]));
+            continue;
+          }
+          const t = Math.max(0, Math.min(1, ((bx - A[0]) * dx + (by - A[1]) * dy) / len2));
+          const px = A[0] + t * dx,
+            py = A[1] + t * dy;
+          min = Math.min(min, Math.hypot(bx - px, by - py));
+        }
+        min = Math.min(min, Math.hypot(bx - pts[0][0], by - pts[0][1]));
+        const last = pts[pts.length - 1];
+        min = Math.min(min, Math.hypot(bx - last[0], by - last[1]));
+        return min;
+      };
+      for (const b of engine.bajantes) {
+        if (b.net !== existing.net) continue;
+        const wasOnExisting = !!b.recibeDeIds?.includes(existing.id);
+        const nearDown = distToSeg(downstream.pts, b.x, b.y) < TOL_B;
+        const nearExist = distToSeg(existing.pts, b.x, b.y) < TOL_B;
+        // si estaba en existing o está geométricamente sobre el nuevo aguas abajo, mover a downstream
+        if (wasOnExisting || (nearDown && !nearExist)) {
+          const targetId = downstream.id;
+          b.recibeDeIds = (b.recibeDeIds || []).filter(
+            (id) => id !== existing.id && id !== downstream.id,
+          );
+          if (!b.recibeDeIds.includes(targetId)) b.recibeDeIds.push(targetId);
+        } else if (nearExist && !nearDown) {
+          // queda en existing (upstream) — limpiar posible duplicado en downstream
+          b.recibeDeIds = (b.recibeDeIds || []).filter((id) => id !== downstream.id);
+        }
+      }
       break;
     }
   }
@@ -621,10 +664,13 @@ export function detectTributaryPadre(
   const sameGroup = (o: string) =>
     o === net || ((o === 'san' || o === 'vent') && (net === 'san' || net === 'vent'));
   const tribEps = [pts[0], pts[pts.length - 1]];
-  let best: { id: string; d: number } | null = null;
+  const mid: number[] = [
+    (pts[0][0] + pts[pts.length - 1][0]) / 2,
+    (pts[0][1] + pts[pts.length - 1][1]) / 2,
+  ];
+  let best: { id: string; d: number; midD: number } | null = null;
   for (const other of engine.ramales) {
     if (!sameGroup(other.net) || !other.pts || other.pts.length < 2) continue;
-    // Distancia mínima desde cualquier extremo del tributario a este ramal (cuerpo o extremo).
     let d = Infinity;
     for (const p of tribEps) {
       for (let i = 0; i < other.pts.length - 1; i++) {
@@ -633,17 +679,23 @@ export function detectTributaryPadre(
       d = Math.min(d, segDist(p, other.pts[0], other.pts[0]));
       d = Math.min(d, segDist(p, other.pts[other.pts.length - 1], other.pts[other.pts.length - 1]));
     }
-    // Debe tocar realmente (extremo o cuerpo) dentro de TOL para ser padre candidato.
     if (d > TOL) continue;
-    // Preferir el más cercano; en empate, el que no es tributario (ramal principal).
+    // distancia del punto medio del tributario al padre para desempate en Y compartida
+    let midD = Infinity;
+    for (let i = 0; i < other.pts.length - 1; i++) {
+      midD = Math.min(midD, segDist(mid, other.pts[i], other.pts[i + 1]));
+    }
     if (!best) {
-      best = { id: other.id, d };
-    } else if (d < best.d) {
-      best = { id: other.id, d };
-    } else if (d === best.d && other.tipo !== 'tributario') {
-      // Empate: preferir un ramal principal (no tributario) como padre.
-      const cur = engine.ramales.find((rr) => rr.id === best!.id);
-      if (cur?.tipo === 'tributario') best = { id: other.id, d };
+      best = { id: other.id, d, midD };
+    } else if (d + 1e-9 < best.d) {
+      best = { id: other.id, d, midD };
+    } else if (Math.abs(d - best.d) < 1e-9) {
+      if (midD + 1e-9 < best.midD) {
+        best = { id: other.id, d, midD };
+      } else if (Math.abs(midD - best.midD) < 1e-9 && other.tipo !== 'tributario') {
+        const cur = engine.ramales.find((rr) => rr.id === best!.id);
+        if (cur?.tipo === 'tributario') best = { id: other.id, d, midD };
+      }
     }
   }
   return best ? best.id : null;
@@ -953,15 +1005,17 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   const net = NETS.find((n) => n.id === engine.activeRamal!.net);
   const netPfx = net ? net.lbl : 'R';
   const isTrib = engine.tipoTramo === 'tributario';
-  // Autodetección de padre: si se dibuja un tributario sin haber elegido padre en la barra
-  // (feature orig. #5), detectarlo del ramal que el trazo toca. Si se detecta, se usa para la
-  // numeración de la etiqueta y como padre del objeto.
-  const autoPadre =
-    isTrib && !engine.padreTributario
-      ? detectTributaryPadre(engine, engine.activeRamal!.pts, engine.activeRamal!.net)
-      : null;
-  const padreId = isTrib ? engine.padreTributario || autoPadre : null;
-  const padreLbl = padreId ? rootTributarioLabel(engine.ramales, padreId) : '';
+  // Autodetección de padre prioriza geometría: evita stale RS1 cuando barra quedó en RS1
+  const autoPadre = isTrib
+    ? detectTributaryPadre(engine, engine.activeRamal!.pts, engine.activeRamal!.net)
+    : null;
+  const padreId = isTrib ? autoPadre || engine.padreTributario : null;
+  const padreObj = padreId ? engine.ramales.find((r) => r.id === padreId) : null;
+  const padreLbl = padreId
+    ? padreObj?.tipo === 'tributario'
+      ? rootTributarioLabel(engine.ramales, padreId)
+      : padreObj?.label || padreId
+    : '';
   const cnt = isTrib
     ? allocTributaryNumber(engine, padreLbl)
     : allocNetNumber(engine, engine.activeRamal!.net, 'ramal', (n) =>
@@ -981,9 +1035,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     padre: padreId,
     pts: engine.activeRamal!.pts,
     totalL: calculateRamalLength(engine.activeRamal!.pts, engine),
-    // Feature #5: si el padre se autodetectó (no estaba en engine.padreTributario), usar la
-    // numeración contra ese padre; si no, el label normal de tributario.
-    label: isTrib && padreId && !engine.padreTributario ? `T${cnt}${padreLbl}` : _nextLabel(engine),
+    label: isTrib && padreId ? `T${cnt}${padreLbl}` : _nextLabel(engine),
     ini: '',
     fin: '',
     piso: String(engine.nivelActual?.n ?? ''),
@@ -997,7 +1049,16 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     // Item 3: todo ramal de ventilación nuevo nace con diámetro 2" por defecto
     // (no solo visual del desplegable — el valor almacenado). Si _ramalDefaults
     // trae un diámetro, se respeta; el 2" es el fallback cuando no hay default.
-    diametro: engine.activeRamal!.net === 'vent' && !def.diametro ? '2"' : def.diametro || '',
+    // Fix issue #3: tributario nunca hereda 4" por defecto — solo inodoro requiere 4"
+    // (ramalMenu/FixturesPanel lo asignan explícitamente al elegir aparato). Tributario
+    // nace vacío (vent: 2" fallback) para no forzar 4" sin aparato.
+    diametro: isTrib
+      ? engine.activeRamal!.net === 'vent' && !def.diametro
+        ? '2"'
+        : ''
+      : engine.activeRamal!.net === 'vent' && !def.diametro
+        ? '2"'
+        : def.diametro || '',
     // Ítem 4: los ramales sanitarios nuevos nacen con pendiente por defecto 2% cuando no se
     // eligió explícitamente otra. El default del selector para san ya trae DEFAULT_PENDIENTE_PCT
     // desde PdfViewer; este fallback cubre el caso de _ramalDefaults ausente o pendiente sin
@@ -1013,6 +1074,8 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     showLength: true,
     showName: true,
     showGuide: true,
+    showFlowDir: true,
+    showMatDiamPend: true,
   };
 
   // Validación de dirección de flujo (san/vent/ll): todo ramal que se conecta a otro debe llevar
@@ -1687,12 +1750,16 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       let segSnapPt: { x: number; y: number } | null = null;
       const SNAP_THRESH = 12 / engine.zoom;
 
+      let bestSegDist = Infinity;
       for (const r of activeNetsRamales) {
         const segSnap = engine._snapToSegment(pt.x, pt.y, r.pts, SNAP_THRESH);
         if (segSnap) {
-          onSegmentRamal = r;
-          segSnapPt = segSnap;
-          break;
+          const d = Math.hypot(segSnap.x - pt.x, segSnap.y - pt.y);
+          if (d < bestSegDist) {
+            bestSegDist = d;
+            onSegmentRamal = r;
+            segSnapPt = segSnap;
+          }
         }
       }
 
@@ -1803,26 +1870,28 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       ar!.net === 'vent'
         ? [...activeRamales, ...engine.ramales.filter((r) => r.net === 'san')]
         : activeRamales;
+    let bestSnap: { x: number; y: number } | null = null;
+    let bestSnapDist = Infinity;
     for (const r of snapCandidates) {
       if (r.id === ar!.id) continue;
-      // Un trazo tipo RAMAL no pega a tributarios (misma regla que snapToExisting)
-      // — si no, el punto aterrizaba sobre el vértice/cuerpo del tributario y
-      // finishRamal rechazaba la unión con "Conexión no permitida" al extender
-      // un ramal cuyo extremo queda cerca de un tributario.
       if (ar!.tipo === 'ramal' && r.tipo === 'tributario') continue;
       let sp = null;
-      // Snap 45° al padre (o, sin padre explícito, a cualquier ramal del grupo para la
-      // autodetección de padre).
       if (engine.snapMode && (r.id === engine.padreTributario || !engine.padreTributario)) {
         sp = snapTributaryToPadre45Deg(pt.x, pt.y, last[0], last[1], r.pts, 20 / engine.zoom);
       } else {
         sp = engine._snapToSegment(pt.x, pt.y, r.pts, 20 / engine.zoom);
       }
       if (sp) {
-        pt = sp;
-        snappedToSeg = true;
-        break;
+        const d = Math.hypot(sp.x - pt.x, sp.y - pt.y);
+        if (d < bestSnapDist) {
+          bestSnapDist = d;
+          bestSnap = sp;
+        }
       }
+    }
+    if (bestSnap) {
+      pt = bestSnap;
+      snappedToSeg = true;
     }
 
     if (!snappedToSeg) {

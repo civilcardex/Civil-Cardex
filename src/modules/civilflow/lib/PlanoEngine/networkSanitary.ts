@@ -417,27 +417,34 @@ export function calcSanitaryAccessories(engine: IPlanoEngineCore): void {
       const countVentTrib = countVent;
       let countSubeTrib = 0;
       let countBajaTrib = 0;
+      let countVentTribExplicit = 0;
 
       const processAcc = (accType: string | undefined) => {
         if (accType === 'sifon') countSifonTrib++;
         else if (accType === 'codoSube' || accType === 'codo90rmSube') countSubeTrib++;
         else if (accType === 'codoBaja' || accType === 'codo90rmBaja') countBajaTrib++;
+        else if (accType === 'codoReventilado') countVentTribExplicit++;
       };
 
       processAcc(r.accesorioInicio);
       processAcc(r.accesorioFin);
       // ponytail: cada sifón implica un codo 90° sube (mismo conteo que FixturesPanel bump).
       countSubeTrib += countSifonTrib;
+      // Un codo reventilado puesto explícito en el extremo (p. ej. inodoro que cambia codo 90°
+      // sube → codo reventilado) cuenta aunque no haya vent geométrico tocando — espejo de la
+      // rama ramal (`if (countVent === 0)`): si ya hay detección geométrica, el explícito es la
+      // misma unión y no se suma para no duplicar.
+      const countVentTribTotal = countVentTrib > 0 ? countVentTrib : countVentTribExplicit;
 
       if (
         acc['sifon'] !== countSifonTrib ||
-        acc['codoReventilado'] !== countVentTrib ||
+        acc['codoReventilado'] !== countVentTribTotal ||
         acc['codo90rmSube'] !== countSubeTrib ||
         acc['codo90rmBaja'] !== countBajaTrib
       ) {
         if (countSifonTrib > 0) acc['sifon'] = countSifonTrib;
         else delete acc['sifon'];
-        if (countVentTrib > 0) acc['codoReventilado'] = countVentTrib;
+        if (countVentTribTotal > 0) acc['codoReventilado'] = countVentTribTotal;
         else delete acc['codoReventilado'];
         if (countSubeTrib > 0) acc['codo90rmSube'] = countSubeTrib;
         else delete acc['codo90rmSube'];

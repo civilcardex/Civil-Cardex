@@ -336,10 +336,12 @@ function sameNetGroupNet(a: string, b: string): boolean {
 }
 
 // Item 5: valida que el ángulo de conexión entre un ramal de ventilación y un
-// ramal sanitario sea exactamente 45° (Y) o 90° (codo reventilado), dentro de
-// ANGLE_EPS (0.5°). Antes, la conexión se permitía a 44°/46° porque solo se
-// validaban los segmentos propios de cada ramal, no el ángulo ENTRE ellos.
-// @returns true si el ángulo es 45° o 90° (±0.5°), false si no.
+// ramal sanitario sea 0° (continuación colineal), 45° (Y) o 90° (codo
+// reventilado), dentro de ANGLE_EPS (0.5°). Antes, la conexión se permitía a
+// 44°/46° porque solo se validaban los segmentos propios de cada ramal, no el
+// ángulo ENTRE ellos. El 0° es continuación recta de la línea (trazo bien
+// hecho) y no debe disparar la alerta.
+// @returns true si el ángulo es 0°, 45° o 90° (±0.5°), false si no.
 function ventSanAngleOk(
   vent: { pts: number[][]; _tribReversed?: boolean },
   san: { pts: number[][]; _tribReversed?: boolean },
@@ -358,8 +360,8 @@ function ventSanAngleOk(
   // atrás" respecto del flujo del san es igualmente válida.
   const clamped = Math.min(1, Math.abs(cosAngle));
   const angleDeg = (Math.acos(clamped) * 180) / Math.PI;
-  // 45° (Y) o 90° (codo reventilado) — estricto, sin tolerancia arbitraria.
-  return Math.abs(angleDeg - 45) <= 0.5 || Math.abs(angleDeg - 90) <= 0.5;
+  // 0° (continuación colineal), 45° (Y) o 90° (codo reventilado) — estricto.
+  return angleDeg <= 0.5 || Math.abs(angleDeg - 45) <= 0.5 || Math.abs(angleDeg - 90) <= 0.5;
 }
 
 /** Chequeo de dirección de flujo para san/ll/vent: cada extremo del ramal que toca otro ramal
