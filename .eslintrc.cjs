@@ -27,9 +27,8 @@ module.exports = {
       // would be a large rewrite of the app's most fragile surface for no behavioral gain.
       files: [
         'src/modules/civilflow/components/PdfViewer.tsx',
-        'src/modules/civilflow/components/pdfViewer/TramoEditor.tsx',
-        'src/modules/civilflow/components/pdfViewer/PdfViewerEngineInit.ts',
-        'src/modules/civilflow/components/pdfViewer/DrawingElementContextMenu.tsx',
+        'src/modules/civilflow/components/pdfViewer/*.ts',
+        'src/modules/civilflow/components/pdfViewer/*.tsx',
         'src/modules/civilflow/components/pdfViewer/drawingElementContextMenu/**/*.{ts,tsx}',
         'src/modules/civilflow/components/pdfViewer/tramoEditor/**/*.{ts,tsx}',
         'src/modules/civilflow/components/pdfViewer/CopyFromPlanPanel.tsx',

@@ -7,46 +7,25 @@ import PlanoEngine, {
   type TramoType,
 } from '../lib/PlanoEngine/PlanoEngine';
 import { NETS } from '../lib/PlanoEngine/PlanoState';
-import type { PlanoElement, PlanoNet, PlanoBajante } from '../lib/PlanoEngine/PlanoState';
-import {
-  codoPolarityOk,
-  codoNivelPermitidoEn,
-  flowEndsAt,
-  aparatoEnExtremoInvalido,
-} from '../lib/PlanoEngine/PlanoEngineDrawing';
-import { hasTeeAtPoint } from '../lib/PlanoEngine/ventCodoTeeFix';
+import type { PlanoElement } from '../lib/PlanoEngine/PlanoState';
+import { aparatoEnExtremoInvalido } from '../lib/PlanoEngine/PlanoEngineDrawing';
 import type { Piso } from '../lib/shared/projectTypes';
 import type { PlanItem } from '../context/PlansContext';
 import { matLongName, pisoLbl, DEFAULT_PENDIENTE_PCT } from '../constants';
 import { useProject } from '../context/ProjectContext';
 import { usePlans } from '../context/PlansContext';
 import { writeSanDrawingSync, writeHydroDrawingSync } from '../utils/drawingSync';
-import { diamPulgFromLabel } from '../utils/diamPulgFromLabel';
-import {
-  loadFromStorage,
-  saveToStorage,
-  saveTrazosToDB,
-  loadTrazosFromDB,
-} from '../services/storageService';
-import type { PlanTrazos } from '../services/storageService';
+import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../services/storageService';
 import {
   GAS_ACC_KEY,
   APARATOS_BY_TRAMO_KEY,
   HYDRO_DATA_STORAGE_KEY,
   ACTIVE_NETS_KEY,
-  VISOR_TOOL_KEY,
-  VISOR_TIPO_TRAMO_KEY,
-  VISOR_SNAP_ON_KEY,
-  VISOR_GRID_ON_KEY,
-  NETS_CHANGED_EVENT,
   TRAZOS_PREFIX,
   LAST_TRAZOS_ID_KEY,
-  NET_COLOR_PREFIX,
   PDF_HIDDEN_NETS_KEY,
   PDF_LOCKED_NETS_KEY,
 } from '../constants/storage-keys';
-import { loadNetColors, applyNetColors } from '../services/netColorsService';
-import { devError } from '../../../utils/devError';
 import PdfViewerToolbar, { STATUS } from './pdfViewer/PdfViewerToolbar';
 import PdfCanvas from './pdfViewer/PdfCanvas';
 import PdfViewerNetworkBar from './pdfViewer/PdfViewerNetworkBar';
@@ -54,10 +33,7 @@ import { usePdfAutoSave } from './pdfViewer/usePdfAutoSave';
 import { usePdfViewerEngine } from './pdfViewer/PdfViewerEngineInit';
 import TextInputOverlay from './pdfViewer/TextInputOverlay';
 import DrawingElementContextMenu from './pdfViewer/drawingElementContextMenu';
-import type {
-  ContextMenuState,
-  LowerFloorRamales,
-} from './pdfViewer/drawingElementContextMenu/context';
+import type { ContextMenuState } from './pdfViewer/drawingElementContextMenu/context';
 import ConfirmDialog from './pdfViewer/ConfirmDialog';
 import AccesorioModal from './pdfViewer/AccesorioModal';
 import TipoTramoSelector from './pdfViewer/TipoTramoSelector';
@@ -66,6 +42,15 @@ import BajanteAsociacion from './pdfViewer/BajanteAsociacion';
 import PdfViewerDrawnElements from './pdfViewer/PdfViewerDrawnElements';
 import { CopyFromPlanPanel } from './pdfViewer/CopyFromPlanPanel';
 import AparatosPanel from './FixturesPanel';
+import { validateBeforeClose } from './pdfViewer/closeValidation';
+import { applyAccesorioPlacement } from './pdfViewer/accesorioPlacement';
+import { useSessionVisorPrefs } from './pdfViewer/useSessionVisorPrefs';
+import { useNetColorsInit } from './pdfViewer/useNetColorsInit';
+import { useActiveNetsVisibility } from './pdfViewer/useActiveNetsVisibility';
+import { useFloorRamales } from './pdfViewer/useFloorRamales';
+import { useTrazosLoader } from './pdfViewer/useTrazosLoader';
+import { usePlanoLoadSwitch } from './pdfViewer/usePlanoLoadSwitch';
+import { useKeyboardShortcuts } from './pdfViewer/useKeyboardShortcuts';
 const PdfViewer_SR_ONLY: React.CSSProperties = {
   position: 'absolute',
   width: 1,
@@ -218,7 +203,8 @@ function PdfViewer_({
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tool, setTool] = useState('sel');
+  const { tool, setTool, tipoTramo, setTipoTramo, snapOn, setSnapOn, gridOn, setGridOn } =
+    useSessionVisorPrefs();
   const [activeNet, setActiveNet] = useState(() => {
     if (activeNetworks && activeNetworks.size > 0) {
       if (activeNetworks.has('af')) return 'af';
@@ -243,29 +229,6 @@ function PdfViewer_({
     }
   }, [activeNetworks, activeNet]);
 
-  const [tipoTramo, setTipoTramo] = useState(() => {
-    try {
-      return sessionStorage.getItem(VISOR_TIPO_TRAMO_KEY) || 'ramal';
-    } catch {
-      return 'ramal';
-    }
-  });
-  const [snapOn, setSnapOn] = useState(() => {
-    try {
-      const v = sessionStorage.getItem(VISOR_SNAP_ON_KEY);
-      return v !== null ? v === 'true' : true;
-    } catch {
-      return true;
-    }
-  });
-  const [gridOn, setGridOn] = useState(() => {
-    try {
-      const v = sessionStorage.getItem(VISOR_GRID_ON_KEY);
-      return v !== null ? v === 'true' : true;
-    } catch {
-      return true;
-    }
-  });
   const [scaleM, setScaleM] = useState('0.5');
   const [selectedNivel, setSelectedNivel] = useState<number | null>(null);
   const syncedNivelForIdRef = useRef<string | number | null>(null);
@@ -325,211 +288,15 @@ function PdfViewer_({
   const pdfCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const [lowerFloorsRamales, setLowerFloorsRamales] = useState<LowerFloorRamales[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    if (!selElement || !(selElement.tipo === 'bajante' || selElement.tipo === 'montante')) {
-      setLowerFloorsRamales([]);
-      return;
-    }
-    // Forzar a String, igual que la búsqueda de coincidencia con planos más abajo — selectedNivel
-    // y piso.n no siempre coinciden en número-vs-string, y un === estricto fallido aquí dejaba
-    // currentFloor en undefined (cayendo a Infinity): inofensivo por sí solo, pero inconsistente
-    // con la OTRA búsqueda de esta función que sí resuelve, haciendo que la lista de pisos del
-    // dropdown alternara entre correcta y vacía según qué comparación acertara esa vez.
-    const currentFloor = pisos.find((p) => String(p.n) === String(selectedNivel));
-    // Coerción con Number() — npt está tipado number|string (LevelsCard guarda un string a
-    // mitad de edición) y un proyecto antiguo puede tener npt serializado como string; un <=
-    // entre dos strings es lexicográfico ("9.00" > "30.00") y descartaba silenciosamente de la
-    // lista pisos realmente más bajos.
-    const currentNpt = currentFloor ? Number(currentFloor.npt) : Infinity;
-    const relevantPlans = planosCtx.plans.filter((plan) => {
-      const pF = pisos.find((p) => String(p.n) === String(plan.nivel));
-      return pF && Number(pF.npt) <= currentNpt;
-    });
-    // Solo bajantes/montantes reales que atraviesan pisos entran en el dropdown "Destino" —
-    // contador/calentador/red_publica son aparatos puntuales, no líneas troncales en las que una
-    // tubería descargue. Los ramales tampoco se ofrecen: la asociación modela una bajante que
-    // continúa hacia la SIGUIENTE bajante inferior, en cascada piso por piso.
-    const isRiser = (b: PlanoBajante) =>
-      b.tipo !== 'contador' && b.tipo !== 'calentador' && b.tipo !== 'red_publica';
-
-    // Resolver cada plan SINCRÓNICAMENTE primero (motor vivo para el piso actual, localStorage
-    // para el resto) y mostrarlo de inmediato — el dropdown nunca debe quedarse vacío solo porque
-    // una consulta lenta a la BD aún no resolvió. Solo los planes sin nada cacheado en local
-    // reciben fallback asíncrono a BD, fusionado conforme cada uno resuelve individualmente (sin
-    // esperar un solo Promise.all) para que una re-ejecución posterior del efecto (al seleccionar
-    // otro elemento) solo cancele SUS propias peticiones pendientes y no descarte el resultado
-    // síncrono ya correcto de cada plan.
-    const syncResults = relevantPlans.map((plan) => {
-      const pF = pisos.find((p) => String(p.n) === String(plan.nivel))!;
-      let bajantes: PlanoBajante[] = [];
-      let needsDbFallback = false;
-      if (plan.id === currentIdRef.current) {
-        bajantes =
-          engineRef.current?.bajantes?.filter(
-            (b) => b.net === (selElement.net || activeNet) && isRiser(b),
-          ) || [];
-      } else {
-        // Debe pasar por el mismo accessor con prefijo civilflow_ que usa todo lo demás
-        // (saveToStorage/loadFromStorage de storageService.ts) — un localStorage.getItem crudo
-        // aquí perdía ese prefijo por completo, leía siempre una clave que nadie escribía y caía
-        // silenciosamente a la consulta de BD de abajo en cada llamada.
-        const data = loadFromStorage<{ bajantes?: PlanoBajante[] } | null>(
-          TRAZOS_PREFIX + plan.id,
-          null,
-        );
-        needsDbFallback = !data?.bajantes?.length;
-        bajantes = (data?.bajantes || []).filter(
-          (b: PlanoBajante) => b.net === (selElement.net || activeNet) && isRiser(b),
-        );
-      }
-      return {
-        planId: plan.id,
-        planName: plan.name,
-        npt: pF.npt,
-        bajantes,
-        needsDbFallback,
-        isCurrent: plan.id === currentIdRef.current,
-      };
-    });
-    syncResults.sort((a, b) => Number(b.npt) - Number(a.npt));
-    setLowerFloorsRamales(syncResults.map(({ needsDbFallback: _n, ...rest }) => rest));
-
-    // El almacenamiento local solo tiene lo que este navegador cargó/guardó de este piso — un
-    // piso editado en otro dispositivo, o antes de limpiar la caché local, aún no tiene nada
-    // aquí aunque sus bajantes sí existan en la nube. Recurrir a la BD igual que loadTrazosForPlan
-    // hace con el plan cargado, por cada plan que lo necesite, fusionando cada resultado conforme
-    // resuelve en vez de bloquear toda la lista por el más lento.
-    for (const plan of relevantPlans) {
-      const sync = syncResults.find((r) => r.planId === plan.id);
-      if (!sync?.needsDbFallback) continue;
-      (async () => {
-        try {
-          const dbData = await loadTrazosFromDB(String(plan.id));
-          if (cancelled || !dbData) return;
-          const data =
-            typeof dbData === 'string'
-              ? JSON.parse(dbData)
-              : (dbData as { bajantes?: PlanoBajante[] });
-          const bajantes = (data?.bajantes || []).filter(
-            (b: PlanoBajante) => b.net === (selElement.net || activeNet) && isRiser(b),
-          );
-          if (bajantes.length === 0) return;
-          setLowerFloorsRamales((prev) =>
-            prev.map((r) => (r.planId === plan.id ? { ...r, bajantes } : r)),
-          );
-        } catch {
-          /* ignore */
-        }
-      })();
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selElement, selectedNivel, pisos, planosCtx.plans, activeNet]);
-
-  // Espejo del efecto lowerFloorsRamales de arriba, pero para el selector "Origen" — solo el
-  // ÚNICO piso inmediatamente superior (menor npt estrictamente mayor al actual), no todos los
-  // pisos de arriba. Una bajante solo recibe del montante que está directamente encima.
-  const [upperFloorGroup, setUpperFloorGroup] = useState<LowerFloorRamales | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    if (!selElement || !(selElement.tipo === 'bajante' || selElement.tipo === 'montante')) {
-      setUpperFloorGroup(null);
-      return;
-    }
-    const currentFloor = pisos.find((p) => String(p.n) === String(selectedNivel));
-    const currentNpt = currentFloor ? Number(currentFloor.npt) : -Infinity;
-    const isRiser = (b: PlanoBajante) =>
-      b.tipo !== 'contador' && b.tipo !== 'calentador' && b.tipo !== 'red_publica';
-
-    let best: { plan: PlanItem; npt: number } | null = null;
-    for (const plan of planosCtx.plans) {
-      const pF = pisos.find((p) => String(p.n) === String(plan.nivel));
-      if (!pF) continue;
-      const npt = Number(pF.npt);
-      if (!(npt > currentNpt)) continue;
-      if (!best || npt < best.npt) best = { plan, npt };
-    }
-    if (!best) {
-      setUpperFloorGroup(null);
-      return;
-    }
-    const { plan, npt } = best;
-    let bajantes: PlanoBajante[] = [];
-    let needsDbFallback = false;
-    if (plan.id === currentIdRef.current) {
-      bajantes =
-        engineRef.current?.bajantes?.filter(
-          (b) => b.net === (selElement.net || activeNet) && isRiser(b),
-        ) || [];
-    } else {
-      const data = loadFromStorage<{ bajantes?: PlanoBajante[] } | null>(
-        TRAZOS_PREFIX + plan.id,
-        null,
-      );
-      needsDbFallback = !data?.bajantes?.length;
-      bajantes = (data?.bajantes || []).filter(
-        (b: PlanoBajante) => b.net === (selElement.net || activeNet) && isRiser(b),
-      );
-    }
-    setUpperFloorGroup({
-      planId: plan.id,
-      planName: plan.name,
-      npt,
-      bajantes,
-      isCurrent: plan.id === currentIdRef.current,
-    });
-
-    if (needsDbFallback) {
-      (async () => {
-        try {
-          const dbData = await loadTrazosFromDB(String(plan.id));
-          if (cancelled || !dbData) return;
-          const data =
-            typeof dbData === 'string'
-              ? JSON.parse(dbData)
-              : (dbData as { bajantes?: PlanoBajante[] });
-          const bj = (data?.bajantes || []).filter(
-            (b: PlanoBajante) => b.net === (selElement.net || activeNet) && isRiser(b),
-          );
-          if (bj.length === 0) return;
-          setUpperFloorGroup((prev) =>
-            prev && prev.planId === plan.id ? { ...prev, bajantes: bj } : prev,
-          );
-        } catch {
-          /* ignore */
-        }
-      })();
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selElement, selectedNivel, pisos, planosCtx.plans, activeNet]);
-
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(VISOR_TOOL_KEY, tool);
-    } catch {}
-  }, [tool]);
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(VISOR_TIPO_TRAMO_KEY, tipoTramo);
-    } catch {}
-  }, [tipoTramo]);
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(VISOR_SNAP_ON_KEY, String(snapOn));
-    } catch {}
-  }, [snapOn]);
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(VISOR_GRID_ON_KEY, String(gridOn));
-    } catch {}
-  }, [gridOn]);
+  const { lowerFloorsRamales, upperFloorGroup } = useFloorRamales({
+    selElement,
+    selectedNivel,
+    pisos,
+    plans: planosCtx.plans,
+    activeNet,
+    engineRef,
+    currentIdRef,
+  });
 
   useEffect(() => {
     if (selectedNivel !== null) {
@@ -560,7 +327,7 @@ function PdfViewer_({
         engineRef.current.setTool('sel');
       if (tool !== 'sel' && tool !== 'guide') setTool('sel');
     }
-  }, [selElement, tool]);
+  }, [selElement, tool, setTool]);
 
   useEffect(() => {
     if (currentId == null) return;
@@ -570,61 +337,9 @@ function PdfViewer_({
     if (pl && (pl.nivel ?? null) !== (selectedNivel ?? null)) {
       setSelectedNivel(pl.nivel ?? null);
     }
-  }, [currentId, planos]);
+  }, [currentId, planos, selectedNivel]);
 
-  const loadTrazosForPlan = useCallback(
-    async (eng: PlanoEngine, resolvedId: string | number): Promise<boolean> => {
-      const tryLoad = (id: string | number): PlanTrazos | string | null => {
-        const key = `trazos_${id}`;
-        const saved = loadFromStorage<PlanTrazos | string | null>(key, null);
-        return saved || null;
-      };
-      const localData = tryLoad(resolvedId);
-      let initiallyLoaded = false;
-      if (localData) {
-        const workStr = typeof localData === 'string' ? localData : JSON.stringify(localData);
-        eng.loadWork(workStr);
-        initiallyLoaded = true;
-        requestAnimationFrame(() => {
-          eng.render();
-        });
-      }
-      try {
-        const dbData = await loadTrazosFromDB(String(resolvedId));
-        if (dbData) {
-          const dbTs = Number(dbData.ts || 0);
-          const localTs = Number((typeof localData === 'string' ? null : localData)?.ts || 0);
-          if (dbTs > localTs || !localData) {
-            const workStr = typeof dbData === 'string' ? dbData : JSON.stringify(dbData);
-            eng.loadWork(workStr);
-            if (!localData || dbTs > localTs) saveToStorage(`trazos_${resolvedId}`, dbData);
-            requestAnimationFrame(() => {
-              eng.render();
-            });
-            initiallyLoaded = true;
-            const loadedNet = eng.activeNet || activeNetRef.current || 'af';
-            const sm = eng.scaleM;
-            setActiveNet(loadedNet);
-            if (sm != null) setScaleM(String(sm));
-            // La caché de trazos recién sobreescrita (saveToStorage no dispara eventos) puede
-            // traer ramales nuevos creados en otro dispositivo — sin notificar, los tramos/UC ya
-            // montados se quedan sin ellos hasta una edición manual o recarga completa.
-            window.dispatchEvent(new Event('storage'));
-            window.dispatchEvent(new CustomEvent('civilflow_san_sync_changed'));
-            window.dispatchEvent(new CustomEvent('civilflow_hidro_sync_changed'));
-          } else if (localTs > dbTs && localData) {
-            saveTrazosToDB(String(resolvedId), localData);
-          }
-        } else if (localData) {
-          saveTrazosToDB(String(resolvedId), localData);
-        }
-      } catch (e) {
-        devError('[LOAD] Supabase error/sync error:', e);
-      }
-      return initiallyLoaded;
-    },
-    [],
-  );
+  const loadTrazosForPlan = useTrazosLoader({ activeNetRef, setActiveNet, setScaleM });
 
   const markDirtyRef = useRef<() => void>(() => {});
 
@@ -772,7 +487,7 @@ function PdfViewer_({
         prev ? { ...prev, element: { ...fresh } as unknown as typeof prev.element } : null,
       );
     }
-  }, [selElement, contextMenuState?.visible]);
+  }, [selElement, contextMenuState?.visible, contextMenuState?.element]);
   const [confirmState, setConfirmState] = useState<{
     isOpen: boolean;
     title: string;
@@ -905,196 +620,14 @@ function PdfViewer_({
     (ramalId: string, point: number[], _net: string, accId: string) => {
       const eng = engineRef.current;
       if (!eng) return;
-      const r = eng.ramales.find((r) => r.id === ramalId);
-      if (!r || !r.pts?.length) return;
-      // Localizar la unión por POSICIÓN en el ramal objetivo (ramalId ahora siempre es el ramal
-      // que ya existía antes de dibujar el conector — su arreglo pts puede no tener relación
-      // alguna con el índice que tuviera el extremo del ramal que disparó la acción).
-      const TOL = 0.5;
-      let junctionIndex = r.pts.findIndex(
-        ([px, py]) => Math.hypot(px - point[0], py - point[1]) < TOL,
-      );
-      if (junctionIndex === -1) {
-        // Una tee real sobre un tramo recto no tiene vértice en la unión (el extremo del ramal
-        // conector toca el medio de un segmento) — insertar uno, partiendo ese segmento, igual
-        // que el patrón existente de inserción de accesorio/montante en medio del cuerpo.
-        let segIdx = -1;
-        for (let i = 0; i < r.pts.length - 1; i++) {
-          const [ax, ay] = r.pts[i],
-            [bx, by] = r.pts[i + 1];
-          const dx = bx - ax,
-            dy = by - ay;
-          const lenSq = dx * dx + dy * dy;
-          if (lenSq < 0.0001) continue;
-          const t = ((point[0] - ax) * dx + (point[1] - ay) * dy) / lenSq;
-          if (t < 0.02 || t > 0.98) continue;
-          const projX = ax + t * dx,
-            projY = ay + t * dy;
-          if (Math.hypot(point[0] - projX, point[1] - projY) < TOL) {
-            segIdx = i;
-            break;
-          }
-        }
-        if (segIdx === -1) {
-          junctionIndex = 0;
-        } else {
-          const newIdx = segIdx + 1;
-          const newPts = [...r.pts];
-          newPts.splice(newIdx, 0, [point[0], point[1]]);
-          const shiftedAccMed: Record<string, string> = {};
-          if (r.accMed) {
-            for (const [key, val] of Object.entries(r.accMed)) {
-              const m = key.match(/^accMed(\d+)$/);
-              if (!m) continue;
-              const idx = parseInt(m[1], 10);
-              shiftedAccMed[`accMed${idx >= newIdx ? idx + 1 : idx}`] = val;
-            }
-          }
-          r.pts = newPts;
-          r.accMed = shiftedAccMed;
-          junctionIndex = newIdx;
-        }
-      }
-      const isIni = junctionIndex === 0;
-      const isFin = junctionIndex === r.pts.length - 1;
-      // Alerta de dirección de flujo san: en un ramal san el flujo va DESDE el extremo abierto
-      // (el aparato) HACIA el extremo de la bajante. Por eso:
-      //   - el sifón (anti-retorno) DEBE ir en el extremo de ENTRADA — opuesto a la bajante.
-      //   - la llave terminal (fin de línea) DEBE ir en el extremo de SALIDA — junto a la bajante.
-      // Si el usuario los coloca en el extremo equivocado, bloquear la colocación con una alerta.
-      // sifón: solo san, debe ir en ENTRADA (inicio). llaveTerminal: cualquier red, en SALIDA (fin).
-      if (accId === 'sifon' && r.net === 'san' && !isIni) {
-        onAlertHandler('Revisar ubicación del sifón', 'El sifón no puede recibir flujo.');
-        return;
-      }
-      // Ítems 4/5 (codo 90° sube/baja): el codo sube solo puede ENTREGAR flujo (la cola de la
-      // flecha apunta al extremo P — el flujo SALE de P hacia el codo); el codo baja solo puede
-      // RECIBIR flujo (la cabeza de la flecha apunta al extremo P — el flujo LLEGA a P desde el
-      // codo). En el cuerpo (flujo que pasa de largo) ninguno es válido. Ítem 2 (reventilado):
-      // el codo reventilado NO puede recibir flujo — si el flujo del ramal sanitario termina en
-      // el punto (lo recibe), bloquear.
-      const accPt = r.pts[junctionIndex];
-      if (
-        accPt &&
-        (accId === 'codoSube' ||
-          accId === 'codoBaja' ||
-          accId === 'codo90rmSube' ||
-          accId === 'codo90rmBaja')
-      ) {
-        const isVentTeeModal = r.net === 'vent' && hasTeeAtPoint(eng, accPt, r.net);
-        // Ítem 5: los codos de nivel (sube/baja) solo aplican entre cuerpo y extremo — nunca en
-        // una intersección entre ramales (tee de 3+ brazos).
-        if (!isVentTeeModal && !codoNivelPermitidoEn(eng, r.id, accPt)) {
-          onAlertHandler(
-            'Codo de nivel no permitido aquí',
-            'Los codos sube/baja solo pueden ubicarse entre el cuerpo del ramal y sus extremos, no en intersecciones entre ramales.',
-          );
-          return;
-        }
-        if (!isVentTeeModal && !codoPolarityOk(r, accPt, accId, TOL)) {
-          const isSube = accId === 'codoSube' || accId === 'codo90rmSube';
-          onAlertHandler(
-            'Dirección de codo incorrecta',
-            isSube
-              ? 'El codo 90° sube solo puede entregar flujo: la cola de la flecha debe apuntar al extremo (el flujo sale de ahí hacia el codo), no en el cuerpo.'
-              : 'El codo 90° baja solo puede recibir flujo: la cabeza de la flecha debe apuntar al extremo (el flujo llega ahí desde el codo), no en el cuerpo.',
-          );
-          return;
-        }
-      }
-      if (accId === 'codoReventilado' && r.net === 'san' && accPt && flowEndsAt(r, accPt, TOL)) {
-        onAlertHandler(
-          'Codo reventilado no puede recibir flujo',
-          'El codo reventilado debe colocarse en el extremo desde donde fluye el ramal sanitario. Invierte la dirección del ramal.',
-        );
-        return;
-      }
-      if (accId === 'llaveTerminal' || accId === 'teeLlaveTerminal') {
-        if (isIni) {
-          onAlertHandler(
-            'Revisar ubicación llave terminal',
-            'La llave terminal debe recibir el flujo.',
-          );
-          return;
-        }
-      }
-      // N9: evitar duplicados — eliminar cualquier accesorio conflictivo existente en el mismo punto antes de crear el nuevo (T+Q90, etc.)
-      // Se limpia tanto codos como tees en ese punto para que solo quede el seleccionado.
-      {
-        const TOL2 = 0.5;
-        const isCodoId = (v: string) => v.toLowerCase().includes('codo');
-        for (const other of eng.ramales) {
-          if (!other.pts) continue;
-          // endpoint inicio
-          if (
-            other.accesorioInicio &&
-            Math.hypot(other.pts[0][0] - accPt[0], other.pts[0][1] - accPt[1]) < TOL2
-          ) {
-            const isExistingCodo = isCodoId(other.accesorioInicio);
-            const isNewCodo = isCodoId(accId);
-            // conflicto: existente es codo y nuevo es tee, o viceversa, o ambos codos/ambos tees en mismo punto (duplicado)
-            if (
-              (isExistingCodo && !isNewCodo) ||
-              (!isExistingCodo && isNewCodo) ||
-              other.id !== r.id ||
-              junctionIndex !== 0
-            ) {
-              if (other.id === r.id && junctionIndex === 0) continue; // el que vamos a sobreescribir
-              other.accesorioInicio = '';
-            }
-          }
-          const li = other.pts.length - 1;
-          if (
-            other.accesorioFin &&
-            Math.hypot(other.pts[li][0] - accPt[0], other.pts[li][1] - accPt[1]) < TOL2
-          ) {
-            const isExistingCodo = isCodoId(other.accesorioFin);
-            const isNewCodo = isCodoId(accId);
-            if (
-              (isExistingCodo && !isNewCodo) ||
-              (!isExistingCodo && isNewCodo) ||
-              other.id !== r.id ||
-              junctionIndex !== li
-            ) {
-              if (other.id === r.id && junctionIndex === li) continue;
-              other.accesorioFin = '';
-            }
-          }
-          if (other.accMed) {
-            for (const k of Object.keys(other.accMed)) {
-              const m = k.match(/^accMed(\d+)$/);
-              if (!m) continue;
-              const p = other.pts[parseInt(m[1], 10)];
-              if (!p || Math.hypot(p[0] - accPt[0], p[1] - accPt[1]) >= TOL2) continue;
-              const isExistingCodo = isCodoId(other.accMed[k]);
-              const isNewCodo = isCodoId(accId);
-              const isSelf = other.id === r.id && parseInt(m[1], 10) === junctionIndex;
-              if (isSelf) continue;
-              // always remove conflicting accMed at the same point (duplicate dedup)
-              void isExistingCodo;
-              void isNewCodo;
-              delete other.accMed[k];
-            }
-          }
-        }
-      }
-      if (isIni) {
-        r.accesorioInicio = accId;
-      } else if (isFin) {
-        r.accesorioFin = accId;
-      } else {
-        if (!r.accMed) r.accMed = {};
-        r.accMed[`accMed${junctionIndex}`] = accId;
-      }
-      eng._markDirty();
-      eng.render();
-      // Refrescar la barra lateral
-      if (typeof window !== 'undefined') {
+      const updated = applyAccesorioPlacement(eng, ramalId, point, accId, onAlertHandler);
+      if (updated && typeof window !== 'undefined') {
+        // Refrescar la barra lateral
         window.dispatchEvent(new CustomEvent('aparatos-clear'));
-        setSelElement({ ...r });
+        setSelElement({ ...updated });
       }
     },
-    [],
+    [onAlertHandler],
   );
 
   useEffect(() => {
@@ -1106,116 +639,22 @@ function PdfViewer_({
     if (engineRef.current) engineRef.current.activeNetworks = activeNetworks;
   }, [activeNetworks, engineReady]);
 
-  // Restaurar colores de redes guardados en NETS[] y variables CSS al montar
-  useEffect(() => {
-    for (const net of NETS) {
-      try {
-        const raw = localStorage.getItem(NET_COLOR_PREFIX + net.id);
-        if (raw) {
-          const c = (() => {
-            try {
-              return JSON.parse(raw);
-            } catch {
-              return raw;
-            }
-          })();
-          if (typeof c === 'string') {
-            document.documentElement.style.setProperty('--' + net.id, c);
-            net.col = c;
-          }
-        } else {
-          // Sin override guardado — sincronizar el default de la variable CSS a NETS[].col para
-          // que lluvias (cyan #22d3ee por defecto en CSS) no se dibuje con el morado #8B5CF6 fijo
-          // en PlanoState.ts.
-          const cssVal = getComputedStyle(document.documentElement)
-            .getPropertyValue('--' + net.id)
-            .trim();
-          if (cssVal) net.col = cssVal;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-  }, []);
+  useNetColorsInit();
 
-  // Colores desde la fuente de verdad (perfiles.net_colors) — la BD gana sobre el restore de
-  // localStorage de arriba (puede resolver después del mount). loadNetColors refresca el caché.
-  useEffect(() => {
-    let cancelled = false;
-    void loadNetColors().then((colors) => {
-      if (!cancelled) applyNetColors(colors);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!engineRef.current || !engineReady) return;
-    const eng = engineRef.current;
-    const prevId = eng._loadedPlanId;
-    if (prevId && prevId !== currentId) {
-      if (autoSaveTimerRef.current) {
-        clearTimeout(autoSaveTimerRef.current);
-        autoSaveTimerRef.current = null;
-      }
-      if (!loadingPlanRef.current && eng._dirty) {
-        const work = eng.saveWork();
-        work.ts = Date.now();
-        saveToStorage(`trazos_${prevId}`, work);
-        eng._dirty = false;
-      }
-    }
-    const resolvedId = currentIdRef.current || currentId || '';
-    if (!resolvedId) {
-      loadingPlanRef.current = false;
-      return;
-    }
-    eng._loadedPlanId = resolvedId;
-    loadingPlanRef.current = true;
-    (async () => {
-      try {
-        const loaded = await loadTrazosForPlan(eng, resolvedId);
-        const currentRefId = currentIdRef.current || 'work';
-        if (resolvedId !== currentRefId) {
-          loadingPlanRef.current = false;
-          return;
-        }
-        if (loaded) {
-          const fallbackNet =
-            activeNetworksRef.current &&
-            activeNetworksRef.current.size > 0 &&
-            !activeNetworksRef.current.has('af')
-              ? Array.from(activeNetworksRef.current)[0]
-              : activeNetRef.current || 'af';
-          const loadedNet = eng.activeNet || fallbackNet;
-          const sm = eng.scaleM;
-          setActiveNet(loadedNet);
-          if (sm != null) setScaleM(String(sm));
-          requestAnimationFrame(() => {
-            loadingPlanRef.current = false;
-            if (engineRef.current) engineRef.current.render();
-          });
-        } else if (currentId) {
-          eng.ramales = [];
-          eng.bajantes = [];
-          eng.areas = [];
-          eng.dims = [];
-          eng.textAnnots = [];
-          eng.selId = null;
-          eng.activeRamal = null;
-          eng.activeArea = null;
-          eng.setActiveNet(activeNetRef.current);
-          eng.render();
-          loadingPlanRef.current = false;
-        }
-      } catch (e) {
-        devError('[LOAD] error', e);
-        loadingPlanRef.current = false;
-      }
-    })();
-    syncDrawings();
-  }, [currentId, engineReady, loadTrazosForPlan, syncDrawings, autoSaveTimerRef]);
+  usePlanoLoadSwitch({
+    engineRef,
+    engineReady,
+    currentId,
+    currentIdRef,
+    loadTrazosForPlan,
+    syncDrawings,
+    autoSaveTimerRef,
+    loadingPlanRef,
+    activeNetRef,
+    activeNetworksRef,
+    setActiveNet,
+    setScaleM,
+  });
 
   const prevActiveNetForSel = useRef(activeNet);
   useEffect(() => {
@@ -1247,52 +686,7 @@ function PdfViewer_({
   // raíz de la app — permanece montado entre cambios de ruta para que las ediciones de la tabla
   // de diseño siempre muestren su alerta, no solo cuando el visor de PDF está en pantalla.
 
-  const [liveActiveNets, setLiveActiveNets] = useState<Set<string> | null>(() => {
-    try {
-      const saved = loadFromStorage(ACTIVE_NETS_KEY, null);
-      if (saved && Array.isArray(saved)) return new Set(saved);
-    } catch {}
-    return null;
-  });
-
-  useEffect(() => {
-    const refresh = () => {
-      try {
-        const saved = loadFromStorage(ACTIVE_NETS_KEY, null);
-        setLiveActiveNets(saved && Array.isArray(saved) ? new Set(saved) : null);
-      } catch {
-        setLiveActiveNets(null);
-      }
-    };
-    window.addEventListener(NETS_CHANGED_EVENT, refresh);
-    window.addEventListener('storage', refresh);
-    return () => {
-      window.removeEventListener(NETS_CHANGED_EVENT, refresh);
-      window.removeEventListener('storage', refresh);
-    };
-  }, []);
-
-  const finalVisibleNets = useMemo(() => {
-    const excludeEquipment = (nets: PlanoNet[]) =>
-      nets.filter((n) => n.id !== 'ep' && n.id !== 'bom' && n.id !== 'recolectora');
-    const getNets = () => {
-      if (activeNetworks && activeNetworks.size > 0)
-        return excludeEquipment(NETS.filter((n) => activeNetworks.has(n.id)));
-      if (liveActiveNets) return excludeEquipment(NETS.filter((n) => liveActiveNets.has(n.id)));
-      return excludeEquipment(NETS);
-    };
-    return getNets();
-  }, [activeNetworks, liveActiveNets]);
-
-  // Misma precedencia que finalVisibleNets arriba, pero para 'recolectora' específicamente — esa
-  // red está excluida de la lista de pestañas visibles (los glifos de canal se dibujan bajo la
-  // pestaña 'll', no en su propia pestaña), así que no se puede derivar de finalVisibleNets y
-  // necesita su propia verificación.
-  const recolectoraActive = useMemo(() => {
-    if (activeNetworks && activeNetworks.size > 0) return activeNetworks.has('recolectora');
-    if (liveActiveNets) return liveActiveNets.has('recolectora');
-    return true;
-  }, [activeNetworks, liveActiveNets]);
+  const { finalVisibleNets, recolectoraActive } = useActiveNetsVisibility(activeNetworks);
 
   // ── Acciones en línea ──
   const syncEngine = useCallback(() => {
@@ -1302,11 +696,7 @@ function PdfViewer_({
     eng.setActiveNet(activeNet);
     eng.setTipoTramo(tipoTramo as TramoType);
     eng.setSnap(snapOn);
-    if ((eng as unknown as { setGridMode?: (v: boolean) => void }).setGridMode) {
-      (eng as unknown as { setGridMode: (v: boolean) => void }).setGridMode(gridOn);
-    } else {
-      (eng as unknown as { gridMode: boolean }).gridMode = gridOn;
-    }
+    eng.setGridMode(gridOn);
     eng.setScaleM(scaleM);
     const floorObj = pisos.find((p) => p.n === selectedNivel);
     eng.nivelActual = floorObj
@@ -1472,52 +862,7 @@ function PdfViewer_({
     if (engineRef.current) engineRef.current.setPadreTributario(null);
   }, [resetKey]);
 
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'SELECT' ||
-        target.tagName === 'TEXTAREA'
-      )
-        return;
-      if (e.key.toLowerCase() === 'g') {
-        setSnapOn((p) => !p);
-        e.preventDefault();
-      }
-      if (e.key.toLowerCase() === 'c') {
-        // Espejo del manejador 'c' del engine: contador en af/gas, canal en el resto (si canal
-        // recolectora está activa).
-        if (activeNet === 'af' || activeNet === 'gas') {
-          setTool('cont');
-        } else if (recolectoraActive) {
-          setTool('canal');
-        } else {
-          setTool('cont');
-        }
-        e.preventDefault();
-      }
-      if (e.key.toLowerCase() === 'h') {
-        setTool('calent');
-        e.preventDefault();
-      }
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (engineRef.current) {
-          const eng = engineRef.current;
-          // El engine ya maneja Suprimir por completo (PlanoEngine._onKeyDownHandler):
-          // multiSel, ramal único (recorte del segmento del clic de selección vía
-          // _selPointCvs) y deleteSelected — este listener solo cubre el borrado de la
-          // selección fantasma, que el engine no toca.
-          if (eng.selectedGhostId) {
-            eng.deleteSelected([eng.selectedGhostId]);
-            e.preventDefault();
-          }
-        }
-      }
-    };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [setTool]);
+  useKeyboardShortcuts({ setSnapOn, setTool, activeNet, recolectoraActive, engineRef });
 
   const prevSelId = useRef(selElement?.id);
   const prevActiveNetForDiam = useRef(activeNet);
@@ -1636,184 +981,7 @@ function PdfViewer_({
         scaleText={scaleText}
         onClose={() => {
           const eng = engineRef.current;
-          if (eng) {
-            // Ítem 10: antes de validar diámetros, todo ramal/tributario debe tener UC/UD o un
-            // aparato/accesorio en sus extremos — un ramal sin carga aguas abajo produce una fila
-            // vacía en las tablas de diseño. El UC/UD real se asigna en las tablas de diseño vía
-            // los conteos de aparatos (fixtures en APARATOS_BY_TRAMO_KEY, clave
-            // `${net}_${id}_${planId}`), no en el campo `uc` del motor (que nace en 0) — se lee
-            // ese mapa para no marcar ramales que ya tienen UC asignado. Exclusiones confirmadas:
-            // red vent (no lleva UC), los Ldesvio de bajante (auto LD_*) y los stubs automáticos
-            // de tapón. Los tramos auto-creados por splits (mergesFrom) SÍ se validan: son la
-            // continuación aguas abajo que acumula el UC de la cadena.
-            const planId = eng._loadedPlanId;
-            const aparatosMap = loadFromStorage<Record<string, Record<string, number>>>(
-              APARATOS_BY_TRAMO_KEY,
-              {},
-            );
-            // Ítem 10: las exclusiones confirmadas son vent, Ldesvio automáticos (LD_*) y stubs de
-            // tapón — más las uniones tee en extremos (la tee conecta ramas que cargan su propio
-            // UC/UD). Los tramos auto-creados por splits (mergesFrom) NO se excluyen: acumulan el
-            // UC de la cadena y deben aparecer si nadie les asignó aparatos. Lo demás — un extremo
-            // con codo, un tributario sin derivación visible, etc. — SÍ se lista si no tiene UC/UD.
-            const TEE_END_IDS = new Set([
-              'teeDirecto',
-              'teeReduccion',
-              'teeLado',
-              'teeSube',
-              'teeBaja',
-              'teeTapon',
-              'teeLlaveTerminal',
-              'te_linea',
-              'te_ramal',
-            ]);
-            const sinUcRamales: string[] = [];
-            const revisados = new Set<string>();
-            const revisarRamal = (
-              r: {
-                net?: string;
-                id?: string;
-                label?: string;
-                tipo?: string;
-                uc?: number;
-                aparatoInicio?: string;
-                aparatoFin?: string;
-                accesorioInicio?: string;
-                accesorioFin?: string;
-                mergesFrom?: unknown;
-              },
-              planFor: number | string | null,
-            ) => {
-              if (!r.net || !r.id) return;
-              // Los tramos auto-creados por suma de flujo (mergesFrom, continuación de una
-              // bifurcación) ya llevan las UC/UD acumuladas según la dirección de flujo — no
-              // deben disparar la alerta de pendientes.
-              if (r.mergesFrom) return;
-              // La clave de dedupe INCLUYE el plan: el mismo id de ramal puede existir en
-              // varios planos confirmados (pisos replicados), y uno con fixtures en un plano no
-              // exime al mismo id en otro — sin el plan, el primer barrido marcaba "revisado" al
-              // resto y la lista de UC/UD pendientes quedaba incompleta.
-              const clave = `${r.net}_${r.id}_${planFor ?? 'engine'}`;
-              if (revisados.has(clave)) return;
-              revisados.add(clave);
-              if (r.net === 'vent') return;
-              if (r.id.startsWith('LD_')) return;
-              if (r.accesorioFin === 'tapon' || r.accesorioInicio === 'tapon') return;
-              const tipo = r.tipo || 'ramal';
-              if (tipo !== 'ramal' && tipo !== 'tributario') return;
-              if ((r.uc || 0) > 0) return;
-              if (r.aparatoInicio || r.aparatoFin) return;
-              if (TEE_END_IDS.has(r.accesorioInicio || '') || TEE_END_IDS.has(r.accesorioFin || ''))
-                return;
-              {
-                const prefix = `${r.net}_${r.id}`;
-                const hasFixtures = Object.keys(aparatosMap).some(
-                  (k) =>
-                    (k === prefix || k.startsWith(prefix + '_')) &&
-                    Object.keys(aparatosMap[k]).length > 0,
-                );
-                if (hasFixtures) return;
-              }
-              sinUcRamales.push(r.label || r.id);
-            };
-            for (const r of eng.ramales) revisarRamal(r, planId);
-            // El engine solo ve el NIVEL cargado — un nivel sin los planos confirmados restantes
-            // dejaba la lista incompleta (ramales de otros planos sin UC/UD no salían). Se barren
-            // los trazos guardados de cada plano confirmado con el mismo criterio, deduplicando
-            // por red+id (el plano actual ya quedó cubierto por el engine).
-            for (const plan of (planos || []).filter((p) => p.status === 'confirmed')) {
-              const raw = loadFromStorage<PlanTrazos | string | null>(
-                TRAZOS_PREFIX + String(plan.id),
-                null,
-              );
-              if (!raw) continue;
-              let data: PlanTrazos | null = null;
-              if (typeof raw === 'string') {
-                try {
-                  data = JSON.parse(raw) as PlanTrazos;
-                } catch {
-                  continue;
-                }
-              } else {
-                data = raw;
-              }
-              if (!data) continue;
-              for (const r of (data.ramales || []) as Array<{
-                net?: string;
-                id?: string;
-                label?: string;
-                tipo?: string;
-                uc?: number;
-                aparatoInicio?: string;
-                aparatoFin?: string;
-                accesorioInicio?: string;
-                accesorioFin?: string;
-                mergesFrom?: unknown;
-              }>)
-                revisarRamal(r, plan.id);
-            }
-            if (sinUcRamales.length > 0) {
-              // Lista COMPLETA — recortarla a 8 ocultaba elementos pendientes (reporte: "la
-              // alerta no muestra todos los elementos con UC/UD pendientes").
-              const lista = sinUcRamales.join(', ');
-              onAlertHandler(
-                'UC/UD pendientes',
-                `${sinUcRamales.length} ramal(es) sin UC/UD asignado: ${lista}. Asigna unidades de descarga o aparatos antes de cerrar el dibujo.`,
-              );
-              return;
-            }
-            // Todo elemento de tubería debe llevar diámetro antes de poder cerrar el dibujo — un
-            // ramal/tributario con diametro vacío (o una bajante/montante sin dNominal)
-            // produciría una tabla de diseño/memoria rota. Bloquear el cierre y listar los
-            // elementos faltantes en lugar de guardar silenciosamente un dibujo incompleto.
-            const sinDiamRamales = eng.ramales
-              .filter((r) => !r.diametro)
-              .map((r) => r.label || r.id);
-            const sinDiamBajantes = eng.bajantes
-              .filter((b) => (b.tipo === 'bajante' || b.tipo === 'montante') && !b.dNominal)
-              .map((b) => b.code || b.id);
-            const total = sinDiamRamales.length + sinDiamBajantes.length;
-            if (total > 0) {
-              const lista = [...sinDiamRamales, ...sinDiamBajantes].slice(0, 8).join(', ');
-              const extra = total > 8 ? ` y ${total - 8} más` : '';
-              onAlertHandler(
-                'Diámetros pendientes',
-                `${total} elemento(s) sin diámetro asignado: ${lista}${extra}. Asigna los diámetros antes de cerrar el dibujo.`,
-              );
-              return;
-            }
-            // Ítem: el diámetro de un bajante/montante no puede ser inferior al del ramal al que
-            // está conectado — validarlo también al cerrar el dibujo (no solo en edición) para que
-            // no se pueda cerrar con una inconsistencia de diámetros.
-            const sinDiamInferior: string[] = [];
-            for (const b of eng.bajantes) {
-              if (b.tipo !== 'bajante' && b.tipo !== 'montante') continue;
-              if (!b.dNominal) continue;
-              const bIn = diamPulgFromLabel(String(b.dNominal).replace(/-/g, ' '));
-              if (bIn <= 0) continue;
-              for (const rid of b.recibeDeIds || []) {
-                const ram = eng.ramales.find((r) => r.id === rid);
-                if (!ram || !ram.diametro) continue;
-                const ramIn = diamPulgFromLabel(String(ram.diametro).replace(/-/g, ' '));
-                if (ramIn > 0 && ramIn > bIn) {
-                  sinDiamInferior.push(
-                    `${b.code || b.id} (${ram.label || ram.id} ${ram.diametro})`,
-                  );
-                  break;
-                }
-              }
-            }
-            if (sinDiamInferior.length > 0) {
-              const lista = sinDiamInferior.slice(0, 8).join(', ');
-              const extra =
-                sinDiamInferior.length > 8 ? ` y ${sinDiamInferior.length - 8} más` : '';
-              onAlertHandler(
-                'Diámetro no permitido',
-                `Bajante(s)/montante(s) con diámetro inferior al del ramal conectado: ${lista}${extra}. Ajusta los diámetros antes de cerrar el dibujo.`,
-              );
-              return;
-            }
-          }
+          if (eng && !validateBeforeClose(eng, planos, onAlertHandler)) return;
           handleSave();
           navigate('/civilflowareatrabajo');
         }}
