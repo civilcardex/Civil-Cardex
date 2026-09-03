@@ -14,7 +14,11 @@ import {
 } from '../constants/storage-keys';
 
 // Module-level store for PDF ready state (useSyncExternalStore pattern).
-const pdfReadyStore = { ready: true, listeners: new Set<() => void>() };
+// Arranca en `false` para que el overlay de carga pinte en el primer render cuando ya
+// hay planos cacheados; si arrancara en `true`, el primer render muestra el visor vacío
+// (getSnapshot cae al check 3) y solo tras el useEffect que resetea `ready=false` aparece
+// el overlay — flash "visor vacío → carga → planos".
+const pdfReadyStore = { ready: false, listeners: new Set<() => void>() };
 
 const ViewerPage_S1: React.CSSProperties = {
   position: 'absolute',
@@ -243,11 +247,14 @@ export default function ViewerPage() {
     },
     () => {
       const ready = pdfReadyStore.ready;
-      if (plans.length > 0 && hasFilesReady && !ready) return true;
-      if (restoreDone && cloudRestoreDone && plans.length === 0) return false;
-      if (plans.length > 0 && hasFilesReady && ready) return false;
-      if (!plans.length) return false;
-      return true;
+      // Sin planos todavía: overlay hasta que la restauración (local + nube) confirme vacío real.
+      if (plans.length === 0) {
+        return !(restoreDone && cloudRestoreDone);
+      }
+      // Con planos pero archivos aún no listos o PDF no renderizado → carga.
+      if (!hasFilesReady || !ready) return true;
+      // Planos listos y PDF renderizado → visor.
+      return false;
     },
   );
   const handlePdfReady = useCallback(() => {
@@ -276,47 +283,48 @@ export default function ViewerPage() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden" style={{ background: '#0a0e14' }}>
-      {isDrawingLoading && (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#0a0e14',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 16,
+          zIndex: 9999,
+          pointerEvents: isDrawingLoading ? 'auto' : 'none',
+          opacity: isDrawingLoading ? 1 : 0,
+          visibility: isDrawingLoading ? 'visible' : 'hidden',
+          transition: 'opacity 0.15s ease',
+        }}
+      >
         <div
           style={{
-            position: 'fixed',
-            inset: 0,
-            background: '#0a0e14',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 16,
-            zIndex: 9999,
-            pointerEvents: 'auto',
+            width: 48,
+            height: 48,
+            border: '3px solid #1e293b',
+            borderTopColor: '#00dce5',
+            borderRadius: '50%',
+            animation: 'spin 0.9s linear infinite',
+          }}
+        />
+        <div
+          style={{
+            fontFamily: 'Geist, monospace',
+            fontSize: 13,
+            color: '#e2e2e8',
+            letterSpacing: 1,
           }}
         >
-          <div
-            style={{
-              width: 48,
-              height: 48,
-              border: '3px solid #1e293b',
-              borderTopColor: '#00dce5',
-              borderRadius: '50%',
-              animation: 'spin 0.9s linear infinite',
-            }}
-          />
-          <div
-            style={{
-              fontFamily: 'Geist, monospace',
-              fontSize: 13,
-              color: '#e2e2e8',
-              letterSpacing: 1,
-            }}
-          >
-            Cargando planos y redes...
-          </div>
-          <div style={{ fontFamily: 'Geist, monospace', fontSize: 11, color: '#64748b' }}>
-            Preparando dibujo de redes
-          </div>
-          <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          Cargando planos y redes...
         </div>
-      )}
+        <div style={{ fontFamily: 'Geist, monospace', fontSize: 11, color: '#64748b' }}>
+          Preparando dibujo de redes
+        </div>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
       <input
         ref={fileRef}
         type="file"
